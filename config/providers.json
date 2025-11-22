@@ -1,0 +1,316 @@
+{
+  "version": 1,
+  "default_timeout_ms": 12000,
+  "providers": {
+    "openai": {
+      "endpoint": "https://api.openai.com/v1",
+      "api_key_env": "OPENAI_API_KEY",
+      "priority_tier": 1,
+      "capabilities": ["chat", "embedding", "code", "stream", "multimodal"],
+      "models": ["gpt-4o", "gpt-4"],
+      "cost_score": 1.0,
+      "default_timeout_ms": 12000,
+      "rate_limit_per_min": 60
+    },
+    "anthropic_claude": {
+      "endpoint": "https://api.anthropic.com/v1",
+      "api_key_env": "ANTHROPIC_API_KEY",
+      "priority_tier": 1,
+      "capabilities": ["chat", "safety", "longform"],
+      "models": ["claude-3"],
+      "cost_score": 0.9,
+      "default_timeout_ms": 12000,
+      "rate_limit_per_min": 60
+    },
+    "grok": {
+      "endpoint": "https://api.x.ai/v1",
+      "api_key_env": "GROK_API_KEY",
+      "priority_tier": 1,
+      "capabilities": ["chat", "fast_recall"],
+      "models": ["grok-1"],
+      "cost_score": 0.8,
+      "default_timeout_ms": 3000,
+      "rate_limit_per_min": 200
+    },
+    "gemini": {
+      "endpoint": "https://generativelanguage.googleapis.com/v1beta",
+      "api_key_env": "GEMINI_API_KEY",
+      "priority_tier": 1,
+      "capabilities": ["chat", "long_context", "multimodal"],
+      "models": ["gemini-pro"],
+      "cost_score": 1.0,
+      "default_timeout_ms": 10000,
+      "rate_limit_per_min": 80
+    },
+    "deepseek": {
+      "endpoint": "https://api.deepseek.com/v1",
+      "api_key_env": "DEEPSEEK_API_KEY",
+      "priority_tier": 1,
+      "capabilities": ["reasoning", "chain_of_thought", "analysis", "stream"],
+      "models": ["deepseek-chat", "deepseek-coder"],
+      "cost_score": 0.15,
+      "default_timeout_ms": 4500,
+      "rate_limit_per_min": 200
+    },
+    "siliconflow": {
+      "endpoint": "https://api.siliconflow.cn/v1",
+      "api_key_env": "SILICONFLOW_API_KEY",
+      "priority_tier": 1,
+      "capabilities": ["reasoning", "planning", "code", "stream", "chat"],
+      "models": ["deepseek-ai/DeepSeek-V2.5", "Qwen/Qwen2-72B-Instruct"],
+      "cost_score": 0.2,
+      "default_timeout_ms": 5000,
+      "rate_limit_per_min": 120
+    },
+    "moonshot": {
+      "endpoint": "https://api.moonshot.cn/v1",
+      "api_key_env": "MOONSHOT_API_KEY",
+      "priority_tier": 1,
+      "capabilities": ["summary", "chat", "conversation"],
+      "models": ["moonshot-v1-8k", "moonshot-v1-32k", "moonshot-v1-128k"],
+      "cost_score": 0.25,
+      "default_timeout_ms": 4000,
+      "rate_limit_per_min": 300
+    },
+    "zhipuai": {
+      "endpoint": "https://open.bigmodel.cn/api/paas/v4",
+      "api_key_env": "ZHIPUAI_API_KEY",
+      "priority_tier": 1,
+      "capabilities": ["chat", "reasoning"],
+      "models": ["glm-4"],
+      "cost_score": 0.2,
+      "default_timeout_ms": 5000,
+      "rate_limit_per_min": 150
+    },
+    "baichuan": {
+      "endpoint": "https://api.baichuan-ai.com/v1",
+      "api_key_env": "BAICHUAI_API_KEY",
+      "priority_tier": 1,
+      "capabilities": ["chat", "reasoning"],
+      "models": ["Baichuan4"],
+      "cost_score": 0.2,
+      "default_timeout_ms": 5000,
+      "rate_limit_per_min": 150
+    },
+    "stepfun": {
+      "endpoint": "https://api.stepfun.com/v1",
+      "api_key_env": "STEPFUN_API_KEY",
+      "priority_tier": 1,
+      "capabilities": ["chat", "reasoning", "fast_inference"],
+      "models": ["step-1-8k", "step-1-32k"],
+      "cost_score": 0.15,
+      "default_timeout_ms": 3500,
+      "rate_limit_per_min": 400
+    },
+    "minimax": {
+      "endpoint": "https://api.minimax.chat/v1",
+      "api_key_env": "MINIMAX_API_KEY",
+      "priority_tier": 1,
+      "capabilities": ["chat", "conversation", "voice"],
+      "models": ["abab6-chat"],
+      "cost_score": 0.25,
+      "default_timeout_ms": 4500,
+      "rate_limit_per_min": 200
+    },
+    "alibaba_qwen": {
+      "endpoint": "https://dashscope.aliyuncs.com/api/v1",
+      "api_key_env": "ALIBABA_QWEN_API_KEY",
+      "priority_tier": 1,
+      "capabilities": ["chat", "reasoning", "multimodal"],
+      "models": ["qwen-turbo", "qwen-plus", "qwen-max"],
+      "cost_score": 0.2,
+      "default_timeout_ms": 5000,
+      "rate_limit_per_min": 250
+    },
+    "tencent_hunyuan": {
+      "endpoint": "https://api.hunyuan.tencent.com/v1",
+      "api_key_env": "TENCENT_HUNYUAN_API_KEY",
+      "priority_tier": 1,
+      "capabilities": ["chat", "reasoning", "stable"],
+      "models": ["hunyuan-turbo"],
+      "cost_score": 0.25,
+      "default_timeout_ms": 5000,
+      "rate_limit_per_min": 180
+    },
+    "sense_time": {
+      "endpoint": "https://api.sensenova.cn/v1",
+      "api_key_env": "SENSE_API_KEY",
+      "priority_tier": 1,
+      "capabilities": ["chat", "large_context"],
+      "models": ["SenseChat-5"],
+      "cost_score": 0.3,
+      "default_timeout_ms": 6000,
+      "rate_limit_per_min": 100
+    },
+    "naga_ai": {
+      "endpoint": "https://api.naga.ai/v1",
+      "api_key_env": "NAGA_API_KEY",
+      "priority_tier": 2,
+      "capabilities": ["chat", "reasoning"],
+      "models": ["naga-7b", "naga-13b"],
+      "cost_score": 0.1,
+      "default_timeout_ms": 6000,
+      "rate_limit_per_min": 150
+    },
+    "h2o_ai": {
+      "endpoint": "https://api.h2o.ai/v1",
+      "api_key_env": "H2O_API_KEY",
+      "priority_tier": 2,
+      "capabilities": ["chat", "embeddings"],
+      "models": ["h2o-danube-1.8b-chat"],
+      "cost_score": 0.05,
+      "default_timeout_ms": 8000,
+      "rate_limit_per_min": 100
+    },
+    "cloudflare_workers": {
+      "endpoint": "https://api.cloudflare.com/client/v4/accounts",
+      "api_key_env": "CLOUDFLARE_GLOBAL_API_KEY",
+      "priority_tier": 2,
+      "capabilities": ["chat", "embeddings", "light_reasoning"],
+      "models": ["@cf/meta/llama-3.1-8b-instruct", "@cf/meta/llama-3.1-70b-instruct"],
+      "cost_score": 0.05,
+      "default_timeout_ms": 3000,
+      "rate_limit_per_min": 1000
+    },
+    "cloudflare_vectors": {
+      "endpoint": "https://api.cloudflare.com/client/v4/accounts",
+      "api_key_env": "CLOUDFLARE_GLOBAL_API_KEY",
+      "priority_tier": 1,
+      "capabilities": ["embedding", "vector_search"],
+      "models": ["semantic-search", "vector-query"],
+      "cost_score": 0.1,
+      "default_timeout_ms": 4000,
+      "rate_limit_per_min": 500
+    },
+    "huggingface": {
+      "endpoint": "https://api-inference.huggingface.co",
+      "api_key_env": "HF_API_KEY",
+      "priority_tier": 3,
+      "capabilities": ["image", "embeddings", "niche_models"],
+      "models": ["sentence-transformers/all-MiniLM-L6-v2"],
+      "cost_score": 0.05,
+      "default_timeout_ms": 8000,
+      "rate_limit_per_min": 300
+    },
+    "together_ai": {
+      "endpoint": "https://api.together.xyz/v1",
+      "api_key_env": "TOGETHER_API_KEY",
+      "priority_tier": 2,
+      "capabilities": ["chat", "embeddings", "free_tier"],
+      "models": ["mistralai/Mistral-7B-Instruct-v0.1", "meta-llama/Llama-2-70b-chat-hf"],
+      "cost_score": 0.08,
+      "default_timeout_ms": 6000,
+      "rate_limit_per_min": 200
+    },
+    "replicate": {
+      "endpoint": "https://api.replicate.com",
+      "api_key_env": "REPLICATE_API_KEY",
+      "priority_tier": 3,
+      "capabilities": ["image", "niche_models"],
+      "models": ["stability-ai/sdxl"],
+      "cost_score": 0.1,
+      "default_timeout_ms": 8000,
+      "rate_limit_per_min": 200
+    },
+    "ollama_local": {
+      "endpoint": "http://127.0.0.1:11434",
+      "api_key_env": null,
+      "priority_tier": 2,
+      "capabilities": ["local", "fast_reasoning_small", "fallback"],
+      "models": ["qwen2.5:3b", "qwen2.5:7b", "llama2", "mistral"],
+      "cost_score": 0.0,
+      "default_timeout_ms": 4000,
+      "rate_limit_per_min": 5000
+    },
+    "lm_studio_local": {
+      "endpoint": "http://127.0.0.1:1234",
+      "api_key_env": null,
+      "priority_tier": 2,
+      "capabilities": ["offline", "fallback", "stream", "embeddings"],
+      "models": ["local-model"],
+      "cost_score": 0.0,
+      "default_timeout_ms": 8000,
+      "rate_limit_per_min": 5000
+    },
+    "llamacpp": {
+      "endpoint": "http://127.0.0.1:8080",
+      "api_key_env": null,
+      "priority_tier": 2,
+      "capabilities": ["local", "cpu_inference", "fallback"],
+      "models": ["local-model"],
+      "cost_score": 0.0,
+      "default_timeout_ms": 10000,
+      "rate_limit_per_min": 1000
+    },
+    "mistral": {
+      "endpoint": "https://api.mistral.ai/v1",
+      "api_key_env": "MISTRAL_API_KEY",
+      "priority_tier": 2,
+      "capabilities": ["chat", "reasoning"],
+      "models": ["mistral-large-latest"],
+      "cost_score": 0.3,
+      "default_timeout_ms": 5000,
+      "rate_limit_per_min": 200
+    },
+    "groq": {
+      "endpoint": "https://api.groq.com/openai/v1",
+      "api_key_env": "GROQ_API_KEY",
+      "priority_tier": 2,
+      "capabilities": ["chat", "embeddings", "fast_inference"],
+      "models": ["llama2-70b-4096", "mixtral-8x7b-32768"],
+      "cost_score": 0.05,
+      "default_timeout_ms": 3000,
+      "rate_limit_per_min": 500
+    },
+    "perplexity": {
+      "endpoint": "https://api.perplexity.ai",
+      "api_key_env": "PERPLEXITY_API_KEY",
+      "priority_tier": 2,
+      "capabilities": ["search", "chat"],
+      "models": ["llama-3.1-sonar-large-128k-online"],
+      "cost_score": 0.05,
+      "default_timeout_ms": 4000,
+      "rate_limit_per_min": 300
+    },
+    "fireworks": {
+      "endpoint": "https://api.fireworks.ai/inference/v1",
+      "api_key_env": "FIREWORKS_API_KEY",
+      "priority_tier": 2,
+      "capabilities": ["chat", "fast_infer"],
+      "models": ["accounts/fireworks/models/llama-v3-70b-instruct"],
+      "cost_score": 0.08,
+      "default_timeout_ms": 3500,
+      "rate_limit_per_min": 300
+    },
+    "voyage_ai": {
+      "endpoint": "https://api.voyageai.com/v1",
+      "api_key_env": "VOYAGE_API_KEY",
+      "priority_tier": 2,
+      "capabilities": ["embeddings", "high_quality"],
+      "models": ["voyage-large-2-instruct"],
+      "cost_score": 0.15,
+      "default_timeout_ms": 5000,
+      "rate_limit_per_min": 100
+    },
+    "elevenlabs": {
+      "endpoint": "https://api.elevenlabs.io/v1",
+      "api_key_env": "ELEVENLABS_API_KEY",
+      "priority_tier": 3,
+      "capabilities": ["voice", "tts"],
+      "models": ["eleven_monolingual_v1"],
+      "cost_score": 0.2,
+      "default_timeout_ms": 8000,
+      "rate_limit_per_min": 300
+    },
+    "dashscope": {
+      "endpoint": "https://dashscope.aliyuncs.com/api/v1",
+      "api_key_env": "DASHSCOPE_API_KEY",
+      "priority_tier": 1,
+      "capabilities": ["chat", "reasoning", "multimodal"],
+      "models": ["qwen-turbo", "qwen-plus", "qwen-max"],
+      "cost_score": 0.25,
+      "default_timeout_ms": 5000,
+      "rate_limit_per_min": 200
+    }
+  }
+}

@@ -1,0 +1,14 @@
+goblins:
+  - id: code-writer
+    name: Code Writer
+    title: Code Generation Specialist
+    summary: Writes and refactors code using best practices.
+    brain:
+      model: "gpt-4-turbo" # A powerful model for code tasks
+
+  - id: docs-writer
+    name: Docs Writer
+    title: Documentation Specialist
+    summary: Writes clear documentation and comments for code.
+    brain:
+      model: "claude-3.5-sonnet" # A model known for strong writing

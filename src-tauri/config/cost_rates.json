@@ -1,0 +1,38 @@
+{
+  "providers": {
+    "openai": {
+      "models": {
+        "gpt-4-turbo": 0.00006,
+        "gpt-4": 0.0002,
+        "gpt-4o": 0.00003,
+        "gpt-3.5-turbo": 0.000002
+      },
+      "default": 0.00003
+    },
+    "anthropic": {
+      "models": {
+        "claude-3-opus": 0.000015,
+        "claude-3-sonnet": 0.000003,
+        "claude-3-haiku": 0.00000025
+      },
+      "default": 0.000025
+    },
+    "gemini": {
+      "models": {
+        "gemini-1.5-pro": 0.000007,
+        "gemini-1.5-flash": 0.00000015
+      },
+      "default": 0.00004
+    },
+    "ollama": {
+      "default": 0.000001
+    },
+    "groq": {
+      "models": {
+        "llama3-70b": 0.00000059,
+        "llama3-8b": 0.00000005
+      },
+      "default": 0.0000001
+    }
+  }
+}

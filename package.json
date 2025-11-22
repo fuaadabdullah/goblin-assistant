@@ -1,21 +1,57 @@
 {
-  "name": "goblin-assistant",
-  "version": "0.0.1",
-  "private": false,
-  "description": "A small scaffold for Goblin Assistant demo",
-  "main": "dist/index.js",
-  "types": "dist/index.d.ts",
-  "scripts": {
-    "build": "tsc",
-    "start": "ts-node src/index.ts",
-    "test": "vitest"
-  },
-  "author": "fuaadabdullah",
-  "license": "MIT",
-  "devDependencies": {
-    "@types/node": "^20.5.0",
-    "ts-node": "^10.9.1",
-    "typescript": "^5.6.2",
-    "vitest": "^0.28.0"
-  }
+	"name": "@goblinos/desktop",
+	"private": true,
+	"version": "1.0.0",
+	"type": "module",
+	"scripts": {
+		"dev": "tauri dev",
+		"dev:web": "vite",
+		"dev:api": "bash ./api/fastapi/run_dev.sh",
+		"dev:fast": "npx concurrently \"npm run dev:web\" \"npm run dev:api\"",
+		"dev:tauri": "VITE_GOBLIN_RUNTIME=tauri tauri dev",
+		"build": "tauri build",
+		"build:mac": "tauri build --target universal-apple-darwin",
+		"preview": "vite preview",
+		"tauri": "tauri",
+		"test": "vitest",
+		"e2e": "playwright test --config e2e/playwright.config.ts",
+		"vite-dev": "vite"
+	},
+	"dependencies": {
+		"@tanstack/react-query": "^5.56.2",
+		"@tauri-apps/api": "^2.9.0",
+		"@tauri-apps/plugin-opener": "^2.5.2",
+		"clsx": "^2.1.1",
+		"lucide-react": "^0.446.0",
+		"react": "^19.1.0",
+		"react-dom": "^19.1.0",
+		"react-hot-toast": "^2.6.0",
+		"react-router-dom": "^6.26.2",
+		"recharts": "3.4.1",
+		"tailwind-merge": "^2.5.2",
+		"yaml": "^2.6.0",
+		"zustand": "5.0.8"
+	},
+	"devDependencies": {
+		"@playwright/test": "^1.56.1",
+		"@tauri-apps/cli": "^2.9.4",
+		"@testing-library/dom": "^10.0.0",
+		"@testing-library/jest-dom": "^6.0.0",
+		"@testing-library/react": "16.3.0",
+		"@types/node": "^24.10.0",
+		"@types/react": "^19.2.3",
+		"@types/react-dom": "^19.2.3",
+		"@vitejs/plugin-react": "^4.7.0",
+		"autoprefixer": "^10.4.20",
+		"concurrently": "^8.2.1",
+		"jsdom": "^22.0.0",
+		"postcss": "^8.4.47",
+		"tailwindcss": "^3.4.13",
+		"typescript": "~5.8.3",
+		"vite": "^5.4.8",
+		"vitest": "^2.1.4"
+	},
+	"vitest": {
+		"environment": "jsdom"
+	}
 }

@@ -1,0 +1,78 @@
+# Sample goblins.yaml for Goblin Assistant Demo
+# This is a minimal configuration for offline demo testing.
+# Copy this to your project root as goblins.yaml to use with the desktop app.
+
+guilds:
+  - id: demo-guild
+    name: Demo Guild
+    charter: "Demonstration goblins for testing the assistant."
+    toolbelt:
+      - id: docs-writer
+        name: Documentation Writer
+        summary: "Writes documentation for code"
+        owner: demo-user
+        command: echo "Writing docs for code"
+      - id: code-writer
+        name: Code Writer
+        summary: "Writes or modifies code"
+        owner: demo-user
+        command: echo "Writing code"
+      - id: code-reviewer
+        name: Code Reviewer
+        summary: "Reviews code for issues"
+        owner: demo-user
+        command: echo "Reviewing code"
+      - id: test-runner
+        name: Test Runner
+        summary: "Runs tests"
+        owner: demo-user
+        command: echo "Running tests"
+
+goblins:
+  - id: docs-writer
+    name: Docs Writer Goblin
+    guild: demo-guild
+    description: "Specializes in writing clear documentation"
+    capabilities:
+      - documentation
+      - writing
+    triggers:
+      - "write docs"
+      - "document"
+      - "explain code"
+
+  - id: code-writer
+    name: Code Writer Goblin
+    guild: demo-guild
+    description: "Writes and modifies code"
+    capabilities:
+      - coding
+      - development
+    triggers:
+      - "write code"
+      - "implement"
+      - "code"
+
+  - id: code-reviewer
+    name: Code Reviewer Goblin
+    guild: demo-guild
+    description: "Reviews code for bugs and improvements"
+    capabilities:
+      - review
+      - analysis
+    triggers:
+      - "review code"
+      - "check code"
+      - "analyze"
+
+  - id: test-runner
+    name: Test Runner Goblin
+    guild: demo-guild
+    description: "Runs and validates tests"
+    capabilities:
+      - testing
+      - validation
+    triggers:
+      - "run tests"
+      - "test"
+      - "validate"
