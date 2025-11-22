@@ -12,6 +12,7 @@
 ## 📋 Table of Contents
 
 - [🎯 Overview](#-overview)
+- [📸 Screenshots](#-screenshots)
 - [✨ Key Features](#-key-features)
 - [🏗️ Architecture](#️-architecture)
 - [🚀 Quick Start](#-quick-start)
@@ -50,6 +51,33 @@ Goblin Assistant is a **production-ready AI orchestration platform** that demons
 - **Research & Analysis**: Complex analytical tasks with intelligent provider selection
 - **Education**: Demonstrating AI orchestration patterns and cost optimization
 
+## 📸 Screenshots
+
+### Main Interface
+
+![Main Interface](screenshots/main-interface.png)
+*The main Goblin Assistant interface showing the task input area, provider status, and real-time cost tracking.*
+
+### Provider Status Dashboard
+
+![Provider Status](screenshots/provider-status.png)
+*Live provider status showing availability, latency, and success rates across all 31+ AI providers.*
+
+### Cost Tracking & Analytics
+
+![Cost Tracking](screenshots/cost-tracking.png)
+*Real-time cost monitoring with budget alerts, spending breakdowns by provider, and usage analytics.*
+
+### Workflow Orchestration
+
+![Workflow Execution](screenshots/workflow-execution.png)
+*Multi-step workflow execution showing parallel processing, conditional logic, and step-by-step progress.*
+
+### Advanced Orchestration Demo
+
+![Orchestration Demo](screenshots/orchestration-demo.png)
+*Complex AI orchestration demonstrating intelligent routing, failover handling, and performance optimization.*
+
 ## ✨ Key Features
 
 ### 🤖 Advanced AI Routing Engine
@@ -66,7 +94,7 @@ Goblin Assistant is a **production-ready AI orchestration platform** that demons
 ### 🧠 Smart Task Processing
 
 - **Chain-of-Thought Management**: Automatically suppresses verbose reasoning for simple tasks while enabling it for complex analysis
-- **Task-Aware Routing**: 
+- **Task-Aware Routing**:
   - Chat/Summary/Translation → Fast, cost-effective providers
   - Analysis/Planning/Code Review → Reasoning-capable models
 - **Streaming Responses**: Real-time token-by-token streaming with live cost tracking
@@ -138,7 +166,7 @@ def calculate_provider_score(provider, task):
     cost_score = (1 - cost_per_token / max_cost) * 0.3
     reliability_score = success_rate * 0.2
     bandwidth_score = min(bandwidth / required_bandwidth, 1) * 0.1
-    
+
     return latency_score + cost_score + reliability_score + bandwidth_score
 ```
 
@@ -811,11 +839,11 @@ class NewProvider(AIProvider):
     def __init__(self, config: dict):
         self.api_key = config.get("api_key")
         self.base_url = config.get("base_url", "https://api.newprovider.com")
-    
+
     async def generate(self, prompt: str, **kwargs) -> AIResponse:
         # Implementation here
         pass
-    
+
     async def health_check(self) -> ProviderHealth:
         # Health check implementation
         pass

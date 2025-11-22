@@ -2,6 +2,12 @@
 
 Welcome to the Goblin Assistant Wiki! This comprehensive guide covers everything from basic setup to advanced orchestration techniques.
 
+## 📸 Screenshots & Demos
+
+- **[View Screenshots](../README.md#screenshots)** - See the app in action with detailed interface shots
+- **Live Demo** - Experience real-time AI orchestration and cost tracking
+- **Feature Showcase** - Provider status, workflow execution, and analytics dashboards
+
 ## 📚 Quick Start Guides
 
 ### [Getting Started](Getting-Started.md)
