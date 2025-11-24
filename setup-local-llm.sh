@@ -60,18 +60,36 @@ echo "🔄 Setting up llama.cpp..."
 # Check if llama.cpp server is available
 if curl -s http://localhost:8080/health > /dev/null 2>&1; then
     echo "✅ llama.cpp server is running on http://localhost:8080"
+    echo "📋 Server status:"
+    curl -s http://localhost:8080/health || echo "   Health check not available"
 else
     echo "❌ llama.cpp server not found on http://localhost:8080"
     echo ""
-    echo "To set up llama.cpp:"
-    echo "1. Clone llama.cpp: git clone https://github.com/ggerganov/llama.cpp"
-    echo "2. Build: cd llama.cpp && make"
-    echo "3. Download a GGUF model (e.g., from huggingface.co)"
-    echo "4. Start server: ./server -m model.gguf --port 8080"
-    echo ""
-    echo "Example:"
-    echo "  wget https://huggingface.co/TheBloke/Llama-2-7B-Chat-GGUF/resolve/main/llama-2-7b-chat.Q4_K_M.gguf"
-    echo "  ./server -m llama-2-7b-chat.Q4_K_M.gguf --port 8080"
+    echo "🚀 Starting llama.cpp server..."
+
+    # Check if we're in the right directory
+    if [ -f "llama.cpp/build/bin/llama-server" ]; then
+        echo "📁 Found llama-server binary, starting server..."
+        cd llama.cpp
+        nohup ./build/bin/llama-server --model models/Llama-3.2-3B-Instruct-Q4_K_M.gguf --host 127.0.0.1 --port 8080 --ctx-size 4096 --threads $(sysctl -n hw.ncpu) --temp 0.7 --top-p 0.9 --top-k 40 > llama-server.log 2>&1 &
+        sleep 3
+
+        if curl -s http://localhost:8080/health > /dev/null 2>&1; then
+            echo "✅ llama.cpp server started successfully!"
+        else
+            echo "❌ Failed to start llama.cpp server"
+            echo "   Check llama-server.log for details"
+        fi
+    else
+        echo "❌ llama-server binary not found"
+        echo ""
+        echo "To set up llama.cpp manually:"
+        echo "1. cd llama.cpp"
+        echo "2. cmake -B build -DLLAMA_BUILD_SERVER=ON"
+        echo "3. cmake --build build --config Release -j$(sysctl -n hw.ncpu)"
+        echo "4. Download TinyLlama model to models/ directory"
+        echo "5. ./build/bin/llama-server -m models/tinyllama-1.1b-chat-v1.0.Q4_K_M.gguf --port 8080"
+    fi
 fi
 
 # Setup LM Studio

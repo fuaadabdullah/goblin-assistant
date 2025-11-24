@@ -1,0 +1,21 @@
+{
+  "name": "Goblin Provider High Latency",
+  "type": "query alert",
+  "query": "avg(last_5m):avg:goblin.llm.latency_ms{env:prod} by {provider} > 1200",
+  "message": "Provider {{provider}} latency is {{value}}ms (threshold: 1200ms) for the last 5 minutes. @slack-goblin-alerts",
+  "tags": ["service:goblin-api", "env:prod", "severity:p2"],
+  "options": {
+    "thresholds": {
+      "critical": 1200,
+      "warning": 800
+    },
+    "notify_no_data": false,
+    "renotify_interval": 10,
+    "timeout_h": 2,
+    "evaluation_delay": 60,
+    "new_host_delay": 300,
+    "include_tags": true,
+    "require_full_window": false
+  },
+  "priority": 2
+}

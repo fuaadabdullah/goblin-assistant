@@ -237,11 +237,34 @@ async def route_task(
     task_type e.g. "reasoning","chat","summary","code","embedding","image","search"
     """
     # filter candidates
-    candidates = [
-        pid for pid, p in PROVIDERS.items() if task_type in p.get("capabilities", [])
-    ]
+    candidates = []
+    for pid, p in PROVIDERS.items():
+        if task_type not in p.get("capabilities", []):
+            continue
+        # Check if provider has required API key
+        api_key_env = p.get("api_key_env")
+        api_key_value = os.getenv(api_key_env) if api_key_env else None
+        # Consider API key valid if it exists and doesn't look like a placeholder
+        has_valid_api_key = bool(
+            api_key_value
+            and not api_key_value.startswith("your-")
+            and not api_key_value.startswith("sk-1234567890")
+        )
+        print(
+            f"DEBUG: Provider {pid}, api_key_env={api_key_env}, api_key_value={api_key_value[:20] if api_key_value else None}, has_valid_api_key={has_valid_api_key}"
+        )
+        if api_key_env and not has_valid_api_key:
+            print(f"DEBUG: Skipping provider {pid} due to invalid/placeholder API key")
+            continue  # Skip providers without valid API keys
+        candidates.append(pid)
+
+    print(f"DEBUG: Final candidates for {task_type}: {candidates}")
+
     if not candidates:
-        return {"ok": False, "error": f"No providers for capability {task_type}"}
+        return {
+            "ok": False,
+            "error": f"No providers with valid API keys for capability {task_type}",
+        }
     # score
     scored = []
     for pid in candidates:

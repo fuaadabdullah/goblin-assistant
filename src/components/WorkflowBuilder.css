@@ -1,0 +1,223 @@
+.workflow-builder {
+  border: 1px solid #e1e5e9;
+  border-radius: 8px;
+  padding: 16px;
+  margin: 16px 0;
+  background: #fafbfc;
+}
+
+.builder-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 16px;
+}
+
+.builder-header h3 {
+  margin: 0;
+  color: #24292f;
+}
+
+.mode-toggle {
+  padding: 6px 12px;
+  border: 1px solid #d1d9e0;
+  border-radius: 6px;
+  background: white;
+  cursor: pointer;
+  font-size: 14px;
+  transition: all 0.2s;
+}
+
+.mode-toggle:hover {
+  background: #f6f8fa;
+}
+
+.mode-toggle.active {
+  background: #0969da;
+  color: white;
+  border-color: #0969da;
+}
+
+.visual-builder {
+  margin-top: 16px;
+}
+
+.step-adder {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 16px;
+  align-items: center;
+}
+
+.goblin-select,
+.task-input {
+  padding: 8px 12px;
+  border: 1px solid #d1d9e0;
+  border-radius: 6px;
+  font-size: 14px;
+}
+
+.goblin-select {
+  min-width: 180px;
+}
+
+.task-input {
+  flex: 1;
+  min-width: 200px;
+}
+
+.add-step-btn {
+  padding: 8px 16px;
+  background: #0969da;
+  color: white;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 14px;
+  font-weight: 500;
+}
+
+.add-step-btn:hover:not(:disabled) {
+  background: #0757c2;
+}
+
+.add-step-btn:disabled {
+  background: #8c959f;
+  cursor: not-allowed;
+}
+
+.steps-list {
+  min-height: 100px;
+}
+
+.step-item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px;
+  margin-bottom: 8px;
+  background: white;
+  border: 1px solid #d1d9e0;
+  border-radius: 6px;
+  transition: box-shadow 0.2s;
+}
+
+.step-item:hover {
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+}
+
+.step-controls {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.remove-step-btn,
+.move-step-btn {
+  width: 24px;
+  height: 24px;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 16px;
+  font-weight: bold;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s;
+}
+
+.remove-step-btn {
+  background: #da3633;
+  color: white;
+}
+
+.remove-step-btn:hover {
+  background: #b62324;
+}
+
+.move-step-btn {
+  background: #f6f8fa;
+  color: #656d76;
+  font-size: 14px;
+}
+
+.move-step-btn:hover:not(:disabled) {
+  background: #0969da;
+  color: white;
+}
+
+.move-step-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.step-content {
+  flex: 1;
+}
+
+.condition-select {
+  display: block;
+  margin-bottom: 8px;
+  padding: 4px 8px;
+  border: 1px solid #d1d9e0;
+  border-radius: 4px;
+  font-size: 12px;
+  background: #f6f8fa;
+  width: fit-content;
+}
+
+.step-details {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.step-details strong {
+  color: #0969da;
+  font-size: 14px;
+}
+
+.step-task {
+  color: #656d76;
+  font-size: 14px;
+}
+
+.empty-state {
+  text-align: center;
+  color: #656d76;
+  padding: 32px;
+  font-style: italic;
+}
+
+.orchestration-output {
+  margin-top: 16px;
+  padding-top: 16px;
+  border-top: 1px solid #d1d9e0;
+}
+
+.orchestration-output label {
+  display: block;
+  font-weight: 600;
+  margin-bottom: 8px;
+  color: #24292f;
+}
+
+.orchestration-text {
+  display: block;
+  background: #f6f8fa;
+  padding: 12px;
+  border-radius: 6px;
+  font-family: 'SF Mono', Monaco, 'Cascadia Code', monospace;
+  font-size: 13px;
+  word-break: break-all;
+  border: 1px solid #d1d9e0;
+}
+
+.text-mode {
+  padding: 16px;
+  background: #f6f8fa;
+  border-radius: 6px;
+  color: #656d76;
+  text-align: center;
+}

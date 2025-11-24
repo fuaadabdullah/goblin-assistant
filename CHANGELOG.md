@@ -9,25 +9,55 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
-- Comprehensive GitHub repository setup with professional documentation
-- Security policy and vulnerability reporting guidelines
-- Code of conduct for community standards
-- Contributing guidelines for developers
-- Issue and pull request templates
-- CI/CD workflows for automated testing
-- Release workflow for version management
-- Detailed screenshots and visual documentation
+- **WorkflowBuilder Component**: Visual orchestration workflow creation with drag-and-drop step management
+  - Goblin selection dropdown with available AI assistants
+  - Task input fields for specifying what each goblin should do
+  - Condition handling (THEN/AND/IF_SUCCESS/IF_FAILURE) between steps
+  - Step reordering and management capabilities
+  - Automatic orchestration syntax generation from visual steps
+
+- **CostEstimationPanel Component**: Pre-execution cost estimation and budget planning
+  - Real-time cost calculation before running workflows
+  - Step-by-step cost breakdown for orchestration tasks
+  - Provider-specific pricing integration
+  - Token estimation based on orchestration text and code input
+  - Transparent cost visibility to help users manage budgets
+
+- **Backend Cost Estimation**: New Tauri command for accurate cost calculation
+  - `estimate_cost` IPC command in Rust backend
+  - Token estimation logic with provider-specific pricing tables
+  - Integration with existing cost tracking system
+
+- **Comprehensive E2E Test Suite**: End-to-end testing for core workflows
+  - Streaming execution flow tests (UI → backend → cost updates)
+  - Cost estimation validation tests
+  - Error handling and graceful degradation tests
+  - Multi-execution cost accumulation tests
+  - Playwright-based testing framework
+
+- **UX Polish Features**: Enhanced user experience improvements
+  - Visual workflow building interface
+  - Pre-execution cost transparency
+  - Improved component accessibility with ARIA labels
+  - Better error handling and user feedback
+
+### Technical Improvements
+
+- **Type Safety**: Fixed all TypeScript compilation errors (24 issues resolved)
+  - Unused variable cleanup across all components
+  - Chart component type fixes for Recharts integration
+  - Datadog integration with graceful fallbacks for missing modules
+  - Proper type casting for cost and chart data
+
+- **Code Quality**: Enhanced maintainability and reliability
+  - Comprehensive linting fixes
+  - Improved error handling in async operations
+  - Better separation of concerns in component architecture
 
 ### Changed
 
 - Enhanced README with screenshots section and improved navigation
 - Updated wiki documentation with visual references
-
-### Technical Improvements
-
-- Added GitHub Actions workflows for continuous integration
-- Implemented comprehensive linting and testing automation
-- Created structured templates for consistent issue tracking
 
 ## [1.0.0] - 2024-01-XX
 

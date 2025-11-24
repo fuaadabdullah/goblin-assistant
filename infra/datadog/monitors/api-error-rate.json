@@ -1,0 +1,22 @@
+{
+  "name": "Goblin API High Error Rate",
+  "type": "query alert",
+  "query": "avg(last_5m):100 * (sum:trace.errors{service:goblin-api,env:prod}.as_count() / sum:trace.requests{service:goblin-api,env:prod}.as_count()) > 5",
+  "message": "Goblin API error rate is {{value}}% (threshold: 5%) for the last 5 minutes. @slack-goblin-alerts",
+  "tags": ["service:goblin-api", "env:prod", "severity:p1"],
+  "options": {
+    "thresholds": {
+      "critical": 5,
+      "warning": 2
+    },
+    "notify_no_data": true,
+    "no_data_timeframe": 10,
+    "renotify_interval": 5,
+    "timeout_h": 1,
+    "evaluation_delay": 60,
+    "new_host_delay": 300,
+    "include_tags": true,
+    "require_full_window": false
+  },
+  "priority": 1
+}

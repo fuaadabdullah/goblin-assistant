@@ -738,3 +738,54 @@ pub async fn parse_orchestration_impl(text: &str, default_goblin: Option<String>
 
     Ok(json!(plan))
 }
+
+/// Estimate cost for orchestration execution without actually running it
+pub async fn estimate_cost_impl(orchestration_text: &str, code_input: Option<&str>, provider: Option<&str>) -> Result<JsonValue, String> {
+    // Parse the orchestration to get steps
+    let plan_result = parse_orchestration_impl(orchestration_text, Some("code-writer".to_string())).await?;
+    let plan: OrchestrationPlanResult = serde_json::from_value(plan_result)
+        .map_err(|e| format!("Failed to parse plan: {}", e))?;
+
+    let mut total_cost = 0.0;
+    let mut step_costs = Vec::new();
+
+    // Estimate cost for each step
+    for step in &plan.steps {
+        // Estimate tokens based on task + code input
+        let task_tokens = estimate_tokens_from_text(&step.task);
+        let code_tokens = code_input.map(|c| estimate_tokens_from_text(c)).unwrap_or(0);
+        let total_tokens = task_tokens + code_tokens;
+
+        // Get cost per token for the provider
+        let provider_name = provider.unwrap_or("openai");
+        let cost_per_token = cost_estimator::cost_per_token(provider_name, None);
+
+        // Estimate output tokens (assume 2x input for most tasks)
+        let estimated_output_tokens = total_tokens * 2;
+        let step_cost = (total_tokens + estimated_output_tokens) as f64 * cost_per_token;
+
+        total_cost += step_cost;
+
+        step_costs.push(json!({
+            "stepId": step.id,
+            "goblin": step.goblin,
+            "task": step.task,
+            "estimatedCost": step_cost,
+            "tokenEstimate": total_tokens
+        }));
+    }
+
+    Ok(json!({
+        "totalCost": total_cost,
+        "stepCosts": step_costs,
+        "currency": "USD",
+        "provider": provider.unwrap_or("openai")
+    }))
+}
+
+// Simple token estimation (rough approximation)
+fn estimate_tokens_from_text(text: &str) -> usize {
+    // Rough estimate: ~4 characters per token for English text
+    let char_count = text.chars().count();
+    ((char_count as f64) / 4.0).ceil() as usize
+}

@@ -337,8 +337,15 @@ cot_suppression_prompt = "Answer directly."
 [providers.llamacpp]
 endpoint = "http://127.0.0.1:8080"
 api_key_env = ""
-priority_tier = 2
-capabilities = ["local", "cpu_inference", "fallback"]
+priority_tier = 1
+capabilities = [
+  "local",
+  "cpu_inference",
+  "fallback",
+  "chat",
+  "reasoning",
+  "code",
+]
 models = ["local-model"]
 cost_score = 0.0
 bandwidth_score = 0.6

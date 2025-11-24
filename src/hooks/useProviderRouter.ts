@@ -17,7 +17,7 @@ interface StreamOptions {
 }
 
 export function useProviderRouter() {
-  const [metricsAvailable, setMetricsAvailable] = useState(false);
+  const [metricsAvailable, _setMetricsAvailable] = useState(false);
   const [connectionHealth, setConnectionHealth] = useState<'unknown' | 'healthy' | 'degraded' | 'failed'>('unknown');
 
   function topProviders(capability: string, preferLocal=false, preferCost=false, limit=6) {

@@ -215,7 +215,7 @@ export class FastApiRuntimeClient {
 		const res = await fetch(`${FASTAPI_BASE}/models/${provider}`);
 		return (await res.json()) as string[];
 	}
-	async executeTask(goblin: string, task: string, streaming = false, code?: string, provider?: string, model?: string): Promise<string> {
+	async executeTask(goblin: string, task: string, _streaming = false, code?: string, provider?: string, model?: string): Promise<string> {
 		const res = await fetch(`${FASTAPI_BASE}/execute`, {
 			method: "POST",
 			headers: { 'Content-Type': 'application/json' },
@@ -281,7 +281,7 @@ export class FastApiRuntimeClient {
 		});
 	}
 
-	async onTaskStream(callback: (payload: any) => void) { /* no-op */ }
+	async onTaskStream(_callback: (payload: any) => void) { /* no-op */ }
 	async setProviderApiKey(_provider: string, _key: string): Promise<void> { return; }
 }
 
@@ -590,11 +590,11 @@ export class MockRuntimeClient {
 		return `Executed: ${_task} using ${_goblin}`;
 	}
 
-	async getHistory(goblin: string, limit = 10): Promise<MemoryEntry[]> {
+	async getHistory(_goblin: string, _limit = 10): Promise<MemoryEntry[]> {
 		return [];
 	}
 
-	async getStats(goblin: string): Promise<any> {
+	async getStats(_goblin: string): Promise<any> {
 		return { total_tasks: 0, success_rate: 0 };
 	}
 
@@ -619,7 +619,7 @@ export class MockRuntimeClient {
 		task: string,
 		onChunk: (chunk: any) => void,
 		onComplete?: (response: any) => void,
-		code?: string,
+		_code?: string,
 		provider?: string,
 		model?: string
 	): Promise<void> {
@@ -646,7 +646,7 @@ export class MockRuntimeClient {
 		}
 	}
 
-	async onTaskStream(callback: (payload: any) => void) { /* no-op */ }
+	async onTaskStream(_callback: (payload: any) => void) { /* no-op */ }
 	async setProviderApiKey(_provider: string, _key: string): Promise<void> { return; }
 	async storeApiKey(_provider: string, _key: string): Promise<void> { return; }
 	async getApiKey(_provider: string): Promise<string | null> { return null; }

@@ -40,8 +40,8 @@ describe("GoblinDemo", () => {
 			max_parallel: 1,
 		});
 		mockExecuteTaskStreaming.mockImplementation(async (
-			goblin: string,
-			task: string,
+			_goblin: string,
+			_task: string,
 			onChunk: (chunk: any) => void,
 			onComplete?: (result: any) => void,
 		) => {
@@ -65,8 +65,8 @@ describe("GoblinDemo", () => {
 			max_parallel: 1,
 		});
 		mockDemoExecuteTaskStreaming.mockImplementation(async (
-			goblin: string,
-			task: string,
+			_goblin: string,
+			_task: string,
 			onChunk: (chunk: any) => void,
 			onComplete?: (result: any) => void,
 		) => {

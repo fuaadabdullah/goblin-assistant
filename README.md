@@ -127,6 +127,27 @@ Goblin Assistant is a **production-ready AI orchestration platform** that demons
 - **Streaming Orchestration**: Watch entire workflows execute in real-time
 - **Error Handling**: Automatic retry logic and alternative provider selection
 
+### 🎨 Enhanced User Experience
+
+- **Visual Workflow Builder**: Drag-and-drop interface for creating complex AI orchestrations
+  - Step-by-step workflow creation with goblin selection
+  - Task input fields and condition handling (THEN/AND/IF_SUCCESS/IF_FAILURE)
+  - Real-time orchestration syntax generation
+  - Intuitive step reordering and management
+
+- **Cost Estimation Panel**: Pre-execution budget planning and transparency
+  - Real-time cost calculation before running workflows
+  - Detailed step-by-step cost breakdown
+  - Provider-specific pricing integration
+  - Token estimation based on input complexity
+  - Budget-conscious decision making
+
+- **Advanced UI Components**: Modern, accessible interface design
+  - Dark mode optimized for extended use
+  - Responsive layout for different screen sizes
+  - Accessibility features with ARIA labels
+  - Real-time streaming indicators and progress feedback
+
 ## 🏗️ Architecture
 
 ### System Components
@@ -240,10 +261,10 @@ cmake -B build -DLLAMA_METAL=on
 cmake --build build --config Release
 
 # Download and run a model
-curl -L -o models/tinyllama.gguf \
-  https://huggingface.co/TheBloke/TinyLlama-1.1B-Chat-v1.0-GGUF/resolve/main/tinyllama-1.1b-chat-v1.0.Q4_K_M.gguf
+curl -L -o models/Llama-3.2-3B-Instruct-Q4_K_M.gguf \
+  https://huggingface.co/bartowski/Llama-3.2-3B-Instruct-GGUF/resolve/main/Llama-3.2-3B-Instruct-Q4_K_M.gguf
 
-./build/bin/llama-server -m models/tinyllama.gguf --port 8080
+./build/bin/llama-server -m models/Llama-3.2-3B-Instruct-Q4_K_M.gguf --port 8080
 ```
 
 ### API Keys Setup
@@ -285,12 +306,14 @@ npm run dev:fast  # Frontend + Backend
 ### Basic Usage
 
 1. **Start the application**:
+
    ```bash
    npm run dev:fast
    # Opens http://localhost:1420
    ```
 
 2. **Enter code** in the input area:
+
    ```javascript
    function add(a, b) {
      return a + b;
@@ -298,7 +321,8 @@ npm run dev:fast  # Frontend + Backend
    ```
 
 3. **Enter orchestration command**:
-   ```
+
+   ```text
    docs-writer: document this code THEN code-writer: write a unit test
    ```
 
@@ -649,26 +673,47 @@ npm run build:mac
 
 ### Docker Deployment
 
-```dockerfile
-FROM node:18-alpine AS frontend
-WORKDIR /app
-COPY package*.json ./
-RUN npm ci
-COPY . .
-RUN npm run build
+Goblin Assistant includes comprehensive Docker support for both development and production deployments.
 
-FROM python:3.11-slim AS backend
-WORKDIR /app
-COPY api/fastapi/requirements.txt .
-RUN pip install -r requirements.txt
-COPY api/fastapi/ .
+#### Quick Start with Docker
 
-FROM nginx:alpine
-COPY --from=frontend /app/dist /usr/share/nginx/html
-COPY --from=backend /app /app
-COPY nginx.conf /etc/nginx/nginx.conf
-EXPOSE 80
-CMD ["nginx", "-g", "daemon off;"]
+```bash
+# Start the application
+./docker-deploy.sh run
+
+# Access at http://localhost
+# API at http://localhost:3001
+# Health check at http://localhost/api/health
+```
+
+#### Production Deployment
+
+```bash
+# Build optimized production image
+./docker-deploy.sh build
+
+# Deploy to registry
+./docker-deploy.sh deploy -r your-registry.com -t v1.0.0
+```
+
+#### Development vs Production
+
+- **Development**: Full development environment with hot reloading
+- **Production**: Multi-stage optimized build (~500MB vs ~2GB)
+
+For complete Docker documentation, see [`docs/DOCKER_DEPLOYMENT.md`](docs/DOCKER_DEPLOYMENT.md).
+
+#### Manual Docker Commands
+
+```bash
+# Build production image
+docker build -t goblin-assistant .
+
+# Run with docker-compose
+docker-compose up -d
+
+# View logs
+docker-compose logs -f
 ```
 
 ### Cloud Deployment
@@ -949,7 +994,7 @@ A: The core routing engine is production-ready. The desktop app is a demonstrati
 A: Run `ollama list` to check available models, then `ollama pull <model-name>` to download missing ones.
 
 **Q: Getting "connection refused" errors?**
-A: Check that Ollama is running with `ollama serve`, and that the correct ports are configured.
+A: Check that Ollama is running `ollama serve`, and that the correct ports are configured.
 
 **Q: High costs on cloud providers?**
 A: Enable "prefer local" in settings, or adjust the budget limits in configuration.
@@ -973,4 +1018,4 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 
 Built with ❤️ using GoblinOS
 
-*Demonstrating the future of intelligent AI orchestration*
+## Demonstrating the Future of Intelligent AI Orchestration

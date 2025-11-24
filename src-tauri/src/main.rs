@@ -5,7 +5,7 @@ mod goblin_runtime;
 mod ipc;
 
 use goblin_runtime::{start_runtime, stop_runtime, status, send_event};
-use ipc::{get_goblins, get_providers, get_provider_models, get_stats, get_history, get_cost_summary, parse_orchestration, execute_orchestration, store_api_key, get_api_key, clear_api_key, set_provider_api_key, execute_task};
+use ipc::{get_goblins, get_providers, get_provider_models, get_stats, get_history, get_cost_summary, parse_orchestration, execute_orchestration, store_api_key, get_api_key, clear_api_key, set_provider_api_key, execute_task, estimate_cost};
 use std::sync::Arc;
 
 /// A lightweight manager that will own runtime-related resources.
@@ -58,6 +58,7 @@ fn main() {
             get_history,
             get_cost_summary,
             parse_orchestration,
+            estimate_cost,
             store_api_key,
             get_api_key,
             clear_api_key,

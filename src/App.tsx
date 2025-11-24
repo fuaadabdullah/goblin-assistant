@@ -3,11 +3,13 @@ import GoblinDemo from "./components/GoblinDemo";
 import ProviderSelector from "./components/ProviderSelector";
 // import ModelSelector from "./components/ModelSelector";
 import CostPanel from "./components/CostPanel";
+import WorkflowBuilder from "./components/WorkflowBuilder";
+import CostEstimationPanel from "./components/CostEstimationPanel";
 import { runtimeClient, runtimeClientDemo } from "./api/tauri-client";
 import "./App.css";
 import React, { useEffect, useState } from "react";
 
-const ModelSelector: React.FC<{ provider?: string; selected?: string; onChange: (model: string) => void }> = ({ provider, selected, onChange }) => {
+const ModelSelector: React.FC<{ provider?: string; selected?: string; onChange: (model: string) => void }> = ({ provider, selected: _selected, onChange: _onChange }) => {
 	console.log('ModelSelector rendering with provider:', provider);
 	return React.createElement('div', { id: 'model-select' }, `Model Selector: ${provider || 'no provider'}`);
 };
@@ -19,6 +21,8 @@ function App() {
 	const [selectedProvider, setSelectedProvider] = useState<string | undefined>(undefined);
 	const [selectedModel, setSelectedModel] = useState<string | undefined>(undefined);
 	const [costSummary, setCostSummary] = useState<any | null>(null);
+	const [orchestrationText, setOrchestrationText] = useState<string>("");
+	const [codeInput, _setCodeInput] = useState<string>("");
 	const [demoMode, setDemoMode] = useState<boolean>(() => {
 		// Check URL parameters for demo mode override (useful for testing)
 		const urlParams = new URLSearchParams(window.location.search);
@@ -111,7 +115,18 @@ function App() {
 							setSelectedProvider(p);
 							setSelectedModel(undefined); // Reset model when provider changes
 						}} />
-						{/* <CostPanel costSummary={costSummary} /> */}
+						<CostPanel costSummary={costSummary} />
+					</div>
+					<div className="workflow-section" data-testid="workflow-section">
+						<WorkflowBuilder onOrchestrationChange={setOrchestrationText} initialOrchestration={orchestrationText} />
+					</div>
+					<div className="cost-estimation-section" data-testid="cost-estimation-section">
+						<CostEstimationPanel
+							orchestrationText={orchestrationText}
+							codeInput={codeInput}
+							provider={selectedProvider}
+							model={selectedModel}
+						/>
 					</div>
 					<main className="app-content" data-testid="app-content">
 						<GoblinDemo provider={selectedProvider} model={selectedModel} demoMode={demoMode} />

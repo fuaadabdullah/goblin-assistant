@@ -1,0 +1,10 @@
+/Users/fuaadabdullah/ForgeMonorepo/goblin-assistant/src-tauri/target/debug/deps/siphasher-b44062e458bebc62.d: /Users/fuaadabdullah/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/siphasher-1.0.1/src/lib.rs /Users/fuaadabdullah/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/siphasher-1.0.1/src/sip.rs /Users/fuaadabdullah/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/siphasher-1.0.1/src/sip128.rs /Users/fuaadabdullah/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/siphasher-1.0.1/src/../README.md
+
+/Users/fuaadabdullah/ForgeMonorepo/goblin-assistant/src-tauri/target/debug/deps/libsiphasher-b44062e458bebc62.rlib: /Users/fuaadabdullah/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/siphasher-1.0.1/src/lib.rs /Users/fuaadabdullah/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/siphasher-1.0.1/src/sip.rs /Users/fuaadabdullah/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/siphasher-1.0.1/src/sip128.rs /Users/fuaadabdullah/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/siphasher-1.0.1/src/../README.md
+
+/Users/fuaadabdullah/ForgeMonorepo/goblin-assistant/src-tauri/target/debug/deps/libsiphasher-b44062e458bebc62.rmeta: /Users/fuaadabdullah/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/siphasher-1.0.1/src/lib.rs /Users/fuaadabdullah/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/siphasher-1.0.1/src/sip.rs /Users/fuaadabdullah/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/siphasher-1.0.1/src/sip128.rs /Users/fuaadabdullah/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/siphasher-1.0.1/src/../README.md
+
+/Users/fuaadabdullah/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/siphasher-1.0.1/src/lib.rs:
+/Users/fuaadabdullah/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/siphasher-1.0.1/src/sip.rs:
+/Users/fuaadabdullah/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/siphasher-1.0.1/src/sip128.rs:
+/Users/fuaadabdullah/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/siphasher-1.0.1/src/../README.md:

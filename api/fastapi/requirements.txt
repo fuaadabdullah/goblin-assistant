@@ -8,3 +8,5 @@ openai>=1.0.0
 dashscope>=1.0.0
 redis>=4.5.0
 replicate>=0.25.0
+ddtrace>=2.0.0
+datadog>=0.47.0

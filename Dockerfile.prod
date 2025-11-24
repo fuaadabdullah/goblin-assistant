@@ -1,0 +1,42 @@
+# Production Dockerfile for Goblin Assistant
+FROM python:3.11-slim
+
+# Set environment variables
+ENV PYTHONUNBUFFERED=1
+ENV PYTHONDONTWRITEBYTECODE=1
+ENV DD_ENV=prod
+ENV DD_SERVICE=goblin-assistant-api
+ENV DD_VERSION=1.0.0
+
+# Install system dependencies
+RUN apt-get update && apt-get install -y \
+    curl \
+    build-essential \
+    && rm -rf /var/lib/apt/lists/*
+
+# Install Datadog tracing
+RUN pip install ddtrace datadog
+
+# Create app directory
+WORKDIR /app
+
+# Copy requirements first for better caching
+COPY api/fastapi/requirements.txt .
+RUN pip install --no-cache-dir -r requirements.txt
+
+# Copy application code
+COPY api/fastapi/ .
+COPY infra/ ./infra/
+
+# Create logs directory
+RUN mkdir -p /app/logs
+
+# Expose port
+EXPOSE 8000
+
+# Health check
+HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
+    CMD curl -f http://localhost:8000/health || exit 1
+
+# Start application with ddtrace
+CMD ["ddtrace-run", "uvicorn", "app:app", "--host", "0.0.0.0", "--port", "8000", "--workers", "4"]

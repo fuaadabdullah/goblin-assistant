@@ -46,6 +46,11 @@ pub async fn parse_orchestration(_mgr: tauri::State<'_, Arc<GoblinRuntimeManager
 }
 
 #[tauri::command]
+pub async fn estimate_cost(_mgr: tauri::State<'_, Arc<GoblinRuntimeManager>>, orchestration_text: String, code_input: Option<String>, provider: Option<String>) -> Result<serde_json::Value, String> {
+    goblin_runtime::estimate_cost_impl(&orchestration_text, code_input.as_deref(), provider.as_deref()).await
+}
+
+#[tauri::command]
 pub async fn execute_orchestration(app: tauri::AppHandle, _mgr: tauri::State<'_, Arc<GoblinRuntimeManager>>, text: String, default_goblin: Option<String>) -> Result<serde_json::Value, String> {
     goblin_runtime::execute_orchestration_impl(app, &text, default_goblin).await
 }

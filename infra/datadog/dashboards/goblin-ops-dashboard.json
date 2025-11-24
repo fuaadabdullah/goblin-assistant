@@ -1,0 +1,373 @@
+{
+  "title": "GoblinOS — Ops Dashboard",
+  "description": "Comprehensive monitoring dashboard for Goblin Assistant operations",
+  "widgets": [
+    {
+      "id": "overview-row",
+      "layout": {
+        "x": 0,
+        "y": 0,
+        "width": 12,
+        "height": 3
+      },
+      "definition": {
+        "title": "API Overview",
+        "type": "group",
+        "widgets": [
+          {
+            "definition": {
+              "title": "Requests per Second",
+              "type": "query_value",
+              "requests": [
+                {
+                  "q": "sum:goblin.request.count{env:prod}.as_rate()",
+                  "aggregator": "avg"
+                }
+              ]
+            },
+            "layout": {"x": 0, "y": 0, "width": 4, "height": 2}
+          },
+          {
+            "definition": {
+              "title": "95th Percentile Latency",
+              "type": "query_value",
+              "requests": [
+                {
+                  "q": "p95:goblin.request.latency_ms{env:prod}",
+                  "aggregator": "avg"
+                }
+              ]
+            },
+            "layout": {"x": 4, "y": 0, "width": 4, "height": 2}
+          },
+          {
+            "definition": {
+              "title": "Error Rate %",
+              "type": "query_value",
+              "requests": [
+                {
+                  "q": "100 * (sum:goblin.provider.error_rate{env:prod}.as_count() / sum:goblin.request.count{env:prod}.as_count())",
+                  "aggregator": "avg"
+                }
+              ]
+            },
+            "layout": {"x": 8, "y": 0, "width": 4, "height": 2}
+          }
+        ]
+      }
+    },
+    {
+      "definition": {
+        "title": "LLM Provider Health",
+        "type": "group",
+        "widgets": [
+          {
+            "definition": {
+              "title": "Provider Latency Comparison",
+              "type": "timeseries",
+              "requests": [
+                {
+                  "q": "avg:goblin.llm.latency_ms{env:prod} by {provider}",
+                  "display_type": "line"
+                }
+              ]
+            },
+            "layout": {"x": 0, "y": 3, "width": 6, "height": 4}
+          },
+          {
+            "definition": {
+              "title": "Provider Error Rates",
+              "type": "timeseries",
+              "requests": [
+                {
+                  "q": "avg:goblin.provider.error_rate{env:prod} by {provider}",
+                  "display_type": "area"
+                }
+              ]
+            },
+            "layout": {"x": 6, "y": 3, "width": 6, "height": 4}
+          },
+          {
+            "definition": {
+              "title": "Tokens Consumed per Provider (per minute)",
+              "type": "timeseries",
+              "requests": [
+                {
+                  "q": "sum:goblin.llm.tokens{env:prod} by {provider}.as_rate()",
+                  "display_type": "bars"
+                }
+              ]
+            },
+            "layout": {"x": 0, "y": 7, "width": 6, "height": 4}
+          },
+          {
+            "definition": {
+              "title": "Estimated Cost per Provider (24h rolling)",
+              "type": "query_value",
+              "requests": [
+                {
+                  "q": "sum:goblin.llm.cost_estimate_usd{env:prod} by {provider}.rollup(sum, 86400)",
+                  "aggregator": "sum"
+                }
+              ]
+            },
+            "layout": {"x": 6, "y": 7, "width": 6, "height": 4}
+          }
+        ]
+      },
+      "layout": {"x": 0, "y": 3, "width": 12, "height": 8}
+    },
+    {
+      "definition": {
+        "title": "Worker & Queue Health",
+        "type": "group",
+        "widgets": [
+          {
+            "definition": {
+              "title": "Queue Depth",
+              "type": "timeseries",
+              "requests": [
+                {
+                  "q": "avg:goblin.worker.queue_depth{env:prod} by {service}",
+                  "display_type": "line"
+                }
+              ]
+            },
+            "layout": {"x": 0, "y": 11, "width": 6, "height": 4}
+          },
+          {
+            "definition": {
+              "title": "Worker Status",
+              "type": "query_value",
+              "requests": [
+                {
+                  "q": "count:goblin.worker.active{env:prod}",
+                  "aggregator": "avg"
+                }
+              ]
+            },
+            "layout": {"x": 6, "y": 11, "width": 3, "height": 4}
+          },
+          {
+            "definition": {
+              "title": "Jobs Failed (last hour)",
+              "type": "query_value",
+              "requests": [
+                {
+                  "q": "sum:goblin.worker.jobs_failed{env:prod}.rollup(sum, 3600)",
+                  "aggregator": "sum"
+                }
+              ]
+            },
+            "layout": {"x": 9, "y": 11, "width": 3, "height": 4}
+          }
+        ]
+      },
+      "layout": {"x": 0, "y": 11, "width": 12, "height": 4}
+    },
+    {
+      "definition": {
+        "title": "Infrastructure Health",
+        "type": "group",
+        "widgets": [
+          {
+            "definition": {
+              "title": "Host CPU Usage",
+              "type": "timeseries",
+              "requests": [
+                {
+                  "q": "avg:system.cpu.user{*} by {host}",
+                  "display_type": "area"
+                }
+              ]
+            },
+            "layout": {"x": 0, "y": 15, "width": 4, "height": 4}
+          },
+          {
+            "definition": {
+              "title": "Host Memory Usage",
+              "type": "timeseries",
+              "requests": [
+                {
+                  "q": "avg:system.mem.pct{*} by {host}",
+                  "display_type": "area"
+                }
+              ]
+            },
+            "layout": {"x": 4, "y": 15, "width": 4, "height": 4}
+          },
+          {
+            "definition": {
+              "title": "Disk Usage",
+              "type": "timeseries",
+              "requests": [
+                {
+                  "q": "avg:system.disk.in_use{*} by {host,device}",
+                  "display_type": "line"
+                }
+              ]
+            },
+            "layout": {"x": 8, "y": 15, "width": 4, "height": 4}
+          },
+          {
+            "definition": {
+              "title": "Container Restarts",
+              "type": "timeseries",
+              "requests": [
+                {
+                  "q": "sum:docker.containers.restarts{*} by {container_name}",
+                  "display_type": "bars"
+                }
+              ]
+            },
+            "layout": {"x": 0, "y": 19, "width": 6, "height": 4}
+          },
+          {
+            "definition": {
+              "title": "Network I/O",
+              "type": "timeseries",
+              "requests": [
+                {
+                  "q": "avg:system.net.bytes_rcvd{*} by {host,device}.as_rate()",
+                  "display_type": "line"
+                }
+              ]
+            },
+            "layout": {"x": 6, "y": 19, "width": 6, "height": 4}
+          }
+        ]
+      },
+      "layout": {"x": 0, "y": 15, "width": 12, "height": 8}
+    },
+    {
+      "definition": {
+        "title": "Tracing & Performance",
+        "type": "group",
+        "widgets": [
+          {
+            "definition": {
+              "title": "Top Slow Endpoints",
+              "type": "table",
+              "requests": [
+                {
+                  "q": "avg:trace.duration{env:prod,service:goblin-api} by {resource_name}.rollup(avg, 3600)",
+                  "aggregator": "avg"
+                }
+              ]
+            },
+            "layout": {"x": 0, "y": 23, "width": 6, "height": 4}
+          },
+          {
+            "definition": {
+              "title": "External Call Breakdown",
+              "type": "treemap",
+              "requests": [
+                {
+                  "q": "avg:trace.duration{env:prod} by {resource_name,service}",
+                  "aggregator": "avg"
+                }
+              ]
+            },
+            "layout": {"x": 6, "y": 23, "width": 6, "height": 4}
+          }
+        ]
+      },
+      "layout": {"x": 0, "y": 23, "width": 12, "height": 4}
+    },
+    {
+      "definition": {
+        "title": "Frontend RUM",
+        "type": "group",
+        "widgets": [
+          {
+            "definition": {
+              "title": "Page Load Time",
+              "type": "timeseries",
+              "requests": [
+                {
+                  "q": "avg:@view.time_spent{env:prod,@view.name:*}.rollup(avg, 300)",
+                  "display_type": "line"
+                }
+              ]
+            },
+            "layout": {"x": 0, "y": 27, "width": 4, "height": 4}
+          },
+          {
+            "definition": {
+              "title": "Frontend Error Rate",
+              "type": "timeseries",
+              "requests": [
+                {
+                  "q": "sum:browser.rum.errors{env:prod}.as_rate()",
+                  "display_type": "area"
+                }
+              ]
+            },
+            "layout": {"x": 4, "y": 27, "width": 4, "height": 4}
+          },
+          {
+            "definition": {
+              "title": "User Sessions",
+              "type": "query_value",
+              "requests": [
+                {
+                  "q": "count:browser.rum.sessions{env:prod}",
+                  "aggregator": "count"
+                }
+              ]
+            },
+            "layout": {"x": 8, "y": 27, "width": 4, "height": 4}
+          }
+        ]
+      },
+      "layout": {"x": 0, "y": 27, "width": 12, "height": 4}
+    },
+    {
+      "definition": {
+        "title": "Cost & Budget Tracking",
+        "type": "group",
+        "widgets": [
+          {
+            "definition": {
+              "title": "Daily Cost by Provider",
+              "type": "timeseries",
+              "requests": [
+                {
+                  "q": "sum:goblin.llm.cost_estimate_usd{env:prod} by {provider}.rollup(sum, 86400)",
+                  "display_type": "bars"
+                }
+              ]
+            },
+            "layout": {"x": 0, "y": 31, "width": 6, "height": 4}
+          },
+          {
+            "definition": {
+              "title": "7-Day Cost Trend",
+              "type": "timeseries",
+              "requests": [
+                {
+                  "q": "sum:goblin.llm.cost_estimate_usd{env:prod}.rollup(sum, 604800)",
+                  "display_type": "line"
+                }
+              ]
+            },
+            "layout": {"x": 6, "y": 31, "width": 6, "height": 4}
+          }
+        ]
+      },
+      "layout": {"x": 0, "y": 31, "width": 12, "height": 4}
+    }
+  ],
+  "template_variables": [
+    {
+      "name": "env",
+      "prefix": "env",
+      "available_values": ["prod", "staging", "dev"],
+      "default": "prod"
+    }
+  ],
+  "layout_type": "ordered",
+  "is_read_only": false,
+  "notify_list": [],
+  "reflow_type": "fixed"
+}

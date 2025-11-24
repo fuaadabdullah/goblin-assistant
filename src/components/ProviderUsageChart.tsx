@@ -33,14 +33,14 @@ const ProviderUsageChart: React.FC<ProviderUsageChartProps> = ({ data }) => {
           <Tooltip content={<CustomTooltip />} />
           <Legend iconType="circle" />
           <Pie
-            data={data}
+            data={data as any}
             dataKey="tasks"
             nameKey="name"
             cx="50%"
             cy="50%"
             outerRadius={80}
             labelLine={false}
-            label={({ name, percent }) => `${name} ${(percent * 100).toFixed(0)}%`}
+            label={({ name, percent }) => `${name} ${((percent ?? 0) * 100).toFixed(0)}%`}
           >
             {data.map((_entry, index) => (
               <Cell key={`cell-${index}`} fill={colors[index % colors.length]} />

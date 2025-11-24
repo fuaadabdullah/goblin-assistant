@@ -10,28 +10,96 @@ catch import-time exceptions when the DEBUGPY env var is enabled.
 # Import debug bootstrap for local development (enables debugpy if DEBUGPY env var is set)
 # import debug_bootstrap  # noqa: F401
 
-from fastapi import FastAPI, Request
+# Import ddtrace configuration for APM and metrics
+from ddtrace_config import goblin_tracer, statsd  # noqa: F401
+
+from fastapi import FastAPI, Request, HTTPException
 from fastapi.responses import JSONResponse, StreamingResponse
 from fastapi.middleware.cors import CORSMiddleware
 from sse_starlette.sse import EventSourceResponse
-from typing import Optional, Dict, Any
+from typing import Optional, Dict, Any, List, Union
 from pydantic import BaseModel
 import asyncio
 import json
 import os
+import time
 import httpx
 from dotenv import load_dotenv
 import sys
 from pathlib import Path
 
+# Optional OpenAI import
+try:
+    from openai import OpenAI
+
+    OPENAI_AVAILABLE = True
+except ImportError:
+    OPENAI_AVAILABLE = False
+    OpenAI = None
+from metrics import MetricsCollector as GoblinMetrics, trace_provider_call
+
 # Add src to path for imports
 sys.path.append(str(Path(__file__).resolve().parents[2] / "src"))
 
 # Import the intelligent routing system
-from routing.router import (
-    route_task,
-    record_success,
-)
+# from routing.router import (
+#     route_task,
+#     record_success,
+# )
+from rag import retrieve, add_document, embed_text, get_vector_db
+
+
+# Simple routing function (fallback)
+async def route_task(
+    task_type: str, payload: dict, prefer_local: bool = True, stream: bool = False
+):
+    """Simple routing function for LLM providers."""
+    try:
+        if not OPENAI_AVAILABLE or not os.getenv("OPENAI_API_KEY"):
+            return {
+                "result": {
+                    "text": "No LLM provider available. Please set OPENAI_API_KEY."
+                },
+                "provider": "none",
+                "model": "unknown",
+            }
+
+        client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
+
+        messages = payload.get("messages", [])
+        if not messages:
+            # Convert simple prompt to messages
+            prompt = payload.get("prompt", "")
+            messages = [{"role": "user", "content": prompt}]
+
+        response = client.chat.completions.create(
+            model="gpt-3.5-turbo",
+            messages=messages,
+            max_tokens=payload.get("max_tokens", 1000),
+            temperature=payload.get("temperature", 0.7),
+            stream=stream,
+        )
+
+        if stream:
+            return response  # Return the stream object
+        else:
+            return {
+                "result": {"text": response.choices[0].message.content},
+                "provider": "openai",
+                "model": "gpt-3.5-turbo",
+            }
+    except Exception as e:
+        return {
+            "result": {"text": f"Error: {str(e)}"},
+            "provider": "error",
+            "model": "unknown",
+        }
+
+
+def record_success(provider: str):
+    """Record successful provider usage (stub)."""
+    pass
+
 
 # Import Redis polling store for production scalability
 from redis_polling_store import RedisPollingStore
@@ -84,39 +152,258 @@ class ExecuteRequest(BaseModel):
     code: Optional[str] = None
 
 
-@app.get("/providers")
-async def get_providers():
-    return JSONResponse(
-        [
-            "ollama",
-            "llamacpp",
-            "lm_studio_local",
-            "openai",
-            "gemini",
-            "anthropic",
-            "deepseek",
-            "replicate",
-            "grok",
-            "siliconflow",
-            "moonshot",
-            "cloudflare-global",
-            "cloudflare-cakey",
-            "vectorize",
-            "huggingface",
-            "together_ai",
-            "fireworks",
-            "groq",
-            "mistral",
-            "perplexity",
-            "voyage_ai",
-            "elevenlabs",
+# OpenAI-compatible API models
+class ChatMessage(BaseModel):
+    role: str
+    content: str
+    name: Optional[str] = None
+
+    class Config:
+        allow_population_by_field_name = True
+        arbitrary_types_allowed = True
+        extra = "allow"
+
+
+class ChatCompletionRequest(BaseModel):
+    model: str
+    messages: List[ChatMessage]
+    temperature: Optional[float] = 1.0
+    max_tokens: Optional[int] = None
+    stream: Optional[bool] = False
+    stop: Optional[List[str]] = None
+
+
+class ChatCompletionChoice(BaseModel):
+    index: int
+    message: ChatMessage
+    finish_reason: Optional[str] = None
+
+
+class ChatCompletionUsage(BaseModel):
+    prompt_tokens: int
+    completion_tokens: int
+    total_tokens: int
+
+
+class ChatCompletionResponse(BaseModel):
+    id: str
+    object: str = "chat.completion"
+    created: int
+    model: str
+    choices: List[ChatCompletionChoice]
+    usage: ChatCompletionUsage
+
+
+class ModelInfo(BaseModel):
+    id: str
+    object: str = "model"
+    created: int
+    owned_by: str = "goblin-assistant"
+
+
+class ModelsResponse(BaseModel):
+    object: str = "list"
+    data: List[ModelInfo]
+
+
+@app.get("/v1/models")
+async def list_models():
+    """OpenAI-compatible models endpoint."""
+    return ModelsResponse(
+        data=[
+            ModelInfo(id="gpt-4", created=1677649963, owned_by="goblin-assistant"),
+            ModelInfo(
+                id="gpt-3.5-turbo", created=1677649963, owned_by="goblin-assistant"
+            ),
         ]
     )
+
+
+@app.get("/providers")
+async def get_providers():
+    from routing.router import PROVIDERS
+
+    return JSONResponse(list(PROVIDERS.keys()))
 
 
 @app.get("/api/health")
 async def health_check():
     return JSONResponse({"status": "healthy", "service": "goblin-assistant-fastapi"})
+
+
+@app.post("/continue/hook")
+async def continue_hook(request: Request):
+    """Endpoint used by the Continue VS Code extension to post events or tests."""
+    data = await request.json()
+    print(f"📥 Continue hook: {data}")
+
+    # Echo back success and indicate which keys are configured
+    return JSONResponse(
+        {
+            "success": True,
+            "message": "Continue hook received",
+            "data": data,
+            "api_keys_configured": {
+                "openai": bool(os.getenv("OPENAI_API_KEY")),
+                "admin": bool(os.getenv("OPENAI_ADMIN_KEY")),
+                "service": bool(os.getenv("OPENAI_SERVICE_KEY")),
+            },
+        }
+    )
+
+
+@app.post("/assistant/query")
+async def assistant_query(request: Request):
+    """Simple assistant query endpoint used by external UIs or tests.
+
+    Accepts JSON { "query": "...", "user_id": "..." }
+    """
+    data = await request.json()
+    query = data.get("query", "")
+    user_id = data.get("user_id", "anonymous")
+
+    # Run a local retrieval to provide contexts
+    contexts = retrieve(query, k=4)
+
+    # Minimal answer generation via routing system / simulated response
+    # For now, call the routing.task system with a simple payload
+    try:
+        routing_resp = await route_task(
+            task_type="chat",
+            payload={"prompt": query, "contexts": contexts},
+            prefer_local=True,
+            stream=False,
+        )
+        # routing_resp may vary depending on providers; normalize
+        answer = routing_resp.get("result", {}).get("text") or routing_resp.get("text")
+        provider = routing_resp.get("provider")
+        model = routing_resp.get("model")
+    except Exception as e:
+        print(f"assistant_query routing error: {e}")
+        answer = f"Mock response to: {query}"
+        provider = "mock"
+        model = "test-model"
+
+    return JSONResponse(
+        {
+            "answer": answer,
+            "contexts": contexts,
+            "usage": {"tokens": 0},
+            "hit_rate": 0.0,
+            "provider": provider,
+            "model": model,
+            "user_id": user_id,
+        }
+    )
+
+
+@app.post("/v1/chat/completions")
+async def chat_completions(request: ChatCompletionRequest):
+    """OpenAI-compatible chat completions endpoint with RAG support."""
+    try:
+        # Extract user message
+        user_message = ""
+        for msg in request.messages:
+            if msg.role == "user":
+                user_message = msg.content
+                break
+
+        # Use RAG if requested (via custom parameter or if we detect a coding question)
+        use_rag = getattr(request, "use_rag", False) or any(
+            keyword in user_message.lower()
+            for keyword in ["code", "function", "class", "api", "implementation"]
+        )
+
+        enhanced_messages = request.messages.copy()
+
+        if use_rag and user_message:
+            # Retrieve relevant context
+            contexts = retrieve(user_message, k=3)
+
+            if contexts:
+                # Build context string
+                context_parts = []
+                for ctx in contexts:
+                    metadata = ctx.get("metadata", {})
+                    source = f"From {metadata.get('file_path', 'unknown')}"
+                    if "start_line" in metadata:
+                        source += f" (lines {metadata['start_line']}-{metadata.get('end_line', '?')})"
+                    context_parts.append(f"{source}:\n{ctx['content']}")
+
+                context_str = "\n\n".join(context_parts)
+
+                # Add context as a system message
+                enhanced_messages.insert(
+                    0,
+                    ChatMessage(
+                        role="system",
+                        content=f"You have access to the following relevant code context:\n\n{context_str}\n\nUse this context to provide accurate, helpful responses. If the context doesn't contain the needed information, say so clearly.",
+                    ),
+                )
+
+        # Route to LLM provider
+        routing_resp = await route_task(
+            task_type="chat",
+            payload={
+                "messages": [
+                    {"role": msg.role, "content": msg.content}
+                    for msg in enhanced_messages
+                ],
+                "max_tokens": request.max_tokens,
+                "temperature": request.temperature,
+                "stream": request.stream,
+            },
+            stream=request.stream,
+        )
+
+        if request.stream:
+            # Handle streaming response
+            async def generate_stream():
+                try:
+                    async for chunk in routing_resp:
+                        if hasattr(chunk, "choices") and chunk.choices:
+                            choice = chunk.choices[0]
+                            if hasattr(choice, "delta") and choice.delta.content:
+                                yield f"data: {json.dumps({'choices': [{'delta': {'content': choice.delta.content}}]})}\n\n"
+
+                    yield "data: [DONE]\n\n"
+                except Exception as e:
+                    yield f"data: {json.dumps({'error': str(e)})}\n\n"
+
+            return StreamingResponse(
+                generate_stream(),
+                media_type="text/plain",
+                headers={"Content-Type": "text/plain; charset=utf-8"},
+            )
+        else:
+            # Handle regular response
+            content = routing_resp.get("result", {}).get(
+                "text", "No response generated"
+            )
+
+            response = ChatCompletionResponse(
+                id=f"chatcmpl-{int(time.time())}",
+                object="chat.completion",
+                created=int(time.time()),
+                model=request.model,
+                choices=[
+                    ChatCompletionChoice(
+                        index=0,
+                        message=ChatMessage(role="assistant", content=content),
+                        finish_reason="stop",
+                    )
+                ],
+                usage=ChatCompletionUsage(
+                    prompt_tokens=len(user_message.split()),
+                    completion_tokens=len(content.split()),
+                    total_tokens=len(user_message.split()) + len(content.split()),
+                ),
+            )
+
+            return response
+
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Chat completion failed: {str(e)}")
 
 
 @app.post("/parse")
@@ -156,10 +443,17 @@ async def execute_task(req: ExecuteRequest):
         f"🚀 [DEBUG] Executing task: goblin={req.goblin}, task={req.task[:50]}..., provider={req.provider}"
     )
 
-    # Start the task and return a taskId; streaming will come from /stream
-    task_id = f"task_{req.goblin}_{req.task.replace(' ', '_')}_{int(asyncio.get_event_loop().time())}"
-    print(f"📋 [DEBUG] Generated task_id: {task_id}")
-    return {"taskId": task_id}
+    # Route the task to determine the best provider
+    routed_provider = route_task(req.goblin, req.task, req.provider)
+
+    # Generate a task ID
+    task_id = f"task_{int(time.time())}_{req.goblin}"
+
+    # For now, return the task ID - streaming will come from /stream
+    result = {"taskId": task_id, "provider": routed_provider, "status": "queued"}
+
+    print(f"✅ [DEBUG] Task queued with ID: {task_id}")
+    return result
 
 
 @app.post("/api/route_task")
@@ -1517,11 +1811,8 @@ async def _stream_cloudflare_global(
 async def _stream_dashscope(
     client: httpx.AsyncClient, task_id: str, req: ExecuteRequest, api_key: str
 ):
-    """Stream from Alibaba Cloud DashScope API (OpenAI-compatible)"""
-    base_url = os.getenv(
-        "DASHSCOPE_HTTP_BASE_URL", "https://dashscope.aliyuncs.com/api/v1"
-    )
-    url = f"{base_url}/chat/completions"
+    """Stream from DashScope API"""
+    url = "https://dashscope.aliyuncs.com/api/v1/chat/completions"
     headers = {"Content-Type": "application/json", "Authorization": f"Bearer {api_key}"}
 
     payload = {
@@ -1631,77 +1922,19 @@ async def stream(task_id: str, goblin: str, task: str):
     )
 
 
-# In-memory storage for API keys (for testing/demo purposes)
-api_keys_store = {}
-
-
-@app.post("/api-keys/{provider}")
-async def store_api_key(provider: str, key: str):
-    """Store an API key for a provider"""
-    api_keys_store[provider] = key
-    return {"status": "stored"}
-
-
-@app.get("/api-keys/{provider}")
-async def get_api_key(provider: str):
-    """Retrieve an API key for a provider"""
-    return {"key": api_keys_store.get(provider)}
-
-
-@app.delete("/api-keys/{provider}")
-async def clear_api_key(provider: str):
-    """Clear an API key for a provider"""
-    if provider in api_keys_store:
-        del api_keys_store[provider]
-    return {"status": "cleared"}
-
-
-@app.get("/models/{provider}")
-async def get_provider_models(provider: str):
-    """Get available models for a provider"""
-    # Comprehensive model lists matching provider configuration
-    models = {
-        "openai": ["gpt-4o", "gpt-4"],
-        "anthropic_claude": ["claude-3"],
-        "grok": ["grok-1"],
-        "gemini": ["gemini-pro"],
-        "siliconflow": ["deepseek-ai/DeepSeek-V2.5", "Qwen/Qwen2-72B-Instruct"],
-        "deepseek": ["deepseek-chat", "deepseek-coder"],
-        "moonshot": ["moonshot-v1-8k", "moonshot-v1-32k", "moonshot-v1-128k"],
-        "cloudflare_workers": [
-            "@cf/meta/llama-3.1-8b-instruct",
-            "@cf/meta/llama-3.1-70b-instruct",
-        ],
-        "lm_studio_local": ["local-model"],
-        "ollama_local": ["qwen2.5:3b", "qwen2.5:7b", "llama2", "mistral"],
-        "cloudflare_vectors": ["semantic-search", "vector-query"],
-        "huggingface": ["sentence-transformers/all-MiniLM-L6-v2"],
-        "replicate": ["black-forest-labs/flux-kontext-pro", "stability-ai/sdxl"],
-        "mistral": ["mistral-large-latest"],
-        "baichuan": ["Baichuan4"],
-        "zhipuai": ["glm-4"],
-        "sense_time": ["SenseChat-5"],
-        "perplexity": ["llama-3.1-sonar-large-128k-online"],
-        "fireworks": ["accounts/fireworks/models/llama-v3-70b-instruct"],
-        "elevenlabs": ["eleven_monolingual_v1"],
-        "dashscope": ["qwen-turbo", "qwen-plus", "qwen-max"],
-        # Legacy mappings for backward compatibility
-        "anthropic": ["claude-3-opus", "claude-3-sonnet", "claude-3-haiku"],
-        "ollama": ["qwen2.5:3b", "qwen2.5:7b", "llama2", "mistral"],
-        "llamacpp": ["local-model", "gguf-model"],
-        "lmstudio": ["local-model"],
-        "cloudflare": ["gpt-3.5-turbo", "gpt-4", "gpt-4-turbo"],
-        "cloudflare-global": [
-            "@cf/meta/llama-3.1-8b-instruct",
-            "@cf/meta/llama-3.1-70b-instruct",
-        ],
-        "cloudflare-cakey": [
-            "gpt-3.5-turbo",
-            "gpt-4",
-            "gpt-4-turbo",
-            "claude-3-haiku",
-            "claude-3-sonnet",
-        ],
-        "vectorize": ["semantic-search", "vector-query", "embedding-lookup"],
+@app.get("/debug/env")
+async def debug_env():
+    """Debug endpoint to check environment variables"""
+    return {
+        "OPENAI_API_KEY": os.getenv("OPENAI_API_KEY", "NOT_SET")[:10] + "..."
+        if os.getenv("OPENAI_API_KEY")
+        else "NOT_SET",
+        "OPENAI_ADMIN_KEY": os.getenv("OPENAI_ADMIN_KEY", "NOT_SET")[:10] + "..."
+        if os.getenv("OPENAI_ADMIN_KEY")
+        else "NOT_SET",
+        "OPENAI_SERVICE_KEY": os.getenv("OPENAI_SERVICE_KEY", "NOT_SET")[:10] + "..."
+        if os.getenv("OPENAI_SERVICE_KEY")
+        else "NOT_SET",
+        "PWD": os.getcwd(),
+        "DOTENV_LOADED": "CHECKED",
     }
-    return models.get(provider, [])

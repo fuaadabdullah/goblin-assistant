@@ -147,6 +147,19 @@ export async function getCostSummary(): Promise<CostSummary> {
 	return invoke<CostSummary>("get_cost_summary");
 }
 
+export interface CostEstimate {
+	totalCost: number;
+	stepCosts: Array<{
+		stepId: string;
+		goblin: string;
+		task: string;
+		estimatedCost: number;
+		tokenEstimate: number;
+	}>;
+	currency: string;
+	provider: string;
+}
+
 /**
  * Parse orchestration syntax into execution plan
  * @param text - Orchestration string (e.g., "task1 THEN task2 AND task3")
@@ -159,6 +172,24 @@ export async function parseOrchestration(
 	return invoke<OrchestrationPlan>("parse_orchestration", {
 		text,
 		defaultGoblin: defaultGoblin || null,
+	});
+}
+
+/**
+ * Estimate cost for orchestration execution
+ * @param orchestrationText - Orchestration string
+ * @param codeInput - Optional code input for token estimation
+ * @param provider - Optional provider for cost calculation
+ */
+export async function estimateCost(
+	orchestrationText: string,
+	codeInput?: string,
+	provider?: string,
+): Promise<CostEstimate> {
+	return invoke<CostEstimate>("estimate_cost", {
+		orchestrationText,
+		codeInput: codeInput || null,
+		provider: provider || null,
 	});
 }
 

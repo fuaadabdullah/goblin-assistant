@@ -16,7 +16,7 @@ const Dashboard: React.FC = () => {
     if (!costSummary?.cost_by_provider) return [];
     return Object.entries(costSummary.cost_by_provider).map(([provider, cost], index) => ({
       name: provider,
-      value: cost,
+      value: cost as number,
       color: colors[index % colors.length],
     }));
   }, [costSummary]);
@@ -25,7 +25,7 @@ const Dashboard: React.FC = () => {
     if (!costSummary?.cost_by_provider) return [];
     return Object.entries(costSummary.cost_by_provider).map(([provider, cost]) => ({
       name: provider,
-      tasks: Math.max(1, Math.round(cost * 10)), // visual approximation
+      tasks: Math.max(1, Math.round((cost as number) * 10)), // visual approximation
     }));
   }, [costSummary]);
 
