@@ -77,16 +77,19 @@ curl -X POST http://localhost:8000/mcp/v1/request \
 ## 🗃️ Database Schema
 
 ### mcp_request
+
 - Request tracking with status, priority, cost estimates
 - User hashing for privacy
 - Provider hints and attempt tracking
 
 ### mcp_event
+
 - Audit trail for all request events
 - Structured JSON payloads
 - Indexed for performance
 
 ### mcp_result
+
 - Final results with token counts and costs
 - Flexible JSON storage
 
@@ -100,9 +103,8 @@ curl -X POST http://localhost:8000/mcp/v1/request \
 
 ## 🎯 Key Features
 
-## 🎯 Key Features
-
 ### ✅ Implemented
+
 - FastAPI router with all core endpoints
 - PostgreSQL models with SQLAlchemy
 - Redis queue integration
@@ -119,6 +121,7 @@ curl -X POST http://localhost:8000/mcp/v1/request \
 - **Real-time monitoring** with Datadog integration
 
 ### 🚧 Next Steps
+
 - Advanced RAG with reranker cross-encoder
 - Provider cost accounting dashboard
 - Streaming UI polish
@@ -155,6 +158,7 @@ OPENAI_API_KEY=sk-...
 ## 📊 Monitoring & Metrics
 
 ### Datadog Metrics
+
 - `goblin.mcp.request.count` - Request volume by task type
 - `goblin.mcp.request.latency_ms` - End-to-end latency
 - `goblin.mcp.tokens` - Token usage
@@ -162,6 +166,7 @@ OPENAI_API_KEY=sk-...
 - `goblin.mcp.fallback.count` - Provider fallback events
 
 ### Health Checks
+
 - API health: `GET /mcp/v1/admin/metrics`
 - Worker health: Queue depth monitoring
 - Database: Connection pool status
@@ -214,11 +219,13 @@ docker-compose -f docker-compose.mcp.yml logs -f mcp-api
 ## 🔗 Integration Points
 
 ### Existing Goblin Assistant
+
 - Integrates with current FastAPI app
 - Uses existing metrics and tracing
 - Compatible with current provider plugins
 
 ### Future Extensions
+
 - **RAG Pipeline**: Context retrieval integration
 - **Workflow Engine**: Multi-step request processing
 - **Admin UI**: Real-time monitoring dashboard

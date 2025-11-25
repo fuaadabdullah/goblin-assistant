@@ -121,11 +121,13 @@ After deployment, access these endpoints:
 ### Environment Variables
 
 **Required:**
+
 - `DD_API_KEY`: Datadog API key
 - `DD_APP_KEY`: Datadog application key
 - `POSTGRES_PASSWORD`: Database password
 
 **Optional:**
+
 - `DD_SITE`: Datadog site (default: datadoghq.com)
 - `ENV`: Environment tag (default: production)
 - `DD_VERSION`: Version tag for deployments
@@ -154,18 +156,21 @@ After deployment, access these endpoints:
 ### Common Issues
 
 **Services won't start:**
+
 ```bash
 docker-compose logs
 # Check for missing environment variables
 ```
 
 **Metrics not appearing:**
+
 ```bash
 docker-compose logs datadog
 # Verify DD_API_KEY and network connectivity
 ```
 
 **High latency alerts:**
+
 - Check queue depth via admin dashboard
 - Monitor provider response times
 - Verify database performance
