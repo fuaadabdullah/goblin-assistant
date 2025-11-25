@@ -1,0 +1,22 @@
+{
+  "name": "Goblin Assistant - High Queue Depth",
+  "type": "metric alert",
+  "query": "avg(last_5m):goblin.queue.depth{env:production,queue:mcp\\:queue} > 50",
+  "message": "📋 **CRITICAL**: Goblin Assistant queue depth exceeded 50 threshold\n\n**Current Value**: {{value}} requests\n**Threshold**: 50 requests\n\n**Impact**: Requests backing up, increased latency\n**Action Required**: Scale up workers, check worker health, or investigate processing bottlenecks\n\n**Dashboard**: {{host.name}} - [Admin Dashboard](http://{{host.name}}/mcp/v1/admin/dashboard)\n\n@slack-alerts @team-platform",
+  "tags": ["service:goblin-assistant", "env:production", "kpi:queue"],
+  "options": {
+    "thresholds": {
+      "critical": 50,
+      "warning": 25
+    },
+    "notify_no_data": true,
+    "no_data_timeframe": 300,
+    "renotify_interval": 5,
+    "timeout_h": 0,
+    "evaluation_delay": 60,
+    "new_host_delay": 300,
+    "include_tags": true,
+    "require_full_window": false
+  },
+  "priority": 1
+}

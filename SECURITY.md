@@ -63,6 +63,47 @@ We appreciate security researchers who help keep our users safe. With your permi
 - No arbitrary code execution capabilities
 - Secure file system access controls
 
+## 🔒 Advanced Security Features
+
+### Comprehensive Secret Scanning
+
+Goblin Assistant implements multi-layer secret detection and prevention to protect sensitive data:
+
+#### Detection Capabilities
+- **API Keys**: OpenAI, Anthropic, Google Cloud, AWS, Azure, and other major providers
+- **Authentication Tokens**: JWT tokens, Bearer tokens, OAuth tokens, API tokens
+- **Passwords**: Common password patterns and credential formats
+- **Private Keys**: RSA, ECDSA, and other cryptographic keys
+- **Certificates**: SSL certificates, SSH keys, and digital certificates
+- **Database Credentials**: Connection strings and database passwords
+- **Environment Variables**: Sensitive configuration values
+
+#### Security Layers
+1. **Request Creation**: Scans user prompts before queuing requests
+2. **Worker Processing**: Double-checks prompts before sending to AI providers
+3. **Document Indexing**: Automatically redacts secrets during ChromaDB indexing
+4. **Audit Logging**: Complete security event logging and monitoring
+
+#### Response to Violations
+- **Immediate Blocking**: Requests containing secrets are rejected with clear error messages
+- **Security Metrics**: Comprehensive monitoring of security events with Datadog
+- **Audit Trail**: Detailed logging of detection points and violation types
+- **Graceful Degradation**: System continues operating while blocking malicious requests
+
+### Privacy Protection
+
+- **User Data Hashing**: User IDs are hashed for privacy in logs and metrics
+- **Secure Credential Storage**: API keys stored in system keychain/keyring
+- **Data Minimization**: Only necessary data retained for functionality
+- **Compliance Ready**: Enterprise-grade security for sensitive environments
+
+### Enterprise Security Architecture
+
+- **Model Control Plane (MCP)**: Centralized security policy enforcement
+- **Circuit Breaker Pattern**: Automatic security response to threats
+- **Real-time Monitoring**: Security events tracked with Datadog integration
+- **Fail-safe Design**: Multiple security layers prevent data leakage
+
 ## Responsible Disclosure
 
 We kindly ask that you:

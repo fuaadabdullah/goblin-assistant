@@ -4,7 +4,7 @@
 cd /Users/fuaadabdullah/ForgeMonorepo/goblin-assistant
 
 # Start the app in background
-PYTHONPATH=/Users/fuaadabdullah/ForgeMonorepo/goblin-assistant:/Users/fuaadabdullah/ForgeMonorepo/goblin-assistant/api/fastapi /usr/local/opt/python@3.14/bin/python3.14 minimal-app.py &
+PYTHONPATH=/Users/fuaadabdullah/ForgeMonorepo/goblin-assistant:/Users/fuaadabdullah/ForgeMonorepo/goblin-assistant/api/fastapi /usr/local/opt/python@3.14/bin/python3.14 python-tests/minimal-app.py &
 APP_PID=$!
 
 # Wait for app to start

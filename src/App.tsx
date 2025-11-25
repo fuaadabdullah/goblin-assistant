@@ -1,18 +1,13 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import GoblinDemo from "./components/GoblinDemo";
 import ProviderSelector from "./components/ProviderSelector";
-// import ModelSelector from "./components/ModelSelector";
+import ModelSelector from "./components/ModelSelector";
 import CostPanel from "./components/CostPanel";
 import WorkflowBuilder from "./components/WorkflowBuilder";
 import CostEstimationPanel from "./components/CostEstimationPanel";
 import { runtimeClient, runtimeClientDemo } from "./api/tauri-client";
 import "./App.css";
-import React, { useEffect, useState } from "react";
-
-const ModelSelector: React.FC<{ provider?: string; selected?: string; onChange: (model: string) => void }> = ({ provider, selected: _selected, onChange: _onChange }) => {
-	console.log('ModelSelector rendering with provider:', provider);
-	return React.createElement('div', { id: 'model-select' }, `Model Selector: ${provider || 'no provider'}`);
-};
+import { useEffect, useState } from "react";
 
 const qc = new QueryClient();
 

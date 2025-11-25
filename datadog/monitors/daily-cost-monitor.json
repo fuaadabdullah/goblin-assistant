@@ -1,0 +1,22 @@
+{
+  "name": "Goblin Assistant - High Daily Cost",
+  "type": "metric alert",
+  "query": "sum(last_24h):goblin.cost.daily_usd{env:production} > 50",
+  "message": "💰 **WARNING**: Goblin Assistant daily cost exceeded $50 threshold\n\n**Current Value**: ${{value}}\n**Threshold**: $50/day\n\n**Impact**: Increased operational costs\n**Action Required**: Review usage patterns, optimize provider selection, or adjust rate limits\n\n**Dashboard**: {{host.name}} - [Admin Dashboard](http://{{host.name}}/mcp/v1/admin/dashboard)\n\n@slack-alerts @team-finance",
+  "tags": ["service:goblin-assistant", "env:production", "kpi:cost"],
+  "options": {
+    "thresholds": {
+      "critical": 50,
+      "warning": 25
+    },
+    "notify_no_data": true,
+    "no_data_timeframe": 3600,
+    "renotify_interval": 1440,
+    "timeout_h": 0,
+    "evaluation_delay": 3600,
+    "new_host_delay": 300,
+    "include_tags": true,
+    "require_full_window": false
+  },
+  "priority": 3
+}

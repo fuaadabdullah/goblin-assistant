@@ -32,16 +32,19 @@
 
 ## 🎯 Overview
 
-Goblin Assistant is a **production-ready AI orchestration platform** that demonstrates enterprise-grade AI management capabilities. It intelligently routes tasks across 31+ AI providers, optimizes costs, handles failures gracefully, and provides real-time monitoring and analytics.
+Goblin Assistant is a **production-ready AI orchestration platform** that demonstrates enterprise-grade AI management capabilities. It intelligently routes tasks across 31+ AI providers, optimizes costs, handles failures gracefully, and provides real-time monitoring and analytics with comprehensive security features.
 
 ### 🎪 What Makes It Special
 
 - **🤖 Multi-Provider Intelligence**: Seamlessly routes across OpenAI, Anthropic, Google Gemini, DeepSeek, and 27+ other providers
 - **💰 Cost Optimization**: Real-time budget tracking with automatic fallback to cost-effective providers
 - **🔄 Circuit Breaker Pattern**: Automatic failover with graceful degradation to local models
-- **📊 Enterprise Monitoring**: Comprehensive metrics, logging, and performance analytics
+- **📊 Enterprise Monitoring**: Comprehensive metrics, logging, and performance analytics with Datadog integration
 - **🏠 Offline-First**: Works with local Ollama/LM Studio models, syncs when online
 - **🎯 Task-Aware Routing**: Different providers selected based on task complexity and requirements
+- **🛡️ Enterprise Security**: Multi-layer secret scanning, privacy protection, and compliance features
+- **🧠 RAG Integration**: ChromaDB-powered retrieval-augmented generation for enhanced responses
+- **🏗️ Model Control Plane**: Centralized orchestration with FastAPI backend and Redis queue management
 
 ### 🎯 Use Cases
 
@@ -99,13 +102,26 @@ Goblin Assistant is a **production-ready AI orchestration platform** that demons
   - Analysis/Planning/Code Review → Reasoning-capable models
 - **Streaming Responses**: Real-time token-by-token streaming with live cost tracking
 - **Context Preservation**: Maintains conversation context across provider switches
+- **RAG Integration**: ChromaDB-powered retrieval-augmented generation for enhanced responses
+- **Document Indexing**: Automatic indexing of documents with secret scanning and redaction
+
+### 🛡️ Enterprise Security
+
+- **Comprehensive Secret Scanning**: Multi-layer detection and blocking of sensitive data
+  - API keys, passwords, tokens, certificates, and private keys
+  - Request-level and worker-level scanning
+  - Automatic redaction for safe document indexing
+- **Security Event Logging**: Complete audit trail of security violations
+- **Privacy Protection**: User data hashing and secure credential management
+- **Compliance Ready**: Enterprise-grade security for sensitive environments
 
 ### 🏗️ Enterprise Architecture
 
+- **Model Control Plane (MCP)**: Centralized orchestration layer with FastAPI backend
 - **TOML Configuration**: Human-editable provider configuration with environment variable support
-- **FastAPI Backend**: High-performance async routing with comprehensive metrics
 - **Cross-Platform Desktop**: Tauri + React + TypeScript stack
-- **SQLite Persistence**: Metrics, task history, and configuration storage
+- **PostgreSQL + Redis**: Production database with queue management
+- **ChromaDB Integration**: Vector database for document indexing and RAG
 - **Modular Design**: Clean separation between routing, providers, and UI
 
 ### 📊 Advanced Monitoring & Analytics

@@ -168,7 +168,7 @@ main() {
     print_header "2. API Key Validation"
 
     run_test "Python API key test" \
-        "cd '$PROJECT_ROOT' && python3 test_api_keys.py" ""
+        "cd '$PROJECT_ROOT' && python3 python-tests/test_api_keys.py" ""
 
     run_test "Node.js API key test" \
         "cd '$PROJECT_ROOT' && node test-api-keys.js" \
@@ -202,10 +202,10 @@ main() {
     print_header "6. Integration Tests"
 
     run_test "Provider routing test" \
-        "cd '$PROJECT_ROOT' && python3 test_routing.py" ""
+        "cd '$PROJECT_ROOT' && python3 python-tests/test_routing.py" ""
 
     run_test "Replicate integration test" \
-        "cd '$PROJECT_ROOT' && python3 test_replicate_direct.py" ""
+        "cd '$PROJECT_ROOT' && python3 python-tests/test_replicate_direct.py" ""
 
     run_test "IPC communication test" \
         "cd '$PROJECT_ROOT' && node test-ipc.js" ""
@@ -219,7 +219,7 @@ main() {
             "cd '$PROJECT_ROOT' && npx playwright test" ""
 
         run_test "Simple E2E test" \
-            "cd '$PROJECT_ROOT' && VITE_PORT=$VITE_PORT python3 test_e2e_simple.py" ""
+            "cd '$PROJECT_ROOT' && VITE_PORT=$VITE_PORT python3 python-tests/test_e2e_simple.py" ""
     else
         echo -e "${YELLOW}⏭️  Skipping E2E tests - servers failed to start${NC}"
         ((TESTS_SKIPPED++))

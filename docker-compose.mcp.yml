@@ -1,0 +1,97 @@
+services:
+  # MCP FastAPI Service
+  mcp-api:
+    build:
+      context: .
+      dockerfile: Dockerfile.fastapi
+    ports:
+      - "8000:8000"
+    environment:
+      - DATABASE_URL=postgresql://mcp_user:mcp_password@postgres/mcp_db
+      - REDIS_HOST=redis
+      - ENV=production
+      - DD_TRACE_ENABLED=true
+      - DD_SERVICE=mcp-api
+      - DD_ENV=production
+    depends_on:
+      - postgres
+      - redis
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/mcp/v1/admin/metrics"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # MCP Worker Service
+  mcp-worker:
+    build:
+      context: .
+      dockerfile: Dockerfile.worker
+    environment:
+      - DATABASE_URL=postgresql://mcp_user:mcp_password@postgres/mcp_db
+      - REDIS_HOST=redis
+      - ENV=production
+      - DD_TRACE_ENABLED=true
+      - DD_SERVICE=mcp-worker
+      - DD_ENV=production
+    depends_on:
+      - postgres
+      - redis
+      - mcp-api
+    restart: unless-stopped
+    deploy:
+      replicas: 2  # Scale workers as needed
+
+  # PostgreSQL Database
+  postgres:
+    image: postgres:15
+    environment:
+      - POSTGRES_DB=mcp_db
+      - POSTGRES_USER=mcp_user
+      - POSTGRES_PASSWORD=mcp_password
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./api/fastapi/setup_mcp_db.py:/docker-entrypoint-initdb.d/setup_mcp_db.py
+    ports:
+      - "5432:5432"
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U mcp_user -d mcp_db"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # Redis Queue
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # pgAdmin (optional, for database management)
+  pgadmin:
+    image: dpage/pgadmin4:latest
+    environment:
+      - PGADMIN_DEFAULT_EMAIL=admin@goblin.local
+      - PGADMIN_DEFAULT_PASSWORD=goblin123
+    ports:
+      - "5050:80"
+    depends_on:
+      - postgres
+    restart: unless-stopped
+
+volumes:
+  postgres_data:
+  redis_data:
+
+networks:
+  default:
+    name: mcp-network

@@ -1,44 +1,251 @@
-# Goblin Assistant Production Deployment Guide
+# 🚀 Goblin Assistant - Production Deployment Guide
 
-## Prerequisites
+## Overview
 
-1. **Datadog Account**: API and Application keys
-2. **HashiCorp Vault**: For secure secrets management (optional but recommended)
-3. **Production Server**: Ubuntu 20.04+ or Docker host
-4. **Domain**: SSL certificate for HTTPS
-5. **Database**: Supabase or PostgreSQL instance
-6. **Redis**: For queue management (optional)
+Complete production deployment guide for the Goblin Assistant MCP service with comprehensive Datadog monitoring, ChromaDB integration, and enterprise security features.
 
-## Quick Deploy with Docker
+## 📋 Prerequisites
 
-### 1. Setup Environment
+- Docker & Docker Compose
+- Datadog account with API access
+- Domain name (optional, for production)
+- SSL certificate (Let's Encrypt recommended)
+- PostgreSQL database (managed or self-hosted)
+
+## ⚡ Quick Deploy
+
+### 1. Clone & Setup
+
 ```bash
-# Clone repository
-git clone <repository-url>
+git clone <repository>
 cd goblin-assistant
-
-# Copy and configure production environment
-cp .env.production.example .env.production
-# Edit .env.production with your actual values
+cp .env.example .env
 ```
 
-### 2. Deploy with Docker Compose
+### 2. Configure Environment
+
+Edit `.env` with your credentials:
+
 ```bash
-# Deploy all services
-docker-compose -f docker-compose.prod.yml up -d
+# Datadog Configuration
+DD_API_KEY=your_datadog_api_key_here
+DD_APP_KEY=your_datadog_app_key_here
+DD_SITE=datadoghq.com
+ENV=production
+
+# Database
+POSTGRES_PASSWORD=your_secure_postgres_password
+DATABASE_URL=postgresql://goblin:${POSTGRES_PASSWORD}@postgres:5432/mcp_db
+
+# ChromaDB (Vector Database)
+CHROMA_HOST=localhost
+CHROMA_PORT=8000
+
+# Add your AI provider API keys...
+OPENAI_API_KEY=sk-...
+ANTHROPIC_API_KEY=sk-ant-...
+```
+
+### 3. Deploy Services
+
+```bash
+# Start all services
+docker-compose up -d
 
 # Check logs
-docker-compose -f docker-compose.prod.yml logs -f goblin-assistant
+docker-compose logs -f goblin-assistant
 ```
 
-### 3. Verify Deployment
+### 4. Setup Monitoring
+
 ```bash
-# Check application health
-curl https://your-domain.com/health
-
-# Check Datadog agent
-docker-compose -f docker-compose.prod.yml logs datadog-agent
+# Run Datadog setup script
+chmod +x setup-datadog.sh
+./setup-datadog.sh
 ```
+
+## 🛡️ Security Configuration
+
+### Secret Scanning Setup
+
+The system includes comprehensive secret scanning at multiple layers:
+
+1. **Request Validation**: Scans user prompts before processing
+2. **Worker Safety**: Double-checks before sending to providers
+3. **Document Indexing**: Automatic redaction in ChromaDB
+
+### Security Monitoring
+
+Security events are automatically tracked:
+
+- **Detection Points**: `request_creation`, `worker_processing`, `document_indexing`
+- **Metrics**: `goblin.security.secrets_detected` with tags for detection location
+- **Audit Logs**: Complete security event trail in database
+
+### Privacy Features
+
+- User IDs are hashed for privacy
+- API keys stored securely in system keychain
+- Data minimization and retention policies
+
+## 📊 KPI Monitoring Dashboard
+
+After deployment, access these endpoints:
+
+- **Admin Dashboard**: `http://localhost/mcp/v1/admin/dashboard`
+- **Datadog Dashboard**: Created automatically via setup script
+- **Health Check**: `http://localhost/api/health`
+
+### Monitored KPIs
+
+| KPI | Target | Critical Alert | Warning Alert |
+|-----|--------|----------------|---------------|
+| P95 Latency | < 1.5s | > 1.5s | > 1.0s |
+| Error Rate | < 3% | > 3% | > 1% |
+| RAG Hit Rate | > 60% | < 60% | < 70% |
+| Fallback Rate | < 5% | > 5% | > 2% |
+| Queue Depth | < 50 | > 50 | > 25 |
+| Daily Cost | < $50 | > $50 | > $25 |
+| Security Violations | < 1/day | > 1/day | > 0/day |
+| Secret Detection Rate | Monitor | N/A | N/A |
+
+## 🔧 Configuration Files
+
+### Docker Services
+
+- **goblin-assistant**: Main FastAPI application
+- **datadog**: Metrics collection and forwarding
+- **postgres**: Database (persistent data)
+- **redis**: Queue and caching (ephemeral)
+
+### Environment Variables
+
+**Required:**
+- `DD_API_KEY`: Datadog API key
+- `DD_APP_KEY`: Datadog application key
+- `POSTGRES_PASSWORD`: Database password
+
+**Optional:**
+- `DD_SITE`: Datadog site (default: datadoghq.com)
+- `ENV`: Environment tag (default: production)
+- `DD_VERSION`: Version tag for deployments
+
+## 📈 Monitoring & Alerts
+
+### Automated Monitors Created
+
+1. **Latency Monitor**: P95 response time alerts
+2. **Error Rate Monitor**: Application error percentage
+3. **RAG Hit Rate Monitor**: Context usage effectiveness
+4. **Fallback Rate Monitor**: Provider reliability
+5. **Queue Depth Monitor**: System capacity
+6. **Cost Monitor**: Daily spending limits
+
+### Dashboard Features
+
+- Real-time KPI visualization
+- Historical trend analysis
+- Alert threshold indicators
+- Provider performance metrics
+- Cost tracking and budgeting
+
+## 🔍 Troubleshooting
+
+### Common Issues
+
+**Services won't start:**
+```bash
+docker-compose logs
+# Check for missing environment variables
+```
+
+**Metrics not appearing:**
+```bash
+docker-compose logs datadog
+# Verify DD_API_KEY and network connectivity
+```
+
+**High latency alerts:**
+- Check queue depth via admin dashboard
+- Monitor provider response times
+- Verify database performance
+
+### Health Checks
+
+```bash
+# Check all services
+docker-compose ps
+
+# Check application health
+curl http://localhost/api/health
+
+# Check admin dashboard
+curl http://localhost/mcp/v1/admin/dashboard
+```
+
+## 🚀 Scaling & Performance
+
+### Horizontal Scaling
+
+```bash
+# Add more application instances
+docker-compose up -d --scale goblin-assistant=3
+```
+
+### Database Optimization
+
+- Monitor slow queries in PostgreSQL logs
+- Consider read replicas for high traffic
+- Enable connection pooling
+
+### Caching Strategy
+
+- Redis handles session and temporary data
+- Consider Redis Cluster for high availability
+- Monitor cache hit rates in Datadog
+
+## 🔐 Security
+
+### Production Checklist
+
+- [ ] SSL/TLS enabled (nginx reverse proxy recommended)
+- [ ] Database password rotated regularly
+- [ ] API keys encrypted in environment
+- [ ] Network segmentation implemented
+- [ ] Regular security updates
+- [ ] Audit logging enabled
+
+### Backup Strategy
+
+```bash
+# Database backup
+docker-compose exec postgres pg_dump -U goblin mcp > backup.sql
+
+# Configuration backup
+cp .env .env.backup
+```
+
+## 📚 Additional Resources
+
+- [Datadog Monitoring Guide](./datadog/README.md)
+- [API Documentation](./docs/API.md)
+- [Troubleshooting Guide](./docs/troubleshooting.md)
+
+## 🎯 Success Metrics
+
+Your deployment is successful when:
+
+- ✅ All services running without errors
+- ✅ Datadog dashboard shows green metrics
+- ✅ Admin dashboard loads with current KPIs
+- ✅ No critical alerts in first 24 hours
+- ✅ Response times within target thresholds
+
+---
+
+**Happy Deploying! 🚀**
+
+*Last Updated: November 24, 2025*
 
 ## Manual Server Deployment
 

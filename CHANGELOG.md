@@ -41,6 +41,26 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Improved component accessibility with ARIA labels
   - Better error handling and user feedback
 
+### Security Enhancements
+
+- **Multi-Layer Secret Scanning**: Comprehensive security implementation across the entire system
+  - **Request-Level Protection**: Scans user prompts before queuing requests
+  - **Worker-Level Safety**: Double-checks prompts before sending to AI providers
+  - **Document Indexing Security**: Automatic redaction during ChromaDB indexing
+  - **Comprehensive Detection**: API keys, passwords, tokens, certificates, private keys, and credentials
+
+- **Security Event Logging**: Complete audit trail and monitoring
+  - Security violation tracking with Datadog metrics
+  - Detailed logging of detection points and secret types
+  - Privacy-preserving user data hashing
+  - Enterprise-grade security event management
+
+- **Privacy Protection Features**: Enhanced data protection and compliance
+  - User ID hashing for privacy in logs and metrics
+  - Secure credential management and storage
+  - Data minimization and retention policies
+  - Compliance-ready security architecture
+
 ### Technical Improvements
 
 - **Type Safety**: Fixed all TypeScript compilation errors (24 issues resolved)

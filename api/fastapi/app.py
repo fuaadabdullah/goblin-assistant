@@ -48,6 +48,9 @@ sys.path.append(str(Path(__file__).resolve().parents[2] / "src"))
 # )
 from rag import retrieve, add_document, embed_text, get_vector_db
 
+# Import MCP router
+from mcp_router import router as mcp_router
+
 
 # Simple routing function (fallback)
 async def route_task(
@@ -137,6 +140,9 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+# Include MCP router
+app.include_router(mcp_router)
 
 
 class ParseRequest(BaseModel):

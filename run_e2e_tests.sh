@@ -73,7 +73,7 @@ echo "======================"
 
 # Run the Python test
 cd /Users/fuaadabdullah/ForgeMonorepo/goblin-assistant
-VITE_PORT=$VITE_PORT python3 test_e2e_simple.py
+VITE_PORT=$VITE_PORT python3 python-tests/test_e2e_simple.py
 TEST_RESULT=$?
 
 echo ""
