@@ -1,6 +1,6 @@
 // src/hooks/useProviderRouter.ts
-import { useState, useCallback } from "react";
-import router from "../routing/router"; // the TS router you already have
+import { useState, useCallback } from 'react';
+import router from '../routing/router'; // the TS router you already have
 
 type ChunkHandler = (chunk: any) => void;
 type MetaHandler = (meta: any) => void;
@@ -18,17 +18,23 @@ interface StreamOptions {
 
 export function useProviderRouter() {
   const [metricsAvailable, _setMetricsAvailable] = useState(false);
-  const [connectionHealth, setConnectionHealth] = useState<'unknown' | 'healthy' | 'degraded' | 'failed'>('unknown');
+  const [connectionHealth, setConnectionHealth] = useState<
+    'unknown' | 'healthy' | 'degraded' | 'failed'
+  >('unknown');
 
-  function topProviders(capability: string, preferLocal=false, preferCost=false, limit=6) {
+  function topProviders(capability: string, preferLocal = false, preferCost = false, limit = 6) {
     return router.topProvidersFor(capability, preferLocal, preferCost, limit);
   }
 
-  async function routeTask(taskType: string, payload: any, opts?: { preferLocal?: boolean; preferCost?: boolean }) {
-    const res = await fetch("/api/route_task", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ task_type: taskType, payload, opts })
+  async function routeTask(
+    taskType: string,
+    payload: any,
+    opts?: { preferLocal?: boolean; preferCost?: boolean }
+  ) {
+    const res = await fetch('/api/route_task', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ task_type: taskType, payload, opts }),
     });
     return await res.json();
   }
@@ -39,10 +45,10 @@ export function useProviderRouter() {
       const controller = new AbortController();
       const timeoutId = setTimeout(() => controller.abort(), 5000); // 5s timeout
 
-      const resp = await fetch("/api/health/stream", {
-        method: "GET",
+      const resp = await fetch('/api/health/stream', {
+        method: 'GET',
         signal: controller.signal,
-        headers: { "Cache-Control": "no-cache" }
+        headers: { 'Cache-Control': 'no-cache' },
       });
 
       clearTimeout(timeoutId);
@@ -66,10 +72,10 @@ export function useProviderRouter() {
 
     try {
       // Start the stream
-      const startResp = await fetch("/api/route_task_stream_start", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ task_type: taskType, payload, opts })
+      const startResp = await fetch('/api/route_task_stream_start', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ task_type: taskType, payload, opts }),
       });
 
       if (!startResp.ok) {
@@ -77,7 +83,7 @@ export function useProviderRouter() {
       }
 
       const { stream_id } = await startResp.json();
-      onMeta?.({ provider: "unknown", model: "unknown", stream_id, fallback: "polling" });
+      onMeta?.({ provider: 'unknown', model: 'unknown', stream_id, fallback: 'polling' });
 
       let retryCount = 0;
       const poll = async () => {
@@ -120,7 +126,7 @@ export function useProviderRouter() {
 
       // Return cleanup function
       return () => {
-        fetch(`/api/route_task_stream_cancel/${stream_id}`, { method: "POST" }).catch(() => {});
+        fetch(`/api/route_task_stream_cancel/${stream_id}`, { method: 'POST' }).catch(() => {});
       };
     } catch (error) {
       onError?.(error);
@@ -149,12 +155,12 @@ export function useProviderRouter() {
     // Try SSE first, fallback to polling if it fails
     const trySSE = async () => {
       try {
-        const esUrl = "/api/route_task_stream";
+        const esUrl = '/api/route_task_stream';
         const resp = await fetch(esUrl, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ task_type: taskType, payload, opts }),
-          signal: controller.signal
+          signal: controller.signal,
         });
 
         if (!resp.ok) {
@@ -173,7 +179,7 @@ export function useProviderRouter() {
         }
 
         const decoder = new TextDecoder();
-        let buffer = "";
+        let buffer = '';
         let sseWorking = false;
         let timeoutId: NodeJS.Timeout;
 
@@ -184,6 +190,7 @@ export function useProviderRouter() {
 
         const processStream = async () => {
           try {
+            // eslint-disable-next-line no-constant-condition
             while (true) {
               const readPromise = reader.read();
               const result = await Promise.race([readPromise, sseTimeout]);
@@ -196,25 +203,33 @@ export function useProviderRouter() {
               buffer += decoder.decode(result.value, { stream: true });
 
               // split by SSE event separator
-              let parts = buffer.split("\n\n");
-              buffer = parts.pop() || "";
+              const parts = buffer.split('\n\n');
+              buffer = parts.pop() || '';
 
               for (const part of parts) {
-                const lines = part.split("\n");
-                let event = "message";
-                let data = "";
+                const lines = part.split('\n');
+                let event = 'message';
+                let data = '';
                 for (const line of lines) {
-                  if (line.startsWith("event:")) event = line.replace("event:", "").trim();
-                  else if (line.startsWith("data:")) data += line.replace("data:", "").trim();
+                  if (line.startsWith('event:')) event = line.replace('event:', '').trim();
+                  else if (line.startsWith('data:')) data += line.replace('data:', '').trim();
                 }
 
-                if (event === "meta") {
-                  try { onMeta?.(JSON.parse(data)); } catch { onMeta?.(data); }
-                } else if (event === "done") {
+                if (event === 'meta') {
+                  try {
+                    onMeta?.(JSON.parse(data));
+                  } catch {
+                    onMeta?.(data);
+                  }
+                } else if (event === 'done') {
                   onDone?.();
                   return;
                 } else {
-                  try { onChunk?.(JSON.parse(data)); } catch { onChunk?.(data); }
+                  try {
+                    onChunk?.(JSON.parse(data));
+                  } catch {
+                    onChunk?.(data);
+                  }
                 }
               }
             }
@@ -255,6 +270,6 @@ export function useProviderRouter() {
     routeTaskStream,
     checkStreamingHealth,
     connectionHealth,
-    metricsAvailable
+    metricsAvailable,
   };
 }

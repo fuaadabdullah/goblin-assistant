@@ -13,10 +13,17 @@ type Provider = {
 
 type ProvidersMap = Record<string, Provider>;
 
+type ProvidersConfig = {
+  version: number;
+  default_timeout_ms: number;
+  providers: ProvidersMap;
+};
+
 import providersJson from '../../config/providers.json';
 
-const PROVIDERS: ProvidersMap = (providersJson as any).providers;
-const DEFAULT_TIMEOUT_MS = (providersJson as any).default_timeout_ms || 12000;
+const config = providersJson as ProvidersConfig;
+const PROVIDERS: ProvidersMap = config.providers;
+const DEFAULT_TIMEOUT_MS = config.default_timeout_ms || 12000;
 
 function movingAvg(arr: number[], n = 8): number | null {
   if (!arr || arr.length === 0) return null;
@@ -40,28 +47,39 @@ export function updateMetricsFromBackend(pid: string, latencyMs: number, ok: boo
   else METRICS[pid].fail += 1;
 }
 
-function scoreProvider(pid: string, capability: string, preferLocal = false, preferCost = false): number {
+function scoreProvider(
+  pid: string,
+  capability: string,
+  preferLocal = false,
+  preferCost = false
+): number {
   const p = PROVIDERS[pid] as Provider;
   if (!p.capabilities || p.capabilities.indexOf(capability) === -1) return Infinity;
   let score = 0;
   score += (p.priority_tier || 2) * 10;
   score += (p.cost_score || 0.5) * 5;
-  const lat = movingAvg(METRICS[pid]?.latencies || []) ?? ((p.default_timeout_ms || DEFAULT_TIMEOUT_MS) / 2);
+  const lat =
+    movingAvg(METRICS[pid]?.latencies || []) ?? (p.default_timeout_ms || DEFAULT_TIMEOUT_MS) / 2;
   score += (lat / 1000) * 2;
   const succ = METRICS[pid]?.succ || 0;
   const fail = METRICS[pid]?.fail || 0;
   const total = succ + fail;
   const succRate = total > 0 ? succ / total : 0.9;
-  score *= (1 - succRate * 0.45);
-  if (preferLocal && (p.endpoint || "").startsWith("http://127.0.0.1")) score *= 0.6;
+  score *= 1 - succRate * 0.45;
+  if (preferLocal && (p.endpoint || '').startsWith('http://127.0.0.1')) score *= 0.6;
   if (preferCost) score += (p.cost_score || 0.5) * 10;
   score += Math.random() * 0.01;
   return score;
 }
 
-export function topProvidersFor(capability: string, preferLocal = false, preferCost = false, limit = 6): string[] {
+export function topProvidersFor(
+  capability: string,
+  preferLocal = false,
+  preferCost = false,
+  limit = 6
+): string[] {
   const items: [number, string][] = [];
-  Object.keys(PROVIDERS).forEach((pid) => {
+  Object.keys(PROVIDERS).forEach(pid => {
     try {
       const s = scoreProvider(pid, capability, preferLocal, preferCost);
       if (s !== Infinity) items.push([s, pid]);
@@ -70,15 +88,19 @@ export function topProvidersFor(capability: string, preferLocal = false, preferC
     }
   });
   items.sort((a, b) => a[0] - b[0]);
-  return items.slice(0, limit).map((x) => x[1]);
+  return items.slice(0, limit).map(x => x[1]);
 }
 
 // minimal frontend router call to your backend route endpoint
-export async function routeTaskFrontend(taskType: string, payload: any, opts?: { preferLocal?: boolean; preferCost?: boolean }) {
-  const res = await fetch("/api/route_task", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ task_type: taskType, payload, opts })
+export async function routeTaskFrontend(
+  taskType: string,
+  payload: unknown,
+  opts?: { preferLocal?: boolean; preferCost?: boolean }
+) {
+  const res = await fetch('/api/route_task', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ task_type: taskType, payload, opts }),
   });
   return await res.json();
 }
@@ -86,5 +108,5 @@ export async function routeTaskFrontend(taskType: string, payload: any, opts?: {
 export default {
   topProvidersFor,
   updateMetricsFromBackend,
-  routeTaskFrontend
+  routeTaskFrontend,
 };

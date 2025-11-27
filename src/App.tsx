@@ -1,134 +1,67 @@
-import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import GoblinDemo from "./components/GoblinDemo";
-import ProviderSelector from "./components/ProviderSelector";
-import ModelSelector from "./components/ModelSelector";
-import CostPanel from "./components/CostPanel";
-import WorkflowBuilder from "./components/WorkflowBuilder";
-import CostEstimationPanel from "./components/CostEstimationPanel";
-import { runtimeClient, runtimeClientDemo } from "./api/tauri-client";
-import "./App.css";
-import { useEffect, useState } from "react";
-
-const qc = new QueryClient();
+import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
+import { AuthProvider } from './auth/AuthContext';
+import { ToastProvider } from './contexts/ToastContext';
+import { ProviderProvider } from './contexts/ProviderContext';
+import { ProtectedRoute } from './components/ProtectedRoute';
+import { ToastContainer } from './components/ToastContainer';
+import Layout from './components/Layout';
+import Login from './pages/Login';
+import Register from './pages/Register';
+import GoogleCallback from './pages/GoogleCallback';
+import { Chat } from './pages/Chat';
+import SearchPage from './pages/SearchPage';
+import SettingsPage from './pages/SettingsPage';
+import './App.css';
 
 function App() {
-	const [providers, setProviders] = useState<string[]>([]);
-	const [selectedProvider, setSelectedProvider] = useState<string | undefined>(undefined);
-	const [selectedModel, setSelectedModel] = useState<string | undefined>(undefined);
-	const [costSummary, setCostSummary] = useState<any | null>(null);
-	const [orchestrationText, setOrchestrationText] = useState<string>("");
-	const [codeInput, _setCodeInput] = useState<string>("");
-	const [demoMode, setDemoMode] = useState<boolean>(() => {
-		// Check URL parameters for demo mode override (useful for testing)
-		const urlParams = new URLSearchParams(window.location.search);
-		const demoParam = urlParams.get('demo');
-		if (demoParam === 'false') return false;
-		if (demoParam === 'true') return true;
-		// Default to demo mode for interviews
-		return true;
-	});
-
-	useEffect(() => {
-		(async () => {
-			try {
-				const client = demoMode ? runtimeClientDemo : runtimeClient;
-				console.log('Using client for providers:', client.constructor.name, 'demoMode:', demoMode);
-				const p = await client.getProviders();
-				console.log('Providers loaded:', p);
-				setProviders(p);
-				setSelectedProvider((prev: string | undefined) => prev ?? p[0]);
-			} catch (error) {
-				console.error('Error loading providers:', error);
-			}
-		})();
-	}, [demoMode]);
-
-	useEffect(() => {
-		(async () => {
-			try {
-				const client = demoMode ? runtimeClientDemo : runtimeClient;
-				const cs = await client.getCostSummary();
-				setCostSummary(cs || { total_cost: 0, cost_by_provider: {}, cost_by_model: {} });
-			} catch (_) { /* ignore */ }
-		})();
-	}, [selectedProvider, demoMode]);
-
-	// Listen for task-stream events globally so the top-level cost summary
-	// updates immediately when tasks emit cost deltas.
-	useEffect(() => {
-		let unlistenPromise: any;
-		(async () => {
-			const client = demoMode ? runtimeClientDemo : runtimeClient;
-			unlistenPromise = await client.onTaskStream((payload: any) => {
-				if (!payload) return;
-				const provider = payload.provider || payload.provider_name || null;
-				const delta = payload.cost_delta || payload.costDelta || 0;
-
-				if (!provider || !delta) return;
-
-				setCostSummary((prev: any) => {
-					const cs = prev ? { ...prev } : { total_cost: 0, cost_by_provider: {}, cost_by_model: {} };
-					cs.total_cost = (cs.total_cost || 0) + delta;
-					cs.cost_by_provider = { ...(cs.cost_by_provider || {}) };
-					cs.cost_by_provider[provider] = (cs.cost_by_provider[provider] || 0) + delta;
-					return cs;
-				});
-			});
-		})();
-
-		return () => {
-			if (unlistenPromise && typeof unlistenPromise === 'function') {
-				try { unlistenPromise(); } catch (e) {}
-			}
-		};
-	}, []);
-
-	console.log('App component rendering, demoMode:', demoMode);
-	return (
-			<QueryClientProvider client={qc}>
-				<div className="app-container" data-testid="app-container">
-					<header className="app-header" data-testid="app-header">
-						<h1 className="app-title" data-testid="app-title">Goblin Assistant — Demo</h1>
-						<div className="demo-mode-toggle" data-testid="demo-mode-toggle">
-							<label>
-								<input
-									type="checkbox"
-									checked={demoMode}
-									onChange={(e) => {
-										console.log('Demo mode checkbox changed to:', e.target.checked);
-										setDemoMode(e.target.checked);
-									}}
-									data-testid="demo-mode-checkbox"
-								/>
-								Demo Mode (Deterministic)
-							</label>
-						</div>
-					</header>
-					<div className="top-controls" data-testid="top-controls">
-						<ModelSelector provider={selectedProvider} selected={selectedModel} onChange={setSelectedModel} />
-						<ProviderSelector providers={providers} selected={selectedProvider} onChange={(p) => {
-							setSelectedProvider(p);
-							setSelectedModel(undefined); // Reset model when provider changes
-						}} />
-						<CostPanel costSummary={costSummary} />
-					</div>
-					<div className="workflow-section" data-testid="workflow-section">
-						<WorkflowBuilder onOrchestrationChange={setOrchestrationText} initialOrchestration={orchestrationText} />
-					</div>
-					<div className="cost-estimation-section" data-testid="cost-estimation-section">
-						<CostEstimationPanel
-							orchestrationText={orchestrationText}
-							codeInput={codeInput}
-							provider={selectedProvider}
-							model={selectedModel}
-						/>
-					</div>
-					<main className="app-content" data-testid="app-content">
-						<GoblinDemo provider={selectedProvider} model={selectedModel} demoMode={demoMode} />
-					</main>
-				</div>
-			</QueryClientProvider>
-	);
+  return (
+    <ToastProvider>
+      <ProviderProvider>
+        <AuthProvider>
+          <Router>
+            <Routes>
+              <Route path="/login" element={<Login />} />
+              <Route path="/register" element={<Register />} />
+              <Route path="/auth/google/callback" element={<GoogleCallback />} />
+              <Route
+                path="/chat"
+                element={
+                  <ProtectedRoute>
+                    <Layout>
+                      <Chat />
+                    </Layout>
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/search"
+                element={
+                  <ProtectedRoute>
+                    <Layout>
+                      <SearchPage />
+                    </Layout>
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/settings"
+                element={
+                  <ProtectedRoute>
+                    <Layout>
+                      <SettingsPage />
+                    </Layout>
+                  </ProtectedRoute>
+                }
+              />
+              <Route path="/" element={<Navigate to="/chat" replace />} />
+              <Route path="*" element={<Navigate to="/chat" replace />} />
+            </Routes>
+            <ToastContainer />
+          </Router>
+        </AuthProvider>
+      </ProviderProvider>
+    </ToastProvider>
+  );
 }
 
 export default App;

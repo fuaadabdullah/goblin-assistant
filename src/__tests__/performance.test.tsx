@@ -1,27 +1,26 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen } from '@testing-library/react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import StreamingView from '../../src/components/StreamingView';
+import StreamingView from '@/components/streaming/StreamingView';
 
 // Mock the runtime client
-vi.mock('../../src/api/tauri-client', () => ({
+vi.mock('@/api/api-client', () => ({
   runtimeClient: {
     executeGoblinCommand: vi.fn(),
-  }
+  },
 }));
 
-const createTestQueryClient = () => new QueryClient({
-  defaultOptions: {
-    queries: {
-      retry: false,
+const createTestQueryClient = () =>
+  new QueryClient({
+    defaultOptions: {
+      queries: {
+        retry: false,
+      },
     },
-  },
-});
+  });
 
 const TestWrapper = ({ children }: { children: React.ReactNode }) => (
-  <QueryClientProvider client={createTestQueryClient()}>
-    {children}
-  </QueryClientProvider>
+  <QueryClientProvider client={createTestQueryClient()}>{children}</QueryClientProvider>
 );
 
 // Mock performance API
@@ -64,8 +63,9 @@ describe('Performance Tests - Streaming Components', () => {
     const streamingOutput = streamingContainer.querySelector('.streaming-output') as HTMLElement;
 
     // Generate large amounts of streaming data
-    const largeDataChunks = Array.from({ length: 100 }, (_, i) =>
-      `Chunk ${i}: ${'x'.repeat(1000)}\n`
+    const largeDataChunks = Array.from(
+      { length: 100 },
+      (_, i) => `Chunk ${i}: ${'x'.repeat(1000)}\n`
     );
 
     // Simulate streaming by updating the content rapidly
@@ -90,7 +90,9 @@ describe('Performance Tests - Streaming Components', () => {
       </TestWrapper>
     );
 
-    const streamingOutput = screen.getByTestId('streaming-container').querySelector('.streaming-output') as HTMLElement;
+    const streamingOutput = screen
+      .getByTestId('streaming-container')
+      .querySelector('.streaming-output') as HTMLElement;
 
     // Start performance measurement
     const startTime = performance.now();
@@ -127,7 +129,9 @@ describe('Performance Tests - Streaming Components', () => {
       </TestWrapper>
     );
 
-    const streamingOutput = screen.getByTestId('streaming-container').querySelector('.streaming-output') as HTMLElement;
+    const streamingOutput = screen
+      .getByTestId('streaming-container')
+      .querySelector('.streaming-output') as HTMLElement;
 
     // Simulate memory-intensive streaming
     const memoryTestData = 'x'.repeat(10000); // 10KB per chunk
@@ -156,7 +160,9 @@ describe('Performance Tests - Streaming Components', () => {
       </TestWrapper>
     );
 
-    const streamingOutput = screen.getByTestId('streaming-container').querySelector('.streaming-output') as HTMLElement;
+    const streamingOutput = screen
+      .getByTestId('streaming-container')
+      .querySelector('.streaming-output') as HTMLElement;
 
     // Start timing
     const startTime = performance.now();
@@ -184,7 +190,9 @@ describe('Performance Tests - Streaming Components', () => {
       </TestWrapper>
     );
 
-    const streamingOutput = screen.getByTestId('streaming-container').querySelector('.streaming-output') as HTMLElement;
+    const streamingOutput = screen
+      .getByTestId('streaming-container')
+      .querySelector('.streaming-output') as HTMLElement;
 
     // Start normal streaming
     streamingOutput.textContent = 'Starting stream...\n';
@@ -225,7 +233,9 @@ describe('Performance Tests - Streaming Components', () => {
     const mockScrollTop = { value: 0 };
     Object.defineProperty(streamingContainer, 'scrollTop', {
       get: () => mockScrollTop.value,
-      set: (value) => { mockScrollTop.value = value; }
+      set: value => {
+        mockScrollTop.value = value;
+      },
     });
 
     Object.defineProperty(streamingContainer, 'scrollHeight', {

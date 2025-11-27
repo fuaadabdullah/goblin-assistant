@@ -1,446 +1,149 @@
-version = 1
-default_timeout_ms = 12000
+# Multi-Provider Intelligence Configuration
+# This file defines all supported AI providers and their routing configuration
 
-[chain_of_thought_suppression]
-suppress_for = ["chat", "summary", "translation", "classification"]
-force_for = ["reasoning", "analysis", "planning", "code_review"]
-
-[chain_of_thought_suppression.provider_rules]
-
-[chain_of_thought_suppression.provider_rules.deepseek]
-suppress_cot = false
-
-[chain_of_thought_suppression.provider_rules.grok]
-suppress_cot = true
-
-[chain_of_thought_suppression.provider_rules.openai]
-suppress_cot = false
-
-[cost_optimization]
-max_budget_per_hour = 10.0
-preferred_providers_under_budget = ["deepseek", "siliconflow", "ollama_local"]
-emergency_fallback = "ollama_local"
-
-[scoring_weights]
-latency = 0.4
-cost = 0.3
-reliability = 0.2
-bandwidth = 0.1
-
-[providers]
+[default]
+timeout_ms = 12000
+scoring_weights = { latency = 0.4, cost = 0.3, reliability = 0.2, bandwidth = 0.1 }
+chain_of_thought_suppression = { suppress_for = ["summary", "code"], force_for = ["reasoning"] }
+cost_optimization = { max_budget_per_hour = 10.0, preferred_providers_under_budget = ["ollama", "openai"] }
 
 [providers.openai]
+name = "OpenAI"
 endpoint = "https://api.openai.com/v1"
+capabilities = ["chat", "reasoning", "code", "embedding", "image"]
+models = ["gpt-4", "gpt-4-turbo", "gpt-3.5-turbo"]
 api_key_env = "OPENAI_API_KEY"
 priority_tier = 1
-capabilities = ["chat", "embedding", "code", "stream", "multimodal"]
-models = ["gpt-4o", "gpt-4"]
-cost_score = 1.0
+cost_score = 0.8
+default_timeout_ms = 10000
 bandwidth_score = 0.9
-default_timeout_ms = 12000
-rate_limit_per_min = 60
 supports_cot = true
-cot_suppression_prompt = "Answer directly without showing your reasoning process."
+cot_suppression_prompt = "Answer directly without showing your reasoning."
 
-[providers.anthropic_claude]
-endpoint = "https://api.anthropic.com/v1"
+[providers.anthropic]
+name = "Anthropic"
+endpoint = "https://api.anthropic.com"
+capabilities = ["chat", "reasoning", "code"]
+models = ["claude-3-opus", "claude-3-sonnet", "claude-3-haiku"]
 api_key_env = "ANTHROPIC_API_KEY"
 priority_tier = 1
-capabilities = ["chat", "safety", "longform"]
-models = ["claude-3"]
 cost_score = 0.9
-bandwidth_score = 0.7
-default_timeout_ms = 12000
-rate_limit_per_min = 60
-supports_cot = true
-cot_suppression_prompt = "Provide your final answer directly without showing intermediate reasoning."
-
-[providers.grok]
-endpoint = "https://api.x.ai/v1"
-api_key_env = "GROK_API_KEY"
-priority_tier = 1
-capabilities = ["chat", "fast_recall"]
-models = ["grok-1"]
-cost_score = 0.8
-bandwidth_score = 0.95
-default_timeout_ms = 3000
-rate_limit_per_min = 200
-supports_cot = false
-cot_suppression_prompt = "Keep it concise and direct."
-
-[providers.gemini]
-endpoint = "https://generativelanguage.googleapis.com/v1beta"
-api_key_env = "GEMINI_API_KEY"
-priority_tier = 1
-capabilities = ["chat", "long_context", "multimodal"]
-models = ["gemini-pro"]
-cost_score = 1.0
+default_timeout_ms = 15000
 bandwidth_score = 0.8
-default_timeout_ms = 10000
-rate_limit_per_min = 80
 supports_cot = true
-cot_suppression_prompt = "Answer directly without step-by-step reasoning."
-
-[providers.deepseek]
-endpoint = "https://api.deepseek.com/v1"
-api_key_env = "DEEPSEEK_API_KEY"
-priority_tier = 1
-capabilities = ["reasoning", "chain_of_thought", "analysis", "stream"]
-models = ["deepseek-chat", "deepseek-coder"]
-cost_score = 0.15
-bandwidth_score = 0.85
-default_timeout_ms = 4500
-rate_limit_per_min = 200
-supports_cot = true
-cot_suppression_prompt = "Provide your final answer directly."
-
-[providers.siliconflow]
-endpoint = "https://api.siliconflow.cn/v1"
-api_key_env = "SILICONFLOW_API_KEY"
-priority_tier = 1
-capabilities = ["reasoning", "planning", "code", "stream", "chat"]
-models = ["deepseek-ai/DeepSeek-V2.5", "Qwen/Qwen2-72B-Instruct"]
-cost_score = 0.2
-bandwidth_score = 0.8
-default_timeout_ms = 5000
-rate_limit_per_min = 120
-supports_cot = true
-cot_suppression_prompt = "Answer concisely without unnecessary reasoning steps."
-
-[providers.moonshot]
-endpoint = "https://api.moonshot.cn/v1"
-api_key_env = "MOONSHOT_API_KEY"
-priority_tier = 1
-capabilities = ["summary", "chat", "conversation"]
-models = ["moonshot-v1-8k", "moonshot-v1-32k", "moonshot-v1-128k"]
-cost_score = 0.25
-bandwidth_score = 0.9
-default_timeout_ms = 4000
-rate_limit_per_min = 300
-supports_cot = false
 cot_suppression_prompt = "Be direct and concise."
 
-[providers.zhipuai]
-endpoint = "https://open.bigmodel.cn/api/paas/v4"
-api_key_env = "ZHIPUAI_API_KEY"
-priority_tier = 1
-capabilities = ["chat", "reasoning"]
-models = ["glm-4"]
-cost_score = 0.2
-bandwidth_score = 0.75
-default_timeout_ms = 5000
-rate_limit_per_min = 150
-supports_cot = true
-cot_suppression_prompt = "Provide direct answers without showing reasoning process."
-
-[providers.baichuan]
-endpoint = "https://api.baichuan-ai.com/v1"
-api_key_env = "BAICHUAI_API_KEY"
-priority_tier = 1
-capabilities = ["chat", "reasoning"]
-models = ["Baichuan4"]
-cost_score = 0.2
-bandwidth_score = 0.7
-default_timeout_ms = 5000
-rate_limit_per_min = 150
-supports_cot = true
-cot_suppression_prompt = "Answer directly."
-
-[providers.stepfun]
-endpoint = "https://api.stepfun.com/v1"
-api_key_env = "STEPFUN_API_KEY"
-priority_tier = 1
-capabilities = ["chat", "reasoning", "fast_inference"]
-models = ["step-1-8k", "step-1-32k"]
-cost_score = 0.15
-bandwidth_score = 0.9
-default_timeout_ms = 3500
-rate_limit_per_min = 400
-supports_cot = true
-cot_suppression_prompt = "Be concise and direct."
-
-[providers.minimax]
-endpoint = "https://api.minimax.chat/v1"
-api_key_env = "MINIMAX_API_KEY"
-priority_tier = 1
-capabilities = ["chat", "conversation", "voice"]
-models = ["abab6-chat"]
-cost_score = 0.25
-bandwidth_score = 0.8
-default_timeout_ms = 4500
-rate_limit_per_min = 200
-supports_cot = false
-cot_suppression_prompt = "Keep responses natural and direct."
-
-[providers.alibaba_qwen]
-endpoint = "https://dashscope.aliyuncs.com/api/v1"
-api_key_env = "ALIBABA_QWEN_API_KEY"
-priority_tier = 1
-capabilities = ["chat", "reasoning", "multimodal"]
-models = ["qwen-turbo", "qwen-plus", "qwen-max"]
-cost_score = 0.2
-bandwidth_score = 0.85
-default_timeout_ms = 5000
-rate_limit_per_min = 250
-supports_cot = true
-cot_suppression_prompt = "Provide direct answers."
-
-[providers.tencent_hunyuan]
-endpoint = "https://api.hunyuan.tencent.com/v1"
-api_key_env = "TENCENT_HUNYUAN_API_KEY"
-priority_tier = 1
-capabilities = ["chat", "reasoning", "stable"]
-models = ["hunyuan-turbo"]
-cost_score = 0.25
-bandwidth_score = 0.8
-default_timeout_ms = 5000
-rate_limit_per_min = 180
-supports_cot = true
-cot_suppression_prompt = "Answer directly without reasoning steps."
-
-[providers.sense_time]
-endpoint = "https://api.sensenova.cn/v1"
-api_key_env = "SENSE_API_KEY"
-priority_tier = 1
-capabilities = ["chat", "large_context"]
-models = ["SenseChat-5"]
-cost_score = 0.3
-bandwidth_score = 0.7
-default_timeout_ms = 6000
-rate_limit_per_min = 100
-supports_cot = false
-cot_suppression_prompt = "Be direct and to the point."
-
-[providers.naga_ai]
-endpoint = "https://api.naga.ai/v1"
-api_key_env = "NAGA_API_KEY"
+[providers.google]
+name = "Google Gemini"
+endpoint = "https://generativelanguage.googleapis.com"
+capabilities = ["chat", "reasoning", "code", "image"]
+models = ["gemini-pro", "gemini-pro-vision"]
+api_key_env = "GOOGLE_API_KEY"
 priority_tier = 2
-capabilities = ["chat", "reasoning"]
-models = ["naga-7b", "naga-13b"]
-cost_score = 0.1
-bandwidth_score = 0.6
-default_timeout_ms = 6000
-rate_limit_per_min = 150
+cost_score = 0.6
+default_timeout_ms = 12000
+bandwidth_score = 0.7
+supports_cot = true
+cot_suppression_prompt = "Provide direct answers without explanation."
+
+[providers.deepseek]
+name = "DeepSeek"
+endpoint = "https://api.deepseek.com"
+capabilities = ["chat", "reasoning", "code"]
+models = ["deepseek-chat", "deepseek-coder"]
+api_key_env = "DEEPSEEK_API_KEY"
+priority_tier = 2
+cost_score = 0.3
+default_timeout_ms = 10000
+bandwidth_score = 0.8
 supports_cot = true
 cot_suppression_prompt = "Answer concisely."
 
-[providers.h2o_ai]
-endpoint = "https://api.h2o.ai/v1"
-api_key_env = "H2O_API_KEY"
-priority_tier = 2
-capabilities = ["chat", "embeddings"]
-models = ["h2o-danube-1.8b-chat"]
-cost_score = 0.05
-bandwidth_score = 0.5
-default_timeout_ms = 8000
-rate_limit_per_min = 100
-supports_cot = false
-cot_suppression_prompt = "Keep it simple."
-
-[providers.cloudflare_workers]
-endpoint = "https://api.cloudflare.com/client/v4/accounts"
-api_key_env = "CLOUDFLARE_GLOBAL_API_KEY"
-priority_tier = 2
-capabilities = ["chat", "embeddings", "light_reasoning"]
-models = ["@cf/meta/llama-3.1-8b-instruct", "@cf/meta/llama-3.1-70b-instruct"]
-cost_score = 0.05
-bandwidth_score = 0.95
-default_timeout_ms = 3000
-rate_limit_per_min = 1000
-supports_cot = false
-cot_suppression_prompt = "Be quick and direct."
-
-[providers.cloudflare_vectors]
-endpoint = "https://api.cloudflare.com/client/v4/accounts"
-api_key_env = "CLOUDFLARE_GLOBAL_API_KEY"
-priority_tier = 1
-capabilities = ["embedding", "vector_search"]
-models = ["semantic-search", "vector-query"]
-cost_score = 0.1
-bandwidth_score = 0.9
-default_timeout_ms = 4000
-rate_limit_per_min = 500
-supports_cot = false
-cot_suppression_prompt = "N/A - embeddings only"
-
-[providers.huggingface]
-endpoint = "https://api-inference.huggingface.co"
-api_key_env = "HF_API_KEY"
-priority_tier = 3
-capabilities = ["image", "embeddings", "niche_models"]
-models = ["sentence-transformers/all-MiniLM-L6-v2"]
-cost_score = 0.05
-bandwidth_score = 0.4
-default_timeout_ms = 8000
-rate_limit_per_min = 300
-supports_cot = false
-cot_suppression_prompt = "N/A - specialized models"
-
-[providers.together_ai]
-endpoint = "https://api.together.xyz/v1"
-api_key_env = "TOGETHER_API_KEY"
-priority_tier = 2
-capabilities = ["chat", "embeddings", "free_tier"]
-models = [
-  "mistralai/Mistral-7B-Instruct-v0.1",
-  "meta-llama/Llama-2-70b-chat-hf",
-]
-cost_score = 0.08
-bandwidth_score = 0.7
-default_timeout_ms = 6000
-rate_limit_per_min = 200
-supports_cot = false
-cot_suppression_prompt = "Keep responses focused."
-
-[providers.replicate]
-endpoint = "https://api.replicate.com"
-api_key_env = "REPLICATE_API_KEY"
-priority_tier = 3
-capabilities = ["image", "niche_models"]
-models = [
-  "stability-ai/sdxl:7762fd07cf82c948538e41f63f77d685e02b063e37e496e96eefd46c929f9bdc8",
-  "black-forest-labs/flux-kontext-pro",
-]
-cost_score = 0.1
-bandwidth_score = 0.3
-default_timeout_ms = 8000
-rate_limit_per_min = 200
-supports_cot = false
-cot_suppression_prompt = "N/A - image generation"
-
-[providers.ollama_local]
+[providers.ollama]
+name = "Ollama (Local)"
 endpoint = "http://127.0.0.1:11434"
-api_key_env = ""
-priority_tier = 2
-capabilities = ["local", "fast_reasoning_small", "fallback"]
-models = ["qwen2.5:3b", "qwen2.5:7b", "llama2", "mistral"]
+capabilities = ["chat", "reasoning", "code", "embedding"]
+models = ["llama2", "codellama", "mistral"]
+api_key_env = null
+priority_tier = 0
 cost_score = 0.0
-bandwidth_score = 0.8
-default_timeout_ms = 4000
-rate_limit_per_min = 5000
-supports_cot = true
-cot_suppression_prompt = "Be direct and concise."
+default_timeout_ms = 30000
+bandwidth_score = 0.5
+supports_cot = false
 
-[providers.lm_studio_local]
-endpoint = "http://127.0.0.1:1234"
-api_key_env = ""
+[providers.groq]
+name = "Groq"
+endpoint = "https://api.groq.com/openai/v1"
+capabilities = ["chat", "reasoning", "code"]
+models = ["mixtral-8x7b", "llama2-70b"]
+api_key_env = "GROQ_API_KEY"
 priority_tier = 2
-capabilities = ["offline", "fallback", "stream", "embeddings"]
-models = ["local-model"]
-cost_score = 0.0
-bandwidth_score = 0.85
+cost_score = 0.4
 default_timeout_ms = 8000
-rate_limit_per_min = 5000
+bandwidth_score = 0.95
+supports_cot = true
+cot_suppression_prompt = "Be direct."
+
+[providers.together]
+name = "Together AI"
+endpoint = "https://api.together.xyz"
+capabilities = ["chat", "reasoning", "code", "image"]
+models = ["llama-2-70b", "codellama-34b"]
+api_key_env = "TOGETHER_API_KEY"
+priority_tier = 3
+cost_score = 0.5
+default_timeout_ms = 10000
+bandwidth_score = 0.8
 supports_cot = true
 cot_suppression_prompt = "Answer directly."
 
-[providers.llamacpp]
-endpoint = "http://127.0.0.1:8080"
-api_key_env = ""
-priority_tier = 1
-capabilities = [
-  "local",
-  "cpu_inference",
-  "fallback",
-  "chat",
-  "reasoning",
-  "code",
-]
-models = ["local-model"]
-cost_score = 0.0
-bandwidth_score = 0.6
-default_timeout_ms = 10000
-rate_limit_per_min = 1000
+[providers.replicate]
+name = "Replicate"
+endpoint = "https://api.replicate.com"
+capabilities = ["chat", "reasoning", "code", "image"]
+models = ["llama-2-70b", "codellama-34b"]
+api_key_env = "REPLICATE_API_KEY"
+priority_tier = 3
+cost_score = 0.6
+default_timeout_ms = 20000
+bandwidth_score = 0.7
 supports_cot = true
 cot_suppression_prompt = "Be concise."
 
-[providers.mistral]
-endpoint = "https://api.mistral.ai/v1"
-api_key_env = "MISTRAL_API_KEY"
-priority_tier = 2
-capabilities = ["chat", "reasoning"]
-models = ["mistral-large-latest"]
-cost_score = 0.3
-bandwidth_score = 0.8
-default_timeout_ms = 5000
-rate_limit_per_min = 200
-supports_cot = true
-cot_suppression_prompt = "Answer directly."
-
-[providers.groq]
-endpoint = "https://api.groq.com/openai/v1"
-api_key_env = "GROQ_API_KEY"
-priority_tier = 2
-capabilities = ["chat", "embeddings", "fast_inference"]
-models = ["llama2-70b-4096", "mixtral-8x7b-32768"]
-cost_score = 0.05
-bandwidth_score = 0.95
-default_timeout_ms = 3000
-rate_limit_per_min = 500
-supports_cot = false
-cot_suppression_prompt = "Be fast and direct."
-
-[providers.perplexity]
-endpoint = "https://api.perplexity.ai"
-api_key_env = "PERPLEXITY_API_KEY"
-priority_tier = 2
-capabilities = ["search", "chat"]
-models = ["llama-3.1-sonar-large-128k-online"]
-cost_score = 0.05
-bandwidth_score = 0.9
-default_timeout_ms = 4000
-rate_limit_per_min = 300
-supports_cot = false
-cot_suppression_prompt = "Be informative and direct."
-
-[providers.fireworks]
-endpoint = "https://api.fireworks.ai/inference/v1"
-api_key_env = "FIREWORKS_API_KEY"
-priority_tier = 2
-capabilities = ["chat", "fast_infer"]
-models = ["accounts/fireworks/models/llama-v3-70b-instruct"]
-cost_score = 0.08
-bandwidth_score = 0.9
-default_timeout_ms = 3500
-rate_limit_per_min = 300
-supports_cot = false
-cot_suppression_prompt = "Keep it quick."
-
-[providers.voyage_ai]
-endpoint = "https://api.voyageai.com/v1"
-api_key_env = "VOYAGE_API_KEY"
-priority_tier = 2
-capabilities = ["embeddings", "high_quality"]
-models = ["voyage-large-2-instruct"]
-cost_score = 0.15
-bandwidth_score = 0.7
-default_timeout_ms = 5000
-rate_limit_per_min = 100
-supports_cot = false
-cot_suppression_prompt = "N/A - embeddings only"
-
-[providers.elevenlabs]
-endpoint = "https://api.elevenlabs.io/v1"
-api_key_env = "ELEVENLABS_API_KEY"
-priority_tier = 3
-capabilities = ["voice", "tts"]
-models = ["eleven_monolingual_v1"]
+[providers.huggingface]
+name = "Hugging Face"
+endpoint = "https://api-inference.huggingface.co"
+capabilities = ["chat", "reasoning", "code"]
+models = ["microsoft/DialoGPT-medium", "facebook/blenderbot-400M-distill"]
+api_key_env = "HUGGINGFACE_API_KEY"
+priority_tier = 4
 cost_score = 0.2
-bandwidth_score = 0.5
-default_timeout_ms = 8000
-rate_limit_per_min = 300
+default_timeout_ms = 15000
+bandwidth_score = 0.6
 supports_cot = false
-cot_suppression_prompt = "N/A - voice synthesis"
 
-[providers.dashscope]
-endpoint = "https://dashscope.aliyuncs.com/api/v1"
-api_key_env = "DASHSCOPE_API_KEY"
-priority_tier = 1
-capabilities = ["chat", "reasoning", "multimodal"]
-models = ["qwen-turbo", "qwen-plus", "qwen-max"]
-cost_score = 0.25
-bandwidth_score = 0.8
-default_timeout_ms = 5000
-rate_limit_per_min = 200
+[providers.cohere]
+name = "Cohere"
+endpoint = "https://api.cohere.ai"
+capabilities = ["chat", "reasoning", "code", "embedding"]
+models = ["command", "base"]
+api_key_env = "COHERE_API_KEY"
+priority_tier = 3
+cost_score = 0.7
+default_timeout_ms = 10000
+bandwidth_score = 0.75
 supports_cot = true
 cot_suppression_prompt = "Answer directly."
+
+[providers.ai21]
+name = "AI21 Labs"
+endpoint = "https://api.ai21.com"
+capabilities = ["chat", "reasoning", "code"]
+models = ["j2-ultra", "j2-mid"]
+api_key_env = "AI21_API_KEY"
+priority_tier = 4
+cost_score = 0.8
+default_timeout_ms = 12000
+bandwidth_score = 0.7
+supports_cot = true
+cot_suppression_prompt = "Be direct."

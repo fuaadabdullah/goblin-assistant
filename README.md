@@ -245,7 +245,21 @@ npm run dev:fast
 ## 🛠️ Installation & Setup
 
 ### Local AI Setup
+For local LLM onboarding and step-by-step provisioning guidance, see `docs/LLM_LOCAL_ONBOARDING.md` which includes recommended hardware, supported weight formats, and the included provisioning helper script.
 
+You can also use the provisioning helper script:
+
+```bash
+# Dry-run a model provision (does not download in dry-run)
+./tools/provision_local_model.sh --model facebook/llama-2-7b --dry-run
+```
+
+Or use the convenience `Makefile` target from the repository root (delegates into the goblin-assistant Makefile):
+
+```bash
+# Dry-run using the Makefile target
+make -C goblin-assistant provision-local MODEL=facebook/llama-2-7b ARGS='--dry-run'
+```
 #### Ollama (Recommended)
 
 ```bash
@@ -660,6 +674,22 @@ curl -X POST http://localhost:3001/parse \
   -H "Content-Type: application/json" \
   -d '{"text": "docs-writer: test", "default_goblin": "docs-writer"}'
 ```
+
+### Running the FastAPI E2E test (mock provider)
+
+The repo adds a convenient Makefile target to run a compact E2E test that uses a mock LLM provider. It runs in-process and doesn't require external provider API keys.
+
+```bash
+# From project root (delegates to api/fastapi Makefile)
+make e2e-mock
+
+# Or run directly in api/fastapi
+cd api/fastapi
+make test-e2e-mock
+```
+
+Make sure your Python virtualenv is active and `requirements-dev.txt` is installed to ensure `pytest` & dev tools are available.
+
 
 ### Performance Testing
 

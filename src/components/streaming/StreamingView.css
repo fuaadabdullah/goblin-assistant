@@ -1,0 +1,145 @@
+.streaming-view {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+}
+
+.streaming-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 12px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.streaming-header h3 {
+  margin: 0;
+  color: #2b90ff;
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.streaming-indicator {
+  color: #32d17a;
+  font-size: 12px;
+  font-weight: 500;
+  animation: pulse 2s infinite;
+}
+
+@keyframes pulse {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.5;
+  }
+}
+
+.streaming-container {
+  flex: 1;
+  overflow: auto;
+  padding: 12px;
+}
+
+.streaming-output {
+  background: #111;
+  color: #eee;
+  padding: 12px;
+  border-radius: 6px;
+  height: 100%;
+  overflow: auto;
+  font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace;
+  font-size: 13px;
+  line-height: 1.4;
+  white-space: pre-wrap;
+  word-wrap: break-word;
+}
+
+.streaming-output.tokenized {
+  background: #0a0a0a;
+  padding: 16px;
+  border-radius: 8px;
+  position: relative;
+}
+
+.token {
+  display: inline;
+  white-space: pre-wrap;
+}
+
+.text-token {
+  color: #e0e0e0;
+}
+
+.code-token {
+  color: #4ec9b0;
+  font-family: 'SF Mono', 'Monaco', 'Inconsolata', 'Roboto Mono', monospace;
+  background: rgba(78, 201, 176, 0.1);
+  padding: 1px 2px;
+  border-radius: 2px;
+}
+
+@keyframes fadeInToken {
+  from {
+    opacity: 0;
+    transform: translateY(2px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* Syntax highlighting for code blocks */
+.streaming-output pre {
+  background: #1e1e1e;
+  padding: 12px;
+  border-radius: 4px;
+  margin: 8px 0;
+  border-left: 3px solid #2b90ff;
+  overflow-x: auto;
+}
+
+.streaming-output code {
+  background: rgba(43, 144, 255, 0.1);
+  color: #4ec9b0;
+  padding: 2px 4px;
+  border-radius: 3px;
+  font-family: 'SF Mono', 'Monaco', 'Inconsolata', 'Roboto Mono', monospace;
+}
+
+/* Smooth scrolling */
+.streaming-container {
+  scroll-behavior: smooth;
+}
+
+/* Loading state */
+.streaming-loading {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 100px;
+  color: #666;
+  font-style: italic;
+}
+
+.streaming-loading::after {
+  content: '';
+  width: 20px;
+  height: 20px;
+  border: 2px solid #333;
+  border-top: 2px solid #2b90ff;
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+  margin-left: 8px;
+}
+
+@keyframes spin {
+  0% {
+    transform: rotate(0deg);
+  }
+  100% {
+    transform: rotate(360deg);
+  }
+}
