@@ -18,6 +18,10 @@ import os
 import uuid
 from datetime import datetime, timedelta, timezone
 import random
+from dotenv import load_dotenv
+
+# Load environment variables from .env file
+load_dotenv()
 
 app = Flask(__name__)
 CORS(app)  # Enable CORS for all routes
@@ -141,28 +145,84 @@ def init_db():
 
         # Seed initial data if tables are empty
         if Provider.query.count() == 0:
-            # Seed providers
+            # Seed providers with API keys from environment variables
             providers_data = [
                 {
                     "name": "openai",
-                    "api_key": "",
+                    "api_key": os.getenv("OPENAI_API_KEY", ""),
                     "base_url": "",
                     "models": ["gpt-4", "gpt-4-turbo", "gpt-3.5-turbo"],
                     "enabled": True,
                 },
                 {
                     "name": "anthropic",
-                    "api_key": "",
+                    "api_key": os.getenv("ANTHROPIC_API_KEY", ""),
                     "base_url": "",
                     "models": ["claude-3-opus", "claude-3-sonnet", "claude-3-haiku"],
                     "enabled": True,
                 },
                 {
                     "name": "gemini",
-                    "api_key": "",
+                    "api_key": os.getenv("GEMINI_API_KEY", ""),
                     "base_url": "",
                     "models": ["gemini-pro", "gemini-pro-vision"],
-                    "enabled": False,
+                    "enabled": True,
+                },
+                {
+                    "name": "groq",
+                    "api_key": os.getenv("GROQ_API_KEY", ""),
+                    "base_url": "",
+                    "models": ["llama2-70b-4096", "mixtral-8x7b-32768"],
+                    "enabled": True,
+                },
+                {
+                    "name": "deepseek",
+                    "api_key": os.getenv("DEEPSEEK_API_KEY", ""),
+                    "base_url": "",
+                    "models": ["deepseek-chat", "deepseek-coder"],
+                    "enabled": True,
+                },
+                {
+                    "name": "siliconflow",
+                    "api_key": os.getenv("SILICONFLOW_API_KEY", ""),
+                    "base_url": "",
+                    "models": ["Qwen2-72B-Instruct"],
+                    "enabled": True,
+                },
+                {
+                    "name": "moonshot",
+                    "api_key": os.getenv("MOONSHOT_API_KEY", ""),
+                    "base_url": "",
+                    "models": ["moonshot-v1-8k", "moonshot-v1-32k"],
+                    "enabled": True,
+                },
+                {
+                    "name": "fireworks",
+                    "api_key": os.getenv("FIREWORKS_API_KEY", ""),
+                    "base_url": "",
+                    "models": ["accounts/fireworks/models/llama-v2-7b-chat"],
+                    "enabled": True,
+                },
+                {
+                    "name": "elevenlabs",
+                    "api_key": os.getenv("ELEVENLABS_API_KEY", ""),
+                    "base_url": "",
+                    "models": ["eleven_monolingual_v1"],
+                    "enabled": True,
+                },
+                {
+                    "name": "datadog",
+                    "api_key": os.getenv("DATADOG_API_KEY", ""),
+                    "base_url": "",
+                    "models": [],
+                    "enabled": True,
+                },
+                {
+                    "name": "netlify",
+                    "api_key": os.getenv("NETLIFY_API_KEY", ""),
+                    "base_url": "",
+                    "models": [],
+                    "enabled": True,
                 },
             ]
 
@@ -175,10 +235,76 @@ def init_db():
                     enabled=provider_data["enabled"],
                 )
                 db.session.add(provider)
+        else:
+            # Update existing providers with API keys from environment variables
+            providers_to_update = {
+                "openai": os.getenv("OPENAI_API_KEY", ""),
+                "anthropic": os.getenv("ANTHROPIC_API_KEY", ""),
+                "gemini": os.getenv("GEMINI_API_KEY", ""),
+                "groq": os.getenv("GROQ_API_KEY", ""),
+                "deepseek": os.getenv("DEEPSEEK_API_KEY", ""),
+                "siliconflow": os.getenv("SILICONFLOW_API_KEY", ""),
+                "moonshot": os.getenv("MOONSHOT_API_KEY", ""),
+                "fireworks": os.getenv("FIREWORKS_API_KEY", ""),
+                "elevenlabs": os.getenv("ELEVENLABS_API_KEY", ""),
+                "datadog": os.getenv("DATADOG_API_KEY", ""),
+                "netlify": os.getenv("NETLIFY_API_KEY", ""),
+            }
+
+            for provider_name, api_key in providers_to_update.items():
+                provider = Provider.query.filter_by(name=provider_name).first()
+                if provider and api_key:
+                    provider.api_key = api_key
+                    print(f"Updated API key for {provider_name}")
+                elif not provider:
+                    # Create missing providers
+                    provider_data = {
+                        "name": provider_name,
+                        "api_key": api_key,
+                        "base_url": "",
+                        "models": [],
+                        "enabled": True,
+                    }
+                    if provider_name == "openai":
+                        provider_data["models"] = [
+                            "gpt-4",
+                            "gpt-4-turbo",
+                            "gpt-3.5-turbo",
+                        ]
+                    elif provider_name == "anthropic":
+                        provider_data["models"] = [
+                            "claude-3-opus",
+                            "claude-3-sonnet",
+                            "claude-3-haiku",
+                        ]
+                    elif provider_name == "gemini":
+                        provider_data["models"] = ["gemini-pro", "gemini-pro-vision"]
+                    elif provider_name == "groq":
+                        provider_data["models"] = [
+                            "llama2-70b-4096",
+                            "mixtral-8x7b-32768",
+                        ]
+                    elif provider_name == "deepseek":
+                        provider_data["models"] = ["deepseek-chat", "deepseek-coder"]
+                    elif provider_name == "siliconflow":
+                        provider_data["models"] = ["Qwen2-72B-Instruct"]
+                    elif provider_name == "moonshot":
+                        provider_data["models"] = ["moonshot-v1-8k", "moonshot-v1-32k"]
+                    elif provider_name == "fireworks":
+                        provider_data["models"] = [
+                            "accounts/fireworks/models/llama-v2-7b-chat"
+                        ]
+                    elif provider_name == "elevenlabs":
+                        provider_data["models"] = ["eleven_monolingual_v1"]
+
+                    provider = Provider(**provider_data)
+                    db.session.add(provider)
+                    print(f"Created provider {provider_name}")
 
         if Model.query.count() == 0:
             # Seed models
             models_data = [
+                # OpenAI models
                 {
                     "name": "gpt-4",
                     "provider": "openai",
@@ -188,9 +314,128 @@ def init_db():
                     "enabled": True,
                 },
                 {
+                    "name": "gpt-4-turbo",
+                    "provider": "openai",
+                    "model_id": "gpt-4-turbo-preview",
+                    "temperature": 0.7,
+                    "max_tokens": 4096,
+                    "enabled": True,
+                },
+                {
+                    "name": "gpt-3.5-turbo",
+                    "provider": "openai",
+                    "model_id": "gpt-3.5-turbo",
+                    "temperature": 0.7,
+                    "max_tokens": 4096,
+                    "enabled": True,
+                },
+                # Anthropic models
+                {
                     "name": "claude-3-opus",
                     "provider": "anthropic",
                     "model_id": "claude-3-opus-20240229",
+                    "temperature": 0.7,
+                    "max_tokens": 4096,
+                    "enabled": True,
+                },
+                {
+                    "name": "claude-3-sonnet",
+                    "provider": "anthropic",
+                    "model_id": "claude-3-sonnet-20240229",
+                    "temperature": 0.7,
+                    "max_tokens": 4096,
+                    "enabled": True,
+                },
+                {
+                    "name": "claude-3-haiku",
+                    "provider": "anthropic",
+                    "model_id": "claude-3-haiku-20240307",
+                    "temperature": 0.7,
+                    "max_tokens": 4096,
+                    "enabled": True,
+                },
+                # Gemini models
+                {
+                    "name": "gemini-pro",
+                    "provider": "gemini",
+                    "model_id": "gemini-pro",
+                    "temperature": 0.7,
+                    "max_tokens": 4096,
+                    "enabled": True,
+                },
+                {
+                    "name": "gemini-pro-vision",
+                    "provider": "gemini",
+                    "model_id": "gemini-pro-vision",
+                    "temperature": 0.7,
+                    "max_tokens": 4096,
+                    "enabled": True,
+                },
+                # Groq models
+                {
+                    "name": "llama2-70b",
+                    "provider": "groq",
+                    "model_id": "llama2-70b-4096",
+                    "temperature": 0.7,
+                    "max_tokens": 4096,
+                    "enabled": True,
+                },
+                {
+                    "name": "mixtral-8x7b",
+                    "provider": "groq",
+                    "model_id": "mixtral-8x7b-32768",
+                    "temperature": 0.7,
+                    "max_tokens": 4096,
+                    "enabled": True,
+                },
+                # DeepSeek models
+                {
+                    "name": "deepseek-chat",
+                    "provider": "deepseek",
+                    "model_id": "deepseek-chat",
+                    "temperature": 0.7,
+                    "max_tokens": 4096,
+                    "enabled": True,
+                },
+                {
+                    "name": "deepseek-coder",
+                    "provider": "deepseek",
+                    "model_id": "deepseek-coder",
+                    "temperature": 0.7,
+                    "max_tokens": 4096,
+                    "enabled": True,
+                },
+                # SiliconFlow models
+                {
+                    "name": "qwen2-72b",
+                    "provider": "siliconflow",
+                    "model_id": "Qwen2-72B-Instruct",
+                    "temperature": 0.7,
+                    "max_tokens": 4096,
+                    "enabled": True,
+                },
+                # Moonshot models
+                {
+                    "name": "moonshot-v1-8k",
+                    "provider": "moonshot",
+                    "model_id": "moonshot-v1-8k",
+                    "temperature": 0.7,
+                    "max_tokens": 8192,
+                    "enabled": True,
+                },
+                {
+                    "name": "moonshot-v1-32k",
+                    "provider": "moonshot",
+                    "model_id": "moonshot-v1-32k",
+                    "temperature": 0.7,
+                    "max_tokens": 32768,
+                    "enabled": True,
+                },
+                # Fireworks models
+                {
+                    "name": "llama-v2-7b",
+                    "provider": "fireworks",
+                    "model_id": "accounts/fireworks/models/llama-v2-7b-chat",
                     "temperature": 0.7,
                     "max_tokens": 4096,
                     "enabled": True,
@@ -810,6 +1055,24 @@ def test_connection():
                 "message": f"No API key configured for {provider_name}",
             }
         )
+
+
+# API Keys status endpoint for frontend
+@app.route("/settings/api-keys/status")
+def get_api_keys_status():
+    """Get status of API keys for all providers (without exposing the keys)"""
+    providers = Provider.query.all()
+
+    status = {}
+    for provider in providers:
+        has_key = bool(provider.api_key and provider.api_key.strip())
+        status[provider.name] = {
+            "configured": has_key,
+            "enabled": provider.enabled,
+            "models": provider.models or [],
+        }
+
+    return jsonify(status)
 
 
 # Search endpoints
