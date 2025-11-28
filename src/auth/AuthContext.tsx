@@ -161,17 +161,22 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
 
       if (response.ok) {
         const payload = await response.json();
-        // Validate response shape: { valid: true, user: { ... } } or just user object
-        const validatedUser = payload && (payload.user || payload);
-
-        if (!validatedUser) {
-          console.error('Auth validate: unexpected response', payload);
-          // Treat this as invalid token
+        // Handle common response shapes
+        if (payload && payload.valid === false) {
+          // Invalid token
           logout();
           return;
         }
 
-        setUser(validatedUser);
+        const validatedUser = payload && (payload.user || payload);
+        // If we received a wrapper without user, we expect a user object; otherwise treat as invalid
+        if (!validatedUser || !validatedUser.id) {
+          console.error('Auth validate: unexpected response', payload);
+          logout();
+          return;
+        }
+
+        setUser(validatedUser as any);
       } else {
         // Token is invalid, clear auth data
         logout();
