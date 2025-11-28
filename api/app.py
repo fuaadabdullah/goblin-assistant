@@ -606,7 +606,14 @@ def init_db():
 
 
 # Initialize database on startup
-init_db()
+with app.app_context():
+    try:
+        init_db()
+        print("Database initialized successfully")
+    except Exception as e:
+        print(f"Database initialization failed: {e}")
+        # Don't crash the app if database init fails
+        pass
 
 
 @app.route("/")
@@ -617,6 +624,16 @@ def home():
 @app.route("/health")
 def health():
     return jsonify({"status": "healthy"})
+
+
+@app.route("/db/init", methods=["POST"])
+def init_database():
+    """Manually initialize the database"""
+    try:
+        init_db()
+        return jsonify({"message": "Database initialized successfully"})
+    except Exception as e:
+        return jsonify({"error": f"Database initialization failed: {str(e)}"}), 500
 
 
 @app.route("/routing/providers")
