@@ -1,0 +1,9 @@
+node_modules
+.venv
+dist
+build
+coverage
+
+# Ignore generated Python files
+**/__pycache__/
+**/*.pyc

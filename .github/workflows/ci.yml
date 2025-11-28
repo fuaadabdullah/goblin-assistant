@@ -1,0 +1,149 @@
+name: CI/CD Quality Gates
+
+on:
+  push:
+    branches: [ main, develop ]
+  pull_request:
+    branches: [ main, develop ]
+
+env:
+  PYTHON_VERSION: '3.11'
+
+jobs:
+  lint-python:
+    name: Python Code Quality
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v4
+    - uses: actions/setup-python@v4
+      with:
+        python-version: ${{ env.PYTHON_VERSION }}
+    - run: |
+        cd api/fastapi
+        pip install -r requirements.txt
+        isort --check-only --diff .
+        black --check --diff .
+        flake8 .
+        mypy .
+
+  test-frontend:
+    name: Frontend Tests
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        node-version: [18.x, 20.x]
+    steps:
+    - uses: actions/checkout@v4
+    - uses: pnpm/action-setup@v2
+      with:
+        version: latest
+    - uses: actions/setup-node@v4
+      with:
+        node-version: ${{ matrix.node-version }}
+        cache: 'pnpm'
+    - run: |
+        pnpm install --frozen-lockfile
+        pnpm lint
+        pnpm type-check
+        pnpm test:ci
+        pnpm build
+
+  test-python:
+    name: Python Tests
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v4
+    - uses: actions/setup-python@v4
+      with:
+        python-version: ${{ env.PYTHON_VERSION }}
+    - run: |
+        cd api/fastapi
+        pip install -r requirements.txt
+        # Install dev dependencies needed for E2E tests (e.g., pytest, chromadb optional)
+        if [ -f requirements-dev.txt ]; then pip install -r requirements-dev.txt; fi
+        # Run normal unit tests + e2e mock tests
+        python -m pytest test_*.py -v --tb=short --cov=. --cov-report=term --cov-fail-under=80
+
+  load-test:
+    name: Load Testing
+    runs-on: ubuntu-latest
+    needs: [lint-python, test-frontend, test-python]
+    if: github.ref == 'refs/heads/main' || github.event_name == 'pull_request'
+    steps:
+    - uses: actions/checkout@v4
+    - uses: actions/setup-python@v4
+      with:
+        python-version: ${{ env.PYTHON_VERSION }}
+    - run: |
+        cd api/fastapi
+        pip install -r requirements.txt
+        uvicorn app:app --host 0.0.0.0 --port 8000 &
+        sleep 10
+        python -m locust --headless --users 10 --spawn-rate 2 --run-time 30s --host http://localhost:8000 -f load_test.py
+
+  smoke-test:
+    name: Smoke Tests
+    runs-on: ubuntu-latest
+    needs: [load-test]
+    if: github.ref == 'refs/heads/main' || github.event_name == 'pull_request'
+    steps:
+    - uses: actions/checkout@v4
+    - uses: actions/setup-python@v4
+      with:
+        python-version: ${{ env.PYTHON_VERSION }}
+    - run: |
+        cd api/fastapi
+        pip install -r requirements.txt
+        uvicorn app:app --host 0.0.0.0 --port 8000 &
+        sleep 15
+        python -m pytest test_smoke.py -v --tb=short
+        curl -f http://localhost:8000/api/health
+
+  deploy-gate:
+    name: Deployment Gate Check
+    runs-on: ubuntu-latest
+    needs: [lint-python, test-frontend, test-python, load-test, smoke-test]
+    if: always()
+    steps:
+    - name: Check all quality gates
+      run: |
+        if [[ "${{ needs.lint-python.result }}" != "success" ]]; then
+          echo "❌ Python linting failed"
+          exit 1
+        fi
+        if [[ "${{ needs.test-frontend.result }}" != "success" ]]; then
+          echo "❌ Frontend tests failed"
+          exit 1
+        fi
+        if [[ "${{ needs.test-python.result }}" != "success" ]]; then
+          echo "❌ Python tests failed"
+          exit 1
+        fi
+        if [[ "${{ needs.load-test.result }}" != "success" ]]; then
+          echo "❌ Load tests failed"
+          exit 1
+        fi
+        if [[ "${{ needs.smoke-test.result }}" != "success" ]]; then
+          echo "❌ Smoke tests failed"
+          exit 1
+        fi
+        echo "✅ All quality gates passed! Ready for deployment."
+
+  deploy:
+    name: Deploy (Simulation)
+    runs-on: ubuntu-latest
+    needs: [deploy-gate]
+    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+    environment: production
+    steps:
+    - name: Simulate deployment
+      run: |
+        echo "🚀 Deployment would proceed here with your deployment provider"
+        echo "✅ All quality gates passed:"
+        echo "  - Python linting & code quality"
+        echo "  - Frontend tests & build"
+        echo "  - Python unit tests & coverage"
+        echo "  - Load testing with Locust"
+        echo "  - Smoke tests against running application"
+        echo ""
+        echo "Add your deployment commands here (Docker, AWS, Railway, etc.)"
