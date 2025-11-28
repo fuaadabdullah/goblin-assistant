@@ -60,7 +60,15 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         setToken(tokenValue);
         setUser(userData);
       } else {
-        throw new Error('Login failed');
+        // Attempt to extract server message for better error propagation
+        let errMsg = 'Login failed';
+        try {
+          const errJson = await response.json();
+          errMsg = errJson.error || errJson.message || errMsg;
+        } catch (e) {
+          // ignore parsing error
+        }
+        throw new Error(errMsg);
       }
     } catch (error) {
       console.error('Login error:', error);
@@ -93,7 +101,15 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         setToken(token);
         setUser(userData);
       } else {
-        throw new Error('Registration failed');
+        // Attempt to extract server message for better error propagation
+        let errMsg = 'Registration failed';
+        try {
+          const errJson = await response.json();
+          errMsg = errJson.error || errJson.message || errMsg;
+        } catch (e) {
+          // ignore parsing error
+        }
+        throw new Error(errMsg);
       }
     } catch (error) {
       console.error('Registration error:', error);
