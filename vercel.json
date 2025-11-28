@@ -20,5 +20,9 @@
     }
   ],
   "outputDirectory": "dist",
-  "ignoreCommand": "rm -rf api"
+  "ignoreCommand": "rm -rf api",
+  "env": {
+    "VITE_FASTAPI_URL": "https://goblin-assistant-backend.onrender.com",
+    "VITE_API_URL": "https://goblin-assistant-backend.onrender.com"
+  }
 }
