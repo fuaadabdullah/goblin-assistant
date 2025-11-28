@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
-import { Settings, Key, Globe, CheckCircle, XCircle, RefreshCw, Loader2 } from 'lucide-react';
+import { Settings, Globe, CheckCircle, XCircle, RefreshCw, Loader2, Shield, AlertTriangle } from 'lucide-react';
 import { useToast } from '../contexts/ToastContext';
+import { api } from '../api/http-client';
 
 interface ProviderSettings {
   name: string;
@@ -19,6 +20,14 @@ interface ModelSettings {
   enabled: boolean;
 }
 
+interface ApiKeyStatus {
+  [providerName: string]: {
+    configured: boolean;
+    enabled: boolean;
+    models: string[];
+  };
+}
+
 interface SettingsResponse {
   providers: ProviderSettings[];
   models: ModelSettings[];
@@ -28,6 +37,7 @@ interface SettingsResponse {
 
 const SettingsPage: React.FC = () => {
   const [settings, setSettings] = useState<SettingsResponse | null>(null);
+  const [apiKeyStatus, setApiKeyStatus] = useState<ApiKeyStatus | null>(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -37,15 +47,18 @@ const SettingsPage: React.FC = () => {
 
   useEffect(() => {
     fetchSettings();
+    fetchApiKeyStatus();
   }, []);
 
   const fetchSettings = async () => {
+    const baseUrl = import.meta.env.VITE_FASTAPI_URL || import.meta.env.VITE_API_URL || 'http://127.0.0.1:8001';
+    console.debug('SettingsPage: using baseUrl', baseUrl);
     try {
-      setLoading(true);
-      const response = await fetch('http://localhost:8000/settings/');
+      const response = await fetch(`${baseUrl}/settings`);
       if (response.ok) {
         const data = await response.json();
         setSettings(data);
+        setLoading(false);
       } else {
         throw new Error('Failed to fetch settings');
       }
@@ -53,8 +66,23 @@ const SettingsPage: React.FC = () => {
       const errorMessage = err instanceof Error ? err.message : 'Failed to load settings';
       setError(errorMessage);
       showError('Failed to Load Settings', errorMessage);
-    } finally {
       setLoading(false);
+    }
+  };
+
+  const fetchApiKeyStatus = async () => {
+    const baseUrl = import.meta.env.VITE_FASTAPI_URL || import.meta.env.VITE_API_URL || 'http://127.0.0.1:8001';
+    try {
+      const response = await fetch(`${baseUrl}/settings/api-keys/status`);
+      if (response.ok) {
+        const data = await response.json();
+        setApiKeyStatus(data);
+      } else {
+        throw new Error('Failed to fetch API key status');
+      }
+    } catch (err) {
+      console.error('Failed to fetch API key status:', err);
+      // Don't show error for API key status, it's not critical
     }
   };
 
@@ -66,25 +94,24 @@ const SettingsPage: React.FC = () => {
 
     try {
       setSaving(true);
-      const provider = settings.providers.find(p => p.name === providerName);
-      if (!provider) return;
-
-      const updatedProvider = { ...provider, ...updates };
-
-      const response = await fetch(`http://localhost:8000/settings/providers/${providerName}`, {
+  const baseUrl = import.meta.env.VITE_FASTAPI_URL || import.meta.env.VITE_API_URL || 'http://127.0.0.1:8001';
+  const response = await fetch(`${baseUrl}/settings/providers/${providerName}`, {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify(updatedProvider),
+        body: JSON.stringify(updates),
       });
 
       if (response.ok) {
+        // Update local state to reflect the changes
         setSettings({
           ...settings,
-          providers: settings.providers.map(p => (p.name === providerName ? updatedProvider : p)),
+          providers: settings.providers.map(p => (p.name === providerName ? { ...p, ...updates } : p)),
         });
         showSuccess('Settings Updated', `Settings updated successfully for ${providerName}`);
+        // Refresh API key status after update
+        fetchApiKeyStatus();
       } else {
         throw new Error('Failed to update provider settings');
       }
@@ -102,23 +129,20 @@ const SettingsPage: React.FC = () => {
 
     try {
       setSaving(true);
-      const model = settings.models.find(m => m.name === modelName);
-      if (!model) return;
-
-      const updatedModel = { ...model, ...updates };
-
-      const response = await fetch(`http://localhost:8000/settings/models/${modelName}`, {
+  const baseUrl = import.meta.env.VITE_FASTAPI_URL || import.meta.env.VITE_API_URL || 'http://127.0.0.1:8001';
+  const response = await fetch(`${baseUrl}/settings/models/${modelName}`, {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify(updatedModel),
+        body: JSON.stringify(updates),
       });
 
       if (response.ok) {
+        // Update local state to reflect the changes
         setSettings({
           ...settings,
-          models: settings.models.map(m => (m.name === modelName ? updatedModel : m)),
+          models: settings.models.map(m => (m.name === modelName ? { ...m, ...updates } : m)),
         });
         showSuccess('Settings Updated', `Settings updated successfully for ${modelName}`);
       } else {
@@ -136,7 +160,8 @@ const SettingsPage: React.FC = () => {
   const testConnection = async (providerName: string) => {
     try {
       setTestingConnection(providerName);
-      const response = await fetch('http://localhost:8000/settings/test-connection', {
+  const baseUrl = import.meta.env.VITE_FASTAPI_URL || import.meta.env.VITE_API_URL || 'http://127.0.0.1:8001';
+  const response = await fetch(`${baseUrl}/settings/test-connection`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -144,14 +169,15 @@ const SettingsPage: React.FC = () => {
         body: JSON.stringify({ provider_name: providerName }),
       });
 
-      const result = await response.json();
-
-      if (result.connected) {
-        showSuccess('Connection Test Successful', `Successfully connected to ${providerName}`);
+      if (response.ok) {
+        const result = await response.json();
+        if (result.connected) {
+          showSuccess('Connection Test Successful', result.message || `Successfully connected to ${providerName}`);
+        } else {
+          throw new Error(result.message || 'Connection test failed');
+        }
       } else {
-        const errorMessage = result.message || `Connection failed for ${providerName}`;
-        setError(errorMessage);
-        showError('Connection Test Failed', errorMessage);
+        throw new Error('Failed to test connection');
       }
     } catch (err) {
       const errorMessage = `Connection test failed: ${err instanceof Error ? err.message : 'Unknown error'}`;
@@ -211,6 +237,64 @@ const SettingsPage: React.FC = () => {
           </div>
         )}
 
+        {/* API Key Status */}
+        <div className="mb-8">
+          <h2 className="text-2xl font-semibold text-gray-900 mb-4">API Key Configuration</h2>
+          <div className="bg-white rounded-lg shadow-sm border p-6">
+            <div className="flex items-center mb-4">
+              <Shield className="h-6 w-6 text-blue-600 mr-2" />
+              <h3 className="text-lg font-medium text-gray-900">Environment Variables</h3>
+            </div>
+            <p className="text-gray-600 mb-4">
+              API keys are configured via environment variables for security. Update your <code className="bg-gray-100 px-2 py-1 rounded">.env</code> file with your API keys.
+            </p>
+
+            {apiKeyStatus && (
+              <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+                {Object.entries(apiKeyStatus).map(([provider, status]) => (
+                  <div key={provider} className="border rounded-lg p-4">
+                    <div className="flex items-center justify-between mb-2">
+                      <h4 className="font-medium text-gray-900 capitalize">{provider}</h4>
+                      <div className="flex items-center gap-2">
+                        {status.configured ? (
+                          <CheckCircle className="h-5 w-5 text-green-500" />
+                        ) : (
+                          <XCircle className="h-5 w-5 text-red-500" />
+                        )}
+                        <span className={`text-sm ${status.configured ? 'text-green-600' : 'text-red-600'}`}>
+                          {status.configured ? 'Configured' : 'Missing'}
+                        </span>
+                      </div>
+                    </div>
+
+                    {!status.configured && (
+                      <div className="flex items-center text-amber-600 text-sm mb-2">
+                        <AlertTriangle className="h-4 w-4 mr-1" />
+                        API key not found in environment
+                      </div>
+                    )}
+
+                    <div className="text-sm text-gray-600">
+                      <div>Status: {status.enabled ? 'Enabled' : 'Disabled'}</div>
+                      <div>Models: {status.models.length}</div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+
+            <div className="mt-4 p-4 bg-blue-50 border border-blue-200 rounded-lg">
+              <h4 className="font-medium text-blue-900 mb-2">Environment Variables Required:</h4>
+              <div className="text-sm text-blue-800 font-mono">
+                OPENAI_API_KEY, ANTHROPIC_API_KEY, GEMINI_API_KEY,<br />
+                GROQ_API_KEY, DEEPSEEK_API_KEY, SILICONFLOW_API_KEY,<br />
+                MOONSHOT_API_KEY, FIREWORKS_API_KEY, ELEVENLABS_API_KEY,<br />
+                DATADOG_API_KEY, NETLIFY_API_KEY
+              </div>
+            </div>
+          </div>
+        </div>
+
         {/* Provider Settings */}
         <div className="mb-8">
           <h2 className="text-2xl font-semibold text-gray-900 mb-4">AI Providers</h2>
@@ -234,30 +318,6 @@ const SettingsPage: React.FC = () => {
                 </div>
 
                 <div className="space-y-4">
-                  {/* API Key */}
-                  <div>
-                    <label
-                      htmlFor={`api-key-${provider.name}`}
-                      className="block text-sm font-medium text-gray-700 mb-2"
-                    >
-                      API Key
-                    </label>
-                    <div className="relative">
-                      <Key className="absolute left-3 top-3 h-5 w-5 text-gray-400" />
-                      <input
-                        id={`api-key-${provider.name}`}
-                        type="password"
-                        value={provider.api_key || ''}
-                        onChange={e =>
-                          updateProviderSettings(provider.name, { api_key: e.target.value })
-                        }
-                        placeholder="Enter API key..."
-                        className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                        disabled={saving}
-                      />
-                    </div>
-                  </div>
-
                   {/* Base URL */}
                   <div>
                     <label
@@ -284,9 +344,9 @@ const SettingsPage: React.FC = () => {
 
                   {/* Models */}
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                    <div className="block text-sm font-medium text-gray-700 mb-2">
                       Available Models
-                    </label>
+                    </div>
                     <div className="flex flex-wrap gap-2">
                       {provider.models.map(model => (
                         <span
