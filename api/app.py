@@ -603,6 +603,10 @@ def init_db():
         db.session.commit()
 
 
+# Initialize database on startup
+init_db()
+
+
 @app.route("/")
 def home():
     return jsonify({"status": "healthy", "message": "API is working!"})
