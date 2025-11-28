@@ -1,5 +1,4 @@
 import React, { createContext, useContext, useState, useEffect, useCallback, ReactNode } from 'react';
-import { runtimeClient } from '../lib/api/api-client';
 
 interface User {
   id: string;
@@ -31,8 +30,85 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const [token, setToken] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
+  const login = async (email: string, password: string): Promise<void> => {
+    try {
+      setIsLoading(true);
+      const response = await fetch(
+        `${import.meta.env.VITE_FASTAPI_URL || 'http://127.0.0.1:8001'}/auth/login`,
+        {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({ email, password }),
+        }
+      );
+
+      if (response.ok) {
+        const data = await response.json();
+        const { access_token, user: userData } = data;
+
+        localStorage.setItem('auth_token', access_token);
+        localStorage.setItem('user_data', JSON.stringify(userData));
+        setToken(access_token);
+        setUser(userData);
+      } else {
+        throw new Error('Login failed');
+      }
+    } catch (error) {
+      console.error('Login error:', error);
+      throw error;
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const register = async (email: string, password: string, name?: string): Promise<void> => {
+    try {
+      setIsLoading(true);
+      const response = await fetch(
+        `${import.meta.env.VITE_FASTAPI_URL || 'http://127.0.0.1:8001'}/auth/register`,
+        {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({ email, password, name }),
+        }
+      );
+
+      if (response.ok) {
+        const data = await response.json();
+        const { access_token, user: userData } = data;
+
+        localStorage.setItem('auth_token', access_token);
+        localStorage.setItem('user_data', JSON.stringify(userData));
+        setToken(access_token);
+        setUser(userData);
+      } else {
+        throw new Error('Registration failed');
+      }
+    } catch (error) {
+      console.error('Registration error:', error);
+      throw error;
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const loginWithGoogle = async (): Promise<void> => {
+    // TODO: Implement Google OAuth login
+    throw new Error('Google login not implemented yet');
+  };
+
+  const registerPasskey = async (_email: string): Promise<void> => {
+    // TODO: Implement passkey registration
+    throw new Error('Passkey registration not implemented yet');
+  };
+
   const logout = () => {
     localStorage.removeItem('auth_token');
+    localStorage.removeItem('user_data');
     setToken(null);
     setUser(null);
   };
