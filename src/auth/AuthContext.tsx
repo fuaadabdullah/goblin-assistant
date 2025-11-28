@@ -46,11 +46,18 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
 
       if (response.ok) {
         const data = await response.json();
-        const { access_token, user: userData } = data;
+        // Backend may return either `token` or `access_token` depending on implementation
+        const tokenValue = (data && (data.token || data.access_token)) || null;
+        const userData = (data && (data.user || data.userData)) || null;
 
-        localStorage.setItem('auth_token', access_token);
+        if (!tokenValue || !userData) {
+          console.error('Login: unexpected response shape', data);
+          throw new Error('Login failed - invalid server response');
+        }
+
+        localStorage.setItem('auth_token', tokenValue);
         localStorage.setItem('user_data', JSON.stringify(userData));
-        setToken(access_token);
+        setToken(tokenValue);
         setUser(userData);
       } else {
         throw new Error('Login failed');
@@ -79,11 +86,11 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
 
       if (response.ok) {
         const data = await response.json();
-        const { access_token, user: userData } = data;
+        const { token, user: userData } = data;
 
-        localStorage.setItem('auth_token', access_token);
+        localStorage.setItem('auth_token', token);
         localStorage.setItem('user_data', JSON.stringify(userData));
-        setToken(access_token);
+        setToken(token);
         setUser(userData);
       } else {
         throw new Error('Registration failed');
@@ -137,8 +144,18 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       );
 
       if (response.ok) {
-        const userData = await response.json();
-        setUser(userData);
+        const payload = await response.json();
+        // Validate response shape: { valid: true, user: { ... } } or just user object
+        const validatedUser = payload && (payload.user || payload);
+
+        if (!validatedUser) {
+          console.error('Auth validate: unexpected response', payload);
+          // Treat this as invalid token
+          logout();
+          return;
+        }
+
+        setUser(validatedUser);
       } else {
         // Token is invalid, clear auth data
         logout();
