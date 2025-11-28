@@ -28,7 +28,7 @@ CORS(app)  # Enable CORS for all routes
 
 # Database configuration
 app.config["SQLALCHEMY_DATABASE_URI"] = os.getenv(
-    "DATABASE_URL", "sqlite:///tmp/goblin_assistant.db"
+    "DATABASE_URL", "sqlite:////tmp/goblin_assistant.db"
 )
 app.config["SQLALCHEMY_TRACK_MODIFICATIONS"] = False
 db = SQLAlchemy(app)
