@@ -57,8 +57,9 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
 
         localStorage.setItem('auth_token', tokenValue);
         localStorage.setItem('user_data', JSON.stringify(userData));
-        setToken(tokenValue);
-        setUser(userData);
+  setToken(tokenValue);
+  setUser(userData);
+  console.debug('Auth: login succeeded - token/user set', { token: tokenValue, user: userData });
       } else {
         // Attempt to extract server message for better error propagation
         let errMsg = 'Login failed';
@@ -98,8 +99,9 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
 
         localStorage.setItem('auth_token', token);
         localStorage.setItem('user_data', JSON.stringify(userData));
-        setToken(token);
-        setUser(userData);
+  setToken(token);
+  setUser(userData);
+  console.debug('Auth: register succeeded - token/user set', { token, user: userData });
       } else {
         // Attempt to extract server message for better error propagation
         let errMsg = 'Registration failed';
