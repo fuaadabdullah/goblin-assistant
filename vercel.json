@@ -1,4 +1,5 @@
 {
+  "framework": "nextjs",
   "env": {
     "BACKEND_URL": "https://goblin-assistant-backend.onrender.com",
     "NEXT_PUBLIC_API_URL": "https://goblin-assistant-backend.onrender.com",
