@@ -13,7 +13,7 @@ const nextConfig = {
   },
   // API proxy to backend with environment variable fallback
   async rewrites() {
-    const backendUrl = process.env.BACKEND_URL || 'https://goblin-backend.fly.dev';
+    const backendUrl = process.env.BACKEND_URL || 'https://goblin-assistant-backend.onrender.com';
 
     return [
       {
