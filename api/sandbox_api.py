@@ -29,7 +29,7 @@ from .sandbox_metrics import (
 REDIS_URL = os.getenv("REDIS_URL", "redis://redis:6379/0")
 SANDBOX_IMAGE = os.getenv("SANDBOX_IMAGE", "ghcr.io/yourorg/sandbox:latest")
 API_KEY = os.getenv("API_AUTH_KEY", "devkey")
-JOBS_DIR = os.getenv("JOBS_DIR", "/var/lib/goblin/sandbox_jobs")
+JOBS_DIR = os.getenv("JOBS_DIR", os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "sandbox_jobs"))
 SANDBOX_ENABLED = os.getenv("SANDBOX_ENABLED", "false").lower() == "true"
 
 # Initialize Redis and RQ
