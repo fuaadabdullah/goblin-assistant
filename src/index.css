@@ -1,0 +1,399 @@
+/* normalize.css v8.0.1 | MIT License | github.com/necolas/normalize.css */
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+@import './theme/index.css';
+
+html{line-height:1.15}
+body{margin:0}
+main{display:block}
+h1{font-size:2em;margin:0.67em 0}
+dt{font-weight:700}
+dd{margin-left:0}
+a{background-color:transparent}
+abbr[title]{border-bottom:none;text-decoration:underline;text-decoration:underline dotted}
+b,strong{font-weight:bolder}
+code,kbd,samp{font-family:monospace,monospace;font-size:1em}
+small{font-size:80%}
+sub,sup{font-size:75%;line-height:0;position:relative;vertical-align:baseline}
+sub{bottom:-0.25em}
+sup{top:-0.5em}
+img{border-style:none}
+button,input,optgroup,select,textarea{font-family:inherit;font-size:100%;line-height:1.15;margin:0}
+button,input{overflow:visible}
+button,select{text-transform:none}
+button,[type=button],[type=reset],[type=submit]{-webkit-appearance:button}
+button::-moz-focus-inner,[type=button]::-moz-focus-inner,[type=reset]::-moz-focus-inner,[type=submit]::-moz-focus-inner{border-style:none;padding:0}
+button:-moz-focusring,[type=button]:-moz-focusring,[type=reset]:-moz-focusring,[type=submit]:-moz-focusring{outline:1px dotted ButtonText}
+fieldset{padding:0.35em 0.75em 0.625em}
+legend{box-sizing:border-box;display:table;max-width:100%;padding:0;color:inherit;white-space:normal}
+progress{vertical-align:baseline}
+textarea{overflow:auto}
+[type=checkbox],[type=radio]{box-sizing:border-box;padding:0}
+[type=number]::-webkit-inner-spin-button,[type=number]::-webkit-outer-spin-button{height:auto}
+[type=search]{outline-offset:-2px}
+[type=search]{-webkit-appearance:textfield}
+::-webkit-input-placeholder{color:inherit;opacity:0.54}
+::-webkit-file-upload-button{-webkit-appearance:button;font:inherit}
+summary{display:list-item}
+template{display:none}
+[hidden]{display:none}
+
+/* ============================================================================
+   GOBLINOS THEME SYSTEM
+   Import centralized theme tokens from theme/index.css
+   ============================================================================ */
+
+/* ============================================================================
+   BASE STYLES
+   ============================================================================ */
+
+:root {
+  font-family: var(--font-sans, system-ui, -apple-system, 'Segoe UI', sans-serif);
+  line-height: 1.5;
+  font-weight: 400;
+
+  color-scheme: dark;
+
+  font-synthesis: none;
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+@supports (-webkit-text-size-adjust: 100%) {
+  html {
+    -webkit-text-size-adjust: 100%;
+  }
+}
+
+@supports (text-size-adjust: 100%) {
+  html {
+    text-size-adjust: 100%;
+  }
+}
+
+body {
+  margin: 0;
+  min-width: 320px;
+  min-height: 100vh;
+  background: var(--bg-gradient);
+  background-attachment: fixed;
+  color: var(--text);
+  /* Typography base scale */
+  font-size: var(--font-size-base); /* Base size */
+  line-height: var(--line-height-base); /* Comfortable reading */
+}
+
+/* Remove default button styles to let Tailwind handle them */
+button {
+  font-family: inherit;
+}
+
+/* ==========================================================================
+   TYPOGRAPHY SCALE
+   Consistent heading sizes and line-height
+   ========================================================================= */
+h1,
+h2,
+h3 {
+  font-family: var(--font-display, var(--font-sans, system-ui, -apple-system, 'Segoe UI', sans-serif));
+  line-height: var(--heading-line-height);
+  letter-spacing: -0.015em;
+  margin: 0 0 0.5rem; /* Minimal vertical rhythm */
+}
+
+::selection {
+  background: rgba(6, 208, 106, 0.22);
+  color: var(--text);
+}
+
+h1 { font-size: var(--h1-size); }
+h2 { font-size: var(--h2-size); }
+h3 { font-size: var(--h3-size); }
+
+/* ==========================================================================
+   PARAGRAPHS & LISTS — small typographic scale
+   Harmonize spacing with Tailwind defaults (roughly 1rem rhythm)
+   ========================================================================= */
+p {
+  margin: 0 0 1rem; /* space after paragraphs */
+}
+
+ul,
+ol {
+  margin: 0 0 1rem; /* space below lists */
+  padding-left: 1.25rem; /* indent consistent with Tailwind prose */
+}
+
+ul {
+  list-style-type: disc;
+}
+
+ol {
+  list-style-type: decimal;
+}
+
+li {
+  margin: 0.25rem 0; /* gentle item spacing */
+}
+
+/* Nested lists get slightly less spacing to avoid excessive gaps */
+li > ul,
+li > ol {
+  margin-top: 0.5rem;
+  margin-bottom: 0.5rem;
+}
+
+/* Optional: tighten spacing for small text blocks inside containers */
+.typography-tight p { margin-bottom: 0.75rem; }
+.typography-tight li { margin: 0.2rem 0; }
+
+/* ============================================================================
+   UTILITY CLASSES
+   ============================================================================ */
+
+@layer utilities {
+  /* Responsive auto-fit grid using minmax() for cards
+   * Breakpoints tested: 375px (mobile), 768px (tablet), 1024px (small desktop), 1280px (desktop), 1440px (wide)
+   */
+  .grid-auto-fit {
+    display: grid;
+    gap: 1rem;
+    grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  }
+
+  /* 375px mobile - 1 column stacked */
+  @media (min-width: 375px) {
+    .grid-auto-fit {
+      grid-template-columns: 1fr;
+    }
+  }
+
+  /* 768px tablet - 2 columns */
+  @media (min-width: 768px) {
+    .grid-auto-fit {
+      grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+    }
+  }
+
+  /* 1024px small desktop - 3 columns */
+  @media (min-width: 1024px) {
+    .grid-auto-fit {
+      grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+    }
+  }
+
+  /* 1280px desktop - optimize for wider viewports */
+  @media (min-width: 1280px) {
+    .grid-auto-fit {
+      grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+    }
+  }
+
+  /* 1440px wide - maximize space with 4 columns */
+  @media (min-width: 1440px) {
+    .grid-auto-fit {
+      grid-template-columns: repeat(auto-fit, minmax(340px, 1fr));
+    }
+  }
+
+  /* Elevation shadow mapped to theme token */
+  .shadow-card {
+    box-shadow: var(--shadow-card);
+  }
+
+  /* Glow effect utilities */
+  .glow-primary {
+    box-shadow: var(--glow-primary);
+  }
+
+  .glow-accent {
+    box-shadow: var(--glow-accent);
+  }
+
+  .glow-cta {
+    box-shadow: var(--glow-cta);
+  }
+
+  /* Scanline overlay */
+  .scanline-overlay::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: var(--scanline-pattern);
+    pointer-events: none;
+    opacity: 0.5;
+  }
+}
+
+/* ============================================================================
+   ACCESSIBILITY: REDUCED MOTION
+   ============================================================================ */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
+/* ============================================================================
+   ACCESSIBILITY: FOCUS INDICATORS
+   ============================================================================ */
+/* Ensure focus indicators are always visible for keyboard navigation */
+:focus-visible {
+  outline: 2px solid var(--primary);
+  outline-offset: 2px;
+}
+
+/* Enhanced focus for interactive elements */
+button:focus-visible,
+a:focus-visible,
+input:focus-visible,
+textarea:focus-visible,
+select:focus-visible {
+  outline: 2px solid var(--primary);
+  outline-offset: 2px;
+  box-shadow: 0 0 0 4px rgba(0, 255, 136, 0.2);
+}
+
+/* Skip link for screen readers (hidden until focused) */
+.skip-link {
+  position: absolute;
+  top: -40px;
+  left: 0;
+  background: var(--primary);
+  color: var(--text-inverse);
+  padding: 8px;
+  text-decoration: none;
+  border-radius: 0 0 4px 0;
+  font-weight: 600;
+  z-index: 9999;
+}
+
+.skip-link:focus {
+  top: 0;
+}
+
+/* ============================================================================
+   UTILITY CLASSES
+   ============================================================================ */
+
+/* Scanline CRT overlay effect */
+.scanlines::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background: linear-gradient(transparent 60%, var(--scanline) 61%);
+  background-size: 100% 4px;
+  mix-blend-mode: overlay;
+  opacity: 0.6;
+}
+
+/* Glow effect utilities */
+.shadow-goblin-glow {
+  box-shadow: 0 6px 24px var(--glow-primary);
+}
+
+.shadow-glow-primary {
+  box-shadow: 0 6px 24px var(--glow-primary);
+}
+
+.shadow-glow-accent {
+  box-shadow: 0 6px 24px var(--glow-accent);
+}
+
+.shadow-glow-cta {
+  box-shadow: 0 6px 24px var(--glow-cta);
+}
+
+/* ==========================================================================
+   TERMINAL + LOGO UTILITIES
+   ========================================================================= */
+
+.terminal-panel {
+  background: linear-gradient(180deg, var(--surface), rgba(0, 0, 0, 0.2));
+  color: var(--primary);
+  padding: 1rem;
+  border-radius: 12px;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, 'Liberation Mono', monospace;
+  box-shadow:
+    0 8px 32px rgba(0, 0, 0, 0.6),
+    0 1px 0 rgba(255, 255, 255, 0.02) inset;
+}
+
+.terminal-panel .prompt {
+  color: var(--accent);
+  font-weight: 600;
+}
+
+.terminal-panel .output {
+  color: var(--text);
+}
+
+.logo-glow {
+  filter: drop-shadow(0 8px 28px var(--glow-primary));
+}
+
+/* Logo component animations and styles */
+.logo-transition {
+  transition: filter 0.3s ease, transform 0.3s ease;
+}
+
+.logo-transition:hover {
+  transform: scale(1.05);
+  filter: drop-shadow(0 0 12px var(--color-brand-primary))
+         drop-shadow(0 0 20px var(--color-brand-primary));
+}
+
+.logo-animated {
+  filter: drop-shadow(0 0 8px var(--color-brand-primary));
+}
+
+.logo-animated:hover {
+  filter: drop-shadow(0 0 12px var(--color-brand-primary))
+         drop-shadow(0 0 20px var(--color-brand-primary));
+  animation: pulse-glow 2s ease-in-out infinite;
+}
+
+@keyframes pulse-glow {
+  0%, 100% {
+    filter: drop-shadow(0 0 8px var(--color-brand-primary));
+  }
+  50% {
+    filter: drop-shadow(0 0 16px var(--color-brand-primary))
+           drop-shadow(0 0 24px var(--color-brand-primary));
+  }
+}
+
+/* Reduced motion support for logos */
+@media (prefers-reduced-motion: reduce) {
+  .logo-transition,
+  .logo-animated {
+    animation: none;
+    transition: none;
+  }
+
+  .logo-transition:hover,
+  .logo-animated:hover {
+    transform: none;
+  }
+}
+
+.pixel-art {
+  image-rendering: -webkit-optimize-contrast;
+  image-rendering: pixelated;
+}
+
+.pixel-art.scale-2 {
+  transform: scale(2);
+}
+
+.pixel-art.scale-3 {
+  transform: scale(3);
+}

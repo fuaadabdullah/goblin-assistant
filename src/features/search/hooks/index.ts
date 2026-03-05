@@ -1,0 +1,1 @@
+export { useSearchResults } from './useSearchResults';

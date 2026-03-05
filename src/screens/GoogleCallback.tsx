@@ -1,0 +1,104 @@
+import React, { useEffect } from 'react';
+import { useRouter } from 'next/router';
+import { useAuthStore } from '../store/authStore';
+
+const cleanUrl = (value?: string) => (value || '').trim().replace(/\/$/, '');
+
+const GoogleCallback: React.FC = () => {
+  const router = useRouter();
+  const { code, state, error: oauthError } = router.query;
+
+  useEffect(() => {
+    // Wait for router to be ready
+    if (!router.isReady) return;
+
+    const handleCallback = async () => {
+      const codeValue = code as string | undefined;
+      const stateValue = state as string | undefined;
+      const errorValue = oauthError as string | undefined;
+
+      if (errorValue) {
+        console.error('OAuth error:', errorValue);
+        router.push('/login?error=oauth_failed');
+        return;
+      }
+
+      if (!codeValue) {
+        console.error('No authorization code received');
+        router.push('/login?error=no_code');
+        return;
+      }
+
+      try {
+        const backendOrigin = cleanUrl(
+          process.env.NEXT_PUBLIC_FASTAPI_URL ||
+            process.env.NEXT_PUBLIC_API_URL ||
+            process.env.NEXT_PUBLIC_API_BASE_URL ||
+            'https://goblin-backend.onrender.com'
+        );
+
+        // Exchange code for token
+        const response = await fetch(
+          `${backendOrigin}/v1/auth/google/callback`,
+          {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+              code: codeValue,
+              state: stateValue,
+            }),
+          }
+        );
+
+        if (!response.ok) {
+          const errorData = await response.json();
+          throw new Error(
+            `Failed to exchange code for token: ${errorData.detail || response.statusText}`
+          );
+        }
+
+        const authData = await response.json();
+        const tokenValue = (authData && (authData.token || authData.access_token)) || null;
+        const userInfo = (authData && (authData.user || authData.userInfo)) || null;
+
+        // Store token and user data
+        if (!tokenValue || !userInfo) {
+          throw new Error('Invalid OAuth response');
+        }
+
+        useAuthStore.getState().setSession({
+          token: tokenValue,
+          user: userInfo,
+          expiresIn: authData?.expires_in,
+        });
+
+        // Navigate to chat
+        router.push('/chat');
+      } catch (err) {
+        console.error('OAuth callback error:', err);
+        router.push('/login?error=callback_failed');
+      }
+    };
+
+    handleCallback();
+  }, [router.isReady, code, state, oauthError, router]);
+
+  return (
+    <div className="callback-container">
+      <div className="callback-content">
+        <h2>Completing sign in...</h2>
+        <p>Please wait while we finish signing you in with Google.</p>
+        <div className="spinner"></div>
+      </div>
+    </div>
+  );
+};
+
+// Prevent static generation - requires server-side data
+export const getServerSideProps = async () => {
+  return { props: {} };
+};
+
+export default GoogleCallback;

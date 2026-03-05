@@ -1,0 +1,211 @@
+.cost-estimation-panel {
+  border: 1px solid #e1e5e9;
+  border-radius: 8px;
+  padding: 16px;
+  margin: 16px 0;
+  background: #fafbfc;
+}
+
+.cost-estimation-panel h4 {
+  margin: 0 0 16px 0;
+  color: #24292f;
+  font-size: 16px;
+  font-weight: 600;
+}
+
+.no-estimate {
+  color: #656d76;
+  font-style: italic;
+  text-align: center;
+  padding: 24px;
+}
+
+.loading {
+  text-align: center;
+  color: #0969da;
+  padding: 16px;
+  font-style: italic;
+}
+
+.error {
+  background: #ffebe9;
+  border: 1px solid #ff7f6b;
+  border-radius: 6px;
+  padding: 12px;
+  color: #cf222e;
+  margin-bottom: 16px;
+}
+
+.estimate-results {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.total-cost {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 12px;
+  background: white;
+  border: 1px solid #d1d9e0;
+  border-radius: 6px;
+}
+
+.total-cost .label {
+  font-weight: 600;
+  color: #24292f;
+}
+
+.total-cost .value {
+  font-size: 18px;
+  font-weight: bold;
+  font-family: 'SF Mono', Monaco, 'Cascadia Code', monospace;
+}
+
+.cost-breakdown h5 {
+  margin: 0 0 12px 0;
+  color: #24292f;
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.step-costs {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.step-cost-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 10px;
+  background: white;
+  border: 1px solid #d1d9e0;
+  border-radius: 6px;
+  transition: box-shadow 0.2s;
+}
+
+.step-cost-item:hover {
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+}
+
+.step-info {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex: 1;
+}
+
+.step-number {
+  font-weight: bold;
+  color: #0969da;
+  min-width: 20px;
+}
+
+.step-goblin {
+  font-weight: 600;
+  color: #24292f;
+  background: #f6f8fa;
+  padding: 2px 6px;
+  border-radius: 4px;
+  font-size: 12px;
+}
+
+.step-task {
+  color: #656d76;
+  font-size: 14px;
+  flex: 1;
+  margin-left: 8px;
+}
+
+.step-cost-details {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  font-family: 'SF Mono', Monaco, 'Cascadia Code', monospace;
+}
+
+.tokens {
+  color: #656d76;
+  font-size: 12px;
+}
+
+.cost {
+  font-weight: bold;
+  font-size: 14px;
+}
+
+/* Cost color classes */
+.cost-low {
+  color: #1a7f37; /* Green for very cheap */
+}
+
+.cost-medium {
+  color: #0969da; /* Blue for reasonable */
+}
+
+.cost-high {
+  color: #d29922; /* Orange for expensive */
+}
+
+.cost-very-high {
+  color: #cf222e; /* Red for very expensive */
+}
+
+.estimate-disclaimer {
+  margin-top: 12px;
+  padding-top: 12px;
+  border-top: 1px solid #d1d9e0;
+}
+
+.estimate-disclaimer small {
+  color: #656d76;
+  line-height: 1.4;
+}
+
+.cost-estimation-panel .streaming-output {
+  background: rgba(255, 255, 255, 0.02);
+  padding: 8px;
+  border-radius: 4px;
+  margin-bottom: 12px;
+}
+
+.cost-estimation-panel .summary-pre {
+  background: rgba(0, 0, 0, 0.05);
+  padding: 12px;
+  border-radius: 6px;
+  white-space: pre-wrap;
+  font-family: monospace;
+  font-size: 12px;
+}
+
+.copy-summary {
+  background-color: var(--button-bg, #2b6cb0);
+  color: white;
+  border: none;
+  padding: 6px 12px;
+  border-radius: 4px;
+  cursor: pointer;
+}
+
+.copy-summary:focus {
+  outline: 2px solid rgba(66, 153, 225, 0.6);
+}
+
+.copy-summary.copied {
+  animation: copied-pulse 600ms ease-in-out;
+}
+
+@keyframes copied-pulse {
+  0% {
+    transform: scale(1);
+  }
+  50% {
+    transform: scale(1.06);
+  }
+  100% {
+    transform: scale(1);
+  }
+}

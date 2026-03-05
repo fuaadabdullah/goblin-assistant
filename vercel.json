@@ -1,19 +1,15 @@
 {
-  "buildCommand": "rm -rf .next/cache && npm run build",
+  "version": 2,
+  "installCommand": "npm install",
+  "buildCommand": "npm run build",
   "outputDirectory": ".next",
   "framework": "nextjs",
-  "functions": {
-    "app/**/*.js": {
-      "maxDuration": 10
-    }
-  },
   "env": {
     "BACKEND_URL": "https://goblin-assistant-backend.onrender.com",
     "NEXT_PUBLIC_API_URL": "https://goblin-assistant-backend.onrender.com",
     "NEXT_PUBLIC_API_BASE_URL": "https://goblin-assistant-backend.onrender.com",
     "NEXT_PUBLIC_DOMAIN": "goblin.fuaad.ai"
   },
-
   "headers": [
     {
       "source": "/api/(.*)",

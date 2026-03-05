@@ -1,41 +1,86 @@
-// Stub implementation for Alert component
+import type { ReactNode } from 'react';
+import IconButton from './IconButton';
 
-import * as React from 'react';
-import { clsx } from 'clsx';
+type AlertVariant = 'info' | 'warning' | 'danger' | 'success';
 
-export interface AlertProps extends React.HTMLAttributes<HTMLDivElement> {
-  variant?: 'default' | 'destructive';
+export interface AlertProps {
+  variant?: AlertVariant;
+  title?: string;
+  message: string | ReactNode;
+  dismissible?: boolean;
+  onDismiss?: () => void;
+  icon?: ReactNode;
+  className?: string;
 }
 
-export const Alert = React.forwardRef<HTMLDivElement, AlertProps>(
-  ({ className, variant = 'default', ...props }, ref) => {
-    return (
-      <div
-        ref={ref}
-        role="alert"
-        className={clsx(
-          'relative w-full rounded-lg border p-4',
-          {
-            'border-red-200 text-red-800 bg-red-50': variant === 'destructive',
-            'border-gray-200 text-gray-800 bg-gray-50': variant === 'default',
-          },
-          className
-        )}
-        {...props}
-      />
-    );
-  }
-);
-Alert.displayName = 'Alert';
+const variantStyles: Record<
+  AlertVariant,
+  { bg: string; border: string; text: string; icon: string }
+> = {
+  info: {
+    bg: 'bg-primary/10',
+    border: 'border-primary',
+    text: 'text-primary',
+    icon: 'ℹ️',
+  },
+  warning: {
+    bg: 'bg-warning/10',
+    border: 'border-warning',
+    text: 'text-warning',
+    icon: '⚠️',
+  },
+  danger: {
+    bg: 'bg-danger/10',
+    border: 'border-danger',
+    text: 'text-danger',
+    icon: '🚨',
+  },
+  success: {
+    bg: 'bg-success/10',
+    border: 'border-success',
+    text: 'text-success',
+    icon: '✓',
+  },
+};
 
-export const AlertDescription = React.forwardRef<
-  HTMLParagraphElement,
-  React.HTMLAttributes<HTMLParagraphElement>
->(({ className, ...props }, ref) => (
-  <div
-    ref={ref}
-    className={clsx('text-sm [&_p]:leading-relaxed', className)}
-    {...props}
-  />
-));
-AlertDescription.displayName = 'AlertDescription';
+/**
+ * Alert — unified alert/banner component.
+ * Replaces duplicate error/warning/info banners.
+ */
+export default function Alert({
+  variant = 'info',
+  title,
+  message,
+  dismissible = false,
+  onDismiss,
+  icon,
+  className = '',
+}: AlertProps) {
+  const styles = variantStyles[variant];
+  const displayIcon = icon || styles.icon;
+  const ariaLive: 'assertive' | 'polite' = variant === 'danger' ? 'assertive' : 'polite';
+
+  return (
+    <div
+      className={`${styles.bg} border ${styles.border} rounded-xl p-4 flex items-start gap-3 ${className}`}
+      role="alert"
+      aria-live={ariaLive}
+    >
+      <span className="text-xl flex-shrink-0">{displayIcon}</span>
+      <div className="flex-1">
+        {title && <h3 className={`${styles.text} font-medium text-sm mb-1`}>{title}</h3>}
+        <div className="text-text text-sm">{message}</div>
+      </div>
+      {dismissible && onDismiss && (
+        <IconButton
+          variant="ghost"
+          size="sm"
+          icon="✕"
+          aria-label="Dismiss alert"
+          onClick={onDismiss}
+          className={styles.text}
+        />
+      )}
+    </div>
+  );
+}

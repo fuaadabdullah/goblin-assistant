@@ -1,7 +1,7 @@
 'use client';
 
 export const websocketService = {
-  connect: async (url: string, onMessage: (data: any) => void) => {
+  connect: async (url: string, _onMessage: (data: any) => void) => {
     console.log('WebSocketService.connect called with:', url);
     // Mock implementation
     return {

@@ -1,118 +1,106 @@
-// components/ErrorBoundary.tsx
-'use client';
+import { Component, ReactNode } from 'react';
+import { logErrorToService, reactErrorInfoToContext } from '../utils/monitoring';
+import { env } from '../config/env';
 
-import React from 'react';
+interface Props {
+  children: ReactNode;
+  fallback?: ReactNode;
+}
 
-interface ErrorBoundaryState {
+interface State {
   hasError: boolean;
-  error?: Error;
-  errorInfo?: React.ErrorInfo;
+  error: Error | null;
 }
 
-interface ErrorBoundaryProps {
-  children: React.ReactNode;
-  fallback?: React.ComponentType<{ error?: Error; errorInfo?: React.ErrorInfo; resetError: () => void }>;
-  onError?: (error: Error, errorInfo: React.ErrorInfo) => void;
-}
-
-class ErrorBoundary extends React.Component<ErrorBoundaryProps, ErrorBoundaryState> {
-  constructor(props: ErrorBoundaryProps) {
+export class ErrorBoundary extends Component<Props, State> {
+  constructor(props: Props) {
     super(props);
-    this.state = { hasError: false };
+    this.state = { hasError: false, error: null };
   }
 
-  static getDerivedStateFromError(error: Error): ErrorBoundaryState {
+  static getDerivedStateFromError(error: Error): State {
     return { hasError: true, error };
   }
 
   componentDidCatch(error: Error, errorInfo: React.ErrorInfo) {
-    console.error('ErrorBoundary caught an error:', error, errorInfo);
-
-    // Store error info in state
-    this.setState({ errorInfo });
-
-    // Call optional error handler
-    if (this.props.onError) {
-      this.props.onError(error, errorInfo);
-    }
-
-    // Report to external service in production
-    if (process.env.NODE_ENV === 'production' && typeof window !== 'undefined') {
-      // Could integrate with Sentry, LogRocket, etc. here
-      console.error('Production error logged:', error.message);
+    // Log to monitoring service
+    if (env.isProduction) {
+      logErrorToService(error, reactErrorInfoToContext(errorInfo));
+    } else {
+      console.error('Error caught by boundary:', error, errorInfo);
     }
   }
 
-  resetError = () => {
-    this.setState({ hasError: false, error: undefined, errorInfo: undefined });
-  };
-
   render() {
     if (this.state.hasError) {
-      if (this.props.fallback) {
-        const FallbackComponent = this.props.fallback;
-        return <FallbackComponent
-          error={this.state.error}
-          errorInfo={this.state.errorInfo}
-          resetError={this.resetError}
-        />;
-      }
-
-      return (
-        <div className="min-h-screen flex items-center justify-center bg-slate-900">
-          <div className="max-w-md w-full bg-slate-800 border border-slate-700 shadow-xl rounded-lg p-6">
-            <div className="flex items-center mb-4">
-              <div className="flex-shrink-0">
-                <svg className="h-8 w-8 text-red-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L4.082 16.5c-.77.833.192 2.5 1.732 2.5z" />
-                </svg>
-              </div>
-              <div className="ml-3">
-                <h3 className="text-lg font-medium text-white">Something went wrong</h3>
-                <p className="text-sm text-slate-400 mt-1">
-                  An unexpected error occurred. Please try refreshing the page.
-                </p>
-              </div>
-            </div>
-            {this.state.error && (
-              <div className="mb-4">
-                <details className="text-sm">
-                  <summary className="cursor-pointer text-slate-400 hover:text-white">
-                    Error details
-                  </summary>
-                  <pre className="mt-2 p-2 bg-slate-700 border border-slate-600 rounded text-xs overflow-auto text-slate-200">
-                    {this.state.error.message}
-                    {this.state.errorInfo && (
-                      <div className="mt-2 pt-2 border-t border-slate-600">
-                        <strong>Component Stack:</strong>
-                        <pre className="text-xs mt-1">{this.state.errorInfo.componentStack}</pre>
-                      </div>
-                    )}
-                  </pre>
-                </details>
-              </div>
-            )}
-            <div className="flex space-x-3">
-              <button
-                onClick={this.resetError}
-                className="flex-1 bg-emerald-600 text-white px-4 py-2 rounded-md text-sm font-medium hover:bg-emerald-700 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:ring-offset-2 transition-colors"
-              >
-                Try again
-              </button>
-              <button
-                onClick={() => window.location.reload()}
-                className="flex-1 bg-slate-600 text-white px-4 py-2 rounded-md text-sm font-medium hover:bg-slate-700 focus:outline-none focus:ring-2 focus:ring-slate-500 focus:ring-offset-2 transition-colors"
-              >
-                Refresh page
-              </button>
-            </div>
-          </div>
-        </div>
-      );
+      return this.props.fallback || <ErrorBoundaryFallback error={this.state.error!} />;
     }
 
     return this.props.children;
   }
 }
 
-export default ErrorBoundary;
+// Safe fallback component
+export function ErrorBoundaryFallback({ error }: { error: Error }) {
+  const isDev = env.isDevelopment;
+
+  return (
+    <div className="min-h-screen flex items-center justify-center bg-bg px-4">
+      <div className="max-w-md w-full bg-surface border border-border shadow-card rounded-2xl p-6">
+        <div className="flex items-center justify-center w-12 h-12 mx-auto bg-danger/15 rounded-full mb-4">
+          <svg
+            className="w-6 h-6 text-danger"
+            fill="none"
+            viewBox="0 0 24 24"
+            stroke="currentColor"
+          >
+            <path
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              strokeWidth={2}
+              d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"
+            />
+          </svg>
+        </div>
+
+        <h1 className="text-xl font-semibold text-center text-text mb-2">
+          Something went wrong
+        </h1>
+
+        <p className="text-center text-muted mb-6">
+          We're sorry, but the application encountered an error. Please try refreshing the page.
+        </p>
+
+        {/* ✅ Only show details in development */}
+        {isDev && error && (
+          <details className="mb-4 text-sm">
+            <summary className="cursor-pointer text-text font-medium mb-2">
+              Error Details (Development Only)
+            </summary>
+            <pre className="bg-bg p-3 rounded-lg border border-border overflow-auto text-xs text-text">
+              {/* ✅ Safe - React escapes this automatically */}
+              {error.message}
+              {'\n\n'}
+              {error.stack}
+            </pre>
+          </details>
+        )}
+
+        <div className="flex gap-3">
+          <button
+            onClick={() => window.location.reload()}
+            className="flex-1 bg-primary text-text-inverse px-4 py-2 rounded-lg hover:brightness-110 transition shadow-glow-primary"
+          >
+            Refresh Page
+          </button>
+          <button
+            onClick={() => (window.location.href = '/')}
+            className="flex-1 bg-surface-hover text-text px-4 py-2 rounded-lg hover:bg-surface-active transition border border-border"
+          >
+            Go Home
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}

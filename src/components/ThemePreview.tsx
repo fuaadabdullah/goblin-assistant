@@ -1,66 +1,103 @@
-'use client';
+import { useEffect, useState } from 'react';
+import { applyThemePreset } from '../theme/theme';
 
-import React from 'react';
-import { useTheme } from '../theme/components/ThemeProvider';
+const THEME_STORAGE_KEY = 'goblinos-theme-preference'; // Align with core theme system
 
-export const ThemePreview: React.FC = () => {
-  const { theme, highContrast } = useTheme();
+// Theme preset metadata for UI display
+const THEME_PRESETS = [
+  {
+    id: 'default',
+    name: 'Goblin Default',
+    description: 'Original neon green + magenta stack',
+    colors: { primary: '#06D06A', accent: '#FF2AA8', cta: '#FF6A1A' },
+  },
+  {
+    id: 'nocturne',
+    name: 'Nocturne Violet',
+    description: 'Deep indigo surfaces with electric cyan accents',
+    colors: { primary: '#51F8E3', accent: '#C964FF', cta: '#FF8C32' },
+  },
+  {
+    id: 'ember',
+    name: 'Ember Blaze',
+    description: 'Warm amber primary with teal highlights',
+    colors: { primary: '#17E0C1', accent: '#FF4DA6', cta: '#FFB347' },
+  },
+] as const;
 
-  const themeStyles = {
-    default: {
-      bg: 'bg-white border-gray-200',
-      text: 'text-gray-900',
-      accent: 'bg-blue-500',
-    },
-    dark: {
-      bg: 'bg-gray-900 border-gray-700',
-      text: 'text-white',
-      accent: 'bg-blue-400',
-    },
-    light: {
-      bg: 'bg-gray-50 border-gray-200',
-      text: 'text-gray-900',
-      accent: 'bg-blue-600',
-    },
-  };
+type ThemeId = (typeof THEME_PRESETS)[number]['id'];
 
-  const currentTheme = themeStyles[theme as keyof typeof themeStyles] || themeStyles.default;
+export default function ThemePreview() {
+  const [activeTheme, setActiveTheme] = useState<ThemeId>(() => {
+    if (typeof window === 'undefined') {
+      return 'default';
+    }
+    const stored = window.localStorage.getItem(THEME_STORAGE_KEY) as ThemeId | null;
+    return stored ?? 'default';
+  });
+
+  useEffect(() => {
+    // Use core theme system's applyThemePreset
+    applyThemePreset(activeTheme);
+  }, [activeTheme]);
 
   return (
-    <div className="space-y-4">
-      <h3 className="text-lg font-medium text-gray-900 dark:text-white">Current Theme Preview</h3>
-
-      <div className="flex gap-4">
-        <div className={`flex-1 p-4 rounded-lg border ${currentTheme.bg}`}>
-          <div className="space-y-2">
-            <div className={`h-4 rounded ${currentTheme.accent} w-3/4`}></div>
-            <div className={`h-3 rounded bg-gray-200 ${currentTheme.text} w-full`}>Heading</div>
-            <div className={`h-3 rounded bg-gray-100 ${currentTheme.text} w-5/6`}>Paragraph text</div>
-            <div className={`h-6 rounded ${currentTheme.accent} w-1/2`}></div>
-          </div>
+    <section className="bg-surface rounded-xl border border-border p-6 space-y-6">
+      <header className="flex items-center justify-between flex-wrap gap-3">
+        <div>
+          <p className="text-xs uppercase tracking-[0.3em] text-muted">Theme Preview</p>
+          <h3 className="text-2xl font-semibold text-text">Swap palettes instantly</h3>
+          <p className="text-sm text-muted">Palettes update CSS vars + glow tokens in real time.</p>
         </div>
+        <div className="flex gap-2">
+          {THEME_PRESETS.map(preset => (
+            <button
+              key={preset.id}
+              onClick={() => setActiveTheme(preset.id)}
+              className={`px-3 py-1 rounded-full text-xs font-semibold border transition
+                ${
+                  activeTheme === preset.id
+                    ? 'border-primary text-primary bg-primary/10'
+                    : 'border-border text-muted hover:text-primary'
+                }
+              `}
+            >
+              {preset.name}
+            </button>
+          ))}
+        </div>
+      </header>
 
-        <div className="flex flex-col justify-center">
-          <div className="space-y-2">
-            <div className="text-sm font-medium text-gray-500">Active Theme</div>
-            <div className="text-lg font-semibold capitalize">{theme}</div>
-            <div className="text-sm text-gray-500">
-              {highContrast ? 'High Contrast: ON' : 'High Contrast: OFF'}
+      <div className="grid gap-4 md:grid-cols-3">
+        {THEME_PRESETS.map(preset => (
+          <div
+            key={preset.id}
+            className={`rounded-lg border p-4 transition bg-surface
+              ${activeTheme === preset.id ? 'border-primary shadow-glow-primary' : 'border-border'}
+            `}
+          >
+            <p className="text-sm font-semibold text-text">{preset.name}</p>
+            <p className="text-xs text-muted mb-3">{preset.description}</p>
+            <div className="flex gap-2">
+              <div
+                className="h-10 w-10 rounded-full border border-border"
+                style={{ backgroundColor: preset.colors.primary }}
+                title={`Primary: ${preset.colors.primary}`}
+              />
+              <div
+                className="h-10 w-10 rounded-full border border-border"
+                style={{ backgroundColor: preset.colors.accent }}
+                title={`Accent: ${preset.colors.accent}`}
+              />
+              <div
+                className="h-10 w-10 rounded-full border border-border"
+                style={{ backgroundColor: preset.colors.cta }}
+                title={`CTA: ${preset.colors.cta}`}
+              />
             </div>
           </div>
-        </div>
+        ))}
       </div>
-
-      <div className="bg-gray-50 p-3 rounded-lg text-sm">
-        <div className="font-medium text-gray-800 mb-1">Theme Features</div>
-        <div className="text-gray-600">
-          • Accessible color contrast<br />
-          • Responsive design support<br />
-          • Dark/light mode compatible
-        </div>
-      </div>
-    </div>
+    </section>
   );
-};
-
-export default ThemePreview;
+}

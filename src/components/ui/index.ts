@@ -1,11 +1,21 @@
-// UI Components index file
-export { Button } from './Button';
-export { Badge } from './Badge';
-export { Tooltip, TooltipContent, TooltipTrigger } from './Tooltip';
-export { Card, CardHeader, CardFooter, CardTitle, CardDescription, CardContent } from './card';
-export { Alert } from './Alert';
-export { Input } from './input';
-export { Label } from './label';
+/**
+ * UI Component Library — Reusable Atoms
+ *
+ * Centralized location for all base UI components.
+ * Replace inline styles and duplicates with these components.
+ */
 
-// Layout components
-export * from '../layout';
+export { default as Button } from './Button';
+export { default as Badge } from './Badge';
+export { default as IconButton } from './IconButton';
+export { default as Grid } from './Grid';
+export { default as Alert } from './Alert';
+export { default as Tooltip } from './Tooltip';
+export { default as Card } from '../Card';
+
+// Re-export types
+export type { ButtonProps } from './Button';
+export type { BadgeProps } from './Badge';
+export type { IconButtonProps } from './IconButton';
+export type { GridProps } from './Grid';
+export type { AlertProps } from './Alert';

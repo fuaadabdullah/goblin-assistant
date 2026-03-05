@@ -1,1 +1,39 @@
-{"compilerOptions": {"target": "ES2022", "lib": ["ES2022", "DOM", "DOM.Iterable", "webworker"], "allowJs": true, "forceConsistentCasingInFileNames": true, "skipLibCheck": true, "types": ["node"], "strict": true, "noImplicitAny": true, "noEmit": true, "esModuleInterop": true, "module": "esnext", "moduleResolution": "bundler", "resolveJsonModule": true, "isolatedModules": true, "jsx": "preserve", "incremental": true, "ignoreDeprecations": "5.0", "plugins": [{"name": "next"}], "baseUrl": ".", "paths": {"@/*": ["./src/*"], "lib/*": ["./lib/*"]}}, "include": ["**/*.ts", "**/*.tsx", "next-env.d.ts", ".next/types/**/*.ts"], "exclude": ["node_modules", ".next", "vitest.config.ts"], "typeRoots": ["./node_modules/@types", "./src/types"]}
+{
+  "compilerOptions": {
+    "target": "ES2020",
+    "lib": ["ES2020", "DOM", "DOM.Iterable"],
+    "module": "ESNext",
+    "moduleResolution": "node",
+    "jsx": "preserve",
+    "allowJs": true,
+    "checkJs": false,
+    "strict": true,
+    "forceConsistentCasingInFileNames": true,
+    "esModuleInterop": true,
+    "skipLibCheck": true,
+    "resolveJsonModule": true,
+    "baseUrl": ".",
+    "paths": {
+      "@/*": ["src/*"]
+    },
+    "preserveSymlinks": true,
+    "noEmit": true,
+    "incremental": true,
+    "isolatedModules": true
+  },
+  "include": [
+    "next-env.d.ts",
+    "src"
+  ],
+  "exclude": [
+    "src/**/__tests__/**",
+    "src/__tests__/**",
+    "src/test/**",
+    "src/**/*.stories.tsx",
+    "src/**/*.stories.ts",
+    "src/**/*.test.ts",
+    "src/**/*.test.tsx",
+    "src/**/*.spec.ts",
+    "src/**/*.spec.tsx"
+  ]
+}

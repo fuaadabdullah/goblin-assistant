@@ -7,7 +7,7 @@ export const databaseService = {
     model: string,
     tokens: number,
     cost: number,
-    latency: number
+    _latency: number
   ) => {
     console.log('DatabaseService.logUsage called with:', { userId, provider, model, tokens, cost });
     // Mock implementation

@@ -1,81 +1,43 @@
-import React from 'react';
-import { Card, CardHeader, CardTitle, CardContent, Badge } from '../../components/ui';
-import { DollarSign, TrendingUp, TrendingDown } from 'lucide-react';
-import { formatCurrency } from '../../lib/utils';
-
-interface CostOverviewBannerProps {
+interface Props {
   totalCost: number;
   todayCost: number;
   thisMonthCost: number;
   byProvider: Record<string, number>;
 }
 
-export function CostOverviewBanner({ totalCost, todayCost, thisMonthCost, byProvider }: CostOverviewBannerProps) {
+export const CostOverviewBanner = ({ totalCost, todayCost, thisMonthCost, byProvider }: Props) => {
+  const providers = Object.entries(byProvider);
+
   return (
-    <Card className="border-green-200">
-      <CardHeader>
-        <div className="flex items-center justify-between">
-          <div className="flex items-center space-x-3">
-            <div className="p-2 bg-green-100 rounded-full">
-              <DollarSign className="h-6 w-6 text-green-600" />
-            </div>
-            <div>
-              <CardTitle className="text-green-900">Cost Overview</CardTitle>
-              <p className="text-sm text-green-600">Real-time spending insights</p>
-            </div>
-          </div>
-          <div className="flex space-x-2">
-            <Badge variant="default">Today: {formatCurrency(todayCost)}</Badge>
-            <Badge variant="secondary">This Month: {formatCurrency(thisMonthCost)}</Badge>
-          </div>
+    <div className="bg-surface rounded-xl border border-border p-6">
+      <h2 className="text-lg font-semibold text-text">Usage Overview</h2>
+      <p className="text-sm text-muted mb-4">
+        For administrators: estimated usage costs across the system.
+      </p>
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <div>
+          <div className="text-sm text-muted">Total cost</div>
+          <div className="text-xl font-semibold">${totalCost.toFixed(2)}</div>
         </div>
-      </CardHeader>
-      <CardContent>
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-          <div className="bg-green-50 rounded-lg p-4">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm text-green-600">Total Cost</p>
-                <p className="text-2xl font-bold text-green-900">{formatCurrency(totalCost)}</p>
-              </div>
-              <TrendingUp className="h-8 w-8 text-green-500" />
-            </div>
-          </div>
-          
-          <div className="bg-blue-50 rounded-lg p-4">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm text-blue-600">Today's Cost</p>
-                <p className="text-2xl font-bold text-blue-900">{formatCurrency(todayCost)}</p>
-              </div>
-              <TrendingDown className="h-8 w-8 text-blue-500" />
-            </div>
-          </div>
-          
-          <div className="bg-purple-50 rounded-lg p-4">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm text-purple-600">This Month</p>
-                <p className="text-2xl font-bold text-purple-900">{formatCurrency(thisMonthCost)}</p>
-              </div>
-              <TrendingUp className="h-8 w-8 text-purple-500" />
-            </div>
-          </div>
+        <div>
+          <div className="text-sm text-muted">Today</div>
+          <div className="text-xl font-semibold">${todayCost.toFixed(2)}</div>
         </div>
-        
-        {Object.keys(byProvider).length > 0 && (
-          <div className="mt-4 pt-4 border-t">
-            <h4 className="text-sm font-medium text-gray-700 mb-2">By Provider</h4>
-            <div className="flex flex-wrap gap-2">
-              {Object.entries(byProvider).map(([provider, cost]) => (
-                <Badge key={provider} variant="outline" className="text-sm">
-                  {provider}: {formatCurrency(cost)}
-                </Badge>
-              ))}
-            </div>
-          </div>
-        )}
-      </CardContent>
-    </Card>
+        <div>
+          <div className="text-sm text-muted">This month</div>
+          <div className="text-xl font-semibold">${thisMonthCost.toFixed(2)}</div>
+        </div>
+      </div>
+
+      {providers.length > 0 && (
+        <div className="mt-4 text-sm text-muted">
+          {providers.map(([provider, value]) => (
+            <span key={provider} className="mr-3">
+              {provider}: ${value.toFixed(2)}
+            </span>
+          ))}
+        </div>
+      )}
+    </div>
   );
-}
+};

@@ -6,6 +6,11 @@
 .env.staging
 .env.vercel*
 
+# Backups
+*.bak/
+src.bak/
+app.bak/
+
 # Dependencies
 node_modules/
 

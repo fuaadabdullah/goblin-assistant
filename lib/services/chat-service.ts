@@ -36,33 +36,54 @@ export const chatService = {
   },
 
   getConversationHistory: async (conversationId: string) => {
-    console.log('ChatService.getConversationHistory called with:', conversationId);
-    // Mock implementation
-    return {
-      success: true,
-      messages: [
-        {
-          id: '1',
-          content: 'Hello! How can I help you?',
-          role: 'assistant',
-          timestamp: new Date(Date.now() - 60000).toISOString(),
-        },
-        {
-          id: '2',
-          content: 'I need help with something',
-          role: 'user',
-          timestamp: new Date(Date.now() - 30000).toISOString(),
-        },
-      ],
-    };
+    try {
+      const response = await apiClient.get(`/chat/history/${encodeURIComponent(conversationId)}`);
+
+      if (response.success && response.data) {
+        const data = response.data as { messages: Array<{ id: string; content: string; role: string; timestamp: string }> };
+        return {
+          success: true,
+          messages: data.messages || [],
+        };
+      }
+
+      return {
+        success: false as const,
+        messages: [],
+        error: response.error?.message || 'Failed to load conversation history',
+      };
+    } catch (error) {
+      console.error('ChatService.getConversationHistory error:', error);
+      return {
+        success: false as const,
+        messages: [],
+        error: error instanceof Error ? error.message : 'Unknown error',
+      };
+    }
   },
 
   createNewConversation: async () => {
-    console.log('ChatService.createNewConversation called');
-    // Mock implementation
-    return {
-      success: true,
-      conversationId: `conv-${Math.random().toString(36).substring(2, 9)}`,
-    };
+    try {
+      const response = await apiClient.post('/chat/new');
+
+      if (response.success && response.data) {
+        const data = response.data as { conversationId: string };
+        return {
+          success: true,
+          conversationId: data.conversationId,
+        };
+      }
+
+      return {
+        success: false as const,
+        error: response.error?.message || 'Failed to create conversation',
+      };
+    } catch (error) {
+      console.error('ChatService.createNewConversation error:', error);
+      return {
+        success: false as const,
+        error: error instanceof Error ? error.message : 'Unknown error',
+      };
+    }
   },
 };

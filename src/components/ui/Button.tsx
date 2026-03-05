@@ -1,60 +1,63 @@
-import * as React from 'react';
-import * as Dialog from '@radix-ui/react-dialog';
-import * as Tooltip from '@radix-ui/react-tooltip';
-import * as Label from '@radix-ui/react-label';
-import * as Select from '@radix-ui/react-select';
-import { clsx } from 'clsx';
-import { cva, type VariantProps } from 'class-variance-authority';
+import type { ButtonHTMLAttributes, ReactNode } from 'react';
 
-const buttonVariants = cva(
-  'inline-flex items-center justify-center rounded-md text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:opacity-50 disabled:pointer-events-none ring-offset-background',
-  {
-    variants: {
-      variant: {
-        default: 'bg-primary text-primary-foreground hover:bg-primary/90',
-        primary: 'bg-primary text-primary-foreground hover:bg-primary/90',
-        destructive: 'bg-destructive text-destructive-foreground hover:bg-destructive/90',
-        outline: 'border border-input bg-background hover:bg-accent hover:text-accent-foreground',
-        secondary: 'bg-secondary text-secondary-foreground hover:bg-secondary/80',
-        ghost: 'hover:bg-accent hover:text-accent-foreground',
-        link: 'underline-offset-4 hover:underline text-primary',
-        danger: 'bg-red-600 text-white hover:bg-red-700',
-      },
-      size: {
-        default: 'h-10 py-2 px-4',
-        sm: 'h-9 px-3 rounded-md',
-        lg: 'h-11 px-8 rounded-md',
-        icon: 'h-10 w-10',
-        md: 'h-10 px-4 rounded-md',
-      },
-    },
-    defaultVariants: {
-      variant: 'default',
-      size: 'default',
-    },
-  }
-);
+type ButtonVariant = 'primary' | 'secondary' | 'danger' | 'success' | 'ghost';
+type ButtonSize = 'sm' | 'md' | 'lg';
 
-export interface ButtonProps
-  extends React.ButtonHTMLAttributes<HTMLButtonElement>,
-    VariantProps<typeof buttonVariants> {
-  asChild?: never;
+export interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
+  variant?: ButtonVariant;
+  size?: ButtonSize;
+  fullWidth?: boolean;
+  icon?: ReactNode;
+  loading?: boolean;
+  children: ReactNode;
 }
 
-const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
-  ({ className, variant, size, ...props }, ref) => {
-    return (
-      <button
-        className={clsx(buttonVariants({ variant, size, className }))}
-        ref={ref}
-        {...props}
-      />
-    );
-  }
-);
-Button.displayName = 'Button';
+const variantStyles: Record<ButtonVariant, string> = {
+  primary: 'bg-primary text-text-inverse hover:bg-primary-hover shadow-glow-primary',
+  secondary: 'bg-surface-hover text-text border border-border hover:bg-surface-active',
+  danger: 'bg-danger text-text-inverse hover:brightness-110 shadow-[0_12px_24px_rgba(226,85,79,0.25)]',
+  success: 'bg-success text-text-inverse hover:brightness-110',
+  ghost: 'bg-transparent text-text border border-border hover:bg-surface-hover',
+};
 
-// Radix Components
-export { Dialog, Label, Select };
+const sizeStyles: Record<ButtonSize, string> = {
+  sm: 'px-3 py-1.5 text-sm',
+  md: 'px-4 py-2 text-sm',
+  lg: 'px-6 py-3 text-base',
+};
 
-export { Button };
+/**
+ * Button — unified button component with variants and sizes.
+ * Replaces duplicate button styles across the app.
+ */
+export default function Button({
+  variant = 'primary',
+  size = 'md',
+  fullWidth = false,
+  icon,
+  loading = false,
+  disabled,
+  type = 'button',
+  className = '',
+  children,
+  ...props
+}: ButtonProps) {
+  const baseStyles =
+    'rounded-xl font-semibold transition-all duration-200 focus-visible:outline focus-visible:outline-2 focus-visible:outline-primary disabled:opacity-50 disabled:cursor-not-allowed active:translate-y-[1px]';
+  const widthStyles = fullWidth ? 'w-full' : '';
+  const flexStyles = icon ? 'flex items-center justify-center gap-2' : '';
+
+  return (
+    <button
+      className={`${baseStyles} ${variantStyles[variant]} ${sizeStyles[size]} ${widthStyles} ${flexStyles} ${className}`}
+      disabled={disabled || loading}
+      type={type}
+      aria-busy={loading || undefined}
+      {...props}
+    >
+      {loading && <span className="animate-spin" aria-hidden="true">⟳</span>}
+      {!loading && icon && <span aria-hidden="true">{icon}</span>}
+      {children}
+    </button>
+  );
+}

@@ -1,32 +1,48 @@
-import * as React from 'react';
-import { cva, type VariantProps } from 'class-variance-authority';
-import { clsx } from 'clsx';
+import type { ReactNode } from 'react';
 
-const badgeVariants = cva(
-  'inline-flex items-center rounded-full border px-2.5 py-0.5 text-xs font-semibold transition-colors focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2',
-  {
-    variants: {
-      variant: {
-        default: 'border-transparent bg-primary text-primary-foreground hover:bg-primary/80',
-        secondary: 'border-transparent bg-secondary text-secondary-foreground hover:bg-secondary/80',
-        destructive: 'border-transparent bg-destructive text-destructive-foreground hover:bg-destructive/80',
-        outline: 'text-foreground',
-      },
-    },
-    defaultVariants: {
-      variant: 'default',
-    },
-  }
-);
+type BadgeVariant = 'success' | 'warning' | 'danger' | 'neutral' | 'primary';
+type BadgeSize = 'sm' | 'md';
 
-export interface BadgeProps
-  extends React.HTMLAttributes<HTMLDivElement>,
-    VariantProps<typeof badgeVariants> {}
-
-function Badge({ className, variant, ...props }: BadgeProps) {
-  return (
-    <div className={clsx(badgeVariants({ variant, className }))} {...props} />
-  );
+export interface BadgeProps {
+  variant?: BadgeVariant;
+  size?: BadgeSize;
+  icon?: ReactNode;
+  children: ReactNode;
+  className?: string;
 }
 
-export { Badge };
+const variantStyles: Record<BadgeVariant, string> = {
+  success: 'bg-success/20 text-success',
+  warning: 'bg-warning/20 text-warning',
+  danger: 'bg-danger/20 text-danger',
+  neutral: 'bg-surface-hover text-muted',
+  primary: 'bg-primary/20 text-primary',
+};
+
+const sizeStyles: Record<BadgeSize, string> = {
+  sm: 'text-xs px-2 py-0.5',
+  md: 'text-sm px-3 py-1',
+};
+
+/**
+ * Badge — unified status chip/badge component.
+ * Replaces inline badge styles across StatusCard, health indicators, etc.
+ */
+export default function Badge({
+  variant = 'neutral',
+  size = 'sm',
+  icon,
+  className = '',
+  children,
+}: BadgeProps) {
+  return (
+    <span
+      className={`inline-flex items-center gap-1 rounded-full font-medium ${variantStyles[variant]} ${sizeStyles[size]} ${className}`}
+      role="status"
+      aria-live="polite"
+    >
+      {icon && <span>{icon}</span>}
+      <span>{children}</span>
+    </span>
+  );
+}

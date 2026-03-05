@@ -116,7 +116,7 @@ test.describe('Privacy and Data Protection', () => {
   test('should clear sensitive data from localStorage on logout', async ({ page, context }) => {
     await context.addInitScript(() => {
       window.localStorage.setItem('api_key', 'secret123');
-      window.localStorage.setItem('auth_token', 'token456');
+      window.localStorage.setItem('auth-token', 'token456');
     });
     
     await page.goto('/dashboard');
@@ -131,9 +131,9 @@ test.describe('Privacy and Data Protection', () => {
       // After logout, sensitive data should be cleared
       await page.waitForLoadState('networkidle');
       
-      const authToken = await page.evaluate(() => localStorage.getItem('auth_token'));
+      const authToken = await page.evaluate(() => localStorage.getItem('auth-token'));
       
-      // At least auth_token should be cleared
+      // At least auth-token should be cleared
       expect(authToken).toBeNull();
     }
   });

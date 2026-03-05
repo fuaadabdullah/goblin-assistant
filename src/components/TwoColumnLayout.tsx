@@ -1,21 +1,50 @@
-// Stub implementation for TwoColumnLayout
-
-import React from 'react';
+import { ReactNode } from 'react';
 
 interface TwoColumnLayoutProps {
-  children: React.ReactNode;
-  sidebar?: React.ReactNode;
+  sidebar: ReactNode;
+  children: ReactNode;
+  sidebarWidth?: 'narrow' | 'normal' | 'wide';
+  mainId?: string;
+  mainLabel?: string;
 }
 
-export default function TwoColumnLayout({ children, sidebar }: TwoColumnLayoutProps) {
+/**
+ * Two-column layout: left sidebar (navigation + controls), right main content
+ */
+const TwoColumnLayout = ({
+  sidebar,
+  children,
+  sidebarWidth = 'normal',
+  mainId = 'main-content',
+  mainLabel,
+}: TwoColumnLayoutProps) => {
+  const widthClasses = {
+    narrow: 'w-48',
+    normal: 'w-64',
+    wide: 'w-80',
+  };
+
   return (
-    <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
-      <div className="lg:col-span-1">
-        {sidebar}
-      </div>
-      <div className="lg:col-span-3">
-        {children}
-      </div>
+    <div className="flex h-[calc(100vh-4rem)]">
+      {' '}
+      {/* Subtract header height */}
+      {/* Left Sidebar */}
+      <aside
+        className={`${widthClasses[sidebarWidth]} bg-surface border-r border-border overflow-y-auto flex-shrink-0`}
+      >
+        <div className="p-4">{sidebar}</div>
+      </aside>
+      {/* Main Content */}
+      <main
+        className="flex-1 overflow-y-auto bg-bg"
+        id={mainId}
+        tabIndex={-1}
+        aria-label={mainLabel}
+      >
+        <div className="p-6">{children}</div>
+      </main>
     </div>
   );
-}
+};
+
+export default TwoColumnLayout;

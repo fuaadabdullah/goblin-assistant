@@ -1,7 +1,7 @@
 'use client';
 
 export const authService = {
-  signIn: async (email: string, password: string) => {
+  signIn: async (email: string, _password: string) => {
     console.log('AuthService.signIn called with:', email);
     // Mock implementation
     return {

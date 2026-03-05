@@ -8,7 +8,7 @@ test.describe('Chat Interface', () => {
         'user',
         JSON.stringify({ id: 'test_user', email: 'test@example.com' })
       );
-      window.localStorage.setItem('auth_token', 'mock_token');
+      window.localStorage.setItem('auth-token', 'mock_token');
     });
   });
 
