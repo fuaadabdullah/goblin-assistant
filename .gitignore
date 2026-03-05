@@ -1,3 +1,6 @@
+# macOS resource forks
+._*
+
 # Environment
 .vercel
 .env*.local
