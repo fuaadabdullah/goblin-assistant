@@ -1,15 +1,28 @@
 /**
  * Enhanced error tracking and logging utilities for Goblin Assistant
- * Integrates with Datadog RUM, Browser Logs, and Sentry for comprehensive monitoring
+ * Integrates with Sentry for comprehensive monitoring
  */
 
-import {
-  logError,
-  logEvent,
-  trackLLMCall,
-  trackRoutingDecision,
-} from './datadog-rum';
 import { logErrorToService } from './monitoring';
+
+// Lightweight logging helpers (replace former Datadog calls)
+const logEvent = (message: string, context?: Record<string, unknown>) => {
+  if (process.env.NODE_ENV === 'development') {
+    console.info(`[event] ${message}`, context);
+  }
+};
+
+const logError = (error: Error, context?: Record<string, unknown>) => {
+  logErrorToService(error, context);
+};
+
+const trackLLMCall = (provider: string, model: string, tokens?: number, cost?: number) => {
+  logEvent('llm_call', { provider, model, tokens, cost });
+};
+
+const trackRoutingDecision = (fromProvider: string, toProvider: string, reason: string) => {
+  logEvent('routing_decision', { from_provider: fromProvider, to_provider: toProvider, reason });
+};
 
 // Custom error types for better categorization
 export class APIError extends Error {

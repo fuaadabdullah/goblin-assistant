@@ -3,7 +3,6 @@ import { useEffect } from 'react';
 import { useRouter } from 'next/router';
 import Navigation from '../components/Navigation';
 import Seo from '../components/Seo';
-import { initDatadog } from '../utils/datadog-rum';
 import { useAuthStore } from '../store/authStore';
 
 interface AdminLayoutProps {
@@ -22,13 +21,6 @@ export default function AdminLayout({
   const router = useRouter();
   const { isAuthenticated, isHydrated, hasRole } = useAuthStore();
   const contentClassName = fullWidth ? 'px-6' : 'max-w-7xl mx-auto p-6';
-
-  useEffect(() => {
-    // Initialize DataDog RUM and Logs for admin pages only
-    initDatadog().catch((error) => {
-      console.warn('Failed to initialize DataDog on admin page:', error);
-    });
-  }, []);
 
   // Auth guard: redirect non-admin users before rendering anything
   useEffect(() => {

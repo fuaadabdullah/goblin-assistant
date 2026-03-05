@@ -28,7 +28,7 @@ export const ErrorTestingPanel: React.FC = () => {
   return (
     <Card className="w-full max-w-4xl mx-auto">
       <CardHeader>
-        <CardTitle>Datadog Error Testing Panel</CardTitle>
+        <CardTitle>Error Testing Panel</CardTitle>
         <CardDescription>
           Generate various types of errors to test RUM error tracking. All errors will be
           captured and sent to your configured monitoring dashboard.

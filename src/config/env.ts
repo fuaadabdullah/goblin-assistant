@@ -41,8 +41,7 @@ interface EnvConfig {
 
   // Monitoring
   sentryDsn: string;
-  posthogApiKey: string;
-  posthogHost: string;
+  gaMeasurementId: string;
 
   // Build Info
   mode: 'development' | 'production' | 'test';
@@ -111,8 +110,7 @@ export const env: EnvConfig = {
   },
 
   sentryDsn: getOptionalEnv('NEXT_PUBLIC_SENTRY_DSN'),
-  posthogApiKey: getOptionalEnv('NEXT_PUBLIC_POSTHOG_API_KEY'),
-  posthogHost: getOptionalEnv('NEXT_PUBLIC_POSTHOG_HOST'),
+  gaMeasurementId: getOptionalEnv('NEXT_PUBLIC_GA_MEASUREMENT_ID'),
 
   mode: (process.env.NODE_ENV as EnvConfig['mode']) || 'development',
   isDevelopment: process.env.NODE_ENV === 'development',

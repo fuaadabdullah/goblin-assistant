@@ -10,10 +10,10 @@ const ErrorTestingPage: React.FC = () => {
       <div className="container mx-auto py-8">
         <div className="mb-8">
           <h1 className="text-3xl font-bold text-text mb-2">
-            Error Testing & Datadog Validation
+            Error Testing & Monitoring Validation
           </h1>
           <p className="text-muted">
-            Test Datadog RUM error tracking by generating various types of errors. This page is for
+            Test Sentry error tracking by generating various types of errors. This page is for
             development and testing purposes only.
           </p>
         </div>
