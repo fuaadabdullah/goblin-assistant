@@ -1,9 +1,4 @@
 {
-  "version": 2,
-  "installCommand": "npm install",
-  "buildCommand": "npm run build",
-  "outputDirectory": ".next",
-  "framework": "nextjs",
   "env": {
     "BACKEND_URL": "https://goblin-assistant-backend.onrender.com",
     "NEXT_PUBLIC_API_URL": "https://goblin-assistant-backend.onrender.com",
