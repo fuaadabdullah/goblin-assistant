@@ -1,0 +1,9 @@
+## Deprecated worker fly config
+## NOTE: The goblin-assistant worker app was removed from Fly.io to keep
+## only the main `goblin-assistant` app active on Fly. This file is retained
+## for reference only. Do NOT use this file to launch a separate Fly app.
+
+# If you need background workers in the future, prefer using a separate
+# infrastructure (e.g., a managed worker queue or a dedicated Fly app
+# created intentionally via `fly launch`) and store its config outside the
+# primary repo directory to avoid accidental creation.

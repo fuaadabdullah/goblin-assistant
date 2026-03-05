@@ -1,0 +1,37 @@
+app = "goblin-backend"
+primary_region = "iad"
+
+[env]
+LOG_LEVEL = "info"
+PORT = "8001"
+ENV = "production"
+OLLAMA_GCP_URL = "http://34.60.255.199:11434"
+LLAMACPP_GCP_URL = "http://34.132.226.143:8000"
+
+[build]
+  dockerfile = "Dockerfile"
+
+[processes]
+app = "uvicorn api.main:app --host 0.0.0.0 --port 8001"
+
+[[services]]
+internal_port = 8001
+processes = ["app"]
+protocol = "tcp"
+
+[[services.ports]]
+port = 80
+handlers = ["http"]
+[[services.ports]]
+port = 443
+handlers = ["tls", "http"]
+
+[[services.http_checks]]
+path = "/health"
+interval = "15s"
+timeout = "5s"
+grace_period = "5s"
+
+[[mounts]]
+source = "data"
+destination = "/app/data"

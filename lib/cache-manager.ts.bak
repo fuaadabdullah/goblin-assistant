@@ -1,0 +1,280 @@
+/**
+ * Production Caching Layer for Goblin Assistant (Node.js)
+ * Provides Redis-based caching with TTL, serialization, and error handling
+ */
+
+import { Redis } from 'ioredis';
+
+// Simple logger fallback
+const logger = {
+  info: (msg: string, ...args: unknown[]) => console.log(`[CACHE INFO] ${msg}`, ...args),
+  warn: (msg: string, ...args: unknown[]) => console.warn(`[CACHE WARN] ${msg}`, ...args),
+  error: (msg: string, ...args: unknown[]) => console.error(`[CACHE ERROR] ${msg}`, ...args),
+};
+
+export interface CacheConfig {
+  url?: string;
+  ttl?: number;
+  keyPrefix?: string;
+}
+
+export class CacheManager {
+  private redis: Redis | null = null;
+  private config: Required<CacheConfig>;
+
+  constructor(config: CacheConfig = {}) {
+    this.config = {
+      url: config.url || process.env.REDIS_URL || 'redis://localhost:6379/0',
+      ttl: config.ttl || 300, // 5 minutes default
+      keyPrefix: config.keyPrefix || 'goblin:',
+    };
+  }
+
+  public async getRedis(): Promise<Redis> {
+    return this.getRedisInternal();
+  }
+
+  private async getRedisInternal(): Promise<Redis> {
+    if (!this.redis) {
+      try {
+        this.redis = new Redis(this.config.url, {
+          retryDelayOnFailover: 100,
+          enableReadyCheck: false,
+          maxRetriesPerRequest: 3,
+          lazyConnect: true,
+        });
+
+        // Test connection
+        await this.redis.ping();
+        logger?.info('Redis cache connection established');
+      } catch (error) {
+        logger?.error('Failed to connect to Redis:', error);
+        this.redis = null;
+        throw error;
+      }
+    }
+    return this.redis;
+  }
+
+  private getKey(key: string): string {
+    return `${this.config.keyPrefix}${key}`;
+  }
+
+  async get<T = unknown>(key: string): Promise<T | null> {
+    try {
+      const redis = await this.getRedisInternal();
+      const value = await redis.get(this.getKey(key));
+      return value ? JSON.parse(value) : null;
+    } catch (error) {
+      logger?.warn(`Cache get failed for key ${key}:`, error);
+      return null;
+    }
+  }
+
+  async set(key: string, value: unknown, ttl?: number): Promise<boolean> {
+    try {
+      const redis = await this.getRedisInternal();
+      const serialized = JSON.stringify(value);
+      const expiry = ttl || this.config.ttl;
+      await redis.setex(this.getKey(key), expiry, serialized);
+      return true;
+    } catch (error) {
+      logger?.warn(`Cache set failed for key ${key}:`, error);
+      return false;
+    }
+  }
+
+  async delete(key: string): Promise<boolean> {
+    try {
+      const redis = await this.getRedisInternal();
+      await redis.del(this.getKey(key));
+      return true;
+    } catch (error) {
+      logger?.warn(`Cache delete failed for key ${key}:`, error);
+      return false;
+    }
+  }
+
+  async exists(key: string): Promise<boolean> {
+    try {
+      const redis = await this.getRedisInternal();
+      const result = await redis.exists(this.getKey(key));
+      return result === 1;
+    } catch (error) {
+      logger?.warn(`Cache exists check failed for key ${key}:`, error);
+      return false;
+    }
+  }
+
+  async clearPattern(pattern: string): Promise<number> {
+    try {
+      const redis = await this.getRedisInternal();
+      const keys = await redis.keys(this.getKey(pattern));
+      if (keys.length > 0) {
+        await redis.del(...keys);
+      }
+      return keys.length;
+    } catch (error) {
+      logger?.warn(`Cache clear pattern failed for ${pattern}:`, error);
+      return 0;
+    }
+  }
+
+  async getTTL(key: string): Promise<number> {
+    try {
+      const redis = await this.getRedisInternal();
+      return await redis.ttl(this.getKey(key));
+    } catch (error) {
+      logger?.warn(`Cache TTL check failed for key ${key}:`, error);
+      return -1;
+    }
+  }
+
+  async increment(key: string, amount: number = 1): Promise<number | null> {
+    try {
+      const redis = await this.getRedisInternal();
+      return await redis.incrby(this.getKey(key), amount);
+    } catch (error) {
+      logger?.warn(`Cache increment failed for key ${key}:`, error);
+      return null;
+    }
+  }
+
+  async close(): Promise<void> {
+    if (this.redis) {
+      await this.redis.quit();
+      this.redis = null;
+    }
+  }
+}
+
+// Cache key patterns
+export class CacheKeys {
+  static conversation(userId: string, sessionId: string): string {
+    return `conv:${userId}:${sessionId}`;
+  }
+
+  static userProfile(userId: string): string {
+    return `user:${userId}:profile`;
+  }
+
+  static llmResponse(promptHash: string, model: string): string {
+    return `llm:${model}:${promptHash}`;
+  }
+
+  static apiRateLimit(identifier: string): string {
+    return `ratelimit:${identifier}`;
+  }
+
+  static featureFlag(flagName: string): string {
+    return `feature:${flagName}`;
+  }
+
+  static sessionData(sessionId: string): string {
+    return `session:${sessionId}`;
+  }
+}
+
+// Global cache instance
+let cacheInstance: CacheManager | null = null;
+
+export function getCacheManager(): CacheManager {
+  if (!cacheInstance) {
+    cacheInstance = new CacheManager();
+  }
+  return cacheInstance;
+}
+
+// Convenience functions
+export async function cacheGet<T = unknown>(key: string): Promise<T | null> {
+  return getCacheManager().get<T>(key);
+}
+
+export async function cacheSet(key: string, value: unknown, ttl?: number): Promise<boolean> {
+  return getCacheManager().set(key, value, ttl);
+}
+
+export async function cacheDelete(key: string): Promise<boolean> {
+  return getCacheManager().delete(key);
+}
+
+// Cache-aside pattern utility
+export async function getWithCache<T>(
+  key: string,
+  fetchFunc: () => Promise<T>,
+  ttl?: number
+): Promise<T | null> {
+  // Try cache first
+  const cached = await cacheGet<T>(key);
+  if (cached !== null) {
+    return cached;
+  }
+
+  // Cache miss - fetch from source
+  try {
+    const data = await fetchFunc();
+    if (data !== null && data !== undefined) {
+      await cacheSet(key, data, ttl);
+    }
+    return data;
+  } catch (error) {
+    logger?.error(`Failed to fetch data for cache key ${key}:`, error);
+    return null;
+  }
+}
+
+// Rate limiting helper
+export class RateLimiter {
+  private cache: CacheManager;
+
+  constructor(cache?: CacheManager) {
+    this.cache = cache || getCacheManager();
+  }
+
+  async checkLimit(
+    identifier: string,
+    limit: number,
+    windowSeconds: number
+  ): Promise<{ allowed: boolean; remaining: number; resetTime: number }> {
+    const key = CacheKeys.apiRateLimit(identifier);
+    const current = (await this.cache.get<number>(key)) || 0;
+    const now = Math.floor(Date.now() / 1000);
+    const resetTime = now + windowSeconds;
+
+    if (current >= limit) {
+      return {
+        allowed: false,
+        remaining: 0,
+        resetTime,
+      };
+    }
+
+    // Increment counter
+    const newCount = await this.cache.increment(key, 1);
+    if (newCount === 1) {
+      // First request in window, set expiry
+      await this.cache.getRedis().then(redis =>
+        redis.expire(key, windowSeconds)
+      );
+    }
+
+    return {
+      allowed: true,
+      remaining: Math.max(0, limit - (newCount || 0)),
+      resetTime,
+    };
+  }
+}
+
+// Graceful shutdown
+process.on('SIGTERM', async () => {
+  if (cacheInstance) {
+    await cacheInstance.close();
+  }
+});
+
+process.on('SIGINT', async () => {
+  if (cacheInstance) {
+    await cacheInstance.close();
+  }
+});

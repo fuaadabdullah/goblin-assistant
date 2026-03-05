@@ -1,0 +1,44 @@
+# Dockerfile for sandbox execution environment
+# This image provides a secure, minimal runtime for executing untrusted user code
+
+# Use a minimal base image
+FROM python:3.11-slim
+
+# Install only essential packages
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    tini \
+    ca-certificates \
+    curl \
+    && rm -rf /var/lib/apt/lists/*
+
+# Install Node.js for JavaScript execution (minimal version)
+RUN curl -fsSL https://deb.nodesource.com/setup_18.x | bash - && \
+    apt-get install -y --no-install-recommends nodejs && \
+    rm -rf /var/lib/apt/lists/*
+
+# Install Python dependencies for RQ worker
+RUN pip install --no-cache-dir rq docker
+
+# Create non-root user for code execution
+RUN groupadd -r runner && useradd --create-home --home-dir /home/runner --shell /bin/bash -r -g runner runner
+
+# Set working directory
+WORKDIR /home/runner
+
+# Copy runtime scripts
+COPY --chown=runner:runner sandbox_runner.py /home/runner/
+COPY --chown=runner:runner sandbox_worker.py /home/runner/
+COPY --chown=runner:runner start_worker.py /home/runner/
+
+# Switch to non-root user
+USER runner
+
+# Health check (optional)
+HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
+    CMD python -c "print('healthy')" || exit 1
+
+# Use tini as init system for proper signal handling
+ENTRYPOINT ["/usr/bin/tini", "--"]
+
+# Default command for sandbox execution
+CMD ["python", "/home/runner/sandbox_runner.py"]

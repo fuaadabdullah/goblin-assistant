@@ -1,0 +1,99 @@
+version: '3.8'
+
+services:
+  # Ollama Service
+  ollama:
+    image: ollama/ollama:latest
+    container_name: goblin-ollama
+    ports:
+      - "11434:11434"
+    volumes:
+      - ollama_data:/root/.ollama
+    environment:
+      - OLLAMA_HOST=0.0.0.0
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:11434/api/tags"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+    deploy:
+      resources:
+        limits:
+          cpus: '4'
+          memory: 8G
+        reservations:
+          cpus: '2'
+          memory: 4G
+
+  # LlamaCPP Service
+  llamacpp:
+    image: ghcr.io/ggerganov/llama.cpp:server
+    container_name: goblin-llamacpp
+    ports:
+      - "8000:8000"
+    volumes:
+      - llamacpp_models:/models
+    environment:
+      - MODEL=/models/qwen2.5-7b-instruct-q4_k_m.gguf
+      - HOST=0.0.0.0
+      - PORT=8000
+      - THREADS=6
+      - CTX_SIZE=4096
+    command: >
+      --server
+      --host 0.0.0.0
+      --port 8000
+      -m /models/qwen2.5-7b-instruct-q4_k_m.gguf
+      -c 4096
+      --threads 6
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+    deploy:
+      resources:
+        limits:
+          cpus: '8'
+          memory: 16G
+        reservations:
+          cpus: '4'
+          memory: 8G
+
+  # Model downloader init container
+  model-downloader:
+    image: alpine:latest
+    container_name: goblin-model-downloader
+    volumes:
+      - ollama_data:/ollama_data
+      - llamacpp_models:/llamacpp_models
+    entrypoint: /bin/sh
+    command: >
+      -c "
+      echo 'Downloading models...';
+      apk add --no-cache curl;
+      
+      # Download LlamaCPP model if not exists
+      if [ ! -f /llamacpp_models/qwen2.5-7b-instruct-q4_k_m.gguf ]; then
+        echo 'Downloading Qwen 2.5 7B model...';
+        curl -L -o /llamacpp_models/qwen2.5-7b-instruct-q4_k_m.gguf \
+          'https://huggingface.co/Qwen/Qwen2.5-7B-Instruct-GGUF/resolve/main/qwen2.5-7b-instruct-q4_k_m.gguf';
+        echo 'Model downloaded successfully!';
+      else
+        echo 'Model already exists, skipping download';
+      fi;
+      
+      echo 'Model setup complete!';
+      "
+
+volumes:
+  ollama_data:
+    driver: local
+  llamacpp_models:
+    driver: local
+
+networks:
+  default:
+    name: goblin-llm-network

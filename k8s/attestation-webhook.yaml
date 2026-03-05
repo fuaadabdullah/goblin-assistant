@@ -1,0 +1,256 @@
+---
+# Attestation Validation Webhook Service
+apiVersion: v1
+kind: Service
+metadata:
+  name: attestation-webhook
+  namespace: sandbox
+  labels:
+    app: attestation-webhook
+    component: admission-controller
+spec:
+  selector:
+    app: attestation-webhook
+  ports:
+  - port: 443
+    targetPort: 8443
+    protocol: TCP
+  type: ClusterIP
+
+---
+# Attestation Webhook Deployment
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: attestation-webhook
+  namespace: sandbox
+  labels:
+    app: attestation-webhook
+    component: admission-controller
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: attestation-webhook
+  template:
+    metadata:
+      labels:
+        app: attestation-webhook
+        component: admission-controller
+    spec:
+      serviceAccountName: sandbox-webhook-sa
+
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 1000
+        runAsGroup: 1000
+        fsGroup: 1000
+        seccompProfile:
+          type: RuntimeDefault
+
+      containers:
+      - name: webhook
+        image: goblin-assistant:latest
+        imagePullPolicy: Always
+        command: ["python", "-m", "uvicorn", "api.attestation_webhook:app", "--host", "0.0.0.0", "--port", "8443", "--ssl-keyfile", "/etc/webhook/certs/tls.key", "--ssl-certfile", "/etc/webhook/certs/tls.crt"]
+
+        securityContext:
+          allowPrivilegeEscalation: false
+          readOnlyRootFilesystem: true
+          runAsNonRoot: true
+          runAsUser: 1000
+          runAsGroup: 1000
+          capabilities:
+            drop:
+            - ALL
+          seccompProfile:
+            type: RuntimeDefault
+
+        resources:
+          requests:
+            cpu: "50m"
+            memory: "64Mi"
+          limits:
+            cpu: "200m"
+            memory: "128Mi"
+
+        env:
+        - name: REDIS_URL
+          value: "redis://redis-service:6379/0"
+
+        volumeMounts:
+        - name: webhook-certs
+          mountPath: /etc/webhook/certs
+          readOnly: true
+
+        # Health check
+        livenessProbe:
+          httpGet:
+            path: /health
+            port: 8443
+            scheme: HTTPS
+          initialDelaySeconds: 30
+          periodSeconds: 10
+          timeoutSeconds: 5
+          failureThreshold: 3
+
+        readinessProbe:
+          httpGet:
+            path: /health
+            port: 8443
+            scheme: HTTPS
+          initialDelaySeconds: 5
+          periodSeconds: 5
+          timeoutSeconds: 3
+          failureThreshold: 3
+
+      volumes:
+      - name: webhook-certs
+        secret:
+          secretName: attestation-webhook-cert
+
+---
+# Validating Webhook Configuration
+apiVersion: admissionregistration.k8s.io/v1
+kind: ValidatingWebhookConfiguration
+metadata:
+  name: sandbox-attestation-webhook
+  labels:
+    app: attestation-webhook
+    component: admission-controller
+webhooks:
+- name: attestation-validator.sandbox.svc.cluster.local
+  rules:
+  - operations: ["CREATE", "UPDATE"]
+    apiGroups: [""]
+    apiVersions: ["v1"]
+    resources: ["pods"]
+    scope: "Namespaced"
+  clientConfig:
+    service:
+      name: attestation-webhook
+      namespace: sandbox
+      path: "/validate"
+      port: 443
+    caBundle: ""  # Will be populated by cert-manager
+  admissionReviewVersions: ["v1", "v1beta1"]
+  sideEffects: None
+  timeoutSeconds: 5
+  namespaceSelector:
+    matchLabels:
+      name: sandbox
+  objectSelector:
+    matchLabels:
+      app: goblin-assistant-worker
+  failurePolicy: Fail  # Reject pods if webhook fails
+
+---
+# Service Account for Webhook
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: sandbox-webhook-sa
+  namespace: sandbox
+  labels:
+    app: attestation-webhook
+    component: admission-controller
+
+---
+# Role for Webhook Service Account
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: sandbox-webhook-role
+  namespace: sandbox
+rules:
+- apiGroups: [""]
+  resources: ["events"]
+  verbs: ["create", "patch", "update"]
+
+---
+# RoleBinding for Webhook
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: sandbox-webhook-binding
+  namespace: sandbox
+subjects:
+- kind: ServiceAccount
+  name: sandbox-webhook-sa
+  namespace: sandbox
+roleRef:
+  kind: Role
+  name: sandbox-webhook-role
+  apiGroup: rbac.authorization.k8s.io
+
+---
+# Certificate for Webhook (use cert-manager in production)
+apiVersion: cert-manager.io/v1
+kind: Certificate
+metadata:
+  name: attestation-webhook-cert
+  namespace: sandbox
+  labels:
+    app: attestation-webhook
+spec:
+  secretName: attestation-webhook-cert
+  issuerRef:
+    name: sandbox-issuer
+    kind: Issuer
+  dnsNames:
+  - attestation-webhook.sandbox.svc
+  - attestation-webhook.sandbox.svc.cluster.local
+
+---
+# Self-signed Issuer for development (replace with proper CA in production)
+apiVersion: cert-manager.io/v1
+kind: Issuer
+metadata:
+  name: sandbox-issuer
+  namespace: sandbox
+spec:
+  selfSigned: {}
+
+---
+# Network Policy for Webhook
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: webhook-network-policy
+  namespace: sandbox
+spec:
+  podSelector:
+    matchLabels:
+      app: attestation-webhook
+  policyTypes:
+  - Ingress
+  - Egress
+  ingress:
+  # Allow API server webhook calls
+  - from:
+    - namespaceSelector: {}  # Allow from all namespaces (API server)
+    ports:
+    - protocol: TCP
+      port: 8443
+  # Allow metrics scraping
+  - from:
+    - namespaceSelector:
+        matchLabels:
+          name: monitoring
+    ports:
+    - protocol: TCP
+      port: 8443
+  egress:
+  # Allow DNS resolution
+  - to: []
+    ports:
+    - protocol: UDP
+      port: 53
+  # Allow Redis access for attestation checks
+  - to:
+    - podSelector:
+        matchLabels:
+          app: redis
+    ports:
+    - protocol: TCP
+      port: 6379

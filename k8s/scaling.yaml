@@ -1,0 +1,82 @@
+---
+# Horizontal Pod Autoscaler for workers based on queue depth
+apiVersion: autoscaling/v2
+kind: HorizontalPodAutoscaler
+metadata:
+  name: sandbox-worker-hpa
+  namespace: sandbox
+  labels:
+    app: goblin-assistant-worker
+    component: worker
+spec:
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: goblin-assistant-worker
+  minReplicas: 1
+  maxReplicas: 5
+  metrics:
+  - type: External
+    external:
+      metric:
+        name: sandbox_queue_depth
+        selector:
+          matchLabels:
+            service: goblin-sandbox
+      target:
+        type: AverageValue
+        averageValue: 10  # Scale up when queue depth > 10
+
+---
+# Pod Disruption Budget to ensure availability
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: sandbox-api-pdb
+  namespace: sandbox
+  labels:
+    app: goblin-assistant-api
+    component: api
+spec:
+  minAvailable: 1  # Always keep at least 1 API pod running
+  selector:
+    matchLabels:
+      app: goblin-assistant-api
+
+---
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: sandbox-worker-pdb
+  namespace: sandbox
+  labels:
+    app: goblin-assistant-worker
+    component: worker
+spec:
+  minAvailable: 1  # Always keep at least 1 worker pod running
+  selector:
+    matchLabels:
+      app: goblin-assistant-worker
+
+---
+# Prometheus ServiceMonitor for metrics collection
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: sandbox-servicemonitor
+  namespace: sandbox
+  labels:
+    app: goblin-assistant
+    release: prometheus
+spec:
+  selector:
+    matchLabels:
+      app: goblin-assistant-api
+  endpoints:
+  - port: http
+    path: /sandbox/metrics
+    interval: 30s
+    scrapeTimeout: 10s
+  namespaceSelector:
+    matchNames:
+    - sandbox

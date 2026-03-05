@@ -1,0 +1,15 @@
+{
+  "parser": "@typescript-eslint/parser",
+  "extends": ["eslint:recommended", "plugin:storybook/recommended"],
+  "env": {
+    "browser": true,
+    "es6": true
+  },
+  "globals": {
+    "RequestInit": "readonly",
+    "EventSource": "readonly",
+    "HTMLTextAreaElement": "readonly",
+    "TextDecoder": "readonly",
+    "EventTarget": "readonly"
+  }
+}

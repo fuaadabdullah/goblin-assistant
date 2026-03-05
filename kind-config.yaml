@@ -1,0 +1,37 @@
+kind: Cluster
+apiVersion: kind.x-k8s.io/v1alpha4
+name: sandbox-cluster
+nodes:
+- role: control-plane
+  # Enable necessary features for sandbox security
+  kubeadmConfigPatches:
+  - |
+    kind: InitConfiguration
+    nodeRegistration:
+      kubeletExtraArgs:
+        node-labels: "sandbox-enabled=true,runtime.gvisor=enabled,docker-runtime=available"
+  extraPortMappings:
+  - containerPort: 30001
+    hostPort: 8001
+    protocol: TCP
+  - containerPort: 30002
+    hostPort: 9000
+    protocol: TCP
+  - containerPort: 30003
+    hostPort: 9001
+    protocol: TCP
+  # Mount Docker socket for sandbox execution
+  extraMounts:
+  - hostPath: /var/run/docker.sock
+    containerPath: /var/run/docker.sock
+    # Enable privileged containers for Docker-in-Docker
+  kubeadmConfigPatchesJSON6902:
+  - group: kubelet.config.k8s.io
+    version: v1beta1
+    kind: KubeletConfiguration
+    patch: |
+      - op: add
+        path: /evictionHard
+        value:
+          memory.available: "100Mi"
+          nodefs.available: "1Gi"

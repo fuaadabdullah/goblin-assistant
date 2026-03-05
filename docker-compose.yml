@@ -1,0 +1,229 @@
+version: '3.8'
+
+services:
+  # Redis for Celery backend and broker
+  redis:
+    image: redis:7-alpine
+    ports:
+      - '6379:6379'
+    volumes:
+      - redis_data:/data
+    command: redis-server --appendonly yes
+    healthcheck:
+      test: ['CMD', 'redis-cli', 'ping']
+      interval: 10s
+      timeout: 3s
+      retries: 5
+    restart: unless-stopped
+
+  # MinIO S3-compatible object storage
+  minio:
+    image: minio/minio:latest
+    ports:
+      - '9000:9000'
+      - '9001:9001'
+    volumes:
+      - minio_data:/data
+    environment:
+      MINIO_ROOT_USER: goblin_sandbox
+      MINIO_ROOT_PASSWORD: goblin_sandbox_secret
+      MINIO_REGION_NAME: us-east-1
+    command: server /data --console-address ":9001"
+    healthcheck:
+      test: ['CMD', 'curl', '-f', 'http://localhost:9000/minio/health/live']
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+    restart: unless-stopped
+
+  # MinIO client for bucket setup
+  minio-client:
+    image: minio/mc:latest
+    depends_on:
+      minio:
+        condition: service_healthy
+    entrypoint: >
+      /bin/sh -c "
+      mc alias set local http://minio:9000 goblin_sandbox goblin_sandbox_secret;
+      mc mb local/goblin-sandbox || true;
+      mc anonymous set public local/goblin-sandbox || true;
+      echo 'MinIO bucket goblin-sandbox ready';
+      "
+    restart: "no"
+
+  # Celery worker for high priority tasks
+  celery-worker-high:
+    build: .
+    command: celery -A celery_app worker --loglevel=info --concurrency=2 --pool=prefork -Q high_priority
+    environment:
+      - ENV=production
+      - CELERY_BROKER_URL=redis://redis:6379/0
+      - CELERY_RESULT_BACKEND=redis://redis:6379/0
+    volumes:
+      - ./backend:/app
+    depends_on:
+      redis:
+        condition: service_healthy
+    restart: unless-stopped
+
+  # Celery worker for default priority tasks
+  celery-worker-default:
+    build: .
+    command: celery -A celery_app worker --loglevel=info --concurrency=4 --pool=prefork -Q default
+    environment:
+      - ENV=production
+      - CELERY_BROKER_URL=redis://redis:6379/0
+      - CELERY_RESULT_BACKEND=redis://redis:6379/0
+    volumes:
+      - ./backend:/app
+    depends_on:
+      redis:
+        condition: service_healthy
+    restart: unless-stopped
+
+  # Celery worker for low priority tasks
+  celery-worker-low:
+    build: .
+    command: celery -A celery_app worker --loglevel=info --concurrency=2 --pool=prefork -Q low_priority
+    environment:
+      - ENV=production
+      - CELERY_BROKER_URL=redis://redis:6379/0
+      - CELERY_RESULT_BACKEND=redis://redis:6379/0
+    volumes:
+      - ./backend:/app
+    depends_on:
+      redis:
+        condition: service_healthy
+    restart: unless-stopped
+
+  # Celery beat scheduler
+  celery-beat:
+    build: .
+    command: celery -A celery_app beat --loglevel=info --scheduler django_celery_beat.schedulers:DatabaseScheduler
+    environment:
+      - ENV=production
+      - CELERY_BROKER_URL=redis://redis:6379/0
+      - CELERY_RESULT_BACKEND=redis://redis:6379/0
+    volumes:
+      - ./backend:/app
+    depends_on:
+      redis:
+        condition: service_healthy
+    restart: unless-stopped
+
+  # Flower monitoring dashboard
+  flower:
+    build: .
+    command: celery -A celery_app flower --address=0.0.0.0 --port=5555 --basic_auth=user:password
+    ports:
+      - '5555:5555'
+    environment:
+      - ENV=production
+      - CELERY_BROKER_URL=redis://redis:6379/0
+      - CELERY_RESULT_BACKEND=redis://redis:6379/0
+    volumes:
+      - ./backend:/app
+    depends_on:
+      redis:
+        condition: service_healthy
+    healthcheck:
+      test: ['CMD', 'curl', '-f', 'http://localhost:5555']
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+    restart: unless-stopped
+
+  # Celery monitoring API
+  celery-monitor:
+    build: .
+    command: python celery_monitoring.py
+    ports:
+      - '5556:5555'
+    environment:
+      - ENV=production
+      - CELERY_BROKER_URL=redis://redis:6379/0
+      - CELERY_RESULT_BACKEND=redis://redis:6379/0
+    volumes:
+      - ./backend:/app
+    depends_on:
+      redis:
+        condition: service_healthy
+    healthcheck:
+      test: ['CMD', 'curl', '-f', 'http://localhost:5555/health']
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+    restart: unless-stopped
+
+  goblin-assistant-backend:
+    build: .
+    ports:
+      - '8001:8001'
+    environment:
+      - ENV=production
+      - CELERY_BROKER_URL=redis://redis:6379/0
+      - CELERY_RESULT_BACKEND=redis://redis:6379/0
+      # Sandbox configuration
+      - SANDBOX_ENABLED=true
+      - SANDBOX_IMAGE=goblin-assistant-sandbox:latest
+      - JOBS_DIR=/app/sandbox_jobs
+    volumes:
+      - ./backend:/app
+      - sandbox_jobs:/app/sandbox_jobs
+    depends_on:
+      redis:
+        condition: service_healthy
+    healthcheck:
+      test: ['CMD', 'curl', '-f', 'http://localhost:8001/health']
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+    restart: unless-stopped
+
+  # Sandbox worker for secure code execution
+  sandbox-worker:
+    build:
+      context: .
+      dockerfile: Dockerfile.sandbox
+    command: ["python", "/home/runner/start_worker.py"]
+    environment:
+      - REDIS_URL=redis://redis:6379/0
+      - SANDBOX_IMAGE=goblin-assistant-sandbox:latest
+      - MAX_JOB_MEMORY=256m
+      - MAX_JOB_CPUS=0.25
+      - JOB_TIMEOUT_SECONDS=10
+      # S3/MinIO configuration
+      - ARTIFACT_S3_ENDPOINT=http://minio:9000
+      - S3_ACCESS_KEY=goblin_sandbox
+      - S3_SECRET_KEY=goblin_sandbox_secret
+      - S3_BUCKET=goblin-sandbox
+      - S3_REGION=us-east-1
+      - MAX_ARTIFACT_SIZE_MB=10
+      - ARTIFACT_TTL_DAYS=7
+    volumes:
+      - sandbox_jobs:/work
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+    depends_on:
+      redis:
+        condition: service_healthy
+      minio:
+        condition: service_healthy
+    restart: unless-stopped
+
+  # Sandbox image builder (for development)
+  sandbox-builder:
+    build:
+      context: .
+      dockerfile: Dockerfile.sandbox
+    image: goblin-assistant-sandbox:latest
+    profiles:
+      - build
+
+volumes:
+  redis_data:
+  sandbox_jobs:
+  minio_data:

@@ -1,0 +1,20 @@
+{
+  "package-manager": "npm",
+  "levels": {
+    "low": true,
+    "moderate": true,
+    "high": true,
+    "critical": true
+  },
+  "report": {
+    "type": "full",
+    "path": "reports"
+  },
+  "allowlist": [],
+  "path-allowlist": ["/test/", "/tests/", "/spec/"],
+  "ignore-dev-dependencies": false,
+  "retry": {
+    "count": 3,
+    "delay": 1000
+  }
+}

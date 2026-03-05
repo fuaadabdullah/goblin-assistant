@@ -1,0 +1,104 @@
+// Type declaration for Lucide icons to resolve React type conflicts
+declare module 'lucide-react' {
+  import { SVGProps } from 'react';
+  
+  export interface LucideProps extends SVGProps<SVGSVGElement> {
+    size?: number | string;
+    color?: string;
+    strokeWidth?: number | string;
+    className?: string;
+  }
+
+  export type LucideIcon = React.FC<LucideProps>;
+
+  // Common icons used in the app
+  export const AlertTriangle: LucideIcon;
+  export const RefreshCw: LucideIcon;
+  export const Server: LucideIcon;
+  export const BarChart3: LucideIcon;
+  export const Database: LucideIcon;
+  export const Clock: LucideIcon;
+  export const Cpu: LucideIcon;
+  export const HardDrive: LucideIcon;
+  export const MemoryStick: LucideIcon;
+  export const Network: LucideIcon;
+  export const Activity: LucideIcon;
+  export const Users: LucideIcon;
+  export const MessageSquare: LucideIcon;
+  export const Settings: LucideIcon;
+  export const Home: LucideIcon;
+  export const Menu: LucideIcon;
+  export const X: LucideIcon;
+  export const ChevronRight: LucideIcon;
+  export const ChevronDown: LucideIcon;
+  export const Plus: LucideIcon;
+  export const Edit: LucideIcon;
+  export const Trash2: LucideIcon;
+  export const Save: LucideIcon;
+  export const Download: LucideIcon;
+  export const Upload: LucideIcon;
+  export const Search: LucideIcon;
+  export const Filter: LucideIcon;
+  export const Check: LucideIcon;
+  export const XCircle: LucideIcon;
+  export const Info: LucideIcon;
+  export const HelpCircle: LucideIcon;
+  export const ExternalLink: LucideIcon;
+  export const Copy: LucideIcon;
+  export const Eye: LucideIcon;
+  export const EyeOff: LucideIcon;
+  export const Lock: LucideIcon;
+  export const Unlock: LucideIcon;
+  export const User: LucideIcon;
+  export const LogOut: LucideIcon;
+  export const LogIn: LucideIcon;
+  export const Mail: LucideIcon;
+  export const Phone: LucideIcon;
+  export const Calendar: LucideIcon;
+  export const FileText: LucideIcon;
+  export const Folder: LucideIcon;
+  export const Image: LucideIcon;
+  export const Video: LucideIcon;
+  export const Music: LucideIcon;
+  export const Link: LucideIcon;
+  export const Globe: LucideIcon;
+  export const MapPin: LucideIcon;
+  export const Star: LucideIcon;
+  export const Heart: LucideIcon;
+  export const ThumbsUp: LucideIcon;
+  export const ThumbsDown: LucideIcon;
+  export const Share: LucideIcon;
+  export const Bookmark: LucideIcon;
+  export const Flag: LucideIcon;
+  export const Tag: LucideIcon;
+  export const ShoppingCart: LucideIcon;
+  export const CreditCard: LucideIcon;
+  export const DollarSign: LucideIcon;
+  export const TrendingUp: LucideIcon;
+  export const TrendingDown: LucideIcon;
+  export const ArrowUp: LucideIcon;
+  export const ArrowDown: LucideIcon;
+  export const ArrowLeft: LucideIcon;
+  export const ArrowRight: LucideIcon;
+  export const Play: LucideIcon;
+  export const Pause: LucideIcon;
+  export const Stop: LucideIcon;
+  export const SkipBack: LucideIcon;
+  export const SkipForward: LucideIcon;
+  export const Volume2: LucideIcon;
+  export const VolumeX: LucideIcon;
+  export const Maximize: LucideIcon;
+  export const Minimize: LucideIcon;
+  export const RotateCcw: LucideIcon;
+  export const RotateCw: LucideIcon;
+  export const ZoomIn: LucideIcon;
+  export const ZoomOut: LucideIcon;
+  export const Move: LucideIcon;
+  export const Grip: LucideIcon;
+  export const MoreHorizontal: LucideIcon;
+  export const MoreVertical: LucideIcon;
+  export const Loader: LucideIcon;
+  export const CheckCircle: LucideIcon;
+  export const AlertCircle: LucideIcon;
+  export const XCircle: LucideIcon;
+}

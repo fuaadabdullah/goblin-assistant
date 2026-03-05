@@ -1,0 +1,229 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>GoblinOS Theme Runtime Test</title>
+    <style>
+      * {
+        margin: 0;
+        padding: 0;
+        box-sizing: border-box;
+      }
+      body {
+        font-family:
+          system-ui,
+          -apple-system,
+          sans-serif;
+        background: var(--bg);
+        color: var(--text);
+        padding: 2rem;
+      }
+
+      /* Import theme CSS */
+      @import '../src/theme/index.css';
+
+      .container {
+        max-width: 1200px;
+        margin: 0 auto;
+      }
+
+      .card {
+        background: var(--surface);
+        border: 1px solid var(--border);
+        border-radius: 12px;
+        padding: 1.5rem;
+        margin-bottom: 1.5rem;
+      }
+
+      .color-swatch {
+        display: inline-block;
+        width: 60px;
+        height: 60px;
+        border-radius: 8px;
+        border: 2px solid var(--border);
+        margin: 0.5rem;
+      }
+
+      button {
+        background: var(--primary);
+        color: var(--bg);
+        border: none;
+        padding: 0.75rem 1.5rem;
+        border-radius: 8px;
+        font-size: 1rem;
+        font-weight: 600;
+        cursor: pointer;
+        margin: 0.5rem;
+        transition: all 0.2s;
+      }
+
+      button:hover {
+        background: var(--primary-600);
+        box-shadow: 0 6px 24px var(--glow-primary);
+      }
+
+      button.secondary {
+        background: var(--accent);
+      }
+
+      button.secondary:hover {
+        background: var(--accent-600);
+        box-shadow: 0 6px 24px var(--glow-accent);
+      }
+
+      button.cta {
+        background: var(--cta);
+      }
+
+      button.cta:hover {
+        background: var(--cta-600);
+        box-shadow: 0 6px 24px var(--glow-cta);
+      }
+
+      .status {
+        padding: 1rem;
+        border-radius: 8px;
+        margin: 1rem 0;
+        font-family: 'Courier New', monospace;
+        font-size: 0.9rem;
+      }
+
+      .status.success {
+        background: rgba(6, 208, 106, 0.1);
+        border: 1px solid var(--success);
+        color: var(--success);
+      }
+
+      h1 {
+        color: var(--primary);
+        margin-bottom: 0.5rem;
+      }
+      h2 {
+        color: var(--text);
+        margin-bottom: 1rem;
+        font-size: 1.5rem;
+      }
+      p {
+        color: var(--muted);
+        line-height: 1.6;
+      }
+      .text-primary {
+        color: var(--primary);
+      }
+      .text-accent {
+        color: var(--accent);
+      }
+      .text-cta {
+        color: var(--cta);
+      }
+    </style>
+  </head>
+  <body>
+    <div class="container">
+      <div class="card">
+        <h1>🧪 GoblinOS Theme Runtime Test</h1>
+        <p>Testing theme system functionality with JavaScript utilities</p>
+      </div>
+
+      <div class="card">
+        <h2>🎨 Theme Controls</h2>
+        <button onclick="testSetThemeVars()">Test setThemeVars()</button>
+        <button onclick="testHighContrast()">Toggle High Contrast</button>
+        <button onclick="testApplyPreset('default')">Apply Default</button>
+        <button onclick="testApplyPreset('nocturne')">Apply Nocturne</button>
+        <button onclick="testApplyPreset('ember')">Apply Ember</button>
+      </div>
+
+      <div class="card">
+        <h2>🌈 Color Palette</h2>
+        <div>
+          <div class="color-swatch" style="background: var(--primary)" title="Primary"></div>
+          <div
+            class="color-swatch"
+            style="background: var(--primary-300)"
+            title="Primary 300"
+          ></div>
+          <div
+            class="color-swatch"
+            style="background: var(--primary-600)"
+            title="Primary 600"
+          ></div>
+          <div class="color-swatch" style="background: var(--accent)" title="Accent"></div>
+          <div class="color-swatch" style="background: var(--cta)" title="CTA"></div>
+        </div>
+      </div>
+
+      <div class="card">
+        <h2>🔘 Button Variants</h2>
+        <button>Primary Button</button>
+        <button class="secondary">Accent Button</button>
+        <button class="cta">CTA Button</button>
+      </div>
+
+      <div class="card">
+        <h2>✨ Typography</h2>
+        <p>
+          Default text using <span class="text-primary">primary</span>,
+          <span class="text-accent">accent</span>, and <span class="text-cta">CTA</span> colors.
+        </p>
+        <p style="color: var(--muted)">Muted secondary text for labels and descriptions.</p>
+      </div>
+
+      <div id="status" class="status success" style="display: none">
+        <strong>✓ Test Result:</strong> <span id="status-text"></span>
+      </div>
+    </div>
+
+    <script type="module">
+      // Import theme utilities
+      import {
+        setThemeVars,
+        enableHighContrast,
+        getHighContrastPreference,
+        applyThemePreset,
+        getCurrentThemePreset,
+        initializeTheme,
+      } from '../src/theme/theme.js';
+
+      // Initialize theme on load
+      initializeTheme();
+
+      // Make functions available globally for onclick handlers
+      window.testSetThemeVars = () => {
+        setThemeVars({
+          primary: '#FF6B6B',
+          'glow-primary': 'rgba(255, 107, 107, 0.2)',
+        });
+        showStatus('Custom primary color applied! Refresh to reset.');
+      };
+
+      window.testHighContrast = () => {
+        const current = getHighContrastPreference();
+        enableHighContrast(!current);
+        showStatus(`High contrast mode: ${!current ? 'ENABLED' : 'DISABLED'}`);
+      };
+
+      window.testApplyPreset = presetName => {
+        applyThemePreset(presetName);
+        const current = getCurrentThemePreset();
+        showStatus(`Applied theme preset: ${current}`);
+      };
+
+      function showStatus(message) {
+        const status = document.getElementById('status');
+        const text = document.getElementById('status-text');
+        text.textContent = message;
+        status.style.display = 'block';
+        setTimeout(() => {
+          status.style.display = 'none';
+        }, 3000);
+      }
+
+      // Log initial state
+      console.log('Theme System Test Page Loaded');
+      console.log('Current preset:', getCurrentThemePreset());
+      console.log('High contrast:', getHighContrastPreference());
+    </script>
+  </body>
+</html>

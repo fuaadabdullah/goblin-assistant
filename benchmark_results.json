@@ -1,0 +1,264 @@
+{
+  "timestamp": "2026-01-11T16:27:31.809007",
+  "results": {
+    "openai": {
+      "simple": {
+        "provider": "openai",
+        "success_rate": 0,
+        "avg_latency_ms": 0,
+        "errors": [
+          "http-401:{\n    \"error\": {\n        \"message\": \"Incorrect API key provided: REDACTED. You can find your API key at https://platform.openai.com/account/api-keys.\",\n        \"type\": \"invalid_request_error\",\n        \"param\": null,\n        \"code\": \"invalid_api_key\"\n    }\n}\n",
+          "http-401:{\n    \"error\": {\n        \"message\": \"Incorrect API key provided: REDACTED. You can find your API key at https://platform.openai.com/account/api-keys.\",\n        \"type\": \"invalid_request_error\",\n        \"param\": null,\n        \"code\": \"invalid_api_key\"\n    }\n}\n",
+          "http-401:{\n    \"error\": {\n        \"message\": \"Incorrect API key provided: REDACTED. You can find your API key at https://platform.openai.com/account/api-keys.\",\n        \"type\": \"invalid_request_error\",\n        \"param\": null,\n        \"code\": \"invalid_api_key\"\n    }\n}\n"
+        ],
+        "successful_runs": 0,
+        "total_runs": 3
+      },
+      "medium": {
+        "provider": "openai",
+        "success_rate": 0,
+        "avg_latency_ms": 0,
+        "errors": [
+          "http-401:{\n    \"error\": {\n        \"message\": \"Incorrect API key provided: REDACTED. You can find your API key at https://platform.openai.com/account/api-keys.\",\n        \"type\": \"invalid_request_error\",\n        \"param\": null,\n        \"code\": \"invalid_api_key\"\n    }\n}\n",
+          "http-401:{\n    \"error\": {\n        \"message\": \"Incorrect API key provided: REDACTED. You can find your API key at https://platform.openai.com/account/api-keys.\",\n        \"type\": \"invalid_request_error\",\n        \"param\": null,\n        \"code\": \"invalid_api_key\"\n    }\n}\n"
+        ],
+        "successful_runs": 0,
+        "total_runs": 2
+      },
+      "throughput": {
+        "completed": 0,
+        "errors": 74,
+        "duration_seconds": 5.18,
+        "throughput_req_per_sec": 0.0
+      },
+      "available": false
+    },
+    "anthropic": {
+      "simple": {
+        "provider": "anthropic",
+        "success_rate": 0,
+        "avg_latency_ms": 0,
+        "errors": [
+          "http-401:{\"type\":\"error\",\"error\":{\"type\":\"authentication_error\",\"message\":\"invalid x-api-key\"},\"request_id\":\"req_011CX2HkkyqyAFfA7k23XAoY\"}",
+          "http-401:{\"type\":\"error\",\"error\":{\"type\":\"authentication_error\",\"message\":\"invalid x-api-key\"},\"request_id\":\"req_011CX2HkmWqgVJxu2u4TUWhK\"}",
+          "http-401:{\"type\":\"error\",\"error\":{\"type\":\"authentication_error\",\"message\":\"invalid x-api-key\"},\"request_id\":\"req_011CX2Hkn3qaNRCSYgL8gBqU\"}"
+        ],
+        "successful_runs": 0,
+        "total_runs": 3
+      },
+      "medium": {
+        "provider": "anthropic",
+        "success_rate": 0,
+        "avg_latency_ms": 0,
+        "errors": [
+          "http-401:{\"type\":\"error\",\"error\":{\"type\":\"authentication_error\",\"message\":\"invalid x-api-key\"},\"request_id\":\"req_011CX2HknVdW8Mvf4sHn4TVp\"}",
+          "http-401:{\"type\":\"error\",\"error\":{\"type\":\"authentication_error\",\"message\":\"invalid x-api-key\"},\"request_id\":\"req_011CX2Hkny9kEg7NPoBxjXHr\"}"
+        ],
+        "successful_runs": 0,
+        "total_runs": 2
+      },
+      "throughput": {
+        "completed": 0,
+        "errors": 67,
+        "duration_seconds": 5.08,
+        "throughput_req_per_sec": 0.0
+      },
+      "available": false
+    },
+    "groq": {
+      "simple": {
+        "provider": "groq",
+        "success_rate": 0,
+        "avg_latency_ms": 0,
+        "errors": [
+          "missing-groq-key",
+          "missing-groq-key",
+          "missing-groq-key"
+        ],
+        "successful_runs": 0,
+        "total_runs": 3
+      },
+      "medium": {
+        "provider": "groq",
+        "success_rate": 0,
+        "avg_latency_ms": 0,
+        "errors": [
+          "missing-groq-key",
+          "missing-groq-key"
+        ],
+        "successful_runs": 0,
+        "total_runs": 2
+      },
+      "throughput": {
+        "completed": 0,
+        "errors": 6541990,
+        "duration_seconds": 5.0,
+        "throughput_req_per_sec": 0.0
+      },
+      "available": false
+    },
+    "siliconeflow": {
+      "simple": {
+        "provider": "siliconeflow",
+        "success_rate": 0,
+        "avg_latency_ms": 0,
+        "errors": [
+          "BaseProvider.__init__() got an unexpected keyword argument 'endpoint'",
+          "BaseProvider.__init__() got an unexpected keyword argument 'endpoint'",
+          "BaseProvider.__init__() got an unexpected keyword argument 'endpoint'"
+        ],
+        "successful_runs": 0,
+        "total_runs": 3
+      },
+      "medium": {
+        "provider": "siliconeflow",
+        "success_rate": 0,
+        "avg_latency_ms": 0,
+        "errors": [
+          "BaseProvider.__init__() got an unexpected keyword argument 'endpoint'",
+          "BaseProvider.__init__() got an unexpected keyword argument 'endpoint'"
+        ],
+        "successful_runs": 0,
+        "total_runs": 2
+      },
+      "throughput": {
+        "completed": 0,
+        "errors": 1630069,
+        "duration_seconds": 5.0,
+        "throughput_req_per_sec": 0.0
+      },
+      "available": false
+    },
+    "gemini": {
+      "simple": {
+        "provider": "gemini",
+        "success_rate": 0,
+        "avg_latency_ms": 0,
+        "errors": [
+          "missing-gemini-key",
+          "missing-gemini-key",
+          "missing-gemini-key"
+        ],
+        "successful_runs": 0,
+        "total_runs": 3
+      },
+      "medium": {
+        "provider": "gemini",
+        "success_rate": 0,
+        "avg_latency_ms": 0,
+        "errors": [
+          "missing-gemini-key",
+          "missing-gemini-key"
+        ],
+        "successful_runs": 0,
+        "total_runs": 2
+      },
+      "throughput": {
+        "completed": 0,
+        "errors": 6695980,
+        "duration_seconds": 5.0,
+        "throughput_req_per_sec": 0.0
+      },
+      "available": false
+    },
+    "ollama_gcp": {
+      "simple": {
+        "provider": "ollama_gcp",
+        "success_rate": 1.0,
+        "avg_latency_ms": 8750.35,
+        "min_latency_ms": 1837.03,
+        "max_latency_ms": 22475.78,
+        "p95_latency_ms": 38905.81,
+        "quality_score": 0.0,
+        "successful_runs": 3,
+        "total_runs": 3,
+        "errors": [],
+        "sample_response": ""
+      },
+      "medium": {
+        "provider": "ollama_gcp",
+        "success_rate": 1.0,
+        "avg_latency_ms": 11840.85,
+        "min_latency_ms": 9526.25,
+        "max_latency_ms": 14155.45,
+        "p95_latency_ms": 18090.28,
+        "quality_score": 0.0,
+        "successful_runs": 2,
+        "total_runs": 2,
+        "errors": [],
+        "sample_response": ""
+      },
+      "throughput": {
+        "completed": 4,
+        "errors": 0,
+        "duration_seconds": 13.18,
+        "throughput_req_per_sec": 0.3
+      },
+      "available": true
+    },
+    "llamacpp_gcp": {
+      "simple": {
+        "provider": "llamacpp_gcp",
+        "success_rate": 0,
+        "avg_latency_ms": 0,
+        "errors": [
+          "",
+          "",
+          ""
+        ],
+        "successful_runs": 0,
+        "total_runs": 3
+      },
+      "medium": {
+        "provider": "llamacpp_gcp",
+        "success_rate": 0,
+        "avg_latency_ms": 0,
+        "errors": [
+          "",
+          ""
+        ],
+        "successful_runs": 0,
+        "total_runs": 2
+      },
+      "throughput": {
+        "completed": 0,
+        "errors": 3,
+        "duration_seconds": 60.11,
+        "throughput_req_per_sec": 0.0
+      },
+      "available": false
+    },
+    "ollama": {
+      "simple": {
+        "provider": "ollama",
+        "success_rate": 0,
+        "avg_latency_ms": 0,
+        "errors": [
+          "Request URL is missing an 'http://' or 'https://' protocol.",
+          "Request URL is missing an 'http://' or 'https://' protocol.",
+          "Request URL is missing an 'http://' or 'https://' protocol."
+        ],
+        "successful_runs": 0,
+        "total_runs": 3
+      },
+      "medium": {
+        "provider": "ollama",
+        "success_rate": 0,
+        "avg_latency_ms": 0,
+        "errors": [
+          "Request URL is missing an 'http://' or 'https://' protocol.",
+          "Request URL is missing an 'http://' or 'https://' protocol."
+        ],
+        "successful_runs": 0,
+        "total_runs": 2
+      },
+      "throughput": {
+        "completed": 0,
+        "errors": 134,
+        "duration_seconds": 5.03,
+        "throughput_req_per_sec": 0.0
+      },
+      "available": false
+    }
+  }
+}

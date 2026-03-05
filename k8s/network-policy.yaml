@@ -1,0 +1,196 @@
+---
+# Default deny all ingress and egress traffic (MANDATORY)
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: sandbox-default-deny-all
+  namespace: sandbox
+spec:
+  podSelector: {}  # Applies to all pods in namespace
+  policyTypes:
+  - Ingress
+  - Egress
+
+---
+# Allow API ingress from external load balancer
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: sandbox-api-ingress
+  namespace: sandbox
+spec:
+  podSelector:
+    matchLabels:
+      app: goblin-assistant-api
+  policyTypes:
+  - Ingress
+  ingress:
+  - from:
+    - namespaceSelector:
+        matchLabels:
+          name: ingress-nginx  # Allow from ingress controller
+    - ipBlock:
+        cidr: 10.0.0.0/8      # Allow from cluster internal
+    ports:
+    - protocol: TCP
+      port: 8001
+
+---
+# Allow Redis communication within namespace
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: sandbox-redis-access
+  namespace: sandbox
+spec:
+  podSelector:
+    matchLabels:
+      app: redis
+  policyTypes:
+  - Ingress
+  ingress:
+  - from:
+    - podSelector: {}  # Allow from all pods in namespace
+    ports:
+    - protocol: TCP
+      port: 6379
+
+---
+# Allow MinIO/S3 communication within namespace
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: sandbox-minio-access
+  namespace: sandbox
+spec:
+  podSelector:
+    matchLabels:
+      app: minio
+  policyTypes:
+  - Ingress
+  ingress:
+  - from:
+    - podSelector: {}  # Allow from all pods in namespace
+    ports:
+    - protocol: TCP
+      port: 9000  # MinIO API
+    - protocol: TCP
+      port: 9001  # MinIO Console
+
+---
+# Allow workers to communicate with Docker daemon (host)
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: sandbox-worker-docker-access
+  namespace: sandbox
+spec:
+  podSelector:
+    matchLabels:
+      app: goblin-assistant-worker
+  policyTypes:
+  - Egress
+  egress:
+  # Allow DNS resolution
+  - to: []
+    ports:
+    - protocol: UDP
+      port: 53
+  # Allow Docker socket communication (localhost)
+  - to:
+    - ipBlock:
+        cidr: 127.0.0.1/32
+    ports:
+    - protocol: TCP
+      port: 2376  # Docker daemon
+  # Allow container registry access (for pulling images)
+  - to: []
+    ports:
+    - protocol: TCP
+      port: 443   # HTTPS for registries
+    - protocol: TCP
+      port: 80    # HTTP for registries
+
+---
+# Allow API to communicate with Redis and MinIO
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: sandbox-api-egress
+  namespace: sandbox
+spec:
+  podSelector:
+    matchLabels:
+      app: goblin-assistant-api
+  policyTypes:
+  - Egress
+  egress:
+  # Allow DNS resolution
+  - to: []
+    ports:
+    - protocol: UDP
+      port: 53
+  # Allow Redis access
+  - to:
+    - podSelector:
+        matchLabels:
+          app: redis
+    ports:
+    - protocol: TCP
+      port: 6379
+  # Allow MinIO access
+  - to:
+    - podSelector:
+        matchLabels:
+          app: minio
+    ports:
+    - protocol: TCP
+      port: 9000
+  # Allow HTTPS outbound (for external API calls if needed)
+  - to: []
+    ports:
+    - protocol: TCP
+      port: 443
+
+---
+# Allow workers to communicate with Redis and MinIO
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: sandbox-worker-egress
+  namespace: sandbox
+spec:
+  podSelector:
+    matchLabels:
+      app: goblin-assistant-worker
+  policyTypes:
+  - Egress
+  egress:
+  # Allow DNS resolution
+  - to: []
+    ports:
+    - protocol: UDP
+      port: 53
+  # Allow Redis access
+  - to:
+    - podSelector:
+        matchLabels:
+          app: redis
+    ports:
+    - protocol: TCP
+      port: 6379
+  # Allow MinIO access
+  - to:
+    - podSelector:
+        matchLabels:
+          app: minio
+    ports:
+    - protocol: TCP
+      port: 9000
+  # Allow Docker socket communication
+  - to:
+    - ipBlock:
+        cidr: 127.0.0.1/32
+    ports:
+    - protocol: TCP
+      port: 2376

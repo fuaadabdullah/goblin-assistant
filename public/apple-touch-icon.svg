@@ -1,0 +1,19 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 180 180">
+    <rect width="180" height="180" fill="#7C3AED" rx="40" />
+    <g transform="translate(90, 90)">
+        <!-- Face -->
+        <circle cx="-25" cy="-10" r="12" fill="#FFF" />
+        <circle cx="25" cy="-10" r="12" fill="#FFF" />
+        <circle cx="-23" cy="-12" r="5" fill="#1F2937" />
+        <circle cx="27" cy="-12" r="5" fill="#1F2937" />
+        <ellipse cx="0" cy="5" rx="8" ry="10" fill="#E0E7FF" />
+        <path d="M -30 25 Q 0 40 30 25" stroke="#FFF" stroke-width="8" fill="none" stroke-linecap="round" />
+        <!-- Ears -->
+        <path d="M -50 -5 Q -60 -20 -55 -30 Q -50 -15 -45 -8 Z" fill="#A78BFA" stroke="#FFF" stroke-width="3" />
+        <path d="M 50 -5 Q 60 -20 55 -30 Q 50 -15 45 -8 Z" fill="#A78BFA" stroke="#FFF" stroke-width="3" />
+        <!-- Tech badge -->
+        <circle cx="45" cy="45" r="20" fill="#F59E0B" />
+        <path d="M 45 30 L 50 40 L 60 45 L 50 50 L 45 60 L 40 50 L 30 45 L 40 40 Z" fill="#FFF" />
+        <circle cx="45" cy="45" r="8" fill="#F59E0B" />
+    </g>
+</svg>

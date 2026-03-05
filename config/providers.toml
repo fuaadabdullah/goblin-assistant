@@ -1,0 +1,282 @@
+[default]
+timeout_ms = 12000
+
+[default.scoring_weights]
+latency = 0.4
+cost = 0.3
+reliability = 0.2
+bandwidth = 0.1
+
+[default.chain_of_thought_suppression]
+suppress_for = ["summary", "code"]
+force_for = ["reasoning"]
+
+[default.cost_optimization]
+max_budget_per_hour = 10.0
+preferred_providers_under_budget = [
+  "ollama_gcp",
+  "llamacpp_gcp",
+  "groq",
+  "siliconeflow",
+  "openai",
+]
+
+[providers.openai]
+name = "OpenAI"
+endpoint = "https://api.openai.com/v1"
+invoke_path = "/chat/completions"
+default_model = "gpt-4o-mini"
+capabilities = ["chat", "reasoning", "code", "embedding", "image"]
+models = ["gpt-4o", "gpt-4o-mini", "gpt-4-turbo"]
+api_key_env = "OPENAI_API_KEY"
+priority_tier = 1
+cost_score = 0.8
+default_timeout_ms = 10000
+bandwidth_score = 0.9
+supports_cot = true
+cot_suppression_prompt = "Answer directly without showing your reasoning."
+
+[providers.anthropic]
+name = "Anthropic"
+endpoint = "https://api.anthropic.com"
+invoke_path = "/v1/messages"
+default_model = "claude-3-5-haiku-latest"
+capabilities = ["chat", "reasoning", "code"]
+models = ["claude-sonnet-4-20250514", "claude-3-5-haiku-latest"]
+api_key_env = "ANTHROPIC_API_KEY"
+priority_tier = 1
+cost_score = 0.9
+default_timeout_ms = 15000
+bandwidth_score = 0.8
+supports_cot = true
+cot_suppression_prompt = "Be direct and concise."
+
+[providers.gemini]
+name = "Google Gemini"
+endpoint = "https://generativelanguage.googleapis.com"
+default_model = "gemini-2.0-flash"
+capabilities = ["chat", "reasoning", "code", "image"]
+models = ["gemini-2.0-flash", "gemini-2.0-flash-lite"]
+api_key_env = "GOOGLE_AI_API_KEY"
+priority_tier = 2
+cost_score = 0.6
+default_timeout_ms = 12000
+bandwidth_score = 0.7
+supports_cot = true
+cot_suppression_prompt = "Provide direct answers without explanation."
+
+[providers.deepseek]
+name = "DeepSeek"
+endpoint = "https://api.deepseek.com"
+invoke_path = "/v1/chat/completions"
+default_model = "deepseek-chat"
+capabilities = ["chat", "reasoning", "code"]
+models = ["deepseek-chat", "deepseek-coder"]
+api_key_env = "DEEPSEEK_API_KEY"
+priority_tier = 2
+cost_score = 0.3
+default_timeout_ms = 10000
+bandwidth_score = 0.8
+supports_cot = true
+cot_suppression_prompt = "Answer concisely."
+
+[providers.groq]
+name = "Groq"
+endpoint = "https://api.groq.com/openai/v1"
+invoke_path = "/chat/completions"
+default_model = "llama-3.1-8b-instant"
+capabilities = ["chat", "reasoning", "code"]
+models = ["llama-3.1-8b-instant", "llama-3.3-70b-versatile", "mixtral-8x7b-32768"]
+api_key_env = "GROQ_API_KEY"
+priority_tier = 2
+cost_score = 0.4
+default_timeout_ms = 8000
+bandwidth_score = 0.95
+supports_cot = true
+cot_suppression_prompt = "Be direct."
+
+[providers.siliconeflow]
+name = "SiliconeFlow"
+endpoint = "https://api.siliconflow.com"
+invoke_path = "/v1/chat/completions"
+default_model = "Qwen/Qwen2.5-7B-Instruct"
+capabilities = ["chat", "reasoning", "code"]
+models = ["Qwen/Qwen2.5-7B-Instruct", "Qwen/Qwen2.5-Coder-7B-Instruct", "deepseek-ai/DeepSeek-V2.5"]
+api_key_env = "SILICONEFLOW_API_KEY"
+priority_tier = 2
+cost_score = 0.3
+default_timeout_ms = 10000
+bandwidth_score = 0.9
+supports_cot = true
+cot_suppression_prompt = "Be direct."
+
+[providers.together]
+name = "Together AI"
+endpoint = "https://api.together.xyz"
+capabilities = ["chat", "reasoning", "code", "image"]
+models = ["llama-2-70b", "codellama-34b"]
+api_key_env = "TOGETHER_API_KEY"
+priority_tier = 3
+cost_score = 0.5
+default_timeout_ms = 10000
+bandwidth_score = 0.8
+supports_cot = true
+cot_suppression_prompt = "Answer directly."
+
+[providers.replicate]
+name = "Replicate"
+endpoint = "https://api.replicate.com"
+capabilities = ["chat", "reasoning", "code", "image"]
+models = ["llama-2-70b", "codellama-34b"]
+api_key_env = "REPLICATE_API_KEY"
+priority_tier = 3
+cost_score = 0.6
+default_timeout_ms = 20000
+bandwidth_score = 0.7
+supports_cot = true
+cot_suppression_prompt = "Be concise."
+
+[providers.huggingface]
+name = "Hugging Face"
+endpoint = "https://api-inference.huggingface.co"
+capabilities = ["chat", "reasoning", "code"]
+models = ["microsoft/DialoGPT-medium", "facebook/blenderbot-400M-distill"]
+api_key_env = "HUGGINGFACE_API_KEY"
+priority_tier = 4
+cost_score = 0.2
+default_timeout_ms = 15000
+bandwidth_score = 0.6
+supports_cot = false
+
+[providers.cohere]
+name = "Cohere"
+endpoint = "https://api.cohere.ai"
+capabilities = ["chat", "reasoning", "code", "embedding"]
+models = ["command", "base"]
+api_key_env = "COHERE_API_KEY"
+priority_tier = 3
+cost_score = 0.7
+default_timeout_ms = 10000
+bandwidth_score = 0.75
+supports_cot = true
+cot_suppression_prompt = "Answer directly."
+
+# Primary Ollama server (Server 2 - 192.175.23.150) - DISABLED (unreachable since 2026-01-11)
+[providers.ollama_kamatera]
+name = "Ollama (Kamatera Server 2) - DISABLED"
+endpoint = "http://192.175.23.150:8002"
+capabilities = ["chat", "reasoning", "code", "embedding"]
+models = [
+  "phi3:latest",
+  "gemma2:latest",
+  "qwen2.5:latest",
+  "codellama:latest",
+  "mistral:latest",
+  "llama3.1:latest",
+  "goblin-simple:latest",
+  "goblin-medium:latest",
+  "goblin-complex:latest",
+]
+priority_tier = 99  # DISABLED - unreachable
+cost_score = 0.0
+default_timeout_ms = 30000
+bandwidth_score = 0.8
+supports_cot = false
+api_key_env = "LOCAL_LLM_API_KEY"
+invoke_path = "/api/generate"
+is_active = false  # DISABLED
+
+# GCP Ollama Server - DISABLED (preemptible VMs terminated since 2026-01-11)
+[providers.ollama_gcp]
+name = "Ollama (GCP us-central1) - DISABLED"
+endpoint = "http://34.60.255.199:11434"
+capabilities = ["chat", "reasoning", "code"]
+models = ["qwen2.5:3b", "llama3.2:1b"]
+priority_tier = 99
+cost_score = 0.0
+default_timeout_ms = 20000
+bandwidth_score = 0.9
+supports_cot = false
+api_key_env = "LOCAL_LLM_API_KEY"
+is_active = false
+invoke_path = "/api/generate"
+default_model = "qwen2.5:3b"
+
+# GCP LlamaCPP Server - DISABLED (preemptible VMs terminated since 2026-01-11)
+[providers.llamacpp_gcp]
+name = "llama.cpp (GCP us-central1) - DISABLED"
+endpoint = "http://34.132.226.143:8000"
+capabilities = ["chat", "reasoning", "code"]
+models = ["qwen2.5-3b-instruct-q4_k_m"]
+priority_tier = 99
+cost_score = 0.0
+default_timeout_ms = 20000
+bandwidth_score = 0.9
+supports_cot = false
+api_key_env = "LOCAL_LLM_API_KEY"
+invoke_path = "/v1/chat/completions"
+default_model = "qwen2.5-3b-instruct-q4_k_m"
+is_active = false
+
+# Kamatera Router API (Server 1 - 45.61.51.220) - DISABLED (unreachable since 2026-01-11)
+[providers.llamacpp_kamatera]
+name = "llama.cpp Router (Kamatera Server 1) - DISABLED"
+endpoint = "http://45.61.51.220:8000"
+capabilities = ["chat", "reasoning", "code"]
+models = [
+  "qwen2.5:latest",
+  "gemma2:latest",
+  "codellama:latest",
+  "llama3.1:latest",
+]
+priority_tier = 99  # DISABLED - unreachable
+cost_score = 0.0
+default_timeout_ms = 30000
+bandwidth_score = 0.8
+supports_cot = false
+api_key_env = "LOCAL_LLM_API_KEY"
+invoke_path = "/v1/chat/completions"
+default_model = "qwen2.5:latest"
+is_active = false  # DISABLED
+
+[providers.azure]
+name = "Azure OpenAI"
+endpoint = "https://goblinos-resource.services.ai.azure.com"
+default_model = "gpt-4o-mini"
+capabilities = ["chat", "reasoning", "code"]
+models = ["gpt-4o-mini", "gpt-4o", "gpt-4.1"]
+api_key_env = "AZURE_API_KEY"
+priority_tier = 1
+cost_score = 0.7
+default_timeout_ms = 15000
+bandwidth_score = 0.9
+supports_cot = true
+cot_suppression_prompt = "Answer directly without showing your reasoning."
+
+[providers.aliyun]
+name = "Aliyun (via SiliconeFlow)"
+endpoint = "https://api.siliconflow.com"
+invoke_path = "/v1/chat/completions"
+default_model = "Qwen/Qwen2.5-7B-Instruct"
+capabilities = ["chat", "reasoning", "code"]
+models = ["Qwen/Qwen2.5-7B-Instruct", "Qwen/Qwen2.5-Coder-7B-Instruct"]
+api_key_env = "SILICONEFLOW_API_KEY"
+priority_tier = 2
+cost_score = 0.3
+default_timeout_ms = 10000
+bandwidth_score = 0.9
+supports_cot = true
+cot_suppression_prompt = "Be direct."
+alias_of = "siliconeflow"
+
+[providers.mock]
+name = "Mock Provider"
+endpoint = "mock://localhost"
+capabilities = ["chat", "reasoning", "code", "embedding"]
+models = ["mock-gpt", "mock-claude", "mock-phi"]
+priority_tier = 99
+cost_score = 0.0
+default_timeout_ms = 1000
+bandwidth_score = 1.0
+supports_cot = false
+force_fallback = true

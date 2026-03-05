@@ -1,0 +1,79 @@
+# Multi-stage optimized Dockerfile for Goblin Assistant
+# Stage 1: Build stage
+FROM python:3.11-slim as builder
+
+# Set build arguments for caching optimization
+ARG BUILD_DATE
+ARG VCS_REF
+ARG VERSION
+
+# Labels for better container management
+LABEL maintainer="goblin-team@fuaad.ai"
+LABEL org.opencontainers.image.title="Goblin Assistant"
+LABEL org.opencontainers.image.description="AI-powered assistant backend"
+LABEL org.opencontainers.image.version="${VERSION}"
+LABEL org.opencontainers.image.created="${BUILD_DATE}"
+LABEL org.opencontainers.image.revision="${VCS_REF}"
+LABEL org.opencontainers.image.source="https://github.com/fuaadabdullah/forgemono"
+
+# Install system dependencies in a single layer
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    build-essential \
+    gcc \
+    git \
+    curl \
+    && rm -rf /var/lib/apt/lists/* \
+    && apt-get clean
+
+# Set working directory
+WORKDIR /app
+
+# Copy requirements first for better caching
+COPY requirements.txt /app/
+
+# Install Python dependencies with optimizations
+RUN pip install --upgrade pip setuptools wheel && \
+    pip install --no-cache-dir -r requirements.txt
+
+# Stage 2: Runtime stage
+FROM python:3.11-slim as runtime
+
+# Avoid Python buffering problems and ensure logs flush
+ENV PYTHONUNBUFFERED=1
+
+# Set working directory where app will live inside the container
+WORKDIR /app
+
+# Copy Python dependencies from builder stage
+COPY --from=builder /usr/local/lib/python3.11/site-packages /usr/local/lib/python3.11/site-packages
+COPY --from=builder /usr/local/bin /usr/local/bin
+
+# Copy app source into container
+COPY . /app
+
+# Ensure backend is importable: make sure /app on PYTHONPATH and workdir is /app
+ENV PYTHONPATH=/app
+
+# Make sure api is a package (helpful if missing __init__.py)
+RUN if [ -d /app/api ] && [ ! -f /app/api/__init__.py ]; then touch /app/api/__init__.py; fi || true
+
+# Create non-root user for security
+RUN groupadd -r goblin && useradd -r -g goblin goblin && \
+    chown -R goblin:goblin /app
+
+# Switch to non-root user
+USER goblin
+
+# Expose the app port
+ENV PORT=8001
+EXPOSE 8001
+
+# Use a small startup wrapper that prints diagnostics before starting
+COPY start.sh /app/start.sh
+RUN chmod +x /app/start.sh
+
+# Health check
+HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
+    CMD curl -f http://localhost:8001/health || exit 1
+
+CMD ["/app/start.sh"]

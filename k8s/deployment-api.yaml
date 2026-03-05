@@ -1,0 +1,159 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: goblin-assistant-api
+  namespace: sandbox
+  labels:
+    app: goblin-assistant-api
+    component: api
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: goblin-assistant-api
+  template:
+    metadata:
+      labels:
+        app: goblin-assistant-api
+        component: api
+    spec:
+      # Service account with minimal permissions
+      serviceAccountName: sandbox-api-sa
+
+      # Security context for the pod
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 1000
+        runAsGroup: 1000
+        fsGroup: 1000
+        seccompProfile:
+          type: RuntimeDefault
+
+      containers:
+      - name: api
+        image: goblin-assistant:latest
+        imagePullPolicy: Always
+
+        # Security context for the container
+        securityContext:
+          allowPrivilegeEscalation: false
+          readOnlyRootFilesystem: true
+          runAsNonRoot: true
+          runAsUser: 1000
+          runAsGroup: 1000
+          capabilities:
+            drop:
+            - ALL
+          seccompProfile:
+            type: RuntimeDefault
+
+        # Resource limits (STRICT)
+        resources:
+          requests:
+            cpu: "100m"
+            memory: "128Mi"
+          limits:
+            cpu: "500m"
+            memory: "512Mi"
+
+        # Health checks
+        livenessProbe:
+          httpGet:
+            path: /health
+            port: 8001
+          initialDelaySeconds: 30
+          periodSeconds: 10
+          timeoutSeconds: 5
+          failureThreshold: 3
+
+        readinessProbe:
+          httpGet:
+            path: /health
+            port: 8001
+          initialDelaySeconds: 5
+          periodSeconds: 5
+          timeoutSeconds: 3
+          failureThreshold: 3
+
+        # Environment variables
+        env:
+        - name: ENV
+          value: "production"
+        - name: REDIS_URL
+          value: "redis://redis-service:6379/0"
+        - name: SANDBOX_ENABLED
+          value: "true"
+        - name: SANDBOX_IMAGE
+          value: "goblin-assistant-sandbox:latest"
+        - name: JOBS_DIR
+          value: "/tmp/sandbox_jobs"
+        - name: API_AUTH_KEY
+          valueFrom:
+            secretKeyRef:
+              name: sandbox-secrets
+              key: api-key
+        - name: ARTIFACT_S3_ENDPOINT
+          value: "http://minio-service:9000"
+        - name: S3_ACCESS_KEY
+          valueFrom:
+            secretKeyRef:
+              name: sandbox-secrets
+              key: s3-access-key
+        - name: S3_SECRET_KEY
+          valueFrom:
+            secretKeyRef:
+              name: sandbox-secrets
+              key: s3-secret-key
+        - name: S3_BUCKET
+          value: "goblin-sandbox"
+        - name: S3_REGION
+          value: "us-east-1"
+        - name: MAX_ARTIFACT_SIZE_MB
+          value: "10"
+        - name: ARTIFACT_TTL_DAYS
+          value: "7"
+        - name: ARTIFACT_CLEANUP_INTERVAL_HOURS
+          value: "24"
+
+        # Ports
+        ports:
+        - containerPort: 8001
+          name: http
+          protocol: TCP
+
+        # Volume mounts (read-only root filesystem)
+        volumeMounts:
+        - name: tmp-volume
+          mountPath: /tmp
+        - name: cache-volume
+          mountPath: /tmp/cache
+
+      # Volumes
+      volumes:
+      - name: tmp-volume
+        emptyDir:
+          medium: Memory
+          sizeLimit: 64Mi
+      - name: cache-volume
+        emptyDir:
+          medium: Memory
+          sizeLimit: 32Mi
+
+      # Node affinity (optional - for security isolation)
+      affinity:
+        nodeAffinity:
+          preferredDuringSchedulingIgnoredDuringExecution:
+          - weight: 100
+            preference:
+              matchExpressions:
+              - key: sandbox-enabled
+                operator: In
+                values:
+                - "true"
+
+      # Tolerations for dedicated nodes
+      tolerations:
+      - key: "sandbox"
+        operator: "Equal"
+        value: "enabled"
+        effect: "NoSchedule"

@@ -1,0 +1,16 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: sandbox
+  labels:
+    name: sandbox
+    # Pod Security Standards - Restricted level (MANDATORY)
+    pod-security.kubernetes.io/enforce: restricted
+    pod-security.kubernetes.io/enforce-version: v1.24
+    pod-security.kubernetes.io/audit: restricted
+    pod-security.kubernetes.io/audit-version: v1.24
+    pod-security.kubernetes.io/warn: restricted
+    pod-security.kubernetes.io/warn-version: v1.24
+  annotations:
+    description: "Secure sandbox environment for code execution"
+    security.alpha.kubernetes.io/scc: restricted

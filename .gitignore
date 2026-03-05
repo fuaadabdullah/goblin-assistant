@@ -1,0 +1,42 @@
+# Environment
+.vercel
+.env*.local
+.env.local*
+.env.production*
+.env.staging
+.env.vercel*
+
+# Dependencies
+node_modules/
+
+# Build outputs
+.next/
+dist/
+build/
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+.venv/
+venv/
+*.egg-info/
+
+# IDE
+.idea/
+.vscode/
+
+# Storybook
+*storybook.log
+storybook-static
+
+# OS
+.DS_Store
+._*
+*.pid
+
+# Embedded repos
+goblin-assistant-contracts/
+tools/
+goblin-assistant-contracts/
+tools/

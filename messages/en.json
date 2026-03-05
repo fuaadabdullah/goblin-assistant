@@ -1,0 +1,131 @@
+{
+  "common": {
+    "loading": "Loading...",
+    "error": "Error",
+    "success": "Success",
+    "cancel": "Cancel",
+    "confirm": "Confirm",
+    "save": "Save",
+    "delete": "Delete",
+    "edit": "Edit",
+    "close": "Close",
+    "send": "Send",
+    "copy": "Copy",
+    "copied": "Copied!",
+    "retry": "Retry",
+    "back": "Back",
+    "next": "Next",
+    "previous": "Previous"
+  },
+  "nav": {
+    "home": "Home",
+    "chat": "Chat",
+    "dashboard": "Dashboard",
+    "documentation": "Documentation",
+    "api": "API",
+    "settings": "Settings",
+    "login": "Login",
+    "logout": "Logout"
+  },
+  "home": {
+    "title": "GoblinOS Assistant",
+    "subtitle": "Your intelligent development companion",
+    "heroTitle": "Build Smarter.",
+    "heroTitleHighlight": "Work Faster.",
+    "heroDescription": "Experience the future of AI-assisted development. Intelligent routing, privacy-first design, and seamless multi-provider integration—all in one powerful platform.",
+    "getStarted": "Get Started",
+    "startBuilding": "Start Building",
+    "viewDashboard": "View Dashboard",
+    "viewLiveDemo": "View Live Demo",
+    "getStartedFree": "Get Started Free",
+    "badge": "AI-Powered Development Assistant",
+    "stats": {
+      "privacyFirst": "Privacy First",
+      "multiProvider": "Multi Provider Support",
+      "smartRouting": "Smart Routing"
+    },
+    "features": {
+      "intelligentRouting": {
+        "title": "Intelligent Routing",
+        "description": "Automatically selects the best AI model for each task based on complexity, cost, and performance."
+      },
+      "privacyFirst": {
+        "title": "Privacy First",
+        "description": "Your data stays secure with local processing options and encrypted cloud connections."
+      },
+      "multiProvider": {
+        "title": "Multi-Provider",
+        "description": "Access multiple AI providers seamlessly with intelligent fallback and load balancing."
+      },
+      "developerFocused": {
+        "title": "Developer Focused",
+        "description": "Built for developers with comprehensive APIs, webhooks, and integration tools."
+      }
+    },
+    "useCases": {
+      "title": "Perfect For",
+      "subtitle": "Discover how GoblinOS Assistant can transform your workflow",
+      "codeAssistance": {
+        "title": "Code Assistance",
+        "description": "Get help with debugging, code reviews, and implementation guidance."
+      },
+      "dataAnalysis": {
+        "title": "Data Analysis",
+        "description": "Analyze datasets, generate insights, and create visualizations."
+      },
+      "research": {
+        "title": "Research & Learning",
+        "description": "Access knowledge from multiple sources with intelligent summarization."
+      }
+    },
+    "cta": {
+      "title": "Ready to Supercharge Your Development?",
+      "description": "Join developers who are already building the future with intelligent AI assistance. Get started in seconds and experience the difference."
+    }
+  },
+  "chat": {
+    "welcome": "Hello! I'm your AI assistant. How can I help you today?",
+    "placeholder": "Type your message...",
+    "sendMessage": "Send message",
+    "clearChat": "Clear chat",
+    "newChat": "New chat",
+    "restoredConversation": "Restored Conversation",
+    "newConversation": "New Conversation",
+    "copyMessage": "Copy message",
+    "regenerate": "Regenerate",
+    "scrollToBottom": "Scroll to bottom",
+    "thinking": "Thinking...",
+    "errors": {
+      "tooLong": "Message is too long. Please keep it under 1000 characters.",
+      "auth": "Authentication failed. Please check your API key configuration.",
+      "forbidden": "Access denied. Please check your permissions.",
+      "rateLimit": "Too many requests. Please wait a moment and try again.",
+      "server": "Server error occurred. Please try again in a few moments.",
+      "network": "Connection error. Please check your internet connection and try again.",
+      "timeout": "Request timed out. Please try again.",
+      "parse": "Received an unexpected response format. Please try again.",
+      "generic": "I apologize, but I encountered an error. Please try again."
+    },
+    "shortcuts": {
+      "title": "Keyboard Shortcuts",
+      "focusInput": "Focus input",
+      "clearChat": "Clear chat",
+      "escape": "Blur input"
+    }
+  },
+  "settings": {
+    "title": "Settings",
+    "language": "Language",
+    "theme": "Theme",
+    "themes": {
+      "light": "Light",
+      "dark": "Dark",
+      "system": "System"
+    }
+  },
+  "language": {
+    "en": "English",
+    "ar": "العربية",
+    "zh": "中文"
+  }
+}

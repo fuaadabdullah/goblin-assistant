@@ -1,0 +1,124 @@
+name: Build and Sign Sandbox Image
+
+on:
+  push:
+    branches: [ main, develop ]
+    paths:
+      - 'Dockerfile.sandbox'
+      - 'sandbox_runner.py'
+      - '.github/workflows/build-sandbox.yml'
+  pull_request:
+    paths:
+      - 'Dockerfile.sandbox'
+      - 'sandbox_runner.py'
+      - '.github/workflows/build-sandbox.yml'
+
+env:
+  REGISTRY: ghcr.io
+  IMAGE_NAME: ${{ github.repository }}-sandbox
+
+jobs:
+  build-and-sign:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+      id-token: write
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Log in to Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Extract metadata
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
+          tags: |
+            type=ref,event=branch
+            type=ref,event=pr
+            type=sha,prefix={{branch}}-
+            type=raw,value=latest,enable={{is_default_branch}}
+
+      - name: Build sandbox image
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          file: ./Dockerfile.sandbox
+          push: false  # Don't push yet, we need to sign first
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      - name: Install cosign
+        uses: sigstore/cosign-installer@v3
+
+      - name: Install Trivy
+        run: |
+          sudo apt-get update
+          sudo apt-get install wget apt-transport-https gnupg lsb-release
+          wget -qO - https://aquasecurity.github.io/trivy-repo/deb/public.key | sudo apt-key add -
+          echo "deb https://aquasecurity.github.io/trivy-repo/deb $(lsb_release -sc) main" | sudo tee -a /etc/apt/sources.list.d/trivy.list
+          sudo apt-get update
+          sudo apt-get install trivy
+
+      - name: Scan image for vulnerabilities
+        run: |
+          docker save ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ github.sha }} -o sandbox-image.tar
+          trivy image --input sandbox-image.tar --exit-code 1 --severity HIGH,CRITICAL
+
+      - name: Push sandbox image
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          file: ./Dockerfile.sandbox
+          push: true
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          cache-from: type=gha
+
+      - name: Sign the published image
+        run: |
+          cosign sign ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}@${{ steps.meta.outputs.digest }}
+
+      - name: Verify signature
+        run: |
+          cosign verify ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}@${{ steps.meta.outputs.digest }} \
+            --certificate-identity-regexp "https://github.com/${{ github.repository }}/.github/workflows/build-sandbox.yml@${{ github.ref }}" \
+            --certificate-oidc-issuer "https://token.actions.githubusercontent.com"
+
+      - name: Generate artifact attestation
+        run: |
+          cosign attest --predicate attestation.json \
+            --type https://slsa.dev/provenance/v1 \
+            ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}@${{ steps.meta.outputs.digest }}
+
+      - name: Create security scan report
+        run: |
+          echo "## Security Scan Report" > security-report.md
+          echo "- **Image**: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}" >> security-report.md
+          echo "- **Commit**: ${{ github.sha }}" >> security-report.md
+          echo "- **Timestamp**: $(date -u)" >> security-report.md
+          echo "" >> security-report.md
+          echo "### Trivy Vulnerability Scan" >> security-report.md
+          trivy image --input sandbox-image.tar --format sarif --output trivy-results.sarif || true
+          echo "✅ Scan completed" >> security-report.md
+
+      - name: Upload security scan results
+        uses: actions/upload-artifact@v4
+        with:
+          name: security-scan-results
+          path: |
+            security-report.md
+            trivy-results.sarif

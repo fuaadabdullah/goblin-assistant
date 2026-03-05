@@ -1,0 +1,478 @@
+---
+# gVisor Runtime Class for enhanced container isolation
+apiVersion: node.k8s.io/v1
+kind: RuntimeClass
+metadata:
+  name: gvisor-sandbox
+  labels:
+    app: sandbox-runtime
+    security-level: enhanced
+handler: runsc
+scheduling:
+  nodeSelector:
+    runtime.gvisor: "enabled"
+overhead:
+  podFixed:
+    cpu: "50m"
+    memory: "128Mi"
+annotations:
+  security.alpha.kubernetes.io/scc: restricted
+
+---
+# Kata Containers Runtime Class (alternative to gVisor)
+apiVersion: node.k8s.io/v1
+kind: RuntimeClass
+metadata:
+  name: kata-sandbox
+  labels:
+    app: sandbox-runtime
+    security-level: maximum
+handler: kata
+scheduling:
+  nodeSelector:
+    runtime.kata: "enabled"
+overhead:
+  podFixed:
+    cpu: "100m"
+    memory: "256Mi"
+annotations:
+  security.alpha.kubernetes.io/scc: restricted
+
+---
+# gVisor-enabled worker deployment
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: goblin-assistant-worker-gvisor
+  namespace: sandbox
+  labels:
+    app: goblin-assistant-worker
+    component: worker
+    runtime: gvisor
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: goblin-assistant-worker
+      runtime: gvisor
+  template:
+    metadata:
+      labels:
+        app: goblin-assistant-worker
+        component: worker
+        runtime: gvisor
+      annotations:
+        # gVisor-specific annotations
+        runsc-config: |
+          {
+            "platform": {
+              "syscall_filter": {
+                "allow": [
+                  "accept",
+                  "accept4",
+                  "bind",
+                  "connect",
+                  "getpeername",
+                  "getsockname",
+                  "getsockopt",
+                  "listen",
+                  "recvfrom",
+                  "recvmsg",
+                  "recvmmsg",
+                  "sendmmsg",
+                  "sendmsg",
+                  "sendto",
+                  "setsockopt",
+                  "shutdown",
+                  "socket",
+                  "socketpair"
+                ]
+              }
+            },
+            "network": {
+              "host": false,
+              "control_plane_fd": -1
+            },
+            "rootfs": {
+              "readonly": true
+            }
+          }
+    spec:
+      runtimeClassName: gvisor-sandbox
+
+      # Service account with Docker access permissions
+      serviceAccountName: sandbox-worker-sa
+
+      # Security context for the pod
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 1000
+        runAsGroup: 1000
+        fsGroup: 1000
+        seccompProfile:
+          type: RuntimeDefault
+
+      containers:
+      - name: worker
+        image: goblin-assistant-sandbox:latest
+        imagePullPolicy: Always
+        command: ["rq", "worker", "sandbox-jobs", "--loglevel=info"]
+
+        # Enhanced security context for gVisor
+        securityContext:
+          allowPrivilegeEscalation: false
+          readOnlyRootFilesystem: true
+          runAsNonRoot: true
+          runAsUser: 1000
+          runAsGroup: 1000
+          capabilities:
+            drop:
+            - ALL
+          seccompProfile:
+            type: RuntimeDefault
+
+        # Resource limits (gVisor has higher overhead)
+        resources:
+          requests:
+            cpu: "300m"
+            memory: "512Mi"
+          limits:
+            cpu: "1500m"
+            memory: "2Gi"
+
+        # Environment variables
+        env:
+        - name: REDIS_URL
+          value: "redis://redis-service:6379/0"
+        - name: SANDBOX_IMAGE
+          value: "goblin-assistant-sandbox:latest"
+        - name: MAX_JOB_MEMORY
+          value: "128m"  # Reduced for gVisor isolation
+        - name: MAX_JOB_CPUS
+          value: "0.3"
+        - name: JOB_TIMEOUT_SECONDS
+          value: "300"
+        - name: ARTIFACT_S3_ENDPOINT
+          value: "http://minio-service:9000"
+        - name: S3_ACCESS_KEY
+          valueFrom:
+            secretKeyRef:
+              name: sandbox-secrets
+              key: s3-access-key
+        - name: S3_SECRET_KEY
+          valueFrom:
+            secretKeyRef:
+              name: sandbox-secrets
+              key: s3-secret-key
+        - name: S3_BUCKET
+          value: "goblin-sandbox"
+        - name: S3_REGION
+          value: "us-east-1"
+        - name: MAX_ARTIFACT_SIZE_MB
+          value: "10"
+        - name: ARTIFACT_TTL_DAYS
+          value: "7"
+        - name: RUNTIME_SECURITY_LEVEL
+          value: "gvisor"
+
+        # Volume mounts (read-only root filesystem with gVisor)
+        volumeMounts:
+        - name: job-storage
+          mountPath: /work
+        - name: tmp-volume
+          mountPath: /tmp
+
+      # No Docker socket access needed with gVisor
+      # gVisor provides its own container runtime
+
+      volumes:
+      - name: job-storage
+        emptyDir:
+          medium: Memory
+          sizeLimit: 50Mi  # Smaller for gVisor efficiency
+      - name: tmp-volume
+        emptyDir:
+          medium: Memory
+          sizeLimit: 16Mi
+
+      # Node affinity for gVisor-capable nodes
+      affinity:
+        nodeAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+          - nodeSelectorTerms:
+            - matchExpressions:
+              - key: runtime.gvisor
+                operator: In
+                values:
+                - "enabled"
+
+      # Tolerations
+      tolerations:
+      - key: "sandbox"
+        operator: "Equal"
+        value: "enabled"
+        effect: "NoSchedule"
+      - key: "runtime"
+        operator: "Equal"
+        value: "gvisor"
+        effect: "NoSchedule"
+
+---
+# Kata Containers worker deployment (maximum isolation)
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: goblin-assistant-worker-kata
+  namespace: sandbox
+  labels:
+    app: goblin-assistant-worker
+    component: worker
+    runtime: kata
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: goblin-assistant-worker
+      runtime: kata
+  template:
+    metadata:
+      labels:
+        app: goblin-assistant-worker
+        component: worker
+        runtime: kata
+    spec:
+      runtimeClassName: kata-sandbox
+
+      # Service account with minimal permissions
+      serviceAccountName: sandbox-worker-sa
+
+      # Security context for the pod
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 1000
+        runAsGroup: 1000
+        fsGroup: 1000
+        seccompProfile:
+          type: RuntimeDefault
+
+      containers:
+      - name: worker
+        image: goblin-assistant-sandbox:latest
+        imagePullPolicy: Always
+        command: ["rq", "worker", "sandbox-jobs", "--loglevel=info"]
+
+        # Enhanced security context for Kata
+        securityContext:
+          allowPrivilegeEscalation: false
+          readOnlyRootFilesystem: true
+          runAsNonRoot: true
+          runAsUser: 1000
+          runAsGroup: 1000
+          capabilities:
+            drop:
+            - ALL
+          seccompProfile:
+            type: RuntimeDefault
+
+        # Resource limits (Kata has highest overhead)
+        resources:
+          requests:
+            cpu: "500m"
+            memory: "1Gi"
+          limits:
+            cpu: "2000m"
+            memory: "4Gi"
+
+        # Environment variables
+        env:
+        - name: REDIS_URL
+          value: "redis://redis-service:6379/0"
+        - name: SANDBOX_IMAGE
+          value: "goblin-assistant-sandbox:latest"
+        - name: MAX_JOB_MEMORY
+          value: "64m"   # Minimal for Kata VM isolation
+        - name: MAX_JOB_CPUS
+          value: "0.2"
+        - name: JOB_TIMEOUT_SECONDS
+          value: "300"
+        - name: ARTIFACT_S3_ENDPOINT
+          value: "http://minio-service:9000"
+        - name: S3_ACCESS_KEY
+          valueFrom:
+            secretKeyRef:
+              name: sandbox-secrets
+              key: s3-access-key
+        - name: S3_SECRET_KEY
+          valueFrom:
+            secretKeyRef:
+              name: sandbox-secrets
+              key: s3-secret-key
+        - name: S3_BUCKET
+          value: "goblin-sandbox"
+        - name: S3_REGION
+          value: "us-east-1"
+        - name: MAX_ARTIFACT_SIZE_MB
+          value: "10"
+        - name: ARTIFACT_TTL_DAYS
+          value: "7"
+        - name: RUNTIME_SECURITY_LEVEL
+          value: "kata"
+
+        # Volume mounts
+        volumeMounts:
+        - name: job-storage
+          mountPath: /work
+        - name: tmp-volume
+          mountPath: /tmp
+
+      volumes:
+      - name: job-storage
+        emptyDir:
+          medium: Memory
+          sizeLimit: 25Mi  # Minimal for Kata efficiency
+      - name: tmp-volume
+        emptyDir:
+          medium: Memory
+          sizeLimit: 8Mi
+
+      # Node affinity for Kata-capable nodes
+      affinity:
+        nodeAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+          - nodeSelectorTerms:
+            - matchExpressions:
+              - key: runtime.kata
+                operator: In
+                values:
+                - "enabled"
+
+      # Tolerations
+      tolerations:
+      - key: "sandbox"
+        operator: "Equal"
+        value: "enabled"
+        effect: "NoSchedule"
+      - key: "runtime"
+        operator: "Equal"
+        value: "kata"
+        effect: "NoSchedule"
+
+---
+# Service to expose sandbox runtime metrics
+apiVersion: v1
+kind: Service
+metadata:
+  name: sandbox-runtime-metrics
+  namespace: sandbox
+  labels:
+    app: sandbox-runtime
+    component: metrics
+spec:
+  selector:
+    runtime: gvisor
+  ports:
+  - name: gvisor-metrics
+    port: 9313
+    targetPort: 9313
+    protocol: TCP
+  type: ClusterIP
+
+---
+# Network Policy for runtime isolation
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: runtime-sandbox-isolation
+  namespace: sandbox
+spec:
+  podSelector:
+    matchLabels:
+      runtime: gvisor
+  policyTypes:
+  - Ingress
+  - Egress
+  ingress:
+  # Allow metrics scraping
+  - from:
+    - namespaceSelector:
+        matchLabels:
+          name: monitoring
+    ports:
+    - protocol: TCP
+      port: 9313
+  # Allow Redis access
+  - from: []
+    ports:
+    - protocol: TCP
+      port: 6379
+  # Allow MinIO access
+  - from: []
+    ports:
+    - protocol: TCP
+      port: 9000
+  egress:
+  # Allow DNS resolution
+  - to: []
+    ports:
+    - protocol: UDP
+      port: 53
+  # Allow HTTPS outbound (for attestation)
+  - to: []
+    ports:
+    - protocol: TCP
+      port: 443
+  # Deny all other traffic (gVisor pods are network-isolated by default)
+
+---
+# ConfigMap for runtime security profiles
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: runtime-security-profiles
+  namespace: sandbox
+  labels:
+    app: sandbox-runtime
+    component: security
+data:
+  # gVisor seccomp profile (restrictive)
+  gvisor-seccomp.json: |
+    {
+      "defaultAction": "SCMP_ACT_ERRNO",
+      "architectures": ["SCMP_ARCH_X86_64"],
+      "syscalls": [
+        {"names": ["accept", "accept4", "bind", "connect", "getpeername", "getsockname", "getsockopt", "listen", "recvfrom", "recvmsg", "sendmsg", "sendto", "setsockopt", "shutdown", "socket", "socketpair"], "action": "SCMP_ACT_ALLOW"},
+        {"names": ["brk", "mmap", "munmap", "mprotect", "madvise", "futex", "epoll_create", "epoll_ctl", "epoll_wait", "epoll_pwait"], "action": "SCMP_ACT_ALLOW"},
+        {"names": ["read", "write", "close", "fstat", "lstat", "stat", "fstatat", "readlink", "readlinkat"], "action": "SCMP_ACT_ALLOW"},
+        {"names": ["open", "openat", "creat", "unlink", "unlinkat", "mkdir", "mkdirat", "rmdir"], "action": "SCMP_ACT_ALLOW"},
+        {"names": ["getdents", "getdents64", "lseek", "ioctl", "fcntl", "flock"], "action": "SCMP_ACT_ALLOW"},
+        {"names": ["rt_sigaction", "rt_sigprocmask", "rt_sigreturn", "sigaltstack"], "action": "SCMP_ACT_ALLOW"},
+        {"names": ["clone", "fork", "vfork", "execve", "wait4", "waitpid", "exit", "exit_group"], "action": "SCMP_ACT_ALLOW"},
+        {"names": ["getpid", "getppid", "gettid", "getuid", "geteuid", "getgid", "getegid", "getgroups"], "action": "SCMP_ACT_ALLOW"},
+        {"names": ["setuid", "setgid", "setgroups", "setresuid", "setresgid", "setfsuid", "setfsgid"], "action": "SCMP_ACT_ALLOW"},
+        {"names": ["chdir", "fchdir", "chroot", "pivot_root"], "action": "SCMP_ACT_ALLOW"},
+        {"names": ["mount", "umount", "umount2"], "action": "SCMP_ACT_ALLOW"},
+        {"names": ["time", "clock_gettime", "clock_settime", "clock_getres", "gettimeofday", "settimeofday"], "action": "SCMP_ACT_ALLOW"},
+        {"names": ["nanosleep", "clock_nanosleep", "select", "pselect6", "poll", "ppoll"], "action": "SCMP_ACT_ALLOW"}
+      ]
+    }
+
+  # Kata Containers configuration
+  kata-config.toml: |
+    [hypervisor.qemu]
+    path = "/usr/bin/qemu-system-x86_64"
+    kernel = "/usr/share/kata-containers/vmlinuz.container"
+    image = "/usr/share/kata-containers/kata-containers.img"
+    initrd = "/usr/share/kata-containers/kata-containers-initrd.img"
+    machine_type = "q35"
+    firmware = "/usr/share/kata-containers/OVMF.fd"
+
+    [runtime]
+    internetworking_model = "none"
+    disable_new_netns = true
+
+    [agent.kata]
+    enable_debug = false
+    kernel_modules = []
+
+    [shim]
+    path = "/usr/local/bin/containerd-shim-kata-v2"

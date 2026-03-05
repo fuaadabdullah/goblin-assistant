@@ -1,0 +1,113 @@
+groups:
+  - name: sandbox_alerts
+    rules:
+      # Job failure rate alert (5% over 5 minutes)
+      - alert: SandboxHighFailureRate
+        expr: rate(sandbox_job_failures_total[5m]) / rate(sandbox_jobs_submitted_total[5m]) > 0.05
+        for: 5m
+        labels:
+          severity: critical
+          service: goblin-sandbox
+        annotations:
+          summary: "High sandbox job failure rate"
+          description: "Sandbox job failure rate is {{ $value | printf \"%.2f\" }}% over the last 5 minutes (threshold: 5%)"
+          runbook_url: "https://docs.goblin.fuaad.ai/sandbox/troubleshooting#high-failure-rate"
+
+      # Queue depth alert
+      - alert: SandboxQueueDepthHigh
+        expr: sandbox_queue_depth > 50
+        for: 2m
+        labels:
+          severity: warning
+          service: goblin-sandbox
+        annotations:
+          summary: "Sandbox queue depth is high"
+          description: "Sandbox queue depth is {{ $value }} jobs (threshold: 50)"
+          runbook_url: "https://docs.goblin.fuaad.ai/sandbox/troubleshooting#queue-depth"
+
+      # Job duration P95 alert (90% of 5min timeout = 4.5min)
+      - alert: SandboxJobDurationHigh
+        expr: histogram_quantile(0.95, rate(sandbox_job_duration_seconds_bucket[5m])) > 270
+        for: 5m
+        labels:
+          severity: warning
+          service: goblin-sandbox
+        annotations:
+          summary: "Sandbox job duration P95 is high"
+          description: "95th percentile job duration is {{ $value | printf \"%.1f\" }}s over the last 5 minutes (threshold: 270s)"
+          runbook_url: "https://docs.goblin.fuaad.ai/sandbox/troubleshooting#job-duration"
+
+      # Container kills alert (indicates timeouts or resource issues)
+      - alert: SandboxContainerKillsHigh
+        expr: increase(sandbox_container_kills_total[10m]) > 5
+        for: 5m
+        labels:
+          severity: warning
+          service: goblin-sandbox
+        annotations:
+          summary: "High number of sandbox container kills"
+          description: "{{ $value }} containers killed in the last 10 minutes (threshold: 5)"
+          runbook_url: "https://docs.goblin.fuaad.ai/sandbox/troubleshooting#container-kills"
+
+      # Artifact upload failures
+      - alert: SandboxArtifactUploadFailures
+        expr: rate(sandbox_artifacts_uploaded_total{result="failure"}[5m]) > 0.1
+        for: 5m
+        labels:
+          severity: warning
+          service: goblin-sandbox
+        annotations:
+          summary: "Sandbox artifact upload failures"
+          description: "Artifact upload failure rate is {{ $value | printf \"%.2f\" }} over the last 5 minutes"
+          runbook_url: "https://docs.goblin.fuaad.ai/sandbox/troubleshooting#artifact-uploads"
+
+      # Cleanup service failures
+      - alert: SandboxCleanupFailures
+        expr: rate(sandbox_cleanup_runs_total{result="failure"}[1h]) > 0
+        for: 15m
+        labels:
+          severity: warning
+          service: goblin-sandbox
+        annotations:
+          summary: "Sandbox cleanup service failing"
+          description: "Cleanup runs are failing - check artifact storage and permissions"
+          runbook_url: "https://docs.goblin.fuaad.ai/sandbox/troubleshooting#cleanup-failures"
+
+      # Running jobs stuck (no completion for extended period)
+      - alert: SandboxJobsStuck
+        expr: sandbox_jobs_running > 0 and (time() - max_over_time(timestamp(sandbox_jobs_running)[30m])) > 1800
+        for: 10m
+        labels:
+          severity: critical
+          service: goblin-sandbox
+        annotations:
+          summary: "Sandbox jobs appear stuck"
+          description: "Jobs have been running for over 30 minutes without completion"
+          runbook_url: "https://docs.goblin.fuaad.ai/sandbox/troubleshooting#stuck-jobs"
+
+  - name: sandbox_slos
+    rules:
+      # Service Level Objectives
+      - alert: SandboxAvailabilityLow
+        expr: (1 - (rate(sandbox_job_failures_total[7d]) / rate(sandbox_jobs_submitted_total[7d]))) < 0.95
+        for: 1h
+        labels:
+          severity: critical
+          service: goblin-sandbox
+          slo: availability
+        annotations:
+          summary: "Sandbox availability below SLO"
+          description: "7-day success rate is {{ $value | printf \"%.1f\" }}% (SLO: 95%)"
+          runbook_url: "https://docs.goblin.fuaad.ai/sandbox/slo#availability"
+
+      - alert: SandboxLatencyHigh
+        expr: histogram_quantile(0.95, rate(sandbox_job_duration_seconds_bucket[7d])) > 120
+        for: 1h
+        labels:
+          severity: warning
+          service: goblin-sandbox
+          slo: latency
+        annotations:
+          summary: "Sandbox latency above SLO"
+          description: "7-day P95 latency is {{ $value | printf \"%.1f\" }}s (SLO: 120s)"
+          runbook_url: "https://docs.goblin.fuaad.ai/sandbox/slo#latency"

@@ -1,0 +1,23 @@
+[load_balancing]
+enabled = true
+strategy = "round_robin"
+health_check_interval = 30
+failure_threshold = 3
+recovery_threshold = 2
+
+[server_priorities]
+# Primary servers for high availability
+primary_ollama = "192.175.23.150:8002"
+backup_router = "45.61.51.220:8000"
+
+[failover_rules]
+# Automatic failover configuration
+failover_to_backup = true
+max_failover_time = 60
+circuit_breaker_enabled = true
+
+[health_checks]
+# Health check endpoints
+ollama_health = "/api/tags"
+router_health = "/health"
+timeout_seconds = 10

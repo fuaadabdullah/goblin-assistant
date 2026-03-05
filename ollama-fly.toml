@@ -1,0 +1,19 @@
+app = 'goblin-ollama'
+primary_region = 'iad'
+
+[build]
+image = 'ollama/ollama:latest'
+
+[[services]]
+protocol = 'tcp'
+internal_port = 11434
+processes = ['app']
+
+[[services.ports]]
+port = 11434
+handlers = ['http']
+
+[[vm]]
+memory = '2gb'
+cpu_kind = 'shared'
+cpus = 1

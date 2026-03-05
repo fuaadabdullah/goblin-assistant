@@ -1,0 +1,22 @@
+<!doctype html>
+<html>
+  <head>
+    <title>Test Page</title>
+  </head>
+  <body>
+    <h1>If you see this, Vite is serving files correctly</h1>
+    <script>
+      console.log('Test page loaded');
+      fetch('http://localhost:8000/health')
+        .then(r => r.json())
+        .then(data => {
+          console.log('Backend health:', data);
+          document.body.innerHTML += '<p>Backend is responding: ' + JSON.stringify(data) + '</p>';
+        })
+        .catch(err => {
+          console.error('Backend error:', err);
+          document.body.innerHTML += '<p style="color:red">Backend error: ' + err.message + '</p>';
+        });
+    </script>
+  </body>
+</html>

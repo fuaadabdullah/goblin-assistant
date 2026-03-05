@@ -1,0 +1,194 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Backend Connection Test</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+        .container {
+            background-color: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        h1 {
+            color: #333;
+            text-align: center;
+        }
+        button {
+            background-color: #4CAF50;
+            color: white;
+            padding: 10px 20px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 16px;
+            margin: 10px 0;
+        }
+        button:hover {
+            background-color: #45a049;
+        }
+        #results {
+            margin-top: 20px;
+            padding: 15px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            background-color: #f9f9f9;
+            min-height: 100px;
+        }
+        .success {
+            color: green;
+        }
+        .error {
+            color: red;
+        }
+        .info {
+            color: blue;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Backend Connection Test</h1>
+        <p>This page tests the connection between the frontend and backend.</p>
+
+        <button id="testConnectionBtn">Test Connection</button>
+        <button id="testChatStreamBtn">Test Chat Stream</button>
+
+        <div id="results">
+            <p>Click the buttons above to test the connection to the backend.</p>
+        </div>
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            const resultsDiv = document.getElementById('results');
+
+            function addResult(message, type = 'info') {
+                const p = document.createElement('p');
+                p.className = type;
+                p.textContent = message;
+                resultsDiv.appendChild(p);
+            }
+
+            document.getElementById('testConnectionBtn').addEventListener('click', async function() {
+                resultsDiv.innerHTML = '<p>Testing connection...</p>';
+
+                try {
+                    const response = await fetch('http://localhost:8003/test', {
+                        method: 'GET',
+                        headers: {
+                            'Content-Type': 'application/json',
+                        }
+                    });
+
+                    if (response.ok) {
+                        const data = await response.json();
+                        addResult('✅ Connection successful!', 'success');
+                        addResult(`Response: ${JSON.stringify(data)}`, 'info');
+                    } else {
+                        addResult('❌ Connection failed', 'error');
+                        addResult(`Status: ${response.status}`, 'error');
+                    }
+                } catch (error) {
+                    addResult('❌ Connection error', 'error');
+                    addResult(`Error: ${error.message}`, 'error');
+                }
+            });
+
+            document.getElementById('testChatStreamBtn').addEventListener('click', async function() {
+                resultsDiv.innerHTML = '<p>Testing chat stream...</p>';
+
+                try {
+                    const response = await fetch('http://localhost:8003/chat/stream', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                        },
+                        body: JSON.stringify({
+                            message: 'Hello, how are you?'
+                        })
+                    });
+
+                    if (response.ok) {
+                        addResult('✅ Chat stream endpoint accessible!', 'success');
+
+                        // Try to read the stream
+                        const reader = response.body.getReader();
+                        const decoder = new TextDecoder();
+                        let streamData = '';
+
+                        while (true) {
+                            const { done, value } = await reader.read();
+                            if (done) break;
+
+                            const chunk = decoder.decode(value);
+                            streamData += chunk;
+
+                            // Show partial results
+                            if (chunk.includes('"done": true')) {
+                                addResult('Stream completed successfully!', 'success');
+                                break;
+                            }
+                        }
+                    } else {
+                        addResult('❌ Chat stream failed', 'error');
+                        addResult(`Status: ${response.status}`, 'error');
+                    }
+                } catch (error) {
+                    addResult('❌ Chat stream error', 'error');
+                    addResult(`Error: ${error.message}`, 'error');
+                }
+            });
+        });
+    </script>
+</body>
+</html>
+<task_progress>
+- [x] Explore goblin-assistant structure
+- [x] Identify frontend and backend components
+- [x] Understand current connection status
+- [x] Make necessary fixes - updating API client to use correct backend URL
+- [x] Make necessary fixes - updating chat page to use correct endpoint
+- [x] Make necessary fixes - chat service endpoints are already correct
+- [x] Make necessary fixes - adding streaming imports to chat router
+- [x] Make necessary fixes - adding chat stream endpoint to chat router
+- [x] Make necessary fixes - updating environment configuration
+- [x] Make necessary fixes - creating proper .env.local file
+- [x] Connect frontend to backend - starting backend server
+- [x] Make necessary fixes - fixing import paths in main.py
+- [x] Connect frontend to backend - restarting backend server with fixed imports
+- [x] Connect frontend to backend - trying module import
+- [x] Make necessary fixes - fixing circular import issue
+- [x] Make necessary fixes - checking observability service for circular import
+- [x] Make necessary fixes - removing circular import from observability service
+- [x] Connect frontend to backend - restarting backend server after circular import fix
+- [x] Make necessary fixes - checking retrieval service for circular import
+- [x] Make necessary fixes - removing circular import from retrieval service
+- [x] Make necessary fixes - moving observability import inside function
+- [x] Connect frontend to backend - restarting backend server after all circular import fixes
+- [x] Make necessary fixes - checking context assembly service import issue
+- [x] Make necessary fixes - adding global instance to context assembly service
+- [x] Connect frontend to backend - restarting backend server after context assembly fix
+- [x] Make necessary fixes - fixing retrieval service lazy import in context assembly service
+- [x] Connect frontend to backend - restarting backend server after retrieval service lazy import fix
+- [x] Make necessary fixes - fixing retrieval service instantiation in context assembly service
+- [x] Connect frontend to backend - restarting backend server after retrieval service instantiation fix
+- [x] Connect frontend to backend - testing backend connection
+- [x] Connect frontend to backend - testing chat stream endpoint
+- [x] Connect frontend to backend - testing chat completions endpoint
+- [x] Connect frontend to backend - starting frontend development server
+- [x] Make necessary fixes - checking package.json for frontend scripts
+- [x] Connect frontend to backend - trying npx next dev
+- [x] Make necessary fixes - creating connection test file
+- [x] Make necessary fixes - creating HTML connection test
+- [ ] Run the application
+</task_progress>
+</write_to_file>

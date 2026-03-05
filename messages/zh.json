@@ -1,0 +1,131 @@
+{
+  "common": {
+    "loading": "加载中...",
+    "error": "错误",
+    "success": "成功",
+    "cancel": "取消",
+    "confirm": "确认",
+    "save": "保存",
+    "delete": "删除",
+    "edit": "编辑",
+    "close": "关闭",
+    "send": "发送",
+    "copy": "复制",
+    "copied": "已复制！",
+    "retry": "重试",
+    "back": "返回",
+    "next": "下一步",
+    "previous": "上一步"
+  },
+  "nav": {
+    "home": "首页",
+    "chat": "聊天",
+    "dashboard": "控制台",
+    "documentation": "文档",
+    "api": "接口",
+    "settings": "设置",
+    "login": "登录",
+    "logout": "退出"
+  },
+  "home": {
+    "title": "GoblinOS 助手",
+    "subtitle": "您的智能开发伙伴",
+    "heroTitle": "更智能地构建。",
+    "heroTitleHighlight": "更快速地工作。",
+    "heroDescription": "体验AI辅助开发的未来。智能路由、隐私优先设计、无缝多供应商集成——尽在一个强大平台。",
+    "getStarted": "开始使用",
+    "startBuilding": "开始构建",
+    "viewDashboard": "查看控制台",
+    "viewLiveDemo": "查看演示",
+    "getStartedFree": "免费开始",
+    "badge": "AI驱动的开发助手",
+    "stats": {
+      "privacyFirst": "隐私优先",
+      "multiProvider": "多供应商支持",
+      "smartRouting": "智能路由"
+    },
+    "features": {
+      "intelligentRouting": {
+        "title": "智能路由",
+        "description": "根据复杂度、成本和性能自动为每个任务选择最佳AI模型。"
+      },
+      "privacyFirst": {
+        "title": "隐私优先",
+        "description": "通过本地处理选项和加密的云连接保护您的数据安全。"
+      },
+      "multiProvider": {
+        "title": "多供应商",
+        "description": "无缝访问多个AI供应商，具有智能回退和负载均衡。"
+      },
+      "developerFocused": {
+        "title": "专注开发者",
+        "description": "为开发者构建，提供全面的API、Webhook和集成工具。"
+      }
+    },
+    "useCases": {
+      "title": "适用场景",
+      "subtitle": "发现GoblinOS助手如何改变您的工作流程",
+      "codeAssistance": {
+        "title": "代码辅助",
+        "description": "获取调试、代码审查和实现指导方面的帮助。"
+      },
+      "dataAnalysis": {
+        "title": "数据分析",
+        "description": "分析数据集、生成洞察并创建可视化。"
+      },
+      "research": {
+        "title": "研究与学习",
+        "description": "通过智能摘要访问多个来源的知识。"
+      }
+    },
+    "cta": {
+      "title": "准备好加速您的开发了吗？",
+      "description": "加入已经在用智能AI辅助构建未来的开发者们。几秒钟内开始，体验不同。"
+    }
+  },
+  "chat": {
+    "welcome": "您好！我是您的AI助手。今天我能帮您什么？",
+    "placeholder": "输入您的消息...",
+    "sendMessage": "发送消息",
+    "clearChat": "清除聊天",
+    "newChat": "新聊天",
+    "restoredConversation": "已恢复的对话",
+    "newConversation": "新对话",
+    "copyMessage": "复制消息",
+    "regenerate": "重新生成",
+    "scrollToBottom": "滚动到底部",
+    "thinking": "思考中...",
+    "errors": {
+      "tooLong": "消息太长。请保持在1000个字符以内。",
+      "auth": "认证失败。请检查您的API密钥配置。",
+      "forbidden": "访问被拒绝。请检查您的权限。",
+      "rateLimit": "请求太多。请稍等片刻后重试。",
+      "server": "服务器错误。请稍后重试。",
+      "network": "连接错误。请检查您的网络连接后重试。",
+      "timeout": "请求超时。请重试。",
+      "parse": "收到意外的响应格式。请重试。",
+      "generic": "抱歉，遇到了错误。请重试。"
+    },
+    "shortcuts": {
+      "title": "键盘快捷键",
+      "focusInput": "聚焦输入框",
+      "clearChat": "清除聊天",
+      "escape": "取消聚焦"
+    }
+  },
+  "settings": {
+    "title": "设置",
+    "language": "语言",
+    "theme": "主题",
+    "themes": {
+      "light": "浅色",
+      "dark": "深色",
+      "system": "跟随系统"
+    }
+  },
+  "language": {
+    "en": "English",
+    "ar": "العربية",
+    "zh": "中文"
+  }
+}

@@ -1,0 +1,37 @@
+{
+  "buildCommand": "rm -rf .next/cache && npm run build",
+  "outputDirectory": ".next",
+  "framework": "nextjs",
+  "functions": {
+    "app/**/*.js": {
+      "maxDuration": 10
+    }
+  },
+  "env": {
+    "BACKEND_URL": "https://goblin-backend.fly.dev",
+    "NEXT_PUBLIC_API_URL": "https://goblin-backend.fly.dev",
+    "NEXT_PUBLIC_API_BASE_URL": "https://goblin-backend.fly.dev",
+    "NEXT_PUBLIC_DOMAIN": "goblinosassistant.duckdns.org"
+  },
+
+  "headers": [
+    {
+      "source": "/api/(.*)",
+      "headers": [
+        {
+          "key": "Access-Control-Allow-Origin",
+          "value": "*"
+        },
+        {
+          "key": "Access-Control-Allow-Methods",
+          "value": "GET, POST, PUT, DELETE, OPTIONS"
+        },
+        {
+          "key": "Access-Control-Allow-Headers",
+          "value": "Content-Type, Authorization"
+        }
+      ]
+    }
+  ]
+}
+

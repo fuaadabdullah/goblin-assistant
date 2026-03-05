@@ -1,0 +1,1157 @@
+{
+  "timestamp": "2025-12-31T04:47:23.157801",
+  "health_check": false,
+  "classification": {
+    "chat": [
+      {
+        "message": "How are you doing today?",
+        "error": "All connection attempts failed"
+      },
+      {
+        "message": "What's the weather like?",
+        "error": "All connection attempts failed"
+      },
+      {
+        "message": "Can you tell me a joke?",
+        "error": "All connection attempts failed"
+      },
+      {
+        "message": "I'm feeling bored, what should I do?",
+        "error": "All connection attempts failed"
+      }
+    ],
+    "fact": [
+      {
+        "message": "I'm a software engineer with 5 years of experience",
+        "error": "All connection attempts failed"
+      },
+      {
+        "message": "I live in San Francisco and work at Google",
+        "error": "All connection attempts failed"
+      },
+      {
+        "message": "I studied computer science at Stanford",
+        "error": "All connection attempts failed"
+      },
+      {
+        "message": "I'm fluent in Python, JavaScript, and Go",
+        "expected_type": "fact",
+        "actual_type": "chat",
+        "correct": false,
+        "decision": [
+          "cache"
+        ],
+        "confidence": 0.875
+      }
+    ],
+    "preference": [
+      {
+        "message": "I prefer concise technical explanations",
+        "expected_type": "preference",
+        "actual_type": "chat",
+        "correct": false,
+        "decision": [
+          "cache"
+        ],
+        "confidence": 0.875
+      },
+      {
+        "message": "I don't like verbose responses",
+        "expected_type": "preference",
+        "actual_type": "chat",
+        "correct": false,
+        "decision": [
+          "cache"
+        ],
+        "confidence": 0.875
+      },
+      {
+        "message": "I always use dark mode",
+        "expected_type": "preference",
+        "actual_type": "chat",
+        "correct": false,
+        "decision": [
+          "cache"
+        ],
+        "confidence": 0.875
+      },
+      {
+        "message": "I prefer React over Vue",
+        "expected_type": "preference",
+        "actual_type": "chat",
+        "correct": false,
+        "decision": [
+          "cache"
+        ],
+        "confidence": 0.75
+      }
+    ],
+    "task_result": [
+      {
+        "message": "Here's the code I implemented for the feature",
+        "expected_type": "task_result",
+        "actual_type": "task_result",
+        "correct": true,
+        "decision": [
+          "embed",
+          "summarize",
+          "cache"
+        ],
+        "confidence": 0.3333333333333333
+      },
+      {
+        "message": "I've completed the task successfully",
+        "expected_type": "task_result",
+        "actual_type": "task_result",
+        "correct": true,
+        "decision": [
+          "embed",
+          "summarize",
+          "cache"
+        ],
+        "confidence": 0.5
+      },
+      {
+        "message": "Attached is the solution you requested",
+        "expected_type": "task_result",
+        "actual_type": "task_result",
+        "correct": true,
+        "decision": [
+          "embed",
+          "summarize",
+          "cache"
+        ],
+        "confidence": 0.3333333333333333
+      },
+      {
+        "message": "The implementation is done and working",
+        "expected_type": "task_result",
+        "actual_type": "chat",
+        "correct": false,
+        "decision": [
+          "cache"
+        ],
+        "confidence": 0.8333333333333334
+      }
+    ],
+    "system": [
+      {
+        "message": "System: Memory cleared",
+        "expected_type": "system",
+        "actual_type": "system",
+        "correct": true,
+        "decision": [
+          "discard"
+        ],
+        "confidence": 0.5
+      },
+      {
+        "message": "Assistant: Context updated",
+        "expected_type": "system",
+        "actual_type": "system",
+        "correct": true,
+        "decision": [
+          "discard"
+        ],
+        "confidence": 0.5
+      },
+      {
+        "message": "Bot: Processing complete",
+        "expected_type": "system",
+        "actual_type": "chat",
+        "correct": false,
+        "decision": [
+          "cache"
+        ],
+        "confidence": 0.75
+      },
+      {
+        "message": "AI: Ready for next input",
+        "expected_type": "system",
+        "actual_type": "chat",
+        "correct": false,
+        "decision": [
+          "cache"
+        ],
+        "confidence": 0.75
+      }
+    ],
+    "noise": [
+      {
+        "message": "ok",
+        "expected_type": "noise",
+        "actual_type": "chat",
+        "correct": false,
+        "decision": [
+          "cache"
+        ],
+        "confidence": 0.8333333333333334
+      },
+      {
+        "message": "thanks",
+        "expected_type": "noise",
+        "actual_type": "chat",
+        "correct": false,
+        "decision": [
+          "cache"
+        ],
+        "confidence": 0.9166666666666666
+      },
+      {
+        "message": "cool",
+        "expected_type": "noise",
+        "actual_type": "chat",
+        "correct": false,
+        "decision": [
+          "cache"
+        ],
+        "confidence": 0.9166666666666666
+      },
+      {
+        "message": "lol",
+        "expected_type": "noise",
+        "actual_type": "chat",
+        "correct": false,
+        "decision": [
+          "cache"
+        ],
+        "confidence": 0.8333333333333334
+      },
+      {
+        "message": "\ud83d\udc4d",
+        "expected_type": "noise",
+        "actual_type": "chat",
+        "correct": false,
+        "decision": [
+          "cache"
+        ],
+        "confidence": 1.0
+      },
+      {
+        "message": "bye",
+        "expected_type": "noise",
+        "actual_type": "chat",
+        "correct": false,
+        "decision": [
+          "cache"
+        ],
+        "confidence": 0.8333333333333334
+      }
+    ]
+  },
+  "decision_matrix_config": {
+    "decision_table": {
+      "chat": {
+        "embed": false,
+        "summarize": false,
+        "cache": "short",
+        "discard": false,
+        "reasoning": "Chat messages are ephemeral, don't embed or summarize"
+      },
+      "task_result": {
+        "embed": true,
+        "summarize": true,
+        "cache": true,
+        "discard": false,
+        "reasoning": "Task results are valuable information worth summarizing"
+      },
+      "fact": {
+        "embed": true,
+        "summarize": false,
+        "cache": true,
+        "discard": false,
+        "reasoning": "Facts are declarative knowledge worth storing"
+      },
+      "preference": {
+        "embed": true,
+        "summarize": false,
+        "cache": true,
+        "discard": false,
+        "reasoning": "Preferences inform future interactions"
+      },
+      "system": {
+        "embed": false,
+        "summarize": false,
+        "cache": false,
+        "discard": true,
+        "reasoning": "System messages are operational, not conversational"
+      },
+      "noise": {
+        "embed": false,
+        "summarize": false,
+        "cache": false,
+        "discard": true,
+        "reasoning": "Noise provides no value, should be discarded"
+      }
+    },
+    "rate_limits": {
+      "max_embeddings_per_hour": 50,
+      "max_summaries_per_day": 10,
+      "max_cache_size_mb": 100
+    },
+    "timestamp": "2025-12-31T04:48:26.136338"
+  },
+  "cache_stats": {
+    "status": "connected",
+    "cache_stats": {
+      "total_keys": 17,
+      "message_keys": 17,
+      "context_keys": 0,
+      "preference_keys": 0
+    },
+    "redis_info": {
+      "used_memory_human": "1.03M",
+      "connected_clients": 2,
+      "keyspace_hits": 0,
+      "keyspace_misses": 0
+    },
+    "timestamp": "2025-12-31T04:48:26.171367"
+  },
+  "batch_processing": {
+    "total_messages": 12,
+    "results": [
+      {
+        "index": 0,
+        "content_preview": "How are you doing today?",
+        "classification": {
+          "type": "chat",
+          "confidence": 1.0,
+          "reasoning": "No strong pattern match, classified as chat"
+        },
+        "decision": {
+          "actions": [
+            "cache"
+          ],
+          "reasoning": "Chat messages are ephemeral, don't embed or summarize",
+          "confidence": 1.0
+        },
+        "actions_taken": [
+          "cache",
+          "store"
+        ]
+      },
+      {
+        "index": 1,
+        "content_preview": "What's the weather like?",
+        "classification": {
+          "type": "chat",
+          "confidence": 1.0,
+          "reasoning": "No strong pattern match, classified as chat"
+        },
+        "decision": {
+          "actions": [
+            "cache"
+          ],
+          "reasoning": "Chat messages are ephemeral, don't embed or summarize",
+          "confidence": 1.0
+        },
+        "actions_taken": [
+          "cache",
+          "store"
+        ]
+      },
+      {
+        "index": 2,
+        "content_preview": "I'm a software engineer with 5 years of experience",
+        "classification": {
+          "type": "chat",
+          "confidence": 0.875,
+          "reasoning": "No strong pattern match, classified as chat"
+        },
+        "decision": {
+          "actions": [
+            "cache"
+          ],
+          "reasoning": "Chat messages are ephemeral, don't embed or summarize",
+          "confidence": 0.875
+        },
+        "actions_taken": [
+          "cache",
+          "store"
+        ]
+      },
+      {
+        "index": 3,
+        "content_preview": "I live in San Francisco and work at Google",
+        "classification": {
+          "type": "chat",
+          "confidence": 0.875,
+          "reasoning": "No strong pattern match, classified as chat"
+        },
+        "decision": {
+          "actions": [
+            "cache"
+          ],
+          "reasoning": "Chat messages are ephemeral, don't embed or summarize",
+          "confidence": 0.875
+        },
+        "actions_taken": [
+          "cache",
+          "store"
+        ]
+      },
+      {
+        "index": 4,
+        "content_preview": "I prefer concise technical explanations",
+        "classification": {
+          "type": "chat",
+          "confidence": 0.875,
+          "reasoning": "No strong pattern match, classified as chat"
+        },
+        "decision": {
+          "actions": [
+            "cache"
+          ],
+          "reasoning": "Chat messages are ephemeral, don't embed or summarize",
+          "confidence": 0.875
+        },
+        "actions_taken": [
+          "cache",
+          "store"
+        ]
+      },
+      {
+        "index": 5,
+        "content_preview": "I don't like verbose responses",
+        "classification": {
+          "type": "chat",
+          "confidence": 0.875,
+          "reasoning": "No strong pattern match, classified as chat"
+        },
+        "decision": {
+          "actions": [
+            "cache"
+          ],
+          "reasoning": "Chat messages are ephemeral, don't embed or summarize",
+          "confidence": 0.875
+        },
+        "actions_taken": [
+          "cache",
+          "store"
+        ]
+      },
+      {
+        "index": 6,
+        "content_preview": "Here's the code I implemented for the feature",
+        "classification": {
+          "type": "task_result",
+          "confidence": 0.3333333333333333,
+          "reasoning": "Classified as task_result with confidence 0.33. Keywords: implemented, code"
+        },
+        "decision": {
+          "actions": [
+            "embed",
+            "summarize",
+            "cache"
+          ],
+          "reasoning": "Task results are valuable information worth summarizing",
+          "confidence": 0.3333333333333333
+        },
+        "actions_taken": [
+          "embed",
+          "summarize",
+          "cache",
+          "store"
+        ]
+      },
+      {
+        "index": 7,
+        "content_preview": "I've completed the task successfully",
+        "classification": {
+          "type": "task_result",
+          "confidence": 0.5,
+          "reasoning": "Classified as task_result with confidence 0.50. Keywords: completed, completed, the"
+        },
+        "decision": {
+          "actions": [
+            "embed",
+            "summarize",
+            "cache"
+          ],
+          "reasoning": "Task results are valuable information worth summarizing",
+          "confidence": 0.5
+        },
+        "actions_taken": [
+          "embed",
+          "summarize",
+          "cache",
+          "store"
+        ]
+      },
+      {
+        "index": 8,
+        "content_preview": "System: Memory cleared",
+        "classification": {
+          "type": "system",
+          "confidence": 0.5,
+          "reasoning": "Classified as system with confidence 0.50. Keywords: system, memory"
+        },
+        "decision": {
+          "actions": [
+            "discard"
+          ],
+          "reasoning": "System messages are operational, not conversational",
+          "confidence": 0.5
+        },
+        "actions_taken": [
+          "discard"
+        ]
+      },
+      {
+        "index": 9,
+        "content_preview": "Assistant: Context updated",
+        "classification": {
+          "type": "system",
+          "confidence": 0.5,
+          "reasoning": "Classified as system with confidence 0.50. Keywords: assistant, context"
+        },
+        "decision": {
+          "actions": [
+            "discard"
+          ],
+          "reasoning": "System messages are operational, not conversational",
+          "confidence": 0.5
+        },
+        "actions_taken": [
+          "discard"
+        ]
+      },
+      {
+        "index": 10,
+        "content_preview": "ok",
+        "classification": {
+          "type": "chat",
+          "confidence": 0.8333333333333334,
+          "reasoning": "No strong pattern match, classified as chat"
+        },
+        "decision": {
+          "actions": [
+            "cache"
+          ],
+          "reasoning": "Chat messages are ephemeral, don't embed or summarize",
+          "confidence": 0.8333333333333334
+        },
+        "actions_taken": [
+          "cache",
+          "store"
+        ]
+      },
+      {
+        "index": 11,
+        "content_preview": "thanks",
+        "classification": {
+          "type": "chat",
+          "confidence": 0.9166666666666666,
+          "reasoning": "No strong pattern match, classified as chat"
+        },
+        "decision": {
+          "actions": [
+            "cache"
+          ],
+          "reasoning": "Chat messages are ephemeral, don't embed or summarize",
+          "confidence": 0.9166666666666666
+        },
+        "actions_taken": [
+          "cache",
+          "store"
+        ]
+      }
+    ],
+    "timestamp": "2025-12-31T04:48:26.232784"
+  },
+  "rate_limiting": {
+    "total_requests": 60,
+    "successful_requests": 60,
+    "rate_limiting_active": false,
+    "results": [
+      {
+        "message_id": 0,
+        "actions": [
+          "cache",
+          "store"
+        ],
+        "success": true
+      },
+      {
+        "message_id": 1,
+        "actions": [
+          "cache",
+          "store"
+        ],
+        "success": true
+      },
+      {
+        "message_id": 2,
+        "actions": [
+          "cache",
+          "store"
+        ],
+        "success": true
+      },
+      {
+        "message_id": 3,
+        "actions": [
+          "cache",
+          "store"
+        ],
+        "success": true
+      },
+      {
+        "message_id": 4,
+        "actions": [
+          "cache",
+          "store"
+        ],
+        "success": true
+      },
+      {
+        "message_id": 5,
+        "actions": [
+          "cache",
+          "store"
+        ],
+        "success": true
+      },
+      {
+        "message_id": 6,
+        "actions": [
+          "cache",
+          "store"
+        ],
+        "success": true
+      },
+      {
+        "message_id": 7,
+        "actions": [
+          "cache",
+          "store"
+        ],
+        "success": true
+      },
+      {
+        "message_id": 8,
+        "actions": [
+          "cache",
+          "store"
+        ],
+        "success": true
+      },
+      {
+        "message_id": 9,
+        "actions": [
+          "cache",
+          "store"
+        ],
+        "success": true
+      },
+      {
+        "message_id": 10,
+        "actions": [
+          "cache",
+          "store"
+        ],
+        "success": true
+      },
+      {
+        "message_id": 11,
+        "actions": [
+          "cache",
+          "store"
+        ],
+        "success": true
+      },
+      {
+        "message_id": 12,
+        "actions": [
+          "cache",
+          "store"
+        ],
+        "success": true
+      },
+      {
+        "message_id": 13,
+        "actions": [
+          "cache",
+          "store"
+        ],
+        "success": true
+      },
+      {
+        "message_id": 14,
+        "actions": [
+          "cache",
+          "store"
+        ],
+        "success": true
+      },
+      {
+        "message_id": 15,
+        "actions": [
+          "cache",
+          "store"
+        ],
+        "success": true
+      },
+      {
+        "message_id": 16,
+        "actions": [
+          "cache",
+          "store"
+        ],
+        "success": true
+      },
+      {
+        "message_id": 17,
+        "actions": [
+          "cache",
+          "store"
+        ],
+        "success": true
+      },
+      {
+        "message_id": 18,
+        "actions": [
+          "cache",
+          "store"
+        ],
+        "success": true
+      },
+      {
+        "message_id": 19,
+        "actions": [
+          "cache",
+          "store"
+        ],
+        "success": true
+      },
+      {
+        "message_id": 20,
+        "actions": [
+          "cache",
+          "store"
+        ],
+        "success": true
+      },
+      {
+        "message_id": 21,
+        "actions": [
+          "cache",
+          "store"
+        ],
+        "success": true
+      },
+      {
+        "message_id": 22,
+        "actions": [
+          "cache",
+          "store"
+        ],
+        "success": true
+      },
+      {
+        "message_id": 23,
+        "actions": [
+          "cache",
+          "store"
+        ],
+        "success": true
+      },
+      {
+        "message_id": 24,
+        "actions": [
+          "cache",
+          "store"
+        ],
+        "success": true
+      },
+      {
+        "message_id": 25,
+        "actions": [
+          "cache",
+          "store"
+        ],
+        "success": true
+      },
+      {
+        "message_id": 26,
+        "actions": [
+          "cache",
+          "store"
+        ],
+        "success": true
+      },
+      {
+        "message_id": 27,
+        "actions": [
+          "cache",
+          "store"
+        ],
+        "success": true
+      },
+      {
+        "message_id": 28,
+        "actions": [
+          "cache",
+          "store"
+        ],
+        "success": true
+      },
+      {
+        "message_id": 29,
+        "actions": [
+          "cache",
+          "store"
+        ],
+        "success": true
+      },
+      {
+        "message_id": 30,
+        "actions": [
+          "cache",
+          "store"
+        ],
+        "success": true
+      },
+      {
+        "message_id": 31,
+        "actions": [
+          "cache",
+          "store"
+        ],
+        "success": true
+      },
+      {
+        "message_id": 32,
+        "actions": [
+          "cache",
+          "store"
+        ],
+        "success": true
+      },
+      {
+        "message_id": 33,
+        "actions": [
+          "cache",
+          "store"
+        ],
+        "success": true
+      },
+      {
+        "message_id": 34,
+        "actions": [
+          "cache",
+          "store"
+        ],
+        "success": true
+      },
+      {
+        "message_id": 35,
+        "actions": [
+          "cache",
+          "store"
+        ],
+        "success": true
+      },
+      {
+        "message_id": 36,
+        "actions": [
+          "cache",
+          "store"
+        ],
+        "success": true
+      },
+      {
+        "message_id": 37,
+        "actions": [
+          "cache",
+          "store"
+        ],
+        "success": true
+      },
+      {
+        "message_id": 38,
+        "actions": [
+          "cache",
+          "store"
+        ],
+        "success": true
+      },
+      {
+        "message_id": 39,
+        "actions": [
+          "cache",
+          "store"
+        ],
+        "success": true
+      },
+      {
+        "message_id": 40,
+        "actions": [
+          "cache",
+          "store"
+        ],
+        "success": true
+      },
+      {
+        "message_id": 41,
+        "actions": [
+          "cache",
+          "store"
+        ],
+        "success": true
+      },
+      {
+        "message_id": 42,
+        "actions": [
+          "cache",
+          "store"
+        ],
+        "success": true
+      },
+      {
+        "message_id": 43,
+        "actions": [
+          "cache",
+          "store"
+        ],
+        "success": true
+      },
+      {
+        "message_id": 44,
+        "actions": [
+          "cache",
+          "store"
+        ],
+        "success": true
+      },
+      {
+        "message_id": 45,
+        "actions": [
+          "cache",
+          "store"
+        ],
+        "success": true
+      },
+      {
+        "message_id": 46,
+        "actions": [
+          "cache",
+          "store"
+        ],
+        "success": true
+      },
+      {
+        "message_id": 47,
+        "actions": [
+          "cache",
+          "store"
+        ],
+        "success": true
+      },
+      {
+        "message_id": 48,
+        "actions": [
+          "cache",
+          "store"
+        ],
+        "success": true
+      },
+      {
+        "message_id": 49,
+        "actions": [
+          "cache",
+          "store"
+        ],
+        "success": true
+      },
+      {
+        "message_id": 50,
+        "actions": [
+          "cache",
+          "store"
+        ],
+        "success": true
+      },
+      {
+        "message_id": 51,
+        "actions": [
+          "cache",
+          "store"
+        ],
+        "success": true
+      },
+      {
+        "message_id": 52,
+        "actions": [
+          "cache",
+          "store"
+        ],
+        "success": true
+      },
+      {
+        "message_id": 53,
+        "actions": [
+          "cache",
+          "store"
+        ],
+        "success": true
+      },
+      {
+        "message_id": 54,
+        "actions": [
+          "cache",
+          "store"
+        ],
+        "success": true
+      },
+      {
+        "message_id": 55,
+        "actions": [
+          "cache",
+          "store"
+        ],
+        "success": true
+      },
+      {
+        "message_id": 56,
+        "actions": [
+          "cache",
+          "store"
+        ],
+        "success": true
+      },
+      {
+        "message_id": 57,
+        "actions": [
+          "cache",
+          "store"
+        ],
+        "success": true
+      },
+      {
+        "message_id": 58,
+        "actions": [
+          "cache",
+          "store"
+        ],
+        "success": true
+      },
+      {
+        "message_id": 59,
+        "actions": [
+          "cache",
+          "store"
+        ],
+        "success": true
+      }
+    ]
+  },
+  "discard_functionality": {
+    "total_noise_messages": 8,
+    "discarded_messages": 0,
+    "discard_accuracy": 0.0,
+    "results": [
+      {
+        "message": "ok",
+        "discarded": false,
+        "actions": [
+          "cache",
+          "store"
+        ],
+        "expected_discard": true
+      },
+      {
+        "message": "thanks",
+        "discarded": false,
+        "actions": [
+          "cache",
+          "store"
+        ],
+        "expected_discard": true
+      },
+      {
+        "message": "cool",
+        "discarded": false,
+        "actions": [
+          "cache",
+          "store"
+        ],
+        "expected_discard": true
+      },
+      {
+        "message": "lol",
+        "discarded": false,
+        "actions": [
+          "cache",
+          "store"
+        ],
+        "expected_discard": true
+      },
+      {
+        "message": "\ud83d\udc4d",
+        "discarded": false,
+        "actions": [
+          "cache",
+          "store"
+        ],
+        "expected_discard": true
+      },
+      {
+        "message": "bye",
+        "discarded": false,
+        "actions": [
+          "cache",
+          "store"
+        ],
+        "expected_discard": true
+      },
+      {
+        "message": "k",
+        "discarded": false,
+        "actions": [
+          "cache",
+          "store"
+        ],
+        "expected_discard": true
+      },
+      {
+        "message": "ty",
+        "discarded": false,
+        "actions": [
+          "cache",
+          "store"
+        ],
+        "expected_discard": true
+      }
+    ]
+  },
+  "cache_operations": {
+    "initial_stats": {
+      "status": "connected",
+      "cache_stats": {
+        "total_keys": 95,
+        "message_keys": 95,
+        "context_keys": 0,
+        "preference_keys": 0
+      },
+      "redis_info": {
+        "used_memory_human": "1.11M",
+        "connected_clients": 2,
+        "keyspace_hits": 0,
+        "keyspace_misses": 0
+      },
+      "timestamp": "2025-12-31T04:48:27.059167"
+    },
+    "cleanup_result": {
+      "status": "success",
+      "message": "Cache cleanup completed",
+      "timestamp": "2025-12-31T04:48:27.164317"
+    },
+    "clear_result": {
+      "status": "success",
+      "message": "Cache cleared successfully",
+      "timestamp": "2025-12-31T04:48:27.286972"
+    }
+  },
+  "total_duration": 64.1319899559021
+}

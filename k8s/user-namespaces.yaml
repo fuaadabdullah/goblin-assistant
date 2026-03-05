@@ -1,0 +1,275 @@
+---
+# User Namespaces Configuration (MANDATORY FOR DOCKER-BASED SANDBOXES)
+# This ensures container root (UID 0) maps to non-root on host
+
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: docker-daemon-config
+  namespace: sandbox
+  labels:
+    component: docker-config
+data:
+  # Docker daemon configuration for user namespace remapping
+  daemon.json: |
+    {
+      "userns-remap": "sandbox-runner",
+      "experimental": true,
+      "metrics-addr": "0.0.0.0:9323",
+      "log-driver": "json-file",
+      "log-opts": {
+        "max-size": "10m",
+        "max-file": "3"
+      },
+      "storage-driver": "overlay2",
+      "iptables": false,
+      "bridge": "none",
+      "ip-forward": false,
+      "ip-masq": false,
+      "userland-proxy": false,
+      "no-new-privileges": true,
+      "seccomp-profile": "/etc/docker/seccomp.json",
+      "live-restore": true,
+      "init": true
+    }
+
+---
+# Docker Daemon Deployment with User Namespace Support
+apiVersion: apps/v1
+kind: DaemonSet
+metadata:
+  name: docker-daemon-sandbox
+  namespace: sandbox
+  labels:
+    app: docker-daemon
+    component: runtime
+spec:
+  selector:
+    matchLabels:
+      app: docker-daemon
+  template:
+    metadata:
+      labels:
+        app: docker-daemon
+        component: runtime
+    spec:
+      # Run on nodes with sandbox runtime label
+      nodeSelector:
+        sandbox-runtime: "enabled"
+      tolerations:
+      - key: "sandbox-runtime"
+        operator: "Equal"
+        value: "enabled"
+        effect: "NoSchedule"
+
+      # Host PID to manage Docker daemon
+      hostPID: true
+      hostIPC: false
+      hostNetwork: false
+
+      containers:
+      - name: docker-daemon
+        image: docker:dind
+        imagePullPolicy: IfNotPresent
+
+        # Privileged access required for Docker daemon
+        securityContext:
+          privileged: true
+          allowPrivilegeEscalation: true
+          runAsUser: 0  # Must run as root for Docker daemon
+          capabilities:
+            add:
+            - SYS_ADMIN
+            - NET_ADMIN
+            - SYS_PTRACE
+          seccompProfile:
+            type: Unconfined  # Required for Docker daemon
+
+        # Environment variables
+        env:
+        - name: DOCKER_TLS_CERTDIR
+          value: "/certs"
+        - name: DOCKER_DRIVER
+          value: "overlay2"
+
+        # Mount host Docker socket
+        volumeMounts:
+        - name: docker-socket
+          mountPath: /var/run/docker.sock
+        - name: docker-config
+          mountPath: /etc/docker/daemon.json
+          subPath: daemon.json
+        - name: docker-data
+          mountPath: /var/lib/docker
+        - name: certs
+          mountPath: /certs
+          readOnly: true
+        - name: run-docker
+          mountPath: /run/docker
+        - name: cgroup
+          mountPath: /sys/fs/cgroup
+        - name: modules
+          mountPath: /lib/modules
+          readOnly: true
+
+        # Ports
+        ports:
+        - containerPort: 2376
+          hostPort: 2376
+          name: docker-tls
+        - containerPort: 9323
+          hostPort: 9323
+          name: metrics
+
+        # Resource limits
+        resources:
+          requests:
+            cpu: "500m"
+            memory: "1Gi"
+          limits:
+            cpu: "2000m"
+            memory: "4Gi"
+
+      # Init container to set up user namespaces
+      initContainers:
+      - name: setup-userns
+        image: alpine:latest
+        command:
+        - sh
+        - -c
+        - |
+          # Create sandbox-runner user for user namespace remapping
+          addgroup -g 1000 sandbox-runner || true
+          adduser -D -u 1000 -G sandbox-runner -s /bin/false sandbox-runner || true
+
+          # Create subuid/subgid mappings
+          echo "sandbox-runner:100000:65536" > /etc/subuid
+          echo "sandbox-runner:100000:65536" > /etc/subgid
+
+          # Verify setup
+          echo "User namespace setup complete"
+          id sandbox-runner
+          cat /etc/subuid
+          cat /etc/subgid
+
+        securityContext:
+          privileged: true
+          runAsUser: 0
+        volumeMounts:
+        - name: passwd
+          mountPath: /etc/passwd
+        - name: group
+          mountPath: /etc/group
+        - name: subuid
+          mountPath: /etc/subuid
+        - name: subgid
+          mountPath: /etc/subgid
+
+      volumes:
+      - name: docker-socket
+        hostPath:
+          path: /var/run/docker.sock
+          type: Socket
+      - name: docker-config
+        configMap:
+          name: docker-daemon-config
+      - name: docker-data
+        hostPath:
+          path: /var/lib/docker
+          type: DirectoryOrCreate
+      - name: certs
+        secret:
+          secretName: docker-tls-certs
+          optional: true
+      - name: run-docker
+        hostPath:
+          path: /run/docker
+          type: DirectoryOrCreate
+      - name: cgroup
+        hostPath:
+          path: /sys/fs/cgroup
+          type: Directory
+      - name: modules
+        hostPath:
+          path: /lib/modules
+          type: Directory
+      - name: passwd
+        hostPath:
+          path: /etc/passwd
+      - name: group
+        hostPath:
+          path: /etc/group
+      - name: subuid
+        hostPath:
+          path: /etc/subuid
+          type: FileOrCreate
+      - name: subgid
+        hostPath:
+          path: /etc/subgid
+          type: FileOrCreate
+
+---
+# Service to expose Docker daemon metrics
+apiVersion: v1
+kind: Service
+metadata:
+  name: docker-metrics
+  namespace: sandbox
+  labels:
+    app: docker-daemon
+    component: metrics
+spec:
+  selector:
+    app: docker-daemon
+  ports:
+  - name: metrics
+    port: 9323
+    targetPort: 9323
+    protocol: TCP
+  type: ClusterIP
+
+---
+# Network Policy for Docker daemon access
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: docker-daemon-access
+  namespace: sandbox
+spec:
+  podSelector:
+    matchLabels:
+      app: docker-daemon
+  policyTypes:
+  - Ingress
+  - Egress
+  ingress:
+  # Allow worker pods to access Docker daemon
+  - from:
+    - podSelector:
+        matchLabels:
+          app: goblin-assistant-worker
+    ports:
+    - protocol: TCP
+      port: 2376  # Docker daemon port
+  - from:
+    - namespaceSelector:
+        matchLabels:
+          name: monitoring  # Allow Prometheus scraping
+    ports:
+    - protocol: TCP
+      port: 9323  # Metrics port
+  egress:
+  # Allow DNS resolution
+  - to: []
+    ports:
+    - protocol: UDP
+      port: 53
+  # Allow container registry access
+  - to: []
+    ports:
+    - protocol: TCP
+      port: 443
+  # Allow Docker Hub
+  - to:
+    - ipBlock:
+        cidr: 0.0.0.0/0  # Allow all for registry access (restrict in production)

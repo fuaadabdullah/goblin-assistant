@@ -1,0 +1,88 @@
+services:
+  - type: web
+    name: goblin-backend
+    runtime: docker
+    region: oregon
+    plan: standard
+    startCommand: uvicorn api.main:app --host 0.0.0.0 --port $PORT
+    
+    # Environment Variables
+    envVars:
+      - key: ENVIRONMENT
+        value: production
+      - key: DEBUG
+        value: "false"
+      - key: PORT
+        value: "8001"
+      - key: LOG_LEVEL
+        value: info
+      - key: RELEASE_VERSION
+        value: goblin-assistant@1.0.0
+      
+      # Error Tracking with Sentry
+      - key: SENTRY_DSN
+        sync: false  # Keep sync: false, will be set manually in Render dashboard
+      
+      # Allowed Origins  
+      - key: ALLOWED_ORIGINS
+        value: https://goblin.fuaad.ai,https://api.goblin.fuaad.ai,https://brain.goblin.fuaad.ai,https://ops.goblin.fuaad.ai
+      
+      # API Base URLs
+      - key: NEXT_PUBLIC_API_BASE_URL
+        value: https://api.goblin.fuaad.ai
+      - key: NEXT_PUBLIC_BACKEND_URL
+        value: https://api.goblin.fuaad.ai
+      - key: NEXT_PUBLIC_FASTAPI_URL
+        value: https://api.goblin.fuaad.ai
+      - key: NEXT_PUBLIC_FRONTEND_URL
+        value: https://goblin.fuaad.ai
+      
+      # Rate Limiting
+      - key: RATE_LIMIT_ENABLED
+        value: "true"
+      - key: RATE_LIMIT_REQUESTS
+        value: "100"
+      - key: RATE_LIMIT_WINDOW
+        value: "60"
+      
+      # GCP LLM Endpoints
+      - key: OLLAMA_GCP_URL
+        value: http://34.60.255.199:11434
+      - key: LLAMACPP_GCP_URL
+        value: http://34.132.226.143:8000
+    
+    # Redis Configuration (if using Render's Redis)
+    # - key: REDIS_URL
+    #   fromDatabase:
+    #     name: goblin-redis
+    #     property: connectionString
+    
+    # Secrets (set manually in Render dashboard)
+    # These should be set as Environment Variables with "sync: false"
+    # - SENTRY_DSN
+    # - DATABASE_URL
+    # - REDIS_URL
+    # - OPENAI_API_KEY
+    # - ANTHROPIC_API_KEY
+    # - GOOGLE_AI_API_KEY
+    # - JWT_SECRET_KEY
+    # - NEXT_PUBLIC_SUPABASE_URL
+    # - NEXT_PUBLIC_SUPABASE_ANON_KEY
+    # - SUPABASE_SERVICE_ROLE_KEY
+    # - AZURE_API_KEY
+    # - AZURE_OPENAI_ENDPOINT
+    # - AWS_ACCESS_KEY_ID
+    # - AWS_SECRET_ACCESS_KEY
+    
+    # Automatic deployment on git push
+    # (requires connecting GitHub repo in Render dashboard)
+    
+    # Custom domain
+    # customDomains:
+    #   - api.goblin.fuaad.ai
+    
+    # Build settings
+    buildCommand: |
+      pip install --upgrade pip
+      pip install -r requirements.txt
+
