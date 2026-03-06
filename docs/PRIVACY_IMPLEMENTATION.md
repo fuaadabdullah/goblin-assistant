@@ -146,7 +146,7 @@ log_inference_metrics(
 Export all user data (GDPR Article 20 - Right to Data Portability)
 
 ```bash
-curl -X POST https://api.goblin.fuaad.ai/api/privacy/export \
+curl -X POST https://goblin-assistant-backend.onrender.com/api/privacy/export \
   -H "Authorization: Bearer <token>"
 ```
 
@@ -170,7 +170,7 @@ curl -X POST https://api.goblin.fuaad.ai/api/privacy/export \
 Delete all user data (GDPR Article 17 - Right to Erasure)
 
 ```bash
-curl -X DELETE "https://api.goblin.fuaad.ai/api/privacy/delete?confirm=true" \
+curl -X DELETE "https://goblin-assistant-backend.onrender.com/api/privacy/delete?confirm=true" \
   -H "Authorization: Bearer <token>"
 ```
 
@@ -191,7 +191,7 @@ curl -X DELETE "https://api.goblin.fuaad.ai/api/privacy/delete?confirm=true" \
 Get summary of stored data (GDPR Article 15 - Right of Access)
 
 ```bash
-curl https://api.goblin.fuaad.ai/api/privacy/data-summary \
+curl https://goblin-assistant-backend.onrender.com/api/privacy/data-summary \
   -H "Authorization: Bearer <token>"
 ```
 
@@ -199,7 +199,7 @@ curl https://api.goblin.fuaad.ai/api/privacy/data-summary \
 Update RAG storage consent
 
 ```bash
-curl -X POST https://api.goblin.fuaad.ai/api/privacy/consent/rag \
+curl -X POST https://goblin-assistant-backend.onrender.com/api/privacy/consent/rag \
   -H "Authorization: Bearer <token>" \
   -H "Content-Type: application/json" \
   -d '{"consent_given": true}'

@@ -461,7 +461,7 @@ env | grep -E "(DATABASE|API_KEY|JWT)" | head -10
 
 ### Emergency Contacts
 
-- **Security Issues**: `security@goblin.fuaad.ai`
+- **Security Issues**: `security@goblin-assistant.vercel.app`
 - **Production Outages**: Check status page or contact on-call engineer
 - **General Support**: Create GitHub issue with diagnostic information
 

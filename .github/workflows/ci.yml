@@ -329,5 +329,5 @@ jobs:
       - name: Deploy to production
         run: |
           echo "🚀 Deploying to production..."
-          echo "Production URL: https://goblin.fuaad.ai"
+          echo "Production URL: https://goblin-assistant.vercel.app"
           echo "✅ Production deployment completed"

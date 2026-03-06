@@ -119,7 +119,7 @@ Authorization: Bearer <your-jwt-token>
 ### Base URL
 
 - **Development**: `http://localhost:8000`
-- **Production**: `https://api.goblin.fuaad.ai`
+- **Production**: `https://goblin-assistant-backend.onrender.com`
 
 ### API Versioning
 

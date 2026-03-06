@@ -103,7 +103,7 @@ The Next.js frontend is deployed to Vercel for optimal performance and CDN distr
 export default {
   async fetch(request, env) {
     // Intelligent routing logic
-    const response = await fetch('https://api.goblin.fuaad.ai', request);
+    const response = await fetch('https://goblin-assistant-backend.onrender.com', request);
     return response;
   }
 };
@@ -270,10 +270,10 @@ bucket_name = "goblin-audio"
 
 ```bash
 # Check backend health
-curl https://api.goblin.fuaad.ai/health
+curl https://goblin-assistant-backend.onrender.com/health
 
 # Check frontend health
-curl https://goblin.fuaad.ai/api/health
+curl https://goblin-assistant.vercel.app/api/health
 ```
 
 #### Infrastructure Health
@@ -348,10 +348,10 @@ services:
 # Example nginx configuration
 server {
     listen 443 ssl http2;
-    server_name api.goblin.fuaad.ai;
+    server_name api.goblin-assistant.vercel.app;
 
-    ssl_certificate /etc/ssl/certs/goblin.fuaad.ai.crt;
-    ssl_certificate_key /etc/ssl/private/goblin.fuaad.ai.key;
+    ssl_certificate /etc/ssl/certs/goblin-assistant.vercel.app.crt;
+    ssl_certificate_key /etc/ssl/private/goblin-assistant.vercel.app.key;
 
     # Security headers
     add_header Strict-Transport-Security "max-age=31536000; includeSubDomains" always;

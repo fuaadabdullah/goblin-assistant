@@ -212,7 +212,7 @@ echo "Checking deployment health..."
 sleep 5
 
 # Check health endpoint
-HEALTH_URL="https://api.goblin.fuaad.ai/health"
+HEALTH_URL="https://goblin-assistant-backend.onrender.com/health"
 echo "Testing: $HEALTH_URL"
 
 if curl -sf "$HEALTH_URL" > /dev/null; then
@@ -223,8 +223,8 @@ fi
 
 echo ""
 echo "Testing GDPR endpoints..."
-echo "  • GET  https://api.goblin.fuaad.ai/api/privacy/export"
-echo "  • DELETE https://api.goblin.fuaad.ai/api/privacy/delete"
+echo "  • GET  https://goblin-assistant-backend.onrender.com/api/privacy/export"
+echo "  • DELETE https://goblin-assistant-backend.onrender.com/api/privacy/delete"
 
 echo ""
 

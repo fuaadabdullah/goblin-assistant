@@ -74,11 +74,11 @@ dns_ttl_check() {
     print_step "DNS TTL Check"
     print_warning "Ensure DNS TTL is set to 60s or less for zero-downtime cutover"
     echo "Current DNS records:"
-    echo "  - goblin.fuaad.ai → Render (current)"
-    echo "  - api.goblin.fuaad.ai → Render (current)"
+    echo "  - goblin-assistant.vercel.app → Render (current)"
+    echo "  - api.goblin-assistant.vercel.app → Render (current)"
     echo "Target:"
-    echo "  - goblin.fuaad.ai → $FLY_URL"
-    echo "  - api.goblin.fuaad.ai → $FLY_URL"
+    echo "  - goblin-assistant.vercel.app → $FLY_URL"
+    echo "  - api.goblin-assistant.vercel.app → $FLY_URL"
     read -p "Press Enter when DNS TTL is adjusted..."
 }
 
@@ -86,10 +86,10 @@ dns_ttl_check() {
 cutover() {
     print_step "Cutover Steps"
     echo "1. Update DNS CNAME records:"
-    echo "   - goblin.fuaad.ai → $FLY_URL"
-    echo "   - api.goblin.fuaad.ai → $FLY_URL"
+    echo "   - goblin-assistant.vercel.app → $FLY_URL"
+    echo "   - api.goblin-assistant.vercel.app → $FLY_URL"
     echo "2. Wait for DNS propagation (5-10 minutes)"
-    echo "3. Test frontend: https://goblin.fuaad.ai"
+    echo "3. Test frontend: https://goblin-assistant.vercel.app"
     echo "4. Monitor logs: fly logs -a goblin-assistant"
     echo "5. If issues, rollback DNS to Render"
     read -p "Press Enter after DNS cutover..."
@@ -99,13 +99,13 @@ cutover() {
 post_cutover_tests() {
     print_step "Post-cutover tests"
     sleep 30  # Wait for DNS
-    if curl -s -f "https://goblin.fuaad.ai/health" > /dev/null; then
+    if curl -s -f "https://goblin-assistant.vercel.app/health" > /dev/null; then
         print_status "Frontend health OK"
     else
         print_warning "Frontend health check failed - check DNS propagation"
     fi
 
-    if curl -s -f "https://api.goblin.fuaad.ai/health" > /dev/null; then
+    if curl -s -f "https://goblin-assistant-backend.onrender.com/health" > /dev/null; then
         print_status "API health OK"
     else
         print_warning "API health check failed - check DNS propagation"

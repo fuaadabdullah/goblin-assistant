@@ -64,7 +64,7 @@ cd apps/goblin-assistant
 fly deploy
 
 # Verify
-curl https://api.goblin.fuaad.ai/health
+curl https://goblin-assistant-backend.onrender.com/health
 ```
 
 ---
@@ -83,11 +83,11 @@ curl https://api.goblin.fuaad.ai/health
 
 ```bash
 # Export user data (GDPR Article 20)
-curl -X GET https://api.goblin.fuaad.ai/api/privacy/export \
+curl -X GET https://goblin-assistant-backend.onrender.com/api/privacy/export \
   -H "Authorization: Bearer <your_token>"
 
 # Delete user data (GDPR Article 17)
-curl -X DELETE https://api.goblin.fuaad.ai/api/privacy/delete \
+curl -X DELETE https://goblin-assistant-backend.onrender.com/api/privacy/delete \
   -H "Authorization: Bearer <your_token>"
 ```
 

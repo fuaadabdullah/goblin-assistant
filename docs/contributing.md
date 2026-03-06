@@ -340,7 +340,7 @@ sqlite3 goblin_assistant.db .schema
 ### Reporting Security Issues
 
 - **DO NOT** create public GitHub issues for security vulnerabilities
-- Email security concerns to: `security@goblin.fuaad.ai`
+- Email security concerns to: `security@goblin-assistant.vercel.app`
 - Include detailed reproduction steps and potential impact
 
 ### Security Best Practices

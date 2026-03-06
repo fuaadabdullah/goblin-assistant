@@ -152,7 +152,7 @@ The application uses environment variables for configuration. Create the appropr
 
 **Required:**
 
-- `VITE_API_BASE_URL` - Base URL for the API (e.g., `https://api.goblin.fuaad.ai`)
+- `VITE_API_BASE_URL` - Base URL for the API (e.g., `https://goblin-assistant-backend.onrender.com`)
 
 **Optional:**
 
@@ -247,7 +247,7 @@ The application uses environment variables for configuration. Create the appropr
 #### Example `.env.local` (Frontend)
 
 ```bash
-VITE_API_BASE_URL=https://api.goblin.fuaad.ai
+VITE_API_BASE_URL=https://goblin-assistant-backend.onrender.com
 VITE_ENABLE_DEBUG=false
 VITE_MOCK_API=false
 VITE_FEATURE_RAG_ENABLED=true

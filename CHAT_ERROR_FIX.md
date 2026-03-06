@@ -7,7 +7,7 @@
 ## Problem Analysis
 
 ### Root Cause
-The frontend was configured to connect to `https://api.goblin.fuaad.ai`, which doesn't exist.
+The frontend was configured to connect to `https://goblin-assistant-backend.onrender.com`, which doesn't exist.
 The actual backend API is deployed at `https://goblin-backend.fly.dev`.
 
 ### Impact
@@ -19,7 +19,7 @@ The actual backend API is deployed at `https://goblin-backend.fly.dev`.
 
 ### 1. Local Configuration Fix
 **File**: `apps/goblin-assistant/.env.production`
-- **Before**: `NEXT_PUBLIC_API_BASE_URL=https://api.goblin.fuaad.ai`
+- **Before**: `NEXT_PUBLIC_API_BASE_URL=https://goblin-assistant-backend.onrender.com`
 - **After**: `NEXT_PUBLIC_API_BASE_URL=https://goblin-backend.fly.dev`
 
 ### 2. Vercel Environment Variable Update
@@ -39,7 +39,7 @@ vercel --prod --yes
 
 Once deployment completes (2-3 minutes):
 
-1. Visit: https://goblin.fuaad.ai/chat
+1. Visit: https://goblin-assistant.vercel.app/chat
 2. Send a test message (e.g., "Hello")
 3. Verify you receive an AI response instead of error
 
@@ -49,7 +49,7 @@ Backend is healthy and ready:
 - **URL**: https://goblin-backend.fly.dev
 - **Health Check**: https://goblin-backend.fly.dev/health
 - **Status**: ✅ Running in 2 regions (IAD)
-- **CORS**: Configured to allow https://goblin.fuaad.ai
+- **CORS**: Configured to allow https://goblin-assistant.vercel.app
 
 ## Technical Details
 
@@ -57,7 +57,7 @@ Backend is healthy and ready:
 ```
 User Browser
     ↓
-https://goblin.fuaad.ai (Vercel Frontend)
+https://goblin-assistant.vercel.app (Vercel Frontend)
     ↓
 https://goblin-backend.fly.dev (Fly.io Backend API)
     ↓
@@ -65,13 +65,13 @@ Kamatera LLM Server (llamacpp_kamatera provider)
 ```
 
 ### Error Flow (Before Fix)
-1. User sends message via https://goblin.fuaad.ai
-2. Frontend attempts to POST to https://api.goblin.fuaad.ai/chat/completions
+1. User sends message via https://goblin-assistant.vercel.app
+2. Frontend attempts to POST to https://goblin-assistant-backend.onrender.com/chat/completions
 3. DNS resolution fails (host doesn't exist)
 4. Frontend catches error and shows generic message
 
 ### Success Flow (After Fix)
-1. User sends message via https://goblin.fuaad.ai
+1. User sends message via https://goblin-assistant.vercel.app
 2. Frontend POSTs to https://goblin-backend.fly.dev/chat/completions
 3. Backend routes to llamacpp_kamatera provider
 4. AI response returned to user
@@ -99,7 +99,7 @@ fly logs --app goblin-backend
 
 ## Future Improvements
 
-1. **DNS Configuration**: Set up `api.goblin.fuaad.ai` to point to the Fly.io backend
+1. **DNS Configuration**: Set up `api.goblin-assistant.vercel.app` to point to the Fly.io backend
 2. **Error Messages**: Add more specific error messages for connection failures
 3. **Health Checks**: Add frontend health check for backend availability
 4. **Fallback**: Implement graceful degradation if backend is unreachable
@@ -109,4 +109,4 @@ fly logs --app goblin-backend
 For issues or questions:
 - Check logs: `fly logs --app goblin-backend`
 - Backend health: https://goblin-backend.fly.dev/health
-- Frontend: https://goblin.fuaad.ai
+- Frontend: https://goblin-assistant.vercel.app

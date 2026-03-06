@@ -36,7 +36,7 @@ print_info() {
 # Health check functions
 check_api_health() {
     print_info "Checking API health..."
-    if curl -s -f --max-time 10 https://api.goblin.fuaad.ai/health > /dev/null 2>&1; then
+    if curl -s -f --max-time 10 https://goblin-assistant-backend.onrender.com/health > /dev/null 2>&1; then
         print_status "API is healthy"
         return 0
     else
@@ -47,7 +47,7 @@ check_api_health() {
 
 check_frontend_health() {
     print_info "Checking frontend health..."
-    if curl -s -f --max-time 10 https://goblin.fuaad.ai > /dev/null 2>&1; then
+    if curl -s -f --max-time 10 https://goblin-assistant.vercel.app > /dev/null 2>&1; then
         print_status "Frontend is healthy"
         return 0
     else

@@ -25,17 +25,17 @@ services:
       
       # Allowed Origins  
       - key: ALLOWED_ORIGINS
-        value: https://goblin.fuaad.ai,https://api.goblin.fuaad.ai,https://brain.goblin.fuaad.ai,https://ops.goblin.fuaad.ai
+        value: https://goblin-assistant.vercel.app,https://goblin-assistant-backend.onrender.com
       
       # API Base URLs
       - key: NEXT_PUBLIC_API_BASE_URL
-        value: https://api.goblin.fuaad.ai
+        value: https://goblin-assistant-backend.onrender.com
       - key: NEXT_PUBLIC_BACKEND_URL
-        value: https://api.goblin.fuaad.ai
+        value: https://goblin-assistant-backend.onrender.com
       - key: NEXT_PUBLIC_FASTAPI_URL
-        value: https://api.goblin.fuaad.ai
+        value: https://goblin-assistant-backend.onrender.com
       - key: NEXT_PUBLIC_FRONTEND_URL
-        value: https://goblin.fuaad.ai
+        value: https://goblin-assistant.vercel.app
       
       # Rate Limiting
       - key: RATE_LIMIT_ENABLED
@@ -76,7 +76,7 @@ services:
     
     # Custom domain
     # customDomains:
-    #   - api.goblin.fuaad.ai
+    # No custom domain configured
     
     # Build settings
     buildCommand: |

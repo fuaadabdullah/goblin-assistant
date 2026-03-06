@@ -47,7 +47,7 @@ app = FastAPI(
 # CORS middleware
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["https://goblin.fuaad.ai", "http://localhost:3000"],
+    allow_origins=["https://goblin-assistant.vercel.app", "http://localhost:3000"],
     allow_credentials=True,
     allow_methods=["GET", "POST", "DELETE"],
     allow_headers=["*"],

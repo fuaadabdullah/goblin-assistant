@@ -152,13 +152,13 @@ Run the setup script to configure branch protection:
 
 - **Trigger**: Push to `main` branch
 - **Environment**: `production`
-- **URL**: `https://goblin.fuaad.ai`
+- **URL**: `https://goblin-assistant.vercel.app`
 
 ### Deployment Verification
 
 ```bash
 # Check deployment health
-curl -f https://goblin.fuaad.ai/api/health
+curl -f https://goblin-assistant.vercel.app/api/health
 
 # Verify build artifacts
 npm run build && ls -la dist/

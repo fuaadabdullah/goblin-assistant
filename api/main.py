@@ -343,9 +343,8 @@ if environment == "production":
         logger.warning("No ALLOWED_ORIGINS configured for production", action="setting fallback origins", severity="security_warning")
         # Fall back to the canonical frontend + worker domains so users aren't blocked by CORS
         allowed_origins = [
-            "https://goblin.fuaad.ai",  # Primary frontend (Cloudflare)
-            "https://api.goblin.fuaad.ai",  # API domain (used for preflight checks)
-            "https://goblin-assistant-edge.fuaadabdullah.workers.dev",  # Worker dev domain
+            "https://goblin-assistant.vercel.app",  # Primary frontend (Vercel)
+            "https://goblin-assistant-backend.onrender.com",  # Backend (Render)
         ]
 else:
     # Development: Allow localhost

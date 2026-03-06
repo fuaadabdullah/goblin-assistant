@@ -128,7 +128,7 @@ supabase migration up --environment production
 ### 12. Production Smoke Tests (15 min)
 ```bash
 # Test production privacy endpoints
-curl -X GET https://api.goblin.fuaad.ai/api/privacy/data-summary \
+curl -X GET https://goblin-assistant-backend.onrender.com/api/privacy/data-summary \
   -H "Authorization: Bearer <prod-token>"
 ```
 

@@ -127,7 +127,7 @@ Keep your Datadog Application ID and Client Token secure:
 
 ### Test Frontend Monitoring
 
-1. Visit your frontend site URL (e.g., https://goblin.fuaad.ai or your Vercel deployment)
+1. Visit your frontend site URL (e.g., https://goblin-assistant.vercel.app or your Vercel deployment)
 2. Open browser DevTools (F12)
 3. Go to Console tab
 4. Run: `throw new Error('Test error for Datadog')`

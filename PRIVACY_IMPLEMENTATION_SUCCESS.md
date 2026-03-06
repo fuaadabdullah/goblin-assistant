@@ -76,11 +76,11 @@ app.add_middleware(RateLimiter)
 
 ```bash
 # Export user data
-curl -X GET "https://api.goblin.fuaad.ai/api/privacy/export" \
+curl -X GET "https://goblin-assistant-backend.onrender.com/api/privacy/export" \
   -H "Authorization: Bearer <token>"
 
 # Delete user data
-curl -X DELETE "https://api.goblin.fuaad.ai/api/privacy/delete" \
+curl -X DELETE "https://goblin-assistant-backend.onrender.com/api/privacy/delete" \
   -H "Authorization: Bearer <token>"
 ```
 
@@ -269,7 +269,7 @@ python3 scripts/validate_privacy_integration.py
   fly deploy
   
   # Verify deployment
-  curl https://api.goblin.fuaad.ai/health
+  curl https://goblin-assistant-backend.onrender.com/health
   ```
 
 - [ ] Set production secrets
@@ -291,11 +291,11 @@ python3 scripts/validate_privacy_integration.py
 - [ ] Test privacy endpoints
   ```bash
   # Data export
-  curl -X GET https://api.goblin.fuaad.ai/api/privacy/export \
+  curl -X GET https://goblin-assistant-backend.onrender.com/api/privacy/export \
     -H "Authorization: Bearer <test_token>"
   
   # Data deletion
-  curl -X DELETE https://api.goblin.fuaad.ai/api/privacy/delete \
+  curl -X DELETE https://goblin-assistant-backend.onrender.com/api/privacy/delete \
     -H "Authorization: Bearer <test_token>"
   ```
 
@@ -303,13 +303,13 @@ python3 scripts/validate_privacy_integration.py
   ```bash
   # Make 101 requests in 1 minute (should get 429 on 101st)
   for i in {1..101}; do
-    curl -w "\nStatus: %{http_code}\n" https://api.goblin.fuaad.ai/api/chat
+    curl -w "\nStatus: %{http_code}\n" https://goblin-assistant-backend.onrender.com/api/chat
   done
   ```
 
 - [ ] Test PII sanitization
   ```bash
-  curl -X POST https://api.goblin.fuaad.ai/api/chat \
+  curl -X POST https://goblin-assistant-backend.onrender.com/api/chat \
     -H "Content-Type: application/json" \
     -d '{"message": "My email is test@example.com and phone is 555-1234"}'
   
@@ -317,7 +317,7 @@ python3 scripts/validate_privacy_integration.py
   ```
 
 - [ ] Test Turnstile bot protection
-  - Visit https://goblin.fuaad.ai
+  - Visit https://goblin-assistant.vercel.app
   - Complete Turnstile challenge
   - Make API call (should succeed with valid token)
 

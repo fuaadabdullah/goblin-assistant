@@ -37,11 +37,11 @@ LOG_LEVEL=info
 SENTRY_DSN=https://c83d4d3b7bb2e74b4620e389a540cce6@o4510137545392128.ingest.us.sentry.io/4510991382347776
 
 # API Configuration
-ALLOWED_ORIGINS=https://goblin.fuaad.ai,https://api.goblin.fuaad.ai,https://brain.goblin.fuaad.ai,https://ops.goblin.fuaad.ai
-NEXT_PUBLIC_API_BASE_URL=https://api.goblin.fuaad.ai
-NEXT_PUBLIC_BACKEND_URL=https://api.goblin.fuaad.ai
-NEXT_PUBLIC_FASTAPI_URL=https://api.goblin.fuaad.ai
-NEXT_PUBLIC_FRONTEND_URL=https://goblin.fuaad.ai
+ALLOWED_ORIGINS=https://goblin-assistant.vercel.app,https://goblin-assistant-backend.onrender.com,https://brain.goblin-assistant.vercel.app,https://ops.goblin-assistant.vercel.app
+NEXT_PUBLIC_API_BASE_URL=https://goblin-assistant-backend.onrender.com
+NEXT_PUBLIC_BACKEND_URL=https://goblin-assistant-backend.onrender.com
+NEXT_PUBLIC_FASTAPI_URL=https://goblin-assistant-backend.onrender.com
+NEXT_PUBLIC_FRONTEND_URL=https://goblin-assistant.vercel.app
 
 # Rate Limiting
 RATE_LIMIT_ENABLED=true
@@ -88,7 +88,7 @@ In Render dashboard settings:
 ### Step 5: Add Custom Domain (Optional)
 
 1. In Render service settings, go to **Custom Domain**
-2. Add: `api.goblin.fuaad.ai`
+2. Add: `api.goblin-assistant.vercel.app`
 3. Follow DNS instructions to point domain
 
 ## Verification
@@ -106,11 +106,11 @@ After deployment:
 
 ```bash
 # Health check
-curl https://api.goblin.fuaad.ai/health
+curl https://goblin-assistant-backend.onrender.com/health
 # Expected: {"status":"healthy"}
 
 # Sentry test (verify error tracking)
-curl https://api.goblin.fuaad.ai/sentry-debug
+curl https://goblin-assistant-backend.onrender.com/sentry-debug
 # Expected: 500 Internal Server Error (error captured by Sentry)
 ```
 

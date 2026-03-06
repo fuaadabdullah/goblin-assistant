@@ -101,9 +101,9 @@ POSTHOG_HOST=<https://app.posthog.com>
 
 1. Sign up at [uptimerobot.com](https://uptimerobot.com)
 2. Add monitors for:
-   - Frontend: `<https://goblin.fuaad.ai`>
-   - API: `<https://api.goblin.fuaad.ai/health`>
-   - Brain: `<https://brain.goblin.fuaad.ai/health`>
+   - Frontend: `<https://goblin-assistant.vercel.app`>
+   - API: `<https://goblin-assistant-backend.onrender.com/health`>
+   - Brain: `<https://goblin-assistant-backend.onrender.com/health`>
 3. Configure alert channels (email/SMS)
 
 #### Alternative: Better Stack

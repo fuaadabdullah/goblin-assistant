@@ -11,7 +11,7 @@ groups:
         annotations:
           summary: "High sandbox job failure rate"
           description: "Sandbox job failure rate is {{ $value | printf \"%.2f\" }}% over the last 5 minutes (threshold: 5%)"
-          runbook_url: "https://docs.goblin.fuaad.ai/sandbox/troubleshooting#high-failure-rate"
+          runbook_url: "https://goblin-assistant.vercel.app/docs/sandbox/troubleshooting#high-failure-rate"
 
       # Queue depth alert
       - alert: SandboxQueueDepthHigh
@@ -23,7 +23,7 @@ groups:
         annotations:
           summary: "Sandbox queue depth is high"
           description: "Sandbox queue depth is {{ $value }} jobs (threshold: 50)"
-          runbook_url: "https://docs.goblin.fuaad.ai/sandbox/troubleshooting#queue-depth"
+          runbook_url: "https://goblin-assistant.vercel.app/docs/sandbox/troubleshooting#queue-depth"
 
       # Job duration P95 alert (90% of 5min timeout = 4.5min)
       - alert: SandboxJobDurationHigh
@@ -35,7 +35,7 @@ groups:
         annotations:
           summary: "Sandbox job duration P95 is high"
           description: "95th percentile job duration is {{ $value | printf \"%.1f\" }}s over the last 5 minutes (threshold: 270s)"
-          runbook_url: "https://docs.goblin.fuaad.ai/sandbox/troubleshooting#job-duration"
+          runbook_url: "https://goblin-assistant.vercel.app/docs/sandbox/troubleshooting#job-duration"
 
       # Container kills alert (indicates timeouts or resource issues)
       - alert: SandboxContainerKillsHigh
@@ -47,7 +47,7 @@ groups:
         annotations:
           summary: "High number of sandbox container kills"
           description: "{{ $value }} containers killed in the last 10 minutes (threshold: 5)"
-          runbook_url: "https://docs.goblin.fuaad.ai/sandbox/troubleshooting#container-kills"
+          runbook_url: "https://goblin-assistant.vercel.app/docs/sandbox/troubleshooting#container-kills"
 
       # Artifact upload failures
       - alert: SandboxArtifactUploadFailures
@@ -59,7 +59,7 @@ groups:
         annotations:
           summary: "Sandbox artifact upload failures"
           description: "Artifact upload failure rate is {{ $value | printf \"%.2f\" }} over the last 5 minutes"
-          runbook_url: "https://docs.goblin.fuaad.ai/sandbox/troubleshooting#artifact-uploads"
+          runbook_url: "https://goblin-assistant.vercel.app/docs/sandbox/troubleshooting#artifact-uploads"
 
       # Cleanup service failures
       - alert: SandboxCleanupFailures
@@ -71,7 +71,7 @@ groups:
         annotations:
           summary: "Sandbox cleanup service failing"
           description: "Cleanup runs are failing - check artifact storage and permissions"
-          runbook_url: "https://docs.goblin.fuaad.ai/sandbox/troubleshooting#cleanup-failures"
+          runbook_url: "https://goblin-assistant.vercel.app/docs/sandbox/troubleshooting#cleanup-failures"
 
       # Running jobs stuck (no completion for extended period)
       - alert: SandboxJobsStuck
@@ -83,7 +83,7 @@ groups:
         annotations:
           summary: "Sandbox jobs appear stuck"
           description: "Jobs have been running for over 30 minutes without completion"
-          runbook_url: "https://docs.goblin.fuaad.ai/sandbox/troubleshooting#stuck-jobs"
+          runbook_url: "https://goblin-assistant.vercel.app/docs/sandbox/troubleshooting#stuck-jobs"
 
   - name: sandbox_slos
     rules:
@@ -98,7 +98,7 @@ groups:
         annotations:
           summary: "Sandbox availability below SLO"
           description: "7-day success rate is {{ $value | printf \"%.1f\" }}% (SLO: 95%)"
-          runbook_url: "https://docs.goblin.fuaad.ai/sandbox/slo#availability"
+          runbook_url: "https://goblin-assistant.vercel.app/docs/sandbox/slo#availability"
 
       - alert: SandboxLatencyHigh
         expr: histogram_quantile(0.95, rate(sandbox_job_duration_seconds_bucket[7d])) > 120
@@ -110,4 +110,4 @@ groups:
         annotations:
           summary: "Sandbox latency above SLO"
           description: "7-day P95 latency is {{ $value | printf \"%.1f\" }}s (SLO: 120s)"
-          runbook_url: "https://docs.goblin.fuaad.ai/sandbox/slo#latency"
+          runbook_url: "https://goblin-assistant.vercel.app/docs/sandbox/slo#latency"

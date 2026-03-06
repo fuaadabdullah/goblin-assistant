@@ -48,7 +48,7 @@ app.use((req, res, next) => {
     "default-src 'self'; " +
     "script-src 'self' <https://challenges.cloudflare.com;> " +
     "style-src 'self' 'unsafe-inline'; " +
-    "connect-src 'self' <https://goblin-backend.fly.dev> <https://api.goblin.fuaad.ai;">
+    "connect-src 'self' <https://goblin-backend.fly.dev> <https://goblin-assistant-backend.onrender.com;">
   );
 
   // Additional Security Headers
@@ -68,7 +68,7 @@ For Fly.io deployments, add security headers in `fly.toml`:
 ```toml
 [http_service]
   [http_service.headers]
-    Content-Security-Policy = "default-src 'self'; script-src 'self' https://challenges.cloudflare.com; style-src 'self' 'unsafe-inline'; connect-src 'self' https://goblin-backend.fly.dev https://api.goblin.fuaad.ai;"
+    Content-Security-Policy = "default-src 'self'; script-src 'self' https://challenges.cloudflare.com; style-src 'self' 'unsafe-inline'; connect-src 'self' https://goblin-backend.fly.dev https://goblin-assistant-backend.onrender.com;"
     X-Content-Type-Options = "nosniff"
     X-Frame-Options = "DENY"
     Strict-Transport-Security = "max-age=31536000; includeSubDomains"
@@ -88,7 +88,7 @@ For Vercel deployments, add headers in `vercel.json`:
       "headers": [
         {
           "key": "Content-Security-Policy",
-          "value": "default-src 'self'; script-src 'self' <https://challenges.cloudflare.com;> style-src 'self' 'unsafe-inline'; connect-src 'self' <https://goblin-backend.fly.dev> <https://api.goblin.fuaad.ai;">
+          "value": "default-src 'self'; script-src 'self' <https://challenges.cloudflare.com;> style-src 'self' 'unsafe-inline'; connect-src 'self' <https://goblin-backend.fly.dev> <https://goblin-assistant-backend.onrender.com;">
         },
         {
           "key": "X-Content-Type-Options",

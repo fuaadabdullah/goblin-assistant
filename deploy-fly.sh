@@ -40,11 +40,11 @@ flyctl secrets set \
     ENVIRONMENT=production \
     RELEASE_VERSION=goblin-assistant@1.0.0 \
     PORT=8001 \
-    ALLOWED_ORIGINS=https://goblin.fuaad.ai,https://api.goblin.fuaad.ai,https://brain.goblin.fuaad.ai,https://ops.goblin.fuaad.ai \
-    NEXT_PUBLIC_API_BASE_URL=https://api.goblin.fuaad.ai \
-    NEXT_PUBLIC_BACKEND_URL=https://api.goblin.fuaad.ai \
-    NEXT_PUBLIC_FASTAPI_URL=https://api.goblin.fuaad.ai \
-    NEXT_PUBLIC_FRONTEND_URL=https://goblin.fuaad.ai
+    ALLOWED_ORIGINS=https://goblin-assistant.vercel.app,https://goblin-assistant-backend.onrender.com,https://goblin-assistant-backend.onrender.com,https://goblin-assistant.vercel.app \
+    NEXT_PUBLIC_API_BASE_URL=https://goblin-assistant-backend.onrender.com \
+    NEXT_PUBLIC_BACKEND_URL=https://goblin-assistant-backend.onrender.com \
+    NEXT_PUBLIC_FASTAPI_URL=https://goblin-assistant-backend.onrender.com \
+    NEXT_PUBLIC_FRONTEND_URL=https://goblin-assistant.vercel.app
 
 # Database configuration (replace with your actual database URL)
 echo "🗄️  Please set your database URL:"
