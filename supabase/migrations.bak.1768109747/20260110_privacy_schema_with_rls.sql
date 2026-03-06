@@ -80,7 +80,7 @@ ON public.inference_logs FOR SELECT
 USING (
     auth.jwt() ->> 'email' IN (
         'fuaadabdullah@gmail.com',
-        'admin@goblin.fuaad.ai'
+        'goblinosrep@gmail.com'
     )
 );
 
@@ -161,7 +161,7 @@ ON public.privacy_audit_log FOR SELECT
 USING (
     auth.jwt() ->> 'email' IN (
         'fuaadabdullah@gmail.com',
-        'admin@goblin.fuaad.ai'
+        'goblinosrep@gmail.com'
     )
 );
 
@@ -212,7 +212,7 @@ DECLARE
 BEGIN
     -- Must be called by the user themselves or admin
     IF auth.uid() != target_user_id AND 
-       auth.jwt() ->> 'email' NOT IN ('fuaadabdullah@gmail.com', 'admin@goblin.fuaad.ai') THEN
+       auth.jwt() ->> 'email' NOT IN ('fuaadabdullah@gmail.com', 'goblinosrep@gmail.com') THEN
         RAISE EXCEPTION 'Unauthorized access to user data summary';
     END IF;
     
