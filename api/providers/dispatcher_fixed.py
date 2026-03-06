@@ -1,11 +1,10 @@
 """
 Provider dispatcher that routes requests to appropriate provider implementations.
 
-Updated: 2026-01-11
-- Integrated with smart router for intelligent provider selection
-- Added health monitoring integration
-- Removed dead Kamatera providers from priority list
-- GCP providers now primary for cost optimization
+Updated: 2026-03-05
+- Removed dead GCP providers (VMs terminated since 2026-01-11)
+- Removed dead Kamatera providers (unreachable since 2026-01-11)
+- Active providers: Groq, SiliconeFlow, Azure, DeepSeek, OpenAI, Anthropic, Gemini
 """
 
 import os
@@ -90,21 +89,7 @@ class ProviderDispatcher:
                 "endpoint": "http://localhost:11434",
                 "invoke_path": "/api/generate",
             },
-            # GCP Ollama Server (replaces Kamatera)
-            "ollama_gcp": {
-                "endpoint": os.getenv("OLLAMA_GCP_URL", "http://localhost:11434"),
-                "invoke_path": "/api/generate",
-                "api_key_env": "LOCAL_LLM_API_KEY",
-                "default_model": "qwen2.5:latest",
-            },
-            # GCP LlamaCPP Server (replaces Kamatera)
-            "llamacpp_gcp": {
-                "endpoint": os.getenv("LLAMACPP_GCP_URL", "http://localhost:8000"),
-                "invoke_path": "/v1/chat/completions",
-                "api_key_env": "LOCAL_LLM_API_KEY",
-                "default_model": "qwen2.5-7b-instruct",
-            },
-            # Legacy Kamatera endpoints (deprecated - use GCP instead)
+            # Legacy Kamatera endpoints (deprecated)
             "ollama_kamatera": {
                 "endpoint": os.getenv(
                     "KAMATERA_SERVER2_URL", "http://192.175.23.150:8002"
@@ -172,17 +157,15 @@ class ProviderDispatcher:
         elif provider_id == "llamacpp_kamatera" or "45.61.51.220:8000" in endpoint:
             return KamateraLlamaCppProvider.from_config(config)
         elif (
-            provider_id in ["ollama", "ollama_gcp"]
+            provider_id == "ollama"
             or "localhost:11434" in endpoint
             or "45.61.51.220:8002" in endpoint
-            or "34.60.255.199:11434" in endpoint  # GCP Ollama
         ):
             return OllamaProvider.from_config(config)
         elif (
-            provider_id in ["llamacpp", "llamacpp_kamatera", "llamacpp_gcp"]
+            provider_id in ["llamacpp", "llamacpp_kamatera"]
             or "127.0.0.1:8080" in endpoint
             or "192.175.23.150:8000" in endpoint
-            or "34.132.226.143:8000" in endpoint  # GCP LlamaCPP
             or "ngrok.io" in endpoint
         ):
             return LlamaCPPProvider.from_config(config)
@@ -223,16 +206,16 @@ class ProviderDispatcher:
         """
         Auto-select the best available provider.
 
-        Updated priority order (2026-01-11):
-        1. GCP Ollama (free, fast, healthy)
-        2. GCP llama.cpp (free, healthy)
-        3. Groq (very cheap, fast)
-        4. SiliconeFlow (cheap)
-        5. DeepSeek (good for code)
-        6. OpenAI (quality fallback)
-        7. Anthropic (premium fallback)
+        Updated priority order (2026-03-05):
+        1. Groq (very cheap, fast)
+        2. SiliconeFlow (cheap)
+        3. Azure OpenAI (mid-tier)
+        4. DeepSeek (good for code)
+        5. OpenAI (quality fallback)
+        6. Anthropic (premium fallback)
 
-        Dead/Disabled:
+        Removed/Disabled:
+        - GCP servers (VMs terminated since 2026-01-11)
         - Kamatera servers (unreachable since 2026-01-11)
         """
         # Use smart router if available
@@ -252,9 +235,6 @@ class ProviderDispatcher:
 
         # Updated priority order: Cost-optimized, healthy providers first
         priority_providers = [
-            # Tier 0: Free/Local (GCP) — DISABLED: GCP VMs are currently unreachable
-            # ("ollama_gcp", "OLLAMA_GCP_URL", True),
-            # ("llamacpp_gcp", "LLAMACPP_GCP_URL", True),
             # Tier 1: Very cheap cloud
             ("groq", "GROQ_API_KEY", False),  # Fast + cheap
             ("siliconeflow", "SILICONEFLOW_API_KEY", False),

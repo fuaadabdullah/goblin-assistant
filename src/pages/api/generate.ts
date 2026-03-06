@@ -84,6 +84,52 @@ function writeResponse(
   return res.status(result.status).json(result.body ?? {});
 }
 
+/**
+ * Build the request body for the backend /api/chat endpoint.
+ * The frontend may send {prompt, messages, model, provider} but the
+ * backend expects {messages: [{role, content}], model?, provider?}.
+ */
+function buildChatRequestBody(incoming: Record<string, unknown>): Record<string, unknown> {
+  let messages = incoming.messages as Array<Record<string, unknown>> | undefined;
+
+  // If no messages provided, convert prompt into a single user message.
+  if ((!messages || !Array.isArray(messages) || messages.length === 0) && incoming.prompt) {
+    messages = [{ role: 'user', content: String(incoming.prompt) }];
+  }
+
+  // Strip extra fields from each message — backend only accepts role & content.
+  const cleanMessages = (messages ?? []).map((m) => ({
+    role: String(m.role ?? 'user'),
+    content: String(m.content ?? ''),
+  }));
+
+  return {
+    messages: cleanMessages,
+    ...(incoming.model ? { model: incoming.model } : {}),
+    ...(incoming.provider ? { provider: incoming.provider } : {}),
+  };
+}
+
+/**
+ * Map the backend SimpleChatResponse {ok, result: {text}, provider, model}
+ * to the frontend ChatResponse {content, model, provider}.
+ */
+function mapBackendResponse(body: Record<string, unknown>): Record<string, unknown> {
+  if (body.ok === true && body.result && typeof body.result === 'object') {
+    const result = body.result as Record<string, unknown>;
+    return {
+      content: result.text ?? '',
+      model: body.model ?? undefined,
+      provider: body.provider ?? undefined,
+    };
+  }
+  // Error case — pass through for the frontend error parser.
+  return {
+    error: body.error ?? 'Unknown backend error',
+    detail: body.error ?? 'Unknown backend error',
+  };
+}
+
 async function forwardToBackendGenerate(
   req: NextApiRequest,
 ): Promise<ForwardResponse> {
@@ -100,19 +146,24 @@ async function forwardToBackendGenerate(
       headers['X-Forwarded-For'] = forwardedFor;
     }
 
+    const chatBody = buildChatRequestBody((req.body ?? {}) as Record<string, unknown>);
+
     const response = await fetchWithTimeout(
-      `${BACKEND_URL}/v1/api/generate`,
+      `${BACKEND_URL}/api/chat`,
       {
         method: 'POST',
         headers,
-        body: JSON.stringify(req.body ?? {}),
+        body: JSON.stringify(chatBody),
       },
-      10000,
+      30000,
     );
 
-    const body = (await safeJson(response)) ?? {
+    const raw = (await safeJson<Record<string, unknown>>(response)) ?? {
       detail: 'Backend returned a non-JSON response',
     };
+
+    // Map the backend response format to what the frontend expects.
+    const body = response.ok ? mapBackendResponse(raw) : raw;
 
     return {
       status: response.status,

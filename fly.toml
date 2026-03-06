@@ -5,8 +5,6 @@ primary_region = "iad"
 LOG_LEVEL = "info"
 PORT = "8001"
 ENV = "production"
-OLLAMA_GCP_URL = "http://34.60.255.199:11434"
-LLAMACPP_GCP_URL = "http://34.132.226.143:8000"
 
 [build]
   dockerfile = "Dockerfile"

@@ -9,8 +9,6 @@ const nextConfig = {
     },
     // Expose server-side env vars needed by API routes (pages/api/*).
     serverRuntimeConfig: {
-        OLLAMA_GCP_URL: process.env.OLLAMA_GCP_URL,
-        LLAMACPP_GCP_URL: process.env.LLAMACPP_GCP_URL,
         GOBLIN_BACKEND_URL: process.env.GOBLIN_BACKEND_URL,
         LOCAL_LLM_API_KEY: process.env.LOCAL_LLM_API_KEY,
     },

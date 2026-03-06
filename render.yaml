@@ -45,11 +45,8 @@ services:
       - key: RATE_LIMIT_WINDOW
         value: "60"
       
-      # GCP LLM Endpoints
-      - key: OLLAMA_GCP_URL
-        value: http://34.60.255.199:11434
-      - key: LLAMACPP_GCP_URL
-        value: http://34.132.226.143:8000
+      # GCP LLM Endpoints (removed - VMs terminated since 2026-01-11)
+      # Re-add OLLAMA_GCP_URL / LLAMACPP_GCP_URL here after redeploying GCP infra
     
     # Redis Configuration (if using Render's Redis)
     # - key: REDIS_URL

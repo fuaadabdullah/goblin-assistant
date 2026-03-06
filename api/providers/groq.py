@@ -31,10 +31,11 @@ class GroqProvider(BaseProvider):
 
         url = self.endpoint.rstrip("/") + (self.invoke_path or "/v1/chat/completions")
 
-        # Build request payload
+        # Build request payload — use conversation messages if provided, else single prompt
+        messages = kwargs.get("messages", [{"role": "user", "content": prompt}])
         payload = {
             "model": model,
-            "messages": [{"role": "user", "content": prompt}],
+            "messages": messages,
             "max_tokens": kwargs.get("max_tokens", 512),
             "temperature": kwargs.get("temperature", 0.2),
         }

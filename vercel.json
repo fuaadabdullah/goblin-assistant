@@ -1,9 +1,10 @@
 {
   "framework": "nextjs",
   "env": {
-    "BACKEND_URL": "https://goblin-assistant-backend.onrender.com",
-    "NEXT_PUBLIC_API_URL": "https://goblin-assistant-backend.onrender.com",
-    "NEXT_PUBLIC_API_BASE_URL": "https://goblin-assistant-backend.onrender.com",
+    "GOBLIN_BACKEND_URL": "https://goblin-backend.onrender.com",
+    "BACKEND_URL": "https://goblin-backend.onrender.com",
+    "NEXT_PUBLIC_API_URL": "https://goblin-backend.onrender.com",
+    "NEXT_PUBLIC_API_BASE_URL": "https://goblin-backend.onrender.com",
     "NEXT_PUBLIC_DOMAIN": "goblin.fuaad.ai",
     "NEXT_PUBLIC_GA_MEASUREMENT_ID": "G-527208310"
   },

@@ -87,8 +87,6 @@ class ProviderHealthMonitor:
 
     # Health check endpoints by provider
     HEALTH_ENDPOINTS = {
-        "ollama_gcp": ("http://34.60.255.199:11434", "/api/tags"),
-        "llamacpp_gcp": ("http://34.132.226.143:8000", "/health"),
         "groq": ("https://api.groq.com", "/openai/v1/models"),
         "openai": ("https://api.openai.com", "/v1/models"),
         "anthropic": ("https://api.anthropic.com", "/v1/models"),

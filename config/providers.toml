@@ -14,10 +14,10 @@ force_for = ["reasoning"]
 [default.cost_optimization]
 max_budget_per_hour = 10.0
 preferred_providers_under_budget = [
-  "ollama_gcp",
-  "llamacpp_gcp",
   "groq",
   "siliconeflow",
+  "azure",
+  "deepseek",
   "openai",
 ]
 
@@ -186,37 +186,8 @@ api_key_env = "LOCAL_LLM_API_KEY"
 invoke_path = "/api/generate"
 is_active = false  # DISABLED
 
-# GCP Ollama Server - DISABLED (preemptible VMs terminated since 2026-01-11)
-[providers.ollama_gcp]
-name = "Ollama (GCP us-central1) - DISABLED"
-endpoint = "http://34.60.255.199:11434"
-capabilities = ["chat", "reasoning", "code"]
-models = ["qwen2.5:3b", "llama3.2:1b"]
-priority_tier = 99
-cost_score = 0.0
-default_timeout_ms = 20000
-bandwidth_score = 0.9
-supports_cot = false
-api_key_env = "LOCAL_LLM_API_KEY"
-is_active = false
-invoke_path = "/api/generate"
-default_model = "qwen2.5:3b"
-
-# GCP LlamaCPP Server - DISABLED (preemptible VMs terminated since 2026-01-11)
-[providers.llamacpp_gcp]
-name = "llama.cpp (GCP us-central1) - DISABLED"
-endpoint = "http://34.132.226.143:8000"
-capabilities = ["chat", "reasoning", "code"]
-models = ["qwen2.5-3b-instruct-q4_k_m"]
-priority_tier = 99
-cost_score = 0.0
-default_timeout_ms = 20000
-bandwidth_score = 0.9
-supports_cot = false
-api_key_env = "LOCAL_LLM_API_KEY"
-invoke_path = "/v1/chat/completions"
-default_model = "qwen2.5-3b-instruct-q4_k_m"
-is_active = false
+# GCP servers removed - preemptible VMs terminated since 2026-01-11
+# To redeploy, run infra/gcp-llm-setup.sh and re-add [providers.ollama_gcp] / [providers.llamacpp_gcp]
 
 # Kamatera Router API (Server 1 - 45.61.51.220) - DISABLED (unreachable since 2026-01-11)
 [providers.llamacpp_kamatera]

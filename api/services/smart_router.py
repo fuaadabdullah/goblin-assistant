@@ -73,11 +73,6 @@ class ProviderSelection:
 
 # Provider cost mapping (USD per 1K tokens: input/output)
 PROVIDER_COSTS: Dict[str, ProviderCost] = {
-    # Free (self-hosted)
-    "ollama_gcp": ProviderCost(0, 0),
-    "llamacpp_gcp": ProviderCost(0, 0),
-    "ollama_kamatera": ProviderCost(0, 0),  # Dead but free
-    "llamacpp_kamatera": ProviderCost(0, 0),  # Dead but free
     # Very cheap cloud
     "groq": ProviderCost(0.05, 0.10),
     "siliconeflow": ProviderCost(0.01, 0.03),
@@ -94,8 +89,6 @@ PROVIDER_COSTS: Dict[str, ProviderCost] = {
 
 # Provider capabilities
 PROVIDER_CAPABILITIES: Dict[str, List[str]] = {
-    "ollama_gcp": ["chat", "code", "reasoning"],
-    "llamacpp_gcp": ["chat", "code"],
     "groq": ["chat", "code", "reasoning"],
     "openai": ["chat", "code", "reasoning", "vision", "embedding", "image"],
     "anthropic": ["chat", "code", "reasoning", "vision"],
@@ -109,8 +102,6 @@ PROVIDER_CAPABILITIES: Dict[str, List[str]] = {
 
 # Default models per provider
 DEFAULT_MODELS: Dict[str, str] = {
-    "ollama_gcp": "qwen2.5:3b",
-    "llamacpp_gcp": "qwen2.5-3b-instruct-q4_k_m",
     "groq": "llama-3.1-8b-instant",
     "openai": "gpt-4o-mini",
     "anthropic": "claude-3-5-sonnet-20241022",
