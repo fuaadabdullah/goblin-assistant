@@ -8,8 +8,8 @@ const BACKEND_URL =
       process.env.NEXT_PUBLIC_FASTAPI_URL ||
       process.env.NEXT_PUBLIC_API_URL ||
       process.env.NEXT_PUBLIC_API_BASE_URL ||
-      'https://goblin-backend.onrender.com',
-  ) || 'https://goblin-backend.onrender.com';
+      'https://goblin-assistant-backend.onrender.com',
+  ) || 'https://goblin-assistant-backend.onrender.com';
 
 const INTERNAL_PROXY_API_KEY =
   (process.env.INTERNAL_PROXY_API_KEY ||
