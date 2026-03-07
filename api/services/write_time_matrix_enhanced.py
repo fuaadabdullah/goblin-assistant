@@ -15,7 +15,7 @@ import structlog
 from .message_classifier import MessageType, MessageClassification
 from .embedding_service import embedding_worker
 from .cache_service import cache_service
-from .retrieval_service import RetrievalService
+from .retrieval_service import retrieval_service as _retrieval_singleton
 from .memory_promotion_service import memory_promotion_service
 from ..observability.decision_logger import decision_logger
 from ..observability.memory_logger import memory_logger
@@ -116,7 +116,7 @@ class WriteTimeDecisionMatrix:
     MAX_CACHE_SIZE_MB = 100
     
     def __init__(self):
-        self.retrieval_service = RetrievalService()
+        self.retrieval_service = _retrieval_singleton
         self._embedding_counts = {}  # user_id -> {hour: count}
         self._summary_counts = {}    # user_id -> {day: count}
     

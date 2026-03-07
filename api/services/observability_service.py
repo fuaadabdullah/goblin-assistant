@@ -23,7 +23,7 @@ import structlog
 
 from .context_assembly_service import ContextAssemblyService
 from .context_monitoring import ContextMonitoringService
-from .retrieval_service import RetrievalService
+from .retrieval_service import RetrievalService, retrieval_service as _retrieval_singleton
 
 logger = structlog.get_logger()
 

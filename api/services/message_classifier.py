@@ -9,7 +9,7 @@ from enum import Enum
 import asyncio
 from datetime import datetime
 
-from ..providers.dispatcher import invoke_provider
+from ..providers.dispatcher_fixed import invoke_provider
 from ..storage.models import MessageModel
 from ..storage.database import get_db
 

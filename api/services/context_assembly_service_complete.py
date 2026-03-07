@@ -9,7 +9,7 @@ import structlog
 from ..storage.database import get_db
 from ..storage.models import ConversationModel, MessageModel
 from ..storage.vector_models import MemoryFactModel, ConversationSummaryModel
-from .retrieval_service import RetrievalService
+from .retrieval_service import retrieval_service as _retrieval_singleton
 from .embedding_service import EmbeddingService
 from .write_time_matrix import write_time_intelligence
 from ..observability.context_snapshotter import context_snapshotter
@@ -67,7 +67,7 @@ class ContextAssemblyService:
     """
     
     def __init__(self):
-        self.retrieval_service = RetrievalService()
+        self.retrieval_service = _retrieval_singleton
         self.embedding_service = EmbeddingService()
         self.budget = self._load_budget_config()
     

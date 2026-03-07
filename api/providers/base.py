@@ -3,7 +3,7 @@ Base provider class for all AI model providers.
 """
 
 from abc import ABC, abstractmethod
-from typing import AsyncGenerator, Dict, Any, Union
+from typing import AsyncGenerator, Dict, Any, List, Union
 import time
 import httpx
 
@@ -105,6 +105,17 @@ class BaseProvider(ABC):
                     "error": str(e),
                     "latency_ms": (time.time() - start_time) * 1000,
                 }
+
+    async def embed(
+        self,
+        texts: Union[str, List[str]],
+        model: str = "",
+        **kwargs,
+    ) -> Union[List[float], List[List[float]]]:
+        """Generate embeddings. Override in providers that support embeddings."""
+        raise NotImplementedError(
+            f"{self.__class__.__name__} does not support embeddings"
+        )
 
     @classmethod
     def from_config(cls, config: Dict[str, Any]) -> "BaseProvider":

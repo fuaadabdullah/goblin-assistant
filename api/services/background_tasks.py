@@ -12,9 +12,9 @@ import uuid
 from ..storage.database import get_db
 from ..storage.models import ConversationModel, MessageModel
 from ..storage.conversations import conversation_store
-from .retrieval_service import RetrievalService
+from .retrieval_service import RetrievalService, retrieval_service as _retrieval_singleton
 from .embedding_service import embedding_worker
-from ..providers.dispatcher import invoke_provider
+from ..providers.dispatcher_fixed import invoke_provider
 
 logger = logging.getLogger(__name__)
 
@@ -190,7 +190,7 @@ Working Memory Summary:"""
             
             if summary_text:
                 # Store summary with embedding
-                retrieval_service = RetrievalService()
+                retrieval_service = _retrieval_singleton
                 success = await retrieval_service.embedding_service.store_conversation_summary(
                     conversation_id=conversation_id,
                     summary_text=summary_text
@@ -370,7 +370,7 @@ class ConversationSummarizationService:
     """Service for on-demand conversation summarization"""
     
     def __init__(self):
-        self.retrieval_service = RetrievalService()
+        self.retrieval_service = _retrieval_singleton
     
     async def summarize_conversation(
         self, 

@@ -43,3 +43,6 @@ aiohttp>=3.9.0
 
 # Input sanitization
 bleach>=6.1.0
+
+# Token counting
+tiktoken>=0.7.0

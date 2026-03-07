@@ -36,6 +36,9 @@ from .services.write_time_matrix import write_time_intelligence
 from .input_validation import InputSanitizer
 from .storage.conversations import Conversation, ConversationMessage
 from .auth.router import get_current_user, User as AuthenticatedUser
+import structlog
+
+logger = structlog.get_logger()
 
 router = APIRouter(prefix="/chat", tags=["chat"])
 
@@ -64,6 +67,7 @@ class SendMessageRequest(BaseModel):
     model: Optional[str] = None  # None = use provider default
     stream: Optional[bool] = False
     metadata: Optional[Dict[str, Any]] = None
+    enable_context_assembly: Optional[bool] = True  # Inject RAG context like contextual-chat
 
 
 class SendMessageResponse(BaseModel):
@@ -380,7 +384,14 @@ async def send_message(
                 "processed_at": write_time_result["processed_at"],
             })
         except Exception as wti_err:
-            print(f"Write-time intelligence failed (non-fatal): {wti_err}")
+            logger.error(
+                "write_time_intelligence_failed",
+                message_id=message_id,
+                conversation_id=conversation_id,
+                user_id=current_user.id,
+                error_type=type(wti_err).__name__,
+                error=str(wti_err),
+            )
             message_metadata["write_time_error"] = str(wti_err)
 
         # Add original metadata if provided
@@ -401,9 +412,42 @@ async def send_message(
         # Step 3: Prepare conversation context for provider
         # Convert stored messages to provider-expected format
         conversation = await _require_owned_conversation(conversation_id, current_user)
-        messages = [
+        history_messages = [
             {"role": msg.role, "content": msg.content} for msg in conversation.messages
         ]
+
+        # Step 3b: Assemble RAG context (same as contextual-chat)
+        context_metadata = {}
+        if request.enable_context_assembly:
+            try:
+                assembly_result = await context_assembly_service.assemble_context(
+                    query=sanitized_message,
+                    user_id=current_user.id,
+                    conversation_id=conversation_id,
+                    conversation_history=history_messages[-10:],
+                )
+                context_text = assembly_result.get("context", "")
+                system_prompt = system_prompt_manager.get_complete_prompt(
+                    context=context_text, user_query=sanitized_message
+                )
+                messages = [
+                    {"role": "system", "content": system_prompt},
+                ] + history_messages
+                context_metadata = {
+                    "context_assembly_enabled": True,
+                    "context_assembly_layers": len(assembly_result.get("layers", [])),
+                    "total_tokens_used": assembly_result.get("total_tokens_used", 0),
+                }
+            except Exception as ctx_err:
+                logger.warning(
+                    "context_assembly_failed_in_send_message",
+                    conversation_id=conversation_id,
+                    error=str(ctx_err),
+                )
+                messages = history_messages
+                context_metadata = {"context_assembly_enabled": False, "context_assembly_error": str(ctx_err)}
+        else:
+            messages = history_messages
 
         # Step 4: Invoke AI provider via dispatcher
         # Provider selection strategy:
@@ -411,18 +455,36 @@ async def send_message(
         # - request.model=None uses provider's default model
         # - 30-second timeout prevents hanging requests
 
-        start_time = time.time()
         payload = {
             "messages": messages,
             "model": request.model,
         }
+
+        # If streaming requested, return SSE response via generate_chat_stream
+        if request.stream:
+            return StreamingResponse(
+                generate_chat_stream(
+                    message=request.message,
+                    conversation_id=conversation_id,
+                    current_user=current_user,
+                    provider=request.provider,
+                    model=request.model,
+                ),
+                media_type="text/event-stream",
+                headers={
+                    "Cache-Control": "no-cache",
+                    "Connection": "keep-alive",
+                },
+            )
+
+        start_time = time.time()
         try:
             provider_response = await invoke_provider(
                 pid=request.provider,
                 model=request.model,
                 payload=payload,
                 timeout_ms=30000,
-                stream=request.stream,
+                stream=False,
             )
         except Exception:
             raise
@@ -468,6 +530,8 @@ async def send_message(
             "model": used_model,
             "message_id": response_message_id,
         }
+        if context_metadata:
+            assistant_metadata.update(context_metadata)
         if usage:
             assistant_metadata["usage"] = usage
         if cost_usd is not None:
@@ -622,7 +686,10 @@ class ContextualChatResponse(BaseModel):
 
 
 @router.post("/contextual-chat", response_model=ContextualChatResponse)
-async def contextual_chat(request: ContextualChatRequest):
+async def contextual_chat(
+    request: ContextualChatRequest,
+    current_user: AuthenticatedUser = Depends(get_current_user),
+):
     """Advanced chat endpoint with Retrieval Ordering + Token Budgeting
 
     This endpoint uses the new ContextAssemblyService to provide:
@@ -635,15 +702,12 @@ async def contextual_chat(request: ContextualChatRequest):
         request: Contextual chat request with optional context assembly
     """
     try:
-        # Step 1: Validate user/conversation if provided
-        user_id = request.user_id
+        # Step 1: Derive user_id from authenticated user; validate conversation ownership
+        user_id = current_user.id
         conversation_id = request.conversation_id
 
-        if conversation_id and not user_id:
-            # Try to get user_id from conversation
-            conversation = await conversation_store.get_conversation(conversation_id)
-            if conversation:
-                user_id = conversation.user_id
+        if conversation_id:
+            await _require_owned_conversation(conversation_id, current_user)
 
         # Step 2: Assemble context using new system (if enabled)
         context_assembly = None
@@ -710,13 +774,37 @@ async def contextual_chat(request: ContextualChatRequest):
             "model": request.model,
         }
 
+        # If streaming requested, return SSE response
+        if request.stream:
+            # contextual_chat doesn't require conversation_id, create one if needed
+            stream_conv_id = conversation_id
+            if not stream_conv_id:
+                new_conv = await conversation_store.create_conversation(
+                    user_id=user_id, title=request.message[:50]
+                )
+                stream_conv_id = new_conv.conversation_id
+            return StreamingResponse(
+                generate_chat_stream(
+                    message=request.message,
+                    conversation_id=stream_conv_id,
+                    current_user=current_user,
+                    provider=request.provider,
+                    model=request.model,
+                ),
+                media_type="text/event-stream",
+                headers={
+                    "Cache-Control": "no-cache",
+                    "Connection": "keep-alive",
+                },
+            )
+
         try:
             provider_response = await invoke_provider(
-                pid=request.provider,  # Use specified provider or let dispatcher choose
+                pid=request.provider,
                 model=request.model,
                 payload=payload,
                 timeout_ms=30000,
-                stream=request.stream,
+                stream=False,
             )
             duration = time.time() - start_time
             success = isinstance(provider_response, dict) and provider_response.get(
@@ -823,58 +911,136 @@ async def debug_context_assembly():
         raise HTTPException(status_code=500, detail="Debug endpoint failed")
 
 
-async def generate_chat_stream(message: str, conversation_id: Optional[str] = None):
-    """Generate server-sent events for chat streaming"""
+async def generate_chat_stream(
+    message: str,
+    conversation_id: str,
+    current_user: AuthenticatedUser,
+    provider: Optional[str] = None,
+    model: Optional[str] = None,
+):
+    """Generate server-sent events for chat streaming via real provider."""
     # Send initial status
     yield f"data: {json.dumps({'status': 'started', 'message': 'Processing your request...'})}\n\n"
-    await asyncio.sleep(0.5)
 
-    # Simulate streaming response
-    response_text = f"Response to: {message}"
-
-    # Send chunks
-    words = response_text.split()
+    accumulated_text = ""
     total_tokens = 0
-    total_cost = 0
+    total_cost = 0.0
+    used_provider = provider or "unknown"
+    used_model = model or "unknown"
+    start_time = time.time()
 
-    for i, word in enumerate(words):
-        await asyncio.sleep(0.1)  # Simulate processing delay
+    try:
+        # Validate conversation ownership
+        conversation = await _require_owned_conversation(conversation_id, current_user)
 
-        chunk_data = {
-            "content": word + (" " if i < len(words) - 1 else ""),
-            "token_count": len(word) // 4 + 1,
-            "cost_delta": 0.001,
-            "done": False,
-        }
+        # Sanitize input
+        sanitized_message, _ = InputSanitizer.sanitize_chat_message(message)
 
-        total_tokens += chunk_data["token_count"]
-        total_cost += chunk_data["cost_delta"]
+        # Store user message
+        await conversation_store.add_message_to_conversation(
+            conversation_id=conversation_id,
+            role="user",
+            content=sanitized_message,
+        )
 
-        yield f"data: {json.dumps(chunk_data)}\n\n"
+        # Build message payload from conversation history
+        conversation = await _require_owned_conversation(conversation_id, current_user)
+        messages = [
+            {"role": msg.role, "content": msg.content} for msg in conversation.messages
+        ]
+        payload = {"messages": messages, "model": model}
 
-    # Send completion
-    completion_data = {
-        "result": response_text,
-        "cost": total_cost,
-        "tokens": total_tokens,
-        "model": "chat-model",
-        "provider": "chat-provider",
-        "duration_ms": len(words) * 100,
-        "done": True,
-    }
+        # Invoke provider with streaming
+        provider_response = await invoke_provider(
+            pid=provider,
+            model=model,
+            payload=payload,
+            timeout_ms=30000,
+            stream=True,
+        )
 
-    yield f"data: {json.dumps(completion_data)}\n\n"
+        if not isinstance(provider_response, dict) or not provider_response.get("ok"):
+            # Provider returned an error — fall back to non-streaming
+            provider_response = await invoke_provider(
+                pid=provider, model=model, payload=payload,
+                timeout_ms=30000, stream=False,
+            )
+            if isinstance(provider_response, dict) and provider_response.get("ok"):
+                result_data = provider_response.get("result", {})
+                accumulated_text = result_data.get("text", str(provider_response))
+                used_provider = provider_response.get("provider", used_provider)
+                used_model = provider_response.get("model", used_model)
+                yield f"data: {json.dumps({'content': accumulated_text, 'token_count': 0, 'cost_delta': 0, 'done': False})}\n\n"
+            else:
+                error_msg = provider_response.get("error", "unknown-error") if isinstance(provider_response, dict) else "provider-error"
+                yield f"data: {json.dumps({'error': error_msg, 'done': True})}\n\n"
+                return
+
+        elif provider_response.get("stream"):
+            # Real streaming path — consume async generator from provider
+            stream_gen = provider_response["stream"]
+            async for chunk in stream_gen:
+                chunk_text = chunk.get("text", "") if isinstance(chunk, dict) else str(chunk)
+                if not chunk_text:
+                    continue
+                accumulated_text += chunk_text
+                token_estimate = max(1, len(chunk_text) // 4)
+                total_tokens += token_estimate
+                yield f"data: {json.dumps({'content': chunk_text, 'token_count': token_estimate, 'cost_delta': 0, 'done': False})}\n\n"
+        else:
+            # Provider returned ok but no stream key — extract text directly
+            result_data = provider_response.get("result", {})
+            accumulated_text = result_data.get("text", "")
+            used_provider = provider_response.get("provider", used_provider)
+            used_model = provider_response.get("model", used_model)
+            if accumulated_text:
+                yield f"data: {json.dumps({'content': accumulated_text, 'token_count': 0, 'cost_delta': 0, 'done': False})}\n\n"
+
+        # Store assistant response
+        response_message_id = str(uuid.uuid4())
+        await conversation_store.add_message_to_conversation(
+            conversation_id=conversation_id,
+            role="assistant",
+            content=accumulated_text,
+            metadata={"provider": used_provider, "model": used_model},
+            message_id=response_message_id,
+        )
+
+        duration_ms = int((time.time() - start_time) * 1000)
+
+        # Send completion event
+        yield f"data: {json.dumps({'result': accumulated_text, 'cost': total_cost, 'tokens': total_tokens, 'model': used_model, 'provider': used_provider, 'duration_ms': duration_ms, 'message_id': response_message_id, 'done': True})}\n\n"
+
+    except HTTPException as exc:
+        yield f"data: {json.dumps({'error': exc.detail, 'done': True})}\n\n"
+    except Exception as exc:
+        print(f"Streaming error: {exc}")
+        yield f"data: {json.dumps({'error': 'Streaming failed', 'done': True})}\n\n"
+
+
+class StreamChatRequest(BaseModel):
+    message: str
+    conversation_id: str
+    provider: Optional[str] = None
+    model: Optional[str] = None
+    metadata: Optional[Dict[str, Any]] = None
 
 
 @router.post("/stream")
-async def stream_chat(request: Dict[str, Any]):
+async def stream_chat(
+    request: StreamChatRequest,
+    current_user: AuthenticatedUser = Depends(get_current_user),
+):
     """Stream chat response using Server-Sent Events"""
     try:
-        message = request.get("message", "")
-        conversation_id = request.get("conversation_id")
-
         return StreamingResponse(
-            generate_chat_stream(message, conversation_id),
+            generate_chat_stream(
+                message=request.message,
+                conversation_id=request.conversation_id,
+                current_user=current_user,
+                provider=request.provider,
+                model=request.model,
+            ),
             media_type="text/event-stream",
             headers={
                 "Cache-Control": "no-cache",

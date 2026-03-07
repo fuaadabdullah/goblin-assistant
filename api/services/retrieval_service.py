@@ -68,11 +68,12 @@ class RetrievalService:
                 from .observability_service import observability_service
 
                 # Build retrieval trace data
+                total_tokens_used = sum(len(r.get("content", "")) // 4 for r in results)
                 retrieval_trace_data = {
                     "request_id": f"retrieval_{datetime.utcnow().isoformat()}",
                     "user_id": user_id,
-                    "model_selected": "retrieval_service",  # This would be the actual model in real usage
-                    "token_budget": max_age_hours,  # Using max_age_hours as a proxy for budget
+                    "model_selected": "retrieval_service",
+                    "token_budget": total_tokens_used,
                     "retrieval_result": {
                         "layers": [
                             {
@@ -725,7 +726,7 @@ class ContextBuilder:
             context_text = context_text[:max_chars]
         
         # Build system prompt
-        system_prompt = f"""You are an AI assistant. Use the following context to inform your responses:
+        system_prompt = f"""You are Goblin Assistant — a sharp, resourceful AI helper. Use the following context to inform your responses:
 
 {context_text}
 
@@ -741,3 +742,7 @@ Conversation history:
         system_prompt += f"user: {user_message}"
         
         return [{"role": "system", "content": system_prompt}]
+
+
+# Module-level singleton — reuse across imports
+retrieval_service = RetrievalService()

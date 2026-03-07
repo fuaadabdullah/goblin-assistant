@@ -12,7 +12,7 @@ from dataclasses import dataclass
 import structlog
 
 from .message_classifier import MessageType, MessageClassification
-from .retrieval_service import RetrievalService
+from .retrieval_service import retrieval_service as _retrieval_singleton
 from .cache_service import cache_service
 from .observability_service import observability_service
 from ..storage.vector_models import MemoryFactModel
@@ -67,7 +67,7 @@ class MemoryPromotionService:
     """
     
     def __init__(self):
-        self.retrieval_service = RetrievalService()
+        self.retrieval_service = _retrieval_singleton
         self._promotion_cache = {}  # In-memory cache for promotion decisions
         self._promotion_thresholds = {
             "repetition_count": 2,

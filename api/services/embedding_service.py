@@ -4,6 +4,7 @@ Embedding service for generating and managing semantic embeddings
 
 import os
 import asyncio
+import logging
 from typing import List, Optional, Dict, Any
 import httpx
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -16,22 +17,74 @@ from ..storage.vector_models import (
     MemoryFactModel,
 )
 from ..storage.database import get_db
-from ..providers.openai import OpenAIProvider
+from ..providers.base import BaseProvider
+
+logger = logging.getLogger(__name__)
+
+# Provider name → (module path, class name, default config)
+_EMBEDDING_PROVIDERS: Dict[str, tuple] = {
+    "openai": (
+        "..providers.openai",
+        "OpenAIProvider",
+        {
+            "api_key_env": "OPENAI_API_KEY",
+            "endpoint": os.getenv("OPENAI_BASE_URL", "https://api.openai.com"),
+            "invoke_path": "/v1/embeddings",
+        },
+    ),
+    "azure_openai": (
+        "..providers.azure_openai",
+        "AzureOpenAIProvider",
+        {
+            "api_key_env": "AZURE_OPENAI_API_KEY",
+            "endpoint": os.getenv("AZURE_OPENAI_ENDPOINT", ""),
+            "invoke_path": "/openai/deployments/{model}/embeddings",
+        },
+    ),
+    "mock": (
+        "..providers.mock_provider",
+        "MockProvider",
+        {},
+    ),
+}
+
+
+def _resolve_embedding_provider() -> BaseProvider:
+    """Resolve the embedding provider from EMBEDDING_PROVIDER env var.
+
+    Falls back to OpenAI for backward compatibility.
+    """
+    provider_name = os.getenv("EMBEDDING_PROVIDER", "openai").lower()
+
+    if provider_name not in _EMBEDDING_PROVIDERS:
+        logger.warning(
+            "Unknown EMBEDDING_PROVIDER '%s', falling back to 'openai'. "
+            "Supported: %s",
+            provider_name,
+            ", ".join(_EMBEDDING_PROVIDERS),
+        )
+        provider_name = "openai"
+
+    module_path, class_name, default_config = _EMBEDDING_PROVIDERS[provider_name]
+
+    # Import provider class
+    import importlib
+
+    mod = importlib.import_module(module_path, package=__name__)
+    provider_cls = getattr(mod, class_name)
+
+    return provider_cls(default_config)
 
 
 class EmbeddingService:
     """Service for generating and managing embeddings"""
 
+    _warned_unavailable = False
+
     def __init__(self):
-        self.client = OpenAIProvider(
-            {
-                "api_key_env": "OPENAI_API_KEY",
-                "endpoint": os.getenv("OPENAI_BASE_URL", "https://api.openai.com"),
-                "invoke_path": "/v1/embeddings",
-            }
-        )
-        self.model = "text-embedding-3-small"
-        self.dimension = 1536
+        self.client = _resolve_embedding_provider()
+        self.model = os.getenv("EMBEDDING_MODEL", "text-embedding-3-small")
+        self.dimension = int(os.getenv("EMBEDDING_DIMENSION", "1536"))
 
     async def embed_text(self, text: str) -> List[float]:
         """Generate embedding for a single text"""
@@ -44,12 +97,20 @@ class EmbeddingService:
             text = text[:max_tokens]
 
         try:
-            # Use the OpenAI provider's embed method
+            # Use the provider's embed method
             embedding = await self.client.embed(texts=text, model=self.model)
             return embedding if isinstance(embedding, list) else []
 
         except Exception as e:
-            print(f"Error generating embedding: {e}")
+            if not EmbeddingService._warned_unavailable:
+                EmbeddingService._warned_unavailable = True
+                logger.warning(
+                    "Embedding provider unavailable — RAG system will return "
+                    "empty results until this is resolved. Error: %s",
+                    e,
+                )
+            else:
+                logger.debug("Embedding generation failed: %s", e)
             return []
 
     async def embed_batch(self, texts: List[str]) -> List[List[float]]:
@@ -63,12 +124,12 @@ class EmbeddingService:
             return []
 
         try:
-            # Use the OpenAI provider's embed method for batching
+            # Use the provider's embed method for batching
             embeddings = await self.client.embed(texts=texts, model=self.model)
             return embeddings if isinstance(embeddings, list) else []
 
         except Exception as e:
-            print(f"Error generating batch embeddings: {e}")
+            logger.warning("Batch embedding failed, falling back to sequential: %s", e)
             # Fallback to sequential processing
             embeddings = []
             for text in texts:
@@ -105,7 +166,7 @@ class EmbeddingService:
                 return True
 
         except Exception as e:
-            print(f"Error storing message embedding: {e}")
+            logger.error("Error storing message embedding: %s", e)
             return False
 
     async def store_conversation_summary(
@@ -154,7 +215,7 @@ class EmbeddingService:
                 return True
 
         except Exception as e:
-            print(f"Error storing conversation summary: {e}")
+            logger.error("Error storing conversation summary: %s", e)
             return False
 
     async def store_memory_fact(
@@ -183,7 +244,7 @@ class EmbeddingService:
                 return True
 
         except Exception as e:
-            print(f"Error storing memory fact: {e}")
+            logger.error("Error storing memory fact: %s", e)
             return False
 
 
@@ -217,7 +278,7 @@ class AsyncEmbeddingWorker:
                 await self._process_task(task)
 
             except Exception as e:
-                print(f"Error in embedding worker: {e}")
+                logger.error("Error in embedding worker: %s", e)
 
     async def _process_task(self, task: Dict[str, Any]):
         """Process a single embedding task"""

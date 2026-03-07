@@ -12,7 +12,7 @@ import asyncio
 
 from .storage.conversations import conversation_store
 from .providers.dispatcher_fixed import invoke_provider
-from .services.retrieval_service import RetrievalService, ContextBuilder
+from .services.retrieval_service import RetrievalService, ContextBuilder, retrieval_service as _retrieval_singleton
 from .services.embedding_service import embedding_worker
 from .storage.models import MessageModel
 from .input_validation import InputSanitizer
@@ -108,9 +108,8 @@ async def semantic_send_message(
         context_used = False
 
         if request.use_semantic_retrieval:
-            retrieval_service = RetrievalService()
             try:
-                context_bundle = await retrieval_service.get_context_bundle(
+                context_bundle = await _retrieval_singleton.get_context_bundle(
                     query=request.message,
                     user_id=user_id,
                     conversation_id=conversation_id,
@@ -284,8 +283,7 @@ async def get_context_bundle(
             raise HTTPException(status_code=400, detail="Conversation has no user_id")
 
         # Retrieve context
-        retrieval_service = RetrievalService()
-        context_bundle = await retrieval_service.get_context_bundle(
+        context_bundle = await _retrieval_singleton.get_context_bundle(
             query=query,
             user_id=user_id,
             conversation_id=conversation_id,
@@ -355,8 +353,7 @@ Summary:"""
             raise Exception("Failed to generate summary")
 
         # Store summary and its embedding
-        retrieval_service = RetrievalService()
-        success = await retrieval_service.embedding_service.store_conversation_summary(
+        success = await _retrieval_singleton.embedding_service.store_conversation_summary(
             conversation_id=conversation_id, summary_text=summary_text
         )
 
@@ -392,8 +389,7 @@ async def add_memory_fact(
             raise HTTPException(status_code=400, detail="Fact text cannot be empty")
 
         # Store memory fact and its embedding
-        retrieval_service = RetrievalService()
-        success = await retrieval_service.embedding_service.store_memory_fact(
+        success = await _retrieval_singleton.embedding_service.store_memory_fact(
             user_id=user_id, fact_text=fact_text, category=category, metadata=metadata
         )
 
@@ -426,8 +422,7 @@ async def search_memory_facts(
         if not query or not query.strip():
             raise HTTPException(status_code=400, detail="Query cannot be empty")
 
-        retrieval_service = RetrievalService()
-        facts = await retrieval_service.retrieve_memory_facts(
+        facts = await _retrieval_singleton.retrieve_memory_facts(
             user_id=user_id, query=query, categories=categories, k=k
         )
 
