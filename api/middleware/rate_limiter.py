@@ -95,7 +95,11 @@ class RateLimiter:
         if request.url.path in ["/health", "/metrics"]:
             return await call_next(request)
 
-        result = await self.check_rate_limit(request)
+        try:
+            result = await self.check_rate_limit(request)
+        except Exception:
+            # Redis unavailable — allow request through without rate limiting
+            return await call_next(request)
 
         if not result["allowed"]:
             return JSONResponse(
