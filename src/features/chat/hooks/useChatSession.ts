@@ -11,6 +11,8 @@ import { CHAT_QUICK_PROMPTS } from '../../../content/brand';
 import { estimateFromText, type TextCostEstimate } from '../../../lib/cost-estimate';
 import { computeCostUsd } from '../../../lib/llm-rates';
 import { useProvider } from '../../../contexts/ProviderContext';
+import { getAuthToken } from '../../../utils/auth-session';
+import { apiClient } from '../../../lib/api';
 
 export interface ChatSessionState {
   messages: ChatMessage[];
@@ -220,6 +222,25 @@ export const useChatSession = (): ChatSessionState => {
       setInput('');
 
       try {
+        // Guest fallback: if user is not authenticated, use the
+        // unauthenticated /api/generate proxy instead of conversations API.
+        const isAuthenticated = Boolean(getAuthToken());
+
+        if (!isAuthenticated) {
+          const response = await apiClient.chatCompletion(updatedMessages, selectedModel || undefined);
+          const text = typeof response === 'string' ? response : String(response ?? 'No response');
+          const assistantMsg: ChatMessage = {
+            id: createMessageId(),
+            createdAt: new Date().toISOString(),
+            role: 'assistant',
+            content: text,
+          };
+          applyMessages([...updatedMessages, assistantMsg]);
+          setIsSending(false);
+          inputRef.current?.focus();
+          return;
+        }
+
         let conversationId = activeThread?.source === 'backend' ? activeThread.id : null;
         let createdAt: string | undefined;
         let pendingThreadTitle = content.slice(0, 48) || 'New chat';
