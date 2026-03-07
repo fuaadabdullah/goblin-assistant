@@ -434,6 +434,66 @@ class ProviderDispatcher:
         messages = payload.get("messages", [])
         resolved_provider_id: str = await self._resolve_provider_id(provider_id, messages)
 
+        result = await self._try_invoke(resolved_provider_id, model, payload, timeout_ms, stream)
+
+        # If the selected provider failed and we used auto-selection,
+        # retry with the priority fallback list (skip the failed provider).
+        is_auto = provider_id is None or provider_id == "auto"
+        if is_auto and isinstance(result, dict) and not result.get("ok", False):
+            error_msg = result.get("error", "")
+            logger.warning(
+                "Provider %s failed (%s), trying fallback providers",
+                resolved_provider_id,
+                error_msg,
+            )
+            fallback_result = await self._invoke_with_fallback(
+                resolved_provider_id, payload, timeout_ms, stream
+            )
+            if fallback_result is not None:
+                return fallback_result
+
+        return result
+
+    async def _invoke_with_fallback(
+        self,
+        failed_provider: str,
+        payload: Dict[str, Any],
+        timeout_ms: int,
+        stream: bool,
+    ) -> Optional[Dict[str, Any]]:
+        """Try invoking fallback providers from the priority list, skipping the failed one."""
+        priority_providers = [
+            ("groq", "GROQ_API_KEY", False),
+            ("siliconeflow", "SILICONEFLOW_API_KEY", False),
+            ("azure", "AZURE_API_KEY", False),
+            ("deepseek", "DEEPSEEK_API_KEY", False),
+        ]
+        for pid, env_var, is_local in priority_providers:
+            if pid == failed_provider:
+                continue
+            config = self._get_provider_config(pid)
+            if not config:
+                continue
+            if not self._is_provider_configured(config, env_var, is_local):
+                continue
+            if not self._is_provider_healthy(pid):
+                continue
+            logger.info("Fallback: trying provider %s", pid)
+            fallback_result = await self._try_invoke(pid, None, payload, timeout_ms, stream)
+            if isinstance(fallback_result, dict) and fallback_result.get("ok", False):
+                return fallback_result
+            logger.warning("Fallback provider %s also failed", pid)
+        return None
+
+    async def _try_invoke(
+        self,
+        resolved_provider_id: str,
+        model: Optional[str],
+        payload: Dict[str, Any],
+        timeout_ms: int,
+        stream: bool,
+    ) -> Dict[str, Any]:
+        """Attempt a single provider invocation."""
         config = self._get_provider_config(resolved_provider_id)
         if not config:
             return self._build_invoke_error(f"unknown-provider:{resolved_provider_id}")
