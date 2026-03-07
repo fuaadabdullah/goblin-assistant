@@ -1,0 +1,78 @@
+
+> goblin-assistant@0.1.0 dev
+> next dev
+
+ ⚠ Runtime config is deprecated and the `serverRuntimeConfig` configuration option will be removed in Next.js 16.
+   ▲ Next.js 15.5.9
+   - Local:        http://localhost:3000
+   - Network:      http://192.168.1.127:3000
+   - Environments: .env.local
+
+ ✓ Starting...
+ ✓ Ready in 23.5s
+ ○ Compiling /chat ...
+ ✓ Compiled /chat in 29.3s (782 modules)
+📝 Environment Configuration: {
+  apiBaseUrl: 'http://localhost:8004',
+  backendUrl: 'https://goblin-backend.fly.dev',
+  fastApiUrl: 'https://goblin-backend.fly.dev',
+  enableDebug: false,
+  mockApi: false,
+  features: {
+    ragEnabled: false,
+    multiProvider: false,
+    passkeyAuth: false,
+    googleAuth: false,
+    orchestration: false,
+    sandbox: false,
+    search: true,
+    admin: false,
+    analytics: false,
+    debugMode: false
+  },
+  turnstile: { chat: '', login: '', search: '' },
+  sentryDsn: '',
+  gaMeasurementId: '',
+  mode: 'development',
+  isDevelopment: true,
+  isProduction: false
+}
+ GET /chat 200 in 42251ms
+ ○ Compiling /404 ...
+ ✓ Compiled /404 in 3.6s (788 modules)
+📝 Environment Configuration: {
+  apiBaseUrl: 'http://localhost:8004',
+  backendUrl: 'https://goblin-backend.fly.dev',
+  fastApiUrl: 'https://goblin-backend.fly.dev',
+  enableDebug: false,
+  mockApi: false,
+  features: {
+    ragEnabled: false,
+    multiProvider: false,
+    passkeyAuth: false,
+    googleAuth: false,
+    orchestration: false,
+    sandbox: false,
+    search: true,
+    admin: false,
+    analytics: false,
+    debugMode: false
+  },
+  turnstile: { chat: '', login: '', search: '' },
+  sentryDsn: '',
+  gaMeasurementId: '',
+  mode: 'development',
+  isDevelopment: true,
+  isProduction: false
+}
+ GET /site.webmanifest 404 in 4545ms
+ ○ Compiling /api/models ...
+ ✓ Compiled /api/models in 556ms (244 modules)
+[api/models] proxy_event {
+  proxy_mode: 'thin',
+  backend_status: 200,
+  legacy_fallback_used: false,
+  correlation_id: undefined,
+  latency_ms: 85
+}
+ GET /api/models 200 in 867ms

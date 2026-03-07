@@ -1,0 +1,1889 @@
+INFO:     Will watch for changes in these directories: ['/Volumes/GOBLINOS 1/apps/goblin-assistant']
+INFO:     Uvicorn running on http://0.0.0.0:8004 (Press CTRL+C to quit)
+INFO:     Started reloader process [80071] using WatchFiles
+sentence-transformers not available (The sentence_transformers python package is not installed. Please install it with `pip install sentence_transformers`), using default embeddings
+No security configuration warnings detected.
+❌ Failed to initialize S3 client: Could not connect to the endpoint URL: "http://minio:9000/goblin-sandbox"
+{"provider": "sentry", "error_monitoring": "enabled", "event": "Sentry SDK initialized", "timestamp": "2026-03-07T11:29:31.923810Z"}
+{"requests_per_minute": 100, "requests_per_hour": 1000, "event": "Rate limiting middleware enabled", "timestamp": "2026-03-07T11:29:31.975016Z"}
+INFO:     Started server process [80075]
+INFO:     Waiting for application startup.
+{"event": "Starting Goblin Assistant API", "timestamp": "2026-03-07T11:29:32.181915Z"}
+{"event": "Initializing Redis cache", "timestamp": "2026-03-07T11:29:32.181981Z"}
+✅ Redis cache initialized successfully
+{"event": "Redis cache initialized", "timestamp": "2026-03-07T11:29:32.202308Z"}
+{"event": "Checking database availability", "timestamp": "2026-03-07T11:29:32.202363Z"}
+⚠️  Database initialization failed: password authentication failed for user "postgres"
+   Continuing without database - some features may be limited
+{"mode": "limited", "event": "Database initialization skipped", "timestamp": "2026-03-07T11:29:32.935785Z"}
+{"event": "Starting provider monitoring", "timestamp": "2026-03-07T11:29:32.935901Z"}
+Provider monitor started
+{"event": "Provider monitoring started", "timestamp": "2026-03-07T11:29:32.935988Z"}
+{"event": "Starting AI provider health monitoring", "timestamp": "2026-03-07T11:29:32.936040Z"}
+{"event": "AI provider health monitoring started", "timestamp": "2026-03-07T11:29:32.981239Z"}
+{"event": "Initializing secrets adapter", "timestamp": "2026-03-07T11:29:32.981302Z"}
+Failed to initialize secrets adapter: Either VAULT_TOKEN or (VAULT_ROLE_ID and VAULT_SECRET_ID) must be provided
+{"error": "Either VAULT_TOKEN or (VAULT_ROLE_ID and VAULT_SECRET_ID) must be provided", "impact": "continuing without secrets management", "event": "Failed to initialize secrets adapter", "timestamp": "2026-03-07T11:29:32.983957Z"}
+{"event": "Checking privacy and security features", "timestamp": "2026-03-07T11:29:32.984047Z"}
+{"event": "PII sanitization available", "timestamp": "2026-03-07T11:29:32.984097Z"}
+{"event": "Telemetry with redaction available", "timestamp": "2026-03-07T11:29:32.984125Z"}
+{"event": "Safe vector store available", "timestamp": "2026-03-07T11:29:32.984154Z"}
+{"event": "Starting artifact cleanup service", "timestamp": "2026-03-07T11:29:32.984178Z"}
+{"interval_hours": 24, "event": "Artifact cleanup service started", "timestamp": "2026-03-07T11:29:32.984221Z"}
+{"event": "Artifact cleanup service started", "timestamp": "2026-03-07T11:29:32.984256Z"}
+{"status": "ready", "event": "Backend startup complete", "timestamp": "2026-03-07T11:29:32.984279Z"}
+{"artifacts_removed": 0, "detail": "no expired artifacts found", "event": "Artifact cleanup completed", "timestamp": "2026-03-07T11:29:33.256046Z"}
+INFO:     Application startup complete.
+{"status_code": 200, "duration": 0.674119234085083, "event": "request_completed", "timestamp": "2026-03-07T11:29:34.193710Z"}
+INFO:     127.0.0.1:54222 - "GET /health HTTP/1.1" 200 OK
+{"status_code": 422, "duration": 0.031803131103515625, "event": "request_completed", "timestamp": "2026-03-07T11:30:18.058825Z"}
+INFO:     127.0.0.1:54258 - "POST /api/chat HTTP/1.1" 422 Unprocessable Content
+{"status_code": 200, "duration": 0.208251953125, "event": "request_completed", "timestamp": "2026-03-07T11:30:44.636067Z"}
+INFO:     127.0.0.1:54280 - "POST /api/chat HTTP/1.1" 200 OK
+{"status_code": 200, "duration": 0.04852795600891113, "event": "request_completed", "timestamp": "2026-03-07T11:31:51.495273Z"}
+INFO:     127.0.0.1:54347 - "GET /providers/models HTTP/1.1" 200 OK
+WARNING:  WatchFiles detected changes in 'api/main.py'. Reloading...
+INFO:     Shutting down
+INFO:     Waiting for application shutdown.
+{"event": "Shutting down Goblin Assistant API", "timestamp": "2026-03-07T11:48:46.105466Z"}
+{"event": "Stopping AI provider health monitoring", "timestamp": "2026-03-07T11:48:46.105675Z"}
+{"event": "AI provider health monitoring stopped", "timestamp": "2026-03-07T11:48:46.107326Z"}
+{"event": "Stopping provider monitoring", "timestamp": "2026-03-07T11:48:46.107395Z"}
+Provider monitor stopped
+{"event": "Provider monitoring stopped", "timestamp": "2026-03-07T11:48:46.107550Z"}
+{"event": "Closing Redis cache", "timestamp": "2026-03-07T11:48:46.107589Z"}
+✅ Redis cache closed successfully
+{"event": "Redis cache closed", "timestamp": "2026-03-07T11:48:46.124859Z"}
+{"event": "Cleaning up secrets adapter", "timestamp": "2026-03-07T11:48:46.124934Z"}
+{"event": "Secrets adapter cleaned up", "timestamp": "2026-03-07T11:48:46.126572Z"}
+{"event": "Stopping artifact cleanup service", "timestamp": "2026-03-07T11:48:46.127192Z"}
+{"event": "Artifact cleanup service stopped", "timestamp": "2026-03-07T11:48:46.128474Z"}
+{"event": "Artifact cleanup service stopped", "timestamp": "2026-03-07T11:48:46.128547Z"}
+{"event": "Backend shutdown complete", "timestamp": "2026-03-07T11:48:46.128579Z"}
+INFO:     Application shutdown complete.
+INFO:     Finished server process [80075]
+sentence-transformers not available (The sentence_transformers python package is not installed. Please install it with `pip install sentence_transformers`), using default embeddings
+WARNING:  WatchFiles detected changes in 'api/main.py'. Reloading...
+No security configuration warnings detected.
+❌ Failed to initialize S3 client: Could not connect to the endpoint URL: "http://minio:9000/goblin-sandbox"
+{"provider": "sentry", "error_monitoring": "enabled", "event": "Sentry SDK initialized", "timestamp": "2026-03-07T11:49:05.094795Z"}
+{"requests_per_minute": 100, "requests_per_hour": 1000, "event": "Rate limiting middleware enabled", "timestamp": "2026-03-07T11:49:05.174310Z"}
+INFO:     Started server process [96708]
+INFO:     Waiting for application startup.
+{"event": "Starting Goblin Assistant API", "timestamp": "2026-03-07T11:49:05.387112Z"}
+{"event": "Initializing Redis cache", "timestamp": "2026-03-07T11:49:05.387162Z"}
+✅ Redis cache initialized successfully
+{"event": "Redis cache initialized", "timestamp": "2026-03-07T11:49:05.390030Z"}
+{"event": "Checking database availability", "timestamp": "2026-03-07T11:49:05.390078Z"}
+⚠️  Database initialization failed: password authentication failed for user "postgres"
+   Continuing without database - some features may be limited
+{"mode": "limited", "event": "Database initialization skipped", "timestamp": "2026-03-07T11:49:06.058953Z"}
+{"event": "Starting provider monitoring", "timestamp": "2026-03-07T11:49:06.059035Z"}
+Provider monitor started
+{"event": "Provider monitoring started", "timestamp": "2026-03-07T11:49:06.059094Z"}
+{"event": "Starting AI provider health monitoring", "timestamp": "2026-03-07T11:49:06.059132Z"}
+{"event": "AI provider health monitoring started", "timestamp": "2026-03-07T11:49:06.100927Z"}
+{"event": "Initializing secrets adapter", "timestamp": "2026-03-07T11:49:06.100988Z"}
+Failed to initialize secrets adapter: Either VAULT_TOKEN or (VAULT_ROLE_ID and VAULT_SECRET_ID) must be provided
+{"error": "Either VAULT_TOKEN or (VAULT_ROLE_ID and VAULT_SECRET_ID) must be provided", "impact": "continuing without secrets management", "event": "Failed to initialize secrets adapter", "timestamp": "2026-03-07T11:49:06.103038Z"}
+{"event": "Checking privacy and security features", "timestamp": "2026-03-07T11:49:06.103084Z"}
+{"event": "PII sanitization available", "timestamp": "2026-03-07T11:49:06.103128Z"}
+{"event": "Telemetry with redaction available", "timestamp": "2026-03-07T11:49:06.103156Z"}
+{"event": "Safe vector store available", "timestamp": "2026-03-07T11:49:06.103184Z"}
+{"event": "Starting artifact cleanup service", "timestamp": "2026-03-07T11:49:06.103209Z"}
+{"interval_hours": 24, "event": "Artifact cleanup service started", "timestamp": "2026-03-07T11:49:06.103247Z"}
+{"event": "Artifact cleanup service started", "timestamp": "2026-03-07T11:49:06.103276Z"}
+{"status": "ready", "event": "Backend startup complete", "timestamp": "2026-03-07T11:49:06.103299Z"}
+{"artifacts_removed": 0, "detail": "no expired artifacts found", "event": "Artifact cleanup completed", "timestamp": "2026-03-07T11:49:06.377986Z"}
+INFO:     Application startup complete.
+sentence-transformers not available (The sentence_transformers python package is not installed. Please install it with `pip install sentence_transformers`), using default embeddings
+No security configuration warnings detected.
+❌ Failed to initialize S3 client: Could not connect to the endpoint URL: "http://minio:9000/goblin-sandbox"
+{"provider": "sentry", "error_monitoring": "enabled", "event": "Sentry SDK initialized", "timestamp": "2026-03-07T11:49:18.770715Z"}
+{"requests_per_minute": 100, "requests_per_hour": 1000, "event": "Rate limiting middleware enabled", "timestamp": "2026-03-07T11:49:18.806340Z"}
+INFO:     Started server process [96916]
+INFO:     Waiting for application startup.
+{"event": "Starting Goblin Assistant API", "timestamp": "2026-03-07T11:49:19.016739Z"}
+{"event": "Initializing Redis cache", "timestamp": "2026-03-07T11:49:19.016793Z"}
+✅ Redis cache initialized successfully
+{"event": "Redis cache initialized", "timestamp": "2026-03-07T11:49:19.020151Z"}
+{"event": "Checking database availability", "timestamp": "2026-03-07T11:49:19.020218Z"}
+⚠️  Database initialization failed: password authentication failed for user "postgres"
+   Continuing without database - some features may be limited
+{"mode": "limited", "event": "Database initialization skipped", "timestamp": "2026-03-07T11:49:19.669500Z"}
+{"event": "Starting provider monitoring", "timestamp": "2026-03-07T11:49:19.669607Z"}
+Provider monitor started
+{"event": "Provider monitoring started", "timestamp": "2026-03-07T11:49:19.669688Z"}
+{"event": "Starting AI provider health monitoring", "timestamp": "2026-03-07T11:49:19.669738Z"}
+{"event": "AI provider health monitoring started", "timestamp": "2026-03-07T11:49:19.712571Z"}
+{"event": "Initializing secrets adapter", "timestamp": "2026-03-07T11:49:19.712639Z"}
+Failed to initialize secrets adapter: Either VAULT_TOKEN or (VAULT_ROLE_ID and VAULT_SECRET_ID) must be provided
+{"error": "Either VAULT_TOKEN or (VAULT_ROLE_ID and VAULT_SECRET_ID) must be provided", "impact": "continuing without secrets management", "event": "Failed to initialize secrets adapter", "timestamp": "2026-03-07T11:49:19.714985Z"}
+{"event": "Checking privacy and security features", "timestamp": "2026-03-07T11:49:19.715042Z"}
+{"event": "PII sanitization available", "timestamp": "2026-03-07T11:49:19.715367Z"}
+{"event": "Telemetry with redaction available", "timestamp": "2026-03-07T11:49:19.715410Z"}
+{"event": "Safe vector store available", "timestamp": "2026-03-07T11:49:19.715444Z"}
+{"event": "Starting artifact cleanup service", "timestamp": "2026-03-07T11:49:19.715469Z"}
+{"interval_hours": 24, "event": "Artifact cleanup service started", "timestamp": "2026-03-07T11:49:19.715523Z"}
+{"event": "Artifact cleanup service started", "timestamp": "2026-03-07T11:49:19.715553Z"}
+{"status": "ready", "event": "Backend startup complete", "timestamp": "2026-03-07T11:49:19.715576Z"}
+{"artifacts_removed": 0, "detail": "no expired artifacts found", "event": "Artifact cleanup completed", "timestamp": "2026-03-07T11:49:19.979154Z"}
+INFO:     Application startup complete.
+WARNING:  WatchFiles detected changes in 'api/main.py'. Reloading...
+INFO:     Shutting down
+INFO:     Waiting for application shutdown.
+{"event": "Shutting down Goblin Assistant API", "timestamp": "2026-03-07T11:50:12.210426Z"}
+{"event": "Stopping AI provider health monitoring", "timestamp": "2026-03-07T11:50:12.210503Z"}
+{"event": "AI provider health monitoring stopped", "timestamp": "2026-03-07T11:50:12.210698Z"}
+{"event": "Stopping provider monitoring", "timestamp": "2026-03-07T11:50:12.210766Z"}
+Provider monitor stopped
+{"event": "Provider monitoring stopped", "timestamp": "2026-03-07T11:50:12.210878Z"}
+{"event": "Closing Redis cache", "timestamp": "2026-03-07T11:50:12.210916Z"}
+✅ Redis cache closed successfully
+{"event": "Redis cache closed", "timestamp": "2026-03-07T11:50:12.211335Z"}
+{"event": "Cleaning up secrets adapter", "timestamp": "2026-03-07T11:50:12.211388Z"}
+{"event": "Secrets adapter cleaned up", "timestamp": "2026-03-07T11:50:12.211421Z"}
+{"event": "Stopping artifact cleanup service", "timestamp": "2026-03-07T11:50:12.211445Z"}
+{"event": "Artifact cleanup service stopped", "timestamp": "2026-03-07T11:50:12.211546Z"}
+{"event": "Artifact cleanup service stopped", "timestamp": "2026-03-07T11:50:12.211580Z"}
+{"event": "Backend shutdown complete", "timestamp": "2026-03-07T11:50:12.211604Z"}
+INFO:     Application shutdown complete.
+INFO:     Finished server process [96916]
+sentence-transformers not available (The sentence_transformers python package is not installed. Please install it with `pip install sentence_transformers`), using default embeddings
+No security configuration warnings detected.
+❌ Failed to initialize S3 client: Could not connect to the endpoint URL: "http://minio:9000/goblin-sandbox"
+{"provider": "sentry", "error_monitoring": "enabled", "event": "Sentry SDK initialized", "timestamp": "2026-03-07T11:50:27.288217Z"}
+{"requests_per_minute": 100, "requests_per_hour": 1000, "event": "Rate limiting middleware enabled", "timestamp": "2026-03-07T11:50:27.329860Z"}
+INFO:     Started server process [98002]
+INFO:     Waiting for application startup.
+{"event": "Starting Goblin Assistant API", "timestamp": "2026-03-07T11:50:27.549974Z"}
+{"event": "Initializing Redis cache", "timestamp": "2026-03-07T11:50:27.550025Z"}
+✅ Redis cache initialized successfully
+{"event": "Redis cache initialized", "timestamp": "2026-03-07T11:50:27.552631Z"}
+{"event": "Checking database availability", "timestamp": "2026-03-07T11:50:27.552680Z"}
+⚠️  Database initialization failed: password authentication failed for user "postgres"
+   Continuing without database - some features may be limited
+{"mode": "limited", "event": "Database initialization skipped", "timestamp": "2026-03-07T11:50:28.210735Z"}
+{"event": "Starting provider monitoring", "timestamp": "2026-03-07T11:50:28.210820Z"}
+Provider monitor started
+{"event": "Provider monitoring started", "timestamp": "2026-03-07T11:50:28.210879Z"}
+{"event": "Starting AI provider health monitoring", "timestamp": "2026-03-07T11:50:28.210913Z"}
+{"event": "AI provider health monitoring started", "timestamp": "2026-03-07T11:50:28.254439Z"}
+{"event": "Initializing secrets adapter", "timestamp": "2026-03-07T11:50:28.254498Z"}
+Failed to initialize secrets adapter: Either VAULT_TOKEN or (VAULT_ROLE_ID and VAULT_SECRET_ID) must be provided
+{"error": "Either VAULT_TOKEN or (VAULT_ROLE_ID and VAULT_SECRET_ID) must be provided", "impact": "continuing without secrets management", "event": "Failed to initialize secrets adapter", "timestamp": "2026-03-07T11:50:28.256554Z"}
+{"event": "Checking privacy and security features", "timestamp": "2026-03-07T11:50:28.256598Z"}
+{"event": "PII sanitization available", "timestamp": "2026-03-07T11:50:28.256634Z"}
+{"event": "Telemetry with redaction available", "timestamp": "2026-03-07T11:50:28.256661Z"}
+{"event": "Safe vector store available", "timestamp": "2026-03-07T11:50:28.256687Z"}
+{"event": "Starting artifact cleanup service", "timestamp": "2026-03-07T11:50:28.256711Z"}
+{"interval_hours": 24, "event": "Artifact cleanup service started", "timestamp": "2026-03-07T11:50:28.256748Z"}
+{"event": "Artifact cleanup service started", "timestamp": "2026-03-07T11:50:28.256775Z"}
+{"status": "ready", "event": "Backend startup complete", "timestamp": "2026-03-07T11:50:28.256797Z"}
+{"artifacts_removed": 0, "detail": "no expired artifacts found", "event": "Artifact cleanup completed", "timestamp": "2026-03-07T11:50:28.531916Z"}
+INFO:     Application startup complete.
+WARNING:  WatchFiles detected changes in 'api/security_config.py'. Reloading...
+INFO:     Shutting down
+INFO:     Waiting for application shutdown.
+{"event": "Shutting down Goblin Assistant API", "timestamp": "2026-03-07T11:52:23.180472Z"}
+{"event": "Stopping AI provider health monitoring", "timestamp": "2026-03-07T11:52:23.181003Z"}
+{"event": "AI provider health monitoring stopped", "timestamp": "2026-03-07T11:52:23.181367Z"}
+{"event": "Stopping provider monitoring", "timestamp": "2026-03-07T11:52:23.181491Z"}
+Provider monitor stopped
+{"event": "Provider monitoring stopped", "timestamp": "2026-03-07T11:52:23.181762Z"}
+{"event": "Closing Redis cache", "timestamp": "2026-03-07T11:52:23.181822Z"}
+✅ Redis cache closed successfully
+{"event": "Redis cache closed", "timestamp": "2026-03-07T11:52:23.184967Z"}
+{"event": "Cleaning up secrets adapter", "timestamp": "2026-03-07T11:52:23.185038Z"}
+{"event": "Secrets adapter cleaned up", "timestamp": "2026-03-07T11:52:23.185134Z"}
+{"event": "Stopping artifact cleanup service", "timestamp": "2026-03-07T11:52:23.185162Z"}
+{"event": "Artifact cleanup service stopped", "timestamp": "2026-03-07T11:52:23.185535Z"}
+{"event": "Artifact cleanup service stopped", "timestamp": "2026-03-07T11:52:23.185597Z"}
+{"event": "Backend shutdown complete", "timestamp": "2026-03-07T11:52:23.185629Z"}
+INFO:     Application shutdown complete.
+INFO:     Finished server process [98002]
+sentence-transformers not available (The sentence_transformers python package is not installed. Please install it with `pip install sentence_transformers`), using default embeddings
+WARNING:  WatchFiles detected changes in 'api/security_config.py'. Reloading...
+No security configuration warnings detected.
+❌ Failed to initialize S3 client: Could not connect to the endpoint URL: "http://minio:9000/goblin-sandbox"
+{"provider": "sentry", "error_monitoring": "enabled", "event": "Sentry SDK initialized", "timestamp": "2026-03-07T11:52:36.407135Z"}
+{"requests_per_minute": 100, "requests_per_hour": 1000, "event": "Rate limiting middleware enabled", "timestamp": "2026-03-07T11:52:36.472966Z"}
+INFO:     Started server process [1171]
+INFO:     Waiting for application startup.
+{"event": "Starting Goblin Assistant API", "timestamp": "2026-03-07T11:52:37.047706Z"}
+{"event": "Initializing Redis cache", "timestamp": "2026-03-07T11:52:37.047764Z"}
+✅ Redis cache initialized successfully
+{"event": "Redis cache initialized", "timestamp": "2026-03-07T11:52:37.054984Z"}
+{"event": "Checking database availability", "timestamp": "2026-03-07T11:52:37.055054Z"}
+⚠️  Database initialization failed: [Errno 61] Connection refused
+   Continuing without database - some features may be limited
+{"mode": "limited", "event": "Database initialization skipped", "timestamp": "2026-03-07T11:52:37.170202Z"}
+{"event": "Starting provider monitoring", "timestamp": "2026-03-07T11:52:37.170267Z"}
+Provider monitor started
+{"event": "Provider monitoring started", "timestamp": "2026-03-07T11:52:37.170314Z"}
+{"event": "Starting AI provider health monitoring", "timestamp": "2026-03-07T11:52:37.170341Z"}
+{"event": "AI provider health monitoring started", "timestamp": "2026-03-07T11:52:37.218483Z"}
+{"event": "Initializing secrets adapter", "timestamp": "2026-03-07T11:52:37.218551Z"}
+Failed to initialize secrets adapter: Either VAULT_TOKEN or (VAULT_ROLE_ID and VAULT_SECRET_ID) must be provided
+{"error": "Either VAULT_TOKEN or (VAULT_ROLE_ID and VAULT_SECRET_ID) must be provided", "impact": "continuing without secrets management", "event": "Failed to initialize secrets adapter", "timestamp": "2026-03-07T11:52:37.220860Z"}
+{"event": "Checking privacy and security features", "timestamp": "2026-03-07T11:52:37.220918Z"}
+{"event": "PII sanitization available", "timestamp": "2026-03-07T11:52:37.220957Z"}
+{"event": "Telemetry with redaction available", "timestamp": "2026-03-07T11:52:37.220986Z"}
+{"event": "Safe vector store available", "timestamp": "2026-03-07T11:52:37.221016Z"}
+{"event": "Starting artifact cleanup service", "timestamp": "2026-03-07T11:52:37.221310Z"}
+{"interval_hours": 24, "event": "Artifact cleanup service started", "timestamp": "2026-03-07T11:52:37.221369Z"}
+{"event": "Artifact cleanup service started", "timestamp": "2026-03-07T11:52:37.221406Z"}
+{"status": "ready", "event": "Backend startup complete", "timestamp": "2026-03-07T11:52:37.221435Z"}
+{"artifacts_removed": 0, "detail": "no expired artifacts found", "event": "Artifact cleanup completed", "timestamp": "2026-03-07T11:52:37.515462Z"}
+INFO:     Application startup complete.
+sentence-transformers not available (The sentence_transformers python package is not installed. Please install it with `pip install sentence_transformers`), using default embeddings
+No security configuration warnings detected.
+❌ Failed to initialize S3 client: Could not connect to the endpoint URL: "http://minio:9000/goblin-sandbox"
+{"provider": "sentry", "error_monitoring": "enabled", "event": "Sentry SDK initialized", "timestamp": "2026-03-07T11:52:54.425894Z"}
+{"requests_per_minute": 100, "requests_per_hour": 1000, "event": "Rate limiting middleware enabled", "timestamp": "2026-03-07T11:52:54.438873Z"}
+INFO:     Started server process [1598]
+INFO:     Waiting for application startup.
+{"event": "Starting Goblin Assistant API", "timestamp": "2026-03-07T11:52:54.712399Z"}
+{"event": "Initializing Redis cache", "timestamp": "2026-03-07T11:52:54.712457Z"}
+✅ Redis cache initialized successfully
+{"event": "Redis cache initialized", "timestamp": "2026-03-07T11:52:54.717278Z"}
+{"event": "Checking database availability", "timestamp": "2026-03-07T11:52:54.717340Z"}
+⚠️  Database initialization failed: [Errno 61] Connection refused
+   Continuing without database - some features may be limited
+{"mode": "limited", "event": "Database initialization skipped", "timestamp": "2026-03-07T11:52:54.833925Z"}
+{"event": "Starting provider monitoring", "timestamp": "2026-03-07T11:52:54.834004Z"}
+Provider monitor started
+{"event": "Provider monitoring started", "timestamp": "2026-03-07T11:52:54.834065Z"}
+{"event": "Starting AI provider health monitoring", "timestamp": "2026-03-07T11:52:54.834102Z"}
+{"event": "AI provider health monitoring started", "timestamp": "2026-03-07T11:52:54.878175Z"}
+{"event": "Initializing secrets adapter", "timestamp": "2026-03-07T11:52:54.878239Z"}
+Failed to initialize secrets adapter: Either VAULT_TOKEN or (VAULT_ROLE_ID and VAULT_SECRET_ID) must be provided
+{"error": "Either VAULT_TOKEN or (VAULT_ROLE_ID and VAULT_SECRET_ID) must be provided", "impact": "continuing without secrets management", "event": "Failed to initialize secrets adapter", "timestamp": "2026-03-07T11:52:54.880703Z"}
+{"event": "Checking privacy and security features", "timestamp": "2026-03-07T11:52:54.881002Z"}
+{"event": "PII sanitization available", "timestamp": "2026-03-07T11:52:54.881056Z"}
+{"event": "Telemetry with redaction available", "timestamp": "2026-03-07T11:52:54.881086Z"}
+{"event": "Safe vector store available", "timestamp": "2026-03-07T11:52:54.881115Z"}
+{"event": "Starting artifact cleanup service", "timestamp": "2026-03-07T11:52:54.881138Z"}
+{"interval_hours": 24, "event": "Artifact cleanup service started", "timestamp": "2026-03-07T11:52:54.881176Z"}
+{"event": "Artifact cleanup service started", "timestamp": "2026-03-07T11:52:54.881202Z"}
+{"status": "ready", "event": "Backend startup complete", "timestamp": "2026-03-07T11:52:54.881229Z"}
+{"artifacts_removed": 0, "detail": "no expired artifacts found", "event": "Artifact cleanup completed", "timestamp": "2026-03-07T11:52:55.155171Z"}
+INFO:     Application startup complete.
+WARNING:  WatchFiles detected changes in 'api/main.py'. Reloading...
+INFO:     Shutting down
+INFO:     Waiting for application shutdown.
+{"event": "Shutting down Goblin Assistant API", "timestamp": "2026-03-07T11:55:31.974666Z"}
+{"event": "Stopping AI provider health monitoring", "timestamp": "2026-03-07T11:55:31.975470Z"}
+{"event": "AI provider health monitoring stopped", "timestamp": "2026-03-07T11:55:31.976020Z"}
+{"event": "Stopping provider monitoring", "timestamp": "2026-03-07T11:55:31.976080Z"}
+Provider monitor stopped
+{"event": "Provider monitoring stopped", "timestamp": "2026-03-07T11:55:31.976382Z"}
+{"event": "Closing Redis cache", "timestamp": "2026-03-07T11:55:31.976423Z"}
+✅ Redis cache closed successfully
+{"event": "Redis cache closed", "timestamp": "2026-03-07T11:55:31.978579Z"}
+{"event": "Cleaning up secrets adapter", "timestamp": "2026-03-07T11:55:31.978735Z"}
+{"event": "Secrets adapter cleaned up", "timestamp": "2026-03-07T11:55:31.978882Z"}
+{"event": "Stopping artifact cleanup service", "timestamp": "2026-03-07T11:55:31.978939Z"}
+{"event": "Artifact cleanup service stopped", "timestamp": "2026-03-07T11:55:31.979274Z"}
+{"event": "Artifact cleanup service stopped", "timestamp": "2026-03-07T11:55:31.979320Z"}
+{"event": "Backend shutdown complete", "timestamp": "2026-03-07T11:55:31.979348Z"}
+INFO:     Application shutdown complete.
+INFO:     Finished server process [1598]
+sentence-transformers not available (The sentence_transformers python package is not installed. Please install it with `pip install sentence_transformers`), using default embeddings
+No security configuration warnings detected.
+❌ Failed to initialize S3 client: Could not connect to the endpoint URL: "http://minio:9000/goblin-sandbox"
+{"provider": "sentry", "error_monitoring": "enabled", "event": "Sentry SDK initialized", "timestamp": "2026-03-07T11:55:51.443347Z"}
+{"requests_per_minute": 100, "requests_per_hour": 1000, "event": "Rate limiting middleware enabled", "timestamp": "2026-03-07T11:55:51.468847Z"}
+INFO:     Started server process [5864]
+INFO:     Waiting for application startup.
+{"event": "Starting Goblin Assistant API", "timestamp": "2026-03-07T11:55:51.681860Z"}
+{"event": "Initializing Redis cache", "timestamp": "2026-03-07T11:55:51.681946Z"}
+✅ Redis cache initialized successfully
+{"event": "Redis cache initialized", "timestamp": "2026-03-07T11:55:51.684350Z"}
+{"event": "Checking database availability", "timestamp": "2026-03-07T11:55:51.684401Z"}
+⚠️  Database initialization failed: [Errno 61] Connection refused
+   Continuing without database - some features may be limited
+{"mode": "limited", "event": "Database initialization skipped", "timestamp": "2026-03-07T11:55:51.792200Z"}
+{"event": "Starting provider monitoring", "timestamp": "2026-03-07T11:55:51.792316Z"}
+Provider monitor started
+{"event": "Provider monitoring started", "timestamp": "2026-03-07T11:55:51.792417Z"}
+{"event": "Starting AI provider health monitoring", "timestamp": "2026-03-07T11:55:51.792467Z"}
+{"event": "AI provider health monitoring started", "timestamp": "2026-03-07T11:55:51.836477Z"}
+{"event": "Initializing secrets adapter", "timestamp": "2026-03-07T11:55:51.836538Z"}
+Failed to initialize secrets adapter: Either VAULT_TOKEN or (VAULT_ROLE_ID and VAULT_SECRET_ID) must be provided
+{"error": "Either VAULT_TOKEN or (VAULT_ROLE_ID and VAULT_SECRET_ID) must be provided", "impact": "continuing without secrets management", "event": "Failed to initialize secrets adapter", "timestamp": "2026-03-07T11:55:51.838577Z"}
+{"event": "Checking privacy and security features", "timestamp": "2026-03-07T11:55:51.838620Z"}
+{"event": "PII sanitization available", "timestamp": "2026-03-07T11:55:51.838911Z"}
+{"event": "Telemetry with redaction available", "timestamp": "2026-03-07T11:55:51.838954Z"}
+{"event": "Safe vector store available", "timestamp": "2026-03-07T11:55:51.838987Z"}
+{"event": "Starting artifact cleanup service", "timestamp": "2026-03-07T11:55:51.839010Z"}
+{"interval_hours": 24, "event": "Artifact cleanup service started", "timestamp": "2026-03-07T11:55:51.839044Z"}
+{"event": "Artifact cleanup service started", "timestamp": "2026-03-07T11:55:51.839075Z"}
+{"status": "ready", "event": "Backend startup complete", "timestamp": "2026-03-07T11:55:51.839098Z"}
+{"artifacts_removed": 0, "detail": "no expired artifacts found", "event": "Artifact cleanup completed", "timestamp": "2026-03-07T11:55:52.109548Z"}
+INFO:     Application startup complete.
+WARNING:  WatchFiles detected changes in 'api/main.py'. Reloading...
+INFO:     Shutting down
+INFO:     Waiting for application shutdown.
+{"event": "Shutting down Goblin Assistant API", "timestamp": "2026-03-07T11:59:10.766618Z"}
+{"event": "Stopping AI provider health monitoring", "timestamp": "2026-03-07T11:59:10.766953Z"}
+{"event": "AI provider health monitoring stopped", "timestamp": "2026-03-07T11:59:10.767218Z"}
+{"event": "Stopping provider monitoring", "timestamp": "2026-03-07T11:59:10.767261Z"}
+Provider monitor stopped
+{"event": "Provider monitoring stopped", "timestamp": "2026-03-07T11:59:10.767457Z"}
+{"event": "Closing Redis cache", "timestamp": "2026-03-07T11:59:10.767513Z"}
+✅ Redis cache closed successfully
+{"event": "Redis cache closed", "timestamp": "2026-03-07T11:59:10.768706Z"}
+{"event": "Cleaning up secrets adapter", "timestamp": "2026-03-07T11:59:10.768750Z"}
+{"event": "Secrets adapter cleaned up", "timestamp": "2026-03-07T11:59:10.768819Z"}
+{"event": "Stopping artifact cleanup service", "timestamp": "2026-03-07T11:59:10.768845Z"}
+{"event": "Artifact cleanup service stopped", "timestamp": "2026-03-07T11:59:10.768973Z"}
+{"event": "Artifact cleanup service stopped", "timestamp": "2026-03-07T11:59:10.769005Z"}
+{"event": "Backend shutdown complete", "timestamp": "2026-03-07T11:59:10.769027Z"}
+INFO:     Application shutdown complete.
+INFO:     Finished server process [5864]
+sentence-transformers not available (The sentence_transformers python package is not installed. Please install it with `pip install sentence_transformers`), using default embeddings
+No security configuration warnings detected.
+❌ Failed to initialize S3 client: Could not connect to the endpoint URL: "http://minio:9000/goblin-sandbox"
+{"provider": "sentry", "error_monitoring": "enabled", "event": "Sentry SDK initialized", "timestamp": "2026-03-07T11:59:27.496555Z"}
+{"requests_per_minute": 100, "requests_per_hour": 1000, "event": "Rate limiting middleware enabled", "timestamp": "2026-03-07T11:59:27.561562Z"}
+INFO:     Started server process [8743]
+INFO:     Waiting for application startup.
+{"event": "Starting Goblin Assistant API", "timestamp": "2026-03-07T11:59:27.792402Z"}
+{"event": "Initializing Redis cache", "timestamp": "2026-03-07T11:59:27.792460Z"}
+✅ Redis cache initialized successfully
+{"event": "Redis cache initialized", "timestamp": "2026-03-07T11:59:27.794780Z"}
+{"event": "Checking database availability", "timestamp": "2026-03-07T11:59:27.794834Z"}
+⚠️  Database initialization failed: [Errno 61] Connection refused
+   Continuing without database - some features may be limited
+{"mode": "limited", "event": "Database initialization skipped", "timestamp": "2026-03-07T11:59:27.894144Z"}
+{"event": "Starting provider monitoring", "timestamp": "2026-03-07T11:59:27.894206Z"}
+Provider monitor started
+{"event": "Provider monitoring started", "timestamp": "2026-03-07T11:59:27.894253Z"}
+{"event": "Starting AI provider health monitoring", "timestamp": "2026-03-07T11:59:27.894279Z"}
+{"event": "AI provider health monitoring started", "timestamp": "2026-03-07T11:59:27.944534Z"}
+{"event": "Initializing secrets adapter", "timestamp": "2026-03-07T11:59:27.944617Z"}
+Failed to initialize secrets adapter: Either VAULT_TOKEN or (VAULT_ROLE_ID and VAULT_SECRET_ID) must be provided
+{"error": "Either VAULT_TOKEN or (VAULT_ROLE_ID and VAULT_SECRET_ID) must be provided", "impact": "continuing without secrets management", "event": "Failed to initialize secrets adapter", "timestamp": "2026-03-07T11:59:27.947122Z"}
+{"event": "Checking privacy and security features", "timestamp": "2026-03-07T11:59:27.947448Z"}
+{"event": "PII sanitization available", "timestamp": "2026-03-07T11:59:27.947501Z"}
+{"event": "Telemetry with redaction available", "timestamp": "2026-03-07T11:59:27.947531Z"}
+{"event": "Safe vector store available", "timestamp": "2026-03-07T11:59:27.947560Z"}
+{"event": "Starting artifact cleanup service", "timestamp": "2026-03-07T11:59:27.947583Z"}
+{"interval_hours": 24, "event": "Artifact cleanup service started", "timestamp": "2026-03-07T11:59:27.947623Z"}
+{"event": "Artifact cleanup service started", "timestamp": "2026-03-07T11:59:27.947656Z"}
+{"status": "ready", "event": "Backend startup complete", "timestamp": "2026-03-07T11:59:27.947697Z"}
+{"artifacts_removed": 0, "detail": "no expired artifacts found", "event": "Artifact cleanup completed", "timestamp": "2026-03-07T11:59:28.236044Z"}
+INFO:     Application startup complete.
+WARNING:  WatchFiles detected changes in 'api/providers/vertex_ai.py'. Reloading...
+INFO:     Shutting down
+INFO:     Waiting for application shutdown.
+{"event": "Shutting down Goblin Assistant API", "timestamp": "2026-03-07T12:20:36.311811Z"}
+{"event": "Stopping AI provider health monitoring", "timestamp": "2026-03-07T12:20:36.313039Z"}
+{"event": "AI provider health monitoring stopped", "timestamp": "2026-03-07T12:20:36.314186Z"}
+{"event": "Stopping provider monitoring", "timestamp": "2026-03-07T12:20:36.314254Z"}
+Provider monitor stopped
+{"event": "Provider monitoring stopped", "timestamp": "2026-03-07T12:20:36.315556Z"}
+{"event": "Closing Redis cache", "timestamp": "2026-03-07T12:20:36.315635Z"}
+✅ Redis cache closed successfully
+{"event": "Redis cache closed", "timestamp": "2026-03-07T12:20:36.335039Z"}
+{"event": "Cleaning up secrets adapter", "timestamp": "2026-03-07T12:20:36.335109Z"}
+{"event": "Secrets adapter cleaned up", "timestamp": "2026-03-07T12:20:36.335197Z"}
+{"event": "Stopping artifact cleanup service", "timestamp": "2026-03-07T12:20:36.335227Z"}
+{"event": "Artifact cleanup service stopped", "timestamp": "2026-03-07T12:20:36.335668Z"}
+{"event": "Artifact cleanup service stopped", "timestamp": "2026-03-07T12:20:36.335727Z"}
+{"event": "Backend shutdown complete", "timestamp": "2026-03-07T12:20:36.335760Z"}
+INFO:     Application shutdown complete.
+INFO:     Finished server process [8743]
+WARNING:  WatchFiles detected changes in 'api/providers/vertex_ai.py'. Reloading...
+sentence-transformers not available (The sentence_transformers python package is not installed. Please install it with `pip install sentence_transformers`), using default embeddings
+No security configuration warnings detected.
+❌ Failed to initialize S3 client: Could not connect to the endpoint URL: "http://minio:9000/goblin-sandbox"
+{"provider": "sentry", "error_monitoring": "enabled", "event": "Sentry SDK initialized", "timestamp": "2026-03-07T12:20:53.018401Z"}
+{"requests_per_minute": 100, "requests_per_hour": 1000, "event": "Rate limiting middleware enabled", "timestamp": "2026-03-07T12:20:53.117635Z"}
+INFO:     Started server process [27997]
+INFO:     Waiting for application startup.
+{"event": "Starting Goblin Assistant API", "timestamp": "2026-03-07T12:20:53.362554Z"}
+{"event": "Initializing Redis cache", "timestamp": "2026-03-07T12:20:53.362607Z"}
+✅ Redis cache initialized successfully
+{"event": "Redis cache initialized", "timestamp": "2026-03-07T12:20:53.366382Z"}
+{"event": "Checking database availability", "timestamp": "2026-03-07T12:20:53.366449Z"}
+⚠️  Database initialization failed: [Errno 61] Connection refused
+   Continuing without database - some features may be limited
+{"mode": "limited", "event": "Database initialization skipped", "timestamp": "2026-03-07T12:20:53.470631Z"}
+{"event": "Starting provider monitoring", "timestamp": "2026-03-07T12:20:53.470707Z"}
+Provider monitor started
+{"event": "Provider monitoring started", "timestamp": "2026-03-07T12:20:53.470762Z"}
+{"event": "Starting AI provider health monitoring", "timestamp": "2026-03-07T12:20:53.470789Z"}
+{"event": "AI provider health monitoring started", "timestamp": "2026-03-07T12:20:53.518181Z"}
+{"event": "Initializing secrets adapter", "timestamp": "2026-03-07T12:20:53.518353Z"}
+Failed to initialize secrets adapter: Either VAULT_TOKEN or (VAULT_ROLE_ID and VAULT_SECRET_ID) must be provided
+{"error": "Either VAULT_TOKEN or (VAULT_ROLE_ID and VAULT_SECRET_ID) must be provided", "impact": "continuing without secrets management", "event": "Failed to initialize secrets adapter", "timestamp": "2026-03-07T12:20:53.521033Z"}
+{"event": "Checking privacy and security features", "timestamp": "2026-03-07T12:20:53.521355Z"}
+{"event": "PII sanitization available", "timestamp": "2026-03-07T12:20:53.521407Z"}
+{"event": "Telemetry with redaction available", "timestamp": "2026-03-07T12:20:53.521437Z"}
+{"event": "Safe vector store available", "timestamp": "2026-03-07T12:20:53.521465Z"}
+{"event": "Starting artifact cleanup service", "timestamp": "2026-03-07T12:20:53.521490Z"}
+{"interval_hours": 24, "event": "Artifact cleanup service started", "timestamp": "2026-03-07T12:20:53.521530Z"}
+{"event": "Artifact cleanup service started", "timestamp": "2026-03-07T12:20:53.521563Z"}
+{"status": "ready", "event": "Backend startup complete", "timestamp": "2026-03-07T12:20:53.521624Z"}
+{"artifacts_removed": 0, "detail": "no expired artifacts found", "event": "Artifact cleanup completed", "timestamp": "2026-03-07T12:20:53.818956Z"}
+INFO:     Application startup complete.
+sentence-transformers not available (The sentence_transformers python package is not installed. Please install it with `pip install sentence_transformers`), using default embeddings
+No security configuration warnings detected.
+❌ Failed to initialize S3 client: Could not connect to the endpoint URL: "http://minio:9000/goblin-sandbox"
+{"provider": "sentry", "error_monitoring": "enabled", "event": "Sentry SDK initialized", "timestamp": "2026-03-07T12:21:05.468622Z"}
+{"requests_per_minute": 100, "requests_per_hour": 1000, "event": "Rate limiting middleware enabled", "timestamp": "2026-03-07T12:21:05.539527Z"}
+INFO:     Started server process [28116]
+INFO:     Waiting for application startup.
+{"event": "Starting Goblin Assistant API", "timestamp": "2026-03-07T12:21:05.772737Z"}
+{"event": "Initializing Redis cache", "timestamp": "2026-03-07T12:21:05.772787Z"}
+✅ Redis cache initialized successfully
+{"event": "Redis cache initialized", "timestamp": "2026-03-07T12:21:05.774976Z"}
+{"event": "Checking database availability", "timestamp": "2026-03-07T12:21:05.775037Z"}
+⚠️  Database initialization failed: [Errno 61] Connection refused
+   Continuing without database - some features may be limited
+{"mode": "limited", "event": "Database initialization skipped", "timestamp": "2026-03-07T12:21:05.862492Z"}
+{"event": "Starting provider monitoring", "timestamp": "2026-03-07T12:21:05.862558Z"}
+Provider monitor started
+{"event": "Provider monitoring started", "timestamp": "2026-03-07T12:21:05.862606Z"}
+{"event": "Starting AI provider health monitoring", "timestamp": "2026-03-07T12:21:05.862634Z"}
+{"event": "AI provider health monitoring started", "timestamp": "2026-03-07T12:21:05.906612Z"}
+{"event": "Initializing secrets adapter", "timestamp": "2026-03-07T12:21:05.906674Z"}
+Failed to initialize secrets adapter: Either VAULT_TOKEN or (VAULT_ROLE_ID and VAULT_SECRET_ID) must be provided
+{"error": "Either VAULT_TOKEN or (VAULT_ROLE_ID and VAULT_SECRET_ID) must be provided", "impact": "continuing without secrets management", "event": "Failed to initialize secrets adapter", "timestamp": "2026-03-07T12:21:05.909111Z"}
+{"event": "Checking privacy and security features", "timestamp": "2026-03-07T12:21:05.909408Z"}
+{"event": "PII sanitization available", "timestamp": "2026-03-07T12:21:05.909449Z"}
+{"event": "Telemetry with redaction available", "timestamp": "2026-03-07T12:21:05.909475Z"}
+{"event": "Safe vector store available", "timestamp": "2026-03-07T12:21:05.909503Z"}
+{"event": "Starting artifact cleanup service", "timestamp": "2026-03-07T12:21:05.909526Z"}
+{"interval_hours": 24, "event": "Artifact cleanup service started", "timestamp": "2026-03-07T12:21:05.909564Z"}
+{"event": "Artifact cleanup service started", "timestamp": "2026-03-07T12:21:05.909590Z"}
+{"status": "ready", "event": "Backend startup complete", "timestamp": "2026-03-07T12:21:05.909617Z"}
+{"artifacts_removed": 0, "detail": "no expired artifacts found", "event": "Artifact cleanup completed", "timestamp": "2026-03-07T12:21:06.191870Z"}
+INFO:     Application startup complete.
+WARNING:  WatchFiles detected changes in 'api/providers/aliyun.py'. Reloading...
+INFO:     Shutting down
+INFO:     Waiting for application shutdown.
+{"event": "Shutting down Goblin Assistant API", "timestamp": "2026-03-07T12:22:45.254500Z"}
+{"event": "Stopping AI provider health monitoring", "timestamp": "2026-03-07T12:22:45.254594Z"}
+{"event": "AI provider health monitoring stopped", "timestamp": "2026-03-07T12:22:45.255052Z"}
+{"event": "Stopping provider monitoring", "timestamp": "2026-03-07T12:22:45.255105Z"}
+Provider monitor stopped
+{"event": "Provider monitoring stopped", "timestamp": "2026-03-07T12:22:45.255203Z"}
+{"event": "Closing Redis cache", "timestamp": "2026-03-07T12:22:45.255237Z"}
+✅ Redis cache closed successfully
+{"event": "Redis cache closed", "timestamp": "2026-03-07T12:22:45.255712Z"}
+{"event": "Cleaning up secrets adapter", "timestamp": "2026-03-07T12:22:45.255763Z"}
+{"event": "Secrets adapter cleaned up", "timestamp": "2026-03-07T12:22:45.255794Z"}
+{"event": "Stopping artifact cleanup service", "timestamp": "2026-03-07T12:22:45.255818Z"}
+{"event": "Artifact cleanup service stopped", "timestamp": "2026-03-07T12:22:45.256028Z"}
+{"event": "Artifact cleanup service stopped", "timestamp": "2026-03-07T12:22:45.256065Z"}
+{"event": "Backend shutdown complete", "timestamp": "2026-03-07T12:22:45.256089Z"}
+INFO:     Application shutdown complete.
+INFO:     Finished server process [28116]
+WARNING:  WatchFiles detected changes in 'api/providers/aliyun.py'. Reloading...
+sentence-transformers not available (The sentence_transformers python package is not installed. Please install it with `pip install sentence_transformers`), using default embeddings
+No security configuration warnings detected.
+❌ Failed to initialize S3 client: Could not connect to the endpoint URL: "http://minio:9000/goblin-sandbox"
+{"provider": "sentry", "error_monitoring": "enabled", "event": "Sentry SDK initialized", "timestamp": "2026-03-07T12:23:02.397441Z"}
+{"requests_per_minute": 100, "requests_per_hour": 1000, "event": "Rate limiting middleware enabled", "timestamp": "2026-03-07T12:23:02.475670Z"}
+INFO:     Started server process [28648]
+INFO:     Waiting for application startup.
+{"event": "Starting Goblin Assistant API", "timestamp": "2026-03-07T12:23:02.737205Z"}
+{"event": "Initializing Redis cache", "timestamp": "2026-03-07T12:23:02.737278Z"}
+✅ Redis cache initialized successfully
+{"event": "Redis cache initialized", "timestamp": "2026-03-07T12:23:02.741232Z"}
+{"event": "Checking database availability", "timestamp": "2026-03-07T12:23:02.741289Z"}
+⚠️  Database initialization failed: [Errno 61] Connection refused
+   Continuing without database - some features may be limited
+{"mode": "limited", "event": "Database initialization skipped", "timestamp": "2026-03-07T12:23:02.848476Z"}
+{"event": "Starting provider monitoring", "timestamp": "2026-03-07T12:23:02.848553Z"}
+Provider monitor started
+{"event": "Provider monitoring started", "timestamp": "2026-03-07T12:23:02.848605Z"}
+{"event": "Starting AI provider health monitoring", "timestamp": "2026-03-07T12:23:02.848633Z"}
+{"event": "AI provider health monitoring started", "timestamp": "2026-03-07T12:23:02.895045Z"}
+{"event": "Initializing secrets adapter", "timestamp": "2026-03-07T12:23:02.895109Z"}
+Failed to initialize secrets adapter: Either VAULT_TOKEN or (VAULT_ROLE_ID and VAULT_SECRET_ID) must be provided
+{"error": "Either VAULT_TOKEN or (VAULT_ROLE_ID and VAULT_SECRET_ID) must be provided", "impact": "continuing without secrets management", "event": "Failed to initialize secrets adapter", "timestamp": "2026-03-07T12:23:02.897367Z"}
+{"event": "Checking privacy and security features", "timestamp": "2026-03-07T12:23:02.897434Z"}
+{"event": "PII sanitization available", "timestamp": "2026-03-07T12:23:02.897474Z"}
+{"event": "Telemetry with redaction available", "timestamp": "2026-03-07T12:23:02.897500Z"}
+{"event": "Safe vector store available", "timestamp": "2026-03-07T12:23:02.897530Z"}
+{"event": "Starting artifact cleanup service", "timestamp": "2026-03-07T12:23:02.897552Z"}
+{"interval_hours": 24, "event": "Artifact cleanup service started", "timestamp": "2026-03-07T12:23:02.897924Z"}
+{"event": "Artifact cleanup service started", "timestamp": "2026-03-07T12:23:02.897987Z"}
+{"status": "ready", "event": "Backend startup complete", "timestamp": "2026-03-07T12:23:02.898021Z"}
+{"artifacts_removed": 0, "detail": "no expired artifacts found", "event": "Artifact cleanup completed", "timestamp": "2026-03-07T12:23:03.178186Z"}
+INFO:     Application startup complete.
+WARNING:  WatchFiles detected changes in 'api/providers/aliyun.py', 'api/providers/vertex_ai.py'. Reloading...
+sentence-transformers not available (The sentence_transformers python package is not installed. Please install it with `pip install sentence_transformers`), using default embeddings
+No security configuration warnings detected.
+❌ Failed to initialize S3 client: Could not connect to the endpoint URL: "http://minio:9000/goblin-sandbox"
+{"provider": "sentry", "error_monitoring": "enabled", "event": "Sentry SDK initialized", "timestamp": "2026-03-07T12:23:15.562471Z"}
+{"requests_per_minute": 100, "requests_per_hour": 1000, "event": "Rate limiting middleware enabled", "timestamp": "2026-03-07T12:23:15.730906Z"}
+INFO:     Started server process [28775]
+INFO:     Waiting for application startup.
+{"event": "Starting Goblin Assistant API", "timestamp": "2026-03-07T12:23:15.958581Z"}
+{"event": "Initializing Redis cache", "timestamp": "2026-03-07T12:23:15.958630Z"}
+✅ Redis cache initialized successfully
+{"event": "Redis cache initialized", "timestamp": "2026-03-07T12:23:15.961123Z"}
+{"event": "Checking database availability", "timestamp": "2026-03-07T12:23:15.961182Z"}
+⚠️  Database initialization failed: [Errno 61] Connection refused
+   Continuing without database - some features may be limited
+{"mode": "limited", "event": "Database initialization skipped", "timestamp": "2026-03-07T12:23:16.065907Z"}
+{"event": "Starting provider monitoring", "timestamp": "2026-03-07T12:23:16.065975Z"}
+Provider monitor started
+{"event": "Provider monitoring started", "timestamp": "2026-03-07T12:23:16.066025Z"}
+{"event": "Starting AI provider health monitoring", "timestamp": "2026-03-07T12:23:16.066054Z"}
+{"event": "AI provider health monitoring started", "timestamp": "2026-03-07T12:23:16.109850Z"}
+{"event": "Initializing secrets adapter", "timestamp": "2026-03-07T12:23:16.109915Z"}
+Failed to initialize secrets adapter: Either VAULT_TOKEN or (VAULT_ROLE_ID and VAULT_SECRET_ID) must be provided
+{"error": "Either VAULT_TOKEN or (VAULT_ROLE_ID and VAULT_SECRET_ID) must be provided", "impact": "continuing without secrets management", "event": "Failed to initialize secrets adapter", "timestamp": "2026-03-07T12:23:16.112062Z"}
+{"event": "Checking privacy and security features", "timestamp": "2026-03-07T12:23:16.112114Z"}
+{"event": "PII sanitization available", "timestamp": "2026-03-07T12:23:16.112453Z"}
+{"event": "Telemetry with redaction available", "timestamp": "2026-03-07T12:23:16.112516Z"}
+{"event": "Safe vector store available", "timestamp": "2026-03-07T12:23:16.112553Z"}
+{"event": "Starting artifact cleanup service", "timestamp": "2026-03-07T12:23:16.112579Z"}
+{"interval_hours": 24, "event": "Artifact cleanup service started", "timestamp": "2026-03-07T12:23:16.112625Z"}
+{"event": "Artifact cleanup service started", "timestamp": "2026-03-07T12:23:16.112661Z"}
+{"status": "ready", "event": "Backend startup complete", "timestamp": "2026-03-07T12:23:16.112686Z"}
+{"artifacts_removed": 0, "detail": "no expired artifacts found", "event": "Artifact cleanup completed", "timestamp": "2026-03-07T12:23:16.394996Z"}
+INFO:     Application startup complete.
+sentence-transformers not available (The sentence_transformers python package is not installed. Please install it with `pip install sentence_transformers`), using default embeddings
+No security configuration warnings detected.
+❌ Failed to initialize S3 client: Could not connect to the endpoint URL: "http://minio:9000/goblin-sandbox"
+{"provider": "sentry", "error_monitoring": "enabled", "event": "Sentry SDK initialized", "timestamp": "2026-03-07T12:23:26.652954Z"}
+{"requests_per_minute": 100, "requests_per_hour": 1000, "event": "Rate limiting middleware enabled", "timestamp": "2026-03-07T12:23:26.664465Z"}
+INFO:     Started server process [28820]
+INFO:     Waiting for application startup.
+{"event": "Starting Goblin Assistant API", "timestamp": "2026-03-07T12:23:26.886078Z"}
+{"event": "Initializing Redis cache", "timestamp": "2026-03-07T12:23:26.886127Z"}
+✅ Redis cache initialized successfully
+{"event": "Redis cache initialized", "timestamp": "2026-03-07T12:23:26.888847Z"}
+{"event": "Checking database availability", "timestamp": "2026-03-07T12:23:26.888902Z"}
+⚠️  Database initialization failed: [Errno 61] Connection refused
+   Continuing without database - some features may be limited
+{"mode": "limited", "event": "Database initialization skipped", "timestamp": "2026-03-07T12:23:26.982613Z"}
+{"event": "Starting provider monitoring", "timestamp": "2026-03-07T12:23:26.982703Z"}
+Provider monitor started
+{"event": "Provider monitoring started", "timestamp": "2026-03-07T12:23:26.982770Z"}
+{"event": "Starting AI provider health monitoring", "timestamp": "2026-03-07T12:23:26.982806Z"}
+{"event": "AI provider health monitoring started", "timestamp": "2026-03-07T12:23:27.025666Z"}
+{"event": "Initializing secrets adapter", "timestamp": "2026-03-07T12:23:27.025731Z"}
+Failed to initialize secrets adapter: Either VAULT_TOKEN or (VAULT_ROLE_ID and VAULT_SECRET_ID) must be provided
+{"error": "Either VAULT_TOKEN or (VAULT_ROLE_ID and VAULT_SECRET_ID) must be provided", "impact": "continuing without secrets management", "event": "Failed to initialize secrets adapter", "timestamp": "2026-03-07T12:23:27.027955Z"}
+{"event": "Checking privacy and security features", "timestamp": "2026-03-07T12:23:27.028008Z"}
+{"event": "PII sanitization available", "timestamp": "2026-03-07T12:23:27.028316Z"}
+{"event": "Telemetry with redaction available", "timestamp": "2026-03-07T12:23:27.028360Z"}
+{"event": "Safe vector store available", "timestamp": "2026-03-07T12:23:27.028394Z"}
+{"event": "Starting artifact cleanup service", "timestamp": "2026-03-07T12:23:27.028418Z"}
+{"interval_hours": 24, "event": "Artifact cleanup service started", "timestamp": "2026-03-07T12:23:27.028456Z"}
+{"event": "Artifact cleanup service started", "timestamp": "2026-03-07T12:23:27.028488Z"}
+{"status": "ready", "event": "Backend startup complete", "timestamp": "2026-03-07T12:23:27.028512Z"}
+{"artifacts_removed": 0, "detail": "no expired artifacts found", "event": "Artifact cleanup completed", "timestamp": "2026-03-07T12:23:27.309081Z"}
+INFO:     Application startup complete.
+WARNING:  WatchFiles detected changes in 'api/config/providers.py', 'api/providers/__init__.py'. Reloading...
+INFO:     Shutting down
+INFO:     Waiting for application shutdown.
+{"event": "Shutting down Goblin Assistant API", "timestamp": "2026-03-07T12:23:54.022075Z"}
+{"event": "Stopping AI provider health monitoring", "timestamp": "2026-03-07T12:23:54.022151Z"}
+{"event": "AI provider health monitoring stopped", "timestamp": "2026-03-07T12:23:54.022977Z"}
+{"event": "Stopping provider monitoring", "timestamp": "2026-03-07T12:23:54.023055Z"}
+Provider monitor stopped
+{"event": "Provider monitoring stopped", "timestamp": "2026-03-07T12:23:54.023315Z"}
+{"event": "Closing Redis cache", "timestamp": "2026-03-07T12:23:54.023372Z"}
+✅ Redis cache closed successfully
+{"event": "Redis cache closed", "timestamp": "2026-03-07T12:23:54.024426Z"}
+{"event": "Cleaning up secrets adapter", "timestamp": "2026-03-07T12:23:54.024522Z"}
+{"event": "Secrets adapter cleaned up", "timestamp": "2026-03-07T12:23:54.024593Z"}
+{"event": "Stopping artifact cleanup service", "timestamp": "2026-03-07T12:23:54.024630Z"}
+{"event": "Artifact cleanup service stopped", "timestamp": "2026-03-07T12:23:54.024772Z"}
+{"event": "Artifact cleanup service stopped", "timestamp": "2026-03-07T12:23:54.024819Z"}
+{"event": "Backend shutdown complete", "timestamp": "2026-03-07T12:23:54.024849Z"}
+INFO:     Application shutdown complete.
+INFO:     Finished server process [28820]
+WARNING:  WatchFiles detected changes in 'api/config/providers.py', 'api/services/provider_health.py', 'api/services/smart_router.py', 'api/providers/dispatcher_fixed.py'. Reloading...
+sentence-transformers not available (The sentence_transformers python package is not installed. Please install it with `pip install sentence_transformers`), using default embeddings
+WARNING:  WatchFiles detected changes in 'api/config/providers.py', 'api/services/smart_router.py', 'api/services/provider_health.py', 'api/providers/__init__.py', 'api/providers/dispatcher_fixed.py'. Reloading...
+No security configuration warnings detected.
+❌ Failed to initialize S3 client: Could not connect to the endpoint URL: "http://minio:9000/goblin-sandbox"
+{"provider": "sentry", "error_monitoring": "enabled", "event": "Sentry SDK initialized", "timestamp": "2026-03-07T12:24:11.459752Z"}
+{"requests_per_minute": 100, "requests_per_hour": 1000, "event": "Rate limiting middleware enabled", "timestamp": "2026-03-07T12:24:11.524252Z"}
+INFO:     Started server process [29027]
+INFO:     Waiting for application startup.
+{"event": "Starting Goblin Assistant API", "timestamp": "2026-03-07T12:24:12.290211Z"}
+{"event": "Initializing Redis cache", "timestamp": "2026-03-07T12:24:12.290780Z"}
+✅ Redis cache initialized successfully
+{"event": "Redis cache initialized", "timestamp": "2026-03-07T12:24:12.297039Z"}
+{"event": "Checking database availability", "timestamp": "2026-03-07T12:24:12.297135Z"}
+⚠️  Database initialization failed: [Errno 61] Connection refused
+   Continuing without database - some features may be limited
+{"mode": "limited", "event": "Database initialization skipped", "timestamp": "2026-03-07T12:24:12.400217Z"}
+{"event": "Starting provider monitoring", "timestamp": "2026-03-07T12:24:12.400319Z"}
+Provider monitor started
+{"event": "Provider monitoring started", "timestamp": "2026-03-07T12:24:12.400518Z"}
+{"event": "Starting AI provider health monitoring", "timestamp": "2026-03-07T12:24:12.400563Z"}
+{"event": "AI provider health monitoring started", "timestamp": "2026-03-07T12:24:12.494310Z"}
+{"event": "Initializing secrets adapter", "timestamp": "2026-03-07T12:24:12.495339Z"}
+Failed to initialize secrets adapter: Either VAULT_TOKEN or (VAULT_ROLE_ID and VAULT_SECRET_ID) must be provided
+{"error": "Either VAULT_TOKEN or (VAULT_ROLE_ID and VAULT_SECRET_ID) must be provided", "impact": "continuing without secrets management", "event": "Failed to initialize secrets adapter", "timestamp": "2026-03-07T12:24:12.499012Z"}
+{"event": "Checking privacy and security features", "timestamp": "2026-03-07T12:24:12.499693Z"}
+{"event": "PII sanitization available", "timestamp": "2026-03-07T12:24:12.499836Z"}
+{"event": "Telemetry with redaction available", "timestamp": "2026-03-07T12:24:12.499907Z"}
+{"event": "Safe vector store available", "timestamp": "2026-03-07T12:24:12.499973Z"}
+{"event": "Starting artifact cleanup service", "timestamp": "2026-03-07T12:24:12.500025Z"}
+{"interval_hours": 24, "event": "Artifact cleanup service started", "timestamp": "2026-03-07T12:24:12.500090Z"}
+{"event": "Artifact cleanup service started", "timestamp": "2026-03-07T12:24:12.500129Z"}
+{"status": "ready", "event": "Backend startup complete", "timestamp": "2026-03-07T12:24:12.500164Z"}
+{"artifacts_removed": 0, "detail": "no expired artifacts found", "event": "Artifact cleanup completed", "timestamp": "2026-03-07T12:24:13.039068Z"}
+INFO:     Application startup complete.
+WARNING:  WatchFiles detected changes in 'api/services/smart_router.py'. Reloading...
+sentence-transformers not available (The sentence_transformers python package is not installed. Please install it with `pip install sentence_transformers`), using default embeddings
+No security configuration warnings detected.
+❌ Failed to initialize S3 client: Could not connect to the endpoint URL: "http://minio:9000/goblin-sandbox"
+{"provider": "sentry", "error_monitoring": "enabled", "event": "Sentry SDK initialized", "timestamp": "2026-03-07T12:24:27.325509Z"}
+{"requests_per_minute": 100, "requests_per_hour": 1000, "event": "Rate limiting middleware enabled", "timestamp": "2026-03-07T12:24:27.389363Z"}
+INFO:     Started server process [29150]
+INFO:     Waiting for application startup.
+{"event": "Starting Goblin Assistant API", "timestamp": "2026-03-07T12:24:27.630501Z"}
+{"event": "Initializing Redis cache", "timestamp": "2026-03-07T12:24:27.630552Z"}
+✅ Redis cache initialized successfully
+{"event": "Redis cache initialized", "timestamp": "2026-03-07T12:24:27.632679Z"}
+{"event": "Checking database availability", "timestamp": "2026-03-07T12:24:27.632731Z"}
+⚠️  Database initialization failed: [Errno 61] Connection refused
+   Continuing without database - some features may be limited
+{"mode": "limited", "event": "Database initialization skipped", "timestamp": "2026-03-07T12:24:27.746355Z"}
+{"event": "Starting provider monitoring", "timestamp": "2026-03-07T12:24:27.746573Z"}
+Provider monitor started
+{"event": "Provider monitoring started", "timestamp": "2026-03-07T12:24:27.746759Z"}
+{"event": "Starting AI provider health monitoring", "timestamp": "2026-03-07T12:24:27.746819Z"}
+{"event": "AI provider health monitoring started", "timestamp": "2026-03-07T12:24:27.792230Z"}
+{"event": "Initializing secrets adapter", "timestamp": "2026-03-07T12:24:27.792299Z"}
+Failed to initialize secrets adapter: Either VAULT_TOKEN or (VAULT_ROLE_ID and VAULT_SECRET_ID) must be provided
+{"error": "Either VAULT_TOKEN or (VAULT_ROLE_ID and VAULT_SECRET_ID) must be provided", "impact": "continuing without secrets management", "event": "Failed to initialize secrets adapter", "timestamp": "2026-03-07T12:24:27.794386Z"}
+{"event": "Checking privacy and security features", "timestamp": "2026-03-07T12:24:27.794436Z"}
+{"event": "PII sanitization available", "timestamp": "2026-03-07T12:24:27.794922Z"}
+{"event": "Telemetry with redaction available", "timestamp": "2026-03-07T12:24:27.794981Z"}
+{"event": "Safe vector store available", "timestamp": "2026-03-07T12:24:27.795018Z"}
+{"event": "Starting artifact cleanup service", "timestamp": "2026-03-07T12:24:27.795043Z"}
+{"interval_hours": 24, "event": "Artifact cleanup service started", "timestamp": "2026-03-07T12:24:27.795087Z"}
+{"event": "Artifact cleanup service started", "timestamp": "2026-03-07T12:24:27.795116Z"}
+{"status": "ready", "event": "Backend startup complete", "timestamp": "2026-03-07T12:24:27.795139Z"}
+{"artifacts_removed": 0, "detail": "no expired artifacts found", "event": "Artifact cleanup completed", "timestamp": "2026-03-07T12:24:28.159158Z"}
+INFO:     Application startup complete.
+Health check failed: vertex_ai - HTTP 404
+WARNING:  WatchFiles detected changes in 'api/providers/vertex_ai.py'. Reloading...
+INFO:     Shutting down
+INFO:     Waiting for application shutdown.
+{"event": "Shutting down Goblin Assistant API", "timestamp": "2026-03-07T12:24:52.020141Z"}
+{"event": "Stopping AI provider health monitoring", "timestamp": "2026-03-07T12:24:52.020398Z"}
+{"event": "AI provider health monitoring stopped", "timestamp": "2026-03-07T12:24:52.020861Z"}
+{"event": "Stopping provider monitoring", "timestamp": "2026-03-07T12:24:52.020936Z"}
+Provider monitor stopped
+{"event": "Provider monitoring stopped", "timestamp": "2026-03-07T12:24:52.021202Z"}
+{"event": "Closing Redis cache", "timestamp": "2026-03-07T12:24:52.021253Z"}
+✅ Redis cache closed successfully
+{"event": "Redis cache closed", "timestamp": "2026-03-07T12:24:52.022314Z"}
+{"event": "Cleaning up secrets adapter", "timestamp": "2026-03-07T12:24:52.022387Z"}
+{"event": "Secrets adapter cleaned up", "timestamp": "2026-03-07T12:24:52.022428Z"}
+{"event": "Stopping artifact cleanup service", "timestamp": "2026-03-07T12:24:52.022458Z"}
+{"event": "Artifact cleanup service stopped", "timestamp": "2026-03-07T12:24:52.022584Z"}
+{"event": "Artifact cleanup service stopped", "timestamp": "2026-03-07T12:24:52.022620Z"}
+{"event": "Backend shutdown complete", "timestamp": "2026-03-07T12:24:52.022648Z"}
+INFO:     Application shutdown complete.
+INFO:     Finished server process [29150]
+sentence-transformers not available (The sentence_transformers python package is not installed. Please install it with `pip install sentence_transformers`), using default embeddings
+No security configuration warnings detected.
+❌ Failed to initialize S3 client: Could not connect to the endpoint URL: "http://minio:9000/goblin-sandbox"
+{"provider": "sentry", "error_monitoring": "enabled", "event": "Sentry SDK initialized", "timestamp": "2026-03-07T12:25:08.928498Z"}
+{"requests_per_minute": 100, "requests_per_hour": 1000, "event": "Rate limiting middleware enabled", "timestamp": "2026-03-07T12:25:09.057350Z"}
+INFO:     Started server process [29366]
+INFO:     Waiting for application startup.
+{"event": "Starting Goblin Assistant API", "timestamp": "2026-03-07T12:25:09.384565Z"}
+{"event": "Initializing Redis cache", "timestamp": "2026-03-07T12:25:09.384626Z"}
+✅ Redis cache initialized successfully
+{"event": "Redis cache initialized", "timestamp": "2026-03-07T12:25:09.390998Z"}
+{"event": "Checking database availability", "timestamp": "2026-03-07T12:25:09.391070Z"}
+⚠️  Database initialization failed: [Errno 61] Connection refused
+   Continuing without database - some features may be limited
+{"mode": "limited", "event": "Database initialization skipped", "timestamp": "2026-03-07T12:25:09.498706Z"}
+{"event": "Starting provider monitoring", "timestamp": "2026-03-07T12:25:09.498779Z"}
+Provider monitor started
+{"event": "Provider monitoring started", "timestamp": "2026-03-07T12:25:09.498830Z"}
+{"event": "Starting AI provider health monitoring", "timestamp": "2026-03-07T12:25:09.498857Z"}
+{"event": "AI provider health monitoring started", "timestamp": "2026-03-07T12:25:09.556910Z"}
+{"event": "Initializing secrets adapter", "timestamp": "2026-03-07T12:25:09.557082Z"}
+Failed to initialize secrets adapter: Either VAULT_TOKEN or (VAULT_ROLE_ID and VAULT_SECRET_ID) must be provided
+{"error": "Either VAULT_TOKEN or (VAULT_ROLE_ID and VAULT_SECRET_ID) must be provided", "impact": "continuing without secrets management", "event": "Failed to initialize secrets adapter", "timestamp": "2026-03-07T12:25:09.561949Z"}
+{"event": "Checking privacy and security features", "timestamp": "2026-03-07T12:25:09.562708Z"}
+{"event": "PII sanitization available", "timestamp": "2026-03-07T12:25:09.562776Z"}
+{"event": "Telemetry with redaction available", "timestamp": "2026-03-07T12:25:09.562815Z"}
+{"event": "Safe vector store available", "timestamp": "2026-03-07T12:25:09.562849Z"}
+{"event": "Starting artifact cleanup service", "timestamp": "2026-03-07T12:25:09.562874Z"}
+{"interval_hours": 24, "event": "Artifact cleanup service started", "timestamp": "2026-03-07T12:25:09.562923Z"}
+{"event": "Artifact cleanup service started", "timestamp": "2026-03-07T12:25:09.562953Z"}
+{"status": "ready", "event": "Backend startup complete", "timestamp": "2026-03-07T12:25:09.562978Z"}
+{"artifacts_removed": 0, "detail": "no expired artifacts found", "event": "Artifact cleanup completed", "timestamp": "2026-03-07T12:25:10.058122Z"}
+INFO:     Application startup complete.
+Health check failed: vertex_ai - HTTP 404
+WARNING:  WatchFiles detected changes in 'api/providers/vertex_ai.py'. Reloading...
+INFO:     Shutting down
+INFO:     Waiting for application shutdown.
+{"event": "Shutting down Goblin Assistant API", "timestamp": "2026-03-07T12:25:12.829270Z"}
+{"event": "Stopping AI provider health monitoring", "timestamp": "2026-03-07T12:25:12.829346Z"}
+{"event": "AI provider health monitoring stopped", "timestamp": "2026-03-07T12:25:12.829519Z"}
+{"event": "Stopping provider monitoring", "timestamp": "2026-03-07T12:25:12.829560Z"}
+Provider monitor stopped
+{"event": "Provider monitoring stopped", "timestamp": "2026-03-07T12:25:12.830457Z"}
+{"event": "Closing Redis cache", "timestamp": "2026-03-07T12:25:12.830522Z"}
+✅ Redis cache closed successfully
+{"event": "Redis cache closed", "timestamp": "2026-03-07T12:25:12.832653Z"}
+{"event": "Cleaning up secrets adapter", "timestamp": "2026-03-07T12:25:12.832722Z"}
+{"event": "Secrets adapter cleaned up", "timestamp": "2026-03-07T12:25:12.832756Z"}
+{"event": "Stopping artifact cleanup service", "timestamp": "2026-03-07T12:25:12.832781Z"}
+{"event": "Artifact cleanup service stopped", "timestamp": "2026-03-07T12:25:12.832904Z"}
+{"event": "Artifact cleanup service stopped", "timestamp": "2026-03-07T12:25:12.832959Z"}
+{"event": "Backend shutdown complete", "timestamp": "2026-03-07T12:25:12.833040Z"}
+INFO:     Application shutdown complete.
+INFO:     Finished server process [29366]
+sentence-transformers not available (The sentence_transformers python package is not installed. Please install it with `pip install sentence_transformers`), using default embeddings
+No security configuration warnings detected.
+❌ Failed to initialize S3 client: Could not connect to the endpoint URL: "http://minio:9000/goblin-sandbox"
+{"provider": "sentry", "error_monitoring": "enabled", "event": "Sentry SDK initialized", "timestamp": "2026-03-07T12:25:28.731352Z"}
+{"requests_per_minute": 100, "requests_per_hour": 1000, "event": "Rate limiting middleware enabled", "timestamp": "2026-03-07T12:25:28.742787Z"}
+INFO:     Started server process [29472]
+INFO:     Waiting for application startup.
+{"event": "Starting Goblin Assistant API", "timestamp": "2026-03-07T12:25:28.955283Z"}
+{"event": "Initializing Redis cache", "timestamp": "2026-03-07T12:25:28.955335Z"}
+✅ Redis cache initialized successfully
+{"event": "Redis cache initialized", "timestamp": "2026-03-07T12:25:28.957904Z"}
+{"event": "Checking database availability", "timestamp": "2026-03-07T12:25:28.957960Z"}
+⚠️  Database initialization failed: [Errno 61] Connection refused
+   Continuing without database - some features may be limited
+{"mode": "limited", "event": "Database initialization skipped", "timestamp": "2026-03-07T12:25:29.053245Z"}
+{"event": "Starting provider monitoring", "timestamp": "2026-03-07T12:25:29.053308Z"}
+Provider monitor started
+{"event": "Provider monitoring started", "timestamp": "2026-03-07T12:25:29.053356Z"}
+{"event": "Starting AI provider health monitoring", "timestamp": "2026-03-07T12:25:29.053383Z"}
+{"event": "AI provider health monitoring started", "timestamp": "2026-03-07T12:25:29.096323Z"}
+{"event": "Initializing secrets adapter", "timestamp": "2026-03-07T12:25:29.096393Z"}
+Failed to initialize secrets adapter: Either VAULT_TOKEN or (VAULT_ROLE_ID and VAULT_SECRET_ID) must be provided
+{"error": "Either VAULT_TOKEN or (VAULT_ROLE_ID and VAULT_SECRET_ID) must be provided", "impact": "continuing without secrets management", "event": "Failed to initialize secrets adapter", "timestamp": "2026-03-07T12:25:29.098644Z"}
+{"event": "Checking privacy and security features", "timestamp": "2026-03-07T12:25:29.098982Z"}
+{"event": "PII sanitization available", "timestamp": "2026-03-07T12:25:29.099038Z"}
+{"event": "Telemetry with redaction available", "timestamp": "2026-03-07T12:25:29.099069Z"}
+{"event": "Safe vector store available", "timestamp": "2026-03-07T12:25:29.099100Z"}
+{"event": "Starting artifact cleanup service", "timestamp": "2026-03-07T12:25:29.099124Z"}
+{"interval_hours": 24, "event": "Artifact cleanup service started", "timestamp": "2026-03-07T12:25:29.099167Z"}
+{"event": "Artifact cleanup service started", "timestamp": "2026-03-07T12:25:29.099195Z"}
+{"status": "ready", "event": "Backend startup complete", "timestamp": "2026-03-07T12:25:29.099218Z"}
+{"artifacts_removed": 0, "detail": "no expired artifacts found", "event": "Artifact cleanup completed", "timestamp": "2026-03-07T12:25:29.448158Z"}
+INFO:     Application startup complete.
+Health check failed: vertex_ai - HTTP 404
+Health check timeout: aliyun
+Health check failed: vertex_ai - HTTP 404
+WARNING:  WatchFiles detected changes in 'api/services/smart_router.py', 'api/providers/vertex_ai.py'. Reloading...
+INFO:     Shutting down
+INFO:     Waiting for application shutdown.
+{"event": "Shutting down Goblin Assistant API", "timestamp": "2026-03-07T12:26:12.517889Z"}
+{"event": "Stopping AI provider health monitoring", "timestamp": "2026-03-07T12:26:12.518321Z"}
+{"event": "AI provider health monitoring stopped", "timestamp": "2026-03-07T12:26:12.519268Z"}
+{"event": "Stopping provider monitoring", "timestamp": "2026-03-07T12:26:12.519327Z"}
+Provider monitor stopped
+{"event": "Provider monitoring stopped", "timestamp": "2026-03-07T12:26:12.519519Z"}
+{"event": "Closing Redis cache", "timestamp": "2026-03-07T12:26:12.519616Z"}
+✅ Redis cache closed successfully
+{"event": "Redis cache closed", "timestamp": "2026-03-07T12:26:12.521432Z"}
+{"event": "Cleaning up secrets adapter", "timestamp": "2026-03-07T12:26:12.521549Z"}
+{"event": "Secrets adapter cleaned up", "timestamp": "2026-03-07T12:26:12.521646Z"}
+{"event": "Stopping artifact cleanup service", "timestamp": "2026-03-07T12:26:12.521689Z"}
+{"event": "Artifact cleanup service stopped", "timestamp": "2026-03-07T12:26:12.521905Z"}
+{"event": "Artifact cleanup service stopped", "timestamp": "2026-03-07T12:26:12.521941Z"}
+{"event": "Backend shutdown complete", "timestamp": "2026-03-07T12:26:12.521966Z"}
+INFO:     Application shutdown complete.
+INFO:     Finished server process [29472]
+sentence-transformers not available (The sentence_transformers python package is not installed. Please install it with `pip install sentence_transformers`), using default embeddings
+No security configuration warnings detected.
+❌ Failed to initialize S3 client: Could not connect to the endpoint URL: "http://minio:9000/goblin-sandbox"
+{"provider": "sentry", "error_monitoring": "enabled", "event": "Sentry SDK initialized", "timestamp": "2026-03-07T12:26:40.415357Z"}
+{"requests_per_minute": 100, "requests_per_hour": 1000, "event": "Rate limiting middleware enabled", "timestamp": "2026-03-07T12:26:40.476378Z"}
+INFO:     Started server process [30643]
+INFO:     Waiting for application startup.
+{"event": "Starting Goblin Assistant API", "timestamp": "2026-03-07T12:26:40.670677Z"}
+{"event": "Initializing Redis cache", "timestamp": "2026-03-07T12:26:40.670728Z"}
+✅ Redis cache initialized successfully
+{"event": "Redis cache initialized", "timestamp": "2026-03-07T12:26:40.673145Z"}
+{"event": "Checking database availability", "timestamp": "2026-03-07T12:26:40.673228Z"}
+⚠️  Database initialization failed: [Errno 61] Connection refused
+   Continuing without database - some features may be limited
+{"mode": "limited", "event": "Database initialization skipped", "timestamp": "2026-03-07T12:26:40.800984Z"}
+{"event": "Starting provider monitoring", "timestamp": "2026-03-07T12:26:40.801087Z"}
+Provider monitor started
+{"event": "Provider monitoring started", "timestamp": "2026-03-07T12:26:40.801167Z"}
+{"event": "Starting AI provider health monitoring", "timestamp": "2026-03-07T12:26:40.801217Z"}
+{"event": "AI provider health monitoring started", "timestamp": "2026-03-07T12:26:40.845405Z"}
+{"event": "Initializing secrets adapter", "timestamp": "2026-03-07T12:26:40.845466Z"}
+Failed to initialize secrets adapter: Either VAULT_TOKEN or (VAULT_ROLE_ID and VAULT_SECRET_ID) must be provided
+{"error": "Either VAULT_TOKEN or (VAULT_ROLE_ID and VAULT_SECRET_ID) must be provided", "impact": "continuing without secrets management", "event": "Failed to initialize secrets adapter", "timestamp": "2026-03-07T12:26:40.847562Z"}
+{"event": "Checking privacy and security features", "timestamp": "2026-03-07T12:26:40.847609Z"}
+{"event": "PII sanitization available", "timestamp": "2026-03-07T12:26:40.847907Z"}
+{"event": "Telemetry with redaction available", "timestamp": "2026-03-07T12:26:40.847951Z"}
+{"event": "Safe vector store available", "timestamp": "2026-03-07T12:26:40.847983Z"}
+{"event": "Starting artifact cleanup service", "timestamp": "2026-03-07T12:26:40.848007Z"}
+{"interval_hours": 24, "event": "Artifact cleanup service started", "timestamp": "2026-03-07T12:26:40.848043Z"}
+{"event": "Artifact cleanup service started", "timestamp": "2026-03-07T12:26:40.848069Z"}
+{"status": "ready", "event": "Backend startup complete", "timestamp": "2026-03-07T12:26:40.848092Z"}
+{"artifacts_removed": 0, "detail": "no expired artifacts found", "event": "Artifact cleanup completed", "timestamp": "2026-03-07T12:26:41.187237Z"}
+INFO:     Application startup complete.
+Health check failed: vertex_ai - HTTP 404
+Health check failed: vertex_ai - HTTP 404
+Health check failed: vertex_ai - HTTP 404
+Health check failed: vertex_ai - HTTP 404
+Health check failed: vertex_ai - HTTP 404
+Health check timeout: aliyun
+Health check failed: vertex_ai - HTTP 404
+Health check timeout: aliyun
+Health check failed: vertex_ai - HTTP 404
+Health check failed: vertex_ai - HTTP 404
+Health check failed: vertex_ai - HTTP 404
+Health check timeout: aliyun
+Health check failed: vertex_ai - HTTP 404
+Health check failed: vertex_ai - HTTP 404
+Health check failed: vertex_ai - HTTP 404
+Health check failed: vertex_ai - HTTP 404
+Health check failed: vertex_ai - HTTP 404
+Health check failed: vertex_ai - HTTP 404
+WARNING:  WatchFiles detected changes in '_get_dashscope_key.py'. Reloading...
+INFO:     Shutting down
+INFO:     Waiting for application shutdown.
+{"event": "Shutting down Goblin Assistant API", "timestamp": "2026-03-07T12:35:08.915356Z"}
+{"event": "Stopping AI provider health monitoring", "timestamp": "2026-03-07T12:35:08.915745Z"}
+{"event": "AI provider health monitoring stopped", "timestamp": "2026-03-07T12:35:08.916126Z"}
+{"event": "Stopping provider monitoring", "timestamp": "2026-03-07T12:35:08.916176Z"}
+Provider monitor stopped
+{"event": "Provider monitoring stopped", "timestamp": "2026-03-07T12:35:08.916448Z"}
+{"event": "Closing Redis cache", "timestamp": "2026-03-07T12:35:08.916494Z"}
+✅ Redis cache closed successfully
+{"event": "Redis cache closed", "timestamp": "2026-03-07T12:35:08.921168Z"}
+{"event": "Cleaning up secrets adapter", "timestamp": "2026-03-07T12:35:08.921245Z"}
+{"event": "Secrets adapter cleaned up", "timestamp": "2026-03-07T12:35:08.921315Z"}
+{"event": "Stopping artifact cleanup service", "timestamp": "2026-03-07T12:35:08.921342Z"}
+{"event": "Artifact cleanup service stopped", "timestamp": "2026-03-07T12:35:08.921602Z"}
+{"event": "Artifact cleanup service stopped", "timestamp": "2026-03-07T12:35:08.921643Z"}
+{"event": "Backend shutdown complete", "timestamp": "2026-03-07T12:35:08.921668Z"}
+INFO:     Application shutdown complete.
+INFO:     Finished server process [30643]
+WARNING:  WatchFiles detected changes in '_get_dashscope_key.py'. Reloading...
+sentence-transformers not available (The sentence_transformers python package is not installed. Please install it with `pip install sentence_transformers`), using default embeddings
+No security configuration warnings detected.
+❌ Failed to initialize S3 client: Could not connect to the endpoint URL: "http://minio:9000/goblin-sandbox"
+{"provider": "sentry", "error_monitoring": "enabled", "event": "Sentry SDK initialized", "timestamp": "2026-03-07T12:35:24.622867Z"}
+{"requests_per_minute": 100, "requests_per_hour": 1000, "event": "Rate limiting middleware enabled", "timestamp": "2026-03-07T12:35:24.683316Z"}
+INFO:     Started server process [43996]
+INFO:     Waiting for application startup.
+{"event": "Starting Goblin Assistant API", "timestamp": "2026-03-07T12:35:24.916649Z"}
+{"event": "Initializing Redis cache", "timestamp": "2026-03-07T12:35:24.916699Z"}
+✅ Redis cache initialized successfully
+{"event": "Redis cache initialized", "timestamp": "2026-03-07T12:35:24.919047Z"}
+{"event": "Checking database availability", "timestamp": "2026-03-07T12:35:24.919110Z"}
+⚠️  Database initialization failed: [Errno 61] Connection refused
+   Continuing without database - some features may be limited
+{"mode": "limited", "event": "Database initialization skipped", "timestamp": "2026-03-07T12:35:25.073517Z"}
+{"event": "Starting provider monitoring", "timestamp": "2026-03-07T12:35:25.073610Z"}
+Provider monitor started
+{"event": "Provider monitoring started", "timestamp": "2026-03-07T12:35:25.073677Z"}
+{"event": "Starting AI provider health monitoring", "timestamp": "2026-03-07T12:35:25.073714Z"}
+{"event": "AI provider health monitoring started", "timestamp": "2026-03-07T12:35:25.118931Z"}
+{"event": "Initializing secrets adapter", "timestamp": "2026-03-07T12:35:25.118997Z"}
+Failed to initialize secrets adapter: Either VAULT_TOKEN or (VAULT_ROLE_ID and VAULT_SECRET_ID) must be provided
+{"error": "Either VAULT_TOKEN or (VAULT_ROLE_ID and VAULT_SECRET_ID) must be provided", "impact": "continuing without secrets management", "event": "Failed to initialize secrets adapter", "timestamp": "2026-03-07T12:35:25.121116Z"}
+{"event": "Checking privacy and security features", "timestamp": "2026-03-07T12:35:25.121200Z"}
+{"event": "PII sanitization available", "timestamp": "2026-03-07T12:35:25.121672Z"}
+{"event": "Telemetry with redaction available", "timestamp": "2026-03-07T12:35:25.121719Z"}
+{"event": "Safe vector store available", "timestamp": "2026-03-07T12:35:25.121755Z"}
+{"event": "Starting artifact cleanup service", "timestamp": "2026-03-07T12:35:25.121780Z"}
+{"interval_hours": 24, "event": "Artifact cleanup service started", "timestamp": "2026-03-07T12:35:25.121823Z"}
+{"event": "Artifact cleanup service started", "timestamp": "2026-03-07T12:35:25.121851Z"}
+{"status": "ready", "event": "Backend startup complete", "timestamp": "2026-03-07T12:35:25.121874Z"}
+{"artifacts_removed": 0, "detail": "no expired artifacts found", "event": "Artifact cleanup completed", "timestamp": "2026-03-07T12:35:25.478799Z"}
+INFO:     Application startup complete.
+sentence-transformers not available (The sentence_transformers python package is not installed. Please install it with `pip install sentence_transformers`), using default embeddings
+No security configuration warnings detected.
+❌ Failed to initialize S3 client: Could not connect to the endpoint URL: "http://minio:9000/goblin-sandbox"
+{"provider": "sentry", "error_monitoring": "enabled", "event": "Sentry SDK initialized", "timestamp": "2026-03-07T12:35:37.626710Z"}
+{"requests_per_minute": 100, "requests_per_hour": 1000, "event": "Rate limiting middleware enabled", "timestamp": "2026-03-07T12:35:37.643895Z"}
+INFO:     Started server process [44281]
+INFO:     Waiting for application startup.
+{"event": "Starting Goblin Assistant API", "timestamp": "2026-03-07T12:35:37.876193Z"}
+{"event": "Initializing Redis cache", "timestamp": "2026-03-07T12:35:37.876247Z"}
+✅ Redis cache initialized successfully
+{"event": "Redis cache initialized", "timestamp": "2026-03-07T12:35:37.879819Z"}
+{"event": "Checking database availability", "timestamp": "2026-03-07T12:35:37.879880Z"}
+⚠️  Database initialization failed: [Errno 61] Connection refused
+   Continuing without database - some features may be limited
+{"mode": "limited", "event": "Database initialization skipped", "timestamp": "2026-03-07T12:35:37.968785Z"}
+{"event": "Starting provider monitoring", "timestamp": "2026-03-07T12:35:37.968867Z"}
+Provider monitor started
+{"event": "Provider monitoring started", "timestamp": "2026-03-07T12:35:37.968925Z"}
+{"event": "Starting AI provider health monitoring", "timestamp": "2026-03-07T12:35:37.968955Z"}
+{"event": "AI provider health monitoring started", "timestamp": "2026-03-07T12:35:38.013954Z"}
+{"event": "Initializing secrets adapter", "timestamp": "2026-03-07T12:35:38.014023Z"}
+Failed to initialize secrets adapter: Either VAULT_TOKEN or (VAULT_ROLE_ID and VAULT_SECRET_ID) must be provided
+{"error": "Either VAULT_TOKEN or (VAULT_ROLE_ID and VAULT_SECRET_ID) must be provided", "impact": "continuing without secrets management", "event": "Failed to initialize secrets adapter", "timestamp": "2026-03-07T12:35:38.016086Z"}
+{"event": "Checking privacy and security features", "timestamp": "2026-03-07T12:35:38.016456Z"}
+{"event": "PII sanitization available", "timestamp": "2026-03-07T12:35:38.016508Z"}
+{"event": "Telemetry with redaction available", "timestamp": "2026-03-07T12:35:38.016536Z"}
+{"event": "Safe vector store available", "timestamp": "2026-03-07T12:35:38.016565Z"}
+{"event": "Starting artifact cleanup service", "timestamp": "2026-03-07T12:35:38.016587Z"}
+{"interval_hours": 24, "event": "Artifact cleanup service started", "timestamp": "2026-03-07T12:35:38.016625Z"}
+{"event": "Artifact cleanup service started", "timestamp": "2026-03-07T12:35:38.016651Z"}
+{"status": "ready", "event": "Backend startup complete", "timestamp": "2026-03-07T12:35:38.016678Z"}
+{"artifacts_removed": 0, "detail": "no expired artifacts found", "event": "Artifact cleanup completed", "timestamp": "2026-03-07T12:35:38.388288Z"}
+INFO:     Application startup complete.
+Health check failed: vertex_ai - HTTP 404
+Health check failed: vertex_ai - HTTP 404
+Health check failed: vertex_ai - HTTP 404
+Health check failed: vertex_ai - HTTP 404
+Health check failed: vertex_ai - HTTP 404
+Health check timeout: aliyun
+WARNING:  WatchFiles detected changes in '_get_dashscope_key.py'. Reloading...
+INFO:     Shutting down
+INFO:     Waiting for application shutdown.
+{"event": "Shutting down Goblin Assistant API", "timestamp": "2026-03-07T12:38:11.211126Z"}
+{"event": "Stopping AI provider health monitoring", "timestamp": "2026-03-07T12:38:11.211247Z"}
+{"event": "AI provider health monitoring stopped", "timestamp": "2026-03-07T12:38:11.211815Z"}
+{"event": "Stopping provider monitoring", "timestamp": "2026-03-07T12:38:11.211883Z"}
+Provider monitor stopped
+{"event": "Provider monitoring stopped", "timestamp": "2026-03-07T12:38:11.211986Z"}
+{"event": "Closing Redis cache", "timestamp": "2026-03-07T12:38:11.212020Z"}
+✅ Redis cache closed successfully
+{"event": "Redis cache closed", "timestamp": "2026-03-07T12:38:11.212516Z"}
+{"event": "Cleaning up secrets adapter", "timestamp": "2026-03-07T12:38:11.212572Z"}
+{"event": "Secrets adapter cleaned up", "timestamp": "2026-03-07T12:38:11.212605Z"}
+{"event": "Stopping artifact cleanup service", "timestamp": "2026-03-07T12:38:11.212630Z"}
+{"event": "Artifact cleanup service stopped", "timestamp": "2026-03-07T12:38:11.212729Z"}
+{"event": "Artifact cleanup service stopped", "timestamp": "2026-03-07T12:38:11.212763Z"}
+{"event": "Backend shutdown complete", "timestamp": "2026-03-07T12:38:11.212787Z"}
+INFO:     Application shutdown complete.
+INFO:     Finished server process [44281]
+sentence-transformers not available (The sentence_transformers python package is not installed. Please install it with `pip install sentence_transformers`), using default embeddings
+No security configuration warnings detected.
+❌ Failed to initialize S3 client: Could not connect to the endpoint URL: "http://minio:9000/goblin-sandbox"
+{"provider": "sentry", "error_monitoring": "enabled", "event": "Sentry SDK initialized", "timestamp": "2026-03-07T12:38:23.064223Z"}
+{"requests_per_minute": 100, "requests_per_hour": 1000, "event": "Rate limiting middleware enabled", "timestamp": "2026-03-07T12:38:23.113485Z"}
+INFO:     Started server process [45192]
+INFO:     Waiting for application startup.
+{"event": "Starting Goblin Assistant API", "timestamp": "2026-03-07T12:38:23.336172Z"}
+{"event": "Initializing Redis cache", "timestamp": "2026-03-07T12:38:23.336244Z"}
+✅ Redis cache initialized successfully
+{"event": "Redis cache initialized", "timestamp": "2026-03-07T12:38:23.339542Z"}
+{"event": "Checking database availability", "timestamp": "2026-03-07T12:38:23.339602Z"}
+⚠️  Database initialization failed: [Errno 61] Connection refused
+   Continuing without database - some features may be limited
+{"mode": "limited", "event": "Database initialization skipped", "timestamp": "2026-03-07T12:38:23.449706Z"}
+{"event": "Starting provider monitoring", "timestamp": "2026-03-07T12:38:23.449869Z"}
+Provider monitor started
+{"event": "Provider monitoring started", "timestamp": "2026-03-07T12:38:23.449952Z"}
+{"event": "Starting AI provider health monitoring", "timestamp": "2026-03-07T12:38:23.449989Z"}
+{"event": "AI provider health monitoring started", "timestamp": "2026-03-07T12:38:23.494398Z"}
+{"event": "Initializing secrets adapter", "timestamp": "2026-03-07T12:38:23.494463Z"}
+Failed to initialize secrets adapter: Either VAULT_TOKEN or (VAULT_ROLE_ID and VAULT_SECRET_ID) must be provided
+{"error": "Either VAULT_TOKEN or (VAULT_ROLE_ID and VAULT_SECRET_ID) must be provided", "impact": "continuing without secrets management", "event": "Failed to initialize secrets adapter", "timestamp": "2026-03-07T12:38:23.496842Z"}
+{"event": "Checking privacy and security features", "timestamp": "2026-03-07T12:38:23.497170Z"}
+{"event": "PII sanitization available", "timestamp": "2026-03-07T12:38:23.497221Z"}
+{"event": "Telemetry with redaction available", "timestamp": "2026-03-07T12:38:23.497248Z"}
+{"event": "Safe vector store available", "timestamp": "2026-03-07T12:38:23.497277Z"}
+{"event": "Starting artifact cleanup service", "timestamp": "2026-03-07T12:38:23.497299Z"}
+{"interval_hours": 24, "event": "Artifact cleanup service started", "timestamp": "2026-03-07T12:38:23.497339Z"}
+{"event": "Artifact cleanup service started", "timestamp": "2026-03-07T12:38:23.497365Z"}
+{"status": "ready", "event": "Backend startup complete", "timestamp": "2026-03-07T12:38:23.497390Z"}
+{"artifacts_removed": 0, "detail": "no expired artifacts found", "event": "Artifact cleanup completed", "timestamp": "2026-03-07T12:38:23.860724Z"}
+INFO:     Application startup complete.
+Health check failed: vertex_ai - HTTP 404
+Health check failed: vertex_ai - HTTP 404
+WARNING:  WatchFiles detected changes in '_get_dashscope_key.py'. Reloading...
+INFO:     Shutting down
+INFO:     Waiting for application shutdown.
+{"event": "Shutting down Goblin Assistant API", "timestamp": "2026-03-07T12:39:05.833163Z"}
+{"event": "Stopping AI provider health monitoring", "timestamp": "2026-03-07T12:39:05.833248Z"}
+{"event": "AI provider health monitoring stopped", "timestamp": "2026-03-07T12:39:05.833830Z"}
+{"event": "Stopping provider monitoring", "timestamp": "2026-03-07T12:39:05.833889Z"}
+Provider monitor stopped
+{"event": "Provider monitoring stopped", "timestamp": "2026-03-07T12:39:05.833986Z"}
+{"event": "Closing Redis cache", "timestamp": "2026-03-07T12:39:05.834018Z"}
+✅ Redis cache closed successfully
+{"event": "Redis cache closed", "timestamp": "2026-03-07T12:39:05.834370Z"}
+{"event": "Cleaning up secrets adapter", "timestamp": "2026-03-07T12:39:05.834410Z"}
+{"event": "Secrets adapter cleaned up", "timestamp": "2026-03-07T12:39:05.834438Z"}
+{"event": "Stopping artifact cleanup service", "timestamp": "2026-03-07T12:39:05.834461Z"}
+{"event": "Artifact cleanup service stopped", "timestamp": "2026-03-07T12:39:05.834569Z"}
+{"event": "Artifact cleanup service stopped", "timestamp": "2026-03-07T12:39:05.834617Z"}
+{"event": "Backend shutdown complete", "timestamp": "2026-03-07T12:39:05.834647Z"}
+INFO:     Application shutdown complete.
+INFO:     Finished server process [45192]
+sentence-transformers not available (The sentence_transformers python package is not installed. Please install it with `pip install sentence_transformers`), using default embeddings
+No security configuration warnings detected.
+❌ Failed to initialize S3 client: Could not connect to the endpoint URL: "http://minio:9000/goblin-sandbox"
+{"provider": "sentry", "error_monitoring": "enabled", "event": "Sentry SDK initialized", "timestamp": "2026-03-07T12:39:20.204028Z"}
+{"requests_per_minute": 100, "requests_per_hour": 1000, "event": "Rate limiting middleware enabled", "timestamp": "2026-03-07T12:39:20.258207Z"}
+INFO:     Started server process [46172]
+INFO:     Waiting for application startup.
+{"event": "Starting Goblin Assistant API", "timestamp": "2026-03-07T12:39:20.473524Z"}
+{"event": "Initializing Redis cache", "timestamp": "2026-03-07T12:39:20.473591Z"}
+✅ Redis cache initialized successfully
+{"event": "Redis cache initialized", "timestamp": "2026-03-07T12:39:20.476925Z"}
+{"event": "Checking database availability", "timestamp": "2026-03-07T12:39:20.476989Z"}
+⚠️  Database initialization failed: [Errno 61] Connection refused
+   Continuing without database - some features may be limited
+{"mode": "limited", "event": "Database initialization skipped", "timestamp": "2026-03-07T12:39:20.577492Z"}
+{"event": "Starting provider monitoring", "timestamp": "2026-03-07T12:39:20.577560Z"}
+Provider monitor started
+{"event": "Provider monitoring started", "timestamp": "2026-03-07T12:39:20.577610Z"}
+{"event": "Starting AI provider health monitoring", "timestamp": "2026-03-07T12:39:20.577637Z"}
+{"event": "AI provider health monitoring started", "timestamp": "2026-03-07T12:39:20.625893Z"}
+{"event": "Initializing secrets adapter", "timestamp": "2026-03-07T12:39:20.625976Z"}
+Failed to initialize secrets adapter: Either VAULT_TOKEN or (VAULT_ROLE_ID and VAULT_SECRET_ID) must be provided
+{"error": "Either VAULT_TOKEN or (VAULT_ROLE_ID and VAULT_SECRET_ID) must be provided", "impact": "continuing without secrets management", "event": "Failed to initialize secrets adapter", "timestamp": "2026-03-07T12:39:20.629014Z"}
+{"event": "Checking privacy and security features", "timestamp": "2026-03-07T12:39:20.629423Z"}
+{"event": "PII sanitization available", "timestamp": "2026-03-07T12:39:20.629486Z"}
+{"event": "Telemetry with redaction available", "timestamp": "2026-03-07T12:39:20.629521Z"}
+{"event": "Safe vector store available", "timestamp": "2026-03-07T12:39:20.629553Z"}
+{"event": "Starting artifact cleanup service", "timestamp": "2026-03-07T12:39:20.629577Z"}
+{"interval_hours": 24, "event": "Artifact cleanup service started", "timestamp": "2026-03-07T12:39:20.629621Z"}
+{"event": "Artifact cleanup service started", "timestamp": "2026-03-07T12:39:20.629679Z"}
+{"status": "ready", "event": "Backend startup complete", "timestamp": "2026-03-07T12:39:20.629708Z"}
+{"artifacts_removed": 0, "detail": "no expired artifacts found", "event": "Artifact cleanup completed", "timestamp": "2026-03-07T12:39:21.014044Z"}
+INFO:     Application startup complete.
+Health check failed: vertex_ai - HTTP 404
+Health check failed: vertex_ai - HTTP 404
+WARNING:  WatchFiles detected changes in 'api/providers/vertex_ai.py'. Reloading...
+INFO:     Shutting down
+INFO:     Waiting for application shutdown.
+{"event": "Shutting down Goblin Assistant API", "timestamp": "2026-03-07T12:40:04.077799Z"}
+{"event": "Stopping AI provider health monitoring", "timestamp": "2026-03-07T12:40:04.078894Z"}
+{"event": "AI provider health monitoring stopped", "timestamp": "2026-03-07T12:40:04.079119Z"}
+{"event": "Stopping provider monitoring", "timestamp": "2026-03-07T12:40:04.079167Z"}
+Provider monitor stopped
+{"event": "Provider monitoring stopped", "timestamp": "2026-03-07T12:40:04.079260Z"}
+{"event": "Closing Redis cache", "timestamp": "2026-03-07T12:40:04.079291Z"}
+✅ Redis cache closed successfully
+{"event": "Redis cache closed", "timestamp": "2026-03-07T12:40:04.079648Z"}
+{"event": "Cleaning up secrets adapter", "timestamp": "2026-03-07T12:40:04.079696Z"}
+{"event": "Secrets adapter cleaned up", "timestamp": "2026-03-07T12:40:04.079727Z"}
+{"event": "Stopping artifact cleanup service", "timestamp": "2026-03-07T12:40:04.079751Z"}
+{"event": "Artifact cleanup service stopped", "timestamp": "2026-03-07T12:40:04.079854Z"}
+{"event": "Artifact cleanup service stopped", "timestamp": "2026-03-07T12:40:04.079900Z"}
+{"event": "Backend shutdown complete", "timestamp": "2026-03-07T12:40:04.079928Z"}
+INFO:     Application shutdown complete.
+INFO:     Finished server process [46172]
+sentence-transformers not available (The sentence_transformers python package is not installed. Please install it with `pip install sentence_transformers`), using default embeddings
+WARNING:  WatchFiles detected changes in 'api/providers/vertex_ai.py'. Reloading...
+No security configuration warnings detected.
+❌ Failed to initialize S3 client: Could not connect to the endpoint URL: "http://minio:9000/goblin-sandbox"
+{"provider": "sentry", "error_monitoring": "enabled", "event": "Sentry SDK initialized", "timestamp": "2026-03-07T12:40:15.601785Z"}
+{"requests_per_minute": 100, "requests_per_hour": 1000, "event": "Rate limiting middleware enabled", "timestamp": "2026-03-07T12:40:15.623639Z"}
+INFO:     Started server process [46979]
+INFO:     Waiting for application startup.
+{"event": "Starting Goblin Assistant API", "timestamp": "2026-03-07T12:40:15.860629Z"}
+{"event": "Initializing Redis cache", "timestamp": "2026-03-07T12:40:15.860684Z"}
+✅ Redis cache initialized successfully
+{"event": "Redis cache initialized", "timestamp": "2026-03-07T12:40:15.862967Z"}
+{"event": "Checking database availability", "timestamp": "2026-03-07T12:40:15.863026Z"}
+⚠️  Database initialization failed: [Errno 61] Connection refused
+   Continuing without database - some features may be limited
+{"mode": "limited", "event": "Database initialization skipped", "timestamp": "2026-03-07T12:40:15.973661Z"}
+{"event": "Starting provider monitoring", "timestamp": "2026-03-07T12:40:15.973720Z"}
+Provider monitor started
+{"event": "Provider monitoring started", "timestamp": "2026-03-07T12:40:15.973765Z"}
+{"event": "Starting AI provider health monitoring", "timestamp": "2026-03-07T12:40:15.973791Z"}
+{"event": "AI provider health monitoring started", "timestamp": "2026-03-07T12:40:16.017451Z"}
+{"event": "Initializing secrets adapter", "timestamp": "2026-03-07T12:40:16.017540Z"}
+Failed to initialize secrets adapter: Either VAULT_TOKEN or (VAULT_ROLE_ID and VAULT_SECRET_ID) must be provided
+{"error": "Either VAULT_TOKEN or (VAULT_ROLE_ID and VAULT_SECRET_ID) must be provided", "impact": "continuing without secrets management", "event": "Failed to initialize secrets adapter", "timestamp": "2026-03-07T12:40:16.019836Z"}
+{"event": "Checking privacy and security features", "timestamp": "2026-03-07T12:40:16.020118Z"}
+{"event": "PII sanitization available", "timestamp": "2026-03-07T12:40:16.020158Z"}
+{"event": "Telemetry with redaction available", "timestamp": "2026-03-07T12:40:16.020185Z"}
+{"event": "Safe vector store available", "timestamp": "2026-03-07T12:40:16.020214Z"}
+{"event": "Starting artifact cleanup service", "timestamp": "2026-03-07T12:40:16.020237Z"}
+{"interval_hours": 24, "event": "Artifact cleanup service started", "timestamp": "2026-03-07T12:40:16.020275Z"}
+{"event": "Artifact cleanup service started", "timestamp": "2026-03-07T12:40:16.020302Z"}
+{"status": "ready", "event": "Backend startup complete", "timestamp": "2026-03-07T12:40:16.020325Z"}
+{"artifacts_removed": 0, "detail": "no expired artifacts found", "event": "Artifact cleanup completed", "timestamp": "2026-03-07T12:40:16.378817Z"}
+INFO:     Application startup complete.
+sentence-transformers not available (The sentence_transformers python package is not installed. Please install it with `pip install sentence_transformers`), using default embeddings
+No security configuration warnings detected.
+❌ Failed to initialize S3 client: Could not connect to the endpoint URL: "http://minio:9000/goblin-sandbox"
+{"provider": "sentry", "error_monitoring": "enabled", "event": "Sentry SDK initialized", "timestamp": "2026-03-07T12:40:28.952072Z"}
+{"requests_per_minute": 100, "requests_per_hour": 1000, "event": "Rate limiting middleware enabled", "timestamp": "2026-03-07T12:40:29.001988Z"}
+INFO:     Started server process [47039]
+INFO:     Waiting for application startup.
+{"event": "Starting Goblin Assistant API", "timestamp": "2026-03-07T12:40:29.224127Z"}
+{"event": "Initializing Redis cache", "timestamp": "2026-03-07T12:40:29.224183Z"}
+✅ Redis cache initialized successfully
+{"event": "Redis cache initialized", "timestamp": "2026-03-07T12:40:29.226942Z"}
+{"event": "Checking database availability", "timestamp": "2026-03-07T12:40:29.226999Z"}
+⚠️  Database initialization failed: [Errno 61] Connection refused
+   Continuing without database - some features may be limited
+{"mode": "limited", "event": "Database initialization skipped", "timestamp": "2026-03-07T12:40:29.318316Z"}
+{"event": "Starting provider monitoring", "timestamp": "2026-03-07T12:40:29.318397Z"}
+Provider monitor started
+{"event": "Provider monitoring started", "timestamp": "2026-03-07T12:40:29.318457Z"}
+{"event": "Starting AI provider health monitoring", "timestamp": "2026-03-07T12:40:29.318493Z"}
+{"event": "AI provider health monitoring started", "timestamp": "2026-03-07T12:40:29.364402Z"}
+{"event": "Initializing secrets adapter", "timestamp": "2026-03-07T12:40:29.364486Z"}
+Failed to initialize secrets adapter: Either VAULT_TOKEN or (VAULT_ROLE_ID and VAULT_SECRET_ID) must be provided
+{"error": "Either VAULT_TOKEN or (VAULT_ROLE_ID and VAULT_SECRET_ID) must be provided", "impact": "continuing without secrets management", "event": "Failed to initialize secrets adapter", "timestamp": "2026-03-07T12:40:29.366770Z"}
+{"event": "Checking privacy and security features", "timestamp": "2026-03-07T12:40:29.366828Z"}
+{"event": "PII sanitization available", "timestamp": "2026-03-07T12:40:29.367128Z"}
+{"event": "Telemetry with redaction available", "timestamp": "2026-03-07T12:40:29.367174Z"}
+{"event": "Safe vector store available", "timestamp": "2026-03-07T12:40:29.367208Z"}
+{"event": "Starting artifact cleanup service", "timestamp": "2026-03-07T12:40:29.367233Z"}
+{"interval_hours": 24, "event": "Artifact cleanup service started", "timestamp": "2026-03-07T12:40:29.367273Z"}
+{"event": "Artifact cleanup service started", "timestamp": "2026-03-07T12:40:29.367300Z"}
+{"status": "ready", "event": "Backend startup complete", "timestamp": "2026-03-07T12:40:29.367325Z"}
+{"artifacts_removed": 0, "detail": "no expired artifacts found", "event": "Artifact cleanup completed", "timestamp": "2026-03-07T12:40:29.739885Z"}
+INFO:     Application startup complete.
+Health check failed: vertex_ai - HTTP 404
+WARNING:  WatchFiles detected changes in 'api/services/provider_health.py'. Reloading...
+INFO:     Shutting down
+INFO:     Waiting for application shutdown.
+{"event": "Shutting down Goblin Assistant API", "timestamp": "2026-03-07T12:40:35.826633Z"}
+{"event": "Stopping AI provider health monitoring", "timestamp": "2026-03-07T12:40:35.826700Z"}
+{"event": "AI provider health monitoring stopped", "timestamp": "2026-03-07T12:40:35.826853Z"}
+{"event": "Stopping provider monitoring", "timestamp": "2026-03-07T12:40:35.826887Z"}
+Provider monitor stopped
+{"event": "Provider monitoring stopped", "timestamp": "2026-03-07T12:40:35.826971Z"}
+{"event": "Closing Redis cache", "timestamp": "2026-03-07T12:40:35.827000Z"}
+✅ Redis cache closed successfully
+{"event": "Redis cache closed", "timestamp": "2026-03-07T12:40:35.827381Z"}
+{"event": "Cleaning up secrets adapter", "timestamp": "2026-03-07T12:40:35.827427Z"}
+{"event": "Secrets adapter cleaned up", "timestamp": "2026-03-07T12:40:35.827459Z"}
+{"event": "Stopping artifact cleanup service", "timestamp": "2026-03-07T12:40:35.827484Z"}
+{"event": "Artifact cleanup service stopped", "timestamp": "2026-03-07T12:40:35.827588Z"}
+{"event": "Artifact cleanup service stopped", "timestamp": "2026-03-07T12:40:35.827634Z"}
+{"event": "Backend shutdown complete", "timestamp": "2026-03-07T12:40:35.827660Z"}
+INFO:     Application shutdown complete.
+INFO:     Finished server process [47039]
+sentence-transformers not available (The sentence_transformers python package is not installed. Please install it with `pip install sentence_transformers`), using default embeddings
+No security configuration warnings detected.
+❌ Failed to initialize S3 client: Could not connect to the endpoint URL: "http://minio:9000/goblin-sandbox"
+{"provider": "sentry", "error_monitoring": "enabled", "event": "Sentry SDK initialized", "timestamp": "2026-03-07T12:40:49.678653Z"}
+{"requests_per_minute": 100, "requests_per_hour": 1000, "event": "Rate limiting middleware enabled", "timestamp": "2026-03-07T12:40:49.729244Z"}
+INFO:     Started server process [47133]
+INFO:     Waiting for application startup.
+{"event": "Starting Goblin Assistant API", "timestamp": "2026-03-07T12:40:49.960341Z"}
+{"event": "Initializing Redis cache", "timestamp": "2026-03-07T12:40:49.960404Z"}
+✅ Redis cache initialized successfully
+{"event": "Redis cache initialized", "timestamp": "2026-03-07T12:40:49.963668Z"}
+{"event": "Checking database availability", "timestamp": "2026-03-07T12:40:49.963722Z"}
+⚠️  Database initialization failed: [Errno 61] Connection refused
+   Continuing without database - some features may be limited
+{"mode": "limited", "event": "Database initialization skipped", "timestamp": "2026-03-07T12:40:50.050720Z"}
+{"event": "Starting provider monitoring", "timestamp": "2026-03-07T12:40:50.050810Z"}
+Provider monitor started
+{"event": "Provider monitoring started", "timestamp": "2026-03-07T12:40:50.050876Z"}
+{"event": "Starting AI provider health monitoring", "timestamp": "2026-03-07T12:40:50.050916Z"}
+{"event": "AI provider health monitoring started", "timestamp": "2026-03-07T12:40:50.099994Z"}
+{"event": "Initializing secrets adapter", "timestamp": "2026-03-07T12:40:50.100083Z"}
+Failed to initialize secrets adapter: Either VAULT_TOKEN or (VAULT_ROLE_ID and VAULT_SECRET_ID) must be provided
+{"error": "Either VAULT_TOKEN or (VAULT_ROLE_ID and VAULT_SECRET_ID) must be provided", "impact": "continuing without secrets management", "event": "Failed to initialize secrets adapter", "timestamp": "2026-03-07T12:40:50.102535Z"}
+{"event": "Checking privacy and security features", "timestamp": "2026-03-07T12:40:50.102870Z"}
+{"event": "PII sanitization available", "timestamp": "2026-03-07T12:40:50.102921Z"}
+{"event": "Telemetry with redaction available", "timestamp": "2026-03-07T12:40:50.102952Z"}
+{"event": "Safe vector store available", "timestamp": "2026-03-07T12:40:50.102982Z"}
+{"event": "Starting artifact cleanup service", "timestamp": "2026-03-07T12:40:50.103004Z"}
+{"interval_hours": 24, "event": "Artifact cleanup service started", "timestamp": "2026-03-07T12:40:50.103043Z"}
+{"event": "Artifact cleanup service started", "timestamp": "2026-03-07T12:40:50.103069Z"}
+{"status": "ready", "event": "Backend startup complete", "timestamp": "2026-03-07T12:40:50.103099Z"}
+{"artifacts_removed": 0, "detail": "no expired artifacts found", "event": "Artifact cleanup completed", "timestamp": "2026-03-07T12:40:50.471289Z"}
+INFO:     Application startup complete.
+Health check failed: vertex_ai - HTTP 404
+WARNING:  WatchFiles detected changes in 'api/services/provider_health.py', 'api/providers/vertex_ai.py'. Reloading...
+INFO:     Shutting down
+INFO:     Waiting for application shutdown.
+{"event": "Shutting down Goblin Assistant API", "timestamp": "2026-03-07T12:41:20.019651Z"}
+{"event": "Stopping AI provider health monitoring", "timestamp": "2026-03-07T12:41:20.019724Z"}
+{"event": "AI provider health monitoring stopped", "timestamp": "2026-03-07T12:41:20.019982Z"}
+{"event": "Stopping provider monitoring", "timestamp": "2026-03-07T12:41:20.020029Z"}
+Provider monitor stopped
+{"event": "Provider monitoring stopped", "timestamp": "2026-03-07T12:41:20.020121Z"}
+{"event": "Closing Redis cache", "timestamp": "2026-03-07T12:41:20.020152Z"}
+✅ Redis cache closed successfully
+{"event": "Redis cache closed", "timestamp": "2026-03-07T12:41:20.020609Z"}
+{"event": "Cleaning up secrets adapter", "timestamp": "2026-03-07T12:41:20.020657Z"}
+{"event": "Secrets adapter cleaned up", "timestamp": "2026-03-07T12:41:20.020700Z"}
+{"event": "Stopping artifact cleanup service", "timestamp": "2026-03-07T12:41:20.020724Z"}
+{"event": "Artifact cleanup service stopped", "timestamp": "2026-03-07T12:41:20.020961Z"}
+{"event": "Artifact cleanup service stopped", "timestamp": "2026-03-07T12:41:20.021011Z"}
+{"event": "Backend shutdown complete", "timestamp": "2026-03-07T12:41:20.021040Z"}
+INFO:     Application shutdown complete.
+INFO:     Finished server process [47133]
+sentence-transformers not available (The sentence_transformers python package is not installed. Please install it with `pip install sentence_transformers`), using default embeddings
+No security configuration warnings detected.
+❌ Failed to initialize S3 client: Could not connect to the endpoint URL: "http://minio:9000/goblin-sandbox"
+{"provider": "sentry", "error_monitoring": "enabled", "event": "Sentry SDK initialized", "timestamp": "2026-03-07T12:41:34.673581Z"}
+{"requests_per_minute": 100, "requests_per_hour": 1000, "event": "Rate limiting middleware enabled", "timestamp": "2026-03-07T12:41:34.722069Z"}
+INFO:     Started server process [47689]
+INFO:     Waiting for application startup.
+{"event": "Starting Goblin Assistant API", "timestamp": "2026-03-07T12:41:34.928103Z"}
+{"event": "Initializing Redis cache", "timestamp": "2026-03-07T12:41:34.928152Z"}
+✅ Redis cache initialized successfully
+{"event": "Redis cache initialized", "timestamp": "2026-03-07T12:41:34.930077Z"}
+{"event": "Checking database availability", "timestamp": "2026-03-07T12:41:34.930122Z"}
+⚠️  Database initialization failed: [Errno 61] Connection refused
+   Continuing without database - some features may be limited
+{"mode": "limited", "event": "Database initialization skipped", "timestamp": "2026-03-07T12:41:35.105178Z"}
+{"event": "Starting provider monitoring", "timestamp": "2026-03-07T12:41:35.105256Z"}
+Provider monitor started
+{"event": "Provider monitoring started", "timestamp": "2026-03-07T12:41:35.105356Z"}
+{"event": "Starting AI provider health monitoring", "timestamp": "2026-03-07T12:41:35.105418Z"}
+{"event": "AI provider health monitoring started", "timestamp": "2026-03-07T12:41:35.149591Z"}
+{"event": "Initializing secrets adapter", "timestamp": "2026-03-07T12:41:35.149658Z"}
+Failed to initialize secrets adapter: Either VAULT_TOKEN or (VAULT_ROLE_ID and VAULT_SECRET_ID) must be provided
+{"error": "Either VAULT_TOKEN or (VAULT_ROLE_ID and VAULT_SECRET_ID) must be provided", "impact": "continuing without secrets management", "event": "Failed to initialize secrets adapter", "timestamp": "2026-03-07T12:41:35.151739Z"}
+{"event": "Checking privacy and security features", "timestamp": "2026-03-07T12:41:35.151788Z"}
+{"event": "PII sanitization available", "timestamp": "2026-03-07T12:41:35.152078Z"}
+{"event": "Telemetry with redaction available", "timestamp": "2026-03-07T12:41:35.152121Z"}
+{"event": "Safe vector store available", "timestamp": "2026-03-07T12:41:35.152154Z"}
+{"event": "Starting artifact cleanup service", "timestamp": "2026-03-07T12:41:35.152178Z"}
+{"interval_hours": 24, "event": "Artifact cleanup service started", "timestamp": "2026-03-07T12:41:35.152213Z"}
+{"event": "Artifact cleanup service started", "timestamp": "2026-03-07T12:41:35.152239Z"}
+{"status": "ready", "event": "Backend startup complete", "timestamp": "2026-03-07T12:41:35.152262Z"}
+{"artifacts_removed": 0, "detail": "no expired artifacts found", "event": "Artifact cleanup completed", "timestamp": "2026-03-07T12:41:35.486603Z"}
+INFO:     Application startup complete.
+Health check failed: vertex_ai - HTTP 404
+Health check failed: vertex_ai - HTTP 404
+Health check failed: vertex_ai - HTTP 404
+Health check timeout: aliyun
+Health check failed: vertex_ai - HTTP 404
+Health check failed: vertex_ai - HTTP 404
+Health check timeout: aliyun
+Health check failed: vertex_ai - HTTP 404
+Health check failed: vertex_ai - HTTP 404
+Health check failed: vertex_ai - HTTP 404
+Health check timeout: aliyun
+Health check failed: vertex_ai - HTTP 404
+Health check failed: vertex_ai - HTTP 404
+Health check failed: vertex_ai - HTTP 404
+WARNING:  WatchFiles detected changes in '_get_dashscope_key.py'. Reloading...
+INFO:     Shutting down
+INFO:     Waiting for application shutdown.
+{"event": "Shutting down Goblin Assistant API", "timestamp": "2026-03-07T12:47:38.772995Z"}
+{"event": "Stopping AI provider health monitoring", "timestamp": "2026-03-07T12:47:38.773383Z"}
+{"event": "AI provider health monitoring stopped", "timestamp": "2026-03-07T12:47:38.779286Z"}
+{"event": "Stopping provider monitoring", "timestamp": "2026-03-07T12:47:38.779447Z"}
+Provider monitor stopped
+{"event": "Provider monitoring stopped", "timestamp": "2026-03-07T12:47:38.780894Z"}
+{"event": "Closing Redis cache", "timestamp": "2026-03-07T12:47:38.781003Z"}
+✅ Redis cache closed successfully
+{"event": "Redis cache closed", "timestamp": "2026-03-07T12:47:38.783706Z"}
+{"event": "Cleaning up secrets adapter", "timestamp": "2026-03-07T12:47:38.783783Z"}
+{"event": "Secrets adapter cleaned up", "timestamp": "2026-03-07T12:47:38.783881Z"}
+{"event": "Stopping artifact cleanup service", "timestamp": "2026-03-07T12:47:38.784020Z"}
+{"event": "Artifact cleanup service stopped", "timestamp": "2026-03-07T12:47:38.788080Z"}
+{"event": "Artifact cleanup service stopped", "timestamp": "2026-03-07T12:47:38.788176Z"}
+{"event": "Backend shutdown complete", "timestamp": "2026-03-07T12:47:38.788217Z"}
+INFO:     Application shutdown complete.
+INFO:     Finished server process [47689]
+sentence-transformers not available (The sentence_transformers python package is not installed. Please install it with `pip install sentence_transformers`), using default embeddings
+No security configuration warnings detected.
+❌ Failed to initialize S3 client: Could not connect to the endpoint URL: "http://minio:9000/goblin-sandbox"
+{"provider": "sentry", "error_monitoring": "enabled", "event": "Sentry SDK initialized", "timestamp": "2026-03-07T12:47:57.188954Z"}
+{"requests_per_minute": 100, "requests_per_hour": 1000, "event": "Rate limiting middleware enabled", "timestamp": "2026-03-07T12:47:57.240283Z"}
+INFO:     Started server process [57234]
+INFO:     Waiting for application startup.
+{"event": "Starting Goblin Assistant API", "timestamp": "2026-03-07T12:47:57.625214Z"}
+{"event": "Initializing Redis cache", "timestamp": "2026-03-07T12:47:57.625264Z"}
+✅ Redis cache initialized successfully
+{"event": "Redis cache initialized", "timestamp": "2026-03-07T12:47:57.628287Z"}
+{"event": "Checking database availability", "timestamp": "2026-03-07T12:47:57.628347Z"}
+⚠️  Database initialization failed: [Errno 61] Connection refused
+   Continuing without database - some features may be limited
+{"mode": "limited", "event": "Database initialization skipped", "timestamp": "2026-03-07T12:47:57.729993Z"}
+{"event": "Starting provider monitoring", "timestamp": "2026-03-07T12:47:57.730076Z"}
+Provider monitor started
+{"event": "Provider monitoring started", "timestamp": "2026-03-07T12:47:57.730138Z"}
+{"event": "Starting AI provider health monitoring", "timestamp": "2026-03-07T12:47:57.730174Z"}
+{"event": "AI provider health monitoring started", "timestamp": "2026-03-07T12:47:57.774797Z"}
+{"event": "Initializing secrets adapter", "timestamp": "2026-03-07T12:47:57.774860Z"}
+Failed to initialize secrets adapter: Either VAULT_TOKEN or (VAULT_ROLE_ID and VAULT_SECRET_ID) must be provided
+{"error": "Either VAULT_TOKEN or (VAULT_ROLE_ID and VAULT_SECRET_ID) must be provided", "impact": "continuing without secrets management", "event": "Failed to initialize secrets adapter", "timestamp": "2026-03-07T12:47:57.777189Z"}
+{"event": "Checking privacy and security features", "timestamp": "2026-03-07T12:47:57.777249Z"}
+{"event": "PII sanitization available", "timestamp": "2026-03-07T12:47:57.777288Z"}
+{"event": "Telemetry with redaction available", "timestamp": "2026-03-07T12:47:57.777590Z"}
+{"event": "Safe vector store available", "timestamp": "2026-03-07T12:47:57.777640Z"}
+{"event": "Starting artifact cleanup service", "timestamp": "2026-03-07T12:47:57.777668Z"}
+{"interval_hours": 24, "event": "Artifact cleanup service started", "timestamp": "2026-03-07T12:47:57.777710Z"}
+{"event": "Artifact cleanup service started", "timestamp": "2026-03-07T12:47:57.777737Z"}
+{"status": "ready", "event": "Backend startup complete", "timestamp": "2026-03-07T12:47:57.777760Z"}
+{"artifacts_removed": 0, "detail": "no expired artifacts found", "event": "Artifact cleanup completed", "timestamp": "2026-03-07T12:47:58.120080Z"}
+INFO:     Application startup complete.
+Health check failed: vertex_ai - HTTP 404
+Health check failed: vertex_ai - HTTP 404
+WARNING:  WatchFiles detected changes in '_get_dashscope_key.py'. Reloading...
+INFO:     Shutting down
+INFO:     Waiting for application shutdown.
+{"event": "Shutting down Goblin Assistant API", "timestamp": "2026-03-07T12:48:36.984579Z"}
+{"event": "Stopping AI provider health monitoring", "timestamp": "2026-03-07T12:48:36.984640Z"}
+{"event": "AI provider health monitoring stopped", "timestamp": "2026-03-07T12:48:36.984869Z"}
+{"event": "Stopping provider monitoring", "timestamp": "2026-03-07T12:48:36.984915Z"}
+Provider monitor stopped
+{"event": "Provider monitoring stopped", "timestamp": "2026-03-07T12:48:36.985108Z"}
+{"event": "Closing Redis cache", "timestamp": "2026-03-07T12:48:36.985155Z"}
+✅ Redis cache closed successfully
+{"event": "Redis cache closed", "timestamp": "2026-03-07T12:48:36.985547Z"}
+{"event": "Cleaning up secrets adapter", "timestamp": "2026-03-07T12:48:36.985647Z"}
+{"event": "Secrets adapter cleaned up", "timestamp": "2026-03-07T12:48:36.985706Z"}
+{"event": "Stopping artifact cleanup service", "timestamp": "2026-03-07T12:48:36.986387Z"}
+{"event": "Artifact cleanup service stopped", "timestamp": "2026-03-07T12:48:36.987349Z"}
+{"event": "Artifact cleanup service stopped", "timestamp": "2026-03-07T12:48:36.987427Z"}
+{"event": "Backend shutdown complete", "timestamp": "2026-03-07T12:48:36.987461Z"}
+INFO:     Application shutdown complete.
+INFO:     Finished server process [57234]
+sentence-transformers not available (The sentence_transformers python package is not installed. Please install it with `pip install sentence_transformers`), using default embeddings
+No security configuration warnings detected.
+❌ Failed to initialize S3 client: Could not connect to the endpoint URL: "http://minio:9000/goblin-sandbox"
+{"provider": "sentry", "error_monitoring": "enabled", "event": "Sentry SDK initialized", "timestamp": "2026-03-07T12:48:52.135955Z"}
+{"requests_per_minute": 100, "requests_per_hour": 1000, "event": "Rate limiting middleware enabled", "timestamp": "2026-03-07T12:48:52.185394Z"}
+INFO:     Started server process [58217]
+INFO:     Waiting for application startup.
+{"event": "Starting Goblin Assistant API", "timestamp": "2026-03-07T12:48:52.380493Z"}
+{"event": "Initializing Redis cache", "timestamp": "2026-03-07T12:48:52.380541Z"}
+✅ Redis cache initialized successfully
+{"event": "Redis cache initialized", "timestamp": "2026-03-07T12:48:52.382680Z"}
+{"event": "Checking database availability", "timestamp": "2026-03-07T12:48:52.382726Z"}
+⚠️  Database initialization failed: [Errno 61] Connection refused
+   Continuing without database - some features may be limited
+{"mode": "limited", "event": "Database initialization skipped", "timestamp": "2026-03-07T12:48:52.479908Z"}
+{"event": "Starting provider monitoring", "timestamp": "2026-03-07T12:48:52.480000Z"}
+Provider monitor started
+{"event": "Provider monitoring started", "timestamp": "2026-03-07T12:48:52.480064Z"}
+{"event": "Starting AI provider health monitoring", "timestamp": "2026-03-07T12:48:52.480100Z"}
+{"event": "AI provider health monitoring started", "timestamp": "2026-03-07T12:48:52.525243Z"}
+{"event": "Initializing secrets adapter", "timestamp": "2026-03-07T12:48:52.525301Z"}
+Failed to initialize secrets adapter: Either VAULT_TOKEN or (VAULT_ROLE_ID and VAULT_SECRET_ID) must be provided
+{"error": "Either VAULT_TOKEN or (VAULT_ROLE_ID and VAULT_SECRET_ID) must be provided", "impact": "continuing without secrets management", "event": "Failed to initialize secrets adapter", "timestamp": "2026-03-07T12:48:52.527416Z"}
+{"event": "Checking privacy and security features", "timestamp": "2026-03-07T12:48:52.527463Z"}
+{"event": "PII sanitization available", "timestamp": "2026-03-07T12:48:52.527763Z"}
+{"event": "Telemetry with redaction available", "timestamp": "2026-03-07T12:48:52.527805Z"}
+{"event": "Safe vector store available", "timestamp": "2026-03-07T12:48:52.527837Z"}
+{"event": "Starting artifact cleanup service", "timestamp": "2026-03-07T12:48:52.527860Z"}
+{"interval_hours": 24, "event": "Artifact cleanup service started", "timestamp": "2026-03-07T12:48:52.527896Z"}
+{"event": "Artifact cleanup service started", "timestamp": "2026-03-07T12:48:52.527921Z"}
+{"status": "ready", "event": "Backend startup complete", "timestamp": "2026-03-07T12:48:52.527942Z"}
+{"artifacts_removed": 0, "detail": "no expired artifacts found", "event": "Artifact cleanup completed", "timestamp": "2026-03-07T12:48:52.867146Z"}
+INFO:     Application startup complete.
+Health check failed: vertex_ai - HTTP 404
+Health check failed: vertex_ai - HTTP 404
+WARNING:  WatchFiles detected changes in '_get_dashscope_key.py'. Reloading...
+INFO:     Shutting down
+INFO:     Waiting for application shutdown.
+{"event": "Shutting down Goblin Assistant API", "timestamp": "2026-03-07T12:49:25.095175Z"}
+{"event": "Stopping AI provider health monitoring", "timestamp": "2026-03-07T12:49:25.095495Z"}
+{"event": "AI provider health monitoring stopped", "timestamp": "2026-03-07T12:49:25.096679Z"}
+{"event": "Stopping provider monitoring", "timestamp": "2026-03-07T12:49:25.096761Z"}
+Provider monitor stopped
+{"event": "Provider monitoring stopped", "timestamp": "2026-03-07T12:49:25.097637Z"}
+{"event": "Closing Redis cache", "timestamp": "2026-03-07T12:49:25.097714Z"}
+✅ Redis cache closed successfully
+{"event": "Redis cache closed", "timestamp": "2026-03-07T12:49:25.098329Z"}
+{"event": "Cleaning up secrets adapter", "timestamp": "2026-03-07T12:49:25.098392Z"}
+{"event": "Secrets adapter cleaned up", "timestamp": "2026-03-07T12:49:25.098425Z"}
+{"event": "Stopping artifact cleanup service", "timestamp": "2026-03-07T12:49:25.098450Z"}
+{"event": "Artifact cleanup service stopped", "timestamp": "2026-03-07T12:49:25.098789Z"}
+{"event": "Artifact cleanup service stopped", "timestamp": "2026-03-07T12:49:25.098845Z"}
+{"event": "Backend shutdown complete", "timestamp": "2026-03-07T12:49:25.098879Z"}
+INFO:     Application shutdown complete.
+INFO:     Finished server process [58217]
+sentence-transformers not available (The sentence_transformers python package is not installed. Please install it with `pip install sentence_transformers`), using default embeddings
+No security configuration warnings detected.
+❌ Failed to initialize S3 client: Could not connect to the endpoint URL: "http://minio:9000/goblin-sandbox"
+{"provider": "sentry", "error_monitoring": "enabled", "event": "Sentry SDK initialized", "timestamp": "2026-03-07T12:49:39.115998Z"}
+{"requests_per_minute": 100, "requests_per_hour": 1000, "event": "Rate limiting middleware enabled", "timestamp": "2026-03-07T12:49:39.161737Z"}
+INFO:     Started server process [59261]
+INFO:     Waiting for application startup.
+{"event": "Starting Goblin Assistant API", "timestamp": "2026-03-07T12:49:39.412262Z"}
+{"event": "Initializing Redis cache", "timestamp": "2026-03-07T12:49:39.412311Z"}
+✅ Redis cache initialized successfully
+{"event": "Redis cache initialized", "timestamp": "2026-03-07T12:49:39.415397Z"}
+{"event": "Checking database availability", "timestamp": "2026-03-07T12:49:39.415448Z"}
+⚠️  Database initialization failed: [Errno 61] Connection refused
+   Continuing without database - some features may be limited
+{"mode": "limited", "event": "Database initialization skipped", "timestamp": "2026-03-07T12:49:39.520538Z"}
+{"event": "Starting provider monitoring", "timestamp": "2026-03-07T12:49:39.520643Z"}
+Provider monitor started
+{"event": "Provider monitoring started", "timestamp": "2026-03-07T12:49:39.520723Z"}
+{"event": "Starting AI provider health monitoring", "timestamp": "2026-03-07T12:49:39.520775Z"}
+{"event": "AI provider health monitoring started", "timestamp": "2026-03-07T12:49:39.564573Z"}
+{"event": "Initializing secrets adapter", "timestamp": "2026-03-07T12:49:39.564641Z"}
+Failed to initialize secrets adapter: Either VAULT_TOKEN or (VAULT_ROLE_ID and VAULT_SECRET_ID) must be provided
+{"error": "Either VAULT_TOKEN or (VAULT_ROLE_ID and VAULT_SECRET_ID) must be provided", "impact": "continuing without secrets management", "event": "Failed to initialize secrets adapter", "timestamp": "2026-03-07T12:49:39.566760Z"}
+{"event": "Checking privacy and security features", "timestamp": "2026-03-07T12:49:39.566806Z"}
+{"event": "PII sanitization available", "timestamp": "2026-03-07T12:49:39.567082Z"}
+{"event": "Telemetry with redaction available", "timestamp": "2026-03-07T12:49:39.567126Z"}
+{"event": "Safe vector store available", "timestamp": "2026-03-07T12:49:39.567160Z"}
+{"event": "Starting artifact cleanup service", "timestamp": "2026-03-07T12:49:39.567184Z"}
+{"interval_hours": 24, "event": "Artifact cleanup service started", "timestamp": "2026-03-07T12:49:39.567221Z"}
+{"event": "Artifact cleanup service started", "timestamp": "2026-03-07T12:49:39.567248Z"}
+{"status": "ready", "event": "Backend startup complete", "timestamp": "2026-03-07T12:49:39.567270Z"}
+{"artifacts_removed": 0, "detail": "no expired artifacts found", "event": "Artifact cleanup completed", "timestamp": "2026-03-07T12:49:39.943275Z"}
+INFO:     Application startup complete.
+Health check failed: vertex_ai - HTTP 404
+Health check timeout: aliyun
+Health check failed: vertex_ai - HTTP 404
+WARNING:  WatchFiles detected changes in '_get_dashscope_key.py'. Reloading...
+INFO:     Shutting down
+INFO:     Waiting for application shutdown.
+{"event": "Shutting down Goblin Assistant API", "timestamp": "2026-03-07T12:50:37.335463Z"}
+{"event": "Stopping AI provider health monitoring", "timestamp": "2026-03-07T12:50:37.335527Z"}
+{"event": "AI provider health monitoring stopped", "timestamp": "2026-03-07T12:50:37.335676Z"}
+{"event": "Stopping provider monitoring", "timestamp": "2026-03-07T12:50:37.335711Z"}
+Provider monitor stopped
+{"event": "Provider monitoring stopped", "timestamp": "2026-03-07T12:50:37.335797Z"}
+{"event": "Closing Redis cache", "timestamp": "2026-03-07T12:50:37.335827Z"}
+✅ Redis cache closed successfully
+{"event": "Redis cache closed", "timestamp": "2026-03-07T12:50:37.336118Z"}
+{"event": "Cleaning up secrets adapter", "timestamp": "2026-03-07T12:50:37.336167Z"}
+{"event": "Secrets adapter cleaned up", "timestamp": "2026-03-07T12:50:37.336199Z"}
+{"event": "Stopping artifact cleanup service", "timestamp": "2026-03-07T12:50:37.336224Z"}
+{"event": "Artifact cleanup service stopped", "timestamp": "2026-03-07T12:50:37.336376Z"}
+{"event": "Artifact cleanup service stopped", "timestamp": "2026-03-07T12:50:37.336411Z"}
+{"event": "Backend shutdown complete", "timestamp": "2026-03-07T12:50:37.336435Z"}
+INFO:     Application shutdown complete.
+INFO:     Finished server process [59261]
+sentence-transformers not available (The sentence_transformers python package is not installed. Please install it with `pip install sentence_transformers`), using default embeddings
+No security configuration warnings detected.
+❌ Failed to initialize S3 client: Could not connect to the endpoint URL: "http://minio:9000/goblin-sandbox"
+{"provider": "sentry", "error_monitoring": "enabled", "event": "Sentry SDK initialized", "timestamp": "2026-03-07T12:50:46.760687Z"}
+{"requests_per_minute": 100, "requests_per_hour": 1000, "event": "Rate limiting middleware enabled", "timestamp": "2026-03-07T12:50:46.806854Z"}
+INFO:     Started server process [60344]
+INFO:     Waiting for application startup.
+{"event": "Starting Goblin Assistant API", "timestamp": "2026-03-07T12:50:47.009460Z"}
+{"event": "Initializing Redis cache", "timestamp": "2026-03-07T12:50:47.009508Z"}
+✅ Redis cache initialized successfully
+{"event": "Redis cache initialized", "timestamp": "2026-03-07T12:50:47.012164Z"}
+{"event": "Checking database availability", "timestamp": "2026-03-07T12:50:47.012213Z"}
+⚠️  Database initialization failed: password authentication failed for user "postgres"
+   Continuing without database - some features may be limited
+{"mode": "limited", "event": "Database initialization skipped", "timestamp": "2026-03-07T12:50:47.679416Z"}
+{"event": "Starting provider monitoring", "timestamp": "2026-03-07T12:50:47.679511Z"}
+Provider monitor started
+{"event": "Provider monitoring started", "timestamp": "2026-03-07T12:50:47.679586Z"}
+{"event": "Starting AI provider health monitoring", "timestamp": "2026-03-07T12:50:47.679634Z"}
+{"event": "AI provider health monitoring started", "timestamp": "2026-03-07T12:50:47.724183Z"}
+{"event": "Initializing secrets adapter", "timestamp": "2026-03-07T12:50:47.724254Z"}
+Failed to initialize secrets adapter: Either VAULT_TOKEN or (VAULT_ROLE_ID and VAULT_SECRET_ID) must be provided
+{"error": "Either VAULT_TOKEN or (VAULT_ROLE_ID and VAULT_SECRET_ID) must be provided", "impact": "continuing without secrets management", "event": "Failed to initialize secrets adapter", "timestamp": "2026-03-07T12:50:47.726544Z"}
+{"event": "Checking privacy and security features", "timestamp": "2026-03-07T12:50:47.726603Z"}
+{"event": "PII sanitization available", "timestamp": "2026-03-07T12:50:47.726642Z"}
+{"event": "Telemetry with redaction available", "timestamp": "2026-03-07T12:50:47.726677Z"}
+{"event": "Safe vector store available", "timestamp": "2026-03-07T12:50:47.726710Z"}
+{"event": "Starting artifact cleanup service", "timestamp": "2026-03-07T12:50:47.726739Z"}
+{"interval_hours": 24, "event": "Artifact cleanup service started", "timestamp": "2026-03-07T12:50:47.726778Z"}
+{"event": "Artifact cleanup service started", "timestamp": "2026-03-07T12:50:47.726805Z"}
+{"status": "ready", "event": "Backend startup complete", "timestamp": "2026-03-07T12:50:47.726832Z"}
+{"artifacts_removed": 0, "detail": "no expired artifacts found", "event": "Artifact cleanup completed", "timestamp": "2026-03-07T12:50:48.089591Z"}
+INFO:     Application startup complete.
+Health check failed: vertex_ai - HTTP 404
+Health check timeout: aliyun
+Health check failed: vertex_ai - HTTP 404
+Health check failed: vertex_ai - HTTP 404
+Health check failed: vertex_ai - HTTP 404
+Health check failed: vertex_ai - HTTP 404
+Health check failed: vertex_ai - HTTP 404
+Health check failed: vertex_ai - HTTP 404
+WARNING:  WatchFiles detected changes in '_intl_key.py'. Reloading...
+INFO:     Shutting down
+INFO:     Waiting for application shutdown.
+{"event": "Shutting down Goblin Assistant API", "timestamp": "2026-03-07T12:54:40.164330Z"}
+{"event": "Stopping AI provider health monitoring", "timestamp": "2026-03-07T12:54:40.164663Z"}
+{"event": "AI provider health monitoring stopped", "timestamp": "2026-03-07T12:54:40.170013Z"}
+{"event": "Stopping provider monitoring", "timestamp": "2026-03-07T12:54:40.170108Z"}
+Provider monitor stopped
+{"event": "Provider monitoring stopped", "timestamp": "2026-03-07T12:54:40.170942Z"}
+{"event": "Closing Redis cache", "timestamp": "2026-03-07T12:54:40.171020Z"}
+✅ Redis cache closed successfully
+{"event": "Redis cache closed", "timestamp": "2026-03-07T12:54:40.178865Z"}
+{"event": "Cleaning up secrets adapter", "timestamp": "2026-03-07T12:54:40.180323Z"}
+{"event": "Secrets adapter cleaned up", "timestamp": "2026-03-07T12:54:40.180560Z"}
+{"event": "Stopping artifact cleanup service", "timestamp": "2026-03-07T12:54:40.180665Z"}
+{"event": "Artifact cleanup service stopped", "timestamp": "2026-03-07T12:54:40.183826Z"}
+{"event": "Artifact cleanup service stopped", "timestamp": "2026-03-07T12:54:40.184476Z"}
+{"event": "Backend shutdown complete", "timestamp": "2026-03-07T12:54:40.184529Z"}
+INFO:     Application shutdown complete.
+INFO:     Finished server process [60344]
+WARNING:  WatchFiles detected changes in '_intl_key.py'. Reloading...
+sentence-transformers not available (The sentence_transformers python package is not installed. Please install it with `pip install sentence_transformers`), using default embeddings
+No security configuration warnings detected.
+❌ Failed to initialize S3 client: Could not connect to the endpoint URL: "http://minio:9000/goblin-sandbox"
+{"provider": "sentry", "error_monitoring": "enabled", "event": "Sentry SDK initialized", "timestamp": "2026-03-07T12:54:58.742571Z"}
+{"requests_per_minute": 100, "requests_per_hour": 1000, "event": "Rate limiting middleware enabled", "timestamp": "2026-03-07T12:54:58.782611Z"}
+INFO:     Started server process [62245]
+INFO:     Waiting for application startup.
+{"event": "Starting Goblin Assistant API", "timestamp": "2026-03-07T12:54:58.984133Z"}
+{"event": "Initializing Redis cache", "timestamp": "2026-03-07T12:54:58.984184Z"}
+✅ Redis cache initialized successfully
+{"event": "Redis cache initialized", "timestamp": "2026-03-07T12:54:58.986308Z"}
+{"event": "Checking database availability", "timestamp": "2026-03-07T12:54:58.986358Z"}
+⚠️  Database initialization failed: password authentication failed for user "postgres"
+   Continuing without database - some features may be limited
+{"mode": "limited", "event": "Database initialization skipped", "timestamp": "2026-03-07T12:54:59.657211Z"}
+{"event": "Starting provider monitoring", "timestamp": "2026-03-07T12:54:59.657337Z"}
+Provider monitor started
+{"event": "Provider monitoring started", "timestamp": "2026-03-07T12:54:59.657419Z"}
+{"event": "Starting AI provider health monitoring", "timestamp": "2026-03-07T12:54:59.657470Z"}
+{"event": "AI provider health monitoring started", "timestamp": "2026-03-07T12:54:59.702356Z"}
+{"event": "Initializing secrets adapter", "timestamp": "2026-03-07T12:54:59.702416Z"}
+Failed to initialize secrets adapter: Either VAULT_TOKEN or (VAULT_ROLE_ID and VAULT_SECRET_ID) must be provided
+{"error": "Either VAULT_TOKEN or (VAULT_ROLE_ID and VAULT_SECRET_ID) must be provided", "impact": "continuing without secrets management", "event": "Failed to initialize secrets adapter", "timestamp": "2026-03-07T12:54:59.704478Z"}
+{"event": "Checking privacy and security features", "timestamp": "2026-03-07T12:54:59.704522Z"}
+{"event": "PII sanitization available", "timestamp": "2026-03-07T12:54:59.704563Z"}
+{"event": "Telemetry with redaction available", "timestamp": "2026-03-07T12:54:59.704595Z"}
+{"event": "Safe vector store available", "timestamp": "2026-03-07T12:54:59.704626Z"}
+{"event": "Starting artifact cleanup service", "timestamp": "2026-03-07T12:54:59.704651Z"}
+{"interval_hours": 24, "event": "Artifact cleanup service started", "timestamp": "2026-03-07T12:54:59.704686Z"}
+{"event": "Artifact cleanup service started", "timestamp": "2026-03-07T12:54:59.704715Z"}
+{"status": "ready", "event": "Backend startup complete", "timestamp": "2026-03-07T12:54:59.704744Z"}
+{"artifacts_removed": 0, "detail": "no expired artifacts found", "event": "Artifact cleanup completed", "timestamp": "2026-03-07T12:55:00.048544Z"}
+INFO:     Application startup complete.
+sentence-transformers not available (The sentence_transformers python package is not installed. Please install it with `pip install sentence_transformers`), using default embeddings
+No security configuration warnings detected.
+❌ Failed to initialize S3 client: Could not connect to the endpoint URL: "http://minio:9000/goblin-sandbox"
+{"provider": "sentry", "error_monitoring": "enabled", "event": "Sentry SDK initialized", "timestamp": "2026-03-07T12:55:19.208898Z"}
+{"requests_per_minute": 100, "requests_per_hour": 1000, "event": "Rate limiting middleware enabled", "timestamp": "2026-03-07T12:55:19.250286Z"}
+INFO:     Started server process [62535]
+INFO:     Waiting for application startup.
+{"event": "Starting Goblin Assistant API", "timestamp": "2026-03-07T12:55:19.444816Z"}
+{"event": "Initializing Redis cache", "timestamp": "2026-03-07T12:55:19.444865Z"}
+✅ Redis cache initialized successfully
+{"event": "Redis cache initialized", "timestamp": "2026-03-07T12:55:19.447132Z"}
+{"event": "Checking database availability", "timestamp": "2026-03-07T12:55:19.447180Z"}
+⚠️  Database initialization failed: password authentication failed for user "postgres"
+   Continuing without database - some features may be limited
+{"mode": "limited", "event": "Database initialization skipped", "timestamp": "2026-03-07T12:55:20.086601Z"}
+{"event": "Starting provider monitoring", "timestamp": "2026-03-07T12:55:20.086711Z"}
+Provider monitor started
+{"event": "Provider monitoring started", "timestamp": "2026-03-07T12:55:20.086803Z"}
+{"event": "Starting AI provider health monitoring", "timestamp": "2026-03-07T12:55:20.086854Z"}
+{"event": "AI provider health monitoring started", "timestamp": "2026-03-07T12:55:20.131615Z"}
+{"event": "Initializing secrets adapter", "timestamp": "2026-03-07T12:55:20.131674Z"}
+Failed to initialize secrets adapter: Either VAULT_TOKEN or (VAULT_ROLE_ID and VAULT_SECRET_ID) must be provided
+{"error": "Either VAULT_TOKEN or (VAULT_ROLE_ID and VAULT_SECRET_ID) must be provided", "impact": "continuing without secrets management", "event": "Failed to initialize secrets adapter", "timestamp": "2026-03-07T12:55:20.133750Z"}
+{"event": "Checking privacy and security features", "timestamp": "2026-03-07T12:55:20.133794Z"}
+{"event": "PII sanitization available", "timestamp": "2026-03-07T12:55:20.134089Z"}
+{"event": "Telemetry with redaction available", "timestamp": "2026-03-07T12:55:20.134133Z"}
+{"event": "Safe vector store available", "timestamp": "2026-03-07T12:55:20.134166Z"}
+{"event": "Starting artifact cleanup service", "timestamp": "2026-03-07T12:55:20.134190Z"}
+{"interval_hours": 24, "event": "Artifact cleanup service started", "timestamp": "2026-03-07T12:55:20.134225Z"}
+{"event": "Artifact cleanup service started", "timestamp": "2026-03-07T12:55:20.134252Z"}
+{"status": "ready", "event": "Backend startup complete", "timestamp": "2026-03-07T12:55:20.134281Z"}
+{"artifacts_removed": 0, "detail": "no expired artifacts found", "event": "Artifact cleanup completed", "timestamp": "2026-03-07T12:55:20.471624Z"}
+INFO:     Application startup complete.
+Health check failed: vertex_ai - HTTP 404
+Health check failed: vertex_ai - HTTP 404
+Health check failed: vertex_ai - HTTP 404
+Health check failed: vertex_ai - HTTP 404
+Health check failed: vertex_ai - HTTP 404
+Health check failed: vertex_ai - HTTP 404
+Health check failed: vertex_ai - HTTP 404
+Health check failed: vertex_ai - HTTP 404
+Health check failed: vertex_ai - HTTP 404
+WARNING:  WatchFiles detected changes in '_intl_key.py'. Reloading...
+INFO:     Shutting down
+INFO:     Waiting for application shutdown.
+{"event": "Shutting down Goblin Assistant API", "timestamp": "2026-03-07T12:59:43.563417Z"}
+{"event": "Stopping AI provider health monitoring", "timestamp": "2026-03-07T12:59:43.564769Z"}
+{"event": "AI provider health monitoring stopped", "timestamp": "2026-03-07T12:59:43.566246Z"}
+{"event": "Stopping provider monitoring", "timestamp": "2026-03-07T12:59:43.566314Z"}
+Provider monitor stopped
+{"event": "Provider monitoring stopped", "timestamp": "2026-03-07T12:59:43.566756Z"}
+{"event": "Closing Redis cache", "timestamp": "2026-03-07T12:59:43.566805Z"}
+✅ Redis cache closed successfully
+{"event": "Redis cache closed", "timestamp": "2026-03-07T12:59:43.569456Z"}
+{"event": "Cleaning up secrets adapter", "timestamp": "2026-03-07T12:59:43.569524Z"}
+{"event": "Secrets adapter cleaned up", "timestamp": "2026-03-07T12:59:43.569670Z"}
+{"event": "Stopping artifact cleanup service", "timestamp": "2026-03-07T12:59:43.569890Z"}
+{"event": "Artifact cleanup service stopped", "timestamp": "2026-03-07T12:59:43.570461Z"}
+{"event": "Artifact cleanup service stopped", "timestamp": "2026-03-07T12:59:43.570507Z"}
+{"event": "Backend shutdown complete", "timestamp": "2026-03-07T12:59:43.570534Z"}
+INFO:     Application shutdown complete.
+INFO:     Finished server process [62535]
+sentence-transformers not available (The sentence_transformers python package is not installed. Please install it with `pip install sentence_transformers`), using default embeddings
+No security configuration warnings detected.
+❌ Failed to initialize S3 client: Could not connect to the endpoint URL: "http://minio:9000/goblin-sandbox"
+{"provider": "sentry", "error_monitoring": "enabled", "event": "Sentry SDK initialized", "timestamp": "2026-03-07T12:59:57.942875Z"}
+{"requests_per_minute": 100, "requests_per_hour": 1000, "event": "Rate limiting middleware enabled", "timestamp": "2026-03-07T12:59:57.989740Z"}
+INFO:     Started server process [69859]
+INFO:     Waiting for application startup.
+{"event": "Starting Goblin Assistant API", "timestamp": "2026-03-07T12:59:58.208795Z"}
+{"event": "Initializing Redis cache", "timestamp": "2026-03-07T12:59:58.208844Z"}
+✅ Redis cache initialized successfully
+{"event": "Redis cache initialized", "timestamp": "2026-03-07T12:59:58.210956Z"}
+{"event": "Checking database availability", "timestamp": "2026-03-07T12:59:58.211005Z"}
+⚠️  Database initialization failed: [Errno 61] Connection refused
+   Continuing without database - some features may be limited
+{"mode": "limited", "event": "Database initialization skipped", "timestamp": "2026-03-07T12:59:58.318251Z"}
+{"event": "Starting provider monitoring", "timestamp": "2026-03-07T12:59:58.318321Z"}
+Provider monitor started
+{"event": "Provider monitoring started", "timestamp": "2026-03-07T12:59:58.318371Z"}
+{"event": "Starting AI provider health monitoring", "timestamp": "2026-03-07T12:59:58.318397Z"}
+{"event": "AI provider health monitoring started", "timestamp": "2026-03-07T12:59:58.366958Z"}
+{"event": "Initializing secrets adapter", "timestamp": "2026-03-07T12:59:58.367030Z"}
+Failed to initialize secrets adapter: Either VAULT_TOKEN or (VAULT_ROLE_ID and VAULT_SECRET_ID) must be provided
+{"error": "Either VAULT_TOKEN or (VAULT_ROLE_ID and VAULT_SECRET_ID) must be provided", "impact": "continuing without secrets management", "event": "Failed to initialize secrets adapter", "timestamp": "2026-03-07T12:59:58.369841Z"}
+{"event": "Checking privacy and security features", "timestamp": "2026-03-07T12:59:58.369912Z"}
+{"event": "PII sanitization available", "timestamp": "2026-03-07T12:59:58.369955Z"}
+{"event": "Telemetry with redaction available", "timestamp": "2026-03-07T12:59:58.369982Z"}
+{"event": "Safe vector store available", "timestamp": "2026-03-07T12:59:58.370011Z"}
+{"event": "Starting artifact cleanup service", "timestamp": "2026-03-07T12:59:58.370035Z"}
+{"interval_hours": 24, "event": "Artifact cleanup service started", "timestamp": "2026-03-07T12:59:58.370077Z"}
+{"event": "Artifact cleanup service started", "timestamp": "2026-03-07T12:59:58.370105Z"}
+{"status": "ready", "event": "Backend startup complete", "timestamp": "2026-03-07T12:59:58.370127Z"}
+{"artifacts_removed": 0, "detail": "no expired artifacts found", "event": "Artifact cleanup completed", "timestamp": "2026-03-07T12:59:58.742626Z"}
+INFO:     Application startup complete.
+Health check failed: vertex_ai - HTTP 404
+Health check failed: vertex_ai - HTTP 404
+Health check failed: vertex_ai - HTTP 404
+Health check failed: vertex_ai - HTTP 404
+Health check failed: vertex_ai - HTTP 404
+Health check failed: vertex_ai - HTTP 404
+Health check failed: vertex_ai - HTTP 404
+Health check failed: vertex_ai - HTTP 404
+Health check failed: vertex_ai - HTTP 404
+WARNING:  WatchFiles detected changes in 'api/providers/aliyun.py'. Reloading...
+INFO:     Shutting down
+INFO:     Waiting for application shutdown.
+{"event": "Shutting down Goblin Assistant API", "timestamp": "2026-03-07T13:04:49.502499Z"}
+{"event": "Stopping AI provider health monitoring", "timestamp": "2026-03-07T13:04:49.505403Z"}
+{"event": "AI provider health monitoring stopped", "timestamp": "2026-03-07T13:04:49.506280Z"}
+{"event": "Stopping provider monitoring", "timestamp": "2026-03-07T13:04:49.506342Z"}
+Provider monitor stopped
+{"event": "Provider monitoring stopped", "timestamp": "2026-03-07T13:04:49.506511Z"}
+{"event": "Closing Redis cache", "timestamp": "2026-03-07T13:04:49.506558Z"}
+✅ Redis cache closed successfully
+{"event": "Redis cache closed", "timestamp": "2026-03-07T13:04:49.508055Z"}
+{"event": "Cleaning up secrets adapter", "timestamp": "2026-03-07T13:04:49.508122Z"}
+{"event": "Secrets adapter cleaned up", "timestamp": "2026-03-07T13:04:49.508204Z"}
+{"event": "Stopping artifact cleanup service", "timestamp": "2026-03-07T13:04:49.508237Z"}
+{"event": "Artifact cleanup service stopped", "timestamp": "2026-03-07T13:04:49.508465Z"}
+{"event": "Artifact cleanup service stopped", "timestamp": "2026-03-07T13:04:49.508535Z"}
+{"event": "Backend shutdown complete", "timestamp": "2026-03-07T13:04:49.508561Z"}
+INFO:     Application shutdown complete.
+INFO:     Finished server process [69859]
+sentence-transformers not available (The sentence_transformers python package is not installed. Please install it with `pip install sentence_transformers`), using default embeddings
+WARNING:  WatchFiles detected changes in 'api/providers/dispatcher_fixed.py'. Reloading...
+No security configuration warnings detected.
+❌ Failed to initialize S3 client: Could not connect to the endpoint URL: "http://minio:9000/goblin-sandbox"
+{"provider": "sentry", "error_monitoring": "enabled", "event": "Sentry SDK initialized", "timestamp": "2026-03-07T13:05:09.328163Z"}
+{"requests_per_minute": 100, "requests_per_hour": 1000, "event": "Rate limiting middleware enabled", "timestamp": "2026-03-07T13:05:09.368126Z"}
+INFO:     Started server process [77827]
+INFO:     Waiting for application startup.
+{"event": "Starting Goblin Assistant API", "timestamp": "2026-03-07T13:05:09.627121Z"}
+{"event": "Initializing Redis cache", "timestamp": "2026-03-07T13:05:09.627169Z"}
+✅ Redis cache initialized successfully
+{"event": "Redis cache initialized", "timestamp": "2026-03-07T13:05:09.631083Z"}
+{"event": "Checking database availability", "timestamp": "2026-03-07T13:05:09.631183Z"}
+⚠️  Database initialization failed: [Errno 61] Connection refused
+   Continuing without database - some features may be limited
+{"mode": "limited", "event": "Database initialization skipped", "timestamp": "2026-03-07T13:05:09.733892Z"}
+{"event": "Starting provider monitoring", "timestamp": "2026-03-07T13:05:09.734216Z"}
+Provider monitor started
+{"event": "Provider monitoring started", "timestamp": "2026-03-07T13:05:09.734309Z"}
+{"event": "Starting AI provider health monitoring", "timestamp": "2026-03-07T13:05:09.734347Z"}
+{"event": "AI provider health monitoring started", "timestamp": "2026-03-07T13:05:09.792358Z"}
+{"event": "Initializing secrets adapter", "timestamp": "2026-03-07T13:05:09.792448Z"}
+Failed to initialize secrets adapter: Either VAULT_TOKEN or (VAULT_ROLE_ID and VAULT_SECRET_ID) must be provided
+{"error": "Either VAULT_TOKEN or (VAULT_ROLE_ID and VAULT_SECRET_ID) must be provided", "impact": "continuing without secrets management", "event": "Failed to initialize secrets adapter", "timestamp": "2026-03-07T13:05:09.795897Z"}
+{"event": "Checking privacy and security features", "timestamp": "2026-03-07T13:05:09.796599Z"}
+{"event": "PII sanitization available", "timestamp": "2026-03-07T13:05:09.796667Z"}
+{"event": "Telemetry with redaction available", "timestamp": "2026-03-07T13:05:09.796733Z"}
+{"event": "Safe vector store available", "timestamp": "2026-03-07T13:05:09.796778Z"}
+{"event": "Starting artifact cleanup service", "timestamp": "2026-03-07T13:05:09.796807Z"}
+{"interval_hours": 24, "event": "Artifact cleanup service started", "timestamp": "2026-03-07T13:05:09.796895Z"}
+{"event": "Artifact cleanup service started", "timestamp": "2026-03-07T13:05:09.796935Z"}
+{"status": "ready", "event": "Backend startup complete", "timestamp": "2026-03-07T13:05:09.796966Z"}
+{"artifacts_removed": 0, "detail": "no expired artifacts found", "event": "Artifact cleanup completed", "timestamp": "2026-03-07T13:05:10.182704Z"}
+INFO:     Application startup complete.
+sentence-transformers not available (The sentence_transformers python package is not installed. Please install it with `pip install sentence_transformers`), using default embeddings
+WARNING:  WatchFiles detected changes in 'api/services/provider_health.py'. Reloading...
+No security configuration warnings detected.
+❌ Failed to initialize S3 client: Could not connect to the endpoint URL: "http://minio:9000/goblin-sandbox"
+{"provider": "sentry", "error_monitoring": "enabled", "event": "Sentry SDK initialized", "timestamp": "2026-03-07T13:05:29.694341Z"}
+{"requests_per_minute": 100, "requests_per_hour": 1000, "event": "Rate limiting middleware enabled", "timestamp": "2026-03-07T13:05:29.706835Z"}
+INFO:     Started server process [77919]
+INFO:     Waiting for application startup.
+{"event": "Starting Goblin Assistant API", "timestamp": "2026-03-07T13:05:30.015466Z"}
+{"event": "Initializing Redis cache", "timestamp": "2026-03-07T13:05:30.015515Z"}
+✅ Redis cache initialized successfully
+{"event": "Redis cache initialized", "timestamp": "2026-03-07T13:05:30.018492Z"}
+{"event": "Checking database availability", "timestamp": "2026-03-07T13:05:30.018556Z"}
+⚠️  Database initialization failed: [Errno 61] Connection refused
+   Continuing without database - some features may be limited
+{"mode": "limited", "event": "Database initialization skipped", "timestamp": "2026-03-07T13:05:30.115215Z"}
+{"event": "Starting provider monitoring", "timestamp": "2026-03-07T13:05:30.115327Z"}
+Provider monitor started
+{"event": "Provider monitoring started", "timestamp": "2026-03-07T13:05:30.115420Z"}
+{"event": "Starting AI provider health monitoring", "timestamp": "2026-03-07T13:05:30.115470Z"}
+{"event": "AI provider health monitoring started", "timestamp": "2026-03-07T13:05:30.160770Z"}
+{"event": "Initializing secrets adapter", "timestamp": "2026-03-07T13:05:30.160841Z"}
+Failed to initialize secrets adapter: Either VAULT_TOKEN or (VAULT_ROLE_ID and VAULT_SECRET_ID) must be provided
+{"error": "Either VAULT_TOKEN or (VAULT_ROLE_ID and VAULT_SECRET_ID) must be provided", "impact": "continuing without secrets management", "event": "Failed to initialize secrets adapter", "timestamp": "2026-03-07T13:05:30.163130Z"}
+{"event": "Checking privacy and security features", "timestamp": "2026-03-07T13:05:30.163191Z"}
+{"event": "PII sanitization available", "timestamp": "2026-03-07T13:05:30.163233Z"}
+{"event": "Telemetry with redaction available", "timestamp": "2026-03-07T13:05:30.163265Z"}
+{"event": "Safe vector store available", "timestamp": "2026-03-07T13:05:30.163295Z"}
+{"event": "Starting artifact cleanup service", "timestamp": "2026-03-07T13:05:30.163319Z"}
+{"interval_hours": 24, "event": "Artifact cleanup service started", "timestamp": "2026-03-07T13:05:30.163358Z"}
+{"event": "Artifact cleanup service started", "timestamp": "2026-03-07T13:05:30.163387Z"}
+{"status": "ready", "event": "Backend startup complete", "timestamp": "2026-03-07T13:05:30.163410Z"}
+{"artifacts_removed": 0, "detail": "no expired artifacts found", "event": "Artifact cleanup completed", "timestamp": "2026-03-07T13:05:30.536011Z"}
+INFO:     Application startup complete.
+sentence-transformers not available (The sentence_transformers python package is not installed. Please install it with `pip install sentence_transformers`), using default embeddings
+No security configuration warnings detected.
+❌ Failed to initialize S3 client: Could not connect to the endpoint URL: "http://minio:9000/goblin-sandbox"
+{"provider": "sentry", "error_monitoring": "enabled", "event": "Sentry SDK initialized", "timestamp": "2026-03-07T13:05:40.963200Z"}
+{"requests_per_minute": 100, "requests_per_hour": 1000, "event": "Rate limiting middleware enabled", "timestamp": "2026-03-07T13:05:40.973573Z"}
+INFO:     Started server process [78010]
+INFO:     Waiting for application startup.
+{"event": "Starting Goblin Assistant API", "timestamp": "2026-03-07T13:05:41.169482Z"}
+{"event": "Initializing Redis cache", "timestamp": "2026-03-07T13:05:41.169531Z"}
+✅ Redis cache initialized successfully
+{"event": "Redis cache initialized", "timestamp": "2026-03-07T13:05:41.173177Z"}
+{"event": "Checking database availability", "timestamp": "2026-03-07T13:05:41.173230Z"}
+⚠️  Database initialization failed: [Errno 61] Connection refused
+   Continuing without database - some features may be limited
+{"mode": "limited", "event": "Database initialization skipped", "timestamp": "2026-03-07T13:05:41.262065Z"}
+{"event": "Starting provider monitoring", "timestamp": "2026-03-07T13:05:41.262174Z"}
+Provider monitor started
+{"event": "Provider monitoring started", "timestamp": "2026-03-07T13:05:41.262255Z"}
+{"event": "Starting AI provider health monitoring", "timestamp": "2026-03-07T13:05:41.262308Z"}
+{"event": "AI provider health monitoring started", "timestamp": "2026-03-07T13:05:41.303232Z"}
+{"event": "Initializing secrets adapter", "timestamp": "2026-03-07T13:05:41.303292Z"}
+Failed to initialize secrets adapter: Either VAULT_TOKEN or (VAULT_ROLE_ID and VAULT_SECRET_ID) must be provided
+{"error": "Either VAULT_TOKEN or (VAULT_ROLE_ID and VAULT_SECRET_ID) must be provided", "impact": "continuing without secrets management", "event": "Failed to initialize secrets adapter", "timestamp": "2026-03-07T13:05:41.305347Z"}
+{"event": "Checking privacy and security features", "timestamp": "2026-03-07T13:05:41.305392Z"}
+{"event": "PII sanitization available", "timestamp": "2026-03-07T13:05:41.305690Z"}
+{"event": "Telemetry with redaction available", "timestamp": "2026-03-07T13:05:41.305734Z"}
+{"event": "Safe vector store available", "timestamp": "2026-03-07T13:05:41.305767Z"}
+{"event": "Starting artifact cleanup service", "timestamp": "2026-03-07T13:05:41.305791Z"}
+{"interval_hours": 24, "event": "Artifact cleanup service started", "timestamp": "2026-03-07T13:05:41.305826Z"}
+{"event": "Artifact cleanup service started", "timestamp": "2026-03-07T13:05:41.305852Z"}
+{"status": "ready", "event": "Backend startup complete", "timestamp": "2026-03-07T13:05:41.305875Z"}
+{"artifacts_removed": 0, "detail": "no expired artifacts found", "event": "Artifact cleanup completed", "timestamp": "2026-03-07T13:05:41.652578Z"}
+INFO:     Application startup complete.
+Health check failed: vertex_ai - HTTP 404
+Health check failed: vertex_ai - HTTP 404
+WARNING:  WatchFiles detected changes in '_intl_key.py'. Reloading...
+INFO:     Shutting down
+INFO:     Waiting for application shutdown.
+{"event": "Shutting down Goblin Assistant API", "timestamp": "2026-03-07T13:06:36.026366Z"}
+{"event": "Stopping AI provider health monitoring", "timestamp": "2026-03-07T13:06:36.027162Z"}
+{"event": "AI provider health monitoring stopped", "timestamp": "2026-03-07T13:06:36.027450Z"}
+{"event": "Stopping provider monitoring", "timestamp": "2026-03-07T13:06:36.027487Z"}
+Provider monitor stopped
+{"event": "Provider monitoring stopped", "timestamp": "2026-03-07T13:06:36.027873Z"}
+{"event": "Closing Redis cache", "timestamp": "2026-03-07T13:06:36.027919Z"}
+✅ Redis cache closed successfully
+{"event": "Redis cache closed", "timestamp": "2026-03-07T13:06:36.031832Z"}
+{"event": "Cleaning up secrets adapter", "timestamp": "2026-03-07T13:06:36.031973Z"}
+{"event": "Secrets adapter cleaned up", "timestamp": "2026-03-07T13:06:36.032129Z"}
+{"event": "Stopping artifact cleanup service", "timestamp": "2026-03-07T13:06:36.032175Z"}
+{"event": "Artifact cleanup service stopped", "timestamp": "2026-03-07T13:06:36.032319Z"}
+{"event": "Artifact cleanup service stopped", "timestamp": "2026-03-07T13:06:36.032355Z"}
+{"event": "Backend shutdown complete", "timestamp": "2026-03-07T13:06:36.032380Z"}
+INFO:     Application shutdown complete.
+INFO:     Finished server process [78010]
+sentence-transformers not available (The sentence_transformers python package is not installed. Please install it with `pip install sentence_transformers`), using default embeddings
+No security configuration warnings detected.
+❌ Failed to initialize S3 client: Could not connect to the endpoint URL: "http://minio:9000/goblin-sandbox"
+{"provider": "sentry", "error_monitoring": "enabled", "event": "Sentry SDK initialized", "timestamp": "2026-03-07T13:06:49.862445Z"}
+{"requests_per_minute": 100, "requests_per_hour": 1000, "event": "Rate limiting middleware enabled", "timestamp": "2026-03-07T13:06:49.907065Z"}
+INFO:     Started server process [83661]
+INFO:     Waiting for application startup.
+{"event": "Starting Goblin Assistant API", "timestamp": "2026-03-07T13:06:50.109665Z"}
+{"event": "Initializing Redis cache", "timestamp": "2026-03-07T13:06:50.109714Z"}
+✅ Redis cache initialized successfully
+{"event": "Redis cache initialized", "timestamp": "2026-03-07T13:06:50.111808Z"}
+{"event": "Checking database availability", "timestamp": "2026-03-07T13:06:50.111854Z"}
+⚠️  Database initialization failed: [Errno 61] Connection refused
+   Continuing without database - some features may be limited
+{"mode": "limited", "event": "Database initialization skipped", "timestamp": "2026-03-07T13:06:50.214392Z"}
+{"event": "Starting provider monitoring", "timestamp": "2026-03-07T13:06:50.214508Z"}
+Provider monitor started
+{"event": "Provider monitoring started", "timestamp": "2026-03-07T13:06:50.214592Z"}
+{"event": "Starting AI provider health monitoring", "timestamp": "2026-03-07T13:06:50.214644Z"}
+{"event": "AI provider health monitoring started", "timestamp": "2026-03-07T13:06:50.258525Z"}
+{"event": "Initializing secrets adapter", "timestamp": "2026-03-07T13:06:50.258587Z"}
+Failed to initialize secrets adapter: Either VAULT_TOKEN or (VAULT_ROLE_ID and VAULT_SECRET_ID) must be provided
+{"error": "Either VAULT_TOKEN or (VAULT_ROLE_ID and VAULT_SECRET_ID) must be provided", "impact": "continuing without secrets management", "event": "Failed to initialize secrets adapter", "timestamp": "2026-03-07T13:06:50.260770Z"}
+{"event": "Checking privacy and security features", "timestamp": "2026-03-07T13:06:50.260818Z"}
+{"event": "PII sanitization available", "timestamp": "2026-03-07T13:06:50.260861Z"}
+{"event": "Telemetry with redaction available", "timestamp": "2026-03-07T13:06:50.260890Z"}
+{"event": "Safe vector store available", "timestamp": "2026-03-07T13:06:50.260918Z"}
+{"event": "Starting artifact cleanup service", "timestamp": "2026-03-07T13:06:50.260943Z"}
+{"interval_hours": 24, "event": "Artifact cleanup service started", "timestamp": "2026-03-07T13:06:50.260979Z"}
+{"event": "Artifact cleanup service started", "timestamp": "2026-03-07T13:06:50.261007Z"}
+{"status": "ready", "event": "Backend startup complete", "timestamp": "2026-03-07T13:06:50.261030Z"}
+{"artifacts_removed": 0, "detail": "no expired artifacts found", "event": "Artifact cleanup completed", "timestamp": "2026-03-07T13:06:50.603442Z"}
+INFO:     Application startup complete.
+Health check failed: vertex_ai - HTTP 404
+WARNING:  WatchFiles detected changes in 'api/providers/aliyun.py', 'api/services/provider_health.py', 'api/providers/dispatcher_fixed.py'. Reloading...
+INFO:     Shutting down
+INFO:     Waiting for application shutdown.
+{"event": "Shutting down Goblin Assistant API", "timestamp": "2026-03-07T13:07:13.640392Z"}
+{"event": "Stopping AI provider health monitoring", "timestamp": "2026-03-07T13:07:13.640625Z"}
+{"event": "AI provider health monitoring stopped", "timestamp": "2026-03-07T13:07:13.642408Z"}
+{"event": "Stopping provider monitoring", "timestamp": "2026-03-07T13:07:13.642485Z"}
+Provider monitor stopped
+{"event": "Provider monitoring stopped", "timestamp": "2026-03-07T13:07:13.644313Z"}
+{"event": "Closing Redis cache", "timestamp": "2026-03-07T13:07:13.644395Z"}
+✅ Redis cache closed successfully
+{"event": "Redis cache closed", "timestamp": "2026-03-07T13:07:13.645050Z"}
+{"event": "Cleaning up secrets adapter", "timestamp": "2026-03-07T13:07:13.645474Z"}
+{"event": "Secrets adapter cleaned up", "timestamp": "2026-03-07T13:07:13.645511Z"}
+{"event": "Stopping artifact cleanup service", "timestamp": "2026-03-07T13:07:13.645536Z"}
+{"event": "Artifact cleanup service stopped", "timestamp": "2026-03-07T13:07:13.647768Z"}
+{"event": "Artifact cleanup service stopped", "timestamp": "2026-03-07T13:07:13.647894Z"}
+{"event": "Backend shutdown complete", "timestamp": "2026-03-07T13:07:13.647931Z"}
+INFO:     Application shutdown complete.
+INFO:     Finished server process [83661]
+sentence-transformers not available (The sentence_transformers python package is not installed. Please install it with `pip install sentence_transformers`), using default embeddings
+No security configuration warnings detected.
+❌ Failed to initialize S3 client: Could not connect to the endpoint URL: "http://minio:9000/goblin-sandbox"
+{"provider": "sentry", "error_monitoring": "enabled", "event": "Sentry SDK initialized", "timestamp": "2026-03-07T13:07:27.805224Z"}
+{"requests_per_minute": 100, "requests_per_hour": 1000, "event": "Rate limiting middleware enabled", "timestamp": "2026-03-07T13:07:27.862467Z"}
+INFO:     Started server process [86057]
+INFO:     Waiting for application startup.
+{"event": "Starting Goblin Assistant API", "timestamp": "2026-03-07T13:07:28.069639Z"}
+{"event": "Initializing Redis cache", "timestamp": "2026-03-07T13:07:28.069691Z"}
+✅ Redis cache initialized successfully
+{"event": "Redis cache initialized", "timestamp": "2026-03-07T13:07:28.071703Z"}
+{"event": "Checking database availability", "timestamp": "2026-03-07T13:07:28.071755Z"}
+⚠️  Database initialization failed: [Errno 61] Connection refused
+   Continuing without database - some features may be limited
+{"mode": "limited", "event": "Database initialization skipped", "timestamp": "2026-03-07T13:07:28.159365Z"}
+{"event": "Starting provider monitoring", "timestamp": "2026-03-07T13:07:28.159426Z"}
+Provider monitor started
+{"event": "Provider monitoring started", "timestamp": "2026-03-07T13:07:28.159473Z"}
+{"event": "Starting AI provider health monitoring", "timestamp": "2026-03-07T13:07:28.159500Z"}
+{"event": "AI provider health monitoring started", "timestamp": "2026-03-07T13:07:28.202522Z"}
+{"event": "Initializing secrets adapter", "timestamp": "2026-03-07T13:07:28.202582Z"}
+Failed to initialize secrets adapter: Either VAULT_TOKEN or (VAULT_ROLE_ID and VAULT_SECRET_ID) must be provided
+{"error": "Either VAULT_TOKEN or (VAULT_ROLE_ID and VAULT_SECRET_ID) must be provided", "impact": "continuing without secrets management", "event": "Failed to initialize secrets adapter", "timestamp": "2026-03-07T13:07:28.204694Z"}
+{"event": "Checking privacy and security features", "timestamp": "2026-03-07T13:07:28.204743Z"}
+{"event": "PII sanitization available", "timestamp": "2026-03-07T13:07:28.204782Z"}
+{"event": "Telemetry with redaction available", "timestamp": "2026-03-07T13:07:28.204810Z"}
+{"event": "Safe vector store available", "timestamp": "2026-03-07T13:07:28.204840Z"}
+{"event": "Starting artifact cleanup service", "timestamp": "2026-03-07T13:07:28.205151Z"}
+{"interval_hours": 24, "event": "Artifact cleanup service started", "timestamp": "2026-03-07T13:07:28.205213Z"}
+{"event": "Artifact cleanup service started", "timestamp": "2026-03-07T13:07:28.205246Z"}
+{"status": "ready", "event": "Backend startup complete", "timestamp": "2026-03-07T13:07:28.205271Z"}
+{"artifacts_removed": 0, "detail": "no expired artifacts found", "event": "Artifact cleanup completed", "timestamp": "2026-03-07T13:07:28.552015Z"}
+INFO:     Application startup complete.
+Health check failed: vertex_ai - HTTP 404
+Health check failed: vertex_ai - HTTP 404
+Health check failed: vertex_ai - HTTP 404
+Health check failed: vertex_ai - HTTP 404
+Health check failed: vertex_ai - HTTP 404
+Health check failed: vertex_ai - HTTP 404
