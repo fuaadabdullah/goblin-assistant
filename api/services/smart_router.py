@@ -14,6 +14,7 @@ from typing import Dict, List, Optional, Any
 from dataclasses import dataclass
 from enum import Enum
 import logging
+import os
 
 from .provider_health import health_monitor
 
@@ -118,6 +119,20 @@ DEFAULT_MODELS: Dict[str, str] = {
     "aliyun": "qwen-turbo",
 }
 
+# Environment variables required for each provider
+PROVIDER_ENV_VARS: Dict[str, str] = {
+    "groq": "GROQ_API_KEY",
+    "openai": "OPENAI_API_KEY",
+    "anthropic": "ANTHROPIC_API_KEY",
+    "deepseek": "DEEPSEEK_API_KEY",
+    "siliconeflow": "SILICONEFLOW_API_KEY",
+    "azure": "AZURE_API_KEY",
+    "google": "GOOGLE_AI_API_KEY",
+    "gemini": "GOOGLE_AI_API_KEY",
+    "vertex_ai": "GCP_ACCESS_TOKEN",
+    "aliyun": "DASHSCOPE_API_KEY",
+}
+
 # Fallback chains for different strategies
 FALLBACK_CHAINS: Dict[str, List[str]] = {
     "cost_optimized": [
@@ -132,16 +147,17 @@ FALLBACK_CHAINS: Dict[str, List[str]] = {
         "anthropic",
     ],
     "quality_first": [
-        "anthropic",
-        "openai",
         "azure",
         "groq",
         "deepseek",
+        "openai",
+        "anthropic",
         "gemini",
     ],
     "latency_optimized": [
         "groq",
         "azure",
+        "deepseek",
         "openai",
         "anthropic",
     ],
@@ -166,15 +182,15 @@ FALLBACK_CHAINS: Dict[str, List[str]] = {
         "deepseek",
         "groq",
         "azure",
-        "anthropic",
         "openai",
+        "anthropic",
     ],
     "reasoning": [
-        "anthropic",
-        "openai",
+        "groq",
         "azure",
         "deepseek",
-        "groq",
+        "openai",
+        "anthropic",
     ],
 }
 
@@ -461,6 +477,11 @@ class SmartRouter:
 
         if not self._provider_has_capabilities(provider_id, required_capabilities):
             return False, f"Skipped {provider_id}: missing capabilities"
+
+        # Check that the required API key env var is set
+        env_var = PROVIDER_ENV_VARS.get(provider_id)
+        if env_var and not os.getenv(env_var, "").strip():
+            return False, f"Skipped {provider_id}: {env_var} not configured"
 
         return True, None
 
