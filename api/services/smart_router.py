@@ -85,6 +85,9 @@ PROVIDER_COSTS: Dict[str, ProviderCost] = {
     "gemini": ProviderCost(0.35, 1.05),  # Gemini (alias)
     # Premium cloud
     "anthropic": ProviderCost(3.00, 15.00),  # Claude 3 Sonnet
+    # Additional cloud
+    "vertex_ai": ProviderCost(0.35, 1.05),  # Vertex AI Gemini
+    "aliyun": ProviderCost(0.02, 0.06),  # DashScope Qwen
 }
 
 # Provider capabilities
@@ -98,6 +101,7 @@ PROVIDER_CAPABILITIES: Dict[str, List[str]] = {
     "aliyun": ["chat", "code"],
     "google": ["chat", "code", "reasoning", "vision"],
     "gemini": ["chat", "code", "reasoning", "vision"],
+    "vertex_ai": ["chat", "code", "reasoning", "vision"],
 }
 
 # Default models per provider
@@ -108,9 +112,10 @@ DEFAULT_MODELS: Dict[str, str] = {
     "deepseek": "deepseek-chat",
     "siliconeflow": "Qwen/Qwen2.5-7B-Instruct",
     "azure": "gpt-4o-mini",
-    "aliyun": "Qwen/Qwen2.5-7B-Instruct",
     "google": "gemini-pro",
     "gemini": "gemini-2.0-flash",
+    "vertex_ai": "gemini-2.0-flash",
+    "aliyun": "qwen-turbo",
 }
 
 # Fallback chains for different strategies
@@ -118,9 +123,11 @@ FALLBACK_CHAINS: Dict[str, List[str]] = {
     "cost_optimized": [
         "groq",
         "siliconeflow",
+        "aliyun",
         "azure",
         "deepseek",
         "gemini",
+        "vertex_ai",
         "openai",
         "anthropic",
     ],
@@ -146,11 +153,13 @@ FALLBACK_CHAINS: Dict[str, List[str]] = {
     "balanced": [
         "groq",
         "siliconeflow",
+        "aliyun",
         "azure",
         "deepseek",
         "openai",
         "anthropic",
         "gemini",
+        "vertex_ai",
     ],
     # Task-specific chains
     "code_generation": [

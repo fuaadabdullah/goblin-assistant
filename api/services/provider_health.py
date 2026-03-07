@@ -96,6 +96,8 @@ class ProviderHealthMonitor:
         "deepseek": ("https://api.deepseek.com", MODELS_ENDPOINT),
         "azure": ("https://goblinos-resource.services.ai.azure.com", "/openai/models?api-version=2024-05-01-preview"),
         "google": ("https://generativelanguage.googleapis.com", "/v1beta/models"),
+        "vertex_ai": ("https://us-central1-aiplatform.googleapis.com", "/v1/projects"),
+        "aliyun": ("https://dashscope.aliyuncs.com", "/compatible-mode/v1/models"),
     }
 
     # API keys required for health checks
@@ -107,6 +109,8 @@ class ProviderHealthMonitor:
         "deepseek": "DEEPSEEK_API_KEY",
         "azure": "AZURE_API_KEY",
         "google": "GOOGLE_AI_API_KEY",
+        "vertex_ai": "GCP_ACCESS_TOKEN",
+        "aliyun": "DASHSCOPE_API_KEY",
     }
 
     def __init__(self, check_interval: int = 30):
@@ -188,6 +192,8 @@ class ProviderHealthMonitor:
             headers["anthropic-version"] = "2024-01-01"
         elif provider_id == "google":
             url = url + "?key=" + api_key
+        elif provider_id in ["vertex_ai", "aliyun"]:
+            headers["Authorization"] = f"Bearer {api_key}"
 
         return url
 

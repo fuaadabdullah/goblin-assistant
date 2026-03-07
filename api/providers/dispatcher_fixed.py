@@ -21,6 +21,8 @@ from .groq import GroqProvider
 from .gemini import GeminiProvider
 from .siliconeflow import SiliconeFlowProvider
 from .azure_openai import AzureOpenAIProvider
+from .vertex_ai import VertexAIProvider
+from .aliyun import AliyunProvider
 from .generic import GenericProvider
 from .mock_provider import MockProvider
 
@@ -132,6 +134,19 @@ class ProviderDispatcher:
                 "api_version": os.getenv("AZURE_API_VERSION", "2024-05-01-preview"),
                 "default_deployment": os.getenv("AZURE_DEPLOYMENT_ID", "gpt-4o-mini"),
             },
+            "vertex_ai": {
+                "endpoint": f"https://{os.getenv('GCP_REGION', 'us-central1')}-aiplatform.googleapis.com",
+                "api_key_env": "GCP_ACCESS_TOKEN",
+                "default_model": "gemini-2.0-flash",
+                "project_id": os.getenv("GCP_PROJECT_ID", ""),
+                "region": os.getenv("GCP_REGION", "us-central1"),
+            },
+            "aliyun": {
+                "endpoint": "https://dashscope.aliyuncs.com/compatible-mode/v1",
+                "api_key_env": "DASHSCOPE_API_KEY",
+                "invoke_path": CHAT_COMPLETIONS_PATH,
+                "default_model": "qwen-turbo",
+            },
         }
 
     def _get_provider_config(self, provider_id: str) -> Dict[str, Any]:
@@ -160,8 +175,12 @@ class ProviderDispatcher:
             return GroqProvider.from_config(config)
         if provider_id in ["gemini", "google"]:
             return GeminiProvider.from_config(config)
-        if provider_id in ["siliconeflow", "aliyun"]:
+        if provider_id == "siliconeflow":
             return SiliconeFlowProvider.from_config(config)
+        if provider_id == "aliyun":
+            return AliyunProvider(config)
+        if provider_id == "vertex_ai":
+            return VertexAIProvider(config)
         if provider_id == "azure":
             return AzureOpenAIProvider(config)
         if provider_id in ["deepseek", "together", "replicate", "huggingface", "cohere"]:
@@ -189,6 +208,10 @@ class ProviderDispatcher:
             return SiliconeFlowProvider.from_config(config)
         if self._endpoint_matches(endpoint, "services.ai.azure.com"):
             return AzureOpenAIProvider(config)
+        if self._endpoint_matches(endpoint, "aiplatform.googleapis.com"):
+            return VertexAIProvider(config)
+        if self._endpoint_matches(endpoint, "dashscope.aliyuncs.com"):
+            return AliyunProvider(config)
 
         return None
 
@@ -293,6 +316,8 @@ class ProviderDispatcher:
             ("openai", "OPENAI_API_KEY", False),
             ("anthropic", "ANTHROPIC_API_KEY", False),
             ("gemini", "GOOGLE_AI_API_KEY", False),
+            ("vertex_ai", "GCP_ACCESS_TOKEN", False),
+            ("aliyun", "DASHSCOPE_API_KEY", False),
             # Tier 4: Local fallback
             ("ollama", None, True),  # Local Ollama
             # DISABLED: Dead Kamatera servers (unreachable since 2026-01-11)

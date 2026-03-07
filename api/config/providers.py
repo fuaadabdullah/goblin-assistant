@@ -61,6 +61,20 @@ DEFAULT_PROVIDERS = [
         "enabled": True,
     },
     {
+        "name": "vertex_ai",
+        "api_key": "GCP_ACCESS_TOKEN",
+        "base_url": "https://us-central1-aiplatform.googleapis.com",
+        "models": ["gemini-2.0-flash", "gemini-1.5-pro"],
+        "enabled": True,
+    },
+    {
+        "name": "aliyun",
+        "api_key": "DASHSCOPE_API_KEY",
+        "base_url": "https://dashscope.aliyuncs.com/compatible-mode/v1",
+        "models": ["qwen-turbo", "qwen-plus", "qwen-max"],
+        "enabled": True,
+    },
+    {
         "name": "ollama_gcp",
         "api_key": None,
         "base_url": "http://34.60.255.199:11434",
@@ -110,6 +124,18 @@ DEFAULT_MODELS = {
     },
     "llama-3.1-8b-instant": {
         "provider": "groq",
+        "max_tokens": 4000,
+        "temperature": 0.7,
+        "supports_streaming": True,
+    },
+    "gemini-2.0-flash-vertex": {
+        "provider": "vertex_ai",
+        "max_tokens": 8000,
+        "temperature": 0.7,
+        "supports_streaming": False,
+    },
+    "qwen-turbo": {
+        "provider": "aliyun",
         "max_tokens": 4000,
         "temperature": 0.7,
         "supports_streaming": True,

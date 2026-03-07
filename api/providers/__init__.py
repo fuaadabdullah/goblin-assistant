@@ -16,6 +16,8 @@ from .groq import GroqProvider
 from .gemini import GeminiProvider
 from .siliconeflow import SiliconeFlowProvider
 from .azure_openai import AzureOpenAIProvider
+from .vertex_ai import VertexAIProvider
+from .aliyun import AliyunProvider
 from .generic import GenericProvider
 from .mock_provider import MockProvider
 from .dispatcher_fixed import ProviderDispatcher, dispatcher, invoke_provider
@@ -30,6 +32,8 @@ __all__ = [
     "GeminiProvider",
     "SiliconeFlowProvider",
     "AzureOpenAIProvider",
+    "VertexAIProvider",
+    "AliyunProvider",
     "GenericProvider",
     "MockProvider",
     "ProviderDispatcher",
