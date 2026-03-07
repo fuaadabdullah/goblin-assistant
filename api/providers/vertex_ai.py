@@ -3,14 +3,19 @@ Google Cloud Vertex AI provider implementation.
 
 Vertex AI uses Google's Gemini models via the REST API:
 - URL: https://{REGION}-aiplatform.googleapis.com/v1/projects/{PROJECT}/locations/{REGION}/publishers/google/models/{MODEL}:generateContent
-- Auth: Bearer token from service account or gcloud CLI
+- Auth: Bearer token from service account key (auto-refreshed) or static token
 
-Alternatively supports the OpenAI-compatible endpoint:
-- URL: https://{REGION}-aiplatform.googleapis.com/v1beta1/projects/{PROJECT}/locations/{REGION}/endpoints/openapi/chat/completions
+Supports three auth methods (checked in order):
+1. GCP_SERVICE_ACCOUNT_KEY env var (base64-encoded JSON key) — recommended for production
+2. GCP_ACCESS_TOKEN env var (static token, 1hr expiry) — for dev/testing
+3. gcloud CLI fallback — for local development
 """
 
+import base64
+import json
 import os
 import subprocess
+import time
 from typing import AsyncGenerator, Dict, Any, Union
 from .base import BaseProvider
 
@@ -26,15 +31,23 @@ class VertexAIProvider(BaseProvider):
         self.region = os.getenv(
             "GCP_REGION", config.get("region", "us-central1")
         )
-        self.access_token = os.getenv("GCP_ACCESS_TOKEN", "")
+        self.static_token = os.getenv("GCP_ACCESS_TOKEN", "")
+        self.sa_key_b64 = os.getenv("GCP_SERVICE_ACCOUNT_KEY", "")
         self.default_model = config.get("default_model", "gemini-2.0-flash")
+        self._cached_token = ""
+        self._token_expiry = 0.0
 
     def _get_access_token(self) -> str:
-        """Get access token from env var or gcloud CLI."""
-        if self.access_token:
-            return self.access_token
+        """Get access token using the best available method."""
+        # 1. Service account key — auto-refreshing (best for production)
+        if self.sa_key_b64:
+            return self._get_token_from_service_account()
 
-        # Try to get from gcloud CLI (works on dev machines and GCE instances)
+        # 2. Static token (short-lived, dev/testing)
+        if self.static_token:
+            return self.static_token
+
+        # 3. gcloud CLI fallback (local development)
         try:
             result = subprocess.run(
                 ["gcloud", "auth", "print-access-token"],
@@ -49,6 +62,28 @@ class VertexAIProvider(BaseProvider):
             pass
 
         return ""
+
+    def _get_token_from_service_account(self) -> str:
+        """Exchange service account key for an access token via Google OAuth2."""
+        # Return cached token if still valid (with 60s buffer)
+        if self._cached_token and time.time() < self._token_expiry - 60:
+            return self._cached_token
+
+        try:
+            from google.oauth2 import service_account
+            from google.auth.transport.requests import Request
+
+            key_json = json.loads(base64.b64decode(self.sa_key_b64))
+            credentials = service_account.Credentials.from_service_account_info(
+                key_json,
+                scopes=["https://www.googleapis.com/auth/cloud-platform"],
+            )
+            credentials.refresh(Request())
+            self._cached_token = credentials.token
+            self._token_expiry = credentials.expiry.timestamp() if credentials.expiry else time.time() + 3600
+            return self._cached_token
+        except (ImportError, KeyError, ValueError, TypeError):
+            return ""
 
     def _build_url(self, model: str) -> str:
         """Build Vertex AI endpoint URL."""

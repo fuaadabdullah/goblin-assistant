@@ -109,7 +109,7 @@ class ProviderHealthMonitor:
         "deepseek": "DEEPSEEK_API_KEY",
         "azure": "AZURE_API_KEY",
         "google": "GOOGLE_AI_API_KEY",
-        "vertex_ai": "GCP_ACCESS_TOKEN",
+        "vertex_ai": "GCP_SERVICE_ACCOUNT_KEY",
         "aliyun": "DASHSCOPE_API_KEY",
     }
 
