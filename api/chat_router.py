@@ -308,8 +308,6 @@ async def delete_conversation(
         return {"success": True, "message": "Conversation deleted successfully"}
     except HTTPException:
         raise
-    except HTTPException:
-        raise
     except Exception as e:
         # Error details are now handled by ErrorHandlingMiddleware
         raise HTTPException(status_code=500, detail="Failed to delete conversation")
@@ -354,44 +352,51 @@ async def send_message(
         message_id = str(uuid.uuid4())
 
         # Process message through Write-Time Intelligence using sanitized content
-        write_time_result = await write_time_intelligence.process_message(
-            message_id=message_id,
-            content=sanitized_message,  # Use sanitized content for processing
-            role="user",
-            user_id=conversation.user_id,
-            conversation_id=conversation_id,
-            metadata=request.metadata,
-        )
-
-        # Extract classification and decision results
-        classification = write_time_result["classification"]
-        decision = write_time_result["decision"]
-        execution = write_time_result["execution"]
-
-        # Build message metadata with Write-Time Intelligence results and input validation
-        message_metadata = {
-            "classification": classification,
-            "decision": decision,
-            "write_time_execution": execution,
-            "memory_type": classification["type"],
-            "confidence": classification["confidence"],
-            "actions_taken": execution["actions_executed"],
-            "processed_at": write_time_result["processed_at"],
-            "input_validation": message_validation,  # Store validation metadata
+        # Wrapped in try-except: classification failures must not block chat
+        message_metadata: Dict[str, Any] = {
+            "input_validation": message_validation,
         }
+        try:
+            write_time_result = await write_time_intelligence.process_message(
+                message_id=message_id,
+                content=sanitized_message,
+                role="user",
+                user_id=conversation.user_id,
+                conversation_id=conversation_id,
+                metadata=request.metadata,
+            )
+
+            classification = write_time_result["classification"]
+            decision = write_time_result["decision"]
+            execution = write_time_result["execution"]
+
+            message_metadata.update({
+                "classification": classification,
+                "decision": decision,
+                "write_time_execution": execution,
+                "memory_type": classification["type"],
+                "confidence": classification["confidence"],
+                "actions_taken": execution["actions_executed"],
+                "processed_at": write_time_result["processed_at"],
+            })
+        except Exception as wti_err:
+            print(f"Write-time intelligence failed (non-fatal): {wti_err}")
+            message_metadata["write_time_error"] = str(wti_err)
 
         # Add original metadata if provided
         if request.metadata:
             message_metadata.update(request.metadata)
 
         # Add message to conversation history (store sanitized content for display safety)
-        await conversation_store.add_message_to_conversation(
+        user_msg_saved = await conversation_store.add_message_to_conversation(
             conversation_id=conversation_id,
             role="user",
             content=sanitized_message,  # Store sanitized content
             metadata=message_metadata,
             message_id=message_id,
         )
+        if not user_msg_saved:
+            raise HTTPException(status_code=404, detail="Conversation not found when saving user message")
 
         # Step 3: Prepare conversation context for provider
         # Convert stored messages to provider-expected format
@@ -470,13 +475,15 @@ async def send_message(
         if correlation_id:
             assistant_metadata["correlation_id"] = correlation_id
 
-        await conversation_store.add_message_to_conversation(
+        asst_msg_saved = await conversation_store.add_message_to_conversation(
             conversation_id=conversation_id,
             role="assistant",
             content=response_content,
             metadata=assistant_metadata,
             message_id=response_message_id,
         )
+        if not asst_msg_saved:
+            print(f"Warning: failed to persist assistant message for conversation {conversation_id}")
 
         # Step 7: Return standardized response
         return SendMessageResponse(
@@ -492,10 +499,10 @@ async def send_message(
 
     except HTTPException:
         raise
-    except HTTPException:
-        raise
     except Exception as e:
-        # Error details are now handled by ErrorHandlingMiddleware
+        print(f"Error in send_message: {e}")
+        import traceback
+        traceback.print_exc()
         raise HTTPException(status_code=500, detail="Failed to send message")
 
 

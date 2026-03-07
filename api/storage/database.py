@@ -80,9 +80,22 @@ AsyncSessionLocal = sessionmaker(
 )
 
 
-@asynccontextmanager
 async def get_db() -> AsyncGenerator[AsyncSession, None]:
-    """Provide a transactional scope around a series of operations."""
+    """Async generator for FastAPI Depends() injection."""
+    session = AsyncSessionLocal()
+    try:
+        yield session
+        await session.commit()
+    except Exception:
+        await session.rollback()
+        raise
+    finally:
+        await session.close()
+
+
+@asynccontextmanager
+async def get_db_context() -> AsyncGenerator[AsyncSession, None]:
+    """Context manager for use with 'async with' in non-endpoint code."""
     session = AsyncSessionLocal()
     try:
         yield session

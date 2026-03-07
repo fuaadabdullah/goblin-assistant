@@ -13,7 +13,7 @@ from sqlalchemy.orm import selectinload
 
 try:
     from .models import ConversationModel, MessageModel
-    from .database import get_db, init_db
+    from .database import get_db_context, init_db
 except ImportError:
     # Fallback for circular imports during initialization
     pass
@@ -200,7 +200,7 @@ class DatabaseConversationStore(ConversationStore):
 
     async def save_conversation(self, conversation: Conversation) -> None:
         """Save a conversation to database"""
-        async with get_db() as session:
+        async with get_db_context() as session:
             # Check if conversation exists
             result = await session.execute(
                 select(ConversationModel).where(
@@ -256,7 +256,7 @@ class DatabaseConversationStore(ConversationStore):
 
     async def get_conversation(self, conversation_id: str) -> Optional[Conversation]:
         """Get a conversation by ID from database"""
-        async with get_db() as session:
+        async with get_db_context() as session:
             result = await session.execute(
                 select(ConversationModel)
                 .where(ConversationModel.conversation_id == conversation_id)
@@ -291,7 +291,7 @@ class DatabaseConversationStore(ConversationStore):
 
     async def delete_conversation(self, conversation_id: str) -> bool:
         """Delete a conversation from database"""
-        async with get_db() as session:
+        async with get_db_context() as session:
             result = await session.execute(
                 delete(ConversationModel).where(
                     ConversationModel.conversation_id == conversation_id
@@ -303,7 +303,7 @@ class DatabaseConversationStore(ConversationStore):
         self, user_id: Optional[str] = None, limit: int = 50
     ) -> List[Conversation]:
         """List conversations from database"""
-        async with get_db() as session:
+        async with get_db_context() as session:
             query = select(ConversationModel).order_by(
                 desc(ConversationModel.updated_at)
             )
@@ -346,7 +346,7 @@ class DatabaseConversationStore(ConversationStore):
 
     async def update_conversation_title(self, conversation_id: str, title: str) -> bool:
         """Update conversation title in database"""
-        async with get_db() as session:
+        async with get_db_context() as session:
             result = await session.execute(
                 select(ConversationModel).where(
                     ConversationModel.conversation_id == conversation_id
