@@ -322,6 +322,7 @@ app.add_middleware(
         "/redoc",
         "/auth/register",
         "/auth/login",
+        "/auth/validate",
         "/auth/oauth/google",
         "/auth/oauth/google/callback",
         "/auth/passkey/register",
