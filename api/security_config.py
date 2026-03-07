@@ -13,7 +13,7 @@ class SecurityConfig:
     # Default to localhost for development, override in production with specific origins
     # Using wildcard (*) for headers in dev for flexibility, restrict in production
     ALLOWED_ORIGINS = (
-        os.getenv("ALLOWED_ORIGINS", "").split(",")
+        [o.strip() for o in os.getenv("ALLOWED_ORIGINS", "").split(",") if o.strip()]
         if os.getenv("ALLOWED_ORIGINS")
         else ["http://localhost:3000", "http://127.0.0.1:3000"]
     )

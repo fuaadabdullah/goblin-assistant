@@ -342,13 +342,16 @@ if environment == "production":
         if os.getenv("ALLOWED_ORIGINS")
         else []
     )
+    # Always ensure canonical frontend and backend origins are included
+    canonical_origins = [
+        "https://goblin-assistant.vercel.app",
+        "https://goblin-assistant-backend.onrender.com",
+    ]
+    for origin in canonical_origins:
+        if origin not in allowed_origins:
+            allowed_origins.append(origin)
     if not allowed_origins:
         logger.warning("No ALLOWED_ORIGINS configured for production", action="setting fallback origins", severity="security_warning")
-        # Fall back to the canonical frontend + worker domains so users aren't blocked by CORS
-        allowed_origins = [
-            "https://goblin-assistant.vercel.app",  # Primary frontend (Vercel)
-            "https://goblin-assistant-backend.onrender.com",  # Backend (Render)
-        ]
 else:
     # Development: Allow localhost
     allowed_origins = (
