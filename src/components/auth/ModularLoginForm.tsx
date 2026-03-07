@@ -40,8 +40,8 @@ export default function ModularLoginForm({
   const handleEmailPasswordSubmit = async (email: string, password: string) => {
     setEmail(email); // Store for passkey
 
-    // Verify Turnstile CAPTCHA completion (security requirement)
-    if (!turnstileToken) {
+    // Verify Turnstile CAPTCHA completion (only when Turnstile is configured)
+    if (turnstileConfig.enabled && !turnstileToken) {
       onError('Please complete the security verification');
       return;
     }
@@ -100,20 +100,22 @@ export default function ModularLoginForm({
           isLoading={isLoading}
         />
 
-        {/* Turnstile Bot Protection */}
-        <div className="mt-4">
-          <TurnstileWidget
-            siteKey={turnstileConfig.siteKey}
-            onVerify={token => setTurnstileToken(token)}
-            mode="managed"
-            theme="auto"
-            size="normal"
-            onError={error => {
-              console.error('Turnstile verification failed:', error);
-              onError('Security verification failed. Please try again.');
-            }}
-          />
-        </div>
+        {/* Turnstile Bot Protection (only when configured) */}
+        {turnstileConfig.enabled && (
+          <div className="mt-4">
+            <TurnstileWidget
+              siteKey={turnstileConfig.siteKey}
+              onVerify={token => setTurnstileToken(token)}
+              mode="managed"
+              theme="auto"
+              size="normal"
+              onError={error => {
+                console.error('Turnstile verification failed:', error);
+                onError('Security verification failed. Please try again.');
+              }}
+            />
+          </div>
+        )}
 
         <Divider text="Or continue with" />
 
