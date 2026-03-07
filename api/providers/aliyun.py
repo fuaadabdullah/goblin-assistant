@@ -2,11 +2,12 @@
 Aliyun DashScope provider implementation.
 
 DashScope provides an OpenAI-compatible API:
-- URL: https://dashscope.aliyuncs.com/compatible-mode/v1/chat/completions
+- URL: https://dashscope-intl.aliyuncs.com/compatible-mode/v1/chat/completions (international)
 - Auth: Bearer token with DASHSCOPE_API_KEY
 - Models: qwen-turbo, qwen-plus, qwen-max, qwen-long, etc.
 """
 
+import os
 from typing import AsyncGenerator, Dict, Any, Union
 from .base import BaseProvider
 
@@ -14,7 +15,7 @@ from .base import BaseProvider
 class AliyunProvider(BaseProvider):
     """Aliyun DashScope provider (OpenAI-compatible)."""
 
-    ENDPOINT = "https://dashscope.aliyuncs.com/compatible-mode/v1"
+    ENDPOINT = os.getenv("DASHSCOPE_ENDPOINT", "https://dashscope-intl.aliyuncs.com/compatible-mode/v1")
 
     MODEL_MAP = {
         "qwen-turbo": "qwen-turbo",

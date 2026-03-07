@@ -224,21 +224,34 @@ bandwidth_score = 0.9
 supports_cot = true
 cot_suppression_prompt = "Answer directly without showing your reasoning."
 
+[providers.vertex_ai]
+name = "Google Vertex AI"
+endpoint = "https://us-central1-aiplatform.googleapis.com"
+default_model = "gemini-2.0-flash"
+capabilities = ["chat", "reasoning", "code", "image"]
+models = ["gemini-2.0-flash", "gemini-2.0-flash-lite", "gemini-2.5-flash-preview-05-20"]
+api_key_env = "GCP_SERVICE_ACCOUNT_KEY"
+priority_tier = 1
+cost_score = 0.7
+default_timeout_ms = 15000
+bandwidth_score = 0.8
+supports_cot = true
+cot_suppression_prompt = "Provide direct answers without explanation."
+
 [providers.aliyun]
-name = "Aliyun (via SiliconeFlow)"
-endpoint = "https://api.siliconflow.com"
-invoke_path = "/v1/chat/completions"
-default_model = "Qwen/Qwen2.5-7B-Instruct"
+name = "Aliyun DashScope"
+endpoint = "https://dashscope-intl.aliyuncs.com/compatible-mode/v1"
+invoke_path = "/chat/completions"
+default_model = "qwen-turbo"
 capabilities = ["chat", "reasoning", "code"]
-models = ["Qwen/Qwen2.5-7B-Instruct", "Qwen/Qwen2.5-Coder-7B-Instruct"]
-api_key_env = "SILICONEFLOW_API_KEY"
+models = ["qwen-turbo", "qwen-plus", "qwen-max", "qwen-long", "qwen2.5-7b-instruct"]
+api_key_env = "DASHSCOPE_API_KEY"
 priority_tier = 2
-cost_score = 0.3
-default_timeout_ms = 10000
-bandwidth_score = 0.9
+cost_score = 0.2
+default_timeout_ms = 15000
+bandwidth_score = 0.8
 supports_cot = true
 cot_suppression_prompt = "Be direct."
-alias_of = "siliconeflow"
 
 [providers.mock]
 name = "Mock Provider"

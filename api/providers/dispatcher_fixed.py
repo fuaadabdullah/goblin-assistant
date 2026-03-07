@@ -142,7 +142,7 @@ class ProviderDispatcher:
                 "region": os.getenv("GCP_REGION", "us-central1"),
             },
             "aliyun": {
-                "endpoint": "https://dashscope.aliyuncs.com/compatible-mode/v1",
+                "endpoint": "https://dashscope-intl.aliyuncs.com/compatible-mode/v1",
                 "api_key_env": "DASHSCOPE_API_KEY",
                 "invoke_path": CHAT_COMPLETIONS_PATH,
                 "default_model": "qwen-turbo",
