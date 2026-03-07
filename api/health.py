@@ -44,8 +44,9 @@ async def check_db_health() -> Dict[str, Any]:
         async with engine.connect() as conn:
             await conn.execute(text("SELECT 1"))
         return {"status": "healthy", "connection": "available"}
-    except Exception:
-        return {"status": "unhealthy", "error": "Database connection failed"}
+    except Exception as e:
+        import traceback
+        return {"status": "unhealthy", "error": f"Database connection failed: {type(e).__name__}: {e}", "traceback": traceback.format_exc()[-500:]}
 
 
 async def check_redis_health() -> Dict[str, Any]:
