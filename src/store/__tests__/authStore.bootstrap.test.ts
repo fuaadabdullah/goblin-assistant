@@ -6,16 +6,13 @@ const setCookie = (name: string, value: string) => {
   document.cookie = `${name}=${encodeURIComponent(value)}; Path=/`;
 };
 
-const createFetchResponse = (status: number, body: unknown): Response =>
-  ({
-    ok: status >= 200 && status < 300,
-    status,
-    json: async () => body,
-  } as unknown as Response);
+jest.mock('../../lib/api', () => ({
+  apiClient: {
+    validateToken: jest.fn(),
+  },
+}));
 
 describe('authStore bootstrapFromSession', () => {
-  const originalFetch = global.fetch;
-
   beforeEach(() => {
     jest.resetModules();
     localStorage.clear();
@@ -25,7 +22,6 @@ describe('authStore bootstrapFromSession', () => {
   });
 
   afterEach(() => {
-    global.fetch = originalFetch;
     jest.restoreAllMocks();
   });
 
@@ -36,15 +32,12 @@ describe('authStore bootstrapFromSession', () => {
       JSON.stringify({ id: 'u1', email: 'u1@example.com', role: 'user' }),
     );
 
-    const fetchMock = jest
-      .fn()
-      .mockResolvedValue(
-        createFetchResponse(200, {
-          valid: true,
-          user: { id: 'u1', email: 'u1@example.com', role: 'user' },
-        }),
-      );
-    global.fetch = fetchMock as unknown as typeof fetch;
+    // eslint-disable-next-line @typescript-eslint/no-var-requires
+    const { apiClient } = require('../../lib/api') as typeof import('../../lib/api');
+    (apiClient.validateToken as jest.Mock).mockResolvedValue({
+      valid: true,
+      user: { id: 'u1', email: 'u1@example.com', role: 'user' },
+    });
 
     // eslint-disable-next-line @typescript-eslint/no-var-requires
     const { useAuthStore } = require('../authStore') as typeof import('../authStore');
@@ -54,16 +47,8 @@ describe('authStore bootstrapFromSession', () => {
     expect(state.token).toBe('cookie-token-123');
     expect(state.isAuthenticated).toBe(true);
     expect(state.isHydrated).toBe(true);
-    expect(fetchMock).toHaveBeenCalledTimes(1);
-    expect(fetchMock.mock.calls[0][0]).toBe('/api/auth/validate');
-    expect(fetchMock.mock.calls[0][1]).toEqual(
-      expect.objectContaining({
-        method: 'POST',
-        headers: expect.objectContaining({
-          Authorization: 'Bearer cookie-token-123',
-        }),
-      }),
-    );
+    expect(apiClient.validateToken).toHaveBeenCalledTimes(1);
+    expect(apiClient.validateToken).toHaveBeenCalledWith('cookie-token-123');
   });
 
   it('clears session on hard auth denial (401)', async () => {
@@ -73,10 +58,11 @@ describe('authStore bootstrapFromSession', () => {
       JSON.stringify({ id: 'u401', email: 'u401@example.com', role: 'user' }),
     );
 
-    const fetchMock = jest
-      .fn()
-      .mockResolvedValue(createFetchResponse(401, { detail: 'Invalid authentication' }));
-    global.fetch = fetchMock as unknown as typeof fetch;
+    // eslint-disable-next-line @typescript-eslint/no-var-requires
+    const { apiClient } = require('../../lib/api') as typeof import('../../lib/api');
+    const authError = new Error('Invalid authentication') as Error & { status?: number };
+    authError.status = 401;
+    (apiClient.validateToken as jest.Mock).mockRejectedValue(authError);
 
     // eslint-disable-next-line @typescript-eslint/no-var-requires
     const { useAuthStore } = require('../authStore') as typeof import('../authStore');
@@ -96,10 +82,11 @@ describe('authStore bootstrapFromSession', () => {
       JSON.stringify({ id: 'u503', email: 'u503@example.com', role: 'user' }),
     );
 
-    const fetchMock = jest
-      .fn()
-      .mockResolvedValue(createFetchResponse(503, { error: 'backend unavailable' }));
-    global.fetch = fetchMock as unknown as typeof fetch;
+    // eslint-disable-next-line @typescript-eslint/no-var-requires
+    const { apiClient } = require('../../lib/api') as typeof import('../../lib/api');
+    const transientError = new Error('backend unavailable') as Error & { status?: number };
+    transientError.status = 503;
+    (apiClient.validateToken as jest.Mock).mockRejectedValue(transientError);
 
     // eslint-disable-next-line @typescript-eslint/no-var-requires
     const { useAuthStore } = require('../authStore') as typeof import('../authStore');
@@ -118,10 +105,9 @@ describe('authStore bootstrapFromSession', () => {
       JSON.stringify({ id: 'uinvalid', email: 'uinvalid@example.com', role: 'user' }),
     );
 
-    const fetchMock = jest
-      .fn()
-      .mockResolvedValue(createFetchResponse(200, { valid: false }));
-    global.fetch = fetchMock as unknown as typeof fetch;
+    // eslint-disable-next-line @typescript-eslint/no-var-requires
+    const { apiClient } = require('../../lib/api') as typeof import('../../lib/api');
+    (apiClient.validateToken as jest.Mock).mockResolvedValue({ valid: false });
 
     // eslint-disable-next-line @typescript-eslint/no-var-requires
     const { useAuthStore } = require('../authStore') as typeof import('../authStore');

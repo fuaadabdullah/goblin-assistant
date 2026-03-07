@@ -104,11 +104,12 @@ describe('Storage Quota Handling', () => {
     // Create large dataset that will exceed quota
     const largeThreads = Array.from({ length: 100 }, (_, i) => ({
       id: `thread-${i}`,
+      source: 'legacy-local' as const,
+      threadKey: `legacy-local:thread-${i}`,
       title: `Thread ${i}`,
       snippet: 'Test snippet',
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString(),
-      messageCount: 100,
     }));
 
     // Should not throw, should handle gracefully

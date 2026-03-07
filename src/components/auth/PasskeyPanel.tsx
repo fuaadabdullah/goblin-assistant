@@ -1,13 +1,39 @@
 import React, { useState } from 'react';
-import { apiClient } from '../../api/apiClient';
-import { useAuthStore } from '../../store/authStore';
-import { PasskeyChallenge, PasskeyVerificationChallenge } from '../../types/api';
+import { useQueryClient } from '@tanstack/react-query';
+import { apiClient } from '../../lib/api';
+import { queryKeys } from '../../lib/query-keys';
+import { persistAuthSession } from '../../utils/auth-session';
+import { PasskeyChallenge, PasskeyVerificationChallenge, LoginResponse } from '../../types/api';
 
 interface PasskeyPanelProps {
   email: string;
   onSuccess: () => void;
   // eslint-disable-next-line no-unused-vars
   onError: (message: string) => void;
+}
+
+// Type for WebAuthn PublicKeyCredentialCreationOptions challenge fields
+interface WebAuthnCreationPublicKey {
+  challenge: string | Uint8Array;
+  rp: { name: string; id: string };
+  user: { id: string | Uint8Array; name: string; displayName: string };
+  pubKeyCredParams: Array<{ type: string; alg: number }>;
+  timeout?: number;
+  attestation?: string;
+  authenticatorSelection?: {
+    authenticatorAttachment?: string;
+    requireResidentKey?: boolean;
+    userVerification?: string;
+  };
+}
+
+// Type for WebAuthn PublicKeyCredentialRequestOptions challenge fields
+interface WebAuthnRequestPublicKey {
+  challenge: string | Uint8Array;
+  rpId?: string;
+  allowCredentials?: Array<{ type: string; id: string | Uint8Array }>;
+  timeout?: number;
+  userVerification?: string;
 }
 
 // Helper: base64url decode
@@ -40,21 +66,29 @@ function credentialToJSON(cred: any): any {
 function isPasskeyRegistrationChallenge(
   data: PasskeyChallenge | PasskeyVerificationChallenge
 ): data is PasskeyChallenge {
-  const publicKey: any = (data as any)?.publicKey;
-  return Boolean(publicKey?.rp && publicKey?.user && Array.isArray(publicKey?.pubKeyCredParams));
+  return Boolean(
+    data.publicKey &&
+    'rp' in data.publicKey &&
+    'user' in data.publicKey &&
+    'pubKeyCredParams' in data.publicKey &&
+    Array.isArray(data.publicKey.pubKeyCredParams)
+  );
 }
 
 function isPasskeyVerificationChallenge(
   data: PasskeyChallenge | PasskeyVerificationChallenge
 ): data is PasskeyVerificationChallenge {
-  const publicKey: any = (data as any)?.publicKey;
-  return Boolean(publicKey?.rpId || Array.isArray(publicKey?.allowCredentials));
+  return Boolean(
+    data.publicKey &&
+    ('rpId' in data.publicKey || 'allowCredentials' in data.publicKey)
+  );
 }
 
 const PasskeyPanel: React.FC<PasskeyPanelProps> = ({ email, onSuccess, onError }) => {
   const [registering, setRegistering] = useState(false);
   const [authenticating, setAuthenticating] = useState(false);
   const [status, setStatus] = useState<string | null>(null);
+  const queryClient = useQueryClient();
 
   const ensureEmail = () => {
     if (!email) {
@@ -71,18 +105,21 @@ const PasskeyPanel: React.FC<PasskeyPanelProps> = ({ email, onSuccess, onError }
     try {
       if (!('PublicKeyCredential' in window))
         throw new Error('WebAuthn not supported in this browser');
-      const challengeData = await apiClient.passkeyChallenge(email);
+      const challengeData =
+        (await apiClient.passkeyChallenge(email)) as PasskeyChallenge | PasskeyVerificationChallenge;
       if (!isPasskeyRegistrationChallenge(challengeData)) {
         throw new Error('Invalid passkey registration challenge');
       }
-      const publicKey = challengeData.publicKey as any; // Cast for WebAuthn compatibility
+      const publicKey: WebAuthnCreationPublicKey = { ...challengeData.publicKey };
 
       // Decode base64url fields
-      if (publicKey.challenge) publicKey.challenge = base64urlToUint8Array(publicKey.challenge);
+      if (publicKey.challenge) publicKey.challenge = base64urlToUint8Array(publicKey.challenge as string);
       if (publicKey.user && publicKey.user.id)
-        publicKey.user.id = base64urlToUint8Array(publicKey.user.id);
+        publicKey.user.id = base64urlToUint8Array(publicKey.user.id as string);
 
-      const credential: any = await navigator.credentials.create({ publicKey });
+      const credential: any = await navigator.credentials.create({
+        publicKey: publicKey as unknown as PublicKeyCredentialCreationOptions,
+      });
       const jsonCred = credentialToJSON(credential);
       await apiClient.passkeyRegister(email, jsonCred);
       setStatus('Passkey registered');
@@ -101,30 +138,39 @@ const PasskeyPanel: React.FC<PasskeyPanelProps> = ({ email, onSuccess, onError }
     try {
       if (!('PublicKeyCredential' in window))
         throw new Error('WebAuthn not supported in this browser');
-      const challengeData = await apiClient.passkeyChallenge(email);
+      const challengeData =
+        (await apiClient.passkeyChallenge(email)) as PasskeyChallenge | PasskeyVerificationChallenge;
       if (!isPasskeyVerificationChallenge(challengeData)) {
         throw new Error('Invalid passkey verification challenge');
       }
-      const publicKey = challengeData.publicKey as any; // Cast for WebAuthn compatibility
-      if (publicKey.challenge) publicKey.challenge = base64urlToUint8Array(publicKey.challenge);
+      const publicKey: WebAuthnRequestPublicKey = { ...challengeData.publicKey };
+      if (publicKey.challenge) publicKey.challenge = base64urlToUint8Array(publicKey.challenge as string);
       // allowCredentials id decode
       if (Array.isArray(publicKey.allowCredentials)) {
-        publicKey.allowCredentials = publicKey.allowCredentials.map((c: any) => ({
+        publicKey.allowCredentials = publicKey.allowCredentials.map((c) => ({
           ...c,
-          id: base64urlToUint8Array(c.id),
+          id: base64urlToUint8Array(c.id as string),
         }));
       }
-      const assertion: any = await navigator.credentials.get({ publicKey });
+      const assertion: any = await navigator.credentials.get({
+        publicKey: publicKey as unknown as PublicKeyCredentialRequestOptions,
+      });
       const jsonAssertion = credentialToJSON(assertion);
-      const authResponse = await apiClient.passkeyAuth(email, jsonAssertion);
-      const tokenValue = (authResponse as any).access_token || (authResponse as any).token || null;
+      const authResponse = await apiClient.passkeyAuth(email, jsonAssertion) as LoginResponse;
+      const tokenValue = authResponse.access_token || null;
       if (!tokenValue) {
         throw new Error('Authentication failed - invalid server response');
       }
-      useAuthStore.getState().setSession({
+      persistAuthSession({
         token: tokenValue,
         user: authResponse.user,
-        expiresIn: (authResponse as any).expires_in,
+        expiresIn: authResponse.expires_in,
+      });
+      queryClient.setQueryData(queryKeys.authValidate, {
+        token: tokenValue,
+        user: authResponse.user,
+        isAuthenticated: true,
+        isHydrated: true,
       });
       setStatus('Passkey authentication successful');
       onSuccess();

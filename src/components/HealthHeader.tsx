@@ -1,17 +1,22 @@
-import { useEffect, useState } from 'react';
-import { apiClient } from '../api/apiClient';
+import { useQuery } from '@tanstack/react-query';
+import { apiClient } from '../lib/api';
+import { queryKeys } from '../lib/query-keys';
+import type { HealthStatus } from '../types/api';
 
 interface HealthData {
   status: 'healthy' | 'degraded' | 'down';
   latency_ms?: number;
   last_check?: string;
-  services?: {
-    routing?: string;
-    execution?: string;
-    search?: string;
-    auth?: string;
-  };
+  services?: Record<string, string>;
 }
+
+const mapOverallStatus = (
+  overall: HealthStatus['overall'] | undefined
+): HealthData['status'] => {
+  if (overall === 'healthy') return 'healthy';
+  if (overall === 'degraded') return 'degraded';
+  return 'down';
+};
 
 interface HealthHeaderProps {
   className?: string;
@@ -19,54 +24,54 @@ interface HealthHeaderProps {
   compact?: boolean;
 }
 
+const createHealthData = async (): Promise<HealthData> => {
+  const startTime = Date.now();
+
+  try {
+    const data = await apiClient.getAllHealth();
+    const latency = Date.now() - startTime;
+
+    const services = data.services || {};
+    const serviceStatuses = Object.values(services).map(service => service?.status);
+    let status: HealthData['status'] = mapOverallStatus(data.overall);
+
+    if (serviceStatuses.some(s => s === 'unhealthy')) {
+      status = 'down';
+    } else if (serviceStatuses.some(s => s === 'degraded')) {
+      status = 'degraded';
+    }
+
+    return {
+      status,
+      latency_ms: latency,
+      last_check: new Date().toISOString(),
+      services: Object.entries(services).reduce<NonNullable<HealthData['services']>>((acc, [key, value]) => {
+        if (typeof value?.status === 'string') {
+          acc[key as keyof HealthData['services']] = value.status;
+        }
+        return acc;
+      }, {}),
+    };
+  } catch {
+    return {
+      status: 'down',
+      latency_ms: undefined,
+      last_check: new Date().toISOString(),
+    };
+  }
+};
+
 /**
  * Global health status indicator in header
  * Shows aggregated system health with latency and last heartbeat
  */
 const HealthHeader = ({ className = '', compact = false }: HealthHeaderProps) => {
-  const [health, setHealth] = useState<HealthData | null>(null);
-  const [loading, setLoading] = useState(true);
-
-  useEffect(() => {
-    const checkHealth = async () => {
-      const startTime = Date.now();
-      try {
-        const data = (await apiClient.getAllHealth()) as HealthData; // Cast to expected shape
-        const latency = Date.now() - startTime;
-
-        // Aggregate health status from services
-        const services = (data.services || {}) as Record<string, string | undefined>;
-        const serviceStatuses = Object.values(services);
-        let status: 'healthy' | 'degraded' | 'down' = 'healthy';
-
-        if (serviceStatuses.some((s: any) => s === 'down' || s === 'error')) {
-          status = 'down';
-        } else if (serviceStatuses.some((s: any) => s === 'degraded' || s === 'warning')) {
-          status = 'degraded';
-        }
-
-        setHealth({
-          status,
-          latency_ms: latency,
-          last_check: new Date().toISOString(),
-          services: data.services,
-        });
-      } catch (error) {
-        setHealth({
-          status: 'down',
-          latency_ms: undefined,
-          last_check: new Date().toISOString(),
-        });
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    checkHealth();
-    const interval = setInterval(checkHealth, 10000); // Check every 10s
-
-    return () => clearInterval(interval);
-  }, []);
+  const { data: health, isLoading: loading } = useQuery({
+    queryKey: queryKeys.health,
+    queryFn: createHealthData,
+    refetchInterval: 10_000,
+    staleTime: 5_000,
+  });
 
   if (loading) {
     return (

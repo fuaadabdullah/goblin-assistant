@@ -74,7 +74,7 @@ class Conversation:
         self.conversation_id = conversation_id or str(uuid.uuid4())
         self.user_id = user_id
         self.title = title or "New Conversation"
-        self.messages = messages or []
+        self.messages = sorted(messages or [], key=lambda item: item.timestamp)
         self.created_at = created_at or datetime.utcnow()
         self.updated_at = updated_at or datetime.utcnow()
         self.metadata = metadata or {}
@@ -82,7 +82,8 @@ class Conversation:
     def add_message(self, message: ConversationMessage) -> None:
         """Add a message to the conversation"""
         self.messages.append(message)
-        self.updated_at = datetime.utcnow()
+        self.messages.sort(key=lambda item: item.timestamp)
+        self.updated_at = max(self.updated_at, message.timestamp)
 
     def to_dict(self) -> Dict[str, Any]:
         """Convert conversation to dictionary for storage"""
@@ -275,7 +276,7 @@ class DatabaseConversationStore(ConversationStore):
                     timestamp=msg.timestamp,
                     metadata=msg.metadata_,
                 )
-                for msg in db_conversation.messages
+                for msg in sorted(db_conversation.messages, key=lambda item: item.timestamp)
             ]
 
             return Conversation(
@@ -326,7 +327,7 @@ class DatabaseConversationStore(ConversationStore):
                         timestamp=msg.timestamp,
                         metadata=msg.metadata_,
                     )
-                    for msg in db_conv.messages
+                    for msg in sorted(db_conv.messages, key=lambda item: item.timestamp)
                 ]
 
                 conversations.append(
@@ -416,14 +417,44 @@ class ConversationStoreManager:
         role: str,
         content: str,
         metadata: Optional[Dict[str, Any]] = None,
+        message_id: Optional[str] = None,
+        timestamp: Optional[datetime] = None,
     ) -> bool:
         """Add a message to an existing conversation"""
         conversation = await self.get_conversation(conversation_id)
         if not conversation:
             return False
 
-        message = ConversationMessage(role=role, content=content, metadata=metadata)
+        message = ConversationMessage(
+            role=role,
+            content=content,
+            metadata=metadata,
+            message_id=message_id,
+            timestamp=timestamp,
+        )
         conversation.add_message(message)
+        await self.save_conversation(conversation)
+        return True
+
+    async def import_messages_to_conversation(
+        self,
+        conversation_id: str,
+        messages: List[ConversationMessage],
+    ) -> bool:
+        """Append existing messages to an existing conversation without rewriting IDs."""
+        conversation = await self.get_conversation(conversation_id)
+        if not conversation:
+            return False
+
+        for message in messages:
+            conversation.messages.append(message)
+
+        conversation.messages.sort(key=lambda item: item.timestamp)
+
+        if messages:
+            latest_timestamp = max(message.timestamp for message in messages)
+            conversation.updated_at = max(conversation.updated_at, latest_timestamp)
+
         await self.save_conversation(conversation)
         return True
 

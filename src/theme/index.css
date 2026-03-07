@@ -4,38 +4,38 @@
  */
 
 :root {
-  /* Neutrals */
-  --background: #071117;
-  --foreground: #e6f2f1;
-  --bg: #071117;
-  --bg-subtle: #0a1719;
+  /* Neutrals - Warm palette preferred by premium products (Perplexity, Arc) */
+  --background: #161008;
+  --foreground: #f8f0e8;
+  --bg: #161008;
+  --bg-subtle: #1a140f;
   --bg-gradient:
-    radial-gradient(900px at 18% 12%, rgba(6, 208, 106, 0.14), transparent 55%),
-    radial-gradient(850px at 86% 8%, rgba(255, 42, 168, 0.14), transparent 55%),
-    radial-gradient(700px at 70% 90%, rgba(255, 106, 26, 0.12), transparent 55%),
+    radial-gradient(900px at 18% 12%, rgba(212, 165, 116, 0.08), transparent 55%),
+    radial-gradient(850px at 86% 8%, rgba(244, 150, 122, 0.08), transparent 55%),
+    radial-gradient(700px at 70% 90%, rgba(230, 158, 29, 0.06), transparent 55%),
     var(--bg);
-  --surface: #0b1617;
-  --surface-hover: #0f1d1f;
-  --surface-active: #15292c;
-  --text: #e6f2f1;
-  --text-inverse: #071117;
-  --muted: #9aa5a8;
+  --surface: #26211b;
+  --surface-hover: #2f2722;
+  --surface-active: #3d3631;
+  --text: #f8f0e8;
+  --text-inverse: #161008;
+  --muted: #b8a394;
 
-  /* Brand colors - base values */
-  --primary: #06d06a;
-  --primary-600: #05b55a;
-  --primary-300: #59e89a;
-  --primary-hover: #05c163;
+  /* Brand colors - Warm, premium aesthetic */
+  --primary: #d4a574;      /* Muted amber/caramel - primary actions */
+  --primary-600: #b68a5c;  /* Darker variant */
+  --primary-300: #e0b88a;  /* Lighter variant */
+  --primary-hover: #cba069;
 
-  --accent: #ff2aa8;
-  --accent-600: #e41f95;
-  --accent-300: #ff73c7;
-  --accent-hover: #ff3ab0;
+  --accent: #f4967a;       /* Warm coral - secondary actions */
+  --accent-600: #e0845c;   /* Darker variant */
+  --accent-300: #f8b398;   /* Lighter variant */
+  --accent-hover: #f0a08a;
 
-  --cta: #ff6a1a;
-  --cta-600: #e35d17;
-  --cta-300: #ff965c;
-  --cta-hover: #ff7526;
+  --cta: #e69e1d;          /* Warm orange-gold - call-to-action (bright) */
+  --cta-600: #d4891a;      /* Darker variant */
+  --cta-300: #f0b547;      /* Lighter variant */
+  --cta-hover: #e8a426;
 
   /* Compatibility aliases (used by SVG/logo utilities and older styles) */
   --color-brand-primary: var(--primary);
@@ -47,21 +47,32 @@
   --color-accent: var(--accent);
 
   /* Semantic colors */
-  --success: #06d06a;
-  --warning: #ffb020;
-  --danger: #ff4d4d;
-  --info: #6aa9ff;
+  --success: #6cc24a;      /* Green (keep for validation, slightly warmed) */
+  --warning: #e8a426;      /* Warm gold warning */
+  --danger: #e74c3c;       /* Warm red for errors */
+  --info: #8bb3e8;         /* Slightly warmed blue info */
 
-  /* Effects */
-  --glow-primary: rgba(6, 208, 106, 0.18);
-  --glow-accent: rgba(255, 42, 168, 0.18);
-  --glow-cta: rgba(255, 106, 26, 0.16);
-  --scanline: rgba(230, 242, 241, 0.04);
-  --scanline-pattern: linear-gradient(transparent 60%, rgba(230, 242, 241, 0.05) 61%);
+  /* Text hierarchy - explicit semantic roles */
+  --text-primary: #f8f0e8;
+  --text-secondary: #d0c8c0;
+  --text-muted: #b8a394;
 
-  /* Borders & dividers */
-  --border: rgba(230, 242, 241, 0.12);
-  --divider: rgba(230, 242, 241, 0.08);
+  /* Effects - updated for warm palette */
+  --glow-primary: rgba(212, 165, 116, 0.18);
+  --glow-accent: rgba(244, 150, 122, 0.18);
+  --glow-cta: rgba(230, 158, 29, 0.16);
+  --scanline: rgba(248, 240, 232, 0.03);
+  --scanline-pattern: linear-gradient(transparent 60%, rgba(248, 240, 232, 0.04) 61%);
+
+  /* Borders & dividers - warm palette compatible */
+  --border: rgba(248, 240, 232, 0.12);
+  --divider: rgba(248, 240, 232, 0.08);
+
+  /* Shadow system - 4-level elevation scale */
+  --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.08);
+  --shadow-md: 0 4px 8px rgba(0, 0, 0, 0.12);
+  --shadow-lg: 0 10px 20px rgba(0, 0, 0, 0.15);
+  --shadow-xl: 0 20px 40px rgba(0, 0, 0, 0.2);
 
   --font-size-base: 16px;
   --line-height-base: 1.55;
@@ -81,15 +92,18 @@
   --space-7: 28px;
   --space-8: 32px;
 
-  /* Radii & elevation */
-  --radius: 14px;
-  --radius-sm: 8px;
-  --radius-md: 14px;
-  --radius-lg: 20px;
-  --shadow-card: 0 12px 30px rgba(15, 23, 42, 0.08);
+  /* Border radius - design rule: 14px is max, scale down consistently */
+  --radius: 14px;          /* max: used for most components */
+  --radius-lg: 14px;       /* large: same as default */
+  --radius-md: 12px;       /* medium: radius - 2px */
+  --radius-sm: 10px;       /* small: radius - 4px */
+  --radius-xs: 8px;        /* extra small: minimal radius */
+
+  /* Legacy shadow names (keeping for backwards compat, prefer --shadow-*) */
+  --shadow-card: var(--shadow-md);
 }
 
-/* High-contrast mode - WCAG AAA compliant */
+/* High-contrast mode - WCAG AAA compliant, warm palette preserved */
 :root.goblinos-high-contrast {
   color-scheme: dark;
   --background: #000000;
@@ -104,27 +118,33 @@
   --text-inverse: #000000;
   --muted: #e5e7eb;
 
-  --primary: #00ff88;
-  --primary-600: #00d46a;
-  --primary-300: #6df0a6;
-  --primary-hover: #00f07f;
+  --primary: #ffd89b;      /* Bright warm amber for HC mode */
+  --primary-600: #f5c35f;
+  --primary-300: #ffe4bc;
+  --primary-hover: #ffd8a8;
 
-  --accent: #ff2aa8;
-  --accent-600: #e41f95;
-  --accent-300: #ff73c7;
-  --accent-hover: #ff3ab0;
+  --accent: #f98b7d;       /* Bright warm coral */
+  --accent-600: #f07560;
+  --accent-300: #fcb3a8;
+  --accent-hover: #f9a08d;
 
-  --cta: #ffb020;
+  --cta: #ffb020;          /* Keep bright orange for CTA */
   --cta-600: #e69e1d;
   --cta-300: #ffd07a;
   --cta-hover: #f0a51f;
 
-  --glow-primary: rgba(0, 255, 136, 0.28);
-  --glow-accent: rgba(255, 42, 168, 0.28);
+  --glow-primary: rgba(255, 216, 155, 0.28);
+  --glow-accent: rgba(249, 155, 125, 0.28);
   --glow-cta: rgba(255, 176, 32, 0.28);
 
   --border: rgba(255, 255, 255, 0.28);
   --divider: rgba(255, 255, 255, 0.18);
+
+  /* Shadow system HC variant */
+  --shadow-sm: 0 1px 2px rgba(255, 255, 255, 0.1);
+  --shadow-md: 0 4px 8px rgba(255, 255, 255, 0.15);
+  --shadow-lg: 0 10px 20px rgba(255, 255, 255, 0.2);
+  --shadow-xl: 0 20px 40px rgba(255, 255, 255, 0.25);
 
   /* Compatibility aliases (used by SVG/logo utilities and older styles) */
   --color-brand-primary: var(--primary);
@@ -153,12 +173,15 @@
   --space-7: 28px;
   --space-8: 32px;
 
-  /* Radii & elevation */
+  /* Border radius - consistent with default theme */
   --radius: 14px;
-  --radius-sm: 8px;
-  --radius-md: 14px;
-  --radius-lg: 20px;
-  --shadow-card: 0 1px 2px rgba(0, 0, 0, 0.6);
+  --radius-lg: 14px;
+  --radius-md: 12px;
+  --radius-sm: 10px;
+  --radius-xs: 8px;
+
+  /* Legacy shadow (HC mode gets warmer text-based shadows) */
+  --shadow-card: var(--shadow-md);
 }
 
 /* Scanline effect - CRT aesthetic */

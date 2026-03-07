@@ -9,6 +9,7 @@
  */
 
 import { devLog } from '../utils/dev-log';
+import { DEFAULT_BACKEND_ORIGIN } from './backendOrigin';
 
 interface EnvConfig {
   // API Configuration
@@ -83,9 +84,9 @@ function validateEnvConfig(config: EnvConfig): void {
 
 // Export typed configuration
 export const env: EnvConfig = {
-  apiBaseUrl: getOptionalEnv('NEXT_PUBLIC_API_BASE_URL', 'https://goblin-assistant-backend.onrender.com'),
-  backendUrl: getOptionalEnv('NEXT_PUBLIC_BACKEND_URL', 'https://goblin-assistant-backend.onrender.com'),
-  fastApiUrl: getOptionalEnv('NEXT_PUBLIC_FASTAPI_URL', 'https://goblin-assistant-backend.onrender.com'),
+  apiBaseUrl: getOptionalEnv('NEXT_PUBLIC_API_BASE_URL', DEFAULT_BACKEND_ORIGIN),
+  backendUrl: getOptionalEnv('NEXT_PUBLIC_BACKEND_URL', DEFAULT_BACKEND_ORIGIN),
+  fastApiUrl: getOptionalEnv('NEXT_PUBLIC_FASTAPI_URL', DEFAULT_BACKEND_ORIGIN),
 
   enableDebug: getOptionalEnv('NEXT_PUBLIC_ENABLE_DEBUG') === 'true',
   mockApi: getOptionalEnv('NEXT_PUBLIC_MOCK_API') === 'true',

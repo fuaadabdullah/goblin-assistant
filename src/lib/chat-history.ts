@@ -1,4 +1,5 @@
-import type { ChatMessage, ChatThread } from '../domain/chat';
+import type { ChatMessage, ChatThread, ChatThreadSource } from '../domain/chat';
+import { generateMessageId } from './id-generation';
 
 export const CHAT_THREADS_STORAGE_KEY = 'goblin_chat_threads_v1';
 export const CHAT_MESSAGES_STORAGE_PREFIX = 'goblin_chat_messages_v1';
@@ -9,6 +10,43 @@ export const sortChatThreads = (threads: ChatThread[]) =>
     (a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime(),
   );
 
+export const buildThreadKey = (source: ChatThreadSource, conversationId: string) =>
+  `${source}:${conversationId}`;
+
+const normalizeStoredThread = (value: unknown): ChatThread | null => {
+  if (!value || typeof value !== 'object') return null;
+
+  const raw = value as Partial<ChatThread> & {
+    id?: unknown;
+    title?: unknown;
+    snippet?: unknown;
+    createdAt?: unknown;
+    updatedAt?: unknown;
+    source?: unknown;
+    threadKey?: unknown;
+  };
+
+  const id = typeof raw.id === 'string' ? raw.id : '';
+  if (!id) return null;
+
+  const source: ChatThreadSource =
+    raw.source === 'backend' || raw.source === 'legacy-local' ? raw.source : 'legacy-local';
+  const nowIso = new Date().toISOString();
+
+  return {
+    id,
+    source,
+    threadKey:
+      typeof raw.threadKey === 'string' && raw.threadKey
+        ? raw.threadKey
+        : buildThreadKey(source, id),
+    title: typeof raw.title === 'string' && raw.title ? raw.title : 'Untitled chat',
+    snippet: typeof raw.snippet === 'string' ? raw.snippet : '',
+    createdAt: typeof raw.createdAt === 'string' && raw.createdAt ? raw.createdAt : nowIso,
+    updatedAt: typeof raw.updatedAt === 'string' && raw.updatedAt ? raw.updatedAt : nowIso,
+  };
+};
+
 export const readChatThreads = (): ChatThread[] => {
   if (typeof window === 'undefined') return [];
   try {
@@ -16,7 +54,12 @@ export const readChatThreads = (): ChatThread[] => {
     if (!raw) return [];
     const parsed = JSON.parse(raw);
     if (!Array.isArray(parsed)) return [];
-    return sortChatThreads(parsed.filter(Boolean) as ChatThread[]);
+    return sortChatThreads(
+      parsed
+        .map(item => normalizeStoredThread(item))
+        .filter((thread): thread is ChatThread => Boolean(thread))
+        .filter(thread => thread.source === 'legacy-local'),
+    );
   } catch (error) {
     console.warn('Failed to read chat threads from storage:', error);
     return [];
@@ -25,17 +68,19 @@ export const readChatThreads = (): ChatThread[] => {
 
 export const writeChatThreads = (threads: ChatThread[]): void => {
   if (typeof window === 'undefined') return;
+
+  const legacyThreads = threads.filter(thread => thread.source === 'legacy-local');
   try {
     window.localStorage.setItem(
       CHAT_THREADS_STORAGE_KEY,
-      JSON.stringify(threads),
+      JSON.stringify(legacyThreads),
     );
   } catch (error) {
     if (error instanceof DOMException && error.name === 'QuotaExceededError') {
       console.error('Storage quota exceeded. Attempting to clear old data...');
       // Try to recover by keeping only the most recent threads
       try {
-        const recentThreads = threads.slice(0, 10);
+        const recentThreads = legacyThreads.slice(0, 10);
         window.localStorage.setItem(
           CHAT_THREADS_STORAGE_KEY,
           JSON.stringify(recentThreads),
@@ -53,18 +98,14 @@ export const writeChatThreads = (threads: ChatThread[]): void => {
   }
 };
 
+export const removeChatThread = (threadId: string): void => {
+  if (typeof window === 'undefined') return;
+  const next = readChatThreads().filter(thread => thread.id !== threadId);
+  writeChatThreads(next);
+};
+
 const messagesKey = (conversationId: string) =>
   `${CHAT_MESSAGES_STORAGE_PREFIX}:${conversationId}`;
-
-const createLocalId = (): string => {
-  if (
-    typeof crypto !== 'undefined' &&
-    typeof crypto.randomUUID === 'function'
-  ) {
-    return crypto.randomUUID();
-  }
-  return `msg-${Date.now()}-${Math.random().toString(16).slice(2, 10)}`;
-};
 
 const normalizeStoredMessage = (
   value: unknown,
@@ -85,7 +126,7 @@ const normalizeStoredMessage = (
     id:
       typeof raw.id === 'string' && raw.id
         ? raw.id
-        : `${createLocalId()}-${fallbackIndex}`,
+        : `${generateMessageId()}-${fallbackIndex}`,
     createdAt:
       typeof raw.createdAt === 'string' && raw.createdAt
         ? raw.createdAt
@@ -147,6 +188,15 @@ export const writeChatMessages = (
     } else {
       console.warn('Failed to persist chat messages:', error);
     }
+  }
+};
+
+export const removeChatMessages = (conversationId: string): void => {
+  if (typeof window === 'undefined') return;
+  try {
+    window.localStorage.removeItem(messagesKey(conversationId));
+  } catch (error) {
+    console.warn('Failed to remove chat messages:', error);
   }
 };
 

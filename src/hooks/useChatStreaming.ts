@@ -1,5 +1,6 @@
 import { useState } from 'react';
-import { apiClient } from '../api/apiClient';
+import { apiClient } from '../lib/api';
+import { generateMessageId } from '../lib/id-generation';
 
 interface UseChatStreamingOptions {
   demoMode?: boolean;
@@ -14,16 +15,6 @@ interface UseChatStreamingOptions {
   onError?: (title: string, message?: string) => void;
 }
 
-const createMessageId = () => {
-  if (
-    typeof crypto !== 'undefined' &&
-    typeof crypto.randomUUID === 'function'
-  ) {
-    return crypto.randomUUID();
-  }
-  return `${Date.now()}-${Math.random().toString(16).slice(2)}`;
-};
-
 export const useChatStreaming = ({
   demoMode = false,
   selectedProvider,
@@ -36,7 +27,7 @@ export const useChatStreaming = ({
   const [isLoading, setIsLoading] = useState(false);
 
   const sendMessage = async (message: string) => {
-    const messageId = createMessageId();
+    const messageId = generateMessageId();
     onMessageStart?.(messageId);
     setIsLoading(true);
 

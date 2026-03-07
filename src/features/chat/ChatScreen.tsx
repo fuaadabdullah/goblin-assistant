@@ -1,11 +1,11 @@
 import type { FC } from 'react';
-import { useAuthStore } from '../../store/authStore';
+import { useAuthSession } from '../../hooks/api/useAuthSession';
 import { isAdminUser } from '../../utils/access';
 import { useChatSession } from './hooks/useChatSession';
 import ChatView from './components/ChatView';
 
 const ChatScreen: FC = () => {
-  const user = useAuthStore(state => state.user);
+  const { user } = useAuthSession();
   const session = useChatSession();
 
   return <ChatView session={session} isAdmin={isAdminUser(user)} />;

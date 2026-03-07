@@ -24,7 +24,7 @@ describe('apiClient.getRoutingInfo', () => {
     jest.restoreAllMocks();
   });
 
-  it('calls /v1/routing/info on the configured backend base URL', async () => {
+  it('calls /routing/info on the configured backend base URL', async () => {
     const fetchMock = jest
       .fn()
       .mockResolvedValue(createFetchResponse(200, { status: 'ok' }));
@@ -35,6 +35,6 @@ describe('apiClient.getRoutingInfo', () => {
     await apiClient.getRoutingInfo();
 
     expect(fetchMock).toHaveBeenCalledTimes(1);
-    expect(fetchMock.mock.calls[0][0]).toBe('https://backend.example/v1/routing/info');
+    expect(fetchMock.mock.calls[0][0]).toBe('https://backend.example/routing/info');
   });
 });

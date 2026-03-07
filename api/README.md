@@ -1,77 +1,81 @@
-# Goblin Assistant Backend API
+# Goblin Assistant FastAPI Backend
 
-## Welcome to the Goblin Assistant Backend
+This directory contains the checked-in FastAPI backend used by the `goblin-assistant` app.
 
-This directory contains the FastAPI-based backend service for the Goblin Assistant AI platform.
+## Entry Point
 
-### Quick Links
-
-- **[📖 Complete API Documentation](./docs/README.md)** - Comprehensive API reference, architecture, and guides
-- **[🚀 Setup Guide](./docs/SETUP.md)** - Installation and configuration instructions
-- **[🏗️ Architecture](./docs/ARCHITECTURE.md)** - System design and component details
-- **[🔧 Development Guide](./docs/DEVELOPMENT.md)** - Contributing and development workflow
-- **[🚨 Troubleshooting](./docs/TROUBLESHOOTING.md)** - Common issues and solutions
-
-### Quick Start
+- App module: `main.py`
+- Dev command from repo root:
 
 ```bash
-# Install dependencies
-pip install -r requirements.txt
-
-# Run development server
-uvicorn main:app --reload
-
-# Access API documentation
-open http://localhost:8000/docs
+uvicorn api.main:app --reload --port 8001
 ```
 
-### Key Features
+If you `cd api`, use:
 
-- **FastAPI-based** async API with automatic OpenAPI documentation
-- **Intelligent routing** across multiple AI providers (OpenAI, Anthropic, etc.)
-- **Real-time streaming** support for long-running tasks
-- **Comprehensive monitoring** with health checks and metrics
-- **Multi-integration** support (Datadog, Cloudflare, Supabase)
-- **Scalable architecture** with Redis caching and database support
+```bash
+uvicorn main:app --reload --port 8001
+```
 
-### API Structure
+## Required Environment
 
-The API is organized into specialized routers:
+Minimum for startup:
 
-- `/health` - System health and monitoring endpoints
-- `/chat` - Conversation management and AI chat
-- `/api` - Core task routing and orchestration
-- `/routing` - Provider selection and management
-- `/search` - Document search and vector operations
-- `/execute` - Task execution and management
-- `/stream` - Real-time streaming endpoints
-- `/api-keys` - AI provider API key management
-- `/settings` - System and provider configuration
+```bash
+JWT_SECRET_KEY=replace-me
+```
 
-For detailed API documentation, visit the [complete documentation](./docs/README.md).
+Common additional env vars:
 
-### Documentation Standards
+- `ENVIRONMENT`
+- `ALLOWED_ORIGINS`
+- `REDIS_URL`
+- `SENTRY_DSN`
+- provider keys such as `OPENAI_API_KEY`, `ANTHROPIC_API_KEY`, `OPENROUTER_API_KEY`, `TOGETHER_API_KEY`, `SILICONEFLOW_API_KEY`
 
-All documentation follows our established standards:
-- **Version**: 1.0.0 (aligned with API version)
-- **Format**: Markdown with consistent structure
-- **Coverage**: Development, deployment, and operations
-- **Quality**: Tested examples and cross-references
+## Route Groups In `api/main.py`
 
-### Entry Points
+Mounted route prefixes in the current app:
 
-- **Development**: `python start_server.py` or `uvicorn main:app --reload`
-- **Production**: Uses Procfile pointing to `main:app`
+- `/api`
+- `/auth`
+- `/routing`
+- `/execute`
+- `/parse`
+- `/raptor`
+- `/chat`
+- `/health`
+- `/ops`
+- `/search`
+- `/settings`
+- `/secrets`
+- `/sandbox`
+- `/api/privacy`
+- `/debug`
 
-### Architecture
+OpenAPI docs come from FastAPI at `/docs` and `/openapi.json`.
 
-- FastAPI-based async API
-- Provider routing via intelligent routing system
-- See `docs/ARCHITECTURE.md` for detailed system design
-- See `MIGRATION_SUMMARY.md` for DB migration status
+## Important Note About Versioning
 
----
+The checked-in backend mounts mostly unversioned routes.
 
-**Last Updated**: December 17, 2025
-**Documentation Version**: 1.0.0
-**API Version**: 1.0.0
+The frontend and some proxy handlers still expect `/v1/...` endpoints for auth, provider registry, search, sandbox, and other flows. Those `/v1` aliases are not defined in `main.py`.
+
+That means:
+
+- backend chat and health routes are the safest local surfaces
+- several frontend modules require contract alignment before they work against this local FastAPI app
+
+## What Is Implemented Here
+
+- JWT auth, Google OAuth helpers, CSRF token issuance, passkey routes
+- conversation CRUD and message send flows
+- contextual/semantic chat helpers
+- routing/orchestration endpoints
+- health, ops, observability, privacy, and secrets endpoints
+- sandbox job APIs with Redis/RQ-backed execution model
+
+## What To Read Next
+
+- `docs/README.md`: route inventory and current API notes
+- `../docs/ARCHITECTURE_OVERVIEW.md`: how the frontend talks to this backend

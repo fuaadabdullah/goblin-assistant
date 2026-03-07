@@ -1,4 +1,4 @@
-import { apiClient } from '../../../api/apiClient';
+import { apiClient } from '../../../lib/api';
 import { UiError } from '../../../lib/ui-error';
 import type { AccountPreferencesPayload, AccountProfilePayload } from '../types';
 
@@ -20,7 +20,9 @@ export const saveProfile = async (_payload: AccountProfilePayload): Promise<void
 
 export const savePreferences = async (_payload: AccountPreferencesPayload): Promise<void> => {
   try {
-    await apiClient.saveAccountPreferences(_payload);
+    await apiClient.saveAccountPreferences(
+      _payload as unknown as Parameters<typeof apiClient.saveAccountPreferences>[0]
+    );
   } catch (error) {
     throw new UiError(
       {

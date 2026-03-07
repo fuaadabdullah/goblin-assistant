@@ -3,7 +3,7 @@ import { useEffect } from 'react';
 import { useRouter } from 'next/router';
 import Navigation from '../components/Navigation';
 import Seo from '../components/Seo';
-import { useAuthStore } from '../store/authStore';
+import { useAuthSession } from '../hooks/api/useAuthSession';
 
 interface AdminLayoutProps {
   children: ReactNode;
@@ -19,7 +19,7 @@ export default function AdminLayout({
   mainLabel = 'Admin',
 }: AdminLayoutProps) {
   const router = useRouter();
-  const { isAuthenticated, isHydrated, hasRole } = useAuthStore();
+  const { isAuthenticated, isHydrated, hasRole } = useAuthSession();
   const contentClassName = fullWidth ? 'px-6' : 'max-w-7xl mx-auto p-6';
 
   // Auth guard: redirect non-admin users before rendering anything

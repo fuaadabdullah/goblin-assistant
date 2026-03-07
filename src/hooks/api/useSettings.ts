@@ -1,6 +1,6 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { apiClient } from '../../api/apiClient';
-import { queryKeys } from '../../lib/queryClient';
+import { apiClient } from '../../lib/api';
+import { queryKeys } from '../../lib/query-keys';
 
 /**
  * Hook to fetch provider settings

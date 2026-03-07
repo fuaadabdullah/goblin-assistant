@@ -1,119 +1,92 @@
 ---
-description: 'Short architecture overview and process flow for GoblinOS Assistant'
+description: "Current Goblin Assistant frontend/backend topology"
 ---
 
-# Architecture Overview — GoblinOS Assistant
+# Architecture Overview
 
-This short document provides a concise architecture diagram and a quick request/response process flow for the GoblinOS Assistant.
+Goblin Assistant is currently a two-part application:
 
-> See `CORE_IDENTITY.md` for product-level messaging, core characteristics, and a short pitch describing GoblinOS Assistant's purpose and differentiators.
+- Next.js Pages Router frontend in `src/`
+- FastAPI backend in `api/`
 
-## Mermaid Diagram
+There is also a thin proxy layer in `src/pages/api/` for a few browser-safe backend calls.
+
+## Topology
 
 ```mermaid
 graph LR
-  subgraph Frontend
-    U[User/Client] --> |HTTP / Websocket| FE(React + Vite UI)
-  end
+  U["User"] --> FE["Next.js frontend (src/pages, src/features)"]
 
-  subgraph API
-    FE --> API[FastAPI (backend/main.py)]
-    API --> GW[Gateway Service (gateway_service.py)]
-    GW --> RS[RoutingService (services/routing.py)]
-    RS -->|Local| OLLA[Ollama / LlamaCPP]
-    RS -->|Cloud| OPENAI(OpenAI) & ANTHROPIC(Anthropic) & DEEPSEEK(DeepSeek) & GROK(Grok)
-    RS --> RAG[RAG/Vector DB (services/rag_service.py)]
-    API --> DB[DB (goblin_assistant.db or Postgres) (database.py)]
-    API --> REDIS[Redis (cache, rate limiting, Celery broker)]
-    API --> SCHED[APScheduler (scheduler.py) / Celery (celery_app.py)]
-    API --> MON[Monitoring - Sentry, OpenTelemetry, Fly/Vercel metrics]
-  end
+  FE --> MW["Next middleware route guard"]
+  FE --> NAPI["Next API routes"]
+  FE --> API["FastAPI app (api/main.py)"]
 
-  subgraph Background
-    SCHED -.-> Jobs(Health probes, cleanup, provider probes)
-    Celery -.-> LongRunning(Training, batch tasks, ETL)
-  end
+  NAPI -->|"POST /api/generate"| API
+  NAPI -->|"GET /api/models"| V1A["Expected backend /v1 endpoints"]
+  NAPI -->|"POST /api/auth/validate"| V1A
 
-  MON --> |logs & telemetry| API
-  REDIS --> |broker/cache| Celery
-  DB --> |persistence| API
+  API --> CHAT["/chat routers"]
+  API --> AUTH["/auth routers"]
+  API --> ROUTING["/routing, /api, /parse, /execute"]
+  API --> OPS["/health, /ops, /debug, /api/privacy, /secrets"]
+  API --> SEARCH["/search"]
+  API --> SANDBOX["/sandbox"]
+
+  API --> DB["SQLite/Postgres"]
+  API --> REDIS["Redis"]
+  API --> PROVIDERS["External model providers"]
 ```
 
-## Request Flow (Quick)
+## Frontend Structure
 
-1. User sends a chat message from the frontend.
-2. Frontend sends the request to the FastAPI backend (`/v1/chat` or related route).
-3. Gateway service performs budget checks, token estimates, and request classification (`gateway_service.py`).
-4. RoutingService (Raptor/`services/routing.py`) selects the provider and decides if RAG should be applied.
-5. If RAG is enabled, the RAG service retrieves vector entries and merges them into prompt construction (`services/rag_service.py`).
-6. The chosen provider adapter (Ollama / OpenAI / Anthropic / Grok / DeepSeek) is invoked and returns a response (`providers/*`).
-7. The response is run through output verification, token accounting, and returned to the client.
-8. Background jobs update monitoring, metrics, and perform health probes and cleanup tasks.
+Key frontend areas:
 
-See the simplified sequence diagram in `SEQUENCE_DIAGRAM.md` for a compact view of the request routing sequence.
+- Pages: `src/pages/`
+- Feature modules: `src/features/`
+- Auth state: `src/store/authStore.ts`
+- Session persistence: `src/utils/auth-session.ts`
+- Provider selection: `src/contexts/ProviderContext.tsx`
+- Backend client code: `src/api/apiClient.ts` and `src/api/http-client.ts`
 
-## Key files & locations
+Protected routes are enforced in `middleware.ts`. The middleware uses cookie presence as a routing gate, while sensitive data still relies on JWT validation server-side.
 
-- `backend/main.py` — FastAPI app, middleware & router wiring
-- `backend/gateway_service.py` — Budgeting & request classification
-- `backend/services/routing.py` — Provider selection & routing logic
-- `backend/services/rag_service.py` — RAG integration and vector retrieval
-- `backend/providers/*` — Provider adapters (OpenAI, Anthropic, Ollama, etc.)
-- `backend/scheduler.py` — APScheduler with Redis locks (lightweight jobs)
-- `backend/celery_app.py` — Celery configuration for heavy and distributed jobs
-- `backend/debugger` — Debugging endpoints and model routing
-- `src/` — Frontend code (React + Vite + TypeScript)
+## Backend Structure
 
-## Notes
+The FastAPI app is assembled in `api/main.py` and includes routers for:
 
-- The diagram intentionally omits minor subsystems (auth, API keys, dashboard endpoints, and infra-specific overlay services) for clarity.
-- For detailed backend docs, see `backend/docs/README.md` and the per-area docs under `backend/docs/`.
+- `/auth`
+- `/chat`
+- `/routing`
+- `/api`
+- `/parse`
+- `/execute`
+- `/health`
+- `/search`
+- `/settings`
+- `/sandbox`
+- `/api/privacy`
+- `/debug`
+- `/ops`
+- `/secrets`
 
-## Runbook: Adding a Provider or Updating Routing
+Startup also initializes Redis cache, database setup, provider monitoring, secrets adapter setup, and artifact cleanup.
 
-Follow these steps when you want to add a new provider adapter (e.g., partner SDK) or update routing rules:
+## Request Paths That Match Today
 
-### 1) Implement the adapter
+These flows line up in the checked-in code:
 
-- Create a new adapter in `backend/providers/` (follow existing adapters like `openai_adapter.py` as a template).
-- Use `backend/providers/base_adapter.py` or `BaseAdapter` where possible for consistent interface.
-- Add configuration parsing in `backend/config` and update `backend/.env.example` to include required env vars.
+1. Chat thread management from the frontend to backend `/chat/conversations*`
+2. Prompt submission through Next `/api/generate` to backend `/api/chat`
+3. Backend health and OpenAPI docs directly from the FastAPI app
 
-### 2) Register the provider
+## Known Contract Mismatches
 
-- Add the provider to `backend/providers/registry.py` so `RoutingService` can discover it.
-- Add provider metadata and a safe default for `is_enabled` flags in `seed_routing.py` or `settings` as applicable.
+Several important frontend paths still assume versioned endpoints:
 
-### 3) Update routing logic & selection
+- auth calls expect `/v1/auth/*`
+- provider registry expects `/v1/providers/models`
+- search calls expect `/v1/search/*`
+- sandbox calls expect `/v1/sandbox/*`
+- account/support calls expect `/v1/account/*` and `/v1/support/message`
 
-- Modify `backend/services/routing.py` or `gateway_service.py` only if provider selection needs new signals (latency, cost, capabilities).
-- Prefer a feature-flagged rollout and keep a fallback provider for high availability.
-
-### 4) Add tests
-
-- Add unit tests for the adapter and mock provider in `backend/providers/tests/`.
-- Add integration tests in `backend/test_api_providers.py` and, if necessary, `test_routing_endpoints.py`.
-- Verify the new provider is covered by `test_local_model_integration.py` or `test_model_comparison.py` as needed.
-
-### 5) Add documentation
-
-- Update `backend/docs/ENVIRONMENT_VARIABLES.md`, `backend/docs/ENDPOINT_AUDIT.md`, and `apps/goblin-assistant/docs/ARCHITECTURE_OVERVIEW.md` to list the new provider.
-- Add provider-specific notes and any required keys to `backend/.env.example`.
-
-### 6) CI & Deployment
-
-- Ensure unit & integration tests pass in CI.
-- If adding infra requirements, update `infra/` (e.g., to add secrets/credentials in Vault) and relevant deployment docs.
-
-### 7) Monitoring & Alerts
-
-- Add provider metrics (latency, error rate) to `backend/monitoring` or Prometheus integrations.
-- Add or update provider health probes under `jobs/provider_health` and verify `scheduler.py` registers them.
-
-### Troubleshooting
-
-- Run `probe_single_provider.py` and `probe_worker.py` to diagnose connectivity and latency issues.
-- Inspect `logs/` and Sentry for stack traces and timeouts.
-- Switch to a fallback provider if errors or regressions persist during rollout.
-
----
+The checked-in FastAPI app does not mount those `/v1` aliases. That is the main architecture gap to understand before working on local integration bugs.

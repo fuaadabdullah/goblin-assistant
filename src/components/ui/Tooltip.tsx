@@ -76,7 +76,7 @@ export default function Tooltip({
           id={tooltipId.current}
           role="tooltip"
           className={`
-            absolute z-50 px-3 py-2 text-xs font-medium text-bg bg-text rounded-lg shadow-lg
+            absolute z-50 px-3 py-2 text-xs font-medium text-text bg-surface border border-border rounded-md shadow-lg
             max-w-xs whitespace-normal break-words
             transition-opacity duration-150
             pointer-events-none
@@ -88,11 +88,11 @@ export default function Tooltip({
           {/* Arrow */}
           <div
             className={`
-              absolute w-2 h-2 bg-text rotate-45
-              ${position === 'top' ? 'bottom-[-4px] left-1/2 -translate-x-1/2' : ''}
-              ${position === 'bottom' ? 'top-[-4px] left-1/2 -translate-x-1/2' : ''}
-              ${position === 'left' ? 'right-[-4px] top-1/2 -translate-y-1/2' : ''}
-              ${position === 'right' ? 'left-[-4px] top-1/2 -translate-y-1/2' : ''}
+              absolute w-2 h-2 bg-surface border border-border rotate-45
+              ${position === 'top' ? 'bottom-[-5px] left-1/2 -translate-x-1/2' : ''}
+              ${position === 'bottom' ? 'top-[-5px] left-1/2 -translate-x-1/2' : ''}
+              ${position === 'left' ? 'right-[-5px] top-1/2 -translate-y-1/2' : ''}
+              ${position === 'right' ? 'left-[-5px] top-1/2 -translate-y-1/2' : ''}
             `}
           />
         </div>

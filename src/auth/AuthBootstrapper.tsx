@@ -1,14 +1,9 @@
-import { useEffect } from 'react';
-import { useAuthStore } from '../store/authStore';
+import { useAuthSession } from '../hooks/api/useAuthSession';
 
 const AuthBootstrapper = () => {
-    const bootstrapFromSession = useAuthStore(state => state.bootstrapFromSession);
-
-    useEffect(() => {
-        bootstrapFromSession();
-    }, [bootstrapFromSession]);
-
-    return null;
+  // Trigger session bootstrap/validation through React Query.
+  useAuthSession();
+  return null;
 };
 
 export default AuthBootstrapper;

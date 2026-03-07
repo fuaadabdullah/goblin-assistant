@@ -1,4 +1,4 @@
-import { apiClient } from '../../../api/apiClient';
+import { apiClient } from '../../../lib/api';
 import { UiError } from '../../../lib/ui-error';
 import type { SearchResult } from '../types';
 
@@ -9,7 +9,7 @@ interface SearchResponse {
 
 export const fetchCollections = async (): Promise<string[]> => {
   try {
-    return await apiClient.getSearchCollections();
+    return (await apiClient.getSearchCollections()) as string[];
   } catch (error) {
     throw new UiError(
       {

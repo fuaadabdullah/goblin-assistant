@@ -11,7 +11,7 @@ jest.mock('@/api/api-client', () => ({
   },
 }));
 
-jest.mock('@/components/ui/select', () => {
+jest.mock('@/components/ui/Select', () => {
   const React = require('react');
 
   return {

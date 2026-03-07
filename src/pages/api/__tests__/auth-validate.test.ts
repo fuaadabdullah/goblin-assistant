@@ -89,7 +89,7 @@ describe('/api/auth/validate thin proxy', () => {
     jest.restoreAllMocks();
   });
 
-  it('forwards authorization and internal key to backend /v1/auth/validate', async () => {
+  it('forwards authorization and internal key to backend /auth/validate', async () => {
     process.env.GOBLIN_BACKEND_URL = 'https://backend.example';
     process.env.INTERNAL_PROXY_API_KEY = 'proxy-key';
 
@@ -112,7 +112,7 @@ describe('/api/auth/validate thin proxy', () => {
     await handler(req, res);
 
     expect(fetchMock).toHaveBeenCalledTimes(1);
-    expect(fetchMock.mock.calls[0][0]).toBe('https://backend.example/v1/auth/validate');
+    expect(fetchMock.mock.calls[0][0]).toBe('https://backend.example/auth/validate');
 
     const init = fetchMock.mock.calls[0][1] as RequestInit;
     expect(init.method).toBe('POST');

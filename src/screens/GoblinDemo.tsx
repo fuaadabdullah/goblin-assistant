@@ -1,13 +1,14 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useReducer, useEffect } from 'react';
 // CSS is imported globally in _app.tsx
 import StreamingView from '@/components/streaming/StreamingView';
 import { runtimeClient, runtimeClientDemo } from '@/api/api-client';
-import type {
-  OrchestrationPlan,
-  OrchestrationStep,
-  StreamChunk,
-  TaskResponse,
-} from '@/api/api-client';
+import type { OrchestrationStep } from '@/types/api';
+import {
+  initialOrchestrationState,
+  orchestrationReducer,
+} from '@/lib/orchestration/orchestrationState';
+import { useOrchestrationExecution } from '@/lib/orchestration/useOrchestrationExecution';
+import { debugLog } from '@/lib/utils/debug';
 
 interface Props {
   provider?: string | null | undefined;
@@ -39,31 +40,24 @@ const ORCHESTRATION_TEMPLATES = [
 ];
 
 export default function GoblinDemo({ provider, model, demoMode = false }: Props) {
-  const [codeInput, setCodeInput] = useState<string>(
-    '// Write code or paste here\nfunction add(a, b) {\n  return a + b;\n}'
-  );
-  const [orchestration, setOrchestration] = useState<string>(
-    'docs-writer: document this code THEN code-writer: write a unit test'
-  );
-  const [streamingText, setStreamingText] = useState<string>('');
-  const [running, setRunning] = useState<boolean>(false);
-  const [plan, setPlan] = useState<OrchestrationPlan | null>(null);
-  const [previewPlan, setPreviewPlan] = useState<OrchestrationPlan | null>(null);
-  const [estimatedCost, setEstimatedCost] = useState<number>(0);
-  const [stepStatuses, setStepStatuses] = useState<Record<string, string>>({});
-  const [stepCosts, setStepCosts] = useState<Record<string, number>>({});
-  const [stepTokens, setStepTokens] = useState<Record<string, number>>({});
-  const [stepChunks, setStepChunks] = useState<
-    Record<string, Array<{ chunk: string; token: number; cost: number }>>
-  >({});
-  const [selectedTemplate, setSelectedTemplate] = useState<string>('Document & Test');
-  const [expandedSteps, setExpandedSteps] = useState<Record<string, boolean>>({});
-  const [isStreaming, setIsStreaming] = useState<boolean>(false);
-  const streamingTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const [fallbackTriggered, setFallbackTriggered] = useState<boolean>(false);
+  // Consolidated state using reducer
+  const [state, dispatch] = useReducer(orchestrationReducer, {
+    ...initialOrchestrationState,
+    codeInput: '// Write code or paste here\nfunction add(a, b) {\n  return a + b;\n}',
+    orchestration: 'docs-writer: document this code THEN code-writer: write a unit test',
+    selectedTemplate: 'Document & Test',
+  });
 
   // Helper function to get the appropriate runtime client
   const getRuntimeClient = () => (demoMode ? runtimeClientDemo : runtimeClient);
+
+  // Orchestration execution hook
+  const { executeOrchestration, streamingTimeoutRef } = useOrchestrationExecution({
+    dispatch,
+    runtimeClient: getRuntimeClient(),
+    provider,
+    model,
+  });
 
   useEffect(() => {
     return () => {
@@ -72,234 +66,54 @@ export default function GoblinDemo({ provider, model, demoMode = false }: Props)
         streamingTimeoutRef.current = null;
       }
     };
-  }, []);
+  }, [streamingTimeoutRef]);
+
   useEffect(() => {
-    if (orchestration.trim()) {
+    if (state.orchestration.trim()) {
       previewOrchestration();
     } else {
-      setPreviewPlan(null);
-      setEstimatedCost(0);
+      dispatch({ type: 'SET_PREVIEW_PLAN', payload: null });
+      dispatch({ type: 'SET_ESTIMATED_COST', payload: 0 });
     }
-  }, [orchestration]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [state.orchestration]);
 
   const previewOrchestration = async () => {
-    console.log('🔍 [DEBUG] Previewing orchestration:', {
-      orchestration,
-      codeInput: codeInput.substring(0, 100) + '...',
+    debugLog('🔍 [DEBUG] Previewing orchestration:', {
+      orchestration: state.orchestration,
     });
 
+    const client = getRuntimeClient();
     try {
-      const client = getRuntimeClient();
-      const plan = await client.parseOrchestration(orchestration, codeInput);
-      console.log('✅ [DEBUG] Orchestration parsed successfully:', {
+      const plan = await client.parseOrchestration(state.orchestration, 'demo');
+      debugLog('✅ [DEBUG] Preview plan received:', {
         steps: plan.steps.length,
         totalBatches: plan.total_batches,
       });
-      setPreviewPlan(plan);
+      dispatch({ type: 'SET_PREVIEW_PLAN', payload: plan });
       // Estimate cost based on steps (rough approximation)
-      // Estimate cost based on number of steps (rough approximation)
       const estimated = plan.steps.length * 0.02; // $0.02 per step average
-      setEstimatedCost(estimated);
+      dispatch({ type: 'SET_ESTIMATED_COST', payload: estimated });
     } catch (error) {
       console.error('❌ [DEBUG] Failed to preview orchestration:', error);
-      setPreviewPlan(null);
-      setEstimatedCost(0);
+      dispatch({ type: 'SET_PREVIEW_PLAN', payload: null });
+      dispatch({ type: 'SET_ESTIMATED_COST', payload: 0 });
     }
   };
 
   const handleTemplateChange = (templateName: string) => {
-    console.log('🎯 [DEBUG] Template changed:', { from: selectedTemplate, to: templateName });
+    debugLog('🎯 [DEBUG] Template changed:', { from: state.selectedTemplate, to: templateName });
 
-    setSelectedTemplate(templateName);
+    dispatch({ type: 'SET_SELECTED_TEMPLATE', payload: templateName });
     const template = ORCHESTRATION_TEMPLATES.find(t => t.name === templateName);
     if (template) {
-      console.log('📝 [DEBUG] Setting orchestration to:', template.value);
-      setOrchestration(template.value);
+      debugLog('📝 [DEBUG] Setting orchestration to:', template.value);
+      dispatch({ type: 'SET_ORCHESTRATION', payload: template.value });
     }
   };
 
   const run = async () => {
-    console.log('🚀 [DEBUG] Starting execution:', {
-      orchestration,
-      codeLength: codeInput.length,
-      demoMode,
-    });
-
-    setStreamingText('');
-    setRunning(true);
-    setIsStreaming(true);
-    setFallbackTriggered(false);
-
-    // Set up streaming timeout for fallback (10 seconds)
-    const timeout = setTimeout(() => {
-      if (isStreaming && !fallbackTriggered) {
-        console.warn('⏰ [DEBUG] Streaming timeout - falling back to non-streaming mode');
-        setFallbackTriggered(true);
-        setIsStreaming(false);
-        fallbackToNonStreaming();
-      }
-    }, 10000);
-
-    streamingTimeoutRef.current = timeout;
-
-    // Use a fixed goblin id as default for parsing
-    const goblin = 'demo';
-    setPlan(null);
-    setStepStatuses({});
-    setStepCosts({});
-    setStepTokens({});
-
-    try {
-      const client = getRuntimeClient();
-      console.log('🔄 [DEBUG] Parsing orchestration...');
-      const parsed = await client.parseOrchestration(orchestration, goblin);
-      console.log('✅ [DEBUG] Orchestration parsed:', {
-        steps: parsed.steps?.length || 0,
-        totalBatches: parsed.total_batches,
-      });
-      setPlan(parsed);
-
-      if (!parsed?.steps || parsed.steps.length === 0) {
-        console.warn('⚠️ [DEBUG] No steps to run');
-        setStreamingText((s: string) => s + 'No steps to run\n');
-        setRunning(false);
-        setIsStreaming(false);
-        return;
-      }
-
-      for (const step of parsed.steps) {
-        console.log('🎬 [DEBUG] Executing step:', {
-          id: step.id,
-          goblin: step.goblin,
-          task: step.task.substring(0, 50) + '...',
-        });
-
-        setStepStatuses((prev: Record<string, string>) => ({ ...prev, [step.id]: 'running' }));
-
-        try {
-          console.log('📡 [DEBUG] Starting streaming execution for step:', step.id);
-          await client.executeTaskStreaming(
-            step.goblin,
-            step.task,
-            (chunk: StreamChunk) => {
-              console.log('📦 [DEBUG] Received chunk:', {
-                stepId: step.id,
-                chunkPreview: (chunk.content || JSON.stringify(chunk)).substring(0, 50) + '...',
-                tokenCount: chunk.token_count,
-                costDelta: chunk.cost_delta,
-              });
-
-              // Clear timeout on first chunk received
-              if (streamingTimeoutRef.current) {
-                clearTimeout(streamingTimeoutRef.current);
-                streamingTimeoutRef.current = null;
-              }
-
-              const chunkText = chunk.content || JSON.stringify(chunk);
-              setStreamingText((s: string) => s + chunkText + '\n');
-              const tokenCount = (chunk.token_count as number) || (chunk.tokenCount as number) || 0;
-              const costDelta = (chunk.cost_delta as number) || (chunk.costDelta as number) || 0;
-              if (tokenCount) {
-                setStepTokens((prev: Record<string, number>) => ({
-                  ...prev,
-                  [step.id]: (prev[step.id] || 0) + tokenCount,
-                }));
-              }
-              if (tokenCount || costDelta) {
-                setStepChunks(prev => ({
-                  ...prev,
-                  [step.id]: [
-                    ...(prev[step.id] || []),
-                    { chunk: chunkText, token: tokenCount, cost: costDelta },
-                  ],
-                }));
-              }
-            },
-            (final: TaskResponse) => {
-              console.log('🏁 [DEBUG] Step completed:', {
-                stepId: step.id,
-                cost: (final as Record<string, unknown>)?.cost,
-                reasoning:
-                  String((final as Record<string, unknown>)?.reasoning || '').substring(0, 50) +
-                  '...',
-              });
-              setStreamingText(
-                (s: string) =>
-                  s + `--- Step ${step.id} COMPLETE ---\n` + JSON.stringify(final) + '\n'
-              );
-              const c = Number((final as Record<string, unknown>)?.cost) || 0;
-              setStepCosts((prev: Record<string, number>) => ({ ...prev, [step.id]: c }));
-            },
-            codeInput,
-            provider || undefined,
-            model || undefined
-          );
-
-          setStepStatuses((prev: Record<string, string>) => ({ ...prev, [step.id]: 'completed' }));
-        } catch (stepError: unknown) {
-          console.error(`Step ${step.id} failed:`, stepError);
-          setStreamingText(
-            (s: string) =>
-              s +
-              `--- Step ${step.id} FAILED ---\nError: ${stepError instanceof Error ? stepError.message : String(stepError)}\n`
-          );
-
-          // If streaming fails, try fallback for this step
-          if (!fallbackTriggered) {
-            setFallbackTriggered(true);
-            setIsStreaming(false);
-            await fallbackToNonStreaming();
-            break;
-          }
-
-          setStepStatuses((prev: Record<string, string>) => ({ ...prev, [step.id]: 'failed' }));
-        }
-      }
-    } catch (err: unknown) {
-      console.error('Orchestration failed:', err);
-      setStreamingText(
-        (s: string) => s + `Error: ${err instanceof Error ? err.message : String(err)}\n`
-      );
-
-      // If parsing fails, try non-streaming fallback
-      if (!fallbackTriggered) {
-        setFallbackTriggered(true);
-        setIsStreaming(false);
-        await fallbackToNonStreaming();
-      }
-    } finally {
-      setRunning(false);
-      setIsStreaming(false);
-      if (streamingTimeoutRef.current) {
-        clearTimeout(streamingTimeoutRef.current);
-        streamingTimeoutRef.current = null;
-      }
-    }
-  };
-
-  const fallbackToNonStreaming = async () => {
-    try {
-      setStreamingText((s: string) => s + '\n--- FALLING BACK TO NON-STREAMING MODE ---\n');
-
-      // Execute without streaming
-      const client = getRuntimeClient();
-      const result = await client.executeTask(
-        'docs-writer', // fallback to docs-writer
-        orchestration,
-        false, // non-streaming
-        codeInput,
-        provider || undefined,
-        model || undefined
-      );
-
-      setStreamingText((s: string) => s + `Fallback result: ${result}\n`);
-    } catch (fallbackError: unknown) {
-      setStreamingText(
-        (s: string) =>
-          s +
-          `Fallback also failed: ${fallbackError instanceof Error ? fallbackError.message : String(fallbackError)}\n`
-      );
-    }
+    await executeOrchestration(state.orchestration, state.codeInput);
   };
 
   return (
@@ -310,8 +124,10 @@ export default function GoblinDemo({ provider, model, demoMode = false }: Props)
         </label>
         <textarea
           id="codeInput"
-          value={codeInput}
-          onChange={(e: React.ChangeEvent<HTMLTextAreaElement>) => setCodeInput(e.target.value)}
+          value={state.codeInput}
+          onChange={(e: React.ChangeEvent<HTMLTextAreaElement>) =>
+            dispatch({ type: 'SET_CODE_INPUT', payload: e.target.value })
+          }
           rows={10}
           className="code-input"
           data-testid="code-input"
@@ -326,7 +142,7 @@ export default function GoblinDemo({ provider, model, demoMode = false }: Props)
         </label>
         <select
           id="template-select"
-          value={selectedTemplate}
+          value={state.selectedTemplate}
           onChange={e => handleTemplateChange(e.target.value)}
           className="template-select"
           data-testid="template-select"
@@ -351,8 +167,10 @@ export default function GoblinDemo({ provider, model, demoMode = false }: Props)
         </label>
         <input
           id="orch"
-          value={orchestration}
-          onChange={(e: React.ChangeEvent<HTMLInputElement>) => setOrchestration(e.target.value)}
+          value={state.orchestration}
+          onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
+            dispatch({ type: 'SET_ORCHESTRATION', payload: e.target.value })
+          }
           data-testid="orchestration-input"
           aria-describedby="orchestration-help"
         />
@@ -360,7 +178,7 @@ export default function GoblinDemo({ provider, model, demoMode = false }: Props)
           Define the sequence of AI operations to perform on your code
         </div>
 
-        {previewPlan && (
+        {state.previewPlan && (
           <div
             className="plan-preview"
             data-testid="plan-preview"
@@ -368,13 +186,13 @@ export default function GoblinDemo({ provider, model, demoMode = false }: Props)
             aria-describedby="estimated-cost"
           >
             <h4 id="plan-preview-title" data-testid="plan-preview-title">
-              Plan Preview ({previewPlan.steps.length} steps)
+              Plan Preview ({state.previewPlan.steps.length} steps)
             </h4>
             <div id="estimated-cost" className="estimated-cost" data-testid="estimated-cost">
-              Estimated Cost: ${estimatedCost.toFixed(4)}
+              Estimated Cost: ${state.estimatedCost.toFixed(4)}
             </div>
             <ul className="plan-steps" data-testid="plan-steps">
-              {previewPlan.steps.map((step, index) => (
+              {state.previewPlan.steps.map((step, index) => (
                 <li key={step.id} className="plan-step" data-testid={`plan-step-${step.id}`}>
                   <span className="step-number" data-testid={`step-number-${step.id}`}>
                     {index + 1}.
@@ -393,20 +211,20 @@ export default function GoblinDemo({ provider, model, demoMode = false }: Props)
 
         <div className="control-row" data-testid="control-row">
           <button
-            disabled={running}
+            disabled={state.running}
             onClick={() => run()}
             data-testid="run-button"
             aria-label={
-              running
+              state.running
                 ? 'Orchestration is currently running'
                 : 'Run the orchestration on the provided code'
             }
             aria-describedby="run-button-status"
           >
-            {running ? 'Running...' : 'Run'}
+            {state.running ? 'Running...' : 'Run'}
           </button>
           <div id="run-button-status" className="sr-only">
-            {running
+            {state.running
               ? 'The orchestration is currently executing. Please wait for it to complete.'
               : 'Click to start executing the orchestration steps on your code.'}
           </div>
@@ -417,44 +235,44 @@ export default function GoblinDemo({ provider, model, demoMode = false }: Props)
         data-testid="goblin-results"
       >
         {/* Plan preview */}
-        {Object.keys(stepCosts).length > 0 && (
+        {Object.keys(state.stepCosts).length > 0 && (
           <div className="plan-total" data-testid="plan-total">
             <strong>Total Plan Cost: </strong>
-            {`$${(Object.values(stepCosts) as number[]).reduce((a, b) => a + b, 0).toFixed(6)}`}
+            {`$${(Object.values(state.stepCosts) as number[]).reduce((a, b) => a + b, 0).toFixed(6)}`}
           </div>
         )}
-        {plan && (
+        {state.plan && (
           <div className="plan-preview" data-testid="execution-plan">
             <h3 data-testid="execution-plan-title">Plan Preview</h3>
             <ol data-testid="execution-steps">
-              {plan.steps.map((s: OrchestrationStep) => (
+              {state.plan.steps.map((s: OrchestrationStep) => (
                 <li
                   key={s.id}
-                  onClick={() => setExpandedSteps(prev => ({ ...prev, [s.id]: !prev[s.id] }))}
+                  onClick={() => dispatch({ type: 'TOGGLE_EXPANDED_STEP', payload: s.id })}
                   className="execution-step"
                   data-testid={`execution-step-${s.id}`}
                 >
                   <strong data-testid={`execution-step-goblin-${s.id}`}>{s.goblin}</strong>:{' '}
                   <span data-testid={`execution-step-task-${s.id}`}>{s.task}</span>{' '}
                   <em data-testid={`execution-step-status-${s.id}`}>
-                    ({stepStatuses[s.id] || 'pending'})
+                    ({state.stepStatuses[s.id] || 'pending'})
                   </em>{' '}
                   <span className="execution-step-cost" data-testid={`execution-step-cost-${s.id}`}>
-                    {(stepCosts[s.id] || 0) > 0 ? `$${(stepCosts[s.id] || 0).toFixed(6)}` : ''}
+                    {(state.stepCosts[s.id] || 0) > 0 ? `$${(state.stepCosts[s.id] || 0).toFixed(6)}` : ''}
                   </span>
-                  {expandedSteps[s.id] && (
+                  {state.expandedSteps[s.id] && (
                     <div className="step-details" data-testid={`step-details-${s.id}`}>
                       <div data-testid={`step-id-${s.id}`}>Step ID: {s.id}</div>
-                      <div data-testid={`step-status-${s.id}`}>Status: {stepStatuses[s.id]}</div>
+                      <div data-testid={`step-status-${s.id}`}>Status: {state.stepStatuses[s.id]}</div>
                       <div data-testid={`step-cost-${s.id}`}>
-                        Cost: ${(stepCosts[s.id] || 0).toFixed(6)}
+                        Cost: ${(state.stepCosts[s.id] || 0).toFixed(6)}
                       </div>
-                      <div data-testid={`step-tokens-${s.id}`}>Tokens: {stepTokens[s.id] || 0}</div>
-                      {stepChunks[s.id] && stepChunks[s.id].length > 0 && (
+                      <div data-testid={`step-tokens-${s.id}`}>Tokens: {state.stepTokens[s.id] || 0}</div>
+                      {state.stepChunks[s.id] && state.stepChunks[s.id].length > 0 && (
                         <div className="chunk-list" data-testid={`chunk-list-${s.id}`}>
                           <strong>Chunks:</strong>
                           <ul data-testid={`chunks-${s.id}`}>
-                            {stepChunks[s.id].map((c, idx) => (
+                            {state.stepChunks[s.id].map((c, idx) => (
                               <li key={`chunk-${s.id}-${idx}`} data-testid={`chunk-${s.id}-${idx}`}>
                                 <span
                                   className="chunk-text"
@@ -474,10 +292,12 @@ export default function GoblinDemo({ provider, model, demoMode = false }: Props)
                                 >
                                   Cost: ${c.cost.toFixed(6)}
                                 </span>
-                                <div
+                                <progress
                                   className="chunk-graph"
-                                  style={{ width: `${Math.min(100, c.cost * 1000)}%` } as React.CSSProperties}
+                                  max={100}
+                                  value={Math.min(100, c.cost * 1000)}
                                   data-testid={`chunk-graph-${s.id}-${idx}`}
+                                  aria-label={`Cost visualization for chunk ${idx + 1}`}
                                 />
                               </li>
                             ))}
@@ -491,7 +311,7 @@ export default function GoblinDemo({ provider, model, demoMode = false }: Props)
             </ol>
           </div>
         )}
-        <StreamingView streamingText={streamingText} isStreaming={isStreaming} />
+        <StreamingView streamingText={state.streamingText} isStreaming={state.isStreaming} />
       </div>
     </div>
   );

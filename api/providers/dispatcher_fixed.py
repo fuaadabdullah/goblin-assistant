@@ -9,14 +9,14 @@ Updated: 2026-03-05
 
 import os
 import logging
-from typing import Dict, Any
+import importlib
+import inspect
+from typing import Dict, Any, Optional
 from .base import BaseProvider
 from .openai import OpenAIProvider
 from .anthropic import AnthropicProvider
 from .ollama import OllamaProvider
 from .llama_cpp import LlamaCPPProvider
-from .kamatera_ollama import KamateraOllamaProvider
-from .kamatera_llamacpp import KamateraLlamaCppProvider
 from .groq import GroqProvider
 from .gemini import GeminiProvider
 from .siliconeflow import SiliconeFlowProvider
@@ -25,17 +25,21 @@ from .generic import GenericProvider
 from .mock_provider import MockProvider
 
 # Import smart router (optional - graceful fallback if not available)
+SMART_ROUTING_AVAILABLE = False
+_smart_router_obj: Any = None
+_health_monitor_obj: Any = None
 try:
-    from api.services.smart_router import smart_router, RoutingStrategy
-    from api.services.provider_health import health_monitor
-
-    SMART_ROUTING_AVAILABLE = True
-except ImportError:
-    SMART_ROUTING_AVAILABLE = False
-    smart_router = None
-    health_monitor = None
+    smart_router_module = importlib.import_module("api.services.smart_router")
+    provider_health_module = importlib.import_module("api.services.provider_health")
+    _smart_router_obj = getattr(smart_router_module, "smart_router")
+    _health_monitor_obj = getattr(provider_health_module, "health_monitor")
+    SMART_ROUTING_AVAILABLE = _smart_router_obj is not None
+except (ImportError, AttributeError):
+    pass
 
 logger = logging.getLogger(__name__)
+
+CHAT_COMPLETIONS_PATH = "/v1/chat/completions"
 
 # Load environment variables
 try:
@@ -58,15 +62,24 @@ class ProviderDispatcher:
     def _load_provider_configs(self) -> Dict[str, Dict[str, Any]]:
         """Load provider configurations from TOML file."""
         try:
-            import toml
+            try:
+                import tomllib
 
-            config_path = os.path.join(
-                os.path.dirname(__file__), "..", "..", "config", "providers.toml"
-            )
-            with open(config_path, "r") as f:
-                config = toml.load(f)
-                return config.get("providers", {})
-        except Exception as e:
+                config_path = os.path.join(
+                    os.path.dirname(__file__), "..", "..", "config", "providers.toml"
+                )
+                with open(config_path, "rb") as f:
+                    config = tomllib.load(f)
+                    return config.get("providers", {})
+            except ImportError:
+                toml_module = importlib.import_module("toml")
+                config_path = os.path.join(
+                    os.path.dirname(__file__), "..", "..", "config", "providers.toml"
+                )
+                with open(config_path, "r", encoding="utf-8") as f:
+                    config = toml_module.load(f)
+                    return config.get("providers", {})
+        except (ImportError, OSError, ValueError, TypeError) as e:
             print(f"Warning: Could not load provider config: {e}")
             return self._get_basic_providers()
 
@@ -76,7 +89,7 @@ class ProviderDispatcher:
             "openai": {
                 "endpoint": "https://api.openai.com",
                 "api_key_env": "OPENAI_API_KEY",
-                "invoke_path": "/v1/chat/completions",
+                "invoke_path": CHAT_COMPLETIONS_PATH,
                 "default_model": "gpt-4o-mini",
             },
             "anthropic": {
@@ -89,26 +102,10 @@ class ProviderDispatcher:
                 "endpoint": "http://localhost:11434",
                 "invoke_path": "/api/generate",
             },
-            # Legacy Kamatera endpoints (deprecated)
-            "ollama_kamatera": {
-                "endpoint": os.getenv(
-                    "KAMATERA_SERVER2_URL", "http://192.175.23.150:8002"
-                ),
-                "invoke_path": "/api/generate",
-                "api_key_env": "LOCAL_LLM_API_KEY",
-            },
-            "llamacpp_kamatera": {
-                "endpoint": os.getenv(
-                    "KAMATERA_SERVER1_URL", "http://45.61.51.220:8000"
-                ),
-                "invoke_path": "/v1/chat/completions",
-                "api_key_env": "LOCAL_LLM_API_KEY",
-                "default_model": "qwen2.5:latest",
-            },
             "deepseek": {
                 "endpoint": "https://api.deepseek.com",
                 "api_key_env": "DEEPSEEK_API_KEY",
-                "invoke_path": "/v1/chat/completions",
+                "invoke_path": CHAT_COMPLETIONS_PATH,
                 "default_model": "deepseek-chat",
             },
             "groq": {
@@ -125,7 +122,7 @@ class ProviderDispatcher:
             "siliconeflow": {
                 "endpoint": "https://api.siliconflow.com",
                 "api_key_env": "SILICONEFLOW_API_KEY",
-                "invoke_path": "/v1/chat/completions",
+                "invoke_path": CHAT_COMPLETIONS_PATH,
                 "default_model": "Qwen/Qwen2.5-7B-Instruct",
             },
             "azure": {
@@ -141,59 +138,121 @@ class ProviderDispatcher:
         """Get provider configuration."""
         return self._provider_configs.get(provider_id, {})
 
+    @staticmethod
+    def _endpoint_matches(endpoint: str, *patterns: str) -> bool:
+        return any(pattern in endpoint for pattern in patterns)
+
+    def _create_provider_for_exact_id(
+        self, provider_id: str, config: Dict[str, Any]
+    ) -> Optional[BaseProvider]:
+        if provider_id == "mock":
+            return MockProvider({"default_model": "mock-gpt"})
+
+        if provider_id == "openai":
+            return OpenAIProvider.from_config(config)
+        if provider_id == "anthropic":
+            return AnthropicProvider.from_config(config)
+        if provider_id == "ollama":
+            return OllamaProvider.from_config(config)
+        if provider_id == "llamacpp":
+            return LlamaCPPProvider.from_config(config)
+        if provider_id == "groq":
+            return GroqProvider.from_config(config)
+        if provider_id in ["gemini", "google"]:
+            return GeminiProvider.from_config(config)
+        if provider_id in ["siliconeflow", "aliyun"]:
+            return SiliconeFlowProvider.from_config(config)
+        if provider_id == "azure":
+            return AzureOpenAIProvider(config)
+        if provider_id in ["deepseek", "together", "replicate", "huggingface", "cohere"]:
+            # These providers use OpenAI-compatible APIs.
+            return OpenAIProvider.from_config(config)
+
+        return None
+
+    def _create_provider_for_endpoint(
+        self, endpoint: str, config: Dict[str, Any]
+    ) -> Optional[BaseProvider]:
+        if self._endpoint_matches(endpoint, "openai.com"):
+            return OpenAIProvider.from_config(config)
+        if self._endpoint_matches(endpoint, "anthropic.com"):
+            return AnthropicProvider.from_config(config)
+        if self._endpoint_matches(endpoint, "localhost:11434"):
+            return OllamaProvider.from_config(config)
+        if self._endpoint_matches(endpoint, "127.0.0.1:8080", "ngrok.io"):
+            return LlamaCPPProvider.from_config(config)
+        if self._endpoint_matches(endpoint, "groq.com"):
+            return GroqProvider.from_config(config)
+        if self._endpoint_matches(endpoint, "generativelanguage.googleapis.com"):
+            return GeminiProvider.from_config(config)
+        if self._endpoint_matches(endpoint, "siliconflow.com"):
+            return SiliconeFlowProvider.from_config(config)
+        if self._endpoint_matches(endpoint, "services.ai.azure.com"):
+            return AzureOpenAIProvider(config)
+
+        return None
+
     def _create_provider(
         self, provider_id: str, config: Dict[str, Any]
     ) -> BaseProvider:
         """Create provider instance based on provider ID."""
         endpoint = config.get("endpoint", "")
 
-        # Route based on provider ID or endpoint patterns
-        if provider_id == "openai" or "openai.com" in endpoint:
-            return OpenAIProvider.from_config(config)
-        elif provider_id == "anthropic" or "anthropic.com" in endpoint:
-            return AnthropicProvider.from_config(config)
-        elif provider_id == "ollama_kamatera" or "192.175.23.150:8002" in endpoint:
-            return KamateraOllamaProvider.from_config(config)
-        elif provider_id == "llamacpp_kamatera" or "45.61.51.220:8000" in endpoint:
-            return KamateraLlamaCppProvider.from_config(config)
-        elif (
-            provider_id == "ollama"
-            or "localhost:11434" in endpoint
-            or "45.61.51.220:8002" in endpoint
-        ):
-            return OllamaProvider.from_config(config)
-        elif (
-            provider_id in ["llamacpp", "llamacpp_kamatera"]
-            or "127.0.0.1:8080" in endpoint
-            or "192.175.23.150:8000" in endpoint
-            or "ngrok.io" in endpoint
-        ):
-            return LlamaCPPProvider.from_config(config)
-        elif provider_id == "groq" or "groq.com" in endpoint:
-            return GroqProvider.from_config(config)
-        elif (
-            provider_id in ["gemini", "google"]
-            or "generativelanguage.googleapis.com" in endpoint
-        ):
-            return GeminiProvider.from_config(config)
-        elif provider_id in ["siliconeflow", "aliyun"] or "siliconflow.com" in endpoint:
-            return SiliconeFlowProvider.from_config(config)
-        elif provider_id == "azure" or "services.ai.azure.com" in endpoint:
-            return AzureOpenAIProvider(config)
-        elif provider_id == "mock":
-            return MockProvider({"default_model": "mock-gpt"})
-        elif provider_id in [
-            "deepseek",
-            "together",
-            "replicate",
-            "huggingface",
-            "cohere",
-        ]:
-            # These providers use OpenAI-compatible APIs, so use OpenAI provider
-            return OpenAIProvider.from_config(config)
-        else:
-            # Generic provider for custom endpoints
-            return GenericProvider.from_config(config)
+        exact_provider = self._create_provider_for_exact_id(provider_id, config)
+        if exact_provider is not None:
+            return exact_provider
+
+        endpoint_provider = self._create_provider_for_endpoint(endpoint, config)
+        if endpoint_provider is not None:
+            return endpoint_provider
+
+        # Generic provider for custom endpoints
+        return GenericProvider.from_config(config)
+
+    async def _select_provider_via_smart_router(
+        self, messages: Optional[list[Any]]
+    ) -> Optional[str]:
+        if not SMART_ROUTING_AVAILABLE or _smart_router_obj is None:
+            return None
+
+        try:
+            selection_result = _smart_router_obj.select_provider(messages=messages or [])
+            if inspect.isawaitable(selection_result):
+                selection = await selection_result
+            else:
+                selection = selection_result
+            logger.info(
+                "Smart router selected: %s (%s)",
+                selection.provider_id,
+                selection.reason,
+            )
+            return selection.provider_id
+        except (AttributeError, TypeError, ValueError, RuntimeError) as e:
+            logger.warning("Smart router failed, falling back to basic selection: %s", e)
+            return None
+
+    @staticmethod
+    def _is_provider_healthy(provider_id: str) -> bool:
+        if SMART_ROUTING_AVAILABLE and _health_monitor_obj is not None:
+            return bool(_health_monitor_obj.is_available(provider_id))
+        return True
+
+    @staticmethod
+    def _is_provider_configured(
+        config: Dict[str, Any], env_var: Optional[str], is_local: bool
+    ) -> bool:
+        if env_var is None:
+            return True
+
+        env_value = os.getenv(env_var, "")
+        if env_value:
+            return True
+
+        if is_local and env_var.endswith("_URL"):
+            endpoint = config.get("endpoint", "")
+            return bool(endpoint and endpoint != "http://localhost:11434")
+
+        return False
 
     def get_provider(self, provider_id: str) -> BaseProvider:
         """Get or create a provider instance."""
@@ -202,7 +261,7 @@ class ProviderDispatcher:
             self._providers[provider_id] = self._create_provider(provider_id, config)
         return self._providers[provider_id]
 
-    async def _auto_select_provider(self, messages: list = None) -> str:
+    async def _auto_select_provider(self, messages: Optional[list[Any]] = None) -> str:
         """
         Auto-select the best available provider.
 
@@ -218,20 +277,9 @@ class ProviderDispatcher:
         - GCP servers (VMs terminated since 2026-01-11)
         - Kamatera servers (unreachable since 2026-01-11)
         """
-        # Use smart router if available
-        if SMART_ROUTING_AVAILABLE and smart_router is not None:
-            try:
-                selection = await smart_router.select_provider(
-                    messages=messages or [],
-                )
-                logger.info(
-                    f"Smart router selected: {selection.provider_id} ({selection.reason})"
-                )
-                return selection.provider_id
-            except Exception as e:
-                logger.warning(
-                    f"Smart router failed, falling back to basic selection: {e}"
-                )
+        smart_router_selection = await self._select_provider_via_smart_router(messages)
+        if smart_router_selection:
+            return smart_router_selection
 
         # Updated priority order: Cost-optimized, healthy providers first
         priority_providers = [
@@ -257,44 +305,95 @@ class ProviderDispatcher:
             if not config:
                 continue
 
-            # Check health if smart routing is available
-            if SMART_ROUTING_AVAILABLE and health_monitor is not None:
-                if not health_monitor.is_available(provider_id):
-                    logger.debug(f"Skipping {provider_id}: unhealthy")
-                    continue
+            if not self._is_provider_healthy(provider_id):
+                logger.debug("Skipping %s: unhealthy", provider_id)
+                continue
 
-            # If no env_var required (local providers)
+            if not self._is_provider_configured(config, env_var, is_local):
+                continue
+
             if env_var is None:
-                logger.info(f"Auto-selected provider: {provider_id} (no key required)")
-                return provider_id
-
-            # Check if env var is set
-            env_value = os.getenv(env_var, "")
-            if config and env_value:
+                logger.info("Auto-selected provider: %s (no key required)", provider_id)
+            elif os.getenv(env_var, ""):
                 logger.info(
-                    f"Auto-selected provider: {provider_id} (configured via {env_var})"
+                    "Auto-selected provider: %s (configured via %s)",
+                    provider_id,
+                    env_var,
                 )
-                return provider_id
-
-            # For local providers with optional env vars, check URL directly
-            if is_local and env_var and env_var.endswith("_URL"):
-                endpoint = config.get("endpoint", "")
-                if (
-                    endpoint and endpoint != "http://localhost:11434"
-                ):  # Has custom endpoint
-                    logger.info(
-                        f"Auto-selected provider: {provider_id} (local endpoint configured)"
-                    )
-                    return provider_id
+            else:
+                logger.info(
+                    "Auto-selected provider: %s (local endpoint configured)",
+                    provider_id,
+                )
+            return provider_id
 
         # Fallback to mock for development stability if nothing else works
         logger.warning("No providers available, falling back to mock")
         return "mock"
 
+    async def _resolve_provider_id(self, provider_id: Optional[str], messages: list[Any]) -> str:
+        if provider_id is not None and provider_id != "auto":
+            return provider_id
+
+        resolved_provider = await self._auto_select_provider(messages)
+        logger.info("Auto-selected provider: %s", resolved_provider)
+        return resolved_provider
+
+    @staticmethod
+    def _extract_prompt(payload: Dict[str, Any]) -> str:
+        messages = payload.get("messages", [])
+        if "messages" in payload:
+            for msg in reversed(messages):
+                if msg.get("role") == "user":
+                    return msg.get("content", "")
+        return payload.get("prompt", "")
+
+    @staticmethod
+    def _build_invoke_kwargs(
+        prompt: str, stream: bool, timeout_ms: int, model: Optional[str]
+    ) -> Dict[str, Any]:
+        invoke_kwargs: Dict[str, Any] = {
+            "prompt": prompt,
+            "stream": stream,
+            "timeout_ms": timeout_ms,
+        }
+        if model is not None:
+            invoke_kwargs["model"] = model
+        return invoke_kwargs
+
+    @staticmethod
+    def _build_invoke_error(error_code: str) -> Dict[str, Any]:
+        return {
+            "ok": False,
+            "error": error_code,
+            "latency_ms": 0,
+        }
+
+    @staticmethod
+    def _format_provider_result(
+        result: Any, stream: bool, provider_id: Optional[str], model: Optional[str]
+    ) -> Dict[str, Any]:
+        if not isinstance(result, dict):
+            return ProviderDispatcher._build_invoke_error("invalid-provider-response")
+
+        if not result.get("ok", False):
+            return result
+
+        if stream:
+            return {
+                "ok": True,
+                "stream": result.get("stream"),
+                "latency_ms": result.get("latency_ms", 0),
+            }
+
+        result.setdefault("provider", provider_id)
+        result.setdefault("model", model)
+        return result
+
     async def invoke_provider(
         self,
-        provider_id: str,
-        model: str,
+        provider_id: Optional[str],
+        model: Optional[str],
         payload: Dict[str, Any],
         timeout_ms: int,
         stream: bool = False,
@@ -308,42 +407,23 @@ class ProviderDispatcher:
         - Integrates with health monitoring
         """
         messages = payload.get("messages", [])
+        resolved_provider_id: str = await self._resolve_provider_id(provider_id, messages)
 
-        # Handle None or "auto" provider_id - use smart routing
-        if provider_id is None or provider_id == "auto":
-            provider_id = await self._auto_select_provider(messages)
-            logger.info(f"Auto-selected provider: {provider_id}")
-
-        config = self._get_provider_config(provider_id)
+        config = self._get_provider_config(resolved_provider_id)
         if not config:
-            return {
-                "ok": False,
-                "error": f"unknown-provider:{provider_id}",
-                "latency_ms": 0,
-            }
+            return self._build_invoke_error(f"unknown-provider:{resolved_provider_id}")
 
         # If model is not provided, use the default model for this provider
         if model is None:
             model = config.get("default_model")
             # If still None, let the provider implementation decide its own default
 
-        provider = self.get_provider(provider_id)
+        provider = self.get_provider(resolved_provider_id)
 
-        # Extract prompt from payload
-        prompt = ""
-        if "messages" in payload:
-            # OpenAI-style messages - find the LAST user message as the active prompt
-            for msg in reversed(payload["messages"]):
-                if msg.get("role") == "user":
-                    prompt = msg.get("content", "")
-                    break
-
-        # Fallback to prompt in payload if messages not found or no user message
-        if not prompt:
-            prompt = payload.get("prompt", "")
+        prompt = self._extract_prompt(payload)
 
         if not prompt and "messages" not in payload:
-            return {"ok": False, "error": "no-prompt-provided", "latency_ms": 0}
+            return self._build_invoke_error("no-prompt-provided")
 
         # Invoke the provider - NO MOCK FALLBACK
         try:
@@ -351,53 +431,23 @@ class ProviderDispatcher:
             invoke_payload = payload.copy()
             invoke_payload.pop("model", None)
 
-            # Only pass model if we have one; otherwise let the provider use its default
-            invoke_kwargs = {
-                "prompt": prompt,
-                "stream": stream,
-                "timeout_ms": timeout_ms,
-            }
-            if model is not None:
-                invoke_kwargs["model"] = model
+            invoke_kwargs = self._build_invoke_kwargs(prompt, stream, timeout_ms, model)
 
-            result = await provider.invoke(
+            provider_impl: Any = provider
+            result = await provider_impl.invoke(
                 **invoke_kwargs,
                 **invoke_payload,
             )
 
-            # Handle streaming vs non-streaming results
-            if isinstance(result, dict):
-                if result.get("ok", False):
-                    if stream:
-                        # For streaming, return the stream generator
-                        return {
-                            "ok": True,
-                            "stream": result.get("stream"),
-                            "latency_ms": result.get("latency_ms", 0),
-                        }
-                    else:
-                        # For non-streaming, return the result
-                        result.setdefault("provider", provider_id)
-                        result.setdefault("model", model)
-                        return result
-                else:
-                    # Return the original error - NO MOCK FALLBACK
-                    return result
-            else:
-                # Should not happen with current implementation
-                return {
-                    "ok": False,
-                    "error": "invalid-provider-response",
-                    "latency_ms": 0,
-                }
+            return self._format_provider_result(result, stream, resolved_provider_id, model)
 
-        except Exception as e:
+        except (
+            RuntimeError,
+            ValueError,
+            TypeError,
+        ) as e:
             # Return the original error - NO MOCK FALLBACK
-            return {
-                "ok": False,
-                "error": f"provider-invocation-error:{str(e)}",
-                "latency_ms": 0,
-            }
+            return self._build_invoke_error(f"provider-invocation-error:{str(e)}")
 
 
 # Global dispatcher instance

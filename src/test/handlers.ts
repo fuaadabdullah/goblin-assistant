@@ -3,7 +3,7 @@ import { http, HttpResponse } from 'msw';
 // Mock API handlers for all backend endpoints
 export const handlers = [
   // Auth endpoints
-  http.post('http://127.0.0.1:8000/v1/auth/login', () => {
+  http.post('http://127.0.0.1:8000/auth/login', () => {
     return HttpResponse.json({
       access_token: 'mock-jwt-token',
       token_type: 'bearer',
@@ -15,11 +15,11 @@ export const handlers = [
     });
   }),
 
-  http.post('http://127.0.0.1:8000/v1/auth/logout', () => {
+  http.post('http://127.0.0.1:8000/auth/logout', () => {
     return HttpResponse.json({ message: 'Logged out successfully' });
   }),
 
-  http.get('http://127.0.0.1:8000/v1/auth/me', () => {
+  http.get('http://127.0.0.1:8000/auth/me', () => {
     return HttpResponse.json({
       id: 1,
       email: 'test@example.com',
@@ -27,7 +27,7 @@ export const handlers = [
     });
   }),
 
-  http.post('http://127.0.0.1:8000/v1/auth/validate', () => {
+  http.post('http://127.0.0.1:8000/auth/validate', () => {
     return HttpResponse.json({
       valid: true,
       user: {
@@ -39,7 +39,7 @@ export const handlers = [
   }),
 
   // Settings endpoints
-  http.get('http://127.0.0.1:8000/v1/settings/', () => {
+  http.get('http://127.0.0.1:8000/settings/', () => {
     return HttpResponse.json({
       providers: [
         {
@@ -172,7 +172,7 @@ export const handlers = [
   }),
 
   // Routing endpoints
-  http.get('http://127.0.0.1:8000/v1/routing/providers', () => {
+  http.get('http://127.0.0.1:8000/routing/providers', () => {
     return HttpResponse.json({
       providers: [
         {
@@ -344,7 +344,7 @@ export const handlers = [
     });
   }),
 
-  http.post('http://127.0.0.1:8000/v1/routing/route', async ({ request }) => {
+  http.post('http://127.0.0.1:8000/routing/route', async ({ request }) => {
     const body = (await request.json()) as { task: string; requirements?: string[] };
     const { task, requirements = [] } = body;
 
@@ -375,7 +375,7 @@ export const handlers = [
   }),
 
   // Get models for a specific provider
-  http.get('http://127.0.0.1:8000/v1/routing/providers/:provider', ({ params }) => {
+  http.get('http://127.0.0.1:8000/routing/providers/:provider', ({ params }) => {
     const { provider } = params as { provider: string };
 
     // Mock models based on provider
@@ -401,7 +401,7 @@ export const handlers = [
   }),
 
   // Search endpoints
-  http.post('http://127.0.0.1:8000/v1/search/query', () => {
+  http.post('http://127.0.0.1:8000/search/query', () => {
     return HttpResponse.json({
       results: [
         {
@@ -415,21 +415,21 @@ export const handlers = [
     });
   }),
 
-  http.get('http://127.0.0.1:8000/v1/search/collections', () => {
+  http.get('http://127.0.0.1:8000/search/collections', () => {
     return HttpResponse.json({
       collections: ['default', 'documents', 'code'],
     });
   }),
 
   // Execute endpoints
-  http.post('http://127.0.0.1:8000/v1/execute', () => {
+  http.post('http://127.0.0.1:8000/execute', () => {
     return HttpResponse.json({
       taskId: 'task-123',
       status: 'queued',
     });
   }),
 
-  http.get('http://127.0.0.1:8000/v1/execute/:taskId', () => {
+  http.get('http://127.0.0.1:8000/execute/:taskId', () => {
     return HttpResponse.json({
       taskId: 'task-123',
       status: 'completed',
@@ -440,7 +440,7 @@ export const handlers = [
     });
   }),
 
-  http.get('http://127.0.0.1:8000/v1/execute/:taskId/stream', () => {
+  http.get('http://127.0.0.1:8000/execute/:taskId/stream', () => {
     return new Response(
       new ReadableStream({
         start(controller) {
@@ -467,20 +467,20 @@ export const handlers = [
   }),
 
   // API Keys endpoints
-  http.post('http://127.0.0.1:8000/v1/api-keys/:provider', () => {
+  http.post('http://127.0.0.1:8000/api-keys/:provider', () => {
     return HttpResponse.json({ message: 'API key stored successfully' });
   }),
 
-  http.get('http://127.0.0.1:8000/v1/api-keys/:provider', () => {
+  http.get('http://127.0.0.1:8000/api-keys/:provider', () => {
     return HttpResponse.json({ key: 'sk-...' });
   }),
 
-  http.delete('http://127.0.0.1:8000/v1/api-keys/:provider', () => {
+  http.delete('http://127.0.0.1:8000/api-keys/:provider', () => {
     return HttpResponse.json({ message: 'API key deleted successfully' });
   }),
 
   // Parse endpoints
-  http.post('http://127.0.0.1:8000/v1/parse', () => {
+  http.post('http://127.0.0.1:8000/parse', () => {
     return HttpResponse.json({
       steps: [
         {
@@ -498,7 +498,7 @@ export const handlers = [
     });
   }),
 
-  http.post('http://127.0.0.1:8000/v1/parse/orchestration', () => {
+  http.post('http://127.0.0.1:8000/parse/orchestration', () => {
     return HttpResponse.json({
       steps: [
         {
@@ -520,28 +520,28 @@ export const handlers = [
   }),
 
   // Raptor endpoints
-  http.post('http://127.0.0.1:8000/v1/raptor/start', () => {
+  http.post('http://127.0.0.1:8000/raptor/start', () => {
     return HttpResponse.json({ running: true });
   }),
 
-  http.post('http://127.0.0.1:8000/v1/raptor/stop', () => {
+  http.post('http://127.0.0.1:8000/raptor/stop', () => {
     return HttpResponse.json({ running: false });
   }),
 
-  http.get('http://127.0.0.1:8000/v1/raptor/status', () => {
+  http.get('http://127.0.0.1:8000/raptor/status', () => {
     return HttpResponse.json({
       running: true,
       config_file: 'config/raptor.ini',
     });
   }),
 
-  http.post('http://127.0.0.1:8000/v1/raptor/logs', () => {
+  http.post('http://127.0.0.1:8000/raptor/logs', () => {
     return HttpResponse.json({
       log_tail: '[INFO] Raptor monitoring started\n[INFO] System check passed',
     });
   }),
 
-  http.get('http://127.0.0.1:8000/v1/raptor/demo/:value', ({ params }) => {
+  http.get('http://127.0.0.1:8000/raptor/demo/:value', ({ params }) => {
     const { value } = params as { value: string };
     return HttpResponse.json({
       result: `Demo executed with value: ${decodeURIComponent(value)}`,
@@ -549,7 +549,7 @@ export const handlers = [
   }),
 
   // Health endpoint
-  http.get('http://127.0.0.1:8000/v1/health', () => {
+  http.get('http://127.0.0.1:8000/health', () => {
     return HttpResponse.json({ status: 'healthy' });
   }),
 

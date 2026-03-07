@@ -6,16 +6,39 @@ import KeyboardShortcutsHelp from '../components/KeyboardShortcutsHelp';
 import Seo from '../components/Seo';
 import { useProvider } from '../contexts/ProviderContext';
 
+interface ProviderSource {
+  name?: string;
+  enabled?: boolean;
+  configured?: boolean;
+  env_var?: string;
+  api_key?: string;
+  models?: unknown;
+}
+
+interface ProviderDisplay {
+  name: string;
+  configured: boolean;
+  env_var?: string;
+  models: string[];
+}
+
 const SettingsPageContent: React.FC = () => {
   const { data: providerData, isLoading: providersLoading } = useProviderSettings();
   const providerCtx = useProvider();
   // Adapt provider data shape: backend may return keys with different naming (configured/env_var)
-  const providers = (providerData || []).map((p: any) => ({
-    name: p.name,
-    configured: p.enabled ?? p.configured ?? false,
-    env_var: p.env_var || p.api_key ? `${p.name.toUpperCase()}_API_KEY` : undefined,
-    models: p.models || [],
-  }));
+  const providers: ProviderDisplay[] = (providerData || []).map((p: ProviderSource) => {
+    const name = typeof p.name === 'string' ? p.name : 'Unknown';
+    const models = Array.isArray(p.models)
+      ? p.models.filter((model): model is string => typeof model === 'string')
+      : [];
+
+    return {
+      name,
+      configured: Boolean(p.enabled ?? p.configured ?? false),
+      env_var: p.env_var || p.api_key ? `${name.toUpperCase()}_API_KEY` : undefined,
+      models,
+    };
+  });
   const loading = providersLoading;
 
   const selectedProvider = providerCtx.selectedProvider || (providers[0]?.name ?? '');

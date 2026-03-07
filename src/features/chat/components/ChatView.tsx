@@ -22,7 +22,7 @@ const ChatView = ({ session, isAdmin }: ChatViewProps) => {
     quickPrompts,
     threads,
     isThreadsLoading,
-    activeThreadId,
+    activeThreadKey,
     inputRef,
     bottomRef,
     setInput,
@@ -34,6 +34,10 @@ const ChatView = ({ session, isAdmin }: ChatViewProps) => {
     selectedProvider,
     selectedModel,
     inputEstimate,
+    isMessagesLoading,
+    deleteMessage,
+    copyMessage,
+    regenerateMessage,
   } = session;
 
   return (
@@ -47,7 +51,7 @@ const ChatView = ({ session, isAdmin }: ChatViewProps) => {
         <ChatSidebar
           threads={threads}
           isThreadsLoading={isThreadsLoading}
-          activeThreadId={activeThreadId}
+          activeThreadKey={activeThreadKey}
           onSelectThread={selectThread}
           onNewConversation={handleClearChat}
           isAdmin={isAdmin}
@@ -69,6 +73,10 @@ const ChatView = ({ session, isAdmin }: ChatViewProps) => {
               onPromptClick={handlePromptClick}
               bottomRef={bottomRef}
               isSending={isSending}
+              isLoading={isMessagesLoading}
+              onDeleteMessage={deleteMessage}
+              onCopyMessage={copyMessage}
+              onRegenerateMessage={regenerateMessage}
             />
           </section>
           <footer>

@@ -10,7 +10,7 @@ Provides background health checks for AI providers with:
 
 import asyncio
 import time
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Dict, List, Optional, Any
 from dataclasses import dataclass, field
 from collections import deque
@@ -19,6 +19,8 @@ import httpx
 import logging
 
 logger = logging.getLogger(__name__)
+
+MODELS_ENDPOINT = "/v1/models"
 
 
 class HealthStatus(Enum):
@@ -47,15 +49,15 @@ class ProviderHealth:
     def record_success(self, latency_ms: float):
         """Record a successful health check."""
         self.latency_samples.append(latency_ms)
-        self.last_check = datetime.utcnow()
-        self.last_success = datetime.utcnow()
+        self.last_check = datetime.now(timezone.utc)
+        self.last_success = datetime.now(timezone.utc)
         self.consecutive_failures = 0
         self.last_error = None
         self._update_metrics()
 
     def record_failure(self, error: str):
         """Record a failed health check."""
-        self.last_check = datetime.utcnow()
+        self.last_check = datetime.now(timezone.utc)
         self.consecutive_failures += 1
         self.last_error = error
         self._update_metrics()
@@ -88,10 +90,10 @@ class ProviderHealthMonitor:
     # Health check endpoints by provider
     HEALTH_ENDPOINTS = {
         "groq": ("https://api.groq.com", "/openai/v1/models"),
-        "openai": ("https://api.openai.com", "/v1/models"),
-        "anthropic": ("https://api.anthropic.com", "/v1/models"),
-        "siliconeflow": ("https://api.siliconflow.com", "/v1/models"),
-        "deepseek": ("https://api.deepseek.com", "/v1/models"),
+        "openai": ("https://api.openai.com", MODELS_ENDPOINT),
+        "anthropic": ("https://api.anthropic.com", MODELS_ENDPOINT),
+        "siliconeflow": ("https://api.siliconflow.com", MODELS_ENDPOINT),
+        "deepseek": ("https://api.deepseek.com", MODELS_ENDPOINT),
         "azure": ("https://goblinos-resource.services.ai.azure.com", "/openai/models?api-version=2024-05-01-preview"),
         "google": ("https://generativelanguage.googleapis.com", "/v1beta/models"),
     }
@@ -130,6 +132,7 @@ class ProviderHealthMonitor:
 
         self._running = True
         self._task = asyncio.create_task(self._monitoring_loop())
+        await asyncio.sleep(0)
         logger.info("Provider health monitoring started")
 
     async def stop(self):
@@ -137,10 +140,7 @@ class ProviderHealthMonitor:
         self._running = False
         if self._task:
             self._task.cancel()
-            try:
-                await self._task
-            except asyncio.CancelledError:
-                pass
+            await asyncio.gather(self._task, return_exceptions=True)
         logger.info("Provider health monitoring stopped")
 
     async def _monitoring_loop(self):
@@ -148,25 +148,73 @@ class ProviderHealthMonitor:
         import os
 
         while self._running:
-            try:
-                # Check all providers concurrently
-                tasks = []
-                for provider_id, (base_url, endpoint) in self.HEALTH_ENDPOINTS.items():
-                    # Get API key if required
-                    api_key = None
-                    if provider_id in self.API_KEY_ENV_VARS:
-                        api_key = os.getenv(self.API_KEY_ENV_VARS[provider_id])
+            # Check all providers concurrently
+            tasks = []
+            for provider_id, (base_url, endpoint) in self.HEALTH_ENDPOINTS.items():
+                # Get API key if required
+                api_key = None
+                if provider_id in self.API_KEY_ENV_VARS:
+                    api_key = os.getenv(self.API_KEY_ENV_VARS[provider_id])
 
-                    tasks.append(
-                        self._check_provider(provider_id, base_url, endpoint, api_key)
-                    )
+                tasks.append(
+                    self._check_provider(provider_id, base_url, endpoint, api_key)
+                )
 
-                await asyncio.gather(*tasks, return_exceptions=True)
-
-            except Exception as e:
-                logger.error(f"Health monitoring error: {e}")
-
+            await asyncio.gather(*tasks, return_exceptions=True)
             await asyncio.sleep(self.check_interval)
+
+    @staticmethod
+    def _build_request(base_url: str, endpoint: str) -> tuple[str, Dict[str, str]]:
+        url = base_url + endpoint
+        headers = {"Accept": "application/json"}
+        return url, headers
+
+    @staticmethod
+    def _apply_provider_auth(
+        provider_id: str,
+        api_key: Optional[str],
+        url: str,
+        headers: Dict[str, str],
+    ) -> str:
+        if not api_key:
+            return url
+
+        if provider_id == "azure":
+            headers["api-key"] = api_key
+        elif provider_id in ["openai", "groq", "siliconeflow", "deepseek"]:
+            headers["Authorization"] = f"Bearer {api_key}"
+        elif provider_id == "anthropic":
+            headers["x-api-key"] = api_key
+            headers["anthropic-version"] = "2024-01-01"
+        elif provider_id == "google":
+            url = url + "?key=" + api_key
+
+        return url
+
+    @staticmethod
+    def _handle_http_response(
+        provider_id: str,
+        health: ProviderHealth,
+        response: httpx.Response,
+        latency_ms: float,
+    ) -> None:
+        if response.status_code in [200, 201]:
+            health.record_success(latency_ms)
+            logger.debug("Health check OK: %s (%.0fms)", provider_id, latency_ms)
+            return
+
+        if response.status_code in [401, 403]:
+            # Auth errors mean service is reachable but key is wrong/missing.
+            health.record_success(latency_ms)
+            logger.debug(
+                "Health check reachable (auth error): %s (%.0fms)",
+                provider_id,
+                latency_ms,
+            )
+            return
+
+        health.record_failure("HTTP " + str(response.status_code))
+        logger.warning("Health check failed: %s - HTTP %s", provider_id, response.status_code)
 
     async def _check_provider(
         self,
@@ -177,19 +225,8 @@ class ProviderHealthMonitor:
     ):
         """Check health of a single provider."""
         health = self.health_data[provider_id]
-        url = f"{base_url}{endpoint}"
-
-        headers = {"Accept": "application/json"}
-        if api_key:
-            if provider_id == "azure":
-                headers["api-key"] = api_key
-            elif provider_id in ["openai", "groq", "siliconeflow", "deepseek"]:
-                headers["Authorization"] = f"Bearer {api_key}"
-            elif provider_id == "anthropic":
-                headers["x-api-key"] = api_key
-                headers["anthropic-version"] = "2024-01-01"
-            elif provider_id == "google":
-                url = f"{url}?key={api_key}"
+        url, headers = self._build_request(base_url, endpoint)
+        url = self._apply_provider_auth(provider_id, api_key, url, headers)
 
         start_time = time.time()
 
@@ -198,30 +235,17 @@ class ProviderHealthMonitor:
                 response = await client.get(url, headers=headers)
 
                 latency_ms = (time.time() - start_time) * 1000
-
-                if response.status_code in [200, 201]:
-                    health.record_success(latency_ms)
-                    logger.debug(f"Health check OK: {provider_id} ({latency_ms:.0f}ms)")
-                elif response.status_code in [401, 403]:
-                    # Auth errors mean the service is reachable but key is wrong/missing
-                    # Treat as degraded rather than unhealthy
-                    health.record_success(latency_ms)
-                    logger.debug(f"Health check reachable (auth error): {provider_id} ({latency_ms:.0f}ms)")
-                else:
-                    health.record_failure(f"HTTP {response.status_code}")
-                    logger.warning(
-                        f"Health check failed: {provider_id} - HTTP {response.status_code}"
-                    )
+                self._handle_http_response(provider_id, health, response, latency_ms)
 
         except httpx.TimeoutException:
             health.record_failure("Timeout")
-            logger.warning(f"Health check timeout: {provider_id}")
+            logger.warning("Health check timeout: %s", provider_id)
         except httpx.ConnectError:
             health.record_failure("Connection refused")
-            logger.warning(f"Health check connection failed: {provider_id}")
-        except Exception as e:
+            logger.warning("Health check connection failed: %s", provider_id)
+        except httpx.HTTPError as e:
             health.record_failure(str(e))
-            logger.error(f"Health check error: {provider_id} - {e}")
+            logger.error("Health check error: %s - %s", provider_id, e)
 
     def is_healthy(self, provider_id: str) -> bool:
         """Check if provider is healthy."""
@@ -317,6 +341,6 @@ class ProviderHealthMonitor:
 health_monitor = ProviderHealthMonitor()
 
 
-async def get_health_monitor() -> ProviderHealthMonitor:
+def get_health_monitor() -> ProviderHealthMonitor:
     """Get the global health monitor instance."""
     return health_monitor

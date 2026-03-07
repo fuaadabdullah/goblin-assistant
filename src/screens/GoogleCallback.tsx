@@ -1,11 +1,13 @@
 import React, { useEffect } from 'react';
+import { useQueryClient } from '@tanstack/react-query';
 import { useRouter } from 'next/router';
-import { useAuthStore } from '../store/authStore';
-
-const cleanUrl = (value?: string) => (value || '').trim().replace(/\/$/, '');
+import { queryKeys } from '../lib/query-keys';
+import { persistAuthSession } from '../utils/auth-session';
+import { resolvePublicBackendOrigin } from '../config/backendOrigin';
 
 const GoogleCallback: React.FC = () => {
   const router = useRouter();
+  const queryClient = useQueryClient();
   const { code, state, error: oauthError } = router.query;
 
   useEffect(() => {
@@ -30,16 +32,11 @@ const GoogleCallback: React.FC = () => {
       }
 
       try {
-        const backendOrigin = cleanUrl(
-          process.env.NEXT_PUBLIC_FASTAPI_URL ||
-            process.env.NEXT_PUBLIC_API_URL ||
-            process.env.NEXT_PUBLIC_API_BASE_URL ||
-            'https://goblin-backend.onrender.com'
-        );
+        const backendOrigin = resolvePublicBackendOrigin();
 
         // Exchange code for token
         const response = await fetch(
-          `${backendOrigin}/v1/auth/google/callback`,
+          `${backendOrigin}/auth/google/callback`,
           {
             method: 'POST',
             headers: {
@@ -68,10 +65,16 @@ const GoogleCallback: React.FC = () => {
           throw new Error('Invalid OAuth response');
         }
 
-        useAuthStore.getState().setSession({
+        persistAuthSession({
           token: tokenValue,
           user: userInfo,
           expiresIn: authData?.expires_in,
+        });
+        queryClient.setQueryData(queryKeys.authValidate, {
+          token: tokenValue,
+          user: userInfo,
+          isAuthenticated: true,
+          isHydrated: true,
         });
 
         // Navigate to chat

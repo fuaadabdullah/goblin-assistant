@@ -1,11 +1,11 @@
 import { useEffect, useRef, useState } from 'react';
-import { apiClient } from '../../../api/apiClient';
+import { apiClient } from '../../../lib/api';
 import { getRuntimeClient } from '../../../services/provider-router';
 import { storeStartupDiagnostics } from '../../../utils/startup-diagnostics';
 import { getEnabledModules } from '../../../config/features';
 import { preloadRecentChat } from '../../../lib/chat-history';
 import { trackPerformance } from '../../../utils/error-tracking';
-import { useAuthStore } from '../../../store/authStore';
+import { bootstrapAuthSession, hasRole } from '../../../lib/auth-state';
 import type { StartupDiagnostics, StartupState, StartupStatus } from '../types';
 
 const STATUS_MESSAGES: Record<StartupStatus, string> = {
@@ -30,7 +30,6 @@ export const resolveStartupDestinationRoute = (input: {
 };
 
 export const useStartupFlow = (): StartupState => {
-  const bootstrapFromSession = useAuthStore(state => state.bootstrapFromSession);
   const currentStatusRef = useRef<StartupStatus>('checking-auth');
   const [state, setState] = useState<StartupState>({
     status: 'checking-auth',
@@ -110,7 +109,7 @@ export const useStartupFlow = (): StartupState => {
       try {
         setStep('checking-auth');
         const authStart = now();
-        await bootstrapFromSession();
+        const authSnapshot = await bootstrapAuthSession();
         timings.authMs = Math.round(now() - authStart);
         trackPerformance('startup_auth_ms', timings.authMs);
         if (cancelled) return;
@@ -133,10 +132,9 @@ export const useStartupFlow = (): StartupState => {
         trackPerformance('startup_runtime_ms', timings.runtimeMs);
         if (cancelled) return;
 
-        const authState = useAuthStore.getState();
         const destinationRoute = resolveStartupDestinationRoute({
-          isAuthenticated: authState.isAuthenticated,
-          isAdmin: authState.hasRole('admin'),
+          isAuthenticated: authSnapshot.isAuthenticated,
+          isAdmin: hasRole(authSnapshot.user, 'admin'),
           isAdminModuleEnabled: modules.admin,
         });
 
@@ -161,7 +159,7 @@ export const useStartupFlow = (): StartupState => {
       cancelled = true;
       window.clearTimeout(watchdog);
     };
-  }, [bootstrapFromSession]);
+  }, []);
 
   return state;
 };

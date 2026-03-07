@@ -87,7 +87,7 @@ describe('/api/models thin proxy', () => {
     jest.restoreAllMocks();
   });
 
-  it('proxies to backend /v1/providers/models with internal key', async () => {
+  it('proxies to backend /providers/models with internal key', async () => {
     process.env.GOBLIN_BACKEND_URL = 'https://backend.example';
     process.env.INTERNAL_PROXY_API_KEY = 'proxy-key';
 
@@ -130,7 +130,7 @@ describe('/api/models thin proxy', () => {
     await handler(req, res);
 
     expect(fetchMock).toHaveBeenCalledTimes(1);
-    expect(fetchMock.mock.calls[0][0]).toBe('https://backend.example/v1/providers/models');
+    expect(fetchMock.mock.calls[0][0]).toBe('https://backend.example/providers/models');
 
     const init = fetchMock.mock.calls[0][1] as RequestInit;
     expect(init.method).toBe('GET');
@@ -230,6 +230,96 @@ describe('/api/models thin proxy', () => {
     expect(fetchMock).toHaveBeenCalledTimes(1);
     expect(res.statusCode).toBe(502);
     expect(res.body).toEqual({ error: 'Backend unreachable' });
+  });
+
+  it('falls back to /ops/providers/status when /providers/models is 404', async () => {
+    process.env.GOBLIN_BACKEND_URL = 'https://backend.example';
+
+    const fetchMock = jest
+      .fn()
+      .mockResolvedValueOnce(
+        createFetchResponse({
+          status: 404,
+          body: { detail: 'Not Found' },
+        }),
+      )
+      .mockResolvedValueOnce(
+        createFetchResponse({
+          status: 200,
+          body: {
+            providers: {
+              openai: {
+                status: 'healthy',
+                error: null,
+                models: ['gpt-4', 'gpt-3.5-turbo'],
+              },
+              local: {
+                status: 'unhealthy',
+                error: 'Missing API key',
+                models: ['llama3'],
+              },
+            },
+          },
+        }),
+      );
+
+    global.fetch = fetchMock as unknown as typeof fetch;
+
+    const handler = loadHandler();
+    const req = createReq();
+    const res = createRes();
+
+    await handler(req, res);
+
+    expect(fetchMock).toHaveBeenCalledTimes(2);
+    expect(fetchMock.mock.calls[0][0]).toBe('https://backend.example/providers/models');
+    expect(fetchMock.mock.calls[1][0]).toBe('https://backend.example/ops/providers/status');
+
+    expect(res.statusCode).toBe(200);
+    expect(res.body).toEqual({
+      models: [
+        {
+          name: 'gpt-4',
+          provider: 'openai',
+          health: 'healthy',
+          is_selectable: true,
+          health_reason: null,
+        },
+        {
+          name: 'gpt-3.5-turbo',
+          provider: 'openai',
+          health: 'healthy',
+          is_selectable: true,
+          health_reason: null,
+        },
+        {
+          name: 'llama3',
+          provider: 'local',
+          health: 'unhealthy',
+          is_selectable: false,
+          health_reason: 'Missing API key',
+        },
+      ],
+      providers: [
+        {
+          id: 'openai',
+          health: 'healthy',
+          configured: true,
+          is_selectable: true,
+          health_reason: null,
+        },
+        {
+          id: 'local',
+          health: 'unhealthy',
+          configured: true,
+          is_selectable: false,
+          health_reason: 'Missing API key',
+        },
+      ],
+      source: 'ops_provider_status_fallback',
+      total_models: 3,
+      total_providers: 2,
+    });
   });
 
   it('rejects non-GET methods', async () => {

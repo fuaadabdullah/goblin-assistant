@@ -1,48 +1,61 @@
+import { cva, type VariantProps } from 'class-variance-authority';
 import type { ReactNode } from 'react';
+import { cn } from '@/lib/utils';
 
-type BadgeVariant = 'success' | 'warning' | 'danger' | 'neutral' | 'primary';
-type BadgeSize = 'sm' | 'md';
+const badgeVariants = cva(
+  'inline-flex items-center gap-1 rounded-sm font-medium transition-all duration-150',
+  {
+    variants: {
+      variant: {
+        primary: 'bg-primary/20 text-primary border border-primary/30',
+        secondary: 'bg-accent/20 text-accent border border-accent/30',
+        success: 'bg-success/20 text-success border border-success/30',
+        warning: 'bg-warning/20 text-warning border border-warning/30',
+        danger: 'bg-danger/20 text-danger border border-danger/30',
+        neutral: 'bg-surface text-muted border border-border',
+      },
+      size: {
+        sm: 'px-2 py-0.5 text-xs',
+        md: 'px-3 py-1 text-sm',
+        lg: 'px-4 py-2 text-base',
+      },
+    },
+    defaultVariants: {
+      variant: 'neutral',
+      size: 'sm',
+    },
+  }
+);
 
-export interface BadgeProps {
-  variant?: BadgeVariant;
-  size?: BadgeSize;
+export type BadgeVariantProps = VariantProps<typeof badgeVariants>;
+
+export interface BadgeProps extends BadgeVariantProps {
   icon?: ReactNode;
   children: ReactNode;
   className?: string;
 }
 
-const variantStyles: Record<BadgeVariant, string> = {
-  success: 'bg-success/20 text-success',
-  warning: 'bg-warning/20 text-warning',
-  danger: 'bg-danger/20 text-danger',
-  neutral: 'bg-surface-hover text-muted',
-  primary: 'bg-primary/20 text-primary',
-};
-
-const sizeStyles: Record<BadgeSize, string> = {
-  sm: 'text-xs px-2 py-0.5',
-  md: 'text-sm px-3 py-1',
-};
-
 /**
- * Badge — unified status chip/badge component.
- * Replaces inline badge styles across StatusCard, health indicators, etc.
+ * Badge — status indicator component with CVA-based variants.
+ * Enforces design system colors and sizing consistency.
  */
-export default function Badge({
+export function Badge({
   variant = 'neutral',
   size = 'sm',
   icon,
-  className = '',
+  className,
   children,
 }: BadgeProps) {
   return (
     <span
-      className={`inline-flex items-center gap-1 rounded-full font-medium ${variantStyles[variant]} ${sizeStyles[size]} ${className}`}
+      className={cn(badgeVariants({ variant, size }), className)}
       role="status"
       aria-live="polite"
     >
-      {icon && <span>{icon}</span>}
+      {icon && <span aria-hidden="true">{icon}</span>}
       <span>{children}</span>
     </span>
   );
 }
+
+export default Badge;

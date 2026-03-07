@@ -9,7 +9,7 @@ Provides intelligent routing with:
 - Circuit breaker integration
 """
 
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Dict, List, Optional, Any
 from dataclasses import dataclass
 from enum import Enum
@@ -187,12 +187,16 @@ class CostTracker:
         """
         self.hourly_budget = hourly_budget
         self.current_hour_spend = 0.0
-        self.hour_start = datetime.utcnow().replace(minute=0, second=0, microsecond=0)
+        self.hour_start = datetime.now(timezone.utc).replace(
+            minute=0, second=0, microsecond=0
+        )
         self.request_history: List[Dict[str, Any]] = []
 
     def _reset_if_new_hour(self):
         """Reset tracking if we're in a new hour."""
-        current_hour = datetime.utcnow().replace(minute=0, second=0, microsecond=0)
+        current_hour = datetime.now(timezone.utc).replace(
+            minute=0, second=0, microsecond=0
+        )
         if current_hour > self.hour_start:
             self.hour_start = current_hour
             self.current_hour_spend = 0.0
@@ -219,12 +223,15 @@ class CostTracker:
                 "input_tokens": input_tokens,
                 "output_tokens": output_tokens,
                 "cost": cost,
-                "timestamp": datetime.utcnow().isoformat(),
+                "timestamp": datetime.now(timezone.utc).isoformat(),
             }
         )
 
         logger.debug(
-            f"Recorded cost: ${cost:.4f} for {provider_id} (hourly total: ${self.current_hour_spend:.2f})"
+            "Recorded cost: $%.4f for %s (hourly total: $%.2f)",
+            cost,
+            provider_id,
+            self.current_hour_spend,
         )
 
     def estimate_cost(
@@ -419,7 +426,101 @@ class SmartRouter:
         # Use strategy-based chain
         return FALLBACK_CHAINS.get(strategy.value, FALLBACK_CHAINS["balanced"])
 
-    async def select_provider(
+    @staticmethod
+    def _provider_has_capabilities(
+        provider_id: str, required_capabilities: Optional[List[str]]
+    ) -> bool:
+        if not required_capabilities:
+            return True
+        provider_caps = PROVIDER_CAPABILITIES.get(provider_id, [])
+        return all(cap in provider_caps for cap in required_capabilities)
+
+    def _provider_is_eligible(
+        self,
+        provider_id: str,
+        exclude_providers: List[str],
+        required_capabilities: Optional[List[str]],
+    ) -> tuple[bool, Optional[str]]:
+        if provider_id in exclude_providers:
+            return False, None
+
+        if not health_monitor.is_available(provider_id):
+            return False, f"Skipped {provider_id}: unhealthy"
+
+        if self._is_circuit_open(provider_id):
+            return False, f"Skipped {provider_id}: circuit open"
+
+        if not self._provider_has_capabilities(provider_id, required_capabilities):
+            return False, f"Skipped {provider_id}: missing capabilities"
+
+        return True, None
+
+    def _should_skip_for_budget(
+        self, provider_id: str, filtered_chain: List[str]
+    ) -> bool:
+        if not self.cost_tracker.should_use_cheaper_provider():
+            return False
+        cost = self.cost_tracker.estimate_cost(provider_id)
+        return cost > 0.01 and len(filtered_chain) > 0
+
+    def _filter_fallback_chain(
+        self,
+        fallback_chain: List[str],
+        exclude_providers: List[str],
+        required_capabilities: Optional[List[str]],
+    ) -> tuple[List[str], List[str]]:
+        filtered_chain: List[str] = []
+        selection_reason: List[str] = []
+
+        for provider_id in fallback_chain:
+            is_eligible, reason = self._provider_is_eligible(
+                provider_id, exclude_providers, required_capabilities
+            )
+            if not is_eligible:
+                if reason:
+                    selection_reason.append(reason)
+                continue
+
+            if self._should_skip_for_budget(provider_id, filtered_chain):
+                selection_reason.append(f"Skipped {provider_id}: over budget")
+                continue
+
+            filtered_chain.append(provider_id)
+
+        return filtered_chain, selection_reason
+
+    def _build_emergency_selection(self) -> ProviderSelection:
+        return ProviderSelection(
+            provider_id="mock",
+            model="mock-gpt",
+            reason="No providers available - using mock",
+            fallback_chain=[],
+            estimated_cost=0,
+            expected_latency_ms=100,
+        )
+
+    def _preferred_provider_selection(
+        self, preferred_provider: Optional[str]
+    ) -> Optional[ProviderSelection]:
+        if not preferred_provider:
+            return None
+
+        if not health_monitor.is_available(preferred_provider):
+            return None
+
+        if self._is_circuit_open(preferred_provider):
+            return None
+
+        return ProviderSelection(
+            provider_id=preferred_provider,
+            model=DEFAULT_MODELS.get(preferred_provider, "default"),
+            reason="User-preferred provider",
+            fallback_chain=[],
+            estimated_cost=self.cost_tracker.estimate_cost(preferred_provider),
+            expected_latency_ms=health_monitor.get_latency(preferred_provider),
+        )
+
+    def select_provider(
         self,
         messages: List[Dict[str, str]],
         strategy: Optional[RoutingStrategy] = None,
@@ -452,19 +553,9 @@ class SmartRouter:
         strategy = strategy or self.default_strategy
         exclude_providers = exclude_providers or []
 
-        # Handle preferred provider override
-        if preferred_provider:
-            if health_monitor.is_available(
-                preferred_provider
-            ) and not self._is_circuit_open(preferred_provider):
-                return ProviderSelection(
-                    provider_id=preferred_provider,
-                    model=DEFAULT_MODELS.get(preferred_provider, "default"),
-                    reason="User-preferred provider",
-                    fallback_chain=[],
-                    estimated_cost=self.cost_tracker.estimate_cost(preferred_provider),
-                    expected_latency_ms=health_monitor.get_latency(preferred_provider),
-                )
+        preferred_selection = self._preferred_provider_selection(preferred_provider)
+        if preferred_selection is not None:
+            return preferred_selection
 
         # Detect task type
         task_type = self._detect_task_type(messages)
@@ -472,56 +563,14 @@ class SmartRouter:
         # Get base fallback chain
         fallback_chain = self._get_fallback_chain(strategy, task_type)
 
-        # Filter chain
-        filtered_chain = []
-        selection_reason = []
-
-        for provider_id in fallback_chain:
-            # Skip excluded providers
-            if provider_id in exclude_providers:
-                continue
-
-            # Check health
-            if not health_monitor.is_available(provider_id):
-                selection_reason.append(f"Skipped {provider_id}: unhealthy")
-                continue
-
-            # Check circuit breaker
-            if self._is_circuit_open(provider_id):
-                selection_reason.append(f"Skipped {provider_id}: circuit open")
-                continue
-
-            # Check capabilities
-            if required_capabilities:
-                provider_caps = PROVIDER_CAPABILITIES.get(provider_id, [])
-                if not all(cap in provider_caps for cap in required_capabilities):
-                    selection_reason.append(
-                        f"Skipped {provider_id}: missing capabilities"
-                    )
-                    continue
-
-            # Check affordability (if budget constrained)
-            if self.cost_tracker.should_use_cheaper_provider():
-                cost = self.cost_tracker.estimate_cost(provider_id)
-                if (
-                    cost > 0.01 and len(filtered_chain) > 0
-                ):  # Allow one expensive option
-                    selection_reason.append(f"Skipped {provider_id}: over budget")
-                    continue
-
-            filtered_chain.append(provider_id)
+        filtered_chain: List[str]
+        filtered_chain, _ = self._filter_fallback_chain(
+            fallback_chain, exclude_providers, required_capabilities
+        )
 
         # Select first available
         if not filtered_chain:
-            # Emergency fallback - try mock provider
-            return ProviderSelection(
-                provider_id="mock",
-                model="mock-gpt",
-                reason="No providers available - using mock",
-                fallback_chain=[],
-                estimated_cost=0,
-                expected_latency_ms=100,
-            )
+            return self._build_emergency_selection()
 
         selected = filtered_chain[0]
         remaining_chain = filtered_chain[1:]
@@ -556,7 +605,7 @@ class SmartRouter:
         Returns:
             Provider response or error
         """
-        selection = await self.select_provider(messages, strategy, **kwargs)
+        selection = self.select_provider(messages, strategy, **kwargs)
         tried_providers = []
 
         chain = [selection.provider_id] + selection.fallback_chain
@@ -565,7 +614,7 @@ class SmartRouter:
             model = DEFAULT_MODELS.get(provider_id, "default")
             tried_providers.append(provider_id)
 
-            logger.info(f"Trying provider: {provider_id} ({model})")
+            logger.info("Trying provider: %s (%s)", provider_id, model)
 
             try:
                 result = await invoke_fn(
@@ -597,11 +646,17 @@ class SmartRouter:
                     return result
                 else:
                     logger.warning(
-                        f"Provider {provider_id} returned error: {result.get('error')}"
+                        "Provider %s returned error: %s",
+                        provider_id,
+                        result.get("error"),
                     )
 
-            except Exception as e:
-                logger.error(f"Provider {provider_id} exception: {e}")
+            except (
+                RuntimeError,
+                ValueError,
+                TypeError,
+            ) as e:
+                logger.error("Provider %s exception: %s", provider_id, e)
                 continue
 
         return {
@@ -628,6 +683,6 @@ smart_router = SmartRouter(
 )
 
 
-async def get_smart_router() -> SmartRouter:
+def get_smart_router() -> SmartRouter:
     """Get the global smart router instance."""
     return smart_router

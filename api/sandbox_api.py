@@ -364,6 +364,47 @@ async def sandbox_health():
         "enabled": SANDBOX_ENABLED
     }
 
+@router.post("/run", response_model=Dict[str, str])
+async def run_sandbox_code(
+    req: SubmitJobRequest,
+    x_api_key: str = Header(...),
+):
+    """Alias for /submit - Execute code in sandbox"""
+    return await submit_job(req, x_api_key)
+
+@router.get("/jobs")
+async def list_sandbox_jobs(
+    x_api_key: str = Header(default=""),
+):
+    """Get list of sandbox jobs (placeholder)"""
+    if not SANDBOX_ENABLED:
+        raise HTTPException(status_code=503, detail="sandbox service is disabled")
+    
+    # Basic auth check if API key provided
+    if x_api_key and x_api_key != API_KEY:
+        if os.getenv("ENVIRONMENT", "development") != "development":
+            raise HTTPException(status_code=401, detail="Unauthorized")
+    
+    # In a real implementation, query Redis/database for job list
+    return {"jobs": [], "total": 0}
+
+@router.get("/jobs/{job_id}/logs")
+async def get_job_logs_alias(
+    job_id: str,
+    x_api_key: str = Header(default=""),
+):
+    """Alias for /logs/{job_id} - Get job execution logs"""
+    if not SANDBOX_ENABLED:
+        raise HTTPException(status_code=503, detail="sandbox service is disabled")
+    
+    # Basic auth check if API key provided
+    if x_api_key and x_api_key != API_KEY:
+        if os.getenv("ENVIRONMENT", "development") != "development":
+            raise HTTPException(status_code=401, detail="Unauthorized")
+    
+    # Call the existing logs implementation with proper auth
+    return await get_job_logs(job_id, x_api_key)
+
 @router.get("/metrics")
 async def sandbox_metrics():
     """Get Prometheus metrics for sandbox operations"""

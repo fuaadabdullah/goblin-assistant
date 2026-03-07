@@ -1,6 +1,9 @@
 import { useEffect, useState } from 'react';
-import { apiClient } from '../../api/apiClient';
-import { useAuthStore } from '../../store/authStore';
+import { useQueryClient } from '@tanstack/react-query';
+import { apiClient } from '../../lib/api';
+import { queryKeys } from '../../lib/query-keys';
+import { persistAuthSession } from '../../utils/auth-session';
+import type { LoginResponse } from '../../types/api';
 import LoginHeader from './LoginHeader';
 import EmailPasswordForm from './EmailPasswordForm';
 import SocialLoginButtons from './SocialLoginButtons';
@@ -26,6 +29,7 @@ export default function ModularLoginForm({
   const [showPasskey, setShowPasskey] = useState(false);
   const [email, setEmail] = useState('');
   const [turnstileToken, setTurnstileToken] = useState('');
+  const queryClient = useQueryClient();
 
   const turnstileConfig = useTurnstile('login');
 
@@ -49,15 +53,22 @@ export default function ModularLoginForm({
         ? await apiClient.register(email, password, turnstileToken)
         : await apiClient.login(email, password);
 
-      const tokenValue = (response as any).access_token || (response as any).token || null;
-      if (!tokenValue) {
+      const authResponse = response as LoginResponse;
+      
+      if (!authResponse.access_token) {
         throw new Error('Authentication failed - invalid server response');
       }
-      const resolvedUser = (response as any).user ?? { id: email, email };
-      useAuthStore.getState().setSession({
-        token: tokenValue,
-        user: resolvedUser,
-        expiresIn: (response as any).expires_in,
+      
+      persistAuthSession({
+        token: authResponse.access_token,
+        user: authResponse.user,
+        expiresIn: authResponse.expires_in,
+      });
+      queryClient.setQueryData(queryKeys.authValidate, {
+        token: authResponse.access_token,
+        user: authResponse.user,
+        isAuthenticated: true,
+        isHydrated: true,
       });
       onSuccess();
     } catch (error) {
@@ -80,7 +91,7 @@ export default function ModularLoginForm({
 
   return (
     <div className="w-full max-w-md">
-      <div className="bg-surface rounded-2xl shadow-[0_20px_60px_rgba(15,23,42,0.12)] border border-border p-8">
+      <div className="bg-surface rounded-md shadow-lg border border-border p-8 transition-all duration-150">
         <LoginHeader isRegister={isRegister} />
 
         <EmailPasswordForm

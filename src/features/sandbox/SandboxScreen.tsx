@@ -1,14 +1,14 @@
 import type { FC } from 'react';
 import { useMemo, useState } from 'react';
 import { useRouter } from 'next/router';
-import { useAuthStore } from '../../store/authStore';
-import AuthPrompt from '../../components/auth/AuthPrompt';
+import { useAuthSession } from '../../hooks/api/useAuthSession';
+import AuthPrompt from '../../components/Auth/AuthPrompt';
 import { useSandboxSession } from './hooks/useSandboxSession';
 import SandboxView from './components/SandboxView';
 
 const SandboxScreen: FC = () => {
   const router = useRouter();
-  const isAuthenticated = useAuthStore(state => state.isAuthenticated);
+  const { isAuthenticated } = useAuthSession();
   const [showAuthPrompt, setShowAuthPrompt] = useState(false);
   const allowGuest = useMemo(() => {
     if (!router.isReady) return false;

@@ -1,6 +1,12 @@
+'use client';
+
 import type { RefObject } from 'react';
 import { useMemo, useState } from 'react';
 import type { ChatMessage, QuickPrompt } from '../types';
+import StreamingMessage from './StreamingMessage';
+import MessageTimestamp from './MessageTimestamp';
+import MessageActions from './MessageActions';
+import ChatEmptyState from './ChatEmptyState';
 
 interface ChatMessageListProps {
   /** Conversation messages in display order. */
@@ -13,6 +19,16 @@ interface ChatMessageListProps {
   bottomRef: RefObject<HTMLDivElement>;
   /** Whether the assistant is currently responding. */
   isSending: boolean;
+  /** Whether the selected thread is loading from the backend. */
+  isLoading?: boolean;
+  /** Handler for deleting a message */
+  onDeleteMessage?: (messageId: string) => void;
+  /** Handler for copying a message */
+  onCopyMessage?: (content: string) => Promise<void>;
+  /** Handler for regenerating a response */
+  onRegenerateMessage?: (messageId: string) => Promise<void>;
+  /** Prefer reduced motion */
+  prefersReducedMotion?: boolean;
 }
 
 const ChatMessageList = ({
@@ -21,6 +37,11 @@ const ChatMessageList = ({
   onPromptClick,
   bottomRef,
   isSending,
+  isLoading = false,
+  onDeleteMessage,
+  onCopyMessage,
+  onRegenerateMessage,
+  prefersReducedMotion = false,
 }: ChatMessageListProps) => {
   const [expanded, setExpanded] = useState<Record<string, boolean>>({});
 
@@ -30,34 +51,39 @@ const ChatMessageList = ({
 
   const messageList = useMemo(() => messages.filter(Boolean), [messages]);
 
-  if (messages.length === 0) {
+  // Find the message that is currently streaming
+  const streamingMessageId = useMemo(() => {
+    if (!isSending) return null;
+    // The last assistant message should be streaming if isSending is true
+    const lastAssistantIndex = [...messageList]
+      .reverse()
+      .findIndex((msg) => msg.role === 'assistant');
+    if (lastAssistantIndex === -1) return null;
+    const assistantMessage = messageList[messageList.length - 1 - lastAssistantIndex];
+    return assistantMessage.id;
+  }, [messageList, isSending]);
+
+  if (isLoading) {
     return (
-      <section className="flex flex-col items-center justify-center h-full text-center">
-        <div className="mb-6 rounded-2xl border border-border bg-surface/70 p-8 shadow-card max-w-xl">
-          <div className="w-16 h-16 bg-primary/20 rounded-full flex items-center justify-center mx-auto mb-4">
-            <span className="text-3xl">🤖</span>
-          </div>
-          <h2 className="text-2xl font-semibold text-text mb-2">
-            Welcome! What do you need help with?
-          </h2>
-          <p className="text-muted">
-            Type a question or choose a suggestion to get started.
-          </p>
-          <div className="mt-5 flex flex-wrap justify-center gap-2">
-            {quickPrompts.map(item => (
-              <button
-                key={item.label}
-                onClick={() => onPromptClick(item.prompt)}
-                className="px-3 py-2 rounded-full border border-border text-sm text-text hover:bg-surface-hover"
-                type="button"
-              >
-                {item.label}
-              </button>
-            ))}
-          </div>
+      <section className="max-w-4xl mx-auto space-y-4" aria-label="Loading conversation">
+        <div className="rounded-2xl border border-border bg-surface/70 p-6 shadow-card animate-pulse">
+          <div className="h-4 w-32 rounded bg-surface-hover mb-4" />
+          <div className="h-4 w-full rounded bg-surface-hover mb-3" />
+          <div className="h-4 w-5/6 rounded bg-surface-hover mb-3" />
+          <div className="h-4 w-3/4 rounded bg-surface-hover" />
         </div>
         <div ref={bottomRef} aria-hidden="true" />
       </section>
+    );
+  }
+
+  if (messages.length === 0) {
+    return (
+      <ChatEmptyState
+        quickPrompts={quickPrompts}
+        onPromptClick={onPromptClick}
+        prefersReducedMotion={prefersReducedMotion}
+      />
     );
   }
 
@@ -72,6 +98,8 @@ const ChatMessageList = ({
           const messageId = msg.id || `msg-${idx}`;
           const isUser = msg.role === 'user';
           const detailsId = `msg-details-${messageId}`;
+          const isStreaming = streamingMessageId === messageId && isSending;
+
           const hasMeta =
             !isUser &&
             !!(msg.meta?.model || msg.meta?.provider || msg.meta?.usage || typeof msg.meta?.cost_usd === 'number');
@@ -83,21 +111,66 @@ const ChatMessageList = ({
           const cost = typeof msg.meta?.cost_usd === 'number' ? msg.meta.cost_usd : undefined;
           const costLabel = cost !== undefined ? `$${cost.toFixed(4)}` : '—';
           const approx = msg.meta?.cost_is_approx ? ' (approx)' : '';
+
           return (
-            <li key={idx} className={`flex ${isUser ? 'justify-end' : 'justify-start'}`}>
+            <li
+              key={idx}
+              className={`flex ${isUser ? 'justify-end' : 'justify-start'} group`}
+            >
               <div className={`max-w-[80%] ${isUser ? 'text-right' : 'text-left'}`}>
+                {/* Timestamp */}
+                <div className="text-xs text-muted mb-1 px-2">
+                  <MessageTimestamp createdAt={msg.createdAt} />
+                </div>
+
+                {/* Message role label */}
                 <div className="text-xs uppercase tracking-wide text-muted mb-1">
                   {isUser ? 'You' : 'Assistant'}
                 </div>
-                <div
-                  className={`rounded-2xl px-4 py-3 leading-relaxed ${
-                    isUser
-                      ? 'bg-primary text-text-inverse shadow-glow-primary rounded-br-sm'
-                      : 'bg-surface text-text border border-border rounded-bl-sm shadow-card'
-                  } whitespace-pre-wrap text-sm md:text-base`}
-                >
-                  {msg.content}
+
+                {/* Message bubble container with hover actions */}
+                <div className="relative">
+                  {/* Message content */}
+                  <div
+                    className={`rounded-2xl px-4 py-3 leading-relaxed ${
+                      isUser
+                        ? 'bg-primary text-text-inverse shadow-glow-primary rounded-br-sm'
+                        : 'bg-surface text-text border border-border rounded-bl-sm shadow-card'
+                    } whitespace-pre-wrap text-sm md:text-base`}
+                  >
+                    {isStreaming ? (
+                      <StreamingMessage
+                        message={msg}
+                        isStreaming={isStreaming}
+                        prefersReducedMotion={prefersReducedMotion}
+                      />
+                    ) : (
+                      msg.content
+                    )}
+                  </div>
+
+                  {/* Message Actions - Hover overlay */}
+                  {(onCopyMessage || onDeleteMessage || onRegenerateMessage) && (
+                    <div
+                      className={`absolute ${
+                        isUser ? 'right-0 bottom-0' : 'left-0 bottom-0'
+                      } -mb-10 opacity-0 group-hover:opacity-100 transition-opacity duration-200`}
+                    >
+                      <MessageActions
+                        role={msg.role as 'user' | 'assistant'}
+                        onCopy={() => onCopyMessage?.(msg.content)}
+                        onRegenerate={() =>
+                          onRegenerateMessage?.(messageId)
+                        }
+                        onDelete={() => onDeleteMessage?.(messageId)}
+                        showRegenerate={true}
+                        showDelete={true}
+                      />
+                    </div>
+                  )}
                 </div>
+
+                {/* Metadata Details toggle */}
                 {hasMeta ? (
                   <div className="mt-2 flex flex-wrap items-center gap-2 text-xs">
                     <button
@@ -117,17 +190,23 @@ const ChatMessageList = ({
                           model: <span className="text-text">{msg.meta?.model || '—'}</span>
                         </div>
                         <div>
-                          provider: <span className="text-text">{msg.meta?.provider || '—'}</span>
+                          provider:{' '}
+                          <span className="text-text">{msg.meta?.provider || '—'}</span>
                         </div>
                         <div>
                           tokens: <span className="text-text">{tokens ?? '—'}</span>
                         </div>
                         <div>
-                          cost: <span className="text-text">{costLabel}{approx}</span>
+                          cost:{' '}
+                          <span className="text-text">
+                            {costLabel}
+                            {approx}
+                          </span>
                         </div>
                         {msg.meta?.correlation_id ? (
                           <div className="opacity-80">
-                            correlation: <span className="text-text">{msg.meta.correlation_id}</span>
+                            correlation:{' '}
+                            <span className="text-text">{msg.meta.correlation_id}</span>
                           </div>
                         ) : null}
                       </div>

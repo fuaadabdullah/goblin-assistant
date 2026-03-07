@@ -1,10 +1,12 @@
 import type { KeyboardEvent, RefObject } from 'react';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { chatClient } from '../api';
 import { toUiError } from '../../../lib/ui-error';
 import type { ChatMessage, ChatThread, QuickPrompt } from '../types';
 import { useChatThreads } from './useChatThreads';
-import { readChatMessages, writeChatMessages } from '../../../lib/chat-history';
+import { buildThreadKey, readChatMessages } from '../../../lib/chat-history';
+import { queryKeys } from '../../../lib/query-keys';
 import { CHAT_QUICK_PROMPTS } from '../../../content/brand';
 import { estimateFromText, type TextCostEstimate } from '../../../lib/cost-estimate';
 import { computeCostUsd } from '../../../lib/llm-rates';
@@ -14,12 +16,13 @@ export interface ChatSessionState {
   messages: ChatMessage[];
   input: string;
   isSending: boolean;
+  isMessagesLoading: boolean;
   totalTokens: number;
   totalCostUsd: number;
   quickPrompts: QuickPrompt[];
   threads: ChatThread[];
   isThreadsLoading: boolean;
-  activeThreadId: string | null;
+  activeThreadKey: string | null;
   inputRef: RefObject<HTMLTextAreaElement>;
   bottomRef: RefObject<HTMLDivElement>;
   selectedProvider?: string;
@@ -27,21 +30,63 @@ export interface ChatSessionState {
   inputEstimate: TextCostEstimate | null;
   setInput: (value: string) => void;
   sendMessage: (messageOverride?: string) => Promise<void>;
-  selectThread: (threadId: string) => void;
+  selectThread: (threadKey: string) => void;
   handleClearChat: () => void;
   handlePromptClick: (prompt: string) => void;
   handleKeyDown: (e: KeyboardEvent<HTMLTextAreaElement>) => void;
+  deleteMessage: (messageId: string) => void;
+  copyMessage: (content: string) => Promise<void>;
+  regenerateMessage: (messageId: string) => Promise<void>;
 }
 
+const createMessageId = (): string => {
+  if (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function') {
+    return crypto.randomUUID();
+  }
+  return `msg-${Date.now()}-${Math.random().toString(16).slice(2, 10)}`;
+};
+
+const calculateTotals = (items: ChatMessage[]) => {
+  const totals = items.reduce(
+    (acc, message) => {
+      const usageTokens = message.meta?.usage?.total_tokens;
+      const inputTokens = message.meta?.usage?.input_tokens || 0;
+      const outputTokens = message.meta?.usage?.output_tokens || 0;
+      const tokens = typeof usageTokens === 'number' ? usageTokens : inputTokens + outputTokens;
+
+      if (typeof tokens === 'number' && Number.isFinite(tokens)) {
+        acc.totalTokens += tokens;
+      }
+      if (typeof message.meta?.cost_usd === 'number' && Number.isFinite(message.meta.cost_usd)) {
+        acc.totalCostUsd += message.meta.cost_usd;
+      }
+      return acc;
+    },
+    { totalTokens: 0, totalCostUsd: 0 }
+  );
+
+  return {
+    totalTokens: totals.totalTokens,
+    totalCostUsd: Number(totals.totalCostUsd.toFixed(6)),
+  };
+};
+
 export const useChatSession = (): ChatSessionState => {
-  const { threads, isLoading: isThreadsLoading, upsertThread } = useChatThreads();
+  const queryClient = useQueryClient();
+  const {
+    threads,
+    isLoading: isThreadsLoading,
+    upsertThread,
+    removeThread,
+    invalidateThreads,
+  } = useChatThreads();
   const { selectedProvider, selectedModel } = useProvider();
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [input, setInput] = useState('');
   const [isSending, setIsSending] = useState(false);
   const [totalTokens, setTotalTokens] = useState(0);
   const [totalCostUsd, setTotalCostUsd] = useState(0);
-  const [activeThreadId, setActiveThreadId] = useState<string | null>(null);
+  const [activeThreadKey, setActiveThreadKey] = useState<string | null>(null);
   const inputRef = useRef<HTMLTextAreaElement | null>(null);
   const bottomRef = useRef<HTMLDivElement | null>(null);
   const hasHydratedRef = useRef(false);
@@ -61,52 +106,106 @@ export const useChatSession = (): ChatSessionState => {
     return window.matchMedia?.('(prefers-reduced-motion: reduce)')?.matches ?? false;
   }, []);
 
+  const activeThread = useMemo(
+    () => threads.find((thread: ChatThread) => thread.threadKey === activeThreadKey) ?? null,
+    [activeThreadKey, threads]
+  );
+
+  const activeBackendThreadId = useMemo(
+    () => (activeThread?.source === 'backend' ? activeThread.id : null),
+    [activeThread],
+  );
+
+  const backendConversationQuery = useQuery({
+    queryKey: activeBackendThreadId
+      ? queryKeys.chatConversation(activeBackendThreadId)
+      : ['chat', 'conversation', 'inactive'],
+    queryFn: async () => {
+      if (!activeBackendThreadId) {
+        throw new Error('No active backend thread id');
+      }
+      return chatClient.getConversation(activeBackendThreadId);
+    },
+    enabled: Boolean(activeBackendThreadId),
+    staleTime: 30_000,
+  });
+
+  const isMessagesLoading =
+    activeThread?.source === 'backend' && !backendConversationQuery.data
+      ? backendConversationQuery.isLoading || backendConversationQuery.isFetching
+      : false;
+
+  const applyMessages = useCallback((nextMessages: ChatMessage[]) => {
+    setMessages(nextMessages);
+    const totals = calculateTotals(nextMessages);
+    setTotalTokens(totals.totalTokens);
+    setTotalCostUsd(totals.totalCostUsd);
+  }, []);
+
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: prefersReducedMotion ? 'auto' : 'smooth' });
-  }, [messages]);
+  }, [messages, prefersReducedMotion]);
 
   useEffect(() => {
-    if (hasHydratedRef.current) return;
-    if (activeThreadId) {
+    if (!hasHydratedRef.current) {
+      if (isThreadsLoading) {
+        return;
+      }
       hasHydratedRef.current = true;
+      if (threads.length > 0 && !activeThreadKey) {
+        setActiveThreadKey(threads[0].threadKey);
+      }
       return;
     }
-    if (threads.length > 0) {
-      const mostRecent = threads[0];
-      setActiveThreadId(mostRecent.id);
-      setMessages(readChatMessages(mostRecent.id));
-      hasHydratedRef.current = true;
-    }
-  }, [activeThreadId, threads]);
 
-  const selectThread = useCallback((threadId: string) => {
-    setActiveThreadId(threadId);
-    setMessages(readChatMessages(threadId));
-    setTotalTokens(0);
-    setTotalCostUsd(0);
+    if (!activeThreadKey) {
+      return;
+    }
+
+    if (!activeThread) {
+      applyMessages([]);
+      setActiveThreadKey(null);
+      return;
+    }
+
     setInput('');
-    hasHydratedRef.current = true;
+
+    if (activeThread.source === 'legacy-local') {
+      applyMessages(readChatMessages(activeThread.id));
+      return;
+    }
+
+    if (
+      activeThread.source === 'backend' &&
+      backendConversationQuery.data?.conversationId === activeThread.id
+    ) {
+      applyMessages(backendConversationQuery.data.messages);
+    }
+  }, [
+    activeThread,
+    activeThreadKey,
+    applyMessages,
+    backendConversationQuery.data,
+    isThreadsLoading,
+    threads,
+  ]);
+
+  const selectThread = useCallback((threadKey: string) => {
+    setActiveThreadKey(threadKey);
     inputRef.current?.focus();
   }, []);
 
   const sendMessage = useCallback(
     async (messageOverride?: string) => {
       const content = (messageOverride ?? input).trim();
-      if (!content || isSending) return;
+      if (!content || isSending || isMessagesLoading) return;
 
       setIsSending(true);
 
       const nowIso = new Date().toISOString();
-      const mkId = () => {
-        if (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function') {
-          return crypto.randomUUID();
-        }
-        return `msg-${Date.now()}-${Math.random().toString(16).slice(2, 10)}`;
-      };
-
       const estimate = estimateFromText(content);
       const userMsg: ChatMessage = {
-        id: mkId(),
+        id: createMessageId(),
         createdAt: nowIso,
         role: 'user',
         content,
@@ -115,84 +214,117 @@ export const useChatSession = (): ChatSessionState => {
           estimated_cost_usd: estimate.estimated_cost_usd,
         },
       };
-      const updatedMessages = [...messages, userMsg];
+      const previousMessages = messages;
+      const updatedMessages = [...previousMessages, userMsg];
       setMessages(updatedMessages);
       setInput('');
 
       try {
-        let conversationId = activeThreadId;
+        let conversationId = activeThread?.source === 'backend' ? activeThread.id : null;
         let createdAt: string | undefined;
+        let pendingThreadTitle = content.slice(0, 48) || 'New chat';
+        let shouldPromoteLegacy = false;
 
-        if (!conversationId) {
+        if (!conversationId && activeThread?.source === 'legacy-local') {
           const created = await chatClient.createConversation({
-            title: content.slice(0, 48),
+            title: activeThread.title || pendingThreadTitle,
           });
           conversationId = created.conversationId;
           createdAt = created.createdAt;
-          setActiveThreadId(conversationId);
-          upsertThread({
-            id: conversationId,
-            title: created.title ?? content.slice(0, 48),
-            snippet: content,
-            createdAt,
+          pendingThreadTitle = created.title ?? activeThread.title ?? pendingThreadTitle;
+          await chatClient.importConversationMessages(conversationId, previousMessages);
+          shouldPromoteLegacy = true;
+        }
+
+        if (!conversationId) {
+          const created = await chatClient.createConversation({
+            title: pendingThreadTitle,
           });
+          conversationId = created.conversationId;
+          createdAt = created.createdAt;
+          pendingThreadTitle = created.title ?? pendingThreadTitle;
         }
 
         if (!conversationId) {
           throw new Error('Conversation ID unavailable.');
         }
 
-        writeChatMessages(conversationId, updatedMessages);
-
-        // Send structured messages (not a flattened "User:/Assistant:" transcript).
-        // Flattened transcripts frequently cause models to roleplay both sides and can balloon latency.
-        const messagesForModel = updatedMessages.slice(-20);
-
         const result = await chatClient.sendMessage({
           conversationId,
-          messages: messagesForModel,
+          prompt: content,
           model: selectedModel || undefined,
           provider: selectedProvider || undefined,
         });
-        const answer = result?.content || 'No response';
-        setMessages(prev => {
-          const usage = result?.usage;
-          const rawCost = typeof result?.cost_usd === 'number' ? result.cost_usd : undefined;
-          const fallbackCost =
-            rawCost !== undefined
-              ? { cost_usd: rawCost, approx: false, source: 'backend' as const }
-              : computeCostUsd(usage, result?.provider, result?.model);
-          const assistantMsg: ChatMessage = {
-            id: mkId(),
-            createdAt: new Date().toISOString(),
-            role: 'assistant',
-            content: answer,
-            meta: {
-              provider: result?.provider,
-              model: result?.model,
-              usage,
-              cost_usd: fallbackCost.cost_usd,
-              cost_is_approx: fallbackCost.approx,
-              correlation_id: result?.correlation_id,
-            },
-          };
-          const next = [...prev, assistantMsg];
-          writeChatMessages(conversationId, next);
-          return next;
-        });
-        setTotalTokens(prev => prev + (result?.usage?.total_tokens || 0));
-        setTotalCostUsd(prev => {
-          const add =
-            typeof result?.cost_usd === 'number'
-              ? result.cost_usd
-              : computeCostUsd(result?.usage, result?.provider, result?.model).cost_usd;
-          return Number((prev + (add || 0)).toFixed(6));
-        });
+
+        const rawCost = typeof result?.cost_usd === 'number' ? result.cost_usd : undefined;
+        const fallbackCost =
+          rawCost !== undefined
+            ? { cost_usd: rawCost, approx: false, source: 'backend' as const }
+            : computeCostUsd(result?.usage, result?.provider, result?.model);
+
+        const assistantMsg: ChatMessage = {
+          id: result?.messageId || createMessageId(),
+          createdAt: result?.createdAt || new Date().toISOString(),
+          role: 'assistant',
+          content: result?.content || 'No response',
+          meta: {
+            provider: result?.provider,
+            model: result?.model,
+            usage: result?.usage,
+            cost_usd: fallbackCost.cost_usd,
+            cost_is_approx: fallbackCost.approx,
+            correlation_id: result?.correlation_id,
+          },
+        };
+
+        const nextMessages = [...updatedMessages, assistantMsg];
+        applyMessages(nextMessages);
+
+        queryClient.setQueryData(
+          queryKeys.chatConversation(conversationId),
+          (current:
+            | {
+                conversationId: string;
+                title: string;
+                createdAt: string;
+                updatedAt: string;
+                messages: ChatMessage[];
+              }
+            | undefined) => {
+            if (!current) {
+              return {
+                conversationId,
+                title: pendingThreadTitle,
+                createdAt: createdAt ?? assistantMsg.createdAt,
+                updatedAt: assistantMsg.createdAt,
+                messages: nextMessages,
+              };
+            }
+
+            return {
+              ...current,
+              updatedAt: assistantMsg.createdAt,
+              messages: nextMessages,
+            };
+          },
+        );
+
+        const backendThreadKey = buildThreadKey('backend', conversationId);
         upsertThread({
           id: conversationId,
-          snippet: answer,
-          updatedAt: new Date().toISOString(),
+          source: 'backend',
+          title: pendingThreadTitle,
+          snippet: assistantMsg.content,
+          createdAt,
+          updatedAt: assistantMsg.createdAt,
         });
+        setActiveThreadKey(backendThreadKey);
+
+        if (shouldPromoteLegacy && activeThread) {
+          removeThread(activeThread);
+        }
+
+        void invalidateThreads();
       } catch (err: unknown) {
         const uiError = toUiError(err, {
           code: 'CHAT_SEND_FAILED',
@@ -204,24 +336,34 @@ export const useChatSession = (): ChatSessionState => {
           role: 'assistant',
           content: uiError.userMessage,
         };
-        setMessages(prev => [...prev, assistantMsg]);
+        applyMessages([...updatedMessages, assistantMsg]);
       } finally {
         setIsSending(false);
         inputRef.current?.focus();
       }
     },
-    [activeThreadId, input, isSending, messages, selectedModel, selectedProvider, upsertThread]
+    [
+      activeThread,
+      applyMessages,
+      input,
+      invalidateThreads,
+      isMessagesLoading,
+      isSending,
+      messages,
+      removeThread,
+      selectedModel,
+      selectedProvider,
+      queryClient,
+      upsertThread,
+    ]
   );
 
   const handleClearChat = useCallback(() => {
-    setMessages([]);
-    setTotalTokens(0);
-    setTotalCostUsd(0);
+    applyMessages([]);
     setInput('');
-    setActiveThreadId(null);
-    hasHydratedRef.current = true;
+    setActiveThreadKey(null);
     inputRef.current?.focus();
-  }, []);
+  }, [applyMessages]);
 
   const handlePromptClick = useCallback((prompt: string) => {
     setInput(prompt);
@@ -232,22 +374,68 @@ export const useChatSession = (): ChatSessionState => {
     (e: KeyboardEvent<HTMLTextAreaElement>) => {
       if (e.key === 'Enter' && !e.shiftKey) {
         e.preventDefault();
-        sendMessage();
+        void sendMessage();
       }
     },
     [sendMessage]
+  );
+
+  const deleteMessage = useCallback(
+    (messageId: string) => {
+      const filteredMessages = messages.filter((msg) => msg.id !== messageId);
+      applyMessages(filteredMessages);
+    },
+    [messages, applyMessages]
+  );
+
+  const copyMessage = useCallback(async (content: string) => {
+    try {
+      await navigator.clipboard.writeText(content);
+      // Show toast feedback (integration with toast system if available)
+      console.log('Message copied to clipboard');
+    } catch (err) {
+      console.error('Failed to copy message:', err);
+    }
+  }, []);
+
+  const regenerateMessage = useCallback(
+    async (messageId: string) => {
+      // Find the assistant message
+      const messageIndex = messages.findIndex((msg) => msg.id === messageId);
+      if (messageIndex === -1) return;
+
+      // Find the previous user message
+      const userMessageIndex = [...messages]
+        .slice(0, messageIndex)
+        .reverse()
+        .findIndex((msg) => msg.role === 'user');
+
+      if (userMessageIndex === -1) return;
+
+      const userMessage = messages[messageIndex - userMessageIndex - 1];
+      if (userMessage.role !== 'user') return;
+
+      // Remove the assistant message and resend the user message
+      const messagesBeforeAssistant = messages.slice(0, messageIndex);
+      setMessages(messagesBeforeAssistant);
+
+      // Resend the user message
+      await sendMessage(userMessage.content);
+    },
+    [messages, sendMessage]
   );
 
   return {
     messages,
     input,
     isSending,
+    isMessagesLoading,
     totalTokens,
     totalCostUsd,
     quickPrompts,
     threads,
     isThreadsLoading,
-    activeThreadId,
+    activeThreadKey,
     inputRef,
     bottomRef,
     selectedProvider: selectedProvider || undefined,
@@ -259,5 +447,8 @@ export const useChatSession = (): ChatSessionState => {
     handleClearChat,
     handlePromptClick,
     handleKeyDown,
+    deleteMessage,
+    copyMessage,
+    regenerateMessage,
   };
 };

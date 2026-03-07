@@ -1,181 +1,83 @@
 # Architecture
 
-## System Architecture
+This document is the longer companion to `ARCHITECTURE_OVERVIEW.md`.
 
-GoblinOS Assistant follows a modular, microservices-inspired architecture designed for scalability, maintainability, and cost-efficiency. The system is built around intelligent model routing that automatically selects the most appropriate AI provider based on task complexity and requirements.
+## Application Shape
 
-### Core Components
+The repository currently contains:
 
-#### 🏗️ Backend API (`backend/`)
+- a Next.js Pages Router frontend
+- a FastAPI backend
+- a few Next API proxy routes
 
-- **Framework**: FastAPI (Python async framework)
-- **Purpose**: Main API service handling AI processing, model routing, and development assistance
-- **Key Features**:
-  - Intelligent model routing with automatic provider selection
-  - RESTful API with automatic OpenAPI documentation
-  - Async processing for high throughput
-  - Comprehensive health monitoring and metrics
+It does not match the older `backend/`-based architecture described in some historical docs.
 
-#### 🎨 Frontend UI (`app/`, `src/`)
+## Frontend
 
-- **Framework**: Next.js 14.2.15 with App Router + TypeScript
-- **Purpose**: Modern web interface for AI assistant interactions
-- **Key Features**:
-  - Responsive design with accessibility support
-  - Real-time streaming responses
-  - Progressive Web App (PWA) capabilities
-  - Component-based architecture
+The frontend lives in `src/`.
 
-#### 🛠️ Infrastructure Layer
+Important parts:
 
-- **Primary CDN/Edge**: Cloudflare (Workers, KV, D1, R2, Tunnel, Turnstile)
-- **Containerization**: Docker with multi-stage builds
-- **Deployment**: Fly.io for backend, Vercel for frontend
-- **Monitoring**: Sentry for error tracking, custom health endpoints
+- route files in `src/pages/`
+- feature modules in `src/features/`
+- auth/bootstrap state in `src/store/authStore.ts`
+- cookie/local-storage session persistence in `src/utils/auth-session.ts`
+- route protection in `middleware.ts`
 
-#### 💾 Data Layer
+Current pages include:
 
-- **Database**: SQLite (development) / PostgreSQL (production)
-- **Vector Store**: ChromaDB for semantic search and RAG
-- **Caching**: Redis for session management and rate limiting
-- **File Storage**: Cloudflare R2 for cost-effective object storage
+- `/`
+- `/startup`
+- `/chat`
+- `/login`
+- `/register`
+- `/search`
+- `/sandbox`
+- `/account`
+- `/settings`
+- `/help`
+- `/admin`, `/admin/providers`, `/admin/logs`, `/admin/settings`
 
-### Request Flow Architecture
+## Backend
 
-```mermaid
-graph TD
-    A[User Request] --> B[Frontend UI]
-    B --> C[Backend API]
-    C --> D[Intelligent Task Analysis]
-    D --> E[Model Router]
-    E --> F[AI Providers]
-    F --> C
-    C --> B
-```
+The backend lives in `api/`.
 
-### Intelligent Model Routing
+The FastAPI app in `api/main.py` wires together:
 
-The core innovation of GoblinOS Assistant is its intelligent model routing system that automatically selects the most appropriate AI model based on:
+- middleware for errors, security headers, auth gating, CORS, and optional rate limiting
+- routers for chat, auth, routing, health, search, privacy, secrets, ops, observability, and sandbox
+- startup/shutdown tasks for Redis, database init, provider monitoring, and artifact cleanup
 
-- **Task Complexity**: Simple debugging → Raptor Mini; Complex reasoning → GPT-4/Claude
-- **Cost Optimization**: Balances quality vs. cost for each request
-- **Performance Requirements**: Latency-sensitive tasks get faster models
-- **Provider Health**: Automatic failover and health monitoring
+## Thin Proxy Routes
 
-#### Routing Logic
+The frontend also ships a few Next API routes:
 
-```python
-def route_request(task_complexity: str, cost_budget: float) -> str:
-    """
-    Intelligent routing based on task analysis
-    """
-    if task_complexity == "simple_debug":
-        return "raptor-mini"  # Fast, cheap
-    elif task_complexity == "complex_reasoning" and cost_budget > 0.10:
-        return "gpt-4-turbo"  # High quality
-    elif task_complexity == "creative_writing":
-        return "claude-3-haiku"  # Creative tasks
-    else:
-        return "fallback_model"  # Cost-effective default
-```
+- `src/pages/api/generate.ts`
+- `src/pages/api/models.ts`
+- `src/pages/api/auth/validate.ts`
+- `src/pages/api/health.ts`
 
-### Security Architecture
+Only `/api/generate` is clearly aligned with a route that exists in the checked-in FastAPI app. The other proxy routes expect `/v1/...` backend endpoints that are not mounted by `api/main.py`.
 
-#### Authentication & Authorization
-- **JWT-based authentication** with HttpOnly cookies
-- **Passkey support** for passwordless authentication
-- **Google OAuth integration** for social login
-- **Role-based access control** (RBAC) for API endpoints
+## Best-Supported Flow
 
-#### Data Protection
-- **End-to-end encryption** for sensitive data
-- **API key encryption** at rest using AES-256
-- **TLS 1.3** for all communications
-- **CSP headers** and XSS prevention
+The cleanest end-to-end path in this repo is chat:
 
-#### Bot Protection
-- **Cloudflare Turnstile** integration for bot detection
-- **Rate limiting** with Redis-backed storage
-- **Request sanitization** and input validation
+1. user opens `/chat`
+2. frontend bootstraps auth/session state
+3. thread APIs call backend `/chat/conversations*`
+4. prompt generation can also go through `/api/generate` -> backend `/api/chat`
+5. provider/model metadata is attached to assistant messages when available
 
-### Monitoring & Observability
+## Partial Areas
 
-#### Health Monitoring
-- **Comprehensive health endpoints** (`/health`, `/v1/health/`)
-- **Component-specific checks** (database, vector store, external services)
-- **Performance metrics** (latency, throughput, error rates)
+These areas exist in code but are not fully contract-aligned:
 
-#### Error Tracking
-- **Sentry integration** for real-time error monitoring
-- **Structured logging** with correlation IDs
-- **Custom metrics** for business logic monitoring
+- auth from the frontend
+- provider registry/admin tools
+- search
+- sandbox
+- account save endpoints
+- support form submission
 
-#### Analytics
-- **PostHog integration** for user behavior analytics
-- **Cost tracking** for API usage optimization
-- **Performance dashboards** with historical data
-
-### Deployment Architecture
-
-#### Development Environment
-- **Local development** with hot reload
-- **Docker Compose** for multi-service setup
-- **SQLite database** for quick iteration
-
-#### Production Environment
-- **Fly.io** for backend API (global deployment)
-- **Vercel** for frontend (CDN distribution)
-- **PostgreSQL** managed database
-- **Redis** for caching and sessions
-- **Cloudflare** for edge acceleration and security
-
-### Scalability Considerations
-
-#### Horizontal Scaling
-- **Stateless backend** design for easy scaling
-- **Redis-backed sessions** for distributed state
-- **Load balancing** via Fly.io regions
-
-#### Performance Optimization
-- **Async processing** for I/O-bound operations
-- **Connection pooling** for database and external APIs
-- **Response caching** with TTL-based invalidation
-
-#### Cost Optimization
-- **Intelligent model selection** reduces API costs
-- **Request batching** for similar operations
-- **Caching layers** reduce redundant API calls
-
-### Data Flow
-
-#### User Request Processing
-1. **Frontend** validates and sanitizes input
-2. **Backend** analyzes task complexity and routes to appropriate model
-3. **AI Provider** processes request and returns response
-4. **Backend** processes and caches response
-5. **Frontend** streams response to user with real-time updates
-
-#### Background Processing
-- **Task queues** for long-running operations
-- **Scheduled jobs** for maintenance and cleanup
-- **Event-driven processing** for real-time features
-
-### API Design Principles
-
-#### RESTful Design
-- **Resource-based URLs** with consistent naming
-- **HTTP methods** for CRUD operations
-- **Status codes** for proper error handling
-- **Versioning** via URL paths (`/v1/`)
-
-#### Streaming Support
-- **Server-sent events** for real-time responses
-- **Chunked responses** for large data transfers
-- **Connection management** with proper cleanup
-
-#### Error Handling
-- **Structured error responses** with error codes
-- **User-friendly messages** without exposing internals
-- **Logging** for debugging and monitoring
-
-This architecture provides a solid foundation for a scalable, maintainable AI assistant platform that can grow with user needs while maintaining high performance and security standards.
+For those areas, the architecture problem is mostly not missing UI. It is mismatched route versioning and differing request/response shapes between `src/api/apiClient.ts` and the FastAPI routers.

@@ -1,3 +1,5 @@
+import { providerRateLookupKeys } from './providers/normalizeProvider';
+
 export interface NormalizedUsage {
   input_tokens?: number;
   output_tokens?: number;
@@ -41,12 +43,14 @@ export function computeCostUsd(
   provider: string | undefined,
   _model?: string | undefined
 ): CostComputationResult {
-  const p = (provider || '').trim();
+  const keys = providerRateLookupKeys(provider);
   if (!usage || (!usage.total_tokens && !usage.input_tokens && !usage.output_tokens)) {
     return { cost_usd: 0, approx: true, source: 'rates' };
   }
 
-  const rate = PROVIDER_RATES_USD_PER_1K[p] || PROVIDER_RATES_USD_PER_1K[p.replace('-', '_')];
+  const rate = keys
+    .map(key => PROVIDER_RATES_USD_PER_1K[key])
+    .find(candidate => Boolean(candidate));
   if (!rate) {
     // Unknown provider: fall back to a generic blended rate.
     const tokens = usage.total_tokens ?? (usage.input_tokens || 0) + (usage.output_tokens || 0);

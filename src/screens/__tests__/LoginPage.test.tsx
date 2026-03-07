@@ -12,7 +12,7 @@ jest.mock('next/router', () => ({
   }),
 }));
 
-jest.mock('../../components/auth/ModularLoginForm', () => ({
+jest.mock('../../components/Auth/ModularLoginForm', () => ({
   __esModule: true,
   default: ({ onSuccess }: { onSuccess: () => void }) => (
     <button type="button" onClick={onSuccess}>

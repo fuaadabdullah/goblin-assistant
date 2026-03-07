@@ -1,29 +1,33 @@
 ---
 title: "README"
-description: "Goblin Assistant — Frontend Documentation (Canonical)"
+description: "Goblin Assistant app documentation index"
 ---
 
-# Goblin Assistant — Frontend Documentation (Canonical)
+# Goblin Assistant Docs
 
-This folder is the canonical location for all frontend-specific documentation and guides for the GoblinOS Assistant UI.
+This folder contains app-level documentation for the checked-in `goblin-assistant` codebase.
 
-Please use this folder for:
+## Canonical Docs
 
-- Local dev and start guides (Vite, Storybook)
-- Frontend deployment guides (Vercel)
-- Frontend build/test/CI guidance
-- Accessibility, theme, and UI guidelines
-- Visual regression and Storybook results
+Start with these files when you need an accurate description of the current repo:
 
-If you need to add or update any frontend documentation, please edit files here rather than in backend docs or infra docs. Where possible, backend docs should link to these frontend docs instead of duplicating content.
+- `../README.md`: top-level project summary and local run instructions
+- `setup.md`: local environment and development workflow
+- `features.md`: capability/status matrix
+- `ARCHITECTURE_OVERVIEW.md`: current frontend/backend wiring
+- `../api/README.md`: backend entry guide
+- `../api/docs/README.md`: backend route inventory
 
-Key files:
+## Scope
 
-- `PRODUCTION_DEPLOYMENT.md` — Frontend deployment and production security
-- `PRODUCTION_PIPELINE.md` — CI/CD pipeline for frontend builds
-- `THEME_AND_ACCESSIBILITY_VERIFICATION.md` — Color & accessibility guides
-- `PASSKEY_FRONTEND_INTEGRATION.md` — Frontend examples for Passkey / WebAuthn flows
-- `ARCHITECTURE_OVERVIEW.md` — Short architecture diagram & request flow for frontend+backend
-- `CORE_IDENTITY.md` — High-level product identity, core differentiators, terminology, and target users
+The current app is:
 
-Make sure to keep content concise and focused on frontend implementation and deployment.
+- a Next.js Pages Router frontend in `../src`
+- a FastAPI backend in `../api`
+- a small set of Next API proxy routes in `../src/pages/api`
+
+## Historical Docs
+
+Many other files in this folder document migrations, experiments, or planned architecture. They may still be useful as implementation notes, but they are not guaranteed to match the current code without verification.
+
+When updating docs, prefer fixing the canonical files above first so new readers are not sent through stale architecture or setup paths.

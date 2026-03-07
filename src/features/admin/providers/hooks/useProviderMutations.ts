@@ -1,8 +1,9 @@
 import { useCallback, useState } from 'react';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
-import { apiClient } from '../../../../api/apiClient';
+import { apiClient } from '../../../../lib/api';
 import type { ProviderConfig } from '../../../../hooks/api/useSettings';
-import { queryKeys } from '../../../../lib/queryClient';
+import type { ProviderTestResponse } from '../../../../types/api';
+import { queryKeys } from '../../../../lib/query-keys';
 
 export interface TestResult {
   success: boolean;
@@ -29,19 +30,19 @@ export const useProviderMutations = () => {
         };
       }
 
-      const result = (await apiClient.testProviderConnection(provider.id)) as any;
+      const result = await apiClient.testProviderConnection(provider.id) as ProviderTestResponse;
       return {
         success: Boolean(result?.success),
         message: result?.message ?? 'Connection test completed.',
         latency: Number(result?.latency) || 0,
       };
     },
-    onMutate: provider => {
+    onMutate: (provider: ProviderConfig) => {
       setTesting(provider.name);
       setTestResult(null);
     },
-    onSuccess: result => setTestResult(result),
-    onError: error => {
+    onSuccess: (result: TestResult) => setTestResult(result),
+    onError: (error: unknown) => {
       setTestResult({
         success: false,
         message: error instanceof Error ? error.message : 'Connection test failed',
@@ -67,7 +68,7 @@ export const useProviderMutations = () => {
         };
       }
 
-      const result = (await apiClient.testProviderWithPrompt(provider.id, prompt)) as any;
+      const result = await apiClient.testProviderWithPrompt(provider.id, prompt) as ProviderTestResponse;
       return {
         success: Boolean(result?.success),
         message: result?.message ?? 'Prompt test completed.',
@@ -76,12 +77,12 @@ export const useProviderMutations = () => {
         model_used: typeof result?.model_used === 'string' ? result.model_used : undefined,
       };
     },
-    onMutate: ({ provider }) => {
+    onMutate: ({ provider }: { provider: ProviderConfig; prompt: string }) => {
       setTesting(provider.name);
       setTestResult(null);
     },
-    onSuccess: result => setTestResult(result),
-    onError: error => {
+    onSuccess: (result: TestResult) => setTestResult(result),
+    onError: (error: unknown) => {
       setTestResult({
         success: false,
         message: error instanceof Error ? error.message : 'Test failed',

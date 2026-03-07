@@ -4,7 +4,7 @@ import { Home, MessageSquare, Search, FlaskConical, User, HelpCircle, LayoutDash
 import HealthHeader from './HealthHeader';
 import ContrastModeToggle from './ContrastModeToggle';
 import Logo from './Logo';
-import { useAuthStore } from '../store/authStore';
+import { useAuthSession } from '../hooks/api/useAuthSession';
 
 interface NavigationProps {
   onLogout?: () => void | Promise<void>;
@@ -14,10 +14,10 @@ interface NavigationProps {
 
 const Navigation = ({ onLogout, showLogout = false, variant = 'customer' }: NavigationProps) => {
   const router = useRouter();
-  const clearSession = useAuthStore(state => state.clearSession);
+  const { logout } = useAuthSession();
 
   const handleLogout = async () => {
-    clearSession();
+    await logout();
     if (onLogout) {
       await onLogout();
     }

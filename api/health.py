@@ -510,3 +510,46 @@ async def liveness_check() -> Dict[str, Any]:
         "timestamp": datetime.utcnow().isoformat(),
         "message": "Application is alive",
     }
+
+@router.get("/health/routing")
+async def health_routing() -> Dict[str, Any]:
+    """Check routing subsystem health"""
+    try:
+        from .routing_router import top_providers_for
+        providers = top_providers_for("chat")
+        return {
+            "status": "healthy" if len(providers) > 0 else "degraded",
+            "providers_available": len(providers),
+            "service": "routing",
+            "timestamp": datetime.utcnow().isoformat(),
+        }
+    except Exception as e:
+        return {
+            "status": "unhealthy",
+            "error": str(e),
+            "service": "routing",
+            "timestamp": datetime.utcnow().isoformat(),
+        }
+
+@router.get("/health/streaming")
+async def health_streaming() -> Dict[str, Any]:
+    """Check streaming capability health (alias for /health/stream)"""
+    try:
+        from .config.providers import DEFAULT_PROVIDERS
+        streaming_providers = [
+            p for p in DEFAULT_PROVIDERS 
+            if p.get("enabled") and p.get("models")
+        ]
+        return {
+            "status": "healthy" if len(streaming_providers) > 0 else "degraded",
+            "streaming_providers": len(streaming_providers),
+            "service": "streaming",
+            "timestamp": datetime.utcnow().isoformat(),
+        }
+    except Exception as e:
+        return {
+            "status": "unhealthy",
+            "error": str(e),
+            "service": "streaming",
+            "timestamp": datetime.utcnow().isoformat(),
+        }

@@ -1,6 +1,6 @@
 import Link from 'next/link';
 import Navigation from '../../components/Navigation';
-import { useAuthStore } from '../../store/authStore';
+import { useAuthSession } from '../../hooks/api/useAuthSession';
 import { BRAND_NAME, BRAND_TAGLINE, HOME_EXAMPLE_CARDS, HOME_VALUE_PROPS } from '../../content/brand';
 import Seo from '../../components/Seo';
 
@@ -85,6 +85,6 @@ const CustomerHome = ({ isAuthenticated }: { isAuthenticated: boolean }) => (
 );
 
 export default function HomeScreen() {
-  const isAuthenticated = useAuthStore(state => state.isAuthenticated);
+  const { isAuthenticated } = useAuthSession();
   return <CustomerHome isAuthenticated={isAuthenticated} />;
 }

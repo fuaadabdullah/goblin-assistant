@@ -89,7 +89,7 @@ describe('/api/generate thin proxy', () => {
     jest.restoreAllMocks();
   });
 
-  it('forwards payload unchanged and injects internal key + forwarded-for', async () => {
+  it('maps payload to backend /api/chat shape and injects internal key + forwarded-for', async () => {
     process.env.GOBLIN_BACKEND_URL = 'https://backend.example';
     process.env.INTERNAL_PROXY_API_KEY = 'proxy-key';
 
@@ -123,14 +123,16 @@ describe('/api/generate thin proxy', () => {
     await handler(req, res);
 
     expect(fetchMock).toHaveBeenCalledTimes(1);
-    expect(fetchMock.mock.calls[0][0]).toBe('https://backend.example/v1/api/generate');
+    expect(fetchMock.mock.calls[0][0]).toBe('https://backend.example/api/chat');
 
     const init = fetchMock.mock.calls[0][1] as RequestInit;
     expect(init.method).toBe('POST');
     expect((init.headers as Record<string, string>)['X-Internal-API-Key']).toBe('proxy-key');
     expect((init.headers as Record<string, string>)['X-Forwarded-For']).toBe('1.2.3.4');
-    expect(JSON.parse(String(init.body))).toEqual(body);
-    expect(JSON.parse(String(init.body)).max_tokens).toBe(9999);
+    expect(JSON.parse(String(init.body))).toEqual({
+      messages: [{ role: 'user', content: 'Do not mutate' }],
+      provider: 'azure-openai',
+    });
   });
 
   it('passes backend status/body/headers through', async () => {

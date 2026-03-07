@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import type { ProviderConfig } from '../../../hooks/api/useSettings';
+import type { RoutingHealthStatus } from '../../../types/api';
 import { useProviderSettings } from '../../../hooks/api/useSettings';
 import { useRoutingHealth } from '../../../hooks/api/useHealth';
 import TwoColumnLayout from '../../../components/TwoColumnLayout';
@@ -16,7 +17,7 @@ export default function ProvidersManagerScreen() {
   const { data: routingHealth } = useRoutingHealth();
 
   const providerList = (providers as ProviderConfig[] | undefined) || [];
-  const routingStatus: string = (routingHealth as any)?.status || 'Healthy';
+  const routingStatus: string = (routingHealth as RoutingHealthStatus | undefined)?.status || 'Healthy';
 
   const [selectedProvider, setSelectedProvider] = useState<ProviderConfig | null>(null);
   const [testPrompt, setTestPrompt] = useState('Write a hello world in Python');

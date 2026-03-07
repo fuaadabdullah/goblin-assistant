@@ -26,10 +26,16 @@ export interface ChatMessage {
   role: ChatRole;
   content: string;
   meta?: ChatMessageMeta;
+  // UI-side streaming indicator
+  isStreaming?: boolean;
 }
+
+export type ChatThreadSource = 'backend' | 'legacy-local';
 
 export interface ChatThread {
   id: string;
+  threadKey: string;
+  source: ChatThreadSource;
   title: string;
   snippet: string;
   createdAt: string;

@@ -1,5 +1,7 @@
-import { useCallback, useEffect, useState } from 'react';
-import { apiClient } from '../api/apiClient';
+import { useMemo } from 'react';
+import { useQuery } from '@tanstack/react-query';
+import { apiClient } from '../lib/api';
+import { queryKeys } from '../lib/query-keys';
 
 export interface ServiceStatus {
   status: 'healthy' | 'degraded' | 'unhealthy';
@@ -23,60 +25,48 @@ export interface DashboardData {
 
 const defaultService: ServiceStatus = { status: 'healthy', latency: 120 };
 
+const defaultCostData = {
+  total: 0.24,
+  today: 0.02,
+  thisMonth: 0.24,
+  byProvider: { openai: 0.12, anthropic: 0.08, local: 0.04 },
+};
+
 export const useDashboardData = () => {
-  const [dashboard, setDashboard] = useState<DashboardData | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const healthQuery = useQuery({
+    queryKey: queryKeys.allHealth,
+    queryFn: () => apiClient.getAllHealth(),
+    staleTime: 10_000,
+  });
 
-  const refresh = useCallback(async () => {
-    setLoading(true);
-    setError(null);
+  const dashboard = useMemo<DashboardData>(() => {
+    const health = healthQuery.data;
 
-    try {
-      const health = await apiClient.getAllHealth();
-      setDashboard(prev => ({
-        cost: prev?.cost || {
-          total: 0.24,
-          today: 0.02,
-          thisMonth: 0.24,
-          byProvider: { openai: 0.12, anthropic: 0.08, local: 0.04 },
-        },
-        backend: (health as any)?.services?.api || defaultService,
-        chroma: (health as any)?.services?.chroma || defaultService,
-        mcp: (health as any)?.services?.mcp || defaultService,
-        rag: (health as any)?.services?.rag || defaultService,
-        sandbox: (health as any)?.services?.sandbox || defaultService,
-      }));
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to load dashboard data');
-      if (!dashboard) {
-        setDashboard({
-          cost: {
-            total: 0,
-            today: 0,
-            thisMonth: 0,
-            byProvider: {},
-          },
-          backend: defaultService,
-          chroma: defaultService,
-          mcp: defaultService,
-          rag: defaultService,
-          sandbox: defaultService,
-        });
-      }
-    } finally {
-      setLoading(false);
+    if (!health) {
+      return {
+        cost: defaultCostData,
+        backend: defaultService,
+        chroma: defaultService,
+        mcp: defaultService,
+        rag: defaultService,
+        sandbox: defaultService,
+      };
     }
-  }, [dashboard]);
 
-  useEffect(() => {
-    refresh();
-  }, [refresh]);
+    return {
+      cost: defaultCostData,
+      backend: health.services?.api || defaultService,
+      chroma: health.services?.chroma || defaultService,
+      mcp: health.services?.mcp || defaultService,
+      rag: health.services?.rag || defaultService,
+      sandbox: health.services?.sandbox || defaultService,
+    };
+  }, [healthQuery.data]);
 
   return {
     dashboard,
-    loading,
-    error,
-    refresh,
+    loading: healthQuery.isLoading,
+    error: healthQuery.error instanceof Error ? healthQuery.error.message : null,
+    refresh: healthQuery.refetch,
   };
 };

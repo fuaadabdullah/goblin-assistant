@@ -1,9 +1,11 @@
 import type { FormEvent, RefObject } from 'react';
 import { useCallback, useEffect, useRef, useState } from 'react';
+import { useMutation, useQuery } from '@tanstack/react-query';
 import { fetchCollections, searchCollectionByName } from '../api';
 import { toUiError } from '../../../lib/ui-error';
 import type { SearchResult, SearchScope } from '../types';
 import { SEARCH_QUICK_QUERIES } from '../../../content/brand';
+import { queryKeys } from '../../../lib/query-keys';
 
 export interface SearchState {
   query: string;
@@ -34,38 +36,31 @@ export const useSearchResults = (): SearchState => {
 
   const quickQueries = Array.from(SEARCH_QUICK_QUERIES);
 
-  const [collectionsData, setCollectionsData] = useState<string[] | undefined>(undefined);
-  const [collectionsLoading, setCollectionsLoading] = useState(true);
-  const [searching, setSearching] = useState(false);
+  const collectionsQuery = useQuery({
+    queryKey: queryKeys.collections,
+    queryFn: fetchCollections,
+    staleTime: 60_000,
+  });
+
+  const searchMutation = useMutation({
+    mutationFn: async ({ collectionName, queryText }: { collectionName: string; queryText: string }) =>
+      searchCollectionByName(collectionName, queryText, 20),
+  });
 
   useEffect(() => {
-    let active = true;
-    const load = async () => {
-      try {
-        setCollectionsLoading(true);
-        const collections = await fetchCollections();
-        if (!active) return;
-        setCollectionsData(collections);
-        if (collections.length > 0 && !selectedCollection) {
-          setSelectedCollection(collections[0]);
-        }
-      } catch (err) {
-        if (!active) return;
-        const uiError = toUiError(err, {
-          code: 'SEARCH_COLLECTIONS_FAILED',
-          userMessage: 'We could not load collections. Please try again.',
-        });
-        setError(uiError.userMessage);
-        setCollectionsData([]);
-      } finally {
-        if (active) setCollectionsLoading(false);
-      }
-    };
-    load();
-    return () => {
-      active = false;
-    };
-  }, []);
+    if (collectionsQuery.data && collectionsQuery.data.length > 0 && !selectedCollection) {
+      setSelectedCollection(collectionsQuery.data[0]);
+    }
+  }, [collectionsQuery.data, selectedCollection]);
+
+  useEffect(() => {
+    if (!collectionsQuery.error) return;
+    const uiError = toUiError(collectionsQuery.error, {
+      code: 'SEARCH_COLLECTIONS_FAILED',
+      userMessage: 'We could not load collections. Please try again.',
+    });
+    setError(uiError.userMessage);
+  }, [collectionsQuery.error]);
 
   const handleSearch = useCallback(
     async (e: FormEvent) => {
@@ -73,12 +68,10 @@ export const useSearchResults = (): SearchState => {
       if (!query.trim() || !selectedCollection) return;
       setError(null);
       try {
-        setSearching(true);
-        const resultsByName = await searchCollectionByName(
-          selectedCollection,
-          query.trim(),
-          20
-        );
+        const resultsByName = await searchMutation.mutateAsync({
+          collectionName: selectedCollection,
+          queryText: query.trim(),
+        });
         setResults(resultsByName);
       } catch (err) {
         const uiError = toUiError(err, {
@@ -87,11 +80,9 @@ export const useSearchResults = (): SearchState => {
         });
         setError(uiError.userMessage);
         setResults([]);
-      } finally {
-        setSearching(false);
       }
     },
-    [query, selectedCollection]
+    [query, searchMutation, selectedCollection]
   );
 
   const handleQuickQuery = useCallback((value: string) => {
@@ -113,9 +104,9 @@ export const useSearchResults = (): SearchState => {
     selectedCollection,
     scope,
     quickQueries,
-    searching,
-    collectionsLoading,
-    collectionsData,
+    searching: searchMutation.isPending,
+    collectionsLoading: collectionsQuery.isLoading,
+    collectionsData: collectionsQuery.data,
     queryRef,
     setQuery,
     setScope,

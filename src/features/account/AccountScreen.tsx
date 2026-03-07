@@ -1,10 +1,10 @@
 import type { FC } from 'react';
-import { useAuthStore } from '../../store/authStore';
+import { useAuthSession } from '../../hooks/api/useAuthSession';
 import { useAccountProfile } from './hooks/useAccountProfile';
 import AccountView from './components/AccountView';
 
 const AccountScreen: FC = () => {
-  const user = useAuthStore(state => state.user);
+  const { user } = useAuthSession();
   const state = useAccountProfile(user);
 
   return <AccountView state={state} />;

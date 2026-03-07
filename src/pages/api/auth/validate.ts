@@ -1,15 +1,7 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
+import { resolveBackendOrigin } from '../../../config/backendOrigin';
 
-const cleanUrl = (value?: string) => (value || '').trim().replace(/\/$/, '');
-
-const BACKEND_URL =
-  cleanUrl(
-    process.env.GOBLIN_BACKEND_URL ||
-      process.env.NEXT_PUBLIC_FASTAPI_URL ||
-      process.env.NEXT_PUBLIC_API_URL ||
-      process.env.NEXT_PUBLIC_API_BASE_URL ||
-      'https://goblin-backend.onrender.com',
-  ) || 'https://goblin-backend.onrender.com';
+const BACKEND_URL = resolveBackendOrigin();
 
 const INTERNAL_PROXY_API_KEY =
   (process.env.INTERNAL_PROXY_API_KEY ||
@@ -74,7 +66,7 @@ async function forwardValidate(req: NextApiRequest): Promise<ForwardResponse> {
     }
 
     const response = await fetchWithTimeout(
-      `${BACKEND_URL}/v1/auth/validate`,
+      `${BACKEND_URL}/auth/validate`,
       {
         method: 'POST',
         headers,

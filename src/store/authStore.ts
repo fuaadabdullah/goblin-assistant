@@ -1,6 +1,8 @@
 import { create } from 'zustand';
 import type { User } from '../types/api';
+import type { ValidateTokenResponse } from '../types/api';
 import { clearAuthSession, getAuthToken, persistAuthSession } from '../utils/auth-session';
+import { apiClient } from '../lib/api';
 
 type SessionInput = {
   token: string;
@@ -101,34 +103,14 @@ export const useAuthStore = create<AuthState>((set, get) => ({
       }
 
       try {
-        const response = await fetch('/api/auth/validate', {
-          method: 'POST',
-          headers: {
-            Authorization: `Bearer ${storedToken}`,
-            'Content-Type': 'application/json',
-          },
-        });
-
-        if (!response.ok) {
-          // Hard auth failures invalidate the local session.
-          if (response.status === 401 || response.status === 403) {
-            get().clearSession();
-            set({ isHydrated: true, isLoading: false });
-            return;
-          }
-          // Transient failures keep the provisional session.
-          set({ isHydrated: true, isLoading: false });
-          return;
-        }
-
-        const payload = (await response.json()) as any;
+        const payload = (await apiClient.validateToken(storedToken)) as ValidateTokenResponse;
         if (payload && payload.valid === false) {
           get().clearSession();
           set({ isHydrated: true, isLoading: false });
           return;
         }
 
-        const candidateUser = (payload && (payload.user || payload)) as User | null;
+        const candidateUser = payload && payload.user ? payload.user : null;
         const validatedUser =
           candidateUser && typeof candidateUser === 'object' && 'id' in candidateUser
             ? candidateUser
@@ -166,6 +148,18 @@ export const useAuthStore = create<AuthState>((set, get) => ({
           isLoading: false,
         });
       } catch (error) {
+        const status =
+          typeof error === 'object' && error !== null && 'status' in error
+            ? Number((error as { status?: unknown }).status)
+            : undefined;
+
+        // Hard auth failures invalidate local session.
+        if (status === 401 || status === 403) {
+          get().clearSession();
+          set({ isHydrated: true, isLoading: false });
+          return;
+        }
+
         // Network/timeouts are treated as transient: keep provisional auth.
         set({ isHydrated: true, isLoading: false });
       }

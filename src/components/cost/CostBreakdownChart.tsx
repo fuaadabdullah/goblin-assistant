@@ -43,19 +43,23 @@ const CustomTooltip = ({ active, payload, label }: TooltipProps) => {
 };
 
 const CostBreakdownChart: React.FC<CostBreakdownChartProps> = ({ data }) => {
+  // Get colors from CSS variables for theme consistency
+  const borderColor = getComputedStyle(document.documentElement).getPropertyValue('--border').trim();
+  const textColor = getComputedStyle(document.documentElement).getPropertyValue('--text').trim();
+  
   return (
     <>
-      <h2 className="text-lg font-semibold mb-4 text-white">Cost Breakdown by Provider</h2>
+      <h2 className="text-lg font-semibold mb-4 text-text">Cost Breakdown by Provider</h2>
       <ResponsiveContainer width="100%" height={250}>
         <BarChart data={data} margin={{ top: 5, right: 20, left: 20, bottom: 5 }}>
-          <CartesianGrid strokeDasharray="3 3" stroke="#374151" />
-          <XAxis dataKey="name" stroke="#9ca3af" fontSize={12} />
+          <CartesianGrid strokeDasharray="3 3" stroke="rgba(248, 240, 232, 0.1)" />
+          <XAxis dataKey="name" stroke="rgba(248, 240, 232, 0.5)" fontSize={12} />
           <YAxis
-            stroke="#9ca3af"
+            stroke="rgba(248, 240, 232, 0.5)"
             fontSize={12}
             tickFormatter={(value: number | string) => `$${Number(value).toFixed(4)}`}
           />
-          <Tooltip content={<CustomTooltip />} cursor={{ fill: 'rgba(100, 116, 139, 0.1)' }} />
+          <Tooltip content={<CustomTooltip />} cursor={{ fill: 'rgba(212, 165, 116, 0.1)' }} />
           <Legend iconType="circle" />
           {data.map((entry, index) => (
             <Bar key={`bar-${index}`} dataKey="value" name={entry.name} fill={entry.color} />

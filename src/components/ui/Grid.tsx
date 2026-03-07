@@ -1,32 +1,58 @@
+import { cva, type VariantProps } from 'class-variance-authority';
 import type { HTMLAttributes, ReactNode } from 'react';
+import { cn } from '@/lib/utils';
 
-export interface GridProps extends HTMLAttributes<HTMLDivElement> {
+const gridVariants = cva(
+  'grid transition-all duration-150',
+  {
+    variants: {
+      gap: {
+        none: 'gap-0',
+        xs: 'gap-1',     // 4px
+        sm: 'gap-2',     // 8px
+        md: 'gap-4',     // 16px
+        lg: 'gap-6',     // 24px
+        xl: 'gap-8',     // 32px
+      },
+      columns: {
+        auto: 'grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4',
+        1: 'grid-cols-1',
+        2: 'grid-cols-1 md:grid-cols-2',
+        3: 'grid-cols-1 md:grid-cols-2 lg:grid-cols-3',
+        4: 'grid-cols-2 md:grid-cols-3 lg:grid-cols-4',
+      },
+    },
+    defaultVariants: {
+      gap: 'md',
+      columns: 'auto',
+    },
+  }
+);
+
+export type GridVariantProps = VariantProps<typeof gridVariants>;
+
+export interface GridProps 
+  extends Omit<HTMLAttributes<HTMLDivElement>, 'children'>,
+          GridVariantProps {
   children: ReactNode;
-  gap?: 'sm' | 'md' | 'lg';
-  autoFit?: boolean; // Use grid-auto-fit utility
 }
 
-const gapStyles = {
-  sm: 'gap-2',
-  md: 'gap-4',
-  lg: 'gap-6',
-};
-
 /**
- * Grid — wrapper for responsive grid layouts.
- * Uses .grid-auto-fit utility for auto-responsive card grids.
+ * Grid — responsive grid component with CVA-based variants.
+ * Enforces design system spacing rhythm (4px base).
  */
 export default function Grid({
   children,
   gap = 'md',
-  autoFit = true,
-  className = '',
+  columns = 'auto',
+  className,
   ...props
 }: GridProps) {
-  const gridClass = autoFit ? 'grid-auto-fit' : 'grid';
-
   return (
-    <div className={`${gridClass} ${gapStyles[gap]} ${className}`} {...props}>
+    <div 
+      className={cn(gridVariants({ gap, columns }), className)} 
+      {...props}
+    >
       {children}
     </div>
   );

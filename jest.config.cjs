@@ -11,19 +11,19 @@ try {
 
 const customJestConfig = {
   testEnvironment: 'jsdom',
-  setupFilesAfterSetup: ['<rootDir>/jest.setup.ts'],
+  setupFilesAfterEnv: ['<rootDir>/jest.setup.ts'],
   collectCoverage: true,
   coverageDirectory: 'coverage',
   coverageProvider: 'v8',
   testPathIgnorePatterns: [
     '/node_modules/',
-    '/\\._.*$/',
+    '[\\/]\\._.*$',
   ],
   coveragePathIgnorePatterns: [
     '/node_modules/',
     '<rootDir>/.next/',
     '<rootDir>/coverage/',
-    '/\\._.*$/',
+    '[\\/]\\._.*$',
   ],
   moduleNameMapper: {
     '^@/(.*)$': '<rootDir>/src/$1',

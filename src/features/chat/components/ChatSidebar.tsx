@@ -6,10 +6,10 @@ interface ChatSidebarProps {
   threads: ChatThread[];
   /** Whether threads are loading. */
   isThreadsLoading: boolean;
-  /** Active thread id. */
-  activeThreadId: string | null;
+  /** Active thread key. */
+  activeThreadKey: string | null;
   /** Select a thread from the list. */
-  onSelectThread: (threadId: string) => void;
+  onSelectThread: (threadKey: string) => void;
   /** Handler for starting a new conversation. */
   onNewConversation: () => void;
   /** Whether admin-only stats should display. */
@@ -23,7 +23,7 @@ interface ChatSidebarProps {
 const ChatSidebar = ({
   threads,
   isThreadsLoading,
-  activeThreadId,
+  activeThreadKey,
   onSelectThread,
   onNewConversation,
   isAdmin,
@@ -52,12 +52,12 @@ const ChatSidebar = ({
       ) : threads.length > 0 ? (
         <ul className="space-y-2">
           {threads.map(thread => {
-            const isActive = thread.id === activeThreadId;
+            const isActive = thread.threadKey === activeThreadKey;
             return (
-              <li key={thread.id}>
+              <li key={thread.threadKey}>
                 <button
                   type="button"
-                  onClick={() => onSelectThread(thread.id)}
+                  onClick={() => onSelectThread(thread.threadKey)}
                   aria-current={isActive ? 'true' : undefined}
                   className={`w-full text-left rounded-xl border px-3 py-3 hover:bg-surface-hover ${
                     isActive ? 'border-primary/40 bg-primary/10' : 'border-border bg-bg'

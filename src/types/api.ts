@@ -111,6 +111,12 @@ export interface EmergencyLogoutResponse {
   revoked_sessions: number;
 }
 
+export interface ValidateTokenResponse {
+  valid: boolean;
+  user?: User;
+  expires_in?: number;
+}
+
 export interface AuthError {
   detail: string;
   code?: string;
@@ -137,6 +143,11 @@ export interface HealthStatus {
     [key: string]: ServiceHealth | undefined;
   };
   uptime?: number;
+}
+
+export interface RoutingHealthStatus {
+  status: string;
+  message?: string;
 }
 
 // ============================================================================
@@ -352,6 +363,14 @@ export interface ProviderModelOption {
   health?: string;
   isSelectable: boolean;
   healthReason?: string | null;
+}
+
+export interface ProviderTestResponse {
+  success: boolean;
+  message: string;
+  latency: number;
+  response?: string;
+  model_used?: string;
 }
 
 export interface ModelSettings {

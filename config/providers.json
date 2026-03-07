@@ -5,7 +5,7 @@
     "_comment": "API keys loaded from environment variables (.env file). See .env.example for configuration.",
 
     "goblin-backend": {
-      "endpoint": "https://goblin-backend.onrender.com",
+      "endpoint": "https://goblin-assistant-backend.onrender.com",
       "priority_tier": 3,
       "capabilities": ["chat", "completions"],
       "models": [

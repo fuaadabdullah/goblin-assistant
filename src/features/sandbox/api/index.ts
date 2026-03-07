@@ -1,4 +1,4 @@
-import { apiClient } from '../../../api/apiClient';
+import { apiClient } from '../../../lib/api';
 import { UiError } from '../../../lib/ui-error';
 import type { SandboxJob } from '../types';
 
@@ -11,6 +11,10 @@ interface SandboxJobsResponse {
     created_at?: number | string;
     language?: string;
   }>;
+}
+
+interface SandboxRunResponse {
+  output: string;
 }
 
 const createFallbackId = () => `job_${Math.random().toString(16).slice(2, 8)}`;
@@ -67,7 +71,7 @@ export const runSandboxCode = async (payload: {
   language: string;
 }): Promise<string> => {
   try {
-    const response = await apiClient.runSandboxCode(payload);
+    const response = await apiClient.runSandboxCode(payload) as SandboxRunResponse;
     return response.output;
   } catch (error) {
     throw new UiError(

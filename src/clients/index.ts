@@ -9,7 +9,8 @@ import type {
   StreamChunk,
   TaskResponse,
 } from "../types/api";
-import { apiClient } from "../api/apiClient";
+import { apiClient } from "../lib/api";
+import { normalizeProviderId } from "../lib/providers/normalizeProvider";
 
 type ModelRegistryItem = {
   name?: string;
@@ -35,12 +36,6 @@ type ModelRegistryResponse = {
 const keyPrefix = "goblin_provider_key:";
 
 const storeKey = (provider: string) => `${keyPrefix}${provider}`;
-
-const normalizeProviderId = (value: string): string => {
-  const raw = (value || "").trim().toLowerCase();
-  if (!raw) return "";
-  return raw.replace(/-/g, "_");
-};
 
 async function loadModelRegistry(): Promise<ModelRegistryResponse> {
   try {

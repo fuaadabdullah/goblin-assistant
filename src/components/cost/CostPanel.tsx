@@ -1,4 +1,4 @@
-import type { CostSummary } from '@/api/api-client';
+import type { CostSummary } from '@/types/api';
 
 interface Props {
   costSummary?: CostSummary | null;
@@ -18,7 +18,7 @@ export default function CostPanel({ costSummary }: Props) {
         <ul>
           {Object.entries(costSummary.cost_by_provider).map(([p, c]) => (
             <li key={p}>
-              {p}: ${c.toFixed(6)}
+              {p}: ${Number(c).toFixed(6)}
             </li>
           ))}
         </ul>
@@ -28,7 +28,7 @@ export default function CostPanel({ costSummary }: Props) {
         <ul>
           {Object.entries(costSummary.cost_by_model).map(([m, c], i) => (
             <li key={`${m}-${i}`}>
-              {m}: ${c.toFixed(6)}
+              {m}: ${Number(c).toFixed(6)}
             </li>
           ))}
         </ul>

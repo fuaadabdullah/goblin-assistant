@@ -15,7 +15,7 @@ Key architectural patterns:
 - Graceful degradation for missing conversations
 """
 
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, Depends, HTTPException
 from fastapi.responses import StreamingResponse
 from pydantic import BaseModel
 from typing import List, Optional, Dict, Any
@@ -34,6 +34,8 @@ from .services.embedding_service import embedding_worker
 from .services.message_classifier import classification_pipeline, MessageType
 from .services.write_time_matrix import write_time_intelligence
 from .input_validation import InputSanitizer
+from .storage.conversations import Conversation, ConversationMessage
+from .auth.router import get_current_user, User as AuthenticatedUser
 
 router = APIRouter(prefix="/chat", tags=["chat"])
 
@@ -42,6 +44,7 @@ class ChatMessage(BaseModel):
     role: str  # "user", "assistant", "system"
     content: str
     metadata: Optional[Dict[str, Any]] = None
+    timestamp: Optional[str] = None
 
 
 class CreateConversationRequest(BaseModel):
@@ -69,6 +72,9 @@ class SendMessageResponse(BaseModel):
     provider: str
     model: str
     timestamp: str
+    usage: Optional[Dict[str, Any]] = None
+    cost_usd: Optional[float] = None
+    correlation_id: Optional[str] = None
 
 
 class ConversationInfo(BaseModel):
@@ -76,6 +82,7 @@ class ConversationInfo(BaseModel):
     user_id: Optional[str]
     title: str
     message_count: int
+    snippet: Optional[str] = None
     created_at: str
     updated_at: str
 
@@ -84,8 +91,59 @@ class UpdateConversationTitleRequest(BaseModel):
     title: str
 
 
+class ImportConversationRequest(BaseModel):
+    messages: List[ChatMessage]
+
+
+def _latest_snippet(conversation: Conversation) -> Optional[str]:
+    if not conversation.messages:
+        return None
+
+    latest = conversation.messages[-1].content.strip()
+    if not latest:
+        return None
+
+    if len(latest) <= 160:
+        return latest
+    return f"{latest[:157].rstrip()}..."
+
+
+async def _require_owned_conversation(
+    conversation_id: str, current_user: AuthenticatedUser
+) -> Conversation:
+    conversation = await conversation_store.get_conversation(conversation_id)
+    if not conversation or conversation.user_id != current_user.id:
+        raise HTTPException(status_code=404, detail="Conversation not found")
+    return conversation
+
+
+def _extract_usage_and_cost(
+    provider_response: Any,
+) -> tuple[Optional[Dict[str, Any]], Optional[float], Optional[str]]:
+    if not isinstance(provider_response, dict):
+        return None, None, None
+
+    result_data = provider_response.get("result")
+    raw = result_data.get("raw") if isinstance(result_data, dict) else None
+    if not isinstance(raw, dict):
+        return None, None, None
+
+    usage = raw.get("usage") if isinstance(raw.get("usage"), dict) else None
+
+    cost_value = raw.get("cost_usd", raw.get("cost"))
+    cost_usd = float(cost_value) if isinstance(cost_value, (int, float)) else None
+
+    correlation_value = raw.get("correlation_id")
+    correlation_id = correlation_value if isinstance(correlation_value, str) else None
+
+    return usage, cost_usd, correlation_id
+
+
 @router.post("/conversations", response_model=CreateConversationResponse)
-async def create_conversation(request: CreateConversationRequest):
+async def create_conversation(
+    request: CreateConversationRequest,
+    current_user: AuthenticatedUser = Depends(get_current_user),
+):
     """Create a new conversation
 
     Conversation creation strategy:
@@ -101,14 +159,8 @@ async def create_conversation(request: CreateConversationRequest):
             if request.title
             else None
         )
-        validated_user_id = (
-            InputSanitizer.validate_user_id(request.user_id)
-            if request.user_id
-            else None
-        )
-
         conversation = await conversation_store.create_conversation(
-            user_id=validated_user_id, title=sanitized_title
+            user_id=current_user.id, title=sanitized_title
         )
 
         return CreateConversationResponse(
@@ -128,7 +180,10 @@ async def create_conversation(request: CreateConversationRequest):
 
 
 @router.get("/conversations", response_model=List[ConversationInfo])
-async def list_conversations(user_id: Optional[str] = None, limit: int = 50):
+async def list_conversations(
+    limit: int = 50,
+    current_user: AuthenticatedUser = Depends(get_current_user),
+):
     """List conversations for a user
 
     Conversation listing strategy:
@@ -139,7 +194,7 @@ async def list_conversations(user_id: Optional[str] = None, limit: int = 50):
     """
     try:
         conversations = await conversation_store.list_conversations(
-            user_id=user_id, limit=limit
+            user_id=current_user.id, limit=limit
         )
 
         return [
@@ -148,6 +203,7 @@ async def list_conversations(user_id: Optional[str] = None, limit: int = 50):
                 user_id=conv.user_id,
                 title=conv.title,
                 message_count=len(conv.messages),
+                snippet=_latest_snippet(conv),
                 created_at=conv.created_at.isoformat(),
                 updated_at=conv.updated_at.isoformat(),
             )
@@ -159,7 +215,10 @@ async def list_conversations(user_id: Optional[str] = None, limit: int = 50):
 
 
 @router.get("/conversations/{conversation_id}")
-async def get_conversation(conversation_id: str):
+async def get_conversation(
+    conversation_id: str,
+    current_user: AuthenticatedUser = Depends(get_current_user),
+):
     """Get a conversation with all messages
 
     Full conversation retrieval:
@@ -169,9 +228,7 @@ async def get_conversation(conversation_id: str):
     - 404 if conversation doesn't exist
     """
     try:
-        conversation = await conversation_store.get_conversation(conversation_id)
-        if not conversation:
-            raise HTTPException(status_code=404, detail="Conversation not found")
+        conversation = await _require_owned_conversation(conversation_id, current_user)
 
         return {
             "conversation_id": conversation.conversation_id,
@@ -200,7 +257,9 @@ async def get_conversation(conversation_id: str):
 
 @router.put("/conversations/{conversation_id}/title")
 async def update_conversation_title(
-    conversation_id: str, request: UpdateConversationTitleRequest
+    conversation_id: str,
+    request: UpdateConversationTitleRequest,
+    current_user: AuthenticatedUser = Depends(get_current_user),
 ):
     """Update conversation title
 
@@ -211,6 +270,7 @@ async def update_conversation_title(
     - Returns success/failure status
     """
     try:
+        await _require_owned_conversation(conversation_id, current_user)
         success = await conversation_store.update_conversation_title(
             conversation_id=conversation_id, title=request.title
         )
@@ -227,7 +287,10 @@ async def update_conversation_title(
 
 
 @router.delete("/conversations/{conversation_id}")
-async def delete_conversation(conversation_id: str):
+async def delete_conversation(
+    conversation_id: str,
+    current_user: AuthenticatedUser = Depends(get_current_user),
+):
     """Delete a conversation
 
     Deletion strategy:
@@ -236,6 +299,7 @@ async def delete_conversation(conversation_id: str):
     - Returns success/failure for client confirmation
     """
     try:
+        await _require_owned_conversation(conversation_id, current_user)
         success = await conversation_store.delete_conversation(conversation_id)
 
         if not success:
@@ -254,7 +318,11 @@ async def delete_conversation(conversation_id: str):
 @router.post(
     "/conversations/{conversation_id}/messages", response_model=SendMessageResponse
 )
-async def send_message(conversation_id: str, request: SendMessageRequest):
+async def send_message(
+    conversation_id: str,
+    request: SendMessageRequest,
+    current_user: AuthenticatedUser = Depends(get_current_user),
+):
     """Send a message to a conversation and get AI response
 
     Message processing flow:
@@ -274,9 +342,7 @@ async def send_message(conversation_id: str, request: SendMessageRequest):
     """
     try:
         # Step 1: Validate conversation exists
-        conversation = await conversation_store.get_conversation(conversation_id)
-        if not conversation:
-            raise HTTPException(status_code=404, detail="Conversation not found")
+        conversation = await _require_owned_conversation(conversation_id, current_user)
 
         # Step 2: Sanitize user input
         sanitized_message, message_validation = InputSanitizer.sanitize_chat_message(
@@ -324,10 +390,12 @@ async def send_message(conversation_id: str, request: SendMessageRequest):
             role="user",
             content=sanitized_message,  # Store sanitized content
             metadata=message_metadata,
+            message_id=message_id,
         )
 
         # Step 3: Prepare conversation context for provider
         # Convert stored messages to provider-expected format
+        conversation = await _require_owned_conversation(conversation_id, current_user)
         messages = [
             {"role": msg.role, "content": msg.content} for msg in conversation.messages
         ]
@@ -345,19 +413,13 @@ async def send_message(conversation_id: str, request: SendMessageRequest):
         }
         try:
             provider_response = await invoke_provider(
-                pid=None,  # Let dispatcher choose best provider
+                pid=request.provider,
                 model=request.model,
                 payload=payload,
                 timeout_ms=30000,
                 stream=request.stream,
             )
-            duration = time.time() - start_time
-            success = isinstance(provider_response, dict) and provider_response.get(
-                "ok", True
-            )
-            error = None if success else str(provider_response.get("error", "unknown"))
-        except Exception as e:
-            duration = time.time() - start_time
+        except Exception:
             raise
 
         # Step 5: Normalize provider response format
@@ -391,18 +453,29 @@ async def send_message(conversation_id: str, request: SendMessageRequest):
             used_provider = request.provider or "unknown"
             used_model = request.model or "unknown"
 
+        usage, cost_usd, correlation_id = _extract_usage_and_cost(provider_response)
+
         # Step 6: Store AI response with metadata
         # Store for conversation continuity and analytics
         response_message_id = str(uuid.uuid4())
+        assistant_metadata: Dict[str, Any] = {
+            "provider": used_provider,
+            "model": used_model,
+            "message_id": response_message_id,
+        }
+        if usage:
+            assistant_metadata["usage"] = usage
+        if cost_usd is not None:
+            assistant_metadata["cost_usd"] = cost_usd
+        if correlation_id:
+            assistant_metadata["correlation_id"] = correlation_id
+
         await conversation_store.add_message_to_conversation(
             conversation_id=conversation_id,
             role="assistant",
             content=response_content,
-            metadata={
-                "provider": used_provider,
-                "model": used_model,
-                "message_id": response_message_id,
-            },
+            metadata=assistant_metadata,
+            message_id=response_message_id,
         )
 
         # Step 7: Return standardized response
@@ -412,6 +485,9 @@ async def send_message(conversation_id: str, request: SendMessageRequest):
             provider=used_provider,
             model=used_model,
             timestamp=datetime.utcnow().isoformat(),
+            usage=usage,
+            cost_usd=cost_usd,
+            correlation_id=correlation_id,
         )
 
     except HTTPException:
@@ -421,6 +497,42 @@ async def send_message(conversation_id: str, request: SendMessageRequest):
     except Exception as e:
         # Error details are now handled by ErrorHandlingMiddleware
         raise HTTPException(status_code=500, detail="Failed to send message")
+
+
+@router.post("/conversations/{conversation_id}/import")
+async def import_conversation_messages(
+    conversation_id: str,
+    request: ImportConversationRequest,
+    current_user: AuthenticatedUser = Depends(get_current_user),
+):
+    try:
+        await _require_owned_conversation(conversation_id, current_user)
+
+        imported_messages = [
+            ConversationMessage(
+                role=message.role,
+                content=message.content,
+                metadata=message.metadata,
+                timestamp=datetime.fromisoformat(message.timestamp.replace("Z", "+00:00"))
+                if message.timestamp
+                else None,
+            )
+            for message in request.messages
+        ]
+
+        success = await conversation_store.import_messages_to_conversation(
+            conversation_id, imported_messages
+        )
+        if not success:
+            raise HTTPException(status_code=404, detail="Conversation not found")
+
+        return {"success": True, "imported_count": len(imported_messages)}
+    except HTTPException:
+        raise
+    except ValueError:
+        raise HTTPException(status_code=422, detail="Invalid message timestamp")
+    except Exception:
+        raise HTTPException(status_code=500, detail="Failed to import conversation")
 
 
 @router.post("/completions")

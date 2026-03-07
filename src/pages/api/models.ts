@@ -1,15 +1,7 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
+import { resolveBackendOrigin } from '../../config/backendOrigin';
 
-const cleanUrl = (value?: string) => (value || '').trim().replace(/\/$/, '');
-
-const BACKEND_URL =
-  cleanUrl(
-      process.env.GOBLIN_BACKEND_URL ||
-      process.env.NEXT_PUBLIC_FASTAPI_URL ||
-      process.env.NEXT_PUBLIC_API_URL ||
-      process.env.NEXT_PUBLIC_API_BASE_URL ||
-      'https://goblin-backend.onrender.com',
-  ) || 'https://goblin-backend.onrender.com';
+const BACKEND_URL = resolveBackendOrigin();
 
 const INTERNAL_PROXY_API_KEY =
   (process.env.INTERNAL_PROXY_API_KEY ||
@@ -22,6 +14,7 @@ interface ForwardModelsResult {
   body: unknown;
   correlationId?: string;
   transportError?: boolean;
+  fallbackUsed?: boolean;
 }
 
 async function safeJson<T = unknown>(res: Response): Promise<T | null> {
@@ -60,17 +53,20 @@ function logProxyEvent(payload: {
 }
 
 async function forwardToBackendModels(): Promise<ForwardModelsResult> {
-  try {
+  const buildHeaders = (): Record<string, string> => {
     const headers: Record<string, string> = {};
     if (INTERNAL_PROXY_API_KEY) {
       headers['X-Internal-API-Key'] = INTERNAL_PROXY_API_KEY;
     }
+    return headers;
+  };
 
+  const requestBackend = async (path: string): Promise<ForwardModelsResult> => {
     const response = await fetchWithTimeout(
-      `${BACKEND_URL}/v1/providers/models`,
+      `${BACKEND_URL}${path}`,
       {
         method: 'GET',
-        headers,
+        headers: buildHeaders(),
       },
       10000,
     );
@@ -83,6 +79,130 @@ async function forwardToBackendModels(): Promise<ForwardModelsResult> {
       status: response.status,
       body,
       correlationId: response.headers.get('x-correlation-id') || undefined,
+    };
+  };
+
+  const mapOpsStatusFallback = (raw: unknown): Record<string, unknown> => {
+    const providersRaw =
+      raw && typeof raw === 'object' && !Array.isArray(raw)
+        ? (raw as { providers?: unknown }).providers
+        : undefined;
+
+    const providersRecord =
+      providersRaw && typeof providersRaw === 'object' && !Array.isArray(providersRaw)
+        ? (providersRaw as Record<string, unknown>)
+        : {};
+
+    const providers: Array<Record<string, unknown>> = [];
+    const models: Array<Record<string, unknown>> = [];
+
+    for (const [providerId, entry] of Object.entries(providersRecord)) {
+      if (!providerId.trim()) continue;
+      const detail =
+        entry && typeof entry === 'object' && !Array.isArray(entry)
+          ? (entry as Record<string, unknown>)
+          : {};
+
+      const health =
+        typeof detail.status === 'string' && detail.status.trim()
+          ? detail.status.trim().toLowerCase()
+          : 'unknown';
+
+      const healthReason =
+        typeof detail.error === 'string' && detail.error.trim()
+          ? detail.error.trim()
+          : null;
+
+      const isSelectable = health !== 'unhealthy';
+
+      providers.push({
+        id: providerId,
+        health,
+        configured: true,
+        is_selectable: isSelectable,
+        health_reason: healthReason,
+      });
+
+      const modelList = Array.isArray(detail.models) ? detail.models : [];
+      for (const model of modelList) {
+        if (typeof model !== 'string' || !model.trim()) continue;
+        models.push({
+          name: model,
+          provider: providerId,
+          health,
+          is_selectable: isSelectable,
+          health_reason: healthReason,
+        });
+      }
+    }
+
+    return {
+      models,
+      providers,
+      source: 'ops_provider_status_fallback',
+      total_models: models.length,
+      total_providers: providers.length,
+    };
+  };
+
+  const mapRoutingProvidersFallback = (raw: unknown): Record<string, unknown> => {
+    const providerNames = Array.isArray(raw)
+      ? raw.filter(
+          (item): item is string => typeof item === 'string' && item.trim().length > 0,
+        )
+      : [];
+
+    return {
+      models: [],
+      providers: providerNames.map((id) => ({
+        id,
+        health: 'unknown',
+        configured: true,
+        is_selectable: true,
+        health_reason: null,
+      })),
+      source: 'routing_providers_fallback',
+      total_models: 0,
+      total_providers: providerNames.length,
+    };
+  };
+
+  try {
+    const primary = await requestBackend('/providers/models');
+    if (primary.status !== 404) {
+      return primary;
+    }
+
+    const opsStatus = await requestBackend('/ops/providers/status');
+    if (opsStatus.status >= 200 && opsStatus.status < 300) {
+      return {
+        status: 200,
+        body: mapOpsStatusFallback(opsStatus.body),
+        correlationId: opsStatus.correlationId,
+        fallbackUsed: true,
+      };
+    }
+
+    if (opsStatus.status !== 404) {
+      return {
+        ...opsStatus,
+        fallbackUsed: true,
+      };
+    }
+
+    const routingProviders = await requestBackend('/routing/providers');
+    if (routingProviders.status >= 200 && routingProviders.status < 300) {
+      return {
+        status: 200,
+        body: mapRoutingProvidersFallback(routingProviders.body),
+        correlationId: routingProviders.correlationId,
+        fallbackUsed: true,
+      };
+    }
+
+    return {
+      ...primary,
+      fallbackUsed: false,
     };
   } catch {
     return {
@@ -113,7 +233,7 @@ export default async function handler(
   logProxyEvent({
     proxy_mode: 'thin',
     backend_status: result.transportError ? null : result.status,
-    legacy_fallback_used: false,
+    legacy_fallback_used: Boolean(result.fallbackUsed),
     correlation_id: result.correlationId,
     latency_ms: Date.now() - startedAt,
   });

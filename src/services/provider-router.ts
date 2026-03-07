@@ -2,7 +2,9 @@
 // Provider selection and runtime client resolution only.
 // Must not contain frontend route paths or navigation logic.
 type Provider = {
-  endpoint: string;
+  endpoint?: string;
+  endpoint_env?: string;
+  endpoint_fallback?: string;
   api_key_env?: string | null;
   priority_tier?: number;
   capabilities?: string[];
@@ -21,12 +23,36 @@ type ProvidersConfig = {
   providers: ProvidersMap;
 };
 
+type ProvidersConfigRaw = {
+  version: number;
+  default_timeout_ms: number;
+  providers: Record<string, unknown>;
+};
+
 import providersJson from '../../config/providers.json';
 import { env } from '../config/env';
 import { runtimeClient, runtimeClientDemo } from '../clients';
 
-const config = providersJson as ProvidersConfig;
-const PROVIDERS: ProvidersMap = config.providers;
+const rawConfig = providersJson as unknown as ProvidersConfigRaw;
+const PROVIDERS: ProvidersMap = Object.entries(rawConfig.providers || {}).reduce(
+  (acc, [providerId, providerValue]) => {
+    if (providerId.startsWith('_')) return acc;
+    if (typeof providerValue !== 'object' || providerValue === null) return acc;
+
+    const provider = providerValue as Provider;
+    if (!provider.endpoint && !provider.endpoint_env) return acc;
+
+    acc[providerId] = provider;
+    return acc;
+  },
+  {} as ProvidersMap,
+);
+
+const config: ProvidersConfig = {
+  version: rawConfig.version,
+  default_timeout_ms: rawConfig.default_timeout_ms,
+  providers: PROVIDERS,
+};
 const DEFAULT_TIMEOUT_MS = config.default_timeout_ms || 12000;
 
 function movingAvg(arr: number[], n = 8): number | null {

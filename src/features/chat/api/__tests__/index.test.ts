@@ -1,71 +1,63 @@
 import { describe, it, expect, beforeEach, jest } from '@jest/globals';
 import { chatClient } from '../index';
+import { apiClient } from '../../../../lib/api';
 
-jest.mock('../../../../api/apiClient', () => ({
-  apiClient: {
-    createConversation: jest.fn(),
-    generate: jest.fn(),
-  },
-}));
-
-describe('chatClient local generate proxy payload', () => {
+describe('chatClient conversation API', () => {
   beforeEach(() => {
-    jest.clearAllMocks();
-    global.fetch = jest.fn().mockResolvedValue({
-      ok: true,
-      json: async () => ({
-        content: 'ok',
-        provider: 'openai',
-        model: 'gpt-4o-mini',
-      }),
-    }) as unknown as typeof fetch;
+    jest.restoreAllMocks();
   });
 
-  it('does not force a default model when none is selected', async () => {
+  it('passes prompt through to the persistent send endpoint', async () => {
+    const spy = jest.spyOn(apiClient, 'sendConversationMessage').mockResolvedValue({
+      content: 'ok',
+      provider: 'openai',
+      model: 'gpt-4o-mini',
+    });
+
     await chatClient.sendMessage({
       conversationId: 'conv-1',
       prompt: 'Hi',
     });
 
-    expect(global.fetch).toHaveBeenCalledTimes(1);
-    const [, options] = (global.fetch as jest.Mock).mock.calls[0];
-    const payload = JSON.parse(String(options.body));
-
-    expect(payload.prompt).toBe('Hi');
-    expect(payload).not.toHaveProperty('model');
-    expect(payload).not.toHaveProperty('provider');
+    expect(spy).toHaveBeenCalledWith({
+      conversationId: 'conv-1',
+      message: 'Hi',
+      model: undefined,
+      provider: undefined,
+    });
   });
 
-  it('forwards explicit model/provider selections', async () => {
-    await chatClient.sendMessage({
-      conversationId: 'conv-2',
-      prompt: 'Hi',
-      model: 'gpt-4o-mini',
+  it('falls back to the last user message when prompt is omitted', async () => {
+    const spy = jest.spyOn(apiClient, 'sendConversationMessage').mockResolvedValue({
+      content: 'ok',
       provider: 'openai',
+      model: 'gpt-4o-mini',
     });
 
-    const [, options] = (global.fetch as jest.Mock).mock.calls[0];
-    const payload = JSON.parse(String(options.body));
+    await chatClient.sendMessage({
+      conversationId: 'conv-2',
+      messages: [
+        { id: 'm1', createdAt: '2026-02-21T00:00:00.000Z', role: 'assistant', content: 'Hello' },
+        { id: 'm2', createdAt: '2026-02-21T00:00:01.000Z', role: 'user', content: 'Need help' },
+      ],
+    });
 
-    expect(payload.model).toBe('gpt-4o-mini');
-    expect(payload.provider).toBe('openai');
+    expect(spy).toHaveBeenCalledWith({
+      conversationId: 'conv-2',
+      message: 'Need help',
+      model: undefined,
+      provider: undefined,
+    });
   });
 
   it('retries once without explicit model/provider when explicit selection fails', async () => {
-    (global.fetch as jest.Mock)
+    const spy = jest
+      .spyOn(apiClient, 'sendConversationMessage')
+      .mockRejectedValueOnce(new Error('invalid provider selection'))
       .mockResolvedValueOnce({
-        ok: false,
-        status: 422,
-        json: async () => ({ detail: { message: 'invalid provider selection' } }),
-      })
-      .mockResolvedValueOnce({
-        ok: true,
-        status: 200,
-        json: async () => ({
-          content: 'retry-ok',
-          provider: 'aliyun',
-          model: 'qwen-plus',
-        }),
+        content: 'retry-ok',
+        provider: 'aliyun',
+        model: 'qwen-plus',
       });
 
     await chatClient.sendMessage({
@@ -75,17 +67,16 @@ describe('chatClient local generate proxy payload', () => {
       provider: 'openai',
     });
 
-    expect(global.fetch).toHaveBeenCalledTimes(2);
-
-    const [, firstOptions] = (global.fetch as jest.Mock).mock.calls[0];
-    const [, secondOptions] = (global.fetch as jest.Mock).mock.calls[1];
-    const firstPayload = JSON.parse(String(firstOptions.body));
-    const secondPayload = JSON.parse(String(secondOptions.body));
-
-    expect(firstPayload.model).toBe('gpt-4o-mini');
-    expect(firstPayload.provider).toBe('openai');
-    expect(secondPayload.prompt).toBe('Retry me');
-    expect(secondPayload).not.toHaveProperty('model');
-    expect(secondPayload).not.toHaveProperty('provider');
+    expect(spy).toHaveBeenCalledTimes(2);
+    expect(spy).toHaveBeenNthCalledWith(1, {
+      conversationId: 'conv-3',
+      message: 'Retry me',
+      model: 'gpt-4o-mini',
+      provider: 'openai',
+    });
+    expect(spy).toHaveBeenNthCalledWith(2, {
+      conversationId: 'conv-3',
+      message: 'Retry me',
+    });
   });
 });

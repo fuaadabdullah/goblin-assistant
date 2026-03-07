@@ -1,10 +1,28 @@
+import { cva, type VariantProps } from 'class-variance-authority';
 import type { ReactNode } from 'react';
+import { cn } from '@/lib/utils';
 import IconButton from './IconButton';
 
-type AlertVariant = 'info' | 'warning' | 'danger' | 'success';
+const alertVariants = cva(
+  'flex items-start gap-3 rounded-md border p-4 transition-all duration-150',
+  {
+    variants: {
+      variant: {
+        info: 'bg-info/10 border-info text-info',
+        warning: 'bg-warning/10 border-warning text-warning',
+        danger: 'bg-danger/10 border-danger text-danger',
+        success: 'bg-success/10 border-success text-success',
+      },
+    },
+    defaultVariants: {
+      variant: 'info',
+    },
+  }
+);
 
-export interface AlertProps {
-  variant?: AlertVariant;
+export type AlertVariantProps = VariantProps<typeof alertVariants>;
+
+export interface AlertProps extends AlertVariantProps {
   title?: string;
   message: string | ReactNode;
   dismissible?: boolean;
@@ -13,39 +31,16 @@ export interface AlertProps {
   className?: string;
 }
 
-const variantStyles: Record<
-  AlertVariant,
-  { bg: string; border: string; text: string; icon: string }
-> = {
-  info: {
-    bg: 'bg-primary/10',
-    border: 'border-primary',
-    text: 'text-primary',
-    icon: 'ℹ️',
-  },
-  warning: {
-    bg: 'bg-warning/10',
-    border: 'border-warning',
-    text: 'text-warning',
-    icon: '⚠️',
-  },
-  danger: {
-    bg: 'bg-danger/10',
-    border: 'border-danger',
-    text: 'text-danger',
-    icon: '🚨',
-  },
-  success: {
-    bg: 'bg-success/10',
-    border: 'border-success',
-    text: 'text-success',
-    icon: '✓',
-  },
+const defaultIcons: Record<string, string> = {
+  info: 'ℹ️',
+  warning: '⚠️',
+  danger: '🚨',
+  success: '✓',
 };
 
 /**
- * Alert — unified alert/banner component.
- * Replaces duplicate error/warning/info banners.
+ * Alert — unified alert/banner component with CVA-based variants.
+ * Enforces design system colors and typography.
  */
 export default function Alert({
   variant = 'info',
@@ -54,22 +49,22 @@ export default function Alert({
   dismissible = false,
   onDismiss,
   icon,
-  className = '',
+  className,
 }: AlertProps) {
-  const styles = variantStyles[variant];
-  const displayIcon = icon || styles.icon;
-  const ariaLive: 'assertive' | 'polite' = variant === 'danger' ? 'assertive' : 'polite';
+  const displayIcon = icon || defaultIcons[variant || 'info'];
 
   return (
     <div
-      className={`${styles.bg} border ${styles.border} rounded-xl p-4 flex items-start gap-3 ${className}`}
+      className={cn(alertVariants({ variant }), className)}
       role="alert"
-      aria-live={ariaLive}
+      aria-live={variant === 'danger' ? 'assertive' : 'polite'}
     >
-      <span className="text-xl flex-shrink-0">{displayIcon}</span>
+      <span className="flex-shrink-0 text-lg" aria-hidden="true">{displayIcon}</span>
       <div className="flex-1">
-        {title && <h3 className={`${styles.text} font-medium text-sm mb-1`}>{title}</h3>}
-        <div className="text-text text-sm">{message}</div>
+        {title && (
+          <h3 className="font-semibold text-sm mb-1">{title}</h3>
+        )}
+        <div className="text-sm text-text">{message}</div>
       </div>
       {dismissible && onDismiss && (
         <IconButton
@@ -78,7 +73,6 @@ export default function Alert({
           icon="✕"
           aria-label="Dismiss alert"
           onClick={onDismiss}
-          className={styles.text}
         />
       )}
     </div>

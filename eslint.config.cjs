@@ -18,6 +18,10 @@ module.exports = [
     ...compat.extends("next/core-web-vitals", "next/typescript"),
     {
         rules: {
+            "import/no-unresolved": [
+                "error",
+                { caseSensitive: true, caseSensitiveStrict: true },
+            ],
             "no-console": ["warn", { allow: ["warn", "error", "debug"] }],
             "react/no-unescaped-entities": "off",
             "max-lines-per-function": [
