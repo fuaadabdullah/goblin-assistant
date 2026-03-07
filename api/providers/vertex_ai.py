@@ -18,7 +18,7 @@ class VertexAIProvider(BaseProvider):
     def __init__(self, config: Dict[str, Any]):
         super().__init__(config)
         self.gemini_key = os.getenv("GOOGLE_AI_API_KEY", self.api_key or "")
-        self.default_model = config.get("default_model", "gemini-2.0-flash")
+        self.default_model = config.get("default_model", "gemini-2.5-flash")
 
     def _build_contents(self, prompt: str, **kwargs) -> list:
         """Build Gemini-format contents from messages or prompt."""
@@ -48,7 +48,7 @@ class VertexAIProvider(BaseProvider):
         self,
         prompt: str,
         stream: bool = False,
-        model: str = "gemini-2.0-flash",
+        model: str = "gemini-2.5-flash",
         **kwargs,
     ) -> Union[AsyncGenerator[Dict[str, Any], None], Dict[str, Any]]:
         """Invoke Google AI Gemini API."""
