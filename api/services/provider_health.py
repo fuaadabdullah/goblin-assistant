@@ -96,7 +96,7 @@ class ProviderHealthMonitor:
         "deepseek": ("https://api.deepseek.com", MODELS_ENDPOINT),
         "azure": ("https://goblinos-resource.services.ai.azure.com", "/openai/models?api-version=2024-05-01-preview"),
         "google": ("https://generativelanguage.googleapis.com", "/v1beta/models"),
-        "vertex_ai": ("https://us-central1-aiplatform.googleapis.com", "/v1/projects"),
+        "vertex_ai": ("https://generativelanguage.googleapis.com", "/v1beta/models"),
         "aliyun": ("https://dashscope-intl.aliyuncs.com", "/compatible-mode/v1/models"),
     }
 
@@ -109,7 +109,7 @@ class ProviderHealthMonitor:
         "deepseek": "DEEPSEEK_API_KEY",
         "azure": "AZURE_API_KEY",
         "google": "GOOGLE_AI_API_KEY",
-        "vertex_ai": "GCP_SERVICE_ACCOUNT_KEY",
+        "vertex_ai": "GOOGLE_AI_API_KEY",
         "aliyun": "DASHSCOPE_API_KEY",
     }
 
