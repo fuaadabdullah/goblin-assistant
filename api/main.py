@@ -44,6 +44,9 @@ from .secrets_router import (
 )
 from .observability.debug_router import router as observability_debug_router  # Renamed for clarity
 from .sandbox_api import router as sandbox_router
+from .routes.providers_models import router as providers_models_router
+from .routes.account_router import router as account_router
+from .routes.support_router import router as support_router
 from .storage.cache import cache
 from .storage.database import init_db
 
@@ -335,7 +338,7 @@ environment = os.getenv("ENVIRONMENT", "development").lower()
 if environment == "production":
     # Production: Only allow specific origins, no wildcards
     allowed_origins = (
-        os.getenv("ALLOWED_ORIGINS", "").split(",")
+        [o.strip() for o in os.getenv("ALLOWED_ORIGINS", "").split(",") if o.strip()]
         if os.getenv("ALLOWED_ORIGINS")
         else []
     )
@@ -349,7 +352,7 @@ if environment == "production":
 else:
     # Development: Allow localhost
     allowed_origins = (
-        os.getenv("ALLOWED_ORIGINS", "").split(",")
+        [o.strip() for o in os.getenv("ALLOWED_ORIGINS", "").split(",") if o.strip()]
         if os.getenv("ALLOWED_ORIGINS")
         else ["http://localhost:3000", "http://127.0.0.1:3000", "http://localhost:3001"]
     )
@@ -396,6 +399,9 @@ app.include_router(privacy_router)  # GDPR/CCPA compliance
 app.include_router(model_suggestion_debug_router)  # Model-based debug suggestions
 app.include_router(observability_debug_router)  # Observability & diagnostic surfaces
 app.include_router(sandbox_router)  # Secure code execution sandbox
+app.include_router(providers_models_router)  # Provider and model discovery
+app.include_router(account_router)  # User account management
+app.include_router(support_router)  # User support/feedback
 
 # Include routing analytics router (new smart routing)
 if ROUTING_ANALYTICS_AVAILABLE and routing_analytics_router:

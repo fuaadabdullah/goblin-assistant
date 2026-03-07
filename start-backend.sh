@@ -1,7 +1,7 @@
 #!/bin/bash
 # Start Goblin Assistant backend with proper environment
 
-cd /Users/fuaadabdullah/ForgeMonorepo/apps/goblin-assistant
+cd "/Volumes/GOBLINOS 1/apps/goblin-assistant"
 
 # Load .env.local into environment
 if [ -f .env.local ]; then
