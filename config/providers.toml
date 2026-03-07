@@ -227,9 +227,9 @@ cot_suppression_prompt = "Answer directly without showing your reasoning."
 [providers.vertex_ai]
 name = "Google Vertex AI"
 endpoint = "https://generativelanguage.googleapis.com"
-default_model = "gemini-2.0-flash"
+default_model = "gemini-2.5-flash"
 capabilities = ["chat", "reasoning", "code", "image"]
-models = ["gemini-2.0-flash", "gemini-2.0-flash-lite", "gemini-2.5-flash-preview-05-20"]
+models = ["gemini-2.5-flash", "gemini-2.0-flash", "gemini-2.0-flash-lite"]
 api_key_env = "GOOGLE_AI_API_KEY"
 priority_tier = 1
 cost_score = 0.7
