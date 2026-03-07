@@ -4,11 +4,30 @@ from typing import Optional, Dict, Any, List
 import uuid
 import asyncio
 import time
+import os
 from .core.orchestration import create_simple_orchestration_plan
 from .write_time_router import router as write_time_router
-from .providers.dispatcher_fixed import invoke_provider
+from .providers.dispatcher_fixed import invoke_provider, dispatcher
 
 router = APIRouter(prefix="/api", tags=["api"])
+
+
+@router.get("/debug/aliyun")
+async def debug_aliyun():
+    """Temporary debug endpoint - remove after fixing aliyun."""
+    ds_key = os.getenv("DASHSCOPE_API_KEY", "")
+    config = dispatcher._get_provider_config("aliyun")
+    provider = dispatcher.get_provider("aliyun")
+    return {
+        "env_var_set": bool(ds_key),
+        "env_var_len": len(ds_key),
+        "env_var_prefix": ds_key[:8] if ds_key else "",
+        "config_api_key_env": config.get("api_key_env"),
+        "provider_type": type(provider).__name__,
+        "provider_api_key_env": getattr(provider, "api_key_env", None),
+        "provider_cached_key_len": len(getattr(provider, "api_key", "") or ""),
+        "provider_get_api_key_len": len(provider._get_api_key()),
+    }
 
 
 # ============================================================================
