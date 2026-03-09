@@ -104,12 +104,19 @@ async def health_check() -> Dict[str, Any]:
         check_api_health(),
     )
 
-    # Get provider status from monitor
+    # Get provider status from the authoritative provider health monitor
     try:
-        provider_status = await monitor.get_status()
+        from .services.provider_health import health_monitor
+
+        await health_monitor.refresh(include_hidden=False)
+        provider_status = health_monitor.get_all_status()
         provider_health = {
             "status": "healthy"
-            if all(p.get("status") == "healthy" for p in provider_status.values())
+            if provider_status
+            and all(
+                provider.get("status") in {"healthy", "unknown"}
+                for provider in provider_status.values()
+            )
             else "degraded",
             "providers_checked": len(provider_status),
             "details": provider_status,

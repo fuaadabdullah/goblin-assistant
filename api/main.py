@@ -474,6 +474,17 @@ if ROUTING_ANALYTICS_AVAILABLE and routing_analytics_router:
     app.include_router(routing_analytics_router)
 
 
+@app.get("/")
+async def root():
+    """Lightweight service metadata endpoint kept for API compatibility."""
+    return {
+        "message": "Goblin Assistant API",
+        "version": app.version,
+        "docs": "/docs",
+        "health": "/health",
+    }
+
+
 @app.get("/test")
 async def test_endpoint():
     """Simple test endpoint without database"""

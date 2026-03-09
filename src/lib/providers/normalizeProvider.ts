@@ -7,6 +7,7 @@ export const PROVIDER_ID_ALIASES: Record<string, string> = {
   'llamacpp-gcp': 'llamacpp_gcp',
   'azure-openai': 'azure_openai',
   azure: 'azure_openai',
+  google: 'gemini',
   alibaba: 'aliyun',
   'ali-baba': 'aliyun',
   'aliyun-model-server': 'aliyun',
@@ -14,7 +15,7 @@ export const PROVIDER_ID_ALIASES: Record<string, string> = {
 
 export function normalizeProviderId(
   value: string | null | undefined,
-  aliases: Record<string, string> = {}
+  aliases: Record<string, string> = PROVIDER_ID_ALIASES
 ): string {
   const raw = (value || '').trim().toLowerCase();
   if (!raw) return '';

@@ -7,7 +7,22 @@ import re
 import html
 from typing import Optional, Dict, Any, Tuple
 from fastapi import HTTPException
-import bleach
+
+try:
+    import bleach
+except ImportError:  # pragma: no cover - exercised only in lean test envs
+    bleach = None
+
+
+def _strip_html_tags(value: str) -> str:
+    """Best-effort tag removal when bleach is unavailable."""
+    return re.sub(r"<[^>]+>", "", value)
+
+
+def _clean_html(value: str, tags: Optional[list[str]] = None, attributes: Optional[Dict[str, Any]] = None, strip: bool = True) -> str:
+    if bleach is not None:
+        return bleach.clean(value, tags=tags or [], attributes=attributes or {}, strip=strip)
+    return _strip_html_tags(value) if strip else value
 
 
 class InputSanitizer:
@@ -88,7 +103,7 @@ class InputSanitizer:
             validation_metadata["sanitized"] = True
 
             # Use bleach for comprehensive HTML sanitization
-            sanitized = bleach.clean(
+            sanitized = _clean_html(
                 content,
                 tags=cls.ALLOWED_TAGS,
                 attributes=cls.ALLOWED_ATTRIBUTES,
@@ -127,7 +142,7 @@ class InputSanitizer:
         title = cls._remove_control_characters(title)
 
         # Use bleach to clean HTML tags
-        title = bleach.clean(title, tags=[], strip=True)
+        title = _clean_html(title, tags=[], strip=True)
 
         # Basic HTML escaping
         title = html.escape(title, quote=True)

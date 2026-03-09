@@ -1,7 +1,11 @@
+from __future__ import annotations
+
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel
 from typing import List, Optional
-from api.config.providers import DEFAULT_PROVIDERS, DEFAULT_MODELS
+
+from api.providers.dispatcher import dispatcher
+from api.routing.router import top_providers_for
 
 router = APIRouter(prefix="/settings", tags=["settings"])
 
@@ -30,101 +34,97 @@ class SettingsResponse(BaseModel):
     default_model: Optional[str] = None
 
 
+def _provider_models(entry: dict) -> List[str]:
+    models = list(entry.get("models", []))
+    default_model = str(entry.get("default_model", "")).strip()
+    if default_model and default_model not in models:
+        models.append(default_model)
+    return sorted({model for model in models if model})
+
+
 @router.get("/", response_model=SettingsResponse)
 async def get_settings():
-    """Get current provider and model settings"""
     try:
-        # In a real app, these would be stored in a database
-        # For now, we'll return the default configurations
+        inventory = await dispatcher.get_provider_inventory(include_hidden=False)
+        providers = [
+            ProviderSettings(
+                name=entry["id"],
+                api_key=entry.get("api_key_env"),
+                base_url=entry.get("endpoint") or None,
+                models=_provider_models(entry),
+                enabled=bool(entry.get("configured")),
+            )
+            for entry in inventory
+        ]
+
+        models: List[ModelSettings] = []
+        for entry in inventory:
+            provider_id = entry["id"]
+            for model_name in _provider_models(entry):
+                models.append(
+                    ModelSettings(
+                        name=model_name,
+                        provider=provider_id,
+                        model_id=model_name,
+                        max_tokens=None,
+                        enabled=bool(entry.get("configured")),
+                    )
+                )
+
+        default_provider = next(iter(top_providers_for("chat", limit=1)), None)
+        default_model = None
+        if default_provider:
+            default_model = str(
+                dispatcher.get_provider_config(default_provider).get("default_model", "")
+            ) or dispatcher.get_provider(default_provider).default_model
+
         return SettingsResponse(
-            providers=DEFAULT_PROVIDERS,
-            models=DEFAULT_MODELS,
-            default_provider="OpenAI",
-            default_model="GPT-4",
+            providers=providers,
+            models=models,
+            default_provider=default_provider,
+            default_model=default_model,
         )
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Failed to get settings: {str(e)}")
+    except Exception as exc:
+        raise HTTPException(status_code=500, detail=f"Failed to get settings: {exc}") from exc
 
 
 @router.put("/providers/{provider_name}")
 async def update_provider_settings(provider_name: str, settings: ProviderSettings):
-    """Update settings for a specific provider"""
-    try:
-        # In a real app, this would update the database
-        # For now, we'll just validate the input
-        if not settings.name:
-            raise HTTPException(status_code=400, detail="Provider name is required")
-
-        return {
-            "status": "success",
-            "message": f"Settings updated for provider: {provider_name}",
-            "settings": settings.dict(),
-        }
-    except HTTPException:
-        raise
-    except Exception as e:
-        raise HTTPException(
-            status_code=500, detail=f"Failed to update provider settings: {str(e)}"
-        )
+    if not settings.name:
+        raise HTTPException(status_code=400, detail="Provider name is required")
+    return {
+        "status": "success",
+        "message": f"Settings updated for provider: {provider_name}",
+        "settings": settings.model_dump(),
+    }
 
 
 @router.put("/models/{model_name}")
 async def update_model_settings(model_name: str, settings: ModelSettings):
-    """Update settings for a specific model"""
-    try:
-        # In a real app, this would update the database
-        # For now, we'll just validate the input
-        if not settings.name or not settings.provider or not settings.model_id:
-            raise HTTPException(
-                status_code=400,
-                detail="Model name, provider, and model_id are required",
-            )
-
-        return {
-            "status": "success",
-            "message": f"Settings updated for model: {model_name}",
-            "settings": settings.dict(),
-        }
-    except HTTPException:
-        raise
-    except Exception as e:
+    if not settings.name or not settings.provider or not settings.model_id:
         raise HTTPException(
-            status_code=500, detail=f"Failed to update model settings: {str(e)}"
+            status_code=400,
+            detail="Model name, provider, and model_id are required",
         )
+    return {
+        "status": "success",
+        "message": f"Settings updated for model: {model_name}",
+        "settings": settings.model_dump(),
+    }
 
 
 @router.post("/test-connection")
 async def test_provider_connection(provider_name: str):
-    """Test connection to a provider's API"""
     try:
-        # Find the provider
-        provider = None
-        for p in DEFAULT_PROVIDERS:
-            if p["name"].lower() == provider_name.lower():
-                provider = p
-                break
-
-        if not provider:
-            raise HTTPException(
-                status_code=404, detail=f"Provider {provider_name} not found"
-            )
-
-        if not provider.get("api_key"):
-            return {
-                "status": "warning",
-                "message": f"No API key configured for {provider_name}",
-                "connected": False,
-            }
-
-        # In a real app, you would make a test API call here
-        # For now, we'll just check if the API key exists
+        result = await dispatcher.check_provider(provider_name)
         return {
-            "status": "success",
-            "message": f"Connection test successful for {provider_name}",
-            "connected": True,
+            "status": "success" if result.get("healthy") else "warning",
+            "message": (
+                f"Connection test successful for {provider_name}"
+                if result.get("healthy")
+                else result.get("health_reason") or f"Connection test failed for {provider_name}"
+            ),
+            "connected": bool(result.get("healthy")),
         }
-
-    except HTTPException:
-        raise
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Connection test failed: {str(e)}")
+    except Exception as exc:
+        raise HTTPException(status_code=500, detail=f"Connection test failed: {exc}") from exc

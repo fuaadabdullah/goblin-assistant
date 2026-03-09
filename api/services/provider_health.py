@@ -1,31 +1,21 @@
 """
-Provider Health Monitoring Service
-
-Provides background health checks for AI providers with:
-- Periodic health polling
-- Latency tracking (rolling window)
-- Automatic status updates
-- Circuit breaker integration
+Compatibility health-monitor facade backed by the authoritative dispatcher.
 """
 
+from __future__ import annotations
+
 import asyncio
-import time
-from datetime import datetime, timezone
-from typing import Dict, List, Optional, Any
-from dataclasses import dataclass, field
 from collections import deque
+from dataclasses import dataclass, field
+from datetime import datetime, timezone
 from enum import Enum
-import httpx
-import logging
+from typing import Any, Dict, List, Optional
 
-logger = logging.getLogger(__name__)
-
-MODELS_ENDPOINT = "/v1/models"
+from api.providers.dispatcher import canonical_provider_id, dispatcher
+from api.routing.router import registry
 
 
 class HealthStatus(Enum):
-    """Provider health status."""
-
     HEALTHY = "healthy"
     DEGRADED = "degraded"
     UNHEALTHY = "unhealthy"
@@ -34,8 +24,6 @@ class HealthStatus(Enum):
 
 @dataclass
 class ProviderHealth:
-    """Health information for a provider."""
-
     provider_id: str
     status: HealthStatus = HealthStatus.UNKNOWN
     last_check: Optional[datetime] = None
@@ -45,377 +33,224 @@ class ProviderHealth:
     success_rate: float = 1.0
     consecutive_failures: int = 0
     latency_samples: deque = field(default_factory=lambda: deque(maxlen=100))
+    configured: bool = False
 
-    def record_success(self, latency_ms: float):
-        """Record a successful health check."""
+    def record_success(self, latency_ms: float) -> None:
         self.latency_samples.append(latency_ms)
         self.last_check = datetime.now(timezone.utc)
-        self.last_success = datetime.now(timezone.utc)
-        self.consecutive_failures = 0
+        self.last_success = self.last_check
         self.last_error = None
-        self._update_metrics()
+        self.consecutive_failures = 0
+        if self.latency_samples:
+            self.avg_latency_ms = sum(self.latency_samples) / len(self.latency_samples)
+        self.status = HealthStatus.HEALTHY
 
-    def record_failure(self, error: str):
-        """Record a failed health check."""
+    def record_failure(self, error: str) -> None:
         self.last_check = datetime.now(timezone.utc)
-        self.consecutive_failures += 1
         self.last_error = error
-        self._update_metrics()
-
-    def _update_metrics(self):
-        """Update derived metrics."""
+        self.consecutive_failures += 1
+        self.status = (
+            HealthStatus.UNHEALTHY
+            if self.consecutive_failures >= 3
+            else HealthStatus.DEGRADED
+        )
         if self.latency_samples:
             self.avg_latency_ms = sum(self.latency_samples) / len(self.latency_samples)
 
-        # Update status based on consecutive failures
-        if self.consecutive_failures >= 3:
-            self.status = HealthStatus.UNHEALTHY
-        elif self.consecutive_failures >= 1:
-            self.status = HealthStatus.DEGRADED
-        else:
-            self.status = HealthStatus.HEALTHY
-
 
 class ProviderHealthMonitor:
-    """
-    Background service for monitoring provider health.
-
-    Features:
-    - Periodic health checks (configurable interval)
-    - Latency tracking with rolling averages
-    - Automatic status updates
-    - Integration with circuit breakers
-    """
-
-    # Health check endpoints by provider
-    HEALTH_ENDPOINTS = {
-        "groq": ("https://api.groq.com", "/openai/v1/models"),
-        "openai": ("https://api.openai.com", MODELS_ENDPOINT),
-        "anthropic": ("https://api.anthropic.com", MODELS_ENDPOINT),
-        "siliconeflow": ("https://api.siliconflow.com", MODELS_ENDPOINT),
-        "deepseek": ("https://api.deepseek.com", MODELS_ENDPOINT),
-        "azure": ("https://goblinos-resource.services.ai.azure.com", "/openai/models?api-version=2024-05-01-preview"),
-        "google": ("https://generativelanguage.googleapis.com", "/v1beta/models"),
-        "vertex_ai": ("https://generativelanguage.googleapis.com", "/v1beta/models"),
-        "aliyun": ("https://dashscope-intl.aliyuncs.com", "/compatible-mode/v1/models"),
-    }
-
-    # API keys required for health checks
-    API_KEY_ENV_VARS = {
-        "openai": "OPENAI_API_KEY",
-        "anthropic": "ANTHROPIC_API_KEY",
-        "groq": "GROQ_API_KEY",
-        "siliconeflow": "SILICONEFLOW_API_KEY",
-        "deepseek": "DEEPSEEK_API_KEY",
-        "azure": "AZURE_API_KEY",
-        "google": "GOOGLE_AI_API_KEY",
-        "vertex_ai": "GOOGLE_AI_API_KEY",
-        "aliyun": "DASHSCOPE_API_KEY",
-    }
-
-    def __init__(self, check_interval: int = 30):
-        """
-        Initialize health monitor.
-
-        Args:
-            check_interval: Seconds between health checks (default: 30)
-        """
+    def __init__(self, check_interval: int = 30) -> None:
         self.check_interval = check_interval
         self.health_data: Dict[str, ProviderHealth] = {}
         self._running = False
-        self._task: Optional[asyncio.Task] = None
+        self._task: Optional[asyncio.Task[Any]] = None
 
-        # Initialize health data for all providers
-        for provider_id in self.HEALTH_ENDPOINTS:
-            self.health_data[provider_id] = ProviderHealth(provider_id=provider_id)
+    async def refresh(self, include_hidden: bool = True) -> Dict[str, ProviderHealth]:
+        inventory = await dispatcher.get_provider_inventory(include_hidden=include_hidden)
+        now = datetime.now(timezone.utc)
+        seen: set[str] = set()
+        for item in inventory:
+            provider_id = item["id"]
+            seen.add(provider_id)
+            state = self.health_data.get(provider_id) or ProviderHealth(provider_id=provider_id)
+            stats = registry.get(provider_id)
+            state.success_rate = stats.success_rate
+            state.configured = bool(item.get("configured"))
+            state.last_check = now
+            latency_ms = float(item.get("latency_ms", 0.0) or 0.0)
+            if latency_ms > 0:
+                state.latency_samples.append(latency_ms)
+                state.avg_latency_ms = sum(state.latency_samples) / len(state.latency_samples)
 
-    async def start(self):
-        """Start background health monitoring."""
+            if not item.get("configured"):
+                state.status = HealthStatus.UNKNOWN
+                state.last_error = item.get("health_reason") or "Provider not configured"
+                state.consecutive_failures = 0
+            elif item.get("healthy"):
+                state.status = HealthStatus.HEALTHY
+                state.last_success = now
+                state.last_error = None
+                state.consecutive_failures = 0
+            else:
+                state.status = HealthStatus.UNHEALTHY
+                state.last_error = item.get("health_reason") or "Health check failed"
+                state.consecutive_failures = max(state.consecutive_failures + 1, 1)
+
+            self.health_data[provider_id] = state
+
+        for provider_id in list(self.health_data.keys()):
+            if provider_id not in seen and not include_hidden:
+                self.health_data.pop(provider_id, None)
+
+        return self.health_data
+
+    async def start(self) -> None:
         if self._running:
             return
-
         self._running = True
-        self._task = asyncio.create_task(self._monitoring_loop())
-        await asyncio.sleep(0)
-        logger.info("Provider health monitoring started")
+        await self.refresh(include_hidden=True)
+        self._task = asyncio.create_task(self._monitor_loop())
 
-    async def stop(self):
-        """Stop background health monitoring."""
+    async def stop(self) -> None:
         self._running = False
-        if self._task:
+        if self._task is not None:
             self._task.cancel()
             await asyncio.gather(self._task, return_exceptions=True)
-        logger.info("Provider health monitoring stopped")
+            self._task = None
 
-    async def _monitoring_loop(self):
-        """Main monitoring loop."""
-        import os
-
+    async def _monitor_loop(self) -> None:
         while self._running:
-            # Check all providers concurrently
-            tasks = []
-            for provider_id, (base_url, endpoint) in self.HEALTH_ENDPOINTS.items():
-                # Get API key if required
-                api_key = None
-                if provider_id in self.API_KEY_ENV_VARS:
-                    api_key = os.getenv(self.API_KEY_ENV_VARS[provider_id])
-
-                tasks.append(
-                    self._check_provider(provider_id, base_url, endpoint, api_key)
-                )
-
-            await asyncio.gather(*tasks, return_exceptions=True)
+            try:
+                await self.refresh(include_hidden=True)
+            except Exception:
+                pass
             await asyncio.sleep(self.check_interval)
 
-    @staticmethod
-    def _build_request(base_url: str, endpoint: str) -> tuple[str, Dict[str, str]]:
-        url = base_url + endpoint
-        headers = {"Accept": "application/json"}
-        return url, headers
-
-    @staticmethod
-    def _apply_provider_auth(
-        provider_id: str,
-        api_key: Optional[str],
-        url: str,
-        headers: Dict[str, str],
-    ) -> str:
-        if not api_key:
-            return url
-
-        if provider_id == "azure":
-            headers["api-key"] = api_key
-        elif provider_id in ["openai", "groq", "siliconeflow", "deepseek"]:
-            headers["Authorization"] = f"Bearer {api_key}"
-        elif provider_id == "anthropic":
-            headers["x-api-key"] = api_key
-            headers["anthropic-version"] = "2024-01-01"
-        elif provider_id == "google":
-            url = url + "?key=" + api_key
-        elif provider_id in ["vertex_ai", "aliyun"]:
-            headers["Authorization"] = f"Bearer {api_key}"
-
-        return url
-
-    @staticmethod
-    def _handle_http_response(
-        provider_id: str,
-        health: ProviderHealth,
-        response: httpx.Response,
-        latency_ms: float,
-    ) -> None:
-        if response.status_code in [200, 201]:
-            health.record_success(latency_ms)
-            logger.debug("Health check OK: %s (%.0fms)", provider_id, latency_ms)
-            return
-
-        if response.status_code in [401, 403]:
-            # Auth errors mean service is reachable but key is wrong/missing.
-            health.record_success(latency_ms)
-            logger.debug(
-                "Health check reachable (auth error): %s (%.0fms)",
-                provider_id,
-                latency_ms,
-            )
-            return
-
-        health.record_failure("HTTP " + str(response.status_code))
-        logger.warning("Health check failed: %s - HTTP %s", provider_id, response.status_code)
+    async def validate_configured_credentials(self) -> Dict[str, List[str]]:
+        inventory = await dispatcher.get_provider_inventory(include_hidden=True)
+        configured = [item["id"] for item in inventory if item.get("configured")]
+        selectable = [item["id"] for item in inventory if item.get("is_selectable")]
+        unconfigured = [item["id"] for item in inventory if not item.get("configured")]
+        return {
+            "configured": configured,
+            "selectable": selectable,
+            "unconfigured": unconfigured,
+        }
 
     async def _check_provider(
         self,
         provider_id: str,
-        base_url: str,
-        endpoint: str,
-        api_key: Optional[str] = None,
-    ):
-        """Check health of a single provider."""
-        health = self.health_data[provider_id]
-        url, headers = self._build_request(base_url, endpoint)
-        url = self._apply_provider_auth(provider_id, api_key, url, headers)
+        *_args: Any,
+        **_kwargs: Any,
+    ) -> Dict[str, Any]:
+        canonical_id = canonical_provider_id(provider_id) or provider_id
+        current = await dispatcher.check_provider(canonical_id)
+        state = self.health_data.get(canonical_id) or ProviderHealth(provider_id=canonical_id)
+        state.configured = bool(current.get("configured"))
+        state.last_check = datetime.now(timezone.utc)
+        state.last_error = current.get("health_reason")
+        latency_ms = float(current.get("latency_ms", 0.0) or 0.0)
+        if latency_ms > 0:
+            state.latency_samples.append(latency_ms)
+            state.avg_latency_ms = sum(state.latency_samples) / len(state.latency_samples)
+        if not current.get("configured"):
+            state.status = HealthStatus.UNKNOWN
+        elif current.get("healthy"):
+            state.status = HealthStatus.HEALTHY
+            state.last_success = state.last_check
+            state.consecutive_failures = 0
+        else:
+            state.status = HealthStatus.UNHEALTHY
+            state.consecutive_failures = max(state.consecutive_failures + 1, 1)
+        stats = registry.get(canonical_id)
+        state.success_rate = stats.success_rate
+        self.health_data[canonical_id] = state
+        return self.get_status(canonical_id)
 
-        start_time = time.time()
-
-        try:
-            async with httpx.AsyncClient(timeout=10.0) as client:
-                response = await client.get(url, headers=headers)
-
-                latency_ms = (time.time() - start_time) * 1000
-                self._handle_http_response(provider_id, health, response, latency_ms)
-
-        except httpx.TimeoutException:
-            health.record_failure("Timeout")
-            logger.warning("Health check timeout: %s", provider_id)
-        except httpx.ConnectError:
-            health.record_failure("Connection refused")
-            logger.warning("Health check connection failed: %s", provider_id)
-        except httpx.HTTPError as e:
-            health.record_failure(str(e))
-            logger.error("Health check error: %s - %s", provider_id, e)
-
-    async def validate_configured_credentials(self) -> Dict[str, List[str]]:
-        """
-        Validate configured provider credentials once at startup.
-
-        This is intentionally stricter than background health checks:
-        - 401/403 are treated as INVALID_CREDENTIALS
-        - Network failures are reported as UNREACHABLE
-        - Only providers with configured API keys are checked
-        """
-        import os
-
-        configured_providers: List[str] = []
-        valid: List[str] = []
-        invalid_credentials: List[str] = []
-        unreachable: List[str] = []
-
-        for provider_id, env_var in self.API_KEY_ENV_VARS.items():
-            api_key = (os.getenv(env_var) or "").strip()
-            if not api_key:
-                continue
-
-            configured_providers.append(provider_id)
-            is_valid, error_type = await self._check_provider_credentials_once(
-                provider_id=provider_id,
-                api_key=api_key,
-            )
-
-            if is_valid:
-                valid.append(provider_id)
-            elif error_type == "INVALID_CREDENTIALS":
-                invalid_credentials.append(provider_id)
-            else:
-                unreachable.append(provider_id)
-
-        return {
-            "configured": configured_providers,
-            "valid": valid,
-            "invalid_credentials": invalid_credentials,
-            "unreachable": unreachable,
-        }
-
-    async def _check_provider_credentials_once(
-        self,
-        provider_id: str,
-        api_key: str,
-    ) -> tuple[bool, str]:
-        """Single-shot credential validation for one provider."""
-        endpoint_data = self.HEALTH_ENDPOINTS.get(provider_id)
-        if not endpoint_data:
-            return False, "UNKNOWN_PROVIDER"
-
-        base_url, endpoint = endpoint_data
-        url, headers = self._build_request(base_url, endpoint)
-        url = self._apply_provider_auth(provider_id, api_key, url, headers)
-
-        try:
-            async with httpx.AsyncClient(timeout=8.0) as client:
-                response = await client.get(url, headers=headers)
-
-            if response.status_code in [200, 201]:
-                return True, "OK"
-            if response.status_code in [401, 403]:
-                return False, "INVALID_CREDENTIALS"
-
-            return False, "UNREACHABLE"
-
-        except httpx.HTTPError:
-            return False, "UNREACHABLE"
-
-    def is_healthy(self, provider_id: str) -> bool:
-        """Check if provider is healthy."""
-        if provider_id not in self.health_data:
-            return False
-        return self.health_data[provider_id].status == HealthStatus.HEALTHY
+    async def probe_provider(self, provider_id: str) -> Dict[str, Any]:
+        return await self._check_provider(provider_id)
 
     def is_available(self, provider_id: str) -> bool:
-        """
-        Check if provider is available (healthy, degraded, or unknown).
-
-        UNKNOWN status is treated as available to allow first-time requests
-        before health checks have run.
-        """
-        if provider_id not in self.health_data:
-            # Not in health data yet = treat as available (optimistic)
-            return True
-        return self.health_data[provider_id].status in [
-            HealthStatus.HEALTHY,
-            HealthStatus.DEGRADED,
-            HealthStatus.UNKNOWN,
-        ]
-
-    def get_healthy_providers(self) -> List[str]:
-        """Get list of healthy providers."""
-        return [
-            pid
-            for pid, health in self.health_data.items()
-            if health.status == HealthStatus.HEALTHY
-        ]
-
-    def get_available_providers(self) -> List[str]:
-        """Get list of available providers (healthy or degraded)."""
-        return [
-            pid
-            for pid, health in self.health_data.items()
-            if health.status in [HealthStatus.HEALTHY, HealthStatus.DEGRADED]
-        ]
-
-    def get_latency(self, provider_id: str) -> float:
-        """Get average latency for provider."""
-        if provider_id not in self.health_data:
-            return float("inf")
-        return self.health_data[provider_id].avg_latency_ms
+        canonical_id = canonical_provider_id(provider_id) or provider_id
+        state = self.health_data.get(canonical_id)
+        if state is None:
+            try:
+                provider = dispatcher.get_provider(canonical_id)
+            except KeyError:
+                return False
+            return dispatcher.is_configured(canonical_id) and provider.is_available()
+        return state.configured and state.status in {HealthStatus.HEALTHY, HealthStatus.DEGRADED}
 
     def get_status(self, provider_id: str) -> Dict[str, Any]:
-        """Get detailed status for provider."""
-        if provider_id not in self.health_data:
-            return {"error": "Unknown provider"}
+        canonical_id = canonical_provider_id(provider_id) or provider_id
+        state = self.health_data.get(canonical_id)
+        if state is None:
+            if dispatcher.get_provider_config(canonical_id):
+                return {
+                    "provider_id": canonical_id,
+                    "status": HealthStatus.UNKNOWN.value,
+                    "configured": dispatcher.is_configured(canonical_id),
+                    "last_check": None,
+                    "last_success": None,
+                    "last_error": None,
+                    "avg_latency_ms": 0.0,
+                    "success_rate": 1.0,
+                    "consecutive_failures": 0,
+                }
+            return {"error": f"Unknown provider: {provider_id}"}
 
-        health = self.health_data[provider_id]
         return {
-            "provider_id": health.provider_id,
-            "status": health.status.value,
-            "last_check": health.last_check.isoformat() if health.last_check else None,
-            "last_success": health.last_success.isoformat()
-            if health.last_success
-            else None,
-            "last_error": health.last_error,
-            "avg_latency_ms": round(health.avg_latency_ms, 2),
-            "consecutive_failures": health.consecutive_failures,
-            "samples": len(health.latency_samples),
+            "provider_id": canonical_id,
+            "status": state.status.value,
+            "configured": state.configured,
+            "last_check": state.last_check.isoformat() if state.last_check else None,
+            "last_success": state.last_success.isoformat() if state.last_success else None,
+            "last_error": state.last_error,
+            "avg_latency_ms": round(state.avg_latency_ms, 1),
+            "success_rate": round(state.success_rate, 3),
+            "consecutive_failures": state.consecutive_failures,
         }
 
     def get_all_status(self) -> Dict[str, Dict[str, Any]]:
-        """Get status for all providers."""
-        return {pid: self.get_status(pid) for pid in self.health_data}
+        return {
+            provider_id: self.get_status(provider_id)
+            for provider_id in sorted(self.health_data.keys())
+        }
 
-    def get_best_providers(self, limit: int = 5) -> List[str]:
-        """
-        Get best providers sorted by health and latency.
-
-        Returns providers that are:
-        1. Healthy
-        2. Sorted by latency (fastest first)
-        """
-        available = [
-            (pid, self.health_data[pid]) for pid in self.get_available_providers()
+    def get_healthy_providers(self) -> List[str]:
+        return [
+            provider_id
+            for provider_id, state in self.health_data.items()
+            if state.status == HealthStatus.HEALTHY and state.configured
         ]
 
-        # Sort by status (healthy first) then by latency
-        available.sort(
-            key=lambda x: (
-                0 if x[1].status == HealthStatus.HEALTHY else 1,
-                x[1].avg_latency_ms if x[1].avg_latency_ms > 0 else float("inf"),
+    def get_available_providers(self) -> List[str]:
+        return [
+            provider_id
+            for provider_id, state in self.health_data.items()
+            if state.configured and state.status in {HealthStatus.HEALTHY, HealthStatus.DEGRADED}
+        ]
+
+    def get_latency(self, provider_id: str) -> float:
+        canonical_id = canonical_provider_id(provider_id) or provider_id
+        state = self.health_data.get(canonical_id)
+        if state is not None and state.avg_latency_ms > 0:
+            return state.avg_latency_ms
+        return registry.get(canonical_id).ewma_latency_ms
+
+    def get_best_providers(self, limit: int = 5) -> List[str]:
+        candidates = self.get_available_providers()
+        candidates.sort(
+            key=lambda provider_id: (
+                self.get_latency(provider_id),
+                -self.health_data[provider_id].success_rate,
             )
         )
+        return candidates[:limit]
 
-        return [pid for pid, _ in available[:limit]]
 
-
-# Global instance
 health_monitor = ProviderHealthMonitor()
 
 
 def get_health_monitor() -> ProviderHealthMonitor:
-    """Get the global health monitor instance."""
     return health_monitor
