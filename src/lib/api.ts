@@ -96,7 +96,7 @@ interface ConversationSendResponse {
 
 const backendHttp = axios.create({
   baseURL: env.apiBaseUrl,
-  timeout: 15000,
+  timeout: 45000,
   headers: {
     'Content-Type': 'application/json',
   },
@@ -104,11 +104,13 @@ const backendHttp = axios.create({
 
 // Used for same-origin Next.js API routes (e.g. /api/models, /api/generate)
 const frontendHttp = axios.create({
-  timeout: 15000,
+  timeout: 45000,
   headers: {
     'Content-Type': 'application/json',
   },
 });
+
+const AUTH_REQUEST_TIMEOUT_MS = 60000;
 
 type RetryableRequestConfig = AxiosRequestConfig & { _retry?: boolean };
 
@@ -199,7 +201,11 @@ const normalizeAxiosError = (error: unknown): never => {
     const axiosError = error as AxiosError<Record<string, unknown>>;
     const payload = axiosError.response?.data;
 
+    const isTimeout = axiosError.code === 'ECONNABORTED';
+
     const detail =
+      (isTimeout &&
+        'Authentication service timed out. The server may be waking up—please try again in a few seconds.') ||
       (typeof payload?.detail === 'string' && payload.detail) ||
       (typeof payload?.error === 'string' && payload.error) ||
       (typeof payload?.message === 'string' && payload.message) ||
@@ -217,6 +223,19 @@ const normalizeAxiosError = (error: unknown): never => {
   }
 
   throw error instanceof Error ? error : new Error('Request failed');
+};
+
+const getCsrfToken = async (): Promise<string> => {
+  const response = await getBackend<{ csrf_token?: string }>('/auth/csrf-token', {
+    timeout: AUTH_REQUEST_TIMEOUT_MS,
+  });
+
+  const token = response?.csrf_token;
+  if (!token || typeof token !== 'string') {
+    throw new Error('Unable to initialize authentication. Please try again.');
+  }
+
+  return token;
 };
 
 const getBackend = async <T>(url: string, config?: AxiosRequestConfig): Promise<T> => {
@@ -512,11 +531,21 @@ export const apiClient = {
     password: string,
     turnstileToken?: string | null,
   ) {
-    return postBackend('/auth/register', { email, password, turnstileToken });
+    const csrfToken = await getCsrfToken();
+    return postBackend(
+      '/auth/register',
+      { email, password, turnstileToken, csrf_token: csrfToken },
+      { timeout: AUTH_REQUEST_TIMEOUT_MS },
+    );
   },
 
   async login(email: string, password: string) {
-    return postBackend('/auth/login', { email, password });
+    const csrfToken = await getCsrfToken();
+    return postBackend(
+      '/auth/login',
+      { email, password, csrf_token: csrfToken },
+      { timeout: AUTH_REQUEST_TIMEOUT_MS },
+    );
   },
 
   async validateToken(token: string): Promise<ValidateTokenResponse> {
@@ -537,7 +566,15 @@ export const apiClient = {
   },
 
   async getGoogleAuthUrl() {
-    return getBackend('/auth/google/url');
+    const payload = await getBackend<{ url?: string; authorization_url?: string }>('/auth/google/url', {
+      timeout: AUTH_REQUEST_TIMEOUT_MS,
+    });
+
+    const url = payload?.url || payload?.authorization_url;
+    if (!url) {
+      throw new Error('Google sign-in URL is unavailable.');
+    }
+    return { url };
   },
 
   async getSearchCollections() {
