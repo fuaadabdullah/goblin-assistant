@@ -74,7 +74,12 @@ export default function ModularLoginForm({
       });
       onSuccess();
     } catch (error) {
-      onError(error instanceof Error ? error.message : 'Authentication failed');
+      const message = error instanceof Error ? error.message : 'Authentication failed';
+      const normalized =
+        message.includes('timed out') || message.includes('timeout')
+          ? 'Authentication service is taking too long to respond. The backend may be waking up—please try again in a few seconds.'
+          : message;
+      onError(normalized);
       // Reset Turnstile on error
       setTurnstileToken('');
     } finally {
@@ -84,10 +89,18 @@ export default function ModularLoginForm({
 
   const handleGoogleLogin = async () => {
     try {
-      const { url } = (await apiClient.getGoogleAuthUrl()) as { url: string };
-      window.location.href = url;
+      const { url } = (await apiClient.getGoogleAuthUrl()) as {
+        url?: string;
+        authorization_url?: string;
+      };
+      const target = url;
+      if (!target) {
+        throw new Error('Google sign-in is not configured yet.');
+      }
+      window.location.href = target;
     } catch (error) {
-      onError('Failed to initiate Google login');
+      const message = error instanceof Error ? error.message : 'Failed to initiate Google login';
+      onError(message);
     }
   };
 
