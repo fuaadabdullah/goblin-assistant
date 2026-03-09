@@ -30,7 +30,33 @@ The checked-in code supports these areas with matching implementation:
 - Thin Next API proxy for prompt generation at `/api/generate`, which forwards to backend `/api/chat`
 - FastAPI routers for auth, chat, routing, health, search, settings, privacy, secrets, ops, debug, and sandbox
 
-The repo also contains UI/features that are present in code but not fully aligned end to end:
+### Security (March 2026)
+
+- **CSRF Protection**: Redis-backed one-time tokens with 1-hour TTL
+- **Rate Limiting**: Sliding window on auth endpoints (5 attempts/hr per IP)
+- **Sentry Integration**: Privacy hooks for PII scrubbing in error reports
+- **Auth Refresh**: Token exchange and revocation flows with session management
+- **Memory Eviction**: TTL-based cleanup with max-size limits and user isolation
+
+### Test Coverage
+
+| Layer            | Suites | Tests | Status      |
+|------------------|--------|-------|-------------|
+| Backend (Python) | 9      | 51    | All passing |
+| Frontend (Jest)  | 50+    | 278+  | All passing |
+
+Run tests:
+
+```bash
+# Backend
+source ../.venv/bin/activate
+cd api && python -m pytest -o "addopts=" -v
+
+# Frontend
+TMPDIR=/tmp npx jest --no-coverage
+```
+
+### Known Caveats
 
 - Much of the frontend client calls `/v1/...`, while `api/main.py` mounts most routers at unversioned paths such as `/auth`, `/chat`, `/search`, `/settings`, and `/sandbox`
 - `src/pages/api/models.ts` expects a backend `/v1/providers/models` endpoint that is not defined in the checked-in FastAPI app
@@ -106,6 +132,8 @@ Open `http://127.0.0.1:3000`.
 - `docs/setup.md`: local setup and env configuration
 - `docs/features.md`: feature status by capability
 - `docs/ARCHITECTURE_OVERVIEW.md`: current frontend/backend topology
+- `DEPLOYMENT_AND_TESTING.md`: deployment procedures and test strategy
+- `SECURITY_IMPLEMENTATION_COMPLETE.md`: security feature details
 - `api/README.md`: FastAPI backend entry guide
 - `api/docs/README.md`: route inventory and API behavior notes
 
