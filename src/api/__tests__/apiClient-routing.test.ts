@@ -1,40 +1,68 @@
-function createFetchResponse(status: number, body: unknown): Response {
+import { beforeEach, afterEach, describe, expect, it, jest } from '@jest/globals';
+
+const backendGetMock = jest.fn();
+const backendPostMock = jest.fn();
+const backendPutMock = jest.fn();
+const backendPatchMock = jest.fn();
+const frontendGetMock = jest.fn();
+const frontendPostMock = jest.fn();
+
+jest.mock('axios', () => {
+  const create = jest
+    .fn()
+    .mockImplementationOnce(() => ({
+      interceptors: {
+        response: { use: jest.fn() },
+      },
+      get: backendGetMock,
+      post: backendPostMock,
+      put: backendPutMock,
+      patch: backendPatchMock,
+    }))
+    .mockImplementationOnce(() => ({
+      get: frontendGetMock,
+      post: frontendPostMock,
+    }));
+
+  const axios = {
+    create,
+    isAxiosError: jest.fn(() => false),
+  };
+
   return {
-    ok: status >= 200 && status < 300,
-    status,
-    json: async () => body,
-  } as unknown as Response;
-}
+    __esModule: true,
+    default: axios,
+    create,
+    isAxiosError: axios.isAxiosError,
+  };
+});
 
 describe('apiClient.getRoutingInfo', () => {
-  const originalFetch = global.fetch;
   const originalEnv = process.env;
 
   beforeEach(() => {
     jest.resetModules();
+    jest.clearAllMocks();
     process.env = {
       ...originalEnv,
       NEXT_PUBLIC_API_BASE_URL: 'https://backend.example',
+      NEXT_PUBLIC_BACKEND_URL: 'https://backend.example',
+      NEXT_PUBLIC_FASTAPI_URL: 'https://backend.example',
     };
   });
 
   afterEach(() => {
     process.env = originalEnv;
-    global.fetch = originalFetch;
     jest.restoreAllMocks();
   });
 
   it('calls /routing/info on the configured backend base URL', async () => {
-    const fetchMock = jest
-      .fn()
-      .mockResolvedValue(createFetchResponse(200, { status: 'ok' }));
-    global.fetch = fetchMock as unknown as typeof fetch;
+    backendGetMock.mockResolvedValue({ data: { status: 'ok' } });
 
-    // eslint-disable-next-line @typescript-eslint/no-var-requires
-    const { apiClient } = require('../apiClient') as typeof import('../apiClient');
+    const { apiClient } = await import('@/api');
     await apiClient.getRoutingInfo();
 
-    expect(fetchMock).toHaveBeenCalledTimes(1);
-    expect(fetchMock.mock.calls[0][0]).toBe('https://backend.example/routing/info');
+    expect(backendGetMock).toHaveBeenCalledTimes(1);
+    expect(backendGetMock.mock.calls[0][0]).toBe('/routing/info');
   });
 });

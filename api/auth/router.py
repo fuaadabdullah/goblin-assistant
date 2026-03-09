@@ -9,63 +9,18 @@ import secrets
 from datetime import datetime, timedelta
 import os
 from dotenv import load_dotenv
-from collections import defaultdict
 from .oauth import GoogleOAuth
 from .passkeys import WebAuthnPasskey
 from ..storage.database import get_db
 from ..storage.user_service import UserService, UserCreateData
 from sqlalchemy.ext.asyncio import AsyncSession
+from ..core.csrf_manager import generate_csrf_token, validate_csrf_token
+from ..core.rate_limiter_auth import check_rate_limit
 
 load_dotenv()
 
 router = APIRouter(prefix="/auth", tags=["auth"])
 security = HTTPBearer()
-
-# Rate limiting storage (in production, use Redis or similar)
-rate_limit_store = defaultdict(list)
-
-# Rate limiting configuration
-MAX_LOGIN_ATTEMPTS = 5  # Max attempts per IP per hour
-RATE_LIMIT_WINDOW = 3600  # 1 hour in seconds
-
-# CSRF protection
-csrf_tokens = set()
-
-
-def generate_csrf_token() -> str:
-    """Generate a new CSRF token"""
-    token = secrets.token_urlsafe(32)
-    csrf_tokens.add(token)
-    return token
-
-
-def validate_csrf_token(token: str) -> bool:
-    """Validate CSRF token"""
-    if token in csrf_tokens:
-        csrf_tokens.discard(token)  # One-time use
-        return True
-    return False
-
-
-def check_rate_limit(client_ip: str) -> bool:
-    """Check if client IP is within rate limits"""
-    now = datetime.utcnow()
-    window_start = now - timedelta(seconds=RATE_LIMIT_WINDOW)
-
-    # Clean old entries
-    rate_limit_store[client_ip] = [
-        timestamp
-        for timestamp in rate_limit_store[client_ip]
-        if timestamp > window_start
-    ]
-
-    # Check if under limit
-    if len(rate_limit_store[client_ip]) >= MAX_LOGIN_ATTEMPTS:
-        return False
-
-    # Record this attempt
-    rate_limit_store[client_ip].append(now)
-    return True
 
 
 # JWT Configuration
@@ -74,6 +29,83 @@ if not SECRET_KEY:
     raise ValueError("JWT_SECRET_KEY environment variable is required")
 ALGORITHM = "HS256"
 ACCESS_TOKEN_EXPIRE_MINUTES = 30
+REFRESH_TOKEN_EXPIRE_DAYS = 7
+
+# Session tracking (in production, use DB or Redis)
+# Format: {session_id: {"user_id": "...", "created_at": datetime, "revoked": bool}}
+active_sessions = {}
+
+
+def create_access_token(
+    data: dict, 
+    expires_delta: Optional[timedelta] = None,
+    scopes: Optional[list] = None,
+    session_id: Optional[str] = None,
+):
+    """Create JWT access token with optional scopes and session ID"""
+    to_encode = data.copy()
+    if expires_delta:
+        expire = datetime.utcnow() + expires_delta
+    else:
+        expire = datetime.utcnow() + timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
+    
+    to_encode.update({
+        "exp": expire,
+        "type": "access",
+    })
+    
+    # Add scopes if provided
+    if scopes:
+        to_encode["scopes"] = scopes
+    
+    # Add session ID if provided (for revocation support)
+    if session_id:
+        to_encode["session_id"] = session_id
+    
+    encoded_jwt = jwt.encode(to_encode, SECRET_KEY, algorithm=ALGORITHM)
+    return encoded_jwt
+
+
+def create_refresh_token(user_id: str, session_id: str) -> str:
+    """Create JWT refresh token with longer expiration"""
+    to_encode = {
+        "sub": user_id,
+        "type": "refresh",
+        "session_id": session_id,
+    }
+    
+    expire = datetime.utcnow() + timedelta(days=REFRESH_TOKEN_EXPIRE_DAYS)
+    to_encode.update({"exp": expire})
+    
+    encoded_jwt = jwt.encode(to_encode, SECRET_KEY, algorithm=ALGORITHM)
+    return encoded_jwt
+
+
+def create_session_id(user_id: str) -> str:
+    """Create unique session ID and track it"""
+    session_id = secrets.token_urlsafe(32)
+    active_sessions[session_id] = {
+        "user_id": user_id,
+        "created_at": datetime.utcnow(),
+        "revoked": False,
+    }
+    return session_id
+
+
+def revoke_session(session_id: str) -> bool:
+    """Mark session as revoked"""
+    if session_id in active_sessions:
+        active_sessions[session_id]["revoked"] = True
+        return True
+    return False
+
+
+def is_session_valid(session_id: str) -> bool:
+    """Check if session is active and not revoked"""
+    if session_id not in active_sessions:
+        return False
+    return not active_sessions[session_id]["revoked"]
+
 
 
 class User(BaseModel):
@@ -86,22 +118,38 @@ class User(BaseModel):
 
 
 class UserCreate(BaseModel):
+    """User registration request model with required CSRF token"""
     email: EmailStr
     password: str
     name: Optional[str] = None
-    csrf_token: Optional[str] = None
+    csrf_token: str  # Required: Must fetch from GET /auth/csrf-token first
 
 
 class UserLogin(BaseModel):
+    """User login request model with required CSRF token"""
     email: EmailStr
     password: str
-    csrf_token: Optional[str] = None
+    csrf_token: str  # Required: Must fetch from GET /auth/csrf-token first
 
 
 class Token(BaseModel):
     access_token: str
     token_type: str
     user: User
+
+
+class TokenWithRefresh(BaseModel):
+    """Token response that includes refresh token"""
+    access_token: str
+    refresh_token: str
+    token_type: str
+    user: User
+    expires_in: int  # Access token expiration in seconds
+
+
+class RefreshTokenRequest(BaseModel):
+    """Request to refresh access token"""
+    refresh_token: str
 
 
 class GoogleAuthRequest(BaseModel):
@@ -127,23 +175,23 @@ class PasskeyAuthRequest(BaseModel):
     signature: str
 
 
-def create_access_token(data: dict, expires_delta: Optional[timedelta] = None):
-    to_encode = data.copy()
-    if expires_delta:
-        expire = datetime.utcnow() + expires_delta
-    else:
-        expire = datetime.utcnow() + timedelta(minutes=15)
-    to_encode.update({"exp": expire})
-    encoded_jwt = jwt.encode(to_encode, SECRET_KEY, algorithm=ALGORITHM)
-    return encoded_jwt
-
-
 def verify_token(token: str) -> Optional[dict]:
     try:
         payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
         return payload
     except PyJWTError:
         return None
+
+
+def _is_user_active(value: object) -> bool:
+    """Coerce legacy string/bool DB values into active flag semantics."""
+    if isinstance(value, bool):
+        return value
+    if isinstance(value, str):
+        return value.strip().lower() in {"1", "true", "yes", "on"}
+    if isinstance(value, (int, float)):
+        return bool(value)
+    return False
 
 
 async def get_current_user(
@@ -159,11 +207,27 @@ async def get_current_user(
             headers={"WWW-Authenticate": "Bearer"},
         )
 
+    # Verify token type is 'access'
+    token_type = payload.get("type")
+    if token_type != "access":
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Invalid token type - expected access token",
+        )
+
     user_id = payload.get("sub")
     if not user_id:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Invalid token payload",
+        )
+
+    # Validate session if present
+    session_id = payload.get("session_id")
+    if session_id and not is_session_valid(session_id):
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Session has expired or been revoked",
         )
 
     user_service = UserService(db)
@@ -172,6 +236,11 @@ async def get_current_user(
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="User not found",
+        )
+    if not _is_user_active(user_model.is_active):
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="User account is inactive",
         )
 
     # Convert database model to Pydantic model
@@ -204,15 +273,16 @@ async def register(
     # Get client IP for rate limiting
     client_ip = request.client.host if request.client else "unknown"
 
-    # Check rate limit (reuse login limit for registration)
-    if not check_rate_limit(client_ip):
+    # Check rate limit (reuse login limit for registration) - uses Redis
+    if not await check_rate_limit(client_ip, endpoint="register"):
         raise HTTPException(
             status_code=status.HTTP_429_TOO_MANY_REQUESTS,
             detail="Too many requests. Please try again later.",
         )
 
-    # Validate CSRF token if provided
-    if user_data.csrf_token and not validate_csrf_token(user_data.csrf_token):
+    # Validate CSRF token (required, uses Redis)
+    # Token must be provided and valid (one-time use)
+    if not await validate_csrf_token(user_data.csrf_token):
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN, detail="Invalid CSRF token"
         )
@@ -250,31 +320,43 @@ async def register(
         name=user_model.name,
     )
 
-    # Create access token
+    # Create session and tokens
+    session_id = create_session_id(user_model.id)
     access_token_expires = timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
     access_token = create_access_token(
-        data={"sub": user_model.id}, expires_delta=access_token_expires
+        data={"sub": user_model.id}, 
+        expires_delta=access_token_expires,
+        scopes=["user"],
+        session_id=session_id,
+    )
+    refresh_token = create_refresh_token(user_model.id, session_id)
+
+    return TokenWithRefresh(
+        access_token=access_token, 
+        refresh_token=refresh_token,
+        token_type="bearer", 
+        user=user,
+        expires_in=ACCESS_TOKEN_EXPIRE_MINUTES * 60,
     )
 
-    return Token(access_token=access_token, token_type="bearer", user=user)
 
-
-@router.post("/login", response_model=Token)
+@router.post("/login", response_model=TokenWithRefresh)
 async def login(
     user_data: UserLogin, request: Request, db: AsyncSession = Depends(get_db)
 ):
     # Get client IP for rate limiting
     client_ip = request.client.host if request.client else "unknown"
 
-    # Check rate limit
-    if not check_rate_limit(client_ip):
+    # Check rate limit - uses Redis
+    if not await check_rate_limit(client_ip, endpoint="login"):
         raise HTTPException(
             status_code=status.HTTP_429_TOO_MANY_REQUESTS,
             detail="Too many login attempts. Please try again later.",
         )
 
-    # Validate CSRF token if provided
-    if user_data.csrf_token and not validate_csrf_token(user_data.csrf_token):
+    # Validate CSRF token (required, uses Redis)
+    # Token must be provided and valid (one-time use)
+    if not await validate_csrf_token(user_data.csrf_token):
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN, detail="Invalid CSRF token"
         )
@@ -295,6 +377,11 @@ async def login(
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid email or password"
         )
+    if not _is_user_active(user_model.is_active):
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="User account is inactive",
+        )
 
     # Update last login
     await user_service.update_user_last_login(user_model.id)
@@ -309,16 +396,27 @@ async def login(
         passkey_public_key=user_model.passkey_public_key,
     )
 
-    # Create access token
+    # Create session and tokens
+    session_id = create_session_id(user_model.id)
     access_token_expires = timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
     access_token = create_access_token(
-        data={"sub": user_model.id}, expires_delta=access_token_expires
+        data={"sub": user_model.id}, 
+        expires_delta=access_token_expires,
+        scopes=["user"],
+        session_id=session_id,
+    )
+    refresh_token = create_refresh_token(user_model.id, session_id)
+
+    return TokenWithRefresh(
+        access_token=access_token, 
+        refresh_token=refresh_token,
+        token_type="bearer", 
+        user=user,
+        expires_in=ACCESS_TOKEN_EXPIRE_MINUTES * 60,
     )
 
-    return Token(access_token=access_token, token_type="bearer", user=user)
 
-
-@router.post("/google", response_model=Token)
+@router.post("/google", response_model=TokenWithRefresh)
 async def google_auth(
     auth_request: GoogleAuthRequest, db: AsyncSession = Depends(get_db)
 ):
@@ -365,6 +463,12 @@ async def google_auth(
                     detail="Failed to create user",
                 )
 
+    if not _is_user_active(user_model.is_active):
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="User account is inactive",
+        )
+
     # Update last login
     await user_service.update_user_last_login(user_model.id)
 
@@ -378,13 +482,24 @@ async def google_auth(
         passkey_public_key=user_model.passkey_public_key,
     )
 
-    # Create access token
+    # Create session and tokens
+    session_id = create_session_id(user_model.id)
     access_token_expires = timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
     access_token = create_access_token(
-        data={"sub": user_model.id}, expires_delta=access_token_expires
+        data={"sub": user_model.id},
+        expires_delta=access_token_expires,
+        scopes=["user"],
+        session_id=session_id,
     )
+    refresh_token = create_refresh_token(user_model.id, session_id)
 
-    return Token(access_token=access_token, token_type="bearer", user=user)
+    return TokenWithRefresh(
+        access_token=access_token,
+        refresh_token=refresh_token,
+        token_type="bearer",
+        user=user,
+        expires_in=ACCESS_TOKEN_EXPIRE_MINUTES * 60,
+    )
 
 
 @router.get("/google/url")
@@ -399,26 +514,87 @@ async def get_google_auth_url():
         )
 
 
-@router.post("/refresh", response_model=Token)
-async def refresh_token(current_user: User = Depends(get_current_user)):
-    """Refresh access token for authenticated user"""
-    # Create new access token
+@router.post("/refresh", response_model=TokenWithRefresh)
+async def refresh_token_endpoint(
+    request: RefreshTokenRequest, db: AsyncSession = Depends(get_db)
+):
+    """Exchange refresh token for new access and refresh tokens"""
+    # Verify refresh token
+    payload = verify_token(request.refresh_token)
+    if not payload or payload.get("type") != "refresh":
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Invalid refresh token",
+        )
+    
+    user_id = payload.get("sub")
+    session_id = payload.get("session_id")
+
+    if not isinstance(user_id, str) or not user_id:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Invalid refresh token",
+        )
+
+    if not isinstance(session_id, str) or not session_id:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Session has expired or been revoked",
+        )
+    
+    # Verify session is still active
+    if not is_session_valid(session_id):
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Session has expired or been revoked",
+        )
+    
+    # Verify user exists
+    user_service = UserService(db)
+    user_model = await user_service.get_user_by_id(user_id)
+    if not user_model:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="User not found",
+        )
+    
+    # Convert to Pydantic model
+    user = User(
+        id=user_model.id,
+        email=user_model.email,
+        name=user_model.name,
+        google_id=user_model.google_id,
+        passkey_credential_id=user_model.passkey_credential_id,
+        passkey_public_key=user_model.passkey_public_key,
+    )
+    
+    # Create new access and refresh tokens using same session
     access_token_expires = timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
     access_token = create_access_token(
-        data={"sub": current_user.id}, expires_delta=access_token_expires
+        data={"sub": user_id},
+        expires_delta=access_token_expires,
+        scopes=["user"],
+        session_id=session_id,
     )
-
-    return Token(access_token=access_token, token_type="bearer", user=current_user)
+    new_refresh_token = create_refresh_token(user_id, session_id)
+    
+    return TokenWithRefresh(
+        access_token=access_token,
+        refresh_token=new_refresh_token,
+        token_type="bearer",
+        user=user,
+        expires_in=ACCESS_TOKEN_EXPIRE_MINUTES * 60,
+    )
 
 
 @router.get("/csrf-token")
 async def get_csrf_token():
-    """Get a CSRF token for form submissions"""
-    token = generate_csrf_token()
+    """Get a CSRF token for form submissions. Required for /register and /login."""
+    token = await generate_csrf_token()
     return {"csrf_token": token}
 
 
-@router.post("/google/callback", response_model=Token)
+@router.post("/google/callback", response_model=TokenWithRefresh)
 async def google_auth_callback(
     callback_data: GoogleAuthCallback, db: AsyncSession = Depends(get_db)
 ):
@@ -480,6 +656,12 @@ async def google_auth_callback(
                         detail="Failed to create user",
                     )
 
+        if not _is_user_active(user_model.is_active):
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="User account is inactive",
+            )
+
         # Update last login
         await user_service.update_user_last_login(user_model.id)
 
@@ -493,13 +675,24 @@ async def google_auth_callback(
             passkey_public_key=user_model.passkey_public_key,
         )
 
-        # Create access token
+        # Create session and tokens
+        session_id = create_session_id(user_model.id)
         access_token_expires = timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
         access_token = create_access_token(
-            data={"sub": user_model.id}, expires_delta=access_token_expires
+            data={"sub": user_model.id},
+            expires_delta=access_token_expires,
+            scopes=["user"],
+            session_id=session_id,
         )
+        refresh_token = create_refresh_token(user_model.id, session_id)
 
-        return Token(access_token=access_token, token_type="bearer", user=user)
+        return TokenWithRefresh(
+            access_token=access_token,
+            refresh_token=refresh_token,
+            token_type="bearer",
+            user=user,
+            expires_in=ACCESS_TOKEN_EXPIRE_MINUTES * 60,
+        )
 
     except Exception as e:
         raise HTTPException(
@@ -538,7 +731,7 @@ async def register_passkey(
     return {"message": "Passkey registered successfully"}
 
 
-@router.post("/passkey/auth", response_model=Token)
+@router.post("/passkey/auth", response_model=TokenWithRefresh)
 async def authenticate_passkey(
     request: PasskeyAuthRequest, db: AsyncSession = Depends(get_db)
 ):
@@ -565,6 +758,12 @@ async def authenticate_passkey(
     # Verify passkey signature (simplified for demo - in production use full WebAuthn verification)
     # For now, we'll do basic validation
     try:
+        if not _is_user_active(user_model.is_active):
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="User account is inactive",
+            )
+
         # In production, you would verify the full WebAuthn assertion here
         # For demo purposes, we'll accept any valid-looking passkey data
         if (
@@ -590,13 +789,24 @@ async def authenticate_passkey(
             passkey_public_key=user_model.passkey_public_key,
         )
 
-        # Create access token
+        # Create session and tokens
+        session_id = create_session_id(user_model.id)
         access_token_expires = timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
         access_token = create_access_token(
-            data={"sub": user_model.id}, expires_delta=access_token_expires
+            data={"sub": user_model.id},
+            expires_delta=access_token_expires,
+            scopes=["user"],
+            session_id=session_id,
         )
+        refresh_token = create_refresh_token(user_model.id, session_id)
 
-        return Token(access_token=access_token, token_type="bearer", user=user)
+        return TokenWithRefresh(
+            access_token=access_token,
+            refresh_token=refresh_token,
+            token_type="bearer",
+            user=user,
+            expires_in=ACCESS_TOKEN_EXPIRE_MINUTES * 60,
+        )
 
     except Exception:
         raise HTTPException(
@@ -611,8 +821,22 @@ async def get_current_user_info(current_user: User = Depends(get_current_user)):
 
 
 @router.post("/logout")
-async def logout():
-    """Logout user (client-side token removal)"""
+async def logout(current_user: User = Depends(get_current_user), credentials: HTTPAuthorizationCredentials = Depends(security)):
+    """Logout user and revoke session"""
+    # Extract session ID from token
+    token = credentials.credentials
+    payload = verify_token(token)
+    
+    if not payload:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Invalid token",
+        )
+    
+    session_id = payload.get("session_id")
+    if session_id:
+        revoke_session(session_id)
+    
     return {"message": "Logged out successfully"}
 
 

@@ -14,7 +14,7 @@ from typing import Dict, Any, List
 # Add parent directory to path for imports
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 
-from api.providers.dispatcher_fixed import ProviderDispatcher
+from api.providers.dispatcher import ProviderDispatcher
 
 
 class LLMDeploymentTester:

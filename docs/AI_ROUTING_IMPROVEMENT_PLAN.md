@@ -22,7 +22,7 @@ This document outlines a comprehensive plan to improve the Goblin Assistant's AI
 
 ### Existing Components
 
-1. **Provider Dispatcher** (`api/providers/dispatcher_fixed.py`)
+1. **Provider Dispatcher** (`api/providers/dispatcher.py`)
    - Basic provider selection
    - Auto-selection based on API key availability
    - TOML-based configuration
@@ -111,7 +111,8 @@ This document outlines a comprehensive plan to improve the Goblin Assistant's AI
 ```
 
 **Files to modify:**
-- `api/providers/dispatcher_fixed.py` - Update `_auto_select_provider()`
+
+- `api/providers/dispatcher.py` - Update `_auto_select_provider()`
 - `config/providers.toml` - Remove/disable dead Kamatera providers
 
 #### 1.2 Integrate Circuit Breakers with Routing
@@ -366,7 +367,7 @@ New endpoints for `/ops/routing`:
 
 ### Immediate (Do Now)
 
-1. **Fix `dispatcher_fixed.py`** to:
+1. **Fix `dispatcher.py`** to:
    - Remove dead Kamatera references from priority list
    - Add GCP providers as primary
    - Integrate circuit breaker checks
@@ -405,7 +406,7 @@ apps/goblin-assistant/api/
 │   ├── cost_tracker.py          # NEW: Cost optimization
 │   └── routing_analytics.py     # NEW: Decision logging
 ├── providers/
-│   ├── dispatcher_fixed.py      # UPDATED: Health integration
+│   ├── dispatcher.py            # UPDATED: Health integration
 │   └── ...
 ├── config/
 │   ├── providers.toml           # UPDATED: Fixed priorities

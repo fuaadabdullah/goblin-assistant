@@ -26,7 +26,7 @@ Updated **11 files** across the codebase to use the new IP address `34.132.226.1
 
 ### Python Files
 - ✅ `test_providers_quick.py` (3 occurrences)
-- ✅ `api/providers/dispatcher_fixed.py`
+- ✅ `api/providers/dispatcher.py`
 
 ### Documentation Files
 - ✅ `AI_PROVIDER_INTEGRATION_REPORT.md`
@@ -119,7 +119,7 @@ LLAMACPP_GCP_URL=http://34.132.226.143:8000
 | `diagnose_gcp_llamacpp.sh` | Script | Updated GCP_IP |
 | `start_backend.sh` | Script | Updated LLAMACPP_GCP_URL |
 | `test_providers_quick.py` | Python | Updated 3 default endpoint URLs |
-| `api/providers/dispatcher_fixed.py` | Python | Updated endpoint detection |
+| `api/providers/dispatcher.py` | Python | Updated endpoint detection |
 | `AI_PROVIDER_INTEGRATION_REPORT.md` | Docs | Updated status table |
 | `GCP_CHAT_DEPLOYMENT.md` | Docs | Updated 5 IP references |
 | `PROVIDER_STATUS_REPORT.md` | Docs | Updated status section |

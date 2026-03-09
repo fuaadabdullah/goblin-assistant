@@ -1,5 +1,6 @@
 import { useCallback, useState } from 'react';
 import type { CostEstimate } from './useCostEstimation';
+import { formatCost } from '@/utils/format-cost';
 
 export const useCostClipboard = () => {
   const [copyStatus, setCopyStatus] = useState<string | null>(null);
@@ -7,7 +8,7 @@ export const useCostClipboard = () => {
   const copyFormattedSummary = useCallback(async (estimate: CostEstimate | null) => {
     if (!estimate) return;
 
-    const summary = `Estimated cost: $${estimate.estimatedCost.toFixed(4)}\nEstimated tokens: ${estimate.estimatedTokens}`;
+    const summary = `Estimated cost: ${formatCost(estimate.estimatedCost, { mode: 'per-message' })}\nEstimated tokens: ${estimate.estimatedTokens}`;
 
     try {
       await navigator.clipboard.writeText(summary);

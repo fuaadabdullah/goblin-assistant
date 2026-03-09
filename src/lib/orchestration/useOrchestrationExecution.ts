@@ -6,7 +6,7 @@ import { useRef, useCallback } from 'react';
 import type { OrchestrationAction } from '@/lib/orchestration/orchestrationState';
 import type { RuntimeClient } from '@/types/api';
 import { createStreamingHandlers, formatStepError } from './streamingUtils';
-import { debugLog, debugWarn } from '@/lib/utils/debug';
+import { debugError, debugLog, debugWarn } from '@/lib/utils/debug';
 
 export interface UseOrchestrationExecutionOptions {
   dispatch: React.Dispatch<OrchestrationAction>;
@@ -146,7 +146,7 @@ export function useOrchestrationExecution({
               payload: { stepId: step.id, status: 'completed' },
             });
           } catch (stepError: unknown) {
-            console.error(`Step ${step.id} failed:`, stepError);
+            debugError(`Step ${step.id} failed:`, stepError);
             dispatch({
               type: 'SET_STREAMING_TEXT',
               payload: (s: string) => s + formatStepError(step.id, stepError),
@@ -168,7 +168,7 @@ export function useOrchestrationExecution({
           }
         }
       } catch (err: unknown) {
-        console.error('Orchestration failed:', err);
+        debugError('Orchestration failed:', err);
         dispatch({
           type: 'SET_STREAMING_TEXT',
           payload: (s: string) =>

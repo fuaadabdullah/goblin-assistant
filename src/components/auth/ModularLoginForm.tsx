@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
-import { apiClient } from '../../lib/api';
+import { apiClient } from '@/api';
 import { queryKeys } from '../../lib/query-keys';
 import { persistAuthSession } from '../../utils/auth-session';
 import type { LoginResponse } from '../../types/api';
@@ -11,6 +11,7 @@ import Divider from './Divider';
 import PasskeyPanel from './PasskeyPanel';
 import TurnstileWidget from '../TurnstileWidget';
 import { useTurnstile } from '../../config/turnstile';
+import { devError } from '@/utils/dev-log';
 
 interface ModularLoginFormProps {
   onSuccess: () => void;
@@ -61,6 +62,7 @@ export default function ModularLoginForm({
       
       persistAuthSession({
         token: authResponse.access_token,
+        refreshToken: authResponse.refresh_token,
         user: authResponse.user,
         expiresIn: authResponse.expires_in,
       });
@@ -110,7 +112,7 @@ export default function ModularLoginForm({
               theme="auto"
               size="normal"
               onError={error => {
-                console.error('Turnstile verification failed:', error);
+                devError('Turnstile verification failed:', error);
                 onError('Security verification failed. Please try again.');
               }}
             />

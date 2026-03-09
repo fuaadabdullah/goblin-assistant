@@ -6,6 +6,20 @@ Goblin Assistant is a split Next.js + FastAPI application in `apps/goblin-assist
 - Backend: FastAPI app in `api/`
 - Shared runtime/provider config: `config/providers.json`
 
+## Canonical Deployment Targets (March 2026)
+
+- Frontend: **Vercel**
+- Backend: **Render**
+- Canonical backend entrypoint: `api.main:app`
+
+Use only these deployment scripts:
+
+- `./deploy-vercel.sh` (frontend)
+- `./deploy-render.sh` (backend)
+- `./deploy.sh vercel|render|test` (wrapper)
+
+Fly/GCP/Kamatera deploy wrappers and duplicate backend entrypoint artifacts were removed to reduce operational drift.
+
 ## Current Repo Status
 
 The checked-in code supports these areas with matching implementation:

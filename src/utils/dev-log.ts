@@ -3,17 +3,30 @@
  * Console logs are automatically removed in production builds
  */
 
-import { env } from '../config/env';
+const shouldLog = (): boolean => process.env.NODE_ENV !== 'production';
+
+const invokeConsole = (
+  method: 'log' | 'info' | 'warn' | 'error' | 'debug',
+  args: unknown[],
+): void => {
+  if (!shouldLog()) {
+    return;
+  }
+
+  // eslint-disable-next-line no-console
+  console[method](...args);
+};
 
 /**
  * Log only in development environment.
  * No-op in production builds.
  */
 export function devLog(...args: unknown[]): void {
-  if (env.isDevelopment) {
-    // eslint-disable-next-line no-console
-    console.log(...args);
-  }
+  invokeConsole('log', args);
+}
+
+export function devInfo(...args: unknown[]): void {
+  invokeConsole('info', args);
 }
 
 /**
@@ -21,17 +34,17 @@ export function devLog(...args: unknown[]): void {
  * Fully suppressed in production — use monitoring.ts for production error tracking.
  */
 export function devWarn(...args: unknown[]): void {
-  if (env.isDevelopment) {
-    // eslint-disable-next-line no-console
-    console.warn(...args);
-  }
+  invokeConsole('warn', args);
 }
 
 /**
- * Log errors in all environments.
+ * Log errors only outside production.
  * Consider using logErrorToService() from monitoring.ts for production errors.
  */
 export function devError(...args: unknown[]): void {
-  // eslint-disable-next-line no-console
-  console.error(...args);
+  invokeConsole('error', args);
+}
+
+export function devDebug(...args: unknown[]): void {
+  invokeConsole('debug', args);
 }

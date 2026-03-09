@@ -2,6 +2,8 @@ import type { KeyboardEvent, RefObject } from 'react';
 import type { QuickPrompt } from '../types';
 import Link from 'next/link';
 import { CHAT_COMPOSER_PLACEHOLDER, CHAT_COMPOSER_TIP } from '../../../content/brand';
+import { AuthRequired } from './AuthRequired';
+import { formatCost } from '@/utils/format-cost';
 
 interface ChatComposerProps {
   /** Current input value. */
@@ -12,6 +14,8 @@ interface ChatComposerProps {
   isSending: boolean;
   /** Inline prompts shown beneath the composer. */
   quickPrompts: QuickPrompt[];
+    /** Whether authentication is required (401/403 error). */
+    authError?: boolean;
   /** Update input value. */
   onInputChange: (value: string) => void;
   /** Clear the current chat. */
@@ -34,11 +38,14 @@ interface ChatComposerProps {
   totalCostUsd?: number;
 }
 
+const MAX_MESSAGE_LENGTH = 10000;
+
 const ChatComposer = ({
   input,
   inputRef,
   isSending,
   quickPrompts,
+    authError,
   onInputChange,
   onClear,
   onSend,
@@ -50,9 +57,19 @@ const ChatComposer = ({
   estimatedCostUsd,
   totalTokens,
   totalCostUsd,
-}: ChatComposerProps) => (
+}: ChatComposerProps) => {
+  const inputLength = input.length;
+  const isOverLimit = inputLength > MAX_MESSAGE_LENGTH;
+  const showCounter = inputLength > 9000;
+
+  return (
   <div className="border-t border-border bg-surface/85 backdrop-blur px-4 py-4">
     <div className="max-w-3xl mx-auto">
+            {authError && (
+              <div className="mb-4">
+                <AuthRequired />
+              </div>
+            )}
       <div className="bg-surface-hover border border-border rounded-2xl p-4 focus-within:ring-1 focus-within:ring-primary/40 focus-within:border-primary/40 transition">
         <div className="flex flex-wrap items-center justify-between gap-3 mb-3 text-xs text-muted">
           <div className="flex flex-wrap items-center gap-3">
@@ -68,13 +85,13 @@ const ChatComposer = ({
           </div>
           <div className="flex flex-wrap items-center gap-3 font-mono" id="chat-composer-meta">
             <span>
-              Est: <span className="text-text">${(estimatedCostUsd || 0).toFixed(4)}</span> ·{' '}
+              Est: <span className="text-text">{formatCost(estimatedCostUsd || 0, { mode: 'per-message' })}</span> ·{' '}
               <span className="text-text">~{estimatedTokens || 0}</span> tok
             </span>
             <span className="hidden sm:inline-block opacity-70">|</span>
             <span>
               Session: <span className="text-text">{totalTokens || 0}</span> tok ·{' '}
-              <span className="text-text">${(totalCostUsd || 0).toFixed(4)}</span>
+              <span className="text-text">{formatCost(totalCostUsd || 0, { mode: 'per-message' })}</span>
             </span>
           </div>
         </div>
@@ -89,14 +106,24 @@ const ChatComposer = ({
           onKeyDown={onKeyDown}
           placeholder={CHAT_COMPOSER_PLACEHOLDER}
           rows={3}
+          maxLength={MAX_MESSAGE_LENGTH}
           className="w-full px-3 py-2 bg-transparent focus:outline-none text-text placeholder-muted resize-none min-h-[112px] text-sm md:text-base leading-relaxed"
           disabled={isSending}
           aria-label="Chat message input"
           aria-describedby="chat-composer-meta"
         />
         <div className="flex flex-wrap items-center justify-between gap-3 mt-3">
-          <div className="text-xs text-muted">
-            Tip: {CHAT_COMPOSER_TIP}
+          <div className="flex items-center gap-3">
+            <div className="text-xs text-muted">
+              Tip: {CHAT_COMPOSER_TIP}
+            </div>
+            {showCounter && (
+              <div className={`text-xs font-mono ${
+                isOverLimit ? 'text-red-500 font-semibold' : 'text-muted'
+              }`}>
+                {inputLength.toLocaleString()} / {MAX_MESSAGE_LENGTH.toLocaleString()}
+              </div>
+            )}
           </div>
           <div className="flex items-center gap-2">
             <button
@@ -108,9 +135,10 @@ const ChatComposer = ({
             </button>
             <button
               onClick={onSend}
-              disabled={isSending || !input.trim()}
+              disabled={isSending || !input.trim() || isOverLimit}
               className="bg-primary hover:brightness-110 disabled:opacity-50 text-text-inverse px-4 py-2 rounded-lg font-medium shadow-glow-primary transition-all"
               type="button"
+              aria-label={isOverLimit ? `Message exceeds ${MAX_MESSAGE_LENGTH} character limit` : 'Send message'}
             >
               {isSending ? 'Sending...' : 'Send'}
             </button>
@@ -136,6 +164,7 @@ const ChatComposer = ({
       </p>
     </div>
   </div>
-);
+  );
+};
 
 export default ChatComposer;

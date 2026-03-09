@@ -1,6 +1,6 @@
 import { describe, it, expect, beforeEach, jest } from '@jest/globals';
 import { chatClient } from '../index';
-import { apiClient } from '../../../../lib/api';
+import { apiClient } from '@/api';
 
 describe('chatClient conversation API', () => {
   beforeEach(() => {

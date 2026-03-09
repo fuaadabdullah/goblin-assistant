@@ -1,15 +1,55 @@
 import { describe, it, expect, beforeEach, afterEach, jest } from '@jest/globals';
 
+const backendGetMock = jest.fn();
+const backendPostMock = jest.fn();
+const backendPutMock = jest.fn();
+const backendPatchMock = jest.fn();
+const frontendGetMock = jest.fn();
+const frontendPostMock = jest.fn();
+
+jest.mock('axios', () => {
+  const create = jest
+    .fn()
+    .mockImplementationOnce(() => ({
+      interceptors: {
+        response: { use: jest.fn() },
+      },
+      get: backendGetMock,
+      post: backendPostMock,
+      put: backendPutMock,
+      patch: backendPatchMock,
+    }))
+    .mockImplementationOnce(() => ({
+      get: frontendGetMock,
+      post: frontendPostMock,
+    }));
+
+  const axios = {
+    create,
+    isAxiosError: jest.fn(() => false),
+  };
+
+  return {
+    __esModule: true,
+    default: axios,
+    create,
+    isAxiosError: axios.isAxiosError,
+  };
+});
+
 jest.mock('../../utils/auth-session', () => ({
   getAuthToken: jest.fn(() => 'session-token-123'),
+  getRefreshToken: jest.fn(() => null),
+  persistAuthSession: jest.fn(),
+  clearAuthSession: jest.fn(),
 }));
 
 describe('apiClient chat conversations', () => {
-  const originalFetch = global.fetch;
   const originalEnv = process.env;
 
   beforeEach(() => {
     jest.resetModules();
+    jest.clearAllMocks();
     process.env = {
       ...originalEnv,
       NEXT_PUBLIC_API_BASE_URL: 'https://backend.example',
@@ -20,22 +60,19 @@ describe('apiClient chat conversations', () => {
 
   afterEach(() => {
     process.env = originalEnv;
-    global.fetch = originalFetch;
     jest.restoreAllMocks();
   });
 
   it('maps backend createConversation responses and sends bearer auth', async () => {
-    const fetchMock = jest.fn().mockResolvedValue({
-      ok: true,
-      json: async () => ({
+    backendPostMock.mockResolvedValue({
+      data: {
         conversation_id: 'conv-backend-1',
         title: 'Persisted',
         created_at: '2026-03-07T12:00:00.000Z',
-      }),
+      },
     });
-    global.fetch = fetchMock as unknown as typeof fetch;
 
-    const { apiClient } = await import('../apiClient');
+    const { apiClient } = await import('@/api');
     const created = await apiClient.createConversation('Persisted');
 
     expect(created).toEqual({
@@ -43,16 +80,14 @@ describe('apiClient chat conversations', () => {
       title: 'Persisted',
       createdAt: '2026-03-07T12:00:00.000Z',
     });
-    expect(fetchMock).toHaveBeenCalledWith(
-      'https://backend.example/chat/conversations',
+    expect(backendPostMock).toHaveBeenCalledWith(
+      '/chat/conversations',
+      { title: 'Persisted' },
       expect.objectContaining({
-        method: 'POST',
-      })
+        headers: expect.objectContaining({
+          Authorization: 'Bearer session-token-123',
+        }),
+      }),
     );
-
-    const [, init] = fetchMock.mock.calls[0] as [string, RequestInit];
-    expect(init.headers).toBeInstanceOf(Headers);
-    const headers = init.headers as Headers;
-    expect(headers.get('Authorization')).toBe('Bearer session-token-123');
   });
 });

@@ -1,7 +1,7 @@
 import { useState, ReactNode } from 'react';
 import { useProviderSettings, ProviderConfig } from '../hooks/api/useSettings';
 import { useRoutingHealth } from '../hooks/api/useHealth';
-import { apiClient } from '../lib/api';
+import { apiClient } from '@/api';
 import TwoColumnLayout from '../components/TwoColumnLayout';
 
 /**

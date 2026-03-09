@@ -1,3 +1,5 @@
+import { devWarn } from './dev-log';
+
 export type StartupDiagnosticStatus =
   | 'checking-auth'
   | 'loading-config'
@@ -23,7 +25,7 @@ export const storeStartupDiagnostics = (payload: StartupDiagnostics): void => {
   try {
     window.sessionStorage.setItem(STORAGE_KEY, JSON.stringify(payload));
   } catch (error) {
-    console.warn('Failed to store startup diagnostics:', error);
+    devWarn('Failed to store startup diagnostics:', error);
   }
 };
 
@@ -36,7 +38,7 @@ export const readStartupDiagnostics = (): StartupDiagnostics | null => {
     if (!parsed || typeof parsed !== 'object') return null;
     return parsed as StartupDiagnostics;
   } catch (error) {
-    console.warn('Failed to read startup diagnostics:', error);
+    devWarn('Failed to read startup diagnostics:', error);
     return null;
   }
 };
@@ -46,6 +48,6 @@ export const clearStartupDiagnostics = (): void => {
   try {
     window.sessionStorage.removeItem(STORAGE_KEY);
   } catch (error) {
-    console.warn('Failed to clear startup diagnostics:', error);
+    devWarn('Failed to clear startup diagnostics:', error);
   }
 };

@@ -108,6 +108,83 @@ class VaultAdapter(SecretAdapter):
             )
         return self._client
 
+    async def authenticate_with_token(self, token: str) -> bool:
+        """
+        Authenticate Vault client with token.
+
+        Args:
+            token: Vault token
+
+        Returns:
+            True if authentication successful
+
+        Raises:
+            SecretUnauthorizedError: If authentication fails
+        """
+        try:
+            client = await self._get_client()
+            client.token = token
+
+            # Verify the token is valid
+            if client.is_authenticated():
+                logger.info("Successfully authenticated to Vault with token")
+                return True
+            else:
+                raise SecretUnauthorizedError("Token authentication failed")
+        except Exception as e:
+            logger.error(f"Vault token authentication error: {e}")
+            raise SecretUnauthorizedError(f"Token authentication failed: {e}")
+
+    async def authenticate_with_approle(
+        self, role_id: str, secret_id: str
+    ) -> TokenCredentials:
+        """
+        Authenticate Vault client with AppRole.
+
+        Args:
+            role_id: AppRole role ID
+            secret_id: AppRole secret ID
+
+        Returns:
+            TokenCredentials with the authenticated token
+
+        Raises:
+            SecretUnauthorizedError: If authentication fails
+        """
+        try:
+            client = await self._get_client()
+
+            # Perform AppRole login
+            response = client.auth.approle.login(
+                role_id=role_id,
+                secret_id=secret_id,
+            )
+
+            # Extract token from response
+            token = response["auth"]["client_token"]
+            lease_duration = response["auth"].get("lease_duration", 0)
+
+            # Set the token on the client
+            client.token = token
+
+            # Verify authentication
+            if not client.is_authenticated():
+                raise SecretUnauthorizedError("AppRole authentication failed")
+
+            logger.info("Successfully authenticated to Vault with AppRole")
+
+            # Create TokenCredentials with expiry
+            expires_at = None
+            if lease_duration > 0:
+                from datetime import timedelta
+                expires_at = datetime.utcnow() + timedelta(seconds=lease_duration)
+
+            return TokenCredentials(token=token, expires_at=expires_at)
+
+        except Exception as e:
+            logger.error(f"Vault AppRole authentication error: {e}")
+            raise SecretUnauthorizedError(f"AppRole authentication failed: {e}")
+
     async def _ensure_authenticated(self) -> None:
         """Ensure client is authenticated."""
         client = await self._get_client()

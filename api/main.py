@@ -52,9 +52,24 @@ from .storage.database import init_db
 
 from .monitoring import monitor
 from .artifact_cleanup import artifact_cleanup_service
+from .security_config import SecurityConfig
 
 # Initialize structured logger (early, for use in module-level initialization)
 logger = structlog.get_logger()
+
+
+def _parse_sample_rate(raw_value: str, fallback: float) -> float:
+    """Parse and clamp sample rate into [0.0, 1.0], with fallback on invalid input."""
+    try:
+        value = float(raw_value)
+    except (TypeError, ValueError):
+        return fallback
+
+    if value < 0.0:
+        return 0.0
+    if value > 1.0:
+        return 1.0
+    return value
 
 # Load environment variables from .env.local if it exists
 try:
@@ -74,10 +89,9 @@ try:
         load_dotenv(str(env_file))
 except ImportError:
     # dotenv not available, continue without it
-    import sys
-
-    print(
-        "Warning: python-dotenv not installed, skipping .env loading", file=sys.stderr
+    logger.warning(
+        "python-dotenv not installed, skipping .env loading",
+        component="startup",
     )
 
 # Initialize Sentry for error monitoring
@@ -85,60 +99,60 @@ try:
     import sentry_sdk
     from sentry_sdk.integrations.fastapi import FastApiIntegration
     from sentry_sdk.integrations.starlette import StarletteIntegration
+    from .services.sentry_hooks import sentry_before_breadcrumb, sentry_before_send
 
     sentry_dsn = os.getenv("SENTRY_DSN")
     if not sentry_dsn:
         raise RuntimeError("SENTRY_DSN not configured, skipping Sentry init")
 
+    sentry_environment = os.getenv("ENVIRONMENT", "development").lower()
+    default_traces_rate = 0.1 if sentry_environment == "production" else 1.0
+    default_profiles_rate = 0.01 if sentry_environment == "production" else 1.0
+
+    traces_sample_rate = _parse_sample_rate(
+        os.getenv("SENTRY_TRACES_SAMPLE_RATE", str(default_traces_rate)),
+        default_traces_rate,
+    )
+    profiles_sample_rate = _parse_sample_rate(
+        os.getenv("SENTRY_PROFILES_SAMPLE_RATE", str(default_profiles_rate)),
+        default_profiles_rate,
+    )
+
     sentry_sdk.init(
         dsn=sentry_dsn,
         # Enable performance monitoring
-        traces_sample_rate=1.0,
+        traces_sample_rate=traces_sample_rate,
         # Enable profiling
-        profiles_sample_rate=1.0,
-        # Enable request body capture
-        send_default_pii=True,
+        profiles_sample_rate=profiles_sample_rate,
+        # Privacy-first defaults
+        send_default_pii=False,
+        before_send=sentry_before_send,
+        before_breadcrumb=sentry_before_breadcrumb,
         # Integrations
         integrations=[
             StarletteIntegration(transaction_style="endpoint"),
             FastApiIntegration(transaction_style="endpoint"),
         ],
         # Environment
-        environment=os.getenv("ENVIRONMENT", "development"),
+        environment=sentry_environment,
         # Release tracking
         release=os.getenv("RELEASE_VERSION", "goblin-assistant@1.0.0"),
     )
-    logger.info("Sentry SDK initialized", provider="sentry", error_monitoring="enabled")
+    logger.info(
+        "Sentry SDK initialized",
+        provider="sentry",
+        error_monitoring="enabled",
+        environment=sentry_environment,
+        traces_sample_rate=traces_sample_rate,
+        profiles_sample_rate=profiles_sample_rate,
+        send_default_pii=False,
+    )
 except ImportError:
     logger.warning("Sentry SDK not available", reason="package not installed", suggestion="pip install sentry-sdk")
 except RuntimeError:
     logger.warning("Sentry error monitoring disabled", reason="SENTRY_DSN not set")
 except Exception as e:
     logger.warning("Failed to initialize Sentry SDK", error=str(e))
-
-# Load environment variables from .env.local if it exists
-try:
-    from dotenv import load_dotenv
-    import pathlib
-
-    # Get the directory of this file (goblin-assistant directory)
-    current_dir = pathlib.Path(__file__).parent.parent
-
-    # Try to load .env files from the goblin-assistant root
-    env_local = current_dir / ".env.local"
-    env_file = current_dir / ".env"
-
-    if env_local.exists():
-        load_dotenv(str(env_local))
-    if env_file.exists():
-        load_dotenv(str(env_file))
-except ImportError:
-    # dotenv not available, continue without it
-    import sys
-
-    print(
-        "Warning: python-dotenv not installed, skipping .env loading", file=sys.stderr
-    )
 
 # Import routing analytics router (new)
 try:
@@ -190,6 +204,36 @@ async def lifespan(app: FastAPI):
 
             await health_monitor.start()
             logger.info("AI provider health monitoring started")
+
+            # One-shot credential validation so invalid cloud keys are surfaced loudly.
+            provider_credential_report = (
+                await health_monitor.validate_configured_credentials()
+            )
+            invalid_credentials = provider_credential_report["invalid_credentials"]
+            unreachable_providers = provider_credential_report["unreachable"]
+
+            if invalid_credentials:
+                logger.critical(
+                    "Invalid AI provider credentials detected at startup",
+                    invalid_providers=invalid_credentials,
+                    action=(
+                        "rotate/update provider keys; routing currently fails over "
+                        "to other providers"
+                    ),
+                )
+
+            if unreachable_providers:
+                logger.warning(
+                    "Some configured AI providers are unreachable at startup",
+                    unreachable_providers=unreachable_providers,
+                )
+
+            if invalid_credentials and os.getenv(
+                "FAIL_ON_PROVIDER_CREDENTIAL_ERRORS", "false"
+            ).lower() in {"1", "true", "yes", "on"}:
+                raise RuntimeError(
+                    "Invalid provider credentials found during startup validation"
+                )
         except Exception as e:
             logger.warning("AI provider health monitoring failed", error=str(e), impact="routing may be degraded")
 
@@ -296,21 +340,50 @@ app.add_middleware(ErrorHandlingMiddleware)
 # Add Security Headers middleware
 app.add_middleware(SecurityHeadersMiddleware)
 
-# Add Rate Limiting middleware for privacy/security (requires Redis)
-try:
-    from .middleware.rate_limiter import RateLimiter
 
-    rate_limiter = RateLimiter(
-        redis_url=os.getenv("REDIS_URL", "redis://localhost:6379"),
-        requests_per_minute=int(os.getenv("RATE_LIMIT_PER_MINUTE", "100")),
-        requests_per_hour=int(os.getenv("RATE_LIMIT_PER_HOUR", "1000")),
+def _is_true(value: str) -> bool:
+    return value.strip().lower() in {"1", "true", "yes", "on"}
+
+
+environment = os.getenv("ENVIRONMENT", "development").lower()
+rate_limit_enabled_raw = os.getenv("RATE_LIMIT_ENABLED")
+if rate_limit_enabled_raw is None:
+    rate_limit_enabled = environment == "production"
+else:
+    rate_limit_enabled = _is_true(rate_limit_enabled_raw)
+
+# Add Rate Limiting middleware for privacy/security (requires Redis)
+if rate_limit_enabled:
+    try:
+        from .middleware.rate_limiter import RateLimiter
+
+        requests_per_minute = int(os.getenv("RATE_LIMIT_PER_MINUTE", "100"))
+        requests_per_hour = int(os.getenv("RATE_LIMIT_PER_HOUR", "1000"))
+        rate_limiter = RateLimiter(
+            redis_url=os.getenv("REDIS_URL", "redis://localhost:6379"),
+            requests_per_minute=requests_per_minute,
+            requests_per_hour=requests_per_hour,
+        )
+        app.middleware("http")(rate_limiter)
+        logger.info(
+            "Rate limiting middleware enabled",
+            requests_per_minute=requests_per_minute,
+            requests_per_hour=requests_per_hour,
+            environment=environment,
+        )
+    except ImportError:
+        logger.warning(
+            "Rate limiting unavailable",
+            reason="redis package not installed",
+            suggestion="pip install redis",
+        )
+    except Exception as e:
+        logger.warning("Rate limiting disabled", error=str(e))
+else:
+    logger.warning(
+        "Rate limiting middleware disabled by configuration",
+        environment=environment,
     )
-    app.middleware("http")(rate_limiter)
-    logger.info("Rate limiting middleware enabled", requests_per_minute=100, requests_per_hour=1000)
-except ImportError:
-    logger.warning("Rate limiting unavailable", reason="redis package not installed", suggestion="pip install redis")
-except Exception as e:
-    logger.warning("Rate limiting disabled", error=str(e))
 
 # Add Authentication middleware
 app.add_middleware(
@@ -335,7 +408,6 @@ app.add_middleware(
 
 # Add CORS middleware
 # Environment-aware CORS configuration
-environment = os.getenv("ENVIRONMENT", "development").lower()
 if environment == "production":
     # Production: Only allow specific origins, no wildcards
     allowed_origins = (
@@ -369,17 +441,7 @@ app.add_middleware(
     allow_origins=allowed_origins,
     allow_credentials=True,
     allow_methods=["GET", "POST", "PUT", "DELETE", "OPTIONS"],
-    allow_headers=["*"]
-    if environment != "production"
-    else [
-        "Accept",
-        "Accept-Language",
-        "Content-Language",
-        "Content-Type",
-        "Authorization",
-        "X-API-Key",
-        "X-CSRF-Token",
-    ],
+    allow_headers=["*"] if environment != "production" else SecurityConfig.ALLOWED_HEADERS,
 )
 
 # Include all routers

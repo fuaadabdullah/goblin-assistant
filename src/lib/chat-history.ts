@@ -1,5 +1,6 @@
 import type { ChatMessage, ChatThread, ChatThreadSource } from '../domain/chat';
 import { generateMessageId } from './id-generation';
+import { devError, devWarn } from '../utils/dev-log';
 
 export const CHAT_THREADS_STORAGE_KEY = 'goblin_chat_threads_v1';
 export const CHAT_MESSAGES_STORAGE_PREFIX = 'goblin_chat_messages_v1';
@@ -61,7 +62,7 @@ export const readChatThreads = (): ChatThread[] => {
         .filter(thread => thread.source === 'legacy-local'),
     );
   } catch (error) {
-    console.warn('Failed to read chat threads from storage:', error);
+    devWarn('Failed to read chat threads from storage:', error);
     return [];
   }
 };
@@ -77,7 +78,7 @@ export const writeChatThreads = (threads: ChatThread[]): void => {
     );
   } catch (error) {
     if (error instanceof DOMException && error.name === 'QuotaExceededError') {
-      console.error('Storage quota exceeded. Attempting to clear old data...');
+      devError('Storage quota exceeded. Attempting to clear old data...');
       // Try to recover by keeping only the most recent threads
       try {
         const recentThreads = legacyThreads.slice(0, 10);
@@ -85,15 +86,15 @@ export const writeChatThreads = (threads: ChatThread[]): void => {
           CHAT_THREADS_STORAGE_KEY,
           JSON.stringify(recentThreads),
         );
-        console.warn('Reduced threads to 10 most recent to fit storage quota');
+        devWarn('Reduced threads to 10 most recent to fit storage quota');
       } catch (retryError) {
-        console.error(
+        devError(
           'Failed to persist even after reducing threads:',
           retryError,
         );
       }
     } else {
-      console.warn('Failed to persist chat threads:', error);
+      devWarn('Failed to persist chat threads:', error);
     }
   }
 };
@@ -151,7 +152,7 @@ export const readChatMessages = (conversationId: string): ChatMessage[] => {
       .map((item, idx) => normalizeStoredMessage(item, idx))
       .filter(Boolean) as ChatMessage[];
   } catch (error) {
-    console.warn('Failed to read chat messages from storage:', error);
+    devWarn('Failed to read chat messages from storage:', error);
     return [];
   }
 };
@@ -168,7 +169,7 @@ export const writeChatMessages = (
     );
   } catch (error) {
     if (error instanceof DOMException && error.name === 'QuotaExceededError') {
-      console.error(
+      devError(
         'Storage quota exceeded for messages. Attempting to clear old messages...',
       );
       // Try to recover by keeping only the most recent messages
@@ -178,15 +179,15 @@ export const writeChatMessages = (
           messagesKey(conversationId),
           JSON.stringify(recentMessages),
         );
-        console.warn('Reduced messages to last 50 to fit storage quota');
+        devWarn('Reduced messages to last 50 to fit storage quota');
       } catch (retryError) {
-        console.error(
+        devError(
           'Failed to persist even after reducing messages:',
           retryError,
         );
       }
     } else {
-      console.warn('Failed to persist chat messages:', error);
+      devWarn('Failed to persist chat messages:', error);
     }
   }
 };
@@ -196,7 +197,7 @@ export const removeChatMessages = (conversationId: string): void => {
   try {
     window.localStorage.removeItem(messagesKey(conversationId));
   } catch (error) {
-    console.warn('Failed to remove chat messages:', error);
+    devWarn('Failed to remove chat messages:', error);
   }
 };
 
@@ -219,7 +220,7 @@ export const preloadRecentChat = (
       JSON.stringify(payload),
     );
   } catch (error) {
-    console.warn('Failed to store preloaded chat messages:', error);
+    devWarn('Failed to store preloaded chat messages:', error);
   }
   return { threadId: thread.id, messages };
 };
@@ -242,7 +243,7 @@ export const readPreloadedChat = (): {
         .filter(Boolean) as ChatMessage[],
     };
   } catch (error) {
-    console.warn('Failed to read preloaded chat messages:', error);
+    devWarn('Failed to read preloaded chat messages:', error);
     return null;
   }
 };
@@ -252,6 +253,6 @@ export const clearPreloadedChat = (): void => {
   try {
     window.sessionStorage.removeItem(CHAT_PRELOAD_STORAGE_KEY);
   } catch (error) {
-    console.warn('Failed to clear preloaded chat messages:', error);
+    devWarn('Failed to clear preloaded chat messages:', error);
   }
 };

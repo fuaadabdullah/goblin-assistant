@@ -24,6 +24,7 @@ preferred_providers_under_budget = [
 [providers.openai]
 name = "OpenAI"
 endpoint = "https://api.openai.com/v1"
+endpoint_env = "OPENAI_ENDPOINT"
 invoke_path = "/chat/completions"
 default_model = "gpt-4o-mini"
 capabilities = ["chat", "reasoning", "code", "embedding", "image"]
@@ -39,6 +40,7 @@ cot_suppression_prompt = "Answer directly without showing your reasoning."
 [providers.anthropic]
 name = "Anthropic"
 endpoint = "https://api.anthropic.com"
+endpoint_env = "ANTHROPIC_ENDPOINT"
 invoke_path = "/v1/messages"
 default_model = "claude-3-5-haiku-latest"
 capabilities = ["chat", "reasoning", "code"]
@@ -54,6 +56,7 @@ cot_suppression_prompt = "Be direct and concise."
 [providers.gemini]
 name = "Google Gemini"
 endpoint = "https://generativelanguage.googleapis.com"
+endpoint_env = "GEMINI_ENDPOINT"
 default_model = "gemini-2.0-flash"
 capabilities = ["chat", "reasoning", "code", "image"]
 models = ["gemini-2.0-flash", "gemini-2.0-flash-lite"]
@@ -68,6 +71,7 @@ cot_suppression_prompt = "Provide direct answers without explanation."
 [providers.deepseek]
 name = "DeepSeek"
 endpoint = "https://api.deepseek.com"
+endpoint_env = "DEEPSEEK_ENDPOINT"
 invoke_path = "/v1/chat/completions"
 default_model = "deepseek-chat"
 capabilities = ["chat", "reasoning", "code"]
@@ -83,6 +87,7 @@ cot_suppression_prompt = "Answer concisely."
 [providers.groq]
 name = "Groq"
 endpoint = "https://api.groq.com/openai/v1"
+endpoint_env = "GROQ_ENDPOINT"
 invoke_path = "/chat/completions"
 default_model = "llama-3.1-8b-instant"
 capabilities = ["chat", "reasoning", "code"]
@@ -98,6 +103,7 @@ cot_suppression_prompt = "Be direct."
 [providers.siliconeflow]
 name = "SiliconeFlow"
 endpoint = "https://api.siliconflow.com"
+endpoint_env = "SILICONEFLOW_ENDPOINT"
 invoke_path = "/v1/chat/completions"
 default_model = "Qwen/Qwen2.5-7B-Instruct"
 capabilities = ["chat", "reasoning", "code"]
@@ -113,6 +119,7 @@ cot_suppression_prompt = "Be direct."
 [providers.together]
 name = "Together AI"
 endpoint = "https://api.together.xyz"
+endpoint_env = "TOGETHER_ENDPOINT"
 capabilities = ["chat", "reasoning", "code", "image"]
 models = ["llama-2-70b", "codellama-34b"]
 api_key_env = "TOGETHER_API_KEY"
@@ -126,6 +133,7 @@ cot_suppression_prompt = "Answer directly."
 [providers.replicate]
 name = "Replicate"
 endpoint = "https://api.replicate.com"
+endpoint_env = "REPLICATE_ENDPOINT"
 capabilities = ["chat", "reasoning", "code", "image"]
 models = ["llama-2-70b", "codellama-34b"]
 api_key_env = "REPLICATE_API_KEY"
@@ -139,6 +147,7 @@ cot_suppression_prompt = "Be concise."
 [providers.huggingface]
 name = "Hugging Face"
 endpoint = "https://api-inference.huggingface.co"
+endpoint_env = "HUGGINGFACE_ENDPOINT"
 capabilities = ["chat", "reasoning", "code"]
 models = ["microsoft/DialoGPT-medium", "facebook/blenderbot-400M-distill"]
 api_key_env = "HUGGINGFACE_API_KEY"
@@ -151,6 +160,7 @@ supports_cot = false
 [providers.cohere]
 name = "Cohere"
 endpoint = "https://api.cohere.ai"
+endpoint_env = "COHERE_ENDPOINT"
 capabilities = ["chat", "reasoning", "code", "embedding"]
 models = ["command", "base"]
 api_key_env = "COHERE_API_KEY"
@@ -165,6 +175,7 @@ cot_suppression_prompt = "Answer directly."
 [providers.ollama_kamatera]
 name = "Ollama (Kamatera Server 2) - DISABLED"
 endpoint = "http://192.175.23.150:8002"
+endpoint_env = "OLLAMA_KAMATERA_ENDPOINT"
 capabilities = ["chat", "reasoning", "code", "embedding"]
 models = [
   "phi3:latest",
@@ -193,6 +204,7 @@ is_active = false  # DISABLED
 [providers.llamacpp_kamatera]
 name = "llama.cpp Router (Kamatera Server 1) - DISABLED"
 endpoint = "http://45.61.51.220:8000"
+endpoint_env = "KAMATERA_LLAMACPP_ENDPOINT"
 capabilities = ["chat", "reasoning", "code"]
 models = [
   "qwen2.5:latest",
@@ -213,6 +225,7 @@ is_active = false  # DISABLED
 [providers.azure]
 name = "Azure OpenAI"
 endpoint = "https://goblinos-resource.services.ai.azure.com"
+endpoint_env = "AZURE_OPENAI_ENDPOINT"
 default_model = "gpt-4o-mini"
 capabilities = ["chat", "reasoning", "code"]
 models = ["gpt-4o-mini", "gpt-4o", "gpt-4.1"]
@@ -227,6 +240,7 @@ cot_suppression_prompt = "Answer directly without showing your reasoning."
 [providers.vertex_ai]
 name = "Google Vertex AI"
 endpoint = "https://generativelanguage.googleapis.com"
+endpoint_env = "VERTEX_AI_ENDPOINT"
 default_model = "gemini-2.5-flash"
 capabilities = ["chat", "reasoning", "code", "image"]
 models = ["gemini-2.5-flash", "gemini-2.0-flash", "gemini-2.0-flash-lite"]
@@ -241,6 +255,7 @@ cot_suppression_prompt = "Provide direct answers without explanation."
 [providers.aliyun]
 name = "Aliyun DashScope"
 endpoint = "https://dashscope-intl.aliyuncs.com/compatible-mode/v1"
+endpoint_env = "DASHSCOPE_ENDPOINT"
 invoke_path = "/chat/completions"
 default_model = "qwen-turbo"
 capabilities = ["chat", "reasoning", "code"]
@@ -256,6 +271,7 @@ cot_suppression_prompt = "Be direct."
 [providers.mock]
 name = "Mock Provider"
 endpoint = "mock://localhost"
+endpoint_env = "MOCK_PROVIDER_ENDPOINT"
 capabilities = ["chat", "reasoning", "code", "embedding"]
 models = ["mock-gpt", "mock-claude", "mock-phi"]
 priority_tier = 99
@@ -264,3 +280,22 @@ default_timeout_ms = 1000
 bandwidth_score = 1.0
 supports_cot = false
 force_fallback = true
+
+[model_context_windows]
+"gpt-4o" = 128000
+"gpt-4o-mini" = 128000
+"gpt-4-turbo" = 128000
+"gpt-3.5-turbo" = 16385
+"claude-sonnet-4-20250514" = 200000
+"claude-3-5-haiku-latest" = 200000
+"gemini-2.0-flash" = 1048576
+"gemini-2.0-flash-lite" = 1048576
+"gemini-2.5-flash" = 1048576
+"deepseek-chat" = 64000
+"deepseek-coder" = 64000
+"llama-3.1-8b-instant" = 32768
+"llama-3.3-70b-versatile" = 32768
+"mixtral-8x7b-32768" = 32768
+"qwen-turbo" = 32000
+"qwen-plus" = 64000
+"qwen-max" = 128000

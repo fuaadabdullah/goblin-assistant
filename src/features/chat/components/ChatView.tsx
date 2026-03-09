@@ -4,6 +4,8 @@ import ChatComposer from './ChatComposer';
 import ChatSidebar from './ChatSidebar';
 import type { ChatSessionState } from '../hooks/useChatSession';
 import Seo from '../../../components/Seo';
+import { useAuthSession } from '../../../hooks/api/useAuthSession';
+import AuthPrompt from '../../../components/Auth/AuthPrompt';
 
 interface ChatViewProps {
   /** Chat session state + handlers. */
@@ -13,6 +15,7 @@ interface ChatViewProps {
 }
 
 const ChatView = ({ session, isAdmin }: ChatViewProps) => {
+  const { isAuthenticated } = useAuthSession();
   const {
     messages,
     input,
@@ -25,6 +28,7 @@ const ChatView = ({ session, isAdmin }: ChatViewProps) => {
     activeThreadKey,
     inputRef,
     bottomRef,
+      authError,
     setInput,
     sendMessage,
     selectThread,
@@ -39,6 +43,23 @@ const ChatView = ({ session, isAdmin }: ChatViewProps) => {
     copyMessage,
     regenerateMessage,
   } = session;
+
+  if (!isAuthenticated) {
+    return (
+      <div className="min-h-[calc(100vh-64px)] bg-bg flex items-center justify-center px-4">
+        <Seo
+          title="Chat - Sign In Required"
+          description="Sign in to chat with Goblin Assistant"
+          robots="noindex,nofollow"
+        />
+        <AuthPrompt
+          title="Sign in to start chatting"
+          message="Create an account or sign in to start chatting with Goblin Assistant."
+          mode="inline"
+        />
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-[calc(100vh-64px)] bg-bg">
@@ -83,6 +104,7 @@ const ChatView = ({ session, isAdmin }: ChatViewProps) => {
             <ChatComposer
               input={input}
               inputRef={inputRef}
+                            authError={authError}
               isSending={isSending}
               quickPrompts={quickPrompts}
               onInputChange={setInput}

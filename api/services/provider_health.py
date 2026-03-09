@@ -253,6 +253,75 @@ class ProviderHealthMonitor:
             health.record_failure(str(e))
             logger.error("Health check error: %s - %s", provider_id, e)
 
+    async def validate_configured_credentials(self) -> Dict[str, List[str]]:
+        """
+        Validate configured provider credentials once at startup.
+
+        This is intentionally stricter than background health checks:
+        - 401/403 are treated as INVALID_CREDENTIALS
+        - Network failures are reported as UNREACHABLE
+        - Only providers with configured API keys are checked
+        """
+        import os
+
+        configured_providers: List[str] = []
+        valid: List[str] = []
+        invalid_credentials: List[str] = []
+        unreachable: List[str] = []
+
+        for provider_id, env_var in self.API_KEY_ENV_VARS.items():
+            api_key = (os.getenv(env_var) or "").strip()
+            if not api_key:
+                continue
+
+            configured_providers.append(provider_id)
+            is_valid, error_type = await self._check_provider_credentials_once(
+                provider_id=provider_id,
+                api_key=api_key,
+            )
+
+            if is_valid:
+                valid.append(provider_id)
+            elif error_type == "INVALID_CREDENTIALS":
+                invalid_credentials.append(provider_id)
+            else:
+                unreachable.append(provider_id)
+
+        return {
+            "configured": configured_providers,
+            "valid": valid,
+            "invalid_credentials": invalid_credentials,
+            "unreachable": unreachable,
+        }
+
+    async def _check_provider_credentials_once(
+        self,
+        provider_id: str,
+        api_key: str,
+    ) -> tuple[bool, str]:
+        """Single-shot credential validation for one provider."""
+        endpoint_data = self.HEALTH_ENDPOINTS.get(provider_id)
+        if not endpoint_data:
+            return False, "UNKNOWN_PROVIDER"
+
+        base_url, endpoint = endpoint_data
+        url, headers = self._build_request(base_url, endpoint)
+        url = self._apply_provider_auth(provider_id, api_key, url, headers)
+
+        try:
+            async with httpx.AsyncClient(timeout=8.0) as client:
+                response = await client.get(url, headers=headers)
+
+            if response.status_code in [200, 201]:
+                return True, "OK"
+            if response.status_code in [401, 403]:
+                return False, "INVALID_CREDENTIALS"
+
+            return False, "UNREACHABLE"
+
+        except httpx.HTTPError:
+            return False, "UNREACHABLE"
+
     def is_healthy(self, provider_id: str) -> bool:
         """Check if provider is healthy."""
         if provider_id not in self.health_data:

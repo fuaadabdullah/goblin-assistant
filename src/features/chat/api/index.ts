@@ -1,4 +1,4 @@
-import { apiClient } from '../../../lib/api';
+import { apiClient } from '@/api';
 import { UiError } from '../../../lib/ui-error';
 import { getAuthToken } from '../../../utils/auth-session';
 import type { ChatMessage } from '../types';
@@ -153,6 +153,30 @@ export const chatClient = {
         });
       }
     } catch (error) {
+      // Check for specific error statuses
+      const errorObj = error as any;
+      const status = errorObj?.response?.status || errorObj?.status;
+      
+      if (status === 413) {
+        throw new UiError(
+          {
+            code: 'MESSAGE_TOO_LONG',
+            userMessage: 'Your message is too long. Please keep messages under 10,000 characters.',
+          },
+          error
+        );
+      }
+      
+      if (status === 401 || status === 403) {
+        throw new UiError(
+          {
+            code: 'AUTHENTICATION_REQUIRED',
+            userMessage: 'You need to sign in to send messages.',
+          },
+          error
+        );
+      }
+      
       throw new UiError(
         {
           code: 'CHAT_SEND_FAILED',

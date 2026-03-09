@@ -4,6 +4,7 @@ import { raptorStart, raptorStop, raptorStatus, raptorLogs, raptorDemo } from '@
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import Button from '@/components/ui/Button';
 import Badge from '@/components/ui/Badge';
+import { devError } from '@/utils/dev-log';
 
 export default function RaptorMiniPanel(): React.JSX.Element {
   const [status, setStatus] = useState<{ running: boolean; config_file?: string } | null>(null);
@@ -18,7 +19,7 @@ export default function RaptorMiniPanel(): React.JSX.Element {
       setStatus(s);
       setError(null);
     } catch (err: unknown) {
-      console.error(err);
+      devError('Failed to fetch raptor status:', err);
       setError('Failed to fetch status');
     }
   };

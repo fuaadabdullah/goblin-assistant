@@ -1,5 +1,6 @@
 import type { CostEstimate } from '../../hooks/useCostEstimation';
 import Button from '../ui/Button';
+import { formatCost } from '@/utils/format-cost';
 
 interface Props {
   estimate: CostEstimate | null;
@@ -20,7 +21,7 @@ export const CostSummary = ({ estimate, showSummary, copyStatus, onCopy }: Props
         </Button>
       </div>
       <div className="summary-content">
-        <div>Estimated cost: ${estimate.estimatedCost.toFixed(4)}</div>
+        <div>Estimated cost: {formatCost(estimate.estimatedCost, { mode: 'per-message' })}</div>
         <div>Estimated tokens: {estimate.estimatedTokens}</div>
       </div>
     </div>

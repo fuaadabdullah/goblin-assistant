@@ -16,9 +16,9 @@ export default function KeyboardShortcutsHelp() {
         Keyboard Shortcuts
       </h3>
       <div className="space-y-2">
-        {shortcuts.map((shortcut, index) => (
+        {shortcuts.map((shortcut) => (
           <div
-            key={index}
+            key={shortcut.description}
             className="flex items-center justify-between py-2 border-b border-divider last:border-0"
           >
             <span className="text-muted text-sm">{shortcut.description}</span>

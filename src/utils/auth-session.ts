@@ -3,6 +3,7 @@ import { isAdminUser, type AccessUser } from './access';
 const AUTH_FLAG_COOKIE = 'goblin_auth';
 const ADMIN_COOKIE = 'goblin_admin';
 const SESSION_TOKEN_COOKIE = 'session_token';
+const REFRESH_TOKEN_COOKIE = 'refresh_token';
 const LEGACY_TOKEN_COOKIES = ['auth_token'];
 const DEFAULT_MAX_AGE_SECONDS = 60 * 60 * 24 * 30;
 
@@ -29,6 +30,7 @@ const clearCookie = (name: string): void => {
 
 interface PersistAuthInput {
   token?: string | null;
+  refreshToken?: string | null;
   user?: AccessUser | null;
   expiresIn?: number | null;
 }
@@ -44,7 +46,7 @@ interface PersistAuthInput {
  * responses, remove the client-side cookie writes entirely and only keep
  * the user_data localStorage entry for UI display.
  */
-export const persistAuthSession = ({ token, user, expiresIn }: PersistAuthInput): void => {
+export const persistAuthSession = ({ token, refreshToken, user, expiresIn }: PersistAuthInput): void => {
   if (typeof window === 'undefined') return;
 
   const maxAge =
@@ -57,6 +59,10 @@ export const persistAuthSession = ({ token, user, expiresIn }: PersistAuthInput)
     setCookie(SESSION_TOKEN_COOKIE, token, maxAge);
     // Keep the legacy flag for middleware backward compatibility
     setCookie(AUTH_FLAG_COOKIE, '1', maxAge);
+  }
+
+  if (refreshToken) {
+    setCookie(REFRESH_TOKEN_COOKIE, refreshToken, maxAge);
   }
 
   if (user) {
@@ -78,6 +84,13 @@ export const getAuthToken = (): string | null => {
   return localStorage.getItem('auth_token');
 };
 
+export const getRefreshToken = (): string | null => {
+  if (typeof document === 'undefined') return null;
+  const match = document.cookie.match(new RegExp(`(?:^|;\\s*)${REFRESH_TOKEN_COOKIE}=([^;]*)`));
+  if (match?.[1]) return decodeURIComponent(match[1]);
+  return null;
+};
+
 export const clearAuthSession = (): void => {
   if (typeof window === 'undefined') return;
 
@@ -87,5 +100,6 @@ export const clearAuthSession = (): void => {
   clearCookie(AUTH_FLAG_COOKIE);
   clearCookie(ADMIN_COOKIE);
   clearCookie(SESSION_TOKEN_COOKIE);
+  clearCookie(REFRESH_TOKEN_COOKIE);
   LEGACY_TOKEN_COOKIES.forEach(clearCookie);
 };

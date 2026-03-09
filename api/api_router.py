@@ -6,7 +6,8 @@ import asyncio
 import time
 from .core.orchestration import create_simple_orchestration_plan
 from .write_time_router import router as write_time_router
-from .providers.dispatcher_fixed import invoke_provider
+from .providers.dispatcher import invoke_provider
+from .input_validation import InputSanitizer
 
 router = APIRouter(prefix="/api", tags=["api"])
 
@@ -53,6 +54,14 @@ async def simple_chat(request: SimpleChatRequest):
         }
     """
     try:
+        # Validate message lengths before processing
+        for msg in request.messages:
+            if len(msg.content) > InputSanitizer.MAX_MESSAGE_LENGTH:
+                raise HTTPException(
+                    status_code=413,
+                    detail=f"Message content exceeds maximum length of {InputSanitizer.MAX_MESSAGE_LENGTH} characters"
+                )
+        
         # Convert messages to dict format
         messages = [{"role": m.role, "content": m.content} for m in request.messages]
 
@@ -107,6 +116,114 @@ async def simple_chat(request: SimpleChatRequest):
             ok=False,
             error=str(e),
         )
+
+
+# ============================================================================
+# Generate Endpoint - For Guest Mode / Unauthenticated Requests
+# ============================================================================
+
+
+class GenerateRequest(BaseModel):
+    messages: Optional[List[SimpleChatMessage]] = None
+    prompt: Optional[str] = None
+    model: Optional[str] = None
+    provider: Optional[str] = None
+
+
+class GenerateResponse(BaseModel):
+    content: Optional[str] = None
+    choices: Optional[List[Dict[str, Any]]] = None
+    error: Optional[str] = None
+
+
+@router.post("/generate", response_model=GenerateResponse)
+async def generate(request: GenerateRequest):
+    """
+    Generate endpoint for guest mode / unauthenticated users.
+    Compatible with OpenAI-style completion responses.
+    
+    Accepts either:
+    - messages: List of chat messages (new format)
+    - prompt: Simple text prompt (legacy format)
+    
+    Returns OpenAI-compatible response format.
+    """
+    try:
+        # Validate input
+        if not request.messages and not request.prompt:
+            raise HTTPException(
+                status_code=400,
+                detail="Either 'messages' or 'prompt' must be provided"
+            )
+        
+        # Convert to messages format
+        if request.messages:
+            # Validate message lengths
+            for msg in request.messages:
+                if len(msg.content) > InputSanitizer.MAX_MESSAGE_LENGTH:
+                    raise HTTPException(
+                        status_code=413,
+                        detail=f"Message content exceeds maximum length of {InputSanitizer.MAX_MESSAGE_LENGTH} characters"
+                    )
+            messages = [{"role": m.role, "content": m.content} for m in request.messages]
+        elif request.prompt:
+            # Validate prompt length
+            if len(request.prompt) > InputSanitizer.MAX_MESSAGE_LENGTH:
+                raise HTTPException(
+                    status_code=413,
+                    detail=f"Prompt exceeds maximum length of {InputSanitizer.MAX_MESSAGE_LENGTH} characters"
+                )
+            messages = [{"role": "user", "content": request.prompt}]
+        
+        # Use auto-selection when provider not specified
+        provider = request.provider or "auto"
+        model = request.model
+        
+        # Create payload for provider
+        payload = {
+            "messages": messages,
+            "model": model,
+        }
+        
+        # Invoke provider
+        response = await invoke_provider(
+            pid=provider,
+            model=model,
+            payload=payload,
+            timeout_ms=30000,
+            stream=False,
+        )
+        
+        if isinstance(response, dict) and response.get("ok"):
+            # Extract text from provider response
+            result_data = response.get("result", {})
+            if isinstance(result_data, dict) and result_data.get("text"):
+                text = result_data["text"]
+            else:
+                text = response.get("text", "")
+            
+            # Return OpenAI-compatible format
+            return GenerateResponse(
+                content=text,
+                choices=[{
+                    "message": {
+                        "role": "assistant",
+                        "content": text
+                    }
+                }]
+            )
+        else:
+            error_msg = (
+                response.get("error", "Unknown error")
+                if isinstance(response, dict)
+                else str(response)
+            )
+            return GenerateResponse(error=error_msg)
+    
+    except HTTPException:
+        raise
+    except Exception as e:
+        return GenerateResponse(error=str(e))
 
 
 # ============================================================================

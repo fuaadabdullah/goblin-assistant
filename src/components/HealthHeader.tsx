@@ -1,5 +1,5 @@
 import { useQuery } from '@tanstack/react-query';
-import { apiClient } from '../lib/api';
+import { apiClient } from '@/api';
 import { queryKeys } from '../lib/query-keys';
 import type { HealthStatus } from '../types/api';
 

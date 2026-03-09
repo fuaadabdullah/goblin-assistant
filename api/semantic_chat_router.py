@@ -11,7 +11,7 @@ from datetime import datetime
 import asyncio
 
 from .storage.conversations import conversation_store
-from .providers.dispatcher_fixed import invoke_provider
+from .providers.dispatcher import invoke_provider
 from .services.retrieval_service import RetrievalService, ContextBuilder, retrieval_service as _retrieval_singleton
 from .services.embedding_service import embedding_worker
 from .storage.models import MessageModel

@@ -108,10 +108,17 @@ async def init_secrets_adapter() -> None:
                     vault_url=vault_url,
                     mount_point=vault_mount_point,
                 )
-                # TODO: Implement AppRole authentication
-                logger.info(
-                    "Initialized Vault adapter with AppRole authentication (not yet implemented)"
-                )
+                
+                # Authenticate with AppRole
+                try:
+                    token_credentials = await _secrets_adapter.authenticate_with_approle(
+                        vault_role_id, vault_secret_id
+                    )
+                    credentials.set_session_token(token_credentials)
+                    logger.info("Successfully initialized Vault adapter with AppRole authentication")
+                except Exception as auth_error:
+                    logger.error(f"AppRole authentication failed: {auth_error}")
+                    raise ValueError(f"AppRole authentication failed: {auth_error}")
 
             else:
                 raise ValueError(

@@ -12,7 +12,8 @@ import { estimateFromText, type TextCostEstimate } from '../../../lib/cost-estim
 import { computeCostUsd } from '../../../lib/llm-rates';
 import { useProvider } from '../../../contexts/ProviderContext';
 import { getAuthToken } from '../../../utils/auth-session';
-import { apiClient } from '../../../lib/api';
+import { apiClient } from '@/api';
+import { devError, devLog } from '@/utils/dev-log';
 
 export interface ChatSessionState {
   messages: ChatMessage[];
@@ -30,6 +31,7 @@ export interface ChatSessionState {
   selectedProvider?: string;
   selectedModel?: string;
   inputEstimate: TextCostEstimate | null;
+    authError: boolean;
   setInput: (value: string) => void;
   sendMessage: (messageOverride?: string) => Promise<void>;
   selectThread: (threadKey: string) => void;
@@ -89,6 +91,7 @@ export const useChatSession = (): ChatSessionState => {
   const [totalTokens, setTotalTokens] = useState(0);
   const [totalCostUsd, setTotalCostUsd] = useState(0);
   const [activeThreadKey, setActiveThreadKey] = useState<string | null>(null);
+    const [authError, setAuthError] = useState(false);
   const inputRef = useRef<HTMLTextAreaElement | null>(null);
   const bottomRef = useRef<HTMLDivElement | null>(null);
   const hasHydratedRef = useRef(false);
@@ -351,13 +354,20 @@ export const useChatSession = (): ChatSessionState => {
           code: 'CHAT_SEND_FAILED',
           userMessage: 'Sorry, we could not send that message right now.',
         });
-        const assistantMsg: ChatMessage = {
-          id: `msg-error-${Date.now()}`,
-          createdAt: new Date().toISOString(),
-          role: 'assistant',
-          content: uiError.userMessage,
-        };
-        applyMessages([...updatedMessages, assistantMsg]);
+        
+        // Check if this is an authentication error
+        if (uiError.code === 'AUTHENTICATION_REQUIRED') {
+          setAuthError(true);
+          // Don't show error message in chat for auth errors
+        } else {
+          const assistantMsg: ChatMessage = {
+            id: `msg-error-${Date.now()}`,
+            createdAt: new Date().toISOString(),
+            role: 'assistant',
+            content: uiError.userMessage,
+          };
+          applyMessages([...updatedMessages, assistantMsg]);
+        }
       } finally {
         setIsSending(false);
         inputRef.current?.focus();
@@ -413,17 +423,22 @@ export const useChatSession = (): ChatSessionState => {
     try {
       await navigator.clipboard.writeText(content);
       // Show toast feedback (integration with toast system if available)
-      console.log('Message copied to clipboard');
+      devLog('Message copied to clipboard');
     } catch (err) {
-      console.error('Failed to copy message:', err);
+      devError('Failed to copy message:', err);
     }
   }, []);
 
   const regenerateMessage = useCallback(
     async (messageId: string) => {
-      // Find the assistant message
+      if (isSending) return;
+
+      // Find the assistant message to regenerate
       const messageIndex = messages.findIndex((msg) => msg.id === messageId);
       if (messageIndex === -1) return;
+
+      const messageToRegenerate = messages[messageIndex];
+      if (messageToRegenerate.role !== 'assistant') return;
 
       // Find the previous user message
       const userMessageIndex = [...messages]
@@ -436,14 +451,74 @@ export const useChatSession = (): ChatSessionState => {
       const userMessage = messages[messageIndex - userMessageIndex - 1];
       if (userMessage.role !== 'user') return;
 
-      // Remove the assistant message and resend the user message
-      const messagesBeforeAssistant = messages.slice(0, messageIndex);
-      setMessages(messagesBeforeAssistant);
+      // Remove the assistant message and any subsequent messages
+      const messagesUpToRegeneration = messages.slice(0, messageIndex);
+      setMessages(messagesUpToRegeneration);
+      setIsSending(true);
 
-      // Resend the user message
-      await sendMessage(userMessage.content);
+      try {
+        // Check if user is authenticated
+        const isAuthenticated = Boolean(getAuthToken());
+
+        if (!isAuthenticated) {
+          // Guest mode: use /api/generate
+          const response = await apiClient.chatCompletion(messagesUpToRegeneration, selectedModel || undefined);
+          const text = typeof response === 'string' ? response : String(response ?? 'No response');
+          const assistantMsg: ChatMessage = {
+            id: createMessageId(),
+            createdAt: new Date().toISOString(),
+            role: 'assistant',
+            content: text,
+          };
+          applyMessages([...messagesUpToRegeneration, assistantMsg]);
+        } else {
+          // Authenticated mode: use conversations API
+          const conversationId = activeThread?.source === 'backend' ? activeThread.id : null;
+          
+          if (!conversationId) {
+            throw new Error('Cannot regenerate message without a conversation');
+          }
+
+          const result = await chatClient.sendMessage({
+            conversationId,
+            prompt: userMessage.content,
+            model: selectedModel || undefined,
+            provider: selectedProvider || undefined,
+          });
+
+          const rawCost = typeof result?.cost_usd === 'number' ? result.cost_usd : undefined;
+          const fallbackCost =
+            rawCost !== undefined
+              ? { cost_usd: rawCost, approx: false, source: 'backend' as const }
+              : computeCostUsd(result?.usage, result?.provider, result?.model);
+
+          const assistantMsg: ChatMessage = {
+            id: result?.messageId || createMessageId(),
+            createdAt: result?.createdAt || new Date().toISOString(),
+            role: 'assistant',
+            content: result?.content || 'No response',
+            meta: {
+              provider: result?.provider,
+              model: result?.model,
+              usage: result?.usage,
+              cost_usd: fallbackCost.cost_usd,
+              cost_is_approx: fallbackCost.approx,
+              correlation_id: result?.correlation_id,
+            },
+          };
+
+          applyMessages([...messagesUpToRegeneration, assistantMsg]);
+        }
+      } catch (error) {
+        devError('Failed to regenerate message:', error);
+        // Restore messages on error
+        setMessages(messages);
+      } finally {
+        setIsSending(false);
+        inputRef.current?.focus();
+      }
     },
-    [messages, sendMessage]
+    [messages, isSending, activeThread, selectedModel, selectedProvider, applyMessages]
   );
 
   return {
@@ -462,6 +537,7 @@ export const useChatSession = (): ChatSessionState => {
     selectedProvider: selectedProvider || undefined,
     selectedModel: selectedModel || undefined,
     inputEstimate,
+      authError,
     setInput,
     sendMessage,
     selectThread,

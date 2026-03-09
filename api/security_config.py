@@ -3,11 +3,25 @@ Security configuration and utilities for Goblin Assistant API
 """
 
 import os
-from typing import List, Optional
+from typing import List
 
 
 class SecurityConfig:
     """Security configuration settings"""
+
+    # Runtime Environment
+    ENVIRONMENT = os.getenv("ENVIRONMENT", "development").lower()
+
+    # Shared production CORS header allowlist
+    PRODUCTION_ALLOWED_HEADERS = [
+        "Accept",
+        "Accept-Language",
+        "Content-Language",
+        "Content-Type",
+        "Authorization",
+        "X-API-Key",
+        "X-CSRF-Token",
+    ]
 
     # CORS Configuration
     # Default to localhost for development, override in production with specific origins
@@ -19,10 +33,19 @@ class SecurityConfig:
     )
     ALLOW_CREDENTIALS = True
     ALLOWED_METHODS = ["GET", "POST", "PUT", "DELETE", "OPTIONS"]
-    ALLOWED_HEADERS = ["*"]
+    ALLOWED_HEADERS = (
+        PRODUCTION_ALLOWED_HEADERS.copy()
+        if ENVIRONMENT == "production"
+        else ["*"]
+    )
 
     # Rate Limiting
-    RATE_LIMIT_ENABLED = os.getenv("RATE_LIMIT_ENABLED", "false").lower() == "true"
+    _rate_limit_env = os.getenv("RATE_LIMIT_ENABLED")
+    RATE_LIMIT_ENABLED = (
+        _rate_limit_env.lower() == "true"
+        if isinstance(_rate_limit_env, str)
+        else ENVIRONMENT == "production"
+    )
     RATE_LIMIT_REQUESTS = int(os.getenv("RATE_LIMIT_REQUESTS", "100"))
     RATE_LIMIT_WINDOW = int(os.getenv("RATE_LIMIT_WINDOW", "60"))
 
@@ -37,7 +60,6 @@ class SecurityConfig:
 
     # Debug Mode - STRICTLY DISABLED IN PRODUCTION
     DEBUG = os.getenv("DEBUG", "false").lower() == "true"
-    ENVIRONMENT = os.getenv("ENVIRONMENT", "development").lower()
 
     # Override debug mode based on environment
     if ENVIRONMENT == "production" and DEBUG:

@@ -1,4 +1,5 @@
 import type { CostSummary } from '@/types/api';
+import { formatCost } from '@/utils/format-cost';
 
 interface Props {
   costSummary?: CostSummary | null;
@@ -11,14 +12,14 @@ export default function CostPanel({ costSummary }: Props) {
     <div className="cost-panel">
       <h3>Cost Summary</h3>
       <div>
-        <strong>Total:</strong> ${costSummary.total_cost.toFixed(6)}
+        <strong>Total:</strong> {formatCost(costSummary.total_cost, { mode: 'summary' })}
       </div>
       <div>
         <strong>By Provider:</strong>
         <ul>
           {Object.entries(costSummary.cost_by_provider).map(([p, c]) => (
             <li key={p}>
-              {p}: ${Number(c).toFixed(6)}
+              {p}: {formatCost(Number(c), { mode: 'summary' })}
             </li>
           ))}
         </ul>
@@ -26,9 +27,9 @@ export default function CostPanel({ costSummary }: Props) {
       <div>
         <strong>By Model:</strong>
         <ul>
-          {Object.entries(costSummary.cost_by_model).map(([m, c], i) => (
-            <li key={`${m}-${i}`}>
-              {m}: ${Number(c).toFixed(6)}
+          {Object.entries(costSummary.cost_by_model).map(([m, c]) => (
+            <li key={m}>
+              {m}: {formatCost(Number(c), { mode: 'summary' })}
             </li>
           ))}
         </ul>

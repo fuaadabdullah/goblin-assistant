@@ -2,10 +2,11 @@ import { create } from 'zustand';
 import type { User } from '../types/api';
 import type { ValidateTokenResponse } from '../types/api';
 import { clearAuthSession, getAuthToken, persistAuthSession } from '../utils/auth-session';
-import { apiClient } from '../lib/api';
+import { apiClient } from '@/api';
 
 type SessionInput = {
   token: string;
+  refreshToken?: string | null;
   user: User;
   expiresIn?: number | null;
 };
@@ -47,8 +48,8 @@ export const useAuthStore = create<AuthState>((set, get) => ({
   isLoading: false,
   isHydrated: false,
 
-  setSession: ({ token, user, expiresIn }: SessionInput) => {
-    persistAuthSession({ token, user, expiresIn });
+  setSession: ({ token, refreshToken, user, expiresIn }: SessionInput) => {
+    persistAuthSession({ token, refreshToken, user, expiresIn });
     set({
       token,
       user,

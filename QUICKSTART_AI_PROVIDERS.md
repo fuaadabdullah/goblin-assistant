@@ -44,7 +44,7 @@ python3 benchmark_providers.py
 ## Using Providers in Code
 
 ```python
-from api.providers.dispatcher_fixed import ProviderDispatcher
+from api.providers.dispatcher import ProviderDispatcher
 
 # Initialize dispatcher
 dispatcher = ProviderDispatcher()

@@ -1,4 +1,4 @@
-import { apiClient } from '../../../lib/api';
+import { apiClient } from '@/api';
 import { UiError } from '../../../lib/ui-error';
 export type { SupportMessagePayload } from '../types';
 

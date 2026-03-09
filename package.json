@@ -16,8 +16,8 @@
     "test:watch": "TMPDIR=/tmp jest --watch",
     "test:ci": "TMPDIR=/tmp jest --coverage --ci --maxWorkers=2",
     "test:e2e": "TMPDIR=/tmp playwright test",
-    "security:audit": "npm audit --audit-level moderate || true",
-    "security:audit-ci": "npx audit-ci --moderate || true",
+    "security:audit": "npm audit --audit-level moderate",
+    "security:audit-ci": "npx audit-ci --moderate",
     "validate-env": "tsx src/config/env.ts"
   },
   "dependencies": {

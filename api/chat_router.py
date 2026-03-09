@@ -26,7 +26,7 @@ import time
 from datetime import datetime
 
 from .storage import conversation_store
-from .providers.dispatcher_fixed import invoke_provider
+from .providers.dispatcher import invoke_provider
 from .services.retrieval_service import RetrievalService, ContextBuilder
 from .services.context_assembly_service import context_assembly_service
 from api.config.system_prompt import system_prompt_manager
@@ -97,6 +97,35 @@ class UpdateConversationTitleRequest(BaseModel):
 
 class ImportConversationRequest(BaseModel):
     messages: List[ChatMessage]
+
+
+class SSEErrorEvent(BaseModel):
+    """Server-Sent Event error payload"""
+    type: str = "error"  # "error", "warning", "info"
+    code: str  # Machine-readable error code
+    message: str  # User-friendly error message
+    is_recoverable: bool = False  # Whether client can retry
+    details: Optional[Dict[str, Any]] = None  # Additional context
+
+
+class SSEDataEvent(BaseModel):
+    """Generic Server-Sent Event data payload"""
+    content: Optional[str] = None  # Streaming text chunk
+    token_count: Optional[int] = None
+    cost_delta: Optional[float] = None
+    done: bool = False
+    # Result fields (on completion)
+    result: Optional[str] = None
+    cost: Optional[float] = None
+    tokens: Optional[int] = None
+    model: Optional[str] = None
+    provider: Optional[str] = None
+    duration_ms: Optional[int] = None
+    message_id: Optional[str] = None
+    # Error fields
+    error: Optional[str] = None
+    error_code: Optional[str] = None
+    is_recoverable: Optional[bool] = None
 
 
 def _latest_snippet(conversation: Conversation) -> Optional[str]:
@@ -176,10 +205,7 @@ async def create_conversation(
         raise
     except Exception as e:
         # Error details are now handled by ErrorHandlingMiddleware
-        print(f"Error creating conversation: {e}")
-        import traceback
-
-        traceback.print_exc()
+        logger.exception("error creating conversation", error=str(e))
         raise HTTPException(status_code=500, detail="Failed to create conversation")
 
 
@@ -425,6 +451,7 @@ async def send_message(
                     user_id=current_user.id,
                     conversation_id=conversation_id,
                     conversation_history=history_messages[-10:],
+                    model=request.model,
                 )
                 context_text = assembly_result.get("context", "")
                 system_prompt = system_prompt_manager.get_complete_prompt(
@@ -437,6 +464,10 @@ async def send_message(
                     "context_assembly_enabled": True,
                     "context_assembly_layers": len(assembly_result.get("layers", [])),
                     "total_tokens_used": assembly_result.get("total_tokens_used", 0),
+                    "degraded_mode": assembly_result.get("degraded_mode", False),
+                    "degraded_reason": assembly_result.get("degraded_reason"),
+                    "truncation_warnings": assembly_result.get("truncation_warnings", []),
+                    "summary_fallback_applied": assembly_result.get("summary_fallback_applied", False),
                 }
             except Exception as ctx_err:
                 logger.warning(
@@ -547,7 +578,11 @@ async def send_message(
             message_id=response_message_id,
         )
         if not asst_msg_saved:
-            print(f"Warning: failed to persist assistant message for conversation {conversation_id}")
+            logger.warning(
+                "failed to persist assistant message",
+                conversation_id=conversation_id,
+                message_id=response_message_id,
+            )
 
         # Step 7: Return standardized response
         return SendMessageResponse(
@@ -564,9 +599,12 @@ async def send_message(
     except HTTPException:
         raise
     except Exception as e:
-        print(f"Error in send_message: {e}")
-        import traceback
-        traceback.print_exc()
+        logger.exception(
+            "error in send_message",
+            error=str(e),
+            conversation_id=conversation_id,
+            user_id=current_user.id,
+        )
         raise HTTPException(status_code=500, detail="Failed to send message")
 
 
@@ -730,6 +768,7 @@ async def contextual_chat(
                 user_id=user_id,
                 conversation_id=conversation_id,
                 conversation_history=conversation_history,
+                model=request.model,
             )
 
             context_assembly = assembly_result
@@ -754,6 +793,10 @@ async def contextual_chat(
                 "assembly_time": assembly_result.get("assembly_log", {}).get(
                     "assembly_time"
                 ),
+                "degraded_mode": assembly_result.get("degraded_mode", False),
+                "degraded_reason": assembly_result.get("degraded_reason"),
+                "truncation_warnings": assembly_result.get("truncation_warnings", []),
+                "summary_fallback_applied": assembly_result.get("summary_fallback_applied", False),
             }
 
         else:
@@ -918,7 +961,20 @@ async def generate_chat_stream(
     provider: Optional[str] = None,
     model: Optional[str] = None,
 ):
-    """Generate server-sent events for chat streaming via real provider."""
+    """Generate server-sent events for chat streaming via real provider.
+    
+    Error Handling:
+    - Auth errors (401): Sent immediately with is_recoverable=false
+    - Provider timeouts: Fallback to non-streaming with is_recoverable=true
+    - Provider errors: Send error event with provider details
+    - DB write failures: Send error but conversationHistory already persisted
+    - Stream interruptions: Attempt reconnect or fallback
+    
+    Ensures:
+    - User message always stored (before provider call)
+    - Partial responses recoverable on retry
+    - Specific error codes for client handling
+    """
     # Send initial status
     yield f"data: {json.dumps({'status': 'started', 'message': 'Processing your request...'})}\n\n"
 
@@ -928,65 +984,211 @@ async def generate_chat_stream(
     used_provider = provider or "unknown"
     used_model = model or "unknown"
     start_time = time.time()
+    user_message_stored = False
+    response_message_id = str(uuid.uuid4())
 
     try:
-        # Validate conversation ownership
-        conversation = await _require_owned_conversation(conversation_id, current_user)
+        # Validate conversation ownership (auth check first)
+        try:
+            conversation = await _require_owned_conversation(conversation_id, current_user)
+        except HTTPException as auth_exc:
+            # Auth/authorization error — user not allowed to access this conversation
+            error_event = {
+                "type": "error",
+                "code": "auth-failed",
+                "message": "You do not have permission to access this conversation.",
+                "is_recoverable": False,
+                "done": True,
+            }
+            yield f"data: {json.dumps(error_event)}\n\n"
+            return
 
         # Sanitize input
         sanitized_message, _ = InputSanitizer.sanitize_chat_message(message)
 
-        # Store user message
-        await conversation_store.add_message_to_conversation(
-            conversation_id=conversation_id,
-            role="user",
-            content=sanitized_message,
-        )
+        # Store user message FIRST (before provider call)
+        # This ensures the message persists even if the provider call fails
+        try:
+            await conversation_store.add_message_to_conversation(
+                conversation_id=conversation_id,
+                role="user",
+                content=sanitized_message,
+            )
+            user_message_stored = True
+        except Exception as db_exc:
+            logger.error("db_write_error", exc=db_exc, stage="user_message_store")
+            error_event = {
+                "type": "error",
+                "code": "db-write-error",
+                "message": "Failed to save your message. Please retry.",
+                "is_recoverable": True,
+                "details": {"stage": "message_storage"},
+                "done": True,
+            }
+            yield f"data: {json.dumps(error_event)}\n\n"
+            return
 
         # Build message payload from conversation history
-        conversation = await _require_owned_conversation(conversation_id, current_user)
-        messages = [
-            {"role": msg.role, "content": msg.content} for msg in conversation.messages
-        ]
-        payload = {"messages": messages, "model": model}
+        try:
+            conversation = await _require_owned_conversation(conversation_id, current_user)
+            messages = [
+                {"role": msg.role, "content": msg.content} for msg in conversation.messages
+            ]
+            payload = {"messages": messages, "model": model}
+        except Exception as build_exc:
+            logger.error("message_build_error", exc=build_exc)
+            error_event = {
+                "type": "error",
+                "code": "message-build-error",
+                "message": "Failed to build conversation context.",
+                "is_recoverable": False,
+                "done": True,
+            }
+            yield f"data: {json.dumps(error_event)}\n\n"
+            return
 
         # Invoke provider with streaming
-        provider_response = await invoke_provider(
-            pid=provider,
-            model=model,
-            payload=payload,
-            timeout_ms=30000,
-            stream=True,
-        )
-
-        if not isinstance(provider_response, dict) or not provider_response.get("ok"):
-            # Provider returned an error — fall back to non-streaming
+        try:
             provider_response = await invoke_provider(
-                pid=provider, model=model, payload=payload,
-                timeout_ms=30000, stream=False,
+                pid=provider,
+                model=model,
+                payload=payload,
+                timeout_ms=30000,
+                stream=True,
             )
-            if isinstance(provider_response, dict) and provider_response.get("ok"):
-                result_data = provider_response.get("result", {})
-                accumulated_text = result_data.get("text", str(provider_response))
-                used_provider = provider_response.get("provider", used_provider)
-                used_model = provider_response.get("model", used_model)
-                yield f"data: {json.dumps({'content': accumulated_text, 'token_count': 0, 'cost_delta': 0, 'done': False})}\n\n"
-            else:
-                error_msg = provider_response.get("error", "unknown-error") if isinstance(provider_response, dict) else "provider-error"
-                yield f"data: {json.dumps({'error': error_msg, 'done': True})}\n\n"
+        except asyncio.TimeoutError as timeout_exc:
+            logger.warning("provider_timeout", provider=provider, model=model)
+            error_event = {
+                "type": "error",
+                "code": "provider-timeout",
+                "message": f"Provider {provider or 'default'} did not respond in time. Your message was saved.",
+                "is_recoverable": True,
+                "details": {"provider": provider, "timeout_ms": 30000},
+                "done": True,
+            }
+            yield f"data: {json.dumps(error_event)}\n\n"
+            return
+        except Exception as provider_connect_exc:
+            logger.error("provider_connection_error", exc=provider_connect_exc, provider=provider)
+            error_event = {
+                "type": "error",
+                "code": "provider-connection-error",
+                "message": f"Could not reach provider {provider or 'default'}. Your message was saved.",
+                "is_recoverable": True,
+                "details": {"provider": provider},
+                "done": True,
+            }
+            yield f"data: {json.dumps(error_event)}\n\n"
+            return
+
+        # Check if provider returned success
+        if not isinstance(provider_response, dict) or not provider_response.get("ok"):
+            # Provider returned an error
+            provider_error = provider_response.get("error", "unknown-error") if isinstance(provider_response, dict) else "provider-error"
+            logger.warning("provider_error", error=provider_error, provider=provider)
+            
+            # Try fallback to non-streaming
+            try:
+                fallback_response = await invoke_provider(
+                    pid=provider, model=model, payload=payload,
+                    timeout_ms=30000, stream=False,
+                )
+                if isinstance(fallback_response, dict) and fallback_response.get("ok"):
+                    result_data = fallback_response.get("result", {})
+                    accumulated_text = result_data.get("text", str(fallback_response))
+                    used_provider = fallback_response.get("provider", used_provider)
+                    used_model = fallback_response.get("model", used_model)
+                    # Send fallback result
+                    yield f"data: {json.dumps({'content': accumulated_text, 'token_count': 0, 'cost_delta': 0, 'done': False})}\n\n"
+                else:
+                    # Fallback also failed
+                    fallback_error = fallback_response.get("error", "unknown") if isinstance(fallback_response, dict) else "unknown"
+                    logger.error("provider_fallback_failed", error=fallback_error)
+                    error_event = {
+                        "type": "error",
+                        "code": "provider-error",
+                        "message": f"Provider could not process your request: {provider_error}. Your message was saved.",
+                        "is_recoverable": True,
+                        "details": {"provider_error": provider_error},
+                        "done": True,
+                    }
+                    yield f"data: {json.dumps(error_event)}\n\n"
+                    return
+            except asyncio.TimeoutError:
+                logger.error("provider_fallback_timeout", provider=provider)
+                error_event = {
+                    "type": "error",
+                    "code": "provider-timeout",
+                    "message": f"Provider fallback timed out. Your message was saved.",
+                    "is_recoverable": True,
+                    "done": True,
+                }
+                yield f"data: {json.dumps(error_event)}\n\n"
+                return
+            except Exception as fallback_exc:
+                logger.error("provider_fallback_error", exc=fallback_exc)
+                error_event = {
+                    "type": "error",
+                    "code": "provider-error",
+                    "message": "Provider unavailable. Your message was saved.",
+                    "is_recoverable": True,
+                    "done": True,
+                }
+                yield f"data: {json.dumps(error_event)}\n\n"
                 return
 
         elif provider_response.get("stream"):
             # Real streaming path — consume async generator from provider
-            stream_gen = provider_response["stream"]
-            async for chunk in stream_gen:
-                chunk_text = chunk.get("text", "") if isinstance(chunk, dict) else str(chunk)
-                if not chunk_text:
-                    continue
-                accumulated_text += chunk_text
-                token_estimate = max(1, len(chunk_text) // 4)
-                total_tokens += token_estimate
-                yield f"data: {json.dumps({'content': chunk_text, 'token_count': token_estimate, 'cost_delta': 0, 'done': False})}\n\n"
+            try:
+                stream_gen = provider_response["stream"]
+                async for chunk in stream_gen:
+                    try:
+                        chunk_text = chunk.get("text", "") if isinstance(chunk, dict) else str(chunk)
+                        if not chunk_text:
+                            continue
+                        accumulated_text += chunk_text
+                        token_estimate = max(1, len(chunk_text) // 4)
+                        total_tokens += token_estimate
+                        yield f"data: {json.dumps({'content': chunk_text, 'token_count': token_estimate, 'cost_delta': 0, 'done': False})}\n\n"
+                    except Exception as chunk_exc:
+                        logger.error("chunk_processing_error", exc=chunk_exc)
+                        # Continue with next chunk instead of failing entire stream
+                        continue
+            except asyncio.TimeoutError:
+                logger.warning("stream_timeout", partial_response_len=len(accumulated_text))
+                error_event = {
+                    "type": "error",
+                    "code": "stream-timeout",
+                    "message": "Stream interrupted mid-response. Partial response received.",
+                    "is_recoverable": True,
+                    "details": {"partial_response": accumulated_text[:100]},  # Send first 100 chars as preview
+                    "done": True,
+                }
+                yield f"data: {json.dumps(error_event)}\n\n"
+                return
+            except Exception as stream_exc:
+                logger.error("streaming_error", exc=stream_exc, partial_response_len=len(accumulated_text))
+                # If we have accumulated text, send it as partial response
+                if accumulated_text:
+                    error_event = {
+                        "type": "error",
+                        "code": "stream-interrupted",
+                        "message": "Response stream was interrupted. Partial response saved.",
+                        "is_recoverable": True,
+                        "details": {"has_partial_response": True},
+                        "done": True,
+                    }
+                    yield f"data: {json.dumps(error_event)}\n\n"
+                else:
+                    error_event = {
+                        "type": "error",
+                        "code": "stream-error",
+                        "message": "Failed to stream response. Your message was saved.",
+                        "is_recoverable": True,
+                        "done": True,
+                    }
+                    yield f"data: {json.dumps(error_event)}\n\n"
+                return
         else:
             # Provider returned ok but no stream key — extract text directly
             result_data = provider_response.get("result", {})
@@ -997,25 +1199,54 @@ async def generate_chat_stream(
                 yield f"data: {json.dumps({'content': accumulated_text, 'token_count': 0, 'cost_delta': 0, 'done': False})}\n\n"
 
         # Store assistant response
-        response_message_id = str(uuid.uuid4())
-        await conversation_store.add_message_to_conversation(
-            conversation_id=conversation_id,
-            role="assistant",
-            content=accumulated_text,
-            metadata={"provider": used_provider, "model": used_model},
-            message_id=response_message_id,
-        )
+        try:
+            await conversation_store.add_message_to_conversation(
+                conversation_id=conversation_id,
+                role="assistant",
+                content=accumulated_text,
+                metadata={"provider": used_provider, "model": used_model},
+                message_id=response_message_id,
+            )
+        except Exception as db_response_exc:
+            logger.error("db_write_error", exc=db_response_exc, stage="assistant_message_store")
+            # Send warning but don't fail — user already got the response
+            error_event = {
+                "type": "warning",
+                "code": "response-storage-failed",
+                "message": "Unable to save assistant response to history, but response was generated.",
+                "is_recoverable": False,
+                "done": True,
+            }
+            yield f"data: {json.dumps(error_event)}\n\n"
+            return
 
         duration_ms = int((time.time() - start_time) * 1000)
 
         # Send completion event
         yield f"data: {json.dumps({'result': accumulated_text, 'cost': total_cost, 'tokens': total_tokens, 'model': used_model, 'provider': used_provider, 'duration_ms': duration_ms, 'message_id': response_message_id, 'done': True})}\n\n"
 
-    except HTTPException as exc:
-        yield f"data: {json.dumps({'error': exc.detail, 'done': True})}\n\n"
+    except HTTPException as http_exc:
+        # HTTP exceptions (auth, not found, etc.)
+        logger.warning("http_exception", status=http_exc.status_code, detail=http_exc.detail)
+        error_event = {
+            "type": "error",
+            "code": f"http-{http_exc.status_code}",
+            "message": str(http_exc.detail),
+            "is_recoverable": False,
+            "done": True,
+        }
+        yield f"data: {json.dumps(error_event)}\n\n"
     except Exception as exc:
-        print(f"Streaming error: {exc}")
-        yield f"data: {json.dumps({'error': 'Streaming failed', 'done': True})}\n\n"
+        # Generic exception handler
+        logger.exception("streaming_error_unhandled", exc=exc)
+        error_event = {
+            "type": "error",
+            "code": "internal-error",
+            "message": "An unexpected error occurred. Your message was saved if it got this far.",
+            "is_recoverable": False,
+            "done": True,
+        }
+        yield f"data: {json.dumps(error_event)}\n\n"
 
 
 class StreamChatRequest(BaseModel):

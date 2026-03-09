@@ -6,7 +6,7 @@ const setCookie = (name: string, value: string) => {
   document.cookie = `${name}=${encodeURIComponent(value)}; Path=/`;
 };
 
-jest.mock('../../lib/api', () => ({
+jest.mock('@/api', () => ({
   apiClient: {
     validateToken: jest.fn(),
   },
@@ -33,7 +33,7 @@ describe('authStore bootstrapFromSession', () => {
     );
 
     // eslint-disable-next-line @typescript-eslint/no-var-requires
-    const { apiClient } = require('../../lib/api') as typeof import('../../lib/api');
+    const { apiClient } = require('@/api') as typeof import('@/api');
     (apiClient.validateToken as jest.Mock).mockResolvedValue({
       valid: true,
       user: { id: 'u1', email: 'u1@example.com', role: 'user' },
@@ -59,7 +59,7 @@ describe('authStore bootstrapFromSession', () => {
     );
 
     // eslint-disable-next-line @typescript-eslint/no-var-requires
-    const { apiClient } = require('../../lib/api') as typeof import('../../lib/api');
+    const { apiClient } = require('@/api') as typeof import('@/api');
     const authError = new Error('Invalid authentication') as Error & { status?: number };
     authError.status = 401;
     (apiClient.validateToken as jest.Mock).mockRejectedValue(authError);
@@ -83,7 +83,7 @@ describe('authStore bootstrapFromSession', () => {
     );
 
     // eslint-disable-next-line @typescript-eslint/no-var-requires
-    const { apiClient } = require('../../lib/api') as typeof import('../../lib/api');
+    const { apiClient } = require('@/api') as typeof import('@/api');
     const transientError = new Error('backend unavailable') as Error & { status?: number };
     transientError.status = 503;
     (apiClient.validateToken as jest.Mock).mockRejectedValue(transientError);
@@ -106,7 +106,7 @@ describe('authStore bootstrapFromSession', () => {
     );
 
     // eslint-disable-next-line @typescript-eslint/no-var-requires
-    const { apiClient } = require('../../lib/api') as typeof import('../../lib/api');
+    const { apiClient } = require('@/api') as typeof import('@/api');
     (apiClient.validateToken as jest.Mock).mockResolvedValue({ valid: false });
 
     // eslint-disable-next-line @typescript-eslint/no-var-requires

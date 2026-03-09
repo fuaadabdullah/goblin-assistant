@@ -6,6 +6,11 @@ import { ToastProvider } from '../contexts/ToastContext';
 import { ProviderProvider } from '../contexts/ProviderContext';
 import { ContrastModeProvider } from '../hooks/useContrastMode';
 import AuthBootstrapper from '../auth/AuthBootstrapper';
+import { ErrorBoundary } from '../components/ErrorBoundary';
+import {
+  RouteBoundaryFallback,
+  formatBoundaryTechnicalDetail,
+} from '../components/RouteBoundary';
 import { createQueryClient } from '../lib/queryClient';
 import { initGA } from '../utils/analytics';
 import { setupGlobalErrorTracking, monitorNetworkStatus } from '../utils/error-tracking';
@@ -23,19 +28,36 @@ export default function App({ Component, pageProps }: AppProps) {
   }, []);
 
   return (
-    <QueryClientProvider client={queryClient}>
-      <AuthBootstrapper />
-      <ToastProvider>
-        <ProviderProvider>
-          <ContrastModeProvider>
-            <a href="#main-content" className="skip-link">
-              Skip to main content
-            </a>
-            <Component {...pageProps} />
-            <Analytics />
-          </ContrastModeProvider>
-        </ProviderProvider>
-      </ToastProvider>
-    </QueryClientProvider>
+    <ErrorBoundary
+      boundaryName="app-shell"
+      fallbackRender={({ error, errorId }) => (
+        <RouteBoundaryFallback
+          title="Goblin Assistant could not finish loading"
+          description="A render failure interrupted the application shell before this page became usable."
+          actions={[
+            { type: 'link', label: 'Go Home', href: '/', variant: 'primary' },
+            { type: 'copyErrorId', label: 'Copy Error ID', variant: 'secondary' },
+            { type: 'reload', label: 'Reload App', variant: 'secondary' },
+          ]}
+          errorId={errorId}
+          technicalDetail={formatBoundaryTechnicalDetail(error)}
+        />
+      )}
+    >
+      <QueryClientProvider client={queryClient}>
+        <AuthBootstrapper />
+        <ToastProvider>
+          <ProviderProvider>
+            <ContrastModeProvider>
+              <a href="#main-content" className="skip-link">
+                Skip to main content
+              </a>
+              <Component {...pageProps} />
+              <Analytics />
+            </ContrastModeProvider>
+          </ProviderProvider>
+        </ToastProvider>
+      </QueryClientProvider>
+    </ErrorBoundary>
   );
 }

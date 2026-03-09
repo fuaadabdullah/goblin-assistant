@@ -1,18 +1,33 @@
 import React from 'react';
-import { PieChart, Pie, Cell, Tooltip, Legend, ResponsiveContainer } from 'recharts';
+import {
+  PieChart,
+  Pie,
+  Cell,
+  Tooltip,
+  Legend,
+  ResponsiveContainer,
+  BarChart,
+  Bar,
+  CartesianGrid,
+  XAxis,
+  YAxis,
+} from 'recharts';
 import type { PieLabelRenderProps } from 'recharts';
+import { getChartPaletteColor } from './chartPalette';
+import { formatCost } from '@/utils/format-cost';
 
 interface ChartData {
   name: string;
-  tasks: number;
+  value: number;
   [key: string]: unknown;
 }
 
+type ProviderUsageMetric = 'requests' | 'cost';
+
 interface ProviderUsageChartProps {
   data: ChartData[];
+  metric?: ProviderUsageMetric;
 }
-
-const colors = ['#7c3aed', '#10b981', '#f59e0b', '#ef4444', '#06b6d4', '#a78bfa'];
 
 interface TooltipProps {
   active?: boolean;
@@ -23,29 +38,70 @@ interface TooltipProps {
   }>;
 }
 
-const CustomTooltip = ({ active, payload }: TooltipProps) => {
+const ProviderUsageTooltip = ({
+  active,
+  payload,
+  metric,
+}: TooltipProps & { metric: ProviderUsageMetric }) => {
   if (active && payload && payload.length) {
+    const label = metric === 'requests' ? 'Requests' : 'Cost';
+    const value = payload[0].value;
     return (
-      <div className="p-2 bg-slate-800 border border-slate-700 rounded-md shadow-lg">
-        <p className="label text-sm text-slate-300">{`${payload[0].name}`}</p>
-        <p className="intro text-sm text-white">{`Tasks: ${payload[0].value}`}</p>
+      <div className="rounded-md border border-border bg-surface p-2 text-text shadow-card">
+        <p className="label text-sm text-muted">{`${payload[0].name}`}</p>
+        <p className="intro text-sm text-text">
+          {metric === 'requests' ? `${label}: ${value}` : `${label}: ${formatCost(value, { mode: 'summary' })}`}
+        </p>
       </div>
     );
   }
   return null;
 };
 
-const ProviderUsageChart: React.FC<ProviderUsageChartProps> = ({ data }) => {
+const ProviderUsageChart: React.FC<ProviderUsageChartProps> = ({
+  data,
+  metric = 'requests',
+}) => {
+  const title = metric === 'requests' ? 'Provider Requests' : 'Provider Costs';
+
+  if (metric === 'cost') {
+    return (
+      <>
+        <h2 className="mb-4 text-lg font-semibold text-text">{title}</h2>
+        <ResponsiveContainer width="100%" height={250}>
+          <BarChart data={data} margin={{ top: 5, right: 20, left: 20, bottom: 5 }}>
+            <CartesianGrid strokeDasharray="3 3" stroke="rgba(248, 240, 232, 0.1)" />
+            <XAxis dataKey="name" stroke="rgba(248, 240, 232, 0.5)" fontSize={12} />
+            <YAxis
+              stroke="rgba(248, 240, 232, 0.5)"
+              fontSize={12}
+              tickFormatter={(value: number | string) =>
+                formatCost(Number(value), { mode: 'summary' })
+              }
+            />
+            <Tooltip content={<ProviderUsageTooltip metric={metric} />} />
+            <Legend iconType="circle" />
+            <Bar dataKey="value" name="Cost">
+              {data.map((entry, index) => (
+                <Cell key={`cost-cell-${entry.name}`} fill={getChartPaletteColor(index)} />
+              ))}
+            </Bar>
+          </BarChart>
+        </ResponsiveContainer>
+      </>
+    );
+  }
+
   return (
     <>
-      <h2 className="text-lg font-semibold mb-4 text-white">Provider Usage (Approximated)</h2>
+      <h2 className="mb-4 text-lg font-semibold text-text">{title}</h2>
       <ResponsiveContainer width="100%" height={250}>
         <PieChart>
-          <Tooltip content={<CustomTooltip />} />
-          <Legend iconType="circle" />
+          <Tooltip content={<ProviderUsageTooltip metric={metric} />} />
+          <Legend iconType="circle" wrapperStyle={{ color: 'var(--text)' }} />
           <Pie
             data={data}
-            dataKey="tasks"
+            dataKey="value"
             nameKey="name"
             cx="50%"
             cy="50%"
@@ -62,8 +118,8 @@ const ProviderUsageChart: React.FC<ProviderUsageChartProps> = ({ data }) => {
               return `${safeName} ${(percent * 100).toFixed(0)}%`;
             }}
           >
-            {data.map((_entry, index) => (
-              <Cell key={`cell-${index}`} fill={colors[index % colors.length]} />
+            {data.map((entry, index) => (
+              <Cell key={`cell-${entry.name}`} fill={getChartPaletteColor(index)} />
             ))}
           </Pie>
         </PieChart>

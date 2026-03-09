@@ -1,27 +1,30 @@
 import { describe, it, expect, beforeEach, jest } from '@jest/globals';
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
-import CostEstimationPanel from './CostEstimationPanel';
-import { useCostEstimation } from '../../hooks/useCostEstimation';
-import { useCostStreaming } from '../../hooks/useCostStreaming';
-import { useCostClipboard } from '../../hooks/useCostClipboard';
 
 jest.mock('../../hooks/useCostEstimation', () => ({
+  __esModule: true,
   useCostEstimation: jest.fn(),
 }));
 
 jest.mock('../../hooks/useCostStreaming', () => ({
+  __esModule: true,
   useCostStreaming: jest.fn(),
 }));
 
 jest.mock('../../hooks/useCostClipboard', () => ({
+  __esModule: true,
   useCostClipboard: jest.fn(),
 }));
 
-jest.mock('../raptor/RaptorMiniPanel', () => () => <div data-testid="raptor-mini-panel" />);
+jest.mock('../raptor/RaptorMiniPanel', () => ({
+  __esModule: true,
+  default: () => <div data-testid="raptor-mini-panel" />,
+}));
 
-const mockedUseCostEstimation = useCostEstimation as unknown as jest.Mock;
-const mockedUseCostStreaming = useCostStreaming as unknown as jest.Mock;
-const mockedUseCostClipboard = useCostClipboard as unknown as jest.Mock;
+const mockedUseCostEstimation = require('../../hooks/useCostEstimation').useCostEstimation as jest.Mock;
+const mockedUseCostStreaming = require('../../hooks/useCostStreaming').useCostStreaming as jest.Mock;
+const mockedUseCostClipboard = require('../../hooks/useCostClipboard').useCostClipboard as jest.Mock;
+const CostEstimationPanel = require('./CostEstimationPanel').default as typeof import('./CostEstimationPanel').default;
 
 describe('CostEstimationPanel', () => {
   beforeEach(() => {
@@ -141,16 +144,17 @@ describe('CostEstimationPanel', () => {
 
     await waitFor(() => expect(startStreaming).not.toHaveBeenCalled());
 
-    expect(screen.getByText(/Summary/i)).toBeInTheDocument();
-    expect(screen.getByText(/Estimated cost: \\$0\\.0123/i)).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: 'Summary' })).toBeInTheDocument();
+    expect(
+      screen.getByText((_, node) => node?.textContent === 'Estimated cost: $0.0123')
+    ).toBeInTheDocument();
     expect(screen.getByText(/Estimated tokens: 123/i)).toBeInTheDocument();
 
     expect(screen.getByText(/Total Estimated Cost/i)).toBeInTheDocument();
-    expect(screen.getByText(/\\$0\\.0123/i)).toBeInTheDocument();
+    expect(screen.getAllByText('$0.0123').length).toBeGreaterThan(0);
 
     const copyBtn = screen.getByRole('button', { name: /Copy summary/i });
     fireEvent.click(copyBtn);
     expect(copyFormattedSummary).toHaveBeenCalledWith(estimate);
   });
 });
-

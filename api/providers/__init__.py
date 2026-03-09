@@ -20,7 +20,7 @@ from .vertex_ai import VertexAIProvider
 from .aliyun import AliyunProvider
 from .generic import GenericProvider
 from .mock_provider import MockProvider
-from .dispatcher_fixed import ProviderDispatcher, dispatcher, invoke_provider
+from .dispatcher import ProviderDispatcher, dispatcher, invoke_provider
 
 __all__ = [
     "BaseProvider",

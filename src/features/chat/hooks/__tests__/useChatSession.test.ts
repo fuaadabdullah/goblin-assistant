@@ -86,6 +86,10 @@ jest.mock('../../../../contexts/ProviderContext', () => ({
   })),
 }));
 
+jest.mock('../../../../utils/auth-session', () => ({
+  getAuthToken: jest.fn(() => 'mock-auth-token'),
+}));
+
 const { useChatSession } = require('../useChatSession') as typeof import('../useChatSession');
 const { chatClient } = require('../../api') as typeof import('../../api');
 const { buildThreadKey, readChatMessages } = require('../../../../lib/chat-history') as typeof import('../../../../lib/chat-history');

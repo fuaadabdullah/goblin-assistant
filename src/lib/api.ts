@@ -1,7 +1,7 @@
 import axios, { AxiosError, type AxiosRequestConfig } from 'axios';
 import { env } from '../config/env';
 import { devWarn } from '../utils/dev-log';
-import { getAuthToken } from '../utils/auth-session';
+import { clearAuthSession, getAuthToken, getRefreshToken, persistAuthSession } from '../utils/auth-session';
 import type { ChatMessage as DomainChatMessage, ChatUsage } from '../domain/chat';
 import type {
   ChatMessage,
@@ -109,6 +109,77 @@ const frontendHttp = axios.create({
     'Content-Type': 'application/json',
   },
 });
+
+type RetryableRequestConfig = AxiosRequestConfig & { _retry?: boolean };
+
+let refreshPromise: Promise<string | null> | null = null;
+
+const refreshAccessToken = async (): Promise<string | null> => {
+  const refreshToken = getRefreshToken();
+  if (!refreshToken) return null;
+
+  try {
+    const response = await backendHttp.post<{
+      access_token: string;
+      refresh_token?: string;
+      expires_in?: number;
+      user?: Record<string, unknown>;
+    }>('/auth/refresh', {
+      refresh_token: refreshToken,
+    });
+
+    const accessToken = response.data?.access_token ?? null;
+    if (!accessToken) return null;
+
+    persistAuthSession({
+      token: accessToken,
+      refreshToken: response.data?.refresh_token ?? refreshToken,
+      user: response.data?.user,
+      expiresIn: response.data?.expires_in,
+    });
+
+    return accessToken;
+  } catch {
+    clearAuthSession();
+    return null;
+  }
+};
+
+backendHttp.interceptors.response.use(
+  response => response,
+  async (error: AxiosError) => {
+    const originalRequest = (error.config ?? {}) as RetryableRequestConfig;
+    const status = error.response?.status;
+    const requestUrl = String(originalRequest.url ?? '');
+
+    const isRefreshCall = requestUrl.includes('/auth/refresh');
+    const canRetry = status === 401 && !originalRequest._retry && !isRefreshCall;
+
+    if (!canRetry) {
+      return Promise.reject(error);
+    }
+
+    originalRequest._retry = true;
+
+    if (!refreshPromise) {
+      refreshPromise = refreshAccessToken().finally(() => {
+        refreshPromise = null;
+      });
+    }
+
+    const nextToken = await refreshPromise;
+    if (!nextToken) {
+      return Promise.reject(error);
+    }
+
+    originalRequest.headers = {
+      ...(originalRequest.headers ?? {}),
+      Authorization: `Bearer ${nextToken}`,
+    };
+
+    return backendHttp(originalRequest);
+  },
+);
 
 const withAuth = (config?: AxiosRequestConfig): AxiosRequestConfig => {
   const token = getAuthToken();

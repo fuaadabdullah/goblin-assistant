@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # Goblin Assistant Production Deployment Script
-# This script builds and deploys the application to various hosting platforms
+# Canonical targets: Vercel (frontend), Render (backend)
 
 set -e
 
@@ -78,18 +78,11 @@ deploy_vercel() {
 
 # Netlify deployment target removed. Use Vercel or other supported hosting instead.
 
-# Deploy to GitHub Pages
-deploy_github_pages() {
-    print_status "Deploying to GitHub Pages..."
-
-    if ! command -v gh-pages &> /dev/null; then
-        print_status "Installing gh-pages..."
-        npm i -g gh-pages
-    fi
-
-    gh-pages -d dist
-
-    print_status "GitHub Pages deployment completed ✓"
+deploy_render() {
+    print_status "Preparing Render backend deployment..."
+    chmod +x ./deploy-render.sh
+    ./deploy-render.sh
+    print_status "Render deployment instructions completed ✓"
 }
 
 # Test the build locally
@@ -132,18 +125,17 @@ main() {
         "vercel")
             deploy_vercel
             ;;
-        # Netlify targets removed; Vercel and GitHub remain supported.
-        "github")
-            deploy_github_pages
+        "render")
+            deploy_render
             ;;
         "test")
             test_build
             ;;
         *)
             print_error "Invalid deployment target: $DEPLOY_TARGET"
-            echo "Usage: $0 [vercel|github|test]"
+            echo "Usage: $0 [vercel|render|test]"
             echo "  vercel          - Deploy to Vercel production"
-            echo "  github          - Deploy to GitHub Pages"
+            echo "  render          - Deploy backend using render.yaml"
             echo "  test            - Test build locally (default)"
             exit 1
             ;;
@@ -151,9 +143,9 @@ main() {
 
     print_status "🎉 Deployment completed successfully!"
     print_status "Don't forget to:"
-    print_status "  1. Update your backend URL in .env.production"
-    print_status "  2. Ensure your FastAPI backend is deployed"
-    print_status "  3. Configure CORS on your backend if needed"
+    print_status "  1. Ensure Render backend secrets are configured"
+    print_status "  2. Keep backend URL aligned with render.yaml"
+    print_status "  3. Configure CORS allowlist for Vercel + Render"
 }
 
 # Run main function with all arguments

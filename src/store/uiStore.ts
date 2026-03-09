@@ -1,5 +1,6 @@
 import { create } from 'zustand';
 import { enableHighContrast, getHighContrastPreference } from '../theme/theme';
+import { devWarn } from '../utils/dev-log';
 
 interface UIState {
   // Theme state
@@ -78,7 +79,7 @@ export const useUIStore = create<UIState>((set, get) => ({
     try {
       localStorage.setItem('goblin-theme', theme);
     } catch (e) {
-      console.warn('Failed to persist theme preference:', e);
+      devWarn('Failed to persist theme preference:', e);
     }
   },
 

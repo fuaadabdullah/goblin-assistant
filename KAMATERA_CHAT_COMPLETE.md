@@ -44,7 +44,7 @@ The Goblin Assistant's real chat functionality with Kamatera LLMs is **fully ope
    - Cleaned up unused imports
    - Removed: `import json` (no longer used in streaming code)
 
-2. **api/providers/dispatcher_fixed.py**
+2. **api/providers/dispatcher.py**
    - Already had proper auto-selection logic
    - LlamaCPP provider correctly prioritized
    - Response normalization working

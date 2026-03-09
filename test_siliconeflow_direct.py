@@ -106,7 +106,7 @@ async def test_with_provider():
     sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 
     try:
-        from api.providers.dispatcher_fixed import ProviderDispatcher
+        from api.providers.dispatcher import ProviderDispatcher
 
         dispatcher = ProviderDispatcher()
 

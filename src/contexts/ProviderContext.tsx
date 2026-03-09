@@ -4,7 +4,7 @@ import {
   normalizeProviderId,
   PROVIDER_ID_ALIASES,
 } from '@/lib/providers/normalizeProvider';
-import { apiClient } from '@/lib/api';
+import { apiClient } from '@/api';
 import { queryKeys } from '@/lib/query-keys';
 
 interface ProviderConfig {

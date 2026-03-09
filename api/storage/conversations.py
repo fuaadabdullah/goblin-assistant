@@ -70,6 +70,7 @@ class Conversation:
         created_at: Optional[datetime] = None,
         updated_at: Optional[datetime] = None,
         metadata: Optional[Dict[str, Any]] = None,
+        last_accessed: Optional[datetime] = None,
     ):
         self.conversation_id = conversation_id or str(uuid.uuid4())
         self.user_id = user_id
@@ -77,6 +78,7 @@ class Conversation:
         self.messages = sorted(messages or [], key=lambda item: item.timestamp)
         self.created_at = created_at or datetime.utcnow()
         self.updated_at = updated_at or datetime.utcnow()
+        self.last_accessed = last_accessed or datetime.utcnow()
         self.metadata = metadata or {}
 
     def add_message(self, message: ConversationMessage) -> None:
@@ -94,6 +96,7 @@ class Conversation:
             "messages": [msg.to_dict() for msg in self.messages],
             "created_at": self.created_at.isoformat(),
             "updated_at": self.updated_at.isoformat(),
+            "last_accessed": self.last_accessed.isoformat(),
             "metadata": self.metadata,
         }
 
@@ -109,6 +112,7 @@ class Conversation:
             ],
             created_at=datetime.fromisoformat(data["created_at"]),
             updated_at=datetime.fromisoformat(data["updated_at"]),
+            last_accessed=datetime.fromisoformat(data.get("last_accessed", datetime.utcnow().isoformat())),
             metadata=data.get("metadata", {}),
         )
 
@@ -145,18 +149,61 @@ class ConversationStore(ABC):
 
 
 class InMemoryConversationStore(ConversationStore):
-    """In-memory conversation storage for development/testing"""
+    """In-memory conversation storage for development/testing with TTL eviction"""
 
-    def __init__(self):
+    def __init__(self, max_conversations: int = 1000, ttl_seconds: int = 3600):
+        """
+        Initialize in-memory store with bounded capacity.
+        
+        Args:
+            max_conversations: Maximum number of conversations to keep in memory (default: 1000)
+            ttl_seconds: Time-to-live for conversations in seconds (default: 1 hour)
+        """
         self._conversations: Dict[str, Conversation] = {}
+        self.max_conversations = max_conversations
+        self.ttl_seconds = ttl_seconds
+
+    def _evict_expired(self) -> None:
+        """Remove conversations that have expired based on TTL or max size"""
+        now = datetime.utcnow()
+        ttl_threshold = now.timestamp() - self.ttl_seconds
+        
+        # Remove expired conversations (based on last_accessed)
+        expired_ids = [
+            conv_id for conv_id, conv in self._conversations.items()
+            if conv.last_accessed.timestamp() < ttl_threshold
+        ]
+        
+        for conv_id in expired_ids:
+            del self._conversations[conv_id]
+        
+        # If over capacity, remove oldest accessed conversations
+        if len(self._conversations) > self.max_conversations:
+            sorted_conversations = sorted(
+                self._conversations.items(),
+                key=lambda item: item[1].last_accessed.timestamp()
+            )
+            
+            # Remove oldest conversations to get back to max
+            num_to_remove = len(self._conversations) - self.max_conversations
+            for conv_id, _ in sorted_conversations[:num_to_remove]:
+                del self._conversations[conv_id]
 
     async def save_conversation(self, conversation: Conversation) -> None:
         """Save a conversation to memory"""
+        # Update last_accessed when saving
+        conversation.last_accessed = datetime.utcnow()
         self._conversations[conversation.conversation_id] = conversation
+        self._evict_expired()
 
     async def get_conversation(self, conversation_id: str) -> Optional[Conversation]:
         """Get a conversation by ID"""
-        return self._conversations.get(conversation_id)
+        if conversation_id in self._conversations:
+            # Update last_accessed on retrieval
+            self._conversations[conversation_id].last_accessed = datetime.utcnow()
+            self._evict_expired()
+            return self._conversations[conversation_id]
+        return None
 
     async def delete_conversation(self, conversation_id: str) -> bool:
         """Delete a conversation"""
@@ -169,6 +216,7 @@ class InMemoryConversationStore(ConversationStore):
         self, user_id: Optional[str] = None, limit: int = 50
     ) -> List[Conversation]:
         """List conversations, optionally filtered by user"""
+        self._evict_expired()
         conversations = list(self._conversations.values())
 
         if user_id:
@@ -184,6 +232,8 @@ class InMemoryConversationStore(ConversationStore):
         if conversation_id in self._conversations:
             self._conversations[conversation_id].title = title
             self._conversations[conversation_id].updated_at = datetime.utcnow()
+            self._conversations[conversation_id].last_accessed = datetime.utcnow()
+            self._evict_expired()
             return True
         return False
 

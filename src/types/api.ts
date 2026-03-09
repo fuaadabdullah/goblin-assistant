@@ -296,7 +296,10 @@ export function isTaskExecutionResponse(data: unknown): data is TaskExecutionRes
 }
 
 export function isChatCompletionResponse(data: unknown): data is ChatCompletionResponse {
-  return typeof data === 'object' && data !== null && ('choices' in data || 'content' in data);
+  if (typeof data !== 'object' || data === null) return false;
+  if ('choices' in data && Array.isArray((data as ChatCompletionResponse).choices)) return true;
+  if ('content' in data && typeof (data as ChatCompletionResponse).content === 'string') return true;
+  return false;
 }
 
 // ============================================================================
@@ -415,6 +418,7 @@ export interface CostSummary {
   total_cost: number;
   cost_by_provider: Record<string, number>;
   cost_by_model: Record<string, number>;
+  requests_by_provider?: Record<string, number>;
 }
 
 export interface OrchestrationStep {

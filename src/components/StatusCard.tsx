@@ -133,9 +133,9 @@ export default function StatusCard({
 
       {meta.length > 0 && (
         <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 mt-4">
-          {meta.map((m, i) => (
+          {meta.map((m) => (
             <div
-              key={i}
+              key={m.label}
               className="bg-surface-hover rounded-lg p-3 border border-border min-h-[64px]"
             >
               <div className="text-xs text-muted mb-1">{m.label}</div>

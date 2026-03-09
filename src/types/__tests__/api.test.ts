@@ -68,9 +68,9 @@ describe('API type guards', () => {
   describe('isHealthStatus', () => {
     it('should identify valid health status', () => {
       const health = {
-        status: 'healthy',
+        overall: 'healthy',
         timestamp: '2026-02-18T10:00:00Z',
-        uptime_ms: 3600000,
+        services: { api: { status: 'healthy' } },
       };
 
       expect(isHealthStatus(health)).toBe(true);
@@ -78,8 +78,9 @@ describe('API type guards', () => {
 
     it('should accept different status values', () => {
       const health = {
-        status: 'degraded',
+        overall: 'degraded',
         timestamp: '2026-02-18T10:00:00Z',
+        services: {},
       };
 
       expect(isHealthStatus(health)).toBe(true);
@@ -95,9 +96,9 @@ describe('API type guards', () => {
   describe('isOrchestrationPlan', () => {
     it('should identify valid orchestration plan', () => {
       const plan = {
-        id: 'plan-123',
         steps: [{ id: 'step-1', type: 'execute', action: 'analyze' }],
-        estimated_duration_ms: 5000,
+        total_batches: 1,
+        max_parallel: 2,
       };
 
       expect(isOrchestrationPlan(plan)).toBe(true);
@@ -105,8 +106,9 @@ describe('API type guards', () => {
 
     it('should handle empty steps', () => {
       const plan = {
-        id: 'plan-123',
         steps: [],
+        total_batches: 0,
+        max_parallel: 1,
       };
 
       expect(isOrchestrationPlan(plan)).toBe(true);
@@ -122,9 +124,9 @@ describe('API type guards', () => {
   describe('isTaskExecutionResponse', () => {
     it('should identify valid task execution response', () => {
       const response = {
-        task_id: 'task-123',
-        status: 'completed',
-        result: { output: 'Success' },
+        chunks: [{ type: 'output', content: 'Success', timestamp: '2026-01-01T00:00:00Z' }],
+        done: true,
+        execution_id: 'exec-123',
       };
 
       expect(isTaskExecutionResponse(response)).toBe(true);
@@ -132,8 +134,9 @@ describe('API type guards', () => {
 
     it('should accept different statuses', () => {
       const response = {
-        task_id: 'task-456',
-        status: 'in_progress',
+        chunks: [],
+        done: false,
+        execution_id: 'exec-456',
       };
 
       expect(isTaskExecutionResponse(response)).toBe(true);

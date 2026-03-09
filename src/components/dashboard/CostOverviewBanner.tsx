@@ -1,3 +1,5 @@
+import { formatCost } from '@/utils/format-cost';
+
 interface Props {
   totalCost: number;
   todayCost: number;
@@ -17,15 +19,15 @@ export const CostOverviewBanner = ({ totalCost, todayCost, thisMonthCost, byProv
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
         <div>
           <div className="text-sm text-muted">Total cost</div>
-          <div className="text-xl font-semibold">${totalCost.toFixed(2)}</div>
+          <div className="text-xl font-semibold">{formatCost(totalCost, { mode: 'summary' })}</div>
         </div>
         <div>
           <div className="text-sm text-muted">Today</div>
-          <div className="text-xl font-semibold">${todayCost.toFixed(2)}</div>
+          <div className="text-xl font-semibold">{formatCost(todayCost, { mode: 'summary' })}</div>
         </div>
         <div>
           <div className="text-sm text-muted">This month</div>
-          <div className="text-xl font-semibold">${thisMonthCost.toFixed(2)}</div>
+          <div className="text-xl font-semibold">{formatCost(thisMonthCost, { mode: 'summary' })}</div>
         </div>
       </div>
 
@@ -33,7 +35,7 @@ export const CostOverviewBanner = ({ totalCost, todayCost, thisMonthCost, byProv
         <div className="mt-4 text-sm text-muted">
           {providers.map(([provider, value]) => (
             <span key={provider} className="mr-3">
-              {provider}: ${value.toFixed(2)}
+              {provider}: {formatCost(value, { mode: 'summary' })}
             </span>
           ))}
         </div>

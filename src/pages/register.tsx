@@ -1,7 +1,10 @@
 import LoginPage, { getServerSideProps } from '../screens/LoginPage';
+import { withRouteErrorBoundary } from '../components/RouteBoundary';
 
 export { getServerSideProps };
 
-export default function RegisterPage() {
+function RegisterPage() {
   return <LoginPage initialMode="register" />;
 }
+
+export default withRouteErrorBoundary(RegisterPage, 'register');

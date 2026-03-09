@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
-import { apiClient } from '../../lib/api';
+import { apiClient } from '@/api';
 import { queryKeys } from '../../lib/query-keys';
 import { persistAuthSession } from '../../utils/auth-session';
 import { PasskeyChallenge, PasskeyVerificationChallenge, LoginResponse } from '../../types/api';
@@ -163,6 +163,7 @@ const PasskeyPanel: React.FC<PasskeyPanelProps> = ({ email, onSuccess, onError }
       }
       persistAuthSession({
         token: tokenValue,
+        refreshToken: authResponse.refresh_token,
         user: authResponse.user,
         expiresIn: authResponse.expires_in,
       });

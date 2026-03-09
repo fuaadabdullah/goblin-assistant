@@ -1,6 +1,6 @@
 import { useCallback, useState } from 'react';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
-import { apiClient } from '../../../../lib/api';
+import { apiClient } from '@/api';
 import type { ProviderConfig } from '../../../../hooks/api/useSettings';
 import type { ProviderTestResponse } from '../../../../types/api';
 import { queryKeys } from '../../../../lib/query-keys';
@@ -154,4 +154,3 @@ export const useProviderMutations = () => {
     isReordering: reorderMutation.isPending,
   };
 };
-

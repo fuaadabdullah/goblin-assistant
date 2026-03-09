@@ -213,7 +213,7 @@ The old Kamatera endpoints were:
 - Ollama: `http://192.175.23.150:8002`
 - LlamaCPP: `http://45.61.51.220:8000`
 
-These have been replaced with GCP endpoints. Update `dispatcher_fixed.py`:
+These have been replaced with GCP endpoints. Update `dispatcher.py`:
 
 ```python
 "ollama_gcp": {

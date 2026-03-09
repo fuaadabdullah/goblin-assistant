@@ -62,7 +62,8 @@ Successfully migrated Goblin Assistant chat functionality from unreachable Kamat
 - Added `provider: Optional[str] = None` to `SimpleChatRequest`
 - Pass provider to dispatcher: `invoke_provider(pid=request.provider, ...)`
 
-### 3. Dispatcher: `/api/providers/dispatcher_fixed.py`
+### 3. Dispatcher: `/api/providers/dispatcher.py`
+
 **Changes**:
 - Added `ollama_gcp` to ollama provider recognition
 - Added `llamacpp_gcp` to llamacpp provider recognition
@@ -283,7 +284,7 @@ If issues arise with GCP providers:
 **Key Files Modified**:
 - `app/chat/page.tsx`
 - `api/api_router.py`
-- `api/providers/dispatcher_fixed.py`
+- `api/providers/dispatcher.py`
 - `config/providers.toml`
 - `.env.local` (not committed)
 

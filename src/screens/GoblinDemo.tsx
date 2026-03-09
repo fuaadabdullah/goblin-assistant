@@ -1,7 +1,7 @@
 import React, { useReducer, useEffect } from 'react';
 // CSS is imported globally in _app.tsx
 import StreamingView from '@/components/streaming/StreamingView';
-import { runtimeClient, runtimeClientDemo } from '@/api/api-client';
+import { runtimeClient, runtimeClientDemo } from '@/api';
 import type { OrchestrationStep } from '@/types/api';
 import {
   initialOrchestrationState,
@@ -9,6 +9,8 @@ import {
 } from '@/lib/orchestration/orchestrationState';
 import { useOrchestrationExecution } from '@/lib/orchestration/useOrchestrationExecution';
 import { debugLog } from '@/lib/utils/debug';
+import { devError } from '@/utils/dev-log';
+import { formatCost } from '@/utils/format-cost';
 
 interface Props {
   provider?: string | null | undefined;
@@ -95,7 +97,7 @@ export default function GoblinDemo({ provider, model, demoMode = false }: Props)
       const estimated = plan.steps.length * 0.02; // $0.02 per step average
       dispatch({ type: 'SET_ESTIMATED_COST', payload: estimated });
     } catch (error) {
-      console.error('❌ [DEBUG] Failed to preview orchestration:', error);
+      devError('❌ [DEBUG] Failed to preview orchestration:', error);
       dispatch({ type: 'SET_PREVIEW_PLAN', payload: null });
       dispatch({ type: 'SET_ESTIMATED_COST', payload: 0 });
     }
@@ -189,7 +191,7 @@ export default function GoblinDemo({ provider, model, demoMode = false }: Props)
               Plan Preview ({state.previewPlan.steps.length} steps)
             </h4>
             <div id="estimated-cost" className="estimated-cost" data-testid="estimated-cost">
-              Estimated Cost: ${state.estimatedCost.toFixed(4)}
+              Estimated Cost: {formatCost(state.estimatedCost, { mode: 'per-message' })}
             </div>
             <ul className="plan-steps" data-testid="plan-steps">
               {state.previewPlan.steps.map((step, index) => (
@@ -238,7 +240,9 @@ export default function GoblinDemo({ provider, model, demoMode = false }: Props)
         {Object.keys(state.stepCosts).length > 0 && (
           <div className="plan-total" data-testid="plan-total">
             <strong>Total Plan Cost: </strong>
-            {`$${(Object.values(state.stepCosts) as number[]).reduce((a, b) => a + b, 0).toFixed(6)}`}
+            {formatCost((Object.values(state.stepCosts) as number[]).reduce((a, b) => a + b, 0), {
+              mode: 'per-token',
+            })}
           </div>
         )}
         {state.plan && (
@@ -258,14 +262,16 @@ export default function GoblinDemo({ provider, model, demoMode = false }: Props)
                     ({state.stepStatuses[s.id] || 'pending'})
                   </em>{' '}
                   <span className="execution-step-cost" data-testid={`execution-step-cost-${s.id}`}>
-                    {(state.stepCosts[s.id] || 0) > 0 ? `$${(state.stepCosts[s.id] || 0).toFixed(6)}` : ''}
+                    {(state.stepCosts[s.id] || 0) > 0
+                      ? formatCost(state.stepCosts[s.id] || 0, { mode: 'per-token' })
+                      : ''}
                   </span>
                   {state.expandedSteps[s.id] && (
                     <div className="step-details" data-testid={`step-details-${s.id}`}>
                       <div data-testid={`step-id-${s.id}`}>Step ID: {s.id}</div>
                       <div data-testid={`step-status-${s.id}`}>Status: {state.stepStatuses[s.id]}</div>
                       <div data-testid={`step-cost-${s.id}`}>
-                        Cost: ${(state.stepCosts[s.id] || 0).toFixed(6)}
+                        Cost: {formatCost(state.stepCosts[s.id] || 0, { mode: 'per-token' })}
                       </div>
                       <div data-testid={`step-tokens-${s.id}`}>Tokens: {state.stepTokens[s.id] || 0}</div>
                       {state.stepChunks[s.id] && state.stepChunks[s.id].length > 0 && (
@@ -290,7 +296,7 @@ export default function GoblinDemo({ provider, model, demoMode = false }: Props)
                                   className="chunk-meta"
                                   data-testid={`chunk-cost-${s.id}-${idx}`}
                                 >
-                                  Cost: ${c.cost.toFixed(6)}
+                                  Cost: {formatCost(c.cost, { mode: 'per-token' })}
                                 </span>
                                 <progress
                                   className="chunk-graph"

@@ -1,5 +1,12 @@
 import Card from './Card';
 
+const createPlaceholderKeys = (prefix: string, count: number) =>
+  Array.from({ length: count }, (_, index) => `${prefix}-${index + 1}`);
+
+const STATUS_CARD_PLACEHOLDER_KEYS = createPlaceholderKeys('status-card-placeholder', 3);
+const DASHBOARD_STATUS_CARD_KEYS = createPlaceholderKeys('dashboard-status-card', 6);
+const DASHBOARD_ACTION_KEYS = createPlaceholderKeys('dashboard-action', 4);
+
 /**
  * Loading skeleton for status cards
  */
@@ -21,9 +28,9 @@ export function StatusCardSkeleton() {
 
       {/* Meta grid skeleton */}
       <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 mt-4">
-        {[1, 2, 3].map(i => (
+        {STATUS_CARD_PLACEHOLDER_KEYS.map((placeholderKey) => (
           <div
-            key={i}
+            key={placeholderKey}
             className="bg-surface-hover rounded-lg p-3 border border-border min-h-[64px]"
           >
             <div className="h-3 w-16 bg-surface-active rounded mb-2" />
@@ -86,10 +93,12 @@ export function ListItemSkeleton() {
  * List loading skeleton
  */
 export function ListSkeleton({ count = 5 }: { count?: number }) {
+  const placeholderKeys = createPlaceholderKeys('list-item-placeholder', count);
+
   return (
     <div className="space-y-3" role="status" aria-label={`Loading ${count} items`}>
-      {Array.from({ length: count }).map((_, i) => (
-        <ListItemSkeleton key={i} />
+      {placeholderKeys.map((placeholderKey) => (
+        <ListItemSkeleton key={placeholderKey} />
       ))}
       <span className="sr-only">Loading list...</span>
     </div>
@@ -164,8 +173,8 @@ export function DashboardSkeleton() {
 
         {/* Health cards grid skeleton */}
         <div className="grid-auto-fit gap-4 auto-rows-fr">
-          {[1, 2, 3, 4, 5, 6].map(i => (
-            <StatusCardSkeleton key={i} />
+          {DASHBOARD_STATUS_CARD_KEYS.map((placeholderKey) => (
+            <StatusCardSkeleton key={placeholderKey} />
           ))}
         </div>
 
@@ -173,8 +182,8 @@ export function DashboardSkeleton() {
         <div className="bg-surface rounded-xl border border-border p-6 animate-pulse">
           <div className="h-6 w-32 bg-surface-hover rounded mb-4" />
           <div className="grid-auto-fit gap-3">
-            {[1, 2, 3, 4].map(i => (
-              <div key={i} className="h-12 bg-surface-hover rounded-lg" />
+            {DASHBOARD_ACTION_KEYS.map((placeholderKey) => (
+              <div key={placeholderKey} className="h-12 bg-surface-hover rounded-lg" />
             ))}
           </div>
         </div>

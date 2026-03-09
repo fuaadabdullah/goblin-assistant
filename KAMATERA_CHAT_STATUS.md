@@ -74,7 +74,7 @@ Chat Router (chat_router.py)
     ├─ Sanitizes user input
     ├─ Invokes provider dispatcher
     ↓
-Provider Dispatcher (dispatcher_fixed.py)
+Provider Dispatcher (dispatcher.py)
     ├─ Auto-selects: llamacpp_kamatera
     ├─ Routes to KamateraLlamaCppProvider
     ↓
@@ -100,7 +100,7 @@ LOCAL_LLM_API_KEY=cef5587890c73a5316a9a2c4ed851d97beb89fd28443885aad6e570dabd5f7
 
 ### Provider Configuration
 
-From `api/providers/dispatcher_fixed.py`:
+From `api/providers/dispatcher.py`:
 
 ```python
 "llamacpp_kamatera": {
@@ -200,7 +200,7 @@ curl -X POST http://localhost:8004/chat/conversations/UUID/messages \
 ### Via Python SDK
 
 ```python
-from api.providers.dispatcher_fixed import dispatcher
+from api.providers.dispatcher import dispatcher
 
 # Direct provider invocation
 result = await dispatcher.invoke_provider(

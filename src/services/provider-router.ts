@@ -31,7 +31,7 @@ type ProvidersConfigRaw = {
 
 import providersJson from '../../config/providers.json';
 import { env } from '../config/env';
-import { runtimeClient, runtimeClientDemo } from '../clients';
+import { runtimeClient, runtimeClientDemo } from '@/api';
 
 const rawConfig = providersJson as unknown as ProvidersConfigRaw;
 const PROVIDERS: ProvidersMap = Object.entries(rawConfig.providers || {}).reduce(

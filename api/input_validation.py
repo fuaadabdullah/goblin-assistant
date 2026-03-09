@@ -62,7 +62,7 @@ class InputSanitizer:
         # Check length
         if len(content) > cls.MAX_MESSAGE_LENGTH:
             raise HTTPException(
-                status_code=400,
+                status_code=413,
                 detail=f"Message too long. Maximum {cls.MAX_MESSAGE_LENGTH} characters allowed."
             )
 

@@ -12,7 +12,7 @@ import time
 # Add parent directory to path
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 
-from api.providers.dispatcher_fixed import ProviderDispatcher
+from api.providers.dispatcher import ProviderDispatcher
 
 
 async def test_siliconeflow():

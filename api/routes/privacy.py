@@ -114,43 +114,65 @@ async def export_user_data(
                     "error": vector_export.get("error", "Unknown error")
                 }
 
-        # TODO: Export conversations from Supabase
+        # Export conversations from database
         if include_conversations:
-            # This would query Supabase for user conversations
-            # For now, placeholder:
-            export_data["data"]["conversations"] = {
-                "note": "Conversation export not yet implemented",
-                "count": 0,
-                "messages": [],
-            }
+            try:
+                from ..storage.conversations import DatabaseConversationStore
+                conversation_store = DatabaseConversationStore()
+                conversations = await conversation_store.list_conversations(
+                    user_id=user_id, limit=1000
+                )
+                export_data["data"]["conversations"] = {
+                    "count": len(conversations),
+                    "conversations": [
+                        {
+                            "conversation_id": conv.conversation_id,
+                            "title": conv.title,
+                            "created_at": conv.created_at.isoformat(),
+                            "updated_at": conv.updated_at.isoformat(),
+                            "messages": [
+                                {
+                                    "message_id": msg.message_id,
+                                    "role": msg.role,
+                                    "content": msg.content,
+                                    "timestamp": msg.timestamp.isoformat(),
+                                    "metadata": msg.metadata,
+                                }
+                                for msg in conv.messages
+                            ],
+                        }
+                        for conv in conversations
+                    ],
+                }
+                logger.info(f"Exported {len(conversations)} conversations for user {user_id}")
+            except Exception as conv_error:
+                logger.error(f"Conversation export error: {conv_error}")
+                export_data["data"]["conversations"] = {
+                    "error": str(conv_error),
+                    "count": 0,
+                }
 
-        # TODO: Export user preferences from Supabase
+        # Export user preferences from database
         if include_preferences:
-            export_data["data"]["preferences"] = {
-                "note": "Preferences export not yet implemented",
-                "settings": {},
-            }
+            try:
+                from ..storage.preferences_service import preferences_service
+                prefs = await preferences_service.get_preferences(user_id)
+                export_data["data"]["preferences"] = prefs if prefs else {}
+                logger.info(f"Exported preferences for user {user_id}")
+            except Exception as pref_error:
+                logger.error(f"Preferences export error: {pref_error}")
+                export_data["data"]["preferences"] = {
+                    "error": str(pref_error),
+                }
 
-        # Log privacy event
+        # Log privacy export
         total_items = export_data["data"].get("vectors", {}).get("document_count", 0)
-        log_conversation_event(
-            event_type="data_export",
-            user_id=user_id,
-            action="full_export",
-            item_count=total_items,
-            success=True,
-        )
+        logger.info(f"Privacy export completed: {total_items} items for user {user_id}")
 
         return export_data
 
     except Exception as e:
         logger.error(f"Export failed for user {user_id}: {e}")
-        log_conversation_event(
-            event_type="data_export",
-            user_id=user_id,
-            action="full_export",
-            success=False,
-        )
         raise HTTPException(status_code=500, detail=f"Export failed: {str(e)}")
 
 
@@ -215,15 +237,28 @@ async def delete_user_data(
         else:
             logger.info("Vector store not available, skipping vector deletion")
 
-        # TODO: Delete from Supabase
-        # This would delete:
-        # - Conversations table (where user_id = <user_id>)
-        # - User_preferences table
-        # - Any other user-scoped data
+        # Delete conversations from database
+        try:
+            from ..storage.conversations import DatabaseConversationStore
+            conversation_store = DatabaseConversationStore()
+            conversations = await conversation_store.list_conversations(
+                user_id=user_id, limit=10000
+            )
+            for conv in conversations:
+                await conversation_store.delete_conversation(conv.conversation_id)
+            deleted_counts["conversations"] = len(conversations)
+            logger.info(f"Deleted {len(conversations)} conversations for user {user_id}")
+        except Exception as conv_error:
+            logger.error(f"Conversation deletion error: {conv_error}")
 
-        # For now, placeholders:
-        deleted_counts["conversations"] = 0  # Would query and delete
-        deleted_counts["preferences"] = 0  # Would query and delete
+        # Delete user preferences from database
+        try:
+            from ..storage.preferences_service import preferences_service
+            prefs_deleted = await preferences_service.delete_preferences(user_id)
+            deleted_counts["preferences"] = 1 if prefs_deleted else 0
+            logger.info(f"Deleted preferences for user {user_id}")
+        except Exception as pref_error:
+            logger.error(f"Preferences deletion error: {pref_error}")
 
         # Log privacy event
         total_deleted = sum(deleted_counts.values())
@@ -290,11 +325,26 @@ async def get_data_summary(user_id: str = Depends(get_current_user)) -> Dict[str
         if vector_store is not None:
             vector_count = await vector_store.get_user_document_count(user_id)
 
-        # TODO: Get conversation count from Supabase
-        conversation_count = 0  # Would query Supabase
+        # Get conversation count from database
+        try:
+            from ..storage.conversations import DatabaseConversationStore
+            conversation_store = DatabaseConversationStore()
+            conversations = await conversation_store.list_conversations(
+                user_id=user_id, limit=10000
+            )
+            conversation_count = len(conversations)
+        except Exception as conv_error:
+            logger.error(f"Conversation count error: {conv_error}")
+            conversation_count = 0
 
-        # TODO: Get preferences from Supabase
-        has_preferences = False  # Would query Supabase
+        # Get preferences from database
+        try:
+            from ..storage.preferences_service import preferences_service
+            prefs = await preferences_service.get_preferences(user_id)
+            has_preferences = prefs is not None
+        except Exception as pref_error:
+            logger.error(f"Preferences fetch error: {pref_error}")
+            has_preferences = False
 
         summary = {
             "user_id": user_id,
@@ -345,8 +395,17 @@ async def update_rag_consent(
     logger.info(f"RAG consent update by user {user_id}: {consent_given}")
 
     try:
-        # TODO: Store consent in Supabase user_preferences table
-        # For now, just log it
+        # Store consent in database user_preferences table
+        try:
+            from ..storage.preferences_service import preferences_service
+            await preferences_service.update_rag_consent(user_id, consent_given)
+            logger.info(f"Stored RAG consent for user {user_id}: {consent_given}")
+        except Exception as consent_error:
+            logger.error(f"Failed to store RAG consent: {consent_error}")
+            raise HTTPException(
+                status_code=500,
+                detail=f"Failed to store consent: {str(consent_error)}",
+            )
 
         if not consent_given:
             # If consent revoked, delete existing data

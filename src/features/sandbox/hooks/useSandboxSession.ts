@@ -2,6 +2,7 @@ import { useCallback, useEffect, useState } from 'react';
 import { fetchJobLogs, fetchSandboxJobs, runSandboxCode } from '../api';
 import { toUiError } from '../../../lib/ui-error';
 import type { SandboxJob } from '../types';
+import { devError } from '@/utils/dev-log';
 
 export interface SandboxSessionState {
   jobs: SandboxJob[];
@@ -43,7 +44,7 @@ export const useSandboxSession = ({ isGuest = false }: SandboxSessionOptions = {
         code: 'SANDBOX_JOBS_FAILED',
         userMessage: 'Unable to load sandbox jobs.',
       });
-      console.error('Failed to load sandbox jobs:', uiError);
+      devError('Failed to load sandbox jobs:', uiError);
     }
   }, [isGuest]);
 

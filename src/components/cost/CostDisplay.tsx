@@ -1,4 +1,5 @@
 import type { CostEstimate } from '../../hooks/useCostEstimation';
+import { formatCost } from '@/utils/format-cost';
 
 interface Props {
   estimate: CostEstimate;
@@ -9,7 +10,7 @@ export const CostDisplay = ({ estimate }: Props) => {
     <div className="estimate-results">
       <div className="estimate-row">
         <span>Total Estimated Cost</span>
-        <strong>${estimate.estimatedCost.toFixed(4)}</strong>
+        <strong>{formatCost(estimate.estimatedCost, { mode: 'per-message' })}</strong>
       </div>
       <div className="estimate-row">
         <span>Estimated Tokens</span>
@@ -21,7 +22,7 @@ export const CostDisplay = ({ estimate }: Props) => {
             <div key={item.label} className="estimate-row">
               <span>{item.label}</span>
               <span>
-                ${item.cost.toFixed(4)} · {item.tokens} tokens
+                {formatCost(item.cost, { mode: 'per-message' })} · {item.tokens} tokens
               </span>
             </div>
           ))}

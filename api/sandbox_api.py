@@ -102,8 +102,8 @@ async def submit_job(
     if not req.source or len(req.source.strip()) == 0:
         raise HTTPException(status_code=400, detail="source code is required")
 
-    if req.language not in ["python", "javascript", "bash"]:
-        raise HTTPException(status_code=400, detail="unsupported language")
+    if req.language not in ["python", "javascript"]:
+        raise HTTPException(status_code=400, detail="Unsupported language. Supported languages: python, javascript")
 
     if req.timeout and (req.timeout < 1 or req.timeout > 300):
         raise HTTPException(status_code=400, detail="timeout must be between 1-300 seconds")
@@ -116,8 +116,7 @@ async def submit_job(
     # Determine main file based on language
     mainfile = {
         "python": "main.py",
-        "javascript": "main.js",
-        "bash": "script.sh"
+        "javascript": "main.js"
     }.get(req.language, "main")
 
     # Write source code to file

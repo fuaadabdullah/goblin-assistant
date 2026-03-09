@@ -4,11 +4,12 @@
  */
 
 import { logErrorToService } from './monitoring';
+import { devInfo } from './dev-log';
 
 // Lightweight logging helpers (replace former Datadog calls)
 const logEvent = (message: string, context?: Record<string, unknown>) => {
   if (process.env.NODE_ENV === 'development') {
-    console.info(`[event] ${message}`, context);
+    devInfo(`[event] ${message}`, context);
   }
 };
 

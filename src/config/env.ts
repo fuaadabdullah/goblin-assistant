@@ -8,7 +8,7 @@
  * - Easier testing
  */
 
-import { devLog } from '../utils/dev-log';
+import { devError, devLog, devWarn } from '../utils/dev-log';
 import { DEFAULT_BACKEND_ORIGIN } from './backendOrigin';
 
 interface EnvConfig {
@@ -66,7 +66,7 @@ function validateEnvConfig(config: EnvConfig): void {
 
   // Warn about production mode with debug enabled
   if (config.isProduction && config.enableDebug) {
-    console.warn('⚠️  Debug mode enabled in production!');
+    devWarn('⚠️  Debug mode enabled in production!');
   }
 
   // Check Turnstile keys format
@@ -77,7 +77,7 @@ function validateEnvConfig(config: EnvConfig): void {
   });
 
   if (errors.length > 0) {
-    console.error('❌ Environment configuration errors:\n', errors.join('\n'));
+    devError('❌ Environment configuration errors:\n', errors.join('\n'));
     throw new Error('Invalid environment configuration');
   }
 }

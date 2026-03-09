@@ -138,9 +138,9 @@ export default function HealthCard({
           {/* Metrics Grid */}
           {metrics.length > 0 && (
             <div className="grid grid-cols-2 sm:grid-cols-3 gap-4 pt-4">
-              {metrics.map((metric, idx) => (
+              {metrics.map((metric) => (
                 <div
-                  key={idx}
+                  key={metric.label}
                   className="bg-surface-hover rounded-lg p-4 border border-border min-h-[72px]"
                 >
                   <div className="text-xs text-muted mb-1">{metric.label}</div>
@@ -166,8 +166,11 @@ export default function HealthCard({
                 Recent Errors ({errors.length})
               </h4>
               <div className="space-y-2 max-h-40 overflow-y-auto">
-                {errors.map((error, idx) => (
-                  <div key={idx} className="bg-surface border border-danger rounded p-2">
+                {errors.map((error) => (
+                  <div
+                    key={`${error.timestamp}-${error.message}`}
+                    className="bg-surface border border-danger rounded p-2"
+                  >
                     <div className="text-xs text-danger font-mono">{error.message}</div>
                     <div className="text-xs text-muted mt-1">
                       {new Date(error.timestamp).toLocaleTimeString()}

@@ -5,7 +5,7 @@
 
 ### Configuration Added
 ✅ **Provider Implementation**: `api/providers/siliconeflow.py` - Complete with streaming support
-✅ **Dispatcher Integration**: Added to `api/providers/dispatcher_fixed.py`
+✅ **Dispatcher Integration**: Added to `api/providers/dispatcher.py`
 ✅ **TOML Configuration**: Added to `config/providers.toml`
 ✅ **Environment Variable**: Added to `.env.local`
 
@@ -77,7 +77,7 @@ sk-yigcnsvlduucoypunlpacsrjesrkpktjllbixtptwzzgiwiy
    - `deploy-gcp-chat.sh` ✅
    - `start_backend.sh` ✅
    - `test_providers_quick.py` ✅
-   - `api/providers/dispatcher_fixed.py` ✅
+   - `api/providers/dispatcher.py` ✅
 
 2. **SSH Access** (if needed):
    ```bash
@@ -174,7 +174,7 @@ python3 benchmark_providers.py
 ### Modified Files
 - `.env.local` - Added SILICONEFLOW_API_KEY
 - `config/providers.toml` - Added SiliconeFlow configuration
-- `api/providers/dispatcher_fixed.py` - Integrated SiliconeFlow
+- `api/providers/dispatcher.py` - Integrated SiliconeFlow
 - `api/config/providers.py` - Added SiliconeFlow settings
 
 ---

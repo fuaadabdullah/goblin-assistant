@@ -6,7 +6,6 @@ import os
 import asyncio
 import logging
 from typing import List, Optional, Dict, Any
-import httpx
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import text
 from sqlalchemy.orm import selectinload
@@ -18,8 +17,13 @@ from ..storage.vector_models import (
 )
 from ..storage.database import get_db
 from ..providers.base import BaseProvider
+from ..utils.tokenizer import count_tokens, trim_to_tokens
 
 logger = logging.getLogger(__name__)
+
+
+class EmbeddingProviderUnavailableError(RuntimeError):
+    """Raised when embedding provider is unavailable or unsupported."""
 
 # Provider name → (module path, class name, default config)
 _EMBEDDING_PROVIDERS: Dict[str, tuple] = {
@@ -70,7 +74,7 @@ def _resolve_embedding_provider() -> BaseProvider:
     # Import provider class
     import importlib
 
-    mod = importlib.import_module(module_path, package=__name__)
+    mod = importlib.import_module(module_path, package=__package__)
     provider_cls = getattr(mod, class_name)
 
     return provider_cls(default_config)
@@ -82,60 +86,121 @@ class EmbeddingService:
     _warned_unavailable = False
 
     def __init__(self):
+        self.provider_name = os.getenv("EMBEDDING_PROVIDER", "openai").lower()
         self.client = _resolve_embedding_provider()
         self.model = os.getenv("EMBEDDING_MODEL", "text-embedding-3-small")
         self.dimension = int(os.getenv("EMBEDDING_DIMENSION", "1536"))
+        self.max_input_tokens = int(os.getenv("EMBEDDING_MAX_INPUT_TOKENS", "8000"))
+        self._degraded_mode = False
+        self._degraded_reason: Optional[str] = None
+        self._validate_embed_capability()
+
+    def _validate_embed_capability(self) -> None:
+        provider_embed = getattr(self.client.__class__, "embed", None)
+        if provider_embed is None or provider_embed is BaseProvider.embed:
+            self._mark_degraded(
+                f"embedding provider '{self.provider_name}' does not implement embed()"
+            )
+
+    def _mark_degraded(self, reason: str) -> None:
+        self._degraded_mode = True
+        self._degraded_reason = reason
+
+    def clear_degraded(self) -> None:
+        self._degraded_mode = False
+        self._degraded_reason = None
+
+    def get_degraded_status(self) -> Dict[str, Any]:
+        return {
+            "degraded_mode": self._degraded_mode,
+            "reason": self._degraded_reason,
+            "provider": self.provider_name,
+            "model": self.model,
+        }
 
     async def embed_text(self, text: str) -> List[float]:
         """Generate embedding for a single text"""
         if not text or not text.strip():
             return []
 
-        # Truncate text if too long (OpenAI has 8191 token limit)
-        max_tokens = 8000
-        if len(text) > max_tokens:
-            text = text[:max_tokens]
+        if self._degraded_mode:
+            raise EmbeddingProviderUnavailableError(
+                self._degraded_reason or "embedding provider unavailable"
+            )
+
+        original_tokens = count_tokens(text)
+        text = trim_to_tokens(text, max_tokens=self.max_input_tokens)
+        trimmed_tokens = count_tokens(text)
 
         try:
             # Use the provider's embed method
             embedding = await self.client.embed(texts=text, model=self.model)
+            self.clear_degraded()
+
+            if original_tokens > self.max_input_tokens:
+                logger.info(
+                    "Embedding input trimmed by token budget",
+                    extra={
+                        "provider": self.provider_name,
+                        "model": self.model,
+                        "original_tokens": original_tokens,
+                        "trimmed_tokens": trimmed_tokens,
+                        "max_input_tokens": self.max_input_tokens,
+                    },
+                )
+
             return embedding if isinstance(embedding, list) else []
 
         except Exception as e:
+            reason = (
+                f"embedding provider '{self.provider_name}' failed for model "
+                f"'{self.model}': {e}"
+            )
+            self._mark_degraded(reason)
             if not EmbeddingService._warned_unavailable:
                 EmbeddingService._warned_unavailable = True
                 logger.warning(
-                    "Embedding provider unavailable — RAG system will return "
-                    "empty results until this is resolved. Error: %s",
-                    e,
+                    "Embedding provider unavailable — semantic retrieval is in degraded mode. Error: %s",
+                    reason,
                 )
             else:
-                logger.debug("Embedding generation failed: %s", e)
-            return []
+                logger.debug("Embedding generation failed: %s", reason)
+
+            raise EmbeddingProviderUnavailableError(reason) from e
 
     async def embed_batch(self, texts: List[str]) -> List[List[float]]:
         """Generate embeddings for multiple texts efficiently"""
         if not texts:
             return []
 
+        if self._degraded_mode:
+            raise EmbeddingProviderUnavailableError(
+                self._degraded_reason or "embedding provider unavailable"
+            )
+
         # Filter out empty texts
-        texts = [text for text in texts if text and text.strip()]
+        texts = [
+            trim_to_tokens(text, max_tokens=self.max_input_tokens)
+            for text in texts
+            if text and text.strip()
+        ]
         if not texts:
             return []
 
         try:
             # Use the provider's embed method for batching
             embeddings = await self.client.embed(texts=texts, model=self.model)
+            self.clear_degraded()
             return embeddings if isinstance(embeddings, list) else []
 
         except Exception as e:
-            logger.warning("Batch embedding failed, falling back to sequential: %s", e)
-            # Fallback to sequential processing
-            embeddings = []
-            for text in texts:
-                embedding = await self.embed_text(text)
-                embeddings.append(embedding)
-            return embeddings
+            reason = (
+                f"batch embedding failed for provider '{self.provider_name}' "
+                f"model '{self.model}': {e}"
+            )
+            self._mark_degraded(reason)
+            logger.warning(reason)
+            raise EmbeddingProviderUnavailableError(reason) from e
 
     async def store_message_embedding(
         self,

@@ -4,6 +4,7 @@ import { useRouter } from 'next/router';
 import { queryKeys } from '../lib/query-keys';
 import { persistAuthSession } from '../utils/auth-session';
 import { resolvePublicBackendOrigin } from '../config/backendOrigin';
+import { devError } from '@/utils/dev-log';
 
 const GoogleCallback: React.FC = () => {
   const router = useRouter();
@@ -20,13 +21,13 @@ const GoogleCallback: React.FC = () => {
       const errorValue = oauthError as string | undefined;
 
       if (errorValue) {
-        console.error('OAuth error:', errorValue);
+        devError('OAuth error:', errorValue);
         router.push('/login?error=oauth_failed');
         return;
       }
 
       if (!codeValue) {
-        console.error('No authorization code received');
+        devError('No authorization code received');
         router.push('/login?error=no_code');
         return;
       }
@@ -67,6 +68,7 @@ const GoogleCallback: React.FC = () => {
 
         persistAuthSession({
           token: tokenValue,
+          refreshToken: authData?.refresh_token,
           user: userInfo,
           expiresIn: authData?.expires_in,
         });
@@ -80,7 +82,7 @@ const GoogleCallback: React.FC = () => {
         // Navigate to chat
         router.push('/chat');
       } catch (err) {
-        console.error('OAuth callback error:', err);
+        devError('OAuth callback error:', err);
         router.push('/login?error=callback_failed');
       }
     };

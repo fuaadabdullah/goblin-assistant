@@ -1,65 +1,65 @@
-import { devLog, devWarn, devError } from '../dev-log';
+import {
+  devDebug,
+  devError,
+  devInfo,
+  devLog,
+  devWarn,
+} from '../dev-log';
 
-describe('Development Logging Utilities', () => {
+describe('development logging utilities', () => {
+  const originalNodeEnv = process.env.NODE_ENV;
   let consoleLogSpy: jest.SpyInstance;
+  let consoleInfoSpy: jest.SpyInstance;
   let consoleWarnSpy: jest.SpyInstance;
   let consoleErrorSpy: jest.SpyInstance;
+  let consoleDebugSpy: jest.SpyInstance;
 
   beforeEach(() => {
     consoleLogSpy = jest.spyOn(console, 'log').mockImplementation();
+    consoleInfoSpy = jest.spyOn(console, 'info').mockImplementation();
     consoleWarnSpy = jest.spyOn(console, 'warn').mockImplementation();
     consoleErrorSpy = jest.spyOn(console, 'error').mockImplementation();
+    consoleDebugSpy = jest.spyOn(console, 'debug').mockImplementation();
   });
 
   afterEach(() => {
+    process.env.NODE_ENV = originalNodeEnv;
     consoleLogSpy.mockRestore();
+    consoleInfoSpy.mockRestore();
     consoleWarnSpy.mockRestore();
     consoleErrorSpy.mockRestore();
+    consoleDebugSpy.mockRestore();
   });
 
-  describe('devLog', () => {
-    it('should call console.log in development', () => {
-      const originalEnv = process.env.NODE_ENV;
-      process.env.NODE_ENV = 'development';
+  it('emits all dev helpers outside production', () => {
+    process.env.NODE_ENV = 'development';
 
-      devLog('test message', { data: 'value' });
+    devLog('log');
+    devInfo('info');
+    devWarn('warn');
+    devError('error');
+    devDebug('debug');
 
-      // In development, devLog should output
-      if (process.env.NODE_ENV === 'development') {
-        expect(consoleLogSpy).toHaveBeenCalled();
-      }
-
-      process.env.NODE_ENV = originalEnv;
-    });
-
-    it('should accept multiple arguments', () => {
-      devLog('message 1', 'message 2', { key: 'value' });
-      // Should not throw
-    });
+    expect(consoleLogSpy).toHaveBeenCalledWith('log');
+    expect(consoleInfoSpy).toHaveBeenCalledWith('info');
+    expect(consoleWarnSpy).toHaveBeenCalledWith('warn');
+    expect(consoleErrorSpy).toHaveBeenCalledWith('error');
+    expect(consoleDebugSpy).toHaveBeenCalledWith('debug');
   });
 
-  describe('devWarn', () => {
-    it('should call console.warn in development', () => {
-      devWarn('warning message');
-      // Should not throw
-    });
+  it('suppresses all dev helpers in production', () => {
+    process.env.NODE_ENV = 'production';
 
-    it('should handle multiple arguments', () => {
-      devWarn('warn 1', 'warn 2', { issue: 'found' });
-      // Should not throw
-    });
-  });
+    devLog('log');
+    devInfo('info');
+    devWarn('warn');
+    devError('error');
+    devDebug('debug');
 
-  describe('devError', () => {
-    it('should call console.error in development', () => {
-      devError('error message');
-      // Should not throw
-    });
-
-    it('should handle error objects', () => {
-      const error = new Error('Test error');
-      devError('Error occurred:', error);
-      // Should not throw
-    });
+    expect(consoleLogSpy).not.toHaveBeenCalled();
+    expect(consoleInfoSpy).not.toHaveBeenCalled();
+    expect(consoleWarnSpy).not.toHaveBeenCalled();
+    expect(consoleErrorSpy).not.toHaveBeenCalled();
+    expect(consoleDebugSpy).not.toHaveBeenCalled();
   });
 });

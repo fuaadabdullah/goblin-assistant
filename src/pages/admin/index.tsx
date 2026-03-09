@@ -1,5 +1,6 @@
 import dynamic from 'next/dynamic';
 import AdminLayout from '../../layout/AdminLayout';
+import { withRouteErrorBoundary } from '../../components/RouteBoundary';
 
 const EnhancedDashboard = dynamic(
   () => import('../../components/EnhancedDashboard'),
@@ -16,10 +17,17 @@ const EnhancedDashboard = dynamic(
   }
 );
 
+const AdminDashboardContent = withRouteErrorBoundary(
+  function AdminDashboardContent() {
+    return <EnhancedDashboard />;
+  },
+  'adminIndex'
+);
+
 export default function Admin() {
   return (
     <AdminLayout mainId="main-content" mainLabel="Admin Dashboard">
-      <EnhancedDashboard />
+      <AdminDashboardContent />
     </AdminLayout>
   );
 }

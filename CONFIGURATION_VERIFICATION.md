@@ -232,7 +232,7 @@ curl -X POST https://goblin-backend.fly.dev/api/chat \
 
 ### Python Files ✅
 - [x] `/apps/goblin-assistant/test_providers_quick.py` - Updated all IPs
-- [x] `/apps/goblin-assistant/api/providers/dispatcher_fixed.py` - Updated IP
+- [x] `/apps/goblin-assistant/api/providers/dispatcher.py` - Updated IP
 
 ### Documentation ✅
 - [x] `/apps/goblin-assistant/AI_PROVIDER_INTEGRATION_REPORT.md` - Updated

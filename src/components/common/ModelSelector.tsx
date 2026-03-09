@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { runtimeClient } from '@/api/api-client';
+import { runtimeClient } from '@/api';
 import type { ProviderModelOption } from '@/types/api';
 import {
   Select,
@@ -8,6 +8,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/Select';
+import { devError } from '@/utils/dev-log';
 
 interface Props {
   provider?: string;
@@ -29,7 +30,7 @@ const ModelSelector: React.FC<Props> = ({ provider, selected, onChange }) => {
           if (!isMounted) return;
           setModels(modelOptions);
         } catch (error) {
-          console.error(error);
+          devError('Failed to load provider models:', error);
           if (!isMounted) return;
           setModels([]);
         } finally {

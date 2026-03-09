@@ -25,7 +25,7 @@ SiliconeFlow is a high-performance AI inference platform that provides:
 
 **Files Modified:**
 - `api/config/providers.py` - Added SiliconeFlow configuration
-- `api/providers/dispatcher_fixed.py` - Integrated SiliconeFlow into provider routing
+- `api/providers/dispatcher.py` - Integrated SiliconeFlow into provider routing
 - `api/routing_router.py` - Added SiliconeFlow to available providers list
 - `.env.example` - Added SILICONEFLOW_API_KEY configuration
 
@@ -242,7 +242,7 @@ apps/goblin-assistant/
 │   ├── config/
 │   │   └── providers.py          # Provider configurations (modified)
 │   └── providers/
-│       ├── dispatcher_fixed.py   # Provider dispatcher (modified)
+│       ├── dispatcher.py         # Provider dispatcher (modified)
 │       ├── siliconeflow.py       # SiliconeFlow provider (new)
 │       ├── base.py               # Base provider class
 │       ├── openai.py

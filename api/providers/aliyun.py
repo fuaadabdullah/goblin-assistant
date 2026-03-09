@@ -15,7 +15,9 @@ from .base import BaseProvider
 class AliyunProvider(BaseProvider):
     """Aliyun DashScope provider (OpenAI-compatible)."""
 
-    ENDPOINT = os.getenv("DASHSCOPE_ENDPOINT", "https://dashscope-intl.aliyuncs.com/compatible-mode/v1")
+    DEFAULT_ENDPOINT = os.getenv(
+        "DASHSCOPE_ENDPOINT", "https://dashscope-intl.aliyuncs.com/compatible-mode/v1"
+    )
 
     MODEL_MAP = {
         "qwen-turbo": "qwen-turbo",
@@ -27,8 +29,9 @@ class AliyunProvider(BaseProvider):
 
     def __init__(self, config: Dict[str, Any]):
         config.setdefault("api_key_env", "DASHSCOPE_API_KEY")
-        config.setdefault("endpoint", self.ENDPOINT)
+        config.setdefault("endpoint", self.DEFAULT_ENDPOINT)
         super().__init__(config)
+        self.dashscope_endpoint = self.endpoint.rstrip("/")
         self.default_model = config.get("default_model", "qwen-turbo")
 
     async def invoke(
@@ -43,7 +46,7 @@ class AliyunProvider(BaseProvider):
         if not api_key:
             return {"ok": False, "error": "missing-dashscope-api-key", "latency_ms": 0}
 
-        url = f"{self.ENDPOINT}/chat/completions"
+        url = f"{self.dashscope_endpoint}/chat/completions"
         headers = {
             "Authorization": f"Bearer {api_key}",
             "Content-Type": "application/json",

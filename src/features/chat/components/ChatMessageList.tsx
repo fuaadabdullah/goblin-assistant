@@ -7,6 +7,7 @@ import StreamingMessage from './StreamingMessage';
 import MessageTimestamp from './MessageTimestamp';
 import MessageActions from './MessageActions';
 import ChatEmptyState from './ChatEmptyState';
+import { formatCost } from '@/utils/format-cost';
 
 interface ChatMessageListProps {
   /** Conversation messages in display order. */
@@ -94,8 +95,8 @@ const ChatMessageList = ({
         aria-relevant="additions"
         className="space-y-5"
       >
-        {messageList.map((msg, idx) => {
-          const messageId = msg.id || `msg-${idx}`;
+        {messageList.map((msg) => {
+          const messageId = msg.id;
           const isUser = msg.role === 'user';
           const detailsId = `msg-details-${messageId}`;
           const isStreaming = streamingMessageId === messageId && isSending;
@@ -109,12 +110,12 @@ const ChatMessageList = ({
           const computedTokens = (usage?.input_tokens || 0) + (usage?.output_tokens || 0);
           const tokens = usage?.total_tokens ?? (computedTokens > 0 ? computedTokens : undefined);
           const cost = typeof msg.meta?.cost_usd === 'number' ? msg.meta.cost_usd : undefined;
-          const costLabel = cost !== undefined ? `$${cost.toFixed(4)}` : '—';
+          const costLabel = cost !== undefined ? formatCost(cost, { mode: 'per-message' }) : '—';
           const approx = msg.meta?.cost_is_approx ? ' (approx)' : '';
 
           return (
             <li
-              key={idx}
+              key={messageId}
               className={`flex ${isUser ? 'justify-end' : 'justify-start'} group`}
             >
               <div className={`max-w-[80%] ${isUser ? 'text-right' : 'text-left'}`}>

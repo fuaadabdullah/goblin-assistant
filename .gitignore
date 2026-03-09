@@ -3,6 +3,9 @@
 
 # Environment
 .vercel
+.env
+.env.*
+!.env.example
 .env*.local
 .env.local*
 .env.production*
@@ -10,9 +13,17 @@
 .env.vercel*
 
 # Backups
+*.bak
 *.bak/
-src.bak/
-app.bak/
+*.backup
+*.tmp
+*.orig
+*.swp
+
+# Database
+*.db
+*.sqlite
+*.sqlite3
 
 # Dependencies
 node_modules/

@@ -1,19 +1,19 @@
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel
 from typing import List, Optional, Dict, Any
-import sys
-import os
-
-# Add the src directory to the path so we can import the routing module
-sys.path.append(os.path.join(os.path.dirname(__file__), "..", "src"))
+import asyncio
 
 try:
-    from routing.router import top_providers_for, route_task, route_task_sync
+    from .routing.router import top_providers_for, route_task
 except ImportError:
     # Fallback if routing module is not available
     def top_providers_for(
-        capability: str, prefer_local=False, prefer_cost=False, limit=6
+        capability: str,
+        prefer_local: bool = False,
+        prefer_cost: bool = False,
+        limit: int = 6,
     ) -> List[str]:
+        _ = (capability, prefer_local, prefer_cost, limit)
         return ["openai", "anthropic", "gemini", "ollama"]
 
     async def route_task(
@@ -24,9 +24,12 @@ except ImportError:
         max_retries: int = 2,
         stream: bool = False,
     ) -> Dict[str, Any]:
+        _ = (task_type, payload, prefer_local, prefer_cost, max_retries, stream)
+        await asyncio.sleep(0)
         return {"ok": False, "error": "Routing system not available", "fallback": True}
 
     def route_task_sync(*args, **kwargs) -> Dict[str, Any]:
+        _ = (args, kwargs)
         return {"ok": False, "error": "Routing system not available"}
 
 
@@ -64,7 +67,7 @@ async def get_available_providers():
         result = list(set(providers))  # Remove duplicates
         print(f"DEBUG: Final providers: {result}")
         return result
-    except Exception:
+    except (RuntimeError, ValueError, TypeError):
         print("DEBUG: Exception in get_available_providers")
         # Fallback to basic providers if routing system fails
         return [
@@ -83,7 +86,7 @@ async def get_providers_for_capability(capability: str):
     """Get providers that support a specific capability"""
     try:
         return top_providers_for(capability)
-    except Exception:
+    except (RuntimeError, ValueError, TypeError):
         return ["openai", "anthropic"]  # Fallback
 
 
@@ -104,11 +107,11 @@ async def route_request(request: RouteRequest):
         result = await route_task(
             task_type=request.task_type,
             payload=request.payload,
-            prefer_local=request.prefer_local,
-            prefer_cost=request.prefer_cost,
-            max_retries=request.max_retries,
-            stream=request.stream,
+            prefer_local=bool(request.prefer_local),
+            prefer_cost=bool(request.prefer_cost),
+            max_retries=int(request.max_retries or 2),
+            stream=bool(request.stream),
         )
         return result
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Routing failed: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Routing failed: {str(e)}") from e

@@ -3,6 +3,12 @@ import { ProviderCardSkeleton } from '../../../../components/LoadingSkeleton';
 import type { ProviderConfig } from '../../../../hooks/api/useSettings';
 import type { DragEvent } from 'react';
 
+const PROVIDER_SKELETON_KEYS = [
+  'provider-skeleton-primary',
+  'provider-skeleton-secondary',
+  'provider-skeleton-tertiary',
+] as const;
+
 export default function ProviderSidebar({
   providers,
   isLoading,
@@ -89,8 +95,8 @@ export default function ProviderSidebar({
 
         {isLoading ? (
           <div className="space-y-2" role="status" aria-label="Loading providers">
-            {[1, 2, 3].map(i => (
-              <ProviderCardSkeleton key={i} />
+            {PROVIDER_SKELETON_KEYS.map((placeholderKey) => (
+              <ProviderCardSkeleton key={placeholderKey} />
             ))}
             <span className="sr-only">Loading providers...</span>
           </div>

@@ -2,6 +2,7 @@ import { useState, useEffect, useRef } from 'react';
 // CSS is imported globally in _app.tsx
 import Button from '@/components/ui/Button';
 import { TokenChunk, getNewChunk, toTokenChunk } from './streamingUtils';
+import { devError } from '@/utils/dev-log';
 
 interface Props {
   streamingText: string;
@@ -55,9 +56,10 @@ export default function StreamingView({ streamingText, isStreaming = false }: Pr
 
     return (
       <div className="streaming-output tokenized">
-        {tokens.map((token, index) => (
+        {tokens.map((token) => (
           <span
-            key={index}
+            key={token.index}
+            data-token-index={token.index}
             className={`token ${token.isCode ? 'code-token' : 'text-token'}`}
           >
             {token.text}
@@ -72,7 +74,7 @@ export default function StreamingView({ streamingText, isStreaming = false }: Pr
       await navigator.clipboard.writeText(currentText);
       // Could add a toast notification here
     } catch (err) {
-      console.error('Failed to copy:', err);
+      devError('Failed to copy:', err);
     }
   };
 

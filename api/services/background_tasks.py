@@ -14,7 +14,7 @@ from ..storage.models import ConversationModel, MessageModel
 from ..storage.conversations import conversation_store
 from .retrieval_service import RetrievalService, retrieval_service as _retrieval_singleton
 from .embedding_service import embedding_worker
-from ..providers.dispatcher_fixed import invoke_provider
+from ..providers.dispatcher import invoke_provider
 
 logger = logging.getLogger(__name__)
 

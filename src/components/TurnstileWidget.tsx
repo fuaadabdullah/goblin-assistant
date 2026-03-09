@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
+import { devError, devWarn } from '@/utils/dev-log';
 
 interface TurnstileWidgetProps {
   siteKey: string;
@@ -55,7 +56,7 @@ export default function TurnstileWidget({
     };
 
     script.onerror = () => {
-      console.error('Failed to load Turnstile script');
+      devError('Failed to load Turnstile script');
       onError?.('Failed to load bot protection');
     };
 
@@ -80,11 +81,11 @@ export default function TurnstileWidget({
           onVerify(token);
         },
         'error-callback': () => {
-          console.error('Turnstile verification failed');
+          devError('Turnstile verification failed');
           onError?.('Bot verification failed');
         },
         'expired-callback': () => {
-          console.warn('Turnstile token expired');
+          devWarn('Turnstile token expired');
           onError?.('Verification expired, please try again');
         },
         theme: theme,
@@ -92,7 +93,7 @@ export default function TurnstileWidget({
         appearance: 'always',
       });
     } catch (error) {
-      console.error('Error rendering Turnstile:', error);
+      devError('Error rendering Turnstile:', error);
       onError?.('Failed to initialize bot protection');
     }
   }, [isLoaded, siteKey, onVerify, mode, theme, size, onError]);

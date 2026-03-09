@@ -1,4 +1,4 @@
-import { api } from '../api/http-client';
+import { api } from '@/api';
 
 /**
  * Raptor Mini service - controls the local Raptor LLM assistant

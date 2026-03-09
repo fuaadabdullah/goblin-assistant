@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import TwoColumnLayout from '../components/TwoColumnLayout';
-import { apiClient } from '../lib/api';
+import { apiClient } from '@/api';
 import { queryKeys } from '../lib/query-keys';
 import { Button, Alert } from '../components/ui';
 import { ListSkeleton } from '../components/LoadingSkeleton';

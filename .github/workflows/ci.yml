@@ -15,6 +15,8 @@ on:
 env:
   NODE_VERSION: '20'
   PYTHON_VERSION: '3.11'
+  VERCEL_ORG_ID: ${{ vars.VERCEL_ORG_ID }}
+  VERCEL_PROJECT_ID: ${{ vars.VERCEL_PROJECT_ID }}
 
 jobs:
   # ------------------------------------------------------------------------------
@@ -38,6 +40,12 @@ jobs:
         run: |
           cd apps/goblin-assistant
           npm ci
+
+      - name: Verify frontend toolchain binaries
+        run: |
+          cd apps/goblin-assistant
+          npx next --version
+          node -e "require.resolve('next/package.json'); console.log('next dependency resolved')"
 
       - name: Run ESLint
         run: |
@@ -229,7 +237,6 @@ jobs:
         run: |
           cd apps/goblin-assistant
           npm run test:e2e
-        continue-on-error: true
 
       - name: Upload E2E test results
         uses: actions/upload-artifact@v4
@@ -286,7 +293,7 @@ jobs:
           echo "  - ✅ E2E tests (if applicable)"
 
   # ------------------------------------------------------------------------------
-  # Deployment (Simulation)
+  # Deployment
   # ------------------------------------------------------------------------------
   deploy-preview:
     name: Deploy Preview
@@ -294,21 +301,79 @@ jobs:
     needs: [quality-gate]
     if: github.event_name == 'pull_request' && needs.quality-gate.result == 'success'
     environment: preview
+    permissions:
+      contents: read
+      pull-requests: write
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
 
-      - name: Download build artifacts
-        uses: actions/download-artifact@v4
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
         with:
-          name: goblin-assistant-build
-          path: ./dist
+          node-version: ${{ env.NODE_VERSION }}
 
-      - name: Deploy to preview environment
+      - name: Validate Vercel configuration
         run: |
-          echo "🚀 Deploying to preview environment..."
-          echo "Preview URL: https://goblin-assistant-preview-${{ github.event.number }}.vercel.app"
-          echo "✅ Preview deployment ready for review"
+          if [[ -z "${{ secrets.VERCEL_TOKEN }}" ]]; then
+            echo "❌ Missing required secret: VERCEL_TOKEN"
+            exit 1
+          fi
+          if [[ -z "${{ env.VERCEL_ORG_ID }}" || -z "${{ env.VERCEL_PROJECT_ID }}" ]]; then
+            echo "❌ Missing required repository variables: VERCEL_ORG_ID and/or VERCEL_PROJECT_ID"
+            exit 1
+          fi
+
+      - name: Install Vercel CLI
+        run: npm install --global vercel@latest
+
+      - name: Deploy preview to Vercel
+        id: deploy_preview
+        run: |
+          cd apps/goblin-assistant
+          vercel pull --yes --environment=preview --token=${{ secrets.VERCEL_TOKEN }}
+          PREVIEW_URL=$(vercel deploy --token=${{ secrets.VERCEL_TOKEN }})
+          echo "✅ Preview deployment ready"
+          echo "Preview URL: ${PREVIEW_URL}"
+          echo "preview_url=${PREVIEW_URL}" >> "$GITHUB_OUTPUT"
+
+      - name: Comment preview URL on PR
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const marker = '<!-- goblin-assistant-preview-url -->';
+            const previewUrl = `${{ steps.deploy_preview.outputs.preview_url }}`;
+            const body = `${marker}\n🚀 **Preview deployment is ready**\n\n🔗 ${previewUrl}`;
+
+            const { owner, repo } = context.repo;
+            const issue_number = context.issue.number;
+
+            const comments = await github.paginate(github.rest.issues.listComments, {
+              owner,
+              repo,
+              issue_number,
+              per_page: 100,
+            });
+
+            const existing = comments.find(
+              (comment) => comment.user?.type === 'Bot' && comment.body?.includes(marker),
+            );
+
+            if (existing) {
+              await github.rest.issues.updateComment({
+                owner,
+                repo,
+                comment_id: existing.id,
+                body,
+              });
+            } else {
+              await github.rest.issues.createComment({
+                owner,
+                repo,
+                issue_number,
+                body,
+              });
+            }
 
   deploy-production:
     name: Deploy Production
@@ -320,14 +385,29 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
 
-      - name: Download build artifacts
-        uses: actions/download-artifact@v4
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
         with:
-          name: goblin-assistant-build
-          path: ./dist
+          node-version: ${{ env.NODE_VERSION }}
 
-      - name: Deploy to production
+      - name: Validate Vercel configuration
         run: |
-          echo "🚀 Deploying to production..."
-          echo "Production URL: https://goblin-assistant.vercel.app"
+          if [[ -z "${{ secrets.VERCEL_TOKEN }}" ]]; then
+            echo "❌ Missing required secret: VERCEL_TOKEN"
+            exit 1
+          fi
+          if [[ -z "${{ env.VERCEL_ORG_ID }}" || -z "${{ env.VERCEL_PROJECT_ID }}" ]]; then
+            echo "❌ Missing required repository variables: VERCEL_ORG_ID and/or VERCEL_PROJECT_ID"
+            exit 1
+          fi
+
+      - name: Install Vercel CLI
+        run: npm install --global vercel@latest
+
+      - name: Deploy production to Vercel
+        run: |
+          cd apps/goblin-assistant
+          vercel pull --yes --environment=production --token=${{ secrets.VERCEL_TOKEN }}
+          PROD_URL=$(vercel deploy --prod --token=${{ secrets.VERCEL_TOKEN }})
           echo "✅ Production deployment completed"
+          echo "Production URL: ${PROD_URL}"

@@ -2,9 +2,8 @@ import React from 'react';
 import { useQuery } from '@tanstack/react-query';
 import CostBreakdownChart from '@/components/cost/CostBreakdownChart';
 import ProviderUsageChart from '@/components/cost/ProviderUsageChart';
-import { runtimeClient } from '@/api/api-client';
-
-const colors = ['#7c3aed', '#10b981', '#f59e0b', '#ef4444', '#06b6d4', '#a78bfa'];
+import { getChartPaletteColor } from '@/components/cost/chartPalette';
+import { runtimeClient } from '@/api';
 
 const DashboardContent: React.FC = () => {
   const {
@@ -21,40 +20,47 @@ const DashboardContent: React.FC = () => {
     return Object.entries(costSummary.cost_by_provider).map(([provider, cost], index) => ({
       name: provider,
       value: cost as number,
-      color: colors[index % colors.length],
+      color: getChartPaletteColor(index),
     }));
   }, [costSummary]);
 
   const usageData = React.useMemo(() => {
-    if (!costSummary?.cost_by_provider) return [];
-    return Object.entries(costSummary.cost_by_provider).map(([provider, cost]) => ({
+    const requestsByProvider = costSummary?.requests_by_provider;
+    if (!requestsByProvider) return [];
+
+    return Object.entries(requestsByProvider).map(([provider, requests]) => ({
       name: provider,
-      tasks: Math.max(1, Math.round((cost as number) * 10)), // visual approximation
+      value: requests as number,
     }));
   }, [costSummary]);
 
+  const usageMetric = usageData.length > 0 ? 'requests' : 'cost';
+  const usageFallbackData = usageMetric === 'requests'
+    ? usageData
+    : costData.map(({ name, value }) => ({ name, value }));
+
   return (
-    <div className="p-8 min-h-[400px] text-slate-100">
+    <div className="min-h-[400px] p-8 text-text">
       <div className="flex items-center justify-between mb-6">
         <h1 className="text-2xl font-bold">Dashboard</h1>
       </div>
 
       {costLoading ? (
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-          <div className="animate-pulse bg-slate-800 rounded-lg h-72" />
-          <div className="animate-pulse bg-slate-800 rounded-lg h-72" />
+          <div className="h-72 animate-pulse rounded-lg border border-border bg-surface-hover" />
+          <div className="h-72 animate-pulse rounded-lg border border-border bg-surface-hover" />
         </div>
       ) : costError ? (
-        <div className="bg-rose-900 text-rose-100 p-4 rounded-md">
+        <div className="rounded-md border border-danger/40 bg-danger/10 p-4 text-danger">
           Error loading data: {(costError as Error)?.message || String(costError)}
         </div>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-          <div className="bg-slate-900 rounded-lg p-4">
+          <div className="rounded-lg border border-border bg-surface p-4 shadow-card">
             <CostBreakdownChart data={costData} />
           </div>
-          <div className="bg-slate-900 rounded-lg p-4">
-            <ProviderUsageChart data={usageData} />
+          <div className="rounded-lg border border-border bg-surface p-4 shadow-card">
+            <ProviderUsageChart data={usageFallbackData} metric={usageMetric} />
           </div>
         </div>
       )}

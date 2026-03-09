@@ -1,39 +1,76 @@
 import { Component, ReactNode } from 'react';
 import { logErrorToService, reactErrorInfoToContext } from '../utils/monitoring';
 import { env } from '../config/env';
+import { devError } from '@/utils/dev-log';
+
+export interface ErrorBoundaryRenderProps {
+  error: Error;
+  errorId?: string;
+  reset: () => void;
+}
 
 interface Props {
   children: ReactNode;
   fallback?: ReactNode;
+  fallbackRender?: (props: ErrorBoundaryRenderProps) => ReactNode;
+  boundaryName?: string;
+  onError?: (error: Error, errorInfo: React.ErrorInfo, errorId?: string) => void;
 }
 
 interface State {
   hasError: boolean;
   error: Error | null;
+  errorId?: string;
 }
 
 export class ErrorBoundary extends Component<Props, State> {
   constructor(props: Props) {
     super(props);
-    this.state = { hasError: false, error: null };
+    this.state = { hasError: false, error: null, errorId: undefined };
   }
 
   static getDerivedStateFromError(error: Error): State {
-    return { hasError: true, error };
+    return { hasError: true, error, errorId: undefined };
   }
 
   componentDidCatch(error: Error, errorInfo: React.ErrorInfo) {
+    const context = {
+      ...reactErrorInfoToContext(errorInfo),
+      boundaryName: this.props.boundaryName,
+    };
+
+    let errorId: string | undefined;
+
     // Log to monitoring service
     if (env.isProduction) {
-      logErrorToService(error, reactErrorInfoToContext(errorInfo));
+      errorId = logErrorToService(error, context);
     } else {
-      console.error('Error caught by boundary:', error, errorInfo);
+      devError('Error caught by boundary:', error, errorInfo);
     }
+
+    this.setState({ errorId });
+    this.props.onError?.(error, errorInfo, errorId);
+  }
+
+  reset = () => {
+    this.setState({ hasError: false, error: null, errorId: undefined });
   }
 
   render() {
     if (this.state.hasError) {
-      return this.props.fallback || <ErrorBoundaryFallback error={this.state.error!} />;
+      if (this.props.fallbackRender && this.state.error) {
+        return this.props.fallbackRender({
+          error: this.state.error,
+          errorId: this.state.errorId,
+          reset: this.reset,
+        });
+      }
+
+      return (
+        this.props.fallback || (
+          <ErrorBoundaryFallback error={this.state.error!} errorId={this.state.errorId} />
+        )
+      );
     }
 
     return this.props.children;
@@ -41,7 +78,13 @@ export class ErrorBoundary extends Component<Props, State> {
 }
 
 // Safe fallback component
-export function ErrorBoundaryFallback({ error }: { error: Error }) {
+export function ErrorBoundaryFallback({
+  error,
+  errorId,
+}: {
+  error: Error;
+  errorId?: string;
+}) {
   const isDev = env.isDevelopment;
 
   return (
@@ -68,36 +111,39 @@ export function ErrorBoundaryFallback({ error }: { error: Error }) {
         </h1>
 
         <p className="text-center text-muted mb-6">
-          We're sorry, but the application encountered an error. Please try refreshing the page.
+          Goblin Assistant hit a render error before this page could finish loading.
         </p>
 
-        {/* ✅ Only show details in development */}
-        {isDev && error && (
+        {(isDev || errorId) && (
           <details className="mb-4 text-sm">
-            <summary className="cursor-pointer text-text font-medium mb-2">
-              Error Details (Development Only)
-            </summary>
-            <pre className="bg-bg p-3 rounded-lg border border-border overflow-auto text-xs text-text">
-              {/* ✅ Safe - React escapes this automatically */}
-              {error.message}
-              {'\n\n'}
-              {error.stack}
-            </pre>
+            <summary className="cursor-pointer text-text font-medium mb-2">Technical details</summary>
+            <div className="bg-bg p-3 rounded-lg border border-border overflow-auto text-xs text-text space-y-3">
+              {errorId && (
+                <p>
+                  Reference ID: <span className="font-mono">{errorId}</span>
+                </p>
+              )}
+              {error && (
+                <pre className="whitespace-pre-wrap break-words">
+                  {isDev ? `${error.message}\n\n${error.stack || ''}`.trim() : error.message}
+                </pre>
+              )}
+            </div>
           </details>
         )}
 
         <div className="flex gap-3">
           <button
-            onClick={() => window.location.reload()}
+            onClick={() => (window.location.href = '/')}
             className="flex-1 bg-primary text-text-inverse px-4 py-2 rounded-lg hover:brightness-110 transition shadow-glow-primary"
           >
-            Refresh Page
+            Go Home
           </button>
           <button
-            onClick={() => (window.location.href = '/')}
+            onClick={() => window.location.reload()}
             className="flex-1 bg-surface-hover text-text px-4 py-2 rounded-lg hover:bg-surface-active transition border border-border"
           >
-            Go Home
+            Reload App
           </button>
         </div>
       </div>

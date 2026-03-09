@@ -2,7 +2,7 @@
 SQLAlchemy models for Goblin Assistant database storage
 """
 
-from sqlalchemy import Column, String, DateTime, ForeignKey, JSON, Text
+from sqlalchemy import Column, String, DateTime, ForeignKey, JSON, Text, Boolean, text
 from sqlalchemy.orm import declarative_base, relationship
 import uuid
 from datetime import datetime
@@ -27,7 +27,7 @@ class UserModel(Base):
     created_at = Column(DateTime, default=datetime.utcnow)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
     last_login = Column(DateTime, nullable=True)
-    is_active = Column(String, default="true")  # Using string for SQLite compatibility
+    is_active = Column(Boolean, default=True, nullable=False, server_default=text("1"))
 
     # Relationships
     conversations = relationship(
@@ -106,6 +106,44 @@ class MessageModel(Base):
 
 # Import vector models to ensure relationships are properly set up
 from .vector_models import EmbeddingModel, ConversationSummaryModel, MemoryFactModel
+
+
+class TaskModel(Base):
+    """Database model for tasks"""
+
+    __tablename__ = "tasks"
+
+    task_id = Column(String, primary_key=True, default=lambda: str(uuid.uuid4()))
+    user_id = Column(String, ForeignKey("users.id"), nullable=True, index=True)
+    status = Column(String, nullable=False, default="pending")  # pending, running, completed, failed
+    task_type = Column(String, nullable=True)  # Type of task (e.g., "chat", "analysis", etc.)
+    payload = Column(JSON, default=dict)  # Task input data
+    result = Column(JSON, nullable=True)  # Task output data
+    created_at = Column(DateTime, default=datetime.utcnow)
+    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    metadata_ = Column("metadata", JSON, default=dict)
+
+    # Relationship
+    user = relationship("UserModel", foreign_keys=[user_id])
+
+
+class UserPreferencesModel(Base):
+    """Database model for user preferences"""
+
+    __tablename__ = "user_preferences"
+
+    id = Column(String, primary_key=True, default=lambda: str(uuid.uuid4()))
+    user_id = Column(String, ForeignKey("users.id"), nullable=False, unique=True, index=True)
+    default_provider = Column(String, nullable=True)
+    default_model = Column(String, nullable=True)
+    rag_consent = Column(String, default="false")  # Using string for SQLite compatibility
+    privacy_settings = Column(JSON, default=dict)
+    created_at = Column(DateTime, default=datetime.utcnow)
+    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+
+    # Relationship
+    user = relationship("UserModel", foreign_keys=[user_id])
+
 
 # Add vector relationships to existing models
 def setup_vector_relationships():

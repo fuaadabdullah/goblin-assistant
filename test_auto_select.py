@@ -5,7 +5,7 @@ import os
 # Add the API directory to Python path for imports
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "api"))
 
-from api.providers.dispatcher_fixed import dispatcher
+from api.providers.dispatcher import dispatcher
 
 
 async def test_auto_select():

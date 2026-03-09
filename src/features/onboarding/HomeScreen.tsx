@@ -53,8 +53,11 @@ const CustomerHome = ({ isAuthenticated }: { isAuthenticated: boolean }) => (
           <section className="bg-surface border border-border rounded-2xl p-6 shadow-card">
             <h2 className="text-lg font-semibold text-text mb-4">Platform Capabilities</h2>
             <div className="grid gap-3 md:grid-cols-2">
-              {HOME_VALUE_PROPS.map((capability, idx) => (
-                <div key={idx} className="rounded-xl border border-border bg-surface-hover p-4">
+              {HOME_VALUE_PROPS.map((capability) => (
+                <div
+                  key={capability.title}
+                  className="rounded-xl border border-border bg-surface-hover p-4"
+                >
                   <div className="text-lg mb-2">{capability.icon}</div>
                   <div className="text-sm font-medium text-text">{capability.title}</div>
                   <div className="text-xs text-muted mt-1">{capability.body}</div>

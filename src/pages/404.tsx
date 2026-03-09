@@ -1,1 +1,4 @@
-export { default } from '../screens/NotFoundPage';
+import NotFoundPageScreen from '../screens/NotFoundPage';
+import { withRouteErrorBoundary } from '../components/RouteBoundary';
+
+export default withRouteErrorBoundary(NotFoundPageScreen, 'notFound');

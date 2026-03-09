@@ -1,5 +1,5 @@
 import { render, screen } from '@testing-library/react';
-import { TerminalShowcase } from '../../TerminalShowcase';
+import { TerminalShowcase } from '../TerminalShowcase';
 
 describe('TerminalShowcase Component', () => {
     it('should render terminal showcase', () => {

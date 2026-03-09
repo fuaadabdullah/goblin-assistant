@@ -1,11 +1,35 @@
 // src/utils/monitoring.ts - Error monitoring with Sentry integration
 import * as Sentry from '@sentry/react';
 import { env } from '../config/env';
+import { devError } from './dev-log';
 
 interface ErrorContext {
   componentStack?: string;
   [key: string]: unknown;
 }
+
+const normalizeError = (error: unknown): Error => {
+  if (error instanceof Error) {
+    return error;
+  }
+
+  if (
+    typeof error === 'object' &&
+    error !== null &&
+    'message' in error &&
+    typeof (error as { message?: unknown }).message === 'string'
+  ) {
+    const normalized = new Error((error as { message: string }).message);
+
+    if ('stack' in error && typeof (error as { stack?: unknown }).stack === 'string') {
+      normalized.stack = (error as { stack: string }).stack;
+    }
+
+    return normalized;
+  }
+
+  return new Error(typeof error === 'string' ? error : String(error));
+};
 
 // Initialize Sentry if DSN is provided
 if (typeof window !== 'undefined' && env.isProduction && env.sentryDsn) {
@@ -27,11 +51,15 @@ if (typeof window !== 'undefined' && env.isProduction && env.sentryDsn) {
   });
 }
 
-export function logErrorToService(error: Error, context?: ErrorContext) {
+export function logErrorToService(error: unknown, context?: ErrorContext): string | undefined {
+  const normalizedError = normalizeError(error);
+
   if (env.isProduction && typeof window !== 'undefined') {
+    let errorId: string | undefined;
+
     // Send to Sentry if configured
     if (env.sentryDsn) {
-      Sentry.captureException(error, {
+      errorId = Sentry.captureException(normalizedError, {
         contexts: context ? { react: context } : undefined,
         tags: {
           component: 'frontend',
@@ -45,8 +73,8 @@ export function logErrorToService(error: Error, context?: ErrorContext) {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
-        message: error.message,
-        stack: error.stack,
+        message: normalizedError.message,
+        stack: normalizedError.stack,
         context,
         timestamp: new Date().toISOString(),
         userAgent: navigator.userAgent,
@@ -55,9 +83,13 @@ export function logErrorToService(error: Error, context?: ErrorContext) {
     }).catch(() => {
       // Silent fail - don't break app if logging fails
     });
+
+    return errorId;
   } else {
-    console.error('Error logged:', error, context);
+    devError('Error logged:', normalizedError, context);
   }
+
+  return undefined;
 }
 
 // Helper to convert React ErrorInfo to our ErrorContext

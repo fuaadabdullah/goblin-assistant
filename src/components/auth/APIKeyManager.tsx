@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { runtimeClient } from '@/api/api-client';
+import { runtimeClient } from '@/api';
 
 interface Props {
   providers: string[];

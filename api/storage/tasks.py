@@ -82,62 +82,129 @@ class TaskStore:
         await self.save_task(task_id, task)
         return True
 
-    # Database implementation methods (placeholders for now)
+    # Database implementation methods
     async def _get_task_from_db(self, task_id: str) -> Optional[Dict[str, Any]]:
         """Retrieve task from database."""
-        # TODO: Implement with SQLAlchemy or similar
-        # Example:
-        # async with self._get_db_session() as session:
-        #     result = await session.execute(
-        #         select(Task).where(Task.id == task_id)
-        #     )
-        #     task = result.scalar_one_or_none()
-        #     return task.to_dict() if task else None
-        return None
+        try:
+            from .models import TaskModel
+            from .database import get_db_context
+            from sqlalchemy import select
+
+            async with get_db_context() as session:
+                result = await session.execute(
+                    select(TaskModel).where(TaskModel.task_id == task_id)
+                )
+                task = result.scalar_one_or_none()
+                if task:
+                    return {
+                        "task_id": task.task_id,
+                        "user_id": task.user_id,
+                        "status": task.status,
+                        "task_type": task.task_type,
+                        "payload": task.payload,
+                        "result": task.result,
+                        "created_at": task.created_at.isoformat(),
+                        "updated_at": task.updated_at.isoformat(),
+                        "metadata": task.metadata_,
+                    }
+                return None
+        except Exception as e:
+            print(f"Error retrieving task from database: {e}")
+            return None
 
     async def _save_task_to_db(self, task_id: str, task_data: Dict[str, Any]) -> None:
         """Save task to database."""
-        # TODO: Implement with SQLAlchemy or similar
-        # Example:
-        # async with self._get_db_session() as session:
-        #     task = Task(id=task_id, **task_data)
-        #     await session.merge(task)  # Insert or update
-        #     await session.commit()
-        pass
+        try:
+            from .models import TaskModel
+            from .database import get_db_context
+            from sqlalchemy import select
+
+            async with get_db_context() as session:
+                # Check if task exists
+                result = await session.execute(
+                    select(TaskModel).where(TaskModel.task_id == task_id)
+                )
+                task = result.scalar_one_or_none()
+
+                if task:
+                    # Update existing task
+                    task.status = task_data.get("status", task.status)
+                    task.task_type = task_data.get("task_type", task.task_type)
+                    task.payload = task_data.get("payload", task.payload)
+                    task.result = task_data.get("result", task.result)
+                    task.updated_at = datetime.utcnow()
+                    task.metadata_ = task_data.get("metadata", task.metadata_)
+                else:
+                    # Create new task
+                    task = TaskModel(
+                        task_id=task_id,
+                        user_id=task_data.get("user_id"),
+                        status=task_data.get("status", "pending"),
+                        task_type=task_data.get("task_type"),
+                        payload=task_data.get("payload", {}),
+                        result=task_data.get("result"),
+                        created_at=datetime.fromisoformat(task_data["created_at"]) if "created_at" in task_data else datetime.utcnow(),
+                        updated_at=datetime.fromisoformat(task_data["updated_at"]) if "updated_at" in task_data else datetime.utcnow(),
+                        metadata_=task_data.get("metadata", {}),
+                    )
+                    session.add(task)
+        except Exception as e:
+            print(f"Error saving task to database: {e}")
 
     async def _delete_task_from_db(self, task_id: str) -> bool:
         """Delete task from database."""
-        # TODO: Implement with SQLAlchemy or similar
-        # Example:
-        # async with self._get_db_session() as session:
-        #     result = await session.execute(
-        #         delete(Task).where(Task.id == task_id)
-        #     )
-        #     await session.commit()
-        #     return result.rowcount > 0
-        return False
+        try:
+            from .models import TaskModel
+            from .database import get_db_context
+            from sqlalchemy import delete
+
+            async with get_db_context() as session:
+                result = await session.execute(
+                    delete(TaskModel).where(TaskModel.task_id == task_id)
+                )
+                return result.rowcount > 0
+        except Exception as e:
+            print(f"Error deleting task from database: {e}")
+            return False
 
     async def _list_tasks_from_db(
         self, status: Optional[str] = None, limit: int = 100
     ) -> List[Dict[str, Any]]:
         """List tasks from database."""
-        # TODO: Implement with SQLAlchemy or similar
-        # Example:
-        # async with self._get_db_session() as session:
-        #     query = select(Task).order_by(Task.created_at.desc()).limit(limit)
-        #     if status:
-        #         query = query.where(Task.status == status)
-        #     result = await session.execute(query)
-        #     tasks = result.scalars().all()
-        #     return [task.to_dict() for task in tasks]
-        return []
+        try:
+            from .models import TaskModel
+            from .database import get_db_context
+            from sqlalchemy import select, desc
+
+            async with get_db_context() as session:
+                query = select(TaskModel).order_by(desc(TaskModel.created_at)).limit(limit)
+                if status:
+                    query = query.where(TaskModel.status == status)
+                result = await session.execute(query)
+                tasks = result.scalars().all()
+                return [
+                    {
+                        "task_id": task.task_id,
+                        "user_id": task.user_id,
+                        "status": task.status,
+                        "task_type": task.task_type,
+                        "payload": task.payload,
+                        "result": task.result,
+                        "created_at": task.created_at.isoformat(),
+                        "updated_at": task.updated_at.isoformat(),
+                        "metadata": task.metadata_,
+                    }
+                    for task in tasks
+                ]
+        except Exception as e:
+            print(f"Error listing tasks from database: {e}")
+            return []
 
     @contextmanager
     def _get_db_session(self):
-        """Context manager for database sessions."""
-        # TODO: Implement with SQLAlchemy or similar
-        # This would yield a database session
-        # For now, just yield None as placeholder
+        """Context manager for database sessions (deprecated - use get_db_context instead)."""
+        # This method is deprecated in favor of using get_db_context() directly
+        # Kept for backward compatibility
         yield None
 
 

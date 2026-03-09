@@ -1,63 +1,67 @@
 import { renderHook, act } from '@testing-library/react';
 import { useCostClipboard } from '../useCostClipboard';
 
-describe('useCostClipboard Hook', () => {
+describe('useCostClipboard', () => {
   beforeEach(() => {
-    // Mock clipboard API
     Object.defineProperty(navigator, 'clipboard', {
       value: {
-        writeText: jest.fn(),
+        writeText: jest.fn().mockResolvedValue(undefined),
       },
       configurable: true,
     });
-  });
-
-  it('should initialize with default state', () => {
-    const { result } = renderHook(() => useCostClipboard());
-    expect(result.current.isCopied).toBe(false);
-  });
-
-  it('should copy cost to clipboard', async () => {
-    const { result } = renderHook(() => useCostClipboard());
-
-    act(() => {
-      result.current.copyCost?.('$0.15');
-    });
-
-    // Should set isCopied to true
-    expect(result.current.isCopied).toBe(true);
-  });
-
-  it('should handle copy error gracefully', async () => {
-    const { result } = renderHook(() => useCostClipboard());
-
-    // Mock clipboard error
-    (navigator.clipboard.writeText as jest.Mock).mockRejectedValueOnce(
-      new Error('Clipboard error'),
-    );
-
-    act(() => {
-      result.current.copyCost?.('$0.15');
-    });
-
-    // Should handle error without crashing
-  });
-
-  it('should reset copy state after delay', async () => {
     jest.useFakeTimers();
+  });
+
+  afterEach(() => {
+    jest.useRealTimers();
+    jest.restoreAllMocks();
+  });
+
+  it('initializes with no copy status', () => {
+    const { result } = renderHook(() => useCostClipboard());
+    expect(result.current.copyStatus).toBeNull();
+  });
+
+  it('copies a formatted summary using per-message precision', async () => {
     const { result } = renderHook(() => useCostClipboard());
 
-    act(() => {
-      result.current.copyCost?.('$0.15');
+    await act(async () => {
+      await result.current.copyFormattedSummary({
+        estimatedCost: 0.01234,
+        estimatedTokens: 123,
+        provider: 'openai',
+        model: 'gpt-4o-mini',
+        breakdown: [],
+      });
     });
 
-    expect(result.current.isCopied).toBe(true);
+    expect(navigator.clipboard.writeText).toHaveBeenCalledWith(
+      'Estimated cost: $0.0123\nEstimated tokens: 123',
+    );
+    expect(result.current.copyStatus).toBe('Copied');
 
     act(() => {
-      jest.advanceTimersByTime(2000);
+      jest.advanceTimersByTime(1500);
     });
 
-    jest.useRealTimers();
-    // Should reset after timeout
+    expect(result.current.copyStatus).toBeNull();
+  });
+
+  it('handles clipboard failures gracefully', async () => {
+    (navigator.clipboard.writeText as jest.Mock).mockRejectedValueOnce(new Error('Clipboard error'));
+
+    const { result } = renderHook(() => useCostClipboard());
+
+    await act(async () => {
+      await result.current.copyFormattedSummary({
+        estimatedCost: 0.5,
+        estimatedTokens: 7,
+        provider: 'openai',
+        model: 'gpt-4o-mini',
+        breakdown: [],
+      });
+    });
+
+    expect(result.current.copyStatus).toBe('Copy failed');
   });
 });

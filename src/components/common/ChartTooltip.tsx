@@ -14,15 +14,29 @@ interface TooltipProps {
 const ChartTooltip: React.FC<TooltipProps> = ({ active, payload, label }) => {
   if (!active || !payload || payload.length === 0) return null;
 
-  const rows = payload.map(p => ({ name: p.name || p.dataKey || label, value: p.value }));
+  const rows = payload.map((entry, rowIndex) => {
+    const resolvedName = entry.name || entry.dataKey || label;
+    const rowName =
+      typeof resolvedName === 'string'
+        ? resolvedName
+        : resolvedName != null
+          ? String(resolvedName)
+          : `Series ${rowIndex + 1}`;
+
+    return {
+      key: rowName,
+      name: rowName,
+      value: entry.value,
+    };
+  });
 
   return (
-    <div className="bg-slate-800 text-slate-100 p-2 rounded shadow-md text-sm">
+    <div className="rounded border border-border bg-surface p-2 text-sm text-text shadow-card">
       {label !== undefined && <div className="font-medium mb-1">{label}</div>}
-      {rows.map((r, i) => (
-        <div key={i} className="flex justify-between gap-4">
-          <div className="text-slate-300">{r.name}</div>
-          <div className="font-semibold">{r.value}</div>
+      {rows.map((row) => (
+        <div key={row.key} className="flex justify-between gap-4">
+          <div className="text-muted">{row.name}</div>
+          <div className="font-semibold">{row.value}</div>
         </div>
       ))}
     </div>

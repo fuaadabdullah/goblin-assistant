@@ -151,7 +151,7 @@ kill -9 $(lsof -t -i:3000)
 - `api/main.py` - Main FastAPI application
 - `api/api_router.py` - Simple chat endpoint (`/api/chat`)
 - `api/chat_router.py` - Full conversation management (`/chat/...`)
-- `api/providers/dispatcher_fixed.py` - Provider routing and selection
+- `api/providers/dispatcher.py` - Provider routing and selection
 - `start-backend.sh` - Backend startup script
 
 ### Frontend

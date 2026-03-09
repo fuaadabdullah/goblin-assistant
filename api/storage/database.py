@@ -5,12 +5,16 @@ Database connection management for Goblin Assistant
 import os
 import ssl
 from urllib.parse import parse_qs, urlencode
+import structlog
 
 from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession
 from sqlalchemy.orm import sessionmaker
 from sqlalchemy.pool import NullPool
 from contextlib import asynccontextmanager
 from typing import AsyncGenerator
+
+
+logger = structlog.get_logger()
 
 # Get database URL from environment or use local sqlite fallback
 DATABASE_URL = os.getenv("DATABASE_URL", "sqlite+aiosqlite:///./goblin_assistant.db")
@@ -59,8 +63,9 @@ if DATABASE_URL and "postgresql" in DATABASE_URL:
 
 # Security: Ensure sensitive information is not logged
 if "password" in DATABASE_URL.lower():
-    print(
-        "WARNING: Database URL contains password. Ensure this is not logged in production."
+    logger.warning(
+        "database URL contains password component",
+        action="ensure DSN is redacted in production logs",
     )
 
 # Create async engine
@@ -117,6 +122,9 @@ async def init_db():
             await conn.run_sync(Base.metadata.create_all)
         return True
     except Exception as e:
-        print(f"⚠️  Database initialization failed: {e}")
-        print("   Continuing without database - some features may be limited")
+        logger.warning(
+            "database initialization failed",
+            error=str(e),
+            impact="continuing without database - some features may be limited",
+        )
         return False

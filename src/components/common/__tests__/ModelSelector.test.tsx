@@ -2,9 +2,9 @@ import React from 'react';
 import { render, screen, waitFor } from '@testing-library/react';
 
 import ModelSelector from '../ModelSelector';
-import { runtimeClient } from '@/api/api-client';
+import { runtimeClient } from '@/api';
 
-jest.mock('@/api/api-client', () => ({
+jest.mock('@/api', () => ({
   runtimeClient: {
     getProviderModelOptions: jest.fn(),
     getProviderModels: jest.fn(),

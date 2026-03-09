@@ -9,11 +9,15 @@ from sqlalchemy import text, func
 from sqlalchemy.orm import selectinload
 from datetime import datetime, timedelta
 import math
+import structlog
 
 from ..storage.database import get_db
 from ..storage.vector_models import EmbeddingModel, ConversationSummaryModel, MemoryFactModel
 from ..storage.models import UserModel, ConversationModel
-from .embedding_service import EmbeddingService
+from .embedding_service import EmbeddingService, EmbeddingProviderUnavailableError
+
+
+logger = structlog.get_logger()
 
 
 class RetrievalService:
@@ -24,6 +28,22 @@ class RetrievalService:
         self.semantic_weight = 0.7
         self.recency_weight = 0.2
         self.source_priority_weight = 0.1
+        self._degraded_mode = False
+        self._degraded_reason: Optional[str] = None
+
+    def get_degraded_status(self) -> Dict[str, Any]:
+        return {
+            "degraded_mode": self._degraded_mode,
+            "reason": self._degraded_reason,
+        }
+
+    def _set_degraded(self, reason: str) -> None:
+        self._degraded_mode = True
+        self._degraded_reason = reason
+
+    def _clear_degraded(self) -> None:
+        self._degraded_mode = False
+        self._degraded_reason = None
         
     async def retrieve_context(
         self, 
@@ -45,10 +65,19 @@ class RetrievalService:
         """
         if not query or not user_id:
             return []
+        self._clear_degraded()
             
         try:
             # Generate query embedding
-            query_embedding = await self.embedding_service.embed_text(query)
+            try:
+                query_embedding = await self.embedding_service.embed_text(query)
+            except EmbeddingProviderUnavailableError as embed_err:
+                self._set_degraded(str(embed_err))
+                return []
+            except Exception as embed_err:
+                self._set_degraded(str(embed_err))
+                return []
+
             if not query_embedding:
                 return []
                 
@@ -89,12 +118,22 @@ class RetrievalService:
 
                 observability_service.log_retrieval_trace(**retrieval_trace_data)
             except Exception as e:
-                print(f"Failed to log retrieval trace to observability: {e}")
+                logger.warning(
+                    "failed to log retrieval trace to observability",
+                    error=str(e),
+                    user_id=user_id,
+                    conversation_id=conversation_id,
+                )
             
             return results
             
         except Exception as e:
-            print(f"Error in retrieve_context: {e}")
+            logger.error(
+                "error in retrieve_context",
+                error=str(e),
+                user_id=user_id,
+                conversation_id=conversation_id,
+            )
             return []
     
     async def _stratified_retrieval(
@@ -206,7 +245,11 @@ class RetrievalService:
                 } for row in rows]
                 
         except Exception as e:
-            print(f"Error retrieving memory facts: {e}")
+            logger.error(
+                "error retrieving memory facts (stratified)",
+                error=str(e),
+                user_id=user_id,
+            )
             return []
     
     async def _retrieve_summaries_stratified(
@@ -265,7 +308,12 @@ class RetrievalService:
                 } for row in rows]
                 
         except Exception as e:
-            print(f"Error retrieving summaries: {e}")
+            logger.error(
+                "error retrieving summaries (stratified)",
+                error=str(e),
+                user_id=user_id,
+                conversation_id=conversation_id,
+            )
             return []
     
     async def _retrieve_messages_stratified(
@@ -325,7 +373,12 @@ class RetrievalService:
                 } for row in rows]
                 
         except Exception as e:
-            print(f"Error retrieving messages: {e}")
+            logger.error(
+                "error retrieving messages (stratified)",
+                error=str(e),
+                user_id=user_id,
+                conversation_id=conversation_id,
+            )
             return []
     
     async def _retrieve_recent_messages(
@@ -381,7 +434,12 @@ class RetrievalService:
                 } for row in rows]
                 
         except Exception as e:
-            print(f"Error retrieving recent messages: {e}")
+            logger.error(
+                "error retrieving recent messages",
+                error=str(e),
+                user_id=user_id,
+                conversation_id=conversation_id,
+            )
             return []
     
     async def _hybrid_search(
@@ -569,7 +627,15 @@ class RetrievalService:
             return []
             
         try:
-            query_embedding = await self.embedding_service.embed_text(query)
+            try:
+                query_embedding = await self.embedding_service.embed_text(query)
+            except EmbeddingProviderUnavailableError as embed_err:
+                self._set_degraded(str(embed_err))
+                return []
+            except Exception as embed_err:
+                self._set_degraded(str(embed_err))
+                return []
+
             if not query_embedding:
                 return []
                 
@@ -616,7 +682,12 @@ class RetrievalService:
                 } for row in rows]
                 
         except Exception as e:
-            print(f"Error retrieving memory facts: {e}")
+            logger.error(
+                "error retrieving memory facts",
+                error=str(e),
+                user_id=user_id,
+                categories=categories,
+            )
             return []
     
     async def get_context_bundle(
@@ -672,6 +743,7 @@ class RetrievalService:
         
         context_bundle["total_tokens"] = total_tokens
         context_bundle["metadata"]["context_count"] = len(all_context)
+        context_bundle["metadata"].update(self.get_degraded_status())
         
         return context_bundle
 
