@@ -467,8 +467,11 @@ class ProviderDispatcher:
         if provider_id == "vertex_ai":
             return bool(
                 os.getenv("VERTEX_AI_PROJECT", "").strip()
+                or os.getenv("GCP_PROJECT_ID", "").strip()
                 or config.get("project")
                 or os.getenv("GOOGLE_APPLICATION_CREDENTIALS", "").strip()
+                or os.getenv("VERTEX_AI_SERVICE_ACCOUNT_JSON", "").strip()
+                or os.getenv("GCP_SERVICE_ACCOUNT_KEY", "").strip()
             )
 
         if provider_id == "azure_openai":

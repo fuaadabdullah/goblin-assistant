@@ -5,6 +5,8 @@ from __future__ import annotations
 import json
 import os
 import time
+import base64
+from pathlib import Path
 from typing import Any, AsyncGenerator, Dict, List, Optional
 
 import httpx
@@ -13,6 +15,74 @@ import structlog
 from .base import BaseProvider, ProviderHealth, ProviderResult
 
 logger = structlog.get_logger(__name__)
+
+_VERTEX_SERVICE_ACCOUNT_FILE = Path("/tmp/goblin_vertex_service_account.json")
+_JSON_CONTENT_TYPE = "application/json"
+
+
+def _parse_google_credentials_payload(payload: str) -> Optional[str]:
+    """Return normalized Google credentials JSON string if payload is valid."""
+    normalized = payload.strip()
+    decoded = normalized
+
+    if not normalized:
+        return None
+
+    if not normalized.startswith("{"):
+        try:
+            decoded = base64.b64decode(normalized).decode("utf-8")
+        except Exception:
+            decoded = normalized
+
+    try:
+        parsed = json.loads(decoded)
+        if isinstance(parsed, dict) and parsed.get("type") in {
+            "service_account",
+            "authorized_user",
+            "external_account",
+        }:
+            return decoded
+    except Exception:
+        return None
+    return None
+
+
+def _collect_credential_payloads() -> List[str]:
+    payloads: List[str] = []
+    for key in (
+        "GOOGLE_APPLICATION_CREDENTIALS",
+        "VERTEX_AI_SERVICE_ACCOUNT_JSON",
+        "GCP_SERVICE_ACCOUNT_KEY",
+    ):
+        value = os.getenv(key, "").strip()
+        if value:
+            payloads.append(value)
+    return payloads
+
+
+def _configure_google_credentials() -> None:
+    """Configure GOOGLE_APPLICATION_CREDENTIALS from supported env formats.
+
+    Supported inputs (in precedence order):
+    1. GOOGLE_APPLICATION_CREDENTIALS path (if it exists)
+    2. GOOGLE_APPLICATION_CREDENTIALS inline JSON
+    3. VERTEX_AI_SERVICE_ACCOUNT_JSON inline JSON or base64 JSON
+    4. GCP_SERVICE_ACCOUNT_KEY inline JSON or base64 JSON (legacy)
+    """
+
+    existing = os.getenv("GOOGLE_APPLICATION_CREDENTIALS", "").strip()
+    if existing and Path(existing).exists():
+        return
+
+    for payload in _collect_credential_payloads():
+        decoded = _parse_google_credentials_payload(payload)
+        if not decoded:
+            continue
+
+        _VERTEX_SERVICE_ACCOUNT_FILE.write_text(decoded, encoding="utf-8")
+        os.chmod(_VERTEX_SERVICE_ACCOUNT_FILE, 0o600)
+        os.environ["GOOGLE_APPLICATION_CREDENTIALS"] = str(_VERTEX_SERVICE_ACCOUNT_FILE)
+        return
 
 _COST_TABLE: Dict[str, Dict[str, float]] = {
     "gemini-1.5-pro": {"input": 0.00125, "output": 0.005},
@@ -23,6 +93,8 @@ _COST_TABLE: Dict[str, Dict[str, float]] = {
 
 def _get_access_token() -> Optional[str]:
     try:
+        _configure_google_credentials()
+
         import google.auth
         import google.auth.transport.requests
 
@@ -47,10 +119,13 @@ class VertexAIProvider(BaseProvider):
         config: Optional[Dict[str, Any]] = None,
     ) -> None:
         super().__init__(provider_id, config)
-        self._project = os.getenv("VERTEX_AI_PROJECT", str(self.config.get("project", "")))
+        self._project = os.getenv(
+            "VERTEX_AI_PROJECT",
+            os.getenv("GCP_PROJECT_ID", str(self.config.get("project", ""))),
+        )
         self._location = os.getenv(
             "VERTEX_AI_LOCATION",
-            str(self.config.get("location", "us-central1")),
+            os.getenv("GCP_REGION", str(self.config.get("location", "us-central1"))),
         )
         self._model = os.getenv(
             "VERTEX_AI_MODEL",
@@ -136,7 +211,7 @@ class VertexAIProvider(BaseProvider):
 
         headers = {
             "Authorization": f"Bearer {token}",
-            "Content-Type": "application/json",
+            "Content-Type": _JSON_CONTENT_TYPE,
         }
         t0 = time.perf_counter()
         try:
@@ -216,7 +291,7 @@ class VertexAIProvider(BaseProvider):
         )
         headers = {
             "Authorization": f"Bearer {token}",
-            "Content-Type": "application/json",
+            "Content-Type": _JSON_CONTENT_TYPE,
         }
         async with httpx.AsyncClient(timeout=120) as client:
             async with client.stream("POST", url, headers=headers, json=body) as resp:
@@ -255,7 +330,7 @@ class VertexAIProvider(BaseProvider):
                     self._endpoint(self._model),
                     headers={
                         "Authorization": f"Bearer {token}",
-                        "Content-Type": "application/json",
+                        "Content-Type": _JSON_CONTENT_TYPE,
                     },
                     json=body,
                 )
