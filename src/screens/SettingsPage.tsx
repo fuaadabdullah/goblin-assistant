@@ -25,8 +25,35 @@ interface ProviderDisplay {
 const SettingsPageContent: React.FC = () => {
   const { data: providerData, isLoading: providersLoading } = useProviderSettings();
   const providerCtx = useProvider();
+
+  const providerRows: ProviderSource[] = React.useMemo(() => {
+    if (Array.isArray(providerData)) {
+      return providerData as ProviderSource[];
+    }
+
+    if (providerData && typeof providerData === 'object') {
+      const maybeProviders = (providerData as { providers?: unknown }).providers;
+      if (Array.isArray(maybeProviders)) {
+        return maybeProviders as ProviderSource[];
+      }
+
+      return Object.entries(providerData as Record<string, unknown>).map(([name, raw]) => {
+        if (raw && typeof raw === 'object') {
+          return {
+            name,
+            ...(raw as ProviderSource),
+          };
+        }
+
+        return { name };
+      });
+    }
+
+    return [];
+  }, [providerData]);
+
   // Adapt provider data shape: backend may return keys with different naming (configured/env_var)
-  const providers: ProviderDisplay[] = (providerData || []).map((p: ProviderSource) => {
+  const providers: ProviderDisplay[] = providerRows.map((p: ProviderSource) => {
     const name = typeof p.name === 'string' ? p.name : 'Unknown';
     const models = Array.isArray(p.models)
       ? p.models.filter((model): model is string => typeof model === 'string')
@@ -43,9 +70,13 @@ const SettingsPageContent: React.FC = () => {
 
   const selectedProvider = providerCtx.selectedProvider || (providers[0]?.name ?? '');
   const selectedModel = providerCtx.selectedModel || '';
-  const selectedProviderModels = (
-    providers.find(p => p.name === selectedProvider)?.models || []
-  ).filter(Boolean) as string[];
+  const selectedProviderModels = React.useMemo(() => {
+    const models = providers.find(p => p.name === selectedProvider)?.models;
+    if (!Array.isArray(models)) {
+      return [] as string[];
+    }
+    return models.filter((model): model is string => typeof model === 'string' && model.length > 0);
+  }, [providers, selectedProvider]);
 
   if (loading) {
     return (

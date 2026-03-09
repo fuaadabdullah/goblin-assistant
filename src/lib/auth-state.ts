@@ -38,7 +38,7 @@ export const hasAnyRole = (user: User | null | undefined, roles: string[]): bool
 const provisionalSnapshot = (token: string, user: User | null): AuthSessionSnapshot => ({
   token,
   user,
-  isAuthenticated: true,
+  isAuthenticated: Boolean(token && user && typeof user === 'object' && 'id' in user),
   isHydrated: true,
 });
 
@@ -105,7 +105,10 @@ export const bootstrapAuthSession = async (): Promise<AuthSessionSnapshot> => {
       return unauthenticatedSnapshot();
     }
 
-    return provisionalSnapshot(storedToken, storedUser);
+    // Fail closed on validation/network errors to avoid route/login bypass UX.
+    // Users can sign in again and refresh the session deterministically.
+    clearAuthSession();
+    return unauthenticatedSnapshot();
   }
 };
 

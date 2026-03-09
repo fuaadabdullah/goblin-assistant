@@ -25,15 +25,15 @@ const matchesPrefix = (pathname: string, prefixes: readonly string[]): boolean =
   prefixes.some(prefix => pathname === prefix || pathname.startsWith(`${prefix}/`));
 
 /**
- * Check for authentication presence. Prefers a real session token cookie over
- * the legacy flag, but accepts either.
+ * Check for authentication presence.
+ *
+ * IMPORTANT: We now require a plausible `session_token` cookie for protected
+ * routes. The legacy `goblin_auth=1` flag alone is insufficient because it can
+ * become stale or be manually set, leading to route-bypass UX.
  */
 const hasAuthCookie = (request: NextRequest): boolean => {
   const sessionToken = request.cookies.get(SESSION_TOKEN_COOKIE)?.value;
-  if (sessionToken && sessionToken.length > 10) {
-    return true;
-  }
-  return request.cookies.get(AUTH_COOKIE_NAME)?.value === '1';
+  return Boolean(sessionToken && sessionToken.length > 10);
 };
 
 const isAdmin = (request: NextRequest): boolean => {
