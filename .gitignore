@@ -22,6 +22,13 @@
 *.log
 BROKEN_ITEMS.md
 
+# Supabase migration backups
+supabase/migrations.bak*/
+
+# Runtime artifacts
+sandbox_jobs/
+instance/
+
 # Hash artifacts
 api/[0-9a-f]*
 
