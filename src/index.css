@@ -149,6 +149,48 @@ li > ol {
 .typography-tight p { margin-bottom: 0.75rem; }
 .typography-tight li { margin: 0.2rem 0; }
 
+/* Chat markdown message rendering */
+.chat-markdown {
+  line-height: 1.6;
+}
+
+.chat-markdown > :first-child {
+  margin-top: 0;
+}
+
+.chat-markdown > :last-child {
+  margin-bottom: 0;
+}
+
+.chat-markdown h1,
+.chat-markdown h2,
+.chat-markdown h3,
+.chat-markdown h4,
+.chat-markdown h5,
+.chat-markdown h6 {
+  margin: 0.75rem 0 0.5rem;
+  font-size: 1em;
+  line-height: 1.4;
+}
+
+.chat-markdown blockquote {
+  margin: 0.75rem 0;
+  border-left: 3px solid var(--border);
+  padding-left: 0.75rem;
+  color: var(--text-muted);
+}
+
+.chat-markdown pre code {
+  background: transparent;
+  padding: 0;
+}
+
+.chat-markdown hr {
+  border: 0;
+  border-top: 1px solid var(--border);
+  margin: 0.75rem 0;
+}
+
 /* ============================================================================
    UTILITY CLASSES
    ============================================================================ */

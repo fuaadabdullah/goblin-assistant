@@ -17,6 +17,7 @@ import { setupGlobalErrorTracking, monitorNetworkStatus } from '../utils/error-t
 
 // Import global CSS files - Next.js only allows global CSS imports in _app.tsx
 import '../index.css';
+import 'highlight.js/styles/github-dark.css';
 
 export default function App({ Component, pageProps }: AppProps) {
   const [queryClient] = useState(() => createQueryClient());

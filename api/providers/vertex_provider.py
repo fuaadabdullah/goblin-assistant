@@ -212,6 +212,7 @@ class VertexAIProvider(BaseProvider):
         headers = {
             "Authorization": f"Bearer {token}",
             "Content-Type": _JSON_CONTENT_TYPE,
+            "x-goog-user-project": self._project,
         }
         t0 = time.perf_counter()
         try:
@@ -222,6 +223,12 @@ class VertexAIProvider(BaseProvider):
                     json=body,
                 )
             latency = (time.perf_counter() - t0) * 1000
+            if resp.status_code >= 400:
+                try:
+                    error_detail = resp.text
+                except Exception:
+                    error_detail = f"HTTP {resp.status_code}"
+                logger.warning("vertex_http_error", status=resp.status_code, response_body=error_detail)
             resp.raise_for_status()
             data = resp.json()
 
@@ -292,9 +299,16 @@ class VertexAIProvider(BaseProvider):
         headers = {
             "Authorization": f"Bearer {token}",
             "Content-Type": _JSON_CONTENT_TYPE,
+            "x-goog-user-project": self._project,
         }
         async with httpx.AsyncClient(timeout=120) as client:
             async with client.stream("POST", url, headers=headers, json=body) as resp:
+                if resp.status_code >= 400:
+                    try:
+                        error_detail = await resp.aread()
+                    except Exception:
+                        error_detail = f"HTTP {resp.status_code}"
+                    logger.warning("vertex_stream_http_error", status=resp.status_code, response_body=str(error_detail))
                 resp.raise_for_status()
                 buffer = ""
                 async for chunk in resp.aiter_bytes():
@@ -331,10 +345,17 @@ class VertexAIProvider(BaseProvider):
                     headers={
                         "Authorization": f"Bearer {token}",
                         "Content-Type": _JSON_CONTENT_TYPE,
+                        "x-goog-user-project": self._project,
                     },
                     json=body,
                 )
             latency = (time.perf_counter() - t0) * 1000
+            if resp.status_code >= 400:
+                try:
+                    error_detail = resp.text
+                except Exception:
+                    error_detail = f"HTTP {resp.status_code}"
+                logger.warning("vertex_health_check_error", status=resp.status_code, response_body=error_detail)
             return ProviderHealth(
                 self.provider_id,
                 resp.status_code < 400,

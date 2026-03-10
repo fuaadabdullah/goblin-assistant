@@ -18,6 +18,8 @@ interface ChatSidebarProps {
   totalTokens: number;
   /** Message count in the current chat. */
   messageCount: number;
+  /** Optional additional classes for layout context (desktop/mobile drawer). */
+  className?: string;
 }
 
 const ChatSidebar = ({
@@ -29,8 +31,9 @@ const ChatSidebar = ({
   isAdmin,
   totalTokens,
   messageCount,
+  className = '',
 }: ChatSidebarProps) => (
-  <aside className="hidden lg:flex w-72 border-r border-border bg-surface px-4 py-6 flex-col gap-6 sticky top-0 h-screen">
+  <aside className={`flex w-72 border-r border-border bg-surface px-4 py-6 flex-col gap-6 ${className}`}>
     <div>
       <h2 className="text-sm font-semibold text-text mb-2">Conversations</h2>
       <button

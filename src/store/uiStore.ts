@@ -9,6 +9,7 @@ interface UIState {
 
   // UI state
   sidebarOpen: boolean;
+  chatSidebarOpen: boolean;
   activeModal: string | null;
   notifications: NotificationItem[];
 
@@ -17,6 +18,8 @@ interface UIState {
   setTheme: (theme: 'default' | 'nocturne' | 'ember') => void;
   toggleSidebar: () => void;
   setSidebarOpen: (open: boolean) => void;
+  toggleChatSidebar: () => void;
+  setChatSidebarOpen: (open: boolean) => void;
   openModal: (modalId: string) => void;
   closeModal: () => void;
   addNotification: (notification: Omit<NotificationItem, 'id'>) => void;
@@ -47,7 +50,7 @@ const _getPersistedTheme = (): 'default' | 'nocturne' | 'ember' => {
     ) {
       return persisted;
     }
-  } catch (e) {
+  } catch {
     // localStorage may not be available
   }
   return 'default';
@@ -58,6 +61,7 @@ export const useUIStore = create<UIState>((set, get) => ({
   highContrast: getHighContrastPreference(),
   currentTheme: _getPersistedTheme(),
   sidebarOpen: true,
+  chatSidebarOpen: false,
   activeModal: null,
   notifications: [],
 
@@ -90,6 +94,14 @@ export const useUIStore = create<UIState>((set, get) => ({
 
   setSidebarOpen: (open: boolean) => {
     set({ sidebarOpen: open });
+  },
+
+  toggleChatSidebar: () => {
+    set((state) => ({ chatSidebarOpen: !state.chatSidebarOpen }));
+  },
+
+  setChatSidebarOpen: (open: boolean) => {
+    set({ chatSidebarOpen: open });
   },
 
   // Modal actions

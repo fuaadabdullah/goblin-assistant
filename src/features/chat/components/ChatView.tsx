@@ -2,10 +2,12 @@ import ChatHeader from './ChatHeader';
 import ChatMessageList from './ChatMessageList';
 import ChatComposer from './ChatComposer';
 import ChatSidebar from './ChatSidebar';
+import { useEffect } from 'react';
 import type { ChatSessionState } from '../hooks/useChatSession';
 import Seo from '../../../components/Seo';
 import { useAuthSession } from '../../../hooks/api/useAuthSession';
 import AuthPrompt from '../../../components/Auth/AuthPrompt';
+import { useUIStore } from '../../../store/uiStore';
 
 interface ChatViewProps {
   /** Chat session state + handlers. */
@@ -16,6 +18,9 @@ interface ChatViewProps {
 
 const ChatView = ({ session, isAdmin }: ChatViewProps) => {
   const { isAuthenticated } = useAuthSession();
+  const chatSidebarOpen = useUIStore((state) => state.chatSidebarOpen);
+  const toggleChatSidebar = useUIStore((state) => state.toggleChatSidebar);
+  const setChatSidebarOpen = useUIStore((state) => state.setChatSidebarOpen);
   const {
     messages,
     input,
@@ -28,7 +33,7 @@ const ChatView = ({ session, isAdmin }: ChatViewProps) => {
     activeThreadKey,
     inputRef,
     bottomRef,
-      authError,
+    authError,
     setInput,
     sendMessage,
     selectThread,
@@ -43,6 +48,34 @@ const ChatView = ({ session, isAdmin }: ChatViewProps) => {
     copyMessage,
     regenerateMessage,
   } = session;
+
+  useEffect(() => {
+    if (!chatSidebarOpen) return undefined;
+
+    const onEscape = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') {
+        setChatSidebarOpen(false);
+      }
+    };
+
+    window.addEventListener('keydown', onEscape);
+    document.body.style.overflow = 'hidden';
+
+    return () => {
+      window.removeEventListener('keydown', onEscape);
+      document.body.style.overflow = '';
+    };
+  }, [chatSidebarOpen, setChatSidebarOpen]);
+
+  const handleThreadSelect = (threadKey: string) => {
+    selectThread(threadKey);
+    setChatSidebarOpen(false);
+  };
+
+  const handleNewConversation = () => {
+    handleClearChat();
+    setChatSidebarOpen(false);
+  };
 
   if (!isAuthenticated) {
     return (
@@ -68,16 +101,51 @@ const ChatView = ({ session, isAdmin }: ChatViewProps) => {
         description="Chat with Goblin Assistant. See the model and cost as you go."
         robots="noindex,nofollow"
       />
-      <div className="flex">
+      <div className="relative flex">
+        <div
+          className={`fixed inset-0 z-40 lg:hidden ${
+            chatSidebarOpen ? 'pointer-events-auto' : 'pointer-events-none'
+          }`}
+          aria-hidden={!chatSidebarOpen}
+        >
+          <button
+            type="button"
+            aria-label="Close conversations drawer"
+            className={`absolute inset-0 bg-black/50 transition-opacity duration-200 ${
+              chatSidebarOpen ? 'opacity-100' : 'opacity-0'
+            }`}
+            onClick={() => setChatSidebarOpen(false)}
+          />
+          <div
+            id="mobile-chat-sidebar"
+            className={`absolute inset-y-0 left-0 transition-transform duration-200 ease-out ${
+              chatSidebarOpen ? 'translate-x-0' : '-translate-x-full'
+            }`}
+          >
+            <ChatSidebar
+              threads={threads}
+              isThreadsLoading={isThreadsLoading}
+              activeThreadKey={activeThreadKey}
+              onSelectThread={handleThreadSelect}
+              onNewConversation={handleNewConversation}
+              isAdmin={isAdmin}
+              totalTokens={totalTokens}
+              messageCount={messages.length}
+              className="h-full w-[85vw] max-w-sm shadow-2xl"
+            />
+          </div>
+        </div>
+
         <ChatSidebar
           threads={threads}
           isThreadsLoading={isThreadsLoading}
           activeThreadKey={activeThreadKey}
-          onSelectThread={selectThread}
-          onNewConversation={handleClearChat}
+          onSelectThread={handleThreadSelect}
+          onNewConversation={handleNewConversation}
           isAdmin={isAdmin}
           totalTokens={totalTokens}
           messageCount={messages.length}
+          className="hidden lg:flex sticky top-0 h-screen"
         />
 
         <main
@@ -86,7 +154,13 @@ const ChatView = ({ session, isAdmin }: ChatViewProps) => {
           tabIndex={-1}
           aria-label="Chat"
         >
-          <ChatHeader isAdmin={isAdmin} onClear={handleClearChat} />
+          <ChatHeader
+            isAdmin={isAdmin}
+            onClear={handleClearChat}
+            showSidebarToggle
+            onToggleSidebar={toggleChatSidebar}
+            isSidebarOpen={chatSidebarOpen}
+          />
           <section className="flex-1 overflow-y-auto px-4 py-8">
             <ChatMessageList
               messages={messages}
@@ -104,7 +178,7 @@ const ChatView = ({ session, isAdmin }: ChatViewProps) => {
             <ChatComposer
               input={input}
               inputRef={inputRef}
-                            authError={authError}
+              authError={authError}
               isSending={isSending}
               quickPrompts={quickPrompts}
               onInputChange={setInput}

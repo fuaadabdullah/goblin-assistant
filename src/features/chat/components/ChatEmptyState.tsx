@@ -1,8 +1,8 @@
 'use client';
 
 import dynamic from 'next/dynamic';
-import { useMemo } from 'react';
 import type { QuickPrompt } from '../types';
+import useGoblinLoaderAnimation from '../hooks/useGoblinLoaderAnimation';
 
 interface ChatEmptyStateProps {
   quickPrompts: QuickPrompt[];
@@ -17,11 +17,7 @@ const ChatEmptyState = ({
   onPromptClick,
   prefersReducedMotion = false,
 }: ChatEmptyStateProps) => {
-  const animationData = useMemo(() => {
-    // In a real implementation, you would fetch this from /public/goblin_loader.json
-    // For now, we'll just render without animation or use a fallback
-    return null;
-  }, []);
+  const animationData = useGoblinLoaderAnimation();
 
   return (
     <section className="flex flex-col items-center justify-center h-full w-full px-4 py-8">

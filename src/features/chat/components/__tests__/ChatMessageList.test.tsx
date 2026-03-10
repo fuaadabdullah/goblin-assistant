@@ -22,6 +22,11 @@ jest.mock('../ChatEmptyState', () => ({
   default: () => <div>Empty state</div>,
 }));
 
+jest.mock('../MessageMarkdown', () => ({
+  __esModule: true,
+  default: ({ content }: { content: string }) => <span>{content}</span>,
+}));
+
 const baseProps = {
   quickPrompts: [],
   onPromptClick: jest.fn(),

@@ -1,8 +1,9 @@
 'use client';
 
 import dynamic from 'next/dynamic';
-import { useMemo } from 'react';
 import type { ChatMessage } from '../types';
+import MessageMarkdown from './MessageMarkdown';
+import useGoblinLoaderAnimation from '../hooks/useGoblinLoaderAnimation';
 
 interface StreamingMessageProps {
   message: ChatMessage;
@@ -17,23 +18,16 @@ const StreamingMessage = ({
   isStreaming,
   prefersReducedMotion = false,
 }: StreamingMessageProps) => {
-  const animationData = useMemo(() => {
-    if (typeof window === 'undefined') return null;
-    // Fallback to a simple text-based typing indicator in the future;
-    // for now, we'll load from public/goblin_loader.json
-    return null; // Will be loaded dynamically below
-  }, []);
+  const animationData = useGoblinLoaderAnimation();
 
   return (
     <div className="space-y-2">
-      <div className="whitespace-pre-wrap text-sm md:text-base leading-relaxed">
-        {message.content}
-      </div>
+      <MessageMarkdown content={message.content} className="text-sm md:text-base leading-relaxed" />
 
       {isStreaming && (
         <div className="mt-3 flex items-center gap-2">
           <div className="w-6 h-6">
-            {!prefersReducedMotion ? (
+            {!prefersReducedMotion && animationData ? (
               <Lottie
                 animationData={animationData}
                 loop

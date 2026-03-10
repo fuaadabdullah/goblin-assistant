@@ -31,13 +31,17 @@
     "@vercel/analytics": "^1.6.1",
     "axios": "^1.7.9",
     "class-variance-authority": "^0.7.1",
+    "highlight.js": "^11.11.1",
     "lottie-react": "^2.4.0",
     "lucide-react": "^0.469.0",
     "next": "^15.1.4",
     "posthog-js": "^1.302.2",
     "react": "18.3.1",
     "react-dom": "18.3.1",
+    "react-markdown": "^10.1.0",
     "recharts": "^3.4.1",
+    "rehype-highlight": "^7.0.2",
+    "remark-gfm": "^4.0.1",
     "zustand": "^5.0.2"
   },
   "devDependencies": {

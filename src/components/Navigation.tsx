@@ -1,6 +1,7 @@
 import Link from 'next/link';
 import { useRouter } from 'next/router';
-import { Home, MessageSquare, Search, FlaskConical, User, HelpCircle, LayoutDashboard, Puzzle, ScrollText, Settings, Users, LogOut } from 'lucide-react';
+import { useEffect, useState } from 'react';
+import { Home, MessageSquare, Search, FlaskConical, User, HelpCircle, LayoutDashboard, Puzzle, ScrollText, Settings, Users, LogOut, Menu, X } from 'lucide-react';
 import HealthHeader from './HealthHeader';
 import ContrastModeToggle from './ContrastModeToggle';
 import Logo from './Logo';
@@ -15,6 +16,7 @@ interface NavigationProps {
 const Navigation = ({ onLogout, showLogout = false, variant = 'customer' }: NavigationProps) => {
   const router = useRouter();
   const { logout } = useAuthSession();
+  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
 
   const handleLogout = async () => {
     await logout();
@@ -43,6 +45,10 @@ const Navigation = ({ onLogout, showLogout = false, variant = 'customer' }: Navi
 
   const navItems = variant === 'admin' ? adminItems : customerItems;
 
+  useEffect(() => {
+    setIsMobileMenuOpen(false);
+  }, [router.asPath]);
+
   return (
     <nav
       className="bg-surface/90 backdrop-blur border-b border-border shadow-sm sticky top-0 z-40"
@@ -63,8 +69,8 @@ const Navigation = ({ onLogout, showLogout = false, variant = 'customer' }: Navi
               </div>
             )}
           </div>
-          {/* Primary Nav */}
-          <div className="flex items-center space-x-3">
+          {/* Desktop Navigation */}
+          <div className="hidden lg:flex items-center space-x-3">
             {navItems.map(item => {
               const isActive = router.pathname === item.path || (item.path !== '/' && router.pathname.startsWith(item.path));
               return (
@@ -102,6 +108,68 @@ const Navigation = ({ onLogout, showLogout = false, variant = 'customer' }: Navi
               )}
             </div>
           </div>
+
+          {/* Mobile Menu Trigger */}
+          <div className="lg:hidden flex items-center gap-2">
+            <ContrastModeToggle />
+            <button
+              type="button"
+              onClick={() => setIsMobileMenuOpen((open) => !open)}
+              className="inline-flex items-center justify-center rounded-lg border border-border bg-surface-hover p-2 text-text hover:bg-surface-active"
+              aria-label={isMobileMenuOpen ? 'Close navigation menu' : 'Open navigation menu'}
+              aria-expanded={isMobileMenuOpen}
+              aria-controls="mobile-navigation-panel"
+            >
+              {isMobileMenuOpen ? <X className="w-5 h-5" aria-hidden="true" /> : <Menu className="w-5 h-5" aria-hidden="true" />}
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <div
+        id="mobile-navigation-panel"
+        className={`lg:hidden border-t border-border bg-surface transition-[max-height,opacity] duration-200 overflow-hidden ${
+          isMobileMenuOpen ? 'max-h-[75vh] opacity-100' : 'max-h-0 opacity-0'
+        }`}
+      >
+        <div className="px-4 py-3 space-y-2">
+          {variant === 'admin' ? (
+            <div className="rounded-lg border border-border bg-surface-hover p-3">
+              <HealthHeader compact />
+            </div>
+          ) : null}
+
+          {navItems.map(item => {
+            const isActive = router.pathname === item.path || (item.path !== '/' && router.pathname.startsWith(item.path));
+            return (
+              <Link
+                key={item.path}
+                href={item.path}
+                className={`flex items-center space-x-3 px-3 py-2 rounded-lg text-sm font-medium min-h-[44px] ${
+                  isActive
+                    ? 'text-text bg-surface-active border border-border'
+                    : 'text-muted hover:text-text hover:bg-surface-hover'
+                }`}
+              >
+                <item.Icon className="w-5 h-5" aria-hidden="true" />
+                <span>{item.label}</span>
+              </Link>
+            );
+          })}
+
+          {showLogout ? (
+            <button
+              type="button"
+              onClick={() => {
+                void handleLogout();
+              }}
+              className="w-full flex items-center space-x-3 px-3 py-2 rounded-lg text-sm font-medium min-h-[44px] text-cta hover:bg-surface-hover"
+              aria-label="Logout"
+            >
+              <LogOut className="w-5 h-5" aria-hidden="true" />
+              <span>Logout</span>
+            </button>
+          ) : null}
         </div>
       </div>
     </nav>

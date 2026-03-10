@@ -7,6 +7,7 @@ import StreamingMessage from './StreamingMessage';
 import MessageTimestamp from './MessageTimestamp';
 import MessageActions from './MessageActions';
 import ChatEmptyState from './ChatEmptyState';
+import MessageMarkdown from './MessageMarkdown';
 import { formatCost } from '@/utils/format-cost';
 
 interface ChatMessageListProps {
@@ -137,7 +138,7 @@ const ChatMessageList = ({
                       isUser
                         ? 'bg-primary text-text-inverse shadow-glow-primary rounded-br-sm'
                         : 'bg-surface text-text border border-border rounded-bl-sm shadow-card'
-                    } whitespace-pre-wrap text-sm md:text-base`}
+                    } text-sm md:text-base`}
                   >
                     {isStreaming ? (
                       <StreamingMessage
@@ -146,7 +147,7 @@ const ChatMessageList = ({
                         prefersReducedMotion={prefersReducedMotion}
                       />
                     ) : (
-                      msg.content
+                      <MessageMarkdown content={msg.content} inverse={isUser} />
                     )}
                   </div>
 
