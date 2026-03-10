@@ -66,15 +66,24 @@ const ChatSidebar = ({
                     isActive ? 'border-primary/40 bg-primary/10' : 'border-border bg-bg'
                   }`}
                 >
-                  <div className="text-xs uppercase tracking-wide text-muted mb-1">
-                    {isActive ? 'Current Chat' : 'Recent Chat'}
-                  </div>
                   <div className="text-sm text-text font-medium line-clamp-1">
                     {thread.title || 'Untitled chat'}
                   </div>
                   <div className="text-xs text-muted line-clamp-2 mt-1">
                     {thread.snippet || 'No messages yet.'}
                   </div>
+                  {isActive && (
+                    <div className="flex items-center gap-2 mt-1">
+                      <span className="text-[10px] uppercase tracking-wide text-primary font-semibold">
+                        Active
+                      </span>
+                      {messageCount > 0 && (
+                        <span className="inline-flex items-center justify-center min-w-[1.25rem] h-5 px-1.5 rounded-full bg-primary/15 text-primary text-[10px] font-semibold">
+                          {messageCount}
+                        </span>
+                      )}
+                    </div>
+                  )}
                 </button>
               </li>
             );

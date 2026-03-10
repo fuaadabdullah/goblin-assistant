@@ -8,6 +8,7 @@ import MessageTimestamp from './MessageTimestamp';
 import MessageActions from './MessageActions';
 import ChatEmptyState from './ChatEmptyState';
 import MessageMarkdown from './MessageMarkdown';
+import { Paperclip } from 'lucide-react';
 import { formatCost } from '@/utils/format-cost';
 
 interface ChatMessageListProps {
@@ -149,6 +150,24 @@ const ChatMessageList = ({
                     ) : (
                       <MessageMarkdown content={msg.content} inverse={isUser} />
                     )}
+                    {/* Attachment badges */}
+                    {msg.meta?.attachments && msg.meta.attachments.length > 0 && (
+                      <div className="flex flex-wrap gap-1.5 mt-2 pt-2 border-t border-current/10">
+                        {msg.meta.attachments.map((att) => (
+                          <span
+                            key={att.id}
+                            className={`inline-flex items-center gap-1 px-2 py-0.5 rounded text-xs ${
+                              isUser
+                                ? 'bg-white/15 text-text-inverse'
+                                : 'bg-surface-hover text-muted border border-border'
+                            }`}
+                          >
+                            <Paperclip className="w-3 h-3" />
+                            <span className="max-w-[100px] truncate">{att.filename}</span>
+                          </span>
+                        ))}
+                      </div>
+                    )}
                   </div>
 
                   {/* Message Actions - Hover overlay */}
@@ -180,6 +199,7 @@ const ChatMessageList = ({
                       className="px-2 py-1 rounded-md border border-border text-muted hover:text-text hover:bg-surface-hover"
                       onClick={() => toggle(messageId)}
                       aria-controls={detailsId}
+                      aria-expanded={isExpanded}
                     >
                       Details
                     </button>

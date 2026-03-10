@@ -38,9 +38,13 @@ const StreamingMessage = ({
               <div className="text-sm text-muted">Generating...</div>
             )}
           </div>
-          <span className="text-xs text-muted animate-pulse">
-            {prefersReducedMotion ? '' : 'Generating response...'}
-          </span>
+          {!prefersReducedMotion && (
+            <span className="inline-flex items-center gap-0.5 text-xs text-muted">
+              <span className="w-1.5 h-1.5 rounded-full bg-current animate-bounce" />
+              <span className="w-1.5 h-1.5 rounded-full bg-current animate-bounce [animation-delay:150ms]" />
+              <span className="w-1.5 h-1.5 rounded-full bg-current animate-bounce [animation-delay:300ms]" />
+            </span>
+          )}
         </div>
       )}
     </div>

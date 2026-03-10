@@ -15,6 +15,13 @@ import { getAuthToken } from '../../../utils/auth-session';
 import { apiClient } from '@/api';
 import { devError, devLog } from '@/utils/dev-log';
 
+export interface PendingAttachment {
+  file_id: string;
+  filename: string;
+  mime_type: string;
+  size_bytes: number;
+}
+
 export interface ChatSessionState {
   messages: ChatMessage[];
   input: string;
@@ -32,6 +39,8 @@ export interface ChatSessionState {
   selectedModel?: string;
   inputEstimate: TextCostEstimate | null;
     authError: boolean;
+  pendingAttachments: PendingAttachment[];
+  isUploading: boolean;
   setInput: (value: string) => void;
   sendMessage: (messageOverride?: string) => Promise<void>;
   selectThread: (threadKey: string) => void;
@@ -41,6 +50,8 @@ export interface ChatSessionState {
   deleteMessage: (messageId: string) => void;
   copyMessage: (content: string) => Promise<void>;
   regenerateMessage: (messageId: string) => Promise<void>;
+  handleFileSelected: (files: FileList) => void;
+  removePendingAttachment: (fileId: string) => void;
 }
 
 const createMessageId = (): string => {
@@ -92,6 +103,8 @@ export const useChatSession = (): ChatSessionState => {
   const [totalCostUsd, setTotalCostUsd] = useState(0);
   const [activeThreadKey, setActiveThreadKey] = useState<string | null>(null);
     const [authError, setAuthError] = useState(false);
+  const [pendingAttachments, setPendingAttachments] = useState<PendingAttachment[]>([]);
+  const [isUploading, setIsUploading] = useState(false);
   const inputRef = useRef<HTMLTextAreaElement | null>(null);
   const bottomRef = useRef<HTMLDivElement | null>(null);
   const hasHydratedRef = useRef(false);
@@ -217,6 +230,14 @@ export const useChatSession = (): ChatSessionState => {
         meta: {
           estimated_tokens: estimate.estimated_tokens,
           estimated_cost_usd: estimate.estimated_cost_usd,
+          ...(pendingAttachments.length > 0
+            ? { attachments: pendingAttachments.map((a) => ({
+                id: a.file_id,
+                filename: a.filename,
+                mime_type: a.mime_type,
+                size_bytes: a.size_bytes,
+              })) }
+            : {}),
         },
       };
       const previousMessages = messages;
@@ -278,7 +299,13 @@ export const useChatSession = (): ChatSessionState => {
           prompt: content,
           model: selectedModel || undefined,
           provider: selectedProvider || undefined,
+          attachment_ids: pendingAttachments.length > 0
+            ? pendingAttachments.map((a) => a.file_id)
+            : undefined,
         });
+
+        // Clear pending attachments after successful send
+        setPendingAttachments([]);
 
         const rawCost = typeof result?.cost_usd === 'number' ? result.cost_usd : undefined;
         const fallbackCost =
@@ -392,9 +419,34 @@ export const useChatSession = (): ChatSessionState => {
   const handleClearChat = useCallback(() => {
     applyMessages([]);
     setInput('');
+    setPendingAttachments([]);
     setActiveThreadKey(null);
     inputRef.current?.focus();
   }, [applyMessages]);
+
+  const handleFileSelected = useCallback((files: FileList) => {
+    setIsUploading(true);
+    const uploads = Array.from(files).map(async (file) => {
+      try {
+        const result = await apiClient.uploadFile(file);
+        return result as PendingAttachment;
+      } catch (err) {
+        devError('file_upload_failed', err);
+        return null;
+      }
+    });
+    void Promise.all(uploads).then((results) => {
+      const successful = results.filter((r): r is PendingAttachment => r !== null);
+      if (successful.length > 0) {
+        setPendingAttachments((prev) => [...prev, ...successful]);
+      }
+      setIsUploading(false);
+    });
+  }, []);
+
+  const removePendingAttachment = useCallback((fileId: string) => {
+    setPendingAttachments((prev) => prev.filter((a) => a.file_id !== fileId));
+  }, []);
 
   const handlePromptClick = useCallback((prompt: string) => {
     setInput(prompt);
@@ -404,6 +456,10 @@ export const useChatSession = (): ChatSessionState => {
   const handleKeyDown = useCallback(
     (e: KeyboardEvent<HTMLTextAreaElement>) => {
       if (e.key === 'Enter' && !e.shiftKey) {
+        e.preventDefault();
+        void sendMessage();
+      }
+      if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') {
         e.preventDefault();
         void sendMessage();
       }
@@ -538,6 +594,8 @@ export const useChatSession = (): ChatSessionState => {
     selectedModel: selectedModel || undefined,
     inputEstimate,
       authError,
+    pendingAttachments,
+    isUploading,
     setInput,
     sendMessage,
     selectThread,
@@ -547,5 +605,7 @@ export const useChatSession = (): ChatSessionState => {
     deleteMessage,
     copyMessage,
     regenerateMessage,
+    handleFileSelected,
+    removePendingAttachment,
   };
 };
