@@ -13,9 +13,9 @@ from .oauth import GoogleOAuth
 from .passkeys import WebAuthnPasskey
 from ..storage.database import get_db
 from ..storage.user_service import UserService, UserCreateData
-from ..storage.models import UserSessionModel
+from ..storage.models import UserModel, UserSessionModel
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select, update
+from sqlalchemy import and_, select, update
 from ..core.csrf_manager import generate_csrf_token, validate_csrf_token
 from ..core.rate_limiter_auth import check_rate_limit
 
@@ -285,11 +285,55 @@ def _is_user_active(value: object) -> bool:
     return False
 
 
+async def _get_authenticated_user_model(
+    db: AsyncSession,
+    user_id: str,
+    session_id: Optional[str],
+) -> Optional[UserModel]:
+    """Fetch user and session state in one query for auth hot paths.
+
+    Session semantics:
+    - If session row exists and is revoked -> invalid
+    - If session row exists and active -> valid
+    - If session row missing -> allow as legacy token fallback
+    """
+    if session_id:
+        result = await db.execute(
+            select(UserModel, UserSessionModel)
+            .outerjoin(
+                UserSessionModel,
+                and_(
+                    UserSessionModel.user_id == UserModel.id,
+                    UserSessionModel.session_id == session_id,
+                ),
+            )
+            .where(UserModel.id == user_id)
+        )
+        row = result.first()
+        if not row:
+            return None
+
+        user_model, session_model = row
+        if session_model is not None and session_model.is_revoked:
+            return None
+        return user_model
+
+    # Tokens without session_id are allowed for backwards compatibility.
+    result = await db.execute(select(UserModel).where(UserModel.id == user_id))
+    return result.scalar_one_or_none()
+
+
 async def get_current_user(
     request: Request,
     credentials: Optional[HTTPAuthorizationCredentials] = Depends(security),
     db: AsyncSession = Depends(get_db),
 ) -> User:
+    # Request-scoped memoization to avoid repeated DB work if this dependency
+    # is resolved multiple times during a single request.
+    cached_user = getattr(request.state, "_auth_user", None)
+    cached_user_id = getattr(request.state, "_auth_user_id", None)
+    cached_session_id = getattr(request.state, "_auth_session_id", None)
+
     token: str | None = None
     if credentials:
         token = credentials.credentials
@@ -324,26 +368,30 @@ async def get_current_user(
             detail="Invalid token payload",
         )
 
-    # Validate session if present
     session_id = payload.get("session_id")
-    if session_id and not await _db_is_session_valid(session_id, db):
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Session has expired or been revoked",
-        )
+    if (
+        cached_user is not None
+        and cached_user_id == user_id
+        and cached_session_id == session_id
+    ):
+        user_model = cached_user
+    else:
+        user_model = await _get_authenticated_user_model(db, user_id, session_id)
 
-    user_service = UserService(db)
-    user_model = await user_service.get_user_by_id(user_id)
     if not user_model:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="User not found",
+            detail="Session has expired or been revoked",
         )
     if not _is_user_active(user_model.is_active):
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="User account is inactive",
         )
+
+    request.state._auth_user = user_model
+    request.state._auth_user_id = user_id
+    request.state._auth_session_id = session_id
 
     # Convert database model to Pydantic model
     user = User(
@@ -663,20 +711,16 @@ async def refresh_token_endpoint(
             detail="Session has expired or been revoked",
         )
     
-    # Verify session is still active
-    if not await _db_is_session_valid(session_id, db):
+    user_model = await _get_authenticated_user_model(db, user_id, session_id)
+    if not user_model:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Session has expired or been revoked",
         )
-    
-    # Verify user exists
-    user_service = UserService(db)
-    user_model = await user_service.get_user_by_id(user_id)
-    if not user_model:
+    if not _is_user_active(user_model.is_active):
         raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="User not found",
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="User account is inactive",
         )
     
     # Convert to Pydantic model
