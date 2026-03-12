@@ -46,26 +46,24 @@ def client(test_app):
 
 
 def test_create_session_id():
-    """Test that session IDs are generated and tracked"""
+    """Test that session IDs are generated."""
     user_id = "test-user-123"
     session_id = create_session_id(user_id)
     
     assert session_id is not None
     assert len(session_id) > 0
-    assert is_session_valid(session_id)
+    assert isinstance(session_id, str)
 
 
-def test_revoke_session():
-    """Test that sessions can be revoked"""
+def test_legacy_session_helpers_are_compatibility_shims():
+    """Legacy sync helpers are no longer authoritative after DB/Redis migration."""
     user_id = "test-user-123"
     session_id = create_session_id(user_id)
-    
+
     assert is_session_valid(session_id)
-    
-    # Revoke the session
-    result = revoke_session(session_id)
-    assert result is True
-    assert not is_session_valid(session_id)
+    assert revoke_session(session_id) is False
+    assert is_session_valid(session_id)
+    assert is_session_valid(session_id)
 
 
 def test_create_access_token_with_scopes_and_session():
@@ -136,21 +134,6 @@ def test_refresh_token_has_type_refresh():
     assert payload.get("type") == "refresh"
 
 
-def test_revoked_session_not_valid():
-    """Test that revoked sessions are marked as invalid"""
-    user_id = "test-user-123"
-    session_id = create_session_id(user_id)
-    
-    # Session should be valid initially
-    assert is_session_valid(session_id)
-    
-    # Revoke it
-    revoke_session(session_id)
-    
-    # Should no longer be valid
-    assert not is_session_valid(session_id)
-
-
 def test_nonexistent_session_not_valid():
     """Unknown sessions return True — they trust the JWT signature/expiry.
     A session absent from the in-process cache may simply pre-date this process
@@ -159,22 +142,19 @@ def test_nonexistent_session_not_valid():
 
 
 def test_session_isolation():
-    """Test that sessions are isolated per user"""
+    """Legacy sync validation is non-authoritative and always permissive."""
     user1_id = "user-1"
     user2_id = "user-2"
     
     session1 = create_session_id(user1_id)
     session2 = create_session_id(user2_id)
     
-    # Both sessions should be valid
     assert is_session_valid(session1)
     assert is_session_valid(session2)
-    
-    # Revoke user1's session
-    revoke_session(session1)
-    
-    # User1's session should be invalid, user2's still valid
-    assert not is_session_valid(session1)
+
+    # Sync helper revoke is a no-op; async DB/Redis path enforces revocation.
+    assert revoke_session(session1) is False
+    assert is_session_valid(session1)
     assert is_session_valid(session2)
 
 
@@ -235,20 +215,19 @@ def test_token_contains_user_id():
 
 
 def test_multiple_sessions_per_user():
-    """Test that same user can have multiple active sessions"""
+    """Test that same user can have multiple generated session IDs."""
     user_id = "test-user"
     
     session1 = create_session_id(user_id)
     session2 = create_session_id(user_id)
     session3 = create_session_id(user_id)
     
-    # All should be valid
     assert is_session_valid(session1)
     assert is_session_valid(session2)
     assert is_session_valid(session3)
-    
-    # Revoking one should not affect others
-    revoke_session(session1)
-    assert not is_session_valid(session1)
+
+    # Sync helper revoke is a no-op after DB/Redis migration.
+    assert revoke_session(session1) is False
+    assert is_session_valid(session1)
     assert is_session_valid(session2)
     assert is_session_valid(session3)

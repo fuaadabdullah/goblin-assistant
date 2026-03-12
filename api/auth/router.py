@@ -12,6 +12,7 @@ from dotenv import load_dotenv
 from .oauth import GoogleOAuth
 from .passkeys import WebAuthnPasskey
 from ..storage.database import get_db
+from ..storage.cache import cache
 from ..storage.user_service import UserService, UserCreateData
 from ..storage.models import UserModel, UserSessionModel
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -36,6 +37,18 @@ REFRESH_TOKEN_EXPIRE_DAYS = 7
 _COOKIE_SECURE = os.getenv("ENVIRONMENT", "development") != "development"
 _COOKIE_SAMESITE: Literal["lax", "strict", "none"] = "lax"
 _REFRESH_MAX_AGE = REFRESH_TOKEN_EXPIRE_DAYS * 24 * 60 * 60
+_SESSION_CACHE_PREFIX = "auth:session"
+
+
+def _session_cache_key(session_id: str) -> str:
+    return f"{_SESSION_CACHE_PREFIX}:{session_id}"
+
+
+def _session_ttl_seconds(expires_at: Optional[datetime]) -> int:
+    if not expires_at:
+        return _REFRESH_MAX_AGE
+    remaining = int((expires_at - datetime.utcnow()).total_seconds())
+    return max(1, remaining)
 
 
 def _set_auth_cookies(
@@ -95,10 +108,21 @@ async def _db_create_session(session_id: str, user_id: str, db: AsyncSession, ex
     db.add(record)
     await db.commit()
 
+    # Best-effort cache warmup (Redis). DB remains source of truth.
+    await cache.set(
+        _session_cache_key(session_id),
+        {"user_id": user_id, "revoked": False},
+        expire=_session_ttl_seconds(expires_at),
+    )
+
 
 async def _db_is_session_valid(session_id: str, db: AsyncSession) -> bool:
     """Return True if the session exists and has not been revoked.
     Returns True for sessions not yet in DB (trust JWT — graceful fallback for pre-DB sessions)."""
+    cached = await cache.get(_session_cache_key(session_id))
+    if isinstance(cached, dict) and "revoked" in cached:
+        return not bool(cached.get("revoked"))
+
     result = await db.execute(
         select(UserSessionModel).where(UserSessionModel.session_id == session_id)
     )
@@ -106,6 +130,12 @@ async def _db_is_session_valid(session_id: str, db: AsyncSession) -> bool:
     if record is None:
         # Session pre-dates DB tracking — trust the JWT signature/expiry.
         return True
+
+    await cache.set(
+        _session_cache_key(session_id),
+        {"user_id": record.user_id, "revoked": bool(record.is_revoked)},
+        expire=_session_ttl_seconds(record.expires_at),
+    )
     return not record.is_revoked
 
 
@@ -117,6 +147,13 @@ async def _db_revoke_session(session_id: str, db: AsyncSession) -> bool:
         .values(is_revoked=True)
     )
     await db.commit()
+
+    # Best-effort cache write-through.
+    await cache.set(
+        _session_cache_key(session_id),
+        {"revoked": True},
+        expire=_REFRESH_MAX_AGE,
+    )
     return result.rowcount > 0
 
 
@@ -166,36 +203,31 @@ def create_refresh_token(user_id: str, session_id: str) -> str:
 
 
 def create_session_id(user_id: str) -> str:
-    """Create unique session ID and track it in-process cache."""
-    session_id = secrets.token_urlsafe(32)
-    _legacy_active_sessions[session_id] = {
-        "user_id": user_id,
-        "created_at": datetime.utcnow(),
-        "revoked": False,
-    }
-    return session_id
+    """Create a unique session ID.
 
-
-# Legacy in-memory dict kept only as a same-process short-lived cache.
-# Never rely on this for cross-restart validity.
-_legacy_active_sessions: dict = {}
+    Session persistence is handled by _db_create_session().
+    """
+    _ = user_id  # kept for backward-compatible function signature
+    return secrets.token_urlsafe(32)
 
 
 def revoke_session(session_id: str) -> bool:
-    """Mark session as revoked in-process cache (use _db_revoke_session for persistence)."""
-    if session_id in _legacy_active_sessions:
-        _legacy_active_sessions[session_id]["revoked"] = True
-        return True
+    """Legacy compatibility helper (no-op).
+
+    Use `_db_revoke_session` for durable revocation.
+    """
+    _ = session_id
     return False
 
 
 def is_session_valid(session_id: str) -> bool:
-    """Synchronous check — only valid within the same process lifetime.
-    For cross-restart safety, use _db_is_session_valid."""
-    if session_id not in _legacy_active_sessions:
-        # Unknown to this process instance — trust the JWT signature instead.
-        return True
-    return not _legacy_active_sessions[session_id]["revoked"]
+    """Legacy compatibility helper.
+
+    Synchronous callers cannot perform DB/Redis I/O, so this returns True and
+    auth enforcement must go through async `_db_is_session_valid`.
+    """
+    _ = session_id
+    return True
 
 
 
