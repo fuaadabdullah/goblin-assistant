@@ -36,27 +36,31 @@ describe('ChatEmptyState', () => {
 
   it('renders all quick prompts', () => {
     render(<ChatEmptyState quickPrompts={prompts} onPromptClick={onPromptClick} />);
-    expect(screen.getByText('Summarize')).toBeInTheDocument();
-    expect(screen.getByText('Code review')).toBeInTheDocument();
-    expect(screen.getByText('Debug')).toBeInTheDocument();
+    expect(screen.getByText('Analyze a stock')).toBeInTheDocument();
+    expect(screen.getByText('Explain a concept')).toBeInTheDocument();
+    expect(screen.getByText('Run some code')).toBeInTheDocument();
   });
 
   it('shows prompt text for each card', () => {
     render(<ChatEmptyState quickPrompts={prompts} onPromptClick={onPromptClick} />);
-    expect(screen.getByText('Summarize the latest news')).toBeInTheDocument();
-    expect(screen.getByText('Review my pull request')).toBeInTheDocument();
+    expect(screen.getByText(/Pull the latest data for AAPL/)).toBeInTheDocument();
+    expect(screen.getByText(/Explain present value/)).toBeInTheDocument();
   });
 
   it('calls onPromptClick with prompt text', () => {
     render(<ChatEmptyState quickPrompts={prompts} onPromptClick={onPromptClick} />);
-    fireEvent.click(screen.getByText('Summarize'));
-    expect(onPromptClick).toHaveBeenCalledWith('Summarize the latest news');
+    fireEvent.click(screen.getByText('Analyze a stock'));
+    expect(onPromptClick).toHaveBeenCalledWith(
+      'Pull the latest data for AAPL \u2014 price, P/E, recent earnings summary, and analyst consensus.',
+    );
   });
 
   it('calls onPromptClick for different prompts', () => {
     render(<ChatEmptyState quickPrompts={prompts} onPromptClick={onPromptClick} />);
-    fireEvent.click(screen.getByText('Debug'));
-    expect(onPromptClick).toHaveBeenCalledWith('Help me debug this error');
+    fireEvent.click(screen.getByText('Run some code'));
+    expect(onPromptClick).toHaveBeenCalledWith(
+      'Open the Python sandbox and show me how to fetch stock data with yfinance.',
+    );
   });
 
   it('renders lottie animation when not reduced motion', () => {

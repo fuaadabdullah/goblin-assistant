@@ -88,6 +88,7 @@ jest.mock('../../../../contexts/ProviderContext', () => ({
 
 jest.mock('../../../../utils/auth-session', () => ({
   getAuthToken: jest.fn(() => 'mock-auth-token'),
+  isAuthenticated: jest.fn(() => true),
 }));
 
 const { useChatSession } = require('../useChatSession') as typeof import('../useChatSession');
