@@ -25,7 +25,7 @@
             <div class='fl pad1y space-right2'>
                 <span class="strong">0% </span>
                 <span class="quiet">Statements</span>
-                <span class='fraction'>0/611</span>
+                <span class='fraction'>0/613</span>
             </div>
         
             
@@ -46,7 +46,7 @@
             <div class='fl pad1y space-right2'>
                 <span class="strong">0% </span>
                 <span class="quiet">Lines</span>
-                <span class='fraction'>0/611</span>
+                <span class='fraction'>0/613</span>
             </div>
         
             
@@ -674,7 +674,11 @@
 <a name='L609'></a><a href='#L609'>609</a>
 <a name='L610'></a><a href='#L610'>610</a>
 <a name='L611'></a><a href='#L611'>611</a>
-<a name='L612'></a><a href='#L612'>612</a></td><td class="line-coverage quiet"><span class="cline-any cline-no">&nbsp;</span>
+<a name='L612'></a><a href='#L612'>612</a>
+<a name='L613'></a><a href='#L613'>613</a>
+<a name='L614'></a><a href='#L614'>614</a></td><td class="line-coverage quiet"><span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-no">&nbsp;</span>
@@ -1298,7 +1302,7 @@
 <span class="cstat-no" title="statement not covered" >import { estimateFromText, type TextCostEstimate } from '../../../lib/cost-estimate';</span>
 <span class="cstat-no" title="statement not covered" >import { computeCostUsd } from '../../../lib/llm-rates';</span>
 <span class="cstat-no" title="statement not covered" >import { useProvider } from '../../../contexts/ProviderContext';</span>
-<span class="cstat-no" title="statement not covered" >import { getAuthToken } from '../../../utils/auth-session';</span>
+<span class="cstat-no" title="statement not covered" >import { isAuthenticated } from '../../../utils/auth-session';</span>
 <span class="cstat-no" title="statement not covered" >import { apiClient } from '@/api';</span>
 <span class="cstat-no" title="statement not covered" >import { devError, devLog } from '@/utils/dev-log';</span>
 <span class="cstat-no" title="statement not covered" ></span>
@@ -1535,9 +1539,9 @@
 <span class="cstat-no" title="statement not covered" >      try {</span>
 <span class="cstat-no" title="statement not covered" >        // Guest fallback: if user is not authenticated, use the</span>
 <span class="cstat-no" title="statement not covered" >        // unauthenticated /api/generate proxy instead of conversations API.</span>
-<span class="cstat-no" title="statement not covered" >        const isAuthenticated = Boolean(getAuthToken());</span>
+<span class="cstat-no" title="statement not covered" >        const isAuthed = isAuthenticated();</span>
 <span class="cstat-no" title="statement not covered" ></span>
-<span class="cstat-no" title="statement not covered" >        if (!isAuthenticated) {</span>
+<span class="cstat-no" title="statement not covered" >        if (!isAuthed) {</span>
 <span class="cstat-no" title="statement not covered" >          const response = await apiClient.chatCompletion(updatedMessages, selectedModel || undefined);</span>
 <span class="cstat-no" title="statement not covered" >          const text = typeof response === 'string' ? response : String(response ?? 'No response');</span>
 <span class="cstat-no" title="statement not covered" >          const assistantMsg: ChatMessage = {</span>
@@ -1612,6 +1616,7 @@
 <span class="cstat-no" title="statement not covered" >            cost_usd: fallbackCost.cost_usd,</span>
 <span class="cstat-no" title="statement not covered" >            cost_is_approx: fallbackCost.approx,</span>
 <span class="cstat-no" title="statement not covered" >            correlation_id: result?.correlation_id,</span>
+<span class="cstat-no" title="statement not covered" >            visualizations: result?.visualizations,</span>
 <span class="cstat-no" title="statement not covered" >          },</span>
 <span class="cstat-no" title="statement not covered" >        };</span>
 <span class="cstat-no" title="statement not covered" ></span>
@@ -1801,9 +1806,9 @@
 <span class="cstat-no" title="statement not covered" ></span>
 <span class="cstat-no" title="statement not covered" >      try {</span>
 <span class="cstat-no" title="statement not covered" >        // Check if user is authenticated</span>
-<span class="cstat-no" title="statement not covered" >        const isAuthenticated = Boolean(getAuthToken());</span>
+<span class="cstat-no" title="statement not covered" >        const isAuthed = isAuthenticated();</span>
 <span class="cstat-no" title="statement not covered" ></span>
-<span class="cstat-no" title="statement not covered" >        if (!isAuthenticated) {</span>
+<span class="cstat-no" title="statement not covered" >        if (!isAuthed) {</span>
 <span class="cstat-no" title="statement not covered" >          // Guest mode: use /api/generate</span>
 <span class="cstat-no" title="statement not covered" >          const response = await apiClient.chatCompletion(messagesUpToRegeneration, selectedModel || undefined);</span>
 <span class="cstat-no" title="statement not covered" >          const text = typeof response === 'string' ? response : String(response ?? 'No response');</span>
@@ -1847,6 +1852,7 @@
 <span class="cstat-no" title="statement not covered" >              cost_usd: fallbackCost.cost_usd,</span>
 <span class="cstat-no" title="statement not covered" >              cost_is_approx: fallbackCost.approx,</span>
 <span class="cstat-no" title="statement not covered" >              correlation_id: result?.correlation_id,</span>
+<span class="cstat-no" title="statement not covered" >              visualizations: result?.visualizations,</span>
 <span class="cstat-no" title="statement not covered" >            },</span>
 <span class="cstat-no" title="statement not covered" >          };</span>
 <span class="cstat-no" title="statement not covered" ></span>
@@ -1903,7 +1909,7 @@
             <div class='footer quiet pad2 space-top1 center small'>
                 Code coverage generated by
                 <a href="https://istanbul.js.org/" target="_blank" rel="noopener noreferrer">istanbul</a>
-                at 2026-03-11T20:44:29.716Z
+                at 2026-03-12T19:41:11.902Z
             </div>
         <script src="../../../prettify.js"></script>
         <script>

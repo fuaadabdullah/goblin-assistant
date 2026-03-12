@@ -67,7 +67,7 @@ function createFetchResponse({
 
 function loadHandler() {
   // eslint-disable-next-line @typescript-eslint/no-var-requires
-  return require('../auth/validate').default as (
+  return require('../../../pages/api/auth/validate').default as (
     req: MockReq,
     res: MockRes,
   ) => Promise<void>;

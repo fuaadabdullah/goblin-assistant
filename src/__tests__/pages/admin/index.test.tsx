@@ -22,7 +22,7 @@ jest.mock('../../../components/RouteBoundary', () => ({
   withRouteErrorBoundary: (Component: React.ComponentType, _name: string) => Component,
 }));
 
-import Admin from '../index';
+import Admin from '../../../pages/admin/index';
 
 describe('Admin index page', () => {
   it('renders the admin layout', () => {

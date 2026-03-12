@@ -25,7 +25,7 @@
             <div class='fl pad1y space-right2'>
                 <span class="strong">0% </span>
                 <span class="quiet">Statements</span>
-                <span class='fraction'>0/248</span>
+                <span class='fraction'>0/261</span>
             </div>
         
             
@@ -46,7 +46,7 @@
             <div class='fl pad1y space-right2'>
                 <span class="strong">0% </span>
                 <span class="quiet">Lines</span>
-                <span class='fraction'>0/248</span>
+                <span class='fraction'>0/261</span>
             </div>
         
             
@@ -311,7 +311,33 @@
 <a name='L246'></a><a href='#L246'>246</a>
 <a name='L247'></a><a href='#L247'>247</a>
 <a name='L248'></a><a href='#L248'>248</a>
-<a name='L249'></a><a href='#L249'>249</a></td><td class="line-coverage quiet"><span class="cline-any cline-no">&nbsp;</span>
+<a name='L249'></a><a href='#L249'>249</a>
+<a name='L250'></a><a href='#L250'>250</a>
+<a name='L251'></a><a href='#L251'>251</a>
+<a name='L252'></a><a href='#L252'>252</a>
+<a name='L253'></a><a href='#L253'>253</a>
+<a name='L254'></a><a href='#L254'>254</a>
+<a name='L255'></a><a href='#L255'>255</a>
+<a name='L256'></a><a href='#L256'>256</a>
+<a name='L257'></a><a href='#L257'>257</a>
+<a name='L258'></a><a href='#L258'>258</a>
+<a name='L259'></a><a href='#L259'>259</a>
+<a name='L260'></a><a href='#L260'>260</a>
+<a name='L261'></a><a href='#L261'>261</a>
+<a name='L262'></a><a href='#L262'>262</a></td><td class="line-coverage quiet"><span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-no">&nbsp;</span>
@@ -569,6 +595,8 @@
 <span class="cstat-no" title="statement not covered" >import MessageActions from './MessageActions';</span>
 <span class="cstat-no" title="statement not covered" >import ChatEmptyState from './ChatEmptyState';</span>
 <span class="cstat-no" title="statement not covered" >import MessageMarkdown from './MessageMarkdown';</span>
+<span class="cstat-no" title="statement not covered" >import { FinancialVisualization } from '@/features/finance';</span>
+<span class="cstat-no" title="statement not covered" >import type { VisualizationBlock } from '@/features/finance';</span>
 <span class="cstat-no" title="statement not covered" >import { Paperclip } from 'lucide-react';</span>
 <span class="cstat-no" title="statement not covered" >import { formatCost } from '@/utils/format-cost';</span>
 <span class="cstat-no" title="statement not covered" ></span>
@@ -711,6 +739,17 @@
 <span class="cstat-no" title="statement not covered" >                    ) : (</span>
 <span class="cstat-no" title="statement not covered" >                      &lt;MessageMarkdown content={msg.content} inverse={isUser} /&gt;</span>
 <span class="cstat-no" title="statement not covered" >                    )}</span>
+<span class="cstat-no" title="statement not covered" >                    {/* Financial visualizations */}</span>
+<span class="cstat-no" title="statement not covered" >                    {!isUser &amp;&amp; msg.meta?.visualizations &amp;&amp; msg.meta.visualizations.length &gt; 0 &amp;&amp; (</span>
+<span class="cstat-no" title="statement not covered" >                      &lt;div className="mt-3 space-y-2"&gt;</span>
+<span class="cstat-no" title="statement not covered" >                        {msg.meta.visualizations.map((viz, idx) =&gt; (</span>
+<span class="cstat-no" title="statement not covered" >                          &lt;FinancialVisualization</span>
+<span class="cstat-no" title="statement not covered" >                            key={`viz-${idx}`}</span>
+<span class="cstat-no" title="statement not covered" >                            block={viz as VisualizationBlock}</span>
+<span class="cstat-no" title="statement not covered" >                          /&gt;</span>
+<span class="cstat-no" title="statement not covered" >                        ))}</span>
+<span class="cstat-no" title="statement not covered" >                      &lt;/div&gt;</span>
+<span class="cstat-no" title="statement not covered" >                    )}</span>
 <span class="cstat-no" title="statement not covered" >                    {/* Attachment badges */}</span>
 <span class="cstat-no" title="statement not covered" >                    {msg.meta?.attachments &amp;&amp; msg.meta.attachments.length &gt; 0 &amp;&amp; (</span>
 <span class="cstat-no" title="statement not covered" >                      &lt;div className="flex flex-wrap gap-1.5 mt-2 pt-2 border-t border-current/10"&gt;</span>
@@ -814,7 +853,7 @@
             <div class='footer quiet pad2 space-top1 center small'>
                 Code coverage generated by
                 <a href="https://istanbul.js.org/" target="_blank" rel="noopener noreferrer">istanbul</a>
-                at 2026-03-11T20:44:29.716Z
+                at 2026-03-12T19:41:11.902Z
             </div>
         <script src="../../../prettify.js"></script>
         <script>

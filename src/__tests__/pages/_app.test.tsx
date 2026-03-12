@@ -39,7 +39,7 @@ jest.mock('../../utils/error-tracking', () => ({
 jest.mock('../../index.css', () => {});
 jest.mock('highlight.js/styles/github-dark.css', () => {});
 
-import App from '../_app';
+import App from '../../pages/_app';
 import { initGA } from '../../utils/analytics';
 import { setupGlobalErrorTracking, monitorNetworkStatus } from '../../utils/error-tracking';
 import type { AppProps } from 'next/app';

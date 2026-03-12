@@ -67,7 +67,7 @@ function createFetchResponse({
 
 function loadHandler() {
   // eslint-disable-next-line @typescript-eslint/no-var-requires
-  return require('../generate').default as (
+  return require('../../../pages/api/generate').default as (
     req: MockReq,
     res: MockRes,
   ) => Promise<void>;
