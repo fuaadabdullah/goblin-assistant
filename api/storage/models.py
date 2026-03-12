@@ -153,6 +153,20 @@ class TaskModel(Base):
     user = relationship("UserModel", foreign_keys=[user_id])
 
 
+class UserSessionModel(Base):
+    """Database model for persistent user sessions (survives server restarts)"""
+
+    __tablename__ = "user_sessions"
+
+    session_id = Column(String, primary_key=True)
+    user_id = Column(String, ForeignKey("users.id"), nullable=False, index=True)
+    is_revoked = Column(Boolean, default=False, nullable=False, server_default=text("0"))
+    created_at = Column(DateTime, default=datetime.utcnow)
+    expires_at = Column(DateTime, nullable=True)
+
+    user = relationship("UserModel", foreign_keys=[user_id])
+
+
 class UserPreferencesModel(Base):
     """Database model for user preferences"""
 

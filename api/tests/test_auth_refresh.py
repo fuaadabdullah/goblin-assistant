@@ -152,8 +152,10 @@ def test_revoked_session_not_valid():
 
 
 def test_nonexistent_session_not_valid():
-    """Test that nonexistent sessions are not valid"""
-    assert not is_session_valid("nonexistent-session-id")
+    """Unknown sessions return True — they trust the JWT signature/expiry.
+    A session absent from the in-process cache may simply pre-date this process
+    instance (e.g. after a server restart), so we fall back to trusting the JWT."""
+    assert is_session_valid("nonexistent-session-id")
 
 
 def test_session_isolation():

@@ -13,7 +13,9 @@ from .oauth import GoogleOAuth
 from .passkeys import WebAuthnPasskey
 from ..storage.database import get_db
 from ..storage.user_service import UserService, UserCreateData
+from ..storage.models import UserSessionModel
 from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy import select, update
 from ..core.csrf_manager import generate_csrf_token, validate_csrf_token
 from ..core.rate_limiter_auth import check_rate_limit
 
@@ -75,9 +77,47 @@ def _clear_auth_cookies(response: Response) -> None:
         )
 
 
-# Session tracking (in production, use DB or Redis)
-# Format: {session_id: {"user_id": "...", "created_at": datetime, "revoked": bool}}
-active_sessions = {}
+# DB-backed session management — survives server restarts.
+# The functions below are async-aware wrappers used throughout the module.
+
+_db_session_override = None  # Used in tests to inject a DB session
+
+
+async def _db_create_session(session_id: str, user_id: str, db: AsyncSession, expires_at: Optional[datetime] = None) -> None:
+    """Persist a new session to the database."""
+    record = UserSessionModel(
+        session_id=session_id,
+        user_id=user_id,
+        is_revoked=False,
+        created_at=datetime.utcnow(),
+        expires_at=expires_at,
+    )
+    db.add(record)
+    await db.commit()
+
+
+async def _db_is_session_valid(session_id: str, db: AsyncSession) -> bool:
+    """Return True if the session exists and has not been revoked.
+    Returns True for sessions not yet in DB (trust JWT — graceful fallback for pre-DB sessions)."""
+    result = await db.execute(
+        select(UserSessionModel).where(UserSessionModel.session_id == session_id)
+    )
+    record = result.scalar_one_or_none()
+    if record is None:
+        # Session pre-dates DB tracking — trust the JWT signature/expiry.
+        return True
+    return not record.is_revoked
+
+
+async def _db_revoke_session(session_id: str, db: AsyncSession) -> bool:
+    """Mark a session as revoked. Returns True if the row existed."""
+    result = await db.execute(
+        update(UserSessionModel)
+        .where(UserSessionModel.session_id == session_id)
+        .values(is_revoked=True)
+    )
+    await db.commit()
+    return result.rowcount > 0
 
 
 def create_access_token(
@@ -126,9 +166,9 @@ def create_refresh_token(user_id: str, session_id: str) -> str:
 
 
 def create_session_id(user_id: str) -> str:
-    """Create unique session ID and track it"""
+    """Create unique session ID and track it in-process cache."""
     session_id = secrets.token_urlsafe(32)
-    active_sessions[session_id] = {
+    _legacy_active_sessions[session_id] = {
         "user_id": user_id,
         "created_at": datetime.utcnow(),
         "revoked": False,
@@ -136,19 +176,26 @@ def create_session_id(user_id: str) -> str:
     return session_id
 
 
+# Legacy in-memory dict kept only as a same-process short-lived cache.
+# Never rely on this for cross-restart validity.
+_legacy_active_sessions: dict = {}
+
+
 def revoke_session(session_id: str) -> bool:
-    """Mark session as revoked"""
-    if session_id in active_sessions:
-        active_sessions[session_id]["revoked"] = True
+    """Mark session as revoked in-process cache (use _db_revoke_session for persistence)."""
+    if session_id in _legacy_active_sessions:
+        _legacy_active_sessions[session_id]["revoked"] = True
         return True
     return False
 
 
 def is_session_valid(session_id: str) -> bool:
-    """Check if session is active and not revoked"""
-    if session_id not in active_sessions:
-        return False
-    return not active_sessions[session_id]["revoked"]
+    """Synchronous check — only valid within the same process lifetime.
+    For cross-restart safety, use _db_is_session_valid."""
+    if session_id not in _legacy_active_sessions:
+        # Unknown to this process instance — trust the JWT signature instead.
+        return True
+    return not _legacy_active_sessions[session_id]["revoked"]
 
 
 
@@ -279,7 +326,7 @@ async def get_current_user(
 
     # Validate session if present
     session_id = payload.get("session_id")
-    if session_id and not is_session_valid(session_id):
+    if session_id and not await _db_is_session_valid(session_id, db):
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Session has expired or been revoked",
@@ -377,6 +424,7 @@ async def register(
 
     # Create session and tokens
     session_id = create_session_id(user_model.id)
+    await _db_create_session(session_id, user_model.id, db)
     access_token_expires = timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
     access_token = create_access_token(
         data={"sub": user_model.id}, 
@@ -455,6 +503,7 @@ async def login(
 
     # Create session and tokens
     session_id = create_session_id(user_model.id)
+    await _db_create_session(session_id, user_model.id, db)
     access_token_expires = timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
     access_token = create_access_token(
         data={"sub": user_model.id}, 
@@ -543,6 +592,7 @@ async def google_auth(
 
     # Create session and tokens
     session_id = create_session_id(user_model.id)
+    await _db_create_session(session_id, user_model.id, db)
     access_token_expires = timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
     access_token = create_access_token(
         data={"sub": user_model.id},
@@ -614,7 +664,7 @@ async def refresh_token_endpoint(
         )
     
     # Verify session is still active
-    if not is_session_valid(session_id):
+    if not await _db_is_session_valid(session_id, db):
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Session has expired or been revoked",
@@ -750,6 +800,7 @@ async def google_auth_callback(
 
         # Create session and tokens
         session_id = create_session_id(user_model.id)
+        await _db_create_session(session_id, user_model.id, db)
         access_token_expires = timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
         access_token = create_access_token(
             data={"sub": user_model.id},
@@ -866,6 +917,7 @@ async def authenticate_passkey(
 
         # Create session and tokens
         session_id = create_session_id(user_model.id)
+        await _db_create_session(session_id, user_model.id, db)
         access_token_expires = timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
         access_token = create_access_token(
             data={"sub": user_model.id},
@@ -903,6 +955,7 @@ async def logout(
     response: Response,
     current_user: User = Depends(get_current_user),
     credentials: Optional[HTTPAuthorizationCredentials] = Depends(security),
+    db: AsyncSession = Depends(get_db),
 ):
     """Logout user and revoke session"""
     # Extract session ID from token (header or cookie)
@@ -917,7 +970,7 @@ async def logout(
         if payload:
             session_id = payload.get("session_id")
             if session_id:
-                revoke_session(session_id)
+                await _db_revoke_session(session_id, db)
 
     _clear_auth_cookies(response)
     return {"message": "Logged out successfully"}
