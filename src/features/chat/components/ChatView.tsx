@@ -2,12 +2,13 @@ import ChatHeader from './ChatHeader';
 import ChatMessageList from './ChatMessageList';
 import ChatComposer from './ChatComposer';
 import ChatSidebar from './ChatSidebar';
-import { useEffect } from 'react';
+import { useCallback } from 'react';
 import type { ChatSessionState } from '../hooks/useChatSession';
 import Seo from '../../../components/Seo';
 import { useAuthSession } from '../../../hooks/api/useAuthSession';
 import AuthPrompt from '../../../components/Auth/AuthPrompt';
 import { useUIStore } from '../../../store/uiStore';
+import { useFocusTrap } from '../../../hooks/useFocusTrap';
 
 interface ChatViewProps {
   /** Chat session state + handlers. */
@@ -47,25 +48,14 @@ const ChatView = ({ session, isAdmin }: ChatViewProps) => {
     deleteMessage,
     copyMessage,
     regenerateMessage,
+    pendingAttachments,
+    isUploading,
+    handleFileSelected,
+    removePendingAttachment,
   } = session;
 
-  useEffect(() => {
-    if (!chatSidebarOpen) return undefined;
-
-    const onEscape = (event: KeyboardEvent) => {
-      if (event.key === 'Escape') {
-        setChatSidebarOpen(false);
-      }
-    };
-
-    window.addEventListener('keydown', onEscape);
-    document.body.style.overflow = 'hidden';
-
-    return () => {
-      window.removeEventListener('keydown', onEscape);
-      document.body.style.overflow = '';
-    };
-  }, [chatSidebarOpen, setChatSidebarOpen]);
+  const closeSidebar = useCallback(() => setChatSidebarOpen(false), [setChatSidebarOpen]);
+  const drawerRef = useFocusTrap(chatSidebarOpen, closeSidebar);
 
   const handleThreadSelect = (threadKey: string) => {
     selectThread(threadKey);
@@ -103,15 +93,19 @@ const ChatView = ({ session, isAdmin }: ChatViewProps) => {
       />
       <div className="relative flex">
         <div
+          ref={drawerRef}
+          role="dialog"
+          aria-modal={chatSidebarOpen ? 'true' : undefined}
+          aria-label="Conversations"
           className={`fixed inset-0 z-40 lg:hidden ${
             chatSidebarOpen ? 'pointer-events-auto' : 'pointer-events-none'
           }`}
-          aria-hidden={!chatSidebarOpen}
+          aria-hidden={chatSidebarOpen ? undefined : 'true'}
         >
           <button
             type="button"
             aria-label="Close conversations drawer"
-            className={`absolute inset-0 bg-black/50 transition-opacity duration-200 ${
+            className={`absolute inset-0 bg-black/50 backdrop-blur-sm transition-opacity duration-200 ${
               chatSidebarOpen ? 'opacity-100' : 'opacity-0'
             }`}
             onClick={() => setChatSidebarOpen(false)}
@@ -120,7 +114,7 @@ const ChatView = ({ session, isAdmin }: ChatViewProps) => {
             id="mobile-chat-sidebar"
             className={`absolute inset-y-0 left-0 transition-transform duration-200 ease-out ${
               chatSidebarOpen ? 'translate-x-0' : '-translate-x-full'
-            }`}
+            } pt-[max(0px,env(safe-area-inset-top))]`}
           >
             <ChatSidebar
               threads={threads}
@@ -186,12 +180,16 @@ const ChatView = ({ session, isAdmin }: ChatViewProps) => {
               onSend={() => sendMessage()}
               onKeyDown={handleKeyDown}
               onPromptClick={handlePromptClick}
+              onFileSelected={handleFileSelected}
               selectedProvider={selectedProvider}
               selectedModel={selectedModel}
               estimatedTokens={inputEstimate?.estimated_tokens}
               estimatedCostUsd={inputEstimate?.estimated_cost_usd}
               totalTokens={totalTokens}
               totalCostUsd={totalCostUsd}
+              pendingAttachments={pendingAttachments}
+              isUploading={isUploading}
+              onRemoveAttachment={removePendingAttachment}
             />
           </footer>
         </main>

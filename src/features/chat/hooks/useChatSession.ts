@@ -11,7 +11,7 @@ import { CHAT_QUICK_PROMPTS } from '../../../content/brand';
 import { estimateFromText, type TextCostEstimate } from '../../../lib/cost-estimate';
 import { computeCostUsd } from '../../../lib/llm-rates';
 import { useProvider } from '../../../contexts/ProviderContext';
-import { getAuthToken } from '../../../utils/auth-session';
+import { isAuthenticated } from '../../../utils/auth-session';
 import { apiClient } from '@/api';
 import { devError, devLog } from '@/utils/dev-log';
 
@@ -248,9 +248,9 @@ export const useChatSession = (): ChatSessionState => {
       try {
         // Guest fallback: if user is not authenticated, use the
         // unauthenticated /api/generate proxy instead of conversations API.
-        const isAuthenticated = Boolean(getAuthToken());
+        const isAuthed = isAuthenticated();
 
-        if (!isAuthenticated) {
+        if (!isAuthed) {
           const response = await apiClient.chatCompletion(updatedMessages, selectedModel || undefined);
           const text = typeof response === 'string' ? response : String(response ?? 'No response');
           const assistantMsg: ChatMessage = {
@@ -325,6 +325,7 @@ export const useChatSession = (): ChatSessionState => {
             cost_usd: fallbackCost.cost_usd,
             cost_is_approx: fallbackCost.approx,
             correlation_id: result?.correlation_id,
+            visualizations: result?.visualizations,
           },
         };
 
@@ -514,9 +515,9 @@ export const useChatSession = (): ChatSessionState => {
 
       try {
         // Check if user is authenticated
-        const isAuthenticated = Boolean(getAuthToken());
+        const isAuthed = isAuthenticated();
 
-        if (!isAuthenticated) {
+        if (!isAuthed) {
           // Guest mode: use /api/generate
           const response = await apiClient.chatCompletion(messagesUpToRegeneration, selectedModel || undefined);
           const text = typeof response === 'string' ? response : String(response ?? 'No response');
@@ -560,6 +561,7 @@ export const useChatSession = (): ChatSessionState => {
               cost_usd: fallbackCost.cost_usd,
               cost_is_approx: fallbackCost.approx,
               correlation_id: result?.correlation_id,
+              visualizations: result?.visualizations,
             },
           };
 

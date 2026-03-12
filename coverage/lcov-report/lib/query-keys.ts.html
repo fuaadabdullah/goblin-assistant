@@ -23,30 +23,30 @@
         <div class='clearfix'>
             
             <div class='fl pad1y space-right2'>
-                <span class="strong">94.23% </span>
+                <span class="strong">0% </span>
                 <span class="quiet">Statements</span>
-                <span class='fraction'>49/52</span>
+                <span class='fraction'>0/52</span>
             </div>
         
             
             <div class='fl pad1y space-right2'>
-                <span class="strong">100% </span>
+                <span class="strong">0% </span>
                 <span class="quiet">Branches</span>
-                <span class='fraction'>1/1</span>
+                <span class='fraction'>0/1</span>
             </div>
         
             
             <div class='fl pad1y space-right2'>
-                <span class="strong">12.5% </span>
+                <span class="strong">0% </span>
                 <span class="quiet">Functions</span>
-                <span class='fraction'>1/8</span>
+                <span class='fraction'>0/1</span>
             </div>
         
             
             <div class='fl pad1y space-right2'>
-                <span class="strong">94.23% </span>
+                <span class="strong">0% </span>
                 <span class="quiet">Lines</span>
-                <span class='fraction'>49/52</span>
+                <span class='fraction'>0/52</span>
             </div>
         
             
@@ -61,7 +61,7 @@
             </div>
         </template>
     </div>
-    <div class='status-line high'></div>
+    <div class='status-line low'></div>
     <pre><table class="coverage">
 <tr><td class="line-count quiet"><a name='L1'></a><a href='#L1'>1</a>
 <a name='L2'></a><a href='#L2'>2</a>
@@ -115,110 +115,110 @@
 <a name='L50'></a><a href='#L50'>50</a>
 <a name='L51'></a><a href='#L51'>51</a>
 <a name='L52'></a><a href='#L52'>52</a>
-<a name='L53'></a><a href='#L53'>53</a></td><td class="line-coverage quiet"><span class="cline-any cline-yes">1x</span>
-<span class="cline-any cline-yes">1x</span>
-<span class="cline-any cline-yes">1x</span>
-<span class="cline-any cline-yes">1x</span>
-<span class="cline-any cline-yes">1x</span>
-<span class="cline-any cline-yes">1x</span>
-<span class="cline-any cline-yes">1x</span>
-<span class="cline-any cline-yes">1x</span>
-<span class="cline-any cline-yes">1x</span>
-<span class="cline-any cline-yes">1x</span>
-<span class="cline-any cline-yes">1x</span>
-<span class="cline-any cline-yes">1x</span>
-<span class="cline-any cline-yes">1x</span>
-<span class="cline-any cline-yes">1x</span>
-<span class="cline-any cline-yes">1x</span>
-<span class="cline-any cline-yes">1x</span>
-<span class="cline-any cline-yes">8x</span>
-<span class="cline-any cline-yes">1x</span>
-<span class="cline-any cline-yes">1x</span>
-<span class="cline-any cline-yes">1x</span>
-<span class="cline-any cline-yes">1x</span>
+<a name='L53'></a><a href='#L53'>53</a></td><td class="line-coverage quiet"><span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-no">&nbsp;</span>
-<span class="cline-any cline-yes">1x</span>
-<span class="cline-any cline-yes">1x</span>
-<span class="cline-any cline-yes">1x</span>
-<span class="cline-any cline-yes">1x</span>
-<span class="cline-any cline-yes">1x</span>
-<span class="cline-any cline-yes">1x</span>
-<span class="cline-any cline-yes">1x</span>
-<span class="cline-any cline-yes">1x</span>
-<span class="cline-any cline-yes">1x</span>
-<span class="cline-any cline-yes">1x</span>
-<span class="cline-any cline-yes">1x</span>
-<span class="cline-any cline-yes">1x</span>
 <span class="cline-any cline-no">&nbsp;</span>
-<span class="cline-any cline-yes">1x</span>
-<span class="cline-any cline-yes">1x</span>
-<span class="cline-any cline-yes">1x</span>
-<span class="cline-any cline-yes">1x</span>
-<span class="cline-any cline-yes">1x</span>
 <span class="cline-any cline-no">&nbsp;</span>
-<span class="cline-any cline-yes">1x</span>
-<span class="cline-any cline-yes">1x</span>
-<span class="cline-any cline-yes">1x</span>
-<span class="cline-any cline-yes">1x</span>
-<span class="cline-any cline-yes">1x</span>
-<span class="cline-any cline-yes">1x</span>
-<span class="cline-any cline-yes">1x</span>
-<span class="cline-any cline-yes">1x</span>
-<span class="cline-any cline-yes">1x</span>
-<span class="cline-any cline-yes">1x</span>
-<span class="cline-any cline-yes">1x</span>
-<span class="cline-any cline-neutral">&nbsp;</span></td><td class="text"><pre class="prettyprint lang-js">/**
- * Canonical React Query keys for consistent cache management.
- *
- * Keep all query keys defined here (single source of truth).
- */
-export const queryKeys = {
-  // Health
-  health: ['health'] as const,
-  streamingHealth: ['health', 'streaming'] as const,
-  allHealth: ['health', 'all'] as const,
-&nbsp;
-  // Chat
-  models: ['chat', 'models'] as const,
-  routingInfo: ['chat', 'routing-info'] as const,
-  chatThreads: ['chat', 'threads'] as const,
-  chatConversation: (conversationId: string) =&gt;
-    ['chat', 'conversation', conversationId] as const,
-&nbsp;
-  // Search
-  collections: ['search', 'collections'] as const,
-  searchResults: <span class="fstat-no" title="function not covered" >(collection: string, query: string, limit = 8) =&gt;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span></td><td class="text"><pre class="prettyprint lang-js"><span class="cstat-no" title="statement not covered" ><span class="fstat-no" title="function not covered" ><span class="branch-0 cbranch-no" title="branch not covered" >/**</span></span></span>
+<span class="cstat-no" title="statement not covered" > * Canonical React Query keys for consistent cache management.</span>
+<span class="cstat-no" title="statement not covered" > *</span>
+<span class="cstat-no" title="statement not covered" > * Keep all query keys defined here (single source of truth).</span>
+<span class="cstat-no" title="statement not covered" > */</span>
+<span class="cstat-no" title="statement not covered" >export const queryKeys = {</span>
+<span class="cstat-no" title="statement not covered" >  // Health</span>
+<span class="cstat-no" title="statement not covered" >  health: ['health'] as const,</span>
+<span class="cstat-no" title="statement not covered" >  streamingHealth: ['health', 'streaming'] as const,</span>
+<span class="cstat-no" title="statement not covered" >  allHealth: ['health', 'all'] as const,</span>
+<span class="cstat-no" title="statement not covered" ></span>
+<span class="cstat-no" title="statement not covered" >  // Chat</span>
+<span class="cstat-no" title="statement not covered" >  models: ['chat', 'models'] as const,</span>
+<span class="cstat-no" title="statement not covered" >  routingInfo: ['chat', 'routing-info'] as const,</span>
+<span class="cstat-no" title="statement not covered" >  chatThreads: ['chat', 'threads'] as const,</span>
+<span class="cstat-no" title="statement not covered" >  chatConversation: (conversationId: string) =&gt;</span>
+<span class="cstat-no" title="statement not covered" >    ['chat', 'conversation', conversationId] as const,</span>
+<span class="cstat-no" title="statement not covered" ></span>
+<span class="cstat-no" title="statement not covered" >  // Search</span>
+<span class="cstat-no" title="statement not covered" >  collections: ['search', 'collections'] as const,</span>
+<span class="cstat-no" title="statement not covered" >  searchResults: (collection: string, query: string, limit = 8) =&gt;</span>
 <span class="cstat-no" title="statement not covered" >    ['search', 'results', collection, query, limit] as const,</span>
-&nbsp;
-  // Settings
-  providers: ['settings', 'providers'] as const,
-  credentials: ['settings', 'credentials'] as const,
-  modelConfigs: ['settings', 'models'] as const,
-  globalSettings: ['settings', 'global'] as const,
-&nbsp;
-  // Auth
-  authValidate: ['auth', 'validate'] as const,
-&nbsp;
-  // Routing
-  routingProviders: <span class="fstat-no" title="function not covered" >(capability?: string) =&gt;</span>
+<span class="cstat-no" title="statement not covered" ></span>
+<span class="cstat-no" title="statement not covered" >  // Settings</span>
+<span class="cstat-no" title="statement not covered" >  providers: ['settings', 'providers'] as const,</span>
+<span class="cstat-no" title="statement not covered" >  credentials: ['settings', 'credentials'] as const,</span>
+<span class="cstat-no" title="statement not covered" >  modelConfigs: ['settings', 'models'] as const,</span>
+<span class="cstat-no" title="statement not covered" >  globalSettings: ['settings', 'global'] as const,</span>
+<span class="cstat-no" title="statement not covered" ></span>
+<span class="cstat-no" title="statement not covered" >  // Auth</span>
+<span class="cstat-no" title="statement not covered" >  authValidate: ['auth', 'validate'] as const,</span>
+<span class="cstat-no" title="statement not covered" ></span>
+<span class="cstat-no" title="statement not covered" >  // Routing</span>
+<span class="cstat-no" title="statement not covered" >  routingProviders: (capability?: string) =&gt;</span>
 <span class="cstat-no" title="statement not covered" >    capability ? ['routing', 'providers', capability] as const : ['routing', 'providers'] as const,</span>
-  routingHealth: ['routing', 'health'] as const,
-&nbsp;
-  // Goblins
-  goblins: ['goblins'] as const,
-  goblinHistory: <span class="fstat-no" title="function not covered" >(goblinId: string, limit: number) =&gt;</span>
+<span class="cstat-no" title="statement not covered" >  routingHealth: ['routing', 'health'] as const,</span>
+<span class="cstat-no" title="statement not covered" ></span>
+<span class="cstat-no" title="statement not covered" >  // Goblins</span>
+<span class="cstat-no" title="statement not covered" >  goblins: ['goblins'] as const,</span>
+<span class="cstat-no" title="statement not covered" >  goblinHistory: (goblinId: string, limit: number) =&gt;</span>
 <span class="cstat-no" title="statement not covered" >    ['goblins', goblinId, 'history', limit] as const,</span>
-  goblinStats: <span class="fstat-no" title="function not covered" >(goblinId: string) =&gt; ['goblins', goblinId, 'stats'] as const,</span>
-&nbsp;
-  // RAPTOR
-  raptorStatus: ['raptor', 'status'] as const,
-  raptorLogs: <span class="fstat-no" title="function not covered" >(limit?: number) =&gt; ['raptor', 'logs', limit] as const,</span>
-&nbsp;
-  // Sandbox
-  sandboxJobs: ['sandbox', 'jobs'] as const,
-  jobLogs: <span class="fstat-no" title="function not covered" >(jobId: string) =&gt; ['sandbox', 'jobs', jobId, 'logs'] as const,</span>
-  jobArtifacts: <span class="fstat-no" title="function not covered" >(jobId: string) =&gt; ['sandbox', 'jobs', jobId, 'artifacts'] as const,</span>
-};
+<span class="cstat-no" title="statement not covered" >  goblinStats: (goblinId: string) =&gt; ['goblins', goblinId, 'stats'] as const,</span>
+<span class="cstat-no" title="statement not covered" ></span>
+<span class="cstat-no" title="statement not covered" >  // RAPTOR</span>
+<span class="cstat-no" title="statement not covered" >  raptorStatus: ['raptor', 'status'] as const,</span>
+<span class="cstat-no" title="statement not covered" >  raptorLogs: (limit?: number) =&gt; ['raptor', 'logs', limit] as const,</span>
+<span class="cstat-no" title="statement not covered" ></span>
+<span class="cstat-no" title="statement not covered" >  // Sandbox</span>
+<span class="cstat-no" title="statement not covered" >  sandboxJobs: ['sandbox', 'jobs'] as const,</span>
+<span class="cstat-no" title="statement not covered" >  jobLogs: (jobId: string) =&gt; ['sandbox', 'jobs', jobId, 'logs'] as const,</span>
+<span class="cstat-no" title="statement not covered" >  jobArtifacts: (jobId: string) =&gt; ['sandbox', 'jobs', jobId, 'artifacts'] as const,</span>
+<span class="cstat-no" title="statement not covered" >};</span>
 &nbsp;</pre></td></tr></table></pre>
 
                 <div class='push'></div><!-- for sticky footer -->
@@ -226,7 +226,7 @@ export const queryKeys = {
             <div class='footer quiet pad2 space-top1 center small'>
                 Code coverage generated by
                 <a href="https://istanbul.js.org/" target="_blank" rel="noopener noreferrer">istanbul</a>
-                at 2026-03-07T09:55:02.934Z
+                at 2026-03-11T20:44:29.716Z
             </div>
         <script src="../prettify.js"></script>
         <script>

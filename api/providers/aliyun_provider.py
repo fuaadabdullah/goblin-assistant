@@ -173,7 +173,7 @@ class AliyunProvider(BaseProvider):
             return ProviderHealth(self.provider_id, False, error="No API key")
         t0 = time.perf_counter()
         try:
-            async with httpx.AsyncClient(timeout=10) as client:
+            async with httpx.AsyncClient(timeout=5) as client:
                 resp = await client.get(
                     f"{self._base_url}/v1/models",
                     headers=self._headers(),

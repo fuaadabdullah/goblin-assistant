@@ -171,56 +171,9 @@ bandwidth_score = 0.75
 supports_cot = true
 cot_suppression_prompt = "Answer directly."
 
-# Primary Ollama server (Server 2 - 192.175.23.150) - DISABLED (unreachable since 2026-01-11)
-[providers.ollama_kamatera]
-name = "Ollama (Kamatera Server 2) - DISABLED"
-endpoint = "http://192.175.23.150:8002"
-endpoint_env = "OLLAMA_KAMATERA_ENDPOINT"
-capabilities = ["chat", "reasoning", "code", "embedding"]
-models = [
-  "phi3:latest",
-  "gemma2:latest",
-  "qwen2.5:latest",
-  "codellama:latest",
-  "mistral:latest",
-  "llama3.1:latest",
-  "goblin-simple:latest",
-  "goblin-medium:latest",
-  "goblin-complex:latest",
-]
-priority_tier = 99  # DISABLED - unreachable
-cost_score = 0.0
-default_timeout_ms = 30000
-bandwidth_score = 0.8
-supports_cot = false
-api_key_env = "LOCAL_LLM_API_KEY"
-invoke_path = "/api/generate"
-is_active = false  # DISABLED
-
 # GCP servers removed - preemptible VMs terminated since 2026-01-11
 # To redeploy, run infra/gcp-llm-setup.sh and re-add [providers.ollama_gcp] / [providers.llamacpp_gcp]
-
-# Kamatera Router API (Server 1 - 45.61.51.220) - DISABLED (unreachable since 2026-01-11)
-[providers.llamacpp_kamatera]
-name = "llama.cpp Router (Kamatera Server 1) - DISABLED"
-endpoint = "http://45.61.51.220:8000"
-endpoint_env = "KAMATERA_LLAMACPP_ENDPOINT"
-capabilities = ["chat", "reasoning", "code"]
-models = [
-  "qwen2.5:latest",
-  "gemma2:latest",
-  "codellama:latest",
-  "llama3.1:latest",
-]
-priority_tier = 99  # DISABLED - unreachable
-cost_score = 0.0
-default_timeout_ms = 30000
-bandwidth_score = 0.8
-supports_cot = false
-api_key_env = "LOCAL_LLM_API_KEY"
-invoke_path = "/v1/chat/completions"
-default_model = "qwen2.5:latest"
-is_active = false  # DISABLED
+# Kamatera servers (ollama_kamatera, llamacpp_kamatera) removed — unreachable since 2026-01-11.
 
 [providers.azure]
 name = "Azure OpenAI"

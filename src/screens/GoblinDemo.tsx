@@ -1,7 +1,7 @@
 import React, { useReducer, useEffect } from 'react';
 // CSS is imported globally in _app.tsx
 import StreamingView from '@/components/streaming/StreamingView';
-import { runtimeClient, runtimeClientDemo } from '@/api';
+import { runtimeClient } from '@/api';
 import type { OrchestrationStep } from '@/types/api';
 import {
   initialOrchestrationState,
@@ -50,8 +50,8 @@ export default function GoblinDemo({ provider, model, demoMode = false }: Props)
     selectedTemplate: 'Document & Test',
   });
 
-  // Helper function to get the appropriate runtime client
-  const getRuntimeClient = () => (demoMode ? runtimeClientDemo : runtimeClient);
+  // Always use the real runtime client
+  const getRuntimeClient = () => runtimeClient;
 
   // Orchestration execution hook
   const { executeOrchestration, streamingTimeoutRef } = useOrchestrationExecution({

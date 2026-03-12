@@ -1,42 +1,58 @@
-import { renderHook, act } from '@testing-library/react';
+import { renderHook } from '@testing-library/react';
 import { useCostEstimation } from '../useCostEstimation';
 
 describe('useCostEstimation Hook', () => {
-  it('should initialize with default values', () => {
-    const { result } = renderHook(() => useCostEstimation());
-    expect(result.current.estimatedCost).toBeDefined();
-  });
-
-  it('should calculate cost for input text', () => {
-    const { result } = renderHook(() => useCostEstimation());
-
-    act(() => {
-      result.current.calculateForText?.('Hello world, this is a test message');
-    });
-
-    expect(result.current.estimatedCost).toBeGreaterThan(0);
-  });
-
-  it('should handle model changes', () => {
-    const { result } = renderHook(() => useCostEstimation({ model: 'gpt-4' }));
-    expect(result.current.estimatedCost).toBeDefined();
-  });
-
-  it('should reset cost estimate', () => {
-    const { result } = renderHook(() => useCostEstimation());
-
-    act(() => {
-      result.current.calculateForText?.('Some text');
-      result.current.reset?.();
-    });
-
-    expect(result.current.estimatedCost).toBe(0);
-  });
-
-  it('should handle provider changes', () => {
+  it('should return null estimate for empty text', () => {
     const { result } = renderHook(() =>
-      useCostEstimation({ provider: 'openai' }),
+      useCostEstimation({ orchestrationText: '', codeInput: '' }),
     );
-    expect(result.current.estimatedCost).toBeDefined();
+    expect(result.current.estimate).toBeNull();
+    expect(result.current.loading).toBe(false);
+  });
+
+  it('should compute estimate for given text', () => {
+    const { result } = renderHook(() =>
+      useCostEstimation({
+        orchestrationText: 'Hello world, this is a test message',
+        codeInput: 'const x = 1;',
+      }),
+    );
+
+    expect(result.current.estimate).not.toBeNull();
+    expect(result.current.estimate!.estimatedCost).toBeGreaterThanOrEqual(0);
+    expect(result.current.estimate!.estimatedTokens).toBeGreaterThan(0);
+  });
+
+  it('should include rate limit info', () => {
+    const { result } = renderHook(() =>
+      useCostEstimation({
+        orchestrationText: 'Some text',
+        codeInput: 'code',
+      }),
+    );
+
+    expect(result.current.rateLimitInfo).toBeDefined();
+  });
+
+  it('should accept provider and model options', () => {
+    const { result } = renderHook(() =>
+      useCostEstimation({
+        orchestrationText: 'text',
+        codeInput: 'code',
+        provider: 'openai',
+        model: 'gpt-4',
+      }),
+    );
+
+    expect(result.current.estimate).not.toBeNull();
+    expect(result.current.estimate!.provider).toBe('openai');
+    expect(result.current.estimate!.model).toBe('gpt-4');
+  });
+
+  it('should have no error by default', () => {
+    const { result } = renderHook(() =>
+      useCostEstimation({ orchestrationText: 'text', codeInput: '' }),
+    );
+    expect(result.current.error).toBeNull();
   });
 });

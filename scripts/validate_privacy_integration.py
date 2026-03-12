@@ -96,7 +96,7 @@ def main():
         ("routes/privacy.py", "Privacy routes"),
         ("middleware/rate_limiter.py", "Rate limiter"),
         (".env.privacy.example", "Environment template"),
-        ("requirements-privacy.txt", "Privacy requirements"),
+        ("requirements.txt", "Main requirements (includes privacy deps)"),
     ]
 
     for filepath, desc in files_to_check:

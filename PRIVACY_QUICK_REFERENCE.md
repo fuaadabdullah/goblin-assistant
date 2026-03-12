@@ -126,7 +126,7 @@ CONVERSATION_TTL_HOURS=1
 ## Deployment Checklist
 
 - [ ] Copy `.env.privacy.example` to `.env`
-- [ ] Install: `pip install -r requirements-privacy.txt`
+- [ ] Install: `pip install -r requirements.txt`
 - [ ] Start Redis: `redis-server`
 - [ ] Run tests: `pytest tests/test_privacy_integration.py`
 - [ ] RLS audit: `bash scripts/ops/supabase_rls_check.sh`

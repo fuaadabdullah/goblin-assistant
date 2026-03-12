@@ -155,27 +155,12 @@ graph TD
 **`api/routes/debug.py`** (Canonical location)
 - `router` - FastAPI APIRouter with `/debug/suggest` endpoint
 
-**`api/debugger/*`** (DEPRECATED — Compatibility shims only)
-- Will be removed after one release cycle
-- New code should import from `api.core` and `api.routes`
+## Import Paths
 
-## Migration Guide
-
-If you have code importing from old locations, update as follows:
-
-**Old (Deprecated)**
-```python
-from api.debugger.model_router import ModelRouter
-from api.debugger.router import router as debug_router
-```
-
-**New (Canonical)**
 ```python
 from api.core.router import ModelRouter
 from api.routes.debug import router as debug_router
 ```
-
-Both will work during compatibility window, but new code must use canonical locations.
 
 ## Security Notes
 
@@ -190,4 +175,3 @@ Both will work during compatibility window, but new code must use canonical loca
 - Implement caching for repeated queries
 - Add telemetry for model performance tracking
 - Support for custom model routing rules
-- Remove compatibility shims after one release cycle

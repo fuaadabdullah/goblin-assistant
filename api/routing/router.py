@@ -3,10 +3,16 @@
 from __future__ import annotations
 
 import asyncio
+import collections
 import os
 import time
+import uuid
 from dataclasses import dataclass, field
 from typing import Any, Dict, List, Optional
+
+import structlog
+
+logger = structlog.get_logger()
 
 
 @dataclass
@@ -32,25 +38,72 @@ class ProviderStats:
 
 
 class RoutingRegistry:
+    _AUDIT_MAX = 1000  # ring buffer capacity for decision audit trail
+
     def __init__(self) -> None:
         self._stats: Dict[str, ProviderStats] = {}
+        self._decision_log: collections.deque = collections.deque(maxlen=self._AUDIT_MAX)
 
     def get(self, provider_id: str) -> ProviderStats:
         if provider_id not in self._stats:
             self._stats[provider_id] = ProviderStats(provider_id=provider_id)
         return self._stats[provider_id]
 
-    def record_success(self, provider_id: str, latency_ms: float, cost_usd: float = 0.0) -> None:
+    def record_success(
+        self,
+        provider_id: str,
+        latency_ms: float,
+        cost_usd: float = 0.0,
+        *,
+        request_id: Optional[str] = None,
+        input_tokens: Optional[int] = None,
+        output_tokens: Optional[int] = None,
+    ) -> None:
         stats = self.get(provider_id)
         stats.success_count += 1
         stats.update_latency(latency_ms)
         stats.total_cost_usd += cost_usd
         stats.last_used = time.time()
+        if request_id is not None:
+            self._decision_log.append({
+                "event": "outcome",
+                "request_id": request_id,
+                "provider_id": provider_id,
+                "actual_latency_ms": round(latency_ms, 2),
+                "actual_cost_usd": round(cost_usd, 8),
+                "input_tokens": input_tokens,
+                "output_tokens": output_tokens,
+                "timestamp": time.time(),
+            })
 
     def record_failure(self, provider_id: str) -> None:
         stats = self.get(provider_id)
         stats.failure_count += 1
         stats.last_used = time.time()
+
+    def log_decision(
+        self,
+        *,
+        request_id: str,
+        cost_weight: float,
+        candidates: List[str],
+        score_breakdown: Dict[str, Dict[str, float]],
+        rank_order: List[str],
+    ) -> None:
+        """Append a routing decision record to the audit trail."""
+        self._decision_log.append({
+            "event": "decision",
+            "request_id": request_id,
+            "cost_weight": cost_weight,
+            "candidates": candidates,
+            "score_breakdown": score_breakdown,
+            "rank_order": rank_order,
+            "timestamp": time.time(),
+        })
+
+    def get_audit_trail(self, limit: int = 200) -> List[Dict[str, Any]]:
+        """Return the most recent decision+outcome records."""
+        return list(self._decision_log)[-limit:]
 
     def snapshot(self) -> Dict[str, Dict[str, Any]]:
         return {
@@ -104,26 +157,58 @@ class HybridRouter:
         self,
         candidates: List[str],
         provider_costs: Dict[str, tuple[float, float]],
+        *,
+        request_id: Optional[str] = None,
     ) -> List[str]:
         if not candidates:
             return []
 
-        latencies = {provider_id: registry.get(provider_id).ewma_latency_ms for provider_id in candidates}
-        costs = {provider_id: sum(provider_costs.get(provider_id, (0.0, 0.0))) for provider_id in candidates}
+        req_id = request_id or str(uuid.uuid4())
+
+        latencies = {pid: registry.get(pid).ewma_latency_ms for pid in candidates}
+        costs = {pid: sum(provider_costs.get(pid, (0.0, 0.0))) for pid in candidates}
         max_latency = max(latencies.values()) or 1.0
         max_cost = max(costs.values()) or 1.0
+
+        breakdown: Dict[str, Dict[str, float]] = {}
 
         def score(provider_id: str) -> float:
             stats = registry.get(provider_id)
             normalized_latency = latencies[provider_id] / max_latency
             normalized_cost = costs[provider_id] / max_cost if max_cost else 0.0
             reliability = max(stats.success_rate, 0.1)
-            return (
+            final = (
                 (1 - self.cost_weight) * normalized_latency
                 + self.cost_weight * normalized_cost
             ) / reliability
+            breakdown[provider_id] = {
+                "normalized_latency": round(normalized_latency, 4),
+                "normalized_cost": round(normalized_cost, 4),
+                "reliability": round(reliability, 4),
+                "final_score": round(final, 6),
+            }
+            return final
 
-        return sorted(candidates, key=score)
+        ranked = sorted(candidates, key=score)
+
+        # Structured audit log
+        logger.info(
+            "routing_decision",
+            request_id=req_id,
+            cost_weight=self.cost_weight,
+            candidates=candidates,
+            rank_order=ranked,
+            score_breakdown=breakdown,
+        )
+        registry.log_decision(
+            request_id=req_id,
+            cost_weight=self.cost_weight,
+            candidates=candidates,
+            score_breakdown=breakdown,
+            rank_order=ranked,
+        )
+
+        return ranked
 
 
 class ModelTierRouter:

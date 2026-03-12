@@ -22,6 +22,14 @@ class MessageType(Enum):
     TASK_RESULT = "task_result"
     SYSTEM = "system"
     NOISE = "noise"
+    # Finance domain types
+    FINANCIAL_ENTITY = "financial_entity"
+    RISK_SIGNAL = "risk_signal"
+    REGULATORY_REF = "regulatory_reference"
+    PORTFOLIO_ACTION = "portfolio_action"
+    MACRO_EVENT = "macro_event"
+    # Education / learning type
+    LEARNING = "learning"
 
 
 class MessageClassification:
@@ -99,6 +107,63 @@ class MessageClassifier:
             r"^[.!?]+$",  # Just punctuation
             r"^\s*$",  # Empty or whitespace only
         ]
+
+        # ── Finance domain patterns ──────────────────────────────────
+        self._financial_entity_patterns = [
+            r"(?i)\b(ticker|stock|equity|bond|etf|fund|option|futures|commodity)\b",
+            r"\b[A-Z]{1,5}\b(?=\s+(?:stock|share|price|earnings|dividend|market\s*cap))",
+            r"(?i)\b(shares of|position in|exposure to|holding in)\s+\S+",
+            r"(?i)\b(asset class|fixed income|equities|derivatives|forex|crypto)\b",
+            r"(?i)\b(company|issuer|counterparty|custodian|exchange)\b",
+            r"(?i)\b(s&p\s*500|nasdaq|dow\s*jones|russell|msci|ftse)\b",
+            r"(?i)\b(treasury|t-bill|t-note|municipal|corporate bond)\b",
+        ]
+
+        self._risk_signal_patterns = [
+            r"(?i)\b(volatility|vol|vix|beta|alpha|sharpe|sortino)\b",
+            r"(?i)\b(drawdown|max\s*drawdown|value.at.risk|var|cvar|expected\s*shortfall)\b",
+            r"(?i)\b(correlation|covariance|standard\s*deviation|risk.adjusted)\b",
+            r"(?i)\b(stress\s*test|scenario\s*analysis|monte\s*carlo|back\s*test)\b",
+            r"(?i)\b(risk\s*budget|tracking\s*error|information\s*ratio)\b",
+            r"(?i)\b(tail\s*risk|downside|upside\s*capture|hedge)\b",
+        ]
+
+        self._regulatory_ref_patterns = [
+            r"(?i)\b(sec|finra|cftc|occ|fdic|fca|esma|mifid)\b",
+            r"(?i)\b(regulation|compliance|fiduciary|suitability|kyc|aml)\b",
+            r"(?i)\b(dodd.frank|volcker|basel|sarbanes.oxley|sox|reg\s*[a-z])\b",
+            r"(?i)\b(accredited\s*investor|qualified\s*purchaser|blue\s*sky)\b",
+            r"(?i)\b(insider\s*trading|material\s*non.public|mnpi|restricted\s*list)\b",
+            r"(?i)\b(prospectus|disclosure|filing|form\s*\d+|10-[kq])\b",
+        ]
+
+        self._portfolio_action_patterns = [
+            r"(?i)\b(rebalance|reallocate|liquidate|accumulate|trim|add to)\b",
+            r"(?i)\b(buy|sell|short|cover|exercise|roll)\b.*\b(position|contract|shares)\b",
+            r"(?i)\b(target\s*allocation|weight|overweight|underweight|neutral)\b",
+            r"(?i)\b(stop.loss|take.profit|limit\s*order|market\s*order)\b",
+            r"(?i)\b(tax.loss\s*harvest|wash\s*sale|lot\s*selection)\b",
+            r"(?i)\b(dollar.cost\s*average|dca|systematic\s*investment)\b",
+        ]
+
+        self._macro_event_patterns = [
+            r"(?i)\b(fomc|fed\s*meeting|rate\s*decision|rate\s*hike|rate\s*cut)\b",
+            r"(?i)\b(cpi|ppi|pce|inflation|deflation|stagflation)\b",
+            r"(?i)\b(gdp|unemployment|non.?farm\s*payroll|nfp|jobs\s*report)\b",
+            r"(?i)\b(earnings|eps|revenue\s*beat|revenue\s*miss|guidance)\b",
+            r"(?i)\b(ipo|m&a|merger|acquisition|spinoff|split)\b",
+            r"(?i)\b(yield\s*curve|inversion|recession|expansion|taper)\b",
+            r"(?i)\b(trade\s*war|tariff|sanctions|geopolitical)\b",
+        ]
+
+        # ── Education / learning domain patterns ────────────────────
+        self._learning_patterns = [
+            r"(?i)\b(explain|understand|confused|what is|how does|teach me|help me learn)\b",
+            r"(?i)\b(studying|study|learning|learn|course|class|professor|homework|assignment)\b",
+            r"(?i)\b(CFA|CPA|exam|quiz|test|certification|degree|finance major|GSU)\b",
+            r"(?i)\b(example|examples|worked example|walk me through|break it down|intuition)\b",
+            r"(?i)\b(study plan|concept|definition|formula|principle|tutorial)\b",
+        ]
     
     def classify_message(self, content: str, role: str) -> MessageClassification:
         """
@@ -139,6 +204,16 @@ class MessageClassifier:
         task_score, task_keywords = self._score_patterns(content_lower, self._task_result_patterns)
         system_score, system_keywords = self._score_patterns(content_lower, self._system_patterns)
         noise_score, noise_keywords = self._score_patterns(content_lower, self._noise_patterns)
+
+        # Finance domain pattern matching
+        fin_entity_score, fin_entity_kw = self._score_patterns(content_lower, self._financial_entity_patterns)
+        risk_score, risk_kw = self._score_patterns(content_lower, self._risk_signal_patterns)
+        reg_score, reg_kw = self._score_patterns(content_lower, self._regulatory_ref_patterns)
+        portfolio_score, portfolio_kw = self._score_patterns(content_lower, self._portfolio_action_patterns)
+        macro_score, macro_kw = self._score_patterns(content_lower, self._macro_event_patterns)
+
+        # Education / learning domain pattern matching
+        learning_score, learning_kw = self._score_patterns(content_lower, self._learning_patterns)
         
         # Determine classification
         scores = [
@@ -147,6 +222,14 @@ class MessageClassifier:
             (MessageType.TASK_RESULT, task_score, task_keywords),
             (MessageType.SYSTEM, system_score, system_keywords),
             (MessageType.NOISE, noise_score, noise_keywords),
+            # Finance domain
+            (MessageType.FINANCIAL_ENTITY, fin_entity_score, fin_entity_kw),
+            (MessageType.RISK_SIGNAL, risk_score, risk_kw),
+            (MessageType.REGULATORY_REF, reg_score, reg_kw),
+            (MessageType.PORTFOLIO_ACTION, portfolio_score, portfolio_kw),
+            (MessageType.MACRO_EVENT, macro_score, macro_kw),
+            # Education domain
+            (MessageType.LEARNING, learning_score, learning_kw),
         ]
         
         # Sort by score descending
@@ -195,7 +278,9 @@ class MessageClassifier:
                             keywords.append(group.strip())
         
         # Normalize score (0.0 to 1.0)
-        score = min(matches / len(patterns), 1.0)
+        # Cap denominator — patterns are alternatives, not conjunctions;
+        # hitting 1–2 out of many is a strong signal.
+        score = min(matches / min(len(patterns), 3), 1.0)
         return score, keywords
     
     def _generate_reasoning(self, message_type: MessageType, score: float, keywords: List[str], content: str) -> str:
@@ -226,13 +311,19 @@ class MessageClassifier:
 - PREFERENCE: Likes, dislikes, wants, needs, opinions
 - TASK_RESULT: Completed tasks, outputs, code, solutions
 - SYSTEM: Technical, memory, context, or system-related
+- FINANCIAL_ENTITY: References to tickers, stocks, bonds, funds, asset classes, companies
+- RISK_SIGNAL: Volatility, drawdown, VaR, correlation, risk metrics
+- REGULATORY_REFERENCE: SEC, FINRA, compliance, fiduciary, KYC/AML
+- PORTFOLIO_ACTION: Rebalance, buy/sell, allocation, tax-loss harvesting
+- MACRO_EVENT: Rate decisions, CPI, earnings, GDP, geopolitical events
+- LEARNING: Explaining concepts, studying, learning, tutorials, exam prep, worked examples
 
 Message: "{content}"
 Role: {role}
 
 Respond with JSON:
 {{
-  "type": "CHAT|FACT|PREFERENCE|TASK_RESULT|SYSTEM",
+  "type": "CHAT|FACT|PREFERENCE|TASK_RESULT|SYSTEM|FINANCIAL_ENTITY|RISK_SIGNAL|REGULATORY_REFERENCE|PORTFOLIO_ACTION|MACRO_EVENT|LEARNING",
   "confidence": 0.0-1.0,
   "reasoning": "Brief explanation"
 }}"""

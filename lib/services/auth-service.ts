@@ -1,61 +1,68 @@
 'use client';
 
+import { apiClient } from '@/lib/api';
+import { clearAuthSession, getAuthToken, persistAuthSession } from '@/utils/auth-session';
+
+type LoginApiResponse = {
+  access_token?: string;
+  refresh_token?: string;
+  expires_in?: number;
+  user?: { id?: string; email?: string };
+};
+
+const mapUser = (user?: { id?: string; email?: string }, fallbackEmail = '') => ({
+  id: user?.id ?? '',
+  email: user?.email ?? fallbackEmail,
+  name: (user?.email ?? fallbackEmail).split('@')[0] ?? '',
+});
+
 export const authService = {
-  signIn: async (email: string, _password: string) => {
-    console.log('AuthService.signIn called with:', email);
-    // Mock implementation
+  signIn: async (email: string, password: string) => {
+    const response = (await apiClient.login(email, password)) as LoginApiResponse;
+    const token = response?.access_token ?? '';
+    const expiresIn = response?.expires_in;
+    persistAuthSession({ token, refreshToken: response?.refresh_token, user: response?.user, expiresIn });
     return {
-      user: {
-        id: 'mock-user-id',
-        email,
-        name: 'Mock User',
-      },
+      user: mapUser(response?.user, email),
       session: {
-        token: 'mock-session-token',
-        expiresAt: new Date(Date.now() + 3600000).toISOString(),
+        token,
+        expiresAt: new Date(Date.now() + (expiresIn ?? 3600) * 1000).toISOString(),
       },
     };
   },
 
-  signUp: async (email: string, password: string, name?: string) => {
-    console.log('AuthService.signUp called with:', email, name);
-    // Mock implementation
+  signUp: async (email: string, password: string, _name?: string) => {
+    const response = (await apiClient.register(email, password)) as LoginApiResponse;
+    const token = response?.access_token ?? '';
+    const expiresIn = response?.expires_in;
+    persistAuthSession({ token, refreshToken: response?.refresh_token, user: response?.user, expiresIn });
     return {
-      user: {
-        id: 'mock-user-id',
-        email,
-        name: name || 'New User',
-      },
+      user: mapUser(response?.user, email),
       session: {
-        token: 'mock-session-token',
-        expiresAt: new Date(Date.now() + 3600000).toISOString(),
+        token,
+        expiresAt: new Date(Date.now() + (expiresIn ?? 3600) * 1000).toISOString(),
       },
     };
   },
 
   signOut: async () => {
-    console.log('AuthService.signOut called');
-    // Mock implementation
+    try {
+      await apiClient.logout();
+    } finally {
+      clearAuthSession();
+    }
     return { success: true };
   },
 
   validateToken: async (token: string) => {
-    console.log('AuthService.validateToken called with:', token);
-    // Mock implementation
-    return {
-      id: 'mock-user-id',
-      email: 'user@example.com',
-      name: 'Mock User',
-    };
+    const response = await apiClient.validateToken(token);
+    return mapUser(response?.user);
   },
 
   getCurrentUser: async () => {
-    console.log('AuthService.getCurrentUser called');
-    // Mock implementation
-    return {
-      id: 'mock-user-id',
-      email: 'user@example.com',
-      name: 'Mock User',
-    };
+    const token = getAuthToken();
+    if (!token) return { id: '', email: '', name: '' };
+    const response = await apiClient.validateToken(token);
+    return mapUser(response?.user);
   },
 };

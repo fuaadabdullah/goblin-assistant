@@ -1,4 +1,4 @@
-import { renderHook, act } from '@testing-library/react';
+import { renderHook } from '@testing-library/react';
 import {
   useKeyboardShortcuts,
   formatShortcut,
@@ -8,21 +8,26 @@ import {
 describe('useKeyboardShortcuts', () => {
   it('should format keyboard shortcuts correctly', () => {
     expect(formatShortcut({ ctrlKey: true, key: 's' })).toContain('Ctrl');
-    expect(formatShortcut({ metaKey: true, key: 'k' })).toContain('Cmd');
+    expect(formatShortcut({ metaKey: true, key: 'k' })).toContain('⌘');
+    expect(formatShortcut({ shiftKey: true, key: 'a' })).toContain('Shift');
   });
 
   it('should return predefined shortcuts', () => {
     expect(SHORTCUTS).toBeDefined();
-    expect(Object.keys(SHORTCUTS).length).toBeGreaterThan(0);
+    expect(SHORTCUTS.TOGGLE_HIGH_CONTRAST).toBeDefined();
+    expect(SHORTCUTS.THEME_NOCTURNE).toBeDefined();
+    expect(SHORTCUTS.THEME_EMBER).toBeDefined();
+    expect(SHORTCUTS.THEME_DEFAULT).toBeDefined();
   });
 
   it('should register keyboard shortcuts', () => {
-    const handler = jest.fn();
+    const callback = jest.fn();
     const shortcuts = [
       {
         key: 'Enter',
         ctrlKey: true,
-        handler,
+        callback,
+        description: 'Submit',
       },
     ];
 
@@ -31,33 +36,32 @@ describe('useKeyboardShortcuts', () => {
   });
 
   it('should handle multiple shortcuts', () => {
-    const handlers = {
+    const callbacks = {
       save: jest.fn(),
       search: jest.fn(),
       help: jest.fn(),
     };
 
     const shortcuts = [
-      { key: 's', ctrlKey: true, handler: handlers.save },
-      { key: 'k', ctrlKey: true, handler: handlers.search },
-      { key: '?', shiftKey: true, handler: handlers.help },
+      { key: 's', ctrlKey: true, callback: callbacks.save, description: 'Save' },
+      { key: 'k', ctrlKey: true, callback: callbacks.search, description: 'Search' },
+      { key: '?', shiftKey: true, callback: callbacks.help, description: 'Help' },
     ];
 
     renderHook(() => useKeyboardShortcuts(shortcuts));
-    // Should register all shortcuts
   });
 
-  it('should handle modifier key combinations', () => {
-    const handler = jest.fn();
-    const shortcutWithModifiers = {
+  it('should format combined modifiers', () => {
+    const formatted = formatShortcut({
       key: 'a',
       ctrlKey: true,
       shiftKey: true,
       altKey: true,
-      handler,
-    };
+    });
 
-    renderHook(() => useKeyboardShortcuts([shortcutWithModifiers]));
-    // Should handle multiple modifier keys
+    expect(formatted).toContain('Ctrl');
+    expect(formatted).toContain('Shift');
+    expect(formatted).toContain('Alt');
+    expect(formatted).toContain('A');
   });
 });

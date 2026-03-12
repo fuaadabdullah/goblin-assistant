@@ -18,6 +18,20 @@ export interface ChatMessageMeta {
   correlation_id?: string;
   // When cost is computed client-side (fallback), mark it clearly.
   cost_is_approx?: boolean;
+  // File attachments associated with this message.
+  attachments?: Array<{
+    id: string;
+    filename: string;
+    mime_type: string;
+    size_bytes: number;
+  }>;
+  // Financial visualizations (charts, tables) from tool execution.
+  visualizations?: Array<{
+    type: string;
+    title: string;
+    data: Record<string, unknown>[];
+    config: Record<string, unknown>;
+  }>;
 }
 
 export interface ChatMessage {

@@ -8,7 +8,7 @@ const collectPageFiles = (dir: string): string[] =>
     const resolvedPath = path.join(dir, entry.name);
 
     if (entry.isDirectory()) {
-      if (entry.name === 'api') {
+      if (entry.name === 'api' || entry.name === '__tests__') {
         return [];
       }
 

@@ -1,8 +1,16 @@
 'use client';
 
+import { useState } from 'react';
 import dynamic from 'next/dynamic';
 import type { QuickPrompt } from '../types';
 import useGoblinLoaderAnimation from '../hooks/useGoblinLoaderAnimation';
+import ModeSelector from './ModeSelector';
+import {
+  CHAT_QUICK_PROMPTS,
+  CHAT_QUICK_PROMPTS_FINANCE,
+  CHAT_QUICK_PROMPTS_GENERAL,
+  CHAT_QUICK_PROMPTS_EDUCATION,
+} from '../../../content/brand';
 
 interface ChatEmptyStateProps {
   quickPrompts: QuickPrompt[];
@@ -10,14 +18,25 @@ interface ChatEmptyStateProps {
   prefersReducedMotion?: boolean;
 }
 
+type Mode = 'all' | 'finance' | 'learn' | 'general';
+
+const PROMPTS_BY_MODE: Record<Mode, readonly { label: string; prompt: string }[]> = {
+  all: CHAT_QUICK_PROMPTS,
+  finance: CHAT_QUICK_PROMPTS_FINANCE,
+  learn: CHAT_QUICK_PROMPTS_EDUCATION,
+  general: CHAT_QUICK_PROMPTS_GENERAL,
+};
+
 const Lottie = dynamic(() => import('lottie-react'), { ssr: false });
 
 const ChatEmptyState = ({
-  quickPrompts,
+  quickPrompts: _quickPrompts,
   onPromptClick,
   prefersReducedMotion = false,
 }: ChatEmptyStateProps) => {
   const animationData = useGoblinLoaderAnimation();
+  const [activeMode, setActiveMode] = useState<Mode>('all');
+  const displayedPrompts = PROMPTS_BY_MODE[activeMode];
 
   return (
     <section className="flex flex-col items-center justify-center h-full w-full px-4 py-8">
@@ -48,9 +67,12 @@ const ChatEmptyState = ({
           </p>
         </div>
 
+        {/* Mode selector tabs */}
+        <ModeSelector activeMode={activeMode} onModeChange={setActiveMode} />
+
         {/* Suggested Prompts Grid */}
         <div className="w-full grid grid-cols-1 sm:grid-cols-2 gap-3">
-          {quickPrompts.map((prompt) => (
+          {displayedPrompts.map((prompt) => (
             <button
               key={prompt.label}
               onClick={() => onPromptClick(prompt.prompt)}
@@ -71,7 +93,7 @@ const ChatEmptyState = ({
 
         {/* Optional help text */}
         <div className="text-xs text-muted text-center pt-4">
-          You can also paste links or upload files for analysis.
+          You can also paste links or attach files for analysis.
         </div>
       </div>
     </section>

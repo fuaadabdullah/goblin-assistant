@@ -1,22 +1,8 @@
 #!/usr/bin/env python3
-"""Verify refactoring compatibility and functionality"""
+"""Verify refactored import paths are functional."""
 
-print('Testing compatibility shims...\n')
+print('Testing canonical import paths...\n')
 
-# Test old import paths still work
-try:
-    from api.debugger.model_router import ModelRouter, ModelRoute, RAPTOR_TASKS
-    print('✅ api.debugger.model_router imports work (compatibility shim)')
-except ImportError as e:
-    print(f'❌ api.debugger.model_router import failed: {e}')
-
-try:
-    from api.debugger.router import router
-    print('✅ api.debugger.router imports work (compatibility shim)')
-except ImportError as e:
-    print(f'❌ api.debugger.router import failed: {e}')
-
-# Test new canonical paths
 try:
     from api.core.router import ModelRouter, ModelRoute, RAPTOR_TASKS
     print('✅ api.core.router imports work (canonical location)')
@@ -29,4 +15,4 @@ try:
 except ImportError as e:
     print(f'❌ api.routes.debug import failed: {e}')
 
-print('\n🎉 All import paths functional (compatibility window active)')
+print('\n🎉 All canonical import paths functional')

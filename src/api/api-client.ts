@@ -48,8 +48,19 @@ type ModelRegistryResponse = {
   providers?: ProviderRegistryItem[];
 };
 
+const V1_PATH_PATTERN = /^\/?v1(\/|$)/i;
+
+const assertNoVersionedClientPath = (path: string): void => {
+  if (V1_PATH_PATTERN.test(path.trim())) {
+    throw new Error(
+      `Refusing client API path "${path}". Frontend must call internal routes, not provider-style /v1 endpoints.`,
+    );
+  }
+};
+
 const buildUrl = (path: string): string => {
   if (path.startsWith('http://') || path.startsWith('https://')) return path;
+  assertNoVersionedClientPath(path);
   if (path.startsWith('/')) return `${env.apiBaseUrl}${path}`;
   return `${env.apiBaseUrl}/${path}`;
 };

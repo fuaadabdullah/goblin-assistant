@@ -30,8 +30,7 @@ type ProvidersConfigRaw = {
 };
 
 import providersJson from '../../config/providers.json';
-import { env } from '../config/env';
-import { runtimeClient, runtimeClientDemo } from '@/api';
+import { runtimeClient } from '@/api';
 
 const rawConfig = providersJson as unknown as ProvidersConfigRaw;
 const PROVIDERS: ProvidersMap = Object.entries(rawConfig.providers || {}).reduce(
@@ -160,7 +159,7 @@ export function topProvidersFor(
 }
 
 export function getRuntimeClient() {
-  return env.mockApi ? runtimeClientDemo : runtimeClient;
+  return runtimeClient;
 }
 
 export default {

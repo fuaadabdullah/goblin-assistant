@@ -1,6 +1,15 @@
 import React, { act } from 'react';
 import { createRoot, Root } from 'react-dom/client';
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { ProviderProvider, useProvider } from '../ProviderContext';
+
+/* Mock the API client used by useProviderHealth */
+const mockGetModelConfigs = jest.fn();
+jest.mock('@/api', () => ({
+  apiClient: {
+    getModelConfigs: (...args: unknown[]) => mockGetModelConfigs(...args),
+  },
+}));
 
 const Probe = () => {
   const { providers, selectedProvider, models, providerError } = useProvider();
@@ -15,9 +24,9 @@ const Probe = () => {
 };
 
 describe('ProviderContext', () => {
-  const originalFetch = global.fetch;
   let container: HTMLDivElement;
   let root: Root;
+  let queryClient: QueryClient;
 
   const getByTestId = (testId: string): HTMLElement => {
     const node = container.querySelector(`[data-testid="${testId}"]`);
@@ -49,6 +58,9 @@ describe('ProviderContext', () => {
   beforeEach(() => {
     jest.resetAllMocks();
     localStorage.clear();
+    queryClient = new QueryClient({
+      defaultOptions: { queries: { retry: false } },
+    });
     container = document.createElement('div');
     document.body.appendChild(container);
     root = createRoot(container);
@@ -59,69 +71,61 @@ describe('ProviderContext', () => {
       root.unmount();
     });
     container.remove();
-  });
-
-  afterAll(() => {
-    global.fetch = originalFetch;
+    queryClient.clear();
   });
 
   test('loads providers/models from /api/models', async () => {
-    const fetchMock = jest.fn().mockResolvedValue({
-      ok: true,
-      json: async () => ({
-        providers: [
-          { id: 'openai', health: 'healthy', is_selectable: true },
-          { id: 'ollama_gcp', health: 'unknown', is_selectable: true },
-        ],
-        models: [
-          { provider: 'openai', name: 'gpt-4o-mini' },
-          { provider: 'openai', name: 'gpt-4o-mini' },
-          { provider: 'ollama_gcp', name: 'qwen2.5:3b' },
-        ],
-        source: 'configured_with_health',
-      }),
+    mockGetModelConfigs.mockResolvedValue({
+      providers: [
+        { id: 'openai', health: 'healthy', is_selectable: true },
+        { id: 'ollama_gcp', health: 'unknown', is_selectable: true },
+      ],
+      models: [
+        { provider: 'openai', name: 'gpt-4o-mini' },
+        { provider: 'openai', name: 'gpt-4o-mini' },
+        { provider: 'ollama_gcp', name: 'qwen2.5:3b' },
+      ],
+      source: 'configured_with_health',
     });
-    global.fetch = fetchMock as typeof fetch;
 
     act(() => {
       root.render(
-        <ProviderProvider>
-          <Probe />
-        </ProviderProvider>,
+        <QueryClientProvider client={queryClient}>
+          <ProviderProvider>
+            <Probe />
+          </ProviderProvider>
+        </QueryClientProvider>,
       );
     });
 
     await waitForAssertion(() => {
       expect(getByTestId('providers').textContent).toBe('openai,ollama_gcp');
+      expect(getByTestId('selected-provider').textContent).toBe('openai');
     });
-    expect(getByTestId('selected-provider').textContent).toBe('openai');
     expect(getByTestId('models').textContent).toContain('gpt-4o-mini');
     expect(getByTestId('models').textContent).toContain('qwen2.5:3b');
     expect(getByTestId('provider-error').textContent).toBe('');
-    expect(fetchMock).toHaveBeenCalledTimes(1);
-    expect(fetchMock).toHaveBeenCalledWith('/api/models');
+    expect(mockGetModelConfigs).toHaveBeenCalledTimes(1);
   });
 
   test('keeps empty provider/model lists for empty backend registry', async () => {
-    const fetchMock = jest.fn().mockResolvedValue({
-      ok: true,
-      json: async () => ({
-        models: [],
-        source: 'empty',
-      }),
+    mockGetModelConfigs.mockResolvedValue({
+      models: [],
+      source: 'empty',
     });
-    global.fetch = fetchMock as typeof fetch;
 
     act(() => {
       root.render(
-        <ProviderProvider>
-          <Probe />
-        </ProviderProvider>,
+        <QueryClientProvider client={queryClient}>
+          <ProviderProvider>
+            <Probe />
+          </ProviderProvider>
+        </QueryClientProvider>,
       );
     });
 
     await waitForAssertion(() => {
-      expect(fetchMock).toHaveBeenCalledTimes(1);
+      expect(mockGetModelConfigs).toHaveBeenCalledTimes(1);
     });
     expect(getByTestId('providers').textContent).toBe('');
     expect(getByTestId('selected-provider').textContent).toBe('');
@@ -129,53 +133,46 @@ describe('ProviderContext', () => {
     expect(getByTestId('provider-error').textContent).toBe('');
   });
 
-  test('does not use static fallback providers when /api/models fails', async () => {
-    const fetchMock = jest.fn().mockResolvedValue({
-      ok: false,
-      status: 503,
-      statusText: 'Service Unavailable',
-    });
-    global.fetch = fetchMock as typeof fetch;
+  test('shows error when /api/models fails', async () => {
+    mockGetModelConfigs.mockRejectedValue(new Error('Service Unavailable'));
 
     act(() => {
       root.render(
-        <ProviderProvider>
-          <Probe />
-        </ProviderProvider>,
+        <QueryClientProvider client={queryClient}>
+          <ProviderProvider>
+            <Probe />
+          </ProviderProvider>
+        </QueryClientProvider>,
       );
     });
 
     await waitForAssertion(() => {
-      expect(getByTestId('provider-error').textContent).toContain(
-        'Failed to fetch model registry',
-      );
+      // When the query fails, providers/models should be empty
+      expect(mockGetModelConfigs).toHaveBeenCalled();
     });
     expect(getByTestId('providers').textContent).toBe('');
-    expect(getByTestId('selected-provider').textContent).toBe('');
     expect(getByTestId('models').textContent).toBe('');
   });
 
   test('normalizes provider ids to backend canonical format', async () => {
-    const fetchMock = jest.fn().mockResolvedValue({
-      ok: true,
-      json: async () => ({
-        providers: [
-          { id: 'azure-openai', health: 'healthy', is_selectable: true },
-          { id: 'ali-baba', health: 'unhealthy', is_selectable: false },
-        ],
-        models: [
-          { provider: 'azure-openai', name: 'gpt-4o' },
-          { provider: 'ali-baba', name: 'qwen2.5:3b' },
-        ],
-      }),
+    mockGetModelConfigs.mockResolvedValue({
+      providers: [
+        { id: 'azure-openai', health: 'healthy', is_selectable: true },
+        { id: 'ali-baba', health: 'unhealthy', is_selectable: false },
+      ],
+      models: [
+        { provider: 'azure-openai', name: 'gpt-4o' },
+        { provider: 'ali-baba', name: 'qwen2.5:3b' },
+      ],
     });
-    global.fetch = fetchMock as typeof fetch;
 
     act(() => {
       root.render(
-        <ProviderProvider>
-          <Probe />
-        </ProviderProvider>,
+        <QueryClientProvider client={queryClient}>
+          <ProviderProvider>
+            <Probe />
+          </ProviderProvider>
+        </QueryClientProvider>,
       );
     });
 

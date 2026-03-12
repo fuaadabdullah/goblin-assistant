@@ -9,10 +9,48 @@ contract while the internals use a stricter typed core.
 from __future__ import annotations
 
 import os
+import re
 import time
 from abc import ABC, abstractmethod
 from dataclasses import dataclass, field
+from enum import Enum
 from typing import Any, AsyncGenerator, Dict, List, Optional, Union
+
+
+class ProviderErrorCategory(str, Enum):
+    """Structured error categories for provider failures."""
+    AUTH = "auth"              # 401/403, invalid API key
+    RATE_LIMIT = "rate-limit"  # 429, quota exceeded
+    TIMEOUT = "timeout"        # Connection/read timeout
+    MODEL_ERROR = "model-error"  # Invalid model, context too long
+    SERVER_ERROR = "server-error"  # 5xx from provider
+    CONNECTION = "connection"  # DNS, network, connection refused
+    UNKNOWN = "unknown"
+
+
+def classify_provider_error(error: Union[str, Exception]) -> ProviderErrorCategory:
+    """Classify a provider error into a structured category."""
+    msg = str(error).lower()
+
+    if any(kw in msg for kw in ("401", "403", "unauthorized", "forbidden", "invalid api key", "invalid_api_key", "authentication")):
+        return ProviderErrorCategory.AUTH
+
+    if any(kw in msg for kw in ("429", "rate limit", "rate_limit", "quota", "too many requests")):
+        return ProviderErrorCategory.RATE_LIMIT
+
+    if any(kw in msg for kw in ("timeout", "timed out", "deadline exceeded")):
+        return ProviderErrorCategory.TIMEOUT
+
+    if any(kw in msg for kw in ("model not found", "invalid model", "context_length_exceeded", "context length", "max_tokens")):
+        return ProviderErrorCategory.MODEL_ERROR
+
+    if re.search(r"\b5\d{2}\b", msg) or any(kw in msg for kw in ("internal server error", "bad gateway", "service unavailable")):
+        return ProviderErrorCategory.SERVER_ERROR
+
+    if any(kw in msg for kw in ("connection refused", "dns", "name resolution", "unreachable", "connection error", "connect error")):
+        return ProviderErrorCategory.CONNECTION
+
+    return ProviderErrorCategory.UNKNOWN
 
 
 @dataclass
@@ -28,6 +66,7 @@ class ProviderResult:
     cost_usd: Optional[float] = None
     latency_ms: float = 0.0
     error: Optional[str] = None
+    error_category: Optional[str] = None  # ProviderErrorCategory value
 
     def _compat_dict(self) -> Dict[str, Any]:
         return {
@@ -40,6 +79,7 @@ class ProviderResult:
             "cost_usd": self.cost_usd,
             "latency_ms": self.latency_ms,
             "error": self.error,
+            "error_category": self.error_category,
             "result": {
                 "text": self.text,
                 "raw": self.raw,
@@ -49,7 +89,7 @@ class ProviderResult:
         }
 
     def to_dict(self) -> Dict[str, Any]:
-        return {
+        d = {
             "ok": self.ok,
             "result": {
                 "text": self.text,
@@ -62,6 +102,9 @@ class ProviderResult:
             "latency_ms": self.latency_ms,
             "error": self.error,
         }
+        if self.error_category:
+            d["error_category"] = self.error_category
+        return d
 
     def get(self, key: str, default: Any = None) -> Any:
         return self._compat_dict().get(key, default)

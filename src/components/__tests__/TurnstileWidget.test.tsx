@@ -1,13 +1,14 @@
-import { render, screen, fireEvent, waitFor } from '@testing-library/react';
-import { TurnstileWidget } from '../../TurnstileWidget';
+import { render } from '@testing-library/react';
+import TurnstileWidget from '../TurnstileWidget';
 
 describe('TurnstileWidget Component', () => {
     beforeEach(() => {
-        // Mock window.turnstile
         (window as any).turnstile = {
             render: jest.fn(() => 'mock-widget-id'),
             reset: jest.fn(),
             remove: jest.fn(),
+            execute: jest.fn(),
+            getResponse: jest.fn(),
         };
     });
 
@@ -15,40 +16,32 @@ describe('TurnstileWidget Component', () => {
         delete (window as any).turnstile;
     });
 
-    it('should render Turnstile widget', () => {
+    it('should render a container div', () => {
         const { container } = render(
             <TurnstileWidget siteKey="test-site-key" onVerify={jest.fn()} />
         );
-        expect(container.querySelector('[data-turnstile]')).toBeInTheDocument();
+        expect(container.querySelector('.turnstile-widget')).toBeInTheDocument();
     });
 
-    it('should call onVerify callback on token generation', async () => {
-        const onVerify = jest.fn();
-        render(
-            <TurnstileWidget siteKey="test-site-key" onVerify={onVerify} />
+    it('should render invisible mode with hidden div', () => {
+        const { container } = render(
+            <TurnstileWidget siteKey="test-site-key" onVerify={jest.fn()} mode="invisible" />
         );
-
-        await waitFor(() => {
-            if (onVerify.mock.calls.length > 0) {
-                expect(onVerify).toHaveBeenCalled();
-            }
-        });
-    });
-
-    it('should handle widget reset', () => {
-        const { rerender } = render(
-            <TurnstileWidget siteKey="test-site-key" onVerify={jest.fn()} />
-        );
-
-        rerender(<TurnstileWidget siteKey="test-site-key" onVerify={jest.fn()} resetTrigger={1} />);
+        const div = container.firstChild as HTMLElement;
+        expect(div.style.display).toBe('none');
     });
 
     it('should clean up widget on unmount', () => {
         const { unmount } = render(
             <TurnstileWidget siteKey="test-site-key" onVerify={jest.fn()} />
         );
-
         unmount();
-        // Turnstile cleanup should be called
+    });
+
+    it('should accept theme and size props', () => {
+        const { container } = render(
+            <TurnstileWidget siteKey="test-key" onVerify={jest.fn()} theme="dark" size="compact" />
+        );
+        expect(container.querySelector('.turnstile-widget')).toBeInTheDocument();
     });
 });

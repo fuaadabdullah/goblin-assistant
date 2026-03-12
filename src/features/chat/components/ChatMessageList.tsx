@@ -8,6 +8,8 @@ import MessageTimestamp from './MessageTimestamp';
 import MessageActions from './MessageActions';
 import ChatEmptyState from './ChatEmptyState';
 import MessageMarkdown from './MessageMarkdown';
+import { FinancialVisualization } from '@/features/finance';
+import type { VisualizationBlock } from '@/features/finance';
 import { Paperclip } from 'lucide-react';
 import { formatCost } from '@/utils/format-cost';
 
@@ -149,6 +151,17 @@ const ChatMessageList = ({
                       />
                     ) : (
                       <MessageMarkdown content={msg.content} inverse={isUser} />
+                    )}
+                    {/* Financial visualizations */}
+                    {!isUser && msg.meta?.visualizations && msg.meta.visualizations.length > 0 && (
+                      <div className="mt-3 space-y-2">
+                        {msg.meta.visualizations.map((viz, idx) => (
+                          <FinancialVisualization
+                            key={`viz-${idx}`}
+                            block={viz as VisualizationBlock}
+                          />
+                        ))}
+                      </div>
                     )}
                     {/* Attachment badges */}
                     {msg.meta?.attachments && msg.meta.attachments.length > 0 && (

@@ -8,37 +8,33 @@ describe('useContrastMode Hook', () => {
     it('should provide contrast mode context', () => {
         const { result } = renderHook(() => useContrastMode(), { wrapper });
         expect(result.current).toBeDefined();
+        expect(result.current.mode).toBe('dark');
     });
 
-    it('should toggle high contrast mode', () => {
+    it('should cycle through dark → light → high → dark', () => {
         const { result } = renderHook(() => useContrastMode(), { wrapper });
-        const initialState = result.current.isHighContrast;
+        expect(result.current.mode).toBe('dark');
 
-        act(() => {
-            result.current.toggleHighContrast();
-        });
+        act(() => { result.current.toggleMode(); });
+        expect(result.current.mode).toBe('light');
 
-        expect(result.current.isHighContrast).toBe(!initialState);
+        act(() => { result.current.toggleMode(); });
+        expect(result.current.mode).toBe('high');
+
+        act(() => { result.current.toggleMode(); });
+        expect(result.current.mode).toBe('dark');
     });
 
-    it('should set specific contrast mode', () => {
+    it('should set specific mode', () => {
         const { result } = renderHook(() => useContrastMode(), { wrapper });
 
-        act(() => {
-            result.current.setHighContrast(true);
-        });
+        act(() => { result.current.setMode('high'); });
+        expect(result.current.mode).toBe('high');
 
-        expect(result.current.isHighContrast).toBe(true);
+        act(() => { result.current.setMode('light'); });
+        expect(result.current.mode).toBe('light');
 
-        act(() => {
-            result.current.setHighContrast(false);
-        });
-
-        expect(result.current.isHighContrast).toBe(false);
-    });
-
-    it('should provide class name for contrast mode', () => {
-        const { result } = renderHook(() => useContrastMode(), { wrapper });
-        expect(result.current.contrastClass).toBeDefined();
+        act(() => { result.current.setMode('dark'); });
+        expect(result.current.mode).toBe('dark');
     });
 });

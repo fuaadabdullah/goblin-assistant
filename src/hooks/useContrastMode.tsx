@@ -1,27 +1,29 @@
 import { createContext, useContext, useEffect, useState, ReactNode } from 'react';
 
-type ContrastMode = 'standard' | 'high';
+type ThemeMode = 'dark' | 'light' | 'high';
 
 interface ContrastModeContextValue {
-  mode: ContrastMode;
+  mode: ThemeMode;
   toggleMode: () => void;
-  setMode: (newMode: ContrastMode) => void;
+  setMode: (newMode: ThemeMode) => void;
 }
 
 const ContrastModeContext = createContext<ContrastModeContextValue | undefined>(undefined);
 
 const STORAGE_KEY = 'goblin-assistant-contrast-mode';
 
+const MODE_CYCLE: ThemeMode[] = ['dark', 'light', 'high'];
+
 export function ContrastModeProvider({ children }: { children: ReactNode }) {
   // SSR safety: Don't access localStorage during server-side rendering
-  const [mode, setModeState] = useState<ContrastMode>('standard');
+  const [mode, setModeState] = useState<ThemeMode>('dark');
   const [isHydrated, setIsHydrated] = useState(false);
 
   // Hydrate from localStorage on client mount
   useEffect(() => {
     const stored = localStorage.getItem(STORAGE_KEY);
-    if (stored === 'high') {
-      setModeState('high');
+    if (stored === 'high' || stored === 'light' || stored === 'dark') {
+      setModeState(stored);
     }
     setIsHydrated(true);
   }, []);
@@ -30,24 +32,28 @@ export function ContrastModeProvider({ children }: { children: ReactNode }) {
     // Only apply after hydration to avoid SSR mismatch
     if (!isHydrated) return;
 
-    // Apply contrast mode to document
+    // Apply theme mode to document
     const root = document.documentElement;
+    root.classList.remove('goblinos-high-contrast', 'goblinos-light');
     if (mode === 'high') {
       root.classList.add('goblinos-high-contrast');
-    } else {
-      root.classList.remove('goblinos-high-contrast');
+    } else if (mode === 'light') {
+      root.classList.add('goblinos-light');
     }
 
     // Persist to localStorage
     localStorage.setItem(STORAGE_KEY, mode);
   }, [mode, isHydrated]);
 
-  const setMode = (newMode: ContrastMode) => {
+  const setMode = (newMode: ThemeMode) => {
     setModeState(newMode);
   };
 
   const toggleMode = () => {
-    setModeState(prev => (prev === 'standard' ? 'high' : 'standard'));
+    setModeState(prev => {
+      const idx = MODE_CYCLE.indexOf(prev);
+      return MODE_CYCLE[(idx + 1) % MODE_CYCLE.length];
+    });
   };
 
   return (

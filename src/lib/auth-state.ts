@@ -1,6 +1,6 @@
 import type { User, ValidateTokenResponse } from '../types/api';
 import { apiClient } from './api';
-import { clearAuthSession, getAuthToken, persistAuthSession } from '../utils/auth-session';
+import { clearAuthSession, getAuthToken, isAuthenticated as checkAuth, persistAuthSession } from '../utils/auth-session';
 
 export interface AuthSessionSnapshot {
   token: string | null;
@@ -74,6 +74,12 @@ export const bootstrapAuthSession = async (): Promise<AuthSessionSnapshot> => {
   }
 
   const { token: storedToken, user: storedUser } = readStoredSession();
+
+  // HttpOnly cookie path: no JS-readable token but auth flag is set.
+  if (!storedToken && checkAuth()) {
+    return provisionalSnapshot('httponly', storedUser);
+  }
+
   if (!storedToken) {
     return unauthenticatedSnapshot();
   }

@@ -19,7 +19,6 @@ interface EnvConfig {
 
   // Feature Flags
   enableDebug: boolean;
-  mockApi: boolean;
   features: {
     ragEnabled: boolean;
     multiProvider: boolean;
@@ -89,7 +88,6 @@ export const env: EnvConfig = {
   fastApiUrl: getOptionalEnv('NEXT_PUBLIC_FASTAPI_URL', DEFAULT_BACKEND_ORIGIN),
 
   enableDebug: getOptionalEnv('NEXT_PUBLIC_ENABLE_DEBUG') === 'true',
-  mockApi: getOptionalEnv('NEXT_PUBLIC_MOCK_API') === 'true',
 
   features: {
     ragEnabled: getOptionalEnv('NEXT_PUBLIC_FEATURE_RAG_ENABLED') === 'true',

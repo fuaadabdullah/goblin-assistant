@@ -27,6 +27,10 @@ class PromotionGate(Enum):
     TIME_SPAN = "time_span"
     STABILITY = "stability"
     CONTENT_QUALITY = "content_quality"
+    # Finance-specific gates
+    ENTITY_PLAUSIBILITY = "entity_plausibility"
+    RISK_CONTEXT = "risk_context"
+    COMPLIANCE_MARKER = "compliance_marker"
 
 
 @dataclass
@@ -66,6 +70,22 @@ class MemoryPromotionService:
     - Emotions, one-off opinions, temporary goals, complaints, jokes, vents, hypotheticals
     """
     
+    # ── Finance-specific category patterns ──────────────────────────
+    FINANCE_CATEGORIES = {
+        "instrument",
+        "risk_signal",
+        "regulatory_constraint",
+        "portfolio_action",
+        "macro_event",
+    }
+
+    # ── Education signals for context memory ────────────────────────
+    EDUCATION_SIGNALS = [
+        'studying', 'learning', 'explain', 'understand', 'confused',
+        'CFA', 'CPA', 'exam', 'course', 'class', 'professor',
+        'GSU', 'finance major', 'homework', 'assignment',
+    ]
+
     def __init__(self):
         self.retrieval_service = _retrieval_singleton
         self._promotion_cache = {}  # In-memory cache for promotion decisions
@@ -127,6 +147,14 @@ class MemoryPromotionService:
         
         # Determine if promotion should occur
         promotion_threshold = 3  # Must pass at least 3 gates
+
+        # Finance content gets additional gates evaluated (non-blocking extras)
+        if candidate.category in self.FINANCE_CATEGORIES:
+            finance_gates = self._evaluate_finance_gates(candidate)
+            gates_passed.extend(finance_gates["passed"])
+            gates_failed.extend(finance_gates["failed"])
+            reasons.extend(finance_gates["reasons"])
+
         promoted = len(gates_passed) >= promotion_threshold
         
         reason = "; ".join(reasons) if reasons else "All gates passed"
@@ -490,8 +518,120 @@ class MemoryPromotionService:
         for pattern in identity_patterns:
             if re.search(pattern, content_lower):
                 return "identity_trait"
-        
+
+        # ── Finance domain categories ────────────────────────────────
+        instrument_patterns = [
+            r"\b(ticker|stock|equity|bond|etf|fund|option|futures|commodity)\b",
+            r"\b(asset class|fixed income|equities|derivatives|forex|crypto)\b",
+            r"\b(s&p\s*500|nasdaq|dow\s*jones|russell|msci|ftse)\b",
+            r"\b(treasury|t-bill|municipal|corporate bond)\b",
+            r"\b(shares of|position in|exposure to|holding in)\b",
+        ]
+        risk_signal_patterns = [
+            r"\b(volatility|vol|vix|beta|alpha|sharpe|sortino)\b",
+            r"\b(drawdown|value.at.risk|var|cvar|expected\s*shortfall)\b",
+            r"\b(correlation|covariance|standard\s*deviation|risk.adjusted)\b",
+            r"\b(stress\s*test|scenario\s*analysis|monte\s*carlo|back\s*test)\b",
+            r"\b(tail\s*risk|downside|hedge)\b",
+        ]
+        regulatory_patterns = [
+            r"\b(sec|finra|cftc|occ|fca|esma|mifid)\b",
+            r"\b(compliance|fiduciary|suitability|kyc|aml)\b",
+            r"\b(dodd.frank|volcker|basel|sarbanes.oxley|sox)\b",
+            r"\b(insider\s*trading|material\s*non.public|mnpi)\b",
+            r"\b(prospectus|disclosure|filing|10-[kq])\b",
+        ]
+        portfolio_action_patterns = [
+            r"\b(rebalance|reallocate|liquidate|accumulate|trim)\b",
+            r"\b(buy|sell|short|cover|exercise|roll)\b.*\b(position|shares)\b",
+            r"\b(target\s*allocation|overweight|underweight)\b",
+            r"\b(stop.loss|take.profit|limit\s*order|market\s*order)\b",
+            r"\b(tax.loss\s*harvest|wash\s*sale|lot\s*selection)\b",
+        ]
+        macro_event_patterns = [
+            r"\b(fomc|fed\s*meeting|rate\s*decision|rate\s*hike|rate\s*cut)\b",
+            r"\b(cpi|ppi|pce|inflation|deflation|stagflation)\b",
+            r"\b(gdp|unemployment|non.?farm\s*payroll|nfp|jobs\s*report)\b",
+            r"\b(earnings|eps|revenue\s*beat|revenue\s*miss|guidance)\b",
+            r"\b(yield\s*curve|inversion|recession|taper)\b",
+        ]
+
+        for pattern in instrument_patterns:
+            if re.search(pattern, content_lower):
+                return "instrument"
+
+        for pattern in risk_signal_patterns:
+            if re.search(pattern, content_lower):
+                return "risk_signal"
+
+        for pattern in regulatory_patterns:
+            if re.search(pattern, content_lower):
+                return "regulatory_constraint"
+
+        for pattern in portfolio_action_patterns:
+            if re.search(pattern, content_lower):
+                return "portfolio_action"
+
+        for pattern in macro_event_patterns:
+            if re.search(pattern, content_lower):
+                return "macro_event"
+
+        # Education context — promote learning background facts
+        for signal in self.EDUCATION_SIGNALS:
+            if signal.lower() in content_lower:
+                return "education_context"
+
         return None
+
+    # ── Finance-specific promotion gate helpers ───────────────────────
+    def _evaluate_finance_gates(
+        self, candidate: PromotionCandidate
+    ) -> Dict[str, Any]:
+        """Run finance-specific promotion gates (additive, non-blocking)."""
+        passed: List[PromotionGate] = []
+        failed: List[PromotionGate] = []
+        reasons: List[str] = []
+        content_lower = candidate.content.lower()
+
+        # Gate: Entity Plausibility — reject gibberish ticker-like strings
+        if candidate.category == "instrument":
+            if self._entity_looks_plausible(content_lower):
+                passed.append(PromotionGate.ENTITY_PLAUSIBILITY)
+            else:
+                failed.append(PromotionGate.ENTITY_PLAUSIBILITY)
+                reasons.append("Financial entity failed plausibility check")
+
+        # Gate: Risk Context — risk metrics need a numeric or comparative anchor
+        if candidate.category == "risk_signal":
+            if re.search(r'\d', content_lower) or re.search(r'(increased|decreased|above|below|higher|lower)', content_lower):
+                passed.append(PromotionGate.RISK_CONTEXT)
+            else:
+                failed.append(PromotionGate.RISK_CONTEXT)
+                reasons.append("Risk signal lacks numeric or comparative context")
+
+        # Gate: Compliance Marker — flag sensitive content but still allow promotion
+        sensitive_patterns = [
+            r'\b(insider\s*trading|material\s*non.public|mnpi)\b',
+            r'\b(ssn|social\s*security|account\s*number)\b',
+        ]
+        has_sensitive = any(re.search(p, content_lower) for p in sensitive_patterns)
+        if not has_sensitive:
+            passed.append(PromotionGate.COMPLIANCE_MARKER)
+        else:
+            failed.append(PromotionGate.COMPLIANCE_MARKER)
+            reasons.append("Content contains sensitive compliance markers — review required")
+
+        return {"passed": passed, "failed": failed, "reasons": reasons}
+
+    @staticmethod
+    def _entity_looks_plausible(content: str) -> bool:
+        """Basic heuristic: content must mention a recognisable instrument keyword."""
+        instrument_anchors = [
+            r'\b(stock|share|bond|etf|fund|option|futures|commodity|equity|index)\b',
+            r'\b(s&p|nasdaq|dow|russell|msci|ftse|treasury)\b',
+            r'\b(price|dividend|market\s*cap|earnings|yield)\b',
+        ]
+        return any(re.search(p, content) for p in instrument_anchors)
 
 
 # Global memory promotion service instance

@@ -94,7 +94,43 @@ class WriteTimeDecisionMatrix:
             "cache": False,
             "discard": True,
             "reasoning": "Noise provides no value, should be discarded"
-        }
+        },
+        # Finance domain — all finance types get aggressive retention
+        MessageType.FINANCIAL_ENTITY: {
+            "embed": True,
+            "summarize": False,
+            "cache": True,
+            "discard": False,
+            "reasoning": "Financial entities (tickers, instruments, issuers) are durable domain knowledge"
+        },
+        MessageType.RISK_SIGNAL: {
+            "embed": True,
+            "summarize": True,
+            "cache": True,
+            "discard": False,
+            "reasoning": "Risk metrics and signals inform portfolio decisions"
+        },
+        MessageType.REGULATORY_REF: {
+            "embed": True,
+            "summarize": False,
+            "cache": True,
+            "discard": False,
+            "reasoning": "Regulatory references are compliance-critical long-term knowledge"
+        },
+        MessageType.PORTFOLIO_ACTION: {
+            "embed": True,
+            "summarize": True,
+            "cache": True,
+            "discard": False,
+            "reasoning": "Portfolio actions document intent and constraints for audit trails"
+        },
+        MessageType.MACRO_EVENT: {
+            "embed": True,
+            "summarize": True,
+            "cache": "short",
+            "discard": False,
+            "reasoning": "Macro events are time-sensitive but valuable for context windows"
+        },
     }
     
     # Rate limiting guardrails

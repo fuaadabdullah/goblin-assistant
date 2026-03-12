@@ -1,7 +1,7 @@
 import React from 'react';
 import { render, screen } from '@testing-library/react';
-import { describe, it, expect } from '@jest/globals';
-import { ModularCard, formatTitle } from './index';
+import { ModularCard } from './ModularCard';
+import { formatTitle } from './utils';
 
 describe('ModularCard', () => {
   it('formats the title and renders content correctly', () => {

@@ -19,6 +19,14 @@ RUN curl -fsSL https://deb.nodesource.com/setup_18.x | bash - && \
 # Install Python dependencies for RQ worker
 RUN pip install --no-cache-dir rq docker
 
+# Install financial analysis packages for sandbox execution
+RUN pip install --no-cache-dir \
+    pandas==2.2.* \
+    numpy==1.26.* \
+    yfinance==0.2.* \
+    matplotlib==3.9.* \
+    openpyxl==3.1.*
+
 # Create non-root user for code execution
 RUN groupadd -r runner && useradd --create-home --home-dir /home/runner --shell /bin/bash -r -g runner runner
 

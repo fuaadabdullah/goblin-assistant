@@ -38,13 +38,9 @@ interface PersistAuthInput {
 /**
  * Persist authentication session.
  *
- * Stores the JWT in a `session_token` cookie (readable by middleware) instead
- * of localStorage to reduce XSS exposure. Also sets the legacy `goblin_auth=1`
- * flag for backward compatibility with the middleware route guard.
- *
- * TODO: Once the backend sets httpOnly cookies directly on login/refresh
- * responses, remove the client-side cookie writes entirely and only keep
- * the user_data localStorage entry for UI display.
+ * Auth tokens (session_token, refresh_token) are now set as HttpOnly cookies
+ * by the backend — they are NOT written client-side. Only non-sensitive UI
+ * flags (goblin_auth, goblin_admin) and user_data remain client-managed.
  */
 export const persistAuthSession = ({ token, refreshToken, user, expiresIn }: PersistAuthInput): void => {
   if (typeof window === 'undefined') return;
@@ -55,15 +51,12 @@ export const persistAuthSession = ({ token, refreshToken, user, expiresIn }: Per
       : DEFAULT_MAX_AGE_SECONDS;
 
   if (token) {
-    // Store token in a cookie (accessible to middleware) instead of localStorage
-    setCookie(SESSION_TOKEN_COOKIE, token, maxAge);
-    // Keep the legacy flag for middleware backward compatibility
+    // Set the legacy auth-flag cookie so Next.js middleware can gate routes.
+    // The actual JWT lives in the HttpOnly session_token cookie set by the backend.
     setCookie(AUTH_FLAG_COOKIE, '1', maxAge);
   }
 
-  if (refreshToken) {
-    setCookie(REFRESH_TOKEN_COOKIE, refreshToken, maxAge);
-  }
+  // refreshToken: handled by HttpOnly cookie from backend — nothing to do here.
 
   if (user) {
     // User data is non-sensitive display info — localStorage is fine here
@@ -73,7 +66,26 @@ export const persistAuthSession = ({ token, refreshToken, user, expiresIn }: Per
 };
 
 /**
+ * Check whether the user appears to be authenticated.
+ *
+ * The actual JWT is in an HttpOnly cookie (not readable by JS). This helper
+ * checks the JS-readable `goblin_auth` flag cookie that is set alongside it,
+ * plus a legacy localStorage fallback.
+ */
+export const isAuthenticated = (): boolean => {
+  if (typeof document === 'undefined') return false;
+  const flagMatch = document.cookie.match(new RegExp(`(?:^|;\\s*)${AUTH_FLAG_COOKIE}=([^;]*)`));
+  if (flagMatch?.[1] === '1') return true;
+  // Legacy fallback
+  return Boolean(localStorage.getItem('auth_token'));
+};
+
+/**
  * Retrieve the stored auth token (checks cookie, falls back to legacy localStorage).
+ *
+ * NOTE: With HttpOnly cookies, the session_token cookie is no longer readable
+ * by client JS. This function now primarily serves legacy fallback. The actual
+ * auth credential is sent automatically as an HttpOnly cookie.
  */
 export const getAuthToken = (): string | null => {
   if (typeof document === 'undefined') return null;

@@ -15,7 +15,6 @@ import structlog
 from .api_router import router as api_router
 from .auth.router import router as auth_router
 from .routing_router import router as routing_router
-from .execute_router import router as execute_router
 from .parse_router import router as parse_router
 from .raptor_router import router as raptor_router
 
@@ -448,7 +447,6 @@ app.add_middleware(
 app.include_router(api_router)
 app.include_router(auth_router)
 app.include_router(routing_router)
-app.include_router(execute_router)
 app.include_router(parse_router)
 app.include_router(raptor_router)
 app.include_router(api_keys_router)
@@ -489,17 +487,6 @@ async def root():
 async def test_endpoint():
     """Simple test endpoint without database"""
     return {"message": "Server is working", "status": "ok"}
-
-
-@app.get("/sentry-debug")
-async def trigger_error():
-    """
-    Sentry test endpoint - triggers a division by zero error.
-    Visit http://localhost:8004/sentry-debug to verify Sentry is capturing errors.
-    Check your Sentry dashboard at https://sentry.io for the error event.
-    """
-    division_by_zero = 1 / 0
-    return {"message": "This should never return"}
 
 
 if __name__ == "__main__":

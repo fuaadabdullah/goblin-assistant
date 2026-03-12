@@ -1,52 +1,60 @@
 import { renderHook, act } from '@testing-library/react';
 import { useAuthStore } from '../authStore';
 
+jest.mock('@/api', () => ({
+  apiClient: { validateToken: jest.fn() },
+}));
+
+jest.mock('@/utils/auth-session', () => ({
+  persistAuthSession: jest.fn(),
+  clearAuthSession: jest.fn(),
+  getAuthToken: jest.fn(() => null),
+}));
+
 describe('Auth Store (Zustand)', () => {
   beforeEach(() => {
     const { result } = renderHook(() => useAuthStore());
     act(() => {
-      result.current.logout();
+      result.current.clearSession();
     });
   });
 
-  it('should have initial state', () => {
+  it('should have initial unauthenticated state', () => {
     const { result } = renderHook(() => useAuthStore());
     expect(result.current.user).toBeNull();
     expect(result.current.token).toBeNull();
     expect(result.current.isAuthenticated).toBe(false);
   });
 
-  it('should set user and token on login', () => {
+  it('should set session with user and token', () => {
     const { result } = renderHook(() => useAuthStore());
 
     act(() => {
-      result.current.login({
-        user: { id: '123', email: 'test@example.com', name: 'Test' },
+      result.current.setSession({
         token: 'jwt.token',
+        user: { id: '123', email: 'test@example.com', name: 'Test', role: 'user' } as any,
       });
     });
 
-    expect(result.current.user).toEqual({
-      id: '123',
-      email: 'test@example.com',
-      name: 'Test',
-    });
     expect(result.current.token).toBe('jwt.token');
+    expect(result.current.user).toEqual(
+      expect.objectContaining({ id: '123', email: 'test@example.com' }),
+    );
     expect(result.current.isAuthenticated).toBe(true);
   });
 
-  it('should clear user and token on logout', () => {
+  it('should clear session', () => {
     const { result } = renderHook(() => useAuthStore());
 
     act(() => {
-      result.current.login({
-        user: { id: '123', email: 'test@example.com', name: 'Test' },
+      result.current.setSession({
         token: 'jwt.token',
+        user: { id: '123', email: 'test@example.com', name: 'Test', role: 'user' } as any,
       });
     });
 
     act(() => {
-      result.current.logout();
+      result.current.clearSession();
     });
 
     expect(result.current.user).toBeNull();
@@ -54,47 +62,36 @@ describe('Auth Store (Zustand)', () => {
     expect(result.current.isAuthenticated).toBe(false);
   });
 
-  it('should set user', () => {
+  it('hasRole returns true for matching role', () => {
     const { result } = renderHook(() => useAuthStore());
-    const newUser = { id: '456', email: 'new@example.com', name: 'New User' };
 
     act(() => {
-      result.current.setUser(newUser);
+      result.current.setSession({
+        token: 'jwt.token',
+        user: { id: '1', email: 'a@b.com', name: 'A', role: 'admin' } as any,
+      });
     });
 
-    expect(result.current.user).toEqual(newUser);
+    expect(result.current.hasRole('admin')).toBe(true);
+    expect(result.current.hasRole('user')).toBe(false);
   });
 
-  it('should set token', () => {
+  it('hasAnyRole returns true if any role matches', () => {
     const { result } = renderHook(() => useAuthStore());
-    const newToken = 'new.jwt.token';
 
     act(() => {
-      result.current.setToken(newToken);
+      result.current.setSession({
+        token: 'jwt.token',
+        user: { id: '1', email: 'a@b.com', name: 'A', role: 'editor' } as any,
+      });
     });
 
-    expect(result.current.token).toBe(newToken);
+    expect(result.current.hasAnyRole(['admin', 'editor'])).toBe(true);
+    expect(result.current.hasAnyRole(['admin', 'superuser'])).toBe(false);
   });
 
-  it('should handle error state', () => {
+  it('hasRole returns false when no user', () => {
     const { result } = renderHook(() => useAuthStore());
-    const error = 'Authentication failed';
-
-    act(() => {
-      result.current.setError(error);
-    });
-
-    expect(result.current.error).toBe(error);
-  });
-
-  it('should clear error state', () => {
-    const { result } = renderHook(() => useAuthStore());
-
-    act(() => {
-      result.current.setError('Some error');
-      result.current.clearError();
-    });
-
-    expect(result.current.error).toBeNull();
+    expect(result.current.hasRole('admin')).toBe(false);
   });
 });

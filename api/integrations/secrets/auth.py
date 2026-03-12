@@ -239,9 +239,16 @@ async def refresh_vault_token(
         credentials_name: Name of the stored credentials
         credentials: AppRole credentials
     """
-    # This will be implemented in the vault adapter
-    # Placeholder for the interface
-    pass
+    from .vault_adapter import VaultAdapter
+
+    adapter = VaultAdapter()
+    token_credentials = await adapter.authenticate_with_approle(
+        role_id=credentials.role_id,
+        secret_id=credentials.secret_id,
+    )
+    credentials.set_session_token(token_credentials)
+    get_auth_manager().store_credentials(credentials_name, credentials)
+    logger.info(f"Refreshed Vault AppRole token for: {credentials_name}")
 
 
 def setup_vault_approle_renewal(
@@ -263,10 +270,8 @@ def setup_vault_approle_renewal(
     auth_manager.store_credentials(name, credentials)
 
     async def renewal_func(creds_name: str, creds: AppRoleCredentials):
-        """Renew Vault token."""
-        # This will be implemented in vault_adapter.py
-        # For now, just log the renewal attempt
-        logger.info(f"Would renew Vault token for {creds_name}")
+        """Renew Vault AppRole token via VaultAdapter."""
+        await refresh_vault_token(creds_name, creds)
 
     auth_manager.start_token_renewal(name, renewal_func, interval_seconds)
 

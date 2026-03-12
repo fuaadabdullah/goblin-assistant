@@ -20,6 +20,15 @@ from .embedding_service import EmbeddingService, EmbeddingProviderUnavailableErr
 logger = structlog.get_logger()
 
 
+# Finance categories that receive retrieval score boosts
+FINANCE_CATEGORIES = {
+    "instrument", "risk_signal", "regulatory_constraint",
+    "portfolio_action", "macro_event",
+}
+FINANCE_BOOST_FACTOR = 1.8   # vs 1.5 for generic memory facts
+GENERIC_BOOST_FACTOR = 1.5
+
+
 class RetrievalService:
     """Service for semantic retrieval with hybrid scoring"""
     
@@ -205,7 +214,12 @@ class RetrievalService:
         user_id: str,
         k: int = 3
     ) -> List[Dict[str, Any]]:
-        """Retrieve long-term memory facts with high priority scoring"""
+        """Retrieve long-term memory facts with priority scoring.
+
+        Finance-category facts receive a higher similarity boost
+        (1.8x) than generic facts (1.5x) so that domain knowledge
+        surfaces ahead of general conversation artifacts.
+        """
         
         try:
             async with get_db() as session:
@@ -216,7 +230,15 @@ class RetrievalService:
                         mf.category,
                         mf.metadata,
                         mf.created_at,
-                        (1 - (mf.fact_embedding <=> :query_embedding)) * 1.5 as score  -- Boost memory facts
+                        (1 - (mf.fact_embedding <=> :query_embedding))
+                            * CASE
+                                WHEN mf.category IN ('instrument','risk_signal',
+                                    'regulatory_constraint','portfolio_action',
+                                    'macro_event')
+                                THEN :finance_boost
+                                ELSE :generic_boost
+                              END
+                            AS score
                     FROM memory_facts mf
                     WHERE mf.user_id = :user_id
                     ORDER BY score DESC
@@ -226,7 +248,9 @@ class RetrievalService:
                 result = await session.execute(query_sql, {
                     "query_embedding": query_embedding,
                     "user_id": user_id,
-                    "k": k
+                    "k": k,
+                    "finance_boost": FINANCE_BOOST_FACTOR,
+                    "generic_boost": GENERIC_BOOST_FACTOR,
                 })
                 
                 rows = result.fetchall()
@@ -238,7 +262,8 @@ class RetrievalService:
                     "source_id": row.id,
                     "metadata": {
                         "category": row.category,
-                        "source": "long_term_memory"
+                        "source": "long_term_memory",
+                        "finance_boosted": row.category in FINANCE_CATEGORIES,
                     },
                     "created_at": row.created_at,
                     "score": float(row.score) if row.score else 0.0
@@ -744,7 +769,16 @@ class RetrievalService:
         context_bundle["total_tokens"] = total_tokens
         context_bundle["metadata"]["context_count"] = len(all_context)
         context_bundle["metadata"].update(self.get_degraded_status())
-        
+
+        # Attach financial profile when available
+        try:
+            from .tool_result_memory_service import get_financial_profile
+            fin_profile = await get_financial_profile(user_id, retrieval_svc=self)
+            if any(fin_profile.values()):
+                context_bundle["financial_profile"] = fin_profile
+        except Exception as e:
+            logger.warning("financial_profile_attach_failed", error=str(e))
+
         return context_bundle
 
 
@@ -784,7 +818,26 @@ class ContextBuilder:
         # Add memory facts
         for fact in context_bundle.get("memory_facts", []):
             context_parts.append(f"[MEMORY] {fact['content']}")
-        
+
+        # Add financial profile if present
+        fin_profile = context_bundle.get("financial_profile")
+        if fin_profile:
+            profile_lines = []
+            if fin_profile.get("watched_tickers"):
+                profile_lines.append(f"Watched tickers: {', '.join(fin_profile['watched_tickers'])}")
+            if fin_profile.get("last_dcf_assumptions"):
+                a = fin_profile["last_dcf_assumptions"]
+                profile_lines.append(
+                    f"Last DCF assumptions: ticker={a.get('ticker','?')}, "
+                    f"WACC={a.get('wacc',0)*100:.1f}%, growth={a.get('growth_rate',0)*100:.1f}%"
+                )
+            if fin_profile.get("portfolio_snapshot"):
+                profile_lines.append(f"Portfolio: {fin_profile['portfolio_snapshot']}")
+            if fin_profile.get("risk_snapshot"):
+                profile_lines.append(f"Risk: {fin_profile['risk_snapshot']}")
+            if profile_lines:
+                context_parts.append("[FINANCIAL PROFILE] " + " | ".join(profile_lines))
+
         # Add recent messages
         for message in context_bundle.get("messages", []):
             context_parts.append(f"[MESSAGE] {message['content']}")

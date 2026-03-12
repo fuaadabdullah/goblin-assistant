@@ -16,6 +16,8 @@ from .services.retrieval_service import RetrievalService, ContextBuilder, retrie
 from .services.embedding_service import embedding_worker
 from .storage.models import MessageModel
 from .input_validation import InputSanitizer
+from .tools.registry import export_openai_tools
+from .tools.executor import run_tool_loop, extract_tool_calls
 
 
 router = APIRouter(prefix="/semantic-chat", tags=["semantic-chat"])
@@ -155,6 +157,11 @@ async def semantic_send_message(
             "model": request.model,
         }
 
+        # Inject registered tools for native function calling
+        sem_tools = export_openai_tools()
+        if sem_tools:
+            payload["tools"] = sem_tools
+
         try:
             provider_response = await invoke_provider(
                 pid=None,  # Let dispatcher choose best provider
@@ -163,6 +170,20 @@ async def semantic_send_message(
                 timeout_ms=60000,  # Longer timeout for semantic processing
                 stream=request.stream,
             )
+
+            # Tool-calling loop for semantic chat
+            if (isinstance(provider_response, dict)
+                    and provider_response.get("ok")
+                    and extract_tool_calls(provider_response)):
+                provider_response = await run_tool_loop(
+                    messages=list(enhanced_messages),
+                    invoke_fn=invoke_provider,
+                    provider=None,
+                    model=request.model,
+                    tools=sem_tools if sem_tools else None,
+                    timeout_ms=60000,
+                )
+
             duration = time.time() - start_time
             success = isinstance(provider_response, dict) and provider_response.get(
                 "ok", True

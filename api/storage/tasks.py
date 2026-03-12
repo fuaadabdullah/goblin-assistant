@@ -2,10 +2,12 @@
 Persistent storage wrapper for tasks with database and in-memory backends.
 """
 
-from contextlib import contextmanager
 from typing import Dict, Any, Optional, List
 import os
 from datetime import datetime
+import structlog
+
+_log = structlog.get_logger()
 
 
 class TaskStore:
@@ -20,11 +22,24 @@ class TaskStore:
             self._init_db()
 
     def _init_db(self):
-        """Initialize database connection and tables."""
-        # TODO: Implement actual database initialization
-        # This would typically use SQLAlchemy, asyncpg, or similar
-        # For now, we'll keep it as a placeholder
-        pass
+        """Verify database connectivity at startup."""
+        import asyncio
+        from sqlalchemy import text
+
+        async def _ping():
+            from .database import get_db_context
+
+            async with get_db_context() as session:
+                await session.execute(text("SELECT 1"))
+
+        try:
+            loop = asyncio.get_event_loop()
+            if loop.is_running():
+                loop.create_task(_ping())
+            else:
+                loop.run_until_complete(_ping())
+        except Exception as e:
+            _log.warning("task_store_db_ping_failed", error=str(e))
 
     async def get_task(self, task_id: str) -> Optional[Dict[str, Any]]:
         """Retrieve a task by ID."""
@@ -109,7 +124,7 @@ class TaskStore:
                     }
                 return None
         except Exception as e:
-            print(f"Error retrieving task from database: {e}")
+            _log.error("task_db_get_failed", task_id=task_id, error=str(e))
             return None
 
     async def _save_task_to_db(self, task_id: str, task_data: Dict[str, Any]) -> None:
@@ -149,7 +164,7 @@ class TaskStore:
                     )
                     session.add(task)
         except Exception as e:
-            print(f"Error saving task to database: {e}")
+            _log.error("task_db_save_failed", task_id=task_id, error=str(e))
 
     async def _delete_task_from_db(self, task_id: str) -> bool:
         """Delete task from database."""
@@ -164,7 +179,7 @@ class TaskStore:
                 )
                 return result.rowcount > 0
         except Exception as e:
-            print(f"Error deleting task from database: {e}")
+            _log.error("task_db_delete_failed", task_id=task_id, error=str(e))
             return False
 
     async def _list_tasks_from_db(
@@ -197,15 +212,8 @@ class TaskStore:
                     for task in tasks
                 ]
         except Exception as e:
-            print(f"Error listing tasks from database: {e}")
+            _log.error("task_db_list_failed", error=str(e))
             return []
-
-    @contextmanager
-    def _get_db_session(self):
-        """Context manager for database sessions (deprecated - use get_db_context instead)."""
-        # This method is deprecated in favor of using get_db_context() directly
-        # Kept for backward compatibility
-        yield None
 
 
 # Global task store instance

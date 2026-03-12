@@ -1,7 +1,7 @@
-from fastapi import APIRouter, HTTPException, Depends, status, Request
+from fastapi import APIRouter, Cookie, HTTPException, Depends, Response, status, Request
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from pydantic import BaseModel, EmailStr
-from typing import Optional
+from typing import Literal, Optional
 import jwt
 from jwt import PyJWTError
 import bcrypt
@@ -20,7 +20,7 @@ from ..core.rate_limiter_auth import check_rate_limit
 load_dotenv()
 
 router = APIRouter(prefix="/auth", tags=["auth"])
-security = HTTPBearer()
+security = HTTPBearer(auto_error=False)
 
 
 # JWT Configuration
@@ -30,6 +30,50 @@ if not SECRET_KEY:
 ALGORITHM = "HS256"
 ACCESS_TOKEN_EXPIRE_MINUTES = 30
 REFRESH_TOKEN_EXPIRE_DAYS = 7
+
+_COOKIE_SECURE = os.getenv("ENVIRONMENT", "development") != "development"
+_COOKIE_SAMESITE: Literal["lax", "strict", "none"] = "lax"
+_REFRESH_MAX_AGE = REFRESH_TOKEN_EXPIRE_DAYS * 24 * 60 * 60
+
+
+def _set_auth_cookies(
+    response: Response,
+    access_token: str,
+    refresh_token: str,
+    access_max_age: int | None = None,
+) -> None:
+    """Set HttpOnly auth cookies on the response."""
+    response.set_cookie(
+        key="session_token",
+        value=access_token,
+        httponly=True,
+        samesite=_COOKIE_SAMESITE,
+        secure=_COOKIE_SECURE,
+        max_age=access_max_age or ACCESS_TOKEN_EXPIRE_MINUTES * 60,
+        path="/",
+    )
+    response.set_cookie(
+        key="refresh_token",
+        value=refresh_token,
+        httponly=True,
+        samesite=_COOKIE_SAMESITE,
+        secure=_COOKIE_SECURE,
+        max_age=_REFRESH_MAX_AGE,
+        path="/",
+    )
+
+
+def _clear_auth_cookies(response: Response) -> None:
+    """Clear HttpOnly auth cookies."""
+    for name in ("session_token", "refresh_token"):
+        response.delete_cookie(
+            key=name,
+            httponly=True,
+            samesite=_COOKIE_SAMESITE,
+            secure=_COOKIE_SECURE,
+            path="/",
+        )
+
 
 # Session tracking (in production, use DB or Redis)
 # Format: {session_id: {"user_id": "...", "created_at": datetime, "revoked": bool}}
@@ -149,7 +193,7 @@ class TokenWithRefresh(BaseModel):
 
 class RefreshTokenRequest(BaseModel):
     """Request to refresh access token"""
-    refresh_token: str
+    refresh_token: Optional[str] = None
 
 
 class GoogleAuthRequest(BaseModel):
@@ -195,10 +239,21 @@ def _is_user_active(value: object) -> bool:
 
 
 async def get_current_user(
-    credentials: HTTPAuthorizationCredentials = Depends(security),
+    request: Request,
+    credentials: Optional[HTTPAuthorizationCredentials] = Depends(security),
     db: AsyncSession = Depends(get_db),
 ) -> User:
-    token = credentials.credentials
+    token: str | None = None
+    if credentials:
+        token = credentials.credentials
+    else:
+        token = request.cookies.get("session_token")
+    if not token:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Not authenticated",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
     payload = verify_token(token)
     if not payload:
         raise HTTPException(
@@ -268,7 +323,7 @@ def verify_password(plain_password: str, hashed_password: str) -> bool:
 
 @router.post("/register", response_model=Token)
 async def register(
-    user_data: UserCreate, request: Request, db: AsyncSession = Depends(get_db)
+    user_data: UserCreate, request: Request, response: Response, db: AsyncSession = Depends(get_db)
 ):
     # Get client IP for rate limiting
     client_ip = request.client.host if request.client else "unknown"
@@ -331,6 +386,8 @@ async def register(
     )
     refresh_token = create_refresh_token(user_model.id, session_id)
 
+    _set_auth_cookies(response, access_token, refresh_token)
+
     return TokenWithRefresh(
         access_token=access_token, 
         refresh_token=refresh_token,
@@ -342,7 +399,7 @@ async def register(
 
 @router.post("/login", response_model=TokenWithRefresh)
 async def login(
-    user_data: UserLogin, request: Request, db: AsyncSession = Depends(get_db)
+    user_data: UserLogin, request: Request, response: Response, db: AsyncSession = Depends(get_db)
 ):
     # Get client IP for rate limiting
     client_ip = request.client.host if request.client else "unknown"
@@ -407,6 +464,8 @@ async def login(
     )
     refresh_token = create_refresh_token(user_model.id, session_id)
 
+    _set_auth_cookies(response, access_token, refresh_token)
+
     return TokenWithRefresh(
         access_token=access_token, 
         refresh_token=refresh_token,
@@ -418,7 +477,7 @@ async def login(
 
 @router.post("/google", response_model=TokenWithRefresh)
 async def google_auth(
-    auth_request: GoogleAuthRequest, db: AsyncSession = Depends(get_db)
+    auth_request: GoogleAuthRequest, response: Response, db: AsyncSession = Depends(get_db)
 ):
     # Verify Google OAuth token
     google_user = await GoogleOAuth.verify_token(auth_request.token)
@@ -493,6 +552,8 @@ async def google_auth(
     )
     refresh_token = create_refresh_token(user_model.id, session_id)
 
+    _set_auth_cookies(response, access_token, refresh_token)
+
     return TokenWithRefresh(
         access_token=access_token,
         refresh_token=refresh_token,
@@ -516,11 +577,21 @@ async def get_google_auth_url():
 
 @router.post("/refresh", response_model=TokenWithRefresh)
 async def refresh_token_endpoint(
-    request: RefreshTokenRequest, db: AsyncSession = Depends(get_db)
+    request: RefreshTokenRequest,
+    http_request: Request,
+    response: Response,
+    db: AsyncSession = Depends(get_db),
 ):
     """Exchange refresh token for new access and refresh tokens"""
+    # Accept refresh token from body or HttpOnly cookie
+    raw_refresh = request.refresh_token or http_request.cookies.get("refresh_token")
+    if not raw_refresh:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="No refresh token provided",
+        )
     # Verify refresh token
-    payload = verify_token(request.refresh_token)
+    payload = verify_token(raw_refresh)
     if not payload or payload.get("type") != "refresh":
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
@@ -578,6 +649,8 @@ async def refresh_token_endpoint(
     )
     new_refresh_token = create_refresh_token(user_id, session_id)
     
+    _set_auth_cookies(response, access_token, new_refresh_token)
+
     return TokenWithRefresh(
         access_token=access_token,
         refresh_token=new_refresh_token,
@@ -596,7 +669,7 @@ async def get_csrf_token():
 
 @router.post("/google/callback", response_model=TokenWithRefresh)
 async def google_auth_callback(
-    callback_data: GoogleAuthCallback, db: AsyncSession = Depends(get_db)
+    callback_data: GoogleAuthCallback, response: Response, db: AsyncSession = Depends(get_db)
 ):
     """Handle Google OAuth callback"""
     try:
@@ -686,6 +759,8 @@ async def google_auth_callback(
         )
         refresh_token = create_refresh_token(user_model.id, session_id)
 
+        _set_auth_cookies(response, access_token, refresh_token)
+
         return TokenWithRefresh(
             access_token=access_token,
             refresh_token=refresh_token,
@@ -733,7 +808,7 @@ async def register_passkey(
 
 @router.post("/passkey/auth", response_model=TokenWithRefresh)
 async def authenticate_passkey(
-    request: PasskeyAuthRequest, db: AsyncSession = Depends(get_db)
+    request: PasskeyAuthRequest, response: Response, db: AsyncSession = Depends(get_db)
 ):
     user_service = UserService(db)
 
@@ -800,6 +875,8 @@ async def authenticate_passkey(
         )
         refresh_token = create_refresh_token(user_model.id, session_id)
 
+        _set_auth_cookies(response, access_token, refresh_token)
+
         return TokenWithRefresh(
             access_token=access_token,
             refresh_token=refresh_token,
@@ -821,22 +898,28 @@ async def get_current_user_info(current_user: User = Depends(get_current_user)):
 
 
 @router.post("/logout")
-async def logout(current_user: User = Depends(get_current_user), credentials: HTTPAuthorizationCredentials = Depends(security)):
+async def logout(
+    http_request: Request,
+    response: Response,
+    current_user: User = Depends(get_current_user),
+    credentials: Optional[HTTPAuthorizationCredentials] = Depends(security),
+):
     """Logout user and revoke session"""
-    # Extract session ID from token
-    token = credentials.credentials
-    payload = verify_token(token)
-    
-    if not payload:
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Invalid token",
-        )
-    
-    session_id = payload.get("session_id")
-    if session_id:
-        revoke_session(session_id)
-    
+    # Extract session ID from token (header or cookie)
+    token = None
+    if credentials:
+        token = credentials.credentials
+    else:
+        token = http_request.cookies.get("session_token")
+
+    if token:
+        payload = verify_token(token)
+        if payload:
+            session_id = payload.get("session_id")
+            if session_id:
+                revoke_session(session_id)
+
+    _clear_auth_cookies(response)
     return {"message": "Logged out successfully"}
 
 

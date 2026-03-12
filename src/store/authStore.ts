@@ -1,7 +1,7 @@
 import { create } from 'zustand';
 import type { User } from '../types/api';
 import type { ValidateTokenResponse } from '../types/api';
-import { clearAuthSession, getAuthToken, persistAuthSession } from '../utils/auth-session';
+import { clearAuthSession, getAuthToken, isAuthenticated as checkAuth, persistAuthSession } from '../utils/auth-session';
 import { apiClient } from '@/api';
 
 type SessionInput = {
@@ -85,24 +85,32 @@ export const useAuthStore = create<AuthState>((set, get) => ({
       set({ isLoading: true });
 
       const storedToken = getAuthToken();
+      const hasSession = checkAuth();
       const storedUserDataRaw = window.localStorage.getItem('user_data');
       const storedUser = safeJsonParse(storedUserDataRaw) as User | null;
 
-      if (storedToken) {
-        set({
-          token: storedToken,
-          user: storedUser,
-          // Cookie-first auth bootstrap keeps the session provisional while
-          // backend validation runs, preventing transient boot-time logouts.
-          isAuthenticated: true,
-        });
+      // No JS-readable token AND no auth flag cookie → not authenticated.
+      if (!storedToken && !hasSession) {
+        set({ isHydrated: true, isLoading: false });
+        return;
       }
 
+      // Set provisional auth while validation runs.
+      set({
+        token: storedToken,
+        user: storedUser,
+        isAuthenticated: true,
+      });
+
+      // HttpOnly cookie path: the actual JWT is not readable by JS.
+      // Trust the auth flag + stored user data for UI state; the HttpOnly
+      // cookie authenticates every API call automatically.
       if (!storedToken) {
         set({ isHydrated: true, isLoading: false });
         return;
       }
 
+      // Legacy path: a JS-readable token exists — validate it server-side.
       try {
         const payload = (await apiClient.validateToken(storedToken)) as ValidateTokenResponse;
         if (payload && payload.valid === false) {

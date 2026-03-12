@@ -68,7 +68,7 @@ class FileAPIKeyStore(APIKeyStore):
 
 
 class SecretManagerAPIKeyStore(APIKeyStore):
-    """Production store using Bitwarden/Vault or other secret managers."""
+    """Production store using HashiCorp Vault KV v2."""
 
     def __init__(self, vault_url: Optional[str] = None, token: Optional[str] = None):
         self.vault_url = vault_url or os.getenv("VAULT_URL")
@@ -79,39 +79,50 @@ class SecretManagerAPIKeyStore(APIKeyStore):
                 "environment variables or explicit parameters"
             )
 
-    async def get(self, provider: str) -> Optional[str]:
-        """Retrieve API key from secret manager."""
-        # TODO: Implement actual secret manager integration
-        # This is a placeholder for Bitwarden, HashiCorp Vault, or similar
-        #
-        # Example implementation for Bitwarden CLI:
-        # import subprocess
-        # result = subprocess.run(
-        #     ["bw", "get", "item", provider],
-        #     capture_output=True, text=True
-        # )
-        # if result.returncode == 0:
-        #     return json.loads(result.stdout).get("notes", "").strip()
-        #
-        # Example implementation for HashiCorp Vault:
-        # import hvac
-        # client = hvac.Client(url=self.vault_url, token=self.token)
-        # secret = client.secrets.kv.v2.read_secret_version(path=f"api-keys/{provider}")
-        # return secret["data"]["data"].get("key")
+    def _get_client(self):
+        try:
+            import hvac  # type: ignore
+        except ImportError as exc:
+            raise RuntimeError(
+                "hvac package is required for SecretManagerAPIKeyStore. "
+                "Install it with: pip install hvac"
+            ) from exc
+        client = hvac.Client(url=self.vault_url, token=self.token)
+        if not client.is_authenticated():
+            raise PermissionError("Vault authentication failed — check VAULT_TOKEN")
+        return client
 
-        # Placeholder implementation - replace with actual secret manager logic
-        raise NotImplementedError(
-            "SecretManagerAPIKeyStore requires implementation for your secret manager. "
-            "See comments in the code for integration examples."
-        )
+    async def get(self, provider: str) -> Optional[str]:
+        """Retrieve API key from Vault KV v2 at path api-keys/{provider}."""
+        import asyncio
+
+        def _read():
+            client = self._get_client()
+            secret = client.secrets.kv.v2.read_secret_version(
+                path=f"api-keys/{provider}",
+                raise_on_deleted_version=False,
+            )
+            return secret["data"]["data"].get("key")
+
+        try:
+            return await asyncio.get_event_loop().run_in_executor(None, _read)
+        except Exception as exc:
+            if "404" in str(exc) or "InvalidPath" in type(exc).__name__:
+                return None
+            raise
 
     async def set(self, provider: str, key: str) -> None:
-        """Store API key in secret manager."""
-        # TODO: Implement actual secret manager integration
-        # This is a placeholder for Bitwarden, HashiCorp Vault, or similar
-        raise NotImplementedError(
-            "SecretManagerAPIKeyStore set() method requires implementation for your secret manager."
-        )
+        """Store API key in Vault KV v2 at path api-keys/{provider}."""
+        import asyncio
+
+        def _write():
+            client = self._get_client()
+            client.secrets.kv.v2.create_or_update_secret(
+                path=f"api-keys/{provider}",
+                secret={"key": key},
+            )
+
+        await asyncio.get_event_loop().run_in_executor(None, _write)
 
 
 # Factory function to create appropriate store based on environment

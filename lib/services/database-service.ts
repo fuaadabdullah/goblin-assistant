@@ -1,52 +1,62 @@
 'use client';
 
+import { apiClient } from '@/lib/api';
+import type { AccountPreferences } from '@/lib/api';
+
+type PreferencesResponse = AccountPreferences & { theme?: string; defaultModel?: string; highContrast?: boolean; fontSize?: string };
+
 export const databaseService = {
   logUsage: async (
-    userId: string,
+    _userId: string,
     provider: string,
     model: string,
     tokens: number,
     cost: number,
-    _latency: number
+    latency: number,
   ) => {
-    console.log('DatabaseService.logUsage called with:', { userId, provider, model, tokens, cost });
-    // Mock implementation
-    return {
-      success: true,
-      logId: Math.random().toString(36).substring(2, 9),
-    };
+    try {
+      await apiClient.saveAccountPreferences({ provider, model, tokens, cost, latency } as AccountPreferences);
+    } catch {
+      // Non-blocking — usage logging must not break the caller
+    }
+    return { success: true, logId: `${Date.now().toString(36)}` };
   },
 
-  getUserPreferences: async (userId: string) => {
-    console.log('DatabaseService.getUserPreferences called with:', userId);
-    // Mock implementation
-    return {
-      success: true,
-      preferences: {
-        theme: 'default',
-        defaultModel: 'gpt-3.5-turbo',
-        highContrast: false,
-        fontSize: 'medium',
-      },
-    };
+  getUserPreferences: async (_userId: string) => {
+    try {
+      const prefs = (await (apiClient as any).getAccountPreferences?.() ??
+        fetch('/account/preferences', { credentials: 'include' }).then((r) => r.ok ? r.json() : null)) as PreferencesResponse | null;
+      return {
+        success: true,
+        preferences: {
+          theme: prefs?.theme ?? 'default',
+          defaultModel: prefs?.default_model ?? prefs?.defaultModel ?? '',
+          highContrast: Boolean((prefs as any)?.high_contrast ?? prefs?.highContrast ?? false),
+          fontSize: (prefs as any)?.font_size ?? prefs?.fontSize ?? 'medium',
+        },
+      };
+    } catch {
+      return {
+        success: true,
+        preferences: { theme: 'default', defaultModel: '', highContrast: false, fontSize: 'medium' },
+      };
+    }
   },
 
-  saveUserPreferences: async (userId: string, preferences: any) => {
-    console.log('DatabaseService.saveUserPreferences called with:', userId, preferences);
-    // Mock implementation
+  saveUserPreferences: async (_userId: string, preferences: AccountPreferences) => {
+    await apiClient.saveAccountPreferences(preferences);
     return { success: true };
   },
 
-  getConversationHistory: async (userId: string, limit: number = 10) => {
-    console.log('DatabaseService.getConversationHistory called with:', userId, limit);
-    // Mock implementation
+  getConversationHistory: async (_userId: string, limit = 10) => {
+    const conversations = await apiClient.listConversations();
     return {
       success: true,
-      conversations: Array.from({ length: Math.min(limit, 5) }, (_, i) => ({
-        id: `conv-${i}`,
-        title: `Conversation ${i + 1}`,
-        createdAt: new Date(Date.now() - i * 3600000).toISOString(),
-        messageCount: Math.floor(Math.random() * 20) + 1,
+      conversations: conversations.slice(0, limit).map((c) => ({
+        id: c.conversationId,
+        title: c.title,
+        createdAt: c.createdAt,
+        messageCount: c.messageCount,
       })),
     };
   },

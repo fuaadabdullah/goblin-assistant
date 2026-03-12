@@ -184,6 +184,74 @@
   --shadow-card: var(--shadow-md);
 }
 
+/* Light mode - warm palette preserved, inverted for light backgrounds */
+:root.goblinos-light {
+  color-scheme: light;
+  --background: #faf6f1;
+  --foreground: #1a140f;
+  --bg: #faf6f1;
+  --bg-subtle: #f5efe8;
+  --bg-gradient:
+    radial-gradient(900px at 18% 12%, rgba(212, 165, 116, 0.06), transparent 55%),
+    radial-gradient(850px at 86% 8%, rgba(244, 150, 122, 0.06), transparent 55%),
+    radial-gradient(700px at 70% 90%, rgba(230, 158, 29, 0.04), transparent 55%),
+    var(--bg);
+  --surface: #ffffff;
+  --surface-hover: #f0e9e0;
+  --surface-active: #e5ddd4;
+  --text: #1a140f;
+  --text-inverse: #faf6f1;
+  --muted: #7a6e62;
+
+  --primary: #9e6f3a;
+  --primary-600: #7d5628;
+  --primary-300: #c49a60;
+  --primary-hover: #8a6232;
+
+  --accent: #c95a42;
+  --accent-600: #a84a36;
+  --accent-300: #e0826c;
+  --accent-hover: #b5503a;
+
+  --cta: #c07d0e;
+  --cta-600: #a86c0c;
+  --cta-300: #e0a030;
+  --cta-hover: #aa7010;
+
+  --success: #3a8c22;
+  --warning: #b87d12;
+  --danger: #c93828;
+  --info: #3070b8;
+
+  --text-primary: #1a140f;
+  --text-secondary: #4a3f36;
+  --text-muted: #7a6e62;
+
+  --glow-primary: rgba(158, 111, 58, 0.10);
+  --glow-accent: rgba(201, 90, 66, 0.10);
+  --glow-cta: rgba(192, 125, 14, 0.10);
+  --scanline: transparent;
+  --scanline-pattern: none;
+
+  --border: rgba(26, 20, 15, 0.12);
+  --divider: rgba(26, 20, 15, 0.08);
+
+  --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.05);
+  --shadow-md: 0 4px 8px rgba(0, 0, 0, 0.08);
+  --shadow-lg: 0 10px 20px rgba(0, 0, 0, 0.10);
+  --shadow-xl: 0 20px 40px rgba(0, 0, 0, 0.12);
+
+  --color-brand-primary: var(--primary);
+  --color-brand-secondary: var(--accent);
+  --color-bg: var(--bg);
+  --color-text: var(--text);
+  --color-surface-active: var(--surface-active);
+  --color-primary: var(--primary);
+  --color-accent: var(--accent);
+
+  --shadow-card: var(--shadow-md);
+}
+
 /* Scanline effect - CRT aesthetic */
 .scanlines {
   position: relative;

@@ -15,13 +15,15 @@ Key architectural patterns:
 - Graceful degradation for missing conversations
 """
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, UploadFile, File
 from fastapi.responses import StreamingResponse
 from pydantic import BaseModel
 from typing import List, Optional, Dict, Any
 import uuid
 import asyncio
+import hashlib
 import json
+import os
 import time
 from datetime import datetime
 
@@ -29,11 +31,13 @@ from .storage import conversation_store
 from .providers.dispatcher import invoke_provider
 from .services.retrieval_service import RetrievalService, ContextBuilder
 from .services.context_assembly_service import context_assembly_service
-from api.config.system_prompt import system_prompt_manager
+from api.config.system_prompt import system_prompt_manager, EDUCATION_SYSTEM_ADDENDUM
 from .services.embedding_service import embedding_worker
-from .services.message_classifier import classification_pipeline, MessageType
+from .services.message_classifier import classification_pipeline, message_classifier, MessageType
 from .services.write_time_matrix import write_time_intelligence
 from .input_validation import InputSanitizer
+from .tools.registry import export_openai_tools
+from .tools.executor import run_tool_loop, extract_tool_calls
 from .storage.conversations import Conversation, ConversationMessage
 from .auth.router import get_current_user, User as AuthenticatedUser
 import structlog
@@ -42,6 +46,16 @@ logger = structlog.get_logger()
 
 router = APIRouter(prefix="/chat", tags=["chat"])
 
+# File upload configuration
+MAX_UPLOAD_SIZE_BYTES = 10 * 1024 * 1024  # 10 MB
+ALLOWED_MIME_TYPES = frozenset({
+    "text/plain", "text/markdown", "text/csv", "text/html",
+    "application/json", "application/pdf",
+    "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+    "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+    "image/png", "image/jpeg", "image/gif", "image/webp",
+})
+UPLOAD_DIR = os.path.join(os.path.dirname(__file__), "..", "uploads")
 
 class ChatMessage(BaseModel):
     role: str  # "user", "assistant", "system"
@@ -68,6 +82,7 @@ class SendMessageRequest(BaseModel):
     stream: Optional[bool] = False
     metadata: Optional[Dict[str, Any]] = None
     enable_context_assembly: Optional[bool] = True  # Inject RAG context like contextual-chat
+    attachment_ids: Optional[List[str]] = None  # IDs from /chat/upload-file
 
 
 class SendMessageResponse(BaseModel):
@@ -79,6 +94,7 @@ class SendMessageResponse(BaseModel):
     usage: Optional[Dict[str, Any]] = None
     cost_usd: Optional[float] = None
     correlation_id: Optional[str] = None
+    visualizations: Optional[List[Dict[str, Any]]] = None
 
 
 class ConversationInfo(BaseModel):
@@ -424,6 +440,23 @@ async def send_message(
         if request.metadata:
             message_metadata.update(request.metadata)
 
+        # Link pending file uploads to this message
+        if request.attachment_ids:
+            attachments_meta = []
+            for aid in request.attachment_ids:
+                upload = _pending_uploads.pop(aid, None)
+                if upload and upload["user_id"] == current_user.id:
+                    attachments_meta.append(
+                        {
+                            "id": upload["file_id"],
+                            "filename": upload["filename"],
+                            "mime_type": upload["mime_type"],
+                            "size_bytes": upload["size_bytes"],
+                        }
+                    )
+            if attachments_meta:
+                message_metadata["attachments"] = attachments_meta
+
         # Add message to conversation history (store sanitized content for display safety)
         user_msg_saved = await conversation_store.add_message_to_conversation(
             conversation_id=conversation_id,
@@ -443,6 +476,14 @@ async def send_message(
         ]
 
         # Step 3b: Assemble RAG context (same as contextual-chat)
+        # Classify message to determine if an education addendum is needed
+        msg_classification = message_classifier.classify_message(sanitized_message, "user")
+        education_addendum = (
+            EDUCATION_SYSTEM_ADDENDUM
+            if msg_classification.message_type == MessageType.LEARNING
+            else ""
+        )
+
         context_metadata = {}
         if request.enable_context_assembly:
             try:
@@ -454,8 +495,8 @@ async def send_message(
                     model=request.model,
                 )
                 context_text = assembly_result.get("context", "")
-                system_prompt = system_prompt_manager.get_complete_prompt(
-                    context=context_text, user_query=sanitized_message
+                system_prompt = system_prompt_manager.get_complete_prompt_with_addendum(
+                    context=context_text, user_query=sanitized_message, addendum=education_addendum
                 )
                 messages = [
                     {"role": "system", "content": system_prompt},
@@ -491,6 +532,11 @@ async def send_message(
             "model": request.model,
         }
 
+        # Inject registered tools for native function calling
+        registered_tools = export_openai_tools()
+        if registered_tools:
+            payload["tools"] = registered_tools
+
         # If streaming requested, return SSE response via generate_chat_stream
         if request.stream:
             return StreamingResponse(
@@ -519,6 +565,22 @@ async def send_message(
             )
         except Exception:
             raise
+
+        # Step 4b: Tool-calling loop — if the LLM returned tool_calls,
+        # execute them and re-invoke until we get a text response.
+        if (isinstance(provider_response, dict)
+                and provider_response.get("ok")
+                and extract_tool_calls(provider_response)):
+            provider_response = await run_tool_loop(
+                messages=list(messages),
+                invoke_fn=invoke_provider,
+                provider=request.provider,
+                model=request.model,
+                tools=registered_tools if registered_tools else None,
+                timeout_ms=30000,
+                user_id=current_user.id,
+                conversation_id=conversation_id,
+            )
 
         # Step 5: Normalize provider response format
         # Different providers return different response structures
@@ -585,6 +647,11 @@ async def send_message(
             )
 
         # Step 7: Return standardized response
+        # Include any chart-ready visualizations extracted during tool execution
+        visualizations = None
+        if isinstance(provider_response, dict) and provider_response.get("visualizations"):
+            visualizations = provider_response["visualizations"]
+
         return SendMessageResponse(
             message_id=response_message_id,
             response=response_content,
@@ -594,6 +661,7 @@ async def send_message(
             usage=usage,
             cost_usd=cost_usd,
             correlation_id=correlation_id,
+            visualizations=visualizations,
         )
 
     except HTTPException:
@@ -644,7 +712,108 @@ async def import_conversation_messages(
         raise HTTPException(status_code=500, detail="Failed to import conversation")
 
 
-@router.post("/completions")
+# ---------- File Upload Endpoints ----------
+
+# In-memory store for pending uploads (keyed by file_id).
+# In production this should be Redis; keeping it simple for MVP.
+_pending_uploads: Dict[str, Dict[str, Any]] = {}
+
+
+class FileUploadResponse(BaseModel):
+    file_id: str
+    filename: str
+    mime_type: str
+    size_bytes: int
+
+
+class AttachmentInfo(BaseModel):
+    id: str
+    filename: str
+    mime_type: str
+    size_bytes: int
+    url: str
+
+
+@router.post("/upload-file", response_model=FileUploadResponse)
+async def upload_file(
+    file: UploadFile = File(...),
+    current_user: AuthenticatedUser = Depends(get_current_user),
+):
+    """Upload a file for later attachment to a chat message."""
+    # Validate MIME type
+    mime = file.content_type or "application/octet-stream"
+    if mime not in ALLOWED_MIME_TYPES:
+        raise HTTPException(status_code=400, detail=f"File type not allowed: {mime}")
+
+    # Read file content (enforcing size limit)
+    contents = await file.read()
+    if len(contents) > MAX_UPLOAD_SIZE_BYTES:
+        raise HTTPException(
+            status_code=413,
+            detail=f"File too large. Maximum size is {MAX_UPLOAD_SIZE_BYTES // (1024 * 1024)} MB",
+        )
+
+    file_id = str(uuid.uuid4())
+    safe_filename = os.path.basename(file.filename or "untitled")
+    file_hash = hashlib.sha256(contents).hexdigest()
+    storage_key = f"chat-uploads/{current_user.id}/{file_id}/{safe_filename}"
+
+    # Persist to local uploads directory (swap for S3 in production)
+    dest_dir = os.path.join(UPLOAD_DIR, current_user.id, file_id)
+    os.makedirs(dest_dir, exist_ok=True)
+    dest_path = os.path.join(dest_dir, safe_filename)
+    with open(dest_path, "wb") as f:
+        f.write(contents)
+
+    # Register pending upload for later association with a message
+    _pending_uploads[file_id] = {
+        "file_id": file_id,
+        "user_id": current_user.id,
+        "filename": safe_filename,
+        "mime_type": mime,
+        "size_bytes": len(contents),
+        "storage_key": storage_key,
+        "upload_hash": file_hash,
+        "path": dest_path,
+    }
+
+    logger.info(
+        "file_uploaded",
+        file_id=file_id,
+        filename=safe_filename,
+        size_bytes=len(contents),
+        user_id=current_user.id,
+    )
+
+    return FileUploadResponse(
+        file_id=file_id,
+        filename=safe_filename,
+        mime_type=mime,
+        size_bytes=len(contents),
+    )
+
+
+@router.get("/files/{file_id}")
+async def download_file(
+    file_id: str,
+    current_user: AuthenticatedUser = Depends(get_current_user),
+):
+    """Download an uploaded file. Only the owning user can access it."""
+    from fastapi.responses import FileResponse
+
+    meta = _pending_uploads.get(file_id)
+    if not meta or meta["user_id"] != current_user.id:
+        raise HTTPException(status_code=404, detail="File not found")
+
+    file_path = meta["path"]
+    if not os.path.exists(file_path):
+        raise HTTPException(status_code=404, detail="File not found on disk")
+
+    return FileResponse(
+        path=file_path,
+        filename=meta["filename"],
+        media_type=meta["mime_type"],
+    )
 async def chat_completion(request: Dict[str, Any]):
     """OpenAI-compatible chat completions endpoint
 
@@ -721,6 +890,7 @@ class ContextualChatResponse(BaseModel):
     timestamp: str
     context_assembly: Optional[Dict[str, Any]] = None
     token_usage: Optional[Dict[str, Any]] = None
+    visualizations: Optional[List[Dict[str, Any]]] = None
 
 
 @router.post("/contextual-chat", response_model=ContextualChatResponse)
@@ -748,6 +918,14 @@ async def contextual_chat(
             await _require_owned_conversation(conversation_id, current_user)
 
         # Step 2: Assemble context using new system (if enabled)
+        # Classify message to determine if an education addendum is needed
+        msg_classification = message_classifier.classify_message(request.message, "user")
+        education_addendum = (
+            EDUCATION_SYSTEM_ADDENDUM
+            if msg_classification.message_type == MessageType.LEARNING
+            else ""
+        )
+
         context_assembly = None
         if request.enable_context_assembly and user_id:
             # Get recent conversation history for ephemeral memory
@@ -775,8 +953,8 @@ async def contextual_chat(
             context_text = assembly_result.get("context", "")
 
             # Get system prompt with context
-            system_prompt = system_prompt_manager.get_complete_prompt(
-                context=context_text, user_query=request.message
+            system_prompt = system_prompt_manager.get_complete_prompt_with_addendum(
+                context=context_text, user_query=request.message, addendum=education_addendum
             )
 
             # Build messages for provider
@@ -801,8 +979,8 @@ async def contextual_chat(
 
         else:
             # Fallback to simple system prompt
-            system_prompt = system_prompt_manager.get_complete_prompt(
-                user_query=request.message
+            system_prompt = system_prompt_manager.get_complete_prompt_with_addendum(
+                user_query=request.message, addendum=education_addendum
             )
             messages = [
                 {"role": "system", "content": system_prompt},
@@ -816,6 +994,11 @@ async def contextual_chat(
             "messages": messages,
             "model": request.model,
         }
+
+        # Inject registered tools for native function calling
+        ctx_tools = export_openai_tools()
+        if ctx_tools:
+            payload["tools"] = ctx_tools
 
         # If streaming requested, return SSE response
         if request.stream:
@@ -849,6 +1032,22 @@ async def contextual_chat(
                 timeout_ms=30000,
                 stream=False,
             )
+
+            # Tool-calling loop for contextual chat
+            if (isinstance(provider_response, dict)
+                    and provider_response.get("ok")
+                    and extract_tool_calls(provider_response)):
+                provider_response = await run_tool_loop(
+                    messages=list(messages),
+                    invoke_fn=invoke_provider,
+                    provider=request.provider,
+                    model=request.model,
+                    tools=ctx_tools if ctx_tools else None,
+                    timeout_ms=30000,
+                    user_id=user_id,
+                    conversation_id=conversation_id,
+                )
+
             duration = time.time() - start_time
             success = isinstance(provider_response, dict) and provider_response.get(
                 "ok", True
@@ -920,6 +1119,10 @@ async def contextual_chat(
             )
 
         # Step 6: Return response with context assembly details
+        visualizations = None
+        if isinstance(provider_response, dict) and provider_response.get("visualizations"):
+            visualizations = provider_response["visualizations"]
+
         return ContextualChatResponse(
             message_id=response_message_id,
             response=response_content,
@@ -928,6 +1131,7 @@ async def contextual_chat(
             timestamp=datetime.utcnow().isoformat(),
             context_assembly=context_assembly,
             token_usage=token_usage,
+            visualizations=visualizations,
         )
 
     except HTTPException:

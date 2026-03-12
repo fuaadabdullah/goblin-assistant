@@ -1,60 +1,62 @@
 'use client';
 
+import { apiClient } from '@/lib/api';
+
+type ModelEntry = {
+  id?: string;
+  name?: string;
+  provider?: string;
+  max_tokens?: number;
+  description?: string;
+  is_selectable?: boolean;
+};
+
+type ModelRegistryResponse = {
+  models?: ModelEntry[];
+};
+
+const COMPLEXITY_KEYWORDS: Record<'simple' | 'medium' | 'complex', string[]> = {
+  complex: ['gpt-4', 'claude-3-opus', 'claude-3-5', 'claude-3.5', 'gemini-pro', 'gpt-4o'],
+  medium: ['gpt-4', 'claude-3-haiku', 'claude-3-sonnet', 'gemini'],
+  simple: [],
+};
+
 export const modelService = {
   getAvailableModels: async () => {
-    console.log('ModelService.getAvailableModels called');
-    // Mock implementation
-    return {
-      success: true,
-      models: [
-        {
-          id: 'gpt-3.5-turbo',
-          name: 'GPT-3.5 Turbo',
-          provider: 'openai',
-          maxTokens: 4096,
-          description: 'Fast and capable model for most tasks',
-        },
-        {
-          id: 'gpt-4',
-          name: 'GPT-4',
-          provider: 'openai',
-          maxTokens: 8192,
-          description: 'More powerful model with higher capabilities',
-        },
-        {
-          id: 'claude-3-haiku',
-          name: 'Claude 3 Haiku',
-          provider: 'anthropic',
-          maxTokens: 200000,
-          description: 'Anthropic\'s fast and efficient model',
-        },
-      ],
-    };
+    const registry = (await apiClient.getModelConfigs()) as ModelRegistryResponse;
+    const models = (registry?.models ?? []).map((m) => ({
+      id: m.id ?? m.name ?? '',
+      name: m.name ?? m.id ?? '',
+      provider: m.provider ?? '',
+      maxTokens: m.max_tokens ?? 4096,
+      description: m.description ?? '',
+    }));
+    return { success: true, models };
   },
 
   getRecommendedModel: async (taskType: 'simple' | 'medium' | 'complex' = 'medium') => {
-    console.log('ModelService.getRecommendedModel called with:', taskType);
-    // Mock implementation
-    const recommendations: Record<string, string> = {
-      simple: 'gpt-3.5-turbo',
-      medium: 'gpt-4',
-      complex: 'claude-3-haiku',
-    };
-
-    return {
-      success: true,
-      modelId: recommendations[taskType] || 'gpt-3.5-turbo',
-    };
+    const { models } = await modelService.getAvailableModels();
+    const keywords = COMPLEXITY_KEYWORDS[taskType] ?? [];
+    const match =
+      keywords.length > 0
+        ? models.find((m) => keywords.some((kw) => m.id.toLowerCase().includes(kw)))
+        : undefined;
+    const modelId = match?.id ?? models[0]?.id ?? '';
+    return { success: true, modelId };
   },
 
   getModelStatus: async (modelId: string) => {
-    console.log('ModelService.getModelStatus called with:', modelId);
-    // Mock implementation
+    const providers = (await apiClient.getProviderSettings()) as Array<{ id?: string; name?: string; status?: string; health?: string; updated_at?: string }> | null;
+    const list = Array.isArray(providers) ? providers : [];
+    const provider = list.find((p) =>
+      modelId.toLowerCase().includes((p.id ?? p.name ?? '').toLowerCase()),
+    );
+    const status = provider?.status ?? provider?.health ?? 'available';
     return {
       success: true,
-      status: 'available',
+      status,
       lastUsed: new Date().toISOString(),
-      usageCount: Math.floor(Math.random() * 100),
+      usageCount: 0,
     };
   },
 };

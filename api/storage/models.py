@@ -2,7 +2,7 @@
 SQLAlchemy models for Goblin Assistant database storage
 """
 
-from sqlalchemy import Column, String, DateTime, ForeignKey, JSON, Text, Boolean, text
+from sqlalchemy import Column, String, DateTime, ForeignKey, JSON, Text, Boolean, Integer, text
 from sqlalchemy.orm import declarative_base, relationship
 import uuid
 from datetime import datetime
@@ -102,6 +102,32 @@ class MessageModel(Base):
 
     # Relationships
     conversation = relationship("ConversationModel", back_populates="messages")
+    attachments = relationship(
+        "MessageAttachmentModel",
+        back_populates="message",
+        cascade="all, delete-orphan",
+        order_by="MessageAttachmentModel.created_at",
+    )
+
+
+class MessageAttachmentModel(Base):
+    """Database model for message file attachments"""
+
+    __tablename__ = "message_attachments"
+
+    id = Column(String, primary_key=True, default=lambda: str(uuid.uuid4()))
+    message_id = Column(
+        String, ForeignKey("messages.message_id", ondelete="CASCADE"), nullable=False, index=True
+    )
+    filename = Column(String, nullable=False)
+    mime_type = Column(String, nullable=False)
+    size_bytes = Column(Integer, nullable=False)
+    storage_key = Column(String, nullable=False)  # S3 key or local path
+    upload_hash = Column(String, nullable=True)  # SHA256 for dedup
+    created_at = Column(DateTime, default=datetime.utcnow)
+
+    # Relationships
+    message = relationship("MessageModel", back_populates="attachments")
 
 
 # Import vector models to ensure relationships are properly set up

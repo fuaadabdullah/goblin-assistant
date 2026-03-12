@@ -58,11 +58,11 @@ TMPDIR=/tmp npx jest --no-coverage
 
 ### Known Caveats
 
-- Much of the frontend client calls `/v1/...`, while `api/main.py` mounts most routers at unversioned paths such as `/auth`, `/chat`, `/search`, `/settings`, and `/sandbox`
-- `src/pages/api/models.ts` expects a backend `/v1/providers/models` endpoint that is not defined in the checked-in FastAPI app
-- Search, sandbox, provider admin, account save, and support form flows currently expect backend contracts that do not match the local `api/` implementation
+- Some historical docs still mention `main:app` and `backend/main.py`; for this repo use only `api.main:app`
+- Provider integrations may use external `/v1/*` upstream APIs internally, but frontend client code must use internal app routes only
+- Use `npm run guard:no-client-v1` to enforce that frontend code does not call provider-style `/v1/*` paths
 
-If you want the most reliable local flow in this checkout, start with chat and health endpoints.
+For the most reliable local flow in this checkout, start with chat and health endpoints.
 
 ## Quick Start
 

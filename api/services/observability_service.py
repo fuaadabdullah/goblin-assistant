@@ -660,9 +660,11 @@ class ObservabilityService:
         
         self.retrieval_quality["avg_chunks_per_request"] = total_items / total_traces if total_traces > 0 else 0
         
-        # Calculate token utilization (this would need actual budget info)
-        # For now, just track average
-        self.retrieval_quality["token_utilization_percent"] = 75  # Placeholder
+        # Calculate token utilization from actual budget vs allocated tokens across all traces
+        total_budget = sum(trace.token_budget for trace in self.retrieval_traces)
+        self.retrieval_quality["token_utilization_percent"] = (
+            total_tokens / total_budget * 100
+        ) if total_budget > 0 else 0
     
     def _redact_content(self, content: str) -> str:
         """Redact sensitive content for logging"""

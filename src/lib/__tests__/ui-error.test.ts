@@ -2,61 +2,61 @@ import { UiError, toUiError } from '../ui-error';
 
 describe('UI Error Utilities', () => {
   describe('UiError class', () => {
-    it('should create UiError with message and payload', () => {
-      const payload = { title: 'Error', message: 'Something went wrong' };
-      const error = new UiError('UI error occurred', payload);
+    it('should create UiError with code and userMessage', () => {
+      const error = new UiError({ code: 'ERR_TEST', userMessage: 'Something went wrong' });
 
-      expect(error.message).toBe('UI error occurred');
-      expect(error.payload).toEqual(payload);
+      expect(error.message).toBe('Something went wrong');
+      expect(error.code).toBe('ERR_TEST');
+      expect(error.userMessage).toBe('Something went wrong');
       expect(error instanceof Error).toBe(true);
     });
 
-    it('should handle UiError with title only', () => {
-      const payload = { title: 'Error' };
-      const error = new UiError('UI error', payload);
+    it('should accept an optional cause', () => {
+      const cause = new Error('original');
+      const error = new UiError({ code: 'ERR_WRAP', userMessage: 'Wrapped error' }, cause);
 
-      expect(error.payload.title).toBe('Error');
+      expect(error.cause).toBe(cause);
+      expect(error.code).toBe('ERR_WRAP');
     });
   });
 
   describe('toUiError', () => {
-    it('should convert Error to UiError', () => {
+    it('should return existing UiError as-is', () => {
+      const original = new UiError({ code: 'ERR', userMessage: 'test' });
+      const result = toUiError(original, { code: 'FALLBACK', userMessage: 'fallback' });
+
+      expect(result).toBe(original);
+    });
+
+    it('should wrap standard Error with fallback payload', () => {
       const standardError = new Error('Standard error message');
-      const fallback = { title: 'Fallback Title', message: 'Fallback message' };
+      const fallback = { code: 'ERR_FALLBACK', userMessage: 'Fallback message' };
 
       const uiError = toUiError(standardError, fallback);
 
       expect(uiError instanceof UiError).toBe(true);
-      expect(uiError.payload).toBeDefined();
+      expect(uiError.code).toBe('ERR_FALLBACK');
+      expect(uiError.userMessage).toBe('Fallback message');
+      expect(uiError.cause).toBe(standardError);
     });
 
-    it('should handle unknown error types', () => {
-      const unknownError = 'string error';
-      const fallback = { title: 'Error', message: 'An error occurred' };
+    it('should handle unknown error types with fallback', () => {
+      const fallback = { code: 'ERR_UNKNOWN', userMessage: 'An error occurred' };
 
-      const uiError = toUiError(unknownError, fallback);
+      const uiError = toUiError('string error', fallback);
 
       expect(uiError instanceof UiError).toBe(true);
-      expect(uiError.payload).toEqual(fallback);
+      expect(uiError.code).toBe('ERR_UNKNOWN');
     });
 
     it('should handle null/undefined errors with fallback', () => {
-      const fallback = { title: 'Error', message: 'Something went wrong' };
+      const fallback = { code: 'ERR_NULL', userMessage: 'Something went wrong' };
 
       const uiError1 = toUiError(null, fallback);
       const uiError2 = toUiError(undefined, fallback);
 
-      expect(uiError1.payload).toEqual(fallback);
-      expect(uiError2.payload).toEqual(fallback);
-    });
-
-    it('should preserve error details when available', () => {
-      const error = new Error('Detailed error message');
-      const fallback = { title: 'Fallback', message: 'Fallback message' };
-
-      const uiError = toUiError(error, fallback);
-
-      expect(uiError.message).toContain('Detailed error message');
+      expect(uiError1.code).toBe('ERR_NULL');
+      expect(uiError2.code).toBe('ERR_NULL');
     });
   });
 });

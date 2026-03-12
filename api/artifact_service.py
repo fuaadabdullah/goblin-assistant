@@ -9,7 +9,6 @@ import json
 import hashlib
 from typing import Optional, Dict, Any, List
 from datetime import datetime, timedelta
-from botocore.exceptions import ClientError, NoCredentialsError
 import redis
 import structlog
 
@@ -39,7 +38,7 @@ class ArtifactService:
         self._init_s3_client()
 
     def _init_s3_client(self):
-        """Initialize S3 client with proper configuration"""
+        """Initialize S3 client with proper configuration (lazy — no network calls on startup)."""
         try:
             if not all([self.access_key, self.secret_key]):
                 logger.warning("S3 credentials not configured", feature="artifact storage", status="disabled")
@@ -47,27 +46,15 @@ class ArtifactService:
 
             self.s3_client = boto3.client(
                 "s3",
-                endpoint_url=self.endpoint_url,
+                endpoint_url=self.endpoint_url,  # None = use real AWS; set S3_ENDPOINT_URL for MinIO/custom
                 aws_access_key_id=self.access_key,
                 aws_secret_access_key=self.secret_key,
                 region_name=self.region,
             )
+            logger.info("S3 client initialized", endpoint=self.endpoint_url or "AWS", bucket=self.bucket_name)
 
-            # Test connection
-            self.s3_client.head_bucket(Bucket=self.bucket_name)
-            print(f"✅ Connected to S3-compatible storage: {self.bucket_name}")
-
-        except NoCredentialsError:
-            print("❌ S3 credentials invalid")
-            self.s3_client = None
-        except ClientError as e:
-            if e.response['Error']['Code'] == '404':
-                print(f"❌ S3 bucket '{self.bucket_name}' not found")
-            else:
-                print(f"❌ S3 connection failed: {e}")
-            self.s3_client = None
         except Exception as e:
-            print(f"❌ Failed to initialize S3 client: {e}")
+            logger.warning("S3/MinIO not available — artifact storage disabled", error=str(e))
             self.s3_client = None
 
     def is_available(self) -> bool:

@@ -15,6 +15,16 @@ from api.utils.tokenizer import count_tokens
 logger = structlog.get_logger()
 
 
+EDUCATION_SYSTEM_ADDENDUM = """
+When a user is learning a concept:
+- Start with the intuition before the formula
+- Use a concrete numerical example for every abstract concept
+- Check comprehension by asking a follow-up question at the end
+- If they get something wrong, explain why without making them feel bad
+- Relate finance concepts to real companies they would recognize (AAPL, TSLA, etc.)
+"""
+
+
 class SystemPromptConfig:
     """Configuration for system prompts and guardrails"""
 
@@ -135,6 +145,18 @@ class SystemPromptManager:
         if user_query:
             prompt += f"\n\nUser Query: {user_query}"
 
+        return prompt
+
+    def get_complete_prompt_with_addendum(
+        self,
+        context: Optional[str] = None,
+        user_query: Optional[str] = None,
+        addendum: str = "",
+    ) -> str:
+        """Get complete system prompt with an optional mode-specific addendum appended"""
+        prompt = self.get_complete_prompt(context=context, user_query=user_query)
+        if addendum:
+            prompt += f"\n\n{addendum.strip()}"
         return prompt
 
     def get_debug_info(self) -> Dict[str, Any]:

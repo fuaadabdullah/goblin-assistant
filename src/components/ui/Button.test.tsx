@@ -1,4 +1,3 @@
-import { describe, it, expect, jest } from "vitest";
 import { render, fireEvent } from '@testing-library/react';
 import Button from './Button';
 
@@ -13,7 +12,7 @@ describe('Button', () => {
   test('renders with different variants', () => {
     const { rerender, getByRole } = render(<Button variant="secondary">Secondary</Button>);
     let button = getByRole('button');
-    expect(button).toHaveClass('bg-surface-hover');
+    expect(button).toHaveClass('bg-surface');
 
     rerender(<Button variant="danger">Danger</Button>);
     button = getByRole('button');
@@ -61,7 +60,7 @@ describe('Button', () => {
 
     const button = getByRole('button');
     expect(button).toBeDisabled();
-    expect(button).toHaveClass('disabled:opacity-50'); // Check for disabled class variant
+    expect(button.className).toContain('disabled:opacity-50');
 
     fireEvent.click(button);
     expect(handleClick).not.toHaveBeenCalled(); // Disabled buttons shouldn't fire clicks

@@ -1,10 +1,12 @@
 import React from 'react';
-import { Bot, Brain, Zap, Search, MessageSquare, Handshake, Wrench, Loader2 } from 'lucide-react';
+import { Bot, Brain, Zap, Search, MessageSquare, Handshake, Wrench, Loader2, Check } from 'lucide-react';
 import { useProviderSettings } from '../hooks/api/useSettings';
 import ThemePreview from '../components/ThemePreview';
 import KeyboardShortcutsHelp from '../components/KeyboardShortcutsHelp';
 import Seo from '../components/Seo';
 import { useProvider } from '../contexts/ProviderContext';
+import { useToast } from '../contexts/ToastContext';
+import { apiClient } from '@/api';
 
 interface ProviderSource {
   name?: string;
@@ -25,6 +27,8 @@ interface ProviderDisplay {
 const SettingsPageContent: React.FC = () => {
   const { data: providerData, isLoading: providersLoading } = useProviderSettings();
   const providerCtx = useProvider();
+  const { showSuccess, showError } = useToast();
+  const [isSaving, setIsSaving] = React.useState(false);
 
   const providerRows: ProviderSource[] = React.useMemo(() => {
     if (Array.isArray(providerData)) {
@@ -77,6 +81,21 @@ const SettingsPageContent: React.FC = () => {
     }
     return models.filter((model): model is string => typeof model === 'string' && model.length > 0);
   }, [providers, selectedProvider]);
+
+  const handleSavePreferences = async () => {
+    setIsSaving(true);
+    try {
+      await apiClient.saveAccountPreferences({
+        default_provider: selectedProvider,
+        default_model: selectedModel,
+      });
+      showSuccess('Preferences saved', 'Your model preferences have been saved.');
+    } catch {
+      showError('Save failed', 'Could not save preferences. Please try again.');
+    } finally {
+      setIsSaving(false);
+    }
+  };
 
   if (loading) {
     return (
@@ -261,6 +280,21 @@ const SettingsPageContent: React.FC = () => {
                 ))}
               </select>
             </div>
+          </div>
+          <div className="mt-6 flex items-center gap-3">
+            <button
+              type="button"
+              onClick={handleSavePreferences}
+              disabled={isSaving}
+              className="inline-flex items-center gap-2 bg-primary hover:brightness-110 disabled:opacity-50 text-text-inverse px-5 py-2.5 rounded-lg font-medium shadow-sm transition-all"
+            >
+              {isSaving ? (
+                <Loader2 className="w-4 h-4 animate-spin" />
+              ) : (
+                <Check className="w-4 h-4" />
+              )}
+              {isSaving ? 'Saving...' : 'Save preferences'}
+            </button>
           </div>
         </div>
       </div>

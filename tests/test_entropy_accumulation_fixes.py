@@ -6,6 +6,8 @@ from api.services.context_assembly_service import (
     ContextLayer,
     ContextBudget,
 )
+from api.services.context_assembly_service import ephemeral_layer as _ephemeral_mod
+from api.services.context_assembly_service import orchestrator as _orch_mod
 
 
 PROJECT_ROOT = Path("/Volumes/GOBLINOS 1/apps/...")
@@ -31,7 +33,8 @@ def test_critical_runtime_files_do_not_use_print(relative_path: Path):
 
 @pytest.mark.asyncio
 async def test_ephemeral_layer_marks_truncation_and_summary_fallback():
-    service = ContextAssemblyService()
+    from api.services.context_assembly_service.ephemeral_layer import assemble_ephemeral_memory
+
     budget = ContextBudget(total_tokens=200, ephemeral_tokens=70)
     history = [
         {"role": "user", "content": "very long message " * 30},
@@ -42,7 +45,7 @@ async def test_ephemeral_layer_marks_truncation_and_summary_fallback():
         {"role": "assistant", "content": "final note " * 30},
     ]
 
-    layer = await service._assemble_ephemeral_memory(
+    layer = await assemble_ephemeral_memory(
         conversation_history=history,
         remaining_tokens=70,
         budget=budget,
@@ -79,11 +82,14 @@ async def test_assemble_context_surfaces_truncation_warnings(monkeypatch):
             metadata={"truncated": True, "summary_fallback_applied": True},
         )
 
-    monkeypatch.setattr(service, "_assemble_system_layer", _system)
-    monkeypatch.setattr(service, "_assemble_long_term_memory", _none)
-    monkeypatch.setattr(service, "_assemble_working_memory", _none)
-    monkeypatch.setattr(service, "_assemble_semantic_retrieval", _semantic)
-    monkeypatch.setattr(service, "_assemble_ephemeral_memory", _ephemeral)
+    monkeypatch.setattr(_orch_mod, "assemble_system_layer", _system)
+    monkeypatch.setattr(_orch_mod, "assemble_long_term_memory", _none)
+    monkeypatch.setattr(_orch_mod, "assemble_working_memory", _none)
+    monkeypatch.setattr(_orch_mod, "assemble_semantic_retrieval", _semantic)
+    monkeypatch.setattr(_orch_mod, "assemble_ephemeral_memory", _ephemeral)
+
+    # Prevent lazy retrieval_service property from triggering embedding import chain
+    service._retrieval_service = type("FakeRS", (), {"get_degraded_status": lambda self: {}})()
 
     from api.observability.context_snapshotter import context_snapshotter
 

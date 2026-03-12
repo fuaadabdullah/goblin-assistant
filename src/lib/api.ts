@@ -92,11 +92,18 @@ interface ConversationSendResponse {
   usage?: ChatUsage;
   cost_usd?: number;
   correlation_id?: string;
+  visualizations?: Array<{
+    type: string;
+    title: string;
+    data: Record<string, unknown>[];
+    config: Record<string, unknown>;
+  }>;
 }
 
 const backendHttp = axios.create({
   baseURL: env.apiBaseUrl,
   timeout: 45000,
+  withCredentials: true,
   headers: {
     'Content-Type': 'application/json',
   },
@@ -117,8 +124,9 @@ type RetryableRequestConfig = AxiosRequestConfig & { _retry?: boolean };
 let refreshPromise: Promise<string | null> | null = null;
 
 const refreshAccessToken = async (): Promise<string | null> => {
+  // HttpOnly cookie is sent automatically via withCredentials.
+  // Still try body for backward-compat with clients that have a readable token.
   const refreshToken = getRefreshToken();
-  if (!refreshToken) return null;
 
   try {
     const response = await backendHttp.post<{
@@ -127,7 +135,7 @@ const refreshAccessToken = async (): Promise<string | null> => {
       expires_in?: number;
       user?: Record<string, unknown>;
     }>('/auth/refresh', {
-      refresh_token: refreshToken,
+      refresh_token: refreshToken ?? undefined,
     });
 
     const accessToken = response.data?.access_token ?? null;
@@ -238,8 +246,23 @@ const getCsrfToken = async (): Promise<string> => {
   return token;
 };
 
+const V1_PATH_PATTERN = /^\/?v1(\/|$)/i;
+
+const assertNoVersionedClientPath = (path: string): void => {
+  if (path.startsWith('http://') || path.startsWith('https://')) {
+    return;
+  }
+
+  if (V1_PATH_PATTERN.test(path.trim())) {
+    throw new Error(
+      `Refusing API path "${path}". Frontend clients must use internal routes, not provider-style /v1 endpoints.`,
+    );
+  }
+};
+
 const getBackend = async <T>(url: string, config?: AxiosRequestConfig): Promise<T> => {
   try {
+    assertNoVersionedClientPath(url);
     const response = await backendHttp.get<T>(url, config);
     return response.data;
   } catch (error) {
@@ -253,6 +276,7 @@ const postBackend = async <T, B = unknown>(
   config?: AxiosRequestConfig,
 ): Promise<T> => {
   try {
+    assertNoVersionedClientPath(url);
     const response = await backendHttp.post<T>(url, body, config);
     return response.data;
   } catch (error) {
@@ -266,6 +290,7 @@ const putBackend = async <T, B = unknown>(
   config?: AxiosRequestConfig,
 ): Promise<T> => {
   try {
+    assertNoVersionedClientPath(url);
     const response = await backendHttp.put<T>(url, body, config);
     return response.data;
   } catch (error) {
@@ -279,6 +304,7 @@ const patchBackend = async <T, B = unknown>(
   config?: AxiosRequestConfig,
 ): Promise<T> => {
   try {
+    assertNoVersionedClientPath(url);
     const response = await backendHttp.patch<T>(url, body, config);
     return response.data;
   } catch (error) {
@@ -288,6 +314,7 @@ const patchBackend = async <T, B = unknown>(
 
 const getFrontend = async <T>(url: string, config?: AxiosRequestConfig): Promise<T> => {
   try {
+    assertNoVersionedClientPath(url);
     const response = await frontendHttp.get<T>(url, config);
     return response.data;
   } catch (error) {
@@ -301,6 +328,7 @@ const postFrontend = async <T, B = unknown>(
   config?: AxiosRequestConfig,
 ): Promise<T> => {
   try {
+    assertNoVersionedClientPath(url);
     const response = await frontendHttp.post<T>(url, body, config);
     return response.data;
   } catch (error) {
@@ -366,6 +394,7 @@ export const apiClient = {
     model?: string;
     provider?: string;
     metadata?: Record<string, unknown>;
+    attachment_ids?: string[];
   }) {
     const response = await postBackend<
       ConversationSendResponse,
@@ -374,6 +403,7 @@ export const apiClient = {
         model?: string;
         provider?: string;
         metadata?: Record<string, unknown>;
+        attachment_ids?: string[];
       }
     >(
       `/chat/conversations/${encodeURIComponent(payload.conversationId)}/messages`,
@@ -382,6 +412,7 @@ export const apiClient = {
         model: payload.model,
         provider: payload.provider,
         metadata: payload.metadata,
+        attachment_ids: payload.attachment_ids,
       },
       withAuth(),
     );
@@ -395,6 +426,7 @@ export const apiClient = {
       usage: response.usage,
       cost_usd: response.cost_usd,
       correlation_id: response.correlation_id,
+      visualizations: response.visualizations,
     };
   },
 
@@ -607,5 +639,23 @@ export const apiClient = {
 
   async saveAccountPreferences(payload: AccountPreferences) {
     return putBackend('/account/preferences', payload);
+  },
+
+  async uploadFile(file: File): Promise<{
+    file_id: string;
+    filename: string;
+    mime_type: string;
+    size_bytes: number;
+  }> {
+    const formData = new FormData();
+    formData.append('file', file);
+    const response = await backendHttp.post('/chat/upload-file', formData, {
+      ...withAuth(),
+      headers: {
+        ...withAuth().headers,
+        'Content-Type': 'multipart/form-data',
+      },
+    });
+    return response.data;
   },
 };

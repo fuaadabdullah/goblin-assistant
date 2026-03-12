@@ -184,7 +184,7 @@ python3 scripts/validate_privacy_integration.py
 - [x] ✅ Install Python dependencies
   ```bash
   cd apps/goblin-assistant/api
-  pip3 install -r requirements-privacy.txt
+  pip3 install -r requirements.txt
   ```
 
 - [x] ✅ Start Redis

@@ -1,37 +1,39 @@
-import { render, screen, fireEvent, waitFor } from '@testing-library/react';
-import { ToastContainer } from '../../ToastContainer';
-import { ToastProvider } from '../../contexts/ToastContext';
+import React from 'react';
+import { render, screen, fireEvent } from '@testing-library/react';
+import { ToastItem } from '../ToastItem';
 
-describe('ToastContainer Component', () => {
-    const renderWithProvider = (component: React.ReactElement) => {
-        return render(<ToastProvider>{component}</ToastProvider>);
-    };
+const baseToast = { id: '1', title: 'Test toast', type: 'info' as const };
 
-    it('should render toast container', () => {
-        renderWithProvider(<ToastContainer />);
-        const container = screen.getByRole('region', { hidden: true });
-        expect(container).toBeDefined();
+describe('ToastItem Component', () => {
+    it('renders toast title', () => {
+        render(<ToastItem toast={baseToast} onRemove={jest.fn()} />);
+        expect(screen.getByText('Test toast')).toBeInTheDocument();
     });
 
-    it('should display multiple toasts', async () => {
-        renderWithProvider(<ToastContainer />);
-        // Toasts should be rendered as they appear
-        await waitFor(() => {
-            // Toast notifications would appear here
-        });
+    it('renders toast message when provided', () => {
+        render(<ToastItem toast={{ ...baseToast, message: 'Details here' }} onRemove={jest.fn()} />);
+        expect(screen.getByText('Details here')).toBeInTheDocument();
     });
 
-    it('should handle toast dismissal', async () => {
-        renderWithProvider(<ToastContainer />);
-        // Test toast dismissal functionality
-        await waitFor(() => {
-            // Dismiss button interaction
-        });
+    it('calls onRemove when dismiss button clicked', () => {
+        const onRemove = jest.fn();
+        render(<ToastItem toast={baseToast} onRemove={onRemove} />);
+        fireEvent.click(screen.getByLabelText('Dismiss notification'));
+        expect(onRemove).toHaveBeenCalledWith('1');
     });
 
-    it('should position toasts correctly', () => {
-        const { container } = renderWithProvider(<ToastContainer />);
-        const toastContainer = container.querySelector('[role="region"]');
-        expect(toastContainer).toBeInTheDocument();
+    it('renders success type toast', () => {
+        render(<ToastItem toast={{ ...baseToast, type: 'success' }} onRemove={jest.fn()} />);
+        expect(screen.getByRole('status')).toBeInTheDocument();
+    });
+
+    it('renders error type toast with assertive aria-live', () => {
+        const { container } = render(<ToastItem toast={{ ...baseToast, type: 'error' }} onRemove={jest.fn()} />);
+        expect(container.querySelector('[aria-live="assertive"]')).toBeInTheDocument();
+    });
+
+    it('renders warning type toast', () => {
+        render(<ToastItem toast={{ ...baseToast, type: 'warning' }} onRemove={jest.fn()} />);
+        expect(screen.getByRole('status')).toBeInTheDocument();
     });
 });

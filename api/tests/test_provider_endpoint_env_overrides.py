@@ -24,12 +24,12 @@ def test_dispatcher_uses_fallback_provider_endpoint_env_convention(monkeypatch):
     assert openai_provider.endpoint == "https://fallback.example.openai.local/v1"
 
 
-def test_dispatcher_reads_kamatera_llamacpp_endpoint_from_env(monkeypatch):
+def test_dispatcher_reads_llamacpp_gcp_endpoint_from_env(monkeypatch):
     monkeypatch.setenv(
-        "KAMATERA_LLAMACPP_ENDPOINT", "http://10.0.0.7:8000"
+        "LLAMACPP_GCP_ENDPOINT", "http://10.0.0.7:8000"
     )
 
     dispatcher = ProviderDispatcher()
-    llamacpp_provider = dispatcher.get_provider("llamacpp_kamatera")
+    llamacpp_provider = dispatcher.get_provider("llamacpp_gcp")
 
     assert llamacpp_provider.endpoint == "http://10.0.0.7:8000"

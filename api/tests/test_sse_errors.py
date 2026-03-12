@@ -16,6 +16,8 @@ from unittest.mock import AsyncMock, patch, MagicMock
 from datetime import datetime
 import asyncio
 
+from fastapi import HTTPException
+
 from api.chat_router import generate_chat_stream
 from api.storage.conversations import Conversation
 from api.auth.router import User as AuthenticatedUser
@@ -55,7 +57,7 @@ async def test_auth_failure_returns_error_event(authenticated_user, test_convers
     """Test that auth failures return error event with auth-failed code"""
     with patch(
         "api.chat_router._require_owned_conversation",
-        side_effect=Exception("Unauthorized")
+        side_effect=HTTPException(status_code=401, detail="Unauthorized")
     ):
         events = []
         async for event in generate_chat_stream(

@@ -6,7 +6,7 @@ from fastapi import APIRouter, HTTPException
 from typing import Any, Dict
 
 from api.providers.dispatcher import dispatcher
-from api.routing.router import registry
+from api.routing.router import hybrid_router, registry
 from api.services.provider_health import health_monitor
 from api.services.smart_router import RoutingStrategy, smart_router
 
@@ -107,3 +107,24 @@ async def test_provider(provider_id: str) -> Dict[str, Any]:
     if "error" in status:
         raise HTTPException(status_code=404, detail=status["error"])
     return status
+
+
+@router.get("/audit")
+async def get_routing_audit(limit: int = 200) -> Dict[str, Any]:
+    """Return the most recent routing decision + outcome audit records."""
+    clamped = max(1, min(limit, 1000))
+    return {
+        "records": registry.get_audit_trail(limit=clamped),
+        "count": len(registry.get_audit_trail(limit=clamped)),
+        "current_cost_weight": hybrid_router.cost_weight,
+    }
+
+
+@router.get("/weight")
+async def get_routing_weight() -> Dict[str, Any]:
+    """Return the current HybridRouter cost/latency weight split."""
+    return {
+        "cost_weight": hybrid_router.cost_weight,
+        "latency_weight": round(1.0 - hybrid_router.cost_weight, 4),
+        "source": "ROUTING_COST_WEIGHT env var (default 0.35)",
+    }

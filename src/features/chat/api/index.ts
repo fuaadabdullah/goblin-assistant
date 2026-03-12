@@ -12,6 +12,12 @@ export interface ChatResponse {
   cost_usd?: number;
   correlation_id?: string;
   createdAt?: string;
+  visualizations?: Array<{
+    type: string;
+    title: string;
+    data: Record<string, unknown>[];
+    config: Record<string, unknown>;
+  }>;
 }
 
 export interface CreateConversationParams {
@@ -47,6 +53,7 @@ export interface SendMessageParams {
   messages?: ChatMessage[];
   model?: string;
   provider?: string;
+  attachment_ids?: string[];
 }
 
 const resolvePrompt = (params: SendMessageParams): string => {
@@ -123,6 +130,7 @@ export const chatClient = {
     messages,
     model,
     provider,
+    attachment_ids,
   }: SendMessageParams): Promise<ChatResponse> {
     try {
       const resolvedPrompt = resolvePrompt({ conversationId, prompt, messages, model, provider });
@@ -141,6 +149,7 @@ export const chatClient = {
           message: resolvedPrompt,
           model,
           provider,
+          attachment_ids,
         });
       } catch (error) {
         if (!hasExplicitSelection) {
@@ -150,6 +159,7 @@ export const chatClient = {
         return await apiClient.sendConversationMessage({
           conversationId,
           message: resolvedPrompt,
+          attachment_ids,
         });
       }
     } catch (error) {
@@ -286,6 +296,7 @@ export const chatClient = {
                     cost_usd: data.cost ?? totalCost,
                     correlation_id: data.correlation_id,
                     createdAt: data.timestamp,
+                    visualizations: data.visualizations,
                   };
                   onComplete(finalResponse);
                   reader.cancel();

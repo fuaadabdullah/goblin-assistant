@@ -19,7 +19,7 @@ import structlog
 from .aliyun_provider import AliyunProvider
 from .anthropic_provider import AnthropicProvider
 from .azure_provider import AzureOpenAIProvider
-from .base import BaseProvider, ProviderResult
+from .base import BaseProvider, ProviderResult, classify_provider_error, ProviderErrorCategory
 from .llamacpp_provider import LlamaCPPProvider
 from .mock_provider import MockProvider
 from .ollama_provider import OllamaProvider
@@ -88,11 +88,9 @@ _PROVIDER_ALIASES: Dict[str, str] = {
     "ollama": "ollama_local",
     "ollama-local": "ollama_local",
     "ollama-gcp": "ollama_gcp",
-    "ollama-kamatera": "ollama_kamatera",
     "llamacpp": "llamacpp_gcp",
     "llama_cpp": "llamacpp_gcp",
     "llamacpp-gcp": "llamacpp_gcp",
-    "llamacpp-kamatera": "llamacpp_kamatera",
 }
 
 _MODEL_ALIASES: Dict[str, tuple[str, str]] = {
@@ -265,30 +263,6 @@ _DEFAULT_PROVIDER_CONFIGS: Dict[str, Dict[str, Any]] = {
         "tier": "self_hosted",
         "selectable_requires_env": True,
     },
-    "ollama_kamatera": {
-        "name": "Ollama Kamatera",
-        "endpoint": "http://192.175.23.150:8002",
-        "endpoint_env": "OLLAMA_KAMATERA_ENDPOINT",
-        "default_model": "qwen2.5:latest",
-        "models": ["qwen2.5:latest"],
-        "capabilities": ["chat", "reasoning", "code"],
-        "priority_tier": 99,
-        "tier": "self_hosted",
-        "selectable_requires_env": True,
-        "hidden": True,
-    },
-    "llamacpp_kamatera": {
-        "name": "LlamaCPP Kamatera",
-        "endpoint": "http://45.61.51.220:8000",
-        "endpoint_env": "KAMATERA_LLAMACPP_ENDPOINT",
-        "default_model": "qwen2.5:latest",
-        "models": ["qwen2.5:latest"],
-        "capabilities": ["chat", "reasoning", "code"],
-        "priority_tier": 99,
-        "tier": "self_hosted",
-        "selectable_requires_env": True,
-        "hidden": True,
-    },
     "mock": {
         "name": "Mock Provider",
         "endpoint": "mock://localhost",
@@ -313,9 +287,7 @@ _PROVIDER_CLASS_MAP = {
     "aliyun": AliyunProvider,
     "ollama_gcp": OllamaProvider,
     "ollama_local": OllamaProvider,
-    "ollama_kamatera": OllamaProvider,
     "llamacpp_gcp": LlamaCPPProvider,
-    "llamacpp_kamatera": LlamaCPPProvider,
     "mock": MockProvider,
 }
 
@@ -339,6 +311,30 @@ class ProviderDispatcher:
         self._providers: Dict[str, BaseProvider] = {}
         self._routing_min_success_rate = self._load_min_success_rate()
         self._build_registry()
+        self._startup_preflight()
+
+    def _startup_preflight(self) -> None:
+        """Log provider configuration status at startup (non-blocking)."""
+        configured = []
+        unconfigured = []
+        for pid in self._configs:
+            if pid == "mock":
+                continue
+            if self.is_configured(pid):
+                configured.append(pid)
+            else:
+                unconfigured.append(pid)
+
+        logger.info(
+            "provider_preflight",
+            configured=configured,
+            configured_count=len(configured),
+            unconfigured=unconfigured,
+            unconfigured_count=len(unconfigured),
+            total=len(configured) + len(unconfigured),
+        )
+        if not configured:
+            logger.warning("no_providers_configured", hint="Set API key env vars for at least one provider")
 
     def _load_min_success_rate(self) -> float:
         raw_value = os.getenv("ROUTING_MIN_SUCCESS_RATE", "0.3").strip()
@@ -465,14 +461,21 @@ class ProviderDispatcher:
             return True
 
         if provider_id == "vertex_ai":
-            return bool(
+            # Require an explicit project ID — credentials alone are not enough
+            # to run a health check and produce a useful error vs. silent auth spam.
+            has_project = bool(
                 os.getenv("VERTEX_AI_PROJECT", "").strip()
                 or os.getenv("GCP_PROJECT_ID", "").strip()
                 or config.get("project")
-                or os.getenv("GOOGLE_APPLICATION_CREDENTIALS", "").strip()
+            )
+            if not has_project:
+                return False
+            has_creds = bool(
+                os.getenv("GOOGLE_APPLICATION_CREDENTIALS", "").strip()
                 or os.getenv("VERTEX_AI_SERVICE_ACCOUNT_JSON", "").strip()
                 or os.getenv("GCP_SERVICE_ACCOUNT_KEY", "").strip()
             )
+            return has_creds
 
         if provider_id == "azure_openai":
             api_key_env = str(config.get("api_key_env", "AZURE_API_KEY"))
@@ -737,6 +740,7 @@ class ProviderDispatcher:
                 provider=provider_id,
                 model=model,
                 error=str(exc),
+                error_category=classify_provider_error(exc).value,
             )
 
     async def dispatch(
@@ -779,6 +783,7 @@ class ProviderDispatcher:
             return {"ok": False, "error": "no-configured-providers", "latency_ms": 0.0}
 
         last_error = "all providers failed"
+        last_category: Optional[ProviderErrorCategory] = None
         for provider_id in ordered:
             provider = self._providers[provider_id]
             model_name = resolved_model or provider.default_model
@@ -829,20 +834,24 @@ class ProviderDispatcher:
                     return result.to_dict()
 
                 last_error = result.error or last_error
+                last_category = classify_provider_error(last_error)
                 provider.record_failure(last_error)
                 registry.record_failure(provider_id)
             except asyncio.TimeoutError:
                 last_error = f"timeout after {timeout_ms}ms"
+                last_category = ProviderErrorCategory.TIMEOUT
                 provider.record_failure(last_error)
                 registry.record_failure(provider_id)
             except Exception as exc:
                 last_error = str(exc)
+                last_category = classify_provider_error(exc)
                 provider.record_failure(last_error)
                 registry.record_failure(provider_id)
 
         return {
             "ok": False,
             "error": last_error,
+            "error_category": last_category.value if last_category else None,
             "provider": "none",
             "latency_ms": 0.0,
         }

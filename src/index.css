@@ -191,6 +191,36 @@ li > ol {
   margin: 0.75rem 0;
 }
 
+/* Syntax highlighting: light mode overrides for highlight.js (github-dark is default) */
+:root.goblinos-light .hljs {
+  background: transparent;
+  color: #24292e;
+}
+:root.goblinos-light .hljs-comment,
+:root.goblinos-light .hljs-quote { color: #6a737d; font-style: italic; }
+:root.goblinos-light .hljs-keyword,
+:root.goblinos-light .hljs-selector-tag { color: #d73a49; }
+:root.goblinos-light .hljs-string,
+:root.goblinos-light .hljs-addition { color: #032f62; }
+:root.goblinos-light .hljs-number,
+:root.goblinos-light .hljs-literal { color: #005cc5; }
+:root.goblinos-light .hljs-title,
+:root.goblinos-light .hljs-section,
+:root.goblinos-light .hljs-built_in { color: #6f42c1; }
+:root.goblinos-light .hljs-type,
+:root.goblinos-light .hljs-name { color: #22863a; }
+:root.goblinos-light .hljs-attr,
+:root.goblinos-light .hljs-attribute { color: #005cc5; }
+:root.goblinos-light .hljs-variable,
+:root.goblinos-light .hljs-template-variable { color: #e36209; }
+:root.goblinos-light .hljs-deletion { color: #b31d28; background: #ffeef0; }
+:root.goblinos-light .hljs-meta { color: #735c0f; }
+:root.goblinos-light .hljs-symbol,
+:root.goblinos-light .hljs-bullet { color: #005cc5; }
+
+/* Ensure hljs background doesn't override our code block wrapper */
+.chat-markdown .hljs { background: transparent; }
+
 /* ============================================================================
    UTILITY CLASSES
    ============================================================================ */

@@ -1,4 +1,3 @@
-import { describe, it, expect } from '@jest/globals';
 import { render } from '@testing-library/react';
 import Grid from './Grid';
 
@@ -25,8 +24,8 @@ describe('Grid', () => {
     );
 
     const grid = container.firstChild as HTMLElement;
-    expect(grid).toHaveClass('grid-auto-fit'); // default autoFit=true
-    expect(grid).toHaveClass('gap-4'); // default gap
+    expect(grid).toHaveClass('grid');
+    expect(grid).toHaveClass('gap-4'); // default gap=md
   });
 
   it('renders with different gap sizes', () => {
@@ -56,7 +55,7 @@ describe('Grid', () => {
     expect(grid).toHaveClass('gap-6');
   });
 
-  it('renders with autoFit enabled by default', () => {
+  it('renders with default auto columns', () => {
     const { container } = render(
       <Grid>
         <div>Item 1</div>
@@ -65,20 +64,20 @@ describe('Grid', () => {
     );
 
     const grid = container.firstChild as HTMLElement;
-    expect(grid).toHaveClass('grid-auto-fit');
+    expect(grid).toHaveClass('grid-cols-1');
   });
 
-  it('renders with regular grid when autoFit is false', () => {
+  it('renders with specific column count', () => {
     const { container } = render(
-      <Grid autoFit={false}>
+      <Grid columns={2}>
         <div>Item</div>
       </Grid>
     );
 
     const grid = container.firstChild as HTMLElement;
-    expect(grid).toHaveClass('grid');
-    expect(grid).not.toHaveClass('grid-auto-fit');
+    expect(grid).toHaveClass('grid-cols-1');
   });
+
   it('applies custom className', () => {
     const { container } = render(
       <Grid className="custom-grid">
@@ -88,12 +87,12 @@ describe('Grid', () => {
 
     const grid = container.firstChild as HTMLElement;
     expect(grid).toHaveClass('custom-grid');
-    expect(grid).toHaveClass('grid-auto-fit'); // default autoFit=true
+    expect(grid).toHaveClass('grid');
   });
 
   it('combines all props correctly', () => {
     const { container } = render(
-      <Grid autoFit={false} gap="lg" className="special-grid">
+      <Grid columns={3} gap="lg" className="special-grid">
         <div>Item 1</div>
         <div>Item 2</div>
         <div>Item 3</div>

@@ -2,84 +2,68 @@ import { renderHook, act } from '@testing-library/react';
 import { useUIStore } from '../uiStore';
 
 describe('UI Store (Zustand)', () => {
-  beforeEach(() => {
-    const { result } = renderHook(() => useUIStore());
-    act(() => {
-      result.current.resetUI();
-    });
-  });
-
   it('should have initial UI state', () => {
     const { result } = renderHook(() => useUIStore());
-    expect(result.current.isSidebarOpen).toBeDefined();
-    expect(result.current.isDarkMode).toBeDefined();
+    expect(result.current.sidebarOpen).toBeDefined();
+    expect(result.current.highContrast).toBeDefined();
+    expect(result.current.currentTheme).toBeDefined();
+    expect(result.current.activeModal).toBeNull();
+    expect(result.current.notifications).toEqual([]);
   });
 
   it('should toggle sidebar visibility', () => {
     const { result } = renderHook(() => useUIStore());
-    const initialState = result.current.isSidebarOpen;
-
-    act(() => {
-      result.current.toggleSidebar();
-    });
-
-    expect(result.current.isSidebarOpen).toBe(!initialState);
+    const initial = result.current.sidebarOpen;
+    act(() => { result.current.toggleSidebar(); });
+    expect(result.current.sidebarOpen).toBe(!initial);
   });
 
-  it('should toggle dark mode', () => {
+  it('should set sidebar open', () => {
     const { result } = renderHook(() => useUIStore());
-    const initialState = result.current.isDarkMode;
-
-    act(() => {
-      result.current.toggleDarkMode();
-    });
-
-    expect(result.current.isDarkMode).toBe(!initialState);
+    act(() => { result.current.setSidebarOpen(false); });
+    expect(result.current.sidebarOpen).toBe(false);
+    act(() => { result.current.setSidebarOpen(true); });
+    expect(result.current.sidebarOpen).toBe(true);
   });
 
-  it('should set loading state', () => {
+  it('should toggle chat sidebar', () => {
     const { result } = renderHook(() => useUIStore());
-
-    act(() => {
-      result.current.setLoading(true);
-    });
-
-    expect(result.current.isLoading).toBe(true);
-
-    act(() => {
-      result.current.setLoading(false);
-    });
-
-    expect(result.current.isLoading).toBe(false);
+    const initial = result.current.chatSidebarOpen;
+    act(() => { result.current.toggleChatSidebar(); });
+    expect(result.current.chatSidebarOpen).toBe(!initial);
   });
 
   it('should open and close modal', () => {
     const { result } = renderHook(() => useUIStore());
-
-    act(() => {
-      result.current.openModal('test-modal');
-    });
-
+    act(() => { result.current.openModal('test-modal'); });
     expect(result.current.activeModal).toBe('test-modal');
-
-    act(() => {
-      result.current.closeModal();
-    });
-
+    act(() => { result.current.closeModal(); });
     expect(result.current.activeModal).toBeNull();
   });
 
-  it('should reset UI state', () => {
+  it('should set high contrast mode', () => {
     const { result } = renderHook(() => useUIStore());
+    act(() => { result.current.setHighContrast(true); });
+    expect(result.current.highContrast).toBe(true);
+    act(() => { result.current.setHighContrast(false); });
+    expect(result.current.highContrast).toBe(false);
+  });
 
+  it('should set theme', () => {
+    const { result } = renderHook(() => useUIStore());
+    act(() => { result.current.setTheme('nocturne'); });
+    expect(result.current.currentTheme).toBe('nocturne');
+    act(() => { result.current.setTheme('default'); });
+    expect(result.current.currentTheme).toBe('default');
+  });
+
+  it('should add and remove notifications', () => {
+    const { result } = renderHook(() => useUIStore());
     act(() => {
-      result.current.setLoading(true);
-      result.current.openModal('test-modal');
-      result.current.resetUI();
+      result.current.addNotification({ type: 'success', title: 'Test' });
     });
-
-    // After reset, should return to initial state
-    expect(result.current.isLoading).toBe(false);
-    expect(result.current.activeModal).toBeNull();
+    expect(result.current.notifications.length).toBeGreaterThanOrEqual(1);
+    const id = result.current.notifications[0].id;
+    act(() => { result.current.removeNotification(id); });
   });
 });

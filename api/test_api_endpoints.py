@@ -199,3 +199,12 @@ def test_api_keys_status_endpoint(client):
         404,
         500,
     ]  # Allow various states during development
+
+
+def test_execute_router_removed(client):
+    """Guard: /execute was retired and must not be reintroduced."""
+    response = client.post("/execute/", json={"goblin": "test", "task": "test"})
+    assert response.status_code == 404 or response.status_code == 405
+
+    response = client.get("/execute/status/00000000-0000-0000-0000-000000000000")
+    assert response.status_code == 404 or response.status_code == 405

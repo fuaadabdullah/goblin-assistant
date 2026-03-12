@@ -18,7 +18,7 @@ from datetime import datetime
 import logging
 
 from ..services.sanitization import mask_sensitive
-from ..services.telemetry import log_conversation_event
+from ..services.telemetry import log_conversation_event, EventType
 
 # Optional: Safe Vector Store (requires sentence-transformers)
 try:
@@ -29,13 +29,8 @@ except ImportError:
     VECTOR_STORE_AVAILABLE = False
     SafeVectorStore = None
 
-# Import auth dependencies (adjust path as needed)
-try:
-    from auth.dependencies import get_current_user
-except ImportError:
-    # Fallback for testing
-    async def get_current_user() -> str:
-        return "test_user"
+# Import auth dependencies
+from ..auth.router import get_current_user
 
 
 logger = logging.getLogger(__name__)
@@ -263,11 +258,9 @@ async def delete_user_data(
         # Log privacy event
         total_deleted = sum(deleted_counts.values())
         log_conversation_event(
-            event_type="data_delete",
+            event_type=EventType.DATA_DELETE,
             user_id=user_id,
-            action="full_deletion",
-            item_count=total_deleted,
-            success=True,
+            metadata={"action": "full_deletion", "item_count": total_deleted, "success": True},
         )
 
         return {
@@ -281,10 +274,9 @@ async def delete_user_data(
     except Exception as e:
         logger.error(f"Deletion failed for user {user_id}: {e}")
         log_conversation_event(
-            event_type="data_delete",
+            event_type=EventType.DATA_DELETE,
             user_id=user_id,
-            action="full_deletion",
-            success=False,
+            metadata={"action": "full_deletion", "success": False},
         )
         raise HTTPException(status_code=500, detail=f"Deletion failed: {str(e)}")
 

@@ -374,18 +374,45 @@ async def run_sandbox_code(
 @router.get("/jobs")
 async def list_sandbox_jobs(
     x_api_key: str = Header(default=""),
+    status: Optional[str] = None,
+    limit: int = 100,
 ):
-    """Get list of sandbox jobs (placeholder)"""
+    """Get list of sandbox jobs from Redis."""
     if not SANDBOX_ENABLED:
         raise HTTPException(status_code=503, detail="sandbox service is disabled")
-    
+
     # Basic auth check if API key provided
     if x_api_key and x_api_key != API_KEY:
         if os.getenv("ENVIRONMENT", "development") != "development":
             raise HTTPException(status_code=401, detail="Unauthorized")
-    
-    # In a real implementation, query Redis/database for job list
-    return {"jobs": [], "total": 0}
+
+    jobs = []
+    try:
+        for key in r.scan_iter("sandbox:job:*"):
+            raw = r.hgetall(key)
+            if not raw:
+                continue
+            job_info = {k.decode("utf-8"): v.decode("utf-8") for k, v in raw.items()}
+            if status and job_info.get("status") != status:
+                continue
+            jobs.append({
+                "job_id": job_info.get("job_id", ""),
+                "status": job_info.get("status", "unknown"),
+                "language": job_info.get("language", ""),
+                "created_at": job_info.get("created_at", ""),
+                "started_at": job_info.get("started_at"),
+                "finished_at": job_info.get("finished_at"),
+                "exit_code": int(job_info["exit_code"]) if job_info.get("exit_code") else None,
+                "error": job_info.get("error"),
+            })
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"failed to list jobs: {str(e)}")
+
+    # Sort by created_at descending, apply limit
+    jobs.sort(key=lambda j: j["created_at"], reverse=True)
+    jobs = jobs[:limit]
+
+    return {"jobs": jobs, "total": len(jobs)}
 
 @router.get("/jobs/{job_id}/logs")
 async def get_job_logs_alias(

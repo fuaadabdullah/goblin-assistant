@@ -91,7 +91,7 @@ class OpenAIProvider(BaseProvider):
             resp.raise_for_status()
             data = resp.json()
 
-            text = data["choices"][0]["message"]["content"]
+            text = data["choices"][0]["message"].get("content") or ""
             usage = data.get("usage", {})
             costs = self._model_cost(model_name)
             cost = (

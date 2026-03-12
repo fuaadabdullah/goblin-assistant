@@ -2,49 +2,46 @@ import { renderHook, act } from '@testing-library/react';
 import { useCostStreaming } from '../useCostStreaming';
 
 describe('useCostStreaming Hook', () => {
-  it('should initialize with provided estimate', () => {
-    const estimate = { inputTokens: 100, outputTokens: 50, totalCost: 0.01 };
-    const { result } = renderHook(() => useCostStreaming({ estimate }));
+  it('should initialize with empty state', () => {
+    const { result } = renderHook(() => useCostStreaming({ estimate: null }));
 
-    expect(result.current.currentCost).toBeDefined();
+    expect(result.current.streamLines).toEqual([]);
+    expect(result.current.streaming).toBe(false);
   });
 
-  it('should update cost on new data', () => {
-    const estimate = { inputTokens: 100, outputTokens: 50, totalCost: 0.01 };
+  it('should show summary when estimate is provided', () => {
+    const estimate = { estimatedCost: 0.01, estimatedTokens: 100 };
     const { result } = renderHook(() => useCostStreaming({ estimate }));
 
+    expect(result.current.showSummary).toBe(true);
+  });
+
+  it('should start streaming with parameters', () => {
+    const { result } = renderHook(() => useCostStreaming({ estimate: null }));
+
     act(() => {
-      result.current.onDataChunk?.({
-        tokens: 10,
-        cost: 0.002,
-      });
+      result.current.startStreaming('instruction text', 'code input', 'openai', 'gpt-4');
     });
 
-    expect(result.current.currentCost).toBeGreaterThanOrEqual(
-      estimate.totalCost,
+    expect(result.current.streaming).toBe(true);
+    expect(result.current.streamLines.length).toBeGreaterThan(0);
+    expect(result.current.streamLines).toEqual(
+      expect.arrayContaining([expect.stringContaining('openai')]),
     );
   });
 
-  it('should handle streaming completion', () => {
-    const estimate = { inputTokens: 100, outputTokens: 50, totalCost: 0.01 };
-    const { result } = renderHook(() => useCostStreaming({ estimate }));
-
-    act(() => {
-      result.current.onComplete?.();
-    });
-
-    // Should finalize cost
-  });
-
   it('should reset streaming state', () => {
-    const estimate = { inputTokens: 100, outputTokens: 50, totalCost: 0.01 };
-    const { result } = renderHook(() => useCostStreaming({ estimate }));
+    const { result } = renderHook(() => useCostStreaming({ estimate: null }));
 
     act(() => {
-      result.current.onDataChunk?.({ tokens: 10, cost: 0.002 });
-      result.current.reset?.();
+      result.current.startStreaming('text', 'code');
     });
 
-    expect(result.current.currentCost).toBe(estimate.totalCost);
+    act(() => {
+      result.current.resetStreaming();
+    });
+
+    expect(result.current.streaming).toBe(false);
+    expect(result.current.streamLines).toEqual([]);
   });
 });

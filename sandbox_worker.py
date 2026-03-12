@@ -117,7 +117,15 @@ def upload_artifacts_to_s3(job_path: str, job_id: str) -> bool:
         print(f"❌ Failed to upload artifacts: {str(e)}")
         return False
 
-def run_job(job_id: str, language: str, timeout: int, runtime_args: str, job_path: str):
+# Domain allowlist for jobs that request network access (financial data APIs)
+FINANCE_NETWORK_ALLOWLIST = {
+    "query1.finance.yahoo.com",
+    "query2.finance.yahoo.com",
+    "fc.yahoo.com",
+    "www.alphavantage.co",
+}
+
+def run_job(job_id: str, language: str, timeout: int, runtime_args: str, job_path: str, allow_network: bool = False):
     """
     Execute a sandbox job in a container
     This function is called by RQ worker
@@ -174,7 +182,7 @@ def run_job(job_id: str, language: str, timeout: int, runtime_args: str, job_pat
             "detach": True,
             "stdin_open": False,
             "tty": False,
-            "network_disabled": True,  # No network access
+            "network_disabled": not allow_network,  # Allow network only for finance jobs
             "mem_limit": MAX_JOB_MEMORY,
             "cpu_quota": int(MAX_JOB_CPUS * 100000),  # Docker CPU quota
             "cap_drop": ["ALL"],  # Drop all capabilities
