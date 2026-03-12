@@ -28,7 +28,7 @@ class EmbeddingProviderUnavailableError(RuntimeError):
 # Provider name → (module path, class name, default config)
 _EMBEDDING_PROVIDERS: Dict[str, tuple] = {
     "openai": (
-        "..providers.openai",
+        "..providers.openai_provider",
         "OpenAIProvider",
         {
             "api_key_env": "OPENAI_API_KEY",
@@ -37,7 +37,7 @@ _EMBEDDING_PROVIDERS: Dict[str, tuple] = {
         },
     ),
     "azure_openai": (
-        "..providers.azure_openai",
+        "..providers.azure_provider",
         "AzureOpenAIProvider",
         {
             "api_key_env": "AZURE_OPENAI_API_KEY",
@@ -74,10 +74,24 @@ def _resolve_embedding_provider() -> BaseProvider:
     # Import provider class
     import importlib
 
-    mod = importlib.import_module(module_path, package=__package__)
-    provider_cls = getattr(mod, class_name)
+    try:
+        mod = importlib.import_module(module_path, package=__package__)
+        provider_cls = getattr(mod, class_name)
+        return provider_cls(default_config)
+    except Exception as exc:
+        logger.exception(
+            "Embedding provider resolution failed for '%s' (%s.%s): %s. Falling back to mock provider.",
+            provider_name,
+            module_path,
+            class_name,
+            exc,
+        )
 
-    return provider_cls(default_config)
+        # Final safety net: never crash app startup due to embedding provider wiring.
+        fallback_module_path, fallback_class_name, fallback_config = _EMBEDDING_PROVIDERS["mock"]
+        fallback_mod = importlib.import_module(fallback_module_path, package=__package__)
+        fallback_cls = getattr(fallback_mod, fallback_class_name)
+        return fallback_cls(fallback_config)
 
 
 class EmbeddingService:
