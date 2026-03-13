@@ -96,7 +96,13 @@ def _clear_auth_cookies(response: Response) -> None:
 _db_session_override = None  # Used in tests to inject a DB session
 
 
-async def _db_create_session(session_id: str, user_id: str, db: AsyncSession, expires_at: Optional[datetime] = None) -> None:
+async def _db_create_session(
+    session_id: str,
+    user_id: str,
+    db: AsyncSession,
+    expires_at: Optional[datetime] = None,
+    skip_commit: bool = False,
+) -> None:
     """Persist a new session to the database."""
     record = UserSessionModel(
         session_id=session_id,
@@ -106,7 +112,8 @@ async def _db_create_session(session_id: str, user_id: str, db: AsyncSession, ex
         expires_at=expires_at,
     )
     db.add(record)
-    await db.commit()
+    if not skip_commit:
+        await db.commit()
 
     # Best-effort cache warmup (Redis). DB remains source of truth.
     await cache.set(
@@ -488,7 +495,7 @@ async def register(
         hashed_password=hashed_password,
     )
 
-    user_model = await user_service.create_user(user_create_data)
+    user_model = await user_service.create_user(user_create_data, flush_only=True)
     if not user_model:
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
@@ -502,9 +509,10 @@ async def register(
         name=user_model.name,
     )
 
-    # Create session and tokens
+    # Create session and tokens — single atomic commit for user + session
     session_id = create_session_id(user_model.id)
-    await _db_create_session(session_id, user_model.id, db)
+    await _db_create_session(session_id, user_model.id, db, skip_commit=True)
+    await db.commit()
     access_token_expires = timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
     access_token = create_access_token(
         data={"sub": user_model.id}, 
@@ -635,7 +643,7 @@ async def google_auth(
         existing_user = await user_service.get_user_by_email(email)
         if existing_user:
             # Link Google account to existing user
-            await user_service.update_user(existing_user.id, google_id=google_id)
+            await user_service.update_user(existing_user.id, google_id=google_id, flush_only=True)
             user_model = existing_user
         else:
             # Create new user
@@ -644,7 +652,7 @@ async def google_auth(
                 name=name,
                 google_id=google_id,
             )
-            user_model = await user_service.create_user(user_create_data)
+            user_model = await user_service.create_user(user_create_data, flush_only=True)
             if not user_model:
                 raise HTTPException(
                     status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
@@ -658,7 +666,7 @@ async def google_auth(
         )
 
     # Update last login
-    await user_service.update_user_last_login(user_model.id)
+    await user_service.update_user_last_login(user_model.id, flush_only=True)
 
     # Convert to Pydantic model for response
     user = User(
@@ -670,9 +678,10 @@ async def google_auth(
         passkey_public_key=user_model.passkey_public_key,
     )
 
-    # Create session and tokens
+    # Create session and tokens — single atomic commit for all writes
     session_id = create_session_id(user_model.id)
-    await _db_create_session(session_id, user_model.id, db)
+    await _db_create_session(session_id, user_model.id, db, skip_commit=True)
+    await db.commit()
     access_token_expires = timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
     access_token = create_access_token(
         data={"sub": user_model.id},
@@ -839,7 +848,7 @@ async def google_auth_callback(
             existing_user = await user_service.get_user_by_email(email)
             if existing_user:
                 # Link Google account to existing user
-                await user_service.update_user(existing_user.id, google_id=google_id)
+                await user_service.update_user(existing_user.id, google_id=google_id, flush_only=True)
                 user_model = existing_user
             else:
                 # Create new user
@@ -848,7 +857,7 @@ async def google_auth_callback(
                     name=name,
                     google_id=google_id,
                 )
-                user_model = await user_service.create_user(user_create_data)
+                user_model = await user_service.create_user(user_create_data, flush_only=True)
                 if not user_model:
                     raise HTTPException(
                         status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
@@ -862,7 +871,7 @@ async def google_auth_callback(
             )
 
         # Update last login
-        await user_service.update_user_last_login(user_model.id)
+        await user_service.update_user_last_login(user_model.id, flush_only=True)
 
         # Convert to Pydantic model for response
         user = User(
@@ -874,9 +883,10 @@ async def google_auth_callback(
             passkey_public_key=user_model.passkey_public_key,
         )
 
-        # Create session and tokens
+        # Create session and tokens — single atomic commit for all writes
         session_id = create_session_id(user_model.id)
-        await _db_create_session(session_id, user_model.id, db)
+        await _db_create_session(session_id, user_model.id, db, skip_commit=True)
+        await db.commit()
         access_token_expires = timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
         access_token = create_access_token(
             data={"sub": user_model.id},

@@ -39,7 +39,9 @@ from .input_validation import InputSanitizer
 from .tools.registry import export_openai_tools
 from .tools.executor import run_tool_loop, extract_tool_calls
 from .storage.conversations import Conversation, ConversationMessage
+from .storage.database import get_db
 from .auth.router import get_current_user, User as AuthenticatedUser
+from sqlalchemy.ext.asyncio import AsyncSession
 import structlog
 
 logger = structlog.get_logger()
@@ -164,6 +166,18 @@ async def _require_owned_conversation(
     if not conversation or conversation.user_id != current_user.id:
         raise HTTPException(status_code=404, detail="Conversation not found")
     return conversation
+
+
+async def _assert_conversation_owned(
+    conversation_id: str,
+    current_user: AuthenticatedUser,
+    db: AsyncSession,
+) -> None:
+    """Lightweight ownership check — no message loading. Raises 404 if not owned."""
+    if not await conversation_store.check_conversation_owner(
+        conversation_id, current_user.id, db=db
+    ):
+        raise HTTPException(status_code=404, detail="Conversation not found")
 
 
 def _extract_usage_and_cost(
@@ -306,6 +320,7 @@ async def update_conversation_title(
     conversation_id: str,
     request: UpdateConversationTitleRequest,
     current_user: AuthenticatedUser = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
 ):
     """Update conversation title
 
@@ -316,7 +331,7 @@ async def update_conversation_title(
     - Returns success/failure status
     """
     try:
-        await _require_owned_conversation(conversation_id, current_user)
+        await _assert_conversation_owned(conversation_id, current_user, db)
         success = await conversation_store.update_conversation_title(
             conversation_id=conversation_id, title=request.title
         )
@@ -336,6 +351,7 @@ async def update_conversation_title(
 async def delete_conversation(
     conversation_id: str,
     current_user: AuthenticatedUser = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
 ):
     """Delete a conversation
 
@@ -345,7 +361,7 @@ async def delete_conversation(
     - Returns success/failure for client confirmation
     """
     try:
-        await _require_owned_conversation(conversation_id, current_user)
+        await _assert_conversation_owned(conversation_id, current_user, db)
         success = await conversation_store.delete_conversation(conversation_id)
 
         if not success:
@@ -681,9 +697,10 @@ async def import_conversation_messages(
     conversation_id: str,
     request: ImportConversationRequest,
     current_user: AuthenticatedUser = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
 ):
     try:
-        await _require_owned_conversation(conversation_id, current_user)
+        await _assert_conversation_owned(conversation_id, current_user, db)
 
         imported_messages = [
             ConversationMessage(
@@ -897,6 +914,7 @@ class ContextualChatResponse(BaseModel):
 async def contextual_chat(
     request: ContextualChatRequest,
     current_user: AuthenticatedUser = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
 ):
     """Advanced chat endpoint with Retrieval Ordering + Token Budgeting
 
@@ -915,7 +933,7 @@ async def contextual_chat(
         conversation_id = request.conversation_id
 
         if conversation_id:
-            await _require_owned_conversation(conversation_id, current_user)
+            await _assert_conversation_owned(conversation_id, current_user, db)
 
         # Step 2: Assemble context using new system (if enabled)
         # Classify message to determine if an education addendum is needed

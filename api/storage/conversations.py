@@ -147,6 +147,18 @@ class ConversationStore(ABC):
         """Update conversation title"""
         pass
 
+    async def check_conversation_owner(
+        self,
+        conversation_id: str,
+        user_id: str,
+        db=None,
+    ) -> bool:
+        """Return True if conversation exists AND belongs to user_id.
+        Default implementation loads the full conversation; backends should override.
+        """
+        conv = await self.get_conversation(conversation_id)
+        return conv is not None and conv.user_id == user_id
+
 
 class InMemoryConversationStore(ConversationStore):
     """In-memory conversation storage for development/testing with TTL eviction"""
@@ -236,6 +248,17 @@ class InMemoryConversationStore(ConversationStore):
             self._evict_expired()
             return True
         return False
+
+    async def check_conversation_owner(
+        self,
+        conversation_id: str,
+        user_id: str,
+        db=None,
+    ) -> bool:
+        """Lightweight ownership check — avoids message loading."""
+        self._evict_expired()
+        conv = self._conversations.get(conversation_id)
+        return conv is not None and conv.user_id == user_id
 
 
 class DatabaseConversationStore(ConversationStore):
@@ -410,6 +433,29 @@ class DatabaseConversationStore(ConversationStore):
                 return True
             return False
 
+    async def check_conversation_owner(
+        self,
+        conversation_id: str,
+        user_id: str,
+        db=None,
+    ) -> bool:
+        """Single-row ownership check — fetches only user_id, no message loading."""
+        from sqlalchemy import literal
+
+        async def _run(session) -> bool:
+            result = await session.execute(
+                select(ConversationModel.user_id).where(
+                    ConversationModel.conversation_id == conversation_id
+                )
+            )
+            row = result.scalar_one_or_none()
+            return row == user_id
+
+        if db is not None:
+            return await _run(db)
+        async with get_db_context() as session:
+            return await _run(session)
+
 
 class ConversationStoreManager:
     """Manages conversation storage with environment-aware backend selection"""
@@ -452,6 +498,15 @@ class ConversationStoreManager:
     async def update_conversation_title(self, conversation_id: str, title: str) -> bool:
         """Update conversation title"""
         return await self._store.update_conversation_title(conversation_id, title)
+
+    async def check_conversation_owner(
+        self,
+        conversation_id: str,
+        user_id: str,
+        db=None,
+    ) -> bool:
+        """Lightweight ownership check — no message loading."""
+        return await self._store.check_conversation_owner(conversation_id, user_id, db=db)
 
     async def create_conversation(
         self, user_id: Optional[str] = None, title: Optional[str] = None

@@ -23,7 +23,7 @@ class UserService:
     def __init__(self, session: AsyncSession):
         self.session = session
 
-    async def create_user(self, user_data: UserCreateData) -> Optional[UserModel]:
+    async def create_user(self, user_data: UserCreateData, flush_only: bool = False) -> Optional[UserModel]:
         """Create a new user"""
         try:
             user = UserModel(
@@ -35,7 +35,10 @@ class UserService:
                 passkey_public_key=user_data.passkey_public_key,
             )
             self.session.add(user)
-            await self.session.commit()
+            if flush_only:
+                await self.session.flush()
+            else:
+                await self.session.commit()
             await self.session.refresh(user)
             return user
         except IntegrityError:
@@ -72,7 +75,7 @@ class UserService:
         )
         return result.scalar_one_or_none()
 
-    async def update_user_last_login(self, user_id: str) -> bool:
+    async def update_user_last_login(self, user_id: str, flush_only: bool = False) -> bool:
         """Update user's last login timestamp"""
         try:
             from sqlalchemy import func
@@ -82,13 +85,16 @@ class UserService:
                 .where(UserModel.id == user_id)
                 .values(last_login=func.now())
             )
-            await self.session.commit()
+            if flush_only:
+                await self.session.flush()
+            else:
+                await self.session.commit()
             return result.rowcount > 0
         except Exception:
             await self.session.rollback()
             return False
 
-    async def update_user(self, user_id: str, **kwargs) -> Optional[UserModel]:
+    async def update_user(self, user_id: str, flush_only: bool = False, **kwargs) -> Optional[UserModel]:
         """Update user fields"""
         try:
             result = await self.session.execute(
@@ -97,7 +103,10 @@ class UserService:
                 .values(**kwargs)
                 .returning(UserModel)
             )
-            await self.session.commit()
+            if flush_only:
+                await self.session.flush()
+            else:
+                await self.session.commit()
             return result.scalar_one_or_none()
         except Exception:
             await self.session.rollback()

@@ -12,7 +12,7 @@ CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
 -- ============================================================================
 
 CREATE TABLE IF NOT EXISTS public.conversations (
-    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     user_id UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
     session_id TEXT NOT NULL,
     message_hash TEXT NOT NULL,  -- SHA256 hash, not raw content
@@ -31,21 +31,34 @@ CREATE TABLE IF NOT EXISTS public.conversations (
 ALTER TABLE public.conversations ENABLE ROW LEVEL SECURITY;
 
 -- RLS Policies for conversations
+-- Note: user_id is TEXT in the Alembic schema, so cast auth.uid() to text
+DROP POLICY IF EXISTS "Users can only see their own conversations" ON public.conversations;
 CREATE POLICY "Users can only see their own conversations"
 ON public.conversations FOR SELECT
-USING (auth.uid() = user_id);
+USING (auth.uid()::text = user_id);
 
+DROP POLICY IF EXISTS "Users can only insert their own conversations" ON public.conversations;
 CREATE POLICY "Users can only insert their own conversations"
 ON public.conversations FOR INSERT
-WITH CHECK (auth.uid() = user_id);
+WITH CHECK (auth.uid()::text = user_id);
 
+DROP POLICY IF EXISTS "Users can only delete their own conversations" ON public.conversations;
 CREATE POLICY "Users can only delete their own conversations"
 ON public.conversations FOR DELETE
-USING (auth.uid() = user_id);
+USING (auth.uid()::text = user_id);
 
--- Index for TTL cleanup
-CREATE INDEX IF NOT EXISTS conversations_expires_at_idx 
-ON public.conversations(expires_at);
+-- Index for TTL cleanup (only if expires_at column exists on this table)
+DO $$
+BEGIN
+  IF EXISTS (
+    SELECT 1 FROM information_schema.columns
+    WHERE table_name = 'conversations' AND column_name = 'expires_at'
+  ) THEN
+    CREATE INDEX IF NOT EXISTS conversations_expires_at_idx
+    ON public.conversations(expires_at);
+  END IF;
+END;
+$$;
 
 -- Index for user queries
 CREATE INDEX IF NOT EXISTS conversations_user_id_created_at_idx 
@@ -57,7 +70,7 @@ ON public.conversations(user_id, created_at DESC);
 -- ============================================================================
 
 CREATE TABLE IF NOT EXISTS public.inference_logs (
-    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     user_id UUID REFERENCES auth.users(id) ON DELETE CASCADE,
     session_id TEXT,
     provider TEXT NOT NULL,
@@ -108,7 +121,7 @@ ON public.inference_logs(status_code, created_at DESC);
 -- ============================================================================
 
 CREATE TABLE IF NOT EXISTS public.user_preferences (
-    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     user_id UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE UNIQUE,
     rag_consent_given BOOLEAN DEFAULT FALSE,
     rag_consent_date TIMESTAMPTZ,
@@ -123,17 +136,21 @@ CREATE TABLE IF NOT EXISTS public.user_preferences (
 ALTER TABLE public.user_preferences ENABLE ROW LEVEL SECURITY;
 
 -- RLS Policies for user preferences
+-- Note: cast auth.uid() to text in case user_id is varchar in the live schema
+DROP POLICY IF EXISTS "Users can see their own preferences" ON public.user_preferences;
 CREATE POLICY "Users can see their own preferences"
 ON public.user_preferences FOR SELECT
-USING (auth.uid() = user_id);
+USING (auth.uid()::text = user_id::text);
 
+DROP POLICY IF EXISTS "Users can insert their own preferences" ON public.user_preferences;
 CREATE POLICY "Users can insert their own preferences"
 ON public.user_preferences FOR INSERT
-WITH CHECK (auth.uid() = user_id);
+WITH CHECK (auth.uid()::text = user_id::text);
 
+DROP POLICY IF EXISTS "Users can update their own preferences" ON public.user_preferences;
 CREATE POLICY "Users can update their own preferences"
 ON public.user_preferences FOR UPDATE
-USING (auth.uid() = user_id);
+USING (auth.uid()::text = user_id::text);
 
 -- ============================================================================
 -- PRIVACY AUDIT LOG TABLE
@@ -141,7 +158,7 @@ USING (auth.uid() = user_id);
 -- ============================================================================
 
 CREATE TABLE IF NOT EXISTS public.privacy_audit_log (
-    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     user_id UUID NOT NULL,  -- Not FK to allow retention after user deletion
     action TEXT NOT NULL CHECK (action IN ('export', 'delete', 'consent_update')),
     item_count INTEGER,
@@ -253,11 +270,23 @@ COMMENT ON TABLE public.user_preferences IS
 COMMENT ON TABLE public.privacy_audit_log IS 
 'Compliance audit log for GDPR/CCPA operations. Retained even after user deletion.';
 
-COMMENT ON COLUMN public.conversations.message_hash IS 
-'SHA256 hash of message for deduplication. Raw content never stored.';
+DO $$
+BEGIN
+  IF EXISTS (SELECT 1 FROM information_schema.columns
+             WHERE table_schema='public' AND table_name='conversations' AND column_name='message_hash') THEN
+    COMMENT ON COLUMN public.conversations.message_hash IS
+    'SHA256 hash of message for deduplication. Raw content never stored.';
+  END IF;
+END; $$;
 
-COMMENT ON COLUMN public.user_preferences.rag_consent_given IS 
-'User consent for storing data in vector database (RAG). Required by privacy policy.';
+DO $$
+BEGIN
+  IF EXISTS (SELECT 1 FROM information_schema.columns
+             WHERE table_schema='public' AND table_name='user_preferences' AND column_name='rag_consent_given') THEN
+    COMMENT ON COLUMN public.user_preferences.rag_consent_given IS
+    'User consent for storing data in vector database (RAG). Required by privacy policy.';
+  END IF;
+END; $$;
 
 -- ============================================================================
 -- SCHEDULE TTL CLEANUP (requires pg_cron extension)
