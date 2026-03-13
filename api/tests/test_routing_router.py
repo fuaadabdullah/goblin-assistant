@@ -40,6 +40,22 @@ class TestGetProviders:
             assert response.status_code == 200
             assert response.json() == ["openai"]
 
+    def test_empty_inventory_uses_fallback_provider_list(self, client):
+        with patch(
+            "api.routing_router.dispatcher.get_provider_inventory",
+            new_callable=AsyncMock,
+            return_value=[],
+        ), patch(
+            "api.routing_router.dispatcher.list_providers",
+            return_value=[
+                {"id": "openai", "hidden": False, "configured": True},
+                {"id": "mock", "hidden": True, "configured": True},
+            ],
+        ):
+            response = client.get("/routing/providers")
+            assert response.status_code == 200
+            assert response.json() == ["openai"]
+
 
 class TestGetProviderDetails:
     def test_returns_inventory(self, client):
@@ -73,6 +89,22 @@ class TestGetProviderDetails:
             "api.routing_router.dispatcher.get_provider_inventory",
             new_callable=AsyncMock,
             side_effect=RuntimeError("boom"),
+        ), patch(
+            "api.routing_router.dispatcher.list_providers",
+            return_value=[
+                {"id": "openai", "hidden": False},
+                {"id": "mock", "hidden": True},
+            ],
+        ):
+            response = client.get("/routing/providers/details")
+            assert response.status_code == 200
+            assert response.json() == [{"id": "openai", "hidden": False}]
+
+    def test_empty_inventory_falls_back_to_provider_list(self, client):
+        with patch(
+            "api.routing_router.dispatcher.get_provider_inventory",
+            new_callable=AsyncMock,
+            return_value=[],
         ), patch(
             "api.routing_router.dispatcher.list_providers",
             return_value=[

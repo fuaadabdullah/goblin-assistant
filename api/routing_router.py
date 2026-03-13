@@ -65,7 +65,12 @@ def _fallback_provider_entries() -> List[Dict[str, Any]]:
 async def get_available_providers():
     try:
         inventory = await dispatcher.get_provider_inventory(include_hidden=False)
-        return [entry["id"] for entry in inventory if entry.get("configured")]
+        provider_ids = [entry["id"] for entry in inventory if entry.get("configured")]
+        if provider_ids:
+            return provider_ids
+
+        fallback = _fallback_provider_entries()
+        return [entry["id"] for entry in fallback if entry.get("configured")]
     except Exception:
         fallback = _fallback_provider_entries()
         return [entry["id"] for entry in fallback if entry.get("configured")]
@@ -74,7 +79,10 @@ async def get_available_providers():
 @router.get("/providers/details", response_model=List[Dict[str, Any]])
 async def get_provider_details():
     try:
-        return await dispatcher.get_provider_inventory(include_hidden=False)
+        inventory = await dispatcher.get_provider_inventory(include_hidden=False)
+        if inventory:
+            return inventory
+        return _fallback_provider_entries()
     except Exception:
         return _fallback_provider_entries()
 
