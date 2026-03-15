@@ -1,8 +1,10 @@
 # Dockerfile
 FROM python:3.11-slim
 
-# Avoid Python buffering problems and ensure logs flush
-ENV PYTHONUNBUFFERED=1
+# Avoid Python buffering problems and keep the runtime image leaner.
+ENV PYTHONUNBUFFERED=1 \
+    PIP_NO_CACHE_DIR=1 \
+    PIP_DISABLE_PIP_VERSION_CHECK=1
 
 # Set working directory where app will live inside the container
 WORKDIR /app
@@ -10,16 +12,15 @@ WORKDIR /app
 # Copy requirements file for dependency installation
 COPY requirements.txt /app/
 
-# Install system deps (if you need build tools, uncomment below)
+# Install build deps only for the pip step, then remove them to keep the image smaller.
 RUN apt-get update && apt-get install -y --no-install-recommends \
   build-essential \
   gcc \
   git \
-  && rm -rf /var/lib/apt/lists/*
-
-# Install Python deps
-RUN pip install --upgrade pip
-RUN pip install -r requirements.txt
+  && pip install --upgrade pip \
+  && pip install -r requirements.txt \
+  && apt-get purge -y --auto-remove build-essential gcc git \
+  && rm -rf /var/lib/apt/lists/* /root/.cache/pip
 
 # Copy app source into container
 COPY . /app
