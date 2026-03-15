@@ -36,8 +36,9 @@ from .services.embedding_service import embedding_worker
 from .services.message_classifier import classification_pipeline, message_classifier, MessageType
 from .services.write_time_matrix import write_time_intelligence
 from .input_validation import InputSanitizer
-from .tools.registry import export_openai_tools
-from .tools.executor import run_tool_loop, extract_tool_calls
+from .providers.base import ProviderErrorCategory
+from .assistant_tools.registry import export_openai_tools
+from .assistant_tools.executor import run_tool_loop, extract_tool_calls
 from .storage.conversations import Conversation, ConversationMessage
 from .storage.database import get_db
 from .auth.router import get_current_user, User as AuthenticatedUser
@@ -200,6 +201,88 @@ def _extract_usage_and_cost(
     correlation_id = correlation_value if isinstance(correlation_value, str) else None
 
     return usage, cost_usd, correlation_id
+
+
+def _raise_structured_provider_error(provider_response: Dict[str, Any]) -> None:
+    error_msg = str(provider_response.get("error") or "unknown-error")
+    category_raw = provider_response.get("error_category")
+    category = str(category_raw or ProviderErrorCategory.UNKNOWN.value)
+    used_provider = str(provider_response.get("provider") or "unknown")
+
+    if category == ProviderErrorCategory.AUTH.value:
+        raise HTTPException(
+            status_code=401,
+            detail={
+                "code": "AUTHENTICATION_REQUIRED",
+                "category": category,
+                "message": "Authentication failed while contacting the AI provider.",
+                "provider": used_provider,
+                "provider_error": error_msg,
+            },
+        )
+
+    if category == ProviderErrorCategory.RATE_LIMIT.value:
+        raise HTTPException(
+            status_code=429,
+            detail={
+                "code": "CHAT_RATE_LIMITED",
+                "category": category,
+                "message": "The AI provider is rate limiting requests. Please retry shortly.",
+                "provider": used_provider,
+                "provider_error": error_msg,
+                "retry_after": 2,
+            },
+        )
+
+    if category == ProviderErrorCategory.TIMEOUT.value:
+        raise HTTPException(
+            status_code=504,
+            detail={
+                "code": "CHAT_TIMEOUT",
+                "category": category,
+                "message": "The AI provider took too long to respond.",
+                "provider": used_provider,
+                "provider_error": error_msg,
+            },
+        )
+
+    if category == ProviderErrorCategory.MODEL_ERROR.value:
+        raise HTTPException(
+            status_code=400,
+            detail={
+                "code": "CHAT_PROVIDER_UNAVAILABLE",
+                "category": category,
+                "message": "The selected model or provider could not process this request.",
+                "provider": used_provider,
+                "provider_error": error_msg,
+            },
+        )
+
+    if category in {
+        ProviderErrorCategory.SERVER_ERROR.value,
+        ProviderErrorCategory.CONNECTION.value,
+    }:
+        raise HTTPException(
+            status_code=503,
+            detail={
+                "code": "CHAT_BACKEND_UNAVAILABLE",
+                "category": category,
+                "message": "The AI backend is temporarily unavailable. Please retry in a moment.",
+                "provider": used_provider,
+                "provider_error": error_msg,
+            },
+        )
+
+    raise HTTPException(
+        status_code=502,
+        detail={
+            "code": "CHAT_PROVIDER_ERROR",
+            "category": category,
+            "message": "The AI provider returned an unexpected error.",
+            "provider": used_provider,
+            "provider_error": error_msg,
+        },
+    )
 
 
 @router.post("/conversations", response_model=CreateConversationResponse)
@@ -618,10 +701,7 @@ async def send_message(
         else:
             # Check for error in dispatcher response
             if isinstance(provider_response, dict) and not provider_response.get("ok"):
-                error_msg = provider_response.get("error", "unknown-error")
-                raise HTTPException(
-                    status_code=500, detail=f"AI Provider error: {error_msg}"
-                )
+                _raise_structured_provider_error(provider_response)
 
             # Fallback for non-standard response formats
             # Ensures we always return a usable response

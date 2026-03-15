@@ -16,8 +16,8 @@ from .services.retrieval_service import RetrievalService, ContextBuilder, retrie
 from .services.embedding_service import embedding_worker
 from .storage.models import MessageModel
 from .input_validation import InputSanitizer
-from .tools.registry import export_openai_tools
-from .tools.executor import run_tool_loop, extract_tool_calls
+from .assistant_tools.registry import export_openai_tools
+from .assistant_tools.executor import run_tool_loop, extract_tool_calls
 
 
 router = APIRouter(prefix="/semantic-chat", tags=["semantic-chat"])

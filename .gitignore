@@ -30,7 +30,7 @@ sandbox_jobs/
 instance/
 
 # Hash artifacts
-api/[0-9a-f]*
+api/[0-9a-f][0-9a-f]*
 
 # Database
 *.db
