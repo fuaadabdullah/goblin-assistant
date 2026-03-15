@@ -5,6 +5,7 @@ import pytest
 from api.providers.base import BaseProvider, ProviderHealth, ProviderResult
 from api.providers.dispatcher import ProviderDispatcher
 from api.routing.router import hybrid_router, registry
+from api.services.provider_health import health_monitor
 
 
 class _StubProvider(BaseProvider):
@@ -240,3 +241,39 @@ async def test_dispatch_registry_gate_falls_back_to_configured_candidates(monkey
     # Even with gate filtering out `available`, dispatcher should still use configured fallback.
     assert result["ok"] is True
     assert result["provider"] == "openai"
+
+
+@pytest.mark.asyncio
+async def test_auto_dispatch_skips_self_hosted_candidates_by_default(monkeypatch):
+    dispatcher = ProviderDispatcher()
+    ollama = dispatcher.get_provider("ollama_gcp")
+    groq = dispatcher.get_provider("groq")
+
+    monkeypatch.setattr(dispatcher, "_candidate_order", lambda _pid: ["ollama_gcp", "groq"])
+    monkeypatch.setattr(dispatcher, "is_configured", lambda _pid: True)
+    monkeypatch.setattr(health_monitor, "is_available", lambda _pid: True)
+
+    async def should_not_run(*args, **kwargs):
+        raise AssertionError("self-hosted provider should not be auto-selected")
+
+    async def fake_groq_invoke(messages=None, model=None, **kwargs):
+        await asyncio.sleep(0)
+        return ProviderResult(
+            ok=True,
+            text="ok",
+            provider="groq",
+            model=model or "llama-3.3-70b-versatile",
+            latency_ms=3.0,
+        )
+
+    monkeypatch.setattr(ollama, "invoke", should_not_run)
+    monkeypatch.setattr(groq, "invoke", fake_groq_invoke)
+
+    result = await dispatcher.dispatch(
+        pid=None,
+        model=None,
+        payload={"messages": [{"role": "user", "content": "hello"}]},
+    )
+
+    assert result["ok"] is True
+    assert result["provider"] == "groq"

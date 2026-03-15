@@ -554,6 +554,49 @@ class ProviderDispatcher:
         ]
         return candidates
 
+    def _allow_self_hosted_auto_routing(self) -> bool:
+        return os.getenv("ENABLE_SELF_HOSTED_AUTO_ROUTING", "").strip().lower() in {
+            "1",
+            "true",
+            "yes",
+            "on",
+        }
+
+    def _is_auto_routing_candidate(self, provider_id: str) -> bool:
+        config = self._configs.get(provider_id, {})
+        if not config:
+            return False
+        if config.get("local_routing") or self._is_self_hosted(config):
+            return self._allow_self_hosted_auto_routing()
+        return True
+
+    def _auto_configured_candidates(self, candidates: List[str]) -> List[str]:
+        configured = [
+            provider_id for provider_id in candidates if self.is_configured(provider_id)
+        ]
+        filtered = [
+            provider_id
+            for provider_id in configured
+            if self._is_auto_routing_candidate(provider_id)
+        ]
+        if filtered:
+            configured = filtered
+
+        try:
+            from ..services.provider_health import health_monitor
+
+            healthy = [
+                provider_id
+                for provider_id in configured
+                if health_monitor.is_available(provider_id)
+            ]
+            if healthy:
+                return healthy
+        except Exception:
+            logger.debug("provider_health_filter_unavailable")
+
+        return configured
+
     def top_providers_for(
         self,
         capability: str,
@@ -766,9 +809,13 @@ class ProviderDispatcher:
         if explicit_mode:
             ordered = candidates
         else:
-            configured_candidates = [
-                provider_id for provider_id in candidates if self.is_configured(provider_id)
-            ]
+            configured_candidates = self._auto_configured_candidates(candidates)
+            if not configured_candidates:
+                configured_candidates = [
+                    provider_id
+                    for provider_id in candidates
+                    if self.is_configured(provider_id)
+                ]
             available = [
                 provider_id
                 for provider_id in configured_candidates
