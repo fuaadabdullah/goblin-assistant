@@ -331,9 +331,14 @@ class AsyncEmbeddingWorker:
     """Background worker for async embedding generation"""
 
     def __init__(self):
-        self.service = EmbeddingService()
+        self.service = None
         self.queue = asyncio.Queue()
         self.running = False
+
+    def _get_service(self) -> EmbeddingService:
+        if self.service is None:
+            self.service = EmbeddingService()
+        return self.service
 
     async def start(self):
         """Start the embedding worker"""
@@ -362,9 +367,10 @@ class AsyncEmbeddingWorker:
     async def _process_task(self, task: Dict[str, Any]):
         """Process a single embedding task"""
         task_type = task.get("type")
+        service = self._get_service()
 
         if task_type == "message":
-            await self.service.store_message_embedding(
+            await service.store_message_embedding(
                 user_id=task["user_id"],
                 conversation_id=task["conversation_id"],
                 message_id=task["message_id"],
@@ -372,12 +378,12 @@ class AsyncEmbeddingWorker:
                 metadata=task.get("metadata"),
             )
         elif task_type == "summary":
-            await self.service.store_conversation_summary(
+            await service.store_conversation_summary(
                 conversation_id=task["conversation_id"],
                 summary_text=task["summary_text"],
             )
         elif task_type == "memory":
-            await self.service.store_memory_fact(
+            await service.store_memory_fact(
                 user_id=task["user_id"],
                 fact_text=task["fact_text"],
                 category=task.get("category"),

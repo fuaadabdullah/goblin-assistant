@@ -15,19 +15,12 @@ Usage:
 from fastapi import APIRouter, Depends, HTTPException, BackgroundTasks
 from typing import Optional, Dict, Any
 from datetime import datetime
+import importlib.util
 import logging
+import os
 
 from ..services.sanitization import mask_sensitive
 from ..services.telemetry import log_conversation_event, EventType
-
-# Optional: Safe Vector Store (requires sentence-transformers)
-try:
-    from ..services.safe_vector_store import SafeVectorStore
-
-    VECTOR_STORE_AVAILABLE = True
-except ImportError:
-    VECTOR_STORE_AVAILABLE = False
-    SafeVectorStore = None
 
 # Import auth dependencies
 from ..auth.router import get_current_user
@@ -37,10 +30,31 @@ logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/api/privacy", tags=["privacy", "gdpr", "ccpa"])
 
-# Initialize vector store (optional - only if available)
-vector_store = (
-    SafeVectorStore(collection_name="goblin_rag") if VECTOR_STORE_AVAILABLE else None
+_VECTOR_STORE_DEFAULT = (
+    "false"
+    if os.getenv("ENVIRONMENT", "development").lower() == "production"
+    else "true"
 )
+VECTOR_STORE_AVAILABLE = (
+    os.getenv("ENABLE_VECTOR_STORE", _VECTOR_STORE_DEFAULT).strip().lower()
+    in {"1", "true", "yes", "on"}
+    and importlib.util.find_spec("chromadb") is not None
+)
+_vector_store = None
+
+
+def _get_vector_store():
+    global _vector_store
+
+    if not VECTOR_STORE_AVAILABLE:
+        return None
+
+    if _vector_store is None:
+        from ..services.safe_vector_store import SafeVectorStore
+
+        _vector_store = SafeVectorStore(collection_name="goblin_rag")
+
+    return _vector_store
 
 
 @router.post("/export", response_model=Dict[str, Any])
@@ -93,6 +107,8 @@ async def export_user_data(
     }
 
     try:
+        vector_store = _get_vector_store()
+
         # Export vector store documents
         if include_vectors and vector_store is not None:
             vector_export = await vector_store.export_user_data(user_id)
@@ -219,6 +235,8 @@ async def delete_user_data(
     deleted_counts = {"vectors": 0, "conversations": 0, "preferences": 0}
 
     try:
+        vector_store = _get_vector_store()
+
         # Delete from vector store
         if vector_store is not None:
             vector_delete = await vector_store.delete_user_data(user_id)
@@ -312,6 +330,8 @@ async def get_data_summary(user_id: str = Depends(get_current_user)) -> Dict[str
     logger.info(f"Data summary requested by user: {user_id}")
 
     try:
+        vector_store = _get_vector_store()
+
         # Get vector store summary
         vector_count = 0
         if vector_store is not None:
@@ -387,6 +407,8 @@ async def update_rag_consent(
     logger.info(f"RAG consent update by user {user_id}: {consent_given}")
 
     try:
+        vector_store = _get_vector_store()
+
         # Store consent in database user_preferences table
         try:
             from ..storage.preferences_service import preferences_service

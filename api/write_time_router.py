@@ -8,10 +8,21 @@ from pydantic import BaseModel
 from typing import List, Dict, Any, Optional
 from datetime import datetime
 
-from .services.write_time_matrix import write_time_intelligence, WriteTimeDecisionMatrix
 from .services.cache_service import cache_service
 
 router = APIRouter(prefix="/write-time", tags=["write-time"])
+
+
+def _get_write_time_decision_matrix():
+    from .services.write_time_matrix import WriteTimeDecisionMatrix
+
+    return WriteTimeDecisionMatrix
+
+
+def _get_write_time_intelligence():
+    from .services.write_time_matrix import write_time_intelligence
+
+    return write_time_intelligence
 
 
 class TestMessageRequest(BaseModel):
@@ -57,6 +68,7 @@ async def test_message_processing(request: TestMessageRequest):
     """
     try:
         # Process message through Write-Time Intelligence
+        write_time_intelligence = _get_write_time_intelligence()
         result = await write_time_intelligence.process_message(
             message_id=f"test_{datetime.utcnow().timestamp()}",
             content=request.content,
@@ -111,6 +123,7 @@ async def cleanup_cache():
 async def get_decision_matrix_config():
     """Get the current decision matrix configuration"""
     try:
+        WriteTimeDecisionMatrix = _get_write_time_decision_matrix()
         matrix = WriteTimeDecisionMatrix()
         
         config = {
@@ -135,8 +148,9 @@ async def get_write_time_metrics():
     try:
         # Get cache stats
         cache_stats = await cache_service.get_cache_stats()
-        
+
         # Get decision matrix stats
+        WriteTimeDecisionMatrix = _get_write_time_decision_matrix()
         matrix = WriteTimeDecisionMatrix()
         
         metrics = {
@@ -240,6 +254,7 @@ async def get_test_examples():
 async def test_batch_messages(messages: List[TestMessageRequest]):
     """Test multiple messages at once"""
     try:
+        write_time_intelligence = _get_write_time_intelligence()
         results = []
         
         for i, message in enumerate(messages):

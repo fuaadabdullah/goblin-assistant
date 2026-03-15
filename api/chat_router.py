@@ -29,12 +29,7 @@ from datetime import datetime
 
 from .storage import conversation_store
 from .providers.dispatcher import invoke_provider
-from .services.retrieval_service import RetrievalService, ContextBuilder
-from .services.context_assembly_service import context_assembly_service
 from api.config.system_prompt import system_prompt_manager, EDUCATION_SYSTEM_ADDENDUM
-from .services.embedding_service import embedding_worker
-from .services.message_classifier import classification_pipeline, message_classifier, MessageType
-from .services.write_time_matrix import write_time_intelligence
 from .input_validation import InputSanitizer
 from .providers.base import ProviderErrorCategory
 from .assistant_tools.registry import export_openai_tools
@@ -48,6 +43,24 @@ import structlog
 logger = structlog.get_logger()
 
 router = APIRouter(prefix="/chat", tags=["chat"])
+
+
+def _get_context_assembly_service():
+    from .services.context_assembly_service import context_assembly_service
+
+    return context_assembly_service
+
+
+def _get_message_classifier():
+    from .services.message_classifier import MessageType, message_classifier
+
+    return message_classifier, MessageType
+
+
+def _get_write_time_intelligence():
+    from .services.write_time_matrix import write_time_intelligence
+
+    return write_time_intelligence
 
 # File upload configuration
 MAX_UPLOAD_SIZE_BYTES = 10 * 1024 * 1024  # 10 MB
@@ -502,6 +515,7 @@ async def send_message(
             "input_validation": message_validation,
         }
         try:
+            write_time_intelligence = _get_write_time_intelligence()
             write_time_result = await write_time_intelligence.process_message(
                 message_id=message_id,
                 content=sanitized_message,
@@ -576,6 +590,7 @@ async def send_message(
 
         # Step 3b: Assemble RAG context (same as contextual-chat)
         # Classify message to determine if an education addendum is needed
+        message_classifier, MessageType = _get_message_classifier()
         msg_classification = message_classifier.classify_message(sanitized_message, "user")
         education_addendum = (
             EDUCATION_SYSTEM_ADDENDUM
@@ -586,6 +601,7 @@ async def send_message(
         context_metadata = {}
         if request.enable_context_assembly:
             try:
+                context_assembly_service = _get_context_assembly_service()
                 assembly_result = await context_assembly_service.assemble_context(
                     query=sanitized_message,
                     user_id=current_user.id,
@@ -1017,6 +1033,7 @@ async def contextual_chat(
 
         # Step 2: Assemble context using new system (if enabled)
         # Classify message to determine if an education addendum is needed
+        message_classifier, MessageType = _get_message_classifier()
         msg_classification = message_classifier.classify_message(request.message, "user")
         education_addendum = (
             EDUCATION_SYSTEM_ADDENDUM
@@ -1039,6 +1056,7 @@ async def contextual_chat(
                     ]
 
             # Assemble context with new system
+            context_assembly_service = _get_context_assembly_service()
             assembly_result = await context_assembly_service.assemble_context(
                 query=request.message,
                 user_id=user_id,
@@ -1245,6 +1263,7 @@ async def contextual_chat(
 async def debug_context_assembly():
     """Debug endpoint to inspect context assembly configuration"""
     try:
+        context_assembly_service = _get_context_assembly_service()
         debug_info = {
             "context_assembly": context_assembly_service.get_debug_info(),
             "system_prompt": system_prompt_manager.get_debug_info(),

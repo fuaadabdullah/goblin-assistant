@@ -12,8 +12,6 @@ import asyncio
 
 from .storage.conversations import conversation_store
 from .providers.dispatcher import invoke_provider
-from .services.retrieval_service import RetrievalService, ContextBuilder, retrieval_service as _retrieval_singleton
-from .services.embedding_service import embedding_worker
 from .storage.models import MessageModel
 from .input_validation import InputSanitizer
 from .assistant_tools.registry import export_openai_tools
@@ -21,6 +19,24 @@ from .assistant_tools.executor import run_tool_loop, extract_tool_calls
 
 
 router = APIRouter(prefix="/semantic-chat", tags=["semantic-chat"])
+
+
+def _get_context_builder():
+    from .services.retrieval_service import ContextBuilder
+
+    return ContextBuilder
+
+
+def _get_embedding_worker():
+    from .services.embedding_service import embedding_worker
+
+    return embedding_worker
+
+
+def _get_retrieval_singleton():
+    from .services.retrieval_service import retrieval_service
+
+    return retrieval_service
 
 
 class SemanticSendMessageRequest(BaseModel):
@@ -79,6 +95,8 @@ async def semantic_send_message(
     7. Return response with context details
     """
     try:
+        retrieval_singleton = _get_retrieval_singleton()
+
         # Step 1: Validate conversation exists
         conversation = await conversation_store.get_conversation(conversation_id)
         if not conversation:
@@ -111,7 +129,7 @@ async def semantic_send_message(
 
         if request.use_semantic_retrieval:
             try:
-                context_bundle = await _retrieval_singleton.get_context_bundle(
+                context_bundle = await retrieval_singleton.get_context_bundle(
                     query=request.message,
                     user_id=user_id,
                     conversation_id=conversation_id,
@@ -137,7 +155,8 @@ async def semantic_send_message(
         # Build enhanced prompt with semantic context
         if context_used and context_bundle:
             # Use semantic context builder
-            enhanced_messages = ContextBuilder.build_contextual_prompt(
+            context_builder = _get_context_builder()
+            enhanced_messages = context_builder.build_contextual_prompt(
                 user_message=request.message,
                 context_bundle=context_bundle,
                 conversation_history=recent_messages,
@@ -239,6 +258,7 @@ async def semantic_send_message(
 
         # Step 8: Queue embeddings for async processing
         if context_used:
+            embedding_worker = _get_embedding_worker()
             # Queue user message embedding
             await embedding_worker.queue_message_embedding(
                 user_id=user_id,
@@ -294,6 +314,8 @@ async def get_context_bundle(
 ):
     """Retrieve semantic context for a conversation and query"""
     try:
+        retrieval_singleton = _get_retrieval_singleton()
+
         # Validate conversation exists
         conversation = await conversation_store.get_conversation(conversation_id)
         if not conversation:
@@ -304,7 +326,7 @@ async def get_context_bundle(
             raise HTTPException(status_code=400, detail="Conversation has no user_id")
 
         # Retrieve context
-        context_bundle = await _retrieval_singleton.get_context_bundle(
+        context_bundle = await retrieval_singleton.get_context_bundle(
             query=query,
             user_id=user_id,
             conversation_id=conversation_id,
@@ -329,6 +351,8 @@ async def summarize_conversation(
 ):
     """Generate and store a summary of the conversation"""
     try:
+        retrieval_singleton = _get_retrieval_singleton()
+
         # Validate conversation exists
         conversation = await conversation_store.get_conversation(conversation_id)
         if not conversation:
@@ -374,7 +398,7 @@ Summary:"""
             raise Exception("Failed to generate summary")
 
         # Store summary and its embedding
-        success = await _retrieval_singleton.embedding_service.store_conversation_summary(
+        success = await retrieval_singleton.embedding_service.store_conversation_summary(
             conversation_id=conversation_id, summary_text=summary_text
         )
 
@@ -406,11 +430,13 @@ async def add_memory_fact(
 ):
     """Add a long-term memory fact for a user"""
     try:
+        retrieval_singleton = _get_retrieval_singleton()
+
         if not fact_text or not fact_text.strip():
             raise HTTPException(status_code=400, detail="Fact text cannot be empty")
 
         # Store memory fact and its embedding
-        success = await _retrieval_singleton.embedding_service.store_memory_fact(
+        success = await retrieval_singleton.embedding_service.store_memory_fact(
             user_id=user_id, fact_text=fact_text, category=category, metadata=metadata
         )
 
@@ -440,10 +466,12 @@ async def search_memory_facts(
 ):
     """Search user's memory facts using semantic similarity"""
     try:
+        retrieval_singleton = _get_retrieval_singleton()
+
         if not query or not query.strip():
             raise HTTPException(status_code=400, detail="Query cannot be empty")
 
-        facts = await _retrieval_singleton.retrieve_memory_facts(
+        facts = await retrieval_singleton.retrieve_memory_facts(
             user_id=user_id, query=query, categories=categories, k=k
         )
 
@@ -469,10 +497,12 @@ async def search_memory_facts(
 @router.on_event("startup")
 async def startup_event():
     """Start the async embedding worker"""
+    embedding_worker = _get_embedding_worker()
     await embedding_worker.start()
 
 
 @router.on_event("shutdown")
 async def shutdown_event():
     """Stop the async embedding worker"""
+    embedding_worker = _get_embedding_worker()
     await embedding_worker.stop()
