@@ -67,9 +67,7 @@ storybook-static
 *.pid
 
 # Embedded repos
-goblin-assistant-contracts/
-tools/
-goblin-assistant-contracts/
-tools/
+/goblin-assistant-contracts/
+/tools/
 !api/tools/
 !api/tools/**
