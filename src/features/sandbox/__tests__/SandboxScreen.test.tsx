@@ -23,7 +23,7 @@ jest.mock('../hooks/useSandboxSession', () => ({
   useSandboxSession: () => mockSession,
 }));
 
-jest.mock('../../../components/Auth/AuthPrompt', () => {
+jest.mock('../../../components/auth/AuthPrompt', () => {
   return function MockAuthPrompt(props: { onClose: () => void }) {
     return <div data-testid="auth-prompt"><button onClick={props.onClose}>close</button></div>;
   };

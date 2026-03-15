@@ -32,7 +32,7 @@ jest.mock('../../../../components/Seo', () => {
     return <div data-testid="seo" data-title={props.title} />;
   };
 });
-jest.mock('../../../../components/Auth/AuthPrompt', () => {
+jest.mock('../../../../components/auth/AuthPrompt', () => {
   return function MockAuthPrompt() {
     return <div data-testid="auth-prompt" />;
   };

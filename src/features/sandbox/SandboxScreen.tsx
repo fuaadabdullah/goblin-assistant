@@ -2,7 +2,7 @@ import type { FC } from 'react';
 import { useMemo, useState } from 'react';
 import { useRouter } from 'next/router';
 import { useAuthSession } from '../../hooks/api/useAuthSession';
-import AuthPrompt from '../../components/Auth/AuthPrompt';
+import AuthPrompt from '../../components/auth/AuthPrompt';
 import { useSandboxSession } from './hooks/useSandboxSession';
 import SandboxView from './components/SandboxView';
 

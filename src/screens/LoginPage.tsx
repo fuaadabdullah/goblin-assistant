@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useRouter } from 'next/router';
 import Link from 'next/link';
-import ModularLoginForm from '../components/Auth/ModularLoginForm';
+import ModularLoginForm from '../components/auth/ModularLoginForm';
 import Seo from '../components/Seo';
 
 interface LoginPageProps {

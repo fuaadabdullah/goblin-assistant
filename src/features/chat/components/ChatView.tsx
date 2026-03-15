@@ -6,7 +6,7 @@ import { useCallback } from 'react';
 import type { ChatSessionState } from '../hooks/useChatSession';
 import Seo from '../../../components/Seo';
 import { useAuthSession } from '../../../hooks/api/useAuthSession';
-import AuthPrompt from '../../../components/Auth/AuthPrompt';
+import AuthPrompt from '../../../components/auth/AuthPrompt';
 import { useUIStore } from '../../../store/uiStore';
 import { useFocusTrap } from '../../../hooks/useFocusTrap';
 
