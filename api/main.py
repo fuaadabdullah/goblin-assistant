@@ -406,30 +406,12 @@ app.add_middleware(
 )
 
 # Add CORS middleware
-# Environment-aware CORS configuration
-if environment == "production":
-    # Production: Only allow specific origins, no wildcards
-    allowed_origins = (
-        [o.strip() for o in os.getenv("ALLOWED_ORIGINS", "").split(",") if o.strip()]
-        if os.getenv("ALLOWED_ORIGINS")
-        else []
-    )
-    # Always ensure canonical frontend and backend origins are included
-    canonical_origins = [
-        "https://goblin-assistant.vercel.app",
-        "https://goblin-assistant-backend.onrender.com",
-    ]
-    for origin in canonical_origins:
-        if origin not in allowed_origins:
-            allowed_origins.append(origin)
-    if not allowed_origins:
-        logger.warning("No ALLOWED_ORIGINS configured for production", action="setting fallback origins", severity="security_warning")
-else:
-    # Development: Allow localhost
-    allowed_origins = (
-        [o.strip() for o in os.getenv("ALLOWED_ORIGINS", "").split(",") if o.strip()]
-        if os.getenv("ALLOWED_ORIGINS")
-        else ["http://localhost:3000", "http://127.0.0.1:3000", "http://localhost:3001"]
+allowed_origins = list(SecurityConfig.ALLOWED_ORIGINS)
+if environment == "production" and not os.getenv("ALLOWED_ORIGINS"):
+    logger.warning(
+        "No ALLOWED_ORIGINS configured for production",
+        action="setting fallback origins",
+        severity="security_warning",
     )
 
 if "*" in allowed_origins:

@@ -6,6 +6,53 @@ import os
 from typing import List
 
 
+DEFAULT_LOCAL_ORIGINS = [
+    "http://localhost:3000",
+    "http://127.0.0.1:3000",
+    "http://localhost:3001",
+]
+
+CANONICAL_PUBLIC_ORIGINS = [
+    "https://goblin-assistant.vercel.app",
+    "https://goblin-assistant-backend.onrender.com",
+]
+
+
+def _dedupe_origins(origins: List[str]) -> List[str]:
+    seen: set[str] = set()
+    ordered: List[str] = []
+    for origin in origins:
+        cleaned = origin.strip()
+        if not cleaned or cleaned in seen:
+            continue
+        seen.add(cleaned)
+        ordered.append(cleaned)
+    return ordered
+
+
+def build_allowed_origins(
+    environment: str | None = None,
+    raw_origins: str | None = None,
+) -> List[str]:
+    resolved_environment = (environment or os.getenv("ENVIRONMENT", "development")).lower()
+    raw_value = os.getenv("ALLOWED_ORIGINS", "") if raw_origins is None else raw_origins
+    parsed = [origin.strip() for origin in raw_value.split(",") if origin.strip()]
+
+    if not parsed and resolved_environment != "production":
+        parsed.extend(DEFAULT_LOCAL_ORIGINS)
+
+    dynamic_public_origins = [
+        os.getenv("FRONTEND_URL", ""),
+        os.getenv("NEXT_PUBLIC_FRONTEND_URL", ""),
+        os.getenv("BACKEND_URL", ""),
+        os.getenv("GOBLIN_BACKEND_URL", ""),
+    ]
+
+    return _dedupe_origins(
+        parsed + CANONICAL_PUBLIC_ORIGINS + dynamic_public_origins
+    )
+
+
 class SecurityConfig:
     """Security configuration settings"""
 
@@ -26,11 +73,7 @@ class SecurityConfig:
     # CORS Configuration
     # Default to localhost for development, override in production with specific origins
     # Using wildcard (*) for headers in dev for flexibility, restrict in production
-    ALLOWED_ORIGINS = (
-        [o.strip() for o in os.getenv("ALLOWED_ORIGINS", "").split(",") if o.strip()]
-        if os.getenv("ALLOWED_ORIGINS")
-        else ["http://localhost:3000", "http://127.0.0.1:3000"]
-    )
+    ALLOWED_ORIGINS = build_allowed_origins(ENVIRONMENT)
     ALLOW_CREDENTIALS = True
     ALLOWED_METHODS = ["GET", "POST", "PUT", "DELETE", "OPTIONS"]
     ALLOWED_HEADERS = (
