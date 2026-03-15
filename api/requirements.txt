@@ -45,10 +45,5 @@ bleach>=6.1.0
 tiktoken>=0.7.0
 
 # Privacy & Security
-# Vector store features require PyTorch and sentence-transformers.
-# Python 3.11 is fully supported by PyTorch.
-chromadb>=0.4.0
-transformers>=4.30.0
-sentence-transformers>=2.2.0
-torch>=2.0.0
+# Optional vector-store dependencies live in requirements-vector.txt.
 python-multipart>=0.0.6
