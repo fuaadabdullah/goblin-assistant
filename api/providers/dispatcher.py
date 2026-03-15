@@ -152,6 +152,7 @@ _DEFAULT_PROVIDER_CONFIGS: Dict[str, Dict[str, Any]] = {
         "default_model": "llama-3.3-70b-versatile",
         "models": ["llama-3.1-8b-instant", "llama-3.3-70b-versatile"],
         "capabilities": ["chat", "reasoning", "code"],
+        "supports_openai_tools": False,
         "cost_input_per1k": 0.00059,
         "cost_output_per1k": 0.00079,
         "priority_tier": 30,

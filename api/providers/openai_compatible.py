@@ -39,6 +39,51 @@ class OpenAICompatibleProvider(BaseProvider):
             headers["Authorization"] = f"Bearer {self._api_key}"
         return headers
 
+    def _supports_openai_tools(self) -> bool:
+        return bool(self.config.get("supports_openai_tools", True))
+
+    def _build_body(
+        self,
+        *,
+        model_name: str,
+        normalized_messages: List[Dict[str, str]],
+        max_tokens: int,
+        temperature: float,
+        stream: bool = False,
+        **kwargs: Any,
+    ) -> Dict[str, Any]:
+        body = {
+            "model": model_name,
+            "messages": normalized_messages,
+            "max_tokens": max_tokens,
+            "temperature": temperature,
+            **kwargs,
+        }
+        if stream:
+            body["stream"] = True
+
+        if not self._supports_openai_tools():
+            body.pop("tools", None)
+            body.pop("tool_choice", None)
+            body.pop("parallel_tool_calls", None)
+
+        return body
+
+    def _format_http_error(self, exc: httpx.HTTPStatusError) -> str:
+        status_code = exc.response.status_code if exc.response is not None else "unknown"
+        response_text = ""
+        if exc.response is not None:
+            try:
+                response_text = exc.response.text.strip()
+            except Exception:
+                response_text = ""
+        if response_text:
+            compact = " ".join(response_text.split())
+            if len(compact) > 400:
+                compact = f"{compact[:397]}..."
+            return f"HTTP {status_code}: {compact}"
+        return str(exc)
+
     async def invoke(
         self,
         messages: Optional[List[Dict[str, str]]] = None,
@@ -60,13 +105,13 @@ class OpenAICompatibleProvider(BaseProvider):
                 error="endpoint not configured",
             )
 
-        body = {
-            "model": model_name,
-            "messages": normalized_messages,
-            "max_tokens": max_tokens,
-            "temperature": temperature,
+        body = self._build_body(
+            model_name=model_name,
+            normalized_messages=normalized_messages,
+            max_tokens=max_tokens,
+            temperature=temperature,
             **kwargs,
-        }
+        )
         t0 = time.perf_counter()
         try:
             async with httpx.AsyncClient(timeout=60) as client:
@@ -96,6 +141,23 @@ class OpenAICompatibleProvider(BaseProvider):
                 cost_usd=cost,
                 latency_ms=latency,
             )
+        except httpx.HTTPStatusError as exc:
+            latency = (time.perf_counter() - t0) * 1000
+            error_message = self._format_http_error(exc)
+            self.record_failure(error_message)
+            logger.warning(
+                "provider_invoke_failed",
+                provider=self.provider_id,
+                status_code=exc.response.status_code if exc.response is not None else None,
+                error=error_message,
+            )
+            return ProviderResult(
+                ok=False,
+                provider=self.provider_id,
+                model=model_name,
+                latency_ms=latency,
+                error=error_message,
+            )
         except Exception as exc:
             latency = (time.perf_counter() - t0) * 1000
             self.record_failure(str(exc))
@@ -124,14 +186,14 @@ class OpenAICompatibleProvider(BaseProvider):
     ) -> AsyncGenerator[Dict[str, Any], None]:
         normalized_messages = self.normalize_messages(messages, prompt=prompt, **kwargs)
         model_name = model or self.default_model
-        body = {
-            "model": model_name,
-            "messages": normalized_messages,
-            "max_tokens": max_tokens,
-            "temperature": temperature,
-            "stream": True,
+        body = self._build_body(
+            model_name=model_name,
+            normalized_messages=normalized_messages,
+            max_tokens=max_tokens,
+            temperature=temperature,
+            stream=True,
             **kwargs,
-        }
+        )
         async with httpx.AsyncClient(timeout=120) as client:
             async with client.stream(
                 "POST",

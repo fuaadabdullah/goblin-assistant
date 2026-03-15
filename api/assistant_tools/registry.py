@@ -53,16 +53,19 @@ class ToolDefinition:
             if param.required:
                 required.append(param.name)
 
+        parameters: Dict[str, Any] = {
+            "type": "object",
+            "properties": properties,
+        }
+        if required:
+            parameters["required"] = required
+
         return {
             "type": "function",
             "function": {
                 "name": self.name,
                 "description": self.description,
-                "parameters": {
-                    "type": "object",
-                    "properties": properties,
-                    "required": required,
-                },
+                "parameters": parameters,
             },
         }
 
