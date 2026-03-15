@@ -6,12 +6,18 @@
 const THEME_STORAGE_KEY = 'goblinos-theme-preference';
 const CONTRAST_STORAGE_KEY = 'goblinos-high-contrast';
 
+const canUseDom = () =>
+  typeof window !== 'undefined' &&
+  typeof document !== 'undefined' &&
+  typeof localStorage !== 'undefined';
+
 /**
  * Set CSS custom properties on the document root
  * @param {Object} vars - Key-value pairs of CSS variable names (without --) and values
  * @example setThemeVars({ bg: '#071117', primary: '#06D06A' })
  */
 export function setThemeVars(vars = {}) {
+  if (!canUseDom()) return;
   const root = document.documentElement;
   Object.entries(vars).forEach(([key, value]) => {
     root.style.setProperty(`--${key}`, value);
@@ -23,6 +29,7 @@ export function setThemeVars(vars = {}) {
  * @param {boolean} enable - Whether to enable high-contrast mode
  */
 export function enableHighContrast(enable = true) {
+  if (!canUseDom()) return;
   const root = document.documentElement;
   root.classList.toggle('goblinos-high-contrast', enable);
 
@@ -39,6 +46,9 @@ export function enableHighContrast(enable = true) {
  * @returns {boolean} Whether high-contrast mode is enabled
  */
 export function getHighContrastPreference() {
+  if (!canUseDom()) {
+    return true;
+  }
   try {
     const stored = localStorage.getItem(CONTRAST_STORAGE_KEY);
     if (stored !== null) {
@@ -57,6 +67,7 @@ export function getHighContrastPreference() {
  * Restores saved preferences and applies system defaults
  */
 export function initializeTheme() {
+  if (!canUseDom()) return;
   // Restore high-contrast preference
   const highContrast = getHighContrastPreference();
   enableHighContrast(highContrast);
@@ -127,6 +138,7 @@ export const THEME_PRESETS = {
  * @param {string} presetName - Name of the preset to apply
  */
 export function applyThemePreset(presetName = 'default') {
+  if (!canUseDom()) return;
   const preset = THEME_PRESETS[presetName];
   if (!preset) {
     console.warn(`Unknown theme preset: ${presetName}`);
@@ -148,6 +160,9 @@ export function applyThemePreset(presetName = 'default') {
  * @returns {string} The name of the active theme preset
  */
 export function getCurrentThemePreset() {
+  if (!canUseDom()) {
+    return 'default';
+  }
   try {
     return localStorage.getItem(THEME_STORAGE_KEY) || 'default';
   } catch (e) {

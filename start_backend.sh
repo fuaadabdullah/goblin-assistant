@@ -1,11 +1,20 @@
 #!/bin/bash
+# Start the local backend for this workspace without reload.
 
-# Start Goblin Assistant Backend with GCP LLM configuration
+set -euo pipefail
 
-cd /Users/fuaadabdullah/ForgeMonorepo/apps/goblin-assistant
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+cd "$SCRIPT_DIR"
 
-# GCP LLM env vars removed - VMs terminated since 2026-01-11
-# Re-add OLLAMA_GCP_URL / LLAMACPP_GCP_URL after redeploying GCP infra
+if [ -f .env.local ]; then
+    set -a
+    # shellcheck disable=SC1091
+    source .env.local
+    set +a
+fi
 
-# Start the server
-python3 -m uvicorn api.main:app --host 0.0.0.0 --port 8004
+if [ "${GOBLIN_USE_REMOTE_DATABASE:-false}" != "true" ]; then
+    export DATABASE_URL="${LOCAL_DATABASE_URL:-sqlite+aiosqlite:///./goblin_assistant.db}"
+fi
+
+exec python3 -m uvicorn api.main:app --host 0.0.0.0 --port 8004

@@ -1,20 +1,34 @@
 # Exclude backend API code from Vercel deployment
-backend/
+/backend/
+/api/
 requirements.txt
 fly.toml
 fly-worker.toml
-docker/
-scripts/
-tests/
+/docker/
+/scripts/
+/tests/
 *.db
 *.log
-__pycache__/
-.pytest_cache/
+/__pycache__/
+/.mypy_cache/
+/.pytest_cache/
+/.ruff_cache/
+/.venv/
+/venv/
+/.git/
+/.next/
+/goblin-assistant-contracts/
 node_modules/
 dist/
+/coverage/
+/.coverage
+/supabase/
+/.playwright-cli/
+/tsconfig.tsbuildinfo
+._*
 .vercel/
 .env*
 !.env.example
 
 # Exclude Next.js cache to reduce deployment size
-.next/cache/
+/.next/cache/

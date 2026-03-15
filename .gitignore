@@ -71,3 +71,5 @@ goblin-assistant-contracts/
 tools/
 goblin-assistant-contracts/
 tools/
+!api/tools/
+!api/tools/**
