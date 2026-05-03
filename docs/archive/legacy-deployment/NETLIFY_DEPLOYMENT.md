@@ -1,7 +1,4 @@
----
-title: "NETLIFY DEPLOYMENT"
-description: "Netlify Deployment (DEPRECATED)"
----
+<!-- markdownlint-disable MD025 -->
 
 # Netlify Deployment (DEPRECATED)
 

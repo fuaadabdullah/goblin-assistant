@@ -1,3 +1,5 @@
+<!-- markdownlint-disable MD022 MD025 MD031 MD032 MD034 MD040 -->
+
 # GCP Chat Integration - Deployment Summary
 
 **Date**: January 11, 2026  

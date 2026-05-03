@@ -44,6 +44,8 @@ node_modules/
 .next/
 dist/
 build/
+coverage/
+*.tsbuildinfo
 
 # Python
 __pycache__/

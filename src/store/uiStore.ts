@@ -1,5 +1,10 @@
 import { create } from 'zustand';
-import { enableHighContrast, getHighContrastPreference } from '../theme/theme';
+import {
+  applyThemePreset,
+  enableHighContrast,
+  getCurrentThemePreset,
+  getHighContrastPreference,
+} from '../theme/theme';
 import { devWarn } from '../utils/dev-log';
 
 interface UIState {
@@ -40,20 +45,10 @@ interface NotificationItem {
  */
 // Helper to load persisted theme preference
 const _getPersistedTheme = (): 'default' | 'nocturne' | 'ember' => {
-  if (typeof window === 'undefined') return 'default';
-  try {
-    const persisted = localStorage.getItem('goblin-theme');
-    if (
-      persisted === 'nocturne' ||
-      persisted === 'ember' ||
-      persisted === 'default'
-    ) {
-      return persisted;
-    }
-  } catch {
-    // localStorage may not be available
-  }
-  return 'default';
+  const persisted = getCurrentThemePreset();
+  return persisted === 'nocturne' || persisted === 'ember' || persisted === 'default'
+    ? persisted
+    : 'default';
 };
 
 export const useUIStore = create<UIState>((set, get) => ({
@@ -72,6 +67,7 @@ export const useUIStore = create<UIState>((set, get) => ({
   },
 
   setTheme: (theme: 'default' | 'nocturne' | 'ember') => {
+    applyThemePreset(theme);
     set({ currentTheme: theme });
     // Apply theme to document root
     const root = document.documentElement;
@@ -79,12 +75,6 @@ export const useUIStore = create<UIState>((set, get) => ({
     // Also update via CSS class for broader compatibility
     root.classList.remove('theme-default', 'theme-nocturne', 'theme-ember');
     root.classList.add(`theme-${theme}`);
-    // Persist theme preference
-    try {
-      localStorage.setItem('goblin-theme', theme);
-    } catch (e) {
-      devWarn('Failed to persist theme preference:', e);
-    }
   },
 
   // Sidebar actions

@@ -5,12 +5,25 @@
  */
 
 /* eslint-disable no-console */
+import crypto from 'node:crypto';
 import fetch from 'node-fetch';
 
 const API_BASE = 'http://localhost:3000/api';
 
+function createTestCredentials() {
+  const suffix = crypto.randomUUID().slice(0, 8);
+
+  return {
+    email: `goblin-test-${suffix}@example.com`,
+    password: `TestPass!${suffix}`,
+    name: 'Goblin Test User'
+  };
+}
+
 async function testAuth() {
   console.log('🧪 Testing GoblinOS Assistant Authentication...\n');
+
+  const testUser = createTestCredentials();
 
   // Test 1: Check if Supabase is configured
   console.log('1. Checking Supabase configuration...');
@@ -25,18 +38,16 @@ async function testAuth() {
 
   // Test 2: Test registration
   console.log('\n2. Testing user registration...');
-  const testUser = {
-    email: 'goblinosrep@gmail.com',
-    password: 'Fa06202001!',
-    confirmPassword: 'Fa06202001!',
-    name: 'Fuaad Abdullah'
+  const registrationUser = {
+    ...testUser,
+    confirmPassword: testUser.password
   };
 
   try {
     const response = await fetch(`${API_BASE}/auth/register`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(testUser)
+      body: JSON.stringify(registrationUser)
     });
 
     const data = await response.json();

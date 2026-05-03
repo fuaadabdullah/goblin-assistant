@@ -2,6 +2,12 @@ import { renderHook, act } from '@testing-library/react';
 import { useUIStore } from '../uiStore';
 
 describe('UI Store (Zustand)', () => {
+  beforeEach(() => {
+    localStorage.clear();
+    document.documentElement.removeAttribute('data-theme');
+    document.documentElement.classList.remove('theme-default', 'theme-nocturne', 'theme-ember');
+  });
+
   it('should have initial UI state', () => {
     const { result } = renderHook(() => useUIStore());
     expect(result.current.sidebarOpen).toBeDefined();
@@ -55,6 +61,24 @@ describe('UI Store (Zustand)', () => {
     expect(result.current.currentTheme).toBe('nocturne');
     act(() => { result.current.setTheme('default'); });
     expect(result.current.currentTheme).toBe('default');
+  });
+
+  it('should persist theme using the shared theme storage key', () => {
+    const { result } = renderHook(() => useUIStore());
+
+    act(() => {
+      result.current.setTheme('ember');
+    });
+
+    expect(localStorage.getItem('goblinos-theme-preference')).toBe('ember');
+    expect(localStorage.getItem('goblin-theme')).toBeNull();
+
+    jest.resetModules();
+    localStorage.setItem('goblinos-theme-preference', 'nocturne');
+
+    // eslint-disable-next-line @typescript-eslint/no-var-requires
+    const { useUIStore: freshUIStore } = require('../uiStore') as typeof import('../uiStore');
+    expect(freshUIStore.getState().currentTheme).toBe('nocturne');
   });
 
   it('should add and remove notifications', () => {

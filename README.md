@@ -133,6 +133,7 @@ Open `http://127.0.0.1:3000`.
 - `docs/features.md`: feature status by capability
 - `docs/ARCHITECTURE_OVERVIEW.md`: current frontend/backend topology
 - `DEPLOYMENT_AND_TESTING.md`: deployment procedures and test strategy
+- `docs/archive/legacy-deployment/`: archived deployment notes for removed/unsupported targets
 - `SECURITY_IMPLEMENTATION_COMPLETE.md`: security feature details
 - `api/README.md`: FastAPI backend entry guide
 - `api/docs/README.md`: route inventory and API behavior notes
