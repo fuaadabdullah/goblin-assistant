@@ -8,10 +8,12 @@ import requests
 import json
 import time
 import sys
+import os
 
 # Configuration
 API_BASE_URL = "http://localhost:8001"  # Adjust as needed
-API_KEY = "206e61fdeda2267c9a4ecac3997c4eae7ebd20038282445f7524a84a78ac0158"  # Use the frontend API key
+# Read API key from environment to avoid committing secrets
+API_KEY = os.getenv("API_AUTH_KEY") or os.getenv("SANDBOX_API_KEY") or "devkey"
 
 def demo_sandbox_api():
     """Demonstrate sandbox API usage"""

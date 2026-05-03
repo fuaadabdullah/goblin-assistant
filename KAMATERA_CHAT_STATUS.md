@@ -95,7 +95,7 @@ Response
 
 ```bash
 # .env.local
-LOCAL_LLM_API_KEY=cef5587890c73a5316a9a2c4ed851d97beb89fd28443885aad6e570dabd5f765
+LOCAL_LLM_API_KEY=[REDACTED_LOCAL_LLM_API_KEY]
 ```
 
 ### Provider Configuration

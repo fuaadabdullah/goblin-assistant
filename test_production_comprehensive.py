@@ -10,8 +10,8 @@ import time
 import os
 from typing import Dict, Any
 
-# Load API key from env or .env.local
-API_KEY = "cef5587890c73a5316a9a2c4ed851d97beb89fd28443885aad6e570dabd5f765"
+# Load API key from environment to avoid committing secrets
+API_KEY = os.getenv("API_AUTH_KEY", "")
 
 
 async def test_endpoint(session, method, path, json_data=None, use_auth=True):

@@ -14,7 +14,7 @@
 
 **Current Key (from your message):**
 ```
-sk-yigcnsvlduucoypunlpacsrjesrkpktjllbixtptwzzgiwiy
+[REDACTED_API_KEY]
 ```
 
 **Possible Causes:**
@@ -40,7 +40,7 @@ sk-yigcnsvlduucoypunlpacsrjesrkpktjllbixtptwzzgiwiy
 3. **Test with cURL**:
    ```bash
    curl -X POST https://api.siliconflow.cn/v1/chat/completions \
-     -H "Authorization: Bearer sk-yigcnsvlduucoypunlpacsrjesrkpktjllbixtptwzzgiwiy" \
+   -H "Authorization: Bearer [REDACTED_API_KEY]" \
      -H "Content-Type: application/json" \
      -d '{
        "model": "Qwen/Qwen2.5-7B-Instruct",
