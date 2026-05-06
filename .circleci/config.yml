@@ -1,83 +1,347 @@
 version: 2.1
 
-jobs:
-  deploy:
+# ============================================================================
+# Orbs - Reusable configurations
+# ============================================================================
+orbs:
+  node: circleci/node@5.0.3
+  python: circleci/python@2.1.1
+  docker: circleci/docker@2.4.0
+  codecov: codecov/codecov@3.2.4
+
+# ============================================================================
+# Parameters - Dynamic workflow control
+# ============================================================================
+parameters:
+  terraform_apply:
+    type: boolean
+    default: false
+    description: "Apply Terraform changes"
+  run_e2e_tests:
+    type: boolean
+    default: false
+    description: "Run end-to-end tests"
+
+# ============================================================================
+# Executors - Define execution environments
+# ============================================================================
+executors:
+  node-executor:
     docker:
-      - image: cimg/base:stable
+      - image: circleci/node:20.9.0
+        auth:
+          username: $DOCKER_LOGIN
+          password: $DOCKER_PASSWORD
+    working_directory: ~/repo
+    resource_class: large
+
+  python-executor:
+    docker:
+      - image: circleci/python:3.11-node
+        auth:
+          username: $DOCKER_LOGIN
+          password: $DOCKER_PASSWORD
+    working_directory: ~/repo
+    resource_class: large
+
+  docker-executor:
+    docker:
+      - image: cimg/base:current
+        auth:
+          username: $DOCKER_LOGIN
+          password: $DOCKER_PASSWORD
+    resource_class: large
+
+# ============================================================================
+# Commands - Reusable sets of steps
+# ============================================================================
+commands:
+  checkout-and-setup:
+    description: "Checkout code and setup workspace"
     steps:
       - checkout
       - run:
-          name: Install Bitwarden CLI
+          name: "Set environment variables"
           command: |
-            sudo apt-get update
-            sudo apt-get install -y gnupg unzip
-            curl -s https://vault.bitwarden.com/download/?app=cli&platform=linux -o bw.zip
-            unzip bw.zip
-            sudo mv bw /usr/local/bin/bw
-            bw --version
-      - run:
-          name: Authenticate with Bitwarden
-          command: |
-            echo "🔐 Authenticating with Bitwarden..."
-            bw login --apikey --clientid $BW_CLIENTID --clientsecret $BW_CLIENTSECRET
-            export BW_SESSION=$(bw unlock --passwordenv BW_PASSWORD --raw)
-            echo "export BW_SESSION=$BW_SESSION" >> $BASH_ENV
-      - run:
-          name: Setup SSH Key
-          command: |
-            echo "🔑 Setting up SSH key for deployment..."
-            mkdir -p ~/.ssh
-            bw get notes goblin-ssh-private-key > ~/.ssh/id_ed25519
-            chmod 600 ~/.ssh/id_ed25519
-            ssh-keyscan -H github.com >> ~/.ssh/known_hosts
-            ssh-keyscan -H gitlab.com >> ~/.ssh/known_hosts 2>/dev/null || true
-      - run:
-          name: Security Check - Monitor .env Files
-          command: |
-            echo "🔍 Running .env file security monitor..."
-            chmod +x ../../../tools/monitor-env-files.sh
-            ../../../tools/monitor-env-files.sh
-            if [ $? -ne 0 ]; then
-              echo "❌ Security violation: Unauthorized .env files found!"
-              exit 1
-            fi
-      - run:
-          name: Fetch Production Secrets
-          command: ./.circleci/fetch_secrets.sh
-      - run:
-          name: Install Fly.io CLI
-          command: |
-            echo "🚀 Installing Fly.io CLI..."
-            curl -L https://fly.io/install.sh | sh
-            export FLYCTL_INSTALL="/home/circleci/.fly"
-            export PATH="$FLYCTL_INSTALL/bin:$PATH"
-            echo "export PATH=$PATH" >> $BASH_ENV
-            flyctl version
-      - run:
-          name: Deploy to Fly.io
-          command: |
-            echo "🌐 Deploying to Fly.io using deployment script..."
-            chmod +x ../../scripts/deploy/deploy-backend.sh
-            ../../scripts/deploy/deploy-backend.sh --platform flyio --env production --ci
-      - run:
-          name: Health Check
-          command: |
-            echo "🏥 Running post-deployment health check..."
-            sleep 30
-            echo "✅ Deployment health check passed"
+            echo 'export CI_COMMIT_SHA=${CIRCLE_SHA1:0:7}' >> $BASH_ENV
+            echo 'export DOCKER_TAG=${CIRCLE_BRANCH}-${CI_COMMIT_SHA}' >> $BASH_ENV
+            source $BASH_ENV
 
+  install-node-dependencies:
+    description: "Install Node.js dependencies with caching"
+    steps:
+      - restore_cache:
+          key: node-v1-{{ checksum "package-lock.json" }}
+      - run:
+          name: "Install dependencies"
+          command: npm ci
+      - save_cache:
+          key: node-v1-{{ checksum "package-lock.json" }}
+          paths:
+            - node_modules
+
+  install-python-dependencies:
+    description: "Install Python dependencies with caching"
+    steps:
+      - restore_cache:
+          key: python-v1-{{ checksum "api/requirements.txt" }}
+      - run:
+          name: "Install dependencies"
+          command: |
+            python -m venv venv
+            source venv/bin/activate
+            pip install --upgrade pip
+            pip install -r api/requirements.txt
+      - save_cache:
+          key: python-v1-{{ checksum "api/requirements.txt" }}
+          paths:
+            - venv
+
+  docker-login:
+    description: "Login to Docker registries"
+    steps:
+      - run:
+          name: "Login to GitHub Container Registry"
+          command: |
+            echo $GITHUB_TOKEN | docker login ghcr.io -u $GITHUB_USER --password-stdin
+
+# ============================================================================
+# Jobs
+# ============================================================================
+jobs:
+  # ============================================================================
+  # Code Quality & Linting
+  # ============================================================================
+  lint:
+    executor: node-executor
+    steps:
+      - checkout-and-setup
+      - install-node-dependencies
+      - run:
+          name: "Run ESLint"
+          command: npm run lint
+      - run:
+          name: "Run Prettier check"
+          command: npx prettier --check "src/**/*.{ts,tsx,js,jsx,json,md}"
+
+  type-check:
+    executor: node-executor
+    steps:
+      - checkout-and-setup
+      - install-node-dependencies
+      - run:
+          name: "TypeScript type check"
+          command: npm run type-check
+
+  # ============================================================================
+  # Backend Testing
+  # ============================================================================
+  backend-test:
+    executor: python-executor
+    steps:
+      - checkout-and-setup
+      - install-python-dependencies
+      - run:
+          name: "Run backend tests"
+          command: |
+            source venv/bin/activate
+            python -m pytest \
+              api/ \
+              --cov=api \
+              --cov-report=xml \
+              --cov-report=html \
+              --junitxml=test-results.xml \
+              --tb=short
+      - store_test_results:
+          path: test-results.xml
+      - store_artifacts:
+          path: htmlcov
+      - codecov/upload:
+          files: ./coverage.xml
+          flags: backend
+
+  # ============================================================================
+  # Frontend Testing
+  # ============================================================================
+  frontend-test:
+    executor: node-executor
+    steps:
+      - checkout-and-setup
+      - install-node-dependencies
+      - run:
+          name: "Run frontend tests"
+          command: |
+            npm run test:coverage -- \
+              --watchAll=false \
+              --passWithNoTests
+      - store_test_results:
+          path: coverage/coverage-final.json
+      - store_artifacts:
+          path: coverage
+      - codecov/upload:
+          files: ./coverage/lcov.info
+          flags: frontend
+
+  # ============================================================================
+  # Build Application
+  # ============================================================================
+  build:
+    executor: node-executor
+    steps:
+      - checkout-and-setup
+      - install-node-dependencies
+      - run:
+          name: "Build frontend"
+          command: npm run build
+      - store_artifacts:
+          path: .next
+      - run:
+          name: "Check build size"
+          command: du -sh .next
+
+  # ============================================================================
+  # Build Docker Image
+  # ============================================================================
+  build-docker:
+    executor: docker-executor
+    steps:
+      - checkout-and-setup
+      - setup_remote_docker:
+          version: 20.10.7
+          docker_layer_caching: true
+      - docker-login
+      - run:
+          name: "Build Docker image"
+          command: |
+            docker build \
+              -t ghcr.io/$GITHUB_USER/goblin-assistant:$DOCKER_TAG \
+              -t ghcr.io/$GITHUB_USER/goblin-assistant:latest \
+              -f Dockerfile .
+      - run:
+          name: "Push Docker image"
+          command: |
+            docker push ghcr.io/$GITHUB_USER/goblin-assistant:$DOCKER_TAG
+            docker push ghcr.io/$GITHUB_USER/goblin-assistant:latest
+
+  # ============================================================================
+  # Terraform Validation
+  # ============================================================================
+  terraform-validate:
+    docker:
+      - image: hashicorp/terraform:1.6.0
+    steps:
+      - checkout
+      - run:
+          name: "Initialize Terraform"
+          command: |
+            cd terraform
+            terraform init -backend=false
+      - run:
+          name: "Validate Terraform"
+          command: |
+            cd terraform
+            terraform validate
+      - run:
+          name: "Format check"
+          command: |
+            cd terraform
+            terraform fmt -check -recursive
+
+  # ============================================================================
+  # Deploy to Staging
+  # ============================================================================
+  deploy-staging:
+    executor: docker-executor
+    steps:
+      - checkout-and-setup
+      - run:
+          name: "Deploy to staging"
+          command: |
+            echo "Deploying to Render staging..."
+            curl -X POST \
+              "https://api.render.com/v1/services/$RENDER_SERVICE_ID_STAGING/deploys" \
+              -H "Authorization: Bearer $RENDER_API_KEY" \
+              -H "Content-Type: application/json" \
+              -d '{"clearCache":"full"}'
+      - run:
+          name: "Health check"
+          command: |
+            sleep 30
+            for i in {1..30}; do
+              if curl -f https://goblin-assistant-staging.onrender.com/health; then
+                echo "✅ Staging deployment successful"
+                exit 0
+              fi
+              sleep 10
+            done
+            exit 1
+
+# ============================================================================
+# Workflows - Orchestrate jobs
+# ============================================================================
 workflows:
-  deploy_on_main:
+  version: 2
+
+  # ============================================================================
+  # Main CI/CD Pipeline
+  # ============================================================================
+  main:
     jobs:
-      - deploy:
+      # Quality gates
+      - lint
+      - type-check
+
+      # Testing
+      - backend-test:
+          requires:
+            - lint
+            - type-check
+      - frontend-test:
+          requires:
+            - lint
+            - type-check
+
+      # Build
+      - build:
+          requires:
+            - backend-test
+            - frontend-test
+
+      # Docker
+      - build-docker:
+          requires:
+            - build
+          filters:
+            branches:
+              only:
+                - main
+                - develop
+
+      # Infrastructure
+      - terraform-validate:
+          requires:
+            - build
+
+      # Deploy to staging (auto on main)
+      - deploy-staging:
+          requires:
+            - build-docker
+            - terraform-validate
           filters:
             branches:
               only: main
-  deploy_on_tags:
-    jobs:
-      - deploy:
+
+  # ============================================================================
+  # Scheduled Nightly Tests
+  # ============================================================================
+  nightly:
+    triggers:
+      - schedule:
+          cron: "0 2 * * *"
           filters:
-            tags:
-              only: /^v.*/
             branches:
-              ignore: /.*/
+              only: main
+    jobs:
+      - backend-test
+      - frontend-test
+      - build-docker

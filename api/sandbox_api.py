@@ -335,11 +335,22 @@ async def sandbox_health():
 
     # Check Redis connectivity
     redis_ok = False
+    redis_error_detail = None
     try:
         r.ping()
         redis_ok = True
-    except:
-        pass
+    except ConnectionError as e:
+        # Redis connection refused - service likely not running
+        redis_error_detail = f"Connection error: {e}"
+        redis_ok = False
+    except TimeoutError as e:
+        # Redis connection timeout
+        redis_error_detail = f"Timeout: {e}"
+        redis_ok = False
+    except Exception as e:
+        # Other unexpected errors
+        redis_error_detail = f"Health check failed: {type(e).__name__}: {e}"
+        redis_ok = False
 
     # Check queue status
     queue_size = len(queue) if redis_ok else 0
@@ -355,13 +366,19 @@ async def sandbox_health():
     else:
         status = "unhealthy"
 
-    return {
+    response = {
         "status": status,
         "redis_connected": redis_ok,
         "image_configured": image_configured,
         "queue_depth": queue_size,
         "enabled": SANDBOX_ENABLED
     }
+    
+    # Include error detail if Redis is down
+    if not redis_ok and redis_error_detail:
+        response["redis_error"] = redis_error_detail
+    
+    return response
 
 @router.post("/run", response_model=Dict[str, str])
 async def run_sandbox_code(

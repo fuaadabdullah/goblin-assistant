@@ -16,8 +16,9 @@ from api.services.message_classifier import (
 )
 from api.services.memory_promotion_service import (
     MemoryPromotionService,
-    MemoryFact,
-    PromotionStatus
+    PromotionCandidate,
+    PromotionResult,
+    PromotionGate
 )
 from api.services.retrieval_service import RetrievalService
 from api.storage.conversations import conversation_store

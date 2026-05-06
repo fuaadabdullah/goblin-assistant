@@ -1,0 +1,35 @@
+# Terraform State Files
+terraform.tfstate
+terraform.tfstate.*
+terraform.tfvars
+.terraform/
+.terraform.lock.hcl
+
+# Terraform Sensitive Output
+crash.log
+crash.*.log
+override.tf
+override.tf.json
+*_override.tf
+*_override.tf.json
+
+# Terraform Variables (local/development)
+terraform.tfvars.local
+*.tfvars
+!terraform.tfvars.example
+
+# Temporary Terraform files
+.terraform-lock.hcl
+*.tfplan
+*.tfstate.backup
+
+# IDE and Editor
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+.DS_Store
+
+# OS specific
+Thumbs.db

@@ -1,4 +1,5 @@
 import { env } from '@/config/env';
+import { devDebug, devWarn } from '@/utils/dev-log';
 import { apiClient } from '@/lib/api';
 import { normalizeProviderId } from '@/lib/providers/normalizeProvider';
 import type {
@@ -65,36 +66,163 @@ const buildUrl = (path: string): string => {
   return `${env.apiBaseUrl}/${path}`;
 };
 
+/**
+ * Retry logic for transient errors with exponential backoff + jitter
+ * Retries on: 429 (rate limit), 503 (service unavailable), 504 (gateway timeout)
+ * Uses exponential backoff with jitter to prevent thundering herd
+ */
+const isTransientError = (status?: number): boolean => {
+  return status === 429 || status === 503 || status === 504;
+};
+
+const isNetworkError = (error: unknown): boolean => {
+  if (!(error instanceof Error)) return false;
+  const message = error.message.toLowerCase();
+  return (
+    message.includes('network') ||
+    message.includes('timeout') ||
+    message.includes('failed to fetch') ||
+    message.includes('aborted')
+  );
+};
+
+/**
+ * Calculate backoff delay with exponential increase and random jitter
+ * Prevents thundering herd problem during recovery
+ */
+const calculateBackoffDelay = (
+  attempt: number,
+  baseDelayMs: number = 100,
+): number => {
+  const exponentialDelay = baseDelayMs * Math.pow(2, attempt);
+  // Add jitter: ±20% random variance
+  const jitter =
+    exponentialDelay * (0.8 + Math.random() * 0.4);
+  // Cap at 10 seconds to avoid excessive waiting
+  return Math.min(jitter, 10000);
+};
+
+const withRetry = async <T>(
+  fn: () => Promise<T>,
+  maxRetries: number = 3,
+  baseDelayMs: number = 100,
+): Promise<T> => {
+  let lastError: Error | null = null;
+
+  for (let attempt = 0; attempt < maxRetries; attempt++) {
+    try {
+      return await fn();
+    } catch (error) {
+      lastError =
+        error instanceof Error
+          ? error
+          : new Error(String(error));
+
+      // Determine if error is retryable
+      const isStatusTransient =
+        typeof error === 'object' &&
+        error !== null &&
+        'status' in error &&
+        isTransientError((error as { status?: number }).status);
+
+      const isNetworkErr = isNetworkError(error);
+      const isRetryable = isStatusTransient || isNetworkErr;
+
+      // Don't retry on last attempt or non-transient errors
+      if (!isRetryable || attempt === maxRetries - 1) {
+        throw error;
+      }
+
+      // Calculate backoff with jitter
+      const delayMs = calculateBackoffDelay(attempt, baseDelayMs);
+
+      // Log retry attempt for debugging
+      devDebug(
+        `Request retry attempt ${attempt + 1}/${maxRetries}`,
+        {
+          error: lastError.message,
+          delayMs,
+          isStatusTransient,
+          isNetworkErr,
+        },
+      );
+
+      await new Promise(resolve =>
+        setTimeout(resolve, delayMs),
+      );
+    }
+  }
+
+  throw (
+    lastError || new Error('Request failed after retries')
+  );
+};
+
 const request = async <T>(
   method: HttpMethod,
   path: string,
   body?: unknown,
 ): Promise<HttpResponse<T>> => {
-  const response = await fetch(buildUrl(path), {
-    method,
-    headers: {
-      'Content-Type': 'application/json',
-    },
-    body: body === undefined ? undefined : JSON.stringify(body),
-  });
+  return withRetry(async () => {
+    const requestStartTime = Date.now();
 
-  if (!response.ok) {
-    let detail = `HTTP ${response.status}`;
-    try {
-      const payload = (await response.json()) as { detail?: string; error?: string };
-      detail = payload.detail || payload.error || detail;
-    } catch {
-      // Keep the default message if the body is not JSON.
+    const response = await fetch(buildUrl(path), {
+      method,
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body:
+        body === undefined ? undefined : JSON.stringify(body),
+      signal: AbortSignal.timeout(30000), // 30s timeout
+    });
+
+    const requestDuration = Date.now() - requestStartTime;
+
+    if (!response.ok) {
+      let detail = `HTTP ${response.status}`;
+      let serverError: string | null = null;
+
+      try {
+        const payload = (await response.json()) as {
+          detail?: string;
+          error?: string;
+        };
+        detail = payload.detail || payload.error || detail;
+        serverError = payload.error || payload.detail || null;
+      } catch {
+        // Keep the default message if the body is not JSON.
+      }
+
+      // Log failed requests with structured context
+      devWarn(`API Error: ${method} ${path}`, {
+        status: response.status,
+        detail,
+        durationMs: requestDuration,
+        serverError,
+        timestamp: new Date().toISOString(),
+      });
+
+      const error = new Error(detail) as Error & {
+        status: number;
+      };
+      error.status = response.status;
+      throw error;
     }
-    throw new Error(detail);
-  }
 
-  if (response.status === 204) {
-    return { data: undefined as T };
-  }
+    // Log slow requests (>500ms)
+    if (requestDuration > 500) {
+      devDebug(`Slow API request: ${method} ${path}`, {
+        durationMs: requestDuration,
+      });
+    }
 
-  const data = (await response.json()) as T;
-  return { data };
+    if (response.status === 204) {
+      return { data: undefined as T };
+    }
+
+    const data = (await response.json()) as T;
+    return { data };
+  });
 };
 
 export const api = {
@@ -110,18 +238,56 @@ const keyPrefix = 'goblin_provider_key:';
 const storeKey = (provider: string) => `${keyPrefix}${provider}`;
 
 async function loadModelRegistry(): Promise<ModelRegistryResponse> {
+  const startTime = Date.now();
   try {
-    const response = await fetch('/api/models', { method: 'GET' });
+    const response = await fetch('/api/models', {
+      method: 'GET',
+      signal: AbortSignal.timeout(10000), // 10s timeout for registry
+    });
+
+    const duration = Date.now() - startTime;
+
     if (!response.ok) {
+      devWarn(
+        `Model registry fetch failed: HTTP ${response.status}`,
+        { durationMs: duration },
+      );
       return { models: [], providers: [] };
     }
 
     const payload = (await response.json()) as ModelRegistryResponse;
-    return {
-      models: Array.isArray(payload?.models) ? payload.models : [],
-      providers: Array.isArray(payload?.providers) ? payload.providers : [],
-    };
-  } catch {
+
+    // Validate response structure
+    const models = Array.isArray(payload?.models)
+      ? payload.models
+      : [];
+    const providers = Array.isArray(payload?.providers)
+      ? payload.providers
+      : [];
+
+    if (duration > 3000) {
+      devDebug('Slow model registry load', {
+        durationMs: duration,
+        modelCount: models.length,
+        providerCount: providers.length,
+      });
+    }
+
+    return { models, providers };
+  } catch (e) {
+    const duration = Date.now() - startTime;
+    const isTimeoutError =
+      e instanceof Error && e.message.includes('timeout');
+
+    // Log the error for observability
+    devWarn('Failed to load model registry', {
+      error:
+        e instanceof Error ? e.message : String(e),
+      type: e instanceof Error ? e.constructor.name : typeof e,
+      isTimeoutError,
+      durationMs: duration,
+    });
+
     return { models: [], providers: [] };
   }
 }
@@ -137,8 +303,17 @@ const safeLocalStorage = {
   get(key: string): string | null {
     if (typeof window === 'undefined') return null;
     try {
-      return window.localStorage.getItem(key);
-    } catch {
+      const value = window.localStorage.getItem(key);
+      return value;
+    } catch (e) {
+      devWarn(
+        `localStorage.getItem failed for key "${key}"`,
+        {
+          error:
+            e instanceof Error ? e.message : String(e),
+          type: typeof e,
+        },
+      );
       return null;
     }
   },
@@ -146,16 +321,34 @@ const safeLocalStorage = {
     if (typeof window === 'undefined') return;
     try {
       window.localStorage.setItem(key, value);
-    } catch {
-      return;
+    } catch (e) {
+      devWarn(
+        `localStorage.setItem failed for key "${key}"`,
+        {
+          error:
+            e instanceof Error ? e.message : String(e),
+          type: typeof e,
+          // Check if it's a quota error
+          isQuotaError:
+            e instanceof Error &&
+            e.name === 'QuotaExceededError',
+        },
+      );
     }
   },
   remove(key: string): void {
     if (typeof window === 'undefined') return;
     try {
       window.localStorage.removeItem(key);
-    } catch {
-      return;
+    } catch (e) {
+      devWarn(
+        `localStorage.removeItem failed for key "${key}"`,
+        {
+          error:
+            e instanceof Error ? e.message : String(e),
+          type: typeof e,
+        },
+      );
     }
   },
 };

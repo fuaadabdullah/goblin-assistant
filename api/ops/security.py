@@ -240,8 +240,21 @@ def require_ops_access(operation: str = "read"):
 
                     security = HTTPBearer(auto_error=False)
                     credentials = await security.__call__(request)
-                except:
-                    pass
+                except (ValueError, TypeError) as e:
+                    # Invalid credentials format or type error
+                    logger.debug(
+                        "Invalid HTTP credential format",
+                        credential_error=str(e),
+                    )
+                    credentials = None
+                except Exception as e:
+                    # Unexpected error during credential extraction
+                    logger.warning(
+                        "Unexpected error extracting HTTP credentials",
+                        exc=e,
+                        exc_type=type(e).__name__,
+                    )
+                    credentials = None
 
             # Check environment access
             env_allowed = await ops_security.check_environment_access(operation)

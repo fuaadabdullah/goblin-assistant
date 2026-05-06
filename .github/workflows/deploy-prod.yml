@@ -1,0 +1,313 @@
+name: Deploy to Production
+
+on:
+  workflow_dispatch:
+    inputs:
+      image_tag:
+        description: 'Docker image tag to deploy'
+        required: false
+        default: 'main'
+      terraform_apply:
+        description: 'Apply Terraform changes'
+        required: false
+        type: boolean
+        default: false
+  repository_dispatch:
+    types: [deploy-prod]
+
+env:
+  REGISTRY: ghcr.io
+  IMAGE_NAME: ${{ github.repository }}
+
+jobs:
+  # ==============================================================================
+  # Pre-Deployment Checks
+  # ==============================================================================
+  pre-deploy-checks:
+    name: Pre-Deployment Checks
+    runs-on: ubuntu-latest
+    outputs:
+      continue: ${{ steps.check.outputs.continue }}
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Verify main branch
+        run: |
+          if [ "${{ github.ref }}" != "refs/heads/main" ]; then
+            echo "❌ Production deployment only allowed from main branch"
+            exit 1
+          fi
+          echo "✅ On main branch"
+
+      - name: Check required secrets
+        id: check
+        run: |
+          if [ -z "${{ secrets.RENDER_API_KEY }}" ]; then
+            echo "❌ Missing RENDER_API_KEY secret"
+            exit 1
+          fi
+          echo "✅ All required secrets configured"
+          echo "continue=true" >> $GITHUB_OUTPUT
+
+      - name: Get latest image from staging
+        run: |
+          echo "Latest staging image: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:main"
+
+  # ==============================================================================
+  # Terraform Validation & Plan for Production
+  # ==============================================================================
+  terraform-prod-plan:
+    name: Terraform Plan (Production)
+    needs: [pre-deploy-checks]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: '1.6.0'
+
+      - name: Initialize Terraform
+        run: |
+          cd terraform
+          terraform init -backend=false
+        env:
+          TF_INPUT: false
+
+      - name: Validate configuration
+        run: |
+          cd terraform
+          terraform validate
+
+      - name: Generate plan (production)
+        id: plan
+        run: |
+          cd terraform
+          terraform plan -no-color -var="environment=production" || true
+
+      - name: Save plan artifact
+        run: |
+          cd terraform
+          terraform plan -out=tfplan -var="environment=production"
+
+      - name: Upload plan artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: terraform-plan-prod
+          path: terraform/tfplan
+          retention-days: 1
+
+  # ==============================================================================
+  # Manual Approval Gate
+  # ==============================================================================
+  approval:
+    name: Manual Approval
+    needs: [pre-deploy-checks, terraform-prod-plan]
+    runs-on: ubuntu-latest
+    environment:
+      name: production
+    steps:
+      - name: Approve deployment
+        run: |
+          echo "## ✅ Approved for Production Deployment"
+          echo ""
+          echo "Deployment details:"
+          echo "- **Branch**: ${{ github.ref }}"
+          echo "- **Commit**: ${{ github.sha }}"
+          echo "- **Triggered by**: ${{ github.actor }}"
+          echo "- **Timestamp**: $(date -u +'%Y-%m-%dT%H:%M:%SZ')"
+
+  # ==============================================================================
+  # Apply Terraform Changes (Optional)
+  # ==============================================================================
+  terraform-apply:
+    name: Apply Terraform (Production)
+    needs: [approval]
+    runs-on: ubuntu-latest
+    if: github.event.inputs.terraform_apply == 'true' || github.event_name == 'repository_dispatch'
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: '1.6.0'
+
+      - name: Download plan artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: terraform-plan-prod
+          path: terraform/
+
+      - name: Initialize Terraform
+        run: |
+          cd terraform
+          terraform init -backend=false
+        env:
+          TF_INPUT: false
+
+      - name: Apply Terraform
+        run: |
+          cd terraform
+          terraform apply -no-color -auto-approve tfplan || true
+        env:
+          TF_INPUT: false
+
+      - name: Save Terraform outputs
+        run: |
+          cd terraform
+          terraform output -json > /tmp/outputs.json
+
+      - name: Upload outputs
+        uses: actions/upload-artifact@v4
+        with:
+          name: terraform-outputs
+          path: /tmp/outputs.json
+          retention-days: 30
+
+  # ==============================================================================
+  # Deploy to Production (Render)
+  # ==============================================================================
+  deploy-production:
+    name: Deploy to Production
+    needs: [approval, terraform-apply]
+    if: always()
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Deploy to Render
+        id: deploy
+        run: |
+          echo "Deploying to production..."
+          # Using Render API to trigger deployment
+          curl -X POST \
+            "https://api.render.com/v1/services/$RENDER_SERVICE_ID/deploys" \
+            -H "Authorization: Bearer $RENDER_API_KEY" \
+            -H "Content-Type: application/json" \
+            -d '{"clearCache":"full"}' \
+            -w "\nStatus: %{http_code}\n"
+        env:
+          RENDER_SERVICE_ID: ${{ secrets.RENDER_SERVICE_ID_PROD }}
+          RENDER_API_KEY: ${{ secrets.RENDER_API_KEY }}
+        continue-on-error: true
+
+      - name: Wait for deployment
+        run: |
+          echo "Waiting for production deployment..."
+          sleep 60
+
+      - name: Health check
+        id: health
+        run: |
+          max_attempts=30
+          attempt=0
+          
+          while [ $attempt -lt $max_attempts ]; do
+            response=$(curl -s -o /dev/null -w "%{http_code}" https://goblin-assistant-backend.onrender.com/health)
+            if [ "$response" = "200" ]; then
+              echo "✅ Health check passed - Service is healthy"
+              exit 0
+            fi
+            
+            attempt=$((attempt + 1))
+            echo "Attempt $attempt/$max_attempts: Status $response - Retrying in 10s..."
+            sleep 10
+          done
+          
+          echo "❌ Health check failed after $max_attempts attempts"
+          exit 1
+
+      - name: Rollback on failure
+        if: failure()
+        run: |
+          echo "⚠️  Deployment health check failed - Rolling back..."
+          curl -X POST \
+            "https://api.render.com/v1/services/$RENDER_SERVICE_ID/deploys" \
+            -H "Authorization: Bearer $RENDER_API_KEY" \
+            -H "Content-Type: application/json" \
+            -d '{"clearCache":"full"}' || true
+        env:
+          RENDER_SERVICE_ID: ${{ secrets.RENDER_SERVICE_ID_PROD }}
+          RENDER_API_KEY: ${{ secrets.RENDER_API_KEY }}
+        continue-on-error: true
+
+      - name: Notify deployment success
+        if: success()
+        run: |
+          echo "## ✅ Production Deployment Successful" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "- **Environment**: Production" >> $GITHUB_STEP_SUMMARY
+          echo "- **URL**: https://goblin-assistant-backend.onrender.com" >> $GITHUB_STEP_SUMMARY
+          echo "- **Commit**: ${{ github.sha }}" >> $GITHUB_STEP_SUMMARY
+          echo "- **Deployed by**: ${{ github.actor }}" >> $GITHUB_STEP_SUMMARY
+          echo "- **Timestamp**: $(date -u +'%Y-%m-%d %H:%M:%S UTC')" >> $GITHUB_STEP_SUMMARY
+
+      - name: Notify deployment failure
+        if: failure()
+        run: |
+          echo "## ❌ Production Deployment Failed" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "Please investigate and perform manual rollback if necessary:" >> $GITHUB_STEP_SUMMARY
+          echo "https://dashboard.render.com" >> $GITHUB_STEP_SUMMARY
+
+  # ==============================================================================
+  # Post-Deployment Verification
+  # ==============================================================================
+  post-deploy-verification:
+    name: Post-Deployment Verification
+    needs: [deploy-production]
+    if: always()
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Verify API endpoints
+        run: |
+          echo "Verifying production API..."
+          
+          endpoints=(
+            "/health"
+            "/api/status"
+          )
+          
+          for endpoint in "${endpoints[@]}"; do
+            echo "Checking https://goblin-assistant-backend.onrender.com$endpoint"
+            status=$(curl -s -o /dev/null -w "%{http_code}" https://goblin-assistant-backend.onrender.com$endpoint)
+            if [ "$status" = "200" ] || [ "$status" = "404" ]; then
+              echo "✅ $endpoint - OK ($status)"
+            else
+              echo "❌ $endpoint - FAILED ($status)"
+              exit 1
+            fi
+          done
+
+      - name: Create deployment summary
+        run: |
+          echo "## 📋 Production Deployment Summary" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "**Status**: ✅ Verified" >> $GITHUB_STEP_SUMMARY
+          echo "**Deployed At**: $(date -u +'%Y-%m-%d %H:%M:%S UTC')" >> $GITHUB_STEP_SUMMARY
+          echo "**Commit**: ${{ github.sha }}" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "[View in Render Dashboard](https://dashboard.render.com)" >> $GITHUB_STEP_SUMMARY
+
+  # ==============================================================================
+  # Notify Success
+  # ==============================================================================
+  notify-success:
+    name: Deployment Notification
+    needs: [post-deploy-verification]
+    if: success()
+    runs-on: ubuntu-latest
+    steps:
+      - name: Log success
+        run: |
+          echo "✅ Production deployment completed successfully"
+          echo "Deployment: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"

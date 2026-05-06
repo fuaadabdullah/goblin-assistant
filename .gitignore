@@ -73,3 +73,4 @@ storybook-static
 /tools/
 !api/tools/
 !api/tools/**
+terraform.tfvars

@@ -115,6 +115,8 @@ apiVersion: admissionregistration.k8s.io/v1
 kind: ValidatingWebhookConfiguration
 metadata:
   name: sandbox-attestation-webhook
+  annotations:
+    cert-manager.io/inject-ca-from: sandbox/attestation-webhook-cert
   labels:
     app: attestation-webhook
     component: admission-controller
@@ -195,11 +197,15 @@ metadata:
 spec:
   secretName: attestation-webhook-cert
   issuerRef:
-    name: sandbox-issuer
-    kind: Issuer
+    name: letsencrypt-prod
+    kind: ClusterIssuer
   dnsNames:
   - attestation-webhook.sandbox.svc
   - attestation-webhook.sandbox.svc.cluster.local
+  usages:
+  - digital signature
+  - key encipherment
+  - server auth
 
 ---
 # Self-signed Issuer for development (replace with proper CA in production)

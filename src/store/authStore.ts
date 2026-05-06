@@ -1,4 +1,5 @@
 import { create } from 'zustand';
+import { devWarn } from '../utils/dev-log';
 import type { User } from '../types/api';
 import type { ValidateTokenResponse } from '../types/api';
 import { clearAuthSession, getAuthToken, isAuthenticated as checkAuth, persistAuthSession } from '../utils/auth-session';
@@ -28,7 +29,9 @@ const safeJsonParse = (value: string | null): unknown => {
   if (!value) return null;
   try {
     return JSON.parse(value);
-  } catch {
+  } catch (e) {
+    // Log parse errors to help identify data corruption
+    devWarn('Failed to parse stored user data', e);
     return null;
   }
 };
@@ -95,38 +98,45 @@ export const useAuthStore = create<AuthState>((set, get) => ({
         return;
       }
 
-      // Set provisional auth while validation runs.
-      set({
-        token: storedToken,
-        user: storedUser,
-        isAuthenticated: true,
-      });
-
       // HttpOnly cookie path: the actual JWT is not readable by JS.
       // Trust the auth flag + stored user data for UI state; the HttpOnly
       // cookie authenticates every API call automatically.
       if (!storedToken) {
+        // Only hasSession cookie, no JS token - hydrated but not setting auth
         set({ isHydrated: true, isLoading: false });
         return;
       }
 
       // Legacy path: a JS-readable token exists — validate it server-side.
+      // Do NOT set provisional auth yet; wait for validation to complete.
       try {
-        const payload = (await apiClient.validateToken(storedToken)) as ValidateTokenResponse;
+        const validateStartTime = Date.now();
+        const payload = (await apiClient.validateToken(
+          storedToken,
+        )) as ValidateTokenResponse;
+        const validationDuration = Date.now() - validateStartTime;
+
         if (payload && payload.valid === false) {
+          devWarn('Token validation failed: invalid token');
           get().clearSession();
           set({ isHydrated: true, isLoading: false });
           return;
         }
 
-        const candidateUser = payload && payload.user ? payload.user : null;
+        const candidateUser =
+          payload && payload.user ? payload.user : null;
         const validatedUser =
-          candidateUser && typeof candidateUser === 'object' && 'id' in candidateUser
+          candidateUser &&
+          typeof candidateUser === 'object' &&
+          'id' in candidateUser
             ? candidateUser
             : storedUser;
 
         // Keep provisional auth if the backend response shape is incomplete.
         if (!validatedUser) {
+          devWarn(
+            'Token validation incomplete: no user in response',
+          );
           set({
             token: storedToken,
             user: storedUser,
@@ -138,6 +148,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
         }
 
         if (typeof validatedUser !== 'object' || !('id' in validatedUser)) {
+          devWarn('Token validation failed: invalid user object');
           set({ isHydrated: true, isLoading: false });
           return;
         }
@@ -158,9 +169,20 @@ export const useAuthStore = create<AuthState>((set, get) => ({
         });
       } catch (error) {
         const status =
-          typeof error === 'object' && error !== null && 'status' in error
+          typeof error === 'object' &&
+          error !== null &&
+          'status' in error
             ? Number((error as { status?: unknown }).status)
             : undefined;
+
+        // Log error for debugging
+        const errorMessage =
+          error instanceof Error ? error.message : String(error);
+        devWarn('Token validation error', {
+          status,
+          message: errorMessage,
+          type: error instanceof Error ? error.constructor.name : typeof error,
+        });
 
         // Hard auth failures invalidate local session.
         if (status === 401 || status === 403) {
@@ -169,8 +191,17 @@ export const useAuthStore = create<AuthState>((set, get) => ({
           return;
         }
 
-        // Network/timeouts are treated as transient: keep provisional auth.
-        set({ isHydrated: true, isLoading: false });
+        // Network/timeout errors are transient: set provisional auth as fallback
+        // to allow UI to work. The HttpOnly cookie will handle auth on API calls.
+        const hasValidFallback =
+          Boolean(storedToken) && Boolean(storedUser);
+        set({
+          token: storedToken,
+          user: storedUser,
+          isAuthenticated: hasValidFallback,
+          isHydrated: true,
+          isLoading: false,
+        });
       }
     })();
 
@@ -184,12 +215,17 @@ export const useAuthStore = create<AuthState>((set, get) => ({
   hasRole: (role: string) => {
     const { user } = get();
     if (!user) return false;
+    if (typeof user.role !== 'string' && !Array.isArray(user.roles)) {
+      return false;
+    }
     return user.role === role || Boolean(user.roles?.includes(role));
   },
 
   hasAnyRole: (roles: string[]) => {
     const { user } = get();
-    if (!user) return false;
-    return roles.some(role => user.role === role || Boolean(user.roles?.includes(role)));
+    if (!user || !Array.isArray(roles) || roles.length === 0) return false;
+    const userRole = typeof user.role === 'string' ? user.role : '';
+    const userRoles = Array.isArray(user.roles) ? user.roles : [];
+    return roles.some(role => role === userRole || userRoles.includes(role));
   },
 }));

@@ -1,0 +1,228 @@
+name: Deploy to Staging
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'api/**'
+      - 'src/**'
+      - 'Dockerfile'
+      - 'terraform/**'
+      - 'terraform.tfvars.example'
+      - '.github/workflows/deploy-staging.yml'
+
+concurrency:
+  group: deploy-staging
+  cancel-in-progress: false
+
+env:
+  REGISTRY: ghcr.io
+  IMAGE_NAME: ${{ github.repository }}
+  DOCKER_BUILDKIT: 1
+  COMPOSE_DOCKER_CLI_BUILD: 1
+
+jobs:
+  # ==============================================================================
+  # Run Tests
+  # ==============================================================================
+  test:
+    name: Run Tests
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+          cache: 'pip'
+
+      - name: Install dependencies
+        run: |
+          npm ci
+          pip install -r api/requirements.txt
+
+      - name: Run linting
+        run: npm run lint
+
+      - name: Run backend tests
+        run: |
+          cd api
+          python -m pytest --cov=. --cov-report=term-missing
+
+      - name: Run frontend tests
+        run: npm run test:coverage
+
+  # ==============================================================================
+  # Build Docker Image
+  # ==============================================================================
+  build:
+    name: Build Docker Image
+    needs: [test]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+    outputs:
+      image: ${{ steps.meta.outputs.tags }}
+      digest: ${{ steps.build.outputs.digest }}
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Log in to Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Extract metadata
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
+          tags: |
+            type=ref,event=branch
+            type=sha,prefix={{branch}}-
+            type=semver,pattern={{version}}
+            type=raw,value=staging
+
+      - name: Build and push image
+        id: build
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          push: true
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+  # ==============================================================================
+  # Terraform Plan for Staging
+  # ==============================================================================
+  terraform-plan:
+    name: Terraform Plan (Staging)
+    needs: [build]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pull-requests: write
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: '1.6.0'
+
+      - name: Initialize Terraform
+        run: |
+          cd terraform
+          terraform init -backend=false
+        env:
+          TF_INPUT: false
+
+      - name: Generate plan
+        id: plan
+        run: |
+          cd terraform
+          terraform plan -no-color || true
+
+  # ==============================================================================
+  # Deploy to Staging (Render)
+  # ==============================================================================
+  deploy-staging:
+    name: Deploy to Staging
+    needs: [build, terraform-plan]
+    runs-on: ubuntu-latest
+    environment:
+      name: staging
+      url: https://goblin-assistant-staging.onrender.com
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Deploy to Render
+        id: deploy
+        run: |
+          # Using Render CLI to trigger deployment
+          curl -X POST \
+            "https://api.render.com/v1/services/$RENDER_SERVICE_ID/deploys" \
+            -H "Authorization: Bearer $RENDER_API_KEY" \
+            -H "Content-Type: application/json" \
+            -d '{"clearCache":"full"}'
+        env:
+          RENDER_SERVICE_ID: ${{ secrets.RENDER_SERVICE_ID }}
+          RENDER_API_KEY: ${{ secrets.RENDER_API_KEY }}
+        continue-on-error: true
+
+      - name: Wait for deployment
+        run: |
+          echo "Waiting for staging deployment..."
+          sleep 30
+
+      - name: Health check
+        id: health
+        run: |
+          for i in {1..30}; do
+            response=$(curl -s -o /dev/null -w "%{http_code}" https://goblin-assistant-staging.onrender.com/health)
+            if [ "$response" = "200" ]; then
+              echo "✅ Health check passed"
+              exit 0
+            fi
+            echo "Attempt $i: Status $response"
+            sleep 10
+          done
+          echo "❌ Health check failed"
+          exit 1
+
+      - name: Notify deployment success
+        run: |
+          echo "## ✅ Staging Deployment Successful" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "- **Environment**: Staging" >> $GITHUB_STEP_SUMMARY
+          echo "- **URL**: https://goblin-assistant-staging.onrender.com" >> $GITHUB_STEP_SUMMARY
+          echo "- **Image**: ${{ needs.build.outputs.image }}" >> $GITHUB_STEP_SUMMARY
+          echo "- **Commit**: ${{ github.sha }}" >> $GITHUB_STEP_SUMMARY
+
+      - name: Notify deployment failure
+        if: failure()
+        run: |
+          echo "## ❌ Staging Deployment Failed" >> $GITHUB_STEP_SUMMARY
+          echo "Please check logs and try manual deployment if needed."
+
+  # ==============================================================================
+  # Run Smoke Tests
+  # ==============================================================================
+  smoke-tests:
+    name: Smoke Tests (Staging)
+    needs: [deploy-staging]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Run smoke tests
+        run: |
+          # Example smoke tests against staging
+          curl -f https://goblin-assistant-staging.onrender.com/health || exit 1
+          curl -f https://goblin-assistant-staging.onrender.com/api/status || exit 1
+          echo "✅ Smoke tests passed"

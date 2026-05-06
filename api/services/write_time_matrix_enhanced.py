@@ -18,7 +18,7 @@ from .cache_service import cache_service
 from .retrieval_service import retrieval_service as _retrieval_singleton
 from .memory_promotion_service import memory_promotion_service
 from ..observability.decision_logger import decision_logger
-from ..observability.memory_logger import memory_logger
+from ..observability.memory_logger import memory_promotion_logger
 
 logger = structlog.get_logger()
 

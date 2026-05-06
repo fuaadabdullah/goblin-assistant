@@ -46,6 +46,14 @@ check_dependencies() {
         exit 1
     fi
 
+    local current_context
+    current_context=$(kubectl config current-context 2>/dev/null || true)
+    if [ -z "$current_context" ]; then
+        log_error "kubectl has no active context"
+        exit 1
+    fi
+    log_info "Using kubectl context: $current_context"
+
     log_success "Dependencies check passed"
 }
 
@@ -54,11 +62,15 @@ create_namespace() {
 
     if kubectl get namespace "$NAMESPACE" &> /dev/null; then
         log_warning "Namespace '$NAMESPACE' already exists"
-        read -p "Continue with existing namespace? (y/N): " -n 1 -r
-        echo
-        if [[ ! $REPLY =~ ^[Yy]$ ]]; then
-            log_info "Deployment cancelled"
-            exit 0
+        if [[ "${INTERACTIVE:-false}" == "true" ]]; then
+            read -p "Continue with existing namespace? (y/N): " -n 1 -r
+            echo
+            if [[ ! $REPLY =~ ^[Yy]$ ]]; then
+                log_info "Deployment cancelled"
+                exit 0
+            fi
+        else
+            log_info "Non-interactive mode: continuing with existing namespace"
         fi
     else
         kubectl apply -f "$SCRIPT_DIR/namespace.yaml"
@@ -127,6 +139,78 @@ deploy_scaling() {
     log_success "Scaling and monitoring configured"
 }
 
+deploy_attestation_webhook() {
+    log_info "Deploying attestation admission webhook..."
+
+    if ! kubectl get crd certificates.cert-manager.io &> /dev/null; then
+        log_error "cert-manager CRDs not found (certificates.cert-manager.io missing)"
+        exit 1
+    fi
+
+    if ! kubectl get clusterissuer letsencrypt-prod &> /dev/null; then
+        log_error "ClusterIssuer 'letsencrypt-prod' not found"
+        exit 1
+    fi
+
+    kubectl apply -f "$SCRIPT_DIR/attestation-webhook.yaml"
+
+    log_info "Waiting for webhook deployment to be available..."
+    kubectl wait --for=condition=available --timeout=300s \
+        deployment/attestation-webhook -n "$NAMESPACE"
+
+    log_info "Waiting for webhook certificate to be Ready..."
+    kubectl wait --for=condition=Ready --timeout=300s \
+        certificate/attestation-webhook-cert -n "$NAMESPACE"
+
+    log_success "Attestation webhook deployed"
+}
+
+verify_attestation_webhook() {
+    log_info "Verifying attestation webhook TLS and caBundle..."
+
+    local ca_bundle_len
+    ca_bundle_len=$(kubectl get validatingwebhookconfiguration \
+        sandbox-attestation-webhook \
+        -o jsonpath='{.webhooks[0].clientConfig.caBundle}' | wc -c)
+
+    if [ "$ca_bundle_len" -gt 0 ]; then
+        log_success "ValidatingWebhookConfiguration caBundle populated"
+    else
+        log_warning "caBundle appears empty; attempting fallback patch from certificate secret"
+
+        local ca_cert
+        ca_cert=$(kubectl get secret -n "$NAMESPACE" attestation-webhook-cert \
+            -o jsonpath='{.data.ca\.crt}' 2>/dev/null || true)
+
+        if [ -n "$ca_cert" ]; then
+            kubectl patch validatingwebhookconfiguration sandbox-attestation-webhook \
+                --type merge \
+                -p "{\"webhooks\":[{\"name\":\"attestation-validator.sandbox.svc.cluster.local\",\"clientConfig\":{\"caBundle\":\"$ca_cert\"}}]}" \
+                >/dev/null
+
+            ca_bundle_len=$(kubectl get validatingwebhookconfiguration \
+                sandbox-attestation-webhook \
+                -o jsonpath='{.webhooks[0].clientConfig.caBundle}' | wc -c)
+        fi
+
+        if [ "$ca_bundle_len" -gt 0 ]; then
+            log_success "caBundle populated after fallback patch"
+        else
+            log_warning "caBundle still empty; webhook calls may fail mTLS verification"
+        fi
+    fi
+
+    local tls_crt_len
+    tls_crt_len=$(kubectl get secret -n "$NAMESPACE" attestation-webhook-cert \
+        -o jsonpath='{.data.tls\.crt}' | wc -c)
+
+    if [ "$tls_crt_len" -gt 0 ]; then
+        log_success "Webhook TLS secret contains tls.crt"
+    else
+        log_warning "Webhook TLS secret missing tls.crt"
+    fi
+}
+
 verify_deployment() {
     log_info "Verifying deployment..."
 
@@ -147,6 +231,9 @@ verify_deployment() {
     local services
     services=$(kubectl get services -n "$NAMESPACE" --no-headers | wc -l)
     log_info "Services deployed: $services"
+
+    # Verify webhook resources
+    verify_attestation_webhook
 
     # Check security
     log_info "Security verification:"
@@ -218,6 +305,7 @@ main() {
     deploy_secrets
     deploy_infrastructure
     deploy_applications
+    deploy_attestation_webhook
     deploy_networking
     deploy_scaling
     verify_deployment

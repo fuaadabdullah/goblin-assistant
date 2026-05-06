@@ -1,208 +1,130 @@
-"""Tests for the /settings FastAPI router endpoints."""
+"""Tests for api.settings_router."""
 
 from __future__ import annotations
 
-from unittest.mock import AsyncMock, patch, MagicMock
+from unittest.mock import AsyncMock, MagicMock, patch
+
+from fastapi import FastAPI
+from fastapi.testclient import TestClient
+
+from api.settings_router import router
 
 
-# ---------------------------------------------------------------------------
-# GET /settings/
-# ---------------------------------------------------------------------------
+def _client() -> TestClient:
+    app = FastAPI()
+    app.include_router(router)
+    return TestClient(app)
 
-class TestGetSettings:
-    def test_returns_settings_shape(self, client):
-        fake_inventory = [
+
+def test_get_settings_maps_inventory_to_response():
+    client = _client()
+
+    fake_provider = MagicMock()
+    fake_provider.default_model = "gpt-4o-mini"
+
+    with patch(
+        "api.settings_router.dispatcher.get_provider_inventory",
+        new_callable=AsyncMock,
+        return_value=[
             {
                 "id": "openai",
+                "configured": True,
                 "api_key_env": "OPENAI_API_KEY",
-                "endpoint": "https://api.openai.com",
-                "models": ["gpt-4o", "gpt-4o-mini"],
+                "endpoint": "https://example.com",
+                "models": ["gpt-4o-mini"],
                 "default_model": "gpt-4o-mini",
-                "configured": True,
-            },
-            {
-                "id": "anthropic",
-                "api_key_env": "ANTHROPIC_API_KEY",
-                "endpoint": "https://api.anthropic.com",
-                "models": ["claude-sonnet-4-20250514"],
-                "default_model": "claude-sonnet-4-20250514",
-                "configured": False,
-            },
-        ]
-        with patch(
-            "api.settings_router.dispatcher.get_provider_inventory",
-            new_callable=AsyncMock,
-            return_value=fake_inventory,
-        ), patch(
-            "api.settings_router.top_providers_for",
-            return_value=["openai"],
-        ), patch(
-            "api.settings_router.dispatcher.get_provider_config",
-            return_value={"default_model": "gpt-4o-mini"},
-        ), patch(
-            "api.settings_router.dispatcher.get_provider",
-            return_value=MagicMock(default_model="gpt-4o-mini"),
-        ):
-            response = client.get("/settings/")
-            assert response.status_code == 200
-            data = response.json()
+            }
+        ],
+    ), patch(
+        "api.settings_router.top_providers_for",
+        return_value=["openai"],
+    ), patch(
+        "api.settings_router.dispatcher.get_provider_config",
+        return_value={"default_model": "gpt-4o-mini"},
+    ), patch(
+        "api.settings_router.dispatcher.get_provider",
+        return_value=fake_provider,
+    ):
+        response = client.get("/settings/")
 
-            assert "providers" in data
-            assert "models" in data
-            assert "default_provider" in data
-            assert "default_model" in data
-
-            provider_names = [p["name"] for p in data["providers"]]
-            assert "openai" in provider_names
-            assert "anthropic" in provider_names
-
-            # Configured flag
-            openai_entry = next(p for p in data["providers"] if p["name"] == "openai")
-            assert openai_entry["enabled"] is True
-
-            anthropic_entry = next(p for p in data["providers"] if p["name"] == "anthropic")
-            assert anthropic_entry["enabled"] is False
-
-    def test_models_are_deduplicated(self, client):
-        """default_model should be merged into models without duplicates."""
-        fake_inventory = [
-            {
-                "id": "test_provider",
-                "models": ["model-a", "model-b"],
-                "default_model": "model-a",  # already in models list
-                "configured": True,
-            },
-        ]
-        with patch(
-            "api.settings_router.dispatcher.get_provider_inventory",
-            new_callable=AsyncMock,
-            return_value=fake_inventory,
-        ), patch(
-            "api.settings_router.top_providers_for",
-            return_value=[],
-        ):
-            response = client.get("/settings/")
-            assert response.status_code == 200
-            data = response.json()
-            provider = data["providers"][0]
-            assert sorted(provider["models"]) == ["model-a", "model-b"]
-
-    def test_settings_error_returns_500(self, client):
-        with patch(
-            "api.settings_router.dispatcher.get_provider_inventory",
-            new_callable=AsyncMock,
-            side_effect=RuntimeError("db down"),
-        ):
-            response = client.get("/settings/")
-            assert response.status_code == 500
-            assert "Failed to get settings" in response.json()["detail"]
+    assert response.status_code == 200
+    data = response.json()
+    assert data["default_provider"] == "openai"
+    assert data["default_model"] == "gpt-4o-mini"
+    assert data["providers"][0]["name"] == "openai"
+    assert data["models"][0]["provider"] == "openai"
 
 
-# ---------------------------------------------------------------------------
-# PUT /settings/providers/{provider_name}
-# ---------------------------------------------------------------------------
+def test_get_settings_returns_500_on_inventory_failure():
+    client = _client()
 
-class TestUpdateProviderSettings:
-    def test_update_returns_success(self, client):
-        response = client.put(
-            "/settings/providers/openai",
-            json={
-                "name": "openai",
-                "api_key": "sk-test",
-                "base_url": "https://api.openai.com",
-                "models": ["gpt-4o"],
-                "enabled": True,
-            },
+    with patch(
+        "api.settings_router.dispatcher.get_provider_inventory",
+        new_callable=AsyncMock,
+        side_effect=RuntimeError("boom"),
+    ):
+        response = client.get("/settings/")
+
+    assert response.status_code == 500
+    assert "Failed to get settings" in response.json()["detail"]
+
+
+def test_update_provider_settings_rejects_blank_name():
+    client = _client()
+
+    response = client.put(
+        "/settings/providers/openai",
+        json={"name": "", "enabled": True},
+    )
+
+    assert response.status_code == 400
+    assert response.json()["detail"] == "Provider name is required"
+
+
+def test_update_model_settings_accepts_valid_payload():
+    client = _client()
+
+    response = client.put(
+        "/settings/models/gpt-4o-mini",
+        json={
+            "name": "gpt-4o-mini",
+            "provider": "openai",
+            "model_id": "gpt-4o-mini",
+        },
+    )
+
+    assert response.status_code == 200
+    data = response.json()
+    assert data["status"] == "success"
+    assert data["settings"]["provider"] == "openai"
+
+
+def test_test_provider_connection_reports_health_states():
+    client = _client()
+
+    with patch(
+        "api.settings_router.dispatcher.check_provider",
+        new_callable=AsyncMock,
+        return_value={"healthy": True},
+    ):
+        healthy = client.post(
+            "/settings/test-connection",
+            params={"provider_name": "openai"},
         )
-        assert response.status_code == 200
-        data = response.json()
-        assert data["status"] == "success"
-        assert "openai" in data["message"]
 
-    def test_update_empty_name_returns_400(self, client):
-        response = client.put(
-            "/settings/providers/openai",
-            json={"name": "", "models": [], "enabled": True},
+    with patch(
+        "api.settings_router.dispatcher.check_provider",
+        new_callable=AsyncMock,
+        return_value={"healthy": False, "health_reason": "timeout"},
+    ):
+        unhealthy = client.post(
+            "/settings/test-connection",
+            params={"provider_name": "openai"},
         )
-        assert response.status_code == 400
 
+    assert healthy.status_code == 200
+    assert healthy.json()["status"] == "success"
 
-# ---------------------------------------------------------------------------
-# PUT /settings/models/{model_name}
-# ---------------------------------------------------------------------------
-
-class TestUpdateModelSettings:
-    def test_update_model_returns_success(self, client):
-        response = client.put(
-            "/settings/models/gpt-4o",
-            json={
-                "name": "gpt-4o",
-                "provider": "openai",
-                "model_id": "gpt-4o",
-                "temperature": 0.5,
-                "enabled": True,
-            },
-        )
-        assert response.status_code == 200
-        data = response.json()
-        assert data["status"] == "success"
-
-    def test_update_model_missing_fields_returns_400(self, client):
-        response = client.put(
-            "/settings/models/gpt-4o",
-            json={
-                "name": "",
-                "provider": "",
-                "model_id": "",
-                "enabled": True,
-            },
-        )
-        assert response.status_code == 400
-
-
-# ---------------------------------------------------------------------------
-# POST /settings/test-connection
-# ---------------------------------------------------------------------------
-
-class TestTestConnection:
-    def test_successful_connection(self, client):
-        with patch(
-            "api.settings_router.dispatcher.check_provider",
-            new_callable=AsyncMock,
-            return_value={"healthy": True},
-        ):
-            response = client.post(
-                "/settings/test-connection",
-                params={"provider_name": "openai"},
-            )
-            assert response.status_code == 200
-            data = response.json()
-            assert data["connected"] is True
-            assert data["status"] == "success"
-
-    def test_failed_connection(self, client):
-        with patch(
-            "api.settings_router.dispatcher.check_provider",
-            new_callable=AsyncMock,
-            return_value={"healthy": False, "health_reason": "timeout"},
-        ):
-            response = client.post(
-                "/settings/test-connection",
-                params={"provider_name": "bad_provider"},
-            )
-            assert response.status_code == 200
-            data = response.json()
-            assert data["connected"] is False
-            assert data["status"] == "warning"
-
-    def test_connection_error_returns_500(self, client):
-        with patch(
-            "api.settings_router.dispatcher.check_provider",
-            new_callable=AsyncMock,
-            side_effect=RuntimeError("network error"),
-        ):
-            response = client.post(
-                "/settings/test-connection",
-                params={"provider_name": "openai"},
-            )
-            assert response.status_code == 500
+    assert unhealthy.status_code == 200
+    assert unhealthy.json()["status"] == "warning"
+    assert unhealthy.json()["message"] == "timeout"

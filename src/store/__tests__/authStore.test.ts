@@ -32,7 +32,7 @@ describe('Auth Store (Zustand)', () => {
     act(() => {
       result.current.setSession({
         token: 'jwt.token',
-        user: { id: '123', email: 'test@example.com', name: 'Test', role: 'user' } as any,
+        user: { id: '123', email: 'test@example.com', name: 'Test', role: 'user' },
       });
     });
 
@@ -49,7 +49,7 @@ describe('Auth Store (Zustand)', () => {
     act(() => {
       result.current.setSession({
         token: 'jwt.token',
-        user: { id: '123', email: 'test@example.com', name: 'Test', role: 'user' } as any,
+        user: { id: '123', email: 'test@example.com', name: 'Test', role: 'user' },
       });
     });
 
@@ -68,7 +68,7 @@ describe('Auth Store (Zustand)', () => {
     act(() => {
       result.current.setSession({
         token: 'jwt.token',
-        user: { id: '1', email: 'a@b.com', name: 'A', role: 'admin' } as any,
+        user: { id: '1', email: 'a@b.com', name: 'A', role: 'admin' },
       });
     });
 
@@ -82,7 +82,7 @@ describe('Auth Store (Zustand)', () => {
     act(() => {
       result.current.setSession({
         token: 'jwt.token',
-        user: { id: '1', email: 'a@b.com', name: 'A', role: 'editor' } as any,
+        user: { id: '1', email: 'a@b.com', name: 'A', role: 'editor' },
       });
     });
 
