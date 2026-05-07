@@ -5,8 +5,10 @@ set -e  # Exit on error
 
 echo "🚀 Deploying GoblinOS Assistant Frontend to Vercel..."
 
-# Navigate to project directory
-cd "$(dirname "$0")"
+# Navigate to project root (script lives in scripts/deploy)
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+PROJECT_ROOT="$(cd "$SCRIPT_DIR/../.." && pwd)"
+cd "$PROJECT_ROOT"
 
 # Check if vercel CLI is installed
 if ! command -v vercel &> /dev/null; then

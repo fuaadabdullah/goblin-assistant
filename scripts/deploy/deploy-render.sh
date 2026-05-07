@@ -6,7 +6,9 @@ set -e
 echo "🚀 Deploying Goblin Assistant Backend to Render"
 echo "================================================"
 
-cd "$(dirname "$0")"
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+PROJECT_ROOT="$(cd "$SCRIPT_DIR/../.." && pwd)"
+cd "$PROJECT_ROOT"
 
 if [ ! -f "render.yaml" ]; then
   echo "❌ render.yaml not found in project root."
