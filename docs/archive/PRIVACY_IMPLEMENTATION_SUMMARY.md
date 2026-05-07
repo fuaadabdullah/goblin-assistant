@@ -19,36 +19,38 @@ Implemented comprehensive privacy-first data handling for Goblin Assistant with 
 
 ### 1. Core Privacy Modules
 
-| Module | File | Purpose |
-|--------|------|---------|
-| **Sanitization** | `api/services/sanitization.py` | PII detection, removal, jailbreak checks |
+| Module                | File                                | Purpose                                  |
+| --------------------- | ----------------------------------- | ---------------------------------------- |
+| **Sanitization**      | `api/services/sanitization.py`      | PII detection, removal, jailbreak checks |
 | **Safe Vector Store** | `api/services/safe_vector_store.py` | Privacy-first Chroma DB wrapper with TTL |
-| **Telemetry** | `api/services/telemetry.py` | PII-free logging to Datadog |
-| **Privacy API** | `api/privacy_router.py` | GDPR/CCPA compliance endpoints |
+| **Telemetry**         | `api/services/telemetry.py`         | PII-free logging to Datadog              |
+| **Privacy API**       | `api/privacy_router.py`             | GDPR/CCPA compliance endpoints           |
 
 ### 2. Database Schema with RLS
 
 **File**: `supabase/migrations/20260110_privacy_schema_with_rls.sql`
 
 **Tables Created**:
+
 - `conversations` - Message hashes (NOT raw content), TTL enforced
 - `inference_logs` - LLM usage metrics (NO message content)
 - `user_preferences` - Consent flags and settings
 - `privacy_audit_log` - Compliance audit trail
 
 **All tables have**:
+
 - ✅ Row Level Security enabled
 - ✅ Policies for user isolation
 - ✅ TTL cleanup functions
 
 ### 3. Privacy API Endpoints
 
-| Endpoint | Purpose | GDPR Article |
-|----------|---------|--------------|
-| `POST /api/privacy/export` | Export all user data | Article 20 (Portability) |
-| `DELETE /api/privacy/delete` | Delete all user data | Article 17 (Erasure) |
-| `GET /api/privacy/data-summary` | View data summary | Article 15 (Access) |
-| `POST /api/privacy/consent/rag` | Update RAG consent | Article 7 (Consent) |
+| Endpoint                        | Purpose              | GDPR Article             |
+| ------------------------------- | -------------------- | ------------------------ |
+| `POST /api/privacy/export`      | Export all user data | Article 20 (Portability) |
+| `DELETE /api/privacy/delete`    | Delete all user data | Article 17 (Erasure)     |
+| `GET /api/privacy/data-summary` | View data summary    | Article 15 (Access)      |
+| `POST /api/privacy/consent/rag` | Update RAG consent   | Article 7 (Consent)      |
 
 ### 4. Documentation
 
@@ -61,6 +63,7 @@ Implemented comprehensive privacy-first data handling for Goblin Assistant with 
 ### PII Detection
 
 Detects and removes:
+
 - Email addresses
 - Phone numbers
 - Social Security Numbers
@@ -71,6 +74,7 @@ Detects and removes:
 - Private keys
 
 **Example**:
+
 ```python
 from api.services.sanitization import sanitize_input_for_model
 
@@ -83,6 +87,7 @@ clean, pii = sanitize_input_for_model(text)
 ### Jailbreak Detection
 
 Blocks prompt injection attempts:
+
 - Instruction override ("ignore previous instructions")
 - Role manipulation ("you are now a hacker")
 - Safety bypass ("disregard your policies")
@@ -91,6 +96,7 @@ Blocks prompt injection attempts:
 ### Consent Enforcement
 
 Vector store (RAG) requires explicit user consent:
+
 ```python
 result = await vector_store.add_document(
     ...,
@@ -102,6 +108,7 @@ result = await vector_store.add_document(
 ### TTL (Time-to-Live)
 
 All data expires automatically:
+
 - Default: 24 hours
 - Configurable per document
 - Automatic cleanup via `cleanup_expired_conversations()`
@@ -109,6 +116,7 @@ All data expires automatically:
 ### RLS (Row Level Security)
 
 Database-level isolation:
+
 ```sql
 -- Users can only see their own data
 CREATE POLICY "Users see own data"
@@ -119,12 +127,14 @@ USING (auth.uid() = user_id);
 ### Telemetry Redaction
 
 **What is logged**:
+
 - ✅ Inference metrics (provider, model, latency, cost)
 - ✅ Hashed user IDs
 - ✅ Message lengths and hashes
 - ✅ Performance metrics
 
 **What is NOT logged**:
+
 - ❌ Raw user messages
 - ❌ Email addresses
 - ❌ API keys or secrets
@@ -135,18 +145,21 @@ USING (auth.uid() = user_id);
 ### Quick Start (5 minutes)
 
 1. **Apply database migration**:
+
    ```bash
    cd apps/goblin-assistant
    supabase migration up
    ```
 
 2. **Register privacy router** in `api/main.py`:
+
    ```python
    from api.privacy_router import router as privacy_router
    app.include_router(privacy_router)
    ```
 
 3. **Integrate sanitization** in chat endpoint:
+
    ```python
    from api.services.sanitization import sanitize_input_for_model
    clean_text, pii = sanitize_input_for_model(user_input)
@@ -181,6 +194,7 @@ pytest tests/test_privacy.py -v
 ```
 
 **Test Coverage**:
+
 - ✅ PII detection (13 test cases)
 - ✅ Sensitive content flagging
 - ✅ Dictionary masking
@@ -224,6 +238,7 @@ curl -X POST http://localhost:8004/api/privacy/data-summary \
 ## Performance Impact
 
 **Minimal overhead**:
+
 - Sanitization: ~5-10ms per message (regex operations)
 - RLS: ~1-2ms (database level)
 - Vector store consent check: <1ms (in-memory check)
@@ -236,6 +251,7 @@ curl -X POST http://localhost:8004/api/privacy/data-summary \
 ### For Developers
 
 **✅ DO**:
+
 ```python
 # Sanitize before LLM
 clean, pii = sanitize_input_for_model(user_input)
@@ -249,6 +265,7 @@ result = await vector_store.add_document(..., consent_given=True)
 ```
 
 **❌ DON'T**:
+
 ```python
 # Never log raw messages
 logger.info(f"User said: {user_message}")  # ❌
@@ -265,21 +282,23 @@ vector_store.add_document(..., force=True)  # ❌
 ### Key Metrics
 
 1. **PII Detection Rate**:
+
    ```sql
-   SELECT COUNT(*) FROM inference_logs 
+   SELECT COUNT(*) FROM inference_logs
    WHERE metadata->>'pii_detected' = 'true';
    ```
 
 2. **Privacy Requests**:
+
    ```sql
-   SELECT action, COUNT(*) 
-   FROM privacy_audit_log 
+   SELECT action, COUNT(*)
+   FROM privacy_audit_log
    GROUP BY action;
    ```
 
 3. **Expired Data**:
    ```sql
-   SELECT COUNT(*) FROM conversations 
+   SELECT COUNT(*) FROM conversations
    WHERE expires_at < NOW();
    ```
 

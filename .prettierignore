@@ -8,6 +8,11 @@ build/
 
 # Generated files
 *.min.js
+
+# Test files with non-standard content
+tests/test_connection.js
+tests/test-auth.js
+api/tests/test_*.py
 *.min.css
 
 # Logs

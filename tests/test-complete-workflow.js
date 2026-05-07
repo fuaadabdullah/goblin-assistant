@@ -17,7 +17,7 @@ async function testCompleteWorkflow() {
   const testAccount = {
     email: 'goblinosrep@gmail.com',
     password: 'Fa06202001!',
-    name: 'Fuaad Abdullah'
+    name: 'Fuaad Abdullah',
   };
 
   let authToken = null;
@@ -34,8 +34,8 @@ async function testCompleteWorkflow() {
           email: testAccount.email,
           password: testAccount.password,
           confirmPassword: testAccount.password,
-          name: testAccount.name
-        })
+          name: testAccount.name,
+        }),
       });
 
       const registerData = await registerResponse.json();
@@ -57,8 +57,8 @@ async function testCompleteWorkflow() {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         email: testAccount.email,
-        password: testAccount.password
-      })
+        password: testAccount.password,
+      }),
     });
 
     const loginData = await loginResponse.json();
@@ -94,8 +94,8 @@ async function testCompleteWorkflow() {
     if (authToken) {
       const sessionResponse = await fetch(`${API_BASE}/auth/session`, {
         headers: {
-          'Cookie': `auth_token=${authToken}`
-        }
+          Cookie: `auth_token=${authToken}`,
+        },
       });
 
       if (sessionResponse.ok) {
@@ -109,14 +109,16 @@ async function testCompleteWorkflow() {
     console.log('\n🌐 Phase 4: Testing Frontend Access...');
     const dashboardResponse = await fetch(`${FRONTEND_BASE}/dashboard`, {
       headers: {
-        'Cookie': authToken ? `auth_token=${authToken}` : ''
-      }
+        Cookie: authToken ? `auth_token=${authToken}` : '',
+      },
     });
 
     if (dashboardResponse.ok) {
       console.log('   ✅ Dashboard access successful');
     } else if (dashboardResponse.status === 302) {
-      console.log('   ℹ️  Redirected (authentication required) - normal for unauthenticated access');
+      console.log(
+        '   ℹ️  Redirected (authentication required) - normal for unauthenticated access'
+      );
     } else {
       console.log('   ❌ Dashboard access failed');
     }
@@ -126,8 +128,8 @@ async function testCompleteWorkflow() {
     const logoutResponse = await fetch(`${API_BASE}/auth/logout`, {
       method: 'POST',
       headers: {
-        'Cookie': authToken ? `auth_token=${authToken}` : ''
-      }
+        Cookie: authToken ? `auth_token=${authToken}` : '',
+      },
     });
 
     if (logoutResponse.ok) {
@@ -150,7 +152,7 @@ async function testCompleteWorkflow() {
 
     // Summary
     console.log('\n📊 Workflow Test Summary:');
-    console.log('=' .repeat(50));
+    console.log('='.repeat(50));
     console.log('✅ Registration: Handled (user exists or created)');
     console.log('✅ Login: Successful');
     console.log('✅ Session: Validated');
@@ -158,7 +160,6 @@ async function testCompleteWorkflow() {
     console.log('✅ Logout: Successful');
     console.log('✅ Security: Session invalidated');
     console.log('🎉 Complete authentication workflow working!');
-
   } catch (error) {
     console.error('❌ Workflow test failed:', error.message);
   }
