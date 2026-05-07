@@ -219,6 +219,89 @@ describe('apiClient', () => {
         createdAt: '2024-01-01',
       });
     });
+
+    it('retries on transient 5xx errors and succeeds', async () => {
+      
+      const error = new Error('Service Unavailable') as Error & { status: number };
+      error.status = 503;
+
+      // First two calls fail with 503, third succeeds
+      mockHttp.post
+        .mockRejectedValueOnce(error)
+        .mockRejectedValueOnce(error)
+        .mockResolvedValueOnce({
+          data: {
+            conversation_id: 'conv-1',
+            title: 'Test Chat',
+            created_at: '2024-01-01',
+          },
+        });
+
+      const result = await apiClient.createConversation('Test Chat');
+      expect(result).toEqual({
+        conversationId: 'conv-1',
+        title: 'Test Chat',
+        createdAt: '2024-01-01',
+      });
+      expect(mockHttp.post).toHaveBeenCalledTimes(3);
+    });
+
+    it('retries on timeout errors and succeeds', async () => {
+      
+      const error = new Error('ECONNABORTED: timeout');
+
+      // First call fails with timeout, second succeeds
+      mockHttp.post
+        .mockRejectedValueOnce(error)
+        .mockResolvedValueOnce({
+          data: {
+            conversation_id: 'conv-1',
+            title: 'Test Chat',
+            created_at: '2024-01-01',
+          },
+        });
+
+      const result = await apiClient.createConversation('Test Chat');
+      expect(result).toEqual({
+        conversationId: 'conv-1',
+        title: 'Test Chat',
+        createdAt: '2024-01-01',
+      });
+      expect(mockHttp.post).toHaveBeenCalledTimes(2);
+    });
+
+    it('gives up after max retries and throws', async () => {
+      
+      const error = new Error('Service Unavailable') as Error & { status: number };
+      error.status = 503;
+
+      // All calls fail
+      mockHttp.post.mockRejectedValue(error);
+
+      await expect(apiClient.createConversation('Test Chat')).rejects.toMatchObject({
+        message: 'Service Unavailable',
+        status: 503,
+      });
+      
+      // 3 attempts total (initial + 2 retries)
+      expect(mockHttp.post).toHaveBeenCalledTimes(3);
+    });
+
+    it('does not retry on client errors (4xx)', async () => {
+      
+      const error = new Error('Unauthorized') as Error & { status: number };
+      error.status = 401;
+
+      mockHttp.post.mockRejectedValue(error);
+
+      await expect(apiClient.createConversation('Test Chat')).rejects.toMatchObject({
+        message: 'Unauthorized',
+        status: 401,
+      });
+      
+      // Should fail immediately without retries
+      expect(mockHttp.post).toHaveBeenCalledTimes(1);
+    });
   });
 
   describe('listConversations', () => {

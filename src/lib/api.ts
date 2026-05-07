@@ -336,12 +336,70 @@ const postFrontend = async <T, B = unknown>(
   }
 };
 
+/**
+ * Retry wrapper for transient failures (5xx, timeouts, network errors).
+ * Exponential backoff with jitter to prevent thundering herd.
+ */
+const withTransientRetry = async <T>(
+  fn: () => Promise<T>,
+  maxRetries: number = 3,
+  baseDelayMs: number = 100,
+): Promise<T> => {
+  let lastError: unknown;
+
+  for (let attempt = 0; attempt < maxRetries; attempt++) {
+    try {
+      return await fn();
+    } catch (error) {
+      lastError = error;
+
+      // Determine if error is transient
+      const isTransientStatus =
+        error instanceof Error &&
+        'status' in error &&
+        typeof (error as any).status === 'number' &&
+        ((error as any).status >= 500 || (error as any).status === 408);
+
+      const isNetworkError =
+        error instanceof Error &&
+        (error.message.includes('timeout') ||
+          error.message.includes('network') ||
+          error.message.includes('ECONNABORTED'));
+
+      const isRetryable = isTransientStatus || isNetworkError;
+
+      // Don't retry on last attempt or non-transient errors
+      if (!isRetryable || attempt === maxRetries - 1) {
+        throw error;
+      }
+
+      // Exponential backoff with jitter
+      const exponentialDelay = baseDelayMs * Math.pow(2, attempt);
+      const jitter = exponentialDelay * (0.8 + Math.random() * 0.4);
+      const delayMs = Math.min(jitter, 5000);
+
+      devWarn(
+        `Conversation API transient error, retrying in ${delayMs}ms`,
+        { attempt: attempt + 1, maxRetries, error: error instanceof Error ? error.message : String(error) },
+      );
+
+      await new Promise(resolve => setTimeout(resolve, delayMs));
+    }
+  }
+
+  throw lastError;
+};
+
 export const apiClient = {
   async createConversation(title?: string) {
-    const response = await postBackend<ConversationCreateResponse, { title?: string }>(
-      '/chat/conversations',
-      { title },
-      withAuth(),
+    const response = await withTransientRetry(() =>
+      postBackend<ConversationCreateResponse, { title?: string }>(
+        '/chat/conversations',
+        { title },
+        withAuth(),
+      ),
+      3,
+      100,
     );
 
     return {
