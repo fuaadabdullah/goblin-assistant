@@ -373,18 +373,34 @@ async def list_conversations(
 @router.get("/conversations/{conversation_id}")
 async def get_conversation(
     conversation_id: str,
+    offset: int = 0,
+    limit: int = 50,
     current_user: AuthenticatedUser = Depends(get_current_user),
 ):
-    """Get a conversation with all messages
+    """Get a conversation with paginated messages
 
-    Full conversation retrieval:
-    - Returns complete message history for context
+    Paginated conversation retrieval:
+    - Returns paginated message history for performance
+    - Default: first 50 messages, ordered chronologically (oldest first)
     - Messages ordered chronologically (oldest first)
     - Includes metadata for debugging/analytics
+    - Supports offset/limit for pagination
     - 404 if conversation doesn't exist
+    
+    Query Parameters:
+    - offset: Number of messages to skip (default: 0)
+    - limit: Maximum messages to return (default: 50, max: 500)
     """
     try:
         conversation = await _require_owned_conversation(conversation_id, current_user)
+
+        # Validate pagination parameters
+        offset = max(0, min(offset, len(conversation.messages)))
+        limit = max(1, min(limit, 500))  # Cap at 500 per request
+        
+        # Paginate messages
+        paginated_messages = conversation.messages[offset : offset + limit]
+        total_messages = len(conversation.messages)
 
         return {
             "conversation_id": conversation.conversation_id,
@@ -398,11 +414,18 @@ async def get_conversation(
                     "timestamp": msg.timestamp.isoformat(),
                     "metadata": msg.metadata,
                 }
-                for msg in conversation.messages
+                for msg in paginated_messages
             ],
             "created_at": conversation.created_at.isoformat(),
             "updated_at": conversation.updated_at.isoformat(),
             "metadata": conversation.metadata,
+            "pagination": {
+                "offset": offset,
+                "limit": limit,
+                "total": total_messages,
+                "returned": len(paginated_messages),
+                "has_more": offset + limit < total_messages,
+            },
         }
     except HTTPException:
         raise

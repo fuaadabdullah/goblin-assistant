@@ -27,6 +27,8 @@ export interface ChatSessionState {
   input: string;
   isSending: boolean;
   isMessagesLoading: boolean;
+  isLoadingOlderMessages: boolean;
+  hasMoreMessages: boolean;
   totalTokens: number;
   totalCostUsd: number;
   quickPrompts: QuickPrompt[];
@@ -52,6 +54,7 @@ export interface ChatSessionState {
   regenerateMessage: (messageId: string) => Promise<void>;
   handleFileSelected: (files: FileList) => void;
   removePendingAttachment: (fileId: string) => void;
+  loadOlderMessages: () => Promise<void>;
 }
 
 const createMessageId = (): string => {
@@ -102,9 +105,12 @@ export const useChatSession = (): ChatSessionState => {
   const [totalTokens, setTotalTokens] = useState(0);
   const [totalCostUsd, setTotalCostUsd] = useState(0);
   const [activeThreadKey, setActiveThreadKey] = useState<string | null>(null);
-    const [authError, setAuthError] = useState(false);
+  const [authError, setAuthError] = useState(false);
   const [pendingAttachments, setPendingAttachments] = useState<PendingAttachment[]>([]);
   const [isUploading, setIsUploading] = useState(false);
+  const [isLoadingOlderMessages, setIsLoadingOlderMessages] = useState(false);
+  const [hasMoreMessages, setHasMoreMessages] = useState(true);
+  const [messageOffset, setMessageOffset] = useState(0);
   const inputRef = useRef<HTMLTextAreaElement | null>(null);
   const bottomRef = useRef<HTMLDivElement | null>(null);
   const hasHydratedRef = useRef(false);
@@ -142,7 +148,8 @@ export const useChatSession = (): ChatSessionState => {
       if (!activeBackendThreadId) {
         throw new Error('No active backend thread id');
       }
-      return chatClient.getConversation(activeBackendThreadId);
+      // Initially load the first 50 messages
+      return chatClient.getConversation(activeBackendThreadId, { offset: 0, limit: 50 });
     },
     enabled: Boolean(activeBackendThreadId),
     staleTime: 30_000,
@@ -198,6 +205,15 @@ export const useChatSession = (): ChatSessionState => {
       backendConversationQuery.data?.conversationId === activeThread.id
     ) {
       applyMessages(backendConversationQuery.data.messages);
+      // Track pagination state
+      const paginationInfo = (backendConversationQuery.data as any)?.pagination;
+      if (paginationInfo) {
+        setHasMoreMessages(paginationInfo.has_more ?? false);
+        setMessageOffset(paginationInfo.offset ?? 0);
+      } else {
+        setHasMoreMessages(false);
+        setMessageOffset(0);
+      }
     }
   }, [
     activeThread,
@@ -579,11 +595,45 @@ export const useChatSession = (): ChatSessionState => {
     [messages, isSending, activeThread, selectedModel, selectedProvider, applyMessages]
   );
 
+  const loadOlderMessages = useCallback(async () => {
+    if (!hasMoreMessages || isLoadingOlderMessages || !activeBackendThreadId) {
+      return;
+    }
+
+    setIsLoadingOlderMessages(true);
+    try {
+      // Request the next batch of older messages
+      const nextOffset = messageOffset + 50;
+      const response = await chatClient.getConversation(activeBackendThreadId, {
+        offset: nextOffset,
+        limit: 50,
+      });
+
+      if (response.messages && response.messages.length > 0) {
+        // Prepend older messages to the beginning
+        setMessages(prev => [...response.messages, ...prev]);
+        
+        // Update pagination state
+        const paginationInfo = (response as any)?.pagination;
+        if (paginationInfo) {
+          setHasMoreMessages(paginationInfo.has_more ?? false);
+          setMessageOffset(paginationInfo.offset ?? 0);
+        }
+      }
+    } catch (error) {
+      devError('Failed to load older messages:', error);
+    } finally {
+      setIsLoadingOlderMessages(false);
+    }
+  }, [hasMoreMessages, isLoadingOlderMessages, activeBackendThreadId, messageOffset]);
+
   return {
     messages,
     input,
     isSending,
     isMessagesLoading,
+    isLoadingOlderMessages,
+    hasMoreMessages,
     totalTokens,
     totalCostUsd,
     quickPrompts,
@@ -609,5 +659,6 @@ export const useChatSession = (): ChatSessionState => {
     regenerateMessage,
     handleFileSelected,
     removePendingAttachment,
+    loadOlderMessages,
   };
 };

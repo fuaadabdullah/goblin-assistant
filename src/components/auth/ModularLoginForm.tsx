@@ -30,9 +30,31 @@ export default function ModularLoginForm({
   const [showPasskey, setShowPasskey] = useState(false);
   const [email, setEmail] = useState('');
   const [turnstileToken, setTurnstileToken] = useState('');
+  const [oauthStatus, setOauthStatus] = useState<'idle' | 'captcha' | 'exchange' | 'session'>('idle');
+  const [oauthRetryCount, setOauthRetryCount] = useState(0);
   const queryClient = useQueryClient();
 
   const turnstileConfig = useTurnstile('login');
+
+  // Retry configuration
+  const MAX_OAUTH_RETRIES = 3;
+  const OAUTH_TIMEOUT_MS = 30000; // 30 seconds
+
+  // Helper: delay with exponential backoff
+  const exponentialBackoff = (attempt: number): Promise<void> => {
+    const delay = Math.min(1000 * Math.pow(2, attempt), 10000); // 1s, 2s, 4s, 8s, max 10s
+    return new Promise(resolve => setTimeout(resolve, delay));
+  };
+
+  // Helper: timeout wrapper for promises
+  const withTimeout = <T,>(promise: Promise<T>, timeoutMs: number): Promise<T> => {
+    return Promise.race([
+      promise,
+      new Promise<T>((_, reject) =>
+        setTimeout(() => reject(new Error('Request timeout')), timeoutMs)
+      ),
+    ]);
+  };
 
   useEffect(() => {
     setIsRegister(initialMode === 'register');
@@ -88,20 +110,70 @@ export default function ModularLoginForm({
   };
 
   const handleGoogleLogin = async () => {
-    try {
-      const { url } = (await apiClient.getGoogleAuthUrl()) as {
-        url?: string;
-        authorization_url?: string;
-      };
-      const target = url;
-      if (!target) {
-        throw new Error('Google sign-in is not configured yet.');
+    let attempt = 0;
+
+    const tryGoogleLogin = async (): Promise<void> => {
+      try {
+        // Step 1: Get Google OAuth URL with timeout
+        setOauthStatus('captcha');
+        const response = await withTimeout(
+          (async () => {
+            const res = (await apiClient.getGoogleAuthUrl()) as {
+              url?: string;
+              authorization_url?: string;
+            };
+            return res;
+          })(),
+          OAUTH_TIMEOUT_MS
+        );
+
+        const target = response.url;
+        if (!target) {
+          throw new Error('Google sign-in is not configured on the server yet.');
+        }
+
+        // Step 2: Redirect to Google OAuth
+        setOauthStatus('exchange');
+        window.location.href = target;
+      } catch (error) {
+        const isTimeout = error instanceof Error && error.message.includes('timeout');
+        const isNetworkError = error instanceof Error && error.message.includes('Failed to fetch');
+
+        // Determine if we should retry
+        if ((isTimeout || isNetworkError) && attempt < MAX_OAUTH_RETRIES) {
+          attempt++;
+          setOauthRetryCount(attempt);
+          const waitMs = Math.min(1000 * Math.pow(2, attempt - 1), 10000);
+          const message = isTimeout
+            ? `Sign-in service not responding. Retrying in ${waitMs / 1000}s... (Attempt ${attempt}/${MAX_OAUTH_RETRIES})`
+            : `Network error. Retrying in ${waitMs / 1000}s... (Attempt ${attempt}/${MAX_OAUTH_RETRIES})`;
+          onError(message);
+          await exponentialBackoff(attempt - 1);
+          return tryGoogleLogin(); // Retry
+        }
+
+        // Final error message
+        let errorMessage = 'Google sign-in failed';
+        if (isTimeout) {
+          errorMessage =
+            'Google sign-in service is not responding. Backend may be waking up—please try again in a few seconds.';
+        } else if (isNetworkError) {
+          errorMessage =
+            'Network error while connecting to Google. Please check your internet connection and try again.';
+        } else if (error instanceof Error) {
+          errorMessage = error.message || 'Failed to initiate Google sign-in';
+        }
+
+        onError(errorMessage);
+        setOauthRetryCount(0);
+      } finally {
+        setOauthStatus('idle');
       }
-      window.location.href = target;
-    } catch (error) {
-      const message = error instanceof Error ? error.message : 'Failed to initiate Google login';
-      onError(message);
-    }
+    };
+
+    setIsLoading(true);
+    setOauthRetryCount(0);
+    await tryGoogleLogin().finally(() => setIsLoading(false));
   };
 
   return (
@@ -135,6 +207,22 @@ export default function ModularLoginForm({
         <Divider text="Or continue with" />
 
         <SocialLoginButtons onGoogleLogin={handleGoogleLogin} isLoading={isLoading} />
+
+        {/* OAuth Progress Indicator */}
+        {oauthStatus !== 'idle' && (
+          <div className="mt-4 p-3 bg-primary-50 border border-primary-200 rounded-md text-center">
+            <div className="text-sm text-primary font-medium">
+              {oauthStatus === 'captcha' && '🔐 Verifying with Google...'}
+              {oauthStatus === 'exchange' && '🔄 Completing sign-in...'}
+              {oauthStatus === 'session' && '💾 Setting up session...'}
+            </div>
+            {oauthRetryCount > 0 && (
+              <div className="text-xs text-primary-600 mt-2">
+                Attempt {oauthRetryCount} of {MAX_OAUTH_RETRIES}
+              </div>
+            )}
+          </div>
+        )}
 
         <div className="mt-6 space-y-3">
           <button

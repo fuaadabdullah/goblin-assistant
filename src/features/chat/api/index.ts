@@ -45,6 +45,13 @@ export interface ChatConversation {
   createdAt: string;
   updatedAt: string;
   messages: ChatMessage[];
+  pagination?: {
+    offset: number;
+    limit: number;
+    total: number;
+    returned: number;
+    has_more: boolean;
+  };
 }
 
 export interface SendMessageParams {
@@ -96,9 +103,12 @@ export const chatClient = {
     }
   },
 
-  async getConversation(conversationId: string): Promise<ChatConversation> {
+  async getConversation(
+    conversationId: string,
+    params?: { offset?: number; limit?: number }
+  ): Promise<ChatConversation> {
     try {
-      return await apiClient.getConversation(conversationId);
+      return await apiClient.getConversation(conversationId, params?.offset, params?.limit);
     } catch (error) {
       throw new UiError(
         {

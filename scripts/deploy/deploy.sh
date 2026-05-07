@@ -5,6 +5,8 @@
 
 set -e
 
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+
 echo "🚀 Starting Goblin Assistant Production Deployment"
 
 # Colors for output
@@ -80,8 +82,8 @@ deploy_vercel() {
 
 deploy_render() {
     print_status "Preparing Render backend deployment..."
-    chmod +x ./deploy-render.sh
-    ./deploy-render.sh
+    chmod +x "$SCRIPT_DIR/deploy-render.sh"
+    "$SCRIPT_DIR/deploy-render.sh"
     print_status "Render deployment instructions completed ✓"
 }
 

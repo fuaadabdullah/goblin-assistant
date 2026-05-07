@@ -9,6 +9,31 @@ export interface AuthSessionSnapshot {
   isHydrated: boolean;
 }
 
+// Token validation cache with TTL (1 hour)
+const TOKEN_CACHE_TTL_MS = 60 * 60 * 1000; // 1 hour
+interface CachedValidation {
+  payload: ValidateTokenResponse;
+  timestamp: number;
+}
+const validationCache = new Map<string, CachedValidation>();
+
+const getCachedValidation = (token: string): ValidateTokenResponse | null => {
+  const cached = validationCache.get(token);
+  if (!cached) return null;
+  
+  const age = Date.now() - cached.timestamp;
+  if (age > TOKEN_CACHE_TTL_MS) {
+    validationCache.delete(token);
+    return null;
+  }
+  
+  return cached.payload;
+};
+
+const setCachedValidation = (token: string, payload: ValidateTokenResponse): void => {
+  validationCache.set(token, { payload, timestamp: Date.now() });
+};
+
 const unauthenticatedSnapshot = (): AuthSessionSnapshot => ({
   token: null,
   user: null,
@@ -85,7 +110,13 @@ export const bootstrapAuthSession = async (): Promise<AuthSessionSnapshot> => {
   }
 
   try {
-    const payload = (await apiClient.validateToken(storedToken)) as ValidateTokenResponse;
+    // Check cache first to avoid unnecessary DB queries on app revisits
+    let payload = getCachedValidation(storedToken);
+    if (!payload) {
+      // Cache miss: validate token with backend
+      payload = (await apiClient.validateToken(storedToken)) as ValidateTokenResponse;
+      setCachedValidation(storedToken, payload);
+    }
 
     if (payload?.valid === false) {
       clearAuthSession();

@@ -364,9 +364,17 @@ export const apiClient = {
     }));
   },
 
-  async getConversation(conversationId: string) {
+  async getConversation(conversationId: string, offset?: number, limit?: number) {
+    const params = new URLSearchParams();
+    if (typeof offset === 'number') params.append('offset', offset.toString());
+    if (typeof limit === 'number') params.append('limit', limit.toString());
+    
+    const url = `/chat/conversations/${encodeURIComponent(conversationId)}${
+      params.toString() ? `?${params.toString()}` : ''
+    }`;
+
     const conversation = await getBackend<ConversationDetailResponse>(
-      `/chat/conversations/${encodeURIComponent(conversationId)}`,
+      url,
       withAuth(),
     );
 
@@ -385,6 +393,7 @@ export const apiClient = {
             ? message.metadata
             : undefined,
       })),
+      pagination: (conversation as any)?.pagination,
     };
   },
 
