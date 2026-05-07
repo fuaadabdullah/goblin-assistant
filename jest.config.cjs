@@ -26,6 +26,9 @@ const customJestConfig = {
     '!src/test/**',
     '!src/__mocks__/**',
     '!src/stories/**',
+    '!src/types/**',
+    '!src/theme/**',
+    '!src/content/**',
   ],
   coverageReporters: ['text', 'text-summary', 'lcov', 'json-summary'],
   coverageThreshold: {

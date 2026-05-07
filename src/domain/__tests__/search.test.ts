@@ -1,30 +1,47 @@
 import type { SearchResult, SearchScope } from '../search';
 
-describe('domain/search types', () => {
-  it('should build a SearchResult with required fields', () => {
-    const result: SearchResult = { id: 's1', document: 'Hello world' };
-    expect(result.id).toBe('s1');
-    expect(result.document).toBe('Hello world');
-    expect(result.metadata).toBeUndefined();
-    expect(result.distance).toBeUndefined();
-    expect(result.score).toBeUndefined();
-  });
-
-  it('should build a SearchResult with optional fields', () => {
+describe('Search types', () => {
+  it('creates a basic search result', () => {
     const result: SearchResult = {
-      id: 's2',
-      document: 'Test doc',
-      metadata: { source: 'wiki' },
-      distance: 0.5,
+      id: 'res1',
+      document: 'This is a test document with content',
       score: 0.95,
     };
-    expect(result.metadata).toEqual({ source: 'wiki' });
-    expect(result.distance).toBe(0.5);
+    expect(result.id).toBe('res1');
+    expect(result.document).toBeDefined();
     expect(result.score).toBe(0.95);
   });
 
-  it('should accept all SearchScope values', () => {
-    const scopes: SearchScope[] = ['all', 'documents', 'messages', 'tasks'];
-    expect(scopes).toHaveLength(4);
+  it('creates search result with metadata', () => {
+    const result: SearchResult = {
+      id: 'res2',
+      document: 'Another document',
+      metadata: { source: 'web', tags: ['test'] },
+      distance: 0.1,
+    };
+    expect(result.metadata?.source).toBe('web');
+    expect(result.distance).toBe(0.1);
+  });
+
+  it('creates search result with score and distance', () => {
+    const result: SearchResult = {
+      id: 'res3',
+      document: 'Document with both metrics',
+      score: 0.85,
+      distance: 0.15,
+    };
+    expect(result.score).toBe(0.85);
+    expect(result.distance).toBe(0.15);
+  });
+
+  it('accepts valid SearchScope values', () => {
+    const scope1: SearchScope = 'all';
+    const scope2: SearchScope = 'documents';
+    const scope3: SearchScope = 'messages';
+    const scope4: SearchScope = 'tasks';
+    expect(scope1).toBe('all');
+    expect(scope2).toBe('documents');
+    expect(scope3).toBe('messages');
+    expect(scope4).toBe('tasks');
   });
 });

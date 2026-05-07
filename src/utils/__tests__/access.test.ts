@@ -1,42 +1,56 @@
-import { isAdminUser, type AccessUser } from '../access';
+import { isAdminUser } from '../access';
 
-describe('Access Control Utilities', () => {
-  describe('isAdminUser', () => {
-    it('should return true for admin user', () => {
-      const adminUser: AccessUser = {
-        id: '1',
-        email: 'admin@example.com',
-        role: 'admin',
-      };
+describe('isAdminUser', () => {
+  const originalEnv = process.env;
 
-      expect(isAdminUser(adminUser)).toBe(true);
-    });
+  beforeEach(() => {
+    jest.resetModules();
+    process.env = { ...originalEnv };
+    delete process.env.NEXT_PUBLIC_ADMIN_EMAILS;
+    delete process.env.NEXT_PUBLIC_ADMIN_DOMAINS;
+  });
 
-    it('should return false for non-admin user', () => {
-      const regularUser: AccessUser = {
-        id: '2',
-        email: 'user@example.com',
-        role: 'user',
-      };
+  afterEach(() => {
+    process.env = originalEnv;
+  });
 
-      expect(isAdminUser(regularUser)).toBe(false);
-    });
+  it('returns false for null user', () => {
+    expect(isAdminUser(null)).toBe(false);
+  });
 
-    it('should return false when user is undefined', () => {
-      expect(isAdminUser(undefined)).toBe(false);
-    });
+  it('returns false for undefined user', () => {
+    expect(isAdminUser(undefined)).toBe(false);
+  });
 
-    it('should return false when user is null', () => {
-      expect(isAdminUser(null)).toBe(false);
-    });
+  it('returns true when user role is admin', () => {
+    expect(isAdminUser({ role: 'admin' })).toBe(true);
+  });
 
-    it('should return false for user without role', () => {
-      const userWithoutRole: Partial<AccessUser> = {
-        id: '3',
-        email: 'test@example.com',
-      };
+  it('returns true when user role is owner', () => {
+    expect(isAdminUser({ role: 'owner' })).toBe(true);
+  });
 
-      expect(isAdminUser(userWithoutRole as AccessUser)).toBe(false);
-    });
+  it('returns true when user role is superuser', () => {
+    expect(isAdminUser({ role: 'superuser' })).toBe(true);
+  });
+
+  it('returns false for non-admin role', () => {
+    expect(isAdminUser({ role: 'user' })).toBe(false);
+  });
+
+  it('returns true when user has admin in roles array', () => {
+    expect(isAdminUser({ roles: ['admin', 'user'] })).toBe(true);
+  });
+
+  it('returns true when user has owner in roles array', () => {
+    expect(isAdminUser({ roles: ['owner'] })).toBe(true);
+  });
+
+  it('returns false when roles array has no admin role', () => {
+    expect(isAdminUser({ roles: ['user', 'moderator'] })).toBe(false);
+  });
+
+  it('returns false for user with no role info', () => {
+    expect(isAdminUser({ email: 'test@example.com' })).toBe(false);
   });
 });
