@@ -36,8 +36,6 @@ RUN if [ -d /app/api ] && [ ! -f /app/api/__init__.py ]; then touch /app/api/__i
 ENV PORT=8001
 EXPOSE 8001
 
-# Use a small startup wrapper that prints diagnostics before starting
-COPY start.sh /app/start.sh
-RUN chmod +x /app/start.sh
-
-CMD ["/app/start.sh"]
+# Default command - will be overridden by render.yaml startCommand
+# render.yaml specifies: uvicorn api.main:app --host 0.0.0.0 --port $PORT
+CMD ["uvicorn", "api.main:app", "--host", "0.0.0.0", "--port", "8001"]
