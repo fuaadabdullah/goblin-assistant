@@ -6,7 +6,9 @@ import { useCallback } from 'react';
 import type { ChatSessionState } from '../hooks/useChatSession';
 import Seo from '../../../components/Seo';
 import { useAuthSession } from '../../../hooks/api/useAuthSession';
-import AuthPrompt from '../../../components/auth/AuthPrompt';
+import ChatPreviewPanel from './ChatPreviewPanel';
+import Link from 'next/link';
+import { Input } from '../../../components/ui/input';
 import { useUIStore } from '../../../store/uiStore';
 import { useFocusTrap } from '../../../hooks/useFocusTrap';
 
@@ -57,6 +59,12 @@ const ChatView = ({ session, isAdmin }: ChatViewProps) => {
   const closeSidebar = useCallback(() => setChatSidebarOpen(false), [setChatSidebarOpen]);
   const drawerRef = useFocusTrap(chatSidebarOpen, closeSidebar);
 
+  const chatPreviewOpen = useUIStore((state) => state.chatPreviewOpen);
+  const toggleChatPreview = useUIStore((state) => state.toggleChatPreview);
+  const setChatPreviewOpen = useUIStore((state) => state.setChatPreviewOpen);
+  const closePreview = useCallback(() => setChatPreviewOpen(false), [setChatPreviewOpen]);
+  const previewDrawerRef = useFocusTrap(chatPreviewOpen, closePreview);
+
   const handleThreadSelect = (threadKey: string) => {
     selectThread(threadKey);
     setChatSidebarOpen(false);
@@ -75,11 +83,45 @@ const ChatView = ({ session, isAdmin }: ChatViewProps) => {
           description="Sign in to chat with Goblin Assistant"
           robots="noindex,nofollow"
         />
-        <AuthPrompt
-          title="Sign in to start chatting"
-          message="Create an account or sign in to start chatting with Goblin Assistant."
-          mode="inline"
-        />
+        <div className="w-full max-w-6xl grid grid-cols-1 lg:grid-cols-[1fr_360px] gap-6 py-12">
+          <div className="rounded-2xl border border-border bg-surface p-6 shadow-card">
+            <ChatPreviewPanel />
+          </div>
+
+          <aside className="rounded-2xl border border-border bg-surface p-6 shadow-card">
+            <h2 className="text-lg font-semibold text-text">Continue the conversation</h2>
+            <p className="text-sm text-muted mt-2">pick up where the preview left off</p>
+
+            <div className="mt-6">
+              <Input placeholder="Sign in to continue this conversation..." disabled />
+            </div>
+
+            <div className="mt-4 grid gap-2">
+              <Link
+                href={{ pathname: '/login' }}
+                className="inline-flex items-center justify-center px-4 py-2 rounded-lg bg-primary text-text-inverse font-medium"
+              >
+                Sign in to Goblin →
+              </Link>
+
+              <Link
+                href={{ pathname: '/login', query: { mode: 'register' } }}
+                className="inline-flex items-center justify-center px-4 py-2 rounded-lg border border-primary text-primary font-medium"
+              >
+                Create account
+              </Link>
+            </div>
+
+            <div className="mt-6">
+              <div className="text-sm text-muted">Features</div>
+              <div className="mt-3 flex flex-wrap gap-2">
+                <span className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-surface-hover text-sm">Finance analysis</span>
+                <span className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-surface-hover text-sm">Live code</span>
+                <span className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-surface-hover text-sm">Smart memory</span>
+              </div>
+            </div>
+          </aside>
+        </div>
       </div>
     );
   }
@@ -94,13 +136,11 @@ const ChatView = ({ session, isAdmin }: ChatViewProps) => {
       <div className="relative flex">
         <div
           ref={drawerRef}
-          role="dialog"
-          aria-modal={chatSidebarOpen ? 'true' : undefined}
-          aria-label="Conversations"
+            role="dialog"
+            aria-label="Conversations"
           className={`fixed inset-0 z-40 lg:hidden ${
             chatSidebarOpen ? 'pointer-events-auto' : 'pointer-events-none'
           }`}
-          aria-hidden={chatSidebarOpen ? undefined : 'true'}
         >
           <button
             type="button"
@@ -130,6 +170,33 @@ const ChatView = ({ session, isAdmin }: ChatViewProps) => {
           </div>
         </div>
 
+        {/* Mobile preview drawer */}
+        <div
+          ref={previewDrawerRef}
+          className={`fixed inset-0 z-40 lg:hidden ${
+            chatPreviewOpen ? 'pointer-events-auto' : 'pointer-events-none'
+          }`}
+        >
+          <button
+            type="button"
+            aria-label="Close preview drawer"
+            className={`absolute inset-0 bg-black/50 backdrop-blur-sm transition-opacity duration-200 ${
+              chatPreviewOpen ? 'opacity-100' : 'opacity-0'
+            }`}
+            onClick={() => setChatPreviewOpen(false)}
+          />
+          <div
+            id="mobile-chat-preview"
+            className={`absolute inset-y-0 right-0 transition-transform duration-200 ease-out ${
+              chatPreviewOpen ? 'translate-x-0' : 'translate-x-full'
+            } pt-[max(0px,env(safe-area-inset-top))]`}
+          >
+            <div className="h-full w-[85vw] max-w-sm shadow-2xl p-6 bg-surface border border-border rounded-2xl">
+              <ChatPreviewPanel />
+            </div>
+          </div>
+        </div>
+
         <ChatSidebar
           threads={threads}
           isThreadsLoading={isThreadsLoading}
@@ -154,6 +221,9 @@ const ChatView = ({ session, isAdmin }: ChatViewProps) => {
             showSidebarToggle
             onToggleSidebar={toggleChatSidebar}
             isSidebarOpen={chatSidebarOpen}
+            showPreviewToggle
+            onTogglePreview={toggleChatPreview}
+            isPreviewOpen={chatPreviewOpen}
           />
           <section className="flex-1 overflow-y-auto px-4 py-8">
             <ChatMessageList
@@ -199,3 +269,4 @@ const ChatView = ({ session, isAdmin }: ChatViewProps) => {
 };
 
 export default ChatView;
+

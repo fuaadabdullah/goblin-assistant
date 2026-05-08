@@ -8,18 +8,27 @@ interface ChatHeaderProps {
   onClear: () => void;
   /** Toggle mobile conversation drawer. */
   onToggleSidebar?: () => void;
+  /** Toggle mobile preview drawer. */
+  onTogglePreview?: () => void;
   /** Whether mobile conversation drawer is open. */
   isSidebarOpen?: boolean;
+  /** Whether mobile preview drawer is open. */
+  isPreviewOpen?: boolean;
   /** Show mobile sidebar toggle button. */
   showSidebarToggle?: boolean;
+  /** Show mobile preview toggle button. */
+  showPreviewToggle?: boolean;
 }
 
 const ChatHeader = ({
   isAdmin,
   onClear,
   onToggleSidebar,
+  onTogglePreview,
   isSidebarOpen = false,
+  isPreviewOpen = false,
   showSidebarToggle = false,
+  showPreviewToggle = false,
 }: ChatHeaderProps) => (
   <header className="sticky top-0 z-20 border-b border-border/70 bg-surface/85 backdrop-blur px-6 py-4">
     <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
@@ -38,11 +47,20 @@ const ChatHeader = ({
               onClick={onToggleSidebar}
               className="lg:hidden inline-flex items-center gap-2 rounded-lg border border-border bg-surface px-3 py-2 text-sm text-text hover:bg-surface-hover"
               aria-label={isSidebarOpen ? 'Close conversations' : 'Open conversations'}
-              aria-expanded={isSidebarOpen}
-              aria-controls="mobile-chat-sidebar"
+              
             >
               {isSidebarOpen ? <X className="h-4 w-4" /> : <Menu className="h-4 w-4" />}
               <span>Conversations</span>
+            </button>
+          ) : null}
+          {showPreviewToggle && onTogglePreview ? (
+            <button
+              type="button"
+              onClick={onTogglePreview}
+              className="lg:hidden inline-flex items-center gap-2 rounded-lg border border-border bg-surface px-3 py-2 text-sm text-text hover:bg-surface-hover"
+              aria-label={isPreviewOpen ? 'Close preview' : 'Open preview'}
+            >
+              <span>Preview</span>
             </button>
           ) : null}
         </div>

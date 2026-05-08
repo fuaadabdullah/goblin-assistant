@@ -469,3 +469,24 @@ select:focus-visible {
 .pixel-art.scale-3 {
   transform: scale(3);
 }
+
+/* Typing indicator used in the preview ghost chat */
+.typing-dots { display: inline-flex; gap: 6px; align-items: center; }
+.typing-dots .dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 9999px;
+  background: var(--text-muted, rgba(255,255,255,0.4));
+  opacity: 0.3;
+  transform: translateY(0);
+  animation: goblin-typing 900ms ease-in-out infinite;
+}
+.typing-dots .dot:nth-child(1) { animation-delay: 0ms; }
+.typing-dots .dot:nth-child(2) { animation-delay: 120ms; }
+.typing-dots .dot:nth-child(3) { animation-delay: 240ms; }
+
+@keyframes goblin-typing {
+  0% { opacity: 0.25; transform: translateY(0); }
+  50% { opacity: 1; transform: translateY(-4px); }
+  100% { opacity: 0.25; transform: translateY(0); }
+}

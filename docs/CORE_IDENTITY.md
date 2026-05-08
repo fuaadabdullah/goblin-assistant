@@ -34,7 +34,7 @@ GoblinOS is designed for users who want data control and privacy:
 - End-to-End Encryption: Conversation data is encrypted in transit and optionally at rest.
 - Self-Hostable: Deploy to Kamatera, Fly.io, bare metal, or a private cloud.
 
-### 2.3 Enterprise-Grade Features
+### 2.3 Build with Goblin
 
 - Multi-Tenancy with isolated data and permissions.
 

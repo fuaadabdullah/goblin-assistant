@@ -5,6 +5,8 @@ description: "Goblin Assistant app documentation index"
 
 # Goblin Assistant Docs
 
+What you can do here: learn how to run, extend, and prompt Goblin Assistant — try real prompts, build with Goblin, and move from idea → output.
+
 This folder contains app-level documentation for the checked-in `goblin-assistant` codebase.
 
 ## Canonical Docs

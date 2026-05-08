@@ -14,7 +14,10 @@ interface UIState {
 
   // UI state
   sidebarOpen: boolean;
+  // Mobile navigation drawer
+  mobileNavOpen: boolean;
   chatSidebarOpen: boolean;
+  chatPreviewOpen: boolean;
   activeModal: string | null;
   notifications: NotificationItem[];
 
@@ -23,7 +26,11 @@ interface UIState {
   setTheme: (theme: 'default' | 'nocturne' | 'ember') => void;
   toggleSidebar: () => void;
   setSidebarOpen: (open: boolean) => void;
+  toggleMobileNav: () => void;
+  setMobileNavOpen: (open: boolean) => void;
   toggleChatSidebar: () => void;
+  toggleChatPreview: () => void;
+  setChatPreviewOpen: (open: boolean) => void;
   setChatSidebarOpen: (open: boolean) => void;
   openModal: (modalId: string) => void;
   closeModal: () => void;
@@ -75,7 +82,10 @@ export const useUIStore = create<UIState>((set, get) => ({
   highContrast: getHighContrastPreference(),
   currentTheme: _getPersistedTheme(),
   sidebarOpen: true,
+  mobileNavOpen: false,
   chatSidebarOpen: false,
+  // Preview drawer open (mobile)
+  chatPreviewOpen: false,
   activeModal: null,
   notifications: [],
 
@@ -109,10 +119,27 @@ export const useUIStore = create<UIState>((set, get) => ({
     set({ sidebarOpen: open });
   },
 
+  // Mobile navigation actions
+  toggleMobileNav: () => {
+    set((state) => ({ mobileNavOpen: !state.mobileNavOpen }));
+  },
+
+  setMobileNavOpen: (open: boolean) => {
+    set({ mobileNavOpen: open });
+  },
+
   toggleChatSidebar: () => {
     set((state) => ({
       chatSidebarOpen: !state.chatSidebarOpen,
     }));
+  },
+
+  toggleChatPreview: () => {
+    set((state) => ({ chatPreviewOpen: !state.chatPreviewOpen }));
+  },
+
+  setChatPreviewOpen: (open: boolean) => {
+    set({ chatPreviewOpen: open });
   },
 
   setChatSidebarOpen: (open: boolean) => {

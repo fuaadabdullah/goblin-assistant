@@ -9,6 +9,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- **Mobile Drawer + Chat FAB (mobile)**: Mobile drawer navigation with accessible focus trapping, reduced-motion support, and a prominent Chat floating action button (FAB).
+  - Chat FAB navigates to /chat, opens the chat sidebar, and emits analytics events.
+  - Framer Motion animations with respect for prefers-reduced-motion and ESC/overlay dismiss behavior.
+  - Playwright E2E test added: e2e/mobile-drawer.spec.ts
+
 - **WorkflowBuilder Component**: Visual orchestration workflow creation with drag-and-drop step management
   - Goblin selection dropdown with available AI assistants
   - Task input fields for specifying what each goblin should do

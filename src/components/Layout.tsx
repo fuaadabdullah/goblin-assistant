@@ -1,8 +1,10 @@
 import React from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/router';
-import { MessageSquare, Search, Settings, LogOut, Home, Menu, X } from 'lucide-react';
+import { MessageSquare, Search, Settings, LogOut, Home, X, Menu } from 'lucide-react';
 import Logo from './Logo';
+import MobileDrawer from './MobileDrawer';
+import { useUIStore } from '../store/uiStore';
 
 interface LayoutProps {
   children: React.ReactNode;
@@ -10,7 +12,8 @@ interface LayoutProps {
 
 const Layout: React.FC<LayoutProps> = ({ children }) => {
   const router = useRouter();
-  const [isMobileMenuOpen, setIsMobileMenuOpen] = React.useState(false);
+  const setMobileNavOpen = useUIStore((s) => s.setMobileNavOpen);
+  const isMobileMenuOpen = useUIStore((s) => s.mobileNavOpen);
 
   const handleLogout = () => {
     // Clear any stored tokens
@@ -18,6 +21,11 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
     // Navigate to login page
     router.push('/login');
   };
+
+  React.useEffect(() => {
+    // Close mobile nav on route changes
+    setMobileNavOpen(false);
+  }, [router.asPath, setMobileNavOpen]);
 
   const isActive = (path: string) => router.pathname === path;
 
@@ -41,9 +49,7 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
                 className="flex items-center space-x-3 hover:opacity-80 transition-opacity"
               >
                 <Logo size="sm" variant="simple" animated={false} decorative ariaLabel="Goblin Assistant" />
-                <h1 className="text-xl font-bold text-text hidden sm:block">
-                  Goblin Assistant
-                </h1>
+                <h1 className="text-xl font-bold text-text hidden sm:block">Goblin Assistant</h1>
               </Link>
             </div>
 
@@ -79,8 +85,9 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
             {/* Mobile menu button */}
             <div className="md:hidden">
               <button
-                onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
+                onClick={() => setMobileNavOpen(!isMobileMenuOpen)}
                 className="p-2 rounded-md text-muted hover:text-text hover:bg-surface-hover"
+                aria-label={isMobileMenuOpen ? 'Close navigation menu' : 'Open navigation menu'}
               >
                 {isMobileMenuOpen ? <X className="h-6 w-6" /> : <Menu className="h-6 w-6" />}
               </button>
@@ -88,42 +95,40 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
           </div>
         </div>
 
-        {/* Mobile Navigation */}
-        {isMobileMenuOpen && (
-          <div className="md:hidden border-t border-border bg-surface">
-            <div className="px-2 pt-2 pb-3 space-y-1">
-              {navItems.map(item => {
-                const Icon = item.icon;
-                return (
-                  <Link
-                    key={item.path}
-                    href={item.path}
-                    onClick={() => setIsMobileMenuOpen(false)}
-                    className={`flex items-center space-x-3 px-3 py-2 rounded-md text-base font-medium transition-colors ${isActive(item.path)
-                        ? 'text-primary bg-primary/10 border border-primary/30'
-                        : 'text-muted hover:text-text hover:bg-surface-hover'
-                      }`}
-                  >
-                    <Icon className="h-5 w-5" />
-                    <span>{item.label}</span>
-                  </Link>
-                );
-              })}
+        {/* Mobile Navigation rendered via MobileDrawer */}
+        <MobileDrawer title="Menu" ariaLabel="Primary mobile navigation">
+          <div className="px-2 pt-2 pb-3 space-y-1">
+            {navItems.map(item => {
+              const Icon = item.icon;
+              return (
+                <Link
+                  key={item.path}
+                  href={item.path}
+                  onClick={() => setMobileNavOpen(false)}
+                  className={`flex items-center space-x-3 px-3 py-2 rounded-md text-base font-medium transition-colors ${isActive(item.path)
+                      ? 'text-primary bg-primary/10 border border-primary/30'
+                      : 'text-muted hover:text-text hover:bg-surface-hover'
+                    }`}
+                >
+                  <Icon className="h-5 w-5" />
+                  <span>{item.label}</span>
+                </Link>
+              );
+            })}
 
-              {/* Mobile Logout Button */}
-              <button
-                onClick={() => {
-                  handleLogout();
-                  setIsMobileMenuOpen(false);
-                }}
-                className="flex items-center space-x-3 px-3 py-2 rounded-md text-base font-medium text-danger hover:brightness-110 hover:bg-danger/10 transition-colors w-full text-left"
-              >
-                <LogOut className="h-5 w-5" />
-                <span>Logout</span>
-              </button>
-            </div>
+            {/* Mobile Logout Button */}
+            <button
+              onClick={() => {
+                handleLogout();
+                setMobileNavOpen(false);
+              }}
+              className="flex items-center space-x-3 px-3 py-2 rounded-md text-base font-medium text-danger hover:brightness-110 hover:bg-danger/10 transition-colors w-full text-left"
+            >
+              <LogOut className="h-5 w-5" />
+              <span>Logout</span>
+            </button>
           </div>
-        )}
+        </MobileDrawer>
       </header>
 
       {/* Main Content */}

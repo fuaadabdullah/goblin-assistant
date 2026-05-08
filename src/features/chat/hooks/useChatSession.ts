@@ -1,5 +1,6 @@
 import type { KeyboardEvent, RefObject } from 'react';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useRouter } from 'next/router';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { chatClient } from '../api';
 import { toUiError } from '../../../lib/ui-error';
@@ -114,6 +115,7 @@ export const useChatSession = (): ChatSessionState => {
   const inputRef = useRef<HTMLTextAreaElement | null>(null);
   const bottomRef = useRef<HTMLDivElement | null>(null);
   const hasHydratedRef = useRef(false);
+  const router = useRouter();
 
   const inputEstimate = useMemo(() => {
     const est = estimateFromText(input);
@@ -170,6 +172,17 @@ export const useChatSession = (): ChatSessionState => {
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: prefersReducedMotion ? 'auto' : 'smooth' });
   }, [messages, prefersReducedMotion]);
+
+  // Prefill input from URL query param ?prompt=... when present
+  useEffect(() => {
+    if (!router.isReady) return;
+    const q = router.query.prompt;
+    const prompt = Array.isArray(q) ? q[0] : q;
+    if (typeof prompt === 'string' && prompt.trim().length > 0) {
+      setInput(prompt);
+      inputRef.current?.focus();
+    }
+  }, [router.isReady, router.query.prompt]);
 
   useEffect(() => {
     if (!hasHydratedRef.current) {

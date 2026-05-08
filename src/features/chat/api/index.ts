@@ -238,6 +238,10 @@ export const chatClient = {
       }
 
       const streamUrl = `${apiBaseUrl}/chat/stream`;
+      let buffer = '';
+      let accumulatedContent = '';
+      let totalTokens = 0;
+      let totalCost = 0;
 
       const response = await fetch(streamUrl, {
         method: 'POST',
@@ -260,10 +264,6 @@ export const chatClient = {
 
       const reader = response.body.getReader();
       const decoder = new TextDecoder();
-      let buffer = '';
-      let accumulatedContent = '';
-      let totalTokens = 0;
-      let totalCost = 0;
 
       try {
         while (true) {
@@ -280,33 +280,40 @@ export const chatClient = {
 
             if (line.startsWith('data: ')) {
               try {
-                const data = JSON.parse(line.slice(6));
-                
-                if (data.content) {
+                const data = JSON.parse(line.slice(6)) as Record<string, unknown>;
+
+                if (typeof data.content === 'string' && data.content.length > 0) {
                   accumulatedContent += data.content;
-                  const tokenCount = data.token_count || 0;
-                  const costDelta = data.cost_delta || 0;
+                  const tokenCount = Number(data.token_count) || 0;
+                  const costDelta = Number(data.cost_delta) || 0;
                   totalTokens += tokenCount;
                   totalCost += costDelta;
                   onChunk(data.content, tokenCount, costDelta);
                 }
 
+                if (data.type === 'error' || typeof (data.error) === 'string') {
+                  throw new Error(
+                    (typeof data.message === 'string' && data.message) ||
+                      (typeof data.error === 'string' && data.error) ||
+                      'Streaming failed'
+                  );
+                }
+
                 if (data.done === true) {
-                  // Final message with full response
                   const finalResponse: ChatResponse = {
-                    messageId: data.message_id,
-                    content: data.result || accumulatedContent,
-                    provider: data.provider,
-                    model: data.model,
+                    messageId: data.message_id as string | undefined,
+                    content: (typeof data.result === 'string' && data.result) || accumulatedContent,
+                    provider: data.provider as string | undefined,
+                    model: data.model as string | undefined,
                     usage: {
-                      total_tokens: data.tokens ?? totalTokens,
-                      input_tokens: data.usage?.input_tokens,
-                      output_tokens: data.usage?.output_tokens,
+                      total_tokens: (data.tokens as number) ?? totalTokens,
+                      input_tokens: (data.usage as Record<string, number>)?.input_tokens,
+                      output_tokens: (data.usage as Record<string, number>)?.output_tokens,
                     },
-                    cost_usd: data.cost ?? totalCost,
-                    correlation_id: data.correlation_id,
-                    createdAt: data.timestamp,
-                    visualizations: data.visualizations,
+                    cost_usd: (data.cost as number) ?? totalCost,
+                    correlation_id: data.correlation_id as string | undefined,
+                    createdAt: data.timestamp as string | undefined,
+                    visualizations: (data.visualizations as Array<{ type: string; title: string; data: Record<string, unknown>[]; config: Record<string, unknown> }>) || undefined,
                   };
                   onComplete(finalResponse);
                   reader.cancel();
@@ -319,15 +326,25 @@ export const chatClient = {
           }
         }
 
-        // If we got here without hitting done, treat as complete
+        // If streaming completed without explicit done flag, send accumulated response
         const finalResponse: ChatResponse = {
           content: accumulatedContent,
           cost_usd: totalCost,
         };
         onComplete(finalResponse);
-      } catch (err) {
+      } catch (error) {
         reader.cancel();
-        throw err;
+        const uiError = error instanceof Error 
+          ? error 
+          : new Error('Unknown error during streaming');
+        onError(uiError);
+        throw new UiError(
+          {
+            code: 'CHAT_STREAM_FAILED',
+            userMessage: 'The connection was interrupted. Please try again.',
+          },
+          error
+        );
       }
     } catch (error) {
       const uiError = error instanceof Error 

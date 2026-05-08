@@ -18,6 +18,8 @@ import { setupGlobalErrorTracking, monitorNetworkStatus } from '../utils/error-t
 // Import global CSS files - Next.js only allows global CSS imports in _app.tsx
 import '../index.css';
 import 'highlight.js/styles/github-dark.css';
+import ChatFAB from '../components/ChatFAB';
+import StatusBar from '../components/StatusBar';
 
 export default function App({ Component, pageProps }: AppProps) {
   const [queryClient] = useState(() => createQueryClient());
@@ -54,6 +56,8 @@ export default function App({ Component, pageProps }: AppProps) {
                 Skip to main content
               </a>
               <Component {...pageProps} />
+              <ChatFAB />
+              <StatusBar />
               <Analytics />
             </ContrastModeProvider>
           </ProviderProvider>

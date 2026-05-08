@@ -16,7 +16,7 @@ Successfully integrated an intelligent routing system for local LLMs with the Go
 1. **`backend/services/local_llm_routing.py`** (357 lines)
    - Core routing logic with intent detection
    - Model selection based on 4 factors: intent, context, latency, cost
-   - System prompt templates for different use cases
+   - System prompt templates for different real prompts
    - Automatic parameter optimization per model
    - Routing explanation generation for transparency
 
@@ -156,7 +156,7 @@ Returns detailed information about the routing system.
 POST /routing/route
 ```
 
-Low-level routing endpoint for advanced use cases.
+Low-level routing endpoint for advanced prompts.
 
 ## 💡 Usage Examples
 
@@ -305,7 +305,7 @@ curl <http://localhost:8000/chat/routing-info>
 ### 2. **Intelligent Selection**
 
 - Automatic model selection based on task
-- Optimized parameters per use case
+- Optimized parameters per prompt
 - Transparent routing explanations
 
 ### 3. **Performance Optimized**
@@ -364,7 +364,7 @@ The intelligent routing system successfully:
 - ✅ Integrates with existing FastAPI backend
 - ✅ Automatically selects optimal models
 - ✅ Provides transparent routing explanations
-- ✅ Optimizes parameters per use case
+- ✅ Optimizes parameters per prompt
 - ✅ Supports explicit overrides
 - ✅ Passes all integration tests
 - ✅ Ready for production use

@@ -6,6 +6,8 @@ import HealthHeader from './HealthHeader';
 import ContrastModeToggle from './ContrastModeToggle';
 import Logo from './Logo';
 import { useAuthSession } from '../hooks/api/useAuthSession';
+import MobileDrawer from './MobileDrawer';
+import { useUIStore } from '../store/uiStore';
 
 interface NavigationProps {
   onLogout?: () => void | Promise<void>;
@@ -16,7 +18,8 @@ interface NavigationProps {
 const Navigation = ({ onLogout, showLogout = false, variant = 'customer' }: NavigationProps) => {
   const router = useRouter();
   const { logout } = useAuthSession();
-  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+  const isMobileMenuOpen = useUIStore((s) => s.mobileNavOpen);
+  const setIsMobileMenuOpen = useUIStore((s) => s.setMobileNavOpen);
 
   const handleLogout = async () => {
     await logout();
@@ -46,8 +49,9 @@ const Navigation = ({ onLogout, showLogout = false, variant = 'customer' }: Navi
   const navItems = variant === 'admin' ? adminItems : customerItems;
 
   useEffect(() => {
+    // close mobile nav on route changes
     setIsMobileMenuOpen(false);
-  }, [router.asPath]);
+  }, [router.asPath, setIsMobileMenuOpen]);
 
   return (
     <nav
@@ -114,11 +118,9 @@ const Navigation = ({ onLogout, showLogout = false, variant = 'customer' }: Navi
             <ContrastModeToggle />
             <button
               type="button"
-              onClick={() => setIsMobileMenuOpen((open) => !open)}
+              onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
               className="inline-flex items-center justify-center rounded-lg border border-border bg-surface-hover p-2 text-text hover:bg-surface-active"
               aria-label={isMobileMenuOpen ? 'Close navigation menu' : 'Open navigation menu'}
-              aria-expanded={isMobileMenuOpen}
-              aria-controls="mobile-navigation-panel"
             >
               {isMobileMenuOpen ? <X className="w-5 h-5" aria-hidden="true" /> : <Menu className="w-5 h-5" aria-hidden="true" />}
             </button>
@@ -126,13 +128,9 @@ const Navigation = ({ onLogout, showLogout = false, variant = 'customer' }: Navi
         </div>
       </div>
 
-      <div
-        id="mobile-navigation-panel"
-        className={`lg:hidden border-t border-border bg-surface transition-[max-height,opacity] duration-200 overflow-hidden ${
-          isMobileMenuOpen ? 'max-h-[75vh] opacity-100' : 'max-h-0 opacity-0'
-        }`}
-      >
-        <div className="px-4 py-3 space-y-2">
+      {/* Mobile drawer rendered via Framer Motion and the MobileDrawer component */}
+      <MobileDrawer title={variant === 'admin' ? 'Admin' : 'Menu'} ariaLabel="Primary mobile navigation">
+        <div className="space-y-3">
           {variant === 'admin' ? (
             <div className="rounded-lg border border-border bg-surface-hover p-3">
               <HealthHeader compact />
@@ -171,7 +169,7 @@ const Navigation = ({ onLogout, showLogout = false, variant = 'customer' }: Navi
             </button>
           ) : null}
         </div>
-      </div>
+      </MobileDrawer>
     </nav>
   );
 };

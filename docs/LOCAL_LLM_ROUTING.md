@@ -38,7 +38,7 @@ This guide describes the intelligent routing system for local LLM models deploye
 }
 ```
 
-**Use Cases:**
+**Try real prompts:**
 
 - Status checks
 - Text classification (spam detection, sentiment analysis)
@@ -65,7 +65,7 @@ This guide describes the intelligent routing system for local LLM models deploye
 }
 ```
 
-**Use Cases:**
+**Try real prompts:**
 
 - Long document summarization
 - RAG (Retrieval-Augmented Generation) queries
@@ -90,7 +90,7 @@ This guide describes the intelligent routing system for local LLM models deploye
 }
 ```
 
-**Use Cases:**
+**Try real prompts:**
 
 - Conversational UI
 - Multi-turn chat
@@ -119,7 +119,7 @@ This guide describes the intelligent routing system for local LLM models deploye
 }
 ```
 
-**Use Cases:**
+**Try real prompts:**
 
 - Code generation with best practices
 - Detailed explanations

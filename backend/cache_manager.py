@@ -5,10 +5,13 @@ Provides Redis-based caching with TTL, serialization, and error handling
 """
 
 import asyncio
+import inspect
 import json
 import logging
 import os
-from typing import Any, Optional
+import random
+import time
+from typing import Any, Awaitable, Callable, Optional
 import redis.asyncio as redis
 from contextlib import asynccontextmanager
 
@@ -22,12 +25,58 @@ class CacheManager:
         self.redis_url = redis_url or os.getenv("REDIS_URL", "redis://localhost:6379/0")
         self._redis: Optional[redis.Redis] = None
         self._lock = asyncio.Lock()
+        self._failed = False
+        self._failure_count = 0
+        self._next_retry_at = 0.0
+        self._base_backoff_seconds = float(
+            os.getenv("REDIS_RETRY_BASE_SECONDS", "0.5")
+        )
+        self._max_backoff_seconds = float(
+            os.getenv("REDIS_RETRY_MAX_SECONDS", "30")
+        )
+
+    def _record_connection_failure(self) -> float:
+        self._failed = True
+        self._failure_count += 1
+
+        delay = min(
+            self._base_backoff_seconds * (2 ** (self._failure_count - 1)),
+            self._max_backoff_seconds,
+        )
+        jitter = random.uniform(0, delay * 0.1)
+        cooldown = delay + jitter
+        self._next_retry_at = time.monotonic() + cooldown
+        return cooldown
+
+    def _connection_cooldown_remaining(self) -> float:
+        if not self._failed:
+            return 0.0
+        return max(0.0, self._next_retry_at - time.monotonic())
+
+    def _reset_connection_failures(self) -> None:
+        self._failed = False
+        self._failure_count = 0
+        self._next_retry_at = 0.0
 
     async def _get_redis(self) -> redis.Redis:
         """Lazy initialization of Redis connection"""
+        if self._redis is not None:
+            return self._redis
+
+        remaining = self._connection_cooldown_remaining()
+        if remaining > 0:
+            raise RuntimeError(
+                f"Redis connection is in cooldown; retry in {remaining:.2f}s"
+            )
+
         if self._redis is None:
             async with self._lock:
                 if self._redis is None:
+                    remaining = self._connection_cooldown_remaining()
+                    if remaining > 0:
+                        raise RuntimeError(
+                            f"Redis connection is in cooldown; retry in {remaining:.2f}s"
+                        )
                     try:
                         self._redis = redis.from_url(
                             self.redis_url,
@@ -39,9 +88,16 @@ class CacheManager:
                         )
                         # Test connection
                         await self._redis.ping()
+                        self._reset_connection_failures()
                         logger.info("Redis cache connection established")
-                    except Exception as e:
-                        logger.error(f"Failed to connect to Redis: {e}")
+                    except Exception as e:  # noqa: BLE001
+                        cooldown = self._record_connection_failure()
+                        logger.error(
+                            "Failed to connect to Redis; cooldown %.2fs: %s",
+                            cooldown,
+                            e,
+                            exc_info=True,
+                        )
                         self._redis = None
                         raise
         return self._redis
@@ -53,8 +109,8 @@ class CacheManager:
             value = await redis_client.get(key)
             if value is not None:
                 return json.loads(value)
-        except Exception as e:
-            logger.warning(f"Cache get failed for key {key}: {e}")
+        except Exception as e:  # noqa: BLE001
+            logger.warning("Cache get failed for key %s: %s", key, e, exc_info=True)
         return None
 
     async def set(self, key: str, value: Any, ttl: int = 300) -> bool:
@@ -64,8 +120,8 @@ class CacheManager:
             serialized = json.dumps(value)
             await redis_client.set(key, serialized, ex=ttl)
             return True
-        except Exception as e:
-            logger.warning(f"Cache set failed for key {key}: {e}")
+        except Exception as e:  # noqa: BLE001
+            logger.warning("Cache set failed for key %s: %s", key, e, exc_info=True)
             return False
 
     async def delete(self, key: str) -> bool:
@@ -74,8 +130,8 @@ class CacheManager:
             redis_client = await self._get_redis()
             await redis_client.delete(key)
             return True
-        except Exception as e:
-            logger.warning(f"Cache delete failed for key {key}: {e}")
+        except Exception as e:  # noqa: BLE001
+            logger.warning("Cache delete failed for key %s: %s", key, e, exc_info=True)
             return False
 
     async def exists(self, key: str) -> bool:
@@ -83,8 +139,8 @@ class CacheManager:
         try:
             redis_client = await self._get_redis()
             return bool(await redis_client.exists(key))
-        except Exception as e:
-            logger.warning(f"Cache exists check failed for key {key}: {e}")
+        except Exception as e:  # noqa: BLE001
+            logger.warning("Cache exists check failed for key %s: %s", key, e, exc_info=True)
             return False
 
     async def clear_pattern(self, pattern: str) -> int:
@@ -95,8 +151,8 @@ class CacheManager:
             if keys:
                 await redis_client.delete(*keys)
             return len(keys)
-        except Exception as e:
-            logger.warning(f"Cache clear pattern failed for {pattern}: {e}")
+        except Exception as e:  # noqa: BLE001
+            logger.warning("Cache clear pattern failed for %s: %s", pattern, e, exc_info=True)
             return 0
 
     async def get_ttl(self, key: str) -> int:
@@ -104,8 +160,8 @@ class CacheManager:
         try:
             redis_client = await self._get_redis()
             return await redis_client.ttl(key)
-        except Exception as e:
-            logger.warning(f"Cache TTL check failed for key {key}: {e}")
+        except Exception as e:  # noqa: BLE001
+            logger.warning("Cache TTL check failed for key %s: %s", key, e, exc_info=True)
             return -1
 
     @asynccontextmanager
@@ -113,13 +169,18 @@ class CacheManager:
         """Context manager for Redis pipeline operations"""
         redis_client = await self._get_redis()
         async with redis_client.pipeline() as pipe:
-            yield pipe
+            try:
+                yield pipe
+            finally:
+                # redis-py context manager handles pipeline cleanup.
+                pass
 
     async def close(self):
         """Close Redis connection"""
         if self._redis:
             await self._redis.close()
             self._redis = None
+        self._reset_connection_failures()
 
 
 # Global cache instance
@@ -128,7 +189,7 @@ _cache_instance: Optional[CacheManager] = None
 
 def get_cache_manager() -> CacheManager:
     """Get global cache manager instance"""
-    global _cache_instance
+    global _cache_instance  # noqa: PLW0603
     if _cache_instance is None:
         _cache_instance = CacheManager()
     return _cache_instance
@@ -176,7 +237,11 @@ class CacheKeys:
 
 
 # Example usage and cache-aside pattern
-async def get_with_cache(key: str, fetch_func, ttl: int = 300):
+async def get_with_cache(
+    key: str,
+    fetch_func: Callable[[], Awaitable[Any]],
+    ttl: int = 300,
+) -> Optional[Any]:
     """
     Cache-aside pattern: try cache first, then fetch if miss
 
@@ -194,12 +259,21 @@ async def get_with_cache(key: str, fetch_func, ttl: int = 300):
 
     # Cache miss - fetch from source
     try:
-        data = await fetch_func()
+        result = fetch_func()
+        if not inspect.isawaitable(result):
+            logger.error(
+                "fetch_func for cache key %s must return an awaitable, got %s",
+                key,
+                type(result).__name__,
+            )
+            return None
+
+        data = await result
         if data is not None:
             await cache_set(key, data, ttl)
         return data
-    except Exception as e:
-        logger.error(f"Failed to fetch data for cache key {key}: {e}")
+    except Exception as e:  # noqa: BLE001
+        logger.error("Failed to fetch data for cache key %s: %s", key, e, exc_info=True)
         return None
 
 

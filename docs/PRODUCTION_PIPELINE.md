@@ -339,7 +339,7 @@ flyctl releases rollback <release-id>
 - No `.env` files in repository
 - Secrets pulled dynamically at deploy time
 
-### ✅ Enterprise Security
+### ✅ Build with Goblin
 
 - Bitwarden encryption and access controls
 - Audit trails for all secret access

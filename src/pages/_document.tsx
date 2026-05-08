@@ -6,7 +6,7 @@ export default class MyDocument extends Document {
     return (
       <Html lang="en" className={fontVariables}>
         <Head>
-          <meta name="theme-color" content="#071117" />
+          <meta name="theme-color" content="#161008" />
           <link rel="icon" href="/favicon.svg" />
           <link rel="apple-touch-icon" href="/GoblinOSIcon.png" />
           <link rel="manifest" href="/site.webmanifest" />

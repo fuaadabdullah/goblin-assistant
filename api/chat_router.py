@@ -160,6 +160,11 @@ class SSEDataEvent(BaseModel):
     is_recoverable: Optional[bool] = None
 
 
+def _format_sse_event(event: str, payload: Dict[str, Any]) -> str:
+    """Format a compliant SSE event frame with explicit event/data fields."""
+    return f"event: {event}\ndata: {json.dumps(payload)}\n\n"
+
+
 def _latest_snippet(conversation: Conversation) -> Optional[str]:
     if not conversation.messages:
         return None
@@ -1320,7 +1325,10 @@ async def generate_chat_stream(
     - Specific error codes for client handling
     """
     # Send initial status
-    yield f"data: {json.dumps({'status': 'started', 'message': 'Processing your request...'})}\n\n"
+    yield _format_sse_event(
+        "status",
+        {"status": "started", "message": "Processing your request..."},
+    )
 
     accumulated_text = ""
     total_tokens = 0
@@ -1344,7 +1352,7 @@ async def generate_chat_stream(
                 "is_recoverable": False,
                 "done": True,
             }
-            yield f"data: {json.dumps(error_event)}\n\n"
+            yield _format_sse_event("error", error_event)
             return
 
         # Sanitize input
@@ -1369,7 +1377,7 @@ async def generate_chat_stream(
                 "details": {"stage": "message_storage"},
                 "done": True,
             }
-            yield f"data: {json.dumps(error_event)}\n\n"
+            yield _format_sse_event("error", error_event)
             return
 
         # Build message payload from conversation history
@@ -1388,7 +1396,7 @@ async def generate_chat_stream(
                 "is_recoverable": False,
                 "done": True,
             }
-            yield f"data: {json.dumps(error_event)}\n\n"
+            yield _format_sse_event("error", error_event)
             return
 
         # Invoke provider with streaming
@@ -1410,7 +1418,7 @@ async def generate_chat_stream(
                 "details": {"provider": provider, "timeout_ms": 30000},
                 "done": True,
             }
-            yield f"data: {json.dumps(error_event)}\n\n"
+            yield _format_sse_event("error", error_event)
             return
         except Exception as provider_connect_exc:
             logger.error("provider_connection_error", exc=provider_connect_exc, provider=provider)
@@ -1422,7 +1430,7 @@ async def generate_chat_stream(
                 "details": {"provider": provider},
                 "done": True,
             }
-            yield f"data: {json.dumps(error_event)}\n\n"
+            yield _format_sse_event("error", error_event)
             return
 
         # Check if provider returned success
@@ -1443,7 +1451,15 @@ async def generate_chat_stream(
                     used_provider = fallback_response.get("provider", used_provider)
                     used_model = fallback_response.get("model", used_model)
                     # Send fallback result
-                    yield f"data: {json.dumps({'content': accumulated_text, 'token_count': 0, 'cost_delta': 0, 'done': False})}\n\n"
+                    yield _format_sse_event(
+                        "chunk",
+                        {
+                            "content": accumulated_text,
+                            "token_count": 0,
+                            "cost_delta": 0,
+                            "done": False,
+                        },
+                    )
                 else:
                     # Fallback also failed
                     fallback_error = fallback_response.get("error", "unknown") if isinstance(fallback_response, dict) else "unknown"
@@ -1456,7 +1472,7 @@ async def generate_chat_stream(
                         "details": {"provider_error": provider_error},
                         "done": True,
                     }
-                    yield f"data: {json.dumps(error_event)}\n\n"
+                    yield _format_sse_event("error", error_event)
                     return
             except asyncio.TimeoutError:
                 logger.error("provider_fallback_timeout", provider=provider)
@@ -1467,7 +1483,7 @@ async def generate_chat_stream(
                     "is_recoverable": True,
                     "done": True,
                 }
-                yield f"data: {json.dumps(error_event)}\n\n"
+                yield _format_sse_event("error", error_event)
                 return
             except Exception as fallback_exc:
                 logger.error("provider_fallback_error", exc=fallback_exc)
@@ -1478,7 +1494,7 @@ async def generate_chat_stream(
                     "is_recoverable": True,
                     "done": True,
                 }
-                yield f"data: {json.dumps(error_event)}\n\n"
+                yield _format_sse_event("error", error_event)
                 return
 
         elif provider_response.get("stream"):
@@ -1493,7 +1509,15 @@ async def generate_chat_stream(
                         accumulated_text += chunk_text
                         token_estimate = max(1, len(chunk_text) // 4)
                         total_tokens += token_estimate
-                        yield f"data: {json.dumps({'content': chunk_text, 'token_count': token_estimate, 'cost_delta': 0, 'done': False})}\n\n"
+                        yield _format_sse_event(
+                            "chunk",
+                            {
+                                "content": chunk_text,
+                                "token_count": token_estimate,
+                                "cost_delta": 0,
+                                "done": False,
+                            },
+                        )
                     except Exception as chunk_exc:
                         logger.error("chunk_processing_error", exc=chunk_exc)
                         # Continue with next chunk instead of failing entire stream
@@ -1508,7 +1532,7 @@ async def generate_chat_stream(
                     "details": {"partial_response": accumulated_text[:100]},  # Send first 100 chars as preview
                     "done": True,
                 }
-                yield f"data: {json.dumps(error_event)}\n\n"
+                yield _format_sse_event("error", error_event)
                 return
             except Exception as stream_exc:
                 logger.error("streaming_error", exc=stream_exc, partial_response_len=len(accumulated_text))
@@ -1522,7 +1546,7 @@ async def generate_chat_stream(
                         "details": {"has_partial_response": True},
                         "done": True,
                     }
-                    yield f"data: {json.dumps(error_event)}\n\n"
+                    yield _format_sse_event("error", error_event)
                 else:
                     error_event = {
                         "type": "error",
@@ -1531,7 +1555,7 @@ async def generate_chat_stream(
                         "is_recoverable": True,
                         "done": True,
                     }
-                    yield f"data: {json.dumps(error_event)}\n\n"
+                    yield _format_sse_event("error", error_event)
                 return
         else:
             # Provider returned ok but no stream key — extract text directly
@@ -1540,7 +1564,15 @@ async def generate_chat_stream(
             used_provider = provider_response.get("provider", used_provider)
             used_model = provider_response.get("model", used_model)
             if accumulated_text:
-                yield f"data: {json.dumps({'content': accumulated_text, 'token_count': 0, 'cost_delta': 0, 'done': False})}\n\n"
+                yield _format_sse_event(
+                    "chunk",
+                    {
+                        "content": accumulated_text,
+                        "token_count": 0,
+                        "cost_delta": 0,
+                        "done": False,
+                    },
+                )
 
         # Store assistant response
         try:
@@ -1561,13 +1593,25 @@ async def generate_chat_stream(
                 "is_recoverable": False,
                 "done": True,
             }
-            yield f"data: {json.dumps(error_event)}\n\n"
+            yield _format_sse_event("warning", error_event)
             return
 
         duration_ms = int((time.time() - start_time) * 1000)
 
         # Send completion event
-        yield f"data: {json.dumps({'result': accumulated_text, 'cost': total_cost, 'tokens': total_tokens, 'model': used_model, 'provider': used_provider, 'duration_ms': duration_ms, 'message_id': response_message_id, 'done': True})}\n\n"
+        yield _format_sse_event(
+            "complete",
+            {
+                "result": accumulated_text,
+                "cost": total_cost,
+                "tokens": total_tokens,
+                "model": used_model,
+                "provider": used_provider,
+                "duration_ms": duration_ms,
+                "message_id": response_message_id,
+                "done": True,
+            },
+        )
 
     except HTTPException as http_exc:
         # HTTP exceptions (auth, not found, etc.)
@@ -1579,7 +1623,7 @@ async def generate_chat_stream(
             "is_recoverable": False,
             "done": True,
         }
-        yield f"data: {json.dumps(error_event)}\n\n"
+        yield _format_sse_event("error", error_event)
     except Exception as exc:
         # Generic exception handler
         logger.exception("streaming_error_unhandled", exc=exc)
@@ -1590,7 +1634,7 @@ async def generate_chat_stream(
             "is_recoverable": False,
             "done": True,
         }
-        yield f"data: {json.dumps(error_event)}\n\n"
+        yield _format_sse_event("error", error_event)
 
 
 class StreamChatRequest(BaseModel):
