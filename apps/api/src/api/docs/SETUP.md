@@ -48,8 +48,8 @@ sudo systemctl start redis-server
 ### 1. Clone Repository
 
 ```bash
-git clone https://github.com/fuaadabdullah/forgemono.git
-cd forgemono/apps/goblin-assistant/api
+git clone https://github.com/fuaadabdullah/goblin-assistant.git
+cd goblin-assistant/apps/api
 ```
 
 ### 2. Create Virtual Environment
@@ -594,7 +594,7 @@ Enable detailed logging for troubleshooting:
 
 ```bash
 export LOG_LEVEL=DEBUG
-export PYTHONPATH=/path/to/forgemono/apps/goblin-assistant
+export PYTHONPATH=src
 uvicorn main:app --reload --log-level debug
 ```
 

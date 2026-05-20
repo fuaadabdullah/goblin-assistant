@@ -19,7 +19,7 @@ if ! gh auth status &> /dev/null; then
     exit 1
 fi
 
-REPO="fuaadabdullah/forgemono"
+REPO="fuaadabdullah/goblin-assistant"
 BRANCH="main"
 
 echo "🔧 Configuring branch protection for $BRANCH branch..."

@@ -5,4 +5,4 @@ description: "Moved"
 
 # Moved
 
-This file has moved to [../../docs/development/CONTRIBUTING.md](../../docs/development/CONTRIBUTING.md)
+This file has moved to [docs/contributing.md](docs/contributing.md)

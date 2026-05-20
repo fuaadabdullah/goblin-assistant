@@ -28,17 +28,17 @@ This project is configured to use a GOBLINOS external hard drive for large artif
 source .env.storage
 
 # 3. For Docker operations, use the override file
-docker-compose -f docker-compose.yml -f docker-compose.goblinos-override.yml up
+docker compose -f docker-compose.yml -f docker-compose.goblinos-override.yml up
 
 # 4. For Python development, activate the venv
-source /Volumes/GOBLINOS\ 1/goblin-assistant/venv/bin/activate
+source "$GOBLINOS_BASE/venv/bin/activate"
 ```
 
 ## Verification
 
 ```bash
 # Check storage usage
-df -h /Volumes/GOBLINOS\ 1/
+df -h "$GOBLINOS_BASE"
 
 # Verify symlinks
 ls -la src/node_modules

@@ -4,7 +4,8 @@
 echo "🔐 Interactive Bitwarden Secrets Retrieval"
 echo "=========================================="
 
-cd /Users/fuaadabdullah/ForgeMonorepo/apps/goblin-assistant
+REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
+cd "$REPO_ROOT"
 
 # Check if unlocked
 if ! bw status | grep -q '"status":"unlocked"'; then

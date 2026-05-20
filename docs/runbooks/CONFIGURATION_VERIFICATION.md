@@ -44,7 +44,7 @@ LLAMACPP_URL="http://34.132.226.143:8000"
 
 ### 1. Provider Test Suite ✅
 ```bash
-cd /Users/fuaadabdullah/ForgeMonorepo/apps/goblin-assistant
+cd /Volumes/GOBLINOS\ 1/goblin-assistant
 python3 test_providers_quick.py
 ```
 
@@ -71,7 +71,7 @@ curl http://34.132.226.143:8000/v1/models
 
 ### 3. Local Deployment Test ✅
 ```bash
-bash deploy-gcp-chat.sh local
+./deploy-gcp-chat.sh local
 ```
 
 **Results:**
@@ -148,7 +148,7 @@ Response shows:
 ### Local Development
 ```bash
 # Start local servers
-cd /Users/fuaadabdullah/ForgeMonorepo/apps/goblin-assistant
+cd /Volumes/GOBLINOS\ 1/goblin-assistant
 bash deploy-gcp-chat.sh local
 
 # Stop servers
@@ -159,7 +159,7 @@ pkill -f "next dev"
 ### Production Deployment
 ```bash
 # Deploy to Fly.io
-cd /Users/fuaadabdullah/ForgeMonorepo/apps/goblin-assistant
+cd /path/to/goblin-assistant
 fly deploy -a goblin-backend
 
 # Check status
@@ -198,7 +198,7 @@ curl https://goblin-backend.fly.dev/health
 
 ### Test Provider Integration
 ```bash
-cd /Users/fuaadabdullah/ForgeMonorepo/apps/goblin-assistant
+cd /path/to/goblin-assistant
 python3 test_providers_quick.py
 ```
 
