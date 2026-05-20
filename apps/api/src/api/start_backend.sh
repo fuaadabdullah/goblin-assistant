@@ -37,14 +37,15 @@ fi
 echo "📋 Verifying available models..."
 ollama list
 
-# Start the canonical FastAPI backend
+# Start the canonical FastAPI backend from this monorepo layout
 echo "🌐 Starting FastAPI backend (canonical)..."
-cd /Users/fuaadabdullah/ForgeMonorepo/apps/goblin-assistant/backend
+API_APP_DIR="$(cd "$(dirname "$0")/../.." && pwd)"
+cd "$API_APP_DIR"
 
 if [ "$1" = "prod" ]; then
     echo "🏭 Starting in production mode with Uvicorn..."
-    exec uvicorn main:app --host 0.0.0.0 --port 8000 --workers 4
+    exec env PYTHONPATH=src uvicorn api.main:app --host 0.0.0.0 --port 8000 --workers 4
 else
     echo "🛠️  Starting in development mode (reload enabled)..."
-    exec uvicorn main:app --host 0.0.0.0 --port 8000 --reload
+    exec env PYTHONPATH=src uvicorn api.main:app --host 0.0.0.0 --port 8000 --reload
 fi

@@ -36,7 +36,7 @@ Your Goblin Assistant application now has comprehensive monitoring set up with:
 Run the automated setup script:
 
 ```bash
-cd /Users/fuaadabdullah/ForgeMonorepo/goblin-assistant
+cd /path/to/goblin-assistant
 ./setup-datadog-monitoring.sh
 ```
 
@@ -58,7 +58,7 @@ This script will:
 
 ```bash
 
-cd /Users/fuaadabdullah/ForgeMonorepo/goblin-assistant
+cd /Volumes/GOBLINOS 1/goblin-assistant
 ./setup-backend-monitoring.sh
 ```
 

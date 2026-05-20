@@ -33,7 +33,7 @@ gcloud services enable compute.googleapis.com
 ## Step 4: Deploy Servers
 
 ```bash
-cd /Users/fuaadabdullah/ForgeMonorepo/apps/goblin-assistant/infra
+cd /Volumes/GOBLINOS 1/goblin-assistant/infra
 
 # Make script executable
 chmod +x gcp-llm-setup.sh
@@ -80,7 +80,7 @@ curl http://YOUR_LLAMACPP_IP:8000/v1/models
 ## Step 7: Restart Backend
 
 ```bash
-cd /Users/fuaadabdullah/ForgeMonorepo/apps/goblin-assistant
+cd /Volumes/GOBLINOS 1/goblin-assistant
 
 # Kill old backend
 pkill -f "uvicorn.*8004"
@@ -175,7 +175,7 @@ Consider GPU instances:
 If you prefer Docker:
 
 ```bash
-cd /Users/fuaadabdullah/ForgeMonorepo/apps/goblin-assistant/infra
+cd /Volumes/GOBLINOS 1/goblin-assistant/infra
 
 # Download models first (one-time)
 docker-compose run model-downloader

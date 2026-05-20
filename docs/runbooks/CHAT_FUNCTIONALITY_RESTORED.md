@@ -7,8 +7,8 @@
 
 ### 1. Fixed Backend Startup Script
 - **File**: `/start-backend.sh`
-- **Issue**: Script was pointing to old path `/Users/fuaadabdullah/ForgeMonorepo/apps/goblin-assistant`
-- **Fix**: Updated to correct path `/Volumes/GOBLINOS 1/apps/goblin-assistant`
+ - **Issue**: Script was pointing to old path referencing the old monorepo path
+ - **Fix**: Updated to use correct repository path on the GOBLINOS drive.
 
 ### 2. Started Backend Server
 - **Server**: FastAPI backend running on `http://localhost:8004`
@@ -52,20 +52,20 @@ NEXT_PUBLIC_FASTAPI_URL=https://goblin-backend.fly.dev
 
 ### Start Backend
 ```bash
-cd "/Volumes/GOBLINOS 1/apps/goblin-assistant"
+cd "/Volumes/GOBLINOS 1/goblin-assistant"
 ./start-backend.sh
 ```
 
 Or manually:
 ```bash
-cd "/Volumes/GOBLINOS 1/apps/goblin-assistant"
+cd "/Volumes/GOBLINOS 1/goblin-assistant"
 export $(grep -v '^#' .env.local | xargs)
 python3 -m uvicorn api.main:app --host 0.0.0.0 --port 8004 --reload
 ```
 
 ### Start Frontend
 ```bash
-cd "/Volumes/GOBLINOS 1/apps/goblin-assistant"
+cd "/Volumes/GOBLINOS 1/goblin-assistant"
 npm run dev
 ```
 
