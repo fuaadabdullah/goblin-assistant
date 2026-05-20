@@ -1,6 +1,6 @@
 # UI Component Library
 
-**Location**: `src/components/ui/`
+**Location**: `apps/web/src/components/ui/`
 **Purpose**: Centralized, reusable UI atoms to eliminate duplicate styles and ensure consistency.
 
 ---
@@ -406,12 +406,12 @@ Search for repeated className patterns:
 
 ```bash
 
-grep -r "bg-primary.*rounded-lg.*hover:brightness" src/
+grep -r "bg-primary.*rounded-lg.*hover:brightness" apps/web/src/
 ```
 
 ### Step 2: Extract to Component
 
-Create reusable component in `src/components/ui/`:
+Create reusable component in `apps/web/src/components/ui/`:
 
 ```tsx
 // Button.tsx
@@ -438,7 +438,7 @@ import { Button } from './ui';
 
 ### Step 4: Update Imports
 
-Add to `src/components/ui/index.ts`:
+Add to `apps/web/src/components/ui/index.ts`:
 
 ```typescript
 export { default as Button } from './Button';
@@ -449,16 +449,16 @@ export type { ButtonProps } from './Button';
 
 ## 📚 Related Documentation
 
-- **Design System**: `src/theme/index.css` - Theme tokens and variables
-- **Typography Scale**: `src/index.css` - Font sizes and line heights
-- **Responsive Grid**: `.grid-auto-fit` utility in `src/index.css`
+- **Design System**: `apps/web/src/theme/index.css` - Theme tokens and variables
+- **Typography Scale**: `apps/web/src/index.css` - Font sizes and line heights
+- **Responsive Grid**: `.grid-auto-fit` utility in `apps/web/src/index.css`
 - **Accessibility**: WCAG 2.1 AA compliance guidelines
 
 ---
 
 ## 🎨 Design Tokens
 
-Components use centralized design tokens from `src/theme/index.css`:
+Components use centralized design tokens from `apps/web/src/theme/index.css`:
 
 ### Colors
 

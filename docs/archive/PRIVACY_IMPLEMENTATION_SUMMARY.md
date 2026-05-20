@@ -151,7 +151,7 @@ USING (auth.uid() = user_id);
    supabase migration up
    ```
 
-2. **Register privacy router** in `api/main.py`:
+2. **Register privacy router** in `apps/api/src/api/main.py`:
 
    ```python
    from api.privacy_router import router as privacy_router
@@ -189,7 +189,7 @@ See `docs/PRIVACY_INTEGRATION_GUIDE.md` for detailed steps.
 ### Automated Tests
 
 ```bash
-cd apps/goblin-assistant/api
+cd apps/api
 pytest tests/test_privacy.py -v
 ```
 

@@ -22,7 +22,7 @@ Enhanced status cards with:
 
 ### Tooltip Component ✅
 
-**Location**: `src/components/ui/Tooltip.tsx`
+**Location**: `apps/web/src/components/ui/Tooltip.tsx`
 
 **Features**:
 

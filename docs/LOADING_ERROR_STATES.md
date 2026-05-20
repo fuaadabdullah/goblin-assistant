@@ -22,7 +22,7 @@ Enhanced all components with:
 
 ### 1. StatusCardSkeleton ✅
 
-**Location**: `src/components/LoadingSkeleton.tsx`
+**Location**: `apps/web/src/components/LoadingSkeleton.tsx`
 
 ```tsx
 <StatusCardSkeleton />
@@ -35,7 +35,7 @@ Enhanced all components with:
 
 ### 2. StatCardSkeleton ✅
 
-**Location**: `src/components/LoadingSkeleton.tsx`
+**Location**: `apps/web/src/components/LoadingSkeleton.tsx`
 
 ```tsx
 <StatCardSkeleton />
@@ -48,7 +48,7 @@ Enhanced all components with:
 
 ### 3. ListItemSkeleton ✅
 
-**Location**: `src/components/LoadingSkeleton.tsx`
+**Location**: `apps/web/src/components/LoadingSkeleton.tsx`
 
 ```tsx
 <ListItemSkeleton />
@@ -61,7 +61,7 @@ Enhanced all components with:
 
 ### 4. ListSkeleton ✅
 
-**Location**: `src/components/LoadingSkeleton.tsx`
+**Location**: `apps/web/src/components/LoadingSkeleton.tsx`
 
 ```tsx
 <ListSkeleton count={5} />
@@ -74,7 +74,7 @@ Enhanced all components with:
 
 ### 5. ProviderCardSkeleton ✅
 
-**Location**: `src/components/LoadingSkeleton.tsx`
+**Location**: `apps/web/src/components/LoadingSkeleton.tsx`
 
 ```tsx
 <ProviderCardSkeleton />
@@ -87,7 +87,7 @@ Enhanced all components with:
 
 ### 6. DashboardSkeleton ✅
 
-**Location**: `src/components/LoadingSkeleton.tsx`
+**Location**: `apps/web/src/components/LoadingSkeleton.tsx`
 
 ```tsx
 <DashboardSkeleton />
@@ -513,14 +513,97 @@ Component bundles:
 
 ---
 
+## New: TristateWrapper Component
+
+**Location**: `apps/web/src/components/ui/TristateWrapper.tsx`
+
+A unified tri-state wrapper that declaratively handles **loading → error → empty → content** transitions in a single composable component, eliminating manual conditionals.
+
+### Usage — Full Page Mode
+
+```tsx
+import { TristateWrapper } from '@/components/ui';
+
+<TristateWrapper
+  loading={isLoading}
+  error={error}
+  loadingTitle="Loading dashboard"
+  errorTitle="Failed to load data"
+  onRetry={refetch}
+>
+  <Content data={data} />
+</TristateWrapper>
+```
+
+### Usage — Section / Inline Mode
+
+```tsx
+<TristateWrapper
+  loading={isLoading}
+  error={error}
+  empty={items.length === 0}
+  plain
+  emptyTitle="No results found"
+  emptyActionLabel="Clear filters"
+  onEmptyAction={clearFilters}
+>
+  <ItemsList items={items} />
+</TristateWrapper>
+```
+
+### Custom Children
+
+Pass custom UI for any state via `loadingChild`, `errorChild`, or `emptyChild`:
+
+```tsx
+<TristateWrapper
+  error="Something broke"
+  errorChild={<MyCustomErrorBanner />}
+>
+  <Content />
+</TristateWrapper>
+```
+
+### Props
+
+| Prop | Type | Default | Description |
+|------|------|---------|-------------|
+| `children` | `ReactNode` | — | Content when all states are falsy |
+| `loading` | `boolean` | — | Shows loading state when truthy |
+| `error` | `unknown` | — | Shows error state when truthy |
+| `empty` | `boolean` | — | Shows empty state when truthy |
+| `loadingTitle` | `string` | `'Loading'` | Loading heading text |
+| `loadingDescription` | `string` | `'Fetching the latest data.'` | Loading description |
+| `errorTitle` | `string` | `'Something went wrong'` | Error heading |
+| `errorMessage` | `string` | — | Overrides auto-resolved error message |
+| `onRetry` | `() => void` | — | Retry callback |
+| `retryLabel` | `string` | `'Retry'` | Retry button label |
+| `emptyTitle` | `string` | `'Nothing here yet'` | Empty heading |
+| `emptyDescription` | `string` | `'There are no items to display.'` | Empty description |
+| `emptyIcon` | `ReactNode` | — | Icon for empty state |
+| `emptyActionLabel` | `string` | — | Empty state action button label |
+| `onEmptyAction` | `() => void` | — | Empty state action callback |
+| `emptyActionHref` | `string` | — | Empty state action as link |
+| `emptySecondaryAction` | `ReactNode` | — | Additional action in empty state |
+| `plain` | `boolean` | `false` | Inline/section mode (no full-page layout) |
+| `loadingChild` | `ReactNode` | — | Custom loading element |
+| `errorChild` | `ReactNode` | — | Custom error element |
+| `emptyChild` | `ReactNode` | — | Custom empty element |
+
+### Stories
+
+- **UI/TristateWrapper** — 11 stories covering all states, modes, and variants
+- Visual regression tested via Chromatic
+
 ## Summary
 
-**✅ 5 new skeleton components** (List, ListItem, Provider, Status, Stat)
-**✅ 5 components enhanced** (Dashboard, Logs, Providers, Orchestration, TaskExecution)
+**✅ 6 new skeleton components** (List, ListItem, Provider, Status, Stat, TristateWrapper)
+**✅ 6 components enhanced** (Dashboard, Logs, Providers, Orchestration, TaskExecution, Settings)
 **✅ ARIA live regions** in all async components
 **✅ Friendly error states** with retry buttons
 **✅ Screen reader announcements** for all status changes
 **✅ Zero layout shift** (skeletons match final layout)
+**✅ TristateWrapper** — unified declarative loading/error/empty/content component
 
 All loading and error states now provide:
 

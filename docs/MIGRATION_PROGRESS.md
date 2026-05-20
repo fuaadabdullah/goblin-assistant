@@ -122,22 +122,22 @@ For each remaining component:
 cd /Users/fuaadabdullah/ForgeMonorepo/apps/goblin-assistant
 
 # Gray backgrounds
-grep -r "bg-gray-" src/ --include="*.tsx" | wc -l
+grep -r "bg-gray-" apps/web/src/ --include="*.tsx" | wc -l
 
 # Gray text
-grep -r "text-gray-" src/ --include="*.tsx" | wc -l
+grep -r "text-gray-" apps/web/src/ --include="*.tsx" | wc -l
 
 # White backgrounds
-grep -r "bg-white" src/ --include="*.tsx" | wc -l
+grep -r "bg-white" apps/web/src/ --include="*.tsx" | wc -l
 
 # Indigo/blue (should be primary)
-grep -r "bg-indigo-\|bg-blue-\|text-indigo-\|text-blue-" src/ --include="*.tsx" | wc -l
+grep -r "bg-indigo-\|bg-blue-\|text-indigo-\|text-blue-" apps/web/src/ --include="*.tsx" | wc -l
 
 # Purple (should be accent)
-grep -r "bg-purple-\|text-purple-" src/ --include="*.tsx" | wc -l
+grep -r "bg-purple-\|text-purple-" apps/web/src/ --include="*.tsx" | wc -l
 
 # Red/orange (should be danger/cta)
-grep -r "bg-red-\|text-red-\|bg-orange-" src/ --include="*.tsx" | wc -l
+grep -r "bg-red-\|text-red-\|bg-orange-" apps/web/src/ --include="*.tsx" | wc -l
 ```
 
 ## Expected Remaining Count

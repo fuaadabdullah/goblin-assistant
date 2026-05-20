@@ -1,0 +1,27 @@
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "goblin-assistant-api"
+version = "0.1.0"
+description = "Goblin Assistant FastAPI backend"
+requires-python = ">=3.11"
+readme = "src/api/README.md"
+dependencies = []
+
+[tool.setuptools]
+package-dir = {"" = "src"}
+
+[tool.setuptools.packages.find]
+where = ["src"]
+include = ["api*"]
+
+[tool.pytest.ini_options]
+cache_dir = "/Volumes/GOBLINOS 1/apps/.tmp/pytest_cache"
+testpaths = ["src/api", "src/api/tests"]
+python_files = ["test_*.py"]
+python_classes = ["Test*"]
+python_functions = ["test_*"]
+addopts = ["--strict-markers", "--strict-config", "--disable-warnings", "--tb=short"]
+asyncio_mode = "auto"

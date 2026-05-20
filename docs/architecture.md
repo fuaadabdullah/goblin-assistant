@@ -14,14 +14,14 @@ It does not match the older `backend/`-based architecture described in some hist
 
 ## Frontend
 
-The frontend lives in `src/`.
+The frontend lives in `apps/web/src/`.
 
 Important parts:
 
-- route files in `src/pages/`
-- feature modules in `src/features/`
-- auth/bootstrap state in `src/store/authStore.ts`
-- cookie/local-storage session persistence in `src/utils/auth-session.ts`
+- route files in `apps/web/pages/`
+- feature modules in `apps/web/src/features/`
+- auth/bootstrap state in `apps/web/src/store/authStore.ts`
+- cookie/local-storage session persistence in `apps/web/src/utils/auth-session.ts`
 - route protection in `middleware.ts`
 
 Current pages include:
@@ -42,7 +42,7 @@ Current pages include:
 
 The backend lives in `api/`.
 
-The FastAPI app in `api/main.py` wires together:
+The FastAPI app in `apps/api/src/api/main.py` wires together:
 
 - middleware for errors, security headers, auth gating, CORS, and optional rate limiting
 - routers for chat, auth, routing, health, search, privacy, secrets, ops, observability, and sandbox
@@ -52,12 +52,12 @@ The FastAPI app in `api/main.py` wires together:
 
 The frontend also ships a few Next API routes:
 
-- `src/pages/api/generate.ts`
-- `src/pages/api/models.ts`
-- `src/pages/api/auth/validate.ts`
-- `src/pages/api/health.ts`
+- `apps/web/pages/api/generate.ts`
+- `apps/web/pages/api/models.ts`
+- `apps/web/pages/api/auth/validate.ts`
+- `apps/web/pages/api/health.ts`
 
-Only `/api/generate` is clearly aligned with a route that exists in the checked-in FastAPI app. The other proxy routes expect `/v1/...` backend endpoints that are not mounted by `api/main.py`.
+Only `/api/generate` is clearly aligned with a route that exists in the checked-in FastAPI app. The other proxy routes expect `/v1/...` backend endpoints that are not mounted by `apps/api/src/api/main.py`.
 
 ## Best-Supported Flow
 
@@ -80,4 +80,4 @@ These areas exist in code but are not fully contract-aligned:
 - account save endpoints
 - support form submission
 
-For those areas, the architecture problem is mostly not missing UI. It is mismatched route versioning and differing request/response shapes between `src/api/apiClient.ts` and the FastAPI routers.
+For those areas, the architecture problem is mostly not missing UI. It is mismatched route versioning and differing request/response shapes between `apps/web/src/api/apiClient.ts` and the FastAPI routers.

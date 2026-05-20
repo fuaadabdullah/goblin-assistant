@@ -8,7 +8,7 @@
 
 ## ✅ Components Created
 
-### 1. **Button** (`src/components/ui/Button.tsx`)
+### 1. **Button** (`apps/web/src/components/ui/Button.tsx`)
 
 Unified button component replacing 20+ inline button styles.
 
@@ -42,7 +42,7 @@ Unified button component replacing 20+ inline button styles.
 
 ---
 
-### 2. **Badge** (`src/components/ui/Badge.tsx`)
+### 2. **Badge** (`apps/web/src/components/ui/Badge.tsx`)
 
 Status chip component for health indicators, tags, labels.
 
@@ -74,7 +74,7 @@ Status chip component for health indicators, tags, labels.
 
 ---
 
-### 3. **IconButton** (`src/components/ui/IconButton.tsx`)
+### 3. **IconButton** (`apps/web/src/components/ui/IconButton.tsx`)
 
 Icon-only button with accessibility built-in.
 
@@ -107,7 +107,7 @@ Icon-only button with accessibility built-in.
 
 ---
 
-### 4. **Grid** (`src/components/ui/Grid.tsx`)
+### 4. **Grid** (`apps/web/src/components/ui/Grid.tsx`)
 
 Responsive grid wrapper using `.grid-auto-fit` utility.
 
@@ -133,7 +133,7 @@ Responsive grid wrapper using `.grid-auto-fit` utility.
 
 ---
 
-### 5. **Alert** (`src/components/ui/Alert.tsx`)
+### 5. **Alert** (`apps/web/src/components/ui/Alert.tsx`)
 
 Unified alert/banner for errors, warnings, info messages.
 
@@ -213,7 +213,7 @@ Unified alert/banner for errors, warnings, info messages.
 </Badge>
 ```
 
-**Files Changed**: `src/components/StatusCard.tsx`
+**Files Changed**: `apps/web/src/components/StatusCard.tsx`
 
 ---
 
@@ -228,7 +228,7 @@ Unified alert/banner for errors, warnings, info messages.
 3. Error banner → `Alert` with dismissible option
 4. Grid layouts → `Grid` component
 
-**Files Changed**: `src/components/EnhancedDashboard.tsx`
+**Files Changed**: `apps/web/src/components/EnhancedDashboard.tsx`
 
 **Lines Reduced**: ~120 → ~80 (33% reduction in error handling code)
 
@@ -277,7 +277,7 @@ Unified alert/banner for errors, warnings, info messages.
 ## 📁 File Structure
 
 ```
-src/components/ui/
+apps/web/src/components/ui/
 ├── index.ts          # Barrel export (public API)
 ├── Button.tsx        # Button component
 ├── Badge.tsx         # Badge/chip component
@@ -306,7 +306,7 @@ import Button from './ui/Button';
 - [x] Refactor StatusCard to use Badge
 - [x] Refactor EnhancedDashboard to use Button, Alert, Grid
 - [x] Build verification (passing)
-- [x] Documentation (`docs/UI_COMPONENT_LIBRARY.md`)
+- [x] Documentation (`docs/UI_docs/runbooks/COMPONENT_LIBRARY.md`)
 
 ### In Progress 🔄
 
@@ -359,7 +359,7 @@ import Button from './ui/Button';
 
 ## 🎨 Design Tokens Integration
 
-All components use centralized tokens from `src/theme/index.css`:
+All components use centralized tokens from `apps/web/src/theme/index.css`:
 
 ### Colors Used
 
@@ -386,7 +386,7 @@ All components use centralized tokens from `src/theme/index.css`:
 
 ### Created Files
 
-1. **`docs/UI_COMPONENT_LIBRARY.md`** - Complete component reference
+1. **`docs/UI_docs/runbooks/COMPONENT_LIBRARY.md`** - Complete component reference
    - All props documented
    - Usage examples
    - Before/after comparisons

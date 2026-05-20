@@ -1,44 +1,63 @@
-# GoblinOS Assistant Makefile
-
-.PHONY: help dev-setup dev-setup-apply dev-setup-full dev-setup-ci
+.PHONY: help install dev web-dev api-dev build lint type-check test test-web test-api test-e2e generate-providers-json
+PNPM_TMP := TMPDIR="$(PWD)/.tmp"
+PYTHON ?= python3.11
 
 help:
-	@echo "Available targets:"
-	@echo "  dev-setup        - Check dev environment setup (safe)"
-	@echo "  dev-setup-apply  - Apply dev environment setup (install deps)"
-	@echo "  dev-setup-full   - Apply setup and boot local LLM"
+	@echo "Workspace commands"
+	@echo "  make install              - install JS & Python deps"
+	@echo "  make dev                  - run web + api in parallel (requires two terminals)"
+	@echo "  make web-dev              - start Next.js web app"
+	@echo "  make api-dev              - start FastAPI backend"
+	@echo "  make lint                 - run web lint"
+	@echo "  make type-check           - run web typecheck"
+	@echo "  make test-web             - run web test suite"
+	@echo "  make test-api             - run api pytest suite"
+	@echo "  make test-e2e             - run Playwright suite"
+	@echo "  make generate-providers-json — validate providers.toml & regenerate providers.json"
 
-# Dev environment setup
-dev-setup:
-	./scripts/dev-setup.sh --check
+install:
+	mkdir -p .tmp
+	$(PNPM_TMP) pnpm install
+	cd apps/api && $(PYTHON) -m pip install -r requirements.txt -r requirements-vector.txt
 
-dev-setup-apply:
-	./scripts/dev-setup.sh --apply
+generate-providers-json:
+	PYTHONPATH=packages/shared/src $(PYTHON) scripts/generate-providers-json.py
+	cp config/providers.json apps/web/src/config/providers.json
 
-dev-setup-full:
-	./scripts/dev-setup.sh --apply --boot-llm
+web-dev:
+	mkdir -p .tmp
+	$(PNPM_TMP) pnpm --filter @goblin/web dev
 
-dev-setup-ci:
-	./scripts/dev-setup.sh --check --ci
+api-dev:
+	cd apps/api && PYTHONPATH=src $(PYTHON) -m uvicorn api.main:app --reload --port 8001
 
-# Convenience targets to manage a local ChromaDB server used by RAG tests
-.PHONY: chroma-up chroma-down
+dev:
+	@echo "Run 'make web-dev' and 'make api-dev' in separate terminals"
 
-chroma-up:
-	@echo "Starting Chroma server (delegating to api/fastapi Makefile)..."
-	@$(MAKE) -C api/fastapi start-chroma
+build: generate-providers-json
+	mkdir -p .tmp
+	$(PNPM_TMP) pnpm --filter @goblin/web build
 
-chroma-down:
-	@echo "Stopping Chroma server (delegating to api/fastapi Makefile)..."
-	@$(MAKE) -C api/fastapi stop-chroma
+lint:
+	mkdir -p .tmp
+	$(PNPM_TMP) pnpm --filter @goblin/web lint
 
-.PHONY: provision-local
-provision-local:
-	@echo "Provisioning a local model using tools/provision_local_model.sh"
-	@if [ -z "$(MODEL)" ]; then echo "Please set MODEL=<huggingface-model-id> or pass ARGS='--model <id>'"; exit 1; fi
-	@bash tools/provision_local_model.sh --model $(MODEL) $(ARGS)
+type-check:
+	mkdir -p .tmp
+	$(PNPM_TMP) pnpm --filter @goblin/web type-check
 
-.PHONY: e2e-mock
-e2e-mock:
-	@echo "Running e2e tests with mock provider (delegating to api/fastapi Makefile)..."
-	@$(MAKE) -C api/fastapi test-e2e-mock
+test:
+	mkdir -p .tmp
+	$(PNPM_TMP) pnpm --filter @goblin/web test
+	cd apps/api && PYTHONPATH=src $(PYTHON) -m pytest -o "addopts=" -v
+
+test-web:
+	mkdir -p .tmp
+	$(PNPM_TMP) pnpm --filter @goblin/web test
+
+test-api:
+	cd apps/api && PYTHONPATH=src $(PYTHON) -m pytest -o "addopts=" -v
+
+test-e2e:
+	mkdir -p .tmp
+	$(PNPM_TMP) pnpm --filter @goblin/web test:e2e

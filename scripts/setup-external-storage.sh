@@ -49,15 +49,15 @@ fi
 # Setup node_modules symlink
 echo ""
 echo "🔗 Setting up node_modules symlink..."
-if [ -d "$PROJECT_ROOT/src/node_modules" ]; then
+if [ -d "$PROJECT_ROOT/apps/web/node_modules" ]; then
     echo "   Moving existing node_modules to GOBLINOS..."
-    mv "$PROJECT_ROOT/src/node_modules" "$GOBLINOS_PATH/node_modules.backup.$(date +%s)"
+    mv "$PROJECT_ROOT/apps/web/node_modules" "$GOBLINOS_PATH/node_modules.backup.$(date +%s)"
 fi
 
-if [ ! -L "$PROJECT_ROOT/src/node_modules" ]; then
+if [ ! -L "$PROJECT_ROOT/apps/web/node_modules" ]; then
     mkdir -p "$GOBLINOS_PATH/node_modules"
-    ln -s "$GOBLINOS_PATH/node_modules" "$PROJECT_ROOT/src/node_modules"
-    echo "✅ Created symlink: src/node_modules → GOBLINOS"
+    ln -s "$GOBLINOS_PATH/node_modules" "$PROJECT_ROOT/apps/web/node_modules"
+    echo "✅ Created symlink: apps/web/node_modules → GOBLINOS"
 else
     echo "ℹ️  Symlink already exists"
 fi
@@ -74,9 +74,9 @@ fi
 source "$GOBLINOS_PATH/venv/bin/activate"
 echo "✅ Activated venv"
 
-if [ -f "$PROJECT_ROOT/api/requirements.txt" ]; then
+if [ -f "$PROJECT_ROOT/apps/api/requirements.txt" ]; then
     echo "   Installing Python dependencies..."
-    pip install -q -r "$PROJECT_ROOT/api/requirements.txt"
+    pip install -q -r "$PROJECT_ROOT/apps/api/requirements.txt"
     echo "✅ Python dependencies installed"
 fi
 
@@ -152,7 +152,7 @@ source /Volumes/GOBLINOS\ 1/goblin-assistant/venv/bin/activate
 df -h /Volumes/GOBLINOS\ 1/
 
 # Verify symlinks
-ls -la src/node_modules
+ls -la apps/web/node_modules
 ls -la .next
 
 # Check venv
@@ -194,7 +194,7 @@ When running in CI:
 - Verify Python installation: `python3 --version`
 - Reinstall venv: `python3 -m venv /Volumes/GOBLINOS\ 1/goblin-assistant/venv`
 EOF
-echo "✅ Created GOBLINOS_STORAGE_README.md"
+echo "✅ Created docs/runbooks/GOBLINOS_STORAGE_README.md"
 
 # Create a convenience activation script
 echo ""
@@ -232,12 +232,12 @@ echo "📍 Storage Location: $GOBLINOS_PATH"
 echo "💾 Available Directories:"
 ls -lh "$GOBLINOS_PATH" | tail -n +2 | awk '{print "   • " $9 " (" $5 ")"}'
 echo ""
-echo "📚 Documentation: GOBLINOS_STORAGE_README.md"
+echo "📚 Documentation: docs/runbooks/GOBLINOS_STORAGE_README.md"
 echo ""
 echo "🚀 Quick Start:"
 echo "   1. Load config: source .env.storage"
 echo "   2. Check setup: df -h /Volumes/GOBLINOS\ 1/"
-echo "   3. Install deps: npm install && pip install -r api/requirements.txt"
+echo "   3. Install deps: npm install && pip install -r apps/api/requirements.txt"
 echo ""
 echo "🐳 Docker: docker-compose -f docker-compose.yml -f docker-compose.goblinos-override.yml up"
 echo ""

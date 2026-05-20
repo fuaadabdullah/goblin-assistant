@@ -59,13 +59,13 @@ console.log('═'.repeat(50) + '\n');
 
 // 1. Core theme files exist
 console.log('📁 Checking theme module files...\n');
-checkExists('src/theme/index.css', 'Theme CSS module exists');
-checkExists('src/theme/theme.js', 'Theme JS utilities exist');
+checkExists('apps/web/src/theme/index.css', 'Theme CSS module exists');
+checkExists('apps/web/src/theme/theme.js', 'Theme JS utilities exist');
 
 // 2. Theme CSS has required variables
 console.log('\n🎨 Checking CSS variable definitions...\n');
 checkFileContains(
-  'src/theme/index.css',
+  'apps/web/src/theme/index.css',
   {
     neutrals: /--bg:\s*#071117/,
     'brand colors': /--primary:\s*#06D06A/,
@@ -80,7 +80,7 @@ checkFileContains(
 // 3. Theme JS has required exports
 console.log('\n⚙️  Checking theme utilities...\n');
 checkFileContains(
-  'src/theme/theme.js',
+  'apps/web/src/theme/theme.js',
   {
     setThemeVars: /export function setThemeVars/,
     enableHighContrast: /export function enableHighContrast/,
@@ -94,7 +94,7 @@ checkFileContains(
 // 4. App.tsx integration
 console.log('\n🔌 Checking app integration...\n');
 checkFileContains(
-  'src/App.tsx',
+  'apps/web/src/App.tsx',
   {
     'theme import': /import.*from\s+['"]\.\/theme\/theme['"]/,
     'css import': /import\s+['"]\.\/theme\/index\.css['"]/,
@@ -120,12 +120,12 @@ if (existsSync(tailwindPath)) {
 
 // 6. High-contrast toggle exists
 console.log('\n🎛️  Checking UI components...\n');
-checkExists('src/components/ContrastModeToggle.tsx', 'High-contrast toggle component exists');
-checkExists('src/hooks/useContrastMode.tsx', 'Contrast mode hook exists');
+checkExists('apps/web/src/components/ContrastModeToggle.tsx', 'High-contrast toggle component exists');
+checkExists('apps/web/src/hooks/useContrastMode.tsx', 'Contrast mode hook exists');
 
 // 7. Check for hard-coded hex colors (sample check)
 console.log('\n🔍 Scanning for hard-coded colors...\n');
-const indexCss = readFileSync(join(ROOT, 'src/index.css'), 'utf-8');
+const indexCss = readFileSync(join(ROOT, 'apps/web/src/index.css'), 'utf-8');
 const hasThemeImport = /@import.*theme\/index\.css/.test(indexCss);
 const hasDuplicateVars = indexCss.includes('--bg: #071117') && !indexCss.includes('@import');
 
@@ -159,8 +159,8 @@ if (CHECKS.warnings.length > 0) {
 if (CHECKS.passed.length > 0 && CHECKS.failed.length === 0) {
   console.log('✨ All checks passed!\n');
   console.log('Theme system is correctly implemented:\n');
-  console.log('  • CSS variables defined in src/theme/index.css');
-  console.log('  • Runtime utilities in src/theme/theme.js');
+  console.log('  • CSS variables defined in apps/web/src/theme/index.css');
+  console.log('  • Runtime utilities in apps/web/src/theme/theme.js');
   console.log('  • High-contrast mode toggle available');
   console.log('  • Reduced motion support enabled');
   console.log('  • Tailwind integrated with CSS vars');

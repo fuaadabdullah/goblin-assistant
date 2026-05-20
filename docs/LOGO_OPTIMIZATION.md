@@ -15,7 +15,7 @@ The Goblin Assistant logo system is fully optimized with theme-adaptive SVGs, mu
 
 ### Location
 
-`src/components/Logo.tsx`
+`apps/web/src/components/Logo.tsx`
 
 ### Usage
 
@@ -61,7 +61,7 @@ import Logo from './components/Logo';
 
 ## SVG Assets
 
-### Main Logo (`src/assets/logo.svg`)
+### Main Logo (`apps/web/src/assets/logo.svg`)
 
 - **Size**: ~2.5KB (optimized)
 - **Features**:
@@ -72,7 +72,7 @@ import Logo from './components/Logo';
 - **Theme Integration**: Uses CSS variables for all colors
 - **Best For**: Medium to large sizes (≥ 32px)
 
-### Simple Logo (`src/assets/logo-simple.svg`)
+### Simple Logo (`apps/web/src/assets/logo-simple.svg`)
 
 - **Size**: ~1.2KB (optimized)
 - **Features**:
@@ -102,7 +102,7 @@ import Logo from './components/Logo';
 
 ### CSS Variables Used
 
-All logos reference theme tokens from `src/theme/index.css`:
+All logos reference theme tokens from `apps/web/src/theme/index.css`:
 
 ```css
 
@@ -236,8 +236,8 @@ import Logo from './Logo';
 ## File Structure
 
 ```
-apps/goblin-assistant/
-├── src/
+./
+├── apps/web/src/
 │   ├── assets/
 │   │   ├── logo.svg           # Full detailed logo
 │   │   └── logo-simple.svg    # Simplified logo
@@ -353,7 +353,7 @@ apps/goblin-assistant/
 ### Logo colors don't change with theme
 
 **Cause**: CSS variables not loaded
-**Solution**: Ensure `src/theme/index.css` is imported before logo usage
+**Solution**: Ensure `apps/web/src/theme/index.css` is imported before logo usage
 
 ### Animations not working
 
@@ -407,7 +407,7 @@ apps/goblin-assistant/
 
 ### Adding a New Logo Variant
 
-1. Create SVG in `src/assets/logo-[variant].svg`
+1. Create SVG in `apps/web/src/assets/logo-[variant].svg`
 2. Use CSS variables for colors: `var(--color-*)`
 3. Optimize file size (< 5KB target)
 4. Add variant to Logo component's variant union type
@@ -417,7 +417,7 @@ apps/goblin-assistant/
 
 Colors are controlled by theme system. To change logo colors:
 
-1. Update theme tokens in `src/theme/index.css`
+1. Update theme tokens in `apps/web/src/theme/index.css`
 2. Logo automatically adapts (no rebuild needed)
 3. Test all themes (default, nocturne, ember, high-contrast)
 

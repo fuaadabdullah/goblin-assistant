@@ -37,8 +37,8 @@ check_dependencies() {
         exit 1
     fi
 
-    if ! command -v npm &> /dev/null; then
-        print_error "npm is not installed. Please install npm first."
+    if ! command -v pnpm &> /dev/null; then
+        print_error "pnpm is not installed. Please install pnpm first."
         exit 1
     fi
 
@@ -54,7 +54,7 @@ build_app() {
         print_warning "Make sure to configure your production environment variables."
     fi
 
-    npm run build
+    pnpm --filter @goblin/web build
 
     if [ $? -eq 0 ]; then
         print_status "Build completed successfully ✓"
@@ -70,7 +70,7 @@ deploy_vercel() {
 
     if ! command -v vercel &> /dev/null; then
         print_status "Installing Vercel CLI..."
-        npm i -g vercel
+        pnpm add -g vercel
     fi
 
     vercel --prod --yes
@@ -92,7 +92,7 @@ test_build() {
     print_status "Testing production build locally..."
 
     # Start preview server in background
-    npx next start -p 4173 &
+    pnpm --filter @goblin/web start -- -p 4173 &
     PREVIEW_PID=$!
 
     # Wait a moment for server to start

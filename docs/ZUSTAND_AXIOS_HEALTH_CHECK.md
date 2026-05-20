@@ -22,7 +22,7 @@ Comprehensive check of Zustand and Axios integration shows **zero errors**. Both
 
 ### Implementation Details
 
-**Store Location**: `src/store/authStore.ts`
+**Store Location**: `apps/web/src/store/authStore.ts`
 
 ```typescript
 export const useAuthStore = create<AuthState>()(
@@ -45,26 +45,26 @@ export const useAuthStore = create<AuthState>()(
 
 ### Usage Locations (5 files)
 
-1. **`src/store/authStore.ts`**
+1. **`apps/web/src/store/authStore.ts`**
    - Store definition
    - Uses `create` and `persist` middleware
    - ✅ No errors
 
-2. **`src/api/client-axios.ts`** (2 usages)
+2. **`apps/web/src/api/client-axios.ts`** (2 usages)
    - Request interceptor: `useAuthStore.getState().token`
    - Response interceptor: `useAuthStore.getState().clearAuth()`
    - ✅ No errors
 
-3. **`src/components/Auth/ModularLoginForm.tsx`**
+3. **`apps/web/src/components/Auth/ModularLoginForm.tsx`**
    - After successful login: `useAuthStore.getState().setAuth()`
    - ✅ No errors
 
-4. **`src/hooks/api/useAuth.ts`** (4 usages)
+4. **`apps/web/src/hooks/api/useAuth.ts`** (4 usages)
    - `useAuthStore((state) => state.setAuth)`
    - `useAuthStore((state) => state.clearAuth)`
    - ✅ No errors
 
-5. **`src/App.tsx`**
+5. **`apps/web/src/App.tsx`**
    - `const { token, clearAuth } = useAuthStore()`
    - ✅ No errors
 
@@ -94,7 +94,7 @@ export const useAuthStore = create<AuthState>()(
 
 ### Implementation Details
 
-**Client Location**: `src/api/client-axios.ts`
+**Client Location**: `apps/web/src/api/client-axios.ts`
 
 ```typescript
 
@@ -173,17 +173,17 @@ private handleError(error: AxiosError): Error {
 
 All imports use the singleton `apiClient` instance:
 
-1. `src/components/Auth/ModularLoginForm.tsx`
-2. `src/pages/ProvidersPage.tsx`
-3. `src/pages/SandboxPage.tsx`
-4. `src/pages/EnhancedProvidersPage.tsx`
-5. `src/pages/LogsPage.tsx`
-6. `src/hooks/api/useSearch.ts`
-7. `src/hooks/api/useSettings.ts`
-8. `src/hooks/api/useAuth.ts`
-9. `src/hooks/api/useHealth.ts`
-10. `src/hooks/api/useChat.ts`
-11. `src/App.tsx`
+1. `apps/web/src/components/Auth/ModularLoginForm.tsx`
+2. `apps/web/pages/ProvidersPage.tsx`
+3. `apps/web/pages/SandboxPage.tsx`
+4. `apps/web/pages/EnhancedProvidersPage.tsx`
+5. `apps/web/pages/LogsPage.tsx`
+6. `apps/web/src/hooks/api/useSearch.ts`
+7. `apps/web/src/hooks/api/useSettings.ts`
+8. `apps/web/src/hooks/api/useAuth.ts`
+9. `apps/web/src/hooks/api/useHealth.ts`
+10. `apps/web/src/hooks/api/useChat.ts`
+11. `apps/web/src/App.tsx`
 
 ✅ All files import correctly with no errors
 
@@ -433,15 +433,15 @@ If you want to improve further (not urgent):
 
 ### Zustand Files (5)
 
-- ✅ `src/store/authStore.ts`
-- ✅ `src/api/client-axios.ts`
-- ✅ `src/components/Auth/ModularLoginForm.tsx`
-- ✅ `src/hooks/api/useAuth.ts`
-- ✅ `src/App.tsx`
+- ✅ `apps/web/src/store/authStore.ts`
+- ✅ `apps/web/src/api/client-axios.ts`
+- ✅ `apps/web/src/components/Auth/ModularLoginForm.tsx`
+- ✅ `apps/web/src/hooks/api/useAuth.ts`
+- ✅ `apps/web/src/App.tsx`
 
 ### Axios Files (11+)
 
-- ✅ `src/api/client-axios.ts` (implementation)
+- ✅ `apps/web/src/api/client-axios.ts` (implementation)
 - ✅ All page components (ProvidersPage, SandboxPage, etc.)
 - ✅ All API hooks (useSearch, useSettings, useAuth, etc.)
 

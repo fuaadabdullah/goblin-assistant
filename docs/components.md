@@ -6,11 +6,11 @@ GoblinOS Assistant is composed of several key components that work together to p
 
 - **Framework**: FastAPI (Python)
 - **Purpose**: Main API service handling AI processing and development assistance
-  Note: Most backend-specific documentation has been consolidated under the canonical backend repository folder at `apps/goblin-assistant/backend/docs` (e.g. endpoint audits, monitoring, production quick-starts). See that folder for the canonical docs.
+  Note: Most backend-specific documentation has been consolidated under the canonical backend repository folder at `./backend/docs` (e.g. endpoint audits, monitoring, production quick-starts). See that folder for the canonical docs.
 
 - **Features**: Intelligent model routing, debugging tools, error analysis, code suggestions
 
-## 🎨 Frontend UI (`app/`, `src/`)
+## 🎨 Frontend UI (`app/`, `apps/web/src/`)
 
 - **Framework**: Next.js 14.2.15 (App Router) + TypeScript
 - **Purpose**: User interface for interacting with the AI assistant

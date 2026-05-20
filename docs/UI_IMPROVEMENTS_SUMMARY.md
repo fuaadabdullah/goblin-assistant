@@ -18,7 +18,7 @@
 | 1280px (wide)       | 3-4 columns | 320px          |
 | 1440px (ultra-wide) | 4 columns   | 340px          |
 
-**Location**: `apps/goblin-assistant/src/index.css` (lines 133-166)
+**Location**: `apps/web/src/index.css` (lines 133-166)
 
 **Benefits**:
 
@@ -37,7 +37,7 @@
 - ✅ **StatCardSkeleton**: Compact skeleton for KPI tiles
 - ✅ **DashboardSkeleton**: Full page skeleton with header, cost banner, grid, actions
 
-**Location**: `apps/goblin-assistant/src/components/LoadingSkeleton.tsx`
+**Location**: `apps/web/src/components/LoadingSkeleton.tsx`
 
 **Features**:
 
@@ -85,7 +85,7 @@
   - `aria-live="polite"` (less intrusive)
   - Automatic error recovery on successful refresh
 
-**Location**: `apps/goblin-assistant/src/components/EnhancedDashboard.tsx` (lines 156-193, 235-253)
+**Location**: `apps/web/src/components/EnhancedDashboard.tsx` (lines 156-193, 235-253)
 
 ---
 
@@ -165,7 +165,7 @@ const [backendHealth, chromaStatus, mcpStatus, ragStatus, sandboxStatus, costDat
 - Loading states during fetch
 - Error handling with retry
 
-**API Client**: `apps/goblin-assistant/src/api/client-axios.ts`
+**API Client**: `apps/web/src/api/client-axios.ts`
 
 ---
 
@@ -213,7 +213,7 @@ const [backendHealth, chromaStatus, mcpStatus, ragStatus, sandboxStatus, costDat
 
 ### Manual Testing Required
 
-**Responsive Layout Testing** (see `docs/RESPONSIVE_TESTING.md`):
+**Responsive Layout Testing** (see `docs/RESPONSIVE_docs/runbooks/TESTING.md`):
 
 ```bash
 # Open Chrome DevTools → Responsive Mode
@@ -329,7 +329,7 @@ node ../../tools/axe-smoke.js
   --glow-accent: 0 6px 24px var(--accent) --glow-cta: 0 6px 24px var(--danger);
 ```
 
-**Location**: `apps/goblin-assistant/src/theme/index.css`
+**Location**: `apps/web/src/theme/index.css`
 
 ---
 
@@ -337,20 +337,20 @@ node ../../tools/axe-smoke.js
 
 ### Created
 
-1. `src/components/LoadingSkeleton.tsx` - Skeleton components
-2. `src/components/Card.tsx` - Primitive container
-3. `src/components/StatusCard.tsx` - Composed status widget
-4. `src/components/StatCard.tsx` - Composed KPI tile
-5. `docs/RESPONSIVE_TESTING.md` - Testing guide
+1. `apps/web/src/components/LoadingSkeleton.tsx` - Skeleton components
+2. `apps/web/src/components/Card.tsx` - Primitive container
+3. `apps/web/src/components/StatusCard.tsx` - Composed status widget
+4. `apps/web/src/components/StatCard.tsx` - Composed KPI tile
+5. `docs/RESPONSIVE_docs/runbooks/TESTING.md` - Testing guide
 6. `docs/UI_IMPROVEMENTS_SUMMARY.md` - This file
 
 ### Modified
 
-1. `src/index.css` - Enhanced responsive grid, shadow utilities
-2. `src/theme/index.css` - Added typography, spacing, radii tokens
-3. `src/App.tsx` - Centered container, skip link, focus management
-4. `src/components/EnhancedDashboard.tsx` - Loading skeletons, error states, aria-live
-5. `src/components/Navigation.tsx` - Horizontal layout, touch targets, focus states
+1. `apps/web/src/index.css` - Enhanced responsive grid, shadow utilities
+2. `apps/web/src/theme/index.css` - Added typography, spacing, radii tokens
+3. `apps/web/src/App.tsx` - Centered container, skip link, focus management
+4. `apps/web/src/components/EnhancedDashboard.tsx` - Loading skeletons, error states, aria-live
+5. `apps/web/src/components/Navigation.tsx` - Horizontal layout, touch targets, focus states
 
 ---
 
@@ -361,7 +361,7 @@ node ../../tools/axe-smoke.js
 1. **Manual viewport testing** (15 min)
    - Open DevTools responsive mode
    - Test 375px, 768px, 1024px, 1280px, 1440px
-   - Check checklist in `docs/RESPONSIVE_TESTING.md`
+   - Check checklist in `docs/RESPONSIVE_docs/runbooks/TESTING.md`
 
 2. **Run axe audit** (10 min)
 
@@ -439,7 +439,7 @@ node ../../tools/axe-smoke.js
 
 - Main overview: `docs/README.md`
 - AI instructions: `.github/copilot-instructions.md`
-- Responsive guide: `docs/RESPONSIVE_TESTING.md`
+- Responsive guide: `docs/RESPONSIVE_docs/runbooks/TESTING.md`
 
 **Dev Server**:
 
@@ -454,7 +454,7 @@ npm run dev
 **Backend**:
 
 ```bash
-cd apps/goblin-assistant/backend
+cd ./backend
 python -m uvicorn app.main:app --reload --port 8001
 # → http://localhost:8001
 ```

@@ -1,35 +1,13 @@
----
-title: "README"
-description: "Goblin Assistant app documentation index"
----
+# Documentation Index
 
-# Goblin Assistant Docs
+Canonical docs for the monorepo:
 
-What you can do here: learn how to run, extend, and prompt Goblin Assistant — try real prompts, build with Goblin, and move from idea → output.
+- `../README.md`: monorepo overview and quickstart
+- `../AGENTS.md`: task-oriented developer/agent navigation
+- `setup.md`: environment and local setup details
+- `features.md`: feature/capability status
+- `ARCHITECTURE_OVERVIEW.md`: web/api topology and request flow
+- `../apps/api/src/api/README.md`: backend entry guide
+- `../apps/api/src/api/docs/README.md`: backend route inventory
 
-This folder contains app-level documentation for the checked-in `goblin-assistant` codebase.
-
-## Canonical Docs
-
-Start with these files when you need an accurate description of the current repo:
-
-- `../README.md`: top-level project summary and local run instructions
-- `setup.md`: local environment and development workflow
-- `features.md`: capability/status matrix
-- `ARCHITECTURE_OVERVIEW.md`: current frontend/backend wiring
-- `../api/README.md`: backend entry guide
-- `../api/docs/README.md`: backend route inventory
-
-## Scope
-
-The current app is:
-
-- a Next.js Pages Router frontend in `../src`
-- a FastAPI backend in `../api`
-- a small set of Next API proxy routes in `../src/pages/api`
-
-## Historical Docs
-
-Many other files in this folder document migrations, experiments, or planned architecture. They may still be useful as implementation notes, but they are not guaranteed to match the current code without verification.
-
-When updating docs, prefer fixing the canonical files above first so new readers are not sent through stale architecture or setup paths.
+Historical/legacy documents are kept under `docs/archive/` and may require verification before use.

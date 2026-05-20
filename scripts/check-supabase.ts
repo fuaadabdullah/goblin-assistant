@@ -12,7 +12,7 @@ async function main() {
   console.log('Env vars check: SUPABASE_URL set?', !!process.env.SUPABASE_URL, 'SUPABASE_ANON_KEY set?', !!process.env.SUPABASE_ANON_KEY);
 
   if (!supabaseUrl || !supabaseAnonKey) {
-    console.error('\nMissing required Supabase environment variables. Create apps/goblin-assistant/.env.local or export SUPABASE_URL and SUPABASE_ANON_KEY.');
+    console.error('\nMissing required Supabase environment variables. Create ./.env.local or export SUPABASE_URL and SUPABASE_ANON_KEY.');
     process.exit(1);
   }
 

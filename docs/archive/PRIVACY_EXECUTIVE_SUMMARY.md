@@ -55,7 +55,7 @@ All privacy and security features have been **successfully implemented, tested, 
 ### 1. Apply Database Migration
 
 ```bash
-cd apps/goblin-assistant/api
+cd apps/api
 supabase db push
 ```
 
@@ -100,11 +100,11 @@ fly deploy
 
 All documentation is ready and comprehensive:
 
-1. **`PRIVACY_IMPLEMENTATION_SUCCESS.md`** ← You are here
+1. **`docs/runbooks/PRIVACY_IMPLEMENTATION_SUCCESS.md`** ← You are here
 2. **`PRIVACY_IMPLEMENTATION_COMPLETE.md`** - Full feature list
 3. **`docs/PRIVACY_IMPLEMENTATION.md`** - Technical implementation guide
 4. **`docs/PRIVACY_INTEGRATION_GUIDE.md`** - Step-by-step integration
-5. **`PRIVACY_QUICK_REFERENCE.md`** - Quick commands
+5. **`docs/runbooks/PRIVACY_QUICK_REFERENCE.md`** - Quick commands
 
 ---
 

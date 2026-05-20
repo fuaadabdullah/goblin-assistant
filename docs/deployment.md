@@ -242,7 +242,7 @@ resource "vercel_project" "goblin_assistant_frontend" {
 ```toml
 # wrangler.toml
 name = "goblin-assistant-edge"
-main = "src/index.js"
+main = "apps/web/src/index.js"
 compatibility_date = "2024-01-01"
 
 [vars]

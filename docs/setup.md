@@ -2,7 +2,7 @@
 
 This setup guide reflects the current repository layout:
 
-- frontend: Next.js app in `src/`
+- frontend: Next.js app in `apps/web/src/`
 - backend: FastAPI app in `api/`
 
 ## Prerequisites
@@ -26,11 +26,11 @@ npm install
 python3 -m pip install -r requirements.txt
 ```
 
-`requirements.txt` is the broader backend dependency set. There is also `api/requirements.txt`, but the root file is the safer choice for the current backend.
+`requirements.txt` is the broader backend dependency set. There is also `apps/api/requirements.txt`, but the root file is the safer choice for the current backend.
 
 ## Environment
 
-The safest local setup is a repo-root `.env.local`, because `api/main.py` explicitly loads `.env.local` and `.env` from the project root.
+The safest local setup is a repo-root `.env.local`, because `apps/api/src/api/main.py` explicitly loads `.env.local` and `.env` from the project root.
 
 ### Minimal `.env.local`
 
@@ -44,11 +44,11 @@ Why these matter:
 
 - `JWT_SECRET_KEY`: required at import time by `api/auth/router.py`
 - `NEXT_PUBLIC_API_BASE_URL`: used by the frontend HTTP clients for backend calls
-- `BACKEND_URL`: used by Next API proxy routes such as `src/pages/api/generate.ts`
+- `BACKEND_URL`: used by Next API proxy routes such as `apps/web/pages/api/generate.ts`
 
 ### Common frontend env vars
 
-Defined in `src/config/env.ts`:
+Defined in `apps/web/src/config/env.ts`:
 
 - `NEXT_PUBLIC_BACKEND_URL`
 - `NEXT_PUBLIC_FASTAPI_URL`
@@ -72,7 +72,7 @@ Defined in `src/config/env.ts`:
 
 ### Common backend env vars
 
-Used across `api/main.py`, auth, sandbox, and provider/config modules:
+Used across `apps/api/src/api/main.py`, auth, sandbox, and provider/config modules:
 
 - `ENVIRONMENT`
 - `ALLOWED_ORIGINS`
@@ -96,7 +96,7 @@ Used across `api/main.py`, auth, sandbox, and provider/config modules:
 Backend:
 
 ```bash
-uvicorn api.main:app --reload --port 8001
+PYTHONPATH=apps/api/src uvicorn api.main:app --reload --port 8001
 ```
 
 Frontend:

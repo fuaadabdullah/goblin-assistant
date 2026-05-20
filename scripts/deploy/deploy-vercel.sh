@@ -13,12 +13,12 @@ cd "$PROJECT_ROOT"
 # Check if vercel CLI is installed
 if ! command -v vercel &> /dev/null; then
     echo "❌ Vercel CLI not found. Installing..."
-    npm install -g vercel
+    pnpm add -g vercel
 fi
 
 # Build the project
 echo "📦 Building frontend..."
-npm run build
+pnpm --filter @goblin/web build
 
 # Deploy to Vercel
 echo "🌐 Deploying to Vercel..."

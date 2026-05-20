@@ -188,7 +188,7 @@ def main():
     docs_to_check = [
         ("docs/PRIVACY_IMPLEMENTATION.md", "Implementation guide"),
         ("docs/PRIVACY_INTEGRATION_GUIDE.md", "Integration guide"),
-        ("PRIVACY_QUICK_REFERENCE.md", "Quick reference"),
+        ("docs/runbooks/PRIVACY_QUICK_REFERENCE.md", "Quick reference"),
     ]
 
     for filepath, desc in docs_to_check:

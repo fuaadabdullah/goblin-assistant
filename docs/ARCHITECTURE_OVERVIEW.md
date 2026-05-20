@@ -6,20 +6,20 @@ description: "Current Goblin Assistant frontend/backend topology"
 
 Goblin Assistant is currently a two-part application:
 
-- Next.js Pages Router frontend in `src/`
+- Next.js Pages Router frontend in `apps/web/src/`
 - FastAPI backend in `api/`
 
-There is also a thin proxy layer in `src/pages/api/` for a few browser-safe backend calls.
+There is also a thin proxy layer in `apps/web/pages/api/` for a few browser-safe backend calls.
 
 ## Topology
 
 ```mermaid
 graph LR
-  U["User"] --> FE["Next.js frontend (src/pages, src/features)"]
+  U["User"] --> FE["Next.js frontend (apps/web/src/pages, apps/web/src/features)"]
 
   FE --> MW["Next middleware route guard"]
   FE --> NAPI["Next API routes"]
-  FE --> API["FastAPI app (api/main.py)"]
+  FE --> API["FastAPI app (apps/api/src/api/main.py)"]
 
   NAPI -->|"POST /api/generate"| API
   NAPI -->|"GET /api/models"| V1A["Expected backend /v1 endpoints"]
@@ -41,18 +41,18 @@ graph LR
 
 Key frontend areas:
 
-- Pages: `src/pages/`
-- Feature modules: `src/features/`
-- Auth state: `src/store/authStore.ts`
-- Session persistence: `src/utils/auth-session.ts`
-- Provider selection: `src/contexts/ProviderContext.tsx`
-- Backend client code: `src/api/apiClient.ts` and `src/api/http-client.ts`
+- Pages: `apps/web/pages/`
+- Feature modules: `apps/web/src/features/`
+- Auth state: `apps/web/src/store/authStore.ts`
+- Session persistence: `apps/web/src/utils/auth-session.ts`
+- Provider selection: `apps/web/src/contexts/ProviderContext.tsx`
+- Backend client code: `apps/web/src/api/apiClient.ts` and `apps/web/src/api/http-client.ts`
 
 Protected routes are enforced in `middleware.ts`. The middleware uses cookie presence as a routing gate, while sensitive data still relies on JWT validation server-side.
 
 ## Backend Structure
 
-The FastAPI app is assembled in `api/main.py` and includes routers for:
+The FastAPI app is assembled in `apps/api/src/api/main.py` and includes routers for:
 
 - `/auth`
 - `/chat`

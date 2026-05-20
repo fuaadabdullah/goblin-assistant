@@ -28,7 +28,7 @@ Goblin Assistant uses **Playwright** for end-to-end testing and **Storybook** fo
 
 ### Visual Testing with Storybook
 
-#### Component Stories (`src/components/`)
+#### Component Stories (`apps/web/src/components/`)
 
 - **68 Storybook stories** documenting 150+ component states
 - **Automated visual testing** via Chromatic (cloud-based)

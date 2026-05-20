@@ -12,8 +12,8 @@
 
 Created a centralized theme system with:
 
-- **CSS Variables**: Single source of truth in `src/theme/index.css`
-- **Runtime Utilities**: JavaScript helpers in `src/theme/theme.js`
+- **CSS Variables**: Single source of truth in `apps/web/src/theme/index.css`
+- **Runtime Utilities**: JavaScript helpers in `apps/web/src/theme/theme.js`
 - **Theme Presets**: 3 ready-to-use color schemes (default, nocturne, ember)
 
 ### 2. App Integration ✅
@@ -35,8 +35,8 @@ Created a centralized theme system with:
 ## 📁 Files Created
 
 ```
-apps/goblin-assistant/
-├── src/theme/
+./
+├── apps/web/src/theme/
 │   ├── index.css                    # CSS variables + high-contrast overrides
 │   └── theme.js                     # Runtime utilities (setThemeVars, enableHighContrast, etc.)
 ├── scripts/
@@ -50,8 +50,8 @@ apps/goblin-assistant/
 ## 📝 Files Modified
 
 ```
-apps/goblin-assistant/
-├── src/
+./
+├── apps/web/src/
 │   ├── App.tsx                      # Added theme imports + initializeTheme()
 │   └── index.css                    # Replaced duplicate vars with @import
 └── tailwind.config.js               # Updated color mappings to CSS vars
@@ -122,8 +122,8 @@ node scripts/verify-theme-system.js
 
 ### Priority 1: Create Theme Module ✅
 
-- [x] Created `src/theme/index.css` with 35 CSS variables
-- [x] Created `src/theme/theme.js` with 6 runtime utilities
+- [x] Created `apps/web/src/theme/index.css` with 35 CSS variables
+- [x] Created `apps/web/src/theme/theme.js` with 6 runtime utilities
 - [x] Defined 3 theme presets (default, nocturne, ember)
 - [x] Added high-contrast class overrides (WCAG AAA)
 - [x] Added reduced motion media query

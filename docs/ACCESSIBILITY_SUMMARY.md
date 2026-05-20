@@ -62,11 +62,11 @@ All semantic token combinations meet or exceed WCAG AA requirements:
 
 **Files**:
 
-- `src/hooks/useContrastMode.tsx` - Context provider and hook
-- `src/components/ContrastModeToggle.tsx` - Toggle button component
-- `src/index.css` - High-contrast CSS variables
-- `src/App.tsx` - ContrastModeProvider wrapper
-- `src/components/Navigation.tsx` - Toggle integration
+- `apps/web/src/hooks/useContrastMode.tsx` - Context provider and hook
+- `apps/web/src/components/ContrastModeToggle.tsx` - Toggle button component
+- `apps/web/src/index.css` - High-contrast CSS variables
+- `apps/web/src/App.tsx` - ContrastModeProvider wrapper
+- `apps/web/src/components/Navigation.tsx` - Toggle integration
 
 **Testing**:
 

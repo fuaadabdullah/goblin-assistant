@@ -83,4 +83,4 @@ console.log('Login token:', access_token);
 - Origin validation is required; ensure `FRONTEND_URL` in backend `.env` matches the production frontend domain.
 - This example intentionally uses `base64urlEncode`/`base64urlDecode` utility functions — you can adapt utilities to your stack (e.g., `@noble/hashes` or `buffer` in Node).
 
-For additional UI examples, see: `apps/goblin-assistant/docs/` and developer stories under `apps/goblin-assistant/src/stories/`.
+For additional UI examples, see: `./docs/` and developer stories under `apps/web/src/stories/`.

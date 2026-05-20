@@ -30,7 +30,7 @@ npm run chromatic
 
 All UI components have Storybook stories documenting their variants and states:
 
-### UI Components (`src/components/ui/`)
+### UI Components (`apps/web/src/components/ui/`)
 
 - **Button** - All variants (default, primary, secondary, danger, ghost), sizes (sm, md, lg)
 - **Badge** - Status badges (success, warning, danger, neutral) with icons
@@ -39,7 +39,7 @@ All UI components have Storybook stories documenting their variants and states:
 - **Grid** - Responsive grid layouts with auto-fit
 - **IconButton** - Icon-only buttons with accessibility
 
-### Application Components (`src/components/`)
+### Application Components (`apps/web/src/components/`)
 
 - **StatusCard** - Health status cards (healthy, degraded, down, unknown)
 - **LoadingSkeleton** - All skeleton loading states
