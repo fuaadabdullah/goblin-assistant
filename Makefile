@@ -22,6 +22,7 @@ install:
 
 generate-providers-json:
 	PYTHONPATH=packages/shared/src $(PYTHON) scripts/generate-providers-json.py
+	cp config/providers.json apps/web/src/config/providers.json
 
 web-dev:
 	mkdir -p .tmp

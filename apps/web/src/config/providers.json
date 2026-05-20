@@ -1,0 +1,360 @@
+{
+  "version": 2,
+  "default_timeout_ms": 12000,
+  "providers": {
+    "openai": {
+      "endpoint": "https://api.openai.com/v1",
+      "endpoint_env": "OPENAI_ENDPOINT",
+      "api_key_env": "OPENAI_API_KEY",
+      "priority_tier": 10,
+      "capabilities": [
+        "chat",
+        "reasoning",
+        "code",
+        "embedding",
+        "image"
+      ],
+      "models": [
+        "gpt-4o",
+        "gpt-4o-mini",
+        "gpt-4-turbo"
+      ],
+      "cost_score": 0.8,
+      "default_timeout_ms": 10000,
+      "rate_limit_per_min": 60,
+      "display_name": "OpenAI",
+      "is_active": true
+    },
+    "anthropic": {
+      "endpoint": "https://api.anthropic.com",
+      "endpoint_env": "ANTHROPIC_ENDPOINT",
+      "api_key_env": "ANTHROPIC_API_KEY",
+      "priority_tier": 20,
+      "capabilities": [
+        "chat",
+        "reasoning",
+        "code"
+      ],
+      "models": [
+        "claude-sonnet-4-20250514",
+        "claude-3-5-haiku-latest"
+      ],
+      "cost_score": 0.9,
+      "default_timeout_ms": 15000,
+      "rate_limit_per_min": 60,
+      "display_name": "Anthropic",
+      "is_active": true,
+      "invoke_path": "/v1/messages"
+    },
+    "gemini": {
+      "endpoint": "https://generativelanguage.googleapis.com/v1beta/openai",
+      "endpoint_env": "GEMINI_ENDPOINT",
+      "api_key_env": "GOOGLE_AI_API_KEY",
+      "priority_tier": 50,
+      "capabilities": [
+        "chat",
+        "reasoning",
+        "code",
+        "image"
+      ],
+      "models": [
+        "gemini-2.0-flash",
+        "gemini-2.0-flash-lite"
+      ],
+      "cost_score": 0.6,
+      "default_timeout_ms": 12000,
+      "rate_limit_per_min": 60,
+      "display_name": "Google Gemini",
+      "is_active": true
+    },
+    "deepseek": {
+      "endpoint": "https://api.deepseek.com",
+      "endpoint_env": "DEEPSEEK_ENDPOINT",
+      "api_key_env": "DEEPSEEK_API_KEY",
+      "priority_tier": 40,
+      "capabilities": [
+        "chat",
+        "reasoning",
+        "code"
+      ],
+      "models": [
+        "deepseek-chat",
+        "deepseek-coder"
+      ],
+      "cost_score": 0.3,
+      "default_timeout_ms": 10000,
+      "rate_limit_per_min": 60,
+      "display_name": "DeepSeek",
+      "is_active": true,
+      "invoke_path": "/v1/chat/completions"
+    },
+    "groq": {
+      "endpoint": "https://api.groq.com/openai/v1",
+      "endpoint_env": "GROQ_ENDPOINT",
+      "api_key_env": "GROQ_API_KEY",
+      "priority_tier": 30,
+      "capabilities": [
+        "chat",
+        "reasoning",
+        "code"
+      ],
+      "models": [
+        "llama-3.1-8b-instant",
+        "llama-3.3-70b-versatile",
+        "mixtral-8x7b-32768"
+      ],
+      "cost_score": 0.4,
+      "default_timeout_ms": 8000,
+      "rate_limit_per_min": 60,
+      "display_name": "Groq",
+      "is_active": true
+    },
+    "siliconeflow": {
+      "endpoint": "https://api.siliconflow.com",
+      "endpoint_env": "SILICONEFLOW_ENDPOINT",
+      "api_key_env": "SILICONEFLOW_API_KEY",
+      "priority_tier": 35,
+      "capabilities": [
+        "chat",
+        "reasoning",
+        "code"
+      ],
+      "models": [
+        "Qwen/Qwen2.5-7B-Instruct",
+        "Qwen/Qwen2.5-Coder-7B-Instruct",
+        "deepseek-ai/DeepSeek-V2.5"
+      ],
+      "cost_score": 0.3,
+      "default_timeout_ms": 10000,
+      "rate_limit_per_min": 60,
+      "display_name": "SiliconeFlow",
+      "is_active": true,
+      "invoke_path": "/v1/chat/completions"
+    },
+    "azure_openai": {
+      "endpoint": "https://goblinos-resource.openai.azure.com/openai/v1",
+      "endpoint_env": "AZURE_OPENAI_ENDPOINT",
+      "api_key_env": "AZURE_API_KEY",
+      "priority_tier": 25,
+      "capabilities": [
+        "chat",
+        "reasoning",
+        "code",
+        "embedding"
+      ],
+      "models": [
+        "gpt-4o-mini",
+        "gpt-4o",
+        "gpt-4.1"
+      ],
+      "cost_score": 0.7,
+      "default_timeout_ms": 15000,
+      "rate_limit_per_min": 60,
+      "display_name": "Azure OpenAI",
+      "is_active": true
+    },
+    "vertex_ai": {
+      "endpoint": "",
+      "endpoint_env": "VERTEX_AI_ENDPOINT",
+      "priority_tier": 45,
+      "capabilities": [
+        "chat",
+        "reasoning",
+        "code",
+        "image"
+      ],
+      "models": [
+        "gemini-2.5-flash",
+        "gemini-2.0-flash",
+        "gemini-2.0-flash-lite"
+      ],
+      "cost_score": 0.7,
+      "default_timeout_ms": 15000,
+      "rate_limit_per_min": 60,
+      "display_name": "Google Vertex AI",
+      "is_active": true
+    },
+    "aliyun": {
+      "endpoint": "https://dashscope-intl.aliyuncs.com/compatible-mode",
+      "endpoint_env": "DASHSCOPE_ENDPOINT",
+      "api_key_env": "DASHSCOPE_API_KEY",
+      "priority_tier": 60,
+      "capabilities": [
+        "chat",
+        "reasoning",
+        "code"
+      ],
+      "models": [
+        "qwen-turbo",
+        "qwen-plus",
+        "qwen-max",
+        "qwen-long",
+        "qwen2.5-7b-instruct"
+      ],
+      "cost_score": 0.2,
+      "default_timeout_ms": 15000,
+      "rate_limit_per_min": 60,
+      "display_name": "Aliyun DashScope",
+      "is_active": true
+    },
+    "together": {
+      "endpoint": "https://api.together.xyz",
+      "endpoint_env": "TOGETHER_ENDPOINT",
+      "api_key_env": "TOGETHER_API_KEY",
+      "priority_tier": 3,
+      "capabilities": [
+        "chat",
+        "reasoning",
+        "code",
+        "image"
+      ],
+      "models": [
+        "llama-2-70b",
+        "codellama-34b"
+      ],
+      "cost_score": 0.5,
+      "default_timeout_ms": 10000,
+      "rate_limit_per_min": 60,
+      "display_name": "Together AI",
+      "is_active": true
+    },
+    "replicate": {
+      "endpoint": "https://api.replicate.com",
+      "endpoint_env": "REPLICATE_ENDPOINT",
+      "api_key_env": "REPLICATE_API_KEY",
+      "priority_tier": 3,
+      "capabilities": [
+        "chat",
+        "reasoning",
+        "code",
+        "image"
+      ],
+      "models": [
+        "llama-2-70b",
+        "codellama-34b"
+      ],
+      "cost_score": 0.6,
+      "default_timeout_ms": 20000,
+      "rate_limit_per_min": 30,
+      "display_name": "Replicate",
+      "is_active": false
+    },
+    "huggingface": {
+      "endpoint": "https://api-inference.huggingface.co",
+      "endpoint_env": "HUGGINGFACE_ENDPOINT",
+      "api_key_env": "HUGGINGFACE_API_KEY",
+      "priority_tier": 4,
+      "capabilities": [
+        "chat",
+        "reasoning",
+        "code"
+      ],
+      "models": [
+        "microsoft/DialoGPT-medium",
+        "facebook/blenderbot-400M-distill"
+      ],
+      "cost_score": 0.2,
+      "default_timeout_ms": 15000,
+      "rate_limit_per_min": 30,
+      "display_name": "Hugging Face",
+      "is_active": false
+    },
+    "cohere": {
+      "endpoint": "https://api.cohere.ai",
+      "endpoint_env": "COHERE_ENDPOINT",
+      "api_key_env": "COHERE_API_KEY",
+      "priority_tier": 3,
+      "capabilities": [
+        "chat",
+        "reasoning",
+        "code",
+        "embedding"
+      ],
+      "models": [
+        "command",
+        "base"
+      ],
+      "cost_score": 0.7,
+      "default_timeout_ms": 10000,
+      "rate_limit_per_min": 30,
+      "display_name": "Cohere",
+      "is_active": false
+    },
+    "ollama_gcp": {
+      "endpoint": "http://34.60.255.199:11434",
+      "endpoint_env": "OLLAMA_GCP_ENDPOINT",
+      "priority_tier": 70,
+      "capabilities": [
+        "chat",
+        "reasoning",
+        "code"
+      ],
+      "models": [
+        "qwen2.5:3b",
+        "llama3.2:1b"
+      ],
+      "cost_score": 0.1,
+      "default_timeout_ms": 60000,
+      "rate_limit_per_min": 120,
+      "display_name": "Ollama (GCP)",
+      "is_active": true
+    },
+    "llamacpp_gcp": {
+      "endpoint": "http://34.132.226.143:8000",
+      "endpoint_env": "LLAMACPP_GCP_ENDPOINT",
+      "priority_tier": 75,
+      "capabilities": [
+        "chat",
+        "reasoning",
+        "code"
+      ],
+      "models": [
+        "qwen2.5-3b-instruct-q4_k_m"
+      ],
+      "cost_score": 0.05,
+      "default_timeout_ms": 60000,
+      "rate_limit_per_min": 120,
+      "display_name": "Llama.cpp (GCP)",
+      "is_active": true
+    },
+    "ollama_local": {
+      "endpoint": "http://localhost:11434",
+      "endpoint_env": "OLLAMA_LOCAL_ENDPOINT",
+      "priority_tier": 80,
+      "capabilities": [
+        "chat",
+        "reasoning",
+        "code"
+      ],
+      "models": [
+        "qwen2.5:3b"
+      ],
+      "cost_score": 0.0,
+      "default_timeout_ms": 60000,
+      "rate_limit_per_min": 120,
+      "display_name": "Ollama Local",
+      "is_active": true
+    },
+    "mock": {
+      "endpoint": "mock://localhost",
+      "endpoint_env": "MOCK_PROVIDER_ENDPOINT",
+      "priority_tier": 999,
+      "capabilities": [
+        "chat",
+        "reasoning",
+        "code",
+        "embedding"
+      ],
+      "models": [
+        "mock-gpt",
+        "mock-claude",
+        "mock-phi"
+      ],
+      "cost_score": 0.0,
+      "default_timeout_ms": 1000,
+      "rate_limit_per_min": 9999,
+      "display_name": "Mock Provider",
+      "is_active": true
+    }
+  }
+}

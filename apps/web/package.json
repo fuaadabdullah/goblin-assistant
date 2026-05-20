@@ -5,7 +5,7 @@
   "description": "Goblin Assistant Next.js frontend",
   "scripts": {
     "dev": "next dev",
-    "build": "next build",
+    "build": "cp ../../config/providers.json src/config/providers.json 2>/dev/null || true && next build",
     "start": "next start",
     "lint": "eslint . && node ../../scripts/guard-no-inline-styles.js",
     "type-check": "tsc --noEmit",

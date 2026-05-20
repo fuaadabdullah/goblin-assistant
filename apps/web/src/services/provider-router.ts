@@ -6,7 +6,7 @@
 // from config/providers.toml (the single source of truth).
 // Run `make generate-providers-json` after editing providers.toml.
 
-import providersJson from '../../../../config/providers.json';
+import providersJson from '../config/providers.json';
 import { runtimeClient } from '@/api';
 
 // ── Minimal runtime types (mirrored from shared schema) ──────────────────
