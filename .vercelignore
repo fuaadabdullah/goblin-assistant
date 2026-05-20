@@ -1,34 +1,58 @@
-# Exclude backend API code from Vercel deployment
+# Backend & infra (not deployed via Vercel)
+apps/api/
 /backend/
-/api/
-requirements.txt
-fly.toml
-fly-worker.toml
 /docker/
 /scripts/
 /tests/
+/k8s/
+/terraform/
+/infra/
+/supabase/
+fly.toml
+fly-worker.toml
+requirements*.txt
+
+# Playwright browser binaries (~1GB) and test artifacts
+.playwright/
+**/.playwright/
+.playwright-cli/
+**/playwright-report/
+**/test-results/
+**/e2e/
+
+# Build outputs (Vercel rebuilds these)
+**/.next/
+**/dist/
+**/build/
+**/storybook-static/
+**/coverage/
+/.coverage
+**/*.tsbuildinfo
+
+# Python caches and venvs
+**/__pycache__/
+**/.mypy_cache/
+**/.pytest_cache/
+**/.ruff_cache/
+.venv/
+venv/
+
+# JS deps & locks (Vercel installs)
+**/node_modules/
+
+# Reports, screenshots, temp, local DB
+/reports/
+/screenshots/
+.tmp/
 *.db
 *.log
-/__pycache__/
-/.mypy_cache/
-/.pytest_cache/
-/.ruff_cache/
-/.venv/
-/venv/
+
+# Git & editor & OS
 /.git/
-/.next/
-/goblin-assistant-contracts/
-node_modules/
-dist/
-/coverage/
-/.coverage
-/supabase/
-/.playwright-cli/
-/tsconfig.tsbuildinfo
-._*
 .vercel/
+._*
+.DS_Store
+
+# Env files (Vercel injects from project settings)
 .env*
 !.env.example
-
-# Exclude Next.js cache to reduce deployment size
-/.next/cache/
