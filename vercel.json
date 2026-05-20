@@ -1,5 +1,6 @@
 {
   "framework": "nextjs",
+  "rootDirectory": "apps/web",
   "env": {
     "GOBLIN_BACKEND_URL": "https://goblin-assistant-backend.onrender.com",
     "BACKEND_URL": "https://goblin-assistant-backend.onrender.com",
