@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-# apps/goblin-assistant/scripts/setup-supabase-from-bw.sh
+# ./scripts/setup-supabase-from-bw.sh
 # Fetch Supabase credentials from Bitwarden and validate using Supabase CLI + local check script
 
 cd "$(dirname "$0")/.."

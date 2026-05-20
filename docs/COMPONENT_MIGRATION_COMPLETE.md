@@ -22,7 +22,7 @@ Successfully migrated all components from inline styles to centralized UI compon
 
 ### Phase 1: UI Component Library Creation
 
-Created 5 core components in `src/components/ui/`:
+Created 5 core components in `apps/web/src/components/ui/`:
 
 1. **Button.tsx** (5 variants, 3 sizes, loading state, icon support)
 2. **Badge.tsx** (5 variants, 2 sizes, ARIA live regions)
@@ -321,7 +321,7 @@ Component bundles:
 ### Maintenance
 
 - Keep design tokens in sync with theme/index.css
-- Document new variants in UI_COMPONENT_LIBRARY.md
+- Document new variants in UI_docs/runbooks/COMPONENT_LIBRARY.md
 - Add Storybook or similar for component showcase
 - Create automated visual regression tests
 
@@ -331,7 +331,7 @@ Component bundles:
 
 ### Component Reference
 
-See `docs/UI_COMPONENT_LIBRARY.md` for complete API documentation of all UI components.
+See `docs/UI_docs/runbooks/COMPONENT_LIBRARY.md` for complete API documentation of all UI components.
 
 ### Migration Summary
 

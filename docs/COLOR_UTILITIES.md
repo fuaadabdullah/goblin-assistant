@@ -11,7 +11,7 @@ The GoblinOS color system uses **research-backed base colors** and programmatica
 
 ## Files
 
-- **`src/utils/colorUtils.js`** - Core color generation utilities
+- **`apps/web/src/utils/colorUtils.js`** - Core color generation utilities
 - **`scripts/generate-theme-css.js`** - Build script to generate CSS variables
 
 ## Base Colors (Research-Backed)
@@ -71,7 +71,7 @@ console.log(GOBLINOS_PALETTE.primary);
 node scripts/generate-theme-css.js
 
 # Write to file
-node scripts/generate-theme-css.js --output src/generated-theme.css
+node scripts/generate-theme-css.js --output apps/web/src/generated-theme.css
 ```
 
 **Output**:
@@ -242,7 +242,7 @@ Add to `package.json` scripts:
 ```json
 {
   "scripts": {
-    "theme:generate": "node scripts/generate-theme-css.js --output src/generated-theme.css",
+    "theme:generate": "node scripts/generate-theme-css.js --output apps/web/src/generated-theme.css",
     "theme:preview": "node scripts/generate-theme-css.js",
     "prebuild": "npm run theme:generate"
   }
@@ -255,7 +255,7 @@ Run the test script:
 
 ```bash
 # Test color utility functions
-node src/utils/colorUtils.js
+node apps/web/src/utils/colorUtils.js
 
 # Generate theme CSS
 node scripts/generate-theme-css.js
@@ -279,7 +279,7 @@ Primary (Goblin Green):
 
 To change the color scheme:
 
-1. **Update base colors** in `src/utils/colorUtils.js`:
+1. **Update base colors** in `apps/web/src/utils/colorUtils.js`:
 
    ```javascript
    export const GOBLINOS_BASE_COLORS = {
@@ -302,7 +302,7 @@ To change the color scheme:
    node scripts/check-contrast.js
    ```
 
-4. **Update CSS** in `src/index.css` if needed
+4. **Update CSS** in `apps/web/src/index.css` if needed
 
 ## Benefits
 

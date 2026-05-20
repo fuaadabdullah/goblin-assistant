@@ -169,4 +169,4 @@ echo ""
 echo "Commands:"
 echo "- Monitor logs: kubectl logs -f deployment/$DEPLOYMENT_NAME -n $STAGING_NAMESPACE"
 echo "- Check scheduler: kubectl exec -n $STAGING_NAMESPACE deployment/$DEPLOYMENT_NAME -- curl http://localhost:8000/v1/health/scheduler/status"</content>
-<parameter name="filePath">/Users/fuaadabdullah/ForgeMonorepo/apps/goblin-assistant/deploy_apscheduler_staging.sh
+<parameter name="filePath">/Users/fuaadabdullah/ForgeMonorepo/./deploy_apscheduler_staging.sh

@@ -17,7 +17,7 @@ import { fileURLToPath } from 'url';
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
-const cssPath = path.join(__dirname, '../src/index.css');
+const cssPath = path.join(__dirname, '../apps/web/src/index.css');
 const css = fs.readFileSync(cssPath, 'utf8');
 
 console.log('\n========================================');
@@ -81,8 +81,8 @@ console.log('========================================\n');
 
 // Check component files exist
 const componentsToCheck = [
-  '../src/hooks/useContrastMode.tsx',
-  '../src/components/ContrastModeToggle.tsx',
+  '../apps/web/src/hooks/useContrastMode.tsx',
+  '../apps/web/src/components/ContrastModeToggle.tsx',
 ];
 
 console.log('Component Files:\n');

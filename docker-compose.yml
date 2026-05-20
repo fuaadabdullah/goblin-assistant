@@ -61,7 +61,7 @@ services:
       - CELERY_BROKER_URL=redis://redis:6379/0
       - CELERY_RESULT_BACKEND=redis://redis:6379/0
     volumes:
-      - ./backend:/app
+      - ./apps/api/src/api:/app
     depends_on:
       redis:
         condition: service_healthy
@@ -76,7 +76,7 @@ services:
       - CELERY_BROKER_URL=redis://redis:6379/0
       - CELERY_RESULT_BACKEND=redis://redis:6379/0
     volumes:
-      - ./backend:/app
+      - ./apps/api/src/api:/app
     depends_on:
       redis:
         condition: service_healthy
@@ -91,7 +91,7 @@ services:
       - CELERY_BROKER_URL=redis://redis:6379/0
       - CELERY_RESULT_BACKEND=redis://redis:6379/0
     volumes:
-      - ./backend:/app
+      - ./apps/api/src/api:/app
     depends_on:
       redis:
         condition: service_healthy
@@ -106,7 +106,7 @@ services:
       - CELERY_BROKER_URL=redis://redis:6379/0
       - CELERY_RESULT_BACKEND=redis://redis:6379/0
     volumes:
-      - ./backend:/app
+      - ./apps/api/src/api:/app
     depends_on:
       redis:
         condition: service_healthy
@@ -123,7 +123,7 @@ services:
       - CELERY_BROKER_URL=redis://redis:6379/0
       - CELERY_RESULT_BACKEND=redis://redis:6379/0
     volumes:
-      - ./backend:/app
+      - ./apps/api/src/api:/app
     depends_on:
       redis:
         condition: service_healthy
@@ -146,7 +146,7 @@ services:
       - CELERY_BROKER_URL=redis://redis:6379/0
       - CELERY_RESULT_BACKEND=redis://redis:6379/0
     volumes:
-      - ./backend:/app
+      - ./apps/api/src/api:/app
     depends_on:
       redis:
         condition: service_healthy
@@ -171,7 +171,7 @@ services:
       - SANDBOX_IMAGE=goblin-assistant-sandbox:latest
       - JOBS_DIR=/app/sandbox_jobs
     volumes:
-      - ./backend:/app
+      - ./apps/api/src/api:/app
       - sandbox_jobs:/app/sandbox_jobs
     depends_on:
       redis:

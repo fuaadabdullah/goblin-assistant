@@ -8,7 +8,7 @@
  *
  * Usage:
  *   node scripts/generate-theme-css.js
- *   node scripts/generate-theme-css.js --output src/generated-theme.css
+ *   node scripts/generate-theme-css.js --output apps/web/src/generated-theme.css
  */
 
 import {
@@ -17,7 +17,7 @@ import {
   GOBLINOS_BASE_COLORS,
   generateCssVariables,
   GOBLINOS_PALETTE,
-} from '../src/utils/colorUtils.js';
+} from '../apps/web/src/utils/colorUtils.js';
 
 const args = process.argv.slice(2);
 const outputFile = args.includes('--output') ? args[args.indexOf('--output') + 1] : null;

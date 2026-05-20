@@ -4,7 +4,7 @@ services:
     runtime: docker
     region: oregon
     plan: standard
-    startCommand: uvicorn api.main:app --host 0.0.0.0 --port $PORT
+    startCommand: PYTHONPATH=apps/api/src uvicorn api.main:app --host 0.0.0.0 --port $PORT
     
     # Environment Variables
     envVars:
@@ -81,5 +81,4 @@ services:
     # Build settings
     buildCommand: |
       pip install --upgrade pip
-      pip install -r requirements.txt
-
+      pip install -r apps/api/requirements.txt -r apps/api/requirements-vector.txt

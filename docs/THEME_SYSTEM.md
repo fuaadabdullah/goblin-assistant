@@ -10,7 +10,7 @@
 
 ### ✅ Priority 1: Theme Module Created
 
-**Files**: `src/theme/index.css`, `src/theme/theme.js`
+**Files**: `apps/web/src/theme/index.css`, `apps/web/src/theme/theme.js`
 
 **CSS Variables** (`index.css`):
 
@@ -41,7 +41,7 @@ getCurrentThemePreset(); // Get active preset
 
 ### ✅ Priority 2: Wired into App Root
 
-**Files**: `src/App.tsx`, `tailwind.config.js`
+**Files**: `apps/web/src/App.tsx`, `tailwind.config.js`
 
 **App.tsx Integration**:
 
@@ -75,7 +75,7 @@ colors: {
 
 ### ✅ Priority 3: Replaced Hard-coded Colors
 
-**File**: `src/index.css`
+**File**: `apps/web/src/index.css`
 
 **Consolidation**:
 
@@ -93,7 +93,7 @@ colors: {
 
 ### ✅ Priority 4: High-Contrast Toggle + Reduced Motion
 
-**Files**: `src/components/ContrastModeToggle.tsx`, `src/hooks/useContrastMode.tsx`, `src/theme/index.css`
+**Files**: `apps/web/src/components/ContrastModeToggle.tsx`, `apps/web/src/hooks/useContrastMode.tsx`, `apps/web/src/theme/index.css`
 
 **High-Contrast Mode**:
 
@@ -301,7 +301,7 @@ node scripts/verify-theme-system.js
 ### File Structure
 
 ```
-src/
+apps/web/src/
 ├── theme/
 │   ├── index.css       # CSS variables + high-contrast overrides
 │   └── theme.js        # Runtime utilities + presets

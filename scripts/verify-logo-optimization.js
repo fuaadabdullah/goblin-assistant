@@ -37,7 +37,7 @@ function check(condition, successMsg, failMsg) {
 console.log('🎨 Verifying Logo Optimization...\n');
 
 // 1. Check Logo component exists
-const logoComponentPath = join(appRoot, 'src/components/Logo.tsx');
+const logoComponentPath = join(appRoot, 'apps/web/src/components/Logo.tsx');
 const logoExists = existsSync(logoComponentPath);
 check(logoExists, '1. Logo component exists', '1. Logo component missing');
 
@@ -63,8 +63,8 @@ if (logoExists) {
 }
 
 // 2. Check SVG assets
-const logoSvgPath = join(appRoot, 'src/assets/logo.svg');
-const logoSimpleSvgPath = join(appRoot, 'src/assets/logo-simple.svg');
+const logoSvgPath = join(appRoot, 'apps/web/src/assets/logo.svg');
+const logoSimpleSvgPath = join(appRoot, 'apps/web/src/assets/logo-simple.svg');
 
 check(existsSync(logoSvgPath), '2. Full logo SVG exists', '2. Full logo SVG missing');
 check(existsSync(logoSimpleSvgPath), '   - Simple logo SVG exists', '   - Simple logo SVG missing');
@@ -116,7 +116,7 @@ if (existsSync(htmlPath)) {
 }
 
 // 5. Check CSS animations
-const cssPath = join(appRoot, 'src/index.css');
+const cssPath = join(appRoot, 'apps/web/src/index.css');
 if (existsSync(cssPath)) {
   const cssContent = readFileSync(cssPath, 'utf-8');
   check(
@@ -137,7 +137,7 @@ if (existsSync(cssPath)) {
 }
 
 // 6. Check Navigation integration
-const navPath = join(appRoot, 'src/components/Navigation.tsx');
+const navPath = join(appRoot, 'apps/web/src/components/Navigation.tsx');
 if (existsSync(navPath)) {
   const navContent = readFileSync(navPath, 'utf-8');
   check(

@@ -117,7 +117,7 @@ app.include_router(dashboard_router)  # Optimized dashboard endpoints
 
 ## 🎨 Frontend Changes
 
-### 1. API Client Updates (`src/api/client-axios.ts`)
+### 1. API Client Updates (`apps/web/src/api/client-axios.ts`)
 
 **New Methods**:
 
@@ -136,7 +136,7 @@ async getDashboardMetrics(service: string): Promise<ServiceMetricsResponse>
 
 - `getChromaStatus()`, `getMCPStatus()`, `getRaptorStatus()`, `getSandboxStatus()`, `getCostTracking()`
 
-### 2. Dashboard Component Update (`src/components/EnhancedDashboard.tsx`)
+### 2. Dashboard Component Update (`apps/web/src/components/EnhancedDashboard.tsx`)
 
 **Before** (6+ API calls):
 
@@ -273,7 +273,7 @@ DB Queries: 0 (cached for 60s)
 
 ```bash
 # Start backend
-cd apps/goblin-assistant/backend
+cd ./backend
 uvicorn main:app --reload
 
 # Test new endpoints

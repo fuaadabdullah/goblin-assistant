@@ -296,7 +296,7 @@ sudo systemctl restart datadog-agent
 ## 📚 Documentation Structure
 
 ```
-apps/goblin-assistant/
+./
 ├── infra/observability/datadog/
 │   ├── README.md                      # Complete guide (700+ lines)
 │   ├── QUICKSTART.md                  # Quick reference
@@ -345,7 +345,7 @@ apps/goblin-assistant/
 
 ### With Existing Goblin Assistant Infrastructure
 
-- **Backend API** (`apps/goblin-assistant/backend/`): Process monitoring tracks FastAPI/Gunicorn workers
+- **Backend API** (`./backend/`): Process monitoring tracks FastAPI/Gunicorn workers
 - **Cloudflare Workers** (`infra/cloudflare/`): Correlate edge metrics with backend processes
 - **Prometheus** (`middleware/metrics.py`): Datadog can scrape Prometheus endpoints
 - **Structured Logging** (`middleware/logging_middleware.py`): JSON logs integrate with Datadog logs

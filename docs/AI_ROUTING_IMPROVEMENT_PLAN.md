@@ -41,7 +41,7 @@ This document outlines a comprehensive plan to improve the Goblin Assistant's AI
    - Bandwidth scores unused
    - Priority tiers exist but not enforced
 
-4. **Frontend Provider Store** (`src/lib/store/provider-store.ts`)
+4. **Frontend Provider Store** (`apps/web/src/lib/store/provider-store.ts`)
    - Routing strategies: `round-robin`, `performance`, `latency`
    - Not connected to backend routing
 
@@ -399,7 +399,7 @@ New endpoints for `/ops/routing`:
 ## New File Structure
 
 ```
-apps/goblin-assistant/api/
+apps/api/
 ├── services/
 │   ├── smart_router.py          # NEW: Intelligent routing
 │   ├── provider_health.py       # NEW: Health monitoring

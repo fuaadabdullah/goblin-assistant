@@ -49,7 +49,7 @@ Visual regression testing has been successfully implemented for the Goblin Assis
 ```bash
 # From monorepo root
 cd /Users/fuaadabdullah/ForgeMonorepo
-npx storybook dev -p 6006 --config-dir apps/goblin-assistant/.storybook
+npx storybook dev -p 6006 --config-dir ./.storybook
 
 # Visit http://localhost:6006
 ```
@@ -226,7 +226,7 @@ import { Button } from './Button';
 ```bash
 
 # From monorepo root
-npx storybook dev -p 6006 --config-dir apps/goblin-assistant/.storybook
+npx storybook dev -p 6006 --config-dir ./.storybook
 ```
 
 ### Clear Cache
@@ -234,12 +234,12 @@ npx storybook dev -p 6006 --config-dir apps/goblin-assistant/.storybook
 ```bash
 cd apps/goblin-assistant
 rm -rf node_modules/.cache
-npx storybook dev -p 6006 --config-dir apps/goblin-assistant/.storybook
+npx storybook dev -p 6006 --config-dir ./.storybook
 ```
 
 ## 📖 Documentation
 
-- **Full Guide**: `docs/VISUAL_REGRESSION_TESTING.md`
+- **Full Guide**: `docs/VISUAL_REGRESSION_docs/runbooks/TESTING.md`
 - **Storybook Docs**: https://storybook.js.org/docs
 - **Chromatic Docs**: https://www.chromatic.com/docs
 - **Component Tests**: All 69 tests passing (see `COMPONENT_TESTS.md`)

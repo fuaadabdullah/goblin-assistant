@@ -24,27 +24,27 @@ echo -e "\n${YELLOW}📋 Step 1: Backup current files${NC}"
 mkdir -p .migration-backup
 cp package.json .migration-backup/package.json.bak 2>/dev/null || true
 cp vite.config.ts .migration-backup/vite.config.ts.bak 2>/dev/null || true
-cp src/main.tsx .migration-backup/main.tsx.bak 2>/dev/null || true
+cp apps/web/src/main.tsx .migration-backup/main.tsx.bak 2>/dev/null || true
 echo -e "${GREEN}✅ Backup created in .migration-backup/${NC}"
 
 echo -e "\n${YELLOW}📋 Step 2: Check existing security components${NC}"
 
 # Check for existing files
 components_exist=true
-if [ ! -f "src/config/env.ts" ]; then
-    echo "❌ Missing: src/config/env.ts"
+if [ ! -f "apps/web/src/config/env.ts" ]; then
+    echo "❌ Missing: apps/web/src/config/env.ts"
     components_exist=false
 fi
-if [ ! -f "src/components/ErrorBoundary.tsx" ]; then
-    echo "❌ Missing: src/components/ErrorBoundary.tsx"
+if [ ! -f "apps/web/src/components/ErrorBoundary.tsx" ]; then
+    echo "❌ Missing: apps/web/src/components/ErrorBoundary.tsx"
     components_exist=false
 fi
 if [ ! -f "scripts/validate-env.ts" ]; then
     echo "❌ Missing: scripts/validate-env.ts"
     components_exist=false
 fi
-if [ ! -f "src/utils/dev-log.ts" ]; then
-    echo "❌ Missing: src/utils/dev-log.ts"
+if [ ! -f "apps/web/src/utils/dev-log.ts" ]; then
+    echo "❌ Missing: apps/web/src/utils/dev-log.ts"
     components_exist=false
 fi
 
@@ -114,7 +114,7 @@ npm run build >/dev/null 2>&1
 # Check if bundle contains console.log statements
 if grep -q "console\.log" dist/assets/*.js 2>/dev/null; then
     echo -e "${RED}❌ Production bundle contains console.log statements${NC}"
-    echo "Check src/utils/dev-log.ts usage and ensure all console.log calls use devLog"
+    echo "Check apps/web/src/utils/dev-log.ts usage and ensure all console.log calls use devLog"
     exit 1
 else
     echo -e "${GREEN}✅ Production bundle clean (no console.log statements)${NC}"
@@ -123,7 +123,7 @@ fi
 echo -e "\n${YELLOW}📋 Step 8: Check ErrorBoundary integration${NC}"
 
 # Check if main.tsx uses ErrorBoundary
-if grep -q "ErrorBoundary" src/main.tsx; then
+if grep -q "ErrorBoundary" apps/web/src/main.tsx; then
     echo -e "${GREEN}✅ ErrorBoundary integrated in main.tsx${NC}"
 else
     echo -e "${YELLOW}⚠️  ErrorBoundary not found in main.tsx - manual integration needed${NC}"

@@ -122,8 +122,8 @@ sleep 61 && time curl <http://localhost:8001/api/dashboard/costs>
 
 ### Frontend
 
-- ✅ `src/api/client-axios.ts` - Add `getDashboardStatus()` and `getDashboardCosts()`
-- ✅ `src/components/EnhancedDashboard.tsx` - Use consolidated endpoints
+- ✅ `apps/web/src/api/client-axios.ts` - Add `getDashboardStatus()` and `getDashboardCosts()`
+- ✅ `apps/web/src/components/EnhancedDashboard.tsx` - Use consolidated endpoints
 
 ## Status Codes
 

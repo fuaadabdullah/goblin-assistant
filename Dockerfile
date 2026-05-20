@@ -10,7 +10,8 @@ ENV PYTHONUNBUFFERED=1 \
 WORKDIR /app
 
 # Copy requirements file for dependency installation
-COPY requirements.txt /app/
+COPY apps/api/requirements.txt /app/apps/api/requirements.txt
+COPY apps/api/requirements-vector.txt /app/apps/api/requirements-vector.txt
 
 # Install build deps only for the pip step, then remove them to keep the image smaller.
 RUN apt-get update && apt-get install -y --no-install-recommends \
@@ -18,7 +19,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
   gcc \
   git \
   && pip install --upgrade pip \
-  && pip install -r requirements.txt \
+  && pip install -r /app/apps/api/requirements.txt -r /app/apps/api/requirements-vector.txt \
   && apt-get purge -y --auto-remove build-essential gcc git \
   && rm -rf /var/lib/apt/lists/* /root/.cache/pip
 
@@ -26,11 +27,11 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 COPY . /app
 
 # Ensure backend is importable: make sure /app on PYTHONPATH and workdir is /app
-ENV PYTHONPATH=/app
+ENV PYTHONPATH=/app/apps/api/src
 
 # Make sure api is a package (helpful if missing __init__.py)
 # Note: This will create an empty __init__.py if it doesn't exist
-RUN if [ -d /app/api ] && [ ! -f /app/api/__init__.py ]; then touch /app/api/__init__.py; fi || true
+RUN if [ -d /app/apps/api/src/api ] && [ ! -f /app/apps/api/src/api/__init__.py ]; then touch /app/apps/api/src/api/__init__.py; fi || true
 
 # Expose the app port
 ENV PORT=8001

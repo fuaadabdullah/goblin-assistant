@@ -16,7 +16,7 @@ Successfully implemented comprehensive logo optimization system with theme-adapt
 
 ### 1. Logo Component System ✅
 
-**Created**: `src/components/Logo.tsx`
+**Created**: `apps/web/src/components/Logo.tsx`
 
 - **Props**: size, variant, animated, className
 - **Sizes**: xs (16px), sm (24px), md (32px), lg (48px), xl (64px)
@@ -27,12 +27,12 @@ Successfully implemented comprehensive logo optimization system with theme-adapt
 
 **Created 4 optimized SVG files**:
 
-1. `src/assets/logo.svg` (2.5KB)
+1. `apps/web/src/assets/logo.svg` (2.5KB)
    - Detailed goblin face with ears, tech circuits, assistant badge
    - Theme-adaptive using CSS variables
    - Best for medium to large displays
 
-2. `src/assets/logo-simple.svg` (1.2KB)
+2. `apps/web/src/assets/logo-simple.svg` (1.2KB)
    - Simplified design for small sizes
    - Clean, minimal aesthetic
    - Optimized for favicons and navigation
@@ -62,7 +62,7 @@ Successfully implemented comprehensive logo optimization system with theme-adapt
 
 ### 4. Animations ✅
 
-**Added to `src/index.css`**:
+**Added to `apps/web/src/index.css`**:
 
 - `.logo-transition` - Smooth hover with scale and glow
 - `.logo-animated` - Enhanced pulse animation
@@ -71,7 +71,7 @@ Successfully implemented comprehensive logo optimization system with theme-adapt
 
 ### 5. Navigation Integration ✅
 
-**Updated `src/components/Navigation.tsx`**:
+**Updated `apps/web/src/components/Navigation.tsx`**:
 
 ```tsx
 // Before: Static emoji
@@ -98,13 +98,13 @@ Successfully implemented comprehensive logo optimization system with theme-adapt
 
 | File                                  | Status   | Purpose                   |
 | ------------------------------------- | -------- | ------------------------- |
-| `src/components/Logo.tsx`             | Created  | Logo component with props |
-| `src/assets/logo.svg`                 | Created  | Full detailed logo        |
-| `src/assets/logo-simple.svg`          | Created  | Simplified logo           |
+| `apps/web/src/components/Logo.tsx`             | Created  | Logo component with props |
+| `apps/web/src/assets/logo.svg`                 | Created  | Full detailed logo        |
+| `apps/web/src/assets/logo-simple.svg`          | Created  | Simplified logo           |
 | `public/favicon.svg`                  | Created  | Browser favicon           |
 | `public/apple-touch-icon.svg`         | Created  | iOS/macOS icon            |
-| `src/index.css`                       | Modified | Logo animations added     |
-| `src/components/Navigation.tsx`       | Modified | Uses Logo component       |
+| `apps/web/src/index.css`                       | Modified | Logo animations added     |
+| `apps/web/src/components/Navigation.tsx`       | Modified | Uses Logo component       |
 | `index.html`                          | Modified | Favicon and meta tags     |
 | `scripts/verify-logo-optimization.js` | Created  | Verification script       |
 | `docs/LOGO_OPTIMIZATION.md`           | Created  | Full documentation        |

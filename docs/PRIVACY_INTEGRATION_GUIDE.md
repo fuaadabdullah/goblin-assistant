@@ -5,7 +5,7 @@
 ### 1. Install Dependencies
 
 ```bash
-cd apps/goblin-assistant/api
+cd apps/api
 pip install chromadb sentence-transformers datadog
 ```
 
@@ -126,7 +126,7 @@ async def query_rag(user_id: str, query: str):
 
 ### 5. Register Privacy Router
 
-Update `api/main.py`:
+Update `apps/api/src/api/main.py`:
 
 ```python
 from api.privacy_router import router as privacy_router
@@ -185,14 +185,14 @@ DATADOG_AGENT_PORT=8125
 Install Datadog agent:
 
 ```bash
-# See apps/goblin-assistant/docs/PRODUCTION_MONITORING.md
+# See ./docs/PRODUCTION_MONITORING.md
 ```
 
 ### 8. Test Privacy Features
 
 ```bash
 # Run privacy tests
-cd apps/goblin-assistant/api
+cd apps/api
 pytest tests/test_privacy.py -v
 
 # Test sanitization
@@ -316,8 +316,8 @@ logger.info(f"Message: hash={log_data['message_hash']}, len={log_data['length']}
 ## Support
 
 For questions or issues:
-- **Documentation**: `apps/goblin-assistant/docs/PRIVACY_IMPLEMENTATION.md`
-- **Tests**: `apps/goblin-assistant/api/tests/test_privacy.py`
+- **Documentation**: `./docs/PRIVACY_IMPLEMENTATION.md`
+- **Tests**: `apps/api/tests/test_privacy.py`
 - **Team**: Engineering team
 
 ---

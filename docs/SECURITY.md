@@ -171,4 +171,4 @@ Regularly review and update CSP based on:
 - New features requiring additional resources
 - Security audit findings
 - Third-party service changes</content>
-  <parameter name="filePath">/Users/fuaadabdullah/ForgeMonorepo/apps/goblin-assistant/docs/SECURITY.md
+  <parameter name="filePath">/Users/fuaadabdullah/ForgeMonorepo/./docs/SECURITY.md

@@ -268,7 +268,7 @@ Location: `goblin-infra/projects/goblin-assistant/infra/cloudflare/worker.ts`
 ### Run Privacy Tests
 
 ```bash
-cd apps/goblin-assistant/api
+cd apps/api
 pytest tests/test_privacy.py -v
 ```
 

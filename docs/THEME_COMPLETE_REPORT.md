@@ -26,9 +26,9 @@ Successfully implemented a modular, accessible, and production-ready theme syste
 
 **Files Created**:
 
-- `src/theme/index.css` (155 lines) - CSS variables with high-contrast overrides
-- `src/theme/theme.js` (157 lines) - Runtime utilities
-- `src/theme/theme.d.ts` - TypeScript declarations
+- `apps/web/src/theme/index.css` (155 lines) - CSS variables with high-contrast overrides
+- `apps/web/src/theme/theme.js` (157 lines) - Runtime utilities
+- `apps/web/src/theme/theme.d.ts` - TypeScript declarations
 
 **CSS Variables Defined**: 35 tokens
 
@@ -66,7 +66,7 @@ getCurrentThemePreset(); // Get active preset
 
 **Files Modified**:
 
-- `src/App.tsx` - Added theme imports and initialization
+- `apps/web/src/App.tsx` - Added theme imports and initialization
 - `tailwind.config.js` - Mapped CSS variables to Tailwind utilities
 - `tsconfig.json` - Added `allowJs: true, checkJs: false`
 
@@ -98,12 +98,12 @@ colors: {
 
 **Files Updated**:
 
-- `src/index.css` - Removed 67 lines of duplicate CSS variables
-- `src/components/ThemePreview.tsx` - Uses core theme presets
-- `src/components/Sparkline.tsx` - Uses `var(--primary)`
-- `src/components/HealthCard.tsx` - Uses `var(--success)`
-- `src/utils/colorUtils.js` - References CSS variables
-- `src/components/TerminalShowcase.tsx` - Fixed unused import
+- `apps/web/src/index.css` - Removed 67 lines of duplicate CSS variables
+- `apps/web/src/components/ThemePreview.tsx` - Uses core theme presets
+- `apps/web/src/components/Sparkline.tsx` - Uses `var(--primary)`
+- `apps/web/src/components/HealthCard.tsx` - Uses `var(--success)`
+- `apps/web/src/utils/colorUtils.js` - References CSS variables
+- `apps/web/src/components/TerminalShowcase.tsx` - Fixed unused import
 
 **Result**: Single source of truth for all color definitions
 
@@ -262,8 +262,8 @@ prefers-reduced-motion       → Disables animations
 ## 📁 Complete File Structure
 
 ```
-apps/goblin-assistant/
-├── src/
+./
+├── apps/web/src/
 │   ├── theme/
 │   │   ├── index.css           # CSS variables (155 lines)
 │   │   ├── theme.js            # Runtime utilities (157 lines)

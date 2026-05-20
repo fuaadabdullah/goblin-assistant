@@ -126,13 +126,13 @@ Run the setup script to configure branch protection:
 
 - **Codecov**: Integrated coverage tracking
 - **Minimum Threshold**: 80% coverage required
-- **Report Location**: `apps/goblin-assistant/coverage/`
+- **Report Location**: `./coverage/`
 
 ### Security Reports
 
 - **NPM Audit**: Weekly security scans
 - **Vulnerability Tracking**: Automated alerts
-- **Report Location**: `apps/goblin-assistant/reports/`
+- **Report Location**: `./reports/`
 
 ### Test Results
 

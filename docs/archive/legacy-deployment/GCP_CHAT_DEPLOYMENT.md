@@ -92,7 +92,7 @@ LLAMACPP_GCP_URL=http://34.132.226.143:8000
 1. **Start Backend**:
    ```bash
    cd /Users/fuaadabdullah/ForgeMonorepo/apps/goblin-assistant
-   python3 -m uvicorn api.main:app --host 0.0.0.0 --port 8004 --reload
+   python3 -m PYTHONPATH=apps/api/src uvicorn api.main:app --host 0.0.0.0 --port 8004 --reload
    ```
 
 2. **Start Frontend**:
@@ -262,10 +262,10 @@ If issues arise with GCP providers:
 
 ## Documentation
 
-- **Main README**: `apps/goblin-assistant/README.md`
-- **API Docs**: `apps/goblin-assistant/docs/API_QUICK_REF.md`
-- **Deployment**: `apps/goblin-assistant/DEPLOYMENT_README.md`
-- **Providers**: `apps/goblin-assistant/config/providers.toml`
+- **Main README**: `./README.md`
+- **API Docs**: `./docs/API_QUICK_REF.md`
+- **Deployment**: `./DEPLOYMENT_README.md`
+- **Providers**: `./config/providers.toml`
 
 ## Support
 

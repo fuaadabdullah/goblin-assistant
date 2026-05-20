@@ -1,3 +1,14 @@
+# =============================================================================
+# Goblin Assistant — SINGLE source of truth for all provider & system config
+# =============================================================================
+# Consumers:
+#   - Python backend: apps/api/src/api/providers/dispatcher.py
+#   - Python monitoring: apps/api/src/api/config/providers.py
+#   - Python budget: apps/api/src/api/services/context_assembly_service/budget_manager.py
+#   - TS frontend: apps/web/src/services/provider-router.ts  (via generated providers.json)
+#   - RAPTOR router: apps/api/src/api/raptor_router.py
+# =============================================================================
+
 [default]
 timeout_ms = 12000
 
@@ -21,234 +32,630 @@ preferred_providers_under_budget = [
   "openai",
 ]
 
-[providers.openai]
-name = "OpenAI"
-endpoint = "https://api.openai.com/v1"
-endpoint_env = "OPENAI_ENDPOINT"
-invoke_path = "/chat/completions"
-default_model = "gpt-4o-mini"
-capabilities = ["chat", "reasoning", "code", "embedding", "image"]
-models = ["gpt-4o", "gpt-4o-mini", "gpt-4-turbo"]
-api_key_env = "OPENAI_API_KEY"
-priority_tier = 1
-cost_score = 0.8
-default_timeout_ms = 10000
-bandwidth_score = 0.9
-supports_cot = true
-cot_suppression_prompt = "Answer directly without showing your reasoning."
+[default.health]
+health_check_interval = 60
+timeout_seconds = 10
+retry_attempts = 3
 
-[providers.anthropic]
-name = "Anthropic"
-endpoint = "https://api.anthropic.com"
-endpoint_env = "ANTHROPIC_ENDPOINT"
-invoke_path = "/v1/messages"
-default_model = "claude-3-5-haiku-latest"
-capabilities = ["chat", "reasoning", "code"]
-models = ["claude-sonnet-4-20250514", "claude-3-5-haiku-latest"]
-api_key_env = "ANTHROPIC_API_KEY"
-priority_tier = 1
-cost_score = 0.9
-default_timeout_ms = 15000
-bandwidth_score = 0.8
-supports_cot = true
-cot_suppression_prompt = "Be direct and concise."
+# ---------------------------------------------------------------------------
+# RAPTOR profiler / sampler settings
+# ---------------------------------------------------------------------------
+[default.raptor]
+level = "INFO"
+file = "logs/raptor.log"
+enable_cpu = true
+enable_memory = true
+sample_rate_ms = 200
+trace_exceptions = true
+enable_dev_flags = false
 
-[providers.gemini]
-name = "Google Gemini"
-endpoint = "https://generativelanguage.googleapis.com"
-endpoint_env = "GEMINI_ENDPOINT"
-default_model = "gemini-2.0-flash"
-capabilities = ["chat", "reasoning", "code", "image"]
-models = ["gemini-2.0-flash", "gemini-2.0-flash-lite"]
-api_key_env = "GOOGLE_AI_API_KEY"
-priority_tier = 2
-cost_score = 0.6
-default_timeout_ms = 12000
-bandwidth_score = 0.7
-supports_cot = true
-cot_suppression_prompt = "Provide direct answers without explanation."
+# ---------------------------------------------------------------------------
+# Load-balancing & failover
+# ---------------------------------------------------------------------------
+[load_balancing]
+enabled = true
+strategy = "round_robin"
+health_check_interval = 30
+failure_threshold = 3
+recovery_threshold = 2
+failover_to_backup = true
+max_failover_time = 60
+circuit_breaker_enabled = true
 
-[providers.deepseek]
-name = "DeepSeek"
-endpoint = "https://api.deepseek.com"
-endpoint_env = "DEEPSEEK_ENDPOINT"
-invoke_path = "/v1/chat/completions"
-default_model = "deepseek-chat"
-capabilities = ["chat", "reasoning", "code"]
-models = ["deepseek-chat", "deepseek-coder"]
-api_key_env = "DEEPSEEK_API_KEY"
-priority_tier = 2
-cost_score = 0.3
-default_timeout_ms = 10000
-bandwidth_score = 0.8
-supports_cot = true
-cot_suppression_prompt = "Answer concisely."
+[load_balancing.health_checks]
+ollama_health = "/api/tags"
+router_health = "/health"
+timeout_seconds = 10
 
-[providers.groq]
-name = "Groq"
-endpoint = "https://api.groq.com/openai/v1"
-endpoint_env = "GROQ_ENDPOINT"
-invoke_path = "/chat/completions"
-default_model = "llama-3.1-8b-instant"
-capabilities = ["chat", "reasoning", "code"]
-models = ["llama-3.1-8b-instant", "llama-3.3-70b-versatile", "mixtral-8x7b-32768"]
-api_key_env = "GROQ_API_KEY"
-priority_tier = 2
-cost_score = 0.4
-default_timeout_ms = 8000
-bandwidth_score = 0.95
-supports_cot = true
-cot_suppression_prompt = "Be direct."
+[load_balancing.server_priorities]
+primary_ollama = "192.175.23.150:8002"
+backup_router = "45.61.51.220:8000"
 
-[providers.siliconeflow]
-name = "SiliconeFlow"
-endpoint = "https://api.siliconflow.com"
-endpoint_env = "SILICONEFLOW_ENDPOINT"
-invoke_path = "/v1/chat/completions"
-default_model = "Qwen/Qwen2.5-7B-Instruct"
-capabilities = ["chat", "reasoning", "code"]
-models = ["Qwen/Qwen2.5-7B-Instruct", "Qwen/Qwen2.5-Coder-7B-Instruct", "deepseek-ai/DeepSeek-V2.5"]
-api_key_env = "SILICONEFLOW_API_KEY"
-priority_tier = 2
-cost_score = 0.3
-default_timeout_ms = 10000
-bandwidth_score = 0.9
-supports_cot = true
-cot_suppression_prompt = "Be direct."
+# ---------------------------------------------------------------------------
+# Provider aliases  —  any of these strings resolve to the canonical ID below
+# ---------------------------------------------------------------------------
+[provider_aliases]
+azure                    = "azure_openai"
+azure_openai             = "azure_openai"
+azure-openai             = "azure_openai"
+vertex                   = "vertex_ai"
+vertex-ai                = "vertex_ai"
+google                   = "gemini"
+siliconflow              = "siliconeflow"
+silicon_flow             = "siliconeflow"
+silicone-flow            = "siliconeflow"
+silicone_flow            = "siliconeflow"
+ollama                   = "ollama_local"
+ollama-local             = "ollama_local"
+ollama-gcp               = "ollama_gcp"
+llamacpp                 = "llamacpp_gcp"
+llama_cpp                = "llamacpp_gcp"
+llamacpp-gcp             = "llamacpp_gcp"
 
-[providers.together]
-name = "Together AI"
-endpoint = "https://api.together.xyz"
-endpoint_env = "TOGETHER_ENDPOINT"
-capabilities = ["chat", "reasoning", "code", "image"]
-models = ["llama-2-70b", "codellama-34b"]
-api_key_env = "TOGETHER_API_KEY"
-priority_tier = 3
-cost_score = 0.5
-default_timeout_ms = 10000
-bandwidth_score = 0.8
-supports_cot = true
-cot_suppression_prompt = "Answer directly."
+# ---------------------------------------------------------------------------
+# Model aliases  —  short name → { provider, model }
+# ---------------------------------------------------------------------------
+[model_aliases]
+"gpt-4o"                              = { provider = "openai",        model = "gpt-4o" }
+"gpt-4o-mini"                         = { provider = "openai",        model = "gpt-4o-mini" }
+"claude-haiku"                        = { provider = "anthropic",     model = "claude-3-5-haiku-latest" }
+"claude-sonnet"                       = { provider = "anthropic",     model = "claude-sonnet-4-20250514" }
+"qwen-max"                            = { provider = "aliyun",        model = "qwen-max" }
+"qwen-plus"                           = { provider = "aliyun",        model = "qwen-plus" }
+"qwen-7b"                             = { provider = "siliconeflow",  model = "Qwen/Qwen2.5-7B-Instruct" }
+"qwen-coder"                          = { provider = "siliconeflow",  model = "Qwen/Qwen2.5-Coder-7B-Instruct" }
+"deepseek-chat"                       = { provider = "deepseek",      model = "deepseek-chat" }
+"gemini-flash"                        = { provider = "gemini",        model = "gemini-2.0-flash" }
+"qwen-3b"                             = { provider = "ollama_gcp",    model = "qwen2.5:3b" }
+"qwen-local"                          = { provider = "ollama_local",  model = "qwen2.5:3b" }
 
-[providers.replicate]
-name = "Replicate"
-endpoint = "https://api.replicate.com"
-endpoint_env = "REPLICATE_ENDPOINT"
-capabilities = ["chat", "reasoning", "code", "image"]
-models = ["llama-2-70b", "codellama-34b"]
-api_key_env = "REPLICATE_API_KEY"
-priority_tier = 3
-cost_score = 0.6
-default_timeout_ms = 20000
-bandwidth_score = 0.7
-supports_cot = true
-cot_suppression_prompt = "Be concise."
+# ---------------------------------------------------------------------------
+# Visible provider IDs  —  order controls UI / API listing order
+# ---------------------------------------------------------------------------
+visible_providers = [
+  "openai",
+  "anthropic",
+  "groq",
+  "siliconeflow",
+  "deepseek",
+  "gemini",
+  "azure_openai",
+  "vertex_ai",
+  "aliyun",
+  "ollama_gcp",
+  "llamacpp_gcp",
+  "ollama_local",
+]
 
-[providers.huggingface]
-name = "Hugging Face"
-endpoint = "https://api-inference.huggingface.co"
-endpoint_env = "HUGGINGFACE_ENDPOINT"
-capabilities = ["chat", "reasoning", "code"]
-models = ["microsoft/DialoGPT-medium", "facebook/blenderbot-400M-distill"]
-api_key_env = "HUGGINGFACE_API_KEY"
-priority_tier = 4
-cost_score = 0.2
-default_timeout_ms = 15000
-bandwidth_score = 0.6
-supports_cot = false
-
-[providers.cohere]
-name = "Cohere"
-endpoint = "https://api.cohere.ai"
-endpoint_env = "COHERE_ENDPOINT"
-capabilities = ["chat", "reasoning", "code", "embedding"]
-models = ["command", "base"]
-api_key_env = "COHERE_API_KEY"
-priority_tier = 3
-cost_score = 0.7
-default_timeout_ms = 10000
-bandwidth_score = 0.75
-supports_cot = true
-cot_suppression_prompt = "Answer directly."
-
-# GCP servers removed - preemptible VMs terminated since 2026-01-11
-# To redeploy, run infra/gcp-llm-setup.sh and re-add [providers.ollama_gcp] / [providers.llamacpp_gcp]
-# Kamatera servers (ollama_kamatera, llamacpp_kamatera) removed — unreachable since 2026-01-11.
-
-[providers.azure]
-name = "Azure OpenAI"
-endpoint = "https://goblinos-resource.services.ai.azure.com"
-endpoint_env = "AZURE_OPENAI_ENDPOINT"
-default_model = "gpt-4o-mini"
-capabilities = ["chat", "reasoning", "code"]
-models = ["gpt-4o-mini", "gpt-4o", "gpt-4.1"]
-api_key_env = "AZURE_API_KEY"
-priority_tier = 1
-cost_score = 0.7
-default_timeout_ms = 15000
-bandwidth_score = 0.9
-supports_cot = true
-cot_suppression_prompt = "Answer directly without showing your reasoning."
-
-[providers.vertex_ai]
-name = "Google Vertex AI"
-endpoint = "https://generativelanguage.googleapis.com"
-endpoint_env = "VERTEX_AI_ENDPOINT"
-default_model = "gemini-2.5-flash"
-capabilities = ["chat", "reasoning", "code", "image"]
-models = ["gemini-2.5-flash", "gemini-2.0-flash", "gemini-2.0-flash-lite"]
-api_key_env = "GOOGLE_AI_API_KEY"
-priority_tier = 1
-cost_score = 0.7
-default_timeout_ms = 15000
-bandwidth_score = 0.8
-supports_cot = true
-cot_suppression_prompt = "Provide direct answers without explanation."
-
-[providers.aliyun]
-name = "Aliyun DashScope"
-endpoint = "https://dashscope-intl.aliyuncs.com/compatible-mode/v1"
-endpoint_env = "DASHSCOPE_ENDPOINT"
-invoke_path = "/chat/completions"
-default_model = "qwen-turbo"
-capabilities = ["chat", "reasoning", "code"]
-models = ["qwen-turbo", "qwen-plus", "qwen-max", "qwen-long", "qwen2.5-7b-instruct"]
-api_key_env = "DASHSCOPE_API_KEY"
-priority_tier = 2
-cost_score = 0.2
-default_timeout_ms = 15000
-bandwidth_score = 0.8
-supports_cot = true
-cot_suppression_prompt = "Be direct."
-
-[providers.mock]
-name = "Mock Provider"
-endpoint = "mock://localhost"
-endpoint_env = "MOCK_PROVIDER_ENDPOINT"
-capabilities = ["chat", "reasoning", "code", "embedding"]
-models = ["mock-gpt", "mock-claude", "mock-phi"]
-priority_tier = 99
-cost_score = 0.0
-default_timeout_ms = 1000
-bandwidth_score = 1.0
-supports_cot = false
-force_fallback = true
-
+# ---------------------------------------------------------------------------
+# Per-model context windows  (tokens)
+# ---------------------------------------------------------------------------
 [model_context_windows]
-"gpt-4o" = 128000
-"gpt-4o-mini" = 128000
-"gpt-4-turbo" = 128000
-"gpt-3.5-turbo" = 16385
-"claude-sonnet-4-20250514" = 200000
-"claude-3-5-haiku-latest" = 200000
-"gemini-2.0-flash" = 1048576
-"gemini-2.0-flash-lite" = 1048576
-"gemini-2.5-flash" = 1048576
-"deepseek-chat" = 64000
-"deepseek-coder" = 64000
-"llama-3.1-8b-instant" = 32768
-"llama-3.3-70b-versatile" = 32768
-"mixtral-8x7b-32768" = 32768
-"qwen-turbo" = 32000
-"qwen-plus" = 64000
-"qwen-max" = 128000
+"gpt-4o"                        = 128000
+"gpt-4o-mini"                   = 128000
+"gpt-4-turbo"                   = 128000
+"gpt-3.5-turbo"                 = 16385
+"claude-sonnet-4-20250514"      = 200000
+"claude-3-5-haiku-latest"       = 200000
+"gemini-2.0-flash"              = 1048576
+"gemini-2.0-flash-lite"         = 1048576
+"gemini-2.5-flash"              = 1048576
+"deepseek-chat"                 = 64000
+"deepseek-coder"                = 64000
+"llama-3.1-8b-instant"          = 32768
+"llama-3.3-70b-versatile"       = 32768
+"mixtral-8x7b-32768"            = 32768
+"qwen-turbo"                    = 32000
+"qwen-plus"                     = 64000
+"qwen-max"                      = 128000
+
+# =============================================================================
+# PROVIDERS
+# =============================================================================
+
+# ---------------------------------------------------------------------------
+# OpenAI
+# ---------------------------------------------------------------------------
+[providers.openai]
+name                    = "OpenAI"
+endpoint                = "https://api.openai.com/v1"
+endpoint_env            = "OPENAI_ENDPOINT"
+invoke_path             = "/chat/completions"
+api_key_env             = "OPENAI_API_KEY"
+default_model           = "gpt-4o-mini"
+models                  = ["gpt-4o", "gpt-4o-mini", "gpt-4-turbo"]
+capabilities            = ["chat", "reasoning", "code", "embedding", "image"]
+priority_tier           = 10
+cost_score              = 0.8
+cost_input_per1k        = 0.0025
+cost_output_per1k       = 0.01
+default_timeout_ms      = 10000
+bandwidth_score         = 0.9
+rate_limit_per_min      = 60
+supports_cot            = true
+cot_suppression_prompt  = "Answer directly without showing your reasoning."
+tier                    = "cloud"
+display_name            = "OpenAI"
+is_active               = true
+
+# ---------------------------------------------------------------------------
+# Anthropic
+# ---------------------------------------------------------------------------
+[providers.anthropic]
+name                    = "Anthropic"
+endpoint                = "https://api.anthropic.com"
+endpoint_env            = "ANTHROPIC_ENDPOINT"
+invoke_path             = "/v1/messages"
+api_key_env             = "ANTHROPIC_API_KEY"
+default_model           = "claude-3-5-haiku-latest"
+models                  = ["claude-sonnet-4-20250514", "claude-3-5-haiku-latest"]
+capabilities            = ["chat", "reasoning", "code"]
+priority_tier           = 20
+cost_score              = 0.9
+cost_input_per1k        = 0.003
+cost_output_per1k       = 0.015
+default_timeout_ms      = 15000
+bandwidth_score         = 0.8
+rate_limit_per_min      = 60
+supports_cot            = true
+cot_suppression_prompt  = "Be direct and concise."
+tier                    = "cloud"
+display_name            = "Anthropic"
+is_active               = true
+
+# ---------------------------------------------------------------------------
+# Google Gemini
+# ---------------------------------------------------------------------------
+[providers.gemini]
+name                    = "Google Gemini"
+endpoint                = "https://generativelanguage.googleapis.com/v1beta/openai"
+endpoint_env            = "GEMINI_ENDPOINT"
+api_key_env             = "GOOGLE_AI_API_KEY"
+default_model           = "gemini-2.0-flash"
+models                  = ["gemini-2.0-flash", "gemini-2.0-flash-lite"]
+capabilities            = ["chat", "reasoning", "code", "image"]
+priority_tier           = 50
+cost_score              = 0.6
+cost_input_per1k        = 0.000075
+cost_output_per1k       = 0.0003
+default_timeout_ms      = 12000
+bandwidth_score         = 0.7
+rate_limit_per_min      = 60
+supports_cot            = true
+cot_suppression_prompt  = "Provide direct answers without explanation."
+tier                    = "cloud"
+display_name            = "Google Gemini"
+is_active               = true
+
+# ---------------------------------------------------------------------------
+# DeepSeek
+# ---------------------------------------------------------------------------
+[providers.deepseek]
+name                    = "DeepSeek"
+endpoint                = "https://api.deepseek.com"
+endpoint_env            = "DEEPSEEK_ENDPOINT"
+invoke_path             = "/v1/chat/completions"
+api_key_env             = "DEEPSEEK_API_KEY"
+default_model           = "deepseek-chat"
+models                  = ["deepseek-chat", "deepseek-coder"]
+capabilities            = ["chat", "reasoning", "code"]
+priority_tier           = 40
+cost_score              = 0.3
+cost_input_per1k        = 0.00027
+cost_output_per1k       = 0.0011
+default_timeout_ms      = 10000
+bandwidth_score         = 0.8
+rate_limit_per_min      = 60
+supports_cot            = true
+cot_suppression_prompt  = "Answer concisely."
+tier                    = "cloud"
+display_name            = "DeepSeek"
+is_active               = true
+
+# ---------------------------------------------------------------------------
+# Groq
+# ---------------------------------------------------------------------------
+[providers.groq]
+name                    = "Groq"
+endpoint                = "https://api.groq.com/openai/v1"
+endpoint_env            = "GROQ_ENDPOINT"
+invoke_path             = "/chat/completions"
+api_key_env             = "GROQ_API_KEY"
+default_model           = "llama-3.1-8b-instant"
+models                  = ["llama-3.1-8b-instant", "llama-3.3-70b-versatile", "mixtral-8x7b-32768"]
+capabilities            = ["chat", "reasoning", "code"]
+priority_tier           = 30
+cost_score              = 0.4
+cost_input_per1k        = 0.00059
+cost_output_per1k       = 0.00079
+default_timeout_ms      = 8000
+bandwidth_score         = 0.95
+rate_limit_per_min      = 60
+supports_cot            = true
+cot_suppression_prompt  = "Be direct."
+supports_openai_tools   = false
+tier                    = "cloud"
+display_name            = "Groq"
+is_active               = true
+
+# ---------------------------------------------------------------------------
+# SiliconeFlow
+# ---------------------------------------------------------------------------
+[providers.siliconeflow]
+name                    = "SiliconeFlow"
+endpoint                = "https://api.siliconflow.com"
+endpoint_env            = "SILICONEFLOW_ENDPOINT"
+invoke_path             = "/v1/chat/completions"
+api_key_env             = "SILICONEFLOW_API_KEY"
+default_model           = "Qwen/Qwen2.5-7B-Instruct"
+models                  = ["Qwen/Qwen2.5-7B-Instruct", "Qwen/Qwen2.5-Coder-7B-Instruct", "deepseek-ai/DeepSeek-V2.5"]
+capabilities            = ["chat", "reasoning", "code"]
+priority_tier           = 35
+cost_score              = 0.3
+cost_input_per1k        = 0.00014
+cost_output_per1k       = 0.00014
+default_timeout_ms      = 10000
+bandwidth_score         = 0.9
+rate_limit_per_min      = 60
+supports_cot            = true
+cot_suppression_prompt  = "Be direct."
+tier                    = "cloud"
+display_name            = "SiliconeFlow"
+is_active               = true
+
+# ---------------------------------------------------------------------------
+# Azure OpenAI
+# ---------------------------------------------------------------------------
+[providers.azure_openai]
+name                    = "Azure OpenAI"
+endpoint                = "https://goblinos-resource.openai.azure.com/openai/v1"
+endpoint_env            = "AZURE_OPENAI_ENDPOINT"
+invoke_path             = "/chat/completions"
+api_key_env             = "AZURE_API_KEY"
+default_model           = "gpt-4o-mini"
+default_deployment      = "gpt-4o-mini"
+models                  = ["gpt-4o-mini", "gpt-4o", "gpt-4.1"]
+capabilities            = ["chat", "reasoning", "code", "embedding"]
+priority_tier           = 25
+cost_score              = 0.7
+cost_input_per1k        = 0.0015
+cost_output_per1k       = 0.006
+default_timeout_ms      = 15000
+bandwidth_score         = 0.9
+rate_limit_per_min      = 60
+supports_cot            = true
+cot_suppression_prompt  = "Answer directly without showing your reasoning."
+requires_env            = ["AZURE_REGION", "AZURE_DEPLOYMENT_ID"]
+tier                    = "private"
+display_name            = "Azure OpenAI"
+is_active               = true
+
+# ---------------------------------------------------------------------------
+# Google Vertex AI
+# ---------------------------------------------------------------------------
+[providers.vertex_ai]
+name                    = "Google Vertex AI"
+endpoint_env            = "VERTEX_AI_ENDPOINT"
+project_env             = "VERTEX_AI_PROJECT"
+default_model           = "gemini-2.5-flash"
+models                  = ["gemini-2.5-flash", "gemini-2.0-flash", "gemini-2.0-flash-lite"]
+capabilities            = ["chat", "reasoning", "code", "image"]
+priority_tier           = 45
+cost_score              = 0.7
+cost_input_per1k        = 0.000075
+cost_output_per1k       = 0.0003
+default_timeout_ms      = 15000
+bandwidth_score         = 0.8
+rate_limit_per_min      = 60
+supports_cot            = true
+cot_suppression_prompt  = "Provide direct answers without explanation."
+tier                    = "private"
+display_name            = "Google Vertex AI"
+is_active               = true
+
+# ---------------------------------------------------------------------------
+# Aliyun DashScope
+# ---------------------------------------------------------------------------
+[providers.aliyun]
+name                    = "Aliyun DashScope"
+endpoint                = "https://dashscope-intl.aliyuncs.com/compatible-mode"
+endpoint_env            = "DASHSCOPE_ENDPOINT"
+invoke_path             = "/chat/completions"
+api_key_env             = "DASHSCOPE_API_KEY"
+default_model           = "qwen-plus"
+models                  = ["qwen-turbo", "qwen-plus", "qwen-max", "qwen-long", "qwen2.5-7b-instruct"]
+capabilities            = ["chat", "reasoning", "code"]
+priority_tier           = 60
+cost_score              = 0.2
+cost_input_per1k        = 0.00014
+cost_output_per1k       = 0.00014
+default_timeout_ms      = 15000
+bandwidth_score         = 0.8
+rate_limit_per_min      = 60
+supports_cot            = true
+cot_suppression_prompt  = "Be direct."
+requires_env            = ["DASHSCOPE_ENDPOINT"]
+local_routing           = true
+tier                    = "private"
+display_name            = "Aliyun DashScope"
+is_active               = true
+
+# ---------------------------------------------------------------------------
+# Together AI
+# ---------------------------------------------------------------------------
+[providers.together]
+name                    = "Together AI"
+endpoint                = "https://api.together.xyz"
+endpoint_env            = "TOGETHER_ENDPOINT"
+api_key_env             = "TOGETHER_API_KEY"
+models                  = ["llama-2-70b", "codellama-34b"]
+capabilities            = ["chat", "reasoning", "code", "image"]
+priority_tier           = 3
+cost_score              = 0.5
+default_timeout_ms      = 10000
+bandwidth_score         = 0.8
+rate_limit_per_min      = 60
+supports_cot            = true
+cot_suppression_prompt  = "Answer directly."
+tier                    = "cloud"
+display_name            = "Together AI"
+is_active               = true
+
+# ---------------------------------------------------------------------------
+# Replicate
+# ---------------------------------------------------------------------------
+[providers.replicate]
+name                    = "Replicate"
+endpoint                = "https://api.replicate.com"
+endpoint_env            = "REPLICATE_ENDPOINT"
+api_key_env             = "REPLICATE_API_KEY"
+models                  = ["llama-2-70b", "codellama-34b"]
+capabilities            = ["chat", "reasoning", "code", "image"]
+priority_tier           = 3
+cost_score              = 0.6
+default_timeout_ms      = 20000
+bandwidth_score         = 0.7
+rate_limit_per_min      = 30
+supports_cot            = true
+cot_suppression_prompt  = "Be concise."
+tier                    = "cloud"
+display_name            = "Replicate"
+is_active               = false
+
+# ---------------------------------------------------------------------------
+# Hugging Face
+# ---------------------------------------------------------------------------
+[providers.huggingface]
+name                    = "Hugging Face"
+endpoint                = "https://api-inference.huggingface.co"
+endpoint_env            = "HUGGINGFACE_ENDPOINT"
+api_key_env             = "HUGGINGFACE_API_KEY"
+models                  = ["microsoft/DialoGPT-medium", "facebook/blenderbot-400M-distill"]
+capabilities            = ["chat", "reasoning", "code"]
+priority_tier           = 4
+cost_score              = 0.2
+default_timeout_ms      = 15000
+bandwidth_score         = 0.6
+rate_limit_per_min      = 30
+supports_cot            = false
+tier                    = "cloud"
+display_name            = "Hugging Face"
+is_active               = false
+
+# ---------------------------------------------------------------------------
+# Cohere
+# ---------------------------------------------------------------------------
+[providers.cohere]
+name                    = "Cohere"
+endpoint                = "https://api.cohere.ai"
+endpoint_env            = "COHERE_ENDPOINT"
+api_key_env             = "COHERE_API_KEY"
+models                  = ["command", "base"]
+capabilities            = ["chat", "reasoning", "code", "embedding"]
+priority_tier           = 3
+cost_score              = 0.7
+default_timeout_ms      = 10000
+bandwidth_score         = 0.75
+rate_limit_per_min      = 30
+supports_cot            = true
+cot_suppression_prompt  = "Answer directly."
+tier                    = "cloud"
+display_name            = "Cohere"
+is_active               = false
+
+# ---------------------------------------------------------------------------
+# Ollama GCP
+# ---------------------------------------------------------------------------
+[providers.ollama_gcp]
+name                    = "Ollama GCP"
+endpoint                = "http://34.60.255.199:11434"
+endpoint_env            = "OLLAMA_GCP_ENDPOINT"
+default_model           = "qwen2.5:3b"
+models                  = ["qwen2.5:3b", "llama3.2:1b"]
+capabilities            = ["chat", "reasoning", "code"]
+priority_tier           = 70
+cost_score              = 0.1
+default_timeout_ms      = 60000
+bandwidth_score         = 0.5
+rate_limit_per_min      = 120
+supports_cot            = true
+cot_suppression_prompt  = "Be concise."
+tier                    = "self_hosted"
+display_name            = "Ollama (GCP)"
+is_active               = true
+selectable_requires_env = true
+
+# ---------------------------------------------------------------------------
+# Llama.cpp GCP
+# ---------------------------------------------------------------------------
+[providers.llamacpp_gcp]
+name                    = "LlamaCPP GCP"
+endpoint                = "http://34.132.226.143:8000"
+endpoint_env            = "LLAMACPP_GCP_ENDPOINT"
+default_model           = ""
+models                  = ["qwen2.5-3b-instruct-q4_k_m"]
+capabilities            = ["chat", "reasoning", "code"]
+priority_tier           = 75
+cost_score              = 0.05
+default_timeout_ms      = 60000
+bandwidth_score         = 0.5
+rate_limit_per_min      = 120
+supports_cot            = true
+cot_suppression_prompt  = "Be concise."
+tier                    = "self_hosted"
+display_name            = "Llama.cpp (GCP)"
+is_active               = true
+selectable_requires_env = true
+
+# ---------------------------------------------------------------------------
+# Ollama Local
+# ---------------------------------------------------------------------------
+[providers.ollama_local]
+name                    = "Ollama Local"
+endpoint                = "http://localhost:11434"
+endpoint_env            = "OLLAMA_LOCAL_ENDPOINT"
+default_model           = "qwen2.5:3b"
+models                  = ["qwen2.5:3b"]
+capabilities            = ["chat", "reasoning", "code"]
+priority_tier           = 80
+cost_score              = 0.0
+default_timeout_ms      = 60000
+bandwidth_score         = 1.0
+rate_limit_per_min      = 120
+supports_cot            = true
+cot_suppression_prompt  = "Be concise."
+tier                    = "self_hosted"
+display_name            = "Ollama Local"
+is_active               = true
+selectable_requires_env = true
+
+# ---------------------------------------------------------------------------
+# Mock (testing only)
+# ---------------------------------------------------------------------------
+[providers.mock]
+name                    = "Mock Provider"
+endpoint                = "mock://localhost"
+endpoint_env            = "MOCK_PROVIDER_ENDPOINT"
+default_model           = "mock-gpt"
+models                  = ["mock-gpt", "mock-claude", "mock-phi"]
+capabilities            = ["chat", "reasoning", "code", "embedding"]
+priority_tier           = 999
+cost_score              = 0.0
+cost_input_per1k        = 0.0
+cost_output_per1k       = 0.0
+default_timeout_ms      = 1000
+bandwidth_score         = 1.0
+rate_limit_per_min      = 9999
+supports_cot            = false
+tier                    = "mock"
+display_name            = "Mock Provider"
+is_active               = true
+force_fallback          = true
+hidden                  = true
+
+# =============================================================================
+# LEGACY — GCP servers removed (preemptible VMs terminated 2026-01-11)
+# =============================================================================
+# To redeploy, run infra/gcp-llm-setup.sh and re-add ollama_gcp / llamacpp_gcp
+# Kamatera servers removed — unreachable since 2026-01-11.
+
+# =============================================================================
+# Per-model default settings  (max_tokens, temperature, supports_streaming)
+# Used by monitoring/budget as fallback when no window is configured above
+# =============================================================================
+[model_defaults]
+[model_defaults.gpt-4o]
+provider            = "openai"
+max_tokens          = 8000
+temperature         = 0.7
+supports_streaming  = true
+
+[model_defaults.gpt-4o-mini]
+provider            = "openai"
+max_tokens          = 8000
+temperature         = 0.7
+supports_streaming  = true
+
+[model_defaults.gpt-4-turbo]
+provider            = "openai"
+max_tokens          = 8000
+temperature         = 0.7
+supports_streaming  = true
+
+[model_defaults.gpt-3.5-turbo]
+provider            = "openai"
+max_tokens          = 4000
+temperature         = 0.7
+supports_streaming  = true
+
+[model_defaults.claude-sonnet-4-20250514]
+provider            = "anthropic"
+max_tokens          = 100000
+temperature         = 0.7
+supports_streaming  = true
+
+[model_defaults.claude-3-5-haiku-latest]
+provider            = "anthropic"
+max_tokens          = 100000
+temperature         = 0.7
+supports_streaming  = true
+
+[model_defaults.qwen2.5-3b-instruct-q4_k_m]
+provider            = "llamacpp_gcp"
+max_tokens          = 4000
+temperature         = 0.2
+supports_streaming  = true
+
+[model_defaults.deepseek-chat]
+provider            = "deepseek"
+max_tokens          = 4000
+temperature         = 0.7
+supports_streaming  = true
+
+[model_defaults.deepseek-coder]
+provider            = "deepseek"
+max_tokens          = 4000
+temperature         = 0.7
+supports_streaming  = true
+
+[model_defaults.llama-3.1-8b-instant]
+provider            = "groq"
+max_tokens          = 4000
+temperature         = 0.7
+supports_streaming  = true
+
+[model_defaults.llama-3.3-70b-versatile]
+provider            = "groq"
+max_tokens          = 4000
+temperature         = 0.7
+supports_streaming  = true
+
+[model_defaults.mixtral-8x7b-32768]
+provider            = "groq"
+max_tokens          = 4000
+temperature         = 0.7
+supports_streaming  = true
+
+[model_defaults.qwen-turbo]
+provider            = "aliyun"
+max_tokens          = 4000
+temperature         = 0.7
+supports_streaming  = true
+
+[model_defaults.qwen-plus]
+provider            = "aliyun"
+max_tokens          = 8000
+temperature         = 0.7
+supports_streaming  = true
+
+[model_defaults.qwen-max]
+provider            = "aliyun"
+max_tokens          = 8000
+temperature         = 0.7
+supports_streaming  = true
+
+["model_defaults.qwen2.5:3b"]
+provider            = "ollama_gcp"
+max_tokens          = 4000
+temperature         = 0.2
+supports_streaming  = true

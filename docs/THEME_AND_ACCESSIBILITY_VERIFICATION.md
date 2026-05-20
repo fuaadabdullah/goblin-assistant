@@ -59,19 +59,19 @@ All theme system implementations have been verified with **zero regressions** to
 
 ### Core Features ✅
 
-1. **CSS Variables System** (`src/theme/index.css`)
+1. **CSS Variables System** (`apps/web/src/theme/index.css`)
    - 35 CSS custom properties
    - 3 theme presets (default, nocturne, ember)
    - High-contrast mode (21:1 contrast ratios)
    - Reduced motion support
 
-2. **JavaScript Runtime** (`src/theme/theme.js`)
+2. **JavaScript Runtime** (`apps/web/src/theme/theme.js`)
    - 6 utility functions
    - System preference detection
    - Persistent localStorage
    - No-rebuild theme switching
 
-3. **TypeScript Support** (`src/theme/theme.d.ts`)
+3. **TypeScript Support** (`apps/web/src/theme/theme.d.ts`)
    - Full type definitions
    - Interface declarations
    - IDE autocomplete support
@@ -176,24 +176,24 @@ When enabled (`Ctrl+Shift+H` or Settings UI):
 
 ### New Files (7)
 
-1. `src/theme/index.css` (155 lines) - CSS variables
-2. `src/theme/theme.js` (157 lines) - Runtime utilities
-3. `src/theme/theme.d.ts` (41 lines) - TypeScript declarations
-4. `src/hooks/useKeyboardShortcuts.ts` (82 lines) - Keyboard shortcuts hook
-5. `src/components/KeyboardShortcutsHelp.tsx` (30 lines) - Shortcuts documentation UI
+1. `apps/web/src/theme/index.css` (155 lines) - CSS variables
+2. `apps/web/src/theme/theme.js` (157 lines) - Runtime utilities
+3. `apps/web/src/theme/theme.d.ts` (41 lines) - TypeScript declarations
+4. `apps/web/src/hooks/useKeyboardShortcuts.ts` (82 lines) - Keyboard shortcuts hook
+5. `apps/web/src/components/KeyboardShortcutsHelp.tsx` (30 lines) - Shortcuts documentation UI
 6. `scripts/verify-theme-system.js` (150 lines) - Automated verification
 7. `scripts/test-theme-runtime.html` (100 lines) - Manual test page
 
 ### Modified Files (8)
 
-1. `src/App.tsx` - Theme initialization + keyboard shortcuts
-2. `src/index.css` - Consolidated duplicates, import theme CSS
+1. `apps/web/src/App.tsx` - Theme initialization + keyboard shortcuts
+2. `apps/web/src/index.css` - Consolidated duplicates, import theme CSS
 3. `tailwind.config.js` - CSS variable mapping
 4. `tsconfig.json` - Added `allowJs: true`
-5. `src/components/ThemePreview.tsx` - Use core theme presets
-6. `src/components/Sparkline.tsx` - CSS variable tokens
-7. `src/components/HealthCard.tsx` - CSS variable tokens
-8. `src/pages/SettingsPage.tsx` - Added KeyboardShortcutsHelp component
+5. `apps/web/src/components/ThemePreview.tsx` - Use core theme presets
+6. `apps/web/src/components/Sparkline.tsx` - CSS variable tokens
+7. `apps/web/src/components/HealthCard.tsx` - CSS variable tokens
+8. `apps/web/pages/SettingsPage.tsx` - Added KeyboardShortcutsHelp component
 
 ---
 
@@ -310,7 +310,7 @@ All issues encountered during development have been resolved:
 
 ### For Maintenance
 
-1. **CSS Variables**: Single source of truth maintained in `src/theme/index.css`
+1. **CSS Variables**: Single source of truth maintained in `apps/web/src/theme/index.css`
 2. **New Colors**: Add to theme CSS, avoid hard-coded hex in components
 3. **Theme Presets**: Define in `theme.js` `THEME_PRESETS` constant
 4. **Keyboard Shortcuts**: Add to `SHORTCUTS` constant in `useKeyboardShortcuts.ts`

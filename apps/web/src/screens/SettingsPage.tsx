@@ -1,0 +1,320 @@
+import React from 'react';
+import { Bot, Brain, Zap, Search, MessageSquare, Handshake, Wrench, Loader2, Check } from 'lucide-react';
+import { useProviderSettings } from '../hooks/api/useSettings';
+import ThemePreview from '../components/ThemePreview';
+import KeyboardShortcutsHelp from '../components/KeyboardShortcutsHelp';
+import Seo from '../components/Seo';
+import { useProvider } from '../contexts/ProviderContext';
+import { useToast } from '../contexts/ToastContext';
+import { apiClient } from '@/api';
+import {
+  Button,
+  Badge,
+  Card,
+  InlineErrorState,
+  PageState,
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '../components/ui';
+
+interface ProviderSource {
+  name?: string;
+  enabled?: boolean;
+  configured?: boolean;
+  env_var?: string;
+  api_key?: string;
+  models?: unknown;
+}
+
+interface ProviderDisplay {
+  name: string;
+  configured: boolean;
+  env_var?: string;
+  models: string[];
+}
+
+const SettingsPageContent: React.FC = () => {
+  const { data: providerData, isLoading: providersLoading, error: providersError, refetch } = useProviderSettings();
+  const providerCtx = useProvider();
+  const { showSuccess, showError } = useToast();
+  const [isSaving, setIsSaving] = React.useState(false);
+
+  const providerRows: ProviderSource[] = React.useMemo(() => {
+    if (Array.isArray(providerData)) {
+      return providerData as ProviderSource[];
+    }
+
+    if (providerData && typeof providerData === 'object') {
+      const maybeProviders = (providerData as { providers?: unknown }).providers;
+      if (Array.isArray(maybeProviders)) {
+        return maybeProviders as ProviderSource[];
+      }
+
+      return Object.entries(providerData as Record<string, unknown>).map(([name, raw]) => {
+        if (raw && typeof raw === 'object') {
+          return {
+            name,
+            ...(raw as ProviderSource),
+          };
+        }
+
+        return { name };
+      });
+    }
+
+    return [];
+  }, [providerData]);
+
+  // Adapt provider data shape: backend may return keys with different naming (configured/env_var)
+  const providers: ProviderDisplay[] = providerRows.map((p: ProviderSource) => {
+    const name = typeof p.name === 'string' ? p.name : 'Unknown';
+    const models = Array.isArray(p.models)
+      ? p.models.filter((model): model is string => typeof model === 'string')
+      : [];
+
+    return {
+      name,
+      configured: Boolean(p.enabled ?? p.configured ?? false),
+      env_var: p.env_var || p.api_key ? `${name.toUpperCase()}_API_KEY` : undefined,
+      models,
+    };
+  });
+  const loading = providersLoading;
+
+  const selectedProvider = providerCtx.selectedProvider || (providers[0]?.name ?? '');
+  const selectedModel = providerCtx.selectedModel || '';
+  const selectedProviderModels = React.useMemo(() => {
+    const models = providers.find(p => p.name === selectedProvider)?.models;
+    if (!Array.isArray(models)) {
+      return [] as string[];
+    }
+    return models.filter((model): model is string => typeof model === 'string' && model.length > 0);
+  }, [providers, selectedProvider]);
+
+  const handleSavePreferences = async () => {
+    setIsSaving(true);
+    try {
+      await apiClient.saveAccountPreferences({
+        default_provider: selectedProvider,
+        default_model: selectedModel,
+      });
+      showSuccess('Preferences saved', 'Your model preferences have been saved.');
+    } catch {
+      showError('Save failed', 'Could not save preferences. Please try again.');
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  if (loading) {
+    return <PageState variant="loading" title="Loading settings" description="Pulling your providers and preferences." icon={<Loader2 className="h-6 w-6 animate-spin" />} />;
+  }
+
+  if (providersError) {
+    return (
+      <PageState
+        variant="error"
+        title="Settings unavailable"
+        description={providersError instanceof Error ? providersError.message : 'We could not load your settings.'}
+        actionLabel="Retry"
+        onAction={() => {
+          void refetch();
+        }}
+      />
+    );
+  }
+
+  return (
+    <div className="min-h-screen bg-bg py-12 px-4">
+      <Seo title="Settings" description="Provider and model settings." robots="noindex,nofollow" />
+      <div className="max-w-6xl mx-auto">
+        {/* Header */}
+        <div className="mb-12">
+          <h1 className="text-4xl font-bold text-primary mb-3">Provider & Model Settings</h1>
+          <p className="text-muted">Configure your AI provider API keys and model preferences</p>
+        </div>
+
+        {/* Theme Preview + Palette Switcher */}
+        <div className="mb-10">
+          <ThemePreview />
+        </div>
+
+        {/* Keyboard Shortcuts */}
+        <div className="mb-10">
+          <KeyboardShortcutsHelp />
+        </div>
+
+        {providers.length === 0 && (
+          <InlineErrorState
+            title="No providers configured"
+            message="Add a provider key on the backend before saving model preferences."
+            className="mb-8"
+          />
+        )}
+
+        {/* Environment Variables Instructions */}
+        <Card variant="default" padding="md" className="mb-8 shadow-sm">
+          <h2 className="text-xl font-semibold text-text mb-4">How to Configure API Keys</h2>
+          <div className="space-y-3 text-text">
+            <p>API keys should be set as environment variables on the backend server.</p>
+            <div className="bg-bg rounded-lg p-4 font-mono text-sm text-primary">
+              <div>export OPENAI_API_KEY="your-key-here"</div>
+              <div>export ANTHROPIC_API_KEY="your-key-here"</div>
+              <div>export GROQ_API_KEY="your-key-here"</div>
+              <div>export GOOGLE_API_KEY="your-key-here"</div>
+            </div>
+            <p className="text-sm text-muted">
+              For persistent configuration, add these to your{' '}
+              <code className="bg-surface-hover px-2 py-1 rounded text-primary">.env</code> file or
+              shell profile.
+            </p>
+          </div>
+        </Card>
+
+        {/* Provider Status Cards */}
+        <div>
+          <h2 className="text-2xl font-semibold text-text mb-6">Provider Status</h2>
+          <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
+            {providers.map(
+              (provider: {
+                name: string;
+                configured: boolean;
+                env_var?: string;
+                models?: string[];
+              }) => (
+                <Card key={provider.name} variant="default" padding="md" className="hover:shadow-md transition-shadow">
+                  {/* Provider Header */}
+                  <div className="flex items-center justify-between mb-4">
+                    <h3 className="text-lg font-semibold text-text">{provider.name}</h3>
+                    <Badge variant={provider.configured ? 'success' : 'danger'}>
+                      {provider.configured ? 'Configured' : 'Missing'}
+                    </Badge>
+                  </div>
+
+                  {/* Provider Icon */}
+                  <div className="flex items-center justify-center w-16 h-16 bg-surface-hover rounded-lg mb-4 mx-auto">
+                    {provider.name === 'OpenAI' && <Bot className="w-8 h-8 text-primary" />}
+                    {provider.name === 'Anthropic' && <Brain className="w-8 h-8 text-primary" />}
+                    {provider.name === 'Groq' && <Zap className="w-8 h-8 text-primary" />}
+                    {provider.name === 'Google' && <Search className="w-8 h-8 text-primary" />}
+                    {provider.name === 'Cohere' && <MessageSquare className="w-8 h-8 text-primary" />}
+                    {provider.name === 'Together' && <Handshake className="w-8 h-8 text-primary" />}
+                    {!['OpenAI', 'Anthropic', 'Groq', 'Google', 'Cohere', 'Together'].includes(
+                      provider.name
+                    ) && <Wrench className="w-8 h-8 text-primary" />}
+                  </div>
+
+                  {/* Environment Variable */}
+                  {provider.env_var && (
+                    <div className="mb-4">
+                      <p className="text-xs text-muted mb-1">Environment Variable:</p>
+                      <code className="block bg-bg px-3 py-2 rounded text-xs font-mono text-primary break-all">
+                        {provider.env_var}
+                      </code>
+                    </div>
+                  )}
+
+                  {/* Models */}
+                  {provider.models && provider.models.length > 0 && (
+                    <div>
+                      <p className="text-xs text-muted mb-2">Available Models:</p>
+                      <div className="flex flex-wrap gap-1">
+                        {provider.models.map((model: string) => (
+                          <Badge key={model} variant="primary" size="sm">
+                            {model}
+                          </Badge>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Status Message */}
+                  <div className="mt-4 pt-4 border-t border-border">
+                    <p className={`text-xs ${provider.configured ? 'text-success' : 'text-danger'}`}>
+                      {provider.configured
+                        ? '✓ API key detected and ready to use'
+                        : '✗ API key not found. Configure on backend.'}
+                    </p>
+                  </div>
+                </Card>
+              )
+            )}
+          </div>
+        </div>
+
+        {/* Model Preferences */}
+        <Card variant="default" padding="md" className="mt-12 shadow-sm">
+          <h2 className="text-xl font-semibold text-text mb-4">Model Preferences</h2>
+          <p className="text-muted mb-4">
+            Configure default model settings and routing preferences.
+          </p>
+          <div className="grid gap-4 md:grid-cols-2">
+            <div>
+              <label
+                htmlFor="default-provider"
+                className="block text-sm font-medium text-text mb-2"
+              >
+                Default Provider
+              </label>
+              <Select
+                value={selectedProvider}
+                onValueChange={providerCtx.setSelectedProvider}
+              >
+                <SelectTrigger id="default-provider" className="w-full">
+                  <SelectValue placeholder={providers.length === 0 ? 'auto' : undefined} />
+                </SelectTrigger>
+                <SelectContent>
+                  {providers.length === 0 && (
+                    <SelectItem value="auto">auto</SelectItem>
+                  )}
+                  {providers.map(p => (
+                    <SelectItem key={p.name} value={p.name}>
+                      {p.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div>
+              <label htmlFor="default-model" className="block text-sm font-medium text-text mb-2">
+                Default Model
+              </label>
+              <Select
+                value={selectedModel}
+                onValueChange={providerCtx.setSelectedModel}
+              >
+                <SelectTrigger id="default-model" className="w-full">
+                  <SelectValue placeholder="auto" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="auto">auto</SelectItem>
+                  {selectedProviderModels.map(model => (
+                    <SelectItem key={model} value={model}>
+                      {model}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+          <div className="mt-6 flex items-center gap-3">
+            <Button
+              type="button"
+              onClick={handleSavePreferences}
+              disabled={providers.length === 0}
+              loading={isSaving}
+              icon={!isSaving ? <Check className="w-4 h-4" /> : undefined}
+            >
+              {isSaving ? 'Saving...' : 'Save preferences'}
+            </Button>
+          </div>
+        </Card>
+      </div>
+    </div>
+  );
+};
+
+export default SettingsPageContent;
