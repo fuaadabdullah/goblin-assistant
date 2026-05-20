@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState, useCallback } from 'react';
+import { devError } from '@/utils/dev-log';
 
 type ServiceState = 'ok' | 'degraded' | 'down' | 'unknown';
 
@@ -118,8 +119,7 @@ export function useSystemStatus(opts?: StatusOptions) {
         setStatus({ models, routing, sandbox, updatedAt: new Date().toISOString() });
       }
     } catch (e) {
-      // eslint-disable-next-line no-console
-      console.error('[useSystemStatus] fetch error', e);
+      devError('[useSystemStatus] fetch error', e);
       if (mounted.current) setStatus(DEFAULT);
     } finally {
       if (mounted.current) setLoading(false);

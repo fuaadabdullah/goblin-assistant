@@ -86,9 +86,29 @@ jest.mock('../../../../contexts/ProviderContext', () => ({
   })),
 }));
 
+jest.mock('../../../../contexts/ToastContext', () => ({
+  useToast: jest.fn(() => ({
+    addToast: jest.fn(),
+    removeToast: jest.fn(),
+    showError: jest.fn(),
+    showInfo: jest.fn(),
+    showSuccess: jest.fn(),
+  })),
+}));
+
 jest.mock('../../../../utils/auth-session', () => ({
   getAuthToken: jest.fn(() => 'mock-auth-token'),
   isAuthenticated: jest.fn(() => true),
+}));
+
+jest.mock('next/router', () => ({
+  useRouter: jest.fn(() => ({
+    push: jest.fn(),
+    replace: jest.fn(),
+    prefetch: jest.fn(),
+    query: {},
+    pathname: '/chat',
+  })),
 }));
 
 const { useChatSession } = require('../useChatSession') as typeof import('../useChatSession');
@@ -261,7 +281,10 @@ describe('useChatSession', () => {
     const { result } = renderHook(() => useChatSession());
 
     await waitFor(() => {
-      expect(chatClient.getConversation).toHaveBeenCalledWith('conv-123');
+      expect(chatClient.getConversation).toHaveBeenCalledWith(
+        'conv-123',
+        expect.objectContaining({ offset: 0, limit: 50 }),
+      );
     });
 
     expect(result.current.messages[0].content).toBe('Persisted');

@@ -66,6 +66,13 @@ const buildUrl = (path: string): string => {
   return `${env.apiBaseUrl}/${path}`;
 };
 
+const createTimeoutSignal = (ms: number): AbortSignal | undefined => {
+  if (typeof AbortSignal !== 'undefined' && typeof AbortSignal.timeout === 'function') {
+    return AbortSignal.timeout(ms);
+  }
+  return undefined;
+};
+
 /**
  * Retry logic for transient errors with exponential backoff + jitter
  * Retries on: 429 (rate limit), 503 (service unavailable), 504 (gateway timeout)
@@ -173,7 +180,7 @@ const request = async <T>(
       },
       body:
         body === undefined ? undefined : JSON.stringify(body),
-      signal: AbortSignal.timeout(30000), // 30s timeout
+      signal: createTimeoutSignal(30000), // 30s timeout where supported
     });
 
     const requestDuration = Date.now() - requestStartTime;
@@ -242,7 +249,7 @@ async function loadModelRegistry(): Promise<ModelRegistryResponse> {
   try {
     const response = await fetch('/api/models', {
       method: 'GET',
-      signal: AbortSignal.timeout(10000), // 10s timeout for registry
+      signal: createTimeoutSignal(10000), // 10s timeout where supported
     });
 
     const duration = Date.now() - startTime;

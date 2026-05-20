@@ -34,7 +34,10 @@ describe('runtimeClient model registry integration', () => {
     const providers = await runtimeClient.getProviders();
 
     expect(providers).toEqual(['openai', 'azure_openai']);
-    expect(fetchMock).toHaveBeenCalledWith('/api/models', { method: 'GET' });
+    expect(fetchMock).toHaveBeenCalledWith(
+      '/api/models',
+      expect.objectContaining({ method: 'GET' }),
+    );
   });
 
   it('derives provider-scoped models from /api/models', async () => {

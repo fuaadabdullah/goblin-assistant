@@ -9,6 +9,7 @@ jest.mock('@vercel/analytics/react', () => ({
 }));
 jest.mock('../../contexts/ToastContext', () => ({
   ToastProvider: ({ children }: { children: React.ReactNode }) => <>{children}</>,
+  useToast: () => ({ addToast: jest.fn() }),
 }));
 jest.mock('../../components/ToastContainer', () => ({
   ToastContainer: () => <div data-testid="toast-container" />,
@@ -32,7 +33,11 @@ jest.mock('../../components/RouteBoundary', () => ({
   formatBoundaryTechnicalDetail: () => '',
 }));
 jest.mock('../../lib/queryClient', () => ({
-  createQueryClient: () => ({}),
+  createQueryClient: () => ({
+    getMutationCache: () => ({
+      subscribe: () => () => {},
+    }),
+  }),
 }));
 jest.mock('../../utils/analytics', () => ({
   initGA: jest.fn(),

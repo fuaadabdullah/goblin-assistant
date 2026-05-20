@@ -8,6 +8,7 @@
 
 import providersJson from '../config/providers.json';
 import { runtimeClient } from '@/api';
+import { devDebug, devError, devWarn } from '@/utils/dev-log';
 
 // ── Minimal runtime types (mirrored from shared schema) ──────────────────
 interface JsonProviderEntry {
@@ -71,14 +72,14 @@ try {
   Object.entries(config.providers || {}).forEach(([id, provider]) => {
     const p = provider as unknown as JsonProviderEntry;
     if (!p.capabilities || p.capabilities.length === 0) {
-      console.warn(
+      devWarn(
         `Provider schema mismatch: ${id} missing or empty 'capabilities' field`
       );
     }
   });
-  console.debug('Provider config validated successfully');
+  devDebug('Provider config validated successfully');
 } catch (validationError) {
-  console.error(
+  devError(
     'Provider config validation failed:',
     validationError instanceof Error ? validationError.message : String(validationError)
   );
