@@ -1,4 +1,4 @@
-.PHONY: help install dev web-dev api-dev build lint type-check test test-web test-api test-e2e generate-providers-json
+.PHONY: help install dev web-dev api-dev build lint type-check test test-web test-api test-api-context-coverage test-e2e generate-providers-json
 PNPM_TMP := TMPDIR="$(PWD)/.tmp"
 PYTHON ?= python3.11
 
@@ -12,6 +12,7 @@ help:
 	@echo "  make type-check           - run web typecheck"
 	@echo "  make test-web             - run web test suite"
 	@echo "  make test-api             - run api pytest suite"
+	@echo "  make test-api-context-coverage - run context assembly service coverage gate (>=90%)"
 	@echo "  make test-e2e             - run Playwright suite"
 	@echo "  make generate-providers-json — validate providers.toml & regenerate providers.json"
 
@@ -57,6 +58,13 @@ test-web:
 
 test-api:
 	cd apps/api && PYTHONPATH=src $(PYTHON) -m pytest -o "addopts=" -v
+
+test-api-context-coverage:
+	cd apps/api && PYTHONPATH=src $(PYTHON) -m pytest -o "addopts=" -v \
+		src/api/tests/test_context_assembly*.py \
+		--cov=src/api/services/context_assembly_service \
+		--cov-report=term-missing \
+		--cov-fail-under=90
 
 test-e2e:
 	mkdir -p .tmp

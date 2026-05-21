@@ -33,9 +33,16 @@ def test_conversation_fixture():
     )
 
 
-def parse_sse_event(data_line: str) -> dict:
-    if data_line.startswith("data: "):
-        return json.loads(data_line[6:])
+def parse_sse_event(frame: str) -> dict:
+    """Extract the JSON payload from an SSE frame.
+
+    Accepts both single-line (`data: {...}`) and multi-line
+    (`event: X\\ndata: {...}\\n\\n`) frames so tests are insensitive to
+    whether the emitter sets an explicit event name.
+    """
+    for line in frame.splitlines():
+        if line.startswith("data: "):
+            return json.loads(line[6:])
     return {}
 
 
