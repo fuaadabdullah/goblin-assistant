@@ -7,7 +7,8 @@ set -e
 echo "🔧 Setting Production Environment Variables for Goblin Assistant"
 echo "=================================================================="
 
-cd /Users/fuaadabdullah/ForgeMonorepo/apps/goblin-assistant
+REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
+cd "$REPO_ROOT"
 
 # Check if Fly CLI is available
 if ! command -v fly &> /dev/null; then

@@ -118,8 +118,8 @@ For each remaining component:
 ## Batch Migration Commands
 
 ```bash
-# Find remaining hardcoded colors
-cd /Users/fuaadabdullah/ForgeMonorepo/apps/goblin-assistant
+# Find remaining hardcoded colors (example)
+cd /path/to/goblin-assistant
 
 # Gray backgrounds
 grep -r "bg-gray-" apps/web/src/ --include="*.tsx" | wc -l

@@ -88,16 +88,17 @@ LLAMACPP_GCP_URL=http://34.132.226.143:8000
 ## Deployment Steps
 
 ### Local Development
-
-1. **Start Backend**:
-   ```bash
-   cd /Users/fuaadabdullah/ForgeMonorepo/apps/goblin-assistant
-   python3 -m PYTHONPATH=apps/api/src uvicorn api.main:app --host 0.0.0.0 --port 8004 --reload
-   ```
-
-2. **Start Frontend**:
-   ```bash
-   cd /Users/fuaadabdullah/ForgeMonorepo/apps/goblin-assistant
+ 
+ 1. **Start Backend**:
+    ```bash
+    cd /path/to/goblin-assistant
+    cd /path/to/goblin-assistant
+    python3 -m PYTHONPATH=apps/api/src uvicorn api.main:app --host 0.0.0.0 --port 8004 --reload
+    ```
+ 
+ 2. **Start Frontend**:
+    ```bash
+    cd /path/to/goblin-assistant
    npm run dev
    ```
 
@@ -117,7 +118,7 @@ LLAMACPP_GCP_URL=http://34.132.226.143:8000
 
 2. **Deploy**:
    ```bash
-   cd /Users/fuaadabdullah/ForgeMonorepo/apps/goblin-assistant
+   cd /path/to/goblin-assistant
    fly deploy
    ```
 

@@ -1,7 +1,6 @@
 """Test suite for middleware.py"""
 
 import os
-import pytest
 from unittest.mock import patch
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
@@ -12,8 +11,7 @@ from api.middleware import (
 )
 
 
-@pytest.fixture
-def test_app_with_auth():
+def _build_test_app():
     """Create a test app with authentication middleware"""
     app = FastAPI()
 
@@ -31,11 +29,9 @@ def test_app_with_auth():
 class TestAuthenticationMiddleware:
     """Tests for AuthenticationMiddleware"""
 
-    def test_auth_middleware_excludes_health_endpoint(
-        self, test_app_with_auth
-    ):
+    def test_auth_middleware_excludes_health_endpoint(self):
         """Test that health endpoint is excluded from auth"""
-        app = test_app_with_auth
+        app = _build_test_app()
         app.add_middleware(
             AuthenticationMiddleware,
             exclude_paths=[],
@@ -54,10 +50,10 @@ class TestAuthenticationMiddleware:
         },
     )
     def test_auth_middleware_dev_mode_allows_unauthenticated(
-        self, test_app_with_auth
+        self
     ):
         """Test that dev mode allows unauthenticated requests"""
-        app = test_app_with_auth
+        app = _build_test_app()
         app.add_middleware(AuthenticationMiddleware)
         client = TestClient(app)
 
@@ -67,10 +63,10 @@ class TestAuthenticationMiddleware:
 
     @patch.dict(os.environ, {"LOCAL_LLM_API_KEY": "test-key"})
     def test_auth_middleware_accepts_valid_api_key_header(
-        self, test_app_with_auth
+        self
     ):
         """Test that valid API key in header is accepted"""
-        app = test_app_with_auth
+        app = _build_test_app()
         app.add_middleware(AuthenticationMiddleware)
         client = TestClient(app)
 
@@ -81,9 +77,9 @@ class TestAuthenticationMiddleware:
         assert response.status_code == 200
 
     @patch.dict(os.environ, {"LOCAL_LLM_API_KEY": "test-key"})
-    def test_auth_middleware_accepts_bearer_token(self, test_app_with_auth):
+    def test_auth_middleware_accepts_bearer_token(self):
         """Test that Bearer token format is accepted"""
-        app = test_app_with_auth
+        app = _build_test_app()
         app.add_middleware(AuthenticationMiddleware)
         client = TestClient(app)
 
@@ -95,9 +91,9 @@ class TestAuthenticationMiddleware:
         assert response.status_code == 200
 
     @patch.dict(os.environ, {"LOCAL_LLM_API_KEY": "test-key"})
-    def test_auth_middleware_rejects_invalid_api_key(self, test_app_with_auth):
+    def test_auth_middleware_rejects_invalid_api_key(self):
         """Test that invalid API key is rejected"""
-        app = test_app_with_auth
+        app = _build_test_app()
         app.add_middleware(AuthenticationMiddleware)
         client = TestClient(app)
 
@@ -109,11 +105,11 @@ class TestAuthenticationMiddleware:
 
     @patch.dict(os.environ, {"LOCAL_LLM_API_KEY": ""})
     def test_auth_middleware_unconfigured_in_production(
-        self, test_app_with_auth
+        self
     ):
         """Test unconfigured API key in production mode"""
         with patch.dict(os.environ, {"ENVIRONMENT": "production"}):
-            app = test_app_with_auth
+            app = _build_test_app()
             app.add_middleware(AuthenticationMiddleware)
             client = TestClient(app)
 
@@ -122,9 +118,9 @@ class TestAuthenticationMiddleware:
             assert response.status_code == 500
             assert "configuration_error" in response.json()["error"]["code"]
 
-    def test_auth_middleware_custom_exclude_paths(self, test_app_with_auth):
+    def test_auth_middleware_custom_exclude_paths(self):
         """Test custom excluded paths"""
-        app = test_app_with_auth
+        app = _build_test_app()
         app.add_middleware(
             AuthenticationMiddleware,
             exclude_paths=["/custom"],
@@ -140,10 +136,10 @@ class TestAuthenticationMiddleware:
         assert response.status_code == 200
 
     def test_auth_middleware_excludes_docs_endpoints(
-        self, test_app_with_auth
+        self
     ):
         """Test that documentation endpoints are excluded"""
-        app = test_app_with_auth
+        app = _build_test_app()
         app.add_middleware(AuthenticationMiddleware)
         client = TestClient(app)
 
@@ -250,7 +246,9 @@ class TestSecurityHeadersMiddleware:
         response = client.get("/test")
 
         # HSTS should be present in production
-        assert "Strict-Transport-Security" in response.headers or True
+        assert response.headers["Strict-Transport-Security"] == (
+            "max-age=31536000; includeSubDomains"
+        )
 
     @patch.dict(os.environ, {"ENVIRONMENT": "development"})
     def test_security_headers_middleware_no_hsts_in_dev(self):

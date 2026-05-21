@@ -47,8 +47,8 @@ Visual regression testing has been successfully implemented for the Goblin Assis
 ### Start Storybook (Local Development)
 
 ```bash
-# From monorepo root
-cd /Users/fuaadabdullah/ForgeMonorepo
+# From project root
+cd /path/to/goblin-assistant
 npx storybook dev -p 6006 --config-dir ./.storybook
 
 # Visit http://localhost:6006

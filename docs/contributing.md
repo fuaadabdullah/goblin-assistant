@@ -21,28 +21,22 @@ This project follows a code of conduct to ensure a welcoming environment for all
 1. **Fork and Clone**:
 
    ```bash
-   git clone https://github.com/your-username/forgemono.git
-   cd forgemono/apps/goblin-assistant
+   git clone https://github.com/your-username/goblin-assistant.git
+   cd goblin-assistant
    ```
 
 2. **Install Dependencies**:
 
    ```bash
-   # Backend
-   cd backend
-   pip install -r requirements.txt
-
-   # Frontend
-   cd ../app
-   npm install
+   make install
    ```
 
 3. **Environment Configuration**:
 
    ```bash
    # Copy environment templates
-   cp backend/.env.example backend/.env.local
-   cp .env.example .env.local
+   cp apps/api/.env.example apps/api/.env.local
+   cp apps/web/.env.example apps/web/.env.local
 
    # Configure your API keys and settings
    ```
@@ -51,12 +45,10 @@ This project follows a code of conduct to ensure a welcoming environment for all
 
    ```bash
    # Backend (Terminal 1)
-   cd backend
-   uvicorn main:app --reload
+   make api-dev
 
    # Frontend (Terminal 2)
-   cd app
-   npm run dev
+   make web-dev
    ```
 
 ### Development Workflow
@@ -78,12 +70,10 @@ This project follows a code of conduct to ensure a welcoming environment for all
 
    ```bash
    # Backend tests
-   cd backend
-   pytest
+   make test-api
 
    # Frontend tests
-   cd app
-   npm test
+   make test-web
    ```
 
 4. **Commit Changes**:

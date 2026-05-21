@@ -5,7 +5,7 @@
 Check if your local LLM servers are up and running:
 
 ```bash
-cd /Users/fuaadabdullah/ForgeMonorepo/apps/goblin-assistant
+cd /Volumes/GOBLINOS\ 1/goblin-assistant
 python3 test_local_llms.py
 ```
 
@@ -20,7 +20,7 @@ This will test:
 Test all configured AI providers for latency, throughput, and quality:
 
 ```bash
-cd /Users/fuaadabdullah/ForgeMonorepo/apps/goblin-assistant
+cd /path/to/goblin-assistant
 python3 benchmark_providers.py
 ```
 

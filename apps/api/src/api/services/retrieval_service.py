@@ -11,6 +11,7 @@ from datetime import datetime, timedelta
 import math
 import structlog
 
+from ..config.system_prompt import system_prompt_manager
 from ..storage.database import get_db
 from ..storage.vector_models import EmbeddingModel, ConversationSummaryModel, MemoryFactModel
 from ..storage.models import UserModel, ConversationModel
@@ -851,12 +852,10 @@ class ContextBuilder:
             context_text = context_text[:max_chars]
         
         # Build system prompt
-        system_prompt = f"""You are Goblin Assistant — a sharp, resourceful AI helper. Use the following context to inform your responses:
-
-{context_text}
-
-Conversation history:
-"""
+        system_prompt = (
+            system_prompt_manager.config.get_prompt_with_context(context_text)
+            + "\n\nConversation history:\n"
+        )
         
         # Add recent conversation history
         recent_history = conversation_history[-5:]  # Last 5 messages

@@ -7,7 +7,7 @@
 1. Push your code to GitHub (if not already done):
 
    ```bash
-   cd /Users/fuaadabdullah/ForgeMonorepo
+   cd /path/to/goblin-assistant
    git add .
    git commit -m "Ready for Fly.io deployment"
    git push origin main

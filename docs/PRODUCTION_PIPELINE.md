@@ -371,7 +371,7 @@ flyctl releases rollback <release-id>
 
 ```bash
 # Check CircleCI logs
-open https://circleci.com/gh/your-org/forgemono
+open https://circleci.com/gh/your-org/goblin-assistant
 
 # Check Fly.io status
 flyctl status

@@ -59,8 +59,8 @@ ANTHROPIC_API_KEY=your-anthropic-key
 
 ```bash
 # Clone repository
-git clone https://github.com/fuaadabdullah/forgemono.git
-cd forgemono/apps/goblin-assistant/api
+git clone https://github.com/fuaadabdullah/goblin-assistant.git
+cd goblin-assistant/apps/api
 
 # Create virtual environment
 python3.11 -m venv venv
@@ -141,17 +141,17 @@ sudo su - goblin
 
 # Clone repository
 cd /opt/goblin-assistant
-git clone https://github.com/fuaadabdullah/forgemono.git .
+git clone https://github.com/fuaadabdullah/goblin-assistant.git .
 
 # Create virtual environment
 python3.11 -m venv venv
 source venv/bin/activate
 
 # Install dependencies
-pip install -r apps/goblin-assistant/api/requirements.txt
+pip install -r apps/api/requirements.txt
 
 # Set up environment
-cp apps/goblin-assistant/api/.env.example .env
+cp apps/api/.env.example .env
 # Edit .env with production values
 ```
 

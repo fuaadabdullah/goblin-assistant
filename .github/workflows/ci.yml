@@ -88,3 +88,12 @@ jobs:
         run: |
           cd apps/api
           PYTHONPATH=src python -m pytest -o "addopts=" -v
+
+      - name: Context Assembly Coverage Gate (>=90%)
+        run: |
+          cd apps/api
+          PYTHONPATH=src python -m pytest -o "addopts=" -v \
+            src/api/tests/test_context_assembly*.py \
+            --cov=src/api/services/context_assembly_service \
+            --cov-report=term-missing \
+            --cov-fail-under=90

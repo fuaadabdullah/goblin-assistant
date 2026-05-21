@@ -12,6 +12,7 @@ from typing import Any, Dict, List, Optional
 
 import structlog
 
+from ...config.system_prompt import system_prompt_manager
 from ...observability.context_snapshotter import context_snapshotter
 from ...utils.tokenizer import count_tokens as _count_tokens, trim_to_tokens as _trim_to_tokens_util
 from . import budget_manager as bm
@@ -286,8 +287,7 @@ class ContextAssemblyService:
     async def _get_minimal_context(query: str) -> str:
         """Get minimal context when assembly fails."""
         return (
-            "You are Goblin Assistant — a sharp, resourceful AI helper. "
-            "Use the following query to inform your response:\n\n"
+            f"{system_prompt_manager.config.get_prompt()}\n\n"
             f"Query: {query}\n\n"
             "Note: Operating with minimal context due to system constraints. "
             "Answer as best you can."

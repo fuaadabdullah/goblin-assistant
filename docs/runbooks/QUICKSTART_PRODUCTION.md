@@ -133,7 +133,7 @@ redis-cli -h <host> -p 6379 -a <password> PING
 
 ```bash
 # Check GoblinOS path
-ls -la /Users/fuaadabdullah/ForgeMonorepo/GoblinOS/goblin-cli.sh
+ls -la /path/to/GoblinOS/goblin-cli.sh
 
 # Test goblin-cli
 bash GoblinOS/goblin-cli.sh list
