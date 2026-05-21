@@ -41,6 +41,19 @@ def test_app_registers_runtime_middlewares_and_core_routes() -> None:
     assert "/search/query" in paths
 
 
+def test_app_auth_middleware_excludes_public_auth_bootstrap_routes() -> None:
+    auth_middleware = next(
+        middleware
+        for middleware in main.app.user_middleware
+        if middleware.cls.__name__ == "AuthenticationMiddleware"
+    )
+    excluded_paths = set(auth_middleware.kwargs["exclude_paths"])
+
+    assert "/auth/csrf-token" in excluded_paths
+    assert "/auth/google/url" in excluded_paths
+    assert "/auth/passkey/challenge" in excluded_paths
+
+
 @pytest.mark.asyncio
 async def test_lifespan_startup_and_shutdown_calls_integrations() -> None:
     health_monitor = _provider_health_stub()

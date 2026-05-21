@@ -396,10 +396,16 @@ app.add_middleware(
         "/redoc",
         "/auth/register",
         "/auth/login",
+        "/auth/csrf-token",
+        "/auth/google/url",
+        "/auth/google/callback",
         "/auth/validate",
+        "/auth/refresh",
         "/auth/oauth/google",
         "/auth/oauth/google/callback",
+        "/auth/passkey/challenge",
         "/auth/passkey/register",
+        "/auth/passkey/auth",
         "/auth/passkey/authenticate",
         "/api/chat",  # Allow chat API in development
         "/chat",  # Allow chat routes in development
