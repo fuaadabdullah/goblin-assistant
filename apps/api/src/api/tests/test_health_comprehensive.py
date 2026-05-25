@@ -81,8 +81,8 @@ async def test_health_returns_healthy_when_everything_passes() -> None:
     ):
         response = await health.health_check()
 
-    assert response["status"] == "healthy"
-    assert response["components"]["providers"]["status"] == "healthy"
+    assert response.data["status"] == "healthy"
+    assert response.data["components"]["providers"]["status"] == "healthy"
     provider_monitor.get_all_status.assert_called_once_with(
         include_hidden=False
     )
@@ -149,8 +149,8 @@ async def test_health_returns_degraded_when_db_fails() -> None:
         )
         response = await health.health_check()
 
-    assert response["status"] == "degraded"
-    assert response["components"]["database"]["status"] == "degraded"
+    assert response.data["status"] == "degraded"
+    assert response.data["components"]["database"]["status"] == "degraded"
 
 
 @pytest.mark.asyncio
@@ -214,8 +214,8 @@ async def test_health_returns_warnings_on_security_issues() -> None:
         )
         response = await health.health_check()
 
-    assert response["status"] == "warnings"
-    assert response["components"]["security"]["status"] == "warnings"
+    assert response.data["status"] == "warnings"
+    assert response.data["components"]["security"]["status"] == "warnings"
 
 
 @pytest.mark.asyncio

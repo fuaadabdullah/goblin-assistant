@@ -160,6 +160,8 @@ jobs:
         run: make test-api
       - name: Run critical path coverage gates
         run: make test-critical
+      - name: Enforce critical E2E budget
+        run: make test-e2e-budget
 
   build:
     name: build

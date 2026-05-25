@@ -47,6 +47,8 @@ class ToolDefinition:
             }
             if param.enum:
                 prop["enum"] = param.enum
+            if param.default is not None:
+                prop["default"] = param.default
             if param.items:
                 prop["items"] = param.items
             properties[param.name] = prop

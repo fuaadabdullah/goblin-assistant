@@ -26,7 +26,11 @@ class TestInvoke:
         mock_resp = MagicMock()
         mock_resp.json.return_value = {
             "choices": [{"message": {"content": "ok"}}],
-            "usage": {"prompt_tokens": 1, "completion_tokens": 1, "total_tokens": 2},
+            "usage": {
+                "prompt_tokens": 1,
+                "completion_tokens": 1,
+                "total_tokens": 2,
+            },
         }
         mock_resp.raise_for_status = MagicMock()
 
@@ -39,7 +43,9 @@ class TestInvoke:
 
             result = await provider.invoke(
                 messages=[{"role": "user", "content": "hello"}],
-                tools=[{"type": "function", "function": {"name": "test_tool"}}],
+                tools=[
+                    {"type": "function", "function": {"name": "test_tool"}}
+                ],
                 tool_choice="auto",
                 parallel_tool_calls=True,
             )
@@ -49,6 +55,37 @@ class TestInvoke:
         assert "tools" not in sent_body
         assert "tool_choice" not in sent_body
         assert "parallel_tool_calls" not in sent_body
+
+    @pytest.mark.asyncio
+    async def test_uses_configured_invoke_path(self):
+        provider = _provider(invoke_path="/v1/chat/completions")
+
+        mock_resp = MagicMock()
+        mock_resp.json.return_value = {
+            "choices": [{"message": {"content": "ok"}}],
+            "usage": {
+                "prompt_tokens": 1,
+                "completion_tokens": 1,
+                "total_tokens": 2,
+            },
+        }
+        mock_resp.raise_for_status = MagicMock()
+
+        with patch("httpx.AsyncClient") as MockClient:
+            instance = AsyncMock()
+            instance.post = AsyncMock(return_value=mock_resp)
+            instance.__aenter__ = AsyncMock(return_value=instance)
+            instance.__aexit__ = AsyncMock(return_value=False)
+            MockClient.return_value = instance
+
+            result = await provider.invoke(
+                messages=[{"role": "user", "content": "hello"}],
+            )
+
+        assert result.ok is True
+        assert instance.post.await_args.args[0] == (
+            "https://provider.test/v1/chat/completions"
+        )
 
     @pytest.mark.asyncio
     async def test_http_error_includes_response_body(self):

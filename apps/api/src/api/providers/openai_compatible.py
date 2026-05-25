@@ -27,11 +27,27 @@ class OpenAICompatibleProvider(BaseProvider):
         config: Optional[Dict[str, Any]] = None,
     ) -> None:
         super().__init__(provider_id, config)
-        self._api_key = os.getenv(self.config.get("api_key_env", ""), "").strip()
+        api_key_env = self.config.get("api_key_env", "")
+        self._api_key = os.getenv(api_key_env, "").strip()
         self._base_url = self.endpoint
-        self.COST_INPUT_PER_1K = float(self.config.get("cost_input_per1k", 0.0))
-        self.COST_OUTPUT_PER_1K = float(self.config.get("cost_output_per1k", 0.0))
+        self.COST_INPUT_PER_1K = float(
+            self.config.get("cost_input_per1k", 0.0)
+        )
+        self.COST_OUTPUT_PER_1K = float(
+            self.config.get("cost_output_per1k", 0.0)
+        )
         self._health_path = str(self.config.get("health_path", "/v1/models"))
+
+    def _request_path(self) -> str:
+        raw_path = str(self.invoke_path or "/v1/chat/completions").strip()
+        if not raw_path:
+            raw_path = "/v1/chat/completions"
+        if not raw_path.startswith("/"):
+            raw_path = f"/{raw_path}"
+        return raw_path
+
+    def _request_url(self) -> str:
+        return f"{self._base_url}{self._request_path()}"
 
     def _headers(self) -> Dict[str, str]:
         headers: Dict[str, str] = {"Content-Type": "application/json"}
@@ -70,12 +86,14 @@ class OpenAICompatibleProvider(BaseProvider):
         return body
 
     def _format_http_error(self, exc: httpx.HTTPStatusError) -> str:
-        status_code = exc.response.status_code if exc.response is not None else "unknown"
+        status_code = (
+            exc.response.status_code if exc.response is not None else "unknown"
+        )
         response_text = ""
         if exc.response is not None:
             try:
                 response_text = exc.response.text.strip()
-            except Exception:
+            except (AttributeError, TypeError, ValueError):
                 response_text = ""
         if response_text:
             compact = " ".join(response_text.split())
@@ -95,7 +113,11 @@ class OpenAICompatibleProvider(BaseProvider):
         prompt: str = "",
         **kwargs: Any,
     ) -> ProviderResult:
-        normalized_messages = self.normalize_messages(messages, prompt=prompt, **kwargs)
+        normalized_messages = self.normalize_messages(
+            messages,
+            prompt=prompt,
+            **kwargs,
+        )
         model_name = model or self.default_model
         if not self._base_url:
             return ProviderResult(
@@ -116,7 +138,7 @@ class OpenAICompatibleProvider(BaseProvider):
         try:
             async with httpx.AsyncClient(timeout=60) as client:
                 resp = await client.post(
-                    f"{self._base_url}/v1/chat/completions",
+                    self._request_url(),
                     headers=self._headers(),
                     json=body,
                 )
@@ -148,7 +170,11 @@ class OpenAICompatibleProvider(BaseProvider):
             logger.warning(
                 "provider_invoke_failed",
                 provider=self.provider_id,
-                status_code=exc.response.status_code if exc.response is not None else None,
+                status_code=(
+                    exc.response.status_code
+                    if exc.response is not None
+                    else None
+                ),
                 error=error_message,
             )
             return ProviderResult(
@@ -158,7 +184,13 @@ class OpenAICompatibleProvider(BaseProvider):
                 latency_ms=latency,
                 error=error_message,
             )
-        except Exception as exc:
+        except (
+            httpx.HTTPError,
+            KeyError,
+            IndexError,
+            TypeError,
+            ValueError,
+        ) as exc:
             latency = (time.perf_counter() - t0) * 1000
             self.record_failure(str(exc))
             logger.warning(
@@ -174,7 +206,7 @@ class OpenAICompatibleProvider(BaseProvider):
                 error=str(exc),
             )
 
-    async def stream(
+    def stream(  # type: ignore[override]
         self,
         messages: Optional[List[Dict[str, str]]] = None,
         model: Optional[str] = None,
@@ -184,37 +216,44 @@ class OpenAICompatibleProvider(BaseProvider):
         prompt: str = "",
         **kwargs: Any,
     ) -> AsyncGenerator[Dict[str, Any], None]:
-        normalized_messages = self.normalize_messages(messages, prompt=prompt, **kwargs)
-        model_name = model or self.default_model
-        body = self._build_body(
-            model_name=model_name,
-            normalized_messages=normalized_messages,
-            max_tokens=max_tokens,
-            temperature=temperature,
-            stream=True,
-            **kwargs,
-        )
-        async with httpx.AsyncClient(timeout=120) as client:
-            async with client.stream(
-                "POST",
-                f"{self._base_url}/v1/chat/completions",
-                headers=self._headers(),
-                json=body,
-            ) as resp:
-                resp.raise_for_status()
-                async for line in resp.aiter_lines():
-                    if not line.startswith("data: "):
-                        continue
-                    payload = line[6:].strip()
-                    if payload == "[DONE]":
-                        break
-                    try:
-                        chunk = json.loads(payload)
-                    except json.JSONDecodeError:
-                        continue
-                    delta = chunk["choices"][0]["delta"].get("content", "")
-                    if delta:
-                        yield {"text": delta}
+        async def _stream() -> AsyncGenerator[Dict[str, Any], None]:
+            normalized_messages = self.normalize_messages(
+                messages,
+                prompt=prompt,
+                **kwargs,
+            )
+            model_name = model or self.default_model
+            body = self._build_body(
+                model_name=model_name,
+                normalized_messages=normalized_messages,
+                max_tokens=max_tokens,
+                temperature=temperature,
+                stream=True,
+                **kwargs,
+            )
+            async with httpx.AsyncClient(timeout=120) as client:
+                async with client.stream(
+                    "POST",
+                    self._request_url(),
+                    headers=self._headers(),
+                    json=body,
+                ) as resp:
+                    resp.raise_for_status()
+                    async for line in resp.aiter_lines():
+                        if not line.startswith("data: "):
+                            continue
+                        payload = line[6:].strip()
+                        if payload == "[DONE]":
+                            break
+                        try:
+                            chunk = json.loads(payload)
+                        except json.JSONDecodeError:
+                            continue
+                        delta = chunk["choices"][0]["delta"].get("content", "")
+                        if delta:
+                            yield {"text": delta}
+
+        return _stream()
 
     async def health_check(self) -> ProviderHealth:
         if not self._base_url:
@@ -231,9 +270,13 @@ class OpenAICompatibleProvider(BaseProvider):
                 self.provider_id,
                 resp.status_code < 400,
                 latency_ms=latency,
-                error=None if resp.status_code < 400 else f"HTTP {resp.status_code}",
+                error=(
+                    None
+                    if resp.status_code < 400
+                    else f"HTTP {resp.status_code}"
+                ),
             )
-        except Exception as exc:
+        except (httpx.HTTPError, ValueError, TypeError) as exc:
             latency = (time.perf_counter() - t0) * 1000
             return ProviderHealth(
                 self.provider_id,

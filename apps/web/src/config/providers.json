@@ -257,7 +257,8 @@
       "default_timeout_ms": 15000,
       "rate_limit_per_min": 30,
       "display_name": "Hugging Face",
-      "is_active": false
+      "is_active": true,
+      "invoke_path": "/v1/chat/completions"
     },
     "cohere": {
       "endpoint": "https://api.cohere.ai",

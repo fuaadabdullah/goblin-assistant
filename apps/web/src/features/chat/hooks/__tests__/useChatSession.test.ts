@@ -33,6 +33,7 @@ jest.mock('../../api', () => ({
     listConversations: jest.fn(),
     getConversation: jest.fn(),
     sendMessage: jest.fn(),
+    estimateTokens: jest.fn(),
     importConversationMessages: jest.fn(),
   },
 }));
@@ -378,5 +379,72 @@ describe('useChatSession', () => {
     const last = result.current.messages[result.current.messages.length - 1];
     expect(last.role).toBe('assistant');
     expect(last.content).toContain('could not send');
+  });
+
+  describe('input estimate (server pre-flight)', () => {
+    beforeEach(() => {
+      jest.useFakeTimers();
+    });
+    afterEach(() => {
+      jest.useRealTimers();
+    });
+
+    it('does not call estimateTokens for short input', () => {
+      const { result } = renderHook(() => useChatSession());
+      act(() => {
+        result.current.setInput('short');
+      });
+      act(() => {
+        jest.advanceTimersByTime(500);
+      });
+      expect(chatClient.estimateTokens).not.toHaveBeenCalled();
+      expect(result.current.inputEstimate?.estimated_tokens).toBe(42);
+    });
+
+    it('debounces and replaces the local estimate when input exceeds 200 chars', async () => {
+      (chatClient.estimateTokens as jest.Mock).mockResolvedValue({
+        input_tokens: 1500,
+        estimated_output_tokens: 600,
+        estimated_cost_usd: 0.018,
+        provider: 'openai',
+        layers: [],
+        degraded_mode: false,
+      });
+
+      const { result } = renderHook(() => useChatSession());
+      act(() => {
+        result.current.setInput('x'.repeat(250));
+      });
+      // Not called before debounce window
+      expect(chatClient.estimateTokens).not.toHaveBeenCalled();
+      act(() => {
+        jest.advanceTimersByTime(300);
+      });
+      await waitFor(() => {
+        expect(chatClient.estimateTokens).toHaveBeenCalledTimes(1);
+      });
+      await waitFor(() => {
+        expect(result.current.inputEstimate?.estimated_tokens).toBe(2100);
+      });
+      expect(result.current.inputEstimate?.estimated_cost_usd).toBe(0.018);
+    });
+
+    it('falls back to local estimate when server call fails', async () => {
+      (chatClient.estimateTokens as jest.Mock).mockRejectedValue(new Error('network'));
+      const { result } = renderHook(() => useChatSession());
+      act(() => {
+        result.current.setInput('y'.repeat(250));
+      });
+      act(() => {
+        jest.advanceTimersByTime(300);
+      });
+      await waitFor(() => {
+        expect(chatClient.estimateTokens).toHaveBeenCalled();
+      });
+      // After failure, server estimate is cleared; local heuristic (42) shows.
+      await waitFor(() => {
+        expect(result.current.inputEstimate?.estimated_tokens).toBe(42);
+      });
+    });
   });
 });

@@ -122,6 +122,7 @@ visible_providers = [
   "azure_openai",
   "vertex_ai",
   "aliyun",
+  "huggingface",
   "ollama_gcp",
   "llamacpp_gcp",
   "ollama_local",
@@ -429,6 +430,7 @@ is_active               = false
 name                    = "Hugging Face"
 endpoint                = "https://api-inference.huggingface.co"
 endpoint_env            = "HUGGINGFACE_ENDPOINT"
+invoke_path             = "/v1/chat/completions"
 api_key_env             = "HUGGINGFACE_API_KEY"
 models                  = ["microsoft/DialoGPT-medium", "facebook/blenderbot-400M-distill"]
 capabilities            = ["chat", "reasoning", "code"]
@@ -438,9 +440,10 @@ default_timeout_ms      = 15000
 bandwidth_score         = 0.6
 rate_limit_per_min      = 30
 supports_cot            = false
+supports_openai_tools    = false
 tier                    = "cloud"
 display_name            = "Hugging Face"
-is_active               = false
+is_active               = true
 
 # ---------------------------------------------------------------------------
 # Cohere

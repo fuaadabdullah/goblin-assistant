@@ -525,3 +525,7 @@ npx playwright test --debug
 ## Questions?
 
 See existing test files for examples, or check code comments for patterns used in this project.
+
+## Critical-First Policy
+
+See `docs/runbooks/CRITICAL_TESTING_POLICY.md` for Tier 0 test priorities, contract requirements, and E2E budget enforcement.

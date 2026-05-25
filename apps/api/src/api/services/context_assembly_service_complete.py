@@ -548,4 +548,40 @@ class ContextAssemblyService:
             logger.error("Failed to assemble ephemeral memory", error=str(e))
             return None
     
-    def _build_final_context(self, layers: List[Context
+    def _build_final_context(self, layers: List[ContextLayer], remaining_tokens: int) -> str:
+        """Build a single final context string from ordered layers."""
+        sections: List[str] = []
+        for layer in layers:
+            if not layer.content:
+                continue
+            sections.append(f"[{layer.name.upper()}]\n{layer.content.strip()}")
+
+        sections.append(f"\n[CONTEXT_BUDGET]\nremaining_tokens={remaining_tokens}")
+        return "\n\n".join(sections)
+
+    def _estimate_tokens(self, text: str) -> int:
+        """Estimate token count using a simple 4-char/token heuristic."""
+        if not text:
+            return 0
+        return max(1, len(text) // 4)
+
+    def _trim_to_tokens(self, text: str, max_tokens: int) -> str:
+        """Trim text to fit within max token estimate."""
+        if max_tokens <= 0 or not text:
+            return ""
+        max_chars = max_tokens * 4
+        return text[:max_chars]
+
+    def _format_ephemeral_memory(self, conversation_history: List[Dict[str, str]]) -> str:
+        """Format recent conversation history for ephemeral layer."""
+        lines: List[str] = []
+        for msg in conversation_history[-20:]:
+            role = msg.get("role", "unknown")
+            content = msg.get("content", "").strip()
+            if not content:
+                continue
+            lines.append(f"{role}: {content}")
+        return "\n".join(lines)
+
+
+context_assembly_service_complete = ContextAssemblyService()

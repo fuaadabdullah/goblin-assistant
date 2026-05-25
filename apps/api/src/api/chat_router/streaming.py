@@ -16,6 +16,7 @@ from fastapi.responses import StreamingResponse
 
 from ..auth.router import User as AuthenticatedUser, get_current_user
 from . import _runtime as _cr
+from .archiving import schedule_conversation_archive
 from .helpers import _format_sse_event
 from .schemas import StreamChatRequest
 
@@ -79,6 +80,7 @@ async def generate_chat_stream(
                 content=sanitized_message,
             )
             user_message_stored = True
+            await schedule_conversation_archive(conversation_id)
         except Exception as db_exc:
             logger.error("db_write_error", exc=db_exc, stage="user_message_store")
             error_event = {
@@ -296,6 +298,7 @@ async def generate_chat_stream(
                 metadata={"provider": used_provider, "model": used_model},
                 message_id=response_message_id,
             )
+            await schedule_conversation_archive(conversation_id)
         except Exception as db_response_exc:
             logger.error("db_write_error", exc=db_response_exc, stage="assistant_message_store")
             # Response was already streamed — warn rather than error.

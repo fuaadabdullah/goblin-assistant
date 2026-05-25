@@ -140,76 +140,86 @@ async def _handle_stock_screener(
 register_tool(ToolDefinition(
     name="stock_screener",
     description=(
-        "Screen stocks against financial criteria: market cap, P/E ratio, "
-        "dividend yield, debt/equity, ROE, and revenue growth. "
-        "Returns a ranked list of matching stocks with key metrics."
+        "Use when the user asks to find, filter, or screen stocks that match "
+        "financial criteria such as market cap, P/E, dividend yield, "
+        "debt/equity, ROE, or revenue growth. Screens either a provided "
+        "ticker list or a default large-cap universe and returns ranked "
+        "matches with key metrics."
     ),
     parameters=[
         ToolParameter(
             name="min_market_cap",
             type="number",
-            description="Minimum market cap in USD (e.g. 1e10 for $10B).",
+            description="Minimum market capitalization in USD dollars, e.g. 10000000000 or 1e10 for $10B.",
             required=False,
         ),
         ToolParameter(
             name="max_market_cap",
             type="number",
-            description="Maximum market cap in USD.",
+            description="Maximum market capitalization in USD dollars.",
             required=False,
         ),
         ToolParameter(
             name="max_pe",
             type="number",
-            description="Maximum trailing P/E ratio (e.g. 25).",
+            description="Maximum trailing price-to-earnings ratio, e.g. 25.",
             required=False,
         ),
         ToolParameter(
             name="min_pe",
             type="number",
-            description="Minimum trailing P/E ratio.",
+            description="Minimum trailing price-to-earnings ratio.",
             required=False,
         ),
         ToolParameter(
             name="min_dividend_yield",
             type="number",
-            description="Minimum dividend yield as decimal (e.g. 0.02 for 2%).",
+            description="Minimum dividend yield as a decimal, not a percent (0.02 means 2%).",
             required=False,
         ),
         ToolParameter(
             name="max_debt_to_equity",
             type="number",
-            description="Maximum debt-to-equity ratio (e.g. 50 means 50%).",
+            description="Maximum debt-to-equity ratio using the data provider's ratio scale.",
             required=False,
         ),
         ToolParameter(
             name="min_roe",
             type="number",
-            description="Minimum ROE as decimal (e.g. 0.15 for 15%).",
+            description="Minimum return on equity as a decimal, not a percent (0.15 means 15%).",
             required=False,
         ),
         ToolParameter(
             name="min_revenue_growth",
             type="number",
-            description="Minimum revenue growth rate as decimal (e.g. 0.1 for 10%).",
+            description="Minimum revenue growth rate as a decimal, not a percent (0.10 means 10%).",
             required=False,
         ),
         ToolParameter(
             name="sector",
             type="string",
-            description="Filter by sector name (e.g. 'Technology', 'Healthcare').",
+            description=(
+                "Optional sector label requested by the user, such as Technology "
+                "or Healthcare. Included in returned criteria; availability "
+                "depends on the data provider."
+            ),
             required=False,
         ),
         ToolParameter(
             name="tickers",
             type="array",
-            description="Custom list of tickers to screen. If omitted, screens a default universe of ~50 large-cap stocks.",
+            description=(
+                "Optional custom list of public equity tickers to screen. If "
+                "omitted, the tool screens a default universe of about 50 "
+                "large-cap stocks."
+            ),
             required=False,
             items={"type": "string"},
         ),
         ToolParameter(
             name="limit",
             type="integer",
-            description="Maximum results to return (1-50, default 20).",
+            description="Maximum number of matching stocks to return. Valid range: 1-50. Default: 20.",
             required=False,
             default=20,
         ),

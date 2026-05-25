@@ -1,0 +1,43 @@
+[utils]
+allow_importers = [
+  "api.utils",
+  "api.tests",
+  "api.config.system_prompt",
+  "api.services.embedding_service",
+  "api.services.context_assembly_service",
+]
+
+[services]
+forbidden_framework_prefixes = ["fastapi", "starlette"]
+
+[routes]
+allow_route_storage_imports = [
+  "api.ops_router -> api.storage.cache",
+  "api.ops_router -> api.storage.tasks",
+  "api.routes.account_router -> api.storage.database",
+  "api.routes.account_router -> api.storage.user_service",
+  "api.routes.privacy -> api.storage.conversations",
+  "api.routes.privacy -> api.storage.preferences_service",
+  "api.sandbox_api -> api.storage.cache",
+  "api.semantic_chat_router -> api.storage.conversations",
+]
+
+[parser]
+allow_parse_errors = []
+
+[cycles]
+ignore_cycles = [
+  "api.integrations.secrets.auth -> api.integrations.secrets.vault_adapter -> api.integrations.secrets.auth",
+  "api.providers.dispatcher -> api.services.provider_health -> api.providers.dispatcher",
+  "api.providers.dispatcher -> api.services.provider_health -> api.routing.router -> api.providers.dispatcher",
+  "api.services.memory_promotion_service -> api.services.observability_service -> api.services.retrieval_service -> api.services.tool_result_memory_service -> api.services.memory_promotion_service",
+  "api.services.memory_promotion_service -> api.services.retrieval_service -> api.services.tool_result_memory_service -> api.services.memory_promotion_service",
+  "api.services.retrieval_service -> api.services.tool_result_memory_service -> api.services.retrieval_service",
+  "api.storage.models -> api.storage.vector_models -> api.storage.models",
+]
+
+[rules]
+route_no_direct_storage = true
+service_no_route_dependency = true
+service_no_framework_coupling = true
+no_utils_graveyard_growth = true

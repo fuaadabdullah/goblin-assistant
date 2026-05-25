@@ -118,4 +118,26 @@ describe('authStore bootstrapFromSession', () => {
     expect(state.isAuthenticated).toBe(false);
     expect(state.isHydrated).toBe(true);
   });
+
+  it('keeps a provisional session when user_data is malformed but token validates', async () => {
+    setCookie('session_token', 'cookie-token-malformed');
+    localStorage.setItem('user_data', '{not-json');
+
+    // eslint-disable-next-line @typescript-eslint/no-var-requires
+    const { apiClient } = require('@/api') as typeof import('@/api');
+    (apiClient.validateToken as jest.Mock).mockResolvedValue({
+      valid: true,
+      user: { id: 'u2', email: 'u2@example.com', role: 'user' },
+    });
+
+    // eslint-disable-next-line @typescript-eslint/no-var-requires
+    const { useAuthStore } = require('../authStore') as typeof import('../authStore');
+    await useAuthStore.getState().bootstrapFromSession();
+
+    const state = useAuthStore.getState();
+    expect(state.token).toBe('cookie-token-malformed');
+    expect(state.user).toEqual(expect.objectContaining({ id: 'u2' }));
+    expect(state.isAuthenticated).toBe(true);
+    expect(state.isHydrated).toBe(true);
+  });
 });

@@ -23,14 +23,19 @@ async def _handle_get_stock_quote(ticker: str) -> dict:
 register_tool(ToolDefinition(
     name="get_stock_quote",
     description=(
-        "Get the current stock quote for a ticker symbol. Returns price, "
-        "change, volume, market cap, and other basic market data."
+        "Use when the user asks for a live or latest single-stock quote, "
+        "price move, volume, market cap, or basic market snapshot. Returns "
+        "current quote fields for one public ticker; not for historical "
+        "charts, financial statements, ratios, or earnings history."
     ),
     parameters=[
         ToolParameter(
             name="ticker",
             type="string",
-            description="Stock ticker symbol, e.g. AAPL, MSFT, TSLA",
+            description=(
+                "Public equity ticker symbol, uppercase when possible, such "
+                "as AAPL, MSFT, TSLA, BRK.B, or GOOGL."
+            ),
         ),
     ],
     handler=_handle_get_stock_quote,
@@ -51,27 +56,41 @@ async def _handle_get_price_history(
 register_tool(ToolDefinition(
     name="get_price_history",
     description=(
-        "Get historical price data (OHLCV) for a stock ticker. "
-        "Useful for charting, backtesting, and trend analysis."
+        "Use when the user asks for historical prices, OHLCV candles, "
+        "charts, trend analysis, returns over time, or backtesting inputs "
+        "for one stock. Returns dated open, high, low, close, and volume "
+        "rows for the requested period and interval."
     ),
     parameters=[
         ToolParameter(
             name="ticker",
             type="string",
-            description="Stock ticker symbol, e.g. AAPL",
+            description=(
+                "Public equity ticker symbol to fetch history for, such as "
+                "AAPL, MSFT, NVDA, or SPY."
+            ),
         ),
         ToolParameter(
             name="period",
             type="string",
-            description="Time period: 1d, 5d, 1mo, 3mo, 6mo, 1y, 2y, 5y, ytd, max",
+            description=(
+                "Lookback range for returned history. Use 1d or 5d for "
+                "intraday requests, 1mo-5y for fixed lookbacks, ytd for "
+                "year-to-date, or max for all available history. Default: 1y."
+            ),
             required=False,
+            enum=["1d", "5d", "1mo", "3mo", "6mo", "1y", "2y", "5y", "ytd", "max"],
             default="1y",
         ),
         ToolParameter(
             name="interval",
             type="string",
-            description="Data interval: 1m, 5m, 15m, 30m, 1h, 1d, 1wk, 1mo",
+            description=(
+                "Candle interval. Use 1m-1h only for short intraday windows; "
+                "use 1d, 1wk, or 1mo for daily or longer analysis. Default: 1d."
+            ),
             required=False,
+            enum=["1m", "5m", "15m", "30m", "1h", "1d", "1wk", "1mo"],
             default="1d",
         ),
     ],
@@ -89,14 +108,16 @@ async def _handle_get_financials(ticker: str) -> dict:
 register_tool(ToolDefinition(
     name="get_financials",
     description=(
-        "Get key financial data for a company: revenue, net income, EBITDA, "
-        "free cash flow, total cash/debt, and balance sheet items."
+        "Use when the user asks for company fundamentals from financial "
+        "statements, such as revenue, net income, EBITDA, free cash flow, "
+        "cash, debt, shares outstanding, or balance-sheet context. Returns "
+        "latest available statement-style metrics for one ticker."
     ),
     parameters=[
         ToolParameter(
             name="ticker",
             type="string",
-            description="Stock ticker symbol, e.g. AAPL",
+            description="Public equity ticker symbol for the company, such as AAPL or MSFT.",
         ),
     ],
     handler=_handle_get_financials,
@@ -113,14 +134,16 @@ async def _handle_get_earnings(ticker: str) -> dict:
 register_tool(ToolDefinition(
     name="get_earnings",
     description=(
-        "Get earnings data for a stock: trailing/forward EPS, recent quarterly "
-        "earnings dates with actual vs estimate EPS, and surprise percentages."
+        "Use when the user asks for raw earnings data, EPS, upcoming or "
+        "recent earnings dates, estimates versus actuals, or surprise "
+        "percentages. Returns earnings fields for one ticker; use "
+        "earnings_summarizer when the user wants a narrative or verdict."
     ),
     parameters=[
         ToolParameter(
             name="ticker",
             type="string",
-            description="Stock ticker symbol, e.g. NVDA",
+            description="Public equity ticker symbol for earnings data, such as NVDA or AAPL.",
         ),
     ],
     handler=_handle_get_earnings,
@@ -137,15 +160,16 @@ async def _handle_get_key_ratios(ticker: str) -> dict:
 register_tool(ToolDefinition(
     name="get_key_ratios",
     description=(
-        "Get key financial ratios for a stock: P/E, P/B, EV/EBITDA, "
-        "debt/equity, ROE, ROA, profit margins, dividend yield, beta, "
-        "and 52-week high/low."
+        "Use when the user asks for valuation, profitability, leverage, "
+        "dividend, risk, margin, or 52-week range ratios for one stock. "
+        "Returns metrics such as P/E, P/B, EV/EBITDA, debt/equity, ROE, "
+        "ROA, margins, dividend yield, beta, and 52-week high/low."
     ),
     parameters=[
         ToolParameter(
             name="ticker",
             type="string",
-            description="Stock ticker symbol, e.g. MSFT",
+            description="Public equity ticker symbol for ratio lookup, such as MSFT or JPM.",
         ),
     ],
     handler=_handle_get_key_ratios,

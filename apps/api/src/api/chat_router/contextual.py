@@ -23,6 +23,7 @@ from ..storage.database import get_db
 from api.config.mode_addendums import get_addendum as _get_mode_addendum
 from api.config.system_prompt import EDUCATION_SYSTEM_ADDENDUM, system_prompt_manager
 from . import _runtime as _cr
+from .archiving import schedule_conversation_archive
 from .schemas import ContextualChatRequest, ContextualChatResponse
 from .service_accessors import (
     _get_context_assembly_service,
@@ -236,6 +237,7 @@ async def contextual_chat(
                 if request.enable_context_assembly
                 else request.metadata,
             )
+            await schedule_conversation_archive(conversation_id)
 
             await conversation_store.add_message_to_conversation(
                 conversation_id=conversation_id,
@@ -248,6 +250,7 @@ async def contextual_chat(
                     "token_usage": token_usage,
                 },
             )
+            await schedule_conversation_archive(conversation_id)
 
         visualizations = None
         if isinstance(provider_response, dict) and provider_response.get("visualizations"):
@@ -266,7 +269,12 @@ async def contextual_chat(
 
     except HTTPException:
         raise
-    except Exception:
+    except Exception as exc:
+        logger.error(
+            "contextual_chat_failed",
+            error=str(exc),
+            error_type=type(exc).__name__,
+        )
         raise HTTPException(status_code=500, detail="Contextual chat failed")
 
 
@@ -281,7 +289,12 @@ async def debug_context_assembly():
             "timestamp": datetime.utcnow().isoformat(),
         }
         return debug_info
-    except Exception:
+    except Exception as exc:
+        logger.error(
+            "debug_context_assembly_failed",
+            error=str(exc),
+            error_type=type(exc).__name__,
+        )
         raise HTTPException(status_code=500, detail="Debug endpoint failed")
 
 

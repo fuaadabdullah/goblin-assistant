@@ -5,20 +5,23 @@ Enhanced chat endpoints with semantic retrieval and context-aware responses
 
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel
-from typing import List, Optional, Dict, Any, Union
+from typing import Any, Dict, List, Optional, Tuple
 import uuid
 from datetime import datetime
-import asyncio
+import structlog
 
 from .storage.conversations import conversation_store
 from .providers.dispatcher import invoke_provider
-from .storage.models import MessageModel
 from .input_validation import InputSanitizer
 from .assistant_tools.registry import export_openai_tools
 from .assistant_tools.executor import run_tool_loop, extract_tool_calls
+from .chat_router.helpers import _raise_structured_provider_error
+
+logger = structlog.get_logger()
 
 
 router = APIRouter(prefix="/semantic-chat", tags=["semantic-chat"])
+DEFAULT_MODEL = "gpt-3.5-turbo"
 
 
 def _get_context_builder():
@@ -75,6 +78,88 @@ class ContextBundleResponse(BaseModel):
     metadata: Dict[str, Any]
 
 
+async def _get_conversation_or_404(conversation_id: str):
+    conversation = await conversation_store.get_conversation(conversation_id)
+    if not conversation:
+        raise HTTPException(status_code=404, detail="Conversation not found")
+    if not conversation.user_id:
+        raise HTTPException(status_code=400, detail="Conversation has no user_id")
+    return conversation
+
+
+def _context_has_content(context_bundle: Dict[str, Any]) -> bool:
+    return any(
+        len(context_bundle.get(bucket, [])) > 0
+        for bucket in ("summaries", "messages", "tasks", "memory_facts")
+    )
+
+
+def _build_recent_messages(conversation, limit: int = 10) -> List[Dict[str, str]]:
+    return [
+        {"role": msg.role, "content": msg.content}
+        for msg in conversation.messages[-limit:]
+    ]
+
+
+async def _invoke_semantic_provider(
+    enhanced_messages: List[Dict[str, Any]], request: SemanticSendMessageRequest
+):
+    payload: Dict[str, Any] = {"messages": enhanced_messages, "model": request.model}
+    sem_tools = export_openai_tools()
+    if sem_tools:
+        payload["tools"] = sem_tools
+
+    provider_response = await invoke_provider(
+        pid=None,
+        model=request.model,
+        payload=payload,
+        timeout_ms=60000,
+        stream=request.stream,
+    )
+
+    if (
+        isinstance(provider_response, dict)
+        and provider_response.get("ok")
+        and extract_tool_calls(provider_response)
+    ):
+        provider_response = await run_tool_loop(
+            messages=list(enhanced_messages),
+            invoke_fn=invoke_provider,
+            provider=None,
+            model=request.model,
+            tools=sem_tools if sem_tools else None,
+            timeout_ms=60000,
+        )
+
+    return provider_response
+
+
+def _normalize_provider_response(
+    provider_response: Any, request: SemanticSendMessageRequest
+) -> Tuple[Dict[str, Any], str, str, str]:
+    if isinstance(provider_response, dict) and provider_response.get("ok"):
+        result_data = provider_response.get("result", {}) or {}
+        return (
+            result_data,
+            result_data.get("text", ""),
+            provider_response.get("provider", request.provider or "unknown"),
+            provider_response.get("model", request.model or "unknown"),
+        )
+
+    if isinstance(provider_response, dict) and "choices" in provider_response:
+        return (
+            {},
+            provider_response["choices"][0]["message"]["content"],
+            provider_response.get("provider", request.provider or "unknown"),
+            provider_response.get("model", request.model or "unknown"),
+        )
+
+    if isinstance(provider_response, dict) and not provider_response.get("ok"):
+        _raise_structured_provider_error(provider_response)
+
+    return ({}, str(provider_response), request.provider or "unknown", request.model or "unknown")
+
+
 @router.post(
     "/conversations/{conversation_id}/messages",
     response_model=SemanticSendMessageResponse,
@@ -96,15 +181,8 @@ async def semantic_send_message(
     """
     try:
         retrieval_singleton = _get_retrieval_singleton()
-
-        # Step 1: Validate conversation exists
-        conversation = await conversation_store.get_conversation(conversation_id)
-        if not conversation:
-            raise HTTPException(status_code=404, detail="Conversation not found")
-
+        conversation = await _get_conversation_or_404(conversation_id)
         user_id = conversation.user_id
-        if not user_id:
-            raise HTTPException(status_code=400, detail="Conversation has no user_id")
 
         # Step 2: Sanitize user input
         sanitized_message, message_validation = InputSanitizer.sanitize_chat_message(
@@ -135,22 +213,18 @@ async def semantic_send_message(
                     conversation_id=conversation_id,
                     max_tokens=request.max_context_tokens,
                 )
-                context_used = (
-                    len(context_bundle.get("summaries", [])) > 0
-                    or len(context_bundle.get("messages", [])) > 0
-                    or len(context_bundle.get("tasks", [])) > 0
-                    or len(context_bundle.get("memory_facts", [])) > 0
-                )
+                context_used = _context_has_content(context_bundle)
             except Exception as e:
-                print(f"Error during semantic retrieval: {e}")
+                logger.warning(
+                    "semantic_retrieval_failed",
+                    error=str(e),
+                    error_type=type(e).__name__,
+                    conversation_id=conversation_id,
+                )
                 context_used = False
 
         # Step 4: Prepare conversation context for provider
-        # Convert stored messages to provider-expected format
-        recent_messages = [
-            {"role": msg.role, "content": msg.content}
-            for msg in conversation.messages[-10:]  # Last 10 messages for context
-        ]
+        recent_messages = _build_recent_messages(conversation, limit=10)
 
         # Build enhanced prompt with semantic context
         if context_used and context_bundle:
@@ -166,80 +240,18 @@ async def semantic_send_message(
             # Fallback to standard conversation history
             enhanced_messages = recent_messages
 
-        # Step 5: Invoke AI provider via dispatcher
-        import time
-
-        start_time = time.time()
-
-        payload = {
-            "messages": enhanced_messages,
-            "model": request.model,
-        }
-
-        # Inject registered tools for native function calling
-        sem_tools = export_openai_tools()
-        if sem_tools:
-            payload["tools"] = sem_tools
-
-        try:
-            provider_response = await invoke_provider(
-                pid=None,  # Let dispatcher choose best provider
-                model=request.model,
-                payload=payload,
-                timeout_ms=60000,  # Longer timeout for semantic processing
-                stream=request.stream,
-            )
-
-            # Tool-calling loop for semantic chat
-            if (isinstance(provider_response, dict)
-                    and provider_response.get("ok")
-                    and extract_tool_calls(provider_response)):
-                provider_response = await run_tool_loop(
-                    messages=list(enhanced_messages),
-                    invoke_fn=invoke_provider,
-                    provider=None,
-                    model=request.model,
-                    tools=sem_tools if sem_tools else None,
-                    timeout_ms=60000,
-                )
-
-            duration = time.time() - start_time
-            success = isinstance(provider_response, dict) and provider_response.get(
-                "ok", True
-            )
-            error = None if success else str(provider_response.get("error", "unknown"))
-        except Exception as e:
-            duration = time.time() - start_time
-            raise
-
-        # Step 6: Normalize provider response format
-        if isinstance(provider_response, dict) and provider_response.get("ok"):
-            # Standardized outcome from our dispatcher
-            result_data = provider_response.get("result", {})
-            response_content = result_data.get("text", "")
-            used_provider = provider_response.get(
-                "provider", request.provider or "unknown"
-            )
-            used_model = provider_response.get("model", request.model or "unknown")
-        elif isinstance(provider_response, dict) and "choices" in provider_response:
-            response_content = provider_response["choices"][0]["message"]["content"]
-            used_provider = provider_response.get(
-                "provider", request.provider or "unknown"
-            )
-            used_model = provider_response.get("model", request.model or "unknown")
-        else:
-            # Check for error in dispatcher response
-            if isinstance(provider_response, dict) and not provider_response.get("ok"):
-                error_msg = provider_response.get("error", "unknown-error")
-                raise HTTPException(
-                    status_code=500, detail=f"AI Provider error: {error_msg}"
-                )
-
-            response_content = str(provider_response)
-            used_provider = request.provider or "unknown"
-            used_model = request.model or "unknown"
+        # Step 5-6: Invoke provider and normalize result
+        provider_response = await _invoke_semantic_provider(enhanced_messages, request)
+        result_data, response_content, used_provider, used_model = _normalize_provider_response(
+            provider_response, request
+        )
 
         # Step 7: Store AI response with metadata
+        usage = result_data.get("usage") or {}
+        cost_usd = result_data.get("cost_usd")
+        input_tokens = usage.get("prompt_tokens") or usage.get("input_tokens") or 0
+        output_tokens = usage.get("completion_tokens") or usage.get("output_tokens") or 0
+
         response_message_id = str(uuid.uuid4())
         await conversation_store.add_message_to_conversation(
             conversation_id=conversation_id,
@@ -253,6 +265,9 @@ async def semantic_send_message(
                 "context_tokens": context_bundle.get("total_tokens", 0)
                 if context_used
                 else 0,
+                "input_tokens": input_tokens,
+                "output_tokens": output_tokens,
+                "cost_usd": cost_usd,
             },
         )
 
@@ -301,9 +316,7 @@ async def semantic_send_message(
 
     except HTTPException:
         raise
-    except HTTPException:
-        raise
-    except Exception as e:
+    except Exception:
         # Error details are now handled by ErrorHandlingMiddleware
         raise HTTPException(status_code=500, detail="Failed to send semantic message")
 
@@ -315,15 +328,8 @@ async def get_context_bundle(
     """Retrieve semantic context for a conversation and query"""
     try:
         retrieval_singleton = _get_retrieval_singleton()
-
-        # Validate conversation exists
-        conversation = await conversation_store.get_conversation(conversation_id)
-        if not conversation:
-            raise HTTPException(status_code=404, detail="Conversation not found")
-
+        conversation = await _get_conversation_or_404(conversation_id)
         user_id = conversation.user_id
-        if not user_id:
-            raise HTTPException(status_code=400, detail="Conversation has no user_id")
 
         # Retrieve context
         context_bundle = await retrieval_singleton.get_context_bundle(
@@ -337,9 +343,7 @@ async def get_context_bundle(
 
     except HTTPException:
         raise
-    except HTTPException:
-        raise
-    except Exception as e:
+    except Exception:
         # Error details are now handled by ErrorHandlingMiddleware
         raise HTTPException(status_code=500, detail="Failed to retrieve context")
 
@@ -352,15 +356,7 @@ async def summarize_conversation(
     """Generate and store a summary of the conversation"""
     try:
         retrieval_singleton = _get_retrieval_singleton()
-
-        # Validate conversation exists
-        conversation = await conversation_store.get_conversation(conversation_id)
-        if not conversation:
-            raise HTTPException(status_code=404, detail="Conversation not found")
-
-        user_id = conversation.user_id
-        if not user_id:
-            raise HTTPException(status_code=400, detail="Conversation has no user_id")
+        conversation = await _get_conversation_or_404(conversation_id)
 
         # Build summary prompt
         messages = [
@@ -379,14 +375,14 @@ Summary:"""
         # Generate summary using AI
         payload = {
             "messages": [{"role": "user", "content": summary_prompt}],
-            "model": "gpt-3.5-turbo",
+            "model": DEFAULT_MODEL,
             "max_tokens": 500,
             "temperature": 0.3,
         }
 
         provider_response = await invoke_provider(
             pid=None,
-            model="gpt-3.5-turbo",
+            model=DEFAULT_MODEL,
             payload=payload,
             timeout_ms=30000,
             stream=False,
@@ -414,9 +410,7 @@ Summary:"""
 
     except HTTPException:
         raise
-    except HTTPException:
-        raise
-    except Exception as e:
+    except Exception:
         # Error details are now handled by ErrorHandlingMiddleware
         raise HTTPException(status_code=500, detail="Failed to summarize conversation")
 
@@ -453,9 +447,7 @@ async def add_memory_fact(
 
     except HTTPException:
         raise
-    except HTTPException:
-        raise
-    except Exception as e:
+    except Exception:
         # Error details are now handled by ErrorHandlingMiddleware
         raise HTTPException(status_code=500, detail="Failed to add memory fact")
 
@@ -486,9 +478,7 @@ async def search_memory_facts(
 
     except HTTPException:
         raise
-    except HTTPException:
-        raise
-    except Exception as e:
+    except Exception:
         # Error details are now handled by ErrorHandlingMiddleware
         raise HTTPException(status_code=500, detail="Failed to search memory facts")
 

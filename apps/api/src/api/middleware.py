@@ -104,8 +104,9 @@ class AuthenticationMiddleware(BaseHTTPMiddleware):
                 return JSONResponse(
                     status_code=500,
                     content={
+                        "success": False,
                         "error": {
-                            "code": "configuration_error",
+                            "code": "CONFIGURATION_ERROR",
                             "message": "API authentication not configured",
                             "details": "LOCAL_LLM_API_KEY environment variable must be set",
                         }
@@ -119,8 +120,9 @@ class AuthenticationMiddleware(BaseHTTPMiddleware):
             return JSONResponse(
                 status_code=401,
                 content={
+                    "success": False,
                     "error": {
-                        "code": "authentication_required",
+                        "code": "AUTHENTICATION_REQUIRED",
                         "message": "Valid API key required",
                         "details": "Provide API key in x-api-key header or Authorization: Bearer <key> header",
                     }
@@ -221,8 +223,9 @@ class ErrorHandlingMiddleware(BaseHTTPMiddleware):
             return JSONResponse(
                 status_code=500,
                 content={
+                    "success": False,
                     "error": {
-                        "code": "internal_server_error",
+                        "code": "INTERNAL_ERROR",
                         "message": error_message,
                         "request_id": request_id,
                         "type": type(e).__name__,

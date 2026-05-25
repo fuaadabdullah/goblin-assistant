@@ -218,3 +218,47 @@ async def test_user_filtering_with_eviction(memory_store_default):
     
     assert len(user2_convs) == 1
     assert user2_convs[0].user_id == "user2"
+
+
+@pytest.mark.asyncio
+async def test_archive_messages_replaces_selected_messages(memory_store_default):
+    """Archive selected messages and replace with one summary message."""
+    store = memory_store_default
+    conv = Conversation(user_id="user1", title="Archive Test")
+    now = datetime.utcnow()
+    m1 = ConversationMessage(role="user", content="old 1", timestamp=now - timedelta(minutes=3))
+    m2 = ConversationMessage(role="assistant", content="old 2", timestamp=now - timedelta(minutes=2))
+    m3 = ConversationMessage(role="user", content="new 1", timestamp=now - timedelta(minutes=1))
+    m4 = ConversationMessage(role="assistant", content="new 2", timestamp=now)
+    conv.messages = [m1, m2, m3, m4]
+    await store.save_conversation(conv)
+
+    ok = await store.archive_messages(
+        conversation_id=conv.conversation_id,
+        message_ids=[m1.message_id, m2.message_id],
+        summary_content="Archived summary",
+        summary_metadata={"archived_summary": True, "archived_message_count": 2},
+    )
+    assert ok is True
+
+    updated = await store.get_conversation(conv.conversation_id)
+    assert updated is not None
+    assert len(updated.messages) == 3
+    assert updated.messages[0].content == "Archived summary"
+    assert updated.messages[0].metadata.get("archived_summary") is True
+    assert [msg.content for msg in updated.messages[1:]] == ["new 1", "new 2"]
+
+
+@pytest.mark.asyncio
+async def test_archive_messages_returns_false_when_ids_not_found(memory_store_default):
+    store = memory_store_default
+    conv = Conversation(user_id="user1", title="Archive Missing IDs")
+    conv.messages = [ConversationMessage(role="user", content="hello")]
+    await store.save_conversation(conv)
+
+    ok = await store.archive_messages(
+        conversation_id=conv.conversation_id,
+        message_ids=["missing-message-id"],
+        summary_content="summary",
+    )
+    assert ok is False

@@ -15,6 +15,7 @@ import subprocess
 from urllib.parse import urlparse
 import httpx
 from .monitoring import monitor
+from .core.contracts import SuccessEnvelope
 
 router = APIRouter(tags=["health"])
 
@@ -88,8 +89,8 @@ async def check_api_health() -> Dict[str, Any]:
         return {"status": "unhealthy", "error": str(e)}
 
 
-@router.get("/health")
-async def health_check() -> Dict[str, Any]:
+@router.get("/health", response_model=SuccessEnvelope[Dict[str, Any]])
+async def health_check() -> SuccessEnvelope[Dict[str, Any]]:
     """Unified health endpoint covering all subsystems.
 
     Strategy: Prioritizes fast response times over comprehensive validation.
@@ -154,23 +155,25 @@ async def health_check() -> Dict[str, Any]:
         else "warnings"
     )
 
-    return {
-        "status": overall_status,
-        "timestamp": datetime.utcnow().isoformat(),
-        "version": "1.0.0",
-        "components": {
-            "api": api_health,
-            "routing": routing_health,
-            "database": db_health,
-            "redis": redis_health,
-            "providers": provider_health,
-            "security": security_status,
-        },
-    }
+    return SuccessEnvelope(
+        data={
+            "status": overall_status,
+            "timestamp": datetime.utcnow().isoformat(),
+            "version": "1.0.0",
+            "components": {
+                "api": api_health,
+                "routing": routing_health,
+                "database": db_health,
+                "redis": redis_health,
+                "providers": provider_health,
+                "security": security_status,
+            },
+        }
+    )
 
 
-@router.get("/health/stream")
-async def health_stream() -> Dict[str, Any]:
+@router.get("/health/stream", response_model=SuccessEnvelope[Dict[str, Any]])
+async def health_stream() -> SuccessEnvelope[Dict[str, Any]]:
     """Streaming health check endpoint (legacy compatibility)"""
     # For backward compatibility, redirect to main health endpoint
     return await health_check()

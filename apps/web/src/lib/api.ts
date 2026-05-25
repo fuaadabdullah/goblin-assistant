@@ -100,6 +100,18 @@ interface ConversationSendResponse {
   }>;
 }
 
+interface StandardApiErrorPayload {
+  code?: string;
+  message?: string;
+  details?: Record<string, unknown>;
+}
+
+interface StandardApiEnvelope<T> {
+  success: boolean;
+  data?: T;
+  error?: StandardApiErrorPayload | string;
+}
+
 const backendHttp = axios.create({
   baseURL: env.apiBaseUrl,
   timeout: 45000,
@@ -211,11 +223,21 @@ const normalizeAxiosError = (error: unknown): never => {
 
     const isTimeout = axiosError.code === 'ECONNABORTED';
 
+    const payloadError = payload?.error;
+    const payloadErrorMessage =
+      typeof payloadError === 'string'
+        ? payloadError
+        : typeof payloadError === 'object' &&
+            payloadError !== null &&
+            typeof (payloadError as Record<string, unknown>).message === 'string'
+          ? ((payloadError as Record<string, unknown>).message as string)
+          : null;
+
     const detail =
       (isTimeout &&
         'Authentication service timed out. The server may be waking up—please try again in a few seconds.') ||
       (typeof payload?.detail === 'string' && payload.detail) ||
-      (typeof payload?.error === 'string' && payload.error) ||
+      payloadErrorMessage ||
       (typeof payload?.message === 'string' && payload.message) ||
       axiosError.message ||
       'Request failed';
@@ -231,6 +253,17 @@ const normalizeAxiosError = (error: unknown): never => {
   }
 
   throw error instanceof Error ? error : new Error('Request failed');
+};
+
+const unwrapEnvelope = <T>(payload: T | StandardApiEnvelope<T>): T => {
+  if (typeof payload !== 'object' || payload === null) return payload as T;
+  if (!('success' in payload)) return payload as T;
+
+  const envelope = payload as StandardApiEnvelope<T>;
+  if (envelope.success && envelope.data !== undefined) {
+    return envelope.data;
+  }
+  return payload as T;
 };
 
 const getCsrfToken = async (): Promise<string> => {
@@ -264,7 +297,7 @@ const getBackend = async <T>(url: string, config?: AxiosRequestConfig): Promise<
   try {
     assertNoVersionedClientPath(url);
     const response = await backendHttp.get<T>(url, config);
-    return response.data;
+    return unwrapEnvelope<T>(response.data as T | StandardApiEnvelope<T>);
   } catch (error) {
     return normalizeAxiosError(error);
   }
@@ -278,7 +311,7 @@ const postBackend = async <T, B = unknown>(
   try {
     assertNoVersionedClientPath(url);
     const response = await backendHttp.post<T>(url, body, config);
-    return response.data;
+    return unwrapEnvelope<T>(response.data as T | StandardApiEnvelope<T>);
   } catch (error) {
     return normalizeAxiosError(error);
   }
@@ -292,7 +325,7 @@ const putBackend = async <T, B = unknown>(
   try {
     assertNoVersionedClientPath(url);
     const response = await backendHttp.put<T>(url, body, config);
-    return response.data;
+    return unwrapEnvelope<T>(response.data as T | StandardApiEnvelope<T>);
   } catch (error) {
     return normalizeAxiosError(error);
   }
@@ -306,7 +339,7 @@ const patchBackend = async <T, B = unknown>(
   try {
     assertNoVersionedClientPath(url);
     const response = await backendHttp.patch<T>(url, body, config);
-    return response.data;
+    return unwrapEnvelope<T>(response.data as T | StandardApiEnvelope<T>);
   } catch (error) {
     return normalizeAxiosError(error);
   }
@@ -316,7 +349,7 @@ const getFrontend = async <T>(url: string, config?: AxiosRequestConfig): Promise
   try {
     assertNoVersionedClientPath(url);
     const response = await frontendHttp.get<T>(url, config);
-    return response.data;
+    return unwrapEnvelope<T>(response.data as T | StandardApiEnvelope<T>);
   } catch (error) {
     return normalizeAxiosError(error);
   }
@@ -330,7 +363,7 @@ const postFrontend = async <T, B = unknown>(
   try {
     assertNoVersionedClientPath(url);
     const response = await frontendHttp.post<T>(url, body, config);
-    return response.data;
+    return unwrapEnvelope<T>(response.data as T | StandardApiEnvelope<T>);
   } catch (error) {
     return normalizeAxiosError(error);
   }
@@ -495,6 +528,35 @@ export const apiClient = {
       correlation_id: response.correlation_id,
       visualizations: response.visualizations,
     };
+  },
+
+  async estimateMessageTokens(payload: {
+    message: string;
+    conversationId?: string;
+    provider?: string;
+    model?: string;
+  }): Promise<{
+    input_tokens: number;
+    estimated_output_tokens: number;
+    estimated_cost_usd: number;
+    provider: string;
+    model?: string;
+    layers: Array<{ name: string; tokens: number }>;
+    degraded_mode: boolean;
+    degraded_reason?: string;
+  }> {
+    const qs = payload.conversationId
+      ? `?conversation_id=${encodeURIComponent(payload.conversationId)}`
+      : '';
+    return postBackend(
+      `/chat/estimate-tokens${qs}`,
+      {
+        message: payload.message,
+        provider: payload.provider,
+        model: payload.model,
+      },
+      withAuth(),
+    );
   },
 
   async importConversationMessages(

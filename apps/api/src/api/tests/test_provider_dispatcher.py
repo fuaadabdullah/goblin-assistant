@@ -43,6 +43,14 @@ def mock_providers():
 class TestProviderDispatcherSelection:
     """Tests for provider selection logic"""
 
+    def test_dispatcher_exposes_huggingface_provider(self):
+        from api.providers.dispatcher import ProviderDispatcher
+
+        dispatcher = ProviderDispatcher()
+        provider = dispatcher.get_provider("huggingface")
+
+        assert provider.provider_id == "huggingface"
+
     @pytest.mark.asyncio
     async def test_select_healthiest_provider(self, mock_providers):
         """Test selecting healthiest available provider"""
@@ -61,15 +69,15 @@ class TestProviderDispatcherSelection:
         assert selected.provider_id == "openai"
 
     @pytest.mark.asyncio
-    async def test_skip_unhealthy_providers(self, mock_providers):
+    async def test_skip_unhealthy_providers(self, providers_mock):
         """Test skips unhealthy providers"""
         from api.providers.dispatcher import (
             select_provider,
         )
 
         providers = [
-            mock_providers["azure"],  # unhealthy
-            mock_providers["openai"],
+            providers_mock["azure"],  # unhealthy
+            providers_mock["openai"],
         ]
 
         selected = await select_provider(providers)
@@ -79,7 +87,7 @@ class TestProviderDispatcherSelection:
 
     @pytest.mark.asyncio
     async def test_fallback_if_no_healthy_providers(
-        self, mock_providers
+        self, providers_mock
     ):
         """Test fallback behavior when all unhealthy"""
         from api.providers.dispatcher import (
@@ -87,7 +95,7 @@ class TestProviderDispatcherSelection:
         )
 
         # All providers unhealthy
-        for provider in mock_providers.values():
+        for provider in providers_mock.values():
             provider.health_check.return_value = (
                 ProviderHealth(
                     provider_id=provider.provider_id,
@@ -96,7 +104,7 @@ class TestProviderDispatcherSelection:
                 )
             )
 
-        providers = list(mock_providers.values())
+        providers = list(providers_mock.values())
 
         # Should still select one (preferably by latency)
         selected = await select_provider(providers)
@@ -104,19 +112,19 @@ class TestProviderDispatcherSelection:
         assert selected is not None
 
     @pytest.mark.asyncio
-    async def test_prefer_configured_provider(self, mock_providers):
+    async def test_prefer_configured_provider(self, providers_mock):
         """Test prefers user-configured provider"""
         from api.providers.dispatcher import (
             select_provider,
         )
 
-        providers = list(mock_providers.values())
+        providers = list(providers_mock.values())
 
         selected = await select_provider(
             providers, preferred="anthropic"
         )
 
-        if mock_providers["anthropic"].health_check.return_value.healthy:
+        if providers_mock["anthropic"].health_check.return_value.healthy:
             assert selected.provider_id == "anthropic"
 
 
@@ -192,7 +200,7 @@ class TestProviderFallback:
     """Tests for provider fallback mechanism"""
 
     @pytest.mark.asyncio
-    async def test_fallback_on_primary_failure(self, mock_providers):
+    async def test_fallback_on_primary_failure(self):
         """Test fallback when primary provider fails"""
         from api.providers.dispatcher import (
             invoke_with_fallback,
@@ -220,7 +228,7 @@ class TestProviderFallback:
         fallback.invoke.assert_called()
 
     @pytest.mark.asyncio
-    async def test_multiple_fallback_chain(self, mock_providers):
+    async def test_multiple_fallback_chain(self):
         """Test chaining multiple fallbacks"""
         from api.providers.dispatcher import (
             invoke_with_fallback,
@@ -277,14 +285,14 @@ class TestProviderLoadBalancing:
     """Tests for load balancing across providers"""
 
     @pytest.mark.asyncio
-    async def test_round_robin_distribution(self, mock_providers):
+    async def test_round_robin_distribution(self, providers_mock):
         """Test round-robin request distribution"""
         from api.providers.dispatcher import (
             LoadBalancer,
         )
 
         lb = LoadBalancer(
-            providers=list(mock_providers.values()),
+            providers=list(providers_mock.values()),
             strategy="round_robin",
         )
 
@@ -296,14 +304,14 @@ class TestProviderLoadBalancing:
         assert len(set(p.provider_id for p in selected_providers)) > 1
 
     @pytest.mark.asyncio
-    async def test_weighted_distribution(self, mock_providers):
+    async def test_weighted_distribution(self, providers_mock):
         """Test weighted distribution based on health"""
         from api.providers.dispatcher import (
             LoadBalancer,
         )
 
         lb = LoadBalancer(
-            providers=list(mock_providers.values()),
+            providers=list(providers_mock.values()),
             strategy="weighted",
         )
 
@@ -324,13 +332,13 @@ class TestProviderMetrics:
     """Tests for provider metrics collection"""
 
     @pytest.mark.asyncio
-    async def test_collect_latency_metrics(self, mock_providers):
+    async def test_collect_latency_metrics(self, providers_mock):
         """Test collecting latency metrics"""
         from api.providers.dispatcher import MetricsCollector
 
         collector = MetricsCollector()
 
-        for provider in mock_providers.values():
+        for provider in providers_mock.values():
             collector.record_latency(
                 provider.provider_id,
                 100,

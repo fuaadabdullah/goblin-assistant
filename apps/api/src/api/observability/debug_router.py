@@ -11,6 +11,7 @@ import structlog
 from .decision_logger import decision_logger, DecisionReason
 from .memory_logger import memory_promotion_logger, PromotionGate
 from .retrieval_tracer import retrieval_tracer, RetrievalTier
+from .tool_tracer import tool_tracer
 from .context_snapshotter import context_snapshotter
 from ..ops.security import require_ops_access, require_ops_write_access
 
@@ -604,5 +605,91 @@ async def reset_observability_counters() -> Dict[str, Any]:
             "reset_counters": ["trace_count"]
         }
     except Exception as e:
-        logger.error(f"Failed to reset observability counters: {e}")
-        raise HTTPException(status_code=500, detail=f"Failed to reset counters: {str(e)}")
+        raise HTTPException(
+            status_code=500,
+            detail=f"Failed to reset observability counters: "
+            f"{str(e)}",
+        )
+
+
+# Tool Execution Trace Endpoints
+@router.get("/tool-trace/{request_id}")
+@require_ops_access("read")
+async def get_tool_trace(request_id: str) -> Dict[str, Any]:
+    """Get full tool execution trace for a specific request"""
+    try:
+        result = tool_tracer.get_tool_trace(request_id)
+
+        if not result:
+            raise HTTPException(
+                status_code=404,
+                detail="Tool trace not found",
+            )
+
+        return result
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Failed to get tool trace: {e}")
+        raise HTTPException(
+            status_code=500,
+            detail=f"Failed to get tool trace: {str(e)}",
+        )
+
+
+@router.get("/tool-trace/conversation/{conversation_id}")
+@require_ops_access("read")
+async def get_conversation_tool_traces(
+    conversation_id: str,
+    limit: int = Query(50, description="Results per page"),
+    offset: int = Query(0, description="Pagination offset"),
+) -> Dict[str, Any]:
+    """Get all tool execution traces for a conversation"""
+    try:
+        result = tool_tracer.get_conversation_tool_traces(
+            conversation_id=conversation_id,
+            limit=limit,
+            offset=offset,
+        )
+
+        return result
+    except Exception as e:
+        logger.error(
+            f"Failed to get conversation tool traces: {e}"
+        )
+        raise HTTPException(
+            status_code=500,
+            detail=(
+                f"Failed to get conversation tool traces: {str(e)}"
+            ),
+        )
+
+
+@router.get("/tool-trace/stats")
+@require_ops_access("read")
+async def get_tool_trace_stats(
+    user_id: Optional[str] = Query(
+        None, description="Filter by user ID"
+    ),
+    time_window_hours: int = Query(
+        24, description="Time window in hours"
+    ),
+) -> Dict[str, Any]:
+    """Get tool execution statistics for monitoring"""
+    try:
+        stats = tool_tracer.get_tool_trace_stats(
+            user_id=user_id,
+            time_window_hours=time_window_hours,
+        )
+
+        return {
+            "user_id": user_id,
+            "time_window_hours": time_window_hours,
+            "data": stats,
+        }
+    except Exception as e:
+        logger.error(f"Failed to get tool trace stats: {e}")
+        raise HTTPException(
+            status_code=500,
+            detail=f"Failed to get tool trace stats: {str(e)}",
+        )

@@ -15,6 +15,11 @@ from .base import BaseProvider, ProviderHealth, ProviderResult
 logger = structlog.get_logger(__name__)
 
 _DEFAULT_ENDPOINT = "https://dashscope-intl.aliyuncs.com/compatible-mode"
+_BODY_PASSTHROUGH = {
+    "top_p", "stream", "tools", "tool_choice",
+    "response_format", "stop", "seed",
+    "presence_penalty", "frequency_penalty",
+}
 _COST_TABLE: Dict[str, Dict[str, float]] = {
     "qwen-max": {"input": 0.004, "output": 0.012},
     "qwen-plus": {"input": 0.0008, "output": 0.002},
@@ -89,7 +94,7 @@ class AliyunProvider(BaseProvider):
             "messages": normalized_messages,
             "max_tokens": max_tokens,
             "temperature": temperature,
-            **kwargs,
+            **{k: v for k, v in kwargs.items() if k in _BODY_PASSTHROUGH},
         }
         t0 = time.perf_counter()
         try:
@@ -100,6 +105,24 @@ class AliyunProvider(BaseProvider):
                     json=body,
                 )
             latency = (time.perf_counter() - t0) * 1000
+            if resp.status_code == 401:
+                self.record_failure("invalid_api_key")
+                return ProviderResult(
+                    ok=False, provider=self.provider_id, model=model_name,
+                    latency_ms=latency,
+                    error="DASHSCOPE_API_KEY rejected by Aliyun (401 invalid_api_key)",
+                )
+            if resp.status_code == 403:
+                self.record_failure("model_access_denied")
+                return ProviderResult(
+                    ok=False, provider=self.provider_id, model=model_name,
+                    latency_ms=latency,
+                    error=(
+                        f"Model '{model_name}' access denied by Aliyun (403). "
+                        "Activate it in Model Studio → Model Gallery, "
+                        "or ensure workspace has free quota / billing."
+                    ),
+                )
             resp.raise_for_status()
             data = resp.json()
 
@@ -151,7 +174,7 @@ class AliyunProvider(BaseProvider):
             "max_tokens": max_tokens,
             "temperature": temperature,
             "stream": True,
-            **kwargs,
+            **{k: v for k, v in kwargs.items() if k in _BODY_PASSTHROUGH and k != "stream"},
         }
         async with httpx.AsyncClient(timeout=120) as client:
             async with client.stream(

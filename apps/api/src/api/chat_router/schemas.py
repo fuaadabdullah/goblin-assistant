@@ -46,6 +46,22 @@ class SendMessageResponse(BaseModel):
     visualizations: Optional[List[Dict[str, Any]]] = None
 
 
+class LayerEstimate(BaseModel):
+    name: str
+    tokens: int
+
+
+class EstimateTokensResponse(BaseModel):
+    input_tokens: int
+    estimated_output_tokens: int
+    estimated_cost_usd: float
+    provider: str
+    model: Optional[str] = None
+    layers: List[LayerEstimate]
+    degraded_mode: bool = False
+    degraded_reason: Optional[str] = None
+
+
 class ConversationInfo(BaseModel):
     conversation_id: str
     user_id: Optional[str]

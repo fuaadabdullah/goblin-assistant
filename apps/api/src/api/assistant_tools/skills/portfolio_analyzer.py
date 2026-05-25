@@ -231,33 +231,37 @@ async def _handle_portfolio_analyzer(
 register_tool(ToolDefinition(
     name="portfolio_analyzer",
     description=(
-        "Analyze a stock portfolio: calculate allocation weights, annualized "
-        "return, volatility, Sharpe ratio, max drawdown, Value-at-Risk, "
-        "and a correlation matrix. Compares performance to a benchmark (default SPY)."
+        "Use when the user provides multiple holdings and asks for portfolio "
+        "allocation, risk, performance, diversification, benchmark comparison, "
+        "or correlation analysis. Returns per-holding weights and metrics, "
+        "portfolio annualized return/volatility, Sharpe ratio, max drawdown, "
+        "daily 95% VaR, correlation matrix, and benchmark metrics."
     ),
     parameters=[
         ToolParameter(
             name="holdings",
             type="array",
             description=(
-                'Array of holdings, each with "ticker" (string) and either '
-                '"shares" (number) or "weight" (number). '
-                'Example: [{"ticker":"AAPL","shares":10},{"ticker":"MSFT","shares":5}]'
+                'Array of holding objects. Each object needs "ticker" and may '
+                'include either "shares" or "weight"; weights can be any '
+                'positive numbers and are normalized by the tool. Example: '
+                '[{"ticker":"AAPL","shares":10},{"ticker":"MSFT","shares":5}].'
             ),
             items={"type": "object"},
         ),
         ToolParameter(
             name="benchmark",
             type="string",
-            description="Benchmark ticker for comparison (default SPY).",
+            description="Benchmark ticker for performance comparison. Default: SPY.",
             required=False,
             default="SPY",
         ),
         ToolParameter(
             name="period",
             type="string",
-            description="Lookback period: 1mo, 3mo, 6mo, 1y, 2y, 5y (default 1y).",
+            description="Historical lookback period for portfolio metrics. Default: 1y.",
             required=False,
+            enum=["1mo", "3mo", "6mo", "1y", "2y", "5y"],
             default="1y",
         ),
     ],

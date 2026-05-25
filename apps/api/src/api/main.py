@@ -6,8 +6,10 @@ Combines all the routers into a single application
 
 from contextlib import asynccontextmanager
 
-from fastapi import FastAPI
+from fastapi import FastAPI, HTTPException, Request
+from fastapi.exceptions import RequestValidationError
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import JSONResponse
 import os
 import structlog
 
@@ -52,6 +54,13 @@ from .storage.database import init_db
 from .monitoring import monitor
 from .artifact_cleanup import artifact_cleanup_service
 from .security_config import SecurityConfig
+from .core.contracts import ErrorEnvelope
+from .core.errors import (
+    DomainError,
+    map_http_exception,
+    map_unhandled_exception,
+    map_validation_exception,
+)
 
 # Initialize structured logger (early, for use in module-level initialization)
 logger = structlog.get_logger()
@@ -335,6 +344,47 @@ app = FastAPI(
 )
 
 
+@app.exception_handler(DomainError)
+async def handle_domain_error(_: Request, exc: DomainError):
+    return JSONResponse(
+        status_code=exc.status_code,
+        content=ErrorEnvelope(
+            error={
+                "code": exc.code,
+                "message": exc.message,
+                "details": exc.details,
+            }
+        ).model_dump(exclude_none=True),
+    )
+
+
+@app.exception_handler(RequestValidationError)
+async def handle_validation_error(_: Request, exc: RequestValidationError):
+    payload = map_validation_exception(exc)
+    return JSONResponse(
+        status_code=422,
+        content=ErrorEnvelope(error=payload).model_dump(exclude_none=True),
+    )
+
+
+@app.exception_handler(HTTPException)
+async def handle_http_error(_: Request, exc: HTTPException):
+    payload = map_http_exception(exc)
+    return JSONResponse(
+        status_code=exc.status_code,
+        content=ErrorEnvelope(error=payload).model_dump(exclude_none=True),
+    )
+
+
+@app.exception_handler(Exception)
+async def handle_unhandled_error(_: Request, exc: Exception):
+    payload = map_unhandled_exception(exc)
+    return JSONResponse(
+        status_code=500,
+        content=ErrorEnvelope(error=payload).model_dump(exclude_none=True),
+    )
+
+
 # Add Error Handling middleware
 app.add_middleware(ErrorHandlingMiddleware)
 
@@ -460,6 +510,11 @@ app.include_router(support_router)  # User support/feedback
 # Include routing analytics router (new smart routing)
 if ROUTING_ANALYTICS_AVAILABLE and routing_analytics_router:
     app.include_router(routing_analytics_router)
+
+# Versioned aliases for high-traffic/admin routes.
+app.include_router(health_router, prefix="/api/v1")
+app.include_router(settings_router, prefix="/api/v1")
+app.include_router(providers_models_router, prefix="/api/v1")
 
 
 @app.get("/")

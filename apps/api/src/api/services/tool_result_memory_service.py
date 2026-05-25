@@ -14,6 +14,7 @@ special category ``financial_profile``.
 
 from __future__ import annotations
 
+import json
 import re
 from datetime import datetime
 from typing import Any, Dict, List, Optional
@@ -119,17 +120,20 @@ def _extract_earnings_facts(result: Dict[str, Any], args: Dict[str, Any]) -> Lis
     facts: List[Dict[str, str]] = []
     ticker = args.get("ticker") or result.get("ticker", "???")
 
-    summary = result.get("summary", {})
-    beats = summary.get("beats", 0)
-    total = summary.get("total", 0)
-    streak = summary.get("streak")
+    earnings = result.get("earnings", {})
+    next_date = earnings.get("next_earnings_date")
+    beat_miss = earnings.get("beat_miss_history", [])
 
-    if total > 0:
+    if next_date:
         facts.append({
-            "content": (
-                f"{ticker} earnings: {beats}/{total} beats"
-                + (f", {streak}" if streak else "")
-            ),
+            "content": f"{ticker} earnings on {next_date}",
+            "category": "instrument",
+        })
+
+    if beat_miss:
+        recent = beat_miss[-3:]
+        facts.append({
+            "content": f"{ticker} recent EPS: {recent}",
             "category": "instrument",
         })
 
@@ -139,14 +143,21 @@ def _extract_earnings_facts(result: Dict[str, Any], args: Dict[str, Any]) -> Lis
 def _extract_screener_facts(result: Dict[str, Any], args: Dict[str, Any]) -> List[Dict[str, str]]:
     """Extract promotable facts from a stock screener result."""
     facts: List[Dict[str, str]] = []
+    screen_name = args.get("screen_name", "custom_screen")
 
-    matches = result.get("matches", [])
-    criteria = result.get("criteria_applied", {})
+    results = result.get("results", [])
+    criteria = args.get("criteria", {})
 
-    if matches:
-        tickers = [m.get("ticker", "?") for m in matches[:10]]
+    if results:
+        tickers = [r.get("ticker") for r in results[:5]]
         facts.append({
-            "content": f"Stock screen matched: {', '.join(tickers)} (criteria: {criteria})",
+            "content": f"Screen '{screen_name}' returned {len(results)} results. Top hits: {', '.join(tickers)}",
+            "category": "instrument",
+        })
+
+    if criteria:
+        facts.append({
+            "content": f"Screening criteria for '{screen_name}': {json.dumps(criteria)}",
             "category": "financial_profile",
         })
 
@@ -210,8 +221,13 @@ async def extract_and_promote(
         try:
             result = await memory_promotion_service.evaluate_promotion_candidate(candidate)
             results.append(result)
-        except Exception:
-            logger.exception("tool_result_promotion_failed", tool=tool_name)
+        except Exception as exc:
+            logger.error(
+                "tool_result_promotion_failed",
+                tool=tool_name,
+                error=str(exc),
+                error_type=type(exc).__name__,
+            )
 
     logger.info(
         "tool_result_memory_extraction",
@@ -255,8 +271,13 @@ async def get_financial_profile(
             ],
             k=15,
         )
-    except Exception:
-        logger.exception("get_financial_profile_failed", user_id=user_id)
+    except Exception as exc:
+        logger.error(
+            "get_financial_profile_failed",
+            user_id=user_id,
+            error=str(exc),
+            error_type=type(exc).__name__,
+        )
         return profile
 
     for fact in facts:
@@ -266,7 +287,7 @@ async def get_financial_profile(
         if cat == "financial_profile":
             if "DCF assumptions" in text:
                 profile["last_dcf_assumptions"] = _parse_dcf_assumptions(text)
-            elif "Stock screen matched" in text:
+            elif "Screen '" in text and "returned" in text:
                 profile["recent_screens"].append(text)
         elif cat == "instrument":
             tickers = re.findall(r"\b[A-Z]{1,5}\b", text)

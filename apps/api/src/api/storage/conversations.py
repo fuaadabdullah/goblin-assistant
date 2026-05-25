@@ -8,8 +8,12 @@ from typing import List, Dict, Any, Optional
 from datetime import datetime
 import uuid
 import os
+import structlog
 from sqlalchemy import select, delete, desc
+from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import selectinload
+
+logger = structlog.get_logger()
 
 try:
     from .models import ConversationModel, MessageModel
@@ -147,6 +151,19 @@ class ConversationStore(ABC):
         """Update conversation title"""
         pass
 
+    @abstractmethod
+    async def archive_messages(
+        self,
+        conversation_id: str,
+        message_ids: List[str],
+        summary_content: str,
+        summary_metadata: Optional[Dict[str, Any]] = None,
+        summary_message_id: Optional[str] = None,
+        summary_timestamp: Optional[datetime] = None,
+    ) -> bool:
+        """Replace archived messages with a synthetic summary message."""
+        pass
+
     async def check_conversation_owner(
         self,
         conversation_id: str,
@@ -249,6 +266,44 @@ class InMemoryConversationStore(ConversationStore):
             return True
         return False
 
+    async def archive_messages(
+        self,
+        conversation_id: str,
+        message_ids: List[str],
+        summary_content: str,
+        summary_metadata: Optional[Dict[str, Any]] = None,
+        summary_message_id: Optional[str] = None,
+        summary_timestamp: Optional[datetime] = None,
+    ) -> bool:
+        """Replace archived messages with one summary message."""
+        conversation = self._conversations.get(conversation_id)
+        if not conversation or not message_ids:
+            return False
+
+        archive_set = set(message_ids)
+        archived = [msg for msg in conversation.messages if msg.message_id in archive_set]
+        if not archived:
+            return False
+
+        retained = [msg for msg in conversation.messages if msg.message_id not in archive_set]
+        summary_ts = summary_timestamp or max(msg.timestamp for msg in archived)
+        summary_message = ConversationMessage(
+            role="system",
+            content=summary_content,
+            metadata=summary_metadata or {},
+            message_id=summary_message_id,
+            timestamp=summary_ts,
+        )
+        retained.append(summary_message)
+        retained.sort(key=lambda item: item.timestamp)
+
+        conversation.messages = retained
+        conversation.updated_at = max(conversation.updated_at, summary_ts)
+        conversation.last_accessed = datetime.utcnow()
+        self._conversations[conversation_id] = conversation
+        self._evict_expired()
+        return True
+
     async def check_conversation_owner(
         self,
         conversation_id: str,
@@ -273,94 +328,108 @@ class DatabaseConversationStore(ConversationStore):
 
     async def save_conversation(self, conversation: Conversation) -> None:
         """Save a conversation to database"""
-        async with get_db_context() as session:
-            # Check if conversation exists
-            result = await session.execute(
-                select(ConversationModel).where(
-                    ConversationModel.conversation_id == conversation.conversation_id
-                )
-            )
-            db_conversation = result.scalar_one_or_none()
-
-            if not db_conversation:
-                # Create new conversation
-                db_conversation = ConversationModel(
-                    conversation_id=conversation.conversation_id,
-                    user_id=conversation.user_id,
-                    title=conversation.title,
-                    created_at=conversation.created_at,
-                    updated_at=conversation.updated_at,
-                    metadata_=conversation.metadata,
-                )
-                session.add(db_conversation)
-            else:
-                # Update existing
-                db_conversation.title = conversation.title
-                db_conversation.updated_at = conversation.updated_at
-                db_conversation.metadata_ = conversation.metadata
-
-            # Handle messages - sophisticated merge or replace strategy
-            # For simplicity, we'll verify existing messages and add new ones
-            # In a real high-throughput system, we might optimize this further
-
-            # Flush to ensure conversation exists
-            await session.flush()
-
-            # Process messages
-            for msg in conversation.messages:
-                # Check if message exists
-                msg_result = await session.execute(
-                    select(MessageModel).where(
-                        MessageModel.message_id == msg.message_id
+        try:
+            async with get_db_context() as session:
+                # Check if conversation exists
+                result = await session.execute(
+                    select(ConversationModel).where(
+                        ConversationModel.conversation_id == conversation.conversation_id
                     )
                 )
-                db_msg = msg_result.scalar_one_or_none()
+                db_conversation = result.scalar_one_or_none()
 
-                if not db_msg:
-                    new_msg = MessageModel(
-                        message_id=msg.message_id,
+                if not db_conversation:
+                    # Create new conversation
+                    db_conversation = ConversationModel(
                         conversation_id=conversation.conversation_id,
-                        role=msg.role,
-                        content=msg.content,
-                        timestamp=msg.timestamp,
-                        metadata_=msg.metadata,
+                        user_id=conversation.user_id,
+                        title=conversation.title,
+                        created_at=conversation.created_at,
+                        updated_at=conversation.updated_at,
+                        metadata_=conversation.metadata,
                     )
-                    session.add(new_msg)
+                    session.add(db_conversation)
+                else:
+                    # Update existing
+                    db_conversation.title = conversation.title
+                    db_conversation.updated_at = conversation.updated_at
+                    db_conversation.metadata_ = conversation.metadata
+
+                # Flush to ensure conversation exists
+                await session.flush()
+
+                # Process messages
+                for msg in conversation.messages:
+                    msg_result = await session.execute(
+                        select(MessageModel).where(
+                            MessageModel.message_id == msg.message_id
+                        )
+                    )
+                    db_msg = msg_result.scalar_one_or_none()
+
+                    if not db_msg:
+                        new_msg = MessageModel(
+                            message_id=msg.message_id,
+                            conversation_id=conversation.conversation_id,
+                            role=msg.role,
+                            content=msg.content,
+                            timestamp=msg.timestamp,
+                            metadata_=msg.metadata,
+                        )
+                        session.add(new_msg)
+        except SQLAlchemyError as exc:
+            logger.error(
+                "db_write_failed",
+                operation="save_conversation",
+                conversation_id=conversation.conversation_id,
+                error=str(exc),
+                error_type=type(exc).__name__,
+            )
+            raise
 
     async def get_conversation(self, conversation_id: str) -> Optional[Conversation]:
         """Get a conversation by ID from database"""
-        async with get_db_context() as session:
-            result = await session.execute(
-                select(ConversationModel)
-                .where(ConversationModel.conversation_id == conversation_id)
-                .options(selectinload(ConversationModel.messages))
-            )
-            db_conversation = result.scalar_one_or_none()
-
-            if not db_conversation:
-                return None
-
-            # Convert to domain object
-            messages = [
-                ConversationMessage(
-                    role=msg.role,
-                    content=msg.content,
-                    message_id=msg.message_id,
-                    timestamp=msg.timestamp,
-                    metadata=msg.metadata_,
+        try:
+            async with get_db_context() as session:
+                result = await session.execute(
+                    select(ConversationModel)
+                    .where(ConversationModel.conversation_id == conversation_id)
+                    .options(selectinload(ConversationModel.messages))
                 )
-                for msg in sorted(db_conversation.messages, key=lambda item: item.timestamp)
-            ]
+                db_conversation = result.scalar_one_or_none()
 
-            return Conversation(
-                conversation_id=db_conversation.conversation_id,
-                user_id=db_conversation.user_id,
-                title=db_conversation.title,
-                messages=messages,
-                created_at=db_conversation.created_at,
-                updated_at=db_conversation.updated_at,
-                metadata=db_conversation.metadata_,
+                if not db_conversation:
+                    return None
+
+                messages = [
+                    ConversationMessage(
+                        role=msg.role,
+                        content=msg.content,
+                        message_id=msg.message_id,
+                        timestamp=msg.timestamp,
+                        metadata=msg.metadata_,
+                    )
+                    for msg in sorted(db_conversation.messages, key=lambda item: item.timestamp)
+                ]
+
+                return Conversation(
+                    conversation_id=db_conversation.conversation_id,
+                    user_id=db_conversation.user_id,
+                    title=db_conversation.title,
+                    messages=messages,
+                    created_at=db_conversation.created_at,
+                    updated_at=db_conversation.updated_at,
+                    metadata=db_conversation.metadata_,
+                )
+        except SQLAlchemyError as exc:
+            logger.error(
+                "db_read_failed",
+                operation="get_conversation",
+                conversation_id=conversation_id,
+                error=str(exc),
+                error_type=type(exc).__name__,
             )
+            raise
 
     async def delete_conversation(self, conversation_id: str) -> bool:
         """Delete a conversation from database"""
@@ -433,6 +502,84 @@ class DatabaseConversationStore(ConversationStore):
                 return True
             return False
 
+    async def archive_messages(
+        self,
+        conversation_id: str,
+        message_ids: List[str],
+        summary_content: str,
+        summary_metadata: Optional[Dict[str, Any]] = None,
+        summary_message_id: Optional[str] = None,
+        summary_timestamp: Optional[datetime] = None,
+    ) -> bool:
+        """Replace archived messages with one summary message in a transaction."""
+        if not message_ids:
+            return False
+
+        from .models import MessageAttachmentModel
+
+        try:
+            async with get_db_context() as session:
+                conv_result = await session.execute(
+                    select(ConversationModel).where(
+                        ConversationModel.conversation_id == conversation_id
+                    )
+                )
+                db_conversation = conv_result.scalar_one_or_none()
+                if not db_conversation:
+                    return False
+
+                archived_result = await session.execute(
+                    select(MessageModel).where(
+                        MessageModel.conversation_id == conversation_id,
+                        MessageModel.message_id.in_(message_ids),
+                    )
+                )
+                archived_messages = archived_result.scalars().all()
+                if not archived_messages:
+                    return False
+
+                summary_ts = summary_timestamp or max(msg.timestamp for msg in archived_messages)
+                archive_ids = [msg.message_id for msg in archived_messages]
+
+                await session.execute(
+                    delete(MessageAttachmentModel).where(
+                        MessageAttachmentModel.message_id.in_(archive_ids)
+                    )
+                )
+                await session.execute(
+                    delete(MessageModel).where(
+                        MessageModel.conversation_id == conversation_id,
+                        MessageModel.message_id.in_(archive_ids),
+                    )
+                )
+
+                session.add(
+                    MessageModel(
+                        message_id=summary_message_id or str(uuid.uuid4()),
+                        conversation_id=conversation_id,
+                        role="system",
+                        content=summary_content,
+                        timestamp=summary_ts,
+                        metadata_=summary_metadata or {},
+                    )
+                )
+
+                db_conversation.updated_at = max(
+                    db_conversation.updated_at or summary_ts,
+                    summary_ts,
+                )
+                return True
+        except SQLAlchemyError as exc:
+            logger.error(
+                "db_write_failed",
+                operation="archive_messages",
+                conversation_id=conversation_id,
+                message_count=len(message_ids),
+                error=str(exc),
+                error_type=type(exc).__name__,
+            )
+            raise
+
     async def check_conversation_owner(
         self,
         conversation_id: str,
@@ -498,6 +645,25 @@ class ConversationStoreManager:
     async def update_conversation_title(self, conversation_id: str, title: str) -> bool:
         """Update conversation title"""
         return await self._store.update_conversation_title(conversation_id, title)
+
+    async def archive_messages(
+        self,
+        conversation_id: str,
+        message_ids: List[str],
+        summary_content: str,
+        summary_metadata: Optional[Dict[str, Any]] = None,
+        summary_message_id: Optional[str] = None,
+        summary_timestamp: Optional[datetime] = None,
+    ) -> bool:
+        """Replace archived messages with one summary message."""
+        return await self._store.archive_messages(
+            conversation_id=conversation_id,
+            message_ids=message_ids,
+            summary_content=summary_content,
+            summary_metadata=summary_metadata,
+            summary_message_id=summary_message_id,
+            summary_timestamp=summary_timestamp,
+        )
 
     async def check_conversation_owner(
         self,

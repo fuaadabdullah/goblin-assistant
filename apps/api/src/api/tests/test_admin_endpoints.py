@@ -23,7 +23,7 @@ def test_endpoint(endpoint, description):
                 data = response.json()
                 print(f"   📊 Response keys: {list(data.keys())}")
                 return True
-            except:
+            except Exception:
                 print(f"   ⚠️  Invalid JSON response")
                 return False
         else:

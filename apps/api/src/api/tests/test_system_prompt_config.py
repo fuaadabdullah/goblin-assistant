@@ -1,6 +1,6 @@
 import pytest
 
-from api.config import system_prompt as prompt_config
+from api.config.system_prompt import SYSTEM_PROMPT, SystemPromptConfig, get_configured_system_prompt
 from api.services.context_assembly_service import system_layer
 from api.services.context_assembly_service.models import ContextBudget
 
@@ -8,10 +8,10 @@ from api.services.context_assembly_service.models import ContextBudget
 def test_default_system_prompt_encodes_goblinos_identity_and_standards(monkeypatch):
     monkeypatch.delenv("SYSTEM_PROMPT_CUSTOM", raising=False)
 
-    config = prompt_config.SystemPromptConfig()
+    config = SystemPromptConfig()
     prompt = config.get_prompt()
 
-    assert prompt == prompt_config.SYSTEM_PROMPT
+    assert prompt == SYSTEM_PROMPT
     assert "GoblinOS Assistant" in prompt
     assert "hybrid" in prompt
     assert "local/cloud, multi-provider AI orchestration platform" in prompt
@@ -27,10 +27,10 @@ def test_default_system_prompt_encodes_goblinos_identity_and_standards(monkeypat
 def test_system_prompt_custom_override_replaces_default(monkeypatch):
     monkeypatch.setenv("SYSTEM_PROMPT_CUSTOM", "Custom deployment prompt")
 
-    config = prompt_config.SystemPromptConfig()
+    config = SystemPromptConfig()
 
     assert config.get_prompt() == "Custom deployment prompt"
-    assert prompt_config.get_configured_system_prompt() == "Custom deployment prompt"
+    assert get_configured_system_prompt() == "Custom deployment prompt"
 
 
 @pytest.mark.asyncio
@@ -44,7 +44,7 @@ async def test_assemble_system_layer_uses_canonical_default_prompt(monkeypatch):
     )
 
     assert layer is not None
-    assert layer.content == prompt_config.SYSTEM_PROMPT
+    assert layer.content == SYSTEM_PROMPT
     assert layer.tokens == 80
 
 

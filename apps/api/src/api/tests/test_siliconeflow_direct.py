@@ -15,7 +15,7 @@ try:
 
     load_dotenv(".env.local")
     print("✅ Loaded .env.local")
-except:
+except Exception:
     print("⚠️  Could not load .env.local")
 
 # Get API key

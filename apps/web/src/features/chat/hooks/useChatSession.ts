@@ -5,6 +5,7 @@ import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { chatClient } from '../api';
 import { toUiError } from '../../../lib/ui-error';
 import type { ChatMessage, ChatThread, QuickPrompt } from '../types';
+import type { ChatMessageMeta, ChatUsage } from '../../../domain/chat';
 import { useChatThreads } from './useChatThreads';
 import { buildThreadKey, readChatMessages } from '../../../lib/chat-history';
 import { queryKeys } from '../../../lib/query-keys';
@@ -14,7 +15,6 @@ import { computeCostUsd } from '../../../lib/llm-rates';
 import { useProvider } from '../../../contexts/ProviderContext';
 import { useToast } from '../../../contexts/ToastContext';
 import { isAuthenticated } from '../../../utils/auth-session';
-import { apiClient } from '@/api';
 import { devError, devLog } from '@/utils/dev-log';
 
 export interface PendingAttachment {
@@ -42,7 +42,7 @@ export interface ChatSessionState {
   selectedProvider?: string;
   selectedModel?: string;
   inputEstimate: TextCostEstimate | null;
-    authError: boolean;
+  authError: boolean;
   pendingAttachments: PendingAttachment[];
   isUploading: boolean;
   setInput: (value: string) => void;
@@ -91,6 +91,50 @@ const calculateTotals = (items: ChatMessage[]) => {
   };
 };
 
+const mapAttachments = (attachments: PendingAttachment[]) =>
+  attachments.map((attachment) => ({
+    id: attachment.file_id,
+    filename: attachment.filename,
+    mime_type: attachment.mime_type,
+    size_bytes: attachment.size_bytes,
+  }));
+
+const createAssistantMessage = (
+  response: {
+    messageId?: string;
+    createdAt?: string;
+    content?: string;
+    provider?: string;
+    model?: string;
+    usage?: ChatUsage;
+    cost_usd?: number;
+    correlation_id?: string;
+    visualizations?: ChatMessageMeta['visualizations'];
+  },
+): ChatMessage => {
+  const rawCost = typeof response.cost_usd === 'number' ? response.cost_usd : undefined;
+  const resolvedCost =
+    rawCost !== undefined
+      ? { cost_usd: rawCost, approx: false }
+      : computeCostUsd(response.usage, response.provider, response.model);
+
+  return {
+    id: response.messageId || createMessageId(),
+    createdAt: response.createdAt || new Date().toISOString(),
+    role: 'assistant',
+    content: response.content || 'No response',
+    meta: {
+      provider: response.provider,
+      model: response.model,
+      usage: response.usage,
+      cost_usd: resolvedCost.cost_usd,
+      cost_is_approx: resolvedCost.approx,
+      correlation_id: response.correlation_id,
+      visualizations: response.visualizations,
+    },
+  };
+};
+
 export const useChatSession = (): ChatSessionState => {
   const { showError, showInfo, showSuccess } = useToast();
   const queryClient = useQueryClient();
@@ -119,10 +163,12 @@ export const useChatSession = (): ChatSessionState => {
   const hasHydratedRef = useRef(false);
   const router = useRouter();
 
-  const inputEstimate = useMemo(() => {
+  const localInputEstimate = useMemo(() => {
     const est = estimateFromText(input);
     return est.estimated_tokens > 0 ? est : null;
   }, [input]);
+
+  const [serverInputEstimate, setServerInputEstimate] = useState<TextCostEstimate | null>(null);
 
   const quickPrompts = useMemo<QuickPrompt[]>(
     () => CHAT_QUICK_PROMPTS.map(item => ({ label: item.label, prompt: item.prompt })),
@@ -143,6 +189,44 @@ export const useChatSession = (): ChatSessionState => {
     () => (activeThread?.source === 'backend' ? activeThread.id : null),
     [activeThread],
   );
+
+  // Server-side estimate: more accurate (includes assembled context layers,
+  // system prompt, conversation history) than the client-side char heuristic.
+  // Only fetched for long inputs to keep backend traffic reasonable.
+  useEffect(() => {
+    if (input.length <= 200) {
+      setServerInputEstimate(null);
+      return;
+    }
+    let cancelled = false;
+    const handle = setTimeout(() => {
+      chatClient
+        .estimateTokens({
+          message: input,
+          conversationId: activeBackendThreadId ?? undefined,
+          provider: selectedProvider,
+          model: selectedModel,
+        })
+        .then((est) => {
+          if (cancelled) return;
+          setServerInputEstimate({
+            estimated_tokens: est.input_tokens + est.estimated_output_tokens,
+            estimated_cost_usd: est.estimated_cost_usd,
+          });
+        })
+        .catch((err) => {
+          if (cancelled) return;
+          devLog('chat.estimate_tokens_failed', { error: String(err) });
+          setServerInputEstimate(null);
+        });
+    }, 300);
+    return () => {
+      cancelled = true;
+      clearTimeout(handle);
+    };
+  }, [input, activeBackendThreadId, selectedProvider, selectedModel]);
+
+  const inputEstimate = serverInputEstimate ?? localInputEstimate;
 
   const backendConversationQuery = useQuery({
     queryKey: activeBackendThreadId
@@ -221,7 +305,7 @@ export const useChatSession = (): ChatSessionState => {
     ) {
       applyMessages(backendConversationQuery.data.messages);
       // Track pagination state
-      const paginationInfo = (backendConversationQuery.data as any)?.pagination;
+      const paginationInfo = backendConversationQuery.data?.pagination;
       if (paginationInfo) {
         setHasMoreMessages(paginationInfo.has_more ?? false);
         setMessageOffset(paginationInfo.offset ?? 0);
@@ -261,14 +345,7 @@ export const useChatSession = (): ChatSessionState => {
         meta: {
           estimated_tokens: estimate.estimated_tokens,
           estimated_cost_usd: estimate.estimated_cost_usd,
-          ...(pendingAttachments.length > 0
-            ? { attachments: pendingAttachments.map((a) => ({
-                id: a.file_id,
-                filename: a.filename,
-                mime_type: a.mime_type,
-                size_bytes: a.size_bytes,
-              })) }
-            : {}),
+          ...(pendingAttachments.length > 0 ? { attachments: mapAttachments(pendingAttachments) } : {}),
         },
       };
       const previousMessages = messages;
@@ -282,7 +359,7 @@ export const useChatSession = (): ChatSessionState => {
         const isAuthed = isAuthenticated();
 
         if (!isAuthed) {
-          const response = await apiClient.chatCompletion(updatedMessages, selectedModel || undefined);
+          const response = await chatClient.chatCompletion(updatedMessages, selectedModel || undefined);
           const text = typeof response === 'string' ? response : String(response ?? 'No response');
           const assistantMsg: ChatMessage = {
             id: createMessageId(),
@@ -291,8 +368,6 @@ export const useChatSession = (): ChatSessionState => {
             content: text,
           };
           applyMessages([...updatedMessages, assistantMsg]);
-          setIsSending(false);
-          inputRef.current?.focus();
           return;
         }
 
@@ -337,28 +412,7 @@ export const useChatSession = (): ChatSessionState => {
 
         // Clear pending attachments after successful send
         setPendingAttachments([]);
-
-        const rawCost = typeof result?.cost_usd === 'number' ? result.cost_usd : undefined;
-        const fallbackCost =
-          rawCost !== undefined
-            ? { cost_usd: rawCost, approx: false, source: 'backend' as const }
-            : computeCostUsd(result?.usage, result?.provider, result?.model);
-
-        const assistantMsg: ChatMessage = {
-          id: result?.messageId || createMessageId(),
-          createdAt: result?.createdAt || new Date().toISOString(),
-          role: 'assistant',
-          content: result?.content || 'No response',
-          meta: {
-            provider: result?.provider,
-            model: result?.model,
-            usage: result?.usage,
-            cost_usd: fallbackCost.cost_usd,
-            cost_is_approx: fallbackCost.approx,
-            correlation_id: result?.correlation_id,
-            visualizations: result?.visualizations,
-          },
-        };
+        const assistantMsg = createAssistantMessage(result ?? {});
 
         const nextMessages = [...updatedMessages, assistantMsg];
         applyMessages(nextMessages);
@@ -442,6 +496,7 @@ export const useChatSession = (): ChatSessionState => {
       isMessagesLoading,
       isSending,
       messages,
+      pendingAttachments,
       removeThread,
       selectedModel,
       selectedProvider,
@@ -465,7 +520,7 @@ export const useChatSession = (): ChatSessionState => {
     showInfo('Uploading attachments', `Preparing ${files.length} file${files.length === 1 ? '' : 's'}.`);
     const uploads = Array.from(files).map(async (file) => {
       try {
-        const result = await apiClient.uploadFile(file);
+        const result = await chatClient.uploadFile(file);
         return result as PendingAttachment;
       } catch (err) {
         devError('file_upload_failed', err);
@@ -562,7 +617,7 @@ export const useChatSession = (): ChatSessionState => {
 
         if (!isAuthed) {
           // Guest mode: use /api/generate
-          const response = await apiClient.chatCompletion(messagesUpToRegeneration, selectedModel || undefined);
+          const response = await chatClient.chatCompletion(messagesUpToRegeneration, selectedModel || undefined);
           const text = typeof response === 'string' ? response : String(response ?? 'No response');
           const assistantMsg: ChatMessage = {
             id: createMessageId(),
@@ -586,27 +641,7 @@ export const useChatSession = (): ChatSessionState => {
             provider: selectedProvider || undefined,
           });
 
-          const rawCost = typeof result?.cost_usd === 'number' ? result.cost_usd : undefined;
-          const fallbackCost =
-            rawCost !== undefined
-              ? { cost_usd: rawCost, approx: false, source: 'backend' as const }
-              : computeCostUsd(result?.usage, result?.provider, result?.model);
-
-          const assistantMsg: ChatMessage = {
-            id: result?.messageId || createMessageId(),
-            createdAt: result?.createdAt || new Date().toISOString(),
-            role: 'assistant',
-            content: result?.content || 'No response',
-            meta: {
-              provider: result?.provider,
-              model: result?.model,
-              usage: result?.usage,
-              cost_usd: fallbackCost.cost_usd,
-              cost_is_approx: fallbackCost.approx,
-              correlation_id: result?.correlation_id,
-              visualizations: result?.visualizations,
-            },
-          };
+          const assistantMsg = createAssistantMessage(result ?? {});
 
           applyMessages([...messagesUpToRegeneration, assistantMsg]);
           showSuccess('Response regenerated');
@@ -643,7 +678,7 @@ export const useChatSession = (): ChatSessionState => {
         setMessages(prev => [...response.messages, ...prev]);
         
         // Update pagination state
-        const paginationInfo = (response as any)?.pagination;
+        const paginationInfo = response.pagination;
         if (paginationInfo) {
           setHasMoreMessages(paginationInfo.has_more ?? false);
           setMessageOffset(paginationInfo.offset ?? 0);
@@ -674,7 +709,7 @@ export const useChatSession = (): ChatSessionState => {
     selectedProvider: selectedProvider || undefined,
     selectedModel: selectedModel || undefined,
     inputEstimate,
-      authError,
+    authError,
     pendingAttachments,
     isUploading,
     setInput,

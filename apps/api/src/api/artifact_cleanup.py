@@ -48,7 +48,7 @@ class ArtifactCleanupService:
         while self._running:
             try:
                 # Run cleanup
-                deleted_count = artifact_service.delete_expired_artifacts()
+                deleted_count = await artifact_service.delete_expired_artifacts()
 
                 # Record cleanup metrics
                 record_cleanup_run(True, deleted_count)

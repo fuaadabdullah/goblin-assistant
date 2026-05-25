@@ -240,7 +240,7 @@ class BaseProvider(ABC):
         """Non-streaming completion."""
 
     @abstractmethod
-    async def stream(
+    def stream(
         self,
         messages: Optional[List[Dict[str, str]]] = None,
         model: Optional[str] = None,
@@ -261,7 +261,11 @@ class BaseProvider(ABC):
             return False
         return self._healthy or self._failure_count < 3
 
-    def record_failure(self, error: str, backoff_seconds: float = 30.0) -> None:
+    def record_failure(
+        self,
+        error: str,
+        backoff_seconds: float = 30.0,
+    ) -> None:
         self._failure_count += 1
         self._last_error = error
         if self._failure_count >= 3:

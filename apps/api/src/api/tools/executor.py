@@ -8,6 +8,7 @@ LLM produces a final text response.
 
 from __future__ import annotations
 
+import asyncio
 import json
 from typing import Any, Dict, List, Optional
 
@@ -19,6 +20,7 @@ logger = structlog.get_logger(__name__)
 
 # Maximum tool-call rounds to prevent infinite loops
 MAX_TOOL_ROUNDS = 5
+DEFAULT_TOOL_MAX_RETRIES = 2
 
 
 async def execute_tool_call(
@@ -50,6 +52,56 @@ async def execute_tool_call(
             pass
         logger.error("tool_execution_error", tool=tool_name, error=str(e))
         return {"error": f"Tool {tool_name} failed: {e}"}
+
+
+def _is_transient_error(error_msg: Optional[str]) -> bool:
+    """Return True when an error appears retryable."""
+    if not error_msg:
+        return False
+    transient_markers = (
+        "timeout",
+        "timed out",
+        "connection",
+        "rate limit",
+        "temporarily unavailable",
+        "service unavailable",
+        "too many requests",
+        "503",
+        "429",
+    )
+    normalized = error_msg.lower()
+    return any(marker in normalized for marker in transient_markers)
+
+
+async def execute_tool_call_with_retry(
+    tool_name: str,
+    arguments: Dict[str, Any],
+    max_retries: int = DEFAULT_TOOL_MAX_RETRIES,
+) -> Dict[str, Any]:
+    """Execute a tool call with retry/backoff for transient failures."""
+    retries = max(1, max_retries)
+    for attempt in range(retries):
+        result = await execute_tool_call(tool_name, arguments)
+        error_msg = result.get("error")
+        if not error_msg:
+            return result
+
+        should_retry = attempt < retries - 1 and _is_transient_error(str(error_msg))
+        if not should_retry:
+            return result
+
+        backoff_seconds = 0.5 * (2 ** attempt)
+        logger.warning(
+            "tool_execution_retry",
+            tool=tool_name,
+            attempt=attempt + 1,
+            max_retries=retries,
+            backoff_seconds=backoff_seconds,
+            error=str(error_msg),
+        )
+        await asyncio.sleep(backoff_seconds)
+
+    return {"error": f"Tool {tool_name} exhausted retries"}
 
 
 def extract_tool_calls(provider_response: Dict[str, Any]) -> Optional[List[Dict[str, Any]]]:
@@ -165,7 +217,7 @@ async def run_tool_loop(
                 tool=tc["name"],
                 round=round_num + 1,
             )
-            result = await execute_tool_call(tc["name"], tc["arguments"])
+            result = await execute_tool_call_with_retry(tc["name"], tc["arguments"])
             messages.append({
                 "role": "tool",
                 "tool_call_id": tc["id"],

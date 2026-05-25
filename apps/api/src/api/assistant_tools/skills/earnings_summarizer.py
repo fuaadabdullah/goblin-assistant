@@ -106,20 +106,21 @@ async def _handle_earnings_summarizer(
 register_tool(ToolDefinition(
     name="earnings_summarizer",
     description=(
-        "Summarize recent earnings for a stock: beat/miss verdicts for each "
-        "quarter, EPS actual vs. estimate, surprise percentage, streak "
-        "analysis, and key valuation metrics."
+        "Use when the user wants an interpreted earnings recap for one stock, "
+        "including recent quarter beat/miss verdicts, EPS actual versus "
+        "estimate, surprise percentages, streak analysis, and related "
+        "valuation metrics. Prefer get_earnings for raw earnings fields only."
     ),
     parameters=[
         ToolParameter(
             name="ticker",
             type="string",
-            description="Stock ticker symbol, e.g. NVDA, AAPL",
+            description="Public equity ticker symbol to summarize, such as NVDA, AAPL, or MSFT.",
         ),
         ToolParameter(
             name="num_quarters",
             type="integer",
-            description="Number of recent quarters to include (1-8, default 4).",
+            description="Number of most recent quarters to include. Valid range: 1-8. Default: 4.",
             required=False,
             default=4,
         ),

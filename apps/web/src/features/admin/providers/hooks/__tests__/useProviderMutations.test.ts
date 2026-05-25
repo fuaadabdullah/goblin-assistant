@@ -7,8 +7,8 @@ const mockTestConnection = jest.fn().mockResolvedValue({ success: true, message:
 const mockTestPrompt = jest.fn().mockResolvedValue({ success: true, message: 'Reply', latency: 200, response: 'hello' });
 const mockSetPriority = jest.fn().mockResolvedValue({});
 const mockReorder = jest.fn().mockResolvedValue({});
-jest.mock('@/api', () => ({
-  apiClient: {
+jest.mock('../../api', () => ({
+  providersAdminApi: {
     testProviderConnection: (...args: unknown[]) => mockTestConnection(...args),
     testProviderWithPrompt: (...args: unknown[]) => mockTestPrompt(...args),
     setProviderPriority: (...args: unknown[]) => mockSetPriority(...args),
@@ -41,7 +41,7 @@ describe('useProviderMutations', () => {
     expect(result.current).toHaveProperty('testResult');
   });
 
-  it('quickTest calls apiClient.testProviderConnection', async () => {
+  it('quickTest calls provider adapter', async () => {
     const { result } = renderHook(() => useProviderMutations(), { wrapper });
     await act(async () => {
       await result.current.quickTest(mockProvider as never);
@@ -49,7 +49,7 @@ describe('useProviderMutations', () => {
     expect(mockTestConnection).toHaveBeenCalledWith('p1');
   });
 
-  it('setPriority calls apiClient', async () => {
+  it('setPriority calls provider adapter', async () => {
     const { result } = renderHook(() => useProviderMutations(), { wrapper });
     await act(async () => {
       await result.current.setPriority(1, 1);
@@ -57,7 +57,7 @@ describe('useProviderMutations', () => {
     expect(mockSetPriority).toHaveBeenCalledWith(1, 1, undefined);
   });
 
-  it('reorderProviders calls apiClient', async () => {
+  it('reorderProviders calls provider adapter', async () => {
     const { result } = renderHook(() => useProviderMutations(), { wrapper });
     await act(async () => {
       await result.current.reorderProviders([{ id: 1, name: 'a' }, { id: 2, name: 'b' }] as never[]);

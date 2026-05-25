@@ -10,11 +10,24 @@ import time
 from typing import Optional, Dict, Any
 from datetime import datetime
 
+import structlog
 from fastapi import APIRouter, HTTPException, Header, Depends, Query
 from pydantic import BaseModel
 import redis
 import rq
 from rq import Queue, Worker
+
+logger = structlog.get_logger()
+
+
+class SandboxExecutionError(Exception):
+    """Raised when a sandbox job cannot be queued or executed."""
+
+    def __init__(self, job_id: str, container_id: str | None, reason: str):
+        self.job_id = job_id
+        self.container_id = container_id
+        self.reason = reason
+        super().__init__(f"Sandbox execution failed [{job_id}]: {reason}")
 
 # Import from existing infrastructure
 from .storage.cache import cache
@@ -154,12 +167,21 @@ async def submit_job(
         # Record job submission metrics
         record_job_submitted(job_id, req.language)
 
+    except SandboxExecutionError:
+        raise
     except Exception as e:
-        # Cleanup on failure
         import shutil
         shutil.rmtree(job_path, ignore_errors=True)
         r.delete(f"sandbox:job:{job_id}")
-        raise HTTPException(status_code=500, detail=f"failed to queue job: {str(e)}")
+        err = SandboxExecutionError(job_id=job_id, container_id=None, reason=str(e))
+        logger.error(
+            "sandbox_job_queue_failed",
+            job_id=job_id,
+            language=req.language,
+            error=str(e),
+            error_type=type(e).__name__,
+        )
+        raise HTTPException(status_code=500, detail=str(err)) from err
 
     return {"job_id": job_id}
 
@@ -245,7 +267,7 @@ async def list_job_artifacts(job_id: str, x_api_key: str = Header(...)):
         raise HTTPException(status_code=400, detail="job is not completed yet")
 
     # Use artifact service to list artifacts with presigned URLs
-    artifacts = artifact_service.list_job_artifacts(job_id)
+    artifacts = await artifact_service.list_job_artifacts(job_id)
 
     # Convert to API format
     api_artifacts = []
@@ -276,7 +298,7 @@ async def download_artifact(
         raise HTTPException(status_code=400, detail="invalid filename")
 
     # Get artifact metadata
-    artifact_meta = artifact_service.get_artifact_metadata(job_id, safe_filename)
+    artifact_meta = await artifact_service.get_artifact_metadata(job_id, safe_filename)
     if not artifact_meta:
         raise HTTPException(status_code=404, detail="artifact not found")
 

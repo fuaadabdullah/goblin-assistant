@@ -1,0 +1,9 @@
+# Tier 0 E2E journeys (hard cap enforced by scripts/check-e2e-budget.sh)
+auth-login-and-session-gate
+api-contract-dependent-core-workflow
+sandbox-submit-run-status
+sandbox-restricted-execution
+persistence-rehydrate-across-refresh
+trading-risk-decision-path
+critical-data-mutation-path
+failure-recovery-safe-fallback

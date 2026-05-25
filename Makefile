@@ -1,4 +1,4 @@
-.PHONY: help install dev web-dev api-dev build lint lint-web lint-api lint-policy type-check test test-web test-api test-api-context-coverage test-e2e generate-providers-json check-api-boundaries check-api-cycles type-check-api-mypy type-check-api-pyright format format-check test-critical
+.PHONY: help install dev web-dev api-dev build lint lint-web lint-api lint-policy type-check test test-web test-api test-api-context-coverage test-e2e test-e2e-budget generate-providers-json check-api-boundaries check-api-cycles type-check-api-mypy type-check-api-pyright format format-check test-critical
 PNPM_TMP := TMPDIR="$(PWD)/.tmp"
 PYTHON ?= python3.11
 
@@ -23,6 +23,7 @@ help:
 	@echo "  make type-check-api-mypy  - run strict mypy for API"
 	@echo "  make type-check-api-pyright - run strict pyright for API"
 	@echo "  make test-e2e             - run Playwright suite"
+	@echo "  make test-e2e-budget      - enforce critical E2E journey cap"
 	@echo "  make generate-providers-json — validate providers.toml & regenerate providers.json"
 
 install:
@@ -115,3 +116,6 @@ test-api-context-coverage:
 test-e2e:
 	mkdir -p .tmp
 	$(PNPM_TMP) pnpm --filter @goblin/web test:e2e
+
+test-e2e-budget:
+	bash scripts/check-e2e-budget.sh

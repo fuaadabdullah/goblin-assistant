@@ -20,6 +20,13 @@ export interface ChatResponse {
   }>;
 }
 
+export interface FileUploadResult {
+  file_id: string;
+  filename: string;
+  mime_type: string;
+  size_bytes: number;
+}
+
 export interface CreateConversationParams {
   title?: string;
 }
@@ -132,6 +139,23 @@ export const chatClient = {
         error
       );
     }
+  },
+
+  async estimateTokens(payload: {
+    message: string;
+    conversationId?: string;
+    provider?: string;
+    model?: string;
+  }) {
+    return apiClient.estimateMessageTokens(payload);
+  },
+
+  async chatCompletion(messages: ChatMessage[], model?: string) {
+    return apiClient.chatCompletion(messages, model);
+  },
+
+  async uploadFile(file: File): Promise<FileUploadResult> {
+    return apiClient.uploadFile(file);
   },
 
   async sendMessage({

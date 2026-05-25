@@ -9,7 +9,7 @@ For streaming requests we delegate to streaming.generate_chat_stream.
 
 import uuid
 from datetime import datetime
-from typing import Any, Dict
+from typing import Any, Dict, Optional
 
 import structlog
 from fastapi import APIRouter, Depends, HTTPException
@@ -18,16 +18,25 @@ from fastapi.responses import StreamingResponse
 from ..assistant_tools.executor import extract_tool_calls, run_tool_loop
 from ..assistant_tools.registry import export_openai_tools
 from ..auth.router import User as AuthenticatedUser, get_current_user
+from ..providers.dispatcher import dispatcher
 from api.config.mode_addendums import get_addendum as _get_mode_addendum
 from api.config.system_prompt import EDUCATION_SYSTEM_ADDENDUM, system_prompt_manager
 from . import _runtime as _cr
-from .schemas import SendMessageRequest, SendMessageResponse
+from .archiving import schedule_conversation_archive
+from .schemas import (
+    EstimateTokensResponse,
+    LayerEstimate,
+    SendMessageRequest,
+    SendMessageResponse,
+)
 from .service_accessors import (
     _get_context_assembly_service,
     _get_message_classifier,
     _get_write_time_intelligence,
 )
 from .uploads import _pending_uploads
+
+OUTPUT_TOKEN_RATIO = 0.4
 
 logger = structlog.get_logger()
 
@@ -127,6 +136,7 @@ async def send_message(
                 status_code=404,
                 detail="Conversation not found when saving user message",
             )
+        await schedule_conversation_archive(conversation_id)
 
         # Reload to include the just-saved user message in the provider payload.
         conversation = await _cr._require_owned_conversation(conversation_id, current_user)
@@ -294,6 +304,8 @@ async def send_message(
                 conversation_id=conversation_id,
                 message_id=response_message_id,
             )
+        else:
+            await schedule_conversation_archive(conversation_id)
 
         visualizations = None
         if isinstance(provider_response, dict) and provider_response.get("visualizations"):
@@ -314,10 +326,105 @@ async def send_message(
     except HTTPException:
         raise
     except Exception as e:
-        logger.exception(
-            "error in send_message",
+        logger.error(
+            "send_message_unhandled_error",
             error=str(e),
+            error_type=type(e).__name__,
             conversation_id=conversation_id,
             user_id=current_user.id,
         )
         raise HTTPException(status_code=500, detail="Failed to send message")
+
+
+def _resolve_provider_id(requested: Optional[str]) -> Optional[str]:
+    """Mirror dispatcher provider selection so the estimate matches the real send."""
+    candidates = dispatcher._candidate_order(requested)
+    return candidates[0] if candidates else None
+
+
+@router.post("/estimate-tokens", response_model=EstimateTokensResponse)
+async def estimate_tokens(
+    request: SendMessageRequest,
+    conversation_id: Optional[str] = None,
+    current_user: AuthenticatedUser = Depends(get_current_user),
+) -> EstimateTokensResponse:
+    """Estimate token usage and cost for a message without invoking the provider.
+
+    Runs the same context-assembly pipeline as send_message so the estimate
+    reflects what the real call would consume. Output tokens are a fixed
+    OUTPUT_TOKEN_RATIO heuristic; this is a UI hint, not a guarantee.
+    """
+    history_messages: list[dict] = []
+    if conversation_id:
+        conversation = await _cr._require_owned_conversation(
+            conversation_id, current_user
+        )
+        history_messages = [
+            {"role": m.role, "content": m.content} for m in conversation.messages
+        ]
+
+    layers: list[LayerEstimate] = []
+    input_tokens = 0
+    degraded_mode = False
+    degraded_reason: Optional[str] = None
+
+    if request.enable_context_assembly:
+        try:
+            assembly = await _get_context_assembly_service().assemble_context(
+                query=request.message,
+                user_id=current_user.id,
+                conversation_id=conversation_id,
+                conversation_history=history_messages[-10:],
+            )
+            input_tokens = int(assembly.get("total_tokens_used") or 0)
+            for layer in assembly.get("layers", []):
+                name = getattr(layer, "name", None) or (
+                    layer.get("name") if isinstance(layer, dict) else "?"
+                )
+                tokens = getattr(layer, "tokens", None) or (
+                    layer.get("tokens", 0) if isinstance(layer, dict) else 0
+                )
+                layers.append(LayerEstimate(name=str(name), tokens=int(tokens)))
+            if not input_tokens:
+                input_tokens = sum(l.tokens for l in layers)
+            degraded_mode = bool(assembly.get("degraded_mode", False))
+            degraded_reason = assembly.get("degraded_reason")
+        except Exception as ctx_err:
+            logger.warning(
+                "context_assembly_failed_in_estimate_tokens",
+                conversation_id=conversation_id,
+                error=str(ctx_err),
+            )
+            degraded_mode = True
+            degraded_reason = str(ctx_err)
+
+    estimated_output_tokens = int(input_tokens * OUTPUT_TOKEN_RATIO)
+
+    provider_id = _resolve_provider_id(request.provider)
+    if provider_id is None:
+        return EstimateTokensResponse(
+            input_tokens=input_tokens,
+            estimated_output_tokens=estimated_output_tokens,
+            estimated_cost_usd=0.0,
+            provider="unknown",
+            model=request.model,
+            layers=layers,
+            degraded_mode=True,
+            degraded_reason=degraded_reason or "no-configured-providers",
+        )
+
+    provider = dispatcher.get_provider(provider_id)
+    estimated_cost_usd = provider.estimate_cost(
+        input_tokens, estimated_output_tokens
+    )
+
+    return EstimateTokensResponse(
+        input_tokens=input_tokens,
+        estimated_output_tokens=estimated_output_tokens,
+        estimated_cost_usd=estimated_cost_usd,
+        provider=provider_id,
+        model=request.model,
+        layers=layers,
+        degraded_mode=degraded_mode,
+        degraded_reason=degraded_reason,
+    )
