@@ -31,3 +31,6 @@ This file is the canonical task map for coding agents and developers.
 - Keep app-local code inside its owning app directory.
 - Put cross-app contracts in `packages/shared`.
 - Prefer root Makefile and root package scripts for reproducible command entrypoints.
+- Follow `docs/PURE_FUNCTIONS_AND_NAMING_POLICY.md` for pure-by-default side-effect boundaries and intent naming.
+- Follow `docs/API_AND_FRONTEND_STANDARDS.md` for orchestration-ready interfaces/events/contracts/observability.
+- Document architecture and operational assumptions in ADRs/runbooks rather than trivial code commentary.

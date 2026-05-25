@@ -124,6 +124,20 @@ docs(readme): update installation instructions
 
 ### Code Style
 
+#### Pure-by-Default and Intent Naming (Trading-Safety Standard)
+
+- Follow `docs/PURE_FUNCTIONS_AND_NAMING_POLICY.md`.
+- Keep core/domain logic pure by default: predictable inputs/outputs, no hidden side effects.
+- Restrict side effects (network, file writes, environment mutation, shared-state mutation) to explicit boundary modules.
+- Use intent-revealing names; avoid vague identifiers like `data`, `temp`, `manager`, `helper`, and generic `process()`.
+- For functions with side effects, document input/output contract and explicit side effects.
+
+#### Policy Rollout (Warn Then Ratchet)
+
+- Phase 1: policy checks run as warnings and visibility reports.
+- Phase 2: pull request changed-files gate blocks new violations.
+- Phase 3: mature rules can be promoted to hard failures as legacy exceptions are reduced.
+
 #### Python (Backend)
 
 - Follow PEP 8 style guide
@@ -221,6 +235,9 @@ test('sends message when form is submitted', async () => {
 - Add JSDoc/TSDoc comments for public APIs
 - Update API documentation for endpoint changes
 - Include examples in documentation
+- Document systems, not obvious code mechanics
+- For architecture-impacting changes, add or update an ADR in `docs/adr/`
+- Capture operational assumptions and edge cases in runbooks/onboarding docs where relevant
 
 ## Pull Request Process
 
@@ -228,7 +245,11 @@ test('sends message when form is submitted', async () => {
 
 - [ ] Tests pass locally
 - [ ] Code follows style guidelines
+- [ ] Pure-by-default policy is satisfied or boundary exceptions are explicit
+- [ ] Naming is intent-revealing (no vague placeholders like `data`/`temp`/`helper`)
 - [ ] Documentation is updated
+- [ ] ADR added/updated for architectural decisions
+- [ ] Operational assumptions and edge cases are documented
 - [ ] Commit messages follow conventional format
 - [ ] Branch is up to date with main
 
@@ -363,4 +384,3 @@ Contributors are recognized in:
 By contributing to this project, you agree that your contributions will be licensed under the same license as the project (see LICENSE file).
 
 Thank you for contributing to GoblinOS Assistant! 🚀
-
