@@ -23,7 +23,7 @@ def test_build_allowed_origins_keeps_public_frontend_in_development():
     origins = build_allowed_origins(environment="development", raw_origins="")
 
     assert "https://goblin-assistant.vercel.app" in origins
-    assert "https://goblin-assistant-backend.onrender.com" in origins
+    assert "https://goblin-backend-dt30.onrender.com" in origins
     assert "http://localhost:3000" in origins
 
 
@@ -35,7 +35,7 @@ def test_build_allowed_origins_appends_canonical_public_origins():
 
     assert origins[0] == "https://example.com"
     assert "https://goblin-assistant.vercel.app" in origins
-    assert "https://goblin-assistant-backend.onrender.com" in origins
+    assert "https://goblin-backend-dt30.onrender.com" in origins
 
 
 def test_build_allowed_origins_uses_dynamic_env_origins(monkeypatch):
@@ -83,3 +83,25 @@ def test_security_config_get_security_summary_contains_expected_keys(
     assert summary["cors_configured"] is True
     assert "warnings" in summary
     assert "security_headers_enabled" in summary
+
+
+def test_security_config_warns_when_cross_site_cookie_is_not_none(monkeypatch):
+    monkeypatch.setenv("ENVIRONMENT", "production")
+    monkeypatch.setenv("ALLOWED_ORIGINS", "https://goblin-assistant.vercel.app")
+    monkeypatch.setenv("LOCAL_LLM_API_KEY", "test-local-llm-key")
+    monkeypatch.setenv("JWT_SECRET_KEY", "test-jwt-secret")
+    monkeypatch.setenv("DATABASE_URL", "sqlite+aiosqlite:///./test.db")
+    monkeypatch.setenv("FRONTEND_URL", "https://goblin-assistant.vercel.app")
+    monkeypatch.setenv("BACKEND_URL", "https://goblin-backend-dt30.onrender.com")
+    monkeypatch.setenv("AUTH_COOKIE_SAMESITE", "lax")
+
+    import api.security_config as security_config
+
+    importlib.reload(security_config)
+    warnings = security_config.SecurityConfig.validate_config()
+
+    assert any(
+        "Cross-site frontend/backend detected but AUTH_COOKIE_SAMESITE is not 'none'."
+        in warning
+        for warning in warnings
+    )

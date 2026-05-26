@@ -11,6 +11,7 @@ import Divider from './Divider';
 import PasskeyPanel from './PasskeyPanel';
 import TurnstileWidget from '../TurnstileWidget';
 import { useTurnstile } from '../../config/turnstile';
+import { featureFlags } from '../../config/features';
 import { devError } from '@/utils/dev-log';
 
 interface ModularLoginFormProps {
@@ -33,6 +34,7 @@ export default function ModularLoginForm({
   const [oauthStatus, setOauthStatus] = useState<'idle' | 'captcha' | 'exchange' | 'session'>('idle');
   const [oauthRetryCount, setOauthRetryCount] = useState(0);
   const queryClient = useQueryClient();
+  const googleAuthEnabled = featureFlags.googleAuth;
 
   const turnstileConfig = useTurnstile('login');
 
@@ -110,6 +112,11 @@ export default function ModularLoginForm({
   };
 
   const handleGoogleLogin = async () => {
+    if (!googleAuthEnabled) {
+      onError('Google sign-in is not enabled.');
+      return;
+    }
+
     let attempt = 0;
 
     const tryGoogleLogin = async (): Promise<void> => {
@@ -204,9 +211,12 @@ export default function ModularLoginForm({
           </div>
         )}
 
-        <Divider text="Or continue with" />
-
-        <SocialLoginButtons onGoogleLogin={handleGoogleLogin} isLoading={isLoading} />
+        {googleAuthEnabled && (
+          <>
+            <Divider text="Or continue with" />
+            <SocialLoginButtons onGoogleLogin={handleGoogleLogin} isLoading={isLoading} />
+          </>
+        )}
 
         {/* OAuth Progress Indicator */}
         {oauthStatus !== 'idle' && (

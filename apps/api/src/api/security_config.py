@@ -4,6 +4,7 @@ Security configuration and utilities for Goblin Assistant API
 
 import os
 from typing import List
+from urllib.parse import urlparse
 
 
 DEFAULT_LOCAL_ORIGINS = [
@@ -14,8 +15,11 @@ DEFAULT_LOCAL_ORIGINS = [
 
 CANONICAL_PUBLIC_ORIGINS = [
     "https://goblin-assistant.vercel.app",
-    "https://goblin-assistant-backend.onrender.com",
+    "https://goblin-backend-dt30.onrender.com",
 ]
+
+CANONICAL_FRONTEND_ORIGIN = "https://goblin-assistant.vercel.app"
+CANONICAL_BACKEND_ORIGIN = "https://goblin-backend-dt30.onrender.com"
 
 
 def _dedupe_origins(origins: List[str]) -> List[str]:
@@ -28,6 +32,48 @@ def _dedupe_origins(origins: List[str]) -> List[str]:
         seen.add(cleaned)
         ordered.append(cleaned)
     return ordered
+
+
+def _extract_hostname(origin: str) -> str:
+    parsed = urlparse(origin)
+    return (parsed.hostname or "").strip().lower()
+
+
+def _resolve_auth_cookie_samesite(environment: str) -> str:
+    default_samesite = "none" if environment == "production" else "lax"
+    configured = os.getenv("AUTH_COOKIE_SAMESITE", default_samesite).strip().lower()
+    if configured in {"lax", "strict", "none"}:
+        return configured
+    return default_samesite
+
+
+def _is_cross_site_frontend_backend() -> bool:
+    frontend_origins = _dedupe_origins(
+        [
+            os.getenv("FRONTEND_URL", ""),
+            os.getenv("NEXT_PUBLIC_FRONTEND_URL", ""),
+            CANONICAL_FRONTEND_ORIGIN,
+        ]
+    )
+    backend_origins = _dedupe_origins(
+        [
+            os.getenv("BACKEND_URL", ""),
+            os.getenv("GOBLIN_BACKEND_URL", ""),
+            CANONICAL_BACKEND_ORIGIN,
+        ]
+    )
+
+    frontend_hosts = {
+        host for host in (_extract_hostname(origin) for origin in frontend_origins) if host
+    }
+    backend_hosts = {
+        host for host in (_extract_hostname(origin) for origin in backend_origins) if host
+    }
+
+    if not frontend_hosts or not backend_hosts:
+        return False
+
+    return any(frontend_host != backend_host for frontend_host in frontend_hosts for backend_host in backend_hosts)
 
 
 def build_allowed_origins(
@@ -154,6 +200,12 @@ class SecurityConfig:
             if not os.getenv("LOCAL_LLM_API_KEY"):
                 warnings.append(
                     "🚨 CRITICAL: No LOCAL_LLM_API_KEY configured for production authentication."
+                )
+
+            auth_cookie_samesite = _resolve_auth_cookie_samesite(environment)
+            if _is_cross_site_frontend_backend() and auth_cookie_samesite != "none":
+                warnings.append(
+                    "🚨 CRITICAL: Cross-site frontend/backend detected but AUTH_COOKIE_SAMESITE is not 'none'."
                 )
 
         if "password" in cls.DATABASE_URL.lower():
