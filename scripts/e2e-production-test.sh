@@ -31,7 +31,7 @@ print_error() {
 }
 
 # Default to production URLs
-BACKEND_URL="${BACKEND_URL:-https://goblin-assistant-backend.onrender.com}"
+BACKEND_URL="${BACKEND_URL:-https://goblin-backend-dt30.onrender.com}"
 FRONTEND_URL="${FRONTEND_URL:-https://goblin-assistant.vercel.app}"
 
 print_header "Goblin Assistant - Production E2E Test Suite"

@@ -29,7 +29,7 @@ print_error() {
 }
 
 # Configuration
-BACKEND_URL="https://goblin-assistant-backend.onrender.com"
+BACKEND_URL="https://goblin-backend-dt30.onrender.com"
 FRONTEND_URL="https://goblin-assistant.vercel.app"
 HEALTH_ENDPOINT="${BACKEND_URL}/health"
 API_ENDPOINT="${BACKEND_URL}/api/v1/sandbox/metrics"
