@@ -44,7 +44,7 @@ commands:
     steps:
       - run:
           name: Install pnpm
-          command: npm install -g pnpm@9
+          command: sudo npm install -g pnpm@9
       - restore_cache:
           keys:
             - pnpm-v1-{{ checksum "pnpm-lock.yaml" }}
