@@ -1,4 +1,6 @@
 import { renderHook, act } from '@testing-library/react';
+import React from 'react';
+import { ToastProvider } from '@/contexts/ToastContext';
 
 jest.mock('../../api', () => ({
   saveProfile: jest.fn(),
@@ -10,6 +12,8 @@ import { saveProfile, savePreferences } from '../../api';
 
 const mockSaveProfile = saveProfile as jest.Mock;
 const mockSavePreferences = savePreferences as jest.Mock;
+const wrapper = ({ children }: { children: React.ReactNode }) =>
+  React.createElement(ToastProvider, null, children);
 
 describe('useAccountProfile', () => {
   beforeEach(() => {
@@ -19,19 +23,21 @@ describe('useAccountProfile', () => {
   });
 
   it('initializes with user name', () => {
-    const { result } = renderHook(() => useAccountProfile({ name: 'Alice', email: 'a@b.com' }));
+    const { result } = renderHook(() => useAccountProfile({ name: 'Alice', email: 'a@b.com' }), {
+      wrapper,
+    });
     expect(result.current.name).toBe('Alice');
     expect(result.current.email).toBe('a@b.com');
   });
 
   it('defaults to empty strings without user', () => {
-    const { result } = renderHook(() => useAccountProfile(null));
+    const { result } = renderHook(() => useAccountProfile(null), { wrapper });
     expect(result.current.name).toBe('');
     expect(result.current.email).toBe('');
   });
 
   it('starts with default preferences', () => {
-    const { result } = renderHook(() => useAccountProfile(null));
+    const { result } = renderHook(() => useAccountProfile(null), { wrapper });
     expect(result.current.preferences).toEqual({
       summaries: true,
       notifications: true,
@@ -40,19 +46,21 @@ describe('useAccountProfile', () => {
   });
 
   it('toggles a preference', () => {
-    const { result } = renderHook(() => useAccountProfile(null));
+    const { result } = renderHook(() => useAccountProfile(null), { wrapper });
     act(() => result.current.togglePreference('familyMode'));
     expect(result.current.preferences.familyMode).toBe(true);
   });
 
   it('sets name', () => {
-    const { result } = renderHook(() => useAccountProfile(null));
+    const { result } = renderHook(() => useAccountProfile(null), { wrapper });
     act(() => result.current.setName('Bob'));
     expect(result.current.name).toBe('Bob');
   });
 
   it('handleSave calls saveProfile and savePreferences', async () => {
-    const { result } = renderHook(() => useAccountProfile({ name: 'X', email: 'x@y.com' }));
+    const { result } = renderHook(() => useAccountProfile({ name: 'X', email: 'x@y.com' }), {
+      wrapper,
+    });
     const fakeEvent = { preventDefault: jest.fn() } as unknown as React.FormEvent;
     await act(async () => {
       await result.current.handleSave(fakeEvent);
@@ -62,7 +70,7 @@ describe('useAccountProfile', () => {
   });
 
   it('sets saved to true on success', async () => {
-    const { result } = renderHook(() => useAccountProfile(null));
+    const { result } = renderHook(() => useAccountProfile(null), { wrapper });
     const fakeEvent = { preventDefault: jest.fn() } as unknown as React.FormEvent;
     await act(async () => {
       await result.current.handleSave(fakeEvent);
@@ -72,7 +80,7 @@ describe('useAccountProfile', () => {
 
   it('sets error on failure', async () => {
     mockSaveProfile.mockRejectedValue(new Error('Network error'));
-    const { result } = renderHook(() => useAccountProfile(null));
+    const { result } = renderHook(() => useAccountProfile(null), { wrapper });
     const fakeEvent = { preventDefault: jest.fn() } as unknown as React.FormEvent;
     await act(async () => {
       await result.current.handleSave(fakeEvent);
@@ -89,7 +97,7 @@ describe('useAccountProfile', () => {
         })
     );
     mockSavePreferences.mockResolvedValue(undefined);
-    const { result } = renderHook(() => useAccountProfile(null));
+    const { result } = renderHook(() => useAccountProfile(null), { wrapper });
     const fakeEvent = { preventDefault: jest.fn() } as unknown as React.FormEvent;
     let promise: Promise<void>;
     act(() => {

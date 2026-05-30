@@ -1,6 +1,9 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   reactStrictMode: true,
+  experimental: {
+    externalDir: true,
+  },
   typescript: {
     ignoreBuildErrors: false,
   },
@@ -17,6 +20,24 @@ const nextConfig = {
     config.resolve.fallback = { ...config.resolve.fallback, fs: false };
     return config;
   },
+  // Security headers
+  async rewrites() {
+    return [
+      { source: '/', destination: '/home' },
+      { source: '/chat', destination: '/chat/chat-page' },
+      { source: '/search', destination: '/chat/search-page' },
+      { source: '/login', destination: '/auth/login' },
+      { source: '/register', destination: '/auth/register' },
+      { source: '/google-callback', destination: '/auth/google-callback' },
+      { source: '/account', destination: '/app/account' },
+      { source: '/help', destination: '/app/help' },
+      { source: '/settings', destination: '/app/settings' },
+      { source: '/onboarding', destination: '/orchestration/onboarding' },
+      { source: '/sandbox', destination: '/orchestration/sandbox' },
+      { source: '/startup', destination: '/orchestration/startup' },
+    ];
+  },
+
   // Security headers
   async headers() {
     return [

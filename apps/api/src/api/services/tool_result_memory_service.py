@@ -127,6 +127,17 @@ def _extract_earnings_facts(result: Dict[str, Any], args: Dict[str, Any]) -> Lis
     facts: List[Dict[str, str]] = []
     ticker = args.get("ticker") or result.get("ticker", "???")
 
+    summary = result.get("summary", {})
+    beats = summary.get("beats")
+    total = summary.get("total")
+    streak = summary.get("streak")
+    if isinstance(beats, int) and isinstance(total, int) and total > 0:
+        content = f"{ticker} earnings surprise record: {beats}/{total} beats"
+        if streak:
+            content += f", streak: {streak}"
+        facts.append({"content": content, "category": "instrument"})
+        return facts
+
     earnings = result.get("earnings", {})
     next_date = earnings.get("next_earnings_date")
     beat_miss = earnings.get("beat_miss_history", [])
@@ -156,19 +167,24 @@ def _extract_screener_facts(result: Dict[str, Any], args: Dict[str, Any]) -> Lis
     facts: List[Dict[str, str]] = []
     screen_name = args.get("screen_name", "custom_screen")
 
-    results = result.get("results", [])
-    criteria = args.get("criteria", {})
+    results = result.get("results")
+    if results is None:
+        results = result.get("matches", [])
+
+    criteria = args.get("criteria")
+    if criteria is None:
+        criteria = result.get("criteria_applied", {})
 
     if results:
-        tickers = [r.get("ticker") for r in results[:5]]
+        tickers = [r.get("ticker") for r in results[:5] if r.get("ticker")]
         facts.append(
             {
                 "content": f"Screen '{screen_name}' returned {len(results)} results. Top hits: {', '.join(tickers)}",
-                "category": "instrument",
+                "category": "financial_profile",
             }
         )
 
-    if criteria:
+    if criteria and not result.get("matches"):
         facts.append(
             {
                 "content": f"Screening criteria for '{screen_name}': {json.dumps(criteria)}",

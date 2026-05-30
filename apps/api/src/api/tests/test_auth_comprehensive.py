@@ -280,7 +280,9 @@ class TestRegisterEndpoint:
             )
 
         assert response.status_code == 200, response.text
-        data = response.json()
+        body = response.json()
+        data = body["data"]
+        assert body["success"] is True
         assert "access_token" in data
         assert data["token_type"] == "bearer"
         assert data["user"]["email"] == "test@example.com"
@@ -351,7 +353,9 @@ class TestLoginEndpoint:
             )
 
         assert response.status_code == 200, response.text
-        data = response.json()
+        body = response.json()
+        data = body["data"]
+        assert body["success"] is True
         assert "access_token" in data
         assert data["user"]["email"] == "user@example.com"
 

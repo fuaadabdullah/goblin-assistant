@@ -14,7 +14,7 @@ from ...storage.database import get_db
 from .models import PromotionCandidate, PromotionGate, PromotionResult
 from .gate_evaluation import evaluate_content_quality, evaluate_stability
 from .finance_gates import FINANCE_CATEGORIES, evaluate_finance_gates
-from .extraction import extract_memory_candidates
+from .extraction import classify_memory_category, extract_memory_candidates
 
 logger = structlog.get_logger()
 
@@ -220,6 +220,13 @@ class MemoryPromotionService:
             result = await self.evaluate_promotion_candidate(candidate)
             results.append(result)
         return results
+
+    # Backward-compatible helpers for legacy tests/callers.
+    def _classify_memory_category(self, content: str) -> Optional[str]:
+        return classify_memory_category(content)
+
+    def _evaluate_finance_gates(self, candidate: PromotionCandidate) -> Dict[str, Any]:
+        return evaluate_finance_gates(candidate)
 
 
 memory_promotion_service = MemoryPromotionService()

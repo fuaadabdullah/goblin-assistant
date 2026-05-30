@@ -9,6 +9,11 @@ from api.auth.router import get_current_user
 from api.chat_router import router
 
 
+def _payload(response):
+    body = response.json()
+    return body["data"] if isinstance(body, dict) and "data" in body else body
+
+
 @pytest.fixture
 def mock_user():
     """Mock authenticated user."""
@@ -56,7 +61,7 @@ class TestCreateConversation:
             )
 
             assert response.status_code == 200
-            data = response.json()
+            data = _payload(response)
             assert "conversation_id" in data
             assert data["title"] == "New Chat"
 
@@ -98,7 +103,7 @@ class TestListConversations:
             response = client.get("/chat/conversations")
 
             assert response.status_code == 200
-            data = response.json()
+            data = _payload(response)
             assert isinstance(data, list)
 
     def test_list_conversations_empty(self, client):
@@ -109,7 +114,7 @@ class TestListConversations:
             response = client.get("/chat/conversations")
 
             assert response.status_code == 200
-            data = response.json()
+            data = _payload(response)
             assert data == []
 
 
@@ -135,7 +140,7 @@ class TestGetConversation:
             response = client.get(f"/chat/conversations/{conv_id}")
 
             assert response.status_code == 200
-            data = response.json()
+            data = _payload(response)
             assert data["conversation_id"] == conv_id
 
     def test_get_conversation_not_found(self, client):
@@ -555,7 +560,7 @@ class TestEstimateTokens:
             )
 
         assert response.status_code == 200
-        data = response.json()
+        data = _payload(response)
         assert data["input_tokens"] == 1000
         assert data["estimated_output_tokens"] == 400
         # 1000 * 1.0/1000 + 400 * 2.0/1000 = 1.0 + 0.8 = 1.8
@@ -679,7 +684,7 @@ class TestEstimateTokens:
             )
 
         assert response.status_code == 200
-        data = response.json()
+        data = _payload(response)
         assert data["provider"] == "unknown"
         assert data["estimated_cost_usd"] == 0.0
         assert data["degraded_mode"] is True

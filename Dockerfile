@@ -1,42 +1,48 @@
-# Dockerfile
-FROM python:3.11-slim
+# syntax=docker/dockerfile:1.7-labs
 
-# Avoid Python buffering problems and keep the runtime image leaner.
+FROM python:3.11-slim AS base
+
 ENV PYTHONUNBUFFERED=1 \
-    PIP_NO_CACHE_DIR=1 \
     PIP_DISABLE_PIP_VERSION_CHECK=1
 
-# Set working directory where app will live inside the container
 WORKDIR /app
 
-# Copy requirements file for dependency installation
+FROM base AS deps
+
 COPY apps/api/requirements.txt /app/apps/api/requirements.txt
 COPY apps/api/requirements-vector.txt /app/apps/api/requirements-vector.txt
 
-# Install build deps only for the pip step, then remove them to keep the image smaller.
-RUN apt-get update && apt-get install -y --no-install-recommends \
-  build-essential \
-  gcc \
-  git \
-  && pip install --upgrade pip \
-  && pip install -r /app/apps/api/requirements.txt -r /app/apps/api/requirements-vector.txt \
-  && apt-get purge -y --auto-remove build-essential gcc git \
-  && rm -rf /var/lib/apt/lists/* /root/.cache/pip
+# Install build-time dependencies and Python packages with BuildKit caches for faster rebuilds.
+RUN --mount=type=cache,target=/var/cache/apt,sharing=locked \
+    --mount=type=cache,target=/var/lib/apt/lists,sharing=locked \
+    --mount=type=cache,target=/root/.cache/pip,sharing=locked \
+    apt-get update \
+    && apt-get install -y --no-install-recommends \
+      build-essential \
+      gcc \
+      git \
+    && python -m pip install --upgrade pip \
+    && python -m pip install -r /app/apps/api/requirements.txt -r /app/apps/api/requirements-vector.txt
 
-# Copy app source into container
+FROM base AS runtime
+
+# Keep runtime image lean: only install minimal shared libs needed by compiled wheels.
+RUN --mount=type=cache,target=/var/cache/apt,sharing=locked \
+    --mount=type=cache,target=/var/lib/apt/lists,sharing=locked \
+    apt-get update \
+    && apt-get install -y --no-install-recommends \
+      libstdc++6 \
+      libgomp1 \
+    && rm -rf /var/lib/apt/lists/*
+
+COPY --from=deps /usr/local /usr/local
 COPY . /app
 
-# Ensure backend is importable: make sure /app on PYTHONPATH and workdir is /app
 ENV PYTHONPATH=/app/apps/api/src
-
-# Make sure api is a package (helpful if missing __init__.py)
-# Note: This will create an empty __init__.py if it doesn't exist
-RUN if [ -d /app/apps/api/src/api ] && [ ! -f /app/apps/api/src/api/__init__.py ]; then touch /app/apps/api/src/api/__init__.py; fi || true
-
-# Expose the app port
 ENV PORT=8001
 EXPOSE 8001
 
-# Default command - will be overridden by render.yaml startCommand
-# render.yaml specifies: uvicorn api.main:app --host 0.0.0.0 --port $PORT
+# Keep compatibility with current runtime assumptions.
+RUN if [ -d /app/apps/api/src/api ] && [ ! -f /app/apps/api/src/api/__init__.py ]; then touch /app/apps/api/src/api/__init__.py; fi || true
+
 CMD ["uvicorn", "api.main:app", "--host", "0.0.0.0", "--port", "8001"]

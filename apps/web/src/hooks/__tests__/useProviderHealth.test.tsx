@@ -5,11 +5,11 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 
 jest.mock('@/api', () => ({
   apiClient: {
-    getProvidersRegistry: jest.fn(),
+    getModelConfigs: jest.fn(),
   },
 }));
 
-const mockGetProvidersRegistry = apiClient.getProvidersRegistry as jest.Mock;
+const mockGetModelConfigs = apiClient.getModelConfigs as jest.Mock;
 
 function wrapper({ children }: { children: React.ReactNode }) {
   const queryClient = new QueryClient({
@@ -24,55 +24,60 @@ describe('useProviderHealth', () => {
   });
 
   it('returns undefined initially while loading', () => {
-    mockGetProvidersRegistry.mockReturnValue(new Promise(() => {}));
+    mockGetModelConfigs.mockReturnValue(new Promise(() => {}));
     const { result } = renderHook(() => useProviderHealth(), { wrapper });
-    expect(result.current.isLoading).toBe(true);
+    expect(result.current.loadingProviders).toBe(true);
   });
 
   it('returns provider health data when loaded', async () => {
     const mockData = {
-      providers: {
-        openai: { health: 'healthy', is_selectable: true },
-        anthropic: { health: 'healthy', is_selectable: true },
-      },
+      providers: [
+        { id: 'openai', health: 'healthy', is_selectable: true },
+        { id: 'anthropic', health: 'healthy', is_selectable: true },
+      ],
+      models: [],
     };
-    mockGetProvidersRegistry.mockResolvedValue(mockData);
+    mockGetModelConfigs.mockResolvedValue(mockData);
 
     const { result } = renderHook(() => useProviderHealth(), { wrapper });
 
     await waitFor(() => {
-      expect(result.current.isLoading).toBe(false);
+      expect(result.current.loadingProviders).toBe(false);
     });
 
-    expect(result.current.providers).toBeDefined();
+    expect(result.current.providers).toEqual(expect.arrayContaining(['openai', 'anthropic']));
   });
 
   it('handles errors gracefully', async () => {
-    mockGetProvidersRegistry.mockRejectedValue(new Error('API error'));
+    mockGetModelConfigs.mockRejectedValue(new Error('API error'));
 
     const { result } = renderHook(() => useProviderHealth(), { wrapper });
 
     await waitFor(() => {
-      expect(result.current.isLoading).toBe(false);
+      expect(result.current.providerError).toBe('API error');
+    }, { timeout: 4000 });
+
+    await waitFor(() => {
+      expect(result.current.loadingProviders).toBe(false);
     });
 
-    expect(result.current.error).toBeDefined();
+    expect(result.current.providerError).toBeDefined();
   });
 
   it('normalizes health status to lowercase', async () => {
     const mockData = {
-      providers: {
-        openai: { health: 'HEALTHY', is_selectable: true },
-      },
+      providers: [{ id: 'openai', health: 'HEALTHY', is_selectable: true }],
+      models: [],
     };
-    mockGetProvidersRegistry.mockResolvedValue(mockData);
+    mockGetModelConfigs.mockResolvedValue(mockData);
 
     const { result } = renderHook(() => useProviderHealth(), { wrapper });
 
     await waitFor(() => {
-      expect(result.current.isLoading).toBe(false);
+      expect(result.current.loadingProviders).toBe(false);
     });
 
-    expect(result.current.providers).toBeDefined();
+    const openaiConfig = result.current.providerConfigs.get('openai');
+    expect(openaiConfig?.health).toBe('healthy');
   });
 });

@@ -1,0 +1,80 @@
+=== Largest Files by Lines of Code ===
+
+Generated: 2026-05-29
+Excludes: .git, node_modules, .mypy_cache, .playwright, storybook-static, .next
+
+=== Top 50 ===
+
+ Lines   File
+------   ----
+ 11249   packages/sdk/openapi/openapi.json
+ 11064   packages/sdk/src/generated/openapi.ts
+  1325   apps/web/src/styles/dark-theme.css
+  1156   reports/write_time_test_results.json
+  1143   reports/axe-report.json
+   878   docs/operations/COMPONENT_LIBRARY.md
+   872   apps/api/src/api/services/retrieval_service.py
+   847   apps/api/src/api/ops_router.py
+   794   apps/web/src/lib/api.ts
+   782   apps/api/src/api/ops/aggregator.py
+   740   apps/api/src/api/integrations/secrets/bitwarden_adapter.py
+   734   apps/api/src/api/storage/conversations.py
+   728   apps/web/src/features/chat/hooks/useChatSession.ts
+   726   apps/api/src/api/observability/debug_router.py
+   703   apps/api/src/api/attestation_webhook.py
+   701   apps/api/src/api/docs/ARCHITECTURE.md
+   696   apps/api/src/api/docs/INTEGRATIONS.md
+   688   apps/api/src/api/services/observability_service.py
+   685   apps/api/src/api/integrations/secrets/vault_adapter.py
+   671   apps/api/src/api/providers/dispatcher.py
+   667   apps/api/src/api/observability/context_snapshotter.py
+   656   apps/api/src/api/tests/test_chat_router_core.py
+   656   apps/api/src/api/services/memory_promotion_service.py
+   640   apps/api/src/api/main.py
+   638   apps/api/src/api/ops/integrations.py
+   635   apps/api/src/api/ops/audit.py
+   632   apps/api/src/api/observability/retrieval_tracer.py
+   614   docs/frontend/LOADING_ERROR_STATES.md
+   603   apps/web/src/lib/__tests__/api.test.ts
+   587   apps/api/src/api/services/context_assembly_service_complete.py
+   583   apps/api/src/api/services/write_time_matrix.py
+   579   apps/api/src/api/sandbox_api.py
+   573   apps/api/src/api/tests/test_sse_errors.py
+   571   docs/operations/CI_CD_PIPELINE_README.md
+   569   apps/api/src/api/tests/test_context_assembly_layers.py
+   564   apps/api/src/api/health.py
+   559   apps/web/src/test/handlers.ts
+   552   apps/api/src/api/observability/tool_tracer.py
+   548   apps/api/src/api/tests/test_financial_memory_integration.py
+   547   docs/operations/TESTING.md
+   541   apps/web/src/api/api-client.ts
+   540   apps/api/src/api/services/write_time_matrix_enhanced.py
+   535   docs/operations/ATTESTATION_WEBHOOK_DEPLOYMENT.md
+   522   docs/frontend/UI_COMPONENT_LIBRARY.md
+   512   apps/api/src/api/tests/test_attestation_service.py
+   508   apps/api/src/api/observability/alerting_system.py
+   503   apps/api/src/api/tests/test_visualization_service.py
+   500   docs/backend/LOCAL_LLM_ROUTING.md
+   492   apps/web/src/index.css
+   493   docs/infra/deployment.md
+
+=== Category Totals ===
+
+Backend Python (apps/api/src/):         71,672 lines
+Frontend TS/TSX/CSS (apps/web/src/):    46,559 lines
+SDK + Packages:                         ~22,000 lines
+Docs:                                   ~12,000 lines
+
+=== Top 10 Hand-Written Source Files ===
+(excluding generated code, coverage reports, JSON reports)
+
+  1.  1,325   apps/web/src/styles/dark-theme.css
+  2.    872   apps/api/src/api/services/retrieval_service.py
+  3.    847   apps/api/src/api/ops_router.py
+  4.    794   apps/web/src/lib/api.ts
+  5.    782   apps/api/src/api/ops/aggregator.py
+  6.    740   apps/api/src/api/integrations/secrets/bitwarden_adapter.py
+  7.    734   apps/api/src/api/storage/conversations.py
+  8.    728   apps/web/src/features/chat/hooks/useChatSession.ts
+  9.    726   apps/api/src/api/observability/debug_router.py
+ 10.    703   apps/api/src/api/attestation_webhook.py

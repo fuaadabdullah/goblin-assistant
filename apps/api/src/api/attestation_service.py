@@ -11,16 +11,32 @@ import importlib
 from datetime import datetime
 from typing import Any, Dict
 
+from . import attestation as _attestation
 from .attestation import providers as _providers
+from .attestation import service as _service
 from .attestation.models import (
+    CachedAttestation,
+    NODE_ID_PATTERN,
+    VERIFIED_FALSE,
     VERIFIED_TRUE,
 )
+from .attestation.providers import AWSNitroProvider, TPMAttestationProvider
 from .attestation.singleton import get_attestation_service
+from .attestation.api import create_admission_webhook
 
 # Backwards-compatible test patching surface.
 
 _providers = importlib.reload(_providers)
 compute_v1 = _providers.compute_v1
+redis = _service.redis
+
+
+class AttestationService(_service.AttestationService):
+    """Compatibility wrapper preserving redis patch surface on this module."""
+
+    def __init__(self):
+        _service.redis = redis
+        super().__init__()
 
 
 class GCPShieldedVMProvider(_providers.GCPShieldedVMProvider):
@@ -51,6 +67,11 @@ def attest_node_endpoint(node_id: str, provider: str, attestation_data: Dict[str
     """Endpoint to attest a node."""
     service = get_attestation_service()
     return service.attest_node(node_id, provider, attestation_data)
+
+
+def reset_attestation_service() -> None:
+    """Compatibility export for singleton reset helper."""
+    _attestation.reset_attestation_service()
 
 
 if __name__ == "__main__":

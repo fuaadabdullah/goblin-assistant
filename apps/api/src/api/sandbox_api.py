@@ -57,7 +57,17 @@ sandbox_rate_limiter = RateLimiter(
 )
 
 # Ensure jobs directory exists
-os.makedirs(JOBS_DIR, exist_ok=True)
+try:
+    os.makedirs(JOBS_DIR, exist_ok=True)
+except PermissionError:
+    fallback_jobs_dir = "/tmp/goblin_sandbox"
+    logger.warning(
+        "sandbox_jobs_dir_unwritable",
+        configured_jobs_dir=JOBS_DIR,
+        fallback_jobs_dir=fallback_jobs_dir,
+    )
+    JOBS_DIR = fallback_jobs_dir
+    os.makedirs(JOBS_DIR, exist_ok=True)
 
 
 # Authentication dependency

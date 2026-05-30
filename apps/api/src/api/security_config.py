@@ -21,6 +21,40 @@ CANONICAL_PUBLIC_ORIGINS = [
 ]
 
 
+def _dedupe_origins(origins: List[str]) -> List[str]:
+    """Normalize, trim, and de-duplicate origins while preserving order."""
+    seen = set()
+    result: List[str] = []
+    for origin in origins:
+        normalized = origin.strip()
+        if not normalized or normalized in seen:
+            continue
+        seen.add(normalized)
+        result.append(normalized)
+    return result
+
+
+def build_allowed_origins(environment: str, raw_origins: str) -> List[str]:
+    """
+    Build allowed CORS origins with canonical/public fallback behavior.
+
+    This compatibility helper is intentionally explicit for tests and callers
+    that validate production/development CORS policy assembly.
+    """
+    parsed_custom = [origin.strip() for origin in raw_origins.split(",") if origin.strip()]
+
+    if environment == "production":
+        dynamic = _dedupe_origins(
+            [
+                os.getenv("FRONTEND_URL", ""),
+                os.getenv("BACKEND_URL", ""),
+            ]
+        )
+        return _dedupe_origins(parsed_custom + dynamic + CANONICAL_PUBLIC_ORIGINS)
+
+    return _dedupe_origins(parsed_custom + DEFAULT_LOCAL_ORIGINS + CANONICAL_PUBLIC_ORIGINS)
+
+
 def _resolve_origins(environment: str) -> List[str]:
     """
     Resolve CORS origins based on environment.
@@ -31,18 +65,8 @@ def _resolve_origins(environment: str) -> List[str]:
     This logic ensures production does not accidentally allow
     development-only origins.
     """
-    if environment == "production":
-        custom = os.getenv("ALLOWED_ORIGINS", "")
-        if custom:
-            return [origin.strip() for origin in custom.split(",") if origin.strip()]
-        return CANONICAL_PUBLIC_ORIGINS
-
-    # Development environment
-    dev_origins = list(DEFAULT_LOCAL_ORIGINS)
     custom = os.getenv("ALLOWED_ORIGINS", "")
-    if custom:
-        dev_origins.extend([origin.strip() for origin in custom.split(",") if origin.strip()])
-    return dev_origins
+    return build_allowed_origins(environment=environment, raw_origins=custom)
 
 
 def _resolve_auth_cookie_samesite(environment: str) -> str:
@@ -54,7 +78,7 @@ def _resolve_auth_cookie_samesite(environment: str) -> str:
     In development, 'lax' is preferred for CSRF protection.
     """
     if environment == "production":
-        return "none"
+        return os.getenv("AUTH_COOKIE_SAMESITE", "none")
     return os.getenv("AUTH_COOKIE_SAMESITE", "lax")
 
 

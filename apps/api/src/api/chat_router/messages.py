@@ -340,16 +340,19 @@ async def send_message(
         if isinstance(provider_response, dict) and provider_response.get("visualizations"):
             visualizations = provider_response["visualizations"]
 
-        return SendMessageResponse(
-            message_id=response_message_id,
-            response=response_content,
-            provider=used_provider,
-            model=used_model,
-            timestamp=datetime.utcnow().isoformat(),
-            usage=usage,
-            cost_usd=cost_usd,
-            correlation_id=correlation_id,
-            visualizations=visualizations,
+        return SuccessEnvelope(
+            success=True,
+            data=SendMessageResponse(
+                message_id=response_message_id,
+                response=response_content,
+                provider=used_provider,
+                model=used_model,
+                timestamp=datetime.utcnow().isoformat(),
+                usage=usage,
+                cost_usd=cost_usd,
+                correlation_id=correlation_id,
+                visualizations=visualizations,
+            ),
         )
 
     except HTTPException:
@@ -376,7 +379,7 @@ async def estimate_tokens(
     request: SendMessageRequest,
     conversation_id: Optional[str] = None,
     current_user: AuthenticatedUser = Depends(get_current_user),
-) -> EstimateTokensResponse:
+) -> SuccessEnvelope[EstimateTokensResponse]:
     """Estimate token usage and cost for a message without invoking the provider.
 
     Runs the same context-assembly pipeline as send_message so the estimate
@@ -427,27 +430,33 @@ async def estimate_tokens(
 
     provider_id = _resolve_provider_id(request.provider)
     if provider_id is None:
-        return EstimateTokensResponse(
-            input_tokens=input_tokens,
-            estimated_output_tokens=estimated_output_tokens,
-            estimated_cost_usd=0.0,
-            provider="unknown",
-            model=request.model,
-            layers=layers,
-            degraded_mode=True,
-            degraded_reason=degraded_reason or "no-configured-providers",
+        return SuccessEnvelope(
+            success=True,
+            data=EstimateTokensResponse(
+                input_tokens=input_tokens,
+                estimated_output_tokens=estimated_output_tokens,
+                estimated_cost_usd=0.0,
+                provider="unknown",
+                model=request.model,
+                layers=layers,
+                degraded_mode=True,
+                degraded_reason=degraded_reason or "no-configured-providers",
+            ),
         )
 
     provider = dispatcher.get_provider(provider_id)
     estimated_cost_usd = provider.estimate_cost(input_tokens, estimated_output_tokens)
 
-    return EstimateTokensResponse(
-        input_tokens=input_tokens,
-        estimated_output_tokens=estimated_output_tokens,
-        estimated_cost_usd=estimated_cost_usd,
-        provider=provider_id,
-        model=request.model,
-        layers=layers,
-        degraded_mode=degraded_mode,
-        degraded_reason=degraded_reason,
+    return SuccessEnvelope(
+        success=True,
+        data=EstimateTokensResponse(
+            input_tokens=input_tokens,
+            estimated_output_tokens=estimated_output_tokens,
+            estimated_cost_usd=estimated_cost_usd,
+            provider=provider_id,
+            model=request.model,
+            layers=layers,
+            degraded_mode=degraded_mode,
+            degraded_reason=degraded_reason,
+        ),
     )

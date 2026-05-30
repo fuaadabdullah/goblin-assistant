@@ -2,11 +2,11 @@
 // Provider selection and runtime client resolution only.
 // Must not contain frontend route paths or navigation logic.
 //
-// Config is loaded from config/providers.json, which is a generated artifact
-// from config/providers.toml (the single source of truth).
+// Config is loaded from root config/providers.json, which is generated from
+// config/providers.toml (the single source of truth).
 // Run `make generate-providers-json` after editing providers.toml.
 
-import providersJson from '../config/providers.json';
+import providersJson from '../../../../config/providers.json';
 import { runtimeClient } from '@/api';
 import { devDebug, devError, devWarn } from '@/utils/dev-log';
 

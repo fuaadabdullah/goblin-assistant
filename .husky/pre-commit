@@ -1,2 +1,7 @@
+#!/usr/bin/env sh
+set -e
+
+scripts/git-hooks/check-no-sqlite-in-commit.sh
+
 echo "Running pre-commit tasks..."
 echo "Skipping lint-staged and validate-env locally; run 'npx lint-staged' and 'npm run validate-env' manually if needed."
