@@ -1,61 +1,50 @@
 version: 2.1
 
-# ============================================================================
-# Orbs
-# ============================================================================
-orbs:
-  node: circleci/node@5.2.0
-  python: circleci/python@2.1.1
-  codecov: codecov/codecov@4.1.0
+# No orbs — uses only official Docker images and shell steps.
+# Orb security settings can be enabled later in CircleCI Org Settings → Security.
 
-# ============================================================================
-# Parameters
-# ============================================================================
 parameters:
   run_e2e_tests:
     type: boolean
     default: false
-    description: "Run full Playwright E2E suite"
 
-# ============================================================================
-# Executors
-# ============================================================================
 executors:
-  node-executor:
+  node:
     docker:
       - image: cimg/node:20.9
     working_directory: ~/repo
     resource_class: medium
 
-  python-executor:
+  python:
     docker:
       - image: cimg/python:3.11
     working_directory: ~/repo
     resource_class: medium
 
-  node-python-executor:
+  node-python:
     docker:
       - image: cimg/python:3.11-node
     working_directory: ~/repo
     resource_class: medium
 
-  base-executor:
+  base:
     docker:
       - image: cimg/base:current
     working_directory: ~/repo
     resource_class: medium
 
-# ============================================================================
-# Commands
-# ============================================================================
 commands:
-  install-pnpm:
-    description: "Install pnpm and Node dependencies"
+  setup-tmpdir:
     steps:
       - run:
-          name: Enable corepack / pnpm
+          name: Create .tmp directory
+          command: mkdir -p ~/repo/.tmp
+
+  install-pnpm:
+    steps:
+      - run:
+          name: Install pnpm
           command: |
-            sudo npm install -g corepack
             corepack enable
             corepack prepare pnpm@9 --activate
       - restore_cache:
@@ -71,68 +60,34 @@ commands:
             - ~/.local/share/pnpm/store
 
   install-python:
-    description: "Install Python API dependencies"
     steps:
       - restore_cache:
           keys:
-            - python-v2-{{ checksum "apps/api/requirements.txt" }}-{{ checksum "apps/api/requirements-vector.txt" }}
-            - python-v2-
+            - pip-v1-{{ checksum "apps/api/requirements.txt" }}-{{ checksum "apps/api/requirements-vector.txt" }}
+            - pip-v1-
       - run:
           name: Install Python deps
           command: |
-            cd apps/api
             pip install --upgrade pip
-            pip install -r requirements.txt -r requirements-vector.txt
+            pip install -r apps/api/requirements.txt -r apps/api/requirements-vector.txt
       - save_cache:
-          key: python-v2-{{ checksum "apps/api/requirements.txt" }}-{{ checksum "apps/api/requirements-vector.txt" }}
+          key: pip-v1-{{ checksum "apps/api/requirements.txt" }}-{{ checksum "apps/api/requirements-vector.txt" }}
           paths:
             - ~/.cache/pip
 
-  setup-tmpdir:
-    steps:
-      - run:
-          name: Create .tmp directory
-          command: mkdir -p ~/repo/.tmp
-
-# ============================================================================
-# Jobs
-# ============================================================================
 jobs:
-  # --------------------------------------------------------------------------
-  # Policy: branch + commit message conventions
-  # --------------------------------------------------------------------------
+  # ── Policy ───────────────────────────────────────────────────────────────
   policy:
-    executor: base-executor
+    executor: base
     steps:
       - checkout
       - run:
-          name: Enforce branch and commit policy
-          command: |
-            set -euo pipefail
-            BRANCH_REGEX='^(feature|fix|refactor|infra)/'
-            COMMIT_REGEX='^(feat|fix|refactor|infra|chore|docs|test|build|ci|perf|revert)(\([a-z0-9._/-]+\))?: .+'
-            BRANCH="${CIRCLE_BRANCH}"
-            # Only enforce branch naming on non-trunk branches (PRs)
-            if [[ "$BRANCH" != "main" && "$BRANCH" != "develop" ]]; then
-              if [[ ! "$BRANCH" =~ $BRANCH_REGEX ]]; then
-                echo "Invalid branch '$BRANCH'. Expected: $BRANCH_REGEX"
-                exit 1
-              fi
-            fi
-            # Validate last commit message
-            COMMIT_MSG=$(git log -1 --format="%s")
-            if [[ ! "$COMMIT_MSG" =~ $COMMIT_REGEX ]]; then
-              echo "Invalid commit message: '$COMMIT_MSG'"
-              echo "Expected pattern: $COMMIT_REGEX"
-              exit 1
-            fi
-            echo "Policy checks passed."
+          name: Branch + commit policy
+          command: bash tooling/automation/ci-policy-check.sh
 
-  # --------------------------------------------------------------------------
-  # Format: ruff format (Python) + prettier (web)
-  # --------------------------------------------------------------------------
+  # ── Format ───────────────────────────────────────────────────────────────
   format-check:
-    executor: node-python-executor
+    executor: node-python
     steps:
       - checkout
       - setup-tmpdir
@@ -145,11 +100,9 @@ jobs:
           name: Prettier check
           command: TMPDIR=~/repo/.tmp pnpm --filter @goblin/web exec prettier --check .
 
-  # --------------------------------------------------------------------------
-  # Security: secret scan + dependency audits
-  # --------------------------------------------------------------------------
+  # ── Security ─────────────────────────────────────────────────────────────
   security-scan:
-    executor: node-python-executor
+    executor: node-python
     steps:
       - checkout
       - setup-tmpdir
@@ -158,34 +111,30 @@ jobs:
           name: Install pip-audit
           command: pip install pip-audit
       - run:
-          name: Scan for embedded secrets
+          name: Secret scan
           command: python scripts/security/scan_secrets.py
       - run:
-          name: Audit npm dependencies
+          name: Audit npm deps
           command: TMPDIR=~/repo/.tmp pnpm --filter @goblin/web security:audit-ci
       - run:
-          name: Audit Python dependencies
+          name: Audit Python deps
           command: python -m pip_audit -r apps/api/requirements.txt
 
-  # --------------------------------------------------------------------------
-  # Lint: ruff lint + eslint + policy guard
-  # --------------------------------------------------------------------------
+  # ── Lint ─────────────────────────────────────────────────────────────────
   lint:
-    executor: node-python-executor
+    executor: node-python
     steps:
       - checkout
       - setup-tmpdir
       - install-pnpm
       - install-python
       - run:
-          name: Run all linters
+          name: Lint (ruff + eslint + policy guard)
           command: make lint
 
-  # --------------------------------------------------------------------------
-  # Type check: tsc + mypy + pyright + route lifecycle + sdk-check
-  # --------------------------------------------------------------------------
+  # ── Type check ───────────────────────────────────────────────────────────
   typecheck:
-    executor: node-python-executor
+    executor: node-python
     steps:
       - checkout
       - setup-tmpdir
@@ -195,7 +144,7 @@ jobs:
           name: Install pyright
           command: pip install pyright
       - run:
-          name: TypeScript type check
+          name: TypeScript
           command: TMPDIR=~/repo/.tmp pnpm --filter @goblin/web type-check
       - run:
           name: mypy
@@ -207,20 +156,19 @@ jobs:
           name: Route lifecycle policy
           command: make check-route-lifecycle
       - run:
-          name: Verify SDK artifacts are current
+          name: SDK artifacts current
           command: make sdk-check
 
-  # --------------------------------------------------------------------------
-  # Backend tests: pytest with coverage
-  # --------------------------------------------------------------------------
+  # ── Backend tests ─────────────────────────────────────────────────────────
   test-backend:
-    executor: python-executor
+    executor: python
     steps:
       - checkout
       - install-python
       - run:
-          name: Run pytest
+          name: pytest with coverage
           command: |
+            pip install pytest-cov
             cd apps/api
             PYTHONPATH=src python -m pytest \
               -o "addopts=" \
@@ -228,85 +176,71 @@ jobs:
               --cov-report=xml:coverage.xml \
               --cov-report=html:htmlcov \
               --junitxml=test-results.xml \
-              --tb=short \
-              -v
-          environment:
-            PYTHONPATH: src
+              --tb=short -v
       - store_test_results:
           path: apps/api/test-results.xml
       - store_artifacts:
           path: apps/api/htmlcov
           destination: coverage-html
-      - codecov/upload:
-          file: apps/api/coverage.xml
-          flags: backend
+      - run:
+          name: Upload to Codecov
+          command: |
+            curl -Os https://uploader.codecov.io/latest/linux/codecov
+            chmod +x codecov
+            ./codecov -t "${CODECOV_TOKEN}" -f apps/api/coverage.xml -F backend
 
-  # --------------------------------------------------------------------------
-  # Frontend tests: jest/vitest
-  # --------------------------------------------------------------------------
+  # ── Frontend tests ────────────────────────────────────────────────────────
   test-frontend:
-    executor: node-executor
+    executor: node
     steps:
       - checkout
       - setup-tmpdir
       - install-pnpm
       - run:
-          name: Run web tests
+          name: Web tests
           command: TMPDIR=~/repo/.tmp pnpm --filter @goblin/web test:ci
       - store_artifacts:
           path: apps/web/coverage
           destination: web-coverage
 
-  # --------------------------------------------------------------------------
-  # Build: Next.js production build
-  # --------------------------------------------------------------------------
+  # ── Build ─────────────────────────────────────────────────────────────────
   build:
-    executor: node-python-executor
+    executor: node-python
     steps:
       - checkout
       - setup-tmpdir
       - install-pnpm
       - install-python
       - run:
-          name: Build web app
+          name: Next.js production build
           command: TMPDIR=~/repo/.tmp make build
       - store_artifacts:
           path: apps/web/.next
           destination: next-build
 
-  # --------------------------------------------------------------------------
-  # Docker: build and push backend image
-  # --------------------------------------------------------------------------
+  # ── Docker ────────────────────────────────────────────────────────────────
   docker-build:
-    executor: base-executor
+    executor: base
     steps:
       - checkout
       - setup_remote_docker:
           docker_layer_caching: true
       - run:
-          name: Build Docker image
+          name: Build and push Docker image
           command: |
-            SHORT_SHA="${CIRCLE_SHA1:0:7}"
-            docker build \
-              -t ghcr.io/${GITHUB_USER}/goblin-assistant:${CIRCLE_BRANCH}-${SHORT_SHA} \
-              -t ghcr.io/${GITHUB_USER}/goblin-assistant:latest \
-              -f Dockerfile .
-      - run:
-          name: Push to GHCR
-          command: |
-            SHORT_SHA="${CIRCLE_SHA1:0:7}"
+            SHORT="${CIRCLE_SHA1:0:7}"
+            TAG="ghcr.io/${GITHUB_USER}/goblin-assistant:${CIRCLE_BRANCH}-${SHORT}"
+            docker build -t "$TAG" -t "ghcr.io/${GITHUB_USER}/goblin-assistant:latest" -f Dockerfile .
             echo "$GITHUB_TOKEN" | docker login ghcr.io -u "$GITHUB_USER" --password-stdin
-            docker push ghcr.io/${GITHUB_USER}/goblin-assistant:${CIRCLE_BRANCH}-${SHORT_SHA}
-            docker push ghcr.io/${GITHUB_USER}/goblin-assistant:latest
+            docker push "$TAG"
+            docker push "ghcr.io/${GITHUB_USER}/goblin-assistant:latest"
 
-  # --------------------------------------------------------------------------
-  # Deploy: trigger Render redeploy via API
-  # --------------------------------------------------------------------------
+  # ── Deploy ────────────────────────────────────────────────────────────────
   deploy-render:
-    executor: base-executor
+    executor: base
     steps:
       - run:
-          name: Trigger Render deployment
+          name: Trigger Render deploy
           command: |
             curl -sf -X POST \
               "https://api.render.com/v1/services/${RENDER_SERVICE_ID}/deploys" \
@@ -316,26 +250,17 @@ jobs:
       - run:
           name: Wait for health check
           command: |
-            echo "Waiting for Render to warm up..."
             sleep 60
             for i in $(seq 1 20); do
               STATUS=$(curl -sf -o /dev/null -w "%{http_code}" \
                 https://goblin-backend-dt30.onrender.com/health || echo "000")
-              if [ "$STATUS" = "200" ]; then
-                echo "Backend healthy after ${i} attempts."
-                exit 0
-              fi
-              echo "Attempt $i: status=$STATUS, retrying in 15s..."
+              [ "$STATUS" = "200" ] && echo "Healthy after $i attempts." && exit 0
+              echo "Attempt $i: $STATUS — retrying in 15s"
               sleep 15
             done
-            echo "Backend health check failed after 5 minutes."
-            exit 1
+            echo "Health check timed out." && exit 1
 
-# ============================================================================
-# Workflows
-# ============================================================================
 workflows:
-  # Main CI/CD: runs on every push
   ci:
     jobs:
       - policy
@@ -364,7 +289,6 @@ workflows:
             branches:
               only: main
 
-  # Nightly: full suite including optional E2E
   nightly:
     triggers:
       - schedule:
