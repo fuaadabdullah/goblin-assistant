@@ -10,10 +10,7 @@ Purpose: keep all intentional legacy exclusions explicit, temporary, and reviewa
 
 ## Current exclusions
 
-| ID | Scope | Excluded from | Source of exclusion | Owner | Reason | Review by | Exit criteria |
-| --- | --- | --- | --- | --- | --- | --- | --- |
-| LEGACY-WEB-TESTS-001 | `apps/web/tests/legacy/**` | Web lint + standard Jest CI run | `apps/web/eslint.config.cjs` (`tests/legacy/**` in `ignores`), legacy files are not in Jest default `*.test`/`*.spec` pattern | Web platform | Historical JS smoke scripts from pre-current test architecture | 2026-08-31 | Port scenarios into `src/**/__tests__` or remove obsolete scripts |
-| LEGACY-API-MODULE-001 | `apps/api/src/api/legacy/**` | API static type checks (mypy/pyright) | `apps/api/pyproject.toml` (`[tool.mypy].exclude`), `apps/api/pyrightconfig.json` (`exclude`) | API platform | Legacy compatibility surface retained while typed services are being consolidated | 2026-08-31 | Migrate/remove legacy module and drop exclude entries |
+No active legacy exclusions are currently registered.
 
 ## Maintenance checklist
 

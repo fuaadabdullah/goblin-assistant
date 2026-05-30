@@ -1,4 +1,8 @@
-name: CI
+name: CI (GitHub-native gates)
+
+# GitHub Actions handles only GitHub-native concerns.
+# All heavy compute (format, lint, typecheck, tests, build, deploy)
+# runs on CircleCI where it is not billing-constrained.
 
 on:
   push:
@@ -7,6 +11,9 @@ on:
     branches: [main, develop]
 
 jobs:
+  # ---------------------------------------------------------------------------
+  # Policy: branch-name + commit-message conventions (needs GitHub env vars)
+  # ---------------------------------------------------------------------------
   policy:
     name: policy
     runs-on: ubuntu-latest
@@ -16,179 +23,3 @@ jobs:
           fetch-depth: 0
       - name: Enforce branch + commit policy
         run: bash tooling/automation/ci-policy-check.sh
-
-  format-check:
-    name: format-check
-    runs-on: ubuntu-latest
-    needs: [policy]
-    steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
-        with:
-          python-version: '3.11'
-          cache: 'pip'
-      - uses: pnpm/action-setup@v4
-        with:
-          version: 9
-      - uses: actions/setup-node@v4
-        with:
-          node-version: '20'
-          cache: 'pnpm'
-      - name: Install deps
-        run: |
-          pnpm install --frozen-lockfile=false
-          cd apps/api
-          python -m pip install --upgrade pip
-          pip install -r requirements.txt -r requirements-vector.txt
-      - name: Run format checks
-        run: make format-check
-
-  security-scan:
-    name: security-scan
-    runs-on: ubuntu-latest
-    needs: [policy]
-    steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
-        with:
-          python-version: '3.11'
-          cache: 'pip'
-      - uses: pnpm/action-setup@v4
-        with:
-          version: 9
-      - uses: actions/setup-node@v4
-        with:
-          node-version: '20'
-          cache: 'pnpm'
-      - name: Install deps
-        run: |
-          pnpm install --frozen-lockfile=false
-          python -m pip install --upgrade pip
-          pip install pip-audit
-      - name: Scan repository for embedded secrets
-        run: python scripts/security/scan_secrets.py
-      - name: Audit npm dependencies
-        run: pnpm --filter @goblin/web security:audit-ci
-      - name: Audit python dependencies
-        run: python -m pip_audit -r apps/api/requirements.txt
-
-  lint:
-    name: lint
-    runs-on: ubuntu-latest
-    needs: [format-check, security-scan]
-    steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
-        with:
-          python-version: '3.11'
-          cache: 'pip'
-      - uses: pnpm/action-setup@v4
-        with:
-          version: 9
-      - uses: actions/setup-node@v4
-        with:
-          node-version: '20'
-          cache: 'pnpm'
-      - name: Install deps
-        run: |
-          pnpm install --frozen-lockfile=false
-          cd apps/api
-          python -m pip install --upgrade pip
-          pip install -r requirements.txt -r requirements-vector.txt
-      - name: Run lint
-        run: make lint
-
-  typecheck:
-    name: typecheck
-    runs-on: ubuntu-latest
-    needs: [format-check, security-scan]
-    steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
-        with:
-          python-version: '3.11'
-          cache: 'pip'
-      - uses: pnpm/action-setup@v4
-        with:
-          version: 9
-      - uses: actions/setup-node@v4
-        with:
-          node-version: '20'
-          cache: 'pnpm'
-      - name: Install deps
-        run: |
-          pnpm install --frozen-lockfile=false
-          cd apps/api
-          python -m pip install --upgrade pip
-          pip install -r requirements.txt -r requirements-vector.txt
-      - name: Fetch PR base branch
-        if: github.event_name == 'pull_request'
-        run: git fetch origin ${{ github.base_ref }} --depth=1
-      - name: Run type checks
-        run: |
-          make type-check
-          make type-check-api-mypy
-          make type-check-api-pyright
-      - name: Enforce route lifecycle policy
-        run: make check-route-lifecycle
-      - name: Enforce capability boundaries on changed API files
-        if: github.event_name == 'pull_request'
-        run: python scripts/architecture/check_capability_boundaries.py --base-ref origin/${{ github.base_ref }}
-      - name: Require ADR update for architecture-impacting changes
-        if: github.event_name == 'pull_request'
-        run: python scripts/architecture/check_adr_required.py --base-ref origin/${{ github.base_ref }}
-      - name: Verify generated SDK artifacts are current
-        run: make sdk-check
-      - name: Enforce API typing on changed files
-        if: github.event_name == 'pull_request'
-        run: python scripts/architecture/check_api_typing_changed.py --base-ref origin/${{ github.base_ref }}
-
-  tests-critical-coverage:
-    name: tests-critical-coverage
-    runs-on: ubuntu-latest
-    needs: [lint, typecheck]
-    steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
-        with:
-          python-version: '3.11'
-          cache: 'pip'
-      - uses: pnpm/action-setup@v4
-        with:
-          version: 9
-      - uses: actions/setup-node@v4
-        with:
-          node-version: '20'
-          cache: 'pnpm'
-      - name: Install deps
-        run: |
-          pnpm install --frozen-lockfile=false
-          cd apps/api
-          python -m pip install --upgrade pip
-          pip install -r requirements.txt -r requirements-vector.txt
-      - name: Run web tests (moderate UI coverage)
-        run: pnpm --filter @goblin/web test:ci
-      - name: Run API tests
-        run: make test-api
-      - name: Run critical path coverage gates
-        run: make test-critical
-      - name: Enforce critical E2E budget
-        run: make test-e2e-budget
-
-  build:
-    name: build
-    runs-on: ubuntu-latest
-    needs: [tests-critical-coverage]
-    steps:
-      - uses: actions/checkout@v4
-      - uses: pnpm/action-setup@v4
-        with:
-          version: 9
-      - uses: actions/setup-node@v4
-        with:
-          node-version: '20'
-          cache: 'pnpm'
-      - name: Install web deps
-        run: pnpm install --frozen-lockfile=false
-      - name: Build web app
-        run: pnpm --filter @goblin/web build

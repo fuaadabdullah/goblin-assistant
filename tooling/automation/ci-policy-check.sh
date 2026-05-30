@@ -4,11 +4,23 @@ set -euo pipefail
 BRANCH_REGEX='^(feature|fix|refactor|infra)/'
 COMMIT_REGEX='^(feat|fix|refactor|infra|chore|docs|test|build|ci|perf|revert)(\([a-z0-9._/-]+\))?: .+'
 
-EVENT_NAME="${GITHUB_EVENT_NAME:-}"
-HEAD_BRANCH="${GITHUB_HEAD_REF:-${GITHUB_REF_NAME:-}}"
+# Support both GitHub Actions and CircleCI environments
+if [[ -n "${GITHUB_EVENT_NAME:-}" ]]; then
+  EVENT_NAME="${GITHUB_EVENT_NAME}"
+  HEAD_BRANCH="${GITHUB_HEAD_REF:-${GITHUB_REF_NAME:-}}"
+elif [[ -n "${CIRCLE_BRANCH:-}" ]]; then
+  HEAD_BRANCH="${CIRCLE_BRANCH}"
+  # CircleCI sets CIRCLE_PULL_REQUEST when building a PR
+  EVENT_NAME="${CIRCLE_PULL_REQUEST:+pull_request}"
+  EVENT_NAME="${EVENT_NAME:-push}"
+else
+  # Local or unknown CI — use git
+  HEAD_BRANCH="$(git rev-parse --abbrev-ref HEAD)"
+  EVENT_NAME="push"
+fi
 
 if [[ -z "$HEAD_BRANCH" ]]; then
-  echo "Could not determine branch name from GitHub environment."
+  echo "Could not determine branch name from CI environment."
   exit 1
 fi
 
@@ -20,7 +32,7 @@ if [[ "$EVENT_NAME" == "pull_request" ]]; then
 fi
 
 if [[ "$EVENT_NAME" == "pull_request" ]]; then
-  BASE_REF="${GITHUB_BASE_REF:-main}"
+  BASE_REF="${GITHUB_BASE_REF:-${CIRCLE_TARGET_BRANCH:-main}}"
   git fetch origin "$BASE_REF" --depth=1
   RANGE="origin/$BASE_REF...HEAD"
 else

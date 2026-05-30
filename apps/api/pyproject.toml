@@ -35,7 +35,6 @@ namespace_packages = true
 explicit_package_bases = true
 mypy_path = "src"
 exclude = [
-  "^src/api/legacy/.*",
   "^src/api/docs/.*",
   "^src/api/tests/.*",
 ]

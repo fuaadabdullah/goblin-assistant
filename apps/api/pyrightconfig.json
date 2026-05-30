@@ -3,7 +3,6 @@
   "include": ["src/api"],
   "exclude": [
     "src/api/tests",
-    "src/api/legacy",
     "src/api/docs"
   ],
   "venvPath": ".",

@@ -1,4 +1,1 @@
-import SearchPageScreen from '@/screens/SearchPage';
-import { withRouteErrorBoundary } from '@/components/RouteBoundary';
-
-export default withRouteErrorBoundary(SearchPageScreen, 'search');
+export { default } from './chat-pages/search';

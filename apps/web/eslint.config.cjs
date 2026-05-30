@@ -16,7 +16,6 @@ module.exports = [
       '**/._*',
       '**/*.stories.*',
       'tests/test_connection.js',
-      'tests/legacy/**',
     ],
   },
   {

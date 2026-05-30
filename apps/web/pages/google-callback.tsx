@@ -1,4 +1,1 @@
-import GoogleCallbackScreen from '@/screens/GoogleCallback';
-import { withRouteErrorBoundary } from '@/components/RouteBoundary';
-
-export default withRouteErrorBoundary(GoogleCallbackScreen, 'googleCallback');
+export { default } from './auth/google-callback';
