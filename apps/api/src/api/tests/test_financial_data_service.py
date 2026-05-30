@@ -6,11 +6,6 @@ Uses the shared yfinance stub from conftest.py to avoid network calls.
 
 from __future__ import annotations
 
-import asyncio
-import math
-import sys
-import types
-from unittest.mock import MagicMock, patch
 
 import pytest
 
@@ -44,12 +39,8 @@ def _no_cache_set(key, value, ttl):
 # Patch cache globally so tests don't depend on Redis
 @pytest.fixture(autouse=True)
 def disable_cache(monkeypatch):
-    monkeypatch.setattr(
-        "api.services.financial_data_service._cache_get", _no_cache_get
-    )
-    monkeypatch.setattr(
-        "api.services.financial_data_service._cache_set", _no_cache_set
-    )
+    monkeypatch.setattr("api.services.financial_data_service._cache_get", _no_cache_get)
+    monkeypatch.setattr("api.services.financial_data_service._cache_set", _no_cache_set)
 
 
 # ---------------------------------------------------------------------------

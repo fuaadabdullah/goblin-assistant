@@ -46,4 +46,8 @@ curl http://127.0.0.1:3000/api/health
 make test-web
 make test-api
 make test-e2e
+make test-integration
+make test-contract
+make test-performance
+make sdk-generate
 ```

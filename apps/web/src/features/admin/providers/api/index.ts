@@ -7,7 +7,10 @@ export const providersAdminApi = {
     return apiClient.testProviderConnection(providerId) as Promise<ProviderTestResponse>;
   },
 
-  testProviderWithPrompt(providerId: number | string, prompt: string): Promise<ProviderTestResponse> {
+  testProviderWithPrompt(
+    providerId: number | string,
+    prompt: string
+  ): Promise<ProviderTestResponse> {
     return apiClient.testProviderWithPrompt(providerId, prompt) as Promise<ProviderTestResponse>;
   },
 
@@ -19,4 +22,3 @@ export const providersAdminApi = {
     return apiClient.reorderProviders(providerIds);
   },
 };
-

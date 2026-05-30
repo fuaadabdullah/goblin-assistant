@@ -28,12 +28,8 @@ class CacheManager:
         self._failed = False
         self._failure_count = 0
         self._next_retry_at = 0.0
-        self._base_backoff_seconds = float(
-            os.getenv("REDIS_RETRY_BASE_SECONDS", "0.5")
-        )
-        self._max_backoff_seconds = float(
-            os.getenv("REDIS_RETRY_MAX_SECONDS", "30")
-        )
+        self._base_backoff_seconds = float(os.getenv("REDIS_RETRY_BASE_SECONDS", "0.5"))
+        self._max_backoff_seconds = float(os.getenv("REDIS_RETRY_MAX_SECONDS", "30"))
 
     def _record_connection_failure(self) -> float:
         self._failed = True
@@ -65,9 +61,7 @@ class CacheManager:
 
         remaining = self._connection_cooldown_remaining()
         if remaining > 0:
-            raise RuntimeError(
-                f"Redis connection is in cooldown; retry in {remaining:.2f}s"
-            )
+            raise RuntimeError(f"Redis connection is in cooldown; retry in {remaining:.2f}s")
 
         if self._redis is None:
             async with self._lock:

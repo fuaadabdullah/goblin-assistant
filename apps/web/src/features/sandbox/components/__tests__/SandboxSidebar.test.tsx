@@ -2,23 +2,62 @@ import React from 'react';
 import { render, screen, fireEvent } from '@testing-library/react';
 import '@testing-library/jest-dom';
 
-jest.mock('next/link', () => function MockLink({ children, href, onClick, ...rest }: { children: React.ReactNode; href: string; onClick?: () => void; [key: string]: unknown }) {
-  return <a href={href} onClick={onClick} {...rest}>{children}</a>;
-});
+jest.mock(
+  'next/link',
+  () =>
+    function MockLink({
+      children,
+      href,
+      onClick,
+      ...rest
+    }: {
+      children: React.ReactNode;
+      href: string;
+      onClick?: () => void;
+      [key: string]: unknown;
+    }) {
+      return (
+        <a href={href} onClick={onClick} {...rest}>
+          {children}
+        </a>
+      );
+    }
+);
 
-jest.mock('lucide-react', () => new Proxy({}, {
-  get: (_, name) => {
-    if (name === '__esModule') return true;
-    return (props: Record<string, unknown>) => <span data-testid={`icon-${String(name)}`} {...props} />;
-  },
-}));
+jest.mock(
+  'lucide-react',
+  () =>
+    new Proxy(
+      {},
+      {
+        get: (_, name) => {
+          if (name === '__esModule') return true;
+          return (props: Record<string, unknown>) => (
+            <span data-testid={`icon-${String(name)}`} {...props} />
+          );
+        },
+      }
+    )
+);
 
 import SandboxSidebar from '../SandboxSidebar';
 import type { SandboxJob } from '../../types';
 
 const mockJobs: SandboxJob[] = [
-  { id: 'job-12345678', status: 'completed', created_at: '2024-01-01T00:00:00Z', language: 'python', code: 'print(1)' } as SandboxJob,
-  { id: 'job-87654321', status: 'failed', created_at: '2024-01-02T00:00:00Z', language: 'python', code: 'x' } as SandboxJob,
+  {
+    id: 'job-12345678',
+    status: 'completed',
+    created_at: '2024-01-01T00:00:00Z',
+    language: 'python',
+    code: 'print(1)',
+  } as SandboxJob,
+  {
+    id: 'job-87654321',
+    status: 'failed',
+    created_at: '2024-01-02T00:00:00Z',
+    language: 'python',
+    code: 'x',
+  } as SandboxJob,
 ];
 
 describe('SandboxSidebar', () => {

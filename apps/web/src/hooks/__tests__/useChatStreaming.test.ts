@@ -33,7 +33,7 @@ describe('useChatStreaming', () => {
         selectedProvider: 'openai',
         selectedModel: 'gpt-4o-mini',
         demoMode: false,
-      }),
+      })
     );
 
     await act(async () => {
@@ -54,7 +54,7 @@ describe('useChatStreaming', () => {
     const { result } = renderHook(() =>
       useChatStreaming({
         onMessageComplete,
-      }),
+      })
     );
 
     await act(async () => {
@@ -65,21 +65,19 @@ describe('useChatStreaming', () => {
       expect.any(String),
       expect.objectContaining({
         content: 'Direct string response',
-      }),
+      })
     );
   });
 
   it('should handle API errors gracefully', async () => {
     const onError = jest.fn();
 
-    mockChatCompletion.mockRejectedValue(
-      new Error('API request failed'),
-    );
+    mockChatCompletion.mockRejectedValue(new Error('API request failed'));
 
     const { result } = renderHook(() =>
       useChatStreaming({
         onError,
-      }),
+      })
     );
 
     await act(async () => {
@@ -95,7 +93,7 @@ describe('useChatStreaming', () => {
       () =>
         new Promise((resolve) => {
           resolveResponse = resolve;
-        }),
+        })
     );
 
     const { result } = renderHook(() => useChatStreaming({}));
@@ -121,7 +119,7 @@ describe('useChatStreaming', () => {
     const { result } = renderHook(() =>
       useChatStreaming({
         selectedModel: 'gpt-4o',
-      }),
+      })
     );
 
     await act(async () => {
@@ -131,7 +129,7 @@ describe('useChatStreaming', () => {
     expect(mockChatCompletion).toHaveBeenCalledWith(
       [{ role: 'user', content: 'Hello world' }],
       'gpt-4o',
-      true,
+      true
     );
   });
 
@@ -143,7 +141,7 @@ describe('useChatStreaming', () => {
     const { result } = renderHook(() =>
       useChatStreaming({
         onMessageStart,
-      }),
+      })
     );
 
     await act(async () => {

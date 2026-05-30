@@ -2,13 +2,20 @@ import React from 'react';
 import { render, screen } from '@testing-library/react';
 import '@testing-library/jest-dom';
 
-jest.mock('lucide-react', () =>
-  new Proxy({}, {
-    get: (_, name) => {
-      if (name === '__esModule') return true;
-      return (props: Record<string, unknown>) => <span data-testid={`icon-${String(name)}`} {...props} />;
-    },
-  })
+jest.mock(
+  'lucide-react',
+  () =>
+    new Proxy(
+      {},
+      {
+        get: (_, name) => {
+          if (name === '__esModule') return true;
+          return (props: Record<string, unknown>) => (
+            <span data-testid={`icon-${String(name)}`} {...props} />
+          );
+        },
+      }
+    )
 );
 
 jest.mock('@/hooks/useKeyboardShortcuts', () => ({
@@ -20,7 +27,12 @@ jest.mock('@/hooks/useKeyboardShortcuts', () => ({
     return parts.join('+');
   },
   SHORTCUTS: {
-    TOGGLE_HIGH_CONTRAST: { key: 'h', ctrlKey: true, shiftKey: true, description: 'Toggle High Contrast' },
+    TOGGLE_HIGH_CONTRAST: {
+      key: 'h',
+      ctrlKey: true,
+      shiftKey: true,
+      description: 'Toggle High Contrast',
+    },
     THEME_DEFAULT: { key: '1', ctrlKey: true, shiftKey: true, description: 'Goblin Default' },
     THEME_NOCTURNE: { key: '2', ctrlKey: true, shiftKey: true, description: 'Nocturne' },
     THEME_EMBER: { key: '3', ctrlKey: true, shiftKey: true, description: 'Ember' },

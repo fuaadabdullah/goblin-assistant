@@ -25,7 +25,9 @@ describe('useErrorTesting', () => {
   beforeEach(() => {
     jest.clearAllMocks();
     // Suppress unhandled promise rejections from the testUnhandledPromiseRejection test
-    unhandledRejectionHandler = () => { /* swallow */ };
+    unhandledRejectionHandler = () => {
+      /* swallow */
+    };
     process.on('unhandledRejection', unhandledRejectionHandler);
   });
 

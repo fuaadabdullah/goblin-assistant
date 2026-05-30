@@ -70,9 +70,7 @@ const notificationMetrics = {
 // Helper to load persisted theme preference
 const _getPersistedTheme = (): 'default' | 'nocturne' | 'ember' => {
   const persisted = getCurrentThemePreset();
-  return persisted === 'nocturne' ||
-    persisted === 'ember' ||
-    persisted === 'default'
+  return persisted === 'nocturne' || persisted === 'ember' || persisted === 'default'
     ? persisted
     : 'default';
 };
@@ -102,11 +100,7 @@ export const useUIStore = create<UIState>((set, get) => ({
     const root = document.documentElement;
     root.setAttribute('data-theme', theme);
     // Also update via CSS class for broader compatibility
-    root.classList.remove(
-      'theme-default',
-      'theme-nocturne',
-      'theme-ember',
-    );
+    root.classList.remove('theme-default', 'theme-nocturne', 'theme-ember');
     root.classList.add(`theme-${theme}`);
   },
 
@@ -173,22 +167,16 @@ export const useUIStore = create<UIState>((set, get) => ({
 
     // Log long-running notifications
     if (newNotification.type === 'error') {
-      devError(
-        'Error notification added',
-        {
-          id,
-          title: newNotification.title,
-          message: newNotification.message,
-          duration: newNotification.duration,
-        },
-      );
+      devError('Error notification added', {
+        id,
+        title: newNotification.title,
+        message: newNotification.message,
+        duration: newNotification.duration,
+      });
     }
 
     // Auto-remove after duration
-    if (
-      newNotification.duration &&
-      newNotification.duration > 0
-    ) {
+    if (newNotification.duration && newNotification.duration > 0) {
       const timeout = setTimeout(() => {
         get().removeNotification(id);
         notificationTimeouts.delete(id);
@@ -207,27 +195,19 @@ export const useUIStore = create<UIState>((set, get) => ({
     }
 
     notificationMetrics.totalRemoved++;
-    notificationMetrics.activeCount = Math.max(
-      0,
-      notificationMetrics.activeCount - 1,
-    );
+    notificationMetrics.activeCount = Math.max(0, notificationMetrics.activeCount - 1);
 
     set((state) => ({
-      notifications: state.notifications.filter(
-        (n) => n.id !== id,
-      ),
+      notifications: state.notifications.filter((n) => n.id !== id),
     }));
 
     // Warn if too many notifications are queued
     const state = get();
     if (state.notifications.length > 10) {
-      devWarn(
-        'High notification queue',
-        {
-          count: state.notifications.length,
-          metrics: notificationMetrics,
-        },
-      );
+      devWarn('High notification queue', {
+        count: state.notifications.length,
+        metrics: notificationMetrics,
+      });
     }
   },
 }));

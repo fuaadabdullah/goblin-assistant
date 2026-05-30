@@ -54,7 +54,7 @@ export class ErrorBoundary extends Component<Props, State> {
 
   reset = () => {
     this.setState({ hasError: false, error: null, errorId: undefined });
-  }
+  };
 
   render() {
     if (this.state.hasError) {
@@ -78,13 +78,7 @@ export class ErrorBoundary extends Component<Props, State> {
 }
 
 // Safe fallback component
-export function ErrorBoundaryFallback({
-  error,
-  errorId,
-}: {
-  error: Error;
-  errorId?: string;
-}) {
+export function ErrorBoundaryFallback({ error, errorId }: { error: Error; errorId?: string }) {
   const isDev = env.isDevelopment;
 
   return (
@@ -106,9 +100,7 @@ export function ErrorBoundaryFallback({
           </svg>
         </div>
 
-        <h1 className="text-xl font-semibold text-center text-text mb-2">
-          Something went wrong
-        </h1>
+        <h1 className="text-xl font-semibold text-center text-text mb-2">Something went wrong</h1>
 
         <p className="text-center text-muted mb-6">
           Goblin Assistant hit a render error before this page could finish loading.
@@ -116,7 +108,9 @@ export function ErrorBoundaryFallback({
 
         {(isDev || errorId) && (
           <details className="mb-4 text-sm">
-            <summary className="cursor-pointer text-text font-medium mb-2">Technical details</summary>
+            <summary className="cursor-pointer text-text font-medium mb-2">
+              Technical details
+            </summary>
             <div className="bg-bg p-3 rounded-lg border border-border overflow-auto text-xs text-text space-y-3">
               {errorId && (
                 <p>

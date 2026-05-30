@@ -56,17 +56,14 @@ describe('raptor service', () => {
     it('should handle API errors', async () => {
       getSpy.mockRejectedValue(new Error('Status check failed'));
 
-      await expect(raptorService.raptorStatus()).rejects.toThrow(
-        'Status check failed',
-      );
+      await expect(raptorService.raptorStatus()).rejects.toThrow('Status check failed');
     });
   });
 
   describe('raptorLogs', () => {
     it('should fetch Raptor logs', async () => {
       const mockLogs: raptorService.RaptorLogsResponse = {
-        log_tail:
-          '2026-02-18 10:00:00 INFO Raptor started\n2026-02-18 10:00:01 INFO Ready',
+        log_tail: '2026-02-18 10:00:00 INFO Raptor started\n2026-02-18 10:00:01 INFO Ready',
       };
 
       getSpy.mockResolvedValue({ data: mockLogs });

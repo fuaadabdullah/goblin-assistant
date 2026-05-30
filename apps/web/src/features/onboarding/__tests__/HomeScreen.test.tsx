@@ -1,15 +1,27 @@
 import React from 'react';
 import { render, screen } from '@testing-library/react';
 
-jest.mock('next/link', () => function MockLink({ children, href }: { children: React.ReactNode; href: string }) {
-  return <a href={href}>{children}</a>;
-});
-jest.mock('../../../components/Navigation', () => function MockNav() {
-  return <nav data-testid="nav" />;
-});
-jest.mock('../../../components/Seo', () => function MockSeo() {
-  return null;
-});
+jest.mock(
+  'next/link',
+  () =>
+    function MockLink({ children, href }: { children: React.ReactNode; href: string }) {
+      return <a href={href}>{children}</a>;
+    }
+);
+jest.mock(
+  '../../../components/Navigation',
+  () =>
+    function MockNav() {
+      return <nav data-testid="nav" />;
+    }
+);
+jest.mock(
+  '../../../components/Seo',
+  () =>
+    function MockSeo() {
+      return null;
+    }
+);
 jest.mock('../../../hooks/api/useAuthSession', () => ({
   useAuthSession: () => ({ isAuthenticated: true }),
 }));
@@ -46,7 +58,9 @@ describe('HomeScreen', () => {
 
   it('renders tagline', () => {
     render(<HomeScreen />);
-    expect(screen.getByText('Live status and quick actions — this system is running.')).toBeInTheDocument();
+    expect(
+      screen.getByText('Live status and quick actions — this system is running.')
+    ).toBeInTheDocument();
   });
 
   it('renders navigation', () => {
@@ -96,9 +110,15 @@ describe('HomeScreen', () => {
     render(<HomeScreen />);
     expect(screen.getByText('Analyze a stock')).toBeInTheDocument();
     expect(
-      screen.getAllByText('Pull the latest data for AAPL — price, P/E, recent earnings summary, and analyst consensus.')
+      screen.getAllByText(
+        'Pull the latest data for AAPL — price, P/E, recent earnings summary, and analyst consensus.'
+      )
     ).toHaveLength(2);
-    expect(screen.getByText('Goblin would fetch the latest market data, summarize the earnings trend, and highlight valuation risks before you even sign in.')).toBeInTheDocument();
+    expect(
+      screen.getByText(
+        'Goblin would fetch the latest market data, summarize the earnings trend, and highlight valuation risks before you even sign in.'
+      )
+    ).toBeInTheDocument();
     expect(screen.getByText('Open this demo')).toBeInTheDocument();
   });
 

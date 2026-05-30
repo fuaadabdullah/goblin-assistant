@@ -16,8 +16,10 @@ from fastapi import APIRouter, Depends, HTTPException
 from fastapi.responses import StreamingResponse
 
 from ..assistant_tools.executor import extract_tool_calls, run_tool_loop
-from ..assistant_tools.registry import export_openai_tools
+from ..assistant_tools.registry import export_tools_for_provider
 from ..auth.router import User as AuthenticatedUser, get_current_user
+from ..core.contracts import ChatMessageCreatedPayload, SuccessEnvelope
+from ..observability.events import event_emitter
 from ..providers.dispatcher import dispatcher
 from api.config.mode_addendums import get_addendum as _get_mode_addendum
 from api.config.system_prompt import EDUCATION_SYSTEM_ADDENDUM, system_prompt_manager
@@ -44,7 +46,8 @@ router = APIRouter()
 
 
 @router.post(
-    "/conversations/{conversation_id}/messages", response_model=SendMessageResponse
+    "/conversations/{conversation_id}/messages",
+    response_model=SuccessEnvelope[SendMessageResponse],
 )
 async def send_message(
     conversation_id: str,
@@ -84,15 +87,17 @@ async def send_message(
             decision = write_time_result["decision"]
             execution = write_time_result["execution"]
 
-            message_metadata.update({
-                "classification": classification,
-                "decision": decision,
-                "write_time_execution": execution,
-                "memory_type": classification["type"],
-                "confidence": classification["confidence"],
-                "actions_taken": execution["actions_executed"],
-                "processed_at": write_time_result["processed_at"],
-            })
+            message_metadata.update(
+                {
+                    "classification": classification,
+                    "decision": decision,
+                    "write_time_execution": execution,
+                    "memory_type": classification["type"],
+                    "confidence": classification["confidence"],
+                    "actions_taken": execution["actions_executed"],
+                    "processed_at": write_time_result["processed_at"],
+                }
+            )
         except Exception as wti_err:
             logger.error(
                 "write_time_intelligence_failed",
@@ -136,6 +141,18 @@ async def send_message(
                 status_code=404,
                 detail="Conversation not found when saving user message",
             )
+        await event_emitter.emit(
+            "chat.message.created",
+            source="api.chat_router.messages",
+            actor_user_id=current_user.id,
+            correlation_id=message_metadata.get("correlation_id"),
+            payload=ChatMessageCreatedPayload(
+                conversation_id=conversation_id,
+                message_id=message_id,
+                role="user",
+                has_attachments=bool(message_metadata.get("attachments")),
+            ),
+        )
         await schedule_conversation_archive(conversation_id)
 
         # Reload to include the just-saved user message in the provider payload.
@@ -185,7 +202,9 @@ async def send_message(
                     "degraded_mode": assembly_result.get("degraded_mode", False),
                     "degraded_reason": assembly_result.get("degraded_reason"),
                     "truncation_warnings": assembly_result.get("truncation_warnings", []),
-                    "summary_fallback_applied": assembly_result.get("summary_fallback_applied", False),
+                    "summary_fallback_applied": assembly_result.get(
+                        "summary_fallback_applied", False
+                    ),
                 }
             except Exception as ctx_err:
                 logger.warning(
@@ -206,7 +225,7 @@ async def send_message(
             "model": request.model,
         }
 
-        registered_tools = export_openai_tools()
+        registered_tools = export_tools_for_provider(request.provider)
         if registered_tools:
             payload["tools"] = registered_tools
 
@@ -256,15 +275,11 @@ async def send_message(
         if isinstance(provider_response, dict) and provider_response.get("ok"):
             result_data = provider_response.get("result", {})
             response_content = result_data.get("text", "")
-            used_provider = provider_response.get(
-                "provider", request.provider or "unknown"
-            )
+            used_provider = provider_response.get("provider", request.provider or "unknown")
             used_model = provider_response.get("model", request.model or "unknown")
         elif isinstance(provider_response, dict) and "choices" in provider_response:
             response_content = provider_response["choices"][0]["message"]["content"]
-            used_provider = provider_response.get(
-                "provider", request.provider or "unknown"
-            )
+            used_provider = provider_response.get("provider", request.provider or "unknown")
             used_model = provider_response.get("model", request.model or "unknown")
         else:
             if isinstance(provider_response, dict) and not provider_response.get("ok"):
@@ -305,6 +320,20 @@ async def send_message(
                 message_id=response_message_id,
             )
         else:
+            await event_emitter.emit(
+                "chat.message.created",
+                source="api.chat_router.messages",
+                actor_user_id=current_user.id,
+                correlation_id=correlation_id,
+                payload=ChatMessageCreatedPayload(
+                    conversation_id=conversation_id,
+                    message_id=response_message_id,
+                    role="assistant",
+                    provider=used_provider,
+                    model=used_model,
+                    has_attachments=False,
+                ),
+            )
             await schedule_conversation_archive(conversation_id)
 
         visualizations = None
@@ -342,7 +371,7 @@ def _resolve_provider_id(requested: Optional[str]) -> Optional[str]:
     return candidates[0] if candidates else None
 
 
-@router.post("/estimate-tokens", response_model=EstimateTokensResponse)
+@router.post("/estimate-tokens", response_model=SuccessEnvelope[EstimateTokensResponse])
 async def estimate_tokens(
     request: SendMessageRequest,
     conversation_id: Optional[str] = None,
@@ -356,12 +385,8 @@ async def estimate_tokens(
     """
     history_messages: list[dict] = []
     if conversation_id:
-        conversation = await _cr._require_owned_conversation(
-            conversation_id, current_user
-        )
-        history_messages = [
-            {"role": m.role, "content": m.content} for m in conversation.messages
-        ]
+        conversation = await _cr._require_owned_conversation(conversation_id, current_user)
+        history_messages = [{"role": m.role, "content": m.content} for m in conversation.messages]
 
     layers: list[LayerEstimate] = []
     input_tokens = 0
@@ -386,7 +411,7 @@ async def estimate_tokens(
                 )
                 layers.append(LayerEstimate(name=str(name), tokens=int(tokens)))
             if not input_tokens:
-                input_tokens = sum(l.tokens for l in layers)
+                input_tokens = sum(layer.tokens for layer in layers)
             degraded_mode = bool(assembly.get("degraded_mode", False))
             degraded_reason = assembly.get("degraded_reason")
         except Exception as ctx_err:
@@ -414,9 +439,7 @@ async def estimate_tokens(
         )
 
     provider = dispatcher.get_provider(provider_id)
-    estimated_cost_usd = provider.estimate_cost(
-        input_tokens, estimated_output_tokens
-    )
+    estimated_cost_usd = provider.estimate_cost(input_tokens, estimated_output_tokens)
 
     return EstimateTokensResponse(
         input_tokens=input_tokens,

@@ -46,7 +46,7 @@ export const ToastProvider: React.FC<ToastProviderProps> = ({ children }) => {
       duration,
     };
 
-    setToasts(prev => [...prev, newToast]);
+    setToasts((prev) => [...prev, newToast]);
 
     // Auto remove after duration
     if (duration > 0) {
@@ -57,7 +57,7 @@ export const ToastProvider: React.FC<ToastProviderProps> = ({ children }) => {
   }, []);
 
   const removeToast = useCallback((id: string) => {
-    setToasts(prev => prev.filter(toast => toast.id !== id));
+    setToasts((prev) => prev.filter((toast) => toast.id !== id));
   }, []);
 
   const showSuccess = useCallback(

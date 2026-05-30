@@ -74,7 +74,9 @@ describe('streamingUtils', () => {
   });
 
   test('format helpers produce stable output', () => {
-    const completion = formatStepCompletion('s2', { result: { ok: true } } as unknown as TaskResponse);
+    const completion = formatStepCompletion('s2', {
+      result: { ok: true },
+    } as unknown as TaskResponse);
     expect(completion).toContain('--- Step s2 COMPLETE ---');
 
     const error = formatStepError('s3', new Error('boom'));

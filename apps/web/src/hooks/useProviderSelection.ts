@@ -1,8 +1,5 @@
 import { useState, useEffect } from 'react';
-import {
-  normalizeProviderId,
-  PROVIDER_ID_ALIASES,
-} from '@/lib/providers/normalizeProvider';
+import { normalizeProviderId, PROVIDER_ID_ALIASES } from '@/lib/providers/normalizeProvider';
 
 interface UseProviderSelectionOptions {
   providers: string[];
@@ -19,7 +16,7 @@ export function useProviderSelection({ providers, models }: UseProviderSelection
 
     const storedProvider = normalizeProviderId(
       localStorage.getItem('selectedProvider') || '',
-      PROVIDER_ID_ALIASES,
+      PROVIDER_ID_ALIASES
     );
     const storedModel = localStorage.getItem('selectedModel');
 
@@ -71,7 +68,7 @@ export function useProviderSelection({ providers, models }: UseProviderSelection
 
   const updateProviders = (newProviders: string[]) => {
     return Array.from(
-      new Set(newProviders.map(p => normalizeProviderId(p, PROVIDER_ID_ALIASES)).filter(Boolean)),
+      new Set(newProviders.map((p) => normalizeProviderId(p, PROVIDER_ID_ALIASES)).filter(Boolean))
     );
   };
 

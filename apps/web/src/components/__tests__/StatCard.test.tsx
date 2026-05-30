@@ -3,8 +3,18 @@ import { render, screen } from '@testing-library/react';
 import '@testing-library/jest-dom';
 
 jest.mock('../Card', () => {
-  return function MockCard({ children, ...props }: { children: React.ReactNode; [k: string]: unknown }) {
-    return <div data-testid="card" {...props}>{children}</div>;
+  return function MockCard({
+    children,
+    ...props
+  }: {
+    children: React.ReactNode;
+    [k: string]: unknown;
+  }) {
+    return (
+      <div data-testid="card" {...props}>
+        {children}
+      </div>
+    );
   };
 });
 

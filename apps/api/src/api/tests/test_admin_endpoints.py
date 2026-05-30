@@ -4,8 +4,6 @@ Test script for admin endpoints
 """
 
 import requests
-import json
-import time
 
 BASE_URL = "http://localhost:8003"
 
@@ -24,16 +22,16 @@ def test_endpoint(endpoint, description):
                 print(f"   📊 Response keys: {list(data.keys())}")
                 return True
             except Exception:
-                print(f"   ⚠️  Invalid JSON response")
+                print("   ⚠️  Invalid JSON response")
                 return False
         else:
             print(f"   ❌ Failed (Status: {response.status_code})")
             return False
     except requests.exceptions.ConnectionError:
-        print(f"   ❌ Connection failed - server may not be running")
+        print("   ❌ Connection failed - server may not be running")
         return False
     except requests.exceptions.Timeout:
-        print(f"   ⏰ Timeout - server may be slow")
+        print("   ⏰ Timeout - server may be slow")
         return False
     except Exception as e:
         print(f"   ❌ Error: {e}")

@@ -8,10 +8,7 @@ import { ContrastModeProvider } from '../hooks/useContrastMode';
 import AuthBootstrapper from '../auth/AuthBootstrapper';
 import { ErrorBoundary } from '../components/ErrorBoundary';
 import { ToastContainer } from '../components/ToastContainer';
-import {
-  RouteBoundaryFallback,
-  formatBoundaryTechnicalDetail,
-} from '../components/RouteBoundary';
+import { RouteBoundaryFallback, formatBoundaryTechnicalDetail } from '../components/RouteBoundary';
 import { createQueryClient } from '../lib/queryClient';
 import { initGA } from '../utils/analytics';
 import { setupGlobalErrorTracking, monitorNetworkStatus } from '../utils/error-tracking';

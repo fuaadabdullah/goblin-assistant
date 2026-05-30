@@ -3,11 +3,12 @@ import { resolveBackendOrigin } from '@/config/backendOrigin';
 
 const BACKEND_URL = resolveBackendOrigin();
 
-const INTERNAL_PROXY_API_KEY =
-  (process.env.INTERNAL_PROXY_API_KEY ||
-    process.env.BACKEND_API_KEY ||
-    process.env.INTERNAL_API_SECRET ||
-    '').trim();
+const INTERNAL_PROXY_API_KEY = (
+  process.env.INTERNAL_PROXY_API_KEY ||
+  process.env.BACKEND_API_KEY ||
+  process.env.INTERNAL_API_SECRET ||
+  ''
+).trim();
 
 interface ForwardModelsResult {
   status: number;
@@ -28,7 +29,7 @@ async function safeJson<T = unknown>(res: Response): Promise<T | null> {
 async function fetchWithTimeout(
   url: string,
   options: RequestInit,
-  timeoutMs: number,
+  timeoutMs: number
 ): Promise<Response> {
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), timeoutMs);
@@ -68,7 +69,7 @@ async function forwardToBackendModels(): Promise<ForwardModelsResult> {
         method: 'GET',
         headers: buildHeaders(),
       },
-      10000,
+      10000
     );
 
     const body = (await safeJson(response)) ?? {
@@ -109,9 +110,7 @@ async function forwardToBackendModels(): Promise<ForwardModelsResult> {
           : 'unknown';
 
       const healthReason =
-        typeof detail.error === 'string' && detail.error.trim()
-          ? detail.error.trim()
-          : null;
+        typeof detail.error === 'string' && detail.error.trim() ? detail.error.trim() : null;
 
       const isSelectable = health !== 'unhealthy';
 
@@ -147,9 +146,7 @@ async function forwardToBackendModels(): Promise<ForwardModelsResult> {
 
   const mapRoutingProvidersFallback = (raw: unknown): Record<string, unknown> => {
     const providerNames = Array.isArray(raw)
-      ? raw.filter(
-          (item): item is string => typeof item === 'string' && item.trim().length > 0,
-        )
+      ? raw.filter((item): item is string => typeof item === 'string' && item.trim().length > 0)
       : [];
 
     return {
@@ -213,10 +210,7 @@ async function forwardToBackendModels(): Promise<ForwardModelsResult> {
   }
 }
 
-export default async function handler(
-  req: NextApiRequest,
-  res: NextApiResponse,
-) {
+export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   if (req.method !== 'GET') {
     return res.status(405).json({ error: 'Method not allowed' });
   }

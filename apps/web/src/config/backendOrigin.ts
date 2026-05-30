@@ -10,14 +10,12 @@ const firstDefinedOrigin = (...values: Array<string | undefined>): string => {
   return '';
 };
 
-export const resolvePublicBackendOrigin = (
-  env: NodeJS.ProcessEnv = process.env,
-): string =>
+export const resolvePublicBackendOrigin = (env: NodeJS.ProcessEnv = process.env): string =>
   firstDefinedOrigin(
     env.NEXT_PUBLIC_BACKEND_URL,
     env.NEXT_PUBLIC_FASTAPI_URL,
     env.NEXT_PUBLIC_API_URL,
-    env.NEXT_PUBLIC_API_BASE_URL,
+    env.NEXT_PUBLIC_API_BASE_URL
   ) || DEFAULT_BACKEND_ORIGIN;
 
 export const resolveBackendOrigin = (env: NodeJS.ProcessEnv = process.env): string =>
@@ -27,5 +25,5 @@ export const resolveBackendOrigin = (env: NodeJS.ProcessEnv = process.env): stri
     env.NEXT_PUBLIC_BACKEND_URL,
     env.NEXT_PUBLIC_FASTAPI_URL,
     env.NEXT_PUBLIC_API_URL,
-    env.NEXT_PUBLIC_API_BASE_URL,
+    env.NEXT_PUBLIC_API_BASE_URL
   ) || DEFAULT_BACKEND_ORIGIN;

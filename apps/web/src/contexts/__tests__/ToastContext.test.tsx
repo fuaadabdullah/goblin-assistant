@@ -5,11 +5,12 @@ import { ToastProvider, useToast } from '../ToastContext';
 
 // Test consumer component
 function TestConsumer() {
-  const { toasts, showSuccess, showError, showWarning, showInfo, removeToast, addToast } = useToast();
+  const { toasts, showSuccess, showError, showWarning, showInfo, removeToast, addToast } =
+    useToast();
   return (
     <div>
       <span data-testid="count">{toasts.length}</span>
-      {toasts.map(t => (
+      {toasts.map((t) => (
         <div key={t.id} data-testid={`toast-${t.id}`}>
           <span data-testid={`type-${t.id}`}>{t.type}</span>
           <span data-testid={`title-${t.id}`}>{t.title}</span>
@@ -17,11 +18,24 @@ function TestConsumer() {
           <button onClick={() => removeToast(t.id)}>remove</button>
         </div>
       ))}
-      <button data-testid="add-success" onClick={() => showSuccess('Done', 'It worked')}>success</button>
-      <button data-testid="add-error" onClick={() => showError('Oops')}>error</button>
-      <button data-testid="add-warning" onClick={() => showWarning('Careful', 'Watch out')}>warning</button>
-      <button data-testid="add-info" onClick={() => showInfo('FYI')}>info</button>
-      <button data-testid="add-no-auto" onClick={() => addToast({ type: 'info', title: 'Sticky', duration: 0 })}>sticky</button>
+      <button data-testid="add-success" onClick={() => showSuccess('Done', 'It worked')}>
+        success
+      </button>
+      <button data-testid="add-error" onClick={() => showError('Oops')}>
+        error
+      </button>
+      <button data-testid="add-warning" onClick={() => showWarning('Careful', 'Watch out')}>
+        warning
+      </button>
+      <button data-testid="add-info" onClick={() => showInfo('FYI')}>
+        info
+      </button>
+      <button
+        data-testid="add-no-auto"
+        onClick={() => addToast({ type: 'info', title: 'Sticky', duration: 0 })}
+      >
+        sticky
+      </button>
     </div>
   );
 }
@@ -42,13 +56,21 @@ describe('ToastContext', () => {
   });
 
   it('starts with no toasts', () => {
-    render(<ToastProvider><TestConsumer /></ToastProvider>);
+    render(
+      <ToastProvider>
+        <TestConsumer />
+      </ToastProvider>
+    );
     expect(screen.getByTestId('count').textContent).toBe('0');
   });
 
   it('showSuccess adds a success toast', async () => {
     const user = userEvent.setup({ advanceTimers: jest.advanceTimersByTime });
-    render(<ToastProvider><TestConsumer /></ToastProvider>);
+    render(
+      <ToastProvider>
+        <TestConsumer />
+      </ToastProvider>
+    );
     await user.click(screen.getByTestId('add-success'));
     expect(screen.getByTestId('count').textContent).toBe('1');
     const toasts = screen.getAllByText('Done');
@@ -57,28 +79,44 @@ describe('ToastContext', () => {
 
   it('showError adds an error toast', async () => {
     const user = userEvent.setup({ advanceTimers: jest.advanceTimersByTime });
-    render(<ToastProvider><TestConsumer /></ToastProvider>);
+    render(
+      <ToastProvider>
+        <TestConsumer />
+      </ToastProvider>
+    );
     await user.click(screen.getByTestId('add-error'));
     expect(screen.getByTestId('count').textContent).toBe('1');
   });
 
   it('showWarning adds a warning toast', async () => {
     const user = userEvent.setup({ advanceTimers: jest.advanceTimersByTime });
-    render(<ToastProvider><TestConsumer /></ToastProvider>);
+    render(
+      <ToastProvider>
+        <TestConsumer />
+      </ToastProvider>
+    );
     await user.click(screen.getByTestId('add-warning'));
     expect(screen.getByTestId('count').textContent).toBe('1');
   });
 
   it('showInfo adds an info toast', async () => {
     const user = userEvent.setup({ advanceTimers: jest.advanceTimersByTime });
-    render(<ToastProvider><TestConsumer /></ToastProvider>);
+    render(
+      <ToastProvider>
+        <TestConsumer />
+      </ToastProvider>
+    );
     await user.click(screen.getByTestId('add-info'));
     expect(screen.getByTestId('count').textContent).toBe('1');
   });
 
   it('removeToast removes a toast', async () => {
     const user = userEvent.setup({ advanceTimers: jest.advanceTimersByTime });
-    render(<ToastProvider><TestConsumer /></ToastProvider>);
+    render(
+      <ToastProvider>
+        <TestConsumer />
+      </ToastProvider>
+    );
     await user.click(screen.getByTestId('add-success'));
     expect(screen.getByTestId('count').textContent).toBe('1');
     await user.click(screen.getByText('remove'));
@@ -87,25 +125,41 @@ describe('ToastContext', () => {
 
   it('auto-removes toast after duration', async () => {
     const user = userEvent.setup({ advanceTimers: jest.advanceTimersByTime });
-    render(<ToastProvider><TestConsumer /></ToastProvider>);
+    render(
+      <ToastProvider>
+        <TestConsumer />
+      </ToastProvider>
+    );
     await user.click(screen.getByTestId('add-success'));
     expect(screen.getByTestId('count').textContent).toBe('1');
-    act(() => { jest.advanceTimersByTime(6000); });
+    act(() => {
+      jest.advanceTimersByTime(6000);
+    });
     expect(screen.getByTestId('count').textContent).toBe('0');
   });
 
   it('does not auto-remove toast with duration 0', async () => {
     const user = userEvent.setup({ advanceTimers: jest.advanceTimersByTime });
-    render(<ToastProvider><TestConsumer /></ToastProvider>);
+    render(
+      <ToastProvider>
+        <TestConsumer />
+      </ToastProvider>
+    );
     await user.click(screen.getByTestId('add-no-auto'));
     expect(screen.getByTestId('count').textContent).toBe('1');
-    act(() => { jest.advanceTimersByTime(30000); });
+    act(() => {
+      jest.advanceTimersByTime(30000);
+    });
     expect(screen.getByTestId('count').textContent).toBe('1');
   });
 
   it('supports multiple toasts', async () => {
     const user = userEvent.setup({ advanceTimers: jest.advanceTimersByTime });
-    render(<ToastProvider><TestConsumer /></ToastProvider>);
+    render(
+      <ToastProvider>
+        <TestConsumer />
+      </ToastProvider>
+    );
     await user.click(screen.getByTestId('add-success'));
     await user.click(screen.getByTestId('add-error'));
     await user.click(screen.getByTestId('add-info'));
@@ -114,7 +168,11 @@ describe('ToastContext', () => {
 
   it('toast includes message when provided', async () => {
     const user = userEvent.setup({ advanceTimers: jest.advanceTimersByTime });
-    render(<ToastProvider><TestConsumer /></ToastProvider>);
+    render(
+      <ToastProvider>
+        <TestConsumer />
+      </ToastProvider>
+    );
     await user.click(screen.getByTestId('add-warning'));
     expect(screen.getByText('Watch out')).toBeInTheDocument();
   });

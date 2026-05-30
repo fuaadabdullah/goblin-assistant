@@ -29,9 +29,7 @@ class SecretNotFoundError(SecretAdapterError):
     """Raised when a requested secret cannot be found."""
 
     def __init__(self, path: str):
-        super().__init__(
-            f"Secret not found at path: {path}", "NOT_FOUND", {"path": path}
-        )
+        super().__init__(f"Secret not found at path: {path}", "NOT_FOUND", {"path": path})
 
 
 class SecretUnauthorizedError(SecretAdapterError):
@@ -98,12 +96,12 @@ class Secret:
             "path": self.path,
             "data": self.data,
             "metadata": {
-                "created_at": self.metadata.created_at.isoformat()
-                if self.metadata.created_at
-                else None,
-                "updated_at": self.metadata.updated_at.isoformat()
-                if self.metadata.updated_at
-                else None,
+                "created_at": (
+                    self.metadata.created_at.isoformat() if self.metadata.created_at else None
+                ),
+                "updated_at": (
+                    self.metadata.updated_at.isoformat() if self.metadata.updated_at else None
+                ),
                 "version": self.metadata.version,
                 "custom_metadata": self.metadata.custom_metadata,
                 "backend_specific": self.metadata.backend_specific,
@@ -216,9 +214,7 @@ class SecretAdapter(ABC):
             NotImplementedError: If rotation is not supported
             Other SecretAdapterError subclasses: For rotation failures
         """
-        raise NotImplementedError(
-            f"Secret rotation not supported by {self.__class__.__name__}"
-        )
+        raise NotImplementedError(f"Secret rotation not supported by {self.__class__.__name__}")
 
     @abstractmethod
     async def health(self) -> Dict[str, Any]:

@@ -37,7 +37,7 @@ export const fetchSandboxJobs = async (): Promise<SandboxJob[]> => {
   try {
     const jobsData = await apiClient.getSandboxJobs();
     if (Array.isArray(jobsData)) {
-      return jobsData.map(job => normalizeJob(job as SandboxJobsResponse['jobs'][number]));
+      return jobsData.map((job) => normalizeJob(job as SandboxJobsResponse['jobs'][number]));
     }
     const response = jobsData as SandboxJobsResponse;
     return (response.jobs || []).map(normalizeJob);
@@ -71,7 +71,7 @@ export const runSandboxCode = async (payload: {
   language: string;
 }): Promise<string> => {
   try {
-    const response = await apiClient.runSandboxCode(payload) as SandboxRunResponse;
+    const response = (await apiClient.runSandboxCode(payload)) as SandboxRunResponse;
     return response.output;
   } catch (error) {
     throw new UiError(

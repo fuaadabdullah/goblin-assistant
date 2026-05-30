@@ -11,21 +11,44 @@ jest.mock('@/services/raptor', () => ({
 }));
 
 jest.mock('@/components/ui/card', () => ({
-  Card: ({ children, className }: { children: React.ReactNode; className?: string }) => <div className={className}>{children}</div>,
+  Card: ({ children, className }: { children: React.ReactNode; className?: string }) => (
+    <div className={className}>{children}</div>
+  ),
   CardContent: ({ children }: { children: React.ReactNode }) => <div>{children}</div>,
   CardHeader: ({ children }: { children: React.ReactNode }) => <div>{children}</div>,
   CardTitle: ({ children }: { children: React.ReactNode }) => <h3>{children}</h3>,
 }));
 
-jest.mock('@/components/ui/Button', () => function MockButton({ children, onClick, disabled, ...props }: React.ButtonHTMLAttributes<HTMLButtonElement>) {
-  return <button onClick={onClick} disabled={disabled} {...props}>{children}</button>;
-});
+jest.mock(
+  '@/components/ui/Button',
+  () =>
+    function MockButton({
+      children,
+      onClick,
+      disabled,
+      ...props
+    }: React.ButtonHTMLAttributes<HTMLButtonElement>) {
+      return (
+        <button onClick={onClick} disabled={disabled} {...props}>
+          {children}
+        </button>
+      );
+    }
+);
 
-jest.mock('@/components/ui/Badge', () => function MockBadge({ children }: { children: React.ReactNode }) {
-  return <span>{children}</span>;
-});
+jest.mock(
+  '@/components/ui/Badge',
+  () =>
+    function MockBadge({ children }: { children: React.ReactNode }) {
+      return <span>{children}</span>;
+    }
+);
 
-jest.mock('@/utils/dev-log', () => ({ devError: jest.fn(), devWarn: jest.fn(), devLog: jest.fn() }));
+jest.mock('@/utils/dev-log', () => ({
+  devError: jest.fn(),
+  devWarn: jest.fn(),
+  devLog: jest.fn(),
+}));
 
 import RaptorMiniPanel from '../RaptorMiniPanel';
 import { raptorStart, raptorStop, raptorStatus, raptorLogs, raptorDemo } from '@/services/raptor';
@@ -58,7 +81,8 @@ describe('RaptorMiniPanel', () => {
   });
 
   it('starts raptor', async () => {
-    (raptorStatus as jest.Mock).mockResolvedValueOnce({ running: false })
+    (raptorStatus as jest.Mock)
+      .mockResolvedValueOnce({ running: false })
       .mockResolvedValueOnce({ running: true });
     render(<RaptorMiniPanel />);
     await waitFor(() => expect(screen.getByText('Start')).toBeInTheDocument());
@@ -125,7 +149,9 @@ describe('RaptorMiniPanel', () => {
     await waitFor(() => expect(screen.getByText(/Test log output/)).toBeInTheDocument());
     fireEvent.click(screen.getByLabelText('Copy logs'));
     await waitFor(() => {
-      expect(navigator.clipboard.writeText).toHaveBeenCalledWith(expect.stringContaining('Test log output'));
+      expect(navigator.clipboard.writeText).toHaveBeenCalledWith(
+        expect.stringContaining('Test log output')
+      );
     });
   });
 });

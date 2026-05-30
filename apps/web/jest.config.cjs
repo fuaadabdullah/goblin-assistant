@@ -1,4 +1,4 @@
-let createJestConfig = config => config;
+let createJestConfig = (config) => config;
 let hasNextJest = false;
 
 try {
@@ -39,11 +39,7 @@ const customJestConfig = {
       lines: 70,
     },
   },
-  testPathIgnorePatterns: [
-    '/node_modules/',
-    '[\\/]\\._.*$',
-    '<rootDir>/e2e/',
-  ],
+  testPathIgnorePatterns: ['/node_modules/', '[\\/]\\._.*$', '<rootDir>/e2e/'],
   coveragePathIgnorePatterns: [
     '/node_modules/',
     '<rootDir>/.next/',
@@ -57,6 +53,4 @@ const customJestConfig = {
   },
 };
 
-module.exports = hasNextJest
-  ? createJestConfig(customJestConfig)
-  : customJestConfig;
+module.exports = hasNextJest ? createJestConfig(customJestConfig) : customJestConfig;

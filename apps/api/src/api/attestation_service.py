@@ -12,19 +12,12 @@ from datetime import datetime
 from typing import Any, Dict
 
 from .attestation import providers as _providers
-from .attestation.api import create_admission_webhook
 from .attestation.models import (
-    CachedAttestation,
-    NODE_ID_PATTERN,
-    VERIFIED_FALSE,
     VERIFIED_TRUE,
 )
-from .attestation.providers import AWSNitroProvider, AttestationProvider, TPMAttestationProvider
-from .attestation.service import AttestationService
-from .attestation.singleton import get_attestation_service, reset_attestation_service
+from .attestation.singleton import get_attestation_service
 
 # Backwards-compatible test patching surface.
-import redis
 
 _providers = importlib.reload(_providers)
 compute_v1 = _providers.compute_v1

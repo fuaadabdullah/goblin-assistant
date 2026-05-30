@@ -3,14 +3,18 @@ import { render, screen } from '@testing-library/react';
 
 // Mock recharts
 jest.mock('recharts', () => ({
-  BarChart: ({ children }: { children: React.ReactNode }) => <div data-testid="bar-chart">{children}</div>,
+  BarChart: ({ children }: { children: React.ReactNode }) => (
+    <div data-testid="bar-chart">{children}</div>
+  ),
   Bar: ({ name }: { name?: string }) => <div data-testid="bar" data-name={name} />,
   XAxis: () => <div data-testid="x-axis" />,
   YAxis: () => <div data-testid="y-axis" />,
   CartesianGrid: () => <div data-testid="grid" />,
   Tooltip: () => <div data-testid="tooltip" />,
   Legend: () => <div data-testid="legend" />,
-  ResponsiveContainer: ({ children }: { children: React.ReactNode }) => <div data-testid="responsive-container">{children}</div>,
+  ResponsiveContainer: ({ children }: { children: React.ReactNode }) => (
+    <div data-testid="responsive-container">{children}</div>
+  ),
 }));
 
 jest.mock('@/utils/format-cost', () => ({

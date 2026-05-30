@@ -3,7 +3,7 @@ Vector storage models for semantic retrieval using pgvector
 """
 
 from sqlalchemy import Column, String, DateTime, ForeignKey, JSON, Text, Index
-from sqlalchemy.orm import declarative_base, relationship
+from sqlalchemy.orm import relationship
 import os
 import uuid
 from datetime import datetime
@@ -95,9 +95,7 @@ class MemoryFactModel(Base):
     user_id = Column(String, ForeignKey("users.id"), nullable=False, index=True)
     fact_text = Column(Text, nullable=False)
     fact_embedding = Column(VECTOR(1536))
-    category = Column(
-        String, nullable=True
-    )  # e.g., "preferences", "knowledge", "tasks"
+    category = Column(String, nullable=True)  # e.g., "preferences", "knowledge", "tasks"
     metadata_ = Column("metadata", JSON, default=dict)
     created_at = Column(DateTime, default=datetime.utcnow)
 

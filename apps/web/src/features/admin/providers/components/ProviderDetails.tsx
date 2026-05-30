@@ -21,9 +21,7 @@ export default function ProviderDetails({
         <div className="bg-bg rounded-lg p-4">
           <div className="text-xs text-muted mb-1">Status</div>
           <div
-            className={`text-lg font-semibold ${
-              provider.enabled ? 'text-success' : 'text-muted'
-            }`}
+            className={`text-lg font-semibold ${provider.enabled ? 'text-success' : 'text-muted'}`}
           >
             {provider.enabled ? 'Enabled' : 'Disabled'}
           </div>
@@ -65,10 +63,7 @@ export default function ProviderDetails({
       {/* Configuration Details */}
       <div className="space-y-3">
         <div>
-          <label
-            htmlFor="provider-base-url"
-            className="block text-xs font-medium text-text mb-1"
-          >
+          <label htmlFor="provider-base-url" className="block text-xs font-medium text-text mb-1">
             Base URL
           </label>
           <input
@@ -95,4 +90,3 @@ export default function ProviderDetails({
     </div>
   );
 }
-

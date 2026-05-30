@@ -7,7 +7,11 @@ import Alert from '../ui/Alert';
 // class-variance-authority and cn. We mock it to avoid dependency issues.
 jest.mock('../ui/IconButton', () => {
   return function MockIconButton({ onClick, 'aria-label': ariaLabel }: any) {
-    return <button aria-label={ariaLabel} onClick={onClick}>✕</button>;
+    return (
+      <button aria-label={ariaLabel} onClick={onClick}>
+        ✕
+      </button>
+    );
   };
 });
 

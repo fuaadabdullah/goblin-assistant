@@ -37,7 +37,9 @@ describe('MessageTimestamp', () => {
   it('shows only time when showRelative is false', () => {
     const now = new Date();
     now.setHours(14, 30, 0, 0);
-    const { container } = render(<MessageTimestamp createdAt={now.toISOString()} showRelative={false} />);
+    const { container } = render(
+      <MessageTimestamp createdAt={now.toISOString()} showRelative={false} />
+    );
     const timeEl = container.querySelector('time')!;
     expect(timeEl.textContent).not.toContain('Today');
   });

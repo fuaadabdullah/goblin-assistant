@@ -72,7 +72,6 @@ async function validateSupabaseConfig() {
       console.log('   ⚠️  SUPABASE_SERVICE_ROLE_KEY format looks incorrect');
       issues.push('Invalid service role key format');
     }
-
   } catch (error) {
     console.log('   ❌ Could not read .env.local file');
     issues.push('Cannot read environment file');
@@ -84,9 +83,9 @@ async function validateSupabaseConfig() {
   try {
     const response = await fetch(`${supabaseUrl}/rest/v1/`, {
       headers: {
-        'apikey': supabaseAnonKey,
-        'Authorization': `Bearer ${supabaseAnonKey}`
-      }
+        apikey: supabaseAnonKey,
+        Authorization: `Bearer ${supabaseAnonKey}`,
+      },
     });
 
     if (response.status === 401) {
@@ -131,7 +130,7 @@ async function validateSupabaseConfig() {
 
   // Summary
   console.log('\n📊 Configuration Summary:');
-  console.log('=' .repeat(50));
+  console.log('='.repeat(50));
 
   if (configValid && issues.length === 0) {
     console.log('✅ Supabase configuration is valid!');
@@ -153,7 +152,7 @@ async function validateSupabaseConfig() {
 
   console.log('\n📚 Resources:');
   console.log('   • SUPABASE_SETUP_GUIDE.md - Step-by-step setup guide');
-  console.log('   • docs/runbooks/AUTHENTICATION_SETUP.md - Detailed configuration info');
+  console.log('   • docs/operations/AUTHENTICATION_SETUP.md - Detailed configuration info');
   console.log('   • supabase.com/docs - Official Supabase documentation');
 
   console.log('\n🔄 Current Status:');

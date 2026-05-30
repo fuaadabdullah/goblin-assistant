@@ -4,7 +4,11 @@ import '@testing-library/jest-dom';
 
 jest.mock('../AccountProfileForm', () => {
   return function MockProfileForm(props: { name: string; email: string }) {
-    return <div data-testid="profile-form">{props.name} – {props.email}</div>;
+    return (
+      <div data-testid="profile-form">
+        {props.name} – {props.email}
+      </div>
+    );
   };
 });
 

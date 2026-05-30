@@ -1,4 +1,9 @@
-import { persistAuthSession, clearAuthSession, getAuthToken, isAuthenticated } from '../auth-session';
+import {
+  persistAuthSession,
+  clearAuthSession,
+  getAuthToken,
+  isAuthenticated,
+} from '../auth-session';
 
 jest.mock('../access', () => ({
   isAdminUser: jest.fn(() => false),
@@ -8,7 +13,7 @@ describe('Auth Session Utilities', () => {
   beforeEach(() => {
     localStorage.clear();
     // Clear all cookies
-    document.cookie.split(';').forEach(c => {
+    document.cookie.split(';').forEach((c) => {
       const name = c.trim().split('=')[0];
       if (name) document.cookie = `${name}=; Path=/; Max-Age=0`;
     });
@@ -35,7 +40,7 @@ describe('Auth Session Utilities', () => {
       const stored = localStorage.getItem('user_data');
       expect(stored).toBeDefined();
       expect(JSON.parse(stored!)).toEqual(
-        expect.objectContaining({ id: '123', email: 'test@example.com' }),
+        expect.objectContaining({ id: '123', email: 'test@example.com' })
       );
     });
 

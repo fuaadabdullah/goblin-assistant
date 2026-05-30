@@ -1,8 +1,18 @@
 """Pydantic request/response models for the chat router."""
 
+from enum import Enum
 from typing import Any, Dict, List, Optional
 
 from pydantic import BaseModel
+
+
+class StreamEventType(str, Enum):
+    TOKEN = "TOKEN"
+    TOOL_CALL = "TOOL_CALL"
+    TOOL_RESULT = "TOOL_RESULT"
+    STATUS = "STATUS"
+    ERROR = "ERROR"
+    COMPLETE = "COMPLETE"
 
 
 class ChatMessage(BaseModel):
@@ -82,7 +92,9 @@ class ImportConversationRequest(BaseModel):
 
 class SSEErrorEvent(BaseModel):
     """Server-Sent Event error payload"""
+
     type: str = "error"  # "error", "warning", "info"
+    event_type: Optional[StreamEventType] = None
     code: str  # Machine-readable error code
     message: str  # User-friendly error message
     is_recoverable: bool = False  # Whether client can retry
@@ -91,6 +103,8 @@ class SSEErrorEvent(BaseModel):
 
 class SSEDataEvent(BaseModel):
     """Generic Server-Sent Event data payload"""
+
+    event_type: Optional[StreamEventType] = None
     content: Optional[str] = None  # Streaming text chunk
     token_count: Optional[int] = None
     cost_delta: Optional[float] = None

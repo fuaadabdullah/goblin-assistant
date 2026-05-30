@@ -27,8 +27,7 @@ class ProviderStats:
 
     def update_latency(self, latency_ms: float) -> None:
         self.ewma_latency_ms = (
-            self.ewma_alpha * latency_ms
-            + (1 - self.ewma_alpha) * self.ewma_latency_ms
+            self.ewma_alpha * latency_ms + (1 - self.ewma_alpha) * self.ewma_latency_ms
         )
 
     @property
@@ -65,16 +64,18 @@ class RoutingRegistry:
         stats.total_cost_usd += cost_usd
         stats.last_used = time.time()
         if request_id is not None:
-            self._decision_log.append({
-                "event": "outcome",
-                "request_id": request_id,
-                "provider_id": provider_id,
-                "actual_latency_ms": round(latency_ms, 2),
-                "actual_cost_usd": round(cost_usd, 8),
-                "input_tokens": input_tokens,
-                "output_tokens": output_tokens,
-                "timestamp": time.time(),
-            })
+            self._decision_log.append(
+                {
+                    "event": "outcome",
+                    "request_id": request_id,
+                    "provider_id": provider_id,
+                    "actual_latency_ms": round(latency_ms, 2),
+                    "actual_cost_usd": round(cost_usd, 8),
+                    "input_tokens": input_tokens,
+                    "output_tokens": output_tokens,
+                    "timestamp": time.time(),
+                }
+            )
 
     def record_failure(self, provider_id: str) -> None:
         stats = self.get(provider_id)
@@ -91,15 +92,17 @@ class RoutingRegistry:
         rank_order: List[str],
     ) -> None:
         """Append a routing decision record to the audit trail."""
-        self._decision_log.append({
-            "event": "decision",
-            "request_id": request_id,
-            "cost_weight": cost_weight,
-            "candidates": candidates,
-            "score_breakdown": score_breakdown,
-            "rank_order": rank_order,
-            "timestamp": time.time(),
-        })
+        self._decision_log.append(
+            {
+                "event": "decision",
+                "request_id": request_id,
+                "cost_weight": cost_weight,
+                "candidates": candidates,
+                "score_breakdown": score_breakdown,
+                "rank_order": rank_order,
+                "timestamp": time.time(),
+            }
+        )
 
     def get_audit_trail(self, limit: int = 200) -> List[Dict[str, Any]]:
         """Return the most recent decision+outcome records."""
@@ -178,8 +181,7 @@ class HybridRouter:
             normalized_cost = costs[provider_id] / max_cost if max_cost else 0.0
             reliability = max(stats.success_rate, 0.1)
             final = (
-                (1 - self.cost_weight) * normalized_latency
-                + self.cost_weight * normalized_cost
+                (1 - self.cost_weight) * normalized_latency + self.cost_weight * normalized_cost
             ) / reliability
             breakdown[provider_id] = {
                 "normalized_latency": round(normalized_latency, 4),
@@ -294,7 +296,11 @@ def top_providers_for(
         return ranked[: max(1, limit)]
 
     if prefer_local:
-        local_candidates = [provider_id for provider_id in tier_router.providers_for_tier("local") if provider_id in candidates]
+        local_candidates = [
+            provider_id
+            for provider_id in tier_router.providers_for_tier("local")
+            if provider_id in candidates
+        ]
         return local_candidates[: max(1, limit)]
 
     return candidates[: max(1, limit)]
@@ -322,7 +328,7 @@ async def route_task(
     for provider_id in candidates:
         result = await dispatch.invoke_provider(
             provider_id=provider_id,
-            model=payload.get("model") if isinstance(payload.get("model"), str) else None,
+            model=(payload.get("model") if isinstance(payload.get("model"), str) else None),
             payload=payload,
             timeout_ms=int(payload.get("timeout_ms", 30000)),
             stream=stream,

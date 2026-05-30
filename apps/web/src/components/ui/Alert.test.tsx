@@ -50,7 +50,7 @@ describe('Alert', () => {
   });
 
   it('shows dismiss button when dismissible is true', () => {
-  const onDismiss = jest.fn();
+    const onDismiss = jest.fn();
     const { getByRole } = render(
       <Alert message="Dismissible alert" dismissible onDismiss={onDismiss} />
     );

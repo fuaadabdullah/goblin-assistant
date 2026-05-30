@@ -7,11 +7,12 @@ Covers:
 - ConversationStoreManager (environment-aware selection, delegation, create_conversation,
   add_message_to_conversation, import_messages_to_conversation, check_conversation_owner)
 """
+
 from __future__ import annotations
 
 import os
 from datetime import datetime, timedelta
-from unittest.mock import AsyncMock, patch
+from unittest.mock import patch
 
 import pytest
 
@@ -233,7 +234,9 @@ class TestConversation:
     def test_add_message_appends_and_sorts(self):
         base = datetime.utcnow()
         m1 = ConversationMessage(role="user", content="a", timestamp=base)
-        m2 = ConversationMessage(role="assistant", content="b", timestamp=base + timedelta(seconds=1))
+        m2 = ConversationMessage(
+            role="assistant", content="b", timestamp=base + timedelta(seconds=1)
+        )
         conv = Conversation(messages=[m1])
         conv.add_message(m2)
         assert len(conv.messages) == 2
@@ -352,7 +355,9 @@ class TestConversationStoreManager:
             manager = ConversationStoreManager()
             base = datetime.utcnow()
             m1 = ConversationMessage(role="user", content="old a", timestamp=base)
-            m2 = ConversationMessage(role="assistant", content="new b", timestamp=base + timedelta(seconds=1))
+            m2 = ConversationMessage(
+                role="assistant", content="new b", timestamp=base + timedelta(seconds=1)
+            )
             conv = Conversation(user_id="u-1", messages=[m1, m2])
             await manager.save_conversation(conv)
             ok = await manager.archive_messages(
@@ -452,15 +457,21 @@ class TestConversationStoreManager:
             manager = ConversationStoreManager()
             base = datetime.utcnow()
             conv = await manager.create_conversation(user_id="u-1")
-            existing = ConversationMessage(role="system", content="preexisting", timestamp=base)
+            ConversationMessage(role="system", content="preexisting", timestamp=base)
             await manager.add_message_to_conversation(
                 conv.conversation_id,
                 role="system",
                 content="preexisting",
                 timestamp=base,
             )
-            later = ConversationMessage(role="user", content="later", timestamp=base + timedelta(seconds=5))
-            earlier = ConversationMessage(role="assistant", content="earlier", timestamp=base + timedelta(seconds=1))
+            later = ConversationMessage(
+                role="user", content="later", timestamp=base + timedelta(seconds=5)
+            )
+            earlier = ConversationMessage(
+                role="assistant",
+                content="earlier",
+                timestamp=base + timedelta(seconds=1),
+            )
             ok = await manager.import_messages_to_conversation(
                 conv.conversation_id, [later, earlier]
             )

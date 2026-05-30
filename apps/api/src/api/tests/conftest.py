@@ -202,13 +202,16 @@ class _FakeYfTicker:
         prices = prices[1:]
 
         dates = pd.bdate_range(end="2026-03-10", periods=n)
-        df = pd.DataFrame({
-            "Open": [p * 0.999 for p in prices],
-            "High": [p * 1.01 for p in prices],
-            "Low": [p * 0.99 for p in prices],
-            "Close": prices,
-            "Volume": [int(50_000_000 * (0.8 + 0.4 * np.random.random())) for _ in prices],
-        }, index=dates)
+        df = pd.DataFrame(
+            {
+                "Open": [p * 0.999 for p in prices],
+                "High": [p * 1.01 for p in prices],
+                "Low": [p * 0.99 for p in prices],
+                "Close": prices,
+                "Volume": [int(50_000_000 * (0.8 + 0.4 * np.random.random())) for _ in prices],
+            },
+            index=dates,
+        )
         return df
 
 

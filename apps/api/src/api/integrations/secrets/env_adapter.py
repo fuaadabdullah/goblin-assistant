@@ -19,7 +19,6 @@ from .base import (
     SecretAdapter,
     Secret,
     SecretMetadata,
-    SecretAdapterError,
     SecretNotFoundError,
     SecretBackendError,
 )

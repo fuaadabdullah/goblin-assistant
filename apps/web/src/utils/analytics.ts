@@ -40,10 +40,7 @@ export function initGA(): void {
   initialized = true;
 }
 
-export function trackEvent(
-  name: string,
-  params?: Record<string, string | number | boolean>,
-): void {
+export function trackEvent(name: string, params?: Record<string, string | number | boolean>): void {
   if (typeof window !== 'undefined' && window.gtag) {
     window.gtag('event', name, params);
   }

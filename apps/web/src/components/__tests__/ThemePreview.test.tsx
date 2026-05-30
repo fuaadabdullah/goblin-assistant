@@ -42,7 +42,7 @@ describe('ThemePreview', () => {
   it('switches theme when button clicked', () => {
     render(<ThemePreview />);
     const buttons = screen.getAllByRole('button');
-    const emberBtn = buttons.find(b => b.textContent === 'Ember Blaze');
+    const emberBtn = buttons.find((b) => b.textContent === 'Ember Blaze');
     fireEvent.click(emberBtn!);
     expect(mockApply).toHaveBeenCalledWith('ember');
   });
@@ -63,7 +63,9 @@ describe('ThemePreview', () => {
 
   it('highlights active theme button', () => {
     render(<ThemePreview />);
-    const defaultBtn = screen.getAllByRole('button').find(b => b.textContent === 'Goblin Default');
+    const defaultBtn = screen
+      .getAllByRole('button')
+      .find((b) => b.textContent === 'Goblin Default');
     expect(defaultBtn?.className).toContain('border-primary');
   });
 });

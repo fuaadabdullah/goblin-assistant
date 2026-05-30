@@ -4,7 +4,11 @@ import '@testing-library/jest-dom';
 // Mock all child components
 jest.mock('../ChatHeader', () => {
   return function MockChatHeader(props: Record<string, unknown>) {
-    return <div data-testid="chat-header"><button onClick={props.onToggleSidebar as () => void}>Toggle</button></div>;
+    return (
+      <div data-testid="chat-header">
+        <button onClick={props.onToggleSidebar as () => void}>Toggle</button>
+      </div>
+    );
   };
 });
 jest.mock('../ChatMessageList', () => {
@@ -21,7 +25,9 @@ jest.mock('../ChatSidebar', () => {
   return function MockChatSidebar(props: Record<string, unknown>) {
     return (
       <div data-testid="chat-sidebar" className={props.className as string}>
-        <button onClick={() => (props.onSelectThread as (k: string) => void)('thread-1')}>Select Thread</button>
+        <button onClick={() => (props.onSelectThread as (k: string) => void)('thread-1')}>
+          Select Thread
+        </button>
         <button onClick={props.onNewConversation as () => void}>New Conv</button>
       </div>
     );

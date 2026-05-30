@@ -6,7 +6,7 @@ Provides common authentication mechanisms for different backends.
 
 import asyncio
 import logging
-from typing import Dict, Optional, Any
+from typing import Dict, Optional
 from datetime import datetime, timedelta
 
 logger = logging.getLogger(__name__)
@@ -95,9 +95,7 @@ class AuthManager:
         """
         return self._credentials_store.get(name)
 
-    async def rotate_credentials(
-        self, name: str, new_credentials: AuthCredentials
-    ) -> None:
+    async def rotate_credentials(self, name: str, new_credentials: AuthCredentials) -> None:
         """
         Rotate stored credentials.
 
@@ -229,9 +227,7 @@ def get_auth_manager() -> AuthManager:
     return _auth_manager
 
 
-async def refresh_vault_token(
-    credentials_name: str, credentials: AppRoleCredentials
-) -> None:
+async def refresh_vault_token(credentials_name: str, credentials: AppRoleCredentials) -> None:
     """
     Refresh HashiCorp Vault token using AppRole.
 

@@ -107,7 +107,7 @@ export default function GoblinDemo({ provider, model, demoMode = false }: Props)
     debugLog('🎯 [DEBUG] Template changed:', { from: state.selectedTemplate, to: templateName });
 
     dispatch({ type: 'SET_SELECTED_TEMPLATE', payload: templateName });
-    const template = ORCHESTRATION_TEMPLATES.find(t => t.name === templateName);
+    const template = ORCHESTRATION_TEMPLATES.find((t) => t.name === templateName);
     if (template) {
       debugLog('📝 [DEBUG] Setting orchestration to:', template.value);
       dispatch({ type: 'SET_ORCHESTRATION', payload: template.value });
@@ -145,12 +145,12 @@ export default function GoblinDemo({ provider, model, demoMode = false }: Props)
         <select
           id="template-select"
           value={state.selectedTemplate}
-          onChange={e => handleTemplateChange(e.target.value)}
+          onChange={(e) => handleTemplateChange(e.target.value)}
           className="template-select"
           data-testid="template-select"
           aria-describedby="template-select-help"
         >
-          {ORCHESTRATION_TEMPLATES.map(template => (
+          {ORCHESTRATION_TEMPLATES.map((template) => (
             <option
               key={template.name}
               value={template.name}
@@ -232,17 +232,17 @@ export default function GoblinDemo({ provider, model, demoMode = false }: Props)
           </div>
         </div>
       </div>
-      <div
-        className="goblin-results"
-        data-testid="goblin-results"
-      >
+      <div className="goblin-results" data-testid="goblin-results">
         {/* Plan preview */}
         {Object.keys(state.stepCosts).length > 0 && (
           <div className="plan-total" data-testid="plan-total">
             <strong>Total Plan Cost: </strong>
-            {formatCost((Object.values(state.stepCosts) as number[]).reduce((a, b) => a + b, 0), {
-              mode: 'per-token',
-            })}
+            {formatCost(
+              (Object.values(state.stepCosts) as number[]).reduce((a, b) => a + b, 0),
+              {
+                mode: 'per-token',
+              }
+            )}
           </div>
         )}
         {state.plan && (
@@ -269,11 +269,15 @@ export default function GoblinDemo({ provider, model, demoMode = false }: Props)
                   {state.expandedSteps[s.id] && (
                     <div className="step-details" data-testid={`step-details-${s.id}`}>
                       <div data-testid={`step-id-${s.id}`}>Step ID: {s.id}</div>
-                      <div data-testid={`step-status-${s.id}`}>Status: {state.stepStatuses[s.id]}</div>
+                      <div data-testid={`step-status-${s.id}`}>
+                        Status: {state.stepStatuses[s.id]}
+                      </div>
                       <div data-testid={`step-cost-${s.id}`}>
                         Cost: {formatCost(state.stepCosts[s.id] || 0, { mode: 'per-token' })}
                       </div>
-                      <div data-testid={`step-tokens-${s.id}`}>Tokens: {state.stepTokens[s.id] || 0}</div>
+                      <div data-testid={`step-tokens-${s.id}`}>
+                        Tokens: {state.stepTokens[s.id] || 0}
+                      </div>
                       {state.stepChunks[s.id] && state.stepChunks[s.id].length > 0 && (
                         <div className="chunk-list" data-testid={`chunk-list-${s.id}`}>
                           <strong>Chunks:</strong>

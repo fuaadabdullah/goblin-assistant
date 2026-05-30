@@ -264,7 +264,7 @@ If issues arise with GCP providers:
 ## Documentation
 
 - **Main README**: `./README.md`
-- **API Docs**: `./docs/API_QUICK_REF.md`
+- **API Docs**: `docs/backend/API_QUICK_REF.md`
 - **Deployment**: `./DEPLOYMENT_README.md`
 - **Providers**: `./config/providers.toml`
 

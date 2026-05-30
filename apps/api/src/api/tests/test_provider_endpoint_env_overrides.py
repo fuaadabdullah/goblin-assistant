@@ -27,16 +27,12 @@ def test_dispatcher_uses_fallback_provider_endpoint_env_convention(
     monkeypatch,
 ):
     monkeypatch.delenv("OPENAI_ENDPOINT", raising=False)
-    monkeypatch.setenv(
-        "PROVIDER_OPENAI_ENDPOINT", "https://fallback.example.openai.local/v1"
-    )
+    monkeypatch.setenv("PROVIDER_OPENAI_ENDPOINT", "https://fallback.example.openai.local/v1")
 
     dispatcher = _dispatcher()
     openai_provider = dispatcher.get_provider("openai")
 
-    assert openai_provider.endpoint == (
-        "https://fallback.example.openai.local/v1"
-    )
+    assert openai_provider.endpoint == ("https://fallback.example.openai.local/v1")
 
 
 def test_dispatcher_reads_llamacpp_gcp_endpoint_from_env(monkeypatch):

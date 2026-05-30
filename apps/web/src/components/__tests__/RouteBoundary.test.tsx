@@ -1,9 +1,6 @@
 import { describe, it, expect, beforeEach, afterAll, jest } from '@jest/globals';
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
-import {
-  RouteBoundaryFallback,
-  withRouteErrorBoundary,
-} from '../RouteBoundary';
+import { RouteBoundaryFallback, withRouteErrorBoundary } from '../RouteBoundary';
 
 jest.mock('next/router', () => ({
   useRouter: () => ({
@@ -97,19 +94,16 @@ describe('RouteBoundaryFallback', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Copy Error ID' }));
 
     await waitFor(() => {
-      expect((global.navigator.clipboard.writeText as jest.Mock)).toHaveBeenCalledWith('evt-copy');
+      expect(global.navigator.clipboard.writeText as jest.Mock).toHaveBeenCalledWith('evt-copy');
     });
 
     expect(screen.getByRole('button', { name: 'Copied Error ID' })).toBeInTheDocument();
   });
 
   it('shows the chat-specific fallback when a wrapped chat component throws', () => {
-    const WrappedChat = withRouteErrorBoundary(
-      () => {
-        throw new Error('chat boom');
-      },
-      'chat'
-    );
+    const WrappedChat = withRouteErrorBoundary(() => {
+      throw new Error('chat boom');
+    }, 'chat');
 
     render(<WrappedChat />);
 
@@ -118,12 +112,9 @@ describe('RouteBoundaryFallback', () => {
   });
 
   it('renders admin fallback inside AdminLayout so navigation remains available', () => {
-    const WrappedAdminContent = withRouteErrorBoundary(
-      () => {
-        throw new Error('admin boom');
-      },
-      'adminIndex'
-    );
+    const WrappedAdminContent = withRouteErrorBoundary(() => {
+      throw new Error('admin boom');
+    }, 'adminIndex');
 
     render(
       <AdminLayout mainId="main-content" mainLabel="Admin Dashboard">

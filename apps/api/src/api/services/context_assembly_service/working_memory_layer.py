@@ -78,9 +78,7 @@ async def assemble_working_memory(
         tokens = count_tokens(summary_content)
 
         if tokens > budget.working_memory_tokens:
-            summary_content = trim_to_tokens(
-                summary_content, budget.working_memory_tokens
-            )
+            summary_content = trim_to_tokens(summary_content, budget.working_memory_tokens)
             tokens = budget.working_memory_tokens
 
         return ContextLayer(

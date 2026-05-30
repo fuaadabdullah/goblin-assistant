@@ -23,7 +23,7 @@ async def get_redis_client() -> redis.Redis:
     Uses lazy initialization with lock to ensure thread-safe singleton creation.
     """
     global _redis_client
-    
+
     if _redis_client is None:
         async with _redis_lock:
             if _redis_client is None:
@@ -44,7 +44,7 @@ async def get_redis_client() -> redis.Redis:
                     logger.error(f"Failed to connect to Redis: {e}")
                     _redis_client = None
                     raise
-    
+
     return _redis_client
 
 

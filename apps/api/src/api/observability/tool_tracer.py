@@ -119,21 +119,15 @@ class ToolTrace:
             all_executions.extend(round_data.executions)
 
         success_count = sum(
-            1 for e in all_executions
-            if e.status == ToolExecutionStatus.SUCCESS.value
+            1 for e in all_executions if e.status == ToolExecutionStatus.SUCCESS.value
         )
         failure_count = sum(
-            1 for e in all_executions
-            if e.status == ToolExecutionStatus.FAILURE.value
+            1 for e in all_executions if e.status == ToolExecutionStatus.FAILURE.value
         )
         total_exec_time_ms = sum(e.elapsed_ms for e in all_executions)
-        avg_exec_time_ms = (
-            total_exec_time_ms / len(all_executions) if all_executions else 0
-        )
+        avg_exec_time_ms = total_exec_time_ms / len(all_executions) if all_executions else 0
         promoted_count = sum(1 for e in all_executions if e.memory_promoted)
-        visualizations_count = sum(
-            1 for e in all_executions if e.visualization_extracted
-        )
+        visualizations_count = sum(1 for e in all_executions if e.visualization_extracted)
 
         # Find slowest tool
         slowest_tool = None
@@ -149,9 +143,7 @@ class ToolTrace:
             "success_count": success_count,
             "failure_count": failure_count,
             "success_rate": (
-                round(success_count / len(all_executions), 3)
-                if all_executions
-                else 1.0
+                round(success_count / len(all_executions), 3) if all_executions else 1.0
             ),
             "total_exec_time_ms": round(total_exec_time_ms, 2),
             "avg_exec_time_ms": round(avg_exec_time_ms, 2),
@@ -211,9 +203,7 @@ class ToolTracer:
 
         return trace_id
 
-    def start_round(
-        self, trace_id: str, round_number: int, tools_to_call: List[str]
-    ) -> None:
+    def start_round(self, trace_id: str, round_number: int, tools_to_call: List[str]) -> None:
         """Record the start of a tool execution round.
 
         Args:
@@ -392,9 +382,7 @@ class ToolTracer:
             error=error,
         )
 
-    def get_tool_trace(
-        self, request_id: str
-    ) -> Optional[Dict[str, Any]]:
+    def get_tool_trace(self, request_id: str) -> Optional[Dict[str, Any]]:
         """Get a specific tool trace by request ID.
 
         Args:
@@ -437,7 +425,7 @@ class ToolTracer:
         matching_traces.sort(key=lambda x: x.timestamp, reverse=True)
 
         total_count = len(matching_traces)
-        paginated_traces = matching_traces[offset:offset + limit]
+        paginated_traces = matching_traces[offset : offset + limit]
 
         return {
             "conversation_id": conversation_id,
@@ -469,16 +457,13 @@ class ToolTracer:
         """
         from datetime import timedelta
 
-        cutoff_time = datetime.now(timezone.utc) - timedelta(
-            hours=time_window_hours
-        )
+        cutoff_time = datetime.now(timezone.utc) - timedelta(hours=time_window_hours)
 
         # Filter traces
         traces = [
             trace
             for trace in self._trace_cache.values()
-            if trace.timestamp >= cutoff_time
-            and (not user_id or trace.user_id == user_id)
+            if trace.timestamp >= cutoff_time and (not user_id or trace.user_id == user_id)
         ]
 
         if not traces:
@@ -493,18 +478,10 @@ class ToolTracer:
         all_summaries = [trace.get_summary() for trace in traces]
 
         trace_count = len(all_summaries)
-        avg_rounds = sum(
-            s["total_rounds"] for s in all_summaries
-        ) / trace_count
-        avg_executions = sum(
-            s["total_executions"] for s in all_summaries
-        ) / trace_count
-        avg_success_rate = sum(
-            s["success_rate"] for s in all_summaries
-        ) / trace_count
-        avg_exec_time = sum(
-            s["avg_exec_time_ms"] for s in all_summaries
-        ) / trace_count
+        avg_rounds = sum(s["total_rounds"] for s in all_summaries) / trace_count
+        avg_executions = sum(s["total_executions"] for s in all_summaries) / trace_count
+        avg_success_rate = sum(s["success_rate"] for s in all_summaries) / trace_count
+        avg_exec_time = sum(s["avg_exec_time_ms"] for s in all_summaries) / trace_count
 
         # Find slowest tools
         tool_times: Dict[str, List[float]] = {}
@@ -537,12 +514,8 @@ class ToolTracer:
                 "avg_executions_per_trace": round(avg_executions, 2),
                 "avg_success_rate": round(avg_success_rate, 3),
                 "avg_execution_time_ms": round(avg_exec_time, 2),
-                "total_promoted_count": sum(
-                    s["memory_promoted_count"] for s in all_summaries
-                ),
-                "total_visualizations_count": sum(
-                    s["visualizations_count"] for s in all_summaries
-                ),
+                "total_promoted_count": sum(s["memory_promoted_count"] for s in all_summaries),
+                "total_visualizations_count": sum(s["visualizations_count"] for s in all_summaries),
                 "slowest_tools": slowest_tools,
             },
         }

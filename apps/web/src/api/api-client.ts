@@ -6,12 +6,14 @@ import type {
   CostSummary,
   GoblinStats,
   GoblinStatus,
+  LoginResponse,
   MemoryEntry,
   OrchestrationPlan,
   ProviderModelOption,
   RuntimeClient,
   StreamChunk,
   TaskResponse,
+  User,
 } from '@/types/api';
 
 export type {
@@ -54,7 +56,7 @@ const V1_PATH_PATTERN = /^\/?v1(\/|$)/i;
 const assertNoVersionedClientPath = (path: string): void => {
   if (V1_PATH_PATTERN.test(path.trim())) {
     throw new Error(
-      `Refusing client API path "${path}". Frontend must call internal routes, not provider-style /v1 endpoints.`,
+      `Refusing client API path "${path}". Frontend must call internal routes, not provider-style /v1 endpoints.`
     );
   }
 };
@@ -97,14 +99,10 @@ const isNetworkError = (error: unknown): boolean => {
  * Calculate backoff delay with exponential increase and random jitter
  * Prevents thundering herd problem during recovery
  */
-const calculateBackoffDelay = (
-  attempt: number,
-  baseDelayMs: number = 100,
-): number => {
+const calculateBackoffDelay = (attempt: number, baseDelayMs: number = 100): number => {
   const exponentialDelay = baseDelayMs * Math.pow(2, attempt);
   // Add jitter: ±20% random variance
-  const jitter =
-    exponentialDelay * (0.8 + Math.random() * 0.4);
+  const jitter = exponentialDelay * (0.8 + Math.random() * 0.4);
   // Cap at 10 seconds to avoid excessive waiting
   return Math.min(jitter, 10000);
 };
@@ -112,7 +110,7 @@ const calculateBackoffDelay = (
 const withRetry = async <T>(
   fn: () => Promise<T>,
   maxRetries: number = 3,
-  baseDelayMs: number = 100,
+  baseDelayMs: number = 100
 ): Promise<T> => {
   let lastError: Error | null = null;
 
@@ -120,10 +118,7 @@ const withRetry = async <T>(
     try {
       return await fn();
     } catch (error) {
-      lastError =
-        error instanceof Error
-          ? error
-          : new Error(String(error));
+      lastError = error instanceof Error ? error : new Error(String(error));
 
       // Determine if error is retryable
       const isStatusTransient =
@@ -144,31 +139,24 @@ const withRetry = async <T>(
       const delayMs = calculateBackoffDelay(attempt, baseDelayMs);
 
       // Log retry attempt for debugging
-      devDebug(
-        `Request retry attempt ${attempt + 1}/${maxRetries}`,
-        {
-          error: lastError.message,
-          delayMs,
-          isStatusTransient,
-          isNetworkErr,
-        },
-      );
+      devDebug(`Request retry attempt ${attempt + 1}/${maxRetries}`, {
+        error: lastError.message,
+        delayMs,
+        isStatusTransient,
+        isNetworkErr,
+      });
 
-      await new Promise(resolve =>
-        setTimeout(resolve, delayMs),
-      );
+      await new Promise((resolve) => setTimeout(resolve, delayMs));
     }
   }
 
-  throw (
-    lastError || new Error('Request failed after retries')
-  );
+  throw lastError || new Error('Request failed after retries');
 };
 
 const request = async <T>(
   method: HttpMethod,
   path: string,
-  body?: unknown,
+  body?: unknown
 ): Promise<HttpResponse<T>> => {
   return withRetry(async () => {
     const requestStartTime = Date.now();
@@ -178,8 +166,7 @@ const request = async <T>(
       headers: {
         'Content-Type': 'application/json',
       },
-      body:
-        body === undefined ? undefined : JSON.stringify(body),
+      body: body === undefined ? undefined : JSON.stringify(body),
       signal: createTimeoutSignal(30000), // 30s timeout where supported
     });
 
@@ -255,22 +242,15 @@ async function loadModelRegistry(): Promise<ModelRegistryResponse> {
     const duration = Date.now() - startTime;
 
     if (!response.ok) {
-      devWarn(
-        `Model registry fetch failed: HTTP ${response.status}`,
-        { durationMs: duration },
-      );
+      devWarn(`Model registry fetch failed: HTTP ${response.status}`, { durationMs: duration });
       return { models: [], providers: [] };
     }
 
     const payload = (await response.json()) as ModelRegistryResponse;
 
     // Validate response structure
-    const models = Array.isArray(payload?.models)
-      ? payload.models
-      : [];
-    const providers = Array.isArray(payload?.providers)
-      ? payload.providers
-      : [];
+    const models = Array.isArray(payload?.models) ? payload.models : [];
+    const providers = Array.isArray(payload?.providers) ? payload.providers : [];
 
     if (duration > 3000) {
       devDebug('Slow model registry load', {
@@ -283,13 +263,11 @@ async function loadModelRegistry(): Promise<ModelRegistryResponse> {
     return { models, providers };
   } catch (e) {
     const duration = Date.now() - startTime;
-    const isTimeoutError =
-      e instanceof Error && e.message.includes('timeout');
+    const isTimeoutError = e instanceof Error && e.message.includes('timeout');
 
     // Log the error for observability
     devWarn('Failed to load model registry', {
-      error:
-        e instanceof Error ? e.message : String(e),
+      error: e instanceof Error ? e.message : String(e),
       type: e instanceof Error ? e.constructor.name : typeof e,
       isTimeoutError,
       durationMs: duration,
@@ -313,14 +291,10 @@ const safeLocalStorage = {
       const value = window.localStorage.getItem(key);
       return value;
     } catch (e) {
-      devWarn(
-        `localStorage.getItem failed for key "${key}"`,
-        {
-          error:
-            e instanceof Error ? e.message : String(e),
-          type: typeof e,
-        },
-      );
+      devWarn(`localStorage.getItem failed for key "${key}"`, {
+        error: e instanceof Error ? e.message : String(e),
+        type: typeof e,
+      });
       return null;
     }
   },
@@ -329,18 +303,12 @@ const safeLocalStorage = {
     try {
       window.localStorage.setItem(key, value);
     } catch (e) {
-      devWarn(
-        `localStorage.setItem failed for key "${key}"`,
-        {
-          error:
-            e instanceof Error ? e.message : String(e),
-          type: typeof e,
-          // Check if it's a quota error
-          isQuotaError:
-            e instanceof Error &&
-            e.name === 'QuotaExceededError',
-        },
-      );
+      devWarn(`localStorage.setItem failed for key "${key}"`, {
+        error: e instanceof Error ? e.message : String(e),
+        type: typeof e,
+        // Check if it's a quota error
+        isQuotaError: e instanceof Error && e.name === 'QuotaExceededError',
+      });
     }
   },
   remove(key: string): void {
@@ -348,14 +316,10 @@ const safeLocalStorage = {
     try {
       window.localStorage.removeItem(key);
     } catch (e) {
-      devWarn(
-        `localStorage.removeItem failed for key "${key}"`,
-        {
-          error:
-            e instanceof Error ? e.message : String(e),
-          type: typeof e,
-        },
-      );
+      devWarn(`localStorage.removeItem failed for key "${key}"`, {
+        error: e instanceof Error ? e.message : String(e),
+        type: typeof e,
+      });
     }
   },
 };
@@ -385,7 +349,7 @@ const runtimeClientImpl: RuntimeClient = {
 
     for (const providerEntry of registry.providers || []) {
       const provider = normalizeProviderId(
-        typeof providerEntry?.id === 'string' ? providerEntry.id : '',
+        typeof providerEntry?.id === 'string' ? providerEntry.id : ''
       );
       if (!provider || seen.has(provider)) {
         continue;
@@ -399,9 +363,7 @@ const runtimeClientImpl: RuntimeClient = {
     }
 
     for (const item of registry.models || []) {
-      const provider = normalizeProviderId(
-        typeof item?.provider === 'string' ? item.provider : '',
-      );
+      const provider = normalizeProviderId(typeof item?.provider === 'string' ? item.provider : '');
       if (!provider || seen.has(provider)) {
         continue;
       }
@@ -421,7 +383,7 @@ const runtimeClientImpl: RuntimeClient = {
 
     for (const item of registry.models || []) {
       const providerId = normalizeProviderId(
-        typeof item?.provider === 'string' ? item.provider : '',
+        typeof item?.provider === 'string' ? item.provider : ''
       );
       const modelName = typeof item?.name === 'string' ? item.name.trim() : '';
       if (!providerId || !modelName || providerId !== targetProvider) {
@@ -433,8 +395,7 @@ const runtimeClientImpl: RuntimeClient = {
         provider: providerId,
         health: normalizeHealth(item?.health),
         isSelectable: isSelectableFlag(item?.is_selectable),
-        healthReason:
-          typeof item?.health_reason === 'string' ? item.health_reason : null,
+        healthReason: typeof item?.health_reason === 'string' ? item.health_reason : null,
       };
 
       const existing = merged.get(modelName);
@@ -459,7 +420,7 @@ const runtimeClientImpl: RuntimeClient = {
 
   async getProviderModels(provider: string): Promise<string[]> {
     const options = await this.getProviderModelOptions(provider);
-    return options.filter(option => option.isSelectable).map(option => option.name);
+    return options.filter((option) => option.isSelectable).map((option) => option.name);
   },
 
   async executeTask(): Promise<string> {
@@ -470,7 +431,7 @@ const runtimeClientImpl: RuntimeClient = {
     _goblin: string,
     _task: string,
     onChunk: (chunk: StreamChunk) => void,
-    onComplete?: (response: TaskResponse) => void,
+    onComplete?: (response: TaskResponse) => void
   ): Promise<void> {
     onChunk({
       content: 'Runtime streaming unavailable in this build.',
@@ -516,25 +477,19 @@ const runtimeClientImpl: RuntimeClient = {
   },
 
   async login(email: string, password: string) {
-    return apiClient.login(email, password) as Promise<{
-      token: string;
-      user: any;
-    }>;
+    return apiClient.login(email, password) as Promise<LoginResponse>;
   },
 
   async register(email: string, password: string, name?: string) {
     void name;
-    return apiClient.register(email, password) as Promise<{
-      token: string;
-      user: any;
-    }>;
+    return apiClient.register(email, password) as Promise<LoginResponse>;
   },
 
   async logout(): Promise<void> {
     return;
   },
 
-  async validateToken(token: string): Promise<{ valid: boolean; user?: any }> {
+  async validateToken(token: string): Promise<{ valid: boolean; user?: User }> {
     return { valid: Boolean(token) };
   },
 };

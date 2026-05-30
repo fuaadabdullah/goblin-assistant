@@ -4,10 +4,7 @@ Test script to validate security fixes for Goblin Assistant API
 Tests XSS protection, error handling, and input sanitization
 """
 
-import asyncio
-import json
 import os
-from typing import Dict, Any
 
 # Set test environment
 os.environ["ENVIRONMENT"] = "development"
@@ -19,6 +16,7 @@ except ImportError:
     # Allow running as standalone script
     import sys
     import os
+
     sys.path.insert(0, os.path.dirname(__file__))
     from input_validation import InputSanitizer
 
@@ -33,15 +31,12 @@ def test_xss_protection():
         "<script>alert('xss')</script>",
         "<img src=x onerror=alert('xss')>",
         "javascript:alert('xss')",
-
         # Event handlers
         "<div onclick=\"alert('xss')\">Click me</div>",
         "<a href=\"javascript:alert('xss')\">Link</a>",
-
         # Complex XSS
         "<iframe src=\"javascript:alert('xss')\"></iframe>",
         "<object data=\"javascript:alert('xss')\"></object>",
-
         # Safe input
         "Hello, this is a normal message!",
         "What is the weather like today?",
@@ -55,19 +50,23 @@ def test_xss_protection():
             # Check if dangerous patterns were detected
             is_safe = len(validation.get("dangerous_patterns_found", [])) == 0
 
-            results.append({
-                "input": test_input[:50] + "..." if len(test_input) > 50 else test_input,
-                "sanitized": sanitized != test_input,  # Was content changed?
-                "dangerous_detected": len(validation.get("dangerous_patterns_found", [])) > 0,
-                "safe": is_safe
-            })
+            results.append(
+                {
+                    "input": (test_input[:50] + "..." if len(test_input) > 50 else test_input),
+                    "sanitized": sanitized != test_input,  # Was content changed?
+                    "dangerous_detected": len(validation.get("dangerous_patterns_found", [])) > 0,
+                    "safe": is_safe,
+                }
+            )
 
         except Exception as e:
-            results.append({
-                "input": test_input[:50] + "..." if len(test_input) > 50 else test_input,
-                "error": str(e),
-                "safe": False
-            })
+            results.append(
+                {
+                    "input": (test_input[:50] + "..." if len(test_input) > 50 else test_input),
+                    "error": str(e),
+                    "safe": False,
+                }
+            )
 
     # Analyze results
     dangerous_inputs = [r for r in results if r.get("dangerous_detected", False)]
@@ -104,25 +103,29 @@ def test_input_validation():
             sanitized, validation = InputSanitizer.sanitize_chat_message(test_input)
             # If we get here without exception, input was accepted
             is_valid = True
-            results.append({
-                "input_type": "message",
-                "input": test_input[:30] + "..." if len(test_input) > 30 else test_input,
-                "valid": is_valid,
-                "expected": should_be_valid,
-                "test_type": test_type
-            })
+            results.append(
+                {
+                    "input_type": "message",
+                    "input": (test_input[:30] + "..." if len(test_input) > 30 else test_input),
+                    "valid": is_valid,
+                    "expected": should_be_valid,
+                    "test_type": test_type,
+                }
+            )
 
         except Exception as e:
             # Exception means input was rejected (which is correct for invalid inputs)
             is_valid = False
-            results.append({
-                "input_type": "message",
-                "input": test_input[:30] + "..." if len(test_input) > 30 else test_input,
-                "error": str(e),
-                "valid": is_valid,  # False means rejected
-                "expected": should_be_valid,
-                "test_type": test_type
-            })
+            results.append(
+                {
+                    "input_type": "message",
+                    "input": (test_input[:30] + "..." if len(test_input) > 30 else test_input),
+                    "error": str(e),
+                    "valid": is_valid,  # False means rejected
+                    "expected": should_be_valid,
+                    "test_type": test_type,
+                }
+            )
 
     # Check user ID validation
     user_id_cases = [
@@ -136,22 +139,26 @@ def test_input_validation():
         try:
             validated = InputSanitizer.validate_user_id(user_id)
             is_valid = validated == user_id if should_be_valid else validated is None
-            results.append({
-                "input_type": "user_id",
-                "input": user_id,
-                "valid": is_valid,
-                "expected": should_be_valid
-            })
+            results.append(
+                {
+                    "input_type": "user_id",
+                    "input": user_id,
+                    "valid": is_valid,
+                    "expected": should_be_valid,
+                }
+            )
         except Exception as e:
             # Exception means validation failed (correct for invalid user IDs)
             is_valid = False
-            results.append({
-                "input_type": "user_id",
-                "input": user_id,
-                "error": str(e),
-                "valid": is_valid,  # False means rejected
-                "expected": should_be_valid
-            })
+            results.append(
+                {
+                    "input_type": "user_id",
+                    "input": user_id,
+                    "error": str(e),
+                    "valid": is_valid,  # False means rejected
+                    "expected": should_be_valid,
+                }
+            )
 
     # Analyze results
     correct_results = sum(1 for r in results if r.get("valid", False) == r.get("expected", False))
@@ -202,7 +209,10 @@ def test_title_sanitization():
         ("Normal Title", "Normal Title"),
         ("<script>Title</script>", "Title"),  # Should remove tags
         ("Title with <b>bold</b> text", "Title with bold text"),  # Should clean HTML
-        ("Very " + "long " * 50 + "title", "Very long long long long long long long long long long long long long long long long long long long long long long long long long long long long long long long long long long long long long long lo..."),  # Should truncate to 200 chars
+        (
+            "Very " + "long " * 50 + "title",
+            "Very long long long long long long long long long long long long long long long long long long long long long long long long long long long long long long long long long long long long long long lo...",
+        ),  # Should truncate to 200 chars
     ]
 
     results = []
@@ -210,18 +220,22 @@ def test_title_sanitization():
         try:
             sanitized = InputSanitizer.sanitize_conversation_title(input_title)
             success = sanitized == expected
-            results.append({
-                "input": input_title[:30] + "..." if len(input_title) > 30 else input_title,
-                "output": sanitized,
-                "expected": expected,
-                "correct": success
-            })
+            results.append(
+                {
+                    "input": (input_title[:30] + "..." if len(input_title) > 30 else input_title),
+                    "output": sanitized,
+                    "expected": expected,
+                    "correct": success,
+                }
+            )
         except Exception as e:
-            results.append({
-                "input": input_title[:30] + "..." if len(input_title) > 30 else input_title,
-                "error": str(e),
-                "correct": False
-            })
+            results.append(
+                {
+                    "input": (input_title[:30] + "..." if len(input_title) > 30 else input_title),
+                    "error": str(e),
+                    "correct": False,
+                }
+            )
 
     correct_results = sum(1 for r in results if r.get("correct", False))
     total_tests = len(results)

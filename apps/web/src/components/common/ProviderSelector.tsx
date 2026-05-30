@@ -32,7 +32,7 @@ export default function ProviderSelector({ providers, selected, onChange }: Prop
           <SelectValue placeholder="Select provider" />
         </SelectTrigger>
         <SelectContent>
-          {providers.map(p => (
+          {providers.map((p) => (
             <SelectItem key={p} value={p} data-testid={`provider-option-${p}`}>
               {p}
             </SelectItem>

@@ -4,12 +4,9 @@ import { withRouteErrorBoundary } from '@/components/RouteBoundary';
 
 export { getServerSideProps };
 
-const AdminProvidersContent = withRouteErrorBoundary(
-  function AdminProvidersContent() {
-    return <ProvidersPage />;
-  },
-  'adminProviders'
-);
+const AdminProvidersContent = withRouteErrorBoundary(function AdminProvidersContent() {
+  return <ProvidersPage />;
+}, 'adminProviders');
 
 export default function AdminProviders() {
   return (

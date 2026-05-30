@@ -1,10 +1,7 @@
 import type { ComponentType } from 'react';
 import { useState } from 'react';
 import { env } from '../config/env';
-import {
-  ErrorBoundary,
-  type ErrorBoundaryRenderProps,
-} from './ErrorBoundary';
+import { ErrorBoundary, type ErrorBoundaryRenderProps } from './ErrorBoundary';
 
 export type RouteBoundaryAction =
   | { type: 'link'; label: string; href: string; variant?: 'primary' | 'secondary' }
@@ -175,7 +172,9 @@ export function RouteBoundaryFallback({
 }: RouteBoundaryFallbackProps) {
   const [copiedErrorId, setCopiedErrorId] = useState(false);
 
-  const visibleActions = actions.filter(action => action.type !== 'copyErrorId' || Boolean(errorId));
+  const visibleActions = actions.filter(
+    (action) => action.type !== 'copyErrorId' || Boolean(errorId)
+  );
 
   const handleCopyErrorId = async () => {
     if (!errorId || !navigator.clipboard?.writeText) {
@@ -242,7 +241,7 @@ export function RouteBoundaryFallback({
           )}
 
           <div className="mt-6 flex flex-wrap gap-3">
-            {visibleActions.map(action => {
+            {visibleActions.map((action) => {
               if (action.type === 'link') {
                 return (
                   <a

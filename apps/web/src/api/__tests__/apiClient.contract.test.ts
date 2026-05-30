@@ -72,7 +72,7 @@ describe('api client consumer contracts', () => {
       expect.objectContaining({
         status: 'ok',
         default_provider: 'openai',
-      }),
+      })
     );
   });
 
@@ -85,9 +85,13 @@ describe('api client consumer contracts', () => {
     const content = await apiClient.chatCompletion([{ role: 'user', content: 'hello' }]);
 
     expect(content).toBe('ok');
-    expect(frontendPostMock).toHaveBeenCalledWith('/api/generate', {
-      messages: [{ role: 'user', content: 'hello' }],
-      model: undefined,
-    }, undefined);
+    expect(frontendPostMock).toHaveBeenCalledWith(
+      '/api/generate',
+      {
+        messages: [{ role: 'user', content: 'hello' }],
+        model: undefined,
+      },
+      undefined
+    );
   });
 });

@@ -16,6 +16,7 @@ from api.services.context_assembly_service import working_memory_layer as wm
 # Ephemeral layer tests
 # -----------------------------
 
+
 def test_format_ephemeral_memory_empty():
     assert eph.format_ephemeral_memory([]) == ""
 
@@ -153,15 +154,18 @@ async def test_assemble_ephemeral_memory_handles_exceptions(monkeypatch):
 # Semantic layer tests
 # -----------------------------
 
+
 def test_format_semantic_retrieval_empty():
     assert sem.format_semantic_retrieval([]) == ""
 
 
 def test_format_semantic_retrieval_with_results():
-    content = sem.format_semantic_retrieval([
-        {"score": 0.9, "content": "alpha"},
-        {"score": 0.4, "content": "beta"},
-    ])
+    content = sem.format_semantic_retrieval(
+        [
+            {"score": 0.9, "content": "alpha"},
+            {"score": 0.4, "content": "beta"},
+        ]
+    )
 
     assert "## Relevant Context" in content
     assert "Result 1" in content
@@ -360,6 +364,7 @@ async def test_assemble_semantic_retrieval_exception_ends_trace(monkeypatch):
 # Long-term & working memory retrieval helper tests
 # -----------------------------
 
+
 class _FakeQuery:
     def filter(self, *_args, **_kwargs):
         return self
@@ -403,7 +408,11 @@ async def test_get_long_term_memory_facts_success(monkeypatch):
     now = datetime.now(timezone.utc)
     rows = [types.SimpleNamespace(fact_text="fact", category="pref", created_at=now)]
 
-    monkeypatch.setitem(sys.modules, "sqlalchemy", types.SimpleNamespace(select=lambda _model: _FakeQuery()))
+    monkeypatch.setitem(
+        sys.modules,
+        "sqlalchemy",
+        types.SimpleNamespace(select=lambda _model: _FakeQuery()),
+    )
     monkeypatch.setattr(ltm, "get_db", lambda: _FakeSessionContext(_FakeSession(rows)))
 
     facts = await ltm.get_long_term_memory_facts("u1")
@@ -413,7 +422,13 @@ async def test_get_long_term_memory_facts_success(monkeypatch):
 
 @pytest.mark.asyncio
 async def test_get_long_term_memory_facts_error(monkeypatch):
-    monkeypatch.setitem(sys.modules, "sqlalchemy", types.SimpleNamespace(select=lambda _model: (_ for _ in ()).throw(RuntimeError("bad select"))))
+    monkeypatch.setitem(
+        sys.modules,
+        "sqlalchemy",
+        types.SimpleNamespace(
+            select=lambda _model: (_ for _ in ()).throw(RuntimeError("bad select"))
+        ),
+    )
 
     facts = await ltm.get_long_term_memory_facts("u1")
 
@@ -472,7 +487,11 @@ async def test_get_working_memory_summaries_success(monkeypatch):
         created_at=types.SimpleNamespace(desc=lambda: None),
     )
 
-    monkeypatch.setitem(sys.modules, "sqlalchemy", types.SimpleNamespace(select=lambda _model: _FakeQuery()))
+    monkeypatch.setitem(
+        sys.modules,
+        "sqlalchemy",
+        types.SimpleNamespace(select=lambda _model: _FakeQuery()),
+    )
     monkeypatch.setattr(wm, "get_db", lambda: _FakeSessionContext(_FakeSession(rows)))
     monkeypatch.setattr(wm, "ConversationSummaryModel", fake_model)
 
@@ -483,7 +502,13 @@ async def test_get_working_memory_summaries_success(monkeypatch):
 
 @pytest.mark.asyncio
 async def test_get_working_memory_summaries_error(monkeypatch):
-    monkeypatch.setitem(sys.modules, "sqlalchemy", types.SimpleNamespace(select=lambda _model: (_ for _ in ()).throw(RuntimeError("bad select"))))
+    monkeypatch.setitem(
+        sys.modules,
+        "sqlalchemy",
+        types.SimpleNamespace(
+            select=lambda _model: (_ for _ in ()).throw(RuntimeError("bad select"))
+        ),
+    )
 
     summaries = await wm.get_working_memory_summaries("u1", "c1")
 
@@ -535,6 +560,7 @@ async def test_assemble_working_memory_paths(monkeypatch):
 # -----------------------------
 # System layer tests
 # -----------------------------
+
 
 @pytest.mark.asyncio
 async def test_assemble_system_layer_budget_gate():

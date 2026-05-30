@@ -5,12 +5,12 @@ from typing import Dict
 
 
 class ModeKey(str, Enum):
-    ARCHITECT     = "ARCHITECT"
+    ARCHITECT = "ARCHITECT"
     TRADING_FORGE = "TRADING_FORGE"
-    OPERATOR      = "OPERATOR"
-    RESEARCH      = "RESEARCH"
-    DEBUG         = "DEBUG"
-    EDUCATION     = "EDUCATION"
+    OPERATOR = "OPERATOR"
+    RESEARCH = "RESEARCH"
+    DEBUG = "DEBUG"
+    EDUCATION = "EDUCATION"
 
 
 _ADDENDA: Dict[ModeKey, str] = {

@@ -93,9 +93,7 @@ class TestListConversations:
                 created_at=MagicMock(isoformat=lambda: "2026-05-06T00:00:00Z"),
                 updated_at=MagicMock(isoformat=lambda: "2026-05-06T00:00:00Z"),
             )
-            mock_store.list_conversations = AsyncMock(
-                return_value=[mock_conv1]
-            )
+            mock_store.list_conversations = AsyncMock(return_value=[mock_conv1])
 
             response = client.get("/chat/conversations")
 
@@ -261,7 +259,7 @@ class TestExtractUsageAndCost:
                 "raw": {
                     "usage": {"tokens": 100},
                     "cost_usd": 0.05,
-                    "correlation_id": "corr_123"
+                    "correlation_id": "corr_123",
                 }
             }
         }
@@ -304,11 +302,13 @@ class TestRaiseStructuredProviderError:
         from api.providers.base import ProviderErrorCategory
 
         with pytest.raises(Exception) as exc_info:
-            _raise_structured_provider_error({
-                "error": "Invalid API key",
-                "error_category": ProviderErrorCategory.AUTH.value,
-                "provider": "openai"
-            })
+            _raise_structured_provider_error(
+                {
+                    "error": "Invalid API key",
+                    "error_category": ProviderErrorCategory.AUTH.value,
+                    "provider": "openai",
+                }
+            )
 
         assert exc_info.value.status_code == 401
 
@@ -318,11 +318,13 @@ class TestRaiseStructuredProviderError:
         from api.providers.base import ProviderErrorCategory
 
         with pytest.raises(Exception) as exc_info:
-            _raise_structured_provider_error({
-                "error": "Rate limited",
-                "error_category": ProviderErrorCategory.RATE_LIMIT.value,
-                "provider": "openai"
-            })
+            _raise_structured_provider_error(
+                {
+                    "error": "Rate limited",
+                    "error_category": ProviderErrorCategory.RATE_LIMIT.value,
+                    "provider": "openai",
+                }
+            )
 
         assert exc_info.value.status_code == 429
 
@@ -332,11 +334,13 @@ class TestRaiseStructuredProviderError:
         from api.providers.base import ProviderErrorCategory
 
         with pytest.raises(Exception) as exc_info:
-            _raise_structured_provider_error({
-                "error": "Request timeout",
-                "error_category": ProviderErrorCategory.TIMEOUT.value,
-                "provider": "openai"
-            })
+            _raise_structured_provider_error(
+                {
+                    "error": "Request timeout",
+                    "error_category": ProviderErrorCategory.TIMEOUT.value,
+                    "provider": "openai",
+                }
+            )
 
         assert exc_info.value.status_code == 504
 
@@ -346,11 +350,13 @@ class TestRaiseStructuredProviderError:
         from api.providers.base import ProviderErrorCategory
 
         with pytest.raises(Exception) as exc_info:
-            _raise_structured_provider_error({
-                "error": "Model not found",
-                "error_category": ProviderErrorCategory.MODEL_ERROR.value,
-                "provider": "openai"
-            })
+            _raise_structured_provider_error(
+                {
+                    "error": "Model not found",
+                    "error_category": ProviderErrorCategory.MODEL_ERROR.value,
+                    "provider": "openai",
+                }
+            )
 
         assert exc_info.value.status_code == 400
 
@@ -452,22 +458,28 @@ class TestSendMessageArchiving:
         mock_wti = MagicMock()
         mock_wti.process_message = AsyncMock(side_effect=fake_process_message)
 
-        with patch(
-            "api.chat_router._require_owned_conversation",
-            side_effect=fake_require_owned_conversation,
-        ), patch(
-            "api.chat_router.messages._get_write_time_intelligence",
-            return_value=mock_wti,
-        ), patch(
-            "api.chat_router.conversation_store.add_message_to_conversation",
-            new_callable=AsyncMock,
-            return_value=True,
-        ), patch(
-            "api.chat_router.invoke_provider",
-            side_effect=fake_invoke_provider,
-        ), patch(
-            "api.chat_router.messages.schedule_conversation_archive",
-            side_effect=fake_schedule,
+        with (
+            patch(
+                "api.chat_router._require_owned_conversation",
+                side_effect=fake_require_owned_conversation,
+            ),
+            patch(
+                "api.chat_router.messages._get_write_time_intelligence",
+                return_value=mock_wti,
+            ),
+            patch(
+                "api.chat_router.conversation_store.add_message_to_conversation",
+                new_callable=AsyncMock,
+                return_value=True,
+            ),
+            patch(
+                "api.chat_router.invoke_provider",
+                side_effect=fake_invoke_provider,
+            ),
+            patch(
+                "api.chat_router.messages.schedule_conversation_archive",
+                side_effect=fake_schedule,
+            ),
         ):
             response = client.post(
                 f"/chat/conversations/{conversation_id}/messages",
@@ -510,27 +522,32 @@ class TestEstimateTokens:
         provider = MagicMock()
         provider.COST_INPUT_PER_1K = cost_in
         provider.COST_OUTPUT_PER_1K = cost_out
-        provider.estimate_cost = (
-            lambda i, o: i * cost_in / 1000 + o * cost_out / 1000
-        )
+        provider.estimate_cost = lambda i, o: i * cost_in / 1000 + o * cost_out / 1000
         return provider
 
     def test_estimate_tokens_no_conversation(self, client):
         service = self._stub_assembly_service(
             total_tokens=1000,
-            layers=[{"name": "system", "tokens": 300}, {"name": "ephemeral", "tokens": 700}],
+            layers=[
+                {"name": "system", "tokens": 300},
+                {"name": "ephemeral", "tokens": 700},
+            ],
         )
         provider = self._stub_provider(cost_in=1.0, cost_out=2.0)
 
-        with patch(
-            "api.chat_router.messages._get_context_assembly_service",
-            return_value=service,
-        ), patch(
-            "api.chat_router.messages.dispatcher.get_provider",
-            return_value=provider,
-        ), patch(
-            "api.chat_router.messages.dispatcher._candidate_order",
-            return_value=["openai"],
+        with (
+            patch(
+                "api.chat_router.messages._get_context_assembly_service",
+                return_value=service,
+            ),
+            patch(
+                "api.chat_router.messages.dispatcher.get_provider",
+                return_value=provider,
+            ),
+            patch(
+                "api.chat_router.messages.dispatcher._candidate_order",
+                return_value=["openai"],
+            ),
         ):
             response = client.post(
                 "/chat/estimate-tokens",
@@ -550,27 +567,30 @@ class TestEstimateTokens:
     def test_estimate_tokens_with_conversation_passes_history(self, client, mock_user):
         owned = MagicMock(
             user_id=mock_user.id,
-            messages=[
-                MagicMock(role="user", content=f"msg-{i}") for i in range(15)
-            ],
+            messages=[MagicMock(role="user", content=f"msg-{i}") for i in range(15)],
         )
         service = self._stub_assembly_service(total_tokens=500, layers=[])
 
         async def fake_require(*_a, **_k):
             return owned
 
-        with patch(
-            "api.chat_router._require_owned_conversation",
-            side_effect=fake_require,
-        ), patch(
-            "api.chat_router.messages._get_context_assembly_service",
-            return_value=service,
-        ), patch(
-            "api.chat_router.messages.dispatcher.get_provider",
-            return_value=self._stub_provider(),
-        ), patch(
-            "api.chat_router.messages.dispatcher._candidate_order",
-            return_value=["openai"],
+        with (
+            patch(
+                "api.chat_router._require_owned_conversation",
+                side_effect=fake_require,
+            ),
+            patch(
+                "api.chat_router.messages._get_context_assembly_service",
+                return_value=service,
+            ),
+            patch(
+                "api.chat_router.messages.dispatcher.get_provider",
+                return_value=self._stub_provider(),
+            ),
+            patch(
+                "api.chat_router.messages.dispatcher._candidate_order",
+                return_value=["openai"],
+            ),
         ):
             response = client.post(
                 "/chat/estimate-tokens?conversation_id=conv-1",
@@ -587,6 +607,7 @@ class TestEstimateTokens:
     def test_estimate_tokens_rejects_unowned_conversation(self, client):
         async def fake_require(*_a, **_k):
             from fastapi import HTTPException
+
             raise HTTPException(status_code=404, detail="Conversation not found")
 
         with patch(
@@ -611,18 +632,23 @@ class TestEstimateTokens:
             invoke_calls.append((args, kwargs))
             return {"ok": True}
 
-        with patch(
-            "api.chat_router.messages._get_context_assembly_service",
-            return_value=service,
-        ), patch(
-            "api.chat_router.messages.dispatcher.get_provider",
-            return_value=self._stub_provider(),
-        ), patch(
-            "api.chat_router.messages.dispatcher._candidate_order",
-            return_value=["openai"],
-        ), patch(
-            "api.chat_router.invoke_provider",
-            side_effect=fake_invoke,
+        with (
+            patch(
+                "api.chat_router.messages._get_context_assembly_service",
+                return_value=service,
+            ),
+            patch(
+                "api.chat_router.messages.dispatcher.get_provider",
+                return_value=self._stub_provider(),
+            ),
+            patch(
+                "api.chat_router.messages.dispatcher._candidate_order",
+                return_value=["openai"],
+            ),
+            patch(
+                "api.chat_router.invoke_provider",
+                side_effect=fake_invoke,
+            ),
         ):
             response = client.post(
                 "/chat/estimate-tokens",
@@ -637,12 +663,15 @@ class TestEstimateTokens:
             total_tokens=50, layers=[{"name": "system", "tokens": 50}]
         )
 
-        with patch(
-            "api.chat_router.messages._get_context_assembly_service",
-            return_value=service,
-        ), patch(
-            "api.chat_router.messages.dispatcher._candidate_order",
-            return_value=[],
+        with (
+            patch(
+                "api.chat_router.messages._get_context_assembly_service",
+                return_value=service,
+            ),
+            patch(
+                "api.chat_router.messages.dispatcher._candidate_order",
+                return_value=[],
+            ),
         ):
             response = client.post(
                 "/chat/estimate-tokens",

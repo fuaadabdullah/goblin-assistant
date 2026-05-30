@@ -23,7 +23,7 @@ describe('SSR Safety - Browser API Access', () => {
 
     // Should not crash when window is undefined
     await expect(
-      withErrorTracking(async () => 'success', { operation: 'test-operation' }),
+      withErrorTracking(async () => 'success', { operation: 'test-operation' })
     ).resolves.toBe('success');
   });
 
@@ -43,8 +43,7 @@ describe('SSR Safety - Browser API Access', () => {
     // @ts-expect-error - intentionally testing undefined
     delete globalThis.window;
 
-    const { setupGlobalErrorTracking } =
-      await import('../utils/error-tracking');
+    const { setupGlobalErrorTracking } = await import('../utils/error-tracking');
 
     // Should exit early without attempting to add event listeners
     expect(() => {
@@ -80,7 +79,7 @@ describe('Storage Quota Handling', () => {
           if (value.length > 1000) {
             const error: DOMException & { name: string } = Object.assign(
               new DOMException('QuotaExceededError', 'QuotaExceededError'),
-              { name: 'QuotaExceededError' },
+              { name: 'QuotaExceededError' }
             );
             throw error;
           }
@@ -322,10 +321,7 @@ describe('Chat History Type Safety', () => {
   test('readChatThreads handles non-array data', async () => {
     const { readChatThreads } = await import('../lib/chat-history');
 
-    localStorage.setItem(
-      'goblin_chat_threads_v1',
-      JSON.stringify({ not: 'array' }),
-    );
+    localStorage.setItem('goblin_chat_threads_v1', JSON.stringify({ not: 'array' }));
 
     const threads = readChatThreads();
     expect(Array.isArray(threads)).toBe(true);
@@ -342,7 +338,7 @@ describe('Chat History Type Safety', () => {
         { role: null, content: null }, // Invalid
         { not: 'valid' }, // Invalid
         null, // Invalid
-      ]),
+      ])
     );
 
     const messages = readChatMessages('test');
@@ -372,11 +368,7 @@ describe('Error Type Instantiation', () => {
     const { NetworkError } = await import('../utils/error-tracking');
 
     const originalError = new Error('Connection failed');
-    const error = new NetworkError(
-      'Network timeout',
-      '/api/endpoint',
-      originalError,
-    );
+    const error = new NetworkError('Network timeout', '/api/endpoint', originalError);
 
     expect(error.name).toBe('NetworkError');
     expect(error.endpoint).toBe('/api/endpoint');

@@ -30,7 +30,9 @@ export const useProviderMutations = () => {
         };
       }
 
-      const result = await providersAdminApi.testProviderConnection(provider.id) as ProviderTestResponse;
+      const result = (await providersAdminApi.testProviderConnection(
+        provider.id
+      )) as ProviderTestResponse;
       return {
         success: Boolean(result?.success),
         message: result?.message ?? 'Connection test completed.',
@@ -68,7 +70,10 @@ export const useProviderMutations = () => {
         };
       }
 
-      const result = await providersAdminApi.testProviderWithPrompt(provider.id, prompt) as ProviderTestResponse;
+      const result = (await providersAdminApi.testProviderWithPrompt(
+        provider.id,
+        prompt
+      )) as ProviderTestResponse;
       return {
         success: Boolean(result?.success),
         message: result?.message ?? 'Prompt test completed.',
@@ -137,7 +142,7 @@ export const useProviderMutations = () => {
 
   const reorderProviders = useCallback(
     async (newOrder: ProviderConfig[]) => {
-      const providerIds = newOrder.map(p => p.id).filter((id): id is number => id !== undefined);
+      const providerIds = newOrder.map((p) => p.id).filter((id): id is number => id !== undefined);
       await reorderMutation.mutateAsync(providerIds);
     },
     [reorderMutation]

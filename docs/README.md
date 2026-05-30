@@ -4,11 +4,19 @@ Canonical docs for the monorepo:
 
 - `../README.md`: monorepo overview and quickstart
 - `../AGENTS.md`: task-oriented developer/agent navigation
-- `setup.md`: environment and local setup details
-- `features.md`: feature/capability status
-- `PURE_FUNCTIONS_AND_NAMING_POLICY.md`: pure-by-default side-effect and naming standard
-- `ARCHITECTURE_OVERVIEW.md`: web/api topology and request flow
-- `../apps/api/src/api/README.md`: backend entry guide
-- `../apps/api/src/api/docs/README.md`: backend route inventory
+- `architecture/README.md`: architecture, standards, and system boundaries
+- `backend/README.md`: backend API and routing references
+- `frontend/README.md`: frontend implementation and UI architecture
+- `infra/README.md`: environment, deployment, and CI/CD setup
+- `security/README.md`: privacy, secrets, and security standards
+- `ux/README.md`: accessibility, responsiveness, and UX verification
+- `decisions/README.md`: architecture decision records (ADRs)
+- `operations/README.md`: runbooks and operational procedures
+- `operations/LEGACY_EXCLUSIONS_REGISTER.md`: tracked temporary legacy exclusions and review dates
+- `archive/README.md`: historical/non-canonical documents
 
-Historical/legacy documents are kept under `docs/archive/` and may require verification before use.
+Migration notes:
+
+- ADRs moved from `docs/adr/` to `docs/decisions/`.
+- Runbooks moved from `docs/runbooks/` to `docs/operations/`.
+- Root-level docs were rehomed into domain folders to reduce monorepo doc sprawl.

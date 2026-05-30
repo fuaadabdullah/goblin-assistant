@@ -1,0 +1,15 @@
+{
+  "bucket": "integration",
+  "description": "Integration boundaries across API routes/services and platform interactions.",
+  "paths": [
+    "apps/api/src/api/tests/test_executor_tracing_integration.py",
+    "apps/api/src/api/tests/test_sandbox_integration.py",
+    "apps/api/src/api/tests/test_integration_e2e.py"
+  ],
+  "commands": [
+    {
+      "name": "api-integration-suite",
+      "run": "cd apps/api && PYTHONPATH=src python3.11 -m pytest -o \"addopts=\" -v src/api/tests/test_executor_tracing_integration.py src/api/tests/test_sandbox_integration.py src/api/tests/test_integration_e2e.py"
+    }
+  ]
+}

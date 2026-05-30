@@ -5,7 +5,7 @@ The crown jewel of observability - tracks every LLM call with full retrieval tra
 
 import json
 import time
-from typing import Dict, Any, List, Optional, Tuple
+from typing import Dict, Any, List, Optional
 from datetime import datetime, timedelta
 from dataclasses import dataclass, asdict
 from enum import Enum
@@ -135,9 +135,7 @@ class RetrievalTracer:
 
         return trace
 
-    def _calculate_tier_breakdown(
-        self, items: List[RetrievedItem]
-    ) -> Dict[str, Dict[str, Any]]:
+    def _calculate_tier_breakdown(self, items: List[RetrievedItem]) -> Dict[str, Dict[str, Any]]:
         """Calculate statistics for each retrieval tier"""
         tier_stats = {}
 
@@ -165,9 +163,7 @@ class RetrievalTracer:
         # Calculate averages
         for source_type, stats in tier_stats.items():
             if stats["count"] > 0:
-                stats["avg_relevance"] = round(
-                    stats["avg_relevance"] / stats["count"], 3
-                )
+                stats["avg_relevance"] = round(stats["avg_relevance"] / stats["count"], 3)
 
         return tier_stats
 
@@ -236,21 +232,17 @@ class RetrievalTracer:
                 "min_relevance": min(
                     (item.relevance_score for item in trace.items_retrieved), default=0
                 ),
-                "truncated_items": sum(
-                    1 for item in trace.items_retrieved if item.truncated
-                ),
+                "truncated_items": sum(1 for item in trace.items_retrieved if item.truncated),
             },
         }
 
         # Log based on retrieval outcome
         if trace.error:
-            logger.error(f"RETRIEVAL: Error occurred", extra={"retrieval": log_data})
+            logger.error("RETRIEVAL: Error occurred", extra={"retrieval": log_data})
         elif trace.total_tokens_used > trace.token_budget:
-            logger.warning(
-                f"RETRIEVAL: Token budget exceeded", extra={"retrieval": log_data}
-            )
+            logger.warning("RETRIEVAL: Token budget exceeded", extra={"retrieval": log_data})
         else:
-            logger.info(f"RETRIEVAL: Successful", extra={"retrieval": log_data})
+            logger.info("RETRIEVAL: Successful", extra={"retrieval": log_data})
 
     async def _log_to_file(self, trace: RetrievalTrace):
         """Log retrieval trace to file for persistent storage"""
@@ -323,14 +315,11 @@ class RetrievalTracer:
 
         # Token usage statistics
         token_usage = {
-            "avg_tokens_used": round(
-                sum(t.total_tokens_used for t in relevant_traces) / total, 2
-            ),
+            "avg_tokens_used": round(sum(t.total_tokens_used for t in relevant_traces) / total, 2),
             "max_tokens_used": max(t.total_tokens_used for t in relevant_traces),
             "min_tokens_used": min(t.total_tokens_used for t in relevant_traces),
             "avg_token_utilization": round(
-                sum(t.total_tokens_used / t.token_budget * 100 for t in relevant_traces)
-                / total,
+                sum(t.total_tokens_used / t.token_budget * 100 for t in relevant_traces) / total,
                 2,
             ),
         }
@@ -387,9 +376,7 @@ class RetrievalTracer:
             },
         }
 
-    async def get_retrieval_quality_report(
-        self, user_id: Optional[str] = None
-    ) -> Dict[str, Any]:
+    async def get_retrieval_quality_report(self, user_id: Optional[str] = None) -> Dict[str, Any]:
         """Get comprehensive retrieval quality report"""
 
         # Get all traces for user
@@ -409,24 +396,20 @@ class RetrievalTracer:
         total_traces = len(user_traces)
 
         # Token utilization analysis
-        token_utilization = [
-            t.total_tokens_used / t.token_budget * 100 for t in user_traces
-        ]
+        token_utilization = [t.total_tokens_used / t.token_budget * 100 for t in user_traces]
         avg_utilization = sum(token_utilization) / len(token_utilization)
 
         # Relevance analysis
         avg_relevance_scores = []
         for trace in user_traces:
             if trace.items_retrieved:
-                avg_relevance = sum(
-                    item.relevance_score for item in trace.items_retrieved
-                ) / len(trace.items_retrieved)
+                avg_relevance = sum(item.relevance_score for item in trace.items_retrieved) / len(
+                    trace.items_retrieved
+                )
                 avg_relevance_scores.append(avg_relevance)
 
         avg_relevance = (
-            sum(avg_relevance_scores) / len(avg_relevance_scores)
-            if avg_relevance_scores
-            else 0
+            sum(avg_relevance_scores) / len(avg_relevance_scores) if avg_relevance_scores else 0
         )
 
         # Truncation analysis
@@ -507,9 +490,7 @@ class RetrievalTracer:
             )
 
         if truncation_rate > 20:
-            recommendations.append(
-                "High truncation rate - review token allocation strategy"
-            )
+            recommendations.append("High truncation rate - review token allocation strategy")
 
         if avg_relevance < 0.5:
             recommendations.append(

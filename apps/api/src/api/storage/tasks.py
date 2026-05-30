@@ -158,8 +158,16 @@ class TaskStore:
                         task_type=task_data.get("task_type"),
                         payload=task_data.get("payload", {}),
                         result=task_data.get("result"),
-                        created_at=datetime.fromisoformat(task_data["created_at"]) if "created_at" in task_data else datetime.utcnow(),
-                        updated_at=datetime.fromisoformat(task_data["updated_at"]) if "updated_at" in task_data else datetime.utcnow(),
+                        created_at=(
+                            datetime.fromisoformat(task_data["created_at"])
+                            if "created_at" in task_data
+                            else datetime.utcnow()
+                        ),
+                        updated_at=(
+                            datetime.fromisoformat(task_data["updated_at"])
+                            if "updated_at" in task_data
+                            else datetime.utcnow()
+                        ),
                         metadata_=task_data.get("metadata", {}),
                     )
                     session.add(task)

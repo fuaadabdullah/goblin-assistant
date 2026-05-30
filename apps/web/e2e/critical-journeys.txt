@@ -1,4 +1,4 @@
-# Tier 0 E2E journeys (hard cap enforced by scripts/check-e2e-budget.sh)
+# Tier 0 E2E journeys (hard cap enforced by tooling/quality/check-e2e-budget.sh)
 auth-login-and-session-gate
 api-contract-dependent-core-workflow
 sandbox-submit-run-status

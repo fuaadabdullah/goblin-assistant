@@ -191,9 +191,7 @@ async def diagnose_llamacpp():
                 elapsed_ms = (time.perf_counter() - start) * 1000
 
                 status_icon = "✅" if 200 <= response.status_code < 300 else "⚠️"
-                print(
-                    f"{status_icon} {path:30} → {response.status_code} ({elapsed_ms:.0f}ms)"
-                )
+                print(f"{status_icon} {path:30} → {response.status_code} ({elapsed_ms:.0f}ms)")
 
                 if response.status_code == 200 and len(response.text) < 200:
                     print(f"   Response: {response.text}")

@@ -115,9 +115,15 @@ const ChatView = ({ session, isAdmin }: ChatViewProps) => {
             <div className="mt-6">
               <div className="text-sm text-muted">Features</div>
               <div className="mt-3 flex flex-wrap gap-2">
-                <span className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-surface-hover text-sm">Finance analysis</span>
-                <span className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-surface-hover text-sm">Live code</span>
-                <span className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-surface-hover text-sm">Smart memory</span>
+                <span className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-surface-hover text-sm">
+                  Finance analysis
+                </span>
+                <span className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-surface-hover text-sm">
+                  Live code
+                </span>
+                <span className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-surface-hover text-sm">
+                  Smart memory
+                </span>
               </div>
             </div>
           </aside>
@@ -136,8 +142,8 @@ const ChatView = ({ session, isAdmin }: ChatViewProps) => {
       <div className="relative flex">
         <div
           ref={drawerRef}
-            role="dialog"
-            aria-label="Conversations"
+          role="dialog"
+          aria-label="Conversations"
           className={`fixed inset-0 z-40 lg:hidden ${
             chatSidebarOpen ? 'pointer-events-auto' : 'pointer-events-none'
           }`}
@@ -269,4 +275,3 @@ const ChatView = ({ session, isAdmin }: ChatViewProps) => {
 };
 
 export default ChatView;
-

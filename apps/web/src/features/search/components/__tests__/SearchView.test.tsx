@@ -1,21 +1,41 @@
 import React from 'react';
 import { render, screen } from '@testing-library/react';
 
-jest.mock('../SearchHeader', () => function MockSearchHeader({ title }: { title: string }) {
-  return <div data-testid="search-header">{title}</div>;
-});
-jest.mock('../SearchQuickQueries', () => function MockQuickQueries() {
-  return <div data-testid="search-quick-queries" />;
-});
-jest.mock('../SearchForm', () => function MockSearchForm() {
-  return <div data-testid="search-form" />;
-});
-jest.mock('../SearchResultsList', () => function MockResults() {
-  return <div data-testid="search-results-list" />;
-});
-jest.mock('../../../../components/Seo', () => function MockSeo() {
-  return null;
-});
+jest.mock(
+  '../SearchHeader',
+  () =>
+    function MockSearchHeader({ title }: { title: string }) {
+      return <div data-testid="search-header">{title}</div>;
+    }
+);
+jest.mock(
+  '../SearchQuickQueries',
+  () =>
+    function MockQuickQueries() {
+      return <div data-testid="search-quick-queries" />;
+    }
+);
+jest.mock(
+  '../SearchForm',
+  () =>
+    function MockSearchForm() {
+      return <div data-testid="search-form" />;
+    }
+);
+jest.mock(
+  '../SearchResultsList',
+  () =>
+    function MockResults() {
+      return <div data-testid="search-results-list" />;
+    }
+);
+jest.mock(
+  '../../../../components/Seo',
+  () =>
+    function MockSeo() {
+      return null;
+    }
+);
 
 import SearchView from '../SearchView';
 import type { SearchState } from '../../../search/hooks/useSearchResults';
@@ -75,7 +95,9 @@ describe('SearchView', () => {
   });
 
   it('shows results list when results are present', () => {
-    const results = [{ id: '1', content: 'test', score: 0.9, metadata: {} }] as SearchState['results'];
+    const results = [
+      { id: '1', content: 'test', score: 0.9, metadata: {} },
+    ] as SearchState['results'];
     render(<SearchView state={makeState({ query: 'test', results })} />);
     expect(screen.getByTestId('search-results-list')).toBeInTheDocument();
   });

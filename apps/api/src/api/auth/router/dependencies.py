@@ -113,11 +113,7 @@ async def get_current_user(
         )
 
     session_id = payload.get("session_id")
-    if (
-        cached_user is not None
-        and cached_user_id == user_id
-        and cached_session_id == session_id
-    ):
+    if cached_user is not None and cached_user_id == user_id and cached_session_id == session_id:
         user_model = cached_user
     else:
         user_model = await _get_authenticated_user_model(db, user_id, session_id)

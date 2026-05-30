@@ -31,7 +31,9 @@ export default function ModularLoginForm({
   const [showPasskey, setShowPasskey] = useState(false);
   const [email, setEmail] = useState('');
   const [turnstileToken, setTurnstileToken] = useState('');
-  const [oauthStatus, setOauthStatus] = useState<'idle' | 'captcha' | 'exchange' | 'session'>('idle');
+  const [oauthStatus, setOauthStatus] = useState<'idle' | 'captcha' | 'exchange' | 'session'>(
+    'idle'
+  );
   const [oauthRetryCount, setOauthRetryCount] = useState(0);
   const queryClient = useQueryClient();
   const googleAuthEnabled = featureFlags.googleAuth;
@@ -45,7 +47,7 @@ export default function ModularLoginForm({
   // Helper: delay with exponential backoff
   const exponentialBackoff = (attempt: number): Promise<void> => {
     const delay = Math.min(1000 * Math.pow(2, attempt), 10000); // 1s, 2s, 4s, 8s, max 10s
-    return new Promise(resolve => setTimeout(resolve, delay));
+    return new Promise((resolve) => setTimeout(resolve, delay));
   };
 
   // Helper: timeout wrapper for promises
@@ -79,11 +81,11 @@ export default function ModularLoginForm({
         : await apiClient.login(email, password);
 
       const authResponse = response as LoginResponse;
-      
+
       if (!authResponse.access_token) {
         throw new Error('Authentication failed - invalid server response');
       }
-      
+
       persistAuthSession({
         token: authResponse.access_token,
         refreshToken: authResponse.refresh_token,
@@ -199,11 +201,11 @@ export default function ModularLoginForm({
           <div className="mt-4">
             <TurnstileWidget
               siteKey={turnstileConfig.siteKey}
-              onVerify={token => setTurnstileToken(token)}
+              onVerify={(token) => setTurnstileToken(token)}
               mode="managed"
               theme="auto"
               size="normal"
-              onError={error => {
+              onError={(error) => {
                 devError('Turnstile verification failed:', error);
                 onError('Security verification failed. Please try again.');
               }}

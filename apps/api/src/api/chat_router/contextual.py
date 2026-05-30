@@ -16,8 +16,9 @@ from fastapi.responses import StreamingResponse
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from ..assistant_tools.executor import extract_tool_calls, run_tool_loop
-from ..assistant_tools.registry import export_openai_tools
+from ..assistant_tools.registry import export_tools_for_provider
 from ..auth.router import User as AuthenticatedUser, get_current_user
+from ..core.contracts import SuccessEnvelope
 from ..storage import conversation_store
 from ..storage.database import get_db
 from api.config.mode_addendums import get_addendum as _get_mode_addendum
@@ -35,7 +36,7 @@ logger = structlog.get_logger()
 router = APIRouter()
 
 
-@router.post("/contextual-chat", response_model=ContextualChatResponse)
+@router.post("/contextual-chat", response_model=SuccessEnvelope[ContextualChatResponse])
 async def contextual_chat(
     request: ContextualChatRequest,
     current_user: AuthenticatedUser = Depends(get_current_user),
@@ -71,9 +72,7 @@ async def contextual_chat(
         if request.enable_context_assembly and user_id:
             conversation_history = []
             if conversation_id:
-                conversation = await conversation_store.get_conversation(
-                    conversation_id
-                )
+                conversation = await conversation_store.get_conversation(conversation_id)
                 if conversation:
                     conversation_history = [
                         {"role": msg.role, "content": msg.content}
@@ -107,9 +106,7 @@ async def contextual_chat(
                 "total_tokens_used": assembly_result.get("total_tokens_used", 0),
                 "remaining_tokens": assembly_result.get("remaining_tokens", 0),
                 "layers_assembled": len(assembly_result.get("layers", [])),
-                "assembly_time": assembly_result.get("assembly_log", {}).get(
-                    "assembly_time"
-                ),
+                "assembly_time": assembly_result.get("assembly_log", {}).get("assembly_time"),
                 "degraded_mode": assembly_result.get("degraded_mode", False),
                 "degraded_reason": assembly_result.get("degraded_reason"),
                 "truncation_warnings": assembly_result.get("truncation_warnings", []),
@@ -132,7 +129,7 @@ async def contextual_chat(
             "model": request.model,
         }
 
-        ctx_tools = export_openai_tools()
+        ctx_tools = export_tools_for_provider(request.provider)
         if ctx_tools:
             payload["tools"] = ctx_tools
 
@@ -186,40 +183,31 @@ async def contextual_chat(
                     conversation_id=conversation_id,
                 )
 
-            duration = time.time() - start_time
-            success = isinstance(provider_response, dict) and provider_response.get(
-                "ok", True
-            )
-            error = None if success else str(provider_response.get("error", "unknown"))
+            time.time() - start_time
+            success = isinstance(provider_response, dict) and provider_response.get("ok", True)
+            None if success else str(provider_response.get("error", "unknown"))
         except Exception:
-            duration = time.time() - start_time
+            time.time() - start_time
             raise
 
         if isinstance(provider_response, dict) and provider_response.get("ok"):
             result_data = provider_response.get("result", {})
             response_content = result_data.get("text", "")
-            used_provider = provider_response.get(
-                "provider", request.provider or "unknown"
-            )
+            used_provider = provider_response.get("provider", request.provider or "unknown")
             used_model = provider_response.get("model", request.model or "unknown")
         elif isinstance(provider_response, dict) and "choices" in provider_response:
             response_content = provider_response["choices"][0]["message"]["content"]
-            used_provider = provider_response.get(
-                "provider", request.provider or "unknown"
-            )
+            used_provider = provider_response.get("provider", request.provider or "unknown")
             used_model = provider_response.get("model", request.model or "unknown")
         else:
             if isinstance(provider_response, dict) and not provider_response.get("ok"):
-                error_msg = provider_response.get("error", "unknown-error")
-                raise HTTPException(
-                    status_code=500, detail=f"AI Provider error: {error_msg}"
-                )
+                _cr._raise_structured_provider_error(provider_response)
 
             response_content = str(provider_response)
             used_provider = request.provider or "unknown"
             used_model = request.model or "unknown"
 
-        message_id = str(uuid.uuid4())
+        str(uuid.uuid4())
         response_message_id = str(uuid.uuid4())
 
         if conversation_id:
@@ -227,15 +215,17 @@ async def contextual_chat(
                 conversation_id=conversation_id,
                 role="user",
                 content=request.message,
-                metadata={
-                    "context_assembly_enabled": request.enable_context_assembly,
-                    "context_assembly_layers": len(context_assembly.get("layers", []))
-                    if context_assembly
-                    else 0,
-                    "metadata": request.metadata,
-                }
-                if request.enable_context_assembly
-                else request.metadata,
+                metadata=(
+                    {
+                        "context_assembly_enabled": request.enable_context_assembly,
+                        "context_assembly_layers": (
+                            len(context_assembly.get("layers", [])) if context_assembly else 0
+                        ),
+                        "metadata": request.metadata,
+                    }
+                    if request.enable_context_assembly
+                    else request.metadata
+                ),
             )
             await schedule_conversation_archive(conversation_id)
 

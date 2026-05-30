@@ -8,9 +8,9 @@ jest.mock('@/content/brand', () => ({
 }));
 
 const mockFetchCollections = jest.fn().mockResolvedValue(['docs', 'code']);
-const mockSearchCollectionByName = jest.fn().mockResolvedValue([
-  { id: '1', content: 'result 1', score: 0.9 },
-]);
+const mockSearchCollectionByName = jest
+  .fn()
+  .mockResolvedValue([{ id: '1', content: 'result 1', score: 0.9 }]);
 
 jest.mock('../../api', () => ({
   fetchCollections: (...args: unknown[]) => mockFetchCollections(...args),

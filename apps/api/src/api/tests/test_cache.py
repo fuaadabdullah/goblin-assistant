@@ -8,6 +8,7 @@ Covers:
 - Helper functions (cache_provider_status, cache_routing_result, cache_task_result,
   get_cached_provider_status, get_cached_routing_result, get_cached_task_result)
 """
+
 from __future__ import annotations
 
 from unittest.mock import AsyncMock, MagicMock, patch
@@ -49,7 +50,10 @@ class TestRedisCacheInit:
     async def test_init_redis_failure_graceful(self):
         cache = RedisCache()
 
-        with patch("api.storage.cache.get_redis_client", side_effect=Exception("connect failed")):
+        with patch(
+            "api.storage.cache.get_redis_client",
+            side_effect=Exception("connect failed"),
+        ):
             await cache.init_redis()
 
         assert cache._initialized is True
@@ -68,7 +72,6 @@ class TestRedisCacheInit:
 
         assert cache._initialized is True
         # get_redis_client should only be called once
-        from api.storage.cache import get_redis_client
 
 
 class TestRedisCacheOperations:
@@ -107,9 +110,7 @@ class TestRedisCacheOperations:
     @pytest.mark.asyncio
     async def test_set_stores_value(self, cache):
         await cache.set("my-key", {"data": 123}, expire=60)
-        cache._redis.set.assert_awaited_with(
-            "my-key", '{"data": 123}', ex=60
-        )
+        cache._redis.set.assert_awaited_with("my-key", '{"data": 123}', ex=60)
 
     @pytest.mark.asyncio
     async def test_set_uses_cache_type_ttl(self, cache):

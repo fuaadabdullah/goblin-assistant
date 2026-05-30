@@ -57,9 +57,7 @@ class LlamaCPPProvider(BaseProvider):
         prompt: str = "",
         **kwargs: Any,
     ) -> ProviderResult:
-        normalized_messages = self.normalize_messages(
-            messages, prompt=prompt, **kwargs
-        )
+        normalized_messages = self.normalize_messages(messages, prompt=prompt, **kwargs)
         if not self._base_url:
             return ProviderResult(
                 ok=False,
@@ -129,9 +127,7 @@ class LlamaCPPProvider(BaseProvider):
         prompt: str = "",
         **kwargs: Any,
     ) -> AsyncGenerator[Dict[str, Any], None]:
-        normalized_messages = self.normalize_messages(
-            messages, prompt=prompt, **kwargs
-        )
+        normalized_messages = self.normalize_messages(messages, prompt=prompt, **kwargs)
         model_name = model or await self._resolve_model()
         body = {
             "model": model_name,

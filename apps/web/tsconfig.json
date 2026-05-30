@@ -21,10 +21,7 @@
     "incremental": true,
     "isolatedModules": true
   },
-  "include": [
-    "next-env.d.ts",
-    "src"
-  ],
+  "include": ["next-env.d.ts", "src"],
   "exclude": [
     "src/**/__tests__/**",
     "src/__tests__/**",

@@ -36,8 +36,7 @@ export default function Seo({
   const desc = description || DEFAULT_DESCRIPTION;
 
   const canonicalUrl =
-    canonical ||
-    toAbsoluteUrl(siteUrl, (router.asPath || '/').split('#')[0].split('?')[0] || '/');
+    canonical || toAbsoluteUrl(siteUrl, (router.asPath || '/').split('#')[0].split('?')[0] || '/');
 
   const ogImageUrl = toAbsoluteUrl(siteUrl, ogImagePath);
 
@@ -65,4 +64,3 @@ export default function Seo({
     </Head>
   );
 }
-

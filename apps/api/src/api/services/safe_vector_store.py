@@ -23,7 +23,7 @@ Usage:
     )
 """
 
-from typing import Optional, List, Dict, Any
+from typing import Optional, Dict, Any
 from datetime import datetime, timedelta
 import logging
 import chromadb
@@ -88,10 +88,8 @@ class SafeVectorStore:
         # Setup embedding function
         if EMBEDDINGS_AVAILABLE and embedding_functions is not None:
             try:
-                self.embedding_fn = (
-                    embedding_functions.SentenceTransformerEmbeddingFunction(
-                        model_name=embedding_model
-                    )
+                self.embedding_fn = embedding_functions.SentenceTransformerEmbeddingFunction(
+                    model_name=embedding_model
                 )
             except (ValueError, ImportError) as e:
                 # sentence-transformers not available (requires PyTorch)
@@ -101,9 +99,7 @@ class SafeVectorStore:
                 self.embedding_fn = None
         else:
             # Fallback: use default embeddings
-            logger.warning(
-                "sentence-transformers not available, using default embeddings"
-            )
+            logger.warning("sentence-transformers not available, using default embeddings")
             self.embedding_fn = None
 
         # Get or create collection
@@ -311,9 +307,7 @@ class SafeVectorStore:
         """
         try:
             # Get all user documents
-            results = self.collection.get(
-                where={"user_id": user_id}, include=["metadatas"]
-            )
+            results = self.collection.get(where={"user_id": user_id}, include=["metadatas"])
 
             doc_ids = results["ids"]
 

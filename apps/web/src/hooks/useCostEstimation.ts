@@ -32,7 +32,11 @@ const computeEstimate = (orchestrationText: string, codeInput: string): CostEsti
     estimatedCost: Number(estimated_cost_usd.toFixed(4)),
     estimatedTokens: estimated_tokens,
     breakdown: [
-      { label: 'Estimated total', cost: Number(estimated_cost_usd.toFixed(4)), tokens: estimated_tokens },
+      {
+        label: 'Estimated total',
+        cost: Number(estimated_cost_usd.toFixed(4)),
+        tokens: estimated_tokens,
+      },
     ],
   };
 };

@@ -36,10 +36,7 @@ const ProjectionsTable = ({ title, data, config }: ProjectionsTableProps) => {
                 row[highlight.key] === highlight.value;
 
               return (
-                <tr
-                  key={rowIdx}
-                  className={isHighlighted ? 'bg-primary/10' : ''}
-                >
+                <tr key={rowIdx} className={isHighlighted ? 'bg-primary/10' : ''}>
                   {columns.map((col) => (
                     <td
                       key={col.key}

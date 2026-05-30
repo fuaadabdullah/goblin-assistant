@@ -15,6 +15,7 @@ from api.providers.base import ProviderResult, ProviderHealth
 # Helpers
 # ---------------------------------------------------------------------------
 
+
 def _provider(endpoint: str = "http://llama.test:8000") -> LlamaCPPProvider:
     """Build a provider instance with a deterministic endpoint."""
     return LlamaCPPProvider(
@@ -39,6 +40,7 @@ def _chat_response(text: str = "hello", model: str = "qwen2.5-3b") -> dict:
 # ---------------------------------------------------------------------------
 # invoke
 # ---------------------------------------------------------------------------
+
 
 class TestInvoke:
     @pytest.mark.asyncio
@@ -82,11 +84,13 @@ class TestInvoke:
 
         with patch("httpx.AsyncClient") as MockClient:
             instance = AsyncMock()
-            instance.post = AsyncMock(side_effect=httpx.HTTPStatusError(
-                "500 Internal Server Error",
-                request=MagicMock(),
-                response=MagicMock(status_code=500),
-            ))
+            instance.post = AsyncMock(
+                side_effect=httpx.HTTPStatusError(
+                    "500 Internal Server Error",
+                    request=MagicMock(),
+                    response=MagicMock(status_code=500),
+                )
+            )
             instance.__aenter__ = AsyncMock(return_value=instance)
             instance.__aexit__ = AsyncMock(return_value=False)
             MockClient.return_value = instance
@@ -139,6 +143,7 @@ class TestInvoke:
 # stream
 # ---------------------------------------------------------------------------
 
+
 class TestStream:
     @pytest.mark.asyncio
     async def test_stream_yields_chunks(self):
@@ -163,9 +168,7 @@ class TestStream:
 
         with patch("httpx.AsyncClient", return_value=mock_client):
             chunks = []
-            async for chunk in provider.stream(
-                messages=[{"role": "user", "content": "hi"}]
-            ):
+            async for chunk in provider.stream(messages=[{"role": "user", "content": "hi"}]):
                 chunks.append(chunk)
 
         assert len(chunks) == 2
@@ -205,6 +208,7 @@ class TestStream:
 # ---------------------------------------------------------------------------
 # health_check
 # ---------------------------------------------------------------------------
+
 
 class TestHealthCheck:
     @pytest.mark.asyncio
@@ -275,6 +279,7 @@ class TestHealthCheck:
 # _resolve_model
 # ---------------------------------------------------------------------------
 
+
 class TestResolveModel:
     @pytest.mark.asyncio
     async def test_uses_default_model_when_set(self):
@@ -286,7 +291,10 @@ class TestResolveModel:
     async def test_falls_back_to_api_model_list(self):
         provider = LlamaCPPProvider(
             "llamacpp_gcp",
-            {"endpoint": "http://llama.test:8000", "endpoint_env": "LLAMACPP_GCP_ENDPOINT"},
+            {
+                "endpoint": "http://llama.test:8000",
+                "endpoint_env": "LLAMACPP_GCP_ENDPOINT",
+            },
         )
         mock_resp = MagicMock()
         mock_resp.status_code = 200
@@ -307,7 +315,10 @@ class TestResolveModel:
     async def test_falls_back_to_default_string(self):
         provider = LlamaCPPProvider(
             "llamacpp_gcp",
-            {"endpoint": "http://llama.test:8000", "endpoint_env": "LLAMACPP_GCP_ENDPOINT"},
+            {
+                "endpoint": "http://llama.test:8000",
+                "endpoint_env": "LLAMACPP_GCP_ENDPOINT",
+            },
         )
 
         with patch("httpx.AsyncClient") as MockClient:
@@ -325,6 +336,7 @@ class TestResolveModel:
 # ---------------------------------------------------------------------------
 # Async iter helper for stream mocking
 # ---------------------------------------------------------------------------
+
 
 async def _async_iter(items):
     for item in items:

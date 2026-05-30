@@ -11,7 +11,7 @@ describe('IconButton', () => {
   });
 
   it('handles click events', () => {
-  const handleClick = jest.fn();
+    const handleClick = jest.fn();
     const { getByRole } = render(
       <IconButton icon="✓" aria-label="Confirm" onClick={handleClick} />
     );
@@ -23,7 +23,7 @@ describe('IconButton', () => {
   });
 
   it('can be disabled', () => {
-  const handleClick = jest.fn();
+    const handleClick = jest.fn();
     const { getByRole } = render(
       <IconButton icon="✓" aria-label="Confirm" disabled onClick={handleClick} />
     );

@@ -1,13 +1,20 @@
 import React from 'react';
 import { render, screen, fireEvent } from '@testing-library/react';
 
-jest.mock('lucide-react', () =>
-  new Proxy({}, {
-    get: (_, name) => {
-      if (name === '__esModule') return true;
-      return (props: Record<string, unknown>) => <span data-testid={`icon-${String(name)}`} {...props} />;
-    },
-  })
+jest.mock(
+  'lucide-react',
+  () =>
+    new Proxy(
+      {},
+      {
+        get: (_, name) => {
+          if (name === '__esModule') return true;
+          return (props: Record<string, unknown>) => (
+            <span data-testid={`icon-${String(name)}`} {...props} />
+          );
+        },
+      }
+    )
 );
 
 import ChatErrorBubble from '../ChatErrorBubble';

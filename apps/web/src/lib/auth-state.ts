@@ -1,6 +1,11 @@
 import type { User, ValidateTokenResponse } from '../types/api';
 import { apiClient } from './api';
-import { clearAuthSession, getAuthToken, isAuthenticated as checkAuth, persistAuthSession } from '../utils/auth-session';
+import {
+  clearAuthSession,
+  getAuthToken,
+  isAuthenticated as checkAuth,
+  persistAuthSession,
+} from '../utils/auth-session';
 
 export interface AuthSessionSnapshot {
   token: string | null;
@@ -20,13 +25,13 @@ const validationCache = new Map<string, CachedValidation>();
 const getCachedValidation = (token: string): ValidateTokenResponse | null => {
   const cached = validationCache.get(token);
   if (!cached) return null;
-  
+
   const age = Date.now() - cached.timestamp;
   if (age > TOKEN_CACHE_TTL_MS) {
     validationCache.delete(token);
     return null;
   }
-  
+
   return cached.payload;
 };
 
@@ -57,7 +62,7 @@ export const hasRole = (user: User | null | undefined, role: string): boolean =>
 
 export const hasAnyRole = (user: User | null | undefined, roles: string[]): boolean => {
   if (!user) return false;
-  return roles.some(role => hasRole(user, role));
+  return roles.some((role) => hasRole(user, role));
 };
 
 const provisionalSnapshot = (token: string, user: User | null): AuthSessionSnapshot => ({
@@ -75,7 +80,7 @@ const readStoredSession = (): { token: string | null; user: User | null } => {
 
 const resolveValidatedUser = (
   payload: ValidateTokenResponse,
-  fallbackUser: User | null,
+  fallbackUser: User | null
 ): User | null => {
   const candidateUser = payload?.user ?? null;
   return candidateUser && typeof candidateUser === 'object' && 'id' in candidateUser
@@ -90,8 +95,7 @@ const getErrorStatus = (error: unknown): number | undefined => {
   return Number((error as { status?: unknown }).status);
 };
 
-const isHardAuthFailure = (status: number | undefined): boolean =>
-  status === 401 || status === 403;
+const isHardAuthFailure = (status: number | undefined): boolean => status === 401 || status === 403;
 
 export const bootstrapAuthSession = async (): Promise<AuthSessionSnapshot> => {
   if (typeof window === 'undefined') {

@@ -78,9 +78,7 @@ def test_generate_requires_messages_or_prompt():
     response = client.post("/api/generate", json={"model": "gpt-4o-mini"})
 
     assert response.status_code == 400
-    assert response.json()["detail"] == (
-        "Either 'messages' or 'prompt' must be provided"
-    )
+    assert response.json()["detail"] == ("Either 'messages' or 'prompt' must be provided")
 
 
 def test_generate_uses_prompt_and_returns_openai_style_response():
@@ -119,12 +117,15 @@ def test_route_task_returns_task_identifier():
 def test_start_poll_and_cancel_stream_task_flow():
     client = _client()
 
-    with patch(
-        "api.api_router.asyncio.create_task",
-        new=MagicMock(),
-    ) as mock_task, patch(
-        "api.api_router.simulate_stream_task",
-        new=MagicMock(),
+    with (
+        patch(
+            "api.api_router.asyncio.create_task",
+            new=MagicMock(),
+        ) as mock_task,
+        patch(
+            "api.api_router.simulate_stream_task",
+            new=MagicMock(),
+        ),
     ):
         start = client.post(
             "/api/route_task_stream_start",

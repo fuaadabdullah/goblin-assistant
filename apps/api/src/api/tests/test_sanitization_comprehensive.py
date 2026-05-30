@@ -348,11 +348,11 @@ class TestSanitizationEdgeCases:
         text1 = "API_KEY: secret123"
         text2 = "api_key: secret123"
         text3 = "Api_Key: secret123"
-        
+
         clean1, pii1 = sanitize_input_for_model(text1)
         clean2, pii2 = sanitize_input_for_model(text2)
         clean3, pii3 = sanitize_input_for_model(text3)
-        
+
         # At least some should detect the api_key
         assert any("api" in str(p) for p in [pii1, pii2, pii3])
 

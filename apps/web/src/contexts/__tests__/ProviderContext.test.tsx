@@ -45,10 +45,16 @@ const Probe = () => {
       <button data-testid="set-selected-provider" onClick={() => setSelectedProvider('anthropic')}>
         set provider
       </button>
-      <button data-testid="set-selected-model" onClick={() => setSelectedModel('claude-3.5-sonnet')}>
+      <button
+        data-testid="set-selected-model"
+        onClick={() => setSelectedModel('claude-3.5-sonnet')}
+      >
         set model
       </button>
-      <button data-testid="update-providers" onClick={() => updateProviders(['openai', 'azure-openai'])}>
+      <button
+        data-testid="update-providers"
+        onClick={() => updateProviders(['openai', 'azure-openai'])}
+      >
         update providers
       </button>
       <button data-testid="update-models" onClick={() => updateModels(['gpt-4o'])}>
@@ -84,7 +90,7 @@ describe('ProviderContext', () => {
         lastError = error;
       }
 
-      await new Promise(resolve => setTimeout(resolve, 20));
+      await new Promise((resolve) => setTimeout(resolve, 20));
     }
 
     throw lastError ?? new Error('Timed out waiting for assertion');
@@ -129,7 +135,7 @@ describe('ProviderContext', () => {
           <ProviderProvider>
             <Probe />
           </ProviderProvider>
-        </QueryClientProvider>,
+        </QueryClientProvider>
       );
     });
 
@@ -155,7 +161,7 @@ describe('ProviderContext', () => {
           <ProviderProvider>
             <Probe />
           </ProviderProvider>
-        </QueryClientProvider>,
+        </QueryClientProvider>
       );
     });
 
@@ -177,7 +183,7 @@ describe('ProviderContext', () => {
           <ProviderProvider>
             <Probe />
           </ProviderProvider>
-        </QueryClientProvider>,
+        </QueryClientProvider>
       );
     });
 
@@ -207,7 +213,7 @@ describe('ProviderContext', () => {
           <ProviderProvider>
             <Probe />
           </ProviderProvider>
-        </QueryClientProvider>,
+        </QueryClientProvider>
       );
     });
 

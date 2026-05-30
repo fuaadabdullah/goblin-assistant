@@ -77,9 +77,7 @@ class TestCacheServiceSet:
         cache_service.redis_client = AsyncMock()
         cache_service._is_connected = True
 
-        result = await cache_service.set(
-            "test_key", {"data": "value"}, ttl=3600
-        )
+        result = await cache_service.set("test_key", {"data": "value"}, ttl=3600)
 
         assert result is True
         cache_service.redis_client.setex.assert_called_once()
@@ -129,8 +127,7 @@ class TestCacheServiceSet:
     async def test_set_redis_error_returns_false(self, cache_service):
         """Test returns False on Redis error"""
         cache_service.redis_client = AsyncMock()
-        cache_service.redis_client.setex.side_effect = \
-            Exception("Redis error")
+        cache_service.redis_client.setex.side_effect = Exception("Redis error")
         cache_service._is_connected = True
 
         result = await cache_service.set("key", "value", ttl=100)
@@ -148,16 +145,12 @@ class TestCacheServiceGet:
         cache_service._is_connected = True
 
         test_value = {"data": "value"}
-        cache_service.redis_client.get = AsyncMock(
-            return_value=json.dumps(test_value).encode()
-        )
+        cache_service.redis_client.get = AsyncMock(return_value=json.dumps(test_value).encode())
 
         result = await cache_service.get("test_key")
 
         assert result == test_value
-        cache_service.redis_client.get.assert_called_once_with(
-            "test_key"
-        )
+        cache_service.redis_client.get.assert_called_once_with("test_key")
 
     @pytest.mark.asyncio
     async def test_get_missing_key_returns_none(self, cache_service):
@@ -187,8 +180,7 @@ class TestCacheServiceGet:
     async def test_get_returns_none_on_error(self, cache_service):
         """Test returns None on Redis error"""
         cache_service.redis_client = AsyncMock()
-        cache_service.redis_client.get.side_effect = \
-            Exception("Redis error")
+        cache_service.redis_client.get.side_effect = Exception("Redis error")
         cache_service._is_connected = True
 
         result = await cache_service.get("key")
@@ -214,8 +206,7 @@ class TestCacheServiceDelete:
     async def test_delete_returns_false_on_error(self, cache_service):
         """Test returns False on Redis error"""
         cache_service.redis_client = AsyncMock()
-        cache_service.redis_client.delete.side_effect = \
-            Exception("Redis error")
+        cache_service.redis_client.delete.side_effect = Exception("Redis error")
         cache_service._is_connected = True
 
         result = await cache_service.delete("key")
@@ -241,8 +232,7 @@ class TestCacheServiceClear:
     async def test_clear_returns_false_on_error(self, cache_service):
         """Test returns False on Redis error"""
         cache_service.redis_client = AsyncMock()
-        cache_service.redis_client.flushdb.side_effect = \
-            Exception("Redis error")
+        cache_service.redis_client.flushdb.side_effect = Exception("Redis error")
         cache_service._is_connected = True
 
         result = await cache_service.flush()

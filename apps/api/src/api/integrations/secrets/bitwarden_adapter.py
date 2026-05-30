@@ -10,7 +10,7 @@ import json
 import logging
 import subprocess
 import tempfile
-from typing import Dict, List, Optional, Any, Union
+from typing import Dict, List, Optional, Any
 from datetime import datetime
 import os
 import re
@@ -19,7 +19,6 @@ from .base import (
     SecretAdapter,
     Secret,
     SecretMetadata,
-    SecretAdapterError,
     SecretNotFoundError,
     SecretUnauthorizedError,
     SecretBackendError,
@@ -128,22 +127,15 @@ class BitwardenAdapter(SecretAdapter):
                 process.stdin.close()
 
             # Wait for completion
-            stdout, stderr = await asyncio.wait_for(
-                process.communicate(), timeout=self.timeout
-            )
+            stdout, stderr = await asyncio.wait_for(process.communicate(), timeout=self.timeout)
 
             returncode = await process.wait()
 
             if returncode != 0:
                 error_msg = stderr.decode().strip() if stderr else "Unknown error"
                 # Check for specific error conditions
-                if (
-                    "not logged in" in error_msg.lower()
-                    or "unauthorized" in error_msg.lower()
-                ):
-                    raise SecretUnauthorizedError(
-                        f"Bitwarden authentication failed: {error_msg}"
-                    )
+                if "not logged in" in error_msg.lower() or "unauthorized" in error_msg.lower():
+                    raise SecretUnauthorizedError(f"Bitwarden authentication failed: {error_msg}")
                 elif "not found" in error_msg.lower():
                     raise SecretNotFoundError(f"Item not found: {error_msg}")
                 else:
@@ -152,13 +144,9 @@ class BitwardenAdapter(SecretAdapter):
             return stdout.decode().strip() if stdout else ""
 
         except asyncio.TimeoutError:
-            raise SecretBackendError(
-                f"Bitwarden CLI command timed out after {self.timeout}s"
-            )
+            raise SecretBackendError(f"Bitwarden CLI command timed out after {self.timeout}s")
         except FileNotFoundError:
-            raise SecretBackendError(
-                "Bitwarden CLI (bw) not found. Please install it first."
-            )
+            raise SecretBackendError("Bitwarden CLI (bw) not found. Please install it first.")
 
     async def _ensure_authenticated(self) -> None:
         """Ensure Bitwarden CLI is authenticated."""
@@ -282,9 +270,7 @@ class BitwardenAdapter(SecretAdapter):
 
         return item_path, field_name
 
-    def _item_to_secret(
-        self, item: Dict[str, Any], field_name: Optional[str] = None
-    ) -> Secret:
+    def _item_to_secret(self, item: Dict[str, Any], field_name: Optional[str] = None) -> Secret:
         """
         Convert Bitwarden item to Secret object.
 
@@ -314,9 +300,11 @@ class BitwardenAdapter(SecretAdapter):
                 "name": item.get("name", ""),
                 "username": item.get("login", {}).get("username", ""),
                 "password": item.get("login", {}).get("password", ""),
-                "uri": item.get("login", {}).get("uris", [{}])[0].get("uri", "")
-                if item.get("login", {}).get("uris")
-                else "",
+                "uri": (
+                    item.get("login", {}).get("uris", [{}])[0].get("uri", "")
+                    if item.get("login", {}).get("uris")
+                    else ""
+                ),
                 "notes": item.get("notes", ""),
                 "totp": item.get("login", {}).get("totp", ""),
             }
@@ -349,6 +337,128 @@ class BitwardenAdapter(SecretAdapter):
             metadata=metadata,
         )
 
+    async def _get_cached_secret(self, path: str, version: Optional[int]) -> Optional[Secret]:
+        """Get a secret from cache if present."""
+        cached_secret = await self.cache.get_secret(path, version)
+        if cached_secret is None:
+            return None
+        logger.debug(f"Cache hit for secret: {path}")
+        return Secret(
+            path,
+            cached_secret["data"],
+            SecretMetadata(**cached_secret["metadata"]),
+        )
+
+    async def _cache_secret(self, path: str, secret: Secret, version: Optional[int]) -> None:
+        """Store secret payload in cache."""
+        await self.cache.set_secret(
+            path,
+            {
+                "data": secret.data,
+                "metadata": {
+                    "created_at": secret.metadata.created_at,
+                    "updated_at": secret.metadata.updated_at,
+                    "version": secret.metadata.version,
+                    "custom_metadata": secret.metadata.custom_metadata,
+                    "backend_specific": secret.metadata.backend_specific,
+                },
+            },
+            version,
+        )
+
+    async def _fetch_item_for_path(self, item_path: str, full_path: str) -> Dict[str, Any]:
+        """Fetch an item by exact match first, then by search fallback."""
+        try:
+            output = await self._run_bw_command(["get", "item", item_path])
+            return json.loads(output)
+        except SecretNotFoundError:
+            try:
+                list_output = await self._run_bw_command(["list", "items", "--search", item_path])
+                items = json.loads(list_output)
+                if items:
+                    return items[0]
+            except Exception:
+                pass
+        raise SecretNotFoundError(f"Item not found: {full_path}")
+
+    async def _resolve_folder_id(self, folder_name: Optional[str]) -> Optional[str]:
+        """Resolve folder name to Bitwarden folder ID."""
+        if not folder_name:
+            return None
+        try:
+            folders_output = await self._run_bw_command(["list", "folders"])
+            folders = json.loads(folders_output)
+            for folder in folders:
+                if folder.get("name") == folder_name:
+                    return folder["id"]
+        except Exception:
+            logger.warning(f"Could not find folder: {folder_name}")
+        return None
+
+    def _build_item_data(
+        self, item_name: str, folder_id: Optional[str], data: Dict[str, str]
+    ) -> Dict[str, Any]:
+        """Build Bitwarden item payload from secret data."""
+        item_data = {
+            "type": 1,
+            "name": item_name,
+            "notes": data.get("notes", ""),
+            "folderId": folder_id,
+            "login": {
+                "username": data.get("username"),
+                "password": data.get("password"),
+                "totp": data.get("totp"),
+            },
+            "fields": [],
+        }
+        if data.get("uri"):
+            item_data["login"]["uris"] = [{"uri": data["uri"]}]
+        for key, value in data.items():
+            if key not in ["name", "username", "password", "uri", "notes", "totp"]:
+                item_data["fields"].append({"name": key, "value": value, "type": 0})
+        return item_data
+
+    async def _create_item(self, item_data: Dict[str, Any], path: str) -> None:
+        """Create Bitwarden item using temporary JSON file."""
+        with tempfile.NamedTemporaryFile(mode="w", suffix=".json", delete=False) as f:
+            json.dump(item_data, f)
+            temp_file = f.name
+        try:
+            await self._run_bw_command(["create", "item", temp_file])
+            logger.info(f"Created new Bitwarden item: {path}")
+        finally:
+            os.unlink(temp_file)
+
+    async def _update_existing_item(
+        self, item_name: str, item_data: Dict[str, Any], path: str
+    ) -> None:
+        """Update an existing Bitwarden item."""
+        get_output = await self._run_bw_command(["get", "item", item_name])
+        existing_item = json.loads(get_output)
+        existing_item.update(item_data)
+        with tempfile.NamedTemporaryFile(mode="w", suffix=".json", delete=False) as f:
+            json.dump(existing_item, f)
+            temp_file = f.name
+        try:
+            await self._run_bw_command(["edit", "item", existing_item["id"], temp_file])
+            logger.info(f"Updated Bitwarden item: {path}")
+        finally:
+            os.unlink(temp_file)
+
+    async def _create_or_update_item(
+        self, item_name: str, item_data: Dict[str, Any], path: str
+    ) -> None:
+        """Create item, or update existing item if duplicate is reported."""
+        try:
+            await self._create_item(item_data, path)
+        except SecretBackendError as e:
+            if "already exists" not in str(e).lower():
+                raise
+            try:
+                await self._update_existing_item(item_name, item_data, path)
+            except Exception as update_error:
+                raise SecretBackendError(f"Failed to update existing item: {update_error}")
+
     async def get_secret(self, path: str, version: Optional[int] = None) -> Secret:
         """
         Retrieve secret from Bitwarden.
@@ -367,66 +477,21 @@ class BitwardenAdapter(SecretAdapter):
         """
         try:
             await self._ensure_authenticated()
-
-            # Check cache first
-            cached_secret = await self.cache.get_secret(path, version)
+            cached_secret = await self._get_cached_secret(path, version)
             if cached_secret is not None:
-                logger.debug(f"Cache hit for secret: {path}")
-                return Secret(
-                    path,
-                    cached_secret["data"],
-                    SecretMetadata(**cached_secret["metadata"]),
-                )
+                return cached_secret
 
             item_path, field_name = self._path_to_item_id(path)
-
-            # Get item by name or ID
-            try:
-                # Try to get by exact name first
-                output = await self._run_bw_command(["get", "item", item_path])
-                item = json.loads(output)
-            except SecretNotFoundError:
-                # If not found by name, try to list and find
-                try:
-                    list_output = await self._run_bw_command(
-                        ["list", "items", "--search", item_path]
-                    )
-                    items = json.loads(list_output)
-                    if not items:
-                        raise SecretNotFoundError(f"Item not found: {path}")
-
-                    # Use first match
-                    item = items[0]
-                except Exception:
-                    raise SecretNotFoundError(f"Item not found: {path}")
-
+            item = await self._fetch_item_for_path(item_path, path)
             secret = self._item_to_secret(item, field_name)
-
-            # Cache the result
-            await self.cache.set_secret(
-                path,
-                {
-                    "data": secret.data,
-                    "metadata": {
-                        "created_at": secret.metadata.created_at,
-                        "updated_at": secret.metadata.updated_at,
-                        "version": secret.metadata.version,
-                        "custom_metadata": secret.metadata.custom_metadata,
-                        "backend_specific": secret.metadata.backend_specific,
-                    },
-                },
-                version,
-            )
-
+            await self._cache_secret(path, secret, version)
             logger.info(f"Retrieved secret from Bitwarden: {path}")
             return secret
 
         except json.JSONDecodeError as e:
             raise SecretBackendError(f"Invalid JSON response from Bitwarden CLI: {e}")
         except Exception as e:
-            if isinstance(
-                e, (SecretNotFoundError, SecretUnauthorizedError, SecretBackendError)
-            ):
+            if isinstance(e, (SecretNotFoundError, SecretUnauthorizedError, SecretBackendError)):
                 raise
             raise SecretBackendError(f"Failed to retrieve secret: {e}")
 
@@ -457,7 +522,6 @@ class BitwardenAdapter(SecretAdapter):
         try:
             await self._ensure_authenticated()
 
-            # Validate data
             if not data:
                 raise SecretValidationError("Secret data cannot be empty")
 
@@ -465,105 +529,14 @@ class BitwardenAdapter(SecretAdapter):
 
             if field_name:
                 # Updating a specific field - not supported by CLI
-                raise SecretBackendError(
-                    "Updating specific fields not supported via Bitwarden CLI"
-                )
+                raise SecretBackendError("Updating specific fields not supported via Bitwarden CLI")
 
-            # Parse folder and item name
             path_parts = item_path.split("/")
             folder_name = path_parts[0] if len(path_parts) > 1 else None
             item_name = path_parts[-1]
-
-            # Get folder ID if folder specified
-            folder_id = None
-            if folder_name:
-                try:
-                    folders_output = await self._run_bw_command(["list", "folders"])
-                    folders = json.loads(folders_output)
-                    for folder in folders:
-                        if folder.get("name") == folder_name:
-                            folder_id = folder["id"]
-                            break
-                except Exception:
-                    logger.warning(f"Could not find folder: {folder_name}")
-
-            # Create item JSON
-            item_data = {
-                "type": 1,  # Login item type
-                "name": item_name,
-                "notes": data.get("notes", ""),
-                "folderId": folder_id,
-                "login": {
-                    "username": data.get("username"),
-                    "password": data.get("password"),
-                    "totp": data.get("totp"),
-                },
-                "fields": [],
-            }
-
-            # Add URI if provided
-            if data.get("uri"):
-                item_data["login"]["uris"] = [{"uri": data["uri"]}]
-
-            # Add custom fields
-            for key, value in data.items():
-                if key not in ["name", "username", "password", "uri", "notes", "totp"]:
-                    item_data["fields"].append(
-                        {
-                            "name": key,
-                            "value": value,
-                            "type": 0,  # Text field
-                        }
-                    )
-
-            # Create or update item
-            try:
-                # Try to create new item
-                with tempfile.NamedTemporaryFile(
-                    mode="w", suffix=".json", delete=False
-                ) as f:
-                    json.dump(item_data, f)
-                    temp_file = f.name
-
-                try:
-                    await self._run_bw_command(["create", "item", temp_file])
-                    logger.info(f"Created new Bitwarden item: {path}")
-                finally:
-                    os.unlink(temp_file)
-
-            except SecretBackendError as e:
-                if "already exists" in str(e).lower():
-                    # Item exists, try to update
-                    try:
-                        # Get existing item
-                        get_output = await self._run_bw_command(
-                            ["get", "item", item_name]
-                        )
-                        existing_item = json.loads(get_output)
-
-                        # Update with new data
-                        existing_item.update(item_data)
-
-                        with tempfile.NamedTemporaryFile(
-                            mode="w", suffix=".json", delete=False
-                        ) as f:
-                            json.dump(existing_item, f)
-                            temp_file = f.name
-
-                        try:
-                            await self._run_bw_command(
-                                ["edit", "item", existing_item["id"], temp_file]
-                            )
-                            logger.info(f"Updated Bitwarden item: {path}")
-                        finally:
-                            os.unlink(temp_file)
-
-                    except Exception as update_error:
-                        raise SecretBackendError(
-                            f"Failed to update existing item: {update_error}"
-                        )
-                else:
-                    raise
+            folder_id = await self._resolve_folder_id(folder_name)
+            item_data = self._build_item_data(item_name, folder_id, data)
+            await self._create_or_update_item(item_name, item_data, path)
 
             # Invalidate cache
             await self.cache.invalidate_path(path)
@@ -572,9 +545,7 @@ class BitwardenAdapter(SecretAdapter):
             return await self.get_secret(path)
 
         except Exception as e:
-            if isinstance(
-                e, (SecretValidationError, SecretUnauthorizedError, SecretBackendError)
-            ):
+            if isinstance(e, (SecretValidationError, SecretUnauthorizedError, SecretBackendError)):
                 raise
             raise SecretBackendError(f"Failed to store secret: {e}")
 
@@ -640,9 +611,7 @@ class BitwardenAdapter(SecretAdapter):
             item_path, field_name = self._path_to_item_id(path)
 
             if field_name:
-                raise SecretBackendError(
-                    "Deleting specific fields not supported via Bitwarden CLI"
-                )
+                raise SecretBackendError("Deleting specific fields not supported via Bitwarden CLI")
 
             # Delete item
             await self._run_bw_command(["delete", "item", item_path])
@@ -653,9 +622,7 @@ class BitwardenAdapter(SecretAdapter):
             logger.info(f"Deleted secret from Bitwarden: {path}")
 
         except Exception as e:
-            if isinstance(
-                e, (SecretNotFoundError, SecretUnauthorizedError, SecretBackendError)
-            ):
+            if isinstance(e, (SecretNotFoundError, SecretUnauthorizedError, SecretBackendError)):
                 raise
             raise SecretBackendError(f"Failed to delete secret: {e}")
 

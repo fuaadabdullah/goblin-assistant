@@ -1,7 +1,22 @@
 import Link from 'next/link';
 import { useRouter } from 'next/router';
 import { useEffect, useState } from 'react';
-import { Home, MessageSquare, Search, FlaskConical, User, HelpCircle, LayoutDashboard, Puzzle, ScrollText, Settings, Users, LogOut, Menu, X } from 'lucide-react';
+import {
+  Home,
+  MessageSquare,
+  Search,
+  FlaskConical,
+  User,
+  HelpCircle,
+  LayoutDashboard,
+  Puzzle,
+  ScrollText,
+  Settings,
+  Users,
+  LogOut,
+  Menu,
+  X,
+} from 'lucide-react';
 import HealthHeader from './HealthHeader';
 import ContrastModeToggle from './ContrastModeToggle';
 import Logo from './Logo';
@@ -75,16 +90,19 @@ const Navigation = ({ onLogout, showLogout = false, variant = 'customer' }: Navi
           </div>
           {/* Desktop Navigation */}
           <div className="hidden lg:flex items-center space-x-3">
-            {navItems.map(item => {
-              const isActive = router.pathname === item.path || (item.path !== '/' && router.pathname.startsWith(item.path));
+            {navItems.map((item) => {
+              const isActive =
+                router.pathname === item.path ||
+                (item.path !== '/' && router.pathname.startsWith(item.path));
               return (
                 <Link
                   key={item.path}
                   href={item.path}
-                  className={`flex items-center space-x-2 px-4 py-3 min-h-[44px] text-sm font-medium rounded-lg transition-colors outline-offset-2 focus-visible:outline focus-visible:outline-2 focus-visible:outline-primary ${isActive
-                    ? 'text-text bg-surface-active shadow-glow-primary border border-border'
-                    : 'text-muted hover:text-text hover:bg-surface-hover'
-                    }`}
+                  className={`flex items-center space-x-2 px-4 py-3 min-h-[44px] text-sm font-medium rounded-lg transition-colors outline-offset-2 focus-visible:outline focus-visible:outline-2 focus-visible:outline-primary ${
+                    isActive
+                      ? 'text-text bg-surface-active shadow-glow-primary border border-border'
+                      : 'text-muted hover:text-text hover:bg-surface-hover'
+                  }`}
                   title={item.label}
                 >
                   <item.Icon className="w-5 h-5" aria-hidden="true" />
@@ -122,14 +140,21 @@ const Navigation = ({ onLogout, showLogout = false, variant = 'customer' }: Navi
               className="inline-flex items-center justify-center rounded-lg border border-border bg-surface-hover p-2 text-text hover:bg-surface-active"
               aria-label={isMobileMenuOpen ? 'Close navigation menu' : 'Open navigation menu'}
             >
-              {isMobileMenuOpen ? <X className="w-5 h-5" aria-hidden="true" /> : <Menu className="w-5 h-5" aria-hidden="true" />}
+              {isMobileMenuOpen ? (
+                <X className="w-5 h-5" aria-hidden="true" />
+              ) : (
+                <Menu className="w-5 h-5" aria-hidden="true" />
+              )}
             </button>
           </div>
         </div>
       </div>
 
       {/* Mobile drawer rendered via Framer Motion and the MobileDrawer component */}
-      <MobileDrawer title={variant === 'admin' ? 'Admin' : 'Menu'} ariaLabel="Primary mobile navigation">
+      <MobileDrawer
+        title={variant === 'admin' ? 'Admin' : 'Menu'}
+        ariaLabel="Primary mobile navigation"
+      >
         <div className="space-y-3">
           {variant === 'admin' ? (
             <div className="rounded-lg border border-border bg-surface-hover p-3">
@@ -137,8 +162,10 @@ const Navigation = ({ onLogout, showLogout = false, variant = 'customer' }: Navi
             </div>
           ) : null}
 
-          {navItems.map(item => {
-            const isActive = router.pathname === item.path || (item.path !== '/' && router.pathname.startsWith(item.path));
+          {navItems.map((item) => {
+            const isActive =
+              router.pathname === item.path ||
+              (item.path !== '/' && router.pathname.startsWith(item.path));
             return (
               <Link
                 key={item.path}

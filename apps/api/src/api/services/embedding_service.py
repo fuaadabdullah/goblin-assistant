@@ -6,9 +6,7 @@ import os
 import asyncio
 import logging
 from typing import List, Optional, Dict, Any
-from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import text
-from sqlalchemy.orm import selectinload
 
 from ..storage.vector_models import (
     EmbeddingModel,
@@ -24,6 +22,7 @@ logger = logging.getLogger(__name__)
 
 class EmbeddingProviderUnavailableError(RuntimeError):
     """Raised when embedding provider is unavailable or unsupported."""
+
 
 # Provider name → (module path, class name, default config)
 _EMBEDDING_PROVIDERS: Dict[str, tuple] = {
@@ -62,8 +61,7 @@ def _resolve_embedding_provider() -> BaseProvider:
 
     if provider_name not in _EMBEDDING_PROVIDERS:
         logger.warning(
-            "Unknown EMBEDDING_PROVIDER '%s', falling back to 'openai'. "
-            "Supported: %s",
+            "Unknown EMBEDDING_PROVIDER '%s', falling back to 'openai'. Supported: %s",
             provider_name,
             ", ".join(_EMBEDDING_PROVIDERS),
         )
@@ -167,8 +165,7 @@ class EmbeddingService:
 
         except Exception as e:
             reason = (
-                f"embedding provider '{self.provider_name}' failed for model "
-                f"'{self.model}': {e}"
+                f"embedding provider '{self.provider_name}' failed for model '{self.model}': {e}"
             )
             self._mark_degraded(reason)
             if not EmbeddingService._warned_unavailable:
@@ -248,9 +245,7 @@ class EmbeddingService:
             logger.error("Error storing message embedding: %s", e)
             return False
 
-    async def store_conversation_summary(
-        self, conversation_id: str, summary_text: str
-    ) -> bool:
+    async def store_conversation_summary(self, conversation_id: str, summary_text: str) -> bool:
         """Store embedding for a conversation summary"""
         try:
             embedding = await self.embed_text(summary_text)
@@ -260,9 +255,7 @@ class EmbeddingService:
             async with get_db() as session:
                 # Check if summary already exists
                 existing = await session.execute(
-                    text(
-                        "SELECT id FROM conversation_summaries WHERE conversation_id = :conv_id"
-                    ),
+                    text("SELECT id FROM conversation_summaries WHERE conversation_id = :conv_id"),
                     {"conv_id": conversation_id},
                 )
                 existing_summary = existing.fetchone()
@@ -270,11 +263,13 @@ class EmbeddingService:
                 if existing_summary:
                     # Update existing summary
                     await session.execute(
-                        text("""
+                        text(
+                            """
                             UPDATE conversation_summaries 
                             SET summary_text = :summary, summary_embedding = :embedding, updated_at = NOW()
                             WHERE conversation_id = :conv_id
-                        """),
+                        """
+                        ),
                         {
                             "summary": summary_text,
                             "embedding": embedding,

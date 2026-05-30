@@ -4,8 +4,19 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 
 // Mock dependencies
 jest.mock('../../components/TwoColumnLayout', () => {
-  return function MockLayout({ sidebar, children }: { sidebar: React.ReactNode; children: React.ReactNode }) {
-    return <div data-testid="layout"><div data-testid="sidebar">{sidebar}</div><div data-testid="main">{children}</div></div>;
+  return function MockLayout({
+    sidebar,
+    children,
+  }: {
+    sidebar: React.ReactNode;
+    children: React.ReactNode;
+  }) {
+    return (
+      <div data-testid="layout">
+        <div data-testid="sidebar">{sidebar}</div>
+        <div data-testid="main">{children}</div>
+      </div>
+    );
   };
 });
 
@@ -16,8 +27,22 @@ jest.mock('@/api', () => ({
 
 const mockProviderSettings = jest.fn().mockReturnValue({
   data: [
-    { id: 'p1', name: 'openai', enabled: true, configured: true, base_url: 'https://api.openai.com', models: ['gpt-4'] },
-    { id: 'p2', name: 'ollama', enabled: false, configured: false, base_url: 'http://localhost:11434', models: [] },
+    {
+      id: 'p1',
+      name: 'openai',
+      enabled: true,
+      configured: true,
+      base_url: 'https://api.openai.com',
+      models: ['gpt-4'],
+    },
+    {
+      id: 'p2',
+      name: 'ollama',
+      enabled: false,
+      configured: false,
+      base_url: 'http://localhost:11434',
+      models: [],
+    },
   ],
   isLoading: false,
   error: null,
@@ -45,8 +70,22 @@ describe('ProvidersPage', () => {
     jest.clearAllMocks();
     mockProviderSettings.mockReturnValue({
       data: [
-        { id: 'p1', name: 'openai', enabled: true, configured: true, base_url: 'https://api.openai.com', models: ['gpt-4'] },
-        { id: 'p2', name: 'ollama', enabled: false, configured: false, base_url: 'http://localhost:11434', models: [] },
+        {
+          id: 'p1',
+          name: 'openai',
+          enabled: true,
+          configured: true,
+          base_url: 'https://api.openai.com',
+          models: ['gpt-4'],
+        },
+        {
+          id: 'p2',
+          name: 'ollama',
+          enabled: false,
+          configured: false,
+          base_url: 'http://localhost:11434',
+          models: [],
+        },
       ],
       isLoading: false,
       error: null,
@@ -61,14 +100,24 @@ describe('ProvidersPage', () => {
   });
 
   it('shows loading state when fetching', () => {
-    mockProviderSettings.mockReturnValue({ data: null, isLoading: true, error: null, refetch: jest.fn() });
+    mockProviderSettings.mockReturnValue({
+      data: null,
+      isLoading: true,
+      error: null,
+      refetch: jest.fn(),
+    });
     render(<ProvidersPage />, { wrapper });
     // Should show some loading indicator
     expect(screen.getByTestId('layout')).toBeInTheDocument();
   });
 
   it('renders empty state when no providers', () => {
-    mockProviderSettings.mockReturnValue({ data: [], isLoading: false, error: null, refetch: jest.fn() });
+    mockProviderSettings.mockReturnValue({
+      data: [],
+      isLoading: false,
+      error: null,
+      refetch: jest.fn(),
+    });
     render(<ProvidersPage />, { wrapper });
     expect(screen.getByTestId('layout')).toBeInTheDocument();
   });

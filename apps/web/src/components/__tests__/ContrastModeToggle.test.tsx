@@ -19,7 +19,7 @@ describe('ContrastModeToggle', () => {
     render(<ContrastModeToggle />);
     expect(screen.getByRole('button')).toHaveAttribute(
       'aria-label',
-      expect.stringContaining('Dark'),
+      expect.stringContaining('Dark')
     );
   });
 

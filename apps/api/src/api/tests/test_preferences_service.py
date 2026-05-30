@@ -3,11 +3,12 @@ Tests for PreferencesService.
 
 Uses a mocked get_db_context to validate business logic without a real database.
 """
+
 from __future__ import annotations
 
 from contextlib import asynccontextmanager
 from datetime import datetime
-from unittest.mock import AsyncMock, MagicMock, PropertyMock, patch
+from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
@@ -17,6 +18,7 @@ from api.storage.preferences_service import PreferencesService, preferences_serv
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
+
 
 def make_mock_prefs(**overrides):
     """Create a mock UserPreferencesModel (or None) with the given attributes."""
@@ -52,11 +54,11 @@ def make_mock_session(prefs=None, rowcount=0):
     async def _refresh_side_effect(obj):
         """Simulate refresh by populating common ORM defaults."""
         now = datetime.utcnow()
-        if not hasattr(obj, 'id') or obj.id is None:
+        if not hasattr(obj, "id") or obj.id is None:
             obj.id = 1
-        if not hasattr(obj, 'created_at') or obj.created_at is None:
+        if not hasattr(obj, "created_at") or obj.created_at is None:
             obj.created_at = now
-        if not hasattr(obj, 'updated_at') or obj.updated_at is None:
+        if not hasattr(obj, "updated_at") or obj.updated_at is None:
             obj.updated_at = now
 
     session.refresh = AsyncMock(side_effect=_refresh_side_effect)

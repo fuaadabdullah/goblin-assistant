@@ -10,9 +10,7 @@ jest.mock('recharts', () => ({
   YAxis: () => <div data-testid="y-axis" />,
   Tooltip: () => <div data-testid="tooltip" />,
   Legend: () => <div data-testid="legend" />,
-  ResponsiveContainer: ({ children }: any) => (
-    <div data-testid="container">{children}</div>
-  ),
+  ResponsiveContainer: ({ children }: any) => <div data-testid="container">{children}</div>,
 }));
 
 describe('FinanceBarChart', () => {
@@ -28,58 +26,28 @@ describe('FinanceBarChart', () => {
   };
 
   it('renders bar chart', () => {
-    render(
-      <FinanceBarChart
-        title="Monthly Costs"
-        data={mockData}
-        config={mockConfig}
-      />
-    );
+    render(<FinanceBarChart title="Monthly Costs" data={mockData} config={mockConfig} />);
     expect(screen.getByTestId('bar-chart')).toBeInTheDocument();
   });
 
   it('renders title', () => {
-    render(
-      <FinanceBarChart
-        title="Monthly Costs"
-        data={mockData}
-        config={mockConfig}
-      />
-    );
+    render(<FinanceBarChart title="Monthly Costs" data={mockData} config={mockConfig} />);
     expect(screen.getByText('Monthly Costs')).toBeInTheDocument();
   });
 
   it('renders axes', () => {
-    render(
-      <FinanceBarChart
-        title="Test"
-        data={mockData}
-        config={mockConfig}
-      />
-    );
+    render(<FinanceBarChart title="Test" data={mockData} config={mockConfig} />);
     expect(screen.getByTestId('x-axis')).toBeInTheDocument();
     expect(screen.getByTestId('y-axis')).toBeInTheDocument();
   });
 
   it('renders tooltip', () => {
-    render(
-      <FinanceBarChart
-        title="Test"
-        data={mockData}
-        config={mockConfig}
-      />
-    );
+    render(<FinanceBarChart title="Test" data={mockData} config={mockConfig} />);
     expect(screen.getByTestId('tooltip')).toBeInTheDocument();
   });
 
   it('renders with empty data', () => {
-    render(
-      <FinanceBarChart
-        title="Test"
-        data={[]}
-        config={mockConfig}
-      />
-    );
+    render(<FinanceBarChart title="Test" data={[]} config={mockConfig} />);
     expect(screen.getByText('Test')).toBeInTheDocument();
   });
 });

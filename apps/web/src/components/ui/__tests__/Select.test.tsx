@@ -95,7 +95,9 @@ describe('Select components', () => {
 
     expect(document.querySelector('.content-extra')).toBeInTheDocument();
     expect(screen.getByText('Label').className).toContain('label-extra');
-    expect(screen.getByText('Item A').closest('[role="option"]')?.className).toContain('item-extra');
+    expect(screen.getByText('Item A').closest('[role="option"]')?.className).toContain(
+      'item-extra'
+    );
   });
 
   it('calls onValueChange when selecting an item', () => {

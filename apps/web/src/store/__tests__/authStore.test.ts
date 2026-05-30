@@ -38,7 +38,7 @@ describe('Auth Store (Zustand)', () => {
 
     expect(result.current.token).toBe('jwt.token');
     expect(result.current.user).toEqual(
-      expect.objectContaining({ id: '123', email: 'test@example.com' }),
+      expect.objectContaining({ id: '123', email: 'test@example.com' })
     );
     expect(result.current.isAuthenticated).toBe(true);
   });

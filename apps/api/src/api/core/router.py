@@ -17,6 +17,7 @@ RAPTOR_TASKS = {"summarize_trace", "quick_fix", "unit_test_hint", "infer_functio
 @dataclass
 class ModelRoute:
     """Configuration for routing to a specific model endpoint."""
+
     url: str
     api_key: Optional[str]
     model_name: str
@@ -25,13 +26,13 @@ class ModelRoute:
 class ModelRouter:
     """
     Intelligent model routing based on task complexity and availability.
-    
+
     Routes tasks to specialized Raptor model for:
     - summarize_trace
     - quick_fix
     - unit_test_hint
     - infer_function_name
-    
+
     Falls back to general-purpose model for other tasks.
     Configuration via environment variables:
     - RAPTOR_URL, RAPTOR_API_KEY
@@ -61,24 +62,22 @@ class ModelRouter:
     def choose_model(self, task: str, context: Dict[str, Any]) -> ModelRoute:
         """
         Select the best model route for the given task.
-        
+
         Routes RAPTOR_TASKS to specialized Raptor model if available,
         otherwise uses fallback model. Raises RuntimeError if no endpoints configured.
-        
+
         Args:
             task: Task identifier (e.g., 'quick_fix', 'summarize_trace')
             context: Contextual data for the task (unused in routing decision)
-            
+
         Returns:
             ModelRoute with endpoint, credentials, and model name
-            
+
         Raises:
             RuntimeError: If no model endpoints are configured
         """
         if task in RAPTOR_TASKS and self.raptor_url:
-            return ModelRoute(
-                url=self.raptor_url, api_key=self.raptor_key, model_name="raptor"
-            )
+            return ModelRoute(url=self.raptor_url, api_key=self.raptor_key, model_name="raptor")
         if self.fallback_url:
             return ModelRoute(
                 url=self.fallback_url, api_key=self.fallback_key, model_name="fallback"
@@ -90,18 +89,18 @@ class ModelRouter:
     ) -> Dict[str, Any]:
         """
         Invoke a model endpoint with the given payload.
-        
+
         Builds authorization headers if API key is present.
         Raises httpx exceptions on network/HTTP errors.
-        
+
         Args:
             route: ModelRoute with endpoint and credentials
             payload: Request body (JSON-serializable dict)
             timeout: Request timeout in seconds (default 30)
-            
+
         Returns:
             Parsed JSON response from model endpoint
-            
+
         Raises:
             httpx.RequestError: On network or HTTP error
         """

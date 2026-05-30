@@ -6,7 +6,12 @@ from typing import Optional
 import jwt
 from jwt import PyJWTError
 
-from .config import ACCESS_TOKEN_EXPIRE_MINUTES, ALGORITHM, REFRESH_TOKEN_EXPIRE_DAYS, SECRET_KEY
+from .config import (
+    ACCESS_TOKEN_EXPIRE_MINUTES,
+    ALGORITHM,
+    REFRESH_TOKEN_EXPIRE_DAYS,
+    SECRET_KEY,
+)
 
 
 def create_access_token(
@@ -22,10 +27,12 @@ def create_access_token(
     else:
         expire = datetime.utcnow() + timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
 
-    to_encode.update({
-        "exp": expire,
-        "type": "access",
-    })
+    to_encode.update(
+        {
+            "exp": expire,
+            "type": "access",
+        }
+    )
 
     if scopes:
         to_encode["scopes"] = scopes

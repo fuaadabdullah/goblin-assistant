@@ -3,9 +3,13 @@ import { render, screen } from '@testing-library/react';
 import '@testing-library/jest-dom';
 import EnhancedProvidersPage from '../EnhancedProvidersPage';
 
-jest.mock('@/features/providers/EnhancedProvidersScreen', () => function MockScreen() {
-  return <div data-testid="enhanced-providers-screen">Enhanced Providers</div>;
-});
+jest.mock(
+  '@/features/providers/EnhancedProvidersScreen',
+  () =>
+    function MockScreen() {
+      return <div data-testid="enhanced-providers-screen">Enhanced Providers</div>;
+    }
+);
 
 describe('EnhancedProvidersPage', () => {
   it('renders EnhancedProvidersScreen component', () => {

@@ -5,7 +5,6 @@ Provides secure upload, download, and lifecycle management for job artifacts
 
 import os
 import boto3
-import json
 import hashlib
 from typing import Optional, Dict, Any, List
 from datetime import datetime, timedelta
@@ -44,7 +43,11 @@ class ArtifactService:
         """Initialize S3 client with proper configuration (lazy — no network calls on startup)."""
         try:
             if not all([self.access_key, self.secret_key]):
-                logger.warning("S3 credentials not configured", feature="artifact storage", status="disabled")
+                logger.warning(
+                    "S3 credentials not configured",
+                    feature="artifact storage",
+                    status="disabled",
+                )
                 return
 
             self.s3_client = boto3.client(
@@ -54,7 +57,11 @@ class ArtifactService:
                 aws_secret_access_key=self.secret_key,
                 region_name=self.region,
             )
-            logger.info("S3 client initialized", endpoint=self.endpoint_url or "AWS", bucket=self.bucket_name)
+            logger.info(
+                "S3 client initialized",
+                endpoint=self.endpoint_url or "AWS",
+                bucket=self.bucket_name,
+            )
 
         except Exception as e:
             logger.warning("S3/MinIO not available — artifact storage disabled", error=str(e))
@@ -80,7 +87,9 @@ class ArtifactService:
         except OSError:
             return False
 
-    async def upload_artifact(self, job_id: str, file_path: str, filename: str) -> Optional[Dict[str, Any]]:
+    async def upload_artifact(
+        self, job_id: str, file_path: str, filename: str
+    ) -> Optional[Dict[str, Any]]:
         """
         Upload artifact to S3 and store metadata
         Returns artifact metadata on success, None on failure
@@ -130,12 +139,7 @@ class ArtifactService:
                 "ContentType": self._guess_content_type(filename),
             }
 
-            self.s3_client.upload_file(
-                file_path,
-                self.bucket_name,
-                s3_key,
-                ExtraArgs=extra_args
-            )
+            self.s3_client.upload_file(file_path, self.bucket_name, s3_key, ExtraArgs=extra_args)
 
             # Store metadata in Redis
             artifact_meta = {
@@ -153,7 +157,12 @@ class ArtifactService:
             await self.redis_client.hset(meta_key, mapping=artifact_meta)
             await self.redis_client.expire(meta_key, self.ttl_days * 24 * 60 * 60)
 
-            logger.info("artifact_uploaded", s3_key=s3_key, size_bytes=file_size, ttl_days=self.ttl_days)
+            logger.info(
+                "artifact_uploaded",
+                s3_key=s3_key,
+                size_bytes=file_size,
+                ttl_days=self.ttl_days,
+            )
 
             return artifact_meta
 
@@ -195,7 +204,7 @@ class ArtifactService:
             url = self.s3_client.generate_presigned_url(
                 "get_object",
                 Params={"Bucket": self.bucket_name, "Key": s3_key},
-                ExpiresIn=expiration_seconds
+                ExpiresIn=expiration_seconds,
             )
             return url
 
@@ -276,22 +285,22 @@ class ArtifactService:
 
     def _guess_content_type(self, filename: str) -> str:
         """Guess content type based on file extension"""
-        ext = filename.lower().split('.')[-1]
+        ext = filename.lower().split(".")[-1]
 
         content_types = {
-            'log': 'text/plain',
-            'txt': 'text/plain',
-            'json': 'application/json',
-            'zip': 'application/zip',
-            'tar': 'application/x-tar',
-            'gz': 'application/gzip',
-            'pdf': 'application/pdf',
-            'png': 'image/png',
-            'jpg': 'image/jpeg',
-            'jpeg': 'image/jpeg',
+            "log": "text/plain",
+            "txt": "text/plain",
+            "json": "application/json",
+            "zip": "application/zip",
+            "tar": "application/x-tar",
+            "gz": "application/gzip",
+            "pdf": "application/pdf",
+            "png": "image/png",
+            "jpg": "image/jpeg",
+            "jpeg": "image/jpeg",
         }
 
-        return content_types.get(ext, 'application/octet-stream')
+        return content_types.get(ext, "application/octet-stream")
 
 
 # Global instance

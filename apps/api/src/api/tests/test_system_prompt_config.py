@@ -1,6 +1,10 @@
 import pytest
 
-from api.config.system_prompt import SYSTEM_PROMPT, SystemPromptConfig, get_configured_system_prompt
+from api.config.system_prompt import (
+    SYSTEM_PROMPT,
+    SystemPromptConfig,
+    get_configured_system_prompt,
+)
 from api.services.context_assembly_service import system_layer
 from api.services.context_assembly_service.models import ContextBudget
 

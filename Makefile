@@ -1,4 +1,4 @@
-.PHONY: help install dev web-dev api-dev build lint lint-web lint-api lint-policy type-check test test-web test-api test-api-context-coverage test-e2e test-e2e-budget generate-providers-json check-api-boundaries check-api-cycles type-check-api-mypy type-check-api-pyright format format-check test-critical
+.PHONY: help install dev web-dev api-dev build build-packages lint lint-web lint-api lint-policy type-check type-check-packages test test-web test-api test-api-context-coverage test-e2e test-e2e-budget test-integration test-contract test-performance generate-providers-json check-api-boundaries check-api-cycles check-capability-boundaries check-route-lifecycle type-check-api-mypy type-check-api-pyright format format-check test-critical sdk-generate sdk-check secret-scan
 PNPM_TMP := TMPDIR="$(PWD)/.tmp"
 PYTHON ?= python3.11
 
@@ -14,16 +14,24 @@ help:
 	@echo "  make type-check           - run web typecheck"
 	@echo "  make test-web             - run web test suite"
 	@echo "  make test-api             - run api pytest suite"
+	@echo "  make test-integration     - run integration bucket from tests/manifests"
+	@echo "  make test-contract        - run contract bucket from tests/manifests"
+	@echo "  make test-performance     - run performance bucket from tests/manifests"
 	@echo "  make test-critical        - run critical-path coverage gates"
+	@echo "  make secret-scan          - scan config/env/docs for embedded secrets"
 	@echo "  make format               - auto-format web + api"
 	@echo "  make format-check         - run blocking format checks"
 	@echo "  make test-api-context-coverage - run context assembly service coverage gate (>=90%)"
 	@echo "  make check-api-boundaries - enforce API module import boundaries"
 	@echo "  make check-api-cycles     - enforce no API circular dependencies"
+	@echo "  make check-capability-boundaries - enforce capability ownership rules"
+	@echo "  make check-route-lifecycle - validate route lifecycle metadata policy"
 	@echo "  make type-check-api-mypy  - run strict mypy for API"
 	@echo "  make type-check-api-pyright - run strict pyright for API"
 	@echo "  make test-e2e             - run Playwright suite"
 	@echo "  make test-e2e-budget      - enforce critical E2E journey cap"
+	@echo "  make sdk-generate         - export OpenAPI and generate SDK types"
+	@echo "  make sdk-check            - fail if SDK generated artifacts are stale"
 	@echo "  make generate-providers-json — validate providers.toml & regenerate providers.json"
 
 install:
@@ -37,6 +45,12 @@ check-api-boundaries:
 check-api-cycles:
 	$(PYTHON) scripts/architecture/check_api_architecture.py cycles
 
+check-capability-boundaries:
+	$(PYTHON) scripts/architecture/check_capability_boundaries.py
+
+check-route-lifecycle:
+	$(PYTHON) scripts/architecture/check_route_lifecycle.py
+
 type-check-api-mypy:
 	cd apps/api && PYTHONPATH=src $(PYTHON) -m mypy --config-file pyproject.toml src/api
 
@@ -44,7 +58,7 @@ type-check-api-pyright:
 	cd apps/api && PYTHONPATH=src $(PYTHON) -m pyright --project pyrightconfig.json
 
 generate-providers-json:
-	PYTHONPATH=packages/shared/src $(PYTHON) scripts/generate-providers-json.py
+	PYTHONPATH=packages/shared/src $(PYTHON) tooling/generators/generate-providers-json.py
 	cp config/providers.json apps/web/src/config/providers.json
 
 web-dev:
@@ -76,20 +90,27 @@ lint-policy:
 type-check:
 	mkdir -p .tmp
 	$(PNPM_TMP) pnpm --filter @goblin/web type-check
+	$(PNPM_TMP) pnpm run packages:type-check
+
+type-check-packages:
+	mkdir -p .tmp
+	$(PNPM_TMP) pnpm run packages:type-check
+
+build-packages:
+	mkdir -p .tmp
+	$(PNPM_TMP) pnpm run packages:build
 
 format:
 	mkdir -p .tmp
 	$(PNPM_TMP) pnpm --filter @goblin/web exec prettier --write .
 	$(PNPM_TMP) pnpm --filter @goblin/web exec eslint . --fix
 	cd apps/api && PYTHONPATH=src $(PYTHON) -m ruff format src/api
-	cd apps/api && PYTHONPATH=src $(PYTHON) -m black src/api
 
 format-check:
 	mkdir -p .tmp
 	$(PNPM_TMP) pnpm --filter @goblin/web exec prettier --check .
 	$(PNPM_TMP) pnpm --filter @goblin/web exec eslint .
 	cd apps/api && PYTHONPATH=src $(PYTHON) -m ruff format --check src/api
-	cd apps/api && PYTHONPATH=src $(PYTHON) -m black --check src/api
 
 test:
 	mkdir -p .tmp
@@ -104,7 +125,7 @@ test-api:
 	cd apps/api && PYTHONPATH=src $(PYTHON) -m pytest -o "addopts=" -v
 
 test-critical:
-	bash scripts/run-critical-coverage.sh
+	bash tooling/quality/run-critical-coverage.sh
 
 test-api-context-coverage:
 	cd apps/api && PYTHONPATH=src $(PYTHON) -m pytest -o "addopts=" -v \
@@ -118,4 +139,22 @@ test-e2e:
 	$(PNPM_TMP) pnpm --filter @goblin/web test:e2e
 
 test-e2e-budget:
-	bash scripts/check-e2e-budget.sh
+	bash tooling/quality/check-e2e-budget.sh
+
+test-integration:
+	$(PYTHON) tooling/quality/run-test-bucket.py integration
+
+test-contract:
+	$(PYTHON) tooling/quality/run-test-bucket.py contract
+
+test-performance:
+	$(PYTHON) tooling/quality/run-test-bucket.py performance
+
+sdk-generate:
+	bash tooling/generators/generate-sdk-client.sh
+
+sdk-check:
+	bash tooling/generators/check-sdk-generated.sh
+
+secret-scan:
+	$(PYTHON) scripts/security/scan_secrets.py

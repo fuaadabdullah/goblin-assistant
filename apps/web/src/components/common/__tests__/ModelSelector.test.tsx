@@ -44,7 +44,7 @@ describe('ModelSelector', () => {
     render(<ModelSelector onChange={jest.fn()} />);
 
     expect(screen.getByTestId('model-selector-placeholder')).toHaveTextContent(
-      'Select a provider first',
+      'Select a provider first'
     );
   });
 
@@ -66,13 +66,7 @@ describe('ModelSelector', () => {
       },
     ]);
 
-    render(
-      <ModelSelector
-        provider="openai"
-        selected=""
-        onChange={jest.fn()}
-      />,
-    );
+    render(<ModelSelector provider="openai" selected="" onChange={jest.fn()} />);
 
     await waitFor(() => {
       expect(mockedRuntimeClient.getProviderModelOptions).toHaveBeenCalledWith('openai');
@@ -80,14 +74,11 @@ describe('ModelSelector', () => {
 
     expect(screen.getByTestId('model-option-gpt-4o-mini')).toHaveAttribute(
       'data-disabled',
-      'false',
+      'false'
     );
-    expect(screen.getByTestId('model-option-gpt-4o')).toHaveAttribute(
-      'data-disabled',
-      'true',
-    );
+    expect(screen.getByTestId('model-option-gpt-4o')).toHaveAttribute('data-disabled', 'true');
     expect(screen.getByTestId('model-option-gpt-4o')).toHaveTextContent(
-      'Unavailable: Provider health check failed.',
+      'Unavailable: Provider health check failed.'
     );
   });
 });

@@ -50,7 +50,7 @@ const ChatMessageList = ({
   const [expanded, setExpanded] = useState<Record<string, boolean>>({});
 
   const toggle = (id: string) => {
-    setExpanded(prev => ({ ...prev, [id]: !prev[id] }));
+    setExpanded((prev) => ({ ...prev, [id]: !prev[id] }));
   };
 
   const messageList = useMemo(() => messages.filter(Boolean), [messages]);
@@ -93,11 +93,7 @@ const ChatMessageList = ({
 
   return (
     <section className="max-w-4xl mx-auto space-y-6" aria-label="Chat transcript">
-      <ol
-        aria-live="polite"
-        aria-relevant="additions"
-        className="space-y-5"
-      >
+      <ol aria-live="polite" aria-relevant="additions" className="space-y-5">
         {messageList.map((msg) => {
           const messageId = msg.id;
           const isUser = msg.role === 'user';
@@ -106,7 +102,12 @@ const ChatMessageList = ({
 
           const hasMeta =
             !isUser &&
-            !!(msg.meta?.model || msg.meta?.provider || msg.meta?.usage || typeof msg.meta?.cost_usd === 'number');
+            !!(
+              msg.meta?.model ||
+              msg.meta?.provider ||
+              msg.meta?.usage ||
+              typeof msg.meta?.cost_usd === 'number'
+            );
           const isExpanded = !!expanded[messageId];
 
           const usage = msg.meta?.usage;
@@ -192,9 +193,7 @@ const ChatMessageList = ({
                       <MessageActions
                         role={msg.role as 'user' | 'assistant'}
                         onCopy={() => onCopyMessage?.(msg.content)}
-                        onRegenerate={() =>
-                          onRegenerateMessage?.(messageId)
-                        }
+                        onRegenerate={() => onRegenerateMessage?.(messageId)}
                         onDelete={() => onDeleteMessage?.(messageId)}
                         showRegenerate={true}
                         showDelete={true}
@@ -224,8 +223,7 @@ const ChatMessageList = ({
                           model: <span className="text-text">{msg.meta?.model || '—'}</span>
                         </div>
                         <div>
-                          provider:{' '}
-                          <span className="text-text">{msg.meta?.provider || '—'}</span>
+                          provider: <span className="text-text">{msg.meta?.provider || '—'}</span>
                         </div>
                         <div>
                           tokens: <span className="text-text">{tokens ?? '—'}</span>

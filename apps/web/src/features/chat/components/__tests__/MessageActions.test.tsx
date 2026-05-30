@@ -1,13 +1,20 @@
 import React from 'react';
 import { render, screen, fireEvent } from '@testing-library/react';
 
-jest.mock('lucide-react', () =>
-  new Proxy({}, {
-    get: (_, name) => {
-      if (name === '__esModule') return true;
-      return (props: Record<string, unknown>) => <span data-testid={`icon-${String(name)}`} {...props} />;
-    },
-  })
+jest.mock(
+  'lucide-react',
+  () =>
+    new Proxy(
+      {},
+      {
+        get: (_, name) => {
+          if (name === '__esModule') return true;
+          return (props: Record<string, unknown>) => (
+            <span data-testid={`icon-${String(name)}`} {...props} />
+          );
+        },
+      }
+    )
 );
 
 import MessageActions from '../MessageActions';
@@ -46,7 +53,14 @@ describe('MessageActions', () => {
   });
 
   it('hides regenerate when showRegenerate is false', () => {
-    render(<MessageActions {...defaultProps} role="assistant" onRegenerate={jest.fn()} showRegenerate={false} />);
+    render(
+      <MessageActions
+        {...defaultProps}
+        role="assistant"
+        onRegenerate={jest.fn()}
+        showRegenerate={false}
+      />
+    );
     expect(screen.queryByLabelText('Regenerate response')).not.toBeInTheDocument();
   });
 

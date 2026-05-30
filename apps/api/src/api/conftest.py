@@ -98,7 +98,5 @@ def authenticated_client():
 
 @pytest.fixture
 def other_authenticated_client():
-    with _build_authenticated_client(
-        "other-user", "other@example.com"
-    ) as test_client:
+    with _build_authenticated_client("other-user", "other@example.com") as test_client:
         yield test_client

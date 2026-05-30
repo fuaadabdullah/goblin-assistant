@@ -8,8 +8,16 @@ jest.mock('../../components/streaming/StreamingView', () => {
   };
 });
 jest.mock('../../api', () => ({
-  runtimeClient: { parseOrchestration: jest.fn(), executeTaskStreaming: jest.fn(), executeTask: jest.fn() },
-  runtimeClientDemo: { parseOrchestration: jest.fn(), executeTaskStreaming: jest.fn(), executeTask: jest.fn() },
+  runtimeClient: {
+    parseOrchestration: jest.fn(),
+    executeTaskStreaming: jest.fn(),
+    executeTask: jest.fn(),
+  },
+  runtimeClientDemo: {
+    parseOrchestration: jest.fn(),
+    executeTaskStreaming: jest.fn(),
+    executeTask: jest.fn(),
+  },
 }));
 jest.mock('../../lib/orchestration/orchestrationState', () => {
   const initialState = {
@@ -31,11 +39,17 @@ jest.mock('../../lib/orchestration/orchestrationState', () => {
   };
   return {
     initialOrchestrationState: initialState,
-    orchestrationReducer: (state: typeof initialState, action: { type: string; payload?: unknown }) => {
+    orchestrationReducer: (
+      state: typeof initialState,
+      action: { type: string; payload?: unknown }
+    ) => {
       switch (action.type) {
-        case 'SET_CODE_INPUT': return { ...state, codeInput: action.payload };
-        case 'SET_ORCHESTRATION': return { ...state, orchestration: action.payload };
-        default: return state;
+        case 'SET_CODE_INPUT':
+          return { ...state, codeInput: action.payload };
+        case 'SET_ORCHESTRATION':
+          return { ...state, orchestration: action.payload };
+        default:
+          return state;
       }
     },
   };

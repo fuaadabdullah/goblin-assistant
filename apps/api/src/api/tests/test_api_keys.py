@@ -7,13 +7,14 @@ Covers:
 - SecretManagerAPIKeyStore (initialization errors)
 - create_api_key_store factory function
 """
+
 from __future__ import annotations
 
 import json
 import os
 import tempfile
 from pathlib import Path
-from unittest.mock import AsyncMock, MagicMock, patch
+from unittest.mock import MagicMock, patch
 
 import pytest
 
@@ -183,7 +184,6 @@ class TestSecretManagerAPIKeyStore:
 
             with patch.dict("sys.modules", {"hvac": mock_hvac}):
                 # Need to actually import via the patched module
-                import importlib
 
                 with patch("importlib.import_module", return_value=mock_hvac):
                     with pytest.raises(PermissionError, match="Vault authentication failed"):
@@ -199,7 +199,11 @@ class TestCreateAPIKeyStore:
     def test_creates_secret_manager_in_production(self):
         with patch.dict(
             os.environ,
-            {"ENVIRONMENT": "production", "VAULT_URL": "http://vault:8200", "VAULT_TOKEN": "s.test"},
+            {
+                "ENVIRONMENT": "production",
+                "VAULT_URL": "http://vault:8200",
+                "VAULT_TOKEN": "s.test",
+            },
             clear=True,
         ):
             store = create_api_key_store()

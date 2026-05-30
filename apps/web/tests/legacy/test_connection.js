@@ -15,8 +15,8 @@ async function testConnection() {
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
-        message: 'Hello, how are you?'
-      })
+        message: 'Hello, how are you?',
+      }),
     });
 
     if (streamResponse.ok) {
@@ -24,11 +24,9 @@ async function testConnection() {
     } else {
       console.error('Chat stream endpoint failed:', await streamResponse.text());
     }
-
   } catch (error) {
     console.error('Connection test failed:', error);
   }
 }
 
 testConnection();
-</write_to_file>

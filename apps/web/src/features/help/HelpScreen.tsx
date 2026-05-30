@@ -14,7 +14,9 @@ const HelpScreen: FC = () => {
   const isStartupFailed = useMemo(() => {
     if (!router.isReady) return false;
     const reason = router.query.reason;
-    return reason === 'startup_failed' || (Array.isArray(reason) && reason.includes('startup_failed'));
+    return (
+      reason === 'startup_failed' || (Array.isArray(reason) && reason.includes('startup_failed'))
+    );
   }, [router.isReady, router.query.reason]);
 
   useEffect(() => {

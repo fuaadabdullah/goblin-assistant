@@ -36,28 +36,33 @@ def test_get_settings_maps_inventory_to_response():
     fake_provider = MagicMock()
     fake_provider.default_model = "gpt-4o-mini"
 
-    with patch(
-        "api.settings_router.dispatcher.get_provider_inventory",
-        new_callable=AsyncMock,
-        return_value=[
-            {
-                "id": "openai",
-                "configured": True,
-                "api_key_env": "OPENAI_API_KEY",
-                "endpoint": "https://example.com",
-                "models": ["gpt-4o-mini"],
-                "default_model": "gpt-4o-mini",
-            }
-        ],
-    ), patch(
-        "api.settings_router.top_providers_for",
-        return_value=["openai"],
-    ), patch(
-        "api.settings_router.dispatcher.get_provider_config",
-        return_value={"default_model": "gpt-4o-mini"},
-    ), patch(
-        "api.settings_router.dispatcher.get_provider",
-        return_value=fake_provider,
+    with (
+        patch(
+            "api.settings_router.dispatcher.get_provider_inventory",
+            new_callable=AsyncMock,
+            return_value=[
+                {
+                    "id": "openai",
+                    "configured": True,
+                    "api_key_env": "OPENAI_API_KEY",
+                    "endpoint": "https://example.com",
+                    "models": ["gpt-4o-mini"],
+                    "default_model": "gpt-4o-mini",
+                }
+            ],
+        ),
+        patch(
+            "api.settings_router.top_providers_for",
+            return_value=["openai"],
+        ),
+        patch(
+            "api.settings_router.dispatcher.get_provider_config",
+            return_value={"default_model": "gpt-4o-mini"},
+        ),
+        patch(
+            "api.settings_router.dispatcher.get_provider",
+            return_value=fake_provider,
+        ),
     ):
         response = client.get("/settings/")
 
@@ -150,14 +155,19 @@ def test_settings_v1_alias_matches_legacy_payload_shape():
     fake_provider = MagicMock()
     fake_provider.default_model = "gpt-4o-mini"
 
-    with patch(
-        "api.settings_router.dispatcher.get_provider_inventory",
-        new_callable=AsyncMock,
-        return_value=[{"id": "openai", "configured": True, "models": ["gpt-4o-mini"]}],
-    ), patch("api.settings_router.top_providers_for", return_value=["openai"]), patch(
-        "api.settings_router.dispatcher.get_provider_config",
-        return_value={"default_model": "gpt-4o-mini"},
-    ), patch("api.settings_router.dispatcher.get_provider", return_value=fake_provider):
+    with (
+        patch(
+            "api.settings_router.dispatcher.get_provider_inventory",
+            new_callable=AsyncMock,
+            return_value=[{"id": "openai", "configured": True, "models": ["gpt-4o-mini"]}],
+        ),
+        patch("api.settings_router.top_providers_for", return_value=["openai"]),
+        patch(
+            "api.settings_router.dispatcher.get_provider_config",
+            return_value={"default_model": "gpt-4o-mini"},
+        ),
+        patch("api.settings_router.dispatcher.get_provider", return_value=fake_provider),
+    ):
         legacy = client.get("/settings/")
         v1 = client.get("/api/v1/settings/")
 

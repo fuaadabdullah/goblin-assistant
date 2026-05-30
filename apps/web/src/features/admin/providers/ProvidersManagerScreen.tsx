@@ -17,7 +17,8 @@ export default function ProvidersManagerScreen() {
   const { data: routingHealth } = useRoutingHealth();
 
   const providerList = (providers as ProviderConfig[] | undefined) || [];
-  const routingStatus: string = (routingHealth as RoutingHealthStatus | undefined)?.status || 'Healthy';
+  const routingStatus: string =
+    (routingHealth as RoutingHealthStatus | undefined)?.status || 'Healthy';
 
   const [selectedProvider, setSelectedProvider] = useState<ProviderConfig | null>(null);
   const [testPrompt, setTestPrompt] = useState('Write a hello world in Python');
@@ -101,10 +102,7 @@ export default function ProvidersManagerScreen() {
       {selectedProvider ? (
         <div className="space-y-6">
           {testResult && (
-            <ProviderTestResultBanner
-              result={testResult}
-              onDismiss={() => setTestResult(null)}
-            />
+            <ProviderTestResultBanner result={testResult} onDismiss={() => setTestResult(null)} />
           )}
 
           <ProviderDetails provider={selectedProvider} onSetPriority={setPriority} />
@@ -126,7 +124,7 @@ export default function ProvidersManagerScreen() {
                 Available Models ({selectedProvider.models.length})
               </h3>
               <div className="flex flex-wrap gap-2">
-                {selectedProvider.models.map(model => (
+                {selectedProvider.models.map((model) => (
                   <span
                     key={model}
                     className="px-3 py-1.5 bg-primary/20 text-primary rounded-full text-sm font-medium"
@@ -152,4 +150,3 @@ export default function ProvidersManagerScreen() {
 
   return <TwoColumnLayout sidebar={sidebar}>{mainContent}</TwoColumnLayout>;
 }
-

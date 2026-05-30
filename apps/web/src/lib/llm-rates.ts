@@ -14,10 +14,7 @@ export interface CostComputationResult {
 
 // USD per 1k tokens. These are intentionally conservative defaults and may not
 // match exact vendor billing.
-const PROVIDER_RATES_USD_PER_1K: Record<
-  string,
-  { input: number; output: number }
-> = {
+const PROVIDER_RATES_USD_PER_1K: Record<string, { input: number; output: number }> = {
   // Hosted APIs
   openai: { input: 0.002, output: 0.006 },
   anthropic: { input: 0.008, output: 0.024 },
@@ -49,8 +46,8 @@ export function computeCostUsd(
   }
 
   const rate = keys
-    .map(key => PROVIDER_RATES_USD_PER_1K[key])
-    .find(candidate => Boolean(candidate));
+    .map((key) => PROVIDER_RATES_USD_PER_1K[key])
+    .find((candidate) => Boolean(candidate));
   if (!rate) {
     // Unknown provider: fall back to a generic blended rate.
     const tokens = usage.total_tokens ?? (usage.input_tokens || 0) + (usage.output_tokens || 0);
@@ -65,8 +62,6 @@ export function computeCostUsd(
   const inferredInput = input || (output ? 0 : Math.round(total * 0.4));
   const inferredOutput = output || (input ? 0 : total - inferredInput);
 
-  const cost =
-    (inferredInput / 1000) * rate.input + (inferredOutput / 1000) * rate.output;
+  const cost = (inferredInput / 1000) * rate.input + (inferredOutput / 1000) * rate.output;
   return { cost_usd: roundUsd(cost), approx: true, source: 'rates' };
 }
-

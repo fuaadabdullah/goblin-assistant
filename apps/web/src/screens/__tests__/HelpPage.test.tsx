@@ -3,9 +3,13 @@ import { render, screen } from '@testing-library/react';
 import '@testing-library/jest-dom';
 import HelpPage from '../HelpPage';
 
-jest.mock('@/features/help/HelpScreen', () => function MockHelpScreen() {
-  return <div data-testid="help-screen">Help Screen</div>;
-});
+jest.mock(
+  '@/features/help/HelpScreen',
+  () =>
+    function MockHelpScreen() {
+      return <div data-testid="help-screen">Help Screen</div>;
+    }
+);
 
 describe('HelpPage', () => {
   it('renders HelpScreen component', () => {

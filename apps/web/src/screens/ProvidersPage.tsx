@@ -12,7 +12,7 @@ const ProvidersPage = () => {
   const { data: routingHealth } = useRoutingHealth();
   const providerList = providers as ProviderConfig[] | undefined;
   const routingStatus: string =
-    (routingHealth && typeof routingHealth === 'object' && 'status' in routingHealth)
+    routingHealth && typeof routingHealth === 'object' && 'status' in routingHealth
       ? String((routingHealth as { status: unknown }).status)
       : 'Healthy';
   const [selectedProvider, setSelectedProvider] = useState<ProviderConfig | null>(null);
@@ -266,7 +266,7 @@ const ProvidersPage = () => {
               <div>
                 <h3 className="text-sm font-semibold text-text mb-3">Available Models</h3>
                 <div className="flex flex-wrap gap-2">
-                  {selectedProvider.models.map(model => (
+                  {selectedProvider.models.map((model) => (
                     <span
                       key={model}
                       className="px-3 py-1 bg-primary/20 text-primary rounded-full text-xs font-medium"

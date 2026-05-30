@@ -43,8 +43,13 @@ export const useSearchResults = (): SearchState => {
   });
 
   const searchMutation = useMutation({
-    mutationFn: async ({ collectionName, queryText }: { collectionName: string; queryText: string }) =>
-      searchCollectionByName(collectionName, queryText, 20),
+    mutationFn: async ({
+      collectionName,
+      queryText,
+    }: {
+      collectionName: string;
+      queryText: string;
+    }) => searchCollectionByName(collectionName, queryText, 20),
   });
 
   useEffect(() => {

@@ -6,7 +6,7 @@ for different secrets backends like Vault and Bitwarden.
 """
 
 import logging
-from typing import Dict, Any, Optional, Type
+from typing import Dict, Optional, Type
 from .base import SecretAdapter, SecretAdapterError
 from .vault_adapter import VaultAdapter
 from .bitwarden_adapter import BitwardenAdapter
@@ -58,8 +58,7 @@ class AdapterFactory:
         if adapter_type not in cls._adapters:
             available_types = list(cls._adapters.keys())
             raise SecretAdapterError(
-                f"Unsupported adapter type: {adapter_type}. "
-                f"Available types: {available_types}"
+                f"Unsupported adapter type: {adapter_type}. Available types: {available_types}"
             )
 
         adapter_class = cls._adapters[adapter_type]

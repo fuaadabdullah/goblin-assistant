@@ -3,7 +3,17 @@ Enhanced memory models for memory stratification system
 Adds memory_items table and enhanced metadata tracking
 """
 
-from sqlalchemy import Column, String, DateTime, ForeignKey, JSON, Text, Index, Integer, Float
+from sqlalchemy import (
+    Column,
+    String,
+    DateTime,
+    ForeignKey,
+    JSON,
+    Text,
+    Index,
+    Integer,
+    Float,
+)
 from sqlalchemy.orm import declarative_base, relationship
 import uuid
 from datetime import datetime
@@ -20,31 +30,35 @@ Base = declarative_base()
 
 class MemoryItemModel(Base):
     """Enhanced memory items table with promotion tracking"""
-    
+
     __tablename__ = "memory_items"
 
     id = Column(String, primary_key=True, default=lambda: str(uuid.uuid4()))
     user_id = Column(String, ForeignKey("users.id"), nullable=False, index=True)
     fact_text = Column(Text, nullable=False)
     fact_embedding = Column(VECTOR(1536))
-    category = Column(String, nullable=True)  # user_trait, preference, skill, goal, constraint, context
+    category = Column(
+        String, nullable=True
+    )  # user_trait, preference, skill, goal, constraint, context
     confidence = Column(Float, nullable=False, default=0.0)
-    source_type = Column(String, nullable=False)  # fact_message, preference_message, summary, manual
+    source_type = Column(
+        String, nullable=False
+    )  # fact_message, preference_message, summary, manual
     source_id = Column(String, nullable=True)  # ID of source (conversation_id, summary_id, etc.)
     metadata_ = Column("metadata", JSON, default=dict)
-    
+
     # Promotion tracking
     promotion_status = Column(String, default="promoted")  # promoted, rejected, duplicate
     promotion_reason = Column(Text, nullable=True)
     promotion_confidence = Column(Float, nullable=True)
     consistency_score = Column(Float, nullable=True)
-    
+
     # Lifecycle tracking
     created_at = Column(DateTime, default=datetime.utcnow)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
     last_confirmed = Column(DateTime, nullable=True)
     confirmation_count = Column(Integer, default=0)
-    
+
     # Relationships
     user = relationship("UserModel", back_populates="memory_items")
 
@@ -59,7 +73,7 @@ class MemoryItemModel(Base):
 
 class MemoryPromotionLogModel(Base):
     """Audit log for memory promotion decisions"""
-    
+
     __tablename__ = "memory_promotion_log"
 
     id = Column(String, primary_key=True, default=lambda: str(uuid.uuid4()))
@@ -86,7 +100,7 @@ class MemoryPromotionLogModel(Base):
 
 class MemoryFactExtractionModel(Base):
     """Track fact extraction from messages"""
-    
+
     __tablename__ = "memory_fact_extraction"
 
     id = Column(String, primary_key=True, default=lambda: str(uuid.uuid4()))
@@ -110,7 +124,7 @@ class MemoryFactExtractionModel(Base):
 
 class MemoryConsistencyModel(Base):
     """Track consistency checks between facts"""
-    
+
     __tablename__ = "memory_consistency"
 
     id = Column(String, primary_key=True, default=lambda: str(uuid.uuid4()))
@@ -134,7 +148,7 @@ class MemoryConsistencyModel(Base):
 
 class MemoryUsageModel(Base):
     """Track memory usage and retrieval patterns"""
-    
+
     __tablename__ = "memory_usage"
 
     id = Column(String, primary_key=True, default=lambda: str(uuid.uuid4()))
@@ -159,7 +173,7 @@ class MemoryUsageModel(Base):
 # Add relationships to existing UserModel
 def add_memory_relationships():
     """Add memory relationships to existing UserModel"""
-    
+
     from .models import UserModel
 
     UserModel.memory_items = relationship(
@@ -167,25 +181,25 @@ def add_memory_relationships():
         back_populates="user",
         cascade="all, delete-orphan",
     )
-    
+
     UserModel.promotion_logs = relationship(
         "MemoryPromotionLogModel",
         back_populates="user",
         cascade="all, delete-orphan",
     )
-    
+
     UserModel.fact_extractions = relationship(
         "MemoryFactExtractionModel",
         back_populates="user",
         cascade="all, delete-orphan",
     )
-    
+
     UserModel.consistency_checks = relationship(
         "MemoryConsistencyModel",
         back_populates="user",
         cascade="all, delete-orphan",
     )
-    
+
     UserModel.memory_usage = relationship(
         "MemoryUsageModel",
         back_populates="user",

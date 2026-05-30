@@ -6,7 +6,6 @@ from api.services.context_assembly_service import (
     ContextLayer,
     ContextBudget,
 )
-from api.services.context_assembly_service import ephemeral_layer as _ephemeral_mod
 from api.services.context_assembly_service import orchestrator as _orch_mod
 
 
@@ -33,7 +32,9 @@ def test_critical_runtime_files_do_not_use_print(relative_path: Path):
 
 @pytest.mark.asyncio
 async def test_ephemeral_layer_marks_truncation_and_summary_fallback():
-    from api.services.context_assembly_service.ephemeral_layer import assemble_ephemeral_memory
+    from api.services.context_assembly_service.ephemeral_layer import (
+        assemble_ephemeral_memory,
+    )
 
     budget = ContextBudget(total_tokens=200, ephemeral_tokens=70)
     history = [

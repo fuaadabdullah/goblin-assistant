@@ -75,7 +75,9 @@ const resolvePrompt = (params: SendMessageParams): string => {
     return params.prompt.trim();
   }
 
-  const lastUser = [...(params.messages || [])].reverse().find(message => message.role === 'user');
+  const lastUser = [...(params.messages || [])]
+    .reverse()
+    .find((message) => message.role === 'user');
   return lastUser?.content?.trim() || '';
 };
 
@@ -174,7 +176,7 @@ export const chatClient = {
 
       const hasExplicitSelection = Boolean(
         (typeof model === 'string' && model.trim()) ||
-          (typeof provider === 'string' && provider.trim())
+        (typeof provider === 'string' && provider.trim())
       );
 
       try {
@@ -200,7 +202,7 @@ export const chatClient = {
       // Check for specific error statuses
       const errorObj = error as any;
       const status = errorObj?.response?.status || errorObj?.status;
-      
+
       if (status === 413) {
         throw new UiError(
           {
@@ -210,7 +212,7 @@ export const chatClient = {
           error
         );
       }
-      
+
       if (status === 401 || status === 403) {
         throw new UiError(
           {
@@ -220,7 +222,7 @@ export const chatClient = {
           error
         );
       }
-      
+
       throw new UiError(
         {
           code: 'CHAT_SEND_FAILED',
@@ -251,7 +253,8 @@ export const chatClient = {
         throw new Error('Conversation message is required.');
       }
 
-      const apiBaseUrl = process.env.NEXT_PUBLIC_API_BASE_URL || 
+      const apiBaseUrl =
+        process.env.NEXT_PUBLIC_API_BASE_URL ||
         (typeof window !== 'undefined' ? '' : 'http://localhost:8000');
       const token = getAuthToken();
       const headers: Record<string, string> = {
@@ -261,7 +264,7 @@ export const chatClient = {
         headers['Authorization'] = `Bearer ${token}`;
       }
 
-      const streamUrl = `${apiBaseUrl}/chat/stream`;
+      const streamUrl = `${apiBaseUrl}/api/v1/chat/stream`;
       let buffer = '';
       let accumulatedContent = '';
       let totalTokens = 0;
@@ -315,7 +318,7 @@ export const chatClient = {
                   onChunk(data.content, tokenCount, costDelta);
                 }
 
-                if (data.type === 'error' || typeof (data.error) === 'string') {
+                if (data.type === 'error' || typeof data.error === 'string') {
                   throw new Error(
                     (typeof data.message === 'string' && data.message) ||
                       (typeof data.error === 'string' && data.error) ||
@@ -337,7 +340,13 @@ export const chatClient = {
                     cost_usd: (data.cost as number) ?? totalCost,
                     correlation_id: data.correlation_id as string | undefined,
                     createdAt: data.timestamp as string | undefined,
-                    visualizations: (data.visualizations as Array<{ type: string; title: string; data: Record<string, unknown>[]; config: Record<string, unknown> }>) || undefined,
+                    visualizations:
+                      (data.visualizations as Array<{
+                        type: string;
+                        title: string;
+                        data: Record<string, unknown>[];
+                        config: Record<string, unknown>;
+                      }>) || undefined,
                   };
                   onComplete(finalResponse);
                   reader.cancel();
@@ -358,9 +367,8 @@ export const chatClient = {
         onComplete(finalResponse);
       } catch (error) {
         reader.cancel();
-        const uiError = error instanceof Error 
-          ? error 
-          : new Error('Unknown error during streaming');
+        const uiError =
+          error instanceof Error ? error : new Error('Unknown error during streaming');
         onError(uiError);
         throw new UiError(
           {
@@ -371,9 +379,7 @@ export const chatClient = {
         );
       }
     } catch (error) {
-      const uiError = error instanceof Error 
-        ? error 
-        : new Error('Unknown error during streaming');
+      const uiError = error instanceof Error ? error : new Error('Unknown error during streaming');
       onError(uiError);
       throw new UiError(
         {

@@ -23,7 +23,9 @@ interface SandboxSessionOptions {
   isGuest?: boolean;
 }
 
-export const useSandboxSession = ({ isGuest = false }: SandboxSessionOptions = {}): SandboxSessionState => {
+export const useSandboxSession = ({
+  isGuest = false,
+}: SandboxSessionOptions = {}): SandboxSessionState => {
   const [jobs, setJobs] = useState<SandboxJob[]>([]);
   const [selectedJob, setSelectedJob] = useState<SandboxJob | null>(null);
   const [code, setCode] = useState('');
@@ -72,23 +74,26 @@ export const useSandboxSession = ({ isGuest = false }: SandboxSessionOptions = {
     }
   }, [code, language, refreshJobs]);
 
-  const selectJob = useCallback(async (job: SandboxJob) => {
-    if (isGuest) {
-      setLogs('Sign in to view saved runs and logs.');
-      return;
-    }
-    setSelectedJob(job);
-    try {
-      const logData = await fetchJobLogs(job.id);
-      setLogs(JSON.stringify(logData, null, 2));
-    } catch (error) {
-      const uiError = toUiError(error, {
-        code: 'SANDBOX_LOGS_FAILED',
-        userMessage: 'Unable to load logs for that job.',
-      });
-      setLogs(uiError.userMessage);
-    }
-  }, [isGuest]);
+  const selectJob = useCallback(
+    async (job: SandboxJob) => {
+      if (isGuest) {
+        setLogs('Sign in to view saved runs and logs.');
+        return;
+      }
+      setSelectedJob(job);
+      try {
+        const logData = await fetchJobLogs(job.id);
+        setLogs(JSON.stringify(logData, null, 2));
+      } catch (error) {
+        const uiError = toUiError(error, {
+          code: 'SANDBOX_LOGS_FAILED',
+          userMessage: 'Unable to load logs for that job.',
+        });
+        setLogs(uiError.userMessage);
+      }
+    },
+    [isGuest]
+  );
 
   const clearCode = useCallback(() => {
     setCode('');

@@ -105,7 +105,7 @@ export const THEME_PRESETS = {
     'primary-300': '#59e89a',
     accent: '#FF2AA8',
     cta: '#FF6A1A',
-    'glow-primary': 'rgba(6, 208, 106, 0.14)'
+    'glow-primary': 'rgba(6, 208, 106, 0.14)',
   },
   nocturne: {
     bg: '#05090F',
@@ -117,7 +117,7 @@ export const THEME_PRESETS = {
     'primary-300': '#7ffbec',
     accent: '#C964FF',
     cta: '#FF8C32',
-    'glow-primary': 'rgba(81, 248, 227, 0.14)'
+    'glow-primary': 'rgba(81, 248, 227, 0.14)',
   },
   ember: {
     bg: '#0A0B10',
@@ -129,8 +129,8 @@ export const THEME_PRESETS = {
     'primary-300': '#4fe9d0',
     accent: '#FF4DA6',
     cta: '#FFB347',
-    'glow-primary': 'rgba(23, 224, 193, 0.14)'
-  }
+    'glow-primary': 'rgba(23, 224, 193, 0.14)',
+  },
 };
 
 /**

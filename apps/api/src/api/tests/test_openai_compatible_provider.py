@@ -43,9 +43,7 @@ class TestInvoke:
 
             result = await provider.invoke(
                 messages=[{"role": "user", "content": "hello"}],
-                tools=[
-                    {"type": "function", "function": {"name": "test_tool"}}
-                ],
+                tools=[{"type": "function", "function": {"name": "test_tool"}}],
                 tool_choice="auto",
                 parallel_tool_calls=True,
             )
@@ -83,9 +81,7 @@ class TestInvoke:
             )
 
         assert result.ok is True
-        assert instance.post.await_args.args[0] == (
-            "https://provider.test/v1/chat/completions"
-        )
+        assert instance.post.await_args.args[0] == ("https://provider.test/v1/chat/completions")
 
     @pytest.mark.asyncio
     async def test_http_error_includes_response_body(self):

@@ -74,7 +74,7 @@ export function generateVariants(hex) {
     light: hslToHex(hsl.h, hsl.s, Math.min(95, hsl.l + 20)), // +20% lighter (e.g., 300)
     dark: hslToHex(hsl.h, hsl.s, Math.max(8, hsl.l - 18)), // -18% darker (e.g., 600)
     mid: hslToHex(hsl.h, hsl.s, Math.min(80, hsl.l + 8)), // +8% mid-tone
-    hover: hslToHex(hsl.h, hsl.s, Math.max(5, hsl.l - 5)) // -5% for hover state
+    hover: hslToHex(hsl.h, hsl.s, Math.max(5, hsl.l - 5)), // -5% for hover state
   };
 }
 
@@ -101,7 +101,7 @@ export function generateThemePalette(baseColors) {
   return {
     primary: generateVariants(baseColors.primary),
     accent: generateVariants(baseColors.accent),
-    cta: generateVariants(baseColors.cta)
+    cta: generateVariants(baseColors.cta),
   };
 }
 
@@ -119,7 +119,7 @@ export const GOBLINOS_BASE_COLORS = {
   bg: 'var(--bg)',
   surface: 'var(--surface)',
   text: 'var(--text)',
-  muted: 'var(--muted)'
+  muted: 'var(--muted)',
 };
 
 /**

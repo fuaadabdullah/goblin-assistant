@@ -3,8 +3,22 @@ import { render, screen, fireEvent } from '@testing-library/react';
 import '@testing-library/jest-dom';
 
 jest.mock('../../ui/Button', () => {
-  return function MockButton({ children, onClick, disabled, variant }: { children: React.ReactNode; onClick?: () => void; disabled?: boolean; variant?: string }) {
-    return <button onClick={onClick} disabled={disabled} data-variant={variant}>{children}</button>;
+  return function MockButton({
+    children,
+    onClick,
+    disabled,
+    variant,
+  }: {
+    children: React.ReactNode;
+    onClick?: () => void;
+    disabled?: boolean;
+    variant?: string;
+  }) {
+    return (
+      <button onClick={onClick} disabled={disabled} data-variant={variant}>
+        {children}
+      </button>
+    );
   };
 });
 

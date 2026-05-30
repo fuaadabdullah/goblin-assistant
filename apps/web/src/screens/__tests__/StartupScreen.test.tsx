@@ -17,14 +17,22 @@ jest.mock('next/router', () => ({
   }),
 }));
 
-let mockStartupReturn = { status: 'loading' as string, message: 'Initializing...', destinationRoute: null as string | null };
+let mockStartupReturn = {
+  status: 'loading' as string,
+  message: 'Initializing...',
+  destinationRoute: null as string | null,
+};
 jest.mock('../../features/startup/hooks/useStartupFlow', () => ({
   useStartupFlow: () => mockStartupReturn,
 }));
 
 jest.mock('../../features/startup/components/GoblinBootScreen', () => {
   return function MockBootScreen(props: { status: string; message: string }) {
-    return <div data-testid="boot-screen" data-status={props.status}>{props.message}</div>;
+    return (
+      <div data-testid="boot-screen" data-status={props.status}>
+        {props.message}
+      </div>
+    );
   };
 });
 
@@ -60,7 +68,11 @@ describe('StartupScreen', () => {
   });
 
   it('redirects on error with destination', () => {
-    mockStartupReturn = { status: 'error', message: 'Failed', destinationRoute: '/help?reason=startup_failed' };
+    mockStartupReturn = {
+      status: 'error',
+      message: 'Failed',
+      destinationRoute: '/help?reason=startup_failed',
+    };
     render(<StartupScreen />);
     expect(mockReplace).toHaveBeenCalledWith('/help?reason=startup_failed');
   });

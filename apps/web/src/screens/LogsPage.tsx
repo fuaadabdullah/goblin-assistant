@@ -57,8 +57,7 @@ const parseLogLine = (line: string, index: number): LogEntry => {
 
     return {
       id: typeof parsed.id === 'string' ? parsed.id : `log-${index}`,
-      timestamp:
-        typeof parsed.timestamp === 'string' ? parsed.timestamp : new Date().toISOString(),
+      timestamp: typeof parsed.timestamp === 'string' ? parsed.timestamp : new Date().toISOString(),
       level: toLogLevel(parsed.level),
       service: toLogService(parsed.service, parsed.source),
       message: toLogMessage(parsed.message, parsed.msg, line),
@@ -122,7 +121,7 @@ const LogsSidebar = ({
       <label className="block text-xs font-medium text-text mb-2">Level Filter</label>
       <select
         value={filter}
-        onChange={e => {
+        onChange={(e) => {
           const nextFilter = e.target.value;
           if (isLogFilter(nextFilter)) {
             onFilterChange(nextFilter);
@@ -142,11 +141,11 @@ const LogsSidebar = ({
       <label className="block text-xs font-medium text-text mb-2">Service Filter</label>
       <select
         value={serviceFilter}
-        onChange={e => onServiceFilterChange(e.target.value)}
+        onChange={(e) => onServiceFilterChange(e.target.value)}
         className="w-full px-3 py-2 border border-border rounded-lg text-sm bg-surface-hover focus:ring-2 focus:ring-primary"
         aria-label="Service filter"
       >
-        {services.map(service => (
+        {services.map((service) => (
           <option key={service} value={service}>
             {service.charAt(0).toUpperCase() + service.slice(1)}
           </option>
@@ -159,7 +158,7 @@ const LogsSidebar = ({
         type="checkbox"
         id="auto-refresh"
         checked={autoRefresh}
-        onChange={e => onAutoRefreshChange(e.target.checked)}
+        onChange={(e) => onAutoRefreshChange(e.target.checked)}
         className="rounded border-border text-primary focus:ring-primary"
       />
       <label htmlFor="auto-refresh" className="text-xs text-text">
@@ -201,11 +200,11 @@ const LogsSidebar = ({
         </div>
         <div className="flex justify-between">
           <span className="text-danger">Errors:</span>
-          <span className="font-medium">{logs.filter(l => l.level === 'error').length}</span>
+          <span className="font-medium">{logs.filter((l) => l.level === 'error').length}</span>
         </div>
         <div className="flex justify-between">
           <span className="text-warning">Warnings:</span>
-          <span className="font-medium">{logs.filter(l => l.level === 'warning').length}</span>
+          <span className="font-medium">{logs.filter((l) => l.level === 'warning').length}</span>
         </div>
       </div>
     </div>
@@ -224,7 +223,9 @@ const LogEntries = ({ logs, selectedLog, onSelectLog, filter, serviceFilter }: L
   if (logs.length === 0) {
     return (
       <div className="bg-surface rounded-xl shadow-sm border border-border p-12 text-center">
-        <div className="text-6xl mb-4" aria-hidden="true">📋</div>
+        <div className="text-6xl mb-4" aria-hidden="true">
+          📋
+        </div>
         <h3 className="text-lg font-medium text-text mb-2">No Logs Found</h3>
         <p className="text-muted">
           {filter !== 'all' || serviceFilter !== 'all'
@@ -237,7 +238,7 @@ const LogEntries = ({ logs, selectedLog, onSelectLog, filter, serviceFilter }: L
 
   return (
     <div className="space-y-3">
-      {logs.map(log => {
+      {logs.map((log) => {
         const colors = levelColors[log.level];
         const isSelected = selectedLog?.id === log.id;
         const detailsId = `log-details-${log.id}`;
@@ -257,8 +258,13 @@ const LogEntries = ({ logs, selectedLog, onSelectLog, filter, serviceFilter }: L
             >
               <div className="flex items-start justify-between mb-2">
                 <div className="flex items-center gap-3">
-                  <span className={`px-3 py-1 rounded-full text-xs font-medium ${colors.bg} ${colors.text}`}>
-                    <span className={`inline-block w-2 h-2 rounded-full ${colors.dot} mr-2`} aria-hidden="true"></span>
+                  <span
+                    className={`px-3 py-1 rounded-full text-xs font-medium ${colors.bg} ${colors.text}`}
+                  >
+                    <span
+                      className={`inline-block w-2 h-2 rounded-full ${colors.dot} mr-2`}
+                      aria-hidden="true"
+                    ></span>
                     {log.level.toUpperCase()}
                   </span>
                   <span className="px-3 py-1 bg-surface-hover text-text rounded-full text-xs font-medium">
@@ -297,7 +303,13 @@ const LogsPageContent = () => {
   const [autoRefresh, setAutoRefresh] = useState(false);
   const [dismissedError, setDismissedError] = useState(false);
 
-  const { data: logs = [], isLoading, isFetching, error, refetch } = useQuery<LogEntry[]>({
+  const {
+    data: logs = [],
+    isLoading,
+    isFetching,
+    error,
+    refetch,
+  } = useQuery<LogEntry[]>({
     queryKey: queryKeys.raptorLogs(100),
     queryFn: async () => {
       const logsData = (await apiClient.getRaptorLogs(100)) as RaptorLogsPayload;
@@ -313,15 +325,15 @@ const LogsPageContent = () => {
 
   const filteredLogs = useMemo(
     () =>
-      logs.filter(log => {
+      logs.filter((log) => {
         if (filter !== 'all' && log.level !== filter) return false;
         if (serviceFilter !== 'all' && log.service !== serviceFilter) return false;
         return true;
       }),
-    [logs, filter, serviceFilter],
+    [logs, filter, serviceFilter]
   );
 
-  const services = ['all', ...Array.from(new Set(logs.map(log => log.service)))];
+  const services = ['all', ...Array.from(new Set(logs.map((log) => log.service)))];
 
   const sidebar = (
     <LogsSidebar
@@ -349,7 +361,9 @@ const LogsPageContent = () => {
     <div className="space-y-6">
       <div>
         <h1 className="text-3xl font-bold text-text mb-2">System Logs</h1>
-        <p className="text-muted">Real-time monitoring of backend errors, warnings, and system events</p>
+        <p className="text-muted">
+          Real-time monitoring of backend errors, warnings, and system events
+        </p>
       </div>
 
       {showError && (
@@ -358,7 +372,9 @@ const LogsPageContent = () => {
           title="Failed to Load Logs"
           message={
             <>
-              <p className="mb-3">{error instanceof Error ? error.message : 'Failed to load logs'}</p>
+              <p className="mb-3">
+                {error instanceof Error ? error.message : 'Failed to load logs'}
+              </p>
               <Button
                 variant="danger"
                 size="sm"
@@ -381,7 +397,9 @@ const LogsPageContent = () => {
       {isLoading && <ListSkeleton count={8} />}
 
       <div className="sr-only" role="status" aria-live="polite" aria-atomic="true">
-        {!isLoading && logs.length > 0 && `Logs updated. Showing ${filteredLogs.length} of ${logs.length} entries`}
+        {!isLoading &&
+          logs.length > 0 &&
+          `Logs updated. Showing ${filteredLogs.length} of ${logs.length} entries`}
       </div>
 
       {!isLoading && (

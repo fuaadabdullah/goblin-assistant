@@ -1,9 +1,27 @@
 import React from 'react';
 import { render, screen, fireEvent } from '@testing-library/react';
 
-jest.mock('../../ui/Button', () => function MockButton({ children, onClick, disabled, variant }: { children: React.ReactNode; onClick: () => void; disabled?: boolean; variant?: string }) {
-  return <button onClick={onClick} disabled={disabled} data-variant={variant}>{children}</button>;
-});
+jest.mock(
+  '../../ui/Button',
+  () =>
+    function MockButton({
+      children,
+      onClick,
+      disabled,
+      variant,
+    }: {
+      children: React.ReactNode;
+      onClick: () => void;
+      disabled?: boolean;
+      variant?: string;
+    }) {
+      return (
+        <button onClick={onClick} disabled={disabled} data-variant={variant}>
+          {children}
+        </button>
+      );
+    }
+);
 
 import { ErrorTestButtons } from '../../error-testing/ErrorTestButtons';
 

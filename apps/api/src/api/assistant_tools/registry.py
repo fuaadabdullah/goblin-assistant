@@ -72,6 +72,26 @@ class ToolDefinition:
         }
 
 
+@dataclass(frozen=True)
+class ToolSpec:
+    """Provider-agnostic tool specification used by router/runtime code."""
+
+    name: str
+    description: str
+    input_schema: Dict[str, Any]
+    category: str = "finance"
+
+    def to_openai_schema(self) -> Dict[str, Any]:
+        return {
+            "type": "function",
+            "function": {
+                "name": self.name,
+                "description": self.description,
+                "parameters": self.input_schema,
+            },
+        }
+
+
 # ---------------------------------------------------------------------------
 # Global registry
 # ---------------------------------------------------------------------------
@@ -94,10 +114,40 @@ def export_openai_tools() -> List[Dict[str, Any]]:
     return [tool.to_openai_schema() for tool in TOOL_REGISTRY.values()]
 
 
-def export_tools_for_provider(provider_id: str) -> List[Dict[str, Any]]:
+def export_tool_specs() -> List[ToolSpec]:
+    """Export tool specifications in a provider-neutral contract."""
+    specs: List[ToolSpec] = []
+    for tool in TOOL_REGISTRY.values():
+        schema = tool.to_openai_schema()["function"]["parameters"]
+        specs.append(
+            ToolSpec(
+                name=tool.name,
+                description=tool.description,
+                input_schema=schema,
+                category=tool.category,
+            )
+        )
+    return specs
+
+
+def format_tool_specs_for_provider(
+    tool_specs: List[ToolSpec],
+    provider_id: Optional[str] = None,
+) -> List[Dict[str, Any]]:
+    """Translate provider-neutral tool specs into provider payload format.
+
+    For now all providers use OpenAI-compatible function tool payloads.
+    Keeping this translation boundary here prevents OpenAI schema leakage
+    into chat route and orchestration internals.
+    """
+    _ = provider_id
+    return [spec.to_openai_schema() for spec in tool_specs]
+
+
+def export_tools_for_provider(provider_id: Optional[str]) -> List[Dict[str, Any]]:
     """Export tools in the format expected by a specific provider.
 
     Currently all supported providers (OpenAI, Anthropic, Gemini, Groq)
     accept the OpenAI tools format, so this is a single code path.
     """
-    return export_openai_tools()
+    return format_tool_specs_for_provider(export_tool_specs(), provider_id=provider_id)

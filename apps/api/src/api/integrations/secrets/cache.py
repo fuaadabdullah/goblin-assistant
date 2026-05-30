@@ -70,9 +70,7 @@ class TTLCache:
         async with self._lock:
             current_time = time.time()
             expired_keys = [
-                key
-                for key, (_, expires_at) in self._cache.items()
-                if expires_at <= current_time
+                key for key, (_, expires_at) in self._cache.items() if expires_at <= current_time
             ]
 
             for key in expired_keys:
@@ -175,9 +173,7 @@ class TTLCache:
         async with self._lock:
             current_time = time.time()
             expired_count = sum(
-                1
-                for _, expires_at in self._cache.values()
-                if expires_at <= current_time
+                1 for _, expires_at in self._cache.values() if expires_at <= current_time
             )
 
             return {
@@ -300,9 +296,7 @@ class SecretCache:
         base_stats.update(
             {
                 "tracked_paths": len(self._path_to_keys),
-                "total_path_keys": sum(
-                    len(keys) for keys in self._path_to_keys.values()
-                ),
+                "total_path_keys": sum(len(keys) for keys in self._path_to_keys.values()),
             }
         )
         return base_stats

@@ -8,13 +8,15 @@ function cleanSiteUrl(value: string | undefined): string {
 
 function buildUrlset(urls: Array<{ loc: string; lastmod?: string }>): string {
   const lines = urls
-    .map(u => {
+    .map((u) => {
       const lastmod = u.lastmod ? `<lastmod>${u.lastmod}</lastmod>` : '';
       return `<url><loc>${u.loc}</loc>${lastmod}</url>`;
     })
     .join('');
-  return `<?xml version="1.0" encoding="UTF-8"?>` +
-    `<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">${lines}</urlset>`;
+  return (
+    `<?xml version="1.0" encoding="UTF-8"?>` +
+    `<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">${lines}</urlset>`
+  );
 }
 
 export const getServerSideProps: GetServerSideProps = async ({ res }) => {
@@ -40,4 +42,3 @@ export const getServerSideProps: GetServerSideProps = async ({ res }) => {
 export default function SitemapXml() {
   return null;
 }
-

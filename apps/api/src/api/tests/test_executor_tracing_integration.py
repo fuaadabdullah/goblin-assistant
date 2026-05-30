@@ -78,14 +78,10 @@ class TestExecutorTracing:
         assert result is not None
         assert result["trace"]["request_id"] == request_id
         assert result["summary"]["total_executions"] == 1
-        assert (
-            result["summary"]["success_rate"] == pytest.approx(1.0)
-        )
+        assert result["summary"]["success_rate"] == pytest.approx(1.0)
 
     @pytest.mark.asyncio
-    async def test_multiple_tool_rounds_are_traced(
-        self, mock_conversation_context
-    ):
+    async def test_multiple_tool_rounds_are_traced(self, mock_conversation_context):
         """Test that multiple rounds of tool calls are traced correctly"""
         request_id = mock_conversation_context["request_id"]
         conversation_id = mock_conversation_context["conversation_id"]
@@ -198,13 +194,8 @@ class TestExecutorTracing:
         # Verify failure was recorded
         result = tool_tracer.get_tool_trace(request_id)
 
-        assert (
-            result["trace"]["error"]
-            == "Tool execution failed during round 0"
-        )
-        assert (
-            result["summary"]["success_rate"] == pytest.approx(0.0)
-        )
+        assert result["trace"]["error"] == "Tool execution failed during round 0"
+        assert result["summary"]["success_rate"] == pytest.approx(0.0)
         assert (
             result["trace"]["rounds"][0]["executions"][0]["error"]
             == "Tool execution failed: Timeout after 30s"
@@ -357,9 +348,7 @@ class TestTracerStatistics:
 
             # Second tool: varies success/failure
             status = (
-                ToolExecutionStatus.SUCCESS.value
-                if i < 3
-                else ToolExecutionStatus.FAILURE.value
+                ToolExecutionStatus.SUCCESS.value if i < 3 else ToolExecutionStatus.FAILURE.value
             )
             tool_tracer.record_tool_execution(
                 trace_id=trace_id,
@@ -380,15 +369,10 @@ class TestTracerStatistics:
             )
 
         # Get statistics
-        stats = tool_tracer.get_tool_trace_stats(
-            user_id=user_id, time_window_hours=24
-        )
+        stats = tool_tracer.get_tool_trace_stats(user_id=user_id, time_window_hours=24)
 
         assert stats["trace_count"] == 4
-        assert (
-            stats["stats"]["avg_executions_per_trace"]
-            == pytest.approx(2.0)
-        )
+        assert stats["stats"]["avg_executions_per_trace"] == pytest.approx(2.0)
 
         # 7 successes out of 8 = 87.5%
         assert stats["stats"]["avg_success_rate"] > 0.8

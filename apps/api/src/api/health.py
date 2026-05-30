@@ -9,12 +9,10 @@ from fastapi import APIRouter
 import asyncio
 import os
 import sqlite3
-import socket
 import shutil
 import subprocess
 from urllib.parse import urlparse
 import httpx
-from .monitoring import monitor
 from .core.contracts import SuccessEnvelope
 
 router = APIRouter(tags=["health"])
@@ -46,7 +44,10 @@ async def check_db_health() -> Dict[str, Any]:
             await conn.execute(text("SELECT 1"))
         return {"status": "healthy", "connection": "available"}
     except Exception as e:
-        return {"status": "unhealthy", "error": f"Database connection failed: {type(e).__name__}: {e}"}
+        return {
+            "status": "unhealthy",
+            "error": f"Database connection failed: {type(e).__name__}: {e}",
+        }
 
 
 async def check_redis_health() -> Dict[str, Any]:
@@ -111,13 +112,15 @@ async def health_check() -> SuccessEnvelope[Dict[str, Any]]:
 
         provider_status = health_monitor.get_all_status(include_hidden=False)
         provider_health = {
-            "status": "healthy"
-            if provider_status
-            and all(
-                provider.get("status") in {"healthy", "unknown", "billing_issue"}
-                for provider in provider_status.values()
-            )
-            else "degraded",
+            "status": (
+                "healthy"
+                if provider_status
+                and all(
+                    provider.get("status") in {"healthy", "unknown", "billing_issue"}
+                    for provider in provider_status.values()
+                )
+                else "degraded"
+            ),
             "providers_checked": len(provider_status),
             "details": provider_status,
         }
@@ -215,7 +218,7 @@ async def _check_chroma() -> Dict[str, Any]:
     chroma_url = os.environ.get("CHROMA_URL") or os.environ.get("CHROMA_API_URL")
     if chroma_url:
         # normalize url
-        parsed = urlparse(chroma_url)
+        urlparse(chroma_url)
         base = chroma_url.rstrip("/")
         probes = [f"{base}/health", base]
         try:
@@ -263,7 +266,7 @@ async def _check_mcp() -> Dict[str, Any]:
                 ok = True
             except Exception:
                 ok = False
-        except Exception as e:
+        except Exception:
             ok = False
 
         results.append({"server": s, "ok": ok})
@@ -520,11 +523,13 @@ async def liveness_check() -> Dict[str, Any]:
         "message": "Application is alive",
     }
 
+
 @router.get("/health/routing")
 async def health_routing() -> Dict[str, Any]:
     """Check routing subsystem health"""
     try:
         from .routing_router import top_providers_for
+
         providers = top_providers_for("chat")
         return {
             "status": "healthy" if len(providers) > 0 else "degraded",
@@ -540,15 +545,14 @@ async def health_routing() -> Dict[str, Any]:
             "timestamp": datetime.utcnow().isoformat(),
         }
 
+
 @router.get("/health/streaming")
 async def health_streaming() -> Dict[str, Any]:
     """Check streaming capability health (alias for /health/stream)"""
     try:
         from .config.providers import DEFAULT_PROVIDERS
-        streaming_providers = [
-            p for p in DEFAULT_PROVIDERS 
-            if p.get("enabled") and p.get("models")
-        ]
+
+        streaming_providers = [p for p in DEFAULT_PROVIDERS if p.get("enabled") and p.get("models")]
         return {
             "status": "healthy" if len(streaming_providers) > 0 else "degraded",
             "streaming_providers": len(streaming_providers),

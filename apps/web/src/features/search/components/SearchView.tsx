@@ -14,7 +14,11 @@ interface SearchViewProps {
 
 const SearchView = ({ state }: SearchViewProps) => (
   <div className="min-h-screen bg-bg py-12 px-4">
-    <Seo title="Search" description="Audit gateway logs, trace provider routing, monitor costs and SLA compliance." robots="noindex,nofollow" />
+    <Seo
+      title="Search"
+      description="Audit gateway logs, trace provider routing, monitor costs and SLA compliance."
+      robots="noindex,nofollow"
+    />
     <main className="max-w-3xl mx-auto" id="main-content" tabIndex={-1} aria-label="Search">
       <SearchHeader
         title="Gateway Audit Log"
@@ -73,7 +77,9 @@ const SearchView = ({ state }: SearchViewProps) => (
         />
       )}
 
-      {!state.searching && state.results.length > 0 && <SearchResultsList results={state.results} />}
+      {!state.searching && state.results.length > 0 && (
+        <SearchResultsList results={state.results} />
+      )}
     </main>
   </div>
 );

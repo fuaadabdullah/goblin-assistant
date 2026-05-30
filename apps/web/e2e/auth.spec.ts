@@ -20,7 +20,7 @@ test.describe('Authentication Flow', () => {
 
   test('should display login form on initial page load', async ({ page }) => {
     await page.goto('/login');
-    
+
     // Check for login form elements
     await expect(page.getByLabel(/email/i)).toBeVisible();
     await expect(page.getByLabel(/^password$/i)).toBeVisible();
@@ -29,7 +29,7 @@ test.describe('Authentication Flow', () => {
 
   test('should display register tab', async ({ page }) => {
     await page.goto('/login');
-    
+
     // Look for register/signup tab or button
     const registerButton = page.getByRole('button', { name: /sign up/i });
     await expect(registerButton).toBeVisible();
@@ -37,10 +37,10 @@ test.describe('Authentication Flow', () => {
 
   test('should switch between login and register forms', async ({ page }) => {
     await page.goto('/login');
-    
+
     // Click register tab
     await page.getByRole('button', { name: /sign up/i }).click();
-    
+
     // Should show register state
     await expect(page.getByRole('heading', { name: /create account/i })).toBeVisible();
     await expect(page.getByRole('button', { name: /create account/i })).toBeVisible();
@@ -48,18 +48,18 @@ test.describe('Authentication Flow', () => {
 
   test('should validate email format', async ({ page }) => {
     await page.goto('/login');
-    
+
     const emailInput = page.getByLabel(/email/i);
     const passwordInput = page.getByLabel(/^password$/i);
     const submitButton = page.getByRole('button', { name: /sign in/i });
-    
+
     // Enter invalid email
     await emailInput.fill('invalid-email');
     await passwordInput.fill('password123');
-    
+
     // Try to submit
     await submitButton.click();
-    
+
     // Should show validation error or prevent submission
     const errorMessage = page.locator('text=/invalid|email/i');
     // Either error shows or form doesn't submit
@@ -68,15 +68,15 @@ test.describe('Authentication Flow', () => {
 
   test('should prevent submission with empty fields', async ({ page }) => {
     await page.goto('/login');
-    
+
     const submitButton = page.getByRole('button', { name: /sign in/i });
-    
+
     // Get initial URL
     const initialUrl = page.url();
-    
+
     // Click submit without filling
     await submitButton.click();
-    
+
     // Should not navigate away
     await page.waitForTimeout(1000);
     expect(page.url()).toBe(initialUrl);
@@ -88,17 +88,17 @@ test.describe('Authentication Flow', () => {
       await new Promise((resolve) => setTimeout(resolve, 2_000));
       await route.abort();
     });
-    
+
     await page.goto('/login');
-    
+
     const emailInput = page.getByLabel(/email/i);
     const passwordInput = page.getByLabel(/^password$/i);
     const submitButton = page.locator('form button[type="submit"]');
-    
+
     await emailInput.fill('test@example.com');
     await passwordInput.fill('password123');
     await submitButton.click();
-    
+
     // Button should be disabled during submission
     await expect(page.getByText(/processing/i)).toBeVisible();
     await expect(submitButton).toBeDisabled();
@@ -109,17 +109,17 @@ test.describe('Authentication Flow', () => {
     await page.route('**/auth/login', (route) => {
       route.abort();
     });
-    
+
     await page.goto('/login');
-    
+
     const emailInput = page.getByLabel(/email/i);
     const passwordInput = page.getByLabel(/^password$/i);
     const submitButton = page.getByRole('button', { name: /sign in/i });
-    
+
     await emailInput.fill('test@example.com');
     await passwordInput.fill('password123');
     await submitButton.click();
-    
+
     // Should show error message
     await expect(page.getByText(/network error|failed|connection/i).first()).toBeVisible({
       timeout: 5000,
@@ -130,10 +130,10 @@ test.describe('Authentication Flow', () => {
 test.describe('OAuth Login', () => {
   test('should display Google OAuth button if available', async ({ page }) => {
     await page.goto('/login');
-    
+
     // Look for Google or OAuth provider buttons
     const oauthButtons = page.locator('button').filter({ hasText: /google|oauth|sign in with/i });
-    
+
     // If OAuth is configured, button should be visible
     const count = await oauthButtons.count();
     if (count > 0) {
@@ -143,14 +143,14 @@ test.describe('OAuth Login', () => {
 
   test('should navigate to OAuth provider on button click', async ({ page }) => {
     await page.goto('/login');
-    
+
     const googleButton = page.locator('button').filter({ hasText: /google|oauth/i });
     const count = await googleButton.count();
-    
+
     if (count > 0) {
       // Click may open popup (we won't complete OAuth flow in E2E)
       await googleButton.first().click();
-      
+
       // Wait a moment for potential navigation
       await page.waitForTimeout(1000);
     }

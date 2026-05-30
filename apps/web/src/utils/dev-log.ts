@@ -7,7 +7,7 @@ const shouldLog = (): boolean => process.env.NODE_ENV !== 'production';
 
 const invokeConsole = (
   method: 'log' | 'info' | 'warn' | 'error' | 'debug',
-  args: unknown[],
+  args: unknown[]
 ): void => {
   if (!shouldLog()) {
     return;

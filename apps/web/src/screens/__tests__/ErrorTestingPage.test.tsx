@@ -7,8 +7,20 @@ jest.mock('@/components/ErrorTestingPanel', () => ({
 }));
 
 jest.mock('@/layout/AdminLayout', () => {
-  return function MockAdminLayout({ children, mainId, mainLabel }: { children: React.ReactNode; mainId: string; mainLabel: string }) {
-    return <main id={mainId} aria-label={mainLabel}>{children}</main>;
+  return function MockAdminLayout({
+    children,
+    mainId,
+    mainLabel,
+  }: {
+    children: React.ReactNode;
+    mainId: string;
+    mainLabel: string;
+  }) {
+    return (
+      <main id={mainId} aria-label={mainLabel}>
+        {children}
+      </main>
+    );
   };
 });
 

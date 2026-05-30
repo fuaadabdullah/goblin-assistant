@@ -36,9 +36,8 @@ const DashboardContent: React.FC = () => {
   }, [costSummary]);
 
   const usageMetric = usageData.length > 0 ? 'requests' : 'cost';
-  const usageFallbackData = usageMetric === 'requests'
-    ? usageData
-    : costData.map(({ name, value }) => ({ name, value }));
+  const usageFallbackData =
+    usageMetric === 'requests' ? usageData : costData.map(({ name, value }) => ({ name, value }));
 
   return (
     <div className="min-h-[400px] p-8 text-text">

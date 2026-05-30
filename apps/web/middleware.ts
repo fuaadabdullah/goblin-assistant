@@ -22,7 +22,7 @@ const AUTH_ROUTE_PREFIXES = ['/chat', '/account', '/settings', '/search'] as con
 const ADMIN_ROUTE_PREFIXES = ['/admin'] as const;
 
 const matchesPrefix = (pathname: string, prefixes: readonly string[]): boolean =>
-  prefixes.some(prefix => pathname === prefix || pathname.startsWith(`${prefix}/`));
+  prefixes.some((prefix) => pathname === prefix || pathname.startsWith(`${prefix}/`));
 
 /**
  * Check for authentication presence.

@@ -43,7 +43,11 @@ describe('SearchResultsList', () => {
   });
 
   it('renders metadata tags', () => {
-    render(<SearchResultsList results={[makeResult({ metadata: { source: 'wiki', type: 'article' } })]} />);
+    render(
+      <SearchResultsList
+        results={[makeResult({ metadata: { source: 'wiki', type: 'article' } })]}
+      />
+    );
     expect(screen.getByText('source: wiki')).toBeInTheDocument();
     expect(screen.getByText('type: article')).toBeInTheDocument();
   });

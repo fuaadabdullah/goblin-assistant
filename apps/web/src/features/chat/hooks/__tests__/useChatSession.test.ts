@@ -3,25 +3,29 @@ import { renderHook, act, waitFor } from '@testing-library/react';
 import type { ChatThread } from '../../types';
 
 const setQueryDataMock = jest.fn();
-let backendConversationData: {
-  conversationId: string;
-  title: string;
-  createdAt: string;
-  updatedAt: string;
-  messages: Array<Record<string, unknown>>;
-} | undefined;
+let backendConversationData:
+  | {
+      conversationId: string;
+      title: string;
+      createdAt: string;
+      updatedAt: string;
+      messages: Array<Record<string, unknown>>;
+    }
+  | undefined;
 
 jest.mock('@tanstack/react-query', () => ({
-  useQuery: jest.fn(({ enabled, queryFn }: { enabled?: boolean; queryFn?: () => Promise<unknown> }) => {
-    if (enabled && typeof queryFn === 'function') {
-      void queryFn();
+  useQuery: jest.fn(
+    ({ enabled, queryFn }: { enabled?: boolean; queryFn?: () => Promise<unknown> }) => {
+      if (enabled && typeof queryFn === 'function') {
+        void queryFn();
+      }
+      return {
+        data: backendConversationData,
+        isLoading: false,
+        isFetching: false,
+      };
     }
-    return {
-      data: backendConversationData,
-      isLoading: false,
-      isFetching: false,
-    };
-  }),
+  ),
   useQueryClient: jest.fn(() => ({
     setQueryData: setQueryDataMock,
   })),
@@ -114,8 +118,10 @@ jest.mock('next/router', () => ({
 
 const { useChatSession } = require('../useChatSession') as typeof import('../useChatSession');
 const { chatClient } = require('../../api') as typeof import('../../api');
-const { buildThreadKey, readChatMessages } = require('../../../../lib/chat-history') as typeof import('../../../../lib/chat-history');
-const { toUiError } = require('../../../../lib/ui-error') as typeof import('../../../../lib/ui-error');
+const { buildThreadKey, readChatMessages } =
+  require('../../../../lib/chat-history') as typeof import('../../../../lib/chat-history');
+const { toUiError } =
+  require('../../../../lib/ui-error') as typeof import('../../../../lib/ui-error');
 
 const legacyThread: ChatThread = {
   id: 'legacy-1',
@@ -145,7 +151,7 @@ describe('useChatSession', () => {
     upsertThreadMock.mockReset();
     removeThreadMock.mockReset();
     invalidateThreadsMock.mockReset();
-    upsertThreadMock.mockImplementation(input => {
+    upsertThreadMock.mockImplementation((input) => {
       const source = input.source ?? 'backend';
       const nextThread: ChatThread = {
         id: input.id,
@@ -158,11 +164,11 @@ describe('useChatSession', () => {
       };
       currentThreads = [
         nextThread,
-        ...currentThreads.filter(thread => thread.threadKey !== nextThread.threadKey),
+        ...currentThreads.filter((thread) => thread.threadKey !== nextThread.threadKey),
       ];
     });
-    removeThreadMock.mockImplementation(thread => {
-      currentThreads = currentThreads.filter(item => item.threadKey !== thread.threadKey);
+    removeThreadMock.mockImplementation((thread) => {
+      currentThreads = currentThreads.filter((item) => item.threadKey !== thread.threadKey);
     });
     useChatThreadsMock.mockImplementation(() => ({
       threads: currentThreads,
@@ -248,13 +254,13 @@ describe('useChatSession', () => {
         prompt: 'Test message',
         provider: 'openai',
         model: 'gpt-4o-mini',
-      }),
+      })
     );
     expect(upsertThreadMock).toHaveBeenCalledWith(
       expect.objectContaining({
         id: 'conv-123',
         source: 'backend',
-      }),
+      })
     );
     expect(result.current.activeThreadKey).toBe(buildThreadKey('backend', 'conv-123'));
     expect(result.current.totalTokens).toBe(30);
@@ -284,7 +290,7 @@ describe('useChatSession', () => {
     await waitFor(() => {
       expect(chatClient.getConversation).toHaveBeenCalledWith(
         'conv-123',
-        expect.objectContaining({ offset: 0, limit: 50 }),
+        expect.objectContaining({ offset: 0, limit: 50 })
       );
     });
 
@@ -338,15 +344,13 @@ describe('useChatSession', () => {
     });
     expect(chatClient.importConversationMessages).toHaveBeenCalledWith(
       'conv-promoted',
-      expect.arrayContaining([
-        expect.objectContaining({ content: 'Old local question' }),
-      ]),
+      expect.arrayContaining([expect.objectContaining({ content: 'Old local question' })])
     );
     expect(chatClient.sendMessage).toHaveBeenCalledWith(
       expect.objectContaining({
         conversationId: 'conv-promoted',
         prompt: 'Continue this thread',
-      }),
+      })
     );
     expect(removeThreadMock).toHaveBeenCalledWith(legacyThread);
     expect(result.current.activeThreadKey).toBe(buildThreadKey('backend', 'conv-promoted'));
@@ -358,9 +362,7 @@ describe('useChatSession', () => {
       title: 'Broken',
       createdAt: '2026-02-21T00:00:00.000Z',
     });
-    (chatClient.sendMessage as jest.Mock).mockRejectedValue(
-      new Error('Backend unavailable'),
-    );
+    (chatClient.sendMessage as jest.Mock).mockRejectedValue(new Error('Backend unavailable'));
 
     const { result } = renderHook(() => useChatSession());
     act(() => {

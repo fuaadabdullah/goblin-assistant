@@ -57,7 +57,12 @@ def _fallback_provider_entries() -> List[Dict[str, Any]]:
                 }
             )
 
-        entries.sort(key=lambda item: (int(item.get("priority_tier", 999)), str(item.get("id", ""))))
+        entries.sort(
+            key=lambda item: (
+                int(item.get("priority_tier", 999)),
+                str(item.get("id", "")),
+            )
+        )
         return entries
 
 

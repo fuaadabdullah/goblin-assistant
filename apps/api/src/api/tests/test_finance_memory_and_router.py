@@ -9,7 +9,6 @@ Covers:
   - Routing cost-weight tuning boundary conditions
 """
 
-import re
 import sys
 import types
 from datetime import datetime
@@ -44,7 +43,7 @@ if "api.services.embedding_service" not in sys.modules:
     sys.modules["api.services.embedding_service"] = _stub_mod
 
 from api.services.message_classifier import MessageClassifier, MessageType
-from api.services.memory_promotion_service import (
+from api.services.memory_promotion import (
     MemoryPromotionService,
     PromotionCandidate,
     PromotionGate,
@@ -59,6 +58,7 @@ from api.routing.router import HybridRouter, RoutingRegistry
 
 # ── Message Classifier: finance types ────────────────────────────────
 
+
 class TestFinanceClassification:
     def setup_method(self):
         self.classifier = MessageClassifier()
@@ -67,7 +67,10 @@ class TestFinanceClassification:
         "content,expected",
         [
             ("AAPL stock price is up 5% after earnings", MessageType.FINANCIAL_ENTITY),
-            ("Our position in the S&P 500 ETF is overweight", MessageType.FINANCIAL_ENTITY),
+            (
+                "Our position in the S&P 500 ETF is overweight",
+                MessageType.FINANCIAL_ENTITY,
+            ),
             ("Treasury bond yields rose this week", MessageType.FINANCIAL_ENTITY),
         ],
     )
@@ -79,7 +82,10 @@ class TestFinanceClassification:
     @pytest.mark.parametrize(
         "content,expected",
         [
-            ("Portfolio volatility increased to 18% annualized", MessageType.RISK_SIGNAL),
+            (
+                "Portfolio volatility increased to 18% annualized",
+                MessageType.RISK_SIGNAL,
+            ),
             ("The Sharpe ratio dropped below 1.0", MessageType.RISK_SIGNAL),
             ("Max drawdown on the backtest was 12%", MessageType.RISK_SIGNAL),
         ],
@@ -92,8 +98,14 @@ class TestFinanceClassification:
         "content,expected",
         [
             ("SEC filing deadline is next week for 10-K", MessageType.REGULATORY_REF),
-            ("FINRA suitability requirements are strict for advisory accounts", MessageType.REGULATORY_REF),
-            ("Dodd-Frank reporting requirements apply here", MessageType.REGULATORY_REF),
+            (
+                "FINRA suitability requirements are strict for advisory accounts",
+                MessageType.REGULATORY_REF,
+            ),
+            (
+                "Dodd-Frank reporting requirements apply here",
+                MessageType.REGULATORY_REF,
+            ),
         ],
     )
     def test_regulatory_ref_classification(self, content, expected):
@@ -103,8 +115,14 @@ class TestFinanceClassification:
     @pytest.mark.parametrize(
         "content,expected",
         [
-            ("Rebalance the portfolio to target allocation weights", MessageType.PORTFOLIO_ACTION),
-            ("Set a stop-loss order on the position at -5%", MessageType.PORTFOLIO_ACTION),
+            (
+                "Rebalance the portfolio to target allocation weights",
+                MessageType.PORTFOLIO_ACTION,
+            ),
+            (
+                "Set a stop-loss order on the position at -5%",
+                MessageType.PORTFOLIO_ACTION,
+            ),
             ("Tax-loss harvest the underperforming lots", MessageType.PORTFOLIO_ACTION),
         ],
     )
@@ -127,13 +145,16 @@ class TestFinanceClassification:
     def test_generic_chat_not_classified_as_finance(self):
         result = self.classifier.classify_message("Hey, how's your day going?", "user")
         assert result.message_type not in {
-            MessageType.FINANCIAL_ENTITY, MessageType.RISK_SIGNAL,
-            MessageType.REGULATORY_REF, MessageType.PORTFOLIO_ACTION,
+            MessageType.FINANCIAL_ENTITY,
+            MessageType.RISK_SIGNAL,
+            MessageType.REGULATORY_REF,
+            MessageType.PORTFOLIO_ACTION,
             MessageType.MACRO_EVENT,
         }
 
 
 # ── Promotion: finance category classification ───────────────────────
+
 
 class TestFinanceCategoryClassification:
     def setup_method(self):
@@ -154,13 +175,12 @@ class TestFinanceCategoryClassification:
         assert category == expected_category
 
     def test_emotional_content_rejected(self):
-        category = self.service._classify_memory_category(
-            "I feel stressed about the market today"
-        )
+        category = self.service._classify_memory_category("I feel stressed about the market today")
         assert category is None
 
 
 # ── Promotion: finance-specific gates ────────────────────────────────
+
 
 class TestFinancePromotionGates:
     def setup_method(self):
@@ -247,6 +267,7 @@ class TestFinancePromotionGates:
 
 # ── Retrieval: finance category boost constants ──────────────────────
 
+
 class TestFinanceRetrievalBoost:
     def test_finance_categories_defined(self):
         assert "instrument" in FINANCE_CATEGORIES
@@ -265,6 +286,7 @@ class TestFinanceRetrievalBoost:
 
 # ── HybridRouter: score breakdown + audit trail ─────────────────────
 
+
 class TestHybridRouterInstrumentation:
     def test_rank_returns_ordered_candidates(self):
         reg = RoutingRegistry()
@@ -277,6 +299,7 @@ class TestHybridRouterInstrumentation:
 
         # Override the global registry temporarily via monkeypatch-style:
         import api.routing.router as mod
+
         original = mod.registry
         mod.registry = reg
         try:
@@ -295,6 +318,7 @@ class TestHybridRouterInstrumentation:
         router = HybridRouter(cost_weight=0.50)
 
         import api.routing.router as mod
+
         original = mod.registry
         mod.registry = reg
         try:
@@ -355,6 +379,7 @@ class TestHybridRouterInstrumentation:
 
 # ── HybridRouter: cost-weight tuning boundaries ─────────────────────
 
+
 class TestCostWeightTuning:
     def test_cost_weight_clamped_to_zero(self):
         router = HybridRouter(cost_weight=-0.5)
@@ -381,6 +406,7 @@ class TestCostWeightTuning:
         stats_b.success_count = 10
 
         import api.routing.router as mod
+
         original = mod.registry
         mod.registry = reg
         try:

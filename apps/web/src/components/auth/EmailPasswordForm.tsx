@@ -65,7 +65,7 @@ export default function EmailPasswordForm({
           id="email"
           type="email"
           value={emailValue}
-          onChange={e => {
+          onChange={(e) => {
             setEmailValue(e.target.value);
             if (errors.email) setErrors({ ...errors, email: undefined });
           }}
@@ -92,7 +92,7 @@ export default function EmailPasswordForm({
           id="password"
           type="password"
           value={passwordValue}
-          onChange={e => {
+          onChange={(e) => {
             setPasswordValue(e.target.value);
             if (errors.password) setErrors({ ...errors, password: undefined });
           }}

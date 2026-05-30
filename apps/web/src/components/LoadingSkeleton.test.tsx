@@ -63,7 +63,7 @@ describe('LoadingSkeleton Components', () => {
       const { getAllByLabelText } = render(<ListSkeleton count={2} />);
 
       const items = getAllByLabelText('Loading list item');
-      items.forEach(item => {
+      items.forEach((item) => {
         expect(item).toHaveAttribute('role', 'status');
       });
     });

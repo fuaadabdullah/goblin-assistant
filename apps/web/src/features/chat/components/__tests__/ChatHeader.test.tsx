@@ -1,15 +1,28 @@
 import React from 'react';
 import { render, screen, fireEvent } from '@testing-library/react';
 
-jest.mock('lucide-react', () => new Proxy({}, {
-  get: (_, name) => {
-    if (name === '__esModule') return true;
-    return (props: Record<string, unknown>) => <span data-testid={`icon-${String(name)}`} {...props} />;
-  },
-}));
-jest.mock('next/link', () => function MockLink({ children, href }: { children: React.ReactNode; href: string }) {
-  return <a href={href}>{children}</a>;
-});
+jest.mock(
+  'lucide-react',
+  () =>
+    new Proxy(
+      {},
+      {
+        get: (_, name) => {
+          if (name === '__esModule') return true;
+          return (props: Record<string, unknown>) => (
+            <span data-testid={`icon-${String(name)}`} {...props} />
+          );
+        },
+      }
+    )
+);
+jest.mock(
+  'next/link',
+  () =>
+    function MockLink({ children, href }: { children: React.ReactNode; href: string }) {
+      return <a href={href}>{children}</a>;
+    }
+);
 
 import ChatHeader from '../ChatHeader';
 
@@ -79,14 +92,25 @@ describe('ChatHeader', () => {
   });
 
   it('shows close label when sidebar is open', () => {
-    render(<ChatHeader {...defaultProps} showSidebarToggle onToggleSidebar={jest.fn()} isSidebarOpen />);
+    render(
+      <ChatHeader {...defaultProps} showSidebarToggle onToggleSidebar={jest.fn()} isSidebarOpen />
+    );
     expect(screen.getByLabelText('Close conversations')).toBeInTheDocument();
   });
 
   it('sets aria-expanded correctly', () => {
-    const { rerender } = render(<ChatHeader {...defaultProps} showSidebarToggle onToggleSidebar={jest.fn()} isSidebarOpen={false} />);
+    const { rerender } = render(
+      <ChatHeader
+        {...defaultProps}
+        showSidebarToggle
+        onToggleSidebar={jest.fn()}
+        isSidebarOpen={false}
+      />
+    );
     expect(screen.getByLabelText('Open conversations')).toHaveAttribute('aria-expanded', 'false');
-    rerender(<ChatHeader {...defaultProps} showSidebarToggle onToggleSidebar={jest.fn()} isSidebarOpen />);
+    rerender(
+      <ChatHeader {...defaultProps} showSidebarToggle onToggleSidebar={jest.fn()} isSidebarOpen />
+    );
     expect(screen.getByLabelText('Close conversations')).toHaveAttribute('aria-expanded', 'true');
   });
 });

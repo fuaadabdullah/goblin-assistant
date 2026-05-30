@@ -96,7 +96,6 @@ def _reset_csrf_fallback():
 
 
 class TestPasswordHashing:
-
     def test_hash_password_returns_string(self):
         hashed = hash_password("test_password_123")
         assert isinstance(hashed, str)
@@ -120,7 +119,6 @@ class TestPasswordHashing:
 
 
 class TestJWTTokens:
-
     def test_create_access_token(self):
         token = create_access_token({"sub": "user_123"})
         assert isinstance(token, str)
@@ -161,7 +159,6 @@ def _fail_redis():
 
 
 class TestCSRFProtection:
-
     @pytest.mark.asyncio
     async def test_generate_csrf_token_returns_string(self):
         with _fail_redis():
@@ -214,7 +211,6 @@ def _redis_mock_for_rate_limit(count_sequence):
 
 
 class TestRateLimiting:
-
     @pytest.mark.asyncio
     async def test_rate_limit_allows_under_limit(self):
         from api.core.rate_limiter_auth import check_rate_limit
@@ -261,7 +257,6 @@ class TestRateLimiting:
 
 
 class TestRegisterEndpoint:
-
     def test_register_success(self, client, csrf_always_valid, rate_limit_open):
         mock_service = AsyncMock()
         mock_service.get_user_by_email = AsyncMock(return_value=None)
@@ -290,9 +285,7 @@ class TestRegisterEndpoint:
         assert data["token_type"] == "bearer"
         assert data["user"]["email"] == "test@example.com"
 
-    def test_register_duplicate_email(
-        self, client, csrf_always_valid, rate_limit_open
-    ):
+    def test_register_duplicate_email(self, client, csrf_always_valid, rate_limit_open):
         mock_service = AsyncMock()
         mock_service.get_user_by_email = AsyncMock(return_value=MagicMock())
 
@@ -331,7 +324,6 @@ class TestRegisterEndpoint:
 
 
 class TestLoginEndpoint:
-
     def test_login_success(self, client, csrf_always_valid, rate_limit_open):
         password = "password123"
         mock_service = AsyncMock()
@@ -380,9 +372,7 @@ class TestLoginEndpoint:
         assert response.status_code == 401
         assert "Invalid email or password" in response.json()["detail"]
 
-    def test_login_invalid_password(
-        self, client, csrf_always_valid, rate_limit_open
-    ):
+    def test_login_invalid_password(self, client, csrf_always_valid, rate_limit_open):
         password = "correct_password"
         mock_service = AsyncMock()
 

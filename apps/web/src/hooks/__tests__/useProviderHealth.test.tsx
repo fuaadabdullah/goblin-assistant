@@ -15,11 +15,7 @@ function wrapper({ children }: { children: React.ReactNode }) {
   const queryClient = new QueryClient({
     defaultOptions: { queries: { retry: false } },
   });
-  return (
-    <QueryClientProvider client={queryClient}>
-      {children}
-    </QueryClientProvider>
-  );
+  return <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>;
 }
 
 describe('useProviderHealth', () => {

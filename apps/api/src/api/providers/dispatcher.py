@@ -12,14 +12,20 @@ import asyncio
 import importlib
 import os
 from pathlib import Path
-from typing import Any, AsyncGenerator, Dict, List, Optional, Union
+from typing import Any, AsyncGenerator, Dict, List, Optional
 
 import structlog
 
 from .aliyun_provider import AliyunProvider
 from .anthropic_provider import AnthropicProvider
 from .azure_provider import AzureOpenAIProvider
-from .base import BaseProvider, ProviderResult, classify_provider_error, ProviderErrorCategory
+from .base import (
+    BaseProvider,
+    ProviderResult,
+    classify_provider_error,
+    ProviderErrorCategory,
+)
+from .contracts import ProviderAdapter
 from .llamacpp_provider import LlamaCPPProvider
 from .mock_provider import MockProvider
 from .ollama_provider import OllamaProvider
@@ -64,6 +70,7 @@ _PROVIDER_CLASS_MAP: Dict[str, type[BaseProvider]] = {
 def _parse_toml(path: Path) -> dict:
     try:
         import tomllib
+
         with open(path, "rb") as f:
             return tomllib.load(f)
     except ImportError:
@@ -153,7 +160,7 @@ def canonical_provider_id(value: Optional[str]) -> Optional[str]:
 class ProviderDispatcher:
     def __init__(self) -> None:
         self._configs: Dict[str, Dict[str, Any]] = _PROVIDER_CONFIGS
-        self._providers: Dict[str, BaseProvider] = {}
+        self._providers: Dict[str, ProviderAdapter] = {}
         self._routing_min_success_rate = self._load_min_success_rate()
         self._build_registry()
         self._startup_preflight()
@@ -274,7 +281,7 @@ class ProviderDispatcher:
             return bool(endpoint_env and os.getenv(str(endpoint_env), "").strip())
         return bool(str(config.get("endpoint", "")).strip())
 
-    def get_provider(self, provider_id: str) -> BaseProvider:
+    def get_provider(self, provider_id: str) -> ProviderAdapter:
         canonical_id = canonical_provider_id(provider_id) or provider_id
         provider = self._providers.get(canonical_id)
         if provider is None:
@@ -292,19 +299,18 @@ class ProviderDispatcher:
         return (provider.COST_INPUT_PER_1K, provider.COST_OUTPUT_PER_1K)
 
     def _priority_order(self) -> List[str]:
-        return [
-            item["id"]
-            for item in self.list_providers(include_hidden=False)
-        ]
+        return [item["id"] for item in self.list_providers(include_hidden=False)]
 
     def _cheapest_order(self) -> List[str]:
         from ..routing.router import cost_router
+
         candidates = self._priority_order()
         provider_costs = {p: self._provider_costs(p) for p in candidates}
         return cost_router.rank(candidates, provider_costs)
 
     def _hybrid_order(self) -> List[str]:
         from ..routing.router import hybrid_router
+
         candidates = self._priority_order()
         provider_costs = {p: self._provider_costs(p) for p in candidates}
         return hybrid_router.rank(candidates, provider_costs)
@@ -319,7 +325,10 @@ class ProviderDispatcher:
 
     def _allow_self_hosted_auto_routing(self) -> bool:
         return os.getenv("ENABLE_SELF_HOSTED_AUTO_ROUTING", "").strip().lower() in {
-            "1", "true", "yes", "on",
+            "1",
+            "true",
+            "yes",
+            "on",
         }
 
     def _is_auto_routing_candidate(self, provider_id: str) -> bool:
@@ -337,6 +346,7 @@ class ProviderDispatcher:
             configured = filtered
         try:
             from ..services.provider_health import health_monitor
+
             healthy = [p for p in configured if health_monitor.is_available(p)]
             if healthy:
                 return healthy
@@ -355,9 +365,9 @@ class ProviderDispatcher:
         cap = capability.strip().lower()
         providers = self.list_providers(include_hidden=False)
         candidates = [
-            item["id"] for item in providers
-            if cap in {c.lower() for c in item["capabilities"]}
-            and self.is_configured(item["id"])
+            item["id"]
+            for item in providers
+            if cap in {c.lower() for c in item["capabilities"]} and self.is_configured(item["id"])
         ]
         if prefer_local:
             local_candidates = [p for p in self._local_order() if p in candidates]
@@ -365,7 +375,7 @@ class ProviderDispatcher:
         elif prefer_cost:
             ranked = self._cheapest_order()
             candidates = [p for p in ranked if p in candidates]
-        return candidates[:max(1, limit)]
+        return candidates[: max(1, limit)]
 
     def _resolve_model_alias(
         self, provider_id: Optional[str], model: Optional[str]
@@ -461,8 +471,12 @@ class ProviderDispatcher:
         for meta, health in zip(providers, checks):
             if isinstance(health, Exception):
                 health = {
-                    "configured": False, "healthy": False, "health": "unknown",
-                    "health_reason": str(health), "is_selectable": False, "latency_ms": 0.0,
+                    "configured": False,
+                    "healthy": False,
+                    "health": "unknown",
+                    "health_reason": str(health),
+                    "is_selectable": False,
+                    "latency_ms": 0.0,
                 }
             inventory.append({**meta, **health})
         return inventory
@@ -482,10 +496,15 @@ class ProviderDispatcher:
         }
 
     async def _stream_wrap(
-        self, provider_id: str, provider: BaseProvider,
-        messages: List[Dict[str, str]], model: str, **kwargs: Any,
+        self,
+        provider_id: str,
+        provider: BaseProvider,
+        messages: List[Dict[str, str]],
+        model: str,
+        **kwargs: Any,
     ) -> ProviderResult:
         from ..routing.router import registry
+
         started_at = asyncio.get_running_loop().time()
         try:
             gen = provider.stream(messages, model, **kwargs)
@@ -504,22 +523,34 @@ class ProviderDispatcher:
             provider.record_success()
             registry.record_success(provider_id, latency_ms=latency, cost_usd=0.0)
             return ProviderResult(
-                ok=True, provider=provider_id, model=model,
-                latency_ms=latency, raw={"stream_gen": combined()},
+                ok=True,
+                provider=provider_id,
+                model=model,
+                latency_ms=latency,
+                raw={"stream_gen": combined()},
             )
         except Exception as exc:
             provider.record_failure(str(exc))
             registry.record_failure(provider_id)
             return ProviderResult(
-                ok=False, provider=provider_id, model=model, error=str(exc),
+                ok=False,
+                provider=provider_id,
+                model=model,
+                error=str(exc),
                 error_category=classify_provider_error(exc).value,
             )
 
     async def dispatch(
-        self, pid: Optional[str], model: Optional[str],
-        payload: Dict[str, Any], *, timeout_ms: int = 30_000, stream: bool = False,
+        self,
+        pid: Optional[str],
+        model: Optional[str],
+        payload: Dict[str, Any],
+        *,
+        timeout_ms: int = 30_000,
+        stream: bool = False,
     ) -> Dict[str, Any]:
         from ..routing.router import registry
+
         resolved_pid, resolved_model = self._resolve_model_alias(pid, model)
         messages = payload.get("messages", [])
         prompt = payload.get("prompt", "")
@@ -534,7 +565,8 @@ class ProviderDispatcher:
             if not configured_candidates:
                 configured_candidates = [p for p in candidates if self.is_configured(p)]
             available = [
-                p for p in configured_candidates
+                p
+                for p in configured_candidates
                 if self._providers[p].is_available()
                 and registry.get(p).success_rate >= self._routing_min_success_rate
             ]
@@ -555,12 +587,23 @@ class ProviderDispatcher:
             try:
                 if stream:
                     result = await asyncio.wait_for(
-                        self._stream_wrap(provider_id, provider, messages, model_name, prompt=prompt, **kwargs),
+                        self._stream_wrap(
+                            provider_id,
+                            provider,
+                            messages,
+                            model_name,
+                            prompt=prompt,
+                            **kwargs,
+                        ),
                         timeout=timeout_ms / 1000,
                     )
                     if result.ok:
-                        return {"ok": True, "stream": result.raw.get("stream_gen"),
-                                "provider": provider_id, "model": model_name}
+                        return {
+                            "ok": True,
+                            "stream": result.raw.get("stream_gen"),
+                            "provider": provider_id,
+                            "model": model_name,
+                        }
                     last_error = result.error or last_error
                     continue
                 result = await asyncio.wait_for(
@@ -569,7 +612,11 @@ class ProviderDispatcher:
                 )
                 if result.ok:
                     provider.record_success()
-                    registry.record_success(provider_id, latency_ms=float(result.latency_ms), cost_usd=float(result.cost_usd or 0.0))
+                    registry.record_success(
+                        provider_id,
+                        latency_ms=float(result.latency_ms),
+                        cost_usd=float(result.cost_usd or 0.0),
+                    )
                     return result.to_dict()
                 last_error = result.error or last_error
                 last_category = classify_provider_error(last_error)
@@ -586,19 +633,28 @@ class ProviderDispatcher:
                 provider.record_failure(last_error)
                 registry.record_failure(provider_id)
         return {
-            "ok": False, "error": last_error,
+            "ok": False,
+            "error": last_error,
             "error_category": last_category.value if last_category else None,
-            "provider": "none", "latency_ms": 0.0,
+            "provider": "none",
+            "latency_ms": 0.0,
         }
 
     async def invoke_provider(
-        self, provider_id: Optional[str] = None, model: Optional[str] = None,
-        payload: Optional[Dict[str, Any]] = None, timeout_ms: int = 30_000,
-        stream: bool = False, pid: Optional[str] = None,
+        self,
+        provider_id: Optional[str] = None,
+        model: Optional[str] = None,
+        payload: Optional[Dict[str, Any]] = None,
+        timeout_ms: int = 30_000,
+        stream: bool = False,
+        pid: Optional[str] = None,
     ) -> Dict[str, Any]:
         return await self.dispatch(
-            pid=pid or provider_id, model=model, payload=payload or {},
-            timeout_ms=timeout_ms, stream=stream,
+            pid=pid or provider_id,
+            model=model,
+            payload=payload or {},
+            timeout_ms=timeout_ms,
+            stream=stream,
         )
 
 
@@ -606,10 +662,15 @@ dispatcher = ProviderDispatcher()
 
 
 async def invoke_provider(
-    pid: Optional[str], model: Optional[str], payload: Dict[str, Any],
-    timeout_ms: int = 30_000, stream: bool = False,
+    pid: Optional[str],
+    model: Optional[str],
+    payload: Dict[str, Any],
+    timeout_ms: int = 30_000,
+    stream: bool = False,
 ) -> Dict[str, Any]:
-    return await dispatcher.dispatch(pid=pid, model=model, payload=payload, timeout_ms=timeout_ms, stream=stream)
+    return await dispatcher.dispatch(
+        pid=pid, model=model, payload=payload, timeout_ms=timeout_ms, stream=stream
+    )
 
 
 async def get_provider_health(include_hidden: bool = False) -> Dict[str, Any]:

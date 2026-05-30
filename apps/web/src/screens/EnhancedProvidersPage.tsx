@@ -8,4 +8,3 @@ export default function EnhancedProvidersPage() {
 export const getServerSideProps = async () => {
   return { props: {} };
 };
-

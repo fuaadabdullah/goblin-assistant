@@ -5,10 +5,7 @@ type HealthResponse = {
   service: 'goblin-assistant-web';
 };
 
-export default function handler(
-  _req: NextApiRequest,
-  res: NextApiResponse<HealthResponse>,
-) {
+export default function handler(_req: NextApiRequest, res: NextApiResponse<HealthResponse>) {
   res.status(200).json({
     status: 'ok',
     service: 'goblin-assistant-web',

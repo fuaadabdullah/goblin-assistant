@@ -22,18 +22,63 @@ logger = structlog.get_logger(__name__)
 # ---------------------------------------------------------------------------
 
 _DEFAULT_UNIVERSE = [
-    "AAPL", "MSFT", "AMZN", "NVDA", "GOOGL", "META", "TSLA", "BRK.B",
-    "UNH", "JNJ", "V", "XOM", "JPM", "WMT", "MA", "PG", "HD", "CVX",
-    "MRK", "ABBV", "LLY", "COST", "PEP", "KO", "AVGO", "TMO", "MCD",
-    "CSCO", "ACN", "ABT", "DHR", "NKE", "TXN", "NEE", "PM", "UPS",
-    "MS", "RTX", "HON", "LOW", "ORCL", "INTC", "AMD", "QCOM", "CRM",
-    "IBM", "GE", "CAT", "BA", "DIS",
+    "AAPL",
+    "MSFT",
+    "AMZN",
+    "NVDA",
+    "GOOGL",
+    "META",
+    "TSLA",
+    "BRK.B",
+    "UNH",
+    "JNJ",
+    "V",
+    "XOM",
+    "JPM",
+    "WMT",
+    "MA",
+    "PG",
+    "HD",
+    "CVX",
+    "MRK",
+    "ABBV",
+    "LLY",
+    "COST",
+    "PEP",
+    "KO",
+    "AVGO",
+    "TMO",
+    "MCD",
+    "CSCO",
+    "ACN",
+    "ABT",
+    "DHR",
+    "NKE",
+    "TXN",
+    "NEE",
+    "PM",
+    "UPS",
+    "MS",
+    "RTX",
+    "HON",
+    "LOW",
+    "ORCL",
+    "INTC",
+    "AMD",
+    "QCOM",
+    "CRM",
+    "IBM",
+    "GE",
+    "CAT",
+    "BA",
+    "DIS",
 ]
 
 
 # ---------------------------------------------------------------------------
 # Handler
 # ---------------------------------------------------------------------------
+
 
 @safe_skill
 async def _handle_stock_screener(
@@ -91,20 +136,24 @@ async def _handle_stock_screener(
             continue
 
         rev_growth = ratios.get("revenue_growth")
-        if min_revenue_growth is not None and (rev_growth is None or rev_growth < min_revenue_growth):
+        if min_revenue_growth is not None and (
+            rev_growth is None or rev_growth < min_revenue_growth
+        ):
             continue
 
-        results.append({
-            "ticker": ticker,
-            "name": quote.get("name", ticker),
-            "price": quote.get("price"),
-            "market_cap": mcap,
-            "pe_trailing": pe,
-            "dividend_yield_pct": round(div_yield * 100, 2) if div_yield else None,
-            "debt_to_equity": dte,
-            "roe_pct": round(roe * 100, 2) if roe else None,
-            "revenue_growth_pct": round(rev_growth * 100, 2) if rev_growth else None,
-        })
+        results.append(
+            {
+                "ticker": ticker,
+                "name": quote.get("name", ticker),
+                "price": quote.get("price"),
+                "market_cap": mcap,
+                "pe_trailing": pe,
+                "dividend_yield_pct": round(div_yield * 100, 2) if div_yield else None,
+                "debt_to_equity": dte,
+                "roe_pct": round(roe * 100, 2) if roe else None,
+                "revenue_growth_pct": (round(rev_growth * 100, 2) if rev_growth else None),
+            }
+        )
 
     # Sort by market cap descending
     results.sort(key=lambda r: r.get("market_cap") or 0, reverse=True)
@@ -137,93 +186,95 @@ async def _handle_stock_screener(
 # Registration
 # ---------------------------------------------------------------------------
 
-register_tool(ToolDefinition(
-    name="stock_screener",
-    description=(
-        "Use when the user asks to find, filter, or screen stocks that match "
-        "financial criteria such as market cap, P/E, dividend yield, "
-        "debt/equity, ROE, or revenue growth. Screens either a provided "
-        "ticker list or a default large-cap universe and returns ranked "
-        "matches with key metrics."
-    ),
-    parameters=[
-        ToolParameter(
-            name="min_market_cap",
-            type="number",
-            description="Minimum market capitalization in USD dollars, e.g. 10000000000 or 1e10 for $10B.",
-            required=False,
+register_tool(
+    ToolDefinition(
+        name="stock_screener",
+        description=(
+            "Use when the user asks to find, filter, or screen stocks that match "
+            "financial criteria such as market cap, P/E, dividend yield, "
+            "debt/equity, ROE, or revenue growth. Screens either a provided "
+            "ticker list or a default large-cap universe and returns ranked "
+            "matches with key metrics."
         ),
-        ToolParameter(
-            name="max_market_cap",
-            type="number",
-            description="Maximum market capitalization in USD dollars.",
-            required=False,
-        ),
-        ToolParameter(
-            name="max_pe",
-            type="number",
-            description="Maximum trailing price-to-earnings ratio, e.g. 25.",
-            required=False,
-        ),
-        ToolParameter(
-            name="min_pe",
-            type="number",
-            description="Minimum trailing price-to-earnings ratio.",
-            required=False,
-        ),
-        ToolParameter(
-            name="min_dividend_yield",
-            type="number",
-            description="Minimum dividend yield as a decimal, not a percent (0.02 means 2%).",
-            required=False,
-        ),
-        ToolParameter(
-            name="max_debt_to_equity",
-            type="number",
-            description="Maximum debt-to-equity ratio using the data provider's ratio scale.",
-            required=False,
-        ),
-        ToolParameter(
-            name="min_roe",
-            type="number",
-            description="Minimum return on equity as a decimal, not a percent (0.15 means 15%).",
-            required=False,
-        ),
-        ToolParameter(
-            name="min_revenue_growth",
-            type="number",
-            description="Minimum revenue growth rate as a decimal, not a percent (0.10 means 10%).",
-            required=False,
-        ),
-        ToolParameter(
-            name="sector",
-            type="string",
-            description=(
-                "Optional sector label requested by the user, such as Technology "
-                "or Healthcare. Included in returned criteria; availability "
-                "depends on the data provider."
+        parameters=[
+            ToolParameter(
+                name="min_market_cap",
+                type="number",
+                description="Minimum market capitalization in USD dollars, e.g. 10000000000 or 1e10 for $10B.",
+                required=False,
             ),
-            required=False,
-        ),
-        ToolParameter(
-            name="tickers",
-            type="array",
-            description=(
-                "Optional custom list of public equity tickers to screen. If "
-                "omitted, the tool screens a default universe of about 50 "
-                "large-cap stocks."
+            ToolParameter(
+                name="max_market_cap",
+                type="number",
+                description="Maximum market capitalization in USD dollars.",
+                required=False,
             ),
-            required=False,
-            items={"type": "string"},
-        ),
-        ToolParameter(
-            name="limit",
-            type="integer",
-            description="Maximum number of matching stocks to return. Valid range: 1-50. Default: 20.",
-            required=False,
-            default=20,
-        ),
-    ],
-    handler=_handle_stock_screener,
-    category="finance",
-))
+            ToolParameter(
+                name="max_pe",
+                type="number",
+                description="Maximum trailing price-to-earnings ratio, e.g. 25.",
+                required=False,
+            ),
+            ToolParameter(
+                name="min_pe",
+                type="number",
+                description="Minimum trailing price-to-earnings ratio.",
+                required=False,
+            ),
+            ToolParameter(
+                name="min_dividend_yield",
+                type="number",
+                description="Minimum dividend yield as a decimal, not a percent (0.02 means 2%).",
+                required=False,
+            ),
+            ToolParameter(
+                name="max_debt_to_equity",
+                type="number",
+                description="Maximum debt-to-equity ratio using the data provider's ratio scale.",
+                required=False,
+            ),
+            ToolParameter(
+                name="min_roe",
+                type="number",
+                description="Minimum return on equity as a decimal, not a percent (0.15 means 15%).",
+                required=False,
+            ),
+            ToolParameter(
+                name="min_revenue_growth",
+                type="number",
+                description="Minimum revenue growth rate as a decimal, not a percent (0.10 means 10%).",
+                required=False,
+            ),
+            ToolParameter(
+                name="sector",
+                type="string",
+                description=(
+                    "Optional sector label requested by the user, such as Technology "
+                    "or Healthcare. Included in returned criteria; availability "
+                    "depends on the data provider."
+                ),
+                required=False,
+            ),
+            ToolParameter(
+                name="tickers",
+                type="array",
+                description=(
+                    "Optional custom list of public equity tickers to screen. If "
+                    "omitted, the tool screens a default universe of about 50 "
+                    "large-cap stocks."
+                ),
+                required=False,
+                items={"type": "string"},
+            ),
+            ToolParameter(
+                name="limit",
+                type="integer",
+                description="Maximum number of matching stocks to return. Valid range: 1-50. Default: 20.",
+                required=False,
+                default=20,
+            ),
+        ],
+        handler=_handle_stock_screener,
+        category="finance",
+    )
+)

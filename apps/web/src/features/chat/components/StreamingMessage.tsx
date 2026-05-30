@@ -28,12 +28,7 @@ const StreamingMessage = ({
         <div className="mt-3 flex items-center gap-2">
           <div className="w-6 h-6">
             {!prefersReducedMotion && animationData ? (
-              <Lottie
-                animationData={animationData}
-                loop
-                autoplay
-                className="h-full w-full"
-              />
+              <Lottie animationData={animationData} loop autoplay className="h-full w-full" />
             ) : (
               <div className="text-sm text-muted">Generating...</div>
             )}

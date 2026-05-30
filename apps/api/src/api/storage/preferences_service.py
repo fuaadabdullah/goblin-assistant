@@ -2,9 +2,7 @@
 User preferences service for database operations
 """
 
-from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, delete
-from sqlalchemy.exc import IntegrityError
 from typing import Optional, Dict, Any
 from datetime import datetime
 
@@ -20,9 +18,7 @@ class PreferencesService:
         """Get user preferences by user_id"""
         async with get_db_context() as session:
             result = await session.execute(
-                select(UserPreferencesModel).where(
-                    UserPreferencesModel.user_id == user_id
-                )
+                select(UserPreferencesModel).where(UserPreferencesModel.user_id == user_id)
             )
             prefs = result.scalar_one_or_none()
             if prefs:
@@ -50,9 +46,7 @@ class PreferencesService:
         async with get_db_context() as session:
             # Check if preferences exist
             result = await session.execute(
-                select(UserPreferencesModel).where(
-                    UserPreferencesModel.user_id == user_id
-                )
+                select(UserPreferencesModel).where(UserPreferencesModel.user_id == user_id)
             )
             prefs = result.scalar_one_or_none()
 
@@ -97,9 +91,7 @@ class PreferencesService:
         """Delete user preferences"""
         async with get_db_context() as session:
             result = await session.execute(
-                delete(UserPreferencesModel).where(
-                    UserPreferencesModel.user_id == user_id
-                )
+                delete(UserPreferencesModel).where(UserPreferencesModel.user_id == user_id)
             )
             return result.rowcount > 0
 

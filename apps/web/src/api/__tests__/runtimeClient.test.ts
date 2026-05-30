@@ -18,10 +18,7 @@ describe('runtimeClient model registry integration', () => {
     const fetchMock = jest.fn().mockResolvedValue({
       ok: true,
       json: async () => ({
-        providers: [
-          { id: 'openai' },
-          { id: 'azure-openai' },
-        ],
+        providers: [{ id: 'openai' }, { id: 'azure-openai' }],
         models: [
           { provider: 'openai', name: 'gpt-4o-mini' },
           { provider: 'openai', name: 'gpt-4o-mini' },
@@ -36,7 +33,7 @@ describe('runtimeClient model registry integration', () => {
     expect(providers).toEqual(['openai', 'azure_openai']);
     expect(fetchMock).toHaveBeenCalledWith(
       '/api/models',
-      expect.objectContaining({ method: 'GET' }),
+      expect.objectContaining({ method: 'GET' })
     );
   });
 

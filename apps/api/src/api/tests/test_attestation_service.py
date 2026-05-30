@@ -41,10 +41,7 @@ class FakeRedis:
 
     def hgetall(self, key: str):
         payload = self.hashes.get(key, {})
-        return {
-            k.encode("utf-8"): v.encode("utf-8")
-            for k, v in payload.items()
-        }
+        return {k.encode("utf-8"): v.encode("utf-8") for k, v in payload.items()}
 
     def expire(self, key: str, ttl: int):
         self.expires.append((key, ttl))
@@ -105,19 +102,13 @@ def api_attn_module(monkeypatch):
         GetInstanceRequest=FakeGetInstanceRequest,
     )
 
-    fake_google = types.SimpleNamespace(
-        cloud=types.SimpleNamespace(compute_v1=fake_compute_v1)
-    )
+    fake_google = types.SimpleNamespace(cloud=types.SimpleNamespace(compute_v1=fake_compute_v1))
     monkeypatch.setitem(sys.modules, "google", fake_google)
     monkeypatch.setitem(sys.modules, "google.cloud", fake_google.cloud)
-    monkeypatch.setitem(
-        sys.modules, "google.cloud.compute_v1", fake_compute_v1
-    )
+    monkeypatch.setitem(sys.modules, "google.cloud.compute_v1", fake_compute_v1)
 
     module = _reload_attestation_service()
-    monkeypatch.setattr(
-        module.redis, "from_url", lambda *_args, **_kwargs: FakeRedis()
-    )
+    monkeypatch.setattr(module.redis, "from_url", lambda *_args, **_kwargs: FakeRedis())
     return module
 
 
@@ -255,9 +246,7 @@ def test_gcp_provider_without_sdk_reports_unavailable(module_under_test):
     assert result["error"] == "google-cloud-compute SDK not available"
 
 
-def test_gcp_provider_requires_project_and_zone(
-    module_under_test, monkeypatch
-):
+def test_gcp_provider_requires_project_and_zone(module_under_test, monkeypatch):
     monkeypatch.delenv("GCP_PROJECT_ID", raising=False)
     monkeypatch.delenv("GCP_ZONE", raising=False)
 
@@ -271,9 +260,7 @@ def test_gcp_provider_requires_project_and_zone(
 
 
 def test_gcp_provider_handles_instance_states(module_under_test):
-    provider = module_under_test.GCPShieldedVMProvider(
-        project_id="proj", zone="zone-a"
-    )
+    provider = module_under_test.GCPShieldedVMProvider(project_id="proj", zone="zone-a")
     provider.compute_client = MagicMock()
 
     provider.compute_client.get.return_value = types.SimpleNamespace(
@@ -307,9 +294,7 @@ def test_gcp_provider_handles_instance_states(module_under_test):
 
 
 def test_gcp_provider_handles_api_errors(module_under_test):
-    provider = module_under_test.GCPShieldedVMProvider(
-        project_id="proj", zone="zone-a"
-    )
+    provider = module_under_test.GCPShieldedVMProvider(project_id="proj", zone="zone-a")
     provider.compute_client = MagicMock()
     provider.compute_client.get.side_effect = RuntimeError("boom")
 
@@ -322,25 +307,17 @@ def test_gcp_provider_handles_api_errors(module_under_test):
 def test_attestation_service_rejects_invalid_and_unknown_provider(
     service_under_test,
 ):
-    invalid = service_under_test.attest_node(
-        "bad:node:id", "tpm", {"pcr_values": {}}
-    )
+    invalid = service_under_test.attest_node("bad:node:id", "tpm", {"pcr_values": {}})
     assert invalid["verified"] is False
     assert invalid["error"] == "invalid node_id format"
 
-    unknown = service_under_test.attest_node(
-        "node-1", "missing", {"pcr_values": {}}
-    )
+    unknown = service_under_test.attest_node("node-1", "missing", {"pcr_values": {}})
     assert unknown["verified"] is False
     assert unknown["error"] == "unknown provider: missing"
 
 
-def test_attestation_service_uses_cache_when_valid(
-    service_under_test, module_under_test
-):
-    service_under_test.redis_client.hashes[
-        "attestation:node:node-1"
-    ] = {
+def test_attestation_service_uses_cache_when_valid(service_under_test, module_under_test):
+    service_under_test.redis_client.hashes["attestation:node:node-1"] = {
         "node_id": "node-1",
         "verified": module_under_test.VERIFIED_TRUE,
         "provider": "tpm",
@@ -348,26 +325,18 @@ def test_attestation_service_uses_cache_when_valid(
         "cache_until": (_now() + timedelta(minutes=30)).isoformat(),
         "grace_period_until": (_now() + timedelta(minutes=5)).isoformat(),
     }
-    service_under_test.redis_client.expire(
-        "attestation:node:node-1", 3600
-    )
+    service_under_test.redis_client.expire("attestation:node:node-1", 3600)
     mock_verify_node = MagicMock()
-    service_under_test.providers["tpm"].verify_node = (
-        mock_verify_node
-    )
+    service_under_test.providers["tpm"].verify_node = mock_verify_node
 
-    result = service_under_test.attest_node(
-        "node-1", "tpm", {"pcr_values": {}}
-    )
+    result = service_under_test.attest_node("node-1", "tpm", {"pcr_values": {}})
 
     assert result["node_id"] == "node-1"
     assert result["verified"] == module_under_test.VERIFIED_TRUE
     mock_verify_node.assert_not_called()
 
 
-def test_attestation_service_caches_fresh_results(
-    service_under_test, module_under_test
-):
+def test_attestation_service_caches_fresh_results(service_under_test, module_under_test):
     result = service_under_test.attest_node(
         "node-1",
         "tpm",
@@ -380,11 +349,10 @@ def test_attestation_service_caches_fresh_results(
     assert result["verified"] is True
     assert result["cache_until"]
     assert result["grace_period_until"]
-    assert service_under_test.redis_client.hashes[
-        "attestation:node:node-1"
-    ][
-        "verified"
-    ] == module_under_test.VERIFIED_TRUE
+    assert (
+        service_under_test.redis_client.hashes["attestation:node:node-1"]["verified"]
+        == module_under_test.VERIFIED_TRUE
+    )
 
 
 def test_attestation_service_revocation_and_listing(
@@ -400,9 +368,7 @@ def test_attestation_service_revocation_and_listing(
     )
 
     assert service_under_test.revoke_node_attestation("node-1") is True
-    assert service_under_test.redis_client.deleted_keys[-1] == (
-        "attestation:node:node-1"
-    )
+    assert service_under_test.redis_client.deleted_keys[-1] == ("attestation:node:node-1")
 
     listed = service_under_test.list_attested_nodes()
     assert listed == []
@@ -435,12 +401,8 @@ def test_attestation_service_rejects_revoked_node(service_under_test):
 def test_attestation_service_handles_cache_helper_errors(
     service_under_test,
 ):
-    service_under_test.redis_client.hgetall = MagicMock(
-        side_effect=RuntimeError("redis boom")
-    )
-    service_under_test.redis_client.hset = MagicMock(
-        side_effect=RuntimeError("redis boom")
-    )
+    service_under_test.redis_client.hgetall = MagicMock(side_effect=RuntimeError("redis boom"))
+    service_under_test.redis_client.hset = MagicMock(side_effect=RuntimeError("redis boom"))
 
     assert service_under_test.get_node_attestation_status("node-x") is None
     assert service_under_test._get_cached_attestation("node-x") is None
@@ -463,9 +425,7 @@ def test_attestation_service_cache_validation_edges(module_under_test):
     assert service._is_cache_valid(None) is False
     assert service._is_cache_valid({}) is False
     assert service._is_cache_valid({"verified": "0"}) is False
-    assert service._is_cache_valid(
-        {"verified": "1", "cache_until": 123}
-    ) is False
+    assert service._is_cache_valid({"verified": "1", "cache_until": 123}) is False
     assert (
         service._is_cache_valid(
             {
@@ -485,9 +445,7 @@ def test_attestation_service_singleton_helpers(module_under_test):
     assert first is second
 
 
-def test_attestation_helpers_and_webhook(
-    module_under_test, service_under_test, monkeypatch
-):
+def test_attestation_helpers_and_webhook(module_under_test, service_under_test, monkeypatch):
     monkeypatch.setattr(
         module_under_test,
         "get_attestation_service",
@@ -499,14 +457,10 @@ def test_attestation_helpers_and_webhook(
 
     webhook = module_under_test.create_admission_webhook()
     assert webhook["metadata"]["name"] == "sandbox-attestation-webhook"
-    assert webhook["webhooks"][0]["clientConfig"]["caBundle"] == (
-        "ZmFrZS1jYS1idW5kbGU="
-    )
+    assert webhook["webhooks"][0]["clientConfig"]["caBundle"] == ("ZmFrZS1jYS1idW5kbGU=")
 
 
-def test_create_admission_webhook_requires_ca_bundle(
-    module_under_test, monkeypatch
-):
+def test_create_admission_webhook_requires_ca_bundle(module_under_test, monkeypatch):
     monkeypatch.delenv("WEBHOOK_CA_BUNDLE", raising=False)
     with pytest.raises(RuntimeError, match="WEBHOOK_CA_BUNDLE"):
         module_under_test.create_admission_webhook()

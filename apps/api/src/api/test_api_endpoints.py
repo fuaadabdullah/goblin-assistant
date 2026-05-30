@@ -25,7 +25,8 @@ def test_health_endpoint(client):
 def test_chat_conversations_endpoint(authenticated_client):
     """Test creating a conversation"""
     response = authenticated_client.post(
-        "/chat/conversations", json={"title": "Test Conversation", "user_id": "ignored-user"}
+        "/chat/conversations",
+        json={"title": "Test Conversation", "user_id": "ignored-user"},
     )
     assert response.status_code == 200
     data = response.json()
@@ -169,7 +170,11 @@ def test_send_message_uses_latest_user_message_and_honors_provider(
 
     response = authenticated_client.post(
         f"/chat/conversations/{conversation_id}/messages",
-        json={"message": "Latest user prompt", "provider": "openai", "model": "gpt-4o-mini"},
+        json={
+            "message": "Latest user prompt",
+            "provider": "openai",
+            "model": "gpt-4o-mini",
+        },
     )
     assert response.status_code == 200
 

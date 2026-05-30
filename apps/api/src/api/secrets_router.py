@@ -6,14 +6,13 @@ Provides HTTP endpoints for secrets operations using the universal secrets adapt
 
 import os
 import logging
-from typing import Dict, List, Optional, Any
+from typing import Dict, Optional, Any
 from fastapi import APIRouter, HTTPException, Depends, status
 from pydantic import BaseModel, Field
 
 from .integrations.secrets import (
     create_adapter,
     SecretAdapter,
-    SecretAdapterError,
     SecretNotFoundError,
     SecretUnauthorizedError,
     SecretBackendError,
@@ -34,12 +33,8 @@ class SecretRequest(BaseModel):
 
     path: str = Field(..., description="Secret path within the mount point")
     data: Dict[str, str] = Field(..., description="Secret data as key-value pairs")
-    metadata: Optional[Dict[str, Any]] = Field(
-        None, description="Optional custom metadata"
-    )
-    version: Optional[int] = Field(
-        None, description="Optional version for conditional updates"
-    )
+    metadata: Optional[Dict[str, Any]] = Field(None, description="Optional custom metadata")
+    version: Optional[int] = Field(None, description="Optional version for conditional updates")
 
 
 class SecretResponse(BaseModel):
@@ -118,14 +113,16 @@ async def init_secrets_adapter() -> None:
                     vault_url=vault_url,
                     mount_point=vault_mount_point,
                 )
-                
+
                 # Authenticate with AppRole
                 try:
                     token_credentials = await _secrets_adapter.authenticate_with_approle(
                         vault_role_id, vault_secret_id
                     )
                     credentials.set_session_token(token_credentials)
-                    logger.info("Successfully initialized Vault adapter with AppRole authentication")
+                    logger.info(
+                        "Successfully initialized Vault adapter with AppRole authentication"
+                    )
                 except Exception as auth_error:
                     logger.error(f"AppRole authentication failed: {auth_error}")
                     raise ValueError(f"AppRole authentication failed: {auth_error}")
@@ -138,9 +135,7 @@ async def init_secrets_adapter() -> None:
         else:
             raise ValueError(f"Unsupported secrets backend: {secrets_backend}")
 
-        logger.info(
-            f"Successfully initialized secrets adapter for backend: {secrets_backend}"
-        )
+        logger.info(f"Successfully initialized secrets adapter for backend: {secrets_backend}")
 
     except Exception as e:
         logger.error(f"Failed to initialize secrets adapter: {e}")
@@ -180,9 +175,7 @@ async def list_secrets(
     except SecretUnauthorizedError as e:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail=str(e))
     except SecretBackendError as e:
-        raise HTTPException(
-            status_code=status.HTTP_503_SERVICE_UNAVAILABLE, detail=str(e)
-        )
+        raise HTTPException(status_code=status.HTTP_503_SERVICE_UNAVAILABLE, detail=str(e))
     except Exception as e:
         logger.error(f"Unexpected error listing secrets: {e}")
         raise HTTPException(
@@ -215,12 +208,12 @@ async def get_secret(
             path=secret.path,
             data=secret.data,
             metadata={
-                "created_at": secret.metadata.created_at.isoformat()
-                if secret.metadata.created_at
-                else None,
-                "updated_at": secret.metadata.updated_at.isoformat()
-                if secret.metadata.updated_at
-                else None,
+                "created_at": (
+                    secret.metadata.created_at.isoformat() if secret.metadata.created_at else None
+                ),
+                "updated_at": (
+                    secret.metadata.updated_at.isoformat() if secret.metadata.updated_at else None
+                ),
                 "version": secret.metadata.version,
                 "custom_metadata": secret.metadata.custom_metadata,
             },
@@ -232,9 +225,7 @@ async def get_secret(
     except SecretUnauthorizedError as e:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail=str(e))
     except SecretBackendError as e:
-        raise HTTPException(
-            status_code=status.HTTP_503_SERVICE_UNAVAILABLE, detail=str(e)
-        )
+        raise HTTPException(status_code=status.HTTP_503_SERVICE_UNAVAILABLE, detail=str(e))
     except Exception as e:
         logger.error(f"Unexpected error retrieving secret {path}: {e}")
         raise HTTPException(
@@ -279,12 +270,12 @@ async def put_secret(
             path=secret.path,
             data=secret.data,
             metadata={
-                "created_at": secret.metadata.created_at.isoformat()
-                if secret.metadata.created_at
-                else None,
-                "updated_at": secret.metadata.updated_at.isoformat()
-                if secret.metadata.updated_at
-                else None,
+                "created_at": (
+                    secret.metadata.created_at.isoformat() if secret.metadata.created_at else None
+                ),
+                "updated_at": (
+                    secret.metadata.updated_at.isoformat() if secret.metadata.updated_at else None
+                ),
                 "version": secret.metadata.version,
                 "custom_metadata": secret.metadata.custom_metadata,
             },
@@ -292,15 +283,11 @@ async def put_secret(
         )
 
     except SecretValidationError as e:
-        raise HTTPException(
-            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail=str(e)
-        )
+        raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail=str(e))
     except SecretUnauthorizedError as e:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail=str(e))
     except SecretBackendError as e:
-        raise HTTPException(
-            status_code=status.HTTP_503_SERVICE_UNAVAILABLE, detail=str(e)
-        )
+        raise HTTPException(status_code=status.HTTP_503_SERVICE_UNAVAILABLE, detail=str(e))
     except Exception as e:
         logger.error(f"Unexpected error storing secret {path}: {e}")
         raise HTTPException(
@@ -332,9 +319,7 @@ async def delete_secret(
     except SecretUnauthorizedError as e:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail=str(e))
     except SecretBackendError as e:
-        raise HTTPException(
-            status_code=status.HTTP_503_SERVICE_UNAVAILABLE, detail=str(e)
-        )
+        raise HTTPException(status_code=status.HTTP_503_SERVICE_UNAVAILABLE, detail=str(e))
     except Exception as e:
         logger.error(f"Unexpected error deleting secret {path}: {e}")
         raise HTTPException(
@@ -344,9 +329,7 @@ async def delete_secret(
 
 
 @router.post("/{path:path}/rotate")
-async def rotate_secret(
-    path: str, adapter: SecretAdapter = Depends(get_secrets_adapter)
-):
+async def rotate_secret(path: str, adapter: SecretAdapter = Depends(get_secrets_adapter)):
     """
     Rotate a secret value.
 
@@ -366,9 +349,7 @@ async def rotate_secret(
     except SecretUnauthorizedError as e:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail=str(e))
     except SecretBackendError as e:
-        raise HTTPException(
-            status_code=status.HTTP_503_SERVICE_UNAVAILABLE, detail=str(e)
-        )
+        raise HTTPException(status_code=status.HTTP_503_SERVICE_UNAVAILABLE, detail=str(e))
     except Exception as e:
         logger.error(f"Unexpected error rotating secret {path}: {e}")
         raise HTTPException(

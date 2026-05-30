@@ -1,9 +1,4 @@
-export type VisualizationType =
-  | 'line_chart'
-  | 'bar_chart'
-  | 'pie_chart'
-  | 'table'
-  | 'heatmap';
+export type VisualizationType = 'line_chart' | 'bar_chart' | 'pie_chart' | 'table' | 'heatmap';
 
 export interface ColumnDef {
   key: string;
@@ -36,11 +31,7 @@ export interface HeatmapConfig {
   maxValue: number;
 }
 
-export type VisualizationConfig =
-  | BarChartConfig
-  | PieChartConfig
-  | TableConfig
-  | HeatmapConfig;
+export type VisualizationConfig = BarChartConfig | PieChartConfig | TableConfig | HeatmapConfig;
 
 export interface VisualizationBlock {
   type: VisualizationType;

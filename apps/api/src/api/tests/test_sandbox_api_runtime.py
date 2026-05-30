@@ -2,13 +2,69 @@
 
 from __future__ import annotations
 
+import importlib
+import os
+import sys
 from pathlib import Path
-from unittest.mock import MagicMock, patch
+from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
-from fastapi import HTTPException
+from fastapi import FastAPI, HTTPException
+from fastapi.testclient import TestClient
 
-from api import sandbox_api
+sys.modules.pop("api.sandbox_api", None)
+sandbox_api = importlib.import_module("api.sandbox_api")
+
+
+def test_sandbox_image_default_when_env_unset() -> None:
+    expected_default = "goblin-assistant-sandbox:latest"
+    original = os.environ.pop("SANDBOX_IMAGE", None)
+    try:
+        module = importlib.reload(sandbox_api)
+        assert module.SANDBOX_IMAGE == expected_default
+    finally:
+        if original is None:
+            os.environ.pop("SANDBOX_IMAGE", None)
+        else:
+            os.environ["SANDBOX_IMAGE"] = original
+        importlib.reload(sandbox_api)
+
+
+def test_sandbox_api_key_default_when_env_unset() -> None:
+    original = os.environ.pop("API_AUTH_KEY", None)
+    try:
+        module = importlib.reload(sandbox_api)
+        assert module.API_KEY is None
+    finally:
+        if original is None:
+            os.environ.pop("API_AUTH_KEY", None)
+        else:
+            os.environ["API_AUTH_KEY"] = original
+        importlib.reload(sandbox_api)
+
+
+def test_require_api_key_fails_closed_when_key_missing() -> None:
+    with (
+        patch.object(sandbox_api, "SANDBOX_ENABLED", False),
+        patch.object(sandbox_api, "API_KEY", None),
+    ):
+        with pytest.raises(HTTPException) as exc:
+            sandbox_api.require_api_key("any-key")
+
+    assert exc.value.status_code == 500
+    assert "API_AUTH_KEY" in str(exc.value.detail)
+
+
+def test_require_api_key_validates_when_key_configured() -> None:
+    with (
+        patch.object(sandbox_api, "SANDBOX_ENABLED", False),
+        patch.object(sandbox_api, "API_KEY", "secret"),
+    ):
+        with pytest.raises(HTTPException) as exc:
+            sandbox_api.require_api_key("wrong")
+        sandbox_api.require_api_key("secret")
+
+    assert exc.value.status_code == 401
 
 
 class _FakeRedis:
@@ -29,10 +85,7 @@ class _FakeRedis:
 
     def hgetall(self, key: str):
         payload = self.store.get(key, {})
-        return {
-            k.encode("utf-8"): v.encode("utf-8")
-            for k, v in payload.items()
-        }
+        return {k.encode("utf-8"): v.encode("utf-8") for k, v in payload.items()}
 
     def delete(self, key: str):
         self.deleted.append(key)
@@ -61,23 +114,40 @@ class _FakeQueue:
         return self.depth
 
 
+def test_sandbox_health_http_response_uses_success_envelope() -> None:
+    app = FastAPI()
+    app.include_router(sandbox_api.router)
+    client = TestClient(app)
+
+    with patch.object(sandbox_api, "SANDBOX_ENABLED", False):
+        response = client.get("/sandbox/health/status")
+
+    assert response.status_code == 200
+    body = response.json()
+    assert body["success"] is True
+    assert body["data"]["status"] == "disabled"
+
+
 @pytest.mark.asyncio
 async def test_submit_job_rejects_when_sandbox_disabled() -> None:
     req = sandbox_api.SubmitJobRequest(language="python", source="print(1)")
 
     with patch.object(sandbox_api, "SANDBOX_ENABLED", False):
         with pytest.raises(HTTPException) as exc:
-            await sandbox_api.submit_job(req, x_api_key="devkey")
+            await sandbox_api.submit_job(req, x_api_key="any-key")
 
     assert exc.value.status_code == 503
 
 
 @pytest.mark.asyncio
 async def test_submit_job_validates_language_and_timeout() -> None:
-    with patch.object(sandbox_api, "SANDBOX_ENABLED", True), patch.object(
-        sandbox_api,
-        "API_KEY",
-        "secret",
+    with (
+        patch.object(sandbox_api, "SANDBOX_ENABLED", True),
+        patch.object(
+            sandbox_api,
+            "API_KEY",
+            "secret",
+        ),
     ):
         with pytest.raises(HTTPException) as bad_lang:
             await sandbox_api.submit_job(
@@ -112,32 +182,40 @@ async def test_submit_job_stores_metadata_and_enqueues(tmp_path: Path) -> None:
         timeout=9,
     )
 
-    with patch.object(sandbox_api, "SANDBOX_ENABLED", True), patch.object(
-        sandbox_api,
-        "API_KEY",
-        "secret",
-    ), patch.object(
-        sandbox_api,
-        "JOBS_DIR",
-        str(tmp_path),
-    ), patch.object(
-        sandbox_api,
-        "r",
-        fake_redis,
-    ), patch.object(
-        sandbox_api,
-        "queue",
-        fake_queue,
-    ), patch(
-        "api.sandbox_api.record_job_submitted",
-        MagicMock(),
-    ), patch(
-        "api.sandbox_api.uuid.uuid4",
-        return_value="job-123",
+    with (
+        patch.object(sandbox_api, "SANDBOX_ENABLED", True),
+        patch.object(
+            sandbox_api,
+            "API_KEY",
+            "secret",
+        ),
+        patch.object(
+            sandbox_api,
+            "JOBS_DIR",
+            str(tmp_path),
+        ),
+        patch.object(
+            sandbox_api,
+            "r",
+            fake_redis,
+        ),
+        patch.object(
+            sandbox_api,
+            "queue",
+            fake_queue,
+        ),
+        patch(
+            "api.sandbox_api.record_job_submitted",
+            MagicMock(),
+        ),
+        patch(
+            "api.sandbox_api.uuid.uuid4",
+            return_value="job-123",
+        ),
     ):
         result = await sandbox_api.submit_job(req, x_api_key="secret")
 
-    assert result == {"job_id": "job-123"}
+    assert result.data.job_id == "job-123"
     assert "sandbox:job:job-123" in fake_redis.store
     assert fake_queue.enqueued
     source_file = tmp_path / "job-123" / "main.py"
@@ -148,10 +226,13 @@ async def test_submit_job_stores_metadata_and_enqueues(tmp_path: Path) -> None:
 async def test_get_job_status_returns_404_for_missing_job() -> None:
     fake_redis = _FakeRedis()
 
-    with patch.object(sandbox_api, "r", fake_redis), patch.object(
-        sandbox_api,
-        "API_KEY",
-        "secret",
+    with (
+        patch.object(sandbox_api, "r", fake_redis),
+        patch.object(
+            sandbox_api,
+            "API_KEY",
+            "secret",
+        ),
     ):
         with pytest.raises(HTTPException) as exc:
             await sandbox_api.get_job_status("missing", x_api_key="secret")
@@ -169,16 +250,20 @@ async def test_get_job_status_decodes_redis_payload() -> None:
         "exit_code": "0",
     }
 
-    with patch.object(sandbox_api, "r", fake_redis), patch.object(
-        sandbox_api,
-        "API_KEY",
-        "secret",
+    with (
+        patch.object(sandbox_api, "r", fake_redis),
+        patch.object(
+            sandbox_api,
+            "API_KEY",
+            "secret",
+        ),
+        patch.object(sandbox_api.event_emitter, "emit", AsyncMock()),
     ):
         status = await sandbox_api.get_job_status("abc", x_api_key="secret")
 
-    assert status.job_id == "abc"
-    assert status.status == "finished"
-    assert status.exit_code == 0
+    assert status.data.job_id == "abc"
+    assert status.data.status == "finished"
+    assert status.data.exit_code == 0
 
 
 @pytest.mark.asyncio
@@ -189,14 +274,23 @@ async def test_cancel_job_marks_job_cancelled() -> None:
         "created_at": "2025-01-01T00:00:00",
     }
 
-    with patch.object(sandbox_api, "r", fake_redis), patch.object(
-        sandbox_api,
-        "API_KEY",
-        "secret",
-    ), patch("api.sandbox_api.record_job_cancelled", MagicMock()):
+    with (
+        patch.object(sandbox_api, "r", fake_redis),
+        patch.object(
+            sandbox_api,
+            "API_KEY",
+            "secret",
+        ),
+        patch("api.sandbox_api.record_job_cancelled", MagicMock()),
+        patch.object(
+            sandbox_api.event_emitter,
+            "emit",
+            AsyncMock(),
+        ),
+    ):
         resp = await sandbox_api.cancel_job("abc", x_api_key="secret")
 
-    assert resp["message"] == "job cancelled successfully"
+    assert resp.data.message == "job cancelled successfully"
     assert fake_redis.store["sandbox:job:abc"]["status"] == "cancelled"
 
 
@@ -207,19 +301,23 @@ async def test_sandbox_health_disabled_and_degraded_paths() -> None:
 
     with patch.object(sandbox_api, "SANDBOX_ENABLED", False):
         disabled = await sandbox_api.sandbox_health()
-    assert disabled["status"] == "disabled"
+    assert disabled.data.status == "disabled"
 
     fake_redis.should_fail_ping = True
-    with patch.object(sandbox_api, "SANDBOX_ENABLED", True), patch.object(
-        sandbox_api,
-        "r",
-        fake_redis,
-    ), patch.object(sandbox_api, "queue", fake_queue):
+    with (
+        patch.object(sandbox_api, "SANDBOX_ENABLED", True),
+        patch.object(
+            sandbox_api,
+            "r",
+            fake_redis,
+        ),
+        patch.object(sandbox_api, "queue", fake_queue),
+    ):
         degraded = await sandbox_api.sandbox_health()
 
-    assert degraded["status"] == "degraded"
-    assert degraded["redis_connected"] is False
-    assert "redis_error" in degraded
+    assert degraded.data.status == "degraded"
+    assert degraded.data.redis_connected is False
+    assert degraded.data.redis_error is not None
 
 
 @pytest.mark.asyncio
@@ -238,15 +336,19 @@ async def test_list_jobs_filters_by_status_and_limit() -> None:
         "created_at": "2025-01-02T00:00:00",
     }
 
-    with patch.object(sandbox_api, "SANDBOX_ENABLED", True), patch.object(
-        sandbox_api,
-        "r",
-        fake_redis,
+    with (
+        patch.object(sandbox_api, "SANDBOX_ENABLED", True),
+        patch.object(
+            sandbox_api,
+            "r",
+            fake_redis,
+        ),
+        patch.object(sandbox_api.event_emitter, "emit", AsyncMock()),
     ):
         resp = await sandbox_api.list_sandbox_jobs(
             status="queued",
             limit=1,
         )
 
-    assert resp["total"] == 1
-    assert resp["jobs"][0]["job_id"] == "2"
+    assert resp.data.total == 1
+    assert resp.data.jobs[0].job_id == "2"

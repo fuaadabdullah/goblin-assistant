@@ -36,7 +36,7 @@ describe('useCostClipboard', () => {
     });
 
     expect(navigator.clipboard.writeText).toHaveBeenCalledWith(
-      'Estimated cost: $0.0123\nEstimated tokens: 123',
+      'Estimated cost: $0.0123\nEstimated tokens: 123'
     );
     expect(result.current.copyStatus).toBe('Copied');
 
@@ -48,7 +48,9 @@ describe('useCostClipboard', () => {
   });
 
   it('handles clipboard failures gracefully', async () => {
-    (navigator.clipboard.writeText as jest.Mock).mockRejectedValueOnce(new Error('Clipboard error'));
+    (navigator.clipboard.writeText as jest.Mock).mockRejectedValueOnce(
+      new Error('Clipboard error')
+    );
 
     const { result } = renderHook(() => useCostClipboard());
 

@@ -1,0 +1,19 @@
+{
+  "bucket": "contract",
+  "description": "Cross-layer contract guarantees for API envelopes/routes and web consumers.",
+  "paths": [
+    "apps/api/src/api/tests/test_contract_boundaries.py",
+    "apps/api/src/api/tests/test_chat_route_version_aliases.py",
+    "apps/web/src/api/__tests__/apiClient.contract.test.ts"
+  ],
+  "commands": [
+    {
+      "name": "api-contract-suite",
+      "run": "cd apps/api && PYTHONPATH=src python3.11 -m pytest -o \"addopts=\" -v src/api/tests/test_contract_boundaries.py src/api/tests/test_chat_route_version_aliases.py"
+    },
+    {
+      "name": "web-consumer-contract-suite",
+      "run": "mkdir -p .tmp && TMPDIR=\"$PWD/.tmp\" pnpm --filter @goblin/web exec jest --runInBand --coverage=false src/api/__tests__/apiClient.contract.test.ts"
+    }
+  ]
+}

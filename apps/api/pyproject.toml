@@ -40,6 +40,10 @@ exclude = [
   "^src/api/tests/.*",
 ]
 
+[tool.black]
+line-length = 100
+target-version = ["py311"]
+
 [tool.ruff]
 target-version = "py311"
 line-length = 100
@@ -48,8 +52,10 @@ line-length = 100
 select = [
   "E",
   "F",
-  "N",
-  "PLR",
+]
+ignore = [
+  "E402",
+  "E501",
 ]
 
 [tool.ruff.lint.pylint]

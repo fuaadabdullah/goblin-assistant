@@ -81,13 +81,13 @@ describe('apiClient chat conversations', () => {
       createdAt: '2026-03-07T12:00:00.000Z',
     });
     expect(backendPostMock).toHaveBeenCalledWith(
-      '/chat/conversations',
+      '/api/v1/chat/conversations',
       { title: 'Persisted' },
       expect.objectContaining({
         headers: expect.objectContaining({
           Authorization: 'Bearer session-token-123',
         }),
-      }),
+      })
     );
   });
 });

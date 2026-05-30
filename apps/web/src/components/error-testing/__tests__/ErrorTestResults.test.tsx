@@ -50,7 +50,13 @@ describe('ErrorTestResults', () => {
     render(
       <ErrorTestResults
         results={[
-          { id: '1', label: 'Test', status: 'error', timestamp: '2024-01-15T10:00:00Z', message: 'Something went wrong' },
+          {
+            id: '1',
+            label: 'Test',
+            status: 'error',
+            timestamp: '2024-01-15T10:00:00Z',
+            message: 'Something went wrong',
+          },
         ]}
       />
     );
@@ -60,9 +66,7 @@ describe('ErrorTestResults', () => {
   it('renders timestamps', () => {
     render(
       <ErrorTestResults
-        results={[
-          { id: '1', label: 'Test', status: 'success', timestamp: '2024-01-15T10:00:00Z' },
-        ]}
+        results={[{ id: '1', label: 'Test', status: 'success', timestamp: '2024-01-15T10:00:00Z' }]}
       />
     );
     // The timestamp is rendered via toLocaleString()
@@ -73,9 +77,7 @@ describe('ErrorTestResults', () => {
   it('applies success styling for success status', () => {
     render(
       <ErrorTestResults
-        results={[
-          { id: '1', label: 'Test', status: 'success', timestamp: '2024-01-15T10:00:00Z' },
-        ]}
+        results={[{ id: '1', label: 'Test', status: 'success', timestamp: '2024-01-15T10:00:00Z' }]}
       />
     );
     const badge = screen.getByText('success');
@@ -85,9 +87,7 @@ describe('ErrorTestResults', () => {
   it('applies danger styling for error status', () => {
     render(
       <ErrorTestResults
-        results={[
-          { id: '1', label: 'Test', status: 'error', timestamp: '2024-01-15T10:00:00Z' },
-        ]}
+        results={[{ id: '1', label: 'Test', status: 'error', timestamp: '2024-01-15T10:00:00Z' }]}
       />
     );
     const badge = screen.getByText('error');

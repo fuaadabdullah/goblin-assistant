@@ -133,7 +133,7 @@ export default function ProviderSidebar({
                   )}
                   <button
                     type="button"
-                    onClick={e => {
+                    onClick={(e) => {
                       e.stopPropagation();
                       onQuickTest(provider);
                     }}

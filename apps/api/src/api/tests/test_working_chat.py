@@ -5,7 +5,6 @@ Test script to verify the chat functionality is working with real responses.
 
 import asyncio
 import aiohttp
-import json
 
 
 async def test_working_chat():
@@ -57,7 +56,7 @@ async def test_working_chat():
                         provider = msg_data.get("provider", "unknown")
                         model = msg_data.get("model", "unknown")
 
-                        print(f"✅ Response received:")
+                        print("✅ Response received:")
                         print(f"   Provider: {provider}")
                         print(f"   Model: {model}")
                         print(
@@ -69,7 +68,7 @@ async def test_working_chat():
                         print(f"   Error: {error_text}")
 
             # Step 3: Test contextual chat endpoint
-            print(f"\n🧠 Testing contextual chat endpoint...")
+            print("\n🧠 Testing contextual chat endpoint...")
             async with session.post(
                 f"{base_url}/chat/contextual-chat",
                 json={
@@ -80,12 +79,12 @@ async def test_working_chat():
             ) as response:
                 if response.status == 200:
                     ctx_data = await response.json()
-                    print(f"✅ Contextual chat response received")
+                    print("✅ Contextual chat response received")
                     print(f"   Provider: {ctx_data.get('provider', 'unknown')}")
                     print(f"   Response: {ctx_data.get('response', '')[:200]}...")
 
                     if ctx_data.get("context_assembly"):
-                        print(f"   Context assembly: ✅ Used")
+                        print("   Context assembly: ✅ Used")
                     if ctx_data.get("token_usage"):
                         print(f"   Token usage: {ctx_data.get('token_usage')}")
                 else:
@@ -94,10 +93,8 @@ async def test_working_chat():
                     print(f"   Error: {error_text}")
 
             # Step 4: Get conversation details
-            print(f"\n📋 Getting conversation history...")
-            async with session.get(
-                f"{base_url}/chat/conversations/{conv_id}"
-            ) as response:
+            print("\n📋 Getting conversation history...")
+            async with session.get(f"{base_url}/chat/conversations/{conv_id}") as response:
                 if response.status == 200:
                     conv_data = await response.json()
                     messages = conv_data.get("messages", [])
@@ -111,12 +108,8 @@ async def test_working_chat():
                     print(f"❌ Failed to get conversation: {response.status}")
 
             print("\n🎉 Chat functionality test completed!")
-            print(
-                "✅ The chat system is working correctly with real responses from Kamatera"
-            )
-            print(
-                "💡 End-to-end integration verified: Dispatcher -> Router -> Kamatera -> History"
-            )
+            print("✅ The chat system is working correctly with real responses from Kamatera")
+            print("💡 End-to-end integration verified: Dispatcher -> Router -> Kamatera -> History")
             return True
 
         except Exception as e:

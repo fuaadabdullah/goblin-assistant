@@ -87,9 +87,10 @@ async def get_settings():
         default_provider = next(iter(top_providers_for("chat", limit=1)), None)
         default_model = None
         if default_provider:
-            default_model = str(
-                dispatcher.get_provider_config(default_provider).get("default_model", "")
-            ) or dispatcher.get_provider(default_provider).default_model
+            default_model = (
+                str(dispatcher.get_provider_config(default_provider).get("default_model", ""))
+                or dispatcher.get_provider(default_provider).default_model
+            )
 
         return SuccessEnvelope(
             data=SettingsResponse(
@@ -108,10 +109,17 @@ async def get_settings():
         ) from exc
 
 
-@router.put("/providers/{provider_name}", response_model=SuccessEnvelope[SettingsUpdatedResponse])
+@router.put(
+    "/providers/{provider_name}",
+    response_model=SuccessEnvelope[SettingsUpdatedResponse],
+)
 async def update_provider_settings(provider_name: str, settings: ProviderSettings):
     if not settings.name:
-        raise DomainError(code="VALIDATION_ERROR", message="Provider name is required", status_code=400)
+        raise DomainError(
+            code="VALIDATION_ERROR",
+            message="Provider name is required",
+            status_code=400,
+        )
     return SuccessEnvelope(
         data=SettingsUpdatedResponse(
             message=f"Settings updated for provider: {provider_name}",
@@ -146,7 +154,8 @@ async def test_provider_connection(provider_name: str):
                 message=(
                     f"Connection test successful for {provider_name}"
                     if result.get("healthy")
-                    else result.get("health_reason") or f"Connection test failed for {provider_name}"
+                    else result.get("health_reason")
+                    or f"Connection test failed for {provider_name}"
                 ),
                 connected=bool(result.get("healthy")),
             )

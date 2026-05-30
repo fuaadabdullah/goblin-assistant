@@ -1,7 +1,8 @@
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter
 from pydantic import BaseModel
 from typing import List, Optional, Dict, Any
-import re
+from api.core.contracts import SuccessEnvelope
+from api.core.errors import DomainError
 
 router = APIRouter(prefix="/search", tags=["search"])
 
@@ -28,9 +29,20 @@ class SearchResponse(BaseModel):
     total_results: int
 
 
-def simple_text_search(
-    query: str, documents: List[Dict], n_results: int = 10
-) -> List[Dict]:
+class CollectionsResponse(BaseModel):
+    collections: List[str]
+
+
+class AddDocumentResponse(BaseModel):
+    status: str
+    document_id: str
+
+
+class CollectionDocumentsResponse(BaseModel):
+    documents: List[Dict[str, Any]]
+
+
+def simple_text_search(query: str, documents: List[Dict], n_results: int = 10) -> List[Dict]:
     """Simple text-based search implementation"""
     query_lower = query.lower()
     scored_docs = []
@@ -64,7 +76,7 @@ def simple_text_search(
     return scored_docs[:n_results]
 
 
-@router.post("/query", response_model=SearchResponse)
+@router.post("/query", response_model=SuccessEnvelope[SearchResponse])
 async def search_documents(search_query: SearchQuery):
     """Search documents using simple text search"""
     try:
@@ -77,12 +89,10 @@ async def search_documents(search_query: SearchQuery):
         documents = COLLECTIONS[collection_name]
 
         if not documents:
-            return SearchResponse(results=[], total_results=0)
+            return SuccessEnvelope(data=SearchResponse(results=[], total_results=0))
 
         # Perform search
-        results = simple_text_search(
-            search_query.query, documents, search_query.n_results
-        )
+        results = simple_text_search(search_query.query, documents, search_query.n_results)
 
         # Format results
         search_results = []
@@ -96,24 +106,37 @@ async def search_documents(search_query: SearchQuery):
                 )
             )
 
-        return SearchResponse(results=search_results, total_results=len(search_results))
+        return SuccessEnvelope(
+            data=SearchResponse(results=search_results, total_results=len(search_results))
+        )
 
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Search failed: {str(e)}")
+        raise DomainError(
+            code="SEARCH_QUERY_FAILED",
+            message="Search failed",
+            status_code=500,
+            details={"reason": str(e)},
+        ) from e
 
 
-@router.get("/collections")
+@router.get("/collections", response_model=SuccessEnvelope[CollectionsResponse])
 async def list_collections():
     """List all available collections"""
     try:
-        return {"collections": list(COLLECTIONS.keys())}
+        return SuccessEnvelope(data=CollectionsResponse(collections=list(COLLECTIONS.keys())))
     except Exception as e:
-        raise HTTPException(
-            status_code=500, detail=f"Failed to list collections: {str(e)}"
-        )
+        raise DomainError(
+            code="SEARCH_COLLECTIONS_LIST_FAILED",
+            message="Failed to list collections",
+            status_code=500,
+            details={"reason": str(e)},
+        ) from e
 
 
-@router.post("/collections/{collection_name}/add")
+@router.post(
+    "/collections/{collection_name}/add",
+    response_model=SuccessEnvelope[AddDocumentResponse],
+)
 async def add_document(
     collection_name: str,
     document: str,
@@ -131,21 +154,34 @@ async def add_document(
             {"id": doc_id, "document": document, "metadata": metadata or {}}
         )
 
-        return {"status": "success", "document_id": doc_id}
+        return SuccessEnvelope(data=AddDocumentResponse(status="success", document_id=doc_id))
 
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Failed to add document: {str(e)}")
+        raise DomainError(
+            code="SEARCH_ADD_DOCUMENT_FAILED",
+            message="Failed to add document",
+            status_code=500,
+            details={"reason": str(e)},
+        ) from e
 
 
-@router.get("/collections/{collection_name}/documents")
+@router.get(
+    "/collections/{collection_name}/documents",
+    response_model=SuccessEnvelope[CollectionDocumentsResponse],
+)
 async def get_collection_documents(collection_name: str):
     """Get all documents in a collection"""
     try:
         if collection_name not in COLLECTIONS:
-            return {"documents": []}
+            return SuccessEnvelope(data=CollectionDocumentsResponse(documents=[]))
 
-        return {"documents": COLLECTIONS[collection_name]}
-    except Exception as e:
-        raise HTTPException(
-            status_code=500, detail=f"Failed to get documents: {str(e)}"
+        return SuccessEnvelope(
+            data=CollectionDocumentsResponse(documents=COLLECTIONS[collection_name])
         )
+    except Exception as e:
+        raise DomainError(
+            code="SEARCH_COLLECTION_DOCUMENTS_FAILED",
+            message="Failed to get documents",
+            status_code=500,
+            details={"reason": str(e)},
+        ) from e

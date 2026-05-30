@@ -3,11 +3,12 @@ import { resolveBackendOrigin } from '../../../config/backendOrigin';
 
 const BACKEND_URL = resolveBackendOrigin();
 
-const INTERNAL_PROXY_API_KEY =
-  (process.env.INTERNAL_PROXY_API_KEY ||
-    process.env.BACKEND_API_KEY ||
-    process.env.INTERNAL_API_SECRET ||
-    '').trim();
+const INTERNAL_PROXY_API_KEY = (
+  process.env.INTERNAL_PROXY_API_KEY ||
+  process.env.BACKEND_API_KEY ||
+  process.env.INTERNAL_API_SECRET ||
+  ''
+).trim();
 
 interface ForwardResponse {
   status: number;
@@ -26,7 +27,7 @@ async function safeJson<T = unknown>(res: Response): Promise<T | null> {
 async function fetchWithTimeout(
   url: string,
   options: RequestInit,
-  timeoutMs: number,
+  timeoutMs: number
 ): Promise<Response> {
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), timeoutMs);
@@ -40,10 +41,7 @@ async function fetchWithTimeout(
   }
 }
 
-const getRequestHeader = (
-  req: NextApiRequest,
-  name: string,
-): string | undefined => {
+const getRequestHeader = (req: NextApiRequest, name: string): string | undefined => {
   const raw = req.headers[name.toLowerCase()];
   if (Array.isArray(raw)) return raw.join(', ');
   if (typeof raw === 'string' && raw.trim()) return raw.trim();
@@ -72,7 +70,7 @@ async function forwardValidate(req: NextApiRequest): Promise<ForwardResponse> {
         headers,
         body: JSON.stringify(req.body ?? {}),
       },
-      8000,
+      8000
     );
 
     const body = (await safeJson(response)) ?? {
@@ -92,10 +90,7 @@ async function forwardValidate(req: NextApiRequest): Promise<ForwardResponse> {
   }
 }
 
-export default async function handler(
-  req: NextApiRequest,
-  res: NextApiResponse,
-) {
+export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   if (req.method !== 'POST') {
     return res.status(405).json({ detail: 'Method not allowed' });
   }

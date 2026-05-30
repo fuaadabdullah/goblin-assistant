@@ -14,12 +14,9 @@ const SettingsPage = dynamic(() => import('@/screens/SettingsPage'), {
   ),
 });
 
-const AdminSettingsContent = withRouteErrorBoundary(
-  function AdminSettingsContent() {
-    return <SettingsPage />;
-  },
-  'adminSettings'
-);
+const AdminSettingsContent = withRouteErrorBoundary(function AdminSettingsContent() {
+  return <SettingsPage />;
+}, 'adminSettings');
 
 export default function AdminSettings() {
   return (

@@ -3,7 +3,10 @@ import { render, screen } from '@testing-library/react';
 import '@testing-library/jest-dom';
 
 jest.mock('next/dynamic', () => {
-  return function mockDynamic(loader: () => Promise<unknown>, opts?: { loading?: () => React.ReactElement }) {
+  return function mockDynamic(
+    loader: () => Promise<unknown>,
+    opts?: { loading?: () => React.ReactElement }
+  ) {
     // Return the loading component for testing
     return function DynamicComponent() {
       if (opts?.loading) return opts.loading();
@@ -13,8 +16,20 @@ jest.mock('next/dynamic', () => {
 });
 
 jest.mock('../../../layout/AdminLayout', () => {
-  return function MockAdminLayout({ children, mainId, mainLabel }: { children: React.ReactNode; mainId: string; mainLabel: string }) {
-    return <main id={mainId} aria-label={mainLabel}>{children}</main>;
+  return function MockAdminLayout({
+    children,
+    mainId,
+    mainLabel,
+  }: {
+    children: React.ReactNode;
+    mainId: string;
+    mainLabel: string;
+  }) {
+    return (
+      <main id={mainId} aria-label={mainLabel}>
+        {children}
+      </main>
+    );
   };
 });
 

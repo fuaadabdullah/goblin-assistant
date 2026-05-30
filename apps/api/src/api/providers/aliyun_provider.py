@@ -16,9 +16,15 @@ logger = structlog.get_logger(__name__)
 
 _DEFAULT_ENDPOINT = "https://dashscope-intl.aliyuncs.com/compatible-mode"
 _BODY_PASSTHROUGH = {
-    "top_p", "stream", "tools", "tool_choice",
-    "response_format", "stop", "seed",
-    "presence_penalty", "frequency_penalty",
+    "top_p",
+    "stream",
+    "tools",
+    "tool_choice",
+    "response_format",
+    "stop",
+    "seed",
+    "presence_penalty",
+    "frequency_penalty",
 }
 _COST_TABLE: Dict[str, Dict[str, float]] = {
     "qwen-max": {"input": 0.004, "output": 0.012},
@@ -49,10 +55,12 @@ class AliyunProvider(BaseProvider):
     ) -> None:
         super().__init__(provider_id, config)
         self._api_key = os.getenv(self.config.get("api_key_env", "DASHSCOPE_API_KEY"), "").strip()
-        self._base_url = _normalize_compatible_base_url(os.getenv(
-            "DASHSCOPE_ENDPOINT",
-            self.endpoint or _DEFAULT_ENDPOINT,
-        ))
+        self._base_url = _normalize_compatible_base_url(
+            os.getenv(
+                "DASHSCOPE_ENDPOINT",
+                self.endpoint or _DEFAULT_ENDPOINT,
+            )
+        )
         self.endpoint = self._base_url
 
     def _headers(self) -> Dict[str, str]:
@@ -108,14 +116,18 @@ class AliyunProvider(BaseProvider):
             if resp.status_code == 401:
                 self.record_failure("invalid_api_key")
                 return ProviderResult(
-                    ok=False, provider=self.provider_id, model=model_name,
+                    ok=False,
+                    provider=self.provider_id,
+                    model=model_name,
                     latency_ms=latency,
                     error="DASHSCOPE_API_KEY rejected by Aliyun (401 invalid_api_key)",
                 )
             if resp.status_code == 403:
                 self.record_failure("model_access_denied")
                 return ProviderResult(
-                    ok=False, provider=self.provider_id, model=model_name,
+                    ok=False,
+                    provider=self.provider_id,
+                    model=model_name,
                     latency_ms=latency,
                     error=(
                         f"Model '{model_name}' access denied by Aliyun (403). "
@@ -211,11 +223,7 @@ class AliyunProvider(BaseProvider):
                 self.provider_id,
                 resp.status_code < 400,
                 latency_ms=latency,
-                error=(
-                    None
-                    if resp.status_code < 400
-                    else f"HTTP {resp.status_code}"
-                ),
+                error=(None if resp.status_code < 400 else f"HTTP {resp.status_code}"),
             )
         except httpx.TimeoutException:
             latency = (time.perf_counter() - t0) * 1000

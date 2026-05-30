@@ -4,10 +4,12 @@ describe('feature flags config', () => {
   const originalEnv = process.env;
   const devLogMock = jest.fn();
 
-  const loadFeaturesModule = (overrides: Partial<{
-    isDevelopment: boolean;
-    featureFlags: Record<string, boolean>;
-  }> = {}) => {
+  const loadFeaturesModule = (
+    overrides: Partial<{
+      isDevelopment: boolean;
+      featureFlags: Record<string, boolean>;
+    }> = {}
+  ) => {
     jest.doMock('../env', () => ({
       __esModule: true,
       env: {
@@ -79,7 +81,7 @@ describe('feature flags config', () => {
       '🚩 Feature Flags:',
       expect.objectContaining({
         debugMode: true,
-      }),
+      })
     );
   });
 });

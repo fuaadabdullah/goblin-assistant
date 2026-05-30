@@ -27,7 +27,10 @@ describe('useGoblinLoaderAnimation', () => {
   it('fetches and returns animation data', async () => {
     const { result } = renderHook(() => useGoblinLoaderAnimation());
     await waitFor(() => expect(result.current).toEqual(animData));
-    expect(fetchMock).toHaveBeenCalledWith('/goblin_loader.json', expect.objectContaining({ signal: expect.any(AbortSignal) }));
+    expect(fetchMock).toHaveBeenCalledWith(
+      '/goblin_loader.json',
+      expect.objectContaining({ signal: expect.any(AbortSignal) })
+    );
   });
 
   it('stays null when fetch fails', async () => {

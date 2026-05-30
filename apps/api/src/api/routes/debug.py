@@ -18,20 +18,18 @@ model_router = ModelRouter()
 
 @router.post("/suggest")
 async def get_debug_suggestion(
-    task: str = Body(
-        ..., description="Debug task type (e.g., 'quick_fix', 'summarize_trace')"
-    ),
+    task: str = Body(..., description="Debug task type (e.g., 'quick_fix', 'summarize_trace')"),
     context: Dict[str, Any] = Body(..., description="Context data for the debug task"),
 ):
     """
     Get intelligent debugging suggestions from model routing system.
-    
+
     Routes specialized tasks to Raptor model; other tasks to fallback model.
-    
+
     Request body:
     - task: str — Task identifier from RAPTOR_TASKS or other
     - context: dict — Contextual data (error, code, traces, etc.)
-    
+
     Returns:
     - model: str — Model used ('raptor' or 'fallback')
     - suggestion: str — The suggestion text
@@ -66,9 +64,7 @@ async def get_debug_suggestion(
         raise HTTPException(status_code=502, detail=f"Model call failed: {str(e)}")
 
     # Extract suggestion with fallback
-    suggestion = (
-        result.get("suggestion") or result.get("text") or result.get("response") or ""
-    )
+    suggestion = result.get("suggestion") or result.get("text") or result.get("response") or ""
 
     # Add confidence if available
     confidence = result.get("confidence")

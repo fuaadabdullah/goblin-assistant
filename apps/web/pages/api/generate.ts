@@ -3,11 +3,12 @@ import { resolveBackendOrigin } from '@/config/backendOrigin';
 
 const BACKEND_URL = resolveBackendOrigin();
 
-const INTERNAL_PROXY_API_KEY =
-  (process.env.INTERNAL_PROXY_API_KEY ||
-    process.env.BACKEND_API_KEY ||
-    process.env.INTERNAL_API_SECRET ||
-    '').trim();
+const INTERNAL_PROXY_API_KEY = (
+  process.env.INTERNAL_PROXY_API_KEY ||
+  process.env.BACKEND_API_KEY ||
+  process.env.INTERNAL_API_SECRET ||
+  ''
+).trim();
 
 interface ForwardResponse {
   status: number;
@@ -29,7 +30,7 @@ async function safeJson<T = unknown>(res: Response): Promise<T | null> {
 async function fetchWithTimeout(
   url: string,
   options: RequestInit,
-  timeoutMs: number,
+  timeoutMs: number
 ): Promise<Response> {
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), timeoutMs);
@@ -68,7 +69,7 @@ function writeResponse(
     correlationId?: string;
     requestId?: string;
     licenseTier?: string;
-  },
+  }
 ) {
   if (result.correlationId) res.setHeader('X-Correlation-ID', result.correlationId);
   if (result.requestId) res.setHeader('X-Request-ID', result.requestId);
@@ -77,7 +78,7 @@ function writeResponse(
 }
 
 /**
- * Build the request body for the backend /api/chat endpoint.
+ * Build the request body for the backend /api/v1/api/chat endpoint.
  * The frontend may send {prompt, messages, model, provider} but the
  * backend expects {messages: [{role, content}], model?, provider?}.
  */
@@ -122,9 +123,7 @@ function mapBackendResponse(body: Record<string, unknown>): Record<string, unkno
   };
 }
 
-async function forwardToBackendGenerate(
-  req: NextApiRequest,
-): Promise<ForwardResponse> {
+async function forwardToBackendGenerate(req: NextApiRequest): Promise<ForwardResponse> {
   try {
     const headers: Record<string, string> = {
       'Content-Type': 'application/json',
@@ -141,13 +140,13 @@ async function forwardToBackendGenerate(
     const chatBody = buildChatRequestBody((req.body ?? {}) as Record<string, unknown>);
 
     const response = await fetchWithTimeout(
-      `${BACKEND_URL}/api/chat`,
+      `${BACKEND_URL}/api/v1/api/chat`,
       {
         method: 'POST',
         headers,
         body: JSON.stringify(chatBody),
       },
-      30000,
+      30000
     );
 
     const raw = (await safeJson<Record<string, unknown>>(response)) ?? {
@@ -173,10 +172,7 @@ async function forwardToBackendGenerate(
   }
 }
 
-export default async function handler(
-  req: NextApiRequest,
-  res: NextApiResponse,
-) {
+export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   if (req.method !== 'POST') {
     return res.status(405).json({ detail: 'Method not allowed' });
   }

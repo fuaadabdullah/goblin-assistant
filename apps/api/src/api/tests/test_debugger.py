@@ -42,9 +42,7 @@ async def test_debugger_endpoint():
         for i, test_case in enumerate(test_cases, 1):
             print(f"\n--- Test Case {i}: {test_case['task']} ---")
             try:
-                response = await client.post(
-                    "/debug/suggest", json=test_case, timeout=30
-                )
+                response = await client.post("/debug/suggest", json=test_case, timeout=30)
                 if response.status_code == 200:
                     data = response.json()
                     print(f"✅ Success - Model: {data.get('model')}")

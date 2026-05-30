@@ -22,9 +22,13 @@ jest.mock('../../contexts/ProviderContext', () => ({
 jest.mock('../../hooks/useContrastMode', () => ({
   ContrastModeProvider: ({ children }: { children: React.ReactNode }) => <>{children}</>,
 }));
-jest.mock('../../auth/AuthBootstrapper', () => function MockAuthBootstrapper() {
-  return <div data-testid="auth-bootstrapper" />;
-});
+jest.mock(
+  '../../auth/AuthBootstrapper',
+  () =>
+    function MockAuthBootstrapper() {
+      return <div data-testid="auth-bootstrapper" />;
+    }
+);
 jest.mock('../../components/ErrorBoundary', () => ({
   ErrorBoundary: ({ children }: { children: React.ReactNode }) => <>{children}</>,
 }));
@@ -113,7 +117,9 @@ describe('_app', () => {
     function PropsPage({ customProp }: { customProp: string }) {
       return <div data-testid="props-page">{customProp}</div>;
     }
-    render(<App {...defaultAppProps} Component={PropsPage as any} pageProps={{ customProp: 'hello' }} />);
+    render(
+      <App {...defaultAppProps} Component={PropsPage as any} pageProps={{ customProp: 'hello' }} />
+    );
     expect(screen.getByTestId('props-page')).toHaveTextContent('hello');
   });
 });

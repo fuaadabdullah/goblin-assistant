@@ -59,7 +59,8 @@ class AttestationService:
         try:
             if not NODE_ID_PATTERN.match(node_id):
                 audit_logger.warning(
-                    "invalid_node_id", extra={"node_id": node_id, "provider": provider_type}
+                    "invalid_node_id",
+                    extra={"node_id": node_id, "provider": provider_type},
                 )
                 return {
                     "verified": False,
@@ -70,7 +71,8 @@ class AttestationService:
 
             if provider_type not in self.providers:
                 audit_logger.warning(
-                    "unknown_provider", extra={"node_id": node_id, "provider": provider_type}
+                    "unknown_provider",
+                    extra={"node_id": node_id, "provider": provider_type},
                 )
                 return {
                     "verified": False,
@@ -149,8 +151,7 @@ class AttestationService:
                     node_data = self.redis_client.hgetall(key)
                     if node_data:
                         node_info = {
-                            k.decode("utf-8"): v.decode("utf-8")
-                            for k, v in node_data.items()
+                            k.decode("utf-8"): v.decode("utf-8") for k, v in node_data.items()
                         }
                         attested_nodes.append(node_info)
                 if cursor == 0:
@@ -165,16 +166,12 @@ class AttestationService:
                     cursor, match=revoked_pattern, count=100
                 )
                 for revoked_key in batch_revoked:
-                    node_id = revoked_key.decode("utf-8").replace(
-                        self.REVOKED_KEY_PREFIX, ""
-                    )
+                    node_id = revoked_key.decode("utf-8").replace(self.REVOKED_KEY_PREFIX, "")
                     revoked_node_ids.add(node_id)
                 if cursor == 0:
                     break
 
-            return [
-                node for node in attested_nodes if node.get("node_id") not in revoked_node_ids
-            ]
+            return [node for node in attested_nodes if node.get("node_id") not in revoked_node_ids]
 
         except Exception as e:
             logger.exception("list_attested_nodes_error", extra={"error": str(e)})
@@ -211,7 +208,8 @@ class AttestationService:
             return {k.decode("utf-8"): v.decode("utf-8") for k, v in data.items()}
         except Exception as e:
             logger.exception(
-                "get_cached_attestation_error", extra={"node_id": node_id, "error": str(e)}
+                "get_cached_attestation_error",
+                extra={"node_id": node_id, "error": str(e)},
             )
             return None
 
@@ -232,7 +230,8 @@ class AttestationService:
 
         except Exception as e:
             logger.exception(
-                "cache_attestation_result_error", extra={"node_id": node_id, "error": str(e)}
+                "cache_attestation_result_error",
+                extra={"node_id": node_id, "error": str(e)},
             )
 
     def _is_cache_valid(self, cached_result: Dict[str, Any]) -> bool:

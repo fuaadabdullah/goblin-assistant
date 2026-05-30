@@ -51,7 +51,7 @@ describe('ChatEmptyState', () => {
     render(<ChatEmptyState quickPrompts={prompts} onPromptClick={onPromptClick} />);
     fireEvent.click(screen.getByText('Analyze a stock'));
     expect(onPromptClick).toHaveBeenCalledWith(
-      'Pull the latest data for AAPL \u2014 price, P/E, recent earnings summary, and analyst consensus.',
+      'Pull the latest data for AAPL \u2014 price, P/E, recent earnings summary, and analyst consensus.'
     );
   });
 
@@ -59,7 +59,7 @@ describe('ChatEmptyState', () => {
     render(<ChatEmptyState quickPrompts={prompts} onPromptClick={onPromptClick} />);
     fireEvent.click(screen.getByText('Run some code'));
     expect(onPromptClick).toHaveBeenCalledWith(
-      'Open the Python sandbox and show me how to fetch stock data with yfinance.',
+      'Open the Python sandbox and show me how to fetch stock data with yfinance.'
     );
   });
 
@@ -69,7 +69,9 @@ describe('ChatEmptyState', () => {
   });
 
   it('renders static icon when prefersReducedMotion', () => {
-    render(<ChatEmptyState quickPrompts={prompts} onPromptClick={onPromptClick} prefersReducedMotion />);
+    render(
+      <ChatEmptyState quickPrompts={prompts} onPromptClick={onPromptClick} prefersReducedMotion />
+    );
     expect(screen.queryByTestId('lottie')).not.toBeInTheDocument();
     expect(screen.getByText('🧠')).toBeInTheDocument();
   });

@@ -1,10 +1,12 @@
 import React from 'react';
 import { render, screen, fireEvent } from '@testing-library/react';
 
-jest.mock('next/link', () =>
-  function MockLink({ children, href }: { children: React.ReactNode; href: string }) {
-    return <a href={href}>{children}</a>;
-  }
+jest.mock(
+  'next/link',
+  () =>
+    function MockLink({ children, href }: { children: React.ReactNode; href: string }) {
+      return <a href={href}>{children}</a>;
+    }
 );
 
 import HelpSupportForm from '../HelpSupportForm';

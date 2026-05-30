@@ -1,22 +1,53 @@
 import { render, screen, fireEvent } from '@testing-library/react';
 import '@testing-library/jest-dom';
 
-jest.mock('next/link', () => function MockLink({ children, href }: { children: React.ReactNode; href: string }) {
-  return <a href={href}>{children}</a>;
-});
+jest.mock(
+  'next/link',
+  () =>
+    function MockLink({ children, href }: { children: React.ReactNode; href: string }) {
+      return <a href={href}>{children}</a>;
+    }
+);
 const mockPush = jest.fn();
 jest.mock('next/router', () => ({
   useRouter: () => ({ pathname: '/', push: mockPush, events: { on: jest.fn(), off: jest.fn() } }),
 }));
-jest.mock('lucide-react', () => new Proxy({}, {
-  get: (_, name) => {
-    if (name === '__esModule') return true;
-    return (props: Record<string, unknown>) => <span data-testid={`icon-${String(name)}`} {...props} />;
-  },
-}));
-jest.mock('../HealthHeader', () => function MockHealthHeader() { return <div data-testid="health-header" />; });
-jest.mock('../ContrastModeToggle', () => function MockToggle() { return <div data-testid="contrast-toggle" />; });
-jest.mock('../Logo', () => function MockLogo() { return <div data-testid="logo" />; });
+jest.mock(
+  'lucide-react',
+  () =>
+    new Proxy(
+      {},
+      {
+        get: (_, name) => {
+          if (name === '__esModule') return true;
+          return (props: Record<string, unknown>) => (
+            <span data-testid={`icon-${String(name)}`} {...props} />
+          );
+        },
+      }
+    )
+);
+jest.mock(
+  '../HealthHeader',
+  () =>
+    function MockHealthHeader() {
+      return <div data-testid="health-header" />;
+    }
+);
+jest.mock(
+  '../ContrastModeToggle',
+  () =>
+    function MockToggle() {
+      return <div data-testid="contrast-toggle" />;
+    }
+);
+jest.mock(
+  '../Logo',
+  () =>
+    function MockLogo() {
+      return <div data-testid="logo" />;
+    }
+);
 const mockLogout = jest.fn();
 jest.mock('../../hooks/api/useAuthSession', () => ({
   useAuthSession: () => ({ logout: mockLogout, isAuthenticated: true }),

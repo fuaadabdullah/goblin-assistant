@@ -33,7 +33,9 @@ const ChatSidebar = ({
   messageCount,
   className = '',
 }: ChatSidebarProps) => (
-  <aside className={`flex w-72 border-r border-border bg-surface px-4 py-6 flex-col gap-6 ${className}`}>
+  <aside
+    className={`flex w-72 border-r border-border bg-surface px-4 py-6 flex-col gap-6 ${className}`}
+  >
     <div>
       <h2 className="text-sm font-semibold text-text mb-2">Conversations</h2>
       <button
@@ -54,7 +56,7 @@ const ChatSidebar = ({
         </div>
       ) : threads.length > 0 ? (
         <ul className="space-y-2">
-          {threads.map(thread => {
+          {threads.map((thread) => {
             const isActive = thread.threadKey === activeThreadKey;
             return (
               <li key={thread.threadKey}>

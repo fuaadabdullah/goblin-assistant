@@ -5,17 +5,14 @@ Provides endpoints for submitting, monitoring, and managing sandbox jobs
 
 import os
 import uuid
-import json
-import time
-from typing import Optional, Dict, Any
+from typing import Optional, Any
 from datetime import datetime
 
 import structlog
-from fastapi import APIRouter, HTTPException, Header, Depends, Query
+from fastapi import APIRouter, HTTPException, Header
 from pydantic import BaseModel
 import redis
 import rq
-from rq import Queue, Worker
 
 logger = structlog.get_logger()
 
@@ -29,19 +26,21 @@ class SandboxExecutionError(Exception):
         self.reason = reason
         super().__init__(f"Sandbox execution failed [{job_id}]: {reason}")
 
-# Import from existing infrastructure
-from .storage.cache import cache
+
 from .middleware.rate_limiter import RateLimiter
+from .core.contracts import SandboxExecutionCompletedPayload, SuccessEnvelope
+from .observability.events import event_emitter
 from .artifact_service import artifact_service
 from .sandbox_metrics import (
-    record_job_submitted, record_job_cancelled,
-    get_metrics_endpoint, update_rq_metrics
+    record_job_submitted,
+    record_job_cancelled,
+    get_metrics_endpoint,
 )
 
 # Configuration from environment
 REDIS_URL = os.getenv("REDIS_URL", "redis://localhost:6379/0")
-SANDBOX_IMAGE = os.getenv("SANDBOX_IMAGE", "ghcr.io/yourorg/sandbox:latest")
-API_KEY = os.getenv("API_AUTH_KEY", "devkey")
+SANDBOX_IMAGE = os.getenv("SANDBOX_IMAGE", "goblin-assistant-sandbox:latest")
+API_KEY = os.getenv("API_AUTH_KEY")
 # Use local writable directory, default to /tmp/goblin_sandbox if not specified
 JOBS_DIR = os.getenv("JOBS_DIR", "/tmp/goblin_sandbox")
 SANDBOX_ENABLED = os.getenv("SANDBOX_ENABLED", "false").lower() == "true"
@@ -60,13 +59,20 @@ sandbox_rate_limiter = RateLimiter(
 # Ensure jobs directory exists
 os.makedirs(JOBS_DIR, exist_ok=True)
 
+
 # Authentication dependency
-def require_api_key(x_api_key: str = Header(...)):
+def require_api_key(x_api_key: str = Header(...)) -> None:
     # Skip authentication in development mode
     if SANDBOX_ENABLED and os.getenv("ENVIRONMENT", "development") == "development":
         return
+    if not API_KEY:
+        raise HTTPException(
+            status_code=500,
+            detail="sandbox API key is not configured (set API_AUTH_KEY)",
+        )
     if x_api_key != API_KEY:
         raise HTTPException(status_code=401, detail="unauthorized")
+
 
 # Pydantic models for API
 class SubmitJobRequest(BaseModel):
@@ -74,6 +80,7 @@ class SubmitJobRequest(BaseModel):
     source: str
     timeout: Optional[int] = 10
     runtime_args: Optional[str] = ""
+
 
 class JobStatus(BaseModel):
     job_id: str
@@ -84,21 +91,119 @@ class JobStatus(BaseModel):
     exit_code: Optional[int] = None
     error: Optional[str] = None
 
+
 class ArtifactInfo(BaseModel):
     name: str
     size: int
     url: str
     created_at: str
 
+
+class SubmitJobResponse(BaseModel):
+    job_id: str
+
+
+class JobLogsResponse(BaseModel):
+    logs: str
+
+
+class ArtifactListResponse(BaseModel):
+    artifacts: list[ArtifactInfo]
+
+
+class CancelJobResponse(BaseModel):
+    message: str
+
+
+class SandboxHealthResponse(BaseModel):
+    status: str
+    redis_connected: bool
+    image_configured: bool
+    queue_depth: int
+    enabled: bool
+    message: Optional[str] = None
+    redis_error: Optional[str] = None
+
+
+class SandboxJobSummary(BaseModel):
+    job_id: str
+    status: str
+    language: str
+    created_at: str
+    started_at: Optional[str] = None
+    finished_at: Optional[str] = None
+    exit_code: Optional[int] = None
+    error: Optional[str] = None
+
+
+class SandboxJobsResponse(BaseModel):
+    jobs: list[SandboxJobSummary]
+    total: int
+
+
+def _decode_job_data(job_data: dict[bytes, bytes]) -> dict[str, str]:
+    return {k.decode("utf-8"): v.decode("utf-8") for k, v in job_data.items()}
+
+
+def _parse_exit_code(job_info: dict[str, str]) -> Optional[int]:
+    if not job_info.get("exit_code"):
+        return None
+    return int(job_info["exit_code"])
+
+
+def _job_status(job_id: str, job_info: dict[str, str]) -> JobStatus:
+    return JobStatus(
+        job_id=job_id,
+        status=job_info.get("status", "unknown"),
+        created_at=job_info.get("created_at", ""),
+        started_at=job_info.get("started_at"),
+        finished_at=job_info.get("finished_at"),
+        exit_code=_parse_exit_code(job_info),
+        error=job_info.get("error"),
+    )
+
+
+def _job_summary(job_info: dict[str, str]) -> SandboxJobSummary:
+    return SandboxJobSummary(
+        job_id=job_info.get("job_id", ""),
+        status=job_info.get("status", "unknown"),
+        language=job_info.get("language", ""),
+        created_at=job_info.get("created_at", ""),
+        started_at=job_info.get("started_at"),
+        finished_at=job_info.get("finished_at"),
+        exit_code=_parse_exit_code(job_info),
+        error=job_info.get("error"),
+    )
+
+
+async def _emit_sandbox_completed(job_id: str, job_info: dict[str, str]) -> None:
+    if job_info.get("status") not in {"finished", "failed", "cancelled"}:
+        return
+    await event_emitter.emit(
+        "sandbox.execution.completed",
+        source="api.sandbox_api",
+        payload=SandboxExecutionCompletedPayload(
+            job_id=job_id,
+            status=job_info.get("status", "unknown"),
+            language=job_info.get("language"),
+            exit_code=_parse_exit_code(job_info),
+            started_at=job_info.get("started_at"),
+            finished_at=job_info.get("finished_at"),
+            error=job_info.get("error"),
+        ),
+    )
+
+
 # Create router
 router = APIRouter(prefix="/sandbox", tags=["sandbox"])
 
-@router.post("/submit", response_model=Dict[str, str])
+
+@router.post("/submit", response_model=SuccessEnvelope[SubmitJobResponse])
 async def submit_job(
     req: SubmitJobRequest,
     x_api_key: str = Header(...),
-    request: Any = None  # For rate limiting
-):
+    request: Any = None,  # For rate limiting
+) -> SuccessEnvelope[SubmitJobResponse]:
     """Submit a job for sandbox execution"""
 
     # Check if sandbox is enabled
@@ -117,7 +222,10 @@ async def submit_job(
         raise HTTPException(status_code=400, detail="source code is required")
 
     if req.language not in ["python", "javascript"]:
-        raise HTTPException(status_code=400, detail="Unsupported language. Supported languages: python, javascript")
+        raise HTTPException(
+            status_code=400,
+            detail="Unsupported language. Supported languages: python, javascript",
+        )
 
     if req.timeout and (req.timeout < 1 or req.timeout > 300):
         raise HTTPException(status_code=400, detail="timeout must be between 1-300 seconds")
@@ -128,10 +236,7 @@ async def submit_job(
     os.makedirs(job_path, exist_ok=True)
 
     # Determine main file based on language
-    mainfile = {
-        "python": "main.py",
-        "javascript": "main.js"
-    }.get(req.language, "main")
+    mainfile = {"python": "main.py", "javascript": "main.js"}.get(req.language, "main")
 
     # Write source code to file
     source_path = os.path.join(job_path, mainfile)
@@ -147,7 +252,7 @@ async def submit_job(
         "runtime_args": req.runtime_args or "",
         "created_at": datetime.utcnow().isoformat(),
         "path": job_path,
-        "source_file": mainfile
+        "source_file": mainfile,
     }
 
     # Store job metadata in Redis
@@ -161,7 +266,7 @@ async def submit_job(
             language=req.language,
             timeout=req.timeout or 10,
             runtime_args=req.runtime_args or "",
-            job_path=job_path
+            job_path=job_path,
         )
 
         # Record job submission metrics
@@ -171,6 +276,7 @@ async def submit_job(
         raise
     except Exception as e:
         import shutil
+
         shutil.rmtree(job_path, ignore_errors=True)
         r.delete(f"sandbox:job:{job_id}")
         err = SandboxExecutionError(job_id=job_id, container_id=None, reason=str(e))
@@ -183,10 +289,11 @@ async def submit_job(
         )
         raise HTTPException(status_code=500, detail=str(err)) from err
 
-    return {"job_id": job_id}
+    return SuccessEnvelope(data=SubmitJobResponse(job_id=job_id))
 
-@router.get("/status/{job_id}", response_model=JobStatus)
-async def get_job_status(job_id: str, x_api_key: str = Header(...)):
+
+@router.get("/status/{job_id}", response_model=SuccessEnvelope[JobStatus])
+async def get_job_status(job_id: str, x_api_key: str = Header(...)) -> SuccessEnvelope[JobStatus]:
     """Get the status of a sandbox job"""
 
     # Authenticate
@@ -200,20 +307,16 @@ async def get_job_status(job_id: str, x_api_key: str = Header(...)):
         raise HTTPException(status_code=404, detail="job not found")
 
     # Convert bytes to strings and parse
-    job_info = {k.decode('utf-8'): v.decode('utf-8') for k, v in job_data.items()}
+    job_info = _decode_job_data(job_data)
+    await _emit_sandbox_completed(job_id, job_info)
 
-    return JobStatus(
-        job_id=job_id,
-        status=job_info.get("status", "unknown"),
-        created_at=job_info.get("created_at", ""),
-        started_at=job_info.get("started_at"),
-        finished_at=job_info.get("finished_at"),
-        exit_code=int(job_info.get("exit_code")) if job_info.get("exit_code") else None,
-        error=job_info.get("error")
-    )
+    return SuccessEnvelope(data=_job_status(job_id, job_info))
 
-@router.get("/logs/{job_id}")
-async def get_job_logs(job_id: str, x_api_key: str = Header(...)):
+
+@router.get("/logs/{job_id}", response_model=SuccessEnvelope[JobLogsResponse])
+async def get_job_logs(
+    job_id: str, x_api_key: str = Header(...)
+) -> SuccessEnvelope[JobLogsResponse]:
     """Get logs for a completed sandbox job"""
 
     # Authenticate
@@ -226,10 +329,11 @@ async def get_job_logs(job_id: str, x_api_key: str = Header(...)):
     if not job_data:
         raise HTTPException(status_code=404, detail="job not found")
 
-    job_info = {k.decode('utf-8'): v.decode('utf-8') for k, v in job_data.items()}
+    job_info = _decode_job_data(job_data)
 
     if job_info.get("status") not in ["finished", "failed"]:
         raise HTTPException(status_code=400, detail="job is not completed yet")
+    await _emit_sandbox_completed(job_id, job_info)
 
     # Get job path and read logs
     job_path = job_info.get("path")
@@ -238,17 +342,20 @@ async def get_job_logs(job_id: str, x_api_key: str = Header(...)):
 
     log_file = os.path.join(job_path, "stdout.log")
     if not os.path.exists(log_file):
-        return {"logs": ""}
+        return SuccessEnvelope(data=JobLogsResponse(logs=""))
 
     try:
         with open(log_file, "r") as f:
             logs = f.read()
-        return {"logs": logs}
+        return SuccessEnvelope(data=JobLogsResponse(logs=logs))
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"failed to read logs: {str(e)}")
 
-@router.get("/artifacts/{job_id}")
-async def list_job_artifacts(job_id: str, x_api_key: str = Header(...)):
+
+@router.get("/artifacts/{job_id}", response_model=SuccessEnvelope[ArtifactListResponse])
+async def list_job_artifacts(
+    job_id: str, x_api_key: str = Header(...)
+) -> SuccessEnvelope[ArtifactListResponse]:
     """List artifacts for a completed sandbox job"""
 
     # Authenticate
@@ -261,32 +368,32 @@ async def list_job_artifacts(job_id: str, x_api_key: str = Header(...)):
     if not job_data:
         raise HTTPException(status_code=404, detail="job not found")
 
-    job_info = {k.decode('utf-8'): v.decode('utf-8') for k, v in job_data.items()}
+    job_info = _decode_job_data(job_data)
 
     if job_info.get("status") not in ["finished", "failed"]:
         raise HTTPException(status_code=400, detail="job is not completed yet")
+    await _emit_sandbox_completed(job_id, job_info)
 
     # Use artifact service to list artifacts with presigned URLs
     artifacts = await artifact_service.list_job_artifacts(job_id)
 
     # Convert to API format
-    api_artifacts = []
+    api_artifacts: list[ArtifactInfo] = []
     for artifact in artifacts:
-        api_artifacts.append(ArtifactInfo(
-            name=artifact.get("filename", ""),
-            size=int(artifact.get("size_bytes", 0)),
-            url=artifact.get("url", ""),
-            created_at=artifact.get("uploaded_at", "")
-        ))
+        api_artifacts.append(
+            ArtifactInfo(
+                name=artifact.get("filename", ""),
+                size=int(artifact.get("size_bytes", 0)),
+                url=artifact.get("url", ""),
+                created_at=artifact.get("uploaded_at", ""),
+            )
+        )
 
-    return {"artifacts": api_artifacts}
+    return SuccessEnvelope(data=ArtifactListResponse(artifacts=api_artifacts))
+
 
 @router.get("/artifacts/{job_id}/download/{filename}")
-async def download_artifact(
-    job_id: str,
-    filename: str,
-    x_api_key: str = Header(...)
-):
+async def download_artifact(job_id: str, filename: str, x_api_key: str = Header(...)) -> Any:
     """Download a specific artifact file via presigned URL"""
 
     # Authenticate
@@ -307,16 +414,22 @@ async def download_artifact(
     if not s3_key:
         raise HTTPException(status_code=404, detail="artifact storage key not found")
 
-    presigned_url = artifact_service.generate_presigned_url(s3_key, expiration_seconds=300)  # 5 minutes
+    presigned_url = artifact_service.generate_presigned_url(
+        s3_key, expiration_seconds=300
+    )  # 5 minutes
     if not presigned_url:
         raise HTTPException(status_code=500, detail="failed to generate download URL")
 
     # Redirect to presigned URL
     from fastapi.responses import RedirectResponse
+
     return RedirectResponse(url=presigned_url, status_code=302)
 
-@router.post("/cancel/{job_id}")
-async def cancel_job(job_id: str, x_api_key: str = Header(...)):
+
+@router.post("/cancel/{job_id}", response_model=SuccessEnvelope[CancelJobResponse])
+async def cancel_job(
+    job_id: str, x_api_key: str = Header(...)
+) -> SuccessEnvelope[CancelJobResponse]:
     """Cancel a running sandbox job"""
 
     # Authenticate
@@ -329,32 +442,64 @@ async def cancel_job(job_id: str, x_api_key: str = Header(...)):
     if not job_data:
         raise HTTPException(status_code=404, detail="job not found")
 
-    job_info = {k.decode('utf-8'): v.decode('utf-8') for k, v in job_data.items()}
+    job_info = _decode_job_data(job_data)
 
     if job_info.get("status") not in ["queued", "running"]:
         raise HTTPException(status_code=400, detail="job cannot be cancelled")
 
     # Mark job as cancelled
     r.hset(job_key, "status", "cancelled")
-    r.hset(job_key, "finished_at", datetime.utcnow().isoformat())
+    finished_at = datetime.utcnow().isoformat()
+    r.hset(job_key, "finished_at", finished_at)
     r.hset(job_key, "error", "job cancelled by user")
+    job_info.update(
+        {
+            "job_id": job_id,
+            "status": "cancelled",
+            "finished_at": finished_at,
+            "error": "job cancelled by user",
+        }
+    )
 
     # Record cancellation metrics
     record_job_cancelled(job_id)
 
-    # TODO: If running in container, kill the container
+    # Kill the container if it's running
+    container_id = job_info.get("container_id")
+    if container_id:
+        import shutil
+        import subprocess
 
-    return {"message": "job cancelled successfully"}
+        if shutil.which("docker"):
+            try:
+                subprocess.run(
+                    ["docker", "kill", container_id],
+                    capture_output=True,
+                    timeout=10,
+                )
+            except Exception as e:
+                logger.warning("failed_to_kill_container", container_id=container_id, error=str(e))
 
-@router.get("/health/status")
-async def sandbox_health():
+    await _emit_sandbox_completed(job_id, job_info)
+
+    return SuccessEnvelope(data=CancelJobResponse(message="job cancelled successfully"))
+
+
+@router.get("/health/status", response_model=SuccessEnvelope[SandboxHealthResponse])
+async def sandbox_health() -> SuccessEnvelope[SandboxHealthResponse]:
     """Get sandbox service health status"""
 
     if not SANDBOX_ENABLED:
-        return {
-            "status": "disabled",
-            "message": "sandbox service is disabled"
-        }
+        return SuccessEnvelope(
+            data=SandboxHealthResponse(
+                status="disabled",
+                message="sandbox service is disabled",
+                redis_connected=False,
+                image_configured=bool(SANDBOX_IMAGE),
+                queue_depth=0,
+                enabled=False,
+            )
+        )
 
     # Check Redis connectivity
     redis_ok = False
@@ -389,34 +534,33 @@ async def sandbox_health():
     else:
         status = "unhealthy"
 
-    response = {
-        "status": status,
-        "redis_connected": redis_ok,
-        "image_configured": image_configured,
-        "queue_depth": queue_size,
-        "enabled": SANDBOX_ENABLED
-    }
-    
-    # Include error detail if Redis is down
-    if not redis_ok and redis_error_detail:
-        response["redis_error"] = redis_error_detail
-    
-    return response
+    return SuccessEnvelope(
+        data=SandboxHealthResponse(
+            status=status,
+            redis_connected=redis_ok,
+            image_configured=image_configured,
+            queue_depth=queue_size,
+            enabled=SANDBOX_ENABLED,
+            redis_error=redis_error_detail,
+        )
+    )
 
-@router.post("/run", response_model=Dict[str, str])
+
+@router.post("/run", response_model=SuccessEnvelope[SubmitJobResponse])
 async def run_sandbox_code(
     req: SubmitJobRequest,
     x_api_key: str = Header(...),
-):
+) -> SuccessEnvelope[SubmitJobResponse]:
     """Alias for /submit - Execute code in sandbox"""
     return await submit_job(req, x_api_key)
 
-@router.get("/jobs")
+
+@router.get("/jobs", response_model=SuccessEnvelope[SandboxJobsResponse])
 async def list_sandbox_jobs(
     x_api_key: str = Header(default=""),
     status: Optional[str] = None,
     limit: int = 100,
-):
+) -> SuccessEnvelope[SandboxJobsResponse]:
     """Get list of sandbox jobs from Redis."""
     if not SANDBOX_ENABLED:
         raise HTTPException(status_code=503, detail="sandbox service is disabled")
@@ -426,52 +570,47 @@ async def list_sandbox_jobs(
         if os.getenv("ENVIRONMENT", "development") != "development":
             raise HTTPException(status_code=401, detail="Unauthorized")
 
-    jobs = []
+    jobs: list[SandboxJobSummary] = []
     try:
         for key in r.scan_iter("sandbox:job:*"):
-            raw = r.hgetall(key)
+            redis_key = key.decode("utf-8") if isinstance(key, bytes) else key
+            raw = r.hgetall(redis_key)
             if not raw:
                 continue
-            job_info = {k.decode("utf-8"): v.decode("utf-8") for k, v in raw.items()}
+            job_info = _decode_job_data(raw)
             if status and job_info.get("status") != status:
                 continue
-            jobs.append({
-                "job_id": job_info.get("job_id", ""),
-                "status": job_info.get("status", "unknown"),
-                "language": job_info.get("language", ""),
-                "created_at": job_info.get("created_at", ""),
-                "started_at": job_info.get("started_at"),
-                "finished_at": job_info.get("finished_at"),
-                "exit_code": int(job_info["exit_code"]) if job_info.get("exit_code") else None,
-                "error": job_info.get("error"),
-            })
+            await _emit_sandbox_completed(job_info.get("job_id", ""), job_info)
+            jobs.append(_job_summary(job_info))
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"failed to list jobs: {str(e)}")
 
     # Sort by created_at descending, apply limit
-    jobs.sort(key=lambda j: j["created_at"], reverse=True)
+    jobs.sort(key=lambda job: job.created_at, reverse=True)
     jobs = jobs[:limit]
 
-    return {"jobs": jobs, "total": len(jobs)}
+    return SuccessEnvelope(data=SandboxJobsResponse(jobs=jobs, total=len(jobs)))
 
-@router.get("/jobs/{job_id}/logs")
+
+@router.get("/jobs/{job_id}/logs", response_model=SuccessEnvelope[JobLogsResponse])
 async def get_job_logs_alias(
     job_id: str,
     x_api_key: str = Header(default=""),
-):
+) -> SuccessEnvelope[JobLogsResponse]:
     """Alias for /logs/{job_id} - Get job execution logs"""
     if not SANDBOX_ENABLED:
         raise HTTPException(status_code=503, detail="sandbox service is disabled")
-    
+
     # Basic auth check if API key provided
     if x_api_key and x_api_key != API_KEY:
         if os.getenv("ENVIRONMENT", "development") != "development":
             raise HTTPException(status_code=401, detail="Unauthorized")
-    
+
     # Call the existing logs implementation with proper auth
     return await get_job_logs(job_id, x_api_key)
 
+
 @router.get("/metrics")
-async def sandbox_metrics():
+async def sandbox_metrics() -> Any:
     """Get Prometheus metrics for sandbox operations"""
     return get_metrics_endpoint()

@@ -6,7 +6,6 @@ for caching, session storage, and rate limiting in production.
 """
 
 import os
-from typing import Optional
 from redis.asyncio import Redis
 from redis.exceptions import ConnectionError, TimeoutError
 
@@ -26,15 +25,11 @@ class RedisConfig:
         self.max_connections = int(os.getenv("REDIS_MAX_CONNECTIONS", 50))
         self.socket_timeout = float(os.getenv("REDIS_SOCKET_TIMEOUT", 5.0))
         self.socket_connect_timeout = float(os.getenv("REDIS_CONNECT_TIMEOUT", 5.0))
-        self.retry_on_timeout = (
-            os.getenv("REDIS_RETRY_ON_TIMEOUT", "true").lower() == "true"
-        )
+        self.retry_on_timeout = os.getenv("REDIS_RETRY_ON_TIMEOUT", "true").lower() == "true"
 
         # Production settings
         self.health_check_interval = int(os.getenv("REDIS_HEALTH_CHECK_INTERVAL", 30))
-        self.socket_keepalive = (
-            os.getenv("REDIS_SOCKET_KEEPALIVE", "true").lower() == "true"
-        )
+        self.socket_keepalive = os.getenv("REDIS_SOCKET_KEEPALIVE", "true").lower() == "true"
         self.socket_keepalive_options = {}
 
         # Cache settings

@@ -4,10 +4,10 @@ Performance optimizations for Goblin Assistant API
 
 import time
 import asyncio
-from typing import Dict, Any, Optional
+from typing import Dict
 from functools import wraps
 import structlog
-from fastapi import Request, Response
+from fastapi import Request
 from starlette.responses import Response as StarletteResponse
 
 # Configure logging

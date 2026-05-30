@@ -13,10 +13,8 @@ async def test_parse_orchestration_success(monkeypatch):
             self.estimated_duration = 0
             self.complexity = "low"
 
-
     def fake_parse(text, default):
         return DummyPlan()
-
 
     monkeypatch.setattr("api.parse_router.parse_natural_language", fake_parse)
 
@@ -34,7 +32,6 @@ async def test_parse_orchestration_failure(monkeypatch):
     # Arrange: make parser raise
     def bad_parse(text, default):
         raise RuntimeError("boom")
-
 
     monkeypatch.setattr("api.parse_router.parse_natural_language", bad_parse)
 

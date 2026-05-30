@@ -7,8 +7,9 @@ This file is the canonical task map for coding agents and developers.
 - Frontend features/pages/components: `apps/web/src`
 - Next API proxy routes: `apps/web/pages/api`
 - Backend API routes/services/providers: `apps/api/src/api`
-- Shared contracts/types: `packages/shared`
-- Infra/deploy scripts: `scripts`, `.github/workflows`, `docker-compose.yml`, `render.yaml`
+- Shared contracts/types: `packages/*` (use `packages/shared` for cross-app contracts)
+- Infra/deploy/runtime scripts: `scripts`, `.github/workflows`, `docker-compose.yml`, `render.yaml`
+- Non-runtime repo tooling: `tooling/*` (`codemods`, `generators`, `automation`, `quality`)
 
 ## Where To Run
 
@@ -19,6 +20,8 @@ This file is the canonical task map for coding agents and developers.
 - Web tests: `make test-web`
 - API tests: `make test-api`
 - E2E tests: `make test-e2e`
+- Test strategy buckets: `make test-integration`, `make test-contract`, `make test-performance`
+- SDK generation: `make sdk-generate` / `make sdk-check`
 
 ## Where To Verify
 
@@ -29,8 +32,9 @@ This file is the canonical task map for coding agents and developers.
 ## Rules Of Thumb
 
 - Keep app-local code inside its owning app directory.
-- Put cross-app contracts in `packages/shared`.
+- Put cross-app code in `packages/*` and keep contracts/types in `packages/shared`.
+- Do not create root-level `src/`; shared code must live under `packages/*`.
 - Prefer root Makefile and root package scripts for reproducible command entrypoints.
-- Follow `docs/PURE_FUNCTIONS_AND_NAMING_POLICY.md` for pure-by-default side-effect boundaries and intent naming.
-- Follow `docs/API_AND_FRONTEND_STANDARDS.md` for orchestration-ready interfaces/events/contracts/observability.
-- Document architecture and operational assumptions in ADRs/runbooks rather than trivial code commentary.
+- Follow `docs/architecture/PURE_FUNCTIONS_AND_NAMING_POLICY.md` for pure-by-default side-effect boundaries and intent naming.
+- Follow `docs/architecture/API_AND_FRONTEND_STANDARDS.md` for orchestration-ready interfaces/events/contracts/observability.
+- Document architecture and operational assumptions in `docs/decisions/` and `docs/operations/` rather than trivial code commentary.

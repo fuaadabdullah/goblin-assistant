@@ -1,9 +1,5 @@
 import { renderHook } from '@testing-library/react';
-import {
-  useKeyboardShortcuts,
-  formatShortcut,
-  SHORTCUTS,
-} from '../useKeyboardShortcuts';
+import { useKeyboardShortcuts, formatShortcut, SHORTCUTS } from '../useKeyboardShortcuts';
 
 describe('useKeyboardShortcuts', () => {
   it('should format keyboard shortcuts correctly', () => {

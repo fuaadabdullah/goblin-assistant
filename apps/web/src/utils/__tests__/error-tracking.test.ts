@@ -57,16 +57,14 @@ describe('Error Tracking', () => {
 
     it('should rethrow errors from the operation', async () => {
       const mockFn = jest.fn().mockRejectedValue(new Error('fail'));
-      await expect(
-        withErrorTracking(mockFn, { operation: 'test-op' }),
-      ).rejects.toThrow('fail');
+      await expect(withErrorTracking(mockFn, { operation: 'test-op' })).rejects.toThrow('fail');
     });
 
     it('should wrap non-Error throws', async () => {
       const mockFn = jest.fn().mockRejectedValue('string error');
-      await expect(
-        withErrorTracking(mockFn, { operation: 'test-op' }),
-      ).rejects.toThrow('Operation failed');
+      await expect(withErrorTracking(mockFn, { operation: 'test-op' })).rejects.toThrow(
+        'Operation failed'
+      );
     });
   });
 
@@ -88,7 +86,9 @@ describe('Error Tracking', () => {
     it('should track LLM operation successfully', async () => {
       const mockFn = jest.fn().mockResolvedValue({ tokens: 100 });
       const result = await trackLLMOperation(mockFn, {
-        provider: 'openai', model: 'gpt-4', operation: 'chat',
+        provider: 'openai',
+        model: 'gpt-4',
+        operation: 'chat',
       });
       expect(result).toEqual({ tokens: 100 });
     });
@@ -97,8 +97,10 @@ describe('Error Tracking', () => {
       const mockFn = jest.fn().mockRejectedValue(new Error('LLM unavailable'));
       await expect(
         trackLLMOperation(mockFn, {
-          provider: 'openai', model: 'gpt-4', operation: 'chat',
-        }),
+          provider: 'openai',
+          model: 'gpt-4',
+          operation: 'chat',
+        })
       ).rejects.toThrow();
     });
   });
@@ -113,31 +115,33 @@ describe('Error Tracking', () => {
 
   describe('trackUserAction', () => {
     it('should log user actions', () => {
-      expect(() => { trackUserAction('click_send'); }).not.toThrow();
+      expect(() => {
+        trackUserAction('click_send');
+      }).not.toThrow();
     });
   });
 
   describe('trackPerformance', () => {
     it('should log performance metrics', () => {
-      expect(() => { trackPerformance('ttfb', 250); }).not.toThrow();
+      expect(() => {
+        trackPerformance('ttfb', 250);
+      }).not.toThrow();
     });
   });
 
   describe('logComponentError', () => {
     it('should log component errors', () => {
       expect(() => {
-        logComponentError(
-          new Error('render failed'),
-          { componentStack: '<App>' },
-          'TestComponent',
-        );
+        logComponentError(new Error('render failed'), { componentStack: '<App>' }, 'TestComponent');
       }).not.toThrow();
     });
   });
 
   describe('setupGlobalErrorTracking', () => {
     it('should not throw when called', () => {
-      expect(() => { setupGlobalErrorTracking(); }).not.toThrow();
+      expect(() => {
+        setupGlobalErrorTracking();
+      }).not.toThrow();
     });
   });
 });

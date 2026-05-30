@@ -10,7 +10,6 @@ Tests:
 """
 
 import pytest
-from datetime import datetime, timedelta
 
 # Import our privacy modules
 from api.services.sanitization import (

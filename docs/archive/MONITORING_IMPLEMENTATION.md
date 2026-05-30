@@ -175,7 +175,7 @@ export CORS_ORIGINS="https://yourdomain.com,https://www.yourdomain.com"
 - **Prometheus + Grafana**:
   - Configure Prometheus to scrape `/metrics` endpoint
   - Create Grafana dashboards for visualization
-  - Set up alerting rules (see `docs/runbooks/PRODUCTION_MONITORING.md`)
+  - Set up alerting rules (see `docs/operations/PRODUCTION_MONITORING.md`)
 
 - **Log Aggregation**:
   - Send JSON logs to ELK Stack, Datadog, or CloudWatch
@@ -195,7 +195,7 @@ The in-memory `RateLimitMiddleware` is convenient for development but unsuitable
 - Use a library like `limits`, `slowapi`, `starlette-limiter`, or a custom Redis client implementing sliding window counters. Integrate with request identity (API key or JWT subject) instead of only IP where appropriate.
 - Set per-key or per-tier limits (eg. `tier: free` vs `tier: paid`) and enforce both global and endpoint-specific limits (chat/completion, debug, auth).
 - Add Redis TLS configuration and authentication in `.env.production` and configure Redis with persistence/backup strategies.
-- Update `docs/runbooks/DEPLOYMENT_CHECKLIST.md` to mark rate limiter migration as a requirement for production.
+- Update `docs/operations/DEPLOYMENT_CHECKLIST.md` to mark rate limiter migration as a requirement for production.
 
 Example approach:
 
@@ -220,7 +220,7 @@ Example approach:
 
 Full documentation available in:
 
-- `docs/runbooks/PRODUCTION_MONITORING.md` - Complete setup guide
+- `docs/operations/PRODUCTION_MONITORING.md` - Complete setup guide
 - `backend/.env.example` - Environment configuration
 - Inline code comments in middleware files
 

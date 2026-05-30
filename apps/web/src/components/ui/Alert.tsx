@@ -59,11 +59,11 @@ export default function Alert({
       role="alert"
       aria-live={variant === 'danger' ? 'assertive' : 'polite'}
     >
-      <span className="flex-shrink-0 text-lg" aria-hidden="true">{displayIcon}</span>
+      <span className="flex-shrink-0 text-lg" aria-hidden="true">
+        {displayIcon}
+      </span>
       <div className="flex-1">
-        {title && (
-          <h3 className="font-semibold text-sm mb-1">{title}</h3>
-        )}
+        {title && <h3 className="font-semibold text-sm mb-1">{title}</h3>}
         <div className="text-sm text-text">{message}</div>
       </div>
       {dismissible && onDismiss && (

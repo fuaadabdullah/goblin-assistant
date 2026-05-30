@@ -2,9 +2,14 @@ import { render, screen, fireEvent } from '@testing-library/react';
 import '@testing-library/jest-dom';
 
 jest.mock('@/components/ui', () => ({
-  Button: ({ children, ...props }: { children: React.ReactNode; onClick?: () => void; disabled?: boolean }) => (
-    <button {...props}>{children}</button>
-  ),
+  Button: ({
+    children,
+    ...props
+  }: {
+    children: React.ReactNode;
+    onClick?: () => void;
+    disabled?: boolean;
+  }) => <button {...props}>{children}</button>,
 }));
 jest.mock('@/components/LoadingSkeleton', () => ({
   ProviderCardSkeleton: () => <div data-testid="skeleton" />,
@@ -13,8 +18,24 @@ jest.mock('@/components/LoadingSkeleton', () => ({
 import ProviderSidebar from '../ProviderSidebar';
 
 const mockProviders = [
-  { id: 'p1', name: 'openai', enabled: true, configured: true, priority: 1, base_url: '', models: ['gpt-4'] },
-  { id: 'p2', name: 'ollama', enabled: false, configured: false, priority: 2, base_url: '', models: [] },
+  {
+    id: 'p1',
+    name: 'openai',
+    enabled: true,
+    configured: true,
+    priority: 1,
+    base_url: '',
+    models: ['gpt-4'],
+  },
+  {
+    id: 'p2',
+    name: 'ollama',
+    enabled: false,
+    configured: false,
+    priority: 2,
+    base_url: '',
+    models: [],
+  },
 ];
 
 describe('ProviderSidebar', () => {

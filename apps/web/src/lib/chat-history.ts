@@ -5,11 +5,15 @@ import { devError, devWarn } from '../utils/dev-log';
 export const CHAT_THREADS_STORAGE_KEY = 'goblin_chat_threads_v1';
 export const CHAT_MESSAGES_STORAGE_PREFIX = 'goblin_chat_messages_v1';
 const CHAT_PRELOAD_STORAGE_KEY = 'goblin_preload_chat_v1';
+const CHAT_MIGRATION_META_STORAGE_KEY = 'goblin_chat_migration_meta_v1';
+
+export interface ChatMigrationMeta {
+  migrationCompleted: boolean;
+  completedAt?: string;
+}
 
 export const sortChatThreads = (threads: ChatThread[]) =>
-  [...threads].sort(
-    (a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime(),
-  );
+  [...threads].sort((a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime());
 
 export const buildThreadKey = (source: ChatThreadSource, conversationId: string) =>
   `${source}:${conversationId}`;
@@ -57,9 +61,9 @@ export const readChatThreads = (): ChatThread[] => {
     if (!Array.isArray(parsed)) return [];
     return sortChatThreads(
       parsed
-        .map(item => normalizeStoredThread(item))
+        .map((item) => normalizeStoredThread(item))
         .filter((thread): thread is ChatThread => Boolean(thread))
-        .filter(thread => thread.source === 'legacy-local'),
+        .filter((thread) => thread.source === 'legacy-local')
     );
   } catch (error) {
     devWarn('Failed to read chat threads from storage:', error);
@@ -70,28 +74,19 @@ export const readChatThreads = (): ChatThread[] => {
 export const writeChatThreads = (threads: ChatThread[]): void => {
   if (typeof window === 'undefined') return;
 
-  const legacyThreads = threads.filter(thread => thread.source === 'legacy-local');
+  const legacyThreads = threads.filter((thread) => thread.source === 'legacy-local');
   try {
-    window.localStorage.setItem(
-      CHAT_THREADS_STORAGE_KEY,
-      JSON.stringify(legacyThreads),
-    );
+    window.localStorage.setItem(CHAT_THREADS_STORAGE_KEY, JSON.stringify(legacyThreads));
   } catch (error) {
     if (error instanceof DOMException && error.name === 'QuotaExceededError') {
       devError('Storage quota exceeded. Attempting to clear old data...');
       // Try to recover by keeping only the most recent threads
       try {
         const recentThreads = legacyThreads.slice(0, 10);
-        window.localStorage.setItem(
-          CHAT_THREADS_STORAGE_KEY,
-          JSON.stringify(recentThreads),
-        );
+        window.localStorage.setItem(CHAT_THREADS_STORAGE_KEY, JSON.stringify(recentThreads));
         devWarn('Reduced threads to 10 most recent to fit storage quota');
       } catch (retryError) {
-        devError(
-          'Failed to persist even after reducing threads:',
-          retryError,
-        );
+        devError('Failed to persist even after reducing threads:', retryError);
       }
     } else {
       devWarn('Failed to persist chat threads:', error);
@@ -99,19 +94,69 @@ export const writeChatThreads = (threads: ChatThread[]): void => {
   }
 };
 
+export const readChatMigrationMeta = (): ChatMigrationMeta => {
+  if (typeof window === 'undefined') {
+    return { migrationCompleted: false };
+  }
+
+  try {
+    const raw = window.localStorage.getItem(CHAT_MIGRATION_META_STORAGE_KEY);
+    if (!raw) return { migrationCompleted: false };
+    const parsed = JSON.parse(raw) as Partial<ChatMigrationMeta> | null;
+    if (!parsed || typeof parsed !== 'object') {
+      return { migrationCompleted: false };
+    }
+
+    return {
+      migrationCompleted: parsed.migrationCompleted === true,
+      completedAt:
+        typeof parsed.completedAt === 'string' && parsed.completedAt
+          ? parsed.completedAt
+          : undefined,
+    };
+  } catch (error) {
+    devWarn('Failed to read chat migration metadata:', error);
+    return { migrationCompleted: false };
+  }
+};
+
+export const markChatMigrationCompleted = (): ChatMigrationMeta => {
+  const nextMeta: ChatMigrationMeta = {
+    migrationCompleted: true,
+    completedAt: new Date().toISOString(),
+  };
+
+  if (typeof window === 'undefined') {
+    return nextMeta;
+  }
+
+  try {
+    window.localStorage.setItem(CHAT_MIGRATION_META_STORAGE_KEY, JSON.stringify(nextMeta));
+  } catch (error) {
+    devWarn('Failed to persist chat migration metadata:', error);
+  }
+
+  return nextMeta;
+};
+
+export const resetChatMigrationMeta = (): void => {
+  if (typeof window === 'undefined') return;
+  try {
+    window.localStorage.removeItem(CHAT_MIGRATION_META_STORAGE_KEY);
+  } catch (error) {
+    devWarn('Failed to reset chat migration metadata:', error);
+  }
+};
+
 export const removeChatThread = (threadId: string): void => {
   if (typeof window === 'undefined') return;
-  const next = readChatThreads().filter(thread => thread.id !== threadId);
+  const next = readChatThreads().filter((thread) => thread.id !== threadId);
   writeChatThreads(next);
 };
 
-const messagesKey = (conversationId: string) =>
-  `${CHAT_MESSAGES_STORAGE_PREFIX}:${conversationId}`;
+const messagesKey = (conversationId: string) => `${CHAT_MESSAGES_STORAGE_PREFIX}:${conversationId}`;
 
-const normalizeStoredMessage = (
-  value: unknown,
-  fallbackIndex: number,
-): ChatMessage | null => {
+const normalizeStoredMessage = (value: unknown, fallbackIndex: number): ChatMessage | null => {
   if (!value || typeof value !== 'object') return null;
   const raw = value as Partial<ChatMessage> & {
     role?: unknown;
@@ -124,20 +169,11 @@ const normalizeStoredMessage = (
 
   const nowIso = new Date().toISOString();
   return {
-    id:
-      typeof raw.id === 'string' && raw.id
-        ? raw.id
-        : `${generateMessageId()}-${fallbackIndex}`,
-    createdAt:
-      typeof raw.createdAt === 'string' && raw.createdAt
-        ? raw.createdAt
-        : nowIso,
+    id: typeof raw.id === 'string' && raw.id ? raw.id : `${generateMessageId()}-${fallbackIndex}`,
+    createdAt: typeof raw.createdAt === 'string' && raw.createdAt ? raw.createdAt : nowIso,
     role: role as ChatMessage['role'],
     content,
-    meta:
-      raw.meta && typeof raw.meta === 'object'
-        ? (raw.meta as ChatMessage['meta'])
-        : undefined,
+    meta: raw.meta && typeof raw.meta === 'object' ? (raw.meta as ChatMessage['meta']) : undefined,
   };
 };
 
@@ -157,34 +193,20 @@ export const readChatMessages = (conversationId: string): ChatMessage[] => {
   }
 };
 
-export const writeChatMessages = (
-  conversationId: string,
-  nextMessages: ChatMessage[],
-): void => {
+export const writeChatMessages = (conversationId: string, nextMessages: ChatMessage[]): void => {
   if (typeof window === 'undefined') return;
   try {
-    window.localStorage.setItem(
-      messagesKey(conversationId),
-      JSON.stringify(nextMessages),
-    );
+    window.localStorage.setItem(messagesKey(conversationId), JSON.stringify(nextMessages));
   } catch (error) {
     if (error instanceof DOMException && error.name === 'QuotaExceededError') {
-      devError(
-        'Storage quota exceeded for messages. Attempting to clear old messages...',
-      );
+      devError('Storage quota exceeded for messages. Attempting to clear old messages...');
       // Try to recover by keeping only the most recent messages
       try {
         const recentMessages = nextMessages.slice(-50); // Keep last 50 messages
-        window.localStorage.setItem(
-          messagesKey(conversationId),
-          JSON.stringify(recentMessages),
-        );
+        window.localStorage.setItem(messagesKey(conversationId), JSON.stringify(recentMessages));
         devWarn('Reduced messages to last 50 to fit storage quota');
       } catch (retryError) {
-        devError(
-          'Failed to persist even after reducing messages:',
-          retryError,
-        );
+        devError('Failed to persist even after reducing messages:', retryError);
       }
     } else {
       devWarn('Failed to persist chat messages:', error);
@@ -202,7 +224,7 @@ export const removeChatMessages = (conversationId: string): void => {
 };
 
 export const preloadRecentChat = (
-  limit = 5,
+  limit = 5
 ): { threadId: string; messages: ChatMessage[] } | null => {
   if (typeof window === 'undefined') return null;
   const threads = readChatThreads();
@@ -215,10 +237,7 @@ export const preloadRecentChat = (
     timestamp: new Date().toISOString(),
   };
   try {
-    window.sessionStorage.setItem(
-      CHAT_PRELOAD_STORAGE_KEY,
-      JSON.stringify(payload),
-    );
+    window.sessionStorage.setItem(CHAT_PRELOAD_STORAGE_KEY, JSON.stringify(payload));
   } catch (error) {
     devWarn('Failed to store preloaded chat messages:', error);
   }

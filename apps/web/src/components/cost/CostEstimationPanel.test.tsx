@@ -21,10 +21,14 @@ jest.mock('../raptor/RaptorMiniPanel', () => ({
   default: () => <div data-testid="raptor-mini-panel" />,
 }));
 
-const mockedUseCostEstimation = require('../../hooks/useCostEstimation').useCostEstimation as jest.Mock;
-const mockedUseCostStreaming = require('../../hooks/useCostStreaming').useCostStreaming as jest.Mock;
-const mockedUseCostClipboard = require('../../hooks/useCostClipboard').useCostClipboard as jest.Mock;
-const CostEstimationPanel = require('./CostEstimationPanel').default as typeof import('./CostEstimationPanel').default;
+const mockedUseCostEstimation = require('../../hooks/useCostEstimation')
+  .useCostEstimation as jest.Mock;
+const mockedUseCostStreaming = require('../../hooks/useCostStreaming')
+  .useCostStreaming as jest.Mock;
+const mockedUseCostClipboard = require('../../hooks/useCostClipboard')
+  .useCostClipboard as jest.Mock;
+const CostEstimationPanel = require('./CostEstimationPanel')
+  .default as typeof import('./CostEstimationPanel').default;
 
 describe('CostEstimationPanel', () => {
   beforeEach(() => {

@@ -22,9 +22,7 @@ class TestSemanticChatRouterChat:
             json={"message": "hello"},
         )
 
-        assert response.status_code in [
-            200, 400, 401, 403, 404, 422, 500
-        ]
+        assert response.status_code in [200, 400, 401, 403, 404, 422, 500]
 
     def test_chat_requires_message(self):
         """Test chat requires message parameter"""
@@ -37,26 +35,18 @@ class TestSemanticChatRouterChat:
 
     def test_chat_with_context(self):
         """Test chat with conversation context"""
-        with patch(
-            "api.semantic_chat_router.semantic_chat"
-        ) as mock_chat:
-            mock_chat.return_value = AsyncMock()(
-                return_value={"response": "hello"}
-            )
+        with patch("api.semantic_chat_router.semantic_chat") as mock_chat:
+            mock_chat.return_value = AsyncMock()(return_value={"response": "hello"})
 
             response = client.post(
                 "/semantic_chat/chat",
                 json={
                     "message": "hello",
-                    "context": [
-                        {"role": "user", "content": "hi"}
-                    ],
+                    "context": [{"role": "user", "content": "hi"}],
                 },
             )
 
-            assert response.status_code in [
-                200, 400, 422, 401, 403, 404, 500
-            ]
+            assert response.status_code in [200, 400, 422, 401, 403, 404, 500]
 
     def test_chat_with_system_prompt(self):
         """Test chat with system prompt"""
@@ -68,9 +58,7 @@ class TestSemanticChatRouterChat:
             },
         )
 
-        assert response.status_code in [
-            200, 400, 422, 401, 403, 404, 500
-        ]
+        assert response.status_code in [200, 400, 422, 401, 403, 404, 500]
 
     def test_chat_streaming(self):
         """Test streaming chat response"""
@@ -80,9 +68,7 @@ class TestSemanticChatRouterChat:
         )
 
         # Should return streaming response or error
-        assert response.status_code in [
-            200, 400, 422, 401, 403, 404, 500
-        ]
+        assert response.status_code in [200, 400, 422, 401, 403, 404, 500]
 
 
 class TestSemanticChatRouterSearch:
@@ -95,9 +81,7 @@ class TestSemanticChatRouterSearch:
             params={"query": "hello", "limit": 5},
         )
 
-        assert response.status_code in [
-            200, 400, 401, 403, 404, 422
-        ]
+        assert response.status_code in [200, 400, 401, 403, 404, 422]
 
     def test_search_with_filters(self):
         """Test search with filters"""
@@ -110,9 +94,7 @@ class TestSemanticChatRouterSearch:
             },
         )
 
-        assert response.status_code in [
-            200, 400, 401, 403, 404, 422
-        ]
+        assert response.status_code in [200, 400, 401, 403, 404, 422]
 
     def test_search_relevance_ranking(self):
         """Test results are ranked by relevance"""
@@ -125,10 +107,7 @@ class TestSemanticChatRouterSearch:
             data = response.json()
             # Results should be ordered by relevance
             if isinstance(data, list) and len(data) > 1:
-                assert (
-                    data[0].get("score", 0) >=
-                    data[1].get("score", 0)
-                )
+                assert data[0].get("score", 0) >= data[1].get("score", 0)
 
 
 class TestSemanticChatRouterMemory:
@@ -138,9 +117,7 @@ class TestSemanticChatRouterMemory:
         """Test retrieving from memory"""
         response = client.get("/semantic_chat/memory")
 
-        assert response.status_code in [
-            200, 400, 401, 403, 404, 422
-        ]
+        assert response.status_code in [200, 400, 401, 403, 404, 422]
 
     def test_memory_context_size(self):
         """Test controlling memory context size"""
@@ -152,15 +129,11 @@ class TestSemanticChatRouterMemory:
             },
         )
 
-        assert response.status_code in [
-            200, 400, 422, 401, 403, 404, 500
-        ]
+        assert response.status_code in [200, 400, 422, 401, 403, 404, 500]
 
     def test_memory_summarization(self):
         """Test long memory is summarized"""
-        with patch(
-            "api.semantic_chat_router.summarize_context"
-        ) as mock_summarize:
+        with patch("api.semantic_chat_router.summarize_context") as mock_summarize:
             mock_summarize.return_value = "summary"
 
             response = client.post(
@@ -168,9 +141,7 @@ class TestSemanticChatRouterMemory:
                 json={"message": "hello"},
             )
 
-            assert response.status_code in [
-                200, 400, 422, 401, 403, 404, 500
-            ]
+            assert response.status_code in [200, 400, 422, 401, 403, 404, 500]
 
 
 class TestSemanticChatRouterEmbeddings:
@@ -178,27 +149,19 @@ class TestSemanticChatRouterEmbeddings:
 
     def test_generate_message_embedding(self):
         """Test generating embedding for message"""
-        with patch(
-            "api.semantic_chat_router.embed_service"
-        ) as mock_embed:
-            mock_embed.embed_text = AsyncMock(
-                return_value=[0.1] * 1536
-            )
+        with patch("api.semantic_chat_router.embed_service") as mock_embed:
+            mock_embed.embed_text = AsyncMock(return_value=[0.1] * 1536)
 
             response = client.post(
                 "/semantic_chat/chat",
                 json={"message": "hello"},
             )
 
-            assert response.status_code in [
-                200, 400, 422, 401, 403, 404, 500
-            ]
+            assert response.status_code in [200, 400, 422, 401, 403, 404, 500]
 
     def test_embedding_caching(self):
         """Test embeddings are cached"""
-        with patch(
-            "api.semantic_chat_router.cache_service"
-        ) as mock_cache:
+        with patch("api.semantic_chat_router.cache_service") as mock_cache:
             mock_cache.get = AsyncMock(return_value=[0.1] * 1536)
             mock_cache.set = AsyncMock()
 
@@ -241,12 +204,8 @@ class TestSemanticChatRouterErrors:
 
     def test_timeout_handling(self):
         """Test timeout handling"""
-        with patch(
-            "api.semantic_chat_router.semantic_chat"
-        ) as mock_chat:
-            mock_chat.side_effect = TimeoutError(
-                "Request timeout"
-            )
+        with patch("api.semantic_chat_router.semantic_chat") as mock_chat:
+            mock_chat.side_effect = TimeoutError("Request timeout")
 
             response = client.post(
                 "/semantic_chat/chat",
@@ -254,18 +213,12 @@ class TestSemanticChatRouterErrors:
             )
 
             # Should handle timeout gracefully
-            assert response.status_code in [
-                500, 408, 400, 422, 200, 404
-            ]
+            assert response.status_code in [500, 408, 400, 422, 200, 404]
 
     def test_embedding_error_handling(self):
         """Test embedding service errors"""
-        with patch(
-            "api.semantic_chat_router.embed_service"
-        ) as mock_embed:
-            mock_embed.embed_text = AsyncMock(
-                side_effect=Exception("Embedding error")
-            )
+        with patch("api.semantic_chat_router.embed_service") as mock_embed:
+            mock_embed.embed_text = AsyncMock(side_effect=Exception("Embedding error"))
 
             response = client.post(
                 "/semantic_chat/chat",
@@ -273,9 +226,7 @@ class TestSemanticChatRouterErrors:
             )
 
             # Should handle gracefully
-            assert response.status_code in [
-                500, 400, 422, 200, 404
-            ]
+            assert response.status_code in [500, 400, 422, 200, 404]
 
 
 class TestSemanticChatRouterPerformance:
@@ -283,12 +234,8 @@ class TestSemanticChatRouterPerformance:
 
     def test_batch_embedding_generation(self):
         """Test batch generating embeddings"""
-        with patch(
-            "api.semantic_chat_router.embed_service"
-        ) as mock_embed:
-            mock_embed.embed_batch = AsyncMock(
-                return_value=[[0.1] * 1536] * 5
-            )
+        with patch("api.semantic_chat_router.embed_service") as mock_embed:
+            mock_embed.embed_batch = AsyncMock(return_value=[[0.1] * 1536] * 5)
 
             # Multiple messages should use batch
             response = client.post(
@@ -299,9 +246,7 @@ class TestSemanticChatRouterPerformance:
                 },
             )
 
-            assert response.status_code in [
-                200, 400, 422, 401, 403, 404, 500
-            ]
+            assert response.status_code in [200, 400, 422, 401, 403, 404, 500]
 
     def test_response_streaming(self):
         """Test streaming response to client"""
@@ -311,6 +256,4 @@ class TestSemanticChatRouterPerformance:
         )
 
         # Should support streaming
-        assert response.status_code in [
-            200, 400, 422, 401, 403, 404, 500
-        ]
+        assert response.status_code in [200, 400, 422, 401, 403, 404, 500]

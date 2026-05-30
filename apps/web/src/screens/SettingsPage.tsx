@@ -1,5 +1,15 @@
 import React from 'react';
-import { Bot, Brain, Zap, Search, MessageSquare, Handshake, Wrench, Loader2, Check } from 'lucide-react';
+import {
+  Bot,
+  Brain,
+  Zap,
+  Search,
+  MessageSquare,
+  Handshake,
+  Wrench,
+  Loader2,
+  Check,
+} from 'lucide-react';
 import { useProviderSettings } from '../hooks/api/useSettings';
 import ThemePreview from '../components/ThemePreview';
 import KeyboardShortcutsHelp from '../components/KeyboardShortcutsHelp';
@@ -37,7 +47,12 @@ interface ProviderDisplay {
 }
 
 const SettingsPageContent: React.FC = () => {
-  const { data: providerData, isLoading: providersLoading, error: providersError, refetch } = useProviderSettings();
+  const {
+    data: providerData,
+    isLoading: providersLoading,
+    error: providersError,
+    refetch,
+  } = useProviderSettings();
   const providerCtx = useProvider();
   const { showSuccess, showError } = useToast();
   const [isSaving, setIsSaving] = React.useState(false);
@@ -87,7 +102,7 @@ const SettingsPageContent: React.FC = () => {
   const selectedProvider = providerCtx.selectedProvider || (providers[0]?.name ?? '');
   const selectedModel = providerCtx.selectedModel || '';
   const selectedProviderModels = React.useMemo(() => {
-    const models = providers.find(p => p.name === selectedProvider)?.models;
+    const models = providers.find((p) => p.name === selectedProvider)?.models;
     if (!Array.isArray(models)) {
       return [] as string[];
     }
@@ -110,7 +125,14 @@ const SettingsPageContent: React.FC = () => {
   };
 
   if (loading) {
-    return <PageState variant="loading" title="Loading settings" description="Pulling your providers and preferences." icon={<Loader2 className="h-6 w-6 animate-spin" />} />;
+    return (
+      <PageState
+        variant="loading"
+        title="Loading settings"
+        description="Pulling your providers and preferences."
+        icon={<Loader2 className="h-6 w-6 animate-spin" />}
+      />
+    );
   }
 
   if (providersError) {
@@ -118,7 +140,11 @@ const SettingsPageContent: React.FC = () => {
       <PageState
         variant="error"
         title="Settings unavailable"
-        description={providersError instanceof Error ? providersError.message : 'We could not load your settings.'}
+        description={
+          providersError instanceof Error
+            ? providersError.message
+            : 'We could not load your settings.'
+        }
         actionLabel="Retry"
         onAction={() => {
           void refetch();
@@ -185,7 +211,12 @@ const SettingsPageContent: React.FC = () => {
                 env_var?: string;
                 models?: string[];
               }) => (
-                <Card key={provider.name} variant="default" padding="md" className="hover:shadow-md transition-shadow">
+                <Card
+                  key={provider.name}
+                  variant="default"
+                  padding="md"
+                  className="hover:shadow-md transition-shadow"
+                >
                   {/* Provider Header */}
                   <div className="flex items-center justify-between mb-4">
                     <h3 className="text-lg font-semibold text-text">{provider.name}</h3>
@@ -200,7 +231,9 @@ const SettingsPageContent: React.FC = () => {
                     {provider.name === 'Anthropic' && <Brain className="w-8 h-8 text-primary" />}
                     {provider.name === 'Groq' && <Zap className="w-8 h-8 text-primary" />}
                     {provider.name === 'Google' && <Search className="w-8 h-8 text-primary" />}
-                    {provider.name === 'Cohere' && <MessageSquare className="w-8 h-8 text-primary" />}
+                    {provider.name === 'Cohere' && (
+                      <MessageSquare className="w-8 h-8 text-primary" />
+                    )}
                     {provider.name === 'Together' && <Handshake className="w-8 h-8 text-primary" />}
                     {!['OpenAI', 'Anthropic', 'Groq', 'Google', 'Cohere', 'Together'].includes(
                       provider.name
@@ -233,7 +266,9 @@ const SettingsPageContent: React.FC = () => {
 
                   {/* Status Message */}
                   <div className="mt-4 pt-4 border-t border-border">
-                    <p className={`text-xs ${provider.configured ? 'text-success' : 'text-danger'}`}>
+                    <p
+                      className={`text-xs ${provider.configured ? 'text-success' : 'text-danger'}`}
+                    >
                       {provider.configured
                         ? '✓ API key detected and ready to use'
                         : '✗ API key not found. Configure on backend.'}
@@ -259,18 +294,13 @@ const SettingsPageContent: React.FC = () => {
               >
                 Default Provider
               </label>
-              <Select
-                value={selectedProvider}
-                onValueChange={providerCtx.setSelectedProvider}
-              >
+              <Select value={selectedProvider} onValueChange={providerCtx.setSelectedProvider}>
                 <SelectTrigger id="default-provider" className="w-full">
                   <SelectValue placeholder={providers.length === 0 ? 'auto' : undefined} />
                 </SelectTrigger>
                 <SelectContent>
-                  {providers.length === 0 && (
-                    <SelectItem value="auto">auto</SelectItem>
-                  )}
-                  {providers.map(p => (
+                  {providers.length === 0 && <SelectItem value="auto">auto</SelectItem>}
+                  {providers.map((p) => (
                     <SelectItem key={p.name} value={p.name}>
                       {p.name}
                     </SelectItem>
@@ -282,16 +312,13 @@ const SettingsPageContent: React.FC = () => {
               <label htmlFor="default-model" className="block text-sm font-medium text-text mb-2">
                 Default Model
               </label>
-              <Select
-                value={selectedModel}
-                onValueChange={providerCtx.setSelectedModel}
-              >
+              <Select value={selectedModel} onValueChange={providerCtx.setSelectedModel}>
                 <SelectTrigger id="default-model" className="w-full">
                   <SelectValue placeholder="auto" />
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="auto">auto</SelectItem>
-                  {selectedProviderModels.map(model => (
+                  {selectedProviderModels.map((model) => (
                     <SelectItem key={model} value={model}>
                       {model}
                     </SelectItem>

@@ -7,9 +7,7 @@ interface SearchResultsListProps {
 
 const SearchResultsList = ({ results }: SearchResultsListProps) => (
   <div className="space-y-4">
-    <h2 className="text-xl font-semibold text-text mb-4">
-      Search Results ({results.length})
-    </h2>
+    <h2 className="text-xl font-semibold text-text mb-4">Search Results ({results.length})</h2>
     {results.map((result, index) => (
       <div
         key={result.id}

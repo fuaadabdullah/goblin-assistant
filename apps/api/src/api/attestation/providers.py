@@ -19,18 +19,14 @@ audit_logger = logging.getLogger("attestation.audit")
 class AttestationProvider:
     """Base class for hardware attestation providers."""
 
-    def verify_node(
-        self, node_id: str, attestation_data: Dict[str, Any]
-    ) -> Dict[str, Any]:
+    def verify_node(self, node_id: str, attestation_data: Dict[str, Any]) -> Dict[str, Any]:
         raise NotImplementedError
 
 
 class TPMAttestationProvider(AttestationProvider):
     """TPM 2.0 hardware-backed attestation."""
 
-    def verify_node(
-        self, node_id: str, attestation_data: Dict[str, Any]
-    ) -> Dict[str, Any]:
+    def verify_node(self, node_id: str, attestation_data: Dict[str, Any]) -> Dict[str, Any]:
         try:
             measured_at_str = attestation_data.get("measured_at")
             if measured_at_str:
@@ -102,9 +98,7 @@ class TPMAttestationProvider(AttestationProvider):
             return result
 
         except Exception as e:
-            logger.exception(
-                "tpm_verification_error", extra={"node_id": node_id, "error": str(e)}
-            )
+            logger.exception("tpm_verification_error", extra={"node_id": node_id, "error": str(e)})
             return {
                 "verified": False,
                 "provider": "tpm",
@@ -135,9 +129,7 @@ class GCPShieldedVMProvider(AttestationProvider):
         if compute_v1:
             self.compute_client = compute_v1.InstancesClient()
 
-    def verify_node(
-        self, node_id: str, attestation_data: Dict[str, Any]
-    ) -> Dict[str, Any]:
+    def verify_node(self, node_id: str, attestation_data: Dict[str, Any]) -> Dict[str, Any]:
         if not self.compute_client:
             return {
                 "verified": False,
@@ -195,9 +187,7 @@ class GCPShieldedVMProvider(AttestationProvider):
 class AWSNitroProvider(AttestationProvider):
     """AWS Nitro Enclave attestation."""
 
-    def verify_node(
-        self, node_id: str, attestation_data: Dict[str, Any]
-    ) -> Dict[str, Any]:
+    def verify_node(self, node_id: str, attestation_data: Dict[str, Any]) -> Dict[str, Any]:
         try:
             attestation_doc = attestation_data.get("attestation_document", {})
             measured_at_str = attestation_doc.get("measured_at")

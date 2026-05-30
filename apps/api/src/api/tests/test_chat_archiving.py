@@ -4,7 +4,11 @@ import uuid
 
 import pytest
 
-from api.storage.conversations import Conversation, ConversationMessage, conversation_store
+from api.storage.conversations import (
+    Conversation,
+    ConversationMessage,
+    conversation_store,
+)
 
 
 @pytest.mark.asyncio
@@ -116,9 +120,15 @@ async def test_database_archive_messages_replaces_rows_transactionally():
         user_id="user-db",
         title="DB Archive",
         messages=[
-            ConversationMessage(role="user", content="old-u", timestamp=base - timedelta(minutes=3)),
-            ConversationMessage(role="assistant", content="old-a", timestamp=base - timedelta(minutes=2)),
-            ConversationMessage(role="user", content="new-u", timestamp=base - timedelta(minutes=1)),
+            ConversationMessage(
+                role="user", content="old-u", timestamp=base - timedelta(minutes=3)
+            ),
+            ConversationMessage(
+                role="assistant", content="old-a", timestamp=base - timedelta(minutes=2)
+            ),
+            ConversationMessage(
+                role="user", content="new-u", timestamp=base - timedelta(minutes=1)
+            ),
         ],
     )
     await store.save_conversation(conv)

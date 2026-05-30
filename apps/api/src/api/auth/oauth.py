@@ -1,12 +1,13 @@
 import httpx
+import logging
 from typing import Optional, Dict, Any
 import os
 from dotenv import load_dotenv
 import secrets
-import base64
-import hashlib
 from urllib.parse import urlencode
 from pathlib import Path
+
+logger = logging.getLogger(__name__)
 
 # Load environment variables from the backend directory
 backend_dir = Path(__file__).parent.parent
@@ -15,9 +16,7 @@ load_dotenv(env_file)
 
 GOOGLE_CLIENT_ID = os.getenv("GOOGLE_CLIENT_ID")
 GOOGLE_CLIENT_SECRET = os.getenv("GOOGLE_CLIENT_SECRET")
-GOOGLE_REDIRECT_URI = os.getenv(
-    "GOOGLE_REDIRECT_URI", "http://localhost:3000/auth/google/callback"
-)
+GOOGLE_REDIRECT_URI = os.getenv("GOOGLE_REDIRECT_URI", "http://localhost:3000/auth/google/callback")
 
 
 class GoogleOAuth:
@@ -71,13 +70,14 @@ class GoogleOAuth:
                 if response.status_code == 200:
                     return response.json()
                 else:
-                    # Log the error for debugging
-                    print(
-                        f"Google OAuth error: {response.status_code} - {response.text}"
+                    logger.error(
+                        "Google OAuth error: %s - %s",
+                        response.status_code,
+                        response.text,
                     )
                     return None
         except Exception as e:
-            print(f"Exception during token exchange: {e}")
+            logger.exception("Exception during token exchange: %s", e)
             return None
 
     @staticmethod

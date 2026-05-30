@@ -1,6 +1,5 @@
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel
-from typing import Optional
 import os
 
 router = APIRouter(prefix="/raptor", tags=["raptor"])
@@ -44,9 +43,7 @@ async def raptor_status():
             "config_file": RAPTOR_STATE["config_file"],
         }
     except Exception as e:
-        raise HTTPException(
-            status_code=500, detail=f"Failed to get raptor status: {str(e)}"
-        )
+        raise HTTPException(status_code=500, detail=f"Failed to get raptor status: {str(e)}")
 
 
 @router.post("/logs")
@@ -60,18 +57,14 @@ async def raptor_logs(request: LogsRequest):
                 content = f.read()
                 # Return last max_chars characters
                 log_tail = (
-                    content[-request.max_chars :]
-                    if len(content) > request.max_chars
-                    else content
+                    content[-request.max_chars :] if len(content) > request.max_chars else content
                 )
         else:
             log_tail = "Log file not found. Raptor may not be configured."
 
         return {"log_tail": log_tail}
     except Exception as e:
-        raise HTTPException(
-            status_code=500, detail=f"Failed to read raptor logs: {str(e)}"
-        )
+        raise HTTPException(status_code=500, detail=f"Failed to read raptor logs: {str(e)}")
 
 
 @router.get("/demo/{value}")

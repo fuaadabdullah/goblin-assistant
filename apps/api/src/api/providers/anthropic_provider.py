@@ -194,6 +194,7 @@ class AnthropicProvider(BaseProvider):
         t0 = time.perf_counter()
         try:
             from .base import is_billing_error
+
             async with httpx.AsyncClient(timeout=10) as client:
                 resp = await client.get(
                     f"{self._base_url}/v1/models",

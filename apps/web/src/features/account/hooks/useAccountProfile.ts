@@ -36,7 +36,7 @@ export const useAccountProfile = (user?: AccountUser | null): AccountState => {
   });
 
   const togglePreference = useCallback((key: keyof AccountPreferencesPayload) => {
-    setPreferences(prev => ({ ...prev, [key]: !prev[key] }));
+    setPreferences((prev) => ({ ...prev, [key]: !prev[key] }));
   }, []);
 
   const handleSave = useCallback(

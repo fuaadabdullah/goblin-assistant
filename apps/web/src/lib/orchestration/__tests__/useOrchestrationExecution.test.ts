@@ -52,7 +52,9 @@ describe('useOrchestrationExecution', () => {
   });
 
   it('dispatches RUNNING status on execute', async () => {
-    mockParseOrchestration.mockResolvedValue({ steps: [{ task: 'test', description: 'Test step' }] });
+    mockParseOrchestration.mockResolvedValue({
+      steps: [{ task: 'test', description: 'Test step' }],
+    });
     mockExecuteTaskStreaming.mockResolvedValue({ result: 'ok' });
 
     const { result } = renderHook(() =>
@@ -66,7 +68,9 @@ describe('useOrchestrationExecution', () => {
       await result.current.executeOrchestration('test orchestration', 'code');
     });
 
-    expect(mockDispatch).toHaveBeenCalledWith(expect.objectContaining({ type: expect.stringContaining('RUNNING') }));
+    expect(mockDispatch).toHaveBeenCalledWith(
+      expect.objectContaining({ type: expect.stringContaining('RUNNING') })
+    );
   });
 
   it('calls parseOrchestration with orchestration text', async () => {

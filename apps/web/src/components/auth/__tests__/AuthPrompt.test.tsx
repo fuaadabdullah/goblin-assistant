@@ -1,9 +1,13 @@
 import { render, screen, fireEvent } from '@testing-library/react';
 import '@testing-library/jest-dom';
 
-jest.mock('next/link', () => function MockLink({ children, href }: { children: React.ReactNode; href: string }) {
-  return <a href={href}>{children}</a>;
-});
+jest.mock(
+  'next/link',
+  () =>
+    function MockLink({ children, href }: { children: React.ReactNode; href: string }) {
+      return <a href={href}>{children}</a>;
+    }
+);
 const mockPush = jest.fn();
 jest.mock('next/router', () => ({
   useRouter: () => ({ pathname: '/chat', push: mockPush, query: {} }),
@@ -36,7 +40,9 @@ describe('AuthPrompt', () => {
   it('renders close button when onClose provided', () => {
     const onClose = jest.fn();
     render(<AuthPrompt onClose={onClose} />);
-    const closeBtn = screen.queryByLabelText(/close/i) || screen.queryByRole('button', { name: /close|dismiss|×/i });
+    const closeBtn =
+      screen.queryByLabelText(/close/i) ||
+      screen.queryByRole('button', { name: /close|dismiss|×/i });
     if (closeBtn) {
       fireEvent.click(closeBtn);
       expect(onClose).toHaveBeenCalled();

@@ -46,9 +46,7 @@ async def store_api_key(provider: str, request: ApiKeyRequest):
         save_api_keys(keys)
         return {"message": f"API key stored for {provider}"}
     except Exception as e:
-        raise HTTPException(
-            status_code=500, detail=f"Failed to store API key: {str(e)}"
-        )
+        raise HTTPException(status_code=500, detail=f"Failed to store API key: {str(e)}")
 
 
 @router.get("/{provider}", response_model=ApiKeyResponse)
@@ -59,9 +57,7 @@ async def get_api_key(provider: str):
         key = keys.get(provider)
         return ApiKeyResponse(key=key, provider=provider)
     except Exception as e:
-        raise HTTPException(
-            status_code=500, detail=f"Failed to retrieve API key: {str(e)}"
-        )
+        raise HTTPException(status_code=500, detail=f"Failed to retrieve API key: {str(e)}")
 
 
 @router.delete("/{provider}")
@@ -74,6 +70,4 @@ async def delete_api_key(provider: str):
             save_api_keys(keys)
         return {"message": f"API key deleted for {provider}"}
     except Exception as e:
-        raise HTTPException(
-            status_code=500, detail=f"Failed to delete API key: {str(e)}"
-        )
+        raise HTTPException(status_code=500, detail=f"Failed to delete API key: {str(e)}")

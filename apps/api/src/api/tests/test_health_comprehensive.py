@@ -48,51 +48,56 @@ async def test_health_returns_healthy_when_everything_passes() -> None:
         }
     )
 
-    with patch.object(
-        health,
-        "check_routing_health",
-        new=AsyncMock(return_value={"status": "healthy"}),
-    ), patch.object(
-        health,
-        "check_db_health",
-        new=AsyncMock(return_value={"status": "healthy"}),
-    ), patch.object(
-        health,
-        "check_redis_health",
-        new=AsyncMock(return_value={"status": "healthy"}),
-    ), patch.object(
-        health,
-        "check_api_health",
-        new=AsyncMock(return_value={"status": "healthy"}),
-    ), patch.object(
-        provider_health,
-        "health_monitor",
-        provider_monitor,
-        create=True,
-    ), patch.object(
-        SecurityConfig,
-        "validate_config",
-        return_value=[],
-    ), patch.object(SecurityConfig, "DEBUG", False), patch.object(
-        SecurityConfig,
-        "ALLOWED_ORIGINS",
-        ["https://example.com"],
-        create=True,
+    with (
+        patch.object(
+            health,
+            "check_routing_health",
+            new=AsyncMock(return_value={"status": "healthy"}),
+        ),
+        patch.object(
+            health,
+            "check_db_health",
+            new=AsyncMock(return_value={"status": "healthy"}),
+        ),
+        patch.object(
+            health,
+            "check_redis_health",
+            new=AsyncMock(return_value={"status": "healthy"}),
+        ),
+        patch.object(
+            health,
+            "check_api_health",
+            new=AsyncMock(return_value={"status": "healthy"}),
+        ),
+        patch.object(
+            provider_health,
+            "health_monitor",
+            provider_monitor,
+            create=True,
+        ),
+        patch.object(
+            SecurityConfig,
+            "validate_config",
+            return_value=[],
+        ),
+        patch.object(SecurityConfig, "DEBUG", False),
+        patch.object(
+            SecurityConfig,
+            "ALLOWED_ORIGINS",
+            ["https://example.com"],
+            create=True,
+        ),
     ):
         response = await health.health_check()
 
     assert response.data["status"] == "healthy"
     assert response.data["components"]["providers"]["status"] == "healthy"
-    provider_monitor.get_all_status.assert_called_once_with(
-        include_hidden=False
-    )
+    provider_monitor.get_all_status.assert_called_once_with(include_hidden=False)
 
 
 @pytest.mark.asyncio
 async def test_health_returns_degraded_when_db_fails() -> None:
-    provider_monitor = _provider_health_monitor(
-        {"openai": {"status": "healthy"}}
-    )
+    provider_monitor = _provider_health_monitor({"openai": {"status": "healthy"}})
 
     with ExitStack() as stack:
         stack.enter_context(
@@ -155,9 +160,7 @@ async def test_health_returns_degraded_when_db_fails() -> None:
 
 @pytest.mark.asyncio
 async def test_health_returns_warnings_on_security_issues() -> None:
-    provider_monitor = _provider_health_monitor(
-        {"openai": {"status": "healthy"}}
-    )
+    provider_monitor = _provider_health_monitor({"openai": {"status": "healthy"}})
 
     with ExitStack() as stack:
         stack.enter_context(
@@ -285,6 +288,7 @@ async def test_check_routing_health_success_and_failure() -> None:
 
     assert degraded["status"] == "degraded"
     assert "router exploded" in degraded["error"]
+
 
 # End of health coverage tests.
 HEALTH_TESTS_READY = True

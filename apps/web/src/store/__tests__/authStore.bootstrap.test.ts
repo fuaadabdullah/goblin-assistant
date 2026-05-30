@@ -29,7 +29,7 @@ describe('authStore bootstrapFromSession', () => {
     setCookie('session_token', 'cookie-token-123');
     localStorage.setItem(
       'user_data',
-      JSON.stringify({ id: 'u1', email: 'u1@example.com', role: 'user' }),
+      JSON.stringify({ id: 'u1', email: 'u1@example.com', role: 'user' })
     );
 
     // eslint-disable-next-line @typescript-eslint/no-var-requires
@@ -55,7 +55,7 @@ describe('authStore bootstrapFromSession', () => {
     setCookie('session_token', 'cookie-token-401');
     localStorage.setItem(
       'user_data',
-      JSON.stringify({ id: 'u401', email: 'u401@example.com', role: 'user' }),
+      JSON.stringify({ id: 'u401', email: 'u401@example.com', role: 'user' })
     );
 
     // eslint-disable-next-line @typescript-eslint/no-var-requires
@@ -79,7 +79,7 @@ describe('authStore bootstrapFromSession', () => {
     setCookie('session_token', 'cookie-token-503');
     localStorage.setItem(
       'user_data',
-      JSON.stringify({ id: 'u503', email: 'u503@example.com', role: 'user' }),
+      JSON.stringify({ id: 'u503', email: 'u503@example.com', role: 'user' })
     );
 
     // eslint-disable-next-line @typescript-eslint/no-var-requires
@@ -102,7 +102,7 @@ describe('authStore bootstrapFromSession', () => {
     setCookie('session_token', 'cookie-token-invalid');
     localStorage.setItem(
       'user_data',
-      JSON.stringify({ id: 'uinvalid', email: 'uinvalid@example.com', role: 'user' }),
+      JSON.stringify({ id: 'uinvalid', email: 'uinvalid@example.com', role: 'user' })
     );
 
     // eslint-disable-next-line @typescript-eslint/no-var-requires

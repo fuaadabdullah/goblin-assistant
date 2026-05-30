@@ -14,7 +14,10 @@ import structlog
 
 from ...config.system_prompt import system_prompt_manager
 from ...observability.context_snapshotter import context_snapshotter
-from ...utils.tokenizer import count_tokens as _count_tokens, trim_to_tokens as _trim_to_tokens_util
+from ...utils.tokenizer import (
+    count_tokens as _count_tokens,
+    trim_to_tokens as _trim_to_tokens_util,
+)
 from . import budget_manager as bm
 from .ephemeral_layer import assemble_ephemeral_memory
 from .long_term_layer import assemble_long_term_memory
@@ -46,9 +49,7 @@ class ContextAssemblyService:
         self._embedding_service = None
         self.default_budget = bm.load_budget_config()
         self.model_context_windows = bm.load_model_context_windows()
-        self.response_reserve_tokens = int(
-            os.getenv("CONTEXT_RESPONSE_RESERVE_TOKENS", "1024")
-        )
+        self.response_reserve_tokens = int(os.getenv("CONTEXT_RESPONSE_RESERVE_TOKENS", "1024"))
 
     @property
     def retrieval_service(self):
@@ -60,6 +61,7 @@ class ContextAssemblyService:
     def embedding_service(self):
         if self._embedding_service is None:
             from ..embedding_service import EmbeddingService
+
             self._embedding_service = EmbeddingService()
         return self._embedding_service
 
@@ -117,9 +119,7 @@ class ContextAssemblyService:
 
             # 2. Long-Term Memory
             if remaining_tokens > 0:
-                long_term_layer = await assemble_long_term_memory(
-                    user_id, remaining_tokens, budget
-                )
+                long_term_layer = await assemble_long_term_memory(user_id, remaining_tokens, budget)
                 if long_term_layer:
                     layers.append(long_term_layer)
                     remaining_tokens -= long_term_layer.tokens
@@ -135,9 +135,7 @@ class ContextAssemblyService:
                     layers.append(working_memory_layer)
                     remaining_tokens -= working_memory_layer.tokens
                     assembly_log["layers"].append("working_memory")
-                    assembly_log["token_usage"]["working_memory"] = (
-                        working_memory_layer.tokens
-                    )
+                    assembly_log["token_usage"]["working_memory"] = working_memory_layer.tokens
 
             # 4. Semantic Retrieval
             if remaining_tokens > 0:
@@ -153,12 +151,8 @@ class ContextAssemblyService:
                     layers.append(semantic_layer)
                     remaining_tokens -= semantic_layer.tokens
                     assembly_log["layers"].append("semantic_retrieval")
-                    assembly_log["token_usage"]["semantic_retrieval"] = (
-                        semantic_layer.tokens
-                    )
-                    if semantic_layer.metadata and semantic_layer.metadata.get(
-                        "hard_stop_applied"
-                    ):
+                    assembly_log["token_usage"]["semantic_retrieval"] = semantic_layer.tokens
+                    if semantic_layer.metadata and semantic_layer.metadata.get("hard_stop_applied"):
                         truncation_events.append("semantic_retrieval_truncated")
 
                 if hasattr(self.retrieval_service, "get_degraded_status"):
@@ -177,14 +171,10 @@ class ContextAssemblyService:
                     remaining_tokens -= ephemeral_layer.tokens
                     assembly_log["layers"].append("ephemeral")
                     assembly_log["token_usage"]["ephemeral"] = ephemeral_layer.tokens
-                    if ephemeral_layer.metadata and ephemeral_layer.metadata.get(
-                        "truncated"
-                    ):
+                    if ephemeral_layer.metadata and ephemeral_layer.metadata.get("truncated"):
                         truncation_events.append("ephemeral_memory_truncated")
                         if ephemeral_layer.metadata.get("summary_fallback_applied"):
-                            truncation_events.append(
-                                "ephemeral_summary_fallback_applied"
-                            )
+                            truncation_events.append("ephemeral_summary_fallback_applied")
 
             if truncation_events:
                 assembly_log["degraded_mode"] = True

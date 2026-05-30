@@ -1,7 +1,7 @@
 from fastapi import APIRouter, HTTPException
 from fastapi.responses import StreamingResponse
 from pydantic import BaseModel
-from typing import Optional, Dict, Any, List
+from typing import Optional, Dict, List
 import json
 import time
 import logging
@@ -14,6 +14,7 @@ logger = logging.getLogger(__name__)
 
 class StreamTaskRequest(BaseModel):
     """Request model for streaming task execution"""
+
     task_id: str
     messages: List[Dict[str, str]]
     provider: Optional[str] = None
@@ -66,7 +67,11 @@ async def generate_stream_events(
                 used_model = provider_response.get("model", used_model)
                 yield f"data: {json.dumps({'content': accumulated_text, 'token_count': 0, 'cost_delta': 0, 'done': False})}\n\n"
             else:
-                error_msg = provider_response.get("error", "unknown-error") if isinstance(provider_response, dict) else "provider-error"
+                error_msg = (
+                    provider_response.get("error", "unknown-error")
+                    if isinstance(provider_response, dict)
+                    else "provider-error"
+                )
                 yield f"data: {json.dumps({'error': error_msg, 'done': True})}\n\n"
                 return
 

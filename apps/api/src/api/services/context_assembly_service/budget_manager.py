@@ -20,14 +20,13 @@ logger = structlog.get_logger()
 # Import the shared Pydantic schema for config validation
 _PROVIDER_CONFIG_PATH = Path(__file__).resolve().parents[6]
 if str(_PROVIDER_CONFIG_PATH / "packages" / "shared" / "src") not in sys.path:
-    sys.path.insert(
-        0, str(_PROVIDER_CONFIG_PATH / "packages" / "shared" / "src")
-    )
+    sys.path.insert(0, str(_PROVIDER_CONFIG_PATH / "packages" / "shared" / "src"))
 
 try:
     from provider_config import ProviderToml
 except ImportError:
     ProviderToml = None  # type: ignore
+
 
 def load_budget_config() -> ContextBudget:
     """Load token budget configuration from environment or defaults."""
@@ -36,9 +35,7 @@ def load_budget_config() -> ContextBudget:
         system_tokens = int(os.getenv("SYSTEM_TOKENS", "300"))
         long_term_tokens = int(os.getenv("LONG_TERM_TOKENS", "300"))
         working_memory_tokens = int(os.getenv("WORKING_MEMORY_TOKENS", "700"))
-        semantic_retrieval_tokens = int(
-            os.getenv("SEMANTIC_RETRIEVAL_TOKENS", "1200")
-        )
+        semantic_retrieval_tokens = int(os.getenv("SEMANTIC_RETRIEVAL_TOKENS", "1200"))
 
         return ContextBudget(
             total_tokens=total_tokens,
@@ -57,9 +54,7 @@ def load_model_context_windows() -> Dict[str, int]:
 
     Uses the shared Pydantic schema for validation & defaults.
     """
-    config_path = (
-        Path(__file__).resolve().parents[3] / "config" / "providers.toml"
-    )
+    config_path = Path(__file__).resolve().parents[3] / "config" / "providers.toml"
     if not config_path.exists():
         logger.warning("providers_toml_not_found", path=str(config_path))
         return {}
@@ -72,9 +67,7 @@ def load_model_context_windows() -> Dict[str, int]:
         config = ProviderToml.load(config_path)
         return config.model_context_windows
     except Exception as e:
-        logger.warning(
-            "failed_to_load_model_context_windows", error=str(e)
-        )
+        logger.warning("failed_to_load_model_context_windows", error=str(e))
         return {}
 
 
@@ -118,19 +111,10 @@ def derive_budget(
 
     system_tokens = max(80, int(default_budget.system_tokens * scale))
     long_term_tokens = max(80, int(default_budget.long_term_tokens * scale))
-    working_memory_tokens = max(
-        120, int(default_budget.working_memory_tokens * scale)
-    )
-    semantic_retrieval_tokens = max(
-        240, int(default_budget.semantic_retrieval_tokens * scale)
-    )
+    working_memory_tokens = max(120, int(default_budget.working_memory_tokens * scale))
+    semantic_retrieval_tokens = max(240, int(default_budget.semantic_retrieval_tokens * scale))
 
-    fixed = (
-        system_tokens
-        + long_term_tokens
-        + working_memory_tokens
-        + semantic_retrieval_tokens
-    )
+    fixed = system_tokens + long_term_tokens + working_memory_tokens + semantic_retrieval_tokens
     if fixed >= usable_tokens:
         shrink = max(0.3, usable_tokens / max(1, fixed))
         system_tokens = max(64, int(system_tokens * shrink))
@@ -141,12 +125,7 @@ def derive_budget(
     ephemeral_tokens = max(
         0,
         usable_tokens
-        - (
-            system_tokens
-            + long_term_tokens
-            + working_memory_tokens
-            + semantic_retrieval_tokens
-        ),
+        - (system_tokens + long_term_tokens + working_memory_tokens + semantic_retrieval_tokens),
     )
 
     return ContextBudget(

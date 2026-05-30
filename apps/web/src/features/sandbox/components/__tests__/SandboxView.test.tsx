@@ -1,16 +1,45 @@
 import React from 'react';
 import { render, screen } from '@testing-library/react';
 
-jest.mock('../../../../components/TwoColumnLayout', () => function MockLayout({ children, sidebar }: { children: React.ReactNode; sidebar: React.ReactNode }) {
-  return <div data-testid="layout"><div data-testid="sidebar">{sidebar}</div><div data-testid="main">{children}</div></div>;
-});
-jest.mock('../SandboxSidebar', () => function MockSidebar(props: Record<string, unknown>) {
-  return <div data-testid="sandbox-sidebar" data-is-guest={String(props.isGuest)} />;
-});
-jest.mock('../SandboxMain', () => function MockMain(props: Record<string, unknown>) {
-  return <div data-testid="sandbox-main" data-is-guest={String(props.isGuest)} />;
-});
-jest.mock('../../../../components/Seo', () => function MockSeo() { return null; });
+jest.mock(
+  '../../../../components/TwoColumnLayout',
+  () =>
+    function MockLayout({
+      children,
+      sidebar,
+    }: {
+      children: React.ReactNode;
+      sidebar: React.ReactNode;
+    }) {
+      return (
+        <div data-testid="layout">
+          <div data-testid="sidebar">{sidebar}</div>
+          <div data-testid="main">{children}</div>
+        </div>
+      );
+    }
+);
+jest.mock(
+  '../SandboxSidebar',
+  () =>
+    function MockSidebar(props: Record<string, unknown>) {
+      return <div data-testid="sandbox-sidebar" data-is-guest={String(props.isGuest)} />;
+    }
+);
+jest.mock(
+  '../SandboxMain',
+  () =>
+    function MockMain(props: Record<string, unknown>) {
+      return <div data-testid="sandbox-main" data-is-guest={String(props.isGuest)} />;
+    }
+);
+jest.mock(
+  '../../../../components/Seo',
+  () =>
+    function MockSeo() {
+      return null;
+    }
+);
 
 import SandboxView from '../SandboxView';
 

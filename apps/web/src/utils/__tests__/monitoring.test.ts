@@ -1,9 +1,5 @@
 import { describe, it, expect, beforeEach, jest } from '@jest/globals';
-import {
-  logErrorToService,
-  reactErrorInfoToContext,
-  logPerformanceMetric,
-} from '../monitoring';
+import { logErrorToService, reactErrorInfoToContext, logPerformanceMetric } from '../monitoring';
 
 // Mock console methods
 jest.spyOn(console, 'error').mockImplementation(() => {});
@@ -56,9 +52,7 @@ describe('monitoring utilities', () => {
     it('should handle very large context objects', () => {
       const error = new Error('Large context error');
       const largeContext = {
-        ...Object.fromEntries(
-          Array.from({ length: 100 }, (_, i) => [`key${i}`, `value${i}`]),
-        ),
+        ...Object.fromEntries(Array.from({ length: 100 }, (_, i) => [`key${i}`, `value${i}`])),
       };
 
       logErrorToService(error, largeContext as any);
@@ -110,9 +104,7 @@ describe('monitoring utilities', () => {
 
   describe('logPerformanceMetric', () => {
     it('should log a performance metric', () => {
-      const consoleSpy = jest
-        .spyOn(console, 'log')
-        .mockImplementation(() => {});
+      const consoleSpy = jest.spyOn(console, 'log').mockImplementation(() => {});
 
       logPerformanceMetric('chat_message_latency', 234);
 

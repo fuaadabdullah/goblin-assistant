@@ -7,10 +7,7 @@ import { ProviderProvider } from '@/contexts/ProviderContext';
 import { ContrastModeProvider } from '@/hooks/useContrastMode';
 import AuthBootstrapper from '@/auth/AuthBootstrapper';
 import { ErrorBoundary } from '@/components/ErrorBoundary';
-import {
-  RouteBoundaryFallback,
-  formatBoundaryTechnicalDetail,
-} from '@/components/RouteBoundary';
+import { RouteBoundaryFallback, formatBoundaryTechnicalDetail } from '@/components/RouteBoundary';
 import { createQueryClient } from '@/lib/queryClient';
 import { initGA } from '@/utils/analytics';
 import { setupGlobalErrorTracking, monitorNetworkStatus } from '@/utils/error-tracking';

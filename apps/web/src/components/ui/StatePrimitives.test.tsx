@@ -13,7 +13,7 @@ describe('state primitives', () => {
         description="Create one to get started."
         actionLabel="Create"
         onAction={onAction}
-      />,
+      />
     );
 
     fireEvent.click(screen.getByRole('button', { name: 'Create' }));

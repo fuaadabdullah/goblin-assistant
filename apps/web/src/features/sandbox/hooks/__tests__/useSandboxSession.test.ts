@@ -72,7 +72,9 @@ describe('useSandboxSession', () => {
 
   it('runCode does nothing when code is empty', async () => {
     const { result } = renderHook(() => useSandboxSession());
-    await act(async () => { await result.current.runCode(); });
+    await act(async () => {
+      await result.current.runCode();
+    });
     expect(mockRunCode).not.toHaveBeenCalled();
   });
 
@@ -81,7 +83,9 @@ describe('useSandboxSession', () => {
     mockFetchJobs.mockResolvedValue([]);
     const { result } = renderHook(() => useSandboxSession());
     act(() => result.current.setCode('print(42)'));
-    await act(async () => { await result.current.runCode(); });
+    await act(async () => {
+      await result.current.runCode();
+    });
     expect(mockRunCode).toHaveBeenCalledWith({ code: 'print(42)', language: 'python' });
     expect(result.current.logs).toBe('output: 42');
     expect(result.current.loading).toBe(false);
@@ -91,7 +95,9 @@ describe('useSandboxSession', () => {
     mockRunCode.mockRejectedValue(new Error('timeout'));
     const { result } = renderHook(() => useSandboxSession());
     act(() => result.current.setCode('bad code'));
-    await act(async () => { await result.current.runCode(); });
+    await act(async () => {
+      await result.current.runCode();
+    });
     expect(result.current.logs).toBe('Unable to run that code right now.');
     expect(result.current.loading).toBe(false);
   });
@@ -100,7 +106,9 @@ describe('useSandboxSession', () => {
     const job = { id: 'j1', status: 'done' as const, created_at: '2024-01-01' };
     mockFetchLogs.mockResolvedValue({ stdout: 'hello' });
     const { result } = renderHook(() => useSandboxSession());
-    await act(async () => { await result.current.selectJob(job); });
+    await act(async () => {
+      await result.current.selectJob(job);
+    });
     expect(mockFetchLogs).toHaveBeenCalledWith('j1');
     expect(result.current.logs).toContain('hello');
   });
@@ -108,7 +116,9 @@ describe('useSandboxSession', () => {
   it('selectJob shows guest message for guest', async () => {
     const job = { id: 'j1', status: 'done' as const, created_at: '2024-01-01' };
     const { result } = renderHook(() => useSandboxSession({ isGuest: true }));
-    await act(async () => { await result.current.selectJob(job); });
+    await act(async () => {
+      await result.current.selectJob(job);
+    });
     expect(mockFetchLogs).not.toHaveBeenCalled();
     expect(result.current.logs).toContain('Sign in');
   });
@@ -117,21 +127,27 @@ describe('useSandboxSession', () => {
     const job = { id: 'j1', status: 'done' as const, created_at: '2024-01-01' };
     mockFetchLogs.mockRejectedValue(new Error('not found'));
     const { result } = renderHook(() => useSandboxSession());
-    await act(async () => { await result.current.selectJob(job); });
+    await act(async () => {
+      await result.current.selectJob(job);
+    });
     expect(result.current.logs).toBe('Unable to load logs for that job.');
   });
 
   it('refreshJobs reloads job list', async () => {
     mockFetchJobs.mockResolvedValue([{ id: 'j2', status: 'running', created_at: '2024-01-02' }]);
     const { result } = renderHook(() => useSandboxSession());
-    await act(async () => { await result.current.refreshJobs(); });
+    await act(async () => {
+      await result.current.refreshJobs();
+    });
     expect(mockFetchJobs).toHaveBeenCalled();
   });
 
   it('refreshJobs handles error gracefully', async () => {
     mockFetchJobs.mockRejectedValue(new Error('network'));
     const { result } = renderHook(() => useSandboxSession());
-    await act(async () => { await result.current.refreshJobs(); });
+    await act(async () => {
+      await result.current.refreshJobs();
+    });
     // Should not throw
   });
 });

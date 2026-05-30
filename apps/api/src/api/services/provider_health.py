@@ -11,8 +11,11 @@ from datetime import datetime, timezone
 from enum import Enum
 from typing import Any, Dict, List, Optional
 
+from api.core.contracts import ProviderHealthUpdatedPayload
+from api.observability.events import event_emitter
 from api.providers.dispatcher import canonical_provider_id, dispatcher
 from api.routing.router import registry
+from api.observability.migration_metrics import migration_metrics
 
 
 class HealthStatus(Enum):
@@ -51,9 +54,7 @@ class ProviderHealth:
         self.last_error = error
         self.consecutive_failures += 1
         self.status = (
-            HealthStatus.UNHEALTHY
-            if self.consecutive_failures >= 3
-            else HealthStatus.DEGRADED
+            HealthStatus.UNHEALTHY if self.consecutive_failures >= 3 else HealthStatus.DEGRADED
         )
         if self.latency_samples:
             self.avg_latency_ms = sum(self.latency_samples) / len(self.latency_samples)
@@ -72,6 +73,23 @@ class ProviderHealthMonitor:
         age = datetime.now(timezone.utc) - state.last_check
         return age.total_seconds() > self.check_interval * 2
 
+    async def _emit_health_event(self, provider_id: str, state: ProviderHealth) -> None:
+        await event_emitter.emit(
+            "provider.health.updated",
+            source="api.services.provider_health",
+            payload=ProviderHealthUpdatedPayload(
+                provider_id=provider_id,
+                status=state.status.value,
+                configured=state.configured,
+                healthy=state.status == HealthStatus.HEALTHY,
+                cache_stale=self._is_stale(state),
+                avg_latency_ms=round(state.avg_latency_ms, 1),
+                success_rate=round(state.success_rate, 3),
+                consecutive_failures=state.consecutive_failures,
+                last_error=state.last_error,
+            ),
+        )
+
     async def refresh(self, include_hidden: bool = True) -> Dict[str, ProviderHealth]:
         inventory = await dispatcher.get_provider_inventory(include_hidden=include_hidden)
         now = datetime.now(timezone.utc)
@@ -79,7 +97,9 @@ class ProviderHealthMonitor:
         for item in inventory:
             provider_id = item["id"]
             seen.add(provider_id)
-            state = self.health_data.get(provider_id) or ProviderHealth(provider_id=provider_id)
+            existing = self.health_data.get(provider_id)
+            previous_status = existing.status if existing is not None else None
+            state = existing or ProviderHealth(provider_id=provider_id)
             stats = registry.get(provider_id)
             state.success_rate = stats.success_rate
             state.configured = bool(item.get("configured"))
@@ -108,6 +128,13 @@ class ProviderHealthMonitor:
                 state.consecutive_failures = max(state.consecutive_failures + 1, 1)
 
             self.health_data[provider_id] = state
+            migration_metrics.record_provider_probe(
+                provider_id=provider_id,
+                healthy=bool(item.get("healthy")),
+                configured=bool(item.get("configured")),
+            )
+            if previous_status != state.status:
+                await self._emit_health_event(provider_id, state)
 
         for provider_id in list(self.health_data.keys()):
             if provider_id not in seen and not include_hidden:
@@ -179,6 +206,12 @@ class ProviderHealthMonitor:
         stats = registry.get(canonical_id)
         state.success_rate = stats.success_rate
         self.health_data[canonical_id] = state
+        migration_metrics.record_provider_probe(
+            provider_id=canonical_id,
+            healthy=bool(current.get("healthy")),
+            configured=bool(current.get("configured")),
+        )
+        await self._emit_health_event(canonical_id, state)
         return self.get_status(canonical_id)
 
     async def probe_provider(self, provider_id: str) -> Dict[str, Any]:
@@ -193,7 +226,10 @@ class ProviderHealthMonitor:
             except KeyError:
                 return False
             return dispatcher.is_configured(canonical_id) and provider.is_available()
-        return state.configured and state.status in {HealthStatus.HEALTHY, HealthStatus.DEGRADED}
+        return state.configured and state.status in {
+            HealthStatus.HEALTHY,
+            HealthStatus.DEGRADED,
+        }
 
     def get_status(self, provider_id: str) -> Dict[str, Any]:
         canonical_id = canonical_provider_id(provider_id) or provider_id
@@ -219,7 +255,7 @@ class ProviderHealthMonitor:
             "status": state.status.value,
             "configured": state.configured,
             "last_check": state.last_check.isoformat() if state.last_check else None,
-            "last_success": state.last_success.isoformat() if state.last_success else None,
+            "last_success": (state.last_success.isoformat() if state.last_success else None),
             "last_error": state.last_error,
             "avg_latency_ms": round(state.avg_latency_ms, 1),
             "success_rate": round(state.success_rate, 3),

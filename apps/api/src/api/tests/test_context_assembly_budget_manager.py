@@ -7,12 +7,7 @@ from api.services.context_assembly_service import budget_manager as bm
 
 def _set_fake_budget_manager_file(monkeypatch, tmp_path: Path, create_providers: bool) -> Path:
     fake_file = (
-        tmp_path
-        / "src"
-        / "api"
-        / "services"
-        / "context_assembly_service"
-        / "budget_manager.py"
+        tmp_path / "src" / "api" / "services" / "context_assembly_service" / "budget_manager.py"
     )
     fake_file.parent.mkdir(parents=True, exist_ok=True)
     fake_file.write_text("# fake", encoding="utf-8")

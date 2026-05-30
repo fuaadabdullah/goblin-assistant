@@ -3,20 +3,35 @@ import '@testing-library/jest-dom';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 
 // Mock dependencies
-jest.mock('lucide-react', () => new Proxy({}, {
-  get: (_, name) => {
-    if (name === '__esModule') return true;
-    return (props: Record<string, unknown>) => <span data-testid={`icon-${String(name)}`} {...props} />;
-  },
-}));
+jest.mock(
+  'lucide-react',
+  () =>
+    new Proxy(
+      {},
+      {
+        get: (_, name) => {
+          if (name === '__esModule') return true;
+          return (props: Record<string, unknown>) => (
+            <span data-testid={`icon-${String(name)}`} {...props} />
+          );
+        },
+      }
+    )
+);
 jest.mock('../../components/ThemePreview', () => {
-  return function MockThemePreview() { return <div data-testid="theme-preview" />; };
+  return function MockThemePreview() {
+    return <div data-testid="theme-preview" />;
+  };
 });
 jest.mock('../../components/KeyboardShortcutsHelp', () => {
-  return function MockKBHelp() { return <div data-testid="kb-help" />; };
+  return function MockKBHelp() {
+    return <div data-testid="kb-help" />;
+  };
 });
 jest.mock('../../components/Seo', () => {
-  return function MockSeo() { return <div data-testid="seo" />; };
+  return function MockSeo() {
+    return <div data-testid="seo" />;
+  };
 });
 
 const mockSavePrefs = jest.fn().mockResolvedValue({});
@@ -67,7 +82,9 @@ describe('SettingsPage', () => {
     mockProviderSettings.mockReturnValue({ data: null, isLoading: true });
     render(<SettingsPageContent />, { wrapper });
     // Should show loading state
-    expect(document.querySelector('.animate-pulse') || screen.queryByText(/loading/i) || true).toBeTruthy();
+    expect(
+      document.querySelector('.animate-pulse') || screen.queryByText(/loading/i) || true
+    ).toBeTruthy();
   });
 
   it('renders with provider data as array', () => {

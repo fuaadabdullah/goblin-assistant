@@ -26,7 +26,7 @@ export { default as Grid } from './Grid';
 // Form components
 export { Input } from './input';
 export { Label } from './Label';
-export { 
+export {
   Select,
   SelectGroup,
   SelectValue,

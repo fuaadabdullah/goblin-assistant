@@ -69,25 +69,13 @@ async def test_lifespan_startup_and_shutdown_calls_integrations() -> None:
     fake_cleanup_stop = AsyncMock(return_value=None)
 
     with ExitStack() as stack:
-        stack.enter_context(
-            patch.object(provider_health, "health_monitor", health_monitor)
-        )
-        stack.enter_context(
-            patch.object(main.cache, "init_redis", fake_redis_init)
-        )
+        stack.enter_context(patch.object(provider_health, "health_monitor", health_monitor))
+        stack.enter_context(patch.object(main.cache, "init_redis", fake_redis_init))
         stack.enter_context(patch.object(main, "init_db", fake_db_init))
-        stack.enter_context(
-            patch.object(main.monitor, "start", fake_monitor_start)
-        )
-        stack.enter_context(
-            patch.object(main.monitor, "stop", fake_monitor_stop)
-        )
-        stack.enter_context(
-            patch.object(main.cache, "close", fake_cache_close)
-        )
-        stack.enter_context(
-            patch.object(main, "init_secrets_adapter", fake_init_secrets)
-        )
+        stack.enter_context(patch.object(main.monitor, "start", fake_monitor_start))
+        stack.enter_context(patch.object(main.monitor, "stop", fake_monitor_stop))
+        stack.enter_context(patch.object(main.cache, "close", fake_cache_close))
+        stack.enter_context(patch.object(main, "init_secrets_adapter", fake_init_secrets))
         stack.enter_context(
             patch.object(
                 main,
@@ -143,18 +131,10 @@ async def test_lifespan_logs_bad_provider_creds_but_continues() -> None:
         clear=False,
     ):
         with ExitStack() as stack:
-            stack.enter_context(
-                patch.object(provider_health, "health_monitor", health_monitor)
-            )
-            stack.enter_context(
-                patch.object(main.cache, "init_redis", fake_redis_init)
-            )
-            stack.enter_context(
-                patch.object(main, "init_db", fake_db_init)
-            )
-            stack.enter_context(
-                patch.object(main.monitor, "start", fake_monitor_start)
-            )
+            stack.enter_context(patch.object(provider_health, "health_monitor", health_monitor))
+            stack.enter_context(patch.object(main.cache, "init_redis", fake_redis_init))
+            stack.enter_context(patch.object(main, "init_db", fake_db_init))
+            stack.enter_context(patch.object(main.monitor, "start", fake_monitor_start))
             stack.enter_context(
                 patch.object(
                     main.artifact_cleanup_service,

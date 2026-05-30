@@ -19,9 +19,7 @@ from .telemetry import (
 )
 
 _VECTOR_STORE_DEFAULT = (
-    "false"
-    if os.getenv("ENVIRONMENT", "development").lower() == "production"
-    else "true"
+    "false" if os.getenv("ENVIRONMENT", "development").lower() == "production" else "true"
 )
 VECTOR_STORE_AVAILABLE = (
     os.getenv("ENABLE_VECTOR_STORE", _VECTOR_STORE_DEFAULT).strip().lower()
@@ -40,6 +38,7 @@ def __getattr__(name: str):
         return _SafeVectorStore
 
     raise AttributeError(f"module {__name__!r} has no attribute {name!r}")
+
 
 __all__ = [
     # Privacy & Security

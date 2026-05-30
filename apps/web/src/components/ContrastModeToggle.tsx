@@ -48,9 +48,7 @@ export default function ContrastModeToggle() {
           />
         )}
       </svg>
-      <span className="text-sm font-medium">
-        {MODE_LABELS[mode]}
-      </span>
+      <span className="text-sm font-medium">{MODE_LABELS[mode]}</span>
     </button>
   );
 }

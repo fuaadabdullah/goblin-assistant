@@ -1,7 +1,11 @@
 import pytest
 
 from api.services import context_assembly_service as cas
-from api.services.context_assembly_service import ContextAssemblyService, ContextBudget, ContextLayer
+from api.services.context_assembly_service import (
+    ContextAssemblyService,
+    ContextBudget,
+    ContextLayer,
+)
 from api.services.context_assembly_service import orchestrator as orch
 
 
@@ -74,7 +78,9 @@ async def test_orchestrator_happy_path(monkeypatch):
     monkeypatch.setattr(orch, "assemble_ephemeral_memory", _ephemeral)
     monkeypatch.setattr(orch.context_snapshotter, "create_snapshot", _snapshot)
 
-    service._retrieval_service = type("RS", (), {"get_degraded_status": lambda self: {"degraded_mode": False}})()
+    service._retrieval_service = type(
+        "RS", (), {"get_degraded_status": lambda self: {"degraded_mode": False}}
+    )()
 
     result = await service.assemble_context(
         query="hello",
@@ -118,14 +124,12 @@ async def test_orchestrator_skips_working_and_ephemeral_without_inputs(monkeypat
 
     async def _working(*_args, **_kwargs):
         calls["working"] += 1
-        return None
 
     async def _semantic(*_args, **_kwargs):
         return None
 
     async def _ephemeral(*_args, **_kwargs):
         calls["ephemeral"] += 1
-        return None
 
     async def _snapshot(**_kwargs):
         return "snap-124"
@@ -137,7 +141,9 @@ async def test_orchestrator_skips_working_and_ephemeral_without_inputs(monkeypat
     monkeypatch.setattr(orch, "assemble_ephemeral_memory", _ephemeral)
     monkeypatch.setattr(orch.context_snapshotter, "create_snapshot", _snapshot)
 
-    service._retrieval_service = type("RS", (), {"get_degraded_status": lambda self: {"degraded_mode": False}})()
+    service._retrieval_service = type(
+        "RS", (), {"get_degraded_status": lambda self: {"degraded_mode": False}}
+    )()
 
     result = await service.assemble_context(
         query="hello",
@@ -152,7 +158,9 @@ async def test_orchestrator_skips_working_and_ephemeral_without_inputs(monkeypat
 
 
 @pytest.mark.asyncio
-async def test_orchestrator_degraded_reason_merges_retrieval_and_truncation(monkeypatch):
+async def test_orchestrator_degraded_reason_merges_retrieval_and_truncation(
+    monkeypatch,
+):
     service = _build_service(monkeypatch)
     monkeypatch.setattr(orch.bm, "derive_budget", lambda **_kwargs: service.default_budget)
 
@@ -191,7 +199,12 @@ async def test_orchestrator_degraded_reason_merges_retrieval_and_truncation(monk
     service._retrieval_service = type(
         "RS",
         (),
-        {"get_degraded_status": lambda self: {"degraded_mode": True, "reason": "embedding unavailable"}},
+        {
+            "get_degraded_status": lambda self: {
+                "degraded_mode": True,
+                "reason": "embedding unavailable",
+            }
+        },
     )()
 
     result = await service.assemble_context(

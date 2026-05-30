@@ -37,9 +37,15 @@ export default function EmptyState({
   ) : null;
 
   return (
-    <Card className={`rounded-2xl border border-border bg-surface text-center shadow-card ${className}`}>
+    <Card
+      className={`rounded-2xl border border-border bg-surface text-center shadow-card ${className}`}
+    >
       <CardHeader className="items-center space-y-3">
-        {icon ? <div className="text-4xl" aria-hidden="true">{icon}</div> : null}
+        {icon ? (
+          <div className="text-4xl" aria-hidden="true">
+            {icon}
+          </div>
+        ) : null}
         <CardTitle>{title}</CardTitle>
       </CardHeader>
       <CardContent className="space-y-4">

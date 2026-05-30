@@ -47,10 +47,7 @@ class ProviderCost:
     output_cost: float
 
     def estimate(self, input_tokens: int, output_tokens: int) -> float:
-        return (
-            input_tokens / 1000 * self.input_cost
-            + output_tokens / 1000 * self.output_cost
-        )
+        return input_tokens / 1000 * self.input_cost + output_tokens / 1000 * self.output_cost
 
 
 @dataclass
@@ -67,15 +64,11 @@ class CostTracker:
     def __init__(self, hourly_budget: float = 10.0) -> None:
         self.hourly_budget = hourly_budget
         self.current_hour_spend = 0.0
-        self.hour_start = datetime.now(timezone.utc).replace(
-            minute=0, second=0, microsecond=0
-        )
+        self.hour_start = datetime.now(timezone.utc).replace(minute=0, second=0, microsecond=0)
         self.request_history: List[Dict[str, Any]] = []
 
     def _reset_if_new_hour(self) -> None:
-        current_hour = datetime.now(timezone.utc).replace(
-            minute=0, second=0, microsecond=0
-        )
+        current_hour = datetime.now(timezone.utc).replace(minute=0, second=0, microsecond=0)
         if current_hour > self.hour_start:
             self.hour_start = current_hour
             self.current_hour_spend = 0.0
@@ -145,7 +138,10 @@ class SmartRouter:
 
     def _model_for_provider(self, provider_id: str) -> str:
         config = dispatcher.get_provider_config(provider_id)
-        return str(config.get("default_model", "")) or dispatcher.get_provider(provider_id).default_model
+        return (
+            str(config.get("default_model", ""))
+            or dispatcher.get_provider(provider_id).default_model
+        )
 
     def _build_emergency_selection(self) -> ProviderSelection:
         return ProviderSelection(

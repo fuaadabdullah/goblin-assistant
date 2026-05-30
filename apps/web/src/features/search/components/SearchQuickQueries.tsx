@@ -8,11 +8,9 @@ interface SearchQuickQueriesProps {
 const SearchQuickQueries = ({ queries, onSelect }: SearchQuickQueriesProps) => (
   <div className="bg-surface rounded-xl border border-border p-6 mb-8">
     <h2 className="text-lg font-semibold text-text mb-2">Quick Queries</h2>
-    <p className="text-sm text-muted mb-4">
-      Start with a suggestion or type your own question.
-    </p>
+    <p className="text-sm text-muted mb-4">Start with a suggestion or type your own question.</p>
     <div className="flex flex-wrap gap-2">
-      {queries.map(value => (
+      {queries.map((value) => (
         <button
           key={value}
           onClick={() => onSelect(value)}

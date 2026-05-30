@@ -21,8 +21,7 @@ from typing import Any, Dict, List, Optional
 
 import structlog
 
-from .memory_promotion_service import (
-    MemoryPromotionService,
+from .memory_promotion import (
     PromotionCandidate,
     PromotionResult,
     memory_promotion_service,
@@ -60,24 +59,28 @@ def _extract_dcf_facts(result: Dict[str, Any], args: Dict[str, Any]) -> List[Dic
     growth = assumptions.get("growth_rate")
 
     if intrinsic is not None:
-        facts.append({
-            "content": (
-                f"DCF valuation for {ticker}: intrinsic value ${intrinsic:.2f}/share "
-                f"({'+' if upside and upside > 0 else ''}{upside:.1f}% vs current price)"
-            ),
-            "category": "instrument",
-        })
+        facts.append(
+            {
+                "content": (
+                    f"DCF valuation for {ticker}: intrinsic value ${intrinsic:.2f}/share "
+                    f"({'+' if upside and upside > 0 else ''}{upside:.1f}% vs current price)"
+                ),
+                "category": "instrument",
+            }
+        )
 
     if wacc is not None and growth is not None:
-        facts.append({
-            "content": (
-                f"DCF assumptions for {ticker}: WACC={wacc*100:.1f}%, "
-                f"growth={growth*100:.1f}%, "
-                f"projection_years={assumptions.get('projection_years', 5)}, "
-                f"terminal_growth={assumptions.get('terminal_growth_rate', 0.025)*100:.1f}%"
-            ),
-            "category": "financial_profile",
-        })
+        facts.append(
+            {
+                "content": (
+                    f"DCF assumptions for {ticker}: WACC={wacc * 100:.1f}%, "
+                    f"growth={growth * 100:.1f}%, "
+                    f"projection_years={assumptions.get('projection_years', 5)}, "
+                    f"terminal_growth={assumptions.get('terminal_growth_rate', 0.025) * 100:.1f}%"
+                ),
+                "category": "financial_profile",
+            }
+        )
 
     return facts
 
@@ -92,10 +95,12 @@ def _extract_portfolio_facts(result: Dict[str, Any], args: Dict[str, Any]) -> Li
     # Summarise the portfolio composition
     if holdings:
         tickers = [h.get("ticker", "?") for h in holdings]
-        facts.append({
-            "content": f"Portfolio holdings analyzed: {', '.join(tickers)}",
-            "category": "portfolio_action",
-        })
+        facts.append(
+            {
+                "content": f"Portfolio holdings analyzed: {', '.join(tickers)}",
+                "category": "portfolio_action",
+            }
+        )
 
     # Risk snapshot
     ann_ret = metrics.get("annualized_return")
@@ -103,14 +108,16 @@ def _extract_portfolio_facts(result: Dict[str, Any], args: Dict[str, Any]) -> Li
     sharpe = metrics.get("sharpe_ratio")
     max_dd = metrics.get("max_drawdown")
     if ann_ret is not None and ann_vol is not None:
-        facts.append({
-            "content": (
-                f"Portfolio risk snapshot: return={ann_ret*100:.1f}%, "
-                f"volatility={ann_vol*100:.1f}%, "
-                f"Sharpe={sharpe:.2f}, max drawdown={max_dd*100:.1f}%"
-            ),
-            "category": "risk_signal",
-        })
+        facts.append(
+            {
+                "content": (
+                    f"Portfolio risk snapshot: return={ann_ret * 100:.1f}%, "
+                    f"volatility={ann_vol * 100:.1f}%, "
+                    f"Sharpe={sharpe:.2f}, max drawdown={max_dd * 100:.1f}%"
+                ),
+                "category": "risk_signal",
+            }
+        )
 
     return facts
 
@@ -125,17 +132,21 @@ def _extract_earnings_facts(result: Dict[str, Any], args: Dict[str, Any]) -> Lis
     beat_miss = earnings.get("beat_miss_history", [])
 
     if next_date:
-        facts.append({
-            "content": f"{ticker} earnings on {next_date}",
-            "category": "instrument",
-        })
+        facts.append(
+            {
+                "content": f"{ticker} earnings on {next_date}",
+                "category": "instrument",
+            }
+        )
 
     if beat_miss:
         recent = beat_miss[-3:]
-        facts.append({
-            "content": f"{ticker} recent EPS: {recent}",
-            "category": "instrument",
-        })
+        facts.append(
+            {
+                "content": f"{ticker} recent EPS: {recent}",
+                "category": "instrument",
+            }
+        )
 
     return facts
 
@@ -150,16 +161,20 @@ def _extract_screener_facts(result: Dict[str, Any], args: Dict[str, Any]) -> Lis
 
     if results:
         tickers = [r.get("ticker") for r in results[:5]]
-        facts.append({
-            "content": f"Screen '{screen_name}' returned {len(results)} results. Top hits: {', '.join(tickers)}",
-            "category": "instrument",
-        })
+        facts.append(
+            {
+                "content": f"Screen '{screen_name}' returned {len(results)} results. Top hits: {', '.join(tickers)}",
+                "category": "instrument",
+            }
+        )
 
     if criteria:
-        facts.append({
-            "content": f"Screening criteria for '{screen_name}': {json.dumps(criteria)}",
-            "category": "financial_profile",
-        })
+        facts.append(
+            {
+                "content": f"Screening criteria for '{screen_name}': {json.dumps(criteria)}",
+                "category": "financial_profile",
+            }
+        )
 
     return facts
 
@@ -214,7 +229,9 @@ async def extract_and_promote(
             metadata={
                 "user_id": user_id,
                 "tool_name": tool_name,
-                "tool_args": {k: v for k, v in tool_args.items() if isinstance(v, (str, int, float, bool))},
+                "tool_args": {
+                    k: v for k, v in tool_args.items() if isinstance(v, (str, int, float, bool))
+                },
             },
             created_at=datetime.utcnow(),
         )

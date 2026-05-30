@@ -14,6 +14,7 @@ from typing import Any, Dict, List, Optional
 
 import structlog
 
+from .contracts import ToolCall
 from .registry import get_tool
 
 logger = structlog.get_logger(__name__)
@@ -45,6 +46,7 @@ async def execute_tool_call(
         # Import guardrail errors for cleaner messages
         try:
             from api.services.financial_guardrails import FinancialDataError
+
             if isinstance(e, FinancialDataError):
                 logger.warning("tool_financial_error", tool=tool_name, error=str(e))
                 return e.to_dict()
@@ -90,7 +92,7 @@ async def execute_tool_call_with_retry(
         if not should_retry:
             return result
 
-        backoff_seconds = 0.5 * (2 ** attempt)
+        backoff_seconds = 0.5 * (2**attempt)
         logger.warning(
             "tool_execution_retry",
             tool=tool_name,
@@ -104,35 +106,8 @@ async def execute_tool_call_with_retry(
     return {"error": f"Tool {tool_name} exhausted retries"}
 
 
-def extract_tool_calls(provider_response: Dict[str, Any]) -> Optional[List[Dict[str, Any]]]:
-    """Extract tool_calls from a provider response, if present.
-
-    Supports OpenAI-format responses where tool calls live at:
-    - response["result"]["raw"]["choices"][0]["message"]["tool_calls"]
-    """
-    try:
-        raw = provider_response.get("result", {}).get("raw", {})
-        choices = raw.get("choices", [])
-        if not choices:
-            return None
-
-        message = choices[0].get("message", {})
-        finish_reason = choices[0].get("finish_reason")
-
-        if finish_reason not in ("tool_calls", "stop") and message.get("tool_calls"):
-            return _parse_tool_calls(message["tool_calls"]) or None
-
-        if finish_reason == "tool_calls" or message.get("tool_calls"):
-            return _parse_tool_calls(message.get("tool_calls", [])) or None
-
-        return None
-    except (KeyError, IndexError, TypeError):
-        return None
-
-
-def _parse_tool_calls(raw_calls: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
-    """Normalize tool call objects."""
-    parsed = []
+def _parse_openai_compat_tool_calls(raw_calls: List[Dict[str, Any]]) -> List[ToolCall]:
+    parsed: List[ToolCall] = []
     for call in raw_calls:
         func = call.get("function", {})
         args_raw = func.get("arguments", "{}")
@@ -140,13 +115,123 @@ def _parse_tool_calls(raw_calls: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
             args = json.loads(args_raw) if isinstance(args_raw, str) else args_raw
         except json.JSONDecodeError:
             args = {}
-
-        parsed.append({
-            "id": call.get("id", ""),
-            "name": func.get("name", ""),
-            "arguments": args,
-        })
+        parsed.append(
+            ToolCall(
+                id=str(call.get("id", "")),
+                name=str(func.get("name", "")),
+                arguments=args if isinstance(args, dict) else {},
+            )
+        )
     return parsed
+
+
+def _extract_tool_calls_from_result(
+    result: Dict[str, Any],
+) -> Optional[List[ToolCall]]:
+    normalized = result.get("tool_calls")
+    if isinstance(normalized, list):
+        calls: List[ToolCall] = []
+        for item in normalized:
+            if not isinstance(item, dict):
+                continue
+            calls.append(
+                ToolCall(
+                    id=str(item.get("id", "")),
+                    name=str(item.get("name", "")),
+                    arguments=(
+                        item.get("arguments", {}) if isinstance(item.get("arguments"), dict) else {}
+                    ),
+                )
+            )
+        return calls or None
+
+    raw = result.get("raw", {})
+    if not isinstance(raw, dict):
+        return None
+
+    content_blocks = raw.get("content")
+    if isinstance(content_blocks, list):
+        anthropic_calls: List[ToolCall] = []
+        for idx, block in enumerate(content_blocks):
+            if not isinstance(block, dict):
+                continue
+            if block.get("type") != "tool_use":
+                continue
+            anthropic_calls.append(
+                ToolCall(
+                    id=str(block.get("id", f"anthropic_tool_{idx}")),
+                    name=str(block.get("name", "")),
+                    arguments=(
+                        block.get("input", {}) if isinstance(block.get("input"), dict) else {}
+                    ),
+                )
+            )
+        if anthropic_calls:
+            return anthropic_calls
+
+    choices = raw.get("choices", [])
+    if not isinstance(choices, list) or not choices:
+        return None
+    first_choice = choices[0] if isinstance(choices[0], dict) else {}
+    message = first_choice.get("message", {}) if isinstance(first_choice, dict) else {}
+    if not isinstance(message, dict):
+        return None
+    tool_calls = message.get("tool_calls", [])
+    if not isinstance(tool_calls, list) or not tool_calls:
+        return None
+    return _parse_openai_compat_tool_calls(tool_calls) or None
+
+
+def extract_tool_calls_contract(
+    provider_response: Dict[str, Any],
+) -> Optional[List[ToolCall]]:
+    """Extract provider-neutral tool call contracts from response payload."""
+    try:
+        result = provider_response.get("result", {})
+        if not isinstance(result, dict):
+            return None
+        return _extract_tool_calls_from_result(result)
+    except (KeyError, IndexError, TypeError):
+        return None
+
+
+def extract_tool_calls(
+    provider_response: Dict[str, Any],
+) -> Optional[List[Dict[str, Any]]]:
+    """Backward-compatible dict form of extracted tool calls."""
+    calls = extract_tool_calls_contract(provider_response)
+    if not calls:
+        return None
+    return [{"id": call.id, "name": call.name, "arguments": call.arguments} for call in calls]
+
+
+def _assistant_message_from_provider_response(
+    provider_response: Dict[str, Any],
+) -> Dict[str, Any]:
+    result = provider_response.get("result", {})
+    if not isinstance(result, dict):
+        return {"role": "assistant", "content": ""}
+
+    raw = result.get("raw", {})
+    if isinstance(raw, dict):
+        choices = raw.get("choices", [])
+        if isinstance(choices, list) and choices and isinstance(choices[0], dict):
+            message = choices[0].get("message")
+            if isinstance(message, dict):
+                return message
+        content_blocks = raw.get("content")
+        if isinstance(content_blocks, list):
+            text_parts = [
+                block.get("text", "")
+                for block in content_blocks
+                if isinstance(block, dict) and block.get("type") == "text"
+            ]
+            return {
+                "role": "assistant",
+                "content": "".join(text_parts),
+            }
+
+    return {"role": "assistant", "content": str(result.get("text", ""))}
 
 
 async def run_tool_loop(
@@ -199,30 +284,31 @@ async def run_tool_loop(
                     response["visualizations"] = all_visualizations
             return response
 
-        tool_calls = extract_tool_calls(response)
+        tool_calls = extract_tool_calls_contract(response)
         if not tool_calls:
             if all_visualizations:
                 response["visualizations"] = all_visualizations
             return response
 
         # Append assistant message with tool_calls
-        raw = response.get("result", {}).get("raw", {})
-        assistant_message = raw.get("choices", [{}])[0].get("message", {})
+        assistant_message = _assistant_message_from_provider_response(response)
         messages.append(assistant_message)
 
         # Execute each tool and append results
         for tc in tool_calls:
             logger.info(
                 "executing_tool_call",
-                tool=tc["name"],
+                tool=tc.name,
                 round=round_num + 1,
             )
-            result = await execute_tool_call_with_retry(tc["name"], tc["arguments"])
-            messages.append({
-                "role": "tool",
-                "tool_call_id": tc["id"],
-                "content": json.dumps(result, default=str),
-            })
+            result = await execute_tool_call_with_retry(tc.name, tc.arguments)
+            messages.append(
+                {
+                    "role": "tool",
+                    "tool_call_id": tc.id,
+                    "content": json.dumps(result, default=str),
+                }
+            )
 
             # Extract chart-ready visualizations (fire-and-forget)
             if "error" not in result:
@@ -230,14 +316,15 @@ async def run_tool_loop(
                     from api.services.visualization_service import (
                         extract_visualizations,
                     )
+
                     viz_blocks = extract_visualizations(
-                        tool_name=tc["name"],
-                        tool_args=tc["arguments"],
+                        tool_name=tc.name,
+                        tool_args=tc.arguments,
                         tool_result=result,
                     )
                     all_visualizations.extend(viz_blocks)
                 except Exception:
-                    logger.debug("visualization_extraction_skipped", tool=tc["name"])
+                    logger.debug("visualization_extraction_skipped", tool=tc.name)
 
             # Promote extractable financial facts to memory (fire-and-forget)
             if user_id and "error" not in result:
@@ -245,15 +332,16 @@ async def run_tool_loop(
                     from api.services.tool_result_memory_service import (
                         extract_and_promote,
                     )
+
                     await extract_and_promote(
-                        tool_name=tc["name"],
-                        tool_args=tc["arguments"],
+                        tool_name=tc.name,
+                        tool_args=tc.arguments,
                         tool_result=result,
                         user_id=user_id,
                         conversation_id=conversation_id,
                     )
                 except Exception:
-                    logger.debug("tool_result_promotion_skipped", tool=tc["name"])
+                    logger.debug("tool_result_promotion_skipped", tool=tc.name)
 
     # Exhausted rounds — return last response as-is
     logger.warning("tool_loop_max_rounds", rounds=MAX_TOOL_ROUNDS)

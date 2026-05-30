@@ -29,9 +29,7 @@ def _parse_bool_env(name: str, default: bool) -> bool:
     if normalized in {"0", "false", "no", "off"}:
         return False
 
-    raise ValueError(
-        f"{name} must be one of: true/false, 1/0, yes/no, on/off"
-    )
+    raise ValueError(f"{name} must be one of: true/false, 1/0, yes/no, on/off")
 
 
 def _resolve_cookie_samesite(
@@ -47,20 +45,14 @@ def _resolve_cookie_samesite(
     if configured == "none":
         return "none"
 
-    raise ValueError(
-        "AUTH_COOKIE_SAMESITE must be one of: lax, strict, none"
-    )
+    raise ValueError("AUTH_COOKIE_SAMESITE must be one of: lax, strict, none")
 
 
 # Cookie settings:
 # - production defaults to cross-site compatible cookies for Vercel<->Render.
 # - development keeps local HTTP ergonomics.
-COOKIE_SAMESITE: Literal["lax", "strict", "none"] = _resolve_cookie_samesite(
-    ENVIRONMENT
-)
-COOKIE_SECURE = _parse_bool_env(
-    "AUTH_COOKIE_SECURE", default=ENVIRONMENT == "production"
-)
+COOKIE_SAMESITE: Literal["lax", "strict", "none"] = _resolve_cookie_samesite(ENVIRONMENT)
+COOKIE_SECURE = _parse_bool_env("AUTH_COOKIE_SECURE", default=ENVIRONMENT == "production")
 REFRESH_MAX_AGE = REFRESH_TOKEN_EXPIRE_DAYS * 24 * 60 * 60
 
 SESSION_CACHE_PREFIX = "auth:session"

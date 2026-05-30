@@ -45,9 +45,11 @@ const CustomTooltip = ({ active, payload, label }: TooltipProps) => {
 
 const CostBreakdownChart: React.FC<CostBreakdownChartProps> = ({ data }) => {
   // Get colors from CSS variables for theme consistency
-  const borderColor = getComputedStyle(document.documentElement).getPropertyValue('--border').trim();
+  const borderColor = getComputedStyle(document.documentElement)
+    .getPropertyValue('--border')
+    .trim();
   const textColor = getComputedStyle(document.documentElement).getPropertyValue('--text').trim();
-  
+
   return (
     <>
       <h2 className="text-lg font-semibold mb-4 text-text">Cost Breakdown by Provider</h2>
@@ -58,7 +60,9 @@ const CostBreakdownChart: React.FC<CostBreakdownChartProps> = ({ data }) => {
           <YAxis
             stroke="rgba(248, 240, 232, 0.5)"
             fontSize={12}
-            tickFormatter={(value: number | string) => formatCost(Number(value), { mode: 'summary' })}
+            tickFormatter={(value: number | string) =>
+              formatCost(Number(value), { mode: 'summary' })
+            }
           />
           <Tooltip content={<CustomTooltip />} cursor={{ fill: 'rgba(212, 165, 116, 0.1)' }} />
           <Legend iconType="circle" />

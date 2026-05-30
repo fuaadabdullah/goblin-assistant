@@ -30,12 +30,8 @@ class OpenAICompatibleProvider(BaseProvider):
         api_key_env = self.config.get("api_key_env", "")
         self._api_key = os.getenv(api_key_env, "").strip()
         self._base_url = self.endpoint
-        self.COST_INPUT_PER_1K = float(
-            self.config.get("cost_input_per1k", 0.0)
-        )
-        self.COST_OUTPUT_PER_1K = float(
-            self.config.get("cost_output_per1k", 0.0)
-        )
+        self.COST_INPUT_PER_1K = float(self.config.get("cost_input_per1k", 0.0))
+        self.COST_OUTPUT_PER_1K = float(self.config.get("cost_output_per1k", 0.0))
         self._health_path = str(self.config.get("health_path", "/v1/models"))
 
     def _request_path(self) -> str:
@@ -86,9 +82,7 @@ class OpenAICompatibleProvider(BaseProvider):
         return body
 
     def _format_http_error(self, exc: httpx.HTTPStatusError) -> str:
-        status_code = (
-            exc.response.status_code if exc.response is not None else "unknown"
-        )
+        status_code = exc.response.status_code if exc.response is not None else "unknown"
         response_text = ""
         if exc.response is not None:
             try:
@@ -170,11 +164,7 @@ class OpenAICompatibleProvider(BaseProvider):
             logger.warning(
                 "provider_invoke_failed",
                 provider=self.provider_id,
-                status_code=(
-                    exc.response.status_code
-                    if exc.response is not None
-                    else None
-                ),
+                status_code=(exc.response.status_code if exc.response is not None else None),
                 error=error_message,
             )
             return ProviderResult(
@@ -270,11 +260,7 @@ class OpenAICompatibleProvider(BaseProvider):
                 self.provider_id,
                 resp.status_code < 400,
                 latency_ms=latency,
-                error=(
-                    None
-                    if resp.status_code < 400
-                    else f"HTTP {resp.status_code}"
-                ),
+                error=(None if resp.status_code < 400 else f"HTTP {resp.status_code}"),
             )
         except (httpx.HTTPError, ValueError, TypeError) as exc:
             latency = (time.perf_counter() - t0) * 1000

@@ -51,10 +51,7 @@ def test_includes_defaults_and_enums_in_openai_schema():
 
 
 def test_exported_financial_tools_include_model_inference_guidance():
-    tools = {
-        tool["function"]["name"]: tool["function"]
-        for tool in export_openai_tools()
-    }
+    tools = {tool["function"]["name"]: tool["function"] for tool in export_openai_tools()}
 
     quote = tools["get_stock_quote"]
     assert "Use when" in quote["description"]

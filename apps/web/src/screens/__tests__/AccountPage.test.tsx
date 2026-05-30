@@ -3,9 +3,13 @@ import { render, screen } from '@testing-library/react';
 import '@testing-library/jest-dom';
 import AccountPage from '../AccountPage';
 
-jest.mock('@/features/account/AccountScreen', () => function MockAccountScreen() {
-  return <div data-testid="account-screen">Account Screen</div>;
-});
+jest.mock(
+  '@/features/account/AccountScreen',
+  () =>
+    function MockAccountScreen() {
+      return <div data-testid="account-screen">Account Screen</div>;
+    }
+);
 
 describe('AccountPage', () => {
   it('renders AccountScreen component', () => {

@@ -4,18 +4,19 @@ Classifies messages into: CHAT | FACT | PREFERENCE | TASK_RESULT | SYSTEM
 """
 
 import re
+import logging
 from typing import Dict, List, Optional, Any
 from enum import Enum
-import asyncio
 from datetime import datetime
 
+logger = logging.getLogger(__name__)
+
 from ..providers.dispatcher import invoke_provider
-from ..storage.models import MessageModel
-from ..storage.database import get_db
 
 
 class MessageType(Enum):
     """Message classification types"""
+
     CHAT = "chat"
     FACT = "fact"
     PREFERENCE = "preference"
@@ -34,14 +35,14 @@ class MessageType(Enum):
 
 class MessageClassification:
     """Result of message classification"""
-    
+
     def __init__(
         self,
         message_type: MessageType,
         confidence: float,
         keywords: List[str],
         reasoning: str,
-        metadata: Optional[Dict[str, Any]] = None
+        metadata: Optional[Dict[str, Any]] = None,
     ):
         self.message_type = message_type
         self.confidence = confidence
@@ -52,7 +53,7 @@ class MessageClassification:
 
 class MessageClassifier:
     """Service for classifying messages into memory types"""
-    
+
     def __init__(self):
         # Rule-based patterns for initial classification
         self._fact_patterns = [
@@ -65,7 +66,7 @@ class MessageClassifier:
             r"(?i)\b(i know|familiar with)\s+(.+?)\b",  # "I know Python"
             r"(?i)\b(i use|using)\s+(.+?)\b",  # "I use React"
         ]
-        
+
         self._preference_patterns = [
             r"(?i)\b(i prefer|i like|i love)\s+(.+?)\b",
             r"(?i)\b(i don't like|i dislike|i hate)\s+(.+?)\b",
@@ -76,7 +77,7 @@ class MessageClassifier:
             r"(?i)\b(should|must|have to|need to)\s+(.+?)\b",
             r"(?i)\b(avoid|don't want|never use)\s+(.+?)\b",
         ]
-        
+
         self._task_result_patterns = [
             r"(?i)\b(done|completed|finished|created|built|implemented)\b",
             r"(?i)\b(successfully|completed|finished)\s+(.+?)\b",
@@ -85,14 +86,14 @@ class MessageClassifier:
             r"(?i)\b(check it out|see below|as requested)\b",
             r"(?i)\b(task|assignment|request)\s+(.+?)\b",
         ]
-        
+
         self._system_patterns = [
             r"(?i)\b(system|assistant|bot|ai)\b",
             r"(?i)\b(memory|context|conversation)\b",
             r"(?i)\b(settings|configuration|setup)\b",
             r"(?i)\b(help|support|documentation)\b",
         ]
-        
+
         self._noise_patterns = [
             r"(?i)\b(ok|okay|k)\b",  # Simple acknowledgements
             r"(?i)\b(yes|no|yeah|nah)\b",  # Simple responses
@@ -164,15 +165,15 @@ class MessageClassifier:
             r"(?i)\b(example|examples|worked example|walk me through|break it down|intuition)\b",
             r"(?i)\b(study plan|concept|definition|formula|principle|tutorial)\b",
         ]
-    
+
     def classify_message(self, content: str, role: str) -> MessageClassification:
         """
         Classify a message using rule-based patterns and confidence scoring
-        
+
         Args:
             content: Message content to classify
             role: Message role (user/assistant/system)
-        
+
         Returns:
             MessageClassification with type and confidence
         """
@@ -182,12 +183,12 @@ class MessageClassifier:
                 confidence=1.0,
                 keywords=[],
                 reasoning="Empty message classified as chat",
-                metadata={"empty": True}
+                metadata={"empty": True},
             )
-        
+
         # Normalize content
         content_lower = content.lower().strip()
-        
+
         # System messages are easy to identify
         if role == "system":
             return MessageClassification(
@@ -195,26 +196,32 @@ class MessageClassifier:
                 confidence=1.0,
                 keywords=["system"],
                 reasoning="System role message",
-                metadata={"role": "system"}
+                metadata={"role": "system"},
             )
-        
+
         # Apply pattern matching
         fact_score, fact_keywords = self._score_patterns(content_lower, self._fact_patterns)
-        preference_score, preference_keywords = self._score_patterns(content_lower, self._preference_patterns)
+        preference_score, preference_keywords = self._score_patterns(
+            content_lower, self._preference_patterns
+        )
         task_score, task_keywords = self._score_patterns(content_lower, self._task_result_patterns)
         system_score, system_keywords = self._score_patterns(content_lower, self._system_patterns)
         noise_score, noise_keywords = self._score_patterns(content_lower, self._noise_patterns)
 
         # Finance domain pattern matching
-        fin_entity_score, fin_entity_kw = self._score_patterns(content_lower, self._financial_entity_patterns)
+        fin_entity_score, fin_entity_kw = self._score_patterns(
+            content_lower, self._financial_entity_patterns
+        )
         risk_score, risk_kw = self._score_patterns(content_lower, self._risk_signal_patterns)
         reg_score, reg_kw = self._score_patterns(content_lower, self._regulatory_ref_patterns)
-        portfolio_score, portfolio_kw = self._score_patterns(content_lower, self._portfolio_action_patterns)
+        portfolio_score, portfolio_kw = self._score_patterns(
+            content_lower, self._portfolio_action_patterns
+        )
         macro_score, macro_kw = self._score_patterns(content_lower, self._macro_event_patterns)
 
         # Education / learning domain pattern matching
         learning_score, learning_kw = self._score_patterns(content_lower, self._learning_patterns)
-        
+
         # Determine classification
         scores = [
             (MessageType.FACT, fact_score, fact_keywords),
@@ -231,13 +238,13 @@ class MessageClassifier:
             # Education domain
             (MessageType.LEARNING, learning_score, learning_kw),
         ]
-        
+
         # Sort by score descending
         scores.sort(key=lambda x: x[1], reverse=True)
-        
+
         # Get best match
         best_type, best_score, best_keywords = scores[0]
-        
+
         # If no patterns match strongly, classify as chat
         if best_score < 0.3:
             return MessageClassification(
@@ -245,12 +252,12 @@ class MessageClassifier:
                 confidence=1.0 - best_score,
                 keywords=[],
                 reasoning="No strong pattern match, classified as chat",
-                metadata={"pattern_score": best_score}
+                metadata={"pattern_score": best_score},
             )
-        
+
         # Generate reasoning
         reasoning = self._generate_reasoning(best_type, best_score, best_keywords, content)
-        
+
         return MessageClassification(
             message_type=best_type,
             confidence=best_score,
@@ -258,15 +265,15 @@ class MessageClassifier:
             reasoning=reasoning,
             metadata={
                 "pattern_score": best_score,
-                "all_scores": {score[0].value: score[1] for score in scores}
-            }
+                "all_scores": {score[0].value: score[1] for score in scores},
+            },
         )
-    
+
     def _score_patterns(self, content: str, patterns: List[str]) -> tuple[float, List[str]]:
         """Score content against a list of regex patterns"""
         keywords = []
         matches = 0
-        
+
         for pattern in patterns:
             match = re.search(pattern, content)
             if match:
@@ -276,31 +283,33 @@ class MessageClassifier:
                     for group in match.groups():
                         if group and len(group) > 2:  # Filter out short words
                             keywords.append(group.strip())
-        
+
         # Normalize score (0.0 to 1.0)
         # Cap denominator — patterns are alternatives, not conjunctions;
         # hitting 1–2 out of many is a strong signal.
         score = min(matches / min(len(patterns), 3), 1.0)
         return score, keywords
-    
-    def _generate_reasoning(self, message_type: MessageType, score: float, keywords: List[str], content: str) -> str:
+
+    def _generate_reasoning(
+        self, message_type: MessageType, score: float, keywords: List[str], content: str
+    ) -> str:
         """Generate human-readable reasoning for classification"""
         base_reasoning = f"Classified as {message_type.value} with confidence {score:.2f}"
-        
+
         if keywords:
             keyword_str = ", ".join(keywords[:3])  # Show top 3 keywords
             return f"{base_reasoning}. Keywords: {keyword_str}"
-        
+
         return base_reasoning
-    
+
     async def classify_with_model(self, content: str, role: str) -> MessageClassification:
         """
         Use AI model to classify message (fallback for ambiguous cases)
-        
+
         Args:
             content: Message content
             role: Message role
-        
+
         Returns:
             MessageClassification from model
         """
@@ -334,7 +343,7 @@ Respond with JSON:
                 "max_tokens": 200,
                 "temperature": 0.1,
             }
-            
+
             response = await invoke_provider(
                 pid=None,
                 model="gpt-3.5-turbo",
@@ -342,77 +351,80 @@ Respond with JSON:
                 timeout_ms=15000,
                 stream=False,
             )
-            
+
             if isinstance(response, dict) and response.get("ok"):
                 result_text = response["result"]["text"]
                 # Parse JSON response
                 import json
+
                 result = json.loads(result_text)
-                
+
                 return MessageClassification(
                     message_type=MessageType(result["type"]),
                     confidence=result["confidence"],
                     keywords=[],  # Model doesn't provide keywords
                     reasoning=result["reasoning"],
-                    metadata={"model_classification": True}
+                    metadata={"model_classification": True},
                 )
-            
+
         except Exception as e:
-            print(f"Model classification failed: {e}")
-        
+            logger.exception("Model classification failed: %s", e)
+
         # Fallback to rule-based classification
         return self.classify_message(content, role)
-    
-    async def classify_message_async(self, content: str, role: str, use_model: bool = False) -> MessageClassification:
+
+    async def classify_message_async(
+        self, content: str, role: str, use_model: bool = False
+    ) -> MessageClassification:
         """
         Async message classification with optional model assistance
-        
+
         Args:
             content: Message content
             role: Message role
             use_model: Whether to use AI model for classification
-        
+
         Returns:
             MessageClassification result
         """
         # First pass: rule-based classification
         classification = self.classify_message(content, role)
-        
+
         # If confidence is low and model assistance is requested, use AI
         if use_model and classification.confidence < 0.7:
             model_classification = await self.classify_with_model(content, role)
-            
+
             # Use model result if it has higher confidence
             if model_classification.confidence > classification.confidence:
                 return model_classification
-        
+
         return classification
 
 
 class ClassificationPipeline:
     """Pipeline for processing message classification"""
-    
+
     def __init__(self):
         self.classifier = MessageClassifier()
-    
+
     async def process_message(
-        self, 
-        message_id: str, 
-        content: str, 
+        self,
+        message_id: str,
+        content: str,
         role: str,
         conversation_id: Optional[str] = None,
-        user_id: Optional[str] = None
+        user_id: Optional[str] = None,
     ) -> Dict[str, Any]:
         """
         Process a message through the classification pipeline
-        
+
         Args:
             message_id: ID of the message
             content: Message content
             role: Message role
             conversation_id: Optional conversation ID
             user_id: Optional user ID
-        
+
         Returns:
             Classification result with metadata
         """
@@ -420,9 +432,9 @@ class ClassificationPipeline:
         classification = await self.classifier.classify_message_async(
             content=content,
             role=role,
-            use_model=True  # Use model for higher accuracy
+            use_model=True,  # Use model for higher accuracy
         )
-        
+
         # Build classification result
         result = {
             "message_id": message_id,
@@ -437,26 +449,31 @@ class ClassificationPipeline:
                 "user_id": user_id,
                 "role": role,
                 "timestamp": datetime.utcnow().isoformat(),
-                "classification_source": "model" if classification.metadata.get("model_classification") else "rule_based",
+                "classification_source": (
+                    "model" if classification.metadata.get("model_classification") else "rule_based"
+                ),
             },
-            "content_preview": content[:100] + "..." if len(content) > 100 else content
+            "content_preview": content[:100] + "..." if len(content) > 100 else content,
         }
-        
+
         # Store classification metadata (optional - for analytics)
         await self._store_classification_metadata(result)
-        
+
         return result
-    
+
     async def _store_classification_metadata(self, result: Dict[str, Any]):
         """Store classification metadata for analytics (optional)"""
         try:
             # This could be stored in a separate table for analytics
             # For now, we'll just log it
-            print(f"Classification: {result['classification']['type']} "
-                  f"(confidence: {result['classification']['confidence']:.2f}) "
-                  f"for message {result['message_id']}")
+            logger.info(
+                "Classification: %s (confidence: %.2f) for message %s",
+                result["classification"]["type"],
+                result["classification"]["confidence"],
+                result["message_id"],
+            )
         except Exception as e:
-            print(f"Failed to store classification metadata: {e}")
+            logger.error("Failed to store classification metadata: %s", e)
 
 
 # Global classifier instance

@@ -26,7 +26,11 @@ describe('GhostButton', () => {
   it('does not fire onClick when disabled', async () => {
     const user = userEvent.setup();
     const onClick = jest.fn();
-    render(<GhostButton onClick={onClick} disabled>Click</GhostButton>);
+    render(
+      <GhostButton onClick={onClick} disabled>
+        Click
+      </GhostButton>
+    );
     await user.click(screen.getByText('Click'));
     expect(onClick).not.toHaveBeenCalled();
   });

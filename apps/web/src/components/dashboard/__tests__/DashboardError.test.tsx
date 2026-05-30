@@ -4,12 +4,22 @@ import '@testing-library/jest-dom';
 
 jest.mock('../../ui/Alert', () => {
   return function MockAlert(props: { variant: string; title: string; message: string }) {
-    return <div data-testid="alert" data-variant={props.variant}>{props.message}</div>;
+    return (
+      <div data-testid="alert" data-variant={props.variant}>
+        {props.message}
+      </div>
+    );
   };
 });
 
 jest.mock('../../ui/Button', () => {
-  return function MockButton({ children, onClick }: { children: React.ReactNode; onClick?: () => void }) {
+  return function MockButton({
+    children,
+    onClick,
+  }: {
+    children: React.ReactNode;
+    onClick?: () => void;
+  }) {
     return <button onClick={onClick}>{children}</button>;
   };
 });

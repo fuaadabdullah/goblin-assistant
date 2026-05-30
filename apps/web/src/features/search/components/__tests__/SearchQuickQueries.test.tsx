@@ -21,7 +21,7 @@ describe('SearchQuickQueries', () => {
 
   it('renders all query buttons', () => {
     render(<SearchQuickQueries queries={queries} onSelect={onSelect} />);
-    queries.forEach(q => expect(screen.getByText(q)).toBeInTheDocument());
+    queries.forEach((q) => expect(screen.getByText(q)).toBeInTheDocument());
   });
 
   it('calls onSelect when a query is clicked', () => {

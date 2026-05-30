@@ -95,10 +95,7 @@ def _context_has_content(context_bundle: Dict[str, Any]) -> bool:
 
 
 def _build_recent_messages(conversation, limit: int = 10) -> List[Dict[str, str]]:
-    return [
-        {"role": msg.role, "content": msg.content}
-        for msg in conversation.messages[-limit:]
-    ]
+    return [{"role": msg.role, "content": msg.content} for msg in conversation.messages[-limit:]]
 
 
 async def _invoke_semantic_provider(
@@ -157,16 +154,19 @@ def _normalize_provider_response(
     if isinstance(provider_response, dict) and not provider_response.get("ok"):
         _raise_structured_provider_error(provider_response)
 
-    return ({}, str(provider_response), request.provider or "unknown", request.model or "unknown")
+    return (
+        {},
+        str(provider_response),
+        request.provider or "unknown",
+        request.model or "unknown",
+    )
 
 
 @router.post(
     "/conversations/{conversation_id}/messages",
     response_model=SemanticSendMessageResponse,
 )
-async def semantic_send_message(
-    conversation_id: str, request: SemanticSendMessageRequest
-):
+async def semantic_send_message(conversation_id: str, request: SemanticSendMessageRequest):
     """
     Send a message with semantic retrieval and context-aware responses
 
@@ -262,9 +262,7 @@ async def semantic_send_message(
                 "model": used_model,
                 "message_id": response_message_id,
                 "semantic_context_used": context_used,
-                "context_tokens": context_bundle.get("total_tokens", 0)
-                if context_used
-                else 0,
+                "context_tokens": (context_bundle.get("total_tokens", 0) if context_used else 0),
                 "input_tokens": input_tokens,
                 "output_tokens": output_tokens,
                 "cost_usd": cost_usd,

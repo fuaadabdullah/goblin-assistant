@@ -48,9 +48,7 @@ export default function LoginPage({ initialMode = 'login' }: LoginPageProps) {
   const handleSuccess = () => {
     setError(null);
     const redirectTo =
-      resolveSafeRedirect(router.query.redirect) ??
-      resolveSafeRedirect(router.query.from) ??
-      '/';
+      resolveSafeRedirect(router.query.redirect) ?? resolveSafeRedirect(router.query.from) ?? '/';
     router.push(redirectTo);
   };
 

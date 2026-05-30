@@ -63,9 +63,11 @@ def test_tool_trace_debug_endpoint():
     # With ops access decorator, should be 401 Unauthorized (auth required)
     # or 403 Forbidden (no permission)
     # or 200 OK (if auth is mocked/disabled in tests)
-    assert response.status_code in [200, 401, 403], (
-        f"Unexpected status code: {response.status_code}"
-    )
+    assert response.status_code in [
+        200,
+        401,
+        403,
+    ], f"Unexpected status code: {response.status_code}"
 
     # If auth is disabled in tests, verify response structure
     if response.status_code == 200:
@@ -107,9 +109,7 @@ def test_conversation_traces_debug_endpoint():
     )
 
     # Query the endpoint
-    response = client.get(
-        f"/debug/tool-trace/conversation/{conversation_id}"
-    )
+    response = client.get(f"/debug/tool-trace/conversation/{conversation_id}")
 
     assert response.status_code in [200, 401, 403]
 

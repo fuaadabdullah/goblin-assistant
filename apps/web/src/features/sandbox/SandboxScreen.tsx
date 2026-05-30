@@ -34,11 +34,7 @@ const SandboxScreen: FC = () => {
           onClose={() => setShowAuthPrompt(false)}
         />
       )}
-      <SandboxView
-        session={session}
-        isGuest={isGuest}
-        onRequireAuth={requireAuthModal}
-      />
+      <SandboxView session={session} isGuest={isGuest} onRequireAuth={requireAuthModal} />
     </>
   );
 };

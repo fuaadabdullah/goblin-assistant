@@ -10,8 +10,8 @@ export default function NotFoundPage() {
         <div className="text-5xl">🧭</div>
         <h1 className="text-3xl font-semibold text-text">Page not found</h1>
         <p className="text-muted">
-          We couldn't find <span className="text-text">{router.asPath}</span>. Check the
-          address or jump back to a known page.
+          We couldn't find <span className="text-text">{router.asPath}</span>. Check the address or
+          jump back to a known page.
         </p>
         <div className="flex flex-wrap justify-center gap-3">
           <Link

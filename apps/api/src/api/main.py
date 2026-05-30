@@ -37,13 +37,18 @@ from .settings_router import router as settings_router
 from .search_router import router as search_router
 from .stream_router import router as stream_router
 from .routes.privacy import router as privacy_router  # Updated to new location
-from .routes.debug import router as model_suggestion_debug_router  # Model suggestion endpoint
+from .routes.debug import (
+    router as model_suggestion_debug_router,
+)  # Model suggestion endpoint
 from .secrets_router import (
     router as secrets_router,
     init_secrets_adapter,
     cleanup_secrets_adapter,
 )
-from .observability.debug_router import router as observability_debug_router  # Renamed for clarity
+from .observability.debug_router import (
+    router as observability_debug_router,
+)  # Renamed for clarity
+from .observability.migration_metrics import migration_metrics
 from .sandbox_api import router as sandbox_router
 from .routes.providers_models import router as providers_models_router
 from .routes.account_router import router as account_router
@@ -61,6 +66,8 @@ from .core.errors import (
     map_unhandled_exception,
     map_validation_exception,
 )
+from .core.route_lifecycle import classify_route_lifecycle
+from .route_mounting import mount_primary_routes, mount_versioned_alias_routes
 
 # Initialize structured logger (early, for use in module-level initialization)
 logger = structlog.get_logger()
@@ -78,6 +85,7 @@ def _parse_sample_rate(raw_value: str, fallback: float) -> float:
     if value > 1.0:
         return 1.0
     return value
+
 
 # Load environment variables from .env.local if it exists
 try:
@@ -158,7 +166,11 @@ try:
         send_default_pii=False,
     )
 except ImportError:
-    logger.warning("Sentry SDK not available", reason="package not installed", suggestion="pip install sentry-sdk")
+    logger.warning(
+        "Sentry SDK not available",
+        reason="package not installed",
+        suggestion="pip install sentry-sdk",
+    )
 except RuntimeError:
     logger.warning("Sentry error monitoring disabled", reason="SENTRY_DSN not set")
 except Exception as e:
@@ -173,6 +185,7 @@ except ImportError:
     ROUTING_ANALYTICS_AVAILABLE = False
     routing_analytics_router = None
 
+
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     """Application lifespan: startup and shutdown logic."""
@@ -186,7 +199,11 @@ async def lifespan(app: FastAPI):
             await cache.init_redis()
             logger.info("Redis cache initialized")
         except Exception as e:
-            logger.warning("Redis initialization failed", error=str(e), impact="performance may be reduced")
+            logger.warning(
+                "Redis initialization failed",
+                error=str(e),
+                impact="performance may be reduced",
+            )
 
         # Initialize database tables (optional for now)
         logger.info("Checking database availability")
@@ -197,7 +214,11 @@ async def lifespan(app: FastAPI):
             else:
                 logger.warning("Database initialization skipped", mode="limited")
         except Exception as e:
-            logger.warning("Database initialization failed", error=str(e), impact="some features may be limited")
+            logger.warning(
+                "Database initialization failed",
+                error=str(e),
+                impact="some features may be limited",
+            )
 
         # Start provider monitoring
         logger.info("Starting provider monitoring")
@@ -216,9 +237,7 @@ async def lifespan(app: FastAPI):
             logger.info("AI provider health monitoring started")
 
             # One-shot credential validation so invalid cloud keys are surfaced loudly.
-            provider_credential_report = (
-                await health_monitor.validate_configured_credentials()
-            )
+            provider_credential_report = await health_monitor.validate_configured_credentials()
             invalid_credentials = provider_credential_report["invalid_credentials"]
             unreachable_providers = provider_credential_report["unreachable"]
 
@@ -241,11 +260,13 @@ async def lifespan(app: FastAPI):
             if invalid_credentials and os.getenv(
                 "FAIL_ON_PROVIDER_CREDENTIAL_ERRORS", "false"
             ).lower() in {"1", "true", "yes", "on"}:
-                raise RuntimeError(
-                    "Invalid provider credentials found during startup validation"
-                )
+                raise RuntimeError("Invalid provider credentials found during startup validation")
         except Exception as e:
-            logger.warning("AI provider health monitoring failed", error=str(e), impact="routing may be degraded")
+            logger.warning(
+                "AI provider health monitoring failed",
+                error=str(e),
+                impact="routing may be degraded",
+            )
 
         # Initialize secrets adapter
         logger.info("Initializing secrets adapter")
@@ -253,14 +274,15 @@ async def lifespan(app: FastAPI):
             await init_secrets_adapter()
             logger.info("Secrets adapter initialized")
         except Exception as e:
-            logger.warning("Failed to initialize secrets adapter", error=str(e), impact="continuing without secrets management")
+            logger.warning(
+                "Failed to initialize secrets adapter",
+                error=str(e),
+                impact="continuing without secrets management",
+            )
 
         # Check privacy features
         logger.info("Checking privacy and security features")
         try:
-            from .services.sanitization import sanitize_input_for_model
-            from .services.telemetry import log_inference_metrics
-
             logger.info("PII sanitization available")
             logger.info("Telemetry with redaction available")
         except Exception as e:
@@ -272,7 +294,10 @@ async def lifespan(app: FastAPI):
             if VECTOR_STORE_AVAILABLE:
                 logger.info("Safe vector store available")
             else:
-                logger.warning("Safe vector store unavailable", reason="sentence-transformers not installed")
+                logger.warning(
+                    "Safe vector store unavailable",
+                    reason="sentence-transformers not installed",
+                )
         except Exception:
             pass
 
@@ -282,7 +307,11 @@ async def lifespan(app: FastAPI):
             await artifact_cleanup_service.start()
             logger.info("Artifact cleanup service started")
         except Exception as e:
-            logger.warning("Artifact cleanup service failed to start", error=str(e), impact="continuing without automatic cleanup")
+            logger.warning(
+                "Artifact cleanup service failed to start",
+                error=str(e),
+                impact="continuing without automatic cleanup",
+            )
 
         logger.info("Backend startup complete", status="ready")
 
@@ -344,8 +373,40 @@ app = FastAPI(
 )
 
 
+@app.middleware("http")
+async def add_contract_lifecycle_headers(request: Request, call_next):
+    correlation_id = request.headers.get("x-correlation-id") or request.headers.get("x-request-id")
+    response = await call_next(request)
+    decision = classify_route_lifecycle(request.url.path)
+    response.headers["X-API-Lifecycle"] = decision.lifecycle.value
+    if decision.sunset_at:
+        response.headers["Deprecation"] = "true"
+        response.headers["Sunset"] = decision.sunset_at
+    if correlation_id:
+        response.headers["X-Correlation-ID"] = correlation_id
+    migration_metrics.record_request(
+        path=request.url.path,
+        lifecycle=decision.lifecycle.value,
+        is_v1=request.url.path.startswith("/api/v1"),
+        status_code=response.status_code,
+    )
+    return response
+
+
 @app.exception_handler(DomainError)
-async def handle_domain_error(_: Request, exc: DomainError):
+async def handle_domain_error(request: Request, exc: DomainError):
+    logger.warning(
+        "domain_error",
+        error_code=exc.code,
+        status_code=exc.status_code,
+        route=request.url.path,
+    )
+    lifecycle = classify_route_lifecycle(request.url.path).lifecycle.value
+    migration_metrics.record_error_code(
+        lifecycle=lifecycle,
+        error_code=exc.code,
+        status_code=exc.status_code,
+    )
     return JSONResponse(
         status_code=exc.status_code,
         content=ErrorEnvelope(
@@ -359,8 +420,15 @@ async def handle_domain_error(_: Request, exc: DomainError):
 
 
 @app.exception_handler(RequestValidationError)
-async def handle_validation_error(_: Request, exc: RequestValidationError):
+async def handle_validation_error(request: Request, exc: RequestValidationError):
     payload = map_validation_exception(exc)
+    logger.warning("validation_error", error_code=payload.code, route=request.url.path)
+    lifecycle = classify_route_lifecycle(request.url.path).lifecycle.value
+    migration_metrics.record_error_code(
+        lifecycle=lifecycle,
+        error_code=payload.code,
+        status_code=422,
+    )
     return JSONResponse(
         status_code=422,
         content=ErrorEnvelope(error=payload).model_dump(exclude_none=True),
@@ -368,8 +436,20 @@ async def handle_validation_error(_: Request, exc: RequestValidationError):
 
 
 @app.exception_handler(HTTPException)
-async def handle_http_error(_: Request, exc: HTTPException):
+async def handle_http_error(request: Request, exc: HTTPException):
     payload = map_http_exception(exc)
+    logger.warning(
+        "http_error",
+        error_code=payload.code,
+        status_code=exc.status_code,
+        route=request.url.path,
+    )
+    lifecycle = classify_route_lifecycle(request.url.path).lifecycle.value
+    migration_metrics.record_error_code(
+        lifecycle=lifecycle,
+        error_code=payload.code,
+        status_code=exc.status_code,
+    )
     return JSONResponse(
         status_code=exc.status_code,
         content=ErrorEnvelope(error=payload).model_dump(exclude_none=True),
@@ -377,8 +457,20 @@ async def handle_http_error(_: Request, exc: HTTPException):
 
 
 @app.exception_handler(Exception)
-async def handle_unhandled_error(_: Request, exc: Exception):
+async def handle_unhandled_error(request: Request, exc: Exception):
     payload = map_unhandled_exception(exc)
+    logger.error(
+        "unhandled_error",
+        error_code=payload.code,
+        route=request.url.path,
+        error=str(exc),
+    )
+    lifecycle = classify_route_lifecycle(request.url.path).lifecycle.value
+    migration_metrics.record_error_code(
+        lifecycle=lifecycle,
+        error_code=payload.code,
+        status_code=500,
+    )
     return JSONResponse(
         status_code=500,
         content=ErrorEnvelope(error=payload).model_dump(exclude_none=True),
@@ -458,6 +550,7 @@ app.add_middleware(
         "/auth/passkey/auth",
         "/auth/passkey/authenticate",
         "/api/chat",  # Allow chat API in development
+        "/api/v1/api/chat",  # Versioned guest chat compatibility endpoint
         "/chat",  # Allow chat routes in development
         "/sandbox",  # Allow sandbox API in development
     ],
@@ -473,48 +566,62 @@ if environment == "production" and not os.getenv("ALLOWED_ORIGINS"):
     )
 
 if "*" in allowed_origins:
-    logger.warning("CORS configured to allow all origins", environment="*", severity="security_risk", note="acceptable only for development")
+    logger.warning(
+        "CORS configured to allow all origins",
+        environment="*",
+        severity="security_risk",
+        note="acceptable only for development",
+    )
 
 app.add_middleware(
     CORSMiddleware,
     allow_origins=allowed_origins,
     allow_credentials=True,
     allow_methods=["GET", "POST", "PUT", "DELETE", "OPTIONS"],
-    allow_headers=["*"] if environment != "production" else SecurityConfig.ALLOWED_HEADERS,
+    allow_headers=(["*"] if environment != "production" else SecurityConfig.ALLOWED_HEADERS),
 )
 
-# Include all routers
-app.include_router(api_router)
-app.include_router(auth_router)
-app.include_router(routing_router)
-app.include_router(parse_router)
-app.include_router(raptor_router)
-app.include_router(api_keys_router)
-app.include_router(settings_router)
-app.include_router(search_router)
-app.include_router(stream_router)
-app.include_router(chat_router)
-app.include_router(semantic_chat_router)
-app.include_router(write_time_router)
-app.include_router(health_router)
-app.include_router(ops_router)
-app.include_router(secrets_router)
-app.include_router(privacy_router)  # GDPR/CCPA compliance
-app.include_router(model_suggestion_debug_router)  # Model-based debug suggestions
-app.include_router(observability_debug_router)  # Observability & diagnostic surfaces
-app.include_router(sandbox_router)  # Secure code execution sandbox
-app.include_router(providers_models_router)  # Provider and model discovery
-app.include_router(account_router)  # User account management
-app.include_router(support_router)  # User support/feedback
+mount_primary_routes(
+    app,
+    api_router=api_router,
+    auth_router=auth_router,
+    routing_router=routing_router,
+    parse_router=parse_router,
+    raptor_router=raptor_router,
+    api_keys_router=api_keys_router,
+    settings_router=settings_router,
+    search_router=search_router,
+    stream_router=stream_router,
+    chat_router=chat_router,
+    semantic_chat_router=semantic_chat_router,
+    write_time_router=write_time_router,
+    health_router=health_router,
+    ops_router=ops_router,
+    secrets_router=secrets_router,
+    privacy_router=privacy_router,
+    model_suggestion_debug_router=model_suggestion_debug_router,
+    observability_debug_router=observability_debug_router,
+    sandbox_router=sandbox_router,
+    providers_models_router=providers_models_router,
+    account_router=account_router,
+    support_router=support_router,
+    routing_analytics_available=ROUTING_ANALYTICS_AVAILABLE,
+    routing_analytics_router=routing_analytics_router,
+)
 
-# Include routing analytics router (new smart routing)
-if ROUTING_ANALYTICS_AVAILABLE and routing_analytics_router:
-    app.include_router(routing_analytics_router)
-
-# Versioned aliases for high-traffic/admin routes.
-app.include_router(health_router, prefix="/api/v1")
-app.include_router(settings_router, prefix="/api/v1")
-app.include_router(providers_models_router, prefix="/api/v1")
+mount_versioned_alias_routes(
+    app,
+    health_router=health_router,
+    settings_router=settings_router,
+    providers_models_router=providers_models_router,
+    chat_router=chat_router,
+    api_router=api_router,
+    auth_router=auth_router,
+    search_router=search_router,
+    sandbox_router=sandbox_router,
+    account_router=account_router,
+    support_router=support_router,
+)
 
 
 @app.get("/")

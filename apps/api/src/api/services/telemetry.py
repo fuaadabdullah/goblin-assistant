@@ -141,9 +141,7 @@ def log_inference_metrics(
 
     # Local logging (safe)
     log_data = {
-        "event": EventType.INFERENCE_SUCCESS
-        if status_code == 200
-        else EventType.INFERENCE_ERROR,
+        "event": (EventType.INFERENCE_SUCCESS if status_code == 200 else EventType.INFERENCE_ERROR),
         "provider": provider,
         "model": model,
         "latency_ms": latency_ms,
@@ -204,9 +202,7 @@ def log_conversation_event(
             statsd.increment(f"goblin.conversation.{event_type.value}", tags=tags)
 
             if message_count is not None:
-                statsd.gauge(
-                    "goblin.conversation.message_count", message_count, tags=tags
-                )
+                statsd.gauge("goblin.conversation.message_count", message_count, tags=tags)
         except Exception as e:
             logger.error(f"Failed to send conversation event to Datadog: {e}")
 
@@ -267,9 +263,7 @@ def log_rag_event(
             logger.error(f"Failed to send RAG event to Datadog: {e}")
 
     # Local logging
-    logger.info(
-        f"RAG: event={event_type.value}, docs={document_count}, success={success}"
-    )
+    logger.info(f"RAG: event={event_type.value}, docs={document_count}, success={success}")
 
 
 def log_privacy_event(

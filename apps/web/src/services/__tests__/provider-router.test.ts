@@ -1,9 +1,5 @@
 import { describe, it, expect, beforeEach } from '@jest/globals';
-import {
-  updateMetricsFromBackend,
-  topProvidersFor,
-  getRuntimeClient,
-} from '../provider-router';
+import { updateMetricsFromBackend, topProvidersFor, getRuntimeClient } from '../provider-router';
 
 describe('provider-router', () => {
   beforeEach(() => {

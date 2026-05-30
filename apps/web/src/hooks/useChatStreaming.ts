@@ -8,10 +8,7 @@ interface UseChatStreamingOptions {
   selectedModel?: string;
   onMessageStart?: (messageId: string) => void;
   onMessageUpdate?: (messageId: string, content: string) => void;
-  onMessageComplete?: (
-    messageId: string,
-    metadata: Record<string, unknown>,
-  ) => void;
+  onMessageComplete?: (messageId: string, metadata: Record<string, unknown>) => void;
   onError?: (title: string, message?: string) => void;
 }
 
@@ -35,23 +32,16 @@ export const useChatStreaming = ({
       const response = await apiClient.chatCompletion(
         [{ role: 'user', content: message }],
         selectedModel,
-        true,
+        true
       );
 
       // Validate and extract content with proper type checking
       let content: string;
       if (typeof response === 'string') {
         content = response;
-      } else if (
-        response &&
-        typeof response === 'object' &&
-        'content' in response
-      ) {
+      } else if (response && typeof response === 'object' && 'content' in response) {
         const contentValue = (response as { content: unknown }).content;
-        content =
-          typeof contentValue === 'string'
-            ? contentValue
-            : JSON.stringify(response);
+        content = typeof contentValue === 'string' ? contentValue : JSON.stringify(response);
       } else {
         content = JSON.stringify(response);
       }
@@ -64,8 +54,7 @@ export const useChatStreaming = ({
         demoMode,
       });
     } catch (error) {
-      const messageText =
-        error instanceof Error ? error.message : 'Failed to send message';
+      const messageText = error instanceof Error ? error.message : 'Failed to send message';
       onError?.('Chat error', messageText);
     } finally {
       setIsLoading(false);

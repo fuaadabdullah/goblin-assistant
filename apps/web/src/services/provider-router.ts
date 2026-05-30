@@ -53,9 +53,7 @@ function validateProvidersJson(raw: unknown): ProvidersJson {
 
   const defaultTimeout = raw.default_timeout_ms;
   if (!isNumber(defaultTimeout) || defaultTimeout <= 0) {
-    throw new Error(
-      `providers.json: invalid default_timeout_ms: ${String(defaultTimeout)}`
-    );
+    throw new Error(`providers.json: invalid default_timeout_ms: ${String(defaultTimeout)}`);
   }
 
   if (!isRecord(raw.providers)) {
@@ -72,9 +70,7 @@ try {
   Object.entries(config.providers || {}).forEach(([id, provider]) => {
     const p = provider as unknown as JsonProviderEntry;
     if (!p.capabilities || p.capabilities.length === 0) {
-      devWarn(
-        `Provider schema mismatch: ${id} missing or empty 'capabilities' field`
-      );
+      devWarn(`Provider schema mismatch: ${id} missing or empty 'capabilities' field`);
     }
   });
   devDebug('Provider config validated successfully');
@@ -98,20 +94,13 @@ function movingAvg(arr: number[], n = 8): number | null {
 }
 
 // simple in-memory metrics mirror for UI (populated by backend telemetry if you push it)
-const METRICS: Record<
-  string,
-  { latencies: number[]; succ: number; fail: number }
-> = {};
+const METRICS: Record<string, { latencies: number[]; succ: number; fail: number }> = {};
 
 function ensureMetrics(pid: string) {
   if (!METRICS[pid]) METRICS[pid] = { latencies: [], succ: 0, fail: 0 };
 }
 
-export function updateMetricsFromBackend(
-  pid: string,
-  latencyMs: number,
-  ok: boolean,
-) {
+export function updateMetricsFromBackend(pid: string, latencyMs: number, ok: boolean) {
   ensureMetrics(pid);
   METRICS[pid].latencies.push(latencyMs);
   if (METRICS[pid].latencies.length > 100) METRICS[pid].latencies.shift();
@@ -123,26 +112,20 @@ function scoreProvider(
   pid: string,
   capability: string,
   preferLocal = false,
-  preferCost = false,
+  preferCost = false
 ): number {
   const p = PROVIDERS[pid] as unknown as JsonProviderEntry;
-  if (!p.capabilities || p.capabilities.indexOf(capability) === -1)
-    return Infinity;
+  if (!p.capabilities || p.capabilities.indexOf(capability) === -1) return Infinity;
 
   let score = 0;
 
   // Priority tier component (default to 2 if missing)
   const priorityTier =
-    typeof p.priority_tier === 'number' && !isNaN(p.priority_tier)
-      ? p.priority_tier
-      : 2;
+    typeof p.priority_tier === 'number' && !isNaN(p.priority_tier) ? p.priority_tier : 2;
   score += priorityTier * 10;
 
   // Cost component (default to 0.5 if missing)
-  const costScore =
-    typeof p.cost_score === 'number' && !isNaN(p.cost_score)
-      ? p.cost_score
-      : 0.5;
+  const costScore = typeof p.cost_score === 'number' && !isNaN(p.cost_score) ? p.cost_score : 0.5;
   score += costScore * 5;
 
   // Latency component
@@ -162,8 +145,7 @@ function scoreProvider(
   score *= 1 - succRate * 0.45;
 
   // Local preference
-  if (preferLocal && (p.endpoint || '').startsWith('http://127.0.0.1'))
-    score *= 0.6;
+  if (preferLocal && (p.endpoint || '').startsWith('http://127.0.0.1')) score *= 0.6;
 
   // Cost preference
   if (preferCost) score += costScore * 10;
@@ -179,7 +161,7 @@ export function topProvidersFor(
   capability: string,
   preferLocal = false,
   preferCost = false,
-  limit = 6,
+  limit = 6
 ): string[] {
   const items: [number, string][] = [];
   Object.keys(PROVIDERS).forEach((pid) => {

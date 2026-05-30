@@ -193,9 +193,11 @@ class SystemPromptManager:
             "prompt_length": len(self.config.get_prompt()),
             "estimated_tokens": self.config.get_tokens(),
             "guardrails": self.config.get_guardrails(),
-            "prompt_preview": self.config.get_prompt()[:200] + "..."
-            if len(self.config.get_prompt()) > 200
-            else self.config.get_prompt(),
+            "prompt_preview": (
+                self.config.get_prompt()[:200] + "..."
+                if len(self.config.get_prompt()) > 200
+                else self.config.get_prompt()
+            ),
         }
 
     def validate_response(self, response: str) -> Dict[str, Any]:
@@ -207,9 +209,7 @@ class SystemPromptManager:
             violations.append("System prompt revelation")
 
         # Check for token limit mentions
-        if any(
-            phrase in response.lower() for phrase in ["token limit", "context window"]
-        ):
+        if any(phrase in response.lower() for phrase in ["token limit", "context window"]):
             violations.append("Token limit mention")
 
         # Check for context assembly mentions

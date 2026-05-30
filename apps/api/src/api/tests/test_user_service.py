@@ -4,10 +4,9 @@ Tests for UserService.
 Uses an in-memory SQLite engine to validate actual SQLAlchemy queries,
 following the pattern from test_task_store.py.
 """
+
 from __future__ import annotations
 
-from contextlib import asynccontextmanager
-from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine
@@ -166,12 +165,10 @@ class TestUserService:
         assert result is True
 
         # Verify last_login was set
-        from sqlalchemy import func, select
+        from sqlalchemy import select
         from api.storage.models import UserModel
 
-        result = await db_session.execute(
-            select(UserModel).where(UserModel.id == user.id)
-        )
+        result = await db_session.execute(select(UserModel).where(UserModel.id == user.id))
         updated = result.scalar_one_or_none()
         assert updated is not None
         assert updated.last_login is not None

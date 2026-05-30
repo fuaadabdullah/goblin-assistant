@@ -57,12 +57,7 @@ const messages = [
 
 describe('ChatMessageList', () => {
   it('preserves DOM identity for messages across reorder and delete operations', () => {
-    const { rerender } = render(
-      <ChatMessageList
-        {...baseProps}
-        messages={messages}
-      />
-    );
+    const { rerender } = render(<ChatMessageList {...baseProps} messages={messages} />);
 
     const alphaNode = screen.getByText('Alpha').closest('li');
     const betaNode = screen.getByText('Beta').closest('li');
@@ -72,24 +67,14 @@ describe('ChatMessageList', () => {
     expect(betaNode).not.toBeNull();
     expect(gammaNode).not.toBeNull();
 
-    rerender(
-      <ChatMessageList
-        {...baseProps}
-        messages={[messages[2], messages[0], messages[1]]}
-      />
-    );
+    rerender(<ChatMessageList {...baseProps} messages={[messages[2], messages[0], messages[1]]} />);
 
     const reorderedItems = screen.getAllByRole('listitem');
     expect(reorderedItems[0]).toBe(gammaNode);
     expect(reorderedItems[1]).toBe(alphaNode);
     expect(reorderedItems[2]).toBe(betaNode);
 
-    rerender(
-      <ChatMessageList
-        {...baseProps}
-        messages={[messages[2], messages[1]]}
-      />
-    );
+    rerender(<ChatMessageList {...baseProps} messages={[messages[2], messages[1]]} />);
 
     const remainingItems = screen.getAllByRole('listitem');
     expect(remainingItems[0]).toBe(gammaNode);

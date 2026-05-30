@@ -26,7 +26,7 @@ export const useErrorTesting = (onSuccess?: (title: string, message?: string) =>
   const [isLoading, setIsLoading] = useState(false);
 
   const addResult = useCallback((label: string, status: ErrorTestStatus, message?: string) => {
-    setResults(prev => [
+    setResults((prev) => [
       ...prev,
       {
         id: createId(),

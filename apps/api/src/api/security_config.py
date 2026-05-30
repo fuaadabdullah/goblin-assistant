@@ -3,8 +3,10 @@ Security configuration and utilities for Goblin Assistant API
 """
 
 import os
+import logging
 from typing import List
-from urllib.parse import urlparse
+
+logger = logging.getLogger(__name__)
 
 
 DEFAULT_LOCAL_ORIGINS = [
@@ -18,125 +20,75 @@ CANONICAL_PUBLIC_ORIGINS = [
     "https://goblin-backend-dt30.onrender.com",
 ]
 
-CANONICAL_FRONTEND_ORIGIN = "https://goblin-assistant.vercel.app"
-CANONICAL_BACKEND_ORIGIN = "https://goblin-backend-dt30.onrender.com"
 
+def _resolve_origins(environment: str) -> List[str]:
+    """
+    Resolve CORS origins based on environment.
 
-def _dedupe_origins(origins: List[str]) -> List[str]:
-    seen: set[str] = set()
-    ordered: List[str] = []
-    for origin in origins:
-        cleaned = origin.strip()
-        if not cleaned or cleaned in seen:
-            continue
-        seen.add(cleaned)
-        ordered.append(cleaned)
-    return ordered
+    For production, only CANONICAL_PUBLIC_ORIGINS are allowed.
+    For development, local origins are used.
 
+    This logic ensures production does not accidentally allow
+    development-only origins.
+    """
+    if environment == "production":
+        custom = os.getenv("ALLOWED_ORIGINS", "")
+        if custom:
+            return [origin.strip() for origin in custom.split(",") if origin.strip()]
+        return CANONICAL_PUBLIC_ORIGINS
 
-def _extract_hostname(origin: str) -> str:
-    parsed = urlparse(origin)
-    return (parsed.hostname or "").strip().lower()
+    # Development environment
+    dev_origins = list(DEFAULT_LOCAL_ORIGINS)
+    custom = os.getenv("ALLOWED_ORIGINS", "")
+    if custom:
+        dev_origins.extend([origin.strip() for origin in custom.split(",") if origin.strip()])
+    return dev_origins
 
 
 def _resolve_auth_cookie_samesite(environment: str) -> str:
-    default_samesite = "none" if environment == "production" else "lax"
-    configured = os.getenv("AUTH_COOKIE_SAMESITE", default_samesite).strip().lower()
-    if configured in {"lax", "strict", "none"}:
-        return configured
-    return default_samesite
+    """
+    Resolve the SameSite setting for auth cookies based on environment.
+
+    In production with cross-site frontend/backend, this must be 'none'
+    so the cookie is sent on cross-site requests.
+    In development, 'lax' is preferred for CSRF protection.
+    """
+    if environment == "production":
+        return "none"
+    return os.getenv("AUTH_COOKIE_SAMESITE", "lax")
 
 
 def _is_cross_site_frontend_backend() -> bool:
-    frontend_origins = _dedupe_origins(
-        [
-            os.getenv("FRONTEND_URL", ""),
-            os.getenv("NEXT_PUBLIC_FRONTEND_URL", ""),
-            CANONICAL_FRONTEND_ORIGIN,
-        ]
-    )
-    backend_origins = _dedupe_origins(
-        [
-            os.getenv("BACKEND_URL", ""),
-            os.getenv("GOBLIN_BACKEND_URL", ""),
-            CANONICAL_BACKEND_ORIGIN,
-        ]
-    )
-
-    frontend_hosts = {
-        host for host in (_extract_hostname(origin) for origin in frontend_origins) if host
-    }
-    backend_hosts = {
-        host for host in (_extract_hostname(origin) for origin in backend_origins) if host
-    }
-
-    if not frontend_hosts or not backend_hosts:
+    """
+    Heuristic: if the frontend and backend are served from different
+    origins (e.g. Vercel frontend + Render backend), we consider
+    the deployment cross-site.
+    """
+    env = os.getenv("ENVIRONMENT", "development")
+    if env != "production":
         return False
-
-    return any(frontend_host != backend_host for frontend_host in frontend_hosts for backend_host in backend_hosts)
-
-
-def build_allowed_origins(
-    environment: str | None = None,
-    raw_origins: str | None = None,
-) -> List[str]:
-    resolved_environment = (environment or os.getenv("ENVIRONMENT", "development")).lower()
-    raw_value = os.getenv("ALLOWED_ORIGINS", "") if raw_origins is None else raw_origins
-    parsed = [origin.strip() for origin in raw_value.split(",") if origin.strip()]
-
-    if not parsed and resolved_environment != "production":
-        parsed.extend(DEFAULT_LOCAL_ORIGINS)
-
-    dynamic_public_origins = [
-        os.getenv("FRONTEND_URL", ""),
-        os.getenv("NEXT_PUBLIC_FRONTEND_URL", ""),
-        os.getenv("BACKEND_URL", ""),
-        os.getenv("GOBLIN_BACKEND_URL", ""),
-    ]
-
-    return _dedupe_origins(
-        parsed + CANONICAL_PUBLIC_ORIGINS + dynamic_public_origins
-    )
+    # In production, frontend & backend are different origins
+    return True
 
 
 class SecurityConfig:
-    """Security configuration settings"""
+    """
+    Centralized security configuration.
 
-    # Runtime Environment
-    ENVIRONMENT = os.getenv("ENVIRONMENT", "development").lower()
+    All security-sensitive settings are resolved once on import and
+    should not be mutated at runtime.
+    """
 
-    # Shared production CORS header allowlist
-    PRODUCTION_ALLOWED_HEADERS = [
-        "Accept",
-        "Accept-Language",
-        "Content-Language",
-        "Content-Type",
-        "Authorization",
-        "X-API-Key",
-        "X-CSRF-Token",
-    ]
+    # Environment
+    ENVIRONMENT = os.getenv("ENVIRONMENT", "development")
 
-    # CORS Configuration
-    # Default to localhost for development, override in production with specific origins
-    # Using wildcard (*) for headers in dev for flexibility, restrict in production
-    ALLOWED_ORIGINS = build_allowed_origins(ENVIRONMENT)
-    ALLOW_CREDENTIALS = True
-    ALLOWED_METHODS = ["GET", "POST", "PUT", "DELETE", "OPTIONS"]
-    ALLOWED_HEADERS = (
-        PRODUCTION_ALLOWED_HEADERS.copy()
-        if ENVIRONMENT == "production"
-        else ["*"]
-    )
+    # CORS Configuration - resolved via helper
+    ALLOWED_ORIGINS = _resolve_origins(ENVIRONMENT)
 
     # Rate Limiting
-    _rate_limit_env = os.getenv("RATE_LIMIT_ENABLED")
-    RATE_LIMIT_ENABLED = (
-        _rate_limit_env.lower() == "true"
-        if isinstance(_rate_limit_env, str)
-        else ENVIRONMENT == "production"
-    )
+    RATE_LIMIT_ENABLED = os.getenv("RATE_LIMIT_ENABLED", "true").lower() == "true"
     RATE_LIMIT_REQUESTS = int(os.getenv("RATE_LIMIT_REQUESTS", "100"))
-    RATE_LIMIT_WINDOW = int(os.getenv("RATE_LIMIT_WINDOW", "60"))
+    RATE_LIMIT_WINDOW = int(os.getenv("RATE_LIMIT_WINDOW", "60"))  # seconds
 
     # Security Headers
     SECURITY_HEADERS = {
@@ -152,8 +104,9 @@ class SecurityConfig:
 
     # Override debug mode based on environment
     if ENVIRONMENT == "production" and DEBUG:
-        print("🚨 SECURITY VIOLATION: Debug mode cannot be enabled in production!")
-        print("   Forcing DEBUG=false for security reasons.")
+        logger.warning(
+            "Security violation: Debug mode cannot be enabled in production! Forcing DEBUG=false."
+        )
         DEBUG = False
 
     # Secret Management
@@ -162,9 +115,7 @@ class SecurityConfig:
     VAULT_MOUNT_POINT = os.getenv("VAULT_MOUNT_POINT", "secret")
 
     # Database Security
-    DATABASE_URL = os.getenv(
-        "DATABASE_URL", "sqlite+aiosqlite:///./goblin_assistant.db"
-    )
+    DATABASE_URL = os.getenv("DATABASE_URL", "sqlite+aiosqlite:///./goblin_assistant.db")
 
     # Redis Security
     REDIS_URL = os.getenv("REDIS_URL", "redis://localhost:6379/0")
@@ -193,9 +144,7 @@ class SecurityConfig:
                 )
 
             if not os.getenv("ALLOWED_ORIGINS"):
-                warnings.append(
-                    "🚨 CRITICAL: No ALLOWED_ORIGINS configured for production CORS."
-                )
+                warnings.append("🚨 CRITICAL: No ALLOWED_ORIGINS configured for production CORS.")
 
             if not os.getenv("LOCAL_LLM_API_KEY"):
                 warnings.append(
@@ -246,11 +195,11 @@ def log_security_warnings():
     """Log security configuration warnings"""
     warnings = SecurityConfig.validate_config()
     if warnings:
-        print("SECURITY WARNINGS:")
+        logger.warning("Security configuration warnings detected:")
         for warning in warnings:
-            print(f"  - {warning}")
+            logger.warning("  - %s", warning)
     else:
-        print("No security configuration warnings detected.")
+        logger.info("No security configuration warnings detected.")
 
 
 # Initialize security warnings on import

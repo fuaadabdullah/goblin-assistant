@@ -16,6 +16,8 @@ from api.tools.registry import (
     ToolDefinition,
     ToolParameter,
     export_openai_tools,
+    export_tool_specs,
+    export_tools_for_provider,
     get_tool,
     register_tool,
 )
@@ -92,6 +94,19 @@ class TestToolRegistry:
         }
         assert expected.issubset(set(TOOL_REGISTRY.keys()))
 
+    def test_provider_neutral_tool_specs_export(self):
+        specs = export_tool_specs()
+        assert isinstance(specs, list)
+        assert specs, "Expected at least one registered tool spec"
+        first = specs[0]
+        assert first.name
+        assert isinstance(first.input_schema, dict)
+
+        provider_payload = export_tools_for_provider("anthropic")
+        assert isinstance(provider_payload, list)
+        assert provider_payload
+        assert provider_payload[0].get("type") == "function"
+
 
 # ---------------------------------------------------------------------------
 # Executor tests
@@ -148,27 +163,50 @@ class TestExecuteToolCall:
 
 
 class TestExtractToolCalls:
+    def test_extracts_from_normalized_contract(self):
+        response = {
+            "ok": True,
+            "result": {
+                "text": "",
+                "tool_calls": [
+                    {
+                        "id": "tc_normalized_1",
+                        "name": "get_stock_quote",
+                        "arguments": {"ticker": "MSFT"},
+                    }
+                ],
+            },
+        }
+        calls = extract_tool_calls(response)
+        assert calls is not None
+        assert calls[0]["name"] == "get_stock_quote"
+        assert calls[0]["arguments"] == {"ticker": "MSFT"}
+
     def test_extracts_from_openai_format(self):
         response = {
             "ok": True,
             "result": {
                 "text": "",
                 "raw": {
-                    "choices": [{
-                        "finish_reason": "tool_calls",
-                        "message": {
-                            "role": "assistant",
-                            "content": None,
-                            "tool_calls": [{
-                                "id": "call_abc",
-                                "type": "function",
-                                "function": {
-                                    "name": "get_stock_quote",
-                                    "arguments": '{"ticker": "AAPL"}',
-                                },
-                            }],
-                        },
-                    }],
+                    "choices": [
+                        {
+                            "finish_reason": "tool_calls",
+                            "message": {
+                                "role": "assistant",
+                                "content": None,
+                                "tool_calls": [
+                                    {
+                                        "id": "call_abc",
+                                        "type": "function",
+                                        "function": {
+                                            "name": "get_stock_quote",
+                                            "arguments": '{"ticker": "AAPL"}',
+                                        },
+                                    }
+                                ],
+                            },
+                        }
+                    ],
                 },
             },
         }
@@ -178,19 +216,44 @@ class TestExtractToolCalls:
         assert calls[0]["name"] == "get_stock_quote"
         assert calls[0]["arguments"] == {"ticker": "AAPL"}
 
+    def test_extracts_from_anthropic_tool_use_blocks(self):
+        response = {
+            "ok": True,
+            "result": {
+                "text": "",
+                "raw": {
+                    "content": [
+                        {
+                            "type": "tool_use",
+                            "id": "anthropic_tool_1",
+                            "name": "get_stock_quote",
+                            "input": {"ticker": "NVDA"},
+                        }
+                    ]
+                },
+            },
+        }
+        calls = extract_tool_calls(response)
+        assert calls is not None
+        assert calls[0]["id"] == "anthropic_tool_1"
+        assert calls[0]["name"] == "get_stock_quote"
+        assert calls[0]["arguments"] == {"ticker": "NVDA"}
+
     def test_returns_none_for_text_response(self):
         response = {
             "ok": True,
             "result": {
                 "text": "Hello!",
                 "raw": {
-                    "choices": [{
-                        "finish_reason": "stop",
-                        "message": {
-                            "role": "assistant",
-                            "content": "Hello!",
-                        },
-                    }],
+                    "choices": [
+                        {
+                            "finish_reason": "stop",
+                            "message": {
+                                "role": "assistant",
+                                "content": "Hello!",
+                            },
+                        }
+                    ],
                 },
             },
         }
@@ -217,10 +280,15 @@ class TestRunToolLoop:
             "result": {
                 "text": "The price is $150.",
                 "raw": {
-                    "choices": [{
-                        "finish_reason": "stop",
-                        "message": {"role": "assistant", "content": "The price is $150."},
-                    }],
+                    "choices": [
+                        {
+                            "finish_reason": "stop",
+                            "message": {
+                                "role": "assistant",
+                                "content": "The price is $150.",
+                            },
+                        }
+                    ],
                 },
             },
         }
@@ -245,21 +313,25 @@ class TestRunToolLoop:
             "result": {
                 "text": "",
                 "raw": {
-                    "choices": [{
-                        "finish_reason": "tool_calls",
-                        "message": {
-                            "role": "assistant",
-                            "content": None,
-                            "tool_calls": [{
-                                "id": "call_1",
-                                "type": "function",
-                                "function": {
-                                    "name": "_loop_test_tool",
-                                    "arguments": '{"val": "42"}',
-                                },
-                            }],
-                        },
-                    }],
+                    "choices": [
+                        {
+                            "finish_reason": "tool_calls",
+                            "message": {
+                                "role": "assistant",
+                                "content": None,
+                                "tool_calls": [
+                                    {
+                                        "id": "call_1",
+                                        "type": "function",
+                                        "function": {
+                                            "name": "_loop_test_tool",
+                                            "arguments": '{"val": "42"}',
+                                        },
+                                    }
+                                ],
+                            },
+                        }
+                    ],
                 },
             },
         }
@@ -270,10 +342,15 @@ class TestRunToolLoop:
             "result": {
                 "text": "The answer is 42.",
                 "raw": {
-                    "choices": [{
-                        "finish_reason": "stop",
-                        "message": {"role": "assistant", "content": "The answer is 42."},
-                    }],
+                    "choices": [
+                        {
+                            "finish_reason": "stop",
+                            "message": {
+                                "role": "assistant",
+                                "content": "The answer is 42.",
+                            },
+                        }
+                    ],
                 },
             },
         }
@@ -285,11 +362,13 @@ class TestRunToolLoop:
             return {"result": val}
 
         backup = dict(TOOL_REGISTRY)
-        register_tool(ToolDefinition(
-            name="_loop_test_tool",
-            description="test",
-            handler=loop_handler,
-        ))
+        register_tool(
+            ToolDefinition(
+                name="_loop_test_tool",
+                description="test",
+                handler=loop_handler,
+            )
+        )
 
         try:
             messages = [{"role": "user", "content": "test"}]

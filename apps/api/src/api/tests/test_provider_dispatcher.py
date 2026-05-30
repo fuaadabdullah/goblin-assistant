@@ -15,26 +15,20 @@ def mock_providers():
     openai = AsyncMock()
     openai.provider_id = "openai"
     openai.health_check = AsyncMock(
-        return_value=ProviderHealth(
-            provider_id="openai", healthy=True, latency_ms=50
-        )
+        return_value=ProviderHealth(provider_id="openai", healthy=True, latency_ms=50)
     )
     openai.invoke = AsyncMock()
 
     anthropic = AsyncMock()
     anthropic.provider_id = "anthropic"
     anthropic.health_check = AsyncMock(
-        return_value=ProviderHealth(
-            provider_id="anthropic", healthy=True, latency_ms=75
-        )
+        return_value=ProviderHealth(provider_id="anthropic", healthy=True, latency_ms=75)
     )
 
     azure = AsyncMock()
     azure.provider_id = "azure"
     azure.health_check = AsyncMock(
-        return_value=ProviderHealth(
-            provider_id="azure", healthy=False, latency_ms=100
-        )
+        return_value=ProviderHealth(provider_id="azure", healthy=False, latency_ms=100)
     )
 
     return {"openai": openai, "anthropic": anthropic, "azure": azure}
@@ -86,9 +80,7 @@ class TestProviderDispatcherSelection:
         assert selected.provider_id == "openai"
 
     @pytest.mark.asyncio
-    async def test_fallback_if_no_healthy_providers(
-        self, providers_mock
-    ):
+    async def test_fallback_if_no_healthy_providers(self, providers_mock):
         """Test fallback behavior when all unhealthy"""
         from api.providers.dispatcher import (
             select_provider,
@@ -96,12 +88,10 @@ class TestProviderDispatcherSelection:
 
         # All providers unhealthy
         for provider in providers_mock.values():
-            provider.health_check.return_value = (
-                ProviderHealth(
-                    provider_id=provider.provider_id,
-                    healthy=False,
-                    latency_ms=1000,
-                )
+            provider.health_check.return_value = ProviderHealth(
+                provider_id=provider.provider_id,
+                healthy=False,
+                latency_ms=1000,
             )
 
         providers = list(providers_mock.values())
@@ -120,9 +110,7 @@ class TestProviderDispatcherSelection:
 
         providers = list(providers_mock.values())
 
-        selected = await select_provider(
-            providers, preferred="anthropic"
-        )
+        selected = await select_provider(providers, preferred="anthropic")
 
         if providers_mock["anthropic"].health_check.return_value.healthy:
             assert selected.provider_id == "anthropic"
@@ -136,9 +124,7 @@ class TestCircuitBreaker:
         """Test circuit breaker opens after threshold"""
         from api.providers.dispatcher import CircuitBreaker
 
-        breaker = CircuitBreaker(
-            failure_threshold=3, timeout=60
-        )
+        breaker = CircuitBreaker(failure_threshold=3, timeout=60)
 
         # Simulate failures
         for _ in range(3):
@@ -151,9 +137,7 @@ class TestCircuitBreaker:
         """Test circuit breaker resets on success"""
         from api.providers.dispatcher import CircuitBreaker
 
-        breaker = CircuitBreaker(
-            failure_threshold=3, timeout=60
-        )
+        breaker = CircuitBreaker(failure_threshold=3, timeout=60)
 
         # Record successes
         for _ in range(3):
@@ -167,9 +151,7 @@ class TestCircuitBreaker:
         from api.providers.dispatcher import CircuitBreaker
         import asyncio
 
-        breaker = CircuitBreaker(
-            failure_threshold=1, timeout=1
-        )
+        breaker = CircuitBreaker(failure_threshold=1, timeout=1)
 
         breaker.record_failure()
         assert breaker.is_open()
@@ -185,9 +167,7 @@ class TestCircuitBreaker:
         """Test half-open state during recovery"""
         from api.providers.dispatcher import CircuitBreaker
 
-        breaker = CircuitBreaker(
-            failure_threshold=2, timeout=1
-        )
+        breaker = CircuitBreaker(failure_threshold=2, timeout=1)
 
         for _ in range(2):
             breaker.record_failure()
@@ -208,15 +188,11 @@ class TestProviderFallback:
 
         primary = AsyncMock()
         primary.provider_id = "primary"
-        primary.invoke = AsyncMock(
-            side_effect=Exception("Primary failed")
-        )
+        primary.invoke = AsyncMock(side_effect=Exception("Primary failed"))
 
         fallback = AsyncMock()
         fallback.provider_id = "fallback"
-        fallback.invoke = AsyncMock(
-            return_value={"response": "fallback"}
-        )
+        fallback.invoke = AsyncMock(return_value={"response": "fallback"})
 
         result = await invoke_with_fallback(
             "prompt",
@@ -236,21 +212,15 @@ class TestProviderFallback:
 
         p1 = AsyncMock()
         p1.provider_id = "p1"
-        p1.invoke = AsyncMock(
-            side_effect=Exception("p1 failed")
-        )
+        p1.invoke = AsyncMock(side_effect=Exception("p1 failed"))
 
         p2 = AsyncMock()
         p2.provider_id = "p2"
-        p2.invoke = AsyncMock(
-            side_effect=Exception("p2 failed")
-        )
+        p2.invoke = AsyncMock(side_effect=Exception("p2 failed"))
 
         p3 = AsyncMock()
         p3.provider_id = "p3"
-        p3.invoke = AsyncMock(
-            return_value={"response": "p3"}
-        )
+        p3.invoke = AsyncMock(return_value={"response": "p3"})
 
         result = await invoke_with_fallback(
             "prompt",
@@ -270,15 +240,11 @@ class TestProviderFallback:
         for i in range(3):
             p = AsyncMock()
             p.provider_id = f"p{i}"
-            p.invoke = AsyncMock(
-                side_effect=Exception(f"Failed {i}")
-            )
+            p.invoke = AsyncMock(side_effect=Exception(f"Failed {i}"))
             providers.append(p)
 
         with pytest.raises(Exception):
-            await invoke_with_fallback(
-                "prompt", providers=providers
-            )
+            await invoke_with_fallback("prompt", providers=providers)
 
 
 class TestProviderLoadBalancing:
@@ -296,9 +262,7 @@ class TestProviderLoadBalancing:
             strategy="round_robin",
         )
 
-        selected_providers = [
-            lb.select() for _ in range(6)
-        ]
+        selected_providers = [lb.select() for _ in range(6)]
 
         # Should rotate through providers
         assert len(set(p.provider_id for p in selected_providers)) > 1
@@ -315,14 +279,9 @@ class TestProviderLoadBalancing:
             strategy="weighted",
         )
 
-        selected_providers = [
-            lb.select() for _ in range(100)
-        ]
+        selected_providers = [lb.select() for _ in range(100)]
 
-        openai_count = sum(
-            1 for p in selected_providers
-            if p.provider_id == "openai"
-        )
+        openai_count = sum(1 for p in selected_providers if p.provider_id == "openai")
 
         # Healthy providers should get more requests
         assert openai_count > 30

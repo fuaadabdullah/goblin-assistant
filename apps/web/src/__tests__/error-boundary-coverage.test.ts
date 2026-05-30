@@ -4,7 +4,7 @@ import * as path from 'node:path';
 const pagesDir = path.join(process.cwd(), 'src/pages');
 
 const collectPageFiles = (dir: string): string[] =>
-  fs.readdirSync(dir, { withFileTypes: true }).flatMap(entry => {
+  fs.readdirSync(dir, { withFileTypes: true }).flatMap((entry) => {
     const resolvedPath = path.join(dir, entry.name);
 
     if (entry.isDirectory()) {
@@ -24,16 +24,16 @@ describe('error boundary route coverage audit', () => {
     const pageFiles = collectPageFiles(pagesDir);
 
     const uncoveredPages = pageFiles
-      .filter(filePath => {
+      .filter((filePath) => {
         const relativePath = path.relative(pagesDir, filePath);
 
         return !excludedPages.has(relativePath);
       })
-      .filter(filePath => {
+      .filter((filePath) => {
         const contents = fs.readFileSync(filePath, 'utf8');
         return !contents.includes('withRouteErrorBoundary');
       })
-      .map(filePath => path.relative(pagesDir, filePath));
+      .map((filePath) => path.relative(pagesDir, filePath));
 
     expect(uncoveredPages).toEqual([]);
   });

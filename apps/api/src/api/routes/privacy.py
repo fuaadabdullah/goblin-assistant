@@ -13,13 +13,12 @@ Usage:
 """
 
 from fastapi import APIRouter, Depends, HTTPException, BackgroundTasks
-from typing import Optional, Dict, Any
+from typing import Dict, Any
 from datetime import datetime
 import importlib.util
 import logging
 import os
 
-from ..services.sanitization import mask_sensitive
 from ..services.telemetry import log_conversation_event, EventType
 
 # Import auth dependencies
@@ -31,9 +30,7 @@ logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/api/privacy", tags=["privacy", "gdpr", "ccpa"])
 
 _VECTOR_STORE_DEFAULT = (
-    "false"
-    if os.getenv("ENVIRONMENT", "development").lower() == "production"
-    else "true"
+    "false" if os.getenv("ENVIRONMENT", "development").lower() == "production" else "true"
 )
 VECTOR_STORE_AVAILABLE = (
     os.getenv("ENABLE_VECTOR_STORE", _VECTOR_STORE_DEFAULT).strip().lower()
@@ -129,6 +126,7 @@ async def export_user_data(
         if include_conversations:
             try:
                 from ..storage.conversations import DatabaseConversationStore
+
                 conversation_store = DatabaseConversationStore()
                 conversations = await conversation_store.list_conversations(
                     user_id=user_id, limit=1000
@@ -167,6 +165,7 @@ async def export_user_data(
         if include_preferences:
             try:
                 from ..storage.preferences_service import preferences_service
+
                 prefs = await preferences_service.get_preferences(user_id)
                 export_data["data"]["preferences"] = prefs if prefs else {}
                 logger.info(f"Exported preferences for user {user_id}")
@@ -242,9 +241,7 @@ async def delete_user_data(
             vector_delete = await vector_store.delete_user_data(user_id)
             if vector_delete["success"]:
                 deleted_counts["vectors"] = vector_delete["deleted_count"]
-                logger.info(
-                    f"Deleted {deleted_counts['vectors']} vectors for user {user_id}"
-                )
+                logger.info(f"Deleted {deleted_counts['vectors']} vectors for user {user_id}")
             else:
                 logger.error(f"Vector deletion failed: {vector_delete.get('error')}")
         else:
@@ -253,6 +250,7 @@ async def delete_user_data(
         # Delete conversations from database
         try:
             from ..storage.conversations import DatabaseConversationStore
+
             conversation_store = DatabaseConversationStore()
             conversations = await conversation_store.list_conversations(
                 user_id=user_id, limit=10000
@@ -267,6 +265,7 @@ async def delete_user_data(
         # Delete user preferences from database
         try:
             from ..storage.preferences_service import preferences_service
+
             prefs_deleted = await preferences_service.delete_preferences(user_id)
             deleted_counts["preferences"] = 1 if prefs_deleted else 0
             logger.info(f"Deleted preferences for user {user_id}")
@@ -278,7 +277,11 @@ async def delete_user_data(
         log_conversation_event(
             event_type=EventType.DATA_DELETE,
             user_id=user_id,
-            metadata={"action": "full_deletion", "item_count": total_deleted, "success": True},
+            metadata={
+                "action": "full_deletion",
+                "item_count": total_deleted,
+                "success": True,
+            },
         )
 
         return {
@@ -340,6 +343,7 @@ async def get_data_summary(user_id: str = Depends(get_current_user)) -> Dict[str
         # Get conversation count from database
         try:
             from ..storage.conversations import DatabaseConversationStore
+
             conversation_store = DatabaseConversationStore()
             conversations = await conversation_store.list_conversations(
                 user_id=user_id, limit=10000
@@ -352,6 +356,7 @@ async def get_data_summary(user_id: str = Depends(get_current_user)) -> Dict[str
         # Get preferences from database
         try:
             from ..storage.preferences_service import preferences_service
+
             prefs = await preferences_service.get_preferences(user_id)
             has_preferences = prefs is not None
         except Exception as pref_error:
@@ -382,9 +387,7 @@ async def get_data_summary(user_id: str = Depends(get_current_user)) -> Dict[str
 
     except Exception as e:
         logger.error(f"Summary failed for user {user_id}: {e}")
-        raise HTTPException(
-            status_code=500, detail=f"Failed to generate summary: {str(e)}"
-        )
+        raise HTTPException(status_code=500, detail=f"Failed to generate summary: {str(e)}")
 
 
 @router.post("/consent/rag", response_model=Dict[str, Any])
@@ -412,6 +415,7 @@ async def update_rag_consent(
         # Store consent in database user_preferences table
         try:
             from ..storage.preferences_service import preferences_service
+
             await preferences_service.update_rag_consent(user_id, consent_given)
             logger.info(f"Stored RAG consent for user {user_id}: {consent_given}")
         except Exception as consent_error:
@@ -425,22 +429,16 @@ async def update_rag_consent(
             # If consent revoked, delete existing data
             if vector_store is not None:
                 delete_result = await vector_store.delete_user_data(user_id)
-                logger.info(
-                    f"Consent revoked - deleted {delete_result['deleted_count']} docs"
-                )
+                logger.info(f"Consent revoked - deleted {delete_result['deleted_count']} docs")
             else:
-                logger.info(
-                    "Vector store not available, skipping deletion on consent revoke"
-                )
+                logger.info("Vector store not available, skipping deletion on consent revoke")
 
         return {
             "success": True,
             "user_id": user_id,
             "consent_given": consent_given,
             "updated_at": datetime.utcnow().isoformat(),
-            "message": "Consent updated"
-            if consent_given
-            else "Consent revoked and data deleted",
+            "message": ("Consent updated" if consent_given else "Consent revoked and data deleted"),
         }
 
     except Exception as e:

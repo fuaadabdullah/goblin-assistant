@@ -16,7 +16,7 @@ function createTestCredentials() {
   return {
     email: `goblin-test-${suffix}@example.com`,
     password: `TestPass!${suffix}`,
-    name: 'Goblin Test User'
+    name: 'Goblin Test User',
   };
 }
 
@@ -40,14 +40,14 @@ async function testAuth() {
   console.log('\n2. Testing user registration...');
   const registrationUser = {
     ...testUser,
-    confirmPassword: testUser.password
+    confirmPassword: testUser.password,
   };
 
   try {
     const response = await fetch(`${API_BASE}/auth/register`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(registrationUser)
+      body: JSON.stringify(registrationUser),
     });
 
     const data = await response.json();
@@ -65,8 +65,8 @@ async function testAuth() {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         email: testUser.email,
-        password: testUser.password
-      })
+        password: testUser.password,
+      }),
     });
 
     const data = await response.json();

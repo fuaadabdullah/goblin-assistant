@@ -11,7 +11,11 @@ interface AccountViewProps {
 
 const AccountView = ({ state }: AccountViewProps) => (
   <div className="min-h-screen bg-bg">
-    <Seo title="Account" description="Manage your Goblin Assistant account." robots="noindex,nofollow" />
+    <Seo
+      title="Account"
+      description="Manage your Goblin Assistant account."
+      robots="noindex,nofollow"
+    />
     <main className="max-w-4xl mx-auto p-6 space-y-6" id="main-content" tabIndex={-1}>
       <header>
         <h1 className="text-3xl font-semibold text-text">Account</h1>

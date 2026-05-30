@@ -10,8 +10,19 @@ jest.mock('@/api', () => ({
 
 // Mock sub-components
 jest.mock('../../components/TwoColumnLayout', () => {
-  return function MockTwoColumnLayout({ sidebar, children }: { sidebar: React.ReactNode; children: React.ReactNode }) {
-    return <div data-testid="two-col"><div data-testid="sidebar">{sidebar}</div><div data-testid="main">{children}</div></div>;
+  return function MockTwoColumnLayout({
+    sidebar,
+    children,
+  }: {
+    sidebar: React.ReactNode;
+    children: React.ReactNode;
+  }) {
+    return (
+      <div data-testid="two-col">
+        <div data-testid="sidebar">{sidebar}</div>
+        <div data-testid="main">{children}</div>
+      </div>
+    );
   };
 });
 jest.mock('../../components/LoadingSkeleton', () => ({
@@ -39,7 +50,8 @@ describe('LogsPage', () => {
 
   it('renders logs after successful fetch', async () => {
     mockGetRaptorLogs.mockResolvedValue({
-      log_tail: '{"level":"error","service":"api","message":"Something failed","id":"1","timestamp":"2024-01-01T00:00:00Z"}\n{"level":"info","service":"raptor","message":"Service started","id":"2","timestamp":"2024-01-01T00:01:00Z"}',
+      log_tail:
+        '{"level":"error","service":"api","message":"Something failed","id":"1","timestamp":"2024-01-01T00:00:00Z"}\n{"level":"info","service":"raptor","message":"Service started","id":"2","timestamp":"2024-01-01T00:01:00Z"}',
     });
     render(<LogsPageContent />, { wrapper });
     await waitFor(() => {
@@ -66,7 +78,8 @@ describe('LogsPage', () => {
 
   it('filters logs by level', async () => {
     mockGetRaptorLogs.mockResolvedValue({
-      log_tail: '{"level":"error","service":"api","message":"Error msg","id":"1","timestamp":"2024-01-01T00:00:00Z"}\n{"level":"info","service":"api","message":"Info msg","id":"2","timestamp":"2024-01-01T00:01:00Z"}',
+      log_tail:
+        '{"level":"error","service":"api","message":"Error msg","id":"1","timestamp":"2024-01-01T00:00:00Z"}\n{"level":"info","service":"api","message":"Info msg","id":"2","timestamp":"2024-01-01T00:01:00Z"}',
     });
     render(<LogsPageContent />, { wrapper });
     await waitFor(() => {
@@ -93,7 +106,8 @@ describe('LogsPage', () => {
 
   it('clears display when clear button clicked', async () => {
     mockGetRaptorLogs.mockResolvedValue({
-      log_tail: '{"level":"info","service":"api","message":"Some log","id":"1","timestamp":"2024-01-01T00:00:00Z"}',
+      log_tail:
+        '{"level":"info","service":"api","message":"Some log","id":"1","timestamp":"2024-01-01T00:00:00Z"}',
     });
     render(<LogsPageContent />, { wrapper });
     await waitFor(() => {
@@ -107,7 +121,8 @@ describe('LogsPage', () => {
 
   it('selects and expands a log entry with details', async () => {
     mockGetRaptorLogs.mockResolvedValue({
-      log_tail: '{"level":"error","service":"api","message":"Error with details","id":"detail-1","timestamp":"2024-01-01T00:00:00Z","details":{"stack":"trace"}}',
+      log_tail:
+        '{"level":"error","service":"api","message":"Error with details","id":"detail-1","timestamp":"2024-01-01T00:00:00Z","details":{"stack":"trace"}}',
     });
     render(<LogsPageContent />, { wrapper });
     await waitFor(() => {
@@ -129,7 +144,8 @@ describe('LogsPage', () => {
 
   it('handles service filter', async () => {
     mockGetRaptorLogs.mockResolvedValue({
-      log_tail: '{"level":"info","service":"api","message":"api log","id":"1","timestamp":"2024-01-01T00:00:00Z"}\n{"level":"info","service":"worker","message":"worker log","id":"2","timestamp":"2024-01-01T00:01:00Z"}',
+      log_tail:
+        '{"level":"info","service":"api","message":"api log","id":"1","timestamp":"2024-01-01T00:00:00Z"}\n{"level":"info","service":"worker","message":"worker log","id":"2","timestamp":"2024-01-01T00:01:00Z"}',
     });
     render(<LogsPageContent />, { wrapper });
     await waitFor(() => {
@@ -143,7 +159,8 @@ describe('LogsPage', () => {
 
   it('shows statistics in sidebar', async () => {
     mockGetRaptorLogs.mockResolvedValue({
-      log_tail: '{"level":"error","service":"api","message":"err","id":"1","timestamp":"2024-01-01T00:00:00Z"}\n{"level":"warning","service":"api","message":"warn","id":"2","timestamp":"2024-01-01T00:01:00Z"}',
+      log_tail:
+        '{"level":"error","service":"api","message":"err","id":"1","timestamp":"2024-01-01T00:00:00Z"}\n{"level":"warning","service":"api","message":"warn","id":"2","timestamp":"2024-01-01T00:01:00Z"}',
     });
     render(<LogsPageContent />, { wrapper });
     await waitFor(() => {

@@ -60,7 +60,11 @@ async def test_context_assembly_accepts_model_aware_budgeting(monkeypatch):
 
 
 def test_background_and_chat_use_same_dispatcher_path():
-    with open("/Volumes/GOBLINOS 1/apps/.../api/services/background_tasks.py", "r", encoding="utf-8") as f:
+    with open(
+        "/Volumes/GOBLINOS 1/apps/.../api/services/background_tasks.py",
+        "r",
+        encoding="utf-8",
+    ) as f:
         bg = f.read()
     with open("/Volumes/GOBLINOS 1/apps/.../api/chat_router.py", "r", encoding="utf-8") as f:
         chat = f.read()

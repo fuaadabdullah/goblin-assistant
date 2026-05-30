@@ -67,12 +67,13 @@ describe('GoogleCallback', () => {
     const mockFetch = global.fetch as jest.Mock;
     mockFetch.mockResolvedValue({
       ok: true,
-      json: () => Promise.resolve({
-        token: 'jwt-token',
-        user: { id: 1, name: 'Test' },
-        refresh_token: 'refresh-123',
-        expires_in: 3600,
-      }),
+      json: () =>
+        Promise.resolve({
+          token: 'jwt-token',
+          user: { id: 1, name: 'Test' },
+          refresh_token: 'refresh-123',
+          expires_in: 3600,
+        }),
     });
 
     renderWithClient(<GoogleCallback />);
@@ -82,14 +83,16 @@ describe('GoogleCallback', () => {
         expect.objectContaining({
           method: 'POST',
           body: JSON.stringify({ code: 'abc123', state: 'xyz' }),
-        }),
+        })
       );
     });
     await waitFor(() => {
-      expect(persistAuthSession).toHaveBeenCalledWith(expect.objectContaining({
-        token: 'jwt-token',
-        user: { id: 1, name: 'Test' },
-      }));
+      expect(persistAuthSession).toHaveBeenCalledWith(
+        expect.objectContaining({
+          token: 'jwt-token',
+          user: { id: 1, name: 'Test' },
+        })
+      );
     });
     await waitFor(() => expect(mockPush).toHaveBeenCalledWith('/chat'));
   });

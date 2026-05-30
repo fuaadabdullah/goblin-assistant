@@ -3,16 +3,20 @@ import { render, screen } from '@testing-library/react';
 
 import GoblinBootScreen from '../GoblinBootScreen';
 
-jest.mock('../StatusLine', () =>
-  function MockStatusLine({ label, state }: { label: string; state: string }) {
-    return <div data-testid={`status-${state}`}>{label}</div>;
-  }
+jest.mock(
+  '../StatusLine',
+  () =>
+    function MockStatusLine({ label, state }: { label: string; state: string }) {
+      return <div data-testid={`status-${state}`}>{label}</div>;
+    }
 );
 
-jest.mock('../GoblinLoader', () =>
-  function MockGoblinLoader() {
-    return <div data-testid="goblin-loader" />;
-  }
+jest.mock(
+  '../GoblinLoader',
+  () =>
+    function MockGoblinLoader() {
+      return <div data-testid="goblin-loader" />;
+    }
 );
 
 describe('GoblinBootScreen', () => {

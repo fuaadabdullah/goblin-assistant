@@ -15,7 +15,7 @@ jobs:
         with:
           fetch-depth: 0
       - name: Enforce branch + commit policy
-        run: bash scripts/ci-policy-check.sh
+        run: bash tooling/automation/ci-policy-check.sh
 
   format-check:
     name: format-check
@@ -39,7 +39,7 @@ jobs:
           pnpm install --frozen-lockfile=false
           cd apps/api
           python -m pip install --upgrade pip
-          pip install -r requirements.txt -r requirements-vector.txt black
+          pip install -r requirements.txt -r requirements-vector.txt
       - name: Run format checks
         run: make format-check
 
@@ -65,6 +65,8 @@ jobs:
           pnpm install --frozen-lockfile=false
           python -m pip install --upgrade pip
           pip install pip-audit
+      - name: Scan repository for embedded secrets
+        run: python scripts/security/scan_secrets.py
       - name: Audit npm dependencies
         run: pnpm --filter @goblin/web security:audit-ci
       - name: Audit python dependencies
@@ -127,6 +129,16 @@ jobs:
           make type-check
           make type-check-api-mypy
           make type-check-api-pyright
+      - name: Enforce route lifecycle policy
+        run: make check-route-lifecycle
+      - name: Enforce capability boundaries on changed API files
+        if: github.event_name == 'pull_request'
+        run: python scripts/architecture/check_capability_boundaries.py --base-ref origin/${{ github.base_ref }}
+      - name: Require ADR update for architecture-impacting changes
+        if: github.event_name == 'pull_request'
+        run: python scripts/architecture/check_adr_required.py --base-ref origin/${{ github.base_ref }}
+      - name: Verify generated SDK artifacts are current
+        run: make sdk-check
       - name: Enforce API typing on changed files
         if: github.event_name == 'pull_request'
         run: python scripts/architecture/check_api_typing_changed.py --base-ref origin/${{ github.base_ref }}

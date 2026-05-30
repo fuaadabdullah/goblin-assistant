@@ -20,22 +20,56 @@ jest.mock('../../../lib/query-keys', () => ({ queryKeys: { authValidate: ['auth'
 jest.mock('@/utils/dev-log', () => ({ devError: jest.fn() }));
 
 // Mock child components
-jest.mock('../LoginHeader', () => function MockLoginHeader({ isRegister }: { isRegister: boolean }) {
-  return <div data-testid="login-header">{isRegister ? 'Register' : 'Login'}</div>;
-});
+jest.mock(
+  '../LoginHeader',
+  () =>
+    function MockLoginHeader({ isRegister }: { isRegister: boolean }) {
+      return <div data-testid="login-header">{isRegister ? 'Register' : 'Login'}</div>;
+    }
+);
 jest.mock('../EmailPasswordForm', () => {
   return function MockEmailForm(props: { onSubmit?: (e: string, p: string) => void }) {
     return (
-      <form data-testid="email-form" onSubmit={(e) => { e.preventDefault(); props.onSubmit?.('test@test.com', 'pass'); }}>
+      <form
+        data-testid="email-form"
+        onSubmit={(e) => {
+          e.preventDefault();
+          props.onSubmit?.('test@test.com', 'pass');
+        }}
+      >
         <button type="submit">Submit</button>
       </form>
     );
   };
 });
-jest.mock('../SocialLoginButtons', () => function MockSocial() { return <div data-testid="social-buttons" />; });
-jest.mock('../Divider', () => function MockDivider() { return <hr data-testid="divider" />; });
-jest.mock('../PasskeyPanel', () => function MockPasskey() { return <div data-testid="passkey-panel" />; });
-jest.mock('../../TurnstileWidget', () => function MockTurnstile() { return <div data-testid="turnstile" />; });
+jest.mock(
+  '../SocialLoginButtons',
+  () =>
+    function MockSocial() {
+      return <div data-testid="social-buttons" />;
+    }
+);
+jest.mock(
+  '../Divider',
+  () =>
+    function MockDivider() {
+      return <hr data-testid="divider" />;
+    }
+);
+jest.mock(
+  '../PasskeyPanel',
+  () =>
+    function MockPasskey() {
+      return <div data-testid="passkey-panel" />;
+    }
+);
+jest.mock(
+  '../../TurnstileWidget',
+  () =>
+    function MockTurnstile() {
+      return <div data-testid="turnstile" />;
+    }
+);
 jest.mock('../../../config/turnstile', () => ({
   useTurnstile: () => ({ token: 'mock-token', isEnabled: false, reset: jest.fn() }),
 }));
@@ -60,7 +94,9 @@ describe('ModularLoginForm', () => {
   });
 
   it('renders register form when initialMode is register', () => {
-    render(<ModularLoginForm onSuccess={onSuccess} onError={onError} initialMode="register" />, { wrapper: Wrapper });
+    render(<ModularLoginForm onSuccess={onSuccess} onError={onError} initialMode="register" />, {
+      wrapper: Wrapper,
+    });
     expect(screen.getByTestId('login-header')).toHaveTextContent('Register');
   });
 
@@ -80,6 +116,8 @@ describe('ModularLoginForm', () => {
 
   it('renders disclaimer text', () => {
     render(<ModularLoginForm onSuccess={onSuccess} onError={onError} />, { wrapper: Wrapper });
-    expect(screen.getByText(/usage data/i) || screen.getByText(/disclaimer/i) || document.body).toBeTruthy();
+    expect(
+      screen.getByText(/usage data/i) || screen.getByText(/disclaimer/i) || document.body
+    ).toBeTruthy();
   });
 });

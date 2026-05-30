@@ -64,7 +64,9 @@ async def test_aliyun_health_normalizes_compatible_endpoint(
 
 
 @pytest.mark.asyncio
-async def test_aliyun_health_timeout_returns_structured_error_without_warning(monkeypatch):
+async def test_aliyun_health_timeout_returns_structured_error_without_warning(
+    monkeypatch,
+):
     class TimeoutClient(_FakeAliyunClient):
         async def get(self, url, **kwargs):
             raise httpx.TimeoutException("timed out")

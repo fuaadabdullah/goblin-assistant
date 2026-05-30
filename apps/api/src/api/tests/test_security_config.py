@@ -58,7 +58,7 @@ def test_security_config_validate_config_reports_missing_prod_settings(
     monkeypatch.delenv("JWT_SECRET_KEY", raising=False)
     monkeypatch.delenv("DATABASE_URL", raising=False)
 
-    import api.security_config as security_config
+    from api import security_config
 
     importlib.reload(security_config)
 
@@ -74,7 +74,7 @@ def test_security_config_get_security_summary_contains_expected_keys(
 ):
     monkeypatch.setenv("ENVIRONMENT", "development")
 
-    import api.security_config as security_config
+    from api import security_config
 
     importlib.reload(security_config)
 
@@ -95,13 +95,12 @@ def test_security_config_warns_when_cross_site_cookie_is_not_none(monkeypatch):
     monkeypatch.setenv("BACKEND_URL", "https://goblin-backend-dt30.onrender.com")
     monkeypatch.setenv("AUTH_COOKIE_SAMESITE", "lax")
 
-    import api.security_config as security_config
+    from api import security_config
 
     importlib.reload(security_config)
     warnings = security_config.SecurityConfig.validate_config()
 
     assert any(
-        "Cross-site frontend/backend detected but AUTH_COOKIE_SAMESITE is not 'none'."
-        in warning
+        "Cross-site frontend/backend detected but AUTH_COOKIE_SAMESITE is not 'none'." in warning
         for warning in warnings
     )

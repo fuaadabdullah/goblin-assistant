@@ -9,6 +9,7 @@ from unittest.mock import AsyncMock, patch
 # GET /routing/providers
 # ---------------------------------------------------------------------------
 
+
 class TestGetProviders:
     def test_returns_list(self, client):
         response = client.get("/routing/providers")
@@ -25,32 +26,38 @@ class TestGetProviders:
         assert "mock" not in data
 
     def test_inventory_error_uses_fallback_provider_list(self, client):
-        with patch(
-            "api.routing_router.dispatcher.get_provider_inventory",
-            new_callable=AsyncMock,
-            side_effect=RuntimeError("boom"),
-        ), patch(
-            "api.routing_router.dispatcher.list_providers",
-            return_value=[
-                {"id": "openai", "hidden": False, "configured": True},
-                {"id": "mock", "hidden": True, "configured": True},
-            ],
+        with (
+            patch(
+                "api.routing_router.dispatcher.get_provider_inventory",
+                new_callable=AsyncMock,
+                side_effect=RuntimeError("boom"),
+            ),
+            patch(
+                "api.routing_router.dispatcher.list_providers",
+                return_value=[
+                    {"id": "openai", "hidden": False, "configured": True},
+                    {"id": "mock", "hidden": True, "configured": True},
+                ],
+            ),
         ):
             response = client.get("/routing/providers")
             assert response.status_code == 200
             assert response.json() == ["openai"]
 
     def test_empty_inventory_uses_fallback_provider_list(self, client):
-        with patch(
-            "api.routing_router.dispatcher.get_provider_inventory",
-            new_callable=AsyncMock,
-            return_value=[],
-        ), patch(
-            "api.routing_router.dispatcher.list_providers",
-            return_value=[
-                {"id": "openai", "hidden": False, "configured": True},
-                {"id": "mock", "hidden": True, "configured": True},
-            ],
+        with (
+            patch(
+                "api.routing_router.dispatcher.get_provider_inventory",
+                new_callable=AsyncMock,
+                return_value=[],
+            ),
+            patch(
+                "api.routing_router.dispatcher.list_providers",
+                return_value=[
+                    {"id": "openai", "hidden": False, "configured": True},
+                    {"id": "mock", "hidden": True, "configured": True},
+                ],
+            ),
         ):
             response = client.get("/routing/providers")
             assert response.status_code == 200
@@ -85,76 +92,90 @@ class TestGetProviderDetails:
             assert any(item.get("id") == "aliyun" for item in data)
 
     def test_inventory_error_falls_back_to_provider_list(self, client):
-        with patch(
-            "api.routing_router.dispatcher.get_provider_inventory",
-            new_callable=AsyncMock,
-            side_effect=RuntimeError("boom"),
-        ), patch(
-            "api.routing_router.dispatcher.list_providers",
-            return_value=[
-                {"id": "openai", "hidden": False},
-                {"id": "mock", "hidden": True},
-            ],
+        with (
+            patch(
+                "api.routing_router.dispatcher.get_provider_inventory",
+                new_callable=AsyncMock,
+                side_effect=RuntimeError("boom"),
+            ),
+            patch(
+                "api.routing_router.dispatcher.list_providers",
+                return_value=[
+                    {"id": "openai", "hidden": False},
+                    {"id": "mock", "hidden": True},
+                ],
+            ),
         ):
             response = client.get("/routing/providers/details")
             assert response.status_code == 200
             assert response.json() == [{"id": "openai", "hidden": False}]
 
     def test_empty_inventory_falls_back_to_provider_list(self, client):
-        with patch(
-            "api.routing_router.dispatcher.get_provider_inventory",
-            new_callable=AsyncMock,
-            return_value=[],
-        ), patch(
-            "api.routing_router.dispatcher.list_providers",
-            return_value=[
-                {"id": "openai", "hidden": False},
-                {"id": "mock", "hidden": True},
-            ],
+        with (
+            patch(
+                "api.routing_router.dispatcher.get_provider_inventory",
+                new_callable=AsyncMock,
+                return_value=[],
+            ),
+            patch(
+                "api.routing_router.dispatcher.list_providers",
+                return_value=[
+                    {"id": "openai", "hidden": False},
+                    {"id": "mock", "hidden": True},
+                ],
+            ),
         ):
             response = client.get("/routing/providers/details")
             assert response.status_code == 200
             assert response.json() == [{"id": "openai", "hidden": False}]
 
     def test_details_route_not_shadowed_by_capability_route(self, client):
-        with patch(
-            "api.routing_router.top_providers_for",
-            side_effect=RuntimeError("capability route should not be called"),
-        ), patch(
-            "api.routing_router.dispatcher.get_provider_inventory",
-            new_callable=AsyncMock,
-            return_value=[{"id": "openai", "configured": True}],
+        with (
+            patch(
+                "api.routing_router.top_providers_for",
+                side_effect=RuntimeError("capability route should not be called"),
+            ),
+            patch(
+                "api.routing_router.dispatcher.get_provider_inventory",
+                new_callable=AsyncMock,
+                return_value=[{"id": "openai", "configured": True}],
+            ),
         ):
             response = client.get("/routing/providers/details")
             assert response.status_code == 200
             assert response.json() == [{"id": "openai", "configured": True}]
 
     def test_details_fallback_uses_static_configs_when_provider_list_fails(self, client):
-        with patch(
-            "api.routing_router.dispatcher.get_provider_inventory",
-            new_callable=AsyncMock,
-            side_effect=RuntimeError("inventory unavailable"),
-        ), patch(
-            "api.routing_router.dispatcher.list_providers",
-            side_effect=RuntimeError("provider list unavailable"),
-        ), patch(
-            "api.routing_router.dispatcher._configs",
-            {
-                "openai": {
-                    "name": "OpenAI",
-                    "models": ["gpt-4o-mini"],
-                    "capabilities": ["chat"],
-                    "priority_tier": 10,
-                    "tier": "cloud",
+        with (
+            patch(
+                "api.routing_router.dispatcher.get_provider_inventory",
+                new_callable=AsyncMock,
+                side_effect=RuntimeError("inventory unavailable"),
+            ),
+            patch(
+                "api.routing_router.dispatcher.list_providers",
+                side_effect=RuntimeError("provider list unavailable"),
+            ),
+            patch(
+                "api.routing_router.dispatcher._configs",
+                {
+                    "openai": {
+                        "name": "OpenAI",
+                        "models": ["gpt-4o-mini"],
+                        "capabilities": ["chat"],
+                        "priority_tier": 10,
+                        "tier": "cloud",
+                    },
+                    "mock": {
+                        "name": "Mock",
+                        "hidden": True,
+                    },
                 },
-                "mock": {
-                    "name": "Mock",
-                    "hidden": True,
-                },
-            },
-        ), patch(
-            "api.routing_router.dispatcher.is_configured",
-            side_effect=lambda provider_id: provider_id == "openai",
+            ),
+            patch(
+                "api.routing_router.dispatcher.is_configured",
+                side_effect=lambda provider_id: provider_id == "openai",
+            ),
         ):
             response = client.get("/routing/providers/details")
             assert response.status_code == 200
@@ -167,6 +188,7 @@ class TestGetProviderDetails:
 # ---------------------------------------------------------------------------
 # GET /routing/providers/{capability}
 # ---------------------------------------------------------------------------
+
 
 class TestGetProvidersByCapability:
     def test_chat_capability(self, client):
@@ -200,6 +222,7 @@ class TestGetProvidersByCapability:
 # ---------------------------------------------------------------------------
 # POST /routing/route
 # ---------------------------------------------------------------------------
+
 
 class TestRouteRequest:
     def test_successful_route(self, client):
@@ -269,7 +292,11 @@ class TestRouteRequest:
         with patch(
             "api.routing_router.route_task",
             new_callable=AsyncMock,
-            return_value={"ok": False, "error": "no providers available", "providers_tried": []},
+            return_value={
+                "ok": False,
+                "error": "no providers available",
+                "providers_tried": [],
+            },
         ):
             response = client.post(
                 "/routing/route",

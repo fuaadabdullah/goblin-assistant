@@ -10,10 +10,12 @@ tests continue to work unchanged.
 Route submodules read patchable runtime dependencies (UserService, get_db)
 via the `_runtime` indirection so test monkeypatches at
 `api.auth.router.X` are honored even from submodule call sites.
+
+Legacy session compatibility helpers were removed at the v0.x -> v1.0 cutoff;
+use the async DB-backed helpers from `api.auth.router.sessions` instead.
 """
 
 from fastapi import APIRouter
-from fastapi.security import HTTPBearer
 
 # --- Patchable runtime dependencies ---
 # Tests monkeypatch these via `api.auth.router.<name>`.
@@ -21,7 +23,10 @@ from ...storage.database import get_db  # noqa: F401
 from ...storage.user_service import UserCreateData, UserService  # noqa: F401
 
 # --- Public re-exports for callers + tests ---
-from ...core.csrf_manager import generate_csrf_token, validate_csrf_token  # noqa: F401
+from ...core.csrf_manager import (  # noqa: F401
+    generate_csrf_token,
+    validate_csrf_token,
+)
 from ...core.rate_limiter_auth import check_rate_limit  # noqa: F401
 from .config import (  # noqa: F401
     ACCESS_TOKEN_EXPIRE_MINUTES,
@@ -57,8 +62,6 @@ from .sessions import (  # noqa: F401
     _session_cache_key,
     _session_ttl_seconds,
     create_session_id,
-    is_session_valid,
-    revoke_session,
 )
 from .tokens import (  # noqa: F401
     create_access_token,

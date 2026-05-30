@@ -36,7 +36,7 @@ const AccountProfileForm = ({
         <input
           id="account-name"
           value={name}
-          onChange={e => onNameChange(e.target.value)}
+          onChange={(e) => onNameChange(e.target.value)}
           placeholder="Your name"
           className="w-full px-4 py-3 border border-border rounded-lg bg-surface-hover text-text"
         />

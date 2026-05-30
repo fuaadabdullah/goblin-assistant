@@ -1,10 +1,4 @@
-import {
-  devDebug,
-  devError,
-  devInfo,
-  devLog,
-  devWarn,
-} from '../dev-log';
+import { devDebug, devError, devInfo, devLog, devWarn } from '../dev-log';
 
 describe('development logging utilities', () => {
   const originalNodeEnv = process.env.NODE_ENV;

@@ -17,34 +17,18 @@ describe('ProjectionsTable', () => {
 
   it('renders table', () => {
     const { container } = render(
-      <ProjectionsTable
-        title="Cost Projections"
-        data={mockData}
-        config={mockConfig}
-      />
+      <ProjectionsTable title="Cost Projections" data={mockData} config={mockConfig} />
     );
     expect(container.querySelector('table')).toBeInTheDocument();
   });
 
   it('renders title', () => {
-    render(
-      <ProjectionsTable
-        title="Cost Projections"
-        data={mockData}
-        config={mockConfig}
-      />
-    );
+    render(<ProjectionsTable title="Cost Projections" data={mockData} config={mockConfig} />);
     expect(screen.getByText('Cost Projections')).toBeInTheDocument();
   });
 
   it('renders column headers', () => {
-    render(
-      <ProjectionsTable
-        title="Test"
-        data={mockData}
-        config={mockConfig}
-      />
-    );
+    render(<ProjectionsTable title="Test" data={mockData} config={mockConfig} />);
     expect(screen.getByText('q1')).toBeInTheDocument();
     expect(screen.getByText('q2')).toBeInTheDocument();
     expect(screen.getByText('q3')).toBeInTheDocument();
@@ -52,25 +36,13 @@ describe('ProjectionsTable', () => {
   });
 
   it('renders row data', () => {
-    render(
-      <ProjectionsTable
-        title="Test"
-        data={mockData}
-        config={mockConfig}
-      />
-    );
+    render(<ProjectionsTable title="Test" data={mockData} config={mockConfig} />);
     expect(screen.getByText('OpenAI')).toBeInTheDocument();
     expect(screen.getByText('Anthropic')).toBeInTheDocument();
   });
 
   it('renders with empty data', () => {
-    render(
-      <ProjectionsTable
-        title="Test"
-        data={[]}
-        config={mockConfig}
-      />
-    );
+    render(<ProjectionsTable title="Test" data={[]} config={mockConfig} />);
     expect(screen.getByText('Test')).toBeInTheDocument();
   });
 });

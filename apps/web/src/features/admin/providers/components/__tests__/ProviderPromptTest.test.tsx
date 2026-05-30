@@ -2,8 +2,19 @@ import React from 'react';
 import { render, screen, fireEvent } from '@testing-library/react';
 
 jest.mock('../../../../../components/ui', () => ({
-  Button: ({ children, onClick, disabled }: { children: React.ReactNode; onClick: () => void; disabled?: boolean }) =>
-    <button onClick={onClick} disabled={disabled}>{children}</button>,
+  Button: ({
+    children,
+    onClick,
+    disabled,
+  }: {
+    children: React.ReactNode;
+    onClick: () => void;
+    disabled?: boolean;
+  }) => (
+    <button onClick={onClick} disabled={disabled}>
+      {children}
+    </button>
+  ),
 }));
 
 import ProviderPromptTest from '../ProviderPromptTest';

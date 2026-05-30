@@ -3,8 +3,19 @@ import { render, screen } from '@testing-library/react';
 import '@testing-library/jest-dom';
 
 jest.mock('../../../../components/TwoColumnLayout', () => {
-  return function MockTwoColumnLayout({ children, sidebar }: { children: React.ReactNode; sidebar: React.ReactNode }) {
-    return <div data-testid="two-col"><div data-testid="sidebar">{sidebar}</div><div data-testid="main">{children}</div></div>;
+  return function MockTwoColumnLayout({
+    children,
+    sidebar,
+  }: {
+    children: React.ReactNode;
+    sidebar: React.ReactNode;
+  }) {
+    return (
+      <div data-testid="two-col">
+        <div data-testid="sidebar">{sidebar}</div>
+        <div data-testid="main">{children}</div>
+      </div>
+    );
   };
 });
 

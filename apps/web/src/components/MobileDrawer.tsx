@@ -14,7 +14,11 @@ const panelVariants = {
   visible: { x: 0 },
 };
 
-const MobileDrawer: React.FC<{ title?: string; ariaLabel?: string; children?: React.ReactNode }> = ({ title = 'Menu', ariaLabel = 'Mobile navigation', children }) => {
+const MobileDrawer: React.FC<{
+  title?: string;
+  ariaLabel?: string;
+  children?: React.ReactNode;
+}> = ({ title = 'Menu', ariaLabel = 'Mobile navigation', children }) => {
   const isOpen = useUIStore((s) => s.mobileNavOpen);
   const close = useUIStore((s) => s.setMobileNavOpen);
   const panelRef = useRef<HTMLDivElement | null>(null);
@@ -70,27 +74,33 @@ const MobileDrawer: React.FC<{ title?: string; ariaLabel?: string; children?: Re
             aria-label={ariaLabel}
           >
             <div ref={panelRef} tabIndex={-1} className="h-full flex flex-col">
-                <div className="flex items-center justify-between px-4 py-3 border-b border-border">
-                  <div className="flex items-center space-x-3">
-                    <Logo size="sm" variant="simple" animated={false} decorative ariaLabel="Goblin Assistant" />
-                    <span className="font-semibold text-lg text-primary">{title}</span>
-                  </div>
-                  <button
-                    className="p-2 rounded-md text-muted hover:text-text"
-                    onClick={() => close(false)}
-                    aria-label="Close menu"
-                  >
-                    <X className="w-5 h-5" />
-                  </button>
+              <div className="flex items-center justify-between px-4 py-3 border-b border-border">
+                <div className="flex items-center space-x-3">
+                  <Logo
+                    size="sm"
+                    variant="simple"
+                    animated={false}
+                    decorative
+                    ariaLabel="Goblin Assistant"
+                  />
+                  <span className="font-semibold text-lg text-primary">{title}</span>
                 </div>
-
-                <div className="p-4 flex-1">{children}</div>
-
-                <div className="p-4 border-t border-border">
-                  <p className="text-sm text-muted">Made with 💚 — Goblin Assistant</p>
-                </div>
+                <button
+                  className="p-2 rounded-md text-muted hover:text-text"
+                  onClick={() => close(false)}
+                  aria-label="Close menu"
+                >
+                  <X className="w-5 h-5" />
+                </button>
               </div>
-            </motion.div>
+
+              <div className="p-4 flex-1">{children}</div>
+
+              <div className="p-4 border-t border-border">
+                <p className="text-sm text-muted">Made with 💚 — Goblin Assistant</p>
+              </div>
+            </div>
+          </motion.div>
         </>
       )}
     </AnimatePresence>

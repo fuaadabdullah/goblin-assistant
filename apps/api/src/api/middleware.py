@@ -33,9 +33,7 @@ class AuthenticationMiddleware(BaseHTTPMiddleware):
         # Check development mode upfront
         environment = os.getenv("ENVIRONMENT", "development").lower()
         is_development = environment in ["development", "dev", "local"]
-        allow_unauth = (
-            os.getenv("ALLOW_UNAUTHENTICATED_REQUESTS", "false").lower() == "true"
-        )
+        allow_unauth = os.getenv("ALLOW_UNAUTHENTICATED_REQUESTS", "false").lower() == "true"
 
         # Base excluded paths
         default_exclude = [
@@ -70,9 +68,7 @@ class AuthenticationMiddleware(BaseHTTPMiddleware):
             return await call_next(request)
 
         # Check for API key in headers
-        api_key_header = request.headers.get("x-api-key") or request.headers.get(
-            "authorization"
-        )
+        api_key_header = request.headers.get("x-api-key") or request.headers.get("authorization")
 
         if api_key_header:
             # Handle Bearer token format
@@ -86,8 +82,7 @@ class AuthenticationMiddleware(BaseHTTPMiddleware):
 
             if (
                 is_development
-                and os.getenv("ALLOW_UNAUTHENTICATED_REQUESTS", "false").lower()
-                == "true"
+                and os.getenv("ALLOW_UNAUTHENTICATED_REQUESTS", "false").lower() == "true"
             ):
                 # SECURITY WARNING: Only allow unauthenticated requests in development
                 # with explicit opt-in via environment variable
@@ -109,7 +104,7 @@ class AuthenticationMiddleware(BaseHTTPMiddleware):
                             "code": "CONFIGURATION_ERROR",
                             "message": "API authentication not configured",
                             "details": "LOCAL_LLM_API_KEY environment variable must be set",
-                        }
+                        },
                     },
                 )
 
@@ -125,7 +120,7 @@ class AuthenticationMiddleware(BaseHTTPMiddleware):
                         "code": "AUTHENTICATION_REQUIRED",
                         "message": "Valid API key required",
                         "details": "Provide API key in x-api-key header or Authorization: Bearer <key> header",
-                    }
+                    },
                 },
             )
 
@@ -229,6 +224,6 @@ class ErrorHandlingMiddleware(BaseHTTPMiddleware):
                         "message": error_message,
                         "request_id": request_id,
                         "type": type(e).__name__,
-                    }
+                    },
                 },
             )

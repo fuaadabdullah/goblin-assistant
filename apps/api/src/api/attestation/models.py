@@ -46,9 +46,7 @@ class CachedAttestation:
             measured_at=data.get("measured_at"),
             enclave_id=data.get("enclave_id"),
             shielded_vm_enabled=data.get("shielded_vm_enabled"),
-            integrity_monitoring_enabled=data.get(
-                "integrity_monitoring_enabled"
-            ),
+            integrity_monitoring_enabled=data.get("integrity_monitoring_enabled"),
             instance_id=data.get("instance_id"),
         )
 

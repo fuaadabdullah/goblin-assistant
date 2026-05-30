@@ -30,7 +30,7 @@ def _cleanup_fallback_store(now: datetime) -> None:
 async def generate_csrf_token() -> str:
     """
     Generate a new CSRF token and store it in Redis with 1-hour TTL.
-    
+
     Returns:
         str: A cryptographically secure CSRF token
     """
@@ -58,27 +58,27 @@ async def generate_csrf_token() -> str:
 async def validate_csrf_token(token: str) -> bool:
     """
     Validate a CSRF token by checking Redis and deleting it (one-time use).
-    
+
     Args:
         token: The CSRF token to validate
-        
+
     Returns:
         bool: True if token is valid and deleted, False otherwise
     """
     if not token:
         logger.debug("CSRF validation failed: token is empty")
         return False
-    
+
     try:
         redis_client = await get_redis_client()
         key = f"{CSRF_TOKEN_PREFIX}{token}"
-        
+
         # Use pipeline to check and delete atomically
         pipe = redis_client.pipeline()
         pipe.exists(key)
         pipe.delete(key)
         results = await pipe.execute()
-        
+
         exists = results[0] > 0
         if exists:
             logger.debug("CSRF token validated and deleted (one-time use)")

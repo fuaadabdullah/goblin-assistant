@@ -14,6 +14,7 @@ import structlog
 from fastapi import APIRouter, Depends, File, HTTPException, UploadFile
 
 from ..auth.router import User as AuthenticatedUser, get_current_user
+from ..core.contracts import SuccessEnvelope
 from .constants import ALLOWED_MIME_TYPES, MAX_UPLOAD_SIZE_BYTES, UPLOAD_DIR
 from .schemas import FileUploadResponse
 
@@ -25,7 +26,7 @@ router = APIRouter()
 _pending_uploads: Dict[str, Dict[str, Any]] = {}
 
 
-@router.post("/upload-file", response_model=FileUploadResponse)
+@router.post("/upload-file", response_model=SuccessEnvelope[FileUploadResponse])
 async def upload_file(
     file: UploadFile = File(...),
     current_user: AuthenticatedUser = Depends(get_current_user),

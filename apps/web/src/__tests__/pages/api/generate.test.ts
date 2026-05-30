@@ -47,13 +47,9 @@ function createRes(): MockRes {
   };
 }
 
-function createFetchResponse({
-  status,
-  body = {},
-  headers = {},
-}: FetchResponseInit): Response {
+function createFetchResponse({ status, body = {}, headers = {} }: FetchResponseInit): Response {
   const normalizedHeaders = Object.fromEntries(
-    Object.entries(headers).map(([k, v]) => [k.toLowerCase(), v]),
+    Object.entries(headers).map(([k, v]) => [k.toLowerCase(), v])
   );
   return {
     ok: status >= 200 && status < 300,
@@ -69,7 +65,7 @@ function loadHandler() {
   // eslint-disable-next-line @typescript-eslint/no-var-requires
   return require('../../../pages/api/generate').default as (
     req: MockReq,
-    res: MockRes,
+    res: MockRes
   ) => Promise<void>;
 }
 
@@ -89,7 +85,7 @@ describe('/api/generate thin proxy', () => {
     jest.restoreAllMocks();
   });
 
-  it('maps payload to backend /api/chat shape and injects internal key + forwarded-for', async () => {
+  it('maps payload to backend /api/v1/api/chat shape and injects internal key + forwarded-for', async () => {
     process.env.GOBLIN_BACKEND_URL = 'https://backend.example';
     process.env.INTERNAL_PROXY_API_KEY = 'proxy-key';
 
@@ -109,7 +105,7 @@ describe('/api/generate thin proxy', () => {
           model: 'gpt-4o-mini',
           provider: 'azure_openai',
         },
-      }),
+      })
     );
     global.fetch = fetchMock as unknown as typeof fetch;
 
@@ -123,7 +119,7 @@ describe('/api/generate thin proxy', () => {
     await handler(req, res);
 
     expect(fetchMock).toHaveBeenCalledTimes(1);
-    expect(fetchMock.mock.calls[0][0]).toBe('https://backend.example/api/chat');
+    expect(fetchMock.mock.calls[0][0]).toBe('https://backend.example/api/v1/api/chat');
 
     const init = fetchMock.mock.calls[0][1] as RequestInit;
     expect(init.method).toBe('POST');
@@ -147,7 +143,7 @@ describe('/api/generate thin proxy', () => {
           'x-request-id': 'rid-429',
           'x-license-tier': 'pro',
         },
-      }),
+      })
     );
     global.fetch = fetchMock as unknown as typeof fetch;
 
@@ -174,7 +170,7 @@ describe('/api/generate thin proxy', () => {
         headers: {
           'x-correlation-id': 'cid-422',
         },
-      }),
+      })
     );
     global.fetch = fetchMock as unknown as typeof fetch;
 

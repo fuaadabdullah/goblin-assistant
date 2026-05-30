@@ -16,7 +16,7 @@ from docker.errors import DockerException, APIError, ContainerError
 
 # Configuration from environment
 REDIS_URL = os.getenv("REDIS_URL", "redis://redis:6379/0")
-SANDBOX_IMAGE = os.getenv("SANDBOX_IMAGE", "ghcr.io/yourorg/sandbox:latest")
+SANDBOX_IMAGE = os.getenv("SANDBOX_IMAGE", "goblin-assistant-sandbox:latest")
 COSIGN_PUBLIC_KEY_PATH = os.getenv("COSIGN_PUBLIC_KEY_PATH")
 MAX_JOB_MEMORY = os.getenv("MAX_JOB_MEMORY", "256m")
 MAX_JOB_CPUS = float(os.getenv("MAX_JOB_CPUS", "0.25"))
@@ -222,6 +222,9 @@ def run_job(job_id: str, language: str, timeout: int, runtime_args: str, job_pat
 
         # Create and start container
         container = docker_client.containers.run(**container_config)
+
+        # Store container ID in Redis so the API can kill it on cancel
+        redis_client.hset(job_key, "container_id", container.id)
 
         print(f"✅ Container {container.id[:12]} started for job {job_id}")
 

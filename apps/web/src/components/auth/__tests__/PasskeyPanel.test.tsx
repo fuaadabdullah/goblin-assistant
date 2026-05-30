@@ -37,7 +37,11 @@ describe('PasskeyPanel', () => {
   beforeEach(() => {
     jest.clearAllMocks();
     // Mock WebAuthn API
-    Object.defineProperty(window, 'PublicKeyCredential', { value: class {}, writable: true, configurable: true });
+    Object.defineProperty(window, 'PublicKeyCredential', {
+      value: class {},
+      writable: true,
+      configurable: true,
+    });
   });
 
   it('renders passkey registration and authentication buttons', () => {
@@ -46,7 +50,11 @@ describe('PasskeyPanel', () => {
   });
 
   it('shows browser not supported message when WebAuthn is unavailable', () => {
-    Object.defineProperty(window, 'PublicKeyCredential', { value: undefined, writable: true, configurable: true });
+    Object.defineProperty(window, 'PublicKeyCredential', {
+      value: undefined,
+      writable: true,
+      configurable: true,
+    });
     render(<PasskeyPanel {...defaultProps} />, { wrapper });
     // Should indicate passkeys are not supported or show nothing actionable
   });

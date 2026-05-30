@@ -19,9 +19,7 @@ class OrchestrationPlan(BaseModel):
     complexity: str = "medium"
 
 
-def parse_natural_language(
-    text: str, default_goblin: Optional[str] = None
-) -> OrchestrationPlan:
+def parse_natural_language(text: str, default_goblin: Optional[str] = None) -> OrchestrationPlan:
     """
     Parse natural language text into an orchestration plan using keyword-based pattern matching.
 
@@ -80,14 +78,10 @@ def parse_natural_language(
     complexity = "low" if len(steps) <= 1 else "medium" if len(steps) <= 3 else "high"
     duration = len(steps) * 30  # 30 seconds per step estimate
 
-    return OrchestrationPlan(
-        steps=steps, estimated_duration=duration, complexity=complexity
-    )
+    return OrchestrationPlan(steps=steps, estimated_duration=duration, complexity=complexity)
 
 
-def create_simple_orchestration_plan(
-    text: str, default_goblin: Optional[str] = None
-) -> dict:
+def create_simple_orchestration_plan(text: str, default_goblin: Optional[str] = None) -> dict:
     """
     Create a simple orchestration plan with a single step.
     Used for basic orchestration requests that don't need complex multi-step parsing.

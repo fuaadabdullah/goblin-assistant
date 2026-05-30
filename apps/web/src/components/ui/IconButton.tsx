@@ -7,10 +7,14 @@ const iconButtonVariants = cva(
   {
     variants: {
       variant: {
-        primary: 'bg-primary text-text hover:bg-primary-600 active:bg-primary-600/90 shadow-md hover:shadow-lg',
-        secondary: 'bg-surface text-text border border-border hover:bg-surface-hover hover:border-primary/50 active:bg-surface-active shadow-sm hover:shadow-md',
-        danger: 'bg-danger text-text hover:bg-danger/90 active:bg-danger/80 shadow-md hover:shadow-lg',
-        ghost: 'bg-transparent text-text border border-border hover:bg-surface/50 active:bg-surface/70',
+        primary:
+          'bg-primary text-text hover:bg-primary-600 active:bg-primary-600/90 shadow-md hover:shadow-lg',
+        secondary:
+          'bg-surface text-text border border-border hover:bg-surface-hover hover:border-primary/50 active:bg-surface-active shadow-sm hover:shadow-md',
+        danger:
+          'bg-danger text-text hover:bg-danger/90 active:bg-danger/80 shadow-md hover:shadow-lg',
+        ghost:
+          'bg-transparent text-text border border-border hover:bg-surface/50 active:bg-surface/70',
       },
       size: {
         sm: 'h-8 w-8 text-sm',
@@ -27,9 +31,8 @@ const iconButtonVariants = cva(
 
 export type IconButtonVariantProps = VariantProps<typeof iconButtonVariants>;
 
-export interface IconButtonProps 
-  extends Omit<ButtonHTMLAttributes<HTMLButtonElement>, 'size'>,
-          IconButtonVariantProps {
+export interface IconButtonProps
+  extends Omit<ButtonHTMLAttributes<HTMLButtonElement>, 'size'>, IconButtonVariantProps {
   icon: ReactNode;
   'aria-label': string; // Required for accessibility
 }
@@ -39,14 +42,7 @@ export interface IconButtonProps
  * Ensures minimum 44x44px touch target (WCAG compliant).
  */
 const IconButton = forwardRef<HTMLButtonElement, IconButtonProps>(
-  ({
-    variant = 'ghost',
-    size = 'md',
-    icon,
-    className,
-    disabled,
-    ...props
-  }, ref) => {
+  ({ variant = 'ghost', size = 'md', icon, className, disabled, ...props }, ref) => {
     return (
       <button
         ref={ref}

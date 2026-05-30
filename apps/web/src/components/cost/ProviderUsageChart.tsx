@@ -50,7 +50,9 @@ const ProviderUsageTooltip = ({
       <div className="rounded-md border border-border bg-surface p-2 text-text shadow-card">
         <p className="label text-sm text-muted">{`${payload[0].name}`}</p>
         <p className="intro text-sm text-text">
-          {metric === 'requests' ? `${label}: ${value}` : `${label}: ${formatCost(value, { mode: 'summary' })}`}
+          {metric === 'requests'
+            ? `${label}: ${value}`
+            : `${label}: ${formatCost(value, { mode: 'summary' })}`}
         </p>
       </div>
     );
@@ -58,10 +60,7 @@ const ProviderUsageTooltip = ({
   return null;
 };
 
-const ProviderUsageChart: React.FC<ProviderUsageChartProps> = ({
-  data,
-  metric = 'requests',
-}) => {
+const ProviderUsageChart: React.FC<ProviderUsageChartProps> = ({ data, metric = 'requests' }) => {
   const title = metric === 'requests' ? 'Provider Requests' : 'Provider Costs';
 
   if (metric === 'cost') {

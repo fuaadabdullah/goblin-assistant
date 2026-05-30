@@ -185,6 +185,7 @@ class AzureOpenAIProvider(BaseProvider):
         t0 = time.perf_counter()
         try:
             from .base import is_billing_error
+
             body: Dict[str, Any] = {
                 "messages": [{"role": "user", "content": "ping"}],
                 "max_tokens": 1,

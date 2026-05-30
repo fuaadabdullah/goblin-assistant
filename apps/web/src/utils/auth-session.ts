@@ -42,7 +42,12 @@ interface PersistAuthInput {
  * by the backend — they are NOT written client-side. Only non-sensitive UI
  * flags (goblin_auth, goblin_admin) and user_data remain client-managed.
  */
-export const persistAuthSession = ({ token, refreshToken, user, expiresIn }: PersistAuthInput): void => {
+export const persistAuthSession = ({
+  token,
+  refreshToken,
+  user,
+  expiresIn,
+}: PersistAuthInput): void => {
   if (typeof window === 'undefined') return;
 
   const maxAge =

@@ -4,7 +4,9 @@ jest.mock('../../api', () => ({
   sendSupportMessage: jest.fn(),
 }));
 jest.mock('../../../../lib/ui-error', () => ({
-  toUiError: jest.fn((_: unknown, opts: { userMessage: string }) => ({ userMessage: opts.userMessage })),
+  toUiError: jest.fn((_: unknown, opts: { userMessage: string }) => ({
+    userMessage: opts.userMessage,
+  })),
 }));
 
 import { useSupportForm } from '../useSupportForm';
@@ -36,7 +38,9 @@ describe('useSupportForm', () => {
   it('handleSubmit does nothing for empty message', async () => {
     const { result } = renderHook(() => useSupportForm());
     const e = { preventDefault: jest.fn() } as unknown as React.FormEvent;
-    await act(async () => { await result.current.handleSubmit(e); });
+    await act(async () => {
+      await result.current.handleSubmit(e);
+    });
     expect(mockSend).not.toHaveBeenCalled();
   });
 
@@ -44,7 +48,9 @@ describe('useSupportForm', () => {
     const { result } = renderHook(() => useSupportForm());
     act(() => result.current.setMessage('   '));
     const e = { preventDefault: jest.fn() } as unknown as React.FormEvent;
-    await act(async () => { await result.current.handleSubmit(e); });
+    await act(async () => {
+      await result.current.handleSubmit(e);
+    });
     expect(mockSend).not.toHaveBeenCalled();
   });
 
@@ -53,7 +59,9 @@ describe('useSupportForm', () => {
     const { result } = renderHook(() => useSupportForm());
     act(() => result.current.setMessage('Need help'));
     const e = { preventDefault: jest.fn() } as unknown as React.FormEvent;
-    await act(async () => { await result.current.handleSubmit(e); });
+    await act(async () => {
+      await result.current.handleSubmit(e);
+    });
     expect(mockSend).toHaveBeenCalledWith('Need help');
     expect(result.current.sent).toBe(true);
     expect(result.current.message).toBe('');
@@ -65,9 +73,13 @@ describe('useSupportForm', () => {
     const { result } = renderHook(() => useSupportForm());
     act(() => result.current.setMessage('test'));
     const e = { preventDefault: jest.fn() } as unknown as React.FormEvent;
-    await act(async () => { await result.current.handleSubmit(e); });
+    await act(async () => {
+      await result.current.handleSubmit(e);
+    });
     expect(result.current.sent).toBe(true);
-    act(() => { jest.advanceTimersByTime(2500); });
+    act(() => {
+      jest.advanceTimersByTime(2500);
+    });
     expect(result.current.sent).toBe(false);
   });
 
@@ -76,7 +88,9 @@ describe('useSupportForm', () => {
     const { result } = renderHook(() => useSupportForm());
     act(() => result.current.setMessage('test'));
     const e = { preventDefault: jest.fn() } as unknown as React.FormEvent;
-    await act(async () => { await result.current.handleSubmit(e); });
+    await act(async () => {
+      await result.current.handleSubmit(e);
+    });
     expect(result.current.error).toBe('We could not send your message. Please try again.');
     expect(result.current.sending).toBe(false);
   });
@@ -86,7 +100,9 @@ describe('useSupportForm', () => {
     const { result } = renderHook(() => useSupportForm());
     act(() => result.current.setMessage('msg'));
     const e = { preventDefault: jest.fn() } as unknown as React.FormEvent;
-    await act(async () => { await result.current.handleSubmit(e); });
+    await act(async () => {
+      await result.current.handleSubmit(e);
+    });
     expect(e.preventDefault).toHaveBeenCalled();
   });
 
@@ -95,7 +111,9 @@ describe('useSupportForm', () => {
     const { result } = renderHook(() => useSupportForm());
     act(() => result.current.setMessage('  trimmed  '));
     const e = { preventDefault: jest.fn() } as unknown as React.FormEvent;
-    await act(async () => { await result.current.handleSubmit(e); });
+    await act(async () => {
+      await result.current.handleSubmit(e);
+    });
     expect(mockSend).toHaveBeenCalledWith('trimmed');
   });
 });

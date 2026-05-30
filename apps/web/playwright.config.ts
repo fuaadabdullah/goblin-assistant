@@ -7,7 +7,15 @@ export default defineConfig({
   forbidOnly: !!process.env.CI,
   retries: process.env.CI ? 2 : 0,
   workers: process.env.CI ? 1 : undefined,
-  reporter: [['html', { outputFolder: '/Volumes/GOBLINOS 1/goblin-assistant/.playwright/html-report', open: 'never' }]],
+  reporter: [
+    [
+      'html',
+      {
+        outputFolder: '/Volumes/GOBLINOS 1/goblin-assistant/.playwright/html-report',
+        open: 'never',
+      },
+    ],
+  ],
   use: {
     baseURL: 'http://localhost:3000',
     trace: 'on-first-retry',

@@ -4,7 +4,9 @@ import type { ChatThread, ChatThreadSource } from '../types';
 import { chatClient } from '../api';
 import {
   buildThreadKey,
+  markChatMigrationCompleted,
   readChatThreads,
+  readChatMigrationMeta,
   removeChatMessages,
   removeChatThread,
   sortChatThreads,
@@ -36,7 +38,9 @@ const createThread = (input: ChatThreadInput, existing?: ChatThread): ChatThread
   };
 };
 
-const mapBackendThread = (thread: Awaited<ReturnType<typeof chatClient.listConversations>>[number]): ChatThread => ({
+const mapBackendThread = (
+  thread: Awaited<ReturnType<typeof chatClient.listConversations>>[number]
+): ChatThread => ({
   id: thread.conversationId,
   source: 'backend',
   threadKey: buildThreadKey('backend', thread.conversationId),
@@ -48,8 +52,9 @@ const mapBackendThread = (thread: Awaited<ReturnType<typeof chatClient.listConve
 
 const readLegacyThreads = (): ChatThread[] => readChatThreads();
 
-const writeLegacyThreads = (threads: ChatThread[]): void => {
-  writeChatThreads(threads.filter(thread => thread.source === 'legacy-local'));
+const writeLegacyThreads = (threads: ChatThread[], migrationCompleted: boolean): void => {
+  if (migrationCompleted) return;
+  writeChatThreads(threads.filter((thread) => thread.source === 'legacy-local'));
 };
 
 export const useChatThreads = () => {
@@ -57,14 +62,16 @@ export const useChatThreads = () => {
   const query = useQuery<ChatThread[]>({
     queryKey: queryKeys.chatThreads,
     queryFn: async () => {
-      const legacyThreads = readLegacyThreads();
+      const migrationMeta = readChatMigrationMeta();
+      const shouldIncludeLegacy = !migrationMeta.migrationCompleted;
+      const legacyThreads = shouldIncludeLegacy ? readLegacyThreads() : [];
 
       try {
         const backendThreads = await chatClient.listConversations();
-      return sortChatThreads([
-          ...backendThreads.map(mapBackendThread),
-          ...legacyThreads,
-        ]);
+        if (!migrationMeta.migrationCompleted) {
+          markChatMigrationCompleted();
+        }
+        return sortChatThreads([...backendThreads.map(mapBackendThread)]);
       } catch {
         return sortChatThreads(legacyThreads);
       }
@@ -78,14 +85,15 @@ export const useChatThreads = () => {
         queryKeys.chatThreads,
         (current: ChatThread[] | undefined) => {
           const list = Array.isArray(current) ? current : [];
+          const migrationMeta = readChatMigrationMeta();
           const threadKey = buildThreadKey(input.source ?? 'backend', input.id);
-          const existing = list.find(thread => thread.threadKey === threadKey);
+          const existing = list.find((thread) => thread.threadKey === threadKey);
           const nextThread = createThread(input, existing);
           const nextThreads = existing
-            ? list.map(thread => (thread.threadKey === threadKey ? nextThread : thread))
+            ? list.map((thread) => (thread.threadKey === threadKey ? nextThread : thread))
             : [nextThread, ...list];
           const sorted = sortChatThreads(nextThreads);
-          writeLegacyThreads(sorted);
+          writeLegacyThreads(sorted, migrationMeta.migrationCompleted);
           return sorted;
         }
       );
@@ -99,12 +107,13 @@ export const useChatThreads = () => {
         queryKeys.chatThreads,
         (current: ChatThread[] | undefined) => {
           const list = Array.isArray(current) ? current : [];
-          const next = list.filter(item => item.threadKey !== thread.threadKey);
+          const migrationMeta = readChatMigrationMeta();
+          const next = list.filter((item) => item.threadKey !== thread.threadKey);
           if (thread.source === 'legacy-local') {
             removeChatThread(thread.id);
             removeChatMessages(thread.id);
           } else {
-            writeLegacyThreads(next);
+            writeLegacyThreads(next, migrationMeta.migrationCompleted);
           }
           return next;
         }

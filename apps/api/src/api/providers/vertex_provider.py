@@ -84,6 +84,7 @@ def _configure_google_credentials() -> None:
         os.environ["GOOGLE_APPLICATION_CREDENTIALS"] = str(_VERTEX_SERVICE_ACCOUNT_FILE)
         return
 
+
 _COST_TABLE: Dict[str, Dict[str, float]] = {
     "gemini-1.5-pro": {"input": 0.00125, "output": 0.005},
     "gemini-1.5-flash": {"input": 0.000075, "output": 0.0003},
@@ -98,9 +99,7 @@ def _get_access_token() -> Optional[str]:
         import google.auth
         import google.auth.transport.requests
 
-        creds, _ = google.auth.default(
-            scopes=["https://www.googleapis.com/auth/cloud-platform"]
-        )
+        creds, _ = google.auth.default(scopes=["https://www.googleapis.com/auth/cloud-platform"])
         request = google.auth.transport.requests.Request()
         creds.refresh(request)
         return creds.token
@@ -228,7 +227,11 @@ class VertexAIProvider(BaseProvider):
                     error_detail = resp.text
                 except Exception:
                     error_detail = f"HTTP {resp.status_code}"
-                logger.warning("vertex_http_error", status=resp.status_code, response_body=error_detail)
+                logger.warning(
+                    "vertex_http_error",
+                    status=resp.status_code,
+                    response_body=error_detail,
+                )
             resp.raise_for_status()
             data = resp.json()
 
@@ -293,9 +296,7 @@ class VertexAIProvider(BaseProvider):
         if system_instruction:
             body["systemInstruction"] = {"parts": [{"text": system_instruction}]}
 
-        url = self._endpoint(model_name).replace(
-            ":generateContent", ":streamGenerateContent"
-        )
+        url = self._endpoint(model_name).replace(":generateContent", ":streamGenerateContent")
         headers = {
             "Authorization": f"Bearer {token}",
             "Content-Type": _JSON_CONTENT_TYPE,
@@ -308,7 +309,11 @@ class VertexAIProvider(BaseProvider):
                         error_detail = await resp.aread()
                     except Exception:
                         error_detail = f"HTTP {resp.status_code}"
-                    logger.warning("vertex_stream_http_error", status=resp.status_code, response_body=str(error_detail))
+                    logger.warning(
+                        "vertex_stream_http_error",
+                        status=resp.status_code,
+                        response_body=str(error_detail),
+                    )
                 resp.raise_for_status()
                 buffer = ""
                 async for chunk in resp.aiter_bytes():
@@ -350,17 +355,13 @@ class VertexAIProvider(BaseProvider):
                         "Authorization": f"Bearer {token}",
                         "x-goog-user-project": self._project,
                     },
-            )
+                )
             latency = (time.perf_counter() - t0) * 1000
             return ProviderHealth(
                 self.provider_id,
                 resp.status_code < 400,
                 latency_ms=latency,
-                error=(
-                    None
-                    if resp.status_code < 400
-                    else f"HTTP {resp.status_code}"
-                ),
+                error=(None if resp.status_code < 400 else f"HTTP {resp.status_code}"),
             )
         except Exception as exc:
             latency = (time.perf_counter() - t0) * 1000

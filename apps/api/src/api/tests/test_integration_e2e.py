@@ -8,8 +8,7 @@ simulating what happens when the LLM invokes a tool during chat.
 from __future__ import annotations
 
 import json
-from typing import Any, Dict, List
-from unittest.mock import AsyncMock, MagicMock, patch
+from unittest.mock import AsyncMock, patch
 
 import pytest
 
@@ -72,9 +71,30 @@ _MOCK_HISTORY = {
     "interval": "1d",
     "data_points": 3,
     "data": [
-        {"date": "2024-01-02", "close": 180.0, "open": 179.0, "high": 181.0, "low": 178.0, "volume": 1000000},
-        {"date": "2024-01-03", "close": 182.0, "open": 180.0, "high": 183.0, "low": 179.0, "volume": 1100000},
-        {"date": "2024-01-04", "close": 185.0, "open": 182.0, "high": 186.0, "low": 181.0, "volume": 900000},
+        {
+            "date": "2024-01-02",
+            "close": 180.0,
+            "open": 179.0,
+            "high": 181.0,
+            "low": 178.0,
+            "volume": 1000000,
+        },
+        {
+            "date": "2024-01-03",
+            "close": 182.0,
+            "open": 180.0,
+            "high": 183.0,
+            "low": 179.0,
+            "volume": 1100000,
+        },
+        {
+            "date": "2024-01-04",
+            "close": 185.0,
+            "open": 182.0,
+            "high": 186.0,
+            "low": 181.0,
+            "volume": 900000,
+        },
     ],
 }
 
@@ -192,21 +212,25 @@ class TestToolLoopEndToEnd:
                     "ok": True,
                     "result": {
                         "raw": {
-                            "choices": [{
-                                "finish_reason": "tool_calls",
-                                "message": {
-                                    "role": "assistant",
-                                    "content": None,
-                                    "tool_calls": [{
-                                        "id": "call_123",
-                                        "type": "function",
-                                        "function": {
-                                            "name": "dcf_calculator",
-                                            "arguments": json.dumps({"ticker": "AAPL"}),
-                                        },
-                                    }],
-                                },
-                            }],
+                            "choices": [
+                                {
+                                    "finish_reason": "tool_calls",
+                                    "message": {
+                                        "role": "assistant",
+                                        "content": None,
+                                        "tool_calls": [
+                                            {
+                                                "id": "call_123",
+                                                "type": "function",
+                                                "function": {
+                                                    "name": "dcf_calculator",
+                                                    "arguments": json.dumps({"ticker": "AAPL"}),
+                                                },
+                                            }
+                                        ],
+                                    },
+                                }
+                            ],
                         },
                     },
                 }
@@ -217,13 +241,15 @@ class TestToolLoopEndToEnd:
                     "result": {
                         "text": "AAPL is valued at $X per share.",
                         "raw": {
-                            "choices": [{
-                                "finish_reason": "stop",
-                                "message": {
-                                    "role": "assistant",
-                                    "content": "AAPL is valued at $X per share.",
-                                },
-                            }],
+                            "choices": [
+                                {
+                                    "finish_reason": "stop",
+                                    "message": {
+                                        "role": "assistant",
+                                        "content": "AAPL is valued at $X per share.",
+                                    },
+                                }
+                            ],
                         },
                     },
                 }
@@ -257,21 +283,25 @@ class TestToolLoopEndToEnd:
                 "ok": True,
                 "result": {
                     "raw": {
-                        "choices": [{
-                            "finish_reason": "tool_calls",
-                            "message": {
-                                "role": "assistant",
-                                "content": None,
-                                "tool_calls": [{
-                                    "id": "call_456",
-                                    "type": "function",
-                                    "function": {
-                                        "name": "dcf_calculator",
-                                        "arguments": json.dumps({"ticker": "AAPL"}),
-                                    },
-                                }],
-                            },
-                        }],
+                        "choices": [
+                            {
+                                "finish_reason": "tool_calls",
+                                "message": {
+                                    "role": "assistant",
+                                    "content": None,
+                                    "tool_calls": [
+                                        {
+                                            "id": "call_456",
+                                            "type": "function",
+                                            "function": {
+                                                "name": "dcf_calculator",
+                                                "arguments": json.dumps({"ticker": "AAPL"}),
+                                            },
+                                        }
+                                    ],
+                                },
+                            }
+                        ],
                     },
                 },
             }
@@ -290,13 +320,15 @@ class TestToolLoopEndToEnd:
                 "result": {
                     "text": "Rate limit hit, try again.",
                     "raw": {
-                        "choices": [{
-                            "finish_reason": "stop",
-                            "message": {
-                                "role": "assistant",
-                                "content": "Rate limit hit, try again.",
-                            },
-                        }],
+                        "choices": [
+                            {
+                                "finish_reason": "stop",
+                                "message": {
+                                    "role": "assistant",
+                                    "content": "Rate limit hit, try again.",
+                                },
+                            }
+                        ],
                     },
                 },
             }

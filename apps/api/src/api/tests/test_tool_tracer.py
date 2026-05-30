@@ -3,15 +3,10 @@ Unit tests for the Tool Tracer service
 """
 
 import pytest
-from datetime import datetime, timezone
 
 from api.observability.tool_tracer import (
     ToolTracer,
-    ToolTrace,
-    RoundData,
-    ToolExecution,
     ToolExecutionStatus,
-    RetryInfo,
 )
 
 
@@ -299,9 +294,7 @@ class TestToolTraceStatistics:
                 final_message_tokens=100,
             )
 
-        result = tracer.get_conversation_tool_traces(
-            conversation_id=conv_id, limit=10, offset=0
-        )
+        result = tracer.get_conversation_tool_traces(conversation_id=conv_id, limit=10, offset=0)
 
         assert result["conversation_id"] == conv_id
         assert result["total_count"] == 3
@@ -347,9 +340,7 @@ class TestToolTraceStatistics:
                 final_message_tokens=100,
             )
 
-        stats = tracer.get_tool_trace_stats(
-            user_id=user_id, time_window_hours=24
-        )
+        stats = tracer.get_tool_trace_stats(user_id=user_id, time_window_hours=24)
 
         assert stats["trace_count"] == 5
         assert stats["stats"]["avg_executions_per_trace"] == 2.0

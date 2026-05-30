@@ -47,13 +47,9 @@ function createRes(): MockRes {
   };
 }
 
-function createFetchResponse({
-  status,
-  body = {},
-  headers = {},
-}: FetchResponseInit): Response {
+function createFetchResponse({ status, body = {}, headers = {} }: FetchResponseInit): Response {
   const normalizedHeaders = Object.fromEntries(
-    Object.entries(headers).map(([k, v]) => [k.toLowerCase(), v]),
+    Object.entries(headers).map(([k, v]) => [k.toLowerCase(), v])
   );
   return {
     ok: status >= 200 && status < 300,
@@ -69,7 +65,7 @@ function loadHandler() {
   // eslint-disable-next-line @typescript-eslint/no-var-requires
   return require('../../../pages/api/auth/validate').default as (
     req: MockReq,
-    res: MockRes,
+    res: MockRes
   ) => Promise<void>;
 }
 
@@ -98,7 +94,7 @@ describe('/api/auth/validate thin proxy', () => {
         status: 200,
         body: { valid: true, user: { id: 'u1', email: 'u1@example.com' } },
         headers: { 'x-correlation-id': 'cid-auth' },
-      }),
+      })
     );
     global.fetch = fetchMock as unknown as typeof fetch;
 

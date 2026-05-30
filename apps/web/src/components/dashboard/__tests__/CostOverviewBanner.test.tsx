@@ -42,12 +42,7 @@ describe('CostOverviewBanner', () => {
   });
 
   it('shows provider breakdown when byProvider has entries', () => {
-    render(
-      <CostOverviewBanner
-        {...baseProps}
-        byProvider={{ openai: 50, anthropic: 30 }}
-      />
-    );
+    render(<CostOverviewBanner {...baseProps} byProvider={{ openai: 50, anthropic: 30 }} />);
     expect(screen.getByText(/openai/)).toBeInTheDocument();
     expect(screen.getByText(/anthropic/)).toBeInTheDocument();
   });

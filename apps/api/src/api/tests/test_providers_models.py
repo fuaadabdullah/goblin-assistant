@@ -37,6 +37,7 @@ def test_provider_models_ignores_blank_values():
 
 def test_get_provider_models_endpoint_returns_providers_and_models():
     app = FastAPI()
+
     @app.exception_handler(DomainError)
     async def _domain_error_handler(_, exc: DomainError):
         return JSONResponse(
@@ -45,6 +46,7 @@ def test_get_provider_models_endpoint_returns_providers_and_models():
                 error={"code": exc.code, "message": exc.message, "details": exc.details}
             ).model_dump(exclude_none=True),
         )
+
     app.include_router(router)
     app.include_router(router, prefix="/api/v1")
     client = TestClient(app)
@@ -88,6 +90,7 @@ def test_get_provider_models_endpoint_returns_providers_and_models():
 
 def test_get_provider_models_endpoint_handles_errors():
     app = FastAPI()
+
     @app.exception_handler(DomainError)
     async def _domain_error_handler(_, exc: DomainError):
         return JSONResponse(
@@ -96,6 +99,7 @@ def test_get_provider_models_endpoint_handles_errors():
                 error={"code": exc.code, "message": exc.message, "details": exc.details}
             ).model_dump(exclude_none=True),
         )
+
     app.include_router(router)
     app.include_router(router, prefix="/api/v1")
     client = TestClient(app)
@@ -114,6 +118,7 @@ def test_get_provider_models_endpoint_handles_errors():
 
 def test_provider_models_v1_alias_matches_legacy():
     app = FastAPI()
+
     @app.exception_handler(DomainError)
     async def _domain_error_handler(_, exc: DomainError):
         return JSONResponse(
@@ -122,6 +127,7 @@ def test_provider_models_v1_alias_matches_legacy():
                 error={"code": exc.code, "message": exc.message, "details": exc.details}
             ).model_dump(exclude_none=True),
         )
+
     app.include_router(router)
     app.include_router(router, prefix="/api/v1")
     client = TestClient(app)

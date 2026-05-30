@@ -154,7 +154,13 @@ describe('ChatComposer', () => {
     const attachments = [
       { file_id: 'f1', filename: 'doc.pdf', mime_type: 'application/pdf', size_bytes: 1024 },
     ];
-    render(<ChatComposer {...defaultProps} pendingAttachments={attachments} onRemoveAttachment={onRemove} />);
+    render(
+      <ChatComposer
+        {...defaultProps}
+        pendingAttachments={attachments}
+        onRemoveAttachment={onRemove}
+      />
+    );
     fireEvent.click(screen.getByLabelText('Remove doc.pdf'));
     expect(onRemove).toHaveBeenCalledWith('f1');
   });
@@ -165,7 +171,15 @@ describe('ChatComposer', () => {
   });
 
   it('displays cost estimates', () => {
-    render(<ChatComposer {...defaultProps} estimatedTokens={500} estimatedCostUsd={0.01} totalTokens={1000} totalCostUsd={0.05} />);
+    render(
+      <ChatComposer
+        {...defaultProps}
+        estimatedTokens={500}
+        estimatedCostUsd={0.01}
+        totalTokens={1000}
+        totalCostUsd={0.05}
+      />
+    );
     expect(screen.getByText('~500')).toBeInTheDocument();
     expect(screen.getByText('1000')).toBeInTheDocument();
   });

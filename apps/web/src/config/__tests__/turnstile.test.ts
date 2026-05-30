@@ -5,11 +5,13 @@ describe('turnstile config', () => {
   const devWarnMock = jest.fn();
   const devErrorMock = jest.fn();
 
-  const loadTurnstileModule = (overrides: Partial<{
-    chat: string;
-    login: string;
-    search: string;
-  }> = {}) => {
+  const loadTurnstileModule = (
+    overrides: Partial<{
+      chat: string;
+      login: string;
+      search: string;
+    }> = {}
+  ) => {
     jest.doMock('../env', () => ({
       __esModule: true,
       env: {
@@ -79,13 +81,15 @@ describe('turnstile config', () => {
   });
 
   it('throws when a key has an invalid format', () => {
-    expect(() => loadTurnstileModule({ chat: 'bad-key' })).toThrow('Invalid Turnstile configuration');
+    expect(() => loadTurnstileModule({ chat: 'bad-key' })).toThrow(
+      'Invalid Turnstile configuration'
+    );
     expect(devErrorMock).toHaveBeenCalled();
   });
 
   it('throws when a secret key leaks into client config', () => {
     expect(() => loadTurnstileModule({ search: '0xsecret-value' })).toThrow(
-      'Security violation: Secret key in client',
+      'Security violation: Secret key in client'
     );
     expect(devErrorMock).toHaveBeenCalled();
   });

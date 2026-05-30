@@ -114,9 +114,7 @@ class RateLimiter:
 
         # Add rate limit headers to response
         response = await call_next(request)
-        response.headers["X-RateLimit-Remaining-Minute"] = str(
-            result["remaining_minute"]
-        )
+        response.headers["X-RateLimit-Remaining-Minute"] = str(result["remaining_minute"])
         response.headers["X-RateLimit-Remaining-Hour"] = str(result["remaining_hour"])
 
         return response

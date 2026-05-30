@@ -58,13 +58,16 @@ async def test_refresh_updates_health_data():
     fake_stats = MagicMock()
     fake_stats.success_rate = 0.97
 
-    with patch(
-        "api.services.provider_health.dispatcher.get_provider_inventory",
-        new_callable=AsyncMock,
-        return_value=inventory,
-    ), patch(
-        "api.services.provider_health.registry.get",
-        return_value=fake_stats,
+    with (
+        patch(
+            "api.services.provider_health.dispatcher.get_provider_inventory",
+            new_callable=AsyncMock,
+            return_value=inventory,
+        ),
+        patch(
+            "api.services.provider_health.registry.get",
+            return_value=fake_stats,
+        ),
     ):
         result = await monitor.refresh(include_hidden=False)
 
@@ -99,21 +102,25 @@ async def test_probe_provider_updates_state():
     fake_stats = MagicMock()
     fake_stats.success_rate = 0.91
 
-    with patch(
-        "api.services.provider_health.dispatcher.check_provider",
-        new_callable=AsyncMock,
-        return_value={
-            "configured": True,
-            "healthy": True,
-            "latency_ms": 18,
-            "health_reason": None,
-        },
-    ), patch(
-        "api.services.provider_health.registry.get",
-        return_value=fake_stats,
-    ), patch(
-        "api.services.provider_health.canonical_provider_id",
-        return_value="openai",
+    with (
+        patch(
+            "api.services.provider_health.dispatcher.check_provider",
+            new_callable=AsyncMock,
+            return_value={
+                "configured": True,
+                "healthy": True,
+                "latency_ms": 18,
+                "health_reason": None,
+            },
+        ),
+        patch(
+            "api.services.provider_health.registry.get",
+            return_value=fake_stats,
+        ),
+        patch(
+            "api.services.provider_health.canonical_provider_id",
+            return_value="openai",
+        ),
     ):
         status = await monitor.probe_provider("openai")
 

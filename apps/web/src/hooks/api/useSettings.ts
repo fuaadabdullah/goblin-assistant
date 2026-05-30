@@ -51,8 +51,13 @@ export const useUpdateProvider = () => {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: ({ providerId, provider }: { providerId: number; provider: Partial<ProviderConfig> }) =>
-      apiClient.updateProvider(providerId, provider),
+    mutationFn: ({
+      providerId,
+      provider,
+    }: {
+      providerId: number;
+      provider: Partial<ProviderConfig>;
+    }) => apiClient.updateProvider(providerId, provider),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: queryKeys.providers });
     },

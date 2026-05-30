@@ -3,9 +3,13 @@ import { render, screen } from '@testing-library/react';
 import '@testing-library/jest-dom';
 import SearchPage from '../SearchPage';
 
-jest.mock('@/features/search/SearchScreen', () => function MockSearchScreen() {
-  return <div data-testid="search-screen">Search Screen</div>;
-});
+jest.mock(
+  '@/features/search/SearchScreen',
+  () =>
+    function MockSearchScreen() {
+      return <div data-testid="search-screen">Search Screen</div>;
+    }
+);
 
 describe('SearchPage', () => {
   it('renders SearchScreen component', () => {

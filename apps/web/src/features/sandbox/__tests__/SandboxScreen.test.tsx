@@ -25,7 +25,11 @@ jest.mock('../hooks/useSandboxSession', () => ({
 
 jest.mock('../../../components/auth/AuthPrompt', () => {
   return function MockAuthPrompt(props: { onClose: () => void }) {
-    return <div data-testid="auth-prompt"><button onClick={props.onClose}>close</button></div>;
+    return (
+      <div data-testid="auth-prompt">
+        <button onClick={props.onClose}>close</button>
+      </div>
+    );
   };
 });
 
@@ -33,7 +37,9 @@ jest.mock('../components/SandboxView', () => {
   return function MockSandboxView(props: { isGuest: boolean; onRequireAuth: () => boolean }) {
     return (
       <div data-testid="sandbox-view" data-guest={String(props.isGuest)}>
-        <button data-testid="require-auth" onClick={() => props.onRequireAuth()}>auth</button>
+        <button data-testid="require-auth" onClick={() => props.onRequireAuth()}>
+          auth
+        </button>
       </div>
     );
   };

@@ -4,7 +4,11 @@ import '@testing-library/jest-dom';
 
 jest.mock('@/components/StatusCard', () => {
   return function MockStatusCard(props: { title: string; status: string }) {
-    return <div data-testid={`status-card-${props.title}`}>{props.title}: {props.status}</div>;
+    return (
+      <div data-testid={`status-card-${props.title}`}>
+        {props.title}: {props.status}
+      </div>
+    );
   };
 });
 
@@ -25,7 +29,7 @@ describe('StatusCardsGrid', () => {
   };
 
   it('renders all 5 status cards', () => {
-    render(<StatusCardsGrid {...baseProps as any} />);
+    render(<StatusCardsGrid {...(baseProps as any)} />);
     expect(screen.getByTestId('status-card-Backend API')).toBeInTheDocument();
     expect(screen.getByTestId('status-card-Chroma')).toBeInTheDocument();
     expect(screen.getByTestId('status-card-MCP')).toBeInTheDocument();
@@ -34,22 +38,22 @@ describe('StatusCardsGrid', () => {
   });
 
   it('maps healthy status to healthy', () => {
-    render(<StatusCardsGrid {...baseProps as any} />);
+    render(<StatusCardsGrid {...(baseProps as any)} />);
     expect(screen.getByTestId('status-card-Backend API')).toHaveTextContent('healthy');
   });
 
   it('maps degraded status to degraded', () => {
-    render(<StatusCardsGrid {...baseProps as any} />);
+    render(<StatusCardsGrid {...(baseProps as any)} />);
     expect(screen.getByTestId('status-card-MCP')).toHaveTextContent('degraded');
   });
 
   it('maps unhealthy status to down', () => {
-    render(<StatusCardsGrid {...baseProps as any} />);
+    render(<StatusCardsGrid {...(baseProps as any)} />);
     expect(screen.getByTestId('status-card-RAG')).toHaveTextContent('down');
   });
 
   it('maps unknown status to unknown', () => {
-    render(<StatusCardsGrid {...baseProps as any} />);
+    render(<StatusCardsGrid {...(baseProps as any)} />);
     expect(screen.getByTestId('status-card-Sandbox')).toHaveTextContent('unknown');
   });
 
@@ -58,7 +62,7 @@ describe('StatusCardsGrid', () => {
       ...baseProps,
       backend: makeService('some-other-status'),
     };
-    render(<StatusCardsGrid {...props as any} />);
+    render(<StatusCardsGrid {...(props as any)} />);
     expect(screen.getByTestId('status-card-Backend API')).toHaveTextContent('unknown');
   });
 });

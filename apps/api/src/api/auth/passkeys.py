@@ -1,12 +1,12 @@
 import base64
 import hashlib
 import secrets
-from typing import Dict, Any, Optional, Tuple
-from cryptography import x509
+from typing import Dict, Any
 from cryptography.hazmat.primitives import hashes
 from cryptography.hazmat.primitives.asymmetric import ec
 from cryptography.exceptions import InvalidSignature
 import json
+
 
 class WebAuthnPasskey:
     @staticmethod
@@ -15,13 +15,13 @@ class WebAuthnPasskey:
         # Add padding if needed
         missing_padding = len(data) % 4
         if missing_padding:
-            data += '=' * (4 - missing_padding)
+            data += "=" * (4 - missing_padding)
         return base64.urlsafe_b64decode(data)
 
     @staticmethod
     def encode_base64url(data: bytes) -> str:
         """Encode bytes to base64url string"""
-        return base64.urlsafe_b64encode(data).decode('utf-8').rstrip('=')
+        return base64.urlsafe_b64encode(data).decode("utf-8").rstrip("=")
 
     @staticmethod
     def parse_authenticator_data(auth_data: bytes) -> Dict[str, Any]:
@@ -36,7 +36,7 @@ class WebAuthnPasskey:
         flags = auth_data[32]
 
         # Parse sign count (4 bytes)
-        sign_count = int.from_bytes(auth_data[33:37], byteorder='big')
+        sign_count = int.from_bytes(auth_data[33:37], byteorder="big")
 
         # Parse attested credential data if present
         attested_credential_data = None
@@ -46,23 +46,23 @@ class WebAuthnPasskey:
             # AAGUID (16 bytes)
             aaguid = remaining_data[:16]
             # Credential ID length (2 bytes)
-            cred_id_len = int.from_bytes(remaining_data[16:18], byteorder='big')
+            cred_id_len = int.from_bytes(remaining_data[16:18], byteorder="big")
             # Credential ID
-            credential_id = remaining_data[18:18+cred_id_len]
+            credential_id = remaining_data[18 : 18 + cred_id_len]
             # Public key (COSE format)
-            public_key_cose = remaining_data[18+cred_id_len:]
+            public_key_cose = remaining_data[18 + cred_id_len :]
 
             attested_credential_data = {
-                'aaguid': aaguid.hex(),
-                'credential_id': credential_id,
-                'public_key_cose': public_key_cose
+                "aaguid": aaguid.hex(),
+                "credential_id": credential_id,
+                "public_key_cose": public_key_cose,
             }
 
         return {
-            'rp_id_hash': rp_id_hash,
-            'flags': flags,
-            'sign_count': sign_count,
-            'attested_credential_data': attested_credential_data
+            "rp_id_hash": rp_id_hash,
+            "flags": flags,
+            "sign_count": sign_count,
+            "attested_credential_data": attested_credential_data,
         }
 
     @staticmethod
@@ -74,16 +74,14 @@ class WebAuthnPasskey:
             # For ES256, the key should be in uncompressed format
             if len(cose_key) == 65 and cose_key[0] == 0x04:
                 # Uncompressed EC point
-                x = int.from_bytes(cose_key[1:33], byteorder='big')
-                y = int.from_bytes(cose_key[33:65], byteorder='big')
+                x = int.from_bytes(cose_key[1:33], byteorder="big")
+                y = int.from_bytes(cose_key[33:65], byteorder="big")
 
                 # Create EC public key
                 from cryptography.hazmat.primitives.asymmetric import ec
                 from cryptography.hazmat.backends import default_backend
 
-                public_numbers = ec.EllipticCurvePublicNumbers(
-                    x=x, y=y, curve=ec.SECP256R1()
-                )
+                public_numbers = ec.EllipticCurvePublicNumbers(x=x, y=y, curve=ec.SECP256R1())
                 return public_numbers.public_key(default_backend())
         except Exception:
             pass
@@ -95,7 +93,7 @@ class WebAuthnPasskey:
         public_key: ec.EllipticCurvePublicKey,
         signature: bytes,
         authenticator_data: bytes,
-        client_data_json: bytes
+        client_data_json: bytes,
     ) -> bool:
         """Verify WebAuthn signature"""
         try:
@@ -104,11 +102,7 @@ class WebAuthnPasskey:
             signed_data = authenticator_data + client_data_hash
 
             # Verify signature
-            public_key.verify(
-                signature,
-                signed_data,
-                ec.ECDSA(hashes.SHA256())
-            )
+            public_key.verify(signature, signed_data, ec.ECDSA(hashes.SHA256()))
             return True
         except InvalidSignature:
             return False
@@ -123,7 +117,7 @@ class WebAuthnPasskey:
         client_data_json_b64: str,
         signature_b64: str,
         challenge: str,
-        origin: str
+        origin: str,
     ) -> bool:
         """
         Verify a passkey authentication response
@@ -135,22 +129,22 @@ class WebAuthnPasskey:
             signature = WebAuthnPasskey.decode_base64url(signature_b64)
 
             # Parse client data JSON
-            client_data = json.loads(client_data_json.decode('utf-8'))
+            client_data = json.loads(client_data_json.decode("utf-8"))
 
             # Verify challenge
-            if client_data.get('challenge') != WebAuthnPasskey.encode_base64url(challenge.encode()):
+            if client_data.get("challenge") != WebAuthnPasskey.encode_base64url(challenge.encode()):
                 return False
 
             # Verify origin
-            if client_data.get('origin') != origin:
+            if client_data.get("origin") != origin:
                 return False
 
             # Verify type
-            if client_data.get('type') != 'webauthn.get':
+            if client_data.get("type") != "webauthn.get":
                 return False
 
             # Parse authenticator data
-            auth_data_parsed = WebAuthnPasskey.parse_authenticator_data(authenticator_data)
+            WebAuthnPasskey.parse_authenticator_data(authenticator_data)
 
             # Parse stored public key
             stored_key_bytes = WebAuthnPasskey.decode_base64url(stored_public_key)

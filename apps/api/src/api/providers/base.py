@@ -16,12 +16,15 @@ from dataclasses import dataclass, field
 from enum import Enum
 from typing import Any, AsyncGenerator, Dict, List, Optional, Union
 
+from .contracts import ProviderCapabilityMatrix
+
 
 class ProviderErrorCategory(str, Enum):
     """Structured error categories for provider failures."""
-    AUTH = "auth"              # 401/403, invalid API key
+
+    AUTH = "auth"  # 401/403, invalid API key
     RATE_LIMIT = "rate-limit"  # 429, quota exceeded
-    TIMEOUT = "timeout"        # Connection/read timeout
+    TIMEOUT = "timeout"  # Connection/read timeout
     MODEL_ERROR = "model-error"  # Invalid model, context too long
     SERVER_ERROR = "server-error"  # 5xx from provider
     CONNECTION = "connection"  # DNS, network, connection refused
@@ -32,7 +35,18 @@ def classify_provider_error(error: Union[str, Exception]) -> ProviderErrorCatego
     """Classify a provider error into a structured category."""
     msg = str(error).lower()
 
-    if any(kw in msg for kw in ("401", "403", "unauthorized", "forbidden", "invalid api key", "invalid_api_key", "authentication")):
+    if any(
+        kw in msg
+        for kw in (
+            "401",
+            "403",
+            "unauthorized",
+            "forbidden",
+            "invalid api key",
+            "invalid_api_key",
+            "authentication",
+        )
+    ):
         return ProviderErrorCategory.AUTH
 
     if any(kw in msg for kw in ("429", "rate limit", "rate_limit", "quota", "too many requests")):
@@ -41,13 +55,34 @@ def classify_provider_error(error: Union[str, Exception]) -> ProviderErrorCatego
     if any(kw in msg for kw in ("timeout", "timed out", "deadline exceeded")):
         return ProviderErrorCategory.TIMEOUT
 
-    if any(kw in msg for kw in ("model not found", "invalid model", "context_length_exceeded", "context length", "max_tokens")):
+    if any(
+        kw in msg
+        for kw in (
+            "model not found",
+            "invalid model",
+            "context_length_exceeded",
+            "context length",
+            "max_tokens",
+        )
+    ):
         return ProviderErrorCategory.MODEL_ERROR
 
-    if re.search(r"\b5\d{2}\b", msg) or any(kw in msg for kw in ("internal server error", "bad gateway", "service unavailable")):
+    if re.search(r"\b5\d{2}\b", msg) or any(
+        kw in msg for kw in ("internal server error", "bad gateway", "service unavailable")
+    ):
         return ProviderErrorCategory.SERVER_ERROR
 
-    if any(kw in msg for kw in ("connection refused", "dns", "name resolution", "unreachable", "connection error", "connect error")):
+    if any(
+        kw in msg
+        for kw in (
+            "connection refused",
+            "dns",
+            "name resolution",
+            "unreachable",
+            "connection error",
+            "connect error",
+        )
+    ):
         return ProviderErrorCategory.CONNECTION
 
     return ProviderErrorCategory.UNKNOWN
@@ -163,9 +198,7 @@ class BaseProvider(ABC):
         provider_id: Union[str, Dict[str, Any]],
         config: Optional[Dict[str, Any]] = None,
     ) -> None:
-        resolved_provider_id, resolved_config = self._resolve_init_args(
-            provider_id, config
-        )
+        resolved_provider_id, resolved_config = self._resolve_init_args(provider_id, config)
         self.provider_id = resolved_provider_id
         self.config = resolved_config
         self.endpoint = str(self.config.get("endpoint", "")).rstrip("/")
@@ -256,6 +289,75 @@ class BaseProvider(ABC):
     async def health_check(self) -> ProviderHealth:
         """Probe the provider."""
 
+    async def chat(
+        self,
+        messages: Optional[List[Dict[str, str]]] = None,
+        model: Optional[str] = None,
+        *,
+        stream: bool = False,
+        max_tokens: int = 4096,
+        temperature: float = 0.7,
+        prompt: str = "",
+        **kwargs: Any,
+    ) -> ProviderResult:
+        """V1 adapter surface: chat invocation."""
+        return await self.invoke(
+            messages=messages,
+            model=model,
+            stream=stream,
+            max_tokens=max_tokens,
+            temperature=temperature,
+            prompt=prompt,
+            **kwargs,
+        )
+
+    def stream_chat(
+        self,
+        messages: Optional[List[Dict[str, str]]] = None,
+        model: Optional[str] = None,
+        *,
+        max_tokens: int = 4096,
+        temperature: float = 0.7,
+        prompt: str = "",
+        **kwargs: Any,
+    ) -> AsyncGenerator[Dict[str, Any], None]:
+        """V1 adapter surface: streaming chat invocation."""
+        return self.stream(
+            messages=messages,
+            model=model,
+            max_tokens=max_tokens,
+            temperature=temperature,
+            prompt=prompt,
+            **kwargs,
+        )
+
+    async def health(self) -> ProviderHealth:
+        """V1 adapter surface: provider health probe."""
+        return await self.health_check()
+
+    def capabilities(self) -> ProviderCapabilityMatrix:
+        """V1 capability contract (embeddings optional by design)."""
+        configured = {str(item).strip().lower() for item in self.config.get("capabilities", [])}
+        supports_embed = "embeddings" in configured or self.config.get("supports_embeddings", False)
+        limits: Dict[str, int] = {}
+        for source_key, dest_key in (
+            ("max_input_tokens", "max_input_tokens"),
+            ("max_output_tokens", "max_output_tokens"),
+            ("max_batch_size", "max_batch_size"),
+        ):
+            value = self.config.get(source_key)
+            if isinstance(value, int) and value > 0:
+                limits[dest_key] = value
+
+        return {
+            "chat": True,
+            "stream_chat": True,
+            "health": True,
+            "capabilities": True,
+            "embeddings": bool(supports_embed),
+            "limits": limits,
+        }
+
     def is_available(self) -> bool:
         if time.time() < self._circuit_open_until:
             return False
@@ -290,9 +392,7 @@ class BaseProvider(ABC):
         model: str = "",
         **kwargs: Any,
     ) -> Union[List[float], List[List[float]]]:
-        raise NotImplementedError(
-            f"{self.__class__.__name__} does not support embeddings"
-        )
+        raise NotImplementedError(f"{self.__class__.__name__} does not support embeddings")
 
     @classmethod
     def from_config(cls, config: Dict[str, Any]) -> "BaseProvider":

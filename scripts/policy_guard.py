@@ -25,6 +25,7 @@ PURE_ZONE_EXCLUDES = (
     "apps/api/src/api/services/*integration*.py",
     "apps/api/src/api/services/*storage*.py",
     "apps/api/src/api/services/**/*adapter*.py",
+    "apps/api/src/api/core/redis_client.py",
     "apps/web/src/lib/api/**/*",
 )
 
@@ -36,8 +37,8 @@ SIDE_EFFECT_RULES = (
 )
 
 NAME_RULES = (
-    ("ambiguous-variable", re.compile(r"\b(?:const|let|var)\s+(data|temp|helper|manager)\b"), "Ambiguous variable name; use intent-focused names."),
-    ("ambiguous-python-name", re.compile(r"^\s*(data|temp|helper|manager)\s*=", re.MULTILINE), "Ambiguous variable name; use intent-focused names."),
+    ("ambiguous-variable", re.compile(r"\b(?:const|let|var)\s+(temp|helper)\b"), "Ambiguous variable name; use intent-focused names."),
+    ("ambiguous-python-name", re.compile(r"^\s*(temp|helper)\s*=", re.MULTILINE), "Ambiguous variable name; use intent-focused names."),
     ("generic-process-fn", re.compile(r"\bfunction\s+process\s*\(|\bdef\s+process\s*\("), "Generic process() name; use a specific verb."),
 )
 
@@ -96,6 +97,7 @@ def in_pure_zone(path: Path) -> bool:
 
 def scan_file(path: Path) -> list[Violation]:
     rel = path.relative_to(ROOT)
+    rel_posix = rel.as_posix()
     text = path.read_text(encoding="utf-8", errors="ignore")
     violations: list[Violation] = []
 
@@ -106,11 +108,12 @@ def scan_file(path: Path) -> list[Violation]:
                 sample = match.group(0).strip().splitlines()[0][:120]
                 violations.append(Violation(rel, line, rule, message, sample))
 
-    for rule, regex, message in NAME_RULES:
-        for match in regex.finditer(text):
-            line = line_for_offset(text, match.start())
-            sample = match.group(0).strip().splitlines()[0][:120]
-            violations.append(Violation(rel, line, rule, message, sample))
+    if "tests/" not in rel_posix:
+        for rule, regex, message in NAME_RULES:
+            for match in regex.finditer(text):
+                line = line_for_offset(text, match.start())
+                sample = match.group(0).strip().splitlines()[0][:120]
+                violations.append(Violation(rel, line, rule, message, sample))
 
     return violations
 

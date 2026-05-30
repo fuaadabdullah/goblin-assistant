@@ -11,9 +11,8 @@ from functools import wraps
 from fastapi import HTTPException, Request, status
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 import jwt
-from datetime import datetime, timedelta
+from datetime import datetime
 
-from ..security_config import SecurityConfig
 from ..storage.cache import cache
 
 logger = logging.getLogger(__name__)
@@ -25,9 +24,9 @@ class OpsSecurityConfig:
     # Environment-based access control
     ENVIRONMENT = os.getenv("ENVIRONMENT", "development").lower()
     OPS_READ_ONLY = os.getenv("OPS_READ_ONLY", "true").lower() == "true"
-    OPS_ALLOWED_ENVIRONMENTS = os.getenv(
-        "OPS_ALLOWED_ENVIRONMENTS", "development,staging"
-    ).split(",")
+    OPS_ALLOWED_ENVIRONMENTS = os.getenv("OPS_ALLOWED_ENVIRONMENTS", "development,staging").split(
+        ","
+    )
 
     # Authentication requirements
     REQUIRE_AUTH = os.getenv("OPS_REQUIRE_AUTH", "true").lower() == "true"
@@ -69,13 +68,9 @@ class OpsSecurityMiddleware:
             return False
 
         # Check if operation is allowed in current environment
-        allowed_operations = OpsSecurityConfig.ENVIRONMENT_PERMISSIONS.get(
-            current_env, []
-        )
+        allowed_operations = OpsSecurityConfig.ENVIRONMENT_PERMISSIONS.get(current_env, [])
         if operation not in allowed_operations:
-            logger.warning(
-                f"Operation {operation} not allowed in environment {current_env}"
-            )
+            logger.warning(f"Operation {operation} not allowed in environment {current_env}")
             return False
 
         return True
@@ -147,18 +142,13 @@ class OpsSecurityMiddleware:
         # Clean old entries
         if client_id in self.rate_limit_cache:
             self.rate_limit_cache[client_id] = [
-                req_time
-                for req_time in self.rate_limit_cache[client_id]
-                if req_time > window_start
+                req_time for req_time in self.rate_limit_cache[client_id] if req_time > window_start
             ]
         else:
             self.rate_limit_cache[client_id] = []
 
         # Check if under limit
-        if (
-            len(self.rate_limit_cache[client_id])
-            >= OpsSecurityConfig.RATE_LIMIT_REQUESTS
-        ):
+        if len(self.rate_limit_cache[client_id]) >= OpsSecurityConfig.RATE_LIMIT_REQUESTS:
             return False
 
         # Record this request
@@ -202,9 +192,7 @@ class OpsSecurityMiddleware:
             if len(audit_log) > 1000:
                 audit_log = audit_log[-1000:]
 
-            await cache.set(
-                OpsSecurityConfig.AUDIT_LOG_KEY, audit_log, expire=86400 * 7
-            )  # 7 days
+            await cache.set(OpsSecurityConfig.AUDIT_LOG_KEY, audit_log, expire=86400 * 7)  # 7 days
         except Exception as e:
             logger.error(f"Failed to store audit log: {e}")
 
@@ -301,11 +289,7 @@ def require_ops_access(operation: str = "read"):
                 operation,
                 "ops_endpoint",
                 True,
-                {
-                    "auth_method": "jwt"
-                    if auth_result.get("authenticated")
-                    else "anonymous"
-                },
+                {"auth_method": ("jwt" if auth_result.get("authenticated") else "anonymous")},
             )
 
             # Call the original function
@@ -388,9 +372,7 @@ def validate_ops_security() -> List[str]:
 
     # Check environment configuration
     if OpsSecurityConfig.ENVIRONMENT not in OpsSecurityConfig.OPS_ALLOWED_ENVIRONMENTS:
-        warnings.append(
-            f"Environment {OpsSecurityConfig.ENVIRONMENT} not in allowed environments"
-        )
+        warnings.append(f"Environment {OpsSecurityConfig.ENVIRONMENT} not in allowed environments")
 
     # Check JWT secret in production
     if OpsSecurityConfig.ENVIRONMENT == "production":

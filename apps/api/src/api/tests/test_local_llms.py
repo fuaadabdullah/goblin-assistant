@@ -31,9 +31,7 @@ class LLMDeploymentTester:
         try:
             async with httpx.AsyncClient(timeout=10.0) as client:
                 start = time.perf_counter()
-                response = await client.get(
-                    f"{url.rstrip('/')}/health", follow_redirects=True
-                )
+                response = await client.get(f"{url.rstrip('/')}/health", follow_redirects=True)
                 elapsed_ms = (time.perf_counter() - start) * 1000
 
                 if response.status_code == 200:
@@ -63,9 +61,7 @@ class LLMDeploymentTester:
 
                 if response.status_code == 200:
                     data = response.json()
-                    models = [
-                        model.get("name", "unknown") for model in data.get("models", [])
-                    ]
+                    models = [model.get("name", "unknown") for model in data.get("models", [])]
                     print(f"✅ Found {len(models)} models: {', '.join(models)}")
                     return models
                 else:
@@ -86,9 +82,7 @@ class LLMDeploymentTester:
 
                 if response.status_code == 200:
                     data = response.json()
-                    models = [
-                        model.get("id", "unknown") for model in data.get("data", [])
-                    ]
+                    models = [model.get("id", "unknown") for model in data.get("data", [])]
                     print(f"✅ Found {len(models)} models: {', '.join(models)}")
                     return models
                 else:
@@ -99,9 +93,7 @@ class LLMDeploymentTester:
             print(f"❌ Error fetching models: {str(e)}")
             return []
 
-    async def test_inference(
-        self, provider_id: str, model: str = None
-    ) -> Dict[str, Any]:
+    async def test_inference(self, provider_id: str, model: str = None) -> Dict[str, Any]:
         """Test inference with a provider."""
         print(f"\n🧪 Testing inference with {provider_id}")
 
@@ -114,7 +106,7 @@ class LLMDeploymentTester:
                 model = config.get("default_model", "qwen2.5:latest")
 
             print(f"   Model: {model}")
-            print(f"   Prompt: 'What is 2+2?'")
+            print("   Prompt: 'What is 2+2?'")
 
             start = time.perf_counter()
             result = await provider.invoke(
@@ -189,19 +181,13 @@ class LLMDeploymentTester:
             if health.get("ok"):
                 # Fetch available models
                 if target["type"] == "ollama":
-                    models = await self.test_ollama_models(
-                        target["provider_id"], target["url"]
-                    )
+                    models = await self.test_ollama_models(target["provider_id"], target["url"])
                 else:
-                    models = await self.test_llamacpp_models(
-                        target["provider_id"], target["url"]
-                    )
+                    models = await self.test_llamacpp_models(target["provider_id"], target["url"])
 
                 # Test inference with first available model
                 if models:
-                    inference = await self.test_inference(
-                        target["provider_id"], models[0]
-                    )
+                    inference = await self.test_inference(target["provider_id"], models[0])
                 else:
                     # Try with default model
                     inference = await self.test_inference(target["provider_id"])
@@ -235,20 +221,18 @@ class LLMDeploymentTester:
                 print(f"✅ {name}: WORKING")
             else:
                 failing.append(name)
-                error = result["health"].get("error") or result["inference"].get(
-                    "error"
-                )
+                error = result["health"].get("error") or result["inference"].get("error")
                 print(f"❌ {name}: FAILED ({error})")
 
         print(f"\n📈 Working: {len(working)}/{len(self.results)}")
 
         if working:
-            print(f"\n🎉 The following deployments are operational:")
+            print("\n🎉 The following deployments are operational:")
             for name in working:
                 print(f"   • {name}")
 
         if failing:
-            print(f"\n⚠️  The following deployments need attention:")
+            print("\n⚠️  The following deployments need attention:")
             for name in failing:
                 print(f"   • {name}")
 

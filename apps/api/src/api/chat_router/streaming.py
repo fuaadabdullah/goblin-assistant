@@ -52,7 +52,6 @@ async def generate_chat_stream(
     used_provider = provider or "unknown"
     used_model = model or "unknown"
     start_time = time.time()
-    user_message_stored = False
     response_message_id = str(uuid.uuid4())
 
     try:
@@ -79,7 +78,6 @@ async def generate_chat_stream(
                 role="user",
                 content=sanitized_message,
             )
-            user_message_stored = True
             await schedule_conversation_archive(conversation_id)
         except Exception as db_exc:
             logger.error("db_write_error", exc=db_exc, stage="user_message_store")
@@ -96,9 +94,7 @@ async def generate_chat_stream(
 
         try:
             conversation = await _cr._require_owned_conversation(conversation_id, current_user)
-            messages = [
-                {"role": msg.role, "content": msg.content} for msg in conversation.messages
-            ]
+            messages = [{"role": msg.role, "content": msg.content} for msg in conversation.messages]
             payload = {"messages": messages, "model": model}
         except Exception as build_exc:
             logger.error("message_build_error", exc=build_exc)
@@ -220,7 +216,9 @@ async def generate_chat_stream(
                 stream_gen = provider_response["stream"]
                 async for chunk in stream_gen:
                     try:
-                        chunk_text = chunk.get("text", "") if isinstance(chunk, dict) else str(chunk)
+                        chunk_text = (
+                            chunk.get("text", "") if isinstance(chunk, dict) else str(chunk)
+                        )
                         if not chunk_text:
                             continue
                         accumulated_text += chunk_text
@@ -252,7 +250,11 @@ async def generate_chat_stream(
                 yield _format_sse_event("error", error_event)
                 return
             except Exception as stream_exc:
-                logger.error("streaming_error", exc=stream_exc, partial_response_len=len(accumulated_text))
+                logger.error(
+                    "streaming_error",
+                    exc=stream_exc,
+                    partial_response_len=len(accumulated_text),
+                )
                 if accumulated_text:
                     error_event = {
                         "type": "error",

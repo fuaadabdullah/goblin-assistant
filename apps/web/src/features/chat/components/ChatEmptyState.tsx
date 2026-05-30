@@ -44,12 +44,7 @@ const ChatEmptyState = ({
         {/* Lottie Animation or Icon */}
         <div className="w-24 h-24 mb-2">
           {!prefersReducedMotion && animationData ? (
-            <Lottie
-              animationData={animationData}
-              loop
-              autoplay
-              className="h-full w-full"
-            />
+            <Lottie animationData={animationData} loop autoplay className="h-full w-full" />
           ) : (
             <div className="w-full h-full bg-primary/20 rounded-full flex items-center justify-center">
               <span className="text-5xl">🧠</span>

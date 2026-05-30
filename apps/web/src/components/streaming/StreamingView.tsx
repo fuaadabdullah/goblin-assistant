@@ -30,7 +30,7 @@ export default function StreamingView({ streamingText, isStreaming = false }: Pr
     const newChunk = getNewChunk(lastChunkRef.current, streamingText);
     if (newChunk) {
       const newToken = toTokenChunk(newChunk, streamingText);
-      setTokens(prev => [...prev, newToken]);
+      setTokens((prev) => [...prev, newToken]);
       lastChunkRef.current = streamingText;
     }
   }, [streamingText, isStreaming]);

@@ -50,7 +50,7 @@ export default function ThemePreview() {
           <p className="text-sm text-muted">Palettes update CSS vars + glow tokens in real time.</p>
         </div>
         <div className="flex gap-2">
-          {THEME_PRESETS.map(preset => (
+          {THEME_PRESETS.map((preset) => (
             <button
               key={preset.id}
               onClick={() => setActiveTheme(preset.id)}
@@ -69,7 +69,7 @@ export default function ThemePreview() {
       </header>
 
       <div className="grid gap-4 md:grid-cols-3">
-        {THEME_PRESETS.map(preset => (
+        {THEME_PRESETS.map((preset) => (
           <div
             key={preset.id}
             className={`rounded-lg border p-4 transition bg-surface

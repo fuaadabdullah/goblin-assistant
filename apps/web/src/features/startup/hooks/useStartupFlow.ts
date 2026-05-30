@@ -16,7 +16,7 @@ const STATUS_MESSAGES: Record<StartupStatus, string> = {
   error: 'Something went wrong while booting.',
 };
 
-const delay = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
+const delay = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 const now = () => (typeof performance !== 'undefined' ? performance.now() : Date.now());
 
 export const resolveStartupDestinationRoute = (input: {
@@ -52,7 +52,7 @@ export const useStartupFlow = (): StartupState => {
 
     const setStep = (status: StartupStatus, message?: string, extras?: Partial<StartupState>) => {
       currentStatusRef.current = status;
-      setState(prev => ({
+      setState((prev) => ({
         ...prev,
         status,
         message: message ?? STATUS_MESSAGES[status] ?? STATUS_MESSAGES.error,
@@ -142,7 +142,7 @@ export const useStartupFlow = (): StartupState => {
         window.clearTimeout(watchdog);
         timings.totalMs = Math.round(now() - bootStart);
         trackPerformance('startup_total_ms', timings.totalMs);
-        setState(prev => ({
+        setState((prev) => ({
           ...prev,
           status: 'ready',
           message: STATUS_MESSAGES.ready,
