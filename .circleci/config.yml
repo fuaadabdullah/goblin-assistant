@@ -113,7 +113,7 @@ jobs:
           command: python scripts/security/scan_secrets.py
       - run:
           name: Audit npm deps
-          command: TMPDIR=~/repo/.tmp pnpm --filter @goblin/web security:audit-ci
+          command: npx audit-ci --moderate --package-manager pnpm
       - run:
           name: Audit Python deps
           command: python -m pip_audit -r apps/api/requirements.txt
