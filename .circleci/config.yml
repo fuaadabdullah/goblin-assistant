@@ -44,9 +44,7 @@ commands:
     steps:
       - run:
           name: Install pnpm
-          command: |
-            corepack enable
-            corepack prepare pnpm@9 --activate
+          command: npm install -g pnpm@9
       - restore_cache:
           keys:
             - pnpm-v1-{{ checksum "pnpm-lock.yaml" }}
