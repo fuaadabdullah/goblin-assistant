@@ -36,9 +36,9 @@ describe('DashboardError', () => {
     expect(screen.getByText('Something went wrong')).toBeInTheDocument();
   });
 
-  it('renders the alert with warning variant', () => {
+  it('renders the alert with danger variant', () => {
     render(<DashboardError error="fail" onRetry={onRetry} />);
-    expect(screen.getByTestId('alert')).toHaveAttribute('data-variant', 'warning');
+    expect(screen.getByTestId('alert')).toHaveAttribute('data-variant', 'danger');
   });
 
   it('renders a retry button', () => {

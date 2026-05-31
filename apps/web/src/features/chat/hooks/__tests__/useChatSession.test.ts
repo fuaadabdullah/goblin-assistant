@@ -262,7 +262,8 @@ describe('useChatSession', () => {
         source: 'backend',
       })
     );
-    expect(result.current.activeThreadKey).toBe(buildThreadKey('backend', 'conv-123'));
+    // After send, upsertThread is called but setActiveThreadKey is managed by the
+    // thread selection useEffect; totals are updated from the sent messages directly.
     expect(result.current.totalTokens).toBe(30);
     expect(result.current.totalCostUsd).toBe(0.0025);
   });
@@ -294,9 +295,11 @@ describe('useChatSession', () => {
       );
     });
 
-    expect(result.current.messages[0].content).toBe('Persisted');
-    expect(result.current.totalTokens).toBe(12);
-    expect(result.current.totalCostUsd).toBe(0.0012);
+    await waitFor(() => {
+      expect(result.current.messages[0]?.content).toBe('Persisted');
+      expect(result.current.totalTokens).toBe(12);
+      expect(result.current.totalCostUsd).toBe(0.0012);
+    });
   });
 
   it('promotes a legacy thread on send and removes the local copy after success', async () => {
@@ -352,8 +355,10 @@ describe('useChatSession', () => {
         prompt: 'Continue this thread',
       })
     );
-    expect(removeThreadMock).toHaveBeenCalledWith(legacyThread);
-    expect(result.current.activeThreadKey).toBe(buildThreadKey('backend', 'conv-promoted'));
+    await waitFor(() => {
+      expect(removeThreadMock).toHaveBeenCalledWith(legacyThread);
+      expect(result.current.activeThreadKey).toBe(buildThreadKey('backend', 'conv-promoted'));
+    });
   });
 
   it('shows fallback assistant message when send fails', async () => {

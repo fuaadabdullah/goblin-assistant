@@ -117,9 +117,9 @@ describe('Layout', () => {
     const mobileBtn = container.querySelector('.md\\:hidden button') as HTMLButtonElement;
     expect(mobileBtn).toBeInTheDocument();
     fireEvent.click(mobileBtn);
-    // After click, mobile nav should be visible
-    const mobileNav = container.querySelector('.md\\:hidden.border-t');
-    expect(mobileNav).toBeInTheDocument();
+    // After click, mobile drawer is rendered via MobileDrawer (portal-based with framer-motion)
+    // The drawer renders a dialog with aria-label
+    expect(screen.getByRole('dialog', { name: 'Primary mobile navigation' })).toBeInTheDocument();
   });
 
   it('closes mobile menu on nav click', () => {
@@ -130,12 +130,13 @@ describe('Layout', () => {
     );
     const mobileBtn = container.querySelector('.md\\:hidden button') as HTMLButtonElement;
     fireEvent.click(mobileBtn);
-    // Click a mobile nav item
-    const mobileLinks = screen.getAllByText('Chat');
-    fireEvent.click(mobileLinks[mobileLinks.length - 1]);
-    // Mobile nav should be hidden
-    const mobileNav = container.querySelector('.md\\:hidden.border-t');
-    expect(mobileNav).not.toBeInTheDocument();
+    // Drawer should be open
+    expect(screen.getByRole('dialog', { name: 'Primary mobile navigation' })).toBeInTheDocument();
+    // Click the close button inside the drawer
+    const closeBtn = screen.getByLabelText('Close menu');
+    fireEvent.click(closeBtn);
+    // Mobile drawer should be hidden
+    expect(screen.queryByRole('dialog', { name: 'Primary mobile navigation' })).not.toBeInTheDocument();
   });
 
   it('renders children in main content area', () => {

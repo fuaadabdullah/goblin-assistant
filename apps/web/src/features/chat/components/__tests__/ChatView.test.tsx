@@ -38,11 +38,32 @@ jest.mock('../../../../components/Seo', () => {
     return <div data-testid="seo" data-title={props.title} />;
   };
 });
-jest.mock('../../../../components/auth/AuthPrompt', () => {
-  return function MockAuthPrompt() {
-    return <div data-testid="auth-prompt" />;
+// AuthPrompt is no longer used by ChatView - it shows an inline login UI instead
+// jest.mock('../../../../components/auth/AuthPrompt', ...)
+
+jest.mock('../ChatPreviewPanel', () => {
+  return function MockChatPreviewPanel() {
+    return <div data-testid="chat-preview-panel" />;
   };
 });
+jest.mock('next/link', () => {
+  return function MockLink(props: Record<string, unknown>) {
+    const href =
+      typeof props.href === 'object' && props.href !== null
+        ? (props.href as { pathname: string }).pathname
+        : String(props.href);
+    return (
+      <a href={href} className={props.className as string}>
+        {props.children as React.ReactNode}
+      </a>
+    );
+  };
+});
+jest.mock('../../../../components/ui/input', () => ({
+  Input: function MockInput(props: Record<string, unknown>) {
+    return <input {...(props as object)} />;
+  },
+}));
 
 const mockIsAuthenticated = jest.fn().mockReturnValue(true);
 jest.mock('../../../../hooks/api/useAuthSession', () => ({
@@ -115,10 +136,11 @@ describe('ChatView', () => {
     expect(screen.getByTestId('chat-composer')).toBeInTheDocument();
   });
 
-  it('shows AuthPrompt when not authenticated', () => {
+  it('shows inline login UI when not authenticated', () => {
     mockIsAuthenticated.mockReturnValue(false);
     render(<ChatView session={mockSession as never} isAdmin={false} />);
-    expect(screen.getByTestId('auth-prompt')).toBeInTheDocument();
+    // Component now renders inline login/preview UI instead of AuthPrompt
+    expect(screen.getByText('Sign in to Goblin →')).toBeInTheDocument();
     expect(screen.queryByTestId('chat-composer')).not.toBeInTheDocument();
   });
 

@@ -74,6 +74,7 @@
     "@typescript-eslint/parser": "^8.60.0",
     "audit-ci": "^7.1.0",
     "autoprefixer": "^10.5.0",
+    "axios-mock-adapter": "^2.1.0",
     "chromatic": "^17.1.0",
     "clsx": "^2.1.1",
     "cross-fetch": "^4.1.0",

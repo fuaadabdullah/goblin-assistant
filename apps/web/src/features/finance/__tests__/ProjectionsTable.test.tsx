@@ -11,8 +11,13 @@ describe('ProjectionsTable', () => {
   ];
 
   const mockConfig = {
-    rowKey: 'provider',
-    columns: ['q1', 'q2', 'q3', 'q4'],
+    columns: [
+      { key: 'provider', label: 'Provider' },
+      { key: 'q1', label: 'q1' },
+      { key: 'q2', label: 'q2' },
+      { key: 'q3', label: 'q3' },
+      { key: 'q4', label: 'q4' },
+    ],
   };
 
   it('renders table', () => {

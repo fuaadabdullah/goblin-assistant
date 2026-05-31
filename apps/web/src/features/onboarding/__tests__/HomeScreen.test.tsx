@@ -47,6 +47,16 @@ jest.mock('../../../hooks/useSystemStatus', () => ({
 jest.mock('../../../utils/analytics', () => ({
   trackEvent: jest.fn(),
 }));
+jest.mock('next/router', () => ({
+  useRouter: () => ({
+    push: jest.fn(),
+    replace: jest.fn(),
+    prefetch: jest.fn(),
+    query: {},
+    pathname: '/',
+    isReady: true,
+  }),
+}));
 
 import HomeScreen from '../HomeScreen';
 
@@ -122,8 +132,8 @@ describe('HomeScreen', () => {
     expect(screen.getByText('Open this demo')).toBeInTheDocument();
   });
 
-  it('renders enterprise use cases heading', () => {
+  it('renders platform capabilities heading', () => {
     render(<HomeScreen />);
-    expect(screen.getByText('Enterprise Use Cases')).toBeInTheDocument();
+    expect(screen.getByText('Platform Capabilities')).toBeInTheDocument();
   });
 });

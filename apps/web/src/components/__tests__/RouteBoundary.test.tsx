@@ -97,7 +97,9 @@ describe('RouteBoundaryFallback', () => {
       expect(global.navigator.clipboard.writeText as jest.Mock).toHaveBeenCalledWith('evt-copy');
     });
 
-    expect(screen.getByRole('button', { name: 'Copied Error ID' })).toBeInTheDocument();
+    await waitFor(() => {
+      expect(screen.getByRole('button', { name: 'Copied Error ID' })).toBeInTheDocument();
+    });
   });
 
   it('shows the chat-specific fallback when a wrapped chat component throws', () => {

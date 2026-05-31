@@ -47,6 +47,7 @@ const ChatHeader = ({
               onClick={onToggleSidebar}
               className="lg:hidden inline-flex items-center gap-2 rounded-lg border border-border bg-surface px-3 py-2 text-sm text-text hover:bg-surface-hover"
               aria-label={isSidebarOpen ? 'Close conversations' : 'Open conversations'}
+              aria-expanded={isSidebarOpen ? 'true' : 'false'}
             >
               {isSidebarOpen ? <X className="h-4 w-4" /> : <Menu className="h-4 w-4" />}
               <span>Conversations</span>

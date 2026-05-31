@@ -8,6 +8,7 @@ jest.mock('recharts', () => ({
   Bar: () => <div data-testid="bar" />,
   XAxis: () => <div data-testid="x-axis" />,
   YAxis: () => <div data-testid="y-axis" />,
+  CartesianGrid: () => <div data-testid="grid" />,
   Tooltip: () => <div data-testid="tooltip" />,
   Legend: () => <div data-testid="legend" />,
   ResponsiveContainer: ({ children }: any) => <div data-testid="container">{children}</div>,
@@ -21,8 +22,8 @@ describe('FinanceBarChart', () => {
   ];
 
   const mockConfig = {
-    dataKey: 'value',
-    labelKey: 'month',
+    xKey: 'month',
+    bars: [{ dataKey: 'value', label: 'Value' }],
   };
 
   it('renders bar chart', () => {

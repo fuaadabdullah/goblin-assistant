@@ -178,7 +178,9 @@ export const useChatSession = (): ChatSessionState => {
 
     if (!threadSelection.activeThread) {
       messagesState.setMessages([]);
-      setActiveThreadKey(null);
+      // If threads are available (e.g. after legacy→backend promotion), select the first one.
+      // Otherwise clear the selection entirely.
+      setActiveThreadKey(threads.length > 0 ? threads[0].threadKey : null);
       return;
     }
 

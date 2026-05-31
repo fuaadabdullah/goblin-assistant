@@ -72,8 +72,9 @@ describe('DashboardContent', () => {
   it('shows error on query failure', async () => {
     mockGetCostSummary.mockRejectedValue(new Error('network fail'));
     renderWithClient(<DashboardContent />);
-    const err = await screen.findByText(/Error loading data.*network fail/);
-    expect(err).toBeInTheDocument();
+    // TristateWrapper renders errorTitle and message in separate elements
+    await screen.findByText('Failed to load data');
+    expect(screen.getByText('network fail')).toBeInTheDocument();
   });
 
   it('renders cost data with correct colors', async () => {

@@ -4,7 +4,7 @@ import '@testing-library/jest-dom';
 import EnhancedProvidersPage from '../EnhancedProvidersPage';
 
 jest.mock(
-  '@/features/providers/EnhancedProvidersScreen',
+  '@/features/admin/providers/ProvidersManagerScreen',
   () =>
     function MockScreen() {
       return <div data-testid="enhanced-providers-screen">Enhanced Providers</div>;

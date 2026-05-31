@@ -484,6 +484,6 @@ export const useMessages = ({
     copyMessage,
     regenerateMessage,
     loadOlderMessages,
-    setMessages,
+    setMessages: applyMessages,
   };
 };

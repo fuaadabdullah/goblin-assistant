@@ -10,6 +10,10 @@ export function useProviderSelection({ providers, models }: UseProviderSelection
   const [selectedProvider, setSelectedProviderState] = useState<string>('');
   const [selectedModel, setSelectedModelState] = useState<string>('');
 
+  // Use string keys to avoid infinite loops when callers pass new array literals each render
+  const providersKey = providers.join(',');
+  const modelsKey = models.join(',');
+
   // Load from localStorage on mount (SSR safe)
   useEffect(() => {
     if (typeof window === 'undefined') return;
@@ -37,7 +41,8 @@ export function useProviderSelection({ providers, models }: UseProviderSelection
     } else {
       setSelectedModelState('');
     }
-  }, [providers, models]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [providersKey, modelsKey]);
 
   // Save to localStorage when values change (SSR safe)
   useEffect(() => {
