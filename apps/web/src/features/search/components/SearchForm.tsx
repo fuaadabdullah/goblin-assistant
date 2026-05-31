@@ -15,7 +15,7 @@ interface SearchFormProps {
   /** Whether a search is in progress. */
   searching: boolean;
   /** Input ref for focus. */
-  queryRef: RefObject<HTMLInputElement>;
+  queryRef: RefObject<HTMLInputElement | null>;
   /** Update query string. */
   onQueryChange: (value: string) => void;
   /** Update scope selection. */

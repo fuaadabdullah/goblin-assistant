@@ -9,8 +9,8 @@ export interface UIState {
   input: string;
   authError: boolean;
   pendingAttachments: PendingAttachment[];
-  inputRef: RefObject<HTMLTextAreaElement>;
-  bottomRef: RefObject<HTMLDivElement>;
+  inputRef: RefObject<HTMLTextAreaElement | null>;
+  bottomRef: RefObject<HTMLDivElement | null>;
   isUploading: boolean;
   setInput: (value: string) => void;
   handleKeyDown: (e: KeyboardEvent<HTMLTextAreaElement>) => void;

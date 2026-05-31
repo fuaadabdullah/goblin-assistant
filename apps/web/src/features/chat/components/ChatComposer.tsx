@@ -12,7 +12,7 @@ interface ChatComposerProps {
   /** Current input value. */
   input: string;
   /** Input ref for focusing. */
-  inputRef: RefObject<HTMLTextAreaElement>;
+  inputRef: RefObject<HTMLTextAreaElement | null>;
   /** Whether a message is being sent. */
   isSending: boolean;
   /** Inline prompts shown beneath the composer. */

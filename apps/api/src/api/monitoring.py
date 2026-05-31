@@ -12,8 +12,10 @@ from .storage.cache import cache
 
 logger = logging.getLogger(__name__)
 
-# Health check configuration
-HEALTH_CHECK_INTERVAL = 60  # seconds
+# Health check configuration — sourced from providers.toml [default.health]
+from .config.providers import get_provider_config as _get_provider_config
+
+HEALTH_CHECK_INTERVAL: int = _get_provider_config().get("health_check_interval", 30)
 PROVIDER_HEALTH_KEY = "provider_health_status"
 
 
@@ -50,8 +52,6 @@ class ProviderMonitor:
                 await self._check_providers()
             except Exception as e:
                 logger.exception("Error in provider monitor: %s", e)
-                # Re-raise to see the full traceback for debugging
-                raise
 
             await asyncio.sleep(HEALTH_CHECK_INTERVAL)
 

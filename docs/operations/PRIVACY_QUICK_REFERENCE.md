@@ -94,6 +94,45 @@ result = await vector_store.add_document(
 )
 ```
 
+### Store vectors
+
+Choose the storage path based on the content type:
+
+| Content type | Storage path | Model / class | Notes |
+| --- | --- | --- | --- |
+| Messages, summaries, memory facts | Postgres + pgvector | `EmbeddingModel`, `ConversationSummaryModel`, `MemoryFactModel` in `vector_models.py` | Insert rows with the `embedding` column and a user-scoped `user_id`. |
+| Documents | Privacy-first Chroma wrapper | `SafeVectorStore` in `safe_vector_store.py` | Requires consent, PII screening, TTL, and per-user isolation. |
+
+Example for pgvector-backed memory facts:
+
+```python
+from api.storage.vector_models import MemoryFactModel
+
+fact = MemoryFactModel(
+    user_id="user_123",
+    fact_text="I prefer concise answers",
+    fact_embedding=embedding,
+    category="preference",
+)
+session.add(fact)
+await session.commit()
+```
+
+Example for consented documents:
+
+```python
+from services.safe_vector_store import SafeVectorStore
+
+store = SafeVectorStore()
+await store.add_document(
+    doc_id="doc_123",
+    content="document text",
+    metadata={"title": "Doc"},
+    user_id="user_123",
+    consent_given=True,
+)
+```
+
 ### Rate Limiting
 
 ```python

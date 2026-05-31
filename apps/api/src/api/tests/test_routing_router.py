@@ -286,7 +286,11 @@ class TestRouteRequest:
                 },
             )
             assert response.status_code == 500
-            assert "Routing failed" in response.json()["detail"]
+            body = response.json()
+            if "detail" in body:
+                assert "Routing failed" in body["detail"]
+            else:
+                assert "Routing failed" in body["error"]["message"]
 
     def test_route_no_providers(self, client):
         with patch(

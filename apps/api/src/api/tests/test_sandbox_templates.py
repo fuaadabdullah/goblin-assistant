@@ -5,7 +5,7 @@ Tests for sandbox template library — Phase 5.2.
 from __future__ import annotations
 
 
-from api.tools.sandbox_templates import (
+from api.assistant_tools.sandbox_templates import (
     get_template,
     list_templates,
 )

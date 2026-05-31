@@ -17,7 +17,7 @@ export interface SearchState {
   searching: boolean;
   collectionsLoading: boolean;
   collectionsData: string[] | undefined;
-  queryRef: RefObject<HTMLInputElement>;
+  queryRef: RefObject<HTMLInputElement | null>;
   setQuery: (value: string) => void;
   setScope: (value: SearchScope) => void;
   setSelectedCollection: (value: string) => void;

@@ -5,6 +5,7 @@ Compatibility health-monitor facade backed by the authoritative dispatcher.
 from __future__ import annotations
 
 import asyncio
+import importlib
 from collections import deque
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
@@ -13,9 +14,56 @@ from typing import Any, Dict, List, Optional
 
 from api.core.contracts import ProviderHealthUpdatedPayload
 from api.observability.events import event_emitter
-from api.providers.dispatcher import canonical_provider_id, dispatcher
-from api.routing.router import registry
 from api.observability.migration_metrics import migration_metrics
+from api.routing.router import registry
+
+
+class _DispatcherProxy:
+    def get_provider_inventory(self, *args: Any, **kwargs: Any) -> Any:
+        module = importlib.import_module("api.providers.dispatcher")
+        return module.dispatcher.get_provider_inventory(*args, **kwargs)
+
+    def get_provider_config(self, *args: Any, **kwargs: Any) -> Any:
+        module = importlib.import_module("api.providers.dispatcher")
+        return module.dispatcher.get_provider_config(*args, **kwargs)
+
+    def check_provider(self, *args: Any, **kwargs: Any) -> Any:
+        module = importlib.import_module("api.providers.dispatcher")
+        return module.dispatcher.check_provider(*args, **kwargs)
+
+    def provider_ids(self, *args: Any, **kwargs: Any) -> Any:
+        module = importlib.import_module("api.providers.dispatcher")
+        return module.dispatcher.provider_ids(*args, **kwargs)
+
+    def list_providers(self, *args: Any, **kwargs: Any) -> Any:
+        module = importlib.import_module("api.providers.dispatcher")
+        return module.dispatcher.list_providers(*args, **kwargs)
+
+    def health_all(self, *args: Any, **kwargs: Any) -> Any:
+        module = importlib.import_module("api.providers.dispatcher")
+        return module.dispatcher.health_all(*args, **kwargs)
+
+    def __getattr__(self, name: str) -> Any:
+        module = importlib.import_module("api.providers.dispatcher")
+        return getattr(module, name)
+
+
+dispatcher = _DispatcherProxy()
+
+
+def _dispatcher() -> _DispatcherProxy:
+    return dispatcher
+
+
+def canonical_provider_id(provider_id: str) -> Optional[str]:
+    module = importlib.import_module("api.providers.dispatcher")
+    return module.canonical_provider_id(provider_id)
+
+
+def _average_latency(samples: deque) -> float:
+    if not samples:
+        return 0.0
+    return sum(samples) / len(samples)
 
 
 class HealthStatus(Enum):
@@ -45,19 +93,18 @@ class ProviderHealth:
         self.last_success = self.last_check
         self.last_error = None
         self.consecutive_failures = 0
-        if self.latency_samples:
-            self.avg_latency_ms = sum(self.latency_samples) / len(self.latency_samples)
+        self.avg_latency_ms = _average_latency(self.latency_samples)
         self.status = HealthStatus.HEALTHY
 
     def record_failure(self, error: str) -> None:
         self.last_check = datetime.now(timezone.utc)
         self.last_error = error
         self.consecutive_failures += 1
-        self.status = (
-            HealthStatus.UNHEALTHY if self.consecutive_failures >= 3 else HealthStatus.DEGRADED
-        )
-        if self.latency_samples:
-            self.avg_latency_ms = sum(self.latency_samples) / len(self.latency_samples)
+        if self.consecutive_failures >= 3:
+            self.status = HealthStatus.UNHEALTHY
+        else:
+            self.status = HealthStatus.DEGRADED
+        self.avg_latency_ms = _average_latency(self.latency_samples)
 
 
 class ProviderHealthMonitor:
@@ -73,7 +120,11 @@ class ProviderHealthMonitor:
         age = datetime.now(timezone.utc) - state.last_check
         return age.total_seconds() > self.check_interval * 2
 
-    async def _emit_health_event(self, provider_id: str, state: ProviderHealth) -> None:
+    async def _emit_health_event(
+        self,
+        provider_id: str,
+        state: ProviderHealth,
+    ) -> None:
         await event_emitter.emit(
             "provider.health.updated",
             source="api.services.provider_health",
@@ -90,28 +141,45 @@ class ProviderHealthMonitor:
             ),
         )
 
-    async def refresh(self, include_hidden: bool = True) -> Dict[str, ProviderHealth]:
-        inventory = await dispatcher.get_provider_inventory(include_hidden=include_hidden)
+    async def probe_all(
+        self,
+        include_hidden: bool = True,
+    ) -> Dict[str, ProviderHealth]:
+        return await self.refresh(include_hidden=include_hidden)
+
+    async def refresh(
+        self,
+        include_hidden: bool = True,
+    ) -> Dict[str, ProviderHealth]:
+        inventory = await _dispatcher().get_provider_inventory(
+            include_hidden=include_hidden,
+        )
         now = datetime.now(timezone.utc)
         seen: set[str] = set()
+
         for item in inventory:
             provider_id = item["id"]
             seen.add(provider_id)
             existing = self.health_data.get(provider_id)
             previous_status = existing.status if existing is not None else None
             state = existing or ProviderHealth(provider_id=provider_id)
-            stats = registry.get(provider_id)
-            state.success_rate = stats.success_rate
+            state.success_rate = registry.get(provider_id).success_rate
             state.configured = bool(item.get("configured"))
             state.last_check = now
+
             latency_ms = float(item.get("latency_ms", 0.0) or 0.0)
             if latency_ms > 0:
                 state.latency_samples.append(latency_ms)
-                state.avg_latency_ms = sum(state.latency_samples) / len(state.latency_samples)
+                sample_count = len(state.latency_samples)
+                state.avg_latency_ms = (
+                    sum(state.latency_samples) / sample_count
+                )
 
             if not item.get("configured"):
                 state.status = HealthStatus.UNKNOWN
-                state.last_error = item.get("health_reason") or "Provider not configured"
+                state.last_error = item.get("health_reason") or (
+                    "Provider not configured"
+                )
                 state.consecutive_failures = 0
             elif item.get("healthy"):
                 state.status = HealthStatus.HEALTHY
@@ -120,12 +188,19 @@ class ProviderHealthMonitor:
                 state.consecutive_failures = 0
             elif item.get("billing_issue"):
                 state.status = HealthStatus.BILLING
-                state.last_error = item.get("health_reason") or "Billing/quota issue"
+                state.last_error = item.get("health_reason") or (
+                    "Billing/quota issue"
+                )
                 state.consecutive_failures = 0
             else:
                 state.status = HealthStatus.UNHEALTHY
-                state.last_error = item.get("health_reason") or "Health check failed"
-                state.consecutive_failures = max(state.consecutive_failures + 1, 1)
+                state.last_error = item.get("health_reason") or (
+                    "Health check failed"
+                )
+                state.consecutive_failures = max(
+                    state.consecutive_failures + 1,
+                    1,
+                )
 
             self.health_data[provider_id] = state
             migration_metrics.record_provider_probe(
@@ -136,9 +211,10 @@ class ProviderHealthMonitor:
             if previous_status != state.status:
                 await self._emit_health_event(provider_id, state)
 
-        for provider_id in list(self.health_data.keys()):
-            if provider_id not in seen and not include_hidden:
-                self.health_data.pop(provider_id, None)
+        if not include_hidden:
+            for provider_id in list(self.health_data.keys()):
+                if provider_id not in seen:
+                    self.health_data.pop(provider_id, None)
 
         return self.health_data
 
@@ -160,15 +236,29 @@ class ProviderHealthMonitor:
         while self._running:
             try:
                 await self.refresh(include_hidden=True)
-            except Exception:
+            except (KeyError, RuntimeError, TypeError, ValueError):
                 pass
             await asyncio.sleep(self.check_interval)
 
     async def validate_configured_credentials(self) -> Dict[str, List[str]]:
-        inventory = await dispatcher.get_provider_inventory(include_hidden=True)
-        configured = [item["id"] for item in inventory if item.get("configured")]
-        selectable = [item["id"] for item in inventory if item.get("is_selectable")]
-        unconfigured = [item["id"] for item in inventory if not item.get("configured")]
+        inventory = await _dispatcher().get_provider_inventory(
+            include_hidden=True,
+        )
+        configured = [
+            item["id"]
+            for item in inventory
+            if item.get("configured")
+        ]
+        selectable = [
+            item["id"]
+            for item in inventory
+            if item.get("is_selectable")
+        ]
+        unconfigured = [
+            item["id"]
+            for item in inventory
+            if not item.get("configured")
+        ]
         return {
             "configured": configured,
             "selectable": selectable,
@@ -182,15 +272,20 @@ class ProviderHealthMonitor:
         **_kwargs: Any,
     ) -> Dict[str, Any]:
         canonical_id = canonical_provider_id(provider_id) or provider_id
-        current = await dispatcher.check_provider(canonical_id)
-        state = self.health_data.get(canonical_id) or ProviderHealth(provider_id=canonical_id)
+        current = await _dispatcher().check_provider(canonical_id)
+        state = self.health_data.get(canonical_id)
+        if state is None:
+            state = ProviderHealth(provider_id=canonical_id)
         state.configured = bool(current.get("configured"))
         state.last_check = datetime.now(timezone.utc)
         state.last_error = current.get("health_reason")
+
         latency_ms = float(current.get("latency_ms", 0.0) or 0.0)
         if latency_ms > 0:
             state.latency_samples.append(latency_ms)
-            state.avg_latency_ms = sum(state.latency_samples) / len(state.latency_samples)
+            sample_count = len(state.latency_samples)
+            state.avg_latency_ms = sum(state.latency_samples) / sample_count
+
         if not current.get("configured"):
             state.status = HealthStatus.UNKNOWN
         elif current.get("healthy"):
@@ -203,8 +298,8 @@ class ProviderHealthMonitor:
         else:
             state.status = HealthStatus.UNHEALTHY
             state.consecutive_failures = max(state.consecutive_failures + 1, 1)
-        stats = registry.get(canonical_id)
-        state.success_rate = stats.success_rate
+
+        state.success_rate = registry.get(canonical_id).success_rate
         self.health_data[canonical_id] = state
         migration_metrics.record_provider_probe(
             provider_id=canonical_id,
@@ -222,24 +317,32 @@ class ProviderHealthMonitor:
         state = self.health_data.get(canonical_id)
         if state is None:
             try:
-                provider = dispatcher.get_provider(canonical_id)
+                provider = _dispatcher().get_provider(canonical_id)
             except KeyError:
                 return False
-            return dispatcher.is_configured(canonical_id) and provider.is_available()
+            configured = _dispatcher().is_configured(canonical_id)
+            return configured and provider.is_available()
         return state.configured and state.status in {
             HealthStatus.HEALTHY,
             HealthStatus.DEGRADED,
         }
 
+    def success_rate(self, provider_id: str) -> float:
+        canonical_id = canonical_provider_id(provider_id) or provider_id
+        state = self.health_data.get(canonical_id)
+        if state is not None:
+            return state.success_rate
+        return registry.get(canonical_id).success_rate
+
     def get_status(self, provider_id: str) -> Dict[str, Any]:
         canonical_id = canonical_provider_id(provider_id) or provider_id
         state = self.health_data.get(canonical_id)
         if state is None:
-            if dispatcher.get_provider_config(canonical_id):
+            if _dispatcher().get_provider_config(canonical_id):
                 return {
                     "provider_id": canonical_id,
                     "status": HealthStatus.UNKNOWN.value,
-                    "configured": dispatcher.is_configured(canonical_id),
+                    "configured": _dispatcher().is_configured(canonical_id),
                     "last_check": None,
                     "last_success": None,
                     "last_error": None,
@@ -250,12 +353,16 @@ class ProviderHealthMonitor:
                 }
             return {"error": f"Unknown provider: {provider_id}"}
 
+        last_check = state.last_check.isoformat() if state.last_check else None
+        last_success = (
+            state.last_success.isoformat() if state.last_success else None
+        )
         return {
             "provider_id": canonical_id,
             "status": state.status.value,
             "configured": state.configured,
-            "last_check": state.last_check.isoformat() if state.last_check else None,
-            "last_success": (state.last_success.isoformat() if state.last_success else None),
+            "last_check": last_check,
+            "last_success": last_success,
             "last_error": state.last_error,
             "avg_latency_ms": round(state.avg_latency_ms, 1),
             "success_rate": round(state.success_rate, 3),
@@ -264,10 +371,18 @@ class ProviderHealthMonitor:
             "cache_stale": self._is_stale(state),
         }
 
-    def get_all_status(self, include_hidden: bool = False) -> Dict[str, Dict[str, Any]]:
+    def get_all_status(
+        self,
+        include_hidden: bool = False,
+    ) -> Dict[str, Dict[str, Any]]:
         provider_ids = set(self.health_data.keys())
-        provider_ids.update(dispatcher.provider_ids(include_hidden=include_hidden))
-        return {provider_id: self.get_status(provider_id) for provider_id in sorted(provider_ids)}
+        provider_ids.update(
+            _dispatcher().provider_ids(include_hidden=include_hidden)
+        )
+        return {
+            provider_id: self.get_status(provider_id)
+            for provider_id in sorted(provider_ids)
+        }
 
     def get_healthy_providers(self) -> List[str]:
         return [
@@ -280,7 +395,8 @@ class ProviderHealthMonitor:
         return [
             provider_id
             for provider_id, state in self.health_data.items()
-            if state.configured and state.status in {HealthStatus.HEALTHY, HealthStatus.DEGRADED}
+            if state.configured
+            and state.status in {HealthStatus.HEALTHY, HealthStatus.DEGRADED}
         ]
 
     def get_latency(self, provider_id: str) -> float:
@@ -301,7 +417,10 @@ class ProviderHealthMonitor:
         return candidates[:limit]
 
 
-health_monitor = ProviderHealthMonitor()
+HealthMonitor = ProviderHealthMonitor
+
+
+health_monitor = HealthMonitor()
 
 
 def get_health_monitor() -> ProviderHealthMonitor:

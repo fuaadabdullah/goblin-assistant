@@ -4,11 +4,14 @@ Tool executor for Goblin Assistant.
 Handles the tool-calling loop: when an LLM responds with tool_calls instead
 of text, execute each tool via the registry and feed results back until the
 LLM produces a final text response.
+
+assistant_tools is the canonical tool system.
 """
 
 from __future__ import annotations
 
 import json
+import inspect
 import time
 from typing import Any, Dict, List, Optional
 from contextvars import ContextVar
@@ -32,6 +35,7 @@ MAX_TOOL_ROUNDS = 5
 async def execute_tool_call(
     tool_name: str,
     arguments: Dict[str, Any],
+    runtime_context: Optional[Dict[str, Any]] = None,
 ) -> Dict[str, Any]:
     """Execute a single tool call and return the result dict."""
     tool = get_tool(tool_name)
@@ -42,7 +46,15 @@ async def execute_tool_call(
         return {"error": f"Tool {tool_name} has no handler registered"}
 
     try:
-        result = await tool.handler(**arguments)
+        call_args = dict(arguments)
+        if runtime_context:
+            signature = inspect.signature(tool.handler)
+            for key, value in runtime_context.items():
+                if value is None:
+                    continue
+                if key in signature.parameters and key not in call_args:
+                    call_args[key] = value
+        result = await tool.handler(**call_args)
         return result
     except TypeError as e:
         logger.warning("tool_argument_error", tool=tool_name, error=str(e))
@@ -222,7 +234,7 @@ async def run_tool_loop(
     trace_start = time.time()
 
     # Get request_id from structlog context
-    request_id = structlog.contextvars.get("request_id", "unknown")
+    request_id = structlog.contextvars.get_contextvars().get("request_id", "unknown")
 
     # Start tool execution trace
     trace_id = tool_tracer.start_trace(
@@ -285,7 +297,14 @@ async def run_tool_loop(
                     round=round_num + 1,
                 )
 
-                result = await execute_tool_call(tool_name, args)
+                result = await execute_tool_call(
+                    tool_name,
+                    args,
+                    runtime_context={
+                        "user_id": user_id,
+                        "conversation_id": conversation_id,
+                    },
+                )
                 tool_exec_time = (time.time() - tool_exec_start) * 1000
 
                 # Check for error

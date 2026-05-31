@@ -22,6 +22,12 @@ from ..core.contracts import SuccessEnvelope
 from ..storage import conversation_store
 from ..storage.database import get_db
 from api.config.mode_addendums import get_addendum as _get_mode_addendum
+from api.config.archetypes import (
+    is_deep_research_mode as _is_deep_research_mode,
+    is_general_assistant_mode as _is_general_assistant_mode,
+    missing_deep_research_tools as _missing_deep_research_tools,
+    missing_general_assistant_tools as _missing_general_assistant_tools,
+)
 from api.config.system_prompt import EDUCATION_SYSTEM_ADDENDUM, system_prompt_manager
 from . import _runtime as _cr
 from .archiving import schedule_conversation_archive
@@ -30,6 +36,12 @@ from .service_accessors import (
     _get_context_assembly_service,
     _get_message_classifier,
 )
+
+
+def _get_embedding_worker():
+    from ..services.embedding_service import embedding_worker
+
+    return embedding_worker
 
 logger = structlog.get_logger()
 
@@ -130,6 +142,26 @@ async def contextual_chat(
         }
 
         ctx_tools = export_tools_for_provider(request.provider)
+        if _is_general_assistant_mode(request.mode) and ctx_tools:
+            missing_tools = _missing_general_assistant_tools(ctx_tools)
+            if missing_tools:
+                logger.warning(
+                    "general_assistant_required_tools_missing",
+                    provider=request.provider,
+                    mode=request.mode,
+                    missing_tools=missing_tools,
+                    registered_tool_count=len(ctx_tools),
+                )
+        if _is_deep_research_mode(request.mode) and ctx_tools:
+            missing_tools = _missing_deep_research_tools(ctx_tools)
+            if missing_tools:
+                logger.warning(
+                    "deep_research_required_tools_missing",
+                    provider=request.provider,
+                    mode=request.mode,
+                    missing_tools=missing_tools,
+                    registered_tool_count=len(ctx_tools),
+                )
         if ctx_tools:
             payload["tools"] = ctx_tools
 
@@ -241,6 +273,29 @@ async def contextual_chat(
                 },
             )
             await schedule_conversation_archive(conversation_id)
+
+            # Queue both messages for embedding so they're retrievable by RAG
+            # on future turns. Fire-and-forget — never blocks the response.
+            try:
+                worker = _get_embedding_worker()
+                user_msg_id = str(uuid.uuid4())
+                await worker.queue_message_embedding(
+                    user_id=user_id,
+                    conversation_id=conversation_id,
+                    message_id=user_msg_id,
+                    content=request.message,
+                )
+                await worker.queue_message_embedding(
+                    user_id=user_id,
+                    conversation_id=conversation_id,
+                    message_id=response_message_id,
+                    content=response_content,
+                    metadata={"provider": used_provider, "model": used_model},
+                )
+            except Exception as _emb_exc:
+                logger.debug(
+                    "embedding_queue_skipped", error=str(_emb_exc)
+                )
 
         visualizations = None
         if isinstance(provider_response, dict) and provider_response.get("visualizations"):

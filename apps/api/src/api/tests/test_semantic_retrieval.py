@@ -257,6 +257,7 @@ class SemanticRetrievalTester:
                 "retrieved_at",
                 "summaries",
                 "messages",
+                "ephemeral_messages",
                 "tasks",
                 "memory_facts",
                 "total_tokens",

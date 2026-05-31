@@ -219,6 +219,16 @@ class DomainEventModel(Base):
     )
 
 
+class ProviderSettingsModel(Base):
+    """Persists dynamic provider config (e.g. Colab worker tunnel URL) across restarts."""
+
+    __tablename__ = "provider_settings"
+
+    provider_name = Column(String, primary_key=True)
+    endpoint = Column(Text, nullable=False)
+    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+
+
 # Add vector relationships to existing models
 def setup_vector_relationships():
     """Set up vector relationships after all models are imported"""

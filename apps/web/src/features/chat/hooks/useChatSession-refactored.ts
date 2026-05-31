@@ -34,8 +34,8 @@ export interface ChatSessionState {
   threads: ChatThread[];
   isThreadsLoading: boolean;
   activeThreadKey: string | null;
-  inputRef: RefObject<HTMLTextAreaElement>;
-  bottomRef: RefObject<HTMLDivElement>;
+  inputRef: RefObject<HTMLTextAreaElement | null>;
+  bottomRef: RefObject<HTMLDivElement | null>;
   selectedProvider?: string;
   selectedModel?: string;
   inputEstimate: TextCostEstimate | null;

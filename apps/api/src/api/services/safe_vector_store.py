@@ -26,12 +26,19 @@ Usage:
 from typing import Optional, Dict, Any
 from datetime import datetime, timedelta
 import logging
-import chromadb
-from chromadb.config import Settings
+
+try:
+    import chromadb
+    from chromadb.config import Settings
+    CHROMADB_AVAILABLE = True
+except ImportError:
+    chromadb = None  # type: ignore[assignment]
+    Settings = None  # type: ignore[assignment,misc]
+    CHROMADB_AVAILABLE = False
 
 # Optional: embedding functions (requires sentence-transformers)
 try:
-    from chromadb.utils import embedding_functions
+    from chromadb.utils import embedding_functions  # type: ignore[import-not-found]
 
     EMBEDDINGS_AVAILABLE = True
 except ImportError:
@@ -75,6 +82,11 @@ class SafeVectorStore:
             default_ttl_hours: Default TTL in hours
             embedding_model: Sentence transformer model name
         """
+        if not CHROMADB_AVAILABLE:
+            raise RuntimeError(
+                "chromadb is not installed. Install it with: pip install chromadb"
+            )
+
         self.collection_name = collection_name
         self.default_ttl_hours = default_ttl_hours
 

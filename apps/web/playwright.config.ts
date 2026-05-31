@@ -1,23 +1,34 @@
+import path from 'node:path';
 import { defineConfig, devices } from '@playwright/test';
+
+const workspaceRoot = path.resolve(__dirname, '../..');
+const tmpDir = path.join(workspaceRoot, '.tmp');
+const browsersPath = path.join(workspaceRoot, '.playwright', 'browsers');
+const baseURL = process.env.PLAYWRIGHT_TEST_BASE_URL || 'http://localhost:3000';
+const shouldStartWebServer = !process.env.PLAYWRIGHT_TEST_BASE_URL;
 
 export default defineConfig({
   testDir: './e2e',
-  outputDir: '/Volumes/GOBLINOS 1/goblin-assistant/.playwright/test-results',
-  fullyParallel: true,
+  outputDir: path.join(workspaceRoot, '.playwright', 'test-results'),
+  timeout: process.env.CI ? 90_000 : 60_000,
+  expect: {
+    timeout: 10_000,
+  },
+  fullyParallel: false,
   forbidOnly: !!process.env.CI,
   retries: process.env.CI ? 2 : 0,
-  workers: process.env.CI ? 1 : undefined,
+  workers: 1,
   reporter: [
     [
       'html',
       {
-        outputFolder: '/Volumes/GOBLINOS 1/goblin-assistant/.playwright/html-report',
+        outputFolder: path.join(workspaceRoot, '.playwright', 'html-report'),
         open: 'never',
       },
     ],
   ],
   use: {
-    baseURL: 'http://localhost:3000',
+    baseURL,
     trace: 'on-first-retry',
     screenshot: 'only-on-failure',
   },
@@ -35,10 +46,12 @@ export default defineConfig({
       use: { ...devices['Desktop Safari'] },
     },
   ],
-  webServer: {
-    command: 'TMPDIR="/Volumes/GOBLINOS 1/goblin-assistant/.tmp" npm run dev',
-    url: 'http://localhost:3000',
-    timeout: 180 * 1000,
-    reuseExistingServer: !process.env.CI,
-  },
+  webServer: shouldStartWebServer
+    ? {
+        command: `TMPDIR="${tmpDir}" PLAYWRIGHT_BROWSERS_PATH="${browsersPath}" npm run dev -- --webpack`,
+        url: 'http://localhost:3000',
+        timeout: 180 * 1000,
+        reuseExistingServer: !process.env.CI,
+      }
+    : undefined,
 });

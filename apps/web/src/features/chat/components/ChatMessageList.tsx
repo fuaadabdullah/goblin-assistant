@@ -20,7 +20,7 @@ interface ChatMessageListProps {
   /** Callback for clicking a quick prompt. */
   onPromptClick: (prompt: string) => void;
   /** Scroll anchor for auto-scrolling. */
-  bottomRef: RefObject<HTMLDivElement>;
+  bottomRef: RefObject<HTMLDivElement | null>;
   /** Whether the assistant is currently responding. */
   isSending: boolean;
   /** Whether the selected thread is loading from the backend. */

@@ -15,6 +15,7 @@ from fastapi import APIRouter, Depends, File, HTTPException, UploadFile
 
 from ..auth.router import User as AuthenticatedUser, get_current_user
 from ..core.contracts import SuccessEnvelope
+from ..services.pdf_extraction_service import extract_pdf
 from .constants import ALLOWED_MIME_TYPES, MAX_UPLOAD_SIZE_BYTES, UPLOAD_DIR
 from .schemas import FileUploadResponse
 
@@ -57,7 +58,7 @@ async def upload_file(
     with open(dest_path, "wb") as f:
         f.write(contents)
 
-    _pending_uploads[file_id] = {
+    upload_meta: Dict[str, Any] = {
         "file_id": file_id,
         "user_id": current_user.id,
         "filename": safe_filename,
@@ -67,6 +68,11 @@ async def upload_file(
         "upload_hash": file_hash,
         "path": dest_path,
     }
+    if mime == "application/pdf":
+        pdf_meta = extract_pdf(dest_path)
+        upload_meta.update(pdf_meta)
+
+    _pending_uploads[file_id] = upload_meta
 
     logger.info(
         "file_uploaded",
@@ -74,6 +80,7 @@ async def upload_file(
         filename=safe_filename,
         size_bytes=len(contents),
         user_id=current_user.id,
+        pdf_extraction_status=upload_meta.get("pdf_extraction_status"),
     )
 
     return FileUploadResponse(

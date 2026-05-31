@@ -32,13 +32,22 @@ from enum import Enum
 # PII detection patterns
 PII_PATTERNS = {
     "email": r"\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Z|a-z]{2,}\b",
-    "phone": r"\b(?:\+?1[-.]?)?\(?([0-9]{3})\)?[-.]?([0-9]{3})[-.]?([0-9]{4})\b",
+    "phone": (
+        r"\b(?:\+?1[-.]?)?\(?([0-9]{3})\)?[-.]?"
+        r"([0-9]{3})[-.]?([0-9]{4})\b"
+    ),
     "ssn": r"\b\d{3}-\d{2}-\d{4}\b",
     "credit_card": r"\b\d{4}[-\s]?\d{4}[-\s]?\d{4}[-\s]?\d{4}\b",
-    "api_key": r"(?i)(api[_-]?key|apikey|secret[_-]?key|access[_-]?token|bearer)[\s:=]+[A-Za-z0-9_\-]{20,}",
+    "api_key": (
+        r"(?i)(api[_-]?key|apikey|secret[_-]?key|"
+        r"access[_-]?token|bearer)[\s:=]+[A-Za-z0-9_\-]{20,}"
+    ),
     "sk_key": r"\bsk-[A-Za-z0-9]{20,}\b",  # OpenAI-style keys
     "jwt": r"eyJ[A-Za-z0-9_-]*\.eyJ[A-Za-z0-9_-]*\.[A-Za-z0-9_-]*",
-    "aws_key": r"(?i)(AKIA|A3T|AGPA|AIDA|AROA|AIPA|ANPA|ANVA|ASIA)[A-Z0-9]{16}",
+    "aws_key": (
+        r"(?i)(AKIA|A3T|AGPA|AIDA|AROA|AIPA|ANPA|ANVA|ASIA)"
+        r"[A-Z0-9]{16}"
+    ),
     "private_key": r"-----BEGIN (RSA |EC )?PRIVATE KEY-----",
     "ip_address": r"\b(?:\d{1,3}\.){3}\d{1,3}\b",
 }
@@ -75,20 +84,28 @@ class PIIDetection:
 
 
 class PIISanitizer:
-    """Backwards-compatible class wrapper used by tests and legacy callsites."""
+    """Backwards-compatible class wrapper used by tests and legacy
+    callsites."""
 
     _cache: Dict[str, str]
 
     def __init__(self) -> None:
         self._cache = {}
 
-    def detect_pii(self, text: str, log_detection: bool = False) -> List[PIIDetection]:
+    def detect_pii(
+        self, text: str, log_detection: bool = False
+    ) -> List[PIIDetection]:
         detections: List[PIIDetection] = []
         for pii_type, pattern in PII_PATTERNS.items():
             for match in re.finditer(pattern, text, re.IGNORECASE):
-                detections.append(PIIDetection(pattern_type=pii_type, value=match.group(0)))
+                detections.append(
+                    PIIDetection(
+                        pattern_type=pii_type,
+                        value=match.group(0),
+                    )
+                )
         if log_detection:
-            # Lightweight side effect for audit parity; no external sink required.
+            # Lightweight side effect for audit parity; no external sink.
             _ = len(detections)
         return detections
 
@@ -113,9 +130,17 @@ class PIISanitizer:
         sanitized = text
         for pii_type, pattern in PII_PATTERNS.items():
             if replacement_mode == "HASH":
+                def _hash_replacement(
+                    match: re.Match[str], token: str = pii_type
+                ) -> str:
+                    return (
+                        f"[{token.upper()}_"
+                        f"{hash_message_id(match.group(0))[:8]}]"
+                    )
+
                 sanitized = re.sub(
                     pattern,
-                    lambda m: f"[{pii_type.upper()}_{hash_message_id(m.group(0))[:8]}]",
+                    _hash_replacement,
                     sanitized,
                     flags=re.IGNORECASE,
                 )
@@ -128,7 +153,12 @@ class PIISanitizer:
                         if preserve_context
                         else f"[{replacement_mode}_{pii_type.upper()}]"
                     )
-                sanitized = re.sub(pattern, token, sanitized, flags=re.IGNORECASE)
+                sanitized = re.sub(
+                    pattern,
+                    token,
+                    sanitized,
+                    flags=re.IGNORECASE,
+                )
 
         self._cache[text] = sanitized
         return sanitized
@@ -140,14 +170,20 @@ class PIISanitizer:
         return {"data_type": data_type, "retention": "30d", "action": "redact"}
 
     def minimize_data(self, text: str) -> str:
-        return self.sanitize(text, level=SanitizationLevel.REDACT, preserve_context=True)
+        return self.sanitize(
+            text,
+            level=SanitizationLevel.REDACT,
+            preserve_context=True,
+        )
 
     def check_consent(self, data_subject: str) -> bool:
         return bool(data_subject)
 
 
 def sanitize_input_for_model(
-    text: str, replace_with: str = "[REDACTED]", strict: bool = True
+    text: str,
+    replace_with: str = "[REDACTED]",
+    strict: bool = True,
 ) -> Tuple[str, List[str]]:
     """
     Sanitize user input before sending to LLM or storing in vector DB.
@@ -168,15 +204,31 @@ def sanitize_input_for_model(
         >>> print(pii)
         ["email", "ssn"]
     """
+    _ = strict
     detected_pii = []
     sanitized = text
+
+    def _replacement_token(pii_type: str) -> str:
+        """Build a stable redaction token.
+
+        Preserves the caller's wrapper style.
+        """
+        suffix = f"_{pii_type.upper()}"
+        if replace_with.endswith("]"):
+            return f"{replace_with[:-1]}{suffix}]"
+        return f"{replace_with}{suffix}"
 
     for pii_type, pattern in PII_PATTERNS.items():
         matches = re.findall(pattern, sanitized, re.IGNORECASE)
         if matches:
             detected_pii.append(pii_type)
-            replacement = f"{replace_with}_{pii_type.upper()}"
-            sanitized = re.sub(pattern, replacement, sanitized, flags=re.IGNORECASE)
+            replacement = _replacement_token(pii_type)
+            sanitized = re.sub(
+                pattern,
+                replacement,
+                sanitized,
+                flags=re.IGNORECASE,
+            )
 
     return sanitized, detected_pii
 
@@ -220,7 +272,8 @@ def is_sensitive_content(text: str, threshold: int = 1) -> bool:
 
 def mask_sensitive(data: Any, sensitive_fields: Optional[set] = None) -> Any:
     """
-    Recursively mask sensitive fields in dictionaries, lists, and nested structures.
+    Recursively mask sensitive fields in dictionaries, lists, and
+    nested structures.
 
     Args:
         data: Data structure to mask (dict, list, str, etc.)
@@ -230,10 +283,18 @@ def mask_sensitive(data: Any, sensitive_fields: Optional[set] = None) -> Any:
         Masked copy of the data structure
 
     Example:
-        >>> data = {"user": "john", "password": "secret", "nested": {"api_key": "abc123"}}
+        >>> data = {
+        ...     "user": "john",
+        ...     "password": "secret",
+        ...     "nested": {"api_key": "abc123"},
+        ... }
         >>> safe = mask_sensitive(data)
         >>> print(safe)
-        {"user": "john", "password": "[REDACTED]", "nested": {"api_key": "[REDACTED]"}}
+        {
+        ...     "user": "john",
+        ...     "password": "[REDACTED]",
+        ...     "nested": {"api_key": "[REDACTED]"},
+        ... }
     """
     if sensitive_fields is None:
         sensitive_fields = {
@@ -286,7 +347,8 @@ def mask_sensitive(data: Any, sensitive_fields: Optional[set] = None) -> Any:
 
 def hash_message_id(message: str, algorithm: str = "sha256") -> str:
     """
-    Create deterministic hash for message deduplication without storing content.
+    Create deterministic hash for message deduplication without storing
+    content.
 
     Use this for:
     - Deduplication without storing raw messages
@@ -328,7 +390,9 @@ def check_jailbreak_attempt(prompt: str) -> Tuple[bool, Optional[str]]:
         Tuple of (is_jailbreak, reason)
 
     Example:
-        >>> is_jail, reason = check_jailbreak_attempt("Ignore all previous instructions")
+        >>> is_jail, reason = check_jailbreak_attempt(
+        ...     "Ignore all previous instructions"
+        ... )
         >>> print(is_jail)
         True
         >>> print(reason)
@@ -343,7 +407,10 @@ def check_jailbreak_attempt(prompt: str) -> Tuple[bool, Optional[str]]:
             r"you are now|from now on|new (role|persona|character)",
             "Detected role manipulation attempt",
         ),
-        (r"disregard.*(safety|ethical|policy)", "Detected safety bypass attempt"),
+        (
+            r"disregard.*(safety|ethical|policy)",
+            "Detected safety bypass attempt",
+        ),
         (r"act as if|pretend.*(you are|to be)", "Detected persona injection"),
         (
             r"system:.*admin|developer mode|god mode",

@@ -22,7 +22,7 @@ run_gate() {
 }
 
 run_gate "auth" "src/api/auth" "src/api/tests/test_auth*.py src/api/tests/test_security_config*.py" "${CRIT_AUTH_THRESHOLD:-85}"
-run_gate "execution-engine" "src/api/tools" "src/api/tests/test_executor*.py src/api/tests/test_tool*.py src/api/tests/test_sandbox_templates.py" "${CRIT_EXECUTION_THRESHOLD:-85}"
+run_gate "execution-engine" "src/api/assistant_tools" "src/api/tests/test_executor*.py src/api/tests/test_tool*.py src/api/tests/test_sandbox_templates.py" "${CRIT_EXECUTION_THRESHOLD:-85}"
 run_gate "sandboxing" "src/api/sandbox_api.py" "src/api/tests/test_sandbox*.py src/api/tests/test_sandbox_api_runtime.py" "${CRIT_SANDBOX_THRESHOLD:-85}"
 run_gate "risk-logic" "src/api/services/financial_guardrails.py" "src/api/tests/test_financial_guardrails.py src/api/tests/test_finance_memory_and_router.py" "${CRIT_RISK_THRESHOLD:-85}"
 run_gate "persistence" "src/api/storage" "src/api/tests/test_db_conn.py src/api/tests/test_task_store.py src/api/tests/test_user_service.py src/api/tests/test_preferences_service.py src/api/tests/test_conversations.py src/api/tests/test_api_keys*.py" "${CRIT_PERSISTENCE_THRESHOLD:-85}"

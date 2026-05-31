@@ -3,11 +3,26 @@ API tests for Goblin Assistant using pytest and TestClient
 """
 
 
+def _unwrap(response):
+    """Return the inner data payload if the API uses the SuccessEnvelope, else return response as-is."""
+    try:
+        # response may be a Response object or a dict
+        if hasattr(response, "json"):
+            payload = response.json()
+        else:
+            payload = response
+    except Exception:
+        return response
+    if isinstance(payload, dict) and "data" in payload:
+        return payload["data"]
+    return payload
+
+
 def test_root_endpoint(client):
     """Test the root endpoint returns correct response"""
     response = client.get("/")
     assert response.status_code == 200
-    data = response.json()
+    data = _unwrap(response)
     assert "message" in data
     assert "version" in data
     assert "docs" in data
@@ -18,7 +33,7 @@ def test_health_endpoint(client):
     """Test the health endpoint"""
     response = client.get("/health")
     assert response.status_code == 200
-    data = response.json()
+    data = _unwrap(response)
     assert "status" in data
 
 
@@ -29,7 +44,7 @@ def test_chat_conversations_endpoint(authenticated_client):
         json={"title": "Test Conversation", "user_id": "ignored-user"},
     )
     assert response.status_code == 200
-    data = response.json()
+    data = _unwrap(response)
     assert "conversation_id" in data
     assert "title" in data
     assert "created_at" in data
@@ -39,7 +54,7 @@ def test_chat_conversations_endpoint(authenticated_client):
     # Test getting the conversation
     response = authenticated_client.get(f"/chat/conversations/{conversation_id}")
     assert response.status_code == 200
-    data = response.json()
+    data = _unwrap(response)
     assert data["conversation_id"] == conversation_id
     assert data["title"] == "Test Conversation"
     assert data["user_id"] == "test-user"
@@ -72,7 +87,7 @@ def test_chat_conversations_list_returns_snippet(authenticated_client):
     response = authenticated_client.get("/chat/conversations")
     assert response.status_code == 200
 
-    data = response.json()
+    data = _unwrap(response)
     assert any(
         item["conversation_id"] == conversation_id
         and item["snippet"] == "The latest snippet should come from here."
@@ -88,7 +103,7 @@ def test_chat_conversation_routes_are_user_scoped():
             "/chat/conversations", json={"title": "Private Conversation"}
         )
         assert response.status_code == 200
-        conversation_id = response.json()["conversation_id"]
+        conversation_id = _unwrap(response)["conversation_id"]
 
     with _build_authenticated_client("other-user", "other@example.com") as other_client:
         response = other_client.get(f"/chat/conversations/{conversation_id}")
@@ -100,7 +115,7 @@ def test_chat_import_preserves_message_order(authenticated_client):
         "/chat/conversations", json={"title": "Imported Conversation"}
     )
     assert response.status_code == 200
-    conversation_id = response.json()["conversation_id"]
+    conversation_id = _unwrap(response)["conversation_id"]
 
     import_response = authenticated_client.post(
         f"/chat/conversations/{conversation_id}/import",
@@ -123,7 +138,7 @@ def test_chat_import_preserves_message_order(authenticated_client):
 
     response = authenticated_client.get(f"/chat/conversations/{conversation_id}")
     assert response.status_code == 200
-    messages = response.json()["messages"]
+    messages = _unwrap(response)["messages"]
     assert [message["content"] for message in messages] == ["First", "Second"]
 
 
@@ -134,7 +149,7 @@ def test_send_message_uses_latest_user_message_and_honors_provider(
         "/chat/conversations", json={"title": "Message Conversation"}
     )
     assert response.status_code == 200
-    conversation_id = response.json()["conversation_id"]
+    conversation_id = _unwrap(response)["conversation_id"]
 
     captured = {}
 
@@ -177,8 +192,7 @@ def test_send_message_uses_latest_user_message_and_honors_provider(
         },
     )
     assert response.status_code == 200
-
-    data = response.json()
+    data = _unwrap(response)
     assert captured["pid"] == "openai"
     assert captured["messages"][-1]["content"] == "Latest user prompt"
     assert data["usage"]["total_tokens"] == 21
@@ -189,7 +203,7 @@ def test_routing_providers_endpoint(client):
     """Test the routing providers endpoint"""
     response = client.get("/routing/providers")
     assert response.status_code == 200
-    data = response.json()
+    data = _unwrap(response)
     assert isinstance(data, list)
     # Should contain at least some providers
     assert len(data) > 0

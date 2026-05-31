@@ -269,12 +269,12 @@ class TestExecutorGuardrailHandling:
     @pytest.mark.asyncio
     async def test_executor_converts_financial_error(self):
         """execute_tool_call converts FinancialDataError to clean dict."""
-        from api.tools.executor import execute_tool_call
+        from api.assistant_tools.executor import execute_tool_call
 
         async def handler_that_raises(**kwargs):
             raise RateLimitError("rate limit reached")
 
-        with patch("api.tools.executor.get_tool") as mock_get:
+        with patch("api.assistant_tools.executor.get_tool") as mock_get:
             mock_tool = type(
                 "T",
                 (),

@@ -336,6 +336,27 @@
       "display_name": "Ollama Local",
       "is_active": true
     },
+    "colab_worker": {
+      "endpoint": "",
+      "endpoint_env": "COLAB_WORKER_ENDPOINT",
+      "api_key_env": "COLAB_WORKER_API_KEY",
+      "priority_tier": 85,
+      "capabilities": [
+        "chat",
+        "reasoning",
+        "code"
+      ],
+      "models": [
+        "gemma-3-12b",
+        "qwen3-14b"
+      ],
+      "cost_score": 0.0,
+      "default_timeout_ms": 60000,
+      "rate_limit_per_min": 120,
+      "display_name": "Colab Worker",
+      "is_active": true,
+      "invoke_path": "/chat"
+    },
     "mock": {
       "endpoint": "mock://localhost",
       "endpoint_env": "MOCK_PROVIDER_ENDPOINT",

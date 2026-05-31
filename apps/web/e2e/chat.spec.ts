@@ -1,8 +1,10 @@
 import { test, expect } from '@playwright/test';
+import { mockCommonApiRoutes } from './support/common-mocks';
 
 test.describe('Chat Interface', () => {
   test.beforeEach(async ({ page, context }) => {
     const nowIso = new Date().toISOString();
+    await mockCommonApiRoutes(page);
 
     await page.route('**/chat/conversations', async (route) => {
       if (route.request().method() === 'GET') {
@@ -222,7 +224,7 @@ test.describe('Chat Interface', () => {
     await page.goto('/chat');
 
     // Wait for any API calls to complete
-    await page.waitForLoadState('networkidle');
+    await page.waitForLoadState('domcontentloaded');
 
     // Check if messages are displayed
     const messages = page.locator('[role="article"], .message, .chat-message');
@@ -235,6 +237,8 @@ test.describe('Chat Interface', () => {
 
 test.describe('Provider Selection', () => {
   test.beforeEach(async ({ page, context }) => {
+    await mockCommonApiRoutes(page);
+
     await page.route('**/chat/conversations', async (route) => {
       await route.fulfill({
         status: 200,

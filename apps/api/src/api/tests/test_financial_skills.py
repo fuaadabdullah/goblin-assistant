@@ -14,14 +14,14 @@ import pytest
 
 # Stubs are provided by conftest.py (mock_embedding_service, mock_yfinance)
 
-from api.tools.registry import TOOL_REGISTRY
-from api.tools.skills.dcf_calculator import (
+from api.assistant_tools.registry import TOOL_REGISTRY
+from api.assistant_tools.skills.dcf_calculator import (
     _project_fcf,
     _discount_fcf,
     _terminal_value,
     _handle_dcf_calculator,
 )
-from api.tools.skills.portfolio_analyzer import (
+from api.assistant_tools.skills.portfolio_analyzer import (
     _daily_returns,
     _annualized_return,
     _annualized_volatility,
@@ -31,8 +31,8 @@ from api.tools.skills.portfolio_analyzer import (
     _correlation,
     _handle_portfolio_analyzer,
 )
-from api.tools.skills.earnings_summarizer import _handle_earnings_summarizer
-from api.tools.skills.stock_screener import _handle_stock_screener
+from api.assistant_tools.skills.earnings_summarizer import _handle_earnings_summarizer
+from api.assistant_tools.skills.stock_screener import _handle_stock_screener
 
 
 # Disable Redis caching and rate limiting for all tests

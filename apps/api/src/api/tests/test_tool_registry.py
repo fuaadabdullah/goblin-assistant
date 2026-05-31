@@ -11,7 +11,7 @@ import pytest
 
 # Stubs are provided by conftest.py (mock_embedding_service, mock_yfinance)
 
-from api.tools.registry import (
+from api.assistant_tools.registry import (
     TOOL_REGISTRY,
     ToolDefinition,
     ToolParameter,
@@ -21,7 +21,7 @@ from api.tools.registry import (
     get_tool,
     register_tool,
 )
-from api.tools.executor import (
+from api.assistant_tools.executor import (
     execute_tool_call,
     extract_tool_calls,
     run_tool_loop,

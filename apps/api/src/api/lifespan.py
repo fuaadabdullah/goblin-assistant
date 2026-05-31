@@ -89,6 +89,32 @@ async def lifespan(app: FastAPI):
                 impact="routing may be degraded",
             )
 
+        logger.info("Starting Colab worker heartbeat monitor")
+        try:
+            from .services.colab_heartbeat import colab_heartbeat
+
+            await colab_heartbeat.start()
+            logger.info("Colab worker heartbeat monitor started")
+        except Exception as exc:
+            logger.warning(
+                "Colab worker heartbeat monitor failed to start",
+                error=str(exc),
+            )
+
+        logger.info("Restoring Colab worker endpoint from database")
+        try:
+            from .ops_routes.colab_worker import load_colab_endpoint_from_db
+            from .providers.dispatcher import dispatcher
+
+            saved_endpoint = await load_colab_endpoint_from_db()
+            if saved_endpoint:
+                dispatcher.update_provider_endpoint("colab_worker", saved_endpoint)
+                logger.info("Colab worker endpoint restored", endpoint=saved_endpoint)
+            else:
+                logger.info("No saved Colab worker endpoint found")
+        except Exception as exc:
+            logger.warning("Failed to restore Colab worker endpoint", error=str(exc))
+
         logger.info("Initializing secrets adapter")
         try:
             await init_secrets_adapter()
@@ -131,6 +157,19 @@ async def lifespan(app: FastAPI):
                 impact="continuing without automatic cleanup",
             )
 
+        logger.info("Starting embedding worker")
+        try:
+            from .services.embedding_service import embedding_worker
+
+            await embedding_worker.start()
+            logger.info("Embedding worker started")
+        except Exception as exc:
+            logger.warning(
+                "Embedding worker failed to start",
+                error=str(exc),
+                impact="async message embedding will be unavailable",
+            )
+
         logger.info("Backend startup complete", status="ready")
     except Exception as exc:
         logger.error("Critical startup error", error=str(exc), action="application will restart")
@@ -149,6 +188,15 @@ async def lifespan(app: FastAPI):
             logger.info("AI provider health monitoring stopped")
         except Exception as exc:
             logger.warning("Failed to stop health monitoring", error=str(exc))
+
+        logger.info("Stopping Colab worker heartbeat monitor")
+        try:
+            from .services.colab_heartbeat import colab_heartbeat
+
+            await colab_heartbeat.stop()
+            logger.info("Colab worker heartbeat monitor stopped")
+        except Exception as exc:
+            logger.warning("Failed to stop Colab heartbeat monitor", error=str(exc))
 
         logger.info("Stopping provider monitoring")
         await monitor.stop()
@@ -170,7 +218,18 @@ async def lifespan(app: FastAPI):
             await artifact_cleanup_service.stop()
             logger.info("Artifact cleanup service stopped")
         except Exception as exc:
-            logger.warning("Failed to stop artifact cleanup service", error=str(exc))
+            logger.warning(
+                "Failed to stop artifact cleanup service", error=str(exc)
+            )
+
+        logger.info("Stopping embedding worker")
+        try:
+            from .services.embedding_service import embedding_worker
+
+            await embedding_worker.stop()
+            logger.info("Embedding worker stopped")
+        except Exception as exc:
+            logger.warning("Failed to stop embedding worker", error=str(exc))
 
         logger.info("Backend shutdown complete")
     except Exception as exc:

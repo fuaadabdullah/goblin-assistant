@@ -25,9 +25,9 @@ DEFAULT_MODEL = "gpt-3.5-turbo"
 
 
 def _get_context_builder():
-    from .services.retrieval_service import ContextBuilder
+    from .services.context_builder import ContextBuilder
 
-    return ContextBuilder
+    return ContextBuilder()
 
 
 def _get_embedding_worker():
@@ -72,6 +72,7 @@ class ContextBundleResponse(BaseModel):
     retrieved_at: str
     summaries: List[Dict[str, Any]]
     messages: List[Dict[str, Any]]
+    ephemeral_messages: List[Dict[str, Any]]
     tasks: List[Dict[str, Any]]
     memory_facts: List[Dict[str, Any]]
     total_tokens: int
@@ -90,7 +91,7 @@ async def _get_conversation_or_404(conversation_id: str):
 def _context_has_content(context_bundle: Dict[str, Any]) -> bool:
     return any(
         len(context_bundle.get(bucket, [])) > 0
-        for bucket in ("summaries", "messages", "tasks", "memory_facts")
+        for bucket in ("summaries", "messages", "ephemeral_messages", "tasks", "memory_facts")
     )
 
 
@@ -230,7 +231,8 @@ async def semantic_send_message(conversation_id: str, request: SemanticSendMessa
         if context_used and context_bundle:
             # Use semantic context builder
             context_builder = _get_context_builder()
-            enhanced_messages = context_builder.build_contextual_prompt(
+            enhanced_messages = await context_builder.build_contextual_prompt(
+                user_id=user_id,
                 user_message=request.message,
                 context_bundle=context_bundle,
                 conversation_history=recent_messages,
@@ -296,6 +298,7 @@ async def semantic_send_message(conversation_id: str, request: SemanticSendMessa
             context_details = {
                 "summaries_count": len(context_bundle.get("summaries", [])),
                 "messages_count": len(context_bundle.get("messages", [])),
+                "ephemeral_messages_count": len(context_bundle.get("ephemeral_messages", [])),
                 "tasks_count": len(context_bundle.get("tasks", [])),
                 "memory_facts_count": len(context_bundle.get("memory_facts", [])),
                 "total_tokens": context_bundle.get("total_tokens", 0),
@@ -480,17 +483,3 @@ async def search_memory_facts(
         # Error details are now handled by ErrorHandlingMiddleware
         raise HTTPException(status_code=500, detail="Failed to search memory facts")
 
-
-# Start the embedding worker on startup
-@router.on_event("startup")
-async def startup_event():
-    """Start the async embedding worker"""
-    embedding_worker = _get_embedding_worker()
-    await embedding_worker.start()
-
-
-@router.on_event("shutdown")
-async def shutdown_event():
-    """Stop the async embedding worker"""
-    embedding_worker = _get_embedding_worker()
-    await embedding_worker.stop()

@@ -20,13 +20,8 @@ from .core.contracts import SuccessEnvelope
 router = APIRouter(tags=["health"])
 
 # ── Ops sub-router (was in ops_routes/health.py) ──────────────────────────
-from .monitoring import monitor
-from .ops_routes.shared import (
-    CircuitBreaker,
-    calculate_health_score,
-    circuit_breakers,
-    performance_metrics,
-)
+# Imports from ops_routes.shared are deferred inside route handlers to avoid
+# the circular import: health → ops_routes.__init__ → health.
 
 ops_health_router = APIRouter()
 
@@ -585,6 +580,8 @@ async def health_streaming() -> Dict[str, Any]:
 
 @ops_health_router.get("/health/summary")
 async def ops_health_summary() -> Dict[str, Any]:
+    from .ops_routes.shared import performance_metrics
+
     try:
         base_health = await health_check()
         chroma_health = await _check_chroma()
@@ -647,6 +644,14 @@ async def ops_health_summary() -> Dict[str, Any]:
 
 @ops_health_router.get("/providers/status")
 async def ops_providers_status() -> Dict[str, Any]:
+    from .monitoring import monitor
+    from .ops_routes.shared import (
+        CircuitBreaker,
+        calculate_health_score,
+        circuit_breakers,
+        performance_metrics,
+    )
+
     try:
         provider_status = await monitor.get_status()
         from .config.providers import get_provider_settings

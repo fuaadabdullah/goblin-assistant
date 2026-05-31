@@ -33,7 +33,7 @@ preferred_providers_under_budget = [
 ]
 
 [default.health]
-health_check_interval = 60
+health_check_interval = 30
 timeout_seconds = 10
 retry_attempts = 3
 
@@ -61,6 +61,8 @@ recovery_threshold = 2
 failover_to_backup = true
 max_failover_time = 60
 circuit_breaker_enabled = true
+circuit_breaker_failure_threshold = 3
+circuit_breaker_recovery_timeout = 30
 
 [load_balancing.health_checks]
 ollama_health = "/api/tags"
@@ -91,6 +93,8 @@ ollama-gcp               = "ollama_gcp"
 llamacpp                 = "llamacpp_gcp"
 llama_cpp                = "llamacpp_gcp"
 llamacpp-gcp             = "llamacpp_gcp"
+colab                    = "colab_worker"
+colab-worker             = "colab_worker"
 
 # ---------------------------------------------------------------------------
 # Model aliases  —  short name → { provider, model }
@@ -116,6 +120,7 @@ visible_providers = [
   "openai",
   "anthropic",
   "groq",
+  "together",
   "siliconeflow",
   "deepseek",
   "gemini",
@@ -126,6 +131,7 @@ visible_providers = [
   "ollama_gcp",
   "llamacpp_gcp",
   "ollama_local",
+  "colab_worker",
 ]
 
 # ---------------------------------------------------------------------------
@@ -388,8 +394,10 @@ is_active               = true
 name                    = "Together AI"
 endpoint                = "https://api.together.xyz"
 endpoint_env            = "TOGETHER_ENDPOINT"
+invoke_path             = "/v1/chat/completions"
 api_key_env             = "TOGETHER_API_KEY"
-models                  = ["llama-2-70b", "codellama-34b"]
+default_model           = "meta-llama/Meta-Llama-3.1-8B-Instruct-Turbo"
+models                  = ["meta-llama/Meta-Llama-3.1-8B-Instruct-Turbo", "meta-llama/Meta-Llama-3.3-70B-Instruct-Turbo", "mistralai/Mixtral-8x7B-Instruct-v0.1"]
 capabilities            = ["chat", "reasoning", "code", "image"]
 priority_tier           = 3
 cost_score              = 0.5
@@ -428,11 +436,12 @@ is_active               = false
 # ---------------------------------------------------------------------------
 [providers.huggingface]
 name                    = "Hugging Face"
-endpoint                = "https://api-inference.huggingface.co"
+endpoint                = "https://router.huggingface.co"
 endpoint_env            = "HUGGINGFACE_ENDPOINT"
 invoke_path             = "/v1/chat/completions"
 api_key_env             = "HUGGINGFACE_API_KEY"
-models                  = ["microsoft/DialoGPT-medium", "facebook/blenderbot-400M-distill"]
+default_model           = "Qwen/Qwen2.5-7B-Instruct"
+models                  = ["Qwen/Qwen2.5-7B-Instruct", "meta-llama/Llama-3.1-8B-Instruct", "mistralai/Mistral-7B-Instruct-v0.3"]
 capabilities            = ["chat", "reasoning", "code"]
 priority_tier           = 4
 cost_score              = 0.2
@@ -450,10 +459,12 @@ is_active               = true
 # ---------------------------------------------------------------------------
 [providers.cohere]
 name                    = "Cohere"
-endpoint                = "https://api.cohere.ai"
+endpoint                = "https://api.cohere.com/compatibility/v1"
 endpoint_env            = "COHERE_ENDPOINT"
+invoke_path             = "/chat/completions"
 api_key_env             = "COHERE_API_KEY"
-models                  = ["command", "base"]
+default_model           = "command-r-08-2024"
+models                  = ["command-r-08-2024", "command-r-plus-08-2024", "command-a-03-2025"]
 capabilities            = ["chat", "reasoning", "code", "embedding"]
 priority_tier           = 3
 cost_score              = 0.7
@@ -464,7 +475,7 @@ supports_cot            = true
 cot_suppression_prompt  = "Answer directly."
 tier                    = "cloud"
 display_name            = "Cohere"
-is_active               = false
+is_active               = true
 
 # ---------------------------------------------------------------------------
 # Ollama GCP
@@ -531,6 +542,32 @@ tier                    = "self_hosted"
 display_name            = "Ollama Local"
 is_active               = true
 selectable_requires_env = true
+
+# ---------------------------------------------------------------------------
+# Colab Worker (ephemeral self-hosted via ngrok)
+# ---------------------------------------------------------------------------
+[providers.colab_worker]
+name                    = "Colab Worker"
+endpoint                = ""
+endpoint_env            = "COLAB_WORKER_ENDPOINT"
+invoke_path             = "/chat"
+api_key_env             = "COLAB_WORKER_API_KEY"
+default_model           = "gemma-3-12b"
+models                  = ["gemma-3-12b", "qwen3-14b"]
+capabilities            = ["chat", "reasoning", "code"]
+priority_tier           = 85
+cost_score              = 0.0
+default_timeout_ms      = 60000
+bandwidth_score         = 0.4
+rate_limit_per_min      = 120
+supports_cot            = true
+cot_suppression_prompt  = "Be concise."
+tier                    = "self_hosted"
+display_name            = "Colab Worker"
+is_active               = true
+selectable_requires_env = true
+force_fallback          = true
+supports_openai_tools   = false
 
 # ---------------------------------------------------------------------------
 # Mock (testing only)

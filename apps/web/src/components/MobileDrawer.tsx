@@ -1,18 +1,8 @@
 import React, { useEffect, useRef } from 'react';
-import { AnimatePresence, motion, useReducedMotion } from 'framer-motion';
+import { AnimatePresence } from 'framer-motion';
 import { X } from 'lucide-react';
 import { useUIStore } from '../store/uiStore';
 import Logo from './Logo';
-
-const overlayVariants = {
-  hidden: { opacity: 0 },
-  visible: { opacity: 1 },
-};
-
-const panelVariants = {
-  hidden: { x: '-100%' },
-  visible: { x: 0 },
-};
 
 const MobileDrawer: React.FC<{
   title?: string;
@@ -33,8 +23,6 @@ const MobileDrawer: React.FC<{
     return () => document.removeEventListener('keydown', onKey);
   }, [isOpen, close]);
 
-  const shouldReduceMotion = useReducedMotion();
-
   useEffect(() => {
     if (isOpen) {
       // focus the panel for keyboard users
@@ -51,24 +39,14 @@ const MobileDrawer: React.FC<{
       {isOpen && (
         <>
           {/* Overlay */}
-          <motion.div
-            initial={shouldReduceMotion ? 'visible' : 'hidden'}
-            animate="visible"
-            exit={shouldReduceMotion ? 'visible' : 'hidden'}
-            variants={overlayVariants}
-            transition={{ duration: shouldReduceMotion ? 0 : 0.18 }}
+          <div
             onClick={() => close(false)}
             className="fixed inset-0 bg-black/40 z-40"
             aria-hidden="true"
           />
 
           {/* Drawer panel */}
-          <motion.div
-            initial={shouldReduceMotion ? 'visible' : 'hidden'}
-            animate="visible"
-            exit={shouldReduceMotion ? 'visible' : 'hidden'}
-            variants={panelVariants}
-            transition={{ type: 'tween', duration: shouldReduceMotion ? 0 : 0.22 }}
+          <div
             className="fixed top-0 left-0 bottom-0 w-72 z-50 bg-surface border-r border-border shadow-lg overflow-auto"
             role="dialog"
             aria-label={ariaLabel}
@@ -100,7 +78,7 @@ const MobileDrawer: React.FC<{
                 <p className="text-sm text-muted">Made with 💚 — Goblin Assistant</p>
               </div>
             </div>
-          </motion.div>
+          </div>
         </>
       )}
     </AnimatePresence>

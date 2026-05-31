@@ -5,8 +5,10 @@ optional RAG context assembly -> provider dispatch (with optional tool-calling
 loop) -> normalize -> persist -> respond.
 
 For streaming requests we delegate to streaming.generate_chat_stream.
+assistant_tools is the canonical tool system.
 """
 
+import os
 import uuid
 from datetime import datetime
 from typing import Any, Dict, Optional
@@ -20,8 +22,19 @@ from ..assistant_tools.registry import export_tools_for_provider
 from ..auth.router import User as AuthenticatedUser, get_current_user
 from ..core.contracts import ChatMessageCreatedPayload, SuccessEnvelope
 from ..observability.events import event_emitter
-from ..providers.dispatcher import dispatcher
+from ..providers.dispatcher import canonical_provider_id, dispatcher
+from ..services.pdf_extraction_service import (
+    DEFAULT_MAX_CONTEXT_CHARS,
+    DEFAULT_MAX_CONTEXT_CHUNKS,
+    build_attachment_context,
+)
 from api.config.mode_addendums import get_addendum as _get_mode_addendum
+from api.config.archetypes import (
+    is_deep_research_mode as _is_deep_research_mode,
+    is_general_assistant_mode as _is_general_assistant_mode,
+    missing_deep_research_tools as _missing_deep_research_tools,
+    missing_general_assistant_tools as _missing_general_assistant_tools,
+)
 from api.config.system_prompt import EDUCATION_SYSTEM_ADDENDUM, system_prompt_manager
 from . import _runtime as _cr
 from .archiving import schedule_conversation_archive
@@ -43,6 +56,40 @@ OUTPUT_TOKEN_RATIO = 0.4
 logger = structlog.get_logger()
 
 router = APIRouter()
+
+
+def _provider_supports_tools(provider_id: Optional[str]) -> bool:
+    # Auto-routing keeps current behavior: include tools and let adapter strip if needed.
+    if provider_id is None:
+        return True
+    resolved = canonical_provider_id(provider_id)
+    if not resolved:
+        return True
+    config = dispatcher._configs.get(resolved, {})
+    value = config.get("supports_openai_tools")
+    return value is not False  # None means unset → treat as supported
+
+
+def _attachment_context_limits() -> tuple[int, int]:
+    max_chunks = int(os.getenv("GOBLIN_ATTACHMENT_CONTEXT_MAX_CHUNKS", str(DEFAULT_MAX_CONTEXT_CHUNKS)))
+    max_chars = int(os.getenv("GOBLIN_ATTACHMENT_CONTEXT_MAX_CHARS", str(DEFAULT_MAX_CONTEXT_CHARS)))
+    return max_chunks, max_chars
+
+
+def _inject_attachment_context(messages: list[dict[str, Any]], attachment_context: str) -> None:
+    if not attachment_context:
+        return
+    context_block = f"\n\n{attachment_context}"
+    if messages and messages[0].get("role") == "system":
+        messages[0]["content"] = f"{messages[0].get('content', '')}{context_block}"
+        return
+    messages.insert(
+        0,
+        {
+            "role": "system",
+            "content": attachment_context,
+        },
+    )
 
 
 @router.post(
@@ -115,19 +162,39 @@ async def send_message(
         # Drain any pending uploads referenced by the request into the message metadata.
         if request.attachment_ids:
             attachments_meta = []
+            attachment_context_sources: list[dict[str, Any]] = []
             for aid in request.attachment_ids:
                 upload = _pending_uploads.pop(aid, None)
                 if upload and upload["user_id"] == current_user.id:
+                    attachment_context_sources.append(upload)
                     attachments_meta.append(
                         {
                             "id": upload["file_id"],
                             "filename": upload["filename"],
                             "mime_type": upload["mime_type"],
                             "size_bytes": upload["size_bytes"],
+                            "pdf_extraction_status": upload.get("pdf_extraction_status"),
+                            "pdf_warnings": upload.get("warnings", []),
                         }
                     )
             if attachments_meta:
                 message_metadata["attachments"] = attachments_meta
+                max_chunks, max_chars = _attachment_context_limits()
+                attachment_context = build_attachment_context(
+                    query=sanitized_message,
+                    attachments=attachment_context_sources,
+                    max_chunks=max_chunks,
+                    max_chars=max_chars,
+                )
+                if attachment_context:
+                    message_metadata["attachment_context_included"] = True
+                    message_metadata["attachment_context_chars"] = len(attachment_context)
+                else:
+                    message_metadata["attachment_context_included"] = False
+            else:
+                attachment_context = ""
+        else:
+            attachment_context = ""
 
         user_msg_saved = await _cr.conversation_store.add_message_to_conversation(
             conversation_id=conversation_id,
@@ -195,6 +262,7 @@ async def send_message(
                 messages = [
                     {"role": "system", "content": system_prompt},
                 ] + history_messages
+                _inject_attachment_context(messages, attachment_context)
                 context_metadata = {
                     "context_assembly_enabled": True,
                     "context_assembly_layers": len(assembly_result.get("layers", [])),
@@ -213,19 +281,45 @@ async def send_message(
                     error=str(ctx_err),
                 )
                 messages = history_messages
+                _inject_attachment_context(messages, attachment_context)
                 context_metadata = {
                     "context_assembly_enabled": False,
                     "context_assembly_error": str(ctx_err),
                 }
         else:
             messages = history_messages
+            _inject_attachment_context(messages, attachment_context)
 
         payload = {
             "messages": messages,
             "model": request.model,
         }
 
-        registered_tools = export_tools_for_provider(request.provider)
+        registered_tools = (
+            export_tools_for_provider(request.provider)
+            if _provider_supports_tools(request.provider)
+            else []
+        )
+        if _is_general_assistant_mode(request.mode) and registered_tools:
+            missing_tools = _missing_general_assistant_tools(registered_tools)
+            if missing_tools:
+                logger.warning(
+                    "general_assistant_required_tools_missing",
+                    provider=request.provider,
+                    mode=request.mode,
+                    missing_tools=missing_tools,
+                    registered_tool_count=len(registered_tools),
+                )
+        if _is_deep_research_mode(request.mode) and registered_tools:
+            missing_tools = _missing_deep_research_tools(registered_tools)
+            if missing_tools:
+                logger.warning(
+                    "deep_research_required_tools_missing",
+                    provider=request.provider,
+                    mode=request.mode,
+                    missing_tools=missing_tools,
+                    registered_tool_count=len(registered_tools),
+                )
         if registered_tools:
             payload["tools"] = registered_tools
 

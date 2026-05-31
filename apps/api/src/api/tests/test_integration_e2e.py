@@ -121,10 +121,10 @@ class TestDCFEndToEnd:
     @pytest.mark.asyncio
     async def test_dcf_produces_visualizations(self):
         with patch(
-            "api.tools.skills.dcf_calculator.financial_data_service",
+            "api.assistant_tools.skills.dcf_calculator.financial_data_service",
             _mock_financial_data_service(),
         ):
-            from api.tools.skills.dcf_calculator import _handle_dcf_calculator
+            from api.assistant_tools.skills.dcf_calculator import _handle_dcf_calculator
             from api.services.visualization_service import extract_visualizations
 
             result = await _handle_dcf_calculator(ticker="AAPL")
@@ -146,10 +146,10 @@ class TestEarningsEndToEnd:
     @pytest.mark.asyncio
     async def test_earnings_produces_visualizations(self):
         with patch(
-            "api.tools.skills.earnings_summarizer.financial_data_service",
+            "api.assistant_tools.skills.earnings_summarizer.financial_data_service",
             _mock_financial_data_service(),
         ):
-            from api.tools.skills.earnings_summarizer import _handle_earnings_summarizer
+            from api.assistant_tools.skills.earnings_summarizer import _handle_earnings_summarizer
             from api.services.visualization_service import extract_visualizations
 
             result = await _handle_earnings_summarizer(ticker="AAPL")
@@ -169,10 +169,10 @@ class TestScreenerEndToEnd:
     async def test_screener_produces_visualizations(self):
         mock_svc = _mock_financial_data_service()
         with patch(
-            "api.tools.skills.stock_screener.financial_data_service",
+            "api.assistant_tools.skills.stock_screener.financial_data_service",
             mock_svc,
         ):
-            from api.tools.skills.stock_screener import _handle_stock_screener
+            from api.assistant_tools.skills.stock_screener import _handle_stock_screener
             from api.services.visualization_service import extract_visualizations
 
             result = await _handle_stock_screener(tickers=["AAPL", "MSFT"], limit=5)
@@ -255,10 +255,10 @@ class TestToolLoopEndToEnd:
                 }
 
         with patch(
-            "api.tools.skills.dcf_calculator.financial_data_service",
+            "api.assistant_tools.skills.dcf_calculator.financial_data_service",
             mock_svc,
         ):
-            from api.tools.executor import run_tool_loop
+            from api.assistant_tools.executor import run_tool_loop
 
             messages = [{"role": "user", "content": "Value AAPL for me"}]
             response = await run_tool_loop(
@@ -336,11 +336,11 @@ class TestToolLoopEndToEnd:
         from api.services.financial_guardrails import RateLimitError
 
         with patch(
-            "api.tools.skills.dcf_calculator.financial_data_service",
+            "api.assistant_tools.skills.dcf_calculator.financial_data_service",
         ) as mock_svc:
             mock_svc.get_financials = AsyncMock(side_effect=RateLimitError("rate limit"))
 
-            from api.tools.executor import run_tool_loop
+            from api.assistant_tools.executor import run_tool_loop
 
             messages = [{"role": "user", "content": "Value AAPL"}]
             response = await run_tool_loop(
@@ -369,10 +369,10 @@ class TestVisualizationFrontendContract:
     @pytest.mark.asyncio
     async def test_bar_chart_block_shape(self):
         with patch(
-            "api.tools.skills.dcf_calculator.financial_data_service",
+            "api.assistant_tools.skills.dcf_calculator.financial_data_service",
             _mock_financial_data_service(),
         ):
-            from api.tools.skills.dcf_calculator import _handle_dcf_calculator
+            from api.assistant_tools.skills.dcf_calculator import _handle_dcf_calculator
             from api.services.visualization_service import extract_visualizations
 
             result = await _handle_dcf_calculator(ticker="AAPL")
@@ -397,10 +397,10 @@ class TestVisualizationFrontendContract:
     @pytest.mark.asyncio
     async def test_table_block_shape(self):
         with patch(
-            "api.tools.skills.dcf_calculator.financial_data_service",
+            "api.assistant_tools.skills.dcf_calculator.financial_data_service",
             _mock_financial_data_service(),
         ):
-            from api.tools.skills.dcf_calculator import _handle_dcf_calculator
+            from api.assistant_tools.skills.dcf_calculator import _handle_dcf_calculator
             from api.services.visualization_service import extract_visualizations
 
             result = await _handle_dcf_calculator(ticker="AAPL")

@@ -4,6 +4,7 @@ from .aliyun_provider import AliyunProvider
 from .anthropic_provider import AnthropicProvider
 from .azure_provider import AzureOpenAIProvider
 from .base import BaseProvider, ProviderHealth, ProviderResult
+from .colab_worker_provider import ColabWorkerProvider
 from .dispatcher import ProviderDispatcher, dispatcher, invoke_provider
 from .generic import GenericProvider
 from .gemini import GeminiProvider
@@ -21,6 +22,7 @@ __all__ = [
     "AnthropicProvider",
     "AzureOpenAIProvider",
     "BaseProvider",
+    "ColabWorkerProvider",
     "GenericProvider",
     "GeminiProvider",
     "GroqProvider",

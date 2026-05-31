@@ -420,7 +420,7 @@ class TestExecutorVisualizationWiring:
     async def test_tool_loop_collects_visualizations(self):
         """run_tool_loop should attach visualizations[] to the final response."""
         from unittest.mock import AsyncMock, patch
-        from api.tools.executor import run_tool_loop
+        from api.assistant_tools.executor import run_tool_loop
 
         # First call returns tool_calls, second call returns text response
         tool_call_response = {
@@ -459,7 +459,7 @@ class TestExecutorVisualizationWiring:
 
         dcf_result = TestDCFVisualizations.SAMPLE_DCF_RESULT
 
-        with patch("api.tools.executor.execute_tool_call", new_callable=AsyncMock) as mock_exec:
+        with patch("api.assistant_tools.executor.execute_tool_call", new_callable=AsyncMock) as mock_exec:
             mock_exec.return_value = dcf_result
             result = await run_tool_loop(
                 messages=[{"role": "user", "content": "Value AAPL"}],
@@ -473,7 +473,7 @@ class TestExecutorVisualizationWiring:
     async def test_tool_loop_no_viz_for_non_financial_tools(self):
         """Tools without extractors should produce empty visualizations."""
         from unittest.mock import AsyncMock, patch
-        from api.tools.executor import run_tool_loop
+        from api.assistant_tools.executor import run_tool_loop
 
         tool_call_response = {
             "ok": True,
@@ -509,7 +509,7 @@ class TestExecutorVisualizationWiring:
 
         invoke_fn = AsyncMock(side_effect=[tool_call_response, final_response])
 
-        with patch("api.tools.executor.execute_tool_call", new_callable=AsyncMock) as mock_exec:
+        with patch("api.assistant_tools.executor.execute_tool_call", new_callable=AsyncMock) as mock_exec:
             mock_exec.return_value = {"price": 170.0, "ticker": "AAPL"}
             result = await run_tool_loop(
                 messages=[{"role": "user", "content": "AAPL quote"}],
@@ -523,7 +523,7 @@ class TestExecutorVisualizationWiring:
     async def test_tool_loop_skips_viz_on_error(self):
         """Error tool results should not generate visualizations."""
         from unittest.mock import AsyncMock, patch
-        from api.tools.executor import run_tool_loop
+        from api.assistant_tools.executor import run_tool_loop
 
         tool_call_response = {
             "ok": True,
@@ -559,7 +559,7 @@ class TestExecutorVisualizationWiring:
 
         invoke_fn = AsyncMock(side_effect=[tool_call_response, final_response])
 
-        with patch("api.tools.executor.execute_tool_call", new_callable=AsyncMock) as mock_exec:
+        with patch("api.assistant_tools.executor.execute_tool_call", new_callable=AsyncMock) as mock_exec:
             mock_exec.return_value = {"error": "Ticker not found"}
             result = await run_tool_loop(
                 messages=[{"role": "user", "content": "Value XYZ"}],

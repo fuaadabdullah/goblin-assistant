@@ -41,7 +41,7 @@ class SendMessageRequest(BaseModel):
     metadata: Optional[Dict[str, Any]] = None
     enable_context_assembly: Optional[bool] = True  # Inject RAG context like contextual-chat
     attachment_ids: Optional[List[str]] = None  # IDs from /chat/upload-file
-    mode: Optional[str] = None  # e.g. "DEBUG", "ARCHITECT" — overrides auto-detection
+    mode: Optional[str] = None  # e.g. "GENERAL_ASSISTANT", "DEEP_RESEARCH", "DEBUG"
 
 
 class SendMessageResponse(BaseModel):
@@ -149,7 +149,7 @@ class ContextualChatRequest(BaseModel):
     stream: Optional[bool] = False
     metadata: Optional[Dict[str, Any]] = None
     enable_context_assembly: bool = True
-    mode: Optional[str] = None  # e.g. "DEBUG", "ARCHITECT" — overrides auto-detection
+    mode: Optional[str] = None  # e.g. "GENERAL_ASSISTANT", "DEEP_RESEARCH", "DEBUG"
 
 
 class ContextualChatResponse(BaseModel):

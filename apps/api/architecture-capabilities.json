@@ -67,7 +67,6 @@
       "allowed_dependency_prefixes": [
         "api.sandbox_api",
         "api.assistant_tools",
-        "api.tools",
         "api.services",
         "api.middleware",
         "api.artifact_service",
