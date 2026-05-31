@@ -27,13 +27,17 @@ const matchesPrefix = (pathname: string, prefixes: readonly string[]): boolean =
 /**
  * Check for authentication presence.
  *
- * IMPORTANT: We now require a plausible `session_token` cookie for protected
- * routes. The legacy `goblin_auth=1` flag alone is insufficient because it can
- * become stale or be manually set, leading to route-bypass UX.
+ * `session_token` is set by the backend as HttpOnly on its own domain and is
+ * only present when frontend and backend share the same domain. In the
+ * cross-origin deployment (Vercel → Render) the backend cookie never lands on
+ * the frontend domain. `goblin_auth=1` is the JS-writable flag set by
+ * `persistAuthSession` on the frontend domain after every successful login —
+ * it is always accessible here. We accept either.
  */
 const hasAuthCookie = (request: NextRequest): boolean => {
   const sessionToken = request.cookies.get(SESSION_TOKEN_COOKIE)?.value;
-  return Boolean(sessionToken && sessionToken.length > 10);
+  if (sessionToken && sessionToken.length > 10) return true;
+  return request.cookies.get(AUTH_COOKIE_NAME)?.value === '1';
 };
 
 const isAdmin = (request: NextRequest): boolean => {

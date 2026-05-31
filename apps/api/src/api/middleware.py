@@ -27,7 +27,7 @@ logger = structlog.get_logger()
 class AuthenticationMiddleware(BaseHTTPMiddleware):
     """Middleware to authenticate API requests using API key."""
 
-    def __init__(self, app: ASGIApp, exclude_paths: list = None):
+    def __init__(self, app: ASGIApp, exclude_paths: list | None = None):
         super().__init__(app)
 
         # Check development mode upfront
@@ -41,6 +41,8 @@ class AuthenticationMiddleware(BaseHTTPMiddleware):
             "/docs",
             "/openapi.json",
             "/redoc",
+            "/auth",        # JWT auth handled by get_current_user, not API key
+            "/api/v1/auth",
         ]
 
         # Merge provided paths with defaults

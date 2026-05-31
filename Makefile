@@ -1,6 +1,6 @@
 .PHONY: help install dev web-dev api-dev build build-packages lint lint-web lint-api lint-policy type-check type-check-packages test test-web test-api test-api-context-coverage test-e2e test-e2e-budget test-integration test-contract test-performance generate-providers-json check-api-boundaries check-api-cycles check-capability-boundaries check-route-lifecycle type-check-api-mypy type-check-api-pyright format format-check test-critical sdk-generate sdk-check secret-scan
 PNPM_TMP := TMPDIR="$(PWD)/.tmp"
-PYTHON ?= python3.11
+PYTHON ?= python3
 
 help:
 	@echo "Workspace commands"
