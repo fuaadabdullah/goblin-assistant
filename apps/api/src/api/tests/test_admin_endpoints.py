@@ -7,7 +7,9 @@ import pytest
 import requests
 
 BASE_URL = "http://localhost:8003"
-pytestmark = pytest.mark.skip(reason="Manual smoke script; requires live admin server on localhost:8003")
+pytestmark = pytest.mark.skip(
+    reason="Manual smoke script; requires live admin server on localhost:8003"
+)
 
 
 def test_endpoint(endpoint, description):

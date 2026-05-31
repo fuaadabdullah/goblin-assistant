@@ -82,9 +82,7 @@ class TestRunShellCommand:
             "subprocess.run",
             return_value=_mock_proc(stderr="some warning", returncode=1),
         ):
-            result = await TOOL_REGISTRY["run_shell_command"].handler(
-                command="ls /nonexistent"
-            )
+            result = await TOOL_REGISTRY["run_shell_command"].handler(command="ls /nonexistent")
         assert result["stderr"] == "some warning"
         assert result["exit_code"] == 1
 
@@ -141,9 +139,7 @@ class TestRunShellCommand:
     @pytest.mark.asyncio
     async def test_shlex_parse_error_returns_error(self, tmp_path, monkeypatch):
         monkeypatch.setenv("GOBLIN_FILE_WORKSPACE", str(tmp_path))
-        result = await TOOL_REGISTRY["run_shell_command"].handler(
-            command="echo 'unclosed quote"
-        )
+        result = await TOOL_REGISTRY["run_shell_command"].handler(command="echo 'unclosed quote")
         assert "error" in result
         assert "parse" in result["error"].lower() or "quote" in result["error"].lower()
 

@@ -482,4 +482,3 @@ async def search_memory_facts(
     except Exception:
         # Error details are now handled by ErrorHandlingMiddleware
         raise HTTPException(status_code=500, detail="Failed to search memory facts")
-

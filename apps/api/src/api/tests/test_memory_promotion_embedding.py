@@ -102,9 +102,7 @@ async def test_similar_memory_lookup_uses_user_scope(monkeypatch):
     monkeypatch.setattr(module, "EmbeddingService", lambda: embedding_service)
 
     service = MemoryPromotionService()
-    service.retrieval_service = SimpleNamespace(
-        retrieve_memory_facts=AsyncMock(return_value=[])
-    )
+    service.retrieval_service = SimpleNamespace(retrieve_memory_facts=AsyncMock(return_value=[]))
 
     find_similar = getattr(service, "_find_similar_memory_facts")
     await find_similar(

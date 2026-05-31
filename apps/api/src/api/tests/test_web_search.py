@@ -52,9 +52,7 @@ async def test_brave_search_success():
     mock_resp = _make_httpx_response(_BRAVE_RAW)
 
     with patch.dict("os.environ", {"BRAVE_SEARCH_API_KEY": "test-key"}):
-        with patch(
-            "api.assistant_tools.skills.web_search.httpx.AsyncClient"
-        ) as mock_client_cls:
+        with patch("api.assistant_tools.skills.web_search.httpx.AsyncClient") as mock_client_cls:
             mock_client = AsyncMock()
             mock_client_cls.return_value.__aenter__ = AsyncMock(return_value=mock_client)
             mock_client_cls.return_value.__aexit__ = AsyncMock(return_value=False)
@@ -84,9 +82,7 @@ async def test_brave_search_fallback_to_ddg():
         }
 
     with patch.dict("os.environ", {"BRAVE_SEARCH_API_KEY": "test-key"}):
-        with patch(
-            "api.assistant_tools.skills.web_search.httpx.AsyncClient"
-        ) as mock_client_cls:
+        with patch("api.assistant_tools.skills.web_search.httpx.AsyncClient") as mock_client_cls:
             mock_client = AsyncMock()
             mock_client_cls.return_value.__aenter__ = AsyncMock(return_value=mock_client)
             mock_client_cls.return_value.__aexit__ = AsyncMock(return_value=False)
@@ -110,7 +106,9 @@ async def test_ddg_search_no_key():
 
     def _fake_ddg_sync(query: str, max_results: int):
         return {
-            "results": [{"title": t["title"], "url": t["href"], "snippet": t["body"]} for t in _DDG_RAW],
+            "results": [
+                {"title": t["title"], "url": t["href"], "snippet": t["body"]} for t in _DDG_RAW
+            ],
             "query": query,
             "provider": "duckduckgo",
             "count": len(_DDG_RAW),
@@ -118,6 +116,7 @@ async def test_ddg_search_no_key():
 
     with patch.dict("os.environ", {}, clear=True):
         import os
+
         os.environ.pop("BRAVE_SEARCH_API_KEY", None)
 
         with patch(
@@ -144,6 +143,7 @@ async def test_max_results_capped():
 
     with patch.dict("os.environ", {}, clear=True):
         import os
+
         os.environ.pop("BRAVE_SEARCH_API_KEY", None)
 
         with patch(

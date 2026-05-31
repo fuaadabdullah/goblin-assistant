@@ -26,6 +26,7 @@ async def lifespan(app):
     async with _lifespan_impl(app):
         yield
 
+
 app = create_app()
 
 

@@ -43,6 +43,7 @@ def _get_embedding_worker():
 
     return embedding_worker
 
+
 logger = structlog.get_logger()
 
 router = APIRouter()
@@ -293,9 +294,7 @@ async def contextual_chat(
                     metadata={"provider": used_provider, "model": used_model},
                 )
             except Exception as _emb_exc:
-                logger.debug(
-                    "embedding_queue_skipped", error=str(_emb_exc)
-                )
+                logger.debug("embedding_queue_skipped", error=str(_emb_exc))
 
         visualizations = None
         if isinstance(provider_response, dict) and provider_response.get("visualizations"):

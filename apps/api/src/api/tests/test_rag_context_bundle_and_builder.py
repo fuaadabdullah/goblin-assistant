@@ -11,7 +11,9 @@ from api.services.retrieval_service import RetrievalService
 TOKEN_LIMIT = 8
 
 
-def _mk_item(source_type: str, content: str, metadata: Dict[str, Any] | None = None) -> Dict[str, Any]:
+def _mk_item(
+    source_type: str, content: str, metadata: Dict[str, Any] | None = None
+) -> Dict[str, Any]:
     return {
         "id": f"{source_type}_1",
         "content": content,

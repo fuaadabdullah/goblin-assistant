@@ -96,7 +96,7 @@ jobs:
           command: cd apps/api && PYTHONPATH=src python -m ruff format --check src/api
       - run:
           name: Prettier check
-          command: TMPDIR=~/repo/.tmp pnpm --filter @goblin/web exec prettier --check .
+          command: TMPDIR=~/repo/.tmp pnpm --filter @goblin/web exec prettier --check apps/web
 
   # ── Security ─────────────────────────────────────────────────────────────
   security-scan:
@@ -113,7 +113,7 @@ jobs:
           command: python scripts/security/scan_secrets.py
       - run:
           name: Audit npm deps
-          command: npx audit-ci --moderate --package-manager pnpm
+          command: npx audit-ci --config audit-ci.json
       - run:
           name: Audit Python deps
           command: python -m pip_audit -r apps/api/requirements.txt
@@ -162,6 +162,7 @@ jobs:
     executor: python
     steps:
       - checkout
+      - setup-tmpdir
       - install-python
       - run:
           name: pytest with coverage
@@ -183,6 +184,10 @@ jobs:
       - run:
           name: Upload to Codecov
           command: |
+            if [ -z "$CODECOV_TOKEN" ]; then
+              echo "Warning: CODECOV_TOKEN not set, skipping Codecov upload"
+              exit 0
+            fi
             curl -Os https://uploader.codecov.io/latest/linux/codecov
             chmod +x codecov
             ./codecov -t "${CODECOV_TOKEN}" -f apps/api/coverage.xml -F backend
@@ -224,6 +229,14 @@ jobs:
       - setup_remote_docker:
           docker_layer_caching: true
       - run:
+          name: Validate Docker credentials
+          command: |
+            if [ -z "$GITHUB_USER" ] || [ -z "$GITHUB_TOKEN" ]; then
+              echo "Error: GITHUB_USER or GITHUB_TOKEN not set"
+              echo "Set these in CircleCI project settings → Environment Variables"
+              exit 1
+            fi
+      - run:
           name: Build and push Docker image
           command: |
             SHORT="${CIRCLE_SHA1:0:7}"
@@ -237,6 +250,14 @@ jobs:
   deploy-render:
     executor: base
     steps:
+      - run:
+          name: Validate Render credentials
+          command: |
+            if [ -z "$RENDER_SERVICE_ID" ] || [ -z "$RENDER_API_KEY" ]; then
+              echo "Error: RENDER_SERVICE_ID or RENDER_API_KEY not set"
+              echo "Set these in CircleCI project settings → Environment Variables"
+              exit 1
+            fi
       - run:
           name: Trigger Render deploy
           command: |

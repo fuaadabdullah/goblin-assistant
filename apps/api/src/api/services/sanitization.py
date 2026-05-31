@@ -92,9 +92,7 @@ class PIISanitizer:
     def __init__(self) -> None:
         self._cache = {}
 
-    def detect_pii(
-        self, text: str, log_detection: bool = False
-    ) -> List[PIIDetection]:
+    def detect_pii(self, text: str, log_detection: bool = False) -> List[PIIDetection]:
         detections: List[PIIDetection] = []
         for pii_type, pattern in PII_PATTERNS.items():
             for match in re.finditer(pattern, text, re.IGNORECASE):
@@ -130,13 +128,9 @@ class PIISanitizer:
         sanitized = text
         for pii_type, pattern in PII_PATTERNS.items():
             if replacement_mode == "HASH":
-                def _hash_replacement(
-                    match: re.Match[str], token: str = pii_type
-                ) -> str:
-                    return (
-                        f"[{token.upper()}_"
-                        f"{hash_message_id(match.group(0))[:8]}]"
-                    )
+
+                def _hash_replacement(match: re.Match[str], token: str = pii_type) -> str:
+                    return f"[{token.upper()}_{hash_message_id(match.group(0))[:8]}]"
 
                 sanitized = re.sub(
                     pattern,

@@ -1,17 +1,11 @@
-"""
-API tests for Goblin Assistant using pytest and TestClient
-"""
+"""API tests for Goblin Assistant using pytest and TestClient."""
 
 
 def _unwrap(response):
-    """Return the inner data payload if the API uses the SuccessEnvelope, else return response as-is."""
+    """Return inner data payload if wrapped, otherwise raw JSON."""
     try:
-        # response may be a Response object or a dict
-        if hasattr(response, "json"):
-            payload = response.json()
-        else:
-            payload = response
-    except Exception:
+        payload = response.json() if hasattr(response, "json") else response
+    except ValueError:
         return response
     if isinstance(payload, dict) and "data" in payload:
         return payload["data"]
@@ -19,7 +13,7 @@ def _unwrap(response):
 
 
 def test_root_endpoint(client):
-    """Test the root endpoint returns correct response"""
+    """Test the root endpoint returns correct response."""
     response = client.get("/")
     assert response.status_code == 200
     data = _unwrap(response)
@@ -30,7 +24,7 @@ def test_root_endpoint(client):
 
 
 def test_health_endpoint(client):
-    """Test the health endpoint"""
+    """Test the health endpoint."""
     response = client.get("/health")
     assert response.status_code == 200
     data = _unwrap(response)
@@ -38,7 +32,7 @@ def test_health_endpoint(client):
 
 
 def test_chat_conversations_endpoint(authenticated_client):
-    """Test creating a conversation"""
+    """Test creating a conversation."""
     response = authenticated_client.post(
         "/chat/conversations",
         json={"title": "Test Conversation", "user_id": "ignored-user"},
@@ -51,7 +45,6 @@ def test_chat_conversations_endpoint(authenticated_client):
 
     conversation_id = data["conversation_id"]
 
-    # Test getting the conversation
     response = authenticated_client.get(f"/chat/conversations/{conversation_id}")
     assert response.status_code == 200
     data = _unwrap(response)
@@ -68,7 +61,7 @@ def test_chat_conversations_list_returns_snippet(authenticated_client):
         "/chat/conversations", json={"title": "Snippet Conversation"}
     )
     assert response.status_code == 200
-    conversation_id = response.json()["conversation_id"]
+    conversation_id = _unwrap(response)["conversation_id"]
 
     import_response = authenticated_client.post(
         f"/chat/conversations/{conversation_id}/import",
@@ -96,16 +89,28 @@ def test_chat_conversations_list_returns_snippet(authenticated_client):
 
 
 def test_chat_conversation_routes_are_user_scoped():
-    from conftest import _build_authenticated_client
+    import importlib
 
-    with _build_authenticated_client("test-user", "test@example.com") as authenticated_client:
+    conftest = importlib.import_module("conftest")
+    _build_authenticated_client = getattr(
+        conftest,
+        "_build_authenticated_client",
+    )
+
+    with _build_authenticated_client(
+        "test-user",
+        "test@example.com",
+    ) as authenticated_client:
         response = authenticated_client.post(
             "/chat/conversations", json={"title": "Private Conversation"}
         )
         assert response.status_code == 200
         conversation_id = _unwrap(response)["conversation_id"]
 
-    with _build_authenticated_client("other-user", "other@example.com") as other_client:
+    with _build_authenticated_client(
+        "other-user",
+        "other@example.com",
+    ) as other_client:
         response = other_client.get(f"/chat/conversations/{conversation_id}")
         assert response.status_code == 404
 
@@ -151,17 +156,23 @@ def test_send_message_uses_latest_user_message_and_honors_provider(
     assert response.status_code == 200
     conversation_id = _unwrap(response)["conversation_id"]
 
+    from unittest.mock import AsyncMock
+
     captured = {}
 
-    async def fake_process_message(*args, **kwargs):
-        return {
-            "classification": {"type": "working", "confidence": 1.0},
-            "decision": {"actions": [], "confidence": 1.0},
-            "execution": {"actions_executed": []},
-            "processed_at": "2026-03-07T12:00:00.000000",
-        }
+    async_response = {
+        "classification": {"type": "working", "confidence": 1.0},
+        "decision": {"actions": [], "confidence": 1.0},
+        "execution": {"actions_executed": []},
+        "processed_at": "2026-03-07T12:00:00.000000",
+    }
 
-    async def fake_invoke_provider(pid, model, payload, timeout_ms, stream=False):
+    mock_wti = type("_FakeWTI", (), {})()
+    mock_wti.process_message = AsyncMock(return_value=async_response)
+
+    def fake_invoke_provider(pid, model, payload, timeout_ms, stream=False):
+        _ = timeout_ms
+        _ = stream
         captured["pid"] = pid
         captured["messages"] = payload["messages"]
         return {
@@ -177,11 +188,17 @@ def test_send_message_uses_latest_user_message_and_honors_provider(
             },
         }
 
+    def fake_get_write_time_intelligence():
+        return mock_wti
+
     monkeypatch.setattr(
-        "api.chat_router.write_time_intelligence.process_message",
-        fake_process_message,
+        "api.chat_router.messages._get_write_time_intelligence",
+        fake_get_write_time_intelligence,
     )
-    monkeypatch.setattr("api.chat_router.invoke_provider", fake_invoke_provider)
+    monkeypatch.setattr(
+        "api.chat_router.invoke_provider",
+        fake_invoke_provider,
+    )
 
     response = authenticated_client.post(
         f"/chat/conversations/{conversation_id}/messages",
@@ -200,30 +217,27 @@ def test_send_message_uses_latest_user_message_and_honors_provider(
 
 
 def test_routing_providers_endpoint(client):
-    """Test the routing providers endpoint"""
+    """Test the routing providers endpoint."""
     response = client.get("/routing/providers")
     assert response.status_code == 200
     data = _unwrap(response)
     assert isinstance(data, list)
-    # Should contain at least some providers
     assert len(data) > 0
 
 
 def test_api_keys_status_endpoint(client):
-    """Test the API keys status endpoint"""
+    """Test the API keys status endpoint."""
     response = client.get("/settings/api-keys/status")
-    # This might return 404 if not implemented, but should not crash
-    assert response.status_code in [
-        200,
-        404,
-        500,
-    ]  # Allow various states during development
+    assert response.status_code in [200, 404, 500]
 
 
 def test_execute_router_removed(client):
     """Guard: /execute was retired and must not be reintroduced."""
-    response = client.post("/execute/", json={"goblin": "test", "task": "test"})
-    assert response.status_code == 404 or response.status_code == 405
+    response = client.post(
+        "/execute/",
+        json={"goblin": "test", "task": "test"},
+    )
+    assert response.status_code in [404, 405]
 
     response = client.get("/execute/status/00000000-0000-0000-0000-000000000000")
-    assert response.status_code == 404 or response.status_code == 405
+    assert response.status_code in [404, 405]

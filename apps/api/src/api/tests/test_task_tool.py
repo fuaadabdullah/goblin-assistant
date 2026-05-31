@@ -85,7 +85,9 @@ class TestTaskLifecycle:
         created = await TOOL_REGISTRY["create_task"].handler(title="X", user_id="u1")
         task_id = created["task"]["task_id"]
 
-        bad = await TOOL_REGISTRY["update_task"].handler(task_id=task_id, status="archived", user_id="u1")
+        bad = await TOOL_REGISTRY["update_task"].handler(
+            task_id=task_id, status="archived", user_id="u1"
+        )
         assert "error" in bad
         assert "Invalid status" in bad["error"]
 

@@ -115,7 +115,10 @@ def _mock_health_status(status_code: int):
 
 def test_register_endpoint_success():
     with (
-        patch("api.ops_routes.colab_worker._probe_health", new=AsyncMock(return_value={"healthy": True})),
+        patch(
+            "api.ops_routes.colab_worker._probe_health",
+            new=AsyncMock(return_value={"healthy": True}),
+        ),
         patch("api.providers.dispatcher.dispatcher.update_provider_endpoint"),
         patch("api.services.provider_health.health_monitor.probe_provider", new=AsyncMock()),
         patch.dict(os.environ, {"COLAB_WORKER_API_KEY": _API_KEY, "ENVIRONMENT": "development"}),
@@ -189,7 +192,10 @@ def test_register_endpoint_probe_timeout():
         async def _timeout(_url, _key):
             raise HTTPException(status_code=504, detail="timeout")
 
-        with patch("api.ops_routes.colab_worker._probe_health", new=AsyncMock(side_effect=HTTPException(status_code=504, detail="timeout"))):
+        with patch(
+            "api.ops_routes.colab_worker._probe_health",
+            new=AsyncMock(side_effect=HTTPException(status_code=504, detail="timeout")),
+        ):
             client = TestClient(app, raise_server_exceptions=False)
             resp = client.post(
                 "/colab-worker/register",
@@ -226,7 +232,10 @@ def test_register_endpoint_probe_unhealthy():
 
 def test_env_not_written_in_production():
     with (
-        patch("api.ops_routes.colab_worker._probe_health", new=AsyncMock(return_value={"healthy": True})),
+        patch(
+            "api.ops_routes.colab_worker._probe_health",
+            new=AsyncMock(return_value={"healthy": True}),
+        ),
         patch("api.providers.dispatcher.dispatcher.update_provider_endpoint"),
         patch("api.services.provider_health.health_monitor.probe_provider", new=AsyncMock()),
         patch.dict(os.environ, {"COLAB_WORKER_API_KEY": _API_KEY, "ENVIRONMENT": "production"}),

@@ -83,9 +83,7 @@ def apply_context_token_budget(
         "ephemeral_messages",
         "tasks",
     ]
-    kept_items: Dict[str, List[Dict[str, Any]]] = {
-        bucket: [] for bucket in priority_buckets
-    }
+    kept_items: Dict[str, List[Dict[str, Any]]] = {bucket: [] for bucket in priority_buckets}
     total_tokens = 0
 
     for bucket in priority_buckets:

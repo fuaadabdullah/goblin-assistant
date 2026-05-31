@@ -457,7 +457,9 @@ class TestExecutorMemoryWiring:
             }
 
         # Mock execute_tool_call to return a non-financial result (no promotion)
-        with patch("api.assistant_tools.executor.execute_tool_call", new_callable=AsyncMock) as mock_exec:
+        with patch(
+            "api.assistant_tools.executor.execute_tool_call", new_callable=AsyncMock
+        ) as mock_exec:
             mock_exec.return_value = {"ticker": "AAPL", "price": 150.0}
 
             with patch(
@@ -532,7 +534,9 @@ class TestExecutorMemoryWiring:
                 },
             }
 
-        with patch("api.assistant_tools.executor.execute_tool_call", new_callable=AsyncMock) as mock_exec:
+        with patch(
+            "api.assistant_tools.executor.execute_tool_call", new_callable=AsyncMock
+        ) as mock_exec:
             mock_exec.return_value = {"ticker": "AAPL", "price": 150.0}
 
             with patch(
@@ -598,7 +602,9 @@ class TestExecutorMemoryWiring:
                 },
             }
 
-        with patch("api.assistant_tools.executor.execute_tool_call", new_callable=AsyncMock) as mock_exec:
+        with patch(
+            "api.assistant_tools.executor.execute_tool_call", new_callable=AsyncMock
+        ) as mock_exec:
             mock_exec.return_value = {"error": "No FCF data available"}
 
             with patch(

@@ -57,7 +57,7 @@ def _check_bearer(request: Request) -> None:
             detail="Missing or malformed Authorization header",
             headers={"WWW-Authenticate": "Bearer"},
         )
-    if auth[len("Bearer "):] != expected:
+    if auth[len("Bearer ") :] != expected:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Invalid COLAB_WORKER_API_KEY",

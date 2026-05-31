@@ -129,7 +129,10 @@ class TestPdfContextInjection:
         fake_message_type = SimpleNamespace(LEARNING="learning")
 
         with (
-            patch("api.chat_router.messages._cr._require_owned_conversation", side_effect=fake_require_owned_conversation),
+            patch(
+                "api.chat_router.messages._cr._require_owned_conversation",
+                side_effect=fake_require_owned_conversation,
+            ),
             patch(
                 "api.chat_router.messages._cr.conversation_store.add_message_to_conversation",
                 new=AsyncMock(return_value=True),
@@ -222,7 +225,10 @@ class TestPdfContextInjection:
         fake_message_type = SimpleNamespace(LEARNING="learning")
 
         with (
-            patch("api.chat_router.messages._cr._require_owned_conversation", side_effect=fake_require_owned_conversation),
+            patch(
+                "api.chat_router.messages._cr._require_owned_conversation",
+                side_effect=fake_require_owned_conversation,
+            ),
             patch(
                 "api.chat_router.messages._cr.conversation_store.add_message_to_conversation",
                 new=AsyncMock(return_value=True),

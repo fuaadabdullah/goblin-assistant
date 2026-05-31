@@ -79,7 +79,9 @@ def _build_findings(query: str, sources: List[Dict[str, str]]) -> List[str]:
         return [f"No high-confidence sources were found for '{query}'."]
 
     findings.append(f"Collected {len(sources)} sources for '{query}'.")
-    unique_domains = len({s.get("url", "").split("/")[2] for s in sources if "://" in s.get("url", "")})
+    unique_domains = len(
+        {s.get("url", "").split("/")[2] for s in sources if "://" in s.get("url", "")}
+    )
     findings.append(f"Coverage spans {unique_domains} distinct source domains.")
 
     for source in sources[:3]:
@@ -178,13 +180,17 @@ async def _handle_verify_sources(
             warnings.append("missing_published_at")
             confidence -= 0.05
 
-        if domain and source_type == "academic" and not any(
-            domain.endswith(d) for d in _KNOWN_ACADEMIC_DOMAINS
+        if (
+            domain
+            and source_type == "academic"
+            and not any(domain.endswith(d) for d in _KNOWN_ACADEMIC_DOMAINS)
         ):
             warnings.append("academic_source_domain_unrecognized")
             confidence -= 0.07
-        if domain and source_type == "web" and any(
-            domain.endswith(d) for d in _KNOWN_ACADEMIC_DOMAINS
+        if (
+            domain
+            and source_type == "web"
+            and any(domain.endswith(d) for d in _KNOWN_ACADEMIC_DOMAINS)
         ):
             warnings.append("web_source_points_to_academic_domain")
             confidence -= 0.03
@@ -321,7 +327,9 @@ async def _handle_lightweight_research(
     if include_web:
         web_result = await _handle_web_search(query=query, max_results=max_sources)
         if "error" in web_result:
-            coverage["partial_failures"].append({"provider": "web_search", "error": web_result["error"]})
+            coverage["partial_failures"].append(
+                {"provider": "web_search", "error": web_result["error"]}
+            )
             coverage["providers"]["web_search"] = {"ok": False, "count": 0}
         else:
             web_sources = _to_source_items(web_result.get("results", []), source_type="web")
@@ -329,7 +337,9 @@ async def _handle_lightweight_research(
             sources.extend(web_sources)
 
     if include_academic:
-        acad_result = await _handle_academic_search(query=query, source="arxiv", max_results=max_sources)
+        acad_result = await _handle_academic_search(
+            query=query, source="arxiv", max_results=max_sources
+        )
         if "error" in acad_result:
             coverage["partial_failures"].append(
                 {"provider": "academic_search", "error": acad_result["error"]}

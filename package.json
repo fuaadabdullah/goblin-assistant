@@ -26,5 +26,10 @@
     "validate-env": "mkdir -p .tmp && TMPDIR=\"$PWD/.tmp\" pnpm --filter @goblin/web validate-env",
     "api:dev": "cd apps/api && PYTHONPATH=src uvicorn api.main:app --reload --port 8001",
     "web:dev": "mkdir -p .tmp && TMPDIR=\"$PWD/.tmp\" pnpm --filter @goblin/web dev"
+  },
+  "pnpm": {
+    "overrides": {
+      "postcss": ">=8.5.10"
+    }
   }
 }

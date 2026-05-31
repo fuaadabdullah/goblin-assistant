@@ -107,9 +107,7 @@ class RetrievalService:
                 from ..observability_service import observability_service
 
                 # Build retrieval trace data
-                total_tokens_used = sum(
-                    len(r.get("content", "")) // 4 for r in results
-                )
+                total_tokens_used = sum(len(r.get("content", "")) // 4 for r in results)
                 retrieval_trace_data = {
                     "request_id": f"retrieval_{datetime.utcnow().isoformat()}",
                     "user_id": user_id,
@@ -122,8 +120,7 @@ class RetrievalService:
                                 "tokens": len(result.get("content", ""))
                                 // 4,  # Rough token estimation
                                 "score": result.get("score", 0.0),
-                                "original_tokens": len(result.get("content", ""))
-                                // 4,
+                                "original_tokens": len(result.get("content", "")) // 4,
                             }
                             for result in results
                         ]
@@ -233,9 +230,7 @@ class RetrievalService:
             """
             )
 
-            result = await session.execute(
-                query, {"conversation_ids": conversation_ids, "k": k}
-            )
+            result = await session.execute(query, {"conversation_ids": conversation_ids, "k": k})
             rows = result.fetchall()
 
             return [
@@ -313,11 +308,7 @@ class RetrievalService:
                         "category": row.category,
                         "metadata": row.metadata,
                         "created_at": row.created_at,
-                        "score": (
-                            float(row.similarity_score)
-                            if row.similarity_score
-                            else 0.0
-                        ),
+                        "score": (float(row.similarity_score) if row.similarity_score else 0.0),
                         "source_type": "memory",
                     }
                     for row in rows
@@ -366,9 +357,7 @@ class RetrievalService:
         try:
             from ..tool_result_memory_service import get_financial_profile
 
-            fin_profile = await get_financial_profile(
-                user_id, retrieval_svc=self
-            )
+            fin_profile = await get_financial_profile(user_id, retrieval_svc=self)
             if any(fin_profile.values()):
                 context_bundle["financial_profile"] = fin_profile
         except Exception as e:

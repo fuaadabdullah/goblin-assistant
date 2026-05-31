@@ -60,10 +60,13 @@ class TestLightweightResearch:
                 ]
             }
         )
-        with patch("api.assistant_tools.skills.research_tool._handle_web_search", mock_web), patch(
-            "api.assistant_tools.skills.research_tool._handle_academic_search", mock_acad
+        with (
+            patch("api.assistant_tools.skills.research_tool._handle_web_search", mock_web),
+            patch("api.assistant_tools.skills.research_tool._handle_academic_search", mock_acad),
         ):
-            result = await TOOL_REGISTRY["lightweight_research"].handler(query="topic", max_sources=6)
+            result = await TOOL_REGISTRY["lightweight_research"].handler(
+                query="topic", max_sources=6
+            )
 
         assert "error" not in result
         assert len(result["sources"]) == 2
@@ -82,8 +85,9 @@ class TestLightweightResearch:
                 ]
             }
         )
-        with patch("api.assistant_tools.skills.research_tool._handle_web_search", mock_web), patch(
-            "api.assistant_tools.skills.research_tool._handle_academic_search", mock_acad
+        with (
+            patch("api.assistant_tools.skills.research_tool._handle_web_search", mock_web),
+            patch("api.assistant_tools.skills.research_tool._handle_academic_search", mock_acad),
         ):
             result = await TOOL_REGISTRY["lightweight_research"].handler(query="topic")
 
@@ -166,7 +170,9 @@ class TestResearchPdfExtract:
             "warnings": [],
             "ocr_attempted": False,
         }
-        with patch("api.assistant_tools.skills.research_tool.extract_pdf", return_value=fake_extract):
+        with patch(
+            "api.assistant_tools.skills.research_tool.extract_pdf", return_value=fake_extract
+        ):
             result = await TOOL_REGISTRY["research_pdf_extract"].handler(path="papers/a.pdf")
 
         assert "error" not in result
@@ -188,7 +194,9 @@ class TestResearchPdfExtract:
             "warnings": ["ocr_deps_unavailable: tesseract missing"],
             "ocr_attempted": True,
         }
-        with patch("api.assistant_tools.skills.research_tool.extract_pdf", return_value=fake_extract):
+        with patch(
+            "api.assistant_tools.skills.research_tool.extract_pdf", return_value=fake_extract
+        ):
             result = await TOOL_REGISTRY["research_pdf_extract"].handler(path="papers/b.pdf")
 
         assert result["pdf_extraction_status"] == "ocr_missing_deps"
@@ -211,8 +219,12 @@ class TestResearchPdfExtract:
             "warnings": [],
             "ocr_attempted": False,
         }
-        with patch("api.assistant_tools.skills.research_tool.extract_pdf", return_value=fake_extract):
-            result = await TOOL_REGISTRY["research_pdf_extract"].handler(path="papers/c.pdf", max_chunks=3)
+        with patch(
+            "api.assistant_tools.skills.research_tool.extract_pdf", return_value=fake_extract
+        ):
+            result = await TOOL_REGISTRY["research_pdf_extract"].handler(
+                path="papers/c.pdf", max_chunks=3
+            )
 
         assert result["selected_count"] == 3
         assert result["total_chunks"] == 20
@@ -234,10 +246,15 @@ class TestResearchPdfExtract:
             "ocr_attempted": False,
         }
         selected = [{"chunk_id": "rel-1", "text": "relevant"}]
-        with patch("api.assistant_tools.skills.research_tool.extract_pdf", return_value=fake_extract), patch(
-            "api.assistant_tools.skills.research_tool.select_relevant_chunks",
-            return_value=selected,
-        ) as mock_select:
+        with (
+            patch(
+                "api.assistant_tools.skills.research_tool.extract_pdf", return_value=fake_extract
+            ),
+            patch(
+                "api.assistant_tools.skills.research_tool.select_relevant_chunks",
+                return_value=selected,
+            ) as mock_select,
+        ):
             result = await TOOL_REGISTRY["research_pdf_extract"].handler(
                 path="papers/d.pdf",
                 query="what is relevant",

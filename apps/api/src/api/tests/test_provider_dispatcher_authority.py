@@ -75,10 +75,7 @@ def test_dispatcher_resolves_provider_aliases():
     dispatcher = ProviderDispatcher()
 
     assert dispatcher.get_provider("google").provider_id == "gemini"
-    assert (
-        dispatcher.get_provider("azure-openai").provider_id
-        == "azure_openai"
-    )
+    assert dispatcher.get_provider("azure-openai").provider_id == "azure_openai"
     assert dispatcher.get_provider("vertex").provider_id == "vertex_ai"
 
 

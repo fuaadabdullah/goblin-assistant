@@ -459,7 +459,9 @@ class TestExecutorVisualizationWiring:
 
         dcf_result = TestDCFVisualizations.SAMPLE_DCF_RESULT
 
-        with patch("api.assistant_tools.executor.execute_tool_call", new_callable=AsyncMock) as mock_exec:
+        with patch(
+            "api.assistant_tools.executor.execute_tool_call", new_callable=AsyncMock
+        ) as mock_exec:
             mock_exec.return_value = dcf_result
             result = await run_tool_loop(
                 messages=[{"role": "user", "content": "Value AAPL"}],
@@ -509,7 +511,9 @@ class TestExecutorVisualizationWiring:
 
         invoke_fn = AsyncMock(side_effect=[tool_call_response, final_response])
 
-        with patch("api.assistant_tools.executor.execute_tool_call", new_callable=AsyncMock) as mock_exec:
+        with patch(
+            "api.assistant_tools.executor.execute_tool_call", new_callable=AsyncMock
+        ) as mock_exec:
             mock_exec.return_value = {"price": 170.0, "ticker": "AAPL"}
             result = await run_tool_loop(
                 messages=[{"role": "user", "content": "AAPL quote"}],
@@ -559,7 +563,9 @@ class TestExecutorVisualizationWiring:
 
         invoke_fn = AsyncMock(side_effect=[tool_call_response, final_response])
 
-        with patch("api.assistant_tools.executor.execute_tool_call", new_callable=AsyncMock) as mock_exec:
+        with patch(
+            "api.assistant_tools.executor.execute_tool_call", new_callable=AsyncMock
+        ) as mock_exec:
             mock_exec.return_value = {"error": "Ticker not found"}
             result = await run_tool_loop(
                 messages=[{"role": "user", "content": "Value XYZ"}],

@@ -7,9 +7,7 @@ import sys
 from pathlib import Path
 
 _REPO_ROOT = Path(__file__).resolve().parents[5]
-_SCHEMA_PATH = (
-    _REPO_ROOT / "packages" / "shared" / "src" / "provider_config.py"
-)
+_SCHEMA_PATH = _REPO_ROOT / "packages" / "shared" / "src" / "provider_config.py"
 
 _SPEC = importlib.util.spec_from_file_location("provider_config", _SCHEMA_PATH)
 if _SPEC is None or _SPEC.loader is None:

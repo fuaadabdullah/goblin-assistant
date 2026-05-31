@@ -71,8 +71,12 @@ def _provider_supports_tools(provider_id: Optional[str]) -> bool:
 
 
 def _attachment_context_limits() -> tuple[int, int]:
-    max_chunks = int(os.getenv("GOBLIN_ATTACHMENT_CONTEXT_MAX_CHUNKS", str(DEFAULT_MAX_CONTEXT_CHUNKS)))
-    max_chars = int(os.getenv("GOBLIN_ATTACHMENT_CONTEXT_MAX_CHARS", str(DEFAULT_MAX_CONTEXT_CHARS)))
+    max_chunks = int(
+        os.getenv("GOBLIN_ATTACHMENT_CONTEXT_MAX_CHUNKS", str(DEFAULT_MAX_CONTEXT_CHUNKS))
+    )
+    max_chars = int(
+        os.getenv("GOBLIN_ATTACHMENT_CONTEXT_MAX_CHARS", str(DEFAULT_MAX_CONTEXT_CHARS))
+    )
     return max_chunks, max_chars
 
 

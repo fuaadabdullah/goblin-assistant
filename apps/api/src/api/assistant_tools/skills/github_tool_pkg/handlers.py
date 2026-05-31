@@ -29,11 +29,7 @@ async def handle_github_list_repos(
     owner_type: str = "user",
     limit: int = 30,
 ) -> Dict[str, Any]:
-    path = (
-        f"/users/{owner}/repos"
-        if owner_type == "user"
-        else f"/orgs/{owner}/repos"
-    )
+    path = f"/users/{owner}/repos" if owner_type == "user" else f"/orgs/{owner}/repos"
     data = await get(path, {"per_page": min(limit, 100), "sort": "updated"})
     if isinstance(data, dict) and "error" in data:
         return data

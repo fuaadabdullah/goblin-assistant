@@ -165,9 +165,7 @@ register_tool(
             ToolParameter(
                 name="path",
                 type="string",
-                description=(
-                    "Limit the diff to this file or directory path."
-                ),
+                description=("Limit the diff to this file or directory path."),
                 required=False,
             ),
         ],
@@ -191,9 +189,7 @@ async def _handle_git_log(
             repo = _resolve_repo(repo_path)
         except ValueError as exc:
             return {"error": str(exc)}
-        return _run_git(
-            ["log", "--oneline", f"-{max(1, limit)}"], repo
-        )
+        return _run_git(["log", "--oneline", f"-{max(1, limit)}"], repo)
 
     return await asyncio.to_thread(_run)
 
@@ -216,9 +212,7 @@ register_tool(
             ToolParameter(
                 name="limit",
                 type="integer",
-                description=(
-                    "Number of recent commits to show. Defaults to 20."
-                ),
+                description=("Number of recent commits to show. Defaults to 20."),
                 required=False,
                 default=20,
             ),
@@ -354,12 +348,7 @@ async def _handle_git_branch(
                 return {"error": "name is required for action=delete"}
             return _run_git(["branch", "-d", name], repo)
         else:
-            return {
-                "error": (
-                    f"Unknown action '{action}'. "
-                    "Use: list, create, delete."
-                )
-            }
+            return {"error": (f"Unknown action '{action}'. Use: list, create, delete.")}
 
     return await asyncio.to_thread(_run)
 
@@ -382,9 +371,7 @@ register_tool(
             ToolParameter(
                 name="name",
                 type="string",
-                description=(
-                    "Branch name. Required for create and delete actions."
-                ),
+                description=("Branch name. Required for create and delete actions."),
                 required=False,
             ),
             ToolParameter(
@@ -432,9 +419,7 @@ register_tool(
             ToolParameter(
                 name="target",
                 type="string",
-                description=(
-                    "Branch name to switch to, or file path to restore."
-                ),
+                description=("Branch name to switch to, or file path to restore."),
             ),
             ToolParameter(
                 name="repo_path",
@@ -537,20 +522,17 @@ async def _handle_git_clone(
     dest: Optional[str] = None,
 ) -> Dict[str, Any]:
     def _run() -> Dict[str, Any]:
-        workspace = Path(
-            os.environ.get("GOBLIN_FILE_WORKSPACE", "~/goblin-workspace")
-        ).expanduser().resolve()
+        workspace = (
+            Path(os.environ.get("GOBLIN_FILE_WORKSPACE", "~/goblin-workspace"))
+            .expanduser()
+            .resolve()
+        )
 
         if dest:
             target = (workspace / dest).resolve()
             # Sandbox: destination must stay within workspace
             if workspace not in target.parents and target != workspace:
-                return {
-                    "error": (
-                        f"Destination '{dest}' resolves outside the "
-                        "goblin workspace."
-                    )
-                }
+                return {"error": (f"Destination '{dest}' resolves outside the goblin workspace.")}
         else:
             # Default: clone into workspace root (git picks folder name)
             target = workspace

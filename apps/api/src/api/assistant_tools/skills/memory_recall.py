@@ -76,8 +76,7 @@ register_tool(
                 name="user_id",
                 type="string",
                 description=(
-                    "Authenticated user id scope for memory retrieval. "
-                    "Provided by runtime context."
+                    "Authenticated user id scope for memory retrieval. Provided by runtime context."
                 ),
             ),
             ToolParameter(

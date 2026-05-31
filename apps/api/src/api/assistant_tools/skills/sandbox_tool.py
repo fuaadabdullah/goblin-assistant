@@ -45,17 +45,26 @@ def _run_code(code: str, language: str, timeout: int) -> Dict[str, Any]:
         if sandbox_enabled:
             sandbox_user = os.getenv("SANDBOX_USER", "runner")
             cmd = [
-                "docker", "run",
+                "docker",
+                "run",
                 "--rm",
-                "--network", "none",
-                "--memory", "256m",
-                "--cpus", "0.5",
+                "--network",
+                "none",
+                "--memory",
+                "256m",
+                "--cpus",
+                "0.5",
                 "--read-only",
-                "--cap-drop", "all",
-                "--security-opt", "no-new-privileges",
-                "--user", sandbox_user,
-                "--tmpfs", "/tmp:size=64m,mode=1777",
-                "-v", f"{tmpdir}:/code:ro",
+                "--cap-drop",
+                "all",
+                "--security-opt",
+                "no-new-privileges",
+                "--user",
+                sandbox_user,
+                "--tmpfs",
+                "/tmp:size=64m,mode=1777",
+                "-v",
+                f"{tmpdir}:/code:ro",
                 sandbox_image,
                 "python" if language == "python" else "node",
                 f"/code/{filename}",
@@ -158,12 +167,7 @@ async def _handle_run_sandbox_template(
         template = get_template(template_name)
         if template is None:
             available = ", ".join(t["name"] for t in list_templates())
-            return {
-                "error": (
-                    f"Unknown template '{template_name}'. "
-                    f"Available: {available}"
-                )
-            }
+            return {"error": (f"Unknown template '{template_name}'. Available: {available}")}
 
         try:
             params = json.loads(parameters)

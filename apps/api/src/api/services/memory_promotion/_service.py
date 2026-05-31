@@ -38,9 +38,7 @@ class MemoryPromotionService:
             "content_quality_threshold": 0.7,
         }
 
-    async def evaluate_promotion_candidate(
-        self, candidate: PromotionCandidate
-    ) -> PromotionResult:
+    async def evaluate_promotion_candidate(self, candidate: PromotionCandidate) -> PromotionResult:
         (
             gates_passed,
             gates_failed,
@@ -94,9 +92,7 @@ class MemoryPromotionService:
         reasons: List[str] = []
 
         quality_score = evaluate_content_quality(candidate.content)
-        if quality_score >= self._promotion_thresholds[
-            "content_quality_threshold"
-        ]:
+        if quality_score >= self._promotion_thresholds["content_quality_threshold"]:
             gates_passed.append(PromotionGate.CONTENT_QUALITY)
         else:
             gates_failed.append(PromotionGate.CONTENT_QUALITY)
@@ -123,9 +119,7 @@ class MemoryPromotionService:
             )
 
         stability_score = evaluate_stability(candidate.content)
-        if stability_score >= self._promotion_thresholds[
-            "stability_score_threshold"
-        ]:
+        if stability_score >= self._promotion_thresholds["stability_score_threshold"]:
             gates_passed.append(PromotionGate.STABILITY)
         else:
             gates_failed.append(PromotionGate.STABILITY)
@@ -196,9 +190,7 @@ class MemoryPromotionService:
             logger.error("Failed to evaluate repetition", error=str(exc))
             return 0
 
-    async def _evaluate_time_span(
-        self, candidate: PromotionCandidate
-    ) -> float:
+    async def _evaluate_time_span(self, candidate: PromotionCandidate) -> float:
         try:
             similar_facts = await self._find_similar_memory_facts(
                 candidate.content,
@@ -236,9 +228,7 @@ class MemoryPromotionService:
     ) -> Any:
         try:
             memory_fact_id = uuid.uuid4().hex
-            embedding = await self.embedding_service.embed_text(
-                candidate.content
-            )
+            embedding = await self.embedding_service.embed_text(candidate.content)
             if not embedding:
                 logger.warning(
                     "Failed to generate embedding for promoted memory fact",
@@ -257,9 +247,7 @@ class MemoryPromotionService:
                         "source_conversation": candidate.source_conversation,
                         "source_type": candidate.source_type,
                         "promotion_confidence": candidate.confidence,
-                        "promotion_gates": [
-                            gate.value for gate in PromotionGate
-                        ],
+                        "promotion_gates": [gate.value for gate in PromotionGate],
                         "promoted_at": datetime.utcnow().isoformat(),
                     },
                 )
@@ -302,9 +290,7 @@ class MemoryPromotionService:
     def _classify_memory_category(self, content: str) -> Optional[str]:
         return classify_memory_category(content)
 
-    def _evaluate_finance_gates(
-        self, candidate: PromotionCandidate
-    ) -> Dict[str, Any]:
+    def _evaluate_finance_gates(self, candidate: PromotionCandidate) -> Dict[str, Any]:
         return evaluate_finance_gates(candidate)
 
 

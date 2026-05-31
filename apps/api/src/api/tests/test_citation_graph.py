@@ -226,11 +226,13 @@ async def test_citation_graph_depth2_fetches_secondary_neighbors():
     }
 
     responses = [
-        _ROOT_PAPER,                                  # _fetch_paper(root)
-        _references_response(_CITED_PAPER),           # depth-1 references
-        _citations_response(_CITING_PAPER),           # depth-1 citations
-        _references_response(secondary_paper),        # depth-2 refs for cited paper
-        _citations_response({"paperId": "", "title": "", "authors": [], "year": None, "url": "", "externalIds": {}}),  # depth-2 cits for citing paper (empty paperId → skipped)
+        _ROOT_PAPER,  # _fetch_paper(root)
+        _references_response(_CITED_PAPER),  # depth-1 references
+        _citations_response(_CITING_PAPER),  # depth-1 citations
+        _references_response(secondary_paper),  # depth-2 refs for cited paper
+        _citations_response(
+            {"paperId": "", "title": "", "authors": [], "year": None, "url": "", "externalIds": {}}
+        ),  # depth-2 cits for citing paper (empty paperId → skipped)
     ]
     ctx, mock_client = _build_client_mock(responses)
 
@@ -281,10 +283,10 @@ async def test_title_search_resolves_paper_id():
     search_resp = {"data": [{"paperId": _ROOT_PAPER["paperId"], "title": _ROOT_PAPER["title"]}]}
 
     responses = [
-        search_resp,                          # _resolve_paper_id title search
-        _ROOT_PAPER,                          # _fetch_paper(resolved)
-        _references_response(_CITED_PAPER),   # references
-        _citations_response(_CITING_PAPER),   # citations
+        search_resp,  # _resolve_paper_id title search
+        _ROOT_PAPER,  # _fetch_paper(resolved)
+        _references_response(_CITED_PAPER),  # references
+        _citations_response(_CITING_PAPER),  # citations
     ]
     ctx, _ = _build_client_mock(responses)
 

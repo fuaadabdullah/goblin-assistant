@@ -171,15 +171,11 @@ class ProviderHealthMonitor:
             if latency_ms > 0:
                 state.latency_samples.append(latency_ms)
                 sample_count = len(state.latency_samples)
-                state.avg_latency_ms = (
-                    sum(state.latency_samples) / sample_count
-                )
+                state.avg_latency_ms = sum(state.latency_samples) / sample_count
 
             if not item.get("configured"):
                 state.status = HealthStatus.UNKNOWN
-                state.last_error = item.get("health_reason") or (
-                    "Provider not configured"
-                )
+                state.last_error = item.get("health_reason") or ("Provider not configured")
                 state.consecutive_failures = 0
             elif item.get("healthy"):
                 state.status = HealthStatus.HEALTHY
@@ -188,15 +184,11 @@ class ProviderHealthMonitor:
                 state.consecutive_failures = 0
             elif item.get("billing_issue"):
                 state.status = HealthStatus.BILLING
-                state.last_error = item.get("health_reason") or (
-                    "Billing/quota issue"
-                )
+                state.last_error = item.get("health_reason") or ("Billing/quota issue")
                 state.consecutive_failures = 0
             else:
                 state.status = HealthStatus.UNHEALTHY
-                state.last_error = item.get("health_reason") or (
-                    "Health check failed"
-                )
+                state.last_error = item.get("health_reason") or ("Health check failed")
                 state.consecutive_failures = max(
                     state.consecutive_failures + 1,
                     1,
@@ -244,21 +236,9 @@ class ProviderHealthMonitor:
         inventory = await _dispatcher().get_provider_inventory(
             include_hidden=True,
         )
-        configured = [
-            item["id"]
-            for item in inventory
-            if item.get("configured")
-        ]
-        selectable = [
-            item["id"]
-            for item in inventory
-            if item.get("is_selectable")
-        ]
-        unconfigured = [
-            item["id"]
-            for item in inventory
-            if not item.get("configured")
-        ]
+        configured = [item["id"] for item in inventory if item.get("configured")]
+        selectable = [item["id"] for item in inventory if item.get("is_selectable")]
+        unconfigured = [item["id"] for item in inventory if not item.get("configured")]
         return {
             "configured": configured,
             "selectable": selectable,
@@ -354,9 +334,7 @@ class ProviderHealthMonitor:
             return {"error": f"Unknown provider: {provider_id}"}
 
         last_check = state.last_check.isoformat() if state.last_check else None
-        last_success = (
-            state.last_success.isoformat() if state.last_success else None
-        )
+        last_success = state.last_success.isoformat() if state.last_success else None
         return {
             "provider_id": canonical_id,
             "status": state.status.value,
@@ -376,13 +354,8 @@ class ProviderHealthMonitor:
         include_hidden: bool = False,
     ) -> Dict[str, Dict[str, Any]]:
         provider_ids = set(self.health_data.keys())
-        provider_ids.update(
-            _dispatcher().provider_ids(include_hidden=include_hidden)
-        )
-        return {
-            provider_id: self.get_status(provider_id)
-            for provider_id in sorted(provider_ids)
-        }
+        provider_ids.update(_dispatcher().provider_ids(include_hidden=include_hidden))
+        return {provider_id: self.get_status(provider_id) for provider_id in sorted(provider_ids)}
 
     def get_healthy_providers(self) -> List[str]:
         return [
@@ -395,8 +368,7 @@ class ProviderHealthMonitor:
         return [
             provider_id
             for provider_id, state in self.health_data.items()
-            if state.configured
-            and state.status in {HealthStatus.HEALTHY, HealthStatus.DEGRADED}
+            if state.configured and state.status in {HealthStatus.HEALTHY, HealthStatus.DEGRADED}
         ]
 
     def get_latency(self, provider_id: str) -> float:

@@ -55,4 +55,3 @@ def sanitize_error_message(message: str, secrets: Iterable[str]) -> str:
     sanitized = _BEARER_RE.sub(r"\1[REDACTED]", sanitized)
     sanitized = _OPENAI_KEY_RE.sub("[REDACTED]", sanitized)
     return sanitized
-

@@ -30,6 +30,7 @@ import logging
 try:
     import chromadb
     from chromadb.config import Settings
+
     CHROMADB_AVAILABLE = True
 except ImportError:
     chromadb = None  # type: ignore[assignment]
@@ -83,9 +84,7 @@ class SafeVectorStore:
             embedding_model: Sentence transformer model name
         """
         if not CHROMADB_AVAILABLE:
-            raise RuntimeError(
-                "chromadb is not installed. Install it with: pip install chromadb"
-            )
+            raise RuntimeError("chromadb is not installed. Install it with: pip install chromadb")
 
         self.collection_name = collection_name
         self.default_ttl_hours = default_ttl_hours

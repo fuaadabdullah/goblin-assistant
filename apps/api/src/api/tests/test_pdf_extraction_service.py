@@ -60,7 +60,12 @@ class TestChunkSelection:
         chunks = [
             {"chunk_id": "a", "page_start": 1, "page_end": 1, "text": "apple banana orange market"},
             {"chunk_id": "b", "page_start": 2, "page_end": 2, "text": "completely unrelated topic"},
-            {"chunk_id": "c", "page_start": 3, "page_end": 3, "text": "apple apple earnings and market data"},
+            {
+                "chunk_id": "c",
+                "page_start": 3,
+                "page_end": 3,
+                "text": "apple apple earnings and market data",
+            },
         ]
 
         selected = svc.select_relevant_chunks(

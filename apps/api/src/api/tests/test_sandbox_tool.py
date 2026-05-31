@@ -65,9 +65,7 @@ class TestExecuteCode:
 
     @pytest.mark.asyncio
     async def test_unsupported_language_returns_error(self):
-        result = await TOOL_REGISTRY["execute_code"].handler(
-            code='print(1)', language="ruby"
-        )
+        result = await TOOL_REGISTRY["execute_code"].handler(code="print(1)", language="ruby")
         assert "error" in result
         assert "unsupported" in result["error"].lower()
 
@@ -170,9 +168,7 @@ class TestExecuteCode:
             return _mock_proc()
 
         with patch("subprocess.run", side_effect=capture_run):
-            await TOOL_REGISTRY["execute_code"].handler(
-                code='pass', timeout=9999
-            )
+            await TOOL_REGISTRY["execute_code"].handler(code="pass", timeout=9999)
 
         assert captured["kwargs"]["timeout"] <= 120
 
@@ -225,7 +221,7 @@ class TestRunSandboxTemplate:
             parameters="[1, 2, 3]",
         )
         assert "error" in result
-        assert ("object" in result["error"].lower() or "dict" in result["error"].lower())
+        assert "object" in result["error"].lower() or "dict" in result["error"].lower()
 
     @pytest.mark.asyncio
     async def test_known_template_renders_and_runs(self, monkeypatch):
@@ -234,12 +230,14 @@ class TestRunSandboxTemplate:
         with patch("subprocess.run", return_value=_mock_proc(stdout=output)):
             result = await TOOL_REGISTRY["run_sandbox_template"].handler(
                 template_name="compound_interest",
-                parameters=json.dumps({
-                    "principal": 1000,
-                    "annual_rate": 0.12,
-                    "years": 1,
-                    "monthly_contribution": 0,
-                }),
+                parameters=json.dumps(
+                    {
+                        "principal": 1000,
+                        "annual_rate": 0.12,
+                        "years": 1,
+                        "monthly_contribution": 0,
+                    }
+                ),
             )
         assert result["exit_code"] == 0
         assert "error" not in result
@@ -257,12 +255,14 @@ class TestRunSandboxTemplate:
         with patch("subprocess.run", side_effect=capture_run):
             await TOOL_REGISTRY["run_sandbox_template"].handler(
                 template_name="compound_interest",
-                parameters=json.dumps({
-                    "principal": 1000,
-                    "annual_rate": 0.07,
-                    "years": 1,
-                    "monthly_contribution": 0,
-                }),
+                parameters=json.dumps(
+                    {
+                        "principal": 1000,
+                        "annual_rate": 0.07,
+                        "years": 1,
+                        "monthly_contribution": 0,
+                    }
+                ),
             )
 
         assert captured["timeout"] == 60

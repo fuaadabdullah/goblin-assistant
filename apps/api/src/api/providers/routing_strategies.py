@@ -15,8 +15,7 @@ class CandidateRouter(Protocol):
         self,
         candidates: Sequence[str],
         provider_costs: ProviderCosts,
-    ) -> list[str]:
-        ...
+    ) -> list[str]: ...
 
 
 class CheapestRouter:

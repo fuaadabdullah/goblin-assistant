@@ -218,9 +218,7 @@ async def lifespan(app: FastAPI):
             await artifact_cleanup_service.stop()
             logger.info("Artifact cleanup service stopped")
         except Exception as exc:
-            logger.warning(
-                "Failed to stop artifact cleanup service", error=str(exc)
-            )
+            logger.warning("Failed to stop artifact cleanup service", error=str(exc))
 
         logger.info("Stopping embedding worker")
         try:

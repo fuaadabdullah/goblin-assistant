@@ -28,9 +28,7 @@ _ATOM_NS = "http://www.w3.org/2005/Atom"
 # ---------------------------------------------------------------------------
 
 
-async def _search_arxiv(
-    query: str, max_results: int, category: Optional[str]
-) -> Dict[str, Any]:
+async def _search_arxiv(query: str, max_results: int, category: Optional[str]) -> Dict[str, Any]:
     search_query = f"all:{quote_plus(query)}"
     if category:
         search_query = f"cat:{category} AND {search_query}"

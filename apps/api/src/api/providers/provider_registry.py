@@ -128,9 +128,7 @@ class ProviderRuntimeConfig(BaseModel):
             default_deployment=default_deployment,
             models=[str(item) for item in models] if isinstance(models, list) else [],
             capabilities=(
-                [str(item) for item in capabilities]
-                if isinstance(capabilities, list)
-                else []
+                [str(item) for item in capabilities] if isinstance(capabilities, list) else []
             ),
             priority_tier=int(raw.get("priority_tier", 999) or 999),
             tier=str(raw.get("tier", "cloud") or "cloud"),
@@ -207,9 +205,7 @@ class ProviderRegistry:
         self,
         factories: Dict[str, ProviderFactory] | None = None,
     ) -> None:
-        self._factories: Dict[str, ProviderFactory] = dict(
-            factories or _DEFAULT_FACTORIES
-        )
+        self._factories: Dict[str, ProviderFactory] = dict(factories or _DEFAULT_FACTORIES)
 
     @classmethod
     def default(cls) -> "ProviderRegistry":

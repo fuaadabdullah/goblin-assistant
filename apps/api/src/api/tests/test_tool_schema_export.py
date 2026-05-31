@@ -130,13 +130,9 @@ def test_exported_tools_include_task_and_research_contracts():
     assert "verify_sources" in tools
     assert "research_pdf_extract" in tools
     assert (
-        tools["verify_sources"]["parameters"]["properties"]["strictness"]["default"]
-        == "standard"
+        tools["verify_sources"]["parameters"]["properties"]["strictness"]["default"] == "standard"
     )
-    assert (
-        tools["research_pdf_extract"]["parameters"]["properties"]["max_chunks"]["default"]
-        == 5
-    )
+    assert tools["research_pdf_extract"]["parameters"]["properties"]["max_chunks"]["default"] == 5
 
 
 def test_exported_tools_satisfy_general_assistant_required_set():

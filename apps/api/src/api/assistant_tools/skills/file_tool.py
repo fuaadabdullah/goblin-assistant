@@ -244,9 +244,7 @@ register_tool(
             ToolParameter(
                 name="max_results",
                 type="integer",
-                description=(
-                    "Maximum number of matching lines to return. Defaults to 50."
-                ),
+                description=("Maximum number of matching lines to return. Defaults to 50."),
                 required=False,
                 default=50,
             ),
@@ -414,10 +412,7 @@ register_tool(
             ToolParameter(
                 name="source",
                 type="string",
-                description=(
-                    "Current path of the file or directory, relative to "
-                    "workspace root."
-                ),
+                description=("Current path of the file or directory, relative to workspace root."),
             ),
             ToolParameter(
                 name="destination",
@@ -476,17 +471,12 @@ register_tool(
             ToolParameter(
                 name="source",
                 type="string",
-                description=(
-                    "Path of the file to copy, relative to workspace root."
-                ),
+                description=("Path of the file to copy, relative to workspace root."),
             ),
             ToolParameter(
                 name="destination",
                 type="string",
-                description=(
-                    "Destination path for the copy, relative to workspace "
-                    "root."
-                ),
+                description=("Destination path for the copy, relative to workspace root."),
             ),
         ],
         handler=_handle_copy_file,

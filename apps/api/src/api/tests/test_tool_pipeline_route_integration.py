@@ -291,7 +291,11 @@ class TestToolPipelineRouteIntegration:
         ):
             response = client.post(
                 "/chat/conversations/conv_1/messages",
-                json={"message": "price of NVDA", "provider": "anthropic", "model": "claude-3-5-haiku"},
+                json={
+                    "message": "price of NVDA",
+                    "provider": "anthropic",
+                    "model": "claude-3-5-haiku",
+                },
             )
 
         assert response.status_code == 200
@@ -333,7 +337,7 @@ class TestToolPipelineRouteIntegration:
         mock_exec = AsyncMock(return_value={"error": "Invalid arguments for get_stock_quote"})
         responses = [
             _openai_tool_result('{"ticker":"AAPL"}'),
-            _openai_tool_result('{not-valid-json'),
+            _openai_tool_result("{not-valid-json"),
             _text_result("openai", "Handled malformed args"),
         ]
 
@@ -439,8 +443,12 @@ class TestToolPipelineRouteIntegration:
             }
         )
         responses = [
-            _openai_tool_result('{"directory":"projects","max_depth":2}', tool_name="list_projects"),
-            _openai_tool_result('{"directory":"projects","max_depth":2}', tool_name="list_projects"),
+            _openai_tool_result(
+                '{"directory":"projects","max_depth":2}', tool_name="list_projects"
+            ),
+            _openai_tool_result(
+                '{"directory":"projects","max_depth":2}', tool_name="list_projects"
+            ),
             _text_result("openai", "Found one project"),
         ]
 
@@ -528,11 +536,18 @@ class TestToolPipelineRouteIntegration:
         ):
             response = client.post(
                 "/chat/conversations/conv_1/messages",
-                json={"message": "research battery breakthroughs", "provider": "openai", "model": "gpt-4o-mini"},
+                json={
+                    "message": "research battery breakthroughs",
+                    "provider": "openai",
+                    "model": "gpt-4o-mini",
+                },
             )
 
         assert response.status_code == 200
         assert _payload(response)["response"] == "Research complete"
         mock_exec.assert_awaited_once()
         assert mock_exec.await_args.args[0] == "lightweight_research"
-        assert mock_exec.await_args.args[1] == {"query": "latest battery breakthroughs", "max_sources": 4}
+        assert mock_exec.await_args.args[1] == {
+            "query": "latest battery breakthroughs",
+            "max_sources": 4,
+        }

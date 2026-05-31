@@ -9,9 +9,7 @@ import pytest
 
 
 def _load_real_embedding_module():
-    module_path = Path(__file__).resolve().parents[1] / "services" / (
-        "embedding_service.py"
-    )
+    module_path = Path(__file__).resolve().parents[1] / "services" / ("embedding_service.py")
     spec = importlib.util.spec_from_file_location(
         "api.services.embedding_service_real",
         module_path,

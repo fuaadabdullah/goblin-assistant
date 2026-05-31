@@ -118,4 +118,3 @@ def load_visible_providers(provider_toml: Optional[ProviderToml]) -> List[str]:
         seen.add(normalized)
         ordered.append(normalized)
     return ordered
-

@@ -280,6 +280,5 @@ def build_attachment_context(
 
     return (
         "Attachment context extracted from user-provided PDFs. "
-        "Use this only as supporting context for the current question.\n\n"
-        + "\n\n".join(sections)
+        "Use this only as supporting context for the current question.\n\n" + "\n\n".join(sections)
     )
