@@ -3,14 +3,16 @@ Retrieval Trace System
 The crown jewel of observability - tracks every LLM call with full retrieval trace
 """
 
+import asyncio
 import json
 import time
-from typing import Dict, Any, List, Optional
-from datetime import datetime, timedelta
-from dataclasses import dataclass, asdict
-from enum import Enum
-import structlog
 import uuid
+from dataclasses import asdict, dataclass
+from datetime import datetime, timedelta
+from enum import Enum
+from typing import Any, Dict, List, Optional
+
+import structlog
 
 from ..config.system_config import get_system_config
 
@@ -251,11 +253,14 @@ class RetrievalTracer:
                 "retrieval_log_file", "retrievals.log"
             )
 
-            with open(log_file, "a", encoding="utf-8") as f:
-                f.write(trace.to_json() + "\n")
+            def _append() -> None:
+                with open(log_file, "a", encoding="utf-8") as f:
+                    f.write(trace.to_json() + "\n")
+
+            await asyncio.to_thread(_append)
 
         except Exception as e:
-            logger.error(f"Failed to log retrieval to file: {e}")
+            logger.error("Failed to log retrieval to file:", error=str(e))
 
     async def get_retrieval_trace(self, request_id: str) -> Optional[Dict[str, Any]]:
         """Get a specific retrieval trace by request ID"""

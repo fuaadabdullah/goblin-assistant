@@ -3,13 +3,15 @@ Context Assembly Snapshot System
 Captures redacted snapshots of context before sending to models for debugging and replay
 """
 
-import json
+import asyncio
 import hashlib
+import json
 import re
 import time
-from typing import Dict, Any, List, Optional, Tuple
+from dataclasses import asdict, dataclass
 from datetime import datetime, timedelta
-from dataclasses import dataclass, asdict
+from typing import Any, Dict, List, Optional, Tuple
+
 import structlog
 
 from ..config.system_config import get_system_config
@@ -278,11 +280,14 @@ class ContextSnapshotter:
                 "snapshot_log_file", "snapshots.log"
             )
 
-            with open(log_file, "a", encoding="utf-8") as f:
-                f.write(snapshot.to_json() + "\n")
+            def _append() -> None:
+                with open(log_file, "a", encoding="utf-8") as f:
+                    f.write(snapshot.to_json() + "\n")
+
+            await asyncio.to_thread(_append)
 
         except Exception as e:
-            logger.error(f"Failed to log snapshot to file: {e}")
+            logger.error("Failed to log snapshot to file:", error=str(e))
 
     async def get_context_snapshot(self, request_id: str) -> Optional[Dict[str, Any]]:
         """Get a specific context snapshot by request ID"""
@@ -459,13 +464,12 @@ class ContextSnapshotter:
         # Determine health status
         if error_rate > 10:
             health_status = "critical"
-        elif avg_assembly_time > 1000:  # > 1 second
-            health_status = "warning"
-        elif avg_utilization > 95:
-            health_status = "warning"
-        elif redaction_rate > 20:
-            health_status = "warning"
-        elif layer_consistency < 70:
+        elif (
+            avg_assembly_time > 1000
+            or avg_utilization > 95
+            or redaction_rate > 20
+            or layer_consistency < 70
+        ):  # > 1 second
             health_status = "warning"
         else:
             health_status = "healthy"

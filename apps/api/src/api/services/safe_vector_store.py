@@ -23,9 +23,9 @@ Usage:
     )
 """
 
-from typing import Optional, Dict, Any
-from datetime import datetime, timedelta
 import logging
+from datetime import datetime, timedelta
+from typing import Any, Dict, Optional
 
 try:
     import chromadb
@@ -47,9 +47,9 @@ except ImportError:
     embedding_functions = None
 
 from .sanitization import (
-    sanitize_input_for_model,
-    is_sensitive_content,
     hash_message_id,
+    is_sensitive_content,
+    sanitize_input_for_model,
 )
 
 logger = logging.getLogger(__name__)
@@ -105,7 +105,7 @@ class SafeVectorStore:
             except (ValueError, ImportError) as e:
                 # sentence-transformers not available (requires PyTorch)
                 logger.warning(
-                    f"sentence-transformers not available ({e}), using default embeddings"
+                    "sentence-transformers not available (%s), using default embeddings", e
                 )
                 self.embedding_fn = None
         else:
@@ -120,7 +120,7 @@ class SafeVectorStore:
             metadata={"hnsw:space": "cosine"},
         )
 
-        logger.info(f"Initialized SafeVectorStore: {collection_name}")
+        logger.info("Initialized SafeVectorStore: %s", collection_name)
 
     async def add_document(
         self,
@@ -160,7 +160,7 @@ class SafeVectorStore:
         """
         # Check consent
         if not consent_given:
-            logger.warning(f"Consent not given for doc {doc_id} by user {user_id}")
+            logger.warning("Consent not given for doc %s by user %s", doc_id, user_id)
             return {
                 "success": False,
                 "error": "User consent required for RAG storage",
@@ -170,7 +170,7 @@ class SafeVectorStore:
 
         # Check for sensitive content (unless forced)
         if not force and is_sensitive_content(content):
-            logger.warning(f"Sensitive content detected in doc {doc_id}")
+            logger.warning("Sensitive content detected in doc %s", doc_id)
             return {
                 "success": False,
                 "error": "Document contains sensitive content - cannot embed",
@@ -182,7 +182,7 @@ class SafeVectorStore:
         sanitized_content, pii_detected = sanitize_input_for_model(content)
 
         if pii_detected and not force:
-            logger.error(f"PII detected in doc {doc_id}: {pii_detected}")
+            logger.error("PII detected in doc %s: %s", doc_id, pii_detected)
             return {
                 "success": False,
                 "error": f"PII detected: {', '.join(pii_detected)}",
@@ -215,7 +215,7 @@ class SafeVectorStore:
                 documents=[sanitized_content], metadatas=[safe_metadata], ids=[doc_id]
             )
 
-            logger.info(f"Added doc {doc_id} for user {user_id}, expires {expires_at}")
+            logger.info("Added doc %s for user %s, expires %s", doc_id, user_id, expires_at)
 
             return {
                 "success": True,
@@ -227,7 +227,7 @@ class SafeVectorStore:
             }
 
         except Exception as e:
-            logger.error(f"Failed to add doc {doc_id}: {e}")
+            logger.error("Failed to add doc %s: %s", doc_id, e)
             return {"success": False, "error": str(e), "doc_id": doc_id}
 
     async def query_documents(
@@ -303,7 +303,7 @@ class SafeVectorStore:
             }
 
         except Exception as e:
-            logger.error(f"Query failed for user {user_id}: {e}")
+            logger.error("Query failed for user %s: %s", user_id, e)
             return {"success": False, "error": str(e), "count": 0}
 
     async def delete_user_data(self, user_id: str) -> Dict[str, Any]:
@@ -324,7 +324,7 @@ class SafeVectorStore:
 
             if doc_ids:
                 self.collection.delete(ids=doc_ids)
-                logger.info(f"Deleted {len(doc_ids)} documents for user {user_id}")
+                logger.info("Deleted %s documents for user %s", len(doc_ids), user_id)
 
             return {
                 "success": True,
@@ -334,7 +334,7 @@ class SafeVectorStore:
             }
 
         except Exception as e:
-            logger.error(f"Failed to delete user data for {user_id}: {e}")
+            logger.error("Failed to delete user data for %s: %s", user_id, e)
             return {"success": False, "error": str(e), "user_id": user_id}
 
     async def cleanup_expired(self) -> Dict[str, Any]:
@@ -356,12 +356,12 @@ class SafeVectorStore:
                         expired_ids.append(doc_id)
                 except (ValueError, TypeError):
                     # Invalid or missing expires_at - skip
-                    logger.warning(f"Doc {doc_id} has invalid expires_at")
+                    logger.warning("Doc %s has invalid expires_at", doc_id)
                     continue
 
             if expired_ids:
                 self.collection.delete(ids=expired_ids)
-                logger.info(f"Cleaned up {len(expired_ids)} expired documents")
+                logger.info("Cleaned up %s expired documents", len(expired_ids))
 
             return {
                 "success": True,
@@ -370,7 +370,7 @@ class SafeVectorStore:
             }
 
         except Exception as e:
-            logger.error(f"Cleanup failed: {e}")
+            logger.error("Cleanup failed: %s", e)
             return {"success": False, "error": str(e), "deleted_count": 0}
 
     async def get_user_document_count(self, user_id: str) -> int:
@@ -379,7 +379,7 @@ class SafeVectorStore:
             results = self.collection.get(where={"user_id": user_id}, include=[])
             return len(results["ids"])
         except Exception as e:
-            logger.error(f"Failed to count documents for {user_id}: {e}")
+            logger.error("Failed to count documents for %s: %s", user_id, e)
             return 0
 
     async def export_user_data(self, user_id: str) -> Dict[str, Any]:
@@ -418,7 +418,7 @@ class SafeVectorStore:
             }
 
         except Exception as e:
-            logger.error(f"Export failed for user {user_id}: {e}")
+            logger.error("Export failed for user %s: %s", user_id, e)
             return {"success": False, "error": str(e), "user_id": user_id}
 
 

@@ -12,18 +12,17 @@ Usage:
     GET /api/privacy/data-summary - Get summary of stored data
 """
 
-from fastapi import APIRouter, Depends, HTTPException, BackgroundTasks
-from typing import Dict, Any
-from datetime import datetime
 import importlib.util
 import logging
 import os
+from datetime import datetime
+from typing import Any, Dict
 
-from ..services.telemetry import log_conversation_event, EventType
+from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException
 
 # Import auth dependencies
 from ..auth.router import get_current_user
-
+from ..services.telemetry import EventType, log_conversation_event
 
 logger = logging.getLogger(__name__)
 
@@ -94,7 +93,7 @@ async def export_user_data(
             }
         }
     """
-    logger.info(f"Data export requested by user: {user_id}")
+    logger.info("Data export requested by user: %s", user_id)
 
     export_data = {
         "user_id": user_id,
@@ -115,7 +114,7 @@ async def export_user_data(
                     "documents": vector_export["documents"],
                 }
                 logger.info(
-                    f"Exported {vector_export['document_count']} vectors for user {user_id}"
+                    "Exported %s vectors for user %s", vector_export["document_count"], user_id
                 )
             else:
                 export_data["data"]["vectors"] = {
@@ -153,9 +152,9 @@ async def export_user_data(
                         for conv in conversations
                     ],
                 }
-                logger.info(f"Exported {len(conversations)} conversations for user {user_id}")
+                logger.info("Exported %s conversations for user %s", len(conversations), user_id)
             except Exception as conv_error:
-                logger.error(f"Conversation export error: {conv_error}")
+                logger.error("Conversation export error: %s", conv_error)
                 export_data["data"]["conversations"] = {
                     "error": str(conv_error),
                     "count": 0,
@@ -168,21 +167,21 @@ async def export_user_data(
 
                 prefs = await preferences_service.get_preferences(user_id)
                 export_data["data"]["preferences"] = prefs if prefs else {}
-                logger.info(f"Exported preferences for user {user_id}")
+                logger.info("Exported preferences for user %s", user_id)
             except Exception as pref_error:
-                logger.error(f"Preferences export error: {pref_error}")
+                logger.error("Preferences export error: %s", pref_error)
                 export_data["data"]["preferences"] = {
                     "error": str(pref_error),
                 }
 
         # Log privacy export
         total_items = export_data["data"].get("vectors", {}).get("document_count", 0)
-        logger.info(f"Privacy export completed: {total_items} items for user {user_id}")
+        logger.info("Privacy export completed: %s items for user %s", total_items, user_id)
 
         return export_data
 
     except Exception as e:
-        logger.error(f"Export failed for user {user_id}: {e}")
+        logger.error("Export failed for user %s: %s", user_id, e)
         raise HTTPException(status_code=500, detail=f"Export failed: {str(e)}")
 
 
@@ -229,7 +228,7 @@ async def delete_user_data(
             detail="Deletion requires confirmation. Set confirm=true to proceed.",
         )
 
-    logger.warning(f"Data deletion requested by user: {user_id}")
+    logger.warning("Data deletion requested by user: %s", user_id)
 
     deleted_counts = {"vectors": 0, "conversations": 0, "preferences": 0}
 
@@ -241,9 +240,9 @@ async def delete_user_data(
             vector_delete = await vector_store.delete_user_data(user_id)
             if vector_delete["success"]:
                 deleted_counts["vectors"] = vector_delete["deleted_count"]
-                logger.info(f"Deleted {deleted_counts['vectors']} vectors for user {user_id}")
+                logger.info("Deleted %s vectors for user %s", deleted_counts["vectors"], user_id)
             else:
-                logger.error(f"Vector deletion failed: {vector_delete.get('error')}")
+                logger.error("Vector deletion failed: %s", vector_delete.get("error"))
         else:
             logger.info("Vector store not available, skipping vector deletion")
 
@@ -258,9 +257,9 @@ async def delete_user_data(
             for conv in conversations:
                 await conversation_store.delete_conversation(conv.conversation_id)
             deleted_counts["conversations"] = len(conversations)
-            logger.info(f"Deleted {len(conversations)} conversations for user {user_id}")
+            logger.info("Deleted %s conversations for user %s", len(conversations), user_id)
         except Exception as conv_error:
-            logger.error(f"Conversation deletion error: {conv_error}")
+            logger.error("Conversation deletion error: %s", conv_error)
 
         # Delete user preferences from database
         try:
@@ -268,9 +267,9 @@ async def delete_user_data(
 
             prefs_deleted = await preferences_service.delete_preferences(user_id)
             deleted_counts["preferences"] = 1 if prefs_deleted else 0
-            logger.info(f"Deleted preferences for user {user_id}")
+            logger.info("Deleted preferences for user %s", user_id)
         except Exception as pref_error:
-            logger.error(f"Preferences deletion error: {pref_error}")
+            logger.error("Preferences deletion error: %s", pref_error)
 
         # Log privacy event
         total_deleted = sum(deleted_counts.values())
@@ -293,7 +292,7 @@ async def delete_user_data(
         }
 
     except Exception as e:
-        logger.error(f"Deletion failed for user {user_id}: {e}")
+        logger.error("Deletion failed for user %s: %s", user_id, e)
         log_conversation_event(
             event_type=EventType.DATA_DELETE,
             user_id=user_id,
@@ -330,7 +329,7 @@ async def get_data_summary(user_id: str = Depends(get_current_user)) -> Dict[str
             }
         }
     """
-    logger.info(f"Data summary requested by user: {user_id}")
+    logger.info("Data summary requested by user: %s", user_id)
 
     try:
         vector_store = _get_vector_store()
@@ -350,7 +349,7 @@ async def get_data_summary(user_id: str = Depends(get_current_user)) -> Dict[str
             )
             conversation_count = len(conversations)
         except Exception as conv_error:
-            logger.error(f"Conversation count error: {conv_error}")
+            logger.error("Conversation count error: %s", conv_error)
             conversation_count = 0
 
         # Get preferences from database
@@ -360,7 +359,7 @@ async def get_data_summary(user_id: str = Depends(get_current_user)) -> Dict[str
             prefs = await preferences_service.get_preferences(user_id)
             has_preferences = prefs is not None
         except Exception as pref_error:
-            logger.error(f"Preferences fetch error: {pref_error}")
+            logger.error("Preferences fetch error: %s", pref_error)
             has_preferences = False
 
         summary = {
@@ -386,7 +385,7 @@ async def get_data_summary(user_id: str = Depends(get_current_user)) -> Dict[str
         return summary
 
     except Exception as e:
-        logger.error(f"Summary failed for user {user_id}: {e}")
+        logger.error("Summary failed for user %s: %s", user_id, e)
         raise HTTPException(status_code=500, detail=f"Failed to generate summary: {str(e)}")
 
 
@@ -407,7 +406,7 @@ async def update_rag_consent(
     Returns:
         Dictionary with consent status
     """
-    logger.info(f"RAG consent update by user {user_id}: {consent_given}")
+    logger.info("RAG consent update by user %s: %s", user_id, consent_given)
 
     try:
         vector_store = _get_vector_store()
@@ -417,9 +416,9 @@ async def update_rag_consent(
             from ..storage.preferences_service import preferences_service
 
             await preferences_service.update_rag_consent(user_id, consent_given)
-            logger.info(f"Stored RAG consent for user {user_id}: {consent_given}")
+            logger.info("Stored RAG consent for user %s: %s", user_id, consent_given)
         except Exception as consent_error:
-            logger.error(f"Failed to store RAG consent: {consent_error}")
+            logger.error("Failed to store RAG consent: %s", consent_error)
             raise HTTPException(
                 status_code=500,
                 detail=f"Failed to store consent: {str(consent_error)}",
@@ -429,7 +428,7 @@ async def update_rag_consent(
             # If consent revoked, delete existing data
             if vector_store is not None:
                 delete_result = await vector_store.delete_user_data(user_id)
-                logger.info(f"Consent revoked - deleted {delete_result['deleted_count']} docs")
+                logger.info("Consent revoked - deleted %s docs", delete_result["deleted_count"])
             else:
                 logger.info("Vector store not available, skipping deletion on consent revoke")
 
@@ -442,7 +441,7 @@ async def update_rag_consent(
         }
 
     except Exception as e:
-        logger.error(f"Consent update failed for user {user_id}: {e}")
+        logger.error("Consent update failed for user %s: %s", user_id, e)
         raise HTTPException(status_code=500, detail=f"Consent update failed: {str(e)}")
 
 

@@ -3,16 +3,17 @@ Sandbox API router for secure code execution
 Provides endpoints for submitting, monitoring, and managing sandbox jobs
 """
 
+import asyncio
 import os
 import uuid
-from typing import Optional, Any
 from datetime import datetime
+from typing import Any, Optional
 
-import structlog
-from fastapi import APIRouter, HTTPException, Header
-from pydantic import BaseModel
 import redis
 import rq
+import structlog
+from fastapi import APIRouter, Header, HTTPException
+from pydantic import BaseModel
 
 logger = structlog.get_logger()
 
@@ -27,14 +28,14 @@ class SandboxExecutionError(Exception):
         super().__init__(f"Sandbox execution failed [{job_id}]: {reason}")
 
 
-from .middleware.rate_limiter import RateLimiter
-from .core.contracts import SandboxExecutionCompletedPayload, SuccessEnvelope
-from .observability.events import event_emitter
 from .artifact_service import artifact_service
+from .core.contracts import SandboxExecutionCompletedPayload, SuccessEnvelope
+from .middleware.rate_limiter import RateLimiter
+from .observability.events import event_emitter
 from .sandbox_metrics import (
-    record_job_submitted,
-    record_job_cancelled,
     get_metrics_endpoint,
+    record_job_cancelled,
+    record_job_submitted,
 )
 
 # Configuration from environment
@@ -186,6 +187,20 @@ def _job_summary(job_info: dict[str, str]) -> SandboxJobSummary:
     )
 
 
+async def _run_blocking(func, *args, **kwargs):
+    return await asyncio.to_thread(func, *args, **kwargs)
+
+
+def _write_text_file(path: str, content: str) -> None:
+    with open(path, "w", encoding="utf-8") as f:
+        f.write(content)
+
+
+def _read_text_file(path: str) -> str:
+    with open(path, "r", encoding="utf-8") as f:
+        return f.read()
+
+
 async def _emit_sandbox_completed(job_id: str, job_info: dict[str, str]) -> None:
     if job_info.get("status") not in {"finished", "failed", "cancelled"}:
         return
@@ -243,15 +258,14 @@ async def submit_job(
     # Generate job ID and paths
     job_id = str(uuid.uuid4())
     job_path = os.path.join(JOBS_DIR, job_id)
-    os.makedirs(job_path, exist_ok=True)
+    await _run_blocking(os.makedirs, job_path, exist_ok=True)
 
     # Determine main file based on language
     mainfile = {"python": "main.py", "javascript": "main.js"}.get(req.language, "main")
 
     # Write source code to file
     source_path = os.path.join(job_path, mainfile)
-    with open(source_path, "w") as f:
-        f.write(req.source)
+    await _run_blocking(_write_text_file, source_path, req.source)
 
     # Prepare job metadata
     job_meta = {
@@ -266,11 +280,12 @@ async def submit_job(
     }
 
     # Store job metadata in Redis
-    r.hset(f"sandbox:job:{job_id}", mapping=job_meta)
+    await _run_blocking(r.hset, f"sandbox:job:{job_id}", mapping=job_meta)
 
     # Queue the job
     try:
-        queue.enqueue(
+        await _run_blocking(
+            queue.enqueue,
             "sandbox_worker.run_job",
             job_id=job_id,
             language=req.language,
@@ -287,8 +302,8 @@ async def submit_job(
     except Exception as e:
         import shutil
 
-        shutil.rmtree(job_path, ignore_errors=True)
-        r.delete(f"sandbox:job:{job_id}")
+        await _run_blocking(shutil.rmtree, job_path, True)
+        await _run_blocking(r.delete, f"sandbox:job:{job_id}")
         err = SandboxExecutionError(job_id=job_id, container_id=None, reason=str(e))
         logger.error(
             "sandbox_job_queue_failed",
@@ -311,7 +326,7 @@ async def get_job_status(job_id: str, x_api_key: str = Header(...)) -> SuccessEn
 
     # Get job metadata from Redis
     job_key = f"sandbox:job:{job_id}"
-    job_data = r.hgetall(job_key)
+    job_data = await _run_blocking(r.hgetall, job_key)
 
     if not job_data:
         raise HTTPException(status_code=404, detail="job not found")
@@ -334,7 +349,7 @@ async def get_job_logs(
 
     # Get job metadata
     job_key = f"sandbox:job:{job_id}"
-    job_data = r.hgetall(job_key)
+    job_data = await _run_blocking(r.hgetall, job_key)
 
     if not job_data:
         raise HTTPException(status_code=404, detail="job not found")
@@ -355,8 +370,7 @@ async def get_job_logs(
         return SuccessEnvelope(data=JobLogsResponse(logs=""))
 
     try:
-        with open(log_file, "r") as f:
-            logs = f.read()
+        logs = await _run_blocking(_read_text_file, log_file)
         return SuccessEnvelope(data=JobLogsResponse(logs=logs))
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"failed to read logs: {str(e)}")
@@ -373,7 +387,7 @@ async def list_job_artifacts(
 
     # Get job metadata to verify job exists and is completed
     job_key = f"sandbox:job:{job_id}"
-    job_data = r.hgetall(job_key)
+    job_data = await _run_blocking(r.hgetall, job_key)
 
     if not job_data:
         raise HTTPException(status_code=404, detail="job not found")
@@ -447,7 +461,7 @@ async def cancel_job(
 
     # Get job metadata
     job_key = f"sandbox:job:{job_id}"
-    job_data = r.hgetall(job_key)
+    job_data = await _run_blocking(r.hgetall, job_key)
 
     if not job_data:
         raise HTTPException(status_code=404, detail="job not found")
@@ -458,10 +472,10 @@ async def cancel_job(
         raise HTTPException(status_code=400, detail="job cannot be cancelled")
 
     # Mark job as cancelled
-    r.hset(job_key, "status", "cancelled")
+    await _run_blocking(r.hset, job_key, "status", "cancelled")
     finished_at = datetime.utcnow().isoformat()
-    r.hset(job_key, "finished_at", finished_at)
-    r.hset(job_key, "error", "job cancelled by user")
+    await _run_blocking(r.hset, job_key, "finished_at", finished_at)
+    await _run_blocking(r.hset, job_key, "error", "job cancelled by user")
     job_info.update(
         {
             "job_id": job_id,
@@ -478,15 +492,17 @@ async def cancel_job(
     container_id = job_info.get("container_id")
     if container_id:
         import shutil
-        import subprocess
 
         if shutil.which("docker"):
             try:
-                subprocess.run(
-                    ["docker", "kill", container_id],
-                    capture_output=True,
-                    timeout=10,
+                proc = await asyncio.create_subprocess_exec(
+                    "docker",
+                    "kill",
+                    container_id,
+                    stdout=asyncio.subprocess.PIPE,
+                    stderr=asyncio.subprocess.PIPE,
                 )
+                await asyncio.wait_for(proc.communicate(), timeout=10)
             except Exception as e:
                 logger.warning("failed_to_kill_container", container_id=container_id, error=str(e))
 
@@ -515,7 +531,7 @@ async def sandbox_health() -> SuccessEnvelope[SandboxHealthResponse]:
     redis_ok = False
     redis_error_detail = None
     try:
-        r.ping()
+        await _run_blocking(r.ping)
         redis_ok = True
     except ConnectionError as e:
         # Redis connection refused - service likely not running
@@ -531,7 +547,7 @@ async def sandbox_health() -> SuccessEnvelope[SandboxHealthResponse]:
         redis_ok = False
 
     # Check queue status
-    queue_size = len(queue) if redis_ok else 0
+    queue_size = await _run_blocking(len, queue) if redis_ok else 0
 
     # Check if sandbox image is configured
     image_configured = bool(SANDBOX_IMAGE)
@@ -582,9 +598,10 @@ async def list_sandbox_jobs(
 
     jobs: list[SandboxJobSummary] = []
     try:
-        for key in r.scan_iter("sandbox:job:*"):
+        keys = await _run_blocking(lambda: list(r.scan_iter("sandbox:job:*")))
+        for key in keys:
             redis_key = key.decode("utf-8") if isinstance(key, bytes) else key
-            raw = r.hgetall(redis_key)
+            raw = await _run_blocking(r.hgetall, redis_key)
             if not raw:
                 continue
             job_info = _decode_job_data(raw)

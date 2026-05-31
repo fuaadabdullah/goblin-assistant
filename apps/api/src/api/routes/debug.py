@@ -5,9 +5,10 @@ Provides endpoints for intelligent model-based debugging suggestions.
 Routes requests to specialized Raptor model or fallback LLM based on task type.
 """
 
-from fastapi import APIRouter, HTTPException, Body
-from typing import Dict, Any
 import logging
+from typing import Any, Dict
+
+from fastapi import APIRouter, Body, HTTPException
 
 from ..core.router import ModelRouter
 
@@ -48,7 +49,7 @@ async def get_debug_suggestion(
     try:
         route = model_router.choose_model(task, context)
     except RuntimeError as e:
-        logger.error(f"Model routing failed for task '{task}': {e}")
+        logger.error("Model routing failed for task '%s': %s", task, e)
         raise HTTPException(status_code=500, detail=str(e))
 
     payload = {
@@ -60,7 +61,7 @@ async def get_debug_suggestion(
     try:
         result = await model_router.call_model(route, payload)
     except Exception as e:
-        logger.exception(f"Model call failed for {route.model_name}: {e}")
+        logger.exception("Model call failed for %s: %s", route.model_name, e)
         raise HTTPException(status_code=502, detail=f"Model call failed: {str(e)}")
 
     # Extract suggestion with fallback

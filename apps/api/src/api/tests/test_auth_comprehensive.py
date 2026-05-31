@@ -29,8 +29,10 @@ from api.auth.router import (
     SECRET_KEY,
     create_access_token,
     get_db,
+    get_readonly_db,
     hash_password,
     router,
+    routes_email,
     verify_password,
     verify_token,
 )
@@ -48,6 +50,7 @@ def app(mock_db):
     app = FastAPI()
     app.include_router(router)
     app.dependency_overrides[get_db] = lambda: mock_db
+    app.dependency_overrides[get_readonly_db] = lambda: mock_db
     return app
 
 
@@ -268,7 +271,14 @@ class TestRegisterEndpoint:
         mock_user_model.hashed_password = hash_password("password123")
         mock_service.create_user = AsyncMock(return_value=mock_user_model)
 
-        with patch("api.auth.router.UserService", return_value=mock_service):
+        with (
+            patch.object(
+                routes_email._ar,
+                "UserService",
+                return_value=mock_service,
+            ),
+            patch.object(routes_email, "_db_create_session", new=AsyncMock()),
+        ):
             response = client.post(
                 "/auth/register",
                 json={
@@ -291,7 +301,14 @@ class TestRegisterEndpoint:
         mock_service = AsyncMock()
         mock_service.get_user_by_email = AsyncMock(return_value=MagicMock())
 
-        with patch("api.auth.router.UserService", return_value=mock_service):
+        with (
+            patch.object(
+                routes_email._ar,
+                "UserService",
+                return_value=mock_service,
+            ),
+            patch.object(routes_email, "_db_create_session", new=AsyncMock()),
+        ):
             response = client.post(
                 "/auth/register",
                 json={
@@ -342,7 +359,11 @@ class TestLoginEndpoint:
         mock_service.get_user_by_email = AsyncMock(return_value=mock_user_model)
         mock_service.update_user_last_login = AsyncMock()
 
-        with patch("api.auth.router.UserService", return_value=mock_service):
+        with patch.object(
+            routes_email._ar,
+            "UserService",
+            return_value=mock_service,
+        ):
             response = client.post(
                 "/auth/login",
                 json={
@@ -363,7 +384,11 @@ class TestLoginEndpoint:
         mock_service = AsyncMock()
         mock_service.get_user_by_email = AsyncMock(return_value=None)
 
-        with patch("api.auth.router.UserService", return_value=mock_service):
+        with patch.object(
+            routes_email._ar,
+            "UserService",
+            return_value=mock_service,
+        ):
             response = client.post(
                 "/auth/login",
                 json={

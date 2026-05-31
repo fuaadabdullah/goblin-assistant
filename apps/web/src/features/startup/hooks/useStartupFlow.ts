@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { apiClient } from '@/api';
+import { apiClient } from '@/lib/api';
 import { getRuntimeClient } from '../../../services/provider-router';
 import { storeStartupDiagnostics } from '../../../utils/startup-diagnostics';
 import { getEnabledModules } from '../../../config/features';

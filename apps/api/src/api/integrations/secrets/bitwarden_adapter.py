@@ -8,24 +8,24 @@ Supports authentication via session tokens and login.
 import asyncio
 import json
 import logging
-import subprocess
-import tempfile
-from typing import Dict, List, Optional, Any
-from datetime import datetime
 import os
 import re
+import subprocess
+import tempfile
+from datetime import datetime
+from typing import Any, Dict, List, Optional
 
+from .auth import TokenCredentials, get_auth_manager
 from .base import (
-    SecretAdapter,
     Secret,
+    SecretAdapter,
+    SecretBackendError,
     SecretMetadata,
     SecretNotFoundError,
     SecretUnauthorizedError,
-    SecretBackendError,
     SecretValidationError,
 )
 from .cache import SecretCache
-from .auth import TokenCredentials, get_auth_manager
 
 logger = logging.getLogger(__name__)
 
@@ -342,7 +342,7 @@ class BitwardenAdapter(SecretAdapter):
         cached_secret = await self.cache.get_secret(path, version)
         if cached_secret is None:
             return None
-        logger.debug(f"Cache hit for secret: {path}")
+        logger.debug("Cache hit for secret: %s", path)
         return Secret(
             path,
             cached_secret["data"],
@@ -392,7 +392,7 @@ class BitwardenAdapter(SecretAdapter):
                 if folder.get("name") == folder_name:
                     return folder["id"]
         except Exception:
-            logger.warning(f"Could not find folder: {folder_name}")
+            logger.warning("Could not find folder: %s", folder_name)
         return None
 
     def _build_item_data(
@@ -425,7 +425,7 @@ class BitwardenAdapter(SecretAdapter):
             temp_file = f.name
         try:
             await self._run_bw_command(["create", "item", temp_file])
-            logger.info(f"Created new Bitwarden item: {path}")
+            logger.info("Created new Bitwarden item: %s", path)
         finally:
             os.unlink(temp_file)
 
@@ -441,7 +441,7 @@ class BitwardenAdapter(SecretAdapter):
             temp_file = f.name
         try:
             await self._run_bw_command(["edit", "item", existing_item["id"], temp_file])
-            logger.info(f"Updated Bitwarden item: {path}")
+            logger.info("Updated Bitwarden item: %s", path)
         finally:
             os.unlink(temp_file)
 
@@ -485,7 +485,7 @@ class BitwardenAdapter(SecretAdapter):
             item = await self._fetch_item_for_path(item_path, path)
             secret = self._item_to_secret(item, field_name)
             await self._cache_secret(path, secret, version)
-            logger.info(f"Retrieved secret from Bitwarden: {path}")
+            logger.info("Retrieved secret from Bitwarden: %s", path)
             return secret
 
         except json.JSONDecodeError as e:
@@ -589,7 +589,7 @@ class BitwardenAdapter(SecretAdapter):
                 path = f"{folder_name}/{item.get('name', item['id'])}"
                 paths.append(path)
 
-            logger.debug(f"Listed {len(paths)} secrets under prefix: {prefix}")
+            logger.debug("Listed %s secrets under prefix: %s", len(paths), prefix)
             return paths
 
         except Exception as e:
@@ -619,7 +619,7 @@ class BitwardenAdapter(SecretAdapter):
             # Invalidate cache
             await self.cache.invalidate_path(path)
 
-            logger.info(f"Deleted secret from Bitwarden: {path}")
+            logger.info("Deleted secret from Bitwarden: %s", path)
 
         except Exception as e:
             if isinstance(e, (SecretNotFoundError, SecretUnauthorizedError, SecretBackendError)):
@@ -654,7 +654,7 @@ class BitwardenAdapter(SecretAdapter):
             # Update the item
             await self.put_secret(path, new_data)
 
-            logger.info(f"Rotated password for secret: {path}")
+            logger.info("Rotated password for secret: %s", path)
             return new_password
 
         except Exception as e:
@@ -695,7 +695,7 @@ class BitwardenAdapter(SecretAdapter):
             }
 
         except Exception as e:
-            logger.error(f"Health check failed: {e}")
+            logger.error("Health check failed: %s", e)
             return {
                 "status": "unhealthy",
                 "error": str(e),

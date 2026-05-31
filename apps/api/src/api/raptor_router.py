@@ -1,6 +1,8 @@
+import asyncio
+import os
+
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel
-import os
 
 router = APIRouter(prefix="/raptor", tags=["raptor"])
 
@@ -12,6 +14,11 @@ class LogsRequest(BaseModel):
 # Simple mock raptor state (in production, integrate with actual raptor system)
 # RAPTOR settings moved to config/providers.toml ([default.raptor]) — the single source of truth
 RAPTOR_STATE = {"running": False, "config_file": "config/providers.toml"}
+
+
+def _read_text_file(path: str) -> str:
+    with open(path, "r", encoding="utf-8") as f:
+        return f.read()
 
 
 @router.post("/start")
@@ -53,12 +60,11 @@ async def raptor_logs(request: LogsRequest):
         # Try to read from log file if it exists
         log_file = "logs/raptor.log"
         if os.path.exists(log_file):
-            with open(log_file, "r") as f:
-                content = f.read()
-                # Return last max_chars characters
-                log_tail = (
-                    content[-request.max_chars :] if len(content) > request.max_chars else content
-                )
+            content = await asyncio.to_thread(_read_text_file, log_file)
+            # Return last max_chars characters
+            log_tail = (
+                content[-request.max_chars :] if len(content) > request.max_chars else content
+            )
         else:
             log_tail = "Log file not found. Raptor may not be configured."
 

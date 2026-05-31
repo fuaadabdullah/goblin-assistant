@@ -7,7 +7,7 @@
 // Run `make generate-providers-json` after editing providers.toml.
 
 import providersJson from '../../../../config/providers.json';
-import { runtimeClient } from '@/api';
+import { runtimeClient } from '@/lib/api/runtimeClient';
 import { devDebug, devError, devWarn } from '@/utils/dev-log';
 
 // ── Minimal runtime types (mirrored from shared schema) ──────────────────

@@ -3,10 +3,11 @@ Debug Surfaces Router
 Provides endpoints for inspecting the observability data and debugging system behavior
 """
 
-from fastapi import APIRouter, HTTPException, Query, Request
-from typing import Dict, Any, List, Optional
 from datetime import datetime
+from typing import Any, Dict, List, Optional
+
 import structlog
+from fastapi import APIRouter, HTTPException, Query, Request
 
 from api.core.contracts import (
     EventEnvelope,
@@ -16,14 +17,14 @@ from api.core.contracts import (
     SuccessEnvelope,
 )
 
+from ..ops.security import require_ops_access, require_ops_write_access
+from .context_snapshotter import context_snapshotter
 from .decision_logger import decision_logger
 from .events import event_emitter
 from .memory_logger import memory_promotion_logger
+from .migration_metrics import migration_metrics
 from .retrieval_tracer import retrieval_tracer
 from .tool_tracer import tool_tracer
-from .context_snapshotter import context_snapshotter
-from .migration_metrics import migration_metrics
-from ..ops.security import require_ops_access, require_ops_write_access
 
 logger = structlog.get_logger()
 
@@ -101,7 +102,7 @@ async def get_write_decisions(
             },
         }
     except Exception as e:
-        logger.error(f"Failed to get write decisions: {e}")
+        logger.error("Failed to get write decisions:", error=str(e))
         raise HTTPException(status_code=500, detail=f"Failed to get write decisions: {str(e)}")
 
 
@@ -123,7 +124,7 @@ async def get_write_decision_stats(
             "stats": stats,
         }
     except Exception as e:
-        logger.error(f"Failed to get decision stats: {e}")
+        logger.error("Failed to get decision stats:", error=str(e))
         raise HTTPException(status_code=500, detail=f"Failed to get decision stats: {str(e)}")
 
 
@@ -161,7 +162,7 @@ async def search_write_decisions(
             "total_results": len(results),
         }
     except Exception as e:
-        logger.error(f"Failed to search write decisions: {e}")
+        logger.error("Failed to search write decisions:", error=str(e))
         raise HTTPException(status_code=500, detail=f"Failed to search write decisions: {str(e)}")
 
 
@@ -201,7 +202,7 @@ async def get_user_memory(
             "by_category": {cat: len(items) for cat, items in by_category.items()},
         }
     except Exception as e:
-        logger.error(f"Failed to get user memory: {e}")
+        logger.error("Failed to get user memory:", error=str(e))
         raise HTTPException(status_code=500, detail=f"Failed to get user memory: {str(e)}")
 
 
@@ -225,7 +226,7 @@ async def get_memory_promotion_stats(
             "stats": stats,
         }
     except Exception as e:
-        logger.error(f"Failed to get promotion stats: {e}")
+        logger.error("Failed to get promotion stats:", error=str(e))
         raise HTTPException(status_code=500, detail=f"Failed to get promotion stats: {str(e)}")
 
 
@@ -238,7 +239,7 @@ async def get_memory_health(user_id: str) -> Dict[str, Any]:
 
         return health_report
     except Exception as e:
-        logger.error(f"Failed to get memory health: {e}")
+        logger.error("Failed to get memory health:", error=str(e))
         raise HTTPException(status_code=500, detail=f"Failed to get memory health: {str(e)}")
 
 
@@ -276,7 +277,7 @@ async def search_memory_promotions(
             "total_results": len(results),
         }
     except Exception as e:
-        logger.error(f"Failed to search memory promotions: {e}")
+        logger.error("Failed to search memory promotions:", error=str(e))
         raise HTTPException(status_code=500, detail=f"Failed to search memory promotions: {str(e)}")
 
 
@@ -295,7 +296,7 @@ async def get_retrieval_trace(request_id: str) -> Dict[str, Any]:
     except HTTPException:
         raise
     except Exception as e:
-        logger.error(f"Failed to get retrieval trace: {e}")
+        logger.error("Failed to get retrieval trace:", error=str(e))
         raise HTTPException(status_code=500, detail=f"Failed to get retrieval trace: {str(e)}")
 
 
@@ -339,7 +340,7 @@ async def get_retrieval_history(
             },
         }
     except Exception as e:
-        logger.error(f"Failed to get retrieval history: {e}")
+        logger.error("Failed to get retrieval history:", error=str(e))
         raise HTTPException(status_code=500, detail=f"Failed to get retrieval history: {str(e)}")
 
 
@@ -352,7 +353,7 @@ async def get_retrieval_quality(user_id: str) -> Dict[str, Any]:
 
         return quality_report
     except Exception as e:
-        logger.error(f"Failed to get retrieval quality: {e}")
+        logger.error("Failed to get retrieval quality:", error=str(e))
         raise HTTPException(status_code=500, detail=f"Failed to get retrieval quality: {str(e)}")
 
 
@@ -376,7 +377,7 @@ async def get_retrieval_stats(
             "stats": stats,
         }
     except Exception as e:
-        logger.error(f"Failed to get retrieval stats: {e}")
+        logger.error("Failed to get retrieval stats:", error=str(e))
         raise HTTPException(status_code=500, detail=f"Failed to get retrieval stats: {str(e)}")
 
 
@@ -395,7 +396,7 @@ async def get_context_snapshot(request_id: str) -> Dict[str, Any]:
     except HTTPException:
         raise
     except Exception as e:
-        logger.error(f"Failed to get context snapshot: {e}")
+        logger.error("Failed to get context snapshot:", error=str(e))
         raise HTTPException(status_code=500, detail=f"Failed to get context snapshot: {str(e)}")
 
 
@@ -413,7 +414,7 @@ async def replay_context(request_id: str) -> Dict[str, Any]:
     except HTTPException:
         raise
     except Exception as e:
-        logger.error(f"Failed to replay context: {e}")
+        logger.error("Failed to replay context:", error=str(e))
         raise HTTPException(status_code=500, detail=f"Failed to replay context: {str(e)}")
 
 
@@ -457,7 +458,7 @@ async def get_context_history(
             },
         }
     except Exception as e:
-        logger.error(f"Failed to get context history: {e}")
+        logger.error("Failed to get context history:", error=str(e))
         raise HTTPException(status_code=500, detail=f"Failed to get context history: {str(e)}")
 
 
@@ -470,7 +471,7 @@ async def get_context_health(user_id: str) -> Dict[str, Any]:
 
         return health_report
     except Exception as e:
-        logger.error(f"Failed to get context health: {e}")
+        logger.error("Failed to get context health:", error=str(e))
         raise HTTPException(status_code=500, detail=f"Failed to get context health: {str(e)}")
 
 
@@ -544,7 +545,7 @@ async def get_observability_summary(
             },
         }
     except Exception as e:
-        logger.error(f"Failed to get observability summary: {e}")
+        logger.error("Failed to get observability summary:", error=str(e))
         raise HTTPException(
             status_code=500, detail=f"Failed to get observability summary: {str(e)}"
         )
@@ -598,7 +599,7 @@ async def get_system_health(
             ),
         }
     except Exception as e:
-        logger.error(f"Failed to get system health: {e}")
+        logger.error("Failed to get system health:", error=str(e))
         raise HTTPException(status_code=500, detail=f"Failed to get system health: {str(e)}")
 
 
@@ -643,7 +644,7 @@ async def clear_observability_cache() -> Dict[str, Any]:
             ],
         }
     except Exception as e:
-        logger.error(f"Failed to clear observability cache: {e}")
+        logger.error("Failed to clear observability cache:", error=str(e))
         raise HTTPException(status_code=500, detail=f"Failed to clear cache: {str(e)}")
 
 
@@ -686,7 +687,7 @@ async def get_tool_trace(request_id: str) -> Dict[str, Any]:
     except HTTPException:
         raise
     except Exception as e:
-        logger.error(f"Failed to get tool trace: {e}")
+        logger.error("Failed to get tool trace:", error=str(e))
         raise HTTPException(
             status_code=500,
             detail=f"Failed to get tool trace: {str(e)}",
@@ -710,7 +711,7 @@ async def get_conversation_tool_traces(
 
         return result
     except Exception as e:
-        logger.error(f"Failed to get conversation tool traces: {e}")
+        logger.error("Failed to get conversation tool traces:", error=str(e))
         raise HTTPException(
             status_code=500,
             detail=(f"Failed to get conversation tool traces: {str(e)}"),
@@ -736,7 +737,7 @@ async def get_tool_trace_stats(
             "data": stats,
         }
     except Exception as e:
-        logger.error(f"Failed to get tool trace stats: {e}")
+        logger.error("Failed to get tool trace stats:", error=str(e))
         raise HTTPException(
             status_code=500,
             detail=f"Failed to get tool trace stats: {str(e)}",

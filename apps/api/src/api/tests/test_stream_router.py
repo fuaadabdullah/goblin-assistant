@@ -27,7 +27,7 @@ async def test_generate_stream_events_streaming(monkeypatch):
             "model": "test-model",
         }
 
-    monkeypatch.setattr(stream, "invoke_provider", fake_invoke_provider)
+    monkeypatch.setattr("api.services.task_streaming.invoke_provider", fake_invoke_provider)
 
     events = []
     async for event in stream.generate_stream_events(
@@ -60,7 +60,7 @@ async def test_generate_stream_events_fallback(monkeypatch):
             "model": "fallback-model",
         }
 
-    monkeypatch.setattr(stream, "invoke_provider", fake_invoke_provider)
+    monkeypatch.setattr("api.services.task_streaming.invoke_provider", fake_invoke_provider)
 
     events = []
     async for event in stream.generate_stream_events(
@@ -81,7 +81,7 @@ async def test_generate_stream_events_error(monkeypatch):
     async def fake_invoke_provider(**kwargs):
         return {"ok": False, "error": "bad-provider"}
 
-    monkeypatch.setattr(stream, "invoke_provider", fake_invoke_provider)
+    monkeypatch.setattr("api.services.task_streaming.invoke_provider", fake_invoke_provider)
 
     events = []
     async for event in stream.generate_stream_events(

@@ -8,6 +8,7 @@ import asyncio
 import logging
 import os
 from typing import Optional
+
 import redis.asyncio as redis
 
 logger = logging.getLogger(__name__)
@@ -41,7 +42,7 @@ async def get_redis_client() -> redis.Redis:
                     await _redis_client.ping()
                     logger.info("Redis client connection established")
                 except Exception as e:
-                    logger.error(f"Failed to connect to Redis: {e}")
+                    logger.error("Failed to connect to Redis: %s", e)
                     _redis_client = None
                     raise
 

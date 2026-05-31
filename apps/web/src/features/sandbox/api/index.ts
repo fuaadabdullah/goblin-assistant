@@ -1,4 +1,4 @@
-import { apiClient } from '@/api';
+import { apiClient } from '@/lib/api';
 import { UiError } from '../../../lib/ui-error';
 import type { SandboxJob } from '../types';
 

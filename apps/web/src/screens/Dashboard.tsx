@@ -3,7 +3,7 @@ import { useQuery } from '@tanstack/react-query';
 import CostBreakdownChart from '@/components/cost/CostBreakdownChart';
 import ProviderUsageChart from '@/components/cost/ProviderUsageChart';
 import { getChartPaletteColor } from '@/components/cost/chartPalette';
-import { runtimeClient } from '@/api';
+import { runtimeClient } from '@/lib/api/runtimeClient';
 import { TristateWrapper, Card } from '@/components/ui';
 
 const DashboardContent: React.FC = () => {

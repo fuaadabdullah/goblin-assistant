@@ -7,6 +7,7 @@ Safe for multi-worker deployments (Gunicorn, multi-instance).
 
 import logging
 from datetime import datetime, timedelta
+
 from .redis_client import get_redis_client
 
 logger = logging.getLogger(__name__)
@@ -50,8 +51,10 @@ async def check_rate_limit(client_ip: str, endpoint: str = "login") -> bool:
 
         if current_count >= MAX_LOGIN_ATTEMPTS:
             logger.warning(
-                f"Rate limit exceeded for {endpoint} from IP: {client_ip} "
-                f"({current_count} attempts)"
+                "Rate limit exceeded for %s from IP: %s (%s attempts)",
+                endpoint,
+                client_ip,
+                current_count,
             )
             return False
 
@@ -63,13 +66,15 @@ async def check_rate_limit(client_ip: str, endpoint: str = "login") -> bool:
 
         remaining = MAX_LOGIN_ATTEMPTS - current_count - 1
         logger.debug(
-            f"Rate limit check passed for {endpoint} from IP: {client_ip} "
-            f"({remaining} attempts remaining)"
+            "Rate limit check passed for %s from IP: %s (%s attempts remaining)",
+            endpoint,
+            client_ip,
+            remaining,
         )
 
         return True
     except Exception as e:
-        logger.error(f"Failed to check rate limit for {client_ip}: {e}")
+        logger.error("Failed to check rate limit for %s: %s", client_ip, e)
         # Fail open in case of Redis error (allow request, log error)
         return True
 
@@ -89,8 +94,8 @@ async def reset_rate_limit(client_ip: str, endpoint: str = "login") -> bool:
         redis_client = await get_redis_client()
         key = f"{RATE_LIMIT_PREFIX}{endpoint}:{client_ip}"
         await redis_client.delete(key)
-        logger.debug(f"Rate limit reset for {endpoint} from IP: {client_ip}")
+        logger.debug("Rate limit reset for %s from IP: %s", endpoint, client_ip)
         return True
     except Exception as e:
-        logger.error(f"Failed to reset rate limit for {client_ip}: {e}")
+        logger.error("Failed to reset rate limit for %s: %s", client_ip, e)
         return False

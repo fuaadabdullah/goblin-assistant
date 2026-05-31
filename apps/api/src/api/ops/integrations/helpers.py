@@ -21,10 +21,10 @@ async def send_system_metrics():
         metrics = await aggregator.aggregate_system_metrics()
         results = await monitoring_manager.send_metrics(metrics)
         success_count = sum(1 for success in results.values() if success)
-        logger.info(f"Sent metrics to {success_count}/{len(results)} monitoring integrations")
+        logger.info("Sent metrics to %s/%s monitoring integrations", success_count, len(results))
         return results
     except Exception as e:
-        logger.error(f"Failed to send system metrics: {e}")
+        logger.error("Failed to send system metrics: %s", e)
         return {}
 
 
@@ -32,10 +32,10 @@ async def send_system_alert(alert_data: Dict[str, Any]):
     try:
         results = await monitoring_manager.send_alert(alert_data)
         success_count = sum(1 for success in results.values() if success)
-        logger.info(f"Sent alert to {success_count}/{len(results)} monitoring integrations")
+        logger.info("Sent alert to %s/%s monitoring integrations", success_count, len(results))
         return results
     except Exception as e:
-        logger.error(f"Failed to send system alert: {e}")
+        logger.error("Failed to send system alert: %s", e)
         return {}
 
 

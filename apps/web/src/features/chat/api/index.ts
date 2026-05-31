@@ -1,4 +1,4 @@
-import { apiClient } from '@/api';
+import { apiClient } from '@/lib/api';
 import { UiError } from '../../../lib/ui-error';
 import { getAuthToken } from '../../../utils/auth-session';
 import type { ChatMessage } from '../types';

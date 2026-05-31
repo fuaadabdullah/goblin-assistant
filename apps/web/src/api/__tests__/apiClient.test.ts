@@ -4,6 +4,7 @@ const backendGetMock = jest.fn();
 const backendPostMock = jest.fn();
 const backendPutMock = jest.fn();
 const backendPatchMock = jest.fn();
+const backendDeleteMock = jest.fn();
 const frontendGetMock = jest.fn();
 const frontendPostMock = jest.fn();
 
@@ -18,6 +19,7 @@ jest.mock('axios', () => {
       post: backendPostMock,
       put: backendPutMock,
       patch: backendPatchMock,
+      delete: backendDeleteMock,
     }))
     .mockImplementationOnce(() => ({
       get: frontendGetMock,
@@ -88,6 +90,19 @@ describe('apiClient chat conversations', () => {
           Authorization: 'Bearer session-token-123',
         }),
       })
+    );
+  });
+
+  it('routes legacy api.delete through the backend DELETE helper', async () => {
+    backendDeleteMock.mockResolvedValue({ data: { deleted: true } });
+
+    const { api } = await import('@/api');
+    const result = await api.delete<{ deleted: boolean }>('/api/notifications/123');
+
+    expect(result).toEqual({ data: { deleted: true } });
+    expect(backendDeleteMock).toHaveBeenCalledWith(
+      '/api/notifications/123',
+      undefined
     );
   });
 });

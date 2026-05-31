@@ -8,7 +8,7 @@ import {
   isAuthenticated as checkAuth,
   persistAuthSession,
 } from '../utils/auth-session';
-import { apiClient } from '@/api';
+import { apiClient } from '@/lib/api';
 
 type SessionInput = {
   token: string;

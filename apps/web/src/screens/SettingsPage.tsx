@@ -16,7 +16,7 @@ import KeyboardShortcutsHelp from '../components/KeyboardShortcutsHelp';
 import Seo from '../components/Seo';
 import { useProvider } from '../contexts/ProviderContext';
 import { useToast } from '../contexts/ToastContext';
-import { apiClient } from '@/api';
+import { apiClient } from '@/lib/api';
 import {
   Button,
   Badge,

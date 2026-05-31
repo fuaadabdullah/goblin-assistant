@@ -34,7 +34,7 @@ class MonitoringManager:
             alertmanager = AlertManagerIntegration()
             await alertmanager.initialize(config["alertmanager"])
             self.integrations["alertmanager"] = alertmanager
-        logger.info(f"Initialized {len(self.integrations)} monitoring integrations")
+        logger.info("Initialized %s monitoring integrations", len(self.integrations))
 
     async def send_metrics(self, metrics: Dict[str, Any]):
         results = {}
@@ -43,11 +43,11 @@ class MonitoringManager:
                 success = await integration.send_metrics(metrics)
                 results[name] = success
                 if success:
-                    logger.info(f"Successfully sent metrics to {name}")
+                    logger.info("Successfully sent metrics to %s", name)
                 else:
-                    logger.warning(f"Failed to send metrics to {name}")
+                    logger.warning("Failed to send metrics to %s", name)
             except Exception as e:
-                logger.error(f"Error sending metrics to {name}: {e}")
+                logger.error("Error sending metrics to %s: %s", name, e)
                 results[name] = False
         return results
 
@@ -59,11 +59,11 @@ class MonitoringManager:
                     success = await integration.send_alert(alert)
                     results[name] = success
                     if success:
-                        logger.info(f"Successfully sent alert to {name}")
+                        logger.info("Successfully sent alert to %s", name)
                     else:
-                        logger.warning(f"Failed to send alert to {name}")
+                        logger.warning("Failed to send alert to %s", name)
             except Exception as e:
-                logger.error(f"Error sending alert to {name}: {e}")
+                logger.error("Error sending alert to %s: %s", name, e)
                 results[name] = False
         return results
 

@@ -37,6 +37,7 @@ const SandboxView = ({ session, isGuest = false, onRequireAuth }: SandboxViewPro
       loading={session.loading}
       code={session.code}
       jobs={isGuest ? [] : session.jobs}
+      jobsError={isGuest ? null : session.jobsError}
       selectedJobId={session.selectedJob?.id}
       onLanguageChange={session.setLanguage}
       onRun={session.runCode}

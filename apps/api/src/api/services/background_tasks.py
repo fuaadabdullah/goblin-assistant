@@ -5,13 +5,13 @@ Handles conversation summarization and periodic maintenance tasks
 
 import asyncio
 import logging
-from typing import List, Dict, Any, Optional
 from datetime import datetime, timedelta
+from typing import Any, Dict, List, Optional
 
-from ..storage.database import get_db
-from ..storage.conversations import conversation_store
-from .retrieval_service import retrieval_service as _retrieval_singleton
 from ..providers.dispatcher import invoke_provider
+from ..storage.conversations import conversation_store
+from ..storage.database import get_db
+from .retrieval_service import retrieval_service as _retrieval_singleton
 
 logger = logging.getLogger(__name__)
 
@@ -69,7 +69,7 @@ class BackgroundTaskManager:
             except asyncio.CancelledError:
                 break
             except Exception as e:
-                logger.error(f"Error in periodic conversation summarization: {e}")
+                logger.error("Error in periodic conversation summarization: %s", e)
                 await asyncio.sleep(300)  # Wait 5 minutes before retrying
 
     async def _periodic_embedding_cleanup(self):
@@ -82,7 +82,7 @@ class BackgroundTaskManager:
             except asyncio.CancelledError:
                 break
             except Exception as e:
-                logger.error(f"Error in periodic embedding cleanup: {e}")
+                logger.error("Error in periodic embedding cleanup: %s", e)
                 await asyncio.sleep(3600)  # Wait 1 hour before retrying
 
     async def _periodic_index_optimization(self):
@@ -95,7 +95,7 @@ class BackgroundTaskManager:
             except asyncio.CancelledError:
                 break
             except Exception as e:
-                logger.error(f"Error in periodic index optimization: {e}")
+                logger.error("Error in periodic index optimization: %s", e)
                 await asyncio.sleep(86400)  # Wait 1 day before retrying
 
     async def _summarize_stale_conversations(self):
@@ -129,7 +129,7 @@ class BackgroundTaskManager:
                         conv.conversation_id, conv.user_id, max_messages=30
                     )
                 except Exception as e:
-                    logger.error(f"Failed to summarize conversation {conv.conversation_id}: {e}")
+                    logger.error("Failed to summarize conversation %s: %s", conv.conversation_id, e)
 
     async def _summarize_conversation(
         self, conversation_id: str, user_id: str, max_messages: int = 30
@@ -186,16 +186,18 @@ Working Memory Summary:"""
 
                 if success:
                     logger.info(
-                        f"Successfully created working memory summary for conversation {conversation_id}"
+                        "Successfully created working memory summary for conversation %s",
+                        conversation_id,
                     )
                 else:
                     logger.error(
-                        f"Failed to store working memory summary for conversation {conversation_id}"
+                        "Failed to store working memory summary for conversation %s",
+                        conversation_id,
                     )
 
         except Exception as e:
             logger.error(
-                f"Error creating working memory summary for conversation {conversation_id}: {e}"
+                "Error creating working memory summary for conversation %s: %s", conversation_id, e
             )
 
     def _analyze_message_types(self, messages: List) -> Dict[str, Any]:
@@ -257,11 +259,11 @@ Working Memory Summary:"""
                     return provider_response["result"]["text"]
                 else:
                     logger.warning(
-                        f"Summary generation attempt {attempt + 1} failed: {provider_response}"
+                        "Summary generation attempt %s failed: %s", attempt + 1, provider_response
                     )
 
             except Exception as e:
-                logger.warning(f"Summary generation attempt {attempt + 1} error: {e}")
+                logger.warning("Summary generation attempt %s error: %s", attempt + 1, e)
 
             # Wait before retry (exponential backoff)
             if attempt < max_retries - 1:
@@ -289,7 +291,9 @@ Working Memory Summary:"""
             count = result.fetchone().count
 
             if count > 0:
-                logger.info(f"Found {count} embeddings older than 90 days that could be cleaned up")
+                logger.info(
+                    "Found %s embeddings older than 90 days that could be cleaned up", count
+                )
 
                 # In production, you might want to move to archive instead of delete
                 # For now, we'll just log it
@@ -357,7 +361,7 @@ Working Memory Summary:"""
                 logger.info("Vector index optimization completed")
 
         except Exception as e:
-            logger.error(f"Error optimizing vector indexes: {e}")
+            logger.error("Error optimizing vector indexes: %s", e)
 
 
 # Global background task manager instance
@@ -431,7 +435,7 @@ class ConversationSummarizationService:
             }
 
         except Exception as e:
-            logger.error(f"Error in summarize_conversation: {e}")
+            logger.error("Error in summarize_conversation: %s", e)
             return {
                 "success": False,
                 "message": f"Failed to summarize conversation: {str(e)}",

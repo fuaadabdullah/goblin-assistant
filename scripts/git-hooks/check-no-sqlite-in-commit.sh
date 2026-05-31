@@ -10,7 +10,7 @@ blocked_files=()
 while IFS= read -r file; do
   [ -z "$file" ] && continue
   case "$file" in
-    goblin_assistant.db|*.sqlite|*.sqlite3|*.db)
+    goblin_assistant.db|*.sqlite|*.sqlite3|*.db|*.db-journal)
       blocked_files+=("$file")
       ;;
   esac

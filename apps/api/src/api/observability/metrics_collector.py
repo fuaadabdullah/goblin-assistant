@@ -3,16 +3,17 @@ Metrics Collector
 Aggregates observability metrics and provides health monitoring
 """
 
-from typing import Dict, Any, List, Optional
-from datetime import datetime
 from dataclasses import dataclass
+from datetime import datetime
+from typing import Any, Dict, List, Optional
+
 import structlog
 
+from ..config.system_config import get_system_config
+from .context_snapshotter import context_snapshotter
 from .decision_logger import decision_logger
 from .memory_logger import memory_promotion_logger
 from .retrieval_tracer import retrieval_tracer
-from .context_snapshotter import context_snapshotter
-from ..config.system_config import get_system_config
 
 logger = structlog.get_logger()
 
@@ -96,7 +97,7 @@ class MetricsCollector:
             return metrics
 
         except Exception as e:
-            logger.error(f"Failed to collect system metrics: {e}")
+            logger.error("Failed to collect system metrics:", error=str(e))
             return SystemMetrics(
                 timestamp=datetime.utcnow(),
                 memory_health={"error": str(e)},

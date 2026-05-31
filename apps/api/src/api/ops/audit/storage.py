@@ -26,7 +26,7 @@ class AuditStore:
                 audit_log = audit_log[-10000:]
             await cache.set(self.audit_log_key, audit_log, expire=86400 * 30)
         except Exception as e:
-            logger.error(f"Failed to store audit event: {e}")
+            logger.error("Failed to store audit event: %s", e)
 
     async def update_compliance_metrics(self, event: AuditEvent) -> None:
         try:
@@ -53,7 +53,7 @@ class AuditStore:
             compliance["unique_users"] = list(compliance["unique_users"])
             await cache.set(self.compliance_key, compliance, expire=86400 * 90)
         except Exception as e:
-            logger.error(f"Failed to update compliance metrics: {e}")
+            logger.error("Failed to update compliance metrics: %s", e)
 
     async def get_audit_log(
         self,
@@ -72,7 +72,7 @@ class AuditStore:
             audit_log.sort(key=lambda x: x["timestamp"], reverse=True)
             return audit_log[offset : offset + limit]
         except Exception as e:
-            logger.error(f"Failed to get audit log: {e}")
+            logger.error("Failed to get audit log: %s", e)
             return []
 
     async def get_security_alerts(self, limit: int = 100) -> List[Dict[str, Any]]:
@@ -80,7 +80,7 @@ class AuditStore:
             alerts = await cache.get(self.alerts_key) or []
             return alerts[-limit:]
         except Exception as e:
-            logger.error(f"Failed to get security alerts: {e}")
+            logger.error("Failed to get security alerts: %s", e)
             return []
 
     async def get_compliance_report(self) -> Dict[str, Any]:
@@ -112,7 +112,7 @@ class AuditStore:
                 },
             }
         except Exception as e:
-            logger.error(f"Failed to get compliance report: {e}")
+            logger.error("Failed to get compliance report: %s", e)
             return {"error": str(e)}
 
     async def search_audit_log(
@@ -156,7 +156,7 @@ class AuditStore:
             audit_log.sort(key=lambda x: x["timestamp"], reverse=True)
             return audit_log
         except Exception as e:
-            logger.error(f"Failed to search audit log: {e}")
+            logger.error("Failed to search audit log: %s", e)
             return []
 
     async def export_audit_log(
@@ -207,7 +207,7 @@ class AuditStore:
                 return output.getvalue()
             return {"error": f"Unsupported format: {format}"}
         except Exception as e:
-            logger.error(f"Failed to export audit log: {e}")
+            logger.error("Failed to export audit log: %s", e)
             return {"error": str(e)}
 
     async def get_user_activity_report(self, user: str, days: int = 30) -> Dict[str, Any]:
@@ -259,7 +259,7 @@ class AuditStore:
                 "last_activity": user_events[0]["timestamp"] if user_events else None,
             }
         except Exception as e:
-            logger.error(f"Failed to get user activity report: {e}")
+            logger.error("Failed to get user activity report: %s", e)
             return {"user": user, "error": str(e)}
 
     async def get_summary(self) -> Dict[str, Any]:
@@ -291,7 +291,7 @@ class AuditStore:
                 "last_updated": compliance.get("last_updated", "N/A"),
             }
         except Exception as e:
-            logger.error(f"Failed to get audit summary: {e}")
+            logger.error("Failed to get audit summary: %s", e)
             return {"error": str(e)}
 
     async def check_security_alerts(self, event: AuditEvent) -> None:
@@ -333,4 +333,4 @@ class AuditStore:
             if alerts:
                 await cache.set(self.alerts_key, alerts[-1000:], expire=86400 * 7)
         except Exception as e:
-            logger.error(f"Failed to check security alerts: {e}")
+            logger.error("Failed to check security alerts: %s", e)

@@ -48,10 +48,10 @@ class DataDogIntegration(MonitoringIntegration):
                 if response.status_code == 202:
                     logger.info("Successfully sent metrics to DataDog")
                     return True
-                logger.error(f"Failed to send metrics to DataDog: {response.text}")
+                logger.error("Failed to send metrics to DataDog: %s", response.text)
                 return False
         except Exception as e:
-            logger.error(f"Error sending metrics to DataDog: {e}")
+            logger.error("Error sending metrics to DataDog: %s", e)
             return False
 
     def _transform_to_datadog_format(self, metrics: Dict[str, Any]) -> List[Dict[str, Any]]:
@@ -169,10 +169,10 @@ class DataDogIntegration(MonitoringIntegration):
                 if response.status_code in [200, 201]:
                     logger.info("Successfully created DataDog monitor")
                     return True
-                logger.error(f"Failed to create DataDog monitor: {response.text}")
+                logger.error("Failed to create DataDog monitor: %s", response.text)
                 return False
         except Exception as e:
-            logger.error(f"Error creating DataDog monitor: {e}")
+            logger.error("Error creating DataDog monitor: %s", e)
             return False
 
 
@@ -205,10 +205,10 @@ class PrometheusIntegration(MonitoringIntegration):
                 if response.status_code == 200:
                     logger.info("Successfully sent metrics to Prometheus")
                     return True
-                logger.error(f"Failed to send metrics to Prometheus: {response.text}")
+                logger.error("Failed to send metrics to Prometheus: %s", response.text)
                 return False
         except Exception as e:
-            logger.error(f"Error sending metrics to Prometheus: {e}")
+            logger.error("Error sending metrics to Prometheus: %s", e)
             return False
 
     def _transform_to_prometheus_format(self, metrics: Dict[str, Any]) -> str:
@@ -306,10 +306,10 @@ class AlertManagerIntegration(MonitoringIntegration):
                 if response.status_code == 200:
                     logger.info("Successfully sent alert to AlertManager")
                     return True
-                logger.error(f"Failed to send alert to AlertManager: {response.text}")
+                logger.error("Failed to send alert to AlertManager: %s", response.text)
                 return False
         except Exception as e:
-            logger.error(f"Error sending alert to AlertManager: {e}")
+            logger.error("Error sending alert to AlertManager: %s", e)
             return False
 
     def _transform_to_alertmanager_format(self, alert: Dict[str, Any]) -> Dict[str, Any]:

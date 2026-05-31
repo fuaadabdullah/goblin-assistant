@@ -143,4 +143,22 @@ module.exports = [
       ],
     },
   },
+  {
+    files: ['src/**/*.{ts,tsx}'],
+    ignores: ['src/**/*.test.{ts,tsx}', 'src/**/__tests__/**', 'src/api/**', 'src/test/**'],
+    rules: {
+      'no-restricted-imports': [
+        'error',
+        {
+          paths: [
+            {
+              name: '@/api',
+              message:
+                "Legacy API shim is not allowed in production code. Import from '@/lib/api' or feature adapters.",
+            },
+          ],
+        },
+      ],
+    },
+  },
 ];

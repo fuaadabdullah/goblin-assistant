@@ -4,19 +4,20 @@ Secrets management router for FastAPI.
 Provides HTTP endpoints for secrets operations using the universal secrets adapter.
 """
 
-import os
 import logging
-from typing import Dict, Optional, Any
-from fastapi import APIRouter, HTTPException, Depends, status
+import os
+from typing import Any, Dict, Optional
+
+from fastapi import APIRouter, Depends, HTTPException, status
 from pydantic import BaseModel, Field
 
 from .integrations.secrets import (
-    create_adapter,
     SecretAdapter,
+    SecretBackendError,
     SecretNotFoundError,
     SecretUnauthorizedError,
-    SecretBackendError,
     SecretValidationError,
+    create_adapter,
 )
 
 logger = logging.getLogger(__name__)
@@ -124,7 +125,7 @@ async def init_secrets_adapter() -> None:
                         "Successfully initialized Vault adapter with AppRole authentication"
                     )
                 except Exception as auth_error:
-                    logger.error(f"AppRole authentication failed: {auth_error}")
+                    logger.error("AppRole authentication failed: %s", auth_error)
                     raise ValueError(f"AppRole authentication failed: {auth_error}")
 
             else:
@@ -135,10 +136,10 @@ async def init_secrets_adapter() -> None:
         else:
             raise ValueError(f"Unsupported secrets backend: {secrets_backend}")
 
-        logger.info(f"Successfully initialized secrets adapter for backend: {secrets_backend}")
+        logger.info("Successfully initialized secrets adapter for backend: %s", secrets_backend)
 
     except Exception as e:
-        logger.error(f"Failed to initialize secrets adapter: {e}")
+        logger.error("Failed to initialize secrets adapter: %s", e)
         raise
 
 
@@ -177,7 +178,7 @@ async def list_secrets(
     except SecretBackendError as e:
         raise HTTPException(status_code=status.HTTP_503_SERVICE_UNAVAILABLE, detail=str(e))
     except Exception as e:
-        logger.error(f"Unexpected error listing secrets: {e}")
+        logger.error("Unexpected error listing secrets: %s", e)
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="Internal server error",
@@ -227,7 +228,7 @@ async def get_secret(
     except SecretBackendError as e:
         raise HTTPException(status_code=status.HTTP_503_SERVICE_UNAVAILABLE, detail=str(e))
     except Exception as e:
-        logger.error(f"Unexpected error retrieving secret {path}: {e}")
+        logger.error("Unexpected error retrieving secret %s: %s", path, e)
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="Internal server error",
@@ -289,7 +290,7 @@ async def put_secret(
     except SecretBackendError as e:
         raise HTTPException(status_code=status.HTTP_503_SERVICE_UNAVAILABLE, detail=str(e))
     except Exception as e:
-        logger.error(f"Unexpected error storing secret {path}: {e}")
+        logger.error("Unexpected error storing secret %s: %s", path, e)
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="Internal server error",
@@ -321,7 +322,7 @@ async def delete_secret(
     except SecretBackendError as e:
         raise HTTPException(status_code=status.HTTP_503_SERVICE_UNAVAILABLE, detail=str(e))
     except Exception as e:
-        logger.error(f"Unexpected error deleting secret {path}: {e}")
+        logger.error("Unexpected error deleting secret %s: %s", path, e)
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="Internal server error",
@@ -351,7 +352,7 @@ async def rotate_secret(path: str, adapter: SecretAdapter = Depends(get_secrets_
     except SecretBackendError as e:
         raise HTTPException(status_code=status.HTTP_503_SERVICE_UNAVAILABLE, detail=str(e))
     except Exception as e:
-        logger.error(f"Unexpected error rotating secret {path}: {e}")
+        logger.error("Unexpected error rotating secret %s: %s", path, e)
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="Internal server error",
@@ -397,7 +398,7 @@ async def secrets_health(adapter: SecretAdapter = Depends(get_secrets_adapter)):
         )
 
     except Exception as e:
-        logger.error(f"Health check failed: {e}")
+        logger.error("Health check failed: %s", e)
         return HealthResponse(
             status="unhealthy",
             backend="unknown",

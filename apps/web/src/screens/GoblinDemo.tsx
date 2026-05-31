@@ -1,7 +1,7 @@
 import React, { useReducer, useEffect } from 'react';
 // CSS is imported globally in _app.tsx
 import StreamingView from '@/components/streaming/StreamingView';
-import { runtimeClient } from '@/api';
+import { runtimeClient } from '@/lib/api/runtimeClient';
 import type { OrchestrationStep } from '@/types/api';
 import {
   initialOrchestrationState,

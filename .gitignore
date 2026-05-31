@@ -35,6 +35,7 @@ api/[0-9a-f][0-9a-f]*
 
 # Database
 *.db
+*.db-journal
 *.sqlite
 *.sqlite3
 

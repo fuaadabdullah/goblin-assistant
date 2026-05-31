@@ -6,11 +6,15 @@ Includes error handling, logging, and other cross-cutting concerns.
 import os
 import time
 import uuid
+from datetime import datetime, timezone
+
 import structlog
 from fastapi import Request
 from fastapi.responses import JSONResponse
 from starlette.middleware.base import BaseHTTPMiddleware
 from starlette.types import ASGIApp
+
+from .core.error_types import ErrorType
 
 # Configure structlog
 structlog.configure(
@@ -41,7 +45,7 @@ class AuthenticationMiddleware(BaseHTTPMiddleware):
             "/docs",
             "/openapi.json",
             "/redoc",
-            "/auth",        # JWT auth handled by get_current_user, not API key
+            "/auth",  # JWT auth handled by get_current_user, not API key
             "/api/v1/auth",
         ]
 
@@ -81,16 +85,19 @@ class AuthenticationMiddleware(BaseHTTPMiddleware):
             # SECURITY: Check if we're in development mode
             environment = os.getenv("ENVIRONMENT", "development").lower()
             is_development = environment in ["development", "dev", "local"]
+            request_id = str(uuid.uuid4())
+            timestamp = datetime.now(timezone.utc).isoformat()
 
             if (
                 is_development
                 and os.getenv("ALLOW_UNAUTHENTICATED_REQUESTS", "false").lower() == "true"
             ):
-                # SECURITY WARNING: Only allow unauthenticated requests in development
-                # with explicit opt-in via environment variable
+                # SECURITY WARNING: Only allow unauthenticated requests
+                # in development with explicit opt-in via environment variable
                 logger.warning(
-                    "SECURITY RISK: Allowing unauthenticated requests in development mode. "
-                    "Set ALLOW_UNAUTHENTICATED_REQUESTS=false to require authentication."
+                    "SECURITY RISK: Allowing unauthenticated requests in "
+                    "development mode. Set ALLOW_UNAUTHENTICATED_REQUESTS="
+                    "false to require authentication."
                 )
                 return await call_next(request)
             else:
@@ -100,28 +107,39 @@ class AuthenticationMiddleware(BaseHTTPMiddleware):
                 )
                 return JSONResponse(
                     status_code=500,
+                    headers={"X-Request-ID": request_id},
                     content={
                         "success": False,
                         "error": {
                             "code": "CONFIGURATION_ERROR",
+                            "type": ErrorType.AUTHENTICATION,
                             "message": "API authentication not configured",
-                            "details": "LOCAL_LLM_API_KEY environment variable must be set",
+                            "request_id": request_id,
+                            "timestamp": timestamp,
+                            "details": {"reason": "missing_api_key"},
                         },
                     },
                 )
 
         if api_key_header and api_key_header != self.api_key:
+            request_id = str(uuid.uuid4())
+            timestamp = datetime.now(timezone.utc).isoformat()
             logger.warning(
-                f"Invalid API key attempt from {request.client.host if request.client else 'unknown'}"
+                "Invalid API key attempt from",
+                client_else_unknown=request.client.host if request.client else "unknown",
             )
             return JSONResponse(
                 status_code=401,
+                headers={"X-Request-ID": request_id},
                 content={
                     "success": False,
                     "error": {
                         "code": "AUTHENTICATION_REQUIRED",
+                        "type": ErrorType.AUTHENTICATION,
                         "message": "Valid API key required",
-                        "details": "Provide API key in x-api-key header or Authorization: Bearer <key> header",
+                        "request_id": request_id,
+                        "timestamp": timestamp,
+                        "details": {"reason": "invalid_api_key"},
                     },
                 },
             )
@@ -214,18 +232,25 @@ class ErrorHandlingMiddleware(BaseHTTPMiddleware):
 
             # In production, don't expose detailed error messages
             error_message = "An internal server error occurred"
+            details = {}
             if os.getenv("DEBUG", "false").lower() == "true":
                 error_message = str(e)
+                details["error_class"] = type(e).__name__
+
+            timestamp = datetime.now(timezone.utc).isoformat()
 
             return JSONResponse(
                 status_code=500,
+                headers={"X-Request-ID": request_id},
                 content={
                     "success": False,
                     "error": {
                         "code": "INTERNAL_ERROR",
+                        "type": ErrorType.INTERNAL,
                         "message": error_message,
                         "request_id": request_id,
-                        "type": type(e).__name__,
+                        "timestamp": timestamp,
+                        "details": details if details else None,
                     },
                 },
             )

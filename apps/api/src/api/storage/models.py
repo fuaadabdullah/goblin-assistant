@@ -2,22 +2,23 @@
 SQLAlchemy models for Goblin Assistant database storage
 """
 
+import logging
+import uuid
+from datetime import datetime
+
 from sqlalchemy import (
+    JSON,
+    Boolean,
     Column,
-    String,
     DateTime,
     ForeignKey,
-    JSON,
-    Text,
-    Boolean,
-    Integer,
     Index,
+    Integer,
+    String,
+    Text,
     text,
 )
 from sqlalchemy.orm import declarative_base, relationship
-import uuid
-import logging
-from datetime import datetime
 
 logger = logging.getLogger(__name__)
 
@@ -236,6 +237,10 @@ def setup_vector_relationships():
     # These relationships are already defined above, but we can ensure they're properly set up
     # The vector_models.py file defines the back_populates relationships
 
+    from . import vector_models  # noqa: F401
+
+    _ = vector_models.EmbeddingModel
+
     # Check if relationships exist and are properly configured
     try:
         # Test relationship access
@@ -246,3 +251,6 @@ def setup_vector_relationships():
         logger.info("Vector relationships successfully configured")
     except Exception as e:
         logger.warning("Vector relationship setup issue: %s", e)
+
+
+setup_vector_relationships()

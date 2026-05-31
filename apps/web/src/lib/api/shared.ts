@@ -361,6 +361,19 @@ export const patchBackend = async <T, B = unknown>(
   }
 };
 
+export const deleteBackend = async <T>(
+  url: string,
+  config?: AxiosRequestConfig
+): Promise<T> => {
+  try {
+    assertNoVersionedClientPath(url);
+    const response = await backendHttp.delete<T>(url, config);
+    return unwrapEnvelope<T>(response.data as T | StandardApiEnvelope<T>);
+  } catch (error) {
+    return normalizeAxiosError(error);
+  }
+};
+
 export const getFrontend = async <T>(url: string, config?: AxiosRequestConfig): Promise<T> => {
   try {
     assertNoVersionedClientPath(url);

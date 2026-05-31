@@ -1,14 +1,17 @@
 """Rate limiting middleware for Goblin Assistant API."""
 
-from typing import Dict
+import asyncio
+import time
 from datetime import datetime, timedelta
+from typing import Any
+
+import redis.asyncio as redis
 from fastapi import Request
 from fastapi.responses import JSONResponse
-import redis.asyncio as redis
 
 
 class RateLimiter:
-    """Rate limiter using Redis backend."""
+    """Rate limiter using Redis with in-process fallback."""
 
     def __init__(
         self,
@@ -19,6 +22,8 @@ class RateLimiter:
         self.redis_client = redis.from_url(redis_url, decode_responses=True)
         self.requests_per_minute = requests_per_minute
         self.requests_per_hour = requests_per_hour
+        self._fallback_counts: dict[str, tuple[int, float]] = {}
+        self._fallback_lock = asyncio.Lock()
 
     def _get_client_identifier(self, request: Request) -> str:
         """Get unique client identifier from request."""
@@ -36,7 +41,47 @@ class RateLimiter:
 
         return f"ip:{ip}"
 
-    async def check_rate_limit(self, request: Request) -> Dict[str, any]:
+    async def _check_rate_limit_fallback(self, client_id: str, now: datetime) -> dict[str, Any]:
+        now_ts = time.time()
+        minute_window_end = now_ts + (60 - now.second)
+        hour_window_end = now_ts + ((60 - now.minute) * 60 - now.second)
+        minute_key = f"minute:{client_id}:{now.strftime('%Y%m%d%H%M')}"
+        hour_key = f"hour:{client_id}:{now.strftime('%Y%m%d%H')}"
+
+        async with self._fallback_lock:
+            # best-effort cleanup
+            expired = [k for k, (_, expiry) in self._fallback_counts.items() if expiry <= now_ts]
+            for key in expired:
+                self._fallback_counts.pop(key, None)
+
+            minute_count, _ = self._fallback_counts.get(minute_key, (0, minute_window_end))
+            if minute_count >= self.requests_per_minute:
+                return {
+                    "allowed": False,
+                    "remaining": 0,
+                    "reset_at": datetime.fromtimestamp(minute_window_end).isoformat(),
+                    "limit_type": "minute",
+                }
+
+            hour_count, _ = self._fallback_counts.get(hour_key, (0, hour_window_end))
+            if hour_count >= self.requests_per_hour:
+                return {
+                    "allowed": False,
+                    "remaining": 0,
+                    "reset_at": datetime.fromtimestamp(hour_window_end).isoformat(),
+                    "limit_type": "hour",
+                }
+
+            self._fallback_counts[minute_key] = (minute_count + 1, minute_window_end)
+            self._fallback_counts[hour_key] = (hour_count + 1, hour_window_end)
+            return {
+                "allowed": True,
+                "remaining_minute": self.requests_per_minute - minute_count - 1,
+                "remaining_hour": self.requests_per_hour - hour_count - 1,
+                "limit_type": "ok",
+            }
+
+    async def check_rate_limit(self, request: Request) -> dict[str, Any]:
         """
         Check if request is within rate limits.
 
@@ -45,61 +90,59 @@ class RateLimiter:
         """
         client_id = self._get_client_identifier(request)
         now = datetime.utcnow()
+        try:
+            # Check minute window
+            minute_key = f"rate_limit:minute:{client_id}:{now.strftime('%Y%m%d%H%M')}"
+            minute_count = await self.redis_client.get(minute_key)
+            minute_count = int(minute_count) if minute_count else 0
 
-        # Check minute window
-        minute_key = f"rate_limit:minute:{client_id}:{now.strftime('%Y%m%d%H%M')}"
-        minute_count = await self.redis_client.get(minute_key)
-        minute_count = int(minute_count) if minute_count else 0
+            if minute_count >= self.requests_per_minute:
+                reset_at = (now + timedelta(seconds=60 - now.second)).isoformat()
+                return {
+                    "allowed": False,
+                    "remaining": 0,
+                    "reset_at": reset_at,
+                    "limit_type": "minute",
+                }
 
-        if minute_count >= self.requests_per_minute:
-            reset_at = (now + timedelta(seconds=60 - now.second)).isoformat()
+            # Check hour window
+            hour_key = f"rate_limit:hour:{client_id}:{now.strftime('%Y%m%d%H')}"
+            hour_count = await self.redis_client.get(hour_key)
+            hour_count = int(hour_count) if hour_count else 0
+
+            if hour_count >= self.requests_per_hour:
+                reset_at = (now + timedelta(minutes=60 - now.minute)).isoformat()
+                return {
+                    "allowed": False,
+                    "remaining": 0,
+                    "reset_at": reset_at,
+                    "limit_type": "hour",
+                }
+
+            # Increment counters
+            pipe = self.redis_client.pipeline()
+            pipe.incr(minute_key)
+            pipe.expire(minute_key, 60)
+            pipe.incr(hour_key)
+            pipe.expire(hour_key, 3600)
+            await pipe.execute()
+
             return {
-                "allowed": False,
-                "remaining": 0,
-                "reset_at": reset_at,
-                "limit_type": "minute",
+                "allowed": True,
+                "remaining_minute": self.requests_per_minute - minute_count - 1,
+                "remaining_hour": self.requests_per_hour - hour_count - 1,
+                "limit_type": "ok",
             }
-
-        # Check hour window
-        hour_key = f"rate_limit:hour:{client_id}:{now.strftime('%Y%m%d%H')}"
-        hour_count = await self.redis_client.get(hour_key)
-        hour_count = int(hour_count) if hour_count else 0
-
-        if hour_count >= self.requests_per_hour:
-            reset_at = (now + timedelta(minutes=60 - now.minute)).isoformat()
-            return {
-                "allowed": False,
-                "remaining": 0,
-                "reset_at": reset_at,
-                "limit_type": "hour",
-            }
-
-        # Increment counters
-        pipe = self.redis_client.pipeline()
-        pipe.incr(minute_key)
-        pipe.expire(minute_key, 60)
-        pipe.incr(hour_key)
-        pipe.expire(hour_key, 3600)
-        await pipe.execute()
-
-        return {
-            "allowed": True,
-            "remaining_minute": self.requests_per_minute - minute_count - 1,
-            "remaining_hour": self.requests_per_hour - hour_count - 1,
-            "limit_type": "ok",
-        }
+        except Exception:
+            return await self._check_rate_limit_fallback(client_id, now)
 
     async def __call__(self, request: Request, call_next):
         """Middleware handler."""
         # Skip rate limiting for health checks
-        if request.url.path in ["/health", "/metrics"]:
+        if request.url.path in ["/health", "/api/v1/health", "/metrics"]:
             return await call_next(request)
 
-        try:
-            result = await self.check_rate_limit(request)
-        except Exception:
-            # Redis unavailable — allow request through without rate limiting
-            return await call_next(request)
+        result = await self.check_rate_limit(request)
 
         if not result["allowed"]:
             return JSONResponse(

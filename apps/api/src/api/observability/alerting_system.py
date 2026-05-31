@@ -1,15 +1,16 @@
 """\nAlerting System\nImplements monitoring and alerting for system health issues\n"""
 
-from typing import Dict, Any, List, Optional, Callable
-from datetime import datetime
-from dataclasses import dataclass
-from enum import Enum
 import asyncio
 import os
+from dataclasses import dataclass
+from datetime import datetime
+from enum import Enum
+from typing import Any, Callable, Dict, List, Optional
+
 import structlog
 
-from .metrics_collector import metrics_collector, SystemMetrics
 from ..config.system_config import get_system_config
+from .metrics_collector import SystemMetrics, metrics_collector
 
 logger = structlog.get_logger()
 
@@ -107,7 +108,7 @@ class AlertingSystem:
                 await self._check_alerts()
                 await asyncio.sleep(60)  # Check every minute
             except Exception as e:
-                logger.error(f"Error in monitoring loop: {e}")
+                logger.error("Error in monitoring loop:", error=str(e))
                 await asyncio.sleep(60)
 
     async def _check_alerts(self):
@@ -132,7 +133,7 @@ class AlertingSystem:
             await self._check_overall_health_alerts(metrics)
 
         except Exception as e:
-            logger.error(f"Error checking alerts: {e}")
+            logger.error("Error checking alerts:", error=str(e))
 
     async def _check_memory_alerts(self, metrics: SystemMetrics):
         """Check memory system alerts"""
@@ -335,11 +336,12 @@ class AlertingSystem:
         await self._notify_alert(alert)
 
         logger.warning(
-            f"Alert created: {title}",
+            "Alert created:",
             alert_id=alert_key,
             severity=severity.value,
             current_value=current_value,
             threshold=threshold_value,
+            title=title,
         )
 
     async def _notify_alert(self, alert: Alert):
@@ -351,7 +353,7 @@ class AlertingSystem:
                 else:
                     callback(alert)
             except Exception as e:
-                logger.error(f"Error notifying alert callback: {e}")
+                logger.error("Error notifying alert callback:", error=str(e))
 
     def register_alert_callback(self, callback: Callable[[Alert], None]):
         """Register a callback to be notified when alerts are created"""
@@ -364,7 +366,7 @@ class AlertingSystem:
             alert.status = AlertStatus.RESOLVED
             alert.resolved_at = datetime.utcnow()
 
-            logger.info(f"Alert resolved: {alert.title}", alert_id=alert_id)
+            logger.info("Alert resolved:", alert_id=alert_id, title=alert.title)
 
             # Remove from active alerts after a delay
             asyncio.create_task(self._cleanup_resolved_alert(alert_id))
@@ -380,12 +382,12 @@ class AlertingSystem:
     def suppress_alert(self, alert_id: str):
         """Suppress an alert to prevent it from being recreated"""
         self._suppressed_alerts.add(alert_id)
-        logger.info(f"Alert suppressed: {alert_id}")
+        logger.info("Alert suppressed:", alert_id=alert_id)
 
     def unsuppress_alert(self, alert_id: str):
         """Unsuppress an alert"""
         self._suppressed_alerts.discard(alert_id)
-        logger.info(f"Alert unsuppressed: {alert_id}")
+        logger.info("Alert unsuppressed:", alert_id=alert_id)
 
     def get_active_alerts(self, severity: Optional[AlertSeverity] = None) -> List[Alert]:
         """Get all active alerts, optionally filtered by severity"""
@@ -444,13 +446,14 @@ alerting_system = AlertingSystem()
 async def log_alert_handler(alert: Alert):
     """Log alerts to structured logger"""
     logger.warning(
-        f"ALERT: {alert.title}",
+        "ALERT:",
         alert_id=alert.alert_id,
         severity=alert.severity.value,
         description=alert.description,
         metric_name=alert.metric_name,
         current_value=alert.current_value,
         threshold_value=alert.threshold_value,
+        title=alert.title,
     )
 
 
@@ -471,8 +474,8 @@ async def email_alert_handler(alert: Alert):
         return
 
     import smtplib
-    from email.mime.text import MIMEText
     from email.mime.multipart import MIMEMultipart
+    from email.mime.text import MIMEText
 
     def _send():
         msg = MIMEMultipart("alternative")

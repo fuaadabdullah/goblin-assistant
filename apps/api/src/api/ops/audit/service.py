@@ -68,7 +68,7 @@ class AuditLogger:
             await self._store.update_compliance_metrics(event)
             return event.event_id
         except Exception as e:
-            logger.error(f"Failed to log audit event: {e}")
+            logger.error("Failed to log audit event: %s", e)
             return None
 
     def _log_to_console(self, event: AuditEvent) -> None:
@@ -90,9 +90,9 @@ class AuditLogger:
             "error_message": event.error_message,
         }
         if event.success:
-            logger.info(f"AUDIT: {json.dumps(log_data)}")
+            logger.info("AUDIT: %s", json.dumps(log_data))
         else:
-            logger.warning(f"AUDIT: {json.dumps(log_data)}")
+            logger.warning("AUDIT: %s", json.dumps(log_data))
 
     async def get_audit_log(self, limit: int = 100, offset: int = 0, filters=None):
         return await self._store.get_audit_log(limit=limit, offset=offset, filters=filters)

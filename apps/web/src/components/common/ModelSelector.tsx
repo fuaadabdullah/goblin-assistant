@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { runtimeClient } from '@/api';
+import { runtimeClient } from '@/lib/api/runtimeClient';
 import type { ProviderModelOption } from '@/types/api';
 import {
   Select,

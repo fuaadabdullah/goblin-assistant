@@ -1,4 +1,4 @@
-import { apiClient } from '@/api';
+import { apiClient } from '@/lib/api';
 import type { ProviderRole } from '../hooks/useProviderMutations';
 import type { ProviderTestResponse } from '../../../../types/api';
 

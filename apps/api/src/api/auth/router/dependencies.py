@@ -6,14 +6,14 @@ on `request.state` so duplicate Depends resolutions in the same request
 don't re-hit the DB.
 """
 
-from typing import Optional
+from typing import Annotated, Optional
 
 from fastapi import Depends, HTTPException, Request, status
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from sqlalchemy import and_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from ...storage.database import get_db
+from ...storage.database import get_readonly_db
 from ...storage.models import UserModel, UserSessionModel
 from .schemas import User
 from .tokens import verify_token
@@ -71,13 +71,13 @@ async def _get_authenticated_user_model(
 
 async def get_current_user(
     request: Request,
+    db: Annotated[AsyncSession, Depends(get_readonly_db)],
     credentials: Optional[HTTPAuthorizationCredentials] = Depends(security),
-    db: AsyncSession = Depends(get_db),
 ) -> User:
     # Request-scoped memoization: skip the DB if Depends resolved us already.
-    cached_user = getattr(request.state, "_auth_user", None)
-    cached_user_id = getattr(request.state, "_auth_user_id", None)
-    cached_session_id = getattr(request.state, "_auth_session_id", None)
+    cached_user = getattr(request.state, "auth_user", None)
+    cached_user_id = getattr(request.state, "auth_user_id", None)
+    cached_session_id = getattr(request.state, "auth_session_id", None)
 
     token: str | None = None
     if credentials:
@@ -116,7 +116,11 @@ async def get_current_user(
     if cached_user is not None and cached_user_id == user_id and cached_session_id == session_id:
         user_model = cached_user
     else:
-        user_model = await _get_authenticated_user_model(db, user_id, session_id)
+        user_model = await _get_authenticated_user_model(
+            db,
+            user_id,
+            session_id,
+        )
 
     if not user_model:
         raise HTTPException(
@@ -129,9 +133,9 @@ async def get_current_user(
             detail="User account is inactive",
         )
 
-    request.state._auth_user = user_model
-    request.state._auth_user_id = user_id
-    request.state._auth_session_id = session_id
+    request.state.auth_user = user_model
+    request.state.auth_user_id = user_id
+    request.state.auth_session_id = session_id
 
     return User(
         id=user_model.id,

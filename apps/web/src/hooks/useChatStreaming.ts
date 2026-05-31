@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { apiClient } from '@/api';
+import { apiClient } from '@/lib/api';
 import { generateMessageId } from '../lib/id-generation';
 
 interface UseChatStreamingOptions {

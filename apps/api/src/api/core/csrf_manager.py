@@ -5,9 +5,10 @@ Tokens are one-time use and expire after 1 hour by default.
 Safe for multi-worker deployments (Gunicorn, multi-instance).
 """
 
-import secrets
 import logging
+import secrets
 from datetime import datetime, timedelta
+
 from .redis_client import get_redis_client
 
 logger = logging.getLogger(__name__)
@@ -41,7 +42,7 @@ async def generate_csrf_token() -> str:
         redis_client = await get_redis_client()
         key = f"{CSRF_TOKEN_PREFIX}{token}"
         await redis_client.set(key, "1", ex=CSRF_TOKEN_TTL)
-        logger.debug(f"Generated CSRF token in Redis (expires in {CSRF_TOKEN_TTL}s)")
+        logger.debug("Generated CSRF token in Redis (expires in %ss)", CSRF_TOKEN_TTL)
         return token
     except Exception as e:
         # Degrade gracefully: keep auth functional even when Redis is down.
@@ -98,5 +99,5 @@ async def validate_csrf_token(token: str) -> bool:
             )
             return True
 
-        logger.error(f"Failed to validate CSRF token: {e}")
+        logger.error("Failed to validate CSRF token: %s", e)
         return False

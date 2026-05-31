@@ -3,11 +3,13 @@ Decision Logging System
 Implements structured logging for write-time decisions with correlation IDs
 """
 
+import asyncio
 import json
-from typing import Dict, Any, List, Optional
+from dataclasses import asdict, dataclass
 from datetime import datetime, timedelta
 from enum import Enum
-from dataclasses import dataclass, asdict
+from typing import Any, Dict, List, Optional
+
 import structlog
 
 from ..config.system_config import get_system_config
@@ -158,11 +160,14 @@ class DecisionLogger:
                 "decision_log_file", "decisions.log"
             )
 
-            with open(log_file, "a", encoding="utf-8") as f:
-                f.write(decision.to_json() + "\n")
+            def _append() -> None:
+                with open(log_file, "a", encoding="utf-8") as f:
+                    f.write(decision.to_json() + "\n")
+
+            await asyncio.to_thread(_append)
 
         except Exception as e:
-            logger.error(f"Failed to log decision to file: {e}")
+            logger.error("Failed to log decision to file:", error=str(e))
 
     async def get_decision_history(
         self, conversation_id: str, limit: int = 100, user_id: Optional[str] = None

@@ -3,11 +3,13 @@ S3/MinIO artifact storage service for sandbox jobs
 Provides secure upload, download, and lifecycle management for job artifacts
 """
 
-import os
-import boto3
+import asyncio
 import hashlib
-from typing import Optional, Dict, Any, List
+import os
 from datetime import datetime, timedelta
+from typing import Any, Dict, List, Optional
+
+import boto3
 import redis.asyncio as redis
 import structlog
 
@@ -119,7 +121,7 @@ class ArtifactService:
             s3_key = f"jobs/{job_id}/{filename}"
 
             # Calculate file hash and metadata
-            file_hash = self.calculate_file_hash(file_path)
+            file_hash = await asyncio.to_thread(self.calculate_file_hash, file_path)
             file_size = os.path.getsize(file_path)
             upload_time = datetime.utcnow()
 
@@ -139,7 +141,13 @@ class ArtifactService:
                 "ContentType": self._guess_content_type(filename),
             }
 
-            self.s3_client.upload_file(file_path, self.bucket_name, s3_key, ExtraArgs=extra_args)
+            await asyncio.to_thread(
+                self.s3_client.upload_file,
+                file_path,
+                self.bucket_name,
+                s3_key,
+                ExtraArgs=extra_args,
+            )
 
             # Store metadata in Redis
             artifact_meta = {

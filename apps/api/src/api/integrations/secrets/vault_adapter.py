@@ -6,23 +6,24 @@ Supports multiple authentication methods including token and AppRole.
 """
 
 import logging
-from typing import Dict, List, Optional, Any
 from datetime import datetime
+from typing import Any, Dict, List, Optional
+
 import aiohttp
 import hvac
-from hvac.exceptions import InvalidPath, VaultError, Forbidden
+from hvac.exceptions import Forbidden, InvalidPath, VaultError
 
+from .auth import TokenCredentials, get_auth_manager
 from .base import (
-    SecretAdapter,
     Secret,
+    SecretAdapter,
+    SecretBackendError,
     SecretMetadata,
     SecretNotFoundError,
     SecretUnauthorizedError,
-    SecretBackendError,
     SecretValidationError,
 )
 from .cache import SecretCache
-from .auth import TokenCredentials, get_auth_manager
 
 logger = logging.getLogger(__name__)
 
@@ -129,7 +130,7 @@ class VaultAdapter(SecretAdapter):
             else:
                 raise SecretUnauthorizedError("Token authentication failed")
         except Exception as e:
-            logger.error(f"Vault token authentication error: {e}")
+            logger.error("Vault token authentication error: %s", e)
             raise SecretUnauthorizedError(f"Token authentication failed: {e}")
 
     async def authenticate_with_approle(self, role_id: str, secret_id: str) -> TokenCredentials:
@@ -178,7 +179,7 @@ class VaultAdapter(SecretAdapter):
             return TokenCredentials(token=token, expires_at=expires_at)
 
         except Exception as e:
-            logger.error(f"Vault AppRole authentication error: {e}")
+            logger.error("Vault AppRole authentication error: %s", e)
             raise SecretUnauthorizedError(f"AppRole authentication failed: {e}")
 
     async def _ensure_authenticated(self) -> None:
@@ -216,19 +217,19 @@ class VaultAdapter(SecretAdapter):
                     if version in ["1", "2"]:
                         self._kv_version = int(version)
                         logger.info(
-                            f"Detected Vault KV v{self._kv_version} at mount {self.mount_point}"
+                            "Detected Vault KV v%s at mount %s", self._kv_version, self.mount_point
                         )
                         return self._kv_version
 
             # Default to v1 if we can't determine
             self._kv_version = 1
             logger.warning(
-                f"Could not detect KV version for mount {self.mount_point}, defaulting to v1"
+                "Could not detect KV version for mount %s, defaulting to v1", self.mount_point
             )
             return self._kv_version
 
         except Exception as e:
-            logger.error(f"Failed to detect KV version: {e}")
+            logger.error("Failed to detect KV version: %s", e)
             raise SecretBackendError(f"Unable to detect Vault KV version: {e}")
 
     async def _get_cached_secret(self, path: str, version: Optional[int]) -> Optional[Secret]:
@@ -236,7 +237,7 @@ class VaultAdapter(SecretAdapter):
         cached_secret = await self.cache.get_secret(path, version)
         if cached_secret is None:
             return None
-        logger.debug(f"Cache hit for secret: {path}")
+        logger.debug("Cache hit for secret: %s", path)
         return Secret(
             path,
             cached_secret["data"],
@@ -381,7 +382,7 @@ class VaultAdapter(SecretAdapter):
             secret = Secret(path, secret_data, secret_metadata)
             await self._cache_secret(path, secret_data, secret_metadata, version)
 
-            logger.info(f"Retrieved secret from Vault: {path}")
+            logger.info("Retrieved secret from Vault: %s", path)
             return secret
 
         except InvalidPath:
@@ -391,7 +392,7 @@ class VaultAdapter(SecretAdapter):
         except VaultError as e:
             raise SecretBackendError(f"Vault error: {e}")
         except Exception as e:
-            logger.error(f"Unexpected error retrieving secret {path}: {e}")
+            logger.error("Unexpected error retrieving secret %s: %s", path, e)
             raise SecretBackendError(f"Failed to retrieve secret: {e}")
 
     async def put_secret(
@@ -436,7 +437,7 @@ class VaultAdapter(SecretAdapter):
             await self.cache.invalidate_path(path)
             await self._cache_secret(path, data, secret_metadata, version)
 
-            logger.info(f"Stored secret in Vault: {path}")
+            logger.info("Stored secret in Vault: %s", path)
             return Secret(path, data, secret_metadata)
 
         except Forbidden:
@@ -444,7 +445,7 @@ class VaultAdapter(SecretAdapter):
         except VaultError as e:
             raise SecretBackendError(f"Vault error: {e}")
         except Exception as e:
-            logger.error(f"Unexpected error storing secret {path}: {e}")
+            logger.error("Unexpected error storing secret %s: %s", path, e)
             raise SecretBackendError(f"Failed to store secret: {e}")
 
     async def list_secrets(self, prefix: str = "", limit: int = 100) -> List[str]:
@@ -494,7 +495,7 @@ class VaultAdapter(SecretAdapter):
                 else:
                     secret_paths = []
 
-            logger.debug(f"Listed {len(secret_paths)} secrets under prefix: {prefix}")
+            logger.debug("Listed %s secrets under prefix: %s", len(secret_paths), prefix)
             return secret_paths
 
         except Forbidden:
@@ -502,7 +503,7 @@ class VaultAdapter(SecretAdapter):
         except VaultError as e:
             raise SecretBackendError(f"Vault error: {e}")
         except Exception as e:
-            logger.error(f"Unexpected error listing secrets with prefix {prefix}: {e}")
+            logger.error("Unexpected error listing secrets with prefix %s: %s", prefix, e)
             raise SecretBackendError(f"Failed to list secrets: {e}")
 
     async def delete_secret(self, path: str, version: Optional[int] = None) -> None:
@@ -551,7 +552,7 @@ class VaultAdapter(SecretAdapter):
             # Invalidate cache
             await self.cache.invalidate_path(path)
 
-            logger.info(f"Deleted secret from Vault: {path}")
+            logger.info("Deleted secret from Vault: %s", path)
 
         except InvalidPath:
             raise SecretNotFoundError(f"Secret not found at path: {path}")
@@ -560,7 +561,7 @@ class VaultAdapter(SecretAdapter):
         except VaultError as e:
             raise SecretBackendError(f"Vault error: {e}")
         except Exception as e:
-            logger.error(f"Unexpected error deleting secret {path}: {e}")
+            logger.error("Unexpected error deleting secret %s: %s", path, e)
             raise SecretBackendError(f"Failed to delete secret: {e}")
 
     async def rotate_secret(self, path: str) -> str:
@@ -595,11 +596,11 @@ class VaultAdapter(SecretAdapter):
             # Update with new value
             await self.put_secret(path, new_data)
 
-            logger.info(f"Rotated secret: {path}")
+            logger.info("Rotated secret: %s", path)
             return new_secret
 
         except Exception as e:
-            logger.error(f"Failed to rotate secret {path}: {e}")
+            logger.error("Failed to rotate secret %s: %s", path, e)
             raise SecretBackendError(f"Failed to rotate secret: {e}")
 
     async def health(self) -> Dict[str, Any]:
@@ -645,7 +646,7 @@ class VaultAdapter(SecretAdapter):
             }
 
         except Exception as e:
-            logger.error(f"Health check failed: {e}")
+            logger.error("Health check failed: %s", e)
             return {
                 "status": "unhealthy",
                 "error": str(e),

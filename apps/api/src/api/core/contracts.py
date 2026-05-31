@@ -4,6 +4,8 @@ from typing import Any, Dict, Generic, Literal, Optional, TypeAlias, TypeVar
 
 from pydantic import BaseModel, JsonValue
 
+from .error_types import ErrorType
+
 T = TypeVar("T")
 EventPayloadT = TypeVar("EventPayloadT", bound=BaseModel | dict[str, JsonValue])
 
@@ -17,8 +19,24 @@ EventType: TypeAlias = Literal[
 
 
 class ApiErrorPayload(BaseModel):
+    """Standard API error response payload.
+
+    Attributes:
+        code: Error code identifier (e.g., VALIDATION_ERROR)
+        type: Error category (validation, authentication, provider, etc.)
+        message: User-facing error message
+        request_id: Unique request identifier for tracking/debugging
+        timestamp: ISO 8601 UTC timestamp when error occurred
+        trace_id: Optional distributed tracing correlation ID
+        details: Optional error-specific context (varies by error type)
+    """
+
     code: str
+    type: ErrorType
     message: str
+    request_id: Optional[str] = None
+    timestamp: Optional[str] = None
+    trace_id: Optional[str] = None
     details: Optional[Dict[str, Any]] = None
 
 

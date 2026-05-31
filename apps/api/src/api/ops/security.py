@@ -3,15 +3,16 @@ Enhanced Security Middleware for Operational Endpoints
 Implements read-only by default with environment-based access control
 """
 
+import logging
 import os
 import time
-import logging
-from typing import Dict, Any, Optional, List
-from functools import wraps
-from fastapi import HTTPException, Request, status
-from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
-import jwt
 from datetime import datetime
+from functools import wraps
+from typing import Any, Dict, List, Optional
+
+import jwt
+from fastapi import HTTPException, Request, status
+from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 
 from ..storage.cache import cache
 
@@ -64,13 +65,13 @@ class OpsSecurityMiddleware:
 
         # Check if environment is allowed for ops access
         if current_env not in OpsSecurityConfig.OPS_ALLOWED_ENVIRONMENTS:
-            logger.warning(f"Environment {current_env} not allowed for ops access")
+            logger.warning("Environment %s not allowed for ops access", current_env)
             return False
 
         # Check if operation is allowed in current environment
         allowed_operations = OpsSecurityConfig.ENVIRONMENT_PERMISSIONS.get(current_env, [])
         if operation not in allowed_operations:
-            logger.warning(f"Operation {operation} not allowed in environment {current_env}")
+            logger.warning("Operation %s not allowed in environment %s", operation, current_env)
             return False
 
         return True
@@ -181,7 +182,7 @@ class OpsSecurityMiddleware:
         }
 
         # Log to console
-        logger.info(f"OPS AUDIT: {audit_event}")
+        logger.info("OPS AUDIT: %s", audit_event)
 
         # Store in cache for retrieval
         try:
@@ -194,7 +195,7 @@ class OpsSecurityMiddleware:
 
             await cache.set(OpsSecurityConfig.AUDIT_LOG_KEY, audit_log, expire=86400 * 7)  # 7 days
         except Exception as e:
-            logger.error(f"Failed to store audit log: {e}")
+            logger.error("Failed to store audit log: %s", e)
 
 
 # Global security instance
@@ -329,7 +330,7 @@ async def get_ops_audit_log(limit: int = 100, offset: int = 0) -> List[Dict[str,
         return audit_log[start:end]
 
     except Exception as e:
-        logger.error(f"Failed to retrieve audit log: {e}")
+        logger.error("Failed to retrieve audit log: %s", e)
         return []
 
 
@@ -398,6 +399,6 @@ security_warnings = validate_ops_security()
 if security_warnings:
     logger.warning("OPS SECURITY WARNINGS:")
     for warning in security_warnings:
-        logger.warning(f"  - {warning}")
+        logger.warning("  - %s", warning)
 else:
     logger.info("Ops security configuration validated successfully")

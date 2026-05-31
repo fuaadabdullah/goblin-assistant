@@ -4,6 +4,8 @@ services:
   # Redis for Celery backend and broker
   redis:
     image: redis:7-alpine
+    cpus: ${REDIS_CPU_LIMIT:-0.50}
+    mem_limit: ${REDIS_MEM_LIMIT:-512m}
     ports:
       - '6379:6379'
     volumes:
@@ -14,11 +16,18 @@ services:
       interval: 10s
       timeout: 3s
       retries: 5
+    deploy:
+      resources:
+        limits:
+          cpus: ${REDIS_CPU_LIMIT:-0.50}
+          memory: ${REDIS_MEM_LIMIT:-512m}
     restart: unless-stopped
 
   # MinIO S3-compatible object storage
   minio:
     image: minio/minio:latest
+    cpus: ${MINIO_CPU_LIMIT:-1.00}
+    mem_limit: ${MINIO_MEM_LIMIT:-1g}
     ports:
       - '9000:9000'
       - '9001:9001'
@@ -35,6 +44,11 @@ services:
       timeout: 10s
       retries: 3
       start_period: 40s
+    deploy:
+      resources:
+        limits:
+          cpus: ${MINIO_CPU_LIMIT:-1.00}
+          memory: ${MINIO_MEM_LIMIT:-1g}
     restart: unless-stopped
 
   # MinIO client for bucket setup
@@ -55,6 +69,8 @@ services:
   # Celery worker for high priority tasks
   celery-worker-high:
     build: .
+    cpus: ${CELERY_WORKER_HIGH_CPU_LIMIT:-1.00}
+    mem_limit: ${CELERY_WORKER_HIGH_MEM_LIMIT:-1g}
     command: celery -A celery_app worker --loglevel=info --concurrency=2 --pool=prefork -Q high_priority
     environment:
       - ENV=production
@@ -65,11 +81,24 @@ services:
     depends_on:
       redis:
         condition: service_healthy
+    healthcheck:
+      test: ['CMD-SHELL', 'celery -A celery_app inspect ping -d celery@$$HOSTNAME --timeout=5 | grep -q pong']
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+    deploy:
+      resources:
+        limits:
+          cpus: ${CELERY_WORKER_HIGH_CPU_LIMIT:-1.00}
+          memory: ${CELERY_WORKER_HIGH_MEM_LIMIT:-1g}
     restart: unless-stopped
 
   # Celery worker for default priority tasks
   celery-worker-default:
     build: .
+    cpus: ${CELERY_WORKER_DEFAULT_CPU_LIMIT:-1.50}
+    mem_limit: ${CELERY_WORKER_DEFAULT_MEM_LIMIT:-2g}
     command: celery -A celery_app worker --loglevel=info --concurrency=4 --pool=prefork -Q default
     environment:
       - ENV=production
@@ -80,11 +109,24 @@ services:
     depends_on:
       redis:
         condition: service_healthy
+    healthcheck:
+      test: ['CMD-SHELL', 'celery -A celery_app inspect ping -d celery@$$HOSTNAME --timeout=5 | grep -q pong']
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+    deploy:
+      resources:
+        limits:
+          cpus: ${CELERY_WORKER_DEFAULT_CPU_LIMIT:-1.50}
+          memory: ${CELERY_WORKER_DEFAULT_MEM_LIMIT:-2g}
     restart: unless-stopped
 
   # Celery worker for low priority tasks
   celery-worker-low:
     build: .
+    cpus: ${CELERY_WORKER_LOW_CPU_LIMIT:-0.75}
+    mem_limit: ${CELERY_WORKER_LOW_MEM_LIMIT:-1g}
     command: celery -A celery_app worker --loglevel=info --concurrency=2 --pool=prefork -Q low_priority
     environment:
       - ENV=production
@@ -95,11 +137,24 @@ services:
     depends_on:
       redis:
         condition: service_healthy
+    healthcheck:
+      test: ['CMD-SHELL', 'celery -A celery_app inspect ping -d celery@$$HOSTNAME --timeout=5 | grep -q pong']
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+    deploy:
+      resources:
+        limits:
+          cpus: ${CELERY_WORKER_LOW_CPU_LIMIT:-0.75}
+          memory: ${CELERY_WORKER_LOW_MEM_LIMIT:-1g}
     restart: unless-stopped
 
   # Celery beat scheduler
   celery-beat:
     build: .
+    cpus: ${CELERY_BEAT_CPU_LIMIT:-0.50}
+    mem_limit: ${CELERY_BEAT_MEM_LIMIT:-512m}
     command: celery -A celery_app beat --loglevel=info --scheduler django_celery_beat.schedulers:DatabaseScheduler
     environment:
       - ENV=production
@@ -110,11 +165,24 @@ services:
     depends_on:
       redis:
         condition: service_healthy
+    healthcheck:
+      test: ['CMD-SHELL', 'tr "\\0" " " < /proc/1/cmdline | grep -q "celery -A celery_app beat"']
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+    deploy:
+      resources:
+        limits:
+          cpus: ${CELERY_BEAT_CPU_LIMIT:-0.50}
+          memory: ${CELERY_BEAT_MEM_LIMIT:-512m}
     restart: unless-stopped
 
   # Flower monitoring dashboard
   flower:
     build: .
+    cpus: ${FLOWER_CPU_LIMIT:-0.50}
+    mem_limit: ${FLOWER_MEM_LIMIT:-512m}
     command: celery -A celery_app flower --address=0.0.0.0 --port=5555 --basic_auth=${FLOWER_BASIC_AUTH:-dev:dev_password_change_me}
     ports:
       - '5555:5555'
@@ -133,11 +201,18 @@ services:
       timeout: 10s
       retries: 3
       start_period: 40s
+    deploy:
+      resources:
+        limits:
+          cpus: ${FLOWER_CPU_LIMIT:-0.50}
+          memory: ${FLOWER_MEM_LIMIT:-512m}
     restart: unless-stopped
 
   # Celery monitoring API
   celery-monitor:
     build: .
+    cpus: ${CELERY_MONITOR_CPU_LIMIT:-0.50}
+    mem_limit: ${CELERY_MONITOR_MEM_LIMIT:-512m}
     command: python celery_monitoring.py
     ports:
       - '5556:5555'
@@ -156,10 +231,17 @@ services:
       timeout: 10s
       retries: 3
       start_period: 40s
+    deploy:
+      resources:
+        limits:
+          cpus: ${CELERY_MONITOR_CPU_LIMIT:-0.50}
+          memory: ${CELERY_MONITOR_MEM_LIMIT:-512m}
     restart: unless-stopped
 
   goblin-assistant-backend:
     build: .
+    cpus: ${BACKEND_CPU_LIMIT:-1.50}
+    mem_limit: ${BACKEND_MEM_LIMIT:-2g}
     ports:
       - '8001:8001'
     environment:
@@ -182,6 +264,11 @@ services:
       timeout: 10s
       retries: 3
       start_period: 40s
+    deploy:
+      resources:
+        limits:
+          cpus: ${BACKEND_CPU_LIMIT:-1.50}
+          memory: ${BACKEND_MEM_LIMIT:-2g}
     restart: unless-stopped
 
   # Sandbox worker for secure code execution
@@ -189,6 +276,8 @@ services:
     build:
       context: .
       dockerfile: Dockerfile.sandbox
+    cpus: ${SANDBOX_WORKER_CPU_LIMIT:-1.00}
+    mem_limit: ${SANDBOX_WORKER_MEM_LIMIT:-1g}
     command: ["python", "/home/runner/start_worker.py"]
     environment:
       - REDIS_URL=redis://redis:6379/0
@@ -212,6 +301,11 @@ services:
         condition: service_healthy
       minio:
         condition: service_healthy
+    deploy:
+      resources:
+        limits:
+          cpus: ${SANDBOX_WORKER_CPU_LIMIT:-1.00}
+          memory: ${SANDBOX_WORKER_MEM_LIMIT:-1g}
     restart: unless-stopped
 
   # Sandbox image builder (for development)

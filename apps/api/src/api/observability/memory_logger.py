@@ -3,11 +3,13 @@ Memory Promotion Logging System
 Tracks all memory promotion events with full audit trail and debugging capabilities
 """
 
+import asyncio
 import json
-from typing import Dict, Any, List, Optional
+from dataclasses import asdict, dataclass
 from datetime import datetime, timedelta
 from enum import Enum
-from dataclasses import dataclass, asdict
+from typing import Any, Dict, List, Optional
+
 import structlog
 
 from ..config.system_config import get_system_config
@@ -162,11 +164,14 @@ class MemoryPromotionLogger:
                 "promotion_log_file", "promotions.log"
             )
 
-            with open(log_file, "a", encoding="utf-8") as f:
-                f.write(event.to_json() + "\n")
+            def _append() -> None:
+                with open(log_file, "a", encoding="utf-8") as f:
+                    f.write(event.to_json() + "\n")
+
+            await asyncio.to_thread(_append)
 
         except Exception as e:
-            logger.error(f"Failed to log promotion to file: {e}")
+            logger.error("Failed to log promotion to file:", error=str(e))
 
     async def get_promotion_history(
         self,
@@ -320,9 +325,7 @@ class MemoryPromotionLogger:
         contradiction_rate = len(contradictions) / max(1, promoted_count) * 100
         if contradiction_rate > 5:
             health_status = "critical"
-        elif contradiction_rate > 2:
-            health_status = "warning"
-        elif rejected_count / max(1, total_attempts) > 0.8:
+        elif contradiction_rate > 2 or rejected_count / max(1, total_attempts) > 0.8:
             health_status = "warning"
         else:
             health_status = "healthy"

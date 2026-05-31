@@ -2,10 +2,11 @@
 
 from __future__ import annotations
 
+import asyncio
+import base64
 import json
 import os
 import time
-import base64
 from pathlib import Path
 from typing import Any, AsyncGenerator, Dict, List, Optional
 
@@ -188,7 +189,7 @@ class VertexAIProvider(BaseProvider):
                 error="VERTEX_AI_PROJECT not set",
             )
 
-        token = _get_access_token()
+        token = await asyncio.to_thread(_get_access_token)
         if not token:
             return ProviderResult(
                 ok=False,
@@ -281,7 +282,7 @@ class VertexAIProvider(BaseProvider):
     ) -> AsyncGenerator[Dict[str, Any], None]:
         normalized_messages = self.normalize_messages(messages, prompt=prompt, **kwargs)
         model_name = model or self._model
-        token = _get_access_token()
+        token = await asyncio.to_thread(_get_access_token)
         if not token:
             return
 
@@ -341,7 +342,7 @@ class VertexAIProvider(BaseProvider):
     async def health_check(self) -> ProviderHealth:
         if not self._project:
             return ProviderHealth(self.provider_id, False, error="No project")
-        token = _get_access_token()
+        token = await asyncio.to_thread(_get_access_token)
         if not token:
             return ProviderHealth(self.provider_id, False, error="Auth failed")
 

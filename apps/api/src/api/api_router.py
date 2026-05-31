@@ -1,19 +1,23 @@
-from fastapi import APIRouter, HTTPException
-from pydantic import BaseModel
-from typing import Optional, Dict, Any, List
-import uuid
+from __future__ import annotations
+
 import asyncio
 import time
+import uuid
+from typing import Any, Dict, List, Optional
+
+from fastapi import APIRouter, HTTPException
+from pydantic import BaseModel
+
 from .core.orchestration import create_simple_orchestration_plan
-from .providers.dispatcher import invoke_provider
 from .input_validation import InputSanitizer
+from .providers.dispatcher import dispatcher, invoke_provider
+from .routing.router import registry as routing_registry
+from .routing.router import route_task as route_task_runtime
+from .services.stream_state_store import get_stream_state_store
+from .services.task_streaming import run_task_stream_to_state
+from .storage.tasks import get_task_store
 
 router = APIRouter(prefix="/api", tags=["api"])
-
-
-# ============================================================================
-# Simple Chat Endpoint - Routes to Kamatera LLM
-# ============================================================================
 
 
 class SimpleChatMessage(BaseModel):
@@ -24,7 +28,7 @@ class SimpleChatMessage(BaseModel):
 class SimpleChatRequest(BaseModel):
     messages: List[SimpleChatMessage]
     model: Optional[str] = None
-    provider: Optional[str] = None  # Allow specifying provider (e.g., "ollama_gcp", "llamacpp_gcp")
+    provider: Optional[str] = None
     stream: Optional[bool] = False
 
 
@@ -34,90 +38,6 @@ class SimpleChatResponse(BaseModel):
     error: Optional[str] = None
     provider: Optional[str] = None
     model: Optional[str] = None
-
-
-@router.post("/chat", response_model=SimpleChatResponse)
-async def simple_chat(request: SimpleChatRequest):
-    """
-    Simple chat endpoint that routes to GCP LLM providers.
-
-    This is the main endpoint for the frontend to use for chat functionality.
-    It defaults to the GCP Ollama server with qwen2.5:3b model.
-
-    Example:
-        POST /api/chat
-        {
-            "messages": [{"role": "user", "content": "Hello!"}]
-        }
-    """
-    try:
-        # Validate message lengths before processing
-        for msg in request.messages:
-            if len(msg.content) > InputSanitizer.MAX_MESSAGE_LENGTH:
-                raise HTTPException(
-                    status_code=413,
-                    detail=f"Message content exceeds maximum length of {InputSanitizer.MAX_MESSAGE_LENGTH} characters",
-                )
-
-        # Convert messages to dict format
-        messages = [{"role": m.role, "content": m.content} for m in request.messages]
-
-        # Use auto-selection when provider not specified (smart routing with fallback)
-        # When explicitly specified, use that provider directly
-        provider = request.provider or "auto"
-        model = request.model  # Let dispatcher pick default model if None
-
-        # Create payload for provider
-        payload = {
-            "messages": messages,
-            "model": model,
-        }
-
-        # Invoke provider
-        response = await invoke_provider(
-            pid=provider,
-            model=model,
-            payload=payload,
-            timeout_ms=30000,
-            stream=request.stream,
-        )
-
-        if isinstance(response, dict) and response.get("ok"):
-            # Extract text from provider response
-            # Standard format: {"ok": True, "result": {"text": ..., "raw": ...}}
-            result_data = response.get("result", {})
-            if isinstance(result_data, dict) and result_data.get("text"):
-                text = result_data["text"]
-            else:
-                # Fallback: some providers put text at top level
-                text = response.get("text", "")
-            return SimpleChatResponse(
-                ok=True,
-                result={"text": text} if text else result_data,
-                provider=response.get("provider", "unknown"),
-                model=response.get("model", "unknown"),
-            )
-        else:
-            error_msg = (
-                response.get("error", "Unknown error")
-                if isinstance(response, dict)
-                else str(response)
-            )
-            return SimpleChatResponse(
-                ok=False,
-                error=error_msg,
-            )
-
-    except Exception as e:
-        return SimpleChatResponse(
-            ok=False,
-            error=str(e),
-        )
-
-
-# ============================================================================
-# Generate Endpoint - For Guest Mode / Unauthenticated Requests
-# ============================================================================
 
 
 class GenerateRequest(BaseModel):
@@ -131,95 +51,6 @@ class GenerateResponse(BaseModel):
     content: Optional[str] = None
     choices: Optional[List[Dict[str, Any]]] = None
     error: Optional[str] = None
-
-
-@router.post("/generate", response_model=GenerateResponse)
-async def generate(request: GenerateRequest):
-    """
-    Generate endpoint for guest mode / unauthenticated users.
-    Compatible with OpenAI-style completion responses.
-
-    Accepts either:
-    - messages: List of chat messages (new format)
-    - prompt: Simple text prompt (legacy format)
-
-    Returns OpenAI-compatible response format.
-    """
-    try:
-        # Validate input
-        if not request.messages and not request.prompt:
-            raise HTTPException(
-                status_code=400, detail="Either 'messages' or 'prompt' must be provided"
-            )
-
-        # Convert to messages format
-        if request.messages:
-            # Validate message lengths
-            for msg in request.messages:
-                if len(msg.content) > InputSanitizer.MAX_MESSAGE_LENGTH:
-                    raise HTTPException(
-                        status_code=413,
-                        detail=f"Message content exceeds maximum length of {InputSanitizer.MAX_MESSAGE_LENGTH} characters",
-                    )
-            messages = [{"role": m.role, "content": m.content} for m in request.messages]
-        elif request.prompt:
-            # Validate prompt length
-            if len(request.prompt) > InputSanitizer.MAX_MESSAGE_LENGTH:
-                raise HTTPException(
-                    status_code=413,
-                    detail=f"Prompt exceeds maximum length of {InputSanitizer.MAX_MESSAGE_LENGTH} characters",
-                )
-            messages = [{"role": "user", "content": request.prompt}]
-
-        # Use auto-selection when provider not specified
-        provider = request.provider or "auto"
-        model = request.model
-
-        # Create payload for provider
-        payload = {
-            "messages": messages,
-            "model": model,
-        }
-
-        # Invoke provider
-        response = await invoke_provider(
-            pid=provider,
-            model=model,
-            payload=payload,
-            timeout_ms=30000,
-            stream=False,
-        )
-
-        if isinstance(response, dict) and response.get("ok"):
-            # Extract text from provider response
-            result_data = response.get("result", {})
-            if isinstance(result_data, dict) and result_data.get("text"):
-                text = result_data["text"]
-            else:
-                text = response.get("text", "")
-
-            # Return OpenAI-compatible format
-            return GenerateResponse(
-                content=text,
-                choices=[{"message": {"role": "assistant", "content": text}}],
-            )
-        else:
-            error_msg = (
-                response.get("error", "Unknown error")
-                if isinstance(response, dict)
-                else str(response)
-            )
-            return GenerateResponse(error=error_msg)
-
-    except HTTPException:
-        raise
-    except Exception as e:
-        return GenerateResponse(error=str(e))
-
-
-# ============================================================================
-# Original API Router Endpoints
-# ============================================================================
 
 
 class RouteTaskRequest(BaseModel):
@@ -244,235 +75,349 @@ class StreamResponse(BaseModel):
     status: str = "started"
 
 
-# In-memory storage for streams (in production, use Redis or database)
-# Production implementation would use Redis for distributed stream management
-# or a message queue system (RabbitMQ, Apache Kafka) for scalability
-ACTIVE_STREAMS = {}
-
-
-@router.post("/route_task")
-async def route_task(request: RouteTaskRequest):
-    """Route a task to the best available provider"""
-    try:
-        # For now, return a simple success response
-        # In production, this would delegate to the routing system
-        return {
-            "ok": True,
-            "message": "Task routed successfully",
-            "task_id": str(uuid.uuid4()),
-        }
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Routing failed: {str(e)}")
-
-
-@router.post("/route_task_stream_start")
-async def start_stream_task(request: StreamTaskRequest):
-    """Start a streaming task"""
-    try:
-        stream_id = str(uuid.uuid4())
-
-        # Store stream information
-        ACTIVE_STREAMS[stream_id] = {
-            "goblin": request.goblin,
-            "task": request.task,
-            "code": request.code,
-            "provider": request.provider,
-            "model": request.model,
-            "status": "running",
-            "chunks": [],
-            "created_at": time.time(),
-        }
-
-        # Simulate task execution (in production, this would queue the task)
-        asyncio.create_task(simulate_stream_task(stream_id))
-
-        return StreamResponse(stream_id=stream_id, status="started")
-
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Failed to start stream task: {str(e)}")
-
-
-@router.get("/route_task_stream_poll/{stream_id}")
-async def poll_stream_task(stream_id: str):
-    """Poll for streaming task updates"""
-    if stream_id not in ACTIVE_STREAMS:
-        raise HTTPException(status_code=404, detail="Stream not found")
-
-    stream = ACTIVE_STREAMS[stream_id]
-
-    # Return available chunks
-    chunks = stream.get("chunks", [])
-    stream["chunks"] = []  # Clear processed chunks
-
-    return {
-        "stream_id": stream_id,
-        "status": stream["status"],
-        "chunks": chunks,
-        "done": stream["status"] == "completed",
-    }
-
-
-@router.post("/route_task_stream_cancel/{stream_id}")
-async def cancel_stream_task(stream_id: str):
-    """Cancel a streaming task"""
-    if stream_id not in ACTIVE_STREAMS:
-        raise HTTPException(status_code=404, detail="Stream not found")
-
-    ACTIVE_STREAMS[stream_id]["status"] = "cancelled"
-
-    return {"stream_id": stream_id, "status": "cancelled"}
-
-
-async def simulate_stream_task(stream_id: str):
-    """Simulate streaming task execution"""
-    await asyncio.sleep(1)  # Initial delay
-
-    if stream_id not in ACTIVE_STREAMS:
-        return
-
-    stream = ACTIVE_STREAMS[stream_id]
-    response_text = f"Executed task '{stream['task']}' using goblin '{stream['goblin']}'"
-
-    # Simulate streaming chunks
-    words = response_text.split()
-    for i, word in enumerate(words):
-        await asyncio.sleep(0.1)  # Simulate processing delay
-
-        if stream["status"] == "cancelled":
-            break
-
-        chunk = {
-            "content": word + (" " if i < len(words) - 1 else ""),
-            "token_count": len(word) // 4 + 1,
-            "cost_delta": 0.001,
-            "done": False,
-        }
-
-        stream["chunks"].append(chunk)
-
-    # Mark as completed
-    if stream["status"] != "cancelled":
-        stream["status"] = "completed"
-        stream["chunks"].append(
-            {
-                "result": response_text,
-                "cost": len(words) * 0.001,
-                "tokens": sum(len(word) for word in words) // 4,
-                "done": True,
-            }
-        )
-
-
-@router.get("/goblins")
-async def get_goblins():
-    """Get list of available goblins"""
-    # Mock goblin data - in production, this would come from a database
-    goblins = [
-        {
-            "id": "docs-writer",
-            "name": "docs-writer",
-            "title": "Documentation Writer",
-            "status": "available",
-            "guild": "Crafters",
-        },
-        {
-            "id": "code-writer",
-            "name": "code-writer",
-            "title": "Code Writer",
-            "status": "available",
-            "guild": "Crafters",
-        },
-        {
-            "id": "search-goblin",
-            "name": "search-goblin",
-            "title": "Search Specialist",
-            "status": "available",
-            "guild": "Huntress",
-        },
-        {
-            "id": "analyze-goblin",
-            "name": "analyze-goblin",
-            "title": "Data Analyst",
-            "status": "available",
-            "guild": "Mages",
-        },
-    ]
-    return goblins
-
-
-@router.get("/history/{goblin_id}")
-async def get_goblin_history(goblin_id: str, limit: int = 10):
-    """Get task history for a specific goblin"""
-    # Mock history data - in production, this would come from a database
-    mock_history = [
-        {
-            "id": f"task_{i}",
-            "goblin": goblin_id,
-            "task": f"Sample task {i}",
-            "response": f"Completed task {i} successfully",
-            "timestamp": time.time() - (i * 3600),  # Hours ago
-            "kpis": f"duration_ms:{1000 + i * 100},cost:{0.01 * (i + 1)}",
-        }
-        for i in range(min(limit, 20))
-    ]
-    return mock_history
-
-
-@router.get("/stats/{goblin_id}")
-async def get_goblin_stats(goblin_id: str):
-    """Get statistics for a specific goblin"""
-    # Mock stats - in production, this would be calculated from actual data
-    return {
-        "goblin_id": goblin_id,
-        "total_tasks": 42,
-        "total_cost": 1.23,
-        "avg_duration_ms": 2500,
-        "success_rate": 0.95,
-        "last_active": time.time() - 3600,  # 1 hour ago
-    }
-
-
 class ParseOrchestrationRequest(BaseModel):
     text: str
     default_goblin: Optional[str] = None
 
 
+def _extract_result_text(response: Dict[str, Any]) -> str:
+    result_data = response.get("result", {})
+    if isinstance(result_data, dict):
+        text = result_data.get("text")
+        if isinstance(text, str) and text:
+            return text
+    fallback_text = response.get("text")
+    if isinstance(fallback_text, str):
+        return fallback_text
+    return ""
+
+
+def _build_stream_messages(request: StreamTaskRequest) -> List[Dict[str, str]]:
+    payload_lines = [request.task.strip()]
+    if request.code:
+        payload_lines.append("\nCode:\n" + request.code.strip())
+    user_message = "\n".join(line for line in payload_lines if line)
+    return [{"role": "user", "content": user_message}]
+
+
+@router.post("/chat", response_model=SimpleChatResponse)
+async def simple_chat(request: SimpleChatRequest):
+    try:
+        for msg in request.messages:
+            if len(msg.content) > InputSanitizer.MAX_MESSAGE_LENGTH:
+                raise HTTPException(
+                    status_code=413,
+                    detail=(
+                        "Message content exceeds maximum length of "
+                        f"{InputSanitizer.MAX_MESSAGE_LENGTH} characters"
+                    ),
+                )
+
+        messages = [{"role": m.role, "content": m.content} for m in request.messages]
+        provider = request.provider or "auto"
+        model = request.model
+
+        response = await invoke_provider(
+            pid=provider,
+            model=model,
+            payload={"messages": messages, "model": model},
+            timeout_ms=30000,
+            stream=bool(request.stream),
+        )
+        if isinstance(response, dict) and response.get("ok"):
+            text = _extract_result_text(response)
+            result_data = response.get("result", {})
+            return SimpleChatResponse(
+                ok=True,
+                result={"text": text} if text else result_data,
+                provider=str(response.get("provider", "unknown")),
+                model=str(response.get("model", "unknown")),
+            )
+        error_msg = (
+            response.get("error", "Unknown error") if isinstance(response, dict) else str(response)
+        )
+        return SimpleChatResponse(ok=False, error=str(error_msg))
+    except HTTPException as exc:
+        return SimpleChatResponse(ok=False, error=str(exc.detail))
+    except Exception as exc:
+        return SimpleChatResponse(ok=False, error=str(exc))
+
+
+@router.post("/generate", response_model=GenerateResponse)
+async def generate(request: GenerateRequest):
+    try:
+        if not request.messages and not request.prompt:
+            raise HTTPException(
+                status_code=400,
+                detail="Either 'messages' or 'prompt' must be provided",
+            )
+
+        if request.messages:
+            for msg in request.messages:
+                if len(msg.content) > InputSanitizer.MAX_MESSAGE_LENGTH:
+                    raise HTTPException(
+                        status_code=413,
+                        detail=(
+                            "Message content exceeds maximum length of "
+                            f"{InputSanitizer.MAX_MESSAGE_LENGTH} characters"
+                        ),
+                    )
+            messages = [{"role": m.role, "content": m.content} for m in request.messages]
+        else:
+            prompt = request.prompt or ""
+            if len(prompt) > InputSanitizer.MAX_MESSAGE_LENGTH:
+                raise HTTPException(
+                    status_code=413,
+                    detail=(
+                        f"Prompt exceeds maximum length of "
+                        f"{InputSanitizer.MAX_MESSAGE_LENGTH} characters"
+                    ),
+                )
+            messages = [{"role": "user", "content": prompt}]
+
+        response = await invoke_provider(
+            pid=request.provider or "auto",
+            model=request.model,
+            payload={"messages": messages, "model": request.model},
+            timeout_ms=30000,
+            stream=False,
+        )
+        if isinstance(response, dict) and response.get("ok"):
+            text = _extract_result_text(response)
+            return GenerateResponse(
+                content=text,
+                choices=[{"message": {"role": "assistant", "content": text}}],
+            )
+        error_msg = (
+            response.get("error", "Unknown error") if isinstance(response, dict) else str(response)
+        )
+        return GenerateResponse(error=str(error_msg))
+    except HTTPException:
+        raise
+    except Exception as exc:
+        return GenerateResponse(error=str(exc))
+
+
+@router.post("/route_task")
+async def route_task(request: RouteTaskRequest):
+    try:
+        task_id = str(uuid.uuid4())
+        store = await get_task_store()
+        await store.save_task(
+            task_id,
+            {
+                "status": "started",
+                "task_type": request.task_type,
+                "payload": request.payload,
+                "metadata": {"source": "legacy_api_router"},
+            },
+        )
+        result = await route_task_runtime(
+            task_type=request.task_type,
+            payload=request.payload,
+            prefer_local=bool(request.prefer_local),
+            prefer_cost=bool(request.prefer_cost),
+            max_retries=int(request.max_retries or 2),
+            stream=bool(request.stream),
+        )
+        if isinstance(result, dict) and result.get("ok"):
+            await store.update_task_status(task_id, "completed", result=result)
+            return {
+                "ok": True,
+                "message": "Task routed successfully",
+                "task_id": task_id,
+                "result": result,
+            }
+        await store.update_task_status(
+            task_id, "failed", result=result if isinstance(result, dict) else {}
+        )
+        return {
+            "ok": False,
+            "task_id": task_id,
+            "error": (
+                result.get("error", "Routing failed") if isinstance(result, dict) else str(result)
+            ),
+            "providers_tried": (
+                result.get("providers_tried", []) if isinstance(result, dict) else []
+            ),
+        }
+    except Exception as exc:
+        raise HTTPException(status_code=500, detail=f"Routing failed: {exc}") from exc
+
+
+@router.post("/route_task_stream_start")
+async def start_stream_task(request: StreamTaskRequest):
+    try:
+        stream_id = str(uuid.uuid4())
+        store = get_stream_state_store()
+        await store.create_stream(
+            stream_id,
+            metadata={
+                "goblin": request.goblin,
+                "task": request.task,
+                "provider": request.provider or "auto",
+                "model": request.model or "",
+                "source": "legacy_api_router",
+            },
+        )
+        asyncio.create_task(
+            run_task_stream_to_state(
+                stream_id=stream_id,
+                task_id=stream_id,
+                messages=_build_stream_messages(request),
+                provider=request.provider,
+                model=request.model,
+                metadata={
+                    "goblin": request.goblin,
+                    "task": request.task,
+                    "source": "legacy_api_router",
+                },
+                initialize_state=False,
+            )
+        )
+        return StreamResponse(stream_id=stream_id, status="started")
+    except Exception as exc:
+        raise HTTPException(status_code=500, detail=f"Failed to start stream task: {exc}") from exc
+
+
+@router.get("/route_task_stream_poll/{stream_id}")
+async def poll_stream_task(stream_id: str):
+    store = get_stream_state_store()
+    stream = await store.poll_stream(stream_id)
+    if stream is None:
+        raise HTTPException(status_code=404, detail="Stream not found")
+    return stream
+
+
+@router.post("/route_task_stream_cancel/{stream_id}")
+async def cancel_stream_task(stream_id: str):
+    store = get_stream_state_store()
+    cancelled = await store.cancel_stream(stream_id)
+    if not cancelled:
+        raise HTTPException(status_code=404, detail="Stream not found")
+    return {"stream_id": stream_id, "status": "cancelled"}
+
+
+@router.get("/goblins")
+async def get_goblins():
+    inventory = await dispatcher.get_provider_inventory(include_hidden=False)
+    goblins = []
+    for provider in inventory:
+        provider_id = str(provider.get("id", "unknown"))
+        name = str(provider.get("name", provider_id))
+        configured = bool(provider.get("configured"))
+        healthy = bool(provider.get("healthy", configured))
+        status = "available" if configured and healthy else "degraded"
+        goblins.append(
+            {
+                "id": provider_id,
+                "name": provider_id,
+                "title": name,
+                "status": status,
+                "guild": str(provider.get("tier", "cloud")),
+            }
+        )
+    return goblins
+
+
+@router.get("/history/{goblin_id}")
+async def get_goblin_history(goblin_id: str, limit: int = 10):
+    capped_limit = max(1, min(int(limit), 100))
+    store = await get_task_store()
+    tasks = await store.list_tasks(limit=500)
+    entries: List[Dict[str, Any]] = []
+    for task in tasks:
+        provider_id = (
+            task.get("result", {}).get("selected_provider")
+            if isinstance(task.get("result"), dict)
+            else None
+        )
+        if provider_id and provider_id != goblin_id:
+            continue
+        payload = task.get("payload", {})
+        entries.append(
+            {
+                "id": task.get("task_id", ""),
+                "goblin": goblin_id,
+                "task": payload.get("task", payload.get("prompt", task.get("task_type", "task"))),
+                "response": (
+                    task.get("result", {}).get("result", {}).get("text", "")
+                    if isinstance(task.get("result"), dict)
+                    else ""
+                ),
+                "timestamp": task.get("updated_at", task.get("created_at", time.time())),
+                "kpis": f"status:{task.get('status', 'unknown')}",
+            }
+        )
+    return entries[-capped_limit:]
+
+
+@router.get("/stats/{goblin_id}")
+async def get_goblin_stats(goblin_id: str):
+    snapshot = routing_registry.snapshot()
+    stats = snapshot.get(goblin_id, {})
+    return {
+        "goblin_id": goblin_id,
+        "total_tasks": int(stats.get("success_rate", 0) * 100),
+        "total_cost": stats.get("total_cost_usd", 0.0),
+        "avg_duration_ms": stats.get("ewma_latency_ms", 0.0),
+        "success_rate": stats.get("success_rate", 0.0),
+        "last_active": stats.get("last_used", time.time()),
+    }
+
+
 @router.post("/orchestrate/parse")
 async def parse_orchestration(request: ParseOrchestrationRequest):
-    """Parse natural language into orchestration plan"""
     return create_simple_orchestration_plan(request.text, request.default_goblin)
 
 
 @router.post("/orchestrate/execute")
 async def execute_orchestration(plan_id: str):
-    """Execute an orchestration plan"""
-    # Mock execution - in production, this would trigger actual orchestration
+    execution_id = str(uuid.uuid4())
+    store = await get_task_store()
+    await store.save_task(
+        execution_id,
+        {
+            "status": "started",
+            "task_type": "orchestration.execute",
+            "payload": {"plan_id": plan_id},
+            "result": {},
+            "metadata": {"source": "legacy_orchestration"},
+        },
+    )
     return {
-        "execution_id": str(uuid.uuid4()),
+        "execution_id": execution_id,
         "plan_id": plan_id,
         "status": "started",
-        "estimated_completion": time.time() + 300,  # 5 minutes from now
+        "estimated_completion": time.time() + 300,
     }
 
 
 @router.get("/orchestrate/plans/{plan_id}")
 async def get_orchestration_plan(plan_id: str):
-    """Get details of an orchestration plan"""
-    # Mock plan data
+    store = await get_task_store()
+    tasks = await store.list_tasks(limit=500)
+    matching = [
+        task
+        for task in tasks
+        if task.get("task_type") == "orchestration.execute"
+        and isinstance(task.get("payload"), dict)
+        and task["payload"].get("plan_id") == plan_id
+    ]
+    if not matching:
+        raise HTTPException(status_code=404, detail="Plan not found")
+    task = matching[-1]
     return {
         "plan_id": plan_id,
-        "status": "completed",
-        "steps": [
-            {
-                "id": "step1",
-                "goblin": "docs-writer",
-                "task": "Document the code",
-                "status": "completed",
-                "duration_ms": 1500,
-                "cost": 0.02,
-            }
-        ],
-        "total_cost": 0.02,
-        "total_duration_ms": 1500,
-        "created_at": time.time() - 3600,
+        "status": task.get("status", "started"),
+        "steps": task.get("result", {}).get("steps", [])
+        if isinstance(task.get("result"), dict)
+        else [],
+        "total_cost": task.get("result", {}).get("total_cost", 0.0)
+        if isinstance(task.get("result"), dict)
+        else 0.0,
+        "total_duration_ms": task.get("result", {}).get("total_duration_ms", 0)
+        if isinstance(task.get("result"), dict)
+        else 0,
+        "created_at": task.get("created_at", time.time()),
     }

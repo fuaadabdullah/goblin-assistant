@@ -10,6 +10,8 @@ interface SandboxSidebarProps {
   code: string;
   /** Jobs list. */
   jobs: SandboxJob[];
+  /** Error message from the last jobs fetch, if any. */
+  jobsError?: string | null;
   /** Selected job id. */
   selectedJobId?: string;
   /** Language change handler. */
@@ -31,6 +33,7 @@ const SandboxSidebar = ({
   loading,
   code,
   jobs,
+  jobsError,
   selectedJobId,
   onLanguageChange,
   onRun,
@@ -100,6 +103,8 @@ const SandboxSidebar = ({
       <h3 className="text-xs font-semibold text-text uppercase tracking-wide">Recent Jobs</h3>
       {isGuest ? (
         <div className="text-xs text-muted">Sign in to view your saved runs and logs.</div>
+      ) : jobsError ? (
+        <div className="text-xs text-danger">{jobsError}</div>
       ) : jobs.length > 0 ? (
         jobs.slice(0, 10).map((job) => (
           <button

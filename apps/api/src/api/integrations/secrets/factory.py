@@ -7,10 +7,11 @@ for different secrets backends like Vault and Bitwarden.
 
 import logging
 from typing import Dict, Optional, Type
+
 from .base import SecretAdapter, SecretAdapterError
-from .vault_adapter import VaultAdapter
 from .bitwarden_adapter import BitwardenAdapter
 from .env_adapter import EnvAdapter
+from .vault_adapter import VaultAdapter
 
 logger = logging.getLogger(__name__)
 
@@ -34,7 +35,7 @@ class AdapterFactory:
             adapter_class: The adapter class to register
         """
         cls._adapters[name] = adapter_class
-        logger.info(f"Registered adapter: {name}")
+        logger.info("Registered adapter: %s", name)
 
     @classmethod
     def create_adapter(
@@ -62,7 +63,7 @@ class AdapterFactory:
             )
 
         adapter_class = cls._adapters[adapter_type]
-        logger.info(f"Creating {adapter_type} adapter with config: {kwargs}")
+        logger.info("Creating %s adapter with config: %s", adapter_type, kwargs)
 
         return adapter_class(**kwargs)
 
