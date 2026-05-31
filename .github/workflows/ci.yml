@@ -5,10 +5,13 @@ name: CI (GitHub-native gates)
 # runs on CircleCI where it is not billing-constrained.
 
 on:
-  push:
-    branches: [main, develop]
-  pull_request:
-    branches: [main, develop]
+  workflow_dispatch:
+# Auto-push disabled: CircleCI handles all CI. GitHub Actions billing locked.
+# Re-enable when billing is resolved:
+#  push:
+#    branches: [main, develop]
+#  pull_request:
+#    branches: [main, develop]
 
 jobs:
   # ---------------------------------------------------------------------------

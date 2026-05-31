@@ -1,17 +1,20 @@
 name: Terraform Plan & Validate
 
 on:
-  push:
-    branches: [main, develop]
-    paths:
-      - 'terraform/**'
-      - 'terraform.tfvars.example'
-      - '.github/workflows/terraform-plan.yml'
-  pull_request:
-    branches: [main, develop]
-    paths:
-      - 'terraform/**'
-      - 'terraform.tfvars.example'
+  workflow_dispatch:
+# Auto-push disabled: GitHub Actions billing locked.
+# Re-enable when billing is resolved:
+#  push:
+#    branches: [main, develop]
+#    paths:
+#      - 'terraform/**'
+#      - 'terraform.tfvars.example'
+#      - '.github/workflows/terraform-plan.yml'
+#  pull_request:
+#    branches: [main, develop]
+#    paths:
+#      - 'terraform/**'
+#      - 'terraform.tfvars.example'
 
 concurrency:
   group: terraform-plan-${{ github.ref }}
