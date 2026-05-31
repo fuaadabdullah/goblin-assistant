@@ -193,8 +193,10 @@ backendHttp.interceptors.response.use(
     const status = error.response?.status;
     const requestUrl = String(originalRequest.url ?? '');
 
-    const isRefreshCall = requestUrl.includes('/auth/refresh');
-    const canRetry = status === 401 && !originalRequest._retry && !isRefreshCall;
+    // Never retry auth endpoints — a 401 on login/register/passkey is a real credential failure,
+    // not an expired session. Retrying with a refreshed token would silently swallow the error.
+    const isAuthEndpoint = requestUrl.includes('/auth/');
+    const canRetry = status === 401 && !originalRequest._retry && !isAuthEndpoint;
 
     if (!canRetry) {
       return Promise.reject(error);
