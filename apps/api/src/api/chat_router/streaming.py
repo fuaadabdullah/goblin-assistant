@@ -217,6 +217,8 @@ async def generate_chat_stream(
                 return
 
         elif provider_response.get("stream"):
+            used_provider = provider_response.get("provider", used_provider)
+            used_model = provider_response.get("model", used_model)
             try:
                 stream_gen = provider_response["stream"]
                 async for chunk in stream_gen:

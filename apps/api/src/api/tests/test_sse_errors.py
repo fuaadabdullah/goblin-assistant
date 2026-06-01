@@ -719,3 +719,75 @@ async def test_streaming_does_not_emit_when_assistant_message_fails_to_save(
             events.append(event)
 
     emit_mock.assert_not_awaited()
+
+
+@pytest.mark.asyncio
+async def test_streaming_records_provider_and_model_from_response(
+    authenticated_user,
+    test_conversation,
+):
+    """used_provider/used_model must be taken from the provider_response dict,
+    not left as the caller-supplied defaults.  Regression for the bug where
+    the stream branch never updated these from provider_response."""
+
+    async def mock_stream_gen():
+        yield {"text": "hello"}
+
+    provider_response = {
+        "ok": True,
+        "stream": mock_stream_gen(),
+        "provider": "siliconeflow",
+        "model": "Qwen/Qwen2.5-7B-Instruct",
+    }
+
+    add_msg_mock = AsyncMock(return_value=None)
+    emit_mock = AsyncMock(return_value=None)
+
+    with (
+        patch(
+            "api.chat_router._require_owned_conversation",
+            return_value=test_conversation,
+        ),
+        patch(
+            "api.chat_router.InputSanitizer.sanitize_chat_message",
+            return_value=("hello", None),
+        ),
+        patch(
+            "api.chat_router.conversation_store.add_message_to_conversation",
+            add_msg_mock,
+        ),
+        patch(
+            "api.chat_router.invoke_provider",
+            return_value=provider_response,
+        ),
+        patch(
+            "api.chat_router.streaming.event_emitter.emit",
+            emit_mock,
+        ),
+        patch(
+            "api.chat_router.streaming.schedule_conversation_archive",
+            new_callable=AsyncMock,
+        ),
+    ):
+        async for _ in generate_chat_stream(
+            message="hello",
+            conversation_id="test-conv-id",
+            current_user=authenticated_user,
+        ):
+            pass
+
+    # The assistant message stored in the DB must carry the real provider/model.
+    asst_call = next(
+        (c for c in add_msg_mock.call_args_list if c.kwargs.get("role") == "assistant"),
+        None,
+    )
+    assert asst_call is not None, "assistant message was never persisted"
+    metadata = asst_call.kwargs.get("metadata", {})
+    assert metadata.get("provider") == "siliconeflow"
+    assert metadata.get("model") == "Qwen/Qwen2.5-7B-Instruct"
+
+    # The domain event must also carry the real provider/model.
+    emit_mock.assert_awaited_once()
+    payload = emit_mock.call_args.kwargs["payload"]
+    assert payload.provider == "siliconeflow"
+    assert payload.model == "Qwen/Qwen2.5-7B-Instruct"
