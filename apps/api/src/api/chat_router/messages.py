@@ -17,7 +17,7 @@ import structlog
 from fastapi import APIRouter, Depends, HTTPException
 from fastapi.responses import StreamingResponse
 
-from ..assistant_tools.executor import extract_tool_calls, run_tool_loop
+from ..assistant_tools.executor import run_tool_loop
 from ..assistant_tools.registry import export_tools_for_provider
 from ..auth.router import User as AuthenticatedUser, get_current_user
 from ..core.contracts import ChatMessageCreatedPayload, SuccessEnvelope
@@ -36,6 +36,8 @@ from api.config.archetypes import (
     missing_general_assistant_tools as _missing_general_assistant_tools,
 )
 from api.config.system_prompt import EDUCATION_SYSTEM_ADDENDUM, system_prompt_manager
+from api.storage.tasks import get_task_store
+from api.storage.usage_events import get_usage_event_store
 from . import _runtime as _cr
 from .archiving import schedule_conversation_archive
 from .schemas import (
@@ -93,6 +95,96 @@ def _inject_attachment_context(messages: list[dict[str, Any]], attachment_contex
             "role": "system",
             "content": attachment_context,
         },
+    )
+
+
+def _usage_token_breakdown(usage: Optional[Dict[str, Any]]) -> tuple[int, int, int]:
+    if not isinstance(usage, dict):
+        return 0, 0, 0
+    prompt_tokens = int(usage.get("prompt_tokens") or usage.get("input_tokens") or 0)
+    completion_tokens = int(usage.get("completion_tokens") or usage.get("output_tokens") or 0)
+    total_tokens = int(usage.get("total_tokens") or (prompt_tokens + completion_tokens))
+    return max(0, prompt_tokens), max(0, completion_tokens), max(0, total_tokens)
+
+
+async def _record_chat_completion_task(
+    *,
+    user_id: str,
+    conversation_id: str,
+    user_message_id: str,
+    assistant_message_id: str,
+    user_message: str,
+    assistant_message: str,
+    provider: str,
+    model: str,
+    usage: Optional[Dict[str, Any]],
+    cost_usd: Optional[float],
+) -> None:
+    prompt_tokens, completion_tokens, total_tokens = _usage_token_breakdown(usage)
+    task_id = str(uuid.uuid4())
+    task_store = await get_task_store()
+
+    await task_store.save_task(
+        task_id,
+        {
+            "task_id": task_id,
+            "user_id": user_id,
+            "status": "completed",
+            "task_type": "chat.completion",
+            "payload": {
+                "task": user_message,
+                "conversation_id": conversation_id,
+                "user_message_id": user_message_id,
+            },
+            "result": {
+                "selected_provider": provider,
+                "model": model,
+                "usage": {
+                    "prompt_tokens": prompt_tokens,
+                    "completion_tokens": completion_tokens,
+                    "total_tokens": total_tokens,
+                },
+                "cost_usd": float(cost_usd or 0.0),
+                "result": {"text": assistant_message},
+            },
+            "metadata": {
+                "source": "chat.send_message",
+                "conversation_id": conversation_id,
+                "assistant_message_id": assistant_message_id,
+            },
+        },
+    )
+
+
+async def _record_usage_event(
+    *,
+    user_id: str,
+    conversation_id: str,
+    message_id: str,
+    provider: str,
+    model: str,
+    usage: Optional[Dict[str, Any]],
+    cost_usd: Optional[float],
+    correlation_id: Optional[str],
+) -> None:
+    prompt_tokens, completion_tokens, total_tokens = _usage_token_breakdown(usage)
+    usage_store = await get_usage_event_store()
+    await usage_store.save_event(
+        {
+            "user_id": user_id,
+            "conversation_id": conversation_id,
+            "message_id": message_id,
+            "provider": provider,
+            "model": model,
+            "prompt_tokens": prompt_tokens,
+            "completion_tokens": completion_tokens,
+            "total_tokens": total_tokens,
+            "cost_usd": float(cost_usd or 0.0),
+            "metadata": {
+                "source": "chat.send_message",
+                "correlation_id": correlation_id,
+            },
+        }
     )
 
 
@@ -159,6 +251,17 @@ async def send_message(
                 error=str(wti_err),
             )
             message_metadata["write_time_error"] = str(wti_err)
+            await event_emitter.emit(
+                "wti.failed",
+                source="chat.send_message",
+                payload={
+                    "message_id": message_id,
+                    "conversation_id": conversation_id,
+                    "error_type": type(wti_err).__name__,
+                    "error": str(wti_err),
+                },
+                actor_user_id=current_user.id,
+            )
 
         if request.metadata:
             message_metadata.update(request.metadata)
@@ -225,6 +328,28 @@ async def send_message(
             ),
         )
         await schedule_conversation_archive(conversation_id)
+
+        try:
+            usage_store = await get_usage_event_store()
+            quota_check = await usage_store.check_limits(current_user.id)
+            if not quota_check.get("allowed", True):
+                raise HTTPException(
+                    status_code=429,
+                    detail={
+                        "message": "Daily usage limit exceeded",
+                        "reason": quota_check.get("reason"),
+                        "usage": quota_check.get("usage"),
+                    },
+                )
+        except HTTPException:
+            raise
+        except Exception as quota_err:  # noqa: BLE001
+            logger.warning(
+                "usage_quota_check_failed",
+                conversation_id=conversation_id,
+                user_id=current_user.id,
+                error=str(quota_err),
+            )
 
         # Reload to include the just-saved user message in the provider payload.
         conversation = await _cr._require_owned_conversation(conversation_id, current_user)
@@ -345,29 +470,24 @@ async def send_message(
                 },
             )
 
-        provider_response = await _cr.invoke_provider(
-            pid=request.provider,
-            model=request.model,
-            payload=payload,
-            timeout_ms=30000,
-            stream=False,
-        )
-
-        # If the model returned tool_calls, run them and re-invoke until we get text.
-        if (
-            isinstance(provider_response, dict)
-            and provider_response.get("ok")
-            and extract_tool_calls(provider_response)
-        ):
+        if registered_tools:
             provider_response = await run_tool_loop(
                 messages=list(messages),
                 invoke_fn=_cr.invoke_provider,
                 provider=request.provider,
                 model=request.model,
-                tools=registered_tools if registered_tools else None,
+                tools=registered_tools,
                 timeout_ms=30000,
                 user_id=current_user.id,
                 conversation_id=conversation_id,
+            )
+        else:
+            provider_response = await _cr.invoke_provider(
+                pid=request.provider,
+                model=request.model,
+                payload=payload,
+                timeout_ms=30000,
+                stream=False,
             )
 
         if isinstance(provider_response, dict) and provider_response.get("ok"):
@@ -433,6 +553,46 @@ async def send_message(
                 ),
             )
             await schedule_conversation_archive(conversation_id)
+
+        try:
+            await _record_chat_completion_task(
+                user_id=current_user.id,
+                conversation_id=conversation_id,
+                user_message_id=message_id,
+                assistant_message_id=response_message_id,
+                user_message=sanitized_message,
+                assistant_message=response_content,
+                provider=used_provider,
+                model=used_model,
+                usage=usage,
+                cost_usd=cost_usd,
+            )
+        except Exception as task_err:  # noqa: BLE001
+            logger.warning(
+                "chat_completion_task_history_write_failed",
+                conversation_id=conversation_id,
+                message_id=response_message_id,
+                error=str(task_err),
+            )
+
+        try:
+            await _record_usage_event(
+                user_id=current_user.id,
+                conversation_id=conversation_id,
+                message_id=response_message_id,
+                provider=used_provider,
+                model=used_model,
+                usage=usage,
+                cost_usd=cost_usd,
+                correlation_id=correlation_id,
+            )
+        except Exception as usage_err:  # noqa: BLE001
+            logger.warning(
+                "usage_event_write_failed",
+                conversation_id=conversation_id,
+                message_id=response_message_id,
+                error=str(usage_err),
+            )
 
         visualizations = None
         if isinstance(provider_response, dict) and provider_response.get("visualizations"):

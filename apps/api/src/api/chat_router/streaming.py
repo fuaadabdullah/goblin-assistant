@@ -14,7 +14,12 @@ import structlog
 from fastapi import APIRouter, Depends, HTTPException
 from fastapi.responses import StreamingResponse
 
-from ..auth.router import User as AuthenticatedUser, get_current_user
+from ..auth.router import User as AuthenticatedUser
+from ..auth.router import get_current_user
+from ..core.contracts import ChatMessageCreatedPayload
+from ..observability.events import event_emitter
+from ..storage.tasks import get_task_store
+from ..storage.usage_events import get_usage_event_store
 from . import _runtime as _cr
 from .archiving import schedule_conversation_archive
 from .helpers import _format_sse_event
@@ -300,6 +305,19 @@ async def generate_chat_stream(
                 metadata={"provider": used_provider, "model": used_model},
                 message_id=response_message_id,
             )
+            await event_emitter.emit(
+                "chat.message.created",
+                source="api.chat_router.streaming",
+                actor_user_id=current_user.id,
+                payload=ChatMessageCreatedPayload(
+                    conversation_id=conversation_id,
+                    message_id=response_message_id,
+                    role="assistant",
+                    provider=used_provider,
+                    model=used_model,
+                    has_attachments=False,
+                ),
+            )
             await schedule_conversation_archive(conversation_id)
         except Exception as db_response_exc:
             logger.error("db_write_error", exc=db_response_exc, stage="assistant_message_store")
@@ -313,6 +331,64 @@ async def generate_chat_stream(
             }
             yield _format_sse_event("warning", error_event)
             return
+
+        try:
+            task_store = await get_task_store()
+            task_id = str(uuid.uuid4())
+            await task_store.save_task(
+                task_id,
+                {
+                    "task_id": task_id,
+                    "user_id": current_user.id,
+                    "status": "completed",
+                    "task_type": "chat.completion.stream",
+                    "payload": {
+                        "task": sanitized_message,
+                        "conversation_id": conversation_id,
+                    },
+                    "result": {
+                        "selected_provider": used_provider,
+                        "model": used_model,
+                        "usage": {"total_tokens": int(total_tokens)},
+                        "cost_usd": float(total_cost),
+                        "result": {"text": accumulated_text},
+                    },
+                    "metadata": {
+                        "source": "chat.generate_chat_stream",
+                        "conversation_id": conversation_id,
+                        "assistant_message_id": response_message_id,
+                    },
+                },
+            )
+        except Exception as task_err:  # noqa: BLE001
+            logger.warning(
+                "stream_chat_task_history_write_failed",
+                conversation_id=conversation_id,
+                message_id=response_message_id,
+                error=str(task_err),
+            )
+
+        try:
+            usage_store = await get_usage_event_store()
+            await usage_store.save_event(
+                {
+                    "user_id": current_user.id,
+                    "conversation_id": conversation_id,
+                    "message_id": response_message_id,
+                    "provider": used_provider,
+                    "model": used_model,
+                    "total_tokens": int(total_tokens),
+                    "cost_usd": float(total_cost),
+                    "metadata": {"source": "chat.generate_chat_stream"},
+                }
+            )
+        except Exception as usage_err:  # noqa: BLE001
+            logger.warning(
+                "stream_usage_event_write_failed",
+                conversation_id=conversation_id,
+                message_id=response_message_id,
+                error=str(usage_err),
+            )
 
         duration_ms = int((time.time() - start_time) * 1000)
 

@@ -15,6 +15,7 @@ EventType: TypeAlias = Literal[
     "provider.health.updated",
     "sandbox.execution.completed",
     "memory.item.promoted",
+    "wti.failed",
 ]
 
 
