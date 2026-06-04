@@ -17,27 +17,40 @@ import structlog
 from fastapi import APIRouter, Depends, HTTPException
 from fastapi.responses import StreamingResponse
 
+from api.config.archetypes import (
+    is_deep_research_mode as _is_deep_research_mode,
+)
+from api.config.archetypes import (
+    is_general_assistant_mode as _is_general_assistant_mode,
+)
+from api.config.archetypes import (
+    missing_deep_research_tools as _missing_deep_research_tools,
+)
+from api.config.archetypes import (
+    missing_general_assistant_tools as _missing_general_assistant_tools,
+)
+from api.config.mode_addendums import get_addendum as _get_mode_addendum
+from api.config.system_prompt import EDUCATION_SYSTEM_ADDENDUM, system_prompt_manager
+from api.storage.tasks import get_task_store
+from api.storage.usage_events import get_usage_event_store
+
 from ..assistant_tools.executor import run_tool_loop
 from ..assistant_tools.registry import export_tools_for_provider
-from ..auth.router import User as AuthenticatedUser, get_current_user
-from ..core.contracts import ChatMessageCreatedPayload, SuccessEnvelope
+from ..auth.router import User as AuthenticatedUser
+from ..auth.router import get_current_user
+from ..core.contracts import (
+    ChatMessageCreatedPayload,
+    ChatMessageFailedPayload,
+    SuccessEnvelope,
+)
 from ..observability.events import event_emitter
+from ..providers.base import ProviderErrorCategory
 from ..providers.dispatcher import canonical_provider_id, dispatcher
 from ..services.pdf_extraction_service import (
     DEFAULT_MAX_CONTEXT_CHARS,
     DEFAULT_MAX_CONTEXT_CHUNKS,
     build_attachment_context,
 )
-from api.config.mode_addendums import get_addendum as _get_mode_addendum
-from api.config.archetypes import (
-    is_deep_research_mode as _is_deep_research_mode,
-    is_general_assistant_mode as _is_general_assistant_mode,
-    missing_deep_research_tools as _missing_deep_research_tools,
-    missing_general_assistant_tools as _missing_general_assistant_tools,
-)
-from api.config.system_prompt import EDUCATION_SYSTEM_ADDENDUM, system_prompt_manager
-from api.storage.tasks import get_task_store
-from api.storage.usage_events import get_usage_event_store
 from . import _runtime as _cr
 from .archiving import schedule_conversation_archive
 from .schemas import (
@@ -58,6 +71,104 @@ OUTPUT_TOKEN_RATIO = 0.4
 logger = structlog.get_logger()
 
 router = APIRouter()
+
+
+def _set_sentry_chat_context(
+    *,
+    conversation_id: str,
+    user_id: str,
+    provider: Optional[str],
+    model: Optional[str],
+) -> None:
+    try:
+        import sentry_sdk  # noqa: PLC0415
+
+        sentry_sdk.set_tag("conversation_id", conversation_id)
+        sentry_sdk.set_tag("operation", "chat.send_message")
+        if provider:
+            sentry_sdk.set_tag("provider_requested", provider)
+        if model:
+            sentry_sdk.set_tag("model_requested", model)
+        sentry_sdk.set_context(
+            "chat",
+            {
+                "conversation_id": conversation_id,
+                "user_id": user_id,
+                "provider": provider,
+                "model": model,
+            },
+        )
+        sentry_sdk.set_transaction_name("POST /chat/conversations/{conversation_id}/messages")
+    except Exception:
+        # Sentry context is best-effort and must never affect chat delivery.
+        return
+
+
+def _provider_error_status_code(category: str) -> int:
+    if category == ProviderErrorCategory.AUTH.value:
+        return 401
+    if category == ProviderErrorCategory.RATE_LIMIT.value:
+        return 429
+    if category == ProviderErrorCategory.TIMEOUT.value:
+        return 504
+    if category == ProviderErrorCategory.MODEL_ERROR.value:
+        return 400
+    if category in {
+        ProviderErrorCategory.SERVER_ERROR.value,
+        ProviderErrorCategory.CONNECTION.value,
+    }:
+        return 503
+    return 502
+
+
+def _provider_error_code(category: str) -> str:
+    if category == ProviderErrorCategory.AUTH.value:
+        return "AUTHENTICATION_REQUIRED"
+    if category == ProviderErrorCategory.RATE_LIMIT.value:
+        return "CHAT_RATE_LIMITED"
+    if category == ProviderErrorCategory.TIMEOUT.value:
+        return "CHAT_TIMEOUT"
+    if category == ProviderErrorCategory.MODEL_ERROR.value:
+        return "CHAT_PROVIDER_UNAVAILABLE"
+    if category in {
+        ProviderErrorCategory.SERVER_ERROR.value,
+        ProviderErrorCategory.CONNECTION.value,
+    }:
+        return "CHAT_BACKEND_UNAVAILABLE"
+    return "CHAT_PROVIDER_ERROR"
+
+
+async def _emit_chat_message_failed(
+    *,
+    current_user: AuthenticatedUser,
+    conversation_id: str,
+    stage: str,
+    message_id: Optional[str] = None,
+    provider: Optional[str] = None,
+    model: Optional[str] = None,
+    category: Optional[str] = None,
+    code: Optional[str] = None,
+    status_code: Optional[int] = None,
+    error: Optional[str] = None,
+    error_type: Optional[str] = None,
+) -> None:
+    await event_emitter.emit(
+        "chat.message.failed",
+        source="api.chat_router.messages",
+        actor_user_id=current_user.id,
+        payload=ChatMessageFailedPayload(
+            conversation_id=conversation_id,
+            message_id=message_id,
+            stage=stage,
+            provider=provider,
+            model=model,
+            category=category,
+            code=code,
+            status_code=status_code,
+            error=error,
+            error_type=error_type,
+        ),
+    )
 
 
 def _provider_supports_tools(provider_id: Optional[str]) -> bool:
@@ -202,7 +313,15 @@ async def send_message(
     On stream=True, returns SSE via streaming.generate_chat_stream. Provider
     selection is delegated to the dispatcher; tool-calling is run inline.
     """
+    message_id: Optional[str] = None
     try:
+        _set_sentry_chat_context(
+            conversation_id=conversation_id,
+            user_id=current_user.id,
+            provider=request.provider,
+            model=request.model,
+        )
+
         conversation = await _cr._require_owned_conversation(conversation_id, current_user)
 
         sanitized_message, message_validation = _cr.InputSanitizer.sanitize_chat_message(
@@ -501,6 +620,24 @@ async def send_message(
             used_model = provider_response.get("model", request.model or "unknown")
         else:
             if isinstance(provider_response, dict) and not provider_response.get("ok"):
+                category = str(
+                    provider_response.get("error_category") or ProviderErrorCategory.UNKNOWN.value
+                )
+                await _emit_chat_message_failed(
+                    current_user=current_user,
+                    conversation_id=conversation_id,
+                    message_id=message_id,
+                    stage="provider",
+                    provider=str(
+                        provider_response.get("provider") or request.provider or "unknown"
+                    ),
+                    model=str(provider_response.get("model") or request.model or "unknown"),
+                    category=category,
+                    code=_provider_error_code(category),
+                    status_code=_provider_error_status_code(category),
+                    error=str(provider_response.get("error") or "unknown-error"),
+                    error_type="provider_error",
+                )
                 _cr._raise_structured_provider_error(provider_response)
 
             response_content = str(provider_response)
@@ -616,6 +753,18 @@ async def send_message(
     except HTTPException:
         raise
     except Exception as e:
+        await _emit_chat_message_failed(
+            current_user=current_user,
+            conversation_id=conversation_id,
+            message_id=message_id,
+            stage="unhandled",
+            provider=request.provider,
+            model=request.model,
+            code="INTERNAL_ERROR",
+            status_code=500,
+            error=str(e),
+            error_type=type(e).__name__,
+        )
         logger.error(
             "send_message_unhandled_error",
             error=str(e),

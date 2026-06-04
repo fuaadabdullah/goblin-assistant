@@ -6,16 +6,17 @@ Updated to use production-ready Redis configuration.
 
 import json
 import logging
-from typing import Any, Optional, Callable
 from functools import wraps
+from typing import Any, Callable, Optional
+
 from fastapi import Request
 
 # Import our production Redis configuration
 from ..config.redis_config import (
-    redis_config,
-    get_redis_client,
-    get_cache_ttl,
     CACHE_KEYS,
+    get_cache_ttl,
+    get_redis_client,
+    redis_config,
 )
 
 logger = logging.getLogger(__name__)

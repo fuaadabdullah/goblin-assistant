@@ -4,6 +4,11 @@ import { render, screen, fireEvent } from '@testing-library/react';
 jest.mock('../../hooks/useContrastMode', () => ({
   useContrastMode: jest.fn(() => ({ mode: 'dark', toggleMode: jest.fn() })),
 }));
+jest.mock('lucide-react', () => ({
+  Contrast: (props: Record<string, unknown>) => <span data-testid="icon-contrast" {...props} />,
+  Moon: (props: Record<string, unknown>) => <span data-testid="icon-moon" {...props} />,
+  Sun: (props: Record<string, unknown>) => <span data-testid="icon-sun" {...props} />,
+}));
 
 import ContrastModeToggle from '../ContrastModeToggle';
 import { useContrastMode } from '../../hooks/useContrastMode';
@@ -48,9 +53,9 @@ describe('ContrastModeToggle', () => {
     expect(toggleMode).toHaveBeenCalledTimes(1);
   });
 
-  it('renders svg icon', () => {
-    const { container } = render(<ContrastModeToggle />);
-    expect(container.querySelector('svg')).toBeInTheDocument();
+  it('renders current mode icon', () => {
+    render(<ContrastModeToggle />);
+    expect(screen.getByTestId('icon-moon')).toBeInTheDocument();
   });
 
   it('has correct title attribute', () => {
@@ -58,10 +63,9 @@ describe('ContrastModeToggle', () => {
     expect(screen.getByRole('button')).toHaveAttribute('title', 'Theme: Dark');
   });
 
-  it('renders different svg path for light mode', () => {
+  it('renders different icon for light mode', () => {
     mockUseContrastMode.mockReturnValue({ mode: 'light', toggleMode: jest.fn() });
-    const { container } = render(<ContrastModeToggle />);
-    const path = container.querySelector('svg path');
-    expect(path).toBeInTheDocument();
+    render(<ContrastModeToggle />);
+    expect(screen.getByTestId('icon-sun')).toBeInTheDocument();
   });
 });

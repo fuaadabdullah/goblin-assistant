@@ -7,13 +7,11 @@ following the pattern from test_task_store.py.
 
 from __future__ import annotations
 
-
 import pytest
 from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine
 from sqlalchemy.orm import sessionmaker
 
-from api.storage.user_service import UserService, UserCreateData
-
+from api.storage.user_service import UserCreateData, UserService
 
 # ---------------------------------------------------------------------------
 # Fixtures
@@ -166,6 +164,7 @@ class TestUserService:
 
         # Verify last_login was set
         from sqlalchemy import select
+
         from api.storage.models import UserModel
 
         result = await db_session.execute(select(UserModel).where(UserModel.id == user.id))

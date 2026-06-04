@@ -3,15 +3,18 @@ User account management endpoints
 Handles user profile and preferences
 """
 
+from typing import Optional
+
 from fastapi import APIRouter, Depends
 from pydantic import BaseModel
-from typing import Optional
-from api.auth.router import get_current_user, User as AuthenticatedUser
+from sqlalchemy.ext.asyncio import AsyncSession
+
+from api.auth.router import User as AuthenticatedUser
+from api.auth.router import get_current_user
 from api.core.contracts import JsonObject, SuccessEnvelope
 from api.core.errors import DomainError
 from api.storage.database import get_db
 from api.storage.user_service import UserService
-from sqlalchemy.ext.asyncio import AsyncSession
 
 router = APIRouter(prefix="/account", tags=["account"])
 

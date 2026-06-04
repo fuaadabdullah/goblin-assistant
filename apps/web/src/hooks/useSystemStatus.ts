@@ -130,7 +130,12 @@ export function useSystemStatus(opts?: StatusOptions) {
       // Example: connect to wss://your-backend/health-stream
       // Configure your real websocket endpoint here
       const proto = globalThis.location?.protocol === 'https:' ? 'wss:' : 'ws:';
-      const hostPart = endpoints.models?.split('://')[1]?.split('/')[0] ?? 'localhost:3000';
+      const hostPart =
+        endpoints.models?.split('://')[1]?.split('/')[0] ?? globalThis.location?.host;
+      if (!hostPart) {
+        fetchStatus();
+        return;
+      }
       const wsUrl = `${proto}//${hostPart}/health-stream`;
       wsRef.current = new WebSocket(wsUrl);
 

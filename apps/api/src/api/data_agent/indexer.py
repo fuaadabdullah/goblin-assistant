@@ -1,4 +1,5 @@
 """Document indexer for the ADK data agent."""
+
 from __future__ import annotations
 
 import hashlib

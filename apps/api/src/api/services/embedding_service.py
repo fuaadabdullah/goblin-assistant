@@ -2,19 +2,21 @@
 Embedding service for generating and managing semantic embeddings
 """
 
-import os
 import asyncio
+import importlib
 import logging
-from typing import List, Optional, Dict, Any
+import os
+from typing import Any, Dict, List, Optional
+
 from sqlalchemy import text
 
+from ..providers.base import BaseProvider
+from ..storage.database import get_db_context
 from ..storage.vector_models import (
-    EmbeddingModel,
     ConversationSummaryModel,
+    EmbeddingModel,
     MemoryFactModel,
 )
-from ..storage.database import get_db
-from ..providers.base import BaseProvider
 from ..utils.tokenizer import count_tokens, trim_to_tokens
 
 logger = logging.getLogger(__name__)
@@ -68,9 +70,6 @@ def _resolve_embedding_provider() -> BaseProvider:
         provider_name = "openai"
 
     module_path, class_name, default_config = _EMBEDDING_PROVIDERS[provider_name]
-
-    # Import provider class
-    import importlib
 
     try:
         mod = importlib.import_module(module_path, package=__package__)
@@ -227,7 +226,7 @@ class EmbeddingService:
             if not embedding:
                 return False
 
-            async with get_db() as session:
+            async with get_db_context() as session:
                 embedding_model = EmbeddingModel(
                     user_id=user_id,
                     conversation_id=conversation_id,
@@ -252,7 +251,7 @@ class EmbeddingService:
             if not embedding:
                 return False
 
-            async with get_db() as session:
+            async with get_db_context() as session:
                 # Check if summary already exists
                 existing = await session.execute(
                     text("SELECT id FROM conversation_summaries WHERE conversation_id = :conv_id"),
@@ -305,7 +304,7 @@ class EmbeddingService:
             if not embedding:
                 return False
 
-            async with get_db() as session:
+            async with get_db_context() as session:
                 fact_model = MemoryFactModel(
                     user_id=user_id,
                     fact_text=fact_text,
@@ -320,6 +319,58 @@ class EmbeddingService:
         except Exception as e:
             logger.error("Error storing memory fact: %s", e)
             return False
+
+    async def store_index_item(
+        self,
+        user_id: str,
+        source_type: str,
+        source_id: str,
+        content: str,
+        metadata: Optional[Dict[str, Any]] = None,
+    ) -> bool:
+        """Generic embedding store for any named index.
+
+        All index types (document, code, research, task) route through here.
+        source_type must match a value the retrieval service knows to query.
+        """
+        try:
+            embedding = await self.embed_text(content)
+            if not embedding:
+                return False
+
+            async with get_db_context() as session:
+                record = EmbeddingModel(
+                    user_id=user_id,
+                    source_type=source_type,
+                    source_id=source_id,
+                    embedding=embedding,
+                    content=content,
+                    metadata_=metadata or {},
+                )
+                session.add(record)
+                await session.commit()
+                return True
+
+        except Exception as e:
+            logger.error("Error storing index item (%s): %s", source_type, e)
+            return False
+
+    async def store_document_embedding(
+        self,
+        user_id: str,
+        file_id: str,
+        chunk_id: str,
+        content: str,
+        metadata: Optional[Dict[str, Any]] = None,
+    ) -> bool:
+        """Store embedding for an uploaded document chunk."""
+        return await self.store_index_item(
+            user_id=user_id,
+            source_type="document",
+            source_id=chunk_id,
+            content=content,
+            metadata={"file_id": file_id, **(metadata or {})},
+        )
 
 
 class AsyncEmbeddingWorker:
@@ -384,6 +435,22 @@ class AsyncEmbeddingWorker:
                 category=task.get("category"),
                 metadata=task.get("metadata"),
             )
+        elif task_type == "document":
+            await service.store_document_embedding(
+                user_id=task["user_id"],
+                file_id=task["file_id"],
+                chunk_id=task["chunk_id"],
+                content=task["content"],
+                metadata=task.get("metadata"),
+            )
+        elif task_type == "index":
+            await service.store_index_item(
+                user_id=task["user_id"],
+                source_type=task["source_type"],
+                source_id=task["source_id"],
+                content=task["content"],
+                metadata=task.get("metadata"),
+            )
 
     async def queue_message_embedding(
         self,
@@ -429,6 +496,49 @@ class AsyncEmbeddingWorker:
                 "user_id": user_id,
                 "fact_text": fact_text,
                 "category": category,
+                "metadata": metadata,
+            }
+        )
+
+    async def queue_document_embedding(
+        self,
+        user_id: str,
+        file_id: str,
+        chunk_id: str,
+        content: str,
+        metadata: Optional[Dict[str, Any]] = None,
+    ):
+        """Queue a document chunk embedding task."""
+        await self.queue.put(
+            {
+                "type": "document",
+                "user_id": user_id,
+                "file_id": file_id,
+                "chunk_id": chunk_id,
+                "content": content,
+                "metadata": metadata,
+            }
+        )
+
+    async def queue_index_item(
+        self,
+        user_id: str,
+        source_type: str,
+        source_id: str,
+        content: str,
+        metadata: Optional[Dict[str, Any]] = None,
+    ):
+        """Queue a generic index item for embedding.
+
+        Use this for code, research, task, or any custom source_type.
+        """
+        await self.queue.put(
+            {
+                "type": "index",
+                "user_id": user_id,
+                "source_type": source_type,
+                "source_id": source_id,
+                "content": content,
                 "metadata": metadata,
             }
         )

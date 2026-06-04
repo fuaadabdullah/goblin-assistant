@@ -14,10 +14,11 @@ Key Features:
 """
 
 import hashlib
-from typing import Dict, List, Optional, Any
-from dataclasses import dataclass, asdict
+from dataclasses import asdict, dataclass
 from datetime import datetime
 from enum import Enum
+from typing import Any, Dict, List, Optional
+
 import structlog
 
 from .context_assembly_service import ContextAssemblyService

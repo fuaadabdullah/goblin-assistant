@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import logging
 import os
+from abc import ABC, abstractmethod
 from datetime import datetime
 from typing import Any, Dict, Optional
 
@@ -16,11 +17,11 @@ logger = logging.getLogger(__name__)
 audit_logger = logging.getLogger("attestation.audit")
 
 
-class AttestationProvider:
+class AttestationProvider(ABC):
     """Base class for hardware attestation providers."""
 
-    def verify_node(self, node_id: str, attestation_data: Dict[str, Any]) -> Dict[str, Any]:
-        raise NotImplementedError
+    @abstractmethod
+    def verify_node(self, node_id: str, attestation_data: Dict[str, Any]) -> Dict[str, Any]: ...
 
 
 class TPMAttestationProvider(AttestationProvider):

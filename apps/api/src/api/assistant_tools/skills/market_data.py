@@ -9,9 +9,8 @@ so the LLM can invoke them natively.
 
 from __future__ import annotations
 
-from ..registry import ToolDefinition, ToolParameter, register_tool
 from ...services.financial_data_service import financial_data_service
-
+from ..registry import ToolDefinition, ToolParameter, register_tool
 
 # ---------------------------------------------------------------------------
 # get_stock_quote

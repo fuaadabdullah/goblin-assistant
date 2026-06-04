@@ -3,8 +3,9 @@
 Direct test of chat functionality to bypass dispatcher issues
 """
 
-import os
 import asyncio
+import os
+
 import aiohttp
 
 

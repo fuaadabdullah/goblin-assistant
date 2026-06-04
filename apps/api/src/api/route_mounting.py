@@ -31,6 +31,21 @@ def mount_primary_routes(
     routing_analytics_available: bool,
     routing_analytics_router,
 ) -> None:
+    _ = (
+        api_router,
+        auth_router,
+        raptor_router,
+        api_keys_router,
+        settings_router,
+        search_router,
+        chat_router,
+        health_router,
+        privacy_router,
+        sandbox_router,
+        providers_models_router,
+        account_router,
+        support_router,
+    )
     # Non-versioned routes that are intentionally internal/experimental.
     app.include_router(routing_router)
     app.include_router(parse_router)
@@ -62,7 +77,34 @@ def mount_versioned_primary_routes(
     raptor_router,
     api_keys_router,
     privacy_router,
+    routing_router,
+    parse_router,
+    write_time_router,
+    stream_router,
+    ops_router,
+    secrets_router,
 ) -> None:
+    _ = (
+        health_router,
+        settings_router,
+        providers_models_router,
+        chat_router,
+        api_router,
+        auth_router,
+        search_router,
+        sandbox_router,
+        account_router,
+        support_router,
+        raptor_router,
+        api_keys_router,
+        privacy_router,
+        routing_router,
+        parse_router,
+        write_time_router,
+        stream_router,
+        ops_router,
+        secrets_router,
+    )
     app.include_router(health_router, prefix="/api/v1")
     app.include_router(settings_router, prefix="/api/v1")
     app.include_router(providers_models_router, prefix="/api/v1")
@@ -76,3 +118,9 @@ def mount_versioned_primary_routes(
     app.include_router(raptor_router, prefix="/api/v1")
     app.include_router(api_keys_router, prefix="/api/v1")
     app.include_router(privacy_router, prefix="/api/v1")
+    app.include_router(routing_router, prefix="/api/v1")
+    app.include_router(parse_router, prefix="/api/v1")
+    app.include_router(write_time_router, prefix="/api/v1")
+    app.include_router(stream_router, prefix="/api/v1")
+    app.include_router(ops_router, prefix="/api/v1")
+    app.include_router(secrets_router, prefix="/api/v1")

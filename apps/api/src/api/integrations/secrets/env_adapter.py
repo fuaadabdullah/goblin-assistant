@@ -10,17 +10,17 @@ Write operations (put_secret, delete_secret, rotate_secret) are not
 supported at runtime since environment variables are process-immutable.
 """
 
-import os
 import logging
-from typing import Dict, List, Optional, Any
+import os
 from datetime import datetime
+from typing import Any, Dict, List, Optional
 
 from .base import (
-    SecretAdapter,
     Secret,
+    SecretAdapter,
+    SecretBackendError,
     SecretMetadata,
     SecretNotFoundError,
-    SecretBackendError,
 )
 
 logger = logging.getLogger(__name__)
@@ -156,9 +156,9 @@ class EnvAdapter(SecretAdapter):
         Rotation is not supported for environment variables.
 
         Raises:
-            NotImplementedError: Always.
+            SecretBackendError: Always, because environment variables are immutable at runtime.
         """
-        raise NotImplementedError(
+        raise SecretBackendError(
             "Secret rotation is not supported by EnvAdapter. "
             "Set a new value in your environment / .env file and restart "
             "the process, or switch to a writable backend (vault / bitwarden)."
@@ -181,4 +181,4 @@ class EnvAdapter(SecretAdapter):
 
     async def close(self) -> None:
         """Nothing to clean up – env vars are process-scoped."""
-        pass
+        ...

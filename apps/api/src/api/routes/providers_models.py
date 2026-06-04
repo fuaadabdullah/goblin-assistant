@@ -2,12 +2,13 @@
 
 from __future__ import annotations
 
-from fastapi import APIRouter
 from typing import Any, Dict, List
 
-from api.providers.dispatcher import dispatcher
+from fastapi import APIRouter
+
 from api.core.contracts import SuccessEnvelope
 from api.core.errors import DomainError
+from api.providers.dispatcher import dispatcher
 
 router = APIRouter(tags=["providers"])
 

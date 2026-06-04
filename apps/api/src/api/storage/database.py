@@ -171,6 +171,19 @@ async def get_db_context() -> AsyncGenerator[AsyncSession, None]:
         await session.close()
 
 
+@asynccontextmanager
+async def get_readonly_db_context() -> AsyncGenerator[AsyncSession, None]:
+    """Context manager for read-only operations — skips commit, reducing DB I/O."""
+    session = AsyncSessionLocal()
+    try:
+        yield session
+    except Exception:
+        await session.rollback()
+        raise
+    finally:
+        await session.close()
+
+
 async def warmup_pool() -> None:
     """Acquire and release one connection to warm the pool before first request."""
     async with engine.connect() as conn:

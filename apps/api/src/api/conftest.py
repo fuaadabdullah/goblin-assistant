@@ -1,8 +1,9 @@
+import os
+import sys
+from contextlib import contextmanager
+
 import pytest
 from fastapi.testclient import TestClient
-import sys
-import os
-from contextlib import contextmanager
 
 # Ensure the package root (apps/goblin-assistant) is on sys.path so relative imports work
 pkg_root = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
@@ -52,7 +53,9 @@ def client(monkeypatch):
 @contextmanager
 def _build_authenticated_client(user_id: str, email: str):
     from importlib import import_module
+
     import redis.asyncio as redis
+
     from api.auth.router import User, get_current_user
     from api.services import embedding_service
     from api.services.embedding_service import AsyncEmbeddingWorker

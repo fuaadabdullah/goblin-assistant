@@ -3,6 +3,7 @@ import { useProviderSettings, ProviderConfig } from '../hooks/api/useSettings';
 import { useRoutingHealth } from '../hooks/api/useHealth';
 import { apiClient } from '@/lib/api';
 import TwoColumnLayout from '../components/TwoColumnLayout';
+import { ProviderCardSkeleton } from '../components/LoadingSkeleton';
 
 /**
  * Provider Manager: Select, test, and prioritize AI providers
@@ -94,7 +95,10 @@ const ProvidersPage = () => {
           Active Providers
         </h3>
         {isLoading ? (
-          <div className="text-xs text-muted">Loading...</div>
+          <div className="space-y-2" role="status" aria-label="Loading providers">
+            <ProviderCardSkeleton />
+            <ProviderCardSkeleton />
+          </div>
         ) : providerList && providerList.length > 0 ? (
           providerList.map((provider: ProviderConfig) => (
             <button

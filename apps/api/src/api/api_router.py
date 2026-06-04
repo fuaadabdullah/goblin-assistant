@@ -3,19 +3,26 @@ from __future__ import annotations
 import asyncio
 import time
 import uuid
+from datetime import datetime
 from typing import Any, Dict, List, Optional
 
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel
 
-from .core.orchestration import create_simple_orchestration_plan
+from .core.orchestration import parse_natural_language
 from .input_validation import InputSanitizer
 from .providers.dispatcher import dispatcher, invoke_provider
 from .routing.router import registry as routing_registry
 from .routing.router import route_task as route_task_runtime
+from .services.orchestration_executor import execute_orchestration_plan
 from .services.stream_state_store import get_stream_state_store
 from .services.task_streaming import run_task_stream_to_state
+from .storage import conversation_store
 from .storage.tasks import get_task_store
+
+# Backward-compatible alias preserved for tests/integrations still patching
+# `api.api_router.create_simple_orchestration_plan`.
+create_simple_orchestration_plan = parse_natural_language
 
 router = APIRouter(prefix="/api", tags=["api"])
 
@@ -98,6 +105,55 @@ def _build_stream_messages(request: StreamTaskRequest) -> List[Dict[str, str]]:
         payload_lines.append("\nCode:\n" + request.code.strip())
     user_message = "\n".join(line for line in payload_lines if line)
     return [{"role": "user", "content": user_message}]
+
+
+def _timestamp_sort_key(value: Any) -> float:
+    if isinstance(value, (int, float)):
+        return float(value)
+    if isinstance(value, datetime):
+        return value.timestamp()
+    if isinstance(value, str):
+        try:
+            return datetime.fromisoformat(value).timestamp()
+        except ValueError:
+            return 0.0
+    return 0.0
+
+
+async def _collect_chat_history_entries(goblin_id: str, limit: int = 500) -> List[Dict[str, Any]]:
+    entries: List[Dict[str, Any]] = []
+    conversations = await conversation_store.list_conversations(limit=limit)
+
+    for conversation in conversations:
+        last_user_prompt = ""
+        for message in conversation.messages:
+            if message.role == "user":
+                last_user_prompt = message.content
+                continue
+
+            if message.role != "assistant":
+                continue
+
+            metadata = message.metadata if isinstance(message.metadata, dict) else {}
+            provider = metadata.get("provider")
+            if provider and provider != goblin_id:
+                continue
+
+            timestamp = message.timestamp
+            entries.append(
+                {
+                    "id": message.message_id,
+                    "goblin": goblin_id,
+                    "task": last_user_prompt or "chat",
+                    "response": message.content,
+                    "timestamp": (
+                        timestamp.isoformat() if isinstance(timestamp, datetime) else timestamp
+                    ),
+                    "kpis": f"status:completed source:chat conversation:{conversation.conversation_id}",
+                }
+            )
+
+    return entries
 
 
 @router.post("/chat", response_model=SimpleChatResponse)
@@ -260,21 +316,46 @@ async def start_stream_task(request: StreamTaskRequest):
                 "source": "legacy_api_router",
             },
         )
-        asyncio.create_task(
-            run_task_stream_to_state(
-                stream_id=stream_id,
-                task_id=stream_id,
-                messages=_build_stream_messages(request),
-                provider=request.provider,
-                model=request.model,
-                metadata={
-                    "goblin": request.goblin,
-                    "task": request.task,
-                    "source": "legacy_api_router",
-                },
-                initialize_state=False,
-            )
-        )
+
+        async def _run_and_log() -> None:
+            try:
+                await run_task_stream_to_state(
+                    stream_id=stream_id,
+                    task_id=stream_id,
+                    messages=_build_stream_messages(request),
+                    provider=request.provider,
+                    model=request.model,
+                    metadata={
+                        "goblin": request.goblin,
+                        "task": request.task,
+                        "source": "legacy_api_router",
+                    },
+                    initialize_state=False,
+                )
+            except Exception as exc:
+                import structlog  # noqa: PLC0415
+
+                structlog.get_logger().error(
+                    "stream_task_background_failed",
+                    stream_id=stream_id,
+                    error=str(exc),
+                )
+                try:
+                    _store = get_stream_state_store()
+                    await _store.mark_status(
+                        stream_id,
+                        status="failed",
+                        done=True,
+                        updates={"error": str(exc)},
+                    )
+                except Exception as cleanup_exc:
+                    structlog.get_logger().warning(
+                        "stream_status_update_failed",
+                        stream_id=stream_id,
+                        error=str(cleanup_exc),
+                    )
+
+        asyncio.create_task(_run_and_log())
         return StreamResponse(stream_id=stream_id, status="started")
     except Exception as exc:
         raise HTTPException(status_code=500, detail=f"Failed to start stream task: {exc}") from exc
@@ -306,7 +387,8 @@ async def get_goblins():
         provider_id = str(provider.get("id", "unknown"))
         name = str(provider.get("name", provider_id))
         configured = bool(provider.get("configured"))
-        healthy = bool(provider.get("healthy", configured))
+        healthy_value = provider.get("healthy")
+        healthy = bool(healthy_value) if isinstance(healthy_value, bool) else False
         status = "available" if configured and healthy else "degraded"
         goblins.append(
             {
@@ -349,6 +431,9 @@ async def get_goblin_history(goblin_id: str, limit: int = 10):
                 "kpis": f"status:{task.get('status', 'unknown')}",
             }
         )
+
+    entries.extend(await _collect_chat_history_entries(goblin_id, limit=500))
+    entries.sort(key=lambda item: _timestamp_sort_key(item.get("timestamp")))
     return entries[-capped_limit:]
 
 
@@ -368,29 +453,110 @@ async def get_goblin_stats(goblin_id: str):
 
 @router.post("/orchestrate/parse")
 async def parse_orchestration(request: ParseOrchestrationRequest):
-    return create_simple_orchestration_plan(request.text, request.default_goblin)
+    plan = parse_natural_language(request.text, request.default_goblin)
+    plan_id = str(uuid.uuid4())
+    steps = [
+        {
+            "id": step.goblin,
+            "goblin": step.goblin,
+            "task": step.task,
+            "dependencies": step.dependencies,
+        }
+        for step in plan.steps
+    ]
+    store = await get_task_store()
+    await store.save_task(
+        plan_id,
+        {
+            "status": "pending",
+            "task_type": "orchestration.plan",
+            "payload": {"text": request.text, "default_goblin": request.default_goblin},
+            "result": {
+                "steps": steps,
+                "complexity": plan.complexity,
+                "estimated_duration": plan.estimated_duration,
+            },
+            "metadata": {"source": "orchestration.parse"},
+        },
+    )
+    return {
+        "plan_id": plan_id,
+        "steps": steps,
+        "complexity": plan.complexity,
+        "estimated_duration": plan.estimated_duration,
+        "max_parallel": 1,
+    }
 
 
 @router.post("/orchestrate/execute")
 async def execute_orchestration(plan_id: str):
-    execution_id = str(uuid.uuid4())
     store = await get_task_store()
+    plan_task = await store.get_task(plan_id)
+    if plan_task is None or plan_task.get("task_type") != "orchestration.plan":
+        raise HTTPException(status_code=404, detail="Plan not found")
+
+    steps = plan_task.get("result", {}).get("steps", [])
+    execution_id = str(uuid.uuid4())
+    pending_steps = [
+        {
+            **s,
+            "status": "pending",
+            "result": None,
+            "provider_used": None,
+            "cost_usd": 0.0,
+            "duration_ms": 0,
+            "error": None,
+        }
+        for s in steps
+    ]
     await store.save_task(
         execution_id,
         {
             "status": "started",
             "task_type": "orchestration.execute",
             "payload": {"plan_id": plan_id},
-            "result": {},
-            "metadata": {"source": "legacy_orchestration"},
+            "result": {"steps": pending_steps, "total_cost": 0.0, "total_duration_ms": 0},
+            "metadata": {"source": "orchestration.execute"},
         },
     )
-    return {
-        "execution_id": execution_id,
-        "plan_id": plan_id,
-        "status": "started",
-        "estimated_completion": time.time() + 300,
-    }
+
+    async def _run_and_log() -> None:
+        try:
+            await execute_orchestration_plan(
+                execution_id=execution_id,
+                plan_id=plan_id,
+                steps=steps,
+            )
+        except Exception as exc:
+            import structlog  # noqa: PLC0415
+
+            structlog.get_logger().error(
+                "orchestration_background_failed",
+                execution_id=execution_id,
+                plan_id=plan_id,
+                error=str(exc),
+            )
+            try:
+                _store = await get_task_store()
+                await _store.update_task_status(
+                    execution_id,
+                    "failed",
+                    result={
+                        "steps": pending_steps,
+                        "total_cost": 0.0,
+                        "total_duration_ms": 0,
+                        "error": str(exc),
+                    },
+                )
+            except Exception as cleanup_exc:
+                structlog.get_logger().warning(
+                    "task_status_update_failed",
+                    execution_id=execution_id,
+                    error=str(cleanup_exc),
+                )
+
+    asyncio.create_task(_run_and_log())
+    return {"execution_id": execution_id, "plan_id": plan_id, "status": "started"}
 
 
 @router.get("/orchestrate/plans/{plan_id}")

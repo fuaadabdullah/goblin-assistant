@@ -4,8 +4,8 @@ from __future__ import annotations
 
 import pytest
 
+from api.providers.base import ProviderHealth, ProviderResult
 from api.providers.mock_provider import MockProvider
-from api.providers.base import ProviderResult, ProviderHealth
 
 
 def _provider() -> MockProvider:

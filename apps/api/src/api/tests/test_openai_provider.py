@@ -2,13 +2,13 @@
 
 from __future__ import annotations
 
-import pytest
 from unittest.mock import AsyncMock, MagicMock, patch
+
 import httpx
+import pytest
 
+from api.providers.base import ProviderHealth, ProviderResult
 from api.providers.openai_provider import OpenAIProvider
-from api.providers.base import ProviderResult, ProviderHealth
-
 
 # ---------------------------------------------------------------------------
 # Helpers
@@ -332,7 +332,7 @@ class TestStream:
             MockClient.return_value = instance
 
             async for _ in provider.stream(prompt="test", model="gpt-4o"):
-                pass
+                continue
 
             call_kwargs = instance.stream.call_args.kwargs
             assert call_kwargs["json"]["model"] == "gpt-4o"

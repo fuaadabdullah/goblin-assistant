@@ -5,6 +5,7 @@ from datetime import timedelta
 from fastapi import APIRouter, Depends, HTTPException, Response, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from ...core.contracts import SuccessEnvelope
 from ..oauth import GoogleOAuth
 from . import _runtime as _ar
 from .config import ACCESS_TOKEN_EXPIRE_MINUTES
@@ -13,7 +14,6 @@ from .dependencies import _is_user_active
 from .schemas import GoogleAuthCallback, GoogleAuthRequest, TokenWithRefresh, User
 from .sessions import _db_create_session, create_session_id
 from .tokens import create_access_token, create_refresh_token
-from ...core.contracts import SuccessEnvelope
 
 router = APIRouter()
 

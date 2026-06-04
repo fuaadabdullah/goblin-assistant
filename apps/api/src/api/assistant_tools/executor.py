@@ -10,18 +10,18 @@ assistant_tools is the canonical tool system.
 
 from __future__ import annotations
 
-import json
 import inspect
+import json
 import time
-from typing import Any, Dict, List, Optional
 from contextvars import ContextVar
+from typing import Any, Dict, List, Optional
 
 import structlog
 
+from api.observability.tool_tracer import ToolExecutionStatus, tool_tracer
+
 from .contracts import ToolCall
 from .registry import get_tool
-from api.observability.tool_tracer import tool_tracer
-from api.observability.tool_tracer import ToolExecutionStatus
 
 logger = structlog.get_logger(__name__)
 
@@ -232,6 +232,8 @@ async def run_tool_loop(
     """
     all_visualizations: List[Dict[str, Any]] = []
     trace_start = time.time()
+    response: Dict[str, Any] = {}
+    round_num = -1
 
     # Get request_id from structlog context
     request_id = structlog.contextvars.get_contextvars().get("request_id", "unknown")
@@ -391,7 +393,7 @@ async def run_tool_loop(
 
     finally:
         # Exhausted rounds — return last response as-is
-        if loop_error is None and round_num >= MAX_TOOL_ROUNDS - 1:
+        if loop_error is None and 0 <= round_num >= MAX_TOOL_ROUNDS - 1:
             logger.warning("tool_loop_max_rounds", rounds=MAX_TOOL_ROUNDS)
             loop_error = "Max tool rounds exceeded"
 

@@ -32,7 +32,7 @@ def _get_request_metadata(request: Request) -> tuple[str, str]:
         context = structlog.contextvars.get_contextvars()
         request_id = context.get("request_id")
     except Exception:
-        pass
+        logger.debug("structlog_context_unavailable", exc_info=True)
 
     # Generate if not found
     if not request_id:

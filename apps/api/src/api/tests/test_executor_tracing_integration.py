@@ -4,7 +4,7 @@ Integration tests for tool executor instrumentation with tracer
 
 import pytest
 
-from api.observability.tool_tracer import tool_tracer, ToolExecutionStatus
+from api.observability.tool_tracer import ToolExecutionStatus, tool_tracer
 
 
 @pytest.fixture

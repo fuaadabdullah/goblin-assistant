@@ -1,12 +1,14 @@
 """Test suite for monitoring.py"""
 
-import pytest
 import asyncio
-from unittest.mock import patch, AsyncMock
+from unittest.mock import AsyncMock, patch
+
+import pytest
+
 from api.monitoring import (
-    ProviderMonitor,
     HEALTH_CHECK_INTERVAL,
     PROVIDER_HEALTH_KEY,
+    ProviderMonitor,
 )
 
 
@@ -129,19 +131,18 @@ class TestProviderMonitor:
         with patch(
             "api.monitoring.get_provider_settings",
             return_value=mock_providers,
-        ):
-            with patch.object(
-                provider_monitor,
-                "_check_connectivity",
-                new_callable=AsyncMock,
-            ) as mock_check:
-                mock_check.return_value = {"ok": True, "latency_ms": 100}
+        ), patch.object(
+            provider_monitor,
+            "_check_connectivity",
+            new_callable=AsyncMock,
+        ) as mock_check:
+            mock_check.return_value = {"ok": True, "latency_ms": 100}
 
-                with patch("api.monitoring.cache.set", new_callable=AsyncMock):
-                    await provider_monitor._check_providers()
+            with patch("api.monitoring.cache.set", new_callable=AsyncMock):
+                await provider_monitor._check_providers()
 
-                # Should only check enabled providers
-                assert mock_check.call_count == 2
+            # Should only check enabled providers
+            assert mock_check.call_count == 2
 
     @pytest.mark.asyncio
     async def test_provider_monitor_check_providers_updates_status(self, provider_monitor):
@@ -157,21 +158,20 @@ class TestProviderMonitor:
         with patch(
             "api.monitoring.get_provider_settings",
             return_value=mock_providers,
-        ):
-            with patch.object(
-                provider_monitor,
-                "_check_connectivity",
-                new_callable=AsyncMock,
-            ) as mock_check:
-                mock_check.return_value = {"ok": True, "latency_ms": 50}
+        ), patch.object(
+            provider_monitor,
+            "_check_connectivity",
+            new_callable=AsyncMock,
+        ) as mock_check:
+            mock_check.return_value = {"ok": True, "latency_ms": 50}
 
-                with patch("api.monitoring.cache.set", new_callable=AsyncMock):
-                    await provider_monitor._check_providers()
+            with patch("api.monitoring.cache.set", new_callable=AsyncMock):
+                await provider_monitor._check_providers()
 
-                assert "test_provider" in provider_monitor._provider_status
-                status = provider_monitor._provider_status["test_provider"]
-                assert status["status"] == "healthy"
-                assert status["latency_ms"] == 50
+            assert "test_provider" in provider_monitor._provider_status
+            status = provider_monitor._provider_status["test_provider"]
+            assert status["status"] == "healthy"
+            assert status["latency_ms"] == 50
 
     @pytest.mark.asyncio
     async def test_provider_monitor_check_providers_unhealthy_status(self, provider_monitor):
@@ -187,23 +187,22 @@ class TestProviderMonitor:
         with patch(
             "api.monitoring.get_provider_settings",
             return_value=mock_providers,
-        ):
-            with patch.object(
-                provider_monitor,
-                "_check_connectivity",
-                new_callable=AsyncMock,
-            ) as mock_check:
-                mock_check.return_value = {
-                    "ok": False,
-                    "error": "Connection timeout",
-                }
+        ), patch.object(
+            provider_monitor,
+            "_check_connectivity",
+            new_callable=AsyncMock,
+        ) as mock_check:
+            mock_check.return_value = {
+                "ok": False,
+                "error": "Connection timeout",
+            }
 
-                with patch("api.monitoring.cache.set", new_callable=AsyncMock):
-                    await provider_monitor._check_providers()
+            with patch("api.monitoring.cache.set", new_callable=AsyncMock):
+                await provider_monitor._check_providers()
 
-                status = provider_monitor._provider_status["unhealthy_provider"]
-                assert status["status"] == "unhealthy"
-                assert status["error"] == "Connection timeout"
+            status = provider_monitor._provider_status["unhealthy_provider"]
+            assert status["status"] == "unhealthy"
+            assert status["error"] == "Connection timeout"
 
     @pytest.mark.asyncio
     async def test_provider_monitor_caches_status(self, provider_monitor):
@@ -219,21 +218,20 @@ class TestProviderMonitor:
         with patch(
             "api.monitoring.get_provider_settings",
             return_value=mock_providers,
-        ):
-            with patch.object(
-                provider_monitor,
-                "_check_connectivity",
-                new_callable=AsyncMock,
-            ) as mock_check:
-                mock_check.return_value = {"ok": True, "latency_ms": 100}
+        ), patch.object(
+            provider_monitor,
+            "_check_connectivity",
+            new_callable=AsyncMock,
+        ) as mock_check:
+            mock_check.return_value = {"ok": True, "latency_ms": 100}
 
-                with patch("api.monitoring.cache.set", new_callable=AsyncMock) as mock_cache_set:
-                    await provider_monitor._check_providers()
+            with patch("api.monitoring.cache.set", new_callable=AsyncMock) as mock_cache_set:
+                await provider_monitor._check_providers()
 
-                    mock_cache_set.assert_called_once()
-                    call_args = mock_cache_set.call_args
-                    assert call_args[0][0] == PROVIDER_HEALTH_KEY
-                    assert call_args[1]["expire"] == HEALTH_CHECK_INTERVAL * 2
+                mock_cache_set.assert_called_once()
+                call_args = mock_cache_set.call_args
+                assert call_args[0][0] == PROVIDER_HEALTH_KEY
+                assert call_args[1]["expire"] == HEALTH_CHECK_INTERVAL * 2
 
     @pytest.mark.asyncio
     async def test_provider_monitor_monitor_loop(self, provider_monitor):
@@ -253,9 +251,8 @@ class TestProviderMonitor:
             provider_monitor,
             "_check_providers",
             side_effect=mock_check_providers,
-        ):
-            with patch("asyncio.sleep", new_callable=AsyncMock):
-                await provider_monitor._monitor_loop()
+        ), patch("asyncio.sleep", new_callable=AsyncMock):
+            await provider_monitor._monitor_loop()
 
         assert iteration_count >= 1
 
@@ -278,9 +275,10 @@ class TestProviderMonitor:
             provider_monitor,
             "_check_providers",
             side_effect=mock_check_with_error,
-        ):
-            with pytest.raises(ValueError):
-                await provider_monitor._monitor_loop()
+        ), patch("asyncio.sleep", new_callable=AsyncMock):
+            await provider_monitor._monitor_loop()
+
+        assert call_count == 1
 
     @pytest.mark.asyncio
     async def test_provider_monitor_multiple_start_stop_cycles(self, provider_monitor):

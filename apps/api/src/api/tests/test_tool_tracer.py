@@ -5,8 +5,8 @@ Unit tests for the Tool Tracer service
 import pytest
 
 from api.observability.tool_tracer import (
-    ToolTracer,
     ToolExecutionStatus,
+    ToolTracer,
 )
 
 

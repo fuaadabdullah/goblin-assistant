@@ -1,7 +1,7 @@
-from datetime import datetime
-from typing import Any, Dict, List, Optional
 import os
 import uuid
+from datetime import datetime
+from typing import Any, Dict, List, Optional
 
 import structlog
 from sqlalchemy import delete, desc, select
@@ -14,8 +14,8 @@ from .models import Conversation, ConversationMessage
 logger = structlog.get_logger()
 
 try:
-    from ..models import ConversationModel, MessageModel
     from ..database import get_db_context, init_db
+    from ..models import ConversationModel, MessageModel
 except ImportError:
     pass
 

@@ -6,8 +6,9 @@ Quick test script for SiliconeFlow and LlamaCPP providers.
 import asyncio
 import os
 import sys
-import httpx
 import time
+
+import httpx
 
 # Add parent directory to path
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))

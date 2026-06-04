@@ -23,7 +23,7 @@ testpaths = ["src/api", "src/api/tests"]
 python_files = ["test_*.py"]
 python_classes = ["Test*"]
 python_functions = ["test_*"]
-addopts = ["--strict-markers", "--strict-config", "--disable-warnings", "--tb=short"]
+addopts = ["--strict-markers", "--strict-config", "--disable-warnings", "--tb=short", "--benchmark-disable-gc"]
 asyncio_mode = "auto"
 
 [tool.mypy]

@@ -6,8 +6,8 @@ from .azure_provider import AzureOpenAIProvider
 from .base import BaseProvider, ProviderHealth, ProviderResult
 from .colab_worker_provider import ColabWorkerProvider
 from .dispatcher import ProviderDispatcher, dispatcher, invoke_provider
-from .generic import GenericProvider
 from .gemini import GeminiProvider
+from .generic import GenericProvider
 from .groq import GroqProvider
 from .llamacpp_provider import LlamaCPPProvider
 from .mock_provider import MockProvider

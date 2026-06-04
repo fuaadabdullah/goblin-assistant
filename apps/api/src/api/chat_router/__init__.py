@@ -15,12 +15,39 @@ when the call site lives in a submodule.
 import structlog
 from fastapi import APIRouter
 
+from ..auth.router import User as AuthenticatedUser
+
 # --- Patchable runtime dependencies ---
 # Module-level so tests can monkeypatch via `api.chat_router.<name>`.
-from ..auth.router import get_current_user, User as AuthenticatedUser  # noqa: F401
+from ..auth.router import get_current_user  # noqa: F401
 from ..input_validation import InputSanitizer  # noqa: F401
 from ..providers.dispatcher import invoke_provider  # noqa: F401
 from ..storage import conversation_store  # noqa: F401
+from . import contextual as _contextual
+
+# --- Sub-router modules + key handler exports ---
+from . import conversations as _conversations
+from . import messages as _messages
+from . import streaming as _streaming
+from . import uploads as _uploads
+
+# --- Constants ---
+from .constants import (  # noqa: F401
+    ALLOWED_MIME_TYPES,
+    MAX_UPLOAD_SIZE_BYTES,
+    UPLOAD_DIR,
+)
+from .contextual import chat_completion  # noqa: F401 — preserved import path
+
+# --- Helpers (re-exported; some are monkeypatched by tests) ---
+from .helpers import (  # noqa: F401
+    _assert_conversation_owned,
+    _extract_usage_and_cost,
+    _format_sse_event,
+    _latest_snippet,
+    _raise_structured_provider_error,
+    _require_owned_conversation,
+)
 
 # --- Public schemas (re-exported for backward compatibility) ---
 from .schemas import (  # noqa: F401
@@ -33,8 +60,8 @@ from .schemas import (  # noqa: F401
     CreateConversationResponse,
     EstimateTokensResponse,
     FileUploadResponse,
-    LayerEstimate,
     ImportConversationRequest,
+    LayerEstimate,
     SendMessageRequest,
     SendMessageResponse,
     SSEDataEvent,
@@ -43,37 +70,12 @@ from .schemas import (  # noqa: F401
     UpdateConversationTitleRequest,
 )
 
-# --- Helpers (re-exported; some are monkeypatched by tests) ---
-from .helpers import (  # noqa: F401
-    _assert_conversation_owned,
-    _extract_usage_and_cost,
-    _format_sse_event,
-    _latest_snippet,
-    _raise_structured_provider_error,
-    _require_owned_conversation,
-)
-
 # --- Service accessors (re-exported) ---
 from .service_accessors import (  # noqa: F401
     _get_context_assembly_service,
     _get_message_classifier,
     _get_write_time_intelligence,
 )
-
-# --- Constants ---
-from .constants import (  # noqa: F401
-    ALLOWED_MIME_TYPES,
-    MAX_UPLOAD_SIZE_BYTES,
-    UPLOAD_DIR,
-)
-
-# --- Sub-router modules + key handler exports ---
-from . import conversations as _conversations
-from . import contextual as _contextual
-from . import messages as _messages
-from . import streaming as _streaming
-from . import uploads as _uploads
-from .contextual import chat_completion  # noqa: F401 — preserved import path
 from .streaming import generate_chat_stream  # noqa: F401 — used by tests
 from .uploads import _pending_uploads  # noqa: F401 — shared mutable state
 

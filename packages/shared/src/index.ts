@@ -13,7 +13,11 @@ export interface ApiSuccessEnvelope<T> {
 
 export interface ApiErrorPayload {
   code: string;
+  type: string;
   message: string;
+  request_id?: string;
+  timestamp?: string;
+  trace_id?: string;
   details?: Record<string, JsonValue>;
 }
 

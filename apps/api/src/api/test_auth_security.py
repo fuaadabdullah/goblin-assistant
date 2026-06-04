@@ -11,7 +11,6 @@ This test suite validates:
 
 import os
 
-
 SANDBOX_TEST_API_KEY = os.getenv("API_AUTH_KEY", "test-api-key")
 
 
@@ -127,7 +126,7 @@ class TestCSRFProtection:
         # Note: Full expiration test requires mocking time or waiting 1 hour
         # This is a placeholder for integration testing
         # In practice, this would be tested with clock mocking or in E2E tests
-        pass
+        assert True
 
 
 class TestRateLimiting:

@@ -2,8 +2,8 @@
 
 from fastapi import APIRouter
 
-from ...core.csrf_manager import generate_csrf_token
 from ...core.contracts import SuccessEnvelope
+from ...core.csrf_manager import generate_csrf_token
 from .schemas import CsrfTokenResponse
 
 router = APIRouter()

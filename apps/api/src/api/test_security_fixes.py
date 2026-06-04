@@ -14,8 +14,8 @@ try:
     from .input_validation import InputSanitizer
 except ImportError:
     # Allow running as standalone script
-    import sys
     import os
+    import sys
 
     sys.path.insert(0, os.path.dirname(__file__))
     from input_validation import InputSanitizer

@@ -126,26 +126,25 @@ class OllamaProvider(BaseProvider):
             "stream": True,
             "options": {"num_predict": max_tokens, "temperature": temperature},
         }
-        async with httpx.AsyncClient(timeout=180) as client:
-            async with client.stream(
-                "POST",
-                f"{self._base_url}/api/chat",
-                headers=self._headers(),
-                json=body,
-            ) as resp:
-                resp.raise_for_status()
-                async for line in resp.aiter_lines():
-                    if not line.strip():
-                        continue
-                    try:
-                        chunk = json.loads(line)
-                    except json.JSONDecodeError:
-                        continue
-                    text = chunk.get("message", {}).get("content", "")
-                    if text:
-                        yield {"text": text}
-                    if chunk.get("done"):
-                        break
+        async with httpx.AsyncClient(timeout=180) as client, client.stream(
+            "POST",
+            f"{self._base_url}/api/chat",
+            headers=self._headers(),
+            json=body,
+        ) as resp:
+            resp.raise_for_status()
+            async for line in resp.aiter_lines():
+                if not line.strip():
+                    continue
+                try:
+                    chunk = json.loads(line)
+                except json.JSONDecodeError:
+                    continue
+                text = chunk.get("message", {}).get("content", "")
+                if text:
+                    yield {"text": text}
+                if chunk.get("done"):
+                    break
 
     async def health_check(self) -> ProviderHealth:
         if not self._base_url:

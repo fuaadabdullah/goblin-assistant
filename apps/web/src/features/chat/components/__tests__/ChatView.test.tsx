@@ -6,7 +6,8 @@ jest.mock('../ChatHeader', () => {
   return function MockChatHeader(props: Record<string, unknown>) {
     return (
       <div data-testid="chat-header">
-        <button onClick={props.onToggleSidebar as () => void}>Toggle</button>
+        <button onClick={props.onToggleMobilePanel as () => void}>Toggle Panel</button>
+        <span data-testid="active-mobile-tab">{props.activeMobilePanelTab as string}</span>
       </div>
     );
   };
@@ -71,13 +72,11 @@ jest.mock('../../../../hooks/api/useAuthSession', () => ({
 }));
 
 const mockChatSidebarOpen = jest.fn().mockReturnValue(false);
-const mockToggleChatSidebar = jest.fn();
 const mockSetChatSidebarOpen = jest.fn();
 jest.mock('../../../../store/uiStore', () => ({
   useUIStore: (selector: (state: Record<string, unknown>) => unknown) => {
     const state = {
       chatSidebarOpen: mockChatSidebarOpen(),
-      toggleChatSidebar: mockToggleChatSidebar,
       setChatSidebarOpen: mockSetChatSidebarOpen,
     };
     return selector(state);
@@ -149,10 +148,30 @@ describe('ChatView', () => {
     expect(screen.getByTestId('seo')).toHaveAttribute('data-title', 'Chat');
   });
 
-  it('renders sidebars (mobile + desktop)', () => {
+  it('renders sidebars (unified mobile panel + desktop)', () => {
     render(<ChatView session={mockSession as never} isAdmin={false} />);
     const sidebars = screen.getAllByTestId('chat-sidebar');
-    expect(sidebars.length).toBe(2); // mobile + desktop
+    expect(sidebars.length).toBe(2);
+    expect(screen.getByRole('dialog', { name: 'Chat mobile panel' })).toBeInTheDocument();
+    expect(screen.getByRole('tab', { name: 'Conversations' })).toHaveAttribute(
+      'aria-selected',
+      'true'
+    );
+    expect(screen.getAllByLabelText('Close chat panel')).toHaveLength(1);
+  });
+
+  it('switches unified mobile panel tabs', () => {
+    render(<ChatView session={mockSession as never} isAdmin={false} />);
+    fireEvent.click(screen.getByRole('tab', { name: 'Preview' }));
+    expect(screen.getByRole('tab', { name: 'Preview' })).toHaveAttribute('aria-selected', 'true');
+    expect(screen.getByTestId('chat-preview-panel')).toBeInTheDocument();
+    expect(screen.getByTestId('active-mobile-tab')).toHaveTextContent('preview');
+  });
+
+  it('opens unified mobile panel through header toggle', () => {
+    render(<ChatView session={mockSession as never} isAdmin={false} />);
+    fireEvent.click(screen.getByText('Toggle Panel'));
+    expect(mockSetChatSidebarOpen).toHaveBeenCalledWith(true);
   });
 
   it('closes sidebar on thread select', () => {

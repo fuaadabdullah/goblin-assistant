@@ -15,17 +15,17 @@ from typing import Any, Dict, List, Optional
 import structlog
 from sqlalchemy import text
 
-from ...storage.database import get_db
+from ...storage.database import get_readonly_db_context
 from ..context_builder import LegacyContextBuilder
-from ..embedding_service import EmbeddingService, EmbeddingProviderUnavailableError
-
+from ..embedding_service import EmbeddingProviderUnavailableError, EmbeddingService
+from ._context_bundle import build_context_bundle
 from ._sql_retrieval import (
+    retrieve_by_source_type,
     retrieve_memory_facts_stratified,
-    retrieve_summaries_stratified,
     retrieve_messages_stratified,
     retrieve_recent_messages,
+    retrieve_summaries_stratified,
 )
-from ._context_bundle import build_context_bundle
 
 logger = structlog.get_logger()
 
@@ -182,7 +182,18 @@ class RetrievalService:
         )
         all_results.extend(summaries)
 
-        # 3. Relevant vector-retrieved messages
+        # 3. Document/code/research/task index items
+        index_source_types = ["document", "code", "research", "task"]
+        for stype in index_source_types:
+            index_items = await retrieve_by_source_type(
+                query_embedding=query_embedding,
+                user_id=user_id,
+                source_type=stype,
+                k=min(k, 3),
+            )
+            all_results.extend(index_items)
+
+        # 4. Relevant vector-retrieved messages
         messages = await retrieve_messages_stratified(
             query_embedding=query_embedding,
             user_id=user_id,
@@ -191,7 +202,7 @@ class RetrievalService:
         )
         all_results.extend(messages)
 
-        # 4. Ephemeral recent messages (if we still need more)
+        # 5. Ephemeral recent messages (if we still need more)
         remaining_k = k - len(all_results)
         if remaining_k > 0:
             recent_messages = await retrieve_recent_messages(
@@ -215,7 +226,7 @@ class RetrievalService:
         if not conversation_ids:
             return []
 
-        async with get_db() as session:
+        async with get_readonly_db_context() as session:
             query = text(
                 """
                 SELECT
@@ -268,7 +279,7 @@ class RetrievalService:
             if not query_embedding:
                 return []
 
-            async with get_db() as session:
+            async with get_readonly_db_context() as session:
                 where_clauses = ["mf.user_id = :user_id"]
                 params = {
                     "user_id": user_id,
@@ -282,7 +293,7 @@ class RetrievalService:
 
                 where_clause = " AND ".join(where_clauses)
 
-                query = text(
+                stmt = text(
                     f"""
                     SELECT
                         mf.id,
@@ -298,7 +309,7 @@ class RetrievalService:
                 """
                 )
 
-                result = await session.execute(query, params)
+                result = await session.execute(stmt, params)
                 rows = result.fetchall()
 
                 return [
@@ -322,6 +333,41 @@ class RetrievalService:
                 categories=categories,
             )
             return []
+
+    async def retrieve_by_index(
+        self,
+        index_name: str,
+        query: str,
+        user_id: str,
+        k: int = 5,
+    ) -> List[Dict[str, Any]]:
+        """Targeted retrieval from a single named index.
+
+        Lets individual goblins query one index directly without pulling the
+        full stratified stack. *index_name* maps to ``source_type`` in the
+        embeddings table (e.g. "document", "code", "research", "task").
+        """
+        if not query or not user_id:
+            return []
+
+        try:
+            query_embedding = await self.embedding_service.embed_text(query)
+        except EmbeddingProviderUnavailableError as exc:
+            self._set_degraded(str(exc))
+            return []
+        except Exception as exc:
+            self._set_degraded(str(exc))
+            return []
+
+        if not query_embedding:
+            return []
+
+        return await retrieve_by_source_type(
+            query_embedding=query_embedding,
+            user_id=user_id,
+            source_type=index_name,
+            k=k,
+        )
 
     async def get_context_bundle(
         self,

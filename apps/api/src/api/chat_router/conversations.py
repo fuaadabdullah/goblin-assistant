@@ -6,11 +6,12 @@ import structlog
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from ..auth.router import User as AuthenticatedUser, get_current_user
+from ..auth.router import User as AuthenticatedUser
+from ..auth.router import get_current_user
 from ..core.contracts import SuccessEnvelope
 from ..input_validation import InputSanitizer
 from ..storage.conversations import ConversationMessage
-from ..storage.database import get_db
+from ..storage.database import get_readonly_db
 from . import _runtime as _cr
 from .schemas import (
     ConversationInfo,
@@ -147,7 +148,7 @@ async def update_conversation_title(
     conversation_id: str,
     request: UpdateConversationTitleRequest,
     current_user: AuthenticatedUser = Depends(get_current_user),
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(get_readonly_db),
 ):
     """Update conversation title (preserves messages + bumps updated_at)."""
     try:
@@ -170,7 +171,7 @@ async def update_conversation_title(
 async def delete_conversation(
     conversation_id: str,
     current_user: AuthenticatedUser = Depends(get_current_user),
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(get_readonly_db),
 ):
     """Delete a conversation permanently (no soft-delete)."""
     try:
@@ -192,7 +193,7 @@ async def import_conversation_messages(
     conversation_id: str,
     request: ImportConversationRequest,
     current_user: AuthenticatedUser = Depends(get_current_user),
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(get_readonly_db),
 ):
     try:
         await _cr._assert_conversation_owned(conversation_id, current_user, db)

@@ -15,8 +15,7 @@ from api.providers.vertex_provider import VertexAIProvider
 class _FakeAliyunClient:
     requested_urls: list[str] = []
 
-    def __init__(self, *args, **kwargs) -> None:
-        pass
+    def __init__(self, *args, **kwargs) -> None: ...
 
     async def __aenter__(self):
         return self
@@ -95,8 +94,7 @@ async def test_vertex_health_404_returns_structured_error_without_warning(monkey
     requested_urls: list[str] = []
 
     class VertexClient:
-        def __init__(self, *args, **kwargs) -> None:
-            pass
+        def __init__(self, *args, **kwargs) -> None: ...
 
         async def __aenter__(self):
             return self

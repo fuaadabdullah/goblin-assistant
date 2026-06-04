@@ -42,19 +42,18 @@ if "api.services.embedding_service" not in sys.modules:
     _stub_mod.embedding_worker = _AsyncEmbeddingWorkerStub()
     sys.modules["api.services.embedding_service"] = _stub_mod
 
-from api.services.message_classifier import MessageClassifier, MessageType
+from api.routing.router import HybridRouter, RoutingRegistry
 from api.services.memory_promotion import (
     MemoryPromotionService,
     PromotionCandidate,
     PromotionGate,
 )
+from api.services.message_classifier import MessageClassifier, MessageType
 from api.services.retrieval_service import (
     FINANCE_BOOST_FACTOR,
     FINANCE_CATEGORIES,
     GENERIC_BOOST_FACTOR,
 )
-from api.routing.router import HybridRouter, RoutingRegistry
-
 
 # ── Message Classifier: finance types ────────────────────────────────
 

@@ -24,7 +24,6 @@ from api.storage.conversations import (
     InMemoryConversationStore,
 )
 
-
 # ---------------------------------------------------------------------------
 # ConversationMessage
 # ---------------------------------------------------------------------------

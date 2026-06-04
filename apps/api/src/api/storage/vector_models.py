@@ -2,25 +2,28 @@
 Vector storage models for semantic retrieval using pgvector
 """
 
-from sqlalchemy import Column, String, DateTime, ForeignKey, JSON, Text, Index
-from sqlalchemy.orm import relationship
 import os
 import uuid
 from datetime import datetime
 
+from sqlalchemy import JSON, Column, DateTime, ForeignKey, Index, String, Text
+from sqlalchemy.orm import relationship
+
+from .models import Base, ConversationModel, UserModel
+
 # Check if we should use pgvector or fallback to Text
 # Default to false because some environments (like the current one) don't have the extension
-USE_PGVECTOR = os.getenv("USE_PGVECTOR", "false").lower() == "true"
+USE_PGVECTOR = os.getenv("USE_PGVECTOR", "true").lower() == "true"
 
 if USE_PGVECTOR:
     try:
-        from pgvector.sqlalchemy import Vector as VECTOR
+        from pgvector.sqlalchemy import Vector as VectorType
     except ImportError:
         USE_PGVECTOR = False
 
 if not USE_PGVECTOR:
     # Use Text as fallback, ensure it evaluates to TEXT in SQL
-    class VECTOR(Text):
+    class VectorType(Text):
         def __init__(self, size=None, **kwargs):
             super().__init__(**kwargs)
             self.size = size
@@ -28,12 +31,8 @@ if not USE_PGVECTOR:
         def __repr__(self):
             return "TEXT"
 
-        def get_col_spec(self, **kw):
+        def get_col_spec(self, **_kw):
             return "TEXT"
-
-
-# Use the shared Base from models.py to ensure all models are in the same registry
-from .models import Base
 
 
 class EmbeddingModel(Base):
@@ -48,7 +47,7 @@ class EmbeddingModel(Base):
     )
     source_type = Column(String, nullable=False)  # message, summary, task, memory
     source_id = Column(String, nullable=False)
-    embedding = Column(VECTOR(1536))  # OpenAI text-embedding-3-small dimension
+    embedding = Column(VectorType(1536))  # OpenAI text-embedding-3-small dimension
     content = Column(Text, nullable=False)
     metadata_ = Column("metadata", JSON, default=dict)
     created_at = Column(DateTime, default=datetime.utcnow)
@@ -78,7 +77,7 @@ class ConversationSummaryModel(Base):
         index=True,
     )
     summary_text = Column(Text, nullable=False)
-    summary_embedding = Column(VECTOR(1536))
+    summary_embedding = Column(VectorType(1536))
     created_at = Column(DateTime, default=datetime.utcnow)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
 
@@ -94,7 +93,7 @@ class MemoryFactModel(Base):
     id = Column(String, primary_key=True, default=lambda: str(uuid.uuid4()))
     user_id = Column(String, ForeignKey("users.id"), nullable=False, index=True)
     fact_text = Column(Text, nullable=False)
-    fact_embedding = Column(VECTOR(1536))
+    fact_embedding = Column(VectorType(1536))
     category = Column(String, nullable=True)  # e.g., "preferences", "knowledge", "tasks"
     metadata_ = Column("metadata", JSON, default=dict)
     created_at = Column(DateTime, default=datetime.utcnow)
@@ -113,9 +112,6 @@ class MemoryFactModel(Base):
 def add_vector_relationships():
     """Add vector relationships to existing models"""
 
-    # Add to UserModel
-    from .models import UserModel
-
     UserModel.embeddings = relationship(
         "EmbeddingModel",
         back_populates="user",
@@ -126,9 +122,6 @@ def add_vector_relationships():
         back_populates="user",
         cascade="all, delete-orphan",
     )
-
-    # Add to ConversationModel
-    from .models import ConversationModel
 
     ConversationModel.embeddings = relationship(
         "EmbeddingModel",

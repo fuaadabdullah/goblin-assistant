@@ -1,8 +1,4 @@
-import {
-  bootstrapAuthSession,
-  clearAuthSessionState,
-  clearValidationCache,
-} from '../auth-state';
+import { bootstrapAuthSession, clearAuthSessionState, clearValidationCache } from '../auth-state';
 
 // ---------------------------------------------------------------------------
 // Module mocks

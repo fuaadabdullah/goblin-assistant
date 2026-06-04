@@ -5,7 +5,7 @@ import { ProviderProvider, useProvider } from '../ProviderContext';
 
 /* Mock the API client used by useProviderHealth */
 const mockGetModelConfigs = jest.fn();
-jest.mock('@/api', () => ({
+jest.mock('@/lib/api', () => ({
   apiClient: {
     getModelConfigs: (...args: unknown[]) => mockGetModelConfigs(...args),
   },

@@ -4,9 +4,11 @@ from fastapi import FastAPI
 
 from .api_keys_router import router as api_keys_router
 from .api_router import router as api_router
-from .artifact_cleanup import artifact_cleanup_service  # noqa: F401
 from .auth.router import router as auth_router
-from .bootstrap.middleware import add_contract_lifecycle_headers, install_runtime_middlewares
+from .bootstrap.middleware import (
+    add_contract_lifecycle_headers,
+    install_runtime_middlewares,
+)
 from .bootstrap.routes import register_routes
 from .bootstrap.startup import (
     init_sentry,
@@ -45,7 +47,7 @@ def create_app() -> FastAPI:
 
     app = FastAPI(
         title="Goblin Assistant API",
-        description="AI-powered development assistant with multi-provider routing",
+        description=("AI-powered development assistant with multi-provider routing"),
         version="1.0.0",
         lifespan=lifespan,
     )

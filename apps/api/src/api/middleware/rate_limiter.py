@@ -2,12 +2,16 @@
 
 import asyncio
 import time
-from datetime import datetime, timedelta
+import uuid
+from datetime import datetime, timedelta, timezone
 from typing import Any
 
 import redis.asyncio as redis
 from fastapi import Request
 from fastapi.responses import JSONResponse
+
+from ..core.contracts import ApiErrorPayload, ErrorEnvelope
+from ..core.error_types import ErrorType
 
 
 class RateLimiter:
@@ -145,14 +149,28 @@ class RateLimiter:
         result = await self.check_rate_limit(request)
 
         if not result["allowed"]:
+            request_id = str(uuid.uuid4())
+            timestamp = datetime.now(timezone.utc).isoformat()
             return JSONResponse(
                 status_code=429,
-                content={
-                    "error": "Rate limit exceeded",
-                    "limit_type": result["limit_type"],
-                    "reset_at": result["reset_at"],
+                content=ErrorEnvelope(
+                    error=ApiErrorPayload(
+                        code="RATE_LIMIT_EXCEEDED",
+                        type=ErrorType.RATE_LIMIT,
+                        message="Rate limit exceeded",
+                        request_id=request_id,
+                        timestamp=timestamp,
+                        details={
+                            "limit_type": result["limit_type"],
+                            "reset_at": result["reset_at"],
+                        },
+                    )
+                ).model_dump(exclude_none=True),
+                headers={
+                    "Retry-After": "60",
+                    "X-RateLimit-Remaining": "0",
+                    "X-Request-ID": request_id,
                 },
-                headers={"Retry-After": "60", "X-RateLimit-Remaining": "0"},
             )
 
         # Add rate limit headers to response

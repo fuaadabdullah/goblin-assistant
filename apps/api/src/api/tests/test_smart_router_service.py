@@ -7,10 +7,10 @@ from unittest.mock import AsyncMock, MagicMock, patch
 import pytest
 
 from api.services.smart_router import (
+    CostTracker,
+    ProviderCost,
     RoutingStrategy,
     SmartRouter,
-    ProviderCost,
-    CostTracker,
 )
 
 

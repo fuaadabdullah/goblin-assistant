@@ -3,19 +3,20 @@ Semantic chat router for Goblin Assistant
 Enhanced chat endpoints with semantic retrieval and context-aware responses
 """
 
-from fastapi import APIRouter, HTTPException
-from pydantic import BaseModel
-from typing import Any, Dict, List, Optional, Tuple
 import uuid
 from datetime import datetime
-import structlog
+from typing import Any, Dict, List, Optional, Tuple
 
-from .storage.conversations import conversation_store
-from .providers.dispatcher import invoke_provider
-from .input_validation import InputSanitizer
+import structlog
+from fastapi import APIRouter, HTTPException
+from pydantic import BaseModel
+
+from .assistant_tools.executor import extract_tool_calls, run_tool_loop
 from .assistant_tools.registry import export_openai_tools
-from .assistant_tools.executor import run_tool_loop, extract_tool_calls
 from .chat_router.helpers import _raise_structured_provider_error
+from .input_validation import InputSanitizer
+from .providers.dispatcher import invoke_provider
+from .storage.conversations import conversation_store
 
 logger = structlog.get_logger()
 

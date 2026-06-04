@@ -11,14 +11,14 @@ import uuid
 # Add the API directory to the path for imports
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "api"))
 
-from api.services.embedding_service import EmbeddingService
-from api.services.retrieval_service import RetrievalService, ContextBuilder
 from api.services.background_tasks import (
-    background_task_manager,
     ConversationSummarizationService,
+    background_task_manager,
 )
-from api.storage.database import get_db, init_db
+from api.services.embedding_service import EmbeddingService
+from api.services.retrieval_service import ContextBuilder, RetrievalService
 from api.storage.conversations import conversation_store
+from api.storage.database import get_db, init_db
 
 
 class SemanticRetrievalTester:

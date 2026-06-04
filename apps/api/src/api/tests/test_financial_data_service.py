@@ -6,17 +6,14 @@ Uses the shared yfinance stub from conftest.py to avoid network calls.
 
 from __future__ import annotations
 
-
 import pytest
 
 # yfinance stub is provided by conftest.py (mock_yfinance fixture)
-
 # Now safe to import the service
 from api.services.financial_data_service import (
     FinancialDataService,
     _validate_ticker,
 )
-
 
 # ---------------------------------------------------------------------------
 # Helpers
@@ -33,7 +30,7 @@ def _no_cache_get(key):
 
 
 def _no_cache_set(key, value, ttl):
-    pass
+    return None
 
 
 # Patch cache globally so tests don't depend on Redis

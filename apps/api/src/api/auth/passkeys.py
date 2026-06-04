@@ -1,11 +1,15 @@
 import base64
 import hashlib
+import json
+import logging
 import secrets
-from typing import Dict, Any
+from typing import Any, Dict
+
+from cryptography.exceptions import InvalidSignature
 from cryptography.hazmat.primitives import hashes
 from cryptography.hazmat.primitives.asymmetric import ec
-from cryptography.exceptions import InvalidSignature
-import json
+
+_logger = logging.getLogger(__name__)
 
 
 class WebAuthnPasskey:
@@ -78,13 +82,13 @@ class WebAuthnPasskey:
                 y = int.from_bytes(cose_key[33:65], byteorder="big")
 
                 # Create EC public key
-                from cryptography.hazmat.primitives.asymmetric import ec
                 from cryptography.hazmat.backends import default_backend
+                from cryptography.hazmat.primitives.asymmetric import ec
 
                 public_numbers = ec.EllipticCurvePublicNumbers(x=x, y=y, curve=ec.SECP256R1())
                 return public_numbers.public_key(default_backend())
         except Exception:
-            pass
+            _logger.warning("COSE key reconstruction failed despite valid header", exc_info=True)
 
         raise ValueError("Unsupported or invalid COSE public key format")
 

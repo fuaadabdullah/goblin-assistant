@@ -16,13 +16,15 @@ from ...config.system_prompt import system_prompt_manager
 from ...observability.context_snapshotter import context_snapshotter
 from ...utils.tokenizer import (
     count_tokens as _count_tokens,
+)
+from ...utils.tokenizer import (
     trim_to_tokens as _trim_to_tokens_util,
 )
 from . import budget_manager as bm
 from .ephemeral_layer import assemble_ephemeral_memory
 from .long_term_layer import assemble_long_term_memory
 from .models import ContextBudget, ContextLayer
-from .semantic_layer import assemble_semantic_retrieval, _get_retrieval_service
+from .semantic_layer import _get_retrieval_service, assemble_semantic_retrieval
 from .system_layer import assemble_system_layer
 from .working_memory_layer import assemble_working_memory
 

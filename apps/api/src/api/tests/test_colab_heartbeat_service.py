@@ -38,14 +38,13 @@ async def test_heartbeat_loop_probes_on_interval():
         service._running = False
         return True
 
-    with patch("api.services.colab_heartbeat.asyncio.sleep", new=fast_sleep):
-        with patch.object(
-            service,
-            "_probe_if_configured",
-            new=AsyncMock(side_effect=probe_once_then_stop),
-        ) as probe_mock:
-            service._running = True
-            await service._heartbeat_loop()
+    with patch("api.services.colab_heartbeat.asyncio.sleep", new=fast_sleep), patch.object(
+        service,
+        "_probe_if_configured",
+        new=AsyncMock(side_effect=probe_once_then_stop),
+    ) as probe_mock:
+        service._running = True
+        await service._heartbeat_loop()
 
     probe_mock.assert_awaited_once()
 

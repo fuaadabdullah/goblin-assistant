@@ -5,9 +5,10 @@ Simulates multiple users interacting with the AI at the same time.
 """
 
 import asyncio
-import aiohttp
-import time
 import random
+import time
+
+import aiohttp
 
 
 async def send_random_message(session, base_url, user_id, conversation_id):

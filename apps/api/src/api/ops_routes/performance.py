@@ -1,8 +1,8 @@
+import statistics
+import time
 from collections import defaultdict
 from datetime import datetime
 from typing import Any, Dict
-import statistics
-import time
 
 from fastapi import APIRouter, HTTPException, Query
 

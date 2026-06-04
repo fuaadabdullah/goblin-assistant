@@ -5,10 +5,10 @@ This module defines the abstract interface that all secrets adapters must implem
 along with common error types and data structures.
 """
 
-from abc import ABC, abstractmethod
-from typing import Dict, List, Optional, Any
-from datetime import datetime
 import asyncio
+from abc import ABC, abstractmethod
+from datetime import datetime
+from typing import Any, Dict, List, Optional
 
 
 class SecretAdapterError(Exception):
@@ -134,7 +134,7 @@ class SecretAdapter(ABC):
             SecretUnauthorizedError: If authentication fails
             SecretBackendError: If the backend service is unavailable
         """
-        pass
+        ...
 
     @abstractmethod
     async def put_secret(
@@ -161,7 +161,7 @@ class SecretAdapter(ABC):
             SecretUnauthorizedError: If write permissions are denied
             SecretBackendError: If the backend service is unavailable
         """
-        pass
+        ...
 
     @abstractmethod
     async def list_secrets(self, prefix: str = "", limit: int = 100) -> List[str]:
@@ -179,7 +179,7 @@ class SecretAdapter(ABC):
             SecretUnauthorizedError: If list permissions are denied
             SecretBackendError: If the backend service is unavailable
         """
-        pass
+        ...
 
     @abstractmethod
     async def delete_secret(self, path: str, version: Optional[int] = None) -> None:
@@ -195,14 +195,14 @@ class SecretAdapter(ABC):
             SecretUnauthorizedError: If delete permissions are denied
             SecretBackendError: If the backend service is unavailable
         """
-        pass
+        ...
 
     async def rotate_secret(self, path: str) -> str:
         """
         Rotate/regenerate a secret value.
 
         Note: Not all backends support automatic rotation. Implementations
-        should raise NotImplementedError if rotation is not supported.
+        should raise SecretAdapterError if rotation is not supported.
 
         Args:
             path: The path/identifier for the secret
@@ -211,10 +211,13 @@ class SecretAdapter(ABC):
             The new secret value or rotation workflow ID
 
         Raises:
-            NotImplementedError: If rotation is not supported
+            SecretAdapterError: If rotation is not supported
             Other SecretAdapterError subclasses: For rotation failures
         """
-        raise NotImplementedError(f"Secret rotation not supported by {self.__class__.__name__}")
+        raise SecretAdapterError(
+            f"Secret rotation not supported by {self.__class__.__name__}",
+            code="NOT_SUPPORTED",
+        )
 
     @abstractmethod
     async def health(self) -> Dict[str, Any]:
@@ -232,7 +235,7 @@ class SecretAdapter(ABC):
         Raises:
             SecretBackendError: If health check itself fails
         """
-        pass
+        ...
 
     async def close(self) -> None:
         """
@@ -240,7 +243,7 @@ class SecretAdapter(ABC):
 
         Called when the adapter is no longer needed.
         """
-        pass
+        ...
 
     def __enter__(self):
         return self

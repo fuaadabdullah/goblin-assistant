@@ -2,9 +2,10 @@
 
 from __future__ import annotations
 
-import pytest
 from unittest.mock import AsyncMock, MagicMock, patch
+
 import httpx
+import pytest
 
 from api.providers.azure_provider import AzureOpenAIProvider
 

@@ -10,7 +10,7 @@ from typing import Any, Dict, List, Optional
 
 from ..providers.dispatcher import invoke_provider
 from ..storage.conversations import conversation_store
-from ..storage.database import get_db
+from ..storage.database import get_db_context, get_readonly_db_context
 from .retrieval_service import retrieval_service as _retrieval_singleton
 
 logger = logging.getLogger(__name__)
@@ -101,7 +101,7 @@ class BackgroundTaskManager:
     async def _summarize_stale_conversations(self):
         """Summarize conversations that haven't been summarized recently"""
 
-        async with get_db() as session:
+        async with get_readonly_db_context() as session:
             # Find conversations that need summarization
             query = """
                 SELECT c.conversation_id, c.user_id, c.updated_at,
@@ -275,7 +275,7 @@ Working Memory Summary:"""
     async def _cleanup_old_embeddings(self):
         """Clean up embeddings older than retention period"""
 
-        async with get_db() as session:
+        async with get_readonly_db_context() as session:
             # Delete embeddings older than 90 days
             cutoff_date = datetime.utcnow() - timedelta(days=90)
 
@@ -307,7 +307,7 @@ Working Memory Summary:"""
         """Optimize pgvector indexes"""
 
         try:
-            async with get_db() as session:
+            async with get_db_context() as session:
                 # Recreate IVFFLAT indexes for better performance
                 # This should only be done when the table has sufficient data
 
@@ -385,11 +385,11 @@ class ConversationSummarizationService:
         try:
             # Check if summary already exists and is recent
             if not force_resummarize:
-                async with get_db() as session:
+                async with get_readonly_db_context() as session:
                     result = await session.execute(
                         """
-                        SELECT updated_at FROM conversation_summaries 
-                        WHERE conversation_id = :conv_id 
+                        SELECT updated_at FROM conversation_summaries
+                        WHERE conversation_id = :conv_id
                         AND updated_at > NOW() - INTERVAL '2 hours'
                         """,
                         {"conv_id": conversation_id},

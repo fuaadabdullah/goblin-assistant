@@ -4,6 +4,7 @@ Test script to verify the chat functionality is working with real responses.
 """
 
 import asyncio
+
 import aiohttp
 
 

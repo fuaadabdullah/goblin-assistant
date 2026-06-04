@@ -15,18 +15,18 @@ Components:
 - Debug Router: Provides debug surfaces for inspection
 """
 
-from .decision_logger import decision_logger, DecisionReason, log_write_time_decision
-from .memory_logger import memory_promotion_logger, PromotionGate, log_memory_promotion
+from .alerting_system import Alert, AlertSeverity, AlertStatus, alerting_system
+from .context_snapshotter import capture_context_snapshot, context_snapshotter
+from .debug_router import router as debug_router
+from .decision_logger import DecisionReason, decision_logger, log_write_time_decision
+from .memory_logger import PromotionGate, log_memory_promotion, memory_promotion_logger
+from .metrics_collector import SystemMetrics, metrics_collector
 from .retrieval_tracer import (
-    retrieval_tracer,
     RetrievalTier,
     RetrievedItem,
+    retrieval_tracer,
     trace_retrieval,
 )
-from .context_snapshotter import context_snapshotter, capture_context_snapshot
-from .metrics_collector import metrics_collector, SystemMetrics
-from .alerting_system import alerting_system, AlertSeverity, AlertStatus, Alert
-from .debug_router import router as debug_router
 
 
 # Initialize observability systems

@@ -7,9 +7,10 @@ Tests the anti-rot layer functionality end-to-end
 import asyncio
 import json
 import time
-from typing import Dict, Any
-import httpx
 from datetime import datetime
+from typing import Any, Dict
+
+import httpx
 
 
 class WriteTimeIntelligenceTester:

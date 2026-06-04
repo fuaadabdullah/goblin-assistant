@@ -1,9 +1,9 @@
 import { renderHook, waitFor } from '@testing-library/react';
 import { useProviderHealth } from '../useProviderHealth';
-import { apiClient } from '@/api';
+import { apiClient } from '@/lib/api';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 
-jest.mock('@/api', () => ({
+jest.mock('@/lib/api', () => ({
   apiClient: {
     getModelConfigs: jest.fn(),
   },
@@ -53,9 +53,12 @@ describe('useProviderHealth', () => {
 
     const { result } = renderHook(() => useProviderHealth(), { wrapper });
 
-    await waitFor(() => {
-      expect(result.current.providerError).toBe('API error');
-    }, { timeout: 4000 });
+    await waitFor(
+      () => {
+        expect(result.current.providerError).toBe('API error');
+      },
+      { timeout: 4000 }
+    );
 
     await waitFor(() => {
       expect(result.current.loadingProviders).toBe(false);

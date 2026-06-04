@@ -4,7 +4,6 @@ from __future__ import annotations
 
 import os
 from pathlib import Path
-from typing import Any
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
@@ -79,6 +78,7 @@ def test_update_provider_endpoint_unknown_provider_raises():
 
 def _make_app():
     from fastapi import FastAPI
+
     from api.ops_routes.colab_worker import router
 
     app = FastAPI()
@@ -125,6 +125,7 @@ def test_register_endpoint_success():
         patch("api.ops_routes.colab_worker._write_env_file", return_value=True),
     ):
         from fastapi import FastAPI
+
         from api.ops_routes.colab_worker import router
 
         app = FastAPI()
@@ -145,6 +146,7 @@ def test_register_endpoint_success():
 def test_register_endpoint_wrong_key():
     with patch.dict(os.environ, {"COLAB_WORKER_API_KEY": _API_KEY}):
         from fastapi import FastAPI
+
         from api.ops_routes.colab_worker import router
 
         app = FastAPI()
@@ -162,6 +164,7 @@ def test_register_endpoint_wrong_key():
 def test_register_endpoint_no_auth():
     with patch.dict(os.environ, {"COLAB_WORKER_API_KEY": _API_KEY}):
         from fastapi import FastAPI
+
         from api.ops_routes.colab_worker import router
 
         app = FastAPI()
@@ -173,7 +176,6 @@ def test_register_endpoint_no_auth():
 
 
 def test_register_endpoint_probe_timeout():
-    import httpx
 
     with (
         patch(
@@ -182,9 +184,9 @@ def test_register_endpoint_probe_timeout():
         ),
         patch.dict(os.environ, {"COLAB_WORKER_API_KEY": _API_KEY}),
     ):
-        from fastapi import FastAPI
+        from fastapi import FastAPI, HTTPException
+
         from api.ops_routes.colab_worker import router
-        from fastapi import HTTPException
 
         app = FastAPI()
         app.include_router(router)
@@ -216,6 +218,7 @@ def test_register_endpoint_probe_unhealthy():
         patch.dict(os.environ, {"COLAB_WORKER_API_KEY": _API_KEY}),
     ):
         from fastapi import FastAPI
+
         from api.ops_routes.colab_worker import router
 
         app = FastAPI()
@@ -241,6 +244,7 @@ def test_env_not_written_in_production():
         patch.dict(os.environ, {"COLAB_WORKER_API_KEY": _API_KEY, "ENVIRONMENT": "production"}),
     ):
         from fastapi import FastAPI
+
         from api.ops_routes.colab_worker import router
 
         app = FastAPI()

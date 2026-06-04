@@ -136,7 +136,9 @@ describe('Layout', () => {
     const closeBtn = screen.getByLabelText('Close menu');
     fireEvent.click(closeBtn);
     // Mobile drawer should be hidden
-    expect(screen.queryByRole('dialog', { name: 'Primary mobile navigation' })).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole('dialog', { name: 'Primary mobile navigation' })
+    ).not.toBeInTheDocument();
   });
 
   it('renders children in main content area', () => {

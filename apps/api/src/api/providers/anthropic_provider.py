@@ -167,26 +167,25 @@ class AnthropicProvider(BaseProvider):
         if system:
             body["system"] = system
 
-        async with httpx.AsyncClient(timeout=120) as client:
-            async with client.stream(
-                "POST",
-                f"{self._base_url}/v1/messages",
-                headers=self._headers(),
-                json=body,
-            ) as resp:
-                resp.raise_for_status()
-                async for line in resp.aiter_lines():
-                    if not line.startswith("data: "):
-                        continue
-                    payload = line[6:].strip()
-                    try:
-                        event = json.loads(payload)
-                    except json.JSONDecodeError:
-                        continue
-                    if event.get("type") == "content_block_delta":
-                        delta = event.get("delta", {}).get("text", "")
-                        if delta:
-                            yield {"text": delta}
+        async with httpx.AsyncClient(timeout=120) as client, client.stream(
+            "POST",
+            f"{self._base_url}/v1/messages",
+            headers=self._headers(),
+            json=body,
+        ) as resp:
+            resp.raise_for_status()
+            async for line in resp.aiter_lines():
+                if not line.startswith("data: "):
+                    continue
+                payload = line[6:].strip()
+                try:
+                    event = json.loads(payload)
+                except json.JSONDecodeError:
+                    continue
+                if event.get("type") == "content_block_delta":
+                    delta = event.get("delta", {}).get("text", "")
+                    if delta:
+                        yield {"text": delta}
 
     async def health_check(self) -> ProviderHealth:
         if not self._api_key:

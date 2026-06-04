@@ -5,7 +5,6 @@ and the legacy OpenAI-compatible `chat_completion` (currently defined but
 intentionally not routed — preserves original behavior).
 """
 
-import time
 import uuid
 from datetime import datetime
 from typing import Any, Dict
@@ -15,20 +14,28 @@ from fastapi import APIRouter, Depends, HTTPException
 from fastapi.responses import StreamingResponse
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from ..assistant_tools.executor import extract_tool_calls, run_tool_loop
-from ..assistant_tools.registry import export_tools_for_provider
-from ..auth.router import User as AuthenticatedUser, get_current_user
-from ..core.contracts import SuccessEnvelope
-from ..storage import conversation_store
-from ..storage.database import get_db
-from api.config.mode_addendums import get_addendum as _get_mode_addendum
 from api.config.archetypes import (
     is_deep_research_mode as _is_deep_research_mode,
+)
+from api.config.archetypes import (
     is_general_assistant_mode as _is_general_assistant_mode,
+)
+from api.config.archetypes import (
     missing_deep_research_tools as _missing_deep_research_tools,
+)
+from api.config.archetypes import (
     missing_general_assistant_tools as _missing_general_assistant_tools,
 )
+from api.config.mode_addendums import get_addendum as _get_mode_addendum
 from api.config.system_prompt import EDUCATION_SYSTEM_ADDENDUM, system_prompt_manager
+
+from ..assistant_tools.executor import run_tool_loop
+from ..assistant_tools.registry import export_tools_for_provider
+from ..auth.router import User as AuthenticatedUser
+from ..auth.router import get_current_user
+from ..core.contracts import SuccessEnvelope
+from ..storage import conversation_store
+from ..storage.database import get_readonly_db
 from . import _runtime as _cr
 from .archiving import schedule_conversation_archive
 from .schemas import ContextualChatRequest, ContextualChatResponse
@@ -53,7 +60,7 @@ router = APIRouter()
 async def contextual_chat(
     request: ContextualChatRequest,
     current_user: AuthenticatedUser = Depends(get_current_user),
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(get_readonly_db),
 ):
     """Chat with the new fixed-order retrieval stack + strict token budgeting.
 
@@ -136,7 +143,6 @@ async def contextual_chat(
             ]
             token_usage = {"method": "fallback"}
 
-        start_time = time.time()
         payload = {
             "messages": messages,
             "model": request.model,
@@ -191,7 +197,18 @@ async def contextual_chat(
                 },
             )
 
-        try:
+        if ctx_tools:
+            provider_response = await run_tool_loop(
+                messages=list(messages),
+                invoke_fn=_cr.invoke_provider,
+                provider=request.provider,
+                model=request.model,
+                tools=ctx_tools,
+                timeout_ms=30000,
+                user_id=user_id,
+                conversation_id=conversation_id,
+            )
+        else:
             provider_response = await _cr.invoke_provider(
                 pid=request.provider,
                 model=request.model,
@@ -199,29 +216,6 @@ async def contextual_chat(
                 timeout_ms=30000,
                 stream=False,
             )
-
-            if (
-                isinstance(provider_response, dict)
-                and provider_response.get("ok")
-                and extract_tool_calls(provider_response)
-            ):
-                provider_response = await run_tool_loop(
-                    messages=list(messages),
-                    invoke_fn=_cr.invoke_provider,
-                    provider=request.provider,
-                    model=request.model,
-                    tools=ctx_tools if ctx_tools else None,
-                    timeout_ms=30000,
-                    user_id=user_id,
-                    conversation_id=conversation_id,
-                )
-
-            time.time() - start_time
-            success = isinstance(provider_response, dict) and provider_response.get("ok", True)
-            None if success else str(provider_response.get("error", "unknown"))
-        except Exception:
-            time.time() - start_time
-            raise
 
         if isinstance(provider_response, dict) and provider_response.get("ok"):
             result_data = provider_response.get("result", {})
@@ -240,7 +234,6 @@ async def contextual_chat(
             used_provider = request.provider or "unknown"
             used_model = request.model or "unknown"
 
-        str(uuid.uuid4())
         response_message_id = str(uuid.uuid4())
 
         if conversation_id:
@@ -260,7 +253,6 @@ async def contextual_chat(
                     else request.metadata
                 ),
             )
-            await schedule_conversation_archive(conversation_id)
 
             await conversation_store.add_message_to_conversation(
                 conversation_id=conversation_id,

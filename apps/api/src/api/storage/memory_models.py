@@ -3,20 +3,21 @@ Enhanced memory models for memory stratification system
 Adds memory_items table and enhanced metadata tracking
 """
 
-from sqlalchemy import (
-    Column,
-    String,
-    DateTime,
-    ForeignKey,
-    JSON,
-    Text,
-    Index,
-    Integer,
-    Float,
-)
-from sqlalchemy.orm import declarative_base, relationship
 import uuid
 from datetime import datetime
+
+from sqlalchemy import (
+    JSON,
+    Column,
+    DateTime,
+    Float,
+    ForeignKey,
+    Index,
+    Integer,
+    String,
+    Text,
+)
+from sqlalchemy.orm import declarative_base, relationship
 
 # Try to import VECTOR for PostgreSQL, fallback to Text for SQLite
 try:

@@ -10,12 +10,15 @@ from sqlalchemy import (
     JSON,
     Boolean,
     Column,
+    Date,
     DateTime,
+    Float,
     ForeignKey,
     Index,
     Integer,
     String,
     Text,
+    UniqueConstraint,
     text,
 )
 from sqlalchemy.orm import declarative_base, relationship
@@ -228,6 +231,51 @@ class ProviderSettingsModel(Base):
     provider_name = Column(String, primary_key=True)
     endpoint = Column(Text, nullable=False)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+
+
+class UsageEventModel(Base):
+    """Append-only usage events for per-message billing and analytics."""
+
+    __tablename__ = "usage_events"
+
+    event_id = Column(String, primary_key=True, default=lambda: str(uuid.uuid4()))
+    user_id = Column(String, ForeignKey("users.id"), nullable=False, index=True)
+    conversation_id = Column(String, nullable=True, index=True)
+    message_id = Column(String, nullable=True, index=True)
+    provider = Column(String, nullable=True, index=True)
+    model = Column(String, nullable=True)
+    prompt_tokens = Column(Integer, nullable=False, default=0)
+    completion_tokens = Column(Integer, nullable=False, default=0)
+    total_tokens = Column(Integer, nullable=False, default=0)
+    cost_usd = Column(Float, nullable=False, default=0.0)
+    metadata_ = Column("metadata", JSON, default=dict)
+    created_at = Column(DateTime, default=datetime.utcnow, nullable=False, index=True)
+
+    __table_args__ = (
+        Index("idx_usage_events_user_created", "user_id", "created_at"),
+        Index("idx_usage_events_conversation_created", "conversation_id", "created_at"),
+    )
+
+
+class UsageDailyAggregateModel(Base):
+    """Daily usage rollups to support quotas and reporting."""
+
+    __tablename__ = "usage_daily_aggregates"
+
+    id = Column(String, primary_key=True, default=lambda: str(uuid.uuid4()))
+    user_id = Column(String, ForeignKey("users.id"), nullable=False, index=True)
+    usage_date = Column(Date, nullable=False, index=True)
+    event_count = Column(Integer, nullable=False, default=0)
+    prompt_tokens = Column(Integer, nullable=False, default=0)
+    completion_tokens = Column(Integer, nullable=False, default=0)
+    total_tokens = Column(Integer, nullable=False, default=0)
+    total_cost_usd = Column(Float, nullable=False, default=0.0)
+    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+
+    __table_args__ = (
+        UniqueConstraint("user_id", "usage_date", name="uq_usage_daily_user_date"),
+        Index("idx_usage_daily_user_date", "user_id", "usage_date"),
+    )
 
 
 # Add vector relationships to existing models

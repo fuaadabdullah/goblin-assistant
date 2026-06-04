@@ -59,9 +59,10 @@ def apply_context_token_budget(
     Priority order (highest → lowest):
         1. memory_facts
         2. summaries
-        3. messages
-        4. ephemeral_messages
-        5. tasks
+        3. documents  (PDFs, code, research — durable, no expiry)
+        4. messages
+        5. ephemeral_messages
+        6. tasks
 
     Returns the total number of tokens kept.
     """
@@ -69,6 +70,7 @@ def apply_context_token_budget(
         for bucket in (
             "memory_facts",
             "summaries",
+            "documents",
             "messages",
             "ephemeral_messages",
             "tasks",
@@ -79,6 +81,7 @@ def apply_context_token_budget(
     priority_buckets = [
         "memory_facts",
         "summaries",
+        "documents",
         "messages",
         "ephemeral_messages",
         "tasks",

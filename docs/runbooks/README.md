@@ -1,5 +1,13 @@
-# Runbooks Compatibility Stub
+# Runbooks Compatibility Notice
 
-Runbooks and operational guides now live in `docs/operations/`.
+Operational runbooks now live in `docs/operations/`.
 
-Use `docs/operations/README.md` as the canonical entrypoint.
+## Canonical location
+
+- Use `docs/operations/README.md` as the primary index.
+- Add new runbooks directly under `docs/operations/`.
+
+## Why this folder still exists
+
+This directory is retained only for compatibility with historic links.
+Do not add new operational content here.

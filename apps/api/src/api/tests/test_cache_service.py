@@ -3,9 +3,10 @@ Tests for CacheService
 Tests Redis-based caching with TTL rules
 """
 
-import pytest
 import json
 from unittest.mock import AsyncMock, patch
+
+import pytest
 
 from api.services.cache_service import CacheService
 

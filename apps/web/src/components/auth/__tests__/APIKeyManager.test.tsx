@@ -2,7 +2,7 @@ import React from 'react';
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 
-jest.mock('@/api', () => ({
+jest.mock('@/lib/api/runtimeClient', () => ({
   runtimeClient: {
     setProviderApiKey: jest.fn(),
     getApiKey: jest.fn(),
@@ -11,7 +11,7 @@ jest.mock('@/api', () => ({
 }));
 
 import APIKeyManager from '../APIKeyManager';
-import { runtimeClient } from '@/api';
+import { runtimeClient } from '@/lib/api/runtimeClient';
 
 const mockSetKey = runtimeClient.setProviderApiKey as jest.Mock;
 const mockGetKey = runtimeClient.getApiKey as jest.Mock;

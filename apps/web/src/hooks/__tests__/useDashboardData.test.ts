@@ -3,7 +3,7 @@ import { renderHook, waitFor } from '@testing-library/react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { useDashboardData } from '../useDashboardData';
 
-jest.mock('@/api', () => ({
+jest.mock('@/lib/api', () => ({
   apiClient: {
     getAllHealth: jest.fn().mockResolvedValue({
       services: {

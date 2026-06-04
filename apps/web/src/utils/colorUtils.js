@@ -147,20 +147,29 @@ export const GOBLINOS_PALETTE = generateThemePalette(GOBLINOS_BASE_COLORS);
 
 // Example usage (for Node.js environments)
 if (typeof process !== 'undefined' && import.meta.url === `file://${process.argv[1]}`) {
-  console.log('\n=== GoblinOS Color Palette ===\n');
-  console.log('Primary (Goblin Green):');
-  console.log('  Base:', GOBLINOS_PALETTE.primary.base);
-  console.log('  Light (300):', GOBLINOS_PALETTE.primary.light);
-  console.log('  Dark (600):', GOBLINOS_PALETTE.primary.dark);
-  console.log('  Hover:', GOBLINOS_PALETTE.primary.hover);
-  console.log('\nAccent (Magenta):');
-  console.log('  Base:', GOBLINOS_PALETTE.accent.base);
-  console.log('  Light (300):', GOBLINOS_PALETTE.accent.light);
-  console.log('  Dark (600):', GOBLINOS_PALETTE.accent.dark);
-  console.log('\nCTA (Burnt Orange):');
-  console.log('  Base:', GOBLINOS_PALETTE.cta.base);
-  console.log('  Light (300):', GOBLINOS_PALETTE.cta.light);
-  console.log('  Dark (600):', GOBLINOS_PALETTE.cta.dark);
-  console.log('\n=== CSS Variables ===\n');
-  console.log(generateCssVariables(GOBLINOS_PALETTE));
+  const lines = [
+    '',
+    '=== GoblinOS Color Palette ===',
+    '',
+    'Primary (Goblin Green):',
+    `  Base: ${GOBLINOS_PALETTE.primary.base}`,
+    `  Light (300): ${GOBLINOS_PALETTE.primary.light}`,
+    `  Dark (600): ${GOBLINOS_PALETTE.primary.dark}`,
+    `  Hover: ${GOBLINOS_PALETTE.primary.hover}`,
+    '',
+    'Accent (Magenta):',
+    `  Base: ${GOBLINOS_PALETTE.accent.base}`,
+    `  Light (300): ${GOBLINOS_PALETTE.accent.light}`,
+    `  Dark (600): ${GOBLINOS_PALETTE.accent.dark}`,
+    '',
+    'CTA (Burnt Orange):',
+    `  Base: ${GOBLINOS_PALETTE.cta.base}`,
+    `  Light (300): ${GOBLINOS_PALETTE.cta.light}`,
+    `  Dark (600): ${GOBLINOS_PALETTE.cta.dark}`,
+    '',
+    '=== CSS Variables ===',
+    '',
+    generateCssVariables(GOBLINOS_PALETTE),
+  ];
+  process.stdout.write(`${lines.join('\n')}\n`);
 }

@@ -14,7 +14,6 @@ import pytest
 
 from api.storage.preferences_service import PreferencesService, preferences_service
 
-
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------

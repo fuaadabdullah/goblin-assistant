@@ -21,7 +21,7 @@ jest.mock('../../components/TwoColumnLayout', () => {
 });
 
 const mockTestConnection = jest.fn();
-jest.mock('@/api', () => ({
+jest.mock('@/lib/api', () => ({
   apiClient: { testProviderConnection: (...args: unknown[]) => mockTestConnection(...args) },
 }));
 
@@ -40,7 +40,7 @@ const mockProviderSettings = jest.fn().mockReturnValue({
       name: 'ollama',
       enabled: false,
       configured: false,
-      base_url: 'http://localhost:11434',
+      base_url: 'http://ollama.internal.test:11434',
       models: [],
     },
   ],
@@ -83,7 +83,7 @@ describe('ProvidersPage', () => {
           name: 'ollama',
           enabled: false,
           configured: false,
-          base_url: 'http://localhost:11434',
+          base_url: 'http://ollama.internal.test:11434',
           models: [],
         },
       ],

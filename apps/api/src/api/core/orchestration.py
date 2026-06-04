@@ -3,7 +3,8 @@ Shared orchestration logic for parsing natural language and creating execution p
 Consolidated from parse_router.py and api_router.py to eliminate duplication.
 """
 
-from typing import Optional, List
+from typing import List, Optional
+
 from pydantic import BaseModel
 
 

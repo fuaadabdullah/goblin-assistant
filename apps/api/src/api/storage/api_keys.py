@@ -20,12 +20,12 @@ class APIKeyStore(ABC):
     @abstractmethod
     async def get(self, provider: str) -> Optional[str]:
         """Retrieve an API key for the given provider."""
-        pass
+        ...
 
     @abstractmethod
     async def set(self, provider: str, key: str) -> None:
         """Store an API key for the given provider."""
-        pass
+        ...
 
 
 class FileAPIKeyStore(APIKeyStore):

@@ -9,26 +9,21 @@ class ConversationStore(ABC):
     """Abstract base class for conversation storage."""
 
     @abstractmethod
-    async def save_conversation(self, conversation: Conversation) -> None:
-        pass
+    async def save_conversation(self, conversation: Conversation) -> None: ...
 
     @abstractmethod
-    async def get_conversation(self, conversation_id: str) -> Optional[Conversation]:
-        pass
+    async def get_conversation(self, conversation_id: str) -> Optional[Conversation]: ...
 
     @abstractmethod
-    async def delete_conversation(self, conversation_id: str) -> bool:
-        pass
+    async def delete_conversation(self, conversation_id: str) -> bool: ...
 
     @abstractmethod
     async def list_conversations(
         self, user_id: Optional[str] = None, limit: int = 50
-    ) -> List[Conversation]:
-        pass
+    ) -> List[Conversation]: ...
 
     @abstractmethod
-    async def update_conversation_title(self, conversation_id: str, title: str) -> bool:
-        pass
+    async def update_conversation_title(self, conversation_id: str, title: str) -> bool: ...
 
     @abstractmethod
     async def archive_messages(
@@ -39,8 +34,7 @@ class ConversationStore(ABC):
         summary_metadata: Optional[Dict[str, Any]] = None,
         summary_message_id: Optional[str] = None,
         summary_timestamp: Optional[datetime] = None,
-    ) -> bool:
-        pass
+    ) -> bool: ...
 
     async def check_conversation_owner(
         self,

@@ -1,4 +1,5 @@
 import type { FormEvent, RefObject } from 'react';
+import { Search, RotateCw, X } from 'lucide-react';
 import type { SearchScope } from '../types';
 
 interface SearchFormProps {
@@ -119,12 +120,12 @@ const SearchForm = ({
       >
         {searching ? (
           <>
-            <span className="animate-spin">🔄</span>
+            <RotateCw className="w-4 h-4 animate-spin" aria-hidden="true" />
             Searching...
           </>
         ) : (
           <>
-            <span>🔍</span>
+            <Search className="w-4 h-4" aria-hidden="true" />
             Search Everything
           </>
         )}
@@ -132,8 +133,9 @@ const SearchForm = ({
       <button
         type="button"
         onClick={onClear}
-        className="w-full bg-surface-hover text-text py-3 px-6 rounded-lg border border-border hover:bg-surface-active transition-all font-medium"
+        className="w-full bg-surface-hover text-text py-3 px-6 rounded-lg border border-border hover:bg-surface-active transition-all font-medium flex items-center justify-center gap-2"
       >
+        <X className="w-4 h-4" aria-hidden="true" />
         Clear Search
       </button>
     </form>

@@ -1,7 +1,7 @@
-from collections import defaultdict
-from typing import Any, Dict, List
 import statistics
 import time
+from collections import defaultdict
+from typing import Any, Dict, List
 
 
 class CircuitBreaker:

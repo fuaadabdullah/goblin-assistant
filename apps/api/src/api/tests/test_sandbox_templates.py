@@ -4,7 +4,6 @@ Tests for sandbox template library — Phase 5.2.
 
 from __future__ import annotations
 
-
 from api.assistant_tools.sandbox_templates import (
     get_template,
     list_templates,
@@ -125,9 +124,9 @@ class TestCompoundInterestTemplate:
             monthly_contribution=0,
         )
         # Execute the code and capture printed output
+        import contextlib
         import io
         import json
-        import contextlib
 
         output = io.StringIO()
         with contextlib.redirect_stdout(output):

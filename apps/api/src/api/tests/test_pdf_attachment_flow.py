@@ -10,6 +10,7 @@ import pytest
 from starlette.datastructures import UploadFile
 
 from api.auth.router import User
+from api.chat_router import uploads as uploads_module
 from api.chat_router.messages import send_message
 from api.chat_router.schemas import SendMessageRequest
 from api.chat_router.uploads import _pending_uploads, upload_file
@@ -30,6 +31,8 @@ class TestPdfUploadExtraction:
             },
         )
         _pending_uploads.clear()
+        uploads_module._pdf_extraction_cache_by_hash.clear()
+        uploads_module._pdf_embedding_cache_by_user_hash.clear()
 
         file = UploadFile(
             filename="doc.pdf",
@@ -50,6 +53,8 @@ class TestPdfUploadExtraction:
     @pytest.mark.asyncio
     async def test_non_pdf_upload_preserves_existing_behavior(self):
         _pending_uploads.clear()
+        uploads_module._pdf_extraction_cache_by_hash.clear()
+        uploads_module._pdf_embedding_cache_by_user_hash.clear()
         file = UploadFile(
             filename="notes.txt",
             file=io.BytesIO(b"hello"),
@@ -62,6 +67,52 @@ class TestPdfUploadExtraction:
         meta = _pending_uploads[response.file_id]
         assert "pdf_extraction_status" not in meta
         assert meta["mime_type"] == "text/plain"
+
+    @pytest.mark.asyncio
+    async def test_upload_pdf_uses_hash_cache_for_extraction(self, monkeypatch):
+        _pending_uploads.clear()
+        uploads_module._pdf_extraction_cache_by_hash.clear()
+        uploads_module._pdf_embedding_cache_by_user_hash.clear()
+
+        extract_calls = {"count": 0}
+
+        def _fake_extract(_path):
+            extract_calls["count"] += 1
+            return {
+                "pdf_extraction_status": "success",
+                "page_count": 1,
+                "char_count": 10,
+                "chunks": [{"chunk_id": "p1-c1", "page_start": 1, "page_end": 1, "text": "alpha"}],
+                "warnings": [],
+                "ocr_attempted": False,
+            }
+
+        monkeypatch.setattr("api.chat_router.uploads.extract_pdf", _fake_extract)
+
+        current_user = User(id="test-user", email="test@example.com")
+        file_bytes = b"%PDF-1.4\nmock-cache\n%%EOF"
+
+        file_one = UploadFile(
+            filename="doc-one.pdf",
+            file=io.BytesIO(file_bytes),
+            headers={"content-type": "application/pdf"},
+        )
+        file_two = UploadFile(
+            filename="doc-two.pdf",
+            file=io.BytesIO(file_bytes),
+            headers={"content-type": "application/pdf"},
+        )
+
+        first = await upload_file(file=file_one, current_user=current_user)
+        second = await upload_file(file=file_two, current_user=current_user)
+
+        first_meta = _pending_uploads[first.file_id]
+        second_meta = _pending_uploads[second.file_id]
+
+        assert extract_calls["count"] == 1
+        assert first_meta["pdf_extraction_cache_hit"] is False
+        assert second_meta["pdf_extraction_cache_hit"] is True
+        assert second_meta["pdf_embedding_cache_hit"] is True
 
 
 class TestPdfContextInjection:

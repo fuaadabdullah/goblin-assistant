@@ -7,6 +7,9 @@ jest.mock('@tanstack/react-query', () => ({
 jest.mock('@vercel/analytics/react', () => ({
   Analytics: () => null,
 }));
+jest.mock('next/router', () => ({
+  useRouter: () => ({ asPath: '/test' }),
+}));
 jest.mock('../../contexts/ToastContext', () => ({
   ToastProvider: ({ children }: { children: React.ReactNode }) => <>{children}</>,
   useToast: () => ({ addToast: jest.fn() }),
@@ -16,6 +19,12 @@ jest.mock('../../components/ToastContainer', () => ({
 }));
 jest.mock('../../components/ChatFAB', () => () => <div data-testid="chat-fab" />);
 jest.mock('../../components/StatusBar', () => () => <div data-testid="status-bar" />);
+jest.mock('../../components/PageTransition', () => ({
+  __esModule: true,
+  default: ({ children }: { children: React.ReactNode }) => (
+    <div data-testid="page-transition">{children}</div>
+  ),
+}));
 jest.mock('../../contexts/ProviderContext', () => ({
   ProviderProvider: ({ children }: { children: React.ReactNode }) => <>{children}</>,
 }));

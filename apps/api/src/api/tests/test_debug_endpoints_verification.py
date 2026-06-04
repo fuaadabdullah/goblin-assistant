@@ -2,12 +2,11 @@
 Verification test for debug endpoints
 """
 
-from fastapi.testclient import TestClient
 from fastapi import FastAPI
+from fastapi.testclient import TestClient
 
-from api.observability.tool_tracer import tool_tracer, ToolExecutionStatus
 from api.observability.debug_router import router
-
+from api.observability.tool_tracer import ToolExecutionStatus, tool_tracer
 
 app = FastAPI()
 app.include_router(router)

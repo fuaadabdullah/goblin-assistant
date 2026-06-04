@@ -7,7 +7,8 @@ Retrieval Ordering + Token Budgeting system.
 """
 
 import os
-from typing import Dict, Any, Optional
+from typing import Any, Dict, Optional
+
 import structlog
 
 from api.config.mode_addendums import get_addendum as _get_addendum

@@ -6,13 +6,16 @@ send-message request. In production this should be Redis or similar.
 """
 
 import asyncio
+import copy
 import hashlib
 import os
 import uuid
+from pathlib import Path
 from typing import Any, Dict
 
 import structlog
 from fastapi import APIRouter, Depends, File, HTTPException, UploadFile
+from fastapi.responses import FileResponse
 
 from ..auth.router import User as AuthenticatedUser
 from ..auth.router import get_current_user
@@ -27,6 +30,8 @@ router = APIRouter()
 
 # Shared between this module and messages.py
 _pending_uploads: Dict[str, Dict[str, Any]] = {}
+_pdf_extraction_cache_by_hash: Dict[str, Dict[str, Any]] = {}
+_pdf_embedding_cache_by_user_hash: set[tuple[str, str]] = set()
 
 
 def _write_bytes(path: str, contents: bytes) -> None:
@@ -75,8 +80,49 @@ async def upload_file(
         "path": dest_path,
     }
     if mime == "application/pdf":
-        pdf_meta = await asyncio.to_thread(extract_pdf, dest_path)
+        cached_pdf_meta = _pdf_extraction_cache_by_hash.get(file_hash)
+        if cached_pdf_meta is not None:
+            pdf_meta = copy.deepcopy(cached_pdf_meta)
+            upload_meta["pdf_extraction_cache_hit"] = True
+        else:
+            pdf_meta = await asyncio.to_thread(extract_pdf, dest_path)
+            _pdf_extraction_cache_by_hash[file_hash] = copy.deepcopy(pdf_meta)
+            upload_meta["pdf_extraction_cache_hit"] = False
+
         upload_meta.update(pdf_meta)
+
+        chunks = upload_meta.get("chunks") or []
+        embed_cache_key = (current_user.id, file_hash)
+        if chunks and embed_cache_key not in _pdf_embedding_cache_by_user_hash:
+            from ..services.embedding_service import (  # noqa: PLC0415
+                embedding_worker,
+            )
+
+            queue_document_embedding = getattr(embedding_worker, "queue_document_embedding", None)
+            if callable(queue_document_embedding):
+                for chunk in chunks:
+                    asyncio.create_task(
+                        queue_document_embedding(
+                            user_id=current_user.id,
+                            file_id=file_id,
+                            chunk_id=chunk["chunk_id"],
+                            content=chunk["text"],
+                            metadata={
+                                "filename": safe_filename,
+                                "page_start": chunk.get("page_start"),
+                            },
+                        )
+                    )
+            else:
+                logger.warning(
+                    "embedding_worker_missing_document_queue",
+                    user_id=current_user.id,
+                    file_id=file_id,
+                )
+            _pdf_embedding_cache_by_user_hash.add(embed_cache_key)
+            upload_meta["pdf_embedding_cache_hit"] = False
+        elif chunks:
+            upload_meta["pdf_embedding_cache_hit"] = True
 
     _pending_uploads[file_id] = upload_meta
 
@@ -103,14 +149,12 @@ async def download_file(
     current_user: AuthenticatedUser = Depends(get_current_user),
 ):
     """Download an uploaded file. Only the owning user can access it."""
-    from fastapi.responses import FileResponse
-
     meta = _pending_uploads.get(file_id)
     if not meta or meta["user_id"] != current_user.id:
         raise HTTPException(status_code=404, detail="File not found")
 
     file_path = meta["path"]
-    if not os.path.exists(file_path):
+    if not await asyncio.to_thread(Path(file_path).exists):
         raise HTTPException(status_code=404, detail="File not found on disk")
 
     return FileResponse(

@@ -25,8 +25,8 @@ jest.mock(
 jest.mock(
   '../SearchResultsList',
   () =>
-    function MockResults() {
-      return <div data-testid="search-results-list" />;
+    function MockResults({ query }: { query?: string }) {
+      return <div data-testid="search-results-list">{query}</div>;
     }
 );
 jest.mock(
@@ -100,6 +100,7 @@ describe('SearchView', () => {
     ] as SearchState['results'];
     render(<SearchView state={makeState({ query: 'test', results })} />);
     expect(screen.getByTestId('search-results-list')).toBeInTheDocument();
+    expect(screen.getByTestId('search-results-list')).toHaveTextContent('test');
   });
 
   it('does not show empty state when searching', () => {

@@ -17,15 +17,14 @@ import pytest
 
 from api.storage.cache import (
     RedisCache,
-    cache_response,
     cache_provider_status,
+    cache_response,
     cache_routing_result,
     cache_task_result,
     get_cached_provider_status,
     get_cached_routing_result,
     get_cached_task_result,
 )
-
 
 # ---------------------------------------------------------------------------
 # RedisCache

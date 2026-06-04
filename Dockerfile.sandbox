@@ -34,9 +34,9 @@ RUN groupadd -r runner && useradd --create-home --home-dir /home/runner --shell 
 WORKDIR /home/runner
 
 # Copy runtime scripts
-COPY --chown=runner:runner sandbox_runner.py /home/runner/
-COPY --chown=runner:runner sandbox_worker.py /home/runner/
-COPY --chown=runner:runner start_worker.py /home/runner/
+COPY --chown=runner:runner apps/api/scripts/root-tools/sandbox_runner.py /home/runner/
+COPY --chown=runner:runner apps/api/scripts/root-tools/sandbox_worker.py /home/runner/
+COPY --chown=runner:runner scripts/ops/start_worker.py /home/runner/
 
 # Switch to non-root user
 USER runner

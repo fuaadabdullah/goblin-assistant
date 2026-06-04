@@ -3,11 +3,13 @@ Message classification service for memory stratification
 Classifies messages into: CHAT | FACT | PREFERENCE | TASK_RESULT | SYSTEM
 """
 
-import re
 import logging
-from typing import Dict, List, Optional, Any
-from enum import Enum
+import re
 from datetime import datetime
+from enum import Enum
+from typing import Any, Dict, List, Optional
+
+_Pattern = re.Pattern[str]
 
 logger = logging.getLogger(__name__)
 
@@ -55,116 +57,138 @@ class MessageClassifier:
     """Service for classifying messages into memory types"""
 
     def __init__(self):
-        # Rule-based patterns for initial classification
-        self._fact_patterns = [
-            r"(?i)\b(i am|i'm)\s+(.+?)\b",  # "I am a developer"
-            r"(?i)\b(i have|i've)\s+(.+?)\b",  # "I have 5 years experience"
-            r"(?i)\b(i work|working)\s+(.+?)\b",  # "I work at Google"
-            r"(?i)\b(my name is|call me)\s+(.+?)\b",  # "My name is John"
-            r"(?i)\b(i live|living)\s+(.+?)\b",  # "I live in NYC"
-            r"(?i)\b(i studied|degree in)\s+(.+?)\b",  # "I studied computer science"
-            r"(?i)\b(i know|familiar with)\s+(.+?)\b",  # "I know Python"
-            r"(?i)\b(i use|using)\s+(.+?)\b",  # "I use React"
-        ]
+        def _c(patterns: list[str]) -> list[_Pattern]:
+            return [re.compile(p) for p in patterns]
 
-        self._preference_patterns = [
-            r"(?i)\b(i prefer|i like|i love)\s+(.+?)\b",
-            r"(?i)\b(i don't like|i dislike|i hate)\s+(.+?)\b",
-            r"(?i)\b(i want|i need)\s+(.+?)\b",
-            r"(?i)\b(i always|i never)\s+(.+?)\b",
-            r"(?i)\b(best|worst|favorite|terrible|amazing)\s+(.+?)\b",
-            r"(?i)\b(rather|instead of|over)\s+(.+?)\b",
-            r"(?i)\b(should|must|have to|need to)\s+(.+?)\b",
-            r"(?i)\b(avoid|don't want|never use)\s+(.+?)\b",
-        ]
+        self._fact_patterns = _c(
+            [
+                r"(?i)\b(i am|i'm)\s+(.+?)\b",
+                r"(?i)\b(i have|i've)\s+(.+?)\b",
+                r"(?i)\b(i work|working)\s+(.+?)\b",
+                r"(?i)\b(my name is|call me)\s+(.+?)\b",
+                r"(?i)\b(i live|living)\s+(.+?)\b",
+                r"(?i)\b(i studied|degree in)\s+(.+?)\b",
+                r"(?i)\b(i know|familiar with)\s+(.+?)\b",
+                r"(?i)\b(i use|using)\s+(.+?)\b",
+            ]
+        )
 
-        self._task_result_patterns = [
-            r"(?i)\b(done|completed|finished|created|built|implemented)\b",
-            r"(?i)\b(successfully|completed|finished)\s+(.+?)\b",
-            r"(?i)\b(here is|attached is|provided below)\b",
-            r"(?i)\b(result|output|code|solution)\b",
-            r"(?i)\b(check it out|see below|as requested)\b",
-            r"(?i)\b(task|assignment|request)\s+(.+?)\b",
-        ]
+        self._preference_patterns = _c(
+            [
+                r"(?i)\b(i prefer|i like|i love)\s+(.+?)\b",
+                r"(?i)\b(i don't like|i dislike|i hate)\s+(.+?)\b",
+                r"(?i)\b(i want|i need)\s+(.+?)\b",
+                r"(?i)\b(i always|i never)\s+(.+?)\b",
+                r"(?i)\b(best|worst|favorite|terrible|amazing)\s+(.+?)\b",
+                r"(?i)\b(rather|instead of|over)\s+(.+?)\b",
+                r"(?i)\b(should|must|have to|need to)\s+(.+?)\b",
+                r"(?i)\b(avoid|don't want|never use)\s+(.+?)\b",
+            ]
+        )
 
-        self._system_patterns = [
-            r"(?i)\b(system|assistant|bot|ai)\b",
-            r"(?i)\b(memory|context|conversation)\b",
-            r"(?i)\b(settings|configuration|setup)\b",
-            r"(?i)\b(help|support|documentation)\b",
-        ]
+        self._task_result_patterns = _c(
+            [
+                r"(?i)\b(done|completed|finished|created|built|implemented)\b",
+                r"(?i)\b(successfully|completed|finished)\s+(.+?)\b",
+                r"(?i)\b(here is|attached is|provided below)\b",
+                r"(?i)\b(result|output|code|solution)\b",
+                r"(?i)\b(check it out|see below|as requested)\b",
+                r"(?i)\b(task|assignment|request)\s+(.+?)\b",
+            ]
+        )
 
-        self._noise_patterns = [
-            r"(?i)\b(ok|okay|k)\b",  # Simple acknowledgements
-            r"(?i)\b(yes|no|yeah|nah)\b",  # Simple responses
-            r"(?i)\b(thanks|thank you|ty|thx)\b",  # Thanks without context
-            r"(?i)\b(sure|alright|got it|cool)\b",  # Simple confirmations
-            r"(?i)\b(lol|lmao|rofl|rotfl)\b",  # Laughter without context
-            r"(?i)\b(what|why|how|when|where)\?$",  # Single word questions
-            r"(?i)\b(hi|hello|hey|yo)\b",  # Greetings without context
-            r"(?i)\b(bye|goodbye|see you|later)\b",  # Goodbyes
-            r"(?i)\b(please|sorry|excuse me)\b",  # Politeness without substance
-            r"^[a-zA-Z]{1,3}$",  # Very short messages (a, ok, ty, etc.)
-            r"^[.!?]+$",  # Just punctuation
-            r"^\s*$",  # Empty or whitespace only
-        ]
+        self._system_patterns = _c(
+            [
+                r"(?i)\b(system|assistant|bot|ai)\b",
+                r"(?i)\b(memory|context|conversation)\b",
+                r"(?i)\b(settings|configuration|setup)\b",
+                r"(?i)\b(help|support|documentation)\b",
+            ]
+        )
 
-        # ── Finance domain patterns ──────────────────────────────────
-        self._financial_entity_patterns = [
-            r"(?i)\b(ticker|stock|equity|bond|etf|fund|option|futures|commodity)\b",
-            r"\b[A-Z]{1,5}\b(?=\s+(?:stock|share|price|earnings|dividend|market\s*cap))",
-            r"(?i)\b(shares of|position in|exposure to|holding in)\s+\S+",
-            r"(?i)\b(asset class|fixed income|equities|derivatives|forex|crypto)\b",
-            r"(?i)\b(company|issuer|counterparty|custodian|exchange)\b",
-            r"(?i)\b(s&p\s*500|nasdaq|dow\s*jones|russell|msci|ftse)\b",
-            r"(?i)\b(treasury|t-bill|t-note|municipal|corporate bond)\b",
-        ]
+        self._noise_patterns = _c(
+            [
+                r"(?i)\b(ok|okay|k)\b",
+                r"(?i)\b(yes|no|yeah|nah)\b",
+                r"(?i)\b(thanks|thank you|ty|thx)\b",
+                r"(?i)\b(sure|alright|got it|cool)\b",
+                r"(?i)\b(lol|lmao|rofl|rotfl)\b",
+                r"(?i)\b(what|why|how|when|where)\?$",
+                r"(?i)\b(hi|hello|hey|yo)\b",
+                r"(?i)\b(bye|goodbye|see you|later)\b",
+                r"(?i)\b(please|sorry|excuse me)\b",
+                r"^[a-zA-Z]{1,3}$",
+                r"^[.!?]+$",
+                r"^\s*$",
+            ]
+        )
 
-        self._risk_signal_patterns = [
-            r"(?i)\b(volatility|vol|vix|beta|alpha|sharpe|sortino)\b",
-            r"(?i)\b(drawdown|max\s*drawdown|value.at.risk|var|cvar|expected\s*shortfall)\b",
-            r"(?i)\b(correlation|covariance|standard\s*deviation|risk.adjusted)\b",
-            r"(?i)\b(stress\s*test|scenario\s*analysis|monte\s*carlo|back\s*test)\b",
-            r"(?i)\b(risk\s*budget|tracking\s*error|information\s*ratio)\b",
-            r"(?i)\b(tail\s*risk|downside|upside\s*capture|hedge)\b",
-        ]
+        self._financial_entity_patterns = _c(
+            [
+                r"(?i)\b(ticker|stock|equity|bond|etf|fund|option|futures|commodity)\b",
+                r"\b[A-Z]{1,5}\b(?=\s+(?:stock|share|price|earnings|dividend|market\s*cap))",
+                r"(?i)\b(shares of|position in|exposure to|holding in)\s+\S+",
+                r"(?i)\b(asset class|fixed income|equities|derivatives|forex|crypto)\b",
+                r"(?i)\b(company|issuer|counterparty|custodian|exchange)\b",
+                r"(?i)\b(s&p\s*500|nasdaq|dow\s*jones|russell|msci|ftse)\b",
+                r"(?i)\b(treasury|t-bill|t-note|municipal|corporate bond)\b",
+            ]
+        )
 
-        self._regulatory_ref_patterns = [
-            r"(?i)\b(sec|finra|cftc|occ|fdic|fca|esma|mifid)\b",
-            r"(?i)\b(regulation|compliance|fiduciary|suitability|kyc|aml)\b",
-            r"(?i)\b(dodd.frank|volcker|basel|sarbanes.oxley|sox|reg\s*[a-z])\b",
-            r"(?i)\b(accredited\s*investor|qualified\s*purchaser|blue\s*sky)\b",
-            r"(?i)\b(insider\s*trading|material\s*non.public|mnpi|restricted\s*list)\b",
-            r"(?i)\b(prospectus|disclosure|filing|form\s*\d+|10-[kq])\b",
-        ]
+        self._risk_signal_patterns = _c(
+            [
+                r"(?i)\b(volatility|vol|vix|beta|alpha|sharpe|sortino)\b",
+                r"(?i)\b(drawdown|max\s*drawdown|value.at.risk|var|cvar|expected\s*shortfall)\b",
+                r"(?i)\b(correlation|covariance|standard\s*deviation|risk.adjusted)\b",
+                r"(?i)\b(stress\s*test|scenario\s*analysis|monte\s*carlo|back\s*test)\b",
+                r"(?i)\b(risk\s*budget|tracking\s*error|information\s*ratio)\b",
+                r"(?i)\b(tail\s*risk|downside|upside\s*capture|hedge)\b",
+            ]
+        )
 
-        self._portfolio_action_patterns = [
-            r"(?i)\b(rebalance|reallocate|liquidate|accumulate|trim|add to)\b",
-            r"(?i)\b(buy|sell|short|cover|exercise|roll)\b.*\b(position|contract|shares)\b",
-            r"(?i)\b(target\s*allocation|weight|overweight|underweight|neutral)\b",
-            r"(?i)\b(stop.loss|take.profit|limit\s*order|market\s*order)\b",
-            r"(?i)\b(tax.loss\s*harvest|wash\s*sale|lot\s*selection)\b",
-            r"(?i)\b(dollar.cost\s*average|dca|systematic\s*investment)\b",
-        ]
+        self._regulatory_ref_patterns = _c(
+            [
+                r"(?i)\b(sec|finra|cftc|occ|fdic|fca|esma|mifid)\b",
+                r"(?i)\b(regulation|compliance|fiduciary|suitability|kyc|aml)\b",
+                r"(?i)\b(dodd.frank|volcker|basel|sarbanes.oxley|sox|reg\s*[a-z])\b",
+                r"(?i)\b(accredited\s*investor|qualified\s*purchaser|blue\s*sky)\b",
+                r"(?i)\b(insider\s*trading|material\s*non.public|mnpi|restricted\s*list)\b",
+                r"(?i)\b(prospectus|disclosure|filing|form\s*\d+|10-[kq])\b",
+            ]
+        )
 
-        self._macro_event_patterns = [
-            r"(?i)\b(fomc|fed\s*meeting|rate\s*decision|rate\s*hike|rate\s*cut)\b",
-            r"(?i)\b(cpi|ppi|pce|inflation|deflation|stagflation)\b",
-            r"(?i)\b(gdp|unemployment|non.?farm\s*payroll|nfp|jobs\s*report)\b",
-            r"(?i)\b(earnings|eps|revenue\s*beat|revenue\s*miss|guidance)\b",
-            r"(?i)\b(ipo|m&a|merger|acquisition|spinoff|split)\b",
-            r"(?i)\b(yield\s*curve|inversion|recession|expansion|taper)\b",
-            r"(?i)\b(trade\s*war|tariff|sanctions|geopolitical)\b",
-        ]
+        self._portfolio_action_patterns = _c(
+            [
+                r"(?i)\b(rebalance|reallocate|liquidate|accumulate|trim|add to)\b",
+                r"(?i)\b(buy|sell|short|cover|exercise|roll)\b.*\b(position|contract|shares)\b",
+                r"(?i)\b(target\s*allocation|weight|overweight|underweight|neutral)\b",
+                r"(?i)\b(stop.loss|take.profit|limit\s*order|market\s*order)\b",
+                r"(?i)\b(tax.loss\s*harvest|wash\s*sale|lot\s*selection)\b",
+                r"(?i)\b(dollar.cost\s*average|dca|systematic\s*investment)\b",
+            ]
+        )
 
-        # ── Education / learning domain patterns ────────────────────
-        self._learning_patterns = [
-            r"(?i)\b(explain|understand|confused|what is|how does|teach me|help me learn)\b",
-            r"(?i)\b(studying|study|learning|learn|course|class|professor|homework|assignment)\b",
-            r"(?i)\b(CFA|CPA|exam|quiz|test|certification|degree|finance major|GSU)\b",
-            r"(?i)\b(example|examples|worked example|walk me through|break it down|intuition)\b",
-            r"(?i)\b(study plan|concept|definition|formula|principle|tutorial)\b",
-        ]
+        self._macro_event_patterns = _c(
+            [
+                r"(?i)\b(fomc|fed\s*meeting|rate\s*decision|rate\s*hike|rate\s*cut)\b",
+                r"(?i)\b(cpi|ppi|pce|inflation|deflation|stagflation)\b",
+                r"(?i)\b(gdp|unemployment|non.?farm\s*payroll|nfp|jobs\s*report)\b",
+                r"(?i)\b(earnings|eps|revenue\s*beat|revenue\s*miss|guidance)\b",
+                r"(?i)\b(ipo|m&a|merger|acquisition|spinoff|split)\b",
+                r"(?i)\b(yield\s*curve|inversion|recession|expansion|taper)\b",
+                r"(?i)\b(trade\s*war|tariff|sanctions|geopolitical)\b",
+            ]
+        )
+
+        self._learning_patterns = _c(
+            [
+                r"(?i)\b(explain|understand|confused|what is|how does|teach me|help me learn)\b",
+                r"(?i)\b(studying|study|learning|learn|course|class|professor|homework|assignment)\b",
+                r"(?i)\b(CFA|CPA|exam|quiz|test|certification|degree|finance major|GSU)\b",
+                r"(?i)\b(example|examples|worked example|walk me through|break it down|intuition)\b",
+                r"(?i)\b(study plan|concept|definition|formula|principle|tutorial)\b",
+            ]
+        )
 
     def classify_message(self, content: str, role: str) -> MessageClassification:
         """
@@ -204,6 +228,12 @@ class MessageClassifier:
         preference_score, preference_keywords = self._score_patterns(
             content_lower, self._preference_patterns
         )
+        if fact_score > 0 and fact_keywords:
+            fact_score = max(fact_score, 0.6)
+        if preference_score > 0 and preference_keywords:
+            preference_score = max(preference_score, 0.6)
+        if preference_score > 0 and fact_score > 0 and preference_score >= fact_score:
+            preference_score = min(preference_score + 0.05, 1.0)
         task_score, task_keywords = self._score_patterns(content_lower, self._task_result_patterns)
         system_score, system_keywords = self._score_patterns(content_lower, self._system_patterns)
         noise_score, noise_keywords = self._score_patterns(content_lower, self._noise_patterns)
@@ -269,13 +299,13 @@ class MessageClassifier:
             },
         )
 
-    def _score_patterns(self, content: str, patterns: List[str]) -> tuple[float, List[str]]:
-        """Score content against a list of regex patterns"""
+    def _score_patterns(self, content: str, patterns: List[_Pattern]) -> tuple[float, List[str]]:
+        """Score content against a list of compiled regex patterns."""
         keywords = []
         matches = 0
 
         for pattern in patterns:
-            match = re.search(pattern, content)
+            match = pattern.search(content)
             if match:
                 matches += 1
                 # Extract keywords from capture groups

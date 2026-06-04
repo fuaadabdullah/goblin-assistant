@@ -6,9 +6,9 @@ Tests message classification into memory types
 import pytest
 
 from api.services.message_classifier import (
+    MessageClassification,
     MessageClassifier,
     MessageType,
-    MessageClassification,
 )
 
 

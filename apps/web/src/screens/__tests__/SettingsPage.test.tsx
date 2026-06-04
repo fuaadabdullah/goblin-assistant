@@ -28,6 +28,11 @@ jest.mock('../../components/KeyboardShortcutsHelp', () => {
     return <div data-testid="kb-help" />;
   };
 });
+jest.mock('../../components/ContrastModeToggle', () => {
+  return function MockContrastModeToggle() {
+    return <button type="button">Dark</button>;
+  };
+});
 jest.mock('../../components/Seo', () => {
   return function MockSeo() {
     return <div data-testid="seo" />;
@@ -35,7 +40,7 @@ jest.mock('../../components/Seo', () => {
 });
 
 const mockSavePrefs = jest.fn().mockResolvedValue({});
-jest.mock('@/api', () => ({
+jest.mock('@/lib/api', () => ({
   apiClient: { saveAccountPreferences: (...args: unknown[]) => mockSavePrefs(...args) },
 }));
 
@@ -97,6 +102,10 @@ describe('SettingsPage', () => {
     });
     render(<SettingsPageContent />, { wrapper });
     expect(screen.getByText(/Provider & Model Settings/)).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Toggle Configured providers' })).toBeInTheDocument();
+    expect(
+      screen.getByRole('button', { name: 'Toggle Needs setup providers' })
+    ).toBeInTheDocument();
   });
 
   it('renders theme preview component', () => {
@@ -104,8 +113,70 @@ describe('SettingsPage', () => {
     expect(screen.getByTestId('theme-preview')).toBeInTheDocument();
   });
 
+  it('renders theme mode toggle', () => {
+    render(<SettingsPageContent />, { wrapper });
+    expect(screen.getByText('Theme Mode')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Dark' })).toBeInTheDocument();
+  });
+
   it('renders keyboard shortcuts help', () => {
     render(<SettingsPageContent />, { wrapper });
     expect(screen.getByTestId('kb-help')).toBeInTheDocument();
+  });
+
+  it('filters providers by model name', () => {
+    mockProviderSettings.mockReturnValue({
+      data: [
+        { name: 'openai', enabled: true, configured: true, models: ['gpt-4'] },
+        { name: 'anthropic', enabled: true, configured: true, models: ['claude-sonnet'] },
+      ],
+      isLoading: false,
+    });
+    render(<SettingsPageContent />, { wrapper });
+    fireEvent.change(screen.getByLabelText('Search providers'), { target: { value: 'claude' } });
+    expect(screen.getAllByText('anthropic').length).toBeGreaterThan(0);
+    expect(screen.queryByRole('button', { name: /openai details/ })).not.toBeInTheDocument();
+  });
+
+  it('collapses and expands provider groups', () => {
+    mockProviderSettings.mockReturnValue({
+      data: [
+        { name: 'openai', enabled: true, configured: true, models: ['gpt-4'] },
+        { name: 'ollama_local', enabled: false, configured: false, models: ['qwen2.5'] },
+      ],
+      isLoading: false,
+    });
+    render(<SettingsPageContent />, { wrapper });
+    const configured = screen.getByRole('button', { name: 'Toggle Configured providers' });
+    expect(configured).toHaveAttribute('aria-expanded', 'true');
+    fireEvent.click(configured);
+    expect(configured).toHaveAttribute('aria-expanded', 'false');
+
+    const local = screen.getByRole('button', { name: 'Toggle Local/self-hosted providers' });
+    expect(local).toHaveAttribute('aria-expanded', 'false');
+    fireEvent.click(local);
+    expect(local).toHaveAttribute('aria-expanded', 'true');
+    expect(screen.getAllByText('ollama_local').length).toBeGreaterThan(0);
+  });
+
+  it('expands provider row details', () => {
+    mockProviderSettings.mockReturnValue({
+      data: [{ name: 'openai', enabled: true, configured: true, models: ['gpt-4'] }],
+      isLoading: false,
+    });
+    render(<SettingsPageContent />, { wrapper });
+    fireEvent.click(screen.getByRole('button', { name: 'openai details in Configured' }));
+    expect(screen.getByText('API key detected and ready to use')).toBeInTheDocument();
+    expect(screen.getAllByText('gpt-4').length).toBeGreaterThan(0);
+  });
+
+  it('shows an empty provider search result', () => {
+    mockProviderSettings.mockReturnValue({
+      data: [{ name: 'openai', enabled: true, configured: true, models: ['gpt-4'] }],
+      isLoading: false,
+    });
+    render(<SettingsPageContent />, { wrapper });
+    fireEvent.change(screen.getByLabelText('Search providers'), { target: { value: 'not-found' } });
+    expect(screen.getByText('No providers match this search.')).toBeInTheDocument();
   });
 });

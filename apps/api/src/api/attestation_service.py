@@ -6,8 +6,8 @@ into the `api.attestation` package.
 
 from __future__ import annotations
 
-import os
 import importlib
+import os
 from datetime import datetime
 from typing import Any, Dict
 
@@ -15,14 +15,9 @@ from . import attestation as _attestation
 from .attestation import providers as _providers
 from .attestation import service as _service
 from .attestation.models import (
-    CachedAttestation,
-    NODE_ID_PATTERN,
-    VERIFIED_FALSE,
     VERIFIED_TRUE,
 )
-from .attestation.providers import AWSNitroProvider, TPMAttestationProvider
 from .attestation.singleton import get_attestation_service
-from .attestation.api import create_admission_webhook
 
 # Backwards-compatible test patching surface.
 

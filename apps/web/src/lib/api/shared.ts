@@ -111,7 +111,11 @@ export interface ConversationSendResponse {
 
 export interface StandardApiErrorPayload {
   code?: string;
+  type?: string;
   message?: string;
+  request_id?: string;
+  timestamp?: string;
+  trace_id?: string;
   details?: Record<string, unknown>;
 }
 
@@ -146,6 +150,7 @@ export const frontendHttp = axios.create({
 // ============================================================================
 
 export const AUTH_REQUEST_TIMEOUT_MS = 60000;
+export const V1_API_PREFIX = '/api/v1';
 export const V1_CHAT_PREFIX = '/api/v1/chat';
 
 type RetryableRequestConfig = AxiosRequestConfig & { _retry?: boolean };
@@ -165,7 +170,7 @@ export const refreshAccessToken = async (): Promise<string | null> => {
       refresh_token?: string;
       expires_in?: number;
       user?: Record<string, unknown>;
-    }>('/auth/refresh', {
+    }>(`${V1_API_PREFIX}/auth/refresh`, {
       refresh_token: refreshToken ?? undefined,
     });
 
@@ -241,6 +246,21 @@ export const withAuth = (config?: AxiosRequestConfig): AxiosRequestConfig => {
 // Error Handling
 // ============================================================================
 
+export const extractApiErrorMessage = (payload: unknown, fallback = 'Request failed'): string => {
+  if (!payload || typeof payload !== 'object') return fallback;
+
+  const data = payload as Record<string, unknown>;
+  const envelopeError = data.error;
+  if (envelopeError && typeof envelopeError === 'object') {
+    const message = (envelopeError as Record<string, unknown>).message;
+    if (typeof message === 'string' && message.trim()) return message;
+  }
+  if (typeof envelopeError === 'string' && envelopeError.trim()) return envelopeError;
+  if (typeof data.message === 'string' && data.message.trim()) return data.message;
+  if (typeof data.detail === 'string' && data.detail.trim()) return data.detail;
+  return fallback;
+};
+
 export const normalizeAxiosError = (error: unknown): never => {
   if (axios.isAxiosError(error)) {
     const axiosError = error as AxiosError<Record<string, unknown>>;
@@ -248,22 +268,10 @@ export const normalizeAxiosError = (error: unknown): never => {
 
     const isTimeout = axiosError.code === 'ECONNABORTED';
 
-    const payloadError = payload?.error;
-    const payloadErrorMessage =
-      typeof payloadError === 'string'
-        ? payloadError
-        : typeof payloadError === 'object' &&
-            payloadError !== null &&
-            typeof (payloadError as Record<string, unknown>).message === 'string'
-          ? ((payloadError as Record<string, unknown>).message as string)
-          : null;
-
     const detail =
       (isTimeout &&
         'Authentication service timed out. The server may be waking up—please try again in a few seconds.') ||
-      (typeof payload?.detail === 'string' && payload.detail) ||
-      payloadErrorMessage ||
-      (typeof payload?.message === 'string' && payload.message) ||
+      extractApiErrorMessage(payload, '') ||
       axiosError.message ||
       'Request failed';
 
@@ -361,10 +369,7 @@ export const patchBackend = async <T, B = unknown>(
   }
 };
 
-export const deleteBackend = async <T>(
-  url: string,
-  config?: AxiosRequestConfig
-): Promise<T> => {
+export const deleteBackend = async <T>(url: string, config?: AxiosRequestConfig): Promise<T> => {
   try {
     assertNoVersionedClientPath(url);
     const response = await backendHttp.delete<T>(url, config);
@@ -462,7 +467,7 @@ export const withTransientRetry = async <T>(
 // ============================================================================
 
 export const getCsrfToken = async (): Promise<string> => {
-  const response = await getBackend<{ csrf_token?: string }>('/auth/csrf-token', {
+  const response = await getBackend<{ csrf_token?: string }>(`${V1_API_PREFIX}/auth/csrf-token`, {
     timeout: AUTH_REQUEST_TIMEOUT_MS,
   });
 

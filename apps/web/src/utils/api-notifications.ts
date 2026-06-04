@@ -1,5 +1,6 @@
 import { AxiosInstance, AxiosError } from 'axios';
 import { useUIStore } from '../store/uiStore';
+import { extractApiErrorMessage } from '../lib/api/shared';
 
 /**
  * Interface for custom request metadata to control notification behavior
@@ -31,8 +32,10 @@ export function setupApiNotifications(apiClient: AxiosInstance) {
     (error: AxiosError<any>) => {
       const meta = (error.config as any)?.meta as ApiNotificationMeta | undefined;
       if (!meta?.skipGlobalError) {
-        const message =
-          error.response?.data?.message || error.message || 'An unexpected error occurred';
+        const message = extractApiErrorMessage(
+          error.response?.data,
+          error.message || 'An unexpected error occurred'
+        );
         useUIStore.getState().addNotification({
           type: 'error',
           title: meta?.errorTitle || 'API Error',

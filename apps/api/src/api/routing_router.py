@@ -1,8 +1,9 @@
 from __future__ import annotations
 
+from typing import Any, Dict, List, Optional
+
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel
-from typing import Any, Dict, List, Optional
 
 from .providers.dispatcher import dispatcher
 from .routing.router import route_task, top_providers_for

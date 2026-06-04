@@ -253,9 +253,7 @@ export const chatClient = {
         throw new Error('Conversation message is required.');
       }
 
-      const apiBaseUrl =
-        process.env.NEXT_PUBLIC_API_BASE_URL ||
-        (typeof window !== 'undefined' ? '' : 'http://localhost:8000');
+      const apiBaseUrl = process.env.NEXT_PUBLIC_API_BASE_URL || '';
       const token = getAuthToken();
       const headers: Record<string, string> = {
         'Content-Type': 'application/json',

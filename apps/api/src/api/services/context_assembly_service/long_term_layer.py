@@ -9,7 +9,7 @@ from typing import Any, Dict, List, Optional
 
 import structlog
 
-from ...storage.database import get_db
+from ...storage.database import get_readonly_db_context
 from ...storage.vector_models import MemoryFactModel
 from ...utils.tokenizer import count_tokens, trim_to_tokens
 from .models import ContextBudget, ContextLayer
@@ -22,7 +22,7 @@ async def get_long_term_memory_facts(user_id: str) -> List[Dict[str, Any]]:
     try:
         from sqlalchemy import select
 
-        async with get_db() as session:
+        async with get_readonly_db_context() as session:
             stmt = (
                 select(MemoryFactModel)
                 .filter(MemoryFactModel.user_id == user_id)

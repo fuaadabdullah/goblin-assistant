@@ -11,7 +11,6 @@ from api.services.context_assembly_service import semantic_layer as sem
 from api.services.context_assembly_service import system_layer as sys_layer
 from api.services.context_assembly_service import working_memory_layer as wm
 
-
 # -----------------------------
 # Ephemeral layer tests
 # -----------------------------

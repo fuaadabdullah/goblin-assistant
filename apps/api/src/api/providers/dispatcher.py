@@ -11,6 +11,7 @@ import os
 from typing import Any, Dict, List, Optional
 
 import structlog
+
 from .base import (
     BaseProvider,
     ProviderErrorCategory,
@@ -19,23 +20,42 @@ from .base import (
 )
 from .contracts import ProviderAdapter
 from .dispatcher_pkg.config import (
-    ModelAliasPatternRule,
     expand_alias_template as _expand_alias_template,
+)
+from .dispatcher_pkg.config import (
     load_aliases as _load_aliases,
+)
+from .dispatcher_pkg.config import (
     load_model_aliases as _load_model_aliases,
+)
+from .dispatcher_pkg.config import (
     load_provider_toml as _load_provider_toml,
+)
+from .dispatcher_pkg.config import (
     load_toml_providers as _load_toml_providers,
+)
+from .dispatcher_pkg.config import (
     load_visible_providers as _load_visible_providers,
+)
+from .dispatcher_pkg.config import (
     normalize_token as _normalize_token,
 )
 from .dispatcher_pkg.execution import (
     build_invoke_kwargs as _build_invoke_kwargs,
+)
+from .dispatcher_pkg.execution import (
     dispatch_request as _dispatch_request,
+)
+from .dispatcher_pkg.execution import (
     provider_error_category as _provider_error_category,
+)
+from .dispatcher_pkg.execution import (
     stream_wrap as _stream_wrap,
 )
 from .dispatcher_pkg.sanitization import (
     known_secrets as _known_secrets_from_configs,
+)
+from .dispatcher_pkg.sanitization import (
     sanitize_error_message as _sanitize_error_message,
 )
 from .provider_registry import (

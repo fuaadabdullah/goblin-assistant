@@ -3,7 +3,7 @@ Lightweight unit tests for SSE error event models.
 Tests the data structures without importing the full chat_router.
 """
 
-from typing import Optional, Dict, Any
+from typing import Any, Dict, Optional
 
 
 # Minimal model definitions copied for testing

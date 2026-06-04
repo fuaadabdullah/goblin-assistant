@@ -68,6 +68,51 @@ class DecisionLogger:
         self.config = get_system_config()
         self._decision_cache = {}  # Cache recent decisions for debugging
 
+    def record_decision(
+        self,
+        *,
+        decision_id: str,
+        decision_type: str,
+        context: Dict[str, Any],
+        correlation_id: Optional[str] = None,
+    ) -> None:
+        """Legacy compatibility shim for older write-time callers.
+
+        New code should call `log_decision(...)` directly.
+        """
+        actions = context.get("actions", [])
+        metadata = {
+            "decision_id": decision_id,
+            "decision_type": decision_type,
+            "correlation_id": correlation_id,
+            "legacy_context": context,
+        }
+        try:
+            loop = asyncio.get_running_loop()
+            loop.create_task(
+                self.log_decision(
+                    message_id=str(context.get("message_id", decision_id)),
+                    conversation_id=str(context.get("conversation_id", "unknown")),
+                    user_id=context.get("user_id"),
+                    classified_type=str(context.get("message_type", "unknown")),
+                    embedded="embed" in actions,
+                    summarized="summarize" in actions,
+                    cached="cache" in actions,
+                    discarded="discard" in actions,
+                    reason_codes=[],
+                    confidence=float(context.get("confidence", 0.0) or 0.0),
+                    decision_metadata=metadata,
+                    processing_time_ms=0.0,
+                    request_id=correlation_id,
+                )
+            )
+        except RuntimeError:
+            logger.debug(
+                "record_decision_no_running_loop",
+                decision_id=decision_id,
+                decision_type=decision_type,
+            )
+
     async def log_decision(
         self,
         message_id: str,

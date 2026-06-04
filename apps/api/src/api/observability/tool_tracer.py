@@ -4,12 +4,13 @@ Comprehensive tracing for every step of tool execution with full observability
 """
 
 import json
-from typing import Dict, Any, List, Optional
-from datetime import datetime, timezone
-from dataclasses import dataclass, asdict, field
-from enum import Enum
-import structlog
 import uuid
+from dataclasses import asdict, dataclass, field
+from datetime import datetime, timezone
+from enum import Enum
+from typing import Any, Dict, List, Optional
+
+import structlog
 
 logger = structlog.get_logger()
 

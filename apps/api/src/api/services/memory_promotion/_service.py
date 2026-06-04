@@ -1,21 +1,20 @@
+import uuid
 from datetime import datetime
 from typing import Any, Dict, List, Optional
-import uuid
 
 import structlog
 
 from api.core.contracts import MemoryItemPromotedPayload
 from api.observability.events import event_emitter
 
+from ...storage.database import get_db_context
+from ...storage.vector_models import MemoryFactModel
 from ..embedding_service import (
     EmbeddingProviderUnavailableError,
     EmbeddingService,
 )
 from ..observability_service import PromotionDecision, observability_service
 from ..retrieval_service import retrieval_service as _retrieval_singleton
-from ...storage.database import get_db_context
-from ...storage.vector_models import MemoryFactModel
-
 from .extraction import classify_memory_category, extract_memory_candidates
 from .finance_gates import FINANCE_CATEGORIES, evaluate_finance_gates
 from .gate_evaluation import evaluate_content_quality, evaluate_stability

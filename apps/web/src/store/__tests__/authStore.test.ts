@@ -1,7 +1,7 @@
 import { renderHook, act } from '@testing-library/react';
 import { useAuthStore } from '../authStore';
 
-jest.mock('@/api', () => ({
+jest.mock('@/lib/api', () => ({
   apiClient: { validateToken: jest.fn() },
 }));
 

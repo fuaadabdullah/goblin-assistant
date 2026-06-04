@@ -12,9 +12,9 @@ Tests cover:
 """
 
 from api.services.sanitization import (
-    sanitize_input_for_model,
     is_sensitive_content,
     mask_sensitive,
+    sanitize_input_for_model,
 )
 
 

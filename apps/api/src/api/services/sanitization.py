@@ -22,12 +22,12 @@ Usage:
     safe_data = mask_sensitive({"message": msg, "api_key": key})
 """
 
-import re
 import hashlib
-from typing import Dict, List, Tuple, Any, Optional
-from datetime import datetime
+import re
 from dataclasses import dataclass
+from datetime import datetime
 from enum import Enum
+from typing import Any, Dict, List, Optional, Tuple
 
 # PII detection patterns
 PII_PATTERNS = {

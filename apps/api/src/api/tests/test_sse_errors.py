@@ -774,7 +774,7 @@ async def test_streaming_records_provider_and_model_from_response(
             conversation_id="test-conv-id",
             current_user=authenticated_user,
         ):
-            pass
+            continue
 
     # The assistant message stored in the DB must carry the real provider/model.
     asst_call = next(

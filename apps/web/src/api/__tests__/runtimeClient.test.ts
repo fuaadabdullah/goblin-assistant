@@ -9,13 +9,22 @@
  * apiClient and providerKeys.
  */
 
-import { runtimeClient, apiClient } from '@/api';
+import { runtimeClient } from '@/lib/api/runtimeClient';
+import { apiClient } from '@/lib/api';
+import { TextDecoder } from 'util';
+import type { LoginResponse } from '@/types/api';
 
 jest.mock('@/lib/api', () => ({
   apiClient: {
+    getGoblins: jest.fn(),
     getProviders: jest.fn(),
     getProviderModelOptions: jest.fn(),
     getProviderModels: jest.fn(),
+    getHistory: jest.fn(),
+    getStats: jest.fn(),
+    parseOrchestration: jest.fn(),
+    createConversation: jest.fn(),
+    sendConversationMessage: jest.fn(),
     getCostSummary: jest.fn(),
     login: jest.fn(),
     register: jest.fn(),
@@ -41,6 +50,18 @@ import { providerKeys } from '@/lib/provider-keys';
 const mockGetProviders = apiClient.getProviders as jest.MockedFunction<
   typeof apiClient.getProviders
 >;
+const mockGetGoblins = apiClient.getGoblins as jest.MockedFunction<typeof apiClient.getGoblins>;
+const mockGetHistory = apiClient.getHistory as jest.MockedFunction<typeof apiClient.getHistory>;
+const mockGetStats = apiClient.getStats as jest.MockedFunction<typeof apiClient.getStats>;
+const mockParseOrchestration = apiClient.parseOrchestration as jest.MockedFunction<
+  typeof apiClient.parseOrchestration
+>;
+const mockCreateConversation = apiClient.createConversation as jest.MockedFunction<
+  typeof apiClient.createConversation
+>;
+const mockSendConversationMessage = apiClient.sendConversationMessage as jest.MockedFunction<
+  typeof apiClient.sendConversationMessage
+>;
 const mockGetProviderModelOptions = apiClient.getProviderModelOptions as jest.MockedFunction<
   typeof apiClient.getProviderModelOptions
 >;
@@ -55,6 +76,8 @@ const mockPKRemove = providerKeys.remove as jest.MockedFunction<typeof providerK
 
 beforeEach(() => {
   jest.clearAllMocks();
+  (globalThis as typeof globalThis & { fetch: jest.Mock }).fetch = jest.fn();
+  (globalThis as typeof globalThis & { TextDecoder: typeof TextDecoder }).TextDecoder = TextDecoder;
 });
 
 describe('runtimeClient model-registry delegation', () => {
@@ -118,7 +141,7 @@ describe('runtimeClient provider API key management', () => {
 
 describe('runtimeClient auth delegation', () => {
   it('delegates login to apiClient', async () => {
-    const loginResponse = { access_token: 'jwt', user: { id: 'u1' } } as any;
+    const loginResponse = { access_token: 'jwt', user: { id: 'u1' } } as unknown as LoginResponse;
     mockLogin.mockResolvedValue(loginResponse);
 
     const result = await runtimeClient.login('user@example.com', 'pass');
@@ -134,30 +157,95 @@ describe('runtimeClient auth delegation', () => {
   });
 });
 
-describe('runtimeClient stub methods', () => {
-  it('getGoblins returns empty array', async () => {
-    await expect(runtimeClient.getGoblins()).resolves.toEqual([]);
+describe('runtimeClient runtime delegation', () => {
+  it('delegates getGoblins to apiClient', async () => {
+    mockGetGoblins.mockResolvedValue([{ id: 'demo', name: 'demo', title: 'Demo', status: 'ok' }]);
+    await expect(runtimeClient.getGoblins()).resolves.toHaveLength(1);
+    expect(mockGetGoblins).toHaveBeenCalledTimes(1);
   });
 
-  it('executeTask returns stub message', async () => {
-    const result = await runtimeClient.executeTask('goblin', 'task');
-    expect(typeof result).toBe('string');
-    expect(result.length).toBeGreaterThan(0);
+  it('delegates getHistory/getStats/parseOrchestration to apiClient', async () => {
+    mockGetHistory.mockResolvedValue([
+      { id: 'h1', goblin: 'demo', task: 't', response: 'r', timestamp: 1 },
+    ]);
+    mockGetStats.mockResolvedValue({ total_tasks: 1 });
+    mockParseOrchestration.mockResolvedValue({ steps: [], total_batches: 0, max_parallel: 0 });
+
+    await expect(runtimeClient.getHistory('demo', 5)).resolves.toHaveLength(1);
+    await expect(runtimeClient.getStats('demo')).resolves.toEqual({ total_tasks: 1 });
+    await expect(runtimeClient.parseOrchestration('a THEN b', 'demo')).resolves.toEqual({
+      steps: [],
+      total_batches: 0,
+      max_parallel: 0,
+    });
+    expect(mockGetHistory).toHaveBeenCalledWith('demo', 5);
+    expect(mockGetStats).toHaveBeenCalledWith('demo');
+    expect(mockParseOrchestration).toHaveBeenCalledWith('a THEN b', 'demo');
   });
 
-  it('executeTaskStreaming calls onChunk then onComplete', async () => {
+  it('executeTask sends message through chat-router conversation flow', async () => {
+    mockCreateConversation.mockResolvedValue({
+      conversationId: 'conv-1',
+      title: 'Runtime Task Execution',
+      createdAt: '2026-01-01T00:00:00Z',
+    });
+    mockSendConversationMessage.mockResolvedValue({
+      messageId: 'm1',
+      content: 'runtime result',
+      provider: 'openai',
+      model: 'gpt-4o-mini',
+      createdAt: '2026-01-01T00:00:01Z',
+    });
+
+    const result = await runtimeClient.executeTask('docs-writer', 'do thing');
+
+    expect(result).toBe('runtime result');
+    expect(mockCreateConversation).toHaveBeenCalledTimes(1);
+    expect(mockSendConversationMessage).toHaveBeenCalledWith(
+      expect.objectContaining({
+        conversationId: 'conv-1',
+      })
+    );
+  });
+
+  it('executeTaskStreaming emits chunks and completion', async () => {
+    mockCreateConversation.mockResolvedValue({
+      conversationId: 'conv-stream',
+      title: 'Runtime Task Execution',
+      createdAt: '2026-01-01T00:00:00Z',
+    });
+
+    const chunks = [
+      Buffer.from('data: {"content":"hello ","token_count":2,"cost_delta":0.001,"done":false}\n\n'),
+      Buffer.from(
+        'data: {"result":"hello world","message_id":"m1","provider":"openai","model":"gpt-4o-mini","tokens":5,"cost":0.002,"duration_ms":100,"done":true}\n\n'
+      ),
+    ];
+    let idx = 0;
+    const stream = {
+      getReader: () => ({
+        read: async () => {
+          if (idx >= chunks.length) return { done: true, value: undefined };
+          const value = new Uint8Array(chunks[idx]);
+          idx += 1;
+          return { done: false, value };
+        },
+        cancel: async () => undefined,
+      }),
+    };
+
+    (globalThis as typeof globalThis & { fetch: jest.Mock }).fetch.mockResolvedValue({
+      ok: true,
+      body: stream,
+      status: 200,
+    });
+
     const onChunk = jest.fn();
     const onComplete = jest.fn();
 
     await runtimeClient.executeTaskStreaming('goblin', 'task', onChunk, onComplete);
 
-    expect(onChunk).toHaveBeenCalledWith(expect.objectContaining({ done: true }));
-    expect(onComplete).toHaveBeenCalled();
-  });
-
-  it('parseOrchestration returns empty plan', async () => {
-    const plan = await runtimeClient.parseOrchestration('task1 THEN task2');
-    expect(plan.steps).toEqual([]);
-    expect(typeof plan.total_batches).toBe('number');
+    expect(onChunk).toHaveBeenCalledWith(expect.objectContaining({ content: 'hello ' }));
+    expect(onComplete).toHaveBeenCalledWith(expect.objectContaining({ done: true }));
   });
 });

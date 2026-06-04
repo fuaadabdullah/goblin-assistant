@@ -19,7 +19,7 @@ jest.mock('@/utils/auth-session', () => ({
 }));
 
 jest.mock('@/config/backendOrigin', () => ({
-  resolvePublicBackendOrigin: () => 'http://localhost:8000',
+  resolvePublicBackendOrigin: () => 'http://api.example.test:8000',
 }));
 
 jest.mock('@/utils/dev-log', () => ({ devError: jest.fn() }));
@@ -79,7 +79,7 @@ describe('GoogleCallback', () => {
     renderWithClient(<GoogleCallback />);
     await waitFor(() => {
       expect(mockFetch).toHaveBeenCalledWith(
-        'http://localhost:8000/auth/google/callback',
+        'http://api.example.test:8000/auth/google/callback',
         expect.objectContaining({
           method: 'POST',
           body: JSON.stringify({ code: 'abc123', state: 'xyz' }),

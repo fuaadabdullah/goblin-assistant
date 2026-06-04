@@ -2,14 +2,13 @@
 
 from __future__ import annotations
 
-import pytest
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import httpx
+import pytest
 
+from api.providers.base import ProviderHealth, ProviderResult
 from api.providers.llamacpp_provider import LlamaCPPProvider
-from api.providers.base import ProviderResult, ProviderHealth
-
 
 # ---------------------------------------------------------------------------
 # Helpers

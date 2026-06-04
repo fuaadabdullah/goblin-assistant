@@ -2,9 +2,9 @@ import React from 'react';
 import { render, screen, waitFor } from '@testing-library/react';
 
 import ModelSelector from '../ModelSelector';
-import { runtimeClient } from '@/api';
+import { runtimeClient } from '@/lib/api/runtimeClient';
 
-jest.mock('@/api', () => ({
+jest.mock('@/lib/api/runtimeClient', () => ({
   runtimeClient: {
     getProviderModelOptions: jest.fn(),
     getProviderModels: jest.fn(),
@@ -12,18 +12,23 @@ jest.mock('@/api', () => ({
 }));
 
 jest.mock('@/components/ui/Select', () => {
-  const React = require('react');
+  type MockSelectProps = {
+    children?: React.ReactNode;
+    disabled?: boolean;
+    placeholder?: string;
+    [key: string]: unknown;
+  };
 
   return {
-    Select: ({ children, disabled }: any) => (
+    Select: ({ children, disabled }: MockSelectProps) => (
       <div data-testid="mock-select-root" data-disabled={disabled ? 'true' : 'false'}>
         {children}
       </div>
     ),
-    SelectTrigger: ({ children, ...props }: any) => <div {...props}>{children}</div>,
-    SelectValue: ({ placeholder }: any) => <span>{placeholder}</span>,
-    SelectContent: ({ children }: any) => <div>{children}</div>,
-    SelectItem: ({ children, disabled, ...props }: any) => (
+    SelectTrigger: ({ children, ...props }: MockSelectProps) => <div {...props}>{children}</div>,
+    SelectValue: ({ placeholder }: MockSelectProps) => <span>{placeholder}</span>,
+    SelectContent: ({ children }: MockSelectProps) => <div>{children}</div>,
+    SelectItem: ({ children, disabled, ...props }: MockSelectProps) => (
       <div {...props} data-disabled={disabled ? 'true' : 'false'}>
         {children}
       </div>

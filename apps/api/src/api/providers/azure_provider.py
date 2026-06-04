@@ -157,27 +157,26 @@ class AzureOpenAIProvider(BaseProvider):
         }
         if self._is_v1_endpoint():
             body["model"] = deployment
-        async with httpx.AsyncClient(timeout=120) as client:
-            async with client.stream(
-                "POST",
-                self._url(deployment),
-                headers=self._headers(),
-                json=body,
-            ) as resp:
-                resp.raise_for_status()
-                async for line in resp.aiter_lines():
-                    if not line.startswith("data: "):
-                        continue
-                    payload = line[6:].strip()
-                    if payload == "[DONE]":
-                        break
-                    try:
-                        chunk = json.loads(payload)
-                    except json.JSONDecodeError:
-                        continue
-                    delta = chunk["choices"][0]["delta"].get("content", "")
-                    if delta:
-                        yield {"text": delta}
+        async with httpx.AsyncClient(timeout=120) as client, client.stream(
+            "POST",
+            self._url(deployment),
+            headers=self._headers(),
+            json=body,
+        ) as resp:
+            resp.raise_for_status()
+            async for line in resp.aiter_lines():
+                if not line.startswith("data: "):
+                    continue
+                payload = line[6:].strip()
+                if payload == "[DONE]":
+                    break
+                try:
+                    chunk = json.loads(payload)
+                except json.JSONDecodeError:
+                    continue
+                delta = chunk["choices"][0]["delta"].get("content", "")
+                if delta:
+                    yield {"text": delta}
 
     async def health_check(self) -> ProviderHealth:
         if not self._is_configured():

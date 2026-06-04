@@ -9,7 +9,6 @@ from datetime import datetime, timezone
 from enum import Enum
 from typing import Any, Dict, List, Optional
 
-from .provider_health import health_monitor
 from api.providers.dispatcher import canonical_provider_id, dispatcher
 from api.routing.router import (
     cost_router,
@@ -19,6 +18,8 @@ from api.routing.router import (
     tier_router,
     top_providers_for,
 )
+
+from .provider_health import health_monitor
 
 
 class TaskType(Enum):

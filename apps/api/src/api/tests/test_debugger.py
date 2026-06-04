@@ -5,8 +5,9 @@ Run this to verify the integration works locally.
 """
 
 import asyncio
-import httpx
 import os
+
+import httpx
 
 
 async def test_debugger_endpoint():

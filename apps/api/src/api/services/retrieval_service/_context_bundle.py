@@ -32,6 +32,7 @@ def build_context_bundle(
         "conversation_id": conversation_id,
         "retrieved_at": datetime.utcnow().isoformat(),
         "summaries": [],
+        "documents": [],
         "messages": [],
         "ephemeral_messages": [],
         "tasks": [],
@@ -45,6 +46,8 @@ def build_context_bundle(
         source_type = item.get("source_type", "")
         if source_type == "summary":
             context_bundle["summaries"].append(item)
+        elif source_type in ("document", "code", "research"):
+            context_bundle["documents"].append(item)
         elif source_type == "message":
             context_bundle["messages"].append(item)
         elif source_type == "ephemeral":

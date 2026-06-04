@@ -2,12 +2,13 @@
 User preferences service for database operations
 """
 
-from sqlalchemy import select, delete
-from typing import Optional, Dict, Any
 from datetime import datetime
+from typing import Any, Dict, Optional
 
-from .models import UserPreferencesModel
+from sqlalchemy import delete, select
+
 from .database import get_db_context
+from .models import UserPreferencesModel
 
 
 class PreferencesService:

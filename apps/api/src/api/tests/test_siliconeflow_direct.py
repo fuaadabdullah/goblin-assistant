@@ -3,11 +3,12 @@
 Direct test of SiliconeFlow API with debugging.
 """
 
+import asyncio
 import os
 import sys
-import httpx
-import asyncio
 import time
+
+import httpx
 
 # Load environment
 try:

@@ -13,25 +13,24 @@ import sys
 import pytest
 
 # Stubs are provided by conftest.py (mock_embedding_service, mock_yfinance)
-
 from api.assistant_tools.registry import TOOL_REGISTRY
 from api.assistant_tools.skills.dcf_calculator import (
-    _project_fcf,
     _discount_fcf,
-    _terminal_value,
     _handle_dcf_calculator,
-)
-from api.assistant_tools.skills.portfolio_analyzer import (
-    _daily_returns,
-    _annualized_return,
-    _annualized_volatility,
-    _sharpe_ratio,
-    _max_drawdown,
-    _var_95,
-    _correlation,
-    _handle_portfolio_analyzer,
+    _project_fcf,
+    _terminal_value,
 )
 from api.assistant_tools.skills.earnings_summarizer import _handle_earnings_summarizer
+from api.assistant_tools.skills.portfolio_analyzer import (
+    _annualized_return,
+    _annualized_volatility,
+    _correlation,
+    _daily_returns,
+    _handle_portfolio_analyzer,
+    _max_drawdown,
+    _sharpe_ratio,
+    _var_95,
+)
 from api.assistant_tools.skills.stock_screener import _handle_stock_screener
 
 

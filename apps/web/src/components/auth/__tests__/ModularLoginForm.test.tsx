@@ -9,7 +9,7 @@ jest.mock('@tanstack/react-query', () => {
 const mockLogin = jest.fn().mockResolvedValue({ token: 'abc' });
 const mockRegister = jest.fn().mockResolvedValue({ token: 'abc' });
 const mockGetGoogleAuthUrl = jest.fn().mockResolvedValue('https://google.com/oauth');
-jest.mock('@/api', () => ({
+jest.mock('@/lib/api', () => ({
   apiClient: {
     login: (...args: unknown[]) => mockLogin(...args),
     register: (...args: unknown[]) => mockRegister(...args),

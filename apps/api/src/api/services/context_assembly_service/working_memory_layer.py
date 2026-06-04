@@ -8,7 +8,7 @@ from typing import Any, Dict, List, Optional
 
 import structlog
 
-from ...storage.database import get_db
+from ...storage.database import get_readonly_db_context
 from ...storage.vector_models import ConversationSummaryModel
 from ...utils.tokenizer import count_tokens, trim_to_tokens
 from .models import ContextBudget, ContextLayer
@@ -24,7 +24,7 @@ async def get_working_memory_summaries(
     try:
         from sqlalchemy import select
 
-        async with get_db() as session:
+        async with get_readonly_db_context() as session:
             stmt = (
                 select(ConversationSummaryModel)
                 .filter(ConversationSummaryModel.user_id == user_id)

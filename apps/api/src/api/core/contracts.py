@@ -12,6 +12,7 @@ EventPayloadT = TypeVar("EventPayloadT", bound=BaseModel | dict[str, JsonValue])
 JsonObject: TypeAlias = dict[str, JsonValue]
 EventType: TypeAlias = Literal[
     "chat.message.created",
+    "chat.message.failed",
     "provider.health.updated",
     "sandbox.execution.completed",
     "memory.item.promoted",
@@ -58,6 +59,19 @@ class ChatMessageCreatedPayload(BaseModel):
     provider: Optional[str] = None
     model: Optional[str] = None
     has_attachments: bool = False
+
+
+class ChatMessageFailedPayload(BaseModel):
+    conversation_id: str
+    stage: str
+    message_id: Optional[str] = None
+    provider: Optional[str] = None
+    model: Optional[str] = None
+    category: Optional[str] = None
+    code: Optional[str] = None
+    status_code: Optional[int] = None
+    error: Optional[str] = None
+    error_type: Optional[str] = None
 
 
 class ProviderHealthUpdatedPayload(BaseModel):

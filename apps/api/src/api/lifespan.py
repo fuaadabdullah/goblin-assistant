@@ -10,7 +10,7 @@ from .monitoring import monitor
 from .secrets_router import cleanup_secrets_adapter, init_secrets_adapter
 from .services.provider_health import health_monitor
 from .storage.cache import cache
-from .storage.database import init_db, is_postgres, warmup_pool
+from .storage.database import engine, init_db, is_postgres, warmup_pool
 
 logger = structlog.get_logger()
 
@@ -152,17 +152,25 @@ async def _start_embedding_worker():
 
 async def _restore_colab_endpoint():
     try:
-        from .ops_routes.colab_worker import load_colab_endpoint_from_db  # noqa: PLC0415
+        from .ops_routes.colab_worker import (  # noqa: PLC0415
+            load_colab_endpoint_from_db,
+        )
         from .providers.dispatcher import dispatcher  # noqa: PLC0415
 
         saved_endpoint = await load_colab_endpoint_from_db()
         if saved_endpoint:
             dispatcher.update_provider_endpoint("colab_worker", saved_endpoint)
-            logger.info("Colab worker endpoint restored", endpoint=saved_endpoint)
+            logger.info(
+                "Colab worker endpoint restored",
+                endpoint=saved_endpoint,
+            )
         else:
             logger.info("No saved Colab worker endpoint found")
     except Exception as exc:
-        logger.warning("Failed to restore Colab worker endpoint", error=str(exc))
+        logger.warning(
+            "Failed to restore Colab worker endpoint",
+            error=str(exc),
+        )
 
 
 async def _stop_ai_health_monitoring():
@@ -180,7 +188,10 @@ async def _stop_colab_heartbeat():
         await colab_heartbeat.stop()
         logger.info("Colab worker heartbeat monitor stopped")
     except Exception as exc:
-        logger.warning("Failed to stop Colab heartbeat monitor", error=str(exc))
+        logger.warning(
+            "Failed to stop Colab heartbeat monitor",
+            error=str(exc),
+        )
 
 
 @asynccontextmanager
@@ -195,8 +206,7 @@ async def lifespan(_app: FastAPI):
         # Colab endpoint restore needs DB to be ready
         await _restore_colab_endpoint()
 
-        # Group B: all monitoring/worker services in parallel;
-        # credential validation runs as a background task inside _start_ai_health_monitoring
+        # Group B: all monitoring/worker services in parallel.
         await asyncio.gather(
             _start_provider_monitoring(),
             _start_ai_health_monitoring(),
@@ -221,7 +231,11 @@ async def lifespan(_app: FastAPI):
 
         logger.info("Backend startup complete", status="ready")
     except Exception as exc:
-        logger.error("Critical startup error", error=str(exc), action="application will restart")
+        logger.error(
+            "Critical startup error",
+            error=str(exc),
+            action="application will restart",
+        )
         raise
 
     yield
@@ -250,15 +264,26 @@ async def lifespan(_app: FastAPI):
             await artifact_cleanup_service.stop()
             logger.info("Artifact cleanup service stopped")
         except Exception as exc:
-            logger.warning("Failed to stop artifact cleanup service", error=str(exc))
+            logger.warning(
+                "Failed to stop artifact cleanup service",
+                error=str(exc),
+            )
 
         try:
-            from .services.embedding_service import embedding_worker  # noqa: PLC0415
+            from .services.embedding_service import (  # noqa: PLC0415
+                embedding_worker,
+            )
 
             await embedding_worker.stop()
             logger.info("Embedding worker stopped")
         except Exception as exc:
             logger.warning("Failed to stop embedding worker", error=str(exc))
+
+        try:
+            await engine.dispose()
+            logger.info("Database connection pool disposed")
+        except Exception as exc:
+            logger.warning("Failed to dispose database pool", error=str(exc))
 
         logger.info("Backend shutdown complete")
     except Exception as exc:

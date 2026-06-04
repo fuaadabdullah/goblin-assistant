@@ -4,7 +4,7 @@ Provides system-wide configuration settings and defaults
 """
 
 import os
-from typing import Dict, Any
+from typing import Any, Dict
 
 
 def get_system_config() -> Dict[str, Any]:

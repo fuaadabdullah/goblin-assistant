@@ -1,7 +1,7 @@
 from __future__ import annotations
 
-from contextlib import asynccontextmanager
 import importlib
+from contextlib import asynccontextmanager
 from unittest.mock import AsyncMock
 
 import pytest

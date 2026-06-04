@@ -41,7 +41,7 @@ export function useProviderSelection({ providers, models }: UseProviderSelection
     } else {
       setSelectedModelState('');
     }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [providersKey, modelsKey]);
 
   // Save to localStorage when values change (SSR safe)

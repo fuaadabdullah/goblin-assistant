@@ -5,17 +5,16 @@ import os
 
 # Privacy & Security Services
 from .sanitization import (
-    sanitize_input_for_model,
-    is_sensitive_content,
-    mask_sensitive,
-    hash_message_id,
     PII_PATTERNS,
     SENSITIVE_KEYWORDS,
+    hash_message_id,
+    is_sensitive_content,
+    mask_sensitive,
+    sanitize_input_for_model,
 )
-
 from .telemetry import (
-    log_inference_metrics,
     log_conversation_event,
+    log_inference_metrics,
 )
 
 _VECTOR_STORE_DEFAULT = (

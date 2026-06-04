@@ -5,15 +5,16 @@ Re‑exports every symbol that callers previously imported from the
 single‑file ``retrieval_service.py``.  No call‑site changes needed.
 """
 
-from ._retrieval_service import RetrievalService, ContextBuilder, retrieval_service
+from ._context_bundle import build_context_bundle
+from ._retrieval_service import ContextBuilder, RetrievalService, retrieval_service
 from ._sql_retrieval import (
-    FINANCE_CATEGORIES,
     FINANCE_BOOST_FACTOR,
+    FINANCE_CATEGORIES,
     GENERIC_BOOST_FACTOR,
     SUMMARY_BOOST_FACTOR,
+    retrieve_by_source_type,
 )
-from ._token_budget import estimate_tokens, trim_item_to_token_budget, apply_context_token_budget
-from ._context_bundle import build_context_bundle
+from ._token_budget import apply_context_token_budget, estimate_tokens, trim_item_to_token_budget
 
 __all__ = [
     "RetrievalService",
@@ -27,4 +28,5 @@ __all__ = [
     "trim_item_to_token_budget",
     "apply_context_token_budget",
     "build_context_bundle",
+    "retrieve_by_source_type",
 ]

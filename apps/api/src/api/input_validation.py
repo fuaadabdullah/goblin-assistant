@@ -3,9 +3,10 @@ Input validation and sanitization utilities for Goblin Assistant API
 Provides protection against XSS, injection attacks, and other input-based vulnerabilities
 """
 
-import re
 import html
-from typing import Optional, Dict, Any, Tuple
+import re
+from typing import Any, Dict, Optional, Tuple
+
 from fastapi import HTTPException
 
 try:

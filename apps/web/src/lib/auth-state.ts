@@ -87,8 +87,7 @@ const getErrorStatus = (error: unknown): number | undefined => {
   return Number((error as { status?: unknown }).status);
 };
 
-const isHardAuthFailure = (status: number | undefined): boolean =>
-  status === 401 || status === 403;
+const isHardAuthFailure = (status: number | undefined): boolean => status === 401 || status === 403;
 
 export const bootstrapAuthSession = async (): Promise<AuthSessionSnapshot> => {
   if (typeof window === 'undefined') {
@@ -134,7 +133,12 @@ export const bootstrapAuthSession = async (): Promise<AuthSessionSnapshot> => {
 
     const validatedUser = resolveValidatedUser(payload, storedUser);
     if (!validatedUser) {
-      return { token: storedToken, user: storedUser, isAuthenticated: Boolean(storedUser), isHydrated: true };
+      return {
+        token: storedToken,
+        user: storedUser,
+        isAuthenticated: Boolean(storedUser),
+        isHydrated: true,
+      };
     }
 
     persistAuthSession({

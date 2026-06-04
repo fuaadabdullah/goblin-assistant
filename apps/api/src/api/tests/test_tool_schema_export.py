@@ -5,8 +5,7 @@ from api.assistant_tools.registry import (
     ToolParameter,
     export_openai_tools,
 )
-from api.config.archetypes import GENERAL_ASSISTANT_CONTRACT
-from api.config.archetypes import DEEP_RESEARCH_CONTRACT
+from api.config.archetypes import DEEP_RESEARCH_CONTRACT, GENERAL_ASSISTANT_CONTRACT
 
 
 def test_omits_empty_required_from_openai_schema():

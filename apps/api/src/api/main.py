@@ -3,7 +3,7 @@
 
 from contextlib import asynccontextmanager
 
-from .app_factory import add_contract_lifecycle_headers, create_app
+from .app_factory import create_app
 from .artifact_cleanup import artifact_cleanup_service
 from .lifespan import lifespan as _lifespan_impl
 from .monitoring import monitor

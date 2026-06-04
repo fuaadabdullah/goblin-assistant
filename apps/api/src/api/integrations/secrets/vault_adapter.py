@@ -578,7 +578,7 @@ class VaultAdapter(SecretAdapter):
             New secret value or rotation workflow ID
 
         Raises:
-            NotImplementedError: If rotation is not supported
+            SecretBackendError: If rotation fails
         """
         import secrets
         import string

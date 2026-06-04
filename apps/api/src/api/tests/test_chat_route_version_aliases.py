@@ -3,7 +3,6 @@ from fastapi.routing import APIRouter
 from fastapi.testclient import TestClient
 
 from api.api_router import router as api_router
-from api.bootstrap.middleware import rewrite_legacy_path_to_v1
 from api.chat_router import router as chat_router
 from api.route_mounting import mount_versioned_primary_routes
 
@@ -21,31 +20,27 @@ def test_public_routes_are_registered_once_under_v1_prefix() -> None:
     assert "/api/chat" not in paths
 
 
-def test_guest_chat_validation_parity_for_v1_alias() -> None:
+def test_legacy_api_chat_alias_is_not_rewritten() -> None:
     app = FastAPI()
-    app.middleware("http")(rewrite_legacy_path_to_v1)
     app.include_router(api_router, prefix="/api/v1")
     client = TestClient(app)
 
-    legacy = client.post("/api/chat", json={})
-    alias = client.post("/api/v1/api/chat", json={})
+    response = client.post("/api/chat", json={})
 
-    assert legacy.status_code == alias.status_code
+    assert response.status_code == 404
 
 
-def test_chat_conversation_auth_parity_for_v1_alias() -> None:
+def test_legacy_chat_conversations_alias_is_not_rewritten() -> None:
     app = FastAPI()
-    app.middleware("http")(rewrite_legacy_path_to_v1)
     app.include_router(chat_router, prefix="/api/v1")
     client = TestClient(app)
 
-    legacy = client.get("/chat/conversations")
-    alias = client.get("/api/v1/chat/conversations")
+    response = client.get("/chat/conversations")
 
-    assert legacy.status_code == alias.status_code
+    assert response.status_code == 404
 
 
-def test_mount_versioned_primary_routes_includes_all_public_v1_routes() -> None:
+def test_mount_versioned_primary_routes_includes_public_v1_routes() -> None:
     app = FastAPI()
 
     def _mk_router(prefix: str, route: str):
@@ -70,6 +65,12 @@ def test_mount_versioned_primary_routes_includes_all_public_v1_routes() -> None:
     raptor = _mk_router("/raptor", "/status")
     api_keys = _mk_router("/api-keys", "/provider")
     privacy = _mk_router("/api/privacy", "/export")
+    routing = _mk_router("/routing", "/providers")
+    parse = _mk_router("/parse", "/")
+    write_time = _mk_router("/write-time", "/metrics")
+    stream = _mk_router("/stream", "")
+    ops = _mk_router("/ops", "/aggregated")
+    secrets = _mk_router("/secrets", "/health")
 
     mount_versioned_primary_routes(
         app,
@@ -86,6 +87,12 @@ def test_mount_versioned_primary_routes_includes_all_public_v1_routes() -> None:
         raptor_router=raptor,
         api_keys_router=api_keys,
         privacy_router=privacy,
+        routing_router=routing,
+        parse_router=parse,
+        write_time_router=write_time,
+        stream_router=stream,
+        ops_router=ops,
+        secrets_router=secrets,
     )
 
     paths = {route.path for route in app.routes}
@@ -102,5 +109,12 @@ def test_mount_versioned_primary_routes_includes_all_public_v1_routes() -> None:
     assert "/api/v1/raptor/status" in paths
     assert "/api/v1/api-keys/provider" in paths
     assert "/api/v1/api/privacy/export" in paths
+    assert "/api/v1/routing/providers" in paths
+    assert "/api/v1/parse/" in paths
+    assert "/api/v1/write-time/metrics" in paths
+    assert "/api/v1/stream" in paths
+    assert "/api/v1/ops/aggregated" in paths
+    assert "/api/v1/secrets/health" in paths
+    assert not any(path.startswith("/api/v1/agent") for path in paths)
     assert "/chat/conversations" not in paths
     assert "/api/chat" not in paths

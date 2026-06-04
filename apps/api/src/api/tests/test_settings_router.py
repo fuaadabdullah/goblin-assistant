@@ -9,6 +9,7 @@ from fastapi.responses import JSONResponse
 from fastapi.testclient import TestClient
 
 from api.core.contracts import ErrorEnvelope
+from api.core.error_types import ErrorType
 from api.core.errors import DomainError
 from api.settings_router import router
 
@@ -21,11 +22,15 @@ def _client() -> TestClient:
         return JSONResponse(
             status_code=exc.status_code,
             content=ErrorEnvelope(
-                error={"code": exc.code, "message": exc.message, "details": exc.details}
+                error={
+                    "code": exc.code,
+                    "type": ErrorType.BUSINESS_LOGIC,
+                    "message": exc.message,
+                    "details": exc.details,
+                }
             ).model_dump(exclude_none=True),
         )
 
-    app.include_router(router)
     app.include_router(router, prefix="/api/v1")
     return TestClient(app)
 
@@ -64,7 +69,7 @@ def test_get_settings_maps_inventory_to_response():
             return_value=fake_provider,
         ),
     ):
-        response = client.get("/settings/")
+        response = client.get("/api/v1/settings/")
 
     assert response.status_code == 200
     data = response.json()["data"]
@@ -82,7 +87,7 @@ def test_get_settings_returns_500_on_inventory_failure():
         new_callable=AsyncMock,
         side_effect=RuntimeError("boom"),
     ):
-        response = client.get("/settings/")
+        response = client.get("/api/v1/settings/")
 
     assert response.status_code == 500
     assert response.json()["success"] is False
@@ -93,7 +98,7 @@ def test_update_provider_settings_rejects_blank_name():
     client = _client()
 
     response = client.put(
-        "/settings/providers/openai",
+        "/api/v1/settings/providers/openai",
         json={"name": "", "enabled": True},
     )
 
@@ -105,7 +110,7 @@ def test_update_model_settings_accepts_valid_payload():
     client = _client()
 
     response = client.put(
-        "/settings/models/gpt-4o-mini",
+        "/api/v1/settings/models/gpt-4o-mini",
         json={
             "name": "gpt-4o-mini",
             "provider": "openai",
@@ -127,7 +132,7 @@ def test_test_provider_connection_reports_health_states():
         return_value={"healthy": True},
     ):
         healthy = client.post(
-            "/settings/test-connection",
+            "/api/v1/settings/test-connection",
             params={"provider_name": "openai"},
         )
 
@@ -137,7 +142,7 @@ def test_test_provider_connection_reports_health_states():
         return_value={"healthy": False, "health_reason": "timeout"},
     ):
         unhealthy = client.post(
-            "/settings/test-connection",
+            "/api/v1/settings/test-connection",
             params={"provider_name": "openai"},
         )
 
@@ -149,7 +154,7 @@ def test_test_provider_connection_reports_health_states():
     assert unhealthy.json()["data"]["message"] == "timeout"
 
 
-def test_settings_v1_alias_matches_legacy_payload_shape():
+def test_settings_legacy_route_is_not_mounted():
     client = _client()
 
     fake_provider = MagicMock()
@@ -168,9 +173,7 @@ def test_settings_v1_alias_matches_legacy_payload_shape():
         ),
         patch("api.settings_router.dispatcher.get_provider", return_value=fake_provider),
     ):
-        legacy = client.get("/settings/")
         v1 = client.get("/api/v1/settings/")
 
-    assert legacy.status_code == 200
     assert v1.status_code == 200
-    assert legacy.json()["data"]["default_provider"] == v1.json()["data"]["default_provider"]
+    assert client.get("/settings/").status_code == 404

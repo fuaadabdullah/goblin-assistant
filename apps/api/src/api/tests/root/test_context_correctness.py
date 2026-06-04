@@ -1,8 +1,8 @@
 import pytest
 
+from api.services.context_assembly_service import ContextAssemblyService
 from api.services.embedding_service import EmbeddingService
 from api.services.retrieval_service import RetrievalService
-from api.services.context_assembly_service import ContextAssemblyService
 
 
 class _CaptureEmbedProvider:

@@ -1,15 +1,16 @@
 # Complete Context Assembly Service with Observability Integration
 
 import os
-from typing import List, Dict, Optional, Any
 from dataclasses import dataclass
 from datetime import datetime
+from typing import Any, Dict, List, Optional
+
 import structlog
 
-from .retrieval_service import retrieval_service as _retrieval_singleton
-from .embedding_service import EmbeddingService
 from ..observability.context_snapshotter import context_snapshotter
 from ..observability.retrieval_tracer import retrieval_tracer
+from .embedding_service import EmbeddingService
+from .retrieval_service import retrieval_service as _retrieval_singleton
 
 logger = structlog.get_logger()
 

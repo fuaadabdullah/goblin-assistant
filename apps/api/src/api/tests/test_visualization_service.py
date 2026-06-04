@@ -5,15 +5,14 @@ from __future__ import annotations
 import pytest
 
 from api.services.visualization_service import (
-    extract_visualizations,
     _extract_dcf_visualizations,
-    _extract_portfolio_visualizations,
     _extract_earnings_visualizations,
+    _extract_portfolio_visualizations,
     _extract_screener_visualizations,
     _fmt_market_cap,
     _fmt_metric,
+    extract_visualizations,
 )
-
 
 # ---------------------------------------------------------------------------
 # Helpers
@@ -420,6 +419,7 @@ class TestExecutorVisualizationWiring:
     async def test_tool_loop_collects_visualizations(self):
         """run_tool_loop should attach visualizations[] to the final response."""
         from unittest.mock import AsyncMock, patch
+
         from api.assistant_tools.executor import run_tool_loop
 
         # First call returns tool_calls, second call returns text response
@@ -475,6 +475,7 @@ class TestExecutorVisualizationWiring:
     async def test_tool_loop_no_viz_for_non_financial_tools(self):
         """Tools without extractors should produce empty visualizations."""
         from unittest.mock import AsyncMock, patch
+
         from api.assistant_tools.executor import run_tool_loop
 
         tool_call_response = {
@@ -527,6 +528,7 @@ class TestExecutorVisualizationWiring:
     async def test_tool_loop_skips_viz_on_error(self):
         """Error tool results should not generate visualizations."""
         from unittest.mock import AsyncMock, patch
+
         from api.assistant_tools.executor import run_tool_loop
 
         tool_call_response = {

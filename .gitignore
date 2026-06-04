@@ -82,3 +82,6 @@ apps/web/storybook-static/
 !api/tools/
 !api/tools/**
 terraform.tfvars
+
+# Test uploads
+apps/api/src/uploads/

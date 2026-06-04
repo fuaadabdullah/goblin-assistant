@@ -216,6 +216,11 @@ def test_get_goblins_and_history_limits():
             ],
         ),
         patch("api.api_router.get_task_store", new_callable=AsyncMock, return_value=fake_store),
+        patch(
+            "api.api_router.conversation_store.list_conversations",
+            new_callable=AsyncMock,
+            return_value=[],
+        ),
     ):
         goblins = client.get("/api/goblins")
         history = client.get("/api/history/docs-writer?limit=25")
@@ -229,28 +234,155 @@ def test_get_goblins_and_history_limits():
     assert history.json()[0]["goblin"] == "docs-writer"
 
 
-def test_orchestration_routes_delegate_and_return_payloads():
+def test_get_goblins_degrades_when_health_flag_is_missing():
     client = _client()
 
     with patch(
-        "api.api_router.create_simple_orchestration_plan",
-        return_value={"ok": True, "plan_id": "plan-1"},
+        "api.api_router.dispatcher.get_provider_inventory",
+        new_callable=AsyncMock,
+        return_value=[
+            {
+                "id": "docs-writer",
+                "name": "Docs Writer",
+                "configured": True,
+                "tier": "cloud",
+            }
+        ],
+    ):
+        response = client.get("/api/goblins")
+
+    assert response.status_code == 200
+    body = response.json()
+    assert len(body) == 1
+    assert body[0]["id"] == "docs-writer"
+    assert body[0]["status"] == "degraded"
+
+
+def test_get_goblin_history_includes_chat_completions_from_conversations():
+    client = _client()
+    fake_store = MagicMock()
+    fake_store.list_tasks = AsyncMock(return_value=[])
+
+    fake_conversation = MagicMock(
+        conversation_id="conv-1",
+        messages=[
+            MagicMock(
+                role="user",
+                content="Draft release notes",
+                message_id="u1",
+                timestamp="2026-01-01T00:00:00",
+                metadata={},
+            ),
+            MagicMock(
+                role="assistant",
+                content="Release notes drafted.",
+                message_id="a1",
+                timestamp="2026-01-01T00:00:02",
+                metadata={"provider": "docs-writer", "model": "gpt-4o-mini"},
+            ),
+        ],
+    )
+
+    with (
+        patch("api.api_router.get_task_store", new_callable=AsyncMock, return_value=fake_store),
+        patch(
+            "api.api_router.conversation_store.list_conversations",
+            new_callable=AsyncMock,
+            return_value=[fake_conversation],
+        ),
+    ):
+        history = client.get("/api/history/docs-writer?limit=10")
+
+    assert history.status_code == 200
+    body = history.json()
+    assert len(body) == 1
+    assert body[0]["task"] == "Draft release notes"
+    assert body[0]["response"] == "Release notes drafted."
+    assert body[0]["goblin"] == "docs-writer"
+
+
+def test_orchestration_parse_stores_plan_and_execute_runs_background_task():
+    client = _client()
+
+    _fake_steps = [
+        {
+            "id": "general-goblin",
+            "goblin": "general-goblin",
+            "task": "write docs",
+            "dependencies": [],
+        }
+    ]
+    _plan_task = {
+        "task_id": "plan-1",
+        "task_type": "orchestration.plan",
+        "status": "pending",
+        "payload": {"text": "write docs", "default_goblin": "docs-writer"},
+        "result": {"steps": _fake_steps, "complexity": "low", "estimated_duration": 30},
+    }
+    _execution_task = {
+        "task_id": "exec-1",
+        "task_type": "orchestration.execute",
+        "status": "completed",
+        "payload": {"plan_id": "plan-1"},
+        "result": {
+            "steps": [
+                {
+                    **_fake_steps[0],
+                    "status": "completed",
+                    "result": "done",
+                    "provider_used": "openai",
+                    "cost_usd": 0.001,
+                    "duration_ms": 800,
+                    "error": None,
+                }
+            ],
+            "total_cost": 0.001,
+            "total_duration_ms": 800,
+        },
+        "created_at": 0.0,
+    }
+
+    fake_store = MagicMock()
+    fake_store.save_task = AsyncMock()
+    fake_store.get_task = AsyncMock(return_value=_plan_task)
+    fake_store.list_tasks = AsyncMock(return_value=[_execution_task])
+    fake_store.update_task_status = AsyncMock()
+
+    from api.core.orchestration import OrchestrationPlan, OrchestrationStep
+
+    fake_plan = OrchestrationPlan(
+        steps=[OrchestrationStep(goblin="general-goblin", task="write docs")],
+        complexity="low",
+        estimated_duration=30,
+    )
+
+    with (
+        patch("api.api_router.parse_natural_language", return_value=fake_plan),
+        patch("api.api_router.get_task_store", new_callable=AsyncMock, return_value=fake_store),
+        patch("api.api_router.asyncio.create_task", new=MagicMock()),
     ):
         parsed = client.post(
             "/api/orchestrate/parse",
             json={"text": "write docs", "default_goblin": "docs-writer"},
         )
+        assert parsed.status_code == 200
+        parse_data = parsed.json()
+        assert "plan_id" in parse_data
+        assert parse_data["steps"][0]["goblin"] == "general-goblin"
+        assert parse_data["complexity"] == "low"
 
-    executed = client.post("/api/orchestrate/execute", params={"plan_id": "plan-1"})
-    plan = client.get("/api/orchestrate/plans/plan-1")
+        executed = client.post("/api/orchestrate/execute", params={"plan_id": "plan-1"})
+        assert executed.status_code == 200
+        exec_data = executed.json()
+        assert exec_data["plan_id"] == "plan-1"
+        assert exec_data["status"] == "started"
+        assert "execution_id" in exec_data
 
-    assert parsed.status_code == 200
-    assert parsed.json() == {"ok": True, "plan_id": "plan-1"}
-
-    assert executed.status_code == 200
-    assert executed.json()["plan_id"] == "plan-1"
-    assert executed.json()["status"] == "started"
-
-    assert plan.status_code == 200
-    assert plan.json()["plan_id"] == "plan-1"
-    assert plan.json()["status"] == "started"
+        poll = client.get("/api/orchestrate/plans/plan-1")
+        assert poll.status_code == 200
+        poll_data = poll.json()
+        assert poll_data["plan_id"] == "plan-1"
+        assert poll_data["status"] == "completed"
+        assert len(poll_data["steps"]) == 1
+        assert poll_data["steps"][0]["status"] == "completed"
+        assert poll_data["total_cost"] == 0.001

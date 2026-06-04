@@ -392,7 +392,7 @@ class BaseProvider(ABC):
         model: str = "",
         **kwargs: Any,
     ) -> Union[List[float], List[List[float]]]:
-        raise NotImplementedError(f"{self.__class__.__name__} does not support embeddings")
+        raise RuntimeError(f"{self.__class__.__name__} does not support embeddings")
 
     @classmethod
     def from_config(cls, config: Dict[str, Any]) -> "BaseProvider":

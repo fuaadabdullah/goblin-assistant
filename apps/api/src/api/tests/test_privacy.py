@@ -13,12 +13,12 @@ import pytest
 
 # Import our privacy modules
 from api.services.sanitization import (
-    sanitize_input_for_model,
+    check_jailbreak_attempt,
+    hash_message_id,
     is_sensitive_content,
     mask_sensitive,
-    hash_message_id,
-    check_jailbreak_attempt,
     redact_for_logging,
+    sanitize_input_for_model,
 )
 
 

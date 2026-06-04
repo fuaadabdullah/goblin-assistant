@@ -3,12 +3,13 @@ Cache service for Write-Time Intelligence
 Implements TTL-based caching with Redis for different message types
 """
 
-import os
 import json
-import structlog
-from typing import Any, Optional, Dict
-import redis.asyncio as redis
+import os
 from datetime import datetime
+from typing import Any, Dict, Optional
+
+import redis.asyncio as redis
+import structlog
 
 logger = structlog.get_logger()
 

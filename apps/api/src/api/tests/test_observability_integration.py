@@ -5,15 +5,16 @@ Tests the complete observability pipeline from message processing through
 write-time decisions, memory promotion, retrieval tracing, and debug endpoints.
 """
 
-import pytest
 from datetime import datetime
 from unittest.mock import patch
 
-from api.services.write_time_matrix import write_time_intelligence
-from api.services.memory_promotion import memory_promotion_service, PromotionCandidate
-from api.services.retrieval_service import RetrievalService
-from api.services.observability_service import observability_service
+import pytest
+
 from api.observability import context_snapshotter
+from api.services.memory_promotion import PromotionCandidate, memory_promotion_service
+from api.services.observability_service import observability_service
+from api.services.retrieval_service import RetrievalService
+from api.services.write_time_matrix import write_time_intelligence
 
 
 class TestObservabilityIntegration:

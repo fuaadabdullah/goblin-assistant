@@ -5,9 +5,10 @@ Tests: Authentication, Concurrency, Caching, and Error Handling.
 """
 
 import asyncio
-import aiohttp
-import time
 import os
+import time
+
+import aiohttp
 
 # Load API key from environment to avoid committing secrets
 API_KEY = os.getenv("API_AUTH_KEY", "")

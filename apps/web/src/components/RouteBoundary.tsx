@@ -23,6 +23,7 @@ export type RouteBoundaryKey =
   | 'googleCallback'
   | 'help'
   | 'login'
+  | 'onboarding'
   | 'register'
   | 'sandbox'
   | 'search'
@@ -109,6 +110,10 @@ const routeBoundaryConfig: Record<RouteBoundaryKey, RouteBoundaryConfig> = {
   login: authConfig(
     'Sign-in is temporarily unavailable',
     'The authentication screen failed before you could continue.'
+  ),
+  onboarding: workspaceConfig(
+    'Onboarding is temporarily unavailable',
+    'The first-run setup wizard failed before it could finish rendering.'
   ),
   register: authConfig(
     'Registration is temporarily unavailable',

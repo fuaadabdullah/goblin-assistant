@@ -5,15 +5,16 @@ Provides comprehensive monitoring and alerting capabilities
 
 import logging
 import time
-from typing import Dict, Any
+from typing import Any, Dict
+
+from fastapi import Response
 from prometheus_client import (
+    CONTENT_TYPE_LATEST,
     Counter,
     Gauge,
     Histogram,
     generate_latest,
-    CONTENT_TYPE_LATEST,
 )
-from fastapi import Response
 
 logger = logging.getLogger(__name__)
 

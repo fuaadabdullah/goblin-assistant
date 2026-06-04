@@ -2,8 +2,8 @@
 Security configuration and utilities for Goblin Assistant API
 """
 
-import os
 import logging
+import os
 from typing import List
 
 logger = logging.getLogger(__name__)

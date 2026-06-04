@@ -2,10 +2,11 @@
 Pytest configuration and shared fixtures for API tests.
 """
 
-import pytest
 import sys
 import types
-from unittest.mock import MagicMock, AsyncMock
+from unittest.mock import AsyncMock, MagicMock
+
+import pytest
 from fastapi import APIRouter
 
 
@@ -189,8 +190,8 @@ class _FakeYfTicker:
         self.earnings_dates = None
 
     def history(self, period="1y", interval="1d"):
-        import pandas as pd
         import numpy as np
+        import pandas as pd
 
         np.random.seed(hash(self._ticker) % 2**31)
         base_price = self.info.get("currentPrice", 150.0)

@@ -586,7 +586,7 @@ class RetrievalTracer:
         error: Optional[str] = None,
     ):
         """End a retrieval trace"""
-        pass
+        return None
 
 
 # Global retrieval tracer instance

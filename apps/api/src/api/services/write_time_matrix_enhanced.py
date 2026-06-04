@@ -6,16 +6,17 @@ The Prime Directive: Every decision affecting memory, retrieval, routing, or con
 must be inspectable. No black boxes.
 """
 
-from enum import Enum
-from typing import Dict, List, Optional, Any
 from dataclasses import dataclass
 from datetime import datetime
+from enum import Enum
+from typing import Any, Dict, List, Optional
+
 import structlog
 
-from .message_classifier import MessageType, MessageClassification
-from .embedding_service import embedding_worker
-from .retrieval_service import retrieval_service as _retrieval_singleton
 from ..observability.decision_logger import decision_logger
+from .embedding_service import embedding_worker
+from .message_classifier import MessageClassification, MessageType
+from .retrieval_service import retrieval_service as _retrieval_singleton
 
 logger = structlog.get_logger()
 

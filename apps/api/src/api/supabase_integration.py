@@ -3,14 +3,13 @@ Supabase integration for PostgreSQL database and authentication
 """
 
 import os
-from typing import Dict, Any
-import httpx
-from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession
-from sqlalchemy.orm import sessionmaker
-from sqlalchemy.pool import NullPool
 from contextlib import asynccontextmanager
-from typing import AsyncGenerator
+from typing import Any, AsyncGenerator, Dict
 
+import httpx
+from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine
+from sqlalchemy.orm import sessionmaker
+from sqlalchemy.pool import StaticPool
 
 # Supabase configuration
 SUPABASE_URL = os.getenv("SUPABASE_URL")
@@ -311,11 +310,12 @@ if SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY:
         pool_timeout=30,
     )
 else:
-    # Fallback to local SQLite
+    # Fallback to local SQLite — StaticPool reuses a single connection (correct for aiosqlite)
     engine = create_async_engine(
         DATABASE_URL,
         echo=False,
-        poolclass=NullPool,
+        poolclass=StaticPool,
+        connect_args={"check_same_thread": False},
     )
 
 

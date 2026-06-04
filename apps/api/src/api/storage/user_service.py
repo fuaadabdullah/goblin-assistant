@@ -2,12 +2,14 @@
 User service for database operations
 """
 
-from sqlalchemy.ext.asyncio import AsyncSession
+from typing import List, Optional
+
+from pydantic import BaseModel
 from sqlalchemy import select, update
 from sqlalchemy.exc import IntegrityError
-from typing import Optional, List
+from sqlalchemy.ext.asyncio import AsyncSession
+
 from .models import UserModel
-from pydantic import BaseModel
 
 
 class UserCreateData(BaseModel):

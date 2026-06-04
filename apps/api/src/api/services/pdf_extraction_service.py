@@ -9,7 +9,6 @@ from collections import Counter
 from dataclasses import dataclass
 from typing import Any, Dict, List, Tuple
 
-
 DEFAULT_CHUNK_SIZE = 1200
 DEFAULT_CHUNK_OVERLAP = 200
 DEFAULT_MAX_CONTEXT_CHARS = 5000

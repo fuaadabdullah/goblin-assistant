@@ -1,9 +1,10 @@
 """Base contracts for monitoring integrations."""
 
+from abc import ABC, abstractmethod
 from typing import Any, Dict
 
 
-class MonitoringIntegration:
+class MonitoringIntegration(ABC):
     """Base class for monitoring system integrations."""
 
     def __init__(self, name: str):
@@ -16,8 +17,8 @@ class MonitoringIntegration:
         self.enabled = config.get("enabled", False)
         return self.enabled
 
-    async def send_metrics(self, metrics: Dict[str, Any]) -> bool:
-        raise NotImplementedError
+    @abstractmethod
+    async def send_metrics(self, metrics: Dict[str, Any]) -> bool: ...
 
-    async def send_alert(self, alert: Dict[str, Any]) -> bool:
-        raise NotImplementedError
+    @abstractmethod
+    async def send_alert(self, alert: Dict[str, Any]) -> bool: ...

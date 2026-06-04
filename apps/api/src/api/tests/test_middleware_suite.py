@@ -2,6 +2,7 @@
 
 import os
 from unittest.mock import patch
+
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
 
@@ -106,7 +107,7 @@ class TestAuthenticationMiddleware:
             response = client.get("/protected")
 
             assert response.status_code == 500
-            assert "configuration_error" in response.json()["error"]["code"]
+            assert response.json()["error"]["code"] == "CONFIGURATION_ERROR"
 
     def test_auth_middleware_custom_exclude_paths(self):
         """Test custom excluded paths"""

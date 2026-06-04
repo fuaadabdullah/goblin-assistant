@@ -8,7 +8,6 @@ from unittest.mock import AsyncMock, MagicMock, patch
 import pytest
 
 from api import health
-from api.security_config import SecurityConfig
 from api.services import provider_health
 
 
@@ -75,18 +74,9 @@ async def test_health_returns_healthy_when_everything_passes() -> None:
             provider_monitor,
             create=True,
         ),
-        patch.object(
-            SecurityConfig,
-            "validate_config",
-            return_value=[],
-        ),
-        patch.object(SecurityConfig, "DEBUG", False),
-        patch.object(
-            SecurityConfig,
-            "ALLOWED_ORIGINS",
-            ["https://example.com"],
-            create=True,
-        ),
+        patch("api.security_config.SecurityConfig.validate_config", return_value=[]),
+        patch("api.security_config.SecurityConfig.DEBUG", False),
+        patch("api.security_config.SecurityConfig.ALLOWED_ORIGINS", ["https://example.com"]),
     ):
         response = await health.health_check()
 
@@ -137,20 +127,11 @@ async def test_health_returns_degraded_when_db_fails() -> None:
             )
         )
         stack.enter_context(
-            patch.object(
-                SecurityConfig,
-                "validate_config",
-                return_value=[],
-            )
+            patch("api.security_config.SecurityConfig.validate_config", return_value=[])
         )
-        stack.enter_context(patch.object(SecurityConfig, "DEBUG", False))
+        stack.enter_context(patch("api.security_config.SecurityConfig.DEBUG", False))
         stack.enter_context(
-            patch.object(
-                SecurityConfig,
-                "ALLOWED_ORIGINS",
-                ["https://example.com"],
-                create=True,
-            )
+            patch("api.security_config.SecurityConfig.ALLOWED_ORIGINS", ["https://example.com"])
         )
         response = await health.health_check()
 
@@ -200,21 +181,13 @@ async def test_health_returns_warnings_on_security_issues() -> None:
             )
         )
         stack.enter_context(
-            patch.object(
-                SecurityConfig,
-                "validate_config",
+            patch(
+                "api.security_config.SecurityConfig.validate_config",
                 return_value=["missing allowed origin"],
             )
         )
-        stack.enter_context(patch.object(SecurityConfig, "DEBUG", True))
-        stack.enter_context(
-            patch.object(
-                SecurityConfig,
-                "ALLOWED_ORIGINS",
-                [],
-                create=True,
-            )
-        )
+        stack.enter_context(patch("api.security_config.SecurityConfig.DEBUG", True))
+        stack.enter_context(patch("api.security_config.SecurityConfig.ALLOWED_ORIGINS", []))
         response = await health.health_check()
 
     assert response.data["status"] == "warnings"

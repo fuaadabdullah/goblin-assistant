@@ -1,5 +1,3 @@
-version: '3.8'
-
 services:
   # Redis for Celery backend and broker
   redis:
@@ -71,7 +69,7 @@ services:
     build: .
     cpus: ${CELERY_WORKER_HIGH_CPU_LIMIT:-1.00}
     mem_limit: ${CELERY_WORKER_HIGH_MEM_LIMIT:-1g}
-    command: celery -A celery_app worker --loglevel=info --concurrency=2 --pool=prefork -Q high_priority
+    command: celery -A celery_app:app worker --loglevel=info --concurrency=2 --pool=prefork -Q high_priority
     environment:
       - ENV=production
       - CELERY_BROKER_URL=redis://redis:6379/0
@@ -82,7 +80,7 @@ services:
       redis:
         condition: service_healthy
     healthcheck:
-      test: ['CMD-SHELL', 'celery -A celery_app inspect ping -d celery@$$HOSTNAME --timeout=5 | grep -q pong']
+      test: ['CMD-SHELL', 'celery -A celery_app:app inspect ping -d celery@$$HOSTNAME --timeout=5 | grep -q pong']
       interval: 30s
       timeout: 10s
       retries: 3
@@ -99,7 +97,7 @@ services:
     build: .
     cpus: ${CELERY_WORKER_DEFAULT_CPU_LIMIT:-1.50}
     mem_limit: ${CELERY_WORKER_DEFAULT_MEM_LIMIT:-2g}
-    command: celery -A celery_app worker --loglevel=info --concurrency=4 --pool=prefork -Q default
+    command: celery -A celery_app:app worker --loglevel=info --concurrency=4 --pool=prefork -Q default
     environment:
       - ENV=production
       - CELERY_BROKER_URL=redis://redis:6379/0
@@ -110,7 +108,7 @@ services:
       redis:
         condition: service_healthy
     healthcheck:
-      test: ['CMD-SHELL', 'celery -A celery_app inspect ping -d celery@$$HOSTNAME --timeout=5 | grep -q pong']
+      test: ['CMD-SHELL', 'celery -A celery_app:app inspect ping -d celery@$$HOSTNAME --timeout=5 | grep -q pong']
       interval: 30s
       timeout: 10s
       retries: 3
@@ -127,7 +125,7 @@ services:
     build: .
     cpus: ${CELERY_WORKER_LOW_CPU_LIMIT:-0.75}
     mem_limit: ${CELERY_WORKER_LOW_MEM_LIMIT:-1g}
-    command: celery -A celery_app worker --loglevel=info --concurrency=2 --pool=prefork -Q low_priority
+    command: celery -A celery_app:app worker --loglevel=info --concurrency=2 --pool=prefork -Q low_priority
     environment:
       - ENV=production
       - CELERY_BROKER_URL=redis://redis:6379/0
@@ -138,7 +136,7 @@ services:
       redis:
         condition: service_healthy
     healthcheck:
-      test: ['CMD-SHELL', 'celery -A celery_app inspect ping -d celery@$$HOSTNAME --timeout=5 | grep -q pong']
+      test: ['CMD-SHELL', 'celery -A celery_app:app inspect ping -d celery@$$HOSTNAME --timeout=5 | grep -q pong']
       interval: 30s
       timeout: 10s
       retries: 3
@@ -155,7 +153,7 @@ services:
     build: .
     cpus: ${CELERY_BEAT_CPU_LIMIT:-0.50}
     mem_limit: ${CELERY_BEAT_MEM_LIMIT:-512m}
-    command: celery -A celery_app beat --loglevel=info --scheduler django_celery_beat.schedulers:DatabaseScheduler
+    command: celery -A celery_app:app beat --loglevel=info
     environment:
       - ENV=production
       - CELERY_BROKER_URL=redis://redis:6379/0
@@ -166,7 +164,7 @@ services:
       redis:
         condition: service_healthy
     healthcheck:
-      test: ['CMD-SHELL', 'tr "\\0" " " < /proc/1/cmdline | grep -q "celery -A celery_app beat"']
+      test: ['CMD-SHELL', 'tr "\\0" " " < /proc/1/cmdline | grep -q "celery -A celery_app:app beat"']
       interval: 30s
       timeout: 10s
       retries: 3
@@ -183,7 +181,7 @@ services:
     build: .
     cpus: ${FLOWER_CPU_LIMIT:-0.50}
     mem_limit: ${FLOWER_MEM_LIMIT:-512m}
-    command: celery -A celery_app flower --address=0.0.0.0 --port=5555 --basic_auth=${FLOWER_BASIC_AUTH:-dev:dev_password_change_me}
+    command: celery -A celery_app:app flower --address=0.0.0.0 --port=5555 --basic_auth=${FLOWER_BASIC_AUTH:-dev:dev_password_change_me}
     ports:
       - '5555:5555'
     environment:

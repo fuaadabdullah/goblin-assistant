@@ -29,6 +29,7 @@ import { accountMethods } from './account';
 import { searchMethods } from './search';
 import { loggingMethods } from './logging';
 import { supportMethods } from './support';
+import { runtimeMethods } from './runtime';
 
 // Export all shared types and utilities
 export * from './shared';
@@ -64,6 +65,9 @@ export const apiClient = {
 
   // Support methods
   ...supportMethods,
+
+  // Runtime/orchestration methods
+  ...runtimeMethods,
 };
 
 export type ApiClient = typeof apiClient;

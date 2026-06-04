@@ -1,13 +1,14 @@
 from __future__ import annotations
 
-from fastapi import APIRouter
-from pydantic import BaseModel
 from typing import List, Optional
 
-from api.providers.dispatcher import dispatcher
-from api.routing.router import top_providers_for
+from fastapi import APIRouter
+from pydantic import BaseModel
+
 from api.core.contracts import SuccessEnvelope
 from api.core.errors import DomainError
+from api.providers.dispatcher import dispatcher
+from api.routing.router import top_providers_for
 
 router = APIRouter(prefix="/settings", tags=["settings"])
 

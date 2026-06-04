@@ -4,7 +4,7 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 
 // Mock apiClient
 const mockGetRaptorLogs = jest.fn();
-jest.mock('@/api', () => ({
+jest.mock('@/lib/api', () => ({
   apiClient: { getRaptorLogs: (...args: unknown[]) => mockGetRaptorLogs(...args) },
 }));
 

@@ -14,17 +14,16 @@ from unittest.mock import AsyncMock, patch
 import pytest
 
 from api.services.financial_guardrails import (
-    FinancialDataError,
+    DataUnavailableError,
     FetchTimeoutError,
+    FinancialDataError,
     RateLimitError,
     TickerNotFoundError,
-    DataUnavailableError,
     _TokenBucket,
     check_rate_limit,
     safe_skill,
     with_timeout,
 )
-
 
 # ---------------------------------------------------------------------------
 # TokenBucket

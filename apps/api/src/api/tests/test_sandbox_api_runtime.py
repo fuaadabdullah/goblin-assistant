@@ -21,7 +21,7 @@ def test_sandbox_image_default_when_env_unset() -> None:
     original = os.environ.pop("SANDBOX_IMAGE", None)
     try:
         module = importlib.reload(sandbox_api)
-        assert module.SANDBOX_IMAGE == expected_default
+        assert expected_default == module.SANDBOX_IMAGE
     finally:
         if original is None:
             os.environ.pop("SANDBOX_IMAGE", None)
@@ -46,10 +46,9 @@ def test_sandbox_api_key_default_when_env_unset() -> None:
 def test_require_api_key_fails_closed_when_key_missing() -> None:
     with (
         patch.object(sandbox_api, "SANDBOX_ENABLED", False),
-        patch.object(sandbox_api, "API_KEY", None),
+        patch.object(sandbox_api, "API_KEY", None),pytest.raises(HTTPException) as exc
     ):
-        with pytest.raises(HTTPException) as exc:
-            sandbox_api.require_api_key("any-key")
+        sandbox_api.require_api_key("any-key")
 
     assert exc.value.status_code == 500
     assert "API_AUTH_KEY" in str(exc.value.detail)
@@ -232,10 +231,9 @@ async def test_get_job_status_returns_404_for_missing_job() -> None:
             sandbox_api,
             "API_KEY",
             "secret",
-        ),
+        ),pytest.raises(HTTPException) as exc
     ):
-        with pytest.raises(HTTPException) as exc:
-            await sandbox_api.get_job_status("missing", x_api_key="secret")
+        await sandbox_api.get_job_status("missing", x_api_key="secret")
 
     assert exc.value.status_code == 404
 

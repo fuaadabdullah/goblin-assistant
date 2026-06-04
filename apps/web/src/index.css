@@ -2,6 +2,7 @@
 @import "tailwindcss";
 @config "../tailwind.config.js";
 @import './theme/index.css';
+@import './styles/light-theme.css';
 
 html {
   line-height: 1.15;

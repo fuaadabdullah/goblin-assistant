@@ -10,7 +10,7 @@ This file describes what the current `goblin-assistant` codebase implements, not
 | Prompt generation proxy | Working path | `apps/web/pages/api/generate.ts` forwards frontend prompt requests to backend `/api/chat` |
 | Startup flow | Working path | `apps/web/src/features/startup/hooks/useStartupFlow.ts` boots auth, routing info, and provider registry before redirecting |
 | Auth screens | Partial | Login/register UI, Google OAuth UI, Turnstile, and passkey UI exist; frontend currently calls `/v1/auth/*`, while local FastAPI routers are mounted at `/auth/*` |
-| Search UI | Partial | Search screen and hooks exist, but the frontend expects `/v1/search/*` and different payload/response shapes than `api/search_router.py` exposes |
+| Search UI | Working path | Search routes are wired at `pages/search.tsx` and `pages/chat/search-page.tsx`, using `features/search/*` with backend calls to `/search/collections` and `/search/query` |
 | Sandbox UI | Partial | Guest mode and sandbox screen exist, but the frontend expects `/v1/sandbox/run` and `/v1/sandbox/jobs`; the local backend exposes `/sandbox/submit`, `/sandbox/status/{job_id}`, and related job endpoints |
 | Admin/provider screens | Partial | Admin pages and provider manager UI exist, but provider registry loading depends on `/api/models` -> backend `/v1/providers/models`, which is not implemented in `api/` |
 | Account page | Partial | Account/profile UI exists, but frontend save calls expect `/v1/account/profile` and `/v1/account/preferences`; no matching backend router is checked in |

@@ -3,18 +3,19 @@ Write-Time Intelligence (The Anti-Rot Layer)
 Core Decision Matrix for message storage and processing decisions
 """
 
-from enum import Enum
-from typing import Dict, List, Optional, Any
 from dataclasses import dataclass
 from datetime import datetime
+from enum import Enum
+from typing import Any, Dict, List, Optional
+
 import structlog
 
-from .message_classifier import MessageType, MessageClassification
-from .embedding_service import embedding_worker
 from .cache_service import cache_service
-from .retrieval_service import retrieval_service as _retrieval_singleton
+from .embedding_service import embedding_worker
 from .memory_promotion import memory_promotion_service
+from .message_classifier import MessageClassification, MessageType
 from .observability_service import observability_service
+from .retrieval_service import retrieval_service as _retrieval_singleton
 
 logger = structlog.get_logger()
 

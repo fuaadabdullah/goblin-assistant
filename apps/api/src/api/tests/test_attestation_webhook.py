@@ -1,7 +1,8 @@
-import types
 import sys
-import pytest
+import types
 from types import SimpleNamespace
+
+import pytest
 
 # Inject a fake 'kubernetes' module before importing the webhook
 fake_k8s = types.SimpleNamespace()
@@ -76,7 +77,7 @@ async def test_rate_limiter_exceeded(monkeypatch):
 
         def expire(self, k, s):
             # no-op for test
-            pass
+            return None
 
     fake_service = SimpleNamespace(redis_client=FakeRedis())
 

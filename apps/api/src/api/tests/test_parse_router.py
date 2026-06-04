@@ -1,7 +1,7 @@
 import pytest
+from fastapi import HTTPException
 
 from api.parse_router import ParseRequest, parse_orchestration
-from fastapi import HTTPException
 
 
 @pytest.mark.asyncio

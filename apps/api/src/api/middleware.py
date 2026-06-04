@@ -14,6 +14,7 @@ from fastapi.responses import JSONResponse
 from starlette.middleware.base import BaseHTTPMiddleware
 from starlette.types import ASGIApp
 
+from .core.contracts import ApiErrorPayload, ErrorEnvelope
 from .core.error_types import ErrorType
 
 # Configure structlog
@@ -41,11 +42,10 @@ class AuthenticationMiddleware(BaseHTTPMiddleware):
 
         # Base excluded paths
         default_exclude = [
-            "/health",
             "/docs",
             "/openapi.json",
             "/redoc",
-            "/auth",  # JWT auth handled by get_current_user, not API key
+            "/api/v1/health",
             "/api/v1/auth",
         ]
 
@@ -58,9 +58,8 @@ class AuthenticationMiddleware(BaseHTTPMiddleware):
         # In development mode with ALLOW_UNAUTHENTICATED_REQUESTS, also exclude chat endpoints
         if is_development and allow_unauth:
             self.exclude_paths = base_paths + [
-                "/api/chat",
-                "/chat",
-                "/api/test",
+                "/api/v1/api/chat",
+                "/api/v1/chat",
             ]
             self.exclude_paths = list(set(self.exclude_paths))  # Remove duplicates
         else:
@@ -108,17 +107,16 @@ class AuthenticationMiddleware(BaseHTTPMiddleware):
                 return JSONResponse(
                     status_code=500,
                     headers={"X-Request-ID": request_id},
-                    content={
-                        "success": False,
-                        "error": {
-                            "code": "CONFIGURATION_ERROR",
-                            "type": ErrorType.AUTHENTICATION,
-                            "message": "API authentication not configured",
-                            "request_id": request_id,
-                            "timestamp": timestamp,
-                            "details": {"reason": "missing_api_key"},
-                        },
-                    },
+                    content=ErrorEnvelope(
+                        error=ApiErrorPayload(
+                            code="CONFIGURATION_ERROR",
+                            type=ErrorType.AUTHENTICATION,
+                            message="API authentication not configured",
+                            request_id=request_id,
+                            timestamp=timestamp,
+                            details={"reason": "missing_api_key"},
+                        )
+                    ).model_dump(exclude_none=True),
                 )
 
         if api_key_header and api_key_header != self.api_key:
@@ -131,17 +129,16 @@ class AuthenticationMiddleware(BaseHTTPMiddleware):
             return JSONResponse(
                 status_code=401,
                 headers={"X-Request-ID": request_id},
-                content={
-                    "success": False,
-                    "error": {
-                        "code": "AUTHENTICATION_REQUIRED",
-                        "type": ErrorType.AUTHENTICATION,
-                        "message": "Valid API key required",
-                        "request_id": request_id,
-                        "timestamp": timestamp,
-                        "details": {"reason": "invalid_api_key"},
-                    },
-                },
+                content=ErrorEnvelope(
+                    error=ApiErrorPayload(
+                        code="AUTHENTICATION_REQUIRED",
+                        type=ErrorType.AUTHENTICATION,
+                        message="Valid API key required",
+                        request_id=request_id,
+                        timestamp=timestamp,
+                        details={"reason": "invalid_api_key"},
+                    )
+                ).model_dump(exclude_none=True),
             )
 
         # Authentication successful
@@ -242,15 +239,14 @@ class ErrorHandlingMiddleware(BaseHTTPMiddleware):
             return JSONResponse(
                 status_code=500,
                 headers={"X-Request-ID": request_id},
-                content={
-                    "success": False,
-                    "error": {
-                        "code": "INTERNAL_ERROR",
-                        "type": ErrorType.INTERNAL,
-                        "message": error_message,
-                        "request_id": request_id,
-                        "timestamp": timestamp,
-                        "details": details if details else None,
-                    },
-                },
+                content=ErrorEnvelope(
+                    error=ApiErrorPayload(
+                        code="INTERNAL_ERROR",
+                        type=ErrorType.INTERNAL,
+                        message=error_message,
+                        request_id=request_id,
+                        timestamp=timestamp,
+                        details=details if details else None,
+                    )
+                ).model_dump(exclude_none=True),
             )

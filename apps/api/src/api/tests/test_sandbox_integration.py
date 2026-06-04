@@ -5,8 +5,8 @@ Tests the sandbox system components without full API startup
 """
 
 import os
-import sys
 import subprocess
+import sys
 
 
 def test_sandbox_components():

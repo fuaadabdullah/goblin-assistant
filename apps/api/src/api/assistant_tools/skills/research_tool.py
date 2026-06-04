@@ -13,14 +13,15 @@ from pathlib import Path
 from typing import Any, Dict, List, Optional
 from urllib.parse import urlsplit
 
-from .academic_search import _handle_academic_search
-from .web_search import _handle_web_search
 from api.services.pdf_extraction_service import (
     DEFAULT_MAX_CONTEXT_CHARS,
     extract_pdf,
     select_relevant_chunks,
 )
+
 from ..registry import ToolDefinition, ToolParameter, register_tool
+from .academic_search import _handle_academic_search
+from .web_search import _handle_web_search
 
 MAX_SOURCES_CAP = 10
 MAX_PDF_CHUNKS_CAP = 12

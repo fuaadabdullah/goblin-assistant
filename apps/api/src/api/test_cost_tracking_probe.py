@@ -37,20 +37,20 @@ def test_cost_tracking_postgres_success(client, monkeypatch):
     # Simulate psycopg with a fake connect that returns the expected row
     class FakeCursor:
         def execute(self, q):
-            pass
+            return None
 
         def fetchone(self):
             return (99.99,)
 
         def close(self):
-            pass
+            return None
 
     class FakeConn:
         def cursor(self):
             return FakeCursor()
 
         def close(self):
-            pass
+            return None
 
     class FakePsycopgModule(SimpleNamespace):
         @staticmethod

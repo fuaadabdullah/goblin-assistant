@@ -16,8 +16,9 @@ from unittest.mock import AsyncMock, patch
 
 import pytest
 
-# ── Import units under test ──────────────────────────────────────
+from api.assistant_tools.executor import run_tool_loop
 
+# ── Import units under test ──────────────────────────────────────
 from api.services.tool_result_memory_service import (
     _extract_dcf_facts,
     _extract_earnings_facts,
@@ -27,9 +28,6 @@ from api.services.tool_result_memory_service import (
     extract_and_promote,
     get_financial_profile,
 )
-
-from api.assistant_tools.executor import run_tool_loop
-
 
 # ===================================================================
 # DCF fact extraction
@@ -225,7 +223,7 @@ class TestExtractAndPromote:
         with patch(
             "api.services.tool_result_memory_service.memory_promotion_service"
         ) as mock_promo:
-            from api.services.memory_promotion import PromotionResult, PromotionGate
+            from api.services.memory_promotion import PromotionGate, PromotionResult
 
             mock_promo.evaluate_promotion_candidate = AsyncMock(
                 return_value=PromotionResult(

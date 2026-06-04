@@ -1,9 +1,11 @@
 import {
   ProviderUpdatePayload,
+  V1_API_PREFIX,
   getBackend,
   getFrontend,
   patchBackend,
   postBackend,
+  putBackend,
 } from './shared';
 import { normalizeProviderId } from '../providers/normalizeProvider';
 import type { CostSummary, ProviderModelOption } from '../../types/api';
@@ -53,7 +55,7 @@ const emptyCostSummary: CostSummary = {
 
 export const providersMethods = {
   async getProviderSettings() {
-    return getBackend('/providers');
+    return getBackend(`${V1_API_PREFIX}/settings/`);
   },
 
   async getModelConfigs() {
@@ -61,15 +63,15 @@ export const providersMethods = {
   },
 
   async getGlobalSettings() {
-    return getBackend('/settings');
+    return getBackend(`${V1_API_PREFIX}/settings/`);
   },
 
   async updateProvider(providerId: string | number, provider: ProviderUpdatePayload) {
-    return patchBackend(`/providers/${providerId}`, provider);
+    return putBackend(`${V1_API_PREFIX}/settings/providers/${providerId}`, provider);
   },
 
   async updateGlobalSetting(key: string, value: unknown) {
-    return patchBackend(`/settings/${encodeURIComponent(key)}`, { value });
+    return patchBackend(`${V1_API_PREFIX}/settings/${encodeURIComponent(key)}`, { value });
   },
 
   async setProviderPriority(providerId: number, priority: number, role?: string) {
@@ -143,7 +145,7 @@ export const providersMethods = {
         ...existing,
         isSelectable: selectable,
         health: selectable ? 'healthy' : incoming.health || existing.health,
-        healthReason: selectable ? null : incoming.healthReason ?? existing.healthReason ?? null,
+        healthReason: selectable ? null : (incoming.healthReason ?? existing.healthReason ?? null),
       });
     }
 

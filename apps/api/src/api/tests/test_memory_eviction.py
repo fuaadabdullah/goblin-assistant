@@ -8,12 +8,14 @@ Tests cover:
 - Lazy eviction on operations
 """
 
-import pytest
 from datetime import datetime, timedelta
+
+import pytest
+
 from api.storage.conversations import (
-    InMemoryConversationStore,
     Conversation,
     ConversationMessage,
+    InMemoryConversationStore,
 )
 
 

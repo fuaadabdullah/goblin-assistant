@@ -3,11 +3,11 @@ Tests for secrets_router
 Tests secure secret management endpoints
 """
 
-from fastapi.testclient import TestClient
 from unittest.mock import patch
 
-from api.main import app
+from fastapi.testclient import TestClient
 
+from api.main import app
 
 client = TestClient(app)
 

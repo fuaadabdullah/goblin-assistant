@@ -4,9 +4,10 @@ Simple settings verification script.
 Not part of automated pytest collection.
 """
 
-import sys
 import os
+import sys
 from pathlib import Path
+
 import pytest
 
 pytest.skip("Legacy script-style test; excluded from pytest suite.", allow_module_level=True)

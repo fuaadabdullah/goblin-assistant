@@ -1,12 +1,4 @@
-import type { GetServerSideProps } from 'next';
+import OnboardingWizard from '../features/onboarding/OnboardingWizard';
+import { withRouteErrorBoundary } from '../components/RouteBoundary';
 
-export const getServerSideProps: GetServerSideProps = async () => ({
-  redirect: {
-    destination: '/',
-    permanent: false,
-  },
-});
-
-export default function OnboardingRedirect() {
-  return null;
-}
+export default withRouteErrorBoundary(OnboardingWizard, 'onboarding');

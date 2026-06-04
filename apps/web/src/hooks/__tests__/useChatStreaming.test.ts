@@ -1,7 +1,7 @@
 import { describe, it, expect, beforeEach, jest } from '@jest/globals';
 import { renderHook, act, waitFor } from '@testing-library/react';
 import { useChatStreaming } from '../useChatStreaming';
-import { apiClient } from '@/api';
+import { apiClient } from '@/lib/api';
 
 const mockChatCompletion = jest.spyOn(apiClient, 'chatCompletion');
 

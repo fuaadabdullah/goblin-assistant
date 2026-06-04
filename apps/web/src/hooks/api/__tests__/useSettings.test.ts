@@ -2,7 +2,7 @@ import { renderHook, waitFor } from '@testing-library/react';
 import React from 'react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 
-jest.mock('@/api', () => ({
+jest.mock('@/lib/api', () => ({
   apiClient: {
     getProviderSettings: jest.fn(),
     getModelConfigs: jest.fn(),
@@ -27,7 +27,7 @@ import {
   useUpdateProvider,
   useUpdateGlobalSetting,
 } from '../useSettings';
-import { apiClient } from '@/api';
+import { apiClient } from '@/lib/api';
 
 const mockGetProviders = apiClient.getProviderSettings as jest.Mock;
 const mockGetModels = apiClient.getModelConfigs as jest.Mock;
@@ -45,11 +45,11 @@ describe('useSettings hooks', () => {
 
   describe('useProviderSettings', () => {
     it('fetches provider settings', async () => {
-      const data = [{ name: 'OpenAI', enabled: true }];
-      mockGetProviders.mockResolvedValue(data);
+      const providerSettings = [{ name: 'OpenAI', enabled: true }];
+      mockGetProviders.mockResolvedValue(providerSettings);
       const { result } = renderHook(() => useProviderSettings(), { wrapper });
       await waitFor(() => expect(result.current.isSuccess).toBe(true));
-      expect(result.current.data).toEqual(data);
+      expect(result.current.data).toEqual(providerSettings);
     });
 
     it('handles error', async () => {
@@ -61,11 +61,11 @@ describe('useSettings hooks', () => {
 
   describe('useModelConfigs', () => {
     it('fetches model configs', async () => {
-      const data = { models: ['gpt-4'] };
-      mockGetModels.mockResolvedValue(data);
+      const modelConfigs = { models: ['gpt-4'] };
+      mockGetModels.mockResolvedValue(modelConfigs);
       const { result } = renderHook(() => useModelConfigs(), { wrapper });
       await waitFor(() => expect(result.current.isSuccess).toBe(true));
-      expect(result.current.data).toEqual(data);
+      expect(result.current.data).toEqual(modelConfigs);
     });
 
     it('handles error', async () => {
@@ -77,11 +77,11 @@ describe('useSettings hooks', () => {
 
   describe('useGlobalSettings', () => {
     it('fetches global settings', async () => {
-      const data = { theme: 'dark' };
-      mockGetGlobal.mockResolvedValue(data);
+      const globalSettings = { theme: 'dark' };
+      mockGetGlobal.mockResolvedValue(globalSettings);
       const { result } = renderHook(() => useGlobalSettings(), { wrapper });
       await waitFor(() => expect(result.current.isSuccess).toBe(true));
-      expect(result.current.data).toEqual(data);
+      expect(result.current.data).toEqual(globalSettings);
     });
   });
 

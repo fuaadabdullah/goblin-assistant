@@ -10,13 +10,14 @@ Retrieval Ordering + Token Budgeting system. This service tracks:
 """
 
 import time
-from typing import Dict, List, Optional, Any
 from dataclasses import dataclass
 from datetime import datetime
+from typing import Any, Dict, List, Optional
+
 import structlog
 
-from .context_assembly_service import ContextAssemblyService
 from ..config.system_prompt import SystemPromptManager
+from .context_assembly_service import ContextAssemblyService
 
 logger = structlog.get_logger()
 

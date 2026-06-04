@@ -5,10 +5,11 @@ Intelligent routing for selecting and invoking AI models based on task type and 
 Supports multi-provider model selection with fallback chains and authorization headers.
 """
 
-from typing import Dict, Any, Optional
 import os
-import httpx
 from dataclasses import dataclass
+from typing import Any, Dict, Optional
+
+import httpx
 
 # Tasks suitable for specialized Raptor model
 RAPTOR_TASKS = {"summarize_trace", "quick_fix", "unit_test_hint", "infer_function_name"}

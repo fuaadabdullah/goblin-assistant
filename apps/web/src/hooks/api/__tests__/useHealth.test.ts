@@ -2,7 +2,7 @@ import { renderHook } from '@testing-library/react';
 import React from 'react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 
-jest.mock('@/api', () => ({
+jest.mock('@/lib/api', () => ({
   apiClient: {
     getAllHealth: jest.fn().mockResolvedValue({ status: 'healthy' }),
     getStreamingHealth: jest.fn().mockResolvedValue({ status: 'ok' }),

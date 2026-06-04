@@ -1,12 +1,13 @@
 """Tests for write_time_router module."""
 
-import pytest
-from unittest.mock import AsyncMock, MagicMock, patch
 from datetime import datetime
-from fastapi.testclient import TestClient
-from fastapi import FastAPI
+from unittest.mock import AsyncMock, MagicMock, patch
 
-from api.write_time_router import router, TEST_MESSAGES
+import pytest
+from fastapi import FastAPI
+from fastapi.testclient import TestClient
+
+from api.write_time_router import TEST_MESSAGES, router
 
 
 @pytest.fixture

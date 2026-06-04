@@ -9,10 +9,9 @@ from __future__ import annotations
 
 from typing import Any, Dict, List
 
-from ..registry import ToolDefinition, ToolParameter, register_tool
 from ...services.financial_data_service import financial_data_service
 from ...services.financial_guardrails import safe_skill
-
+from ..registry import ToolDefinition, ToolParameter, register_tool
 
 # ---------------------------------------------------------------------------
 # Handler

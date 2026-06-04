@@ -11,7 +11,7 @@ from typing import Any, Dict, List, Optional
 import structlog
 from sqlalchemy import text
 
-from ...storage.database import get_db
+from ...storage.database import get_readonly_db_context
 
 logger = structlog.get_logger()
 
@@ -40,7 +40,7 @@ async def retrieve_memory_facts_stratified(
     surfaces ahead of general conversation artifacts.
     """
     try:
-        async with get_db() as session:
+        async with get_readonly_db_context() as session:
             query_sql = text(
                 """
                 SELECT
@@ -112,34 +112,34 @@ async def retrieve_summaries_stratified(
 ) -> List[Dict[str, Any]]:
     """Retrieve working memory summaries."""
     try:
-        async with get_db() as session:
-            where_clauses = ["cs.user_id = :user_id"]
-            params = {
+        async with get_readonly_db_context() as session:
+            conv_filter = "AND cs.conversation_id = :conversation_id" if conversation_id else ""
+            params: dict = {
                 "user_id": user_id,
                 "query_embedding": query_embedding,
                 "k": k,
                 "summary_boost": SUMMARY_BOOST_FACTOR,
             }
-
             if conversation_id:
-                where_clauses.append("cs.conversation_id = :conversation_id")
                 params["conversation_id"] = conversation_id
-
-            where_clause = " AND ".join(where_clauses)
 
             query_sql = text(
                 f"""
                 SELECT
                     cs.id,
                     cs.conversation_id,
-                    cs.summary_text as content,
+                    cs.summary_text AS content,
                     cs.created_at,
-                    (1 - (cs.summary_embedding <=> :query_embedding)) * :summary_boost as score
+                    (1 - (cs.summary_embedding <=> :query_embedding))
+                        * :summary_boost AS score
                 FROM conversation_summaries cs
-                WHERE {where_clause}
+                JOIN conversations c
+                  ON cs.conversation_id = c.conversation_id
+                WHERE c.user_id = :user_id
+                {conv_filter}
                 ORDER BY score DESC
                 LIMIT :k
-            """
+                """
             )
 
             result = await session.execute(query_sql, params)
@@ -179,7 +179,7 @@ async def retrieve_messages_stratified(
 ) -> List[Dict[str, Any]]:
     """Retrieve relevant messages with semantic search."""
     try:
-        async with get_db() as session:
+        async with get_readonly_db_context() as session:
             where_clauses = ["e.user_id = :user_id", "e.source_type = 'message'"]
             params = {
                 "user_id": user_id,
@@ -238,6 +238,71 @@ async def retrieve_messages_stratified(
         return []
 
 
+async def retrieve_by_source_type(
+    query_embedding: List[float],
+    user_id: str,
+    source_type: str,
+    k: int = 5,
+) -> List[Dict[str, Any]]:
+    """Generic cosine-similarity retrieval for any source_type in the embeddings table.
+
+    No recency decay — documents, code, research, and task items are treated as
+    durable. Score is pure cosine similarity.
+    """
+    try:
+        async with get_readonly_db_context() as session:
+            query_sql = text(
+                """
+                SELECT
+                    e.id,
+                    e.content,
+                    e.source_type,
+                    e.source_id,
+                    e.metadata,
+                    e.created_at,
+                    (1 - (e.embedding <=> :query_embedding)) AS score
+                FROM embeddings e
+                WHERE e.user_id = :user_id
+                  AND e.source_type = :source_type
+                ORDER BY score DESC
+                LIMIT :k
+                """
+            )
+
+            result = await session.execute(
+                query_sql,
+                {
+                    "query_embedding": query_embedding,
+                    "user_id": user_id,
+                    "source_type": source_type,
+                    "k": k,
+                },
+            )
+            rows = result.fetchall()
+
+            return [
+                {
+                    "id": row.id,
+                    "content": row.content,
+                    "source_type": row.source_type,
+                    "source_id": row.source_id,
+                    "metadata": row.metadata,
+                    "created_at": row.created_at,
+                    "score": float(row.score) if row.score else 0.0,
+                }
+                for row in rows
+            ]
+
+    except Exception as e:
+        logger.error(
+            "error retrieving by source_type",
+            error=str(e),
+            user_id=user_id,
+            source_type=source_type,
+        )
+        return []
+
+
 async def retrieve_recent_messages(
     user_id: str,
     conversation_id: Optional[str] = None,
@@ -245,7 +310,7 @@ async def retrieve_recent_messages(
 ) -> List[Dict[str, Any]]:
     """Retrieve recent ephemeral messages."""
     try:
-        async with get_db() as session:
+        async with get_readonly_db_context() as session:
             where_clauses = ["m.user_id = :user_id"]
             params = {"user_id": user_id, "k": k}
 

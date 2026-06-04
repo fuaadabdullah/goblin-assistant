@@ -1,7 +1,9 @@
+from typing import Optional
+
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel
-from typing import Optional
-from .core.orchestration import parse_natural_language, OrchestrationPlan
+
+from .core.orchestration import OrchestrationPlan, parse_natural_language
 
 router = APIRouter(prefix="/parse", tags=["parse"])
 

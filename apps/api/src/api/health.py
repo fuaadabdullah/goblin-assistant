@@ -3,18 +3,19 @@ Unified health check endpoint for all Goblin Assistant subsystems.
 Consolidates health checks from main.py, routing_router.py, and api_router.py.
 """
 
-from typing import Dict, Any, List
-from datetime import datetime
-from fastapi import APIRouter, HTTPException
 import asyncio
 import os
-import sqlite3
 import shutil
-import subprocess
 import statistics
 import time
+from datetime import datetime
+from typing import Any, Dict, List
 from urllib.parse import urlparse
+
+import aiosqlite
 import httpx
+from fastapi import APIRouter, HTTPException
+
 from .core.contracts import SuccessEnvelope
 
 router = APIRouter(tags=["health"])
@@ -45,8 +46,9 @@ async def check_routing_health() -> Dict[str, Any]:
 async def check_db_health() -> Dict[str, Any]:
     """Check database connectivity health"""
     try:
-        from .storage.database import engine
         from sqlalchemy import text
+
+        from .storage.database import engine
 
         async with engine.connect() as conn:
             await conn.execute(text("SELECT 1"))
@@ -207,11 +209,10 @@ async def _check_chroma() -> Dict[str, Any]:
     if os.path.exists(path):
         try:
             size = os.path.getsize(path)
-            conn = sqlite3.connect(path)
-            cur = conn.cursor()
-            cur.execute("SELECT name FROM sqlite_master WHERE type='table';")
-            tables = [r[0] for r in cur.fetchall()]
-            conn.close()
+            async with aiosqlite.connect(path) as conn, conn.execute(
+                "SELECT name FROM sqlite_master WHERE type='table';"
+            ) as cur:
+                tables = [r[0] for r in await cur.fetchall()]
             return {
                 "status": "healthy",
                 "path": path,
@@ -320,9 +321,16 @@ async def _check_sandbox() -> Dict[str, Any]:
     # If docker is available and SANDBOX_IMAGE is configured, check image exists
     if image and shutil.which("docker"):
         try:
-            out = subprocess.check_output(
-                ["docker", "images", "--format", "{{.Repository}}:{{.Tag}}"], text=True
+            proc = await asyncio.create_subprocess_exec(
+                "docker",
+                "images",
+                "--format",
+                "{{.Repository}}:{{.Tag}}",
+                stdout=asyncio.subprocess.PIPE,
+                stderr=asyncio.subprocess.PIPE,
             )
+            stdout, _ = await proc.communicate()
+            out = stdout.decode()
             found = any(line.strip() == image for line in out.splitlines())
             return {
                 "status": "healthy" if found else "degraded",
@@ -357,13 +365,11 @@ async def _check_cost_tracking() -> Dict[str, Any]:
                 path = "/" + path_part.lstrip("/")
             else:
                 path = path_part
-            conn = sqlite3.connect(path)
-            cur = conn.cursor()
-            # Try reading a costs table if present
-            cur.execute("SELECT SUM(amount) FROM costs")
-            total = cur.fetchone()[0] or 0.0
-            conn.close()
-            return {"status": "healthy", "total_cost": float(total)}
+            async with aiosqlite.connect(path) as conn:
+                async with conn.execute("SELECT SUM(amount) FROM costs") as cur:
+                    row = await cur.fetchone()
+                    total = float(row[0]) if row and row[0] is not None else 0.0
+            return {"status": "healthy", "total_cost": total}
         except Exception as e:
             return {"status": "degraded", "error": str(e)}
 
@@ -458,20 +464,23 @@ async def health_cost_tracking():
 
 @router.get("/health/latency-history/{service}")
 async def health_latency_history(service: str):
-    # Placeholder: return empty history
-    return {"service": service, "history": []}
+    raise HTTPException(
+        status_code=501, detail=f"Latency history tracking not implemented for service '{service}'"
+    )
 
 
 @router.get("/health/service-errors/{service}")
 async def health_service_errors(service: str):
-    # Placeholder: no recent errors
-    return {"service": service, "recent_errors": []}
+    raise HTTPException(
+        status_code=501, detail=f"Service error tracking not implemented for service '{service}'"
+    )
 
 
 @router.post("/health/retest/{service}")
 async def health_retest(service: str):
-    # Trigger a retest for a service (placeholder)
-    return {"service": service, "retest": "scheduled"}
+    raise HTTPException(
+        status_code=501, detail=f"On-demand retest not implemented for service '{service}'"
+    )
 
 
 @router.get("/health/ready")
@@ -481,8 +490,9 @@ async def readiness_check() -> Dict[str, Any]:
         # Check if we can connect to database (optional)
         db_ready = False
         try:
-            from .storage.database import engine
             from sqlalchemy import text
+
+            from .storage.database import engine
 
             async with engine.connect() as conn:
                 await conn.execute(text("SELECT 1"))

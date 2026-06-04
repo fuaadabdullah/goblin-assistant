@@ -3,8 +3,9 @@ Tests for provider dispatcher and fallback logic
 Tests provider selection, fallback, and circuit breaker mechanisms
 """
 
-import pytest
 from unittest.mock import AsyncMock
+
+import pytest
 
 from api.providers.base import ProviderHealth
 
@@ -148,8 +149,9 @@ class TestCircuitBreaker:
     @pytest.mark.asyncio
     async def test_circuit_breaker_timeout(self):
         """Test circuit breaker timeout mechanism"""
-        from api.providers.dispatcher import CircuitBreaker
         import asyncio
+
+        from api.providers.dispatcher import CircuitBreaker
 
         breaker = CircuitBreaker(failure_threshold=1, timeout=1)
 

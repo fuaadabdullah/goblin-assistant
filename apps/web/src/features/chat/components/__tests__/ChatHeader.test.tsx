@@ -74,43 +74,66 @@ describe('ChatHeader', () => {
 
   it('does not show sidebar toggle by default', () => {
     render(<ChatHeader {...defaultProps} />);
-    expect(screen.queryByLabelText(/conversations/i)).not.toBeInTheDocument();
+    expect(screen.queryByLabelText(/chat panel/i)).not.toBeInTheDocument();
   });
 
-  it('shows sidebar toggle when enabled', () => {
+  it('shows unified mobile panel toggle when enabled', () => {
     const onToggle = jest.fn();
-    render(<ChatHeader {...defaultProps} showSidebarToggle onToggleSidebar={onToggle} />);
-    const btn = screen.getByLabelText('Open conversations');
+    render(<ChatHeader {...defaultProps} showMobilePanelToggle onToggleMobilePanel={onToggle} />);
+    const btn = screen.getByLabelText('Open chat panel');
     expect(btn).toBeInTheDocument();
+    expect(btn).toHaveTextContent('Conversations');
   });
 
-  it('toggles sidebar on click', () => {
+  it('toggles unified mobile panel on click', () => {
     const onToggle = jest.fn();
-    render(<ChatHeader {...defaultProps} showSidebarToggle onToggleSidebar={onToggle} />);
-    fireEvent.click(screen.getByLabelText('Open conversations'));
+    render(<ChatHeader {...defaultProps} showMobilePanelToggle onToggleMobilePanel={onToggle} />);
+    fireEvent.click(screen.getByLabelText('Open chat panel'));
     expect(onToggle).toHaveBeenCalled();
   });
 
-  it('shows close label when sidebar is open', () => {
+  it('shows close label when mobile panel is open', () => {
     render(
-      <ChatHeader {...defaultProps} showSidebarToggle onToggleSidebar={jest.fn()} isSidebarOpen />
+      <ChatHeader
+        {...defaultProps}
+        showMobilePanelToggle
+        onToggleMobilePanel={jest.fn()}
+        isMobilePanelOpen
+      />
     );
-    expect(screen.getByLabelText('Close conversations')).toBeInTheDocument();
+    expect(screen.getByLabelText('Close chat panel')).toBeInTheDocument();
   });
 
   it('sets aria-expanded correctly', () => {
     const { rerender } = render(
       <ChatHeader
         {...defaultProps}
-        showSidebarToggle
-        onToggleSidebar={jest.fn()}
-        isSidebarOpen={false}
+        showMobilePanelToggle
+        onToggleMobilePanel={jest.fn()}
+        isMobilePanelOpen={false}
       />
     );
-    expect(screen.getByLabelText('Open conversations')).toHaveAttribute('aria-expanded', 'false');
+    expect(screen.getByLabelText('Open chat panel')).toHaveAttribute('aria-expanded', 'false');
     rerender(
-      <ChatHeader {...defaultProps} showSidebarToggle onToggleSidebar={jest.fn()} isSidebarOpen />
+      <ChatHeader
+        {...defaultProps}
+        showMobilePanelToggle
+        onToggleMobilePanel={jest.fn()}
+        isMobilePanelOpen
+      />
     );
-    expect(screen.getByLabelText('Close conversations')).toHaveAttribute('aria-expanded', 'true');
+    expect(screen.getByLabelText('Close chat panel')).toHaveAttribute('aria-expanded', 'true');
+  });
+
+  it('shows active preview tab label in the toggle', () => {
+    render(
+      <ChatHeader
+        {...defaultProps}
+        showMobilePanelToggle
+        onToggleMobilePanel={jest.fn()}
+        activeMobilePanelTab="preview"
+      />
+    );
+    expect(screen.getByLabelText('Open chat panel')).toHaveTextContent('Preview');
   });
 });

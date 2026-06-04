@@ -1,13 +1,13 @@
-import pytest
 from pathlib import Path
+
+import pytest
 
 from api.services.context_assembly_service import (
     ContextAssemblyService,
-    ContextLayer,
     ContextBudget,
+    ContextLayer,
 )
 from api.services.context_assembly_service import orchestrator as _orch_mod
-
 
 PROJECT_ROOT = Path("/Volumes/GOBLINOS 1/apps/...")
 

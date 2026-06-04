@@ -6,7 +6,7 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 const mockPasskeyChallenge = jest.fn();
 const mockPasskeyRegister = jest.fn();
 const mockPasskeyAuth = jest.fn();
-jest.mock('@/api', () => ({
+jest.mock('@/lib/api', () => ({
   apiClient: {
     passkeyChallenge: (...args: unknown[]) => mockPasskeyChallenge(...args),
     passkeyRegister: (...args: unknown[]) => mockPasskeyRegister(...args),

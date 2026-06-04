@@ -3,11 +3,13 @@ Support message endpoint
 Handles user support/feedback submissions
 """
 
+import uuid
+from datetime import datetime
+from typing import Optional
+
 from fastapi import APIRouter
 from pydantic import BaseModel
-from typing import Optional
-from datetime import datetime
-import uuid
+
 from api.core.contracts import SuccessEnvelope
 from api.core.errors import DomainError
 

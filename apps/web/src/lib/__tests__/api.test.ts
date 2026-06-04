@@ -22,7 +22,7 @@ jest.mock('axios', () => {
 });
 
 jest.mock('../../config/env', () => ({
-  env: { apiBaseUrl: 'http://localhost:8000' },
+  env: { apiBaseUrl: 'http://api.example.test:8000' },
 }));
 
 jest.mock('../../utils/dev-log', () => ({
@@ -120,7 +120,7 @@ describe('apiClient', () => {
   });
 
   describe('getProviderSettings', () => {
-    it('calls backend GET /providers', async () => {
+    it('calls backend GET /api/v1/settings/', async () => {
       mockHttp.get.mockResolvedValueOnce({ data: [{ id: 1, name: 'openai' }] });
       const result = await apiClient.getProviderSettings();
       expect(result).toEqual([{ id: 1, name: 'openai' }]);
@@ -136,10 +136,14 @@ describe('apiClient', () => {
   });
 
   describe('updateProvider', () => {
-    it('calls backend PATCH', async () => {
-      mockHttp.patch.mockResolvedValueOnce({ data: { ok: true } });
+    it('calls backend PUT', async () => {
+      mockHttp.put.mockResolvedValueOnce({ data: { ok: true } });
       await apiClient.updateProvider(1, { enabled: true });
-      expect(mockHttp.patch).toHaveBeenCalledWith('/providers/1', { enabled: true }, undefined);
+      expect(mockHttp.put).toHaveBeenCalledWith(
+        '/api/v1/settings/providers/1',
+        { enabled: true },
+        undefined
+      );
     });
   });
 
@@ -396,11 +400,11 @@ describe('apiClient', () => {
   });
 
   describe('searchQuery', () => {
-    it('calls backend POST /search/query', async () => {
+    it('calls backend POST /api/v1/search/query', async () => {
       mockHttp.post.mockResolvedValueOnce({ data: [{ id: '1' }] });
       await apiClient.searchQuery('docs', 'test');
       expect(mockHttp.post).toHaveBeenCalledWith(
-        '/search/query',
+        '/api/v1/search/query',
         { collection: 'docs', query: 'test', limit: 8 },
         undefined
       );
@@ -408,11 +412,11 @@ describe('apiClient', () => {
   });
 
   describe('runSandboxCode', () => {
-    it('calls backend POST /sandbox/run', async () => {
+    it('calls backend POST /api/v1/sandbox/run', async () => {
       mockHttp.post.mockResolvedValueOnce({ data: { output: 'hello' } });
       await apiClient.runSandboxCode({ code: 'print("hello")', language: 'python' });
       expect(mockHttp.post).toHaveBeenCalledWith(
-        '/sandbox/run',
+        '/api/v1/sandbox/run',
         { code: 'print("hello")', language: 'python' },
         undefined
       );
@@ -420,19 +424,23 @@ describe('apiClient', () => {
   });
 
   describe('saveAccountProfile', () => {
-    it('calls backend PUT /account/profile', async () => {
+    it('calls backend PUT /api/v1/account/profile', async () => {
       mockHttp.put.mockResolvedValueOnce({ data: { ok: true } });
       await apiClient.saveAccountProfile({ name: 'Test' });
-      expect(mockHttp.put).toHaveBeenCalledWith('/account/profile', { name: 'Test' }, undefined);
+      expect(mockHttp.put).toHaveBeenCalledWith(
+        '/api/v1/account/profile',
+        { name: 'Test' },
+        undefined
+      );
     });
   });
 
   describe('saveAccountPreferences', () => {
-    it('calls backend PUT /account/preferences', async () => {
+    it('calls backend PUT /api/v1/account/preferences', async () => {
       mockHttp.put.mockResolvedValueOnce({ data: { ok: true } });
       await apiClient.saveAccountPreferences({ theme: 'dark' });
       expect(mockHttp.put).toHaveBeenCalledWith(
-        '/account/preferences',
+        '/api/v1/account/preferences',
         { theme: 'dark' },
         undefined
       );
@@ -471,7 +479,7 @@ describe('apiClient', () => {
       mockHttp.post.mockResolvedValueOnce({ data: { challenge: 'abc' } });
       await apiClient.passkeyChallenge('test@example.com');
       expect(mockHttp.post).toHaveBeenCalledWith(
-        '/auth/passkey/challenge',
+        '/api/v1/auth/passkey/challenge',
         { email: 'test@example.com' },
         undefined
       );
@@ -479,10 +487,14 @@ describe('apiClient', () => {
   });
 
   describe('logout', () => {
-    it('calls POST /auth/logout', async () => {
+    it('calls POST /api/v1/auth/logout', async () => {
       mockHttp.post.mockResolvedValueOnce({ data: { ok: true } });
       await apiClient.logout();
-      expect(mockHttp.post).toHaveBeenCalledWith('/auth/logout', undefined, expect.anything());
+      expect(mockHttp.post).toHaveBeenCalledWith(
+        '/api/v1/auth/logout',
+        undefined,
+        expect.anything()
+      );
     });
   });
 
@@ -499,7 +511,7 @@ describe('apiClient', () => {
   });
 
   describe('getGlobalSettings', () => {
-    it('calls GET /settings', async () => {
+    it('calls GET /api/v1/settings/', async () => {
       mockHttp.get.mockResolvedValueOnce({ data: { setting: 'value' } });
       const result = await apiClient.getGlobalSettings();
       expect(result).toEqual({ setting: 'value' });
@@ -507,10 +519,14 @@ describe('apiClient', () => {
   });
 
   describe('updateGlobalSetting', () => {
-    it('calls PATCH /settings/:key', async () => {
+    it('calls PATCH /api/v1/settings/:key', async () => {
       mockHttp.patch.mockResolvedValueOnce({ data: { ok: true } });
       await apiClient.updateGlobalSetting('theme', 'dark');
-      expect(mockHttp.patch).toHaveBeenCalledWith('/settings/theme', { value: 'dark' }, undefined);
+      expect(mockHttp.patch).toHaveBeenCalledWith(
+        '/api/v1/settings/theme',
+        { value: 'dark' },
+        undefined
+      );
     });
   });
 });

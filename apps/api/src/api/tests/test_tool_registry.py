@@ -9,8 +9,13 @@ from unittest.mock import AsyncMock
 
 import pytest
 
-# Stubs are provided by conftest.py (mock_embedding_service, mock_yfinance)
+from api.assistant_tools.executor import (
+    execute_tool_call,
+    extract_tool_calls,
+    run_tool_loop,
+)
 
+# Stubs are provided by conftest.py (mock_embedding_service, mock_yfinance)
 from api.assistant_tools.registry import (
     TOOL_REGISTRY,
     ToolDefinition,
@@ -21,12 +26,6 @@ from api.assistant_tools.registry import (
     get_tool,
     register_tool,
 )
-from api.assistant_tools.executor import (
-    execute_tool_call,
-    extract_tool_calls,
-    run_tool_loop,
-)
-
 
 # ---------------------------------------------------------------------------
 # Registry tests

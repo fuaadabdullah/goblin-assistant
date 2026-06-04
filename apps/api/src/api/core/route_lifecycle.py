@@ -18,18 +18,7 @@ class LifecycleDecision:
     sunset_at: Optional[str] = None
 
 
-_LEGACY_PREFIXES = (
-    "/health",
-    "/settings",
-    "/providers/models",
-    "/chat",
-    "/api/chat",
-    "/search",
-    "/sandbox",
-    "/account",
-    "/support",
-    "/auth",
-)
+_LEGACY_PREFIXES: tuple[str, ...] = ()
 
 _INTERNAL_PREFIXES = (
     "/docs",
@@ -49,20 +38,29 @@ _EXPERIMENTAL_PREFIXES = (
     "/stream",
 )
 
-_LEGACY_SUNSET = "2026-12-31T00:00:00Z"
+
+def _strip_version_prefix(path: str) -> str:
+    if path == "/api/v1":
+        return "/"
+    if path.startswith("/api/v1/"):
+        stripped = path[len("/api/v1") :]
+        return stripped if stripped else "/"
+    return path
 
 
 def classify_route_lifecycle(path: str) -> LifecycleDecision:
-    if path == "/" or path.startswith("/api/v1"):
+    normalized_path = _strip_version_prefix(path)
+
+    if normalized_path == "/":
         return LifecycleDecision(RouteLifecycle.STABLE)
 
-    if path.startswith(_INTERNAL_PREFIXES):
+    if normalized_path.startswith(_INTERNAL_PREFIXES):
         return LifecycleDecision(RouteLifecycle.INTERNAL)
 
-    if path.startswith(_LEGACY_PREFIXES):
-        return LifecycleDecision(RouteLifecycle.LEGACY, sunset_at=_LEGACY_SUNSET)
+    if normalized_path.startswith(_LEGACY_PREFIXES):
+        return LifecycleDecision(RouteLifecycle.LEGACY)
 
-    if path.startswith(_EXPERIMENTAL_PREFIXES):
+    if normalized_path.startswith(_EXPERIMENTAL_PREFIXES):
         return LifecycleDecision(RouteLifecycle.EXPERIMENTAL)
 
     return LifecycleDecision(RouteLifecycle.STABLE)

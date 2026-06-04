@@ -1,5 +1,6 @@
 import type { AppProps } from 'next/app';
 import { useEffect, useState, useRef } from 'react';
+import { useRouter } from 'next/router';
 import { QueryClientProvider } from '@tanstack/react-query';
 import { Analytics } from '@vercel/analytics/react';
 import { ToastProvider, useToast } from '../contexts/ToastContext';
@@ -14,12 +15,14 @@ import { initGA } from '../utils/analytics';
 import { setupGlobalErrorTracking, monitorNetworkStatus } from '../utils/error-tracking';
 import { reportWebVitalMetric } from '../utils/web-vitals';
 import { useUIStore } from '../store/uiStore';
+import { extractApiErrorMessage } from '../lib/api/shared';
 
 // Import global CSS files - Next.js only allows global CSS imports in _app.tsx
 import '../index.css';
 import 'highlight.js/styles/github-dark.css';
 import ChatFAB from '../components/ChatFAB';
 import StatusBar from '../components/StatusBar';
+import PageTransition from '../components/PageTransition';
 
 /**
  * Bridge component to sync global UI store notifications with the Toast system.
@@ -48,6 +51,7 @@ function NotificationBridge() {
 
 export default function App({ Component, pageProps }: AppProps) {
   const [queryClient] = useState(() => createQueryClient());
+  const router = useRouter();
 
   useEffect(() => {
     initGA();
@@ -61,7 +65,10 @@ export default function App({ Component, pageProps }: AppProps) {
         useUIStore.getState().addNotification({
           type: 'error',
           title: 'Action failed',
-          message: error?.response?.data?.message || error?.message || 'Request failed',
+          message: extractApiErrorMessage(
+            error?.response?.data,
+            error?.message || 'Request failed'
+          ),
         });
       }
     });
@@ -95,7 +102,9 @@ export default function App({ Component, pageProps }: AppProps) {
               <a href="#main-content" className="skip-link">
                 Skip to main content
               </a>
-              <Component {...pageProps} />
+              <PageTransition routeKey={router.asPath}>
+                <Component {...pageProps} />
+              </PageTransition>
               <ToastContainer />
               <ChatFAB />
               <StatusBar />

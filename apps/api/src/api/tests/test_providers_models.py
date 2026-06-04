@@ -9,6 +9,7 @@ from fastapi.responses import JSONResponse
 from fastapi.testclient import TestClient
 
 from api.core.contracts import ErrorEnvelope
+from api.core.error_types import ErrorType
 from api.core.errors import DomainError
 from api.routes.providers_models import _provider_models, router
 
@@ -43,11 +44,15 @@ def test_get_provider_models_endpoint_returns_providers_and_models():
         return JSONResponse(
             status_code=exc.status_code,
             content=ErrorEnvelope(
-                error={"code": exc.code, "message": exc.message, "details": exc.details}
+                error={
+                    "code": exc.code,
+                    "type": ErrorType.BUSINESS_LOGIC,
+                    "message": exc.message,
+                    "details": exc.details,
+                }
             ).model_dump(exclude_none=True),
         )
 
-    app.include_router(router)
     app.include_router(router, prefix="/api/v1")
     client = TestClient(app)
 
@@ -77,7 +82,7 @@ def test_get_provider_models_endpoint_returns_providers_and_models():
         new_callable=AsyncMock,
         return_value=inventory,
     ):
-        response = client.get("/providers/models")
+        response = client.get("/api/v1/providers/models")
 
     assert response.status_code == 200
     data = response.json()["data"]
@@ -96,11 +101,15 @@ def test_get_provider_models_endpoint_handles_errors():
         return JSONResponse(
             status_code=exc.status_code,
             content=ErrorEnvelope(
-                error={"code": exc.code, "message": exc.message, "details": exc.details}
+                error={
+                    "code": exc.code,
+                    "type": ErrorType.BUSINESS_LOGIC,
+                    "message": exc.message,
+                    "details": exc.details,
+                }
             ).model_dump(exclude_none=True),
         )
 
-    app.include_router(router)
     app.include_router(router, prefix="/api/v1")
     client = TestClient(app)
 
@@ -109,14 +118,14 @@ def test_get_provider_models_endpoint_handles_errors():
         new_callable=AsyncMock,
         side_effect=RuntimeError("inventory unavailable"),
     ):
-        response = client.get("/providers/models")
+        response = client.get("/api/v1/providers/models")
 
     assert response.status_code == 500
     assert response.json()["success"] is False
     assert response.json()["error"]["code"] == "PROVIDER_MODELS_FETCH_FAILED"
 
 
-def test_provider_models_v1_alias_matches_legacy():
+def test_provider_models_legacy_route_is_not_mounted():
     app = FastAPI()
 
     @app.exception_handler(DomainError)
@@ -124,11 +133,15 @@ def test_provider_models_v1_alias_matches_legacy():
         return JSONResponse(
             status_code=exc.status_code,
             content=ErrorEnvelope(
-                error={"code": exc.code, "message": exc.message, "details": exc.details}
+                error={
+                    "code": exc.code,
+                    "type": ErrorType.BUSINESS_LOGIC,
+                    "message": exc.message,
+                    "details": exc.details,
+                }
             ).model_dump(exclude_none=True),
         )
 
-    app.include_router(router)
     app.include_router(router, prefix="/api/v1")
     client = TestClient(app)
 
@@ -137,9 +150,7 @@ def test_provider_models_v1_alias_matches_legacy():
         new_callable=AsyncMock,
         return_value=[{"id": "openai", "models": ["gpt-4o-mini"], "configured": True}],
     ):
-        legacy = client.get("/providers/models")
         v1 = client.get("/api/v1/providers/models")
 
-    assert legacy.status_code == 200
     assert v1.status_code == 200
-    assert legacy.json()["data"]["total_providers"] == v1.json()["data"]["total_providers"]
+    assert client.get("/providers/models").status_code == 404

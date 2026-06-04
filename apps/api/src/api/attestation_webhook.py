@@ -3,13 +3,13 @@ Kubernetes Admission Controller for Hardware Attestation Validation
 Ensures only attested nodes can run sandbox workloads
 """
 
+import logging
 import os
 import time
-import logging
-from typing import Dict, Any, Optional, Callable, Awaitable
 from functools import wraps
+from typing import Any, Awaitable, Callable, Dict, Optional
 
-from fastapi import FastAPI, Request, HTTPException
+from fastapi import FastAPI, HTTPException, Request
 from fastapi.responses import JSONResponse
 from pydantic import BaseModel
 
@@ -481,7 +481,7 @@ async def get_attestation_status(request: Request):
         if sa:
             extra["service_account"] = sa
     except Exception:
-        pass
+        logger.warning("identity_verification_error", exc_info=True)
 
     audit_logger.warning(
         "attestation_status_requested_deprecated",

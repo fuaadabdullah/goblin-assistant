@@ -7,9 +7,10 @@ Checks connectivity, available models, and basic inference.
 import asyncio
 import os
 import sys
-import httpx
 import time
-from typing import Dict, Any, List
+from typing import Any, Dict, List
+
+import httpx
 
 # Add parent directory to path for imports
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
