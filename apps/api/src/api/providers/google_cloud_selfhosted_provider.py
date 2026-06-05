@@ -33,36 +33,22 @@ from .vertex_provider import VertexAIProvider
 
 logger = structlog.get_logger(__name__)
 
+
+def _backend_is_configured(bc: Dict[str, Any]) -> bool:
+    """Return True if the backend's primary env var is present and non-empty."""
+    for key in ("endpoint_env", "project_env", "api_key_env"):
+        env_name = bc.get(key)
+        if env_name and os.environ.get(str(env_name)):
+            return True
+    return False
+
+
 _ENGINE_MAP: Dict[str, Type[BaseProvider]] = {
     "ollama": OllamaProvider,
     "llamacpp": LlamaCPPProvider,
     "colab": ColabWorkerProvider,
     "vertex": VertexAIProvider,
 }
-
-
-def _backend_is_configured(bc: Dict[str, Any]) -> bool:
-    engine = bc.get("engine", "")
-    if engine == "vertex":
-        has_project = bool(
-            os.getenv("VERTEX_AI_PROJECT", "").strip()
-            or os.getenv("GCP_PROJECT_ID", "").strip()
-        )
-        has_creds = bool(
-            os.getenv("GOOGLE_APPLICATION_CREDENTIALS", "").strip()
-            or os.getenv("VERTEX_AI_SERVICE_ACCOUNT_JSON", "").strip()
-            or os.getenv("GCP_SERVICE_ACCOUNT_KEY", "").strip()
-        )
-        return has_project and has_creds
-    if engine == "colab":
-        ep_env = bc.get("endpoint_env", "")
-        ak_env = bc.get("api_key_env", "")
-        return bool(
-            ep_env and os.getenv(ep_env, "").strip()
-            and ak_env and os.getenv(ak_env, "").strip()
-        )
-    ep_env = bc.get("endpoint_env", "")
-    return bool(ep_env and os.getenv(ep_env, "").strip())
 
 
 class GoogleCloudSelfhostedProvider(BaseProvider):
@@ -98,12 +84,14 @@ class GoogleCloudSelfhostedProvider(BaseProvider):
             if cls is None:
                 logger.warning("gcs_unknown_engine", engine=engine)
                 continue
-            if not _backend_is_configured(bc):
-                logger.debug("gcs_backend_skipped_unconfigured", engine=engine)
-                continue
+            
             sub_id = f"{self.provider_id}.{engine}"
             try:
                 backend = cls(sub_id, dict(bc))
+                # Rely on individual provider's knowledge of its own configuration requirements
+                if not backend.is_available():
+                    logger.debug("gcs_backend_skipped_unconfigured", engine=engine)
+                    continue
                 backends.append(backend)
                 logger.debug(
                     "gcs_backend_registered", engine=engine, sub_id=sub_id
@@ -192,24 +180,6 @@ class GoogleCloudSelfhostedProvider(BaseProvider):
         max_tokens: int = 4096,
         temperature: float = 0.7,
         prompt: str = "",
-        **kwargs: Any,
-    ) -> AsyncGenerator[Dict[str, Any], None]:
-        return self._stream_impl(
-            messages, model,
-            max_tokens=max_tokens,
-            temperature=temperature,
-            prompt=prompt,
-            **kwargs,
-        )
-
-    async def _stream_impl(
-        self,
-        messages: Optional[List[Dict[str, str]]],
-        model: Optional[str],
-        *,
-        max_tokens: int,
-        temperature: float,
-        prompt: str,
         **kwargs: Any,
     ) -> AsyncGenerator[Dict[str, Any], None]:
         if not self._backends:
