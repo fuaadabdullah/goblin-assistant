@@ -64,7 +64,7 @@ async function forwardValidate(req: NextApiRequest): Promise<ForwardResponse> {
     }
 
     const response = await fetchWithTimeout(
-      `${BACKEND_URL}/auth/validate`,
+      `${BACKEND_URL}/api/v1/auth/validate`,
       {
         method: 'POST',
         headers,

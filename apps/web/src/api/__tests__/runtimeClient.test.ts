@@ -245,6 +245,10 @@ describe('runtimeClient runtime delegation', () => {
 
     await runtimeClient.executeTaskStreaming('goblin', 'task', onChunk, onComplete);
 
+    expect(globalThis.fetch).toHaveBeenCalledWith(
+      'https://goblin-backend-dt30.onrender.com/api/v1/chat/stream',
+      expect.anything()
+    );
     expect(onChunk).toHaveBeenCalledWith(expect.objectContaining({ content: 'hello ' }));
     expect(onComplete).toHaveBeenCalledWith(expect.objectContaining({ done: true }));
   });

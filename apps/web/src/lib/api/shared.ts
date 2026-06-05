@@ -150,8 +150,8 @@ export const frontendHttp = axios.create({
 // ============================================================================
 
 export const AUTH_REQUEST_TIMEOUT_MS = 60000;
-export const V1_API_PREFIX = '/v1';
-export const V1_CHAT_PREFIX = '/v1/chat';
+export const V1_API_PREFIX = '/api/v1';
+export const V1_CHAT_PREFIX = `${V1_API_PREFIX}/chat`;
 
 type RetryableRequestConfig = AxiosRequestConfig & { _retry?: boolean };
 
@@ -170,7 +170,7 @@ export const refreshAccessToken = async (): Promise<string | null> => {
       refresh_token?: string;
       expires_in?: number;
       user?: Record<string, unknown>;
-    }>(`/auth/refresh`, {
+    }>(`${V1_API_PREFIX}/auth/refresh`, {
       refresh_token: refreshToken ?? undefined,
     });
 
@@ -303,15 +303,15 @@ export const unwrapEnvelope = <T>(payload: T | StandardApiEnvelope<T>): T => {
 // HTTP Helpers (private, used within this module)
 // ============================================================================
 
-// Matches /v1/... but not /v1/auth/... — backend auth routes legitimately live at /v1/auth/.
-const V1_PATH_PATTERN = /^\/?v1(?!\/auth)(\/|$)/i;
+// Reject the removed legacy prefix before it reaches the production backend.
+const LEGACY_V1_PATH_PATTERN = /^\/?v1(\/|$)/i;
 
 const assertNoVersionedClientPath = (path: string): void => {
   if (path.startsWith('http://') || path.startsWith('https://')) {
     return;
   }
 
-  if (V1_PATH_PATTERN.test(path.trim())) {
+  if (LEGACY_V1_PATH_PATTERN.test(path.trim())) {
     throw new Error(
       `Refusing API path "${path}". Frontend clients must use internal routes, not provider-style /v1 endpoints.`
     );
@@ -468,7 +468,7 @@ export const withTransientRetry = async <T>(
 // ============================================================================
 
 export const getCsrfToken = async (): Promise<string> => {
-  const response = await getBackend<{ csrf_token?: string }>(`/auth/csrf-token`, {
+  const response = await getBackend<{ csrf_token?: string }>(`${V1_API_PREFIX}/auth/csrf-token`, {
     timeout: AUTH_REQUEST_TIMEOUT_MS,
   });
 

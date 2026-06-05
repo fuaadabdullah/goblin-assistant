@@ -21,7 +21,7 @@ headers: {
     "style-src 'self' 'unsafe-inline'",
     "img-src 'self' data: https:",
     "font-src 'self' data:",
-    "connect-src 'self' https://goblin-backend.fly.dev https://challenges.cloudflare.com ws://localhost:3000",
+    "connect-src 'self' https://goblin-backend-dt30.onrender.com https://challenges.cloudflare.com ws://localhost:3000",
     "frame-src https://challenges.cloudflare.com",
     "base-uri 'self'",
     "form-action 'self'"
@@ -48,7 +48,7 @@ app.use((req, res, next) => {
     "default-src 'self'; " +
     "script-src 'self' <https://challenges.cloudflare.com;> " +
     "style-src 'self' 'unsafe-inline'; " +
-    "connect-src 'self' <https://goblin-backend.fly.dev> <https://goblin-assistant-backend.onrender.com;">
+    "connect-src 'self' <https://goblin-backend-dt30.onrender.com> <https://goblin-assistant-backend.onrender.com;">
   );
 
   // Additional Security Headers
@@ -68,7 +68,7 @@ For Fly.io deployments, add security headers in `fly.toml`:
 ```toml
 [http_service]
   [http_service.headers]
-    Content-Security-Policy = "default-src 'self'; script-src 'self' https://challenges.cloudflare.com; style-src 'self' 'unsafe-inline'; connect-src 'self' https://goblin-backend.fly.dev https://goblin-assistant-backend.onrender.com;"
+    Content-Security-Policy = "default-src 'self'; script-src 'self' https://challenges.cloudflare.com; style-src 'self' 'unsafe-inline'; connect-src 'self' https://goblin-backend-dt30.onrender.com https://goblin-assistant-backend.onrender.com;"
     X-Content-Type-Options = "nosniff"
     X-Frame-Options = "DENY"
     Strict-Transport-Security = "max-age=31536000; includeSubDomains"
@@ -88,7 +88,7 @@ For Vercel deployments, add headers in `vercel.json`:
       "headers": [
         {
           "key": "Content-Security-Policy",
-          "value": "default-src 'self'; script-src 'self' <https://challenges.cloudflare.com;> style-src 'self' 'unsafe-inline'; connect-src 'self' <https://goblin-backend.fly.dev> <https://goblin-assistant-backend.onrender.com;">
+          "value": "default-src 'self'; script-src 'self' <https://challenges.cloudflare.com;> style-src 'self' 'unsafe-inline'; connect-src 'self' <https://goblin-backend-dt30.onrender.com> <https://goblin-assistant-backend.onrender.com;">
         },
         {
           "key": "X-Content-Type-Options",
@@ -117,7 +117,7 @@ For Vercel deployments, add headers in `vercel.json`:
 - **`default-src 'self'`**: Only allow resources from the same origin
 - **`script-src 'self' <https://challenges.cloudflare.com`**:> Allow scripts from self and Cloudflare Turnstile
 - **`style-src 'self' 'unsafe-inline'`**: Allow styles from self and inline styles (required for some UI libraries)
-- **`connect-src 'self' <https://goblin-backend.fly.dev`**:> Allow API connections to backend
+- **`connect-src 'self' <https://goblin-backend-dt30.onrender.com`**:> Allow API connections to backend
 - **`frame-src <https://challenges.cloudflare.com`**:> Allow Turnstile widget iframe
 - **`img-src 'self' data: https:`**: Allow images from self, data URIs, and HTTPS sources
 - **`font-src 'self' data:`**: Allow fonts from self and data URIs

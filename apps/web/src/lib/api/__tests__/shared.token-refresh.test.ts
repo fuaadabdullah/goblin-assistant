@@ -3,9 +3,9 @@
  *
  * The backendHttp axios instance has a response interceptor that:
  * 1. Catches 401 responses
- * 2. Calls /auth/refresh once (deduped with a lock)
+ * 2. Calls /api/v1/auth/refresh once (deduped with a lock)
  * 3. Retries the original request with the new token
- * 4. Falls through on /auth/refresh 401 (no infinite loop)
+ * 4. Falls through on /api/v1/auth/refresh 401 (no infinite loop)
  */
 
 // Must be hoisted before any imports so shared.ts picks up the mocks
@@ -46,7 +46,7 @@ afterEach(() => {
 
 describe('refreshAccessToken', () => {
   it('returns new access token and persists session on success', async () => {
-    mock.onPost('/auth/refresh').reply(200, {
+    mock.onPost('/api/v1/auth/refresh').reply(200, {
       access_token: 'new-jwt',
       refresh_token: 'new-refresh',
       expires_in: 3600,
@@ -62,7 +62,7 @@ describe('refreshAccessToken', () => {
   });
 
   it('returns null and clears session when refresh endpoint returns 401', async () => {
-    mock.onPost('/auth/refresh').reply(401, { detail: 'refresh token expired' });
+    mock.onPost('/api/v1/auth/refresh').reply(401, { detail: 'refresh token expired' });
 
     const token = await refreshAccessToken();
 
@@ -71,7 +71,7 @@ describe('refreshAccessToken', () => {
   });
 
   it('returns null when response body has no access_token', async () => {
-    mock.onPost('/auth/refresh').reply(200, { access_token: null });
+    mock.onPost('/api/v1/auth/refresh').reply(200, { access_token: null });
 
     const token = await refreshAccessToken();
 
@@ -79,7 +79,7 @@ describe('refreshAccessToken', () => {
   });
 
   it('returns null and clears session on network error', async () => {
-    mock.onPost('/auth/refresh').networkError();
+    mock.onPost('/api/v1/auth/refresh').networkError();
 
     const token = await refreshAccessToken();
 
@@ -92,7 +92,7 @@ describe('refreshAccessToken', () => {
 
 describe('backendHttp 401 interceptor', () => {
   it('retries original request after successful token refresh', async () => {
-    mock.onPost('/auth/refresh').reply(200, {
+    mock.onPost('/api/v1/auth/refresh').reply(200, {
       access_token: 'refreshed-jwt',
       expires_in: 3600,
     });
@@ -108,30 +108,30 @@ describe('backendHttp 401 interceptor', () => {
     expect(response.data).toEqual({ data: 'secret' });
   });
 
-  it('does NOT retry /auth/refresh on 401 (prevents infinite loop)', async () => {
-    mock.onPost('/auth/refresh').reply(401, { detail: 'Refresh token expired' });
+  it('does NOT retry /api/v1/auth/refresh on 401 (prevents infinite loop)', async () => {
+    mock.onPost('/api/v1/auth/refresh').reply(401, { detail: 'Refresh token expired' });
 
-    await expect(backendHttp.post('/auth/refresh', {})).rejects.toMatchObject({
+    await expect(backendHttp.post('/api/v1/auth/refresh', {})).rejects.toMatchObject({
       response: { status: 401 },
     });
-    expect(mock.history.post.filter((r) => r.url === '/auth/refresh')).toHaveLength(1);
+    expect(mock.history.post.filter((r) => r.url === '/api/v1/auth/refresh')).toHaveLength(1);
   });
 
   it('does NOT retry a request a second time (_retry flag)', async () => {
-    mock.onPost('/auth/refresh').reply(200, { access_token: 'new-jwt', expires_in: 3600 });
+    mock.onPost('/api/v1/auth/refresh').reply(200, { access_token: 'new-jwt', expires_in: 3600 });
     mock.onGet('/api/protected').reply(401, { detail: 'Unauthorized' });
 
     await expect(backendHttp.get('/api/protected')).rejects.toMatchObject({
       response: { status: 401 },
     });
     // Refresh attempted once
-    expect(mock.history.post.filter((r) => r.url === '/auth/refresh')).toHaveLength(1);
+    expect(mock.history.post.filter((r) => r.url === '/api/v1/auth/refresh')).toHaveLength(1);
     // Endpoint hit twice: original + one retry
     expect(mock.history.get.filter((r) => r.url === '/api/protected')).toHaveLength(2);
   });
 
   it('propagates error when refresh returns no token', async () => {
-    mock.onPost('/auth/refresh').reply(200, { access_token: null });
+    mock.onPost('/api/v1/auth/refresh').reply(200, { access_token: null });
     mock.onGet('/api/protected').reply(401, { detail: 'Unauthorized' });
 
     await expect(backendHttp.get('/api/protected')).rejects.toMatchObject({
@@ -145,12 +145,12 @@ describe('backendHttp 401 interceptor', () => {
     await expect(backendHttp.get('/api/data')).rejects.toMatchObject({
       response: { status: 500 },
     });
-    expect(mock.history.post.filter((r) => r.url === '/auth/refresh')).toHaveLength(0);
+    expect(mock.history.post.filter((r) => r.url === '/api/v1/auth/refresh')).toHaveLength(0);
   });
 
-  it('deduplicates concurrent refresh calls (only one /auth/refresh request)', async () => {
+  it('deduplicates concurrent refresh calls (only one /api/v1/auth/refresh request)', async () => {
     let refreshCount = 0;
-    mock.onPost('/auth/refresh').reply(() => {
+    mock.onPost('/api/v1/auth/refresh').reply(() => {
       refreshCount++;
       return [200, { access_token: `token-${refreshCount}`, expires_in: 3600 }];
     });

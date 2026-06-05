@@ -83,8 +83,6 @@ async function forwardToBackendModels(): Promise<ForwardModelsResult> {
     };
   };
 
-
-
   const mapRoutingProvidersFallback = (raw: unknown): Record<string, unknown> => {
     const providerNames = Array.isArray(raw)
       ? raw.filter((item): item is string => typeof item === 'string' && item.trim().length > 0)
@@ -106,12 +104,12 @@ async function forwardToBackendModels(): Promise<ForwardModelsResult> {
   };
 
   try {
-    const primary = await requestBackend('/v1/providers/models');
+    const primary = await requestBackend('/api/v1/providers/models');
     if (primary.status !== 404) {
       return primary;
     }
 
-    const routingProviders = await requestBackend('/v1/routing/providers');
+    const routingProviders = await requestBackend('/api/v1/routing/providers');
     if (routingProviders.status >= 200 && routingProviders.status < 300) {
       return {
         status: 200,

@@ -88,14 +88,14 @@ fly status -a goblin-backend
 
 **Results:**
 - ✅ App: `goblin-backend` (deployed 2h ago)
-- ✅ Hostname: `goblin-backend.fly.dev`
+- ✅ Hostname: `goblin-backend-dt30.onrender.com`
 - ✅ Machines: 2 instances running
 - ✅ Health checks: 1 total, 1 passing (both machines)
 - ✅ Region: IAD (US East)
 
 **Health Endpoint:**
 ```bash
-curl https://goblin-backend.fly.dev/health
+curl https://goblin-backend-dt30.onrender.com/health
 ```
 Response shows:
 - ✅ API: healthy
@@ -117,8 +117,8 @@ Response shows:
 - **Health Check**: http://localhost:8004/health
 
 ### Production
-- **Backend API**: https://goblin-backend.fly.dev
-- **Health Check**: https://goblin-backend.fly.dev/health
+- **Backend API**: https://goblin-backend-dt30.onrender.com
+- **Health Check**: https://goblin-backend-dt30.onrender.com/health
 - **Fly.io Dashboard**: https://fly.io/apps/goblin-backend
 
 ### GCP LLM Servers
@@ -193,7 +193,7 @@ fly secrets set \
 curl http://localhost:8004/health
 
 # Production
-curl https://goblin-backend.fly.dev/health
+curl https://goblin-backend-dt30.onrender.com/health
 ```
 
 ### Test Provider Integration
@@ -210,7 +210,7 @@ curl -X POST http://localhost:8004/api/chat \
   -d '{"messages":[{"role":"user","content":"Hello"}],"provider":"llamacpp_gcp"}'
 
 # Production
-curl -X POST https://goblin-backend.fly.dev/api/chat \
+curl -X POST https://goblin-backend-dt30.onrender.com/api/chat \
   -H "Content-Type: application/json" \
   -d '{"messages":[{"role":"user","content":"Hello"}],"provider":"llamacpp_gcp"}'
 ```
@@ -249,7 +249,7 @@ curl -X POST https://goblin-backend.fly.dev/api/chat \
 | **Ollama GCP** | ✅ OPERATIONAL | 34.60.255.199:11434 |
 | **Local Backend** | ✅ RUNNING | Port 8004 |
 | **Local Frontend** | ✅ RUNNING | Port 3000 |
-| **Production Backend** | ✅ DEPLOYED | goblin-backend.fly.dev |
+| **Production Backend** | ✅ DEPLOYED | goblin-backend-dt30.onrender.com |
 | **Configuration** | ✅ VERIFIED | All files updated |
 | **Tests** | ✅ PASSING | All provider tests pass |
 

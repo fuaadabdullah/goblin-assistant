@@ -44,8 +44,8 @@ Provider (Groq/OpenAI/Anthropic/etc.)
 ### Environment Variables (.env.local)
 ```bash
 NEXT_PUBLIC_API_BASE_URL=http://localhost:8004
-NEXT_PUBLIC_BACKEND_URL=https://goblin-backend.fly.dev
-NEXT_PUBLIC_FASTAPI_URL=https://goblin-backend.fly.dev
+NEXT_PUBLIC_BACKEND_URL=https://goblin-backend-dt30.onrender.com
+NEXT_PUBLIC_FASTAPI_URL=https://goblin-backend-dt30.onrender.com
 ```
 
 ## Running the Application
@@ -194,8 +194,8 @@ For production deployment, see:
 
 ### Production URLs
 - **Frontend**: https://goblin-assistant.vercel.app
-- **Backend**: https://goblin-backend.fly.dev
-- **Health Check**: https://goblin-backend.fly.dev/health
+- **Backend**: https://goblin-backend-dt30.onrender.com
+- **Health Check**: https://goblin-backend-dt30.onrender.com/health
 
 ## Support
 

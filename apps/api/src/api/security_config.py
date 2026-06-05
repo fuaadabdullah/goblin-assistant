@@ -17,7 +17,7 @@ DEFAULT_LOCAL_ORIGINS = [
 
 CANONICAL_PUBLIC_ORIGINS = [
     "https://goblin-assistant.vercel.app",
-    "https://goblin-backend.fly.dev",
+    "https://goblin-backend-dt30.onrender.com",
 ]
 
 PRODUCTION_ALLOWED_HEADERS = [

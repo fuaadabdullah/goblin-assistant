@@ -133,6 +133,49 @@ class TestAuthenticationMiddleware:
 
         assert response.status_code == 200
 
+    @patch.dict(
+        os.environ,
+        {
+            "ENVIRONMENT": "production",
+            "LOCAL_LLM_API_KEY": "machine-key",
+        },
+    )
+    def test_auth_middleware_defers_chat_routes_to_jwt_dependencies(self):
+        """User-authenticated chat routes are not treated as machine API-key routes."""
+        app = FastAPI()
+
+        @app.get("/api/v1/chat/conversations")
+        async def conversations():
+            return {"message": "JWT dependency owns authentication"}
+
+        app.add_middleware(AuthenticationMiddleware)
+        client = TestClient(app)
+
+        response = client.get(
+            "/api/v1/chat/conversations",
+            headers={"Authorization": "Bearer user-jwt"},
+        )
+
+        assert response.status_code == 200
+
+    @patch.dict(os.environ, {"LOCAL_LLM_API_KEY": "machine-key"})
+    def test_auth_middleware_keeps_chat_debug_route_machine_key_protected(self):
+        app = FastAPI()
+
+        @app.get("/api/v1/chat/debug/context-assembly")
+        async def debug_context():
+            return {"message": "protected"}
+
+        app.add_middleware(AuthenticationMiddleware)
+        client = TestClient(app)
+
+        response = client.get(
+            "/api/v1/chat/debug/context-assembly",
+            headers={"Authorization": "Bearer user-jwt"},
+        )
+
+        assert response.status_code == 401
+
     def test_auth_middleware_excludes_docs_endpoints(self):
         """Test that documentation endpoints are excluded"""
         app = _build_test_app()

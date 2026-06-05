@@ -1,4 +1,4 @@
-export const DEFAULT_BACKEND_ORIGIN = 'https://goblin-backend.fly.dev';
+export const DEFAULT_BACKEND_ORIGIN = 'https://goblin-backend-dt30.onrender.com';
 
 const cleanUrl = (value?: string): string => (value || '').trim().replace(/\/+$/, '');
 

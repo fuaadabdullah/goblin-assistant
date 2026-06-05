@@ -83,7 +83,7 @@ describe('/api/models thin proxy', () => {
     jest.restoreAllMocks();
   });
 
-  it('proxies to backend /providers/models with internal key', async () => {
+  it('proxies to backend /api/v1/providers/models with internal key', async () => {
     process.env.GOBLIN_BACKEND_URL = 'https://backend.example';
     process.env.INTERNAL_PROXY_API_KEY = 'proxy-key';
 
@@ -126,7 +126,7 @@ describe('/api/models thin proxy', () => {
     await handler(req, res);
 
     expect(fetchMock).toHaveBeenCalledTimes(1);
-    expect(fetchMock.mock.calls[0][0]).toBe('https://backend.example/providers/models');
+    expect(fetchMock.mock.calls[0][0]).toBe('https://backend.example/api/v1/providers/models');
 
     const init = fetchMock.mock.calls[0][1] as RequestInit;
     expect(init.method).toBe('GET');
@@ -228,7 +228,7 @@ describe('/api/models thin proxy', () => {
     expect(res.body).toEqual({ error: 'Backend unreachable' });
   });
 
-  it('falls back to /ops/providers/status when /providers/models is 404', async () => {
+  it('falls back to /api/v1/routing/providers when /api/v1/providers/models is 404', async () => {
     process.env.GOBLIN_BACKEND_URL = 'https://backend.example';
 
     const fetchMock = jest
@@ -242,20 +242,7 @@ describe('/api/models thin proxy', () => {
       .mockResolvedValueOnce(
         createFetchResponse({
           status: 200,
-          body: {
-            providers: {
-              openai: {
-                status: 'healthy',
-                error: null,
-                models: ['gpt-4', 'gpt-3.5-turbo'],
-              },
-              local: {
-                status: 'unhealthy',
-                error: 'Missing API key',
-                models: ['llama3'],
-              },
-            },
-          },
+          body: ['openai', 'local'],
         })
       );
 
@@ -268,52 +255,30 @@ describe('/api/models thin proxy', () => {
     await handler(req, res);
 
     expect(fetchMock).toHaveBeenCalledTimes(2);
-    expect(fetchMock.mock.calls[0][0]).toBe('https://backend.example/providers/models');
-    expect(fetchMock.mock.calls[1][0]).toBe('https://backend.example/ops/providers/status');
+    expect(fetchMock.mock.calls[0][0]).toBe('https://backend.example/api/v1/providers/models');
+    expect(fetchMock.mock.calls[1][0]).toBe('https://backend.example/api/v1/routing/providers');
 
     expect(res.statusCode).toBe(200);
     expect(res.body).toEqual({
-      models: [
-        {
-          name: 'gpt-4',
-          provider: 'openai',
-          health: 'healthy',
-          is_selectable: true,
-          health_reason: null,
-        },
-        {
-          name: 'gpt-3.5-turbo',
-          provider: 'openai',
-          health: 'healthy',
-          is_selectable: true,
-          health_reason: null,
-        },
-        {
-          name: 'llama3',
-          provider: 'local',
-          health: 'unhealthy',
-          is_selectable: false,
-          health_reason: 'Missing API key',
-        },
-      ],
+      models: [],
       providers: [
         {
           id: 'openai',
-          health: 'healthy',
+          health: 'unknown',
           configured: true,
           is_selectable: true,
           health_reason: null,
         },
         {
           id: 'local',
-          health: 'unhealthy',
+          health: 'unknown',
           configured: true,
-          is_selectable: false,
-          health_reason: 'Missing API key',
+          is_selectable: true,
+          health_reason: null,
         },
       ],
-      source: 'ops_provider_status_fallback',
-      total_models: 3,
+      source: 'routing_providers_fallback',
+      total_models: 0,
       total_providers: 2,
     });
   });

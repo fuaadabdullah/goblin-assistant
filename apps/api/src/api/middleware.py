@@ -28,6 +28,15 @@ structlog.configure(
 
 logger = structlog.get_logger()
 
+JWT_AUTH_ROUTE_PREFIXES = [
+    "/api/v1/chat/contextual-chat",
+    "/api/v1/chat/conversations",
+    "/api/v1/chat/estimate-tokens",
+    "/api/v1/chat/files",
+    "/api/v1/chat/stream",
+    "/api/v1/chat/upload-file",
+]
+
 
 class AuthenticationMiddleware(BaseHTTPMiddleware):
     """Middleware to authenticate API requests using API key."""
@@ -48,6 +57,7 @@ class AuthenticationMiddleware(BaseHTTPMiddleware):
             "/health",
             "/api/v1/health",
             "/api/v1/auth",
+            *JWT_AUTH_ROUTE_PREFIXES,
         ]
 
         # Merge provided paths with defaults

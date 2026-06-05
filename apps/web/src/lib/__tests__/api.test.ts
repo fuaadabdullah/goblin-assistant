@@ -183,6 +183,12 @@ describe('apiClient', () => {
       mockHttp.post.mockResolvedValueOnce({ data: { access_token: 'tok' } });
       const result = await apiClient.login('test@example.com', 'password');
       expect(result).toEqual({ access_token: 'tok' });
+      expect(mockHttp.get).toHaveBeenCalledWith('/api/v1/auth/csrf-token', expect.anything());
+      expect(mockHttp.post).toHaveBeenCalledWith(
+        '/api/v1/auth/login',
+        expect.objectContaining({ csrf_token: 'csrf123' }),
+        expect.anything()
+      );
     });
   });
 
@@ -192,6 +198,12 @@ describe('apiClient', () => {
       mockHttp.post.mockResolvedValueOnce({ data: { access_token: 'tok' } });
       const result = await apiClient.register('test@example.com', 'password', 'turnstile-tok');
       expect(result).toEqual({ access_token: 'tok' });
+      expect(mockHttp.get).toHaveBeenCalledWith('/api/v1/auth/csrf-token', expect.anything());
+      expect(mockHttp.post).toHaveBeenCalledWith(
+        '/api/v1/auth/register',
+        expect.objectContaining({ csrf_token: 'csrf123' }),
+        expect.anything()
+      );
     });
   });
 
