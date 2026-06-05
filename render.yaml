@@ -57,6 +57,10 @@ services:
           type: keyvalue
           name: goblin-redis
           property: connectionString
+      - key: DATABASE_URL
+        fromDatabase:
+          name: goblin-postgres
+          property: connectionString
     
     # Secrets (set manually in Render dashboard)
     # These should be set as Environment Variables with "sync: false"
@@ -92,4 +96,13 @@ services:
     region: virginia
     plan: free
     maxmemoryPolicy: allkeys-lru
+    ipAllowList: []
+
+databases:
+  - name: goblin-postgres
+    databaseName: goblin_assistant
+    user: goblin_assistant
+    region: virginia
+    plan: free
+    postgresMajorVersion: "18"
     ipAllowList: []

@@ -144,8 +144,6 @@ vertex-ai                = "gcp_vm"
 "qwen-coder"                          = { provider = "siliconeflow",  model = "Qwen/Qwen2.5-Coder-7B-Instruct" }
 "deepseek-chat"                       = { provider = "deepseek",      model = "deepseek-chat" }
 "gemini-flash"                        = { provider = "gemini",        model = "gemini-2.0-flash" }
-"qwen-3b"                             = { provider = "gcp_vm",       model = "qwen2.5:3b" }
-"qwen-local"                          = { provider = "gcp_vm",        model = "qwen2.5:3b" }
 # GCP vLLM model shortcuts (big models — gcp_vllm cluster)
 "qwen3"                               = { provider = "gcp_vllm",     model = "qwen3-32b" }
 "qwen3-32b"                           = { provider = "gcp_vllm",     model = "qwen3-32b" }
@@ -334,6 +332,7 @@ name                    = "Groq"
 endpoint                = "https://api.groq.com/openai/v1"
 endpoint_env            = "GROQ_ENDPOINT"
 invoke_path             = "/chat/completions"
+health_path             = "/models"
 api_key_env             = "GROQ_API_KEY"
 default_model           = "llama-3.1-8b-instant"
 models                  = ["llama-3.1-8b-instant", "llama-3.3-70b-versatile", "mixtral-8x7b-32768"]
@@ -500,9 +499,9 @@ is_active               = true
 # ---------------------------------------------------------------------------
 [providers.replicate]
 name                    = "Replicate"
-endpoint                = "https://openai-compatible.replicate.com/v1"
+endpoint                = "https://api.replicate.com/v1"
 endpoint_env            = "REPLICATE_ENDPOINT"
-invoke_path             = "/chat/completions"
+invoke_path             = "/predictions"
 api_key_env             = "REPLICATE_API_KEY"
 default_model           = "meta/llama-4-scout-instruct-17b-16e"
 models                  = [
@@ -523,8 +522,8 @@ supports_cot            = true
 cot_suppression_prompt  = "Be concise."
 tier                    = "cloud"
 display_name            = "Replicate"
-is_active               = true
-hidden                  = false
+is_active               = false
+hidden                  = true
 
 # ---------------------------------------------------------------------------
 # Hugging Face
@@ -557,6 +556,7 @@ name                    = "Cohere"
 endpoint                = "https://api.cohere.com/compatibility/v1"
 endpoint_env            = "COHERE_ENDPOINT"
 invoke_path             = "/chat/completions"
+health_path             = "/models"
 api_key_env             = "COHERE_API_KEY"
 default_model           = "command-r-08-2024"
 models                  = ["command-r-08-2024", "command-r-plus-08-2024", "command-a-03-2025"]
@@ -655,8 +655,9 @@ models                  = [
 supports_cot            = true
 cot_suppression_prompt  = "Be concise."
 display_name            = "GCP Self-Hosted"
-is_active               = true
+is_active               = false
 selectable_requires_env = true
+hidden                  = true
 
 [[providers.gcp_vm.backends]]
 engine        = "colab"

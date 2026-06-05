@@ -79,6 +79,29 @@ rate_limit_per_min = 60
     assert provider.rate_limit_per_min == 60
 
 
+def test_dispatcher_config_loader_excludes_inactive_providers(tmp_path: Path) -> None:
+    config_path = tmp_path / "providers.toml"
+    config_path.write_text(
+        """
+[providers.active]
+endpoint = "https://active.example.com"
+
+[providers.inactive]
+endpoint = "https://inactive.example.com"
+is_active = false
+""".strip(),
+        encoding="utf-8",
+    )
+
+    provider_toml = ProviderToml.load(config_path)
+    loaded = dispatcher_module._load_toml_providers(
+        provider_toml,
+        logger=MagicMock(),
+    )
+
+    assert set(loaded) == {"active"}
+
+
 def test_validate_model_alias_targets_accepts_valid_aliases(tmp_path: Path) -> None:
     config_path = tmp_path / "providers.toml"
     config_path.write_text(

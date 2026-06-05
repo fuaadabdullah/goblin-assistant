@@ -60,6 +60,8 @@ def load_toml_providers(
 
     result: Dict[str, Dict[str, Any]] = {}
     for provider_id, provider_cfg in provider_toml.providers.items():
+        if not provider_cfg.is_active:
+            continue
         try:
             runtime_cfg = ProviderRuntimeConfig.from_source(
                 provider_id,
