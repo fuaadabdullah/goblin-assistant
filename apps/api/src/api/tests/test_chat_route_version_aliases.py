@@ -70,6 +70,7 @@ def test_mount_versioned_primary_routes_includes_public_v1_routes() -> None:
     write_time = _mk_router("/write-time", "/metrics")
     stream = _mk_router("/stream", "")
     ops = _mk_router("/ops", "/aggregated")
+    admin = _mk_router("/admin", "/providers")
     secrets = _mk_router("/secrets", "/health")
 
     mount_versioned_primary_routes(
@@ -92,6 +93,7 @@ def test_mount_versioned_primary_routes_includes_public_v1_routes() -> None:
         write_time_router=write_time,
         stream_router=stream,
         ops_router=ops,
+        admin_router=admin,
         secrets_router=secrets,
     )
 
@@ -114,6 +116,7 @@ def test_mount_versioned_primary_routes_includes_public_v1_routes() -> None:
     assert "/api/v1/write-time/metrics" in paths
     assert "/api/v1/stream" in paths
     assert "/api/v1/ops/aggregated" in paths
+    assert "/api/v1/admin/providers" in paths
     assert "/api/v1/secrets/health" in paths
     assert not any(path.startswith("/api/v1/agent") for path in paths)
     assert "/chat/conversations" not in paths
