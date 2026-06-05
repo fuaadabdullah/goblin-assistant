@@ -196,6 +196,8 @@ async def init_db():
         from .models import Base
 
         async with engine.begin() as conn:
+            if is_postgres:
+                await conn.execute(text("CREATE EXTENSION IF NOT EXISTS vector"))
             # Create tables if they don't exist
             await conn.run_sync(Base.metadata.create_all)
         return True

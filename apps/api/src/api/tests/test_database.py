@@ -1,3 +1,4 @@
+from types import SimpleNamespace
 from unittest.mock import AsyncMock
 
 import pytest
@@ -57,3 +58,30 @@ def test_boolean_server_defaults_compile_for_postgres():
 
     assert "is_active BOOLEAN DEFAULT true NOT NULL" in users_ddl
     assert "is_revoked BOOLEAN DEFAULT false NOT NULL" in sessions_ddl
+
+
+@pytest.mark.asyncio
+async def test_init_db_enables_vector_extension_before_creating_postgres_tables(
+    monkeypatch,
+):
+    calls = []
+
+    class FakeConnection:
+        async def execute(self, statement):
+            calls.append(str(statement))
+
+        async def run_sync(self, _operation):
+            calls.append("create_all")
+
+    class FakeBegin:
+        async def __aenter__(self):
+            return FakeConnection()
+
+        async def __aexit__(self, *_args):
+            return None
+
+    monkeypatch.setattr(database, "engine", SimpleNamespace(begin=FakeBegin))
+    monkeypatch.setattr(database, "is_postgres", True)
+
+    assert await database.init_db() is True
+    assert calls == ["CREATE EXTENSION IF NOT EXISTS vector", "create_all"]
