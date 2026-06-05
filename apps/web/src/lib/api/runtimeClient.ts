@@ -90,7 +90,7 @@ const runtimeClientImpl: RuntimeClient = {
       headers.Authorization = `Bearer ${token}`;
     }
 
-    const response = await fetch(`${env.apiBaseUrl}/api/v1/chat/stream`, {
+    const response = await fetch(`${env.apiBaseUrl}/v1/chat/stream`, {
       method: 'POST',
       headers,
       body: JSON.stringify({

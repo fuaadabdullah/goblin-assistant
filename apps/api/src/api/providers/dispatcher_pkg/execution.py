@@ -5,6 +5,7 @@ from typing import Any, AsyncGenerator, Dict, List, Optional
 
 from ..base import BaseProvider, ProviderErrorCategory, ProviderResult, classify_provider_error
 from ..metrics import record_dispatch
+from ..quota_service import quota_service
 
 
 def provider_error_category(
@@ -16,7 +17,8 @@ def provider_error_category(
     if isinstance(value, ProviderErrorCategory):
         return value
     try:
-        return ProviderErrorCategory(str(value))
+        normalized = str(value).strip().lower().replace("_", "-")
+        return ProviderErrorCategory(normalized)
     except Exception:
         return classify_provider_error(fallback_error) if fallback_error else None
 
@@ -42,6 +44,9 @@ async def stream_wrap(
 
     started_at = asyncio.get_running_loop().time()
     try:
+        injected = await dispatcher._maybe_inject_test_failure(provider_id, model)
+        if injected is not None:
+            return injected
         gen = provider.stream(messages, model, **kwargs)
         first = None
         async for chunk in gen:
@@ -57,6 +62,7 @@ async def stream_wrap(
         latency = (asyncio.get_running_loop().time() - started_at) * 1000
         provider.record_success()
         registry.record_success(provider_id, latency_ms=latency, cost_usd=0.0)
+        dispatcher.note_provider_result(provider_id, ok=True, latency_ms=latency)
         record_dispatch(
             provider_id=provider_id,
             model=model,
@@ -78,8 +84,9 @@ async def stream_wrap(
     except Exception as exc:
         safe_error = dispatcher._sanitize_error(exc)
         error_category = classify_provider_error(exc).value
-        provider.record_failure(safe_error)
+        provider.record_failure(safe_error, category=error_category)
         registry.record_failure(provider_id)
+        dispatcher.note_provider_result(provider_id, ok=False, error=safe_error)
         record_dispatch(
             provider_id=provider_id,
             model=model,
@@ -143,9 +150,9 @@ async def dispatch_request(
             current_provider = dispatcher._ensure_provider(provider_id)
             if current_provider is None:
                 continue
-            if (
-                current_provider.is_available()
-                and registry.get(provider_id).success_rate >= dispatcher._routing_min_success_rate
+            canary = dispatcher._is_canary_attempt(provider_id, resolved_model)
+            if current_provider.should_attempt(canary=canary) and (
+                registry.get(provider_id).success_rate >= dispatcher._routing_min_success_rate
             ):
                 available.append(provider_id)
         ordered = available or configured_candidates
@@ -191,8 +198,31 @@ async def dispatch_request(
 
         model_name = resolved_model or current_provider.default_model
         log = logger.bind(provider=provider_id, model=model_name)
-        log.info("dispatch_attempt")
+        if not current_provider.should_attempt(
+            canary=dispatcher._is_canary_attempt(provider_id, model_name),
+        ):
+            last_error = "provider circuit open"
+            last_category = ProviderErrorCategory.SERVER_ERROR
+            log.info(
+                "dispatch_circuit_skipped",
+                circuit_state=current_provider.circuit_state,
+            )
+            continue
         kwargs = dispatcher._build_invoke_kwargs(payload)
+        reservation = await quota_service.reserve(
+            provider_id,
+            model_name,
+            messages=messages,
+            prompt=prompt,
+            max_tokens=int(payload.get("max_tokens", 0) or 0) or None,
+        )
+        if reservation is None:
+            last_error = "quota exhausted"
+            last_category = ProviderErrorCategory.RATE_LIMIT
+            log.info("dispatch_quota_skipped", reason=quota_service.last_skip_reason)
+            continue
+
+        log.info("dispatch_attempt")
 
         try:
             if stream:
@@ -208,35 +238,59 @@ async def dispatch_request(
                     timeout=timeout_ms / 1000,
                 )
                 if result.ok:
+                    await quota_service.commit(
+                        reservation,
+                        actual_input_tokens=reservation.estimated_input_tokens,
+                        actual_output_tokens=reservation.estimated_output_tokens,
+                    )
                     return {
                         "ok": True,
                         "stream": result.raw.get("stream_gen"),
                         "provider": provider_id,
                         "model": model_name,
                     }
+                await quota_service.release(reservation)
                 last_error = dispatcher._sanitize_error(result.error or last_error)
                 last_category = dispatcher._provider_error_category(
                     result.error_category,
                     last_error,
                 )
+                if last_category == ProviderErrorCategory.RATE_LIMIT:
+                    await quota_service.mark_rate_limited(provider_id, model_name)
                 continue
 
             result = await asyncio.wait_for(
-                current_provider.invoke(
+                dispatcher._invoke_with_test_mode(
+                    provider_id,
+                    current_provider,
                     messages,
                     model_name,
-                    stream=False,
                     prompt=prompt,
                     **kwargs,
                 ),
                 timeout=timeout_ms / 1000,
             )
             if result.ok:
+                usage = result.usage or {}
+                await quota_service.commit(
+                    reservation,
+                    actual_input_tokens=int(
+                        usage.get("prompt_tokens") or usage.get("input_tokens") or 0
+                    ),
+                    actual_output_tokens=int(
+                        usage.get("completion_tokens") or usage.get("output_tokens") or 0
+                    ),
+                )
                 current_provider.record_success()
                 registry.record_success(
                     provider_id,
                     latency_ms=float(result.latency_ms),
                     cost_usd=float(result.cost_usd or 0.0),
+                )
+                dispatcher.note_provider_result(
+                    provider_id,
+                    ok=True,
+                    latency_ms=float(result.latency_ms),
                 )
                 record_dispatch(
                     provider_id=provider_id,
@@ -250,13 +304,17 @@ async def dispatch_request(
                 )
                 return result.to_dict()
 
+            await quota_service.release(reservation)
             last_error = dispatcher._sanitize_error(result.error or last_error)
             last_category = dispatcher._provider_error_category(
                 result.error_category,
                 last_error,
             )
-            current_provider.record_failure(last_error)
+            current_provider.record_failure(last_error, category=last_category)
             registry.record_failure(provider_id)
+            dispatcher.note_provider_result(provider_id, ok=False, error=last_error)
+            if last_category == ProviderErrorCategory.RATE_LIMIT:
+                await quota_service.mark_rate_limited(provider_id, model_name)
             record_dispatch(
                 provider_id=provider_id,
                 model=model_name,
@@ -270,10 +328,12 @@ async def dispatch_request(
                 error_category=result.error_category,
             )
         except asyncio.TimeoutError:
+            await quota_service.release(reservation)
             last_error = f"timeout after {timeout_ms}ms"
             last_category = ProviderErrorCategory.TIMEOUT
-            current_provider.record_failure(last_error)
+            current_provider.record_failure(last_error, category=last_category)
             registry.record_failure(provider_id)
+            dispatcher.note_provider_result(provider_id, ok=False, error=last_error)
             record_dispatch(
                 provider_id=provider_id,
                 model=model_name,
@@ -288,10 +348,12 @@ async def dispatch_request(
                 latency_ms=timeout_ms,
             )
         except Exception as exc:
+            await quota_service.release(reservation)
             last_error = dispatcher._sanitize_error(exc)
             last_category = classify_provider_error(exc)
-            current_provider.record_failure(last_error)
+            current_provider.record_failure(last_error, category=last_category)
             registry.record_failure(provider_id)
+            dispatcher.note_provider_result(provider_id, ok=False, error=last_error)
             record_dispatch(
                 provider_id=provider_id,
                 model=model_name,
@@ -299,6 +361,8 @@ async def dispatch_request(
                 ok=False,
                 error_category=last_category.value,
             )
+            if last_category == ProviderErrorCategory.RATE_LIMIT:
+                await quota_service.mark_rate_limited(provider_id, model_name)
             log.warning(
                 "dispatch_exception",
                 error=last_error,

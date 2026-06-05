@@ -51,6 +51,9 @@ class _EmbeddingServiceStub:
     async def embed_text(self, _text: str):
         return []
 
+    def get_dedup_stats(self):
+        return {"duplicates_prevented": 0, "hash_cache_size": 0}
+
 
 class _AsyncEmbeddingWorkerStub:
     def __init__(self):
@@ -70,6 +73,7 @@ if "api.services.embedding_service" not in sys.modules:
     _mock_embedding.EmbeddingService = _EmbeddingServiceStub
     _mock_embedding.AsyncEmbeddingWorker = _AsyncEmbeddingWorkerStub
     _mock_embedding.embedding_worker = _AsyncEmbeddingWorkerStub()
+    _mock_embedding.embedding_service = _EmbeddingServiceStub()
     sys.modules["api.services.providers"] = _mock_providers
     sys.modules["api.services.embedding_service"] = _mock_embedding
 

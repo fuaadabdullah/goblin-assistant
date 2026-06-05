@@ -3,8 +3,9 @@ from typing import Any, Dict
 
 from fastapi import APIRouter, HTTPException, Request
 
+from ..ops.circuit_breaker import CircuitBreaker
 from ..ops.security import require_ops_reset_access
-from .shared import CircuitBreaker, circuit_breakers
+from .shared import circuit_breakers
 
 router = APIRouter()
 

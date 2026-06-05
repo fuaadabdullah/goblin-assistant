@@ -52,7 +52,6 @@ queue = rq.Queue("sandbox-jobs", connection=r)
 
 # Rate limiter for sandbox operations
 sandbox_rate_limiter = RateLimiter(
-    redis_url=REDIS_URL,
     requests_per_minute=int(os.getenv("SANDBOX_RATE_LIMIT_PER_MINUTE", "10")),
     requests_per_hour=int(os.getenv("SANDBOX_RATE_LIMIT_PER_HOUR", "100")),
 )

@@ -262,7 +262,7 @@ export const chatClient = {
         headers['Authorization'] = `Bearer ${token}`;
       }
 
-      const streamUrl = `${apiBaseUrl}/api/v1/chat/stream`;
+      const streamUrl = `${apiBaseUrl}/v1/chat/stream`;
       let buffer = '';
       let accumulatedContent = '';
       let totalTokens = 0;

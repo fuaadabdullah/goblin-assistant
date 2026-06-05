@@ -52,6 +52,37 @@ def test_simple_chat_returns_provider_result_text():
     assert data["model"] == "gpt-4o-mini"
 
 
+def test_simple_chat_returns_error_payload_for_provider_failure_and_exception():
+    client = _client()
+
+    with patch(
+        "api.api_router.invoke_provider",
+        new_callable=AsyncMock,
+        return_value={"ok": False, "error": "provider down"},
+    ):
+        failed = client.post(
+            "/api/chat",
+            json={"messages": [{"role": "user", "content": "Hi"}]},
+        )
+
+    with patch(
+        "api.api_router.invoke_provider",
+        new_callable=AsyncMock,
+        side_effect=RuntimeError("boom"),
+    ):
+        errored = client.post(
+            "/api/chat",
+            json={"messages": [{"role": "user", "content": "Hi"}]},
+        )
+
+    assert failed.status_code == 200
+    assert failed.json()["ok"] is False
+    assert failed.json()["error"] == "provider down"
+    assert errored.status_code == 200
+    assert errored.json()["ok"] is False
+    assert "boom" in errored.json()["error"]
+
+
 def test_simple_chat_rejects_oversized_message():
     client = _client()
     max_len = api_router.InputSanitizer.MAX_MESSAGE_LENGTH
@@ -102,6 +133,33 @@ def test_generate_uses_prompt_and_returns_openai_style_response():
     assert data["choices"][0]["message"]["content"] == "prompt reply"
 
 
+def test_generate_handles_oversized_prompt_provider_error_and_exception():
+    client = _client()
+    max_len = api_router.InputSanitizer.MAX_MESSAGE_LENGTH
+
+    oversized = client.post("/api/generate", json={"prompt": "x" * (max_len + 1)})
+    assert oversized.status_code == 413
+
+    with patch(
+        "api.api_router.invoke_provider",
+        new_callable=AsyncMock,
+        return_value={"ok": False, "error": "nope"},
+    ):
+        provider_error = client.post("/api/generate", json={"prompt": "hi"})
+
+    with patch(
+        "api.api_router.invoke_provider",
+        new_callable=AsyncMock,
+        side_effect=RuntimeError("explode"),
+    ):
+        exception_response = client.post("/api/generate", json={"prompt": "hi"})
+
+    assert provider_error.status_code == 200
+    assert provider_error.json()["error"] == "nope"
+    assert exception_response.status_code == 200
+    assert exception_response.json()["error"] == "explode"
+
+
 def test_route_task_returns_task_identifier():
     client = _client()
 
@@ -119,6 +177,46 @@ def test_route_task_returns_task_identifier():
     assert response.json()["ok"] is True
     assert response.json()["message"] == "Task routed successfully"
     assert response.json()["task_id"]
+
+
+def test_route_task_failure_and_exception_paths():
+    client = _client()
+    fake_store = MagicMock()
+    fake_store.save_task = AsyncMock()
+    fake_store.update_task_status = AsyncMock()
+
+    with (
+        patch("api.api_router.get_task_store", new_callable=AsyncMock, return_value=fake_store),
+        patch(
+            "api.api_router.route_task_runtime",
+            new_callable=AsyncMock,
+            return_value={"ok": False, "error": "routing failed", "providers_tried": ["openai"]},
+        ),
+    ):
+        failed = client.post(
+            "/api/route_task",
+            json={"task_type": "chat", "payload": {"message": "hi"}},
+        )
+
+    assert failed.status_code == 200
+    assert failed.json()["ok"] is False
+    assert failed.json()["providers_tried"] == ["openai"]
+
+    with (
+        patch("api.api_router.get_task_store", new_callable=AsyncMock, return_value=fake_store),
+        patch(
+            "api.api_router.route_task_runtime",
+            new_callable=AsyncMock,
+            side_effect=RuntimeError("kaboom"),
+        ),
+    ):
+        errored = client.post(
+            "/api/route_task",
+            json={"task_type": "chat", "payload": {"message": "hi"}},
+        )
+
+    assert errored.status_code == 500
+    assert "Routing failed: kaboom" in errored.json()["detail"]
 
 
 def test_start_poll_and_cancel_stream_task_flow():
@@ -173,6 +271,32 @@ def test_start_poll_and_cancel_stream_task_flow():
         cancel = client.post(f"/api/route_task_stream_cancel/{stream_id}")
         assert cancel.status_code == 200
         assert cancel.json()["status"] == "cancelled"
+
+
+def test_start_stream_task_failure_and_cancel_404():
+    client = _client()
+
+    with patch(
+        "api.api_router.get_stream_state_store",
+        side_effect=RuntimeError("store unavailable"),
+    ):
+        failed = client.post(
+            "/api/route_task_stream_start",
+            json={"goblin": "docs-writer", "task": "Write docs"},
+        )
+
+    assert failed.status_code == 500
+    assert "Failed to start stream task: store unavailable" in failed.json()["detail"]
+
+    class _MissingStore:
+        async def cancel_stream(self, stream_id: str):
+            del stream_id
+            return False
+
+    with patch("api.api_router.get_stream_state_store", return_value=_MissingStore()):
+        missing = client.post("/api/route_task_stream_cancel/missing")
+
+    assert missing.status_code == 404
 
 
 def test_poll_stream_task_404_for_missing_stream():
@@ -232,6 +356,40 @@ def test_get_goblins_and_history_limits():
     assert history.status_code == 200
     assert len(history.json()) == 1
     assert history.json()[0]["goblin"] == "docs-writer"
+
+
+def test_get_goblin_stats_and_empty_history_defaults():
+    client = _client()
+    fake_store = MagicMock()
+    fake_store.list_tasks = AsyncMock(return_value=[])
+
+    with (
+        patch("api.api_router.get_task_store", new_callable=AsyncMock, return_value=fake_store),
+        patch(
+            "api.api_router.conversation_store.list_conversations",
+            new_callable=AsyncMock,
+            return_value=[],
+        ),
+        patch(
+            "api.api_router.routing_registry.snapshot",
+            return_value={
+                "docs-writer": {
+                    "success_rate": 0.75,
+                    "total_cost_usd": 1.25,
+                    "ewma_latency_ms": 321.0,
+                    "last_used": 123.0,
+                }
+            },
+        ),
+    ):
+        stats = client.get("/api/stats/docs-writer")
+        history = client.get("/api/history/docs-writer?limit=999")
+
+    assert stats.status_code == 200
+    assert stats.json()["goblin_id"] == "docs-writer"
+    assert stats.json()["total_tasks"] == 75
+    assert history.status_code == 200
+    assert history.json() == []
 
 
 def test_get_goblins_degrades_when_health_flag_is_missing():
@@ -386,3 +544,17 @@ def test_orchestration_parse_stores_plan_and_execute_runs_background_task():
         assert len(poll_data["steps"]) == 1
         assert poll_data["steps"][0]["status"] == "completed"
         assert poll_data["total_cost"] == 0.001
+
+
+def test_orchestration_execute_and_plan_not_found_paths():
+    client = _client()
+    fake_store = MagicMock()
+    fake_store.get_task = AsyncMock(return_value=None)
+    fake_store.list_tasks = AsyncMock(return_value=[])
+
+    with patch("api.api_router.get_task_store", new_callable=AsyncMock, return_value=fake_store):
+        missing_exec = client.post("/api/orchestrate/execute", params={"plan_id": "missing"})
+        missing_plan = client.get("/api/orchestrate/plans/missing")
+
+    assert missing_exec.status_code == 404
+    assert missing_plan.status_code == 404

@@ -15,27 +15,17 @@ from .base import BaseProvider, ProviderHealth, ProviderResult
 logger = structlog.get_logger(__name__)
 
 _ENDPOINT = "https://api.openai.com/v1"
-_COST_TABLE: Dict[str, Dict[str, float]] = {
-    "gpt-4o": {"input": 0.005, "output": 0.015},
-    "gpt-4o-mini": {"input": 0.00015, "output": 0.0006},
-    "gpt-4-turbo": {"input": 0.01, "output": 0.03},
-    "o1": {"input": 0.015, "output": 0.06},
-    "o1-mini": {"input": 0.003, "output": 0.012},
-    "o3-mini": {"input": 0.0011, "output": 0.0044},
-}
 
 
 class OpenAIProvider(BaseProvider):
-    COST_INPUT_PER_1K = 0.005
-    COST_OUTPUT_PER_1K = 0.015
-
     def __init__(
         self,
         provider_id: str | Dict[str, Any],
         config: Optional[Dict[str, Any]] = None,
     ) -> None:
         super().__init__(provider_id, config)
-        self._api_key = os.getenv(self.config.get("api_key_env", "OPENAI_API_KEY"), "").strip()
+        api_key_env = self.config.get("api_key_env") or "OPENAI_API_KEY"
+        self._api_key = os.getenv(str(api_key_env), "").strip()
         self._base_url = (self.endpoint or _ENDPOINT).rstrip("/")
         self.endpoint = self._base_url
 
@@ -44,12 +34,6 @@ class OpenAIProvider(BaseProvider):
             "Authorization": f"Bearer {self._api_key}",
             "Content-Type": "application/json",
         }
-
-    def _model_cost(self, model: str) -> Dict[str, float]:
-        for key, costs in _COST_TABLE.items():
-            if key in model:
-                return costs
-        return {"input": self.COST_INPUT_PER_1K, "output": self.COST_OUTPUT_PER_1K}
 
     async def invoke(
         self,
@@ -93,10 +77,10 @@ class OpenAIProvider(BaseProvider):
 
             text = data["choices"][0]["message"].get("content") or ""
             usage = data.get("usage", {})
-            costs = self._model_cost(model_name)
-            cost = (
-                int(usage.get("prompt_tokens", 0)) * costs["input"] / 1000
-                + int(usage.get("completion_tokens", 0)) * costs["output"] / 1000
+            cost = self.estimate_cost(
+                int(usage.get("prompt_tokens", 0)),
+                int(usage.get("completion_tokens", 0)),
+                model=model_name,
             )
             self.record_success()
             return ProviderResult(

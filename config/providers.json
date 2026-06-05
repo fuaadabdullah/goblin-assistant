@@ -1,12 +1,94 @@
 {
   "version": 2,
   "default_timeout_ms": 12000,
+  "model_budgets": {
+    "gpt-4o": {
+      "requests_per_minute": 500,
+      "tokens_per_minute": 200000,
+      "concurrency": 0
+    },
+    "gpt-4o-mini": {
+      "requests_per_minute": 1000,
+      "tokens_per_minute": 400000,
+      "concurrency": 0
+    },
+    "gpt-4-turbo": {
+      "requests_per_minute": 300,
+      "tokens_per_minute": 200000,
+      "concurrency": 0
+    },
+    "claude-sonnet-4-20250514": {
+      "requests_per_minute": 300,
+      "tokens_per_minute": 200000,
+      "concurrency": 0
+    },
+    "claude-3-5-haiku-latest": {
+      "requests_per_minute": 300,
+      "tokens_per_minute": 200000,
+      "concurrency": 0
+    },
+    "gemini-2.0-flash": {
+      "requests_per_minute": 600,
+      "tokens_per_minute": 300000,
+      "concurrency": 0
+    },
+    "gemini-2.0-flash-lite": {
+      "requests_per_minute": 600,
+      "tokens_per_minute": 300000,
+      "concurrency": 0
+    },
+    "gemini-2.5-flash": {
+      "requests_per_minute": 600,
+      "tokens_per_minute": 300000,
+      "concurrency": 0
+    },
+    "deepseek-chat": {
+      "requests_per_minute": 300,
+      "tokens_per_minute": 200000,
+      "concurrency": 0
+    },
+    "deepseek-coder": {
+      "requests_per_minute": 300,
+      "tokens_per_minute": 200000,
+      "concurrency": 0
+    },
+    "llama-3.1-8b-instant": {
+      "requests_per_minute": 300,
+      "tokens_per_minute": 200000,
+      "concurrency": 0
+    },
+    "llama-3.3-70b-versatile": {
+      "requests_per_minute": 300,
+      "tokens_per_minute": 200000,
+      "concurrency": 0
+    },
+    "mixtral-8x7b-32768": {
+      "requests_per_minute": 300,
+      "tokens_per_minute": 200000,
+      "concurrency": 0
+    },
+    "qwen-turbo": {
+      "requests_per_minute": 300,
+      "tokens_per_minute": 200000,
+      "concurrency": 0
+    },
+    "qwen-plus": {
+      "requests_per_minute": 300,
+      "tokens_per_minute": 200000,
+      "concurrency": 0
+    },
+    "qwen-max": {
+      "requests_per_minute": 300,
+      "tokens_per_minute": 200000,
+      "concurrency": 0
+    }
+  },
   "providers": {
     "openai": {
       "endpoint": "https://api.openai.com/v1",
       "endpoint_env": "OPENAI_ENDPOINT",
       "api_key_env": "OPENAI_API_KEY",
-      "priority_tier": 10,
+      "priority_tier": 30,
       "capabilities": [
         "chat",
         "reasoning",
@@ -19,7 +101,56 @@
         "gpt-4o-mini",
         "gpt-4-turbo"
       ],
-      "cost_score": 0.8,
+      "cost_score": 0.75,
+      "cost_input_per1k": 0.0025,
+      "cost_output_per1k": 0.01,
+      "costs": {
+        "default": {
+          "input_per1k": 0.005,
+          "output_per1k": 0.015
+        },
+        "gpt-4o": {
+          "input_per1k": 0.005,
+          "output_per1k": 0.015
+        },
+        "gpt-4o-mini": {
+          "input_per1k": 0.00015,
+          "output_per1k": 0.0006
+        },
+        "gpt-4-turbo": {
+          "input_per1k": 0.01,
+          "output_per1k": 0.03
+        },
+        "o1": {
+          "input_per1k": 0.015,
+          "output_per1k": 0.06
+        },
+        "o1-mini": {
+          "input_per1k": 0.003,
+          "output_per1k": 0.012
+        },
+        "o3-mini": {
+          "input_per1k": 0.0011,
+          "output_per1k": 0.0044
+        }
+      },
+      "rate_limits": {
+        "default": {
+          "requests_per_minute": 60,
+          "tokens_per_minute": 200000,
+          "concurrency": 0
+        },
+        "gpt-4o": {
+          "requests_per_minute": 500,
+          "tokens_per_minute": 200000,
+          "concurrency": 0
+        },
+        "gpt-4o-mini": {
+          "requests_per_minute": 500,
+          "tokens_per_minute": 200000,
+          "concurrency": 0
+        }
+      },
       "default_timeout_ms": 10000,
       "rate_limit_per_min": 60,
       "display_name": "OpenAI",
@@ -29,7 +160,7 @@
       "endpoint": "https://api.anthropic.com",
       "endpoint_env": "ANTHROPIC_ENDPOINT",
       "api_key_env": "ANTHROPIC_API_KEY",
-      "priority_tier": 20,
+      "priority_tier": 40,
       "capabilities": [
         "chat",
         "reasoning",
@@ -39,7 +170,56 @@
         "claude-sonnet-4-20250514",
         "claude-3-5-haiku-latest"
       ],
-      "cost_score": 0.9,
+      "cost_score": 0.8,
+      "cost_input_per1k": 0.003,
+      "cost_output_per1k": 0.015,
+      "costs": {
+        "default": {
+          "input_per1k": 0.003,
+          "output_per1k": 0.015
+        },
+        "claude-3-5-sonnet": {
+          "input_per1k": 0.003,
+          "output_per1k": 0.015
+        },
+        "claude-sonnet-4-20250514": {
+          "input_per1k": 0.003,
+          "output_per1k": 0.015
+        },
+        "claude-3-5-haiku-latest": {
+          "input_per1k": 0.0008,
+          "output_per1k": 0.004
+        },
+        "claude-3-opus": {
+          "input_per1k": 0.015,
+          "output_per1k": 0.075
+        },
+        "claude-3-sonnet": {
+          "input_per1k": 0.003,
+          "output_per1k": 0.015
+        },
+        "claude-3-haiku": {
+          "input_per1k": 0.00025,
+          "output_per1k": 0.00125
+        }
+      },
+      "rate_limits": {
+        "default": {
+          "requests_per_minute": 60,
+          "tokens_per_minute": 200000,
+          "concurrency": 0
+        },
+        "claude-sonnet-4-20250514": {
+          "requests_per_minute": 300,
+          "tokens_per_minute": 200000,
+          "concurrency": 0
+        },
+        "claude-3-5-haiku-latest": {
+          "requests_per_minute": 300,
+          "tokens_per_minute": 200000,
+          "concurrency": 0
+        }
+      },
       "default_timeout_ms": 15000,
       "rate_limit_per_min": 60,
       "display_name": "Anthropic",
@@ -50,7 +230,7 @@
       "endpoint": "https://generativelanguage.googleapis.com/v1beta/openai",
       "endpoint_env": "GEMINI_ENDPOINT",
       "api_key_env": "GOOGLE_AI_API_KEY",
-      "priority_tier": 50,
+      "priority_tier": 20,
       "capabilities": [
         "chat",
         "reasoning",
@@ -61,7 +241,34 @@
         "gemini-2.0-flash",
         "gemini-2.0-flash-lite"
       ],
-      "cost_score": 0.6,
+      "cost_score": 0.05,
+      "cost_input_per1k": 7.5e-05,
+      "cost_output_per1k": 0.0003,
+      "costs": {
+        "default": {
+          "input_per1k": 7.5e-05,
+          "output_per1k": 0.0003
+        },
+        "gemini-2.0-flash": {
+          "input_per1k": 7.5e-05,
+          "output_per1k": 0.0003
+        },
+        "gemini-2.0-flash-lite": {
+          "input_per1k": 7.5e-05,
+          "output_per1k": 0.0003
+        },
+        "gemini-2.5-flash": {
+          "input_per1k": 7.5e-05,
+          "output_per1k": 0.0003
+        }
+      },
+      "rate_limits": {
+        "default": {
+          "requests_per_minute": 60,
+          "tokens_per_minute": 200000,
+          "concurrency": 0
+        }
+      },
       "default_timeout_ms": 12000,
       "rate_limit_per_min": 60,
       "display_name": "Google Gemini",
@@ -71,7 +278,7 @@
       "endpoint": "https://api.deepseek.com",
       "endpoint_env": "DEEPSEEK_ENDPOINT",
       "api_key_env": "DEEPSEEK_API_KEY",
-      "priority_tier": 40,
+      "priority_tier": 15,
       "capabilities": [
         "chat",
         "reasoning",
@@ -81,7 +288,30 @@
         "deepseek-chat",
         "deepseek-coder"
       ],
-      "cost_score": 0.3,
+      "cost_score": 0.15,
+      "cost_input_per1k": 0.00027,
+      "cost_output_per1k": 0.0011,
+      "costs": {
+        "default": {
+          "input_per1k": 0.00027,
+          "output_per1k": 0.0011
+        },
+        "deepseek-chat": {
+          "input_per1k": 0.00027,
+          "output_per1k": 0.0011
+        },
+        "deepseek-coder": {
+          "input_per1k": 0.00027,
+          "output_per1k": 0.0011
+        }
+      },
+      "rate_limits": {
+        "default": {
+          "requests_per_minute": 60,
+          "tokens_per_minute": 200000,
+          "concurrency": 0
+        }
+      },
       "default_timeout_ms": 10000,
       "rate_limit_per_min": 60,
       "display_name": "DeepSeek",
@@ -92,7 +322,7 @@
       "endpoint": "https://api.groq.com/openai/v1",
       "endpoint_env": "GROQ_ENDPOINT",
       "api_key_env": "GROQ_API_KEY",
-      "priority_tier": 30,
+      "priority_tier": 10,
       "capabilities": [
         "chat",
         "reasoning",
@@ -103,7 +333,34 @@
         "llama-3.3-70b-versatile",
         "mixtral-8x7b-32768"
       ],
-      "cost_score": 0.4,
+      "cost_score": 0.25,
+      "cost_input_per1k": 0.00059,
+      "cost_output_per1k": 0.00079,
+      "costs": {
+        "default": {
+          "input_per1k": 0.00059,
+          "output_per1k": 0.00079
+        },
+        "llama-3.1-8b-instant": {
+          "input_per1k": 0.00059,
+          "output_per1k": 0.00079
+        },
+        "llama-3.3-70b-versatile": {
+          "input_per1k": 0.00059,
+          "output_per1k": 0.00079
+        },
+        "mixtral-8x7b-32768": {
+          "input_per1k": 0.00059,
+          "output_per1k": 0.00079
+        }
+      },
+      "rate_limits": {
+        "default": {
+          "requests_per_minute": 60,
+          "tokens_per_minute": 200000,
+          "concurrency": 0
+        }
+      },
       "default_timeout_ms": 8000,
       "rate_limit_per_min": 60,
       "display_name": "Groq",
@@ -113,7 +370,7 @@
       "endpoint": "https://api.siliconflow.com",
       "endpoint_env": "SILICONEFLOW_ENDPOINT",
       "api_key_env": "SILICONEFLOW_API_KEY",
-      "priority_tier": 35,
+      "priority_tier": 25,
       "capabilities": [
         "chat",
         "reasoning",
@@ -124,7 +381,34 @@
         "Qwen/Qwen2.5-Coder-7B-Instruct",
         "deepseek-ai/DeepSeek-V2.5"
       ],
-      "cost_score": 0.3,
+      "cost_score": 0.1,
+      "cost_input_per1k": 0.00014,
+      "cost_output_per1k": 0.00014,
+      "costs": {
+        "default": {
+          "input_per1k": 0.00014,
+          "output_per1k": 0.00014
+        },
+        "Qwen/Qwen2.5-7B-Instruct": {
+          "input_per1k": 0.00014,
+          "output_per1k": 0.00014
+        },
+        "Qwen/Qwen2.5-Coder-7B-Instruct": {
+          "input_per1k": 0.00014,
+          "output_per1k": 0.00014
+        },
+        "deepseek-ai/DeepSeek-V2.5": {
+          "input_per1k": 0.00014,
+          "output_per1k": 0.00014
+        }
+      },
+      "rate_limits": {
+        "default": {
+          "requests_per_minute": 60,
+          "tokens_per_minute": 200000,
+          "concurrency": 0
+        }
+      },
       "default_timeout_ms": 10000,
       "rate_limit_per_min": 60,
       "display_name": "SiliconeFlow",
@@ -135,7 +419,7 @@
       "endpoint": "https://goblinos-resource.openai.azure.com/openai/v1",
       "endpoint_env": "AZURE_OPENAI_ENDPOINT",
       "api_key_env": "AZURE_API_KEY",
-      "priority_tier": 25,
+      "priority_tier": 35,
       "capabilities": [
         "chat",
         "reasoning",
@@ -147,31 +431,47 @@
         "gpt-4o",
         "gpt-4.1"
       ],
-      "cost_score": 0.7,
+      "cost_score": 0.6,
+      "cost_input_per1k": 0.0015,
+      "cost_output_per1k": 0.006,
+      "costs": {
+        "default": {
+          "input_per1k": 0.005,
+          "output_per1k": 0.015
+        },
+        "gpt-4o-mini": {
+          "input_per1k": 0.0015,
+          "output_per1k": 0.006
+        },
+        "gpt-4o": {
+          "input_per1k": 0.005,
+          "output_per1k": 0.015
+        },
+        "gpt-4.1": {
+          "input_per1k": 0.005,
+          "output_per1k": 0.015
+        }
+      },
+      "rate_limits": {
+        "default": {
+          "requests_per_minute": 60,
+          "tokens_per_minute": 200000,
+          "concurrency": 0
+        },
+        "gpt-4o-mini": {
+          "requests_per_minute": 500,
+          "tokens_per_minute": 200000,
+          "concurrency": 0
+        },
+        "gpt-4o": {
+          "requests_per_minute": 500,
+          "tokens_per_minute": 200000,
+          "concurrency": 0
+        }
+      },
       "default_timeout_ms": 15000,
       "rate_limit_per_min": 60,
       "display_name": "Azure OpenAI",
-      "is_active": true
-    },
-    "vertex_ai": {
-      "endpoint": "",
-      "endpoint_env": "VERTEX_AI_ENDPOINT",
-      "priority_tier": 45,
-      "capabilities": [
-        "chat",
-        "reasoning",
-        "code",
-        "image"
-      ],
-      "models": [
-        "gemini-2.5-flash",
-        "gemini-2.0-flash",
-        "gemini-2.0-flash-lite"
-      ],
-      "cost_score": 0.7,
-      "default_timeout_ms": 15000,
-      "rate_limit_per_min": 60,
-      "display_name": "Google Vertex AI",
       "is_active": true
     },
     "aliyun": {
@@ -191,7 +491,38 @@
         "qwen-long",
         "qwen2.5-7b-instruct"
       ],
-      "cost_score": 0.2,
+      "cost_score": 0.15,
+      "cost_input_per1k": 0.00014,
+      "cost_output_per1k": 0.00014,
+      "costs": {
+        "default": {
+          "input_per1k": 0.00014,
+          "output_per1k": 0.00014
+        },
+        "qwen-turbo": {
+          "input_per1k": 0.0002,
+          "output_per1k": 0.0006
+        },
+        "qwen-plus": {
+          "input_per1k": 0.0008,
+          "output_per1k": 0.002
+        },
+        "qwen-max": {
+          "input_per1k": 0.004,
+          "output_per1k": 0.012
+        },
+        "qwen2.5-7b-instruct": {
+          "input_per1k": 0.0001,
+          "output_per1k": 0.0001
+        }
+      },
+      "rate_limits": {
+        "default": {
+          "requests_per_minute": 60,
+          "tokens_per_minute": 200000,
+          "concurrency": 0
+        }
+      },
       "default_timeout_ms": 15000,
       "rate_limit_per_min": 60,
       "display_name": "Aliyun DashScope",
@@ -201,7 +532,7 @@
       "endpoint": "https://api.together.xyz",
       "endpoint_env": "TOGETHER_ENDPOINT",
       "api_key_env": "TOGETHER_API_KEY",
-      "priority_tier": 3,
+      "priority_tier": 45,
       "capabilities": [
         "chat",
         "reasoning",
@@ -209,20 +540,26 @@
         "image"
       ],
       "models": [
-        "llama-2-70b",
-        "codellama-34b"
+        "meta-llama/Meta-Llama-3.1-8B-Instruct-Turbo",
+        "meta-llama/Meta-Llama-3.3-70B-Instruct-Turbo",
+        "mistralai/Mixtral-8x7B-Instruct-v0.1"
       ],
-      "cost_score": 0.5,
+      "cost_score": 0.3,
+      "cost_input_per1k": 0.00018,
+      "cost_output_per1k": 0.00018,
+      "costs": {},
+      "rate_limits": {},
       "default_timeout_ms": 10000,
       "rate_limit_per_min": 60,
       "display_name": "Together AI",
-      "is_active": true
+      "is_active": true,
+      "invoke_path": "/v1/chat/completions"
     },
     "replicate": {
       "endpoint": "https://api.replicate.com",
       "endpoint_env": "REPLICATE_ENDPOINT",
       "api_key_env": "REPLICATE_API_KEY",
-      "priority_tier": 3,
+      "priority_tier": 999,
       "capabilities": [
         "chat",
         "reasoning",
@@ -234,26 +571,35 @@
         "codellama-34b"
       ],
       "cost_score": 0.6,
+      "cost_input_per1k": 0.0,
+      "cost_output_per1k": 0.0,
+      "costs": {},
+      "rate_limits": {},
       "default_timeout_ms": 20000,
       "rate_limit_per_min": 30,
       "display_name": "Replicate",
       "is_active": false
     },
     "huggingface": {
-      "endpoint": "https://api-inference.huggingface.co",
+      "endpoint": "https://router.huggingface.co",
       "endpoint_env": "HUGGINGFACE_ENDPOINT",
       "api_key_env": "HUGGINGFACE_API_KEY",
-      "priority_tier": 4,
+      "priority_tier": 55,
       "capabilities": [
         "chat",
         "reasoning",
         "code"
       ],
       "models": [
-        "microsoft/DialoGPT-medium",
-        "facebook/blenderbot-400M-distill"
+        "Qwen/Qwen2.5-7B-Instruct",
+        "meta-llama/Llama-3.1-8B-Instruct",
+        "mistralai/Mistral-7B-Instruct-v0.3"
       ],
-      "cost_score": 0.2,
+      "cost_score": 0.15,
+      "cost_input_per1k": 0.0,
+      "cost_output_per1k": 0.0,
+      "costs": {},
+      "rate_limits": {},
       "default_timeout_ms": 15000,
       "rate_limit_per_min": 30,
       "display_name": "Hugging Face",
@@ -261,10 +607,10 @@
       "invoke_path": "/v1/chat/completions"
     },
     "cohere": {
-      "endpoint": "https://api.cohere.ai",
+      "endpoint": "https://api.cohere.com/compatibility/v1",
       "endpoint_env": "COHERE_ENDPOINT",
       "api_key_env": "COHERE_API_KEY",
-      "priority_tier": 3,
+      "priority_tier": 50,
       "capabilities": [
         "chat",
         "reasoning",
@@ -272,50 +618,18 @@
         "embedding"
       ],
       "models": [
-        "command",
-        "base"
+        "command-r-08-2024",
+        "command-r-plus-08-2024",
+        "command-a-03-2025"
       ],
-      "cost_score": 0.7,
+      "cost_score": 0.4,
+      "cost_input_per1k": 0.0005,
+      "cost_output_per1k": 0.0015,
+      "costs": {},
+      "rate_limits": {},
       "default_timeout_ms": 10000,
       "rate_limit_per_min": 30,
       "display_name": "Cohere",
-      "is_active": false
-    },
-    "ollama_gcp": {
-      "endpoint": "http://34.60.255.199:11434",
-      "endpoint_env": "OLLAMA_GCP_ENDPOINT",
-      "priority_tier": 70,
-      "capabilities": [
-        "chat",
-        "reasoning",
-        "code"
-      ],
-      "models": [
-        "qwen2.5:3b",
-        "llama3.2:1b"
-      ],
-      "cost_score": 0.1,
-      "default_timeout_ms": 60000,
-      "rate_limit_per_min": 120,
-      "display_name": "Ollama (GCP)",
-      "is_active": true
-    },
-    "llamacpp_gcp": {
-      "endpoint": "http://34.132.226.143:8000",
-      "endpoint_env": "LLAMACPP_GCP_ENDPOINT",
-      "priority_tier": 75,
-      "capabilities": [
-        "chat",
-        "reasoning",
-        "code"
-      ],
-      "models": [
-        "qwen2.5-3b-instruct-q4_k_m"
-      ],
-      "cost_score": 0.05,
-      "default_timeout_ms": 60000,
-      "rate_limit_per_min": 120,
-      "display_name": "Llama.cpp (GCP)",
       "is_active": true
     },
     "ollama_local": {
@@ -331,31 +645,70 @@
         "qwen2.5:3b"
       ],
       "cost_score": 0.0,
+      "cost_input_per1k": 0.0,
+      "cost_output_per1k": 0.0,
+      "costs": {},
+      "rate_limits": {},
       "default_timeout_ms": 60000,
       "rate_limit_per_min": 120,
       "display_name": "Ollama Local",
       "is_active": true
     },
-    "colab_worker": {
+    "google_cloud": {
       "endpoint": "",
-      "endpoint_env": "COLAB_WORKER_ENDPOINT",
-      "api_key_env": "COLAB_WORKER_API_KEY",
-      "priority_tier": 85,
+      "endpoint_env": "GOOGLE_CLOUD_VLLM_ENDPOINT",
+      "api_key_env": "GOOGLE_CLOUD_VLLM_API_KEY",
+      "priority_tier": 65,
+      "capabilities": [
+        "chat",
+        "reasoning",
+        "code",
+        "embedding"
+      ],
+      "models": [
+        "qwen3-32b",
+        "gemma3-27b",
+        "deepseek-r1-32b",
+        "bge-m3",
+        "bge-reranker-v2-m3"
+      ],
+      "cost_score": 0.05,
+      "cost_input_per1k": 0.0,
+      "cost_output_per1k": 0.0,
+      "costs": {},
+      "rate_limits": {},
+      "default_timeout_ms": 60000,
+      "rate_limit_per_min": 120,
+      "display_name": "Google Cloud (vLLM)",
+      "is_active": true
+    },
+    "google_cloud_selfhosted": {
+      "endpoint": "",
+      "priority_tier": 70,
       "capabilities": [
         "chat",
         "reasoning",
         "code"
       ],
       "models": [
+        "qwen2.5-3b-instruct-q4_k_m",
+        "qwen2.5:3b",
+        "llama3.2:1b",
         "gemma-3-12b",
-        "qwen3-14b"
+        "qwen3-14b",
+        "gemini-2.5-flash",
+        "gemini-2.0-flash",
+        "gemini-2.0-flash-lite"
       ],
-      "cost_score": 0.0,
+      "cost_score": 0.05,
+      "cost_input_per1k": 0.0,
+      "cost_output_per1k": 0.0,
+      "costs": {},
+      "rate_limits": {},
       "default_timeout_ms": 60000,
       "rate_limit_per_min": 120,
-      "display_name": "Colab Worker",
-      "is_active": true,
-      "invoke_path": "/chat"
+      "display_name": "GCP Self-Hosted",
+      "is_active": true
     },
     "mock": {
       "endpoint": "mock://localhost",
@@ -373,6 +726,10 @@
         "mock-phi"
       ],
       "cost_score": 0.0,
+      "cost_input_per1k": 0.0,
+      "cost_output_per1k": 0.0,
+      "costs": {},
+      "rate_limits": {},
       "default_timeout_ms": 1000,
       "rate_limit_per_min": 9999,
       "display_name": "Mock Provider",

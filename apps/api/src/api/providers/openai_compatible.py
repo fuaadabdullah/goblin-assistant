@@ -27,11 +27,9 @@ class OpenAICompatibleProvider(BaseProvider):
         config: Optional[Dict[str, Any]] = None,
     ) -> None:
         super().__init__(provider_id, config)
-        api_key_env = self.config.get("api_key_env", "")
+        api_key_env = str(self.config.get("api_key_env") or "")
         self._api_key = os.getenv(api_key_env, "").strip()
         self._base_url = self.endpoint
-        self.COST_INPUT_PER_1K = float(self.config.get("cost_input_per1k", 0.0))
-        self.COST_OUTPUT_PER_1K = float(self.config.get("cost_output_per1k", 0.0))
         self._health_path = str(self.config.get("health_path", "/v1/models"))
 
     def _request_path(self) -> str:
@@ -145,6 +143,7 @@ class OpenAICompatibleProvider(BaseProvider):
             cost = self.estimate_cost(
                 int(usage.get("prompt_tokens", 0)),
                 int(usage.get("completion_tokens", 0)),
+                model=model_name,
             )
             self.record_success()
             return ProviderResult(

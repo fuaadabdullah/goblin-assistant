@@ -150,8 +150,8 @@ export const frontendHttp = axios.create({
 // ============================================================================
 
 export const AUTH_REQUEST_TIMEOUT_MS = 60000;
-export const V1_API_PREFIX = '/api/v1';
-export const V1_CHAT_PREFIX = '/api/v1/chat';
+export const V1_API_PREFIX = '/v1';
+export const V1_CHAT_PREFIX = '/v1/chat';
 
 type RetryableRequestConfig = AxiosRequestConfig & { _retry?: boolean };
 

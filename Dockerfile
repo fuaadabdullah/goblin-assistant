@@ -39,10 +39,10 @@ COPY --from=deps /usr/local /usr/local
 COPY . /app
 
 ENV PYTHONPATH=/app/apps/api/src
-ENV PORT=8001
-EXPOSE 8001
+ENV PORT=8080
+EXPOSE 8080
 
 # Keep compatibility with current runtime assumptions.
 RUN if [ -d /app/apps/api/src/api ] && [ ! -f /app/apps/api/src/api/__init__.py ]; then touch /app/apps/api/src/api/__init__.py; fi || true
 
-CMD ["uvicorn", "api.main:app", "--host", "0.0.0.0", "--port", "8001"]
+CMD ["sh", "-c", "uvicorn api.main:app --host 0.0.0.0 --port ${PORT:-8080}"]

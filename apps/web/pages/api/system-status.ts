@@ -53,8 +53,8 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
   try {
     const [healthRes, sandboxRes] = await Promise.allSettled([
-      fetchWithTimeout(`${BACKEND_URL}/health`, 5000),
-      fetchWithTimeout(`${BACKEND_URL}/health/sandbox/status`, 5000),
+      fetchWithTimeout(`${BACKEND_URL}/v1/health`, 5000),
+      fetchWithTimeout(`${BACKEND_URL}/v1/health/sandbox/status`, 5000),
     ]);
 
     // Parse main health response

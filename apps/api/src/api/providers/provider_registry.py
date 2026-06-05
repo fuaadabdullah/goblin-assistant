@@ -12,16 +12,15 @@ from .aliyun_provider import AliyunProvider
 from .anthropic_provider import AnthropicProvider
 from .azure_provider import AzureOpenAIProvider
 from .base import BaseProvider
-from .colab_worker_provider import ColabWorkerProvider
 from .contracts import ProviderAdapter
-from .llamacpp_provider import LlamaCPPProvider
+from .google_cloud_provider import GoogleCloudProvider
+from .google_cloud_selfhosted_provider import GoogleCloudSelfhostedProvider
 from .mock_provider import MockProvider
 from .ollama_provider import OllamaProvider
 from .openai_compatible import OpenAICompatibleProvider
 from .openai_provider import OpenAIProvider
 from .provider_config_runtime import ProviderConfig, ProviderToml
 from .siliconeflow import SiliconeFlowProvider
-from .vertex_provider import VertexAIProvider
 
 ProviderFactory = Callable[[str, Dict[str, Any]], ProviderAdapter]
 
@@ -33,18 +32,23 @@ DEFAULT_PROVIDER_CLASS_MAP: Dict[str, type[BaseProvider]] = {
     "deepseek": OpenAICompatibleProvider,
     "gemini": OpenAICompatibleProvider,
     "azure_openai": AzureOpenAIProvider,
-    "vertex_ai": VertexAIProvider,
     "aliyun": AliyunProvider,
     "together": OpenAICompatibleProvider,
     "replicate": OpenAICompatibleProvider,
     "huggingface": OpenAICompatibleProvider,
     "cohere": OpenAICompatibleProvider,
-    "colab_worker": ColabWorkerProvider,
-    "ollama_gcp": OllamaProvider,
     "ollama_local": OllamaProvider,
-    "llamacpp_gcp": LlamaCPPProvider,
+    "gcp_vllm": GoogleCloudProvider,
+    "gcp_vm": GoogleCloudSelfhostedProvider,
     "mock": MockProvider,
 }
+
+
+def _gcs_any_backend_configured(backends: list) -> bool:
+    """Return True if at least one google_cloud_selfhosted backend has its
+    required env vars set."""
+    from .google_cloud_selfhosted_provider import _backend_is_configured
+    return any(_backend_is_configured(bc) for bc in backends)
 
 
 class ProviderRuntimeConfig(BaseModel):
@@ -161,10 +165,8 @@ class ProviderRuntimeConfig(BaseModel):
     def is_configured(self) -> bool:
         if self.provider_id == "mock":
             return True
-        if self.provider_id == "colab_worker":
-            return bool(self.resolved_endpoint and self.resolved_api_key)
-        if self.provider_id == "vertex_ai":
-            return bool(self.resolved_project_value and self.resolved_vertex_credentials)
+        if self.provider_id in ("gcp_vm", "google_cloud_selfhosted"):
+            return _gcs_any_backend_configured(self.raw.get("backends", []))
         if self.provider_id == "azure_openai":
             return bool(
                 self.resolved_api_key

@@ -94,4 +94,23 @@ describe('api client consumer contracts', () => {
       undefined
     );
   });
+
+  it('preserves legacy api shim methods over backend helpers', async () => {
+    backendGetMock.mockResolvedValue({ data: { ok: 'get' } });
+    backendPostMock.mockResolvedValue({ data: { ok: 'post' } });
+    backendPutMock.mockResolvedValue({ data: { ok: 'put' } });
+    backendPatchMock.mockResolvedValue({ data: { ok: 'patch' } });
+
+    const deleteMock = jest.fn().mockResolvedValue({ data: { ok: 'delete' } });
+    const libApi = await import('@/lib/api');
+    libApi.apiClient.backend.delete = deleteMock;
+
+    const { api } = await import('@/api');
+
+    await expect(api.get('/health')).resolves.toEqual({ data: { ok: 'get' } });
+    await expect(api.post('/items', { id: 1 })).resolves.toEqual({ data: { ok: 'post' } });
+    await expect(api.put('/items/1', { id: 1 })).resolves.toEqual({ data: { ok: 'put' } });
+    await expect(api.patch('/items/1', { id: 2 })).resolves.toEqual({ data: { ok: 'patch' } });
+    await expect(api.delete('/items/1')).resolves.toEqual({ data: { ok: 'delete' } });
+  });
 });

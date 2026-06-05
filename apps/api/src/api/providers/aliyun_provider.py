@@ -26,17 +26,6 @@ _BODY_PASSTHROUGH = {
     "presence_penalty",
     "frequency_penalty",
 }
-_COST_TABLE: Dict[str, Dict[str, float]] = {
-    "qwen-max": {"input": 0.004, "output": 0.012},
-    "qwen-plus": {"input": 0.0008, "output": 0.002},
-    "qwen-turbo": {"input": 0.0002, "output": 0.0006},
-    "qwen2.5-72b": {"input": 0.0009, "output": 0.0009},
-    "qwen2.5-32b": {"input": 0.00045, "output": 0.00045},
-    "qwen2.5-14b": {"input": 0.00023, "output": 0.00023},
-    "qwen2.5-7b": {"input": 0.0001, "output": 0.0001},
-}
-
-
 def _normalize_compatible_base_url(value: str) -> str:
     base_url = value.strip().rstrip("/")
     if base_url.endswith("/compatible-mode/v1"):
@@ -45,9 +34,6 @@ def _normalize_compatible_base_url(value: str) -> str:
 
 
 class AliyunProvider(BaseProvider):
-    COST_INPUT_PER_1K = 0.0008
-    COST_OUTPUT_PER_1K = 0.002
-
     def __init__(
         self,
         provider_id: str | Dict[str, Any],
@@ -68,13 +54,6 @@ class AliyunProvider(BaseProvider):
             "Authorization": f"Bearer {self._api_key}",
             "Content-Type": "application/json",
         }
-
-    def _model_cost(self, model: str) -> Dict[str, float]:
-        lowered = model.lower()
-        for key, costs in _COST_TABLE.items():
-            if key in lowered:
-                return costs
-        return {"input": self.COST_INPUT_PER_1K, "output": self.COST_OUTPUT_PER_1K}
 
     async def invoke(
         self,
@@ -140,10 +119,10 @@ class AliyunProvider(BaseProvider):
 
             text = data["choices"][0]["message"]["content"]
             usage = data.get("usage", {})
-            costs = self._model_cost(model_name)
-            cost = (
-                int(usage.get("prompt_tokens", 0)) * costs["input"] / 1000
-                + int(usage.get("completion_tokens", 0)) * costs["output"] / 1000
+            cost = self.estimate_cost(
+                int(usage.get("prompt_tokens", 0)),
+                int(usage.get("completion_tokens", 0)),
+                model=model_name,
             )
             self.record_success()
             return ProviderResult(

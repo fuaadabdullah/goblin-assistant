@@ -2,15 +2,21 @@
 
 from __future__ import annotations
 
+import atexit
 import asyncio
 import collections
 import os
+import sqlite3
 import time
 import uuid
 from dataclasses import dataclass, field
+from datetime import datetime, timezone
+from pathlib import Path
 from typing import Any, Dict, List, Optional
 
 import structlog
+
+from ..providers.pricing import resolve_model_pricing
 
 logger = structlog.get_logger()
 
@@ -36,12 +42,218 @@ class ProviderStats:
         return self.success_count / total if total > 0 else 1.0
 
 
+class RoutingRegistryStore:
+    def __init__(self, path: Optional[str] = None) -> None:
+        configured = path if path is not None else os.getenv("ROUTING_REGISTRY_DB_PATH", "")
+        default_path = Path(os.getcwd()) / "routing_registry.db"
+        self.path = Path(configured).expanduser() if configured else default_path
+        self.enabled = bool(path or configured or not os.getenv("PYTEST_CURRENT_TEST"))
+        self.last_loaded_at = 0.0
+        self.last_flushed_at = 0.0
+        self.last_error = ""
+
+    def load(self) -> Dict[str, ProviderStats]:
+        if not self.enabled:
+            return {}
+        try:
+            if not self.path.exists():
+                return {}
+            with sqlite3.connect(str(self.path)) as conn:
+                self._ensure_schema(conn)
+                rows = conn.execute(
+                    """
+                    SELECT provider_id, ewma_latency_ms, ewma_alpha, success_count,
+                           failure_count, total_cost_usd, last_used
+                    FROM provider_routing_stats
+                    """
+                ).fetchall()
+            self.last_loaded_at = time.time()
+            self.last_error = ""
+            return {
+                str(row[0]): ProviderStats(
+                    provider_id=str(row[0]),
+                    ewma_latency_ms=float(row[1]),
+                    ewma_alpha=float(row[2]),
+                    success_count=int(row[3]),
+                    failure_count=int(row[4]),
+                    total_cost_usd=float(row[5]),
+                    last_used=float(row[6]),
+                )
+                for row in rows
+            }
+        except Exception as exc:  # noqa: BLE001
+            self.last_error = str(exc)
+            logger.warning(
+                "routing_registry_load_failed",
+                path=str(self.path),
+                error=str(exc),
+            )
+            return {}
+
+    def load_hourly_spend(self) -> Dict[str, Dict[str, float]]:
+        if not self.enabled:
+            return {}
+        try:
+            if not self.path.exists():
+                return {}
+            with sqlite3.connect(str(self.path)) as conn:
+                self._ensure_schema(conn)
+                rows = conn.execute(
+                    """
+                    SELECT hour_bucket, provider_id, spend_usd
+                    FROM provider_hourly_spend
+                    """
+                ).fetchall()
+            spend_by_hour: Dict[str, Dict[str, float]] = {}
+            for hour_bucket, provider_id, spend_usd in rows:
+                bucket = spend_by_hour.setdefault(str(hour_bucket), {})
+                bucket[str(provider_id)] = float(spend_usd)
+            return spend_by_hour
+        except Exception as exc:  # noqa: BLE001
+            self.last_error = str(exc)
+            logger.warning(
+                "routing_registry_spend_load_failed",
+                path=str(self.path),
+                error=str(exc),
+            )
+            return {}
+
+    def flush(
+        self,
+        stats: Dict[str, ProviderStats],
+        hourly_spend: Dict[str, Dict[str, float]],
+    ) -> None:
+        if not self.enabled:
+            return
+        try:
+            self.path.parent.mkdir(parents=True, exist_ok=True)
+            with sqlite3.connect(str(self.path)) as conn:
+                self._ensure_schema(conn)
+                now = time.time()
+                conn.executemany(
+                    """
+                    INSERT INTO provider_routing_stats (
+                        provider_id, ewma_latency_ms, ewma_alpha, success_count,
+                        failure_count, total_cost_usd, last_used, updated_at
+                    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+                    ON CONFLICT(provider_id) DO UPDATE SET
+                        ewma_latency_ms = excluded.ewma_latency_ms,
+                        ewma_alpha = excluded.ewma_alpha,
+                        success_count = excluded.success_count,
+                        failure_count = excluded.failure_count,
+                        total_cost_usd = excluded.total_cost_usd,
+                        last_used = excluded.last_used,
+                        updated_at = excluded.updated_at
+                    """,
+                    [
+                        (
+                            item.provider_id,
+                            item.ewma_latency_ms,
+                            item.ewma_alpha,
+                            item.success_count,
+                            item.failure_count,
+                            item.total_cost_usd,
+                            item.last_used,
+                            now,
+                        )
+                        for item in stats.values()
+                    ],
+                )
+                conn.execute("DELETE FROM provider_hourly_spend")
+                conn.executemany(
+                    """
+                    INSERT INTO provider_hourly_spend (
+                        hour_bucket, provider_id, spend_usd, updated_at
+                    ) VALUES (?, ?, ?, ?)
+                    ON CONFLICT(hour_bucket, provider_id) DO UPDATE SET
+                        spend_usd = excluded.spend_usd,
+                        updated_at = excluded.updated_at
+                    """,
+                    [
+                        (hour_bucket, provider_id, spend_usd, now)
+                        for hour_bucket, provider_spend in hourly_spend.items()
+                        for provider_id, spend_usd in provider_spend.items()
+                    ],
+                )
+            self.last_flushed_at = time.time()
+            self.last_error = ""
+        except Exception as exc:  # noqa: BLE001
+            self.last_error = str(exc)
+            logger.warning(
+                "routing_registry_flush_failed",
+                path=str(self.path),
+                error=str(exc),
+            )
+
+    @staticmethod
+    def _ensure_schema(conn: sqlite3.Connection) -> None:
+        conn.execute(
+            """
+            CREATE TABLE IF NOT EXISTS provider_routing_stats (
+                provider_id TEXT PRIMARY KEY,
+                ewma_latency_ms REAL NOT NULL,
+                ewma_alpha REAL NOT NULL,
+                success_count INTEGER NOT NULL,
+                failure_count INTEGER NOT NULL,
+                total_cost_usd REAL NOT NULL,
+                last_used REAL NOT NULL,
+                updated_at REAL NOT NULL
+            )
+            """
+        )
+        conn.execute(
+            """
+            CREATE TABLE IF NOT EXISTS provider_hourly_spend (
+                hour_bucket TEXT NOT NULL,
+                provider_id TEXT NOT NULL,
+                spend_usd REAL NOT NULL,
+                updated_at REAL NOT NULL,
+                PRIMARY KEY (hour_bucket, provider_id)
+            )
+            """
+        )
+
+
 class RoutingRegistry:
     _AUDIT_MAX = 1000  # ring buffer capacity for decision audit trail
 
-    def __init__(self) -> None:
-        self._stats: Dict[str, ProviderStats] = {}
+    def __init__(self, store: Optional[RoutingRegistryStore] = None) -> None:
+        self._store = store or RoutingRegistryStore()
+        self._stats: Dict[str, ProviderStats] = self._store.load()
+        self._hourly_spend: Dict[str, Dict[str, float]] = self._store.load_hourly_spend()
         self._decision_log: collections.deque = collections.deque(maxlen=self._AUDIT_MAX)
+        self._dirty = False
+        self._dirty_since_at = 0.0
+        self._last_mutation_at = 0.0
+        self._flush_interval_seconds = self._load_flush_interval_seconds()
+        atexit.register(self.close)
+
+    def _load_flush_interval_seconds(self) -> float:
+        raw_value = os.getenv("ROUTING_REGISTRY_FLUSH_INTERVAL_SECONDS", "5").strip()
+        try:
+            return max(0.0, float(raw_value))
+        except (TypeError, ValueError):
+            return 5.0
+
+    @staticmethod
+    def _current_hour_bucket(moment: Optional[float] = None) -> str:
+        ts = moment if moment is not None else time.time()
+        return datetime.fromtimestamp(ts, tz=timezone.utc).strftime("%Y%m%d%H")
+
+    def _mark_dirty(self) -> None:
+        if not self._dirty:
+            self._dirty_since_at = time.time()
+        self._dirty = True
+        self._last_mutation_at = time.time()
+
+    def _flush_if_due(self) -> None:
+        if not self._dirty:
+            return
+        if self._flush_interval_seconds <= 0:
+            self.flush()
+            return
+        if self._dirty_since_at and (time.time() - self._dirty_since_at) >= self._flush_interval_seconds:
+            self.flush()
 
     def get(self, provider_id: str) -> ProviderStats:
         if provider_id not in self._stats:
@@ -62,7 +274,11 @@ class RoutingRegistry:
         stats.success_count += 1
         stats.update_latency(latency_ms)
         stats.total_cost_usd += cost_usd
-        stats.last_used = time.time()
+        now = time.time()
+        stats.last_used = now
+        hour_bucket = self._current_hour_bucket(now)
+        bucket = self._hourly_spend.setdefault(hour_bucket, {})
+        bucket[provider_id] = bucket.get(provider_id, 0.0) + float(cost_usd)
         if request_id is not None:
             self._decision_log.append(
                 {
@@ -73,14 +289,18 @@ class RoutingRegistry:
                     "actual_cost_usd": round(cost_usd, 8),
                     "input_tokens": input_tokens,
                     "output_tokens": output_tokens,
-                    "timestamp": time.time(),
+                    "timestamp": now,
                 }
             )
+        self._mark_dirty()
+        self._flush_if_due()
 
     def record_failure(self, provider_id: str) -> None:
         stats = self.get(provider_id)
         stats.failure_count += 1
         stats.last_used = time.time()
+        self._mark_dirty()
+        self._flush_if_due()
 
     def log_decision(
         self,
@@ -117,6 +337,66 @@ class RoutingRegistry:
                 "last_used": stats.last_used,
             }
             for provider_id, stats in self._stats.items()
+        }
+
+    def current_hour_spend(self) -> Dict[str, float]:
+        return dict(self._hourly_spend.get(self._current_hour_bucket(), {}))
+
+    def current_hour_spend_total(self) -> float:
+        return round(sum(self.current_hour_spend().values()), 6)
+
+    def hourly_spend_snapshot(self) -> Dict[str, Dict[str, float]]:
+        return {
+            hour_bucket: {provider_id: round(spend, 6) for provider_id, spend in provider_spend.items()}
+            for hour_bucket, provider_spend in self._hourly_spend.items()
+        }
+
+    def persisted_snapshot(self) -> Dict[str, Any]:
+        return {
+            "stats": {
+                provider_id: {
+                    "ewma_latency_ms": round(stats.ewma_latency_ms, 1),
+                    "success_rate": round(stats.success_rate, 3),
+                    "total_cost_usd": round(stats.total_cost_usd, 6),
+                    "last_used": stats.last_used,
+                }
+                for provider_id, stats in self._store.load().items()
+            },
+            "hourly_spend": self._store.load_hourly_spend(),
+        }
+
+    def metrics_snapshot(self) -> Dict[str, Any]:
+        return {
+            "providers": self.snapshot(),
+            "current_hour_bucket": self._current_hour_bucket(),
+            "current_hour_spend": {
+                provider_id: round(spend, 6)
+                for provider_id, spend in self.current_hour_spend().items()
+            },
+            "current_hour_spend_total": self.current_hour_spend_total(),
+        }
+
+    def flush(self) -> None:
+        self._store.flush(self._stats, self._hourly_spend)
+        if not self._store.last_error:
+            self._dirty = False
+            self._dirty_since_at = 0.0
+
+    def close(self) -> None:
+        self.flush()
+
+    def persistence_status(self) -> Dict[str, Any]:
+        return {
+            "path": str(self._store.path),
+            "last_loaded_at": self._store.last_loaded_at,
+            "last_flushed_at": self._store.last_flushed_at,
+            "last_error": self._store.last_error,
+            "dirty": self._dirty,
+            "dirty_since_at": self._dirty_since_at,
+            "last_mutation_at": self._last_mutation_at,
+            "flush_interval_seconds": self._flush_interval_seconds,
+            "current_hour_bucket": self._current_hour_bucket(),
+            "current_hour_spend_total": self.current_hour_spend_total(),
         }
 
 
@@ -271,7 +551,14 @@ def _provider_costs(provider_ids: List[str]) -> Dict[str, tuple[float, float]]:
     costs: Dict[str, tuple[float, float]] = {}
     for provider_id in provider_ids:
         provider = dispatch.get_provider(provider_id)
-        costs[provider_id] = (provider.COST_INPUT_PER_1K, provider.COST_OUTPUT_PER_1K)
+        pricing = resolve_model_pricing(
+            provider.provider_id,
+            provider.default_model or None,
+            config=provider.config,
+            default_input_per1k=provider.COST_INPUT_PER_1K,
+            default_output_per1k=provider.COST_OUTPUT_PER_1K,
+        )
+        costs[provider_id] = (pricing.input_per1k, pricing.output_per1k)
     return costs
 
 

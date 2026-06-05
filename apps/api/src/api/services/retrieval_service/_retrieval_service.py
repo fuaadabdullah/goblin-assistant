@@ -9,8 +9,9 @@ the retrieval pipeline:
   4. Assemble a context bundle (via ``_context_bundle``)
 """
 
+import time
 from datetime import datetime
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List, Optional, Tuple
 
 import structlog
 from sqlalchemy import text
@@ -92,7 +93,7 @@ class RetrievalService:
                 return []
 
             # Retrieve context using stratified priority
-            results = await self._stratified_retrieval(
+            results, tier_timings = await self._stratified_retrieval(
                 query_embedding=query_embedding,
                 query=query,
                 user_id=user_id,
@@ -100,6 +101,11 @@ class RetrievalService:
                 k=k,
                 max_age_hours=max_age_hours,
             )
+            try:
+                from ..retrieval_metrics_service import retrieval_metrics_service
+                retrieval_metrics_service.record_retrieval_timing(user_id, tier_timings)
+            except Exception:
+                pass
 
             # Log retrieval trace to observability system
             try:
@@ -155,66 +161,58 @@ class RetrievalService:
         conversation_id: Optional[str] = None,
         k: int = 5,
         max_age_hours: int = 168,
-    ) -> List[Dict[str, Any]]:
-        """
-        Retrieve context using memory stratification priority:
-        1. Long-term memory facts (highest priority)
-        2. Working memory summaries
-        3. Relevant vector-retrieved messages
-        4. Ephemeral recent messages
-        """
-        all_results = []
+    ) -> Tuple[List[Dict[str, Any]], Dict[str, float]]:
+        """Retrieve context using memory stratification priority.
 
-        # 1. Long-term memory facts (highest priority)
-        memory_facts = await retrieve_memory_facts_stratified(
-            query_embedding=query_embedding,
-            user_id=user_id,
-            k=min(k, 3),
-        )
-        all_results.extend(memory_facts)
+        Returns (results, tier_timings_ms).
+        """
+        all_results: List[Dict[str, Any]] = []
+        timings: Dict[str, float] = {}
 
-        # 2. Working memory summaries
-        summaries = await retrieve_summaries_stratified(
+        t0 = time.perf_counter()
+        all_results.extend(await retrieve_memory_facts_stratified(
+            query_embedding=query_embedding, user_id=user_id, k=min(k, 3),
+        ))
+        timings["long_term"] = (time.perf_counter() - t0) * 1000
+
+        t0 = time.perf_counter()
+        all_results.extend(await retrieve_summaries_stratified(
             query_embedding=query_embedding,
             user_id=user_id,
             conversation_id=conversation_id,
             k=min(k, 2),
-        )
-        all_results.extend(summaries)
+        ))
+        timings["summary"] = (time.perf_counter() - t0) * 1000
 
-        # 3. Document/code/research/task index items
-        index_source_types = ["document", "code", "research", "task"]
-        for stype in index_source_types:
-            index_items = await retrieve_by_source_type(
+        t0 = time.perf_counter()
+        for stype in ["document", "code", "research", "task"]:
+            all_results.extend(await retrieve_by_source_type(
                 query_embedding=query_embedding,
                 user_id=user_id,
                 source_type=stype,
                 k=min(k, 3),
-            )
-            all_results.extend(index_items)
+            ))
+        timings["index"] = (time.perf_counter() - t0) * 1000
 
-        # 4. Relevant vector-retrieved messages
-        messages = await retrieve_messages_stratified(
+        t0 = time.perf_counter()
+        all_results.extend(await retrieve_messages_stratified(
             query_embedding=query_embedding,
             user_id=user_id,
             conversation_id=conversation_id,
             k=min(k, 3),
-        )
-        all_results.extend(messages)
+        ))
+        timings["messages"] = (time.perf_counter() - t0) * 1000
 
-        # 5. Ephemeral recent messages (if we still need more)
         remaining_k = k - len(all_results)
+        t0 = time.perf_counter()
         if remaining_k > 0:
-            recent_messages = await retrieve_recent_messages(
-                user_id=user_id,
-                conversation_id=conversation_id,
-                k=remaining_k,
-            )
-            all_results.extend(recent_messages)
+            all_results.extend(await retrieve_recent_messages(
+                user_id=user_id, conversation_id=conversation_id, k=remaining_k,
+            ))
+        timings["recent"] = (time.perf_counter() - t0) * 1000
 
-        # Sort by score and return top k
         all_results.sort(key=lambda x: x.get("score", 0), reverse=True)
-        return all_results[:k]
+        return all_results[:k], timings
 
     async def retrieve_conversation_summaries(
         self,

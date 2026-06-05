@@ -86,13 +86,6 @@ def _configure_google_credentials() -> None:
         return
 
 
-_COST_TABLE: Dict[str, Dict[str, float]] = {
-    "gemini-1.5-pro": {"input": 0.00125, "output": 0.005},
-    "gemini-1.5-flash": {"input": 0.000075, "output": 0.0003},
-    "gemini-2.0-flash": {"input": 0.0001, "output": 0.0004},
-}
-
-
 def _get_access_token() -> Optional[str]:
     try:
         _configure_google_credentials()
@@ -110,9 +103,6 @@ def _get_access_token() -> Optional[str]:
 
 
 class VertexAIProvider(BaseProvider):
-    COST_INPUT_PER_1K = 0.000075
-    COST_OUTPUT_PER_1K = 0.0003
-
     def __init__(
         self,
         provider_id: str | Dict[str, Any],
@@ -142,12 +132,6 @@ class VertexAIProvider(BaseProvider):
             f"/projects/{self._project}/locations/{self._location}"
             f"/publishers/google/models/{model}:generateContent"
         )
-
-    def _model_cost(self, model: str) -> Dict[str, float]:
-        for key, costs in _COST_TABLE.items():
-            if key in model:
-                return costs
-        return {"input": self.COST_INPUT_PER_1K, "output": self.COST_OUTPUT_PER_1K}
 
     @staticmethod
     def _to_vertex_messages(
@@ -242,10 +226,10 @@ class VertexAIProvider(BaseProvider):
             except (KeyError, IndexError, TypeError):
                 pass
             usage = data.get("usageMetadata", {})
-            costs = self._model_cost(model_name)
-            cost = (
-                int(usage.get("promptTokenCount", 0)) * costs["input"] / 1000
-                + int(usage.get("candidatesTokenCount", 0)) * costs["output"] / 1000
+            cost = self.estimate_cost(
+                int(usage.get("promptTokenCount", 0)),
+                int(usage.get("candidatesTokenCount", 0)),
+                model=model_name,
             )
             self.record_success()
             return ProviderResult(

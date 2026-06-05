@@ -17,6 +17,7 @@ from enum import Enum
 from typing import Any, AsyncGenerator, Dict, List, Optional, Union
 
 from .contracts import ProviderCapabilityMatrix
+from .pricing import resolve_model_pricing
 
 
 class ProviderErrorCategory(str, Enum):
@@ -29,6 +30,14 @@ class ProviderErrorCategory(str, Enum):
     SERVER_ERROR = "server-error"  # 5xx from provider
     CONNECTION = "connection"  # DNS, network, connection refused
     UNKNOWN = "unknown"
+
+
+class ProviderCircuitState(str, Enum):
+    """Provider-local circuit breaker states used by routing."""
+
+    CLOSED = "closed"
+    SOFT_OPEN = "soft_open"
+    HARD_OPEN = "hard_open"
 
 
 def classify_provider_error(error: Union[str, Exception]) -> ProviderErrorCategory:
@@ -207,7 +216,9 @@ class BaseProvider(ABC):
         self._healthy = True
         self._last_error: Optional[str] = None
         self._failure_count = 0
+        self._transient_failure_count = 0
         self._circuit_open_until = 0.0
+        self._circuit_state = ProviderCircuitState.CLOSED
 
     @staticmethod
     def _resolve_init_args(
@@ -335,6 +346,19 @@ class BaseProvider(ABC):
         """V1 adapter surface: provider health probe."""
         return await self.health_check()
 
+    async def warmup(self) -> ProviderResult:
+        """Optional startup warmup probe."""
+        return await self.invoke(
+            messages=[{"role": "user", "content": "ping"}],
+            model=self.default_model or None,
+            max_tokens=1,
+            temperature=0.0,
+        )
+
+    def warmup_targets(self) -> list[tuple[str, "BaseProvider"]]:
+        """Return providers that should receive warmup traffic."""
+        return [(self.provider_id, self)]
+
     def capabilities(self) -> ProviderCapabilityMatrix:
         """V1 capability contract (embeddings optional by design)."""
         configured = {str(item).strip().lower() for item in self.config.get("capabilities", [])}
@@ -359,31 +383,109 @@ class BaseProvider(ABC):
         }
 
     def is_available(self) -> bool:
+        if self._circuit_state == ProviderCircuitState.HARD_OPEN:
+            return False
+        if self._circuit_state == ProviderCircuitState.SOFT_OPEN:
+            return True
         if time.time() < self._circuit_open_until:
             return False
         return self._healthy or self._failure_count < 3
+
+    def should_attempt(self, *, canary: bool = False, critical: bool = True) -> bool:
+        """Return whether routing may attempt this provider now."""
+        if self._circuit_state == ProviderCircuitState.HARD_OPEN:
+            return False
+        if self._circuit_state == ProviderCircuitState.SOFT_OPEN:
+            return bool(canary or not critical)
+        return self.is_available()
+
+    @property
+    def circuit_state(self) -> str:
+        return self._circuit_state.value
+
+    def circuit_status(self) -> Dict[str, Any]:
+        return {
+            "state": self._circuit_state.value,
+            "failure_count": self._failure_count,
+            "transient_failure_count": self._transient_failure_count,
+            "last_error": self._last_error,
+            "open_until": self._circuit_open_until,
+            "available": self.is_available(),
+        }
 
     def record_failure(
         self,
         error: str,
         backoff_seconds: float = 30.0,
+        category: Optional[Union[ProviderErrorCategory, str]] = None,
     ) -> None:
+        category_value = self._normalize_error_category(error, category)
         self._failure_count += 1
         self._last_error = error
-        if self._failure_count >= 3:
+        if category_value in {ProviderErrorCategory.AUTH, ProviderErrorCategory.RATE_LIMIT} and (
+            category_value == ProviderErrorCategory.AUTH or is_billing_error(429, error)
+        ):
+            self._healthy = False
+            self._circuit_state = ProviderCircuitState.HARD_OPEN
+            self._circuit_open_until = float("inf")
+            return
+
+        if category_value in {ProviderErrorCategory.TIMEOUT, ProviderErrorCategory.SERVER_ERROR}:
+            self._transient_failure_count += 1
+        else:
+            self._transient_failure_count = 0
+
+        if self._transient_failure_count >= 2:
+            self._circuit_state = ProviderCircuitState.SOFT_OPEN
+            self._healthy = False
+            self._circuit_open_until = time.time() + backoff_seconds
+        elif self._failure_count >= 3:
+            self._circuit_state = ProviderCircuitState.SOFT_OPEN
             self._healthy = False
             self._circuit_open_until = time.time() + backoff_seconds
 
     def record_success(self) -> None:
         self._healthy = True
         self._failure_count = 0
+        self._transient_failure_count = 0
         self._last_error = None
         self._circuit_open_until = 0.0
+        self._circuit_state = ProviderCircuitState.CLOSED
 
-    def estimate_cost(self, input_tokens: int, output_tokens: int) -> float:
+    def reset_circuit(self) -> None:
+        self.record_success()
+
+    @staticmethod
+    def _normalize_error_category(
+        error: str,
+        category: Optional[Union[ProviderErrorCategory, str]],
+    ) -> ProviderErrorCategory:
+        if isinstance(category, ProviderErrorCategory):
+            return category
+        if isinstance(category, str) and category:
+            try:
+                return ProviderErrorCategory(category.strip().lower().replace("_", "-"))
+            except ValueError:
+                pass
+        return classify_provider_error(error)
+
+    def estimate_cost(
+        self,
+        input_tokens: int,
+        output_tokens: int,
+        model: Optional[str] = None,
+    ) -> float:
+        resolved_model = model or self.default_model or None
+        pricing = resolve_model_pricing(
+            self.provider_id,
+            resolved_model,
+            config=self.config,
+            default_input_per1k=self.COST_INPUT_PER_1K,
+            default_output_per1k=self.COST_OUTPUT_PER_1K,
+        )
         return (
-            input_tokens * self.COST_INPUT_PER_1K / 1000
-            + output_tokens * self.COST_OUTPUT_PER_1K / 1000
+            input_tokens * pricing.input_per1k / 1000
+            + output_tokens * pricing.output_per1k / 1000
         )
 
     async def embed(

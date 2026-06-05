@@ -29,7 +29,7 @@ from api.config.archetypes import (
 from api.config.mode_addendums import get_addendum as _get_mode_addendum
 from api.config.system_prompt import EDUCATION_SYSTEM_ADDENDUM, system_prompt_manager
 
-from ..assistant_tools.executor import run_tool_loop
+from ..assistant_tools.executor import extract_tool_calls_contract, run_tool_loop
 from ..assistant_tools.registry import export_tools_for_provider
 from ..auth.router import User as AuthenticatedUser
 from ..auth.router import get_current_user
@@ -197,7 +197,19 @@ async def contextual_chat(
                 },
             )
 
-        if ctx_tools:
+        provider_response = await _cr.invoke_provider(
+            pid=request.provider,
+            model=request.model,
+            payload=payload,
+            timeout_ms=30000,
+            stream=False,
+        )
+        if (
+            ctx_tools
+            and isinstance(provider_response, dict)
+            and provider_response.get("ok")
+            and extract_tool_calls_contract(provider_response)
+        ):
             provider_response = await run_tool_loop(
                 messages=list(messages),
                 invoke_fn=_cr.invoke_provider,
@@ -207,14 +219,6 @@ async def contextual_chat(
                 timeout_ms=30000,
                 user_id=user_id,
                 conversation_id=conversation_id,
-            )
-        else:
-            provider_response = await _cr.invoke_provider(
-                pid=request.provider,
-                model=request.model,
-                payload=payload,
-                timeout_ms=30000,
-                stream=False,
             )
 
         if isinstance(provider_response, dict) and provider_response.get("ok"):
@@ -292,15 +296,17 @@ async def contextual_chat(
         if isinstance(provider_response, dict) and provider_response.get("visualizations"):
             visualizations = provider_response["visualizations"]
 
-        return ContextualChatResponse(
-            message_id=response_message_id,
-            response=response_content,
-            provider=used_provider,
-            model=used_model,
-            timestamp=datetime.utcnow().isoformat(),
-            context_assembly=context_assembly,
-            token_usage=token_usage,
-            visualizations=visualizations,
+        return SuccessEnvelope(
+            data=ContextualChatResponse(
+                message_id=response_message_id,
+                response=response_content,
+                provider=used_provider,
+                model=used_model,
+                timestamp=datetime.utcnow().isoformat(),
+                context_assembly=context_assembly,
+                token_usage=token_usage,
+                visualizations=visualizations,
+            )
         )
 
     except HTTPException:

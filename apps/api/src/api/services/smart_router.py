@@ -10,6 +10,7 @@ from enum import Enum
 from typing import Any, Dict, List, Optional
 
 from api.providers.dispatcher import canonical_provider_id, dispatcher
+from api.providers.pricing import resolve_model_pricing
 from api.routing.router import (
     cost_router,
     hybrid_router,
@@ -20,6 +21,24 @@ from api.routing.router import (
 )
 
 from .provider_health import health_monitor
+
+
+def _provider_pricing(provider: Any) -> ProviderCost:
+    config = getattr(provider, "config", None)
+    if isinstance(config, dict):
+        pricing = resolve_model_pricing(
+            getattr(provider, "provider_id", ""),
+            getattr(provider, "default_model", None) or None,
+            config=config,
+            default_input_per1k=float(getattr(provider, "COST_INPUT_PER_1K", 0.0) or 0.0),
+            default_output_per1k=float(getattr(provider, "COST_OUTPUT_PER_1K", 0.0) or 0.0),
+        )
+        return ProviderCost(input_cost=pricing.input_per1k, output_cost=pricing.output_per1k)
+
+    return ProviderCost(
+        input_cost=float(getattr(provider, "COST_INPUT_PER_1K", 0.0) or 0.0),
+        output_cost=float(getattr(provider, "COST_OUTPUT_PER_1K", 0.0) or 0.0),
+    )
 
 
 class TaskType(Enum):
@@ -81,7 +100,8 @@ class CostTracker:
             provider = dispatcher.get_provider(canonical_id)
         except KeyError:
             return 0.0
-        return provider.estimate_cost(estimated_tokens, estimated_tokens)
+        pricing = _provider_pricing(provider)
+        return pricing.estimate(estimated_tokens, estimated_tokens)
 
     def record_request(
         self,
@@ -90,11 +110,11 @@ class CostTracker:
         output_tokens: int,
     ) -> None:
         self._reset_if_new_hour()
-        cost = self.estimate_cost(provider_id, estimated_tokens=0)
         canonical_id = canonical_provider_id(provider_id) or provider_id
         try:
             provider = dispatcher.get_provider(canonical_id)
-            cost = provider.estimate_cost(input_tokens, output_tokens)
+            pricing = _provider_pricing(provider)
+            cost = pricing.estimate(input_tokens, output_tokens)
         except KeyError:
             cost = 0.0
         self.current_hour_spend += cost
@@ -165,8 +185,8 @@ class SmartRouter:
 
         provider_costs = {
             provider_id: (
-                dispatcher.get_provider(provider_id).COST_INPUT_PER_1K,
-                dispatcher.get_provider(provider_id).COST_OUTPUT_PER_1K,
+                _provider_pricing(dispatcher.get_provider(provider_id)).input_cost,
+                _provider_pricing(dispatcher.get_provider(provider_id)).output_cost,
             )
             for provider_id in candidates
         }

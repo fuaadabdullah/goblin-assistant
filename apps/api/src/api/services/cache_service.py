@@ -4,12 +4,12 @@ Implements TTL-based caching with Redis for different message types
 """
 
 import json
-import os
 from datetime import datetime
 from typing import Any, Dict, Optional
 
-import redis.asyncio as redis
 import structlog
+
+from ..core.redis_client import get_redis_client
 
 logger = structlog.get_logger()
 
@@ -19,30 +19,28 @@ class CacheService:
 
     def __init__(self):
         self.redis_client = None
-        self._redis_url = os.getenv("REDIS_URL", "redis://localhost:6379/0")
         self._is_connected = False
+        self._hit_count: int = 0
+        self._miss_count: int = 0
 
     async def connect(self):
-        """Initialize Redis connection"""
+        """Initialize Redis connection using the shared singleton."""
         if self._is_connected:
             return
 
         try:
-            self.redis_client = redis.from_url(self._redis_url)
-            # Test connection
-            await self.redis_client.ping()
+            self.redis_client = await get_redis_client()
             self._is_connected = True
-            logger.info("Cache service connected to Redis", url=self._redis_url)
+            logger.info("Cache service connected to Redis")
         except Exception as e:
             logger.error("Failed to connect to Redis", error=str(e))
             self._is_connected = False
 
-    async def disconnect(self):
-        """Close Redis connection"""
-        if self.redis_client:
-            await self.redis_client.close()
-            self._is_connected = False
-            logger.info("Cache service disconnected from Redis")
+    def disconnect(self):
+        """Release our reference; the singleton manages the actual connection lifecycle."""
+        self.redis_client = None
+        self._is_connected = False
+        logger.info("Cache service disconnected from Redis")
 
     async def set(self, key: str, value: Any, ttl: Optional[int] = None) -> bool:
         """
@@ -95,10 +93,12 @@ class CacheService:
         try:
             value = await self.redis_client.get(key)
             if value:
+                self._hit_count += 1
                 deserialized = json.loads(value)
                 logger.debug("Cache hit", key=key)
                 return deserialized
             else:
+                self._miss_count += 1
                 logger.debug("Cache miss", key=key)
                 return None
 
@@ -180,8 +180,7 @@ class CacheService:
             return []
 
         try:
-            keys = await self.redis_client.keys(pattern)
-            return [key.decode() for key in keys]
+            return await self.redis_client.keys(pattern)
         except Exception as e:
             logger.error("Cache keys search failed", pattern=pattern, error=str(e))
             return []
@@ -203,6 +202,21 @@ class CacheService:
         except Exception as e:
             logger.error("Cache flush failed", error=str(e))
             return False
+
+    def get_hit_rate(self) -> Dict[str, Any]:
+        """Return application-level cache hit/miss counters since process start."""
+        total = self._hit_count + self._miss_count
+        return {
+            "hits": self._hit_count,
+            "misses": self._miss_count,
+            "rate": self._hit_count / total if total > 0 else 0.0,
+            "total": total,
+        }
+
+    def reset_counters(self) -> None:
+        """Reset hit/miss counters (useful in tests)."""
+        self._hit_count = 0
+        self._miss_count = 0
 
     # TTL-based convenience methods
 

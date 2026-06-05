@@ -20,6 +20,7 @@ from .exception_handlers import register_exception_handlers
 from .health import router as health_router
 from .lifespan import lifespan
 from .observability.debug_router import router as observability_debug_router
+from .observability.metrics_router import router as retrieval_metrics_router
 from .ops_router import router as ops_router
 from .parse_router import router as parse_router
 from .raptor_router import router as raptor_router
@@ -78,6 +79,7 @@ def create_app() -> FastAPI:
         privacy_router=privacy_router,
         model_suggestion_debug_router=model_suggestion_debug_router,
         observability_debug_router=observability_debug_router,
+        retrieval_metrics_router=retrieval_metrics_router,
         sandbox_router=sandbox_router,
         providers_models_router=providers_models_router,
         account_router=account_router,

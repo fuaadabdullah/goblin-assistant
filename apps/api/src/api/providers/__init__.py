@@ -8,6 +8,14 @@ from .colab_worker_provider import ColabWorkerProvider
 from .dispatcher import ProviderDispatcher, dispatcher, invoke_provider
 from .gemini import GeminiProvider
 from .generic import GenericProvider
+from .google_cloud_provider import GoogleCloudProvider
+from .google_cloud_selfhosted_provider import GoogleCloudSelfhostedProvider
+from .model_registry import (
+    ModelBackend,
+    ModelRegistry,
+    get_model_registry,
+    invalidate_model_registry,
+)
 from .groq import GroqProvider
 from .llamacpp_provider import LlamaCPPProvider
 from .mock_provider import MockProvider
@@ -25,8 +33,13 @@ __all__ = [
     "ColabWorkerProvider",
     "GenericProvider",
     "GeminiProvider",
+    "GoogleCloudProvider",
+    "GoogleCloudSelfhostedProvider",  # backing class for gcp_vm
+
     "GroqProvider",
     "LlamaCPPProvider",
+    "ModelBackend",
+    "ModelRegistry",
     "MockProvider",
     "OllamaProvider",
     "OpenAICompatibleProvider",
@@ -37,5 +50,7 @@ __all__ = [
     "SiliconeFlowProvider",
     "VertexAIProvider",
     "dispatcher",
+    "get_model_registry",
+    "invalidate_model_registry",
     "invoke_provider",
 ]

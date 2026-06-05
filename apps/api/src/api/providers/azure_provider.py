@@ -16,9 +16,6 @@ logger = structlog.get_logger(__name__)
 
 
 class AzureOpenAIProvider(BaseProvider):
-    COST_INPUT_PER_1K = 0.005
-    COST_OUTPUT_PER_1K = 0.015
-
     def __init__(
         self,
         provider_id: str | Dict[str, Any],
@@ -112,6 +109,7 @@ class AzureOpenAIProvider(BaseProvider):
             cost = self.estimate_cost(
                 int(usage.get("prompt_tokens", 0)),
                 int(usage.get("completion_tokens", 0)),
+                model=deployment,
             )
             self.record_success()
             return ProviderResult(

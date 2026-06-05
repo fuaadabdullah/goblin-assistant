@@ -8,22 +8,20 @@ GET  /ops/colab-worker/status    — returns the current registered endpoint.
 from __future__ import annotations
 
 import os
-from datetime import datetime
-from pathlib import Path
-from typing import Any, Dict, Optional
+from typing import Any, Dict
 
 import httpx
 import structlog
 from fastapi import APIRouter, HTTPException, Request, status
 from pydantic import BaseModel, field_validator
-from sqlalchemy import select
+
+from ._colab_store import load_endpoint_from_db, save_endpoint_to_db, write_env_file
 
 logger = structlog.get_logger(__name__)
 
 router = APIRouter()
 
 _HEALTH_PROBE_TIMEOUT_S = 10
-_ENV_FILE_PATH = Path(__file__).resolve().parents[5] / ".env"
 _PROVIDER_NAME = "colab_worker"
 
 
@@ -94,78 +92,6 @@ async def _probe_health(url: str, api_key: str) -> Dict[str, Any]:
         )
 
 
-def _write_env_file(key: str, value: str) -> bool:
-    if not _ENV_FILE_PATH.exists():
-        logger.warning("env_file_not_found", path=str(_ENV_FILE_PATH))
-        return False
-    try:
-        lines = _ENV_FILE_PATH.read_text(encoding="utf-8").splitlines(keepends=True)
-        new_line = f"{key}={value}\n"
-        found = False
-        new_lines = []
-        for line in lines:
-            if line.startswith(f"{key}=") or line.startswith(f"{key} ="):
-                new_lines.append(new_line)
-                found = True
-            else:
-                new_lines.append(line)
-        if not found:
-            new_lines.append(new_line)
-        _ENV_FILE_PATH.write_text("".join(new_lines), encoding="utf-8")
-        return True
-    except OSError as exc:
-        logger.warning("env_file_write_failed", path=str(_ENV_FILE_PATH), error=str(exc))
-        return False
-
-
-async def _save_endpoint_to_db(endpoint: str) -> bool:
-    try:
-        from ..storage.database import get_db_context
-        from ..storage.models import ProviderSettingsModel
-
-        async with get_db_context() as session:
-            result = await session.execute(
-                select(ProviderSettingsModel).where(
-                    ProviderSettingsModel.provider_name == _PROVIDER_NAME
-                )
-            )
-            row = result.scalar_one_or_none()
-            if row:
-                row.endpoint = endpoint
-                row.updated_at = datetime.utcnow()
-            else:
-                session.add(
-                    ProviderSettingsModel(
-                        provider_name=_PROVIDER_NAME,
-                        endpoint=endpoint,
-                        updated_at=datetime.utcnow(),
-                    )
-                )
-        return True
-    except Exception as exc:
-        logger.warning("colab_endpoint_db_write_failed", error=str(exc))
-        return False
-
-
-async def load_colab_endpoint_from_db() -> Optional[str]:
-    """Called at startup to restore a previously registered endpoint."""
-    try:
-        from ..storage.database import get_db_context
-        from ..storage.models import ProviderSettingsModel
-
-        async with get_db_context() as session:
-            result = await session.execute(
-                select(ProviderSettingsModel).where(
-                    ProviderSettingsModel.provider_name == _PROVIDER_NAME
-                )
-            )
-            row = result.scalar_one_or_none()
-            return row.endpoint if row else None
-    except Exception as exc:
-        logger.warning("colab_endpoint_db_read_failed", error=str(exc))
-        return None
-
-
 @router.post("/colab-worker/register")
 async def register_colab_worker(
     request: Request,
@@ -186,11 +112,11 @@ async def register_colab_worker(
     except KeyError as exc:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(exc))
 
-    db_saved = await _save_endpoint_to_db(endpoint)
+    db_saved = await save_endpoint_to_db(endpoint)
 
     env_written = False
     if os.getenv("ENVIRONMENT", "development").lower() == "development":
-        env_written = _write_env_file("COLAB_WORKER_ENDPOINT", endpoint)
+        env_written = write_env_file("COLAB_WORKER_ENDPOINT", endpoint)
 
     probe_result: str = "skipped"
     try:
@@ -222,7 +148,7 @@ async def colab_worker_status(request: Request) -> Dict[str, Any]:
     from ..providers.dispatcher import dispatcher
 
     in_memory = dispatcher._configs.get(_PROVIDER_NAME, {}).get("endpoint") or None
-    in_db = await load_colab_endpoint_from_db()
+    in_db = await load_endpoint_from_db()
 
     return {
         "provider": _PROVIDER_NAME,

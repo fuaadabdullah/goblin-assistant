@@ -3,9 +3,11 @@ Embedding service for generating and managing semantic embeddings
 """
 
 import asyncio
+import hashlib
 import importlib
 import logging
 import os
+from collections import OrderedDict
 from typing import Any, Dict, List, Optional
 
 from sqlalchemy import text
@@ -96,6 +98,11 @@ class EmbeddingService:
 
     _warned_unavailable = False
 
+    # Class-level dedup tracking shared across all instances (process-wide).
+    _HASH_CACHE_MAX = 10_000
+    _content_hash_cache: OrderedDict = OrderedDict()
+    _duplicate_prevented_count: int = 0
+
     def __init__(self):
         self.provider_name = os.getenv("EMBEDDING_PROVIDER", "openai").lower()
         self.client = _resolve_embedding_provider()
@@ -128,6 +135,30 @@ class EmbeddingService:
             "provider": self.provider_name,
             "model": self.model,
         }
+
+    def get_dedup_stats(self) -> Dict[str, Any]:
+        """Return process-wide embedding deduplication statistics."""
+        return {
+            "duplicates_prevented": EmbeddingService._duplicate_prevented_count,
+            "hash_cache_size": len(EmbeddingService._content_hash_cache),
+        }
+
+    @classmethod
+    def _check_and_register_hash(cls, content: str) -> bool:
+        """Return True (duplicate — skip embed) if content was already embedded.
+
+        Adds the hash on first encounter. Evicts the oldest entry when cache is full.
+        """
+        content_hash = hashlib.sha256(content.encode("utf-8", errors="replace")).hexdigest()
+        if content_hash in cls._content_hash_cache:
+            cls._duplicate_prevented_count += 1
+            logger.debug("embedding_dedup_hit", hash_prefix=content_hash[:8])
+            return True
+        # Register; evict oldest if at capacity
+        if len(cls._content_hash_cache) >= cls._HASH_CACHE_MAX:
+            cls._content_hash_cache.popitem(last=False)
+        cls._content_hash_cache[content_hash] = True
+        return False
 
     async def embed_text(self, text: str) -> List[float]:
         """Generate embedding for a single text"""
@@ -222,6 +253,21 @@ class EmbeddingService:
     ) -> bool:
         """Store embedding for a message"""
         try:
+            # Skip if already stored for this message_id (idempotency).
+            async with get_db_context() as session:
+                existing = await session.execute(
+                    text(
+                        "SELECT id FROM embeddings WHERE source_id = :sid AND user_id = :uid LIMIT 1"
+                    ),
+                    {"sid": message_id, "uid": user_id},
+                )
+                if existing.fetchone():
+                    return True
+
+            # Skip if identical content was embedded recently (process-level dedup).
+            if self._check_and_register_hash(content):
+                return True
+
             embedding = await self.embed_text(content)
             if not embedding:
                 return False
@@ -544,5 +590,6 @@ class AsyncEmbeddingWorker:
         )
 
 
-# Global embedding worker instance
+# Module-level singletons
+embedding_service = EmbeddingService()
 embedding_worker = AsyncEmbeddingWorker()

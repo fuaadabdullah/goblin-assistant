@@ -57,7 +57,6 @@ def install_runtime_middlewares(app: FastAPI, *, environment: str) -> None:
             requests_per_minute = int(os.getenv("RATE_LIMIT_PER_MINUTE", "100"))
             requests_per_hour = int(os.getenv("RATE_LIMIT_PER_HOUR", "1000"))
             rate_limiter = RateLimiter(
-                redis_url=os.getenv("REDIS_URL", "redis://localhost:6379"),
                 requests_per_minute=requests_per_minute,
                 requests_per_hour=requests_per_hour,
             )

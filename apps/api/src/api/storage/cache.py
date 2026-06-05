@@ -15,9 +15,9 @@ from fastapi import Request
 from ..config.redis_config import (
     CACHE_KEYS,
     get_cache_ttl,
-    get_redis_client,
     redis_config,
 )
+from ..core.redis_client import get_redis_client
 
 logger = logging.getLogger(__name__)
 

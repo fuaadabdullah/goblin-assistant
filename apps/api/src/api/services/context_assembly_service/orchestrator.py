@@ -7,6 +7,7 @@ logic lives in the individual layer modules.
 """
 
 import os
+import time
 from datetime import datetime
 from typing import Any, Dict, List, Optional
 
@@ -109,6 +110,7 @@ class ContextAssemblyService:
             "correlation_id": correlation_id,
         }
         truncation_events: List[str] = []
+        t_start = time.perf_counter()
 
         try:
             # 1. System + Guardrails
@@ -127,6 +129,8 @@ class ContextAssemblyService:
                     remaining_tokens -= long_term_layer.tokens
                     assembly_log["layers"].append("long_term")
                     assembly_log["token_usage"]["long_term"] = long_term_layer.tokens
+                else:
+                    self._record_layer_skip(user_id, "long_term_memory", remaining_tokens, budget.long_term_tokens)
 
             # 3. Working Memory
             if remaining_tokens > 0 and conversation_id:
@@ -138,6 +142,8 @@ class ContextAssemblyService:
                     remaining_tokens -= working_memory_layer.tokens
                     assembly_log["layers"].append("working_memory")
                     assembly_log["token_usage"]["working_memory"] = working_memory_layer.tokens
+                else:
+                    self._record_layer_skip(user_id, "working_memory", remaining_tokens, budget.working_memory_tokens)
 
             # 4. Semantic Retrieval
             if remaining_tokens > 0:
@@ -156,12 +162,16 @@ class ContextAssemblyService:
                     assembly_log["token_usage"]["semantic_retrieval"] = semantic_layer.tokens
                     if semantic_layer.metadata and semantic_layer.metadata.get("hard_stop_applied"):
                         truncation_events.append("semantic_retrieval_truncated")
+                        self._push_failure(user_id, "truncation_triggered", "semantic_retrieval")
+                else:
+                    self._record_layer_skip(user_id, "semantic_retrieval", remaining_tokens, budget.semantic_retrieval_tokens)
 
                 if hasattr(self.retrieval_service, "get_degraded_status"):
                     degraded_status = self.retrieval_service.get_degraded_status()
                     if degraded_status.get("degraded_mode"):
                         assembly_log["degraded_mode"] = True
                         assembly_log["degraded_reason"] = degraded_status.get("reason")
+                        self._push_failure(user_id, "embedding_unavailable", "semantic_retrieval", degraded_status.get("reason", ""))
 
             # 5. Ephemeral Memory
             if remaining_tokens > 0 and conversation_history:
@@ -175,8 +185,11 @@ class ContextAssemblyService:
                     assembly_log["token_usage"]["ephemeral"] = ephemeral_layer.tokens
                     if ephemeral_layer.metadata and ephemeral_layer.metadata.get("truncated"):
                         truncation_events.append("ephemeral_memory_truncated")
+                        self._push_failure(user_id, "truncation_triggered", "ephemeral")
                         if ephemeral_layer.metadata.get("summary_fallback_applied"):
                             truncation_events.append("ephemeral_summary_fallback_applied")
+                else:
+                    self._record_layer_skip(user_id, "ephemeral", remaining_tokens, 0)
 
             if truncation_events:
                 assembly_log["degraded_mode"] = True
@@ -191,6 +204,15 @@ class ContextAssemblyService:
 
             # Build final context
             final_context = self._build_final_context(layers, remaining_tokens, budget)
+
+            # Record token accuracy delta and total assembly latency
+            predicted_tokens = budget.total_tokens - remaining_tokens
+            actual_tokens = _count_tokens(final_context)
+            assembly_log["token_delta"] = actual_tokens - predicted_tokens
+            assembly_log["actual_final_tokens"] = actual_tokens
+            assembly_latency_ms = (time.perf_counter() - t_start) * 1000
+            self._push_token_accuracy(user_id, predicted_tokens, actual_tokens)
+            self._push_assembly_latency(user_id, assembly_latency_ms)
 
             context_snapshot_id = await context_snapshotter.create_snapshot(
                 query=query,
@@ -239,6 +261,7 @@ class ContextAssemblyService:
                 error=str(e),
                 correlation_id=correlation_id,
             )
+            self._push_failure(user_id, "assembly_error", "orchestrator", str(e))
             return {
                 "context": await self._get_minimal_context(query),
                 "layers": [],
@@ -250,6 +273,41 @@ class ContextAssemblyService:
                 "degraded_mode": True,
                 "degraded_reason": str(e),
             }
+
+    # ------------------------------------------------------------------
+    # Metrics helpers — all swallow errors so they never affect assembly
+    # ------------------------------------------------------------------
+
+    @staticmethod
+    def _push_failure(user_id: str, failure_type: str, layer: str, detail: str = "") -> None:
+        try:
+            from ..retrieval_metrics_service import retrieval_metrics_service
+            retrieval_metrics_service.record_failure(user_id, failure_type, layer, detail)
+        except Exception:
+            pass
+
+    @staticmethod
+    def _push_token_accuracy(user_id: str, predicted: int, actual: int) -> None:
+        try:
+            from ..retrieval_metrics_service import retrieval_metrics_service
+            retrieval_metrics_service.record_token_accuracy(user_id, predicted, actual)
+        except Exception:
+            pass
+
+    @staticmethod
+    def _push_assembly_latency(user_id: str, latency_ms: float) -> None:
+        try:
+            from ..retrieval_metrics_service import retrieval_metrics_service
+            retrieval_metrics_service.record_assembly_latency(user_id, latency_ms)
+        except Exception:
+            pass
+
+    @staticmethod
+    def _record_layer_skip(
+        user_id: str, layer: str, remaining: int, threshold: int
+    ) -> None:
+        detail = "skip_budget_exhausted" if remaining < threshold else "skip_no_data"
+        ContextAssemblyService._push_failure(user_id, "layer_skipped", layer, detail)
 
     # ------------------------------------------------------------------
     # Private helpers

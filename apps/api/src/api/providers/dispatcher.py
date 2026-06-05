@@ -7,7 +7,11 @@ Config is loaded from config/providers.toml — the SINGLE source of truth.
 from __future__ import annotations
 
 import asyncio
+import hashlib
 import os
+import random
+import time
+from contextlib import asynccontextmanager
 from typing import Any, Dict, List, Optional
 
 import structlog
@@ -53,11 +57,13 @@ from .dispatcher_pkg.execution import (
     stream_wrap as _stream_wrap,
 )
 from .dispatcher_pkg.sanitization import (
+    get_provider_logger as _get_provider_logger,
     known_secrets as _known_secrets_from_configs,
 )
 from .dispatcher_pkg.sanitization import (
     sanitize_error_message as _sanitize_error_message,
 )
+from .pricing import resolve_model_pricing
 from .provider_registry import (
     DEFAULT_PROVIDER_CLASS_MAP,
     ProviderRegistry,
@@ -66,7 +72,7 @@ from .provider_registry import (
 )
 from .routing_strategies import rank_cheapest, rank_hybrid, rank_local
 
-logger = structlog.get_logger(__name__)
+_bootstrap_logger = structlog.get_logger(__name__)
 
 # Preserve historical module attribute for monkeypatch-based tests/importers.
 _CLASSIFY_PROVIDER_ERROR = classify_provider_error
@@ -84,14 +90,25 @@ _PROVIDER_CLASS_MAP: Dict[str, type[BaseProvider]] = dict(DEFAULT_PROVIDER_CLASS
 
 # ── Load once ─────────────────────────────────────────────────────────────
 
-_provider_toml = _load_provider_toml(logger=logger)
+_provider_toml = _load_provider_toml(logger=_bootstrap_logger)
 _PROVIDER_CONFIGS: Dict[str, Dict[str, Any]] = _load_toml_providers(
     _provider_toml,
-    logger=logger,
+    logger=_bootstrap_logger,
 )
 _PROVIDER_ALIASES: Dict[str, str] = _load_aliases(_provider_toml)
 _MODEL_ALIASES, _MODEL_ALIAS_PATTERNS = _load_model_aliases(_provider_toml)
 _VISIBLE_PROVIDER_IDS: List[str] = _load_visible_providers(_provider_toml)
+logger = _get_provider_logger(__name__, lambda: _known_secrets_from_configs(_PROVIDER_CONFIGS))
+
+
+def reload_provider_catalog() -> None:
+    global _provider_toml, _PROVIDER_CONFIGS, _PROVIDER_ALIASES, _MODEL_ALIASES, _MODEL_ALIAS_PATTERNS, _VISIBLE_PROVIDER_IDS
+
+    _provider_toml = _load_provider_toml(logger=logger)
+    _PROVIDER_CONFIGS = _load_toml_providers(_provider_toml, logger=logger)
+    _PROVIDER_ALIASES = _load_aliases(_provider_toml)
+    _MODEL_ALIASES, _MODEL_ALIAS_PATTERNS = _load_model_aliases(_provider_toml)
+    _VISIBLE_PROVIDER_IDS = _load_visible_providers(_provider_toml)
 
 
 def canonical_provider_id(value: Optional[str]) -> Optional[str]:
@@ -125,6 +142,14 @@ class ProviderDispatcher:
         self._providers: Dict[str, ProviderAdapter] = {}
         self._provider_list_cache: Dict[bool, List[Dict[str, Any]]] = {}
         self._routing_min_success_rate = self._load_min_success_rate()
+        self._circuit_canary_percent = self._load_circuit_canary_percent()
+        self._prewarm_enabled = self._load_prewarm_enabled()
+        self._prewarm_latency_threshold_ms = self._load_prewarm_latency_threshold_ms()
+        self._warmup_states: Dict[str, Dict[str, Any]] = {}
+        self._warmup_task: Optional[asyncio.Task[Any]] = None
+        self._background_started = False
+        self._test_mode_stack: List[Dict[str, Any]] = []
+        self._random = random.Random(0)
         self._startup_preflight()
 
     def _known_secrets(self) -> List[str]:
@@ -171,6 +196,66 @@ class ProviderDispatcher:
                 "no_providers_configured",
                 hint="Set API key env vars for at least one provider",
             )
+        self.start_background_tasks()
+
+    def start_background_tasks(self) -> None:
+        if self._background_started:
+            return
+        if not self._prewarm_enabled:
+            self._background_started = True
+            return
+        try:
+            loop = asyncio.get_running_loop()
+        except RuntimeError:
+            return
+        self._background_started = True
+        self._warmup_task = loop.create_task(self._prewarm_self_hosted_providers())
+
+    def _load_prewarm_enabled(self) -> bool:
+        return os.getenv("ENABLE_SELF_HOSTED_PREWARM", "").strip().lower() in {
+            "1",
+            "true",
+            "yes",
+            "on",
+        }
+
+    def _load_prewarm_latency_threshold_ms(self) -> float:
+        raw_value = os.getenv("SELF_HOSTED_PREWARM_LATENCY_THRESHOLD_MS", "2500").strip()
+        try:
+            return max(0.0, float(raw_value))
+        except (TypeError, ValueError):
+            return 2500.0
+
+    def _load_hourly_budget_cap(self) -> float:
+        raw_value = os.getenv("ROUTING_MAX_BUDGET_PER_HOUR", "").strip()
+        if not raw_value:
+            raw_value = str(
+                getattr(
+                    getattr(getattr(_provider_toml, "default", object()), "cost_optimization", object()),
+                    "max_budget_per_hour",
+                    0.0,
+                )
+            )
+        try:
+            return max(0.0, float(raw_value))
+        except (TypeError, ValueError):
+            return 0.0
+
+    def _budget_status(self) -> Dict[str, Any]:
+        from ..routing.router import registry
+
+        cap = self._load_hourly_budget_cap()
+        spend_by_provider = registry.current_hour_spend()
+        total_spend = round(sum(spend_by_provider.values()), 6)
+        return {
+            "cap_usd": round(cap, 6),
+            "current_hour_spend_usd": total_spend,
+            "current_hour_spend_by_provider": {
+                provider_id: round(spend, 6)
+                for provider_id, spend in spend_by_provider.items()
+            },
+            "over_budget": bool(cap > 0 and total_spend >= cap),
+        }
 
     def _load_min_success_rate(self) -> float:
         raw_value = os.getenv("ROUTING_MIN_SUCCESS_RATE", "0.3").strip()
@@ -179,6 +264,39 @@ class ProviderDispatcher:
         except (TypeError, ValueError):
             return 0.3
         return max(0.0, min(1.0, value))
+
+    def _load_circuit_canary_percent(self) -> float:
+        raw_value = os.getenv("PROVIDER_CIRCUIT_CANARY_PERCENT", "").strip()
+        if not raw_value:
+            raw_value = str(
+                getattr(
+                    getattr(_provider_toml, "load_balancing", object()),
+                    "circuit_breaker_canary_percent",
+                    0.1,
+                )
+            )
+        try:
+            value = float(raw_value)
+        except (TypeError, ValueError):
+            return 0.1
+        if value > 1:
+            value /= 100
+        return max(0.0, min(1.0, value))
+
+    def _is_canary_attempt(
+        self,
+        provider_id: str,
+        model: Optional[str],
+    ) -> bool:
+        if self._circuit_canary_percent <= 0:
+            return False
+        if self._circuit_canary_percent >= 1:
+            return True
+        minute_bucket = int(time.time() // 60)
+        seed = f"{provider_id}:{model or ''}:{minute_bucket}".encode("utf-8")
+        digest = hashlib.sha256(seed).hexdigest()
+        value = int(digest[:8], 16) / 0xFFFFFFFF
+        return value < self._circuit_canary_percent
 
     def _ensure_provider(self, provider_id: str) -> Optional[ProviderAdapter]:
         canonical_id = canonical_provider_id(provider_id) or provider_id
@@ -295,6 +413,38 @@ class ProviderDispatcher:
         canonical_id = canonical_provider_id(provider_id) or provider_id
         return dict(self._configs.get(canonical_id, {}))
 
+    def update_backend_endpoint(
+        self,
+        provider_id: str,
+        engine: str,
+        new_endpoint: str,
+    ) -> None:
+        """Hot-reload a specific backend engine's endpoint inside a family provider."""
+        canonical_id = canonical_provider_id(provider_id) or provider_id
+        if canonical_id not in self._configs:
+            raise KeyError(f"Unknown provider: {provider_id!r}")
+
+        backends = self._configs[canonical_id].get("backends", [])
+        for bc in backends:
+            if bc.get("engine") == engine:
+                bc["endpoint"] = new_endpoint
+                ep_env = str(bc.get("endpoint_env", "") or "").strip()
+                if ep_env:
+                    os.environ[ep_env] = new_endpoint
+                break
+        else:
+            raise KeyError(f"No backend engine {engine!r} in {provider_id!r}")
+
+        self._providers.pop(canonical_id, None)
+        self._provider_list_cache.clear()
+        self._warmup_states.pop(canonical_id, None)
+        logger.info(
+            "backend_endpoint_updated",
+            provider=canonical_id,
+            engine=engine,
+            endpoint=new_endpoint,
+        )
+
     def update_provider_endpoint(self, provider_id: str, new_endpoint: str) -> None:
         """Hot-reload a provider's endpoint URL in-memory without restart."""
         canonical_id = canonical_provider_id(provider_id) or provider_id
@@ -309,14 +459,64 @@ class ProviderDispatcher:
 
         self._providers.pop(canonical_id, None)
         self._provider_list_cache.clear()
+        self._warmup_states.pop(canonical_id, None)
 
         logger.info("provider_endpoint_updated", provider=canonical_id, endpoint=new_endpoint)
+
+    def reload_config(self) -> None:
+        """Reload provider TOML and reset provider instances/cache."""
+        reload_provider_catalog()
+        self._configs = _PROVIDER_CONFIGS
+        self._circuit_canary_percent = self._load_circuit_canary_percent()
+        self._providers.clear()
+        self._provider_list_cache.clear()
+        self._warmup_states.clear()
+        self._background_started = False
+        logger.info("provider_catalog_reloaded")
+        self.start_background_tasks()
 
     def _provider_costs(self, provider_id: str) -> tuple[float, float]:
         provider = self._ensure_provider(provider_id)
         if provider is None:
             return (float("inf"), float("inf"))
-        return (provider.COST_INPUT_PER_1K, provider.COST_OUTPUT_PER_1K)
+        pricing = resolve_model_pricing(
+            provider.provider_id,
+            provider.default_model or None,
+            config=provider.config,
+            default_input_per1k=provider.COST_INPUT_PER_1K,
+            default_output_per1k=provider.COST_OUTPUT_PER_1K,
+        )
+        return (pricing.input_per1k, pricing.output_per1k)
+
+    def _budget_sort_key(self, provider_id: str) -> tuple[float, float, int]:
+        input_cost, output_cost = self._provider_costs(provider_id)
+        total_cost = input_cost + output_cost
+        config = self._configs.get(provider_id, {})
+        return (
+            0.0 if total_cost <= 0 else 1.0,
+            total_cost,
+            int(config.get("priority_tier", 999)),
+        )
+
+    def _apply_budget_rerank(
+        self,
+        candidates: List[str],
+        *,
+        routing_mode: str,
+    ) -> List[str]:
+        budget_status = self._budget_status()
+        if not budget_status["over_budget"]:
+            return candidates
+        re_ranked = sorted(candidates, key=self._budget_sort_key)
+        logger.warning(
+            "routing_budget_soft_rerank",
+            routing_mode=routing_mode,
+            current_hour_spend_usd=budget_status["current_hour_spend_usd"],
+            cap_usd=budget_status["cap_usd"],
+            original_candidates=candidates,
+            rank_order=re_ranked,
+        )
+        return re_ranked
 
     def _priority_order(self) -> List[str]:
         return [item["id"] for item in self.list_providers(include_hidden=False)]
@@ -324,12 +524,18 @@ class ProviderDispatcher:
     def _cheapest_order(self) -> List[str]:
         candidates = self._priority_order()
         provider_costs = {p: self._provider_costs(p) for p in candidates}
-        return rank_cheapest(candidates, provider_costs)
+        return self._apply_budget_rerank(
+            rank_cheapest(candidates, provider_costs),
+            routing_mode="cheapest",
+        )
 
     def _hybrid_order(self) -> List[str]:
         candidates = self._priority_order()
         provider_costs = {p: self._provider_costs(p) for p in candidates}
-        return rank_hybrid(candidates, provider_costs)
+        return self._apply_budget_rerank(
+            rank_hybrid(candidates, provider_costs),
+            routing_mode="auto",
+        )
 
     def _local_order(self) -> List[str]:
         providers = self.list_providers(include_hidden=False)
@@ -338,7 +544,10 @@ class ProviderDispatcher:
             for item in providers
             if item["local_routing"] or item["tier"] == "self_hosted"
         ]
-        return rank_local(local_candidates)
+        return self._apply_budget_rerank(
+            rank_local(local_candidates),
+            routing_mode="local",
+        )
 
     def _allow_self_hosted_auto_routing(self) -> bool:
         return os.getenv("ENABLE_SELF_HOSTED_AUTO_ROUTING", "").strip().lower() in {
@@ -370,6 +579,193 @@ class ProviderDispatcher:
         except Exception:
             logger.debug("provider_health_filter_unavailable")
         return configured
+
+    def _warmup_parent_id(self, target_id: str) -> str:
+        if "." not in target_id:
+            return target_id
+        return target_id.split(".", 1)[0]
+
+    def _update_warmup_state(
+        self,
+        target_id: str,
+        *,
+        state: str,
+        latency_ms: Optional[float] = None,
+        error: str = "",
+    ) -> None:
+        self._warmup_states[target_id] = {
+            "state": state,
+            "latency_ms": round(float(latency_ms), 1) if latency_ms is not None else None,
+            "error": self._sanitize_error(error) if error else "",
+            "updated_at": time.time(),
+        }
+        parent_id = self._warmup_parent_id(target_id)
+        if parent_id == target_id:
+            return
+        child_states = {
+            key: value
+            for key, value in self._warmup_states.items()
+            if self._warmup_parent_id(key) == parent_id and key != parent_id
+        }
+        if any(item["state"] == "warm" for item in child_states.values()):
+            parent_state = "warm"
+        elif any(item["state"] == "warming" for item in child_states.values()):
+            parent_state = "warming"
+        elif child_states and all(item["state"] == "failed" for item in child_states.values()):
+            parent_state = "failed"
+        else:
+            parent_state = "idle"
+        fastest = min(
+            (
+                item["latency_ms"]
+                for item in child_states.values()
+                if isinstance(item.get("latency_ms"), (int, float))
+            ),
+            default=None,
+        )
+        errors = [item["error"] for item in child_states.values() if item.get("error")]
+        self._warmup_states[parent_id] = {
+            "state": parent_state,
+            "latency_ms": fastest,
+            "error": errors[-1] if errors else "",
+            "updated_at": time.time(),
+            "backends": child_states,
+        }
+
+    def _warmup_state_for(self, provider_id: str) -> Dict[str, Any]:
+        return dict(self._warmup_states.get(provider_id, {"state": "idle"}))
+
+    async def _prewarm_target(self, target_id: str, provider: ProviderAdapter) -> None:
+        self._update_warmup_state(target_id, state="warming")
+        started_at = time.perf_counter()
+        try:
+            result = await provider.warmup()
+            latency_ms = (
+                float(getattr(result, "latency_ms", 0.0))
+                or (time.perf_counter() - started_at) * 1000
+            )
+            final_state = "warm" if latency_ms <= self._prewarm_latency_threshold_ms else "warming"
+            if not getattr(result, "ok", False):
+                final_state = "failed"
+            self._update_warmup_state(
+                target_id,
+                state=final_state,
+                latency_ms=latency_ms,
+                error=str(getattr(result, "error", "") or ""),
+            )
+        except Exception as exc:
+            self._update_warmup_state(target_id, state="failed", error=str(exc))
+            logger.warning("provider_prewarm_failed", provider=target_id, error=str(exc))
+
+    async def _prewarm_self_hosted_providers(self) -> None:
+        tasks: List[asyncio.Task[Any]] = []
+        for provider_id, config in self._configs.items():
+            if provider_id == "mock" or not self.is_configured(provider_id):
+                continue
+            if not self._is_self_hosted(config):
+                continue
+            provider = self._ensure_provider(provider_id)
+            if provider is None:
+                continue
+            for target_id, target_provider in provider.warmup_targets():
+                tasks.append(asyncio.create_task(self._prewarm_target(target_id, target_provider)))
+        if tasks:
+            await asyncio.gather(*tasks, return_exceptions=True)
+
+    def note_provider_result(
+        self,
+        provider_id: str,
+        *,
+        ok: bool,
+        latency_ms: float = 0.0,
+        error: str = "",
+    ) -> None:
+        config = self._configs.get(provider_id, {})
+        if not self._is_self_hosted(config):
+            return
+        self._update_warmup_state(
+            provider_id,
+            state="warm" if ok and latency_ms <= self._prewarm_latency_threshold_ms else ("failed" if not ok else "warming"),
+            latency_ms=latency_ms,
+            error=error,
+        )
+
+    def _active_test_mode_state(self, provider_id: str) -> Optional[Dict[str, Any]]:
+        for state in reversed(self._test_mode_stack):
+            if provider_id in state["profiles"]:
+                return state
+        return None
+
+    async def _apply_test_mode_delay(self, provider_id: str) -> None:
+        state = self._active_test_mode_state(provider_id)
+        if state is None:
+            return
+        latency_ms = float(state["profiles"][provider_id].get("latency_ms", 0.0) or 0.0)
+        if latency_ms > 0:
+            await asyncio.sleep(latency_ms / 1000)
+
+    async def _maybe_inject_test_failure(
+        self,
+        provider_id: str,
+        model: str,
+    ) -> Optional[ProviderResult]:
+        state = self._active_test_mode_state(provider_id)
+        if state is None:
+            return None
+        profile = state["profiles"][provider_id]
+        call_count = int(state["calls"].get(provider_id, 0)) + 1
+        state["calls"][provider_id] = call_count
+        await self._apply_test_mode_delay(provider_id)
+        fail_after_calls = profile.get("fail_after_calls")
+        fail_probability = float(profile.get("fail_probability", 0.0) or 0.0)
+        should_fail = False
+        if isinstance(fail_after_calls, int) and fail_after_calls >= 0 and call_count > fail_after_calls:
+            should_fail = True
+        elif fail_probability > 0 and self._random.random() < min(1.0, max(0.0, fail_probability)):
+            should_fail = True
+        if not should_fail:
+            return None
+        category = self._provider_error_category(profile.get("error_category"), "test failure")
+        error_message = str(profile.get("error", "") or f"test-mode {category.value} failure")
+        return ProviderResult(
+            ok=False,
+            provider=provider_id,
+            model=model,
+            error=error_message,
+            error_category=category.value,
+            latency_ms=float(profile.get("latency_ms", 0.0) or 0.0),
+        )
+
+    async def _invoke_with_test_mode(
+        self,
+        provider_id: str,
+        provider: ProviderAdapter,
+        messages: List[Dict[str, str]],
+        model: str,
+        **kwargs: Any,
+    ) -> ProviderResult:
+        injected = await self._maybe_inject_test_failure(provider_id, model)
+        if injected is not None:
+            return injected
+        return await provider.invoke(
+            messages,
+            model,
+            stream=False,
+            **kwargs,
+        )
+
+    @asynccontextmanager
+    async def test_mode(self, profiles: Dict[str, Dict[str, Any]]):
+        state = {
+            "profiles": {canonical_provider_id(pid) or pid: dict(profile) for pid, profile in profiles.items()},
+            "calls": {},
+        }
+        self._test_mode_stack.append(state)
+        try:
+            yield self
+        finally:
+            with_state = [item for item in self._test_mode_stack if item is not state]
+            self._test_mode_stack = with_state
 
     def top_providers_for(
         self,
@@ -455,6 +851,8 @@ class ProviderDispatcher:
                 "health_reason": "Unknown provider",
                 "is_selectable": False,
                 "latency_ms": 0.0,
+                "circuit_breaker": {},
+                "warmup": self._warmup_state_for(canonical_id),
             }
 
         configured = self.is_configured(canonical_id)
@@ -467,6 +865,8 @@ class ProviderDispatcher:
                 "health_reason": "Provider not configured",
                 "is_selectable": False,
                 "latency_ms": 0.0,
+                "circuit_breaker": provider.circuit_status(),
+                "warmup": self._warmup_state_for(canonical_id),
             }
 
         timeout_ms = int(
@@ -482,6 +882,10 @@ class ProviderDispatcher:
                 health_state = "healthy"
             elif billing:
                 health_state = "billing_issue"
+                provider.record_failure(
+                    self._sanitize_error(getattr(health, "error", "") or "billing issue"),
+                    category=ProviderErrorCategory.RATE_LIMIT,
+                )
             else:
                 health_state = "unhealthy"
             return {
@@ -493,8 +897,14 @@ class ProviderDispatcher:
                 "billing_issue": billing,
                 "is_selectable": bool(health.healthy),
                 "latency_ms": round(float(health.latency_ms), 1),
+                "circuit_breaker": provider.circuit_status(),
+                "warmup": self._warmup_state_for(canonical_id),
             }
         except asyncio.TimeoutError:
+            provider.record_failure(
+                f"timeout after {timeout_ms}ms",
+                category=ProviderErrorCategory.TIMEOUT,
+            )
             return {
                 "id": canonical_id,
                 "configured": True,
@@ -504,8 +914,14 @@ class ProviderDispatcher:
                 "billing_issue": False,
                 "is_selectable": False,
                 "latency_ms": float(timeout_ms),
+                "circuit_breaker": provider.circuit_status(),
+                "warmup": self._warmup_state_for(canonical_id),
             }
         except Exception as exc:
+            provider.record_failure(
+                self._sanitize_error(exc),
+                category=classify_provider_error(exc),
+            )
             return {
                 "id": canonical_id,
                 "configured": True,
@@ -515,6 +931,8 @@ class ProviderDispatcher:
                 "billing_issue": False,
                 "is_selectable": False,
                 "latency_ms": 0.0,
+                "circuit_breaker": provider.circuit_status(),
+                "warmup": self._warmup_state_for(canonical_id),
             }
 
     async def get_provider_inventory(
@@ -550,6 +968,7 @@ class ProviderDispatcher:
                 "latency_ms": item["latency_ms"],
                 "error": item["health_reason"],
                 "is_selectable": bool(item["is_selectable"]),
+                "circuit_breaker": item.get("circuit_breaker", {}),
             }
             for item in inventory
         }
@@ -617,9 +1036,15 @@ class ProviderDispatcher:
                 "local_routing": item["local_routing"],
                 "configured": self.is_configured(item["id"]),
                 "instantiated": item["id"] in self._providers,
+                "circuit_breaker": (
+                    self._providers[item["id"]].circuit_status()
+                    if item["id"] in self._providers
+                    else {}
+                ),
                 "hidden": item["hidden"],
                 "capabilities": item["capabilities"],
                 "default_model": item["default_model"],
+                "warmup": self._warmup_state_for(item["id"]),
             }
             for item in self.list_providers(include_hidden=True)
         ]
@@ -627,7 +1052,13 @@ class ProviderDispatcher:
         return {
             "routing_table": routing_table,
             "registry_stats": registry.snapshot(),
+            "registry_metrics": registry.metrics_snapshot(),
+            "registry_persisted_snapshot": registry.persisted_snapshot(),
+            "registry_persistence": registry.persistence_status(),
+            "budget_status": self._budget_status(),
+            "warmup_states": dict(self._warmup_states),
             "routing_min_success_rate": self._routing_min_success_rate,
+            "circuit_canary_percent": self._circuit_canary_percent,
             "model_aliases": {k: list(v) for k, v in _MODEL_ALIASES.items()},
             "model_alias_patterns": [pattern.pattern for pattern, _, _ in _MODEL_ALIAS_PATTERNS],
             "provider_aliases": dict(_PROVIDER_ALIASES),

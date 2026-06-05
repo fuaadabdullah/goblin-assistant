@@ -78,7 +78,7 @@ function writeResponse(
 }
 
 /**
- * Build the request body for the backend /api/v1/api/chat endpoint.
+ * Build the request body for the backend /v1/api/chat endpoint.
  * The frontend may send {prompt, messages, model, provider} but the
  * backend expects {messages: [{role, content}], model?, provider?}.
  */
@@ -140,7 +140,7 @@ async function forwardToBackendGenerate(req: NextApiRequest): Promise<ForwardRes
     const chatBody = buildChatRequestBody((req.body ?? {}) as Record<string, unknown>);
 
     const response = await fetchWithTimeout(
-      `${BACKEND_URL}/api/v1/api/chat`,
+      `${BACKEND_URL}/v1/api/chat`,
       {
         method: 'POST',
         headers,

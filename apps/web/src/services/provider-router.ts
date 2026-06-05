@@ -85,6 +85,17 @@ try {
 
 const PROVIDERS = config.providers || {};
 const DEFAULT_TIMEOUT_MS = config.default_timeout_ms || 12000;
+const METRICS_STORAGE_KEY = 'goblin-provider-router-metrics';
+const MAX_LATENCY_SAMPLES = 100;
+
+type ProviderMetrics = {
+  latencies: number[];
+  succ: number;
+  fail: number;
+  updatedAt: number;
+};
+
+type PersistedMetrics = Record<string, ProviderMetrics>;
 
 function movingAvg(arr: number[], n = 8): number | null {
   if (!arr || arr.length === 0) return null;
@@ -94,18 +105,92 @@ function movingAvg(arr: number[], n = 8): number | null {
 }
 
 // simple in-memory metrics mirror for UI (populated by backend telemetry if you push it)
-const METRICS: Record<string, { latencies: number[]; succ: number; fail: number }> = {};
+const METRICS: Record<string, ProviderMetrics> = {};
+
+function isValidMetrics(value: unknown): value is ProviderMetrics {
+  if (!isRecord(value)) return false;
+  const { latencies, succ, fail, updatedAt } = value;
+  return (
+    Array.isArray(latencies) &&
+    latencies.every((item) => isNumber(item)) &&
+    isNumber(succ) &&
+    isNumber(fail) &&
+    isNumber(updatedAt)
+  );
+}
+
+function getSessionStorage(): Storage | null {
+  try {
+    if (typeof window === 'undefined' || !window.sessionStorage) return null;
+    return window.sessionStorage;
+  } catch {
+    return null;
+  }
+}
+
+function trimLatencies(latencies: number[]): number[] {
+  return latencies.slice(-MAX_LATENCY_SAMPLES);
+}
+
+function readMetricsFromStorage(): PersistedMetrics {
+  const storage = getSessionStorage();
+  if (!storage) return {};
+
+  try {
+    const raw = storage.getItem(METRICS_STORAGE_KEY);
+    if (!raw) return {};
+    const parsed: unknown = JSON.parse(raw);
+    if (!isRecord(parsed)) return {};
+
+    const hydrated: PersistedMetrics = {};
+    Object.entries(parsed).forEach(([pid, value]) => {
+      if (!isValidMetrics(value)) return;
+      hydrated[pid] = {
+        latencies: trimLatencies(value.latencies),
+        succ: value.succ,
+        fail: value.fail,
+        updatedAt: value.updatedAt,
+      };
+    });
+    return hydrated;
+  } catch {
+    return {};
+  }
+}
+
+function persistMetrics(): void {
+  const storage = getSessionStorage();
+  if (!storage) return;
+
+  try {
+    storage.setItem(METRICS_STORAGE_KEY, JSON.stringify(METRICS));
+  } catch {
+    // Ignore storage write failures; in-memory metrics remain available.
+  }
+}
+
+function hydrateMetrics(): void {
+  const persisted = readMetricsFromStorage();
+  Object.keys(METRICS).forEach((pid) => delete METRICS[pid]);
+  Object.entries(persisted).forEach(([pid, metrics]) => {
+    METRICS[pid] = metrics;
+  });
+}
 
 function ensureMetrics(pid: string) {
-  if (!METRICS[pid]) METRICS[pid] = { latencies: [], succ: 0, fail: 0 };
+  if (!METRICS[pid]) METRICS[pid] = { latencies: [], succ: 0, fail: 0, updatedAt: 0 };
 }
+
+hydrateMetrics();
 
 export function updateMetricsFromBackend(pid: string, latencyMs: number, ok: boolean) {
   ensureMetrics(pid);
   METRICS[pid].latencies.push(latencyMs);
-  if (METRICS[pid].latencies.length > 100) METRICS[pid].latencies.shift();
+  METRICS[pid].latencies = trimLatencies(METRICS[pid].latencies);
   if (ok) METRICS[pid].succ += 1;
   else METRICS[pid].fail += 1;
+  METRICS[pid].updatedAt = Date.now();
+  persistMetrics();
 }
 
 function scoreProvider(
@@ -178,6 +263,21 @@ export function topProvidersFor(
 
 export function getRuntimeClient() {
   return runtimeClient;
+}
+
+export function __getMetricsSnapshotForTests(): PersistedMetrics {
+  return JSON.parse(JSON.stringify(METRICS)) as PersistedMetrics;
+}
+
+export function __resetMetricsForTests(): void {
+  Object.keys(METRICS).forEach((pid) => delete METRICS[pid]);
+  const storage = getSessionStorage();
+  if (!storage) return;
+  try {
+    storage.removeItem(METRICS_STORAGE_KEY);
+  } catch {
+    // Ignore storage cleanup failures in test/reset paths.
+  }
 }
 
 export default {

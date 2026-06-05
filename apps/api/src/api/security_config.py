@@ -17,7 +17,17 @@ DEFAULT_LOCAL_ORIGINS = [
 
 CANONICAL_PUBLIC_ORIGINS = [
     "https://goblin-assistant.vercel.app",
-    "https://goblin-backend-dt30.onrender.com",
+    "https://goblin-backend.fly.dev",
+]
+
+PRODUCTION_ALLOWED_HEADERS = [
+    "Accept",
+    "Accept-Language",
+    "Content-Language",
+    "Content-Type",
+    "Authorization",
+    "X-API-Key",
+    "X-CSRF-Token",
 ]
 
 
@@ -82,6 +92,21 @@ def _resolve_auth_cookie_samesite(environment: str) -> str:
     return os.getenv("AUTH_COOKIE_SAMESITE", "lax")
 
 
+def _resolve_rate_limit_enabled(environment: str) -> bool:
+    """Default rate limiting on in production, off elsewhere unless overridden."""
+    raw = os.getenv("RATE_LIMIT_ENABLED")
+    if raw is not None:
+        return raw.lower() == "true"
+    return environment == "production"
+
+
+def _resolve_allowed_headers(environment: str) -> List[str]:
+    """Keep non-production permissive while production stays explicit."""
+    if environment == "production":
+        return list(PRODUCTION_ALLOWED_HEADERS)
+    return ["*"]
+
+
 def _is_cross_site_frontend_backend() -> bool:
     """
     Heuristic: if the frontend and backend are served from different
@@ -108,9 +133,10 @@ class SecurityConfig:
 
     # CORS Configuration - resolved via helper
     ALLOWED_ORIGINS = _resolve_origins(ENVIRONMENT)
+    ALLOWED_HEADERS = _resolve_allowed_headers(ENVIRONMENT)
 
     # Rate Limiting
-    RATE_LIMIT_ENABLED = os.getenv("RATE_LIMIT_ENABLED", "true").lower() == "true"
+    RATE_LIMIT_ENABLED = _resolve_rate_limit_enabled(ENVIRONMENT)
     RATE_LIMIT_REQUESTS = int(os.getenv("RATE_LIMIT_REQUESTS", "100"))
     RATE_LIMIT_WINDOW = int(os.getenv("RATE_LIMIT_WINDOW", "60"))  # seconds
 

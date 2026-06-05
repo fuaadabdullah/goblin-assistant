@@ -34,6 +34,17 @@ export interface Health {
   retry_attempts: number;
 }
 
+export interface CostEntry {
+  input_per1k: number;
+  output_per1k: number;
+}
+
+export interface RateLimitEntry {
+  requests_per_minute: number;
+  tokens_per_minute: number;
+  concurrency: number;
+}
+
 export interface Raptor {
   level: string;
   file: string;
@@ -92,6 +103,8 @@ export interface ProviderConfigEntry {
   cost_score?: number;
   cost_input_per1k?: number;
   cost_output_per1k?: number;
+  costs?: Record<string, CostEntry>;
+  rate_limits?: Record<string, RateLimitEntry>;
   default_timeout_ms?: number;
   bandwidth_score?: number;
   rate_limit_per_min?: number;
@@ -130,6 +143,7 @@ export interface ProviderTomlConfig {
   model_context_windows: Record<string, number>;
   providers: Record<string, ProviderConfigEntry>;
   model_defaults: Record<string, ModelDefaults>;
+  model_budgets: Record<string, RateLimitEntry>;
 }
 
 // ── JSON-serializable subset (the shape of providers.json) ─────────────────
@@ -143,6 +157,10 @@ export interface JsonProviderEntry {
   capabilities?: string[];
   models?: string[];
   cost_score?: number;
+  cost_input_per1k?: number;
+  cost_output_per1k?: number;
+  costs?: Record<string, CostEntry>;
+  rate_limits?: Record<string, RateLimitEntry>;
   default_timeout_ms?: number;
   rate_limit_per_min?: number;
   display_name?: string;
@@ -153,6 +171,7 @@ export interface JsonProviderEntry {
 export interface ProvidersJson {
   version: number;
   default_timeout_ms: number;
+  model_budgets: Record<string, RateLimitEntry>;
   providers: Record<string, JsonProviderEntry>;
 }
 
@@ -197,6 +216,10 @@ export function validateProvidersJson(raw: unknown): ProvidersJson {
     );
   }
 
+  if (!isRecord(raw.model_budgets)) {
+    throw new Error("providers.json: model_budgets must be an object");
+  }
+
   if (!isRecord(raw.providers)) {
     throw new Error("providers.json: providers must be an object");
   }
@@ -228,5 +251,6 @@ export function validateProvidersJson(raw: unknown): ProvidersJson {
 export const DEFAULT_PROVIDERS_JSON: ProvidersJson = {
   version: 2,
   default_timeout_ms: 12000,
+  model_budgets: {},
   providers: {},
 };

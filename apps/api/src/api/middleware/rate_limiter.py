@@ -6,12 +6,12 @@ import uuid
 from datetime import datetime, timedelta, timezone
 from typing import Any
 
-import redis.asyncio as redis
 from fastapi import Request
 from fastapi.responses import JSONResponse
 
 from ..core.contracts import ApiErrorPayload, ErrorEnvelope
 from ..core.error_types import ErrorType
+from ..core.redis_client import get_redis_client
 
 
 class RateLimiter:
@@ -19,11 +19,9 @@ class RateLimiter:
 
     def __init__(
         self,
-        redis_url: str = "redis://localhost:6379",
         requests_per_minute: int = 100,
         requests_per_hour: int = 1000,
     ):
-        self.redis_client = redis.from_url(redis_url, decode_responses=True)
         self.requests_per_minute = requests_per_minute
         self.requests_per_hour = requests_per_hour
         self._fallback_counts: dict[str, tuple[int, float]] = {}
@@ -95,9 +93,10 @@ class RateLimiter:
         client_id = self._get_client_identifier(request)
         now = datetime.utcnow()
         try:
+            redis_client = await get_redis_client()
             # Check minute window
             minute_key = f"rate_limit:minute:{client_id}:{now.strftime('%Y%m%d%H%M')}"
-            minute_count = await self.redis_client.get(minute_key)
+            minute_count = await redis_client.get(minute_key)
             minute_count = int(minute_count) if minute_count else 0
 
             if minute_count >= self.requests_per_minute:
@@ -111,7 +110,7 @@ class RateLimiter:
 
             # Check hour window
             hour_key = f"rate_limit:hour:{client_id}:{now.strftime('%Y%m%d%H')}"
-            hour_count = await self.redis_client.get(hour_key)
+            hour_count = await redis_client.get(hour_key)
             hour_count = int(hour_count) if hour_count else 0
 
             if hour_count >= self.requests_per_hour:
@@ -124,7 +123,7 @@ class RateLimiter:
                 }
 
             # Increment counters
-            pipe = self.redis_client.pipeline()
+            pipe = redis_client.pipeline()
             pipe.incr(minute_key)
             pipe.expire(minute_key, 60)
             pipe.incr(hour_key)

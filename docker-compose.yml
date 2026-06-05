@@ -33,7 +33,7 @@ services:
       - minio_data:/data
     environment:
       MINIO_ROOT_USER: ${MINIO_ROOT_USER:-dev_minio_user}
-      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD:-dev_minio_password_change_me}
+      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD:?Set MINIO_ROOT_PASSWORD in your .env file}
       MINIO_REGION_NAME: us-east-1
     command: server /data --console-address ":9001"
     healthcheck:
@@ -57,7 +57,7 @@ services:
         condition: service_healthy
     entrypoint: >
       /bin/sh -c "
-      mc alias set local http://minio:9000 ${MINIO_ROOT_USER:-dev_minio_user} ${MINIO_ROOT_PASSWORD:-dev_minio_password_change_me};
+      mc alias set local http://minio:9000 ${MINIO_ROOT_USER:-minio} ${MINIO_ROOT_PASSWORD:?Set MINIO_ROOT_PASSWORD in your .env file};
       mc mb local/goblin-sandbox || true;
       mc anonymous set public local/goblin-sandbox || true;
       echo 'MinIO bucket goblin-sandbox ready';
@@ -181,7 +181,7 @@ services:
     build: .
     cpus: ${FLOWER_CPU_LIMIT:-0.50}
     mem_limit: ${FLOWER_MEM_LIMIT:-512m}
-    command: celery -A celery_app:app flower --address=0.0.0.0 --port=5555 --basic_auth=${FLOWER_BASIC_AUTH:-dev:dev_password_change_me}
+    command: celery -A celery_app:app flower --address=0.0.0.0 --port=5555 --basic_auth=${FLOWER_BASIC_AUTH:?Set FLOWER_BASIC_AUTH=user:password in your .env file}
     ports:
       - '5555:5555'
     environment:
@@ -286,7 +286,7 @@ services:
       # S3/MinIO configuration
       - ARTIFACT_S3_ENDPOINT=http://minio:9000
       - S3_ACCESS_KEY=${S3_ACCESS_KEY:-dev_minio_user}
-      - S3_SECRET_KEY=${S3_SECRET_KEY:-dev_minio_password_change_me}
+      - S3_SECRET_KEY=${S3_SECRET_KEY:?Set S3_SECRET_KEY in your .env file}
       - S3_BUCKET=goblin-sandbox
       - S3_REGION=us-east-1
       - MAX_ARTIFACT_SIZE_MB=10

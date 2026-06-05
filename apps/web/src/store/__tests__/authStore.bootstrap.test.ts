@@ -140,4 +140,101 @@ describe('authStore bootstrapFromSession', () => {
     expect(state.isAuthenticated).toBe(true);
     expect(state.isHydrated).toBe(true);
   });
+
+  it('marks hydrated without auth when no token and no auth cookie exist', async () => {
+    // eslint-disable-next-line @typescript-eslint/no-var-requires
+    const { useAuthStore } = require('../authStore') as typeof import('../authStore');
+    await useAuthStore.getState().bootstrapFromSession();
+
+    const state = useAuthStore.getState();
+    expect(state.token).toBeNull();
+    expect(state.isAuthenticated).toBe(false);
+    expect(state.isHydrated).toBe(true);
+  });
+
+  it('hydrates without auth when only the auth cookie exists', async () => {
+    setCookie('goblin_auth', 'true');
+
+    // eslint-disable-next-line @typescript-eslint/no-var-requires
+    const { useAuthStore } = require('../authStore') as typeof import('../authStore');
+    await useAuthStore.getState().bootstrapFromSession();
+
+    const state = useAuthStore.getState();
+    expect(state.token).toBeNull();
+    expect(state.isAuthenticated).toBe(false);
+    expect(state.isHydrated).toBe(true);
+  });
+
+  it('falls back to stored user when validate response is missing a usable user', async () => {
+    setCookie('session_token', 'cookie-token-fallback');
+    localStorage.setItem(
+      'user_data',
+      JSON.stringify({ id: 'ufallback', email: 'fallback@example.com', role: 'admin' })
+    );
+
+    // eslint-disable-next-line @typescript-eslint/no-var-requires
+    const { apiClient } = require('@/lib/api') as typeof import('@/lib/api');
+    (apiClient.validateToken as jest.Mock).mockResolvedValue({ valid: true, user: null });
+
+    // eslint-disable-next-line @typescript-eslint/no-var-requires
+    const { useAuthStore } = require('../authStore') as typeof import('../authStore');
+    await useAuthStore.getState().bootstrapFromSession();
+
+    const state = useAuthStore.getState();
+    expect(state.user).toEqual(expect.objectContaining({ id: 'ufallback' }));
+    expect(state.isAuthenticated).toBe(true);
+  });
+
+  it('does not authenticate when validate response user object is invalid', async () => {
+    setCookie('session_token', 'cookie-token-invalid-user');
+    localStorage.setItem(
+      'user_data',
+      JSON.stringify({ email: 'no-id@example.com', role: 'user' })
+    );
+
+    // eslint-disable-next-line @typescript-eslint/no-var-requires
+    const { apiClient } = require('@/lib/api') as typeof import('@/lib/api');
+    (apiClient.validateToken as jest.Mock).mockResolvedValue({
+      valid: true,
+      user: { email: 'bad@example.com' },
+    });
+
+    // eslint-disable-next-line @typescript-eslint/no-var-requires
+    const { useAuthStore } = require('../authStore') as typeof import('../authStore');
+    await useAuthStore.getState().bootstrapFromSession();
+
+    const state = useAuthStore.getState();
+    expect(state.isAuthenticated).toBe(false);
+    expect(state.isHydrated).toBe(true);
+  });
+
+  it('supports setSession clearSession hasRole and hasAnyRole', () => {
+    // eslint-disable-next-line @typescript-eslint/no-var-requires
+    const { useAuthStore } = require('../authStore') as typeof import('../authStore');
+
+    useAuthStore.getState().setSession({
+      token: 'token-1',
+      refreshToken: 'refresh-1',
+      user: {
+        id: 'u-role',
+        email: 'role@example.com',
+        role: 'admin',
+        roles: ['admin', 'editor'],
+      },
+      expiresIn: 3600,
+    });
+
+    let state = useAuthStore.getState();
+    expect(state.isAuthenticated).toBe(true);
+    expect(state.hasRole('admin')).toBe(true);
+    expect(state.hasRole('user')).toBe(false);
+    expect(state.hasAnyRole(['viewer', 'editor'])).toBe(true);
+    expect(state.hasAnyRole([])).toBe(false);
+
+    state.clearSession();
+    state = useAuthStore.getState();
+    expect(state.token).toBeNull();
+    expect(state.user).toBeNull();
+    expect(state.isAuthenticated).toBe(false);
+  });
 });

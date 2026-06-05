@@ -412,7 +412,11 @@ async def test_get_long_term_memory_facts_success(monkeypatch):
         "sqlalchemy",
         types.SimpleNamespace(select=lambda _model: _FakeQuery()),
     )
-    monkeypatch.setattr(ltm, "get_db", lambda: _FakeSessionContext(_FakeSession(rows)))
+    monkeypatch.setattr(
+        ltm,
+        "get_readonly_db_context",
+        lambda: _FakeSessionContext(_FakeSession(rows)),
+    )
 
     facts = await ltm.get_long_term_memory_facts("u1")
 
@@ -491,7 +495,11 @@ async def test_get_working_memory_summaries_success(monkeypatch):
         "sqlalchemy",
         types.SimpleNamespace(select=lambda _model: _FakeQuery()),
     )
-    monkeypatch.setattr(wm, "get_db", lambda: _FakeSessionContext(_FakeSession(rows)))
+    monkeypatch.setattr(
+        wm,
+        "get_readonly_db_context",
+        lambda: _FakeSessionContext(_FakeSession(rows)),
+    )
     monkeypatch.setattr(wm, "ConversationSummaryModel", fake_model)
 
     summaries = await wm.get_working_memory_summaries("u1", "c1")

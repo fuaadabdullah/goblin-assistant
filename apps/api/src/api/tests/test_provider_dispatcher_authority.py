@@ -6,6 +6,7 @@ import pytest
 
 from api.providers.base import BaseProvider, ProviderHealth, ProviderResult
 from api.providers.dispatcher import ProviderDispatcher
+from api.providers.dispatcher_pkg.sanitization import provider_secrets_processor
 from api.routing.router import hybrid_router, registry
 from api.services.provider_health import health_monitor
 
@@ -28,6 +29,17 @@ class _StubProvider(BaseProvider):
 
     async def health_check(self):
         return ProviderHealth(provider_id=self.provider_id, healthy=True)
+
+
+class _WarmupProvider(_StubProvider):
+    async def warmup(self):
+        await asyncio.sleep(0)
+        return ProviderResult(
+            ok=True,
+            provider=self.provider_id,
+            model=self.default_model or "stub",
+            latency_ms=10.0,
+        )
 
 
 def test_provider_result_to_dict_uses_compat_shape():
@@ -57,17 +69,20 @@ def test_provider_result_to_dict_uses_compat_shape():
     }
 
 
-def test_base_provider_circuit_breaker_opens_after_three_failures():
+def test_base_provider_circuit_breaker_soft_opens_after_transient_failures():
     provider = _StubProvider("stub", {"default_model": "stub-model"})
 
-    provider.record_failure("first")
-    provider.record_failure("second")
-    assert provider.is_available() is True
+    provider.record_failure("timeout one", category="timeout")
+    assert provider.circuit_state == "closed"
 
-    provider.record_failure("third")
-    assert provider.is_available() is False
+    provider.record_failure("timeout two", category="timeout")
+    assert provider.circuit_state == "soft_open"
+    assert provider.is_available() is True
+    assert provider.should_attempt(canary=False) is False
+    assert provider.should_attempt(canary=True) is True
 
     provider.record_success()
+    assert provider.circuit_state == "closed"
     assert provider.is_available() is True
 
 
@@ -76,7 +91,9 @@ def test_dispatcher_resolves_provider_aliases():
 
     assert dispatcher.get_provider("google").provider_id == "gemini"
     assert dispatcher.get_provider("azure-openai").provider_id == "azure_openai"
-    assert dispatcher.get_provider("vertex").provider_id == "vertex_ai"
+    assert (
+        dispatcher.get_provider("vertex").provider_id == "gcp_vm"
+    )
 
 
 def test_dispatcher_visible_provider_ids_include_together():
@@ -87,12 +104,13 @@ def test_dispatcher_visible_provider_ids_include_together():
     assert "together" in visible_ids
 
 
-def test_dispatcher_visible_order_together_before_siliconeflow():
+def test_dispatcher_visible_order_siliconeflow_before_together():
+    # siliconeflow (priority 25) is cheaper and faster than together (priority 45)
     dispatcher = ProviderDispatcher()
 
     visible_ids = dispatcher.provider_ids(include_hidden=False)
 
-    assert visible_ids.index("together") < visible_ids.index("siliconeflow")
+    assert visible_ids.index("siliconeflow") < visible_ids.index("together")
 
 
 @pytest.mark.asyncio
@@ -189,12 +207,36 @@ async def test_dispatcher_redacts_secrets_in_errors(monkeypatch):
     assert secret not in result["error"]
 
 
+def test_provider_secrets_processor_redacts_nested_sensitive_fields():
+    processor = provider_secrets_processor(lambda: ["sk-live-secret-12345678"])
+
+    event = processor(
+        None,
+        "warning",
+        {
+            "event": "provider_failure",
+            "provider": "openai",
+            "headers": {"Authorization": "Bearer sk-live-secret-12345678"},
+            "error": "failed with sk-live-secret-12345678",
+        },
+    )
+
+    assert event["provider"] == "openai"
+    assert event["headers"]["Authorization"] == "[REDACTED]"
+    assert event["error"] == "failed with [REDACTED]"
+
+
 @pytest.mark.asyncio
 async def test_self_hosted_provider_is_not_selectable_without_env(monkeypatch):
     monkeypatch.delenv("OLLAMA_GCP_ENDPOINT", raising=False)
+    monkeypatch.delenv("LLAMACPP_GCP_ENDPOINT", raising=False)
+    monkeypatch.delenv("COLAB_WORKER_ENDPOINT", raising=False)
+    monkeypatch.delenv("COLAB_WORKER_API_KEY", raising=False)
+    monkeypatch.delenv("VERTEX_AI_PROJECT", raising=False)
+    monkeypatch.delenv("GCP_PROJECT_ID", raising=False)
 
     dispatcher = ProviderDispatcher()
-    status = await dispatcher.check_provider("ollama_gcp")
+    status = await dispatcher.check_provider("gcp_vm")
 
     assert status["configured"] is False
     assert status["is_selectable"] is False
@@ -243,10 +285,10 @@ async def test_dispatch_success_records_provider_and_registry(monkeypatch):
     monkeypatch.setattr(provider, "invoke", fake_invoke)
 
     # Success path must close the circuit via provider.record_success().
-    provider.record_failure("f1")
-    provider.record_failure("f2")
-    provider.record_failure("f3")
-    assert provider.is_available() is False
+    provider.record_failure("timeout 1", category="timeout")
+    provider.record_failure("timeout 2", category="timeout")
+    assert provider.circuit_state == "soft_open"
+    monkeypatch.setattr(dispatcher, "_is_canary_attempt", lambda _pid, _model: True)
 
     stats_before = registry.get("openai")
     before_successes = stats_before.success_count
@@ -344,17 +386,136 @@ async def test_dispatch_registry_gate_falls_back_to_configured_candidates(
 
 
 @pytest.mark.asyncio
-async def test_auto_dispatch_skips_self_hosted_candidates_by_default(
+async def test_auto_dispatch_falls_through_to_next_healthy_candidate(
     monkeypatch,
 ):
     dispatcher = ProviderDispatcher()
-    ollama = dispatcher.get_provider("ollama_gcp")
+    openai = dispatcher.get_provider("openai")
     groq = dispatcher.get_provider("groq")
 
     monkeypatch.setattr(
         dispatcher,
         "_candidate_order",
-        lambda _pid: ["ollama_gcp", "groq"],
+        lambda _pid: ["openai", "groq"],
+    )
+    monkeypatch.setattr(
+        dispatcher,
+        "_auto_configured_candidates",
+        lambda candidates: candidates,
+    )
+    monkeypatch.setattr(dispatcher, "is_configured", lambda _pid: True)
+    monkeypatch.setattr(openai, "is_available", lambda: True)
+    monkeypatch.setattr(groq, "is_available", lambda: True)
+
+    async def fail_openai(messages=None, model=None, **kwargs):
+        _ = messages, kwargs
+        await asyncio.sleep(0)
+        return ProviderResult(
+            ok=False,
+            provider="openai",
+            model=model or "gpt-4o-mini",
+            error="openai unavailable",
+            latency_ms=1.0,
+        )
+
+    async def succeed_groq(messages=None, model=None, **kwargs):
+        _ = messages, kwargs
+        await asyncio.sleep(0)
+        return ProviderResult(
+            ok=True,
+            text="fallback answer",
+            provider="groq",
+            model=model or "llama-3.3-70b-versatile",
+            latency_ms=2.0,
+        )
+
+    monkeypatch.setattr(openai, "invoke", fail_openai)
+    monkeypatch.setattr(groq, "invoke", succeed_groq)
+
+    result = await dispatcher.dispatch(
+        pid=None,
+        model=None,
+        payload={"messages": [{"role": "user", "content": "hello"}]},
+    )
+
+    assert result["ok"] is True
+    assert result["provider"] == "groq"
+    assert result["result"]["text"] == "fallback answer"
+
+
+@pytest.mark.asyncio
+async def test_auto_dispatch_returns_provider_none_when_all_candidates_fail(
+    monkeypatch,
+):
+    dispatcher = ProviderDispatcher()
+    openai = dispatcher.get_provider("openai")
+    groq = dispatcher.get_provider("groq")
+
+    monkeypatch.setattr(
+        dispatcher,
+        "_candidate_order",
+        lambda _pid: ["openai", "groq"],
+    )
+    monkeypatch.setattr(
+        dispatcher,
+        "_auto_configured_candidates",
+        lambda candidates: candidates,
+    )
+    monkeypatch.setattr(dispatcher, "is_configured", lambda _pid: True)
+    monkeypatch.setattr(openai, "is_available", lambda: True)
+    monkeypatch.setattr(groq, "is_available", lambda: True)
+
+    async def fail_openai(messages=None, model=None, **kwargs):
+        _ = messages, kwargs
+        await asyncio.sleep(0)
+        return ProviderResult(
+            ok=False,
+            provider="openai",
+            model=model or "gpt-4o-mini",
+            error="openai down",
+            error_category="server_error",
+            latency_ms=1.0,
+        )
+
+    async def fail_groq(messages=None, model=None, **kwargs):
+        _ = messages, kwargs
+        await asyncio.sleep(0)
+        return ProviderResult(
+            ok=False,
+            provider="groq",
+            model=model or "llama-3.3-70b-versatile",
+            error="groq down",
+            error_category="server_error",
+            latency_ms=1.5,
+        )
+
+    monkeypatch.setattr(openai, "invoke", fail_openai)
+    monkeypatch.setattr(groq, "invoke", fail_groq)
+
+    result = await dispatcher.dispatch(
+        pid=None,
+        model=None,
+        payload={"messages": [{"role": "user", "content": "hello"}]},
+    )
+
+    assert result["ok"] is False
+    assert result["provider"] == "none"
+    assert result["error"] == "groq down"
+    assert result["error_category"] == "server-error"
+
+
+@pytest.mark.asyncio
+async def test_auto_dispatch_skips_self_hosted_candidates_by_default(
+    monkeypatch,
+):
+    dispatcher = ProviderDispatcher()
+    gcs = dispatcher.get_provider("gcp_vm")
+    groq = dispatcher.get_provider("groq")
+
+    monkeypatch.setattr(
+        dispatcher,
+        "_candidate_order",
+        lambda _pid: ["gcp_vm", "groq"],
     )
     monkeypatch.setattr(dispatcher, "is_configured", lambda _pid: True)
     monkeypatch.setattr(health_monitor, "is_available", lambda _pid: True)
@@ -373,7 +534,7 @@ async def test_auto_dispatch_skips_self_hosted_candidates_by_default(
             latency_ms=3.0,
         )
 
-    monkeypatch.setattr(ollama, "invoke", should_not_run)
+    monkeypatch.setattr(gcs, "invoke", should_not_run)
     monkeypatch.setattr(groq, "invoke", fake_groq_invoke)
 
     result = await dispatcher.dispatch(
@@ -391,24 +552,24 @@ async def test_explicit_force_fallback_provider_uses_auto_fallback_chain(
     monkeypatch,
 ):
     dispatcher = ProviderDispatcher()
-    colab = dispatcher.get_provider("colab_worker")
+    gcs = dispatcher.get_provider("gcp_vm")
     groq = dispatcher.get_provider("groq")
 
-    colab_cfg = dispatcher.__dict__.setdefault("_configs", {}).setdefault(
-        "colab_worker",
+    gcs_cfg = dispatcher.__dict__.setdefault("_configs", {}).setdefault(
+        "gcp_vm",
         {},
     )
-    colab_cfg["force_fallback"] = True
+    gcs_cfg["force_fallback"] = True
 
     monkeypatch.setattr(
         dispatcher,
         "_candidate_order",
-        lambda _pid: ["colab_worker"],
+        lambda _pid: ["gcp_vm"],
     )
     monkeypatch.setattr(
         dispatcher,
         "_hybrid_order",
-        lambda: ["colab_worker", "groq"],
+        lambda: ["gcp_vm", "groq"],
     )
     monkeypatch.setattr(
         dispatcher,
@@ -421,14 +582,14 @@ async def test_explicit_force_fallback_provider_uses_auto_fallback_chain(
         lambda _pid: True,
     )
 
-    async def fail_colab(messages=None, model=None, **kwargs):
+    async def fail_gcs(messages=None, model=None, **kwargs):
         _ = messages, kwargs
         await asyncio.sleep(0)
         return ProviderResult(
             ok=False,
-            provider="colab_worker",
-            model=model or "gemma-3-12b",
-            error="colab unavailable",
+            provider="gcp_vm",
+            model=model or "qwen2.5:3b",
+            error="all gcs backends unavailable",
         )
 
     async def ok_groq(messages=None, model=None, **kwargs):
@@ -442,12 +603,12 @@ async def test_explicit_force_fallback_provider_uses_auto_fallback_chain(
             latency_ms=2.0,
         )
 
-    monkeypatch.setattr(colab, "invoke", fail_colab)
+    monkeypatch.setattr(gcs, "invoke", fail_gcs)
     monkeypatch.setattr(groq, "invoke", ok_groq)
 
     result = await dispatcher.dispatch(
-        pid="colab_worker",
-        model="gemma-3-12b",
+        pid="gcp_vm",
+        model="qwen2.5:3b",
         payload={"messages": [{"role": "user", "content": "hello"}]},
     )
 
@@ -661,3 +822,96 @@ async def test_dispatch_timeout_cancels_inflight_provider_task(monkeypatch):
     assert result["ok"] is False
     assert result["error_category"] == "timeout"
     assert cancelled.is_set()
+
+
+@pytest.mark.asyncio
+async def test_dispatcher_prewarm_updates_warmup_state(monkeypatch):
+    monkeypatch.setenv("ENABLE_SELF_HOSTED_PREWARM", "true")
+    monkeypatch.setenv("LOCAL_STUB_ENDPOINT", "http://localhost")
+    dispatcher = ProviderDispatcher(
+        configs={
+            "local_stub": {
+                "tier": "self_hosted",
+                "endpoint_env": "LOCAL_STUB_ENDPOINT",
+                "default_model": "stub-model",
+            }
+        },
+        class_map={"local_stub": _WarmupProvider},
+    )
+
+    dispatcher.start_background_tasks()
+    await asyncio.sleep(0.05)
+
+    warmup = dispatcher._warmup_state_for("local_stub")
+    assert warmup["state"] == "warm"
+    assert warmup["latency_ms"] == 10.0
+
+
+@pytest.mark.asyncio
+async def test_dispatcher_test_mode_injects_failures_and_restores(monkeypatch):
+    dispatcher = ProviderDispatcher()
+    provider = dispatcher.get_provider("openai")
+
+    async def ok_invoke(messages=None, model=None, **kwargs):
+        _ = messages, kwargs
+        await asyncio.sleep(0)
+        return ProviderResult(ok=True, text="ok", provider="openai", model=model or "gpt-4o-mini")
+
+    monkeypatch.setattr(provider, "invoke", ok_invoke)
+
+    async with dispatcher.test_mode(
+        {"openai": {"fail_after_calls": 0, "error_category": "timeout", "latency_ms": 1}}
+    ):
+        first = await dispatcher.dispatch(
+            pid="openai",
+            model="gpt-4o-mini",
+            payload={"messages": [{"role": "user", "content": "hi"}]},
+        )
+        second = await dispatcher.dispatch(
+            pid="openai",
+            model="gpt-4o-mini",
+            payload={"messages": [{"role": "user", "content": "hi"}]},
+        )
+
+    assert provider.circuit_state == "soft_open"
+    provider.reset_circuit()
+    restored = await dispatcher.dispatch(
+        pid="openai",
+        model="gpt-4o-mini",
+        payload={"messages": [{"role": "user", "content": "hi"}]},
+    )
+
+    assert first["ok"] is False
+    assert first["error_category"] == "timeout"
+    assert second["ok"] is False
+    assert restored["ok"] is True
+
+
+def test_budget_rerank_prefers_zero_cost_candidates(monkeypatch):
+    dispatcher = ProviderDispatcher(
+        configs={
+            "openai": {"priority_tier": 30, "default_model": "gpt-4o-mini"},
+            "gcp_vm": {"priority_tier": 60, "default_model": "qwen2.5:3b", "tier": "self_hosted"},
+        },
+        class_map={"openai": _StubProvider, "gcp_vm": _StubProvider},
+    )
+
+    monkeypatch.setattr(
+        dispatcher,
+        "_budget_status",
+        lambda: {
+            "cap_usd": 1.0,
+            "current_hour_spend_usd": 2.0,
+            "current_hour_spend_by_provider": {"openai": 2.0},
+            "over_budget": True,
+        },
+    )
+    monkeypatch.setattr(
+        dispatcher,
+        "_provider_costs",
+        lambda provider_id: (0.2, 0.2) if provider_id == "openai" else (0.0, 0.0),
+    )
+
+    ranked = dispatcher._apply_budget_rerank(["openai", "gcp_vm"], routing_mode="auto")
+
+    assert ranked == ["gcp_vm", "openai"]

@@ -83,66 +83,7 @@ async function forwardToBackendModels(): Promise<ForwardModelsResult> {
     };
   };
 
-  const mapOpsStatusFallback = (raw: unknown): Record<string, unknown> => {
-    const providersRaw =
-      raw && typeof raw === 'object' && !Array.isArray(raw)
-        ? (raw as { providers?: unknown }).providers
-        : undefined;
 
-    const providersRecord =
-      providersRaw && typeof providersRaw === 'object' && !Array.isArray(providersRaw)
-        ? (providersRaw as Record<string, unknown>)
-        : {};
-
-    const providers: Array<Record<string, unknown>> = [];
-    const models: Array<Record<string, unknown>> = [];
-
-    for (const [providerId, entry] of Object.entries(providersRecord)) {
-      if (!providerId.trim()) continue;
-      const detail =
-        entry && typeof entry === 'object' && !Array.isArray(entry)
-          ? (entry as Record<string, unknown>)
-          : {};
-
-      const health =
-        typeof detail.status === 'string' && detail.status.trim()
-          ? detail.status.trim().toLowerCase()
-          : 'unknown';
-
-      const healthReason =
-        typeof detail.error === 'string' && detail.error.trim() ? detail.error.trim() : null;
-
-      const isSelectable = health !== 'unhealthy';
-
-      providers.push({
-        id: providerId,
-        health,
-        configured: true,
-        is_selectable: isSelectable,
-        health_reason: healthReason,
-      });
-
-      const modelList = Array.isArray(detail.models) ? detail.models : [];
-      for (const model of modelList) {
-        if (typeof model !== 'string' || !model.trim()) continue;
-        models.push({
-          name: model,
-          provider: providerId,
-          health,
-          is_selectable: isSelectable,
-          health_reason: healthReason,
-        });
-      }
-    }
-
-    return {
-      models,
-      providers,
-      source: 'ops_provider_status_fallback',
-      total_models: models.length,
-      total_providers: providers.length,
-    };
-  };
 
   const mapRoutingProvidersFallback = (raw: unknown): Record<string, unknown> => {
     const providerNames = Array.isArray(raw)
@@ -165,29 +106,12 @@ async function forwardToBackendModels(): Promise<ForwardModelsResult> {
   };
 
   try {
-    const primary = await requestBackend('/providers/models');
+    const primary = await requestBackend('/v1/providers/models');
     if (primary.status !== 404) {
       return primary;
     }
 
-    const opsStatus = await requestBackend('/ops/providers/status');
-    if (opsStatus.status >= 200 && opsStatus.status < 300) {
-      return {
-        status: 200,
-        body: mapOpsStatusFallback(opsStatus.body),
-        correlationId: opsStatus.correlationId,
-        fallbackUsed: true,
-      };
-    }
-
-    if (opsStatus.status !== 404) {
-      return {
-        ...opsStatus,
-        fallbackUsed: true,
-      };
-    }
-
-    const routingProviders = await requestBackend('/routing/providers');
+    const routingProviders = await requestBackend('/v1/routing/providers');
     if (routingProviders.status >= 200 && routingProviders.status < 300) {
       return {
         status: 200,

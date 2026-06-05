@@ -14,7 +14,7 @@ from api.services.provider_health import health_monitor
 logger = structlog.get_logger(__name__)
 
 _DEFAULT_INTERVAL_SECONDS = 60
-_PROVIDER_ID = "colab_worker"
+_PROVIDER_ID = "gcp_vm"
 
 
 def _env_true(name: str, default: bool = False) -> bool:

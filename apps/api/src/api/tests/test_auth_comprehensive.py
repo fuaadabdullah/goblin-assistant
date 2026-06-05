@@ -412,7 +412,11 @@ class TestLoginEndpoint:
         mock_user_model.hashed_password = hash_password(password)
         mock_service.get_user_by_email = AsyncMock(return_value=mock_user_model)
 
-        with patch("api.auth.router.UserService", return_value=mock_service):
+        with patch.object(
+            routes_email._ar,
+            "UserService",
+            return_value=mock_service,
+        ):
             response = client.post(
                 "/auth/login",
                 json={

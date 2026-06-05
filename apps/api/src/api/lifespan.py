@@ -152,25 +152,37 @@ async def _start_embedding_worker():
 
 async def _restore_colab_endpoint():
     try:
-        from .ops_routes.colab_worker import (  # noqa: PLC0415
-            load_colab_endpoint_from_db,
+        from .ops_routes._colab_store import (  # noqa: PLC0415
+            load_endpoint_from_db as load_colab_endpoint_from_db,
         )
         from .providers.dispatcher import dispatcher  # noqa: PLC0415
 
         saved_endpoint = await load_colab_endpoint_from_db()
         if saved_endpoint:
-            dispatcher.update_provider_endpoint("colab_worker", saved_endpoint)
+            dispatcher.update_backend_endpoint(
+                "gcp_vm", "colab", saved_endpoint
+            )
             logger.info(
-                "Colab worker endpoint restored",
+                "GCS colab backend endpoint restored",
                 endpoint=saved_endpoint,
             )
         else:
-            logger.info("No saved Colab worker endpoint found")
+            logger.info("No saved GCS colab backend endpoint found")
     except Exception as exc:
         logger.warning(
             "Failed to restore Colab worker endpoint",
             error=str(exc),
         )
+
+
+async def _start_dispatcher_background_tasks():
+    try:
+        from .providers.dispatcher import dispatcher  # noqa: PLC0415
+
+        dispatcher.start_background_tasks()
+        logger.info("Dispatcher background tasks started")
+    except Exception as exc:
+        logger.warning("Dispatcher background tasks failed to start", error=str(exc))
 
 
 async def _stop_ai_health_monitoring():
@@ -211,6 +223,7 @@ async def lifespan(_app: FastAPI):
             _start_provider_monitoring(),
             _start_ai_health_monitoring(),
             _start_colab_heartbeat(),
+            _start_dispatcher_background_tasks(),
             _init_secrets(),
             _start_artifact_cleanup(),
             _start_embedding_worker(),
@@ -253,6 +266,14 @@ async def lifespan(_app: FastAPI):
 
         await cache.close()
         logger.info("Redis cache closed")
+
+        try:
+            from .routing.router import registry  # noqa: PLC0415
+
+            registry.close()
+            logger.info("Routing registry flushed")
+        except Exception as exc:
+            logger.warning("Failed to flush routing registry", error=str(exc))
 
         try:
             await cleanup_secrets_adapter()

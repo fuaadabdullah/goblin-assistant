@@ -588,6 +588,22 @@ class RetrievalTracer:
         """End a retrieval trace"""
         return None
 
+    async def record_tier_breakdown(
+        self,
+        trace_id: str,
+        tier: str,
+        results: List[Any],
+        total_results: int,
+    ) -> None:
+        """Record per-tier retrieval breakdown for a trace."""
+        logger.debug(
+            "retrieval_tier_breakdown",
+            trace_id=trace_id,
+            tier=tier,
+            total_results=total_results,
+            result_count=len(results) if results else 0,
+        )
+
 
 # Global retrieval tracer instance
 retrieval_tracer = RetrievalTracer()
