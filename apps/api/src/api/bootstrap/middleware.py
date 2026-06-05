@@ -87,6 +87,7 @@ def install_runtime_middlewares(app: FastAPI, *, environment: str) -> None:
             "/docs",
             "/openapi.json",
             "/redoc",
+            "/health",
             "/api/v1/health",
             "/auth/register",
             "/auth/login",

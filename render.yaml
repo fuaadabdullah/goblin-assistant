@@ -1,9 +1,9 @@
 services:
   - type: web
-    name: goblin-assistant-api
+    name: goblin-backend
     runtime: docker
-    region: oregon
-    plan: standard
+    region: virginia
+    plan: free
     startCommand: PYTHONPATH=apps/api/src uvicorn api.main:app --host 0.0.0.0 --port $PORT
     healthCheckPath: /health
     
@@ -23,6 +23,8 @@ services:
       # Error Tracking with Sentry
       - key: SENTRY_DSN
         sync: false  # Keep sync: false, will be set manually in Render dashboard
+      - key: LOCAL_LLM_API_KEY
+        sync: false
       
       # Allowed Origins  
       - key: ALLOWED_ORIGINS
@@ -49,11 +51,12 @@ services:
       # GCP LLM Endpoints (removed - VMs terminated since 2026-01-11)
       # Re-add OLLAMA_GCP_URL / LLAMACPP_GCP_URL here after redeploying GCP infra
     
-    # Redis Configuration (if using Render's Redis)
-    # - key: REDIS_URL
-    #   fromDatabase:
-    #     name: goblin-redis
-    #     property: connectionString
+      # Same-region private Key Value connection
+      - key: REDIS_URL
+        fromService:
+          type: keyvalue
+          name: goblin-redis
+          property: connectionString
     
     # Secrets (set manually in Render dashboard)
     # These should be set as Environment Variables with "sync: false"
@@ -83,3 +86,10 @@ services:
     buildCommand: |
       pip install --upgrade pip
       pip install -r apps/api/requirements.txt -r apps/api/requirements-vector.txt
+
+  - type: keyvalue
+    name: goblin-redis
+    region: virginia
+    plan: free
+    maxmemoryPolicy: allkeys-lru
+    ipAllowList: []

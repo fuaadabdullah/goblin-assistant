@@ -30,8 +30,15 @@ def _build_test_app():
 class TestAuthenticationMiddleware:
     """Tests for AuthenticationMiddleware"""
 
+    @patch.dict(
+        os.environ,
+        {
+            "ENVIRONMENT": "production",
+            "LOCAL_LLM_API_KEY": "",
+        },
+    )
     def test_auth_middleware_excludes_health_endpoint(self):
-        """Test that health endpoint is excluded from auth"""
+        """Health probes remain public when production auth is unconfigured."""
         app = _build_test_app()
         app.add_middleware(
             AuthenticationMiddleware,

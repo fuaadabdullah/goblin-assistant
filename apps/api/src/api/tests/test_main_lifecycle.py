@@ -49,6 +49,7 @@ def test_app_auth_middleware_excludes_public_auth_bootstrap_routes() -> None:
     )
     excluded_paths = set(auth_middleware.kwargs["exclude_paths"])
 
+    assert "/health" in excluded_paths
     assert "/auth/csrf-token" in excluded_paths
     assert "/auth/google/url" in excluded_paths
     assert "/auth/passkey/challenge" in excluded_paths
