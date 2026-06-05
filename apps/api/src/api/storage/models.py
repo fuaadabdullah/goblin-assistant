@@ -19,7 +19,8 @@ from sqlalchemy import (
     String,
     Text,
     UniqueConstraint,
-    text,
+    false,
+    true,
 )
 from sqlalchemy.orm import declarative_base, relationship
 
@@ -43,7 +44,7 @@ class UserModel(Base):
     created_at = Column(DateTime, default=datetime.utcnow)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
     last_login = Column(DateTime, nullable=True)
-    is_active = Column(Boolean, default=True, nullable=False, server_default=text("1"))
+    is_active = Column(Boolean, default=True, nullable=False, server_default=true())
 
     # Relationships
     conversations = relationship(
@@ -178,7 +179,7 @@ class UserSessionModel(Base):
 
     session_id = Column(String, primary_key=True)
     user_id = Column(String, ForeignKey("users.id"), nullable=False, index=True)
-    is_revoked = Column(Boolean, default=False, nullable=False, server_default=text("0"))
+    is_revoked = Column(Boolean, default=False, nullable=False, server_default=false())
     created_at = Column(DateTime, default=datetime.utcnow)
     expires_at = Column(DateTime, nullable=True)
 
