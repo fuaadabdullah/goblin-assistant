@@ -26,15 +26,15 @@ services:
       
       # Allowed Origins  
       - key: ALLOWED_ORIGINS
-        value: https://goblin-assistant.vercel.app,https://goblin-backend.fly.dev
+        value: https://goblin-assistant.vercel.app,https://goblin-backend-dt30.onrender.com
 
       # API Base URLs
       - key: NEXT_PUBLIC_API_BASE_URL
-        value: https://goblin-backend.fly.dev
+        value: https://goblin-backend-dt30.onrender.com
       - key: NEXT_PUBLIC_BACKEND_URL
-        value: https://goblin-backend.fly.dev
+        value: https://goblin-backend-dt30.onrender.com
       - key: NEXT_PUBLIC_FASTAPI_URL
-        value: https://goblin-backend.fly.dev
+        value: https://goblin-backend-dt30.onrender.com
       - key: NEXT_PUBLIC_FRONTEND_URL
         value: https://goblin-assistant.vercel.app
       

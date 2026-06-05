@@ -2,10 +2,10 @@
   "framework": "nextjs",
   "installCommand": "pnpm install --no-frozen-lockfile",
   "env": {
-    "GOBLIN_BACKEND_URL": "https://goblin-backend.fly.dev",
-    "BACKEND_URL": "https://goblin-backend.fly.dev",
-    "NEXT_PUBLIC_API_URL": "https://goblin-backend.fly.dev",
-    "NEXT_PUBLIC_API_BASE_URL": "https://goblin-backend.fly.dev",
+    "GOBLIN_BACKEND_URL": "https://goblin-backend-dt30.onrender.com",
+    "BACKEND_URL": "https://goblin-backend-dt30.onrender.com",
+    "NEXT_PUBLIC_API_URL": "https://goblin-backend-dt30.onrender.com",
+    "NEXT_PUBLIC_API_BASE_URL": "https://goblin-backend-dt30.onrender.com",
     "NEXT_PUBLIC_DOMAIN": "goblin-assistant.vercel.app",
     "NEXT_PUBLIC_GA_MEASUREMENT_ID": "G-527208310"
   },
