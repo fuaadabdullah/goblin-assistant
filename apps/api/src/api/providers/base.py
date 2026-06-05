@@ -199,9 +199,6 @@ class BaseProvider(ABC):
     Costs are expressed as USD per 1K tokens to keep routing logic simple.
     """
 
-    COST_INPUT_PER_1K: float = 0.0
-    COST_OUTPUT_PER_1K: float = 0.0
-
     def __init__(
         self,
         provider_id: Union[str, Dict[str, Any]],
@@ -480,8 +477,6 @@ class BaseProvider(ABC):
             self.provider_id,
             resolved_model,
             config=self.config,
-            default_input_per1k=self.COST_INPUT_PER_1K,
-            default_output_per1k=self.COST_OUTPUT_PER_1K,
         )
         return (
             input_tokens * pricing.input_per1k / 1000

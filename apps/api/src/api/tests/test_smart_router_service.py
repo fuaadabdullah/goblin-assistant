@@ -43,8 +43,6 @@ async def test_invoke_with_fallback_returns_success():
 
     fake_provider = MagicMock()
     fake_provider.default_model = "gpt-4o-mini"
-    fake_provider.COST_INPUT_PER_1K = 1
-    fake_provider.COST_OUTPUT_PER_1K = 1
 
     with (
         patch(

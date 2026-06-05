@@ -35,9 +35,6 @@ class GoogleCloudProvider(OpenAICompatibleProvider):
     Supports chat, streaming, embeddings, and reranking.
     """
 
-    COST_INPUT_PER_1K = 0.0
-    COST_OUTPUT_PER_1K = 0.0
-
     def __init__(
         self,
         provider_id: str | Dict[str, Any],

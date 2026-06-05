@@ -18,18 +18,16 @@ from api.routing.router import HybridRouter, RoutingRegistry
 
 
 class StubProvider(BaseProvider):
-    """Minimal provider stub with configurable cost attributes.
+    """Minimal provider stub.
 
-    COST_* are class-level floats on BaseProvider — safe to set as instance attrs.
-    default_model is a read-only property on BaseProvider that reads self.config,
-    so we pass costs and model through config and let the property handle it.
+    Costs are sourced from the provider's config dict (``cost_input_per_1k`` /
+    ``cost_output_per_1k`` or the ``[costs]`` section) by ``pricing.resolve_model_pricing``.
+    ``default_model`` is a read-only property on ``BaseProvider`` that reads
+    ``self.config``, so we pass it through config.
     """
 
     def __init__(self, provider_id: str, config: dict) -> None:
         super().__init__(provider_id, config)
-        self.COST_INPUT_PER_1K = float(config.get("cost_input_per_1k", 0.0))
-        self.COST_OUTPUT_PER_1K = float(config.get("cost_output_per_1k", 0.0))
-        # default_model is read from self.config by the BaseProvider property — no assignment needed
 
     async def invoke(self, messages=None, model=None, **kwargs):
         return ProviderResult(ok=True, provider=self.provider_id, model=model or self.default_model)

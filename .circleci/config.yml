@@ -247,32 +247,38 @@ jobs:
             docker push "ghcr.io/${GITHUB_USER}/goblin-assistant:latest"
 
   # ── Deploy ────────────────────────────────────────────────────────────────
-  deploy-render:
+  deploy-fly:
     executor: base
     steps:
+      - checkout
       - run:
-          name: Validate Render credentials
+          name: Install flyctl
           command: |
-            if [ -z "$RENDER_SERVICE_ID" ] || [ -z "$RENDER_API_KEY" ]; then
-              echo "Error: RENDER_SERVICE_ID or RENDER_API_KEY not set"
-              echo "Set these in CircleCI project settings → Environment Variables"
+            curl -L https://fly.io/install.sh | sh
+            echo 'export PATH="$HOME/.fly/bin:$PATH"' >> $BASH_ENV
+            source $BASH_ENV
+      - run:
+          name: Validate Fly credentials
+          command: |
+            if [ -z "$FLY_API_TOKEN" ]; then
+              echo "Error: FLY_API_TOKEN not set"
+              echo "Set this in CircleCI project settings → Environment Variables"
               exit 1
             fi
       - run:
-          name: Trigger Render deploy
+          name: Deploy to Fly.io
           command: |
-            curl -sf -X POST \
-              "https://api.render.com/v1/services/${RENDER_SERVICE_ID}/deploys" \
-              -H "Authorization: Bearer ${RENDER_API_KEY}" \
-              -H "Content-Type: application/json" \
-              -d '{"clearCache":"do_not_clear_cache"}'
+            source $BASH_ENV
+            flyctl deploy --remote-only --app goblin-backend
+          environment:
+            FLY_API_TOKEN: $FLY_API_TOKEN
       - run:
           name: Wait for health check
           command: |
-            sleep 60
+            sleep 30
             for i in $(seq 1 20); do
               STATUS=$(curl -sf -o /dev/null -w "%{http_code}" \
-                https://goblin-backend-dt30.onrender.com/health || echo "000")
+                https://goblin-backend.fly.dev/health || echo "000")
               [ "$STATUS" = "200" ] && echo "Healthy after $i attempts." && exit 0
               echo "Attempt $i: $STATUS — retrying in 15s"
               sleep 15
@@ -284,21 +290,21 @@ jobs:
     executor: base
     steps:
       - run:
-          name: Health check (staging)
+          name: Health check
           command: |
             for i in $(seq 1 5); do
               STATUS=$(curl -sf -o /dev/null -w "%{http_code}" \
-                https://goblin-backend-dt30.onrender.com/health || echo "000")
+                https://goblin-backend.fly.dev/health || echo "000")
               [ "$STATUS" = "200" ] && echo "Health check passed." && break
               echo "Attempt $i: $STATUS — retrying in 10s"
               sleep 10
               [ "$i" = "5" ] && echo "Health check failed after 5 attempts." && exit 1
             done
       - run:
-          name: Readiness check (staging)
+          name: Readiness check
           command: |
             STATUS=$(curl -sf -o /dev/null -w "%{http_code}" \
-              https://goblin-backend-dt30.onrender.com/health/ready || echo "000")
+              https://goblin-backend.fly.dev/health/ready || echo "000")
             [ "$STATUS" = "200" ] && echo "Readiness check passed." && exit 0
             echo "Readiness check returned $STATUS." && exit 1
 
@@ -325,7 +331,7 @@ workflows:
           filters:
             branches:
               only: [main, develop]
-      - deploy-render:
+      - deploy-fly:
           requires: [docker-build]
           filters:
             branches:

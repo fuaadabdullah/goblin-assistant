@@ -38,6 +38,8 @@ def _normalize_provider_config(provider_id: str, config: Optional[Dict[str, Any]
             "costs",
             "cost_input_per1k",
             "cost_output_per1k",
+            "cost_input_per_1k",
+            "cost_output_per_1k",
             "rate_limits",
             "rate_limit_per_min",
         )
@@ -54,9 +56,18 @@ def resolve_model_pricing(
     model: Optional[str] = None,
     *,
     config: Optional[Dict[str, Any]] = None,
-    default_input_per1k: float = 0.0,
-    default_output_per1k: float = 0.0,
 ) -> ModelPricing:
+    """
+    Resolve per-model pricing from the single source of truth (providers.toml).
+
+    Looks up costs in the ``[providers.<id>.costs]`` section keyed by:
+      1. the exact *model* name,
+      2. the provider's *default_model*,
+      3. ``"default"``,
+      4. ``"*"`` (wildcard fallback).
+
+    If nothing is found, returns ``ModelPricing(0.0, 0.0)``.
+    """
     provider_cfg = _normalize_provider_config(provider_id, config)
     costs = _as_dict(provider_cfg.get("costs"))
     candidate_keys = [
@@ -77,18 +88,19 @@ def resolve_model_pricing(
         if cost_dict:
             return ModelPricing(
                 input_per1k=float(
-                    cost_dict.get("input_per1k", cost_dict.get("input", default_input_per1k))
+                    cost_dict.get("input_per1k", cost_dict.get("input", 0.0))
                 ),
                 output_per1k=float(
-                    cost_dict.get("output_per1k", cost_dict.get("output", default_output_per1k))
+                    cost_dict.get("output_per1k", cost_dict.get("output", 0.0))
                 ),
             )
 
-    legacy_input = provider_cfg.get("cost_input_per1k", default_input_per1k)
-    legacy_output = provider_cfg.get("cost_output_per1k", default_output_per1k)
+    # Legacy top-level fields — accept both spellings (TOML uses per1k, config dicts use per_1k)
+    legacy_input = provider_cfg.get("cost_input_per1k") or provider_cfg.get("cost_input_per_1k", 0.0)
+    legacy_output = provider_cfg.get("cost_output_per1k") or provider_cfg.get("cost_output_per_1k", 0.0)
     return ModelPricing(
-        input_per1k=float(legacy_input or default_input_per1k),
-        output_per1k=float(legacy_output or default_output_per1k),
+        input_per1k=float(legacy_input or 0.0),
+        output_per1k=float(legacy_output or 0.0),
     )
 
 

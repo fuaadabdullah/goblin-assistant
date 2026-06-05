@@ -483,8 +483,6 @@ class ProviderDispatcher:
             provider.provider_id,
             provider.default_model or None,
             config=provider.config,
-            default_input_per1k=provider.COST_INPUT_PER_1K,
-            default_output_per1k=provider.COST_OUTPUT_PER_1K,
         )
         return (pricing.input_per1k, pricing.output_per1k)
 

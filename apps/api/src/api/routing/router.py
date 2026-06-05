@@ -555,8 +555,6 @@ def _provider_costs(provider_ids: List[str]) -> Dict[str, tuple[float, float]]:
             provider.provider_id,
             provider.default_model or None,
             config=provider.config,
-            default_input_per1k=provider.COST_INPUT_PER_1K,
-            default_output_per1k=provider.COST_OUTPUT_PER_1K,
         )
         costs[provider_id] = (pricing.input_per1k, pricing.output_per1k)
     return costs

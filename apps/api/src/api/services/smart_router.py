@@ -30,15 +30,10 @@ def _provider_pricing(provider: Any) -> ProviderCost:
             getattr(provider, "provider_id", ""),
             getattr(provider, "default_model", None) or None,
             config=config,
-            default_input_per1k=float(getattr(provider, "COST_INPUT_PER_1K", 0.0) or 0.0),
-            default_output_per1k=float(getattr(provider, "COST_OUTPUT_PER_1K", 0.0) or 0.0),
         )
         return ProviderCost(input_cost=pricing.input_per1k, output_cost=pricing.output_per1k)
 
-    return ProviderCost(
-        input_cost=float(getattr(provider, "COST_INPUT_PER_1K", 0.0) or 0.0),
-        output_cost=float(getattr(provider, "COST_OUTPUT_PER_1K", 0.0) or 0.0),
-    )
+    return ProviderCost(input_cost=0.0, output_cost=0.0)
 
 
 class TaskType(Enum):

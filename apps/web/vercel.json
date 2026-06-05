@@ -1,5 +1,6 @@
 {
   "framework": "nextjs",
+  "installCommand": "pnpm install --no-frozen-lockfile",
   "env": {
     "GOBLIN_BACKEND_URL": "https://goblin-backend.fly.dev",
     "BACKEND_URL": "https://goblin-backend.fly.dev",

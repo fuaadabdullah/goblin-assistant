@@ -23,8 +23,6 @@ _OPENAI_UNSUPPORTED_STATUS = {404, 405, 422, 501}
 
 
 class ColabWorkerProvider(BaseProvider):
-    COST_INPUT_PER_1K = 0.0
-    COST_OUTPUT_PER_1K = 0.0
 
     def __init__(
         self,

@@ -68,9 +68,6 @@ def _backend_is_configured(bc: Dict[str, Any]) -> bool:
 class GoogleCloudSelfhostedProvider(BaseProvider):
     """Single provider that aggregates all GCP-hosted inference backends."""
 
-    COST_INPUT_PER_1K = 0.0
-    COST_OUTPUT_PER_1K = 0.0
-
     def __init__(
         self,
         provider_id: str | Dict[str, Any],
