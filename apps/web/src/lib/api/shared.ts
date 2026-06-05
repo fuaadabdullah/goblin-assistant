@@ -170,7 +170,7 @@ export const refreshAccessToken = async (): Promise<string | null> => {
       refresh_token?: string;
       expires_in?: number;
       user?: Record<string, unknown>;
-    }>(`${V1_API_PREFIX}/auth/refresh`, {
+    }>(`/auth/refresh`, {
       refresh_token: refreshToken ?? undefined,
     });
 
@@ -468,7 +468,7 @@ export const withTransientRetry = async <T>(
 // ============================================================================
 
 export const getCsrfToken = async (): Promise<string> => {
-  const response = await getBackend<{ csrf_token?: string }>(`${V1_API_PREFIX}/auth/csrf-token`, {
+  const response = await getBackend<{ csrf_token?: string }>(`/auth/csrf-token`, {
     timeout: AUTH_REQUEST_TIMEOUT_MS,
   });
 

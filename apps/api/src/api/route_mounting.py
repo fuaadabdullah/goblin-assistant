@@ -20,6 +20,7 @@ def mount_primary_routes(
     write_time_router,
     health_router,
     ops_router,
+    admin_router,
     secrets_router,
     privacy_router,
     model_suggestion_debug_router,
@@ -46,6 +47,7 @@ def mount_primary_routes(
         providers_models_router,
         account_router,
         support_router,
+        admin_router,
     )
     # Non-versioned routes that are intentionally internal/experimental.
     app.include_router(routing_router)
@@ -54,6 +56,7 @@ def mount_primary_routes(
     app.include_router(semantic_chat_router)
     app.include_router(write_time_router)
     app.include_router(ops_router)
+    app.include_router(admin_router)
     app.include_router(secrets_router)
     app.include_router(model_suggestion_debug_router)
     app.include_router(observability_debug_router)
@@ -84,6 +87,7 @@ def mount_versioned_primary_routes(
     write_time_router,
     stream_router,
     ops_router,
+    admin_router,
     secrets_router,
 ) -> None:
     _ = (
@@ -105,6 +109,7 @@ def mount_versioned_primary_routes(
         write_time_router,
         stream_router,
         ops_router,
+        admin_router,
         secrets_router,
     )
     app.include_router(health_router, prefix="/v1")
@@ -112,7 +117,7 @@ def mount_versioned_primary_routes(
     app.include_router(providers_models_router, prefix="/v1")
     app.include_router(chat_router, prefix="/v1")
     app.include_router(api_router, prefix="/v1")
-    app.include_router(auth_router, prefix="/v1")
+    app.include_router(auth_router)
     app.include_router(search_router, prefix="/v1")
     app.include_router(sandbox_router, prefix="/v1")
     app.include_router(account_router, prefix="/v1")
@@ -125,4 +130,5 @@ def mount_versioned_primary_routes(
     app.include_router(write_time_router, prefix="/v1")
     app.include_router(stream_router, prefix="/v1")
     app.include_router(ops_router, prefix="/v1")
+    app.include_router(admin_router, prefix="/v1")
     app.include_router(secrets_router, prefix="/v1")
