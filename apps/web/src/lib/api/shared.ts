@@ -303,7 +303,8 @@ export const unwrapEnvelope = <T>(payload: T | StandardApiEnvelope<T>): T => {
 // HTTP Helpers (private, used within this module)
 // ============================================================================
 
-const V1_PATH_PATTERN = /^\/?v1(\/|$)/i;
+// Matches /v1/... but not /v1/auth/... — backend auth routes legitimately live at /v1/auth/.
+const V1_PATH_PATTERN = /^\/?v1(?!\/auth)(\/|$)/i;
 
 const assertNoVersionedClientPath = (path: string): void => {
   if (path.startsWith('http://') || path.startsWith('https://')) {
