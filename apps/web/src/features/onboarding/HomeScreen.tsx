@@ -24,7 +24,7 @@ const LIVE_DEMO_PROMPTS = [
     label: 'Run some code',
     prompt: 'Open the Python sandbox and show me how to fetch stock data with yfinance.',
     response:
-      'Goblin would prefill a runnable example, ready to execute in the guest sandbox with no login required.',
+      'Goblin would prefill a runnable example, ready to send in the guest chat with no login required.',
   },
   {
     label: 'Research a topic',
@@ -51,7 +51,7 @@ const CustomerHome = ({ isAuthenticated }: { isAuthenticated: boolean }) => {
             <section className="bg-surface border border-border rounded-2xl p-6 shadow-card">
               <div className="flex items-center justify-between mb-4 gap-4">
                 <div>
-                  <h2 className="text-lg font-semibold text-text">Live sandbox chat</h2>
+                  <h2 className="text-lg font-semibold text-text">Live chat demo</h2>
                   <p className="text-sm text-muted mt-1">
                     No login. Rate limited. Instantly interactive.
                   </p>
@@ -90,7 +90,7 @@ const CustomerHome = ({ isAuthenticated }: { isAuthenticated: boolean }) => {
                     <span className="text-xs font-mono uppercase tracking-wide text-muted">
                       Preview
                     </span>
-                    <span className="text-xs text-muted">Guest sandbox ready</span>
+                    <span className="text-xs text-muted">Guest chat ready</span>
                   </div>
                   <div className="space-y-3">
                     <div className="rounded-xl bg-primary/10 border border-primary/20 p-3">

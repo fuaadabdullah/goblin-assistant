@@ -93,7 +93,7 @@ export default function ControlPanelHero() {
           <div className="flex flex-wrap gap-3">
             <Link
               href="/chat?guest=1"
-              onClick={() => trackAction('try_live_sandbox')}
+              onClick={() => trackAction('try_guest_chat')}
               className="px-4 py-2 rounded-lg bg-primary text-text-inverse font-medium shadow-glow-primary hover:brightness-110"
             >
               Try for free
@@ -127,7 +127,7 @@ export default function ControlPanelHero() {
                   Example
                 </div>
                 <p className="text-sm text-text">
-                  Try a quick demo in the sandbox for {current} scenarios.
+                  Try a quick demo in the chat for {current} scenarios.
                 </p>
               </div>
             </div>
