@@ -198,9 +198,8 @@ async def dispatch_request(
 
         model_name = resolved_model or current_provider.default_model
         log = logger.bind(provider=provider_id, model=model_name)
-        if not current_provider.should_attempt(
-            canary=dispatcher._is_canary_attempt(provider_id, model_name),
-        ):
+        canary = dispatcher._is_canary_attempt(provider_id, model_name)
+        if not current_provider.should_attempt(canary=canary):
             last_error = "provider circuit open"
             last_category = ProviderErrorCategory.SERVER_ERROR
             log.info(
@@ -208,6 +207,15 @@ async def dispatch_request(
                 circuit_state=current_provider.circuit_state,
             )
             continue
+        if current_provider.circuit_state == "soft_open":
+            if not current_provider.claim_soft_open_probe():
+                last_error = "provider circuit open"
+                last_category = ProviderErrorCategory.SERVER_ERROR
+                log.info(
+                    "dispatch_circuit_skipped",
+                    circuit_state=current_provider.circuit_state,
+                )
+                continue
         kwargs = dispatcher._build_invoke_kwargs(payload)
         reservation = await quota_service.reserve(
             provider_id,

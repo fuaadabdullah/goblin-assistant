@@ -383,7 +383,7 @@ class TestBaseProviderCircuitBreaker:
         assert provider.circuit_state == "soft_open"
         assert provider.is_available() is True
         assert provider.should_attempt(canary=False) is False
-        assert provider.should_attempt(canary=True) is True
+        assert provider.should_attempt(canary=True) is False
 
     def test_circuit_breaker_backoff_duration(self):
         provider = _StubProvider("stub", {"default_model": "stub-model"})
@@ -392,6 +392,25 @@ class TestBaseProviderCircuitBreaker:
         assert provider.circuit_state == "soft_open"
         # _circuit_open_until should be ~now + 30s
         assert provider._circuit_open_until > time.time() + 25
+
+    def test_circuit_breaker_failed_probe_rearms_soft_open_window(self, monkeypatch):
+        import api.providers.base as base_module
+
+        now = 1_000.0
+        monkeypatch.setattr(base_module.time, "time", lambda: now)
+
+        provider = _StubProvider("stub", {"default_model": "stub-model"})
+        provider.record_failure("timeout 1", category="timeout")
+        provider.record_failure("timeout 2", category="timeout")
+        assert provider.circuit_state == "soft_open"
+
+        monkeypatch.setattr(base_module.time, "time", lambda: now + 31.0)
+        assert provider.claim_soft_open_probe() is True
+
+        provider.record_failure("timeout probe failed", category="timeout")
+        assert provider.circuit_state == "soft_open"
+        assert provider.soft_open_probe_available() is False
+        assert provider._circuit_open_until > now + 31.0
 
     def test_circuit_breaker_success_resets_backoff(self):
         provider = _StubProvider("stub", {"default_model": "stub-model"})
@@ -427,6 +446,35 @@ class TestBaseProviderCircuitBreaker:
         assert provider.circuit_state == "hard_open"
         assert provider.is_available() is False
         assert provider.should_attempt(canary=True) is False
+
+    def test_circuit_breaker_hard_opens_on_billing_failure(self):
+        provider = _StubProvider("stub", {"default_model": "stub-model"})
+
+        provider.record_failure("credit balance is too low", category="rate-limit")
+
+        assert provider.circuit_state == "hard_open"
+        assert provider.is_available() is False
+        assert provider.should_attempt(canary=True) is False
+
+    def test_dispatcher_probe_eligibility_uses_recovery_window(self, monkeypatch):
+        import api.providers.base as base_module
+
+        providers = {"alpha": {"default_model": "m1"}}
+        d = _make_dispatcher(providers)
+        try:
+            provider = d.get_provider("alpha")
+
+            now = 1_000.0
+            monkeypatch.setattr(base_module.time, "time", lambda: now)
+            provider.record_failure("timeout one", category="timeout")
+            provider.record_failure("timeout two", category="timeout")
+
+            assert d._is_canary_attempt("alpha", "m1") is False
+
+            monkeypatch.setattr(base_module.time, "time", lambda: now + 31.0)
+            assert d._is_canary_attempt("alpha", "m1") is True
+        finally:
+            _clean_env(providers)
 
 
 # =============================================================================
@@ -744,6 +792,7 @@ class TestLatencyBasedRouting:
 
         reg.record_success("p1", latency_ms=100.0, cost_usd=0.25)
         reg.record_failure("p1")
+        reg.flush()
 
         restored = RoutingRegistry(store=RoutingRegistryStore(str(store_path)))
         stats = restored.get("p1")

@@ -79,7 +79,35 @@ def test_base_provider_circuit_breaker_soft_opens_after_transient_failures():
     assert provider.circuit_state == "soft_open"
     assert provider.is_available() is True
     assert provider.should_attempt(canary=False) is False
-    assert provider.should_attempt(canary=True) is True
+    assert provider.should_attempt(canary=True) is False
+
+
+def test_base_provider_soft_open_probe_becomes_available_after_timeout(monkeypatch):
+    import api.providers.base as base_module
+
+    now = 1_000.0
+    monkeypatch.setattr(base_module.time, "time", lambda: now)
+
+    provider = _StubProvider("stub", {"default_model": "stub-model"})
+    provider.record_failure("timeout one", category="timeout")
+    provider.record_failure("timeout two", category="timeout")
+
+    assert provider.soft_open_probe_available() is False
+
+    monkeypatch.setattr(base_module.time, "time", lambda: now + 31.0)
+    assert provider.soft_open_probe_available() is True
+    assert provider.claim_soft_open_probe() is True
+    assert provider.claim_soft_open_probe() is False
+
+
+def test_base_provider_hard_opens_on_billing_failure():
+    provider = _StubProvider("stub", {"default_model": "stub-model"})
+
+    provider.record_failure("exceeded your current quota", category="rate-limit")
+
+    assert provider.circuit_state == "hard_open"
+    assert provider.is_available() is False
+    assert provider.should_attempt(canary=True) is False
 
     provider.record_success()
     assert provider.circuit_state == "closed"
@@ -266,6 +294,8 @@ def test_candidate_order_auto_uses_hybrid_router(monkeypatch):
 
 @pytest.mark.asyncio
 async def test_dispatch_success_records_provider_and_registry(monkeypatch):
+    import api.providers.base as base_module
+
     dispatcher = ProviderDispatcher()
     provider = dispatcher.get_provider("openai")
 
@@ -285,10 +315,12 @@ async def test_dispatch_success_records_provider_and_registry(monkeypatch):
     monkeypatch.setattr(provider, "invoke", fake_invoke)
 
     # Success path must close the circuit via provider.record_success().
+    now = 1_000.0
+    monkeypatch.setattr(base_module.time, "time", lambda: now)
     provider.record_failure("timeout 1", category="timeout")
     provider.record_failure("timeout 2", category="timeout")
     assert provider.circuit_state == "soft_open"
-    monkeypatch.setattr(dispatcher, "_is_canary_attempt", lambda _pid, _model: True)
+    monkeypatch.setattr(base_module.time, "time", lambda: now + 31.0)
 
     stats_before = registry.get("openai")
     before_successes = stats_before.success_count
@@ -517,6 +549,7 @@ async def test_auto_dispatch_skips_self_hosted_candidates_by_default(
         "_candidate_order",
         lambda _pid: ["gcp_vm", "groq"],
     )
+    monkeypatch.setattr(dispatcher, "_allow_self_hosted_auto_routing", lambda: False)
     monkeypatch.setattr(dispatcher, "is_configured", lambda _pid: True)
     monkeypatch.setattr(health_monitor, "is_available", lambda _pid: True)
 

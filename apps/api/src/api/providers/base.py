@@ -215,6 +215,7 @@ class BaseProvider(ABC):
         self._failure_count = 0
         self._transient_failure_count = 0
         self._circuit_open_until = 0.0
+        self._soft_open_probe_taken = False
         self._circuit_state = ProviderCircuitState.CLOSED
 
     @staticmethod
@@ -393,8 +394,23 @@ class BaseProvider(ABC):
         if self._circuit_state == ProviderCircuitState.HARD_OPEN:
             return False
         if self._circuit_state == ProviderCircuitState.SOFT_OPEN:
-            return bool(canary or not critical)
+            return bool(canary and self.soft_open_probe_available())
         return self.is_available()
+
+    def soft_open_probe_available(self) -> bool:
+        """Return True when a soft-open provider may receive its next probe."""
+        return (
+            self._circuit_state == ProviderCircuitState.SOFT_OPEN
+            and not self._soft_open_probe_taken
+            and time.time() >= self._circuit_open_until
+        )
+
+    def claim_soft_open_probe(self) -> bool:
+        """Reserve the current soft-open probe slot if one is available."""
+        if not self.soft_open_probe_available():
+            return False
+        self._soft_open_probe_taken = True
+        return True
 
     @property
     def circuit_state(self) -> str:
@@ -407,6 +423,8 @@ class BaseProvider(ABC):
             "transient_failure_count": self._transient_failure_count,
             "last_error": self._last_error,
             "open_until": self._circuit_open_until,
+            "probe_available": self.soft_open_probe_available(),
+            "probe_taken": self._soft_open_probe_taken,
             "available": self.is_available(),
         }
 
@@ -419,12 +437,27 @@ class BaseProvider(ABC):
         category_value = self._normalize_error_category(error, category)
         self._failure_count += 1
         self._last_error = error
-        if category_value in {ProviderErrorCategory.AUTH, ProviderErrorCategory.RATE_LIMIT} and (
-            category_value == ProviderErrorCategory.AUTH or is_billing_error(429, error)
+        if self._circuit_state == ProviderCircuitState.HARD_OPEN:
+            self._healthy = False
+            return
+        if category_value == ProviderErrorCategory.AUTH or (
+            category_value in {ProviderErrorCategory.RATE_LIMIT, ProviderErrorCategory.UNKNOWN}
+            and is_billing_error(429, error)
         ):
             self._healthy = False
             self._circuit_state = ProviderCircuitState.HARD_OPEN
             self._circuit_open_until = float("inf")
+            self._soft_open_probe_taken = False
+            return
+
+        if self._circuit_state == ProviderCircuitState.SOFT_OPEN:
+            self._healthy = False
+            self._circuit_open_until = time.time() + backoff_seconds
+            self._soft_open_probe_taken = False
+            if category_value in {ProviderErrorCategory.TIMEOUT, ProviderErrorCategory.SERVER_ERROR}:
+                self._transient_failure_count += 1
+            elif category_value not in {ProviderErrorCategory.AUTH, ProviderErrorCategory.RATE_LIMIT}:
+                self._transient_failure_count = 0
             return
 
         if category_value in {ProviderErrorCategory.TIMEOUT, ProviderErrorCategory.SERVER_ERROR}:
@@ -436,10 +469,12 @@ class BaseProvider(ABC):
             self._circuit_state = ProviderCircuitState.SOFT_OPEN
             self._healthy = False
             self._circuit_open_until = time.time() + backoff_seconds
+            self._soft_open_probe_taken = False
         elif self._failure_count >= 3:
             self._circuit_state = ProviderCircuitState.SOFT_OPEN
             self._healthy = False
             self._circuit_open_until = time.time() + backoff_seconds
+            self._soft_open_probe_taken = False
 
     def record_success(self) -> None:
         self._healthy = True
@@ -447,6 +482,7 @@ class BaseProvider(ABC):
         self._transient_failure_count = 0
         self._last_error = None
         self._circuit_open_until = 0.0
+        self._soft_open_probe_taken = False
         self._circuit_state = ProviderCircuitState.CLOSED
 
     def reset_circuit(self) -> None:

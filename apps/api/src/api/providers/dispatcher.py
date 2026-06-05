@@ -7,7 +7,6 @@ Config is loaded from config/providers.toml — the SINGLE source of truth.
 from __future__ import annotations
 
 import asyncio
-import hashlib
 import os
 import random
 import time
@@ -70,6 +69,7 @@ from .provider_registry import (
     ProviderRuntimeConfig,
     build_factories_from_class_map,
 )
+from .model_registry import validate_model_alias_targets
 from .routing_strategies import rank_cheapest, rank_hybrid, rank_local
 
 _bootstrap_logger = structlog.get_logger(__name__)
@@ -99,6 +99,11 @@ _PROVIDER_ALIASES: Dict[str, str] = _load_aliases(_provider_toml)
 _MODEL_ALIASES, _MODEL_ALIAS_PATTERNS = _load_model_aliases(_provider_toml)
 _VISIBLE_PROVIDER_IDS: List[str] = _load_visible_providers(_provider_toml)
 logger = _get_provider_logger(__name__, lambda: _known_secrets_from_configs(_PROVIDER_CONFIGS))
+validate_model_alias_targets(
+    provider_toml=_provider_toml,
+    provider_configs=_PROVIDER_CONFIGS,
+    logger=logger,
+)
 
 
 def reload_provider_catalog() -> None:
@@ -109,6 +114,11 @@ def reload_provider_catalog() -> None:
     _PROVIDER_ALIASES = _load_aliases(_provider_toml)
     _MODEL_ALIASES, _MODEL_ALIAS_PATTERNS = _load_model_aliases(_provider_toml)
     _VISIBLE_PROVIDER_IDS = _load_visible_providers(_provider_toml)
+    validate_model_alias_targets(
+        provider_toml=_provider_toml,
+        provider_configs=_PROVIDER_CONFIGS,
+        logger=logger,
+    )
 
 
 def canonical_provider_id(value: Optional[str]) -> Optional[str]:
@@ -266,6 +276,8 @@ class ProviderDispatcher:
         return max(0.0, min(1.0, value))
 
     def _load_circuit_canary_percent(self) -> float:
+        # Compatibility-only config reader. Dispatch now uses time-based probe
+        # eligibility derived from provider circuit state.
         raw_value = os.getenv("PROVIDER_CIRCUIT_CANARY_PERCENT", "").strip()
         if not raw_value:
             raw_value = str(
@@ -288,15 +300,11 @@ class ProviderDispatcher:
         provider_id: str,
         model: Optional[str],
     ) -> bool:
-        if self._circuit_canary_percent <= 0:
+        _ = model
+        current_provider = self._ensure_provider(provider_id)
+        if current_provider is None:
             return False
-        if self._circuit_canary_percent >= 1:
-            return True
-        minute_bucket = int(time.time() // 60)
-        seed = f"{provider_id}:{model or ''}:{minute_bucket}".encode("utf-8")
-        digest = hashlib.sha256(seed).hexdigest()
-        value = int(digest[:8], 16) / 0xFFFFFFFF
-        return value < self._circuit_canary_percent
+        return current_provider.soft_open_probe_available()
 
     def _ensure_provider(self, provider_id: str) -> Optional[ProviderAdapter]:
         canonical_id = canonical_provider_id(provider_id) or provider_id

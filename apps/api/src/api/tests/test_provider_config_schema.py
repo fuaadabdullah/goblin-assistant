@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import importlib
 from pathlib import Path
+from unittest.mock import MagicMock
 
 import pytest
 
@@ -78,6 +79,81 @@ rate_limit_per_min = 60
     assert provider.rate_limit_per_min == 60
 
 
+def test_validate_model_alias_targets_accepts_valid_aliases(tmp_path: Path) -> None:
+    config_path = tmp_path / "providers.toml"
+    config_path.write_text(
+        """
+[providers.openai]
+name = "OpenAI"
+endpoint = "https://api.openai.com/v1"
+api_key_env = "OPENAI_API_KEY"
+default_model = "gpt-4o-mini"
+models = ["gpt-4o", "gpt-4o-mini"]
+
+[model_aliases]
+"gpt-mini" = { provider = "openai", model = "gpt-4o-mini" }
+""".strip(),
+        encoding="utf-8",
+    )
+
+    provider_toml = ProviderToml.load(config_path)
+    logger = MagicMock()
+
+    dispatcher_module.validate_model_alias_targets(
+        provider_toml=provider_toml,
+        provider_configs={
+            "openai": {
+                "default_model": "gpt-4o-mini",
+                "models": ["gpt-4o", "gpt-4o-mini"],
+                "backends": [],
+            },
+        },
+        logger=logger,
+    )
+
+    logger.warning.assert_not_called()
+
+
+def test_validate_model_alias_targets_warns_for_invalid_alias_targets(tmp_path: Path) -> None:
+    config_path = tmp_path / "providers.toml"
+    config_path.write_text(
+        """
+[providers.openai]
+name = "OpenAI"
+endpoint = "https://api.openai.com/v1"
+api_key_env = "OPENAI_API_KEY"
+default_model = "gpt-4o-mini"
+models = ["gpt-4o-mini"]
+
+[model_aliases]
+"missing-provider" = { provider = "anthropic", model = "claude-3-5-haiku-latest" }
+"bad-model" = { provider = "openai", model = "gpt-4.1" }
+""".strip(),
+        encoding="utf-8",
+    )
+
+    provider_toml = ProviderToml.load(config_path)
+    logger = MagicMock()
+
+    dispatcher_module.validate_model_alias_targets(
+        provider_toml=provider_toml,
+        provider_configs={
+            "openai": {
+                "default_model": "gpt-4o-mini",
+                "models": ["gpt-4o-mini"],
+                "backends": [],
+            }
+        },
+        logger=logger,
+    )
+
+    assert logger.warning.call_count == 2
+    assert {call.kwargs["alias"] for call in logger.warning.call_args_list} == {
+        "missing-provider",
+        "bad-model",
+    }
+
+
 def test_dispatcher_reload_config_refreshes_provider_pricing(monkeypatch):
     original_state = {
         "_provider_toml": dispatcher_module._provider_toml,
@@ -119,6 +195,12 @@ def test_dispatcher_reload_config_refreshes_provider_pricing(monkeypatch):
     monkeypatch.setattr(dispatcher_module, "_load_aliases", lambda _toml: {})
     monkeypatch.setattr(dispatcher_module, "_load_model_aliases", lambda _toml: ({}, []))
     monkeypatch.setattr(dispatcher_module, "_load_visible_providers", lambda _toml: ["openai"])
+    validation_calls = []
+    monkeypatch.setattr(
+        dispatcher_module,
+        "validate_model_alias_targets",
+        lambda **kwargs: validation_calls.append(kwargs),
+    )
 
     dispatcher = dispatcher_module.ProviderDispatcher(
         configs=first,
@@ -134,6 +216,8 @@ def test_dispatcher_reload_config_refreshes_provider_pricing(monkeypatch):
         assert before == pytest.approx(0.003)
 
         dispatcher.reload_config()
+        assert validation_calls
+        assert validation_calls[-1]["provider_configs"] == second
 
         after = dispatcher.get_provider("openai").estimate_cost(
             1000,
