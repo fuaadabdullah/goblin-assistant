@@ -19,6 +19,7 @@ from .chat_router import router as chat_router
 from .exception_handlers import register_exception_handlers
 from .health import router as health_router
 from .lifespan import lifespan
+from .admin_routes import router as admin_router
 from .observability.debug_router import router as observability_debug_router
 from .observability.metrics_router import router as retrieval_metrics_router
 from .ops_router import router as ops_router
@@ -75,6 +76,7 @@ def create_app() -> FastAPI:
         write_time_router=write_time_router,
         health_router=health_router,
         ops_router=ops_router,
+        admin_router=admin_router,
         secrets_router=secrets_router,
         privacy_router=privacy_router,
         model_suggestion_debug_router=model_suggestion_debug_router,

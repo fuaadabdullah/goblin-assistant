@@ -25,6 +25,7 @@ def register_routes(
     write_time_router,
     health_router,
     ops_router,
+    admin_router,
     secrets_router,
     privacy_router,
     model_suggestion_debug_router,
@@ -53,6 +54,7 @@ def register_routes(
         write_time_router=write_time_router,
         health_router=health_router,
         ops_router=ops_router,
+        admin_router=admin_router,
         secrets_router=secrets_router,
         privacy_router=privacy_router,
         model_suggestion_debug_router=model_suggestion_debug_router,
@@ -86,5 +88,6 @@ def register_routes(
         write_time_router=write_time_router,
         stream_router=stream_router,
         ops_router=ops_router,
+        admin_router=admin_router,
         secrets_router=secrets_router,
     )
