@@ -62,30 +62,41 @@ async def check_db_health() -> Dict[str, Any]:
 
 async def check_redis_health() -> Dict[str, Any]:
     """Check Redis connectivity and performance health"""
+    redis_url = os.getenv("REDIS_URL")
+    if not redis_url:
+        return {"status": "unconfigured", "error": "REDIS_URL not set"}
+
     try:
-        from .storage.cache import cache
+        import redis.asyncio as _redis
 
-        # Test basic connectivity
-        await cache.redis.ping()
+        kwargs: Dict[str, Any] = {
+            "encoding": "utf-8",
+            "decode_responses": True,
+            "socket_connect_timeout": 5,
+            "socket_timeout": 5,
+        }
+        if redis_url.startswith("rediss://"):
+            kwargs["ssl_cert_reqs"] = None
 
-        # Test basic operations
-        test_key = "health_check_test"
-        await cache.redis.set(test_key, "test_value", ex=10)
-        value = await cache.redis.get(test_key)
-        await cache.redis.delete(test_key)
-
-        if value == "test_value":
-            # Get Redis info for additional metrics
-            info = await cache.redis.info()
-            return {
-                "status": "healthy",
-                "connection": "available",
-                "memory_used": info.get("used_memory_human", "unknown"),
-                "connected_clients": info.get("connected_clients", "unknown"),
-                "uptime_days": info.get("uptime_in_days", "unknown"),
-            }
-        else:
+        client = _redis.from_url(redis_url, **kwargs)
+        try:
+            await client.ping()
+            test_key = "health_check_test"
+            await client.set(test_key, "test_value", ex=10)
+            value = await client.get(test_key)
+            await client.delete(test_key)
+            if value == "test_value":
+                info = await client.info()
+                return {
+                    "status": "healthy",
+                    "connection": "available",
+                    "memory_used": info.get("used_memory_human", "unknown"),
+                    "connected_clients": info.get("connected_clients", "unknown"),
+                    "uptime_days": info.get("uptime_in_days", "unknown"),
+                }
             return {"status": "degraded", "error": "Redis operations failed"}
+        finally:
+            await client.aclose()
 
     except Exception as e:
         return {"status": "unhealthy", "error": f"Redis connection failed: {str(e)}"}
