@@ -497,8 +497,8 @@ class ModelTierRouter:
     TIER_PROVIDERS: Dict[str, List[str]] = {
         "fast": ["groq", "siliconeflow", "gemini"],
         "smart": ["openai", "anthropic", "deepseek", "aliyun"],
-        "best": ["openai", "anthropic", "vertex_ai", "azure_openai"],
-        "local": ["ollama_gcp", "llamacpp_gcp", "ollama_local", "aliyun"],
+        "best": ["openai", "anthropic", "gcp_vllm", "azure_openai"],
+        "local": ["gcp_vm", "ollama_local", "aliyun"],
     }
 
     TIER_MODELS: Dict[str, Dict[str, str]] = {
@@ -516,12 +516,11 @@ class ModelTierRouter:
         "best": {
             "openai": "gpt-4o",
             "anthropic": "claude-sonnet-4-20250514",
-            "vertex_ai": "gemini-2.5-flash",
+            "gcp_vllm": "qwen3-32b",
             "azure_openai": "gpt-4o",
         },
         "local": {
-            "ollama_gcp": "qwen2.5:3b",
-            "llamacpp_gcp": "",
+            "gcp_vm": "qwen2.5:3b",
             "ollama_local": "qwen2.5:3b",
             "aliyun": "qwen-plus",
         },

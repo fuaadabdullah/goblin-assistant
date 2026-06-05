@@ -633,11 +633,11 @@ is_active               = true
 selectable_requires_env = true
 
 # ---------------------------------------------------------------------------
-# GCP VM  (goblin-ollama-server — 34.172.237.33, us-central1-a)
-# Models: qwen2.5:3b, llama3.2:1b, qwen2.5-3b-gguf (via Ollama)
+# GCP VM  (google_cloud_selfhosted — Colab + Vertex backends)
+# Ollama/LlamaCPP VM backends removed (preemptible VMs terminated 2026-01-11)
 # ---------------------------------------------------------------------------
 [providers.gcp_vm]
-name                    = "GCP VM"
+name                    = "GCP Self-Hosted"
 tier                    = "private"
 priority_tier           = 70
 cost_score              = 0.05
@@ -646,9 +646,6 @@ bandwidth_score         = 0.5
 rate_limit_per_min      = 120
 capabilities            = ["chat", "reasoning", "code"]
 models                  = [
-  "qwen2.5-3b-instruct-q4_k_m",
-  "qwen2.5:3b",
-  "llama3.2:1b",
   "gemma-3-12b",
   "qwen3-14b",
   "gemini-2.5-flash",
@@ -659,40 +656,23 @@ supports_cot            = true
 cot_suppression_prompt  = "Be concise."
 display_name            = "GCP Self-Hosted"
 is_active               = true
+selectable_requires_env = true
 
-# Both backends share the single consolidated GCP VM.
-# LlamaCPP GGUF was imported into Ollama directly — no separate process.
-[[providers.google_cloud_selfhosted.backends]]
-engine        = "ollama"
-endpoint_env  = "OLLAMA_GCP_ENDPOINT"
-endpoint      = "http://34.172.237.33:11434"
-default_model = "qwen2.5:3b"
-models        = ["qwen2.5:3b", "llama3.2:1b", "qwen2.5-3b-gguf"]
-priority      = 1
-
-[[providers.google_cloud_selfhosted.backends]]
-engine        = "llamacpp"
-endpoint_env  = "LLAMACPP_GCP_ENDPOINT"
-endpoint      = "http://34.172.237.33:11434"
-default_model = "qwen2.5-3b-gguf"
-models        = ["qwen2.5-3b-gguf", "qwen2.5-3b-instruct-q4_k_m"]
-priority      = 2
-
-[[providers.google_cloud_selfhosted.backends]]
+[[providers.gcp_vm.backends]]
 engine        = "colab"
 endpoint_env  = "COLAB_WORKER_ENDPOINT"
 invoke_path   = "/chat"
 api_key_env   = "COLAB_WORKER_API_KEY"
 default_model = "gemma-3-12b"
 models        = ["gemma-3-12b", "qwen3-14b"]
-priority      = 3
+priority      = 1
 
-[[providers.google_cloud_selfhosted.backends]]
+[[providers.gcp_vm.backends]]
 engine        = "vertex"
 project_env   = "VERTEX_AI_PROJECT"
 default_model = "gemini-2.5-flash"
 models        = ["gemini-2.5-flash", "gemini-2.0-flash", "gemini-2.0-flash-lite"]
-priority      = 4
+priority      = 2
 
 # ---------------------------------------------------------------------------
 # Mock (testing only)
@@ -784,7 +764,7 @@ temperature         = 0.7
 supports_streaming  = true
 
 [model_defaults.qwen2.5-3b-instruct-q4_k_m]
-provider            = "llamacpp_gcp"
+provider            = "gcp_vm"
 max_tokens          = 4000
 temperature         = 0.2
 supports_streaming  = true
@@ -838,7 +818,7 @@ temperature         = 0.7
 supports_streaming  = true
 
 ["model_defaults.qwen2.5:3b"]
-provider            = "ollama_gcp"
+provider            = "gcp_vm"
 max_tokens          = 4000
 temperature         = 0.2
 supports_streaming  = true

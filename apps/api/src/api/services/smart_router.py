@@ -200,7 +200,7 @@ class SmartRouter:
         if strategy == RoutingStrategy.BALANCED:
             return hybrid_router.rank(candidates, provider_costs)
 
-        quality_order = ["anthropic", "openai", "azure_openai", "vertex_ai", "gemini"]
+        quality_order = ["anthropic", "openai", "azure_openai", "gemini", "gcp_vllm"]
         prioritized = [provider_id for provider_id in quality_order if provider_id in candidates]
         leftovers = [provider_id for provider_id in candidates if provider_id not in prioritized]
         return prioritized + leftovers
