@@ -111,6 +111,18 @@ async def check_api_health() -> Dict[str, Any]:
         return {"status": "unhealthy", "error": str(e)}
 
 
+def _summarize_provider_health(provider_status: Dict[str, Dict[str, Any]]) -> str:
+    if not provider_status:
+        return "degraded"
+
+    statuses = {provider.get("status") for provider in provider_status.values()}
+    if statuses <= {"healthy", "unknown", "billing_issue"}:
+        return "healthy"
+    if "healthy" in statuses:
+        return "warnings"
+    return "degraded"
+
+
 @router.get("/health", response_model=SuccessEnvelope[Dict[str, Any]])
 async def health_check() -> SuccessEnvelope[Dict[str, Any]]:
     """Unified health endpoint covering all subsystems.
@@ -133,15 +145,7 @@ async def health_check() -> SuccessEnvelope[Dict[str, Any]]:
 
         provider_status = health_monitor.get_all_status(include_hidden=False)
         provider_health = {
-            "status": (
-                "healthy"
-                if provider_status
-                and all(
-                    provider.get("status") in {"healthy", "unknown", "billing_issue"}
-                    for provider in provider_status.values()
-                )
-                else "degraded"
-            ),
+            "status": _summarize_provider_health(provider_status),
             "providers_checked": len(provider_status),
             "details": provider_status,
         }
