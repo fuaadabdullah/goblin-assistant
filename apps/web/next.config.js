@@ -15,7 +15,9 @@ const nextConfig = {
     GOBLIN_BACKEND_URL: process.env.GOBLIN_BACKEND_URL,
     LOCAL_LLM_API_KEY: process.env.LOCAL_LLM_API_KEY,
   },
-  // Silence build warnings for missing optional deps
+  // Next.js 16 uses Turbopack by default — empty config silences the "webpack but no turbopack" error
+  turbopack: {},
+  // Webpack fallback for non-Turbopack builds
   webpack: (config) => {
     config.resolve.fallback = { ...config.resolve.fallback, fs: false };
     return config;
