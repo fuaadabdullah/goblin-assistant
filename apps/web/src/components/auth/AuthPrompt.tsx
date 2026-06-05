@@ -18,7 +18,7 @@ const AuthPrompt = ({
   mode = 'inline',
   onClose,
   allowGuest = false,
-  guestHref = '/sandbox?guest=1',
+  guestHref = '/chat?guest=1',
 }: AuthPromptProps) => {
   const router = useRouter();
   const from = typeof router.asPath === 'string' ? router.asPath : '/';

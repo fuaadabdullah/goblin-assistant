@@ -83,10 +83,10 @@ export default function LoginPage({ initialMode = 'login' }: LoginPageProps) {
 
         <div className="mt-6 bg-surface border border-border rounded-xl p-4 text-sm text-muted text-center">
           Want to explore first?{' '}
-          <Link href="/sandbox?guest=1" className="text-primary font-medium hover:underline">
+          <Link href="/chat?guest=1" className="text-primary font-medium hover:underline">
             Continue as guest
           </Link>{' '}
-          to try the sandbox without saving runs.
+          to chat without an account.
         </div>
       </div>
     </div>

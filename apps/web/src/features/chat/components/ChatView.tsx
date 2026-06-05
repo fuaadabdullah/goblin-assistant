@@ -19,9 +19,11 @@ interface ChatViewProps {
   session: ChatSessionState;
   /** Is the current user an admin. */
   isAdmin: boolean;
+  /** Unauthenticated guest session (via ?guest=1). */
+  isGuest?: boolean;
 }
 
-const ChatView = ({ session, isAdmin }: ChatViewProps) => {
+const ChatView = ({ session, isAdmin, isGuest = false }: ChatViewProps) => {
   const { isAuthenticated } = useAuthSession();
   const chatSidebarOpen = useUIStore((state) => state.chatSidebarOpen);
   const setChatSidebarOpen = useUIStore((state) => state.setChatSidebarOpen);
@@ -74,7 +76,7 @@ const ChatView = ({ session, isAdmin }: ChatViewProps) => {
     setChatSidebarOpen(false);
   };
 
-  if (!isAuthenticated) {
+  if (!isAuthenticated && !isGuest) {
     return (
       <div className="min-h-[calc(100vh-64px)] bg-bg flex items-center justify-center px-4">
         <Seo
@@ -205,17 +207,19 @@ const ChatView = ({ session, isAdmin }: ChatViewProps) => {
           </div>
         </div>
 
-        <ChatSidebar
-          threads={threads}
-          isThreadsLoading={isThreadsLoading}
-          activeThreadKey={activeThreadKey}
-          onSelectThread={handleThreadSelect}
-          onNewConversation={handleNewConversation}
-          isAdmin={isAdmin}
-          totalTokens={totalTokens}
-          messageCount={messages.length}
-          className="hidden lg:flex sticky top-0 h-screen"
-        />
+        {!isGuest && (
+          <ChatSidebar
+            threads={threads}
+            isThreadsLoading={isThreadsLoading}
+            activeThreadKey={activeThreadKey}
+            onSelectThread={handleThreadSelect}
+            onNewConversation={handleNewConversation}
+            isAdmin={isAdmin}
+            totalTokens={totalTokens}
+            messageCount={messages.length}
+            className="hidden lg:flex sticky top-0 h-screen"
+          />
+        )}
 
         <main
           className="flex-1 flex flex-col bg-bg"
@@ -231,6 +235,26 @@ const ChatView = ({ session, isAdmin }: ChatViewProps) => {
             isMobilePanelOpen={chatSidebarOpen}
             activeMobilePanelTab={mobilePanelTab}
           />
+          {isGuest && (
+            <div className="mx-4 mt-4 rounded-xl border border-primary/40 bg-surface p-4 text-sm flex items-start justify-between gap-4">
+              <div>
+                <p className="font-semibold text-primary">Guest session</p>
+                <p className="text-muted mt-1">
+                  Messages are not saved.{' '}
+                  <Link href="/login" className="text-primary hover:underline font-medium">
+                    Sign in
+                  </Link>{' '}
+                  to keep your history.
+                </p>
+              </div>
+              <Link
+                href="/login"
+                className="shrink-0 px-3 py-1.5 rounded-lg bg-primary text-text-inverse text-sm font-medium"
+              >
+                Sign in
+              </Link>
+            </div>
+          )}
           <section className="flex-1 overflow-y-auto px-4 py-8">
             <ChatMessageList
               messages={messages}
@@ -256,7 +280,7 @@ const ChatView = ({ session, isAdmin }: ChatViewProps) => {
               onSend={() => sendMessage()}
               onKeyDown={handleKeyDown}
               onPromptClick={handlePromptClick}
-              onFileSelected={handleFileSelected}
+              onFileSelected={isGuest ? undefined : handleFileSelected}
               selectedProvider={selectedProvider}
               selectedModel={selectedModel}
               estimatedTokens={inputEstimate?.estimated_tokens}

@@ -65,7 +65,11 @@ export const resolveRouteDecision = (input: {
     };
   }
 
-  if (requiresAuth && !input.isAuthenticated) {
+  const isGuestChatAllowed =
+    input.pathname.startsWith('/chat') &&
+    new URLSearchParams(input.search || '').get('guest') === '1';
+
+  if (requiresAuth && !input.isAuthenticated && !isGuestChatAllowed) {
     return {
       allow: false,
       redirectTarget: `${input.pathname}${input.search || ''}`,

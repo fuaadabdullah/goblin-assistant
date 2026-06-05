@@ -57,10 +57,10 @@ const CustomerHome = ({ isAuthenticated }: { isAuthenticated: boolean }) => {
                   </p>
                 </div>
                 <Link
-                  href="/sandbox?guest=1"
+                  href="/chat?guest=1"
                   className="text-sm text-primary hover:underline whitespace-nowrap"
                 >
-                  Open guest sandbox
+                  Continue as guest
                 </Link>
               </div>
 
@@ -108,7 +108,7 @@ const CustomerHome = ({ isAuthenticated }: { isAuthenticated: boolean }) => {
                   </div>
                   <div className="mt-4 flex flex-wrap gap-2">
                     <Link
-                      href="/sandbox?guest=1"
+                      href="/chat?guest=1"
                       className="px-4 py-2 rounded-lg bg-primary text-text-inverse text-sm font-medium shadow-glow-primary hover:brightness-110"
                     >
                       Open this demo

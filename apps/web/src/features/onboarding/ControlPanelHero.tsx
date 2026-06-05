@@ -92,11 +92,11 @@ export default function ControlPanelHero() {
 
           <div className="flex flex-wrap gap-3">
             <Link
-              href="/sandbox?guest=1"
+              href="/chat?guest=1"
               onClick={() => trackAction('try_live_sandbox')}
               className="px-4 py-2 rounded-lg bg-primary text-text-inverse font-medium shadow-glow-primary hover:brightness-110"
             >
-              Try the live sandbox
+              Try for free
             </Link>
             <Link
               href="/search"
