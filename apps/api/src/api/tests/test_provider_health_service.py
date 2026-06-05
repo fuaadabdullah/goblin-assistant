@@ -149,6 +149,23 @@ def test_get_status_unknown_provider_returns_error():
     assert result["error"] == "Unknown provider: missing"
 
 
+def test_get_all_status_excludes_hidden_cached_providers_by_default():
+    monitor = ProviderHealthMonitor()
+    monitor.health_data = {
+        "visible": ProviderHealth(provider_id="visible"),
+        "hidden": ProviderHealth(provider_id="hidden"),
+    }
+
+    with patch(
+        "api.services.provider_health.dispatcher.provider_ids",
+        side_effect=lambda include_hidden=False: (
+            ["visible", "hidden"] if include_hidden else ["visible"]
+        ),
+    ):
+        assert set(monitor.get_all_status()) == {"visible"}
+        assert set(monitor.get_all_status(include_hidden=True)) == {"hidden", "visible"}
+
+
 def test_get_best_providers_sorts_by_latency_and_success_rate():
     monitor = ProviderHealthMonitor()
 

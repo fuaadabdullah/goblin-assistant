@@ -5,7 +5,7 @@ services:
     region: virginia
     plan: free
     startCommand: PYTHONPATH=apps/api/src uvicorn api.main:app --host 0.0.0.0 --port $PORT
-    healthCheckPath: /health
+    healthCheckPath: /api/v1/health
     
     # Environment Variables
     envVars:

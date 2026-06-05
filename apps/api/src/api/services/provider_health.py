@@ -353,8 +353,9 @@ class ProviderHealthMonitor:
         self,
         include_hidden: bool = False,
     ) -> Dict[str, Dict[str, Any]]:
-        provider_ids = set(self.health_data.keys())
-        provider_ids.update(_dispatcher().provider_ids(include_hidden=include_hidden))
+        provider_ids = set(_dispatcher().provider_ids(include_hidden=include_hidden))
+        if include_hidden:
+            provider_ids.update(self.health_data.keys())
         return {provider_id: self.get_status(provider_id) for provider_id in sorted(provider_ids)}
 
     def get_healthy_providers(self) -> List[str]:
