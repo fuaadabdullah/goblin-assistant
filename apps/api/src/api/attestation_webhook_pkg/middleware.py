@@ -76,7 +76,12 @@ def rate_limit(
 def require_mtls(func):
     """Decorator to require mTLS (or proxy-forwarded client cert) for requests.
 
-    Use SKIP_MTLS_CHECK=true in env for local development/testing.
+    Requires X-SSL-Client-Verify: SUCCESS from the TLS-terminating reverse
+    proxy. When ATTEST_TRUSTED_CLIENT_DN is configured the client DN must also
+    match exactly, preventing spoofed-header bypass by an attacker who knows
+    the expected verify value but not the DN.
+
+    Use SKIP_MTLS_CHECK=true in env for local development/testing only.
     """
 
     @wraps(func)
@@ -90,15 +95,24 @@ def require_mtls(func):
         client_dn = request.headers.get("X-SSL-Client-S-DN") or request.headers.get(
             "X-SSL-CLIENT-S-DN"
         )
+        trusted_dn = os.getenv("ATTEST_TRUSTED_CLIENT_DN", "").strip()
 
-        if verify_header and verify_header.upper() == "SUCCESS":
+        verified = bool(verify_header and verify_header.upper() == "SUCCESS")
+        # When a trusted DN is configured the presented DN must match exactly.
+        dn_ok = (not trusted_dn) or (client_dn == trusted_dn)
+
+        if verified and dn_ok:
             return await func(request, *args, **kwargs)
 
-        if client_dn:
-            logger.debug("client_dn_forwarded", extra={"dn": client_dn})
-            return await func(request, *args, **kwargs)
-
-        audit_logger.warning("mtls_missing", extra={"path": request.url.path})
+        audit_logger.warning(
+            "mtls_rejected",
+            extra={
+                "path": request.url.path,
+                "verify_header_present": bool(verify_header),
+                "verified": verified,
+                "dn_match": dn_ok,
+            },
+        )
         raise HTTPException(status_code=403, detail="mTLS required")
 
     return wrapper

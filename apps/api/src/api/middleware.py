@@ -131,12 +131,13 @@ class AuthenticationMiddleware(BaseHTTPMiddleware):
                     ).model_dump(exclude_none=True),
                 )
 
-        if api_key_header and api_key_header != self.api_key:
+        if not api_key_header or api_key_header != self.api_key:
             request_id = str(uuid.uuid4())
             timestamp = datetime.now(timezone.utc).isoformat()
             logger.warning(
-                "Invalid API key attempt from",
-                client_else_unknown=request.client.host if request.client else "unknown",
+                "Invalid or missing API key",
+                client=request.client.host if request.client else "unknown",
+                header_present=bool(api_key_header),
             )
             return JSONResponse(
                 status_code=401,
