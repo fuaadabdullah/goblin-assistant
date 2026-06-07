@@ -40,12 +40,12 @@ export function useProviderStatus(): UseProviderStatusResult {
     supabase
       .from('provider_status')
       .select('*')
-      .then(({ data, error: fetchError }) => {
+      .then(({ data, error: fetchError }: { data: ProviderStatusRow[] | null; error: { message: string } | null }) => {
         if (fetchError) {
           setError(new Error(fetchError.message));
         } else if (data) {
           const map: ProviderStatusMap = {};
-          (data as ProviderStatusRow[]).forEach((row) => {
+          data.forEach((row) => {
             map[row.provider] = row;
           });
           setStatuses(map);
