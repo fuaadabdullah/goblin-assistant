@@ -8,7 +8,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { supabase, supabaseConfigured } from '../lib/supabase';
 import type { ProviderStatusRow } from '../lib/supabase';
-import type { RealtimeChannel } from '@supabase/supabase-js';
+type RealtimeChannel = ReturnType<typeof supabase.channel>;
 
 export type ProviderStatusMap = Record<string, ProviderStatusRow>;
 
