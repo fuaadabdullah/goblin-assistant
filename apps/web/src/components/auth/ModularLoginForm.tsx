@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
-import { apiClient } from '@/lib/api';
+import { apiClient, prefetchCsrfToken } from '@/lib/api';
 import { queryKeys } from '../../lib/query-keys';
 import { persistAuthSession } from '../../utils/auth-session';
 import type { LoginResponse } from '../../types/api';
@@ -16,7 +16,7 @@ import { devError } from '@/utils/dev-log';
 
 interface ModularLoginFormProps {
   onSuccess: () => void;
-  // eslint-disable-next-line no-unused-vars
+   
   onError: (message: string) => void;
   initialMode?: 'login' | 'register';
 }
@@ -59,6 +59,12 @@ export default function ModularLoginForm({
       ),
     ]);
   };
+
+  useEffect(() => {
+    // Warm the CSRF token immediately so the backend wakes up while the user
+    // is typing, not after they click submit.
+    prefetchCsrfToken();
+  }, []);
 
   useEffect(() => {
     setIsRegister(initialMode === 'register');
@@ -108,6 +114,8 @@ export default function ModularLoginForm({
       onError(normalized);
       // Reset Turnstile on error
       setTurnstileToken('');
+      // Pre-warm the CSRF token for the next attempt so it's ready immediately.
+      prefetchCsrfToken();
     } finally {
       setIsLoading(false);
     }
