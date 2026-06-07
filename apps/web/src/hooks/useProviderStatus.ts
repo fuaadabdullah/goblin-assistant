@@ -59,13 +59,13 @@ export function useProviderStatus(): UseProviderStatusResult {
       .on(
         'postgres_changes',
         { event: '*', schema: 'public', table: 'provider_status' },
-        (payload) => {
-          const row = (payload.new ?? payload.old) as ProviderStatusRow | undefined;
+        (payload: { new: Record<string, unknown>; old: Record<string, unknown> }) => {
+          const row = (payload.new ?? payload.old) as unknown as ProviderStatusRow | undefined;
           if (!row?.provider) return;
           setStatuses((prev) => ({ ...prev, [row.provider]: row }));
         }
       )
-      .subscribe((status) => {
+      .subscribe((status: string) => {
         setConnected(status === 'SUBSCRIBED');
       });
 
