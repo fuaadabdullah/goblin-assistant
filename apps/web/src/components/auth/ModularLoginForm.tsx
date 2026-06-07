@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
-import { supabase, supabaseUserToAppUser, authSignUp, authSignIn } from '@/lib/supabase';
+import { supabaseUserToAppUser, authSignUp, authSignIn, authSignInWithOAuth } from '@/lib/supabase';
 import { queryKeys } from '../../lib/query-keys';
 import LoginHeader from './LoginHeader';
 import EmailPasswordForm from './EmailPasswordForm';
@@ -81,10 +81,7 @@ export default function ModularLoginForm({
 
     setIsLoading(true);
     try {
-      const { error } = await supabase.auth.signInWithOAuth({
-        provider: 'google',
-        options: { redirectTo: `${window.location.origin}/google-callback` },
-      });
+      const { error } = await authSignInWithOAuth('google', `${window.location.origin}/google-callback`);
       if (error) throw error;
       // Redirect happens — no further action needed here
     } catch (error) {

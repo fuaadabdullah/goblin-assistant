@@ -43,6 +43,14 @@ export async function authSignIn(email: string, password: string) {
   return { session: data?.session ?? null, error };
 }
 
+export async function authSignInWithOAuth(provider: string, redirectTo: string) {
+  const { data, error } = await supabase.auth.signInWithOAuth({
+    provider: provider as Parameters<typeof supabase.auth.signInWithOAuth>[0]['provider'],
+    options: { redirectTo },
+  });
+  return { data, error };
+}
+
 export interface ProviderStatusRow {
   provider: string;
   is_healthy: boolean;
