@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
-import { supabase, supabaseUserToAppUser } from '@/lib/supabase';
+import { supabase, supabaseUserToAppUser, authSignUp, authSignIn } from '@/lib/supabase';
 import { queryKeys } from '../../lib/query-keys';
 import LoginHeader from './LoginHeader';
 import EmailPasswordForm from './EmailPasswordForm';
@@ -46,20 +46,20 @@ export default function ModularLoginForm({
 
     setIsLoading(true);
     try {
-      const { data, error } = isRegister
-        ? await supabase.auth.signUp({ email: emailValue, password })
-        : await supabase.auth.signInWithPassword({ email: emailValue, password });
+      const { session, error } = isRegister
+        ? await authSignUp(emailValue, password)
+        : await authSignIn(emailValue, password);
 
       if (error) throw error;
-      if (!data.session) {
+      if (!session) {
         // signUp with email confirmation enabled: session is null until confirmed
         onError('Check your email to confirm your account before signing in.');
         return;
       }
 
       queryClient.setQueryData(queryKeys.authValidate, {
-        token: data.session.access_token,
-        user: supabaseUserToAppUser(data.session.user),
+        token: session.access_token,
+        user: supabaseUserToAppUser(session.user),
         isAuthenticated: true,
         isHydrated: true,
       });

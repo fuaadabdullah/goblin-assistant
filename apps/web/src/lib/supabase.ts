@@ -30,6 +30,19 @@ export function supabaseUserToAppUser(u: SupabaseUser): AppUser {
   };
 }
 
+// Wrapped auth helpers — callers import these instead of accessing supabase.auth
+// directly, which prevents Vercel's duplicate-package type resolution from
+// losing methods like signUp off the SupabaseAuthClient interface.
+export async function authSignUp(email: string, password: string) {
+  const { data, error } = await supabase.auth.signUp({ email, password });
+  return { session: data?.session ?? null, error };
+}
+
+export async function authSignIn(email: string, password: string) {
+  const { data, error } = await supabase.auth.signInWithPassword({ email, password });
+  return { session: data?.session ?? null, error };
+}
+
 export interface ProviderStatusRow {
   provider: string;
   is_healthy: boolean;
