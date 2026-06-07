@@ -21,7 +21,7 @@ interface DashboardActivityItem {
   description: string;
   timestampLabel: string;
   period: DashboardPeriod;
-  tone?: 'success' | 'warning' | 'danger' | 'muted';
+  tone?: 'success' | 'warning' | 'danger' | 'muted' | undefined;
 }
 
 const DASHBOARD_PERIODS: Array<{ value: DashboardPeriod; label: string }> = [

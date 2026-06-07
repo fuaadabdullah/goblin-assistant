@@ -8,7 +8,7 @@
 
 import providersJson from '../../../../config/providers.json';
 import { runtimeClient } from '@/lib/api/runtimeClient';
-import { devDebug, devError, devWarn } from '@/utils/dev-log';
+import { devError, devWarn } from '@/utils/dev-log';
 
 const PROVIDERS_JSON_SCHEMA_VERSION = 1;
 
@@ -49,24 +49,24 @@ function validateProvidersJson(raw: unknown): ProvidersJson {
     throw new Error('providers.json: root must be an object');
   }
 
-  const schemaVersion = raw.schema_version;
+  const schemaVersion = raw['schema_version'];
   if (schemaVersion !== PROVIDERS_JSON_SCHEMA_VERSION) {
     throw new Error(
       `providers.json: expected schema_version=${PROVIDERS_JSON_SCHEMA_VERSION}, got ${String(schemaVersion)}`
     );
   }
 
-  const version = raw.version;
+  const version = raw['version'];
   if (version !== 2) {
     throw new Error(`providers.json: expected version=2, got ${String(version)}`);
   }
 
-  const defaultTimeout = raw.default_timeout_ms;
+  const defaultTimeout = raw['default_timeout_ms'];
   if (!isNumber(defaultTimeout) || defaultTimeout <= 0) {
     throw new Error(`providers.json: invalid default_timeout_ms: ${String(defaultTimeout)}`);
   }
 
-  if (!isRecord(raw.providers)) {
+  if (!isRecord(raw['providers'])) {
     throw new Error('providers.json: providers must be an object');
   }
 
@@ -84,7 +84,7 @@ try {
       devWarn(`Provider schema mismatch: ${id} missing or empty 'capabilities' field`);
     }
   });
-  devDebug('Provider config validated successfully');
+  devWarn('Provider config validated successfully');
 } catch (validationError) {
   configValidationError =
     validationError instanceof Error

@@ -5,7 +5,7 @@ import { devError } from '@/utils/dev-log';
 
 export interface ErrorBoundaryRenderProps {
   error: Error;
-  errorId?: string;
+  errorId?: string | undefined;
   reset: () => void;
 }
 
@@ -20,7 +20,7 @@ interface Props {
 interface State {
   hasError: boolean;
   error: Error | null;
-  errorId?: string;
+  errorId?: string | undefined;
 }
 
 export class ErrorBoundary extends Component<Props, State> {
@@ -78,7 +78,7 @@ export class ErrorBoundary extends Component<Props, State> {
 }
 
 // Safe fallback component
-export function ErrorBoundaryFallback({ error, errorId }: { error: Error; errorId?: string }) {
+export function ErrorBoundaryFallback({ error, errorId }: { error: Error; errorId?: string | undefined }) {
   const isDev = env.isDevelopment;
 
   return (

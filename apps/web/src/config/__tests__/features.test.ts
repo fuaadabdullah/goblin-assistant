@@ -1,6 +1,6 @@
 describe('feature flags config', () => {
   const originalEnv = process.env;
-  const devLogMock = vi.fn();
+  const devWarnMock = vi.fn();
 
   const loadFeaturesModule = async (
     overrides: Partial<{
@@ -28,7 +28,7 @@ describe('feature flags config', () => {
     }));
 
     vi.doMock('../../utils/dev-log', () => ({
-      devLog: devLogMock,
+      devWarn: devWarnMock,
     }));
 
     return import('../features') as Promise<typeof import('../features')>;
@@ -72,7 +72,7 @@ describe('feature flags config', () => {
       featureFlags: { debugMode: true },
     });
 
-    expect(devLogMock).toHaveBeenCalledWith(
+    expect(devWarnMock).toHaveBeenCalledWith(
       '🚩 Feature Flags:',
       expect.objectContaining({ debugMode: true })
     );

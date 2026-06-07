@@ -5,12 +5,12 @@ import { Card, CardContent, CardHeader, CardTitle } from '../card';
 export interface EmptyStateProps {
   title: string;
   description: string;
-  icon?: ReactNode;
-  actionLabel?: string;
-  onAction?: () => void;
-  actionHref?: string;
-  secondaryAction?: ReactNode;
-  className?: string;
+  icon?: ReactNode | undefined;
+  actionLabel?: string | undefined;
+  onAction?: (() => void) | undefined;
+  actionHref?: string | undefined;
+  secondaryAction?: ReactNode | undefined;
+  className?: string | undefined;
 }
 
 export default function EmptyState({

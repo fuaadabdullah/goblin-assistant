@@ -5,9 +5,9 @@ import type { HealthStatus } from '../types/api';
 
 interface HealthData {
   status: 'healthy' | 'degraded' | 'down';
-  latency_ms?: number;
-  last_check?: string;
-  services?: Record<string, string>;
+  latency_ms?: number | undefined;
+  last_check?: string | undefined;
+  services?: Record<string, string> | undefined;
 }
 
 const mapOverallStatus = (overall: HealthStatus['overall'] | undefined): HealthData['status'] => {

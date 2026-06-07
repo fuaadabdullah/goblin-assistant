@@ -36,8 +36,8 @@ export interface ChatSessionState {
   activeThreadKey: string | null;
   inputRef: RefObject<HTMLTextAreaElement | null>;
   bottomRef: RefObject<HTMLDivElement | null>;
-  selectedProvider?: string;
-  selectedModel?: string;
+  selectedProvider?: string | undefined;
+  selectedModel?: string | undefined;
   inputEstimate: TextCostEstimate | null;
   authError: boolean;
   pendingAttachments: PendingAttachment[];

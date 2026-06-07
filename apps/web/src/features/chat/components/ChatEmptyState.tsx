@@ -28,7 +28,10 @@ const PROMPTS_BY_MODE: Record<Mode, readonly { label: string; prompt: string }[]
   general: CHAT_QUICK_PROMPTS_GENERAL,
 };
 
-const Lottie = dynamic(() => import('lottie-react'), { ssr: false });
+const Lottie = dynamic(() => import('lottie-react'), {
+  ssr: false,
+  loading: () => <div className="w-full h-full rounded-full bg-primary/20 animate-pulse" />,
+});
 
 const ChatEmptyState = ({
   quickPrompts: _quickPrompts,

@@ -9,7 +9,7 @@ const CHAT_MIGRATION_META_STORAGE_KEY = 'goblin_chat_migration_meta_v1';
 
 export interface ChatMigrationMeta {
   migrationCompleted: boolean;
-  completedAt?: string;
+  completedAt?: string | undefined;
 }
 
 export const sortChatThreads = (threads: ChatThread[]) =>

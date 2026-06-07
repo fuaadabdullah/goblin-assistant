@@ -12,8 +12,8 @@ export interface RouteBoundaryFallbackProps {
   title: string;
   description: string;
   actions: RouteBoundaryAction[];
-  errorId?: string;
-  technicalDetail?: string;
+  errorId?: string | undefined;
+  technicalDetail?: string | undefined;
   onReset?: () => void;
 }
 

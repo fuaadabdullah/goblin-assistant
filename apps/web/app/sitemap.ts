@@ -7,7 +7,7 @@ function cleanSiteUrl(value: string | undefined): string {
 }
 
 export default function sitemap(): MetadataRoute.Sitemap {
-  const siteUrl = cleanSiteUrl(process.env.NEXT_PUBLIC_SITE_URL);
+  const siteUrl = cleanSiteUrl(process.env['NEXT_PUBLIC_SITE_URL']);
   const now = new Date();
 
   // Public-only pages.

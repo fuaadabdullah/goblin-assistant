@@ -1,5 +1,5 @@
 import { useCallback } from 'react';
-import { devError, devLog } from '@/utils/dev-log';
+import { devError, devWarn } from '@/utils/dev-log';
 import { useToast } from '../../../../hooks/useToast';
 
 interface CopyMessageDeps {
@@ -15,7 +15,7 @@ export const useCopyMessage = ({
     async (content: string) => {
       try {
         await navigator.clipboard.writeText(content);
-        devLog('Message copied to clipboard');
+        devWarn('Message copied to clipboard');
         showSuccess('Copied to clipboard');
       } catch (err) {
         devError('Failed to copy message:', err);

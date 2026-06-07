@@ -51,12 +51,12 @@ export interface PasskeyVerificationChallenge {
 export interface User {
   id: string;
   email: string;
-  name?: string;
-  role?: string;
-  roles?: string[];
-  token_version?: number;
-  created_at?: string;
-  updated_at?: string;
+  name?: string | undefined;
+  role?: string | undefined;
+  roles?: string[] | undefined;
+  token_version?: number | undefined;
+  created_at?: string | undefined;
+  updated_at?: string | undefined;
 }
 
 export interface LoginRequest {
@@ -114,8 +114,8 @@ export interface EmergencyLogoutResponse {
 
 export interface ValidateTokenResponse {
   valid: boolean;
-  user?: User;
-  expires_in?: number;
+  user?: User | undefined;
+  expires_in?: number | undefined;
 }
 
 export interface AuthError {
@@ -343,7 +343,7 @@ export interface RuntimeClient {
   login(email: string, password: string): Promise<LoginResponse>;
   register(email: string, password: string, name?: string): Promise<LoginResponse>;
   logout(): Promise<void>;
-  validateToken(token: string): Promise<{ valid: boolean; user?: User }>;
+  validateToken(token: string): Promise<{ valid: boolean; user?: User | undefined }>;
 }
 
 export interface GoblinStatus {
@@ -365,17 +365,17 @@ export interface ProviderSettings {
 export interface ProviderModelOption {
   name: string;
   provider: string;
-  health?: string;
+  health?: string | undefined;
   isSelectable: boolean;
-  healthReason?: string | null;
+  healthReason?: string | null | undefined;
 }
 
 export interface ProviderTestResponse {
   success: boolean;
   message: string;
   latency: number;
-  response?: string;
-  model_used?: string;
+  response?: string | undefined;
+  model_used?: string | undefined;
 }
 
 export interface ModelSettings {
@@ -452,14 +452,14 @@ export interface GoblinStats {
 }
 
 export interface StreamChunk {
-  content?: string;
+  content?: string | undefined;
   result?: unknown;
-  done?: boolean;
+  done?: boolean | undefined;
   [key: string]: unknown; // Allow additional dynamic properties
 }
 
 export interface TaskResponse {
-  taskId?: string;
+  taskId?: string | undefined;
   result?: unknown;
   [key: string]: unknown; // Allow additional dynamic properties
 }

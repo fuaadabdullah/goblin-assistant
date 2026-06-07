@@ -12,9 +12,9 @@ import { apiClient } from '@/lib/api';
 
 type SessionInput = {
   token: string;
-  refreshToken?: string | null;
+  refreshToken?: string | null | undefined;
   user: User;
-  expiresIn?: number | null;
+  expiresIn?: number | null | undefined;
 };
 
 interface AuthState {

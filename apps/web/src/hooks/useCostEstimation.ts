@@ -10,17 +10,17 @@ export interface RateLimitInfo {
 export interface CostEstimate {
   estimatedCost: number;
   estimatedTokens: number;
-  provider?: string;
-  model?: string;
-  breakdown?: Array<{ label: string; cost: number; tokens: number }>;
+  provider?: string | undefined;
+  model?: string | undefined;
+  breakdown?: Array<{ label: string; cost: number; tokens: number }> | undefined;
 }
 
 interface Options {
   orchestrationText: string;
   codeInput: string;
-  provider?: string;
-  model?: string;
-  onEstimatedCostChange?: (cost: number) => void;
+  provider?: string | undefined;
+  model?: string | undefined;
+  onEstimatedCostChange?: ((cost: number) => void) | undefined;
 }
 
 const computeEstimate = (orchestrationText: string, codeInput: string): CostEstimate => {

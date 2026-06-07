@@ -4,18 +4,18 @@ import { resolveBackendOrigin } from '@/config/backendOrigin';
 const BACKEND_URL = resolveBackendOrigin();
 
 const INTERNAL_PROXY_API_KEY = (
-  process.env.INTERNAL_PROXY_API_KEY ||
-  process.env.BACKEND_API_KEY ||
-  process.env.INTERNAL_API_SECRET ||
+  process.env['INTERNAL_PROXY_API_KEY'] ||
+  process.env['BACKEND_API_KEY'] ||
+  process.env['INTERNAL_API_SECRET'] ||
   ''
 ).trim();
 
 interface ForwardModelsResult {
   status: number;
   body: unknown;
-  correlationId?: string;
-  transportError?: boolean;
-  fallbackUsed?: boolean;
+  correlationId?: string | undefined;
+  transportError?: boolean | undefined;
+  fallbackUsed?: boolean | undefined;
 }
 
 async function safeJson<T = unknown>(res: Response): Promise<T | null> {
@@ -47,10 +47,10 @@ function logProxyEvent(payload: {
   proxy_mode: 'thin';
   backend_status: number | null;
   legacy_fallback_used: boolean;
-  correlation_id?: string;
+  correlation_id?: string | undefined;
   latency_ms: number;
 }) {
-  console.info('[api/models] proxy_event', payload);
+  console.warn('[api/models] proxy_event', payload);
 }
 
 async function forwardToBackendModels(): Promise<ForwardModelsResult> {

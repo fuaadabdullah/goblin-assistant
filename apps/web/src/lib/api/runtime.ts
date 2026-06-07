@@ -18,7 +18,7 @@ export const runtimeMethods = {
   },
 
   async parseOrchestration(text: string, defaultGoblin?: string): Promise<OrchestrationPlan> {
-    return postBackend<OrchestrationPlan, { text: string; default_goblin?: string }>(
+    return postBackend<OrchestrationPlan, { text: string; default_goblin?: string | undefined }>(
       `${V1_API_PREFIX}/api/orchestrate/parse`,
       {
         text,

@@ -11,9 +11,9 @@ interface SandboxSidebarProps {
   /** Jobs list. */
   jobs: SandboxJob[];
   /** Error message from the last jobs fetch, if any. */
-  jobsError?: string | null;
+  jobsError?: string | null | undefined;
   /** Selected job id. */
-  selectedJobId?: string;
+  selectedJobId?: string | undefined;
   /** Language change handler. */
   onLanguageChange: (value: string) => void;
   /** Run handler. */
@@ -25,7 +25,7 @@ interface SandboxSidebarProps {
   /** Job selection handler. */
   onSelectJob: (job: SandboxJob) => void;
   /** Whether viewer is in guest mode. */
-  isGuest?: boolean;
+  isGuest?: boolean | undefined;
 }
 
 const SandboxSidebar = ({

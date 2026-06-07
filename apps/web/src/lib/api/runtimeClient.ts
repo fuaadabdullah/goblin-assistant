@@ -87,7 +87,7 @@ const runtimeClientImpl: RuntimeClient = {
       'Content-Type': 'application/json',
     };
     if (token) {
-      headers.Authorization = `Bearer ${token}`;
+      headers['Authorization'] = `Bearer ${token}`;
     }
 
     const response = await fetch(`${env.apiBaseUrl}${V1_CHAT_PREFIX}/stream`, {
@@ -128,38 +128,38 @@ const runtimeClientImpl: RuntimeClient = {
         if (!line || !line.startsWith('data: ')) continue;
 
         const payload = JSON.parse(line.slice(6)) as Record<string, unknown>;
-        if (payload.type === 'error' || typeof payload.error === 'string') {
+        if (payload['type'] === 'error' || typeof payload['error'] === 'string') {
           const message =
-            (typeof payload.message === 'string' && payload.message) ||
-            (typeof payload.error === 'string' && payload.error) ||
+            (typeof payload['message'] === 'string' && payload['message']) ||
+            (typeof payload['error'] === 'string' && payload['error']) ||
             'Streaming failed';
           throw new Error(message);
         }
 
         const chunkContent =
-          typeof payload.content === 'string'
-            ? payload.content
-            : typeof payload.result === 'string'
-              ? payload.result
+          typeof payload['content'] === 'string'
+            ? payload['content']
+            : typeof payload['result'] === 'string'
+              ? payload['result']
               : undefined;
 
         onChunk({
           content: chunkContent,
-          done: payload.done === true,
-          token_count: Number(payload.token_count) || undefined,
-          cost_delta: Number(payload.cost_delta) || undefined,
-          result: payload.result,
+          done: payload['done'] === true,
+          token_count: Number(payload['token_count']) || undefined,
+          cost_delta: Number(payload['cost_delta']) || undefined,
+          result: payload['result'],
         });
 
-        if (payload.done === true) {
+        if (payload['done'] === true) {
           finalResponse = {
-            result: payload.result,
-            message_id: payload.message_id,
-            provider: payload.provider,
-            model: payload.model,
-            tokens: payload.tokens,
-            cost: payload.cost,
-            duration_ms: payload.duration_ms,
+            result: payload['result'],
+            message_id: payload['message_id'],
+            provider: payload['provider'],
+            model: payload['model'],
+            tokens: payload['tokens'],
+            cost: payload['cost'],
+            duration_ms: payload['duration_ms'],
             done: true,
           };
           onComplete?.(finalResponse);
@@ -220,7 +220,7 @@ const runtimeClientImpl: RuntimeClient = {
     await apiClient.logout().catch(() => {});
   },
 
-  async validateToken(token: string): Promise<{ valid: boolean; user?: User }> {
+  async validateToken(token: string): Promise<{ valid: boolean; user?: User | undefined }> {
     const result = await apiClient.validateToken(token);
     return { valid: result?.valid ?? false, user: result?.user };
   },

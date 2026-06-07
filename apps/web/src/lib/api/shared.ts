@@ -267,14 +267,14 @@ export const extractApiErrorMessage = (payload: unknown, fallback = 'Request fai
   if (!payload || typeof payload !== 'object') return fallback;
 
   const data = payload as Record<string, unknown>;
-  const envelopeError = data.error;
+  const envelopeError = data['error'];
   if (envelopeError && typeof envelopeError === 'object') {
-    const message = (envelopeError as Record<string, unknown>).message;
+    const message = (envelopeError as Record<string, unknown>)['message'];
     if (typeof message === 'string' && message.trim()) return message;
   }
   if (typeof envelopeError === 'string' && envelopeError.trim()) return envelopeError;
-  if (typeof data.message === 'string' && data.message.trim()) return data.message;
-  if (typeof data.detail === 'string' && data.detail.trim()) return data.detail;
+  if (typeof data['message'] === 'string' && data['message'].trim()) return data['message'];
+  if (typeof data['detail'] === 'string' && data['detail'].trim()) return data['detail'];
   return fallback;
 };
 
@@ -293,8 +293,8 @@ export const normalizeAxiosError = (error: unknown): never => {
       'Request failed';
 
     const normalizedError = new Error(detail) as Error & {
-      status?: number;
-      responseData?: Record<string, unknown>;
+      status?: number | undefined;
+      responseData?: Record<string, unknown> | undefined;
     };
     normalizedError.status = axiosError.response?.status;
     normalizedError.responseData = payload;

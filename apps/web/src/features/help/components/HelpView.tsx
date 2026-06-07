@@ -10,10 +10,10 @@ interface HelpViewProps {
   form: SupportFormState;
   /** Optional startup failure context. */
   startupFailure?: {
-    logId?: string | null;
-    diagnostics?: StartupDiagnostics | null;
+    logId?: string | null | undefined;
+    diagnostics?: StartupDiagnostics | null | undefined;
     onRetry: () => void;
-  };
+  } | undefined;
 }
 
 const HelpView = ({ form, startupFailure }: HelpViewProps) => (

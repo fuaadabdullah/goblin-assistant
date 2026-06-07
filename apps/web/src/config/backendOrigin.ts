@@ -12,18 +12,18 @@ const firstDefinedOrigin = (...values: Array<string | undefined>): string => {
 
 export const resolvePublicBackendOrigin = (env: NodeJS.ProcessEnv = process.env): string =>
   firstDefinedOrigin(
-    env.NEXT_PUBLIC_BACKEND_URL,
-    env.NEXT_PUBLIC_FASTAPI_URL,
-    env.NEXT_PUBLIC_API_URL,
-    env.NEXT_PUBLIC_API_BASE_URL
+    env['NEXT_PUBLIC_BACKEND_URL'],
+    env['NEXT_PUBLIC_FASTAPI_URL'],
+    env['NEXT_PUBLIC_API_URL'],
+    env['NEXT_PUBLIC_API_BASE_URL']
   ) || DEFAULT_BACKEND_ORIGIN;
 
 export const resolveBackendOrigin = (env: NodeJS.ProcessEnv = process.env): string =>
   firstDefinedOrigin(
-    env.GOBLIN_BACKEND_URL,
-    env.BACKEND_URL,
-    env.NEXT_PUBLIC_BACKEND_URL,
-    env.NEXT_PUBLIC_FASTAPI_URL,
-    env.NEXT_PUBLIC_API_URL,
-    env.NEXT_PUBLIC_API_BASE_URL
+    env['GOBLIN_BACKEND_URL'],
+    env['BACKEND_URL'],
+    env['NEXT_PUBLIC_BACKEND_URL'],
+    env['NEXT_PUBLIC_FASTAPI_URL'],
+    env['NEXT_PUBLIC_API_URL'],
+    env['NEXT_PUBLIC_API_BASE_URL']
   ) || DEFAULT_BACKEND_ORIGIN;

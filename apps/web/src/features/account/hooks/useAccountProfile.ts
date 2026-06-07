@@ -5,8 +5,8 @@ import type { AccountPreferencesPayload } from '../types';
 import { useToast } from '../../../hooks/useToast';
 
 interface AccountUser {
-  name?: string;
-  email?: string;
+  name?: string | undefined;
+  email?: string | undefined;
 }
 
 export interface AccountState {

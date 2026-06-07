@@ -4,12 +4,12 @@
  */
 
 import { logErrorToService } from './monitoring';
-import { devInfo } from './dev-log';
+import { devWarn } from './dev-log';
 
 // Lightweight logging helpers (replace former Datadog calls)
 const logEvent = (message: string, context?: Record<string, unknown>) => {
-  if (process.env.NODE_ENV === 'development') {
-    devInfo(`[event] ${message}`, context);
+  if (process.env['NODE_ENV'] === 'development') {
+    devWarn(`[event] ${message}`, context);
   }
 };
 
@@ -66,10 +66,10 @@ export const withErrorTracking = async <T>(
   operation: () => Promise<T>,
   context: {
     operation: string;
-    endpoint?: string;
-    method?: string;
-    userId?: string;
-    additionalContext?: Record<string, unknown>;
+    endpoint?: string | undefined;
+    method?: string | undefined;
+    userId?: string | undefined;
+    additionalContext?: Record<string, unknown> | undefined;
   }
 ): Promise<T> => {
   const startTime = Date.now();

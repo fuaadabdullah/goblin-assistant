@@ -4,16 +4,16 @@ import { resolveBackendOrigin } from '@/config/backendOrigin';
 const BACKEND_URL = resolveBackendOrigin();
 
 const INTERNAL_PROXY_API_KEY = (
-  process.env.INTERNAL_PROXY_API_KEY ||
-  process.env.BACKEND_API_KEY ||
-  process.env.INTERNAL_API_SECRET ||
+  process.env['INTERNAL_PROXY_API_KEY'] ||
+  process.env['BACKEND_API_KEY'] ||
+  process.env['INTERNAL_API_SECRET'] ||
   ''
 ).trim();
 
 interface ForwardResponse {
   status: number;
   body: unknown;
-  correlationId?: string;
+  correlationId?: string | undefined;
 }
 
 async function safeJson<T = unknown>(res: Request | Response): Promise<T | null> {
@@ -49,7 +49,7 @@ async function forwardValidate(req: Request): Promise<ForwardResponse> {
 
     const authorization = req.headers.get('authorization');
     if (authorization) {
-      headers.Authorization = authorization;
+      headers['Authorization'] = authorization;
     }
 
     if (INTERNAL_PROXY_API_KEY) {

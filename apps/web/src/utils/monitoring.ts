@@ -17,7 +17,7 @@ type SentryWithExtras = typeof Sentry & {
 const sentry = Sentry as SentryWithExtras;
 
 interface ErrorContext {
-  componentStack?: string;
+  componentStack?: string | undefined;
   [key: string]: unknown;
 }
 

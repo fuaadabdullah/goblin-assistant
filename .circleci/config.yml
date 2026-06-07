@@ -305,6 +305,60 @@ jobs:
             done
             echo "Health check timed out." && exit 1
 
+  # ── Lighthouse CI ────────────────────────────────────────────────────────
+  lighthouse-ci:
+    docker:
+      - image: cimg/node:20.9-browsers
+    working_directory: ~/repo
+    resource_class: medium
+    steps:
+      - checkout
+      - setup-tmpdir
+      - install-pnpm
+      - run:
+          name: Build Next.js for Lighthouse
+          command: TMPDIR=~/repo/.tmp make build
+      - run:
+          name: Run Lighthouse CI
+          command: |
+            cd apps/web
+            TMPDIR=~/repo/.tmp pnpm lhci autorun
+          environment:
+            LHCI_BUILD_CONTEXT__CURRENT_HASH: << pipeline.git.revision >>
+            LHCI_BUILD_CONTEXT__COMMIT_TIME: << pipeline.git.base_revision >>
+      - store_artifacts:
+          path: apps/web/.lighthouseci
+          destination: lighthouse-reports
+
+  # ── Chromatic (visual regression) ────────────────────────────────────────
+  chromatic:
+    executor: node
+    working_directory: ~/repo
+    steps:
+      - checkout
+      - setup-tmpdir
+      - install-pnpm
+      - run:
+          name: Publish to Chromatic
+          command: |
+            cd apps/web
+            if [ -z "$CHROMATIC_PROJECT_TOKEN" ]; then
+              echo "CHROMATIC_PROJECT_TOKEN not set — skipping visual regression."
+              echo "Add the token from chromatic.com/manage to CircleCI env vars to enable."
+              exit 0
+            fi
+            # On main, auto-accept so baseline advances without manual review.
+            # On all other branches, upload and flag diffs for async review —
+            # exit-zero-on-changes keeps the build green while visual review
+            # happens in the Chromatic UI.
+            if [ "$CIRCLE_BRANCH" = "main" ]; then
+              TMPDIR=~/repo/.tmp pnpm chromatic --auto-accept-changes
+            else
+              TMPDIR=~/repo/.tmp pnpm chromatic --exit-zero-on-changes
+            fi
+          environment:
+            CHROMATIC_PROJECT_TOKEN: $CHROMATIC_PROJECT_TOKEN
+
   # ── Smoke Tests ──────────────────────────────────────────────────────────
   smoke-test:
     executor: base
@@ -346,6 +400,13 @@ workflows:
           requires: [lint, typecheck]
       - build:
           requires: [test-backend, test-frontend]
+      - chromatic:
+          requires: [lint, typecheck]
+      - lighthouse-ci:
+          requires: [build]
+          filters:
+            branches:
+              only: [main, develop]
       - docker-build:
           requires: [build]
           filters:
@@ -369,4 +430,8 @@ workflows:
       - test-backend
       - test-frontend
       - build
+      - chromatic:
+          requires: [build]
+      - lighthouse-ci:
+          requires: [build]
       - smoke-test

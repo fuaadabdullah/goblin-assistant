@@ -4,20 +4,20 @@ import { getAuthToken } from '../../../utils/auth-session';
 import type { ChatMessage } from '../types';
 
 export interface ChatResponse {
-  messageId?: string;
-  content?: string;
-  model?: string;
-  provider?: string;
-  usage?: { input_tokens?: number; output_tokens?: number; total_tokens?: number };
-  cost_usd?: number;
-  correlation_id?: string;
-  createdAt?: string;
+  messageId?: string | undefined;
+  content?: string | undefined;
+  model?: string | undefined;
+  provider?: string | undefined;
+  usage?: { input_tokens?: number | undefined; output_tokens?: number | undefined; total_tokens?: number | undefined } | undefined;
+  cost_usd?: number | undefined;
+  correlation_id?: string | undefined;
+  createdAt?: string | undefined;
   visualizations?: Array<{
     type: string;
     title: string;
     data: Record<string, unknown>[];
     config: Record<string, unknown>;
-  }>;
+  }> | undefined;
 }
 
 export interface FileUploadResult {
@@ -54,21 +54,21 @@ export interface ChatConversation {
   messages: ChatMessage[];
   // Mirrors the backend ConversationDetailResponse pagination, whose fields are all optional.
   pagination?: {
-    offset?: number;
-    limit?: number;
-    total?: number;
-    returned?: number;
-    has_more?: boolean;
-  };
+    offset?: number | undefined;
+    limit?: number | undefined;
+    total?: number | undefined;
+    returned?: number | undefined;
+    has_more?: boolean | undefined;
+  } | undefined;
 }
 
 export interface SendMessageParams {
   conversationId: string;
-  prompt?: string;
-  messages?: ChatMessage[];
-  model?: string;
-  provider?: string;
-  attachment_ids?: string[];
+  prompt?: string | undefined;
+  messages?: ChatMessage[] | undefined;
+  model?: string | undefined;
+  provider?: string | undefined;
+  attachment_ids?: string[] | undefined;
 }
 
 const resolvePrompt = (params: SendMessageParams): string => {
@@ -146,9 +146,9 @@ export const chatClient = {
 
   async estimateTokens(payload: {
     message: string;
-    conversationId?: string;
-    provider?: string;
-    model?: string;
+    conversationId?: string | undefined;
+    provider?: string | undefined;
+    model?: string | undefined;
   }) {
     return apiClient.estimateMessageTokens(payload);
   },
@@ -254,7 +254,7 @@ export const chatClient = {
         throw new Error('Conversation message is required.');
       }
 
-      const apiBaseUrl = process.env.NEXT_PUBLIC_API_BASE_URL || '';
+      const apiBaseUrl = process.env['NEXT_PUBLIC_API_BASE_URL'] || '';
       const token = getAuthToken();
       const headers: Record<string, string> = {
         'Content-Type': 'application/json',
@@ -308,39 +308,39 @@ export const chatClient = {
               try {
                 const data = JSON.parse(line.slice(6)) as Record<string, unknown>;
 
-                if (typeof data.content === 'string' && data.content.length > 0) {
-                  accumulatedContent += data.content;
-                  const tokenCount = Number(data.token_count) || 0;
-                  const costDelta = Number(data.cost_delta) || 0;
+                if (typeof data['content'] === 'string' && data['content'].length > 0) {
+                  accumulatedContent += data['content'];
+                  const tokenCount = Number(data['token_count']) || 0;
+                  const costDelta = Number(data['cost_delta']) || 0;
                   totalTokens += tokenCount;
                   totalCost += costDelta;
-                  onChunk(data.content, tokenCount, costDelta);
+                  onChunk(data['content'], tokenCount, costDelta);
                 }
 
-                if (data.type === 'error' || typeof data.error === 'string') {
+                if (data['type'] === 'error' || typeof data['error'] === 'string') {
                   throw new Error(
-                    (typeof data.message === 'string' && data.message) ||
-                      (typeof data.error === 'string' && data.error) ||
+                    (typeof data['message'] === 'string' && data['message']) ||
+                      (typeof data['error'] === 'string' && data['error']) ||
                       'Streaming failed'
                   );
                 }
 
-                if (data.done === true) {
+                if (data['done'] === true) {
                   const finalResponse: ChatResponse = {
-                    messageId: data.message_id as string | undefined,
-                    content: (typeof data.result === 'string' && data.result) || accumulatedContent,
-                    provider: data.provider as string | undefined,
-                    model: data.model as string | undefined,
+                    messageId: data['message_id'] as string | undefined,
+                    content: (typeof data['result'] === 'string' && data['result']) || accumulatedContent,
+                    provider: data['provider'] as string | undefined,
+                    model: data['model'] as string | undefined,
                     usage: {
-                      total_tokens: (data.tokens as number) ?? totalTokens,
-                      input_tokens: (data.usage as Record<string, number>)?.input_tokens,
-                      output_tokens: (data.usage as Record<string, number>)?.output_tokens,
+                      total_tokens: (data['tokens'] as number) ?? totalTokens,
+                      input_tokens: (data['usage'] as Record<string, number>)?.['input_tokens'],
+                      output_tokens: (data['usage'] as Record<string, number>)?.['output_tokens'],
                     },
-                    cost_usd: (data.cost as number) ?? totalCost,
-                    correlation_id: data.correlation_id as string | undefined,
-                    createdAt: data.timestamp as string | undefined,
+                    cost_usd: (data['cost'] as number) ?? totalCost,
+                    correlation_id: data['correlation_id'] as string | undefined,
+                    createdAt: data['timestamp'] as string | undefined,
                     visualizations:
-                      (data.visualizations as Array<{
+                      (data['visualizations'] as Array<{
                         type: string;
                         title: string;
                         data: Record<string, unknown>[];

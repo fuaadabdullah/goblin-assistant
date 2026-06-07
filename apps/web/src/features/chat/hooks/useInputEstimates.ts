@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import { chatClient } from '../api';
 import { estimateFromText, type TextCostEstimate } from '../../../lib/cost-estimate';
-import { devLog } from '@/utils/dev-log';
+import { devWarn } from '@/utils/dev-log';
 
 export interface InputEstimatesState {
   localInputEstimate: TextCostEstimate | null;
@@ -11,9 +11,9 @@ export interface InputEstimatesState {
 
 export interface InputEstimatesProps {
   input: string;
-  conversationId?: string | null;
-  selectedProvider?: string;
-  selectedModel?: string;
+  conversationId?: string | null | undefined;
+  selectedProvider?: string | undefined;
+  selectedModel?: string | undefined;
 }
 
 /**
@@ -62,7 +62,7 @@ export const useInputEstimates = ({
         })
         .catch((err) => {
           if (cancelled) return;
-          devLog('chat.estimate_tokens_failed', { error: String(err) });
+          devWarn('chat.estimate_tokens_failed', { error: String(err) });
           setServerInputEstimate(null);
         });
     }, 300);

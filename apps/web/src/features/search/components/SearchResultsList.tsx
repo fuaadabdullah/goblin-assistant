@@ -85,8 +85,8 @@ const SearchResultsList = ({ results, query = '' }: SearchResultsListProps) => (
     <h2 className="text-xl font-semibold text-text mb-4">Search Results ({results.length})</h2>
     {results.map((result, index) => {
       const meta = getSourceMeta(
-        (result.metadata?.source_type as string) ||
-          (result.metadata?.sourceType as string) ||
+        (result.metadata?.['source_type'] as string) ||
+          (result.metadata?.['sourceType'] as string) ||
           undefined
       );
       const Icon = meta.icon;

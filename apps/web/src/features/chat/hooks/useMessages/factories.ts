@@ -44,14 +44,14 @@ export const mapAttachments = (attachments: PendingAttachment[]) =>
   }));
 
 export const createAssistantMessage = (response: {
-  messageId?: string;
-  createdAt?: string;
-  content?: string;
-  provider?: string;
-  model?: string;
-  usage?: ChatUsage;
-  cost_usd?: number;
-  correlation_id?: string;
+  messageId?: string | undefined;
+  createdAt?: string | undefined;
+  content?: string | undefined;
+  provider?: string | undefined;
+  model?: string | undefined;
+  usage?: ChatUsage | undefined;
+  cost_usd?: number | undefined;
+  correlation_id?: string | undefined;
   visualizations?: ChatMessageMeta['visualizations'];
 }): ChatMessage => {
   const rawCost = typeof response.cost_usd === 'number' ? response.cost_usd : undefined;

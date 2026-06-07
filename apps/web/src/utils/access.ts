@@ -1,7 +1,7 @@
 export interface AccessUser {
-  email?: string;
-  role?: string;
-  roles?: string[];
+  email?: string | undefined;
+  role?: string | undefined;
+  roles?: string[] | undefined;
 }
 
 const parseList = (value?: string): string[] =>
@@ -10,8 +10,8 @@ const parseList = (value?: string): string[] =>
     .map((item) => item.trim().toLowerCase())
     .filter(Boolean);
 
-const ADMIN_EMAILS = parseList(process.env.NEXT_PUBLIC_ADMIN_EMAILS);
-const ADMIN_DOMAINS = parseList(process.env.NEXT_PUBLIC_ADMIN_DOMAINS);
+const ADMIN_EMAILS = parseList(process.env['NEXT_PUBLIC_ADMIN_EMAILS']);
+const ADMIN_DOMAINS = parseList(process.env['NEXT_PUBLIC_ADMIN_DOMAINS']);
 
 export const isAdminUser = (user?: AccessUser | null): boolean => {
   if (!user) return false;

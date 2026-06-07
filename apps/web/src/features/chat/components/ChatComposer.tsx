@@ -18,7 +18,7 @@ interface ChatComposerProps {
   /** Inline prompts shown beneath the composer. */
   quickPrompts: QuickPrompt[];
   /** Whether authentication is required (401/403 error). */
-  authError?: boolean;
+  authError?: boolean | undefined;
   /** Update input value. */
   onInputChange: (value: string) => void;
   /** Clear the current chat. */
@@ -30,23 +30,23 @@ interface ChatComposerProps {
   /** Handler for quick prompt selection. */
   onPromptClick: (prompt: string) => void;
   /** Handler for file selection (optional until backend supports uploads). */
-  onFileSelected?: (files: FileList) => void;
+  onFileSelected?: ((files: FileList) => void) | undefined;
   /** Pending file attachments to display as chips. */
-  pendingAttachments?: PendingAttachment[];
+  pendingAttachments?: PendingAttachment[] | undefined;
   /** Whether a file upload is in progress. */
-  isUploading?: boolean;
+  isUploading?: boolean | undefined;
   /** Remove a pending attachment. */
-  onRemoveAttachment?: (fileId: string) => void;
+  onRemoveAttachment?: ((fileId: string) => void) | undefined;
 
   /** Selected provider/model for visibility (may be auto). */
-  selectedProvider?: string;
-  selectedModel?: string;
+  selectedProvider?: string | undefined;
+  selectedModel?: string | undefined;
   /** Live estimate for the current input. */
-  estimatedTokens?: number;
-  estimatedCostUsd?: number;
+  estimatedTokens?: number | undefined;
+  estimatedCostUsd?: number | undefined;
   /** Session totals (actual or approximate). */
-  totalTokens?: number;
-  totalCostUsd?: number;
+  totalTokens?: number | undefined;
+  totalCostUsd?: number | undefined;
 }
 
 const MAX_MESSAGE_LENGTH = 10000;

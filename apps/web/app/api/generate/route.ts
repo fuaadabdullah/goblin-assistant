@@ -4,19 +4,19 @@ import { resolveBackendOrigin } from '@/config/backendOrigin';
 const BACKEND_URL = resolveBackendOrigin();
 
 const INTERNAL_PROXY_API_KEY = (
-  process.env.INTERNAL_PROXY_API_KEY ||
-  process.env.BACKEND_API_KEY ||
-  process.env.INTERNAL_API_SECRET ||
+  process.env['INTERNAL_PROXY_API_KEY'] ||
+  process.env['BACKEND_API_KEY'] ||
+  process.env['INTERNAL_API_SECRET'] ||
   ''
 ).trim();
 
 interface ForwardResponse {
   status: number;
   body: unknown;
-  correlationId?: string;
-  requestId?: string;
-  licenseTier?: string;
-  transportError?: boolean;
+  correlationId?: string | undefined;
+  requestId?: string | undefined;
+  licenseTier?: string | undefined;
+  transportError?: boolean | undefined;
 }
 
 async function safeJson<T = unknown>(res: Request | Response): Promise<T | null> {
@@ -48,10 +48,10 @@ function logProxyEvent(payload: {
   proxy_mode: 'thin';
   backend_status: number | null;
   legacy_fallback_used: boolean;
-  correlation_id?: string;
+  correlation_id?: string | undefined;
   latency_ms: number;
 }) {
-  console.info('[api/generate] proxy_event', payload);
+  console.warn('[api/generate] proxy_event', payload);
 }
 
 /**
@@ -60,23 +60,23 @@ function logProxyEvent(payload: {
  * backend expects {messages: [{role, content}], model?, provider?}.
  */
 function buildChatRequestBody(incoming: Record<string, unknown>): Record<string, unknown> {
-  let messages = incoming.messages as Array<Record<string, unknown>> | undefined;
+  let messages = incoming['messages'] as Array<Record<string, unknown>> | undefined;
 
   // If no messages provided, convert prompt into a single user message.
-  if ((!messages || !Array.isArray(messages) || messages.length === 0) && incoming.prompt) {
-    messages = [{ role: 'user', content: String(incoming.prompt) }];
+  if ((!messages || !Array.isArray(messages) || messages.length === 0) && incoming['prompt']) {
+    messages = [{ role: 'user', content: String(incoming['prompt']) }];
   }
 
   // Strip extra fields from each message — backend only accepts role & content.
   const cleanMessages = (messages ?? []).map((m) => ({
-    role: String(m.role ?? 'user'),
-    content: String(m.content ?? ''),
+    role: String(m['role'] ?? 'user'),
+    content: String(m['content'] ?? ''),
   }));
 
   return {
     messages: cleanMessages,
-    ...(incoming.model ? { model: incoming.model } : {}),
-    ...(incoming.provider ? { provider: incoming.provider } : {}),
+    ...(incoming['model'] ? { model: incoming['model'] } : {}),
+    ...(incoming['provider'] ? { provider: incoming['provider'] } : {}),
   };
 }
 
@@ -85,18 +85,18 @@ function buildChatRequestBody(incoming: Record<string, unknown>): Record<string,
  * to the frontend ChatResponse {content, model, provider}.
  */
 function mapBackendResponse(body: Record<string, unknown>): Record<string, unknown> {
-  if (body.ok === true && body.result && typeof body.result === 'object') {
-    const result = body.result as Record<string, unknown>;
+  if (body['ok'] === true && body['result'] && typeof body['result'] === 'object') {
+    const result = body['result'] as Record<string, unknown>;
     return {
-      content: result.text ?? '',
-      model: body.model ?? undefined,
-      provider: body.provider ?? undefined,
+      content: result['text'] ?? '',
+      model: body['model'] ?? undefined,
+      provider: body['provider'] ?? undefined,
     };
   }
   // Error case — pass through for the frontend error parser.
   return {
-    error: body.error ?? 'Unknown backend error',
-    detail: body.error ?? 'Unknown backend error',
+    error: body['error'] ?? 'Unknown backend error',
+    detail: body['error'] ?? 'Unknown backend error',
   };
 }
 

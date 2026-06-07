@@ -5,8 +5,8 @@ import type { QuickPrompt } from '../types';
 
 export interface QuickActionsState {
   quickPrompts: QuickPrompt[];
-  selectedProvider?: string;
-  selectedModel?: string;
+  selectedProvider?: string | undefined;
+  selectedModel?: string | undefined;
 }
 
 /**

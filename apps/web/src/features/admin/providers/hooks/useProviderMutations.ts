@@ -9,8 +9,8 @@ export interface TestResult {
   success: boolean;
   message: string;
   latency: number;
-  response?: string;
-  model_used?: string;
+  response?: string | undefined;
+  model_used?: string | undefined;
 }
 
 export type ProviderRole = 'primary' | 'fallback';
@@ -105,7 +105,7 @@ export const useProviderMutations = () => {
     }: {
       providerId: number;
       priority: number;
-      role?: ProviderRole;
+      role?: ProviderRole | undefined;
     }) => providersAdminApi.setProviderPriority(providerId, priority, role),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: queryKeys.providers });

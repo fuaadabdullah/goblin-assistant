@@ -16,6 +16,7 @@ module.exports = [
       '**/._*',
       '**/*.stories.*',
       'tests/test_connection.js',
+      'scripts/root-tools/**',
     ],
   },
   {
@@ -42,6 +43,7 @@ module.exports = [
       'max-lines-per-function': ['warn', { max: 40, skipBlankLines: true, skipComments: true }],
       'max-depth': ['warn', 3],
       complexity: ['warn', 10],
+      'no-console': ['error', { allow: ['warn', 'error'] }],
     },
   },
   {
@@ -92,6 +94,7 @@ module.exports = [
       'max-lines-per-function': ['warn', { max: 40, skipBlankLines: true, skipComments: true }],
       'max-depth': ['warn', 3],
       complexity: ['warn', 10],
+      'no-console': ['error', { allow: ['warn', 'error'] }],
       'no-restricted-syntax': [
         'warn',
         {

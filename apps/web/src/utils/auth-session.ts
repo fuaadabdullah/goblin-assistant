@@ -29,10 +29,10 @@ const clearCookie = (name: string): void => {
 };
 
 interface PersistAuthInput {
-  token?: string | null;
-  refreshToken?: string | null;
-  user?: AccessUser | null;
-  expiresIn?: number | null;
+  token?: string | null | undefined;
+  refreshToken?: string | null | undefined;
+  user?: AccessUser | null | undefined;
+  expiresIn?: number | null | undefined;
 }
 
 /**

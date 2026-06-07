@@ -33,7 +33,7 @@ export default function Seo({
   ogImagePath = '/goblin-logo.png',
 }: SeoProps) {
   const pathname = usePathname();
-  const siteUrl = cleanSiteUrl(process.env.NEXT_PUBLIC_SITE_URL);
+  const siteUrl = cleanSiteUrl(process.env['NEXT_PUBLIC_SITE_URL']);
   const desc = description || DEFAULT_DESCRIPTION;
 
   const canonicalUrl =

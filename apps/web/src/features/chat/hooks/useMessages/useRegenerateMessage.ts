@@ -10,8 +10,8 @@ interface RegenerateMessageDeps {
   messages: ChatMessage[];
   isSending: boolean;
   activeThread: ChatThread | null;
-  selectedModel?: string;
-  selectedProvider?: string;
+  selectedModel?: string | undefined;
+  selectedProvider?: string | undefined;
   applyMessages: (msgs: ChatMessage[]) => void;
   setMessages: (msgs: ChatMessage[]) => void;
   setIsSending: (v: boolean) => void;

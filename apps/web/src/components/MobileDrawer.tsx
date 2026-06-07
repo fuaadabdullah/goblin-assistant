@@ -1,5 +1,4 @@
 import React, { useEffect, useRef } from 'react';
-import { AnimatePresence } from 'framer-motion';
 import { X } from 'lucide-react';
 import { useUIStore } from '../store/uiStore';
 import Logo from './Logo';
@@ -35,7 +34,7 @@ const MobileDrawer: React.FC<{
   }, [isOpen]);
 
   return (
-    <AnimatePresence>
+    <>
       {isOpen && (
         <>
           {/* Overlay */}
@@ -64,6 +63,7 @@ const MobileDrawer: React.FC<{
                   <span className="font-semibold text-lg text-primary">{title}</span>
                 </div>
                 <button
+                  type="button"
                   className="p-2 rounded-md text-muted hover:text-text"
                   onClick={() => close(false)}
                   aria-label="Close menu"
@@ -81,7 +81,7 @@ const MobileDrawer: React.FC<{
           </div>
         </>
       )}
-    </AnimatePresence>
+    </>
   );
 };
 

@@ -1,9 +1,9 @@
 import { providerRateLookupKeys } from './providers/normalizeProvider';
 
 export interface NormalizedUsage {
-  input_tokens?: number;
-  output_tokens?: number;
-  total_tokens?: number;
+  input_tokens?: number | undefined;
+  output_tokens?: number | undefined;
+  total_tokens?: number | undefined;
 }
 
 export interface CostComputationResult {

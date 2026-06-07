@@ -47,7 +47,9 @@ const Navigation = ({ onLogout, showLogout = false, variant = 'customer' }: Navi
     router.push('/login');
   };
 
-  const customerItems = [
+  type NavItem = { path: string; label: string; Icon: React.ElementType };
+
+  const customerItems: NavItem[] = [
     { path: '/', label: 'Home', Icon: Home },
     { path: '/chat', label: 'Chat', Icon: MessageSquare },
     { path: '/search', label: 'Search', Icon: Search },
@@ -56,13 +58,19 @@ const Navigation = ({ onLogout, showLogout = false, variant = 'customer' }: Navi
     { path: '/help', label: 'Help', Icon: HelpCircle },
   ];
 
-  const adminItems = [
+  const adminItems: NavItem[] = [
     { path: '/admin', label: 'Dashboard', Icon: LayoutDashboard },
     { path: '/admin/providers', label: 'Providers', Icon: Puzzle },
     { path: '/admin/logs', label: 'Logs', Icon: ScrollText },
     { path: '/admin/settings', label: 'Settings', Icon: Settings },
     { path: '/', label: 'Customer View', Icon: Users },
   ];
+
+  // Admin routes use dynamic imports with heavy dashboards; disable prefetch so
+  // hovering the nav doesn't eagerly fetch large JS chunks the user hasn't
+  // explicitly navigated to yet. Customer primary paths keep default prefetch.
+  const getItemPrefetch = (path: string): false | 'auto' =>
+    variant === 'admin' && path !== '/' ? false : 'auto';
 
   const navItems = variant === 'admin' ? adminItems : customerItems;
 
@@ -101,6 +109,7 @@ const Navigation = ({ onLogout, showLogout = false, variant = 'customer' }: Navi
                 <Link
                   key={item.path}
                   href={item.path}
+                  prefetch={getItemPrefetch(item.path)}
                   className={`flex items-center space-x-2 px-4 py-3 min-h-[44px] text-sm font-medium rounded-lg transition-colors outline-offset-2 focus-visible:outline focus-visible:outline-2 focus-visible:outline-primary ${
                     isActive
                       ? 'text-text bg-surface-active shadow-glow-primary border border-border'
@@ -120,6 +129,7 @@ const Navigation = ({ onLogout, showLogout = false, variant = 'customer' }: Navi
               </div>
               {showLogout && (
                 <button
+                  type="button"
                   onClick={() => {
                     void handleLogout();
                   }}
@@ -173,6 +183,7 @@ const Navigation = ({ onLogout, showLogout = false, variant = 'customer' }: Navi
               <Link
                 key={item.path}
                 href={item.path}
+                prefetch={getItemPrefetch(item.path)}
                 className={`flex items-center space-x-3 px-3 py-2 rounded-lg text-sm font-medium min-h-[44px] ${
                   isActive
                     ? 'text-text bg-surface-active border border-border'

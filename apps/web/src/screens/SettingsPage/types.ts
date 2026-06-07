@@ -13,8 +13,8 @@ export interface ProviderDisplay {
   name: string;
   normalizedName: string;
   configured: boolean;
-  env_var?: string;
-  base_url?: string;
+  env_var?: string | undefined;
+  base_url?: string | undefined;
   models: string[];
 }
 

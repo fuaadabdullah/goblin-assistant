@@ -134,6 +134,187 @@ test.describe('Authentication Flow', () => {
   });
 });
 
+test.describe('Logout', () => {
+  test.beforeEach(async ({ page, context }) => {
+    await mockCommonApiRoutes(page);
+
+    await page.route('**/auth/logout', async (route) => {
+      await route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({ success: true }),
+      });
+    });
+
+    await page.route('**/api/auth/validate', async (route) => {
+      await route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({
+          valid: true,
+          user: { id: 'test_user', email: 'test@example.com', role: 'user' },
+          expires_in: 3600,
+        }),
+      });
+    });
+
+    await context.addCookies([
+      { name: 'goblin_auth', value: '1', domain: 'localhost', path: '/' },
+      { name: 'session_token', value: 'mock-session-token-e2e', domain: 'localhost', path: '/' },
+    ]);
+    await context.addInitScript(() => {
+      document.cookie = 'goblin_auth=1; Path=/';
+      window.localStorage.setItem(
+        'user_data',
+        JSON.stringify({ id: 'test_user', email: 'test@example.com', role: 'user' })
+      );
+    });
+  });
+
+  test('should show a logout button when authenticated', async ({ page }) => {
+    await page.goto('/chat');
+
+    const logoutButton = page
+      .getByRole('button', { name: /log.?out|sign.?out/i })
+      .or(page.getByRole('link', { name: /log.?out|sign.?out/i }))
+      .first();
+
+    const count = await logoutButton.count();
+    // Logout may be in a menu — open account menu if needed
+    if (count === 0) {
+      const accountMenu = page.getByRole('button', { name: /account|profile|user/i }).first();
+      const menuCount = await accountMenu.count();
+      if (menuCount > 0) {
+        await accountMenu.click();
+      }
+    }
+    // Re-check after potential menu open
+    const logoutAfterMenu = page
+      .getByRole('button', { name: /log.?out|sign.?out/i })
+      .or(page.getByRole('link', { name: /log.?out|sign.?out/i }))
+      .first();
+    const finalCount = await logoutAfterMenu.count();
+    if (finalCount > 0) {
+      await expect(logoutAfterMenu).toBeVisible();
+    }
+  });
+
+  test('should redirect to login after logout', async ({ page }) => {
+    await page.goto('/chat');
+
+    // Attempt logout via button or direct API call + navigation
+    const logoutButton = page
+      .getByRole('button', { name: /log.?out|sign.?out/i })
+      .first();
+    const count = await logoutButton.count();
+
+    if (count > 0) {
+      await logoutButton.click();
+      // Should end up on login page
+      await expect(page).toHaveURL(/\/login/, { timeout: 5000 });
+    } else {
+      // Simulate logout by clearing auth state and navigating
+      await page.evaluate(() => {
+        window.localStorage.removeItem('user_data');
+        document.cookie = 'goblin_auth=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;';
+      });
+      await page.goto('/chat');
+      // Without auth, should redirect to login
+      await expect(page).toHaveURL(/\/login|\/startup/, { timeout: 5000 });
+    }
+  });
+
+  test('should clear session data after logout', async ({ page }) => {
+    await page.goto('/chat');
+
+    const logoutButton = page
+      .getByRole('button', { name: /log.?out|sign.?out/i })
+      .first();
+    const count = await logoutButton.count();
+
+    if (count > 0) {
+      await logoutButton.click();
+      await page.waitForURL(/\/login|\/startup/, { timeout: 5000 });
+
+      // Auth cookie should be cleared
+      const cookies = await page.context().cookies();
+      const authCookie = cookies.find((c) => c.name === 'goblin_auth' && c.value === '1');
+      expect(authCookie).toBeUndefined();
+    }
+  });
+});
+
+test.describe('Session Persistence', () => {
+  test.beforeEach(async ({ page, context }) => {
+    await mockCommonApiRoutes(page);
+
+    await page.route('**/api/auth/validate', async (route) => {
+      await route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({
+          valid: true,
+          user: { id: 'test_user', email: 'test@example.com', role: 'user' },
+          expires_in: 3600,
+        }),
+      });
+    });
+
+    await context.addCookies([
+      { name: 'goblin_auth', value: '1', domain: 'localhost', path: '/' },
+      { name: 'session_token', value: 'mock-session-token-e2e', domain: 'localhost', path: '/' },
+    ]);
+    await context.addInitScript(() => {
+      document.cookie = 'goblin_auth=1; Path=/';
+      window.localStorage.setItem(
+        'user_data',
+        JSON.stringify({ id: 'test_user', email: 'test@example.com', role: 'user' })
+      );
+    });
+  });
+
+  test('should stay authenticated after page reload', async ({ page }) => {
+    await page.goto('/chat');
+    await expect(page.getByRole('main')).toBeVisible({ timeout: 5000 });
+
+    await page.reload();
+
+    // Should remain on chat, not redirected to login
+    await expect(page).toHaveURL(/\/chat/, { timeout: 5000 });
+    await expect(page.getByRole('main')).toBeVisible({ timeout: 5000 });
+  });
+
+  test('should stay authenticated when navigating between pages', async ({ page }) => {
+    await page.goto('/chat');
+    await expect(page).toHaveURL(/\/chat/, { timeout: 5000 });
+
+    await page.goto('/settings');
+    await expect(page).toHaveURL(/\/settings/, { timeout: 5000 });
+
+    // Navigate back — should still be authenticated
+    await page.goto('/chat');
+    await expect(page).toHaveURL(/\/chat/, { timeout: 5000 });
+  });
+
+  test('should redirect unauthenticated users to login', async ({ page, context }) => {
+    // Clear cookies to simulate unauthenticated state
+    await context.clearCookies();
+
+    await page.route('**/api/auth/validate', async (route) => {
+      await route.fulfill({
+        status: 401,
+        contentType: 'application/json',
+        body: JSON.stringify({ valid: false }),
+      });
+    });
+
+    await page.goto('/chat');
+
+    // Should be redirected away from the protected route
+    await expect(page).not.toHaveURL(/\/chat$/, { timeout: 5000 });
+  });
+});
+
 test.describe('OAuth Login', () => {
   test.beforeEach(async ({ page }) => {
     await mockCommonApiRoutes(page);

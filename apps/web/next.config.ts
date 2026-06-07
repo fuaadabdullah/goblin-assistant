@@ -8,8 +8,21 @@ const nextConfig: NextConfig = {
   env: {
     NEXT_PUBLIC_APP_VERSION: appVersion,
   },
+  // Strip console.warn in production builds; console.error is preserved for error reporting
+  compiler: {
+    removeConsole: {
+      exclude: ['error'],
+    },
+  },
   reactStrictMode: true,
   transpilePackages: ['@goblin/ui'],
+  images: {
+    // Serve AVIF first (best compression), fall back to WebP, then original.
+    formats: ['image/avif', 'image/webp'],
+    deviceSizes: [640, 750, 828, 1080, 1200, 1920],
+    imageSizes: [16, 32, 48, 64, 96, 128, 256, 384],
+    minimumCacheTTL: 604800,
+  },
   experimental: {
     externalDir: true,
   },

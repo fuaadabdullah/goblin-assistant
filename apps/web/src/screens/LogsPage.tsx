@@ -56,12 +56,12 @@ const parseLogLine = (line: string, index: number): LogEntry => {
     const parsed = JSON.parse(line) as Record<string, unknown>;
 
     return {
-      id: typeof parsed.id === 'string' ? parsed.id : `log-${index}`,
-      timestamp: typeof parsed.timestamp === 'string' ? parsed.timestamp : new Date().toISOString(),
-      level: toLogLevel(parsed.level),
-      service: toLogService(parsed.service, parsed.source),
-      message: toLogMessage(parsed.message, parsed.msg, line),
-      details: parsed.details ?? parsed.metadata ?? parsed.context,
+      id: typeof parsed['id'] === 'string' ? parsed['id'] : `log-${index}`,
+      timestamp: typeof parsed['timestamp'] === 'string' ? parsed['timestamp'] : new Date().toISOString(),
+      level: toLogLevel(parsed['level']),
+      service: toLogService(parsed['service'], parsed['source']),
+      message: toLogMessage(parsed['message'], parsed['msg'], line),
+      details: parsed['details'] ?? parsed['metadata'] ?? parsed['context'],
     };
   } catch {
     return {

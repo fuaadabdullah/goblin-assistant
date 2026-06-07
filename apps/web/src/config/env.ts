@@ -8,7 +8,7 @@
  * - Easier testing
  */
 
-import { devError, devLog, devWarn } from '../utils/dev-log';
+import { devError, devWarn } from '../utils/dev-log';
 import { DEFAULT_BACKEND_ORIGIN } from './backendOrigin';
 
 interface EnvConfig {
@@ -111,9 +111,9 @@ export const env: EnvConfig = {
   sentryDsn: getOptionalEnv('NEXT_PUBLIC_SENTRY_DSN'),
   gaMeasurementId: getOptionalEnv('NEXT_PUBLIC_GA_MEASUREMENT_ID'),
 
-  mode: (process.env.NODE_ENV as EnvConfig['mode']) || 'development',
-  isDevelopment: process.env.NODE_ENV === 'development',
-  isProduction: process.env.NODE_ENV === 'production',
+  mode: (process.env['NODE_ENV'] as EnvConfig['mode']) || 'development',
+  isDevelopment: process.env['NODE_ENV'] === 'development',
+  isProduction: process.env['NODE_ENV'] === 'production',
 };
 
 // Validate on import
@@ -121,7 +121,7 @@ validateEnvConfig(env);
 
 // Log configuration in development
 if (env.isDevelopment) {
-  devLog('📝 Environment Configuration:', {
+  console.warn('📝 Environment Configuration:', {
     ...env,
     apiBaseUrl: env.apiBaseUrl,
     mode: env.mode,

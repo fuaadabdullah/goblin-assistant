@@ -21,13 +21,13 @@ export interface MessagesProps {
   input: string;
   activeThread: ChatThread | null;
   activeBackendThreadId: string | null;
-  selectedProvider?: string;
-  selectedModel?: string;
+  selectedProvider?: string | undefined;
+  selectedModel?: string | undefined;
   pendingAttachments: PendingAttachment[];
-  onMessagesLoading?: (loading: boolean) => void;
-  onThreadUpdated?: (thread: ChatThread) => void;
-  onThreadRemoved?: (thread: ChatThread) => void;
-  onThreadsInvalidated?: () => void;
+  onMessagesLoading?: ((loading: boolean) => void) | undefined;
+  onThreadUpdated?: ((thread: ChatThread) => void) | undefined;
+  onThreadRemoved?: ((thread: ChatThread) => void) | undefined;
+  onThreadsInvalidated?: (() => void) | undefined;
   backendConversationQuery?: {
     isLoading: boolean;
     isFetching: boolean;
@@ -37,7 +37,7 @@ export interface MessagesProps {
       createdAt: string;
       updatedAt: string;
       messages: ChatMessage[];
-      pagination?: { has_more?: boolean; offset?: number };
-    };
-  };
+      pagination?: { has_more?: boolean | undefined; offset?: number | undefined } | undefined;
+    } | undefined;
+  } | undefined;
 }

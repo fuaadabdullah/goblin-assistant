@@ -16,13 +16,13 @@ interface SendMessageDeps {
   isMessagesLoading: boolean;
   messages: ChatMessage[];
   activeThread: ChatThread | null;
-  selectedModel?: string;
-  selectedProvider?: string;
+  selectedModel?: string | undefined;
+  selectedProvider?: string | undefined;
   pendingAttachments: PendingAttachment[];
   applyMessages: (msgs: ChatMessage[]) => void;
-  onThreadUpdated?: (thread: ChatThread) => void;
-  onThreadRemoved?: (thread: ChatThread) => void;
-  onThreadsInvalidated?: () => void;
+  onThreadUpdated?: ((thread: ChatThread) => void) | undefined;
+  onThreadRemoved?: ((thread: ChatThread) => void) | undefined;
+  onThreadsInvalidated?: (() => void) | undefined;
   setIsSending: (v: boolean) => void;
   showError: ReturnType<typeof useToast>['showError'];
   showInfo: ReturnType<typeof useToast>['showInfo'];

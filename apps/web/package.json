@@ -27,7 +27,8 @@
     "security:audit:python": "../../.venv/bin/python -m pip_audit -r ../api/requirements.txt",
     "security:audit-ci": "npx audit-ci --moderate",
     "validate-env": "tsx src/config/env.ts",
-    "dead-code": "knip"
+    "dead-code": "knip",
+    "lhci": "lhci autorun"
   },
   "dependencies": {
     "@goblin/ui": "workspace:*",
@@ -98,6 +99,7 @@
     "ts-node": "^10.9.2",
     "tsx": "^4.22.3",
     "typescript": "^5.9.3",
+    "@lhci/cli": "^0.14.0",
     "knip": "^5.0.0",
     "web-streams-polyfill": "^4.3.0"
   },

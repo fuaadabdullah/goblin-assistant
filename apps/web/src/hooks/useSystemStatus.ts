@@ -73,12 +73,12 @@ export function useSystemStatus(opts?: StatusOptions) {
       if (response.status === 'fulfilled' && response.value?.ok) {
         try {
           const data = (await response.value.json()) as Record<string, unknown>;
-          if (field === 'models' && Array.isArray(data.models)) {
-            const firstModel = data.models[0] as ModelHealth | undefined;
+          if (field === 'models' && Array.isArray(data['models'])) {
+            const firstModel = data['models'][0] as ModelHealth | undefined;
             return mapHealth(firstModel?.health);
           }
           if (field === 'routing' || field === 'sandbox') {
-            return mapHealth(data.status as string | undefined);
+            return mapHealth(data['status'] as string | undefined);
           }
         } catch {
           // Continue on parse error

@@ -1,12 +1,10 @@
 describe('env config', () => {
   const originalEnv = process.env;
-  const devLogMock = vi.fn();
   const devWarnMock = vi.fn();
   const devErrorMock = vi.fn();
 
   const mockDevLogModule = () => {
     vi.doMock('../../utils/dev-log', () => ({
-      devLog: devLogMock,
       devWarn: devWarnMock,
       devError: devErrorMock,
     }));
@@ -73,7 +71,7 @@ describe('env config', () => {
     expect(env.mode).toBe('development');
     expect(env.isDevelopment).toBe(true);
     expect(env.isProduction).toBe(false);
-    expect(devLogMock).toHaveBeenCalled();
+    expect(devWarnMock).toHaveBeenCalled();
   });
 
   it('throws when the api base url is invalid', async () => {

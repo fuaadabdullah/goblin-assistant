@@ -40,8 +40,8 @@ export type ButtonVariantProps = VariantProps<typeof buttonVariants>;
 
 export interface ButtonProps
   extends Omit<ButtonHTMLAttributes<HTMLButtonElement>, 'size'>, ButtonVariantProps {
-  icon?: ReactNode;
-  loading?: boolean;
+  icon?: ReactNode | undefined;
+  loading?: boolean | undefined;
   children: ReactNode;
 }
 

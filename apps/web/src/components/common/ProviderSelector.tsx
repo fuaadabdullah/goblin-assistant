@@ -21,7 +21,7 @@ export default function ProviderSelector({ providers, selected, onChange }: Prop
         Provider:
       </label>
       <Select
-        value={selected || providers[0]}
+        {...((selected ?? providers[0]) !== undefined ? { value: selected ?? providers[0] } : {})}
         onValueChange={(value: string) => onChange && onChange(value)}
       >
         <SelectTrigger

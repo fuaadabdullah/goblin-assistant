@@ -20,13 +20,13 @@ import StatusBar from '@/components/StatusBar';
 import PageTransition from '@/components/PageTransition';
 
 function initDatadog() {
-  const appId = process.env.NEXT_PUBLIC_DD_APPLICATION_ID;
-  const clientToken = process.env.NEXT_PUBLIC_DD_CLIENT_TOKEN;
+  const appId = process.env['NEXT_PUBLIC_DD_APPLICATION_ID'];
+  const clientToken = process.env['NEXT_PUBLIC_DD_CLIENT_TOKEN'];
   if (!appId || !clientToken) return;
 
-  const site = process.env.NEXT_PUBLIC_DD_SITE ?? 'datadoghq.com';
-  const env = process.env.NEXT_PUBLIC_DD_ENV ?? process.env.NODE_ENV ?? 'development';
-  const version = process.env.NEXT_PUBLIC_DD_VERSION ?? '1.0.0';
+  const site = process.env['NEXT_PUBLIC_DD_SITE'] ?? 'datadoghq.com';
+  const env = process.env['NEXT_PUBLIC_DD_ENV'] ?? process.env['NODE_ENV'] ?? 'development';
+  const version = process.env['NEXT_PUBLIC_DD_VERSION'] ?? '1.0.0';
 
   datadogRum.init({
     applicationId: appId,

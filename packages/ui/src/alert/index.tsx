@@ -23,12 +23,12 @@ const alertVariants = cva(
 export type AlertVariantProps = VariantProps<typeof alertVariants>;
 
 export interface AlertProps extends AlertVariantProps {
-  title?: string;
+  title?: string | undefined;
   message: string | ReactNode;
-  dismissible?: boolean;
-  onDismiss?: () => void;
-  icon?: ReactNode;
-  className?: string;
+  dismissible?: boolean | undefined;
+  onDismiss?: (() => void) | undefined;
+  icon?: ReactNode | undefined;
+  className?: string | undefined;
 }
 
 const defaultIcons: Record<string, string> = {

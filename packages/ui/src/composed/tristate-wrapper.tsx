@@ -6,27 +6,27 @@ import EmptyState from './empty-state';
 
 export interface TristateWrapperProps {
   children: ReactNode;
-  loading?: boolean;
+  loading?: boolean | undefined;
   error?: unknown;
-  empty?: boolean;
-  loadingTitle?: string;
-  loadingDescription?: string;
-  errorTitle?: string;
-  errorMessage?: string;
-  onRetry?: () => void;
-  retryLabel?: string;
-  emptyTitle?: string;
-  emptyDescription?: string;
-  emptyIcon?: ReactNode;
-  emptyActionLabel?: string;
-  onEmptyAction?: () => void;
-  emptyActionHref?: string;
-  emptySecondaryAction?: ReactNode;
-  plain?: boolean;
-  loadingChild?: ReactNode;
-  emptyChild?: ReactNode;
-  errorChild?: ReactNode;
-  className?: string;
+  empty?: boolean | undefined;
+  loadingTitle?: string | undefined;
+  loadingDescription?: string | undefined;
+  errorTitle?: string | undefined;
+  errorMessage?: string | undefined;
+  onRetry?: (() => void) | undefined;
+  retryLabel?: string | undefined;
+  emptyTitle?: string | undefined;
+  emptyDescription?: string | undefined;
+  emptyIcon?: ReactNode | undefined;
+  emptyActionLabel?: string | undefined;
+  onEmptyAction?: (() => void) | undefined;
+  emptyActionHref?: string | undefined;
+  emptySecondaryAction?: ReactNode | undefined;
+  plain?: boolean | undefined;
+  loadingChild?: ReactNode | undefined;
+  emptyChild?: ReactNode | undefined;
+  errorChild?: ReactNode | undefined;
+  className?: string | undefined;
 }
 
 function resolveErrorMessage(error: unknown): string {

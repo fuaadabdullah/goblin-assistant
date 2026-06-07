@@ -16,7 +16,7 @@ export const chatMethods = {
   async createConversation(title?: string) {
     const response = await withTransientRetry(
       () =>
-        postBackend<ConversationCreateResponse, { title?: string }>(
+        postBackend<ConversationCreateResponse, { title?: string | undefined }>(
           `${V1_CHAT_PREFIX}/conversations`,
           { title },
           withAuth()
@@ -79,19 +79,19 @@ export const chatMethods = {
   async sendConversationMessage(payload: {
     conversationId: string;
     message: string;
-    model?: string;
-    provider?: string;
-    metadata?: Record<string, unknown>;
-    attachment_ids?: string[];
+    model?: string | undefined;
+    provider?: string | undefined;
+    metadata?: Record<string, unknown> | undefined;
+    attachment_ids?: string[] | undefined;
   }) {
     const response = await postBackend<
       ConversationSendResponse,
       {
         message: string;
-        model?: string;
-        provider?: string;
-        metadata?: Record<string, unknown>;
-        attachment_ids?: string[];
+        model?: string | undefined;
+        provider?: string | undefined;
+        metadata?: Record<string, unknown> | undefined;
+        attachment_ids?: string[] | undefined;
       }
     >(
       `${V1_CHAT_PREFIX}/conversations/${encodeURIComponent(payload.conversationId)}/messages`,
@@ -120,9 +120,9 @@ export const chatMethods = {
 
   async estimateMessageTokens(payload: {
     message: string;
-    conversationId?: string;
-    provider?: string;
-    model?: string;
+    conversationId?: string | undefined;
+    provider?: string | undefined;
+    model?: string | undefined;
   }): Promise<{
     input_tokens: number;
     estimated_output_tokens: number;

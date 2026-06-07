@@ -15,7 +15,7 @@ export interface ErrorTestResult {
   id: string;
   label: string;
   status: ErrorTestStatus;
-  message?: string;
+  message?: string | undefined;
   timestamp: string;
 }
 
