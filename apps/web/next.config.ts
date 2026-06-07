@@ -9,6 +9,7 @@ const nextConfig: NextConfig = {
     NEXT_PUBLIC_APP_VERSION: appVersion,
   },
   reactStrictMode: true,
+  transpilePackages: ['@goblin/ui'],
   experimental: {
     externalDir: true,
   },

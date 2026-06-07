@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 // CSS is imported globally in _app.tsx
-import Button from '@/components/ui/Button';
+import { Button } from '@/components/ui';
 import { TokenChunk, getNewChunk, toTokenChunk } from './streamingUtils';
 import { devError } from '@/utils/dev-log';
 

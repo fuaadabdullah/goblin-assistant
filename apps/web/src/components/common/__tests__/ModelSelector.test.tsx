@@ -11,7 +11,7 @@ vi.mock('@/lib/api/runtimeClient', () => ({
   },
 }));
 
-vi.mock('@/components/ui/Select', () => {
+vi.mock('@goblin/ui', () => {
   type MockSelectProps = {
     children?: React.ReactNode;
     disabled?: boolean;

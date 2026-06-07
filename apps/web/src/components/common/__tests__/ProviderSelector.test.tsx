@@ -1,7 +1,7 @@
 import React from 'react';
 import { render, screen } from '@testing-library/react';
 
-vi.mock('@/components/ui/Select', () => ({
+vi.mock('@goblin/ui', () => ({
   Select: ({
     children,
     value,

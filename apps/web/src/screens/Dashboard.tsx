@@ -8,9 +8,8 @@ import { getChartPaletteColor } from '@/components/cost/chartPalette';
 import { runtimeClient } from '@/lib/api/runtimeClient';
 import { queryKeys } from '@/lib/query-keys';
 import { useSystemStatus } from '@/hooks/useSystemStatus';
-import { TristateWrapper, Card } from '@/components/ui';
+import { TristateWrapper, Card, EmptyState } from '@/components/ui';
 import StatCard from '@/components/StatCard';
-import EmptyState from '@/components/ui/EmptyState';
 import { useDashboardData } from '@/hooks/useDashboardData';
 
 type DashboardPeriod = '7d' | '30d' | 'all';

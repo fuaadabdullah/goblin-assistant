@@ -14,6 +14,7 @@ vi.mock('@/lib/api', () => ({
     register: (...args: unknown[]) => mockRegister(...args),
     getGoogleAuthUrl: (...args: unknown[]) => mockGetGoogleAuthUrl(...args),
   },
+  prefetchCsrfToken: vi.fn(),
 }));
 vi.mock('../../../lib/query-keys', () => ({ queryKeys: { authValidate: ['auth'] } }));
 vi.mock('@/utils/dev-log', () => ({ devError: vi.fn() }));

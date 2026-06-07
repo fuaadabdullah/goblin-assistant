@@ -14,7 +14,7 @@ describe('UI Store (Zustand)', () => {
     expect(result.current.highContrast).toBeDefined();
     expect(result.current.currentTheme).toBeDefined();
     expect(result.current.activeModal).toBeNull();
-    expect(result.current.notifications).toEqual([]);
+    expect(result.current.toasts).toEqual([]);
   });
 
   it('should toggle sidebar visibility', () => {
@@ -100,15 +100,16 @@ describe('UI Store (Zustand)', () => {
     expect(freshUIStore.getState().currentTheme).toBe('nocturne');
   });
 
-  it('should add and remove notifications', () => {
+  it('should add and remove toasts', () => {
     const { result } = renderHook(() => useUIStore());
     act(() => {
-      result.current.addNotification({ type: 'success', title: 'Test' });
+      result.current.addToast({ type: 'success', title: 'Test' });
     });
-    expect(result.current.notifications.length).toBeGreaterThanOrEqual(1);
-    const id = result.current.notifications[0].id;
+    expect(result.current.toasts.length).toBeGreaterThanOrEqual(1);
+    const id = result.current.toasts[0]!.id;
     act(() => {
-      result.current.removeNotification(id);
+      result.current.removeToast(id);
     });
+    expect(result.current.toasts).toHaveLength(0);
   });
 });
