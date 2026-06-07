@@ -1,10 +1,10 @@
 import React from 'react';
 import { render, screen, fireEvent } from '@testing-library/react';
 
-jest.mock(
+vi.mock(
   '../../ui/Button',
-  () =>
-    function MockButton({
+  () => ({
+    default: function MockButton({
       children,
       onClick,
       disabled,
@@ -20,28 +20,29 @@ jest.mock(
           {children}
         </button>
       );
-    }
+    },
+  })
 );
 
 import { ErrorTestButtons } from '../../error-testing/ErrorTestButtons';
 
 const defaultProps = {
-  onJavaScriptError: jest.fn(),
-  onTypeError: jest.fn(),
-  onCustomError: jest.fn(),
-  onAsyncError: jest.fn(),
-  onNetworkError: jest.fn(),
-  onUnhandledPromiseRejection: jest.fn(),
-  onSentryError: jest.fn(),
-  onSentryMessage: jest.fn(),
-  onSentryBreadcrumb: jest.fn(),
-  onRunAll: jest.fn(),
+  onJavaScriptError: vi.fn(),
+  onTypeError: vi.fn(),
+  onCustomError: vi.fn(),
+  onAsyncError: vi.fn(),
+  onNetworkError: vi.fn(),
+  onUnhandledPromiseRejection: vi.fn(),
+  onSentryError: vi.fn(),
+  onSentryMessage: vi.fn(),
+  onSentryBreadcrumb: vi.fn(),
+  onRunAll: vi.fn(),
   running: false,
 };
 
 describe('ErrorTestButtons', () => {
   beforeEach(() => {
-    jest.clearAllMocks();
+    vi.clearAllMocks();
   });
 
   it('renders all 10 buttons', () => {

@@ -1,28 +1,12 @@
 import React from 'react';
 import { render, screen, fireEvent } from '@testing-library/react';
 
-jest.mock(
-  'lucide-react',
-  () =>
-    new Proxy(
-      {},
-      {
-        get: (_, name) => {
-          if (name === '__esModule') return true;
-          return (props: Record<string, unknown>) => (
-            <span data-testid={`icon-${String(name)}`} {...props} />
-          );
-        },
-      }
-    )
-);
-
 import MessageActions from '../MessageActions';
 
 describe('MessageActions', () => {
-  const defaultProps = { role: 'user' as const, onCopy: jest.fn() };
+  const defaultProps = { role: 'user' as const, onCopy: vi.fn() };
 
-  beforeEach(() => jest.clearAllMocks());
+  beforeEach(() => vi.clearAllMocks());
 
   it('renders copy button', () => {
     render(<MessageActions {...defaultProps} />);
@@ -36,17 +20,17 @@ describe('MessageActions', () => {
   });
 
   it('does not show regenerate for user messages', () => {
-    render(<MessageActions {...defaultProps} onRegenerate={jest.fn()} />);
+    render(<MessageActions {...defaultProps} onRegenerate={vi.fn()} />);
     expect(screen.queryByLabelText('Regenerate response')).not.toBeInTheDocument();
   });
 
   it('shows regenerate for assistant messages', () => {
-    render(<MessageActions {...defaultProps} role="assistant" onRegenerate={jest.fn()} />);
+    render(<MessageActions {...defaultProps} role="assistant" onRegenerate={vi.fn()} />);
     expect(screen.getByLabelText('Regenerate response')).toBeInTheDocument();
   });
 
   it('calls onRegenerate when clicked', () => {
-    const onRegenerate = jest.fn();
+    const onRegenerate = vi.fn();
     render(<MessageActions {...defaultProps} role="assistant" onRegenerate={onRegenerate} />);
     fireEvent.click(screen.getByLabelText('Regenerate response'));
     expect(onRegenerate).toHaveBeenCalled();
@@ -57,7 +41,7 @@ describe('MessageActions', () => {
       <MessageActions
         {...defaultProps}
         role="assistant"
-        onRegenerate={jest.fn()}
+        onRegenerate={vi.fn()}
         showRegenerate={false}
       />
     );
@@ -65,19 +49,19 @@ describe('MessageActions', () => {
   });
 
   it('shows delete button', () => {
-    render(<MessageActions {...defaultProps} onDelete={jest.fn()} />);
+    render(<MessageActions {...defaultProps} onDelete={vi.fn()} />);
     expect(screen.getByLabelText('Delete message')).toBeInTheDocument();
   });
 
   it('calls onDelete when clicked', () => {
-    const onDelete = jest.fn();
+    const onDelete = vi.fn();
     render(<MessageActions {...defaultProps} onDelete={onDelete} />);
     fireEvent.click(screen.getByLabelText('Delete message'));
     expect(onDelete).toHaveBeenCalled();
   });
 
   it('hides delete when showDelete is false', () => {
-    render(<MessageActions {...defaultProps} onDelete={jest.fn()} showDelete={false} />);
+    render(<MessageActions {...defaultProps} onDelete={vi.fn()} showDelete={false} />);
     expect(screen.queryByLabelText('Delete message')).not.toBeInTheDocument();
   });
 

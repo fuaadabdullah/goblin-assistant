@@ -1,16 +1,15 @@
 import React from 'react';
 import { render, screen } from '@testing-library/react';
-import '@testing-library/jest-dom';
 
-jest.mock('@/components/StatusCard', () => {
-  return function MockStatusCard(props: { title: string; status: string }) {
+vi.mock('@/components/StatusCard', () => ({
+  default: function MockStatusCard(props: { title: string; status: string }) {
     return (
       <div data-testid={`status-card-${props.title}`}>
         {props.title}: {props.status}
       </div>
     );
-  };
-});
+  },
+}));
 
 import { StatusCardsGrid } from '../StatusCardsGrid';
 

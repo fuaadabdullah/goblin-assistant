@@ -1,6 +1,5 @@
 import React from 'react';
-import { render, screen, act } from '@testing-library/react';
-import userEvent from '@testing-library/user-event';
+import { render, screen, act, fireEvent } from '@testing-library/react';
 import { ToastProvider, useToast } from '../ToastContext';
 
 // Test consumer component
@@ -42,15 +41,15 @@ function TestConsumer() {
 
 describe('ToastContext', () => {
   beforeEach(() => {
-    jest.useFakeTimers();
+    vi.useFakeTimers();
   });
 
   afterEach(() => {
-    jest.useRealTimers();
+    vi.useRealTimers();
   });
 
   it('throws when used outside provider', () => {
-    const spy = jest.spyOn(console, 'error').mockImplementation(() => {});
+    const spy = vi.spyOn(console, 'error').mockImplementation(() => {});
     expect(() => render(<TestConsumer />)).toThrow('useToast must be used within a ToastProvider');
     spy.mockRestore();
   });
@@ -64,116 +63,102 @@ describe('ToastContext', () => {
     expect(screen.getByTestId('count').textContent).toBe('0');
   });
 
-  it('showSuccess adds a success toast', async () => {
-    const user = userEvent.setup({ advanceTimers: jest.advanceTimersByTime });
+  it('showSuccess adds a success toast', () => {
     render(
       <ToastProvider>
         <TestConsumer />
       </ToastProvider>
     );
-    await user.click(screen.getByTestId('add-success'));
+    act(() => { fireEvent.click(screen.getByTestId('add-success')); });
     expect(screen.getByTestId('count').textContent).toBe('1');
-    const toasts = screen.getAllByText('Done');
-    expect(toasts.length).toBeGreaterThan(0);
+    expect(screen.getAllByText('Done').length).toBeGreaterThan(0);
   });
 
-  it('showError adds an error toast', async () => {
-    const user = userEvent.setup({ advanceTimers: jest.advanceTimersByTime });
+  it('showError adds an error toast', () => {
     render(
       <ToastProvider>
         <TestConsumer />
       </ToastProvider>
     );
-    await user.click(screen.getByTestId('add-error'));
+    act(() => { fireEvent.click(screen.getByTestId('add-error')); });
     expect(screen.getByTestId('count').textContent).toBe('1');
   });
 
-  it('showWarning adds a warning toast', async () => {
-    const user = userEvent.setup({ advanceTimers: jest.advanceTimersByTime });
+  it('showWarning adds a warning toast', () => {
     render(
       <ToastProvider>
         <TestConsumer />
       </ToastProvider>
     );
-    await user.click(screen.getByTestId('add-warning'));
+    act(() => { fireEvent.click(screen.getByTestId('add-warning')); });
     expect(screen.getByTestId('count').textContent).toBe('1');
   });
 
-  it('showInfo adds an info toast', async () => {
-    const user = userEvent.setup({ advanceTimers: jest.advanceTimersByTime });
+  it('showInfo adds an info toast', () => {
     render(
       <ToastProvider>
         <TestConsumer />
       </ToastProvider>
     );
-    await user.click(screen.getByTestId('add-info'));
+    act(() => { fireEvent.click(screen.getByTestId('add-info')); });
     expect(screen.getByTestId('count').textContent).toBe('1');
   });
 
-  it('removeToast removes a toast', async () => {
-    const user = userEvent.setup({ advanceTimers: jest.advanceTimersByTime });
+  it('removeToast removes a toast', () => {
     render(
       <ToastProvider>
         <TestConsumer />
       </ToastProvider>
     );
-    await user.click(screen.getByTestId('add-success'));
+    act(() => { fireEvent.click(screen.getByTestId('add-success')); });
     expect(screen.getByTestId('count').textContent).toBe('1');
-    await user.click(screen.getByText('remove'));
+    act(() => { fireEvent.click(screen.getByText('remove')); });
     expect(screen.getByTestId('count').textContent).toBe('0');
   });
 
-  it('auto-removes toast after duration', async () => {
-    const user = userEvent.setup({ advanceTimers: jest.advanceTimersByTime });
+  it('auto-removes toast after duration', () => {
     render(
       <ToastProvider>
         <TestConsumer />
       </ToastProvider>
     );
-    await user.click(screen.getByTestId('add-success'));
+    act(() => { fireEvent.click(screen.getByTestId('add-success')); });
     expect(screen.getByTestId('count').textContent).toBe('1');
-    act(() => {
-      jest.advanceTimersByTime(6000);
-    });
+    act(() => { vi.advanceTimersByTime(6000); });
     expect(screen.getByTestId('count').textContent).toBe('0');
   });
 
-  it('does not auto-remove toast with duration 0', async () => {
-    const user = userEvent.setup({ advanceTimers: jest.advanceTimersByTime });
+  it('does not auto-remove toast with duration 0', () => {
     render(
       <ToastProvider>
         <TestConsumer />
       </ToastProvider>
     );
-    await user.click(screen.getByTestId('add-no-auto'));
+    act(() => { fireEvent.click(screen.getByTestId('add-no-auto')); });
     expect(screen.getByTestId('count').textContent).toBe('1');
-    act(() => {
-      jest.advanceTimersByTime(30000);
-    });
+    act(() => { vi.advanceTimersByTime(30000); });
     expect(screen.getByTestId('count').textContent).toBe('1');
   });
 
-  it('supports multiple toasts', async () => {
-    const user = userEvent.setup({ advanceTimers: jest.advanceTimersByTime });
+  it('supports multiple toasts', () => {
     render(
       <ToastProvider>
         <TestConsumer />
       </ToastProvider>
     );
-    await user.click(screen.getByTestId('add-success'));
-    await user.click(screen.getByTestId('add-error'));
-    await user.click(screen.getByTestId('add-info'));
+    act(() => { fireEvent.click(screen.getByTestId('add-success')); });
+    act(() => { fireEvent.click(screen.getByTestId('add-error')); });
+    act(() => { fireEvent.click(screen.getByTestId('add-info')); });
     expect(screen.getByTestId('count').textContent).toBe('3');
   });
 
-  it('toast includes message when provided', async () => {
-    const user = userEvent.setup({ advanceTimers: jest.advanceTimersByTime });
+  it('toast includes message when provided', () => {
     render(
       <ToastProvider>
         <TestConsumer />
       </ToastProvider>
     );
-    await user.click(screen.getByTestId('add-warning'));
+    act(() => { fireEvent.click(screen.getByTestId('add-warning')); });
     expect(screen.getByText('Watch out')).toBeInTheDocument();
   });
 });

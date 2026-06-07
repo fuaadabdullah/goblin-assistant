@@ -2,6 +2,7 @@
 Pytest configuration and shared fixtures for API tests.
 """
 
+import importlib
 import sys
 import types
 from unittest.mock import AsyncMock, MagicMock
@@ -25,11 +26,14 @@ class _ArtifactCleanupServiceStub:
 
 
 if "api.sandbox_api" not in sys.modules:
-    sys.modules["api.sandbox_api"] = _router_module(
-        "api.sandbox_api",
-        "/sandbox",
-        "sandbox",
-    )
+    try:
+        importlib.import_module("api.sandbox_api")
+    except Exception:
+        sys.modules["api.sandbox_api"] = _router_module(
+            "api.sandbox_api",
+            "/sandbox",
+            "sandbox",
+        )
 
 if "api.routes.privacy" not in sys.modules:
     sys.modules["api.routes.privacy"] = _router_module(

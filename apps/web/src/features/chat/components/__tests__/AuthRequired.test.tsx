@@ -1,12 +1,13 @@
 import React from 'react';
 import { render, screen } from '@testing-library/react';
 
-jest.mock(
+vi.mock(
   'next/link',
-  () =>
-    function MockLink({ children, href }: { children: React.ReactNode; href: string }) {
+  () => ({
+    default: function MockLink({ children, href }: { children: React.ReactNode; href: string }) {
       return <a href={href}>{children}</a>;
-    }
+    },
+  })
 );
 
 import { AuthRequired } from '../AuthRequired';

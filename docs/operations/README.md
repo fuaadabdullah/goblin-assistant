@@ -21,6 +21,8 @@ This directory is the canonical home for operational documentation previously un
 
 - `QUICKSTART_AI_PROVIDERS.md`: provider setup and smoke-test runbook.
 - `PROVIDERS.md`: canonical provider matrix and env requirements.
+- `JIRA_PROVIDER_OPS.md`: Jira provider incident automation, backlog conventions, and release workflow.
+- `CONFLUENCE_PROVIDER_ARCHITECTURE.md`: repo-first Confluence workflow, source mapping, and provider-doc maintenance rules.
 
 ## Notes
 

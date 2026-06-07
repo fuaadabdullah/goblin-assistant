@@ -1,19 +1,18 @@
 import React from 'react';
 import { render, screen, fireEvent } from '@testing-library/react';
-import '@testing-library/jest-dom';
 
-jest.mock('../../ui/Alert', () => {
-  return function MockAlert(props: { variant: string; title: string; message: string }) {
+vi.mock('../../ui/Alert', () => ({
+  default: function MockAlert(props: { variant: string; title: string; message: string }) {
     return (
       <div data-testid="alert" data-variant={props.variant}>
         {props.message}
       </div>
     );
-  };
-});
+  },
+}));
 
-jest.mock('../../ui/Button', () => {
-  return function MockButton({
+vi.mock('../../ui/Button', () => ({
+  default: function MockButton({
     children,
     onClick,
   }: {
@@ -21,15 +20,15 @@ jest.mock('../../ui/Button', () => {
     onClick?: () => void;
   }) {
     return <button onClick={onClick}>{children}</button>;
-  };
-});
+  },
+}));
 
 import { DashboardError } from '../DashboardError';
 
 describe('DashboardError', () => {
-  const onRetry = jest.fn();
+  const onRetry = vi.fn();
 
-  beforeEach(() => jest.clearAllMocks());
+  beforeEach(() => vi.clearAllMocks());
 
   it('renders the error message', () => {
     render(<DashboardError error="Something went wrong" onRetry={onRetry} />);

@@ -1,25 +1,9 @@
 import React from 'react';
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
-import '@testing-library/jest-dom';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 
-jest.mock(
-  'lucide-react',
-  () =>
-    new Proxy(
-      {},
-      {
-        get: (_, name) => {
-          if (name === '__esModule') return true;
-          return (props: Record<string, unknown>) => (
-            <span data-testid={`icon-${String(name)}`} {...props} />
-          );
-        },
-      }
-    )
-);
-jest.mock('next/link', () => {
-  return function MockLink({
+vi.mock('next/link', () => ({
+  default: function MockLink({
     children,
     href,
     className,
@@ -33,21 +17,23 @@ jest.mock('next/link', () => {
         {children}
       </a>
     );
-  };
-});
-
-const mockPush = jest.fn().mockResolvedValue(true);
-jest.mock('next/router', () => ({
-  useRouter: () => ({ push: mockPush }),
+  },
 }));
-jest.mock('../../../components/Seo', () => {
-  return function MockSeo() {
-    return null;
-  };
-});
 
-const mockProviderSettings = jest.fn();
-jest.mock('../../../hooks/api/useSettings', () => ({
+const mockPush = vi.fn().mockResolvedValue(true);
+vi.mock('next/navigation', () => ({
+  useRouter: () => ({ push: mockPush, replace: vi.fn(), prefetch: vi.fn() }),
+  useSearchParams: () => new URLSearchParams(),
+  usePathname: () => '/onboarding',
+}));
+vi.mock('../../../components/Seo', () => ({
+  default: function MockSeo() {
+    return null;
+  },
+}));
+
+const mockProviderSettings = vi.fn();
+vi.mock('../../../hooks/api/useSettings', () => ({
   useProviderSettings: () => mockProviderSettings(),
 }));
 
@@ -60,7 +46,7 @@ function wrapper({ children }: { children: React.ReactNode }) {
 
 describe('OnboardingWizard', () => {
   beforeEach(() => {
-    jest.clearAllMocks();
+    vi.clearAllMocks();
     localStorage.clear();
     mockProviderSettings.mockReturnValue({
       data: [

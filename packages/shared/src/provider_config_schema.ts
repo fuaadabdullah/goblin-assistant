@@ -9,6 +9,8 @@
  * after editing `config/providers.toml` to regenerate `config/providers.json`.
  */
 
+export const PROVIDERS_JSON_SCHEMA_VERSION = 1;
+
 // ── Leaf types ─────────────────────────────────────────────────────────────
 
 export interface ScoringWeights {
@@ -169,6 +171,7 @@ export interface JsonProviderEntry {
 }
 
 export interface ProvidersJson {
+  schema_version: number;
   version: number;
   default_timeout_ms: number;
   model_budgets: Record<string, RateLimitEntry>;
@@ -200,6 +203,13 @@ function isBoolean(value: unknown): value is boolean {
 export function validateProvidersJson(raw: unknown): ProvidersJson {
   if (!isRecord(raw)) {
     throw new Error("providers.json: root must be an object");
+  }
+
+  const schemaVersion = raw.schema_version;
+  if (schemaVersion !== PROVIDERS_JSON_SCHEMA_VERSION) {
+    throw new Error(
+      `providers.json: expected schema_version=${PROVIDERS_JSON_SCHEMA_VERSION}, got ${String(schemaVersion)}`,
+    );
   }
 
   const version = raw.version;
@@ -249,6 +259,7 @@ export function validateProvidersJson(raw: unknown): ProvidersJson {
  * Default values for runtime use when config is not loaded yet.
  */
 export const DEFAULT_PROVIDERS_JSON: ProvidersJson = {
+  schema_version: PROVIDERS_JSON_SCHEMA_VERSION,
   version: 2,
   default_timeout_ms: 12000,
   model_budgets: {},

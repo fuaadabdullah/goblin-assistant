@@ -2,6 +2,8 @@ import os
 
 from fastapi import FastAPI
 
+from ._version import get_version
+from .admin_routes import router as admin_router
 from .api_keys_router import router as api_keys_router
 from .api_router import router as api_router
 from .auth.router import router as auth_router
@@ -11,6 +13,7 @@ from .bootstrap.middleware import (
 )
 from .bootstrap.routes import register_routes
 from .bootstrap.startup import (
+    init_ddtrace,
     init_sentry,
     load_env_files,
     resolve_optional_routing_analytics_router,
@@ -19,7 +22,6 @@ from .chat_router import router as chat_router
 from .exception_handlers import register_exception_handlers
 from .health import router as health_router
 from .lifespan import lifespan
-from .admin_routes import router as admin_router
 from .observability.debug_router import router as observability_debug_router
 from .observability.metrics_router import router as retrieval_metrics_router
 from .ops_router import router as ops_router
@@ -43,14 +45,15 @@ from .write_time_router import router as write_time_router
 def create_app() -> FastAPI:
     load_env_files()
     init_sentry()
+    init_ddtrace()
     routing_analytics_available, routing_analytics_router = (
         resolve_optional_routing_analytics_router()
     )
 
     app = FastAPI(
         title="Goblin Assistant API",
-        description=("AI-powered development assistant with multi-provider routing"),
-        version="1.0.0",
+        description="AI-powered development assistant with multi-provider routing",
+        version=get_version(),
         lifespan=lifespan,
     )
 

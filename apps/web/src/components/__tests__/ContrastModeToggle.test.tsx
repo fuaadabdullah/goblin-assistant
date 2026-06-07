@@ -1,10 +1,10 @@
 import React from 'react';
 import { render, screen, fireEvent } from '@testing-library/react';
 
-jest.mock('../../hooks/useContrastMode', () => ({
-  useContrastMode: jest.fn(() => ({ mode: 'dark', toggleMode: jest.fn() })),
+vi.mock('../../hooks/useContrastMode', () => ({
+  useContrastMode: vi.fn(() => ({ mode: 'dark', toggleMode: vi.fn() })),
 }));
-jest.mock('lucide-react', () => ({
+vi.mock('lucide-react', () => ({
   Contrast: (props: Record<string, unknown>) => <span data-testid="icon-contrast" {...props} />,
   Moon: (props: Record<string, unknown>) => <span data-testid="icon-moon" {...props} />,
   Sun: (props: Record<string, unknown>) => <span data-testid="icon-sun" {...props} />,
@@ -13,11 +13,11 @@ jest.mock('lucide-react', () => ({
 import ContrastModeToggle from '../ContrastModeToggle';
 import { useContrastMode } from '../../hooks/useContrastMode';
 
-const mockUseContrastMode = useContrastMode as jest.Mock;
+const mockUseContrastMode = useContrastMode as vi.Mock;
 
 describe('ContrastModeToggle', () => {
   beforeEach(() => {
-    mockUseContrastMode.mockReturnValue({ mode: 'dark', toggleMode: jest.fn() });
+    mockUseContrastMode.mockReturnValue({ mode: 'dark', toggleMode: vi.fn() });
   });
 
   it('renders button with current theme label', () => {
@@ -34,19 +34,19 @@ describe('ContrastModeToggle', () => {
   });
 
   it('displays Light text when mode is light', () => {
-    mockUseContrastMode.mockReturnValue({ mode: 'light', toggleMode: jest.fn() });
+    mockUseContrastMode.mockReturnValue({ mode: 'light', toggleMode: vi.fn() });
     render(<ContrastModeToggle />);
     expect(screen.getByText('Light')).toBeInTheDocument();
   });
 
   it('displays High Contrast text when mode is high', () => {
-    mockUseContrastMode.mockReturnValue({ mode: 'high', toggleMode: jest.fn() });
+    mockUseContrastMode.mockReturnValue({ mode: 'high', toggleMode: vi.fn() });
     render(<ContrastModeToggle />);
     expect(screen.getByText('High Contrast')).toBeInTheDocument();
   });
 
   it('calls toggleMode on click', () => {
-    const toggleMode = jest.fn();
+    const toggleMode = vi.fn();
     mockUseContrastMode.mockReturnValue({ mode: 'dark', toggleMode });
     render(<ContrastModeToggle />);
     fireEvent.click(screen.getByRole('button'));
@@ -64,7 +64,7 @@ describe('ContrastModeToggle', () => {
   });
 
   it('renders different icon for light mode', () => {
-    mockUseContrastMode.mockReturnValue({ mode: 'light', toggleMode: jest.fn() });
+    mockUseContrastMode.mockReturnValue({ mode: 'light', toggleMode: vi.fn() });
     render(<ContrastModeToggle />);
     expect(screen.getByTestId('icon-sun')).toBeInTheDocument();
   });

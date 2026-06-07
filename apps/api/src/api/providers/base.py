@@ -16,6 +16,8 @@ from dataclasses import dataclass, field
 from enum import Enum
 from typing import Any, AsyncGenerator, Dict, List, Optional, Union
 
+import httpx
+
 from .contracts import ProviderCapabilityMatrix
 from .pricing import resolve_model_pricing
 
@@ -218,6 +220,19 @@ class BaseProvider(ABC):
         self._soft_open_probe_taken = False
         self._circuit_state = ProviderCircuitState.CLOSED
 
+        # Shared client configuration
+        self._client: Optional[httpx.AsyncClient] = None
+
+    async def get_client(self, timeout: float = 60.0) -> httpx.AsyncClient:
+        """Returns a reusable AsyncClient instance."""
+        if self._client is None or self._client.is_closed:
+            # Standardizing on a pooled client for the provider instance
+            self._client = httpx.AsyncClient(
+                timeout=timeout,
+                limits=httpx.Limits(max_connections=20, max_keepalive_connections=5),
+            )
+        return self._client
+
     @staticmethod
     def _resolve_init_args(
         provider_id: Union[str, Dict[str, Any]],
@@ -417,12 +432,16 @@ class BaseProvider(ABC):
         return self._circuit_state.value
 
     def circuit_status(self) -> Dict[str, Any]:
+        cooldown_remaining_seconds = 0.0
+        if self._circuit_open_until not in (0.0, float("inf")):
+            cooldown_remaining_seconds = max(0.0, self._circuit_open_until - time.time())
         return {
             "state": self._circuit_state.value,
             "failure_count": self._failure_count,
             "transient_failure_count": self._transient_failure_count,
             "last_error": self._last_error,
             "open_until": self._circuit_open_until,
+            "cooldown_remaining_seconds": round(cooldown_remaining_seconds, 1),
             "probe_available": self.soft_open_probe_available(),
             "probe_taken": self._soft_open_probe_taken,
             "available": self.is_available(),
@@ -454,9 +473,15 @@ class BaseProvider(ABC):
             self._healthy = False
             self._circuit_open_until = time.time() + backoff_seconds
             self._soft_open_probe_taken = False
-            if category_value in {ProviderErrorCategory.TIMEOUT, ProviderErrorCategory.SERVER_ERROR}:
+            if category_value in {
+                ProviderErrorCategory.TIMEOUT,
+                ProviderErrorCategory.SERVER_ERROR,
+            }:
                 self._transient_failure_count += 1
-            elif category_value not in {ProviderErrorCategory.AUTH, ProviderErrorCategory.RATE_LIMIT}:
+            elif category_value not in {
+                ProviderErrorCategory.AUTH,
+                ProviderErrorCategory.RATE_LIMIT,
+            }:
                 self._transient_failure_count = 0
             return
 
@@ -465,12 +490,7 @@ class BaseProvider(ABC):
         else:
             self._transient_failure_count = 0
 
-        if self._transient_failure_count >= 2:
-            self._circuit_state = ProviderCircuitState.SOFT_OPEN
-            self._healthy = False
-            self._circuit_open_until = time.time() + backoff_seconds
-            self._soft_open_probe_taken = False
-        elif self._failure_count >= 3:
+        if self._transient_failure_count >= 2 or self._failure_count >= 3:
             self._circuit_state = ProviderCircuitState.SOFT_OPEN
             self._healthy = False
             self._circuit_open_until = time.time() + backoff_seconds
@@ -515,8 +535,7 @@ class BaseProvider(ABC):
             config=self.config,
         )
         return (
-            input_tokens * pricing.input_per1k / 1000
-            + output_tokens * pricing.output_per1k / 1000
+            input_tokens * pricing.input_per1k / 1000 + output_tokens * pricing.output_per1k / 1000
         )
 
     async def embed(

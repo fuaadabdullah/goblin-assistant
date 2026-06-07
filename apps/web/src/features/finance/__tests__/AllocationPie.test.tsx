@@ -1,9 +1,8 @@
 import React from 'react';
 import { render, screen } from '@testing-library/react';
-import '@testing-library/jest-dom';
 import AllocationPie from '../AllocationPie';
 
-jest.mock('recharts', () => ({
+vi.mock('recharts', () => ({
   PieChart: ({ children }: any) => <div data-testid="pie-chart">{children}</div>,
   Pie: ({ children }: any) => <div data-testid="pie">{children}</div>,
   Cell: () => <div data-testid="cell" />,
@@ -12,7 +11,7 @@ jest.mock('recharts', () => ({
   ResponsiveContainer: ({ children }: any) => <div data-testid="container">{children}</div>,
 }));
 
-jest.mock('@/components/cost/chartPalette', () => ({
+vi.mock('@/components/cost/chartPalette', () => ({
   getChartPaletteColor: (i: number) => '#fff',
 }));
 

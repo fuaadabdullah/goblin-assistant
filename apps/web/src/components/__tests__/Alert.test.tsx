@@ -1,19 +1,18 @@
 import React from 'react';
 import { render, screen, fireEvent } from '@testing-library/react';
-import '@testing-library/jest-dom';
 import Alert from '../ui/Alert';
 
 // The Alert component imports IconButton from ui/IconButton which uses
 // class-variance-authority and cn. We mock it to avoid dependency issues.
-jest.mock('../ui/IconButton', () => {
-  return function MockIconButton({ onClick, 'aria-label': ariaLabel }: any) {
+vi.mock('../ui/IconButton', () => ({
+  default: function MockIconButton({ onClick, 'aria-label': ariaLabel }: any) {
     return (
       <button aria-label={ariaLabel} onClick={onClick}>
         ✕
       </button>
     );
-  };
-});
+  },
+}));
 
 describe('Alert', () => {
   it('renders the message', () => {
@@ -52,7 +51,7 @@ describe('Alert', () => {
   });
 
   it('shows dismiss button when dismissible and onDismiss provided', () => {
-    const onDismiss = jest.fn();
+    const onDismiss = vi.fn();
     render(<Alert message="Dismiss me" dismissible onDismiss={onDismiss} />);
     expect(screen.getByLabelText('Dismiss alert')).toBeInTheDocument();
   });
@@ -63,7 +62,7 @@ describe('Alert', () => {
   });
 
   it('calls onDismiss when dismiss button is clicked', () => {
-    const onDismiss = jest.fn();
+    const onDismiss = vi.fn();
     render(<Alert message="Dismiss me" dismissible onDismiss={onDismiss} />);
     fireEvent.click(screen.getByLabelText('Dismiss alert'));
     expect(onDismiss).toHaveBeenCalledTimes(1);

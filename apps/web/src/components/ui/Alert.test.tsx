@@ -1,4 +1,4 @@
-import { describe, it, expect, jest } from '@jest/globals';
+import { describe, it, expect, jest } from 'vitest';
 import { render, fireEvent } from '@testing-library/react';
 import Alert from './Alert';
 
@@ -50,7 +50,7 @@ describe('Alert', () => {
   });
 
   it('shows dismiss button when dismissible is true', () => {
-    const onDismiss = jest.fn();
+    const onDismiss = vi.fn();
     const { getByRole } = render(
       <Alert message="Dismissible alert" dismissible onDismiss={onDismiss} />
     );

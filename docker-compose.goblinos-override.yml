@@ -1,16 +1,11 @@
-# Docker Compose Override for External Storage
-# Usage: docker-compose -f docker-compose.yml -f docker-compose.goblinos-override.yml up
-
-version: '3.8'
+# Docker Compose override for external GOBLINOS drive storage.
+# Usage: docker compose -f docker-compose.yml -f docker-compose.goblinos-override.yml up
+#
+# Redirects persistent data volumes to the external GOBLINOS 1 drive so they
+# survive container rebuilds without consuming the internal disk.
 
 services:
-  postgres:
-    volumes:
-      - /Volumes/GOBLINOS\ 1/goblin-assistant/postgres-data:/var/lib/postgresql/data
-
   redis:
     volumes:
       - /Volumes/GOBLINOS\ 1/goblin-assistant/redis-data:/data
-
-# BuildKit cache configuration
-# Add to docker daemon.json: "builder": { "gc": { "policy": [{ "all": true, "maxUnusedBuildCacheSize": "10gb" }] } }
+      - ./redis.conf:/usr/local/etc/redis/redis.conf

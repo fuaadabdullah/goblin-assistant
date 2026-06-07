@@ -9,13 +9,6 @@ const ROTATING = ['Finance', 'Code', 'Learning', 'Trading systems', 'Decision su
 export default function ControlPanelHero() {
   const { status, loading, refresh } = useSystemStatus({
     pollIntervalMs: 15000,
-    // Uncomment to enable websocket and real endpoints:
-    // useWebSocket: true,
-    // endpoints: {
-    //   models: '/api/models',
-    //   routing: '/api/routing',
-    //   sandbox: '/api/sandbox',
-    // },
   });
   const words = useMemo(() => ROTATING, []);
   const [index, setIndex] = useState(0);
@@ -41,7 +34,7 @@ export default function ControlPanelHero() {
   const trackAction = (action: string) => {
     trackEvent('control_panel_hero_action', {
       action,
-      domain: words[index],
+      domain: words[index]!,
     });
   };
 

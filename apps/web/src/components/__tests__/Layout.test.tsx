@@ -1,62 +1,42 @@
 import React from 'react';
 import { render, screen, fireEvent } from '@testing-library/react';
-import '@testing-library/jest-dom';
 
-jest.mock(
-  'next/link',
-  () =>
-    function MockLink({
-      children,
-      href,
-      onClick,
-    }: {
-      children: React.ReactNode;
-      href: string;
-      onClick?: () => void;
-    }) {
-      return (
-        <a href={href} onClick={onClick}>
-          {children}
-        </a>
-      );
-    }
-);
-
-const mockPush = jest.fn();
-jest.mock('next/router', () => ({
-  useRouter: () => ({ pathname: '/', push: mockPush, events: { on: jest.fn(), off: jest.fn() } }),
+vi.mock('next/link', () => ({
+  default: function MockLink({
+    children,
+    href,
+    onClick,
+  }: {
+    children: React.ReactNode;
+    href: string;
+    onClick?: () => void;
+  }) {
+    return (
+      <a href={href} onClick={onClick}>
+        {children}
+      </a>
+    );
+  },
 }));
 
-jest.mock(
-  'lucide-react',
-  () =>
-    new Proxy(
-      {},
-      {
-        get: (_, name) => {
-          if (name === '__esModule') return true;
-          return (props: Record<string, unknown>) => (
-            <span data-testid={`icon-${String(name)}`} {...props} />
-          );
-        },
-      }
-    )
-);
+const mockPush = vi.fn();
+vi.mock('next/navigation', () => ({
+  useRouter: () => ({ push: mockPush, replace: vi.fn(), prefetch: vi.fn() }),
+  usePathname: () => '/',
+}));
 
-jest.mock(
-  '@/components/Logo',
-  () =>
-    function MockLogo() {
-      return <div data-testid="logo" />;
-    }
-);
+vi.mock('@/components/Logo', () => ({
+  default: function MockLogo() {
+    return <div data-testid="logo" />;
+  },
+}));
 
 import Layout from '../Layout';
 
 describe('Layout', () => {
   beforeEach(() => {
-    jest.clearAllMocks();
-    Storage.prototype.removeItem = jest.fn();
+    vi.clearAllMocks();
+    Storage.prototype.removeItem = vi.fn();
   });
 
   it('renders header with logo and navigation', () => {

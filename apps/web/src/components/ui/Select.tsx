@@ -10,21 +10,22 @@ const SelectGroup = SelectPrimitive.Group;
 
 const SelectValue = SelectPrimitive.Value;
 
-// NOTE: With pnpm + `preserveSymlinks`, TypeScript can fail to "see" common DOM props
-// (like `children`/`className`) on Radix primitives due to how their types are composed.
-// Runtime is fine; we keep types on the exported wrappers and treat the inner primitives as `any`.
-const TriggerPrimitive: any = SelectPrimitive.Trigger;
-const IconPrimitive: any = SelectPrimitive.Icon;
-const ScrollUpPrimitive: any = SelectPrimitive.ScrollUpButton;
-const ScrollDownPrimitive: any = SelectPrimitive.ScrollDownButton;
-const ContentPrimitive: any = SelectPrimitive.Content;
-const ViewportPrimitive: any = SelectPrimitive.Viewport;
-const LabelPrimitive: any = SelectPrimitive.Label;
-const ItemPrimitive: any = SelectPrimitive.Item;
-const ItemIndicatorPrimitive: any = SelectPrimitive.ItemIndicator;
-const ItemTextPrimitive: any = SelectPrimitive.ItemText;
-const SeparatorPrimitive: any = SelectPrimitive.Separator;
-const PortalPrimitive: any = SelectPrimitive.Portal;
+// NOTE: With pnpm + `preserveSymlinks`, TypeScript can fail to resolve common DOM props
+// (like `children`/`className`) on Radix primitives through symlinked packages.
+// We type these as React.ElementType (the correct type for any JSX-renderable component)
+// rather than the specific primitive type — type safety lives on the exported forwardRef wrappers.
+const TriggerPrimitive: React.ElementType = SelectPrimitive.Trigger;
+const IconPrimitive: React.ElementType = SelectPrimitive.Icon;
+const ScrollUpPrimitive: React.ElementType = SelectPrimitive.ScrollUpButton;
+const ScrollDownPrimitive: React.ElementType = SelectPrimitive.ScrollDownButton;
+const ContentPrimitive: React.ElementType = SelectPrimitive.Content;
+const ViewportPrimitive: React.ElementType = SelectPrimitive.Viewport;
+const LabelPrimitive: React.ElementType = SelectPrimitive.Label;
+const ItemPrimitive: React.ElementType = SelectPrimitive.Item;
+const ItemIndicatorPrimitive: React.ElementType = SelectPrimitive.ItemIndicator;
+const ItemTextPrimitive: React.ElementType = SelectPrimitive.ItemText;
+const SeparatorPrimitive: React.ElementType = SelectPrimitive.Separator;
+const PortalPrimitive: React.ElementType = SelectPrimitive.Portal;
 
 type WithDomStyling = {
   id?: string;

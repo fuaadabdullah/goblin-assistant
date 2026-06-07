@@ -14,69 +14,70 @@ import { apiClient } from '@/lib/api';
 import { TextDecoder } from 'util';
 import type { LoginResponse } from '@/types/api';
 
-jest.mock('@/lib/api', () => ({
+vi.mock('@/lib/api', () => ({
   apiClient: {
-    getGoblins: jest.fn(),
-    getProviders: jest.fn(),
-    getProviderModelOptions: jest.fn(),
-    getProviderModels: jest.fn(),
-    getHistory: jest.fn(),
-    getStats: jest.fn(),
-    parseOrchestration: jest.fn(),
-    createConversation: jest.fn(),
-    sendConversationMessage: jest.fn(),
-    getCostSummary: jest.fn(),
-    login: jest.fn(),
-    register: jest.fn(),
-    logout: jest.fn(),
-    validateToken: jest.fn(),
+    getGoblins: vi.fn(),
+    getProviders: vi.fn(),
+    getProviderModelOptions: vi.fn(),
+    getProviderModels: vi.fn(),
+    getHistory: vi.fn(),
+    getStats: vi.fn(),
+    parseOrchestration: vi.fn(),
+    createConversation: vi.fn(),
+    sendConversationMessage: vi.fn(),
+    getCostSummary: vi.fn(),
+    login: vi.fn(),
+    register: vi.fn(),
+    logout: vi.fn(),
+    validateToken: vi.fn(),
   },
-  getBackend: jest.fn(),
-  postBackend: jest.fn(),
-  putBackend: jest.fn(),
-  patchBackend: jest.fn(),
+  getBackend: vi.fn(),
+  postBackend: vi.fn(),
+  putBackend: vi.fn(),
+  patchBackend: vi.fn(),
+  V1_CHAT_PREFIX: '/api/v1/chat',
 }));
 
-jest.mock('@/lib/provider-keys', () => ({
+vi.mock('@/lib/provider-keys', () => ({
   providerKeys: {
-    get: jest.fn(),
-    set: jest.fn(),
-    remove: jest.fn(),
+    get: vi.fn(),
+    set: vi.fn(),
+    remove: vi.fn(),
   },
 }));
 
 import { providerKeys } from '@/lib/provider-keys';
 
-const mockGetProviders = apiClient.getProviders as jest.MockedFunction<
+const mockGetProviders = apiClient.getProviders as vi.MockedFunction<
   typeof apiClient.getProviders
 >;
-const mockGetGoblins = apiClient.getGoblins as jest.MockedFunction<typeof apiClient.getGoblins>;
-const mockGetHistory = apiClient.getHistory as jest.MockedFunction<typeof apiClient.getHistory>;
-const mockGetStats = apiClient.getStats as jest.MockedFunction<typeof apiClient.getStats>;
-const mockParseOrchestration = apiClient.parseOrchestration as jest.MockedFunction<
+const mockGetGoblins = apiClient.getGoblins as vi.MockedFunction<typeof apiClient.getGoblins>;
+const mockGetHistory = apiClient.getHistory as vi.MockedFunction<typeof apiClient.getHistory>;
+const mockGetStats = apiClient.getStats as vi.MockedFunction<typeof apiClient.getStats>;
+const mockParseOrchestration = apiClient.parseOrchestration as vi.MockedFunction<
   typeof apiClient.parseOrchestration
 >;
-const mockCreateConversation = apiClient.createConversation as jest.MockedFunction<
+const mockCreateConversation = apiClient.createConversation as vi.MockedFunction<
   typeof apiClient.createConversation
 >;
-const mockSendConversationMessage = apiClient.sendConversationMessage as jest.MockedFunction<
+const mockSendConversationMessage = apiClient.sendConversationMessage as vi.MockedFunction<
   typeof apiClient.sendConversationMessage
 >;
-const mockGetProviderModelOptions = apiClient.getProviderModelOptions as jest.MockedFunction<
+const mockGetProviderModelOptions = apiClient.getProviderModelOptions as vi.MockedFunction<
   typeof apiClient.getProviderModelOptions
 >;
-const mockGetCostSummary = apiClient.getCostSummary as jest.MockedFunction<
+const mockGetCostSummary = apiClient.getCostSummary as vi.MockedFunction<
   typeof apiClient.getCostSummary
 >;
-const mockLogin = apiClient.login as jest.MockedFunction<typeof apiClient.login>;
-const mockLogout = apiClient.logout as jest.MockedFunction<typeof apiClient.logout>;
-const mockPKGet = providerKeys.get as jest.MockedFunction<typeof providerKeys.get>;
-const mockPKSet = providerKeys.set as jest.MockedFunction<typeof providerKeys.set>;
-const mockPKRemove = providerKeys.remove as jest.MockedFunction<typeof providerKeys.remove>;
+const mockLogin = apiClient.login as vi.MockedFunction<typeof apiClient.login>;
+const mockLogout = apiClient.logout as vi.MockedFunction<typeof apiClient.logout>;
+const mockPKGet = providerKeys.get as vi.MockedFunction<typeof providerKeys.get>;
+const mockPKSet = providerKeys.set as vi.MockedFunction<typeof providerKeys.set>;
+const mockPKRemove = providerKeys.remove as vi.MockedFunction<typeof providerKeys.remove>;
 
 beforeEach(() => {
-  jest.clearAllMocks();
-  (globalThis as typeof globalThis & { fetch: jest.Mock }).fetch = jest.fn();
+  vi.clearAllMocks();
+  (globalThis as typeof globalThis & { fetch: vi.Mock }).fetch = vi.fn();
   (globalThis as typeof globalThis & { TextDecoder: typeof TextDecoder }).TextDecoder = TextDecoder;
 });
 
@@ -234,14 +235,14 @@ describe('runtimeClient runtime delegation', () => {
       }),
     };
 
-    (globalThis as typeof globalThis & { fetch: jest.Mock }).fetch.mockResolvedValue({
+    (globalThis as typeof globalThis & { fetch: vi.Mock }).fetch.mockResolvedValue({
       ok: true,
       body: stream,
       status: 200,
     });
 
-    const onChunk = jest.fn();
-    const onComplete = jest.fn();
+    const onChunk = vi.fn();
+    const onComplete = vi.fn();
 
     await runtimeClient.executeTaskStreaming('goblin', 'task', onChunk, onComplete);
 

@@ -1,7 +1,6 @@
 import { render, screen, fireEvent } from '@testing-library/react';
-import '@testing-library/jest-dom';
 
-jest.mock('@/components/ui', () => ({
+vi.mock('@/components/ui', () => ({
   Button: ({
     children,
     ...props
@@ -11,7 +10,7 @@ jest.mock('@/components/ui', () => ({
     disabled?: boolean;
   }) => <button {...props}>{children}</button>,
 }));
-jest.mock('@/components/LoadingSkeleton', () => ({
+vi.mock('@/components/LoadingSkeleton', () => ({
   ProviderCardSkeleton: () => <div data-testid="skeleton" />,
 }));
 
@@ -43,20 +42,20 @@ describe('ProviderSidebar', () => {
     providers: mockProviders as never[],
     isLoading: false,
     selectedProvider: null,
-    onSelectProvider: jest.fn(),
-    onRefresh: jest.fn(),
+    onSelectProvider: vi.fn(),
+    onRefresh: vi.fn(),
     routingStatus: 'Healthy',
     showRoutingHealth: true,
     testingProviderName: null,
-    onQuickTest: jest.fn(),
+    onQuickTest: vi.fn(),
     draggedProvider: null,
     isReordering: false,
-    onDragStart: jest.fn(),
-    onDragOver: jest.fn(),
-    onDrop: jest.fn(),
+    onDragStart: vi.fn(),
+    onDragOver: vi.fn(),
+    onDrop: vi.fn(),
   };
 
-  beforeEach(() => jest.clearAllMocks());
+  beforeEach(() => vi.clearAllMocks());
 
   it('renders provider list', () => {
     render(<ProviderSidebar {...baseProps} />);

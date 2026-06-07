@@ -2,7 +2,7 @@ import React from 'react';
 import { render, screen } from '@testing-library/react';
 
 // Mock recharts
-jest.mock('recharts', () => ({
+vi.mock('recharts', () => ({
   BarChart: ({ children }: { children: React.ReactNode }) => (
     <div data-testid="bar-chart">{children}</div>
   ),
@@ -17,14 +17,14 @@ jest.mock('recharts', () => ({
   ),
 }));
 
-jest.mock('@/utils/format-cost', () => ({
+vi.mock('@/utils/format-cost', () => ({
   formatCost: (value: number) => `$${value.toFixed(2)}`,
 }));
 
 // Mock getComputedStyle
 const origGetComputedStyle = window.getComputedStyle;
 beforeAll(() => {
-  window.getComputedStyle = jest.fn().mockReturnValue({
+  window.getComputedStyle = vi.fn().mockReturnValue({
     getPropertyValue: () => '#ffffff',
   });
 });

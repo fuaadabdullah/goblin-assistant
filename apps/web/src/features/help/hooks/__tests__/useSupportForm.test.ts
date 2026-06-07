@@ -2,11 +2,11 @@ import { renderHook, act } from '@testing-library/react';
 import React from 'react';
 import { ToastProvider } from '@/contexts/ToastContext';
 
-jest.mock('../../api', () => ({
-  sendSupportMessage: jest.fn(),
+vi.mock('../../api', () => ({
+  sendSupportMessage: vi.fn(),
 }));
-jest.mock('../../../../lib/ui-error', () => ({
-  toUiError: jest.fn((_: unknown, opts: { userMessage: string }) => ({
+vi.mock('../../../../lib/ui-error', () => ({
+  toUiError: vi.fn((_: unknown, opts: { userMessage: string }) => ({
     userMessage: opts.userMessage,
   })),
 }));
@@ -14,16 +14,16 @@ jest.mock('../../../../lib/ui-error', () => ({
 import { useSupportForm } from '../useSupportForm';
 import { sendSupportMessage } from '../../api';
 
-const mockSend = sendSupportMessage as jest.Mock;
+const mockSend = sendSupportMessage as vi.Mock;
 const wrapper = ({ children }: { children: React.ReactNode }) =>
   React.createElement(ToastProvider, null, children);
 
 describe('useSupportForm', () => {
   beforeEach(() => {
-    jest.clearAllMocks();
-    jest.useFakeTimers();
+    vi.clearAllMocks();
+    vi.useFakeTimers();
   });
-  afterEach(() => jest.useRealTimers());
+  afterEach(() => vi.useRealTimers());
 
   it('returns initial state', () => {
     const { result } = renderHook(() => useSupportForm(), { wrapper });
@@ -41,7 +41,7 @@ describe('useSupportForm', () => {
 
   it('handleSubmit does nothing for empty message', async () => {
     const { result } = renderHook(() => useSupportForm(), { wrapper });
-    const e = { preventDefault: jest.fn() } as unknown as React.FormEvent;
+    const e = { preventDefault: vi.fn() } as unknown as React.FormEvent;
     await act(async () => {
       await result.current.handleSubmit(e);
     });
@@ -51,7 +51,7 @@ describe('useSupportForm', () => {
   it('handleSubmit does nothing for whitespace-only message', async () => {
     const { result } = renderHook(() => useSupportForm(), { wrapper });
     act(() => result.current.setMessage('   '));
-    const e = { preventDefault: jest.fn() } as unknown as React.FormEvent;
+    const e = { preventDefault: vi.fn() } as unknown as React.FormEvent;
     await act(async () => {
       await result.current.handleSubmit(e);
     });
@@ -62,7 +62,7 @@ describe('useSupportForm', () => {
     mockSend.mockResolvedValue(undefined);
     const { result } = renderHook(() => useSupportForm(), { wrapper });
     act(() => result.current.setMessage('Need help'));
-    const e = { preventDefault: jest.fn() } as unknown as React.FormEvent;
+    const e = { preventDefault: vi.fn() } as unknown as React.FormEvent;
     await act(async () => {
       await result.current.handleSubmit(e);
     });
@@ -76,13 +76,13 @@ describe('useSupportForm', () => {
     mockSend.mockResolvedValue(undefined);
     const { result } = renderHook(() => useSupportForm(), { wrapper });
     act(() => result.current.setMessage('test'));
-    const e = { preventDefault: jest.fn() } as unknown as React.FormEvent;
+    const e = { preventDefault: vi.fn() } as unknown as React.FormEvent;
     await act(async () => {
       await result.current.handleSubmit(e);
     });
     expect(result.current.sent).toBe(true);
     act(() => {
-      jest.advanceTimersByTime(2500);
+      vi.advanceTimersByTime(2500);
     });
     expect(result.current.sent).toBe(false);
   });
@@ -91,7 +91,7 @@ describe('useSupportForm', () => {
     mockSend.mockRejectedValue(new Error('network'));
     const { result } = renderHook(() => useSupportForm(), { wrapper });
     act(() => result.current.setMessage('test'));
-    const e = { preventDefault: jest.fn() } as unknown as React.FormEvent;
+    const e = { preventDefault: vi.fn() } as unknown as React.FormEvent;
     await act(async () => {
       await result.current.handleSubmit(e);
     });
@@ -103,7 +103,7 @@ describe('useSupportForm', () => {
     mockSend.mockResolvedValue(undefined);
     const { result } = renderHook(() => useSupportForm(), { wrapper });
     act(() => result.current.setMessage('msg'));
-    const e = { preventDefault: jest.fn() } as unknown as React.FormEvent;
+    const e = { preventDefault: vi.fn() } as unknown as React.FormEvent;
     await act(async () => {
       await result.current.handleSubmit(e);
     });
@@ -114,7 +114,7 @@ describe('useSupportForm', () => {
     mockSend.mockResolvedValue(undefined);
     const { result } = renderHook(() => useSupportForm(), { wrapper });
     act(() => result.current.setMessage('  trimmed  '));
-    const e = { preventDefault: jest.fn() } as unknown as React.FormEvent;
+    const e = { preventDefault: vi.fn() } as unknown as React.FormEvent;
     await act(async () => {
       await result.current.handleSubmit(e);
     });

@@ -1,6 +1,8 @@
+'use client';
+
 import React, { useEffect } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
-import { useRouter } from 'next/router';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { queryKeys } from '../lib/query-keys';
 import { persistAuthSession } from '../utils/auth-session';
 import { resolvePublicBackendOrigin } from '../config/backendOrigin';
@@ -9,16 +11,16 @@ import { devError } from '@/utils/dev-log';
 const GoogleCallback: React.FC = () => {
   const router = useRouter();
   const queryClient = useQueryClient();
-  const { code, state, error: oauthError } = router.query;
+  const searchParams = useSearchParams();
+  const code = searchParams.get('code');
+  const state = searchParams.get('state');
+  const oauthError = searchParams.get('error');
 
   useEffect(() => {
-    // Wait for router to be ready
-    if (!router.isReady) return;
-
     const handleCallback = async () => {
-      const codeValue = code as string | undefined;
-      const stateValue = state as string | undefined;
-      const errorValue = oauthError as string | undefined;
+      const codeValue = code ?? undefined;
+      const stateValue = state ?? undefined;
+      const errorValue = oauthError ?? undefined;
 
       if (errorValue) {
         devError('OAuth error:', errorValue);
@@ -85,7 +87,7 @@ const GoogleCallback: React.FC = () => {
     };
 
     handleCallback();
-  }, [router.isReady, code, state, oauthError, router]);
+  }, [code, state, oauthError, router, queryClient]);
 
   return (
     <div className="callback-container">

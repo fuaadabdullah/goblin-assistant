@@ -102,6 +102,47 @@ def init_sentry() -> None:
         logger.warning("Failed to initialize Sentry SDK", error=str(exc))
 
 
+def init_ddtrace() -> None:
+    try:
+        import ddtrace
+        from ddtrace import tracer
+
+        dd_api_key = os.getenv("DD_API_KEY")
+        if not dd_api_key:
+            raise RuntimeError("DD_API_KEY not configured, skipping Datadog init")
+
+        dd_service = os.getenv("DD_SERVICE", "goblin-api")
+        dd_env = os.getenv("ENVIRONMENT", "development").lower()
+        dd_version = os.getenv("RELEASE_VERSION", "goblin-assistant@1.0.0")
+
+        tracer.configure(
+            hostname=os.getenv("DD_AGENT_HOST", "localhost"),
+            port=int(os.getenv("DD_TRACE_AGENT_PORT", "8126")),
+        )
+
+        # Patch integrations not already handled by ddtrace-run.
+        ddtrace.patch(fastapi=True, httpx=True, sqlalchemy=True, redis=True, logging=True)
+
+        logger.info(
+            "Datadog APM initialized",
+            provider="datadog",
+            service=dd_service,
+            environment=dd_env,
+            version=dd_version,
+            agentless=bool(os.getenv("DD_TRACE_AGENTLESS")),
+        )
+    except ImportError:
+        logger.warning(
+            "ddtrace not available",
+            reason="package not installed",
+            suggestion="pip install ddtrace",
+        )
+    except RuntimeError:
+        logger.warning("Datadog APM disabled", reason="DD_API_KEY not set")
+    except Exception as exc:
+        logger.warning("Failed to initialize Datadog APM", error=str(exc))
+
+
 def resolve_optional_routing_analytics_router() -> Tuple[bool, Optional[Any]]:
     try:
         from ..routes.routing_analytics import router as routing_analytics_router

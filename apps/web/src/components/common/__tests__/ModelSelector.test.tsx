@@ -4,14 +4,14 @@ import { render, screen, waitFor } from '@testing-library/react';
 import ModelSelector from '../ModelSelector';
 import { runtimeClient } from '@/lib/api/runtimeClient';
 
-jest.mock('@/lib/api/runtimeClient', () => ({
+vi.mock('@/lib/api/runtimeClient', () => ({
   runtimeClient: {
-    getProviderModelOptions: jest.fn(),
-    getProviderModels: jest.fn(),
+    getProviderModelOptions: vi.fn(),
+    getProviderModels: vi.fn(),
   },
 }));
 
-jest.mock('@/components/ui/Select', () => {
+vi.mock('@/components/ui/Select', () => {
   type MockSelectProps = {
     children?: React.ReactNode;
     disabled?: boolean;
@@ -38,15 +38,15 @@ jest.mock('@/components/ui/Select', () => {
 
 describe('ModelSelector', () => {
   const mockedRuntimeClient = runtimeClient as unknown as {
-    getProviderModelOptions: jest.Mock;
+    getProviderModelOptions: vi.Mock;
   };
 
   beforeEach(() => {
-    jest.clearAllMocks();
+    vi.clearAllMocks();
   });
 
   it('shows placeholder when provider is not selected', () => {
-    render(<ModelSelector onChange={jest.fn()} />);
+    render(<ModelSelector onChange={vi.fn()} />);
 
     expect(screen.getByTestId('model-selector-placeholder')).toHaveTextContent(
       'Select a provider first'
@@ -71,7 +71,7 @@ describe('ModelSelector', () => {
       },
     ]);
 
-    render(<ModelSelector provider="openai" selected="" onChange={jest.fn()} />);
+    render(<ModelSelector provider="openai" selected="" onChange={vi.fn()} />);
 
     await waitFor(() => {
       expect(mockedRuntimeClient.getProviderModelOptions).toHaveBeenCalledWith('openai');

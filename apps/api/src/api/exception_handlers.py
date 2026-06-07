@@ -82,10 +82,12 @@ def register_exception_handlers(app: FastAPI) -> None:
             error_code=payload.code,
             status_code=422,
         )
+        content = ErrorEnvelope(error=payload).model_dump(exclude_none=True)
+        content["detail"] = exc.errors()
         return JSONResponse(
             status_code=422,
             headers={"X-Request-ID": request_id},
-            content=ErrorEnvelope(error=payload).model_dump(exclude_none=True),
+            content=content,
         )
 
     @app.exception_handler(HTTPException)
@@ -104,10 +106,13 @@ def register_exception_handlers(app: FastAPI) -> None:
             error_code=payload.code,
             status_code=exc.status_code,
         )
+        content = ErrorEnvelope(error=payload).model_dump(exclude_none=True)
+        if isinstance(exc.detail, str) or exc.detail is not None:
+            content["detail"] = exc.detail
         return JSONResponse(
             status_code=exc.status_code,
             headers={"X-Request-ID": request_id},
-            content=ErrorEnvelope(error=payload).model_dump(exclude_none=True),
+            content=content,
         )
 
     @app.exception_handler(Exception)

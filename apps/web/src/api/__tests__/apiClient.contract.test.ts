@@ -1,48 +1,36 @@
-import { describe, it, expect, beforeEach, afterEach, jest } from '@jest/globals';
+import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 
-const backendGetMock = jest.fn();
-const backendPostMock = jest.fn();
-const backendPutMock = jest.fn();
-const backendPatchMock = jest.fn();
-const frontendGetMock = jest.fn();
-const frontendPostMock = jest.fn();
+const backendGetMock = vi.fn();
+const backendPostMock = vi.fn();
+const backendPutMock = vi.fn();
+const backendPatchMock = vi.fn();
+const backendDeleteMock = vi.fn();
+const frontendGetMock = vi.fn();
+const frontendPostMock = vi.fn();
 
-jest.mock('axios', () => {
-  const create = jest
-    .fn()
-    .mockImplementationOnce(() => ({
-      interceptors: {
-        response: { use: jest.fn() },
-      },
-      get: backendGetMock,
-      post: backendPostMock,
-      put: backendPutMock,
-      patch: backendPatchMock,
-    }))
-    .mockImplementationOnce(() => ({
-      get: frontendGetMock,
-      post: frontendPostMock,
-    }));
-
-  const axios = {
-    create,
-    isAxiosError: jest.fn(() => false),
-  };
-
-  return {
-    __esModule: true,
-    default: axios,
-    create,
-    isAxiosError: axios.isAxiosError,
-  };
+vi.mock('axios', () => {
+  const create = vi.fn();
+  const axios = { create, isAxiosError: vi.fn(() => false) };
+  return { __esModule: true, default: axios, create, isAxiosError: axios.isAxiosError };
 });
 
 describe('api client consumer contracts', () => {
   const originalEnv = process.env;
 
-  beforeEach(() => {
-    jest.resetModules();
-    jest.clearAllMocks();
+  beforeEach(async () => {
+    vi.resetModules();
+    vi.clearAllMocks();
+    const { default: axios } = await import('axios');
+    vi.mocked(axios.create)
+      .mockImplementationOnce(() => ({
+        interceptors: { response: { use: vi.fn() } },
+        get: backendGetMock,
+        post: backendPostMock,
+        put: backendPutMock,
+        patch: backendPatchMock,
+        delete: backendDeleteMock,
+      }))
+      .mockImplementationOnce(() => ({ get: frontendGetMock, post: frontendPostMock }));
     process.env = {
       ...originalEnv,
       NEXT_PUBLIC_API_BASE_URL: 'https://backend.example',
@@ -53,7 +41,7 @@ describe('api client consumer contracts', () => {
 
   afterEach(() => {
     process.env = originalEnv;
-    jest.restoreAllMocks();
+    vi.restoreAllMocks();
   });
 
   it('pins routing contract shape for startup dependency', async () => {
@@ -100,10 +88,7 @@ describe('api client consumer contracts', () => {
     backendPostMock.mockResolvedValue({ data: { ok: 'post' } });
     backendPutMock.mockResolvedValue({ data: { ok: 'put' } });
     backendPatchMock.mockResolvedValue({ data: { ok: 'patch' } });
-
-    const deleteMock = jest.fn().mockResolvedValue({ data: { ok: 'delete' } });
-    const libApi = await import('@/lib/api');
-    libApi.apiClient.backend.delete = deleteMock;
+    backendDeleteMock.mockResolvedValue({ data: { ok: 'delete' } });
 
     const { api } = await import('@/api');
 

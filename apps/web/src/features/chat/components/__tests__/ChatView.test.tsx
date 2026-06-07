@@ -1,29 +1,28 @@
 import { render, screen, fireEvent } from '@testing-library/react';
-import '@testing-library/jest-dom';
 
 // Mock all child components
-jest.mock('../ChatHeader', () => {
-  return function MockChatHeader(props: Record<string, unknown>) {
+vi.mock('../ChatHeader', () => ({
+  default: function MockChatHeader(props: Record<string, unknown>) {
     return (
       <div data-testid="chat-header">
         <button onClick={props.onToggleMobilePanel as () => void}>Toggle Panel</button>
         <span data-testid="active-mobile-tab">{props.activeMobilePanelTab as string}</span>
       </div>
     );
-  };
-});
-jest.mock('../ChatMessageList', () => {
-  return function MockChatMessageList() {
+  },
+}));
+vi.mock('../ChatMessageList', () => ({
+  default: function MockChatMessageList() {
     return <div data-testid="chat-message-list" />;
-  };
-});
-jest.mock('../ChatComposer', () => {
-  return function MockChatComposer() {
+  },
+}));
+vi.mock('../ChatComposer', () => ({
+  default: function MockChatComposer() {
     return <div data-testid="chat-composer" />;
-  };
-});
-jest.mock('../ChatSidebar', () => {
-  return function MockChatSidebar(props: Record<string, unknown>) {
+  },
+}));
+vi.mock('../ChatSidebar', () => ({
+  default: function MockChatSidebar(props: Record<string, unknown>) {
     return (
       <div data-testid="chat-sidebar" className={props.className as string}>
         <button onClick={() => (props.onSelectThread as (k: string) => void)('thread-1')}>
@@ -32,23 +31,23 @@ jest.mock('../ChatSidebar', () => {
         <button onClick={props.onNewConversation as () => void}>New Conv</button>
       </div>
     );
-  };
-});
-jest.mock('../../../../components/Seo', () => {
-  return function MockSeo(props: Record<string, unknown>) {
+  },
+}));
+vi.mock('../../../../components/Seo', () => ({
+  default: function MockSeo(props: Record<string, unknown>) {
     return <div data-testid="seo" data-title={props.title} />;
-  };
-});
+  },
+}));
 // AuthPrompt is no longer used by ChatView - it shows an inline login UI instead
-// jest.mock('../../../../components/auth/AuthPrompt', ...)
+// vi.mock('../../../../components/auth/AuthPrompt', ...)
 
-jest.mock('../ChatPreviewPanel', () => {
-  return function MockChatPreviewPanel() {
+vi.mock('../ChatPreviewPanel', () => ({
+  default: function MockChatPreviewPanel() {
     return <div data-testid="chat-preview-panel" />;
-  };
-});
-jest.mock('next/link', () => {
-  return function MockLink(props: Record<string, unknown>) {
+  },
+}));
+vi.mock('next/link', () => ({
+  default: function MockLink(props: Record<string, unknown>) {
     const href =
       typeof props.href === 'object' && props.href !== null
         ? (props.href as { pathname: string }).pathname
@@ -58,22 +57,22 @@ jest.mock('next/link', () => {
         {props.children as React.ReactNode}
       </a>
     );
-  };
-});
-jest.mock('../../../../components/ui/input', () => ({
+  },
+}));
+vi.mock('../../../../components/ui/input', () => ({
   Input: function MockInput(props: Record<string, unknown>) {
     return <input {...(props as object)} />;
   },
 }));
 
-const mockIsAuthenticated = jest.fn().mockReturnValue(true);
-jest.mock('../../../../hooks/api/useAuthSession', () => ({
+const mockIsAuthenticated = vi.fn().mockReturnValue(true);
+vi.mock('../../../../hooks/api/useAuthSession', () => ({
   useAuthSession: () => ({ isAuthenticated: mockIsAuthenticated() }),
 }));
 
-const mockChatSidebarOpen = jest.fn().mockReturnValue(false);
-const mockSetChatSidebarOpen = jest.fn();
-jest.mock('../../../../store/uiStore', () => ({
+const mockChatSidebarOpen = vi.fn().mockReturnValue(false);
+const mockSetChatSidebarOpen = vi.fn();
+vi.mock('../../../../store/uiStore', () => ({
   useUIStore: (selector: (state: Record<string, unknown>) => unknown) => {
     const state = {
       chatSidebarOpen: mockChatSidebarOpen(),
@@ -82,7 +81,7 @@ jest.mock('../../../../store/uiStore', () => ({
     return selector(state);
   },
 }));
-jest.mock('../../../../hooks/useFocusTrap', () => ({
+vi.mock('../../../../hooks/useFocusTrap', () => ({
   useFocusTrap: () => ({ current: null }),
 }));
 
@@ -102,28 +101,28 @@ const mockSession = {
   inputRef: createRef<HTMLTextAreaElement>(),
   bottomRef: createRef<HTMLDivElement>(),
   authError: false,
-  setInput: jest.fn(),
-  sendMessage: jest.fn(),
-  selectThread: jest.fn(),
-  handleClearChat: jest.fn(),
-  handlePromptClick: jest.fn(),
-  handleKeyDown: jest.fn(),
+  setInput: vi.fn(),
+  sendMessage: vi.fn(),
+  selectThread: vi.fn(),
+  handleClearChat: vi.fn(),
+  handlePromptClick: vi.fn(),
+  handleKeyDown: vi.fn(),
   selectedProvider: 'openai',
   selectedModel: 'gpt-4',
   inputEstimate: null,
   isMessagesLoading: false,
-  deleteMessage: jest.fn(),
-  copyMessage: jest.fn(),
-  regenerateMessage: jest.fn(),
+  deleteMessage: vi.fn(),
+  copyMessage: vi.fn(),
+  regenerateMessage: vi.fn(),
   pendingAttachments: [],
   isUploading: false,
-  handleFileSelected: jest.fn(),
-  removePendingAttachment: jest.fn(),
+  handleFileSelected: vi.fn(),
+  removePendingAttachment: vi.fn(),
 };
 
 describe('ChatView', () => {
   beforeEach(() => {
-    jest.clearAllMocks();
+    vi.clearAllMocks();
     mockIsAuthenticated.mockReturnValue(true);
     mockChatSidebarOpen.mockReturnValue(false);
   });

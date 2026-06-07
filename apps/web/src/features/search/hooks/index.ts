@@ -1,1 +1,0 @@
-export { useSearchResults } from './useSearchResults';

@@ -52,7 +52,7 @@ export function ContrastModeProvider({ children }: { children: ReactNode }) {
   const toggleMode = () => {
     setModeState((prev) => {
       const idx = MODE_CYCLE.indexOf(prev);
-      return MODE_CYCLE[(idx + 1) % MODE_CYCLE.length];
+      return MODE_CYCLE[(idx + 1) % MODE_CYCLE.length]!;
     });
   };
 

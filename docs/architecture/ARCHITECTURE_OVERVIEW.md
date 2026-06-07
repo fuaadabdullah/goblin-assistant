@@ -79,14 +79,12 @@ These flows line up in the checked-in code:
 2. Prompt submission through Next `/api/generate` to backend `/api/chat`
 3. Backend health and OpenAPI docs directly from the FastAPI app
 
-## Known Contract Mismatches
+## API Versioning
 
-Several important frontend paths still assume versioned endpoints:
+All production routes are mounted exclusively under the `/api/v1` prefix via
+`mount_versioned_primary_routes()` in `apps/api/src/api/route_mounting.py`.
+A small set of internal/experimental routes (`semantic_chat`, debug, metrics)
+remain at root with no versioned alias — these are not called by the frontend.
 
-- auth calls expect `/v1/auth/*`
-- provider registry expects `/v1/providers/models`
-- search calls expect `/v1/search/*`
-- sandbox calls expect `/v1/sandbox/*`
-- account/support calls expect `/v1/account/*` and `/v1/support/message`
-
-The checked-in FastAPI app does not mount those `/v1` aliases. That is the main architecture gap to understand before working on local integration bugs.
+Frontend clients use `V1_API_PREFIX = '/api/v1'` and `V1_CHAT_PREFIX`
+constants from `apps/web/src/lib/api/shared.ts` rather than hardcoding paths.

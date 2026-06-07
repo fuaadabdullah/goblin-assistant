@@ -1,6 +1,6 @@
 import type { RefObject } from 'react';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { useRouter } from 'next/router';
+import { useSearchParams } from 'next/navigation';
 import { useQuery } from '@tanstack/react-query';
 import { chatClient } from '../api';
 import type { ChatMessage, ChatThread, QuickPrompt } from '../types';
@@ -68,7 +68,8 @@ export interface ChatSessionState {
  * - useChatThreads: thread list management
  */
 export const useChatSession = (): ChatSessionState => {
-  const router = useRouter();
+  const searchParams = useSearchParams();
+  const promptParam = searchParams.get('prompt');
   const hasHydratedRef = useRef(false);
   const bottomRef = useRef<HTMLDivElement | null>(null);
 
@@ -150,14 +151,11 @@ export const useChatSession = (): ChatSessionState => {
 
   // Prefill input from URL query param
   useEffect(() => {
-    if (!router.isReady) return;
-    const q = router.query.prompt;
-    const prompt = Array.isArray(q) ? q[0] : q;
-    if (typeof prompt === 'string' && prompt.trim().length > 0) {
-      uiState.setInput(prompt);
+    if (typeof promptParam === 'string' && promptParam.trim().length > 0) {
+      uiState.setInput(promptParam);
       uiState.inputRef.current?.focus();
     }
-  }, [router.isReady, router.query.prompt]);
+  }, [promptParam]);
 
   // Initialize active thread and load messages
   useEffect(() => {
@@ -167,7 +165,7 @@ export const useChatSession = (): ChatSessionState => {
       }
       hasHydratedRef.current = true;
       if (threads.length > 0 && !activeThreadKey) {
-        setActiveThreadKey(threads[0].threadKey);
+        setActiveThreadKey(threads[0]!.threadKey);
       }
       return;
     }
@@ -180,7 +178,7 @@ export const useChatSession = (): ChatSessionState => {
       messagesState.setMessages([]);
       // If threads are available (e.g. after legacy→backend promotion), select the first one.
       // Otherwise clear the selection entirely.
-      setActiveThreadKey(threads.length > 0 ? threads[0].threadKey : null);
+      setActiveThreadKey(threads.length > 0 ? threads[0]!.threadKey : null);
       return;
     }
 

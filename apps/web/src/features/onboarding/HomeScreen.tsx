@@ -1,6 +1,8 @@
+'use client';
+
 import { useState } from 'react';
 import Link from 'next/link';
-import { useRouter } from 'next/router';
+import { useRouter } from 'next/navigation';
 import Navigation from '../../components/Navigation';
 import { useAuthSession } from '../../hooks/api/useAuthSession';
 import {
@@ -36,7 +38,7 @@ const LIVE_DEMO_PROMPTS = [
 
 const CustomerHome = ({ isAuthenticated }: { isAuthenticated: boolean }) => {
   const [selectedPromptIndex, setSelectedPromptIndex] = useState(0);
-  const selectedPrompt = LIVE_DEMO_PROMPTS[selectedPromptIndex];
+  const selectedPrompt = LIVE_DEMO_PROMPTS[selectedPromptIndex]!;
   const router = useRouter();
 
   return (

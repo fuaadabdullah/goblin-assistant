@@ -1,10 +1,9 @@
 import React from 'react';
 import { render, screen, fireEvent } from '@testing-library/react';
-import '@testing-library/jest-dom';
 import { ToastItem } from '../ToastItem';
 
 describe('ToastItem', () => {
-  const mockRemove = jest.fn();
+  const mockRemove = vi.fn();
 
   beforeEach(() => {
     mockRemove.mockClear();

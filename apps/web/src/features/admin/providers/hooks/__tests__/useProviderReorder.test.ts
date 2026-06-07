@@ -14,10 +14,10 @@ describe('useProviderReorder', () => {
   const providerA = makeProvider('a');
   const providerB = makeProvider('b');
   const providerC = makeProvider('c');
-  let onReorder: jest.Mock;
+  let onReorder: vi.Mock;
 
   beforeEach(() => {
-    onReorder = jest.fn().mockResolvedValue(undefined);
+    onReorder = vi.fn().mockResolvedValue(undefined);
   });
 
   it('returns initial state with no dragged provider', () => {
@@ -42,7 +42,7 @@ describe('useProviderReorder', () => {
     const { result } = renderHook(() =>
       useProviderReorder({ providers: [providerA, providerB], onReorder })
     );
-    const e = { preventDefault: jest.fn() } as unknown as React.DragEvent<HTMLDivElement>;
+    const e = { preventDefault: vi.fn() } as unknown as React.DragEvent<HTMLDivElement>;
     act(() => result.current.handleDragOver(e));
     expect(e.preventDefault).toHaveBeenCalled();
   });

@@ -1,42 +1,38 @@
-import { describe, it, expect, beforeEach, jest } from '@jest/globals';
+import { describe, it, expect, beforeEach } from 'vitest';
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 
-jest.mock('../../hooks/useCostEstimation', () => ({
-  __esModule: true,
-  useCostEstimation: jest.fn(),
+vi.mock('../../hooks/useCostEstimation', () => ({
+  useCostEstimation: vi.fn(),
 }));
 
-jest.mock('../../hooks/useCostStreaming', () => ({
-  __esModule: true,
-  useCostStreaming: jest.fn(),
+vi.mock('../../hooks/useCostStreaming', () => ({
+  useCostStreaming: vi.fn(),
 }));
 
-jest.mock('../../hooks/useCostClipboard', () => ({
-  __esModule: true,
-  useCostClipboard: jest.fn(),
+vi.mock('../../hooks/useCostClipboard', () => ({
+  useCostClipboard: vi.fn(),
 }));
 
-jest.mock('../raptor/RaptorMiniPanel', () => ({
-  __esModule: true,
+vi.mock('../raptor/RaptorMiniPanel', () => ({
   default: () => <div data-testid="raptor-mini-panel" />,
 }));
 
-const mockedUseCostEstimation = require('../../hooks/useCostEstimation')
-  .useCostEstimation as jest.Mock;
-const mockedUseCostStreaming = require('../../hooks/useCostStreaming')
-  .useCostStreaming as jest.Mock;
-const mockedUseCostClipboard = require('../../hooks/useCostClipboard')
-  .useCostClipboard as jest.Mock;
-const CostEstimationPanel = require('./CostEstimationPanel')
-  .default as typeof import('./CostEstimationPanel').default;
+import { useCostEstimation } from '../../hooks/useCostEstimation';
+import { useCostStreaming } from '../../hooks/useCostStreaming';
+import { useCostClipboard } from '../../hooks/useCostClipboard';
+import CostEstimationPanel from './CostEstimationPanel';
+
+const mockedUseCostEstimation = vi.mocked(useCostEstimation);
+const mockedUseCostStreaming = vi.mocked(useCostStreaming);
+const mockedUseCostClipboard = vi.mocked(useCostClipboard);
 
 describe('CostEstimationPanel', () => {
   beforeEach(() => {
-    jest.clearAllMocks();
+    vi.clearAllMocks();
   });
 
   it('renders an empty state when orchestrationText is blank', async () => {
-    const resetStreaming = jest.fn();
+    const resetStreaming = vi.fn();
 
     mockedUseCostEstimation.mockReturnValue({
       estimate: null,
@@ -49,13 +45,13 @@ describe('CostEstimationPanel', () => {
       streamLines: [],
       streaming: false,
       showSummary: false,
-      startStreaming: jest.fn(),
+      startStreaming: vi.fn(),
       resetStreaming,
     });
 
     mockedUseCostClipboard.mockReturnValue({
       copyStatus: null,
-      copyFormattedSummary: jest.fn(),
+      copyFormattedSummary: vi.fn(),
     });
 
     render(<CostEstimationPanel orchestrationText="" codeInput="" />);
@@ -68,7 +64,7 @@ describe('CostEstimationPanel', () => {
   });
 
   it('starts streaming when orchestrationText is provided and no estimate exists yet', async () => {
-    const startStreaming = jest.fn();
+    const startStreaming = vi.fn();
 
     mockedUseCostEstimation.mockReturnValue({
       estimate: null,
@@ -82,12 +78,12 @@ describe('CostEstimationPanel', () => {
       streaming: true,
       showSummary: false,
       startStreaming,
-      resetStreaming: jest.fn(),
+      resetStreaming: vi.fn(),
     });
 
     mockedUseCostClipboard.mockReturnValue({
       copyStatus: null,
-      copyFormattedSummary: jest.fn(),
+      copyFormattedSummary: vi.fn(),
     });
 
     render(
@@ -113,8 +109,8 @@ describe('CostEstimationPanel', () => {
   });
 
   it('shows summary and cost display when estimate is available, and allows copy', async () => {
-    const startStreaming = jest.fn();
-    const copyFormattedSummary = jest.fn();
+    const startStreaming = vi.fn();
+    const copyFormattedSummary = vi.fn();
 
     const estimate = {
       estimatedCost: 0.0123,
@@ -136,7 +132,7 @@ describe('CostEstimationPanel', () => {
       streaming: false,
       showSummary: true,
       startStreaming,
-      resetStreaming: jest.fn(),
+      resetStreaming: vi.fn(),
     });
 
     mockedUseCostClipboard.mockReturnValue({

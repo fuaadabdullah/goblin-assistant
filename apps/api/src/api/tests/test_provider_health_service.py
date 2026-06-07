@@ -5,7 +5,6 @@ from __future__ import annotations
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
-
 from api.services.provider_health import (
     HealthStatus,
     ProviderHealth,
@@ -74,6 +73,90 @@ async def test_refresh_updates_health_data():
     assert "openai" in result
     assert result["openai"].status == HealthStatus.HEALTHY
     assert result["mock"].status == HealthStatus.UNKNOWN
+
+
+@pytest.mark.asyncio
+async def test_refresh_emits_jira_once_for_unhealthy_transition() -> None:
+    monitor = ProviderHealthMonitor()
+    fake_stats = MagicMock()
+    fake_stats.success_rate = 0.12
+    inventory = [
+        {
+            "id": "openai",
+            "configured": True,
+            "healthy": False,
+            "health_reason": "timeout",
+        }
+    ]
+
+    with (
+        patch(
+            "api.services.provider_health.dispatcher.get_provider_inventory",
+            new_callable=AsyncMock,
+            return_value=inventory,
+        ),
+        patch("api.services.provider_health.registry.get", return_value=fake_stats),
+        patch("api.services.provider_health._push_status"),
+        patch(
+            "api.services.provider_health.event_emitter.emit",
+            new_callable=AsyncMock,
+        ),
+        patch(
+            "api.services.provider_health.publish_provider_health_incident",
+            new_callable=AsyncMock,
+            return_value=True,
+        ) as publish_incident,
+    ):
+        await monitor.refresh(include_hidden=False)
+        await monitor.refresh(include_hidden=False)
+
+    publish_incident.assert_awaited_once()
+
+
+@pytest.mark.asyncio
+async def test_refresh_does_not_emit_jira_for_steady_state_healthy_provider() -> None:
+    monitor = ProviderHealthMonitor()
+    fake_stats = MagicMock()
+    fake_stats.success_rate = 0.99
+    inventory = [
+        {
+            "id": "openai",
+            "configured": True,
+            "healthy": True,
+            "latency_ms": 18,
+        }
+    ]
+
+    with (
+        patch.dict(
+            "os.environ",
+            {
+                "JIRA_PROVIDER_OPS_WEBHOOK_URL": "https://jira.example/webhook",
+                "JIRA_PROVIDER_OPS_PROJECT_KEY": "PROVOPS",
+            },
+            clear=False,
+        ),
+        patch(
+            "api.services.provider_health.dispatcher.get_provider_inventory",
+            new_callable=AsyncMock,
+            return_value=inventory,
+        ),
+        patch("api.services.provider_health.registry.get", return_value=fake_stats),
+        patch("api.services.provider_health._push_status"),
+        patch(
+            "api.services.provider_health.event_emitter.emit",
+            new_callable=AsyncMock,
+        ),
+        patch(
+            "api.ops.integrations.jira.post_jira_provider_ops_payload",
+            new_callable=AsyncMock,
+            return_value=True,
+        ) as post_payload,
+    ):
+        await monitor.refresh(include_hidden=False)
+        await monitor.refresh(include_hidden=False)
+
+    post_payload.assert_not_awaited()
 
 
 @pytest.mark.asyncio

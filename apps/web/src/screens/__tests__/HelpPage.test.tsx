@@ -1,14 +1,14 @@
 import React from 'react';
 import { render, screen } from '@testing-library/react';
-import '@testing-library/jest-dom';
 import HelpPage from '../HelpPage';
 
-jest.mock(
+vi.mock(
   '@/features/help/HelpScreen',
-  () =>
-    function MockHelpScreen() {
+  () => ({
+    default: function MockHelpScreen() {
       return <div data-testid="help-screen">Help Screen</div>;
-    }
+    },
+  })
 );
 
 describe('HelpPage', () => {

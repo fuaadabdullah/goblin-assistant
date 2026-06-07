@@ -2,18 +2,18 @@ import { devDebug, devError, devInfo, devLog, devWarn } from '../dev-log';
 
 describe('development logging utilities', () => {
   const originalNodeEnv = process.env.NODE_ENV;
-  let consoleLogSpy: jest.SpyInstance;
-  let consoleInfoSpy: jest.SpyInstance;
-  let consoleWarnSpy: jest.SpyInstance;
-  let consoleErrorSpy: jest.SpyInstance;
-  let consoleDebugSpy: jest.SpyInstance;
+  let consoleLogSpy: vi.SpyInstance;
+  let consoleInfoSpy: vi.SpyInstance;
+  let consoleWarnSpy: vi.SpyInstance;
+  let consoleErrorSpy: vi.SpyInstance;
+  let consoleDebugSpy: vi.SpyInstance;
 
   beforeEach(() => {
-    consoleLogSpy = jest.spyOn(console, 'log').mockImplementation();
-    consoleInfoSpy = jest.spyOn(console, 'info').mockImplementation();
-    consoleWarnSpy = jest.spyOn(console, 'warn').mockImplementation();
-    consoleErrorSpy = jest.spyOn(console, 'error').mockImplementation();
-    consoleDebugSpy = jest.spyOn(console, 'debug').mockImplementation();
+    consoleLogSpy = vi.spyOn(console, 'log').mockImplementation();
+    consoleInfoSpy = vi.spyOn(console, 'info').mockImplementation();
+    consoleWarnSpy = vi.spyOn(console, 'warn').mockImplementation();
+    consoleErrorSpy = vi.spyOn(console, 'error').mockImplementation();
+    consoleDebugSpy = vi.spyOn(console, 'debug').mockImplementation();
   });
 
   afterEach(() => {

@@ -1,13 +1,13 @@
-import { describe, it, expect, beforeEach, jest } from '@jest/globals';
+import { describe, it, expect, beforeEach, jest } from 'vitest';
 import { logErrorToService, reactErrorInfoToContext, logPerformanceMetric } from '../monitoring';
 
 // Mock console methods
-jest.spyOn(console, 'error').mockImplementation(() => {});
-jest.spyOn(console, 'warn').mockImplementation(() => {});
+vi.spyOn(console, 'error').mockImplementation(() => {});
+vi.spyOn(console, 'warn').mockImplementation(() => {});
 
 describe('monitoring utilities', () => {
   beforeEach(() => {
-    jest.clearAllMocks();
+    vi.clearAllMocks();
   });
 
   describe('logErrorToService', () => {
@@ -104,7 +104,7 @@ describe('monitoring utilities', () => {
 
   describe('logPerformanceMetric', () => {
     it('should log a performance metric', () => {
-      const consoleSpy = jest.spyOn(console, 'log').mockImplementation(() => {});
+      const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {});
 
       logPerformanceMetric('chat_message_latency', 234);
 

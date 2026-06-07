@@ -9,24 +9,24 @@
  */
 
 // Must be hoisted before any imports so shared.ts picks up the mocks
-jest.mock('../../../utils/auth-session', () => ({
-  getRefreshToken: jest.fn(() => 'refresh-token-abc'),
-  getAuthToken: jest.fn(() => null),
-  persistAuthSession: jest.fn(),
-  clearAuthSession: jest.fn(),
+vi.mock('../../../utils/auth-session', () => ({
+  getRefreshToken: vi.fn(() => 'refresh-token-abc'),
+  getAuthToken: vi.fn(() => null),
+  persistAuthSession: vi.fn(),
+  clearAuthSession: vi.fn(),
 }));
 
 import MockAdapter from 'axios-mock-adapter';
 import { backendHttp, refreshAccessToken } from '../shared';
 import * as authSession from '../../../utils/auth-session';
 
-const mockGetRefreshToken = authSession.getRefreshToken as jest.MockedFunction<
+const mockGetRefreshToken = authSession.getRefreshToken as vi.MockedFunction<
   typeof authSession.getRefreshToken
 >;
-const mockPersistAuthSession = authSession.persistAuthSession as jest.MockedFunction<
+const mockPersistAuthSession = authSession.persistAuthSession as vi.MockedFunction<
   typeof authSession.persistAuthSession
 >;
-const mockClearAuthSession = authSession.clearAuthSession as jest.MockedFunction<
+const mockClearAuthSession = authSession.clearAuthSession as vi.MockedFunction<
   typeof authSession.clearAuthSession
 >;
 
@@ -34,7 +34,7 @@ let mock: MockAdapter;
 
 beforeEach(() => {
   mock = new MockAdapter(backendHttp);
-  jest.clearAllMocks();
+  vi.clearAllMocks();
   mockGetRefreshToken.mockReturnValue('refresh-token-abc');
 });
 

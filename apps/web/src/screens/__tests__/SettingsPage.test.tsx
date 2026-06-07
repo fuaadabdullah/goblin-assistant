@@ -1,67 +1,50 @@
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
-import '@testing-library/jest-dom';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 
-// Mock dependencies
-jest.mock(
-  'lucide-react',
-  () =>
-    new Proxy(
-      {},
-      {
-        get: (_, name) => {
-          if (name === '__esModule') return true;
-          return (props: Record<string, unknown>) => (
-            <span data-testid={`icon-${String(name)}`} {...props} />
-          );
-        },
-      }
-    )
-);
-jest.mock('../../components/ThemePreview', () => {
-  return function MockThemePreview() {
+vi.mock('../../components/ThemePreview', () => ({
+  default: function MockThemePreview() {
     return <div data-testid="theme-preview" />;
-  };
-});
-jest.mock('../../components/KeyboardShortcutsHelp', () => {
-  return function MockKBHelp() {
+  },
+}));
+vi.mock('../../components/KeyboardShortcutsHelp', () => ({
+  default: function MockKBHelp() {
     return <div data-testid="kb-help" />;
-  };
-});
-jest.mock('../../components/ContrastModeToggle', () => {
-  return function MockContrastModeToggle() {
+  },
+}));
+vi.mock('../../components/ContrastModeToggle', () => ({
+  default: function MockContrastModeToggle() {
     return <button type="button">Dark</button>;
-  };
-});
-jest.mock('../../components/Seo', () => {
-  return function MockSeo() {
+  },
+}));
+vi.mock('../../components/Seo', () => ({
+  default: function MockSeo() {
     return <div data-testid="seo" />;
-  };
-});
+  },
+}));
 
-const mockSavePrefs = jest.fn().mockResolvedValue({});
-jest.mock('@/lib/api', () => ({
+const mockSavePrefs = vi.fn().mockResolvedValue({});
+vi.mock('@/lib/api', () => ({
   apiClient: { saveAccountPreferences: (...args: unknown[]) => mockSavePrefs(...args) },
 }));
 
-const mockProviderSettings = jest.fn().mockReturnValue({ data: null, isLoading: false });
-jest.mock('@/hooks/api/useSettings', () => ({
+const mockProviderSettings = vi.fn().mockReturnValue({ data: null, isLoading: false });
+vi.mock('@/hooks/api/useSettings', () => ({
   useProviderSettings: () => mockProviderSettings(),
 }));
 
-const mockUseProvider = jest.fn().mockReturnValue({
+const mockUseProvider = vi.fn().mockReturnValue({
   selectedProvider: 'openai',
   selectedModel: 'gpt-4',
-  setSelectedProvider: jest.fn(),
-  setSelectedModel: jest.fn(),
+  setSelectedProvider: vi.fn(),
+  setSelectedModel: vi.fn(),
 });
-jest.mock('@/contexts/ProviderContext', () => ({
+vi.mock('@/contexts/ProviderContext', () => ({
   useProvider: () => mockUseProvider(),
 }));
 
-const mockShowSuccess = jest.fn();
-const mockShowError = jest.fn();
-jest.mock('@/contexts/ToastContext', () => ({
+const mockShowSuccess = vi.fn();
+const mockShowError = vi.fn();
+vi.mock('@/contexts/ToastContext', () => ({
   useToast: () => ({ showSuccess: mockShowSuccess, showError: mockShowError }),
 }));
 
@@ -74,7 +57,7 @@ function wrapper({ children }: { children: React.ReactNode }) {
 
 describe('SettingsPage', () => {
   beforeEach(() => {
-    jest.clearAllMocks();
+    vi.clearAllMocks();
     mockProviderSettings.mockReturnValue({ data: null, isLoading: false });
   });
 

@@ -1,8 +1,8 @@
-import { describe, it, expect, beforeEach, jest } from '@jest/globals';
+import { describe, it, expect, beforeEach } from 'vitest';
 import { renderHook, act, waitFor } from '@testing-library/react';
 import type { ChatThread } from '../../types';
 
-const setQueryDataMock = jest.fn();
+const setQueryDataMock = vi.fn();
 let backendConversationData:
   | {
       conversationId: string;
@@ -13,8 +13,8 @@ let backendConversationData:
     }
   | undefined;
 
-jest.mock('@tanstack/react-query', () => ({
-  useQuery: jest.fn(
+vi.mock('@tanstack/react-query', () => ({
+  useQuery: vi.fn(
     ({ enabled, queryFn }: { enabled?: boolean; queryFn?: () => Promise<unknown> }) => {
       if (enabled && typeof queryFn === 'function') {
         void queryFn();
@@ -26,102 +26,102 @@ jest.mock('@tanstack/react-query', () => ({
       };
     }
   ),
-  useQueryClient: jest.fn(() => ({
+  useQueryClient: vi.fn(() => ({
     setQueryData: setQueryDataMock,
   })),
 }));
 
-jest.mock('../../api', () => ({
+vi.mock('../../api', () => ({
   chatClient: {
-    createConversation: jest.fn(),
-    listConversations: jest.fn(),
-    getConversation: jest.fn(),
-    sendMessage: jest.fn(),
-    estimateTokens: jest.fn(),
-    importConversationMessages: jest.fn(),
+    createConversation: vi.fn(),
+    listConversations: vi.fn(),
+    getConversation: vi.fn(),
+    sendMessage: vi.fn(),
+    estimateTokens: vi.fn(),
+    importConversationMessages: vi.fn(),
   },
 }));
 
-jest.mock('../../../../lib/ui-error', () => ({
-  toUiError: jest.fn(() => ({
+vi.mock('../../../../lib/ui-error', () => ({
+  toUiError: vi.fn(() => ({
     code: 'CHAT_SEND_FAILED',
     userMessage: 'Sorry, we could not send that message right now.',
   })),
 }));
 
-jest.mock('../../../../lib/chat-history', () => ({
-  buildThreadKey: jest.requireActual('../../../../lib/chat-history').buildThreadKey,
-  readChatThreads: jest.fn(() => []),
-  readChatMessages: jest.fn(() => []),
-  removeChatMessages: jest.fn(),
-  removeChatThread: jest.fn(),
-  sortChatThreads: jest.requireActual('../../../../lib/chat-history').sortChatThreads,
-  writeChatThreads: jest.fn(),
-}));
+vi.mock('../../../../lib/chat-history', async () => {
+  const actual = await vi.importActual<typeof import('../../../../lib/chat-history')>('../../../../lib/chat-history');
+  return {
+    buildThreadKey: actual.buildThreadKey,
+    readChatThreads: vi.fn(() => []),
+    readChatMessages: vi.fn(() => []),
+    removeChatMessages: vi.fn(),
+    removeChatThread: vi.fn(),
+    sortChatThreads: actual.sortChatThreads,
+    writeChatThreads: vi.fn(),
+  };
+});
 
-jest.mock('../../../../lib/cost-estimate', () => ({
-  estimateFromText: jest.fn((text: string) => ({
+vi.mock('../../../../lib/cost-estimate', () => ({
+  estimateFromText: vi.fn((text: string) => ({
     estimated_tokens: text?.trim() ? 42 : 0,
     estimated_cost_usd: text?.trim() ? 0.0042 : 0,
   })),
 }));
 
-jest.mock('../../../../lib/llm-rates', () => ({
-  computeCostUsd: jest.fn(() => ({
+vi.mock('../../../../lib/llm-rates', () => ({
+  computeCostUsd: vi.fn(() => ({
     cost_usd: 0.001,
     approx: true,
     source: 'estimate',
   })),
 }));
 
-const upsertThreadMock = jest.fn();
-const removeThreadMock = jest.fn();
-const invalidateThreadsMock = jest.fn();
-const useChatThreadsMock = jest.fn();
+const upsertThreadMock = vi.fn();
+const removeThreadMock = vi.fn();
+const invalidateThreadsMock = vi.fn();
+const useChatThreadsMock = vi.fn();
 let currentThreads: ChatThread[] = [];
 
-jest.mock('../useChatThreads', () => ({
+vi.mock('../useChatThreads', () => ({
   useChatThreads: () => useChatThreadsMock(),
 }));
 
-jest.mock('../../../../contexts/ProviderContext', () => ({
-  useProvider: jest.fn(() => ({
+vi.mock('../../../../contexts/ProviderContext', () => ({
+  useProvider: vi.fn(() => ({
     selectedProvider: 'openai',
     selectedModel: 'gpt-4o-mini',
   })),
 }));
 
-jest.mock('../../../../contexts/ToastContext', () => ({
-  useToast: jest.fn(() => ({
-    addToast: jest.fn(),
-    removeToast: jest.fn(),
-    showError: jest.fn(),
-    showInfo: jest.fn(),
-    showSuccess: jest.fn(),
+vi.mock('../../../../contexts/ToastContext', () => ({
+  useToast: vi.fn(() => ({
+    addToast: vi.fn(),
+    removeToast: vi.fn(),
+    showError: vi.fn(),
+    showInfo: vi.fn(),
+    showSuccess: vi.fn(),
   })),
 }));
 
-jest.mock('../../../../utils/auth-session', () => ({
-  getAuthToken: jest.fn(() => 'mock-auth-token'),
-  isAuthenticated: jest.fn(() => true),
+vi.mock('../../../../utils/auth-session', () => ({
+  getAuthToken: vi.fn(() => 'mock-auth-token'),
+  isAuthenticated: vi.fn(() => true),
 }));
 
-jest.mock('next/router', () => ({
-  useRouter: jest.fn(() => ({
-    push: jest.fn(),
-    replace: jest.fn(),
-    prefetch: jest.fn(),
-    query: {},
-    pathname: '/chat',
+vi.mock('next/navigation', () => ({
+  useSearchParams: vi.fn(() => new URLSearchParams()),
+  useRouter: vi.fn(() => ({
+    push: vi.fn(),
+    replace: vi.fn(),
+    prefetch: vi.fn(),
   })),
 }));
 
-const { useChatSession } = require('../useChatSession') as typeof import('../useChatSession');
-const { chatClient } = require('../../api') as typeof import('../../api');
-const { buildThreadKey, readChatMessages } =
-  require('../../../../lib/chat-history') as typeof import('../../../../lib/chat-history');
-const { toUiError } =
-  require('../../../../lib/ui-error') as typeof import('../../../../lib/ui-error');
+import { useChatSession } from '../useChatSession';
+import { chatClient } from '../../api';
+import { buildThreadKey, readChatMessages } from '../../../../lib/chat-history';
+import { toUiError } from '../../../../lib/ui-error';
 
 const legacyThread: ChatThread = {
   id: 'legacy-1',
@@ -145,7 +145,7 @@ const backendThread: ChatThread = {
 
 describe('useChatSession', () => {
   beforeEach(() => {
-    jest.clearAllMocks();
+    vi.clearAllMocks();
     backendConversationData = undefined;
     currentThreads = [];
     upsertThreadMock.mockReset();
@@ -192,12 +192,12 @@ describe('useChatSession', () => {
   });
 
   it('creates a backend thread, sends a message, and updates totals', async () => {
-    (chatClient.createConversation as jest.Mock).mockResolvedValue({
+    (chatClient.createConversation as vi.Mock).mockResolvedValue({
       conversationId: 'conv-123',
       title: 'Test message',
       createdAt: '2026-02-21T00:00:00.000Z',
     });
-    (chatClient.sendMessage as jest.Mock).mockResolvedValue({
+    (chatClient.sendMessage as vi.Mock).mockResolvedValue({
       messageId: 'assistant-1',
       content: 'Assistant response',
       provider: 'openai',
@@ -206,7 +206,7 @@ describe('useChatSession', () => {
       usage: { input_tokens: 10, output_tokens: 20, total_tokens: 30 },
       cost_usd: 0.0025,
     });
-    (chatClient.getConversation as jest.Mock).mockResolvedValue({
+    (chatClient.getConversation as vi.Mock).mockResolvedValue({
       conversationId: 'conv-123',
       title: 'Test message',
       createdAt: '2026-02-21T00:00:00.000Z',
@@ -304,7 +304,7 @@ describe('useChatSession', () => {
 
   it('promotes a legacy thread on send and removes the local copy after success', async () => {
     currentThreads = [legacyThread];
-    (readChatMessages as jest.Mock).mockReturnValue([
+    (readChatMessages as vi.Mock).mockReturnValue([
       {
         id: 'legacy-msg-1',
         createdAt: '2026-02-20T00:00:00.000Z',
@@ -312,13 +312,13 @@ describe('useChatSession', () => {
         content: 'Old local question',
       },
     ]);
-    (chatClient.createConversation as jest.Mock).mockResolvedValue({
+    (chatClient.createConversation as vi.Mock).mockResolvedValue({
       conversationId: 'conv-promoted',
       title: 'Legacy thread',
       createdAt: '2026-02-21T00:00:00.000Z',
     });
-    (chatClient.importConversationMessages as jest.Mock).mockResolvedValue(undefined);
-    (chatClient.sendMessage as jest.Mock).mockResolvedValue({
+    (chatClient.importConversationMessages as vi.Mock).mockResolvedValue(undefined);
+    (chatClient.sendMessage as vi.Mock).mockResolvedValue({
       messageId: 'assistant-promoted',
       content: 'Promoted response',
       provider: 'openai',
@@ -362,12 +362,12 @@ describe('useChatSession', () => {
   });
 
   it('shows fallback assistant message when send fails', async () => {
-    (chatClient.createConversation as jest.Mock).mockResolvedValue({
+    (chatClient.createConversation as vi.Mock).mockResolvedValue({
       conversationId: 'conv-err',
       title: 'Broken',
       createdAt: '2026-02-21T00:00:00.000Z',
     });
-    (chatClient.sendMessage as jest.Mock).mockRejectedValue(new Error('Backend unavailable'));
+    (chatClient.sendMessage as vi.Mock).mockRejectedValue(new Error('Backend unavailable'));
 
     const { result } = renderHook(() => useChatSession());
     act(() => {
@@ -390,10 +390,10 @@ describe('useChatSession', () => {
 
   describe('input estimate (server pre-flight)', () => {
     beforeEach(() => {
-      jest.useFakeTimers();
+      vi.useFakeTimers();
     });
     afterEach(() => {
-      jest.useRealTimers();
+      vi.useRealTimers();
     });
 
     it('does not call estimateTokens for short input', () => {
@@ -402,21 +402,21 @@ describe('useChatSession', () => {
         result.current.setInput('short');
       });
       act(() => {
-        jest.advanceTimersByTime(500);
+        vi.advanceTimersByTime(500);
       });
       expect(chatClient.estimateTokens).not.toHaveBeenCalled();
       expect(result.current.inputEstimate?.estimated_tokens).toBe(42);
     });
 
     it('debounces and replaces the local estimate when input exceeds 200 chars', async () => {
-      (chatClient.estimateTokens as jest.Mock).mockResolvedValue({
+      vi.mocked(chatClient.estimateTokens).mockResolvedValue({
         input_tokens: 1500,
         estimated_output_tokens: 600,
         estimated_cost_usd: 0.018,
         provider: 'openai',
         layers: [],
         degraded_mode: false,
-      });
+      } as never);
 
       const { result } = renderHook(() => useChatSession());
       act(() => {
@@ -424,34 +424,26 @@ describe('useChatSession', () => {
       });
       // Not called before debounce window
       expect(chatClient.estimateTokens).not.toHaveBeenCalled();
-      act(() => {
-        jest.advanceTimersByTime(300);
+      await act(async () => {
+        await vi.advanceTimersByTimeAsync(300);
       });
-      await waitFor(() => {
-        expect(chatClient.estimateTokens).toHaveBeenCalledTimes(1);
-      });
-      await waitFor(() => {
-        expect(result.current.inputEstimate?.estimated_tokens).toBe(2100);
-      });
+      expect(chatClient.estimateTokens).toHaveBeenCalledTimes(1);
+      expect(result.current.inputEstimate?.estimated_tokens).toBe(2100);
       expect(result.current.inputEstimate?.estimated_cost_usd).toBe(0.018);
     });
 
     it('falls back to local estimate when server call fails', async () => {
-      (chatClient.estimateTokens as jest.Mock).mockRejectedValue(new Error('network'));
+      vi.mocked(chatClient.estimateTokens).mockRejectedValue(new Error('network'));
       const { result } = renderHook(() => useChatSession());
       act(() => {
         result.current.setInput('y'.repeat(250));
       });
-      act(() => {
-        jest.advanceTimersByTime(300);
+      await act(async () => {
+        await vi.advanceTimersByTimeAsync(300);
       });
-      await waitFor(() => {
-        expect(chatClient.estimateTokens).toHaveBeenCalled();
-      });
+      expect(chatClient.estimateTokens).toHaveBeenCalled();
       // After failure, server estimate is cleared; local heuristic (42) shows.
-      await waitFor(() => {
-        expect(result.current.inputEstimate?.estimated_tokens).toBe(42);
-      });
+      expect(result.current.inputEstimate?.estimated_tokens).toBe(42);
     });
   });
 });

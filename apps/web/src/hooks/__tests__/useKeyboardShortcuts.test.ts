@@ -17,7 +17,7 @@ describe('useKeyboardShortcuts', () => {
   });
 
   it('should register keyboard shortcuts', () => {
-    const callback = jest.fn();
+    const callback = vi.fn();
     const shortcuts = [
       {
         key: 'Enter',
@@ -33,9 +33,9 @@ describe('useKeyboardShortcuts', () => {
 
   it('should handle multiple shortcuts', () => {
     const callbacks = {
-      save: jest.fn(),
-      search: jest.fn(),
-      help: jest.fn(),
+      save: vi.fn(),
+      search: vi.fn(),
+      help: vi.fn(),
     };
 
     const shortcuts = [

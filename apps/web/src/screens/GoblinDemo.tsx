@@ -278,11 +278,14 @@ export default function GoblinDemo({ provider, model, demoMode = false }: Props)
                       <div data-testid={`step-tokens-${s.id}`}>
                         Tokens: {state.stepTokens[s.id] || 0}
                       </div>
-                      {state.stepChunks[s.id] && state.stepChunks[s.id].length > 0 && (
-                        <div className="chunk-list" data-testid={`chunk-list-${s.id}`}>
+                      {(() => {
+                        const chunks = state.stepChunks[s.id];
+                        if (!chunks || chunks.length === 0) return null;
+                        return (
+                          <div className="chunk-list" data-testid={`chunk-list-${s.id}`}>
                           <strong>Chunks:</strong>
                           <ul data-testid={`chunks-${s.id}`}>
-                            {state.stepChunks[s.id].map((c, idx) => (
+                            {chunks.map((c, idx) => (
                               <li key={`chunk-${s.id}-${idx}`} data-testid={`chunk-${s.id}-${idx}`}>
                                 <span
                                   className="chunk-text"
@@ -312,8 +315,9 @@ export default function GoblinDemo({ provider, model, demoMode = false }: Props)
                               </li>
                             ))}
                           </ul>
-                        </div>
-                      )}
+                          </div>
+                        );
+                      })()}
                     </div>
                   )}
                 </li>

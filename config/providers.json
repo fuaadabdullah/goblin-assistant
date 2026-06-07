@@ -1,4 +1,5 @@
 {
+  "schema_version": 1,
   "version": 2,
   "default_timeout_ms": 12000,
   "model_budgets": {
@@ -556,10 +557,10 @@
       "invoke_path": "/v1/chat/completions"
     },
     "replicate": {
-      "endpoint": "https://api.replicate.com",
+      "endpoint": "https://openai-compatible.replicate.com/v1",
       "endpoint_env": "REPLICATE_ENDPOINT",
       "api_key_env": "REPLICATE_API_KEY",
-      "priority_tier": 999,
+      "priority_tier": 48,
       "capabilities": [
         "chat",
         "reasoning",
@@ -567,18 +568,20 @@
         "image"
       ],
       "models": [
-        "llama-2-70b",
-        "codellama-34b"
+        "meta/llama-4-scout-instruct-17b-16e",
+        "meta/llama-4-maverick-instruct-17b-128e",
+        "meta/llama-3.1-405b-instruct",
+        "meta/llama-3.3-70b-instruct"
       ],
-      "cost_score": 0.6,
-      "cost_input_per1k": 0.0,
-      "cost_output_per1k": 0.0,
+      "cost_score": 0.5,
+      "cost_input_per1k": 0.0009,
+      "cost_output_per1k": 0.0009,
       "costs": {},
       "rate_limits": {},
-      "default_timeout_ms": 20000,
-      "rate_limit_per_min": 30,
+      "default_timeout_ms": 30000,
+      "rate_limit_per_min": 60,
       "display_name": "Replicate",
-      "is_active": false
+      "is_active": true
     },
     "huggingface": {
       "endpoint": "https://router.huggingface.co",
@@ -635,7 +638,7 @@
     "ollama_local": {
       "endpoint": "http://localhost:11434",
       "endpoint_env": "OLLAMA_LOCAL_ENDPOINT",
-      "priority_tier": 80,
+      "priority_tier": 999,
       "capabilities": [
         "chat",
         "reasoning",
@@ -652,9 +655,9 @@
       "default_timeout_ms": 60000,
       "rate_limit_per_min": 120,
       "display_name": "Ollama Local",
-      "is_active": true
+      "is_active": false
     },
-    "google_cloud": {
+    "gcp_vllm": {
       "endpoint": "",
       "endpoint_env": "GOOGLE_CLOUD_VLLM_ENDPOINT",
       "api_key_env": "GOOGLE_CLOUD_VLLM_API_KEY",
@@ -672,17 +675,17 @@
         "bge-m3",
         "bge-reranker-v2-m3"
       ],
-      "cost_score": 0.05,
+      "cost_score": 0.0,
       "cost_input_per1k": 0.0,
       "cost_output_per1k": 0.0,
       "costs": {},
       "rate_limits": {},
       "default_timeout_ms": 60000,
       "rate_limit_per_min": 120,
-      "display_name": "Google Cloud (vLLM)",
+      "display_name": "GCP vLLM",
       "is_active": true
     },
-    "google_cloud_selfhosted": {
+    "gcp_vm": {
       "endpoint": "",
       "priority_tier": 70,
       "capabilities": [
@@ -691,9 +694,6 @@
         "code"
       ],
       "models": [
-        "qwen2.5-3b-instruct-q4_k_m",
-        "qwen2.5:3b",
-        "llama3.2:1b",
         "gemma-3-12b",
         "qwen3-14b",
         "gemini-2.5-flash",

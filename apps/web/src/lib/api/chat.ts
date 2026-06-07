@@ -72,7 +72,7 @@ export const chatMethods = {
         meta:
           message.metadata && typeof message.metadata === 'object' ? message.metadata : undefined,
       })),
-      pagination: (conversation as any)?.pagination,
+      pagination: conversation.pagination,
     };
   },
 

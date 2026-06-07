@@ -4,18 +4,18 @@ import { bootstrapAuthSession, clearAuthSessionState, clearValidationCache } fro
 // Module mocks
 // ---------------------------------------------------------------------------
 
-jest.mock('../api', () => ({
+vi.mock('../api', () => ({
   apiClient: {
-    validateToken: jest.fn(),
-    logout: jest.fn(),
+    validateToken: vi.fn(),
+    logout: vi.fn(),
   },
 }));
 
-jest.mock('../../utils/auth-session', () => ({
-  clearAuthSession: jest.fn(),
-  getAuthToken: jest.fn(),
-  isAuthenticated: jest.fn(),
-  persistAuthSession: jest.fn(),
+vi.mock('../../utils/auth-session', () => ({
+  clearAuthSession: vi.fn(),
+  getAuthToken: vi.fn(),
+  isAuthenticated: vi.fn(),
+  persistAuthSession: vi.fn(),
 }));
 
 import { apiClient } from '../api';
@@ -26,14 +26,14 @@ import {
   persistAuthSession,
 } from '../../utils/auth-session';
 
-const mockValidateToken = apiClient.validateToken as jest.MockedFunction<
+const mockValidateToken = apiClient.validateToken as vi.MockedFunction<
   typeof apiClient.validateToken
 >;
-const mockLogout = apiClient.logout as jest.MockedFunction<typeof apiClient.logout>;
-const mockGetAuthToken = getAuthToken as jest.MockedFunction<typeof getAuthToken>;
-const mockCheckAuth = checkAuth as jest.MockedFunction<typeof checkAuth>;
-const mockClearAuthSession = clearAuthSession as jest.MockedFunction<typeof clearAuthSession>;
-const mockPersistAuthSession = persistAuthSession as jest.MockedFunction<typeof persistAuthSession>;
+const mockLogout = apiClient.logout as vi.MockedFunction<typeof apiClient.logout>;
+const mockGetAuthToken = getAuthToken as vi.MockedFunction<typeof getAuthToken>;
+const mockCheckAuth = checkAuth as vi.MockedFunction<typeof checkAuth>;
+const mockClearAuthSession = clearAuthSession as vi.MockedFunction<typeof clearAuthSession>;
+const mockPersistAuthSession = persistAuthSession as vi.MockedFunction<typeof persistAuthSession>;
 
 const testUser = { id: 'u1', email: 'test@example.com', name: 'Test User', role: 'user' };
 
@@ -60,7 +60,7 @@ function clearAll() {
 beforeEach(() => {
   clearAll();
   clearValidationCache();
-  jest.clearAllMocks();
+  vi.clearAllMocks();
 
   // Sensible defaults
   mockGetAuthToken.mockReturnValue(null);
@@ -258,7 +258,7 @@ describe('clearAuthSessionState', () => {
     expect(mockClearAuthSession).toHaveBeenCalled();
 
     // Cache cleared — next bootstrapAuthSession should call validateToken again
-    jest.clearAllMocks();
+    vi.clearAllMocks();
     mockGetAuthToken.mockReturnValue(token);
     mockCheckAuth.mockReturnValue(false);
     mockLogout.mockResolvedValue(undefined);

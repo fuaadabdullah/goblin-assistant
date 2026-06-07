@@ -1,14 +1,14 @@
 import React from 'react';
 import { render, screen } from '@testing-library/react';
-import '@testing-library/jest-dom';
 import AccountPage from '../AccountPage';
 
-jest.mock(
+vi.mock(
   '@/features/account/AccountScreen',
-  () =>
-    function MockAccountScreen() {
+  () => ({
+    default: function MockAccountScreen() {
       return <div data-testid="account-screen">Account Screen</div>;
-    }
+    },
+  })
 );
 
 describe('AccountPage', () => {

@@ -1,24 +1,7 @@
 import React from 'react';
 import { render, screen } from '@testing-library/react';
-import '@testing-library/jest-dom';
 
-jest.mock(
-  'lucide-react',
-  () =>
-    new Proxy(
-      {},
-      {
-        get: (_, name) => {
-          if (name === '__esModule') return true;
-          return (props: Record<string, unknown>) => (
-            <span data-testid={`icon-${String(name)}`} {...props} />
-          );
-        },
-      }
-    )
-);
-
-jest.mock('@/hooks/useKeyboardShortcuts', () => ({
+vi.mock('@/hooks/useKeyboardShortcuts', () => ({
   formatShortcut: (s: { key: string; ctrlKey?: boolean; shiftKey?: boolean }) => {
     const parts: string[] = [];
     if (s.ctrlKey) parts.push('Ctrl');

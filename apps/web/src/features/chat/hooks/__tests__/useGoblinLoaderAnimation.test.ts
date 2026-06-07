@@ -1,14 +1,13 @@
 import { renderHook, waitFor } from '@testing-library/react';
-import '@testing-library/jest-dom';
 import useGoblinLoaderAnimation from '../useGoblinLoaderAnimation';
 
 describe('useGoblinLoaderAnimation', () => {
   const animData = { v: '5.5.7', layers: [] };
-  let fetchMock: jest.Mock;
+  let fetchMock: vi.Mock;
   const originalFetch = globalThis.fetch;
 
   beforeEach(() => {
-    fetchMock = jest.fn().mockResolvedValue({
+    fetchMock = vi.fn().mockResolvedValue({
       ok: true,
       json: async () => animData,
     } as Response);

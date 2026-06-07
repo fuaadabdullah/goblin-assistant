@@ -33,7 +33,7 @@ function getTurnstileSiteKey(context: 'chat' | 'login' | 'search'): string {
   return siteKey;
 }
 
-export const TURNSTILE_CONFIG: Record<string, TurnstileConfig> = {
+export const TURNSTILE_CONFIG: Record<'chat' | 'login' | 'search', TurnstileConfig> = {
   chat: {
     siteKey: getTurnstileSiteKey('chat'),
     enabled: Boolean(env.turnstile.chat),
@@ -50,7 +50,7 @@ export const TURNSTILE_CONFIG: Record<string, TurnstileConfig> = {
 
 // Usage
 export function useTurnstile(context: 'chat' | 'login' | 'search') {
-  const config = TURNSTILE_CONFIG[context];
+  const config = TURNSTILE_CONFIG[context]!;
 
   if (!config.enabled) {
     devWarn(`Turnstile not configured for ${context}`);

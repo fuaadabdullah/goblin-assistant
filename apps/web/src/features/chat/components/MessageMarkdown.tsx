@@ -56,7 +56,7 @@ function extractLanguage(children: React.ReactNode): string | null {
   if (!isValidElement(child)) return null;
   const className = (child.props as { className?: string }).className ?? '';
   const match = className.match(/language-(\w+)/);
-  return match ? match[1] : null;
+  return match ? (match[1] ?? null) : null;
 }
 
 function extractText(node: React.ReactNode): string {

@@ -14,7 +14,7 @@ import {
 
 describe('Error Tracking', () => {
   beforeEach(() => {
-    jest.clearAllMocks();
+    vi.clearAllMocks();
   });
 
   describe('Custom Error Classes', () => {
@@ -49,19 +49,19 @@ describe('Error Tracking', () => {
 
   describe('withErrorTracking', () => {
     it('should execute function and return result', async () => {
-      const mockFn = jest.fn().mockResolvedValue('success');
+      const mockFn = vi.fn().mockResolvedValue('success');
       const result = await withErrorTracking(mockFn, { operation: 'test-op' });
       expect(result).toBe('success');
       expect(mockFn).toHaveBeenCalled();
     });
 
     it('should rethrow errors from the operation', async () => {
-      const mockFn = jest.fn().mockRejectedValue(new Error('fail'));
+      const mockFn = vi.fn().mockRejectedValue(new Error('fail'));
       await expect(withErrorTracking(mockFn, { operation: 'test-op' })).rejects.toThrow('fail');
     });
 
     it('should wrap non-Error throws', async () => {
-      const mockFn = jest.fn().mockRejectedValue('string error');
+      const mockFn = vi.fn().mockRejectedValue('string error');
       await expect(withErrorTracking(mockFn, { operation: 'test-op' })).rejects.toThrow(
         'Operation failed'
       );
@@ -70,21 +70,21 @@ describe('Error Tracking', () => {
 
   describe('trackApiCall', () => {
     it('should execute and track successful API call', async () => {
-      const mockFn = jest.fn().mockResolvedValue({ data: 'response' });
+      const mockFn = vi.fn().mockResolvedValue({ data: 'response' });
       const result = await trackApiCall(mockFn, '/api/test', 'GET');
       expect(result).toEqual({ data: 'response' });
       expect(mockFn).toHaveBeenCalled();
     });
 
     it('should handle API errors appropriately', async () => {
-      const mockFn = jest.fn().mockRejectedValue(new APIError('Not found', 404));
+      const mockFn = vi.fn().mockRejectedValue(new APIError('Not found', 404));
       await expect(trackApiCall(mockFn, '/api/missing', 'GET')).rejects.toThrow(APIError);
     });
   });
 
   describe('trackLLMOperation', () => {
     it('should track LLM operation successfully', async () => {
-      const mockFn = jest.fn().mockResolvedValue({ tokens: 100 });
+      const mockFn = vi.fn().mockResolvedValue({ tokens: 100 });
       const result = await trackLLMOperation(mockFn, {
         provider: 'openai',
         model: 'gpt-4',
@@ -94,7 +94,7 @@ describe('Error Tracking', () => {
     });
 
     it('should handle LLM operation failures', async () => {
-      const mockFn = jest.fn().mockRejectedValue(new Error('LLM unavailable'));
+      const mockFn = vi.fn().mockRejectedValue(new Error('LLM unavailable'));
       await expect(
         trackLLMOperation(mockFn, {
           provider: 'openai',

@@ -1,17 +1,14 @@
-import { jest } from '@jest/globals';
-
 describe('feature flags config', () => {
   const originalEnv = process.env;
-  const devLogMock = jest.fn();
+  const devLogMock = vi.fn();
 
-  const loadFeaturesModule = (
+  const loadFeaturesModule = async (
     overrides: Partial<{
       isDevelopment: boolean;
       featureFlags: Record<string, boolean>;
     }> = {}
   ) => {
-    jest.doMock('../env', () => ({
-      __esModule: true,
+    vi.doMock('../env', () => ({
       env: {
         isDevelopment: overrides.isDevelopment ?? false,
         features: {
@@ -30,28 +27,28 @@ describe('feature flags config', () => {
       },
     }));
 
-    jest.doMock('../../utils/dev-log', () => ({
-      __esModule: true,
+    vi.doMock('../../utils/dev-log', () => ({
       devLog: devLogMock,
     }));
 
-    return require('../features') as typeof import('../features');
+    return import('../features') as Promise<typeof import('../features')>;
   };
 
   beforeEach(() => {
-    jest.resetModules();
-    jest.clearAllMocks();
+    vi.resetModules();
+    vi.clearAllMocks();
     process.env = { ...originalEnv };
   });
 
   afterEach(() => {
     process.env = originalEnv;
-    jest.dontMock('../env');
-    jest.dontMock('../../utils/dev-log');
+    vi.unmock('../env');
+    vi.unmock('../../utils/dev-log');
   });
 
-  it('maps feature flags to module flags and checks feature state', () => {
-    const { featureFlags, moduleFlags, isFeatureEnabled, getEnabledModules } = loadFeaturesModule();
+  it('maps feature flags to module flags and checks feature state', async () => {
+    const { featureFlags, moduleFlags, isFeatureEnabled, getEnabledModules } =
+      await loadFeaturesModule();
 
     expect(featureFlags.ragEnabled).toBe(true);
     expect(featureFlags.multiProvider).toBe(false);
@@ -69,19 +66,15 @@ describe('feature flags config', () => {
     expect(isFeatureEnabled('admin')).toBe(false);
   });
 
-  it('logs feature flags in development when debug mode is enabled', () => {
-    loadFeaturesModule({
+  it('logs feature flags in development when debug mode is enabled', async () => {
+    await loadFeaturesModule({
       isDevelopment: true,
-      featureFlags: {
-        debugMode: true,
-      },
+      featureFlags: { debugMode: true },
     });
 
     expect(devLogMock).toHaveBeenCalledWith(
       '🚩 Feature Flags:',
-      expect.objectContaining({
-        debugMode: true,
-      })
+      expect.objectContaining({ debugMode: true })
     );
   });
 });

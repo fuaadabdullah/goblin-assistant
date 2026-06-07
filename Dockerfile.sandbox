@@ -1,31 +1,35 @@
+# syntax=docker/dockerfile:1.7-labs
 # Dockerfile for sandbox execution environment
 # This image provides a secure, minimal runtime for executing untrusted user code
 
-# Use a minimal base image
 FROM python:3.11-slim
 
 # Install only essential packages
-RUN apt-get update && apt-get install -y --no-install-recommends \
+RUN --mount=type=cache,target=/var/cache/apt,sharing=locked \
+    --mount=type=cache,target=/var/lib/apt/lists,sharing=locked \
+    apt-get update && apt-get install -y --no-install-recommends \
     tini \
     ca-certificates \
-    curl \
-    && rm -rf /var/lib/apt/lists/*
+    curl
 
 # Install Node.js for JavaScript execution (minimal version)
-RUN curl -fsSL https://deb.nodesource.com/setup_18.x | bash - && \
-    apt-get install -y --no-install-recommends nodejs && \
-    rm -rf /var/lib/apt/lists/*
+RUN --mount=type=cache,target=/var/cache/apt,sharing=locked \
+    --mount=type=cache,target=/var/lib/apt/lists,sharing=locked \
+    curl -fsSL https://deb.nodesource.com/setup_18.x | bash - && \
+    apt-get install -y --no-install-recommends nodejs
 
 # Install Python dependencies for RQ worker
-RUN pip install --no-cache-dir rq docker
+RUN --mount=type=cache,target=/root/.cache/pip,sharing=locked \
+    pip install rq docker
 
 # Install financial analysis packages for sandbox execution
-RUN pip install --no-cache-dir \
-    pandas==2.2.* \
-    numpy==1.26.* \
-    yfinance==0.2.* \
-    matplotlib==3.9.* \
-    openpyxl==3.1.*
+RUN --mount=type=cache,target=/root/.cache/pip,sharing=locked \
+    pip install \
+    "pandas==2.2.*" \
+    "numpy==1.26.*" \
+    "yfinance==0.2.*" \
+    "matplotlib==3.9.*" \
+    "openpyxl==3.1.*"
 
 # Create non-root user for code execution
 RUN groupadd -r runner && useradd --create-home --home-dir /home/runner --shell /bin/bash -r -g runner runner

@@ -1,28 +1,25 @@
-import { jest } from '@jest/globals';
-
 describe('env config', () => {
   const originalEnv = process.env;
-  const devLogMock = jest.fn();
-  const devWarnMock = jest.fn();
-  const devErrorMock = jest.fn();
+  const devLogMock = vi.fn();
+  const devWarnMock = vi.fn();
+  const devErrorMock = vi.fn();
 
   const mockDevLogModule = () => {
-    jest.doMock('../../utils/dev-log', () => ({
-      __esModule: true,
+    vi.doMock('../../utils/dev-log', () => ({
       devLog: devLogMock,
       devWarn: devWarnMock,
       devError: devErrorMock,
     }));
   };
 
-  const loadEnvModule = () => {
+  const loadEnvModule = async () => {
     mockDevLogModule();
-    return require('../env') as typeof import('../env');
+    return import('../env') as Promise<typeof import('../env')>;
   };
 
   beforeEach(() => {
-    jest.resetModules();
-    jest.clearAllMocks();
+    vi.resetModules();
+    vi.clearAllMocks();
     process.env = {
       ...originalEnv,
       NODE_ENV: 'development',
@@ -50,11 +47,11 @@ describe('env config', () => {
 
   afterEach(() => {
     process.env = originalEnv;
-    jest.dontMock('../../utils/dev-log');
+    vi.unmock('../../utils/dev-log');
   });
 
-  it('exports validated environment values and logs in development', () => {
-    const { env } = loadEnvModule();
+  it('exports validated environment values and logs in development', async () => {
+    const { env } = await loadEnvModule();
 
     expect(env.apiBaseUrl).toBe('https://api.example.com');
     expect(env.backendUrl).toBe('https://backend.example.com');
@@ -79,17 +76,15 @@ describe('env config', () => {
     expect(devLogMock).toHaveBeenCalled();
   });
 
-  it('throws when the api base url is invalid', () => {
+  it('throws when the api base url is invalid', async () => {
     process.env.NEXT_PUBLIC_API_BASE_URL = 'not-a-url';
-
-    expect(() => loadEnvModule()).toThrow('Invalid environment configuration');
+    await expect(loadEnvModule()).rejects.toThrow('Invalid environment configuration');
     expect(devErrorMock).toHaveBeenCalled();
   });
 
-  it('throws when a turnstile key has an invalid format', () => {
+  it('throws when a turnstile key has an invalid format', async () => {
     process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY_CHAT = 'invalid-key';
-
-    expect(() => loadEnvModule()).toThrow('Invalid environment configuration');
+    await expect(loadEnvModule()).rejects.toThrow('Invalid environment configuration');
     expect(devErrorMock).toHaveBeenCalled();
   });
 });

@@ -1,34 +1,34 @@
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
-import '@testing-library/jest-dom';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 
-jest.mock('@tanstack/react-query', () => {
-  const actual = jest.requireActual('@tanstack/react-query');
-  return { ...actual, useQueryClient: () => ({ invalidateQueries: jest.fn() }) };
+vi.mock('@tanstack/react-query', async () => {
+  const actual = await vi.importActual('@tanstack/react-query');
+  return { ...actual, useQueryClient: () => ({ invalidateQueries: vi.fn() }) };
 });
-const mockLogin = jest.fn().mockResolvedValue({ token: 'abc' });
-const mockRegister = jest.fn().mockResolvedValue({ token: 'abc' });
-const mockGetGoogleAuthUrl = jest.fn().mockResolvedValue('https://google.com/oauth');
-jest.mock('@/lib/api', () => ({
+const mockLogin = vi.fn().mockResolvedValue({ token: 'abc' });
+const mockRegister = vi.fn().mockResolvedValue({ token: 'abc' });
+const mockGetGoogleAuthUrl = vi.fn().mockResolvedValue('https://google.com/oauth');
+vi.mock('@/lib/api', () => ({
   apiClient: {
     login: (...args: unknown[]) => mockLogin(...args),
     register: (...args: unknown[]) => mockRegister(...args),
     getGoogleAuthUrl: (...args: unknown[]) => mockGetGoogleAuthUrl(...args),
   },
 }));
-jest.mock('../../../lib/query-keys', () => ({ queryKeys: { authValidate: ['auth'] } }));
-jest.mock('@/utils/dev-log', () => ({ devError: jest.fn() }));
+vi.mock('../../../lib/query-keys', () => ({ queryKeys: { authValidate: ['auth'] } }));
+vi.mock('@/utils/dev-log', () => ({ devError: vi.fn() }));
 
 // Mock child components
-jest.mock(
+vi.mock(
   '../LoginHeader',
-  () =>
-    function MockLoginHeader({ isRegister }: { isRegister: boolean }) {
+  () => ({
+    default: function MockLoginHeader({ isRegister }: { isRegister: boolean }) {
       return <div data-testid="login-header">{isRegister ? 'Register' : 'Login'}</div>;
-    }
+    },
+  })
 );
-jest.mock('../EmailPasswordForm', () => {
-  return function MockEmailForm(props: { onSubmit?: (e: string, p: string) => void }) {
+vi.mock('../EmailPasswordForm', () => ({
+  default: function MockEmailForm(props: { onSubmit?: (e: string, p: string) => void }) {
     return (
       <form
         data-testid="email-form"
@@ -40,38 +40,42 @@ jest.mock('../EmailPasswordForm', () => {
         <button type="submit">Submit</button>
       </form>
     );
-  };
-});
-jest.mock(
+  },
+}));
+vi.mock(
   '../SocialLoginButtons',
-  () =>
-    function MockSocial() {
+  () => ({
+    default: function MockSocial() {
       return <div data-testid="social-buttons" />;
-    }
+    },
+  })
 );
-jest.mock(
+vi.mock(
   '../Divider',
-  () =>
-    function MockDivider() {
+  () => ({
+    default: function MockDivider() {
       return <hr data-testid="divider" />;
-    }
+    },
+  })
 );
-jest.mock(
+vi.mock(
   '../PasskeyPanel',
-  () =>
-    function MockPasskey() {
+  () => ({
+    default: function MockPasskey() {
       return <div data-testid="passkey-panel" />;
-    }
+    },
+  })
 );
-jest.mock(
+vi.mock(
   '../../TurnstileWidget',
-  () =>
-    function MockTurnstile() {
+  () => ({
+    default: function MockTurnstile() {
       return <div data-testid="turnstile" />;
-    }
+    },
+  })
 );
-jest.mock('../../../config/turnstile', () => ({
-  useTurnstile: () => ({ token: 'mock-token', isEnabled: false, reset: jest.fn() }),
+vi.mock('../../../config/turnstile', () => ({
+  useTurnstile: () => ({ token: 'mock-token', isEnabled: false, reset: vi.fn() }),
 }));
 
 import ModularLoginForm from '../ModularLoginForm';
@@ -82,10 +86,10 @@ function Wrapper({ children }: { children: React.ReactNode }) {
 }
 
 describe('ModularLoginForm', () => {
-  const onSuccess = jest.fn();
-  const onError = jest.fn();
+  const onSuccess = vi.fn();
+  const onError = vi.fn();
 
-  beforeEach(() => jest.clearAllMocks());
+  beforeEach(() => vi.clearAllMocks());
 
   it('renders login form by default', () => {
     render(<ModularLoginForm onSuccess={onSuccess} onError={onError} />, { wrapper: Wrapper });

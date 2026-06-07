@@ -3,8 +3,9 @@ import * as path from 'node:path';
 
 const pagesDir = path.join(process.cwd(), 'src/pages');
 
-const collectPageFiles = (dir: string): string[] =>
-  fs.readdirSync(dir, { withFileTypes: true }).flatMap((entry) => {
+const collectPageFiles = (dir: string): string[] => {
+  if (!fs.existsSync(dir)) return [];
+  return fs.readdirSync(dir, { withFileTypes: true }).flatMap((entry) => {
     const resolvedPath = path.join(dir, entry.name);
 
     if (entry.isDirectory()) {
@@ -17,6 +18,7 @@ const collectPageFiles = (dir: string): string[] =>
 
     return entry.name.endsWith('.tsx') && !entry.name.startsWith('._') ? [resolvedPath] : [];
   });
+};
 
 describe('error boundary route coverage audit', () => {
   it('wraps every renderable page with withRouteErrorBoundary or explicitly excludes it', () => {

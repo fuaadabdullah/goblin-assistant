@@ -15,7 +15,7 @@ import type {
   User,
 } from '@/types/api';
 
-import { apiClient } from '@/lib/api';
+import { apiClient, V1_CHAT_PREFIX } from '@/lib/api';
 
 let runtimeConversationId: string | null = null;
 
@@ -90,7 +90,7 @@ const runtimeClientImpl: RuntimeClient = {
       headers.Authorization = `Bearer ${token}`;
     }
 
-    const response = await fetch(`${env.apiBaseUrl}/api/v1/chat/stream`, {
+    const response = await fetch(`${env.apiBaseUrl}${V1_CHAT_PREFIX}/stream`, {
       method: 'POST',
       headers,
       body: JSON.stringify({

@@ -1,5 +1,7 @@
+'use client';
+
 import { useEffect, useMemo, useState } from 'react';
-import { useRouter } from 'next/router';
+import { useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import ModularLoginForm from '../components/auth/ModularLoginForm';
 import Seo from '../components/Seo';
@@ -9,7 +11,7 @@ interface LoginPageProps {
   initialMode?: 'login' | 'register';
 }
 
-const resolveSafeRedirect = (value: string | string[] | undefined): string | null => {
+const resolveSafeRedirect = (value: string | string[] | null | undefined): string | null => {
   const candidate = Array.isArray(value) ? value[0] : value;
   if (typeof candidate !== 'string') return null;
   if (!candidate.startsWith('/') || candidate.startsWith('//')) return null;
@@ -18,7 +20,9 @@ const resolveSafeRedirect = (value: string | string[] | undefined): string | nul
 
 export default function LoginPage({ initialMode = 'login' }: LoginPageProps) {
   const router = useRouter();
-  const { mode: paramMode, error: oauthErrorParam } = router.query;
+  const searchParams = useSearchParams();
+  const paramMode = searchParams.get('mode');
+  const oauthErrorParam = searchParams.get('error');
   const [error, setError] = useState<string | null>(null);
   const [dismissedOauthMessage, setDismissedOauthMessage] = useState(false);
 
@@ -27,7 +31,7 @@ export default function LoginPage({ initialMode = 'login' }: LoginPageProps) {
     return initialMode;
   }, [initialMode, paramMode]);
 
-  const oauthError = oauthErrorParam as string | undefined;
+  const oauthError = oauthErrorParam ?? undefined;
 
   const oauthMessage = useMemo(() => {
     if (!oauthError) return null;
@@ -48,7 +52,9 @@ export default function LoginPage({ initialMode = 'login' }: LoginPageProps) {
   const handleSuccess = () => {
     setError(null);
     const redirectTo =
-      resolveSafeRedirect(router.query.redirect) ?? resolveSafeRedirect(router.query.from) ?? '/';
+      resolveSafeRedirect(searchParams.get('redirect')) ??
+      resolveSafeRedirect(searchParams.get('from')) ??
+      '/';
     router.push(redirectTo);
   };
 
@@ -92,8 +98,3 @@ export default function LoginPage({ initialMode = 'login' }: LoginPageProps) {
     </div>
   );
 }
-
-// Prevent static generation - requires server-side data
-export const getServerSideProps = async () => {
-  return { props: {} };
-};

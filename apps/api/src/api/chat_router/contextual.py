@@ -146,6 +146,7 @@ async def contextual_chat(
         payload = {
             "messages": messages,
             "model": request.model,
+            "user_id": str(user_id),
         }
 
         ctx_tools = export_tools_for_provider(request.provider)

@@ -17,6 +17,15 @@ from .helpers import (
     send_system_alert,
     send_system_metrics,
 )
+from .jira import (
+    build_circuit_breaker_incident_payload,
+    build_provider_health_incident_payload,
+    jira_incident_dedupe_key,
+    jira_provider_ops_enabled,
+    post_jira_provider_ops_payload,
+    publish_circuit_breaker_incident,
+    publish_provider_health_incident,
+)
 from .manager import MonitoringManager
 from .providers import (
     AlertManagerIntegration,
@@ -43,9 +52,16 @@ __all__ = [
     "MonitoringIntegration",
     "MonitoringManager",
     "PrometheusIntegration",
+    "build_circuit_breaker_incident_payload",
+    "build_provider_health_incident_payload",
     "get_monitoring_status",
     "initialize_monitoring",
+    "jira_incident_dedupe_key",
+    "jira_provider_ops_enabled",
     "monitoring_manager",
+    "post_jira_provider_ops_payload",
+    "publish_circuit_breaker_incident",
+    "publish_provider_health_incident",
     "send_circuit_breaker_alert",
     "send_health_alert",
     "send_provider_alert",

@@ -4,11 +4,12 @@ import { apiClient } from '@/lib/api';
 import { queryKeys } from '../../lib/query-keys';
 import { persistAuthSession } from '../../utils/auth-session';
 import { PasskeyChallenge, PasskeyVerificationChallenge, LoginResponse } from '../../types/api';
+import type { PasskeyCredential } from '@/lib/api/shared';
 
 interface PasskeyPanelProps {
   email: string;
   onSuccess: () => void;
-  // eslint-disable-next-line no-unused-vars
+   
   onError: (message: string) => void;
 }
 
@@ -36,6 +37,13 @@ interface WebAuthnRequestPublicKey {
   userVerification?: string;
 }
 
+interface CredentialJSON {
+  id: string;
+  type: string;
+  rawId?: string;
+  response?: Record<string, string>;
+}
+
 // Helper: base64url decode
 function base64urlToUint8Array(base64url: string): Uint8Array {
   const padding = '='.repeat((4 - (base64url.length % 4)) % 4);
@@ -47,17 +55,18 @@ function base64urlToUint8Array(base64url: string): Uint8Array {
 }
 
 // Helper: convert credential to JSON friendly object
-function credentialToJSON(cred: any): any {
+function credentialToJSON(cred: PublicKeyCredential | null): CredentialJSON | null {
   if (!cred) return null;
-  const credentialData: any = { id: cred.id, type: cred.type };
+  const credentialData: CredentialJSON = { id: cred.id, type: cred.type };
   if (cred.rawId) credentialData.rawId = btoa(String.fromCharCode(...new Uint8Array(cred.rawId)));
   if (cred.response) {
     credentialData.response = {};
-    const resp = cred.response;
+    // AuthenticatorResponse subclass fields are all ArrayBuffers; cast once to iterate by name.
+    const resp = cred.response as unknown as Record<string, ArrayBuffer | null>;
     ['attestationObject', 'clientDataJSON', 'authenticatorData', 'signature', 'userHandle'].forEach(
       (k) => {
         if (resp[k])
-          credentialData.response[k] = btoa(String.fromCharCode(...new Uint8Array(resp[k])));
+          credentialData.response![k] = btoa(String.fromCharCode(...new Uint8Array(resp[k]!)));
       }
     );
   }
@@ -119,15 +128,16 @@ const PasskeyPanel: React.FC<PasskeyPanelProps> = ({ email, onSuccess, onError }
       if (publicKey.user && publicKey.user.id)
         publicKey.user.id = base64urlToUint8Array(publicKey.user.id as string);
 
-      const credential: any = await navigator.credentials.create({
+      const credential = await navigator.credentials.create({
         publicKey: publicKey as unknown as PublicKeyCredentialCreationOptions,
-      });
+      }) as PublicKeyCredential | null;
       const jsonCred = credentialToJSON(credential);
-      await apiClient.passkeyRegister(email, jsonCred);
+      if (!jsonCred) throw new Error('Failed to encode passkey credential');
+      await apiClient.passkeyRegister(email, jsonCred as unknown as PasskeyCredential);
       setStatus('Passkey registered');
       onSuccess();
-    } catch (e: any) {
-      onError(e.message || 'Passkey registration failed');
+    } catch (e) {
+      onError(e instanceof Error ? e.message : 'Passkey registration failed');
     } finally {
       setRegistering(false);
     }
@@ -156,11 +166,15 @@ const PasskeyPanel: React.FC<PasskeyPanelProps> = ({ email, onSuccess, onError }
           id: base64urlToUint8Array(c.id as string),
         }));
       }
-      const assertion: any = await navigator.credentials.get({
+      const assertion = await navigator.credentials.get({
         publicKey: publicKey as unknown as PublicKeyCredentialRequestOptions,
-      });
+      }) as PublicKeyCredential | null;
       const jsonAssertion = credentialToJSON(assertion);
-      const authResponse = (await apiClient.passkeyAuth(email, jsonAssertion)) as LoginResponse;
+      if (!jsonAssertion) throw new Error('Failed to encode passkey assertion');
+      const authResponse = (await apiClient.passkeyAuth(
+        email,
+        jsonAssertion as unknown as PasskeyCredential
+      )) as LoginResponse;
       const tokenValue = authResponse.access_token || null;
       if (!tokenValue) {
         throw new Error('Authentication failed - invalid server response');
@@ -179,8 +193,8 @@ const PasskeyPanel: React.FC<PasskeyPanelProps> = ({ email, onSuccess, onError }
       });
       setStatus('Passkey authentication successful');
       onSuccess();
-    } catch (e: any) {
-      onError(e.message || 'Passkey authentication failed');
+    } catch (e) {
+      onError(e instanceof Error ? e.message : 'Passkey authentication failed');
     } finally {
       setAuthenticating(false);
     }

@@ -57,6 +57,7 @@ class AuthenticationMiddleware(BaseHTTPMiddleware):
             "/health",
             "/api/v1/health",
             "/api/v1/auth",
+            "/sandbox",
             *JWT_AUTH_ROUTE_PREFIXES,
         ]
 

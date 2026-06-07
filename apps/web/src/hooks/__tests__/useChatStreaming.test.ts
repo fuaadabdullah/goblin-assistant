@@ -1,9 +1,9 @@
-import { describe, it, expect, beforeEach, jest } from '@jest/globals';
+import { describe, it, expect, beforeEach, jest } from 'vitest';
 import { renderHook, act, waitFor } from '@testing-library/react';
 import { useChatStreaming } from '../useChatStreaming';
 import { apiClient } from '@/lib/api';
 
-const mockChatCompletion = jest.spyOn(apiClient, 'chatCompletion');
+const mockChatCompletion = vi.spyOn(apiClient, 'chatCompletion');
 
 describe('useChatStreaming', () => {
   beforeEach(() => {
@@ -17,9 +17,9 @@ describe('useChatStreaming', () => {
   });
 
   it('should send a message and call callbacks', async () => {
-    const onMessageStart = jest.fn();
-    const onMessageUpdate = jest.fn();
-    const onMessageComplete = jest.fn();
+    const onMessageStart = vi.fn();
+    const onMessageUpdate = vi.fn();
+    const onMessageComplete = vi.fn();
 
     mockChatCompletion.mockResolvedValue({
       content: 'Hello! How can I help?',
@@ -47,7 +47,7 @@ describe('useChatStreaming', () => {
   });
 
   it('should handle string responses', async () => {
-    const onMessageComplete = jest.fn();
+    const onMessageComplete = vi.fn();
 
     mockChatCompletion.mockResolvedValue('Direct string response');
 
@@ -70,7 +70,7 @@ describe('useChatStreaming', () => {
   });
 
   it('should handle API errors gracefully', async () => {
-    const onError = jest.fn();
+    const onError = vi.fn();
 
     mockChatCompletion.mockRejectedValue(new Error('API request failed'));
 
@@ -136,7 +136,7 @@ describe('useChatStreaming', () => {
   it('should generate unique message IDs', async () => {
     mockChatCompletion.mockResolvedValue({ content: 'Response' });
     const messageIds = new Set<string>();
-    const onMessageStart = jest.fn((id: string) => messageIds.add(id));
+    const onMessageStart = vi.fn((id: string) => messageIds.add(id));
 
     const { result } = renderHook(() =>
       useChatStreaming({

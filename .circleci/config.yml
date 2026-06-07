@@ -156,6 +156,9 @@ jobs:
       - run:
           name: SDK artifacts current
           command: make sdk-check
+      - run:
+          name: Providers JSON current
+          command: make check-providers-json
 
   # ── Backend tests ─────────────────────────────────────────────────────────
   test-backend:
@@ -174,7 +177,17 @@ jobs:
               --cov=src/api \
               --cov-report=xml:coverage.xml \
               --cov-report=html:htmlcov \
+              --cov-fail-under=60 \
               --junitxml=test-results.xml \
+              --tb=short -v
+      - run:
+          name: Contract tests
+          command: |
+            cd apps/api
+            PYTHONPATH=src python -m pytest \
+              -o "addopts=" \
+              src/api/tests/test_contract_boundaries.py \
+              src/api/tests/test_chat_route_version_aliases.py \
               --tb=short -v
       - store_test_results:
           path: apps/api/test-results.xml
@@ -205,6 +218,19 @@ jobs:
       - store_artifacts:
           path: apps/web/coverage
           destination: web-coverage
+      - run:
+          name: Upload frontend coverage to Codecov
+          command: |
+            if [ -z "$CODECOV_TOKEN" ]; then
+              echo "Warning: CODECOV_TOKEN not set, skipping Codecov upload"
+              exit 0
+            fi
+            curl -Os https://uploader.codecov.io/latest/linux/codecov
+            chmod +x codecov
+            ./codecov -t "${CODECOV_TOKEN}" -f apps/web/coverage/coverage-final.json -F frontend
+      - run:
+          name: E2E budget check (max 8 critical journeys)
+          command: make test-e2e-budget
 
   # ── Build ─────────────────────────────────────────────────────────────────
   build:
@@ -339,6 +365,7 @@ workflows:
             branches:
               only: main
     jobs:
+      - security-scan
       - test-backend
       - test-frontend
       - build

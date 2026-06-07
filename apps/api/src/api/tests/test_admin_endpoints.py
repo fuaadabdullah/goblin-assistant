@@ -54,6 +54,7 @@ def main():
         ("/ops/performance/snapshot", "Performance Snapshot"),
         ("/ops/queues/snapshot", "Task Queue Monitor"),
         ("/ops/circuit-breakers", "Circuit Breaker Status"),
+        ("/admin/providers/state", "Provider Registry State"),
     ]
 
     results = []

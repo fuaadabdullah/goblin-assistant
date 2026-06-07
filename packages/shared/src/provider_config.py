@@ -298,6 +298,7 @@ class ProviderToml(BaseModel):
             providers_out[pid] = entry
 
         return {
+            "schema_version": 1,
             "version": 2,
             "default_timeout_ms": self.default.timeout_ms,
             "model_budgets": {

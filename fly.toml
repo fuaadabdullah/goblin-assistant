@@ -1,3 +1,8 @@
+# ARCHIVED — Render (render.yaml) is the active deployment platform.
+# goblin-backend-dt30.onrender.com is the canonical backend URL.
+# This file is kept for reference; do not deploy from it without updating
+# RELEASE_VERSION and environment variables to match the current state.
+
 app = "goblin-backend"
 primary_region = "sea"
 

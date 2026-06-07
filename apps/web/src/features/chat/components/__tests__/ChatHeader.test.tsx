@@ -1,38 +1,21 @@
 import React from 'react';
 import { render, screen, fireEvent } from '@testing-library/react';
 
-jest.mock(
-  'lucide-react',
-  () =>
-    new Proxy(
-      {},
-      {
-        get: (_, name) => {
-          if (name === '__esModule') return true;
-          return (props: Record<string, unknown>) => (
-            <span data-testid={`icon-${String(name)}`} {...props} />
-          );
-        },
-      }
-    )
-);
-jest.mock(
-  'next/link',
-  () =>
-    function MockLink({ children, href }: { children: React.ReactNode; href: string }) {
-      return <a href={href}>{children}</a>;
-    }
-);
+vi.mock('next/link', () => ({
+  default: function MockLink({ children, href }: { children: React.ReactNode; href: string }) {
+    return <a href={href}>{children}</a>;
+  },
+}));
 
 import ChatHeader from '../ChatHeader';
 
 describe('ChatHeader', () => {
   const defaultProps = {
     isAdmin: false,
-    onClear: jest.fn(),
+    onClear: vi.fn(),
   };
 
-  beforeEach(() => jest.clearAllMocks());
+  beforeEach(() => vi.clearAllMocks());
 
   it('renders the title', () => {
     render(<ChatHeader {...defaultProps} />);
@@ -78,7 +61,7 @@ describe('ChatHeader', () => {
   });
 
   it('shows unified mobile panel toggle when enabled', () => {
-    const onToggle = jest.fn();
+    const onToggle = vi.fn();
     render(<ChatHeader {...defaultProps} showMobilePanelToggle onToggleMobilePanel={onToggle} />);
     const btn = screen.getByLabelText('Open chat panel');
     expect(btn).toBeInTheDocument();
@@ -86,7 +69,7 @@ describe('ChatHeader', () => {
   });
 
   it('toggles unified mobile panel on click', () => {
-    const onToggle = jest.fn();
+    const onToggle = vi.fn();
     render(<ChatHeader {...defaultProps} showMobilePanelToggle onToggleMobilePanel={onToggle} />);
     fireEvent.click(screen.getByLabelText('Open chat panel'));
     expect(onToggle).toHaveBeenCalled();
@@ -97,7 +80,7 @@ describe('ChatHeader', () => {
       <ChatHeader
         {...defaultProps}
         showMobilePanelToggle
-        onToggleMobilePanel={jest.fn()}
+        onToggleMobilePanel={vi.fn()}
         isMobilePanelOpen
       />
     );
@@ -109,7 +92,7 @@ describe('ChatHeader', () => {
       <ChatHeader
         {...defaultProps}
         showMobilePanelToggle
-        onToggleMobilePanel={jest.fn()}
+        onToggleMobilePanel={vi.fn()}
         isMobilePanelOpen={false}
       />
     );
@@ -118,7 +101,7 @@ describe('ChatHeader', () => {
       <ChatHeader
         {...defaultProps}
         showMobilePanelToggle
-        onToggleMobilePanel={jest.fn()}
+        onToggleMobilePanel={vi.fn()}
         isMobilePanelOpen
       />
     );
@@ -130,7 +113,7 @@ describe('ChatHeader', () => {
       <ChatHeader
         {...defaultProps}
         showMobilePanelToggle
-        onToggleMobilePanel={jest.fn()}
+        onToggleMobilePanel={vi.fn()}
         activeMobilePanelTab="preview"
       />
     );

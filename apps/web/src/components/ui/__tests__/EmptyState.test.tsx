@@ -1,6 +1,5 @@
 import React from 'react';
 import { render, screen, fireEvent } from '@testing-library/react';
-import '@testing-library/jest-dom';
 import EmptyState from '../EmptyState';
 
 describe('EmptyState', () => {
@@ -25,7 +24,7 @@ describe('EmptyState', () => {
   });
 
   it('renders action button and calls onAction when no href is provided', () => {
-    const onAction = jest.fn();
+    const onAction = vi.fn();
     render(<EmptyState title="t" description="d" actionLabel="Do it" onAction={onAction} />);
     const btn = screen.getByRole('button', { name: 'Do it' });
     fireEvent.click(btn);
@@ -47,7 +46,7 @@ describe('EmptyState', () => {
   });
 
   it('renders action as anchor when actionHref is provided', () => {
-    const onAction = jest.fn();
+    const onAction = vi.fn();
     render(
       <EmptyState
         title="t"

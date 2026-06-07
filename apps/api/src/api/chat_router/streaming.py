@@ -100,7 +100,11 @@ async def generate_chat_stream(
         try:
             conversation = await _cr._require_owned_conversation(conversation_id, current_user)
             messages = [{"role": msg.role, "content": msg.content} for msg in conversation.messages]
-            payload = {"messages": messages, "model": model}
+            payload = {
+                "messages": messages,
+                "model": model,
+                "user_id": str(current_user.id),
+            }
         except Exception as build_exc:
             logger.error("message_build_error", exc=build_exc)
             error_event = {

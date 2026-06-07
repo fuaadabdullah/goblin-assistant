@@ -1,13 +1,12 @@
 import React from 'react';
 import { render, screen } from '@testing-library/react';
-import '@testing-library/jest-dom';
 
-jest.mock('@/components/ErrorTestingPanel', () => ({
+vi.mock('@/components/ErrorTestingPanel', () => ({
   ErrorTestingPanel: () => <div data-testid="panel">panel</div>,
 }));
 
-jest.mock('@/layout/AdminLayout', () => {
-  return function MockAdminLayout({
+vi.mock('@/layout/AdminLayout', () => ({
+  default: function MockAdminLayout({
     children,
     mainId,
     mainLabel,
@@ -21,14 +20,14 @@ jest.mock('@/layout/AdminLayout', () => {
         {children}
       </main>
     );
-  };
-});
+  },
+}));
 
-jest.mock('@/components/Seo', () => {
-  return function MockSeo(props: { title: string }) {
+vi.mock('@/components/Seo', () => ({
+  default: function MockSeo(props: { title: string }) {
     return <div data-testid="seo">{props.title}</div>;
-  };
-});
+  },
+}));
 
 import ErrorTestingPage from '../ErrorTestingPage';
 

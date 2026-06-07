@@ -1,20 +1,19 @@
 import React from 'react';
 import { render, screen } from '@testing-library/react';
-import '@testing-library/jest-dom';
 
-const mockUseAuthSession = jest.fn();
-const mockUseAccountProfile = jest.fn();
-const mockAccountView = jest.fn();
+const mockUseAuthSession = vi.fn();
+const mockUseAccountProfile = vi.fn();
+const mockAccountView = vi.fn();
 
-jest.mock('../../../hooks/api/useAuthSession', () => ({
+vi.mock('../../../hooks/api/useAuthSession', () => ({
   useAuthSession: () => mockUseAuthSession(),
 }));
 
-jest.mock('../hooks/useAccountProfile', () => ({
+vi.mock('../hooks/useAccountProfile', () => ({
   useAccountProfile: (...args: unknown[]) => mockUseAccountProfile(...args),
 }));
 
-jest.mock('../components/AccountView', () => ({
+vi.mock('../components/AccountView', () => ({
   __esModule: true,
   default: (props: Record<string, unknown>) => {
     mockAccountView(props);
@@ -26,7 +25,7 @@ import AccountScreen from '../AccountScreen';
 
 describe('AccountScreen', () => {
   beforeEach(() => {
-    jest.clearAllMocks();
+    vi.clearAllMocks();
     mockUseAuthSession.mockReturnValue({ user: { name: 'Test', email: 'test@example.com' } });
     mockUseAccountProfile.mockReturnValue({
       name: 'Test',
@@ -35,9 +34,9 @@ describe('AccountScreen', () => {
       error: null,
       saving: false,
       preferences: { summaries: true, notifications: true, familyMode: false },
-      setName: jest.fn(),
-      togglePreference: jest.fn(),
-      handleSave: jest.fn(),
+      setName: vi.fn(),
+      togglePreference: vi.fn(),
+      handleSave: vi.fn(),
     });
   });
 
@@ -58,9 +57,9 @@ describe('AccountScreen', () => {
       error: null,
       saving: false,
       preferences: { summaries: true, notifications: false, familyMode: true },
-      setName: jest.fn(),
-      togglePreference: jest.fn(),
-      handleSave: jest.fn(),
+      setName: vi.fn(),
+      togglePreference: vi.fn(),
+      handleSave: vi.fn(),
     };
     mockUseAccountProfile.mockReturnValue(state);
 

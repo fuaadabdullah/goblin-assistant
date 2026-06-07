@@ -1,38 +1,41 @@
 import React from 'react';
 import { render, screen } from '@testing-library/react';
-import '@testing-library/jest-dom';
 import FinancialVisualization from '../FinancialVisualization';
 
-jest.mock(
+vi.mock(
   '../AllocationPie',
-  () =>
-    function MockPie(props: { title: string }) {
+  () => ({
+    default: function MockPie(props: { title: string }) {
       return <div data-testid="allocation-pie">{props.title}</div>;
-    }
+    },
+  })
 );
 
-jest.mock(
+vi.mock(
   '../FinanceBarChart',
-  () =>
-    function MockBarChart(props: { title: string }) {
+  () => ({
+    default: function MockBarChart(props: { title: string }) {
       return <div data-testid="finance-bar-chart">{props.title}</div>;
-    }
+    },
+  })
 );
 
-jest.mock(
+vi.mock(
   '../ProjectionsTable',
-  () =>
-    function MockTable(props: { title: string }) {
+  () => ({
+    default: function MockTable(props: { title: string }) {
       return <div data-testid="projections-table">{props.title}</div>;
-    }
+    },
+  })
 );
 
-jest.mock(
+vi.mock(
   '../CorrelationHeatmap',
-  () =>
-    function MockHeatmap(props: { title: string }) {
+  () => ({
+    default: function MockHeatmap(props: { title: string }) {
       return <div data-testid="correlation-heatmap">{props.title}</div>;
-    }
+    },
+  })
 );
 
 describe('FinancialVisualization', () => {

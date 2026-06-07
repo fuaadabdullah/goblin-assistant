@@ -1,4 +1,4 @@
-import { describe, it, expect, jest } from '@jest/globals';
+import { describe, it, expect, jest } from 'vitest';
 import { render, fireEvent } from '@testing-library/react';
 import IconButton from './IconButton';
 
@@ -11,7 +11,7 @@ describe('IconButton', () => {
   });
 
   it('handles click events', () => {
-    const handleClick = jest.fn();
+    const handleClick = vi.fn();
     const { getByRole } = render(
       <IconButton icon="✓" aria-label="Confirm" onClick={handleClick} />
     );
@@ -23,7 +23,7 @@ describe('IconButton', () => {
   });
 
   it('can be disabled', () => {
-    const handleClick = jest.fn();
+    const handleClick = vi.fn();
     const { getByRole } = render(
       <IconButton icon="✓" aria-label="Confirm" disabled onClick={handleClick} />
     );

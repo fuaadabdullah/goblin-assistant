@@ -1,0 +1,676 @@
+{
+  "source_of_truth": "config/providers.toml",
+  "generated_from": "config/providers.toml",
+  "visible_providers": [
+    "groq",
+    "deepseek",
+    "gemini",
+    "siliconeflow",
+    "openai",
+    "azure_openai",
+    "anthropic",
+    "together",
+    "replicate",
+    "cohere",
+    "huggingface",
+    "aliyun",
+    "gcp_vllm",
+    "gcp_vm"
+  ],
+  "providers": [
+    {
+      "provider_id": "aliyun",
+      "display_name": "Aliyun DashScope",
+      "default_model": "qwen-plus",
+      "tier": "private",
+      "capabilities": [
+        "chat",
+        "reasoning",
+        "code"
+      ],
+      "active": true,
+      "visible": true,
+      "hidden": false,
+      "local_routing": true,
+      "api_key_env": "DASHSCOPE_API_KEY",
+      "endpoint_env": "DASHSCOPE_ENDPOINT",
+      "requires_env": [
+        "DASHSCOPE_ENDPOINT"
+      ],
+      "models": [
+        "qwen-turbo",
+        "qwen-plus",
+        "qwen-max",
+        "qwen-long",
+        "qwen2.5-7b-instruct"
+      ],
+      "costs": {
+        "default": {
+          "input_per1k": 0.00014,
+          "output_per1k": 0.00014
+        },
+        "qwen-turbo": {
+          "input_per1k": 0.0002,
+          "output_per1k": 0.0006
+        },
+        "qwen-plus": {
+          "input_per1k": 0.0008,
+          "output_per1k": 0.002
+        },
+        "qwen-max": {
+          "input_per1k": 0.004,
+          "output_per1k": 0.012
+        },
+        "qwen2.5-7b-instruct": {
+          "input_per1k": 0.0001,
+          "output_per1k": 0.0001
+        }
+      },
+      "rate_limits": {
+        "default": {
+          "requests_per_minute": 60,
+          "tokens_per_minute": 200000,
+          "concurrency": 0
+        }
+      }
+    },
+    {
+      "provider_id": "anthropic",
+      "display_name": "Anthropic",
+      "default_model": "claude-3-5-haiku-latest",
+      "tier": "cloud",
+      "capabilities": [
+        "chat",
+        "reasoning",
+        "code"
+      ],
+      "active": true,
+      "visible": true,
+      "hidden": false,
+      "local_routing": false,
+      "api_key_env": "ANTHROPIC_API_KEY",
+      "endpoint_env": "ANTHROPIC_ENDPOINT",
+      "requires_env": [],
+      "models": [
+        "claude-sonnet-4-20250514",
+        "claude-3-5-haiku-latest"
+      ],
+      "costs": {
+        "default": {
+          "input_per1k": 0.003,
+          "output_per1k": 0.015
+        },
+        "claude-3-5-sonnet": {
+          "input_per1k": 0.003,
+          "output_per1k": 0.015
+        },
+        "claude-sonnet-4-20250514": {
+          "input_per1k": 0.003,
+          "output_per1k": 0.015
+        },
+        "claude-3-5-haiku-latest": {
+          "input_per1k": 0.0008,
+          "output_per1k": 0.004
+        },
+        "claude-3-opus": {
+          "input_per1k": 0.015,
+          "output_per1k": 0.075
+        },
+        "claude-3-sonnet": {
+          "input_per1k": 0.003,
+          "output_per1k": 0.015
+        },
+        "claude-3-haiku": {
+          "input_per1k": 0.00025,
+          "output_per1k": 0.00125
+        }
+      },
+      "rate_limits": {
+        "default": {
+          "requests_per_minute": 60,
+          "tokens_per_minute": 200000,
+          "concurrency": 0
+        },
+        "claude-sonnet-4-20250514": {
+          "requests_per_minute": 300,
+          "tokens_per_minute": 200000,
+          "concurrency": 0
+        },
+        "claude-3-5-haiku-latest": {
+          "requests_per_minute": 300,
+          "tokens_per_minute": 200000,
+          "concurrency": 0
+        }
+      }
+    },
+    {
+      "provider_id": "azure_openai",
+      "display_name": "Azure OpenAI",
+      "default_model": "gpt-4o-mini",
+      "tier": "private",
+      "capabilities": [
+        "chat",
+        "reasoning",
+        "code",
+        "embedding"
+      ],
+      "active": true,
+      "visible": true,
+      "hidden": false,
+      "local_routing": false,
+      "api_key_env": "AZURE_API_KEY",
+      "endpoint_env": "AZURE_OPENAI_ENDPOINT",
+      "requires_env": [
+        "AZURE_REGION",
+        "AZURE_DEPLOYMENT_ID"
+      ],
+      "models": [
+        "gpt-4o-mini",
+        "gpt-4o",
+        "gpt-4.1"
+      ],
+      "costs": {
+        "default": {
+          "input_per1k": 0.005,
+          "output_per1k": 0.015
+        },
+        "gpt-4o-mini": {
+          "input_per1k": 0.0015,
+          "output_per1k": 0.006
+        },
+        "gpt-4o": {
+          "input_per1k": 0.005,
+          "output_per1k": 0.015
+        },
+        "gpt-4.1": {
+          "input_per1k": 0.005,
+          "output_per1k": 0.015
+        }
+      },
+      "rate_limits": {
+        "default": {
+          "requests_per_minute": 60,
+          "tokens_per_minute": 200000,
+          "concurrency": 0
+        },
+        "gpt-4o-mini": {
+          "requests_per_minute": 500,
+          "tokens_per_minute": 200000,
+          "concurrency": 0
+        },
+        "gpt-4o": {
+          "requests_per_minute": 500,
+          "tokens_per_minute": 200000,
+          "concurrency": 0
+        }
+      }
+    },
+    {
+      "provider_id": "cohere",
+      "display_name": "Cohere",
+      "default_model": "command-r-08-2024",
+      "tier": "cloud",
+      "capabilities": [
+        "chat",
+        "reasoning",
+        "code",
+        "embedding"
+      ],
+      "active": true,
+      "visible": true,
+      "hidden": false,
+      "local_routing": false,
+      "api_key_env": "COHERE_API_KEY",
+      "endpoint_env": "COHERE_ENDPOINT",
+      "requires_env": [],
+      "models": [
+        "command-r-08-2024",
+        "command-r-plus-08-2024",
+        "command-a-03-2025"
+      ],
+      "costs": {},
+      "rate_limits": {}
+    },
+    {
+      "provider_id": "deepseek",
+      "display_name": "DeepSeek",
+      "default_model": "deepseek-chat",
+      "tier": "cloud",
+      "capabilities": [
+        "chat",
+        "reasoning",
+        "code"
+      ],
+      "active": true,
+      "visible": true,
+      "hidden": false,
+      "local_routing": false,
+      "api_key_env": "DEEPSEEK_API_KEY",
+      "endpoint_env": "DEEPSEEK_ENDPOINT",
+      "requires_env": [],
+      "models": [
+        "deepseek-chat",
+        "deepseek-coder"
+      ],
+      "costs": {
+        "default": {
+          "input_per1k": 0.00027,
+          "output_per1k": 0.0011
+        },
+        "deepseek-chat": {
+          "input_per1k": 0.00027,
+          "output_per1k": 0.0011
+        },
+        "deepseek-coder": {
+          "input_per1k": 0.00027,
+          "output_per1k": 0.0011
+        }
+      },
+      "rate_limits": {
+        "default": {
+          "requests_per_minute": 60,
+          "tokens_per_minute": 200000,
+          "concurrency": 0
+        }
+      }
+    },
+    {
+      "provider_id": "gcp_vllm",
+      "display_name": "GCP vLLM",
+      "default_model": "qwen3-32b",
+      "tier": "private",
+      "capabilities": [
+        "chat",
+        "reasoning",
+        "code",
+        "embedding"
+      ],
+      "active": true,
+      "visible": true,
+      "hidden": false,
+      "local_routing": false,
+      "api_key_env": "GOOGLE_CLOUD_VLLM_API_KEY",
+      "endpoint_env": "GOOGLE_CLOUD_VLLM_ENDPOINT",
+      "requires_env": [],
+      "models": [
+        "qwen3-32b",
+        "gemma3-27b",
+        "deepseek-r1-32b",
+        "bge-m3",
+        "bge-reranker-v2-m3"
+      ],
+      "costs": {},
+      "rate_limits": {}
+    },
+    {
+      "provider_id": "gcp_vm",
+      "display_name": "GCP Self-Hosted",
+      "default_model": "",
+      "tier": "private",
+      "capabilities": [
+        "chat",
+        "reasoning",
+        "code"
+      ],
+      "active": false,
+      "visible": false,
+      "hidden": true,
+      "local_routing": false,
+      "api_key_env": null,
+      "endpoint_env": null,
+      "requires_env": [],
+      "models": [
+        "gemma-3-12b",
+        "qwen3-14b",
+        "gemini-2.5-flash",
+        "gemini-2.0-flash",
+        "gemini-2.0-flash-lite"
+      ],
+      "costs": {},
+      "rate_limits": {}
+    },
+    {
+      "provider_id": "gemini",
+      "display_name": "Google Gemini",
+      "default_model": "gemini-2.0-flash",
+      "tier": "cloud",
+      "capabilities": [
+        "chat",
+        "reasoning",
+        "code",
+        "image"
+      ],
+      "active": true,
+      "visible": true,
+      "hidden": false,
+      "local_routing": false,
+      "api_key_env": "GOOGLE_AI_API_KEY",
+      "endpoint_env": "GEMINI_ENDPOINT",
+      "requires_env": [],
+      "models": [
+        "gemini-2.0-flash",
+        "gemini-2.0-flash-lite"
+      ],
+      "costs": {
+        "default": {
+          "input_per1k": 7.5e-05,
+          "output_per1k": 0.0003
+        },
+        "gemini-2.0-flash": {
+          "input_per1k": 7.5e-05,
+          "output_per1k": 0.0003
+        },
+        "gemini-2.0-flash-lite": {
+          "input_per1k": 7.5e-05,
+          "output_per1k": 0.0003
+        },
+        "gemini-2.5-flash": {
+          "input_per1k": 7.5e-05,
+          "output_per1k": 0.0003
+        }
+      },
+      "rate_limits": {
+        "default": {
+          "requests_per_minute": 60,
+          "tokens_per_minute": 200000,
+          "concurrency": 0
+        }
+      }
+    },
+    {
+      "provider_id": "groq",
+      "display_name": "Groq",
+      "default_model": "llama-3.1-8b-instant",
+      "tier": "cloud",
+      "capabilities": [
+        "chat",
+        "reasoning",
+        "code"
+      ],
+      "active": true,
+      "visible": true,
+      "hidden": false,
+      "local_routing": false,
+      "api_key_env": "GROQ_API_KEY",
+      "endpoint_env": "GROQ_ENDPOINT",
+      "requires_env": [],
+      "models": [
+        "llama-3.1-8b-instant",
+        "llama-3.3-70b-versatile",
+        "mixtral-8x7b-32768"
+      ],
+      "costs": {
+        "default": {
+          "input_per1k": 0.00059,
+          "output_per1k": 0.00079
+        },
+        "llama-3.1-8b-instant": {
+          "input_per1k": 0.00059,
+          "output_per1k": 0.00079
+        },
+        "llama-3.3-70b-versatile": {
+          "input_per1k": 0.00059,
+          "output_per1k": 0.00079
+        },
+        "mixtral-8x7b-32768": {
+          "input_per1k": 0.00059,
+          "output_per1k": 0.00079
+        }
+      },
+      "rate_limits": {
+        "default": {
+          "requests_per_minute": 60,
+          "tokens_per_minute": 200000,
+          "concurrency": 0
+        }
+      }
+    },
+    {
+      "provider_id": "huggingface",
+      "display_name": "Hugging Face",
+      "default_model": "Qwen/Qwen2.5-7B-Instruct",
+      "tier": "cloud",
+      "capabilities": [
+        "chat",
+        "reasoning",
+        "code"
+      ],
+      "active": true,
+      "visible": true,
+      "hidden": false,
+      "local_routing": false,
+      "api_key_env": "HUGGINGFACE_API_KEY",
+      "endpoint_env": "HUGGINGFACE_ENDPOINT",
+      "requires_env": [],
+      "models": [
+        "Qwen/Qwen2.5-7B-Instruct",
+        "meta-llama/Llama-3.1-8B-Instruct",
+        "mistralai/Mistral-7B-Instruct-v0.3"
+      ],
+      "costs": {},
+      "rate_limits": {}
+    },
+    {
+      "provider_id": "mock",
+      "display_name": "Mock Provider",
+      "default_model": "mock-gpt",
+      "tier": "mock",
+      "capabilities": [
+        "chat",
+        "reasoning",
+        "code",
+        "embedding"
+      ],
+      "active": true,
+      "visible": false,
+      "hidden": true,
+      "local_routing": false,
+      "api_key_env": null,
+      "endpoint_env": "MOCK_PROVIDER_ENDPOINT",
+      "requires_env": [],
+      "models": [
+        "mock-gpt",
+        "mock-claude",
+        "mock-phi"
+      ],
+      "costs": {},
+      "rate_limits": {}
+    },
+    {
+      "provider_id": "ollama_local",
+      "display_name": "Ollama Local",
+      "default_model": "qwen2.5:3b",
+      "tier": "self_hosted",
+      "capabilities": [
+        "chat",
+        "reasoning",
+        "code"
+      ],
+      "active": false,
+      "visible": false,
+      "hidden": true,
+      "local_routing": false,
+      "api_key_env": null,
+      "endpoint_env": "OLLAMA_LOCAL_ENDPOINT",
+      "requires_env": [],
+      "models": [
+        "qwen2.5:3b"
+      ],
+      "costs": {},
+      "rate_limits": {}
+    },
+    {
+      "provider_id": "openai",
+      "display_name": "OpenAI",
+      "default_model": "gpt-4o-mini",
+      "tier": "cloud",
+      "capabilities": [
+        "chat",
+        "reasoning",
+        "code",
+        "embedding",
+        "image"
+      ],
+      "active": true,
+      "visible": true,
+      "hidden": false,
+      "local_routing": false,
+      "api_key_env": "OPENAI_API_KEY",
+      "endpoint_env": "OPENAI_ENDPOINT",
+      "requires_env": [],
+      "models": [
+        "gpt-4o",
+        "gpt-4o-mini",
+        "gpt-4-turbo"
+      ],
+      "costs": {
+        "default": {
+          "input_per1k": 0.005,
+          "output_per1k": 0.015
+        },
+        "gpt-4o": {
+          "input_per1k": 0.005,
+          "output_per1k": 0.015
+        },
+        "gpt-4o-mini": {
+          "input_per1k": 0.00015,
+          "output_per1k": 0.0006
+        },
+        "gpt-4-turbo": {
+          "input_per1k": 0.01,
+          "output_per1k": 0.03
+        },
+        "o1": {
+          "input_per1k": 0.015,
+          "output_per1k": 0.06
+        },
+        "o1-mini": {
+          "input_per1k": 0.003,
+          "output_per1k": 0.012
+        },
+        "o3-mini": {
+          "input_per1k": 0.0011,
+          "output_per1k": 0.0044
+        }
+      },
+      "rate_limits": {
+        "default": {
+          "requests_per_minute": 60,
+          "tokens_per_minute": 200000,
+          "concurrency": 0
+        },
+        "gpt-4o": {
+          "requests_per_minute": 500,
+          "tokens_per_minute": 200000,
+          "concurrency": 0
+        },
+        "gpt-4o-mini": {
+          "requests_per_minute": 500,
+          "tokens_per_minute": 200000,
+          "concurrency": 0
+        }
+      }
+    },
+    {
+      "provider_id": "replicate",
+      "display_name": "Replicate",
+      "default_model": "meta/llama-4-scout-instruct-17b-16e",
+      "tier": "cloud",
+      "capabilities": [
+        "chat",
+        "reasoning",
+        "code",
+        "image"
+      ],
+      "active": false,
+      "visible": false,
+      "hidden": true,
+      "local_routing": false,
+      "api_key_env": "REPLICATE_API_KEY",
+      "endpoint_env": "REPLICATE_ENDPOINT",
+      "requires_env": [],
+      "models": [
+        "meta/llama-4-scout-instruct-17b-16e",
+        "meta/llama-4-maverick-instruct-17b-128e",
+        "meta/llama-3.1-405b-instruct",
+        "meta/llama-3.3-70b-instruct"
+      ],
+      "costs": {},
+      "rate_limits": {}
+    },
+    {
+      "provider_id": "siliconeflow",
+      "display_name": "SiliconeFlow",
+      "default_model": "Qwen/Qwen2.5-7B-Instruct",
+      "tier": "cloud",
+      "capabilities": [
+        "chat",
+        "reasoning",
+        "code"
+      ],
+      "active": true,
+      "visible": true,
+      "hidden": false,
+      "local_routing": false,
+      "api_key_env": "SILICONEFLOW_API_KEY",
+      "endpoint_env": "SILICONEFLOW_ENDPOINT",
+      "requires_env": [],
+      "models": [
+        "Qwen/Qwen2.5-7B-Instruct",
+        "Qwen/Qwen2.5-Coder-7B-Instruct",
+        "deepseek-ai/DeepSeek-V2.5"
+      ],
+      "costs": {
+        "default": {
+          "input_per1k": 0.00014,
+          "output_per1k": 0.00014
+        },
+        "Qwen/Qwen2.5-7B-Instruct": {
+          "input_per1k": 0.00014,
+          "output_per1k": 0.00014
+        },
+        "Qwen/Qwen2.5-Coder-7B-Instruct": {
+          "input_per1k": 0.00014,
+          "output_per1k": 0.00014
+        },
+        "deepseek-ai/DeepSeek-V2.5": {
+          "input_per1k": 0.00014,
+          "output_per1k": 0.00014
+        }
+      },
+      "rate_limits": {
+        "default": {
+          "requests_per_minute": 60,
+          "tokens_per_minute": 200000,
+          "concurrency": 0
+        }
+      }
+    },
+    {
+      "provider_id": "together",
+      "display_name": "Together AI",
+      "default_model": "meta-llama/Meta-Llama-3.1-8B-Instruct-Turbo",
+      "tier": "cloud",
+      "capabilities": [
+        "chat",
+        "reasoning",
+        "code",
+        "image"
+      ],
+      "active": true,
+      "visible": true,
+      "hidden": false,
+      "local_routing": false,
+      "api_key_env": "TOGETHER_API_KEY",
+      "endpoint_env": "TOGETHER_ENDPOINT",
+      "requires_env": [],
+      "models": [
+        "meta-llama/Meta-Llama-3.1-8B-Instruct-Turbo",
+        "meta-llama/Meta-Llama-3.3-70B-Instruct-Turbo",
+        "mistralai/Mixtral-8x7B-Instruct-v0.1"
+      ],
+      "costs": {},
+      "rate_limits": {}
+    }
+  ]
+}

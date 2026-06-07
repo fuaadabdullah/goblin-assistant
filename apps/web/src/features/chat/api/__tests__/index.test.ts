@@ -1,14 +1,14 @@
-import { describe, it, expect, beforeEach, jest } from '@jest/globals';
+import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { chatClient } from '../index';
 import { apiClient } from '@/lib/api';
 
 describe('chatClient conversation API', () => {
   beforeEach(() => {
-    jest.restoreAllMocks();
+    vi.restoreAllMocks();
   });
 
   it('passes prompt through to the persistent send endpoint', async () => {
-    const spy = jest.spyOn(apiClient, 'sendConversationMessage').mockResolvedValue({
+    const spy = vi.spyOn(apiClient, 'sendConversationMessage').mockResolvedValue({
       content: 'ok',
       provider: 'openai',
       model: 'gpt-4o-mini',
@@ -28,7 +28,7 @@ describe('chatClient conversation API', () => {
   });
 
   it('falls back to the last user message when prompt is omitted', async () => {
-    const spy = jest.spyOn(apiClient, 'sendConversationMessage').mockResolvedValue({
+    const spy = vi.spyOn(apiClient, 'sendConversationMessage').mockResolvedValue({
       content: 'ok',
       provider: 'openai',
       model: 'gpt-4o-mini',
@@ -51,8 +51,7 @@ describe('chatClient conversation API', () => {
   });
 
   it('retries once without explicit model/provider when explicit selection fails', async () => {
-    const spy = jest
-      .spyOn(apiClient, 'sendConversationMessage')
+    const spy = vi.spyOn(apiClient, 'sendConversationMessage')
       .mockRejectedValueOnce(new Error('invalid provider selection'))
       .mockResolvedValueOnce({
         content: 'retry-ok',

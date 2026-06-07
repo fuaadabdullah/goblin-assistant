@@ -3,6 +3,7 @@ import type { ProviderConfig } from '../../../hooks/api/useSettings';
 import type { RoutingHealthStatus } from '../../../types/api';
 import { useProviderSettings } from '../../../hooks/api/useSettings';
 import { useRoutingHealth } from '../../../hooks/api/useHealth';
+import { useProviderStatus } from '../../../hooks/useProviderStatus';
 import TwoColumnLayout from '../../../components/TwoColumnLayout';
 import { Button, Alert } from '../../../components/ui';
 import ProviderSidebar from './components/ProviderSidebar';
@@ -11,14 +12,17 @@ import ProviderPromptTest from './components/ProviderPromptTest';
 import ProviderTestResultBanner from './components/ProviderTestResultBanner';
 import { useProviderMutations } from './hooks/useProviderMutations';
 import { useProviderReorder } from './hooks/useProviderReorder';
+import { getProviderRouterConfigError } from '../../../services/provider-router';
 
 export default function ProvidersManagerScreen() {
   const { data: providers, isLoading, error, refetch } = useProviderSettings();
   const { data: routingHealth } = useRoutingHealth();
+  const { statuses: providerStatuses, connected: realtimeConnected } = useProviderStatus();
 
   const providerList = (providers as ProviderConfig[] | undefined) || [];
   const routingStatus: string =
     (routingHealth as RoutingHealthStatus | undefined)?.status || 'Healthy';
+  const providerConfigError = getProviderRouterConfigError();
 
   const [selectedProvider, setSelectedProvider] = useState<ProviderConfig | null>(null);
   const [testPrompt, setTestPrompt] = useState('Write a hello world in Python');
@@ -55,6 +59,8 @@ export default function ProvidersManagerScreen() {
       onDragStart={handleDragStart}
       onDragOver={handleDragOver}
       onDrop={handleDrop}
+      providerStatuses={providerStatuses}
+      realtimeConnected={realtimeConnected}
     />
   );
 
@@ -96,6 +102,23 @@ export default function ProvidersManagerScreen() {
             </>
           }
           dismissible
+        />
+      )}
+
+      {providerConfigError && (
+        <Alert
+          variant="danger"
+          title="Provider routing config is incompatible"
+          message={
+            <>
+              <p className="mb-2">{providerConfigError.message}</p>
+              <p className="text-sm text-muted">
+                Regenerate <code>config/providers.json</code> from
+                <code>config/providers.toml</code> and refresh the page.
+              </p>
+            </>
+          }
+          dismissible={false}
         />
       )}
 

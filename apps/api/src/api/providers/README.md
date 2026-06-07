@@ -7,6 +7,11 @@ If you are adding a new provider, read this before writing the adapter. The
 important part is not only getting a single request to work, but fitting into
 the failover, health, quota, and routing behavior that already exists.
 
+This file remains the canonical provider developer guide for code-adjacent
+adapter behavior. Confluence may mirror or reorganize this guidance for
+navigation, but runtime and onboarding truth should still be updated here
+first.
+
 ## Core surfaces
 
 - `contracts.py`
@@ -234,6 +239,31 @@ Use this checklist for a new provider such as Mistral:
    - dispatcher authority/routing coverage,
    - any provider-specific edge cases.
 
+## Generic compatibility wrapper
+
+`GenericProvider` exists only as a development/test escape hatch for
+OpenAI-compatible endpoints. Do not use it as a production fallback.
+
+Rules:
+
+- keep aliases explicit in TOML,
+- prefer a concrete adapter when the provider has a distinct circuit, quota, or
+  health model,
+- treat the generic wrapper as blocked outside `ENV=development` or
+  `TESTING=true`.
+
+If you need an OpenAI-compatible adapter, register a concrete provider class and
+wire it through the registry instead of relying on the generic wrapper.
+
+```python
+class MyProvider(OpenAICompatibleProvider):
+    async def invoke(self, messages=None, model=None, **kwargs):
+        result = await super().invoke(messages, model, **kwargs)
+        if not result.ok:
+            return result
+        return result
+```
+
 ## Testing guidance
 
 Prefer focused tests over broad end-to-end expansion when adding one provider.
@@ -246,9 +276,25 @@ Useful places to extend:
 - integration tests only when the change affects shared routing behavior across
   providers
 
+`ProviderDispatcher.test_mode()` can inject deterministic latency and failures
+for routing tests. Use it when you need to validate fallback, circuit-breaker,
+or quota interactions without depending on real provider behavior.
+
 The goal is to prove:
 
 - the adapter conforms to `ProviderResult` / `ProviderHealth` contracts,
 - failover still works,
 - streams fail in the expected way,
 - config registration is accurate.
+
+## Documentation handoff
+
+When a provider change is architecture-significant or changes onboarding flow:
+
+1. Update this guide if adapter lifecycle, registration, or testing
+   expectations changed.
+2. Update the Confluence `Provider Developer Guide` or relevant provider-family
+   page using the repo-tracked source material under
+   `docs/operations/confluence/`.
+3. Link related Jira `PLAT` or `PROVOPS` issues where the change affects
+   backlog or incident context.

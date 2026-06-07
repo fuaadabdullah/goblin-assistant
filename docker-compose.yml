@@ -1,14 +1,21 @@
+# Usage:
+#   docker compose up                                  # redis + backend only
+#   docker compose --profile workers up                # + Celery worker pool
+#   docker compose --profile sandbox up                # + MinIO + sandbox worker
+#   docker compose --profile workers --profile sandbox up  # full local stack
+#   docker compose --profile build build sandbox-builder   # build sandbox image
+
 services:
-  # Redis for Celery backend and broker
+  # ── Core ──────────────────────────────────────────────────────────────────
   redis:
-    image: redis:7-alpine
-    cpus: ${REDIS_CPU_LIMIT:-0.50}
-    mem_limit: ${REDIS_MEM_LIMIT:-512m}
+    image: redis:7.2-alpine
+    container_name: goblin-assistant-redis
     ports:
       - '6379:6379'
     volumes:
       - redis_data:/data
-    command: redis-server --appendonly yes
+      - ./redis.conf:/usr/local/etc/redis/redis.conf
+    command: redis-server /usr/local/etc/redis/redis.conf
     healthcheck:
       test: ['CMD', 'redis-cli', 'ping']
       interval: 10s
@@ -21,11 +28,40 @@ services:
           memory: ${REDIS_MEM_LIMIT:-512m}
     restart: unless-stopped
 
-  # MinIO S3-compatible object storage
+  goblin-assistant-backend:
+    build: .
+    ports:
+      - '8001:8001'
+    environment:
+      - ENV=production
+      - CELERY_BROKER_URL=redis://redis:6379/0
+      - CELERY_RESULT_BACKEND=redis://redis:6379/0
+      - SANDBOX_ENABLED=true
+      - SANDBOX_IMAGE=goblin-assistant-sandbox:latest
+      - JOBS_DIR=/app/sandbox_jobs
+    volumes:
+      - ./apps/api/src/api:/app
+      - sandbox_jobs:/app/sandbox_jobs
+    depends_on:
+      redis:
+        condition: service_healthy
+    healthcheck:
+      test: ['CMD', 'curl', '-f', 'http://localhost:8001/health']
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+    deploy:
+      resources:
+        limits:
+          cpus: ${BACKEND_CPU_LIMIT:-1.50}
+          memory: ${BACKEND_MEM_LIMIT:-2g}
+    restart: unless-stopped
+
+  # ── Sandbox storage (--profile sandbox) ───────────────────────────────────
   minio:
     image: minio/minio:latest
-    cpus: ${MINIO_CPU_LIMIT:-1.00}
-    mem_limit: ${MINIO_MEM_LIMIT:-1g}
+    profiles: [sandbox]
     ports:
       - '9000:9000'
       - '9001:9001'
@@ -33,7 +69,7 @@ services:
       - minio_data:/data
     environment:
       MINIO_ROOT_USER: ${MINIO_ROOT_USER:-dev_minio_user}
-      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD:?Set MINIO_ROOT_PASSWORD in your .env file}
+      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD:?Set MINIO_ROOT_PASSWORD in .env}
       MINIO_REGION_NAME: us-east-1
     command: server /data --console-address ":9001"
     healthcheck:
@@ -49,26 +85,59 @@ services:
           memory: ${MINIO_MEM_LIMIT:-1g}
     restart: unless-stopped
 
-  # MinIO client for bucket setup
   minio-client:
     image: minio/mc:latest
+    profiles: [sandbox]
     depends_on:
       minio:
         condition: service_healthy
     entrypoint: >
       /bin/sh -c "
-      mc alias set local http://minio:9000 ${MINIO_ROOT_USER:-minio} ${MINIO_ROOT_PASSWORD:?Set MINIO_ROOT_PASSWORD in your .env file};
+      mc alias set local http://minio:9000 ${MINIO_ROOT_USER:-minio} ${MINIO_ROOT_PASSWORD:?Set MINIO_ROOT_PASSWORD in .env};
       mc mb local/goblin-sandbox || true;
       mc anonymous set public local/goblin-sandbox || true;
       echo 'MinIO bucket goblin-sandbox ready';
       "
     restart: "no"
 
-  # Celery worker for high priority tasks
+  sandbox-worker:
+    build:
+      context: .
+      dockerfile: Dockerfile.sandbox
+    profiles: [sandbox]
+    command: ["python", "/home/runner/start_worker.py"]
+    environment:
+      - REDIS_URL=redis://redis:6379/0
+      - SANDBOX_IMAGE=goblin-assistant-sandbox:latest
+      - MAX_JOB_MEMORY=256m
+      - MAX_JOB_CPUS=0.25
+      - JOB_TIMEOUT_SECONDS=10
+      - ARTIFACT_S3_ENDPOINT=http://minio:9000
+      - S3_ACCESS_KEY=${S3_ACCESS_KEY:-dev_minio_user}
+      - S3_SECRET_KEY=${S3_SECRET_KEY:?Set S3_SECRET_KEY in .env}
+      - S3_BUCKET=goblin-sandbox
+      - S3_REGION=us-east-1
+      - MAX_ARTIFACT_SIZE_MB=10
+      - ARTIFACT_TTL_DAYS=7
+    volumes:
+      - sandbox_jobs:/work
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+    depends_on:
+      redis:
+        condition: service_healthy
+      minio:
+        condition: service_healthy
+    deploy:
+      resources:
+        limits:
+          cpus: ${SANDBOX_WORKER_CPU_LIMIT:-1.00}
+          memory: ${SANDBOX_WORKER_MEM_LIMIT:-1g}
+    restart: unless-stopped
+
+  # ── Celery worker pool (--profile workers) ─────────────────────────────────
   celery-worker-high:
     build: .
-    cpus: ${CELERY_WORKER_HIGH_CPU_LIMIT:-1.00}
-    mem_limit: ${CELERY_WORKER_HIGH_MEM_LIMIT:-1g}
+    profiles: [workers]
     command: celery -A celery_app:app worker --loglevel=info --concurrency=2 --pool=prefork -Q high_priority
     environment:
       - ENV=production
@@ -92,11 +161,9 @@ services:
           memory: ${CELERY_WORKER_HIGH_MEM_LIMIT:-1g}
     restart: unless-stopped
 
-  # Celery worker for default priority tasks
   celery-worker-default:
     build: .
-    cpus: ${CELERY_WORKER_DEFAULT_CPU_LIMIT:-1.50}
-    mem_limit: ${CELERY_WORKER_DEFAULT_MEM_LIMIT:-2g}
+    profiles: [workers]
     command: celery -A celery_app:app worker --loglevel=info --concurrency=4 --pool=prefork -Q default
     environment:
       - ENV=production
@@ -120,11 +187,9 @@ services:
           memory: ${CELERY_WORKER_DEFAULT_MEM_LIMIT:-2g}
     restart: unless-stopped
 
-  # Celery worker for low priority tasks
   celery-worker-low:
     build: .
-    cpus: ${CELERY_WORKER_LOW_CPU_LIMIT:-0.75}
-    mem_limit: ${CELERY_WORKER_LOW_MEM_LIMIT:-1g}
+    profiles: [workers]
     command: celery -A celery_app:app worker --loglevel=info --concurrency=2 --pool=prefork -Q low_priority
     environment:
       - ENV=production
@@ -148,11 +213,9 @@ services:
           memory: ${CELERY_WORKER_LOW_MEM_LIMIT:-1g}
     restart: unless-stopped
 
-  # Celery beat scheduler
   celery-beat:
     build: .
-    cpus: ${CELERY_BEAT_CPU_LIMIT:-0.50}
-    mem_limit: ${CELERY_BEAT_MEM_LIMIT:-512m}
+    profiles: [workers]
     command: celery -A celery_app:app beat --loglevel=info
     environment:
       - ENV=production
@@ -176,12 +239,10 @@ services:
           memory: ${CELERY_BEAT_MEM_LIMIT:-512m}
     restart: unless-stopped
 
-  # Flower monitoring dashboard
   flower:
     build: .
-    cpus: ${FLOWER_CPU_LIMIT:-0.50}
-    mem_limit: ${FLOWER_MEM_LIMIT:-512m}
-    command: celery -A celery_app:app flower --address=0.0.0.0 --port=5555 --basic_auth=${FLOWER_BASIC_AUTH:?Set FLOWER_BASIC_AUTH=user:password in your .env file}
+    profiles: [workers]
+    command: celery -A celery_app:app flower --address=0.0.0.0 --port=5555 --basic_auth=${FLOWER_BASIC_AUTH:?Set FLOWER_BASIC_AUTH=user:password in .env}
     ports:
       - '5555:5555'
     environment:
@@ -206,11 +267,9 @@ services:
           memory: ${FLOWER_MEM_LIMIT:-512m}
     restart: unless-stopped
 
-  # Celery monitoring API
   celery-monitor:
     build: .
-    cpus: ${CELERY_MONITOR_CPU_LIMIT:-0.50}
-    mem_limit: ${CELERY_MONITOR_MEM_LIMIT:-512m}
+    profiles: [workers]
     command: python celery_monitoring.py
     ports:
       - '5556:5555'
@@ -236,84 +295,13 @@ services:
           memory: ${CELERY_MONITOR_MEM_LIMIT:-512m}
     restart: unless-stopped
 
-  goblin-assistant-backend:
-    build: .
-    cpus: ${BACKEND_CPU_LIMIT:-1.50}
-    mem_limit: ${BACKEND_MEM_LIMIT:-2g}
-    ports:
-      - '8001:8001'
-    environment:
-      - ENV=production
-      - CELERY_BROKER_URL=redis://redis:6379/0
-      - CELERY_RESULT_BACKEND=redis://redis:6379/0
-      # Sandbox configuration
-      - SANDBOX_ENABLED=true
-      - SANDBOX_IMAGE=goblin-assistant-sandbox:latest
-      - JOBS_DIR=/app/sandbox_jobs
-    volumes:
-      - ./apps/api/src/api:/app
-      - sandbox_jobs:/app/sandbox_jobs
-    depends_on:
-      redis:
-        condition: service_healthy
-    healthcheck:
-      test: ['CMD', 'curl', '-f', 'http://localhost:8001/health']
-      interval: 30s
-      timeout: 10s
-      retries: 3
-      start_period: 40s
-    deploy:
-      resources:
-        limits:
-          cpus: ${BACKEND_CPU_LIMIT:-1.50}
-          memory: ${BACKEND_MEM_LIMIT:-2g}
-    restart: unless-stopped
-
-  # Sandbox worker for secure code execution
-  sandbox-worker:
-    build:
-      context: .
-      dockerfile: Dockerfile.sandbox
-    cpus: ${SANDBOX_WORKER_CPU_LIMIT:-1.00}
-    mem_limit: ${SANDBOX_WORKER_MEM_LIMIT:-1g}
-    command: ["python", "/home/runner/start_worker.py"]
-    environment:
-      - REDIS_URL=redis://redis:6379/0
-      - SANDBOX_IMAGE=goblin-assistant-sandbox:latest
-      - MAX_JOB_MEMORY=256m
-      - MAX_JOB_CPUS=0.25
-      - JOB_TIMEOUT_SECONDS=10
-      # S3/MinIO configuration
-      - ARTIFACT_S3_ENDPOINT=http://minio:9000
-      - S3_ACCESS_KEY=${S3_ACCESS_KEY:-dev_minio_user}
-      - S3_SECRET_KEY=${S3_SECRET_KEY:?Set S3_SECRET_KEY in your .env file}
-      - S3_BUCKET=goblin-sandbox
-      - S3_REGION=us-east-1
-      - MAX_ARTIFACT_SIZE_MB=10
-      - ARTIFACT_TTL_DAYS=7
-    volumes:
-      - sandbox_jobs:/work
-      - /var/run/docker.sock:/var/run/docker.sock:ro
-    depends_on:
-      redis:
-        condition: service_healthy
-      minio:
-        condition: service_healthy
-    deploy:
-      resources:
-        limits:
-          cpus: ${SANDBOX_WORKER_CPU_LIMIT:-1.00}
-          memory: ${SANDBOX_WORKER_MEM_LIMIT:-1g}
-    restart: unless-stopped
-
-  # Sandbox image builder (for development)
+  # ── Sandbox image builder (--profile build) ────────────────────────────────
   sandbox-builder:
     build:
       context: .
       dockerfile: Dockerfile.sandbox
     image: goblin-assistant-sandbox:latest
-    profiles:
-      - build
+    profiles: [build]
 
 volumes:
   redis_data:

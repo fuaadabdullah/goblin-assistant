@@ -9,10 +9,10 @@ describe('SandboxMain', () => {
     language: 'python',
     logs: '',
     selectedJob: null,
-    onCodeChange: jest.fn(),
+    onCodeChange: vi.fn(),
   };
 
-  beforeEach(() => jest.clearAllMocks());
+  beforeEach(() => vi.clearAllMocks());
 
   it('renders heading', () => {
     render(<SandboxMain {...defaultProps} />);

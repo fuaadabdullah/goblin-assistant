@@ -1,8 +1,7 @@
 import React from 'react';
 import { render, screen, fireEvent } from '@testing-library/react';
-import '@testing-library/jest-dom';
 
-jest.mock(
+vi.mock(
   'next/link',
   () =>
     function MockLink({
@@ -22,22 +21,6 @@ jest.mock(
         </a>
       );
     }
-);
-
-jest.mock(
-  'lucide-react',
-  () =>
-    new Proxy(
-      {},
-      {
-        get: (_, name) => {
-          if (name === '__esModule') return true;
-          return (props: Record<string, unknown>) => (
-            <span data-testid={`icon-${String(name)}`} {...props} />
-          );
-        },
-      }
-    )
 );
 
 import SandboxSidebar from '../SandboxSidebar';
@@ -67,15 +50,15 @@ describe('SandboxSidebar', () => {
     code: 'print("hello")',
     jobs: mockJobs,
     selectedJobId: undefined,
-    onLanguageChange: jest.fn(),
-    onRun: jest.fn(),
-    onClear: jest.fn(),
-    onRefresh: jest.fn(),
-    onSelectJob: jest.fn(),
+    onLanguageChange: vi.fn(),
+    onRun: vi.fn(),
+    onClear: vi.fn(),
+    onRefresh: vi.fn(),
+    onSelectJob: vi.fn(),
   };
 
   beforeEach(() => {
-    jest.clearAllMocks();
+    vi.clearAllMocks();
   });
 
   it('renders title and description', () => {

@@ -1,11 +1,10 @@
 import React from 'react';
 import { render, screen, fireEvent } from '@testing-library/react';
-import '@testing-library/jest-dom';
 
-jest.mock(
+vi.mock(
   'next/link',
-  () =>
-    function MockLink({
+  () => ({
+    default: function MockLink({
       children,
       href,
       ...rest
@@ -19,7 +18,8 @@ jest.mock(
           {children}
         </a>
       );
-    }
+    },
+  })
 );
 
 import ChatSidebar from '../ChatSidebar';
@@ -51,15 +51,15 @@ describe('ChatSidebar', () => {
     threads: mockThreads,
     isThreadsLoading: false,
     activeThreadKey: null,
-    onSelectThread: jest.fn(),
-    onNewConversation: jest.fn(),
+    onSelectThread: vi.fn(),
+    onNewConversation: vi.fn(),
     isAdmin: false,
     totalTokens: 0,
     messageCount: 0,
   };
 
   beforeEach(() => {
-    jest.clearAllMocks();
+    vi.clearAllMocks();
   });
 
   it('renders Conversations heading and New Conversation button', () => {

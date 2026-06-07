@@ -1,9 +1,8 @@
 import React from 'react';
 import { render, screen, fireEvent } from '@testing-library/react';
-import '@testing-library/jest-dom';
 
-jest.mock('../../ui/Button', () => {
-  return function MockButton({
+vi.mock('../../ui/Button', () => ({
+  default: function MockButton({
     children,
     onClick,
     disabled,
@@ -19,20 +18,20 @@ jest.mock('../../ui/Button', () => {
         {children}
       </button>
     );
-  };
-});
+  },
+}));
 
 import { DashboardHeader } from '../DashboardHeader';
 
 describe('DashboardHeader', () => {
   const defaultProps = {
-    onRefresh: jest.fn(),
+    onRefresh: vi.fn(),
     autoRefresh: false,
-    onToggleAutoRefresh: jest.fn(),
+    onToggleAutoRefresh: vi.fn(),
     loading: false,
   };
 
-  beforeEach(() => jest.clearAllMocks());
+  beforeEach(() => vi.clearAllMocks());
 
   it('renders the welcome heading', () => {
     render(<DashboardHeader {...defaultProps} />);

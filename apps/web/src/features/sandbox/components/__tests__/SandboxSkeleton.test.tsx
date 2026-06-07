@@ -1,9 +1,8 @@
 import React from 'react';
 import { render, screen } from '@testing-library/react';
-import '@testing-library/jest-dom';
 
-jest.mock('../../../../components/TwoColumnLayout', () => {
-  return function MockTwoColumnLayout({
+vi.mock('../../../../components/TwoColumnLayout', () => ({
+  default: function MockTwoColumnLayout({
     children,
     sidebar,
   }: {
@@ -16,8 +15,8 @@ jest.mock('../../../../components/TwoColumnLayout', () => {
         <div data-testid="main">{children}</div>
       </div>
     );
-  };
-});
+  },
+}));
 
 import SandboxSkeleton from '../SandboxSkeleton';
 

@@ -2,15 +2,15 @@ import { renderHook } from '@testing-library/react';
 import React from 'react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 
-jest.mock('@/lib/api', () => ({
+vi.mock('@/lib/api', () => ({
   apiClient: {
-    getAllHealth: jest.fn().mockResolvedValue({ status: 'healthy' }),
-    getStreamingHealth: jest.fn().mockResolvedValue({ status: 'ok' }),
-    getRoutingHealth: jest.fn().mockResolvedValue({ status: 'ok' }),
+    getAllHealth: vi.fn().mockResolvedValue({ status: 'healthy' }),
+    getStreamingHealth: vi.fn().mockResolvedValue({ status: 'ok' }),
+    getRoutingHealth: vi.fn().mockResolvedValue({ status: 'ok' }),
   },
 }));
 
-jest.mock('@/lib/query-keys', () => ({
+vi.mock('@/lib/query-keys', () => ({
   queryKeys: {
     health: ['health'],
     streamingHealth: ['streaming-health'],

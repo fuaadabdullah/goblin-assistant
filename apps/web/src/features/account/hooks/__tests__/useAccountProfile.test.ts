@@ -2,22 +2,22 @@ import { renderHook, act } from '@testing-library/react';
 import React from 'react';
 import { ToastProvider } from '@/contexts/ToastContext';
 
-jest.mock('../../api', () => ({
-  saveProfile: jest.fn(),
-  savePreferences: jest.fn(),
+vi.mock('../../api', () => ({
+  saveProfile: vi.fn(),
+  savePreferences: vi.fn(),
 }));
 
 import { useAccountProfile } from '../useAccountProfile';
 import { saveProfile, savePreferences } from '../../api';
 
-const mockSaveProfile = saveProfile as jest.Mock;
-const mockSavePreferences = savePreferences as jest.Mock;
+const mockSaveProfile = saveProfile as vi.Mock;
+const mockSavePreferences = savePreferences as vi.Mock;
 const wrapper = ({ children }: { children: React.ReactNode }) =>
   React.createElement(ToastProvider, null, children);
 
 describe('useAccountProfile', () => {
   beforeEach(() => {
-    jest.clearAllMocks();
+    vi.clearAllMocks();
     mockSaveProfile.mockResolvedValue(undefined);
     mockSavePreferences.mockResolvedValue(undefined);
   });
@@ -61,7 +61,7 @@ describe('useAccountProfile', () => {
     const { result } = renderHook(() => useAccountProfile({ name: 'X', email: 'x@y.com' }), {
       wrapper,
     });
-    const fakeEvent = { preventDefault: jest.fn() } as unknown as React.FormEvent;
+    const fakeEvent = { preventDefault: vi.fn() } as unknown as React.FormEvent;
     await act(async () => {
       await result.current.handleSave(fakeEvent);
     });
@@ -71,7 +71,7 @@ describe('useAccountProfile', () => {
 
   it('sets saved to true on success', async () => {
     const { result } = renderHook(() => useAccountProfile(null), { wrapper });
-    const fakeEvent = { preventDefault: jest.fn() } as unknown as React.FormEvent;
+    const fakeEvent = { preventDefault: vi.fn() } as unknown as React.FormEvent;
     await act(async () => {
       await result.current.handleSave(fakeEvent);
     });
@@ -81,7 +81,7 @@ describe('useAccountProfile', () => {
   it('sets error on failure', async () => {
     mockSaveProfile.mockRejectedValue(new Error('Network error'));
     const { result } = renderHook(() => useAccountProfile(null), { wrapper });
-    const fakeEvent = { preventDefault: jest.fn() } as unknown as React.FormEvent;
+    const fakeEvent = { preventDefault: vi.fn() } as unknown as React.FormEvent;
     await act(async () => {
       await result.current.handleSave(fakeEvent);
     });
@@ -98,7 +98,7 @@ describe('useAccountProfile', () => {
     );
     mockSavePreferences.mockResolvedValue(undefined);
     const { result } = renderHook(() => useAccountProfile(null), { wrapper });
-    const fakeEvent = { preventDefault: jest.fn() } as unknown as React.FormEvent;
+    const fakeEvent = { preventDefault: vi.fn() } as unknown as React.FormEvent;
     let promise: Promise<void>;
     act(() => {
       promise = result.current.handleSave(fakeEvent);

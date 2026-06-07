@@ -2,8 +2,6 @@ schema-version: v1
 rulesets:
   - python-best-practices
   - python-code-style
-  - python-django
-  - python-flask
   - python-inclusive
   - python-pandas
   - python-security
@@ -12,6 +10,15 @@ rulesets:
   - typescript-browser-security
   - typescript-code-style
   - typescript-common-security
-  - typescript-express
   - typescript-inclusive
   - typescript-node-security
+ignore-paths:
+  - node_modules/
+  - apps/web/.next/
+  - apps/web/coverage/
+  - apps/api/htmlcov/
+  - apps/api/src/api/tests/
+  - "**/__pycache__/"
+  - "**/*.pyc"
+  - dist/
+  - build/

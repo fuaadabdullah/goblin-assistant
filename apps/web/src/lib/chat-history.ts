@@ -229,7 +229,7 @@ export const preloadRecentChat = (
   if (typeof window === 'undefined') return null;
   const threads = readChatThreads();
   if (threads.length === 0) return null;
-  const thread = threads[0];
+  const thread = threads[0]!;
   const messages = readChatMessages(thread.id).slice(-limit);
   const payload = {
     threadId: thread.id,

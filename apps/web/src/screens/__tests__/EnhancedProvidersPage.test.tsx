@@ -1,14 +1,14 @@
 import React from 'react';
 import { render, screen } from '@testing-library/react';
-import '@testing-library/jest-dom';
 import EnhancedProvidersPage from '../EnhancedProvidersPage';
 
-jest.mock(
+vi.mock(
   '@/features/admin/providers/ProvidersManagerScreen',
-  () =>
-    function MockScreen() {
+  () => ({
+    default: function MockScreen() {
       return <div data-testid="enhanced-providers-screen">Enhanced Providers</div>;
-    }
+    },
+  })
 );
 
 describe('EnhancedProvidersPage', () => {

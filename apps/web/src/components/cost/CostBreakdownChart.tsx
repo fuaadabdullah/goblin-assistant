@@ -35,7 +35,7 @@ const CustomTooltip = ({ active, payload, label }: TooltipProps) => {
     return (
       <div className="p-2 bg-slate-800 border border-slate-700 rounded-md shadow-lg">
         <p className="label text-sm text-slate-300">{`${label}`}</p>
-        <p className="intro text-sm text-white">{`Cost: ${formatCost(payload[0].value, { mode: 'summary' })}`}</p>
+        <p className="intro text-sm text-white">{`Cost: ${formatCost(payload[0]!.value, { mode: 'summary' })}`}</p>
       </div>
     );
   }

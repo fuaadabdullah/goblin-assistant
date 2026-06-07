@@ -14,19 +14,19 @@ type MockFetchResponse = {
 
 // frontendHttp (axios) is used under getFrontend — mock the underlying fetch
 // that axios calls, or mock axios itself. We mock at the axios level.
-jest.mock('axios', () => {
-  const actual = jest.requireActual('axios');
+vi.mock('axios', async () => {
+  const actual = await vi.importActual<typeof import('axios')>('axios');
   return {
     ...actual,
-    create: jest.fn(() => ({
-      get: jest.fn(),
-      post: jest.fn(),
-      put: jest.fn(),
-      patch: jest.fn(),
-      delete: jest.fn(),
+    create: vi.fn(() => ({
+      get: vi.fn(),
+      post: vi.fn(),
+      put: vi.fn(),
+      patch: vi.fn(),
+      delete: vi.fn(),
       interceptors: {
-        request: { use: jest.fn(), eject: jest.fn() },
-        response: { use: jest.fn(), eject: jest.fn() },
+        request: { use: vi.fn(), eject: vi.fn() },
+        response: { use: vi.fn(), eject: vi.fn() },
       },
     })),
     isAxiosError: actual.isAxiosError,
@@ -34,22 +34,22 @@ jest.mock('axios', () => {
 });
 
 // Instead of fighting axios mocks we mock getFrontend/getBackend at the module level.
-jest.mock('../shared', () => {
-  const actual = jest.requireActual('../shared');
+vi.mock('../shared', async () => {
+  const actual = await vi.importActual('../shared');
   return {
     ...actual,
-    getFrontend: jest.fn(),
-    getBackend: jest.fn(),
-    postBackend: jest.fn(),
-    putBackend: jest.fn(),
-    patchBackend: jest.fn(),
+    getFrontend: vi.fn(),
+    getBackend: vi.fn(),
+    postBackend: vi.fn(),
+    putBackend: vi.fn(),
+    patchBackend: vi.fn(),
   };
 });
 
 import { getFrontend, getBackend } from '../shared';
 
-const mockGetFrontend = getFrontend as jest.MockedFunction<typeof getFrontend>;
-const mockGetBackend = getBackend as jest.MockedFunction<typeof getBackend>;
+const mockGetFrontend = getFrontend as vi.MockedFunction<typeof getFrontend>;
+const mockGetBackend = getBackend as vi.MockedFunction<typeof getBackend>;
 
 const registryWithProviders = {
   providers: [{ id: 'openai' }, { id: 'azure-openai' }],
@@ -76,7 +76,7 @@ const registryWithModelsOnly = {
 };
 
 beforeEach(() => {
-  jest.clearAllMocks();
+  vi.clearAllMocks();
 });
 
 describe('apiClient.getProviders', () => {
@@ -199,7 +199,7 @@ describe('apiClient.getCostSummary', () => {
 
     expect(result.total_cost).toBe(1.23);
     expect(result.cost_by_provider.openai).toBe(1.0);
-    expect(mockGetBackend).toHaveBeenCalledWith('/costs/summary');
+    expect(mockGetBackend).toHaveBeenCalledWith('/api/v1/costs/summary');
   });
 
   it('returns empty cost summary when backend call fails', async () => {

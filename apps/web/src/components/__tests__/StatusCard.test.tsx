@@ -1,9 +1,8 @@
 import React from 'react';
 import { render, screen } from '@testing-library/react';
-import '@testing-library/jest-dom';
 
-jest.mock('../Card', () => {
-  return function MockCard({
+vi.mock('../Card', () => ({
+  default: function MockCard({
     children,
     className,
     ...props
@@ -17,11 +16,11 @@ jest.mock('../Card', () => {
         {children}
       </div>
     );
-  };
-});
+  },
+}));
 
-jest.mock('../ui/Badge', () => {
-  return function MockBadge({
+vi.mock('../ui/Badge', () => ({
+  default: function MockBadge({
     children,
     icon,
     variant,
@@ -37,11 +36,11 @@ jest.mock('../ui/Badge', () => {
         {icon} {children}
       </span>
     );
-  };
-});
+  },
+}));
 
-jest.mock('../ui/Tooltip', () => {
-  return function MockTooltip({
+vi.mock('../ui/Tooltip', () => ({
+  default: function MockTooltip({
     children,
     content,
   }: {
@@ -53,8 +52,8 @@ jest.mock('../ui/Tooltip', () => {
         {children}
       </div>
     );
-  };
-});
+  },
+}));
 
 import StatusCard from '../StatusCard';
 

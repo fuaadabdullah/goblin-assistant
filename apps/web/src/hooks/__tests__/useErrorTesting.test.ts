@@ -1,29 +1,29 @@
 import { renderHook, act } from '@testing-library/react';
-import '@testing-library/jest-dom';
 
-jest.mock('@sentry/react', () => ({
-  captureException: jest.fn().mockReturnValue('event-id-1'),
-  captureMessage: jest.fn().mockReturnValue('event-id-2'),
-  addBreadcrumb: jest.fn(),
+vi.mock('@sentry/react', () => ({
+  captureException: vi.fn().mockReturnValue('event-id-1'),
+  captureMessage: vi.fn().mockReturnValue('event-id-2'),
+  addBreadcrumb: vi.fn(),
 }));
+
+import * as Sentry from '@sentry/react';
+import { useErrorTesting } from '../useErrorTesting';
 
 // Mock fetch for network error test
 const originalFetch = global.fetch;
 beforeAll(() => {
-  global.fetch = jest.fn().mockResolvedValue({ ok: false, status: 404 });
+  global.fetch = vi.fn().mockResolvedValue({ ok: false, status: 404 });
 });
 afterAll(() => {
   global.fetch = originalFetch;
 });
-
-import { useErrorTesting } from '../useErrorTesting';
 
 describe('useErrorTesting', () => {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   let unhandledRejectionHandler: (...args: any[]) => void;
 
   beforeEach(() => {
-    jest.clearAllMocks();
+    vi.clearAllMocks();
     // Suppress unhandled promise rejections from the testUnhandledPromiseRejection test
     unhandledRejectionHandler = () => {
       /* swallow */
@@ -90,8 +90,7 @@ describe('useErrorTesting', () => {
   });
 
   it('testSentryError captures exception via Sentry', async () => {
-    const Sentry = require('@sentry/react');
-    const { result } = renderHook(() => useErrorTesting());
+        const { result } = renderHook(() => useErrorTesting());
     await act(async () => {
       await result.current.testSentryError();
     });
@@ -100,8 +99,7 @@ describe('useErrorTesting', () => {
   });
 
   it('testSentryMessage captures message via Sentry', async () => {
-    const Sentry = require('@sentry/react');
-    const { result } = renderHook(() => useErrorTesting());
+        const { result } = renderHook(() => useErrorTesting());
     await act(async () => {
       await result.current.testSentryMessage();
     });
@@ -109,8 +107,7 @@ describe('useErrorTesting', () => {
   });
 
   it('testSentryBreadcrumb adds breadcrumb and captures message', async () => {
-    const Sentry = require('@sentry/react');
-    const { result } = renderHook(() => useErrorTesting());
+        const { result } = renderHook(() => useErrorTesting());
     await act(async () => {
       await result.current.testSentryBreadcrumb();
     });
@@ -150,7 +147,7 @@ describe('useErrorTesting', () => {
   });
 
   it('calls onSuccess callback when test succeeds', async () => {
-    const onSuccess = jest.fn();
+    const onSuccess = vi.fn();
     const { result } = renderHook(() => useErrorTesting(onSuccess));
     await act(async () => {
       await result.current.testSentryError();

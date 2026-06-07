@@ -7,18 +7,17 @@ from .base import BaseProvider, ProviderHealth, ProviderResult
 from .colab_worker_provider import ColabWorkerProvider
 from .dispatcher import ProviderDispatcher, dispatcher, invoke_provider
 from .gemini import GeminiProvider
-from .generic import GenericProvider
 from .google_cloud_provider import GoogleCloudProvider
 from .google_cloud_selfhosted_provider import GoogleCloudSelfhostedProvider
+from .groq import GroqProvider
+from .llamacpp_provider import LlamaCPPProvider
+from .mock_provider import MockProvider
 from .model_registry import (
     ModelBackend,
     ModelRegistry,
     get_model_registry,
     invalidate_model_registry,
 )
-from .groq import GroqProvider
-from .llamacpp_provider import LlamaCPPProvider
-from .mock_provider import MockProvider
 from .ollama_provider import OllamaProvider
 from .openai_compatible import OpenAICompatibleProvider
 from .openai_provider import OpenAIProvider
@@ -31,11 +30,9 @@ __all__ = [
     "AzureOpenAIProvider",
     "BaseProvider",
     "ColabWorkerProvider",
-    "GenericProvider",
     "GeminiProvider",
     "GoogleCloudProvider",
     "GoogleCloudSelfhostedProvider",  # backing class for gcp_vm
-
     "GroqProvider",
     "LlamaCPPProvider",
     "ModelBackend",

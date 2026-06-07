@@ -45,10 +45,10 @@ const ProviderUsageTooltip = ({
 }: TooltipProps & { metric: ProviderUsageMetric }) => {
   if (active && payload && payload.length) {
     const label = metric === 'requests' ? 'Requests' : 'Cost';
-    const value = payload[0].value;
+    const value = payload[0]!.value;
     return (
       <div className="rounded-md border border-border bg-surface p-2 text-text shadow-card">
-        <p className="label text-sm text-muted">{`${payload[0].name}`}</p>
+        <p className="label text-sm text-muted">{`${payload[0]!.name}`}</p>
         <p className="intro text-sm text-text">
           {metric === 'requests'
             ? `${label}: ${value}`

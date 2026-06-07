@@ -339,8 +339,3 @@ const DashboardContent: React.FC = () => {
 };
 
 export default DashboardContent;
-
-// Prevent static generation - this page uses react-query
-export const getServerSideProps = async () => {
-  return { props: {} };
-};

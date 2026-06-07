@@ -1,29 +1,29 @@
 import { renderHook, act } from '@testing-library/react';
 
-jest.mock('../../api', () => ({
-  fetchSandboxJobs: jest.fn(),
-  fetchJobLogs: jest.fn(),
-  runSandboxCode: jest.fn(),
+vi.mock('../../api', () => ({
+  fetchSandboxJobs: vi.fn(),
+  fetchJobLogs: vi.fn(),
+  runSandboxCode: vi.fn(),
 }));
 
-jest.mock('../../../../lib/ui-error', () => ({
-  toUiError: jest.fn((_err: unknown, opts: { userMessage: string }) => ({
+vi.mock('../../../../lib/ui-error', () => ({
+  toUiError: vi.fn((_err: unknown, opts: { userMessage: string }) => ({
     userMessage: opts.userMessage,
   })),
 }));
 
-jest.mock('@/utils/dev-log', () => ({ devError: jest.fn() }));
+vi.mock('@/utils/dev-log', () => ({ devError: vi.fn() }));
 
 import { useSandboxSession } from '../useSandboxSession';
 import { fetchSandboxJobs, fetchJobLogs, runSandboxCode } from '../../api';
 
-const mockFetchJobs = fetchSandboxJobs as jest.Mock;
-const mockFetchLogs = fetchJobLogs as jest.Mock;
-const mockRunCode = runSandboxCode as jest.Mock;
+const mockFetchJobs = fetchSandboxJobs as vi.Mock;
+const mockFetchLogs = fetchJobLogs as vi.Mock;
+const mockRunCode = runSandboxCode as vi.Mock;
 
 describe('useSandboxSession', () => {
   beforeEach(() => {
-    jest.clearAllMocks();
+    vi.clearAllMocks();
     mockFetchJobs.mockResolvedValue([]);
   });
 

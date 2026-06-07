@@ -1,27 +1,26 @@
 import React from 'react';
 import { renderHook, act, waitFor } from '@testing-library/react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import '@testing-library/jest-dom';
 
-jest.mock('@/content/brand', () => ({
+vi.mock('@/content/brand', () => ({
   SEARCH_QUICK_QUERIES: ['hello world', 'test query'],
 }));
 
-const mockFetchCollections = jest.fn().mockResolvedValue(['docs', 'code']);
-const mockSearchCollectionByName = jest
+const mockFetchCollections = vi.fn().mockResolvedValue(['docs', 'code']);
+const mockSearchCollectionByName = vi
   .fn()
   .mockResolvedValue([{ id: '1', content: 'result 1', score: 0.9 }]);
 
-jest.mock('../../api', () => ({
+vi.mock('../../api', () => ({
   fetchCollections: (...args: unknown[]) => mockFetchCollections(...args),
   searchCollectionByName: (...args: unknown[]) => mockSearchCollectionByName(...args),
 }));
 
-jest.mock('@/lib/ui-error', () => ({
+vi.mock('@/lib/ui-error', () => ({
   toUiError: (_err: unknown, opts: { userMessage: string }) => ({ userMessage: opts.userMessage }),
 }));
 
-jest.mock('@/lib/query-keys', () => ({
+vi.mock('@/lib/query-keys', () => ({
   queryKeys: { collections: ['collections'] },
 }));
 
@@ -34,7 +33,7 @@ const wrapper = ({ children }: { children: React.ReactNode }) => {
 
 describe('useSearchResults', () => {
   beforeEach(() => {
-    jest.clearAllMocks();
+    vi.clearAllMocks();
   });
 
   it('returns initial state', () => {
@@ -76,7 +75,7 @@ describe('useSearchResults', () => {
     act(() => {
       result.current.setQuery('test');
     });
-    const mockEvent = { preventDefault: jest.fn() } as unknown as React.FormEvent;
+    const mockEvent = { preventDefault: vi.fn() } as unknown as React.FormEvent;
     await act(async () => {
       await result.current.handleSearch(mockEvent);
     });
@@ -86,7 +85,7 @@ describe('useSearchResults', () => {
 
   it('handleSearch does nothing if query is empty', async () => {
     const { result } = renderHook(() => useSearchResults(), { wrapper });
-    const mockEvent = { preventDefault: jest.fn() } as unknown as React.FormEvent;
+    const mockEvent = { preventDefault: vi.fn() } as unknown as React.FormEvent;
     await act(async () => {
       await result.current.handleSearch(mockEvent);
     });
@@ -100,7 +99,7 @@ describe('useSearchResults', () => {
     act(() => {
       result.current.setQuery('test');
     });
-    const mockEvent = { preventDefault: jest.fn() } as unknown as React.FormEvent;
+    const mockEvent = { preventDefault: vi.fn() } as unknown as React.FormEvent;
     await act(async () => {
       await result.current.handleSearch(mockEvent);
     });

@@ -63,7 +63,7 @@ const ChatMessageList = ({
       .reverse()
       .findIndex((msg) => msg.role === 'assistant');
     if (lastAssistantIndex === -1) return null;
-    const assistantMessage = messageList[messageList.length - 1 - lastAssistantIndex];
+    const assistantMessage = messageList[messageList.length - 1 - lastAssistantIndex]!;
     return assistantMessage.id;
   }, [messageList, isSending]);
 

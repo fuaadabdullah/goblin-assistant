@@ -75,19 +75,19 @@ export const providersMethods = {
   },
 
   async setProviderPriority(providerId: number, priority: number, role?: string) {
-    return postBackend(`/providers/${providerId}/priority`, { priority, role });
+    return postBackend(`${V1_API_PREFIX}/providers/${providerId}/priority`, { priority, role });
   },
 
   async reorderProviders(providerIds: number[]) {
-    return postBackend('/providers/reorder', { providerIds });
+    return postBackend(`${V1_API_PREFIX}/providers/reorder`, { providerIds });
   },
 
   async testProviderConnection(providerId: number | string) {
-    return postBackend(`/providers/${providerId}/test`);
+    return postBackend(`${V1_API_PREFIX}/providers/${providerId}/test`);
   },
 
   async testProviderWithPrompt(providerId: number | string, prompt: string) {
-    return postBackend(`/providers/${providerId}/test-prompt`, { prompt });
+    return postBackend(`${V1_API_PREFIX}/providers/${providerId}/test-prompt`, { prompt });
   },
 
   async getProviders(): Promise<string[]> {
@@ -159,7 +159,7 @@ export const providersMethods = {
 
   async getCostSummary(): Promise<CostSummary> {
     try {
-      return await getBackend<CostSummary>('/costs/summary');
+      return await getBackend<CostSummary>(`${V1_API_PREFIX}/costs/summary`);
     } catch {
       return emptyCostSummary;
     }

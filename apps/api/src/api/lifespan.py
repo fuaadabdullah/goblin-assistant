@@ -159,9 +159,7 @@ async def _restore_colab_endpoint():
 
         saved_endpoint = await load_colab_endpoint_from_db()
         if saved_endpoint:
-            dispatcher.update_backend_endpoint(
-                "gcp_vm", "colab", saved_endpoint
-            )
+            dispatcher.update_backend_endpoint("gcp_vm", "colab", saved_endpoint)
             logger.info(
                 "GCS colab backend endpoint restored",
                 endpoint=saved_endpoint,
@@ -173,6 +171,47 @@ async def _restore_colab_endpoint():
             "Failed to restore Colab worker endpoint",
             error=str(exc),
         )
+
+
+async def _restore_routing_registry() -> None:
+    try:
+        from .routing.router import registry  # noqa: PLC0415
+
+        await registry.async_restore_from_supabase()
+    except Exception as exc:
+        logger.warning("routing_registry_restore_failed", error=str(exc))
+
+
+async def _restore_circuit_states() -> None:
+    try:
+        from .providers.dispatcher import dispatcher  # noqa: PLC0415
+        from .providers.supabase_events import (  # noqa: PLC0415
+            _ENABLED,
+            _HEADERS,
+            _REST,
+            _get_client,
+        )
+
+        if not _ENABLED:
+            return
+        resp = await _get_client().get(
+            f"{_REST}/provider_status",
+            headers=_HEADERS,
+            params={
+                "select": (
+                    "provider,circuit_state,failure_count,"
+                    "transient_failure_count,circuit_open_until"
+                )
+            },
+        )
+        rows = resp.json()
+        if not isinstance(rows, list):
+            return
+        states = {r["provider"]: r for r in rows if isinstance(r, dict)}
+        dispatcher.restore_circuit_states(states)
+        logger.info("circuit_states_restored", count=len(states))
+    except Exception as exc:
+        logger.warning("circuit_state_restore_failed", error=str(exc))
 
 
 async def _start_dispatcher_background_tasks():
@@ -217,6 +256,10 @@ async def lifespan(_app: FastAPI):
 
         # Colab endpoint restore needs DB to be ready
         await _restore_colab_endpoint()
+        await asyncio.gather(
+            _restore_routing_registry(),
+            _restore_circuit_states(),
+        )
 
         # Group B: all monitoring/worker services in parallel.
         await asyncio.gather(

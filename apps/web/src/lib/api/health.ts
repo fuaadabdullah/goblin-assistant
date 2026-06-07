@@ -34,6 +34,6 @@ export const healthMethods = {
   },
 
   async getRoutingInfo() {
-    return getBackend('/routing/info');
+    return getBackend(`${V1_API_PREFIX}/routing/info`);
   },
 };

@@ -9,7 +9,6 @@ from __future__ import annotations
 import asyncio
 import os
 import random
-import time
 from contextlib import asynccontextmanager
 from typing import Any, Dict, List, Optional
 
@@ -43,6 +42,21 @@ from .dispatcher_pkg.config import (
 from .dispatcher_pkg.config import (
     normalize_token as _normalize_token,
 )
+from .dispatcher_pkg.discovery import (
+    build_provider_list as _build_provider_list_fn,
+)
+from .dispatcher_pkg.discovery import (
+    get_provider as _get_provider_fn,
+)
+from .dispatcher_pkg.discovery import (
+    get_provider_config as _get_provider_config_fn,
+)
+from .dispatcher_pkg.discovery import (
+    is_configured as _is_configured_fn,
+)
+from .dispatcher_pkg.discovery import (
+    list_providers as _list_providers_fn,
+)
 from .dispatcher_pkg.execution import (
     build_invoke_kwargs as _build_invoke_kwargs,
 )
@@ -55,22 +69,87 @@ from .dispatcher_pkg.execution import (
 from .dispatcher_pkg.execution import (
     stream_wrap as _stream_wrap,
 )
+from .dispatcher_pkg.health import check_provider as _check_provider
+from .dispatcher_pkg.lifecycle import (
+    apply_circuit_state as _apply_circuit_state_fn,
+)
+from .dispatcher_pkg.lifecycle import (
+    ensure_provider as _ensure_provider_fn,
+)
+from .dispatcher_pkg.lifecycle import (
+    restore_circuit_states as _restore_circuit_states_fn,
+)
+from .dispatcher_pkg.lifecycle import (
+    startup_preflight as _startup_preflight_fn,
+)
+from .dispatcher_pkg.routing import (
+    _allow_self_hosted_auto_routing as _routing_allow_self_hosted,
+)
+from .dispatcher_pkg.routing import (
+    _budget_status as _budget_status_fn,
+)
+from .dispatcher_pkg.routing import (
+    _is_canary_attempt as _routing_is_canary_attempt,
+)
+from .dispatcher_pkg.routing import (
+    _load_circuit_canary_percent as _load_circuit_canary_percent_fn,
+)
+from .dispatcher_pkg.routing import (
+    _load_min_success_rate as _load_min_success_rate_fn,
+)
+from .dispatcher_pkg.routing import (
+    _provider_costs as _routing_provider_costs,
+)
+from .dispatcher_pkg.routing import (
+    auto_configured_candidates as _auto_configured_candidates,
+)
+from .dispatcher_pkg.routing import (
+    candidate_order as _candidate_order_fn,
+)
 from .dispatcher_pkg.sanitization import (
     get_provider_logger as _get_provider_logger,
+)
+from .dispatcher_pkg.sanitization import (
     known_secrets as _known_secrets_from_configs,
 )
 from .dispatcher_pkg.sanitization import (
     sanitize_error_message as _sanitize_error_message,
 )
-from .pricing import resolve_model_pricing
+from .dispatcher_pkg.test_mode import (
+    active_test_mode_state as _active_test_mode_state,
+)
+from .dispatcher_pkg.test_mode import (
+    apply_test_mode_delay as _apply_test_mode_delay,
+)
+from .dispatcher_pkg.test_mode import (
+    invoke_with_test_mode as _invoke_with_test_mode,
+)
+from .dispatcher_pkg.test_mode import (
+    maybe_inject_test_failure as _maybe_inject_test_failure,
+)
+from .dispatcher_pkg.warmup import (
+    _load_prewarm_enabled,
+    _load_prewarm_latency_threshold_ms,
+)
+from .dispatcher_pkg.warmup import (
+    is_warmup_routing_blocked as _is_warmup_routing_blocked,
+)
+from .dispatcher_pkg.warmup import (
+    note_provider_result as _note_warmup_result,
+)
+from .dispatcher_pkg.warmup import (
+    start_background_tasks as _start_background_tasks,
+)
+from .dispatcher_pkg.warmup import (
+    warmup_state_for as _warmup_state_for,
+)
+from .model_registry import validate_model_alias_targets
 from .provider_registry import (
     DEFAULT_PROVIDER_CLASS_MAP,
     ProviderRegistry,
     ProviderRuntimeConfig,
     build_factories_from_class_map,
 )
-from .model_registry import validate_model_alias_targets
-from .routing_strategies import rank_cheapest, rank_hybrid, rank_local
 
 _bootstrap_logger = structlog.get_logger(__name__)
 
@@ -107,7 +186,13 @@ validate_model_alias_targets(
 
 
 def reload_provider_catalog() -> None:
-    global _provider_toml, _PROVIDER_CONFIGS, _PROVIDER_ALIASES, _MODEL_ALIASES, _MODEL_ALIAS_PATTERNS, _VISIBLE_PROVIDER_IDS
+    global \
+        _provider_toml, \
+        _PROVIDER_CONFIGS, \
+        _PROVIDER_ALIASES, \
+        _MODEL_ALIASES, \
+        _MODEL_ALIAS_PATTERNS, \
+        _VISIBLE_PROVIDER_IDS
 
     _provider_toml = _load_provider_toml(logger=logger)
     _PROVIDER_CONFIGS = _load_toml_providers(_provider_toml, logger=logger)
@@ -151,12 +236,13 @@ class ProviderDispatcher:
         )
         self._providers: Dict[str, ProviderAdapter] = {}
         self._provider_list_cache: Dict[bool, List[Dict[str, Any]]] = {}
-        self._routing_min_success_rate = self._load_min_success_rate()
-        self._circuit_canary_percent = self._load_circuit_canary_percent()
-        self._prewarm_enabled = self._load_prewarm_enabled()
-        self._prewarm_latency_threshold_ms = self._load_prewarm_latency_threshold_ms()
+        self._routing_min_success_rate = _load_min_success_rate_fn()
+        self._circuit_canary_percent = _load_circuit_canary_percent_fn(_provider_toml)
+        self._prewarm_enabled = _load_prewarm_enabled()
+        self._prewarm_latency_threshold_ms = _load_prewarm_latency_threshold_ms()
         self._warmup_states: Dict[str, Dict[str, Any]] = {}
         self._warmup_task: Optional[asyncio.Task[Any]] = None
+        self._pending_circuit_restores: Dict[str, Dict[str, Any]] = {}
         self._background_started = False
         self._test_mode_stack: List[Dict[str, Any]] = []
         self._random = random.Random(0)
@@ -183,243 +269,72 @@ class ProviderDispatcher:
             )
             return None
 
+    # ── Startup / Preflight ───────────────────────────────────────────────
+
     def _startup_preflight(self) -> None:
-        configured = []
-        unconfigured = []
-        for pid in self._configs:
-            if pid == "mock":
-                continue
-            if self.is_configured(pid):
-                configured.append(pid)
-            else:
-                unconfigured.append(pid)
-        logger.info(
-            "provider_preflight",
-            configured=configured,
-            configured_count=len(configured),
-            unconfigured=unconfigured,
-            unconfigured_count=len(unconfigured),
-            total=len(configured) + len(unconfigured),
-        )
-        if not configured:
-            logger.warning(
-                "no_providers_configured",
-                hint="Set API key env vars for at least one provider",
-            )
-        self.start_background_tasks()
+        _startup_preflight_fn(self, logger)
 
     def start_background_tasks(self) -> None:
-        if self._background_started:
-            return
-        if not self._prewarm_enabled:
-            self._background_started = True
-            return
-        try:
-            loop = asyncio.get_running_loop()
-        except RuntimeError:
-            return
-        self._background_started = True
-        self._warmup_task = loop.create_task(self._prewarm_self_hosted_providers())
+        warmup_task_ref: List[Optional[asyncio.Task[Any]]] = [self._warmup_task]
+        _start_background_tasks(
+            self._warmup_states,
+            self._prewarm_enabled,
+            warmup_task_ref,
+            [self._background_started],
+            self._configs,
+            self._ensure_provider,
+            self.is_configured,
+            self._sanitize_error,
+            logger=logger,
+            prewarm_latency_threshold_ms=self._prewarm_latency_threshold_ms,
+        )
+        self._warmup_task = warmup_task_ref[0]
 
-    def _load_prewarm_enabled(self) -> bool:
-        return os.getenv("ENABLE_SELF_HOSTED_PREWARM", "").strip().lower() in {
-            "1",
-            "true",
-            "yes",
-            "on",
-        }
-
-    def _load_prewarm_latency_threshold_ms(self) -> float:
-        raw_value = os.getenv("SELF_HOSTED_PREWARM_LATENCY_THRESHOLD_MS", "2500").strip()
-        try:
-            return max(0.0, float(raw_value))
-        except (TypeError, ValueError):
-            return 2500.0
-
-    def _load_hourly_budget_cap(self) -> float:
-        raw_value = os.getenv("ROUTING_MAX_BUDGET_PER_HOUR", "").strip()
-        if not raw_value:
-            raw_value = str(
-                getattr(
-                    getattr(getattr(_provider_toml, "default", object()), "cost_optimization", object()),
-                    "max_budget_per_hour",
-                    0.0,
-                )
-            )
-        try:
-            return max(0.0, float(raw_value))
-        except (TypeError, ValueError):
-            return 0.0
-
-    def _budget_status(self) -> Dict[str, Any]:
-        from ..routing.router import registry
-
-        cap = self._load_hourly_budget_cap()
-        spend_by_provider = registry.current_hour_spend()
-        total_spend = round(sum(spend_by_provider.values()), 6)
-        return {
-            "cap_usd": round(cap, 6),
-            "current_hour_spend_usd": total_spend,
-            "current_hour_spend_by_provider": {
-                provider_id: round(spend, 6)
-                for provider_id, spend in spend_by_provider.items()
-            },
-            "over_budget": bool(cap > 0 and total_spend >= cap),
-        }
-
-    def _load_min_success_rate(self) -> float:
-        raw_value = os.getenv("ROUTING_MIN_SUCCESS_RATE", "0.3").strip()
-        try:
-            value = float(raw_value)
-        except (TypeError, ValueError):
-            return 0.3
-        return max(0.0, min(1.0, value))
-
-    def _load_circuit_canary_percent(self) -> float:
-        # Compatibility-only config reader. Dispatch now uses time-based probe
-        # eligibility derived from provider circuit state.
-        raw_value = os.getenv("PROVIDER_CIRCUIT_CANARY_PERCENT", "").strip()
-        if not raw_value:
-            raw_value = str(
-                getattr(
-                    getattr(_provider_toml, "load_balancing", object()),
-                    "circuit_breaker_canary_percent",
-                    0.1,
-                )
-            )
-        try:
-            value = float(raw_value)
-        except (TypeError, ValueError):
-            return 0.1
-        if value > 1:
-            value /= 100
-        return max(0.0, min(1.0, value))
-
-    def _is_canary_attempt(
-        self,
-        provider_id: str,
-        model: Optional[str],
-    ) -> bool:
-        _ = model
-        current_provider = self._ensure_provider(provider_id)
-        if current_provider is None:
-            return False
-        return current_provider.soft_open_probe_available()
+    # ── Provider Lifecycle ────────────────────────────────────────────────
 
     def _ensure_provider(self, provider_id: str) -> Optional[ProviderAdapter]:
-        canonical_id = canonical_provider_id(provider_id) or provider_id
-        provider = self._providers.get(canonical_id)
-        if provider is not None:
-            return provider
+        return _ensure_provider_fn(self, provider_id, canonical_provider_id, logger)
 
-        if canonical_id not in self._class_map:
-            logger.warning("no_class_for_provider", provider=canonical_id)
-            return None
+    def _canonical_provider_id(self, provider_id: str) -> Optional[str]:
+        return canonical_provider_id(provider_id)
 
-        source_config = dict(self._configs.get(canonical_id, {}))
-        try:
-            provider = self._registry.create_from_source(canonical_id, source_config)
-        except Exception as exc:
-            logger.warning(
-                "provider_init_failed",
-                provider=canonical_id,
-                error=self._sanitize_error(exc),
-            )
-            return None
-        self._providers[canonical_id] = provider
-        return provider
+    def _provider_costs(self, provider_id: str) -> tuple:
+        return _routing_provider_costs(self._ensure_provider, provider_id)
 
-    def _build_registry(self) -> None:
-        for provider_id in self._configs:
-            self._ensure_provider(provider_id)
+    def _allow_self_hosted_auto_routing(self) -> bool:
+        return _routing_allow_self_hosted()
 
-    def _build_provider_list(
-        self,
-        include_hidden: bool = False,
-    ) -> List[Dict[str, Any]]:
-        providers: List[Dict[str, Any]] = []
-        if include_hidden or self._using_custom_configs or not _VISIBLE_PROVIDER_IDS:
-            provider_ids = list(self._configs.keys())
-        else:
-            provider_ids = []
-            seen: set[str] = set()
-            for entry in _VISIBLE_PROVIDER_IDS:
-                canonical_id = canonical_provider_id(entry) or entry
-                if canonical_id not in self._configs or canonical_id in seen:
-                    continue
-                seen.add(canonical_id)
-                provider_ids.append(canonical_id)
+    def _apply_circuit_state(self, provider: ProviderAdapter, state: Dict[str, Any]) -> None:
+        _apply_circuit_state_fn(provider, state)
 
-        for provider_id in provider_ids:
-            runtime_cfg = self._runtime_config(provider_id)
-            config = (
-                runtime_cfg.to_provider_dict()
-                if runtime_cfg is not None
-                else dict(self._configs.get(provider_id, {}))
-            )
-            if config.get("hidden") and not include_hidden:
-                continue
-            providers.append(
-                {
-                    "id": provider_id,
-                    "name": config.get("name", provider_id),
-                    "endpoint": config.get("endpoint", ""),
-                    "endpoint_env": config.get("endpoint_env"),
-                    "api_key_env": config.get("api_key_env"),
-                    "default_model": config.get("default_model", ""),
-                    "models": list(config.get("models", [])),
-                    "capabilities": list(config.get("capabilities", [])),
-                    "priority_tier": int(config.get("priority_tier", 999)),
-                    "tier": config.get("tier", "cloud"),
-                    "local_routing": bool(config.get("local_routing", False)),
-                    "hidden": bool(config.get("hidden", False)),
-                }
-            )
-        return providers
+    def restore_circuit_states(self, states: Dict[str, Dict[str, Any]]) -> None:
+        _restore_circuit_states_fn(self, states)
 
-    def list_providers(
-        self,
-        include_hidden: bool = False,
-    ) -> List[Dict[str, Any]]:
-        cached = self._provider_list_cache.get(include_hidden)
-        if cached is not None:
-            return [dict(item) for item in cached]
+    # ── Provider Listing / Caching ────────────────────────────────────────
 
-        providers = self._build_provider_list(include_hidden=include_hidden)
-        if include_hidden or self._using_custom_configs or not _VISIBLE_PROVIDER_IDS:
-            providers.sort(
-                key=lambda item: (
-                    int(item.get("priority_tier", 999)),
-                    str(item.get("id", "")),
-                )
-            )
-        self._provider_list_cache[include_hidden] = [dict(item) for item in providers]
-        return [dict(item) for item in providers]
+    def _build_provider_list(self, include_hidden: bool = False) -> List[Dict[str, Any]]:
+        return _build_provider_list_fn(
+            self, canonical_provider_id, _VISIBLE_PROVIDER_IDS, include_hidden=include_hidden
+        )
 
-    def provider_ids(
-        self,
-        include_hidden: bool = False,
-    ) -> List[str]:
+    def list_providers(self, include_hidden: bool = False) -> List[Dict[str, Any]]:
+        return _list_providers_fn(
+            self, canonical_provider_id, _VISIBLE_PROVIDER_IDS, include_hidden=include_hidden
+        )
+
+    def provider_ids(self, include_hidden: bool = False) -> List[str]:
         return [item["id"] for item in self.list_providers(include_hidden=include_hidden)]
 
-    def _is_self_hosted(self, config: Dict[str, Any]) -> bool:
-        return str(config.get("tier", "")) == "self_hosted"
-
     def is_configured(self, provider_id: str) -> bool:
-        canonical_id = canonical_provider_id(provider_id) or provider_id
-        runtime_cfg = self._runtime_config(canonical_id)
-        return runtime_cfg.is_configured() if runtime_cfg is not None else False
+        return _is_configured_fn(self, canonical_provider_id, provider_id)
 
     def get_provider(self, provider_id: str) -> ProviderAdapter:
-        canonical_id = canonical_provider_id(provider_id) or provider_id
-        provider = self._ensure_provider(canonical_id)
-        if provider is None:
-            raise KeyError(f"Unknown provider: {provider_id}")
-        return provider
+        return _get_provider_fn(self, canonical_provider_id, provider_id)
 
     def get_provider_config(self, provider_id: str) -> Dict[str, Any]:
-        canonical_id = canonical_provider_id(provider_id) or provider_id
-        return dict(self._configs.get(canonical_id, {}))
+        return _get_provider_config_fn(self, canonical_provider_id, provider_id)
+
+    # ── Hot-Reload ────────────────────────────────────────────────────────
 
     def update_backend_endpoint(
         self,
@@ -427,7 +342,6 @@ class ProviderDispatcher:
         engine: str,
         new_endpoint: str,
     ) -> None:
-        """Hot-reload a specific backend engine's endpoint inside a family provider."""
         canonical_id = canonical_provider_id(provider_id) or provider_id
         if canonical_id not in self._configs:
             raise KeyError(f"Unknown provider: {provider_id!r}")
@@ -454,7 +368,6 @@ class ProviderDispatcher:
         )
 
     def update_provider_endpoint(self, provider_id: str, new_endpoint: str) -> None:
-        """Hot-reload a provider's endpoint URL in-memory without restart."""
         canonical_id = canonical_provider_id(provider_id) or provider_id
         if canonical_id not in self._configs:
             raise KeyError(f"Unknown provider: {provider_id!r}")
@@ -472,10 +385,9 @@ class ProviderDispatcher:
         logger.info("provider_endpoint_updated", provider=canonical_id, endpoint=new_endpoint)
 
     def reload_config(self) -> None:
-        """Reload provider TOML and reset provider instances/cache."""
         reload_provider_catalog()
         self._configs = _PROVIDER_CONFIGS
-        self._circuit_canary_percent = self._load_circuit_canary_percent()
+        self._circuit_canary_percent = _load_circuit_canary_percent_fn(_provider_toml)
         self._providers.clear()
         self._provider_list_cache.clear()
         self._warmup_states.clear()
@@ -483,200 +395,13 @@ class ProviderDispatcher:
         logger.info("provider_catalog_reloaded")
         self.start_background_tasks()
 
-    def _provider_costs(self, provider_id: str) -> tuple[float, float]:
-        provider = self._ensure_provider(provider_id)
-        if provider is None:
-            return (float("inf"), float("inf"))
-        pricing = resolve_model_pricing(
-            provider.provider_id,
-            provider.default_model or None,
-            config=provider.config,
-        )
-        return (pricing.input_per1k, pricing.output_per1k)
-
-    def _budget_sort_key(self, provider_id: str) -> tuple[float, float, int]:
-        input_cost, output_cost = self._provider_costs(provider_id)
-        total_cost = input_cost + output_cost
-        config = self._configs.get(provider_id, {})
-        return (
-            0.0 if total_cost <= 0 else 1.0,
-            total_cost,
-            int(config.get("priority_tier", 999)),
-        )
-
-    def _apply_budget_rerank(
-        self,
-        candidates: List[str],
-        *,
-        routing_mode: str,
-    ) -> List[str]:
-        budget_status = self._budget_status()
-        if not budget_status["over_budget"]:
-            return candidates
-        re_ranked = sorted(candidates, key=self._budget_sort_key)
-        logger.warning(
-            "routing_budget_soft_rerank",
-            routing_mode=routing_mode,
-            current_hour_spend_usd=budget_status["current_hour_spend_usd"],
-            cap_usd=budget_status["cap_usd"],
-            original_candidates=candidates,
-            rank_order=re_ranked,
-        )
-        return re_ranked
-
-    def _priority_order(self) -> List[str]:
-        return [item["id"] for item in self.list_providers(include_hidden=False)]
-
-    def _cheapest_order(self) -> List[str]:
-        candidates = self._priority_order()
-        provider_costs = {p: self._provider_costs(p) for p in candidates}
-        return self._apply_budget_rerank(
-            rank_cheapest(candidates, provider_costs),
-            routing_mode="cheapest",
-        )
-
-    def _hybrid_order(self) -> List[str]:
-        candidates = self._priority_order()
-        provider_costs = {p: self._provider_costs(p) for p in candidates}
-        return self._apply_budget_rerank(
-            rank_hybrid(candidates, provider_costs),
-            routing_mode="auto",
-        )
-
-    def _local_order(self) -> List[str]:
-        providers = self.list_providers(include_hidden=False)
-        local_candidates = [
-            item["id"]
-            for item in providers
-            if item["local_routing"] or item["tier"] == "self_hosted"
-        ]
-        return self._apply_budget_rerank(
-            rank_local(local_candidates),
-            routing_mode="local",
-        )
-
-    def _allow_self_hosted_auto_routing(self) -> bool:
-        return os.getenv("ENABLE_SELF_HOSTED_AUTO_ROUTING", "").strip().lower() in {
-            "1",
-            "true",
-            "yes",
-            "on",
-        }
-
-    def _is_auto_routing_candidate(self, provider_id: str) -> bool:
-        config = self._configs.get(provider_id, {})
-        if not config:
-            return False
-        if config.get("local_routing") or self._is_self_hosted(config):
-            return self._allow_self_hosted_auto_routing()
-        return True
-
-    def _auto_configured_candidates(self, candidates: List[str]) -> List[str]:
-        configured = [p for p in candidates if self.is_configured(p)]
-        filtered = [p for p in configured if self._is_auto_routing_candidate(p)]
-        if filtered:
-            configured = filtered
-        try:
-            from ..services.provider_health import health_monitor
-
-            healthy = [p for p in configured if health_monitor.is_available(p)]
-            if healthy:
-                return healthy
-        except Exception:
-            logger.debug("provider_health_filter_unavailable")
-        return configured
-
-    def _warmup_parent_id(self, target_id: str) -> str:
-        if "." not in target_id:
-            return target_id
-        return target_id.split(".", 1)[0]
-
-    def _update_warmup_state(
-        self,
-        target_id: str,
-        *,
-        state: str,
-        latency_ms: Optional[float] = None,
-        error: str = "",
-    ) -> None:
-        self._warmup_states[target_id] = {
-            "state": state,
-            "latency_ms": round(float(latency_ms), 1) if latency_ms is not None else None,
-            "error": self._sanitize_error(error) if error else "",
-            "updated_at": time.time(),
-        }
-        parent_id = self._warmup_parent_id(target_id)
-        if parent_id == target_id:
-            return
-        child_states = {
-            key: value
-            for key, value in self._warmup_states.items()
-            if self._warmup_parent_id(key) == parent_id and key != parent_id
-        }
-        if any(item["state"] == "warm" for item in child_states.values()):
-            parent_state = "warm"
-        elif any(item["state"] == "warming" for item in child_states.values()):
-            parent_state = "warming"
-        elif child_states and all(item["state"] == "failed" for item in child_states.values()):
-            parent_state = "failed"
-        else:
-            parent_state = "idle"
-        fastest = min(
-            (
-                item["latency_ms"]
-                for item in child_states.values()
-                if isinstance(item.get("latency_ms"), (int, float))
-            ),
-            default=None,
-        )
-        errors = [item["error"] for item in child_states.values() if item.get("error")]
-        self._warmup_states[parent_id] = {
-            "state": parent_state,
-            "latency_ms": fastest,
-            "error": errors[-1] if errors else "",
-            "updated_at": time.time(),
-            "backends": child_states,
-        }
+    # ── Warmup Delegation ─────────────────────────────────────────────────
 
     def _warmup_state_for(self, provider_id: str) -> Dict[str, Any]:
-        return dict(self._warmup_states.get(provider_id, {"state": "idle"}))
+        return _warmup_state_for(self._warmup_states, provider_id)
 
-    async def _prewarm_target(self, target_id: str, provider: ProviderAdapter) -> None:
-        self._update_warmup_state(target_id, state="warming")
-        started_at = time.perf_counter()
-        try:
-            result = await provider.warmup()
-            latency_ms = (
-                float(getattr(result, "latency_ms", 0.0))
-                or (time.perf_counter() - started_at) * 1000
-            )
-            final_state = "warm" if latency_ms <= self._prewarm_latency_threshold_ms else "warming"
-            if not getattr(result, "ok", False):
-                final_state = "failed"
-            self._update_warmup_state(
-                target_id,
-                state=final_state,
-                latency_ms=latency_ms,
-                error=str(getattr(result, "error", "") or ""),
-            )
-        except Exception as exc:
-            self._update_warmup_state(target_id, state="failed", error=str(exc))
-            logger.warning("provider_prewarm_failed", provider=target_id, error=str(exc))
-
-    async def _prewarm_self_hosted_providers(self) -> None:
-        tasks: List[asyncio.Task[Any]] = []
-        for provider_id, config in self._configs.items():
-            if provider_id == "mock" or not self.is_configured(provider_id):
-                continue
-            if not self._is_self_hosted(config):
-                continue
-            provider = self._ensure_provider(provider_id)
-            if provider is None:
-                continue
-            for target_id, target_provider in provider.warmup_targets():
-                tasks.append(asyncio.create_task(self._prewarm_target(target_id, target_provider)))
-        if tasks:
-            await asyncio.gather(*tasks, return_exceptions=True)
+    def _is_warmup_routing_blocked(self, provider_id: str) -> bool:
+        return _is_warmup_routing_blocked(self._warmup_states, self._configs, provider_id)
 
     def note_provider_result(
         self,
@@ -687,91 +412,137 @@ class ProviderDispatcher:
         error: str = "",
     ) -> None:
         config = self._configs.get(provider_id, {})
-        if not self._is_self_hosted(config):
+        from .dispatcher_pkg.warmup import _is_self_hosted
+
+        if not _is_self_hosted(config):
             return
-        self._update_warmup_state(
+        _note_warmup_result(
+            self._warmup_states,
             provider_id,
-            state="warm" if ok and latency_ms <= self._prewarm_latency_threshold_ms else ("failed" if not ok else "warming"),
+            ok=ok,
             latency_ms=latency_ms,
             error=error,
+            prewarm_latency_threshold_ms=self._prewarm_latency_threshold_ms,
         )
 
-    def _active_test_mode_state(self, provider_id: str) -> Optional[Dict[str, Any]]:
-        for state in reversed(self._test_mode_stack):
-            if provider_id in state["profiles"]:
-                return state
-        return None
+    async def _prewarm_self_hosted_providers(self) -> None:
+        from .dispatcher_pkg.warmup import _prewarm_self_hosted_providers as _run_prewarm
 
-    async def _apply_test_mode_delay(self, provider_id: str) -> None:
-        state = self._active_test_mode_state(provider_id)
-        if state is None:
-            return
-        latency_ms = float(state["profiles"][provider_id].get("latency_ms", 0.0) or 0.0)
-        if latency_ms > 0:
-            await asyncio.sleep(latency_ms / 1000)
+        await _run_prewarm(
+            self._warmup_states,
+            self._configs,
+            self._ensure_provider,
+            self.is_configured,
+            self._sanitize_error,
+            logger=logger,
+            prewarm_latency_threshold_ms=self._prewarm_latency_threshold_ms,
+        )
 
-    async def _maybe_inject_test_failure(
+    # ── Routing Delegation ────────────────────────────────────────────────
+
+    def _budget_status(self) -> Dict[str, Any]:
+        from .dispatcher_pkg.routing import _load_hourly_budget_cap as _load_hourly_budget_cap_fn
+
+        return _budget_status_fn(_load_hourly_budget_cap_fn, _provider_toml)
+
+    def _priority_order(self) -> List[str]:
+        from .dispatcher_pkg.routing import priority_order
+
+        return priority_order(self.list_providers)
+
+    def _cheapest_order(self) -> List[str]:
+        from .dispatcher_pkg.routing import cheapest_order
+
+        return cheapest_order(
+            self._ensure_provider,
+            self._configs,
+            self.list_providers,
+            provider_toml=_provider_toml,
+            logger=logger,
+        )
+
+    def _hybrid_order(self) -> List[str]:
+        from .dispatcher_pkg.routing import hybrid_order
+
+        return hybrid_order(
+            self._ensure_provider,
+            self._configs,
+            self.list_providers,
+            provider_toml=_provider_toml,
+            logger=logger,
+        )
+
+    def _local_order(self) -> List[str]:
+        from .dispatcher_pkg.routing import local_order
+
+        return local_order(
+            self._ensure_provider,
+            self._configs,
+            self.list_providers,
+            provider_toml=_provider_toml,
+            logger=logger,
+        )
+
+    def _is_auto_routing_candidate(self, provider_id: str) -> bool:
+        from .dispatcher_pkg.routing import is_auto_routing_candidate
+
+        return is_auto_routing_candidate(self._configs, provider_id)
+
+    def _auto_configured_candidates(self, candidates: List[str]) -> List[str]:
+        return _auto_configured_candidates(
+            self._configs,
+            candidates,
+            self.is_configured,
+            self._is_warmup_routing_blocked,
+        )
+
+    def _apply_budget_rerank(self, candidates: List[str], *, routing_mode: str) -> List[str]:
+        budget_status = self._budget_status()
+        if not budget_status["over_budget"]:
+            return candidates
+
+        def _sort_key(pid: str) -> tuple:
+            input_cost, output_cost = self._provider_costs(pid)
+            total_cost = input_cost + output_cost
+            config = self._configs.get(pid, {})
+            return (
+                0.0 if total_cost <= 0 else 1.0,
+                total_cost,
+                int(config.get("priority_tier", 999)),
+            )
+
+        re_ranked = sorted(candidates, key=_sort_key)
+        logger.warning(
+            "routing_budget_soft_rerank",
+            routing_mode=routing_mode,
+            current_hour_spend_usd=budget_status["current_hour_spend_usd"],
+            cap_usd=budget_status["cap_usd"],
+            original_candidates=candidates,
+            rank_order=re_ranked,
+        )
+        return re_ranked
+
+    def _candidate_order(self, provider_id: Optional[str]) -> List[str]:
+        def _priority_list_fn(include_hidden: bool = False) -> List[Dict[str, Any]]:
+            _ = include_hidden
+            return [{"id": pid} for pid in self._priority_order()]
+
+        return _candidate_order_fn(
+            provider_id,
+            canonical_provider_id,
+            self._configs,
+            self._ensure_provider,
+            _priority_list_fn,
+            provider_toml=_provider_toml,
+            logger=logger,
+        )
+
+    def _is_canary_attempt(
         self,
         provider_id: str,
-        model: str,
-    ) -> Optional[ProviderResult]:
-        state = self._active_test_mode_state(provider_id)
-        if state is None:
-            return None
-        profile = state["profiles"][provider_id]
-        call_count = int(state["calls"].get(provider_id, 0)) + 1
-        state["calls"][provider_id] = call_count
-        await self._apply_test_mode_delay(provider_id)
-        fail_after_calls = profile.get("fail_after_calls")
-        fail_probability = float(profile.get("fail_probability", 0.0) or 0.0)
-        should_fail = False
-        if isinstance(fail_after_calls, int) and fail_after_calls >= 0 and call_count > fail_after_calls:
-            should_fail = True
-        elif fail_probability > 0 and self._random.random() < min(1.0, max(0.0, fail_probability)):
-            should_fail = True
-        if not should_fail:
-            return None
-        category = self._provider_error_category(profile.get("error_category"), "test failure")
-        error_message = str(profile.get("error", "") or f"test-mode {category.value} failure")
-        return ProviderResult(
-            ok=False,
-            provider=provider_id,
-            model=model,
-            error=error_message,
-            error_category=category.value,
-            latency_ms=float(profile.get("latency_ms", 0.0) or 0.0),
-        )
-
-    async def _invoke_with_test_mode(
-        self,
-        provider_id: str,
-        provider: ProviderAdapter,
-        messages: List[Dict[str, str]],
-        model: str,
-        **kwargs: Any,
-    ) -> ProviderResult:
-        injected = await self._maybe_inject_test_failure(provider_id, model)
-        if injected is not None:
-            return injected
-        return await provider.invoke(
-            messages,
-            model,
-            stream=False,
-            **kwargs,
-        )
-
-    @asynccontextmanager
-    async def test_mode(self, profiles: Dict[str, Dict[str, Any]]):
-        state = {
-            "profiles": {canonical_provider_id(pid) or pid: dict(profile) for pid, profile in profiles.items()},
-            "calls": {},
-        }
-        self._test_mode_stack.append(state)
-        try:
-            yield self
-        finally:
-            with_state = [item for item in self._test_mode_stack if item is not state]
-            self._test_mode_stack = with_state
+        model: Optional[str],
+    ) -> bool:
+        return _routing_is_canary_attempt(self._ensure_provider, provider_id, model)
 
     def top_providers_for(
         self,
@@ -795,6 +566,8 @@ class ProviderDispatcher:
             ranked = self._cheapest_order()
             candidates = [p for p in ranked if p in candidates]
         return candidates[: max(1, limit)]
+
+    # ── Model Alias Resolution ────────────────────────────────────────────
 
     def _resolve_pattern_model_alias(self, model: str) -> Optional[tuple[str, str]]:
         for compiled_pattern, provider_template, model_template in _MODEL_ALIAS_PATTERNS:
@@ -832,114 +605,76 @@ class ProviderDispatcher:
             return canonical_id, alias_model
         return canonical_id or provider_id, model
 
-    def _candidate_order(self, provider_id: Optional[str]) -> List[str]:
-        if provider_id in (None, "auto"):
-            return self._hybrid_order()
-        if provider_id == "cheapest":
-            return self._cheapest_order()
-        if provider_id == "local":
-            return self._local_order()
-        canonical_id = canonical_provider_id(provider_id)
-        if canonical_id and canonical_id in self._configs:
-            return [canonical_id]
-        return []
+    # ── Test Mode Delegation ──────────────────────────────────────────────
+
+    def _active_test_mode_state(self, provider_id: str) -> Optional[Dict[str, Any]]:
+        return _active_test_mode_state(self._test_mode_stack, provider_id)
+
+    async def _apply_test_mode_delay(self, provider_id: str) -> None:
+        await _apply_test_mode_delay(self._test_mode_stack, provider_id)
+
+    async def _maybe_inject_test_failure(
+        self,
+        provider_id: str,
+        model: str,
+    ) -> Optional[ProviderResult]:
+        return await _maybe_inject_test_failure(
+            self._test_mode_stack,
+            provider_id,
+            model,
+            provider_error_category_fn=self._provider_error_category,
+        )
+
+    async def _invoke_with_test_mode(
+        self,
+        provider_id: str,
+        provider: ProviderAdapter,
+        messages: List[Dict[str, str]],
+        model: str,
+        **kwargs: Any,
+    ) -> ProviderResult:
+        return await _invoke_with_test_mode(
+            self._test_mode_stack,
+            provider_id,
+            provider,
+            messages,
+            model,
+            sanitize_error_fn=self._sanitize_error,
+            provider_error_category_fn=self._provider_error_category,
+            **kwargs,
+        )
+
+    @asynccontextmanager
+    async def test_mode(self, profiles: Dict[str, Dict[str, Any]]):
+        """Inject deterministic failure profiles for routing tests.
+
+        Supported profile keys:
+        - ``fail_after_calls``: fail on the N+1 call and later.
+        - ``fail_probability``: randomly fail each call with this probability.
+        - ``latency_ms``: add artificial latency before invoke/stream calls.
+        - ``error_category``: explicit ProviderErrorCategory for injected failures.
+        - ``error``: custom failure message.
+        - ``health_check``: synthetic health result with ``healthy``,
+          ``billing_issue``, ``latency_ms``, and ``error`` fields.
+        """
+        state = {
+            "profiles": {
+                canonical_provider_id(pid) or pid: dict(profile)
+                for pid, profile in profiles.items()
+            },
+            "calls": {},
+        }
+        self._test_mode_stack.append(state)
+        try:
+            yield self
+        finally:
+            with_state = [item for item in self._test_mode_stack if item is not state]
+            self._test_mode_stack = with_state
+
+    # ── Health Checks ────────────────────────────────────────────────────
 
     async def check_provider(self, provider_id: str) -> Dict[str, Any]:
-        canonical_id = canonical_provider_id(provider_id) or provider_id
-        config = self._configs.get(canonical_id, {})
-        provider = self._ensure_provider(canonical_id)
-        if not config or provider is None:
-            return {
-                "id": canonical_id,
-                "configured": False,
-                "healthy": False,
-                "health": "unknown",
-                "health_reason": "Unknown provider",
-                "is_selectable": False,
-                "latency_ms": 0.0,
-                "circuit_breaker": {},
-                "warmup": self._warmup_state_for(canonical_id),
-            }
-
-        configured = self.is_configured(canonical_id)
-        if not configured:
-            return {
-                "id": canonical_id,
-                "configured": False,
-                "healthy": False,
-                "health": "unknown",
-                "health_reason": "Provider not configured",
-                "is_selectable": False,
-                "latency_ms": 0.0,
-                "circuit_breaker": provider.circuit_status(),
-                "warmup": self._warmup_state_for(canonical_id),
-            }
-
-        timeout_ms = int(
-            config.get("health_check_timeout_ms", self.DEFAULT_HEALTH_CHECK_TIMEOUT_MS),
-        )
-        try:
-            health = await asyncio.wait_for(
-                provider.health_check(),
-                timeout=max(1, timeout_ms) / 1000,
-            )
-            billing = getattr(health, "billing_issue", False)
-            if health.healthy:
-                health_state = "healthy"
-            elif billing:
-                health_state = "billing_issue"
-                provider.record_failure(
-                    self._sanitize_error(getattr(health, "error", "") or "billing issue"),
-                    category=ProviderErrorCategory.RATE_LIMIT,
-                )
-            else:
-                health_state = "unhealthy"
-            return {
-                "id": canonical_id,
-                "configured": True,
-                "healthy": health.healthy,
-                "health": health_state,
-                "health_reason": self._sanitize_error(getattr(health, "error", "") or ""),
-                "billing_issue": billing,
-                "is_selectable": bool(health.healthy),
-                "latency_ms": round(float(health.latency_ms), 1),
-                "circuit_breaker": provider.circuit_status(),
-                "warmup": self._warmup_state_for(canonical_id),
-            }
-        except asyncio.TimeoutError:
-            provider.record_failure(
-                f"timeout after {timeout_ms}ms",
-                category=ProviderErrorCategory.TIMEOUT,
-            )
-            return {
-                "id": canonical_id,
-                "configured": True,
-                "healthy": False,
-                "health": "unhealthy",
-                "health_reason": f"timed out after {timeout_ms}ms",
-                "billing_issue": False,
-                "is_selectable": False,
-                "latency_ms": float(timeout_ms),
-                "circuit_breaker": provider.circuit_status(),
-                "warmup": self._warmup_state_for(canonical_id),
-            }
-        except Exception as exc:
-            provider.record_failure(
-                self._sanitize_error(exc),
-                category=classify_provider_error(exc),
-            )
-            return {
-                "id": canonical_id,
-                "configured": True,
-                "healthy": False,
-                "health": "unhealthy",
-                "health_reason": self._sanitize_error(exc),
-                "billing_issue": False,
-                "is_selectable": False,
-                "latency_ms": 0.0,
-                "circuit_breaker": provider.circuit_status(),
-                "warmup": self._warmup_state_for(canonical_id),
-            }
+        return await _check_provider(self, provider_id, logger=logger)
 
     async def get_provider_inventory(
         self,
@@ -978,6 +713,8 @@ class ProviderDispatcher:
             }
             for item in inventory
         }
+
+    # ── Stream Wrap / Dispatch ────────────────────────────────────────────
 
     async def _stream_wrap(
         self,
@@ -1030,7 +767,6 @@ class ProviderDispatcher:
         )
 
     def debug_info(self) -> Dict[str, Any]:
-        """Return internal dispatcher state for debugging and support."""
         from ..routing.router import registry
 
         routing_table = [

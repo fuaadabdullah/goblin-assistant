@@ -1,11 +1,10 @@
 import { render, screen } from '@testing-library/react';
-import '@testing-library/jest-dom';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 
-jest.mock('@/lib/api', () => ({
-  apiClient: { getAllHealth: jest.fn().mockResolvedValue({ status: 'healthy', latency: 42 }) },
+vi.mock('@/lib/api', () => ({
+  apiClient: { getAllHealth: vi.fn().mockResolvedValue({ status: 'healthy', latency: 42 }) },
 }));
-jest.mock('../../lib/query-keys', () => ({
+vi.mock('../../lib/query-keys', () => ({
   queryKeys: { health: ['health'] },
 }));
 

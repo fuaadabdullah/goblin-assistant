@@ -8,12 +8,17 @@ has a single responsibility and an explicit side-effect contract.
 import uuid
 from datetime import datetime
 from importlib import import_module
+from inspect import isawaitable
 from typing import Any, Dict, Optional
 
 import structlog
 from fastapi import APIRouter, Depends, HTTPException
 from fastapi.responses import StreamingResponse
 
+from ...assistant_tools.executor import extract_tool_calls_contract, run_tool_loop
+from ...assistant_tools.registry import export_tools_for_provider
+from ...auth.router import User as AuthenticatedUser
+from ...auth.router import get_current_user
 from ...config.archetypes import (
     is_deep_research_mode as _is_deep_research_mode,
 )
@@ -28,27 +33,15 @@ from ...config.archetypes import (
 )
 from ...config.mode_addendums import get_addendum as _get_mode_addendum
 from ...config.system_prompt import EDUCATION_SYSTEM_ADDENDUM, system_prompt_manager
-from ...storage.usage_events import get_usage_event_store
-from ...assistant_tools.executor import extract_tool_calls_contract, run_tool_loop
-from ...assistant_tools.registry import export_tools_for_provider
-from ...auth.router import User as AuthenticatedUser
-from ...auth.router import get_current_user
 from ...core.contracts import SuccessEnvelope
 from ...providers.base import ProviderErrorCategory
-from ...providers.dispatcher import canonical_provider_id, dispatcher
 from ...services.pdf_extraction_service import build_attachment_context
 from .. import _runtime as _cr
-from ..archiving import schedule_conversation_archive
 from ..schemas import (
     EstimateTokensResponse,
     LayerEstimate,
     SendMessageRequest,
     SendMessageResponse,
-)
-from ..service_accessors import (
-    _get_context_assembly_service,
-    _get_message_classifier,
-    _get_write_time_intelligence,
 )
 from ..uploads import _pending_uploads
 from .attachment_utils import attachment_context_limits, inject_attachment_context
@@ -72,6 +65,12 @@ logger = structlog.get_logger()
 
 router = APIRouter()
 _messages_pkg = import_module(__package__)
+
+
+async def _resolve_provider_call(result: Any) -> Any:
+    if isawaitable(result):
+        return await result
+    return result
 
 
 # ---------------------------------------------------------------------------
@@ -293,6 +292,7 @@ async def send_message(
         payload = {
             "messages": messages,
             "model": request.model,
+            "user_id": str(current_user.id),
         }
 
         registered_tools = (
@@ -342,12 +342,14 @@ async def send_message(
                 },
             )
 
-        provider_response = await _cr.invoke_provider(
-            pid=request.provider,
-            model=request.model,
-            payload=payload,
-            timeout_ms=30000,
-            stream=False,
+        provider_response = await _resolve_provider_call(
+            _cr.invoke_provider(
+                pid=request.provider,
+                model=request.model,
+                payload=payload,
+                timeout_ms=30000,
+                stream=False,
+            )
         )
 
         # Tool loop
@@ -381,8 +383,7 @@ async def send_message(
         else:
             if isinstance(provider_response, dict) and not provider_response.get("ok"):
                 category = str(
-                    provider_response.get("error_category")
-                    or ProviderErrorCategory.UNKNOWN.value
+                    provider_response.get("error_category") or ProviderErrorCategory.UNKNOWN.value
                 )
                 await emit_chat_message_failed(
                     current_user=current_user,

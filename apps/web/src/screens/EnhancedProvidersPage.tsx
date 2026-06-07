@@ -3,8 +3,3 @@ import ProvidersManagerScreen from '../features/admin/providers/ProvidersManager
 export default function EnhancedProvidersPage() {
   return <ProvidersManagerScreen />;
 }
-
-// Prevent static generation - this page uses react-query
-export const getServerSideProps = async () => {
-  return { props: {} };
-};

@@ -1,17 +1,21 @@
-import { beforeEach, describe, expect, it, jest } from '@jest/globals';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 type ProviderRouterModule = typeof import('../provider-router');
 
 const STORAGE_KEY = 'goblin-provider-router-metrics';
 
 async function loadProviderRouter(): Promise<ProviderRouterModule> {
-  jest.resetModules();
+  vi.resetModules();
   return import('../provider-router');
 }
 
 describe('provider-router', () => {
   beforeEach(() => {
-    jest.resetModules();
+    // Re-register passthrough doMock to cancel any lingering doMock override
+    vi.doMock('../../../../../config/providers.json', async (importOriginal) => {
+      return importOriginal();
+    });
+    vi.resetModules();
     window.sessionStorage.clear();
   });
 
@@ -103,6 +107,25 @@ describe('provider-router', () => {
         fail: 1,
         latencies: [100, 150],
       });
+    });
+
+    it('surfaces schema_version mismatches as a validation error', async () => {
+      vi.doMock('../../../../../config/providers.json', () => ({
+        __esModule: true,
+        default: {
+          schema_version: 99,
+          version: 2,
+          default_timeout_ms: 12000,
+          providers: {},
+        },
+      }));
+
+      const providerRouter = await loadProviderRouter();
+
+      expect(providerRouter.getProviderRouterConfigError()).toBeTruthy();
+      expect(providerRouter.getProviderRouterConfigError()?.message).toContain(
+        'expected schema_version=1'
+      );
     });
 
     it('keeps metrics isolated per provider', async () => {

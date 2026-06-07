@@ -1,27 +1,29 @@
 import React from 'react';
 import { render, screen, fireEvent } from '@testing-library/react';
 
-jest.mock(
+vi.mock(
   'next/link',
-  () =>
-    function MockLink({ children, href }: { children: React.ReactNode; href: string }) {
+  () => ({
+    default: function MockLink({ children, href }: { children: React.ReactNode; href: string }) {
       return <a href={href}>{children}</a>;
-    }
+    },
+  })
 );
-jest.mock(
+vi.mock(
   '../../../../components/Seo',
-  () =>
-    function MockSeo() {
+  () => ({
+    default: function MockSeo() {
       return null;
-    }
+    },
+  })
 );
 
 import HelpView from '../HelpView';
 
-jest.mock(
+vi.mock(
   '../HelpTopics',
-  () =>
-    function MockHelpTopics({ topics }: { topics: Array<{ title: string }> }) {
+  () => ({
+    default: function MockHelpTopics({ topics }: { topics: Array<{ title: string }> }) {
       return (
         <div data-testid="help-topics">
           {topics.map((t) => (
@@ -29,12 +31,13 @@ jest.mock(
           ))}
         </div>
       );
-    }
+    },
+  })
 );
-jest.mock(
+vi.mock(
   '../HelpSupportForm',
-  () =>
-    function MockForm({
+  () => ({
+    default: function MockForm({
       message,
       onSubmit,
       onMessageChange,
@@ -50,12 +53,13 @@ jest.mock(
             onChange={(e) => onMessageChange(e.target.value)}
             data-testid="msg-input"
           />
-          <button onClick={onSubmit} data-testid="submit-btn">
+          <button type="button" onClick={onSubmit} data-testid="submit-btn">
             Submit
           </button>
         </div>
       );
-    }
+    },
+  })
 );
 
 const defaultForm = {
@@ -63,12 +67,12 @@ const defaultForm = {
   sent: false,
   error: null,
   sending: false,
-  setMessage: jest.fn(),
-  handleSubmit: jest.fn(),
+  setMessage: vi.fn(),
+  handleSubmit: vi.fn(),
 };
 
 describe('HelpView', () => {
-  beforeEach(() => jest.clearAllMocks());
+  beforeEach(() => vi.clearAllMocks());
 
   it('renders heading', () => {
     render(<HelpView form={defaultForm} />);
@@ -111,7 +115,7 @@ describe('HelpView', () => {
         timestamp: '2024-01-01T00:00:00Z',
         logId: 'diag-456',
       },
-      onRetry: jest.fn(),
+      onRetry: vi.fn(),
     };
     render(<HelpView form={defaultForm} startupFailure={failure} />);
     expect(screen.getByText('Startup issue detected')).toBeInTheDocument();
@@ -130,7 +134,7 @@ describe('HelpView', () => {
         totalMs: 60,
         timestamp: '2024-01-01',
       },
-      onRetry: jest.fn(),
+      onRetry: vi.fn(),
     };
     render(<HelpView form={defaultForm} startupFailure={failure} />);
     expect(screen.getByText(/Auth:.*10/)).toBeInTheDocument();
@@ -138,14 +142,14 @@ describe('HelpView', () => {
   });
 
   it('shows fallback values when diagnostics are null', () => {
-    const failure = { onRetry: jest.fn() };
+    const failure = { onRetry: vi.fn() };
     render(<HelpView form={defaultForm} startupFailure={failure} />);
     expect(screen.getByText('Startup issue detected')).toBeInTheDocument();
     expect(screen.getAllByText(/unknown/).length).toBeGreaterThanOrEqual(1);
   });
 
   it('calls onRetry when retry button clicked', () => {
-    const onRetry = jest.fn();
+    const onRetry = vi.fn();
     const failure = { onRetry };
     render(<HelpView form={defaultForm} startupFailure={failure} />);
     fireEvent.click(screen.getAllByText('Retry boot')[0]);
@@ -164,7 +168,7 @@ describe('HelpView', () => {
         timestamp: '2024-01-01',
         logId: 'diag-log-789',
       },
-      onRetry: jest.fn(),
+      onRetry: vi.fn(),
     };
     render(<HelpView form={defaultForm} startupFailure={failure} />);
     expect(screen.getByText('diag-log-789')).toBeInTheDocument();

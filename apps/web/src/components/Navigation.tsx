@@ -1,6 +1,8 @@
+'use client';
+
 import Link from 'next/link';
-import { useRouter } from 'next/router';
-import { useEffect, useState } from 'react';
+import { useRouter, usePathname } from 'next/navigation';
+import { useEffect } from 'react';
 import {
   Home,
   MessageSquare,
@@ -32,6 +34,7 @@ interface NavigationProps {
 
 const Navigation = ({ onLogout, showLogout = false, variant = 'customer' }: NavigationProps) => {
   const router = useRouter();
+  const pathname = usePathname();
   const { logout } = useAuthSession();
   const isMobileMenuOpen = useUIStore((s) => s.mobileNavOpen);
   const setIsMobileMenuOpen = useUIStore((s) => s.setMobileNavOpen);
@@ -41,7 +44,7 @@ const Navigation = ({ onLogout, showLogout = false, variant = 'customer' }: Navi
     if (onLogout) {
       await onLogout();
     }
-    await router.push('/login');
+    router.push('/login');
   };
 
   const customerItems = [
@@ -66,7 +69,7 @@ const Navigation = ({ onLogout, showLogout = false, variant = 'customer' }: Navi
   useEffect(() => {
     // close mobile nav on route changes
     setIsMobileMenuOpen(false);
-  }, [router.asPath, setIsMobileMenuOpen]);
+  }, [pathname, setIsMobileMenuOpen]);
 
   return (
     <nav
@@ -92,8 +95,8 @@ const Navigation = ({ onLogout, showLogout = false, variant = 'customer' }: Navi
           <div className="hidden lg:flex items-center space-x-3">
             {navItems.map((item) => {
               const isActive =
-                router.pathname === item.path ||
-                (item.path !== '/' && router.pathname.startsWith(item.path));
+                pathname === item.path ||
+                (item.path !== '/' && pathname.startsWith(item.path));
               return (
                 <Link
                   key={item.path}
@@ -164,8 +167,8 @@ const Navigation = ({ onLogout, showLogout = false, variant = 'customer' }: Navi
 
           {navItems.map((item) => {
             const isActive =
-              router.pathname === item.path ||
-              (item.path !== '/' && router.pathname.startsWith(item.path));
+              pathname === item.path ||
+              (item.path !== '/' && pathname.startsWith(item.path));
             return (
               <Link
                 key={item.path}

@@ -3,5 +3,12 @@ set -e
 
 scripts/git-hooks/check-no-sqlite-in-commit.sh
 
-echo "Running pre-commit tasks..."
-echo "Skipping lint-staged and validate-env locally; run 'npx lint-staged' and 'npm run validate-env' manually if needed."
+# Ruff check + format-check on staged API Python files
+STAGED_PY=$(git diff --cached --name-only --diff-filter=ACMR | grep '^apps/api/.*\.py$' || true)
+if [ -n "$STAGED_PY" ]; then
+  echo "Running ruff on staged Python files..."
+  echo "$STAGED_PY" | xargs python3 -m ruff check --config apps/api/pyproject.toml
+  echo "$STAGED_PY" | xargs python3 -m ruff format --check --config apps/api/pyproject.toml
+fi
+
+cd apps/web && npx lint-staged

@@ -3,13 +3,13 @@ import { useProviderHealth } from '../useProviderHealth';
 import { apiClient } from '@/lib/api';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 
-jest.mock('@/lib/api', () => ({
+vi.mock('@/lib/api', () => ({
   apiClient: {
-    getModelConfigs: jest.fn(),
+    getModelConfigs: vi.fn(),
   },
 }));
 
-const mockGetModelConfigs = apiClient.getModelConfigs as jest.Mock;
+const mockGetModelConfigs = apiClient.getModelConfigs as vi.Mock;
 
 function wrapper({ children }: { children: React.ReactNode }) {
   const queryClient = new QueryClient({
@@ -20,7 +20,7 @@ function wrapper({ children }: { children: React.ReactNode }) {
 
 describe('useProviderHealth', () => {
   beforeEach(() => {
-    jest.clearAllMocks();
+    vi.clearAllMocks();
   });
 
   it('returns undefined initially while loading', () => {

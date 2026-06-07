@@ -1,8 +1,7 @@
 import React from 'react';
 import { render, screen } from '@testing-library/react';
-import '@testing-library/jest-dom';
 
-jest.mock('@/utils/format-cost', () => ({
+vi.mock('@/utils/format-cost', () => ({
   formatCost: (v: number) => `$${v.toFixed(2)}`,
 }));
 

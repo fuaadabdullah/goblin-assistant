@@ -67,19 +67,26 @@ def _fallback_provider_entries() -> List[Dict[str, Any]]:
         return entries
 
 
+def _visible_provider_ids(entries: List[Dict[str, Any]]) -> List[str]:
+    configured_ids = [entry["id"] for entry in entries if entry.get("configured")]
+    if configured_ids:
+        return configured_ids
+    return [entry["id"] for entry in entries if not entry.get("hidden", False)]
+
+
 @router.get("/providers", response_model=List[str])
 async def get_available_providers():
     try:
         inventory = await dispatcher.get_provider_inventory(include_hidden=False)
-        provider_ids = [entry["id"] for entry in inventory if entry.get("configured")]
+        provider_ids = _visible_provider_ids(inventory)
         if provider_ids:
             return provider_ids
 
         fallback = _fallback_provider_entries()
-        return [entry["id"] for entry in fallback if entry.get("configured")]
+        return _visible_provider_ids(fallback)
     except Exception:
         fallback = _fallback_provider_entries()
-        return [entry["id"] for entry in fallback if entry.get("configured")]
+        return _visible_provider_ids(fallback)
 
 
 @router.get("/providers/details", response_model=List[Dict[str, Any]])

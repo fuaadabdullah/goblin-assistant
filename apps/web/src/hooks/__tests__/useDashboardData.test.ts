@@ -3,9 +3,9 @@ import { renderHook, waitFor } from '@testing-library/react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { useDashboardData } from '../useDashboardData';
 
-jest.mock('@/lib/api', () => ({
+vi.mock('@/lib/api', () => ({
   apiClient: {
-    getAllHealth: jest.fn().mockResolvedValue({
+    getAllHealth: vi.fn().mockResolvedValue({
       services: {
         api: { status: 'healthy', latency: 50 },
         chroma: { status: 'healthy', latency: 100 },

@@ -2,17 +2,17 @@ import { renderHook, waitFor } from '@testing-library/react';
 import React from 'react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 
-jest.mock('@/lib/api', () => ({
+vi.mock('@/lib/api', () => ({
   apiClient: {
-    getProviderSettings: jest.fn(),
-    getModelConfigs: jest.fn(),
-    getGlobalSettings: jest.fn(),
-    updateProvider: jest.fn(),
-    updateGlobalSetting: jest.fn(),
+    getProviderSettings: vi.fn(),
+    getModelConfigs: vi.fn(),
+    getGlobalSettings: vi.fn(),
+    updateProvider: vi.fn(),
+    updateGlobalSetting: vi.fn(),
   },
 }));
 
-jest.mock('../../../lib/query-keys', () => ({
+vi.mock('../../../lib/query-keys', () => ({
   queryKeys: {
     providers: ['providers'],
     modelConfigs: ['modelConfigs'],
@@ -29,11 +29,11 @@ import {
 } from '../useSettings';
 import { apiClient } from '@/lib/api';
 
-const mockGetProviders = apiClient.getProviderSettings as jest.Mock;
-const mockGetModels = apiClient.getModelConfigs as jest.Mock;
-const mockGetGlobal = apiClient.getGlobalSettings as jest.Mock;
-const mockUpdateProvider = apiClient.updateProvider as jest.Mock;
-const mockUpdateSetting = apiClient.updateGlobalSetting as jest.Mock;
+const mockGetProviders = apiClient.getProviderSettings as vi.Mock;
+const mockGetModels = apiClient.getModelConfigs as vi.Mock;
+const mockGetGlobal = apiClient.getGlobalSettings as vi.Mock;
+const mockUpdateProvider = apiClient.updateProvider as vi.Mock;
+const mockUpdateSetting = apiClient.updateGlobalSetting as vi.Mock;
 
 function wrapper({ children }: { children: React.ReactNode }) {
   const qc = new QueryClient({ defaultOptions: { queries: { retry: false } } });
@@ -41,7 +41,7 @@ function wrapper({ children }: { children: React.ReactNode }) {
 }
 
 describe('useSettings hooks', () => {
-  beforeEach(() => jest.clearAllMocks());
+  beforeEach(() => vi.clearAllMocks());
 
   describe('useProviderSettings', () => {
     it('fetches provider settings', async () => {

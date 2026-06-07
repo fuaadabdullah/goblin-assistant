@@ -1,16 +1,15 @@
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
-import '@testing-library/jest-dom';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 
 // Mock apiClient
-const mockGetRaptorLogs = jest.fn();
-jest.mock('@/lib/api', () => ({
+const mockGetRaptorLogs = vi.fn();
+vi.mock('@/lib/api', () => ({
   apiClient: { getRaptorLogs: (...args: unknown[]) => mockGetRaptorLogs(...args) },
 }));
 
 // Mock sub-components
-jest.mock('../../components/TwoColumnLayout', () => {
-  return function MockTwoColumnLayout({
+vi.mock('../../components/TwoColumnLayout', () => ({
+  default: function MockTwoColumnLayout({
     sidebar,
     children,
   }: {
@@ -23,9 +22,9 @@ jest.mock('../../components/TwoColumnLayout', () => {
         <div data-testid="main">{children}</div>
       </div>
     );
-  };
-});
-jest.mock('../../components/LoadingSkeleton', () => ({
+  },
+}));
+vi.mock('../../components/LoadingSkeleton', () => ({
   ListSkeleton: ({ count }: { count: number }) => <div data-testid="skeleton">{count} items</div>,
 }));
 
@@ -38,7 +37,7 @@ function wrapper({ children }: { children: React.ReactNode }) {
 
 describe('LogsPage', () => {
   beforeEach(() => {
-    jest.clearAllMocks();
+    vi.clearAllMocks();
   });
 
   it('renders loading skeleton initially', () => {

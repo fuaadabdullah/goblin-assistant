@@ -1,6 +1,8 @@
+'use client';
+
 import type { ReactNode } from 'react';
 import { useEffect } from 'react';
-import { useRouter } from 'next/router';
+import { useRouter, usePathname, useSearchParams } from 'next/navigation';
 import Navigation from '../components/Navigation';
 import Seo from '../components/Seo';
 import { useAuthSession } from '../hooks/api/useAuthSession';
@@ -19,6 +21,8 @@ export default function AdminLayout({
   mainLabel = 'Admin',
 }: AdminLayoutProps) {
   const router = useRouter();
+  const pathname = usePathname();
+  const searchParams = useSearchParams();
   const { isAuthenticated, isHydrated, hasRole } = useAuthSession();
   const contentClassName = fullWidth ? 'px-6' : 'max-w-7xl mx-auto p-6';
 
@@ -26,10 +30,12 @@ export default function AdminLayout({
   useEffect(() => {
     if (!isHydrated) return; // wait for Zustand store to rehydrate from session
     if (!isAuthenticated || !hasRole('admin')) {
-      const redirect = encodeURIComponent(router.asPath);
-      void router.replace(`/login?redirect=${redirect}`);
+      const query = searchParams.toString();
+      const asPath = query ? `${pathname}?${query}` : pathname;
+      const redirect = encodeURIComponent(asPath ?? '/');
+      router.replace(`/login?redirect=${redirect}`);
     }
-  }, [isHydrated, isAuthenticated, hasRole, router]);
+  }, [isHydrated, isAuthenticated, hasRole, router, pathname, searchParams]);
 
   // Render nothing until hydration is complete and auth is confirmed
   if (!isHydrated || !isAuthenticated || !hasRole('admin')) {

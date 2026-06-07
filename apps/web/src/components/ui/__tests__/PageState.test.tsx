@@ -1,6 +1,5 @@
 import React from 'react';
 import { render, screen, fireEvent } from '@testing-library/react';
-import '@testing-library/jest-dom';
 import PageState from '../PageState';
 
 describe('PageState', () => {
@@ -50,7 +49,7 @@ describe('PageState', () => {
     });
 
     it('renders action button and calls onAction', () => {
-      const onAction = jest.fn();
+      const onAction = vi.fn();
       render(
         <PageState
           variant="empty"
@@ -113,7 +112,7 @@ describe('PageState', () => {
     });
 
     it('renders retry button when onAction is provided and triggers it', () => {
-      const onAction = jest.fn();
+      const onAction = vi.fn();
       render(
         <PageState
           variant="error"
@@ -128,7 +127,7 @@ describe('PageState', () => {
     });
 
     it('falls back to actionLabel when retryLabel is missing', () => {
-      const onAction = jest.fn();
+      const onAction = vi.fn();
       render(
         <PageState
           variant="error"

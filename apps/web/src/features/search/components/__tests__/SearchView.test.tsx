@@ -1,40 +1,45 @@
 import React from 'react';
 import { render, screen } from '@testing-library/react';
 
-jest.mock(
+vi.mock(
   '../SearchHeader',
-  () =>
-    function MockSearchHeader({ title }: { title: string }) {
+  () => ({
+    default: function MockSearchHeader({ title }: { title: string }) {
       return <div data-testid="search-header">{title}</div>;
-    }
+    },
+  })
 );
-jest.mock(
+vi.mock(
   '../SearchQuickQueries',
-  () =>
-    function MockQuickQueries() {
+  () => ({
+    default: function MockQuickQueries() {
       return <div data-testid="search-quick-queries" />;
-    }
+    },
+  })
 );
-jest.mock(
+vi.mock(
   '../SearchForm',
-  () =>
-    function MockSearchForm() {
+  () => ({
+    default: function MockSearchForm() {
       return <div data-testid="search-form" />;
-    }
+    },
+  })
 );
-jest.mock(
+vi.mock(
   '../SearchResultsList',
-  () =>
-    function MockResults({ query }: { query?: string }) {
+  () => ({
+    default: function MockResults({ query }: { query?: string }) {
       return <div data-testid="search-results-list">{query}</div>;
-    }
+    },
+  })
 );
-jest.mock(
+vi.mock(
   '../../../../components/Seo',
-  () =>
-    function MockSeo() {
+  () => ({
+    default: function MockSeo() {
       return null;
-    }
+    },
+  })
 );
 
 import SearchView from '../SearchView';
@@ -53,12 +58,12 @@ function makeState(overrides: Partial<SearchState> = {}): SearchState {
     collectionsLoading: false,
     collectionsData: [],
     queryRef: { current: null } as RefObject<HTMLInputElement>,
-    setQuery: jest.fn(),
-    setScope: jest.fn(),
-    setSelectedCollection: jest.fn(),
-    handleSearch: jest.fn(),
-    handleQuickQuery: jest.fn(),
-    handleClear: jest.fn(),
+    setQuery: vi.fn(),
+    setScope: vi.fn(),
+    setSelectedCollection: vi.fn(),
+    handleSearch: vi.fn(),
+    handleQuickQuery: vi.fn(),
+    handleClear: vi.fn(),
     ...overrides,
   };
 }

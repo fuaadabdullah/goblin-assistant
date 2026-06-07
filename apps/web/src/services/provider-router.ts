@@ -10,6 +10,8 @@ import providersJson from '../../../../config/providers.json';
 import { runtimeClient } from '@/lib/api/runtimeClient';
 import { devDebug, devError, devWarn } from '@/utils/dev-log';
 
+const PROVIDERS_JSON_SCHEMA_VERSION = 1;
+
 // ── Minimal runtime types (mirrored from shared schema) ──────────────────
 interface JsonProviderEntry {
   endpoint?: string;
@@ -28,6 +30,7 @@ interface JsonProviderEntry {
 }
 
 interface ProvidersJson {
+  schema_version: number;
   version: number;
   default_timeout_ms: number;
   providers: Record<string, JsonProviderEntry>;
@@ -44,6 +47,13 @@ function isNumber(value: unknown): value is number {
 function validateProvidersJson(raw: unknown): ProvidersJson {
   if (!isRecord(raw)) {
     throw new Error('providers.json: root must be an object');
+  }
+
+  const schemaVersion = raw.schema_version;
+  if (schemaVersion !== PROVIDERS_JSON_SCHEMA_VERSION) {
+    throw new Error(
+      `providers.json: expected schema_version=${PROVIDERS_JSON_SCHEMA_VERSION}, got ${String(schemaVersion)}`
+    );
   }
 
   const version = raw.version;
@@ -64,6 +74,7 @@ function validateProvidersJson(raw: unknown): ProvidersJson {
 }
 
 let config: ProvidersJson;
+let configValidationError: Error | null = null;
 try {
   config = validateProvidersJson(providersJson);
   // Validate that required provider fields exist
@@ -75,12 +86,16 @@ try {
   });
   devDebug('Provider config validated successfully');
 } catch (validationError) {
+  configValidationError =
+    validationError instanceof Error
+      ? validationError
+      : new Error(String(validationError));
   devError(
     'Provider config validation failed:',
-    validationError instanceof Error ? validationError.message : String(validationError)
+    configValidationError.message
   );
   // Fallback to empty config to prevent startup crash
-  config = { providers: {} } as ProvidersJson;
+  config = { schema_version: PROVIDERS_JSON_SCHEMA_VERSION, version: 2, default_timeout_ms: 12000, providers: {} };
 }
 
 const PROVIDERS = config.providers || {};
@@ -181,15 +196,20 @@ function ensureMetrics(pid: string) {
   if (!METRICS[pid]) METRICS[pid] = { latencies: [], succ: 0, fail: 0, updatedAt: 0 };
 }
 
+export function getProviderRouterConfigError(): Error | null {
+  return configValidationError;
+}
+
 hydrateMetrics();
 
 export function updateMetricsFromBackend(pid: string, latencyMs: number, ok: boolean) {
   ensureMetrics(pid);
-  METRICS[pid].latencies.push(latencyMs);
-  METRICS[pid].latencies = trimLatencies(METRICS[pid].latencies);
-  if (ok) METRICS[pid].succ += 1;
-  else METRICS[pid].fail += 1;
-  METRICS[pid].updatedAt = Date.now();
+  const m = METRICS[pid]!;
+  m.latencies.push(latencyMs);
+  m.latencies = trimLatencies(m.latencies);
+  if (ok) m.succ += 1;
+  else m.fail += 1;
+  m.updatedAt = Date.now();
   persistMetrics();
 }
 

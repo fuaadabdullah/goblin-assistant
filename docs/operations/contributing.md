@@ -90,6 +90,15 @@ This project follows a code of conduct to ensure a welcoming environment for all
    # Create pull request on GitHub
    ```
 
+### Documentation Checklist
+
+For provider-platform changes:
+
+- update repo docs when runtime behavior, config shape, or env requirements change
+- update Confluence source material when onboarding or architecture guidance changes
+- keep `config/providers.toml` as the pricing and provider-metadata source of truth
+- link related Jira provider issues when the change affects provider operations or follow-up work
+
 ## Contribution Guidelines
 
 ### Commit Message Format
@@ -308,14 +317,12 @@ For feature requests, please include:
 
 ```json
 {
-  "python.formatting.provider": "black",
   "editor.formatOnSave": true,
   "editor.codeActionsOnSave": {
     "source.fixAll.eslint": true
   },
-  "python.linting.enabled": true,
-  "python.linting.pylintEnabled": false,
-  "python.linting.flake8Enabled": true
+  "ruff.enable": true,
+  "ruff.organizeImports": true
 }
 ```
 

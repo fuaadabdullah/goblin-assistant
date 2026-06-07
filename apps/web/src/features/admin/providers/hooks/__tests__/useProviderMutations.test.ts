@@ -1,17 +1,16 @@
 import { renderHook, act } from '@testing-library/react';
-import '@testing-library/jest-dom';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import React from 'react';
 
-const mockTestConnection = jest
+const mockTestConnection = vi
   .fn()
   .mockResolvedValue({ success: true, message: 'OK', latency: 100 });
-const mockTestPrompt = jest
+const mockTestPrompt = vi
   .fn()
   .mockResolvedValue({ success: true, message: 'Reply', latency: 200, response: 'hello' });
-const mockSetPriority = jest.fn().mockResolvedValue({});
-const mockReorder = jest.fn().mockResolvedValue({});
-jest.mock('../../api', () => ({
+const mockSetPriority = vi.fn().mockResolvedValue({});
+const mockReorder = vi.fn().mockResolvedValue({});
+vi.mock('../../api', () => ({
   providersAdminApi: {
     testProviderConnection: (...args: unknown[]) => mockTestConnection(...args),
     testProviderWithPrompt: (...args: unknown[]) => mockTestPrompt(...args),
@@ -19,7 +18,7 @@ jest.mock('../../api', () => ({
     reorderProviders: (...args: unknown[]) => mockReorder(...args),
   },
 }));
-jest.mock('@/lib/query-keys', () => ({
+vi.mock('@/lib/query-keys', () => ({
   queryKeys: { providerSettings: ['providers'] },
 }));
 
@@ -41,7 +40,7 @@ const mockProvider = {
 };
 
 describe('useProviderMutations', () => {
-  beforeEach(() => jest.clearAllMocks());
+  beforeEach(() => vi.clearAllMocks());
 
   it('returns expected properties', () => {
     const { result } = renderHook(() => useProviderMutations(), { wrapper });

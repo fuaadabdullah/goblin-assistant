@@ -2,27 +2,28 @@ import React from 'react';
 import { render, screen, waitFor } from '@testing-library/react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 
-const mockPush = jest.fn();
-let mockQuery: Record<string, string | undefined> = {};
-let mockIsReady = true;
+const mockPush = vi.fn();
+let mockQuery: Record<string, string> = {};
 
-jest.mock('next/router', () => ({
+vi.mock('next/navigation', () => ({
   useRouter: () => ({
-    isReady: mockIsReady,
-    query: mockQuery,
     push: mockPush,
+    replace: vi.fn(),
+    prefetch: vi.fn(),
   }),
+  useSearchParams: () => new URLSearchParams(mockQuery),
+  usePathname: () => '/google-callback',
 }));
 
-jest.mock('@/utils/auth-session', () => ({
-  persistAuthSession: jest.fn(),
+vi.mock('@/utils/auth-session', () => ({
+  persistAuthSession: vi.fn(),
 }));
 
-jest.mock('@/config/backendOrigin', () => ({
+vi.mock('@/config/backendOrigin', () => ({
   resolvePublicBackendOrigin: () => 'http://api.example.test:8000',
 }));
 
-jest.mock('@/utils/dev-log', () => ({ devError: jest.fn() }));
+vi.mock('@/utils/dev-log', () => ({ devError: vi.fn() }));
 
 import GoogleCallback from '../GoogleCallback';
 import { persistAuthSession } from '@/utils/auth-session';
@@ -34,10 +35,9 @@ function renderWithClient(ui: React.ReactElement) {
 
 describe('GoogleCallback', () => {
   beforeEach(() => {
-    jest.clearAllMocks();
+    vi.clearAllMocks();
     mockQuery = {};
-    mockIsReady = true;
-    global.fetch = jest.fn();
+    global.fetch = vi.fn();
   });
 
   afterEach(() => {
@@ -45,7 +45,6 @@ describe('GoogleCallback', () => {
   });
 
   it('renders loading state', () => {
-    mockIsReady = false;
     renderWithClient(<GoogleCallback />);
     expect(screen.getByText('Completing sign in...')).toBeInTheDocument();
   });
@@ -64,7 +63,7 @@ describe('GoogleCallback', () => {
 
   it('exchanges code for token on success', async () => {
     mockQuery = { code: 'abc123', state: 'xyz' };
-    const mockFetch = global.fetch as jest.Mock;
+    const mockFetch = global.fetch as vi.Mock;
     mockFetch.mockResolvedValue({
       ok: true,
       json: () =>
@@ -99,7 +98,7 @@ describe('GoogleCallback', () => {
 
   it('redirects to login on fetch error', async () => {
     mockQuery = { code: 'abc123' };
-    const mockFetch = global.fetch as jest.Mock;
+    const mockFetch = global.fetch as vi.Mock;
     mockFetch.mockResolvedValue({
       ok: false,
       statusText: 'Bad Request',
@@ -112,7 +111,7 @@ describe('GoogleCallback', () => {
 
   it('redirects on invalid response (no token)', async () => {
     mockQuery = { code: 'abc123' };
-    const mockFetch = global.fetch as jest.Mock;
+    const mockFetch = global.fetch as vi.Mock;
     mockFetch.mockResolvedValue({
       ok: true,
       json: () => Promise.resolve({ token: null, user: null }),
@@ -124,18 +123,11 @@ describe('GoogleCallback', () => {
 
   it('redirects on network error', async () => {
     mockQuery = { code: 'abc123' };
-    const mockFetch = global.fetch as jest.Mock;
+    const mockFetch = global.fetch as vi.Mock;
     mockFetch.mockRejectedValue(new Error('network down'));
 
     renderWithClient(<GoogleCallback />);
     await waitFor(() => expect(mockPush).toHaveBeenCalledWith('/login?error=callback_failed'));
-  });
-
-  it('does nothing when router not ready', () => {
-    mockIsReady = false;
-    mockQuery = { code: 'abc123' };
-    renderWithClient(<GoogleCallback />);
-    expect(global.fetch).not.toHaveBeenCalled();
   });
 
   it('renders spinne  placeholder text', () => {

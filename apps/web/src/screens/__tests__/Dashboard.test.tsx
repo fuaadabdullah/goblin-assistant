@@ -2,50 +2,52 @@ import React from 'react';
 import { render, screen, fireEvent } from '@testing-library/react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 
-jest.mock('@/lib/api/runtimeClient', () => ({
+vi.mock('@/lib/api/runtimeClient', () => ({
   runtimeClient: {
-    getCostSummary: jest.fn(),
+    getCostSummary: vi.fn(),
   },
 }));
-jest.mock('@/hooks/useSystemStatus', () => ({
-  useSystemStatus: jest.fn(() => ({
+vi.mock('@/hooks/useSystemStatus', () => ({
+  useSystemStatus: vi.fn(() => ({
     status: { models: 'ok', routing: 'degraded', sandbox: 'down' },
   })),
 }));
-jest.mock('@/hooks/useDashboardData', () => ({
-  useDashboardData: jest.fn(() => ({
+vi.mock('@/hooks/useDashboardData', () => ({
+  useDashboardData: vi.fn(() => ({
     dashboard: {
       cost: { total: 0.24, today: 0.02, thisMonth: 0.24, byProvider: {} },
     },
   })),
 }));
 
-jest.mock(
+vi.mock(
   '@/components/cost/CostBreakdownChart',
-  () =>
-    function MockCostChart({ data }: { data: unknown[] }) {
+  () => ({
+    default: function MockCostChart({ data }: { data: unknown[] }) {
       return <div data-testid="cost-chart">{JSON.stringify(data)}</div>;
-    }
+    },
+  })
 );
-jest.mock(
+vi.mock(
   '@/components/cost/ProviderUsageChart',
-  () =>
-    function MockUsageChart({ data, metric }: { data: unknown[]; metric: string }) {
+  () => ({
+    default: function MockUsageChart({ data, metric }: { data: unknown[]; metric: string }) {
       return (
         <div data-testid="usage-chart" data-metric={metric}>
           {JSON.stringify(data)}
         </div>
       );
-    }
+    },
+  })
 );
-jest.mock('@/components/cost/chartPalette', () => ({
+vi.mock('@/components/cost/chartPalette', () => ({
   getChartPaletteColor: (i: number) => ['#f00', '#0f0', '#00f'][i] || '#999',
 }));
 
 import DashboardContent from '../Dashboard';
 import { runtimeClient } from '@/lib/api/runtimeClient';
 
-const mockGetCostSummary = runtimeClient.getCostSummary as jest.Mock;
+const mockGetCostSummary = runtimeClient.getCostSummary as vi.Mock;
 
 function renderWithClient(ui: React.ReactElement) {
   const qc = new QueryClient({ defaultOptions: { queries: { retry: false } } });
@@ -54,7 +56,7 @@ function renderWithClient(ui: React.ReactElement) {
 
 describe('DashboardContent', () => {
   beforeEach(() => {
-    jest.clearAllMocks();
+    vi.clearAllMocks();
     localStorage.clear();
   });
 

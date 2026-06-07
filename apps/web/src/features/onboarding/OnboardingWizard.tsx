@@ -1,6 +1,8 @@
+'use client';
+
 import React from 'react';
 import Link from 'next/link';
-import { useRouter } from 'next/router';
+import { useRouter } from 'next/navigation';
 import { CheckCircle2, MessageSquare, Search, Settings, SkipForward } from 'lucide-react';
 import Seo from '../../components/Seo';
 import { Badge, Button, Card } from '../../components/ui';
@@ -57,7 +59,7 @@ const OnboardingWizard = () => {
     } catch {
       // localStorage can be unavailable in hardened browser modes.
     }
-    await router.push('/');
+    router.push('/');
   };
 
   const activeIndex = STEPS.findIndex((step) => step.id === activeStep);
@@ -167,7 +169,7 @@ const OnboardingWizard = () => {
               </div>
               <div className="mt-6 flex flex-wrap gap-3">
                 <Link
-                  href={`/chat?prompt=${encodeURIComponent(selectedPrompt)}`}
+                  href={`/chat?prompt=${encodeURIComponent(selectedPrompt ?? '')}`}
                   className="inline-flex items-center justify-center rounded-md bg-primary px-4 py-2 text-sm font-semibold text-text-inverse"
                 >
                   Start chat
@@ -214,14 +216,14 @@ const OnboardingWizard = () => {
         <footer className="mt-6 flex items-center justify-between">
           <Button
             variant="ghost"
-            disabled={activeStep === STEPS[0].id}
+            disabled={activeStep === STEPS[0]!.id}
             onClick={() => previousStep && setActiveStep(previousStep)}
           >
             Back
           </Button>
           <Button
             variant="secondary"
-            disabled={activeStep === STEPS[STEPS.length - 1].id}
+            disabled={activeStep === STEPS[STEPS.length - 1]!.id}
             onClick={() => nextStep && setActiveStep(nextStep)}
           >
             Next

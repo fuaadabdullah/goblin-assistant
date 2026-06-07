@@ -45,4 +45,4 @@ EXPOSE 8080
 # Keep compatibility with current runtime assumptions.
 RUN if [ -d /app/apps/api/src/api ] && [ ! -f /app/apps/api/src/api/__init__.py ]; then touch /app/apps/api/src/api/__init__.py; fi || true
 
-CMD ["sh", "-c", "uvicorn api.main:app --host 0.0.0.0 --port ${PORT:-8080}"]
+CMD ["sh", "-c", "ddtrace-run uvicorn api.main:app --host 0.0.0.0 --port ${PORT:-8080}"]

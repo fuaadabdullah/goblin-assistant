@@ -90,6 +90,12 @@ export interface ConversationDetailResponse {
   created_at: string;
   updated_at: string;
   metadata?: Record<string, unknown>;
+  pagination?: {
+    total?: number;
+    offset?: number;
+    limit?: number;
+    has_more?: boolean;
+  };
 }
 
 export interface ConversationSendResponse {
@@ -426,11 +432,12 @@ export const withTransientRetry = async <T>(
       lastError = error;
 
       // Determine if error is transient
+      type ErrorWithStatus = Error & { status?: unknown };
+      const err = error as ErrorWithStatus;
       const isTransientStatus =
         error instanceof Error &&
-        'status' in error &&
-        typeof (error as any).status === 'number' &&
-        ((error as any).status >= 500 || (error as any).status === 408);
+        typeof err.status === 'number' &&
+        (err.status >= 500 || err.status === 408);
 
       const isNetworkError =
         error instanceof Error &&

@@ -5,8 +5,8 @@ import {
   isAuthenticated,
 } from '../auth-session';
 
-jest.mock('../access', () => ({
-  isAdminUser: jest.fn(() => false),
+vi.mock('../access', () => ({
+  isAdminUser: vi.fn(() => false),
 }));
 
 describe('Auth Session Utilities', () => {

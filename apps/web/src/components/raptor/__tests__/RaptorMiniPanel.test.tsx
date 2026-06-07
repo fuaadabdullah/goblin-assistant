@@ -1,16 +1,15 @@
 import React from 'react';
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
-import '@testing-library/jest-dom';
 
-jest.mock('@/services/raptor', () => ({
-  raptorStart: jest.fn().mockResolvedValue({}),
-  raptorStop: jest.fn().mockResolvedValue({}),
-  raptorStatus: jest.fn().mockResolvedValue({ running: false, config_file: 'test.yaml' }),
-  raptorLogs: jest.fn().mockResolvedValue({ log_tail: 'Test log output line 1\nline 2' }),
-  raptorDemo: jest.fn().mockResolvedValue({}),
+vi.mock('@/services/raptor', () => ({
+  raptorStart: vi.fn().mockResolvedValue({}),
+  raptorStop: vi.fn().mockResolvedValue({}),
+  raptorStatus: vi.fn().mockResolvedValue({ running: false, config_file: 'test.yaml' }),
+  raptorLogs: vi.fn().mockResolvedValue({ log_tail: 'Test log output line 1\nline 2' }),
+  raptorDemo: vi.fn().mockResolvedValue({}),
 }));
 
-jest.mock('@/components/ui/card', () => ({
+vi.mock('@/components/ui/card', () => ({
   Card: ({ children, className }: { children: React.ReactNode; className?: string }) => (
     <div className={className}>{children}</div>
   ),
@@ -19,10 +18,10 @@ jest.mock('@/components/ui/card', () => ({
   CardTitle: ({ children }: { children: React.ReactNode }) => <h3>{children}</h3>,
 }));
 
-jest.mock(
+vi.mock(
   '@/components/ui/Button',
-  () =>
-    function MockButton({
+  () => ({
+    default: function MockButton({
       children,
       onClick,
       disabled,
@@ -33,21 +32,23 @@ jest.mock(
           {children}
         </button>
       );
-    }
+    },
+  })
 );
 
-jest.mock(
+vi.mock(
   '@/components/ui/Badge',
-  () =>
-    function MockBadge({ children }: { children: React.ReactNode }) {
+  () => ({
+    default: function MockBadge({ children }: { children: React.ReactNode }) {
       return <span>{children}</span>;
-    }
+    },
+  })
 );
 
-jest.mock('@/utils/dev-log', () => ({
-  devError: jest.fn(),
-  devWarn: jest.fn(),
-  devLog: jest.fn(),
+vi.mock('@/utils/dev-log', () => ({
+  devError: vi.fn(),
+  devWarn: vi.fn(),
+  devLog: vi.fn(),
 }));
 
 import RaptorMiniPanel from '../RaptorMiniPanel';
@@ -55,13 +56,13 @@ import { raptorStart, raptorStop, raptorStatus, raptorLogs, raptorDemo } from '@
 
 describe('RaptorMiniPanel', () => {
   beforeEach(() => {
-    jest.clearAllMocks();
+    vi.clearAllMocks();
     // Reset to default mock implementations (clearAllMocks doesn't reset these)
-    (raptorStatus as jest.Mock).mockResolvedValue({ running: false, config_file: 'test.yaml' });
-    (raptorStart as jest.Mock).mockResolvedValue({});
-    (raptorStop as jest.Mock).mockResolvedValue({});
-    (raptorLogs as jest.Mock).mockResolvedValue({ log_tail: 'Test log output line 1\nline 2' });
-    (raptorDemo as jest.Mock).mockResolvedValue({});
+    (raptorStatus as vi.Mock).mockResolvedValue({ running: false, config_file: 'test.yaml' });
+    (raptorStart as vi.Mock).mockResolvedValue({});
+    (raptorStop as vi.Mock).mockResolvedValue({});
+    (raptorLogs as vi.Mock).mockResolvedValue({ log_tail: 'Test log output line 1\nline 2' });
+    (raptorDemo as vi.Mock).mockResolvedValue({});
   });
 
   it('renders the panel title', async () => {
@@ -81,7 +82,7 @@ describe('RaptorMiniPanel', () => {
   });
 
   it('starts raptor', async () => {
-    (raptorStatus as jest.Mock)
+    (raptorStatus as vi.Mock)
       .mockResolvedValueOnce({ running: false })
       .mockResolvedValueOnce({ running: true });
     render(<RaptorMiniPanel />);
@@ -93,7 +94,7 @@ describe('RaptorMiniPanel', () => {
   });
 
   it('stops raptor', async () => {
-    (raptorStatus as jest.Mock).mockResolvedValue({ running: true });
+    (raptorStatus as vi.Mock).mockResolvedValue({ running: true });
     render(<RaptorMiniPanel />);
     await waitFor(() => expect(screen.getByText(/Running: Yes/)).toBeInTheDocument());
     fireEvent.click(screen.getByText('Stop'));
@@ -122,7 +123,7 @@ describe('RaptorMiniPanel', () => {
   });
 
   it('shows error on status failure', async () => {
-    (raptorStatus as jest.Mock).mockRejectedValueOnce(new Error('fail'));
+    (raptorStatus as vi.Mock).mockRejectedValueOnce(new Error('fail'));
     render(<RaptorMiniPanel />);
     await waitFor(() => {
       expect(screen.getByText('Failed to fetch status')).toBeInTheDocument();
@@ -130,7 +131,7 @@ describe('RaptorMiniPanel', () => {
   });
 
   it('shows error on start failure', async () => {
-    (raptorStart as jest.Mock).mockRejectedValueOnce(new Error('fail'));
+    (raptorStart as vi.Mock).mockRejectedValueOnce(new Error('fail'));
     render(<RaptorMiniPanel />);
     await waitFor(() => expect(screen.getByText('Start')).toBeInTheDocument());
     fireEvent.click(screen.getByText('Start'));
@@ -141,7 +142,7 @@ describe('RaptorMiniPanel', () => {
 
   it('copies logs to clipboard', async () => {
     Object.assign(navigator, {
-      clipboard: { writeText: jest.fn().mockResolvedValue(undefined) },
+      clipboard: { writeText: vi.fn().mockResolvedValue(undefined) },
     });
     render(<RaptorMiniPanel />);
     await waitFor(() => expect(screen.getByText('Fetch Logs')).toBeInTheDocument());

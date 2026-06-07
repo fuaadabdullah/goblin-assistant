@@ -1,12 +1,12 @@
 import React from 'react';
 import { render, screen, fireEvent } from '@testing-library/react';
 
-jest.mock('next/dynamic', () => () => {
-  return function MockLottie() {
+vi.mock('next/dynamic', () => ({
+  default: () => function MockLottie() {
     return <div data-testid="lottie" />;
-  };
-});
-jest.mock('../../hooks/useGoblinLoaderAnimation', () => ({
+  },
+}));
+vi.mock('../../hooks/useGoblinLoaderAnimation', () => ({
   __esModule: true,
   default: () => ({ frames: [] }),
 }));
@@ -20,9 +20,9 @@ const prompts = [
 ];
 
 describe('ChatEmptyState', () => {
-  const onPromptClick = jest.fn();
+  const onPromptClick = vi.fn();
 
-  beforeEach(() => jest.clearAllMocks());
+  beforeEach(() => vi.clearAllMocks());
 
   it('renders heading', () => {
     render(<ChatEmptyState quickPrompts={prompts} onPromptClick={onPromptClick} />);
@@ -73,7 +73,7 @@ describe('ChatEmptyState', () => {
       <ChatEmptyState quickPrompts={prompts} onPromptClick={onPromptClick} prefersReducedMotion />
     );
     expect(screen.queryByTestId('lottie')).not.toBeInTheDocument();
-    expect(screen.getByText('🧠')).toBeInTheDocument();
+    expect(screen.getByTestId('icon-Brain')).toBeInTheDocument();
   });
 
   it('renders help text at bottom', () => {

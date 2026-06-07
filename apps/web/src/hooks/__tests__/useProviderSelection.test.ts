@@ -4,7 +4,7 @@ import { useProviderSelection } from '../useProviderSelection';
 describe('useProviderSelection', () => {
   beforeEach(() => {
     localStorage.clear();
-    jest.clearAllMocks();
+    vi.clearAllMocks();
   });
 
   afterEach(() => {

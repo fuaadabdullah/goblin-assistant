@@ -7,6 +7,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+
+- Jira versions/releases are now the issue-level source of truth for release notes, while `CHANGELOG.md` remains the curated public summary.
+- Jira provider incident automation is now wired to the live `PROVOPS` project workflow with incoming-webhook incident creation.
+
 ### Added
 
 - **Mobile Drawer + Chat FAB (mobile)**: Mobile drawer navigation with accessible focus trapping, reduced-motion support, and a prominent Chat floating action button (FAB).

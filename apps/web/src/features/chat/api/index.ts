@@ -1,4 +1,4 @@
-import { apiClient } from '@/lib/api';
+import { apiClient, V1_CHAT_PREFIX } from '@/lib/api';
 import { UiError } from '../../../lib/ui-error';
 import { getAuthToken } from '../../../utils/auth-session';
 import type { ChatMessage } from '../types';
@@ -52,12 +52,13 @@ export interface ChatConversation {
   createdAt: string;
   updatedAt: string;
   messages: ChatMessage[];
+  // Mirrors the backend ConversationDetailResponse pagination, whose fields are all optional.
   pagination?: {
-    offset: number;
-    limit: number;
-    total: number;
-    returned: number;
-    has_more: boolean;
+    offset?: number;
+    limit?: number;
+    total?: number;
+    returned?: number;
+    has_more?: boolean;
   };
 }
 
@@ -262,7 +263,7 @@ export const chatClient = {
         headers['Authorization'] = `Bearer ${token}`;
       }
 
-      const streamUrl = `${apiBaseUrl}/api/v1/chat/stream`;
+      const streamUrl = `${apiBaseUrl}${V1_CHAT_PREFIX}/stream`;
       let buffer = '';
       let accumulatedContent = '';
       let totalTokens = 0;
@@ -297,10 +298,10 @@ export const chatClient = {
 
           buffer += decoder.decode(value, { stream: true });
           const lines = buffer.split('\n');
-          buffer = lines[lines.length - 1];
+          buffer = lines[lines.length - 1]!;
 
           for (let i = 0; i < lines.length - 1; i++) {
-            const line = lines[i].trim();
+            const line = lines[i]!.trim();
             if (!line || line.startsWith(':')) continue;
 
             if (line.startsWith('data: ')) {

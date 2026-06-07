@@ -15,6 +15,8 @@ from typing import Any, Dict, List, Optional
 from api.core.contracts import ProviderHealthUpdatedPayload
 from api.observability.events import event_emitter
 from api.observability.migration_metrics import migration_metrics
+from api.ops.integrations.jira import publish_provider_health_incident
+from api.providers.supabase_events import upsert_provider_status
 from api.routing.router import registry
 
 
@@ -64,6 +66,26 @@ def _average_latency(samples: deque) -> float:
     if not samples:
         return 0.0
     return sum(samples) / len(samples)
+
+
+def _push_status(provider_id: str, state: "ProviderHealth") -> None:
+    """Fire-and-forget upsert of provider health to Supabase."""
+    import importlib  # noqa: PLC0415
+
+    disp = importlib.import_module("api.providers.dispatcher").dispatcher
+    provider = disp._providers.get(provider_id)
+    upsert_provider_status(
+        provider_id,
+        is_healthy=state.status == HealthStatus.HEALTHY,
+        circuit_state=(provider.circuit_state if provider else state.status.value),
+        failure_count=state.consecutive_failures,
+        transient_failure_count=(
+            getattr(provider, "_transient_failure_count", 0) if provider else 0
+        ),
+        circuit_open_until=(getattr(provider, "_circuit_open_until", None) if provider else None),
+        avg_latency_ms=(state.avg_latency_ms if state.avg_latency_ms > 0 else None),
+        error_message=state.last_error,
+    )
 
 
 class HealthStatus(Enum):
@@ -125,20 +147,26 @@ class ProviderHealthMonitor:
         provider_id: str,
         state: ProviderHealth,
     ) -> None:
+        occurred_at = (state.last_check or datetime.now(timezone.utc)).isoformat()
+        payload = ProviderHealthUpdatedPayload(
+            provider_id=provider_id,
+            status=state.status.value,
+            configured=state.configured,
+            healthy=state.status == HealthStatus.HEALTHY,
+            cache_stale=self._is_stale(state),
+            avg_latency_ms=round(state.avg_latency_ms, 1),
+            success_rate=round(state.success_rate, 3),
+            consecutive_failures=state.consecutive_failures,
+            last_error=state.last_error,
+        )
         await event_emitter.emit(
             "provider.health.updated",
             source="api.services.provider_health",
-            payload=ProviderHealthUpdatedPayload(
-                provider_id=provider_id,
-                status=state.status.value,
-                configured=state.configured,
-                healthy=state.status == HealthStatus.HEALTHY,
-                cache_stale=self._is_stale(state),
-                avg_latency_ms=round(state.avg_latency_ms, 1),
-                success_rate=round(state.success_rate, 3),
-                consecutive_failures=state.consecutive_failures,
-                last_error=state.last_error,
-            ),
+            payload=payload,
+        )
+        await publish_provider_health_incident(
+            payload,
+            occurred_at=occurred_at,
         )
 
     async def probe_all(
@@ -200,6 +228,8 @@ class ProviderHealthMonitor:
                 healthy=bool(item.get("healthy")),
                 configured=bool(item.get("configured")),
             )
+            # Persist current snapshot to Supabase for Realtime subscribers
+            _push_status(provider_id, state)
             if previous_status != state.status:
                 await self._emit_health_event(provider_id, state)
 
@@ -286,6 +316,7 @@ class ProviderHealthMonitor:
             healthy=bool(current.get("healthy")),
             configured=bool(current.get("configured")),
         )
+        _push_status(canonical_id, state)
         await self._emit_health_event(canonical_id, state)
         return self.get_status(canonical_id)
 

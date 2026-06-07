@@ -15,11 +15,12 @@ describe('SSR Safety - Browser API Access', () => {
   });
 
   test('error tracking handles missing window object', async () => {
+    // Pre-import before deleting window to avoid module-init hangs in jsdom
+    const { withErrorTracking } = await import('../utils/error-tracking');
+
     // Simulate SSR environment
     // @ts-expect-error - intentionally testing undefined
     delete globalThis.window;
-
-    const { withErrorTracking } = await import('../utils/error-tracking');
 
     // Should not crash when window is undefined
     await expect(

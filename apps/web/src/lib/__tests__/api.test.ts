@@ -1,42 +1,41 @@
-import '@testing-library/jest-dom';
 
 // Mock dependencies before importing api
-jest.mock('axios', () => {
+vi.mock('axios', () => {
   const mockAxiosInstance = {
-    get: jest.fn(),
-    post: jest.fn(),
-    put: jest.fn(),
-    patch: jest.fn(),
+    get: vi.fn(),
+    post: vi.fn(),
+    put: vi.fn(),
+    patch: vi.fn(),
     interceptors: {
-      response: { use: jest.fn() },
+      response: { use: vi.fn() },
     },
   };
   return {
     __esModule: true,
     default: {
-      create: jest.fn(() => mockAxiosInstance),
-      isAxiosError: jest.fn(() => false),
+      create: vi.fn(() => mockAxiosInstance),
+      isAxiosError: vi.fn(() => false),
     },
     AxiosError: class extends Error {},
   };
 });
 
-jest.mock('../../config/env', () => ({
+vi.mock('../../config/env', () => ({
   env: { apiBaseUrl: 'http://api.example.test:8000' },
 }));
 
-jest.mock('../../utils/dev-log', () => ({
-  devWarn: jest.fn(),
-  devError: jest.fn(),
-  devLog: jest.fn(),
+vi.mock('../../utils/dev-log', () => ({
+  devWarn: vi.fn(),
+  devError: vi.fn(),
+  devLog: vi.fn(),
 }));
 
-const mockGetAuthToken = jest.fn().mockReturnValue('test-token');
-const mockGetRefreshToken = jest.fn().mockReturnValue('refresh-token');
-const mockPersistAuthSession = jest.fn();
-const mockClearAuthSession = jest.fn();
+const mockGetAuthToken = vi.fn().mockReturnValue('test-token');
+const mockGetRefreshToken = vi.fn().mockReturnValue('refresh-token');
+const mockPersistAuthSession = vi.fn();
+const mockClearAuthSession = vi.fn();
 
-jest.mock('../../utils/auth-session', () => ({
+vi.mock('../../utils/auth-session', () => ({
   getAuthToken: () => mockGetAuthToken(),
   getRefreshToken: () => mockGetRefreshToken(),
   persistAuthSession: (...args: unknown[]) => mockPersistAuthSession(...args),
@@ -48,7 +47,7 @@ import { apiClient } from '../api';
 
 // Save mock instance references immediately after import (before any test clears them)
 // axios.create returns the same mockAxiosInstance for every call, so both backend & frontend share it
-const mockHttp = (axios.create as jest.Mock).mock.results[0]?.value;
+const mockHttp = (axios.create as vi.Mock).mock.results[0]?.value;
 
 describe('apiClient', () => {
   beforeEach(() => {
@@ -152,7 +151,7 @@ describe('apiClient', () => {
       mockHttp.post.mockResolvedValueOnce({ data: { ok: true } });
       await apiClient.setProviderPriority(1, 5, 'default');
       expect(mockHttp.post).toHaveBeenCalledWith(
-        '/providers/1/priority',
+        '/api/v1/providers/1/priority',
         { priority: 5, role: 'default' },
         undefined
       );
@@ -163,7 +162,7 @@ describe('apiClient', () => {
     it('calls backend POST', async () => {
       mockHttp.post.mockResolvedValueOnce({ data: { connected: true } });
       await apiClient.testProviderConnection(1);
-      expect(mockHttp.post).toHaveBeenCalledWith('/providers/1/test', undefined, undefined);
+      expect(mockHttp.post).toHaveBeenCalledWith('/api/v1/providers/1/test', undefined, undefined);
     });
   });
 
@@ -515,7 +514,7 @@ describe('apiClient', () => {
       mockHttp.post.mockResolvedValueOnce({ data: { ok: true } });
       await apiClient.reorderProviders([1, 2, 3]);
       expect(mockHttp.post).toHaveBeenCalledWith(
-        '/providers/reorder',
+        '/api/v1/providers/reorder',
         { providerIds: [1, 2, 3] },
         undefined
       );

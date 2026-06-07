@@ -54,7 +54,7 @@ export const useSearchResults = (): SearchState => {
 
   useEffect(() => {
     if (collectionsQuery.data && collectionsQuery.data.length > 0 && !selectedCollection) {
-      setSelectedCollection(collectionsQuery.data[0]);
+      setSelectedCollection(collectionsQuery.data[0]!);
     }
   }, [collectionsQuery.data, selectedCollection]);
 

@@ -83,7 +83,7 @@ describe('UI Store (Zustand)', () => {
     expect(result.current.currentTheme).toBe('default');
   });
 
-  it('should persist theme using the shared theme storage key', () => {
+  it('should persist theme using the shared theme storage key', async () => {
     const { result } = renderHook(() => useUIStore());
 
     act(() => {
@@ -93,11 +93,10 @@ describe('UI Store (Zustand)', () => {
     expect(localStorage.getItem('goblinos-theme-preference')).toBe('ember');
     expect(localStorage.getItem('goblin-theme')).toBeNull();
 
-    jest.resetModules();
+    vi.resetModules();
     localStorage.setItem('goblinos-theme-preference', 'nocturne');
 
-    // eslint-disable-next-line @typescript-eslint/no-var-requires
-    const { useUIStore: freshUIStore } = require('../uiStore') as typeof import('../uiStore');
+    const { useUIStore: freshUIStore } = await import('../uiStore');
     expect(freshUIStore.getState().currentTheme).toBe('nocturne');
   });
 

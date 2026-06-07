@@ -18,13 +18,35 @@ where = ["src"]
 include = ["api*"]
 
 [tool.pytest.ini_options]
-cache_dir = "/Volumes/GOBLINOS 1/apps/.tmp/pytest_cache"
+cache_dir = ".tmp/pytest_cache"
 testpaths = ["src/api", "src/api/tests"]
 python_files = ["test_*.py"]
 python_classes = ["Test*"]
 python_functions = ["test_*"]
 addopts = ["--strict-markers", "--strict-config", "--disable-warnings", "--tb=short", "--benchmark-disable-gc"]
 asyncio_mode = "auto"
+
+[tool.coverage.run]
+source = ["api"]
+branch = true
+omit = [
+  "*/tests/*",
+  "*/test_*.py",
+  "*/__pycache__/*",
+  "*/migrations/*",
+  "*/conftest.py",
+]
+
+[tool.coverage.report]
+show_missing = true
+skip_covered = false
+fail_under = 60
+exclude_lines = [
+  "pragma: no cover",
+  "if TYPE_CHECKING:",
+  "raise NotImplementedError",
+  "@(abc\\.)?abstractmethod",
+]
 
 [tool.mypy]
 python_version = "3.11"
@@ -38,9 +60,19 @@ exclude = [
   "^src/api/docs/.*",
 ]
 
-[tool.black]
-line-length = 100
-target-version = ["py311"]
+[tool.vulture]
+min_confidence = 80
+paths = ["src/api"]
+ignore_names = [
+  "test_*",
+  "*_test",
+  "conftest",
+]
+ignore_decorators = [
+  "@app.route",
+  "@router.*",
+  "@pytest.*",
+]
 
 [tool.ruff]
 target-version = "py311"
@@ -60,6 +92,25 @@ select = [
 ignore = [
   "E402",
   "E501",
+  "PLC0415",  # lazy imports are a legitimate circular-import-avoidance pattern
+  "PLR0913",  # API functions legitimately take many parameters
+  "PLR2004",  # magic values in tests are acceptable
+  "ARG001",   # unused args in callbacks/overrides are common
+  "N806",     # PascalCase locals used as type aliases
+  "N815",     # mixedCase class variables (e.g. apiVersion)
+  "PLW2901",  # loop variable reassignment is fine
+  "SIM102",   # nested if clarity over single-statement compression
+  "SIM105",   # explicit try/except/pass is clearer than contextlib.suppress
+  "SIM108",   # ternary can hurt readability in complex conditions
+  "SIM117",   # nested with statements are intentional in some cases
+  "PLR0912",  # large dispatch/handler functions are unavoidable
+  "PLR0915",  # large handler functions are unavoidable
+  "PLR0911",  # large streaming/dispatch functions have many early returns
+  "PLW0603",  # global updates in reload functions are intentional
+  "ASYNC109", # timeout parameter in async functions is intentional API design
+  "ARG002",   # unused method args in interface implementations/overrides
+  "ARG005",   # unused lambda args (forward-compatible signatures)
+  "SIM103",   # return condition directly (readability preference)
 ]
 
 [tool.ruff.lint.pylint]

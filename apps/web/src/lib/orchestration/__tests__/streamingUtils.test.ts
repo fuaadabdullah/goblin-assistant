@@ -26,8 +26,8 @@ describe('streamingUtils', () => {
   });
 
   test('createStreamingHandlers dispatches expected actions for chunk + completion', () => {
-    const dispatch = jest.fn<void, [OrchestrationAction]>();
-    const clearTimeoutFn = jest.fn();
+    const dispatch = vi.fn<void, [OrchestrationAction]>();
+    const clearTimeoutFn = vi.fn();
     const handlers = createStreamingHandlers('s1', dispatch, clearTimeoutFn);
 
     const chunk = {

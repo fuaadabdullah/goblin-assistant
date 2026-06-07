@@ -1,14 +1,14 @@
 import { renderHook, act } from '@testing-library/react';
 import { useAuthStore } from '../authStore';
 
-jest.mock('@/lib/api', () => ({
-  apiClient: { validateToken: jest.fn() },
+vi.mock('@/lib/api', () => ({
+  apiClient: { validateToken: vi.fn() },
 }));
 
-jest.mock('@/utils/auth-session', () => ({
-  persistAuthSession: jest.fn(),
-  clearAuthSession: jest.fn(),
-  getAuthToken: jest.fn(() => null),
+vi.mock('@/utils/auth-session', () => ({
+  persistAuthSession: vi.fn(),
+  clearAuthSession: vi.fn(),
+  getAuthToken: vi.fn(() => null),
 }));
 
 describe('Auth Store (Zustand)', () => {

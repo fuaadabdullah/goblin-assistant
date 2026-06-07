@@ -1,4 +1,4 @@
-.PHONY: help install dev web-dev api-dev build build-packages lint lint-web lint-api lint-policy type-check type-check-packages test test-web test-api test-api-context-coverage test-e2e test-e2e-budget test-integration test-contract test-performance generate-providers-json check-api-boundaries check-api-cycles check-capability-boundaries check-route-lifecycle type-check-api-mypy type-check-api-pyright format format-check test-critical sdk-generate sdk-check secret-scan
+.PHONY: help install dev web-dev api-dev build build-packages lint lint-web lint-api lint-policy type-check type-check-packages test test-unit test-web test-api test-api-context-coverage test-e2e test-e2e-budget test-integration test-contract test-performance generate-providers-json check-providers-json check-api-boundaries check-api-cycles check-capability-boundaries check-route-lifecycle type-check-api-mypy type-check-api-pyright format format-check test-critical sdk-generate sdk-check secret-scan check-unused-deps check-dead-code
 PNPM_TMP := TMPDIR="$(PWD)/.tmp"
 PYTHON ?= python3
 
@@ -12,12 +12,14 @@ help:
 	@echo "  make lint-web             - run web lint"
 	@echo "  make lint-api             - run api Ruff lint"
 	@echo "  make type-check           - run web typecheck"
-	@echo "  make test-web             - run web test suite"
-	@echo "  make test-api             - run api pytest suite"
-	@echo "  make test-integration     - run integration bucket from tests/manifests"
-	@echo "  make test-contract        - run contract bucket from tests/manifests"
+	@echo "  make test-unit            - run all unit tests (web + api)"
+	@echo "  make test-web             - run web test suite (subset of test-unit)"
+	@echo "  make test-api             - run api pytest suite (subset of test-unit)"
+	@echo "  make test-integration     - run integration + contract buckets from tests/manifests"
+	@echo "  make test-contract        - run contract bucket only"
 	@echo "  make test-performance     - run performance bucket from tests/manifests"
 	@echo "  make test-critical        - run critical-path coverage gates"
+	@echo "  make check-dead-code      - find unused Python functions and TS exports"
 	@echo "  make secret-scan          - scan config/env/docs for embedded secrets"
 	@echo "  make format               - auto-format web + api"
 	@echo "  make format-check         - run blocking format checks"
@@ -33,6 +35,7 @@ help:
 	@echo "  make sdk-generate         - export OpenAPI and generate SDK types"
 	@echo "  make sdk-check            - fail if SDK generated artifacts are stale"
 	@echo "  make generate-providers-json — validate providers.toml & regenerate providers.json"
+	@echo "  make check-providers-json  - fail if providers.json is stale"
 
 install:
 	mkdir -p .tmp
@@ -59,6 +62,9 @@ type-check-api-pyright:
 
 generate-providers-json:
 	PYTHONPATH=packages/shared/src $(PYTHON) tooling/generators/generate-providers-json.py
+
+check-providers-json:
+	PYTHONPATH=packages/shared/src $(PYTHON) tooling/generators/generate-providers-json.py --check
 
 web-dev:
 	mkdir -p .tmp
@@ -111,7 +117,9 @@ format-check:
 	$(PNPM_TMP) pnpm --filter @goblin/web exec eslint .
 	cd apps/api && PYTHONPATH=src $(PYTHON) -m ruff format --check src/api
 
-test:
+test: test-unit
+
+test-unit:
 	mkdir -p .tmp
 	$(PNPM_TMP) pnpm --filter @goblin/web test
 	cd apps/api && PYTHONPATH=src $(PYTHON) -m pytest -o "addopts=" -v
@@ -142,6 +150,7 @@ test-e2e-budget:
 
 test-integration:
 	$(PYTHON) tooling/quality/run-test-bucket.py integration
+	$(PYTHON) tooling/quality/run-test-bucket.py contract
 
 test-contract:
 	$(PYTHON) tooling/quality/run-test-bucket.py contract
@@ -157,3 +166,13 @@ sdk-check:
 
 secret-scan:
 	$(PYTHON) scripts/security/scan_secrets.py
+
+check-dead-code:
+	cd apps/api && $(PYTHON) -m vulture src/api --min-confidence 80
+	$(PNPM_TMP) pnpm --filter @goblin/web dead-code
+
+check-unused-deps:
+	@echo "==> Python unused/transitive deps"
+	cd apps/api && pip install --quiet pipdeptree && pipdeptree --warn fail
+	@echo "==> Node.js unused deps"
+	$(PNPM_TMP) pnpm --filter @goblin/web exec npx depcheck

@@ -1,8 +1,7 @@
 import React from 'react';
 import { render, screen } from '@testing-library/react';
-import '@testing-library/jest-dom';
 
-jest.mock('@/components/ui/Select', () => ({
+vi.mock('@/components/ui/Select', () => ({
   Select: ({
     children,
     value,

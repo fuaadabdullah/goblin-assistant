@@ -2,34 +2,34 @@ import { createRef } from 'react';
 import { fireEvent, render, screen } from '@testing-library/react';
 import ChatMessageList from '../ChatMessageList';
 
-jest.mock('../StreamingMessage', () => ({
+vi.mock('../StreamingMessage', () => ({
   __esModule: true,
   default: ({ message }: { message: { content: string } }) => <span>{message.content}</span>,
 }));
 
-jest.mock('../MessageTimestamp', () => ({
+vi.mock('../MessageTimestamp', () => ({
   __esModule: true,
   default: ({ createdAt }: { createdAt: string }) => <time>{createdAt}</time>,
 }));
 
-jest.mock('../MessageActions', () => ({
+vi.mock('../MessageActions', () => ({
   __esModule: true,
   default: () => null,
 }));
 
-jest.mock('../ChatEmptyState', () => ({
+vi.mock('../ChatEmptyState', () => ({
   __esModule: true,
   default: () => <div>Empty state</div>,
 }));
 
-jest.mock('../MessageMarkdown', () => ({
+vi.mock('../MessageMarkdown', () => ({
   __esModule: true,
   default: ({ content }: { content: string }) => <span>{content}</span>,
 }));
 
 const baseProps = {
   quickPrompts: [],
-  onPromptClick: jest.fn(),
+  onPromptClick: vi.fn(),
   bottomRef: createRef<HTMLDivElement>(),
   isSending: false,
 };

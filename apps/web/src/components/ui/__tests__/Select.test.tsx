@@ -1,6 +1,5 @@
 import React from 'react';
 import { fireEvent, render, screen } from '@testing-library/react';
-import '@testing-library/jest-dom';
 import {
   Select,
   SelectGroup,
@@ -101,7 +100,7 @@ describe('Select components', () => {
   });
 
   it('calls onValueChange when selecting an item', () => {
-    const onValueChange = jest.fn();
+    const onValueChange = vi.fn();
     render(
       <Select open onValueChange={onValueChange}>
         <SelectTrigger aria-label="choose-value">

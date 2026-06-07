@@ -4,8 +4,8 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { ProviderProvider, useProvider } from '../ProviderContext';
 
 /* Mock the API client used by useProviderHealth */
-const mockGetModelConfigs = jest.fn();
-jest.mock('@/lib/api', () => ({
+const mockGetModelConfigs = vi.fn();
+vi.mock('@/lib/api', () => ({
   apiClient: {
     getModelConfigs: (...args: unknown[]) => mockGetModelConfigs(...args),
   },
@@ -97,7 +97,7 @@ describe('ProviderContext', () => {
   };
 
   beforeEach(() => {
-    jest.resetAllMocks();
+    vi.resetAllMocks();
     localStorage.clear();
     queryClient = new QueryClient({
       defaultOptions: { queries: { retry: false } },

@@ -5,16 +5,16 @@ describe('useCostClipboard', () => {
   beforeEach(() => {
     Object.defineProperty(navigator, 'clipboard', {
       value: {
-        writeText: jest.fn().mockResolvedValue(undefined),
+        writeText: vi.fn().mockResolvedValue(undefined),
       },
       configurable: true,
     });
-    jest.useFakeTimers();
+    vi.useFakeTimers();
   });
 
   afterEach(() => {
-    jest.useRealTimers();
-    jest.restoreAllMocks();
+    vi.useRealTimers();
+    vi.restoreAllMocks();
   });
 
   it('initializes with no copy status', () => {
@@ -41,14 +41,14 @@ describe('useCostClipboard', () => {
     expect(result.current.copyStatus).toBe('Copied');
 
     act(() => {
-      jest.advanceTimersByTime(1500);
+      vi.advanceTimersByTime(1500);
     });
 
     expect(result.current.copyStatus).toBeNull();
   });
 
   it('handles clipboard failures gracefully', async () => {
-    (navigator.clipboard.writeText as jest.Mock).mockRejectedValueOnce(
+    (navigator.clipboard.writeText as vi.Mock).mockRejectedValueOnce(
       new Error('Clipboard error')
     );
 

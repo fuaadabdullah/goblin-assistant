@@ -1,25 +1,24 @@
 import { render, screen, fireEvent } from '@testing-library/react';
-import '@testing-library/jest-dom';
 
 // Mock dependencies
-jest.mock('../../components/streaming/StreamingView', () => {
-  return function MockStreamingView() {
+vi.mock('../../components/streaming/StreamingView', () => ({
+  default: function MockStreamingView() {
     return <div data-testid="streaming-view" />;
-  };
-});
-jest.mock('../../api', () => ({
-  runtimeClient: {
-    parseOrchestration: jest.fn(),
-    executeTaskStreaming: jest.fn(),
-    executeTask: jest.fn(),
-  },
-  runtimeClientDemo: {
-    parseOrchestration: jest.fn(),
-    executeTaskStreaming: jest.fn(),
-    executeTask: jest.fn(),
   },
 }));
-jest.mock('../../lib/orchestration/orchestrationState', () => {
+vi.mock('../../api', () => ({
+  runtimeClient: {
+    parseOrchestration: vi.fn(),
+    executeTaskStreaming: vi.fn(),
+    executeTask: vi.fn(),
+  },
+  runtimeClientDemo: {
+    parseOrchestration: vi.fn(),
+    executeTaskStreaming: vi.fn(),
+    executeTask: vi.fn(),
+  },
+}));
+vi.mock('../../lib/orchestration/orchestrationState', () => {
   const initialState = {
     codeInput: '// Write code or paste here\nfunction add(a, b) {\n  return a + b;\n}',
     orchestration: 'docs-writer: document this code THEN code-writer: write a unit test',
@@ -54,27 +53,27 @@ jest.mock('../../lib/orchestration/orchestrationState', () => {
     },
   };
 });
-const mockExecuteOrchestration = jest.fn();
-jest.mock('../../lib/orchestration/useOrchestrationExecution', () => ({
+const mockExecuteOrchestration = vi.fn();
+vi.mock('../../lib/orchestration/useOrchestrationExecution', () => ({
   useOrchestrationExecution: () => ({
     executeOrchestration: mockExecuteOrchestration,
     streamingTimeoutRef: { current: null },
   }),
 }));
-jest.mock('../../utils/format-cost', () => ({
+vi.mock('../../utils/format-cost', () => ({
   formatCost: (val: number) => `$${val.toFixed(2)}`,
 }));
-jest.mock('../../lib/utils/debug', () => ({
-  debugLog: jest.fn(),
+vi.mock('../../lib/utils/debug', () => ({
+  debugLog: vi.fn(),
 }));
-jest.mock('../../utils/dev-log', () => ({
-  devError: jest.fn(),
+vi.mock('../../utils/dev-log', () => ({
+  devError: vi.fn(),
 }));
 
 import GoblinDemo from '../GoblinDemo';
 
 describe('GoblinDemo', () => {
-  beforeEach(() => jest.clearAllMocks());
+  beforeEach(() => vi.clearAllMocks());
 
   it('renders the demo page with orchestration input', () => {
     render(<GoblinDemo />);

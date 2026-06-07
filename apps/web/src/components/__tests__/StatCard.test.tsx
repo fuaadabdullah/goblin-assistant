@@ -1,9 +1,8 @@
 import React from 'react';
 import { render, screen } from '@testing-library/react';
-import '@testing-library/jest-dom';
 
-jest.mock('../Card', () => {
-  return function MockCard({
+vi.mock('../Card', () => ({
+  default: function MockCard({
     children,
     ...props
   }: {
@@ -15,8 +14,8 @@ jest.mock('../Card', () => {
         {children}
       </div>
     );
-  };
-});
+  },
+}));
 
 import StatCard from '../StatCard';
 

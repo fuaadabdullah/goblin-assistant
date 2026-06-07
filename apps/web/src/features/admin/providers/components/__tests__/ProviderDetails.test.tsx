@@ -14,10 +14,10 @@ const baseProvider = {
 };
 
 describe('ProviderDetails', () => {
-  const onSetPriority = jest.fn();
+  const onSetPriority = vi.fn();
 
   beforeEach(() => {
-    jest.clearAllMocks();
+    vi.clearAllMocks();
   });
 
   it('renders provider name and subtitle', () => {
