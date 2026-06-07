@@ -6,6 +6,7 @@ import CostBreakdownChart from '@/components/cost/CostBreakdownChart';
 import ProviderUsageChart from '@/components/cost/ProviderUsageChart';
 import { getChartPaletteColor } from '@/components/cost/chartPalette';
 import { runtimeClient } from '@/lib/api/runtimeClient';
+import { queryKeys } from '@/lib/query-keys';
 import { useSystemStatus } from '@/hooks/useSystemStatus';
 import { TristateWrapper, Card } from '@/components/ui';
 import StatCard from '@/components/StatCard';
@@ -57,7 +58,7 @@ const DashboardContent: React.FC = () => {
     isLoading: costLoading,
     error: costError,
   } = useQuery({
-    queryKey: ['costSummary'],
+    queryKey: queryKeys.costSummary,
     queryFn: () => runtimeClient.getCostSummary(),
   });
 

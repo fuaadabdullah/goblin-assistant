@@ -44,7 +44,7 @@ vi.mock('@/contexts/ProviderContext', () => ({
 
 const mockShowSuccess = vi.fn();
 const mockShowError = vi.fn();
-vi.mock('@/contexts/ToastContext', () => ({
+vi.mock('@/hooks/useToast', () => ({
   useToast: () => ({ showSuccess: mockShowSuccess, showError: mockShowError }),
 }));
 

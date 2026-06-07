@@ -1,8 +1,8 @@
 import React from 'react';
 import { render, screen, act, fireEvent } from '@testing-library/react';
-import { ToastProvider, useToast } from '../ToastContext';
+import { useUIStore } from '../../store/uiStore';
+import { useToast } from '../useToast';
 
-// Test consumer component
 function TestConsumer() {
   const { toasts, showSuccess, showError, showWarning, showInfo, removeToast, addToast } =
     useToast();
@@ -39,8 +39,9 @@ function TestConsumer() {
   );
 }
 
-describe('ToastContext', () => {
+describe('useToast', () => {
   beforeEach(() => {
+    useUIStore.setState({ toasts: [] });
     vi.useFakeTimers();
   });
 
@@ -48,68 +49,38 @@ describe('ToastContext', () => {
     vi.useRealTimers();
   });
 
-  it('throws when used outside provider', () => {
-    const spy = vi.spyOn(console, 'error').mockImplementation(() => {});
-    expect(() => render(<TestConsumer />)).toThrow('useToast must be used within a ToastProvider');
-    spy.mockRestore();
-  });
-
   it('starts with no toasts', () => {
-    render(
-      <ToastProvider>
-        <TestConsumer />
-      </ToastProvider>
-    );
+    render(<TestConsumer />);
     expect(screen.getByTestId('count').textContent).toBe('0');
   });
 
   it('showSuccess adds a success toast', () => {
-    render(
-      <ToastProvider>
-        <TestConsumer />
-      </ToastProvider>
-    );
+    render(<TestConsumer />);
     act(() => { fireEvent.click(screen.getByTestId('add-success')); });
     expect(screen.getByTestId('count').textContent).toBe('1');
     expect(screen.getAllByText('Done').length).toBeGreaterThan(0);
   });
 
   it('showError adds an error toast', () => {
-    render(
-      <ToastProvider>
-        <TestConsumer />
-      </ToastProvider>
-    );
+    render(<TestConsumer />);
     act(() => { fireEvent.click(screen.getByTestId('add-error')); });
     expect(screen.getByTestId('count').textContent).toBe('1');
   });
 
   it('showWarning adds a warning toast', () => {
-    render(
-      <ToastProvider>
-        <TestConsumer />
-      </ToastProvider>
-    );
+    render(<TestConsumer />);
     act(() => { fireEvent.click(screen.getByTestId('add-warning')); });
     expect(screen.getByTestId('count').textContent).toBe('1');
   });
 
   it('showInfo adds an info toast', () => {
-    render(
-      <ToastProvider>
-        <TestConsumer />
-      </ToastProvider>
-    );
+    render(<TestConsumer />);
     act(() => { fireEvent.click(screen.getByTestId('add-info')); });
     expect(screen.getByTestId('count').textContent).toBe('1');
   });
 
   it('removeToast removes a toast', () => {
-    render(
-      <ToastProvider>
-        <TestConsumer />
-      </ToastProvider>
-    );
+    render(<TestConsumer />);
     act(() => { fireEvent.click(screen.getByTestId('add-success')); });
     expect(screen.getByTestId('count').textContent).toBe('1');
     act(() => { fireEvent.click(screen.getByText('remove')); });
@@ -117,11 +88,7 @@ describe('ToastContext', () => {
   });
 
   it('auto-removes toast after duration', () => {
-    render(
-      <ToastProvider>
-        <TestConsumer />
-      </ToastProvider>
-    );
+    render(<TestConsumer />);
     act(() => { fireEvent.click(screen.getByTestId('add-success')); });
     expect(screen.getByTestId('count').textContent).toBe('1');
     act(() => { vi.advanceTimersByTime(6000); });
@@ -129,11 +96,7 @@ describe('ToastContext', () => {
   });
 
   it('does not auto-remove toast with duration 0', () => {
-    render(
-      <ToastProvider>
-        <TestConsumer />
-      </ToastProvider>
-    );
+    render(<TestConsumer />);
     act(() => { fireEvent.click(screen.getByTestId('add-no-auto')); });
     expect(screen.getByTestId('count').textContent).toBe('1');
     act(() => { vi.advanceTimersByTime(30000); });
@@ -141,11 +104,7 @@ describe('ToastContext', () => {
   });
 
   it('supports multiple toasts', () => {
-    render(
-      <ToastProvider>
-        <TestConsumer />
-      </ToastProvider>
-    );
+    render(<TestConsumer />);
     act(() => { fireEvent.click(screen.getByTestId('add-success')); });
     act(() => { fireEvent.click(screen.getByTestId('add-error')); });
     act(() => { fireEvent.click(screen.getByTestId('add-info')); });
@@ -153,11 +112,7 @@ describe('ToastContext', () => {
   });
 
   it('toast includes message when provided', () => {
-    render(
-      <ToastProvider>
-        <TestConsumer />
-      </ToastProvider>
-    );
+    render(<TestConsumer />);
     act(() => { fireEvent.click(screen.getByTestId('add-warning')); });
     expect(screen.getByText('Watch out')).toBeInTheDocument();
   });

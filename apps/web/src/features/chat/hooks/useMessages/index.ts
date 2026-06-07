@@ -1,5 +1,5 @@
 import { useCallback, useState } from 'react';
-import { useToast } from '../../../../contexts/ToastContext';
+import { useToast } from '../../../../hooks/useToast';
 import { calculateTotals } from './factories';
 import { useSendMessage } from './useSendMessage';
 import { useDeleteMessage } from './useDeleteMessage';

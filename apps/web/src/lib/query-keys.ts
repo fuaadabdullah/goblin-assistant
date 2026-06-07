@@ -29,6 +29,9 @@ export const queryKeys = {
   // Auth
   authValidate: ['auth', 'validate'] as const,
 
+  // Dashboard
+  costSummary: ['dashboard', 'cost-summary'] as const,
+
   // Routing
   routingProviders: (capability?: string) =>
     capability

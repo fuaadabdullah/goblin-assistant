@@ -1,6 +1,6 @@
 import type { KeyboardEvent, RefObject } from 'react';
 import { useCallback, useRef, useState } from 'react';
-import { useToast } from '../../../contexts/ToastContext';
+import { useToast } from '../../../hooks/useToast';
 import { chatClient } from '../api';
 import { devError } from '@/utils/dev-log';
 import type { PendingAttachment } from './useChatSession';

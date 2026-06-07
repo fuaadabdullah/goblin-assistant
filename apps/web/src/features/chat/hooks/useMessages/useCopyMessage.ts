@@ -1,6 +1,6 @@
 import { useCallback } from 'react';
 import { devError, devLog } from '@/utils/dev-log';
-import { useToast } from '../../../../contexts/ToastContext';
+import { useToast } from '../../../../hooks/useToast';
 
 interface CopyMessageDeps {
   showError: ReturnType<typeof useToast>['showError'];

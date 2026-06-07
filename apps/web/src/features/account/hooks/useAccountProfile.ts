@@ -3,7 +3,7 @@ import { useCallback, useMemo, useState } from 'react';
 import { savePreferences, saveProfile } from '../api';
 import type { AccountPreferencesPayload } from '../types';
 import { toUiError } from '../../../lib/ui-error';
-import { useToast } from '../../../contexts/ToastContext';
+import { useToast } from '../../../hooks/useToast';
 
 interface AccountUser {
   name?: string;

@@ -3,7 +3,7 @@ import { chatClient } from '../../api';
 import { devError } from '@/utils/dev-log';
 import { isAuthenticated } from '../../../../utils/auth-session';
 import type { ChatMessage, ChatThread } from '../../types';
-import { useToast } from '../../../../contexts/ToastContext';
+import { useToast } from '../../../../hooks/useToast';
 import { createMessageId, createAssistantMessage } from './factories';
 
 interface RegenerateMessageDeps {

@@ -1,7 +1,7 @@
 import React from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from './ui/card';
 import Alert from './ui/Alert';
-import { useToast } from '../contexts/ToastContext';
+import { useToast } from '../hooks/useToast';
 import { Button } from './ui';
 import { useErrorTesting } from '../hooks/useErrorTesting';
 import { ErrorTestButtons } from './error-testing/ErrorTestButtons';

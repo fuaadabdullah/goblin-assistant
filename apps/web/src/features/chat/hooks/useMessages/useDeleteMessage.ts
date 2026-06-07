@@ -1,6 +1,6 @@
 import { useCallback } from 'react';
 import type { ChatMessage } from '../../types';
-import { useToast } from '../../../../contexts/ToastContext';
+import { useToast } from '../../../../hooks/useToast';
 
 interface DeleteMessageDeps {
   messages: ChatMessage[];

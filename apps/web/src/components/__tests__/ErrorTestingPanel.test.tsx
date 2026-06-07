@@ -33,7 +33,7 @@ vi.mock('../ui', () => ({
     </button>
   ),
 }));
-vi.mock('../../contexts/ToastContext', () => ({
+vi.mock('../../hooks/useToast', () => ({
   useToast: () => ({ showSuccess: vi.fn() }),
 }));
 vi.mock('../../hooks/useErrorTesting', () => ({

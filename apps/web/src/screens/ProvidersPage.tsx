@@ -1,58 +1,21 @@
 import { useState, ReactNode } from 'react';
 import { useProviderSettings, ProviderConfig } from '../hooks/api/useSettings';
 import { useRoutingHealth } from '../hooks/api/useHealth';
-import { apiClient } from '@/lib/api';
+import { useProviderMutations } from '../features/admin/providers/hooks/useProviderMutations';
 import TwoColumnLayout from '../components/TwoColumnLayout';
 import { ProviderCardSkeleton } from '../components/LoadingSkeleton';
 
-/**
- * Provider Manager: Select, test, and prioritize AI providers
- */
 const ProvidersPage = () => {
   const { data: providers, isLoading, error, refetch } = useProviderSettings();
   const { data: routingHealth } = useRoutingHealth();
+  const { testing, testResult, setTestResult, quickTest: handleTestConnection } =
+    useProviderMutations();
   const providerList = providers as ProviderConfig[] | undefined;
   const routingStatus: string =
     routingHealth && typeof routingHealth === 'object' && 'status' in routingHealth
       ? String((routingHealth as { status: unknown }).status)
       : 'Healthy';
   const [selectedProvider, setSelectedProvider] = useState<ProviderConfig | null>(null);
-  const [testing, setTesting] = useState<string | null>(null);
-  const [testResult, setTestResult] = useState<{
-    success: boolean;
-    message: string;
-    latency?: number;
-  } | null>(null);
-
-  const handleTestConnection = async (provider: ProviderConfig) => {
-    setTesting(provider.name);
-    setTestResult(null);
-
-    try {
-      // Use real backend endpoint when providerId is available
-      if (provider.id) {
-        const result = (await apiClient.testProviderConnection(provider.id)) as {
-          success: boolean;
-          message: string;
-          latency?: number;
-        };
-        setTestResult(result);
-      } else {
-        // Fallback for providers without IDs (shouldn't happen in production)
-        setTestResult({
-          success: false,
-          message: 'Provider ID not available. Cannot test connection.',
-        });
-      }
-    } catch (error) {
-      setTestResult({
-        success: false,
-        message: error instanceof Error ? error.message : 'Connection test failed',
-      });
-    } finally {
-      setTesting(null);
-    }
-  };
 
   const sidebar: ReactNode = (
     <div className="space-y-4">

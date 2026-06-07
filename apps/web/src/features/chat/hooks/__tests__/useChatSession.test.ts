@@ -94,7 +94,7 @@ vi.mock('../../../../contexts/ProviderContext', () => ({
   })),
 }));
 
-vi.mock('../../../../contexts/ToastContext', () => ({
+vi.mock('../../../../hooks/useToast', () => ({
   useToast: vi.fn(() => ({
     addToast: vi.fn(),
     removeToast: vi.fn(),

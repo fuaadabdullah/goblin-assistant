@@ -5,7 +5,7 @@ import { toUiError } from '../../../../lib/ui-error';
 import type { ChatMessage, ChatThread } from '../../types';
 import { buildThreadKey } from '../../../../lib/chat-history';
 import { queryKeys } from '../../../../lib/query-keys';
-import { useToast } from '../../../../contexts/ToastContext';
+import { useToast } from '../../../../hooks/useToast';
 import { isAuthenticated } from '../../../../utils/auth-session';
 import type { PendingAttachment } from '../useChatSession';
 import { createMessageId, createAssistantMessage, mapAttachments } from './factories';

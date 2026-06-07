@@ -1,6 +1,6 @@
 import React from 'react';
 import { X, CheckCircle, AlertCircle, Info, AlertTriangle } from 'lucide-react';
-import { Toast, ToastType } from '../contexts/ToastContext';
+import type { Toast, ToastType } from '../hooks/useToast';
 
 interface ToastItemProps {
   toast: Toast;
