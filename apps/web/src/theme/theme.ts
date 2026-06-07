@@ -1,8 +1,3 @@
-/**
- * GoblinOS Theme Runtime
- * Deterministic theme manipulation utilities
- */
-
 const THEME_STORAGE_KEY = 'goblinos-theme-preference';
 const CONTRAST_STORAGE_KEY = 'goblinos-high-contrast';
 
@@ -11,12 +6,7 @@ const canUseDom = () =>
   typeof document !== 'undefined' &&
   typeof localStorage !== 'undefined';
 
-/**
- * Set CSS custom properties on the document root
- * @param {Object} vars - Key-value pairs of CSS variable names (without --) and values
- * @example setThemeVars({ bg: '#071117', primary: '#06D06A' })
- */
-export function setThemeVars(vars = {}) {
+export function setThemeVars(vars: Record<string, string> = {}): void {
   if (!canUseDom()) return;
   const root = document.documentElement;
   Object.entries(vars).forEach(([key, value]) => {
@@ -24,77 +14,62 @@ export function setThemeVars(vars = {}) {
   });
 }
 
-/**
- * Enable or disable high-contrast mode
- * @param {boolean} enable - Whether to enable high-contrast mode
- */
-export function enableHighContrast(enable = true) {
+export function enableHighContrast(enable = true): void {
   if (!canUseDom()) return;
   const root = document.documentElement;
   root.classList.toggle('goblinos-high-contrast', enable);
 
-  // Persist preference
   try {
     localStorage.setItem(CONTRAST_STORAGE_KEY, JSON.stringify(enable));
-  } catch (e) {
-    console.warn('Failed to save contrast preference:', e);
+  } catch {
+    // Non-critical: storage may be unavailable.
   }
 }
 
-/**
- * Get the current high-contrast preference from storage
- * @returns {boolean} Whether high-contrast mode is enabled
- */
-export function getHighContrastPreference() {
+export function getHighContrastPreference(): boolean {
   if (!canUseDom()) {
     return true;
   }
   try {
     const stored = localStorage.getItem(CONTRAST_STORAGE_KEY);
     if (stored !== null) {
-      return JSON.parse(stored);
+      return JSON.parse(stored) as boolean;
     }
-  } catch (e) {
-    console.warn('Failed to read contrast preference:', e);
+  } catch {
+    // Fall through to default.
   }
 
-  // Default: high contrast enabled (project default)
   return true;
 }
 
-/**
- * Initialize theme system on app load
- * Restores saved preferences and applies system defaults
- */
-export function initializeTheme() {
+export function initializeTheme(): void {
   if (!canUseDom()) return;
-  // Restore high-contrast preference
   const highContrast = getHighContrastPreference();
   enableHighContrast(highContrast);
 
-  // Listen for system contrast changes
   const contrastMedia = window.matchMedia('(prefers-contrast: high)');
   contrastMedia.addEventListener('change', (e) => {
-    // Only auto-apply if user hasn't set a preference
     const stored = localStorage.getItem(CONTRAST_STORAGE_KEY);
     if (stored === null) {
       enableHighContrast(e.matches);
     }
   });
 
-  // Listen for reduced motion preference
   const motionMedia = window.matchMedia('(prefers-reduced-motion: reduce)');
-  const handleMotionChange = (motionEvent) => {
-    document.documentElement.setAttribute('data-motion-reduced', motionEvent.matches);
+  const handleMotionChange = (motionEvent: MediaQueryListEvent | MediaQueryList) => {
+    document.documentElement.setAttribute(
+      'data-motion-reduced',
+      String(motionEvent.matches)
+    );
   };
   handleMotionChange(motionMedia);
   motionMedia.addEventListener('change', handleMotionChange);
 }
 
-/**
- * Predefined theme presets
- */
-export const THEME_PRESETS = {
+export type ThemePresetName = 'default' | 'nocturne' | 'ember';
+export type ThemePreset = Record<string, string>;
+
+export const THEME_PRESETS: Record<ThemePresetName, ThemePreset> = {
   default: {
     bg: '#071117',
     surface: '#0b1617',
@@ -133,39 +108,29 @@ export const THEME_PRESETS = {
   },
 };
 
-/**
- * Apply a theme preset
- * @param {string} presetName - Name of the preset to apply
- */
-export function applyThemePreset(presetName = 'default') {
+export function applyThemePreset(presetName: string = 'default'): void {
   if (!canUseDom()) return;
-  const preset = THEME_PRESETS[presetName];
+  const preset = THEME_PRESETS[presetName as ThemePresetName];
   if (!preset) {
-    console.warn(`Unknown theme preset: ${presetName}`);
     return;
   }
 
   setThemeVars(preset);
 
-  // Save preference
   try {
     localStorage.setItem(THEME_STORAGE_KEY, presetName);
-  } catch (e) {
-    console.warn('Failed to save theme preference:', e);
+  } catch {
+    // Non-critical: storage may be unavailable.
   }
 }
 
-/**
- * Get the current theme preset name from storage
- * @returns {string} The name of the active theme preset
- */
-export function getCurrentThemePreset() {
+export function getCurrentThemePreset(): string {
   if (!canUseDom()) {
     return 'default';
   }
   try {
-    return localStorage.getItem(THEME_STORAGE_KEY) || 'default';
-  } catch (e) {
+    return localStorage.getItem(THEME_STORAGE_KEY) ?? 'default';
+  } catch {
     return 'default';
   }
 }

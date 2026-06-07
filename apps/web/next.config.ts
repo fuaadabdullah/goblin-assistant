@@ -1,10 +1,10 @@
-const fs = require('fs');
-const path = require('path');
+import type { NextConfig } from 'next';
+import fs from 'fs';
+import path from 'path';
 
 const appVersion = fs.readFileSync(path.join(__dirname, '../../VERSION'), 'utf8').trim();
 
-/** @type {import('next').NextConfig} */
-const nextConfig = {
+const nextConfig: NextConfig = {
   env: {
     NEXT_PUBLIC_APP_VERSION: appVersion,
   },
@@ -43,4 +43,4 @@ const nextConfig = {
   },
 };
 
-module.exports = nextConfig;
+export default nextConfig;
