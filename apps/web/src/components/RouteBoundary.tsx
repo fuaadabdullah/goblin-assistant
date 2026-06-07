@@ -14,6 +14,7 @@ export interface RouteBoundaryFallbackProps {
   actions: RouteBoundaryAction[];
   errorId?: string;
   technicalDetail?: string;
+  onReset?: () => void;
 }
 
 export type RouteBoundaryKey =
@@ -174,6 +175,7 @@ export function RouteBoundaryFallback({
   actions,
   errorId,
   technicalDetail,
+  onReset,
 }: RouteBoundaryFallbackProps) {
   const [copiedErrorId, setCopiedErrorId] = useState(false);
 
@@ -195,7 +197,13 @@ export function RouteBoundaryFallback({
   };
 
   const handleReload = () => {
-    window.location.reload();
+    // If an onReset callback is provided (from ErrorBoundary.reset() or error.tsx reset()),
+    // use it first — it recovers without a full page reload.
+    if (onReset) {
+      onReset();
+    } else {
+      window.location.reload();
+    }
   };
 
   return (
@@ -299,13 +307,14 @@ export function withRouteErrorBoundary<P extends object>(
   const ComponentWithRouteBoundary = (props: P) => (
     <ErrorBoundary
       boundaryName={`route:${routeKey}`}
-      fallbackRender={({ error, errorId }: ErrorBoundaryRenderProps) => (
+      fallbackRender={({ error, errorId, reset }: ErrorBoundaryRenderProps) => (
         <RouteBoundaryFallback
           title={config.title}
           description={config.description}
           actions={config.actions}
           errorId={errorId}
           technicalDetail={formatBoundaryTechnicalDetail(error)}
+          onReset={reset}
         />
       )}
     >
