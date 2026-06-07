@@ -1,8 +1,7 @@
 import type { FormEvent } from 'react';
 import { useCallback, useMemo, useState } from 'react';
-import { savePreferences, saveProfile } from '../api';
+import { savePreferences, saveProfile, loadPreferences } from '../api';
 import type { AccountPreferencesPayload } from '../types';
-import { toUiError } from '../../../lib/ui-error';
 import { useToast } from '../../../hooks/useToast';
 
 interface AccountUser {
@@ -22,18 +21,22 @@ export interface AccountState {
   handleSave: (e: FormEvent) => Promise<void>;
 }
 
+const defaultPreferences: AccountPreferencesPayload = {
+  summaries: true,
+  notifications: true,
+  familyMode: false,
+};
+
 export const useAccountProfile = (user?: AccountUser | null): AccountState => {
-  const { showSuccess, showError } = useToast();
+  const { showSuccess } = useToast();
   const [name, setName] = useState(user?.name || '');
   const email = useMemo(() => user?.email || '', [user?.email]);
   const [saved, setSaved] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
-  const [preferences, setPreferences] = useState<AccountPreferencesPayload>({
-    summaries: true,
-    notifications: true,
-    familyMode: false,
-  });
+  const [preferences, setPreferences] = useState<AccountPreferencesPayload>(
+    () => loadPreferences() ?? defaultPreferences
+  );
 
   const togglePreference = useCallback((key: keyof AccountPreferencesPayload) => {
     setPreferences((prev) => ({ ...prev, [key]: !prev[key] }));
@@ -49,14 +52,13 @@ export const useAccountProfile = (user?: AccountUser | null): AccountState => {
         setSaved(true);
         showSuccess('Account updated', 'Your profile and preferences were saved.');
         setTimeout(() => setSaved(false), 2000);
-      } catch (err) {
+      } catch {
         setError('We could not save your account changes.');
-        // The global notification bridge automatically handles the visible error toast
       } finally {
         setSaving(false);
       }
     },
-    [name, preferences, showError, showSuccess]
+    [name, preferences, showSuccess]
   );
 
   return {

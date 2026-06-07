@@ -72,6 +72,7 @@ from .sessions import (  # noqa: F401
 from .tokens import (  # noqa: F401
     create_access_token,
     create_refresh_token,
+    verify_supabase_token,
     verify_token,
 )
 

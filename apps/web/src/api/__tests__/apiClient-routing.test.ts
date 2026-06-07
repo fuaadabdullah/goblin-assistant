@@ -22,7 +22,7 @@ describe('apiClient.getRoutingInfo', () => {
     const { default: axios } = await import('axios');
     vi.mocked(axios.create)
       .mockImplementationOnce(() => ({
-        interceptors: { response: { use: vi.fn() } },
+        interceptors: { request: { use: vi.fn() }, response: { use: vi.fn() } },
         get: backendGetMock,
         post: backendPostMock,
         put: backendPutMock,

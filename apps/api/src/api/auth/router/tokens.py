@@ -1,5 +1,6 @@
 """JWT access/refresh token issuance and verification."""
 
+import os
 from datetime import datetime, timedelta
 from typing import Optional
 
@@ -12,6 +13,8 @@ from .config import (
     REFRESH_TOKEN_EXPIRE_DAYS,
     SECRET_KEY,
 )
+
+SUPABASE_JWT_SECRET = os.getenv("SUPABASE_JWT_SECRET")
 
 
 def create_access_token(
@@ -58,5 +61,20 @@ def create_refresh_token(user_id: str, session_id: str) -> str:
 def verify_token(token: str) -> Optional[dict]:
     try:
         return jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
+    except PyJWTError:
+        return None
+
+
+def verify_supabase_token(token: str) -> Optional[dict]:
+    """Verify a Supabase-issued JWT using the project JWT secret."""
+    if not SUPABASE_JWT_SECRET:
+        return None
+    try:
+        return jwt.decode(
+            token,
+            SUPABASE_JWT_SECRET,
+            algorithms=[ALGORITHM],
+            audience="authenticated",
+        )
     except PyJWTError:
         return None

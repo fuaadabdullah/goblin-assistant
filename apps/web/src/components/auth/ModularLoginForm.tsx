@@ -1,9 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
-import { apiClient, prefetchCsrfToken } from '@/lib/api';
+import { supabase, supabaseUserToAppUser } from '@/lib/supabase';
 import { queryKeys } from '../../lib/query-keys';
-import { persistAuthSession } from '../../utils/auth-session';
-import type { LoginResponse } from '../../types/api';
 import LoginHeader from './LoginHeader';
 import EmailPasswordForm from './EmailPasswordForm';
 import SocialLoginButtons from './SocialLoginButtons';
@@ -16,7 +14,6 @@ import { devError } from '@/utils/dev-log';
 
 interface ModularLoginFormProps {
   onSuccess: () => void;
-   
   onError: (message: string) => void;
   initialMode?: 'login' | 'register';
 }
@@ -31,91 +28,46 @@ export default function ModularLoginForm({
   const [showPasskey, setShowPasskey] = useState(false);
   const [email, setEmail] = useState('');
   const [turnstileToken, setTurnstileToken] = useState('');
-  const [oauthStatus, setOauthStatus] = useState<'idle' | 'captcha' | 'exchange' | 'session'>(
-    'idle'
-  );
-  const [oauthRetryCount, setOauthRetryCount] = useState(0);
   const queryClient = useQueryClient();
   const googleAuthEnabled = featureFlags.googleAuth;
-
   const turnstileConfig = useTurnstile('login');
-
-  // Retry configuration
-  const MAX_OAUTH_RETRIES = 3;
-  const OAUTH_TIMEOUT_MS = 30000; // 30 seconds
-
-  // Helper: delay with exponential backoff
-  const exponentialBackoff = (attempt: number): Promise<void> => {
-    const delay = Math.min(1000 * Math.pow(2, attempt), 10000); // 1s, 2s, 4s, 8s, max 10s
-    return new Promise((resolve) => setTimeout(resolve, delay));
-  };
-
-  // Helper: timeout wrapper for promises
-  const withTimeout = <T,>(promise: Promise<T>, timeoutMs: number): Promise<T> => {
-    return Promise.race([
-      promise,
-      new Promise<T>((_, reject) =>
-        setTimeout(() => reject(new Error('Request timeout')), timeoutMs)
-      ),
-    ]);
-  };
-
-  useEffect(() => {
-    // Warm the CSRF token immediately so the backend wakes up while the user
-    // is typing, not after they click submit.
-    prefetchCsrfToken();
-  }, []);
 
   useEffect(() => {
     setIsRegister(initialMode === 'register');
   }, [initialMode]);
 
-  const handleEmailPasswordSubmit = async (email: string, password: string) => {
-    setEmail(email); // Store for passkey
+  const handleEmailPasswordSubmit = async (emailValue: string, password: string) => {
+    setEmail(emailValue);
 
-    // Verify Turnstile CAPTCHA completion (only when Turnstile is configured)
     if (turnstileConfig.enabled && !turnstileToken) {
       onError('Please complete the security verification');
       return;
     }
 
     setIsLoading(true);
-
     try {
-      const response = isRegister
-        ? await apiClient.register(email, password, turnstileToken)
-        : await apiClient.login(email, password);
+      const { data, error } = isRegister
+        ? await supabase.auth.signUp({ email: emailValue, password })
+        : await supabase.auth.signInWithPassword({ email: emailValue, password });
 
-      const authResponse = response as LoginResponse;
-
-      if (!authResponse.access_token) {
-        throw new Error('Authentication failed - invalid server response');
+      if (error) throw error;
+      if (!data.session) {
+        // signUp with email confirmation enabled: session is null until confirmed
+        onError('Check your email to confirm your account before signing in.');
+        return;
       }
 
-      persistAuthSession({
-        token: authResponse.access_token,
-        refreshToken: authResponse.refresh_token,
-        user: authResponse.user,
-        expiresIn: authResponse.expires_in,
-      });
       queryClient.setQueryData(queryKeys.authValidate, {
-        token: authResponse.access_token,
-        user: authResponse.user,
+        token: data.session.access_token,
+        user: supabaseUserToAppUser(data.session.user),
         isAuthenticated: true,
         isHydrated: true,
       });
       onSuccess();
     } catch (error) {
       const message = error instanceof Error ? error.message : 'Authentication failed';
-      const normalized =
-        message.includes('timed out') || message.includes('timeout')
-          ? 'Authentication service is taking too long to respond. The backend may be waking up—please try again in a few seconds.'
-          : message;
-      onError(normalized);
-      // Reset Turnstile on error
+      onError(message);
       setTurnstileToken('');
-      // Pre-warm the CSRF token for the next attempt so it's ready immediately.
-      prefetchCsrfToken();
     } finally {
       setIsLoading(false);
     }
@@ -127,70 +79,19 @@ export default function ModularLoginForm({
       return;
     }
 
-    let attempt = 0;
-
-    const tryGoogleLogin = async (): Promise<void> => {
-      try {
-        // Step 1: Get Google OAuth URL with timeout
-        setOauthStatus('captcha');
-        const response = await withTimeout(
-          (async () => {
-            const res = (await apiClient.getGoogleAuthUrl()) as {
-              url?: string;
-              authorization_url?: string;
-            };
-            return res;
-          })(),
-          OAUTH_TIMEOUT_MS
-        );
-
-        const target = response.url;
-        if (!target) {
-          throw new Error('Google sign-in is not configured on the server yet.');
-        }
-
-        // Step 2: Redirect to Google OAuth
-        setOauthStatus('exchange');
-        window.location.href = target;
-      } catch (error) {
-        const isTimeout = error instanceof Error && error.message.includes('timeout');
-        const isNetworkError = error instanceof Error && error.message.includes('Failed to fetch');
-
-        // Determine if we should retry
-        if ((isTimeout || isNetworkError) && attempt < MAX_OAUTH_RETRIES) {
-          attempt++;
-          setOauthRetryCount(attempt);
-          const waitMs = Math.min(1000 * Math.pow(2, attempt - 1), 10000);
-          const message = isTimeout
-            ? `Sign-in service not responding. Retrying in ${waitMs / 1000}s... (Attempt ${attempt}/${MAX_OAUTH_RETRIES})`
-            : `Network error. Retrying in ${waitMs / 1000}s... (Attempt ${attempt}/${MAX_OAUTH_RETRIES})`;
-          onError(message);
-          await exponentialBackoff(attempt - 1);
-          return tryGoogleLogin(); // Retry
-        }
-
-        // Final error message
-        let errorMessage = 'Google sign-in failed';
-        if (isTimeout) {
-          errorMessage =
-            'Google sign-in service is not responding. Backend may be waking up—please try again in a few seconds.';
-        } else if (isNetworkError) {
-          errorMessage =
-            'Network error while connecting to Google. Please check your internet connection and try again.';
-        } else if (error instanceof Error) {
-          errorMessage = error.message || 'Failed to initiate Google sign-in';
-        }
-
-        onError(errorMessage);
-        setOauthRetryCount(0);
-      } finally {
-        setOauthStatus('idle');
-      }
-    };
-
     setIsLoading(true);
-    setOauthRetryCount(0);
-    await tryGoogleLogin().finally(() => setIsLoading(false));
+    try {
+      const { error } = await supabase.auth.signInWithOAuth({
+        provider: 'google',
+        options: { redirectTo: `${window.location.origin}/google-callback` },
+      });
+      if (error) throw error;
+      // Redirect happens — no further action needed here
+    } catch (error) {
+      devError('Google OAuth error:', error);
+      onError(error instanceof Error ? error.message : 'Google sign-in failed');
+      setIsLoading(false);
+    }
   };
 
   return (
@@ -204,7 +105,6 @@ export default function ModularLoginForm({
           isLoading={isLoading}
         />
 
-        {/* Turnstile Bot Protection (only when configured) */}
         {turnstileConfig.enabled && (
           <div className="mt-4">
             <TurnstileWidget
@@ -213,8 +113,8 @@ export default function ModularLoginForm({
               mode="managed"
               theme="auto"
               size="normal"
-              onError={(error) => {
-                devError('Turnstile verification failed:', error);
+              onError={(err) => {
+                devError('Turnstile verification failed:', err);
                 onError('Security verification failed. Please try again.');
               }}
             />
@@ -226,22 +126,6 @@ export default function ModularLoginForm({
             <Divider text="Or continue with" />
             <SocialLoginButtons onGoogleLogin={handleGoogleLogin} isLoading={isLoading} />
           </>
-        )}
-
-        {/* OAuth Progress Indicator */}
-        {oauthStatus !== 'idle' && (
-          <div className="mt-4 p-3 bg-primary-50 border border-primary-200 rounded-md text-center">
-            <div className="text-sm text-primary font-medium">
-              {oauthStatus === 'captcha' && '🔐 Verifying with Google...'}
-              {oauthStatus === 'exchange' && '🔄 Completing sign-in...'}
-              {oauthStatus === 'session' && '💾 Setting up session...'}
-            </div>
-            {oauthRetryCount > 0 && (
-              <div className="text-xs text-primary-600 mt-2">
-                Attempt {oauthRetryCount} of {MAX_OAUTH_RETRIES}
-              </div>
-            )}
-          </div>
         )}
 
         <div className="mt-6 space-y-3">

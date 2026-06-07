@@ -5,16 +5,27 @@ vi.mock('@tanstack/react-query', async () => {
   const actual = await vi.importActual('@tanstack/react-query');
   return { ...actual, useQueryClient: () => ({ invalidateQueries: vi.fn() }) };
 });
-const mockLogin = vi.fn().mockResolvedValue({ token: 'abc' });
-const mockRegister = vi.fn().mockResolvedValue({ token: 'abc' });
-const mockGetGoogleAuthUrl = vi.fn().mockResolvedValue('https://google.com/oauth');
-vi.mock('@/lib/api', () => ({
-  apiClient: {
-    login: (...args: unknown[]) => mockLogin(...args),
-    register: (...args: unknown[]) => mockRegister(...args),
-    getGoogleAuthUrl: (...args: unknown[]) => mockGetGoogleAuthUrl(...args),
+vi.mock('@/lib/supabase', () => ({
+  supabase: {
+    auth: {
+      signInWithPassword: vi.fn().mockResolvedValue({
+        data: {
+          session: { access_token: 'test-token', user: { id: 'u1', email: 'test@test.com', role: 'authenticated', user_metadata: {} } },
+          user: { id: 'u1', email: 'test@test.com', role: 'authenticated', user_metadata: {} },
+        },
+        error: null,
+      }),
+      signUp: vi.fn().mockResolvedValue({
+        data: {
+          session: { access_token: 'test-token', user: { id: 'u1', email: 'test@test.com', role: 'authenticated', user_metadata: {} } },
+          user: { id: 'u1', email: 'test@test.com', role: 'authenticated', user_metadata: {} },
+        },
+        error: null,
+      }),
+      signInWithOAuth: vi.fn().mockResolvedValue({ data: {}, error: null }),
+    },
   },
-  prefetchCsrfToken: vi.fn(),
+  supabaseUserToAppUser: (u: { id: string; email: string }) => ({ id: u.id, email: u.email }),
 }));
 vi.mock('../../../lib/query-keys', () => ({ queryKeys: { authValidate: ['auth'] } }));
 vi.mock('@/utils/dev-log', () => ({ devError: vi.fn() }));

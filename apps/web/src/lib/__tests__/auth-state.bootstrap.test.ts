@@ -1,71 +1,60 @@
 import { bootstrapAuthSession, clearAuthSessionState, clearValidationCache } from '../auth-state';
 
 // ---------------------------------------------------------------------------
-// Module mocks
+// Module mocks — factories run at hoist time, so no top-level var refs allowed
 // ---------------------------------------------------------------------------
 
-vi.mock('../api', () => ({
-  apiClient: {
-    validateToken: vi.fn(),
-    logout: vi.fn(),
+vi.mock('../supabase', () => ({
+  supabase: {
+    auth: {
+      getSession: vi.fn(),
+      signOut: vi.fn(),
+    },
   },
+  supabaseUserToAppUser: (u: {
+    id: string;
+    email?: string;
+    role?: string;
+    user_metadata?: Record<string, unknown>;
+    created_at?: string;
+  }) => ({
+    id: u.id,
+    email: u.email ?? '',
+    name: u.user_metadata?.name as string | undefined,
+    role: u.role ?? 'authenticated',
+    created_at: u.created_at,
+  }),
 }));
 
 vi.mock('../../utils/auth-session', () => ({
   clearAuthSession: vi.fn(),
-  getAuthToken: vi.fn(),
-  isAuthenticated: vi.fn(),
-  persistAuthSession: vi.fn(),
 }));
 
-import { apiClient } from '../api';
-import {
-  clearAuthSession,
-  getAuthToken,
-  isAuthenticated as checkAuth,
-  persistAuthSession,
-} from '../../utils/auth-session';
+// Get references to the mock functions after hoisting resolves
+import { supabase } from '../supabase';
+import { clearAuthSession } from '../../utils/auth-session';
 
-const mockValidateToken = apiClient.validateToken as vi.MockedFunction<
-  typeof apiClient.validateToken
->;
-const mockLogout = apiClient.logout as vi.MockedFunction<typeof apiClient.logout>;
-const mockGetAuthToken = getAuthToken as vi.MockedFunction<typeof getAuthToken>;
-const mockCheckAuth = checkAuth as vi.MockedFunction<typeof checkAuth>;
+const mockGetSession = supabase.auth.getSession as vi.MockedFunction<typeof supabase.auth.getSession>;
+const mockSignOut = supabase.auth.signOut as vi.MockedFunction<typeof supabase.auth.signOut>;
 const mockClearAuthSession = clearAuthSession as vi.MockedFunction<typeof clearAuthSession>;
-const mockPersistAuthSession = persistAuthSession as vi.MockedFunction<typeof persistAuthSession>;
 
-const testUser = { id: 'u1', email: 'test@example.com', name: 'Test User', role: 'user' };
+const testUser = {
+  id: 'u1',
+  email: 'test@example.com',
+  role: 'authenticated',
+  user_metadata: { name: 'Test User' },
+  created_at: '2024-01-01T00:00:00Z',
+};
 
-// ---------------------------------------------------------------------------
-// Helpers
-// ---------------------------------------------------------------------------
-
-function setLocalStorage(key: string, value: string) {
-  window.localStorage.setItem(key, value);
-}
-
-function clearAll() {
-  window.localStorage.clear();
-  document.cookie.split(';').forEach((c) => {
-    const name = c.trim().split('=')[0];
-    if (name) document.cookie = `${name}=; Path=/; Max-Age=0`;
-  });
-}
-
-// ---------------------------------------------------------------------------
-// Tests
-// ---------------------------------------------------------------------------
+const testSession = {
+  access_token: 'supabase.jwt.token',
+  user: testUser,
+};
 
 beforeEach(() => {
-  clearAll();
-  clearValidationCache();
   vi.clearAllMocks();
-
-  // Sensible defaults
-  mockGetAuthToken.mockReturnValue(null);
-  mockCheckAuth.mockReturnValue(false);
-  mockLogout.mockResolvedValue(undefined);
+  clearValidationCache();
+  mockSignOut.mockResolvedValue({ error: null } as ReturnType<typeof supabase.auth.signOut> extends Promise<infer R> ? R : never);
 });
 
 describe('bootstrapAuthSession — SSR guard', () => {
@@ -81,197 +70,54 @@ describe('bootstrapAuthSession — SSR guard', () => {
   });
 });
 
-describe('bootstrapAuthSession — HttpOnly cookie path', () => {
-  it('returns authenticated when goblin_auth cookie is set and no localStorage token', async () => {
-    mockGetAuthToken.mockReturnValue(null);
-    mockCheckAuth.mockReturnValue(true);
+describe('bootstrapAuthSession — Supabase session present', () => {
+  it('returns authenticated with user when session exists', async () => {
+    mockGetSession.mockResolvedValue({ data: { session: testSession as any }, error: null });
 
     const snapshot = await bootstrapAuthSession();
 
     expect(snapshot.isAuthenticated).toBe(true);
-    expect(snapshot.token).toBeNull();
     expect(snapshot.isHydrated).toBe(true);
-    expect(mockValidateToken).not.toHaveBeenCalled();
+    expect(snapshot.token).toBe(testSession.access_token);
+    expect(snapshot.user).toMatchObject({ id: 'u1', email: 'test@example.com' });
+    expect(mockGetSession).toHaveBeenCalledTimes(1);
   });
 
-  it('includes cached user_data when present', async () => {
-    mockGetAuthToken.mockReturnValue(null);
-    mockCheckAuth.mockReturnValue(true);
-    setLocalStorage('user_data', JSON.stringify(testUser));
+  it('maps user name from user_metadata', async () => {
+    mockGetSession.mockResolvedValue({ data: { session: testSession as any }, error: null });
 
     const snapshot = await bootstrapAuthSession();
 
-    expect(snapshot.isAuthenticated).toBe(true);
-    expect(snapshot.user).toMatchObject({ id: 'u1' });
-  });
-
-  it('returns authenticated with null user when no user_data is cached', async () => {
-    mockGetAuthToken.mockReturnValue(null);
-    mockCheckAuth.mockReturnValue(true);
-
-    const snapshot = await bootstrapAuthSession();
-
-    expect(snapshot.isAuthenticated).toBe(true);
-    expect(snapshot.user).toBeNull();
-  });
-
-  it('migrates legacy auth_token out of localStorage when goblin_auth cookie is set', async () => {
-    setLocalStorage('auth_token', 'old-legacy-token');
-    mockCheckAuth.mockReturnValue(true);
-    // After migration, getAuthToken returns null (cookie only)
-    mockGetAuthToken.mockReturnValue(null);
-
-    await bootstrapAuthSession();
-
-    expect(window.localStorage.getItem('auth_token')).toBeNull();
+    expect(snapshot.user?.name).toBe('Test User');
   });
 });
 
 describe('bootstrapAuthSession — no session', () => {
-  it('returns unauthenticated when no token and no auth cookie', async () => {
-    mockGetAuthToken.mockReturnValue(null);
-    mockCheckAuth.mockReturnValue(false);
+  it('returns unauthenticated when Supabase has no session', async () => {
+    mockGetSession.mockResolvedValue({ data: { session: null }, error: null });
 
     const snapshot = await bootstrapAuthSession();
 
     expect(snapshot.isAuthenticated).toBe(false);
     expect(snapshot.token).toBeNull();
-    expect(mockValidateToken).not.toHaveBeenCalled();
-  });
-});
-
-describe('bootstrapAuthSession — legacy localStorage token path', () => {
-  it('validates token and returns authenticated on success', async () => {
-    const token = 'legacy.jwt.token';
-    mockGetAuthToken.mockReturnValue(token);
-    mockCheckAuth.mockReturnValue(false);
-    setLocalStorage('user_data', JSON.stringify(testUser));
-
-    mockValidateToken.mockResolvedValue({
-      valid: true,
-      user: testUser,
-      expires_in: 3600,
-    } as any);
-
-    const snapshot = await bootstrapAuthSession();
-
-    expect(snapshot.isAuthenticated).toBe(true);
-    expect(snapshot.token).toBe(token);
-    expect(snapshot.user).toMatchObject({ id: 'u1' });
-    expect(mockValidateToken).toHaveBeenCalledWith(token);
-    expect(mockPersistAuthSession).toHaveBeenCalled();
-  });
-
-  it('clears session and returns unauthenticated when token is invalid', async () => {
-    mockGetAuthToken.mockReturnValue('expired.token');
-    mockCheckAuth.mockReturnValue(false);
-
-    mockValidateToken.mockResolvedValue({ valid: false } as any);
-
-    const snapshot = await bootstrapAuthSession();
-
-    expect(snapshot.isAuthenticated).toBe(false);
+    expect(snapshot.user).toBeNull();
+    expect(snapshot.isHydrated).toBe(true);
     expect(mockClearAuthSession).toHaveBeenCalled();
-  });
-
-  it('uses cached validation result on second call (no extra network requests)', async () => {
-    const token = 'cached.token';
-    mockGetAuthToken.mockReturnValue(token);
-    mockCheckAuth.mockReturnValue(false);
-
-    mockValidateToken.mockResolvedValue({ valid: true, user: testUser } as any);
-
-    await bootstrapAuthSession();
-    await bootstrapAuthSession();
-
-    // validateToken should only be called once
-    expect(mockValidateToken).toHaveBeenCalledTimes(1);
-  });
-
-  it('clears session on 401 backend response', async () => {
-    mockGetAuthToken.mockReturnValue('stale.token');
-    mockCheckAuth.mockReturnValue(false);
-
-    const err = Object.assign(new Error('Unauthorized'), { status: 401 });
-    mockValidateToken.mockRejectedValue(err);
-
-    const snapshot = await bootstrapAuthSession();
-
-    expect(snapshot.isAuthenticated).toBe(false);
-    expect(mockClearAuthSession).toHaveBeenCalled();
-  });
-
-  it('clears session on 403 backend response', async () => {
-    mockGetAuthToken.mockReturnValue('forbidden.token');
-    mockCheckAuth.mockReturnValue(false);
-
-    const err = Object.assign(new Error('Forbidden'), { status: 403 });
-    mockValidateToken.mockRejectedValue(err);
-
-    const snapshot = await bootstrapAuthSession();
-
-    expect(snapshot.isAuthenticated).toBe(false);
-    expect(mockClearAuthSession).toHaveBeenCalled();
-  });
-
-  it('fails closed on generic network error (no 401/403)', async () => {
-    mockGetAuthToken.mockReturnValue('some.token');
-    mockCheckAuth.mockReturnValue(false);
-
-    mockValidateToken.mockRejectedValue(new Error('Network error'));
-
-    const snapshot = await bootstrapAuthSession();
-
-    expect(snapshot.isAuthenticated).toBe(false);
-    expect(mockClearAuthSession).toHaveBeenCalled();
-  });
-
-  it('falls back to stored user when validate response has no user', async () => {
-    const token = 'token.no.user';
-    mockGetAuthToken.mockReturnValue(token);
-    mockCheckAuth.mockReturnValue(false);
-    setLocalStorage('user_data', JSON.stringify(testUser));
-
-    mockValidateToken.mockResolvedValue({ valid: true } as any);
-
-    const snapshot = await bootstrapAuthSession();
-
-    expect(snapshot.user).toMatchObject({ id: 'u1' });
   });
 });
 
 describe('clearAuthSessionState', () => {
-  it('calls logout, clears validation cache, and clears local session', async () => {
-    mockLogout.mockResolvedValue(undefined);
-
-    // Pre-populate cache so we can verify it's cleared
-    const token = 'cached.token';
-    mockGetAuthToken.mockReturnValue(token);
-    mockCheckAuth.mockReturnValue(false);
-    mockValidateToken.mockResolvedValue({ valid: true, user: testUser } as any);
-    await bootstrapAuthSession();
-    expect(mockValidateToken).toHaveBeenCalledTimes(1);
-
+  it('calls supabase.auth.signOut and clears local session', async () => {
     await clearAuthSessionState();
 
-    expect(mockLogout).toHaveBeenCalled();
+    expect(mockSignOut).toHaveBeenCalled();
     expect(mockClearAuthSession).toHaveBeenCalled();
-
-    // Cache cleared — next bootstrapAuthSession should call validateToken again
-    vi.clearAllMocks();
-    mockGetAuthToken.mockReturnValue(token);
-    mockCheckAuth.mockReturnValue(false);
-    mockLogout.mockResolvedValue(undefined);
-    mockValidateToken.mockResolvedValue({ valid: true, user: testUser } as any);
-    await bootstrapAuthSession();
-    expect(mockValidateToken).toHaveBeenCalledTimes(1);
   });
 
-  it('still clears local session even when backend logout fails', async () => {
-    mockLogout.mockRejectedValue(new Error('Network error'));
+  it('still clears local session even when signOut errors', async () => {
+    mockSignOut.mockRejectedValue(new Error('Network error'));
 
-    await clearAuthSessionState();
-
+    await clearAuthSessionState().catch(() => {});
     expect(mockClearAuthSession).toHaveBeenCalled();
   });
 });

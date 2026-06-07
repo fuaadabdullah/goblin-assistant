@@ -1,13 +1,16 @@
-import { apiClient } from '@/lib/api';
+import { supabase } from '@/lib/supabase';
 import { UiError } from '../../../lib/ui-error';
 import type { AccountPreferencesPayload, AccountProfilePayload } from '../types';
 
 export type { AccountPreferencesPayload, AccountProfilePayload } from '../types';
 
-export const saveProfile = async (_payload: AccountProfilePayload): Promise<void> => {
-  try {
-    await apiClient.saveAccountProfile(_payload);
-  } catch (error) {
+const PREFS_KEY = 'goblin-account-preferences';
+
+export const saveProfile = async (payload: AccountProfilePayload): Promise<void> => {
+  const { error } = await supabase.auth.updateUser({
+    data: { name: payload.name },
+  });
+  if (error) {
     throw new UiError(
       {
         code: 'ACCOUNT_PROFILE_SAVE_FAILED',
@@ -18,11 +21,9 @@ export const saveProfile = async (_payload: AccountProfilePayload): Promise<void
   }
 };
 
-export const savePreferences = async (_payload: AccountPreferencesPayload): Promise<void> => {
+export const savePreferences = async (payload: AccountPreferencesPayload): Promise<void> => {
   try {
-    await apiClient.saveAccountPreferences(
-      _payload as unknown as Parameters<typeof apiClient.saveAccountPreferences>[0]
-    );
+    localStorage.setItem(PREFS_KEY, JSON.stringify(payload));
   } catch (error) {
     throw new UiError(
       {
@@ -31,5 +32,14 @@ export const savePreferences = async (_payload: AccountPreferencesPayload): Prom
       },
       error
     );
+  }
+};
+
+export const loadPreferences = (): AccountPreferencesPayload | null => {
+  try {
+    const raw = localStorage.getItem(PREFS_KEY);
+    return raw ? (JSON.parse(raw) as AccountPreferencesPayload) : null;
+  } catch {
+    return null;
   }
 };

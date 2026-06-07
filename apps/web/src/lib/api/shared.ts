@@ -1,4 +1,5 @@
-import axios, { AxiosError, type AxiosRequestConfig } from 'axios';
+import axios, { AxiosError, type AxiosRequestConfig, type InternalAxiosRequestConfig } from 'axios';
+import { supabase } from '../supabase';
 import { env } from '../../config/env';
 import { devWarn } from '../../utils/dev-log';
 import {
@@ -142,6 +143,16 @@ export const backendHttp = axios.create({
   headers: {
     'Content-Type': 'application/json',
   },
+});
+
+// Attach Supabase access token as Bearer before every backend request.
+// Supabase auto-refreshes tokens; getSession() is a fast local read.
+backendHttp.interceptors.request.use(async (config: InternalAxiosRequestConfig) => {
+  const { data: { session } } = await supabase.auth.getSession();
+  if (session?.access_token) {
+    config.headers.Authorization = `Bearer ${session.access_token}`;
+  }
+  return config;
 });
 
 export const frontendHttp = axios.create({

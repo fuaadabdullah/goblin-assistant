@@ -68,6 +68,8 @@ vi.mock('../../lib/utils/debug', () => ({
 }));
 vi.mock('../../utils/dev-log', () => ({
   devError: vi.fn(),
+  devWarn: vi.fn(),
+  devLog: vi.fn(),
 }));
 
 import GoblinDemo from '../GoblinDemo';

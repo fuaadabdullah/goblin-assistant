@@ -4,6 +4,7 @@ import { useUIStore } from '@/store/uiStore';
 vi.mock('../../api', () => ({
   saveProfile: vi.fn(),
   savePreferences: vi.fn(),
+  loadPreferences: vi.fn().mockReturnValue(null),
 }));
 
 import { useAccountProfile } from '../useAccountProfile';
