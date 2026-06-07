@@ -1,7 +1,17 @@
 import { createClient } from '@supabase/supabase-js';
-import type { User as SupabaseUser } from '@supabase/supabase-js';
 import { devWarn } from '../utils/dev-log';
 import type { User as AppUser } from '../types/api';
+
+// Local shape instead of importing User from @supabase/supabase-js — Vercel's
+// pnpm hoisting produces a second copy of the package whose type exports are
+// incomplete, causing TS2305 errors on any named import from it.
+interface SupabaseUser {
+  id: string;
+  email?: string;
+  user_metadata?: Record<string, unknown>;
+  role?: string;
+  created_at: string;
+}
 
 const supabaseUrl = process.env['NEXT_PUBLIC_SUPABASE_URL'];
 const supabaseAnonKey = process.env['NEXT_PUBLIC_SUPABASE_ANON_KEY'];
