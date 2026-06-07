@@ -1,5 +1,5 @@
 import type { User } from '../types/api';
-import { supabase, supabaseUserToAppUser } from './supabase';
+import { supabaseUserToAppUser, authGetSession, authSignOut } from './supabase';
 import { clearAuthSession } from '../utils/auth-session';
 
 export interface AuthSessionSnapshot {
@@ -37,9 +37,7 @@ export const hasAnyRole = (user: User | null | undefined, roles: string[]): bool
 export const bootstrapAuthSession = async (): Promise<AuthSessionSnapshot> => {
   if (typeof window === 'undefined') return unauthenticatedSnapshot();
 
-  const {
-    data: { session },
-  } = await supabase.auth.getSession();
+  const { session } = await authGetSession();
 
   if (!session) {
     clearAuthSession();
@@ -56,7 +54,7 @@ export const bootstrapAuthSession = async (): Promise<AuthSessionSnapshot> => {
 
 export const clearAuthSessionState = async (): Promise<void> => {
   try {
-    await supabase.auth.signOut();
+    await authSignOut();
   } finally {
     clearAuthSession();
   }

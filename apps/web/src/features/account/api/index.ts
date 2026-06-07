@@ -1,4 +1,4 @@
-import { supabase } from '@/lib/supabase';
+import { authUpdateUser } from '@/lib/supabase';
 import { UiError } from '../../../lib/ui-error';
 import type { AccountPreferencesPayload, AccountProfilePayload } from '../types';
 
@@ -7,9 +7,7 @@ export type { AccountPreferencesPayload, AccountProfilePayload } from '../types'
 const PREFS_KEY = 'goblin-account-preferences';
 
 export const saveProfile = async (payload: AccountProfilePayload): Promise<void> => {
-  const { error } = await supabase.auth.updateUser({
-    data: { name: payload.name },
-  });
+  const { error } = await authUpdateUser({ data: { name: payload.name } });
   if (error) {
     throw new UiError(
       {

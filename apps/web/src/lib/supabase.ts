@@ -51,6 +51,21 @@ export async function authSignInWithOAuth(provider: string, redirectTo: string) 
   return { data, error };
 }
 
+export async function authGetSession() {
+  const { data, error } = await supabase.auth.getSession();
+  return { session: data?.session ?? null, error };
+}
+
+export async function authUpdateUser(attributes: { data?: Record<string, unknown>; email?: string }) {
+  const { data, error } = await supabase.auth.updateUser(attributes);
+  return { user: data?.user ?? null, error };
+}
+
+export async function authSignOut() {
+  const { error } = await supabase.auth.signOut();
+  return { error };
+}
+
 export interface ProviderStatusRow {
   provider: string;
   is_healthy: boolean;
