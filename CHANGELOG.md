@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.2.0] - 2026-06-06
+
 ### Changed
 
 - Jira versions/releases are now the issue-level source of truth for release notes, while `CHANGELOG.md` remains the curated public summary.
