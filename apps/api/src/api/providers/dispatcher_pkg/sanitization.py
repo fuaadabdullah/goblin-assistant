@@ -118,7 +118,11 @@ def provider_secrets_processor(
         for key, value in event_dict.items():
             if key.startswith("_"):
                 continue
-            if key != "event" and key not in _SAFE_EVENT_KEYS and _SENSITIVE_KEY_PATTERN.search(key):
+            if (
+                key != "event"
+                and key not in _SAFE_EVENT_KEYS
+                and _SENSITIVE_KEY_PATTERN.search(key)
+            ):
                 sanitized[key] = "[REDACTED]"
                 continue
             sanitized[key] = sanitize_log_value(value, secrets)
@@ -128,7 +132,9 @@ def provider_secrets_processor(
 
 
 class ProviderLoggerProxy:
-    def __init__(self, name: str, secrets_supplier, *, context: Dict[str, Any] | None = None) -> None:
+    def __init__(
+        self, name: str, secrets_supplier, *, context: Dict[str, Any] | None = None
+    ) -> None:
         self._name = name
         self._secrets_supplier = secrets_supplier
         self._logger = structlog.get_logger(name)

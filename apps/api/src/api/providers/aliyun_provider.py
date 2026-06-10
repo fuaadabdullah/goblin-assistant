@@ -26,6 +26,8 @@ _BODY_PASSTHROUGH = {
     "presence_penalty",
     "frequency_penalty",
 }
+
+
 def _normalize_compatible_base_url(value: str) -> str:
     base_url = value.strip().rstrip("/")
     if base_url.endswith("/compatible-mode/v1"):
@@ -167,12 +169,15 @@ class AliyunProvider(BaseProvider):
             "stream": True,
             **{k: v for k, v in kwargs.items() if k in _BODY_PASSTHROUGH and k != "stream"},
         }
-        async with httpx.AsyncClient(timeout=120) as client, client.stream(
-            "POST",
-            f"{self._base_url}/v1/chat/completions",
-            headers=self._headers(),
-            json=body,
-        ) as resp:
+        async with (
+            httpx.AsyncClient(timeout=120) as client,
+            client.stream(
+                "POST",
+                f"{self._base_url}/v1/chat/completions",
+                headers=self._headers(),
+                json=body,
+            ) as resp,
+        ):
             resp.raise_for_status()
             async for line in resp.aiter_lines():
                 if not line.startswith("data: "):

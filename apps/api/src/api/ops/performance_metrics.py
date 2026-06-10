@@ -82,7 +82,7 @@ async def compute_performance_snapshot(
     cache_hit_ratio = round((cache_hits / total_reqs * 100) if total_reqs > 0 else 0, 2)
 
     all_metrics = []
-    for provider_name in pm.total_requests.keys():
+    for provider_name in pm.total_requests:
         m = pm.get_metrics(provider_name)
         if m["total_requests"] > 0:
             all_metrics.append(m)
@@ -187,11 +187,7 @@ async def compute_queues_snapshot(task_store) -> Dict[str, Any]:
         "performance": {
             "avg_completion_time": avg_completion_time,
             "completion_rate": round(
-                (
-                    (status_counts.get("completed", 0) / len(all_tasks) * 100)
-                    if all_tasks
-                    else 0
-                ),
+                ((status_counts.get("completed", 0) / len(all_tasks) * 100) if all_tasks else 0),
                 2,
             ),
             "failure_rate": round(
@@ -206,8 +202,7 @@ async def compute_queues_snapshot(task_store) -> Dict[str, Any]:
                 [
                     t
                     for t in all_tasks
-                    if t.get("status") == "running"
-                    and time.time() - t.get("created_at", 0) > 300
+                    if t.get("status") == "running" and time.time() - t.get("created_at", 0) > 300
                 ]
             ),
         },

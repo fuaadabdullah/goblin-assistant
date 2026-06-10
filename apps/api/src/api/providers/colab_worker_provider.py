@@ -23,7 +23,6 @@ _OPENAI_UNSUPPORTED_STATUS = {404, 405, 422, 501}
 
 
 class ColabWorkerProvider(BaseProvider):
-
     def __init__(
         self,
         provider_id: str | Dict[str, Any],

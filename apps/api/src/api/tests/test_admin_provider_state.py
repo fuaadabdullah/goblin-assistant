@@ -2,11 +2,12 @@ from __future__ import annotations
 
 from typing import Any, Dict
 
+import pytest
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
-import pytest
 
-from api.admin_routes import router as admin_router, provider_state
+from api.admin_routes import provider_state
+from api.admin_routes import router as admin_router
 from api.ops.security import OpsSecurityConfig, ops_security
 
 
@@ -148,8 +149,12 @@ class _QuotaStub:
                     "concurrency": 4,
                 },
                 "usage": {
-                    "reserved_requests": 50 - remaining_requests if remaining_requests is not None else 0,
-                    "reserved_tokens": 4000 - remaining_tokens if remaining_tokens is not None else 0,
+                    "reserved_requests": 50 - remaining_requests
+                    if remaining_requests is not None
+                    else 0,
+                    "reserved_tokens": 4000 - remaining_tokens
+                    if remaining_tokens is not None
+                    else 0,
                     "committed_requests": 0,
                     "committed_tokens": 0,
                     "active": 0,
@@ -190,7 +195,9 @@ def provider_state_env(monkeypatch):
 
 
 @pytest.mark.asyncio
-async def test_build_provider_state_includes_warmup_circuit_and_quota(monkeypatch, provider_state_env):
+async def test_build_provider_state_includes_warmup_circuit_and_quota(
+    monkeypatch, provider_state_env
+):
     _ = provider_state_env
     monkeypatch.setattr(provider_state, "dispatcher", _DispatcherStub())
     monkeypatch.setattr(provider_state, "quota_service", _QuotaStub())

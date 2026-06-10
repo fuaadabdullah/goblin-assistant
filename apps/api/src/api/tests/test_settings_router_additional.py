@@ -61,7 +61,8 @@ def test_get_settings_success():
         patch(
             "api.settings_router.dispatcher.get_provider",
             return_value=MagicMock(default_model="gpt-4o-mini"),
-        ),_make_client() as client
+        ),
+        _make_client() as client,
     ):
         response = client.get("/settings/")
 
@@ -73,11 +74,14 @@ def test_get_settings_success():
 
 
 def test_get_settings_failure():
-    with patch(
-        "api.settings_router.dispatcher.get_provider_inventory",
-        new_callable=AsyncMock,
-        side_effect=RuntimeError("boom"),
-    ), _make_client() as client:
+    with (
+        patch(
+            "api.settings_router.dispatcher.get_provider_inventory",
+            new_callable=AsyncMock,
+            side_effect=RuntimeError("boom"),
+        ),
+        _make_client() as client,
+    ):
         response = client.get("/settings/")
 
     assert response.status_code == 500

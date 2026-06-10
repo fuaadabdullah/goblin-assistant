@@ -44,12 +44,8 @@ class GoogleCloudProvider(OpenAICompatibleProvider):
         ep_env = str(self.config.get("endpoint_env", "") or "").strip()
         resolved = os.getenv(ep_env, "").strip() if ep_env else ""
         self._base_url = resolved or self.endpoint
-        self._embed_model = str(
-            self.config.get("embed_model", _DEFAULT_EMBED_MODEL)
-        )
-        self._rerank_model = str(
-            self.config.get("rerank_model", "bge-reranker-v2-m3")
-        )
+        self._embed_model = str(self.config.get("embed_model", _DEFAULT_EMBED_MODEL))
+        self._rerank_model = str(self.config.get("rerank_model", "bge-reranker-v2-m3"))
 
     # ── Embeddings ──────────────────────────────────────────────────────────
 
@@ -61,9 +57,7 @@ class GoogleCloudProvider(OpenAICompatibleProvider):
     ) -> Union[List[float], List[List[float]]]:
         """Embed text(s) via vLLM's /v1/embeddings (BGE-M3 by default)."""
         if not self._base_url:
-            raise ValueError(
-                "google_cloud: endpoint not configured"
-            )
+            raise ValueError("google_cloud: endpoint not configured")
         embed_model = model or self._embed_model
         is_single = isinstance(texts, str)
         inputs: List[str] = [texts] if is_single else list(texts)
@@ -78,9 +72,7 @@ class GoogleCloudProvider(OpenAICompatibleProvider):
                 )
             resp.raise_for_status()
             data = resp.json()
-            embeddings = [
-                item["embedding"] for item in data.get("data", [])
-            ]
+            embeddings = [item["embedding"] for item in data.get("data", [])]
             logger.debug(
                 "google_cloud_embed",
                 model=embed_model,
@@ -110,9 +102,7 @@ class GoogleCloudProvider(OpenAICompatibleProvider):
         Returns list of {"index": int, "score": float} sorted by score desc.
         """
         if not self._base_url:
-            raise ValueError(
-                "google_cloud: GOOGLE_CLOUD_VLLM_ENDPOINT not configured"
-            )
+            raise ValueError("google_cloud: GOOGLE_CLOUD_VLLM_ENDPOINT not configured")
         rerank_model = model or self._rerank_model
         pairs = [[query, doc] for doc in documents]
 
@@ -183,9 +173,7 @@ class GoogleCloudProvider(OpenAICompatibleProvider):
                 provider_id=self.provider_id,
                 healthy=ok,
                 latency_ms=latency,
-                error=(
-                    None if ok else f"HTTP {resp.status_code}"
-                ),
+                error=(None if ok else f"HTTP {resp.status_code}"),
             )
         except (httpx.HTTPError, ValueError) as exc:
             latency = (time.perf_counter() - t0) * 1000

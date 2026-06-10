@@ -19,12 +19,12 @@ from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
-from api.services.context_assembly_service import ContextBudget, ContextLayer
 from api.services.context_assembly_service import (
     ContextAssemblyService,
+    ContextBudget,
+    ContextLayer,
 )
 from api.services.context_assembly_service import orchestrator as orch
-
 
 # ======================================================================
 # Helpers
@@ -128,7 +128,9 @@ class TestTokenBudgeting:
             _snapshot_patch("snap-1"),
         ):
             result = await svc.assemble_context(
-                query="q", user_id="u1", conversation_id="c1",
+                query="q",
+                user_id="u1",
+                conversation_id="c1",
                 conversation_history=[{"role": "user", "content": "hi"}],
             )
 
@@ -183,8 +185,11 @@ class TestTokenBudgeting:
         """With tight budget only system layer assembles."""
         # Budget = 100. System consumes all 100, remaining=0 → nothing else runs.
         budget = ContextBudget(
-            total_tokens=100, system_tokens=100, long_term_tokens=50,
-            working_memory_tokens=50, semantic_retrieval_tokens=50,
+            total_tokens=100,
+            system_tokens=100,
+            long_term_tokens=50,
+            working_memory_tokens=50,
+            semantic_retrieval_tokens=50,
             ephemeral_tokens=0,
         )
         svc = _make_minimal_service()
@@ -221,8 +226,11 @@ class TestTokenBudgeting:
     async def test_system_exhausts_budget_nothing_else_assembles(self, monkeypatch):
         """System consumes entire budget; remaining=0 skips all subsequent layers."""
         budget = ContextBudget(
-            total_tokens=80, system_tokens=80, long_term_tokens=50,
-            working_memory_tokens=50, semantic_retrieval_tokens=50,
+            total_tokens=80,
+            system_tokens=80,
+            long_term_tokens=50,
+            working_memory_tokens=50,
+            semantic_retrieval_tokens=50,
             ephemeral_tokens=0,
         )
         svc = _make_minimal_service()
@@ -245,7 +253,9 @@ class TestTokenBudgeting:
             _snapshot_patch("snap-exh"),
         ):
             result = await svc.assemble_context(
-                query="q", user_id="u1", conversation_id="c1",
+                query="q",
+                user_id="u1",
+                conversation_id="c1",
             )
 
         assert result["remaining_tokens"] == 0
@@ -260,8 +270,11 @@ class TestTokenBudgeting:
     async def test_conversation_id_without_history_skips_ephemeral(self, monkeypatch):
         """conversation_id set, history=None: working memory included, ephemeral skipped."""
         budget = ContextBudget(
-            total_tokens=400, system_tokens=50, long_term_tokens=50,
-            working_memory_tokens=100, semantic_retrieval_tokens=100,
+            total_tokens=400,
+            system_tokens=50,
+            long_term_tokens=50,
+            working_memory_tokens=100,
+            semantic_retrieval_tokens=100,
             ephemeral_tokens=100,
         )
         svc = _make_minimal_service()
@@ -272,7 +285,6 @@ class TestTokenBudgeting:
         async def eph(*_a, **_kw):
             nonlocal ephemeral_calls
             ephemeral_calls += 1
-            return None
 
         with (
             _patch_layer("assemble_system_layer", return_value=_make_layer("system", 30)),
@@ -297,12 +309,14 @@ class TestTokenBudgeting:
             )
 
             result = await svc.assemble_context(
-                query="q", user_id="u1",
-                conversation_id="c1", conversation_history=None,
+                query="q",
+                user_id="u1",
+                conversation_id="c1",
+                conversation_history=None,
             )
 
         assert ephemeral_calls == 0
-        names = [l.name for l in result["layers"]]
+        names = [lyr.name for lyr in result["layers"]]
         assert "working_memory" in names
         assert "ephemeral_memory" not in names
 
@@ -319,8 +333,11 @@ class TestChunkTruncation:
     async def test_semantic_hard_stop_sets_truncation_warning(self, monkeypatch):
         """Semantic layer with hard_stop_applied=True → truncation_warnings includes it."""
         budget = ContextBudget(
-            total_tokens=500, system_tokens=300, long_term_tokens=50,
-            working_memory_tokens=50, semantic_retrieval_tokens=50,
+            total_tokens=500,
+            system_tokens=300,
+            long_term_tokens=50,
+            working_memory_tokens=50,
+            semantic_retrieval_tokens=50,
             ephemeral_tokens=50,
         )
         svc = _make_minimal_service()
@@ -331,14 +348,16 @@ class TestChunkTruncation:
             _patch_layer(
                 "assemble_semantic_retrieval",
                 return_value=_make_layer(
-                    "semantic_retrieval", 50,
+                    "semantic_retrieval",
+                    50,
                     metadata={"hard_stop_applied": True},
                 ),
             ),
             _patch_layer(
                 "assemble_ephemeral_memory",
                 return_value=_make_layer(
-                    "ephemeral_memory", 40,
+                    "ephemeral_memory",
+                    40,
                     metadata={"truncated": False},
                 ),
             ),
@@ -350,7 +369,9 @@ class TestChunkTruncation:
             )
 
             result = await svc.assemble_context(
-                query="q", user_id="u1", conversation_id="c1",
+                query="q",
+                user_id="u1",
+                conversation_id="c1",
                 conversation_history=[{"role": "u", "content": "hi"}],
             )
 
@@ -360,8 +381,11 @@ class TestChunkTruncation:
     async def test_ephemeral_truncated_sets_truncation_warning(self, monkeypatch):
         """Ephemeral layer with truncated=True → warning in result."""
         budget = ContextBudget(
-            total_tokens=500, system_tokens=300, long_term_tokens=50,
-            working_memory_tokens=50, semantic_retrieval_tokens=50,
+            total_tokens=500,
+            system_tokens=300,
+            long_term_tokens=50,
+            working_memory_tokens=50,
+            semantic_retrieval_tokens=50,
             ephemeral_tokens=50,
         )
         svc = _make_minimal_service()
@@ -372,7 +396,8 @@ class TestChunkTruncation:
             _patch_layer(
                 "assemble_ephemeral_memory",
                 return_value=_make_layer(
-                    "ephemeral_memory", 40,
+                    "ephemeral_memory",
+                    40,
                     metadata={"truncated": True, "summary_fallback_applied": False},
                 ),
             ),
@@ -384,7 +409,9 @@ class TestChunkTruncation:
             )
 
             result = await svc.assemble_context(
-                query="q", user_id="u1", conversation_id="c1",
+                query="q",
+                user_id="u1",
+                conversation_id="c1",
                 conversation_history=[{"role": "u", "content": "hi"}],
             )
 
@@ -394,8 +421,11 @@ class TestChunkTruncation:
     async def test_summary_fallback_sets_flag_in_result(self, monkeypatch):
         """summary_fallback_applied=True propagates to result correctly."""
         budget = ContextBudget(
-            total_tokens=500, system_tokens=300, long_term_tokens=50,
-            working_memory_tokens=50, semantic_retrieval_tokens=50,
+            total_tokens=500,
+            system_tokens=300,
+            long_term_tokens=50,
+            working_memory_tokens=50,
+            semantic_retrieval_tokens=50,
             ephemeral_tokens=50,
         )
         svc = _make_minimal_service()
@@ -406,7 +436,8 @@ class TestChunkTruncation:
             _patch_layer(
                 "assemble_ephemeral_memory",
                 return_value=_make_layer(
-                    "ephemeral_memory", 40,
+                    "ephemeral_memory",
+                    40,
                     metadata={"truncated": True, "summary_fallback_applied": True},
                 ),
             ),
@@ -418,7 +449,9 @@ class TestChunkTruncation:
             )
 
             result = await svc.assemble_context(
-                query="q", user_id="u1", conversation_id="c1",
+                query="q",
+                user_id="u1",
+                conversation_id="c1",
                 conversation_history=[{"role": "u", "content": "hi"}],
             )
 
@@ -433,12 +466,15 @@ class TestChunkTruncation:
         ]
         monkeypatch.setattr(orch, "_count_tokens", lambda _text: 200)
         monkeypatch.setattr(
-            orch, "_trim_to_tokens_util",
+            orch,
+            "_trim_to_tokens_util",
             lambda text, limit: "trimmed-final",
         )
 
         final = ContextAssemblyService._build_final_context(
-            layers, remaining_tokens=60, budget=budget,
+            layers,
+            remaining_tokens=60,
+            budget=budget,
         )
 
         assert final == "trimmed-final"
@@ -456,8 +492,11 @@ class TestContextOrdering:
     async def test_system_layer_always_first(self, monkeypatch):
         """System is always the first layer in the assembled list."""
         budget = ContextBudget(
-            total_tokens=500, system_tokens=100, long_term_tokens=50,
-            working_memory_tokens=50, semantic_retrieval_tokens=50,
+            total_tokens=500,
+            system_tokens=100,
+            long_term_tokens=50,
+            working_memory_tokens=50,
+            semantic_retrieval_tokens=50,
             ephemeral_tokens=50,
         )
         svc = _make_minimal_service()
@@ -475,8 +514,11 @@ class TestContextOrdering:
     async def test_full_stack_order(self, monkeypatch):
         """All five layers present in correct order."""
         budget = ContextBudget(
-            total_tokens=1000, system_tokens=200, long_term_tokens=200,
-            working_memory_tokens=200, semantic_retrieval_tokens=200,
+            total_tokens=1000,
+            system_tokens=200,
+            long_term_tokens=200,
+            working_memory_tokens=200,
+            semantic_retrieval_tokens=200,
             ephemeral_tokens=200,
         )
         svc = _make_minimal_service()
@@ -508,11 +550,13 @@ class TestContextOrdering:
             )
 
             result = await svc.assemble_context(
-                query="q", user_id="u1", conversation_id="c1",
+                query="q",
+                user_id="u1",
+                conversation_id="c1",
                 conversation_history=[{"role": "u", "content": "hi"}],
             )
 
-        names = [l.name for l in result["layers"]]
+        names = [lyr.name for lyr in result["layers"]]
         assert names == [
             "system",
             "long_term_memory",
@@ -525,8 +569,11 @@ class TestContextOrdering:
     async def test_no_conversation_id_skips_working_and_ephemeral(self, monkeypatch):
         """Without conversation_id, working_memory and ephemeral are skipped."""
         budget = ContextBudget(
-            total_tokens=500, system_tokens=100, long_term_tokens=100,
-            working_memory_tokens=100, semantic_retrieval_tokens=100,
+            total_tokens=500,
+            system_tokens=100,
+            long_term_tokens=100,
+            working_memory_tokens=100,
+            semantic_retrieval_tokens=100,
             ephemeral_tokens=100,
         )
         svc = _make_minimal_service()
@@ -550,23 +597,29 @@ class TestContextOrdering:
             )
 
             result = await svc.assemble_context(
-                query="q", user_id="u1",
-                conversation_id=None, conversation_history=None,
+                query="q",
+                user_id="u1",
+                conversation_id=None,
+                conversation_history=None,
             )
 
-        names = [l.name for l in result["layers"]]
+        names = [lyr.name for lyr in result["layers"]]
         assert "working_memory" not in names
         assert "ephemeral_memory" not in names
         assert names == ["system", "long_term_memory", "semantic_retrieval"]
 
     @pytest.mark.asyncio
     async def test_conversation_id_no_history_working_present_ephemeral_skipped(
-        self, monkeypatch,
+        self,
+        monkeypatch,
     ):
         """conversation_id present + history=None → working included, ephemeral skipped."""
         budget = ContextBudget(
-            total_tokens=500, system_tokens=100, long_term_tokens=50,
-            working_memory_tokens=100, semantic_retrieval_tokens=100,
+            total_tokens=500,
+            system_tokens=100,
+            long_term_tokens=50,
+            working_memory_tokens=100,
+            semantic_retrieval_tokens=100,
             ephemeral_tokens=150,
         )
         svc = _make_minimal_service()
@@ -594,22 +647,28 @@ class TestContextOrdering:
             )
 
             result = await svc.assemble_context(
-                query="q", user_id="u1",
-                conversation_id="c1", conversation_history=None,
+                query="q",
+                user_id="u1",
+                conversation_id="c1",
+                conversation_history=None,
             )
 
-        names = [l.name for l in result["layers"]]
+        names = [lyr.name for lyr in result["layers"]]
         assert "working_memory" in names
         assert "ephemeral_memory" not in names
 
     @pytest.mark.asyncio
     async def test_history_no_conversation_id_working_skipped_ephemeral_present(
-        self, monkeypatch,
+        self,
+        monkeypatch,
     ):
         """history present + conversation_id=None → working skipped, ephemeral included."""
         budget = ContextBudget(
-            total_tokens=500, system_tokens=100, long_term_tokens=50,
-            working_memory_tokens=100, semantic_retrieval_tokens=100,
+            total_tokens=500,
+            system_tokens=100,
+            long_term_tokens=50,
+            working_memory_tokens=100,
+            semantic_retrieval_tokens=100,
             ephemeral_tokens=150,
         )
         svc = _make_minimal_service()
@@ -637,11 +696,13 @@ class TestContextOrdering:
             )
 
             result = await svc.assemble_context(
-                query="q", user_id="u1", conversation_id=None,
+                query="q",
+                user_id="u1",
+                conversation_id=None,
                 conversation_history=[{"role": "u", "content": "hi"}],
             )
 
-        names = [l.name for l in result["layers"]]
+        names = [lyr.name for lyr in result["layers"]]
         assert "working_memory" not in names
         assert "ephemeral_memory" in names
 
@@ -658,8 +719,11 @@ class TestSourceAttribution:
     async def test_semantic_source_count_propagates(self, monkeypatch):
         """source_count on semantic layer is accessible through the result."""
         budget = ContextBudget(
-            total_tokens=500, system_tokens=100, long_term_tokens=50,
-            working_memory_tokens=50, semantic_retrieval_tokens=200,
+            total_tokens=500,
+            system_tokens=100,
+            long_term_tokens=50,
+            working_memory_tokens=50,
+            semantic_retrieval_tokens=200,
             ephemeral_tokens=100,
         )
         svc = _make_minimal_service()
@@ -670,7 +734,9 @@ class TestSourceAttribution:
             _patch_layer(
                 "assemble_semantic_retrieval",
                 return_value=_make_layer(
-                    "semantic_retrieval", 50, source_count=7,
+                    "semantic_retrieval",
+                    50,
+                    source_count=7,
                 ),
             ),
             _snapshot_patch("snap-sc"),
@@ -682,17 +748,18 @@ class TestSourceAttribution:
 
             result = await svc.assemble_context(query="q", user_id="u1")
 
-        sem_layer = next(
-            l for l in result["layers"] if l.name == "semantic_retrieval"
-        )
+        sem_layer = next(lyr for lyr in result["layers"] if lyr.name == "semantic_retrieval")
         assert sem_layer.source_count == 7
 
     @pytest.mark.asyncio
     async def test_ephemeral_source_count_propagates(self, monkeypatch):
         """source_count on ephemeral layer is accessible through the result."""
         budget = ContextBudget(
-            total_tokens=500, system_tokens=100, long_term_tokens=50,
-            working_memory_tokens=50, semantic_retrieval_tokens=50,
+            total_tokens=500,
+            system_tokens=100,
+            long_term_tokens=50,
+            working_memory_tokens=50,
+            semantic_retrieval_tokens=50,
             ephemeral_tokens=250,
         )
         svc = _make_minimal_service()
@@ -703,14 +770,17 @@ class TestSourceAttribution:
             _patch_layer(
                 "assemble_semantic_retrieval",
                 return_value=_make_layer(
-                    "semantic_retrieval", 50,
+                    "semantic_retrieval",
+                    50,
                     metadata={"hard_stop_applied": False},
                 ),
             ),
             _patch_layer(
                 "assemble_ephemeral_memory",
                 return_value=_make_layer(
-                    "ephemeral_memory", 40, source_count=5,
+                    "ephemeral_memory",
+                    40,
+                    source_count=5,
                 ),
             ),
             _snapshot_patch("snap-ephc"),
@@ -721,21 +791,24 @@ class TestSourceAttribution:
             )
 
             result = await svc.assemble_context(
-                query="q", user_id="u1", conversation_id="c1",
+                query="q",
+                user_id="u1",
+                conversation_id="c1",
                 conversation_history=[{"role": "u", "content": "hi"}] * 5,
             )
 
-        eph_layer = next(
-            l for l in result["layers"] if l.name == "ephemeral_memory"
-        )
+        eph_layer = next(lyr for lyr in result["layers"] if lyr.name == "ephemeral_memory")
         assert eph_layer.source_count == 5
 
     @pytest.mark.asyncio
     async def test_assembly_log_token_usage_per_layer(self, monkeypatch):
         """assembly_log.token_usage has correct keys and values."""
         budget = ContextBudget(
-            total_tokens=1000, system_tokens=200, long_term_tokens=200,
-            working_memory_tokens=200, semantic_retrieval_tokens=200,
+            total_tokens=1000,
+            system_tokens=200,
+            long_term_tokens=200,
+            working_memory_tokens=200,
+            semantic_retrieval_tokens=200,
             ephemeral_tokens=200,
         )
         svc = _make_minimal_service()
@@ -767,7 +840,9 @@ class TestSourceAttribution:
             )
 
             result = await svc.assemble_context(
-                query="q", user_id="u1", conversation_id="c1",
+                query="q",
+                user_id="u1",
+                conversation_id="c1",
                 conversation_history=[{"role": "u", "content": "hi"}],
             )
 
@@ -793,8 +868,11 @@ class TestOverflowHandling:
     async def test_remaining_tokens_never_negative(self, monkeypatch):
         """Even with oversized layers, remaining_tokens stays >= 0."""
         budget = ContextBudget(
-            total_tokens=100, system_tokens=50, long_term_tokens=50,
-            working_memory_tokens=50, semantic_retrieval_tokens=50,
+            total_tokens=100,
+            system_tokens=50,
+            long_term_tokens=50,
+            working_memory_tokens=50,
+            semantic_retrieval_tokens=50,
             ephemeral_tokens=50,
         )
         svc = _make_minimal_service()
@@ -813,8 +891,11 @@ class TestOverflowHandling:
     async def test_all_layers_return_data_graceful_trim(self, monkeypatch):
         """All 5 layers return data — final context trimmed if it exceeds budget."""
         budget = ContextBudget(
-            total_tokens=300, system_tokens=60, long_term_tokens=60,
-            working_memory_tokens=60, semantic_retrieval_tokens=60,
+            total_tokens=300,
+            system_tokens=60,
+            long_term_tokens=60,
+            working_memory_tokens=60,
+            semantic_retrieval_tokens=60,
             ephemeral_tokens=60,
         )
         svc = _make_minimal_service()
@@ -848,12 +929,15 @@ class TestOverflowHandling:
             # Force _build_final_context to trigger trim
             monkeypatch.setattr(orch, "_count_tokens", lambda text: 500)
             monkeypatch.setattr(
-                orch, "_trim_to_tokens_util",
+                orch,
+                "_trim_to_tokens_util",
                 lambda text, limit: "gracefully-trimmed",
             )
 
             result = await svc.assemble_context(
-                query="q", user_id="u1", conversation_id="c1",
+                query="q",
+                user_id="u1",
+                conversation_id="c1",
                 conversation_history=[{"role": "u", "content": "hi"}],
             )
 
@@ -863,7 +947,9 @@ class TestOverflowHandling:
         """Empty layers list produces empty context string."""
         budget = ContextBudget(total_tokens=500)
         final = ContextAssemblyService._build_final_context(
-            [], remaining_tokens=500, budget=budget,
+            [],
+            remaining_tokens=500,
+            budget=budget,
         )
         assert final == ""
 
@@ -871,8 +957,11 @@ class TestOverflowHandling:
     async def test_zero_remaining_skips_all_subsequent(self, monkeypatch):
         """System consumes entire budget; remaining=0 skips all subsequent layers."""
         budget = ContextBudget(
-            total_tokens=60, system_tokens=60, long_term_tokens=0,
-            working_memory_tokens=0, semantic_retrieval_tokens=0,
+            total_tokens=60,
+            system_tokens=60,
+            long_term_tokens=0,
+            working_memory_tokens=0,
+            semantic_retrieval_tokens=0,
             ephemeral_tokens=0,
         )
         svc = _make_minimal_service()
@@ -895,7 +984,9 @@ class TestOverflowHandling:
             _snapshot_patch("snap-zero"),
         ):
             result = await svc.assemble_context(
-                query="q", user_id="u1", conversation_id="c1",
+                query="q",
+                user_id="u1",
+                conversation_id="c1",
                 conversation_history=[{"role": "u", "content": "hi"}],
             )
 
@@ -920,8 +1011,11 @@ class TestRetrievalFailures:
     async def test_semantic_failure_triggers_minimal_context(self, monkeypatch):
         """Semantic raises exception → orchestrator returns minimal context."""
         budget = ContextBudget(
-            total_tokens=500, system_tokens=100, long_term_tokens=100,
-            working_memory_tokens=100, semantic_retrieval_tokens=100,
+            total_tokens=500,
+            system_tokens=100,
+            long_term_tokens=100,
+            working_memory_tokens=100,
+            semantic_retrieval_tokens=100,
             ephemeral_tokens=100,
         )
         svc = _make_minimal_service()
@@ -940,7 +1034,9 @@ class TestRetrievalFailures:
             _snapshot_patch("snap-semfail"),
         ):
             result = await svc.assemble_context(
-                query="q", user_id="u1", conversation_id="c1",
+                query="q",
+                user_id="u1",
+                conversation_id="c1",
             )
 
         # Exception bubbles up through the orchestrator's try/except (line 256)
@@ -953,8 +1049,11 @@ class TestRetrievalFailures:
     async def test_system_layer_failure_triggers_minimal_context(self, monkeypatch):
         """System layer raises → orchestrator returns minimal context."""
         budget = ContextBudget(
-            total_tokens=500, system_tokens=100, long_term_tokens=100,
-            working_memory_tokens=100, semantic_retrieval_tokens=100,
+            total_tokens=500,
+            system_tokens=100,
+            long_term_tokens=100,
+            working_memory_tokens=100,
+            semantic_retrieval_tokens=100,
             ephemeral_tokens=100,
         )
         svc = _make_minimal_service()
@@ -968,7 +1067,9 @@ class TestRetrievalFailures:
             _snapshot_patch("snap-sysfail"),
         ):
             result = await svc.assemble_context(
-                query="q", user_id="u1", conversation_id="c1",
+                query="q",
+                user_id="u1",
+                conversation_id="c1",
             )
 
         assert result["degraded_mode"] is True
@@ -979,8 +1080,11 @@ class TestRetrievalFailures:
     async def test_multiple_layers_failure_triggers_minimal_context(self, monkeypatch):
         """Multiple layers fail → orchestrator returns minimal context."""
         budget = ContextBudget(
-            total_tokens=500, system_tokens=100, long_term_tokens=100,
-            working_memory_tokens=100, semantic_retrieval_tokens=100,
+            total_tokens=500,
+            system_tokens=100,
+            long_term_tokens=100,
+            working_memory_tokens=100,
+            semantic_retrieval_tokens=100,
             ephemeral_tokens=100,
         )
         svc = _make_minimal_service()
@@ -997,7 +1101,9 @@ class TestRetrievalFailures:
             _snapshot_patch("snap-multifail"),
         ):
             result = await svc.assemble_context(
-                query="q", user_id="u1", conversation_id="c1",
+                query="q",
+                user_id="u1",
+                conversation_id="c1",
             )
 
         # The first failure (long_term) causes assembly to abort → minimal context
@@ -1005,12 +1111,16 @@ class TestRetrievalFailures:
 
     @pytest.mark.asyncio
     async def test_snapshotter_failure_returns_result_without_snapshot(
-        self, monkeypatch,
+        self,
+        monkeypatch,
     ):
         """create_snapshot raises; result falls back to minimal context."""
         budget = ContextBudget(
-            total_tokens=200, system_tokens=100, long_term_tokens=50,
-            working_memory_tokens=50, semantic_retrieval_tokens=50,
+            total_tokens=200,
+            system_tokens=100,
+            long_term_tokens=50,
+            working_memory_tokens=50,
+            semantic_retrieval_tokens=50,
             ephemeral_tokens=50,
         )
         svc = _make_minimal_service()
@@ -1030,8 +1140,11 @@ class TestRetrievalFailures:
     async def test_embedding_unavailable_sets_degraded_mode(self, monkeypatch):
         """get_degraded_status returns degraded → degraded_mode=True in result."""
         budget = ContextBudget(
-            total_tokens=500, system_tokens=100, long_term_tokens=50,
-            working_memory_tokens=50, semantic_retrieval_tokens=200,
+            total_tokens=500,
+            system_tokens=100,
+            long_term_tokens=50,
+            working_memory_tokens=50,
+            semantic_retrieval_tokens=200,
             ephemeral_tokens=100,
         )
         svc = _make_minimal_service()
@@ -1042,7 +1155,8 @@ class TestRetrievalFailures:
             _patch_layer(
                 "assemble_semantic_retrieval",
                 return_value=_make_layer(
-                    "semantic_retrieval", 50,
+                    "semantic_retrieval",
+                    50,
                     metadata={"hard_stop_applied": False},
                 ),
             ),
@@ -1057,7 +1171,9 @@ class TestRetrievalFailures:
             )
 
             result = await svc.assemble_context(
-                query="q", user_id="u1", conversation_id="c1",
+                query="q",
+                user_id="u1",
+                conversation_id="c1",
             )
 
         assert result["degraded_mode"] is True
@@ -1067,8 +1183,11 @@ class TestRetrievalFailures:
     async def test_retrieval_service_lacks_degraded_check_no_crash(self, monkeypatch):
         """Retrieval service without get_degraded_status doesn't crash."""
         budget = ContextBudget(
-            total_tokens=500, system_tokens=100, long_term_tokens=50,
-            working_memory_tokens=50, semantic_retrieval_tokens=200,
+            total_tokens=500,
+            system_tokens=100,
+            long_term_tokens=50,
+            working_memory_tokens=50,
+            semantic_retrieval_tokens=200,
             ephemeral_tokens=100,
         )
         svc = _make_minimal_service()
@@ -1079,7 +1198,8 @@ class TestRetrievalFailures:
             _patch_layer(
                 "assemble_semantic_retrieval",
                 return_value=_make_layer(
-                    "semantic_retrieval", 50,
+                    "semantic_retrieval",
+                    50,
                     metadata={"hard_stop_applied": False},
                 ),
             ),
@@ -1095,8 +1215,11 @@ class TestRetrievalFailures:
     async def test_all_layers_failure_provides_minimal_context(self, monkeypatch):
         """Only system succeeds; all other layers fail. Returns valid minimal context."""
         budget = ContextBudget(
-            total_tokens=500, system_tokens=100, long_term_tokens=100,
-            working_memory_tokens=100, semantic_retrieval_tokens=100,
+            total_tokens=500,
+            system_tokens=100,
+            long_term_tokens=100,
+            working_memory_tokens=100,
+            semantic_retrieval_tokens=100,
             ephemeral_tokens=100,
         )
         svc = _make_minimal_service()
@@ -1114,7 +1237,9 @@ class TestRetrievalFailures:
             _snapshot_patch("snap-almost"),
         ):
             result = await svc.assemble_context(
-                query="q", user_id="u1", conversation_id="c1",
+                query="q",
+                user_id="u1",
+                conversation_id="c1",
                 conversation_history=[{"role": "u", "content": "hi"}],
             )
 
@@ -1124,12 +1249,16 @@ class TestRetrievalFailures:
 
     @pytest.mark.asyncio
     async def test_non_semantic_layer_returns_none_skipped_gracefully(
-        self, monkeypatch,
+        self,
+        monkeypatch,
     ):
         """Layers returning None are skipped without impacting other layers."""
         budget = ContextBudget(
-            total_tokens=500, system_tokens=100, long_term_tokens=100,
-            working_memory_tokens=100, semantic_retrieval_tokens=100,
+            total_tokens=500,
+            system_tokens=100,
+            long_term_tokens=100,
+            working_memory_tokens=100,
+            semantic_retrieval_tokens=100,
             ephemeral_tokens=100,
         )
         svc = _make_minimal_service()
@@ -1153,8 +1282,10 @@ class TestRetrievalFailures:
             )
 
             result = await svc.assemble_context(
-                query="q", user_id="u1", conversation_id="c1",
+                query="q",
+                user_id="u1",
+                conversation_id="c1",
             )
 
-        names = [l.name for l in result["layers"]]
+        names = [lyr.name for lyr in result["layers"]]
         assert names == ["system", "semantic_retrieval"]

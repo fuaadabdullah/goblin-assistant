@@ -220,12 +220,15 @@ class OpenAICompatibleProvider(BaseProvider):
                 stream=True,
                 **kwargs,
             )
-            async with httpx.AsyncClient(timeout=120) as client, client.stream(
-                "POST",
-                self._request_url(),
-                headers=self._headers(),
-                json=body,
-            ) as resp:
+            async with (
+                httpx.AsyncClient(timeout=120) as client,
+                client.stream(
+                    "POST",
+                    self._request_url(),
+                    headers=self._headers(),
+                    json=body,
+                ) as resp,
+            ):
                 resp.raise_for_status()
                 async for line in resp.aiter_lines():
                     if not line.startswith("data: "):

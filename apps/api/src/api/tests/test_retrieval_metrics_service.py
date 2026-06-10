@@ -134,10 +134,12 @@ async def test_get_cache_hit_rate_delegates_to_cache_service(svc, monkeypatch):
     mock_cache = MagicMock()
     mock_cache.get_hit_rate.return_value = {"hits": 3, "misses": 1, "rate": 0.75, "total": 4}
     import api.services.retrieval_metrics_service as rms_mod
+
     monkeypatch.setattr(rms_mod, "cache_service", mock_cache, raising=False)
 
     # Patch the import inside the method
     import api.services.cache_service as cs_mod
+
     original = cs_mod.cache_service
     cs_mod.cache_service = mock_cache
 
@@ -170,7 +172,9 @@ async def test_failure_summary_counts_by_type(svc):
 @pytest.mark.asyncio
 async def test_failure_summary_counts_by_layer(svc):
     svc.record_failure("u1", FAILURE_LAYER_SKIPPED, "long_term_memory", detail="skip_no_data")
-    svc.record_failure("u1", FAILURE_LAYER_SKIPPED, "long_term_memory", detail="skip_budget_exhausted")
+    svc.record_failure(
+        "u1", FAILURE_LAYER_SKIPPED, "long_term_memory", detail="skip_budget_exhausted"
+    )
     svc.record_failure("u1", FAILURE_LAYER_SKIPPED, "working_memory", detail="skip_no_data")
 
     result = await svc.get_failure_summary()
@@ -206,6 +210,7 @@ async def test_failure_window_excludes_old_events(svc):
 @pytest.mark.asyncio
 async def test_get_embedding_dedup_delegates_to_embedding_service(svc):
     import api.services.embedding_service as es_mod
+
     original = es_mod.embedding_service
     mock_embed = MagicMock()
     mock_embed.get_dedup_stats.return_value = {"duplicates_prevented": 7, "hash_cache_size": 42}
@@ -228,14 +233,27 @@ async def test_full_report_keys_present(svc, monkeypatch):
     import api.services.embedding_service as es_mod
 
     cs_mod.cache_service = MagicMock()
-    cs_mod.cache_service.get_hit_rate.return_value = {"hits": 0, "misses": 0, "rate": 0.0, "total": 0}
+    cs_mod.cache_service.get_hit_rate.return_value = {
+        "hits": 0,
+        "misses": 0,
+        "rate": 0.0,
+        "total": 0,
+    }
     es_mod.embedding_service = MagicMock()
-    es_mod.embedding_service.get_dedup_stats.return_value = {"duplicates_prevented": 0, "hash_cache_size": 0}
+    es_mod.embedding_service.get_dedup_stats.return_value = {
+        "duplicates_prevented": 0,
+        "hash_cache_size": 0,
+    }
 
     result = await svc.get_full_report()
     expected_keys = {
-        "generated_at", "window_hours", "user_id",
-        "token_budget_accuracy", "tier_latency",
-        "cache_hit_rate", "failure_summary", "embedding_dedup",
+        "generated_at",
+        "window_hours",
+        "user_id",
+        "token_budget_accuracy",
+        "tier_latency",
+        "cache_hit_rate",
+        "failure_summary",
+        "embedding_dedup",
     }
     assert expected_keys.issubset(result.keys())

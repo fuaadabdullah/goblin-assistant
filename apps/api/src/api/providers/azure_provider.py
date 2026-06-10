@@ -155,12 +155,15 @@ class AzureOpenAIProvider(BaseProvider):
         }
         if self._is_v1_endpoint():
             body["model"] = deployment
-        async with httpx.AsyncClient(timeout=120) as client, client.stream(
-            "POST",
-            self._url(deployment),
-            headers=self._headers(),
-            json=body,
-        ) as resp:
+        async with (
+            httpx.AsyncClient(timeout=120) as client,
+            client.stream(
+                "POST",
+                self._url(deployment),
+                headers=self._headers(),
+                json=body,
+            ) as resp,
+        ):
             resp.raise_for_status()
             async for line in resp.aiter_lines():
                 if not line.startswith("data: "):

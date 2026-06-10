@@ -65,10 +65,7 @@ class _StubProvider(BaseProvider):
             provider=self.provider_id,
             model=model or self.default_model,
             usage={"input_tokens": 1, "output_tokens": 1},
-            cost_usd=(
-                self.COST_INPUT_PER_1K / 1000 * 1
-                + self.COST_OUTPUT_PER_1K / 1000 * 1
-            ),
+            cost_usd=(self.COST_INPUT_PER_1K / 1000 * 1 + self.COST_OUTPUT_PER_1K / 1000 * 1),
             latency_ms=2.0,
         )
 
@@ -309,9 +306,7 @@ class TestProviderFailover:
         primary._fake_fail = True
 
         secondary._invoke_hook = lambda *a, **kw: (
-            None
-            if False
-            else (_ for _ in ()).throw(AssertionError("should not be called"))
+            None if False else (_ for _ in ()).throw(AssertionError("should not be called"))
         )
 
         result = await self.d.dispatch(
@@ -722,6 +717,7 @@ class TestLatencyBasedRouting:
         reg.get("slow").success_count = 10
 
         import api.routing.router as mod
+
         original = mod.registry
         mod.registry = reg
         try:
@@ -746,6 +742,7 @@ class TestLatencyBasedRouting:
         reg.get("fast_b").failure_count = 0
 
         import api.routing.router as mod
+
         original = mod.registry
         mod.registry = reg
         try:
@@ -826,6 +823,7 @@ class TestLatencyBasedRouting:
         reg.get("solo").success_count = 5
 
         import api.routing.router as mod
+
         original = mod.registry
         mod.registry = reg
         try:
@@ -855,6 +853,7 @@ class TestHybridScoring:
         reg.get("slow_expensive").success_count = 10
 
         import api.routing.router as mod
+
         original = mod.registry
         mod.registry = reg
         try:
@@ -875,6 +874,7 @@ class TestHybridScoring:
         reg.get("unreliable").failure_count = 5  # 50% success rate
 
         import api.routing.router as mod
+
         original = mod.registry
         mod.registry = reg
         try:
@@ -894,6 +894,7 @@ class TestHybridScoring:
         reg.get("b").success_count = 10
 
         import api.routing.router as mod
+
         original = mod.registry
         mod.registry = reg
         try:
@@ -920,6 +921,7 @@ class TestHybridScoring:
         reg.get("beta").success_count = 10
 
         import api.routing.router as mod
+
         original = mod.registry
         mod.registry = reg
         try:
@@ -939,6 +941,7 @@ class TestHybridScoring:
         reg.get("solo").success_count = 10
 
         import api.routing.router as mod
+
         original = mod.registry
         mod.registry = reg
         try:
@@ -966,6 +969,7 @@ class TestHybridScoring:
         reg.get("b").success_count = 10
 
         import api.routing.router as mod
+
         original = mod.registry
         mod.registry = reg
         try:

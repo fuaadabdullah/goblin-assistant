@@ -128,14 +128,17 @@ class TestProviderMonitor:
             },
         ]
 
-        with patch(
-            "api.monitoring.get_provider_settings",
-            return_value=mock_providers,
-        ), patch.object(
-            provider_monitor,
-            "_check_connectivity",
-            new_callable=AsyncMock,
-        ) as mock_check:
+        with (
+            patch(
+                "api.monitoring.get_provider_settings",
+                return_value=mock_providers,
+            ),
+            patch.object(
+                provider_monitor,
+                "_check_connectivity",
+                new_callable=AsyncMock,
+            ) as mock_check,
+        ):
             mock_check.return_value = {"ok": True, "latency_ms": 100}
 
             with patch("api.monitoring.cache.set", new_callable=AsyncMock):
@@ -155,14 +158,17 @@ class TestProviderMonitor:
             },
         ]
 
-        with patch(
-            "api.monitoring.get_provider_settings",
-            return_value=mock_providers,
-        ), patch.object(
-            provider_monitor,
-            "_check_connectivity",
-            new_callable=AsyncMock,
-        ) as mock_check:
+        with (
+            patch(
+                "api.monitoring.get_provider_settings",
+                return_value=mock_providers,
+            ),
+            patch.object(
+                provider_monitor,
+                "_check_connectivity",
+                new_callable=AsyncMock,
+            ) as mock_check,
+        ):
             mock_check.return_value = {"ok": True, "latency_ms": 50}
 
             with patch("api.monitoring.cache.set", new_callable=AsyncMock):
@@ -184,14 +190,17 @@ class TestProviderMonitor:
             },
         ]
 
-        with patch(
-            "api.monitoring.get_provider_settings",
-            return_value=mock_providers,
-        ), patch.object(
-            provider_monitor,
-            "_check_connectivity",
-            new_callable=AsyncMock,
-        ) as mock_check:
+        with (
+            patch(
+                "api.monitoring.get_provider_settings",
+                return_value=mock_providers,
+            ),
+            patch.object(
+                provider_monitor,
+                "_check_connectivity",
+                new_callable=AsyncMock,
+            ) as mock_check,
+        ):
             mock_check.return_value = {
                 "ok": False,
                 "error": "Connection timeout",
@@ -215,14 +224,17 @@ class TestProviderMonitor:
             },
         ]
 
-        with patch(
-            "api.monitoring.get_provider_settings",
-            return_value=mock_providers,
-        ), patch.object(
-            provider_monitor,
-            "_check_connectivity",
-            new_callable=AsyncMock,
-        ) as mock_check:
+        with (
+            patch(
+                "api.monitoring.get_provider_settings",
+                return_value=mock_providers,
+            ),
+            patch.object(
+                provider_monitor,
+                "_check_connectivity",
+                new_callable=AsyncMock,
+            ) as mock_check,
+        ):
             mock_check.return_value = {"ok": True, "latency_ms": 100}
 
             with patch("api.monitoring.cache.set", new_callable=AsyncMock) as mock_cache_set:
@@ -247,11 +259,14 @@ class TestProviderMonitor:
                 # Stop after 2 iterations
                 provider_monitor._running = False
 
-        with patch.object(
-            provider_monitor,
-            "_check_providers",
-            side_effect=mock_check_providers,
-        ), patch("asyncio.sleep", new_callable=AsyncMock):
+        with (
+            patch.object(
+                provider_monitor,
+                "_check_providers",
+                side_effect=mock_check_providers,
+            ),
+            patch("asyncio.sleep", new_callable=AsyncMock),
+        ):
             await provider_monitor._monitor_loop()
 
         assert iteration_count >= 1
@@ -271,11 +286,14 @@ class TestProviderMonitor:
                 raise ValueError("Test error")
             raise asyncio.CancelledError()
 
-        with patch.object(
-            provider_monitor,
-            "_check_providers",
-            side_effect=mock_check_with_error,
-        ), patch("asyncio.sleep", new_callable=AsyncMock):
+        with (
+            patch.object(
+                provider_monitor,
+                "_check_providers",
+                side_effect=mock_check_with_error,
+            ),
+            patch("asyncio.sleep", new_callable=AsyncMock),
+        ):
             await provider_monitor._monitor_loop()
 
         assert call_count == 1

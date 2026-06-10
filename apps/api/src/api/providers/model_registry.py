@@ -17,7 +17,7 @@ Usage
 
 from __future__ import annotations
 
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from typing import Any, Dict, List, Optional
 
 from .dispatcher_pkg.config import normalize_token
@@ -107,8 +107,7 @@ class ModelRegistry:
         key = _normalize(model_name)
         bucket = self._index.setdefault(key, [])
         if not any(
-            b.provider_id == backend.provider_id and b.model == backend.model
-            for b in bucket
+            b.provider_id == backend.provider_id and b.model == backend.model for b in bucket
         ):
             bucket.append(backend)
             bucket.sort(key=lambda b: b.priority)
@@ -142,9 +141,7 @@ class ModelRegistry:
 
         If prefer_provider is set and it exists in the backend list, it wins.
         """
-        backends = self.backends_for(
-            model_name, require_embeddings=require_embeddings
-        )
+        backends = self.backends_for(model_name, require_embeddings=require_embeddings)
         if not backends:
             return None
         if prefer_provider:
@@ -164,8 +161,7 @@ class ModelRegistry:
     def model_catalog(self) -> Dict[str, List[Dict[str, Any]]]:
         """Full catalog: model_name → list of backend dicts."""
         return {
-            name: [b.to_dict() for b in backends]
-            for name, backends in sorted(self._index.items())
+            name: [b.to_dict() for b in backends] for name, backends in sorted(self._index.items())
         }
 
     def embedding_providers(self) -> List[str]:

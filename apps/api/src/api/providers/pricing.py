@@ -31,7 +31,9 @@ def _as_dict(value: Any) -> Dict[str, Any]:
     return {}
 
 
-def _normalize_provider_config(provider_id: str, config: Optional[Dict[str, Any]]) -> Dict[str, Any]:
+def _normalize_provider_config(
+    provider_id: str, config: Optional[Dict[str, Any]]
+) -> Dict[str, Any]:
     if config and any(
         key in config
         for key in (
@@ -43,7 +45,7 @@ def _normalize_provider_config(provider_id: str, config: Optional[Dict[str, Any]
             "rate_limits",
             "rate_limit_per_min",
         )
-        ):
+    ):
         return dict(config)
     loaded = load_provider_config(use_cache=False).get_provider(provider_id)
     if loaded is not None:
@@ -87,17 +89,17 @@ def resolve_model_pricing(
         cost_dict = _as_dict(raw_cost)
         if cost_dict:
             return ModelPricing(
-                input_per1k=float(
-                    cost_dict.get("input_per1k", cost_dict.get("input", 0.0))
-                ),
-                output_per1k=float(
-                    cost_dict.get("output_per1k", cost_dict.get("output", 0.0))
-                ),
+                input_per1k=float(cost_dict.get("input_per1k", cost_dict.get("input", 0.0))),
+                output_per1k=float(cost_dict.get("output_per1k", cost_dict.get("output", 0.0))),
             )
 
     # Legacy top-level fields — accept both spellings (TOML uses per1k, config dicts use per_1k)
-    legacy_input = provider_cfg.get("cost_input_per1k") or provider_cfg.get("cost_input_per_1k", 0.0)
-    legacy_output = provider_cfg.get("cost_output_per1k") or provider_cfg.get("cost_output_per_1k", 0.0)
+    legacy_input = provider_cfg.get("cost_input_per1k") or provider_cfg.get(
+        "cost_input_per_1k", 0.0
+    )
+    legacy_output = provider_cfg.get("cost_output_per1k") or provider_cfg.get(
+        "cost_output_per_1k", 0.0
+    )
     return ModelPricing(
         input_per1k=float(legacy_input or 0.0),
         output_per1k=float(legacy_output or 0.0),
@@ -181,6 +183,5 @@ def estimate_cost(
         config=config,
     )
     return (
-        input_tokens * pricing.input_per1k / 1000.0
-        + output_tokens * pricing.output_per1k / 1000.0
+        input_tokens * pricing.input_per1k / 1000.0 + output_tokens * pricing.output_per1k / 1000.0
     )

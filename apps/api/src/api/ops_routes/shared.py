@@ -5,7 +5,7 @@ These have been moved to the ops/ domain layer for better separation of concerns
 """
 
 from ..ops.circuit_breaker import CircuitBreaker, calculate_health_score
-from ..ops.performance_metrics import performance_metrics, PerformanceMetrics
+from ..ops.performance_metrics import PerformanceMetrics, performance_metrics
 
 circuit_breakers: dict = {}
 

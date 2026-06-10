@@ -1,6 +1,6 @@
 """Tests for EmbeddingService DB pre-check and content hash deduplication."""
 
-from unittest.mock import AsyncMock, MagicMock, patch
+from unittest.mock import AsyncMock, MagicMock
 
 import pytest
 
@@ -53,15 +53,17 @@ async def test_store_skipped_when_source_id_exists(svc):
     svc.embed_text = raise_if_called
 
     import api.services.embedding_service as em
+
     original = em.get_db_context
 
     class _FakeCtx:
         async def __aenter__(self):
             return mock_session
+
         async def __aexit__(self, *args):
             pass
 
-    em.get_db_context = lambda: _FakeCtx()
+    em.get_db_context = lambda: _FakeCtx()  # noqa: PLW0108
     try:
         result = await svc.store_message_embedding("u1", "c1", "msg1", "hello world")
         assert result is True

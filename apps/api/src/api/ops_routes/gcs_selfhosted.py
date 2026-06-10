@@ -57,7 +57,7 @@ def _check_bearer(request: Request) -> None:
             detail="Missing or malformed Authorization header",
             headers={"WWW-Authenticate": "Bearer"},
         )
-    if auth[len("Bearer "):] != expected:
+    if auth[len("Bearer ") :] != expected:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Invalid COLAB_WORKER_API_KEY",
@@ -74,9 +74,7 @@ async def _probe_health(url: str, api_key: str) -> Dict[str, Any]:
         if resp.status_code >= 400:
             raise HTTPException(
                 status_code=status.HTTP_502_BAD_GATEWAY,
-                detail=(
-                    f"Colab worker /health returned HTTP {resp.status_code}"
-                ),
+                detail=(f"Colab worker /health returned HTTP {resp.status_code}"),
             )
         try:
             return resp.json()
@@ -87,10 +85,7 @@ async def _probe_health(url: str, api_key: str) -> Dict[str, Any]:
     except httpx.TimeoutException:
         raise HTTPException(
             status_code=status.HTTP_504_GATEWAY_TIMEOUT,
-            detail=(
-                f"Timed out probing {health_url} "
-                f"after {_HEALTH_PROBE_TIMEOUT_S}s"
-            ),
+            detail=(f"Timed out probing {health_url} after {_HEALTH_PROBE_TIMEOUT_S}s"),
         )
     except httpx.HTTPError as exc:
         raise HTTPException(
@@ -115,13 +110,9 @@ async def register_colab_backend(
     from ..providers.dispatcher import dispatcher
 
     try:
-        dispatcher.update_backend_endpoint(
-            _FAMILY_PROVIDER, _COLAB_ENGINE, endpoint
-        )
+        dispatcher.update_backend_endpoint(_FAMILY_PROVIDER, _COLAB_ENGINE, endpoint)
     except KeyError as exc:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND, detail=str(exc)
-        )
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(exc))
 
     db_saved = await save_endpoint_to_db(endpoint)
 
@@ -160,9 +151,7 @@ async def gcs_colab_status(request: Request) -> Dict[str, Any]:
 
     configs = dispatcher._configs.get(_FAMILY_PROVIDER, {})
     backends = configs.get("backends", [])
-    colab_bc = next(
-        (bc for bc in backends if bc.get("engine") == _COLAB_ENGINE), {}
-    )
+    colab_bc = next((bc for bc in backends if bc.get("engine") == _COLAB_ENGINE), {})
     in_memory = colab_bc.get("endpoint") or None
     in_db = await load_endpoint_from_db()
 

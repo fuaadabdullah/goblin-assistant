@@ -103,6 +103,7 @@ class RetrievalService:
             )
             try:
                 from ..retrieval_metrics_service import retrieval_metrics_service
+
                 retrieval_metrics_service.record_retrieval_timing(user_id, tier_timings)
             except Exception:
                 pass
@@ -170,45 +171,59 @@ class RetrievalService:
         timings: Dict[str, float] = {}
 
         t0 = time.perf_counter()
-        all_results.extend(await retrieve_memory_facts_stratified(
-            query_embedding=query_embedding, user_id=user_id, k=min(k, 3),
-        ))
+        all_results.extend(
+            await retrieve_memory_facts_stratified(
+                query_embedding=query_embedding,
+                user_id=user_id,
+                k=min(k, 3),
+            )
+        )
         timings["long_term"] = (time.perf_counter() - t0) * 1000
 
         t0 = time.perf_counter()
-        all_results.extend(await retrieve_summaries_stratified(
-            query_embedding=query_embedding,
-            user_id=user_id,
-            conversation_id=conversation_id,
-            k=min(k, 2),
-        ))
+        all_results.extend(
+            await retrieve_summaries_stratified(
+                query_embedding=query_embedding,
+                user_id=user_id,
+                conversation_id=conversation_id,
+                k=min(k, 2),
+            )
+        )
         timings["summary"] = (time.perf_counter() - t0) * 1000
 
         t0 = time.perf_counter()
         for stype in ["document", "code", "research", "task"]:
-            all_results.extend(await retrieve_by_source_type(
-                query_embedding=query_embedding,
-                user_id=user_id,
-                source_type=stype,
-                k=min(k, 3),
-            ))
+            all_results.extend(
+                await retrieve_by_source_type(
+                    query_embedding=query_embedding,
+                    user_id=user_id,
+                    source_type=stype,
+                    k=min(k, 3),
+                )
+            )
         timings["index"] = (time.perf_counter() - t0) * 1000
 
         t0 = time.perf_counter()
-        all_results.extend(await retrieve_messages_stratified(
-            query_embedding=query_embedding,
-            user_id=user_id,
-            conversation_id=conversation_id,
-            k=min(k, 3),
-        ))
+        all_results.extend(
+            await retrieve_messages_stratified(
+                query_embedding=query_embedding,
+                user_id=user_id,
+                conversation_id=conversation_id,
+                k=min(k, 3),
+            )
+        )
         timings["messages"] = (time.perf_counter() - t0) * 1000
 
         remaining_k = k - len(all_results)
         t0 = time.perf_counter()
         if remaining_k > 0:
-            all_results.extend(await retrieve_recent_messages(
-                user_id=user_id, conversation_id=conversation_id, k=remaining_k,
-            ))
+            all_results.extend(
+                await retrieve_recent_messages(
+                    user_id=user_id,
+                    conversation_id=conversation_id,
+                    k=remaining_k,
+                )
+            )
         timings["recent"] = (time.perf_counter() - t0) * 1000
 
         all_results.sort(key=lambda x: x.get("score", 0), reverse=True)

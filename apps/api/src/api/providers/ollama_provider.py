@@ -16,7 +16,6 @@ logger = structlog.get_logger(__name__)
 
 
 class OllamaProvider(BaseProvider):
-
     def __init__(
         self,
         provider_id: str | Dict[str, Any],
@@ -124,12 +123,15 @@ class OllamaProvider(BaseProvider):
             "stream": True,
             "options": {"num_predict": max_tokens, "temperature": temperature},
         }
-        async with httpx.AsyncClient(timeout=180) as client, client.stream(
-            "POST",
-            f"{self._base_url}/api/chat",
-            headers=self._headers(),
-            json=body,
-        ) as resp:
+        async with (
+            httpx.AsyncClient(timeout=180) as client,
+            client.stream(
+                "POST",
+                f"{self._base_url}/api/chat",
+                headers=self._headers(),
+                json=body,
+            ) as resp,
+        ):
             resp.raise_for_status()
             async for line in resp.aiter_lines():
                 if not line.strip():

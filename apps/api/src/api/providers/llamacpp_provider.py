@@ -16,7 +16,6 @@ logger = structlog.get_logger(__name__)
 
 
 class LlamaCPPProvider(BaseProvider):
-
     def __init__(
         self,
         provider_id: str | Dict[str, Any],
@@ -135,12 +134,15 @@ class LlamaCPPProvider(BaseProvider):
             "stream": True,
             **kwargs,
         }
-        async with httpx.AsyncClient(timeout=180) as client, client.stream(
-            "POST",
-            f"{self._base_url}/v1/chat/completions",
-            headers=self._headers(),
-            json=body,
-        ) as resp:
+        async with (
+            httpx.AsyncClient(timeout=180) as client,
+            client.stream(
+                "POST",
+                f"{self._base_url}/v1/chat/completions",
+                headers=self._headers(),
+                json=body,
+            ) as resp,
+        ):
             resp.raise_for_status()
             async for line in resp.aiter_lines():
                 if not line.startswith("data: "):

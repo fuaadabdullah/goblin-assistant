@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import base64
 import json
 from types import SimpleNamespace
 from unittest.mock import AsyncMock, MagicMock
@@ -25,8 +24,12 @@ from api.auth.router.schemas import (
 )
 from api.auth.router.tokens import (
     SECRET_KEY,
-    create_access_token as create_real_access_token,
     create_refresh_token,
+)
+from api.auth.router.tokens import (
+    create_access_token as create_real_access_token,
+)
+from api.auth.router.tokens import (
     verify_token as verify_auth_token,
 )
 
@@ -326,7 +329,10 @@ class TestAuthDependencies:
             )
             is None
         )
-        assert await deps._get_authenticated_user_model(db, user_id=active_user.id, session_id=None) is active_user
+        assert (
+            await deps._get_authenticated_user_model(db, user_id=active_user.id, session_id=None)
+            is active_user
+        )
 
     @pytest.mark.asyncio
     async def test_get_current_user_error_and_cache_paths(self, monkeypatch):
@@ -342,11 +348,15 @@ class TestAuthDependencies:
 
         monkeypatch.setattr(deps, "verify_token", lambda _token: {"type": "refresh"})
         with pytest.raises(HTTPException, match="Invalid token type"):
-            await deps.get_current_user(request, db, credentials=SimpleNamespace(credentials="refresh"))
+            await deps.get_current_user(
+                request, db, credentials=SimpleNamespace(credentials="refresh")
+            )
 
         monkeypatch.setattr(deps, "verify_token", lambda _token: {"type": "access"})
         with pytest.raises(HTTPException, match="Invalid token payload"):
-            await deps.get_current_user(request, db, credentials=SimpleNamespace(credentials="missing-sub"))
+            await deps.get_current_user(
+                request, db, credentials=SimpleNamespace(credentials="missing-sub")
+            )
 
         inactive_request = _auth_request()
         inactive_user = _user_model(is_active=False)
@@ -481,7 +491,9 @@ class TestGoogleRoutes:
         result = await routes_google.google_auth(GoogleAuthRequest(token="token"), response, db)
         assert result.ok is True
 
-        monkeypatch.setattr(routes_google.GoogleOAuth, "get_authorization_url", lambda: "https://google")
+        monkeypatch.setattr(
+            routes_google.GoogleOAuth, "get_authorization_url", lambda: "https://google"
+        )
         assert (await routes_google.get_google_auth_url())["authorization_url"] == "https://google"
 
         monkeypatch.setattr(
@@ -651,7 +663,9 @@ class TestEmailRoutes:
 
         valid_refresh = create_refresh_token(active_user.id, "session-1")
         monkeypatch.setattr(routes_email, "verify_token", verify_auth_token)
-        monkeypatch.setattr(routes_email, "_get_authenticated_user_model", AsyncMock(return_value=active_user))
+        monkeypatch.setattr(
+            routes_email, "_get_authenticated_user_model", AsyncMock(return_value=active_user)
+        )
         monkeypatch.setattr(routes_email, "create_access_token", lambda **_kwargs: "new-access")
         monkeypatch.setattr(routes_email, "create_refresh_token", lambda *_args: "new-refresh")
         set_cookies = MagicMock()
@@ -670,7 +684,9 @@ class TestEmailRoutes:
         clear_cookies = MagicMock()
         monkeypatch.setattr(routes_email, "_db_revoke_session", revoke)
         monkeypatch.setattr(routes_email, "_clear_auth_cookies", clear_cookies)
-        access_token = create_real_access_token(data={"sub": active_user.id}, session_id="session-1")
+        access_token = create_real_access_token(
+            data={"sub": active_user.id}, session_id="session-1"
+        )
 
         logged_out = await routes_email.logout(
             SimpleNamespace(cookies={"session_token": access_token}),
@@ -689,7 +705,11 @@ class TestEmailRoutes:
 
         payload = decode(valid_refresh, SECRET_KEY, algorithms=["HS256"])
         access_like = create_real_access_token(data={"sub": payload["sub"]}, session_id="session-1")
-        monkeypatch.setattr(routes_email, "verify_token", lambda _token: decode(access_like, SECRET_KEY, algorithms=["HS256"]))
+        monkeypatch.setattr(
+            routes_email,
+            "verify_token",
+            lambda _token: decode(access_like, SECRET_KEY, algorithms=["HS256"]),
+        )
         user_service = MagicMock()
         user_service.get_user_by_id = AsyncMock(return_value=active_user)
         monkeypatch.setattr(routes_email._ar, "UserService", lambda _db: user_service)

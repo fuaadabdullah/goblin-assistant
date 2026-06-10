@@ -62,7 +62,11 @@ class RetrievalMetricsService:
             }
         )
         logger.debug(
-            "token_accuracy_recorded", user_id=user_id, predicted=predicted, actual=actual, delta=delta
+            "token_accuracy_recorded",
+            user_id=user_id,
+            predicted=predicted,
+            actual=actual,
+            delta=delta,
         )
 
     def record_assembly_latency(self, user_id: str, latency_ms: float) -> None:
@@ -72,9 +76,7 @@ class RetrievalMetricsService:
         )
         logger.debug("assembly_latency_recorded", user_id=user_id, latency_ms=latency_ms)
 
-    def record_failure(
-        self, user_id: str, failure_type: str, layer: str, detail: str = ""
-    ) -> None:
+    def record_failure(self, user_id: str, failure_type: str, layer: str, detail: str = "") -> None:
         """Record a context assembly failure event."""
         self._failure_events.append(
             {
@@ -128,11 +130,7 @@ class RetrievalMetricsService:
         predicted_vals = [e["predicted"] for e in events]
         sorted_abs = sorted(abs(d) for d in deltas)
 
-        within_5pct = sum(
-            1
-            for e in events
-            if abs(e["delta"]) / max(1, e["predicted"]) <= 0.05
-        )
+        within_5pct = sum(1 for e in events if abs(e["delta"]) / max(1, e["predicted"]) <= 0.05)
 
         return {
             "sample_count": len(events),

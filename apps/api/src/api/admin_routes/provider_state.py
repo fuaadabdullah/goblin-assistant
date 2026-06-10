@@ -39,7 +39,10 @@ def _derive_skip_reason(
     if not bool(entry.get("configured")):
         return "not_configured"
 
-    if str(warmup.get("state", "idle")) in {"warming", "failed"} and str(entry.get("tier")) == "self_hosted":
+    if (
+        str(warmup.get("state", "idle")) in {"warming", "failed"}
+        and str(entry.get("tier")) == "self_hosted"
+    ):
         return f"warmup_{warmup.get('state')}"
 
     circuit_state = str(circuit.get("state", "")).lower()
@@ -53,7 +56,11 @@ def _derive_skip_reason(
     model_requests = model_scope.get("remaining_requests")
     model_tokens = model_scope.get("remaining_tokens")
 
-    if any(value == 0 for value in (provider_requests, provider_tokens, model_requests, model_tokens) if value is not None):
+    if any(
+        value == 0
+        for value in (provider_requests, provider_tokens, model_requests, model_tokens)
+        if value is not None
+    ):
         return "quota_exhausted"
 
     if not bool(provider.should_attempt(canary=False)):
@@ -74,7 +81,9 @@ async def _build_provider_state() -> Dict[str, Any]:
 
         warmup = dict(entry.get("warmup", {}))
         registry_stats = dict(debug_info.get("registry_stats", {}).get(provider_id, {}))
-        registry_metrics = dict(debug_info.get("registry_metrics", {}).get("providers", {}).get(provider_id, {}))
+        registry_metrics = dict(
+            debug_info.get("registry_metrics", {}).get("providers", {}).get(provider_id, {})
+        )
         snapshot_model = _preferred_snapshot_model(entry)
         try:
             provider = dispatcher.get_provider(provider_id)
@@ -113,22 +122,41 @@ async def _build_provider_state() -> Dict[str, Any]:
 
     summary = {
         "total_providers": len(provider_state),
-        "configured_providers": len([item for item in provider_state.values() if item.get("configured")]),
-        "routing_providers": len([item for item in provider_state.values() if item.get("can_route")]),
+        "configured_providers": len(
+            [item for item in provider_state.values() if item.get("configured")]
+        ),
+        "routing_providers": len(
+            [item for item in provider_state.values() if item.get("can_route")]
+        ),
         "warming_providers": len(
-            [item for item in provider_state.values() if str(item.get("warmup", {}).get("state", "")).lower() == "warming"]
+            [
+                item
+                for item in provider_state.values()
+                if str(item.get("warmup", {}).get("state", "")).lower() == "warming"
+            ]
         ),
         "failed_warmups": len(
-            [item for item in provider_state.values() if str(item.get("warmup", {}).get("state", "")).lower() == "failed"]
+            [
+                item
+                for item in provider_state.values()
+                if str(item.get("warmup", {}).get("state", "")).lower() == "failed"
+            ]
         ),
         "open_circuit_breakers": len(
             [
                 item
                 for item in provider_state.values()
-                if str(item.get("circuit_breaker", {}).get("state", "")).lower() in {"soft_open", "hard_open"}
+                if str(item.get("circuit_breaker", {}).get("state", "")).lower()
+                in {"soft_open", "hard_open"}
             ]
         ),
-        "quota_blocked": len([item for item in provider_state.values() if item.get("skip_reason") == "quota_exhausted"]),
+        "quota_blocked": len(
+            [
+                item
+                for item in provider_state.values()
+                if item.get("skip_reason") == "quota_exhausted"
+            ]
+        ),
     }
 
     return {

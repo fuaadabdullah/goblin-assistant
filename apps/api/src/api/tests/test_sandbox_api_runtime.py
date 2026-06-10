@@ -46,7 +46,8 @@ def test_sandbox_api_key_default_when_env_unset() -> None:
 def test_require_api_key_fails_closed_when_key_missing() -> None:
     with (
         patch.object(sandbox_api, "SANDBOX_ENABLED", False),
-        patch.object(sandbox_api, "API_KEY", None),pytest.raises(HTTPException) as exc
+        patch.object(sandbox_api, "API_KEY", None),
+        pytest.raises(HTTPException) as exc,
     ):
         sandbox_api.require_api_key("any-key")
 
@@ -99,7 +100,7 @@ class _FakeRedis:
         self.store.pop(key, None)
 
     def scan_iter(self, _pattern: str):
-        for key in self.store.keys():
+        for key in self.store:
             if key.startswith("sandbox:job:"):
                 yield key.encode("utf-8")
 
@@ -297,7 +298,8 @@ async def test_get_job_status_returns_404_for_missing_job() -> None:
             sandbox_api,
             "API_KEY",
             "secret",
-        ),pytest.raises(HTTPException) as exc
+        ),
+        pytest.raises(HTTPException) as exc,
     ):
         await sandbox_api.get_job_status("missing", x_api_key="secret")
 
@@ -434,9 +436,7 @@ async def test_list_job_artifacts_and_download_paths() -> None:
         ),
     ):
         artifacts = await sandbox_api.list_job_artifacts("abc", x_api_key="secret")
-        redirect = await sandbox_api.download_artifact(
-            "abc", "report.csv", x_api_key="secret"
-        )
+        redirect = await sandbox_api.download_artifact("abc", "report.csv", x_api_key="secret")
 
     assert artifacts.data.artifacts[0].name == "report.csv"
     assert redirect.status_code == 302
@@ -663,7 +663,10 @@ async def test_run_and_logs_aliases_and_list_jobs_error_paths(tmp_path: Path) ->
         patch.object(sandbox_api, "API_KEY", "secret"),
         patch.object(sandbox_api, "r", fake_redis),
         patch.object(sandbox_api.event_emitter, "emit", AsyncMock()),
-        patch("api.sandbox_api.submit_job", AsyncMock(return_value=MagicMock(data=MagicMock(job_id="alias")))),
+        patch(
+            "api.sandbox_api.submit_job",
+            AsyncMock(return_value=MagicMock(data=MagicMock(job_id="alias"))),
+        ),
     ):
         alias = await sandbox_api.run_sandbox_code(
             sandbox_api.SubmitJobRequest(language="python", source="print(1)"),
@@ -690,7 +693,11 @@ async def test_run_and_logs_aliases_and_list_jobs_error_paths(tmp_path: Path) ->
 
     with (
         patch.object(sandbox_api, "SANDBOX_ENABLED", True),
-        patch.object(sandbox_api, "r", MagicMock(scan_iter=MagicMock(side_effect=RuntimeError("scan failed")))),
+        patch.object(
+            sandbox_api,
+            "r",
+            MagicMock(scan_iter=MagicMock(side_effect=RuntimeError("scan failed"))),
+        ),
     ):
         with pytest.raises(HTTPException) as list_error:
             await sandbox_api.list_sandbox_jobs()

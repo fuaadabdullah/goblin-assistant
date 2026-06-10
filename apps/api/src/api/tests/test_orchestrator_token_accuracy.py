@@ -8,7 +8,6 @@ from api.services.context_assembly_service.models import ContextBudget, ContextL
 from api.services.context_assembly_service.orchestrator import ContextAssemblyService
 from api.services.retrieval_metrics_service import RetrievalMetricsService
 
-
 # ---------------------------------------------------------------------------
 # Fixtures
 # ---------------------------------------------------------------------------
@@ -233,13 +232,21 @@ def test_push_token_accuracy_is_silent_on_import_error():
 
 def test_record_layer_skip_detail_budget_exhausted():
     calls = []
-    with patch.object(ContextAssemblyService, "_push_failure", side_effect=lambda *a, **kw: calls.append((a, kw))):
-        ContextAssemblyService._record_layer_skip("u1", "working_memory", remaining=10, threshold=100)
+    with patch.object(
+        ContextAssemblyService, "_push_failure", side_effect=lambda *a, **kw: calls.append((a, kw))
+    ):
+        ContextAssemblyService._record_layer_skip(
+            "u1", "working_memory", remaining=10, threshold=100
+        )
     assert calls[0][0][3] == "skip_budget_exhausted"
 
 
 def test_record_layer_skip_detail_no_data():
     calls = []
-    with patch.object(ContextAssemblyService, "_push_failure", side_effect=lambda *a, **kw: calls.append((a, kw))):
-        ContextAssemblyService._record_layer_skip("u1", "long_term_memory", remaining=200, threshold=50)
+    with patch.object(
+        ContextAssemblyService, "_push_failure", side_effect=lambda *a, **kw: calls.append((a, kw))
+    ):
+        ContextAssemblyService._record_layer_skip(
+            "u1", "long_term_memory", remaining=200, threshold=50
+        )
     assert calls[0][0][3] == "skip_no_data"

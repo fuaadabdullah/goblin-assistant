@@ -52,4 +52,3 @@ def merge_attachment_metadata(
                 }
             )
     return attachments_meta, attachment_context_sources
-

@@ -60,9 +60,7 @@ class GoogleCloudSelfhostedProvider(BaseProvider):
         config: Optional[Dict[str, Any]] = None,
     ) -> None:
         super().__init__(provider_id, config)
-        raw_backends: List[Dict[str, Any]] = list(
-            self.config.get("backends", [])
-        )
+        raw_backends: List[Dict[str, Any]] = list(self.config.get("backends", []))
         self._backends: List[BaseProvider] = self._init_backends(raw_backends)
         if not self._backends:
             logger.warning(
@@ -71,12 +69,8 @@ class GoogleCloudSelfhostedProvider(BaseProvider):
                 hint="Set at least one backend endpoint env var",
             )
 
-    def _init_backends(
-        self, backend_configs: List[Dict[str, Any]]
-    ) -> List[BaseProvider]:
-        ordered = sorted(
-            backend_configs, key=lambda bc: int(bc.get("priority", 99))
-        )
+    def _init_backends(self, backend_configs: List[Dict[str, Any]]) -> List[BaseProvider]:
+        ordered = sorted(backend_configs, key=lambda bc: int(bc.get("priority", 99)))
         backends: List[BaseProvider] = []
         for bc in ordered:
             engine = bc.get("engine", "")
@@ -84,7 +78,7 @@ class GoogleCloudSelfhostedProvider(BaseProvider):
             if cls is None:
                 logger.warning("gcs_unknown_engine", engine=engine)
                 continue
-            
+
             sub_id = f"{self.provider_id}.{engine}"
             try:
                 backend = cls(sub_id, dict(bc))
@@ -93,13 +87,9 @@ class GoogleCloudSelfhostedProvider(BaseProvider):
                     logger.debug("gcs_backend_skipped_unconfigured", engine=engine)
                     continue
                 backends.append(backend)
-                logger.debug(
-                    "gcs_backend_registered", engine=engine, sub_id=sub_id
-                )
+                logger.debug("gcs_backend_registered", engine=engine, sub_id=sub_id)
             except Exception as exc:
-                logger.warning(
-                    "gcs_backend_init_failed", engine=engine, error=str(exc)
-                )
+                logger.warning("gcs_backend_init_failed", engine=engine, error=str(exc))
         return backends
 
     def _pick_model(self, model: Optional[str], backend: BaseProvider) -> str:
@@ -130,9 +120,7 @@ class GoogleCloudSelfhostedProvider(BaseProvider):
         last_error: str = "all backends failed"
         for backend in self._backends:
             if not backend.is_available():
-                logger.debug(
-                    "gcs_backend_unavailable", sub=backend.provider_id
-                )
+                logger.debug("gcs_backend_unavailable", sub=backend.provider_id)
                 continue
             resolved_model = self._pick_model(model, backend)
             try:
@@ -239,9 +227,5 @@ class GoogleCloudSelfhostedProvider(BaseProvider):
             provider_id=self.provider_id,
             healthy=healthy_count > 0,
             latency_ms=latency,
-            error=(
-                None
-                if healthy_count > 0
-                else f"all {len(self._backends)} backends unhealthy"
-            ),
+            error=(None if healthy_count > 0 else f"all {len(self._backends)} backends unhealthy"),
         )
