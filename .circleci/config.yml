@@ -37,12 +37,20 @@ commands:
   trigger-autofix:
     steps:
       - run:
-          name: AI autofix via Claude (on failure)
+          name: Install ACLI (Atlassian CLI)
           when: on_fail
           command: |
-            pip install --quiet anthropic
-            FAILURE_OUTPUT_FILE=/tmp/ci_failure_output.txt \
-              python3 tooling/automation/ci_autofix_trigger.py
+            OS=$(uname -s | tr '[:upper:]' '[:lower:]')
+            ARCH=$(uname -m | sed 's/x86_64/amd64/;s/aarch64/arm64/')
+            curl -fsSL "https://acli.atlassian.com/${OS}/latest/acli_${OS}_${ARCH}/acli" \
+              -o /usr/local/bin/acli
+            chmod +x /usr/local/bin/acli
+      - run:
+          name: Rovo Dev autofix (on failure)
+          when: on_fail
+          command: |
+            acli rovodev auth login --email "$ATLASSIAN_EMAIL" --token "$ATLASSIAN_API_TOKEN"
+            python3 tooling/automation/ci_autofix_trigger.py
 
   setup-tmpdir:
     steps:
