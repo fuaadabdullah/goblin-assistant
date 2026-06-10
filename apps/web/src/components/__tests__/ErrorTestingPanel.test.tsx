@@ -10,14 +10,11 @@ vi.mock('../ui/card', () => ({
   CardHeader: ({ children }: { children: React.ReactNode }) => <div>{children}</div>,
   CardTitle: ({ children }: { children: React.ReactNode }) => <h2>{children}</h2>,
 }));
-vi.mock(
-  '../ui/Alert',
-  () => ({
-    default: function MockAlert({ message }: { message: string }) {
-      return <div data-testid="alert">{message}</div>;
-    },
-  })
-);
+vi.mock('../ui/Alert', () => ({
+  default: function MockAlert({ message }: { message: string }) {
+    return <div data-testid="alert">{message}</div>;
+  },
+}));
 vi.mock('../ui', () => ({
   Button: ({
     children,

@@ -199,8 +199,12 @@ const ChatMessageList = ({
                         onRegenerate={() => onRegenerateMessage?.(messageId)}
                         onDelete={() => onDeleteMessage?.(messageId)}
                         {...(onRateFeedback && {
-                          onThumbsUp: () => { void onRateFeedback(messageId, 1); },
-                          onThumbsDown: () => { void onRateFeedback(messageId, -1); },
+                          onThumbsUp: () => {
+                            void onRateFeedback(messageId, 1);
+                          },
+                          onThumbsDown: () => {
+                            void onRateFeedback(messageId, -1);
+                          },
                         })}
                         showRegenerate={true}
                         showDelete={true}

@@ -47,8 +47,7 @@ export const moduleFlags: ModuleFlags = {
 };
 
 /** Static env-based flag check — safe on server. */
-export const isFeatureEnabled = (feature: keyof FeatureFlags): boolean =>
-  featureFlags[feature];
+export const isFeatureEnabled = (feature: keyof FeatureFlags): boolean => featureFlags[feature];
 
 /**
  * Runtime flag check — reads a localStorage override if present so QA and
@@ -103,14 +102,9 @@ function djb2(s: string): number {
  * A localStorage override (`goblin:exp:<name>`) lets developers force a variant
  * without changing their user ID.
  */
-export const getExperimentVariant = (
-  experiment: Experiment,
-  userId: string
-): ExperimentVariant => {
+export const getExperimentVariant = (experiment: Experiment, userId: string): ExperimentVariant => {
   if (typeof window !== 'undefined') {
-    const override = window.localStorage.getItem(
-      `${EXPERIMENT_STORAGE_PREFIX}${experiment.name}`
-    );
+    const override = window.localStorage.getItem(`${EXPERIMENT_STORAGE_PREFIX}${experiment.name}`);
     if (override !== null && experiment.variants.includes(override)) return override;
   }
 

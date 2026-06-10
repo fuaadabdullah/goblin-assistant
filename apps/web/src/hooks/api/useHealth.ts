@@ -34,8 +34,7 @@ export const useRoutingHealth = (refetchInterval?: number) => {
     if (rows.length === 0) return null;
     const healthy = rows.filter((r) => r.is_healthy).length;
     const total = rows.length;
-    const status =
-      healthy === total ? 'Healthy' : healthy === 0 ? 'Unhealthy' : 'Degraded';
+    const status = healthy === total ? 'Healthy' : healthy === 0 ? 'Unhealthy' : 'Degraded';
     return { status, healthy, total, providers: statuses, realtime: true };
   }, [statuses]);
 

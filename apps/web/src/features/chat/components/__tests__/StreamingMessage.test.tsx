@@ -2,22 +2,20 @@ import React from 'react';
 import { render, screen } from '@testing-library/react';
 
 vi.mock('next/dynamic', () => ({
-  default: () => function MockLottie() {
-    return <div data-testid="lottie" />;
-  },
+  default: () =>
+    function MockLottie() {
+      return <div data-testid="lottie" />;
+    },
 }));
 vi.mock('../../hooks/useGoblinLoaderAnimation', () => ({
   __esModule: true,
   default: () => ({ mock: 'animation-data' }),
 }));
-vi.mock(
-  '../MessageMarkdown',
-  () => ({
-    default: function MockMarkdown({ content }: { content: string }) {
-      return <div data-testid="message-markdown">{content}</div>;
-    },
-  })
-);
+vi.mock('../MessageMarkdown', () => ({
+  default: function MockMarkdown({ content }: { content: string }) {
+    return <div data-testid="message-markdown">{content}</div>;
+  },
+}));
 
 import StreamingMessage from '../StreamingMessage';
 

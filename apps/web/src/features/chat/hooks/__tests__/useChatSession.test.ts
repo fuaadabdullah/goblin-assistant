@@ -50,7 +50,9 @@ vi.mock('../../../../lib/ui-error', () => ({
 }));
 
 vi.mock('../../../../lib/chat-history', async () => {
-  const actual = await vi.importActual<typeof import('../../../../lib/chat-history')>('../../../../lib/chat-history');
+  const actual = await vi.importActual<typeof import('../../../../lib/chat-history')>(
+    '../../../../lib/chat-history'
+  );
   return {
     buildThreadKey: actual.buildThreadKey,
     readChatThreads: vi.fn(() => []),

@@ -168,10 +168,7 @@ describe('authStore bootstrapFromSession', () => {
 
   it('does not authenticate when validate response user object is invalid', async () => {
     setCookie('session_token', 'cookie-token-invalid-user');
-    localStorage.setItem(
-      'user_data',
-      JSON.stringify({ email: 'no-id@example.com', role: 'user' })
-    );
+    localStorage.setItem('user_data', JSON.stringify({ email: 'no-id@example.com', role: 'user' }));
 
     vi.mocked(apiClient.validateToken).mockResolvedValue({
       valid: true,

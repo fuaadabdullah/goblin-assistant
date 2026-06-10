@@ -13,14 +13,11 @@ vi.mock('next/dynamic', () => ({
 }));
 
 // Also mock the features module in case it is resolved directly
-vi.mock(
-  '@/features/sandbox/SandboxScreen',
-  () => ({
-    default: function MockSandboxScreen() {
-      return <div data-testid="sandbox-screen">Sandbox Screen</div>;
-    },
-  })
-);
+vi.mock('@/features/sandbox/SandboxScreen', () => ({
+  default: function MockSandboxScreen() {
+    return <div data-testid="sandbox-screen">Sandbox Screen</div>;
+  },
+}));
 
 vi.mock('../../features/sandbox/components/SandboxSkeleton', () => ({
   default: function MockSandboxSkeleton() {

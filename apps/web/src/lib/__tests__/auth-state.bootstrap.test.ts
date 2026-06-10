@@ -34,7 +34,9 @@ vi.mock('../../utils/auth-session', () => ({
 import { supabase } from '../supabase';
 import { clearAuthSession } from '../../utils/auth-session';
 
-const mockGetSession = supabase.auth.getSession as vi.MockedFunction<typeof supabase.auth.getSession>;
+const mockGetSession = supabase.auth.getSession as vi.MockedFunction<
+  typeof supabase.auth.getSession
+>;
 const mockSignOut = supabase.auth.signOut as vi.MockedFunction<typeof supabase.auth.signOut>;
 const mockClearAuthSession = clearAuthSession as vi.MockedFunction<typeof clearAuthSession>;
 
@@ -54,7 +56,11 @@ const testSession = {
 beforeEach(() => {
   vi.clearAllMocks();
   clearValidationCache();
-  mockSignOut.mockResolvedValue({ error: null } as ReturnType<typeof supabase.auth.signOut> extends Promise<infer R> ? R : never);
+  mockSignOut.mockResolvedValue({ error: null } as ReturnType<
+    typeof supabase.auth.signOut
+  > extends Promise<infer R>
+    ? R
+    : never);
 });
 
 describe('bootstrapAuthSession — SSR guard', () => {

@@ -2,41 +2,29 @@ import React from 'react';
 import { render, screen } from '@testing-library/react';
 import FinancialVisualization from '../FinancialVisualization';
 
-vi.mock(
-  '../AllocationPie',
-  () => ({
-    default: function MockPie(props: { title: string }) {
-      return <div data-testid="allocation-pie">{props.title}</div>;
-    },
-  })
-);
+vi.mock('../AllocationPie', () => ({
+  default: function MockPie(props: { title: string }) {
+    return <div data-testid="allocation-pie">{props.title}</div>;
+  },
+}));
 
-vi.mock(
-  '../FinanceBarChart',
-  () => ({
-    default: function MockBarChart(props: { title: string }) {
-      return <div data-testid="finance-bar-chart">{props.title}</div>;
-    },
-  })
-);
+vi.mock('../FinanceBarChart', () => ({
+  default: function MockBarChart(props: { title: string }) {
+    return <div data-testid="finance-bar-chart">{props.title}</div>;
+  },
+}));
 
-vi.mock(
-  '../ProjectionsTable',
-  () => ({
-    default: function MockTable(props: { title: string }) {
-      return <div data-testid="projections-table">{props.title}</div>;
-    },
-  })
-);
+vi.mock('../ProjectionsTable', () => ({
+  default: function MockTable(props: { title: string }) {
+    return <div data-testid="projections-table">{props.title}</div>;
+  },
+}));
 
-vi.mock(
-  '../CorrelationHeatmap',
-  () => ({
-    default: function MockHeatmap(props: { title: string }) {
-      return <div data-testid="correlation-heatmap">{props.title}</div>;
-    },
-  })
-);
+vi.mock('../CorrelationHeatmap', () => ({
+  default: function MockHeatmap(props: { title: string }) {
+    return <div data-testid="correlation-heatmap">{props.title}</div>;
+  },
+}));
 
 describe('FinancialVisualization', () => {
   it('renders bar_chart block', () => {

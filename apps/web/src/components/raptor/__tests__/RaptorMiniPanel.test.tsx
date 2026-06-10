@@ -18,32 +18,26 @@ vi.mock('@/components/ui/card', () => ({
   CardTitle: ({ children }: { children: React.ReactNode }) => <h3>{children}</h3>,
 }));
 
-vi.mock(
-  '@/components/ui/Button',
-  () => ({
-    default: function MockButton({
-      children,
-      onClick,
-      disabled,
-      ...props
-    }: React.ButtonHTMLAttributes<HTMLButtonElement>) {
-      return (
-        <button onClick={onClick} disabled={disabled} {...props}>
-          {children}
-        </button>
-      );
-    },
-  })
-);
+vi.mock('@/components/ui/Button', () => ({
+  default: function MockButton({
+    children,
+    onClick,
+    disabled,
+    ...props
+  }: React.ButtonHTMLAttributes<HTMLButtonElement>) {
+    return (
+      <button onClick={onClick} disabled={disabled} {...props}>
+        {children}
+      </button>
+    );
+  },
+}));
 
-vi.mock(
-  '@/components/ui/Badge',
-  () => ({
-    default: function MockBadge({ children }: { children: React.ReactNode }) {
-      return <span>{children}</span>;
-    },
-  })
-);
+vi.mock('@/components/ui/Badge', () => ({
+  default: function MockBadge({ children }: { children: React.ReactNode }) {
+    return <span>{children}</span>;
+  },
+}));
 
 vi.mock('@/utils/dev-log', () => ({
   devError: vi.fn(),

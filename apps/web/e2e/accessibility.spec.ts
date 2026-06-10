@@ -8,7 +8,7 @@ const AUTH_COOKIES = [
   { name: 'session_token', value: 'mock-session-token-e2e', domain: 'localhost', path: '/' },
 ];
 
-const envelope = <T,>(data: T) => JSON.stringify({ success: true, data });
+const envelope = <T>(data: T) => JSON.stringify({ success: true, data });
 
 async function mockAuditApi(page: import('@playwright/test').Page) {
   await mockCommonApiRoutes(page);

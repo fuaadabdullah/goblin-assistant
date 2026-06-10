@@ -10,7 +10,10 @@ import { devError } from './dev-log';
 type SentryIntegration = { name: string; [key: string]: unknown };
 type SentryWithExtras = typeof Sentry & {
   browserTracingIntegration?(): SentryIntegration;
-  replayIntegration?(options?: { maskAllText?: boolean; blockAllMedia?: boolean }): SentryIntegration;
+  replayIntegration?(options?: {
+    maskAllText?: boolean;
+    blockAllMedia?: boolean;
+  }): SentryIntegration;
   setMeasurement?(name: string, value: number, unit: string): void;
   captureException(error: unknown, hint?: Record<string, unknown>): string;
 };

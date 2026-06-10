@@ -203,9 +203,7 @@ test.describe('Logout', () => {
     await page.goto('/chat');
 
     // Attempt logout via button or direct API call + navigation
-    const logoutButton = page
-      .getByRole('button', { name: /log.?out|sign.?out/i })
-      .first();
+    const logoutButton = page.getByRole('button', { name: /log.?out|sign.?out/i }).first();
     const count = await logoutButton.count();
 
     if (count > 0) {
@@ -227,9 +225,7 @@ test.describe('Logout', () => {
   test('should clear session data after logout', async ({ page }) => {
     await page.goto('/chat');
 
-    const logoutButton = page
-      .getByRole('button', { name: /log.?out|sign.?out/i })
-      .first();
+    const logoutButton = page.getByRole('button', { name: /log.?out|sign.?out/i }).first();
     const count = await logoutButton.count();
 
     if (count > 0) {

@@ -1,4 +1,13 @@
-import { Button, Card, CardContent, CardDescription, CardHeader, CardTitle, Input, Badge } from '@/components/ui';
+import {
+  Button,
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+  Input,
+  Badge,
+} from '@/components/ui';
 
 export function UiLibraryDemo() {
   return (

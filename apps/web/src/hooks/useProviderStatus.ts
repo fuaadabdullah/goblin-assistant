@@ -40,18 +40,26 @@ export function useProviderStatus(): UseProviderStatusResult {
     supabase
       .from('provider_status')
       .select('*')
-      .then(({ data, error: fetchError }: { data: ProviderStatusRow[] | null; error: { message: string } | null }) => {
-        if (fetchError) {
-          setError(new Error(fetchError.message));
-        } else if (data) {
-          const map: ProviderStatusMap = {};
-          data.forEach((row) => {
-            map[row.provider] = row;
-          });
-          setStatuses(map);
+      .then(
+        ({
+          data,
+          error: fetchError,
+        }: {
+          data: ProviderStatusRow[] | null;
+          error: { message: string } | null;
+        }) => {
+          if (fetchError) {
+            setError(new Error(fetchError.message));
+          } else if (data) {
+            const map: ProviderStatusMap = {};
+            data.forEach((row) => {
+              map[row.provider] = row;
+            });
+            setStatuses(map);
+          }
+          setIsLoading(false);
         }
-        setIsLoading(false);
-      });
+      );
 
     // Realtime subscription — UPDATE and INSERT events on provider_status
     const channel = supabase

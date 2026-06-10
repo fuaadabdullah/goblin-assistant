@@ -4,10 +4,7 @@ export default function ProvidersLoading() {
       <div className="h-8 w-36 bg-surface-hover rounded animate-pulse mb-6" />
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
         {[1, 2, 3, 4, 5, 6].map((i) => (
-          <div
-            key={i}
-            className="bg-surface rounded-lg border border-border p-4 animate-pulse"
-          >
+          <div key={i} className="bg-surface rounded-lg border border-border p-4 animate-pulse">
             <div className="flex items-center gap-3 mb-3">
               <div className="w-10 h-10 bg-surface-hover rounded" />
               <div>

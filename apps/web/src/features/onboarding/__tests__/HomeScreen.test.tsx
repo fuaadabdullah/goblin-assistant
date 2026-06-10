@@ -1,30 +1,21 @@
 import React from 'react';
 import { render, screen } from '@testing-library/react';
 
-vi.mock(
-  'next/link',
-  () => ({
-    default: function MockLink({ children, href }: { children: React.ReactNode; href: string }) {
-      return <a href={href}>{children}</a>;
-    },
-  })
-);
-vi.mock(
-  '../../../components/Navigation',
-  () => ({
-    default: function MockNav() {
-      return <nav data-testid="nav" />;
-    },
-  })
-);
-vi.mock(
-  '../../../components/Seo',
-  () => ({
-    default: function MockSeo() {
-      return null;
-    },
-  })
-);
+vi.mock('next/link', () => ({
+  default: function MockLink({ children, href }: { children: React.ReactNode; href: string }) {
+    return <a href={href}>{children}</a>;
+  },
+}));
+vi.mock('../../../components/Navigation', () => ({
+  default: function MockNav() {
+    return <nav data-testid="nav" />;
+  },
+}));
+vi.mock('../../../components/Seo', () => ({
+  default: function MockSeo() {
+    return null;
+  },
+}));
 vi.mock('../../../hooks/api/useAuthSession', () => ({
   useAuthSession: () => ({ isAuthenticated: true }),
 }));

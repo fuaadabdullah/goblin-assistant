@@ -30,7 +30,7 @@ export function logError(error: unknown, context: ErrorContext = {}): AppError {
     console.error(
       `[error] ${appError.code} — ${appError.userMessage}`,
       { severity: appError.severity, retryable: appError.retryable, context },
-      appError.cause,
+      appError.cause
     );
   } else {
     console.error(`[error] ${appError.code}: ${appError.userMessage}`, context);

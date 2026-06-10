@@ -18,7 +18,7 @@ type ShowWarningFn = (title: string, message?: string) => void;
 export function toastError(
   fns: { showError: ShowErrorFn; showWarning?: ShowWarningFn | undefined },
   error: unknown,
-  context: ErrorContext = {},
+  context: ErrorContext = {}
 ): void {
   const appError = logError(error, context);
 
@@ -37,7 +37,7 @@ export function toastError(
  */
 export function makeMutationErrorHandler(
   fns: { showError: ShowErrorFn; showWarning?: ShowWarningFn | undefined },
-  context: ErrorContext = {},
+  context: ErrorContext = {}
 ): (error: unknown) => void {
   return (error: unknown) => toastError(fns, error, context);
 }

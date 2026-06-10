@@ -21,6 +21,6 @@ export function useExperiment(experiment: Experiment, userId: string): Experimen
     () => getExperimentVariant(experiment, userId),
     // experiment object is expected to be stable (defined outside the component)
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [experiment.name, userId],
+    [experiment.name, userId]
   );
 }

@@ -87,15 +87,15 @@ try {
   devWarn('Provider config validated successfully');
 } catch (validationError) {
   configValidationError =
-    validationError instanceof Error
-      ? validationError
-      : new Error(String(validationError));
-  devError(
-    'Provider config validation failed:',
-    configValidationError.message
-  );
+    validationError instanceof Error ? validationError : new Error(String(validationError));
+  devError('Provider config validation failed:', configValidationError.message);
   // Fallback to empty config to prevent startup crash
-  config = { schema_version: PROVIDERS_JSON_SCHEMA_VERSION, version: 2, default_timeout_ms: 12000, providers: {} };
+  config = {
+    schema_version: PROVIDERS_JSON_SCHEMA_VERSION,
+    version: 2,
+    default_timeout_ms: 12000,
+    providers: {},
+  };
 }
 
 const PROVIDERS = config.providers || {};

@@ -48,9 +48,7 @@ vi.mock('@/lib/provider-keys', () => ({
 
 import { providerKeys } from '@/lib/provider-keys';
 
-const mockGetProviders = apiClient.getProviders as vi.MockedFunction<
-  typeof apiClient.getProviders
->;
+const mockGetProviders = apiClient.getProviders as vi.MockedFunction<typeof apiClient.getProviders>;
 const mockGetGoblins = apiClient.getGoblins as vi.MockedFunction<typeof apiClient.getGoblins>;
 const mockGetHistory = apiClient.getHistory as vi.MockedFunction<typeof apiClient.getHistory>;
 const mockGetStats = apiClient.getStats as vi.MockedFunction<typeof apiClient.getStats>;

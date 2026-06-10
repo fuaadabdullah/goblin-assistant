@@ -9,25 +9,22 @@ vi.mock('@/hooks/api/useHealth', () => ({
   useRoutingHealth: vi.fn(),
   RoutingHealthStatus: {} as never,
 }));
-vi.mock(
-  '@/components/TwoColumnLayout',
-  () => ({
-    default: function MockLayout({
-      sidebar,
-      children,
-    }: {
-      sidebar: React.ReactNode;
-      children: React.ReactNode;
-    }) {
-      return (
-        <div data-testid="layout">
-          <div data-testid="sidebar">{sidebar}</div>
-          <div data-testid="main">{children}</div>
-        </div>
-      );
-    },
-  })
-);
+vi.mock('@/components/TwoColumnLayout', () => ({
+  default: function MockLayout({
+    sidebar,
+    children,
+  }: {
+    sidebar: React.ReactNode;
+    children: React.ReactNode;
+  }) {
+    return (
+      <div data-testid="layout">
+        <div data-testid="sidebar">{sidebar}</div>
+        <div data-testid="main">{children}</div>
+      </div>
+    );
+  },
+}));
 vi.mock('@/components/ui', () => ({
   Button: ({ children, ...p }: { children: React.ReactNode; onClick?: () => void }) => (
     <button {...p}>{children}</button>
@@ -48,38 +45,26 @@ vi.mock('@/components/ui', () => ({
     </div>
   ),
 }));
-vi.mock(
-  '../components/ProviderSidebar',
-  () => ({
-    default: function MockSidebar() {
-      return <div data-testid="provider-sidebar" />;
-    },
-  })
-);
-vi.mock(
-  '../components/ProviderDetails',
-  () => ({
-    default: function MockDetails() {
-      return <div data-testid="provider-details" />;
-    },
-  })
-);
-vi.mock(
-  '../components/ProviderPromptTest',
-  () => ({
-    default: function MockPromptTest() {
-      return <div data-testid="prompt-test" />;
-    },
-  })
-);
-vi.mock(
-  '../components/ProviderTestResultBanner',
-  () => ({
-    default: function MockBanner() {
-      return <div data-testid="test-banner" />;
-    },
-  })
-);
+vi.mock('../components/ProviderSidebar', () => ({
+  default: function MockSidebar() {
+    return <div data-testid="provider-sidebar" />;
+  },
+}));
+vi.mock('../components/ProviderDetails', () => ({
+  default: function MockDetails() {
+    return <div data-testid="provider-details" />;
+  },
+}));
+vi.mock('../components/ProviderPromptTest', () => ({
+  default: function MockPromptTest() {
+    return <div data-testid="prompt-test" />;
+  },
+}));
+vi.mock('../components/ProviderTestResultBanner', () => ({
+  default: function MockBanner() {
+    return <div data-testid="test-banner" />;
+  },
+}));
 vi.mock('@/hooks/useProviderStatus', () => ({
   useProviderStatus: () => ({
     statuses: {},

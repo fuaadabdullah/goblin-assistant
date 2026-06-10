@@ -1,46 +1,31 @@
 import React from 'react';
 import { render, screen } from '@testing-library/react';
 
-vi.mock(
-  '../SearchHeader',
-  () => ({
-    default: function MockSearchHeader({ title }: { title: string }) {
-      return <div data-testid="search-header">{title}</div>;
-    },
-  })
-);
-vi.mock(
-  '../SearchQuickQueries',
-  () => ({
-    default: function MockQuickQueries() {
-      return <div data-testid="search-quick-queries" />;
-    },
-  })
-);
-vi.mock(
-  '../SearchForm',
-  () => ({
-    default: function MockSearchForm() {
-      return <div data-testid="search-form" />;
-    },
-  })
-);
-vi.mock(
-  '../SearchResultsList',
-  () => ({
-    default: function MockResults({ query }: { query?: string }) {
-      return <div data-testid="search-results-list">{query}</div>;
-    },
-  })
-);
-vi.mock(
-  '../../../../components/Seo',
-  () => ({
-    default: function MockSeo() {
-      return null;
-    },
-  })
-);
+vi.mock('../SearchHeader', () => ({
+  default: function MockSearchHeader({ title }: { title: string }) {
+    return <div data-testid="search-header">{title}</div>;
+  },
+}));
+vi.mock('../SearchQuickQueries', () => ({
+  default: function MockQuickQueries() {
+    return <div data-testid="search-quick-queries" />;
+  },
+}));
+vi.mock('../SearchForm', () => ({
+  default: function MockSearchForm() {
+    return <div data-testid="search-form" />;
+  },
+}));
+vi.mock('../SearchResultsList', () => ({
+  default: function MockResults({ query }: { query?: string }) {
+    return <div data-testid="search-results-list">{query}</div>;
+  },
+}));
+vi.mock('../../../../components/Seo', () => ({
+  default: function MockSeo() {
+    return null;
+  },
+}));
 
 import SearchView from '../SearchView';
 import type { SearchState } from '../../../search/hooks/useSearchResults';

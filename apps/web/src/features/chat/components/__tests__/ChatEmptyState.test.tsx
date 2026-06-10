@@ -2,9 +2,10 @@ import React from 'react';
 import { render, screen, fireEvent } from '@testing-library/react';
 
 vi.mock('next/dynamic', () => ({
-  default: () => function MockLottie() {
-    return <div data-testid="lottie" />;
-  },
+  default: () =>
+    function MockLottie() {
+      return <div data-testid="lottie" />;
+    },
 }));
 vi.mock('../../hooks/useGoblinLoaderAnimation', () => ({
   __esModule: true,

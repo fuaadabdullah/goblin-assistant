@@ -1,6 +1,10 @@
 export default function ChatLoading() {
   return (
-    <div className="flex flex-col h-full min-h-[60vh] bg-bg" role="status" aria-label="Loading chat">
+    <div
+      className="flex flex-col h-full min-h-[60vh] bg-bg"
+      role="status"
+      aria-label="Loading chat"
+    >
       {/* Message list area */}
       <div className="flex-1 overflow-hidden p-4 space-y-4">
         {[1, 2, 3].map((i) => (

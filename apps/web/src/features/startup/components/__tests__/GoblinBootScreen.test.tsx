@@ -3,23 +3,17 @@ import { render, screen } from '@testing-library/react';
 
 import GoblinBootScreen from '../GoblinBootScreen';
 
-vi.mock(
-  '../StatusLine',
-  () => ({
-    default: function MockStatusLine({ label, state }: { label: string; state: string }) {
-      return <div data-testid={`status-${state}`}>{label}</div>;
-    },
-  })
-);
+vi.mock('../StatusLine', () => ({
+  default: function MockStatusLine({ label, state }: { label: string; state: string }) {
+    return <div data-testid={`status-${state}`}>{label}</div>;
+  },
+}));
 
-vi.mock(
-  '../GoblinLoader',
-  () => ({
-    default: function MockGoblinLoader() {
-      return <div data-testid="goblin-loader" />;
-    },
-  })
-);
+vi.mock('../GoblinLoader', () => ({
+  default: function MockGoblinLoader() {
+    return <div data-testid="goblin-loader" />;
+  },
+}));
 
 describe('GoblinBootScreen', () => {
   it('renders heading', () => {

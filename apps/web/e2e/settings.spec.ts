@@ -70,9 +70,7 @@ test.describe('Settings: Preferences', () => {
   test('should show a save / apply button', async ({ page }) => {
     await page.goto('/settings');
 
-    const saveButton = page
-      .getByRole('button', { name: /save|apply|update/i })
-      .first();
+    const saveButton = page.getByRole('button', { name: /save|apply|update/i }).first();
     await expect(saveButton).toBeVisible({ timeout: 5000 });
   });
 
@@ -81,9 +79,7 @@ test.describe('Settings: Preferences', () => {
 
     const initialUrl = page.url();
 
-    const saveButton = page
-      .getByRole('button', { name: /save|apply|update/i })
-      .first();
+    const saveButton = page.getByRole('button', { name: /save|apply|update/i }).first();
 
     const count = await saveButton.count();
     if (count > 0) {
@@ -110,9 +106,7 @@ test.describe('Settings: Preferences', () => {
 
     await page.goto('/settings');
 
-    const saveButton = page
-      .getByRole('button', { name: /save|apply|update/i })
-      .first();
+    const saveButton = page.getByRole('button', { name: /save|apply|update/i }).first();
 
     const count = await saveButton.count();
     if (count > 0) {
@@ -191,9 +185,7 @@ test.describe('Settings: Provider Management', () => {
     await page.goto('/admin/providers');
 
     // At least one provider name should appear
-    const providerItem = page
-      .getByText(/openai|anthropic|provider/i)
-      .first();
+    const providerItem = page.getByText(/openai|anthropic|provider/i).first();
     await expect(providerItem).toBeVisible({ timeout: 5000 });
   });
 
@@ -201,9 +193,7 @@ test.describe('Settings: Provider Management', () => {
     await page.goto('/admin/providers');
 
     // Look for toggle switches or enable/disable buttons
-    const toggle = page
-      .locator('[role="switch"], input[type="checkbox"]')
-      .first();
+    const toggle = page.locator('[role="switch"], input[type="checkbox"]').first();
     const count = await toggle.count();
 
     if (count > 0) {
@@ -230,9 +220,7 @@ test.describe('Settings: Provider Management', () => {
     if (count > 0) {
       await apiKeyInput.fill('sk-test-api-key-e2e');
 
-      const saveButton = page
-        .getByRole('button', { name: /save|apply|update/i })
-        .first();
+      const saveButton = page.getByRole('button', { name: /save|apply|update/i }).first();
       const saveCount = await saveButton.count();
 
       if (saveCount > 0) {
@@ -255,9 +243,7 @@ test.describe('Settings: Provider Management', () => {
 
     await page.goto('/admin/providers');
 
-    const saveButton = page
-      .getByRole('button', { name: /save|apply|update/i })
-      .first();
+    const saveButton = page.getByRole('button', { name: /save|apply|update/i }).first();
     const count = await saveButton.count();
 
     if (count > 0) {

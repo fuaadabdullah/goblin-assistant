@@ -43,7 +43,6 @@ function initDatadog() {
     defaultPrivacyLevel: 'mask-user-input',
   });
 
-   
   datadogLogs.init({
     clientToken,
     site,
@@ -86,16 +85,16 @@ export default function Providers({ children }: { children: ReactNode }) {
       <QueryClientProvider client={queryClient}>
         <AuthBootstrapper />
         <ProviderProvider>
-            <ContrastModeProvider>
-              <a href="#main-content" className="skip-link">
-                Skip to main content
-              </a>
-              <PageTransition routeKey={pathname ?? '/'}>{children}</PageTransition>
-              <ChatFAB />
-              <StatusBar />
-              <Analytics />
-            </ContrastModeProvider>
-          </ProviderProvider>
+          <ContrastModeProvider>
+            <a href="#main-content" className="skip-link">
+              Skip to main content
+            </a>
+            <PageTransition routeKey={pathname ?? '/'}>{children}</PageTransition>
+            <ChatFAB />
+            <StatusBar />
+            <Analytics />
+          </ContrastModeProvider>
+        </ProviderProvider>
       </QueryClientProvider>
     </ErrorBoundary>
   );

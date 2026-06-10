@@ -48,9 +48,7 @@ describe('useCostClipboard', () => {
   });
 
   it('handles clipboard failures gracefully', async () => {
-    (navigator.clipboard.writeText as vi.Mock).mockRejectedValueOnce(
-      new Error('Clipboard error')
-    );
+    (navigator.clipboard.writeText as vi.Mock).mockRejectedValueOnce(new Error('Clipboard error'));
 
     const { result } = renderHook(() => useCostClipboard());
 

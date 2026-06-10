@@ -1,6 +1,10 @@
 export default function SandboxLoading() {
   return (
-    <div className="flex flex-col h-full min-h-[70vh] p-4 gap-4" role="status" aria-label="Loading sandbox">
+    <div
+      className="flex flex-col h-full min-h-[70vh] p-4 gap-4"
+      role="status"
+      aria-label="Loading sandbox"
+    >
       {/* Toolbar */}
       <div className="flex gap-2">
         <div className="h-9 w-28 bg-surface-hover rounded-lg animate-pulse" />

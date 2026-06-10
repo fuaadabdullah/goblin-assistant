@@ -20,7 +20,9 @@ vi.mock('../../hooks/api/useAuthSession', () => ({
   }),
 }));
 
-vi.mock('../../components/Navigation', () => ({ default: () => <nav data-testid="admin-navigation" /> }));
+vi.mock('../../components/Navigation', () => ({
+  default: () => <nav data-testid="admin-navigation" />,
+}));
 vi.mock('../../components/Seo', () => ({ default: () => null }));
 
 import AdminLayout from '../../layout/AdminLayout';

@@ -1,26 +1,23 @@
 import React from 'react';
 import { render, screen, fireEvent } from '@testing-library/react';
 
-vi.mock(
-  'next/link',
-  () => ({
-    default: function MockLink({
-      children,
-      href,
-      ...rest
-    }: {
-      children: React.ReactNode;
-      href: string;
-      [key: string]: unknown;
-    }) {
-      return (
-        <a href={href} {...rest}>
-          {children}
-        </a>
-      );
-    },
-  })
-);
+vi.mock('next/link', () => ({
+  default: function MockLink({
+    children,
+    href,
+    ...rest
+  }: {
+    children: React.ReactNode;
+    href: string;
+    [key: string]: unknown;
+  }) {
+    return (
+      <a href={href} {...rest}>
+        {children}
+      </a>
+    );
+  },
+}));
 
 import ChatSidebar from '../ChatSidebar';
 import type { ChatThread } from '../../types';

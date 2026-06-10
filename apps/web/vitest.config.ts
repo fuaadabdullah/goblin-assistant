@@ -13,7 +13,10 @@ export default defineConfig({
         }
       },
       load(id: string) {
-        if (id.startsWith('\0') && (id.endsWith('.css') || id.endsWith('.scss') || id.endsWith('.less'))) {
+        if (
+          id.startsWith('\0') &&
+          (id.endsWith('.css') || id.endsWith('.scss') || id.endsWith('.less'))
+        ) {
           return 'export default {}';
         }
       },
@@ -56,7 +59,10 @@ export default defineConfig({
   resolve: {
     alias: [
       { find: '@', replacement: path.resolve(__dirname, 'src') },
-      { find: 'lucide-react', replacement: path.resolve(__dirname, 'src/__mocks__/lucide-react.tsx') },
+      {
+        find: 'lucide-react',
+        replacement: path.resolve(__dirname, 'src/__mocks__/lucide-react.tsx'),
+      },
     ],
   },
 });

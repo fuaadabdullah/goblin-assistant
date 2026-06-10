@@ -27,19 +27,21 @@ describe('error boundary route coverage audit', () => {
   it('wraps every page.tsx with withRouteErrorBoundary or has a corresponding error.tsx', () => {
     const pageFiles = collectPageFiles(appDir);
 
-    const uncoveredPages = pageFiles.filter((filePath) => {
-      const contents = fs.readFileSync(filePath, 'utf8');
+    const uncoveredPages = pageFiles
+      .filter((filePath) => {
+        const contents = fs.readFileSync(filePath, 'utf8');
 
-      // Check if page itself uses withRouteErrorBoundary
-      const hasRouteBoundary = contents.includes('withRouteErrorBoundary');
+        // Check if page itself uses withRouteErrorBoundary
+        const hasRouteBoundary = contents.includes('withRouteErrorBoundary');
 
-      // Check if there's a sibling error.tsx for layout-level protection
-      const dir = path.dirname(filePath);
-      const siblingErrorTsx = path.join(dir, 'error.tsx');
-      const hasSiblingError = fs.existsSync(siblingErrorTsx);
+        // Check if there's a sibling error.tsx for layout-level protection
+        const dir = path.dirname(filePath);
+        const siblingErrorTsx = path.join(dir, 'error.tsx');
+        const hasSiblingError = fs.existsSync(siblingErrorTsx);
 
-      return !hasRouteBoundary && !hasSiblingError;
-    }).map((filePath) => path.relative(appDir, filePath));
+        return !hasRouteBoundary && !hasSiblingError;
+      })
+      .map((filePath) => path.relative(appDir, filePath));
 
     expect(uncoveredPages).toEqual([]);
   });

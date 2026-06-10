@@ -8,16 +8,24 @@ export interface ChatResponse {
   content?: string | undefined;
   model?: string | undefined;
   provider?: string | undefined;
-  usage?: { input_tokens?: number | undefined; output_tokens?: number | undefined; total_tokens?: number | undefined } | undefined;
+  usage?:
+    | {
+        input_tokens?: number | undefined;
+        output_tokens?: number | undefined;
+        total_tokens?: number | undefined;
+      }
+    | undefined;
   cost_usd?: number | undefined;
   correlation_id?: string | undefined;
   createdAt?: string | undefined;
-  visualizations?: Array<{
-    type: string;
-    title: string;
-    data: Record<string, unknown>[];
-    config: Record<string, unknown>;
-  }> | undefined;
+  visualizations?:
+    | Array<{
+        type: string;
+        title: string;
+        data: Record<string, unknown>[];
+        config: Record<string, unknown>;
+      }>
+    | undefined;
 }
 
 export interface FileUploadResult {
@@ -54,13 +62,15 @@ export interface ChatConversation {
   updatedAt: string;
   messages: ChatMessage[];
   // Mirrors the backend ConversationDetailResponse pagination, whose fields are all optional.
-  pagination?: {
-    offset?: number | undefined;
-    limit?: number | undefined;
-    total?: number | undefined;
-    returned?: number | undefined;
-    has_more?: boolean | undefined;
-  } | undefined;
+  pagination?:
+    | {
+        offset?: number | undefined;
+        limit?: number | undefined;
+        total?: number | undefined;
+        returned?: number | undefined;
+        has_more?: boolean | undefined;
+      }
+    | undefined;
 }
 
 export interface SendMessageParams {
@@ -329,7 +339,8 @@ export const chatClient = {
                 if (data['done'] === true) {
                   const finalResponse: ChatResponse = {
                     messageId: data['message_id'] as string | undefined,
-                    content: (typeof data['result'] === 'string' && data['result']) || accumulatedContent,
+                    content:
+                      (typeof data['result'] === 'string' && data['result']) || accumulatedContent,
                     provider: data['provider'] as string | undefined,
                     model: data['model'] as string | undefined,
                     usage: {

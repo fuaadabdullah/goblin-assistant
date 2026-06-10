@@ -1,14 +1,11 @@
 import React from 'react';
 import { render, screen, fireEvent } from '@testing-library/react';
 
-vi.mock(
-  'next/link',
-  () => ({
-    default: function MockLink({ children, href }: { children: React.ReactNode; href: string }) {
-      return <a href={href}>{children}</a>;
-    },
-  })
-);
+vi.mock('next/link', () => ({
+  default: function MockLink({ children, href }: { children: React.ReactNode; href: string }) {
+    return <a href={href}>{children}</a>;
+  },
+}));
 
 import HelpSupportForm from '../HelpSupportForm';
 

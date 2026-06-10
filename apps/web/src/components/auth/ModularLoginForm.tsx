@@ -81,7 +81,10 @@ export default function ModularLoginForm({
 
     setIsLoading(true);
     try {
-      const { error } = await authSignInWithOAuth('google', `${window.location.origin}/google-callback`);
+      const { error } = await authSignInWithOAuth(
+        'google',
+        `${window.location.origin}/google-callback`
+      );
       if (error) throw error;
       // Redirect happens — no further action needed here
     } catch (error) {

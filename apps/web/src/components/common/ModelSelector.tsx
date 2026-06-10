@@ -1,13 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { runtimeClient } from '@/lib/api/runtimeClient';
 import type { ProviderModelOption } from '@/types/api';
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui';
 import { devError } from '@/utils/dev-log';
 
 interface Props {

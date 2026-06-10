@@ -58,7 +58,9 @@ function hslToHex(h: number, s: number, l: number): string {
   const a = sn * Math.min(ln, 1 - ln);
   const f = (n: number) => {
     const color = ln - a * Math.max(Math.min(k(n) - 3, 9 - k(n), 1), -1);
-    return Math.round(255 * color).toString(16).padStart(2, '0');
+    return Math.round(255 * color)
+      .toString(16)
+      .padStart(2, '0');
   };
   return `#${f(0)}${f(8)}${f(4)}`;
 }

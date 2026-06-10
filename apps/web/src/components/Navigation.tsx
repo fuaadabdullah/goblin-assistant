@@ -103,8 +103,7 @@ const Navigation = ({ onLogout, showLogout = false, variant = 'customer' }: Navi
           <div className="hidden lg:flex items-center space-x-3">
             {navItems.map((item) => {
               const isActive =
-                pathname === item.path ||
-                (item.path !== '/' && pathname.startsWith(item.path));
+                pathname === item.path || (item.path !== '/' && pathname.startsWith(item.path));
               return (
                 <Link
                   key={item.path}
@@ -177,8 +176,7 @@ const Navigation = ({ onLogout, showLogout = false, variant = 'customer' }: Navi
 
           {navItems.map((item) => {
             const isActive =
-              pathname === item.path ||
-              (item.path !== '/' && pathname.startsWith(item.path));
+              pathname === item.path || (item.path !== '/' && pathname.startsWith(item.path));
             return (
               <Link
                 key={item.path}

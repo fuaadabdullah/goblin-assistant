@@ -87,7 +87,9 @@ describe('raptor service', () => {
 
       await raptorService.raptorDemo('embeddings');
 
-      expect(mock.history.post.some((r) => r.url === `${V1_API_PREFIX}/raptor/demo/embeddings`)).toBe(true);
+      expect(
+        mock.history.post.some((r) => r.url === `${V1_API_PREFIX}/raptor/demo/embeddings`)
+      ).toBe(true);
     });
 
     it('should support different demo modes', async () => {
@@ -95,7 +97,9 @@ describe('raptor service', () => {
 
       await raptorService.raptorDemo('chat');
 
-      expect(mock.history.post.some((r) => r.url === `${V1_API_PREFIX}/raptor/demo/chat`)).toBe(true);
+      expect(mock.history.post.some((r) => r.url === `${V1_API_PREFIX}/raptor/demo/chat`)).toBe(
+        true
+      );
     });
   });
 });

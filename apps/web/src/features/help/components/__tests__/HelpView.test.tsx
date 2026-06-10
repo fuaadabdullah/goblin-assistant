@@ -1,66 +1,54 @@
 import React from 'react';
 import { render, screen, fireEvent } from '@testing-library/react';
 
-vi.mock(
-  'next/link',
-  () => ({
-    default: function MockLink({ children, href }: { children: React.ReactNode; href: string }) {
-      return <a href={href}>{children}</a>;
-    },
-  })
-);
-vi.mock(
-  '../../../../components/Seo',
-  () => ({
-    default: function MockSeo() {
-      return null;
-    },
-  })
-);
+vi.mock('next/link', () => ({
+  default: function MockLink({ children, href }: { children: React.ReactNode; href: string }) {
+    return <a href={href}>{children}</a>;
+  },
+}));
+vi.mock('../../../../components/Seo', () => ({
+  default: function MockSeo() {
+    return null;
+  },
+}));
 
 import HelpView from '../HelpView';
 
-vi.mock(
-  '../HelpTopics',
-  () => ({
-    default: function MockHelpTopics({ topics }: { topics: Array<{ title: string }> }) {
-      return (
-        <div data-testid="help-topics">
-          {topics.map((t) => (
-            <div key={t.title}>{t.title}</div>
-          ))}
-        </div>
-      );
-    },
-  })
-);
-vi.mock(
-  '../HelpSupportForm',
-  () => ({
-    default: function MockForm({
-      message,
-      onSubmit,
-      onMessageChange,
-    }: {
-      message: string;
-      onSubmit: () => void;
-      onMessageChange: (v: string) => void;
-    }) {
-      return (
-        <div data-testid="support-form">
-          <input
-            value={message}
-            onChange={(e) => onMessageChange(e.target.value)}
-            data-testid="msg-input"
-          />
-          <button type="button" onClick={onSubmit} data-testid="submit-btn">
-            Submit
-          </button>
-        </div>
-      );
-    },
-  })
-);
+vi.mock('../HelpTopics', () => ({
+  default: function MockHelpTopics({ topics }: { topics: Array<{ title: string }> }) {
+    return (
+      <div data-testid="help-topics">
+        {topics.map((t) => (
+          <div key={t.title}>{t.title}</div>
+        ))}
+      </div>
+    );
+  },
+}));
+vi.mock('../HelpSupportForm', () => ({
+  default: function MockForm({
+    message,
+    onSubmit,
+    onMessageChange,
+  }: {
+    message: string;
+    onSubmit: () => void;
+    onMessageChange: (v: string) => void;
+  }) {
+    return (
+      <div data-testid="support-form">
+        <input
+          value={message}
+          onChange={(e) => onMessageChange(e.target.value)}
+          data-testid="msg-input"
+        />
+        <button type="button" onClick={onSubmit} data-testid="submit-btn">
+          Submit
+        </button>
+      </div>
+    );
+  },
+}));
 
 const defaultForm = {
   message: '',

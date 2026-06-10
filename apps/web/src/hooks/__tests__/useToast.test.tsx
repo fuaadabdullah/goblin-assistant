@@ -56,64 +56,92 @@ describe('useToast', () => {
 
   it('showSuccess adds a success toast', () => {
     render(<TestConsumer />);
-    act(() => { fireEvent.click(screen.getByTestId('add-success')); });
+    act(() => {
+      fireEvent.click(screen.getByTestId('add-success'));
+    });
     expect(screen.getByTestId('count').textContent).toBe('1');
     expect(screen.getAllByText('Done').length).toBeGreaterThan(0);
   });
 
   it('showError adds an error toast', () => {
     render(<TestConsumer />);
-    act(() => { fireEvent.click(screen.getByTestId('add-error')); });
+    act(() => {
+      fireEvent.click(screen.getByTestId('add-error'));
+    });
     expect(screen.getByTestId('count').textContent).toBe('1');
   });
 
   it('showWarning adds a warning toast', () => {
     render(<TestConsumer />);
-    act(() => { fireEvent.click(screen.getByTestId('add-warning')); });
+    act(() => {
+      fireEvent.click(screen.getByTestId('add-warning'));
+    });
     expect(screen.getByTestId('count').textContent).toBe('1');
   });
 
   it('showInfo adds an info toast', () => {
     render(<TestConsumer />);
-    act(() => { fireEvent.click(screen.getByTestId('add-info')); });
+    act(() => {
+      fireEvent.click(screen.getByTestId('add-info'));
+    });
     expect(screen.getByTestId('count').textContent).toBe('1');
   });
 
   it('removeToast removes a toast', () => {
     render(<TestConsumer />);
-    act(() => { fireEvent.click(screen.getByTestId('add-success')); });
+    act(() => {
+      fireEvent.click(screen.getByTestId('add-success'));
+    });
     expect(screen.getByTestId('count').textContent).toBe('1');
-    act(() => { fireEvent.click(screen.getByText('remove')); });
+    act(() => {
+      fireEvent.click(screen.getByText('remove'));
+    });
     expect(screen.getByTestId('count').textContent).toBe('0');
   });
 
   it('auto-removes toast after duration', () => {
     render(<TestConsumer />);
-    act(() => { fireEvent.click(screen.getByTestId('add-success')); });
+    act(() => {
+      fireEvent.click(screen.getByTestId('add-success'));
+    });
     expect(screen.getByTestId('count').textContent).toBe('1');
-    act(() => { vi.advanceTimersByTime(6000); });
+    act(() => {
+      vi.advanceTimersByTime(6000);
+    });
     expect(screen.getByTestId('count').textContent).toBe('0');
   });
 
   it('does not auto-remove toast with duration 0', () => {
     render(<TestConsumer />);
-    act(() => { fireEvent.click(screen.getByTestId('add-no-auto')); });
+    act(() => {
+      fireEvent.click(screen.getByTestId('add-no-auto'));
+    });
     expect(screen.getByTestId('count').textContent).toBe('1');
-    act(() => { vi.advanceTimersByTime(30000); });
+    act(() => {
+      vi.advanceTimersByTime(30000);
+    });
     expect(screen.getByTestId('count').textContent).toBe('1');
   });
 
   it('supports multiple toasts', () => {
     render(<TestConsumer />);
-    act(() => { fireEvent.click(screen.getByTestId('add-success')); });
-    act(() => { fireEvent.click(screen.getByTestId('add-error')); });
-    act(() => { fireEvent.click(screen.getByTestId('add-info')); });
+    act(() => {
+      fireEvent.click(screen.getByTestId('add-success'));
+    });
+    act(() => {
+      fireEvent.click(screen.getByTestId('add-error'));
+    });
+    act(() => {
+      fireEvent.click(screen.getByTestId('add-info'));
+    });
     expect(screen.getByTestId('count').textContent).toBe('3');
   });
 
   it('toast includes message when provided', () => {
     render(<TestConsumer />);
-    act(() => { fireEvent.click(screen.getByTestId('add-warning')); });
+    act(() => {
+      fireEvent.click(screen.getByTestId('add-warning'));
+    });
     expect(screen.getByText('Watch out')).toBeInTheDocument();
   });
 });

@@ -51,7 +51,8 @@ describe('chatClient conversation API', () => {
   });
 
   it('retries once without explicit model/provider when explicit selection fails', async () => {
-    const spy = vi.spyOn(apiClient, 'sendConversationMessage')
+    const spy = vi
+      .spyOn(apiClient, 'sendConversationMessage')
       .mockRejectedValueOnce(new Error('invalid provider selection'))
       .mockResolvedValueOnce({
         content: 'retry-ok',

@@ -1,4 +1,3 @@
-
 // Mock dependencies before importing api
 vi.mock('axios', () => {
   const mockAxiosInstance = {

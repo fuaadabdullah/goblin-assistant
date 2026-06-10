@@ -1,13 +1,10 @@
 import { render, screen } from '@testing-library/react';
 
-vi.mock(
-  'next/link',
-  () => ({
-    default: function MockLink({ children, href }: { children: React.ReactNode; href: string }) {
-      return <a href={href}>{children}</a>;
-    },
-  })
-);
+vi.mock('next/link', () => ({
+  default: function MockLink({ children, href }: { children: React.ReactNode; href: string }) {
+    return <a href={href}>{children}</a>;
+  },
+}));
 vi.mock('@/components/LoadingSkeleton', () => ({
   DashboardSkeleton: () => <div data-testid="dashboard-skeleton" />,
 }));

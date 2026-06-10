@@ -3,7 +3,11 @@ import * as Sentry from '@sentry/react';
 
 // @sentry/react re-exports these from @sentry/browser at runtime but the type declarations
 // don't resolve them without @sentry/browser installed as a direct dep.
-const { captureException: sentryCaptureException, captureMessage: sentryCaptureMessage, addBreadcrumb: sentryAddBreadcrumb } = Sentry as typeof Sentry & {
+const {
+  captureException: sentryCaptureException,
+  captureMessage: sentryCaptureMessage,
+  addBreadcrumb: sentryAddBreadcrumb,
+} = Sentry as typeof Sentry & {
   captureException: (error: unknown) => string;
   captureMessage: (message: string, level: string) => string;
   addBreadcrumb: (breadcrumb: { message: string; category: string; level: string }) => void;

@@ -78,7 +78,13 @@ export class ErrorBoundary extends Component<Props, State> {
 }
 
 // Safe fallback component
-export function ErrorBoundaryFallback({ error, errorId }: { error: Error; errorId?: string | undefined }) {
+export function ErrorBoundaryFallback({
+  error,
+  errorId,
+}: {
+  error: Error;
+  errorId?: string | undefined;
+}) {
   const isDev = env.isDevelopment;
 
   return (

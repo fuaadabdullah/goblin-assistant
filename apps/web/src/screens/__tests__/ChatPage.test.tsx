@@ -2,14 +2,11 @@ import React from 'react';
 import { render, screen } from '@testing-library/react';
 import ChatPage from '../ChatPage';
 
-vi.mock(
-  '@/features/chat/ChatScreen',
-  () => ({
-    default: function MockChatScreen() {
-      return <div data-testid="chat-screen">Chat Screen</div>;
-    },
-  })
-);
+vi.mock('@/features/chat/ChatScreen', () => ({
+  default: function MockChatScreen() {
+    return <div data-testid="chat-screen">Chat Screen</div>;
+  },
+}));
 
 describe('ChatPage', () => {
   it('renders ChatScreen component', () => {

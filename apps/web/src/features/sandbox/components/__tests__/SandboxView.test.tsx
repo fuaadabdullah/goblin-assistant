@@ -1,49 +1,37 @@
 import React from 'react';
 import { render, screen } from '@testing-library/react';
 
-vi.mock(
-  '../../../../components/TwoColumnLayout',
-  () => ({
-    default: function MockLayout({
-      children,
-      sidebar,
-    }: {
-      children: React.ReactNode;
-      sidebar: React.ReactNode;
-    }) {
-      return (
-        <div data-testid="layout">
-          <div data-testid="sidebar">{sidebar}</div>
-          <div data-testid="main">{children}</div>
-        </div>
-      );
-    },
-  })
-);
-vi.mock(
-  '../SandboxSidebar',
-  () => ({
-    default: function MockSidebar(props: Record<string, unknown>) {
-      return <div data-testid="sandbox-sidebar" data-is-guest={String(props.isGuest)} />;
-    },
-  })
-);
-vi.mock(
-  '../SandboxMain',
-  () => ({
-    default: function MockMain(props: Record<string, unknown>) {
-      return <div data-testid="sandbox-main" data-is-guest={String(props.isGuest)} />;
-    },
-  })
-);
-vi.mock(
-  '../../../../components/Seo',
-  () => ({
-    default: function MockSeo() {
-      return null;
-    },
-  })
-);
+vi.mock('../../../../components/TwoColumnLayout', () => ({
+  default: function MockLayout({
+    children,
+    sidebar,
+  }: {
+    children: React.ReactNode;
+    sidebar: React.ReactNode;
+  }) {
+    return (
+      <div data-testid="layout">
+        <div data-testid="sidebar">{sidebar}</div>
+        <div data-testid="main">{children}</div>
+      </div>
+    );
+  },
+}));
+vi.mock('../SandboxSidebar', () => ({
+  default: function MockSidebar(props: Record<string, unknown>) {
+    return <div data-testid="sandbox-sidebar" data-is-guest={String(props.isGuest)} />;
+  },
+}));
+vi.mock('../SandboxMain', () => ({
+  default: function MockMain(props: Record<string, unknown>) {
+    return <div data-testid="sandbox-main" data-is-guest={String(props.isGuest)} />;
+  },
+}));
+vi.mock('../../../../components/Seo', () => ({
+  default: function MockSeo() {
+    return null;
+  },
+}));
 
 import SandboxView from '../SandboxView';
 

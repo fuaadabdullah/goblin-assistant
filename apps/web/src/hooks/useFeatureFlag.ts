@@ -1,11 +1,7 @@
 'use client';
 
 import { useSyncExternalStore } from 'react';
-import {
-  getRuntimeFlag,
-  featureFlags,
-  type FeatureFlags,
-} from '../config/features';
+import { getRuntimeFlag, featureFlags, type FeatureFlags } from '../config/features';
 
 function subscribe(callback: () => void): () => void {
   window.addEventListener('storage', callback);
@@ -26,6 +22,6 @@ export function useFeatureFlag(feature: keyof FeatureFlags): boolean {
   return useSyncExternalStore(
     subscribe,
     () => getRuntimeFlag(feature),
-    () => featureFlags[feature],
+    () => featureFlags[feature]
   );
 }

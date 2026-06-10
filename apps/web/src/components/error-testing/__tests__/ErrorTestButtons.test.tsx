@@ -1,28 +1,25 @@
 import React from 'react';
 import { render, screen, fireEvent } from '@testing-library/react';
 
-vi.mock(
-  '../../ui/Button',
-  () => ({
-    default: function MockButton({
-      children,
-      onClick,
-      disabled,
-      variant,
-    }: {
-      children: React.ReactNode;
-      onClick: () => void;
-      disabled?: boolean;
-      variant?: string;
-    }) {
-      return (
-        <button onClick={onClick} disabled={disabled} data-variant={variant}>
-          {children}
-        </button>
-      );
-    },
-  })
-);
+vi.mock('../../ui/Button', () => ({
+  default: function MockButton({
+    children,
+    onClick,
+    disabled,
+    variant,
+  }: {
+    children: React.ReactNode;
+    onClick: () => void;
+    disabled?: boolean;
+    variant?: string;
+  }) {
+    return (
+      <button onClick={onClick} disabled={disabled} data-variant={variant}>
+        {children}
+      </button>
+    );
+  },
+}));
 
 import { ErrorTestButtons } from '../../error-testing/ErrorTestButtons';
 

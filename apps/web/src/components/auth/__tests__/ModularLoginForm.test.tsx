@@ -10,14 +10,20 @@ vi.mock('@/lib/supabase', () => ({
     auth: {
       signInWithPassword: vi.fn().mockResolvedValue({
         data: {
-          session: { access_token: 'test-token', user: { id: 'u1', email: 'test@test.com', role: 'authenticated', user_metadata: {} } },
+          session: {
+            access_token: 'test-token',
+            user: { id: 'u1', email: 'test@test.com', role: 'authenticated', user_metadata: {} },
+          },
           user: { id: 'u1', email: 'test@test.com', role: 'authenticated', user_metadata: {} },
         },
         error: null,
       }),
       signUp: vi.fn().mockResolvedValue({
         data: {
-          session: { access_token: 'test-token', user: { id: 'u1', email: 'test@test.com', role: 'authenticated', user_metadata: {} } },
+          session: {
+            access_token: 'test-token',
+            user: { id: 'u1', email: 'test@test.com', role: 'authenticated', user_metadata: {} },
+          },
           user: { id: 'u1', email: 'test@test.com', role: 'authenticated', user_metadata: {} },
         },
         error: null,
@@ -31,14 +37,11 @@ vi.mock('../../../lib/query-keys', () => ({ queryKeys: { authValidate: ['auth'] 
 vi.mock('@/utils/dev-log', () => ({ devError: vi.fn() }));
 
 // Mock child components
-vi.mock(
-  '../LoginHeader',
-  () => ({
-    default: function MockLoginHeader({ isRegister }: { isRegister: boolean }) {
-      return <div data-testid="login-header">{isRegister ? 'Register' : 'Login'}</div>;
-    },
-  })
-);
+vi.mock('../LoginHeader', () => ({
+  default: function MockLoginHeader({ isRegister }: { isRegister: boolean }) {
+    return <div data-testid="login-header">{isRegister ? 'Register' : 'Login'}</div>;
+  },
+}));
 vi.mock('../EmailPasswordForm', () => ({
   default: function MockEmailForm(props: { onSubmit?: (e: string, p: string) => void }) {
     return (
@@ -54,38 +57,26 @@ vi.mock('../EmailPasswordForm', () => ({
     );
   },
 }));
-vi.mock(
-  '../SocialLoginButtons',
-  () => ({
-    default: function MockSocial() {
-      return <div data-testid="social-buttons" />;
-    },
-  })
-);
-vi.mock(
-  '../Divider',
-  () => ({
-    default: function MockDivider() {
-      return <hr data-testid="divider" />;
-    },
-  })
-);
-vi.mock(
-  '../PasskeyPanel',
-  () => ({
-    default: function MockPasskey() {
-      return <div data-testid="passkey-panel" />;
-    },
-  })
-);
-vi.mock(
-  '../../TurnstileWidget',
-  () => ({
-    default: function MockTurnstile() {
-      return <div data-testid="turnstile" />;
-    },
-  })
-);
+vi.mock('../SocialLoginButtons', () => ({
+  default: function MockSocial() {
+    return <div data-testid="social-buttons" />;
+  },
+}));
+vi.mock('../Divider', () => ({
+  default: function MockDivider() {
+    return <hr data-testid="divider" />;
+  },
+}));
+vi.mock('../PasskeyPanel', () => ({
+  default: function MockPasskey() {
+    return <div data-testid="passkey-panel" />;
+  },
+}));
+vi.mock('../../TurnstileWidget', () => ({
+  default: function MockTurnstile() {
+    return <div data-testid="turnstile" />;
+  },
+}));
 vi.mock('../../../config/turnstile', () => ({
   useTurnstile: () => ({ token: 'mock-token', isEnabled: false, reset: vi.fn() }),
 }));

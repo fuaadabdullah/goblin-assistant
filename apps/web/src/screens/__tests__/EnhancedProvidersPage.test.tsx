@@ -2,14 +2,11 @@ import React from 'react';
 import { render, screen } from '@testing-library/react';
 import EnhancedProvidersPage from '../EnhancedProvidersPage';
 
-vi.mock(
-  '@/features/admin/providers/ProvidersManagerScreen',
-  () => ({
-    default: function MockScreen() {
-      return <div data-testid="enhanced-providers-screen">Enhanced Providers</div>;
-    },
-  })
-);
+vi.mock('@/features/admin/providers/ProvidersManagerScreen', () => ({
+  default: function MockScreen() {
+    return <div data-testid="enhanced-providers-screen">Enhanced Providers</div>;
+  },
+}));
 
 describe('EnhancedProvidersPage', () => {
   it('renders EnhancedProvidersScreen component', () => {

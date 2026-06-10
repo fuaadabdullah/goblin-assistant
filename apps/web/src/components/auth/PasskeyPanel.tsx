@@ -9,7 +9,7 @@ import type { PasskeyCredential } from '@/lib/api/shared';
 interface PasskeyPanelProps {
   email: string;
   onSuccess: () => void;
-   
+
   onError: (message: string) => void;
 }
 
@@ -128,9 +128,9 @@ const PasskeyPanel: React.FC<PasskeyPanelProps> = ({ email, onSuccess, onError }
       if (publicKey.user && publicKey.user.id)
         publicKey.user.id = base64urlToUint8Array(publicKey.user.id as string);
 
-      const credential = await navigator.credentials.create({
+      const credential = (await navigator.credentials.create({
         publicKey: publicKey as unknown as PublicKeyCredentialCreationOptions,
-      }) as PublicKeyCredential | null;
+      })) as PublicKeyCredential | null;
       const jsonCred = credentialToJSON(credential);
       if (!jsonCred) throw new Error('Failed to encode passkey credential');
       await apiClient.passkeyRegister(email, jsonCred as unknown as PasskeyCredential);
@@ -166,9 +166,9 @@ const PasskeyPanel: React.FC<PasskeyPanelProps> = ({ email, onSuccess, onError }
           id: base64urlToUint8Array(c.id as string),
         }));
       }
-      const assertion = await navigator.credentials.get({
+      const assertion = (await navigator.credentials.get({
         publicKey: publicKey as unknown as PublicKeyCredentialRequestOptions,
-      }) as PublicKeyCredential | null;
+      })) as PublicKeyCredential | null;
       const jsonAssertion = credentialToJSON(assertion);
       if (!jsonAssertion) throw new Error('Failed to encode passkey assertion');
       const authResponse = (await apiClient.passkeyAuth(

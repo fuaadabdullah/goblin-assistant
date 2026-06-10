@@ -28,16 +28,22 @@ export interface MessagesProps {
   onThreadUpdated?: ((thread: ChatThread) => void) | undefined;
   onThreadRemoved?: ((thread: ChatThread) => void) | undefined;
   onThreadsInvalidated?: (() => void) | undefined;
-  backendConversationQuery?: {
-    isLoading: boolean;
-    isFetching: boolean;
-    data?: {
-      conversationId: string;
-      title: string;
-      createdAt: string;
-      updatedAt: string;
-      messages: ChatMessage[];
-      pagination?: { has_more?: boolean | undefined; offset?: number | undefined } | undefined;
-    } | undefined;
-  } | undefined;
+  backendConversationQuery?:
+    | {
+        isLoading: boolean;
+        isFetching: boolean;
+        data?:
+          | {
+              conversationId: string;
+              title: string;
+              createdAt: string;
+              updatedAt: string;
+              messages: ChatMessage[];
+              pagination?:
+                | { has_more?: boolean | undefined; offset?: number | undefined }
+                | undefined;
+            }
+          | undefined;
+      }
+    | undefined;
 }

@@ -11,11 +11,35 @@ const PROVIDER_SKELETON_KEYS = [
 ] as const;
 
 function healthDot(circuitState: string | undefined, isHealthy: boolean | undefined) {
-  if (circuitState === 'hard_open') return <span title="Hard-open (auth/billing issue)" className="text-xs text-error">●</span>;
-  if (circuitState === 'soft_open') return <span title="Soft-open (probing)" className="text-xs text-warning">◐</span>;
-  if (isHealthy === true) return <span title="Healthy" className="text-xs text-success">●</span>;
-  if (isHealthy === false) return <span title="Unhealthy" className="text-xs text-error">●</span>;
-  return <span title="Unknown" className="text-xs text-muted">○</span>;
+  if (circuitState === 'hard_open')
+    return (
+      <span title="Hard-open (auth/billing issue)" className="text-xs text-error">
+        ●
+      </span>
+    );
+  if (circuitState === 'soft_open')
+    return (
+      <span title="Soft-open (probing)" className="text-xs text-warning">
+        ◐
+      </span>
+    );
+  if (isHealthy === true)
+    return (
+      <span title="Healthy" className="text-xs text-success">
+        ●
+      </span>
+    );
+  if (isHealthy === false)
+    return (
+      <span title="Unhealthy" className="text-xs text-error">
+        ●
+      </span>
+    );
+  return (
+    <span title="Unknown" className="text-xs text-muted">
+      ○
+    </span>
+  );
 }
 
 export default function ProviderSidebar({
@@ -164,12 +188,15 @@ export default function ProviderSidebar({
                   </button>
                   {(() => {
                     const status = providerStatuses?.[provider.name];
-                    return status
-                      ? healthDot(
-                          status.circuit_state,
-                          status.is_healthy
-                        )
-                    : <span className={`text-xs ${provider.enabled ? 'text-success' : 'text-muted'}`}>{provider.enabled ? '✓' : '○'}</span>
+                    return status ? (
+                      healthDot(status.circuit_state, status.is_healthy)
+                    ) : (
+                      <span
+                        className={`text-xs ${provider.enabled ? 'text-success' : 'text-muted'}`}
+                      >
+                        {provider.enabled ? '✓' : '○'}
+                      </span>
+                    );
                   })()}
                 </div>
               </div>

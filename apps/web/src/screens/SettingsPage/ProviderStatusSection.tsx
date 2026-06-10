@@ -29,15 +29,11 @@ interface ProviderStatusSectionProps {
 }
 
 const ProviderIcon: React.FC<{ provider: ProviderDisplay }> = ({ provider }) => {
-  if (provider.normalizedName.includes('openai'))
-    return <Bot className="h-5 w-5 text-primary" />;
+  if (provider.normalizedName.includes('openai')) return <Bot className="h-5 w-5 text-primary" />;
   if (provider.normalizedName.includes('anthropic'))
     return <Brain className="h-5 w-5 text-primary" />;
   if (provider.normalizedName.includes('groq')) return <Zap className="h-5 w-5 text-primary" />;
-  if (
-    provider.normalizedName.includes('google') ||
-    provider.normalizedName.includes('gemini')
-  )
+  if (provider.normalizedName.includes('google') || provider.normalizedName.includes('gemini'))
     return <Search className="h-5 w-5 text-primary" />;
   if (provider.normalizedName.includes('cohere'))
     return <MessageSquare className="h-5 w-5 text-primary" />;

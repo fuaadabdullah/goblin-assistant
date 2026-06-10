@@ -1,6 +1,8 @@
 import HelpTopics from './HelpTopics';
 import HelpSupportForm from './HelpSupportForm';
+import BugReportForm from './BugReportForm';
 import type { SupportFormState } from '../hooks/useSupportForm';
+import type { TriageFormState } from '../hooks/useTriageForm';
 import type { StartupDiagnostics } from '../../../utils/startup-diagnostics';
 import Seo from '../../../components/Seo';
 import { Button, InlineErrorState } from '../../../components/ui';
@@ -8,15 +10,19 @@ import { Button, InlineErrorState } from '../../../components/ui';
 interface HelpViewProps {
   /** Support form state + handlers. */
   form: SupportFormState;
+  /** Bug triage form state + handlers. */
+  triage: TriageFormState;
   /** Optional startup failure context. */
-  startupFailure?: {
-    logId?: string | null | undefined;
-    diagnostics?: StartupDiagnostics | null | undefined;
-    onRetry: () => void;
-  } | undefined;
+  startupFailure?:
+    | {
+        logId?: string | null | undefined;
+        diagnostics?: StartupDiagnostics | null | undefined;
+        onRetry: () => void;
+      }
+    | undefined;
 }
 
-const HelpView = ({ form, startupFailure }: HelpViewProps) => (
+const HelpView = ({ form, triage, startupFailure }: HelpViewProps) => (
   <div className="min-h-screen bg-bg">
     <Seo
       title="Help"
@@ -89,14 +95,26 @@ const HelpView = ({ form, startupFailure }: HelpViewProps) => (
           ]}
         />
 
-        <HelpSupportForm
-          message={form.message}
-          sent={form.sent}
-          error={form.error}
-          sending={form.sending}
-          onMessageChange={form.setMessage}
-          onSubmit={form.handleSubmit}
-        />
+        <div className="space-y-4">
+          <BugReportForm
+            description={triage.description}
+            submitting={triage.submitting}
+            result={triage.result}
+            error={triage.error}
+            onDescriptionChange={triage.setDescription}
+            onSubmit={triage.handleSubmit}
+            onReset={triage.reset}
+          />
+
+          <HelpSupportForm
+            message={form.message}
+            sent={form.sent}
+            error={form.error}
+            sending={form.sending}
+            onMessageChange={form.setMessage}
+            onSubmit={form.handleSubmit}
+          />
+        </div>
       </div>
     </main>
   </div>

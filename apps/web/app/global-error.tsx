@@ -72,7 +72,14 @@ export default function GlobalError({
                 justifyContent: 'center',
               }}
             >
-              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#db4437" strokeWidth="2">
+              <svg
+                width="24"
+                height="24"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="#db4437"
+                strokeWidth="2"
+              >
                 <path
                   strokeLinecap="round"
                   strokeLinejoin="round"
@@ -81,16 +88,38 @@ export default function GlobalError({
               </svg>
             </div>
 
-            <h1 style={{ fontSize: '20px', fontWeight: 600, textAlign: 'center', color: '#e6dccc', margin: '0 0 8px' }}>
+            <h1
+              style={{
+                fontSize: '20px',
+                fontWeight: 600,
+                textAlign: 'center',
+                color: '#e6dccc',
+                margin: '0 0 8px',
+              }}
+            >
               Goblin Assistant encountered a critical error
             </h1>
 
-            <p style={{ textAlign: 'center', color: '#8a7f6e', margin: '0 0 20px', fontSize: '14px' }}>
+            <p
+              style={{
+                textAlign: 'center',
+                color: '#8a7f6e',
+                margin: '0 0 20px',
+                fontSize: '14px',
+              }}
+            >
               The application crashed before the interface could fully load.
             </p>
 
             <details style={{ marginBottom: '16px', fontSize: '13px' }}>
-              <summary style={{ cursor: 'pointer', color: '#cdc2b0', fontWeight: 500, marginBottom: '8px' }}>
+              <summary
+                style={{
+                  cursor: 'pointer',
+                  color: '#cdc2b0',
+                  fontWeight: 500,
+                  marginBottom: '8px',
+                }}
+              >
                 Technical details
               </summary>
               <div
@@ -131,7 +160,9 @@ export default function GlobalError({
                 Try Again
               </button>
               <button
-                onClick={() => { window.location.href = '/'; }}
+                onClick={() => {
+                  window.location.href = '/';
+                }}
                 style={{
                   flex: 1,
                   padding: '10px 16px',

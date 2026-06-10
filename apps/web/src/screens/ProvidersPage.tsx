@@ -8,8 +8,12 @@ import { ProviderCardSkeleton } from '../components/LoadingSkeleton';
 const ProvidersPage = () => {
   const { data: providers, isLoading, error, refetch } = useProviderSettings();
   const { data: routingHealth } = useRoutingHealth();
-  const { testing, testResult, setTestResult, quickTest: handleTestConnection } =
-    useProviderMutations();
+  const {
+    testing,
+    testResult,
+    setTestResult,
+    quickTest: handleTestConnection,
+  } = useProviderMutations();
   const providerList = providers as ProviderConfig[] | undefined;
   const routingStatus: string =
     routingHealth && typeof routingHealth === 'object' && 'status' in routingHealth

@@ -2,14 +2,11 @@ import React from 'react';
 import { render, screen } from '@testing-library/react';
 import AccountPage from '../AccountPage';
 
-vi.mock(
-  '@/features/account/AccountScreen',
-  () => ({
-    default: function MockAccountScreen() {
-      return <div data-testid="account-screen">Account Screen</div>;
-    },
-  })
-);
+vi.mock('@/features/account/AccountScreen', () => ({
+  default: function MockAccountScreen() {
+    return <div data-testid="account-screen">Account Screen</div>;
+  },
+}));
 
 describe('AccountPage', () => {
   it('renders AccountScreen component', () => {

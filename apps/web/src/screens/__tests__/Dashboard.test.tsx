@@ -20,26 +20,20 @@ vi.mock('@/hooks/useDashboardData', () => ({
   })),
 }));
 
-vi.mock(
-  '@/components/cost/CostBreakdownChart',
-  () => ({
-    default: function MockCostChart({ data }: { data: unknown[] }) {
-      return <div data-testid="cost-chart">{JSON.stringify(data)}</div>;
-    },
-  })
-);
-vi.mock(
-  '@/components/cost/ProviderUsageChart',
-  () => ({
-    default: function MockUsageChart({ data, metric }: { data: unknown[]; metric: string }) {
-      return (
-        <div data-testid="usage-chart" data-metric={metric}>
-          {JSON.stringify(data)}
-        </div>
-      );
-    },
-  })
-);
+vi.mock('@/components/cost/CostBreakdownChart', () => ({
+  default: function MockCostChart({ data }: { data: unknown[] }) {
+    return <div data-testid="cost-chart">{JSON.stringify(data)}</div>;
+  },
+}));
+vi.mock('@/components/cost/ProviderUsageChart', () => ({
+  default: function MockUsageChart({ data, metric }: { data: unknown[]; metric: string }) {
+    return (
+      <div data-testid="usage-chart" data-metric={metric}>
+        {JSON.stringify(data)}
+      </div>
+    );
+  },
+}));
 vi.mock('@/components/cost/chartPalette', () => ({
   getChartPaletteColor: (i: number) => ['#f00', '#0f0', '#00f'][i] || '#999',
 }));

@@ -2,9 +2,10 @@ import React from 'react';
 import { render, screen, waitFor } from '@testing-library/react';
 
 vi.mock('next/dynamic', () => ({
-  default: () => function MockLottie(props: { animationData: unknown }) {
-    return <div data-testid="lottie" />;
-  },
+  default: () =>
+    function MockLottie(props: { animationData: unknown }) {
+      return <div data-testid="lottie" />;
+    },
 }));
 
 // Mock fetch

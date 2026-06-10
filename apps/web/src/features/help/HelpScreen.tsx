@@ -4,12 +4,14 @@ import type { FC } from 'react';
 import { useEffect, useMemo, useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useSupportForm } from './hooks/useSupportForm';
+import { useTriageForm } from './hooks/useTriageForm';
 import HelpView from './components/HelpView';
 import type { StartupDiagnostics } from '../../utils/startup-diagnostics';
 import { readStartupDiagnostics, clearStartupDiagnostics } from '../../utils/startup-diagnostics';
 
 const HelpScreen: FC = () => {
   const form = useSupportForm();
+  const triage = useTriageForm();
   const router = useRouter();
   const searchParams = useSearchParams();
   const [startupDiagnostics, setStartupDiagnostics] = useState<StartupDiagnostics | null>(null);
@@ -43,7 +45,7 @@ const HelpScreen: FC = () => {
       }
     : undefined;
 
-  return <HelpView form={form} startupFailure={startupFailure} />;
+  return <HelpView form={form} triage={triage} startupFailure={startupFailure} />;
 };
 
 export default HelpScreen;

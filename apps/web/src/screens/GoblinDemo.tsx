@@ -283,38 +283,41 @@ export default function GoblinDemo({ provider, model, demoMode = false }: Props)
                         if (!chunks || chunks.length === 0) return null;
                         return (
                           <div className="chunk-list" data-testid={`chunk-list-${s.id}`}>
-                          <strong>Chunks:</strong>
-                          <ul data-testid={`chunks-${s.id}`}>
-                            {chunks.map((c, idx) => (
-                              <li key={`chunk-${s.id}-${idx}`} data-testid={`chunk-${s.id}-${idx}`}>
-                                <span
-                                  className="chunk-text"
-                                  data-testid={`chunk-text-${s.id}-${idx}`}
+                            <strong>Chunks:</strong>
+                            <ul data-testid={`chunks-${s.id}`}>
+                              {chunks.map((c, idx) => (
+                                <li
+                                  key={`chunk-${s.id}-${idx}`}
+                                  data-testid={`chunk-${s.id}-${idx}`}
                                 >
-                                  {c.chunk}
-                                </span>
-                                <span
-                                  className="chunk-meta"
-                                  data-testid={`chunk-tokens-${s.id}-${idx}`}
-                                >
-                                  Tokens: {c.token}
-                                </span>
-                                <span
-                                  className="chunk-meta"
-                                  data-testid={`chunk-cost-${s.id}-${idx}`}
-                                >
-                                  Cost: {formatCost(c.cost, { mode: 'per-token' })}
-                                </span>
-                                <progress
-                                  className="chunk-graph"
-                                  max={100}
-                                  value={Math.min(100, c.cost * 1000)}
-                                  data-testid={`chunk-graph-${s.id}-${idx}`}
-                                  aria-label={`Cost visualization for chunk ${idx + 1}`}
-                                />
-                              </li>
-                            ))}
-                          </ul>
+                                  <span
+                                    className="chunk-text"
+                                    data-testid={`chunk-text-${s.id}-${idx}`}
+                                  >
+                                    {c.chunk}
+                                  </span>
+                                  <span
+                                    className="chunk-meta"
+                                    data-testid={`chunk-tokens-${s.id}-${idx}`}
+                                  >
+                                    Tokens: {c.token}
+                                  </span>
+                                  <span
+                                    className="chunk-meta"
+                                    data-testid={`chunk-cost-${s.id}-${idx}`}
+                                  >
+                                    Cost: {formatCost(c.cost, { mode: 'per-token' })}
+                                  </span>
+                                  <progress
+                                    className="chunk-graph"
+                                    max={100}
+                                    value={Math.min(100, c.cost * 1000)}
+                                    data-testid={`chunk-graph-${s.id}-${idx}`}
+                                    aria-label={`Cost visualization for chunk ${idx + 1}`}
+                                  />
+                                </li>
+                              ))}
+                            </ul>
                           </div>
                         );
                       })()}

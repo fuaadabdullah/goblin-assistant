@@ -16,7 +16,9 @@ vi.mock('../../api', () => ({
 }));
 
 vi.mock('../../../../lib/chat-history', async () => {
-  const actual = await vi.importActual<typeof import('../../../../lib/chat-history')>('../../../../lib/chat-history');
+  const actual = await vi.importActual<typeof import('../../../../lib/chat-history')>(
+    '../../../../lib/chat-history'
+  );
   return {
     buildThreadKey: actual.buildThreadKey,
     markChatMigrationCompleted: vi.fn(),
@@ -31,7 +33,11 @@ vi.mock('../../../../lib/chat-history', async () => {
 
 import { useQuery } from '@tanstack/react-query';
 import { chatClient } from '../../api';
-import { markChatMigrationCompleted, readChatMigrationMeta, readChatThreads } from '../../../../lib/chat-history';
+import {
+  markChatMigrationCompleted,
+  readChatMigrationMeta,
+  readChatThreads,
+} from '../../../../lib/chat-history';
 import { useChatThreads } from '../useChatThreads';
 
 describe('useChatThreads', () => {
@@ -61,11 +67,14 @@ describe('useChatThreads', () => {
         updatedAt: '2026-03-07T11:00:00.000Z',
       },
     ] as never);
-    vi.mocked(useQuery).mockImplementation(({ queryFn }: { queryFn: () => Promise<unknown> }) => ({
-      data: undefined,
-      isLoading: false,
-      queryFn,
-    }) as never);
+    vi.mocked(useQuery).mockImplementation(
+      ({ queryFn }: { queryFn: () => Promise<unknown> }) =>
+        ({
+          data: undefined,
+          isLoading: false,
+          queryFn,
+        }) as never
+    );
 
     renderHook(() => useChatThreads());
     const merged = await (vi.mocked(useQuery).mock.calls[0][0].queryFn as () => Promise<any>)();
@@ -106,11 +115,14 @@ describe('useChatThreads', () => {
         updatedAt: '2026-03-07T11:00:00.000Z',
       },
     ] as never);
-    vi.mocked(useQuery).mockImplementation(({ queryFn }: { queryFn: () => Promise<unknown> }) => ({
-      data: undefined,
-      isLoading: false,
-      queryFn,
-    }) as never);
+    vi.mocked(useQuery).mockImplementation(
+      ({ queryFn }: { queryFn: () => Promise<unknown> }) =>
+        ({
+          data: undefined,
+          isLoading: false,
+          queryFn,
+        }) as never
+    );
 
     renderHook(() => useChatThreads());
     const merged = await (vi.mocked(useQuery).mock.calls[0][0].queryFn as () => Promise<any>)();
@@ -142,11 +154,14 @@ describe('useChatThreads', () => {
         updatedAt: '2026-03-07T11:00:00.000Z',
       },
     ] as never);
-    vi.mocked(useQuery).mockImplementation(({ queryFn }: { queryFn: () => Promise<unknown> }) => ({
-      data: undefined,
-      isLoading: false,
-      queryFn,
-    }) as never);
+    vi.mocked(useQuery).mockImplementation(
+      ({ queryFn }: { queryFn: () => Promise<unknown> }) =>
+        ({
+          data: undefined,
+          isLoading: false,
+          queryFn,
+        }) as never
+    );
 
     renderHook(() => useChatThreads());
     const merged = await (vi.mocked(useQuery).mock.calls[0][0].queryFn as () => Promise<any>)();

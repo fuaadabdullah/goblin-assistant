@@ -5,7 +5,7 @@
  * Theme tokens are loaded from ./theme/index.css.
  */
 
-@import "tailwindcss";
+@import 'tailwindcss';
 @config "../tailwind.config.js";
 @import './theme/index.css';
 

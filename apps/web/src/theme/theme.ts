@@ -57,10 +57,7 @@ export function initializeTheme(): void {
 
   const motionMedia = window.matchMedia('(prefers-reduced-motion: reduce)');
   const handleMotionChange = (motionEvent: MediaQueryListEvent | MediaQueryList) => {
-    document.documentElement.setAttribute(
-      'data-motion-reduced',
-      String(motionEvent.matches)
-    );
+    document.documentElement.setAttribute('data-motion-reduced', String(motionEvent.matches));
   };
   handleMotionChange(motionMedia);
   motionMedia.addEventListener('change', handleMotionChange);

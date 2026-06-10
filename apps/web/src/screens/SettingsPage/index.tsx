@@ -13,7 +13,12 @@ import { ProviderStatusSection } from './ProviderStatusSection';
 import { ModelPreferencesSection } from './ModelPreferencesSection';
 import type { ProviderSource, ProviderDisplay, ProviderGroup, ProviderGroupId } from './types';
 import { DEFAULT_OPEN_PROVIDER_GROUPS } from './constants';
-import { normalizeProviderName, providerMatchesSearch, isLocalProvider, isCloudProvider } from './providerUtils';
+import {
+  normalizeProviderName,
+  providerMatchesSearch,
+  isLocalProvider,
+  isCloudProvider,
+} from './providerUtils';
 
 const SettingsPageContent: React.FC = () => {
   const {

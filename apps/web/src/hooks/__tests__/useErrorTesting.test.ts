@@ -90,7 +90,7 @@ describe('useErrorTesting', () => {
   });
 
   it('testSentryError captures exception via Sentry', async () => {
-        const { result } = renderHook(() => useErrorTesting());
+    const { result } = renderHook(() => useErrorTesting());
     await act(async () => {
       await result.current.testSentryError();
     });
@@ -99,7 +99,7 @@ describe('useErrorTesting', () => {
   });
 
   it('testSentryMessage captures message via Sentry', async () => {
-        const { result } = renderHook(() => useErrorTesting());
+    const { result } = renderHook(() => useErrorTesting());
     await act(async () => {
       await result.current.testSentryMessage();
     });
@@ -107,7 +107,7 @@ describe('useErrorTesting', () => {
   });
 
   it('testSentryBreadcrumb adds breadcrumb and captures message', async () => {
-        const { result } = renderHook(() => useErrorTesting());
+    const { result } = renderHook(() => useErrorTesting());
     await act(async () => {
       await result.current.testSentryBreadcrumb();
     });
