@@ -1,9 +1,12 @@
 #!/usr/bin/env node
 
-const { execFileSync } = require('node:child_process');
+const fs = require('node:fs');
 const path = require('node:path');
 
 const repoRoot = path.resolve(__dirname, '..', '..');
+const scanRoot = path.join(repoRoot, 'apps', 'web', 'src');
+const EXTS = new Set(['.ts', '.tsx', '.js', '.jsx']);
+const PATTERN = /style=\{\{/;
 
 const allowlist = [
   'apps/web/src/components/Sparkline.tsx',
@@ -13,27 +16,32 @@ const allowlist = [
   'apps/web/src/features/startup/components/GoblinLoader.tsx',
 ];
 
-let results = '';
-
-try {
-  results = execFileSync(
-    'rg',
-    ['-n', 'style=\\{\\{', 'apps/web/src', '-g', '*.ts', '-g', '*.tsx', '-g', '*.js', '-g', '*.jsx'],
-    {
-      cwd: repoRoot,
-      encoding: 'utf8',
-    },
-  ).trim();
-} catch (error) {
-  if (error.status !== 1) {
-    throw error;
+function collectFiles(dir) {
+  const results = [];
+  for (const entry of fs.readdirSync(dir, { withFileTypes: true })) {
+    const full = path.join(dir, entry.name);
+    if (entry.isDirectory()) {
+      results.push(...collectFiles(full));
+    } else if (EXTS.has(path.extname(entry.name))) {
+      results.push(full);
+    }
   }
+  return results;
 }
 
-const violations = results
-  .split('\n')
-  .filter(Boolean)
-  .filter((line) => !allowlist.some((path) => line.startsWith(`${path}:`)));
+const violations = [];
+
+for (const file of collectFiles(scanRoot)) {
+  const rel = path.relative(repoRoot, file).replace(/\\/g, '/');
+  if (allowlist.some((p) => rel === p)) continue;
+
+  const lines = fs.readFileSync(file, 'utf8').split('\n');
+  for (let i = 0; i < lines.length; i++) {
+    if (PATTERN.test(lines[i])) {
+      violations.push(`${rel}:${i + 1}: ${lines[i].trim()}`);
+    }
+  }
+}
 
 if (violations.length > 0) {
   console.error('Disallowed inline styles found:');

@@ -65,7 +65,11 @@ type-check-api-mypy:
 		src/api/routes/support_router.py
 
 type-check-api-pyright:
-	cd apps/api && PYTHONPATH=src $(PYTHON) -m pyright --project pyrightconfig.json
+	cd apps/api && PYTHONPATH=src $(PYTHON) -m pyright --project pyrightconfig.json \
+		src/api/services/error_summarizer.py \
+		src/api/ops_routes/sentry_webhook.py \
+		src/api/providers/rovo_dev_provider.py \
+		src/api/routes/support_router.py
 
 generate-providers-json:
 	PYTHONPATH=packages/shared/src $(PYTHON) tooling/generators/generate-providers-json.py
