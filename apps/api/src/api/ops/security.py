@@ -175,8 +175,8 @@ class OpsSecurityMiddleware:
             "operation": operation,
             "resource": resource,
             "success": success,
-            "client_ip": request.client.host if request.client else "unknown",
-            "user_agent": request.headers.get("user-agent", "unknown"),
+            "client_ip": request.client.host if (request and request.client) else "unknown",
+            "user_agent": request.headers.get("user-agent", "unknown") if request else "unknown",
             "environment": OpsSecurityConfig.ENVIRONMENT,
             "details": details or {},
         }

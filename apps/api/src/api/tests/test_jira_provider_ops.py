@@ -3,6 +3,7 @@ from __future__ import annotations
 from unittest.mock import AsyncMock, patch
 
 import pytest
+
 from api.core.contracts import ProviderHealthUpdatedPayload
 from api.ops.integrations.jira import (
     build_circuit_breaker_incident_payload,
@@ -44,6 +45,7 @@ def test_build_provider_health_incident_payload_includes_expected_contract(monke
     monkeypatch.setenv("JIRA_PROVIDER_OPS_PROJECT_KEY", "PROVOPS")
     monkeypatch.setenv("JIRA_ENVIRONMENT", "production")
     monkeypatch.setenv("BACKEND_URL", "https://backend.example.com")
+    monkeypatch.delenv("GOBLIN_BACKEND_URL", raising=False)
 
     payload = build_provider_health_incident_payload(
         ProviderHealthUpdatedPayload(
@@ -71,6 +73,7 @@ def test_build_circuit_breaker_incident_payload_includes_expected_contract(monke
     monkeypatch.setenv("JIRA_PROVIDER_OPS_PROJECT_KEY", "PROVOPS")
     monkeypatch.setenv("JIRA_ENVIRONMENT", "staging")
     monkeypatch.setenv("BACKEND_URL", "https://backend.example.com")
+    monkeypatch.delenv("GOBLIN_BACKEND_URL", raising=False)
 
     payload = build_circuit_breaker_incident_payload(
         provider_id="anthropic",

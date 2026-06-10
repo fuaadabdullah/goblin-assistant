@@ -48,6 +48,7 @@ const mapBackendThread = (
   snippet: thread.snippet || '',
   createdAt: thread.createdAt,
   updatedAt: thread.updatedAt,
+  ...(thread.category ? { category: thread.category } : {}),
 });
 
 const readLegacyThreads = (): ChatThread[] => readChatThreads();

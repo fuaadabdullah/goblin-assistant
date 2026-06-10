@@ -10,6 +10,7 @@ Add --benchmark-histogram to generate an HTML histogram, or
 
 import random
 import string
+from typing import Any
 
 import pytest
 
@@ -46,7 +47,7 @@ def _make_item(n_words: int, source_type: str = "message") -> dict:
     }
 
 
-def _make_bundle(n_each: int) -> dict:
+def _make_bundle(n_each: int) -> list[dict[str, Any]]:
     """Build a realistic context bundle with n_each items per bucket."""
     source_types = ["message", "summary", "memory", "document", "task", "ephemeral"]
     items = []

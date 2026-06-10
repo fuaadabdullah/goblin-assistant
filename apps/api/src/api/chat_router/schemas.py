@@ -80,6 +80,7 @@ class ConversationInfo(BaseModel):
     snippet: Optional[str] = None
     created_at: str
     updated_at: str
+    category: Optional[str] = None
 
 
 class UpdateConversationTitleRequest(BaseModel):

@@ -13,7 +13,8 @@ from ..embedding_service import (
     EmbeddingProviderUnavailableError,
     EmbeddingService,
 )
-from ..observability_service import PromotionDecision, observability_service
+from ..observability_models import PromotionDecision
+from ..observability_service import observability_service
 from ..retrieval_service import retrieval_service as _retrieval_singleton
 from .extraction import classify_memory_category, extract_memory_candidates
 from .finance_gates import FINANCE_CATEGORIES, evaluate_finance_gates

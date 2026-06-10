@@ -79,6 +79,7 @@ class RoutingRegistry:
         request_id: Optional[str] = None,
         input_tokens: Optional[int] = None,
         output_tokens: Optional[int] = None,
+        task_type: Optional[str] = None,
     ) -> None:
         stats = self.get(provider_id)
         stats.success_count += 1
@@ -103,13 +104,20 @@ class RoutingRegistry:
             )
         self._mark_dirty()
         self._flush_if_due()
+        _notify_bandit(provider_id=provider_id, task_type=task_type, success=True)
 
-    def record_failure(self, provider_id: str) -> None:
+    def record_failure(
+        self,
+        provider_id: str,
+        *,
+        task_type: Optional[str] = None,
+    ) -> None:
         stats = self.get(provider_id)
         stats.failure_count += 1
         stats.last_used = time.time()
         self._mark_dirty()
         self._flush_if_due()
+        _notify_bandit(provider_id=provider_id, task_type=task_type, success=False)
 
     def log_decision(
         self,
@@ -219,3 +227,21 @@ class RoutingRegistry:
 
 
 registry = RoutingRegistry()
+
+
+def _notify_bandit(
+    *,
+    provider_id: str,
+    task_type: Optional[str],
+    success: bool,
+) -> None:
+    """Lazy-import bandit_cache and forward outcome. Best-effort — never raises."""
+    if not task_type:
+        return
+    try:
+        from api.routing.ml_router import _fire_bandit_state_upsert, bandit_cache  # noqa: PLC0415
+
+        updated = bandit_cache.update(task_type, provider_id, success=success)
+        _fire_bandit_state_upsert(updated)
+    except Exception:
+        pass

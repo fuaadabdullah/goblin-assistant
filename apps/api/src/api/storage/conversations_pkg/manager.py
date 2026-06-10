@@ -66,6 +66,14 @@ class ConversationStoreManager:
     ) -> bool:
         return await self._store.check_conversation_owner(conversation_id, user_id, db=db)
 
+    async def update_metadata(self, conversation_id: str, updates: Dict[str, Any]) -> bool:
+        conversation = await self.get_conversation(conversation_id)
+        if not conversation:
+            return False
+        conversation.metadata.update(updates)
+        await self.save_conversation(conversation)
+        return True
+
     async def create_conversation(
         self, user_id: Optional[str] = None, title: Optional[str] = None
     ) -> Conversation:

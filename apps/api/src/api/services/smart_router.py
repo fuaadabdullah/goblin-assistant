@@ -54,6 +54,7 @@ class RoutingStrategy(Enum):
     LATENCY_OPTIMIZED = "latency_optimized"
     BALANCED = "balanced"
     LOCAL_FIRST = "local_first"
+    ML_BANDIT = "ml_bandit"
 
 
 @dataclass
@@ -143,6 +144,17 @@ class CostTracker:
         }
 
 
+def _last_user_message(messages: Optional[List[Dict[str, Any]]]) -> str:
+    """Return the content of the last user-role message, or empty string."""
+    if not messages:
+        return ""
+    for msg in reversed(messages):
+        if isinstance(msg, dict) and msg.get("role") == "user":
+            content = msg.get("content", "")
+            return content if isinstance(content, str) else ""
+    return ""
+
+
 class SmartRouter:
     def __init__(
         self,
@@ -151,6 +163,35 @@ class SmartRouter:
     ) -> None:
         self.strategy = strategy
         self.cost_tracker = CostTracker(hourly_budget)
+
+    def _resolve_task_type(
+        self,
+        task_type: Optional[str],
+        messages: Optional[List[Dict[str, Any]]],
+        intent: Optional[Any] = None,
+    ) -> str:
+        """Return an explicit task_type, or derive from intent/messages, or default to CHAT."""
+        if task_type:
+            return task_type
+        # Use intent classification when confidence is high enough — skip PromptClassifier
+        if intent is not None:
+            try:
+                from api.routing.intent_classifier import map_intent_to_task_type  # noqa: PLC0415
+
+                if intent.confidence >= 0.7:
+                    mapped = map_intent_to_task_type(intent)
+                    if mapped:
+                        return mapped
+            except Exception:
+                pass
+        if messages:
+            try:
+                from api.routing.prompt_classifier import prompt_classifier  # noqa: PLC0415
+
+                return prompt_classifier.classify_messages(messages).value
+            except Exception:
+                pass
+        return TaskType.CHAT.value
 
     def _model_for_provider(self, provider_id: str) -> str:
         config = dispatcher.get_provider_config(provider_id)
@@ -173,6 +214,10 @@ class SmartRouter:
         self,
         strategy: RoutingStrategy,
         capability: str,
+        *,
+        messages: Optional[List[Dict[str, Any]]] = None,
+        intent: Optional[Any] = None,
+        request_id: Optional[str] = None,
     ) -> List[str]:
         candidates = top_providers_for(capability, limit=20)
         if not candidates:
@@ -185,6 +230,38 @@ class SmartRouter:
             )
             for provider_id in candidates
         }
+
+        if strategy == RoutingStrategy.ML_BANDIT:
+            try:
+                from api.routing.ml_router import bandit_router  # noqa: PLC0415
+
+                routing_request = None
+                try:
+                    from api.routing.feature_extractor import feature_extractor  # noqa: PLC0415
+
+                    intent_label = getattr(intent, "label", "unknown")
+                    intent_conf = getattr(intent, "confidence", 0.0)
+                    routing_request = feature_extractor.extract_request(
+                        prompt=_last_user_message(messages),
+                        task_type=capability,
+                        conversation_history=messages or [],
+                        intent_label=intent_label.value
+                        if hasattr(intent_label, "value")
+                        else str(intent_label),
+                        intent_confidence=float(intent_conf),
+                    )
+                except Exception:
+                    pass
+
+                return bandit_router.rank(
+                    candidates,
+                    provider_costs,
+                    task_type=capability,
+                    request_id=request_id,
+                    request=routing_request,
+                )
+            except Exception:
+                pass  # fall through to BALANCED on import/runtime error
 
         if strategy == RoutingStrategy.COST_OPTIMIZED:
             return cost_router.rank(candidates, provider_costs)
@@ -205,16 +282,18 @@ class SmartRouter:
         leftovers = [provider_id for provider_id in candidates if provider_id not in prioritized]
         return prioritized + leftovers
 
-    def select_provider(
+    async def select_provider(
         self,
         messages: Optional[List[Dict[str, Any]]] = None,
         strategy: Optional[RoutingStrategy] = None,
         preferred_provider: Optional[str] = None,
         task_type: Optional[str] = None,
+        request_id: Optional[str] = None,
+        intent: Optional[Any] = None,
+        user_id: Optional[str] = None,
     ) -> ProviderSelection:
-        del messages
         active_strategy = strategy or self.strategy
-        capability = task_type or TaskType.CHAT.value
+        capability = self._resolve_task_type(task_type, messages, intent=intent)
 
         if preferred_provider:
             canonical_id = canonical_provider_id(preferred_provider) or preferred_provider
@@ -229,9 +308,26 @@ class SmartRouter:
                     expected_latency_ms=health_monitor.get_latency(canonical_id),
                 )
 
-        ordered = self._ordered_candidates(active_strategy, capability)
+        ordered = self._ordered_candidates(
+            active_strategy,
+            capability,
+            messages=messages,
+            intent=intent,
+            request_id=request_id,
+        )
         if not ordered:
             return self._build_emergency_selection()
+
+        # Preference re-ranking: float providers the user has high affinity for
+        if user_id:
+            try:
+                from api.services.preference_learner import (
+                    preference_learner as _pl,  # noqa: PLC0415
+                )
+
+                ordered = await _pl.apply_to_routing(user_id, ordered)
+            except Exception:
+                pass
 
         selected = ordered[0]
         return ProviderSelection(
@@ -243,6 +339,52 @@ class SmartRouter:
             expected_latency_ms=health_monitor.get_latency(selected),
         )
 
+    def _record_provider_success(
+        self,
+        result: Dict[str, Any],
+        *,
+        provider_id: str,
+        req_id: str,
+        task_type: str,
+        tried: List[str],
+    ) -> Dict[str, Any]:
+        usage = {}
+        result_data = result.get("result")
+        if isinstance(result_data, dict):
+            usage = result_data.get("usage") or {}
+        if not usage and isinstance(result.get("usage"), dict):
+            usage = result["usage"]
+
+        latency_ms = float(result.get("latency_ms") or 0.0)
+        cost_usd = self.cost_tracker.estimate_cost(provider_id)
+        self.cost_tracker.record_request(
+            provider_id,
+            int(usage.get("prompt_tokens") or usage.get("input_tokens") or 0),
+            int(usage.get("completion_tokens") or usage.get("output_tokens") or 0),
+        )
+        # Note: registry.record_success is NOT called here — the dispatcher's
+        # execution layer already calls it. We only add the bandit update.
+        try:
+            from api.routing.ml_router import bandit_router as _br  # noqa: PLC0415
+
+            _br.record_outcome(
+                request_id=req_id,
+                task_type=task_type,
+                provider_id=provider_id,
+                was_selected=True,
+                latency_ms=latency_ms,
+                cost_usd=cost_usd,
+                success=True,
+            )
+        except Exception:
+            pass
+
+        result.setdefault(
+            "routing",
+            {"provider": provider_id, "tried_providers": tried, "request_id": req_id},
+        )
+        return result
+
     async def invoke_with_fallback(
         self,
         invoke_fn,
@@ -252,15 +394,24 @@ class SmartRouter:
         timeout_ms: int = 30_000,
         **kwargs: Any,
     ) -> Dict[str, Any]:
+        import uuid as _uuid  # noqa: PLC0415
+
         payload = dict(kwargs.get("payload") or {})
         payload.setdefault("messages", messages)
 
-        selection = self.select_provider(
+        req_id = str(_uuid.uuid4())
+        task_type: str = self._resolve_task_type(kwargs.get("task_type"), messages)
+        user_id: Optional[str] = payload.get("user_id") or kwargs.get("user_id")
+
+        selection = await self.select_provider(
             messages=messages,
             strategy=strategy,
             preferred_provider=preferred_provider,
-            task_type=kwargs.get("task_type"),
+            task_type=task_type,
+            request_id=req_id,
+            user_id=user_id,
         )
+
         tried: List[str] = []
         for provider_id in [selection.provider_id, *selection.fallback_chain]:
             tried.append(provider_id)
@@ -268,30 +419,22 @@ class SmartRouter:
             try:
                 result = await invoke_fn(provider_id, model, payload, timeout_ms)
             except Exception:
-                registry.record_failure(provider_id)
+                registry.record_failure(provider_id, task_type=task_type)
                 continue
 
             if isinstance(result, dict) and result.get("ok"):
-                usage = {}
-                if isinstance(result.get("result"), dict):
-                    usage = result["result"].get("usage") or {}
-                if not usage and isinstance(result.get("usage"), dict):
-                    usage = result["usage"]
-                self.cost_tracker.record_request(
-                    provider_id,
-                    int(usage.get("prompt_tokens") or usage.get("input_tokens") or 0),
-                    int(usage.get("completion_tokens") or usage.get("output_tokens") or 0),
+                return self._record_provider_success(
+                    result,
+                    provider_id=provider_id,
+                    req_id=req_id,
+                    task_type=task_type,
+                    tried=tried,
                 )
-                result.setdefault(
-                    "routing",
-                    {"provider": provider_id, "tried_providers": tried},
-                )
-                return result
 
         return {
             "ok": False,
             "error": "all providers failed",
-            "routing": {"provider": "none", "tried_providers": tried},
+            "routing": {"provider": "none", "tried_providers": tried, "request_id": req_id},
         }
 
     def get_status(self) -> Dict[str, Any]:
@@ -305,7 +448,7 @@ class SmartRouter:
         }
 
 
-smart_router = SmartRouter(strategy=RoutingStrategy.COST_OPTIMIZED)
+smart_router = SmartRouter(strategy=RoutingStrategy.ML_BANDIT)
 
 
 def get_smart_router() -> SmartRouter:

@@ -115,6 +115,38 @@ When a user is learning a concept:
 }
 
 
+CATEGORY_ADDENDUMS: dict[str, str] = {
+    "coding": (
+        "You are helping with a software engineering task. "
+        "Be precise, include runnable examples, and prefer idiomatic solutions over novelty."
+    ),
+    "trading": (
+        "You are helping with trading and market analysis. "
+        "Present data accurately. Always note that nothing you say constitutes financial advice "
+        "and that markets carry risk."
+    ),
+    "finance": (
+        "You are helping with personal finance. "
+        "Be practical, surface trade-offs, and remind the user to consult a financial "
+        "professional before major decisions."
+    ),
+    "health": (
+        "You are helping with a health-related question. "
+        "Be accurate and empathetic. Always recommend that the user consult a qualified "
+        "healthcare professional for diagnosis or treatment decisions."
+    ),
+    "relationships": (
+        "You are helping with a personal relationship topic. "
+        "Be compassionate and non-judgmental. Respect the user's autonomy in their decisions."
+    ),
+    "research": (
+        "You are helping with research or analysis. "
+        "Prioritise accuracy, cite uncertainty clearly, and structure responses so key findings "
+        "stand out."
+    ),
+}
+
+
 def get_addendum(mode: str) -> str:
     """Return the addendum for a mode name (case-insensitive).
 
@@ -131,3 +163,15 @@ def get_addendum(mode: str) -> str:
 def list_modes() -> list[str]:
     """Return all valid mode name strings."""
     return [m.value for m in ModeKey]
+
+
+_LENGTH_ADDENDA: dict[str, str] = {
+    "concise": "Be concise. Lead with the answer. Use short paragraphs and avoid restating context.",
+    "verbose": "Be thorough. Explain your reasoning fully. Include examples and cover edge cases.",
+    "medium": "",
+}
+
+
+def response_length_addendum(length_pref: str) -> str:
+    """Return a system prompt snippet for a learned response-length preference."""
+    return _LENGTH_ADDENDA.get(length_pref, "")

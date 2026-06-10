@@ -17,6 +17,8 @@ from .attestation import service as _service
 from .attestation.models import (
     VERIFIED_TRUE,
 )
+from .attestation.providers import AWSNitroProvider as _AWSNitroProvider
+from .attestation.providers import TPMAttestationProvider as _TPMAttestationProvider
 from .attestation.singleton import get_attestation_service
 
 # Backwards-compatible test patching surface.
@@ -40,6 +42,14 @@ class GCPShieldedVMProvider(_providers.GCPShieldedVMProvider):
     def __init__(self, project_id=None, zone=None):
         _providers.compute_v1 = compute_v1
         super().__init__(project_id=project_id, zone=zone)
+
+
+class TPMAttestationProvider(_TPMAttestationProvider):
+    pass
+
+
+class AWSNitroProvider(_AWSNitroProvider):
+    pass
 
 
 def get_attestation_status(node_id: str):

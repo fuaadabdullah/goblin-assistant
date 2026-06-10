@@ -6,7 +6,12 @@
  * throughout the frontend.
  *
  * Structure:
- * - shared.ts: Shared infrastructure (axios config, auth, error handling, HTTP helpers)
+ * - shared.ts & index.ts: Barrel re-exports from the modular infrastructure below
+ * - api-types.ts: Shared type/interface definitions
+ * - http-client.ts: Axios instances, auth interceptor, token refresh, constants
+ * - http-helpers.ts: HTTP verb wrappers (get/post/put/patch/delete), error handling
+ * - retry.ts: Exponential-backoff retry wrapper
+ * - csrf.ts: CSRF token management
  * - chat.ts: Conversation and message endpoints
  * - auth.ts: Authentication endpoints
  * - providers.ts: Provider management endpoints

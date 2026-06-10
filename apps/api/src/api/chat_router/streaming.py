@@ -75,6 +75,15 @@ async def generate_chat_stream(
 
         sanitized_message, _ = _cr.InputSanitizer.sanitize_chat_message(message)
 
+        # Intent classification — sync path only (streaming can't await refinement)
+        _stream_intent_meta = {}
+        try:
+            from api.routing.intent_classifier import intent_classifier as _ic  # noqa: PLC0415
+
+            _stream_intent_meta = _ic.classify(sanitized_message).to_dict()
+        except Exception:
+            pass
+
         # Persist the user turn before invoking the provider so failures
         # downstream still leave the message in conversation history.
         try:
@@ -82,6 +91,7 @@ async def generate_chat_stream(
                 conversation_id=conversation_id,
                 role="user",
                 content=sanitized_message,
+                metadata={"intent": _stream_intent_meta} if _stream_intent_meta else {},
             )
             await schedule_conversation_archive(conversation_id)
         except Exception as db_exc:

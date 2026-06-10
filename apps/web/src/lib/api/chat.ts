@@ -1,4 +1,5 @@
 import {
+  V1_API_PREFIX,
   V1_CHAT_PREFIX,
   ConversationCreateResponse,
   ConversationInfoResponse,
@@ -45,6 +46,7 @@ export const chatMethods = {
       createdAt: conversation.created_at,
       updatedAt: conversation.updated_at,
       messageCount: conversation.message_count,
+      ...(conversation.category ? { category: conversation.category } : {}),
     }));
   },
 
@@ -178,5 +180,23 @@ export const chatMethods = {
       },
     });
     return response.data;
+  },
+
+  async submitRoutingFeedback(payload: {
+    requestId: string;
+    rating: 1 | -1;
+    providerId?: string;
+    taskType?: string;
+  }): Promise<{ ok: boolean }> {
+    return postBackend<{ ok: boolean }, object>(
+      `${V1_API_PREFIX}/routing/feedback`,
+      {
+        request_id: payload.requestId,
+        rating: payload.rating,
+        provider_id: payload.providerId,
+        task_type: payload.taskType,
+      },
+      withAuth()
+    );
   },
 };

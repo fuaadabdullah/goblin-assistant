@@ -25,6 +25,8 @@ Optional:
 ```bash
 JIRA_PROVIDER_OPS_WEBHOOK_SECRET=replace-with-jira-webhook-token
 JIRA_ENVIRONMENT=production
+GOBLIN_BACKEND_URL=https://your-backend.example.com
+# BACKEND_URL is a legacy fallback; prefer GOBLIN_BACKEND_URL
 BACKEND_URL=https://your-backend.example.com
 ```
 

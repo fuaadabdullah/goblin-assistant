@@ -4,6 +4,20 @@ from __future__ import annotations
 
 from unittest.mock import AsyncMock, patch
 
+import pytest
+from fastapi import FastAPI
+from fastapi.testclient import TestClient
+
+from api import routing_router as _routing_router_module
+
+
+@pytest.fixture
+def client():
+    app = FastAPI()
+    app.include_router(_routing_router_module.router)
+    return TestClient(app)
+
+
 # ---------------------------------------------------------------------------
 # GET /routing/providers
 # ---------------------------------------------------------------------------

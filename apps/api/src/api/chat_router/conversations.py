@@ -82,6 +82,7 @@ async def list_conversations(
                     snippet=_cr._latest_snippet(conv),
                     created_at=conv.created_at.isoformat(),
                     updated_at=conv.updated_at.isoformat(),
+                    category=conv.metadata.get("category"),
                 )
                 for conv in conversations
             ]

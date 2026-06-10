@@ -182,6 +182,24 @@ async def _restore_routing_registry() -> None:
         logger.warning("routing_registry_restore_failed", error=str(exc))
 
 
+async def _restore_bandit_state() -> None:
+    try:
+        from .routing.ml_router import bandit_cache, restore_bandit_state  # noqa: PLC0415
+
+        await restore_bandit_state(bandit_cache)
+    except Exception as exc:
+        logger.warning("bandit_state_restore_failed", error=str(exc))
+
+
+async def _restore_feature_weights() -> None:
+    try:
+        from .routing.feature_router import feature_router  # noqa: PLC0415
+
+        await feature_router.restore_weights()
+    except Exception as exc:
+        logger.warning("feature_weights_restore_failed", error=str(exc))
+
+
 async def _restore_circuit_states() -> None:
     try:
         from .providers.dispatcher import dispatcher  # noqa: PLC0415
@@ -259,6 +277,8 @@ async def lifespan(_app: FastAPI):
         await asyncio.gather(
             _restore_routing_registry(),
             _restore_circuit_states(),
+            _restore_bandit_state(),
+            _restore_feature_weights(),
         )
 
         # Group B: all monitoring/worker services in parallel.

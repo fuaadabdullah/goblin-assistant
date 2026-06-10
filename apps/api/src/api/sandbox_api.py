@@ -13,19 +13,8 @@ import redis
 import rq
 import structlog
 from fastapi import APIRouter, Header, HTTPException
-from pydantic import BaseModel
 
 logger = structlog.get_logger()
-
-
-class SandboxExecutionError(Exception):
-    """Raised when a sandbox job cannot be queued or executed."""
-
-    def __init__(self, job_id: str, container_id: str | None, reason: str):
-        self.job_id = job_id
-        self.container_id = container_id
-        self.reason = reason
-        super().__init__(f"Sandbox execution failed [{job_id}]: {reason}")
 
 
 from .artifact_service import artifact_service
@@ -36,6 +25,19 @@ from .sandbox_metrics import (
     get_metrics_endpoint,
     record_job_cancelled,
     record_job_submitted,
+)
+from .sandbox_models import (
+    ArtifactInfo,
+    ArtifactListResponse,
+    CancelJobResponse,
+    JobLogsResponse,
+    JobStatus,
+    SandboxExecutionError,
+    SandboxHealthResponse,
+    SandboxJobsResponse,
+    SandboxJobSummary,
+    SubmitJobRequest,
+    SubmitJobResponse,
 )
 
 # Configuration from environment
@@ -85,73 +87,6 @@ def require_api_key(x_api_key: str = Header(...)) -> None:
         )
     if x_api_key != configured_api_key:
         raise HTTPException(status_code=401, detail="unauthorized")
-
-
-# Pydantic models for API
-class SubmitJobRequest(BaseModel):
-    language: str
-    source: str
-    timeout: Optional[int] = 10
-    runtime_args: Optional[str] = ""
-
-
-class JobStatus(BaseModel):
-    job_id: str
-    status: str  # queued, running, finished, failed, cancelled
-    created_at: str
-    started_at: Optional[str] = None
-    finished_at: Optional[str] = None
-    exit_code: Optional[int] = None
-    error: Optional[str] = None
-
-
-class ArtifactInfo(BaseModel):
-    name: str
-    size: int
-    url: str
-    created_at: str
-
-
-class SubmitJobResponse(BaseModel):
-    job_id: str
-
-
-class JobLogsResponse(BaseModel):
-    logs: str
-
-
-class ArtifactListResponse(BaseModel):
-    artifacts: list[ArtifactInfo]
-
-
-class CancelJobResponse(BaseModel):
-    message: str
-
-
-class SandboxHealthResponse(BaseModel):
-    status: str
-    redis_connected: bool
-    image_configured: bool
-    queue_depth: int
-    enabled: bool
-    message: Optional[str] = None
-    redis_error: Optional[str] = None
-
-
-class SandboxJobSummary(BaseModel):
-    job_id: str
-    status: str
-    language: str
-    created_at: str
-    started_at: Optional[str] = None
-    finished_at: Optional[str] = None
-    exit_code: Optional[int] = None
-    error: Optional[str] = None
-
-
-class SandboxJobsResponse(BaseModel):
-    jobs: list[SandboxJobSummary]
-    total: int
 
 
 def _decode_job_data(job_data: dict[bytes, bytes]) -> dict[str, str]:

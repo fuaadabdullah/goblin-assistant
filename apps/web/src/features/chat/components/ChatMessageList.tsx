@@ -31,6 +31,8 @@ interface ChatMessageListProps {
   onCopyMessage?: (content: string) => Promise<void>;
   /** Handler for regenerating a response */
   onRegenerateMessage?: (messageId: string) => Promise<void>;
+  /** Handler for submitting thumbs-up/down feedback on a response */
+  onRateFeedback?: (messageId: string, rating: 1 | -1) => Promise<void>;
   /** Prefer reduced motion */
   prefersReducedMotion?: boolean;
 }
@@ -45,6 +47,7 @@ const ChatMessageList = ({
   onDeleteMessage,
   onCopyMessage,
   onRegenerateMessage,
+  onRateFeedback,
   prefersReducedMotion = false,
 }: ChatMessageListProps) => {
   const [expanded, setExpanded] = useState<Record<string, boolean>>({});
@@ -184,7 +187,7 @@ const ChatMessageList = ({
                   </div>
 
                   {/* Message Actions - Hover overlay */}
-                  {(onCopyMessage || onDeleteMessage || onRegenerateMessage) && (
+                  {(onCopyMessage || onDeleteMessage || onRegenerateMessage || onRateFeedback) && (
                     <div
                       className={`absolute ${
                         isUser ? 'right-0 bottom-0' : 'left-0 bottom-0'
@@ -195,6 +198,10 @@ const ChatMessageList = ({
                         onCopy={() => onCopyMessage?.(msg.content)}
                         onRegenerate={() => onRegenerateMessage?.(messageId)}
                         onDelete={() => onDeleteMessage?.(messageId)}
+                        {...(onRateFeedback && {
+                          onThumbsUp: () => { void onRateFeedback(messageId, 1); },
+                          onThumbsDown: () => { void onRateFeedback(messageId, -1); },
+                        })}
                         showRegenerate={true}
                         showDelete={true}
                       />

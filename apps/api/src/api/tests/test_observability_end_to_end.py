@@ -11,6 +11,7 @@ Tests the complete observability flow across all services to ensure:
 """
 
 import asyncio
+import sys
 import uuid
 from datetime import datetime
 
@@ -20,7 +21,7 @@ from api.services.memory_promotion import MemoryPromotionService, PromotionCandi
 from api.services.message_classifier import MessageClassifier
 from api.services.observability_service import observability_service
 from api.services.retrieval_service import RetrievalService
-from api.services.write_time_matrix_enhanced import WriteTimeDecisionMatrix
+from api.services.write_time_matrix import WriteTimeDecisionMatrix
 
 
 class TestObservabilityEndToEnd:
@@ -364,4 +365,4 @@ async def test_observability_integration():
 if __name__ == "__main__":
     # Run integration tests
     success = asyncio.run(test_observability_integration())
-    exit(0 if success else 1)
+    sys.exit(0 if success else 1)

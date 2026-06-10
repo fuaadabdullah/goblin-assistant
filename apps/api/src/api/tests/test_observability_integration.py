@@ -6,38 +6,44 @@ write-time decisions, memory promotion, retrieval tracing, and debug endpoints.
 """
 
 from datetime import datetime
-from unittest.mock import patch
+from unittest.mock import AsyncMock, patch
 
 import pytest
+import pytest_asyncio
 
-from api.observability import context_snapshotter
 from api.services.memory_promotion import PromotionCandidate, memory_promotion_service
 from api.services.observability_service import observability_service
 from api.services.retrieval_service import RetrievalService
 from api.services.write_time_matrix import write_time_intelligence
 
 
+@pytest.fixture(autouse=True)
+def _disable_ops_auth(monkeypatch):
+    from api.ops import security as _ops_sec
+
+    monkeypatch.setattr(_ops_sec.OpsSecurityConfig, "REQUIRE_AUTH", False)
+
+
+@pytest_asyncio.fixture
+async def setup_observability_test():
+    """Setup test environment with mocked services"""
+    observability_service.write_decisions = []
+    observability_service.memory_promotions = []
+    observability_service.retrieval_traces = []
+    observability_service.context_snapshots = []
+
+    with patch("api.services.observability_service.get_db") as mock_db:
+        with patch("api.services.write_time_matrix.embedding_worker") as mock_worker:
+            with patch("api.services.write_time_matrix.cache_service") as mock_cache:
+                yield {
+                    "mock_db": mock_db,
+                    "mock_worker": mock_worker,
+                    "mock_cache": mock_cache,
+                }
+
+
 class TestObservabilityIntegration:
     """Test the complete observability integration pipeline"""
-
-    @pytest.fixture
-    async def setup_observability_test(self):
-        """Setup test environment with mocked services"""
-        # Reset observability service state
-        observability_service.write_decisions = []
-        observability_service.memory_promotions = []
-        observability_service.retrieval_traces = []
-        observability_service.context_snapshots = []
-
-        # Mock external dependencies
-        with patch("api.services.observability_service.get_db") as mock_db:
-            with patch("api.services.write_time_matrix.embedding_worker") as mock_worker:
-                with patch("api.services.write_time_matrix.cache_service") as mock_cache:
-                    yield {
-                        "mock_db": mock_db,
-                        "mock_worker": mock_worker,
-                        "mock_cache": mock_cache,
-                    }
 
     async def test_write_time_decision_logging(self, setup_observability_test):
         """Test that write-time decisions are properly logged to observability"""
@@ -114,32 +120,39 @@ class TestObservabilityIntegration:
             assert logged_promotion.conversation_id == "test_conv_456"
 
             # Verify promotion decision (should be rejected due to low quality)
-            assert not logged_promotion.promotion_decision
+            from api.services.observability_models import PromotionDecision
+
+            assert logged_promotion.promotion_decision == PromotionDecision.REJECTED
             assert logged_promotion.rejection_reason is not None
 
     async def test_retrieval_trace_logging(self, setup_observability_test):
         """Test that retrieval operations are properly traced"""
-        # Mock embedding service
-        with patch.object(RetrievalService, "_stratified_retrieval") as mock_retrieval:
-            mock_retrieval.return_value = [
-                {
-                    "id": "test_fact_1",
-                    "content": "Test memory fact content",
-                    "source_type": "memory",
-                    "score": 0.9,
-                    "created_at": datetime.utcnow(),
-                },
-                {
-                    "id": "test_summary_1",
-                    "content": "Test summary content",
-                    "source_type": "summary",
-                    "score": 0.8,
-                    "created_at": datetime.utcnow(),
-                },
-            ]
+        fake_results = [
+            {
+                "id": "test_fact_1",
+                "content": "Test memory fact content",
+                "source_type": "memory",
+                "score": 0.9,
+                "created_at": datetime.utcnow(),
+            },
+            {
+                "id": "test_summary_1",
+                "content": "Test summary content",
+                "source_type": "summary",
+                "score": 0.8,
+                "created_at": datetime.utcnow(),
+            },
+        ]
+        with patch.object(
+            RetrievalService, "_stratified_retrieval", new_callable=AsyncMock
+        ) as mock_retrieval:
+            mock_retrieval.return_value = (fake_results, {})
 
-            # Create retrieval service instance
+            # Create retrieval service instance with mocked embedding
             retrieval_service = RetrievalService()
+            mock_emb = AsyncMock()
+            mock_emb.embed_text = AsyncMock(return_value=[0.1] * 768)
+            retrieval_service.embedding_service = mock_emb
 
             # Perform retrieval
             await retrieval_service.retrieve_context(
@@ -165,48 +178,32 @@ class TestObservabilityIntegration:
                 assert "token_count" in item
                 assert "rank" in item
 
-    async def test_context_snapshot_logging(self, setup_observability_test):
+    def test_context_snapshot_logging(self, setup_observability_test):
         """Test that context assembly snapshots are properly captured"""
-        # Mock context assembly service
-        with patch.object(context_snapshotter, "capture_context_snapshot") as mock_capture:
-            mock_capture.return_value = {
-                "request_id": "test_context_123",
-                "user_id": "test_user_123",
-                "context_hash": "abc123",
-                "redacted_snapshot": {
-                    "layers": [
-                        {"name": "memory", "token_count": 100, "source_count": 2},
-                        {"name": "summary", "token_count": 50, "source_count": 1},
-                    ]
-                },
-                "total_token_usage": 150,
-            }
+        observability_service.log_context_assembly_snapshot(
+            request_id="test_context_123",
+            user_id="test_user_123",
+            conversation_id="test_conv_456",
+            context_assembly={
+                "context": "Test context content",
+                "layers": [
+                    {"name": "memory", "tokens": 100, "source_count": 2},
+                    {"name": "summary", "tokens": 50, "source_count": 1},
+                ],
+                "total_tokens_used": 150,
+            },
+        )
 
-            # Capture context snapshot
-            await context_snapshotter.capture_context_snapshot(
-                request_id="test_context_123",
-                user_id="test_user_123",
-                context_assembly={
-                    "context": "Test context content",
-                    "layers": [
-                        {"name": "memory", "tokens": 100, "source_count": 2},
-                        {"name": "summary", "tokens": 50, "source_count": 1},
-                    ],
-                    "total_tokens_used": 150,
-                },
-            )
+        # Verify snapshot was logged
+        assert len(observability_service.context_snapshots) > 0
 
-            # Verify snapshot was logged
-            assert len(observability_service.context_snapshots) > 0
+        # Get the logged snapshot
+        logged_snapshot = observability_service.context_snapshots[-1]
 
-            # Get the logged snapshot
-            logged_snapshot = observability_service.context_snapshots[-1]
-
-            # Verify snapshot content
-            assert logged_snapshot.request_id == "test_context_123"
-            assert logged_snapshot.user_id == "test_user_123"
-            assert logged_snapshot.context_hash == "abc123"
-            assert logged_snapshot.total_token_usage == 150
+        # Verify snapshot content
+        assert logged_snapshot.request_id == "test_context_123"
+        assert logged_snapshot.user_id == "test_user_123"
+        assert logged_snapshot.total_token_usage == 150
 
     async def test_debug_endpoints_integration(self, setup_observability_test):
         """Test that debug endpoints return observability data correctly"""
@@ -275,7 +272,7 @@ class TestObservabilityIntegration:
         assert "token_utilization_percent" in retrieval_quality
         assert "retrieval_hit_rate" in retrieval_quality
 
-    async def test_observability_alerts(self, setup_observability_test):
+    def test_observability_alerts(self, setup_observability_test):
         """Test that observability alerts are properly generated"""
         # Test alert checking
         alerts = observability_service.check_alerts()
@@ -318,13 +315,11 @@ class TestObservabilityIntegration:
         assert isinstance(export_data["retrieval_traces"], list)
         assert isinstance(export_data["context_snapshots"], list)
 
-    async def test_observability_error_handling(self, setup_observability_test):
+    def test_observability_error_handling(self, setup_observability_test):
         """Test that observability handles errors gracefully"""
-        # Test with invalid data
         with patch.object(observability_service, "log_write_time_decision") as mock_log:
             mock_log.side_effect = Exception("Test error")
 
-            # Should not crash the system
             try:
                 observability_service.log_write_time_decision(
                     message_id="test",
@@ -335,10 +330,7 @@ class TestObservabilityIntegration:
                     write_time_result={},
                 )
             except Exception:
-                pass  # Expected to fail
-
-            # System should continue working
-            assert True  # If we get here, the system didn't crash
+                pass  # expected — verifies the exception propagates cleanly
 
     async def test_observability_performance_impact(self, setup_observability_test):
         """Test that observability logging doesn't significantly impact performance"""

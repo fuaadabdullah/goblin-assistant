@@ -111,6 +111,43 @@ class PreferencesService:
             return prefs.get("rag_consent", False)
         return False
 
+    @staticmethod
+    async def get_learned_preferences(user_id: str) -> dict:
+        """Return the learned preference profile stored inside privacy_settings."""
+        prefs = await PreferencesService.get_preferences(user_id)
+        if prefs:
+            privacy = prefs.get("privacy_settings") or {}
+            return dict(privacy.get("learned_preferences") or {})
+        return {}
+
+    @staticmethod
+    async def update_learned_preferences(user_id: str, learned: dict) -> None:
+        """
+        Persist the learned preference profile.
+
+        The profile is stored as privacy_settings["learned_preferences"] so no
+        schema migration is needed. Other privacy_settings keys are preserved.
+        """
+        async with get_db_context() as session:
+            result = await session.execute(
+                select(UserPreferencesModel).where(UserPreferencesModel.user_id == user_id)
+            )
+            prefs = result.scalar_one_or_none()
+
+            if prefs is None:
+                prefs = UserPreferencesModel(
+                    user_id=user_id,
+                    privacy_settings={"learned_preferences": learned},
+                )
+                session.add(prefs)
+            else:
+                current_privacy: dict = dict(prefs.privacy_settings or {})
+                current_privacy["learned_preferences"] = learned
+                prefs.privacy_settings = current_privacy
+                prefs.updated_at = datetime.utcnow()
+
+            await session.flush()
+
 
 # Singleton instance
 preferences_service = PreferencesService()

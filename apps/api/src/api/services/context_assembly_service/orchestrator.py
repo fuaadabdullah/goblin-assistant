@@ -31,6 +31,31 @@ from .working_memory_layer import assemble_working_memory
 
 logger = structlog.get_logger()
 
+# Per-intent retrieval query suffixes — appended when intent confidence > 0.6
+_INTENT_QUERY_SUFFIXES: Dict[str, str] = {
+    "coding": "code implementation technical",
+    "research": "background context sources evidence",
+    "creative": "creative examples inspiration tone",
+    "business": "strategy market business context",
+    "finance": "financial data risk portfolio",
+    "reasoning": "analysis reasoning tradeoffs",
+    "agent_task": "tool execution workflow steps",
+}
+
+
+def _expand_query_for_intent(query: str, intent: Any) -> str:
+    """Append intent-specific terms to the retrieval query when confidence is high enough."""
+    try:
+        if intent is None or getattr(intent, "confidence", 0.0) < 0.6:
+            return query
+        label_val = getattr(getattr(intent, "label", None), "value", None) or str(intent.label)
+        suffix = _INTENT_QUERY_SUFFIXES.get(label_val)
+        if suffix:
+            return f"{query} {suffix}"
+    except Exception:
+        pass
+    return query
+
 
 class ContextAssemblyService:
     """
@@ -80,6 +105,7 @@ class ContextAssemblyService:
         conversation_history: Optional[List[Dict[str, str]]] = None,
         model: Optional[str] = None,
         max_context_tokens: Optional[int] = None,
+        intent: Optional[Any] = None,
     ) -> Dict[str, Any]:
         """
         Assemble complete context using fixed retrieval stack order.
@@ -99,6 +125,8 @@ class ContextAssemblyService:
 
         correlation_id = f"ctx_assembly_{datetime.utcnow().strftime('%Y%m%d_%H%M%S')}"
 
+        retrieval_query = _expand_query_for_intent(query, intent)
+
         assembly_log: Dict[str, Any] = {
             "query": query,
             "user_id": user_id,
@@ -109,6 +137,16 @@ class ContextAssemblyService:
             "assembly_time": datetime.utcnow().isoformat(),
             "correlation_id": correlation_id,
         }
+        if intent is not None:
+            try:
+                assembly_log["intent"] = {
+                    "label": getattr(
+                        getattr(intent, "label", None), "value", str(getattr(intent, "label", ""))
+                    ),
+                    "confidence": getattr(intent, "confidence", 0.0),
+                }
+            except Exception:
+                pass
         truncation_events: List[str] = []
         t_start = time.perf_counter()
 
@@ -130,7 +168,9 @@ class ContextAssemblyService:
                     assembly_log["layers"].append("long_term")
                     assembly_log["token_usage"]["long_term"] = long_term_layer.tokens
                 else:
-                    self._record_layer_skip(user_id, "long_term_memory", remaining_tokens, budget.long_term_tokens)
+                    self._record_layer_skip(
+                        user_id, "long_term_memory", remaining_tokens, budget.long_term_tokens
+                    )
 
             # 3. Working Memory
             if remaining_tokens > 0 and conversation_id:
@@ -143,12 +183,14 @@ class ContextAssemblyService:
                     assembly_log["layers"].append("working_memory")
                     assembly_log["token_usage"]["working_memory"] = working_memory_layer.tokens
                 else:
-                    self._record_layer_skip(user_id, "working_memory", remaining_tokens, budget.working_memory_tokens)
+                    self._record_layer_skip(
+                        user_id, "working_memory", remaining_tokens, budget.working_memory_tokens
+                    )
 
             # 4. Semantic Retrieval
             if remaining_tokens > 0:
                 semantic_layer = await assemble_semantic_retrieval(
-                    query,
+                    retrieval_query,
                     user_id,
                     conversation_id,
                     remaining_tokens,
@@ -164,14 +206,24 @@ class ContextAssemblyService:
                         truncation_events.append("semantic_retrieval_truncated")
                         self._push_failure(user_id, "truncation_triggered", "semantic_retrieval")
                 else:
-                    self._record_layer_skip(user_id, "semantic_retrieval", remaining_tokens, budget.semantic_retrieval_tokens)
+                    self._record_layer_skip(
+                        user_id,
+                        "semantic_retrieval",
+                        remaining_tokens,
+                        budget.semantic_retrieval_tokens,
+                    )
 
                 if hasattr(self.retrieval_service, "get_degraded_status"):
                     degraded_status = self.retrieval_service.get_degraded_status()
                     if degraded_status.get("degraded_mode"):
                         assembly_log["degraded_mode"] = True
                         assembly_log["degraded_reason"] = degraded_status.get("reason")
-                        self._push_failure(user_id, "embedding_unavailable", "semantic_retrieval", degraded_status.get("reason", ""))
+                        self._push_failure(
+                            user_id,
+                            "embedding_unavailable",
+                            "semantic_retrieval",
+                            degraded_status.get("reason", ""),
+                        )
 
             # 5. Ephemeral Memory
             if remaining_tokens > 0 and conversation_history:
@@ -282,6 +334,7 @@ class ContextAssemblyService:
     def _push_failure(user_id: str, failure_type: str, layer: str, detail: str = "") -> None:
         try:
             from ..retrieval_metrics_service import retrieval_metrics_service
+
             retrieval_metrics_service.record_failure(user_id, failure_type, layer, detail)
         except Exception:
             pass
@@ -290,6 +343,7 @@ class ContextAssemblyService:
     def _push_token_accuracy(user_id: str, predicted: int, actual: int) -> None:
         try:
             from ..retrieval_metrics_service import retrieval_metrics_service
+
             retrieval_metrics_service.record_token_accuracy(user_id, predicted, actual)
         except Exception:
             pass
@@ -298,14 +352,13 @@ class ContextAssemblyService:
     def _push_assembly_latency(user_id: str, latency_ms: float) -> None:
         try:
             from ..retrieval_metrics_service import retrieval_metrics_service
+
             retrieval_metrics_service.record_assembly_latency(user_id, latency_ms)
         except Exception:
             pass
 
     @staticmethod
-    def _record_layer_skip(
-        user_id: str, layer: str, remaining: int, threshold: int
-    ) -> None:
+    def _record_layer_skip(user_id: str, layer: str, remaining: int, threshold: int) -> None:
         detail = "skip_budget_exhausted" if remaining < threshold else "skip_no_data"
         ContextAssemblyService._push_failure(user_id, "layer_skipped", layer, detail)
 

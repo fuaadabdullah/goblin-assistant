@@ -35,6 +35,11 @@ def mock_providers():
     return {"openai": openai, "anthropic": anthropic, "azure": azure}
 
 
+@pytest.fixture
+def providers_mock(mock_providers):
+    return mock_providers
+
+
 class TestProviderDispatcherSelection:
     """Tests for provider selection logic"""
 

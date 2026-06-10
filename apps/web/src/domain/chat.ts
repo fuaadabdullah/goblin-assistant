@@ -54,4 +54,5 @@ export interface ChatThread {
   snippet: string;
   createdAt: string;
   updatedAt: string;
+  category?: string;
 }

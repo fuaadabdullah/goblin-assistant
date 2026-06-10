@@ -44,6 +44,7 @@ export interface ChatConversationSummary {
   createdAt: string;
   updatedAt: string;
   messageCount: number;
+  category?: string;
 }
 
 export interface ChatConversation {

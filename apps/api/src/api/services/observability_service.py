@@ -14,110 +14,40 @@ Key Features:
 """
 
 import hashlib
-from dataclasses import asdict, dataclass
+from dataclasses import asdict
 from datetime import datetime
-from enum import Enum
 from typing import Any, Dict, List, Optional
 
 import structlog
 
+from ..storage.database import get_db  # noqa: F401 — re-exported for test patching
 from .context_assembly_service import ContextAssemblyService
 from .context_monitoring import ContextMonitoringService
+from .observability_models import (
+    ContextAssemblySnapshot,
+    DecisionReason,
+    MemoryPromotionEvent,
+    PromotionDecision,
+    RetrievalTier,
+    RetrievalTrace,
+    WriteTimeDecisionRecord,
+)
 from .retrieval_service import RetrievalService
 
 logger = structlog.get_logger()
 
-
-class DecisionReason(Enum):
-    """Reason codes for write-time decisions"""
-
-    SHORT_CHAT = "short_chat"
-    DECLARATIVE_FACT = "declarative_fact"
-    TASK_RESULT = "task_result"
-    LOW_SIGNAL = "low_signal"
-    SYSTEM_MESSAGE = "system_message"
-    NOISE = "noise"
-    USER_PREFERENCE = "user_preference"
-    CONTEXT_RELEVANT = "context_relevant"
-
-
-class PromotionDecision(Enum):
-    """Memory promotion decisions"""
-
-    ACCEPTED = "accepted"
-    REJECTED = "rejected"
-
-
-class RetrievalTier(Enum):
-    """Retrieval tiers for trace recording"""
-
-    LONG_TERM = "long_term"
-    WORKING_MEMORY = "working_memory"
-    SEMANTIC = "semantic"
-    EPHEMERAL = "ephemeral"
-
-
-@dataclass
-class WriteTimeDecisionRecord:
-    """Record of write-time decision for a message"""
-
-    message_id: str
-    user_id: Optional[str]
-    conversation_id: Optional[str]
-    message_content: str
-    message_role: str
-    classified_type: str
-    embedded: bool
-    summarized: bool
-    cached: bool
-    discarded: bool
-    reason_codes: List[str]
-    confidence: float
-    timestamp: str
-    request_id: Optional[str] = None
-
-
-@dataclass
-class MemoryPromotionEvent:
-    """Record of memory promotion attempt"""
-
-    candidate_text: str
-    source: str  # "summary", "task", "direct"
-    confidence_score: float
-    promotion_decision: PromotionDecision
-    rejection_reason: Optional[str]
-    user_id: Optional[str]
-    conversation_id: Optional[str]
-    timestamp: str
-    request_id: Optional[str] = None
-
-
-@dataclass
-class RetrievalTrace:
-    """Complete retrieval trace for an LLM call"""
-
-    request_id: str
-    user_id: Optional[str]
-    model_selected: str
-    token_budget: int
-    items_retrieved: List[Dict[str, Any]]
-    scoring_breakdown: Dict[str, Any]
-    token_allocation: Dict[str, int]
-    timestamp: str
-
-
-@dataclass
-class ContextAssemblySnapshot:
-    """Snapshot of context assembly before sending to model"""
-
-    request_id: str
-    user_id: Optional[str]
-    conversation_id: Optional[str]
-    context_hash: str
-    redacted_snapshot: Dict[str, Any]
-    total_token_usage: int
-    assembly_details: Dict[str, Any]
-    timestamp: str
+# Re-export models so existing importers of observability_service continue to work
+__all__ = [
+    "ObservabilityService",
+    "observability_service",
+    "DecisionReason",
+    "PromotionDecision",
+    "RetrievalTier",
+    "WriteTimeDecisionRecord",
+    "MemoryPromotionEvent",
+    "RetrievalTrace",
+    "ContextAssemblySnapshot",
+]
 
 
 class ObservabilityService:
@@ -189,12 +119,10 @@ class ObservabilityService:
             decision = write_time_result.get("decision", {})
             write_time_result.get("execution", {})
 
-            # Determine reason codes
             reason_codes = self._determine_reason_codes(
                 message_content, message_role, classification, decision
             )
 
-            # Build decision record
             decision_record = WriteTimeDecisionRecord(
                 message_id=message_id,
                 user_id=user_id,
@@ -212,10 +140,8 @@ class ObservabilityService:
                 request_id=request_id,
             )
 
-            # Store decision
             self.write_decisions.append(decision_record)
 
-            # Log for structured analysis
             logger.info(
                 "Write-time decision logged",
                 message_id=message_id,
@@ -240,7 +166,6 @@ class ObservabilityService:
         """Determine reason codes for the decision"""
         reason_codes = []
 
-        # Role-based reasons
         if message_role == "system":
             reason_codes.append(DecisionReason.SYSTEM_MESSAGE.value)
         elif message_role == "user":
@@ -249,7 +174,6 @@ class ObservabilityService:
             else:
                 reason_codes.append(DecisionReason.CONTEXT_RELEVANT.value)
 
-        # Classification-based reasons
         message_type = classification.get("type", "")
         if message_type == "fact":
             reason_codes.append(DecisionReason.DECLARATIVE_FACT.value)
@@ -260,14 +184,13 @@ class ObservabilityService:
         elif message_type == "preference":
             reason_codes.append(DecisionReason.USER_PREFERENCE.value)
 
-        # Decision-based reasons
         actions = [action.value for action in decision.get("actions", [])]
         if "embed" in actions:
             reason_codes.append(DecisionReason.CONTEXT_RELEVANT.value)
         if "discard" in actions:
             reason_codes.append(DecisionReason.LOW_SIGNAL.value)
 
-        return list(set(reason_codes))  # Remove duplicates
+        return list(set(reason_codes))
 
     # 2. Memory Promotion Event Tracking
     def log_memory_promotion_event(
@@ -300,8 +223,6 @@ class ObservabilityService:
             )
 
             self.memory_promotions.append(promotion_event)
-
-            # Update memory health metrics
             self._update_memory_health_metrics()
 
             logger.info(
@@ -331,12 +252,9 @@ class ObservabilityService:
         This is the crown jewel - it tells you exactly what the model saw.
         """
         try:
-            # Extract items by tier
             items_retrieved = []
             token_allocation = {}
-            scoring_breakdown = {}
 
-            # Process each layer from context assembly
             layers = retrieval_result.get("layers", [])
             for layer in layers:
                 tier = self._map_layer_to_tier(layer["name"])
@@ -353,16 +271,12 @@ class ObservabilityService:
                 )
                 token_allocation[tier.value] = token_allocation.get(tier.value, 0) + layer["tokens"]
 
-            # Calculate scoring breakdown
             scoring_breakdown = {
                 "avg_relevance_score": sum(item["relevance_score"] for item in items_retrieved)
                 / max(len(items_retrieved), 1),
-                "tier_distribution": {
-                    tier.value: count for tier, count in token_allocation.items()
-                },
+                "tier_distribution": dict(token_allocation),
             }
 
-            # Create retrieval trace
             trace = RetrievalTrace(
                 request_id=request_id,
                 user_id=user_id,
@@ -375,8 +289,6 @@ class ObservabilityService:
             )
 
             self.retrieval_traces.append(trace)
-
-            # Update retrieval quality metrics
             self._update_retrieval_quality_metrics()
 
             logger.info(
@@ -416,11 +328,9 @@ class ObservabilityService:
         This lets you replay bugs and compare good vs bad answers.
         """
         try:
-            # Create hash of context
             context_text = context_assembly.get("context", "")
             context_hash = hashlib.sha256(context_text.encode()).hexdigest()
 
-            # Create redacted snapshot
             redacted_snapshot = {
                 "layers": [
                     {
@@ -434,7 +344,6 @@ class ObservabilityService:
                 "remaining_tokens": context_assembly.get("remaining_tokens", 0),
             }
 
-            # Create snapshot
             snapshot = ContextAssemblySnapshot(
                 request_id=request_id,
                 user_id=user_id,
@@ -461,13 +370,8 @@ class ObservabilityService:
 
     # Debug Endpoints
     def get_memory_debug_info(self, user_id: str) -> Dict[str, Any]:
-        """
-        Debug endpoint: /ops/memory/user/{id}
-
-        Returns long-term memory items with metadata for inspection.
-        """
+        """Debug endpoint: /ops/memory/user/{id}"""
         try:
-            # Get promotion events for this user
             user_promotions = [
                 event
                 for event in self.memory_promotions
@@ -475,7 +379,6 @@ class ObservabilityService:
                 and event.promotion_decision == PromotionDecision.ACCEPTED
             ]
 
-            # Calculate memory health metrics
             memory_items = [
                 event
                 for event in user_promotions
@@ -492,7 +395,7 @@ class ObservabilityService:
                         "timestamp": event.timestamp,
                         "source_reference": event.conversation_id,
                     }
-                    for event in memory_items[-20:]  # Last 20 items
+                    for event in memory_items[-20:]
                 ],
                 "memory_health": {
                     "total_items": len(memory_items),
@@ -509,11 +412,7 @@ class ObservabilityService:
             return {"error": str(e)}
 
     def get_retrieval_trace(self, request_id: str) -> Dict[str, Any]:
-        """
-        Debug endpoint: /ops/retrieval/trace/{request_id}
-
-        Returns full retrieval trace - the lie detector.
-        """
+        """Debug endpoint: /ops/retrieval/trace/{request_id}"""
         try:
             trace = next((t for t in self.retrieval_traces if t.request_id == request_id), None)
 
@@ -546,11 +445,7 @@ class ObservabilityService:
             return {"error": str(e)}
 
     def get_write_decisions(self, conversation_id: str) -> Dict[str, Any]:
-        """
-        Debug endpoint: /ops/write/decisions/{conversation_id}
-
-        Shows message-by-message write decisions for tuning thresholds.
-        """
+        """Debug endpoint: /ops/write/decisions/{conversation_id}"""
         try:
             decisions = [
                 decision
@@ -630,7 +525,6 @@ class ObservabilityService:
         """Check for system health alerts"""
         alerts = []
 
-        # Memory promotion spike alert
         if self.memory_health["promotion_rejection_rate"] > 0.8:
             alerts.append(
                 {
@@ -641,7 +535,6 @@ class ObservabilityService:
                 }
             )
 
-        # Retrieval empty alert
         if self.retrieval_quality["retrieval_hit_rate"] < 0.1:
             alerts.append(
                 {
@@ -652,7 +545,6 @@ class ObservabilityService:
                 }
             )
 
-        # Token budget exceeded alert
         if self.retrieval_quality["token_utilization_percent"] > 95:
             alerts.append(
                 {
@@ -663,7 +555,6 @@ class ObservabilityService:
                 }
             )
 
-        # Contradiction alert
         if self.memory_health["contradiction_rate"] > 0.1:
             alerts.append(
                 {
@@ -704,7 +595,6 @@ class ObservabilityService:
             total_items / total_traces if total_traces > 0 else 0
         )
 
-        # Calculate token utilization from actual budget vs allocated tokens across all traces
         total_budget = sum(trace.token_budget for trace in self.retrieval_traces)
         self.retrieval_quality["token_utilization_percent"] = (
             (total_tokens / total_budget * 100) if total_budget > 0 else 0
@@ -719,10 +609,10 @@ class ObservabilityService:
     def export_observability_data(self) -> Dict[str, Any]:
         """Export all observability data for analysis"""
         return {
-            "write_decisions": [asdict(d) for d in self.write_decisions[-100:]],  # Last 100
-            "memory_promotions": [asdict(p) for p in self.memory_promotions[-50:]],  # Last 50
-            "retrieval_traces": [asdict(t) for t in self.retrieval_traces[-20:]],  # Last 20
-            "context_snapshots": [asdict(s) for s in self.context_snapshots[-50:]],  # Last 50
+            "write_decisions": [asdict(d) for d in self.write_decisions[-100:]],
+            "memory_promotions": [asdict(p) for p in self.memory_promotions[-50:]],
+            "retrieval_traces": [asdict(t) for t in self.retrieval_traces[-20:]],
+            "context_snapshots": [asdict(s) for s in self.context_snapshots[-50:]],
             "metrics": self.get_critical_metrics(),
             "alerts": self.check_alerts(),
             "export_timestamp": datetime.utcnow().isoformat(),

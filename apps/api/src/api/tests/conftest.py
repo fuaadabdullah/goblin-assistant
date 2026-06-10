@@ -235,3 +235,32 @@ def mock_yfinance():
 
 
 __all__ = ["_build_authenticated_client"]
+
+
+# ---------------------------------------------------------------------------
+# benchmark fixture fallback
+# ---------------------------------------------------------------------------
+# pytest-benchmark is an optional dependency (pip install goblin-assistant-api[benchmark]).
+# When it is not installed the `benchmark` fixture is unavailable and the
+# test_benchmarks.py suite would fail at collection time.  The stub below lets
+# the tests run as plain assertions so the suite never hard-fails due to a
+# missing plugin.  When pytest-benchmark IS installed its own fixture takes
+# precedence via the normal pytest fixture resolution order.
+
+try:
+    import pytest_benchmark  # noqa: F401  # plugin registers its own fixture
+except ImportError:
+
+    @pytest.fixture
+    def benchmark(request):
+        """No-op stand-in for pytest-benchmark's fixture.
+
+        Calls the function once and returns the result so tests pass without
+        the plugin installed.  Install pytest-benchmark[histogram] to get
+        real timing measurements.
+        """
+
+        def _run(func, *args, **kwargs):
+            return func(*args, **kwargs)
+
+        return _run

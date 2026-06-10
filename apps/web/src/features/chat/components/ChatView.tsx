@@ -3,6 +3,7 @@ import ChatMessageList from './ChatMessageList';
 import ChatComposer from './ChatComposer';
 import ChatSidebar from './ChatSidebar';
 import { useCallback, useState } from 'react';
+import { apiClient } from '../../../lib/api';
 import type { ChatSessionState } from '../hooks/useChatSession';
 import Seo from '../../../components/Seo';
 import { useAuthSession } from '../../../hooks/api/useAuthSession';
@@ -59,6 +60,25 @@ const ChatView = ({ session, isAdmin, isGuest = false }: ChatViewProps) => {
     handleFileSelected,
     removePendingAttachment,
   } = session;
+
+  const rateFeedback = useCallback(
+    async (messageId: string, rating: 1 | -1) => {
+      const msg = messages.find((m) => m.id === messageId);
+      const requestId = msg?.meta?.correlation_id;
+      if (!requestId) return;
+      try {
+        const provider = msg?.meta?.provider;
+        await apiClient.submitRoutingFeedback({
+          requestId,
+          rating,
+          ...(provider && { providerId: provider }),
+        });
+      } catch {
+        // best-effort — feedback failure is silent
+      }
+    },
+    [messages]
+  );
 
   const closeMobilePanel = useCallback(() => setChatSidebarOpen(false), [setChatSidebarOpen]);
   const mobilePanelRef = useFocusTrap(chatSidebarOpen, closeMobilePanel);
@@ -266,6 +286,7 @@ const ChatView = ({ session, isAdmin, isGuest = false }: ChatViewProps) => {
               onDeleteMessage={deleteMessage}
               onCopyMessage={copyMessage}
               onRegenerateMessage={regenerateMessage}
+              onRateFeedback={rateFeedback}
             />
           </section>
           <footer>
