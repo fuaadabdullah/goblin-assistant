@@ -269,21 +269,18 @@ async def lifespan(_app: FastAPI):
     try:
         logger.info("Starting Goblin Assistant API")
 
-        # Group A: infrastructure (Redis + DB) in parallel
-        await asyncio.gather(_init_redis(), _init_db())
-
-        # Colab endpoint restore needs DB to be ready
-        await _restore_colab_endpoint()
-        await asyncio.gather(
-            _restore_routing_registry(),
-            _restore_circuit_states(),
-            _restore_bandit_state(),
-            _restore_feature_weights(),
-        )
-
-        # Group B: monitoring/worker services — fire in background so the health
-        # endpoint can respond immediately without waiting for provider probes.
-        async def _start_background_services():
+        # All I/O — DB, Redis, Supabase restores, provider probes — runs in the
+        # background so the health endpoint responds immediately and Render's
+        # 3-minute health-check window is never exceeded.
+        async def _start_all_services():
+            await asyncio.gather(_init_redis(), _init_db())
+            await _restore_colab_endpoint()
+            await asyncio.gather(
+                _restore_routing_registry(),
+                _restore_circuit_states(),
+                _restore_bandit_state(),
+                _restore_feature_weights(),
+            )
             await asyncio.gather(
                 _start_provider_monitoring(),
                 _start_ai_health_monitoring(),
@@ -307,7 +304,7 @@ async def lifespan(_app: FastAPI):
                 pass
             logger.info("Background services started")
 
-        asyncio.create_task(_start_background_services())
+        asyncio.create_task(_start_all_services())
         logger.info("Backend startup complete", status="ready")
     except Exception as exc:
         logger.error(
