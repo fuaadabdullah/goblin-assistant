@@ -38,7 +38,7 @@ const GoogleCallback: React.FC = () => {
         const backendOrigin = resolvePublicBackendOrigin();
 
         // Exchange code for token
-        const response = await fetch(`${backendOrigin}/auth/google/callback`, {
+        const response = await fetch(`${backendOrigin}/api/v1/auth/google/callback`, {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',

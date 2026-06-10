@@ -9,23 +9,5 @@
     "NEXT_PUBLIC_DOMAIN": "goblin-assistant.vercel.app",
     "NEXT_PUBLIC_GA_MEASUREMENT_ID": "G-527208310"
   },
-  "headers": [
-    {
-      "source": "/api/(.*)",
-      "headers": [
-        {
-          "key": "Access-Control-Allow-Origin",
-          "value": "*"
-        },
-        {
-          "key": "Access-Control-Allow-Methods",
-          "value": "GET, POST, PUT, DELETE, OPTIONS"
-        },
-        {
-          "key": "Access-Control-Allow-Headers",
-          "value": "Content-Type, Authorization"
-        }
-      ]
-    }
-  ]
+  "rewrites": []
 }

@@ -13,6 +13,7 @@ from ..archiving import schedule_conversation_archive  # noqa: F401
 from ..service_accessors import (  # noqa: F401
     _get_context_assembly_service,
     _get_message_classifier,
+    _get_request_pipeline,
     _get_write_time_intelligence,
 )
 from .router import (  # noqa: F401

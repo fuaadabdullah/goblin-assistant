@@ -12,8 +12,13 @@ from __future__ import annotations
 
 import logging
 
-from fastapi import FastAPI, Request
+from fastapi import FastAPI, HTTPException, Request  # noqa: F401 — HTTPException re-exported
 
+from .attestation_service import get_attestation_service  # noqa: F401 — re-exported
+from .attestation_webhook_pkg.auth import (  # noqa: F401 — re-exported
+    get_verified_identity,
+    verify_service_account_token,
+)
 from .attestation_webhook_pkg.middleware import (
     rate_limit,
     require_bearer_token,

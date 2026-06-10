@@ -143,6 +143,11 @@ from .dispatcher_pkg.warmup import (
 from .dispatcher_pkg.warmup import (
     warmup_state_for as _warmup_state_for,
 )
+from .dispatcher_utils import (  # noqa: F401 — re-exported for backward compat
+    CircuitBreaker,
+    LoadBalancer,
+    MetricsCollector,
+)
 from .model_registry import validate_model_alias_targets
 from .provider_registry import (
     DEFAULT_PROVIDER_CLASS_MAP,
@@ -854,3 +859,46 @@ def list_providers(include_hidden: bool = False) -> List[Dict[str, Any]]:
 
 def get_debug_info() -> Dict[str, Any]:
     return dispatcher.debug_info()
+
+
+# ---------------------------------------------------------------------------
+# Standalone helpers expected by tests
+# ---------------------------------------------------------------------------
+
+
+async def select_provider(providers: list, *, preferred: Optional[str] = None) -> Any:
+    """Select the best provider from a list based on health and latency."""
+    if preferred:
+        for p in providers:
+            health = await p.health_check()
+            if p.provider_id == preferred and health.healthy:
+                return p
+
+    healthy = []
+    for p in providers:
+        health = await p.health_check()
+        if health.healthy:
+            healthy.append((health.latency_ms, p))
+
+    if healthy:
+        healthy.sort(key=lambda x: x[0])
+        return healthy[0][1]
+
+    # All unhealthy — pick lowest latency anyway
+    all_checked = []
+    for p in providers:
+        health = await p.health_check()
+        all_checked.append((health.latency_ms, p))
+    all_checked.sort(key=lambda x: x[0])
+    return all_checked[0][1] if all_checked else providers[0]
+
+
+async def invoke_with_fallback(prompt: str, *, providers: list) -> Any:
+    """Try each provider in order; raise if all fail."""
+    last_exc: Optional[Exception] = None
+    for p in providers:
+        try:
+            return await p.invoke(prompt)
+        except Exception as exc:
+            last_exc = exc
+    raise last_exc or RuntimeError("No providers available")

@@ -16,7 +16,6 @@ from fastapi import APIRouter, Depends, HTTPException
 from fastapi.responses import StreamingResponse
 
 from ...assistant_tools.executor import extract_tool_calls_contract, run_tool_loop
-from ...assistant_tools.registry import export_tools_for_provider
 from ...auth.router import User as AuthenticatedUser
 from ...auth.router import get_current_user
 from ...config.archetypes import (
@@ -111,8 +110,19 @@ async def send_message(
             request.message
         )
 
-        # ── Stage 1: Write-Time Intelligence ──────────────────────────────
+        # ── Pre-classify intent (feeds WTI and pipeline stage 1) ─────────
         message_id = str(uuid.uuid4())
+        try:
+            from api.routing.intent_classifier import intent_classifier as _ic  # noqa: PLC0415
+
+            _intent_result = _ic.classify(sanitized_message)
+            _intent_meta = _intent_result.to_dict()
+        except Exception as _ie:
+            logger.warning("intent_classification_failed", error=str(_ie))
+            _intent_result = None
+            _intent_meta = {}
+
+        # ── Stage 1: Write-Time Intelligence ──────────────────────────────
         message_metadata: Dict[str, Any] = {}
         try:
             write_time_intelligence = _messages_pkg._get_write_time_intelligence()
@@ -123,6 +133,7 @@ async def send_message(
                 user_id=conversation.user_id,
                 conversation_id=conversation_id,
                 metadata=request.metadata,
+                intent=_intent_result,
             )
             classification = write_time_result["classification"]
             decision = write_time_result["decision"]
@@ -150,6 +161,8 @@ async def send_message(
             message_metadata["write_time_error"] = str(wti_err)
 
         message_metadata["input_validation"] = message_validation
+        if _intent_meta:
+            message_metadata["intent"] = _intent_meta
         if request.metadata:
             message_metadata.update(request.metadata)
 
@@ -172,6 +185,21 @@ async def send_message(
             message_metadata["attachment_context_included"] = bool(attachment_context)
             if attachment_context:
                 message_metadata["attachment_context_chars"] = len(attachment_context)
+
+        # ── Conversation classification ───────────────────────────────────
+        _new_category: Optional[str] = None
+        try:
+            from api.services.conversation_classifier import conversation_classifier as _cc  # noqa: PLC0415, I001
+
+            _existing_category = conversation.metadata.get("category")
+            _new_category = _cc.classify(sanitized_message, existing=_existing_category)
+            if _new_category and _new_category != _existing_category:
+                await _cr.conversation_store.update_metadata(
+                    conversation_id, {"category": _new_category}
+                )
+            message_metadata["conversation_category"] = _new_category
+        except Exception:
+            pass
 
         # ── Persist user message ──────────────────────────────────────────
         user_msg_saved = await _cr.conversation_store.add_message_to_conversation(
@@ -219,7 +247,7 @@ async def send_message(
                 error=str(quota_err),
             )
 
-        # ── Stage 3: Context assembly + message building ──────────────────
+        # ── Stage 3: Reload conversation + build pipeline input ──────────
         # Reload to include the just-saved user message.
         conversation = await _cr._require_owned_conversation(conversation_id, current_user)
         history_messages = [
@@ -239,66 +267,67 @@ async def send_message(
                 if msg_classification.message_type == MessageType.LEARNING
                 else ""
             )
+            if _new_category:
+                try:
+                    from api.config.mode_addendums import CATEGORY_ADDENDUMS  # noqa: PLC0415
 
-        context_metadata: Dict[str, Any] = {}
-        if request.enable_context_assembly:
+                    cat_addendum = CATEGORY_ADDENDUMS.get(_new_category, "")
+                    if cat_addendum:
+                        addendum = (addendum + "\n\n" + cat_addendum).strip()
+                except Exception:
+                    pass
+
+            # Learned response-length preference — injected only when no explicit mode set
             try:
-                context_assembly_service = _messages_pkg._get_context_assembly_service()
-                assembly_result = await context_assembly_service.assemble_context(
-                    query=sanitized_message,
-                    user_id=current_user.id,
-                    conversation_id=conversation_id,
-                    conversation_history=history_messages[-10:],
-                    model=request.model,
-                )
-                context_text = assembly_result.get("context", "")
-                system_prompt = system_prompt_manager.get_complete_prompt_with_addendum(
-                    context=context_text,
-                    user_query=sanitized_message,
-                    addendum=addendum,
-                )
-                messages = [
-                    {"role": "system", "content": system_prompt},
-                ] + history_messages
-                inject_attachment_context(messages, attachment_context)
-                context_metadata = {
-                    "context_assembly_enabled": True,
-                    "context_assembly_layers": len(assembly_result.get("layers", [])),
-                    "total_tokens_used": assembly_result.get("total_tokens_used", 0),
-                    "degraded_mode": assembly_result.get("degraded_mode", False),
-                    "degraded_reason": assembly_result.get("degraded_reason"),
-                    "truncation_warnings": assembly_result.get("truncation_warnings", []),
-                    "summary_fallback_applied": assembly_result.get(
-                        "summary_fallback_applied", False
-                    ),
-                }
-            except Exception as ctx_err:
-                logger.warning(
-                    "context_assembly_failed_in_send_message",
-                    conversation_id=conversation_id,
-                    error=str(ctx_err),
-                )
-                messages = history_messages
-                inject_attachment_context(messages, attachment_context)
-                context_metadata = {
-                    "context_assembly_enabled": False,
-                    "context_assembly_error": str(ctx_err),
-                }
-        else:
-            messages = history_messages
-            inject_attachment_context(messages, attachment_context)
+                from api.config.mode_addendums import response_length_addendum as _rla  # noqa: PLC0415, I001
+                from api.services.preference_learner import preference_learner as _pl  # noqa: PLC0415, I001
 
-        # ── Stage 4: Provider dispatch ────────────────────────────────────
+                _length_pref = await _pl.get_length_pref(
+                    str(current_user.id),
+                    _intent_meta.get("label", "default"),
+                )
+                _len_add = _rla(_length_pref)
+                if _len_add:
+                    addendum = (addendum + "\n\n" + _len_add).strip()
+            except Exception:
+                pass
+
+        # ── Pipeline: Memory → Routing → Tool Selection ───────────────────
+        # Stages run in sequence; each stage is isolated with try/except so a
+        # failure degrades gracefully rather than aborting the request.
+        pipeline_ctx = await _messages_pkg._get_request_pipeline().run(
+            raw_message=request.message,
+            sanitized_message=sanitized_message,
+            user_id=str(current_user.id),
+            conversation_id=conversation_id,
+            history_messages=history_messages,
+            intent_result=_intent_result,  # skip re-classification; reuse pre-classified result
+            preferred_provider=request.provider,
+            preferred_model=request.model,
+            enable_context_assembly=request.enable_context_assembly,
+            request_model=request.model,
+        )
+        context_metadata: Dict[str, Any] = pipeline_ctx.context_metadata
+
+        system_prompt = system_prompt_manager.get_complete_prompt_with_addendum(
+            context=pipeline_ctx.assembled_context,
+            user_query=sanitized_message,
+            addendum=addendum,
+        )
+        messages = [{"role": "system", "content": system_prompt}] + history_messages
+        inject_attachment_context(messages, attachment_context)
+
+        # ── Provider dispatch ─────────────────────────────────────────────
+        resolved_provider = request.provider or pipeline_ctx.selected_provider
         payload = {
             "messages": messages,
             "model": request.model,
             "user_id": str(current_user.id),
+            "intent": _intent_meta or {},
         }
 
         registered_tools = (
-            export_tools_for_provider(request.provider)
-            if provider_supports_tools(request.provider)
-            else []
+            pipeline_ctx.tool_schemas if provider_supports_tools(resolved_provider) else []
         )
         if _is_general_assistant_mode(request.mode) and registered_tools:
             missing_tools = _missing_general_assistant_tools(registered_tools)
@@ -344,7 +373,7 @@ async def send_message(
 
         provider_response = await _resolve_provider_call(
             _cr.invoke_provider(
-                pid=request.provider,
+                pid=resolved_provider,
                 model=request.model,
                 payload=payload,
                 timeout_ms=30000,
@@ -362,7 +391,7 @@ async def send_message(
             provider_response = await run_tool_loop(
                 messages=list(messages),
                 invoke_fn=_cr.invoke_provider,
-                provider=request.provider,
+                provider=resolved_provider,
                 model=request.model,
                 tools=registered_tools,
                 timeout_ms=30000,
@@ -490,6 +519,30 @@ async def send_message(
                 message_id=response_message_id,
                 error=str(usage_err),
             )
+
+        # ── Preference learning (fire-and-forget) ────────────────────────
+        try:
+            import asyncio as _asyncio  # noqa: PLC0415
+
+            from api.services.preference_learner import preference_learner as _pl  # noqa: PLC0415
+
+            _pref_task = _asyncio.create_task(
+                _pl.record_response(
+                    user_id=str(current_user.id),
+                    provider_id=used_provider,
+                    model=used_model,
+                    intent_label=_intent_meta.get("label", "unknown"),
+                    completion_tokens=int(
+                        (usage or {}).get("completion_tokens")
+                        or (usage or {}).get("output_tokens")
+                        or 0
+                    ),
+                    explicit_rating=None,
+                )
+            )
+            _pref_task.add_done_callback(lambda _t: None)  # suppress "task not awaited" warning
+        except Exception:
+            pass
 
         visualizations = None
         if isinstance(provider_response, dict) and provider_response.get("visualizations"):
