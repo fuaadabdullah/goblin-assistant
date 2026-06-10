@@ -10,6 +10,9 @@ requires-python = ">=3.11"
 readme = "src/api/README.md"
 dependencies = []
 
+[project.optional-dependencies]
+benchmark = ["pytest-benchmark>=4.0"]
+
 [tool.setuptools]
 package-dir = {"" = "src"}
 
@@ -23,7 +26,7 @@ testpaths = ["src/api", "src/api/tests"]
 python_files = ["test_*.py"]
 python_classes = ["Test*"]
 python_functions = ["test_*"]
-addopts = ["--strict-markers", "--strict-config", "--disable-warnings", "--tb=short", "--benchmark-disable-gc"]
+addopts = ["--strict-markers", "--strict-config", "--disable-warnings", "--tb=short"]
 asyncio_mode = "auto"
 
 [tool.coverage.run]
@@ -40,7 +43,7 @@ omit = [
 [tool.coverage.report]
 show_missing = true
 skip_covered = false
-fail_under = 60
+fail_under = 70
 exclude_lines = [
   "pragma: no cover",
   "if TYPE_CHECKING:",
@@ -112,6 +115,9 @@ ignore = [
   "ARG005",   # unused lambda args (forward-compatible signatures)
   "SIM103",   # return condition directly (readability preference)
 ]
+
+[tool.ruff.lint.isort]
+known-first-party = ["api"]
 
 [tool.ruff.lint.pylint]
 max-statements = 40
