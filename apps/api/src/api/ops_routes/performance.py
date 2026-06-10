@@ -56,7 +56,7 @@ async def metrics_history(
             }
 
         all_history = {}
-        for prov_name in performance_metrics.total_requests.keys():
+        for prov_name in performance_metrics.total_requests:
             times = performance_metrics.response_times.get(prov_name, [])
             if times:
                 all_history[prov_name] = {

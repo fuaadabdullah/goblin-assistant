@@ -6,6 +6,7 @@ Run this to verify the integration works locally.
 
 import asyncio
 import os
+import sys
 
 import httpx
 
@@ -67,7 +68,7 @@ if __name__ == "__main__":
     if missing:
         print(f"⚠️  Missing environment variables: {', '.join(missing)}")
         print("Set them in .env.local or export them before running")
-        exit(1)
+        sys.exit(1)
 
     try:
         asyncio.run(test_debugger_endpoint())

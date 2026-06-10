@@ -5,9 +5,11 @@ Simple test script to verify sandbox execution works without RQ
 
 import os
 import shutil
+import sys
+
+from docker.errors import DockerException
 
 import docker
-from docker.errors import DockerException
 
 
 def test_sandbox_execution():
@@ -98,4 +100,4 @@ def test_sandbox_execution():
 
 if __name__ == "__main__":
     success = test_sandbox_execution()
-    exit(0 if success else 1)
+    sys.exit(0 if success else 1)

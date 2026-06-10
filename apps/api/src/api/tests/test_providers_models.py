@@ -33,7 +33,7 @@ def test_provider_models_ignores_blank_values():
 
     result = _provider_models(entry)
 
-    assert result == ["  ", "model-a"] or result == ["model-a"]
+    assert result in (["  ", "model-a"], ["model-a"])
 
 
 def test_get_provider_models_endpoint_returns_providers_and_models():

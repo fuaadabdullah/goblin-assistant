@@ -128,7 +128,7 @@ class TestExecuteCode:
             return _mock_proc(stdout="ok\n")
 
         with patch("subprocess.run", side_effect=capture_run):
-            result = await TOOL_REGISTRY["execute_code"].handler(code='print("ok")')
+            await TOOL_REGISTRY["execute_code"].handler(code='print("ok")')
 
         cmd = captured["cmd"]
         assert "docker" in cmd[0]

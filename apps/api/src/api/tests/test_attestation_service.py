@@ -64,10 +64,10 @@ class FakeRedis:
 
     def scan(self, _cursor, match=None, count=None, **_kwargs):
         if match == "attestation:node:*":
-            keys = [k.encode("utf-8") for k in self.hashes.keys()]
+            keys = [k.encode("utf-8") for k in self.hashes]
             return 0, keys
         if match == "attestation:revoked:*":
-            keys = [k.encode("utf-8") for k in self.values.keys()]
+            keys = [k.encode("utf-8") for k in self.values]
             return 0, keys
         return 0, []
 
