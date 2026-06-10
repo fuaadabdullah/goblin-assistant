@@ -34,6 +34,13 @@ executors:
     resource_class: medium
 
 commands:
+  trigger-autofix:
+    steps:
+      - run:
+          name: Trigger AI autofix (on failure)
+          when: on_fail
+          command: python3 tooling/automation/ci_autofix_trigger.py
+
   setup-tmpdir:
     steps:
       - run:
@@ -128,7 +135,8 @@ jobs:
       - install-python
       - run:
           name: Lint (ruff + eslint + policy guard)
-          command: make lint
+          command: make lint 2>&1 | tee /tmp/ci_failure_output.txt; exit ${PIPESTATUS[0]}
+      - trigger-autofix
 
   # ── Type check ───────────────────────────────────────────────────────────
   typecheck:
@@ -159,6 +167,7 @@ jobs:
       - run:
           name: Providers JSON current
           command: make check-providers-json
+      - trigger-autofix
 
   # ── Backend tests ─────────────────────────────────────────────────────────
   test-backend:
@@ -179,7 +188,7 @@ jobs:
               --cov-report=html:htmlcov \
               --cov-fail-under=60 \
               --junitxml=test-results.xml \
-              --tb=short -v
+              --tb=short -v 2>&1 | tee /tmp/ci_failure_output.txt; exit ${PIPESTATUS[0]}
       - run:
           name: Contract tests
           command: |
@@ -188,7 +197,8 @@ jobs:
               -o "addopts=" \
               src/api/tests/test_contract_boundaries.py \
               src/api/tests/test_chat_route_version_aliases.py \
-              --tb=short -v
+              --tb=short -v 2>&1 | tee -a /tmp/ci_failure_output.txt; exit ${PIPESTATUS[0]}
+      - trigger-autofix
       - store_test_results:
           path: apps/api/test-results.xml
       - store_artifacts:
@@ -214,7 +224,8 @@ jobs:
       - install-pnpm
       - run:
           name: Web tests
-          command: TMPDIR=~/repo/.tmp pnpm --filter @goblin/web test:ci
+          command: TMPDIR=~/repo/.tmp pnpm --filter @goblin/web test:ci 2>&1 | tee /tmp/ci_failure_output.txt; exit ${PIPESTATUS[0]}
+      - trigger-autofix
       - store_artifacts:
           path: apps/web/coverage
           destination: web-coverage
