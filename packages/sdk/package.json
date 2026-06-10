@@ -9,6 +9,18 @@
     ".": {
       "types": "./dist/index.d.ts",
       "default": "./dist/index.js"
+    },
+    "./components": {
+      "types": "./dist/generated/components.d.ts",
+      "default": "./dist/generated/components.js"
+    },
+    "./operations": {
+      "types": "./dist/generated/operations.d.ts",
+      "default": "./dist/generated/operations.js"
+    },
+    "./paths": {
+      "types": "./dist/generated/paths.d.ts",
+      "default": "./dist/generated/paths.js"
     }
   },
   "scripts": {

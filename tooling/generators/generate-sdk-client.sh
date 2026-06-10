@@ -11,4 +11,6 @@ TMPDIR="$ROOT_DIR/.tmp" pnpm --filter @goblin/web exec openapi-typescript \
   ../../packages/sdk/openapi/openapi.json \
   -o ../../packages/sdk/src/generated/openapi.ts
 
+python3 tooling/generators/split-sdk.py
+
 echo "Generated SDK schema and TypeScript types."
