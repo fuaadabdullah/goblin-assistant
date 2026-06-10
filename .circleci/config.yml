@@ -359,6 +359,62 @@ jobs:
           environment:
             CHROMATIC_PROJECT_TOKEN: $CHROMATIC_PROJECT_TOKEN
 
+  # ── Vercel (frontend) ────────────────────────────────────────────────────
+  deploy-vercel:
+    executor: node
+    steps:
+      - checkout
+      - setup-tmpdir
+      - run:
+          name: Validate Vercel credentials
+          command: |
+            if [ -z "$VERCEL_TOKEN" ] || [ -z "$VERCEL_ORG_ID" ] || [ -z "$VERCEL_PROJECT_ID" ]; then
+              echo "Error: VERCEL_TOKEN, VERCEL_ORG_ID, or VERCEL_PROJECT_ID not set"
+              echo "Set these in CircleCI project settings → Environment Variables"
+              exit 1
+            fi
+      - run:
+          name: Install Vercel CLI
+          command: TMPDIR=~/repo/.tmp pnpm add -g vercel
+      - run:
+          name: Deploy to Vercel (production)
+          command: |
+            vercel pull --yes --environment=production --token=$VERCEL_TOKEN
+            vercel build --prod --token=$VERCEL_TOKEN
+            DEPLOY_URL=$(vercel deploy --prebuilt --prod --token=$VERCEL_TOKEN)
+            echo "Deployed: $DEPLOY_URL"
+          environment:
+            VERCEL_ORG_ID: $VERCEL_ORG_ID
+            VERCEL_PROJECT_ID: $VERCEL_PROJECT_ID
+
+  # ── Notify ────────────────────────────────────────────────────────────────
+  notify-deploy:
+    executor: base
+    steps:
+      - run:
+          name: Notify Slack
+          when: always
+          command: |
+            if [ -z "$SLACK_WEBHOOK_URL" ]; then
+              echo "SLACK_WEBHOOK_URL not set — skipping notification."
+              exit 0
+            fi
+            SHORT="${CIRCLE_SHA1:0:7}"
+            MSG="${CIRCLE_WORKFLOW_JOB_ID:+✅ Goblin deployed to production}"
+            MSG="${MSG:-❌ Goblin deployment FAILED}"
+            curl -sf -X POST "$SLACK_WEBHOOK_URL" \
+              -H "Content-Type: application/json" \
+              -d "{
+                \"text\": \"$MSG\",
+                \"blocks\": [{
+                  \"type\": \"section\",
+                  \"text\": {
+                    \"type\": \"mrkdwn\",
+                    \"text\": \"*$MSG*\nCommit: \`$SHORT\` on \`$CIRCLE_BRANCH\`\nAPI: https://goblin-backend-dt30.onrender.com\nFrontend: https://goblin-assistant.vercel.app\n<$CIRCLE_BUILD_URL|View build>\"
+                  }
+                }]
+              }"
+
   # ── Smoke Tests ──────────────────────────────────────────────────────────
   smoke-test:
     executor: base
@@ -414,6 +470,21 @@ workflows:
               only: [main, develop]
       - deploy-render:
           requires: [docker-build]
+          filters:
+            branches:
+              only: main
+      - deploy-vercel:
+          requires: [build]
+          filters:
+            branches:
+              only: main
+      - smoke-test:
+          requires: [deploy-render]
+          filters:
+            branches:
+              only: main
+      - notify-deploy:
+          requires: [smoke-test, deploy-vercel]
           filters:
             branches:
               only: main

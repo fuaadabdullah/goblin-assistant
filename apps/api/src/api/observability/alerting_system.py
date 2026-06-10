@@ -539,7 +539,49 @@ async def webhook_alert_handler(alert: Alert):
         logger.error("Failed to send webhook alert", alert_id=alert.alert_id, error=str(exc))
 
 
+async def slack_alert_handler(alert: Alert):
+    """Post alert to Slack for all severity levels."""
+    webhook_url = os.environ.get("SLACK_WEBHOOK_URL", "")
+    if not webhook_url:
+        return
+
+    import httpx
+
+    _emoji = {
+        AlertSeverity.CRITICAL: "🚨",
+        AlertSeverity.HIGH: "⚠️",
+        AlertSeverity.MEDIUM: "📊",
+        AlertSeverity.LOW: "ℹ️",
+    }
+    emoji = _emoji.get(alert.severity, "📢")
+    payload = {
+        "blocks": [
+            {
+                "type": "section",
+                "text": {
+                    "type": "mrkdwn",
+                    "text": (
+                        f"{emoji} *[{alert.severity.value.upper()}] {alert.title}*\n"
+                        f"{alert.description}\n"
+                        f"`{alert.metric_name}` = {alert.current_value} "
+                        f"(threshold: {alert.threshold_value})"
+                    ),
+                },
+            }
+        ]
+    }
+
+    try:
+        async with httpx.AsyncClient(timeout=10.0) as client:
+            resp = await client.post(webhook_url, json=payload)
+            resp.raise_for_status()
+        logger.info("Slack alert sent", alert_id=alert.alert_id)
+    except Exception as exc:
+        logger.error("Failed to send Slack alert", alert_id=alert.alert_id, error=str(exc))
+
+
 # Register default alert handlers
 alerting_system.register_alert_callback(log_alert_handler)
 alerting_system.register_alert_callback(email_alert_handler)
 alerting_system.register_alert_callback(webhook_alert_handler)
+alerting_system.register_alert_callback(slack_alert_handler)

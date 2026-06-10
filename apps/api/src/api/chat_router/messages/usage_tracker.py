@@ -4,10 +4,7 @@ import uuid
 from importlib import import_module
 from typing import Any, Dict, Optional
 
-from ...core.contracts import ChatMessageFailedPayload, ChatMessageCreatedPayload
-from ...observability.events import event_emitter
-from ...storage.tasks import get_task_store
-from ...storage.usage_events import get_usage_event_store
+from ...core.contracts import ChatMessageCreatedPayload, ChatMessageFailedPayload
 
 _messages_pkg = import_module(__package__)
 
@@ -117,7 +114,7 @@ async def record_usage_event(
 
 async def emit_chat_message_failed(
     *,
-    current_user: "AuthenticatedUser",  # noqa: F821
+    current_user: Any,
     conversation_id: str,
     stage: str,
     message_id: Optional[str] = None,
@@ -134,7 +131,6 @@ async def emit_chat_message_failed(
     This is an explicit side-effect boundary — fires an event through the
     event emitter.
     """
-    from ...auth.router import User as AuthenticatedUser  # noqa: F811
 
     await _messages_pkg.event_emitter.emit(
         "chat.message.failed",
@@ -157,7 +153,7 @@ async def emit_chat_message_failed(
 
 async def emit_chat_message_created(
     *,
-    current_user: "AuthenticatedUser",
+    current_user: Any,
     conversation_id: str,
     message_id: str,
     role: str,

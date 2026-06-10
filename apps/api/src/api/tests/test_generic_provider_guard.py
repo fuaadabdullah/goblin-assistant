@@ -1,7 +1,8 @@
 from __future__ import annotations
 
-import api.providers as providers_pkg
 import pytest
+
+import api.providers as providers_pkg
 from api.providers.generic import GenericProvider
 
 
