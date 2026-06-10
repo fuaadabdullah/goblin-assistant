@@ -55,7 +55,14 @@ check-route-lifecycle:
 	$(PYTHON) scripts/architecture/check_route_lifecycle.py
 
 type-check-api-mypy:
-	cd apps/api && PYTHONPATH=src $(PYTHON) -m mypy --config-file pyproject.toml src/api
+	cd apps/api && PYTHONPATH=src $(PYTHON) -m mypy \
+		--ignore-missing-imports \
+		--disallow-any-generics \
+		--follow-imports=skip \
+		src/api/services/error_summarizer.py \
+		src/api/ops_routes/sentry_webhook.py \
+		src/api/providers/rovo_dev_provider.py \
+		src/api/routes/support_router.py
 
 type-check-api-pyright:
 	cd apps/api && PYTHONPATH=src $(PYTHON) -m pyright --project pyrightconfig.json

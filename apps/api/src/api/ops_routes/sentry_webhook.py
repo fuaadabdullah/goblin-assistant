@@ -138,10 +138,5 @@ async def sentry_webhook(request: Request) -> JSONResponse:
 
     await _post_to_slack(slack_payload)
 
-    logger.info(
-        "Sentry webhook processed",
-        title=title,
-        level=level,
-        one_liner=summary.one_liner,
-    )
+    logger.info("Sentry webhook processed — %s [%s] %s", title, level, summary.one_liner)
     return JSONResponse({"ok": True})
