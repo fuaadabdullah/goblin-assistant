@@ -24,7 +24,8 @@ if [[ -z "$HEAD_BRANCH" ]]; then
   exit 1
 fi
 
-if [[ "$EVENT_NAME" == "pull_request" ]]; then
+TRUNK_REGEX='^(main|master|develop|reorg/.+)$'
+if [[ "$EVENT_NAME" == "pull_request" && ! "$HEAD_BRANCH" =~ $TRUNK_REGEX ]]; then
   if [[ ! "$HEAD_BRANCH" =~ $BRANCH_REGEX ]]; then
     echo "Invalid branch name '$HEAD_BRANCH'. Expected pattern: $BRANCH_REGEX"
     exit 1
