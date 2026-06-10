@@ -37,9 +37,12 @@ commands:
   trigger-autofix:
     steps:
       - run:
-          name: Trigger AI autofix (on failure)
+          name: AI autofix via Claude (on failure)
           when: on_fail
-          command: python3 tooling/automation/ci_autofix_trigger.py
+          command: |
+            pip install --quiet anthropic
+            FAILURE_OUTPUT_FILE=/tmp/ci_failure_output.txt \
+              python3 tooling/automation/ci_autofix_trigger.py
 
   setup-tmpdir:
     steps:
