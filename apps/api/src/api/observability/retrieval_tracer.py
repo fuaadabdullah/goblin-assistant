@@ -441,8 +441,7 @@ class RetrievalTracer:
                 )
                 tier_effectiveness[tier]["count"] += 1
 
-        for tier in tier_effectiveness:
-            eff = tier_effectiveness[tier]
+        for tier, eff in tier_effectiveness.items():
             eff["avg_relevance"] = eff["total_relevance"] / max(1, eff["total_items"])
             eff["usage_frequency"] = eff["count"] / total_traces * 100
 

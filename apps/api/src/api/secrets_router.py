@@ -59,7 +59,6 @@ class HealthResponse(BaseModel):
 
 def get_secrets_adapter() -> SecretAdapter:
     """Dependency to get the secrets adapter instance."""
-    global _secrets_adapter
     if _secrets_adapter is None:
         raise HTTPException(
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE,

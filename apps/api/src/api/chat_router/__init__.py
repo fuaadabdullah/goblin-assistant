@@ -15,8 +15,6 @@ when the call site lives in a submodule.
 import structlog
 from fastapi import APIRouter
 
-from ..auth.router import User as AuthenticatedUser
-
 # --- Patchable runtime dependencies ---
 # Module-level so tests can monkeypatch via `api.chat_router.<name>`.
 from ..auth.router import get_current_user  # noqa: F401

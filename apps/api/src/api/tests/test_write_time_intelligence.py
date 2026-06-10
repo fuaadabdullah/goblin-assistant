@@ -428,7 +428,7 @@ class WriteTimeIntelligenceTester:
         print("=" * 60)
 
         # Save results to file
-        with open("write_time_test_results.json", "w") as f:
+        with open("write_time_test_results.json", "w") as f:  # noqa: ASYNC230
             json.dump(test_results, f, indent=2, default=str)
 
         print("📄 Test results saved to write_time_test_results.json")

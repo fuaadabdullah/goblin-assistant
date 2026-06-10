@@ -75,6 +75,7 @@ async def _handle_run_shell_command(
                 text=True,
                 timeout=30,
                 cwd=str(cwd),
+                check=False,
             )
         except subprocess.TimeoutExpired:
             return {"error": "Command timed out after 30 seconds", "exit_code": -1}

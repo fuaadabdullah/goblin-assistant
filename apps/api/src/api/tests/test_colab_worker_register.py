@@ -176,7 +176,6 @@ def test_register_endpoint_no_auth():
 
 
 def test_register_endpoint_probe_timeout():
-
     with (
         patch(
             "api.ops_routes.colab_worker._probe_health",

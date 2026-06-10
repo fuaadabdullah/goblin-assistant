@@ -115,7 +115,7 @@ class WebAuthnPasskey:
 
     @staticmethod
     async def verify_passkey_authentication(
-        credential_id: str,
+        _credential_id: str,
         stored_public_key: str,
         authenticator_data_b64: str,
         client_data_json_b64: str,

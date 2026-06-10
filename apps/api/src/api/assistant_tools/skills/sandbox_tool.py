@@ -79,6 +79,7 @@ def _run_code(code: str, language: str, timeout: int) -> Dict[str, Any]:
                 capture_output=True,
                 text=True,
                 timeout=timeout,
+                check=False,
             )
         except subprocess.TimeoutExpired:
             return {"error": f"Execution timed out after {timeout}s", "exit_code": -1}

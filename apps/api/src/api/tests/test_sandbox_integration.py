@@ -98,6 +98,7 @@ def test_sandbox_components():
             capture_output=True,
             text=True,
             cwd=".",
+            check=False,
         )
 
         if result.returncode == 0:
@@ -187,6 +188,7 @@ def test_sandbox_components():
             text=True,
             cwd=".",
             timeout=10,
+            check=False,
         )
 
         if result.returncode == 0 or "usage:" in result.stdout.lower():

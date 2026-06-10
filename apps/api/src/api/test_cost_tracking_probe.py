@@ -54,7 +54,7 @@ def test_cost_tracking_postgres_success(client, monkeypatch):
 
     class FakePsycopgModule(SimpleNamespace):
         @staticmethod
-        def connect(dsn, connect_timeout=2):
+        def connect(_dsn: str, _connect_timeout: int = 2) -> "FakeConn":  # type: ignore[name-defined]
             return FakeConn()
 
     monkeypatch.setitem(sys.modules, "psycopg", FakePsycopgModule())

@@ -55,6 +55,7 @@ def _run_git(args: List[str], cwd: Path) -> Dict[str, Any]:
         capture_output=True,
         text=True,
         cwd=str(cwd),
+        check=False,
     )
     output = {
         "stdout": result.stdout.strip(),

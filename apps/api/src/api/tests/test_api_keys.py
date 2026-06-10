@@ -73,7 +73,7 @@ class TestFileAPIKeyStore:
             assert result == "sk-abc123"
 
             # Verify file content
-            with open(path) as f:
+            with open(path) as f:  # noqa: ASYNC230
                 data = json.load(f)
             assert data["openai"] == "sk-abc123"
         finally:

@@ -24,7 +24,9 @@ try:
     from sqlalchemy.dialects.postgresql import VECTOR
 except ImportError:
     # Fallback for SQLite or when pgvector is not available
-    from sqlalchemy import Text as VECTOR
+    from sqlalchemy import Text as _TextFallback
+
+    VECTOR = _TextFallback  # type alias fallback when pgvector unavailable
 
 Base = declarative_base()
 
