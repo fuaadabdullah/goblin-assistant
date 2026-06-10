@@ -6,7 +6,7 @@ import json
 import logging
 import re
 from dataclasses import dataclass
-from typing import List
+from typing import Any, Dict, List
 
 logger = logging.getLogger(__name__)
 
@@ -57,7 +57,7 @@ def _parse_summary_json(text: str) -> ErrorSummary:
     )
 
 
-def _format_frames(frames: List[dict]) -> str:
+def _format_frames(frames: List[Dict[str, Any]]) -> str:
     """Format Sentry stack frames into a readable trace string (top 15)."""
     lines = []
     for frame in frames[-15:]:
