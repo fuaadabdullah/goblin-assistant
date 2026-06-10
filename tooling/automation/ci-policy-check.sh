@@ -2,7 +2,7 @@
 set -euo pipefail
 
 BRANCH_REGEX='^(feature|fix|refactor|infra)/'
-COMMIT_REGEX='^(feat|fix|refactor|infra|chore|docs|test|build|ci|perf|revert)(\([a-z0-9._/-]+\))?: .+'
+COMMIT_REGEX='^(feat|fix|refactor|infra|chore|docs|test|build|ci|perf|revert|style|deps|release|security)(\([a-z0-9._/ -]+\))?: .+'
 
 # Support both GitHub Actions and CircleCI environments
 if [[ -n "${GITHUB_EVENT_NAME:-}" ]]; then
