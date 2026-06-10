@@ -30,12 +30,6 @@ ruff>=0.6.0
 pytest-cov>=5.0.0
 pytest-benchmark>=4.0.0
 vulture>=2.11
-tiktoken>=0.7.0
-
-# Google Drive integration for Ollama models
-google-api-python-client>=2.127.0
-google-auth-httplib2>=0.1.1
-google-auth-oauthlib>=1.2.0
 
 # Secrets adapter dependencies
 hvac>=1.2.0
