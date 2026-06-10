@@ -281,30 +281,33 @@ async def lifespan(_app: FastAPI):
             _restore_feature_weights(),
         )
 
-        # Group B: all monitoring/worker services in parallel.
-        await asyncio.gather(
-            _start_provider_monitoring(),
-            _start_ai_health_monitoring(),
-            _start_colab_heartbeat(),
-            _start_dispatcher_background_tasks(),
-            _init_secrets(),
-            _start_artifact_cleanup(),
-            _start_embedding_worker(),
-        )
+        # Group B: monitoring/worker services — fire in background so the health
+        # endpoint can respond immediately without waiting for provider probes.
+        async def _start_background_services():
+            await asyncio.gather(
+                _start_provider_monitoring(),
+                _start_ai_health_monitoring(),
+                _start_colab_heartbeat(),
+                _start_dispatcher_background_tasks(),
+                _init_secrets(),
+                _start_artifact_cleanup(),
+                _start_embedding_worker(),
+            )
+            try:
+                from .services import VECTOR_STORE_AVAILABLE  # noqa: PLC0415
 
-        try:
-            from .services import VECTOR_STORE_AVAILABLE  # noqa: PLC0415
+                if VECTOR_STORE_AVAILABLE:
+                    logger.info("Safe vector store available")
+                else:
+                    logger.warning(
+                        "Safe vector store unavailable",
+                        reason="sentence-transformers not installed",
+                    )
+            except Exception:
+                pass
+            logger.info("Background services started")
 
-            if VECTOR_STORE_AVAILABLE:
-                logger.info("Safe vector store available")
-            else:
-                logger.warning(
-                    "Safe vector store unavailable",
-                    reason="sentence-transformers not installed",
-                )
-        except Exception:
-            pass
-
+        asyncio.create_task(_start_background_services())
         logger.info("Backend startup complete", status="ready")
     except Exception as exc:
         logger.error(

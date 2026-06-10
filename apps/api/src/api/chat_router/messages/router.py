@@ -319,6 +319,34 @@ async def send_message(
 
         # ── Provider dispatch ─────────────────────────────────────────────
         resolved_provider = request.provider or pipeline_ctx.selected_provider
+        _rovo_task_id: Optional[str] = None
+        if resolved_provider == "rovo_dev":
+            try:
+                from ...storage.tasks import task_store as _task_store  # noqa: PLC0415
+
+                _rovo_task_id = str(uuid.uuid4())
+                await _task_store.save_task(
+                    _rovo_task_id,
+                    {
+                        "task_id": _rovo_task_id,
+                        "task_type": "code",
+                        "status": "pending",
+                        "payload": {
+                            "prompt": sanitized_message,
+                            "conversation_id": conversation_id,
+                            "user_id": str(current_user.id),
+                        },
+                        "metadata": {
+                            "provider": "rovo_dev",
+                            "intent": _intent_meta,
+                            "complexity_score": getattr(pipeline_ctx, "complexity_score", None),
+                        },
+                    },
+                )
+            except Exception as _rte:
+                logger.warning("rovo_dev_task_create_failed", error=str(_rte))
+                _rovo_task_id = None
+
         payload = {
             "messages": messages,
             "model": request.model,
@@ -380,6 +408,34 @@ async def send_message(
                 stream=False,
             )
         )
+
+        if _rovo_task_id is not None:
+            try:
+                from ...storage.tasks import task_store as _task_store  # noqa: PLC0415
+
+                _is_ok = isinstance(provider_response, dict) and provider_response.get("ok")
+                await _task_store.update_task_status(
+                    _rovo_task_id,
+                    "completed" if _is_ok else "failed",
+                    result={
+                        "diff": (
+                            provider_response.get("result", {}).get("text")
+                            or provider_response.get("text")
+                        )
+                        if isinstance(provider_response, dict)
+                        else None,
+                        "error": provider_response.get("error")
+                        if isinstance(provider_response, dict)
+                        else None,
+                        "latency_ms": provider_response.get("latency_ms")
+                        if isinstance(provider_response, dict)
+                        else None,
+                    },
+                )
+            except Exception as _rtu:
+                logger.warning(
+                    "rovo_dev_task_update_failed", task_id=_rovo_task_id, error=str(_rtu)
+                )
 
         # Tool loop
         if (

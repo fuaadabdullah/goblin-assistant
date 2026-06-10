@@ -19,7 +19,8 @@ from api.core.errors import DomainError
 
 from .auth.router import User as AuthenticatedUser
 from .auth.router import get_current_user
-from .services.embedding_service import EmbeddingProviderUnavailableError, embedding_worker
+from .services.embedding_service import EmbeddingProviderUnavailableError
+from .services.embedding_worker import embedding_worker
 from .services.retrieval_service import retrieve_by_source_type
 from .storage.database import get_readonly_db_context
 

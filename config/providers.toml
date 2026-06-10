@@ -113,6 +113,10 @@ gcp                      = "gcp_vm"
 gcp_vm                   = "gcp_vm"
 gcp-vm                   = "gcp_vm"
 gcp_vllm                 = "gcp_vllm"
+# Rovo Dev / Goblin Coder
+rovo-dev                 = "rovo_dev"
+goblin_coder             = "rovo_dev"
+goblin-coder             = "rovo_dev"
 gcp-vllm                 = "gcp_vllm"
 google_cloud             = "gcp_vllm"
 google_cloud_selfhosted  = "gcp_vm"
@@ -698,6 +702,28 @@ display_name            = "Mock Provider"
 is_active               = true
 force_fallback          = true
 hidden                  = true
+
+# ---------------------------------------------------------------------------
+# Rovo Dev — Atlassian AI coding agent (internal only, not user-facing)
+# Not in visible_providers — hidden from user-facing lists while still
+# participating in capability-based routing for code tasks.
+# ---------------------------------------------------------------------------
+[providers.rovo_dev]
+name                    = "Rovo Dev (Goblin Coder)"
+endpoint                = "https://mcp.atlassian.com/v1/mcp"
+endpoint_env            = "ROVO_DEV_ENDPOINT"
+api_key_env             = "ATLASSIAN_API_TOKEN"
+default_model           = "rovo_dev"
+models                  = ["rovo_dev"]
+capabilities            = ["code"]
+priority_tier           = 5
+cost_score              = 0.0
+cost_input_per1k        = 0.0
+cost_output_per1k       = 0.0
+default_timeout_ms      = 120000
+health_check_timeout_ms = 15000
+tier                    = "cloud"
+is_active               = true
 
 # =============================================================================
 # LEGACY — GCP servers removed (preemptible VMs terminated 2026-01-11)

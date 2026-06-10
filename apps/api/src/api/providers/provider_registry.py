@@ -20,6 +20,7 @@ from .ollama_provider import OllamaProvider
 from .openai_compatible import OpenAICompatibleProvider
 from .openai_provider import OpenAIProvider
 from .provider_config_runtime import ProviderConfig, ProviderToml
+from .rovo_dev_provider import RovoDevProvider
 from .siliconeflow import SiliconeFlowProvider
 
 ProviderFactory = Callable[[str, Dict[str, Any]], ProviderAdapter]
@@ -41,6 +42,7 @@ DEFAULT_PROVIDER_CLASS_MAP: Dict[str, type[BaseProvider]] = {
     "gcp_vllm": GoogleCloudProvider,
     "gcp_vm": GoogleCloudSelfhostedProvider,
     "mock": MockProvider,
+    "rovo_dev": RovoDevProvider,
 }
 
 
@@ -48,6 +50,7 @@ def _gcs_any_backend_configured(backends: list) -> bool:
     """Return True if at least one google_cloud_selfhosted backend has its
     required env vars set."""
     from .google_cloud_selfhosted_provider import _backend_is_configured
+
     return any(_backend_is_configured(bc) for bc in backends)
 
 

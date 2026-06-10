@@ -1,0 +1,32 @@
+name: Goblin Coder (Rovo Dev)
+
+# Triggered by the backend via repository_dispatch when the goblin
+# routes a code task to Rovo Dev. Never run manually in production.
+on:
+  repository_dispatch:
+    types: [goblin-coder]
+
+jobs:
+  code:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      pull-requests: write
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Run Rovo Dev
+        uses: atlassian-labs/rovo-dev-action@v1
+        with:
+          prompt: ${{ github.event.client_payload.prompt }}
+          atlassian_email: ${{ secrets.ATLASSIAN_EMAIL }}
+          atlassian_token: ${{ secrets.ATLASSIAN_API_TOKEN }}
+
+      - name: Report result
+        if: always()
+        run: |
+          echo "task_id=${{ github.event.client_payload.task_id }}"
+          echo "run_id=${{ github.run_id }}"
