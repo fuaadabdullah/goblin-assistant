@@ -32,7 +32,7 @@ if [[ "$EVENT_NAME" == "pull_request" && ! "$HEAD_BRANCH" =~ $TRUNK_REGEX ]]; th
   fi
 fi
 
-if [[ "$EVENT_NAME" == "pull_request" ]]; then
+if [[ "$EVENT_NAME" == "pull_request" && ! "$HEAD_BRANCH" =~ $TRUNK_REGEX ]]; then
   BASE_REF="${GITHUB_BASE_REF:-${CIRCLE_TARGET_BRANCH:-main}}"
   git fetch origin "$BASE_REF" --depth=1
   RANGE="origin/$BASE_REF...HEAD"
