@@ -365,6 +365,9 @@ async def test_assemble_semantic_retrieval_exception_ends_trace(monkeypatch):
 
 
 class _FakeQuery:
+    def join(self, *_args, **_kwargs):
+        return self
+
     def filter(self, *_args, **_kwargs):
         return self
 
