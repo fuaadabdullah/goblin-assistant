@@ -54,7 +54,8 @@ def load_model_context_windows() -> Dict[str, int]:
 
     Uses the shared Pydantic schema for validation & defaults.
     """
-    config_path = Path(__file__).resolve().parents[3] / "config" / "providers.toml"
+    # Repo root is parents[6] from apps/api/src/api/services/context_assembly_service/
+    config_path = Path(__file__).resolve().parents[6] / "config" / "providers.toml"
     if not config_path.exists():
         logger.warning("providers_toml_not_found", path=str(config_path))
         return {}

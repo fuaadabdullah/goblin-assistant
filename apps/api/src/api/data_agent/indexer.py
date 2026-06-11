@@ -27,7 +27,7 @@ class DocumentIndexer:
         metadata: Optional[Dict[str, Any]] = None,
         document_id: Optional[str] = None,
     ) -> str:
-        from api.services.embedding_service import embedding_worker  # noqa: PLC0415
+        from api.services.embedding_worker import embedding_worker  # noqa: PLC0415
 
         doc_id = document_id or self._generate_id(content)
         await embedding_worker.queue_index_item(

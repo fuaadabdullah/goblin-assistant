@@ -24,10 +24,18 @@ async def get_working_memory_summaries(
     try:
         from sqlalchemy import select
 
+        from ...storage.models import ConversationModel
+
         async with get_readonly_db_context() as session:
+            # Summaries carry no user_id column — ownership lives on the
+            # conversation, so scope through a join to enforce it.
             stmt = (
                 select(ConversationSummaryModel)
-                .filter(ConversationSummaryModel.user_id == user_id)
+                .join(
+                    ConversationModel,
+                    ConversationModel.conversation_id == ConversationSummaryModel.conversation_id,
+                )
+                .filter(ConversationModel.user_id == user_id)
                 .filter(ConversationSummaryModel.conversation_id == conversation_id)
                 .order_by(ConversationSummaryModel.created_at.desc())
                 .limit(5)

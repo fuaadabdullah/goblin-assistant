@@ -11,7 +11,7 @@ from typing import Any, Dict, List, Optional
 import structlog
 
 from .cache_service import cache_service
-from .embedding_service import embedding_worker
+from .embedding_worker import embedding_worker
 from .memory_promotion import memory_promotion_service
 from .message_classifier import MessageClassification, MessageType
 from .observability_service import observability_service

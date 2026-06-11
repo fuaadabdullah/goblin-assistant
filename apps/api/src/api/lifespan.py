@@ -138,7 +138,7 @@ async def _start_artifact_cleanup():
 
 async def _start_embedding_worker():
     try:
-        from .services.embedding_service import embedding_worker  # noqa: PLC0415
+        from .services.embedding_worker import embedding_worker  # noqa: PLC0415
 
         await embedding_worker.start()
         logger.info("Embedding worker started")

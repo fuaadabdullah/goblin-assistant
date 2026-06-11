@@ -122,8 +122,10 @@ class ContextSnapshotter:
         else:
             context_layers = context if isinstance(context, list) else []
 
-        # Map arguments from ContextAssemblyService to capture_context_snapshot
-        return await self.capture_context_snapshot(
+        # Map arguments from ContextAssemblyService to capture_context_snapshot.
+        # Callers persist this value in JSON message metadata, so return the
+        # snapshot id string rather than the ContextSnapshot object.
+        snapshot = await self.capture_context_snapshot(
             request_id=kwargs.get("correlation_id") or f"req_{int(time.time())}",
             user_id=kwargs.get("user_id"),
             context_layers=context_layers,
@@ -134,6 +136,7 @@ class ContextSnapshotter:
             assembly_time_ms=kwargs.get("assembly_time_ms", 0.0),
             error=kwargs.get("error"),
         )
+        return getattr(snapshot, "snapshot_id", None)
 
     def _extract_context_content(self, context_layers: List[Dict[str, Any]]) -> str:
         """Extract text content from context layers for hashing"""

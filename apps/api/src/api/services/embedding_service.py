@@ -34,8 +34,9 @@ _EMBEDDING_PROVIDERS: Dict[str, tuple] = {
         "OpenAIProvider",
         {
             "api_key_env": "OPENAI_API_KEY",
-            "endpoint": os.getenv("OPENAI_BASE_URL", "https://api.openai.com"),
-            "invoke_path": "/v1/embeddings",
+            # OpenAIProvider appends /embeddings itself, so the endpoint must
+            # already include the /v1 prefix.
+            "endpoint": os.getenv("OPENAI_BASE_URL", "https://api.openai.com/v1"),
         },
     ),
     "azure_openai": (
