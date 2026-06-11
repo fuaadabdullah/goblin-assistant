@@ -23,7 +23,7 @@ vi.mock('@/config/backendOrigin', () => ({
   resolvePublicBackendOrigin: () => 'http://api.example.test:8000',
 }));
 
-vi.mock('@/utils/dev-log', () => ({ devError: vi.fn() }));
+vi.mock('@/utils/dev-log', () => ({ devError: vi.fn(), devWarn: vi.fn(), devLog: vi.fn() }));
 
 import GoogleCallback from '../GoogleCallback';
 import { persistAuthSession } from '@/utils/auth-session';

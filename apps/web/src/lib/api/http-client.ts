@@ -6,7 +6,7 @@
  */
 
 import axios, { AxiosError, type AxiosRequestConfig, type InternalAxiosRequestConfig } from 'axios';
-import { authGetSession } from '../supabase';
+import { authGetSession, authRefreshSession, supabaseConfigured } from '../supabase';
 import { env } from '../../config/env';
 import {
   clearAuthSession,
@@ -62,6 +62,17 @@ type RetryableRequestConfig = AxiosRequestConfig & { _retry?: boolean };
 let refreshPromise: Promise<string | null> | null = null;
 
 export const refreshAccessToken = async (): Promise<string | null> => {
+  // Supabase sessions refresh through the Supabase client, not the legacy
+  // backend endpoint — hitting /auth/refresh with no legacy session would
+  // fail and wipe the auth cookies mid-session.
+  if (supabaseConfigured) {
+    const { session: existing } = await authGetSession();
+    if (existing) {
+      const { session } = await authRefreshSession();
+      return session?.access_token ?? null;
+    }
+  }
+
   const refreshToken = getRefreshToken();
 
   try {

@@ -5,7 +5,7 @@ from datetime import datetime, timedelta
 from typing import Optional
 
 import jwt
-from jwt import PyJWTError
+from jwt import PyJWKClient, PyJWTError
 
 from .config import (
     ACCESS_TOKEN_EXPIRE_MINUTES,
@@ -15,6 +15,20 @@ from .config import (
 )
 
 SUPABASE_JWT_SECRET = os.getenv("SUPABASE_JWT_SECRET")
+SUPABASE_URL = (os.getenv("SUPABASE_URL") or "").rstrip("/")
+
+_jwks_client: Optional[PyJWKClient] = None
+
+
+def _get_jwks_client() -> Optional[PyJWKClient]:
+    global _jwks_client
+    if _jwks_client is None and SUPABASE_URL:
+        _jwks_client = PyJWKClient(
+            f"{SUPABASE_URL}/auth/v1/.well-known/jwks.json",
+            cache_keys=True,
+            lifespan=3600,
+        )
+    return _jwks_client
 
 
 def create_access_token(
@@ -66,15 +80,45 @@ def verify_token(token: str) -> Optional[dict]:
 
 
 def verify_supabase_token(token: str) -> Optional[dict]:
-    """Verify a Supabase-issued JWT using the project JWT secret."""
-    if not SUPABASE_JWT_SECRET:
-        return None
+    """Verify a Supabase-issued JWT.
+
+    Legacy projects sign with HS256 using the shared JWT secret; projects on
+    Supabase's newer signing keys use ES256/RS256 published via JWKS. Branch
+    on the token header so both verify.
+    """
     try:
-        return jwt.decode(
-            token,
-            SUPABASE_JWT_SECRET,
-            algorithms=[ALGORITHM],
-            audience="authenticated",
-        )
+        header = jwt.get_unverified_header(token)
     except PyJWTError:
         return None
+
+    alg = header.get("alg", "")
+
+    if alg == "HS256":
+        if not SUPABASE_JWT_SECRET:
+            return None
+        try:
+            return jwt.decode(
+                token,
+                SUPABASE_JWT_SECRET,
+                algorithms=["HS256"],
+                audience="authenticated",
+            )
+        except PyJWTError:
+            return None
+
+    if alg in {"ES256", "RS256"}:
+        jwks_client = _get_jwks_client()
+        if jwks_client is None:
+            return None
+        try:
+            signing_key = jwks_client.get_signing_key_from_jwt(token)
+            return jwt.decode(
+                token,
+                signing_key.key,
+                algorithms=[alg],
+                audience="authenticated",
+            )
+        except Exception:  # JWKS fetch is a network call; never raise into auth
+            return None
+
+    return None

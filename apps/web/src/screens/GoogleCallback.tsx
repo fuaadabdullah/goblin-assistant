@@ -6,6 +6,8 @@ import { useRouter, useSearchParams } from 'next/navigation';
 import { queryKeys } from '../lib/query-keys';
 import { persistAuthSession } from '../utils/auth-session';
 import { resolvePublicBackendOrigin } from '../config/backendOrigin';
+import { authExchangeCodeForSession } from '../lib/supabase';
+import { snapshotFromSupabaseSession } from '../lib/auth-state';
 import { devError } from '@/utils/dev-log';
 
 const GoogleCallback: React.FC = () => {
@@ -31,6 +33,21 @@ const GoogleCallback: React.FC = () => {
       if (!codeValue) {
         devError('No authorization code received');
         router.push('/login?error=no_code');
+        return;
+      }
+
+      // Supabase OAuth (signInWithOAuth) redirects back with a PKCE `code` and
+      // no `state` param — that code must be exchanged with Supabase, not the
+      // legacy backend endpoint. The legacy Google flow always carries `state`.
+      if (!stateValue) {
+        const { session, error } = await authExchangeCodeForSession(codeValue);
+        if (error || !session) {
+          devError('Supabase code exchange failed:', error);
+          router.push('/login?error=callback_failed');
+          return;
+        }
+        queryClient.setQueryData(queryKeys.authValidate, snapshotFromSupabaseSession(session));
+        router.push('/chat');
         return;
       }
 

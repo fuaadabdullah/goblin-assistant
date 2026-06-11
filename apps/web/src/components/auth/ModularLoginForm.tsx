@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
-import { supabaseUserToAppUser, authSignUp, authSignIn, authSignInWithOAuth } from '@/lib/supabase';
+import { authSignUp, authSignIn, authSignInWithOAuth } from '@/lib/supabase';
+import { snapshotFromSupabaseSession } from '@/lib/auth-state';
 import { queryKeys } from '../../lib/query-keys';
 import LoginHeader from './LoginHeader';
 import EmailPasswordForm from './EmailPasswordForm';
@@ -46,9 +47,10 @@ export default function ModularLoginForm({
 
     setIsLoading(true);
     try {
+      const captchaToken = turnstileConfig.enabled ? turnstileToken : undefined;
       const { session, error } = isRegister
-        ? await authSignUp(emailValue, password)
-        : await authSignIn(emailValue, password);
+        ? await authSignUp(emailValue, password, captchaToken)
+        : await authSignIn(emailValue, password, captchaToken);
 
       if (error) throw error;
       if (!session) {
@@ -57,12 +59,9 @@ export default function ModularLoginForm({
         return;
       }
 
-      queryClient.setQueryData(queryKeys.authValidate, {
-        token: session.access_token,
-        user: supabaseUserToAppUser(session.user),
-        isAuthenticated: true,
-        isHydrated: true,
-      });
+      // Sets the goblin_auth/goblin_admin cookies the middleware needs —
+      // without them the redirect to /chat bounces straight back to /login.
+      queryClient.setQueryData(queryKeys.authValidate, snapshotFromSupabaseSession(session));
       onSuccess();
     } catch (error) {
       const message = error instanceof Error ? error.message : 'Authentication failed';

@@ -259,7 +259,7 @@ class TestPasskeyHelpers:
 
         assert (
             await WebAuthnPasskey.verify_passkey_authentication(
-                credential_id="cred",
+                _credential_id="cred",
                 stored_public_key=encoded_public_key,
                 authenticator_data_b64=encoded_auth_data,
                 client_data_json_b64=encoded_client_data,
@@ -274,7 +274,7 @@ class TestPasskeyHelpers:
         bad_origin_b64 = WebAuthnPasskey.encode_base64url(json.dumps(bad_origin).encode())
         assert (
             await WebAuthnPasskey.verify_passkey_authentication(
-                credential_id="cred",
+                _credential_id="cred",
                 stored_public_key=encoded_public_key,
                 authenticator_data_b64=encoded_auth_data,
                 client_data_json_b64=bad_origin_b64,

@@ -1,6 +1,6 @@
 import type { User } from '../types/api';
 import { supabaseUserToAppUser, authGetSession, authSignOut } from './supabase';
-import { clearAuthSession } from '../utils/auth-session';
+import { clearAuthSession, persistAuthSession } from '../utils/auth-session';
 
 export interface AuthSessionSnapshot {
   token: string | null;
@@ -44,9 +44,31 @@ export const bootstrapAuthSession = async (): Promise<AuthSessionSnapshot> => {
     return unauthenticatedSnapshot();
   }
 
+  const user = supabaseUserToAppUser(session.user);
+
+  // Supabase keeps its session in localStorage, which the Next.js middleware
+  // can't read — mirror it into the goblin_auth/goblin_admin cookie flags the
+  // middleware gates routes on.
+  persistAuthSession({ token: session.access_token, user });
+
   return {
     token: session.access_token,
-    user: supabaseUserToAppUser(session.user),
+    user,
+    isAuthenticated: true,
+    isHydrated: true,
+  };
+};
+
+/** Mirror a fresh Supabase session into the cookie flags + return a snapshot. */
+export const snapshotFromSupabaseSession = (session: {
+  access_token: string;
+  user: Parameters<typeof supabaseUserToAppUser>[0];
+}): AuthSessionSnapshot => {
+  const user = supabaseUserToAppUser(session.user);
+  persistAuthSession({ token: session.access_token, user });
+  return {
+    token: session.access_token,
+    user,
     isAuthenticated: true,
     isHydrated: true,
   };

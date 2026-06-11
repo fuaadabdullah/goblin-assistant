@@ -47,13 +47,21 @@ export function supabaseUserToAppUser(u: SupabaseUser): AppUser {
 // Wrapped auth helpers — callers import these instead of accessing supabase.auth
 // directly, which prevents Vercel's duplicate-package type resolution from
 // losing methods like signUp off the SupabaseAuthClient interface.
-export async function authSignUp(email: string, password: string) {
-  const { data, error } = await supabase.auth.signUp({ email, password });
+export async function authSignUp(email: string, password: string, captchaToken?: string) {
+  const { data, error } = await supabase.auth.signUp({
+    email,
+    password,
+    ...(captchaToken ? { options: { captchaToken } } : {}),
+  });
   return { session: data?.session ?? null, error };
 }
 
-export async function authSignIn(email: string, password: string) {
-  const { data, error } = await supabase.auth.signInWithPassword({ email, password });
+export async function authSignIn(email: string, password: string, captchaToken?: string) {
+  const { data, error } = await supabase.auth.signInWithPassword({
+    email,
+    password,
+    ...(captchaToken ? { options: { captchaToken } } : {}),
+  });
   return { session: data?.session ?? null, error };
 }
 
@@ -81,6 +89,25 @@ export async function authUpdateUser(attributes: {
 export async function authSignOut() {
   const { error } = await supabase.auth.signOut();
   return { error };
+}
+
+export async function authRefreshSession() {
+  const { data, error } = await supabase.auth.refreshSession();
+  return { session: data?.session ?? null, error };
+}
+
+export async function authExchangeCodeForSession(code: string) {
+  const { data, error } = await supabase.auth.exchangeCodeForSession(code);
+  return { session: data?.session ?? null, error };
+}
+
+export function authOnStateChange(
+  callback: (event: string, session: { access_token: string; user: SupabaseUser } | null) => void
+) {
+  const { data } = supabase.auth.onAuthStateChange((event, session) =>
+    callback(event, session as { access_token: string; user: SupabaseUser } | null)
+  );
+  return () => data.subscription.unsubscribe();
 }
 
 export interface ProviderStatusRow {

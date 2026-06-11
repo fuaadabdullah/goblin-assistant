@@ -18,7 +18,7 @@ from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from sqlalchemy import and_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from ...storage.database import get_db, get_readonly_db
+from ...storage.database import get_db_context, get_readonly_db
 from ...storage.models import UserModel, UserSessionModel
 from .schemas import User
 from .tokens import verify_supabase_token, verify_token
@@ -189,10 +189,8 @@ async def get_current_user(
         )
 
     # Auto-provision: needs a writable session (get_readonly_db won't work here).
-    user_model = None
-    async for write_db in get_db():
+    async with get_db_context() as write_db:
         user_model = await _provision_supabase_user(write_db, supabase_payload)
-        break
 
     if not user_model:
         raise HTTPException(

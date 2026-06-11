@@ -24,6 +24,7 @@ vi.mock('../supabase', () => ({
 
 vi.mock('../../utils/auth-session', () => ({
   clearAuthSession: vi.fn(),
+  persistAuthSession: vi.fn(),
 }));
 
 // Get references to the mock functions after hoisting resolves
