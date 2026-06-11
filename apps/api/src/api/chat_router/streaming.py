@@ -8,7 +8,7 @@ carry an `is_recoverable` flag so the client knows whether to retry.
 import asyncio
 import time
 import uuid
-from typing import Optional
+from typing import Any, Optional
 
 import structlog
 from fastapi import APIRouter, Depends, HTTPException
@@ -58,6 +58,7 @@ async def generate_chat_stream(
     used_model = model or "unknown"
     used_department = "general"
     used_department_reason = ""
+    fallback_pids: list = []
     start_time = time.time()
     response_message_id = str(uuid.uuid4())
 
@@ -94,6 +95,7 @@ async def generate_chat_stream(
             if not provider and _exec.selected_provider:
                 used_provider = _exec.selected_provider
                 used_model = _exec.selected_model or "unknown"
+                fallback_pids = list(_exec.fallback_chain or [])
         except Exception:
             pass
 
@@ -184,13 +186,35 @@ async def generate_chat_stream(
             logger.warning("provider_error", error=provider_error, provider=used_provider)
 
             try:
-                fallback_response = await _cr.invoke_provider(
-                    pid=used_provider,
-                    model=used_model,
-                    payload=payload,
-                    timeout_ms=30000,
-                    stream=False,
-                )
+                # Retry non-streaming on the same provider first, then walk
+                # the department fallback chain (each provider on its own
+                # default model).
+                fallback_response: Any = None
+                for attempt_pid, attempt_model in [
+                    (used_provider, used_model),
+                    *[(pid, None) for pid in fallback_pids if pid != used_provider],
+                ]:
+                    attempt_payload = dict(payload)
+                    if attempt_model is None:
+                        attempt_payload.pop("model", None)
+                    fallback_response = await _cr.invoke_provider(
+                        pid=attempt_pid,
+                        model=attempt_model,
+                        payload=attempt_payload,
+                        timeout_ms=30000,
+                        stream=False,
+                    )
+                    if isinstance(fallback_response, dict) and fallback_response.get("ok"):
+                        break
+                    logger.warning(
+                        "stream_fallback_provider_failed",
+                        provider=attempt_pid,
+                        error=str(
+                            fallback_response.get("error", "unknown")
+                            if isinstance(fallback_response, dict)
+                            else fallback_response
+                        ),
+                    )
                 if isinstance(fallback_response, dict) and fallback_response.get("ok"):
                     result_data = fallback_response.get("result", {})
                     accumulated_text = result_data.get("text", str(fallback_response))
