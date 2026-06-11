@@ -79,12 +79,66 @@ def verify_token(token: str) -> Optional[dict]:
         return None
 
 
+# Token-hash → (payload, token_exp) cache for the auth-API verification
+# fallback, so we hit Supabase at most once per token instead of per request.
+_auth_api_cache: dict = {}
+_AUTH_API_CACHE_MAX = 1024
+
+SUPABASE_ANON_KEY = os.getenv("SUPABASE_ANON_KEY") or os.getenv("NEXT_PUBLIC_SUPABASE_ANON_KEY")
+
+
+def _verify_via_auth_api(token: str) -> Optional[dict]:
+    """Verify a Supabase token by asking Supabase itself (GET /auth/v1/user).
+
+    Fallback for HS256 tokens when SUPABASE_JWT_SECRET isn't configured —
+    Supabase is the source of truth regardless of signing algorithm. Results
+    are cached until the token's own exp so each token costs one network call.
+    """
+    if not SUPABASE_URL or not SUPABASE_ANON_KEY:
+        return None
+
+    import hashlib
+    import time as _time
+
+    key = hashlib.sha256(token.encode()).hexdigest()
+    cached = _auth_api_cache.get(key)
+    if cached and cached[1] > _time.time():
+        return cached[0]
+
+    try:
+        import httpx
+
+        resp = httpx.get(
+            f"{SUPABASE_URL}/auth/v1/user",
+            headers={"Authorization": f"Bearer {token}", "apikey": SUPABASE_ANON_KEY},
+            timeout=5.0,
+        )
+        if resp.status_code != 200:
+            return None
+        user = resp.json()
+        unverified = jwt.decode(token, options={"verify_signature": False})
+        payload = {
+            "sub": user.get("id") or unverified.get("sub"),
+            "email": user.get("email") or unverified.get("email"),
+            "user_metadata": user.get("user_metadata") or {},
+            "aud": "authenticated",
+            "exp": unverified.get("exp"),
+        }
+        if len(_auth_api_cache) >= _AUTH_API_CACHE_MAX:
+            _auth_api_cache.clear()
+        _auth_api_cache[key] = (payload, float(unverified.get("exp") or _time.time() + 300))
+        return payload
+    except Exception:  # network call — never raise into the auth path
+        return None
+
+
 def verify_supabase_token(token: str) -> Optional[dict]:
     """Verify a Supabase-issued JWT.
 
     Legacy projects sign with HS256 using the shared JWT secret; projects on
     Supabase's newer signing keys use ES256/RS256 published via JWKS. Branch
-    on the token header so both verify.
+    on the token header so both verify. When no local verification material
+    is available, fall back to validating against the Supabase auth API.
     """
     try:
         header = jwt.get_unverified_header(token)
@@ -95,7 +149,7 @@ def verify_supabase_token(token: str) -> Optional[dict]:
 
     if alg == "HS256":
         if not SUPABASE_JWT_SECRET:
-            return None
+            return _verify_via_auth_api(token)
         try:
             return jwt.decode(
                 token,
