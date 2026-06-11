@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
 
 /**
- * Auth proxy (formerly Next.js middleware) for route protection.
+ * Auth middleware for route protection.
  *
  * Current model: The backend issues a JWT on login. The client stores it in
  * localStorage (not accessible here) and sets a `goblin_auth=1` cookie flag so
@@ -79,7 +79,7 @@ export const resolveRouteDecision = (input: {
   return { allow: true };
 };
 
-export function proxy(request: NextRequest) {
+export function middleware(request: NextRequest) {
   const decision = resolveRouteDecision({
     pathname: request.nextUrl.pathname,
     search: request.nextUrl.search,
