@@ -9,6 +9,7 @@ from ...observability.events import event_emitter  # noqa: F401
 from ...providers.dispatcher import dispatcher  # noqa: F401
 from ...storage.tasks import get_task_store  # noqa: F401
 from ...storage.usage_events import get_usage_event_store  # noqa: F401
+from .. import _runtime as _cr  # noqa: F401 — tests patch api.chat_router.messages._cr.*
 from ..archiving import schedule_conversation_archive  # noqa: F401
 from ..service_accessors import (  # noqa: F401
     _get_context_assembly_service,

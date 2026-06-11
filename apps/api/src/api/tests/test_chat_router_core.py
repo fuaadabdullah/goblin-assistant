@@ -96,6 +96,7 @@ class TestListConversations:
                 user_id="user_123",
                 title="Chat 1",
                 messages=[],
+                metadata={},
                 created_at=MagicMock(isoformat=lambda: "2026-05-06T00:00:00Z"),
                 updated_at=MagicMock(isoformat=lambda: "2026-05-06T00:00:00Z"),
             )
@@ -880,7 +881,8 @@ class TestEstimateTokens:
         assert data["estimated_output_tokens"] == 400
         # 1000 * 1.0/1000 + 400 * 2.0/1000 = 1.0 + 0.8 = 1.8
         assert data["estimated_cost_usd"] == pytest.approx(1.8)
-        assert data["provider"] == "openai"
+        # Response is department-based now; provider no longer surfaced.
+        assert data["department"] == "general"
         assert len(data["layers"]) == 2
         assert data["layers"][0] == {"name": "system", "tokens": 300}
 
@@ -1000,9 +1002,11 @@ class TestEstimateTokens:
 
         assert response.status_code == 200
         data = _payload(response)
-        assert data["provider"] == "unknown"
+        # Response is department-based now; provider no longer surfaced.
+        assert data["department"] == "general"
         assert data["estimated_cost_usd"] == 0.0
         assert data["degraded_mode"] is True
+        assert data["degraded_reason"] == "no-configured-providers"
 
 
 class TestContextualChatRoute:
@@ -1097,8 +1101,8 @@ class TestContextualChatRoute:
         assert response.status_code == 200
         data = _payload(response)
         assert data["response"] == "fallback answer"
-        assert data["provider"] == "groq"
-        assert data["model"] == "llama-3.3-70b-versatile"
+        # provider/model moved off the response envelope (department-based API);
+        # the provider that actually answered is asserted via stored_messages below.
         assert data["token_usage"]["degraded_mode"] is True
         assert data["token_usage"]["degraded_reason"].startswith("embedding unavailable")
         assert data["token_usage"]["truncation_warnings"] == ["semantic_retrieval_truncated"]

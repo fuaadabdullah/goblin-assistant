@@ -307,4 +307,8 @@ class TestPdfContextInjection:
 
         assert response.success is True
         context_msg = captured_payload["messages"][0]["content"]
-        assert len(context_msg) < 1000
+        # The cap applies to the injected attachment context, not the system
+        # prompt it is appended to. 1800 chars of "apple " must shrink to ~120.
+        attachment_section = context_msg.split("long.pdf", 1)[1]
+        assert len(attachment_section) < 200
+        assert context_msg.count("apple") <= 25

@@ -227,7 +227,12 @@ async def test_check_redis_health_success_and_failure() -> None:
         }
     )
 
-    with patch("api.storage.cache.cache._redis", fake_redis):
+    fake_redis.aclose = AsyncMock(return_value=None)
+
+    with (
+        patch.dict("os.environ", {"REDIS_URL": "redis://localhost:6379/0"}),
+        patch("redis.asyncio.from_url", return_value=fake_redis),
+    ):
         healthy = await health.check_redis_health()
 
     assert healthy["status"] == "healthy"
@@ -235,7 +240,10 @@ async def test_check_redis_health_success_and_failure() -> None:
     assert healthy["memory_used"] == "1MB"
 
     fake_redis.ping.side_effect = ConnectionError("redis down")
-    with patch("api.storage.cache.cache._redis", fake_redis):
+    with (
+        patch.dict("os.environ", {"REDIS_URL": "redis://localhost:6379/0"}),
+        patch("redis.asyncio.from_url", return_value=fake_redis),
+    ):
         unhealthy = await health.check_redis_health()
 
     assert unhealthy["status"] == "unhealthy"
@@ -245,7 +253,7 @@ async def test_check_redis_health_success_and_failure() -> None:
 @pytest.mark.asyncio
 async def test_check_routing_health_success_and_failure() -> None:
     with patch(
-        "api.routing_router.top_providers_for",
+        "api.departments.DEPARTMENT_REGISTRY.list_ids",
         return_value=["openai", "anthropic"],
     ):
         healthy = await health.check_routing_health()
@@ -254,7 +262,7 @@ async def test_check_routing_health_success_and_failure() -> None:
     assert healthy["providers_available"] == 2
 
     with patch(
-        "api.routing_router.top_providers_for",
+        "api.departments.DEPARTMENT_REGISTRY.list_ids",
         side_effect=RuntimeError("router exploded"),
     ):
         degraded = await health.check_routing_health()
