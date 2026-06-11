@@ -27,6 +27,7 @@ def _get_jwks_client() -> Optional[PyJWKClient]:
             f"{SUPABASE_URL}/auth/v1/.well-known/jwks.json",
             cache_keys=True,
             lifespan=3600,
+            timeout=10,  # the fetch is sync inside the auth path — never let it wedge requests
         )
     return _jwks_client
 
