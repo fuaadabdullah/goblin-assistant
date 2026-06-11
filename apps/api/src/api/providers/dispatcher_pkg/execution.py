@@ -45,7 +45,7 @@ def provider_error_category(
 
 def build_invoke_kwargs(payload: Dict[str, Any]) -> Dict[str, Any]:
     kwargs = dict(payload)
-    for key in ("messages", "prompt", "model", "user_id", "request_id"):
+    for key in ("messages", "prompt", "model", "user_id", "request_id", "intent"):
         kwargs.pop(key, None)
     return kwargs
 
