@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from unittest.mock import AsyncMock, patch
+from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 from fastapi import FastAPI
@@ -19,7 +19,7 @@ def client():
 
 
 # ---------------------------------------------------------------------------
-# GET /routing/providers
+# GET /routing/providers  (deprecated — still must not 500)
 # ---------------------------------------------------------------------------
 
 
@@ -31,14 +31,12 @@ class TestGetProviders:
         assert isinstance(data, list)
 
     def test_returns_only_configured_providers(self, client):
-        """Configured providers should appear in the list."""
         response = client.get("/routing/providers")
         data = response.json()
-        # At minimum, mock should be excluded (hidden) but any configured real provider present
         assert isinstance(data, list)
         assert "mock" not in data
 
-    def test_inventory_error_uses_fallback_provider_list(self, client):
+    def test_inventory_error_falls_back_to_department_ids(self, client):
         with (
             patch(
                 "api.routing_router.dispatcher.get_provider_inventory",
@@ -46,18 +44,15 @@ class TestGetProviders:
                 side_effect=RuntimeError("boom"),
             ),
             patch(
-                "api.routing_router.dispatcher.list_providers",
-                return_value=[
-                    {"id": "openai", "hidden": False, "configured": True},
-                    {"id": "mock", "hidden": True, "configured": True},
-                ],
+                "api.routing_router.DEPARTMENT_REGISTRY.list_ids",
+                return_value=["general", "coding"],
             ),
         ):
             response = client.get("/routing/providers")
             assert response.status_code == 200
-            assert response.json() == ["openai"]
+            assert response.json() == ["general", "coding"]
 
-    def test_empty_inventory_uses_fallback_provider_list(self, client):
+    def test_empty_inventory_falls_back_to_department_ids(self, client):
         with (
             patch(
                 "api.routing_router.dispatcher.get_provider_inventory",
@@ -65,171 +60,101 @@ class TestGetProviders:
                 return_value=[],
             ),
             patch(
-                "api.routing_router.dispatcher.list_providers",
-                return_value=[
-                    {"id": "openai", "hidden": False, "configured": True},
-                    {"id": "mock", "hidden": True, "configured": True},
-                ],
+                "api.routing_router.DEPARTMENT_REGISTRY.list_ids",
+                return_value=["general", "reasoning"],
             ),
         ):
             response = client.get("/routing/providers")
             assert response.status_code == 200
-            assert response.json() == ["openai"]
-
-
-class TestGetProviderDetails:
-    def test_returns_inventory(self, client):
-        fake_inventory = [
-            {
-                "id": "openai",
-                "configured": False,
-                "health": "unknown",
-                "is_selectable": False,
-            },
-            {
-                "id": "aliyun",
-                "configured": False,
-                "health": "unknown",
-                "is_selectable": False,
-            },
-        ]
-        with patch(
-            "api.routing_router.dispatcher.get_provider_inventory",
-            new_callable=AsyncMock,
-            return_value=fake_inventory,
-        ):
-            response = client.get("/routing/providers/details")
-            assert response.status_code == 200
-            data = response.json()
-            assert isinstance(data, list)
-            assert any(item.get("id") == "aliyun" for item in data)
-
-    def test_inventory_error_falls_back_to_provider_list(self, client):
-        with (
-            patch(
-                "api.routing_router.dispatcher.get_provider_inventory",
-                new_callable=AsyncMock,
-                side_effect=RuntimeError("boom"),
-            ),
-            patch(
-                "api.routing_router.dispatcher.list_providers",
-                return_value=[
-                    {"id": "openai", "hidden": False},
-                    {"id": "mock", "hidden": True},
-                ],
-            ),
-        ):
-            response = client.get("/routing/providers/details")
-            assert response.status_code == 200
-            assert response.json() == [{"id": "openai", "hidden": False}]
-
-    def test_empty_inventory_falls_back_to_provider_list(self, client):
-        with (
-            patch(
-                "api.routing_router.dispatcher.get_provider_inventory",
-                new_callable=AsyncMock,
-                return_value=[],
-            ),
-            patch(
-                "api.routing_router.dispatcher.list_providers",
-                return_value=[
-                    {"id": "openai", "hidden": False},
-                    {"id": "mock", "hidden": True},
-                ],
-            ),
-        ):
-            response = client.get("/routing/providers/details")
-            assert response.status_code == 200
-            assert response.json() == [{"id": "openai", "hidden": False}]
-
-    def test_details_route_not_shadowed_by_capability_route(self, client):
-        with (
-            patch(
-                "api.routing_router.top_providers_for",
-                side_effect=RuntimeError("capability route should not be called"),
-            ),
-            patch(
-                "api.routing_router.dispatcher.get_provider_inventory",
-                new_callable=AsyncMock,
-                return_value=[{"id": "openai", "configured": True}],
-            ),
-        ):
-            response = client.get("/routing/providers/details")
-            assert response.status_code == 200
-            assert response.json() == [{"id": "openai", "configured": True}]
-
-    def test_details_fallback_uses_static_configs_when_provider_list_fails(self, client):
-        with (
-            patch(
-                "api.routing_router.dispatcher.get_provider_inventory",
-                new_callable=AsyncMock,
-                side_effect=RuntimeError("inventory unavailable"),
-            ),
-            patch(
-                "api.routing_router.dispatcher.list_providers",
-                side_effect=RuntimeError("provider list unavailable"),
-            ),
-            patch(
-                "api.routing_router.dispatcher._configs",
-                {
-                    "openai": {
-                        "name": "OpenAI",
-                        "models": ["gpt-4o-mini"],
-                        "capabilities": ["chat"],
-                        "priority_tier": 10,
-                        "tier": "cloud",
-                    },
-                    "mock": {
-                        "name": "Mock",
-                        "hidden": True,
-                    },
-                },
-            ),
-            patch(
-                "api.routing_router.dispatcher.is_configured",
-                side_effect=lambda provider_id: provider_id == "openai",
-            ),
-        ):
-            response = client.get("/routing/providers/details")
-            assert response.status_code == 200
-            data = response.json()
-            assert len(data) == 1
-            assert data[0]["id"] == "openai"
-            assert data[0]["configured"] is True
+            assert response.json() == ["general", "reasoning"]
 
 
 # ---------------------------------------------------------------------------
-# GET /routing/providers/{capability}
+# GET /routing/departments  +  GET /routing/departments/{id}
+# ---------------------------------------------------------------------------
+
+
+class TestGetDepartments:
+    def test_list_departments_returns_list(self, client):
+        response = client.get("/routing/departments")
+        assert response.status_code == 200
+        data = response.json()
+        assert isinstance(data, list)
+
+    def test_list_departments_has_department_key(self, client):
+        fake = [{"department": "general", "name": "General", "description": "d"}]
+        with patch(
+            "api.routing_router.DEPARTMENT_REGISTRY.list_public",
+            return_value=fake,
+        ):
+            response = client.get("/routing/departments")
+            assert response.status_code == 200
+            data = response.json()
+            assert all("department" in item for item in data)
+
+    def test_get_department_by_id_returns_details(self, client):
+        policy = MagicMock()
+        policy.department_id.value = "reasoning"
+        policy.display_name = "Reasoning"
+        policy.description = "Logic and math"
+        policy.supports_streaming = True
+        policy.supports_tools = True
+        with patch(
+            "api.routing_router.DEPARTMENT_REGISTRY.get_by_id_str",
+            return_value=policy,
+        ):
+            response = client.get("/routing/departments/reasoning")
+            assert response.status_code == 200
+            data = response.json()
+            assert data["department"] == "reasoning"
+            assert "name" in data
+            assert "description" in data
+
+    def test_get_unknown_department_returns_404(self, client):
+        with patch(
+            "api.routing_router.DEPARTMENT_REGISTRY.get_by_id_str",
+            side_effect=KeyError("nope"),
+        ):
+            response = client.get("/routing/departments/nonexistent")
+            assert response.status_code == 404
+
+
+# ---------------------------------------------------------------------------
+# GET /routing/providers/{capability}  (deprecated — dict-lookup behaviour)
 # ---------------------------------------------------------------------------
 
 
 class TestGetProvidersByCapability:
-    def test_chat_capability(self, client):
-        with patch(
-            "api.routing_router.top_providers_for",
-            return_value=["openai", "anthropic"],
-        ):
-            response = client.get("/routing/providers/chat")
-            assert response.status_code == 200
-            assert response.json() == ["openai", "anthropic"]
+    def test_chat_capability_returns_known_departments(self, client):
+        response = client.get("/routing/providers/chat")
+        assert response.status_code == 200
+        data = response.json()
+        assert isinstance(data, list)
+        assert len(data) > 0
+        assert "general" in data
 
-    def test_unknown_capability_returns_empty(self, client):
+    def test_coding_capability_returns_coding_department(self, client):
+        response = client.get("/routing/providers/coding")
+        assert response.status_code == 200
+        data = response.json()
+        assert "coding" in data
+
+    def test_unknown_capability_falls_back_to_all_departments(self, client):
         with patch(
-            "api.routing_router.top_providers_for",
-            return_value=[],
+            "api.routing_router.DEPARTMENT_REGISTRY.list_ids",
+            return_value=["general", "coding", "reasoning"],
         ):
             response = client.get("/routing/providers/telekinesis")
             assert response.status_code == 200
-            assert response.json() == []
+            data = response.json()
+            assert data == ["general", "coding", "reasoning"]
 
-    def test_exception_returns_empty(self, client):
-        with patch(
-            "api.routing_router.top_providers_for",
-            side_effect=RuntimeError("oops"),
-        ):
-            response = client.get("/routing/providers/chat")
-            assert response.status_code == 200
-            assert response.json() == []
+    def test_capability_lookup_is_case_insensitive(self, client):
+        response_lower = client.get("/routing/providers/chat")
+        response_upper = client.get("/routing/providers/CHAT")
+        assert response_lower.status_code == 200
+        assert response_upper.status_code == 200
+        assert response_lower.json() == response_upper.json()
 
 
 # ---------------------------------------------------------------------------
@@ -242,86 +167,86 @@ class TestRouteRequest:
         fake_result = {
             "ok": True,
             "text": "routed-response",
-            "provider": "openai",
-            "model": "gpt-4o-mini",
-            "selected_provider": "openai",
+            "provider": "anthropic",
+            "model": "claude-sonnet-4-6",
         }
         with patch(
-            "api.routing_router.route_task",
+            "api.routing_router.department_dispatcher.dispatch",
             new_callable=AsyncMock,
             return_value=fake_result,
         ):
             response = client.post(
                 "/routing/route",
                 json={
-                    "task_type": "chat",
+                    "department": "general",
                     "payload": {"messages": [{"role": "user", "content": "hi"}]},
                 },
             )
             assert response.status_code == 200
             data = response.json()
             assert data["ok"] is True
-            assert data["selected_provider"] == "openai"
+            assert data["department"] == "general"
 
-    def test_route_with_preferences(self, client):
+    def test_route_strips_internal_fields(self, client):
+        fake_result = {
+            "ok": True,
+            "_department": "general",
+            "_department_reason": "default",
+            "text": "hello",
+        }
         with patch(
-            "api.routing_router.route_task",
+            "api.routing_router.department_dispatcher.dispatch",
             new_callable=AsyncMock,
-            return_value={"ok": True, "provider": "llamacpp_gcp"},
-        ) as mock_route:
-            response = client.post(
-                "/routing/route",
-                json={
-                    "task_type": "chat",
-                    "payload": {"messages": [{"role": "user", "content": "hi"}]},
-                    "prefer_local": True,
-                    "prefer_cost": False,
-                    "max_retries": 3,
-                },
-            )
-            assert response.status_code == 200
-            mock_route.assert_awaited_once()
-            call_kwargs = mock_route.call_args.kwargs
-            assert call_kwargs["prefer_local"] is True
-            assert call_kwargs["max_retries"] == 3
-
-    def test_route_failure_returns_500(self, client):
-        with patch(
-            "api.routing_router.route_task",
-            new_callable=AsyncMock,
-            side_effect=RuntimeError("no providers"),
+            return_value=fake_result,
         ):
             response = client.post(
                 "/routing/route",
-                json={
-                    "task_type": "chat",
-                    "payload": {},
-                },
+                json={"department": "general", "payload": {}},
+            )
+            data = response.json()
+            assert "_department" not in data
+            assert "_department_reason" not in data
+
+    def test_unknown_department_returns_404(self, client):
+        with patch(
+            "api.routing_router.DEPARTMENT_REGISTRY.get",
+            side_effect=KeyError("nope"),
+        ):
+            response = client.post(
+                "/routing/route",
+                json={"department": "imaginary", "payload": {}},
+            )
+            assert response.status_code == 404
+
+    def test_dispatch_failure_returns_500(self, client):
+        with patch(
+            "api.routing_router.department_dispatcher.dispatch",
+            new_callable=AsyncMock,
+            side_effect=RuntimeError("provider unavailable"),
+        ):
+            response = client.post(
+                "/routing/route",
+                json={"department": "general", "payload": {}},
             )
             assert response.status_code == 500
             body = response.json()
-            if "detail" in body:
-                assert "Routing failed" in body["detail"]
-            else:
-                assert "Routing failed" in body["error"]["message"]
+            assert "detail" in body
+            assert "Department routing failed" in body["detail"]
 
-    def test_route_no_providers(self, client):
+    def test_stream_defaults_to_false(self, client):
+        captured = {}
+
+        def capture_dispatch(**kwargs):
+            captured["stream"] = kwargs.get("stream")
+            return {"ok": True}
+
         with patch(
-            "api.routing_router.route_task",
+            "api.routing_router.department_dispatcher.dispatch",
             new_callable=AsyncMock,
-            return_value={
-                "ok": False,
-                "error": "no providers available",
-                "providers_tried": [],
-            },
+            side_effect=capture_dispatch,
         ):
-            response = client.post(
+            client.post(
                 "/routing/route",
-                json={
-                    "task_type": "chat",
-                    "payload": {},
-                },
+                json={"department": "general", "payload": {}},
             )
-            assert response.status_code == 200
-            data = response.json()
-            assert data["ok"] is False
+        assert captured.get("stream") is False

@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from typing import Any, Dict, Optional
+from typing import Any, Dict, Optional, Tuple
 
 from ...providers.dispatcher import canonical_provider_id, dispatcher
 
@@ -52,3 +52,28 @@ def merge_attachment_metadata(
                 }
             )
     return attachments_meta, attachment_context_sources
+
+
+def normalize_provider_response(
+    provider_response: Any,
+    request_provider: Optional[str],
+    request_model: Optional[str],
+) -> Tuple[str, str, str]:
+    """Return (content, used_provider, used_model) from a dispatcher response.
+
+    Caller is responsible for detecting and raising on error responses before
+    calling this — the fallback branch handles unexpected/unknown shapes only.
+    """
+    if isinstance(provider_response, dict) and provider_response.get("ok"):
+        return (
+            provider_response.get("result", {}).get("text", ""),
+            provider_response.get("provider", request_provider or "unknown"),
+            provider_response.get("model", request_model or "unknown"),
+        )
+    if isinstance(provider_response, dict) and "choices" in provider_response:
+        return (
+            provider_response["choices"][0]["message"]["content"],
+            provider_response.get("provider", request_provider or "unknown"),
+            provider_response.get("model", request_model or "unknown"),
+        )
+    return str(provider_response), request_provider or "unknown", request_model or "unknown"

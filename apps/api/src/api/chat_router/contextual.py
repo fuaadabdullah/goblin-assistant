@@ -46,7 +46,7 @@ from .service_accessors import (
 
 
 def _get_embedding_worker():
-    from ..services.embedding_service import embedding_worker
+    from ..services.embedding_worker import embedding_worker
 
     return embedding_worker
 
@@ -173,6 +173,20 @@ async def contextual_chat(
         if ctx_tools:
             payload["tools"] = ctx_tools
 
+        # Resolve department for contextual chat
+        _ctx_dept = request.department or "general"
+        _ctx_dept_provider = request.provider
+        _ctx_dept_model = request.model
+        if request.department and not request.provider:
+            try:
+                from api.departments import department_dispatcher as _dd  # noqa: PLC0415
+
+                _ctx_dept_id = _dd.resolve_provider_id(request.department)
+                if _ctx_dept_id:
+                    _ctx_dept_provider = _ctx_dept_id
+            except Exception:
+                pass
+
         if request.stream:
             # Streaming requires a conversation; create one on the fly if missing.
             from .streaming import generate_chat_stream
@@ -188,8 +202,8 @@ async def contextual_chat(
                     message=request.message,
                     conversation_id=stream_conv_id,
                     current_user=current_user,
-                    provider=request.provider,
-                    model=request.model,
+                    provider=_ctx_dept_provider,
+                    model=_ctx_dept_model,
                 ),
                 media_type="text/event-stream",
                 headers={
@@ -199,8 +213,8 @@ async def contextual_chat(
             )
 
         provider_response = await _cr.invoke_provider(
-            pid=request.provider,
-            model=request.model,
+            pid=_ctx_dept_provider,
+            model=_ctx_dept_model,
             payload=payload,
             timeout_ms=30000,
             stream=False,
@@ -214,8 +228,8 @@ async def contextual_chat(
             provider_response = await run_tool_loop(
                 messages=list(messages),
                 invoke_fn=_cr.invoke_provider,
-                provider=request.provider,
-                model=request.model,
+                provider=_ctx_dept_provider,
+                model=_ctx_dept_model,
                 tools=ctx_tools,
                 timeout_ms=30000,
                 user_id=user_id,
@@ -301,8 +315,8 @@ async def contextual_chat(
             data=ContextualChatResponse(
                 message_id=response_message_id,
                 response=response_content,
-                provider=used_provider,
-                model=used_model,
+                department=_ctx_dept,
+                department_reason="",
                 timestamp=datetime.utcnow().isoformat(),
                 context_assembly=context_assembly,
                 token_usage=token_usage,

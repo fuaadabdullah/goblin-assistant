@@ -7,8 +7,10 @@ export interface ChatUsage {
 }
 
 export interface ChatMessageMeta {
-  provider?: string | undefined;
-  model?: string | undefined;
+  department?: string | undefined;   // Which brain department handled this
+  department_reason?: string | undefined;  // Why this department was chosen
+  provider?: string | undefined;     // Internal: deprecated, use department
+  model?: string | undefined;        // Internal: deprecated, use department
   usage?: ChatUsage | undefined;
   cost_usd?: number | undefined;
   // UI-side estimates (pre-send).

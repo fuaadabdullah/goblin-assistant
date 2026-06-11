@@ -18,9 +18,7 @@ tools for plain conversation).
 
 from __future__ import annotations
 
-from typing import Dict, List
-
-from .context import PipelineContext
+from typing import Any, Dict, List, Optional
 
 # ---------------------------------------------------------------------------
 # Intent → tool category weights
@@ -136,13 +134,13 @@ class ToolSelectionModel:
     def __init__(self, threshold: float = _DEFAULT_THRESHOLD) -> None:
         self.threshold = threshold
 
-    def select(self, ctx: PipelineContext) -> List[str]:
+    def select(self, intent: Optional[Any]) -> List[str]:
         """Return an ordered list of tool names appropriate for this request."""
-        if ctx.intent is None:
+        if intent is None:
             return []
 
-        label: str = ctx.intent.label.value  # e.g. "coding"
-        confidence: float = ctx.intent.confidence
+        label: str = intent.label.value  # e.g. "coding"
+        confidence: float = intent.confidence
 
         category_weights = _INTENT_CATEGORY_WEIGHTS.get(label)
         if not category_weights:

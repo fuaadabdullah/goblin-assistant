@@ -68,10 +68,17 @@ const ChatView = ({ session, isAdmin, isGuest = false }: ChatViewProps) => {
       if (!requestId) return;
       try {
         const provider = msg?.meta?.provider;
+        const department = msg?.meta?.department || msg?.meta?.department_reason;
+        // Use the active thread id as conversation_id for feedback context
+        const conversationId = session.threads.find(t => t.threadKey === session.activeThreadKey)?.id || '';
         await apiClient.submitRoutingFeedback({
           requestId,
           rating,
           ...(provider && { providerId: provider }),
+          ...(msg?.meta?.model && { model: msg.meta.model }),
+          ...(department && { department: department }),
+          messageId,
+          conversationId,
         });
       } catch {
         // best-effort — feedback failure is silent

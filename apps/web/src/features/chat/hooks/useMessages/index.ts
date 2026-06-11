@@ -65,7 +65,7 @@ export const useMessages = ({
 
   const deleteMessage = useDeleteMessage({ messages, applyMessages, showSuccess });
 
-  const copyMessage = useCopyMessage({ showError, showSuccess });
+  const copyMessage = useCopyMessage({ messages, showError, showSuccess });
 
   const regenerateMessage = useRegenerateMessage({
     messages,

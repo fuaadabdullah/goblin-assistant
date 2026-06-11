@@ -81,6 +81,7 @@ export const chatMethods = {
   async sendConversationMessage(payload: {
     conversationId: string;
     message: string;
+    department?: string | undefined;
     model?: string | undefined;
     provider?: string | undefined;
     metadata?: Record<string, unknown> | undefined;
@@ -90,6 +91,7 @@ export const chatMethods = {
       ConversationSendResponse,
       {
         message: string;
+        department?: string | undefined;
         model?: string | undefined;
         provider?: string | undefined;
         metadata?: Record<string, unknown> | undefined;
@@ -99,6 +101,7 @@ export const chatMethods = {
       `${V1_CHAT_PREFIX}/conversations/${encodeURIComponent(payload.conversationId)}/messages`,
       {
         message: payload.message,
+        department: payload.department,
         model: payload.model,
         provider: payload.provider,
         metadata: payload.metadata,
@@ -110,6 +113,8 @@ export const chatMethods = {
     return {
       messageId: response.message_id,
       content: response.response,
+      department: (response as any).department || "general",
+      department_reason: (response as any).department_reason || "",
       provider: response.provider,
       model: response.model,
       createdAt: response.timestamp,
@@ -184,18 +189,59 @@ export const chatMethods = {
 
   async submitRoutingFeedback(payload: {
     requestId: string;
-    rating: 1 | -1;
+    rating?: 1 | -1;
+    signal?: string;
     providerId?: string;
     taskType?: string;
+    messageId?: string;
+    conversationId?: string;
+    model?: string;
+    department?: string;
   }): Promise<{ ok: boolean }> {
     return postBackend<{ ok: boolean }, object>(
       `${V1_API_PREFIX}/routing/feedback`,
       {
         request_id: payload.requestId,
         rating: payload.rating,
+        signal: payload.signal,
         provider_id: payload.providerId,
         task_type: payload.taskType,
+        message_id: payload.messageId,
+        conversation_id: payload.conversationId,
+        model: payload.model,
+        department: payload.department,
       },
+      withAuth()
+    );
+  },
+
+  async getFeedbackStats(days: number = 7): Promise<{
+    total_events: number;
+    thumbs_up_count: number;
+    thumbs_down_count: number;
+    regenerate_count: number;
+    delete_count: number;
+    continue_count: number;
+    copy_count: number;
+    provider_switch_count: number;
+    model_switch_count: number;
+    thumbs_up_rate: number;
+    by_department: Record<string, { thumbs_up: number; thumbs_down: number; total: number }>;
+    by_provider: Record<string, { thumbs_up: number; thumbs_down: number; total: number }>;
+    recent_events: Array<{
+      event_id: string;
+      signal: string;
+      rating: number | null;
+      user_id: string;
+      department: string | null;
+      provider: string | null;
+      model: string | null;
+      task_type: string | null;
+      created_at: string | null;
+    }>;
+  }> {
+    return getBackend(
+      `${V1_API_PREFIX}/feedback/stats?days=${days}`,
       withAuth()
     );
   },

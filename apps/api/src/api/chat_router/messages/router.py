@@ -47,9 +47,11 @@ from .attachment_utils import attachment_context_limits, inject_attachment_conte
 from .error_mapping import provider_error_code, provider_error_status_code
 from .pipeline_helpers import (
     merge_attachment_metadata,
+    normalize_provider_response,
     provider_supports_tools,
     resolve_provider_id,
 )
+from .rovo_task import create_rovo_task, update_rovo_task
 from .sentry_context import set_sentry_chat_context
 from .usage_tracker import (
     emit_chat_message_created,
@@ -73,7 +75,172 @@ async def _resolve_provider_call(result: Any) -> Any:
 
 
 # ---------------------------------------------------------------------------
-# Route handler
+# Private pipeline stage helpers
+# ---------------------------------------------------------------------------
+
+
+async def _classify_intent(message: str) -> tuple[Any, dict]:
+    """Run intent classification; return (result, meta_dict) or (None, {}) on failure."""
+    try:
+        from api.routing.intent_classifier import intent_classifier as _ic  # noqa: PLC0415
+
+        result = _ic.classify(message)
+        return result, result.to_dict()
+    except Exception as exc:
+        logger.warning("intent_classification_failed", error=str(exc))
+        return None, {}
+
+
+async def _run_wti_stage(
+    message_id: str,
+    content: str,
+    conversation: Any,
+    conversation_id: str,
+    user_id: str,
+    metadata: Optional[dict],
+    intent_result: Any,
+) -> dict:
+    """Run Write-Time Intelligence; return populated metadata dict or partial dict on failure."""
+    result: dict = {}
+    try:
+        wti = _messages_pkg._get_write_time_intelligence()
+        wti_result = await wti.process_message(
+            message_id=message_id,
+            content=content,
+            role="user",
+            user_id=conversation.user_id,
+            conversation_id=conversation_id,
+            metadata=metadata,
+            intent=intent_result,
+        )
+        classification = wti_result["classification"]
+        decision = wti_result["decision"]
+        execution = wti_result["execution"]
+        result.update(
+            {
+                "classification": classification,
+                "decision": decision,
+                "write_time_execution": execution,
+                "memory_type": classification["type"],
+                "confidence": classification["confidence"],
+                "actions_taken": execution["actions_executed"],
+                "processed_at": wti_result["processed_at"],
+            }
+        )
+    except Exception as exc:
+        logger.error(
+            "write_time_intelligence_failed",
+            message_id=message_id,
+            conversation_id=conversation_id,
+            user_id=user_id,
+            error_type=type(exc).__name__,
+            error=str(exc),
+        )
+        result["write_time_error"] = str(exc)
+    return result
+
+
+async def _check_usage_quota(user_id: str, conversation_id: str) -> None:
+    """Raise HTTP 429 if the user has exceeded daily limits; silently pass on store errors."""
+    try:
+        usage_store = await _messages_pkg.get_usage_event_store()
+        quota = await usage_store.check_limits(user_id)
+        if not quota.get("allowed", True):
+            raise HTTPException(
+                status_code=429,
+                detail={
+                    "message": "Daily usage limit exceeded",
+                    "reason": quota.get("reason"),
+                    "usage": quota.get("usage"),
+                },
+            )
+    except HTTPException:
+        raise
+    except Exception as exc:
+        logger.warning(
+            "usage_quota_check_failed",
+            conversation_id=conversation_id,
+            user_id=user_id,
+            error=str(exc),
+        )
+
+
+async def _resolve_addendum(
+    mode: Optional[str],
+    new_category: Optional[str],
+    intent_meta: dict,
+    user_id: str,
+    sanitized_message: str,
+) -> str:
+    """Return the system-prompt addendum for the request."""
+    if mode:
+        try:
+            return _get_mode_addendum(mode)
+        except KeyError as exc:
+            raise HTTPException(status_code=400, detail=str(exc))
+
+    message_classifier, MessageType = _messages_pkg._get_message_classifier()
+    classification = message_classifier.classify_message(sanitized_message, "user")
+    addendum = (
+        EDUCATION_SYSTEM_ADDENDUM if classification.message_type == MessageType.LEARNING else ""
+    )
+
+    if new_category:
+        try:
+            from api.config.mode_addendums import CATEGORY_ADDENDUMS  # noqa: PLC0415
+
+            cat_addendum = CATEGORY_ADDENDUMS.get(new_category, "")
+            if cat_addendum:
+                addendum = (addendum + "\n\n" + cat_addendum).strip()
+        except Exception:
+            pass
+
+    try:
+        from api.config.mode_addendums import response_length_addendum as _rla  # noqa: PLC0415
+        from api.services.preference_learner import preference_learner as _pl  # noqa: PLC0415
+
+        length_pref = await _pl.get_length_pref(str(user_id), intent_meta.get("label", "default"))
+        len_addendum = _rla(length_pref)
+        if len_addendum:
+            addendum = (addendum + "\n\n" + len_addendum).strip()
+    except Exception:
+        pass
+
+    return addendum
+
+
+def _log_missing_mode_tools(
+    provider: Optional[str],
+    mode: Optional[str],
+    registered_tools: list,
+) -> None:
+    """Warn when mode-required tools are absent from the registered tool list."""
+    if not registered_tools:
+        return
+    if _is_general_assistant_mode(mode):
+        missing = _missing_general_assistant_tools(registered_tools)
+        if missing:
+            logger.warning(
+                "general_assistant_required_tools_missing",
+                provider=provider,
+                mode=mode,
+                missing_tools=missing,
+                registered_tool_count=len(registered_tools),
+            )
+    if _is_deep_research_mode(mode):
+        missing = _missing_deep_research_tools(registered_tools)
+        if missing:
+            logger.warning(
+                "deep_research_required_tools_missing",
+                provider=provider,
+                mode=mode,
+                missing_tools=missing,
+                registered_tool_count=len(registered_tools),
+            )
+
+
+# ---------------------------------------------------------------------------
+# Route handlers
 # ---------------------------------------------------------------------------
 
 
@@ -100,79 +267,40 @@ async def send_message(
         set_sentry_chat_context(
             conversation_id=conversation_id,
             user_id=current_user.id,
-            provider=request.provider,
+            provider=request.provider or request.department,
             model=request.model,
         )
 
         conversation = await _cr._require_owned_conversation(conversation_id, current_user)
-
         sanitized_message, message_validation = _cr.InputSanitizer.sanitize_chat_message(
             request.message
         )
-
-        # ── Pre-classify intent (feeds WTI and pipeline stage 1) ─────────
         message_id = str(uuid.uuid4())
-        try:
-            from api.routing.intent_classifier import intent_classifier as _ic  # noqa: PLC0415
 
-            _intent_result = _ic.classify(sanitized_message)
-            _intent_meta = _intent_result.to_dict()
-        except Exception as _ie:
-            logger.warning("intent_classification_failed", error=str(_ie))
-            _intent_result = None
-            _intent_meta = {}
-
-        # ── Stage 1: Write-Time Intelligence ──────────────────────────────
-        message_metadata: Dict[str, Any] = {}
-        try:
-            write_time_intelligence = _messages_pkg._get_write_time_intelligence()
-            write_time_result = await write_time_intelligence.process_message(
-                message_id=message_id,
-                content=sanitized_message,
-                role="user",
-                user_id=conversation.user_id,
-                conversation_id=conversation_id,
-                metadata=request.metadata,
-                intent=_intent_result,
-            )
-            classification = write_time_result["classification"]
-            decision = write_time_result["decision"]
-            execution = write_time_result["execution"]
-            message_metadata.update(
-                {
-                    "classification": classification,
-                    "decision": decision,
-                    "write_time_execution": execution,
-                    "memory_type": classification["type"],
-                    "confidence": classification["confidence"],
-                    "actions_taken": execution["actions_executed"],
-                    "processed_at": write_time_result["processed_at"],
-                }
-            )
-        except Exception as wti_err:
-            logger.error(
-                "write_time_intelligence_failed",
-                message_id=message_id,
-                conversation_id=conversation_id,
-                user_id=current_user.id,
-                error_type=type(wti_err).__name__,
-                error=str(wti_err),
-            )
-            message_metadata["write_time_error"] = str(wti_err)
-
+        # Stage 1: Intent classification + Write-Time Intelligence
+        intent_result, intent_meta = await _classify_intent(sanitized_message)
+        message_metadata = await _run_wti_stage(
+            message_id,
+            sanitized_message,
+            conversation,
+            conversation_id,
+            current_user.id,
+            request.metadata,
+            intent_result,
+        )
         message_metadata["input_validation"] = message_validation
-        if _intent_meta:
-            message_metadata["intent"] = _intent_meta
+        if intent_meta:
+            message_metadata["intent"] = intent_meta
         if request.metadata:
             message_metadata.update(request.metadata)
 
-        # ── Stage 2: Attachments ─────────────────────────────────────────
-        attachment_context = ""
+        # Stage 2: Attachments
         attachments_meta, attachment_context_sources = merge_attachment_metadata(
             current_user_id=current_user.id,
             attachment_ids=request.attachment_ids,
             pending_uploads=_pending_uploads,
         )
+        attachment_context = ""
         if attachments_meta:
             message_metadata["attachments"] = attachments_meta
             max_chunks, max_chars = attachment_context_limits()
@@ -186,7 +314,7 @@ async def send_message(
             if attachment_context:
                 message_metadata["attachment_context_chars"] = len(attachment_context)
 
-        # ── Conversation classification ───────────────────────────────────
+        # Stage 3: Conversation classification
         _new_category: Optional[str] = None
         try:
             from api.services.conversation_classifier import conversation_classifier as _cc  # noqa: PLC0415, I001
@@ -201,7 +329,7 @@ async def send_message(
         except Exception:
             pass
 
-        # ── Persist user message ──────────────────────────────────────────
+        # Persist user message
         user_msg_saved = await _cr.conversation_store.add_message_to_conversation(
             conversation_id=conversation_id,
             role="user",
@@ -224,163 +352,74 @@ async def send_message(
         )
         await _messages_pkg.schedule_conversation_archive(conversation_id)
 
-        # ── Usage quota check ─────────────────────────────────────────────
-        try:
-            usage_store = await _messages_pkg.get_usage_event_store()
-            quota_check = await usage_store.check_limits(current_user.id)
-            if not quota_check.get("allowed", True):
-                raise HTTPException(
-                    status_code=429,
-                    detail={
-                        "message": "Daily usage limit exceeded",
-                        "reason": quota_check.get("reason"),
-                        "usage": quota_check.get("usage"),
-                    },
-                )
-        except HTTPException:
-            raise
-        except Exception as quota_err:
-            logger.warning(
-                "usage_quota_check_failed",
-                conversation_id=conversation_id,
-                user_id=current_user.id,
-                error=str(quota_err),
-            )
+        # Quota check
+        await _check_usage_quota(current_user.id, conversation_id)
 
-        # ── Stage 3: Reload conversation + build pipeline input ──────────
-        # Reload to include the just-saved user message.
+        # Stage 4: Context assembly + system prompt
         conversation = await _cr._require_owned_conversation(conversation_id, current_user)
         history_messages = [
             {"role": msg.role, "content": msg.content} for msg in conversation.messages
         ]
 
-        if request.mode:
+        # Resolve department → provider for backward compat
+        _resolved_dept_provider: Optional[str] = None
+        _resolved_dept_model: Optional[str] = None
+        if request.department and not request.provider:
             try:
-                addendum = _get_mode_addendum(request.mode)
-            except KeyError as exc:
-                raise HTTPException(status_code=400, detail=str(exc))
-        else:
-            message_classifier, MessageType = _messages_pkg._get_message_classifier()
-            msg_classification = message_classifier.classify_message(sanitized_message, "user")
-            addendum = (
-                EDUCATION_SYSTEM_ADDENDUM
-                if msg_classification.message_type == MessageType.LEARNING
-                else ""
-            )
-            if _new_category:
-                try:
-                    from api.config.mode_addendums import CATEGORY_ADDENDUMS  # noqa: PLC0415
+                from api.departments import department_dispatcher  # noqa: PLC0415
 
-                    cat_addendum = CATEGORY_ADDENDUMS.get(_new_category, "")
-                    if cat_addendum:
-                        addendum = (addendum + "\n\n" + cat_addendum).strip()
-                except Exception:
-                    pass
-
-            # Learned response-length preference — injected only when no explicit mode set
-            try:
-                from api.config.mode_addendums import response_length_addendum as _rla  # noqa: PLC0415, I001
-                from api.services.preference_learner import preference_learner as _pl  # noqa: PLC0415, I001
-
-                _length_pref = await _pl.get_length_pref(
-                    str(current_user.id),
-                    _intent_meta.get("label", "default"),
-                )
-                _len_add = _rla(_length_pref)
-                if _len_add:
-                    addendum = (addendum + "\n\n" + _len_add).strip()
+                _resolved_dept_id = department_dispatcher.resolve_provider_id(request.department)
+                _resolved_dept_provider = _resolved_dept_id
             except Exception:
                 pass
 
-        # ── Pipeline: Memory → Routing → Tool Selection ───────────────────
-        # Stages run in sequence; each stage is isolated with try/except so a
-        # failure degrades gracefully rather than aborting the request.
-        pipeline_ctx = await _messages_pkg._get_request_pipeline().run(
+        pipeline_result = await _messages_pkg._get_request_pipeline().run(
             raw_message=request.message,
             sanitized_message=sanitized_message,
             user_id=str(current_user.id),
             conversation_id=conversation_id,
             history_messages=history_messages,
-            intent_result=_intent_result,  # skip re-classification; reuse pre-classified result
-            preferred_provider=request.provider,
-            preferred_model=request.model,
+            intent_result=intent_result,
+            preferred_provider=request.provider or _resolved_dept_provider,
+            preferred_model=request.model or _resolved_dept_model,
             enable_context_assembly=request.enable_context_assembly,
             request_model=request.model,
         )
-        context_metadata: Dict[str, Any] = pipeline_ctx.context_metadata
+        context_metadata: Dict[str, Any] = pipeline_result.decision.context_metadata
 
+        addendum = await _resolve_addendum(
+            request.mode, _new_category, intent_meta, current_user.id, sanitized_message
+        )
         system_prompt = system_prompt_manager.get_complete_prompt_with_addendum(
-            context=pipeline_ctx.assembled_context,
+            context=pipeline_result.decision.assembled_context,
             user_query=sanitized_message,
             addendum=addendum,
         )
         messages = [{"role": "system", "content": system_prompt}] + history_messages
         inject_attachment_context(messages, attachment_context)
 
-        # ── Provider dispatch ─────────────────────────────────────────────
-        resolved_provider = request.provider or pipeline_ctx.selected_provider
-        _rovo_task_id: Optional[str] = None
-        if resolved_provider == "rovo_dev":
-            try:
-                from ...storage.tasks import task_store as _task_store  # noqa: PLC0415
+        # Stage 5: Provider dispatch — use department routing
+        resolved_provider = request.provider or pipeline_result.execution.selected_provider
+        resolved_department = (
+            request.department or pipeline_result.execution.selected_department or "general"
+        )
+        department_reason = pipeline_result.execution.department_selection_reason or ""
+        registered_tools = (
+            pipeline_result.response.tool_schemas
+            if provider_supports_tools(resolved_provider)
+            else []
+        )
+        _log_missing_mode_tools(request.provider, request.mode, registered_tools)
 
-                _rovo_task_id = str(uuid.uuid4())
-                await _task_store.save_task(
-                    _rovo_task_id,
-                    {
-                        "task_id": _rovo_task_id,
-                        "task_type": "code",
-                        "status": "pending",
-                        "payload": {
-                            "prompt": sanitized_message,
-                            "conversation_id": conversation_id,
-                            "user_id": str(current_user.id),
-                        },
-                        "metadata": {
-                            "provider": "rovo_dev",
-                            "intent": _intent_meta,
-                            "complexity_score": getattr(pipeline_ctx, "complexity_score", None),
-                        },
-                    },
-                )
-            except Exception as _rte:
-                logger.warning("rovo_dev_task_create_failed", error=str(_rte))
-                _rovo_task_id = None
-
-        payload = {
+        payload: Dict[str, Any] = {
             "messages": messages,
             "model": request.model,
             "user_id": str(current_user.id),
-            "intent": _intent_meta or {},
+            "intent": intent_meta or {},
         }
-
-        registered_tools = (
-            pipeline_ctx.tool_schemas if provider_supports_tools(resolved_provider) else []
-        )
-        if _is_general_assistant_mode(request.mode) and registered_tools:
-            missing_tools = _missing_general_assistant_tools(registered_tools)
-            if missing_tools:
-                logger.warning(
-                    "general_assistant_required_tools_missing",
-                    provider=request.provider,
-                    mode=request.mode,
-                    missing_tools=missing_tools,
-                    registered_tool_count=len(registered_tools),
-                )
-        if _is_deep_research_mode(request.mode) and registered_tools:
-            missing_tools = _missing_deep_research_tools(registered_tools)
-            if missing_tools:
-                logger.warning(
-                    "deep_research_required_tools_missing",
-                    provider=request.provider,
-                    mode=request.mode,
-                    missing_tools=missing_tools,
-                    registered_tool_count=len(registered_tools),
-                )
         if registered_tools:
             payload["tools"] = registered_tools
 
-        # Streaming branch
         if request.stream:
             from ..streaming import generate_chat_stream
 
@@ -393,12 +432,17 @@ async def send_message(
                     model=request.model,
                 ),
                 media_type="text/event-stream",
-                headers={
-                    "Cache-Control": "no-cache",
-                    "Connection": "keep-alive",
-                },
+                headers={"Cache-Control": "no-cache", "Connection": "keep-alive"},
             )
 
+        rovo_task_id = await create_rovo_task(
+            resolved_provider,
+            sanitized_message,
+            conversation_id,
+            str(current_user.id),
+            pipeline_result.decision.complexity_score,
+            intent_meta,
+        )
         provider_response = await _resolve_provider_call(
             _cr.invoke_provider(
                 pid=resolved_provider,
@@ -408,34 +452,7 @@ async def send_message(
                 stream=False,
             )
         )
-
-        if _rovo_task_id is not None:
-            try:
-                from ...storage.tasks import task_store as _task_store  # noqa: PLC0415
-
-                _is_ok = isinstance(provider_response, dict) and provider_response.get("ok")
-                await _task_store.update_task_status(
-                    _rovo_task_id,
-                    "completed" if _is_ok else "failed",
-                    result={
-                        "diff": (
-                            provider_response.get("result", {}).get("text")
-                            or provider_response.get("text")
-                        )
-                        if isinstance(provider_response, dict)
-                        else None,
-                        "error": provider_response.get("error")
-                        if isinstance(provider_response, dict)
-                        else None,
-                        "latency_ms": provider_response.get("latency_ms")
-                        if isinstance(provider_response, dict)
-                        else None,
-                    },
-                )
-            except Exception as _rtu:
-                logger.warning(
-                    "rovo_dev_task_update_failed", task_id=_rovo_task_id, error=str(_rtu)
-                )
+        await update_rovo_task(rovo_task_id, provider_response)
 
         # Tool loop
         if (
@@ -455,45 +472,36 @@ async def send_message(
                 conversation_id=conversation_id,
             )
 
-        # ── Stage 5: Normalize response ──────────────────────────────────
-        if isinstance(provider_response, dict) and provider_response.get("ok"):
-            result_data = provider_response.get("result", {})
-            response_content = result_data.get("text", "")
-            used_provider = provider_response.get("provider", request.provider or "unknown")
-            used_model = provider_response.get("model", request.model or "unknown")
-        elif isinstance(provider_response, dict) and "choices" in provider_response:
-            response_content = provider_response["choices"][0]["message"]["content"]
-            used_provider = provider_response.get("provider", request.provider or "unknown")
-            used_model = provider_response.get("model", request.model or "unknown")
-        else:
-            if isinstance(provider_response, dict) and not provider_response.get("ok"):
-                category = str(
-                    provider_response.get("error_category") or ProviderErrorCategory.UNKNOWN.value
-                )
-                await emit_chat_message_failed(
-                    current_user=current_user,
-                    conversation_id=conversation_id,
-                    message_id=message_id,
-                    stage="provider",
-                    provider=str(
-                        provider_response.get("provider") or request.provider or "unknown"
-                    ),
-                    model=str(provider_response.get("model") or request.model or "unknown"),
-                    category=category,
-                    code=provider_error_code(category),
-                    status_code=provider_error_status_code(category),
-                    error=str(provider_response.get("error") or "unknown-error"),
-                    error_type="provider_error",
-                )
-                _cr._raise_structured_provider_error(provider_response)
+        # Stage 6: Normalize response (emit structured error first if provider failed)
+        if (
+            isinstance(provider_response, dict)
+            and not provider_response.get("ok")
+            and "choices" not in provider_response
+        ):
+            category = str(
+                provider_response.get("error_category") or ProviderErrorCategory.UNKNOWN.value
+            )
+            await emit_chat_message_failed(
+                current_user=current_user,
+                conversation_id=conversation_id,
+                message_id=message_id,
+                stage="provider",
+                provider=str(provider_response.get("provider") or request.provider or "unknown"),
+                model=str(provider_response.get("model") or request.model or "unknown"),
+                category=category,
+                code=provider_error_code(category),
+                status_code=provider_error_status_code(category),
+                error=str(provider_response.get("error") or "unknown-error"),
+                error_type="provider_error",
+            )
+            _cr._raise_structured_provider_error(provider_response)
 
-            response_content = str(provider_response)
-            used_provider = request.provider or "unknown"
-            used_model = request.model or "unknown"
-
+        response_content, used_provider, used_model = normalize_provider_response(
+            provider_response, request.provider, request.model
+        )
         usage, cost_usd, correlation_id = _cr._extract_usage_and_cost(provider_response)
 
-        # ── Persist assistant message ─────────────────────────────────────
+        # Stage 7: Persist assistant message
         response_message_id = str(uuid.uuid4())
         assistant_metadata: Dict[str, Any] = {
             "provider": used_provider,
@@ -535,7 +543,7 @@ async def send_message(
             )
             await _messages_pkg.schedule_conversation_archive(conversation_id)
 
-        # ── Record task + usage event (best-effort) ───────────────────────
+        # Record task + usage event (best-effort)
         try:
             await record_chat_completion_task(
                 user_id=current_user.id,
@@ -576,7 +584,7 @@ async def send_message(
                 error=str(usage_err),
             )
 
-        # ── Preference learning (fire-and-forget) ────────────────────────
+        # Preference learning (fire-and-forget)
         try:
             import asyncio as _asyncio  # noqa: PLC0415
 
@@ -587,7 +595,7 @@ async def send_message(
                     user_id=str(current_user.id),
                     provider_id=used_provider,
                     model=used_model,
-                    intent_label=_intent_meta.get("label", "unknown"),
+                    intent_label=intent_meta.get("label", "unknown"),
                     completion_tokens=int(
                         (usage or {}).get("completion_tokens")
                         or (usage or {}).get("output_tokens")
@@ -596,9 +604,124 @@ async def send_message(
                     explicit_rating=None,
                 )
             )
-            _pref_task.add_done_callback(lambda _t: None)  # suppress "task not awaited" warning
+            _pref_task.add_done_callback(lambda _t: None)
         except Exception:
             pass
+
+        # Track feedback outcomes (fire-and-forget)
+        try:
+            import asyncio as _asyncio  # noqa: PLC0415
+
+            from api.services.feedback_service import (  # noqa: PLC0415
+                FeedbackContext,
+                feedback_service,
+            )
+
+            # 1. Detect continuation: find the previous assistant message and mark it
+            #    as having had the conversation continue after it
+            if len(history_messages) >= 2:
+                prev_msgs = history_messages[:-1]  # exclude the current user message
+                # Find last assistant message in history
+                for i in range(len(prev_msgs) - 1, -1, -1):
+                    if prev_msgs[i].get("role") == "assistant":
+                        prev_asst_msg_id = None
+                        # Find the corresponding message id from the store
+                        if hasattr(conversation, "messages") and i < len(conversation.messages):
+                            prev_msg_obj = conversation.messages[i]
+                            if hasattr(prev_msg_obj, "message_id"):
+                                prev_asst_msg_id = prev_msg_obj.message_id
+
+                        if prev_asst_msg_id:
+                            context = FeedbackContext(
+                                user_id=str(current_user.id),
+                                conversation_id=conversation_id,
+                                message_id=prev_asst_msg_id,
+                                request_id=correlation_id,
+                                department=resolved_department,
+                                provider=used_provider,
+                                model=used_model,
+                                task_type=pipeline_result.decision.task_type or "",
+                                intent_label=intent_meta.get("label"),
+                                complexity_score=pipeline_result.decision.complexity_score,
+                            )
+                            _prev_task = _asyncio.create_task(
+                                feedback_service.record_conversation_continued(
+                                    context=context,
+                                    next_message_id=response_message_id,
+                                )
+                            )
+                            _prev_task.add_done_callback(lambda _t: None)
+                        break
+
+            # 2. Detect provider/model switch
+            if len(history_messages) >= 2:
+                # Check the previous assistant message's metadata for provider/model
+                prev_provider = None
+                prev_model = None
+                for j in range(len(history_messages) - 1, -1, -1):
+                    if history_messages[j].get("role") == "assistant":
+                        if hasattr(conversation, "messages") and j < len(conversation.messages):
+                            prev_msg_obj = conversation.messages[j]
+                            if hasattr(prev_msg_obj, "metadata_") and prev_msg_obj.metadata_:
+                                prev_provider = prev_msg_obj.metadata_.get("provider")
+                                prev_model = prev_msg_obj.metadata_.get("model")
+                        break
+
+                if prev_provider and prev_provider != used_provider:
+                    # Find the assistant message id from the metadata
+                    switch_asst_msg_id = None
+                    for j in range(len(history_messages) - 1, -1, -1):
+                        if history_messages[j].get("role") == "assistant":
+                            if hasattr(conversation, "messages") and j < len(conversation.messages):
+                                prev_msg_obj = conversation.messages[j]
+                                if hasattr(prev_msg_obj, "message_id"):
+                                    switch_asst_msg_id = prev_msg_obj.message_id
+                            break
+
+                    if switch_asst_msg_id:
+                        switch_context = FeedbackContext(
+                            user_id=str(current_user.id),
+                            conversation_id=conversation_id,
+                            message_id=switch_asst_msg_id,
+                            request_id=correlation_id,
+                            department=resolved_department,
+                            provider=prev_provider,
+                            model=prev_model,
+                            task_type=pipeline_result.decision.task_type or "",
+                            intent_label=intent_meta.get("label"),
+                            complexity_score=pipeline_result.decision.complexity_score,
+                            previous_provider=prev_provider,
+                            previous_model=prev_model,
+                        )
+                        _switch_task = _asyncio.create_task(
+                            feedback_service.record_provider_switch(
+                                context=switch_context,
+                                new_provider=used_provider,
+                                new_model=used_model,
+                            )
+                        )
+                        _switch_task.add_done_callback(lambda _t: None)
+
+            # 3. Detect regeneration: if the last message in conversation history
+            #    (excluding current user message) is a user message with the same content,
+            #    and the assistant response was removed
+            if len(history_messages) >= 2:
+                # Find if there was a previous assistant message that was removed
+                # (i.e., the last messages were user + assistant, and now it's just user again)
+                last_user_idx = -1
+                for k in range(len(history_messages) - 1, -1, -1):
+                    if history_messages[k].get("role") == "user":
+                        last_user_idx = k
+                        break
+
+                if last_user_idx > 0 and last_user_idx < len(history_messages) - 1:
+                    # The last item in history should be an assistant message if no regeneration
+                    # If history_messages[-1] is assistant, this is a normal continuation (already tracked)
+                    # If the assistant after last_user_idx was removed, we detect it
+                    pass  # Regeneration is better detected from the frontend sending a flag
+
+        except Exception as exc:
+            logger.debug("feedback_outcome_tracking_failed error=%s", exc)
 
         visualizations = None
         if isinstance(provider_response, dict) and provider_response.get("visualizations"):
@@ -609,8 +732,8 @@ async def send_message(
             data=SendMessageResponse(
                 message_id=response_message_id,
                 response=response_content,
-                provider=used_provider,
-                model=used_model,
+                department=resolved_department,
+                department_reason=department_reason,
                 timestamp=datetime.utcnow().isoformat(),
                 usage=usage,
                 cost_usd=cost_usd,
@@ -698,6 +821,13 @@ async def estimate_tokens(
 
     estimated_output_tokens = int(input_tokens * OUTPUT_TOKEN_RATIO)
 
+    # Resolve department for estimation
+    _estimate_department = "general"
+    if request.department:
+        _estimate_department = request.department
+    elif request.provider:
+        _estimate_department = "general"  # provider was specified directly
+
     provider_id = resolve_provider_id(request.provider)
     if provider_id is None:
         return SuccessEnvelope(
@@ -706,8 +836,7 @@ async def estimate_tokens(
                 input_tokens=input_tokens,
                 estimated_output_tokens=estimated_output_tokens,
                 estimated_cost_usd=0.0,
-                provider="unknown",
-                model=request.model,
+                department=_estimate_department,
                 layers=layers,
                 degraded_mode=True,
                 degraded_reason=degraded_reason or "no-configured-providers",
@@ -726,8 +855,7 @@ async def estimate_tokens(
             input_tokens=input_tokens,
             estimated_output_tokens=estimated_output_tokens,
             estimated_cost_usd=estimated_cost_usd,
-            provider=provider_id,
-            model=request.model,
+            department=_estimate_department,
             layers=layers,
             degraded_mode=degraded_mode,
             degraded_reason=degraded_reason,

@@ -34,10 +34,9 @@ ops_health_router = APIRouter()
 async def check_routing_health() -> Dict[str, Any]:
     """Check routing system health"""
     try:
-        # Import here to avoid circular imports
-        from .routing_router import top_providers_for
+        from .departments import DEPARTMENT_REGISTRY
 
-        providers = top_providers_for("chat")
+        providers = DEPARTMENT_REGISTRY.list_ids()
         return {
             "status": "healthy",
             "providers_available": len(providers),
@@ -359,9 +358,9 @@ async def liveness_check() -> Dict[str, Any]:
 async def health_routing() -> Dict[str, Any]:
     """Check routing subsystem health"""
     try:
-        from .routing_router import top_providers_for
+        from .departments import DEPARTMENT_REGISTRY
 
-        providers = top_providers_for("chat")
+        providers = DEPARTMENT_REGISTRY.list_ids()
         return {
             "status": "healthy" if len(providers) > 0 else "degraded",
             "providers_available": len(providers),

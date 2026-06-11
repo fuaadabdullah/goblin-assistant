@@ -32,7 +32,7 @@ def _get_context_builder():
 
 
 def _get_embedding_worker():
-    from .services.embedding_service import embedding_worker
+    from .services.embedding_worker import embedding_worker
 
     return embedding_worker
 
@@ -45,8 +45,9 @@ def _get_retrieval_singleton():
 
 class SemanticSendMessageRequest(BaseModel):
     message: str
-    provider: Optional[str] = None  # None = let dispatcher choose
-    model: Optional[str] = None  # None = use provider default
+    provider: Optional[str] = None  # Deprecated: use department instead
+    model: Optional[str] = None  # Deprecated: auto-selected by department
+    department: Optional[str] = None  # e.g. "reasoning", "coding", "creative", "research"
     stream: Optional[bool] = False
     metadata: Optional[Dict[str, Any]] = None
     # Semantic retrieval options
@@ -59,8 +60,7 @@ class SemanticSendMessageRequest(BaseModel):
 class SemanticSendMessageResponse(BaseModel):
     message_id: str
     response: str
-    provider: str
-    model: str
+    department: str = "general"  # Which brain department handled this
     timestamp: str
     context_used: bool
     context_details: Optional[Dict[str, Any]] = None
@@ -306,11 +306,11 @@ async def semantic_send_message(conversation_id: str, request: SemanticSendMessa
                 "retrieved_at": context_bundle.get("retrieved_at"),
             }
 
+        _dept = request.department or "general"
         return SemanticSendMessageResponse(
             message_id=response_message_id,
             response=response_content,
-            provider=used_provider,
-            model=used_model,
+            department=_dept,
             timestamp=datetime.utcnow().isoformat(),
             context_used=context_used,
             context_details=context_details,

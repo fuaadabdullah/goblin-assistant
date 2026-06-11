@@ -6,8 +6,10 @@ import type { ChatMessage } from '../types';
 export interface ChatResponse {
   messageId?: string | undefined;
   content?: string | undefined;
-  model?: string | undefined;
-  provider?: string | undefined;
+  department?: string | undefined;        // Which brain department handled this
+  department_reason?: string | undefined;  // Why this department was chosen
+  model?: string | undefined;             // Deprecated: internal
+  provider?: string | undefined;          // Deprecated: internal
   usage?:
     | {
         input_tokens?: number | undefined;
@@ -77,8 +79,9 @@ export interface SendMessageParams {
   conversationId: string;
   prompt?: string | undefined;
   messages?: ChatMessage[] | undefined;
-  model?: string | undefined;
-  provider?: string | undefined;
+  department?: string | undefined;  // e.g. "reasoning", "coding", "creative", "research"
+  model?: string | undefined;       // Deprecated: use department instead
+  provider?: string | undefined;    // Deprecated: use department instead
   attachment_ids?: string[] | undefined;
 }
 
@@ -176,6 +179,7 @@ export const chatClient = {
     conversationId,
     prompt,
     messages,
+    department,
     model,
     provider,
     attachment_ids,
@@ -188,13 +192,15 @@ export const chatClient = {
 
       const hasExplicitSelection = Boolean(
         (typeof model === 'string' && model.trim()) ||
-        (typeof provider === 'string' && provider.trim())
+        (typeof provider === 'string' && provider.trim()) ||
+        (typeof department === 'string' && department.trim())
       );
 
       try {
         return await apiClient.sendConversationMessage({
           conversationId,
           message: resolvedPrompt,
+          department,
           model,
           provider,
           attachment_ids,
@@ -249,6 +255,7 @@ export const chatClient = {
     conversationId,
     prompt,
     messages,
+    department,
     model,
     provider,
     onChunk,
@@ -286,6 +293,7 @@ export const chatClient = {
         body: JSON.stringify({
           conversation_id: conversationId,
           message: resolvedPrompt,
+          department,
           model,
           provider,
         }),
@@ -341,6 +349,8 @@ export const chatClient = {
                     messageId: data['message_id'] as string | undefined,
                     content:
                       (typeof data['result'] === 'string' && data['result']) || accumulatedContent,
+                    department: data['department'] as string | undefined,
+                    department_reason: data['department_reason'] as string | undefined,
                     provider: data['provider'] as string | undefined,
                     model: data['model'] as string | undefined,
                     usage: {

@@ -40,6 +40,9 @@ class BackgroundTaskManager:
         # Start periodic indexing optimization
         self.tasks.append(asyncio.create_task(self._periodic_index_optimization()))
 
+        # Apply accumulated implicit feedback signals to routing weights every 15 minutes
+        self.tasks.append(asyncio.create_task(self._periodic_learning_application()))
+
     async def stop(self):
         """Stop all background tasks"""
         if not self.running:
@@ -97,6 +100,23 @@ class BackgroundTaskManager:
             except Exception as e:
                 logger.error("Error in periodic index optimization: %s", e)
                 await asyncio.sleep(86400)  # Wait 1 day before retrying
+
+    async def _periodic_learning_application(self):
+        """Apply unapplied implicit feedback signals to bandit/feature/preference weights."""
+        while self.running:
+            try:
+                from .learning_applicator import learning_applicator  # noqa: PLC0415
+
+                async with get_db_context() as db:
+                    applied = await learning_applicator.apply_batch(db, limit=200)
+                    if applied > 0:
+                        logger.info("learning_applicator_applied count=%d", applied)
+                await asyncio.sleep(900)  # 15 minutes
+            except asyncio.CancelledError:
+                break
+            except Exception as exc:
+                logger.error("Error in periodic learning application: %s", exc)
+                await asyncio.sleep(300)  # retry in 5 minutes on failure
 
     async def _summarize_stale_conversations(self):
         """Summarize conversations that haven't been summarized recently"""

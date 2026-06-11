@@ -14,25 +14,25 @@ No database, network, or AI provider is needed.
 
 import argparse
 import cProfile
-import pstats
 import io
+import os
+import pstats
 import random
 import string
 import sys
-import os
 
 # Add src to path so we can import the API package
 _here = os.path.dirname(os.path.abspath(__file__))
 _src = os.path.join(_here, "..", "src")
 sys.path.insert(0, _src)
 
+from api.services.message_classifier import MessageClassifier
+from api.services.retrieval_service._context_bundle import build_context_bundle
 from api.services.retrieval_service._token_budget import (
     apply_context_token_budget,
     estimate_tokens,
     trim_item_to_token_budget,
 )
-from api.services.retrieval_service._context_bundle import build_context_bundle
-from api.services.message_classifier import MessageClassifier
 from api.utils.tokenizer import count_tokens, trim_to_tokens
 
 N_ITER = 500
@@ -123,7 +123,9 @@ def workload() -> None:
 def main() -> None:
     parser = argparse.ArgumentParser(description="Profile goblin-assistant hot paths")
     parser.add_argument("--out", metavar="FILE", help="Write .stats file to this path")
-    parser.add_argument("--top", type=int, default=20, metavar="N", help="Rows to print (default 20)")
+    parser.add_argument(
+        "--top", type=int, default=20, metavar="N", help="Rows to print (default 20)"
+    )
     parser.add_argument(
         "--sort",
         default="cumtime",

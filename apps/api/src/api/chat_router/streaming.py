@@ -56,6 +56,8 @@ async def generate_chat_stream(
     total_cost = 0.0
     used_provider = provider or "unknown"
     used_model = model or "unknown"
+    used_department = "general"
+    used_department_reason = ""
     start_time = time.time()
     response_message_id = str(uuid.uuid4())
 
@@ -75,12 +77,23 @@ async def generate_chat_stream(
 
         sanitized_message, _ = _cr.InputSanitizer.sanitize_chat_message(message)
 
-        # Intent classification — sync path only (streaming can't await refinement)
+        # Intent + department routing via shared pipeline (avoids duplicating classification logic)
         _stream_intent_meta = {}
         try:
-            from api.routing.intent_classifier import intent_classifier as _ic  # noqa: PLC0415
+            from .messages import _get_request_pipeline  # noqa: PLC0415
 
-            _stream_intent_meta = _ic.classify(sanitized_message).to_dict()
+            _dec, _exec = await _get_request_pipeline().run_routing_only(
+                sanitized_message=sanitized_message,
+                preferred_provider=provider,
+                preferred_model=model,
+            )
+            if _dec.intent is not None:
+                _stream_intent_meta = _dec.intent.to_dict()
+            used_department = _exec.selected_department or "general"
+            used_department_reason = _exec.department_selection_reason
+            if not provider and _exec.selected_provider:
+                used_provider = _exec.selected_provider
+                used_model = _exec.selected_model or "unknown"
         except Exception:
             pass
 
@@ -129,32 +142,34 @@ async def generate_chat_stream(
 
         try:
             provider_response = await _cr.invoke_provider(
-                pid=provider,
-                model=model,
+                pid=used_provider if provider is None else provider,
+                model=used_model if model is None else model,
                 payload=payload,
                 timeout_ms=30000,
                 stream=True,
             )
         except asyncio.TimeoutError:
-            logger.warning("provider_timeout", provider=provider, model=model)
+            logger.warning("provider_timeout", provider=used_provider, model=used_model)
             error_event = {
                 "type": "error",
                 "code": "provider-timeout",
-                "message": f"Provider {provider or 'default'} did not respond in time. Your message was saved.",
+                "message": "The service timed out. Your message was saved.",
                 "is_recoverable": True,
-                "details": {"provider": provider, "timeout_ms": 30000},
+                "details": {"department": used_department},
                 "done": True,
             }
             yield _format_sse_event("error", error_event)
             return
         except Exception as provider_connect_exc:
-            logger.error("provider_connection_error", exc=provider_connect_exc, provider=provider)
+            logger.error(
+                "provider_connection_error", exc=provider_connect_exc, provider=used_provider
+            )
             error_event = {
                 "type": "error",
                 "code": "provider-connection-error",
-                "message": f"Could not reach provider {provider or 'default'}. Your message was saved.",
+                "message": "Processing service is temporarily unavailable. Your message was saved.",
                 "is_recoverable": True,
-                "details": {"provider": provider},
+                "details": {"department": used_department},
                 "done": True,
             }
             yield _format_sse_event("error", error_event)
@@ -166,12 +181,12 @@ async def generate_chat_stream(
                 if isinstance(provider_response, dict)
                 else "provider-error"
             )
-            logger.warning("provider_error", error=provider_error, provider=provider)
+            logger.warning("provider_error", error=provider_error, provider=used_provider)
 
             try:
                 fallback_response = await _cr.invoke_provider(
-                    pid=provider,
-                    model=model,
+                    pid=used_provider,
+                    model=used_model,
                     payload=payload,
                     timeout_ms=30000,
                     stream=False,
@@ -200,19 +215,19 @@ async def generate_chat_stream(
                     error_event = {
                         "type": "error",
                         "code": "provider-error",
-                        "message": f"Provider could not process your request: {provider_error}. Your message was saved.",
+                        "message": "Processing service could not complete your request. Your message was saved.",
                         "is_recoverable": True,
-                        "details": {"provider_error": provider_error},
+                        "details": {"department": used_department},
                         "done": True,
                     }
                     yield _format_sse_event("error", error_event)
                     return
             except asyncio.TimeoutError:
-                logger.error("provider_fallback_timeout", provider=provider)
+                logger.error("provider_fallback_timeout", provider=used_provider)
                 error_event = {
                     "type": "error",
                     "code": "provider-timeout",
-                    "message": "Provider fallback timed out. Your message was saved.",
+                    "message": "Processing timed out. Your message was saved.",
                     "is_recoverable": True,
                     "done": True,
                 }
@@ -223,7 +238,7 @@ async def generate_chat_stream(
                 error_event = {
                     "type": "error",
                     "code": "provider-error",
-                    "message": "Provider unavailable. Your message was saved.",
+                    "message": "Processing service unavailable. Your message was saved.",
                     "is_recoverable": True,
                     "done": True,
                 }
@@ -365,6 +380,7 @@ async def generate_chat_stream(
                     "result": {
                         "selected_provider": used_provider,
                         "model": used_model,
+                        "department": used_department,
                         "usage": {"total_tokens": int(total_tokens)},
                         "cost_usd": float(total_cost),
                         "result": {"text": accumulated_text},
@@ -414,8 +430,8 @@ async def generate_chat_stream(
                 "result": accumulated_text,
                 "cost": total_cost,
                 "tokens": total_tokens,
-                "model": used_model,
-                "provider": used_provider,
+                "department": used_department,
+                "department_reason": used_department_reason,
                 "duration_ms": duration_ms,
                 "message_id": response_message_id,
                 "done": True,

@@ -35,8 +35,9 @@ class CreateConversationResponse(BaseModel):
 
 class SendMessageRequest(BaseModel):
     message: str
-    provider: Optional[str] = None  # None = let dispatcher choose
-    model: Optional[str] = None  # None = use provider default
+    provider: Optional[str] = None  # Deprecated: use department instead
+    model: Optional[str] = None  # Deprecated: auto-selected by department
+    department: Optional[str] = None  # e.g. "reasoning", "coding", "creative", "research"
     stream: Optional[bool] = False
     metadata: Optional[Dict[str, Any]] = None
     enable_context_assembly: Optional[bool] = True  # Inject RAG context like contextual-chat
@@ -47,8 +48,8 @@ class SendMessageRequest(BaseModel):
 class SendMessageResponse(BaseModel):
     message_id: str
     response: str
-    provider: str
-    model: str
+    department: str  # Which brain department handled this
+    department_reason: str = ""  # Why this department was chosen
     timestamp: str
     usage: Optional[Dict[str, Any]] = None
     cost_usd: Optional[float] = None
@@ -65,8 +66,7 @@ class EstimateTokensResponse(BaseModel):
     input_tokens: int
     estimated_output_tokens: int
     estimated_cost_usd: float
-    provider: str
-    model: Optional[str] = None
+    department: str = "general"  # Which department handles this
     layers: List[LayerEstimate]
     degraded_mode: bool = False
     degraded_reason: Optional[str] = None
@@ -114,8 +114,8 @@ class SSEDataEvent(BaseModel):
     result: Optional[str] = None
     cost: Optional[float] = None
     tokens: Optional[int] = None
-    model: Optional[str] = None
-    provider: Optional[str] = None
+    department: Optional[str] = None  # Which department handled this
+    department_reason: Optional[str] = None
     duration_ms: Optional[int] = None
     message_id: Optional[str] = None
     # Error fields
@@ -145,8 +145,9 @@ class ContextualChatRequest(BaseModel):
     message: str
     user_id: Optional[str] = None
     conversation_id: Optional[str] = None
-    provider: Optional[str] = None
-    model: Optional[str] = None
+    provider: Optional[str] = None  # Deprecated: use department instead
+    model: Optional[str] = None  # Deprecated: auto-selected by department
+    department: Optional[str] = None  # e.g. "reasoning", "coding", "creative", "research"
     stream: Optional[bool] = False
     metadata: Optional[Dict[str, Any]] = None
     enable_context_assembly: bool = True
@@ -158,8 +159,8 @@ class ContextualChatResponse(BaseModel):
 
     message_id: str
     response: str
-    provider: str
-    model: str
+    department: str  # Which brain department handled this
+    department_reason: str = ""
     timestamp: str
     context_assembly: Optional[Dict[str, Any]] = None
     token_usage: Optional[Dict[str, Any]] = None
@@ -169,6 +170,7 @@ class ContextualChatResponse(BaseModel):
 class StreamChatRequest(BaseModel):
     message: str
     conversation_id: str
-    provider: Optional[str] = None
-    model: Optional[str] = None
+    provider: Optional[str] = None  # Deprecated: use department instead
+    model: Optional[str] = None  # Deprecated: auto-selected
+    department: Optional[str] = None  # e.g. "reasoning", "coding", "creative", "research"
     metadata: Optional[Dict[str, Any]] = None
