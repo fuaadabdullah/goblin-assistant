@@ -283,13 +283,22 @@ class RequestPipeline:
                     resolved_provider = top.provider_id
                     resolved_model = top.model_name or dept_selection.resolved_model
 
+            # The selection model may override the department's primary, so
+            # rebuild the fallback chain from the full department chain
+            # (primary + fallbacks) minus whichever provider was selected.
+            fallback_chain = [
+                pid
+                for pid in [dept_selection.resolved_provider, *dept_selection.fallback_chain]
+                if pid and pid != resolved_provider
+            ]
+
             return (
                 ExecutionContext(
                     selected_department=dept_selection.department_id.value,
                     department_selection_reason=dept_selection.reason,
                     selected_provider=resolved_provider,
                     selected_model=resolved_model,
-                    fallback_chain=dept_selection.fallback_chain,
+                    fallback_chain=fallback_chain,
                     provider_scores=provider_scores,
                     routing_id=routing_id,
                 ),
