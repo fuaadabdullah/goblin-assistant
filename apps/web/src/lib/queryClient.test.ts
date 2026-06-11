@@ -7,10 +7,19 @@ describe('createQueryClient', () => {
     expect(client.getQueryCache()).toBeDefined();
   });
 
-  it('default options have retry 3', () => {
+  it('query retry allows up to 3 attempts for retryable errors only', () => {
     const client = createQueryClient();
-    const options = client.getDefaultOptions();
-    expect(options.queries?.retry).toBe(3);
+    const retry = client.getDefaultOptions().queries?.retry as (
+      failureCount: number,
+      error: unknown
+    ) => boolean;
+    expect(typeof retry).toBe('function');
+    const serverError = { status: 500 };
+    const authError = { status: 401 };
+    expect(retry(0, serverError)).toBe(true);
+    expect(retry(2, serverError)).toBe(true);
+    expect(retry(3, serverError)).toBe(false);
+    expect(retry(0, authError)).toBe(false);
   });
 
   it('default options have staleTime of 5 minutes', () => {
@@ -37,9 +46,16 @@ describe('createQueryClient', () => {
     expect(options.queries?.refetchOnReconnect).toBe(true);
   });
 
-  it('mutation retry is 1', () => {
+  it('mutation retry allows 1 attempt for retryable errors only', () => {
     const client = createQueryClient();
-    const options = client.getDefaultOptions();
-    expect(options.mutations?.retry).toBe(1);
+    const retry = client.getDefaultOptions().mutations?.retry as (
+      failureCount: number,
+      error: unknown
+    ) => boolean;
+    expect(typeof retry).toBe('function');
+    const serverError = { status: 503 };
+    expect(retry(0, serverError)).toBe(true);
+    expect(retry(1, serverError)).toBe(false);
+    expect(retry(0, { status: 400 })).toBe(false);
   });
 });

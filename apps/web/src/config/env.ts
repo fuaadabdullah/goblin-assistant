@@ -121,7 +121,7 @@ validateEnvConfig(env);
 
 // Log configuration in development
 if (env.isDevelopment) {
-  console.warn('📝 Environment Configuration:', {
+  devWarn('📝 Environment Configuration:', {
     ...env,
     apiBaseUrl: env.apiBaseUrl,
     mode: env.mode,

@@ -5,12 +5,8 @@ import { bootstrapAuthSession, clearAuthSessionState, clearValidationCache } fro
 // ---------------------------------------------------------------------------
 
 vi.mock('../supabase', () => ({
-  supabase: {
-    auth: {
-      getSession: vi.fn(),
-      signOut: vi.fn(),
-    },
-  },
+  authGetSession: vi.fn(),
+  authSignOut: vi.fn(),
   supabaseUserToAppUser: (u: {
     id: string;
     email?: string;
@@ -31,13 +27,11 @@ vi.mock('../../utils/auth-session', () => ({
 }));
 
 // Get references to the mock functions after hoisting resolves
-import { supabase } from '../supabase';
+import { authGetSession, authSignOut } from '../supabase';
 import { clearAuthSession } from '../../utils/auth-session';
 
-const mockGetSession = supabase.auth.getSession as vi.MockedFunction<
-  typeof supabase.auth.getSession
->;
-const mockSignOut = supabase.auth.signOut as vi.MockedFunction<typeof supabase.auth.signOut>;
+const mockGetSession = authGetSession as vi.MockedFunction<typeof authGetSession>;
+const mockSignOut = authSignOut as vi.MockedFunction<typeof authSignOut>;
 const mockClearAuthSession = clearAuthSession as vi.MockedFunction<typeof clearAuthSession>;
 
 const testUser = {
@@ -56,11 +50,7 @@ const testSession = {
 beforeEach(() => {
   vi.clearAllMocks();
   clearValidationCache();
-  mockSignOut.mockResolvedValue({ error: null } as ReturnType<
-    typeof supabase.auth.signOut
-  > extends Promise<infer R>
-    ? R
-    : never);
+  mockSignOut.mockResolvedValue({ error: null });
 });
 
 describe('bootstrapAuthSession — SSR guard', () => {
@@ -78,7 +68,7 @@ describe('bootstrapAuthSession — SSR guard', () => {
 
 describe('bootstrapAuthSession — Supabase session present', () => {
   it('returns authenticated with user when session exists', async () => {
-    mockGetSession.mockResolvedValue({ data: { session: testSession as any }, error: null });
+    mockGetSession.mockResolvedValue({ session: testSession as any, error: null });
 
     const snapshot = await bootstrapAuthSession();
 
@@ -90,7 +80,7 @@ describe('bootstrapAuthSession — Supabase session present', () => {
   });
 
   it('maps user name from user_metadata', async () => {
-    mockGetSession.mockResolvedValue({ data: { session: testSession as any }, error: null });
+    mockGetSession.mockResolvedValue({ session: testSession as any, error: null });
 
     const snapshot = await bootstrapAuthSession();
 
@@ -100,7 +90,7 @@ describe('bootstrapAuthSession — Supabase session present', () => {
 
 describe('bootstrapAuthSession — no session', () => {
   it('returns unauthenticated when Supabase has no session', async () => {
-    mockGetSession.mockResolvedValue({ data: { session: null }, error: null });
+    mockGetSession.mockResolvedValue({ session: null, error: null });
 
     const snapshot = await bootstrapAuthSession();
 

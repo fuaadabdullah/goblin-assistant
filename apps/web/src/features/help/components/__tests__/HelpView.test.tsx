@@ -50,6 +50,16 @@ vi.mock('../HelpSupportForm', () => ({
   },
 }));
 
+const defaultTriage = {
+  description: '',
+  submitting: false,
+  result: null,
+  error: null,
+  setDescription: vi.fn(),
+  handleSubmit: vi.fn(),
+  reset: vi.fn(),
+};
+
 const defaultForm = {
   message: '',
   sent: false,
@@ -63,17 +73,17 @@ describe('HelpView', () => {
   beforeEach(() => vi.clearAllMocks());
 
   it('renders heading', () => {
-    render(<HelpView form={defaultForm} />);
+    render(<HelpView form={defaultForm} triage={defaultTriage} />);
     expect(screen.getByText('Support & Docs')).toBeInTheDocument();
   });
 
   it('renders subtitle', () => {
-    render(<HelpView form={defaultForm} />);
+    render(<HelpView form={defaultForm} triage={defaultTriage} />);
     expect(screen.getByText(/Gateway setup, routing/)).toBeInTheDocument();
   });
 
   it('renders help topics', () => {
-    render(<HelpView form={defaultForm} />);
+    render(<HelpView form={defaultForm} triage={defaultTriage} />);
     expect(screen.getByTestId('help-topics')).toBeInTheDocument();
     expect(screen.getByText('Getting started')).toBeInTheDocument();
     expect(screen.getByText('Search tips')).toBeInTheDocument();
@@ -81,12 +91,12 @@ describe('HelpView', () => {
   });
 
   it('renders support form', () => {
-    render(<HelpView form={defaultForm} />);
+    render(<HelpView form={defaultForm} triage={defaultTriage} />);
     expect(screen.getByTestId('support-form')).toBeInTheDocument();
   });
 
   it('does not show startup failure when absent', () => {
-    render(<HelpView form={defaultForm} />);
+    render(<HelpView form={defaultForm} triage={defaultTriage} />);
     expect(screen.queryByText('Startup issue detected')).not.toBeInTheDocument();
   });
 
@@ -105,7 +115,7 @@ describe('HelpView', () => {
       },
       onRetry: vi.fn(),
     };
-    render(<HelpView form={defaultForm} startupFailure={failure} />);
+    render(<HelpView form={defaultForm} triage={defaultTriage} startupFailure={failure} />);
     expect(screen.getByText('Startup issue detected')).toBeInTheDocument();
     expect(screen.getByText(/Config error/)).toBeInTheDocument();
     expect(screen.getByText('log-123')).toBeInTheDocument();
@@ -124,14 +134,14 @@ describe('HelpView', () => {
       },
       onRetry: vi.fn(),
     };
-    render(<HelpView form={defaultForm} startupFailure={failure} />);
+    render(<HelpView form={defaultForm} triage={defaultTriage} startupFailure={failure} />);
     expect(screen.getByText(/Auth:.*10/)).toBeInTheDocument();
     expect(screen.getByText(/Config:.*20/)).toBeInTheDocument();
   });
 
   it('shows fallback values when diagnostics are null', () => {
     const failure = { onRetry: vi.fn() };
-    render(<HelpView form={defaultForm} startupFailure={failure} />);
+    render(<HelpView form={defaultForm} triage={defaultTriage} startupFailure={failure} />);
     expect(screen.getByText('Startup issue detected')).toBeInTheDocument();
     expect(screen.getAllByText(/unknown/).length).toBeGreaterThanOrEqual(1);
   });
@@ -139,7 +149,7 @@ describe('HelpView', () => {
   it('calls onRetry when retry button clicked', () => {
     const onRetry = vi.fn();
     const failure = { onRetry };
-    render(<HelpView form={defaultForm} startupFailure={failure} />);
+    render(<HelpView form={defaultForm} triage={defaultTriage} startupFailure={failure} />);
     fireEvent.click(screen.getAllByText('Retry boot')[0]);
     expect(onRetry).toHaveBeenCalled();
   });
@@ -158,7 +168,7 @@ describe('HelpView', () => {
       },
       onRetry: vi.fn(),
     };
-    render(<HelpView form={defaultForm} startupFailure={failure} />);
+    render(<HelpView form={defaultForm} triage={defaultTriage} startupFailure={failure} />);
     expect(screen.getByText('diag-log-789')).toBeInTheDocument();
   });
 });

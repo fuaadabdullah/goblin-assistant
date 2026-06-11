@@ -78,7 +78,7 @@ describe('GoogleCallback', () => {
     renderWithClient(<GoogleCallback />);
     await waitFor(() => {
       expect(mockFetch).toHaveBeenCalledWith(
-        'http://api.example.test:8000/auth/google/callback',
+        'http://api.example.test:8000/api/v1/auth/google/callback',
         expect.objectContaining({
           method: 'POST',
           body: JSON.stringify({ code: 'abc123', state: 'xyz' }),

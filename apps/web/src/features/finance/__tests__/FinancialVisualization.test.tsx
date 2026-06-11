@@ -27,7 +27,7 @@ vi.mock('../CorrelationHeatmap', () => ({
 }));
 
 describe('FinancialVisualization', () => {
-  it('renders bar_chart block', () => {
+  it('renders bar_chart block', async () => {
     render(
       <FinancialVisualization
         block={{
@@ -38,11 +38,11 @@ describe('FinancialVisualization', () => {
         }}
       />
     );
-    expect(screen.getByTestId('finance-bar-chart')).toBeInTheDocument();
+    expect(await screen.findByTestId('finance-bar-chart')).toBeInTheDocument();
     expect(screen.getByText('Monthly Costs')).toBeInTheDocument();
   });
 
-  it('renders pie_chart block', () => {
+  it('renders pie_chart block', async () => {
     render(
       <FinancialVisualization
         block={{
@@ -53,7 +53,7 @@ describe('FinancialVisualization', () => {
         }}
       />
     );
-    expect(screen.getByTestId('allocation-pie')).toBeInTheDocument();
+    expect(await screen.findByTestId('allocation-pie')).toBeInTheDocument();
     expect(screen.getByText('Allocation')).toBeInTheDocument();
   });
 
@@ -87,7 +87,7 @@ describe('FinancialVisualization', () => {
     expect(screen.getByText('Correlation')).toBeInTheDocument();
   });
 
-  it('renders line_chart block as bar chart', () => {
+  it('renders line_chart block as bar chart', async () => {
     render(
       <FinancialVisualization
         block={{
@@ -98,7 +98,7 @@ describe('FinancialVisualization', () => {
         }}
       />
     );
-    expect(screen.getByTestId('finance-bar-chart')).toBeInTheDocument();
+    expect(await screen.findByTestId('finance-bar-chart')).toBeInTheDocument();
   });
 
   it('renders nothing for unknown type', () => {
