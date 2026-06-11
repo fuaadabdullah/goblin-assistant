@@ -452,6 +452,43 @@ async def send_message(
                 stream=False,
             )
         )
+
+        # Department chain fallback: when the user didn't pin a provider and the
+        # selected one failed, walk the rest of the chain before giving up.
+        if (
+            not request.provider
+            and isinstance(provider_response, dict)
+            and not provider_response.get("ok", False)
+            and "choices" not in provider_response
+        ):
+            for fallback_pid in pipeline_result.execution.fallback_chain:
+                if fallback_pid == resolved_provider:
+                    continue
+                logger.warning(
+                    "chat_department_fallback",
+                    department=resolved_department,
+                    failed_provider=resolved_provider,
+                    fallback_provider=fallback_pid,
+                    error=str(provider_response.get("error", "unknown")),
+                )
+                # Don't pin the failed provider's model on the fallback provider.
+                fallback_payload = dict(payload)
+                fallback_payload.pop("model", None)
+                fallback_response = await _resolve_provider_call(
+                    _cr.invoke_provider(
+                        pid=fallback_pid,
+                        model=None,
+                        payload=fallback_payload,
+                        timeout_ms=30000,
+                        stream=False,
+                    )
+                )
+                if isinstance(fallback_response, dict):
+                    provider_response = fallback_response
+                    if fallback_response.get("ok", False):
+                        resolved_provider = fallback_pid
+                        break
+
         await update_rovo_task(rovo_task_id, provider_response)
 
         # Tool loop
