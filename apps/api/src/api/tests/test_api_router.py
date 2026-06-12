@@ -133,6 +133,34 @@ def test_generate_uses_prompt_and_returns_openai_style_response():
     assert data["choices"][0]["message"]["content"] == "prompt reply"
 
 
+def test_generate_uses_messages_payload():
+    client = _client()
+
+    with patch(
+        "api.api_router.invoke_provider",
+        new_callable=AsyncMock,
+        return_value={
+            "ok": True,
+            "result": {"text": "messages reply"},
+            "provider": "openai",
+            "model": "gpt-4o-mini",
+        },
+    ):
+        response = client.post(
+            "/api/generate",
+            json={
+                "messages": [{"role": "user", "content": "Tell me a story"}],
+                "provider": "openai",
+                "model": "gpt-4o-mini",
+            },
+        )
+
+    assert response.status_code == 200
+    data = response.json()
+    assert data["content"] == "messages reply"
+    assert data["choices"][0]["message"]["content"] == "messages reply"
+
+
 def test_generate_handles_oversized_prompt_provider_error_and_exception():
     client = _client()
     max_len = api_router.InputSanitizer.MAX_MESSAGE_LENGTH
@@ -158,6 +186,29 @@ def test_generate_handles_oversized_prompt_provider_error_and_exception():
     assert provider_error.json()["error"] == "nope"
     assert exception_response.status_code == 200
     assert exception_response.json()["error"] == "explode"
+
+
+def test_router_helpers_cover_text_fallback_stream_messages_and_timestamp_sort():
+    assert api_router._extract_result_text({"result": {"text": "nested"}}) == "nested"
+    assert api_router._extract_result_text({"text": "fallback"}) == "fallback"
+    assert api_router._extract_result_text({}) == ""
+
+    request = api_router.StreamTaskRequest(
+        goblin="docs-writer",
+        task="Write docs",
+        code="print('hello')",
+    )
+    assert api_router._build_stream_messages(request) == [
+        {"role": "user", "content": "Write docs\n\nCode:\nprint('hello')"}
+    ]
+
+    assert api_router._timestamp_sort_key(10) == 10.0
+    assert api_router._timestamp_sort_key(10.5) == 10.5
+    assert api_router._timestamp_sort_key("2026-01-01T00:00:00") == api_router.datetime.fromisoformat(
+        "2026-01-01T00:00:00"
+    ).timestamp()
+    assert api_router._timestamp_sort_key("not-a-timestamp") == 0.0
+    assert api_router._timestamp_sort_key(object()) == 0.0
 
 
 def test_route_task_returns_task_identifier():
@@ -219,6 +270,36 @@ def test_route_task_failure_and_exception_paths():
     assert "Routing failed: kaboom" in errored.json()["detail"]
 
 
+@pytest.mark.asyncio
+async def test_run_stream_task_background_failure_and_cleanup_path():
+    fake_store = MagicMock()
+    fake_store.mark_status = AsyncMock(side_effect=RuntimeError("cleanup boom"))
+
+    request = api_router.StreamTaskRequest(
+        goblin="docs-writer",
+        task="Write docs",
+        provider="openai",
+        model="gpt-4o-mini",
+    )
+
+    with (
+        patch(
+            "api.api_router.run_task_stream_to_state",
+            new_callable=AsyncMock,
+            side_effect=RuntimeError("stream boom"),
+        ),
+        patch("api.api_router.get_stream_state_store", return_value=fake_store),
+    ):
+        await api_router._run_stream_task_background("stream-1", request)
+
+    fake_store.mark_status.assert_awaited_once_with(
+        "stream-1",
+        status="failed",
+        done=True,
+        updates={"error": "stream boom"},
+    )
+
+
 def test_start_poll_and_cancel_stream_task_flow():
     client = _client()
     store_data: dict[str, dict] = {}
@@ -247,10 +328,14 @@ def test_start_poll_and_cancel_stream_task_flow():
             stream["status"] = "cancelled"
             return True
 
+    def _drop_task(coro):
+        coro.close()
+        return MagicMock()
+
     with (
         patch(
             "api.api_router.asyncio.create_task",
-            new=MagicMock(),
+            side_effect=_drop_task,
         ) as mock_task,
         patch("api.api_router.get_stream_state_store", return_value=_FakeStore()),
     ):
@@ -322,8 +407,22 @@ def test_get_goblins_and_history_limits():
                 "created_at": "2026-01-01T00:00:00",
                 "updated_at": "2026-01-01T00:00:10",
             }
+        ,
+            {
+                "task_id": "t2",
+                "task_type": "chat",
+                "payload": {"task": "Skip me"},
+                "status": "completed",
+                "result": {"selected_provider": "other-writer", "result": {"text": "ignore"}},
+                "created_at": "2026-01-01T00:01:00",
+                "updated_at": "2026-01-01T00:01:10",
+            },
         ]
     )
+
+    def _drop_task(coro):
+        coro.close()
+        return MagicMock()
 
     with (
         patch(
@@ -345,6 +444,7 @@ def test_get_goblins_and_history_limits():
             new_callable=AsyncMock,
             return_value=[],
         ),
+        patch("api.api_router.asyncio.create_task", side_effect=_drop_task),
     ):
         goblins = client.get("/api/goblins")
         history = client.get("/api/history/docs-writer?limit=25")
@@ -457,6 +557,59 @@ def test_get_goblin_history_includes_chat_completions_from_conversations():
     assert body[0]["task"] == "Draft release notes"
     assert body[0]["response"] == "Release notes drafted."
     assert body[0]["goblin"] == "docs-writer"
+
+
+def test_get_goblin_history_filters_other_provider_chat_and_task_entries():
+    client = _client()
+    fake_store = MagicMock()
+    fake_store.list_tasks = AsyncMock(
+        return_value=[
+            {
+                "task_id": "t1",
+                "task_type": "chat",
+                "payload": {"task": "Write docs"},
+                "status": "completed",
+                "result": {"selected_provider": "docs-writer", "result": {"text": "done"}},
+                "created_at": "2026-01-01T00:00:00",
+                "updated_at": "2026-01-01T00:00:10",
+            }
+        ]
+    )
+
+    fake_conversation = MagicMock(
+        conversation_id="conv-2",
+        messages=[
+            MagicMock(
+                role="user",
+                content="Draft release notes",
+                message_id="u2",
+                timestamp="2026-01-01T00:00:00",
+                metadata={},
+            ),
+            MagicMock(
+                role="assistant",
+                content="Other provider response.",
+                message_id="a2",
+                timestamp="2026-01-01T00:00:02",
+                metadata={"provider": "other-writer", "model": "gpt-4o-mini"},
+            ),
+        ],
+    )
+
+    with (
+        patch("api.api_router.get_task_store", new_callable=AsyncMock, return_value=fake_store),
+        patch(
+            "api.api_router.conversation_store.list_conversations",
+            new_callable=AsyncMock,
+            return_value=[fake_conversation],
+        ),
+    ):
+        history = client.get("/api/history/docs-writer?limit=10")
+
+    assert history.status_code == 200
+    body = history.json()
+    assert len(body) == 1
+    assert body[0]["response"] == "done"
 
 
 def test_orchestration_parse_stores_plan_and_execute_runs_background_task():

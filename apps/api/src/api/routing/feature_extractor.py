@@ -23,6 +23,9 @@ class RoutingFeatures:
     conversation_turn: int  # number of prior messages, capped at 10
     intent_label: str = "unknown"  # from IntentClassifier (e.g. "coding", "research")
     intent_confidence: float = 0.0  # 0–1 classification confidence
+    retrieval_probability: float = 0.0  # 0–1 likelihood of search/lookup intent
+    tool_probability: float = 0.0  # 0–1 likelihood of action/automation intent
+    latency_sensitivity: float = 0.0  # 0–1 likelihood the user wants a fast response
 
 
 @dataclass
@@ -35,6 +38,47 @@ class ProviderFeatures:
     norm_cost: float  # 0–1, relative to most-expensive candidate
     is_healthy: bool
 
+
+_RETRIEVAL_KEYWORDS = [
+    "find",
+    "search",
+    "look up",
+    "lookup",
+    "who is",
+    "what is",
+    "when did",
+    "where is",
+    "tell me about",
+    "what are",
+]
+_TOOL_KEYWORDS = [
+    "schedule",
+    "send",
+    "deploy",
+    "create a",
+    "run",
+    "execute",
+    "automate",
+    "set up",
+    "generate a",
+    "make a",
+    "build a",
+    "post to",
+    "write to",
+]
+_LATENCY_KEYWORDS = [
+    "quick",
+    "fast",
+    "asap",
+    "briefly",
+    "tldr",
+    "tl;dr",
+    "in one line",
+    "short answer",
+    "one word",
+    "quickly",
+    "hurry",
+]
 
 _COMPLEXITY_KEYWORDS = [
     "explain",
@@ -86,6 +130,16 @@ class FeatureExtractor:
 
         turn = min(len(conversation_history), 10)
 
+        retrieval = min(
+            sum(1.0 for kw in _RETRIEVAL_KEYWORDS if kw in lower) / max(len(_RETRIEVAL_KEYWORDS) * 0.3, 1.0),
+            1.0,
+        )
+        tool = min(
+            sum(1.0 for kw in _TOOL_KEYWORDS if kw in lower) / max(len(_TOOL_KEYWORDS) * 0.3, 1.0),
+            1.0,
+        )
+        latency = 1.0 if any(kw in lower for kw in _LATENCY_KEYWORDS) else 0.0
+
         return RoutingFeatures(
             prompt_length_bucket=bucket,
             task_type=task_type,
@@ -93,6 +147,9 @@ class FeatureExtractor:
             conversation_turn=turn,
             intent_label=intent_label,
             intent_confidence=round(intent_confidence, 4),
+            retrieval_probability=round(retrieval, 4),
+            tool_probability=round(tool, 4),
+            latency_sensitivity=latency,
         )
 
     def extract_providers(

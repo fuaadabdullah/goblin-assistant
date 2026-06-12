@@ -12,6 +12,7 @@ from api.departments.models import (
     DepartmentPolicy,
     DepartmentQualityTier,
     DepartmentSelection,
+    DepartmentSpecialization,
     quality_tier_for_complexity,
 )
 
@@ -78,6 +79,7 @@ class TestDepartmentPolicy:
 
     def test_defaults(self):
         policy = self._make_policy()
+        assert policy.specializations == []
         assert policy.default_tier is DepartmentQualityTier.BALANCED
         assert policy.supports_streaming is True
         assert policy.supports_tools is True
@@ -119,6 +121,14 @@ class TestDepartmentPolicy:
             display_name="Creative",
             description="Writing and art",
             provider_chain=[("anthropic", "claude-sonnet-4-6")],
+            specializations=[
+                DepartmentSpecialization(
+                    specialization_id="writing",
+                    display_name="Writing",
+                    description="Drafting and editorial polish",
+                    routing_hints=["drafting", "editing"],
+                )
+            ],
             supports_vision=True,
             max_tokens=8192,
             temperature_default=0.9,
@@ -126,6 +136,113 @@ class TestDepartmentPolicy:
         assert policy.supports_vision is True
         assert policy.max_tokens == 8192
         assert policy.temperature_default == pytest.approx(0.9)
+
+    def test_to_dict_omits_specializations_by_default(self):
+        policy = self._make_policy()
+        payload = policy.to_dict()
+        assert "specializations" not in payload
+        assert payload["department_id"] == "general"
+        assert payload["provider_chain"] == [
+            ["openai", "gpt-4o-mini"],
+            ["anthropic", "claude-haiku-4-5-20251001"],
+        ]
+
+    def test_to_dict_can_include_specializations(self):
+        policy = DepartmentPolicy(
+            department_id=DepartmentId.CODING,
+            display_name="Coding",
+            description="Code changes",
+            provider_chain=[("anthropic", "claude-sonnet-4-20250514")],
+            specializations=[
+                DepartmentSpecialization(
+                    specialization_id="frontend",
+                    display_name="Frontend",
+                    description="UI work",
+                    routing_hints=["react", "css"],
+                )
+            ],
+        )
+        payload = policy.to_dict(include_specializations=True)
+        assert payload["specializations"] == [
+            {
+                "specialization_id": "frontend",
+                "display_name": "Frontend",
+                "description": "UI work",
+                "routing_hints": ["react", "css"],
+            }
+        ]
+
+    def test_round_trip_preserves_specializations(self):
+        payload = {
+            "department_id": "research",
+            "display_name": "Research",
+            "description": "Research work",
+            "provider_chain": [["gemini", "gemini-2.5-flash-001"]],
+            "specializations": [
+                {
+                    "specialization_id": "legal",
+                    "display_name": "Legal",
+                    "description": "Regulatory review",
+                    "routing_hints": ["policy", "compliance"],
+                }
+            ],
+            "default_tier": "quality",
+            "supports_streaming": True,
+            "supports_tools": True,
+            "supports_attachments": False,
+            "supports_vision": False,
+            "max_tokens": 8192,
+            "temperature_default": 0.5,
+        }
+        policy = DepartmentPolicy.from_dict(payload)
+        assert policy.department_id is DepartmentId.RESEARCH
+        assert policy.default_tier is DepartmentQualityTier.QUALITY
+        assert policy.specializations == [
+            DepartmentSpecialization(
+                specialization_id="legal",
+                display_name="Legal",
+                description="Regulatory review",
+                routing_hints=["policy", "compliance"],
+            )
+        ]
+        assert (
+            policy.to_dict(include_specializations=True)["specializations"]
+            == payload["specializations"]
+        )
+
+
+# ── DepartmentSpecialization dataclass ────────────────────────────────────────
+
+
+class TestDepartmentSpecialization:
+    def test_defaults_are_serializable(self):
+        specialization = DepartmentSpecialization(
+            specialization_id="frontend",
+            display_name="Frontend",
+            description="UI work",
+        )
+        assert specialization.routing_hints == []
+        assert specialization.to_dict() == {
+            "specialization_id": "frontend",
+            "display_name": "Frontend",
+            "description": "UI work",
+            "routing_hints": [],
+        }
+
+    def test_from_dict_round_trip(self):
+        payload = {
+            "specialization_id": "backend",
+            "display_name": "Backend",
+            "description": "Server work",
+            "routing_hints": ["api", "routes"],
+        }
+        specialization = DepartmentSpecialization.from_dict(payload)
+        assert specialization == DepartmentSpecialization(
+            specialization_id="backend",
+            display_name="Backend",
+            description="Server work",
+            routing_hints=["api", "routes"],
+        )
 
 
 # ── DepartmentSelection dataclass ─────────────────────────────────────────────

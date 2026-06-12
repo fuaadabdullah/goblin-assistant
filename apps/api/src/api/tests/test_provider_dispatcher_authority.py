@@ -1,6 +1,8 @@
 import asyncio
 import importlib
+import os
 import re
+from unittest.mock import AsyncMock, MagicMock
 
 import pytest
 
@@ -155,6 +157,87 @@ def test_dispatcher_visible_order_siliconeflow_before_together():
     assert visible_ids.index("siliconeflow") < visible_ids.index("together")
 
 
+def test_dispatcher_reload_and_endpoint_update_paths(monkeypatch):
+    dispatcher = ProviderDispatcher()
+    original_provider_toml = dispatcher_module._provider_toml
+    original_provider_configs = dispatcher_module._PROVIDER_CONFIGS
+    original_provider_aliases = dispatcher_module._PROVIDER_ALIASES
+    original_model_aliases = dispatcher_module._MODEL_ALIASES
+    original_model_alias_patterns = dispatcher_module._MODEL_ALIAS_PATTERNS
+    original_visible_provider_ids = dispatcher_module._VISIBLE_PROVIDER_IDS
+    dispatcher._configs["openai"] = {
+        "endpoint": "https://old.example.com",
+        "endpoint_env": "OPENAI_ENDPOINT",
+        "backends": [
+            {
+                "engine": "chat",
+                "endpoint": "https://old-backend.example.com",
+                "endpoint_env": "OPENAI_BACKEND_ENDPOINT",
+            }
+        ],
+    }
+    dispatcher._configs["broken"] = "oops"  # type: ignore[assignment]
+
+    warning = MagicMock()
+    monkeypatch.setattr(dispatcher_module.logger, "warning", warning)
+
+    monkeypatch.setattr(dispatcher._registry, "runtime_config", lambda *_: {"ok": True})
+    assert dispatcher._runtime_config("broken") is None
+
+    def _raise_runtime_config(*_args, **_kwargs):
+        raise ValueError("bad runtime config")
+
+    monkeypatch.setattr(dispatcher._registry, "runtime_config", _raise_runtime_config)
+    assert dispatcher._runtime_config("openai") is None
+    warning.assert_called()
+
+    monkeypatch.setattr(dispatcher._registry, "runtime_config", lambda _canonical_id, raw: raw)
+    assert dispatcher._runtime_config("openai") == dispatcher._configs["openai"]
+
+    dispatcher.update_backend_endpoint("openai", "chat", "https://new-backend.example.com")
+    assert dispatcher._configs["openai"]["backends"][0]["endpoint"] == "https://new-backend.example.com"
+    assert os.environ["OPENAI_BACKEND_ENDPOINT"] == "https://new-backend.example.com"
+
+    dispatcher.update_provider_endpoint("openai", "https://new.example.com")
+    assert dispatcher._configs["openai"]["endpoint"] == "https://new.example.com"
+    assert os.environ["OPENAI_ENDPOINT"] == "https://new.example.com"
+
+    monkeypatch.setattr(dispatcher_module, "_load_provider_toml", lambda logger: {"providers": True})
+    monkeypatch.setattr(
+        dispatcher_module,
+        "_load_toml_providers",
+        lambda _toml, logger: {"openai": {"endpoint": "https://reload.example.com"}},
+    )
+    monkeypatch.setattr(dispatcher_module, "_load_aliases", lambda _toml: {"google": "gemini"})
+    monkeypatch.setattr(
+        dispatcher_module,
+        "_load_model_aliases",
+        lambda _toml: ({"claude-haiku": ("anthropic", "claude-3-5-haiku-latest")}, []),
+    )
+    monkeypatch.setattr(dispatcher_module, "_load_visible_providers", lambda _toml: ["openai"])
+    validate_mock = MagicMock()
+    monkeypatch.setattr(dispatcher_module, "validate_model_alias_targets", validate_mock)
+
+    dispatcher_module.reload_provider_catalog()
+    assert dispatcher_module._PROVIDER_CONFIGS == {"openai": {"endpoint": "https://reload.example.com"}}
+    validate_mock.assert_called_once()
+    assert dispatcher_module.canonical_provider_id(None) is None
+    assert dispatcher_module.canonical_provider_id("   ") is None
+
+    start_background_tasks = MagicMock()
+    monkeypatch.setattr(dispatcher, "start_background_tasks", start_background_tasks)
+    monkeypatch.setattr(dispatcher_module, "reload_provider_catalog", lambda: None)
+    dispatcher.reload_config()
+    start_background_tasks.assert_called_once()
+
+    dispatcher_module._provider_toml = original_provider_toml
+    dispatcher_module._PROVIDER_CONFIGS = original_provider_configs
+    dispatcher_module._PROVIDER_ALIASES = original_provider_aliases
+    dispatcher_module._MODEL_ALIASES = original_model_aliases
+    dispatcher_module._MODEL_ALIAS_PATTERNS = original_model_alias_patterns
+    dispatcher_module._VISIBLE_PROVIDER_IDS = original_visible_provider_ids
+
+
 @pytest.mark.asyncio
 async def test_dispatcher_routes_model_alias_to_matching_provider(monkeypatch):
     monkeypatch.setenv("ANTHROPIC_API_KEY", "test-key")
@@ -224,6 +307,102 @@ async def test_dispatcher_routes_wildcard_model_alias(monkeypatch):
     assert result["model"] == "gpt-4o-mini-coder"
 
 
+def test_dispatcher_routing_aliases_and_budget_rerank(monkeypatch):
+    dispatcher = ProviderDispatcher()
+
+    monkeypatch.setattr(
+        dispatcher_module,
+        "_MODEL_ALIASES",
+        {"claude-haiku": ("anthropic", "claude-3-5-haiku-latest")},
+    )
+    monkeypatch.setattr(
+        dispatcher_module,
+        "_MODEL_ALIAS_PATTERNS",
+        [(re.compile(r"^gpt-mini-(.+)$"), "openai", "gpt-4o-mini-{1}")],
+    )
+    monkeypatch.setattr(
+        dispatcher,
+        "list_providers",
+        lambda include_hidden=False: [
+            {
+                "id": "openai",
+                "name": "OpenAI",
+                "priority_tier": 2,
+                "tier": "cloud",
+                "local_routing": False,
+                "hidden": False,
+                "capabilities": ["chat"],
+                "default_model": "gpt-4o-mini",
+            },
+            {
+                "id": "groq",
+                "name": "Groq",
+                "priority_tier": 1,
+                "tier": "cloud",
+                "local_routing": True,
+                "hidden": False,
+                "capabilities": ["chat"],
+                "default_model": "llama-3.3-70b-versatile",
+            },
+            {
+                "id": "vision",
+                "name": "Vision",
+                "priority_tier": 3,
+                "tier": "cloud",
+                "local_routing": False,
+                "hidden": False,
+                "capabilities": ["vision"],
+                "default_model": "vision-1",
+            },
+        ],
+    )
+    monkeypatch.setattr(dispatcher, "is_configured", lambda provider_id: provider_id != "vision")
+    monkeypatch.setattr(dispatcher, "_local_order", lambda: ["groq", "openai"])
+    monkeypatch.setattr(dispatcher, "_cheapest_order", lambda: ["openai", "groq"])
+    monkeypatch.setattr(dispatcher, "_budget_status", lambda: {"over_budget": False})
+
+    assert dispatcher.top_providers_for("chat") == ["openai", "groq"]
+    assert dispatcher.top_providers_for("chat", prefer_local=True) == ["groq", "openai"]
+    assert dispatcher.top_providers_for("chat", prefer_cost=True) == ["openai", "groq"]
+    assert dispatcher.top_providers_for("chat", limit=1) == ["openai"]
+
+    assert dispatcher._resolve_pattern_model_alias("gpt-mini-coder") == (
+        "openai",
+        "gpt-4o-mini-coder",
+    )
+    assert dispatcher._resolve_model_alias(None, "claude-haiku") == (
+        "anthropic",
+        "claude-3-5-haiku-latest",
+    )
+    assert dispatcher._resolve_model_alias("anthropic", "claude-haiku") == (
+        "anthropic",
+        "claude-3-5-haiku-latest",
+    )
+    assert dispatcher._resolve_model_alias("openai", "gpt-mini-coder") == (
+        "openai",
+        "gpt-4o-mini-coder",
+    )
+
+    monkeypatch.setattr(
+        dispatcher,
+        "_budget_status",
+        lambda: {
+            "over_budget": True,
+            "current_hour_spend_usd": 10.0,
+            "cap_usd": 8.0,
+        },
+    )
+    monkeypatch.setattr(
+        dispatcher,
+        "_provider_costs",
+        lambda provider_id: (0.0, 0.0) if provider_id == "groq" else (0.1, 0.2),
+    )
+    assert dispatcher._apply_budget_rerank(["openai", "groq"], routing_mode="auto") == [
+        "groq",
+        "openai",
+    ]
+
+
 @pytest.mark.asyncio
 async def test_dispatcher_redacts_secrets_in_errors(monkeypatch):
     secret = "sk-secret-value-123456"
@@ -247,6 +426,89 @@ async def test_dispatcher_redacts_secrets_in_errors(monkeypatch):
     assert result["ok"] is False
     assert "[REDACTED]" in result["error"]
     assert secret not in result["error"]
+
+
+@pytest.mark.asyncio
+async def test_dispatcher_inventory_debug_and_module_helpers(monkeypatch):
+    dispatcher = ProviderDispatcher()
+
+    monkeypatch.setattr(
+        dispatcher,
+        "list_providers",
+        lambda include_hidden=False: [
+            {
+                "id": "openai",
+                "name": "OpenAI",
+                "priority_tier": 1,
+                "tier": "cloud",
+                "local_routing": False,
+                "hidden": False,
+                "capabilities": ["chat"],
+                "default_model": "gpt-4o-mini",
+            },
+            {
+                "id": "groq",
+                "name": "Groq",
+                "priority_tier": 2,
+                "tier": "cloud",
+                "local_routing": True,
+                "hidden": False,
+                "capabilities": ["chat"],
+                "default_model": "llama-3.3-70b-versatile",
+            },
+        ],
+    )
+
+    async def _check_provider(provider_id: str):
+        if provider_id == "groq":
+            raise RuntimeError("provider token=sk-secret")
+        return {
+            "configured": True,
+            "healthy": True,
+            "health": "healthy",
+            "health_reason": "",
+            "is_selectable": True,
+            "latency_ms": 11.0,
+            "circuit_breaker": {"state": "closed"},
+        }
+
+    monkeypatch.setattr(dispatcher, "check_provider", _check_provider)
+    inventory = await dispatcher.get_provider_inventory(include_hidden=False)
+    assert len(inventory) == 2
+    assert inventory[0]["healthy"] is True
+    assert inventory[1]["healthy"] is False
+
+    health_all = await dispatcher.health_all(include_hidden=False)
+    assert health_all["openai"]["healthy"] is True
+    assert health_all["groq"]["healthy"] is False
+
+    monkeypatch.setattr(dispatcher, "is_configured", lambda provider_id: provider_id == "openai")
+    monkeypatch.setattr(dispatcher, "_warmup_state_for", lambda provider_id: {"state": provider_id})
+    monkeypatch.setattr(dispatcher, "_budget_status", lambda: {"over_budget": False})
+    monkeypatch.setattr(
+        registry,
+        "snapshot",
+        lambda: {"openai": {"success_rate": 1.0}},
+    )
+    monkeypatch.setattr(registry, "metrics_snapshot", lambda: {"calls": 1})
+    monkeypatch.setattr(registry, "persisted_snapshot", lambda: {"persisted": True})
+    monkeypatch.setattr(registry, "persistence_status", lambda: {"enabled": True})
+
+    debug = dispatcher.debug_info()
+    assert debug["routing_table"][0]["configured"] is True
+    assert debug["registry_stats"] == {"openai": {"success_rate": 1.0}}
+
+    monkeypatch.setattr(dispatcher_module.dispatcher, "health_all", AsyncMock(return_value={"ok": True}))
+    monkeypatch.setattr(
+        dispatcher_module.dispatcher,
+        "list_providers",
+        lambda include_hidden=False: [{"id": "openai"}],
+    )
+    monkeypatch.setattr(dispatcher_module.dispatcher, "debug_info", lambda: {"debug": True})
+
+    assert await dispatcher_module.get_provider_health() == {"ok": True}
+    assert dispatcher_module.list_providers() == [{"id": "openai"}]
+    assert dispatcher_module.get_debug_info() == {"debug": True}
 
 
 def test_provider_secrets_processor_redacts_nested_sensitive_fields():
@@ -793,6 +1055,44 @@ async def test_health_inventory_times_out_hung_provider(monkeypatch):
 
     assert inventory[0]["healthy"] is False
     assert "timed out" in inventory[0]["health_reason"]
+
+
+@pytest.mark.asyncio
+async def test_select_provider_and_invoke_with_fallback_helpers():
+    class _ProbeProvider:
+        def __init__(self, provider_id: str, healthy: bool, latency_ms: float, result: str | None = None):
+            self.provider_id = provider_id
+            self._healthy = healthy
+            self._latency_ms = latency_ms
+            self._result = result
+
+        async def health_check(self):
+            return ProviderHealth(
+                provider_id=self.provider_id,
+                healthy=self._healthy,
+                latency_ms=self._latency_ms,
+            )
+
+        async def invoke(self, prompt):
+            _ = prompt
+            if self._result is None:
+                raise RuntimeError(f"{self.provider_id} failed")
+            return self._result
+
+    preferred = _ProbeProvider("fast", True, 10.0, result="preferred")
+    slower = _ProbeProvider("slow", True, 20.0, result="slow")
+    unhealthy = _ProbeProvider("down", False, 5.0, result=None)
+
+    assert await dispatcher_module.select_provider([preferred, slower], preferred="fast") is preferred
+    assert await dispatcher_module.select_provider([preferred, slower]) is preferred
+    assert await dispatcher_module.select_provider([unhealthy]) is unhealthy
+
+    failing = _ProbeProvider("fail", True, 1.0, result=None)
+    succeeding = _ProbeProvider("ok", True, 1.0, result="done")
+    assert await dispatcher_module.invoke_with_fallback("prompt", providers=[failing, succeeding]) == "done"
+
+    with pytest.raises(RuntimeError, match="fail"):
+        await dispatcher_module.invoke_with_fallback("prompt", providers=[failing])
 
 
 def test_list_providers_uses_cached_snapshot(monkeypatch):

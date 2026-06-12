@@ -7,7 +7,12 @@ Users interact with departments, never with raw provider names.
 """
 
 from .dispatcher import DepartmentDispatcher, department_dispatcher
-from .models import DepartmentId, DepartmentPolicy, DepartmentSelection
+from .models import (
+    DepartmentId,
+    DepartmentPolicy,
+    DepartmentSelection,
+    DepartmentSpecialization,
+)
 from .registry import DEPARTMENT_REGISTRY
 from .router import DepartmentRouter, classify_department
 
@@ -18,6 +23,7 @@ __all__ = [
     "DepartmentPolicy",
     "DepartmentRouter",
     "DepartmentSelection",
+    "DepartmentSpecialization",
     "DEPARTMENT_REGISTRY",
     "classify_department",
 ]

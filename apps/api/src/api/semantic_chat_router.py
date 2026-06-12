@@ -16,6 +16,7 @@ from .assistant_tools.registry import export_openai_tools
 from .chat_router.helpers import _raise_structured_provider_error
 from .input_validation import InputSanitizer
 from .providers.dispatcher import invoke_provider
+from .services.memory_core import memory_core_service
 from .storage.conversations import conversation_store
 
 logger = structlog.get_logger()
@@ -426,17 +427,19 @@ async def add_memory_fact(
 ):
     """Add a long-term memory fact for a user"""
     try:
-        retrieval_singleton = _get_retrieval_singleton()
-
         if not fact_text or not fact_text.strip():
             raise HTTPException(status_code=400, detail="Fact text cannot be empty")
 
-        # Store memory fact and its embedding
-        success = await retrieval_singleton.embedding_service.store_memory_fact(
-            user_id=user_id, fact_text=fact_text, category=category, metadata=metadata
+        record = await memory_core_service.ingest_memory_fact(
+            user_id=user_id,
+            fact_text=fact_text,
+            category=category,
+            metadata=metadata,
+            source_kind=(metadata or {}).get("source_kind", "memory"),
+            source_id=(metadata or {}).get("source_id"),
         )
 
-        if not success:
+        if not record:
             raise HTTPException(status_code=500, detail="Failed to store memory fact")
 
         return {
@@ -444,6 +447,7 @@ async def add_memory_fact(
             "message": "Memory fact stored successfully",
             "user_id": user_id,
             "category": category,
+            "memory_fact": record.to_dict(),
             "stored_at": datetime.utcnow().isoformat(),
         }
 

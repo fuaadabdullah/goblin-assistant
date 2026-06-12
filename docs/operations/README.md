@@ -16,6 +16,7 @@ This directory is the canonical home for operational documentation previously un
 - `SECRET_EXPOSURE_INCIDENT_RESPONSE.md`: incident response for exposed secrets.
 - `LEGACY_EXCLUSIONS_REGISTER.md`: temporary exclusions with owners and review dates.
 - `SANDBOX_README.md`: sandbox runtime operations and constraints.
+- `MEMORY_PROMOTION_GUIDELINES.md`: canonical memory promotion, conflict, lifecycle, forgetting, and privacy policy.
 
 ## Provider operations
 

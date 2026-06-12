@@ -19,9 +19,11 @@ from sqlalchemy import text
 from ...storage.database import get_readonly_db_context
 from ..context_builder import LegacyContextBuilder
 from ..embedding_service import EmbeddingProviderUnavailableError, EmbeddingService
+from ..memory_contract import canonicalize_memory_item
 from ._context_bundle import build_context_bundle
 from ._sql_retrieval import (
     retrieve_by_source_type,
+    retrieve_graph_expanded_memories,
     retrieve_memory_facts_stratified,
     retrieve_messages_stratified,
     retrieve_recent_messages,
@@ -63,6 +65,7 @@ class RetrievalService:
         conversation_id: Optional[str] = None,
         k: int = 5,
         max_age_hours: int = 168,  # 7 days default
+        context_scope: Optional[str] = None,
     ) -> List[Dict[str, Any]]:
         """
         Retrieve relevant context using memory stratification priority
@@ -100,6 +103,7 @@ class RetrievalService:
                 conversation_id=conversation_id,
                 k=k,
                 max_age_hours=max_age_hours,
+                context_scope=context_scope,
             )
             try:
                 from ..retrieval_metrics_service import retrieval_metrics_service
@@ -162,6 +166,7 @@ class RetrievalService:
         conversation_id: Optional[str] = None,
         k: int = 5,
         max_age_hours: int = 168,
+        context_scope: Optional[str] = None,
     ) -> Tuple[List[Dict[str, Any]], Dict[str, float]]:
         """Retrieve context using memory stratification priority.
 
@@ -203,6 +208,21 @@ class RetrievalService:
             )
         timings["index"] = (time.perf_counter() - t0) * 1000
 
+        # Stage 4: Graph expansion — find memory facts connected via entity relations
+        t0 = time.perf_counter()
+        seed_ids = [
+            r["id"] for r in all_results if r.get("id") and r.get("source_type") == "memory"
+        ]
+        if seed_ids:
+            graph_results = await retrieve_graph_expanded_memories(
+                user_id=user_id,
+                seed_memory_ids=seed_ids,
+                k=min(k, 3),
+            )
+            existing_ids = {r["id"] for r in all_results}
+            all_results.extend(gr for gr in graph_results if gr.get("id") not in existing_ids)
+        timings["graph"] = (time.perf_counter() - t0) * 1000
+
         t0 = time.perf_counter()
         all_results.extend(
             await retrieve_messages_stratified(
@@ -225,6 +245,15 @@ class RetrievalService:
                 )
             )
         timings["recent"] = (time.perf_counter() - t0) * 1000
+
+        # Attach context_scope to each result so the reranker can compute scope_match
+        if context_scope:
+            for r in all_results:
+                meta = r.get("metadata")
+                if isinstance(meta, dict):
+                    meta["_context_scope"] = context_scope
+                else:
+                    r["metadata"] = {"_context_scope": context_scope}
 
         all_results.sort(key=lambda x: x.get("score", 0), reverse=True)
         return all_results[:k], timings
@@ -312,12 +341,44 @@ class RetrievalService:
                         mf.id,
                         mf.fact_text,
                         mf.category,
+                        mf.memory_type,
+                        mf.source_kind,
+                        mf.source_id,
+                        mf.salience_score,
+                        mf.confidence,
+                        mf.memory_state,
+                        mf.sensitivity_level,
+                        mf.retention_days,
+                        mf.expires_at,
+                        mf.last_accessed_at,
+                        mf.confirmation_count,
+                        mf.is_archived,
+                        mf.related_memory_ids,
+                        mf.entity_refs,
                         mf.metadata,
                         mf.created_at,
                         (1 - (mf.fact_embedding <=> :query_embedding)) as similarity_score
                     FROM memory_facts mf
                     WHERE {where_clause}
-                    ORDER BY similarity_score DESC
+                      AND COALESCE(mf.memory_state, 'active') NOT IN ('archived', 'deleted')
+                      AND (mf.expires_at IS NULL OR mf.expires_at > NOW())
+                    ORDER BY
+                    CASE
+                        WHEN COALESCE(mf.memory_state, 'active') = 'verified' THEN 4
+                        WHEN COALESCE(mf.memory_state, 'active') = 'active' THEN 3
+                        WHEN COALESCE(mf.memory_state, 'active') = 'candidate' THEN 2
+                        WHEN COALESCE(mf.memory_state, 'active') = 'deprecated' THEN 1
+                        ELSE 0
+                    END DESC,
+                    CASE
+                        WHEN COALESCE(mf.confidence, 0) >= 0.90 THEN 3
+                        WHEN COALESCE(mf.confidence, 0) >= 0.70 THEN 2
+                        WHEN COALESCE(mf.confidence, 0) >= 0.40 THEN 1
+                        ELSE 0
+                    END DESC,
+                    similarity_score DESC
+                    , COALESCE(mf.salience_score, 0) DESC
+                    , mf.created_at DESC
                     LIMIT :k
                 """
                 )
@@ -326,15 +387,33 @@ class RetrievalService:
                 rows = result.fetchall()
 
                 return [
-                    {
-                        "id": row.id,
-                        "fact_text": row.fact_text,
-                        "category": row.category,
-                        "metadata": row.metadata,
-                        "created_at": row.created_at,
-                        "score": (float(row.similarity_score) if row.similarity_score else 0.0),
-                        "source_type": "memory",
-                    }
+                    canonicalize_memory_item(
+                        {
+                            "id": row.id,
+                            "fact_text": row.fact_text,
+                            "category": row.category,
+                            "memory_type": row.memory_type or row.category,
+                            "source_kind": row.source_kind,
+                            "source_id": row.source_id,
+                            "salience_score": row.salience_score,
+                            "confidence": row.confidence,
+                            "memory_state": row.memory_state,
+                            "sensitivity_level": row.sensitivity_level,
+                            "retention_days": row.retention_days,
+                            "expires_at": row.expires_at,
+                            "last_accessed_at": row.last_accessed_at,
+                            "confirmation_count": row.confirmation_count,
+                            "is_archived": row.is_archived,
+                            "related_memory_ids": row.related_memory_ids,
+                            "entity_refs": row.entity_refs,
+                            "metadata": row.metadata,
+                            "created_at": row.created_at,
+                            "score": (float(row.similarity_score) if row.similarity_score else 0.0),
+                            "source_type": "memory",
+                        },
+                        user_id=user_id,
+                        source_type="memory",
+                    )
                     for row in rows
                 ]
 

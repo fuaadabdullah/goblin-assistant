@@ -119,8 +119,13 @@ def insert_routing_audit(
     success: bool,
     error_message: Optional[str] = None,
     error_category: Optional[str] = None,
+    dept_routing: Optional[Dict[str, Any]] = None,
 ) -> None:
-    """Non-blocking insert of one routing decision into the audit log."""
+    """Non-blocking insert of one routing decision into the audit log.
+
+    dept_routing accepts learned-router metadata:
+      {"confidence": float, "shadow": str}
+    """
     payload: Dict[str, Any] = {
         "request_id": request_id,
         "model": model,
@@ -146,6 +151,11 @@ def insert_routing_audit(
         payload["error_message"] = error_message[:500]
     if error_category:
         payload["error_category"] = error_category
+    if dept_routing:
+        if (conf := dept_routing.get("confidence")) is not None:
+            payload["department_confidence"] = round(float(conf), 4)
+        if shadow := dept_routing.get("shadow"):
+            payload["department_router_shadow"] = str(shadow)
 
     _fire(_post("routing_audit_log", payload, "return=minimal"))
 

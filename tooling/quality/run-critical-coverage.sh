@@ -81,9 +81,9 @@ COVERAGE_FILE="$ROOT_DIR/apps/api/.coverage.provider_routing_rag" \
 cd "$ROOT_DIR"
 mkdir -p "$ROOT_DIR/.tmp"
 echo "Running critical web consumer + state persistence gates (threshold ${WEB_CRITICAL_THRESHOLD}%)"
-TMPDIR="$ROOT_DIR/.tmp" pnpm --filter @goblin/web exec jest --runInBand --coverage \
-  --collectCoverageFrom='src/api/api-client.ts' \
-  --collectCoverageFrom='src/store/authStore.ts' \
-  --coverageThreshold="{\"global\":{\"lines\":${WEB_CRITICAL_THRESHOLD},\"statements\":${WEB_CRITICAL_THRESHOLD},\"functions\":${WEB_CRITICAL_THRESHOLD},\"branches\":70}}" \
+TMPDIR="$ROOT_DIR/.tmp" \
+VITEST_COVERAGE_INCLUDE='src/api/api-client.ts,src/lib/auth-state.ts' \
+WEB_CRITICAL_THRESHOLD="$WEB_CRITICAL_THRESHOLD" \
+pnpm --filter @goblin/web exec vitest run --coverage \
   src/api/__tests__/apiClient.contract.test.ts \
-  src/store/__tests__/authStore.bootstrap.test.ts
+  src/lib/__tests__/auth-state.bootstrap.test.ts

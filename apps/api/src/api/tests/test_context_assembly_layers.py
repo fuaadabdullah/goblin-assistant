@@ -211,7 +211,7 @@ async def test_assemble_semantic_retrieval_no_results(monkeypatch):
         _record_tier_breakdown,
         raising=False,
     )
-    monkeypatch.setattr(sem, "_get_retrieval_service", lambda: _RetrievalService())
+    monkeypatch.setattr(sem, "_get_retrieval_service", _RetrievalService)
 
     layer = await sem.assemble_semantic_retrieval(
         query="q",
@@ -254,7 +254,7 @@ async def test_assemble_semantic_retrieval_success(monkeypatch):
         _record_tier_breakdown,
         raising=False,
     )
-    monkeypatch.setattr(sem, "_get_retrieval_service", lambda: _RetrievalService())
+    monkeypatch.setattr(sem, "_get_retrieval_service", _RetrievalService)
     monkeypatch.setattr(sem, "count_tokens", lambda _text: 40)
 
     layer = await sem.assemble_semantic_retrieval(
@@ -298,7 +298,7 @@ async def test_assemble_semantic_retrieval_hard_stop(monkeypatch):
         _record_tier_breakdown,
         raising=False,
     )
-    monkeypatch.setattr(sem, "_get_retrieval_service", lambda: _RetrievalService())
+    monkeypatch.setattr(sem, "_get_retrieval_service", _RetrievalService)
     monkeypatch.setattr(sem, "count_tokens", lambda _text: 1000)
     monkeypatch.setattr(sem, "trim_to_tokens", lambda _text, _limit: "trimmed")
 
@@ -343,7 +343,7 @@ async def test_assemble_semantic_retrieval_exception_ends_trace(monkeypatch):
         _record_tier_breakdown,
         raising=False,
     )
-    monkeypatch.setattr(sem, "_get_retrieval_service", lambda: _RetrievalService())
+    monkeypatch.setattr(sem, "_get_retrieval_service", _RetrievalService)
 
     layer = await sem.assemble_semantic_retrieval(
         query="q",
@@ -423,7 +423,14 @@ async def test_get_long_term_memory_facts_success(monkeypatch):
 
     facts = await ltm.get_long_term_memory_facts("u1")
 
-    assert facts == [{"content": "fact", "category": "pref", "created_at": now.isoformat()}]
+    assert facts == [
+        {
+            "content": "fact",
+            "category": "pref",
+            "memory_type": "pref",
+            "created_at": now.isoformat(),
+        }
+    ]
 
 
 @pytest.mark.asyncio

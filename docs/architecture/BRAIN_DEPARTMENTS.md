@@ -12,6 +12,9 @@ Hide provider plumbing behind a functional decision layer. Users should never se
 - It got the job done
 
 GoblinOS acts like a **brain with departments**, not a "chat app with providers."
+The current public routing layer is intentionally flat, but each department can
+carry an internal specialist tree for future sub-routing without changing the
+top-level contract.
 
 ## Architecture
 
@@ -29,6 +32,7 @@ User Message
 │  → Maps intent/task_type → Department         │
 │  → Departments: REASONING, CODING, CREATIVE,  │
 │    RECALL, TOOL_USE, RESEARCH, GENERAL        │
+│  → Optional internal specialists per dept     │
 └──────────────────┬────────────────────────────┘
                    ↓
 ┌──────────────────────────────────────────────┐
@@ -58,6 +62,19 @@ User Message
 | `research` | Deep research, multi-source synthesis | Gemini Flash → GPT-4o → Claude Sonnet |
 | `general` | Catch-all for unclassified intent | GPT-4o-mini → Gemini Flash → Claude Sonnet |
 
+## Department Families and Specialists
+
+The public contract remains the department family. Internal specialist leaves
+may appear underneath a department when we need a narrower routing target, such
+as `coding/frontend` or `research/legal`, but those leaves are not surfaced as
+public department IDs yet.
+
+Specialist metadata should be treated as additive:
+
+- keep the parent department as the routing and response contract
+- attach specialist hints as internal configuration
+- add new leaves only when a future routing layer can consume them safely
+
 ## Key Files
 
 ### Backend (Python) — `apps/api/src/api/departments/`
@@ -65,7 +82,7 @@ User Message
 | File | Purpose |
 |---|---|
 | `__init__.py` | Package exports |
-| `models.py` | `DepartmentId`, `DepartmentPolicy`, `DepartmentSelection`, quality tiers, intent→department mapping |
+| `models.py` | `DepartmentId`, `DepartmentPolicy`, `DepartmentSpecialization`, `DepartmentSelection`, quality tiers, intent→department mapping |
 | `registry.py` | `DEPARTMENT_REGISTRY` singleton with all department policies and provider chains |
 | `router.py` | `DepartmentRouter.classify()` — maps intent/task_type/mode → DepartmentSelection |
 | `dispatcher.py` | `DepartmentDispatcher.dispatch()` — invokes providers through the department chain with fallback |

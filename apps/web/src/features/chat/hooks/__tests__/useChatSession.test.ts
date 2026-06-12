@@ -111,6 +111,10 @@ vi.mock('../../../../utils/auth-session', () => ({
   isAuthenticated: vi.fn(() => true),
 }));
 
+vi.mock('../../../../hooks/api/useAuthSession', () => ({
+  useAuthSession: () => ({ isAuthenticated: true }),
+}));
+
 vi.mock('next/navigation', () => ({
   useSearchParams: vi.fn(() => new URLSearchParams()),
   useRouter: vi.fn(() => ({

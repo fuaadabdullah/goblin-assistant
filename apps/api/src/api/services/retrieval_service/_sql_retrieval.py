@@ -12,6 +12,7 @@ import structlog
 from sqlalchemy import text
 
 from ...storage.database import get_readonly_db_context
+from ..memory_contract import canonicalize_memory_item
 
 logger = structlog.get_logger()
 
@@ -47,6 +48,20 @@ async def retrieve_memory_facts_stratified(
                     mf.id,
                     mf.fact_text as content,
                     mf.category,
+                    mf.memory_type,
+                    mf.source_kind,
+                    mf.source_id,
+                    mf.salience_score,
+                    mf.confidence,
+                    mf.memory_state,
+                    mf.sensitivity_level,
+                    mf.retention_days,
+                    mf.expires_at,
+                    mf.last_accessed_at,
+                    mf.confirmation_count,
+                    mf.is_archived,
+                    mf.related_memory_ids,
+                    mf.entity_refs,
                     mf.metadata,
                     mf.created_at,
                     (1 - (mf.fact_embedding <=> :query_embedding))
@@ -60,7 +75,25 @@ async def retrieve_memory_facts_stratified(
                         AS score
                 FROM memory_facts mf
                 WHERE mf.user_id = :user_id
-                ORDER BY score DESC
+                  AND COALESCE(mf.memory_state, 'active') NOT IN ('archived', 'deleted')
+                  AND (mf.expires_at IS NULL OR mf.expires_at > NOW())
+                ORDER BY
+                    CASE
+                        WHEN COALESCE(mf.memory_state, 'active') = 'verified' THEN 4
+                        WHEN COALESCE(mf.memory_state, 'active') = 'active' THEN 3
+                        WHEN COALESCE(mf.memory_state, 'active') = 'candidate' THEN 2
+                        WHEN COALESCE(mf.memory_state, 'active') = 'deprecated' THEN 1
+                        ELSE 0
+                    END DESC,
+                    CASE
+                        WHEN COALESCE(mf.confidence, 0) >= 0.90 THEN 3
+                        WHEN COALESCE(mf.confidence, 0) >= 0.70 THEN 2
+                        WHEN COALESCE(mf.confidence, 0) >= 0.40 THEN 1
+                        ELSE 0
+                    END DESC,
+                    score DESC
+                , COALESCE(mf.salience_score, 0) DESC
+                , mf.created_at DESC
                 LIMIT :k
             """
             )
@@ -79,19 +112,39 @@ async def retrieve_memory_facts_stratified(
             rows = result.fetchall()
 
             return [
-                {
-                    "id": row.id,
-                    "content": row.content,
-                    "source_type": "memory",
-                    "source_id": row.id,
-                    "metadata": {
-                        "category": row.category,
-                        "source": "long_term_memory",
-                        "finance_boosted": row.category in FINANCE_CATEGORIES,
+                canonicalize_memory_item(
+                    {
+                        "id": row.id,
+                        "content": row.content,
+                        "source_type": "memory",
+                        "source_id": row.id,
+                        "metadata": {
+                            "memory_type": row.memory_type or row.category,
+                            "category": row.category,
+                            "source_kind": row.source_kind,
+                            "source_id": row.source_id,
+                            "salience_score": row.salience_score,
+                            "confidence": row.confidence,
+                            "memory_state": row.memory_state,
+                            "sensitivity_level": row.sensitivity_level,
+                            "retention_days": row.retention_days,
+                            "expires_at": row.expires_at,
+                            "last_accessed_at": row.last_accessed_at,
+                            "confirmation_count": row.confirmation_count,
+                            "is_archived": row.is_archived,
+                            "related_memory_ids": row.related_memory_ids,
+                            "entity_refs": row.entity_refs,
+                            "source": "long_term_memory",
+                            "finance_boosted": row.category in FINANCE_CATEGORIES,
+                            "embedding_id": None,
+                        },
+                        "created_at": row.created_at,
+                        "score": float(row.score) if row.score else 0.0,
+                        "user_id": user_id,
                     },
-                    "created_at": row.created_at,
-                    "score": float(row.score) if row.score else 0.0,
-                }
+                    user_id=user_id,
+                    source_type="memory",
+                )
                 for row in rows
             ]
 
@@ -146,18 +199,22 @@ async def retrieve_summaries_stratified(
             rows = result.fetchall()
 
             return [
-                {
-                    "id": row.id,
-                    "content": row.content,
-                    "source_type": "summary",
-                    "source_id": row.conversation_id,
-                    "metadata": {
-                        "conversation_id": row.conversation_id,
-                        "source": "working_memory",
+                canonicalize_memory_item(
+                    {
+                        "id": row.id,
+                        "content": row.content,
+                        "source_type": "summary",
+                        "source_id": row.conversation_id,
+                        "metadata": {
+                            "conversation_id": row.conversation_id,
+                            "source": "working_memory",
+                        },
+                        "created_at": row.created_at,
+                        "score": float(row.score) if row.score else 0.0,
                     },
-                    "created_at": row.created_at,
-                    "score": float(row.score) if row.score else 0.0,
-                }
+                    user_id=user_id,
+                    source_type="summary",
+                )
                 for row in rows
             ]
 
@@ -357,5 +414,110 @@ async def retrieve_recent_messages(
             error=str(e),
             user_id=user_id,
             conversation_id=conversation_id,
+        )
+        return []
+
+
+async def retrieve_graph_expanded_memories(
+    user_id: str,
+    seed_memory_ids: List[str],
+    k: int = 5,
+) -> List[Dict[str, Any]]:
+    """Retrieve memory facts connected to seed facts via the entity relation graph.
+
+    Two-hop traversal: find all entities touched by the seed facts, then find
+    all other memory facts connected to those same entities. Returns up to k
+    results ordered by salience_score descending.
+    """
+    if not seed_memory_ids:
+        return []
+    try:
+        async with get_readonly_db_context() as session:
+            query_sql = text(
+                """
+                WITH seed_entities AS (
+                    SELECT DISTINCT mer.source_entity_id AS eid
+                    FROM memory_entity_relations mer
+                    WHERE mer.memory_fact_id = ANY(:seed_ids)
+                      AND mer.user_id = :user_id
+                    UNION
+                    SELECT DISTINCT mer.target_entity_id AS eid
+                    FROM memory_entity_relations mer
+                    WHERE mer.memory_fact_id = ANY(:seed_ids)
+                      AND mer.user_id = :user_id
+                ),
+                related_facts AS (
+                    SELECT DISTINCT mer2.memory_fact_id
+                    FROM memory_entity_relations mer2
+                    JOIN seed_entities se
+                      ON (mer2.source_entity_id = se.eid OR mer2.target_entity_id = se.eid)
+                    WHERE mer2.user_id = :user_id
+                      AND mer2.memory_fact_id IS NOT NULL
+                      AND mer2.memory_fact_id != ALL(:seed_ids)
+                )
+                SELECT
+                    mf.id,
+                    mf.fact_text AS content,
+                    mf.category,
+                    mf.memory_type,
+                    mf.source_kind,
+                    mf.source_id,
+                    mf.salience_score,
+                    mf.confidence,
+                    mf.sensitivity_level,
+                    mf.last_accessed_at,
+                    mf.confirmation_count,
+                    mf.is_archived,
+                    mf.related_memory_ids,
+                    mf.entity_refs,
+                    mf.metadata,
+                    mf.created_at,
+                    mf.scope
+                FROM memory_facts mf
+                JOIN related_facts rf ON mf.id = rf.memory_fact_id
+                WHERE mf.user_id = :user_id
+                  AND COALESCE(mf.is_archived, false) = false
+                  AND (mf.expires_at IS NULL OR mf.expires_at > NOW())
+                ORDER BY COALESCE(mf.salience_score, 0) DESC
+                LIMIT :k
+                """
+            )
+            result = await session.execute(
+                query_sql,
+                {"user_id": user_id, "seed_ids": seed_memory_ids, "k": k},
+            )
+            rows = result.fetchall()
+            return [
+                canonicalize_memory_item(
+                    {
+                        "id": row.id,
+                        "content": row.content,
+                        "category": row.category,
+                        "memory_type": row.memory_type or row.category,
+                        "source_kind": row.source_kind,
+                        "source_id": row.source_id,
+                        "salience_score": row.salience_score,
+                        "confidence": row.confidence,
+                        "sensitivity_level": row.sensitivity_level,
+                        "last_accessed_at": row.last_accessed_at,
+                        "confirmation_count": row.confirmation_count,
+                        "is_archived": row.is_archived,
+                        "related_memory_ids": row.related_memory_ids,
+                        "entity_refs": row.entity_refs,
+                        "metadata": dict(row.metadata or {}, graph_expanded=True, scope=row.scope),
+                        "created_at": row.created_at,
+                        "score": float(row.salience_score or 0.0),
+                        "source_type": "memory",
+                    },
+                    user_id=user_id,
+                    source_type="memory",
+                )
+                for row in rows
+            ]
+    except Exception as e:
+        logger.error(
+            "error retrieving graph expanded memories",
+            error=str(e),
+            user_id=user_id,
         )
         return []

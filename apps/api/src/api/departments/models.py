@@ -4,14 +4,15 @@ A Department is a functional specialization of the brain. Each department:
 - Has a human-readable department_id (e.g. "reasoning", "coding")
 - Maps to a chain of (provider_id, model) pairs for fallback
 - Carries a quality policy (latency vs cost vs capability)
+- Can expose internal specialist metadata for future sub-routing layers
 - Is what users see instead of "Gemini" or "DeepSeek"
 """
 
 from __future__ import annotations
 
-from dataclasses import dataclass, field
+from dataclasses import asdict, dataclass, field
 from enum import Enum
-from typing import Dict, List, Tuple
+from typing import Any, Dict, List, Tuple
 
 
 class DepartmentId(str, Enum):
@@ -40,6 +41,35 @@ class DepartmentQualityTier(str, Enum):
 
 
 @dataclass(frozen=True)
+class DepartmentSpecialization:
+    """Internal specialist metadata nested under a department.
+
+    Specializations are intentionally not part of the public DepartmentId
+    union yet. They let the architecture model future leaves such as
+    coding/frontend or research/legal without changing current routing.
+    """
+
+    specialization_id: str
+    display_name: str
+    description: str
+    routing_hints: List[str] = field(default_factory=list)
+
+    def to_dict(self) -> Dict[str, Any]:
+        """Serialize the specialization for internal configuration payloads."""
+        return asdict(self)
+
+    @classmethod
+    def from_dict(cls, payload: Dict[str, Any]) -> "DepartmentSpecialization":
+        """Build a specialization from serialized configuration data."""
+        return cls(
+            specialization_id=str(payload["specialization_id"]),
+            display_name=str(payload["display_name"]),
+            description=str(payload["description"]),
+            routing_hints=[str(hint) for hint in payload.get("routing_hints", [])],
+        )
+
+
+@dataclass(frozen=True)
 class DepartmentPolicy:
     """Defines how a department selects and falls back between providers.
 
@@ -51,6 +81,7 @@ class DepartmentPolicy:
     display_name: str
     description: str
     provider_chain: List[Tuple[str, str]]  # [(provider_id, model), ...]
+    specializations: List[DepartmentSpecialization] = field(default_factory=list)
     default_tier: DepartmentQualityTier = DepartmentQualityTier.BALANCED
     supports_streaming: bool = True
     supports_tools: bool = True
@@ -68,6 +99,50 @@ class DepartmentPolicy:
     def fallback_providers(self) -> List[Tuple[str, str]]:
         """Return all providers after the first (fallback chain)."""
         return self.provider_chain[1:] if len(self.provider_chain) > 1 else []
+
+    def to_dict(self, include_specializations: bool = False) -> Dict[str, Any]:
+        """Serialize policy metadata for internal consumers.
+
+        The public API remains flat, so specialist metadata is only included
+        when explicitly requested.
+        """
+        payload: Dict[str, Any] = {
+            "department_id": self.department_id.value,
+            "display_name": self.display_name,
+            "description": self.description,
+            "provider_chain": [list(item) for item in self.provider_chain],
+            "default_tier": self.default_tier.value,
+            "supports_streaming": self.supports_streaming,
+            "supports_tools": self.supports_tools,
+            "supports_attachments": self.supports_attachments,
+            "supports_vision": self.supports_vision,
+            "max_tokens": self.max_tokens,
+            "temperature_default": self.temperature_default,
+        }
+        if include_specializations:
+            payload["specializations"] = [spec.to_dict() for spec in self.specializations]
+        return payload
+
+    @classmethod
+    def from_dict(cls, payload: Dict[str, Any]) -> "DepartmentPolicy":
+        """Deserialize policy metadata from configuration data."""
+        specializations = [
+            DepartmentSpecialization.from_dict(spec) for spec in payload.get("specializations", [])
+        ]
+        return cls(
+            department_id=DepartmentId(str(payload["department_id"])),
+            display_name=str(payload["display_name"]),
+            description=str(payload["description"]),
+            provider_chain=[(str(pid), str(model)) for pid, model in payload["provider_chain"]],
+            specializations=specializations,
+            default_tier=DepartmentQualityTier(str(payload.get("default_tier", "balanced"))),
+            supports_streaming=bool(payload.get("supports_streaming", True)),
+            supports_tools=bool(payload.get("supports_tools", True)),
+            supports_attachments=bool(payload.get("supports_attachments", True)),
+            supports_vision=bool(payload.get("supports_vision", False)),
+            max_tokens=int(payload.get("max_tokens", 4096)),
+            temperature_default=float(payload.get("temperature_default", 0.7)),
+        )
 
 
 @dataclass
@@ -87,6 +162,7 @@ class DepartmentSelection:
     resolved_model: str = ""
     quality_tier: DepartmentQualityTier = DepartmentQualityTier.BALANCED
     fallback_chain: List[str] = field(default_factory=list)
+    department_confidence: float = 0.0  # learned router confidence; 0.0 when rule-based
 
     def to_dict(self) -> Dict[str, str]:
         """Public-facing representation — NO provider/model info."""

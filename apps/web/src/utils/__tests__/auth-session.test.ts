@@ -5,14 +5,9 @@ import {
   isAuthenticated,
 } from '../auth-session';
 
-vi.mock('../access', () => ({
-  isAdminUser: vi.fn(() => false),
-}));
-
 describe('Auth Session Utilities', () => {
   beforeEach(() => {
     localStorage.clear();
-    // Clear all cookies
     document.cookie.split(';').forEach((c) => {
       const name = c.trim().split('=')[0];
       if (name) document.cookie = `${name}=; Path=/; Max-Age=0`;
@@ -20,68 +15,53 @@ describe('Auth Session Utilities', () => {
   });
 
   describe('persistAuthSession', () => {
-    it('should NOT write session_token cookie (HttpOnly set by backend)', () => {
-      persistAuthSession({
-        token: 'jwt.token.here',
-        user: { id: '123', email: 'test@example.com', name: 'Test User' } as any,
-        expiresIn: 3600,
-      });
-
-      expect(document.cookie).not.toContain('session_token=');
-    });
-
     it('should persist user data in localStorage', () => {
       persistAuthSession({
-        token: 'jwt.token.here',
         user: { id: '123', email: 'test@example.com', name: 'Test User' } as any,
-        expiresIn: 3600,
       });
 
       const stored = localStorage.getItem('user_data');
       expect(stored).toBeDefined();
       expect(JSON.parse(stored!)).toEqual(
-        expect.objectContaining({ id: '123', email: 'test@example.com' })
+        expect.objectContaining({ id: '123', email: 'test@example.com' }),
       );
     });
 
-    it('should set goblin_auth flag cookie', () => {
+    it('should not write goblin_auth or goblin_admin cookies', () => {
       persistAuthSession({
         token: 'jwt.token.here',
         user: { id: '123', email: 'test@example.com', name: 'Test User' } as any,
       });
 
-      expect(document.cookie).toContain('goblin_auth=');
+      expect(document.cookie).not.toContain('goblin_auth=');
+      expect(document.cookie).not.toContain('goblin_admin=');
     });
 
-    it('should NOT write refresh_token cookie (HttpOnly set by backend)', () => {
+    it('should not write session_token or refresh_token cookies', () => {
       persistAuthSession({
         token: 'jwt.token.here',
         refreshToken: 'refresh.token.here',
         user: { id: '123', email: 'test@example.com', name: 'Test User' } as any,
       });
 
+      expect(document.cookie).not.toContain('session_token=');
       expect(document.cookie).not.toContain('refresh_token=');
     });
   });
 
   describe('isAuthenticated', () => {
-    it('should return true when goblin_auth flag is set', () => {
-      document.cookie = 'goblin_auth=1; Path=/';
-      expect(isAuthenticated()).toBe(true);
-    });
-
     it('should return false when no session exists', () => {
       expect(isAuthenticated()).toBe(false);
     });
 
-    it('should fall back to legacy localStorage auth_token', () => {
+    it('should return true for legacy localStorage auth_token', () => {
       localStorage.setItem('auth_token', 'legacy-token');
       expect(isAuthenticated()).toBe(true);
     });
   });
 
   describe('getAuthToken', () => {
-    it('should retrieve token from cookie', () => {
+    it('should retrieve token from session_token cookie', () => {
       document.cookie = 'session_token=my-jwt-token; Path=/';
       expect(getAuthToken()).toBe('my-jwt-token');
     });

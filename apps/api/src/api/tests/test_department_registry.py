@@ -62,6 +62,7 @@ class TestListPublic:
         for item in DEPARTMENT_REGISTRY.list_public():
             assert "provider_chain" not in item
             assert "provider" not in " ".join(item.keys())
+            assert "specializations" not in item
 
     def test_count_matches_list_ids(self):
         assert len(DEPARTMENT_REGISTRY.list_public()) == len(DEPARTMENT_REGISTRY.list_ids())
@@ -111,6 +112,25 @@ class TestGet:
         for dept_id in DepartmentId:
             policy = DEPARTMENT_REGISTRY.get(dept_id)
             assert len(policy.provider_chain) > 0, f"{dept_id.value} has empty provider_chain"
+
+    def test_specialization_metadata_is_present_for_selected_departments(self):
+        coding = DEPARTMENT_REGISTRY.get(DepartmentId.CODING)
+        research = DEPARTMENT_REGISTRY.get(DepartmentId.RESEARCH)
+        assert [spec.specialization_id for spec in coding.specializations] == [
+            "frontend",
+            "backend",
+            "devops",
+            "data",
+            "security",
+        ]
+        assert [spec.specialization_id for spec in research.specializations] == [
+            "academic",
+            "market",
+            "legal",
+            "news",
+        ]
+        assert all(spec.routing_hints for spec in coding.specializations)
+        assert all(spec.routing_hints for spec in research.specializations)
 
 
 # ── DepartmentRegistry.get_by_id_str ─────────────────────────────────────────

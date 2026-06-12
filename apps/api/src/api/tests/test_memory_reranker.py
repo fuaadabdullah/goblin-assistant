@@ -119,6 +119,43 @@ class TestMemoryRerankerRerank:
         # Should not raise — unknown types get default weight (0.5)
         assert result[0]["rerank_score"] > 0
 
+    def test_low_confidence_memory_does_not_outrank_strong_memory(self):
+        strong = {
+            **_item("memory", score=0.95, id_="strong"),
+            "confidence": 0.95,
+            "importance": 0.9,
+            "confidence_band": "strong_stable_memory",
+        }
+        weak = {
+            **_item("memory", score=0.99, id_="weak"),
+            "confidence": 0.25,
+            "importance": 0.95,
+            "confidence_band": "do_not_use_by_default",
+        }
+
+        result = memory_reranker.rerank([weak, strong], query="q")
+
+        assert result[0]["id"] == "strong"
+
+    def test_direct_correction_can_override_with_recent_signal(self):
+        strong = {
+            **_item("memory", score=0.6, id_="baseline"),
+            "confidence": 0.88,
+            "importance": 0.8,
+            "confidence_band": "likely_true_usable",
+        }
+        correction = {
+            **_item("memory", score=0.7, id_="correction"),
+            "confidence": 0.58,
+            "importance": 0.7,
+            "confidence_band": "weak_needs_verification",
+            "direct_correction": True,
+        }
+
+        result = memory_reranker.rerank([strong, correction], query="q")
+
+        assert result[0]["id"] == "correction"
+
     def test_item_without_created_at_handled_gracefully(self):
         item = {"id": "no_ts", "content": "x", "source_type": "memory", "score": 0.8}
         result = memory_reranker.rerank([item], query="q")

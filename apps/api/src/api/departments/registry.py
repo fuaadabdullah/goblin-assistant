@@ -12,11 +12,31 @@ from __future__ import annotations
 
 from typing import Dict, List
 
-from .models import DepartmentId, DepartmentPolicy, DepartmentQualityTier
+from .models import (
+    DepartmentId,
+    DepartmentPolicy,
+    DepartmentQualityTier,
+    DepartmentSpecialization,
+)
 
 # ── Department policy definitions ──────────────────────────────────────
 # Each entry in provider_chain is (provider_id, model_name).
 # provider_id must match a key in config/providers.toml.
+
+
+def _specialization(
+    specialization_id: str,
+    display_name: str,
+    description: str,
+    routing_hints: List[str],
+) -> DepartmentSpecialization:
+    return DepartmentSpecialization(
+        specialization_id=specialization_id,
+        display_name=display_name,
+        description=description,
+        routing_hints=routing_hints,
+    )
+
 
 _DEPARTMENT_POLICIES: Dict[DepartmentId, DepartmentPolicy] = {
     DepartmentId.REASONING: DepartmentPolicy(
@@ -30,6 +50,20 @@ _DEPARTMENT_POLICIES: Dict[DepartmentId, DepartmentPolicy] = {
             ("siliconeflow", "Qwen/Qwen2.5-7B-Instruct"),
             ("aliyun", "qwen-plus"),
             ("huggingface", "Qwen/Qwen2.5-7B-Instruct"),
+        ],
+        specializations=[
+            _specialization(
+                "math",
+                "Math",
+                "Symbolic reasoning, proofs, equations, and quantitative analysis",
+                ["equations", "proofs", "quantitative", "calculation"],
+            ),
+            _specialization(
+                "planning",
+                "Planning",
+                "Sequencing, dependency analysis, and project decomposition",
+                ["roadmaps", "timelines", "dependencies", "breakdown"],
+            ),
         ],
         default_tier=DepartmentQualityTier.BALANCED,
         supports_streaming=True,
@@ -50,6 +84,38 @@ _DEPARTMENT_POLICIES: Dict[DepartmentId, DepartmentPolicy] = {
             ("aliyun", "qwen-plus"),
             ("huggingface", "Qwen/Qwen2.5-7B-Instruct"),
         ],
+        specializations=[
+            _specialization(
+                "frontend",
+                "Frontend",
+                "UI implementation, layout, component behavior, and client state",
+                ["ui", "react", "css", "accessibility"],
+            ),
+            _specialization(
+                "backend",
+                "Backend",
+                "API routes, services, data flow, and server-side behavior",
+                ["routes", "services", "contracts", "fastapi"],
+            ),
+            _specialization(
+                "devops",
+                "DevOps",
+                "Deployments, environments, CI/CD, and infrastructure workflows",
+                ["deploy", "ci", "infra", "release"],
+            ),
+            _specialization(
+                "data",
+                "Data",
+                "Schemas, transformations, analysis pipelines, and data quality",
+                ["schema", "etl", "analytics", "pipelines"],
+            ),
+            _specialization(
+                "security",
+                "Security",
+                "Secrets, auth, threat modeling, and safe handling of sensitive data",
+                ["auth", "secrets", "threats", "hardening"],
+            ),
+        ],
         default_tier=DepartmentQualityTier.BALANCED,
         supports_streaming=True,
         supports_tools=True,
@@ -68,6 +134,20 @@ _DEPARTMENT_POLICIES: Dict[DepartmentId, DepartmentPolicy] = {
             ("siliconeflow", "Qwen/Qwen2.5-7B-Instruct"),
             ("aliyun", "qwen-plus"),
             ("huggingface", "Qwen/Qwen2.5-7B-Instruct"),
+        ],
+        specializations=[
+            _specialization(
+                "writing",
+                "Writing",
+                "Long-form drafting, tone tuning, and editorial revisions",
+                ["drafting", "tone", "editing", "copy"],
+            ),
+            _specialization(
+                "design",
+                "Design",
+                "Visual concepts, presentation structure, and creative direction",
+                ["layout", "visual", "branding", "presentation"],
+            ),
         ],
         default_tier=DepartmentQualityTier.BALANCED,
         supports_streaming=True,
@@ -88,6 +168,14 @@ _DEPARTMENT_POLICIES: Dict[DepartmentId, DepartmentPolicy] = {
             ("aliyun", "qwen-plus"),
             ("huggingface", "Qwen/Qwen2.5-7B-Instruct"),
         ],
+        specializations=[
+            _specialization(
+                "memory",
+                "Memory",
+                "Recall, context assembly, and user-history lookup",
+                ["recall", "context", "history", "lookup"],
+            ),
+        ],
         default_tier=DepartmentQualityTier.SPEED,
         supports_streaming=True,
         supports_tools=False,
@@ -106,6 +194,14 @@ _DEPARTMENT_POLICIES: Dict[DepartmentId, DepartmentPolicy] = {
             ("siliconeflow", "Qwen/Qwen2.5-7B-Instruct"),
             ("aliyun", "qwen-plus"),
             ("huggingface", "Qwen/Qwen2.5-7B-Instruct"),
+        ],
+        specializations=[
+            _specialization(
+                "automation",
+                "Automation",
+                "Tool orchestration, structured actions, and repeatable workflows",
+                ["workflow", "actions", "function-calling", "orchestration"],
+            ),
         ],
         default_tier=DepartmentQualityTier.BALANCED,
         supports_streaming=True,
@@ -126,6 +222,32 @@ _DEPARTMENT_POLICIES: Dict[DepartmentId, DepartmentPolicy] = {
             ("aliyun", "qwen-plus"),
             ("huggingface", "Qwen/Qwen2.5-7B-Instruct"),
         ],
+        specializations=[
+            _specialization(
+                "academic",
+                "Academic",
+                "Papers, methods, citations, and scholarly synthesis",
+                ["papers", "citations", "methods", "literature"],
+            ),
+            _specialization(
+                "market",
+                "Market",
+                "Industry analysis, competitive research, and market context",
+                ["industry", "competition", "market", "trend"],
+            ),
+            _specialization(
+                "legal",
+                "Legal",
+                "Policy analysis, regulatory research, and legal source review",
+                ["policy", "regulation", "legal", "compliance"],
+            ),
+            _specialization(
+                "news",
+                "News",
+                "Fresh-event synthesis, timeline building, and source verification",
+                ["freshness", "events", "timeline", "sources"],
+            ),
+        ],
         default_tier=DepartmentQualityTier.QUALITY,
         supports_streaming=True,
         supports_tools=True,
@@ -144,6 +266,14 @@ _DEPARTMENT_POLICIES: Dict[DepartmentId, DepartmentPolicy] = {
             ("siliconeflow", "Qwen/Qwen2.5-7B-Instruct"),
             ("aliyun", "qwen-plus"),
             ("huggingface", "Qwen/Qwen2.5-7B-Instruct"),
+        ],
+        specializations=[
+            _specialization(
+                "triage",
+                "Triage",
+                "Unstructured requests, broad assistance, and first-pass routing",
+                ["general", "fallback", "triage", "broad"],
+            ),
         ],
         default_tier=DepartmentQualityTier.SPEED,
         supports_streaming=True,

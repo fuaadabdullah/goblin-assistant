@@ -13,6 +13,7 @@ from ._sql_retrieval import (
     GENERIC_BOOST_FACTOR,
     SUMMARY_BOOST_FACTOR,
     retrieve_by_source_type,
+    retrieve_graph_expanded_memories,
 )
 from ._token_budget import apply_context_token_budget, estimate_tokens, trim_item_to_token_budget
 
@@ -29,4 +30,5 @@ __all__ = [
     "apply_context_token_budget",
     "build_context_bundle",
     "retrieve_by_source_type",
+    "retrieve_graph_expanded_memories",
 ]

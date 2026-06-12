@@ -9,7 +9,7 @@ from __future__ import annotations
 
 from typing import Any, Dict, Optional
 
-from api.services.retrieval_service import RetrievalService
+from api.services.memory_core import memory_core_service
 
 from ..registry import ToolDefinition, ToolParameter, register_tool
 
@@ -26,11 +26,10 @@ async def _handle_memory_recall(
         return {"error": "user_id is required"}
 
     safe_limit = max(1, min(int(limit), 10))
-    retrieval = RetrievalService()
-    facts = await retrieval.retrieve_memory_facts(
+    facts = await memory_core_service.retrieve_memory_context(
         user_id=user_id,
         query=str(query),
-        k=safe_limit,
+        limit=safe_limit,
     )
 
     normalized = []
@@ -38,14 +37,17 @@ async def _handle_memory_recall(
         normalized.append(
             {
                 "id": fact.get("id"),
-                "content": fact.get("fact_text", ""),
+                "content": fact.get("content", ""),
                 "category": fact.get("category"),
+                "memory_type": fact.get("memory_type"),
                 "score": fact.get("score", 0.0),
+                "rerank_score": fact.get("rerank_score", 0.0),
                 "created_at": (
                     fact.get("created_at").isoformat()
                     if hasattr(fact.get("created_at"), "isoformat")
                     else fact.get("created_at")
                 ),
+                "metadata": fact.get("metadata", {}),
             }
         )
 

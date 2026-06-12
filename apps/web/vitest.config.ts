@@ -2,6 +2,11 @@ import { defineConfig } from 'vitest/config';
 import react from '@vitejs/plugin-react';
 import path from 'path';
 
+const criticalCoverageThreshold = Number(process.env.WEB_CRITICAL_THRESHOLD ?? 70);
+const criticalCoverageInclude = process.env.VITEST_COVERAGE_INCLUDE?.split(',')
+  .map((entry) => entry.trim())
+  .filter(Boolean);
+
 export default defineConfig({
   plugins: [
     react(),
@@ -33,7 +38,7 @@ export default defineConfig({
     coverage: {
       provider: 'v8',
       reporter: ['text', 'text-summary', 'lcov', 'json-summary'],
-      include: ['src/**/*.{ts,tsx}'],
+      include: criticalCoverageInclude ?? ['src/**/*.{ts,tsx}'],
       exclude: [
         'src/**/*.test.{ts,tsx}',
         'src/**/*.spec.{ts,tsx}',
@@ -49,10 +54,10 @@ export default defineConfig({
         'src/content/**',
       ],
       thresholds: {
-        statements: 70,
+        statements: criticalCoverageThreshold,
         branches: 70,
-        functions: 70,
-        lines: 70,
+        functions: criticalCoverageThreshold,
+        lines: criticalCoverageThreshold,
       },
     },
   },

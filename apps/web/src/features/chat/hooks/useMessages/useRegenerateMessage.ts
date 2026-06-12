@@ -1,7 +1,7 @@
 import { useCallback } from 'react';
 import { chatClient } from '../../api';
 import { devError } from '@/utils/dev-log';
-import { isAuthenticated } from '../../../../utils/auth-session';
+import { useAuthSession } from '../../../../hooks/api/useAuthSession';
 import type { ChatMessage, ChatThread } from '../../types';
 import { useToast } from '../../../../hooks/useToast';
 import { createMessageId, createAssistantMessage } from './factories';
@@ -30,8 +30,9 @@ export const useRegenerateMessage = ({
   setIsSending,
   showError,
   showSuccess,
-}: RegenerateMessageDeps): ((messageId: string) => Promise<void>) =>
-  useCallback(
+}: RegenerateMessageDeps): ((messageId: string) => Promise<void>) => {
+  const { isAuthenticated } = useAuthSession();
+  return useCallback(
     async (messageId: string) => {
       if (isSending) return;
 
@@ -56,7 +57,7 @@ export const useRegenerateMessage = ({
       setIsSending(true);
 
       try {
-        if (!isAuthenticated()) {
+        if (!isAuthenticated) {
           const response = await chatClient.chatCompletion(
             messagesUpToRegeneration,
             selectedModel || undefined
@@ -105,5 +106,7 @@ export const useRegenerateMessage = ({
       setIsSending,
       showError,
       showSuccess,
+      isAuthenticated,
     ]
   );
+};

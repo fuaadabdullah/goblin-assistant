@@ -1,10 +1,13 @@
 from __future__ import annotations
 
 import json
+import sys
 from types import SimpleNamespace
 from unittest.mock import AsyncMock, MagicMock
 
+import jwt
 import pytest
+from cryptography.hazmat.primitives.asymmetric import ec
 from fastapi import HTTPException, Response
 from jwt import decode
 
@@ -12,7 +15,8 @@ from api.auth import oauth as oauth_module
 from api.auth.oauth import GoogleOAuth
 from api.auth.passkeys import WebAuthnPasskey
 from api.auth.router import dependencies as deps
-from api.auth.router import routes_email, routes_google, routes_passkey
+from api.auth.router import routes_csrf, routes_email, routes_google, routes_passkey
+from api.auth.router import tokens as tokens_module
 from api.auth.router.schemas import (
     GoogleAuthCallback,
     GoogleAuthRequest,
@@ -198,6 +202,25 @@ class TestPasskeyHelpers:
         assert parsed["attested_credential_data"]["aaguid"] == aaguid.hex()
         assert parsed["attested_credential_data"]["credential_id"] == credential_id
 
+    def test_parse_authenticator_data_without_attested_data(self):
+        payload = b"\x01" * 32 + b"\x05" + (7).to_bytes(4, byteorder="big")
+
+        parsed = WebAuthnPasskey.parse_authenticator_data(payload)
+
+        assert parsed["attested_credential_data"] is None
+
+    def test_parse_cose_public_key_success(self):
+        private_key = ec.generate_private_key(ec.SECP256R1())
+        public_numbers = private_key.public_key().public_numbers()
+        cose_key = (
+            b"\x04" + public_numbers.x.to_bytes(32, "big") + public_numbers.y.to_bytes(32, "big")
+        )
+
+        parsed = WebAuthnPasskey.parse_cose_public_key(cose_key)
+
+        assert parsed.public_numbers().x == public_numbers.x
+        assert parsed.public_numbers().y == public_numbers.y
+
     def test_parse_cose_public_key_invalid(self):
         with pytest.raises(ValueError, match="Unsupported"):
             WebAuthnPasskey.parse_cose_public_key(b"invalid")
@@ -222,6 +245,21 @@ class TestPasskeyHelpers:
         assert (
             WebAuthnPasskey.verify_signature(
                 public_key, b"bad-signature", authenticator_data, client_data_json
+            )
+            is False
+        )
+
+    def test_verify_signature_generic_exception(self):
+        class _BrokenPublicKey:
+            def verify(self, *_args, **_kwargs):
+                raise RuntimeError("boom")
+
+        assert (
+            WebAuthnPasskey.verify_signature(
+                _BrokenPublicKey(),
+                b"sig",
+                b"auth",
+                b'{"type":"webauthn.get"}',
             )
             is False
         )
@@ -286,6 +324,86 @@ class TestPasskeyHelpers:
         )
 
         assert WebAuthnPasskey.generate_challenge()
+
+    @pytest.mark.asyncio
+    async def test_verify_passkey_authentication_rejects_challenge_type_and_errors(
+        self, monkeypatch
+    ):
+        challenge = "challenge-123"
+        origin = "https://goblin.example"
+        client_data = {
+            "challenge": WebAuthnPasskey.encode_base64url(challenge.encode()),
+            "origin": origin,
+            "type": "webauthn.get",
+        }
+
+        monkeypatch.setattr(
+            WebAuthnPasskey,
+            "parse_authenticator_data",
+            staticmethod(lambda _data: {"flags": 1}),
+        )
+        monkeypatch.setattr(
+            WebAuthnPasskey,
+            "parse_cose_public_key",
+            staticmethod(lambda _data: object()),
+        )
+        monkeypatch.setattr(
+            WebAuthnPasskey,
+            "verify_signature",
+            staticmethod(lambda *_args: True),
+        )
+
+        wrong_challenge = dict(client_data, challenge=WebAuthnPasskey.encode_base64url(b"other"))
+        wrong_type = dict(client_data, type="webauthn.create")
+
+        assert (
+            await WebAuthnPasskey.verify_passkey_authentication(
+                _credential_id="cred",
+                stored_public_key=WebAuthnPasskey.encode_base64url(b"\x04" + b"\x01" * 64),
+                authenticator_data_b64=WebAuthnPasskey.encode_base64url(b"a" * 37),
+                client_data_json_b64=WebAuthnPasskey.encode_base64url(
+                    json.dumps(wrong_challenge).encode()
+                ),
+                signature_b64=WebAuthnPasskey.encode_base64url(b"signature"),
+                challenge=challenge,
+                origin=origin,
+            )
+            is False
+        )
+        assert (
+            await WebAuthnPasskey.verify_passkey_authentication(
+                _credential_id="cred",
+                stored_public_key=WebAuthnPasskey.encode_base64url(b"\x04" + b"\x01" * 64),
+                authenticator_data_b64=WebAuthnPasskey.encode_base64url(b"a" * 37),
+                client_data_json_b64=WebAuthnPasskey.encode_base64url(
+                    json.dumps(wrong_type).encode()
+                ),
+                signature_b64=WebAuthnPasskey.encode_base64url(b"signature"),
+                challenge=challenge,
+                origin=origin,
+            )
+            is False
+        )
+
+        monkeypatch.setattr(
+            WebAuthnPasskey,
+            "parse_authenticator_data",
+            staticmethod(lambda _data: (_ for _ in ()).throw(RuntimeError("bad auth data"))),
+        )
+        assert (
+            await WebAuthnPasskey.verify_passkey_authentication(
+                _credential_id="cred",
+                stored_public_key=WebAuthnPasskey.encode_base64url(b"\x04" + b"\x01" * 64),
+                authenticator_data_b64=WebAuthnPasskey.encode_base64url(b"a" * 37),
+                client_data_json_b64=WebAuthnPasskey.encode_base64url(
+                    json.dumps(client_data).encode()
+                ),
+                signature_b64=WebAuthnPasskey.encode_base64url(b"signature"),
+                challenge=challenge,
+                origin=origin,
+            )
+            is False
+        )
 
 
 class TestAuthDependencies:
@@ -402,6 +520,209 @@ class TestAuthDependencies:
         assert isinstance(user, User)
         assert user.id == cached_model.id
         fetcher.assert_not_awaited()
+
+    @pytest.mark.asyncio
+    async def test_supabase_provision_and_get_current_user_paths(self, monkeypatch):
+        db = SimpleNamespace(
+            execute=AsyncMock(
+                side_effect=[
+                    _FakeExecuteResult(scalar=None),
+                    _FakeExecuteResult(scalar=None),
+                    _FakeExecuteResult(scalar=None),
+                ]
+            ),
+            add=MagicMock(),
+            commit=AsyncMock(),
+            refresh=AsyncMock(),
+        )
+
+        provisioned_user = _user_model(id="supabase-user", email="supabase@example.com")
+        db.execute = AsyncMock(
+            side_effect=[
+                _FakeExecuteResult(scalar=None),
+                _FakeExecuteResult(scalar=None),
+                _FakeExecuteResult(scalar=None),
+            ]
+        )
+
+        async def fake_provision(_db, _payload):
+            return provisioned_user
+
+        monkeypatch.setattr(deps, "_provision_supabase_user", fake_provision)
+        monkeypatch.setattr(deps, "verify_token", lambda _token: None)
+        monkeypatch.setattr(
+            deps,
+            "verify_supabase_token",
+            lambda _token: {"sub": "supabase-user", "email": "supabase@example.com"},
+        )
+
+        class _Ctx:
+            async def __aenter__(self):
+                return db
+
+            async def __aexit__(self, exc_type, exc, tb):
+                return False
+
+        monkeypatch.setattr(deps, "get_db_context", _Ctx)
+
+        request = _auth_request()
+        user = await deps.get_current_user(
+            request,
+            db,
+            credentials=SimpleNamespace(credentials="supabase-token"),
+        )
+
+        assert user.id == "supabase-user"
+        assert request.state.auth_user_id == "supabase-user"
+
+    @pytest.mark.asyncio
+    async def test_get_authenticated_user_model_provision_and_revoke_paths(self, monkeypatch):
+        write_db = SimpleNamespace(
+            execute=AsyncMock(return_value=_FakeExecuteResult(scalar=None)),
+            add=MagicMock(),
+            commit=AsyncMock(),
+            refresh=AsyncMock(),
+        )
+
+        monkeypatch.setattr(deps.uuid, "uuid4", lambda: "generated-user")
+
+        result = await deps._provision_supabase_user(
+            write_db,
+            {"sub": "", "email": "new@example.com", "user_metadata": {"name": "New User"}},
+        )
+
+        assert result is not None
+        assert result.email == "new@example.com"
+        assert write_db.add.called
+        write_db.commit.assert_awaited_once()
+        write_db.refresh.assert_awaited_once()
+
+
+class TestTokenHelpers:
+    def test_get_jwks_client_is_created_and_cached(self, monkeypatch):
+        created = {}
+
+        class FakeJwksClient:
+            def __init__(self, url, cache_keys, lifespan, timeout):
+                created["url"] = url
+                created["cache_keys"] = cache_keys
+                created["lifespan"] = lifespan
+                created["timeout"] = timeout
+
+        monkeypatch.setattr(tokens_module, "SUPABASE_URL", "https://supabase.example")
+        monkeypatch.setattr(tokens_module, "_jwks_client", None)
+        monkeypatch.setattr(tokens_module, "PyJWKClient", FakeJwksClient)
+
+        first = tokens_module._get_jwks_client()
+        second = tokens_module._get_jwks_client()
+
+        assert first is second
+        assert created["url"].endswith("/auth/v1/.well-known/jwks.json")
+        assert created["cache_keys"] is True
+
+    @pytest.mark.asyncio
+    async def test_verify_via_auth_api_caches_success(self, monkeypatch):
+        tokens_module._auth_api_cache.clear()
+        monkeypatch.setattr(tokens_module, "SUPABASE_URL", "https://supabase.example")
+        monkeypatch.setattr(tokens_module, "SUPABASE_ANON_KEY", "anon-key")
+
+        token = jwt.encode(
+            {"sub": "supabase-user", "email": "supabase@example.com", "exp": 2000000000},
+            "secret",
+            algorithm="HS256",
+        )
+        calls = {"count": 0}
+
+        class FakeResponse:
+            status_code = 200
+
+            def json(self):
+                return {
+                    "id": "supabase-user",
+                    "email": "supabase@example.com",
+                    "user_metadata": {"name": "Supabase User"},
+                }
+
+        def fake_get(*args, **kwargs):
+            calls["count"] += 1
+            return FakeResponse()
+
+        monkeypatch.setitem(sys.modules, "httpx", SimpleNamespace(get=fake_get))
+
+        first = tokens_module._verify_via_auth_api(token)
+        second = tokens_module._verify_via_auth_api(token)
+
+        assert first == second
+        assert first["sub"] == "supabase-user"
+        assert calls["count"] == 1
+
+    def test_verify_supabase_token_hs256_es256_and_invalid_paths(self, monkeypatch):
+        monkeypatch.setattr(tokens_module, "SUPABASE_JWT_SECRET", "supabase-secret")
+        hs_token = jwt.encode(
+            {"sub": "user-1", "aud": "authenticated"},
+            "supabase-secret",
+            algorithm="HS256",
+        )
+        assert tokens_module.verify_supabase_token(hs_token)["sub"] == "user-1"
+
+        monkeypatch.setattr(tokens_module, "SUPABASE_JWT_SECRET", None)
+        monkeypatch.setattr(
+            tokens_module, "_verify_via_auth_api", lambda _token: {"sub": "api-user"}
+        )
+        monkeypatch.setattr(
+            tokens_module.jwt, "get_unverified_header", lambda _token: {"alg": "HS256"}
+        )
+        assert tokens_module.verify_supabase_token("hs-token") == {"sub": "api-user"}
+
+        fake_jwks = SimpleNamespace(
+            get_signing_key_from_jwt=lambda _token: SimpleNamespace(key="public-key")
+        )
+        seen = {}
+
+        def fake_decode(token, key, algorithms, audience):
+            seen["args"] = (token, key, algorithms, audience)
+            return {"sub": "es-user"}
+
+        monkeypatch.setattr(tokens_module, "_get_jwks_client", lambda: fake_jwks)
+        monkeypatch.setattr(
+            tokens_module.jwt, "get_unverified_header", lambda _token: {"alg": "ES256"}
+        )
+        monkeypatch.setattr(tokens_module.jwt, "decode", fake_decode)
+        assert tokens_module.verify_supabase_token("es-token") == {"sub": "es-user"}
+        assert seen["args"][1] == "public-key"
+
+        monkeypatch.setattr(
+            tokens_module.jwt, "get_unverified_header", lambda _token: {"alg": "none"}
+        )
+        assert tokens_module.verify_supabase_token("bad-token") is None
+
+
+class TestCsrfRoute:
+    @pytest.mark.asyncio
+    async def test_get_csrf_token_wraps_generated_value(self, monkeypatch):
+        monkeypatch.setattr(routes_csrf, "generate_csrf_token", AsyncMock(return_value="csrf-123"))
+
+        response = await routes_csrf.get_csrf_token()
+
+        assert response.csrf_token == "csrf-123"
+
+
+class TestOAuthHelpers:
+    def test_get_authorization_url_generates_default_state(self, monkeypatch):
+        monkeypatch.setattr(oauth_module, "GOOGLE_CLIENT_ID", "client-id")
+        monkeypatch.setattr(oauth_module, "GOOGLE_REDIRECT_URI", "https://app/callback")
+        monkeypatch.setattr(oauth_module.secrets, "token_urlsafe", lambda _n: "generated-state")
+
+        url = oauth_module.GoogleOAuth.get_authorization_url()
+
+        assert "state=generated-state" in url
+
+    @pytest.mark.asyncio
+    async def test_exchange_code_for_token_without_credentials_returns_none(self, monkeypatch):
+        monkeypatch.setattr(oauth_module, "GOOGLE_CLIENT_ID", None)
+        monkeypatch.setattr(oauth_module, "GOOGLE_CLIENT_SECRET", None)
+
+        assert await oauth_module.GoogleOAuth.exchange_code_for_token("code") is None
 
 
 class TestGoogleRoutes:

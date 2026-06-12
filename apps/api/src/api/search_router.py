@@ -24,6 +24,9 @@ from .services.embedding_worker import embedding_worker
 from .services.retrieval_service import retrieve_by_source_type
 from .storage.database import get_readonly_db_context
 
+# Compatibility seam for older tests and call sites that still patch `get_db`.
+get_db = get_readonly_db_context
+
 logger = structlog.get_logger()
 
 router = APIRouter(prefix="/search", tags=["search"])
@@ -163,6 +166,20 @@ async def index_content(
     """
     try:
         source_id = request.source_id or str(uuid.uuid4())
+
+        if request.source_type == "memory":
+            from .services.memory_core import memory_core_service  # noqa: PLC0415
+
+            await memory_core_service.ingest_text(
+                user_id=current_user.id,
+                text=request.content,
+                source_kind="search_index",
+                source_id=source_id,
+                metadata=request.metadata or {},
+                explicit_kind=(request.metadata or {}).get("memory_type"),
+                confidence=float((request.metadata or {}).get("confidence", 0.8)),
+            )
+            return SuccessEnvelope(data=IndexResponse(status="stored", source_id=source_id))
 
         await embedding_worker.queue_index_item(
             user_id=current_user.id,

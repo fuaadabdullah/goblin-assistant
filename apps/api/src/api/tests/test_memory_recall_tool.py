@@ -13,15 +13,18 @@ async def test_memory_recall_success_normalizes_payload():
     rows = [
         {
             "id": "mf_1",
-            "fact_text": "User prefers concise answers",
+            "content": "User prefers concise answers",
             "category": "preference",
+            "memory_type": "preference",
             "score": 0.91,
+            "rerank_score": 0.97,
             "created_at": datetime(2026, 5, 30, tzinfo=timezone.utc),
+            "metadata": {"memory_type": "preference"},
         }
     ]
 
     with patch(
-        "api.assistant_tools.skills.memory_recall.RetrievalService.retrieve_memory_facts",
+        "api.assistant_tools.skills.memory_recall.memory_core_service.retrieve_memory_context",
         new=AsyncMock(return_value=rows),
     ):
         result = await _handle_memory_recall(
@@ -36,12 +39,13 @@ async def test_memory_recall_success_normalizes_payload():
     assert result["conversation_id"] == "conv_1"
     assert result["memory_facts"][0]["content"] == "User prefers concise answers"
     assert result["memory_facts"][0]["created_at"] == "2026-05-30T00:00:00+00:00"
+    assert result["memory_facts"][0]["memory_type"] == "preference"
 
 
 @pytest.mark.asyncio
 async def test_memory_recall_empty_results():
     with patch(
-        "api.assistant_tools.skills.memory_recall.RetrievalService.retrieve_memory_facts",
+        "api.assistant_tools.skills.memory_recall.memory_core_service.retrieve_memory_context",
         new=AsyncMock(return_value=[]),
     ):
         result = await _handle_memory_recall(

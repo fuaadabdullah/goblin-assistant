@@ -241,7 +241,10 @@ async def generate_chat_stream(
                         "code": "provider-error",
                         "message": "Processing service could not complete your request. Your message was saved.",
                         "is_recoverable": True,
-                        "details": {"department": used_department},
+                        "details": {
+                            "department": used_department,
+                            "provider_error": provider_error,
+                        },
                         "done": True,
                     }
                     yield _format_sse_event("error", error_event)
@@ -262,8 +265,12 @@ async def generate_chat_stream(
                 error_event = {
                     "type": "error",
                     "code": "provider-error",
-                    "message": "Processing service unavailable. Your message was saved.",
+                    "message": "Provider unavailable. Your message was saved.",
                     "is_recoverable": True,
+                    "details": {
+                        "department": used_department,
+                        "provider_error": provider_error,
+                    },
                     "done": True,
                 }
                 yield _format_sse_event("error", error_event)

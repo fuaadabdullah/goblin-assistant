@@ -17,6 +17,7 @@ from api.core.contracts import (
 )
 
 from ..ops.security import require_ops_access
+from ..services.memory_core import memory_core_service
 from .decision_logger import decision_logger
 from .events import event_emitter
 from .memory_logger import memory_promotion_logger
@@ -78,36 +79,48 @@ async def get_write_decisions(
 ) -> Dict[str, Any]:
     """Get message-by-message write decisions for a conversation"""
     try:
-        decisions = await decision_logger.get_decision_history(
-            conversation_id=conversation_id, limit=limit, user_id=user_id
-        )
+        from api.services.observability_service import observability_service as _obs
 
-        if not decisions:
-            from api.services.observability_service import observability_service as _obs
-
-            _uid = user_id if isinstance(user_id, str) else None
+        if _obs.write_decisions:
+            decisions = []
             for rec in _obs.write_decisions:
-                if rec.conversation_id != conversation_id:
-                    continue
-                if _uid and rec.user_id != _uid:
-                    continue
-                decisions.append(
-                    {
-                        "message_id": rec.message_id,
-                        "conversation_id": rec.conversation_id,
-                        "user_id": rec.user_id,
-                        "classified_type": rec.classified_type,
-                        "embedded": rec.embedded,
-                        "summarized": rec.summarized,
-                        "cached": rec.cached,
-                        "discarded": rec.discarded,
-                        "confidence": rec.confidence,
-                        "reason_codes": rec.reason_codes,
-                        "timestamp": rec.timestamp,
-                    }
-                )
-                if len(decisions) >= limit:
-                    break
+                if isinstance(rec, dict):
+                    rec_conversation_id = rec.get("conversation_id")
+                    rec_user_id = rec.get("user_id")
+                    if rec_conversation_id != conversation_id:
+                        continue
+                    if user_id and rec_user_id != user_id:
+                        continue
+                    decisions.append(rec)
+                else:
+                    if rec.conversation_id != conversation_id:
+                        continue
+                    if user_id and rec.user_id != user_id:
+                        continue
+                    decisions.append(
+                        {
+                            "message_id": rec.message_id,
+                            "conversation_id": rec.conversation_id,
+                            "user_id": rec.user_id,
+                            "timestamp": rec.timestamp,
+                            "classification": {
+                                "type": rec.classified_type,
+                                "confidence": rec.confidence,
+                                "reason_codes": rec.reason_codes,
+                            },
+                            "decisions": {
+                                "embedded": rec.embedded,
+                                "summarized": rec.summarized,
+                                "cached": rec.cached,
+                                "discarded": rec.discarded,
+                            },
+                            "confidence": rec.confidence,
+                        }
+                    )
+        else:
+            decisions = await decision_logger.get_decision_history(
+                conversation_id=conversation_id, limit=limit, user_id=user_id
+            )
 
         return {
             "conversation_id": conversation_id,
@@ -115,12 +128,12 @@ async def get_write_decisions(
             "decisions": decisions,
             "summary": {
                 "total_decisions": len(decisions),
-                "embedded_count": len([d for d in decisions if d["embedded"]]),
-                "summarized_count": len([d for d in decisions if d["summarized"]]),
-                "cached_count": len([d for d in decisions if d.get("cached", False)]),
-                "discarded_count": len([d for d in decisions if d["discarded"]]),
+                "embedded_count": len([d for d in decisions if _decision_flag(d, "embedded")]),
+                "summarized_count": len([d for d in decisions if _decision_flag(d, "summarized")]),
+                "cached_count": len([d for d in decisions if _decision_flag(d, "cached")]),
+                "discarded_count": len([d for d in decisions if _decision_flag(d, "discarded")]),
                 "avg_confidence": round(
-                    sum(d["confidence"] for d in decisions) / max(1, len(decisions)), 2
+                    sum(_decision_confidence(d) for d in decisions) / max(1, len(decisions)), 2
                 ),
             },
         }
@@ -180,27 +193,56 @@ async def search_write_decisions(
             _uid = user_id if isinstance(user_id, str) else None
             _cls = classification_type if isinstance(classification_type, str) else None
             for rec in _obs.write_decisions:
-                if _conv and rec.conversation_id != _conv:
+                if isinstance(rec, dict):
+                    rec_conversation_id = rec.get("conversation_id")
+                    rec_user_id = rec.get("user_id")
+                    rec_classified_type = rec.get("classified_type") or rec.get(
+                        "classification", {}
+                    ).get("type", "unknown")
+                    rec_reason_codes = rec.get("reason_codes") or rec.get("classification", {}).get(
+                        "reason_codes", []
+                    )
+                    rec_embedded = rec.get("decisions", {}).get("embedded", False)
+                    rec_summarized = rec.get("decisions", {}).get("summarized", False)
+                    rec_discarded = rec.get("decisions", {}).get("discarded", False)
+                    rec_confidence = rec.get(
+                        "confidence", rec.get("classification", {}).get("confidence", 0.0)
+                    )
+                    rec_timestamp = rec.get("timestamp", "")
+                else:
+                    rec_conversation_id = rec.conversation_id
+                    rec_user_id = rec.user_id
+                    rec_classified_type = rec.classified_type
+                    rec_reason_codes = rec.reason_codes
+                    rec_embedded = rec.embedded
+                    rec_summarized = rec.summarized
+                    rec_discarded = rec.discarded
+                    rec_confidence = rec.confidence
+                    rec_timestamp = rec.timestamp
+
+                if _conv and rec_conversation_id != _conv:
                     continue
-                if _uid and rec.user_id != _uid:
+                if _uid and rec_user_id != _uid:
                     continue
-                if _cls and rec.classified_type != _cls:
+                if _cls and rec_classified_type != _cls:
                     continue
-                searchable = f"{rec.classified_type} {' '.join(rec.reason_codes)}"
+                searchable = f"{rec_classified_type} {' '.join(rec_reason_codes)}"
                 if q and q not in searchable.lower():
                     continue
                 results.append(
                     {
-                        "message_id": rec.message_id,
-                        "conversation_id": rec.conversation_id,
-                        "user_id": rec.user_id,
-                        "classified_type": rec.classified_type,
-                        "embedded": rec.embedded,
-                        "summarized": rec.summarized,
-                        "discarded": rec.discarded,
-                        "confidence": rec.confidence,
-                        "reason_codes": rec.reason_codes,
-                        "timestamp": rec.timestamp,
+                        "message_id": rec.get("message_id")
+                        if isinstance(rec, dict)
+                        else rec.message_id,
+                        "conversation_id": rec_conversation_id,
+                        "user_id": rec_user_id,
+                        "classified_type": rec_classified_type,
+                        "embedded": rec_embedded,
+                        "summarized": rec_summarized,
+                        "discarded": rec_discarded,
+                        "confidence": rec_confidence,
+                        "reason_codes": rec_reason_codes,
+                        "timestamp": rec_timestamp,
                     }
                 )
 
@@ -229,27 +271,30 @@ async def get_user_memory(
 ) -> Dict[str, Any]:
     """Get long-term memory items for a user with full metadata"""
     try:
+        memory_items = await memory_core_service.export_user_memory(user_id)
         promotions = await memory_promotion_logger.get_promotion_history(
             user_id=user_id, limit=limit if isinstance(limit, int) else 100
         )
 
         by_category = {}
-        for promotion in promotions:
-            category = promotion["category"]
+        for item in memory_items:
+            category = item.get("category") or item.get("type") or "uncategorized"
             if category not in by_category:
                 by_category[category] = []
-            by_category[category].append(promotion)
+            by_category[category].append(item)
 
         return {
             "user_id": user_id,
-            "memory_items": promotions,
+            "memory_items": memory_items,
+            "promotion_history": promotions,
             "summary": {
-                "total_items": len(promotions),
+                "total_items": len(memory_items),
                 "promoted_items": len([p for p in promotions if p["promotion_decision"]]),
                 "rejected_items": len([p for p in promotions if not p["promotion_decision"]]),
                 "categories": list(by_category.keys()),
                 "avg_confidence": round(
-                    sum(p["confidence_score"] for p in promotions) / max(1, len(promotions)),
+                    sum(float(p.get("confidence", 0.0)) for p in memory_items)
+                    / max(1, len(memory_items)),
                     2,
                 ),
             },
@@ -318,33 +363,67 @@ async def search_memory_promotions(
         )
 
         if not results:
-            from api.services.observability_models import PromotionDecision as _PD  # noqa: N814
             from api.services.observability_service import observability_service as _obs
 
             q = query.lower() if isinstance(query, str) else ""
             _uid = user_id if isinstance(user_id, str) else None
-            _promoted_only = promoted_only if isinstance(promoted_only, bool) else False
+            _category = category if isinstance(category, str) else None
             for rec in _obs.memory_promotions:
-                if _uid and rec.user_id != _uid:
+                if isinstance(rec, dict):
+                    rec_user_id = rec.get("user_id")
+                    rec_category = rec.get("source")
+                    rec_candidate_text = rec.get("candidate_text", "")
+                    rec_confidence = rec.get("confidence_score", 0.0)
+                    rec_timestamp = rec.get("timestamp", "")
+                    rec_conversation_id = rec.get("conversation_id")
+                    rec_memory_state = rec.get("memory_state")
+                    rec_conflict_reason = rec.get("conflict_reason")
+                    rec_conflicting_memory_ids = rec.get("conflicting_memory_ids", [])
+                    promotion_decision = rec.get("promotion_decision")
+                    rejection_reason = rec.get("rejection_reason")
+                else:
+                    rec_user_id = rec.user_id
+                    rec_category = rec.source
+                    rec_candidate_text = rec.candidate_text
+                    rec_confidence = rec.confidence_score
+                    rec_timestamp = rec.timestamp
+                    rec_conversation_id = rec.conversation_id
+                    rec_memory_state = rec.memory_state
+                    rec_conflict_reason = rec.conflict_reason
+                    rec_conflicting_memory_ids = rec.conflicting_memory_ids
+                    promotion_decision = rec.promotion_decision
+                    rejection_reason = rec.rejection_reason
+
+                if _uid and rec_user_id != _uid:
                     continue
-                is_promoted = rec.promotion_decision != _PD.REJECTED
-                if _promoted_only and not is_promoted:
+                if _category and rec_category != _category:
                     continue
-                if q not in rec.candidate_text.lower():
+                if q and q not in rec_candidate_text.lower():
                     continue
+
+                is_promoted = bool(
+                    promotion_decision
+                    and getattr(promotion_decision, "value", promotion_decision) != "rejected"
+                )
+                if promoted_only and not is_promoted:
+                    continue
+
                 results.append(
                     {
-                        "candidate_text": rec.candidate_text,
-                        "source": rec.source,
-                        "user_id": rec.user_id,
-                        "conversation_id": rec.conversation_id,
-                        "confidence_score": rec.confidence_score,
+                        "candidate_text": rec_candidate_text,
+                        "source": rec_category,
+                        "user_id": rec_user_id,
+                        "conversation_id": rec_conversation_id,
+                        "confidence_score": rec_confidence,
                         "promoted": is_promoted,
-                        "promotion_decision": rec.promotion_decision.value
-                        if rec.promotion_decision
-                        else None,
-                        "rejection_reason": rec.rejection_reason,
-                        "timestamp": rec.timestamp,
+                        "promotion_decision": getattr(
+                            promotion_decision, "value", promotion_decision
+                        ),
+                        "rejection_reason": rejection_reason,
+                        "memory_state": rec_memory_state,
+                        "conflict_reason": rec_conflict_reason,
+                        "conflicting_memory_ids": rec_conflicting_memory_ids,
+                        "timestamp": rec_timestamp,
                     }
                 )
 
@@ -363,3 +442,25 @@ async def search_memory_promotions(
     except Exception as e:
         logger.error("Failed to search memory promotions:", error=str(e))
         raise HTTPException(status_code=500, detail=f"Failed to search memory promotions: {str(e)}")
+
+
+def _decision_flag(decision: Any, field: str) -> bool:
+    if isinstance(decision, dict):
+        if field == "embedded":
+            return bool(decision.get("decisions", {}).get("embedded", False))
+        if field == "summarized":
+            return bool(decision.get("decisions", {}).get("summarized", False))
+        if field == "cached":
+            return bool(decision.get("decisions", {}).get("cached", False))
+        if field == "discarded":
+            return bool(decision.get("decisions", {}).get("discarded", False))
+        return False
+    return bool(getattr(decision, field, False))
+
+
+def _decision_confidence(decision: Any) -> float:
+    if isinstance(decision, dict):
+        return float(
+            decision.get("confidence", decision.get("classification", {}).get("confidence", 0.0))
+        )
+    return float(getattr(decision, "confidence", 0.0))

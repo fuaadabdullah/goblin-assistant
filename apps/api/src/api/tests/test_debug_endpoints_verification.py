@@ -2,10 +2,11 @@
 Verification test for debug endpoints
 """
 
+import pytest
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
 
-from api.observability.debug_router import router
+from api.observability.debug_router import get_memory_debug_info, router
 from api.observability.tool_tracer import ToolExecutionStatus, tool_tracer
 
 app = FastAPI()
@@ -130,3 +131,48 @@ def test_stats_debug_endpoint():
         data = response.json()
         assert "trace_count" in data
         assert "stats" in data
+
+
+@pytest.mark.asyncio
+async def test_memory_debug_info_includes_canonical_memory_items(monkeypatch):
+    async def fake_get_user_memory(user_id: str):
+        return {
+            "memory_items": [
+                {
+                    "id": "mem-1",
+                    "type": "preference",
+                    "scope": "global",
+                    "content": "User prefers concise answers.",
+                    "summary": "Prefers concise answers",
+                    "source": "conversation",
+                    "source_ref": {"conversation_id": "conv-1"},
+                    "confidence": 0.93,
+                    "importance": 0.82,
+                    "recency_score": 0.71,
+                    "sensitivity": "low",
+                    "status": "active",
+                    "tags": ["preference"],
+                    "entities": ["user"],
+                    "embedding_id": "emb-1",
+                }
+            ],
+            "promotion_history": [],
+        }
+
+    async def fake_get_memory_health(user_id: str):
+        return {"user_id": user_id, "status": "ok"}
+
+    monkeypatch.setattr(
+        "api.observability.debug_write_router.get_user_memory",
+        fake_get_user_memory,
+    )
+    monkeypatch.setattr(
+        "api.observability.debug_write_router.get_memory_health",
+        fake_get_memory_health,
+    )
+
+    result = await get_memory_debug_info("user-123")
+
+    assert result["memory_items"][0]["type"] == "preference"
+    assert result["memory_items"][0]["source_ref"] == {"conversation_id": "conv-1"}
+    assert result["promotion_history"] == []

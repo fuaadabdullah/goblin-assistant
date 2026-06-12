@@ -57,6 +57,10 @@ from .sandbox_models import (
 logger = structlog.get_logger()
 
 
+def _path_exists(path: str) -> bool:
+    return os.path.exists(path)
+
+
 def require_api_key(x_api_key: str = Header(...)) -> None:
     """Validate the X-Api-Key header. Defined here so tests can patch module-level API_KEY."""
     if SANDBOX_ENABLED and os.getenv("ENVIRONMENT", "development") == "development":
@@ -83,6 +87,14 @@ async def submit_job(
 ) -> SuccessEnvelope[SubmitJobResponse]:
     """Submit a job for sandbox execution"""
 
+    if not SANDBOX_ENABLED:
+        raise HTTPException(status_code=503, detail="sandbox service is disabled")
+
+    require_api_key(x_api_key)
+
+    if request:
+        await sandbox_rate_limiter.__call__(request)
+
     if not req.source or len(req.source.strip()) == 0:
         raise HTTPException(status_code=400, detail="source code is required")
 
@@ -94,14 +106,6 @@ async def submit_job(
 
     if req.timeout and (req.timeout < 1 or req.timeout > 300):
         raise HTTPException(status_code=400, detail="timeout must be between 1-300 seconds")
-
-    if not SANDBOX_ENABLED:
-        raise HTTPException(status_code=503, detail="sandbox service is disabled")
-
-    require_api_key(x_api_key)
-
-    if request:
-        await sandbox_rate_limiter.__call__(request)
 
     if (
         os.getenv("PYTEST_CURRENT_TEST")
@@ -192,11 +196,11 @@ async def get_job_logs(
     await _emit_sandbox_completed(job_id, job_info)
 
     job_path = job_info.get("path")
-    if not job_path or not os.path.exists(job_path):
+    if not job_path or not await _run_blocking(_path_exists, job_path):
         raise HTTPException(status_code=404, detail="job data not found")
 
     log_file = os.path.join(job_path, "stdout.log")
-    if not os.path.exists(log_file):
+    if not await _run_blocking(_path_exists, log_file):
         return SuccessEnvelope(data=JobLogsResponse(logs=""))
 
     try:

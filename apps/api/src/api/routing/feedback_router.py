@@ -158,6 +158,10 @@ async def submit_routing_feedback(body: FeedbackRequest) -> FeedbackResponse:
         except Exception as exc:
             logger.debug("feature_router_rating_update_failed error=%s", exc)
 
+        # Propagate rating to learned department router
+        if body.department:
+            _update_learned_dept_router(body.request_id, body.department, body.rating)
+
         # Update learned user preference profile with the explicit rating
         if user_id:
             try:
@@ -249,6 +253,27 @@ async def _lookup_routing_event(request_id: str):
         logger.debug("routing_event_lookup_failed request_id=%s error=%s", request_id, exc)
 
     return None, None, None
+
+
+def _update_learned_dept_router(
+    request_id: str, department: str, rating: Optional[int]
+) -> None:
+    """Apply a user rating to the learned department router's weight model."""
+    try:
+        from api.routing.learned_department_router import (  # noqa: PLC0415
+            learned_department_router as _ldr,
+        )
+
+        found = _ldr.record_outcome_by_request_id(
+            request_id=request_id,
+            department_id=department,
+            success=True,
+            rating=rating,
+        )
+        if not found:
+            logger.debug("dept_router_rating_no_cached_features request_id=%s", request_id)
+    except Exception as exc:
+        logger.debug("dept_router_rating_update_failed error=%s", exc)
 
 
 def _fire_rating_update(request_id: str, rating: int) -> None:

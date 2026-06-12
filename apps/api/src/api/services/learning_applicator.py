@@ -69,6 +69,7 @@ class LearningApplicator:
             self._apply_to_bandit(row, success, rating, quality_score)
             self._apply_to_feature_router(row, success, rating)
             self._apply_to_preference(row, rating)
+            self._apply_to_memory_core(row, success, rating, quality_score)
             applied_ids.append(row.event_id)
 
         if applied_ids:
@@ -214,6 +215,63 @@ class LearningApplicator:
             task.add_done_callback(lambda _t: None)
         except Exception as exc:
             logger.debug("learning_preference_failed signal=%s error=%s", row.signal, exc)
+
+    def _apply_to_memory_core(
+        self,
+        row: Any,
+        success: Optional[bool],
+        rating: Optional[int],
+        quality_score: Optional[float],
+    ) -> None:
+        if not row.user_id:
+            return
+        try:
+            from api.services.memory_core import memory_core_service  # noqa: PLC0415
+
+            if row.signal in _SKIP_SIGNALS:
+                return
+
+            memory_type = "task_signal"
+            if row.signal in {"continue", "copy"}:
+                memory_type = "project_state"
+            elif row.signal in {"provider_switch", "model_switch"}:
+                memory_type = "decision"
+
+            content = (
+                f"Workflow signal {row.signal}"
+                f" for task_type={row.task_type or 'unknown'}"
+                f" provider={row.provider or 'unknown'}"
+                f" success={success}"
+                f" rating={rating}"
+                f" quality={quality_score if quality_score is not None else 'n/a'}"
+            )
+
+            task = asyncio.create_task(
+                memory_core_service.ingest_text(
+                    user_id=str(row.user_id),
+                    text=content,
+                    source_kind="workflow",
+                    source_id=row.event_id,
+                    metadata={
+                        "task_type": row.task_type,
+                        "provider": row.provider,
+                        "model": row.model,
+                        "intent_label": row.intent_label,
+                        "signal": row.signal,
+                        "success": success,
+                        "rating": rating,
+                        "quality_score": quality_score,
+                        "memory_type": memory_type,
+                        "active_workflow": True,
+                        "repetition_count": 1,
+                    },
+                    confidence=0.65 if success else 0.55,
+                    explicit_kind=memory_type,
+                )
+            )
+            task.add_done_callback(lambda _t: None)
+        except Exception as exc:
+            logger.debug("learning_memory_core_failed signal=%s error=%s", row.signal, exc)
 
     # ── Mark applied ──────────────────────────────────────────────────────────
 

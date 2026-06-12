@@ -49,5 +49,6 @@ async def get_memory_debug_info(user_id: str) -> Dict[str, Any]:
     return {
         "user_id": user_id,
         "memory_items": memory_items_resp.get("memory_items", []),
+        "promotion_history": memory_items_resp.get("promotion_history", []),
         "memory_health": health_resp,
     }

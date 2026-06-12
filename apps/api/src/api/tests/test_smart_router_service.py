@@ -79,7 +79,8 @@ async def test_invoke_with_fallback_returns_success():
     assert result["routing"]["provider"] == "openai"
 
 
-def test_select_provider_prefers_healthy_preferred_provider():
+@pytest.mark.asyncio
+async def test_select_provider_prefers_healthy_preferred_provider():
     router = SmartRouter(strategy=RoutingStrategy.BALANCED)
 
     fake_provider = MagicMock()
@@ -107,20 +108,21 @@ def test_select_provider_prefers_healthy_preferred_provider():
             return_value=[],
         ),
     ):
-        selection = router.select_provider(preferred_provider="openai")
+        selection = await router.select_provider(preferred_provider="openai")
 
     assert selection.provider_id == "openai"
     assert selection.reason == "Preferred provider selected"
 
 
-def test_select_provider_returns_emergency_selection_when_no_candidates():
+@pytest.mark.asyncio
+async def test_select_provider_returns_emergency_selection_when_no_candidates():
     router = SmartRouter(strategy=RoutingStrategy.BALANCED)
 
     with patch(
         "api.services.smart_router.top_providers_for",
         return_value=[],
     ):
-        selection = router.select_provider(task_type="chat")
+        selection = await router.select_provider(task_type="chat")
 
     assert selection.provider_id == "mock"
     assert selection.reason.startswith("No providers available")

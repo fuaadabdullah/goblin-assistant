@@ -6,7 +6,7 @@ import type { ChatMessage, ChatThread } from '../../types';
 import { buildThreadKey } from '../../../../lib/chat-history';
 import { queryKeys } from '../../../../lib/query-keys';
 import { useToast } from '../../../../hooks/useToast';
-import { isAuthenticated } from '../../../../utils/auth-session';
+import { useAuthSession } from '../../../../hooks/api/useAuthSession';
 import type { PendingAttachment } from '../useChatSession';
 import { createMessageId, createAssistantMessage, mapAttachments } from './factories';
 
@@ -46,6 +46,7 @@ export const useSendMessage = ({
   showInfo,
 }: SendMessageDeps): ((messageOverride?: string) => Promise<void>) => {
   const queryClient = useQueryClient();
+  const { isAuthenticated } = useAuthSession();
 
   return useCallback(
     async (messageOverride?: string) => {
@@ -71,7 +72,7 @@ export const useSendMessage = ({
       applyMessages(updatedMessages);
 
       try {
-        const isAuthed = isAuthenticated();
+        const isAuthed = isAuthenticated;
 
         if (!isAuthed) {
           const response = await chatClient.chatCompletion(
@@ -216,6 +217,7 @@ export const useSendMessage = ({
       setIsSending,
       showError,
       showInfo,
+      isAuthenticated,
     ]
   );
 };

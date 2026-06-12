@@ -48,7 +48,9 @@ def _build_context_text(
         context_parts.append(f"[SUMMARY] {summary['content']}")
 
     for fact in context_bundle.get("memory_facts", []):
-        context_parts.append(f"[MEMORY] {fact['content']}")
+        memory_type = fact.get("memory_type") or fact.get("metadata", {}).get("memory_type")
+        label = f"[MEMORY:{memory_type}]" if memory_type else "[MEMORY]"
+        context_parts.append(f"{label} {fact['content']}")
 
     profile_block = _build_financial_profile_block(context_bundle)
     if profile_block:

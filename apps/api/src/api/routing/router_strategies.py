@@ -3,14 +3,24 @@
 from __future__ import annotations
 
 import os
+import sys
 import uuid
 from typing import Dict, List, Optional
 
 import structlog
 
-from .router_registry import registry
+from .router_registry import registry as default_registry
 
 logger = structlog.get_logger()
+
+
+def _get_registry():
+    router_module = sys.modules.get("api.routing.router")
+    if router_module is not None:
+        module_registry = getattr(router_module, "registry", None)
+        if module_registry is not None:
+            return module_registry
+    return default_registry
 
 
 class LatencyRouter:
@@ -22,7 +32,7 @@ class LatencyRouter:
         del provider_costs
 
         def score(provider_id: str) -> float:
-            stats = registry.get(provider_id)
+            stats = _get_registry().get(provider_id)
             reliability = max(stats.success_rate, 0.01)
             return stats.ewma_latency_ms / reliability
 
@@ -58,7 +68,8 @@ class HybridRouter:
 
         req_id = request_id or str(uuid.uuid4())
 
-        latencies = {pid: registry.get(pid).ewma_latency_ms for pid in candidates}
+        routing_registry = _get_registry()
+        latencies = {pid: routing_registry.get(pid).ewma_latency_ms for pid in candidates}
         costs = {pid: sum(provider_costs.get(pid, (0.0, 0.0))) for pid in candidates}
         max_latency = max(latencies.values()) or 1.0
         max_cost = max(costs.values()) or 1.0
@@ -66,7 +77,7 @@ class HybridRouter:
         breakdown: Dict[str, Dict[str, float]] = {}
 
         def score(provider_id: str) -> float:
-            stats = registry.get(provider_id)
+            stats = routing_registry.get(provider_id)
             normalized_latency = latencies[provider_id] / max_latency
             normalized_cost = costs[provider_id] / max_cost if max_cost else 0.0
             reliability = max(stats.success_rate, 0.1)
@@ -91,7 +102,7 @@ class HybridRouter:
             rank_order=ranked,
             score_breakdown=breakdown,
         )
-        registry.log_decision(
+        routing_registry.log_decision(
             request_id=req_id,
             cost_weight=self.cost_weight,
             candidates=candidates,

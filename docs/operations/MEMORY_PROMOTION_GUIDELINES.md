@@ -4,6 +4,72 @@
 
 Memory Promotion Rules ensure that long-term memory stays **boring, stable, and provable**. This prevents the system from creating a false personality or storing unstable, emotional information.
 
+## Canonical Memory Object
+
+The runtime exposes long-term memory as a canonical superset object. Existing storage fields are still preserved, but callers should treat this shape as the source of truth:
+
+```json
+{
+  "id": "mem_01JX...",
+  "user_id": "usr_123",
+  "type": "semantic",
+  "scope": "global",
+  "content": "User prefers concise technical explanations.",
+  "summary": "Prefers concise technical explanations",
+  "source": "conversation",
+  "source_ref": {
+    "conversation_id": "conv_456",
+    "message_id": "msg_789"
+  },
+  "confidence": 0.94,
+  "importance": 0.82,
+  "recency_score": 0.71,
+  "sensitivity": "low",
+  "status": "active",
+  "tags": ["preference", "style"],
+  "entities": ["user"],
+  "embedding_id": "emb_abc",
+  "created_at": "2026-06-11T18:00:00Z",
+  "updated_at": "2026-06-11T18:00:00Z",
+  "last_accessed_at": "2026-06-11T18:03:00Z",
+  "expires_at": null
+}
+```
+
+Compatibility aliases such as `memory_type`, `source_kind`, `source_id`, `salience_score`, `entity_refs`, and `sensitivity_level` remain available for older callers.
+
+## Conflict Handling
+
+Humans contradict themselves. The memory system must keep the useful parts instead of flattening them into one false truth.
+
+### Policy
+- Explicit user correction wins over inferred memory.
+- Newer high-confidence memory wins over stale lower-confidence memory.
+- Repeated recent memory wins over a one-off older memory.
+- Inferred memory loses to a direct statement.
+- Stale memory gets demoted before it gets deleted.
+- Different scopes can coexist when they describe different contexts.
+
+### Resolution Rules
+- Keep both memories when they are scoped differently, such as a global preference plus a project-specific override.
+- Mark the losing memory `deprecated` when the new memory clearly supersedes it.
+- Merge repeated confirmations into the same memory record when the content is materially the same.
+- Preserve contradiction history in metadata and observability logs.
+
+### Example
+
+Old memory:
+`User prefers short answers.`
+
+New message:
+`User wants more detail for architecture explanations.`
+
+Result:
+- keep both
+- scope them separately
+- general answers: concise
+- architecture explanations: detailed
+
 ## Core Law
 
 **Long-term memory must be boring, stable, and provable.**
@@ -158,6 +224,160 @@ Each gate has a threshold:
 2. **Apply Gates**: Check each gate sequentially
 3. **Store if Passed**: Only if ALL gates pass
 4. **Log Decision**: For transparency and debugging
+
+## Lifecycle
+
+Every memory item moves through explicit states instead of being treated as permanently active.
+
+### States
+- `candidate`: observed but not yet trusted enough for broad use
+- `active`: usable in retrieval and context assembly
+- `verified`: trusted, repeatedly reinforced, or directly corrected by the user
+- `deprecated`: preserved for history, but downranked because it is stale or contradicted
+- `archived`: retained for traceability but excluded from normal retrieval
+- `deleted`: tombstoned in the normal lifecycle or removed by privacy erasure policy
+
+### Lifecycle Rules
+- Candidates need scoring or confirmation before they become active.
+- Verified memories are the highest-trust durable memories.
+- Deprecated memories stay visible for history and audit, but they should not outrank stronger evidence.
+- Archived memories are preserved for traceability and compaction.
+- Deleted memories are terminal; privacy erasure may hard-delete them immediately.
+
+## Forgetting
+
+Memory without forgetting becomes clutter.
+
+### Automatic Forgetting
+- Trigger on low usage.
+- Trigger on low importance.
+- Trigger on expiration.
+- Trigger on contradiction.
+- Trigger on irrelevance.
+
+### Decay Rules
+- Memory scores should slowly decay unless reinforced.
+- Important memories can be pinned internally so they resist decay.
+- Low-salience memories should be archived before they are deleted.
+- Stale or contradictory memories should be demoted, not immediately removed.
+
+### User-Requested Forgetting
+- If the user explicitly says delete, forget, or remove, obey the privacy policy and remove the memory through the erasure flow.
+- Treat user erasure as higher priority than ordinary lifecycle decay.
+
+## Privacy and Safety
+
+Memory is where assistant systems get creepy fast, so the storage rules need to stay tight.
+
+### Rules
+- Do not store sensitive data by default.
+- Classify sensitive content before persistence.
+- Separate inferred memory from explicit memory.
+- Keep audit logs for promotion, demotion, and deletion.
+- Support user deletion and export through the privacy flow.
+- Avoid storing private health, legal, financial, or identity data unless the user explicitly asks and the policy allows it.
+
+### Security Layers
+- Encrypt sensitive storage at rest.
+- Scope access by user and project.
+- Log admin access.
+- Redact memory content before sending it to model prompts when needed.
+- Scan memory ingestion paths for secrets.
+
+## Memory Acquisition Pipeline
+
+Every user message and assistant response is scanned for memory-worthy content.
+
+### Step 1: Detect Candidates
+- Look for explicit requests like "remember this"
+- Look for recurring preferences, goals, and architecture decisions
+- Look for stable facts with future utility
+
+### Step 2: Classify Type
+- `semantic`
+- `episodic`
+- `procedural`
+- `project`
+- `preference`
+- `task-related`
+
+### Step 3: Score Signals
+- usefulness
+- stability
+- confidence
+- sensitivity
+- duplication risk
+- recency
+
+### Step 4: Decide
+- store automatically
+- store with lower priority
+- ask for confirmation
+- reject
+- merge with existing memory
+
+### Step 5: Normalize
+- Convert the raw statement into a clean summary
+- Attach source metadata and timestamps
+- Preserve privacy-safe aliases for older surfaces
+
+## Memory Confidence Model
+
+Memory confidence is probabilistic, not binary.
+
+### Confidence Inputs
+- explicitness of the statement
+- repetition over time
+- whether the memory was user-authored or inferred
+- whether it conflicts with existing memory
+- whether it came from a direct correction
+- whether the user later contradicted it
+
+### Confidence Bands
+- `0.90-1.00`: strong stable memory
+- `0.70-0.89`: likely true, usable
+- `0.40-0.69`: weak, needs verification
+- `<0.40`: do not use by default
+
+Low-confidence memories stay visible for audit and retrieval, but they do not override stronger memories unless a direct correction or other fresh evidence raises them.
+
+## Memory Importance Model
+
+Importance controls retrieval, pinning, summarization, and forgetting.
+
+### Importance Inputs
+- frequency of use
+- task relevance
+- explicit user emphasis
+- dependency level
+- whether the memory affects future behavior
+
+### Priority Examples
+- `User likes concise answers` -> high importance
+- `User mentioned a random anime once` -> low importance
+- `Goblin uses department routing` -> high project importance
+
+## Memory Scopes
+
+Memory is scoped to prevent pollution.
+
+- `global`: user style preferences, general identity, long-term goals
+- `project`: repo, client, or initiative-specific context
+- `conversation`: current thread or related follow-up only
+- `tool`: a tool or subsystem boundary
+
+If scope is not explicit, default to `global` unless metadata proves a narrower boundary.
+
+## Storage Architecture
+
+Use a split storage model instead of a single table pretending to be a strategy.
+
+- PostgreSQL: authoritative memory records, metadata, lifecycle state, permissions, and audit trail
+- Vector index: semantic retrieval and fuzzy recall
+- Redis: hot/session/working-memory cache and temporary ranking data
+- Graph-like relationships: represented first with Postgres links and metadata, not a new graph service
+
+The runtime should keep `memory_facts` and embeddings compatible while deriving confidence, importance, and scope at write/read time.
 
 ### Monitoring
 

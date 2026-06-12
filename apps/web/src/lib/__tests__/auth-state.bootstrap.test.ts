@@ -1,4 +1,11 @@
-import { bootstrapAuthSession, clearAuthSessionState, clearValidationCache } from '../auth-state';
+import {
+  bootstrapAuthSession,
+  clearAuthSessionState,
+  clearValidationCache,
+  hasAnyRole,
+  hasRole,
+  snapshotFromSupabaseSession,
+} from '../auth-state';
 
 // ---------------------------------------------------------------------------
 // Module mocks — factories run at hoist time, so no top-level var refs allowed
@@ -24,7 +31,6 @@ vi.mock('../supabase', () => ({
 
 vi.mock('../../utils/auth-session', () => ({
   clearAuthSession: vi.fn(),
-  persistAuthSession: vi.fn(),
 }));
 
 // Get references to the mock functions after hoisting resolves
@@ -100,6 +106,36 @@ describe('bootstrapAuthSession — no session', () => {
     expect(snapshot.user).toBeNull();
     expect(snapshot.isHydrated).toBe(true);
     expect(mockClearAuthSession).toHaveBeenCalled();
+  });
+});
+
+describe('auth-state role helpers', () => {
+  it('handles missing roles and direct role matches', () => {
+    expect(hasRole(null, 'admin')).toBe(false);
+    expect(hasAnyRole(undefined, ['admin'])).toBe(false);
+    expect(hasRole({ role: 'admin', roles: ['editor'] } as any, 'admin')).toBe(true);
+    expect(hasRole({ role: 'user', roles: ['editor'] } as any, 'editor')).toBe(true);
+    expect(hasAnyRole({ role: 'user', roles: ['viewer'] } as any, ['admin', 'viewer'])).toBe(true);
+  });
+});
+
+describe('snapshotFromSupabaseSession', () => {
+  it('maps a supabase session into an authenticated snapshot', () => {
+    const snapshot = snapshotFromSupabaseSession({
+      access_token: 'token-123',
+      user: testUser as any,
+    });
+
+    expect(snapshot).toMatchObject({
+      token: 'token-123',
+      isAuthenticated: true,
+      isHydrated: true,
+      user: {
+        id: 'u1',
+        email: 'test@example.com',
+        name: 'Test User',
+      },
+    });
   });
 });
 

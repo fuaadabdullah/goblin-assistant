@@ -5,7 +5,7 @@ Enums, dataclasses, and type definitions used by ObservabilityService and
 its callers. Extracted here to keep the service module focused on behaviour.
 """
 
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from enum import Enum
 from typing import Any, Dict, List, Optional
 
@@ -71,6 +71,9 @@ class MemoryPromotionEvent:
     user_id: Optional[str]
     conversation_id: Optional[str]
     timestamp: str
+    memory_state: Optional[str] = None
+    conflict_reason: Optional[str] = None
+    conflicting_memory_ids: List[str] = field(default_factory=list)
     request_id: Optional[str] = None
 
 

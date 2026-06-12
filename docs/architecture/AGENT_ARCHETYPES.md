@@ -375,6 +375,19 @@ Analyzes markets, equities, portfolios, earnings, valuation, and investment-rele
 | ForgeTM Analyst | Deep Research Agent | Market thesis needs broader literature, industry research, or primary-source synthesis | Thesis, sources, tickers, sector, unresolved claims |
 | ForgeTM Analyst | Code Agent | Analyst workflow needs implementation, data connector changes, or tool bug fixes | Tool gap, expected data contract, provider requirements, acceptance criteria |
 
+## Family Hierarchy
+
+The current public archetype list is deliberately coarse:
+
+- General-Purpose Assistant
+- Deep Research Agent
+- Code Agent
+- ForgeTM Analyst
+
+Each family can later own internal specialist leaves such as frontend, backend,
+devops, academic, legal, or news, but those leaves should remain internal
+metadata until a routing contract explicitly exposes them.
+
 ## Shared Contract Shape
 
 Future implementation should represent archetypes as configuration over a shared orchestration contract rather than as separate hardcoded systems.

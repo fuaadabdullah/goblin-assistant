@@ -4,6 +4,19 @@
 
 The Goblin Assistant memory stratification system implements a three-tier memory architecture that transforms raw chat messages into structured, long-term knowledge. This system ensures that only valuable, stable information is retained while filtering out noise and temporary content.
 
+The canonical long-term memory object is documented in `MEMORY_PROMOTION_GUIDELINES.md` and is surfaced by the runtime as a backward-compatible superset. The storage layer can still use the existing `memory_facts` table, but callers should normalize against the canonical object shape.
+
+## Storage Architecture
+
+Use a split memory store rather than a single catch-all table:
+
+- PostgreSQL for authoritative memory records, metadata, lifecycle state, permissions, and audit trails
+- Vector index for semantic retrieval and fuzzy recall
+- Redis for hot/session/working-memory cache and temporary ranking data
+- Graph-like relationships for linked memories, project dependencies, and entity references, represented first with Postgres links/metadata
+
+This keeps long-term memory inspectable while still allowing retrieval to scale.
+
 ## Architecture
 
 ### Three Memory Tiers
@@ -64,6 +77,36 @@ classification = classifier.classify_message(message, "user")
 3. **Stability Filter**: Reject temporary or situational statements
 4. **Duplicate Detection**: Semantic similarity > 85% = duplicate
 5. **Content Quality**: Minimum length, no technical version specifics
+
+### Acquisition Flow
+
+1. **Detect candidates** from user messages and assistant responses.
+2. **Classify the item** as semantic, episodic, procedural, project, preference, or task-related.
+3. **Score usefulness, stability, confidence, sensitivity, duplication risk, and recency**.
+4. **Decide** whether to store, defer, reject, or merge.
+5. **Normalize** the raw statement into the canonical memory object with source metadata and timestamps.
+
+## Confidence And Importance
+
+Confidence is probabilistic and should not be treated as binary truth.
+
+- strong stable memory: `0.90-1.00`
+- likely true, usable: `0.70-0.89`
+- weak, needs verification: `0.40-0.69`
+- do not use by default: `<0.40`
+
+Importance determines retrieval ordering, pinning, summarization, and forgetting. Repeated, task-relevant, explicitly emphasized, dependency-heavy memories should rank higher than one-off observations.
+
+Low-confidence memories should remain auditable, but they should not displace higher-confidence memories unless a newer correction or other fresh evidence wins the comparison.
+
+## Scope Rules
+
+- `global` for user style, identity, and long-term goals
+- `project` for repo- or initiative-specific memory
+- `conversation` for thread-local memory
+- `tool` for subsystem-specific memory
+
+If a memory can be scoped more narrowly than `global`, do that. It prevents unrelated memory from leaking into future context.
 
 ### Promotion Process
 

@@ -71,6 +71,45 @@ def _timestamp_sort_key(value: Any) -> float:
     return 0.0
 
 
+async def _run_stream_task_background(stream_id: str, request: StreamTaskRequest) -> None:
+    try:
+        await run_task_stream_to_state(
+            stream_id=stream_id,
+            task_id=stream_id,
+            messages=_build_stream_messages(request),
+            provider=request.provider,
+            model=request.model,
+            metadata={
+                "goblin": request.goblin,
+                "task": request.task,
+                "source": "legacy_api_router",
+            },
+            initialize_state=False,
+        )
+    except Exception as exc:
+        import structlog  # noqa: PLC0415
+
+        structlog.get_logger().error(
+            "stream_task_background_failed",
+            stream_id=stream_id,
+            error=str(exc),
+        )
+        try:
+            _store = get_stream_state_store()
+            await _store.mark_status(
+                stream_id,
+                status="failed",
+                done=True,
+                updates={"error": str(exc)},
+            )
+        except Exception as cleanup_exc:
+            structlog.get_logger().warning(
+                "stream_status_update_failed",
+                stream_id=stream_id,
+                error=str(cleanup_exc),
+            )
+
+
 async def _collect_chat_history_entries(goblin_id: str, limit: int = 500) -> List[Dict[str, Any]]:
     entries: List[Dict[str, Any]] = []
     conversations = await conversation_store.list_conversations(limit=limit)
@@ -267,46 +306,7 @@ async def start_stream_task(request: StreamTaskRequest):
                 "source": "legacy_api_router",
             },
         )
-
-        async def _run_and_log() -> None:
-            try:
-                await run_task_stream_to_state(
-                    stream_id=stream_id,
-                    task_id=stream_id,
-                    messages=_build_stream_messages(request),
-                    provider=request.provider,
-                    model=request.model,
-                    metadata={
-                        "goblin": request.goblin,
-                        "task": request.task,
-                        "source": "legacy_api_router",
-                    },
-                    initialize_state=False,
-                )
-            except Exception as exc:
-                import structlog  # noqa: PLC0415
-
-                structlog.get_logger().error(
-                    "stream_task_background_failed",
-                    stream_id=stream_id,
-                    error=str(exc),
-                )
-                try:
-                    _store = get_stream_state_store()
-                    await _store.mark_status(
-                        stream_id,
-                        status="failed",
-                        done=True,
-                        updates={"error": str(exc)},
-                    )
-                except Exception as cleanup_exc:
-                    structlog.get_logger().warning(
-                        "stream_status_update_failed",
-                        stream_id=stream_id,
-                        error=str(cleanup_exc),
-                    )
-
-        asyncio.create_task(_run_and_log())
+        asyncio.create_task(_run_stream_task_background(stream_id, request))
         return StreamResponse(stream_id=stream_id, status="started")
     except Exception as exc:
         raise HTTPException(status_code=500, detail=f"Failed to start stream task: {exc}") from exc

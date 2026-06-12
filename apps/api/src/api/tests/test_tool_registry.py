@@ -5,7 +5,7 @@ Tests for tool registry, executor, and the tool-calling loop.
 from __future__ import annotations
 
 import json
-from unittest.mock import AsyncMock
+from unittest.mock import AsyncMock, patch
 
 import pytest
 
@@ -129,6 +129,65 @@ class TestExecuteToolCall:
         try:
             result = await execute_tool_call("_test_echo", {"message": "hello"})
             assert result == {"echo": "hello"}
+        finally:
+            TOOL_REGISTRY.clear()
+            TOOL_REGISTRY.update(backup)
+
+    @pytest.mark.asyncio
+    async def test_injects_runtime_context_and_handles_no_handler_and_typeerror(self):
+        seen = {}
+
+        async def contextual_handler(*, user_id: str = "", conversation_id: str = "", ticker: str = ""):
+            seen["user_id"] = user_id
+            seen["conversation_id"] = conversation_id
+            seen["ticker"] = ticker
+            return {"ok": True}
+
+        backup = dict(TOOL_REGISTRY)
+        register_tool(
+            ToolDefinition(
+                name="_test_contextual",
+                description="contextual",
+                handler=contextual_handler,
+            )
+        )
+        try:
+            result = await execute_tool_call(
+                "_test_contextual",
+                {"ticker": "AAPL"},
+                runtime_context={"user_id": "user-1", "conversation_id": "conv-1"},
+            )
+            assert result == {"ok": True}
+            assert seen == {
+                "user_id": "user-1",
+                "conversation_id": "conv-1",
+                "ticker": "AAPL",
+            }
+        finally:
+            TOOL_REGISTRY.clear()
+            TOOL_REGISTRY.update(backup)
+
+        with patch("api.assistant_tools.executor.get_tool") as mock_get:
+            mock_get.return_value = type("T", (), {"handler": None})()
+            no_handler = await execute_tool_call("missing_handler", {})
+            assert "error" in no_handler
+            assert "no handler" in no_handler["error"].lower()
+
+        async def raises_type_error(**_kwargs):
+            raise TypeError("missing ticker")
+
+        backup = dict(TOOL_REGISTRY)
+        register_tool(
+            ToolDefinition(
+                name="_test_typeerror",
+                description="typeerror",
+                handler=raises_type_error,
+            )
+        )
+        try:
+            typeerror = await execute_tool_call("_test_typeerror", {})
+            assert "error" in typeerror
+            assert "Invalid arguments" in typeerror["error"]
         finally:
             TOOL_REGISTRY.clear()
             TOOL_REGISTRY.update(backup)

@@ -16,7 +16,6 @@ from ..storage.database import get_db_context
 from ..storage.vector_models import (
     ConversationSummaryModel,
     EmbeddingModel,
-    MemoryFactModel,
 )
 from ..utils.tokenizer import count_tokens, trim_to_tokens
 
@@ -343,24 +342,26 @@ class EmbeddingService:
         fact_text: str,
         category: Optional[str] = None,
         metadata: Optional[Dict[str, Any]] = None,
+        source_kind: str = "memory",
+        source_id: Optional[str] = None,
+        confidence: float = 0.8,
+        allow_sensitive: bool = False,
     ) -> bool:
         """Store embedding for a memory fact"""
         try:
-            embedding = await self.embed_text(fact_text)
-            if not embedding:
-                return False
+            from .memory_core import memory_core_service  # noqa: PLC0415
 
-            async with get_db_context() as session:
-                fact_model = MemoryFactModel(
-                    user_id=user_id,
-                    fact_text=fact_text,
-                    fact_embedding=embedding,
-                    category=category,
-                    metadata_=metadata or {},
-                )
-                session.add(fact_model)
-                await session.commit()
-                return True
+            record = await memory_core_service.ingest_memory_fact(
+                user_id=user_id,
+                fact_text=fact_text,
+                category=category,
+                metadata=metadata,
+                source_kind=source_kind,
+                source_id=source_id,
+                confidence=confidence,
+                allow_sensitive=allow_sensitive,
+            )
+            return record is not None
 
         except Exception as e:
             logger.error("Error storing memory fact: %s", e)

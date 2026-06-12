@@ -1,4 +1,3 @@
-import uuid
 from datetime import datetime
 from typing import Any, Dict, List, Optional
 
@@ -7,8 +6,6 @@ import structlog
 from api.core.contracts import MemoryItemPromotedPayload
 from api.observability.events import event_emitter
 
-from ...storage.database import get_db_context
-from ...storage.vector_models import MemoryFactModel
 from ..embedding_service import (
     EmbeddingProviderUnavailableError,
     EmbeddingService,
@@ -39,6 +36,8 @@ class MemoryPromotionService:
         }
 
     async def evaluate_promotion_candidate(self, candidate: PromotionCandidate) -> PromotionResult:
+        ingest_metadata = await self._build_ingest_metadata(candidate)
+        candidate.metadata = {**candidate.metadata, **ingest_metadata}
         (
             gates_passed,
             gates_failed,
@@ -152,6 +151,11 @@ class MemoryPromotionService:
                     rejection_reason=None,
                     user_id=candidate.metadata.get("user_id"),
                     conversation_id=candidate.source_conversation,
+                    memory_state=candidate.metadata.get("memory_state"),
+                    conflict_reason=candidate.metadata.get("conflict_reason"),
+                    conflicting_memory_ids=list(
+                        candidate.metadata.get("conflicting_memory_ids") or []
+                    ),
                     request_id=candidate.metadata.get("request_id"),
                 )
             else:
@@ -164,6 +168,11 @@ class MemoryPromotionService:
                     rejection_reason=reason,
                     user_id=candidate.metadata.get("user_id"),
                     conversation_id=candidate.source_conversation,
+                    memory_state=candidate.metadata.get("memory_state"),
+                    conflict_reason=candidate.metadata.get("conflict_reason"),
+                    conflicting_memory_ids=list(
+                        candidate.metadata.get("conflicting_memory_ids") or []
+                    ),
                     request_id=candidate.metadata.get("request_id"),
                 )
         except (AttributeError, RuntimeError, TypeError, ValueError) as exc:
@@ -222,44 +231,143 @@ class MemoryPromotionService:
             logger.error("Failed to find similar memory facts", error=str(exc))
             return []
 
+    async def _build_ingest_metadata(self, candidate: PromotionCandidate) -> Dict[str, Any]:
+        similar_facts = await self._find_similar_memory_facts(
+            candidate.content,
+            candidate.category,
+            user_id=candidate.metadata.get("user_id"),
+            threshold=0.75,
+        )
+        if candidate.metadata.get("scope"):
+            candidate_scope = str(candidate.metadata.get("scope"))
+        elif candidate.metadata.get("conversation_id") or candidate.source_type == "summary":
+            candidate_scope = "project" if candidate.metadata.get("project_id") else "conversation"
+        else:
+            candidate_scope = "global"
+        conflicting_memory_ids: List[str] = []
+        supersedes_memory_ids: List[str] = []
+        conflict_scopes: List[str] = []
+        conflict_reasons: List[str] = []
+        keep_both = False
+
+        for fact in similar_facts:
+            fact_id = fact.get("id")
+            if not fact_id:
+                continue
+            fact_scope = str(
+                fact.get("scope")
+                or (fact.get("metadata", {}) if isinstance(fact.get("metadata"), dict) else {}).get(
+                    "scope"
+                )
+                or "global"
+            )
+            fact_content = str(fact.get("content") or "")
+            if fact_content.strip() == candidate.content.strip():
+                continue
+            conflict_scopes.append(fact_scope)
+            conflict_reasons.append(
+                f"{fact_id}:{fact_scope}:{float(fact.get('confidence', 0.0) or 0.0):.2f}"
+            )
+            if fact_scope != candidate_scope:
+                keep_both = True
+                continue
+            conflicting_memory_ids.append(str(fact_id))
+            if candidate.metadata.get("direct_correction") or float(candidate.confidence) >= float(
+                fact.get("confidence", 0.0) or 0.0
+            ):
+                supersedes_memory_ids.append(str(fact_id))
+
+        explicit_memory_state = candidate.metadata.get("memory_state")
+
+        ingest_metadata = {
+            **candidate.metadata,
+            "conversation_id": candidate.metadata.get("conversation_id")
+            or candidate.source_conversation,
+            "scope": candidate_scope,
+            "conflicts_with_existing": bool(conflicting_memory_ids or conflict_scopes),
+            "conflicting_memory_ids": conflicting_memory_ids,
+            "supersedes_memory_ids": supersedes_memory_ids,
+            "conflict_scopes": sorted(set(conflict_scopes)),
+            "keep_both": keep_both,
+            "conflict_reason": "; ".join(conflict_reasons) if conflict_reasons else None,
+            "inferred": bool(
+                candidate.metadata.get("inferred", candidate.source_type == "summary")
+            ),
+            "authored": bool(
+                candidate.metadata.get("authored", candidate.source_type != "summary")
+            ),
+            "memory_state": explicit_memory_state,
+        }
+        if supersedes_memory_ids:
+            ingest_metadata["replacement_memory_id"] = supersedes_memory_ids[0]
+        if candidate.metadata.get("direct_correction"):
+            ingest_metadata["direct_correction"] = True
+        if candidate.metadata.get("verified"):
+            ingest_metadata["verified"] = True
+        if explicit_memory_state:
+            ingest_metadata["memory_state"] = explicit_memory_state
+        elif keep_both or supersedes_memory_ids:
+            ingest_metadata["memory_state"] = candidate.metadata.get("memory_state") or (
+                "verified" if candidate.metadata.get("direct_correction") else "active"
+            )
+        elif conflicting_memory_ids:
+            ingest_metadata["memory_state"] = "deprecated"
+        else:
+            ingest_metadata["memory_state"] = candidate.metadata.get("memory_state") or (
+                "verified" if candidate.metadata.get("direct_correction") else "active"
+            )
+        if keep_both:
+            ingest_metadata["conflict_resolution"] = "keep_both"
+        elif supersedes_memory_ids:
+            ingest_metadata["conflict_resolution"] = "supersede"
+        elif conflicting_memory_ids:
+            ingest_metadata["conflict_resolution"] = "demote"
+        else:
+            ingest_metadata["conflict_resolution"] = "none"
+        return ingest_metadata
+
     async def _store_memory_fact(
         self,
         candidate: PromotionCandidate,
     ) -> Any:
         try:
-            memory_fact_id = uuid.uuid4().hex
-            embedding = await self.embedding_service.embed_text(candidate.content)
-            if not embedding:
+            if not candidate.metadata.get("user_id"):
                 logger.warning(
-                    "Failed to generate embedding for promoted memory fact",
+                    "Skipping promoted memory fact without user scope",
                     category=candidate.category,
-                    content_preview=candidate.content[:50],
                 )
                 return None
 
-            async with get_db_context() as session:
-                fact_model: Any = MemoryFactModel(
-                    user_id=candidate.metadata.get("user_id"),
-                    fact_text=candidate.content,
-                    fact_embedding=embedding,
-                    category=candidate.category,
-                    metadata_={
-                        "source_conversation": candidate.source_conversation,
-                        "source_type": candidate.source_type,
-                        "promotion_confidence": candidate.confidence,
-                        "promotion_gates": [gate.value for gate in PromotionGate],
-                        "promoted_at": datetime.utcnow().isoformat(),
-                    },
-                )
-                session.add(fact_model)
-                await session.commit()
+            from ..memory_core import memory_core_service  # noqa: PLC0415
+
+            record = await memory_core_service.ingest_memory_fact(
+                user_id=candidate.metadata.get("user_id"),
+                fact_text=candidate.content,
+                category=candidate.category,
+                metadata={
+                    **candidate.metadata,
+                    "source_conversation": candidate.source_conversation,
+                    "source_type": candidate.source_type,
+                    "promotion_confidence": candidate.confidence,
+                    "promotion_gates": [gate.value for gate in PromotionGate],
+                    "promoted_at": datetime.utcnow().isoformat(),
+                    "repetition_count": candidate.metadata.get("repetition_count", 2),
+                    "active_workflow": candidate.metadata.get("active_workflow", False),
+                },
+                source_kind=candidate.source_type or "summary",
+                source_id=candidate.metadata.get("source_id") or candidate.source_conversation,
+                confidence=candidate.confidence,
+                explicit_kind=candidate.category,
+            )
+            if record:
                 logger.info(
                     "Memory fact promoted to long-term",
-                    fact_id=memory_fact_id,
+                    fact_id=record.id,
                     category=candidate.category,
                     content_preview=candidate.content[:50],
                 )
-                return memory_fact_id
+                return record.id
+            return None
         except EmbeddingProviderUnavailableError as exc:
             logger.error(
                 "Failed to generate memory fact embedding",

@@ -3,9 +3,15 @@ Tests for semantic_chat_router
 Tests semantic chat functionality
 """
 
+from types import SimpleNamespace
+from unittest.mock import AsyncMock
+
+import pytest
 from fastapi.testclient import TestClient
 
 from api.main import app
+from api.semantic_chat_router import add_memory_fact, search_memory_facts
+from api.services.memory_core import memory_core_service
 
 client = TestClient(app)
 
@@ -29,7 +35,7 @@ class TestSemanticChatRouterChat:
             json={},
         )
 
-        assert response.status_code in [400, 422, 200, 404, 500]
+        assert response.status_code in [400, 401, 422, 200, 404, 500]
 
     def test_chat_with_context(self):
         """Test chat with conversation context"""
@@ -136,6 +142,112 @@ class TestSemanticChatRouterMemory:
         assert response.status_code in [200, 400, 422, 401, 403, 404, 500]
 
 
+@pytest.mark.asyncio
+async def test_add_memory_fact_returns_canonical_memory_object(monkeypatch):
+    fake_record = SimpleNamespace(
+        to_dict=lambda: {
+            "id": "mem-1",
+            "type": "preference",
+            "scope": "conversation",
+            "content": "User prefers concise answers.",
+            "summary": "Prefers concise answers",
+            "source": "memory",
+            "source_ref": {"conversation_id": "conv-1"},
+            "confidence": 0.92,
+            "confidence_band": "likely_true_usable",
+            "confidence_reason": "user-authored and repeated",
+            "importance": 0.81,
+            "importance_band": "high",
+            "importance_reason": "task relevant",
+            "recency_score": 0.7,
+            "sensitivity": "low",
+            "status": "active",
+            "tags": ["preference"],
+            "entities": ["user"],
+            "embedding_id": "emb-1",
+            "created_at": "2026-06-11T18:00:00Z",
+            "updated_at": "2026-06-11T18:00:00Z",
+            "last_accessed_at": "2026-06-11T18:03:00Z",
+            "expires_at": None,
+        }
+    )
+
+    monkeypatch.setattr(
+        memory_core_service,
+        "ingest_memory_fact",
+        AsyncMock(return_value=fake_record),
+    )
+
+    result = await add_memory_fact(
+        user_id="user-123",
+        fact_text="User prefers concise answers.",
+        category="preference",
+        metadata={"source_kind": "conversation", "source_id": "conv-1"},
+    )
+
+    assert result["success"] is True
+    assert result["memory_fact"]["type"] == "preference"
+    assert result["memory_fact"]["confidence_band"] in {
+        "strong_stable_memory",
+        "likely_true_usable",
+        "weak_needs_verification",
+        "do_not_use_by_default",
+    }
+    assert result["memory_fact"]["importance_band"] in {"high", "medium", "low"}
+    assert result["memory_fact"]["scope"] == "conversation"
+    assert result["memory_fact"]["source_ref"] == {"conversation_id": "conv-1"}
+
+
+@pytest.mark.asyncio
+async def test_search_memory_facts_returns_canonical_items(monkeypatch):
+    class FakeRetrievalSingleton:
+        async def retrieve_memory_facts(self, user_id, query, categories=None, k=5):
+            return [
+                {
+                    "id": "mem-2",
+                    "type": "project_state",
+                    "scope": "global",
+                    "content": "User wants decisions recorded.",
+                    "summary": "Wants decisions recorded",
+                    "source": "conversation",
+                    "source_ref": {"conversation_id": "conv-2"},
+                    "confidence": 0.9,
+                    "confidence_band": "likely_true_usable",
+                    "importance": 0.78,
+                    "importance_band": "medium",
+                    "recency_score": 0.65,
+                    "sensitivity": "low",
+                    "status": "active",
+                    "tags": ["project"],
+                    "entities": ["project"],
+                    "embedding_id": "emb-2",
+                }
+            ]
+
+    monkeypatch.setattr(
+        "api.semantic_chat_router._get_retrieval_singleton",
+        FakeRetrievalSingleton,
+    )
+
+    result = await search_memory_facts(
+        user_id="user-123",
+        query="project decisions",
+        categories=["project"],
+        k=1,
+    )
+
+    assert result["count"] == 1
+    assert result["facts"][0]["type"] == "project_state"
+    assert result["facts"][0]["confidence_band"] in {
+        "strong_stable_memory",
+        "likely_true_usable",
+        "weak_needs_verification",
+        "do_not_use_by_default",
+    }
+    assert result["facts"][0]["scope"] == "global"
+    assert result["facts"][0]["source_ref"] == {"conversation_id": "conv-2"}
+
+
 class TestSemanticChatRouterEmbeddings:
     """Tests for embedding generation"""
 
@@ -169,7 +281,7 @@ class TestSemanticChatRouterErrors:
             json={"message": 123},  # Should be string
         )
 
-        assert response.status_code in [400, 422, 200, 404, 500]
+        assert response.status_code in [400, 401, 422, 200, 404, 500]
 
     def test_context_validation(self):
         """Test context validation"""
@@ -181,7 +293,7 @@ class TestSemanticChatRouterErrors:
             },
         )
 
-        assert response.status_code in [400, 422, 200, 404, 500]
+        assert response.status_code in [400, 401, 422, 200, 404, 500]
 
     def test_timeout_handling(self):
         """Test timeout handling"""
@@ -191,7 +303,7 @@ class TestSemanticChatRouterErrors:
         )
 
         # Should handle timeout gracefully
-        assert response.status_code in [500, 408, 400, 422, 200, 404]
+        assert response.status_code in [500, 408, 400, 401, 422, 200, 404]
 
     def test_embedding_error_handling(self):
         """Test embedding service errors are handled gracefully"""
@@ -201,7 +313,7 @@ class TestSemanticChatRouterErrors:
         )
 
         # Should handle gracefully
-        assert response.status_code in [500, 400, 422, 200, 404]
+        assert response.status_code in [500, 400, 401, 422, 200, 404]
 
 
 class TestSemanticChatRouterPerformance:

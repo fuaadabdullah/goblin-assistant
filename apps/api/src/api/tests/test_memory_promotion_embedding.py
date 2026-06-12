@@ -1,4 +1,4 @@
-"""Tests for memory promotion embedding storage."""
+"""Tests for memory promotion ingest routing."""
 
 from __future__ import annotations
 
@@ -25,27 +25,14 @@ class _FakeDBContext:
 
 
 @pytest.mark.asyncio
-async def test_store_memory_fact_persists_embedding(monkeypatch):
-    embedding_service = AsyncMock()
-    embedding_service.embed_text = AsyncMock(return_value=[0.1, 0.2, 0.3])
-
+async def test_store_memory_fact_routes_through_memory_core(monkeypatch):
     module = import_module("api.services.memory_promotion._service")
-    monkeypatch.setattr(module, "EmbeddingService", lambda: embedding_service)
     monkeypatch.setattr(
         module,
         "evaluate_content_quality",
         lambda content: 1.0,
     )
     monkeypatch.setattr(module, "evaluate_stability", lambda content: 1.0)
-
-    session = MagicMock()
-    session.add = MagicMock()
-    session.commit = AsyncMock()
-    monkeypatch.setattr(
-        module,
-        "get_db_context",
-        lambda: _FakeDBContext(session),
-    )
 
     service = MemoryPromotionService()
     service.retrieval_service = SimpleNamespace(
@@ -69,6 +56,11 @@ async def test_store_memory_fact_persists_embedding(monkeypatch):
     )
     monkeypatch.setattr(module.event_emitter, "emit", AsyncMock())
 
+    fake_record = SimpleNamespace(id="memory-123")
+    memory_core_mock = AsyncMock()
+    memory_core_mock.ingest_memory_fact = AsyncMock(return_value=fake_record)
+    monkeypatch.setattr("api.services.memory_core.memory_core_service", memory_core_mock)
+
     candidate = PromotionCandidate(
         content="I prefer concise technical explanations.",
         category="preference",
@@ -82,15 +74,13 @@ async def test_store_memory_fact_persists_embedding(monkeypatch):
     result = await service.evaluate_promotion_candidate(candidate)
 
     assert result.promoted is True
-    assert result.memory_fact_id is not None
-    embedding_service.embed_text.assert_awaited_once_with(candidate.content)
-    session.commit.assert_awaited_once()
-
-    stored_model = session.add.call_args.args[0]
-    assert stored_model.user_id == "user-123"
-    assert stored_model.fact_text == candidate.content
-    assert stored_model.fact_embedding == [0.1, 0.2, 0.3]
-    assert stored_model.metadata_["source_conversation"] == "conv-123"
+    assert result.memory_fact_id == "memory-123"
+    memory_core_mock.ingest_memory_fact.assert_awaited_once()
+    kwargs = memory_core_mock.ingest_memory_fact.await_args.kwargs
+    assert kwargs["user_id"] == "user-123"
+    assert kwargs["fact_text"] == candidate.content
+    assert kwargs["category"] == candidate.category
+    assert kwargs["metadata"]["source_conversation"] == "conv-123"
 
 
 @pytest.mark.asyncio
@@ -117,3 +107,45 @@ async def test_similar_memory_lookup_uses_user_scope(monkeypatch):
         categories=["preference"],
         k=10,
     )
+
+
+@pytest.mark.asyncio
+async def test_build_ingest_metadata_keeps_both_across_scopes():
+    service = MemoryPromotionService()
+    service.retrieval_service = SimpleNamespace(
+        retrieve_memory_facts=AsyncMock(
+            return_value=[
+                {
+                    "id": "mem-global",
+                    "content": "User prefers concise answers.",
+                    "scope": "global",
+                    "confidence": 0.95,
+                    "metadata": {"scope": "global"},
+                },
+                {
+                    "id": "mem-project",
+                    "content": "User wants architecture explanations in more detail.",
+                    "scope": "project",
+                    "confidence": 0.88,
+                    "metadata": {"scope": "project"},
+                },
+            ]
+        )
+    )
+
+    candidate = PromotionCandidate(
+        content="User wants more detail for architecture explanations.",
+        category="preference",
+        source_conversation="conv-123",
+        source_type="summary",
+        confidence=0.92,
+        metadata={"user_id": "user-123", "conversation_id": "conv-123"},
+        created_at=datetime.utcnow(),
+    )
+
+    ingest_metadata = await service._build_ingest_metadata(candidate)
+
+    assert ingest_metadata["keep_both"] is True
+    assert ingest_metadata["conflicting_memory_ids"] == []
+    assert ingest_metadata["conflict_scopes"] == ["global", "project"]
+    assert ingest_metadata["conflict_resolution"] == "keep_both"

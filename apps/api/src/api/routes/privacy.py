@@ -174,6 +174,22 @@ async def export_user_data(
                     "error": str(pref_error),
                 }
 
+        # Export memory records
+        try:
+            from ..services.memory_core import memory_core_service
+
+            memory_export = await memory_core_service.export_user_memory(user_id)
+            if memory_export:
+                export_data["data"]["memory"] = {
+                    "count": len(memory_export),
+                    "records": memory_export,
+                }
+                logger.info(
+                    "Exported %s memory records for user %s", len(memory_export), user_id
+                )
+        except Exception as memory_error:
+            logger.error("Memory export error: %s", memory_error)
+
         # Log privacy export
         total_items = export_data["data"].get("vectors", {}).get("document_count", 0)
         logger.info("Privacy export completed: %s items for user %s", total_items, user_id)
@@ -230,7 +246,7 @@ async def delete_user_data(
 
     logger.warning("Data deletion requested by user: %s", user_id)
 
-    deleted_counts = {"vectors": 0, "conversations": 0, "preferences": 0}
+    deleted_counts = {"vectors": 0, "conversations": 0, "preferences": 0, "memory": 0}
 
     try:
         vector_store = _get_vector_store()
@@ -270,6 +286,16 @@ async def delete_user_data(
             logger.info("Deleted preferences for user %s", user_id)
         except Exception as pref_error:
             logger.error("Preferences deletion error: %s", pref_error)
+
+        # Delete memory records from the unified memory core
+        try:
+            from ..services.memory_core import memory_core_service
+
+            memory_deleted = await memory_core_service.delete_user_memory(user_id)
+            deleted_counts["memory"] = memory_deleted.get("memory_records", 0)
+            logger.info("Deleted memory records for user %s", user_id)
+        except Exception as memory_error:
+            logger.error("Memory deletion error: %s", memory_error)
 
         # Log privacy event
         total_deleted = sum(deleted_counts.values())
@@ -362,6 +388,15 @@ async def get_data_summary(user_id: str = Depends(get_current_user)) -> Dict[str
             logger.error("Preferences fetch error: %s", pref_error)
             has_preferences = False
 
+        try:
+            from ..services.memory_core import memory_core_service
+
+            memory_records = await memory_core_service.export_user_memory(user_id)
+            memory_count = len(memory_records)
+        except Exception as memory_error:
+            logger.error("Memory count error: %s", memory_error)
+            memory_count = 0
+
         summary = {
             "user_id": user_id,
             "generated_at": datetime.utcnow().isoformat(),
@@ -377,6 +412,10 @@ async def get_data_summary(user_id: str = Depends(get_current_user)) -> Dict[str
                 "preferences": {
                     "exists": has_preferences,
                     "description": "User settings and preferences",
+                },
+                "memory": {
+                    "count": memory_count,
+                    "description": "Typed long-term memory records",
                 },
             },
             "privacy_notice": "You have the right to export or delete all your data at any time.",
@@ -431,6 +470,17 @@ async def update_rag_consent(
                 logger.info("Consent revoked - deleted %s docs", delete_result["deleted_count"])
             else:
                 logger.info("Vector store not available, skipping deletion on consent revoke")
+
+            try:
+                from ..services.memory_core import memory_core_service
+
+                memory_delete = await memory_core_service.delete_user_memory(user_id)
+                logger.info(
+                    "Consent revoked - deleted %s memory records",
+                    memory_delete.get("memory_records", 0),
+                )
+            except Exception as memory_error:
+                logger.error("Memory deletion on consent revoke failed: %s", memory_error)
 
         return {
             "success": True,
