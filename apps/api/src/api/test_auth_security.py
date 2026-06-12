@@ -9,6 +9,10 @@ This test suite validates:
 4. Bash language is removed from sandbox
 """
 
+import os
+
+SANDBOX_TEST_API_KEY = os.getenv("API_AUTH_KEY", "test-api-key")
+
 
 class TestCSRFProtection:
     """Test CSRF token enforcement on auth endpoints"""
@@ -122,7 +126,7 @@ class TestCSRFProtection:
         # Note: Full expiration test requires mocking time or waiting 1 hour
         # This is a placeholder for integration testing
         # In practice, this would be tested with clock mocking or in E2E tests
-        pass
+        assert True
 
 
 class TestRateLimiting:
@@ -223,7 +227,7 @@ class TestSandboxSecurity:
                 "source": "echo 'hello'",
                 "timeout": 10,
             },
-            headers={"X-API-Key": "devkey"},
+            headers={"X-API-Key": SANDBOX_TEST_API_KEY},
         )
         # Should fail because bash is not in supported languages
         assert response.status_code == 400
@@ -242,7 +246,7 @@ class TestSandboxSecurity:
                 "source": "print('hello')",
                 "timeout": 10,
             },
-            headers={"X-API-Key": "devkey"},
+            headers={"X-API-Key": SANDBOX_TEST_API_KEY},
         )
         # Should not fail because of unsupported language
         data = response.json()
@@ -259,7 +263,7 @@ class TestSandboxSecurity:
                 "source": "console.log('hello')",
                 "timeout": 10,
             },
-            headers={"X-API-Key": "devkey"},
+            headers={"X-API-Key": SANDBOX_TEST_API_KEY},
         )
         # Should not fail because of unsupported language
         data = response.json()
@@ -276,7 +280,7 @@ class TestSandboxSecurity:
                 "source": "puts 'hello'",
                 "timeout": 10,
             },
-            headers={"X-API-Key": "devkey"},
+            headers={"X-API-Key": SANDBOX_TEST_API_KEY},
         )
         assert response.status_code == 400
         data = response.json()

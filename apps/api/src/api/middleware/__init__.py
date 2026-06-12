@@ -1,6 +1,10 @@
 """Middleware package for Goblin Assistant API."""
 
+import logging
+
 from .rate_limiter import RateLimiter
+
+logger = logging.getLogger(__name__)
 
 # Import middleware classes from the api/middleware.py file (sibling to this package)
 # We need to use importlib because Python prioritizes the package over the .py file
@@ -13,11 +17,14 @@ try:
     middleware_py_path = Path(__file__).parent.parent / "middleware.py"
 
     if middleware_py_path.exists():
-        # Load the module from the file
+        # Load the module from the file with package context
         spec = importlib.util.spec_from_file_location(
-            "api_middleware_file", middleware_py_path
+            "api.middleware_impl", middleware_py_path, submodule_search_locations=[]
         )
         middleware_module = importlib.util.module_from_spec(spec)
+        # Set up the module in sys.modules with proper package context
+        middleware_module.__package__ = "api"
+        sys.modules["api.middleware_impl"] = middleware_module
         spec.loader.exec_module(middleware_module)
 
         # Extract the classes
@@ -34,9 +41,10 @@ try:
     else:
         # Fallback if file doesn't exist
         __all__ = ["RateLimiter"]
+        logger.warning("middleware.py file not found")
 except Exception as e:
-    # If anything goes wrong, just export RateLimiter
-    import sys
+    logger.warning("Could not load middleware classes: %s", e)
+    import traceback
 
-    print(f"Warning: Could not load middleware classes: {e}", file=sys.stderr)
+    logger.debug("Traceback: %s", traceback.format_exc())
     __all__ = ["RateLimiter"]

@@ -5,9 +5,9 @@ import AccountPreferences from '../AccountPreferences';
 
 describe('AccountPreferences', () => {
   const defaultPrefs = { summaries: true, notifications: true, familyMode: false };
-  const onToggle = jest.fn();
+  const onToggle = vi.fn();
 
-  beforeEach(() => jest.clearAllMocks());
+  beforeEach(() => vi.clearAllMocks());
 
   it('renders Preferences heading', () => {
     render(<AccountPreferences preferences={defaultPrefs} onToggle={onToggle} />);

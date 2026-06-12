@@ -62,6 +62,4 @@ def test_save_api_keys_writes_indented_json(tmp_path, monkeypatch):
 
     assert keys_file.exists()
     assert keys_file.read_text(encoding="utf-8").strip().startswith("{")
-    assert json.loads(keys_file.read_text(encoding="utf-8")) == {
-        "openai": "secret-123"
-    }
+    assert json.loads(keys_file.read_text(encoding="utf-8")) == {"openai": "secret-123"}

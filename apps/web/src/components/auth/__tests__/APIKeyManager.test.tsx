@@ -2,30 +2,30 @@ import React from 'react';
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 
-jest.mock('@/api', () => ({
+vi.mock('@/lib/api/runtimeClient', () => ({
   runtimeClient: {
-    setProviderApiKey: jest.fn(),
-    getApiKey: jest.fn(),
-    clearApiKey: jest.fn(),
+    setProviderApiKey: vi.fn(),
+    getApiKey: vi.fn(),
+    clearApiKey: vi.fn(),
   },
 }));
 
 import APIKeyManager from '../APIKeyManager';
-import { runtimeClient } from '@/api';
+import { runtimeClient } from '@/lib/api/runtimeClient';
 
-const mockSetKey = runtimeClient.setProviderApiKey as jest.Mock;
-const mockGetKey = runtimeClient.getApiKey as jest.Mock;
-const mockClearKey = runtimeClient.clearApiKey as jest.Mock;
+const mockSetKey = runtimeClient.setProviderApiKey as vi.Mock;
+const mockGetKey = runtimeClient.getApiKey as vi.Mock;
+const mockClearKey = runtimeClient.clearApiKey as vi.Mock;
 
 const defaultProps = {
   providers: ['openai', 'anthropic', 'google'],
   selectedProvider: 'openai',
-  onProviderChange: jest.fn(),
+  onProviderChange: vi.fn(),
 };
 
 describe('APIKeyManager', () => {
   beforeEach(() => {
-    jest.clearAllMocks();
+    vi.clearAllMocks();
   });
 
   it('renders heading', () => {

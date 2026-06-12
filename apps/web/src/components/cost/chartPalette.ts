@@ -8,4 +8,4 @@ export const CHART_COLOR_PALETTE = [
 ] as const;
 
 export const getChartPaletteColor = (index: number) =>
-  CHART_COLOR_PALETTE[index % CHART_COLOR_PALETTE.length];
+  CHART_COLOR_PALETTE[index % CHART_COLOR_PALETTE.length]!;

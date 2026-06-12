@@ -5,27 +5,25 @@ Provides async interface to HashiCorp Vault KV v1 and v2 engines.
 Supports multiple authentication methods including token and AppRole.
 """
 
-import asyncio
-import json
 import logging
-from typing import Dict, List, Optional, Any, Union
 from datetime import datetime
+from typing import Any, Dict, List, Optional
+
 import aiohttp
 import hvac
-from hvac.exceptions import InvalidPath, VaultError, Forbidden
+from hvac.exceptions import Forbidden, InvalidPath, VaultError
 
+from .auth import TokenCredentials, get_auth_manager
 from .base import (
-    SecretAdapter,
     Secret,
+    SecretAdapter,
+    SecretBackendError,
     SecretMetadata,
-    SecretAdapterError,
     SecretNotFoundError,
     SecretUnauthorizedError,
-    SecretBackendError,
     SecretValidationError,
 )
 from .cache import SecretCache
-from .auth import TokenCredentials, AppRoleCredentials, get_auth_manager
 
 logger = logging.getLogger(__name__)
 
@@ -132,12 +130,10 @@ class VaultAdapter(SecretAdapter):
             else:
                 raise SecretUnauthorizedError("Token authentication failed")
         except Exception as e:
-            logger.error(f"Vault token authentication error: {e}")
+            logger.error("Vault token authentication error: %s", e)
             raise SecretUnauthorizedError(f"Token authentication failed: {e}")
 
-    async def authenticate_with_approle(
-        self, role_id: str, secret_id: str
-    ) -> TokenCredentials:
+    async def authenticate_with_approle(self, role_id: str, secret_id: str) -> TokenCredentials:
         """
         Authenticate Vault client with AppRole.
 
@@ -177,12 +173,13 @@ class VaultAdapter(SecretAdapter):
             expires_at = None
             if lease_duration > 0:
                 from datetime import timedelta
+
                 expires_at = datetime.utcnow() + timedelta(seconds=lease_duration)
 
             return TokenCredentials(token=token, expires_at=expires_at)
 
         except Exception as e:
-            logger.error(f"Vault AppRole authentication error: {e}")
+            logger.error("Vault AppRole authentication error: %s", e)
             raise SecretUnauthorizedError(f"AppRole authentication failed: {e}")
 
     async def _ensure_authenticated(self) -> None:
@@ -220,20 +217,141 @@ class VaultAdapter(SecretAdapter):
                     if version in ["1", "2"]:
                         self._kv_version = int(version)
                         logger.info(
-                            f"Detected Vault KV v{self._kv_version} at mount {self.mount_point}"
+                            "Detected Vault KV v%s at mount %s", self._kv_version, self.mount_point
                         )
                         return self._kv_version
 
             # Default to v1 if we can't determine
             self._kv_version = 1
             logger.warning(
-                f"Could not detect KV version for mount {self.mount_point}, defaulting to v1"
+                "Could not detect KV version for mount %s, defaulting to v1", self.mount_point
             )
             return self._kv_version
 
         except Exception as e:
-            logger.error(f"Failed to detect KV version: {e}")
+            logger.error("Failed to detect KV version: %s", e)
             raise SecretBackendError(f"Unable to detect Vault KV version: {e}")
+
+    async def _get_cached_secret(self, path: str, version: Optional[int]) -> Optional[Secret]:
+        """Get a secret from cache if present."""
+        cached_secret = await self.cache.get_secret(path, version)
+        if cached_secret is None:
+            return None
+        logger.debug("Cache hit for secret: %s", path)
+        return Secret(
+            path,
+            cached_secret["data"],
+            SecretMetadata(**cached_secret["metadata"]),
+        )
+
+    def _build_kv2_metadata(self, metadata: Dict[str, Any]) -> SecretMetadata:
+        """Build SecretMetadata from KV v2 metadata payload."""
+        return SecretMetadata(
+            created_at=_parse_vault_time(metadata.get("created_time")),
+            updated_at=_parse_vault_time(metadata.get("updated_time")),
+            version=metadata.get("version"),
+            custom_metadata=metadata.get("custom_metadata", {}),
+            backend_specific={
+                "vault_kv_version": 2,
+                "mount_point": self.mount_point,
+                "cas_version": metadata.get("cas_version"),
+            },
+        )
+
+    def _build_kv1_metadata(self) -> SecretMetadata:
+        """Build SecretMetadata for KV v1 responses."""
+        return SecretMetadata(
+            created_at=None,
+            updated_at=None,
+            version=None,
+            custom_metadata={},
+            backend_specific={
+                "vault_kv_version": 1,
+                "mount_point": self.mount_point,
+            },
+        )
+
+    async def _read_secret_payload(
+        self, path: str, version: Optional[int], kv_version: int
+    ) -> tuple[Dict[str, str], SecretMetadata]:
+        """Read secret payload and metadata from Vault."""
+        client = await self._get_client()
+        if kv_version == 2:
+            if version is not None:
+                response = client.secrets.kv.v2.read_secret_version(
+                    path=path,
+                    version=version,
+                    mount_point=self.mount_point,
+                )
+            else:
+                response = client.secrets.kv.v2.read_secret_version(
+                    path=path,
+                    mount_point=self.mount_point,
+                )
+            secret_data = response["data"]["data"]
+            metadata = self._build_kv2_metadata(response["data"]["metadata"])
+            return secret_data, metadata
+
+        response = client.secrets.kv.v1.read_secret(
+            path=path,
+            mount_point=self.mount_point,
+        )
+        return response["data"], self._build_kv1_metadata()
+
+    async def _cache_secret(
+        self,
+        path: str,
+        data: Dict[str, str],
+        metadata: SecretMetadata,
+        version: Optional[int],
+    ) -> None:
+        """Store secret payload in adapter cache."""
+        await self.cache.set_secret(
+            path,
+            {
+                "data": data,
+                "metadata": {
+                    "created_at": metadata.created_at,
+                    "updated_at": metadata.updated_at,
+                    "version": metadata.version,
+                    "custom_metadata": metadata.custom_metadata,
+                    "backend_specific": metadata.backend_specific,
+                },
+            },
+            version,
+        )
+
+    async def _write_secret_payload(
+        self,
+        path: str,
+        data: Dict[str, str],
+        metadata: Optional[Dict[str, Any]],
+        version: Optional[int],
+        kv_version: int,
+    ) -> SecretMetadata:
+        """Write secret payload and return generated metadata."""
+        client = await self._get_client()
+        if kv_version == 2:
+            write_params = {"data": data}
+            if metadata:
+                write_params["options"] = {"cas": version} if version is not None else {}
+                write_params["metadata"] = metadata
+            elif version is not None:
+                write_params["options"] = {"cas": version}
+
+            response = client.secrets.kv.v2.create_or_update_secret(
+                path=path,
+                secret=write_params,
+                mount_point=self.mount_point,
+            )
+            return self._build_kv2_metadata(response["data"]["metadata"])
+
+        client.secrets.kv.v1.create_or_update_secret(
+            path=path,
+            secret=data,
+            mount_point=self.mount_point,
+        )
+        return self._build_kv1_metadata()
 
     async def get_secret(self, path: str, version: Optional[int] = None) -> Secret:
         """
@@ -254,93 +372,17 @@ class VaultAdapter(SecretAdapter):
         try:
             await self._ensure_authenticated()
             kv_version = await self._detect_kv_version()
-
-            # Check cache first
-            cached_secret = await self.cache.get_secret(path, version)
+            cached_secret = await self._get_cached_secret(path, version)
             if cached_secret is not None:
-                logger.debug(f"Cache hit for secret: {path}")
-                return Secret(
-                    path,
-                    cached_secret["data"],
-                    SecretMetadata(**cached_secret["metadata"]),
-                )
+                return cached_secret
 
-            client = await self._get_client()
-            full_path = f"{self.mount_point}/{path.lstrip('/')}"
-
-            # Handle KV v1 vs v2
-            if kv_version == 2:
-                if version is not None:
-                    # Get specific version
-                    response = client.secrets.kv.v2.read_secret_version(
-                        path=path,
-                        version=version,
-                        mount_point=self.mount_point,
-                    )
-                else:
-                    # Get latest version
-                    response = client.secrets.kv.v2.read_secret_version(
-                        path=path,
-                        mount_point=self.mount_point,
-                    )
-
-                # Extract data and metadata
-                secret_data = response["data"]["data"]
-                metadata = response["data"]["metadata"]
-
-                # Create metadata object
-                secret_metadata = SecretMetadata(
-                    created_at=_parse_vault_time(metadata.get("created_time")),
-                    updated_at=_parse_vault_time(metadata.get("updated_time")),
-                    version=metadata.get("version"),
-                    custom_metadata=metadata.get("custom_metadata", {}),
-                    backend_specific={
-                        "vault_kv_version": 2,
-                        "mount_point": self.mount_point,
-                        "cas_version": metadata.get("cas_version"),
-                    },
-                )
-
-            else:  # KV v1
-                response = client.secrets.kv.v1.read_secret(
-                    path=path,
-                    mount_point=self.mount_point,
-                )
-
-                secret_data = response["data"]
-
-                # KV v1 has limited metadata
-                secret_metadata = SecretMetadata(
-                    created_at=None,
-                    updated_at=None,
-                    version=None,
-                    custom_metadata={},
-                    backend_specific={
-                        "vault_kv_version": 1,
-                        "mount_point": self.mount_point,
-                    },
-                )
-
-            # Create Secret object
-            secret = Secret(path, secret_data, secret_metadata)
-
-            # Cache the result
-            await self.cache.set_secret(
-                path,
-                {
-                    "data": secret_data,
-                    "metadata": {
-                        "created_at": secret_metadata.created_at,
-                        "updated_at": secret_metadata.updated_at,
-                        "version": secret_metadata.version,
-                        "custom_metadata": secret_metadata.custom_metadata,
-                        "backend_specific": secret_metadata.backend_specific,
-                    },
-                },
-                version,
+            secret_data, secret_metadata = await self._read_secret_payload(
+                path, version, kv_version
             )
+            secret = Secret(path, secret_data, secret_metadata)
+            await self._cache_secret(path, secret_data, secret_metadata, version)
 
-            logger.info(f"Retrieved secret from Vault: {path}")
+            logger.info("Retrieved secret from Vault: %s", path)
             return secret
 
         except InvalidPath:
@@ -350,7 +392,7 @@ class VaultAdapter(SecretAdapter):
         except VaultError as e:
             raise SecretBackendError(f"Vault error: {e}")
         except Exception as e:
-            logger.error(f"Unexpected error retrieving secret {path}: {e}")
+            logger.error("Unexpected error retrieving secret %s: %s", path, e)
             raise SecretBackendError(f"Failed to retrieve secret: {e}")
 
     async def put_secret(
@@ -381,88 +423,21 @@ class VaultAdapter(SecretAdapter):
             await self._ensure_authenticated()
             kv_version = await self._detect_kv_version()
 
-            # Validate data
             if not data:
                 raise SecretValidationError("Secret data cannot be empty")
 
             if not isinstance(data, dict):
                 raise SecretValidationError("Secret data must be a dictionary")
 
-            client = await self._get_client()
-            full_path = f"{self.mount_point}/{path.lstrip('/')}"
-
-            # Handle KV v1 vs v2
-            if kv_version == 2:
-                # Prepare parameters
-                write_params = {"data": data}
-
-                if metadata:
-                    write_params["options"] = (
-                        {"cas": version} if version is not None else {}
-                    )
-                    write_params["metadata"] = metadata
-                elif version is not None:
-                    write_params["options"] = {"cas": version}
-
-                response = client.secrets.kv.v2.create_or_update_secret(
-                    path=path,
-                    secret=write_params,
-                    mount_point=self.mount_point,
-                )
-
-                # Extract response data
-                metadata_response = response["data"]["metadata"]
-
-                secret_metadata = SecretMetadata(
-                    created_at=_parse_vault_time(metadata_response.get("created_time")),
-                    updated_at=_parse_vault_time(metadata_response.get("updated_time")),
-                    version=metadata_response.get("version"),
-                    custom_metadata=metadata_response.get("custom_metadata", {}),
-                    backend_specific={
-                        "vault_kv_version": 2,
-                        "mount_point": self.mount_point,
-                        "cas_version": metadata_response.get("cas_version"),
-                    },
-                )
-
-            else:  # KV v1
-                client.secrets.kv.v1.create_or_update_secret(
-                    path=path,
-                    secret=data,
-                    mount_point=self.mount_point,
-                )
-
-                secret_metadata = SecretMetadata(
-                    created_at=None,
-                    updated_at=None,
-                    version=None,
-                    custom_metadata={},
-                    backend_specific={
-                        "vault_kv_version": 1,
-                        "mount_point": self.mount_point,
-                    },
-                )
+            secret_metadata = await self._write_secret_payload(
+                path, data, metadata, version, kv_version
+            )
 
             # Invalidate cache
             await self.cache.invalidate_path(path)
+            await self._cache_secret(path, data, secret_metadata, version)
 
-            # Cache the new secret
-            await self.cache.set_secret(
-                path,
-                {
-                    "data": data,
-                    "metadata": {
-                        "created_at": secret_metadata.created_at,
-                        "updated_at": secret_metadata.updated_at,
-                        "version": secret_metadata.version,
-                        "custom_metadata": secret_metadata.custom_metadata,
-                        "backend_specific": secret_metadata.backend_specific,
-                    },
-                },
-                version,
-            )
-
-            logger.info(f"Stored secret in Vault: {path}")
+            logger.info("Stored secret in Vault: %s", path)
             return Secret(path, data, secret_metadata)
 
         except Forbidden:
@@ -470,7 +445,7 @@ class VaultAdapter(SecretAdapter):
         except VaultError as e:
             raise SecretBackendError(f"Vault error: {e}")
         except Exception as e:
-            logger.error(f"Unexpected error storing secret {path}: {e}")
+            logger.error("Unexpected error storing secret %s: %s", path, e)
             raise SecretBackendError(f"Failed to store secret: {e}")
 
     async def list_secrets(self, prefix: str = "", limit: int = 100) -> List[str]:
@@ -504,9 +479,7 @@ class VaultAdapter(SecretAdapter):
                 if response and "data" in response and "keys" in response["data"]:
                     paths = response["data"]["keys"]
                     # Filter out directory markers and apply limit
-                    secret_paths = [path for path in paths if not path.endswith("/")][
-                        :limit
-                    ]
+                    secret_paths = [path for path in paths if not path.endswith("/")][:limit]
                 else:
                     secret_paths = []
 
@@ -518,23 +491,19 @@ class VaultAdapter(SecretAdapter):
 
                 if response and "data" in response and "keys" in response["data"]:
                     paths = response["data"]["keys"]
-                    secret_paths = [path for path in paths if not path.endswith("/")][
-                        :limit
-                    ]
+                    secret_paths = [path for path in paths if not path.endswith("/")][:limit]
                 else:
                     secret_paths = []
 
-            logger.debug(f"Listed {len(secret_paths)} secrets under prefix: {prefix}")
+            logger.debug("Listed %s secrets under prefix: %s", len(secret_paths), prefix)
             return secret_paths
 
         except Forbidden:
-            raise SecretUnauthorizedError(
-                f"Access denied to list secrets with prefix: {prefix}"
-            )
+            raise SecretUnauthorizedError(f"Access denied to list secrets with prefix: {prefix}")
         except VaultError as e:
             raise SecretBackendError(f"Vault error: {e}")
         except Exception as e:
-            logger.error(f"Unexpected error listing secrets with prefix {prefix}: {e}")
+            logger.error("Unexpected error listing secrets with prefix %s: %s", prefix, e)
             raise SecretBackendError(f"Failed to list secrets: {e}")
 
     async def delete_secret(self, path: str, version: Optional[int] = None) -> None:
@@ -583,7 +552,7 @@ class VaultAdapter(SecretAdapter):
             # Invalidate cache
             await self.cache.invalidate_path(path)
 
-            logger.info(f"Deleted secret from Vault: {path}")
+            logger.info("Deleted secret from Vault: %s", path)
 
         except InvalidPath:
             raise SecretNotFoundError(f"Secret not found at path: {path}")
@@ -592,7 +561,7 @@ class VaultAdapter(SecretAdapter):
         except VaultError as e:
             raise SecretBackendError(f"Vault error: {e}")
         except Exception as e:
-            logger.error(f"Unexpected error deleting secret {path}: {e}")
+            logger.error("Unexpected error deleting secret %s: %s", path, e)
             raise SecretBackendError(f"Failed to delete secret: {e}")
 
     async def rotate_secret(self, path: str) -> str:
@@ -609,7 +578,7 @@ class VaultAdapter(SecretAdapter):
             New secret value or rotation workflow ID
 
         Raises:
-            NotImplementedError: If rotation is not supported
+            SecretBackendError: If rotation fails
         """
         import secrets
         import string
@@ -627,11 +596,11 @@ class VaultAdapter(SecretAdapter):
             # Update with new value
             await self.put_secret(path, new_data)
 
-            logger.info(f"Rotated secret: {path}")
+            logger.info("Rotated secret: %s", path)
             return new_secret
 
         except Exception as e:
-            logger.error(f"Failed to rotate secret {path}: {e}")
+            logger.error("Failed to rotate secret %s: %s", path, e)
             raise SecretBackendError(f"Failed to rotate secret: {e}")
 
     async def health(self) -> Dict[str, Any]:
@@ -677,7 +646,7 @@ class VaultAdapter(SecretAdapter):
             }
 
         except Exception as e:
-            logger.error(f"Health check failed: {e}")
+            logger.error("Health check failed: %s", e)
             return {
                 "status": "unhealthy",
                 "error": str(e),

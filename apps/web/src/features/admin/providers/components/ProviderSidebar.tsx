@@ -1,6 +1,7 @@
 import { Button } from '../../../../components/ui';
 import { ProviderCardSkeleton } from '../../../../components/LoadingSkeleton';
 import type { ProviderConfig } from '../../../../hooks/api/useSettings';
+import type { ProviderStatusMap } from '../../../../hooks/useProviderStatus';
 import type { DragEvent } from 'react';
 
 const PROVIDER_SKELETON_KEYS = [
@@ -8,6 +9,38 @@ const PROVIDER_SKELETON_KEYS = [
   'provider-skeleton-secondary',
   'provider-skeleton-tertiary',
 ] as const;
+
+function healthDot(circuitState: string | undefined, isHealthy: boolean | undefined) {
+  if (circuitState === 'hard_open')
+    return (
+      <span title="Hard-open (auth/billing issue)" className="text-xs text-error">
+        ●
+      </span>
+    );
+  if (circuitState === 'soft_open')
+    return (
+      <span title="Soft-open (probing)" className="text-xs text-warning">
+        ◐
+      </span>
+    );
+  if (isHealthy === true)
+    return (
+      <span title="Healthy" className="text-xs text-success">
+        ●
+      </span>
+    );
+  if (isHealthy === false)
+    return (
+      <span title="Unhealthy" className="text-xs text-error">
+        ●
+      </span>
+    );
+  return (
+    <span title="Unknown" className="text-xs text-muted">
+      ○
+    </span>
+  );
+}
 
 export default function ProviderSidebar({
   providers,
@@ -24,6 +57,8 @@ export default function ProviderSidebar({
   onDragStart,
   onDragOver,
   onDrop,
+  providerStatuses,
+  realtimeConnected,
 }: {
   providers: ProviderConfig[];
   isLoading: boolean;
@@ -39,6 +74,8 @@ export default function ProviderSidebar({
   onDragStart: (provider: ProviderConfig) => void;
   onDragOver: (e: DragEvent<HTMLDivElement>) => void;
   onDrop: (provider: ProviderConfig) => void;
+  providerStatuses?: ProviderStatusMap;
+  realtimeConnected?: boolean;
 }) {
   return (
     <div className="space-y-4">
@@ -75,10 +112,16 @@ export default function ProviderSidebar({
       {showRoutingHealth && (
         <div className="bg-surface rounded-lg p-3 border border-border">
           <h3 className="text-sm font-medium text-text mb-2">Routing Engine</h3>
-          <div className="text-xs text-muted">
+          <div className="text-xs text-muted space-y-1">
             <div className="flex justify-between">
               <span>Status:</span>
               <span className="font-medium text-success">{routingStatus || 'Healthy'}</span>
+            </div>
+            <div className="flex justify-between">
+              <span>Live feed:</span>
+              <span className={realtimeConnected ? 'text-success' : 'text-muted'}>
+                {realtimeConnected ? '● Realtime' : '○ Polling'}
+              </span>
             </div>
           </div>
         </div>
@@ -133,7 +176,7 @@ export default function ProviderSidebar({
                   )}
                   <button
                     type="button"
-                    onClick={e => {
+                    onClick={(e) => {
                       e.stopPropagation();
                       onQuickTest(provider);
                     }}
@@ -143,9 +186,18 @@ export default function ProviderSidebar({
                   >
                     {testingProviderName === provider.name ? '🔄' : '🧪'}
                   </button>
-                  <span className={`text-xs ${provider.enabled ? 'text-success' : 'text-muted'}`}>
-                    {provider.enabled ? '✓' : '○'}
-                  </span>
+                  {(() => {
+                    const status = providerStatuses?.[provider.name];
+                    return status ? (
+                      healthDot(status.circuit_state, status.is_healthy)
+                    ) : (
+                      <span
+                        className={`text-xs ${provider.enabled ? 'text-success' : 'text-muted'}`}
+                      >
+                        {provider.enabled ? '✓' : '○'}
+                      </span>
+                    );
+                  })()}
                 </div>
               </div>
             </div>

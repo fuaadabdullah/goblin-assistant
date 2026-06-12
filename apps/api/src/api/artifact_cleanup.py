@@ -5,8 +5,8 @@ Runs periodically to enforce TTL and prevent storage bloat
 
 import asyncio
 import os
-from datetime import datetime, timedelta
 from typing import Optional
+
 import structlog
 
 from .artifact_service import artifact_service
@@ -30,7 +30,10 @@ class ArtifactCleanupService:
 
         self._running = True
         self._task = asyncio.create_task(self._cleanup_loop())
-        logger.info("Artifact cleanup service started", interval_hours=self.cleanup_interval_hours)
+        logger.info(
+            "Artifact cleanup service started",
+            interval_hours=self.cleanup_interval_hours,
+        )
 
     async def stop(self):
         """Stop the cleanup service"""
@@ -48,7 +51,7 @@ class ArtifactCleanupService:
         while self._running:
             try:
                 # Run cleanup
-                deleted_count = artifact_service.delete_expired_artifacts()
+                deleted_count = await artifact_service.delete_expired_artifacts()
 
                 # Record cleanup metrics
                 record_cleanup_run(True, deleted_count)
@@ -56,7 +59,11 @@ class ArtifactCleanupService:
                 if deleted_count > 0:
                     logger.info("Artifact cleanup completed", artifacts_removed=deleted_count)
                 else:
-                    logger.info("Artifact cleanup completed", artifacts_removed=0, detail="no expired artifacts found")
+                    logger.info(
+                        "Artifact cleanup completed",
+                        artifacts_removed=0,
+                        detail="no expired artifacts found",
+                    )
 
             except Exception as e:
                 # Record failed cleanup

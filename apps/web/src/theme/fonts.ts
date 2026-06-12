@@ -20,4 +20,3 @@ export const fontMono = IBM_Plex_Mono({
 });
 
 export const fontVariables = `${fontSans.variable} ${fontDisplay.variable} ${fontMono.variable}`;
-

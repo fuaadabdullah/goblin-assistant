@@ -10,19 +10,17 @@ This exercises the actual SQLAlchemy queries without touching the filesystem.
 
 from __future__ import annotations
 
-import os
 from contextlib import asynccontextmanager
-from datetime import datetime
 from unittest.mock import patch
 
 import pytest
 from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine
 from sqlalchemy.orm import sessionmaker
 
-
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
+
 
 def _make_in_memory_store():
     """Return a TaskStore with the in-memory backend (use_db=False)."""
@@ -39,11 +37,13 @@ def _make_in_memory_store():
 # Fixtures for the DB backend
 # ---------------------------------------------------------------------------
 
+
 @pytest.fixture
 async def _db_engine():
     engine = create_async_engine("sqlite+aiosqlite:///:memory:", echo=False)
     async with engine.begin() as conn:
         from api.storage.models import Base
+
         await conn.run_sync(Base.metadata.create_all)
     yield engine
     await engine.dispose()
@@ -81,6 +81,7 @@ async def db_store(_db_engine):
 # In-memory backend
 # ===========================================================================
 
+
 class TestTaskStoreInMemory:
     """Full CRUD coverage against the dict-backed in-memory store."""
 
@@ -108,7 +109,9 @@ class TestTaskStoreInMemory:
 
     async def test_save_does_not_overwrite_created_at(self, store):
         original_time = "2026-01-01T00:00:00"
-        await store.save_task("t3", {"task_id": "t3", "status": "pending", "created_at": original_time})
+        await store.save_task(
+            "t3", {"task_id": "t3", "status": "pending", "created_at": original_time}
+        )
         task = await store.get_task("t3")
         assert task["created_at"] == original_time
 
@@ -173,6 +176,7 @@ class TestTaskStoreInMemory:
 # SQLAlchemy database backend
 # ===========================================================================
 
+
 class TestTaskStoreDB:
     """CRUD coverage against a real SQLite in-memory engine."""
 
@@ -208,7 +212,9 @@ class TestTaskStoreDB:
 
     async def test_save_upserts_existing_task(self, db_store):
         await db_store.save_task("db-t3", {"task_id": "db-t3", "status": "pending"})
-        await db_store.save_task("db-t3", {"task_id": "db-t3", "status": "completed", "result": {"val": 1}})
+        await db_store.save_task(
+            "db-t3", {"task_id": "db-t3", "status": "completed", "result": {"val": 1}}
+        )
         task = await db_store.get_task("db-t3")
         assert task["status"] == "completed"
         assert task["result"] == {"val": 1}
@@ -271,8 +277,23 @@ class TestTaskStoreDB:
     async def test_returned_dict_has_all_keys(self, db_store):
         await db_store.save_task(
             "db-keys",
-            {"task_id": "db-keys", "status": "pending", "payload": {"x": 1}, "metadata": {}},
+            {
+                "task_id": "db-keys",
+                "status": "pending",
+                "payload": {"x": 1},
+                "metadata": {},
+            },
         )
         task = await db_store.get_task("db-keys")
-        for key in ("task_id", "user_id", "status", "task_type", "payload", "result", "created_at", "updated_at", "metadata"):
+        for key in (
+            "task_id",
+            "user_id",
+            "status",
+            "task_type",
+            "payload",
+            "result",
+            "created_at",
+            "updated_at",
+            "metadata",
+        ):
             assert key in task, f"missing key: {key}"

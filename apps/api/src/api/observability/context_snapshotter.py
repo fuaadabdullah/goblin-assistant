@@ -3,13 +3,15 @@ Context Assembly Snapshot System
 Captures redacted snapshots of context before sending to models for debugging and replay
 """
 
-import json
+import asyncio
 import hashlib
+import json
 import re
 import time
-from typing import Dict, Any, List, Optional, Tuple
+from dataclasses import asdict, dataclass
 from datetime import datetime, timedelta
-from dataclasses import dataclass, asdict
+from typing import Any, Dict, List, Optional, Tuple
+
 import structlog
 
 from ..config.system_config import get_system_config
@@ -120,8 +122,10 @@ class ContextSnapshotter:
         else:
             context_layers = context if isinstance(context, list) else []
 
-        # Map arguments from ContextAssemblyService to capture_context_snapshot
-        return await self.capture_context_snapshot(
+        # Map arguments from ContextAssemblyService to capture_context_snapshot.
+        # Callers persist this value in JSON message metadata, so return the
+        # snapshot id string rather than the ContextSnapshot object.
+        snapshot = await self.capture_context_snapshot(
             request_id=kwargs.get("correlation_id") or f"req_{int(time.time())}",
             user_id=kwargs.get("user_id"),
             context_layers=context_layers,
@@ -132,6 +136,7 @@ class ContextSnapshotter:
             assembly_time_ms=kwargs.get("assembly_time_ms", 0.0),
             error=kwargs.get("error"),
         )
+        return getattr(snapshot, "snapshot_id", None)
 
     def _extract_context_content(self, context_layers: List[Dict[str, Any]]) -> str:
         """Extract text content from context layers for hashing"""
@@ -213,9 +218,7 @@ class ContextSnapshotter:
             patterns_found.append("ip_address")
 
         # Custom redaction patterns from config
-        custom_patterns = self.config.get("observability", {}).get(
-            "redaction_patterns", []
-        )
+        custom_patterns = self.config.get("observability", {}).get("redaction_patterns", [])
         for pattern in custom_patterns:
             if re.search(pattern, text):
                 redacted_text = re.sub(pattern, "[REDACTED]", redacted_text)
@@ -240,27 +243,23 @@ class ContextSnapshotter:
                     "total": snapshot.total_tokens,
                     "remaining": snapshot.remaining_tokens,
                     "budget": snapshot.token_budget,
-                    "utilization": round(
-                        snapshot.total_tokens / snapshot.token_budget * 100, 2
-                    )
-                    if snapshot.token_budget > 0
-                    else 0,
+                    "utilization": (
+                        round(snapshot.total_tokens / snapshot.token_budget * 100, 2)
+                        if snapshot.token_budget > 0
+                        else 0
+                    ),
                 },
                 "assembly_time_ms": snapshot.assembly_time_ms,
                 "redaction": {
                     "applied": snapshot.redaction_applied,
                     "patterns": snapshot.redaction_details.get("patterns_applied", []),
-                    "items_redacted": snapshot.redaction_details.get(
-                        "items_redacted", 0
-                    ),
+                    "items_redacted": snapshot.redaction_details.get("items_redacted", 0),
                 },
                 "error": snapshot.error,
             },
             "layers_summary": {
                 "total_layers": len(snapshot.context_layers),
-                "layer_types": [
-                    layer.get("name", "unknown") for layer in snapshot.context_layers
-                ],
+                "layer_types": [layer.get("name", "unknown") for layer in snapshot.context_layers],
                 "avg_layer_tokens": round(
                     sum(layer.get("tokens", 0) for layer in snapshot.context_layers)
                     / max(1, len(snapshot.context_layers)),
@@ -273,9 +272,7 @@ class ContextSnapshotter:
         if snapshot.error:
             logger.error("CONTEXT: Assembly error", extra={"context": log_data})
         elif snapshot.redaction_details.get("items_redacted", 0) > 0:
-            logger.warning(
-                "CONTEXT: Sensitive data redacted", extra={"context": log_data}
-            )
+            logger.warning("CONTEXT: Sensitive data redacted", extra={"context": log_data})
         else:
             logger.info("CONTEXT: Snapshot captured", extra={"context": log_data})
 
@@ -286,11 +283,14 @@ class ContextSnapshotter:
                 "snapshot_log_file", "snapshots.log"
             )
 
-            with open(log_file, "a", encoding="utf-8") as f:
-                f.write(snapshot.to_json() + "\n")
+            def _append() -> None:
+                with open(log_file, "a", encoding="utf-8") as f:
+                    f.write(snapshot.to_json() + "\n")
+
+            await asyncio.to_thread(_append)
 
         except Exception as e:
-            logger.error(f"Failed to log snapshot to file: {e}")
+            logger.error("Failed to log snapshot to file:", error=str(e))
 
     async def get_context_snapshot(self, request_id: str) -> Optional[Dict[str, Any]]:
         """Get a specific context snapshot by request ID"""
@@ -350,14 +350,11 @@ class ContextSnapshotter:
 
         # Token usage statistics
         token_stats = {
-            "avg_tokens_used": round(
-                sum(s.total_tokens for s in relevant_snapshots) / total, 2
-            ),
+            "avg_tokens_used": round(sum(s.total_tokens for s in relevant_snapshots) / total, 2),
             "max_tokens_used": max(s.total_tokens for s in relevant_snapshots),
             "min_tokens_used": min(s.total_tokens for s in relevant_snapshots),
             "avg_token_utilization": round(
-                sum(s.total_tokens / s.token_budget * 100 for s in relevant_snapshots)
-                / total,
+                sum(s.total_tokens / s.token_budget * 100 for s in relevant_snapshots) / total,
                 2,
             ),
         }
@@ -377,9 +374,7 @@ class ContextSnapshotter:
                 s.redaction_details.get("items_redacted", 0) for s in relevant_snapshots
             ),
             "snapshots_with_redaction": sum(
-                1
-                for s in relevant_snapshots
-                if s.redaction_details.get("items_redacted", 0) > 0
+                1 for s in relevant_snapshots if s.redaction_details.get("items_redacted", 0) > 0
             ),
             "redaction_rate": round(
                 sum(
@@ -417,9 +412,7 @@ class ContextSnapshotter:
             "error_rate": error_rate,
         }
 
-    def _get_layer_type_distribution(
-        self, snapshots: List[ContextSnapshot]
-    ) -> Dict[str, int]:
+    def _get_layer_type_distribution(self, snapshots: List[ContextSnapshot]) -> Dict[str, int]:
         """Get distribution of layer types across snapshots"""
         layer_types = {}
         for snapshot in snapshots:
@@ -428,9 +421,7 @@ class ContextSnapshotter:
                 layer_types[layer_type] = layer_types.get(layer_type, 0) + 1
         return layer_types
 
-    async def get_context_health_report(
-        self, user_id: Optional[str] = None
-    ) -> Dict[str, Any]:
+    async def get_context_health_report(self, user_id: Optional[str] = None) -> Dict[str, Any]:
         """Get comprehensive context assembly health report"""
 
         # Get all snapshots for user
@@ -450,9 +441,7 @@ class ContextSnapshotter:
         total_snapshots = len(user_snapshots)
 
         # Token utilization analysis
-        token_utilization = [
-            s.total_tokens / s.token_budget * 100 for s in user_snapshots
-        ]
+        token_utilization = [s.total_tokens / s.token_budget * 100 for s in user_snapshots]
         avg_utilization = sum(token_utilization) / len(token_utilization)
 
         # Assembly performance analysis
@@ -460,13 +449,9 @@ class ContextSnapshotter:
         avg_assembly_time = sum(assembly_times) / len(assembly_times)
 
         # Redaction analysis
-        total_redactions = sum(
-            s.redaction_details.get("items_redacted", 0) for s in user_snapshots
-        )
+        total_redactions = sum(s.redaction_details.get("items_redacted", 0) for s in user_snapshots)
         redaction_rate = (
-            total_redactions
-            / max(1, sum(len(s.context_layers) for s in user_snapshots))
-            * 100
+            total_redactions / max(1, sum(len(s.context_layers) for s in user_snapshots)) * 100
         )
 
         # Error analysis
@@ -476,20 +461,18 @@ class ContextSnapshotter:
         # Layer consistency analysis
         layer_counts = [len(s.context_layers) for s in user_snapshots]
         layer_consistency = (
-            100
-            - (max(layer_counts) - min(layer_counts)) / max(1, sum(layer_counts)) * 100
+            100 - (max(layer_counts) - min(layer_counts)) / max(1, sum(layer_counts)) * 100
         )
 
         # Determine health status
         if error_rate > 10:
             health_status = "critical"
-        elif avg_assembly_time > 1000:  # > 1 second
-            health_status = "warning"
-        elif avg_utilization > 95:
-            health_status = "warning"
-        elif redaction_rate > 20:
-            health_status = "warning"
-        elif layer_consistency < 70:
+        elif (
+            avg_assembly_time > 1000
+            or avg_utilization > 95
+            or redaction_rate > 20
+            or layer_consistency < 70
+        ):  # > 1 second
             health_status = "warning"
         else:
             health_status = "healthy"
@@ -507,11 +490,11 @@ class ContextSnapshotter:
                 "assembly_performance": {
                     "min_time_ms": min(assembly_times),
                     "max_time_ms": max(assembly_times),
-                    "p95_time_ms": sorted(assembly_times)[
-                        int(0.95 * len(assembly_times))
-                    ]
-                    if assembly_times
-                    else 0,
+                    "p95_time_ms": (
+                        sorted(assembly_times)[int(0.95 * len(assembly_times))]
+                        if assembly_times
+                        else 0
+                    ),
                 },
             },
             "recommendations": self._generate_health_recommendations(
@@ -536,32 +519,22 @@ class ContextSnapshotter:
         recommendations = []
 
         if avg_utilization > 95:
-            recommendations.append(
-                "High token utilization - consider increasing token budget"
-            )
+            recommendations.append("High token utilization - consider increasing token budget")
 
         if avg_assembly_time > 1000:
-            recommendations.append(
-                "Slow context assembly - review layer processing efficiency"
-            )
+            recommendations.append("Slow context assembly - review layer processing efficiency")
 
         if redaction_rate > 20:
-            recommendations.append(
-                "High redaction rate - review data filtering before assembly"
-            )
+            recommendations.append("High redaction rate - review data filtering before assembly")
 
         if error_rate > 5:
             recommendations.append("High error rate - review context assembly logic")
 
         if layer_consistency < 70:
-            recommendations.append(
-                "Inconsistent layer assembly - review layer ordering logic"
-            )
+            recommendations.append("Inconsistent layer assembly - review layer ordering logic")
 
         if not recommendations:
-            recommendations.append(
-                "Context assembly health looks good - continue monitoring"
-            )
+            recommendations.append("Context assembly health looks good - continue monitoring")
 
         return recommendations
 

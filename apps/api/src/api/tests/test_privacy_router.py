@@ -39,7 +39,9 @@ _privacy_mod = importlib.import_module("api.routes.privacy")
 _real_router = _privacy_mod.router
 
 # These imports happen AFTER the env-var is set.
-from api.auth.router import get_current_user  # noqa: F401 — used as dependency_overrides key
+from api.auth.router import (
+    get_current_user,
+)  # noqa: F401 — used as dependency_overrides key
 from api.storage.database import get_db  # noqa: F401 — used as dependency_overrides key
 
 
@@ -53,6 +55,7 @@ async def _stub_db() -> AsyncGenerator[Any, None]:
 # ---------------------------------------------------------------------------
 # App factories
 # ---------------------------------------------------------------------------
+
 
 def _build_auth_app(user_id: str = "u-privacy-test") -> FastAPI:
     """FastAPI app with the privacy router and auth bypassed."""
@@ -84,6 +87,7 @@ def _build_anon_app() -> FastAPI:
 # Fixtures
 # ---------------------------------------------------------------------------
 
+
 @pytest.fixture(scope="module")
 def auth_client() -> TestClient:
     return TestClient(_build_auth_app(), raise_server_exceptions=False)
@@ -97,6 +101,7 @@ def anon_client() -> TestClient:
 # ---------------------------------------------------------------------------
 # Export endpoint (POST /api/privacy/export)
 # ---------------------------------------------------------------------------
+
 
 def test_data_export_returns_200(auth_client: TestClient) -> None:
     """Authenticated POST /api/privacy/export must return 200."""
@@ -139,6 +144,7 @@ def test_data_export_requires_auth(anon_client: TestClient) -> None:
 # Delete endpoint (DELETE /api/privacy/delete)
 # ---------------------------------------------------------------------------
 
+
 def test_data_delete_requires_auth(anon_client: TestClient) -> None:
     """DELETE /api/privacy/delete must reject unauthenticated requests."""
     response = anon_client.delete("/api/privacy/delete")
@@ -171,6 +177,7 @@ def test_data_delete_with_confirm_returns_200(auth_client: TestClient) -> None:
 # Data-summary endpoint (GET /api/privacy/data-summary)
 # ---------------------------------------------------------------------------
 
+
 def test_data_summary_returns_200(auth_client: TestClient) -> None:
     """GET /api/privacy/data-summary must return 200 with the expected shape."""
     response = auth_client.get("/api/privacy/data-summary")
@@ -189,6 +196,7 @@ def test_data_summary_requires_auth(anon_client: TestClient) -> None:
 # ---------------------------------------------------------------------------
 # RAG consent endpoint (POST /api/privacy/consent/rag)
 # ---------------------------------------------------------------------------
+
 
 def test_rag_consent_grant_returns_200(auth_client: TestClient) -> None:
     """POST /api/privacy/consent/rag?consent_given=true must return 200."""

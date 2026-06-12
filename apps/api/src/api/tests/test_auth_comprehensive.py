@@ -29,8 +29,10 @@ from api.auth.router import (
     SECRET_KEY,
     create_access_token,
     get_db,
+    get_readonly_db,
     hash_password,
     router,
+    routes_email,
     verify_password,
     verify_token,
 )
@@ -48,6 +50,7 @@ def app(mock_db):
     app = FastAPI()
     app.include_router(router)
     app.dependency_overrides[get_db] = lambda: mock_db
+    app.dependency_overrides[get_readonly_db] = lambda: mock_db
     return app
 
 
@@ -96,7 +99,6 @@ def _reset_csrf_fallback():
 
 
 class TestPasswordHashing:
-
     def test_hash_password_returns_string(self):
         hashed = hash_password("test_password_123")
         assert isinstance(hashed, str)
@@ -120,7 +122,6 @@ class TestPasswordHashing:
 
 
 class TestJWTTokens:
-
     def test_create_access_token(self):
         token = create_access_token({"sub": "user_123"})
         assert isinstance(token, str)
@@ -161,7 +162,6 @@ def _fail_redis():
 
 
 class TestCSRFProtection:
-
     @pytest.mark.asyncio
     async def test_generate_csrf_token_returns_string(self):
         with _fail_redis():
@@ -214,7 +214,6 @@ def _redis_mock_for_rate_limit(count_sequence):
 
 
 class TestRateLimiting:
-
     @pytest.mark.asyncio
     async def test_rate_limit_allows_under_limit(self):
         from api.core.rate_limiter_auth import check_rate_limit
@@ -261,7 +260,6 @@ class TestRateLimiting:
 
 
 class TestRegisterEndpoint:
-
     def test_register_success(self, client, csrf_always_valid, rate_limit_open):
         mock_service = AsyncMock()
         mock_service.get_user_by_email = AsyncMock(return_value=None)
@@ -273,7 +271,14 @@ class TestRegisterEndpoint:
         mock_user_model.hashed_password = hash_password("password123")
         mock_service.create_user = AsyncMock(return_value=mock_user_model)
 
-        with patch("api.auth.router.UserService", return_value=mock_service):
+        with (
+            patch.object(
+                routes_email._ar,
+                "UserService",
+                return_value=mock_service,
+            ),
+            patch.object(routes_email, "_db_create_session", new=AsyncMock()),
+        ):
             response = client.post(
                 "/auth/register",
                 json={
@@ -285,18 +290,25 @@ class TestRegisterEndpoint:
             )
 
         assert response.status_code == 200, response.text
-        data = response.json()
+        body = response.json()
+        data = body["data"]
+        assert body["success"] is True
         assert "access_token" in data
         assert data["token_type"] == "bearer"
         assert data["user"]["email"] == "test@example.com"
 
-    def test_register_duplicate_email(
-        self, client, csrf_always_valid, rate_limit_open
-    ):
+    def test_register_duplicate_email(self, client, csrf_always_valid, rate_limit_open):
         mock_service = AsyncMock()
         mock_service.get_user_by_email = AsyncMock(return_value=MagicMock())
 
-        with patch("api.auth.router.UserService", return_value=mock_service):
+        with (
+            patch.object(
+                routes_email._ar,
+                "UserService",
+                return_value=mock_service,
+            ),
+            patch.object(routes_email, "_db_create_session", new=AsyncMock()),
+        ):
             response = client.post(
                 "/auth/register",
                 json={
@@ -331,7 +343,6 @@ class TestRegisterEndpoint:
 
 
 class TestLoginEndpoint:
-
     def test_login_success(self, client, csrf_always_valid, rate_limit_open):
         password = "password123"
         mock_service = AsyncMock()
@@ -348,7 +359,11 @@ class TestLoginEndpoint:
         mock_service.get_user_by_email = AsyncMock(return_value=mock_user_model)
         mock_service.update_user_last_login = AsyncMock()
 
-        with patch("api.auth.router.UserService", return_value=mock_service):
+        with patch.object(
+            routes_email._ar,
+            "UserService",
+            return_value=mock_service,
+        ):
             response = client.post(
                 "/auth/login",
                 json={
@@ -359,7 +374,9 @@ class TestLoginEndpoint:
             )
 
         assert response.status_code == 200, response.text
-        data = response.json()
+        body = response.json()
+        data = body["data"]
+        assert body["success"] is True
         assert "access_token" in data
         assert data["user"]["email"] == "user@example.com"
 
@@ -367,7 +384,11 @@ class TestLoginEndpoint:
         mock_service = AsyncMock()
         mock_service.get_user_by_email = AsyncMock(return_value=None)
 
-        with patch("api.auth.router.UserService", return_value=mock_service):
+        with patch.object(
+            routes_email._ar,
+            "UserService",
+            return_value=mock_service,
+        ):
             response = client.post(
                 "/auth/login",
                 json={
@@ -380,9 +401,7 @@ class TestLoginEndpoint:
         assert response.status_code == 401
         assert "Invalid email or password" in response.json()["detail"]
 
-    def test_login_invalid_password(
-        self, client, csrf_always_valid, rate_limit_open
-    ):
+    def test_login_invalid_password(self, client, csrf_always_valid, rate_limit_open):
         password = "correct_password"
         mock_service = AsyncMock()
 
@@ -393,7 +412,11 @@ class TestLoginEndpoint:
         mock_user_model.hashed_password = hash_password(password)
         mock_service.get_user_by_email = AsyncMock(return_value=mock_user_model)
 
-        with patch("api.auth.router.UserService", return_value=mock_service):
+        with patch.object(
+            routes_email._ar,
+            "UserService",
+            return_value=mock_service,
+        ):
             response = client.post(
                 "/auth/login",
                 json={

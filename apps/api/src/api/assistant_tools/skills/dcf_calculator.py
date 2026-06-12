@@ -10,14 +10,14 @@ from __future__ import annotations
 
 from typing import Any, Dict, List, Optional
 
-from ..registry import ToolDefinition, ToolParameter, register_tool
 from ...services.financial_data_service import financial_data_service
 from ...services.financial_guardrails import safe_skill
-
+from ..registry import ToolDefinition, ToolParameter, register_tool
 
 # ---------------------------------------------------------------------------
 # Core calculation helpers
 # ---------------------------------------------------------------------------
+
 
 def _project_fcf(
     base_fcf: float,
@@ -29,11 +29,13 @@ def _project_fcf(
     fcf = base_fcf
     for year in range(1, projection_years + 1):
         fcf *= 1 + growth_rate
-        projections.append({
-            "year": year,
-            "projected_fcf": round(fcf, 2),
-            "growth_rate": round(growth_rate * 100, 2),
-        })
+        projections.append(
+            {
+                "year": year,
+                "projected_fcf": round(fcf, 2),
+                "growth_rate": round(growth_rate * 100, 2),
+            }
+        )
     return projections
 
 
@@ -93,6 +95,7 @@ def _sensitivity_matrix(
 # ---------------------------------------------------------------------------
 # Handler
 # ---------------------------------------------------------------------------
+
 
 @safe_skill
 async def _handle_dcf_calculator(
@@ -162,8 +165,13 @@ async def _handle_dcf_calculator(
     upside = ((per_share_value / current_price) - 1) * 100 if current_price else None
 
     sensitivity = _sensitivity_matrix(
-        base_fcf, projection_years, growth_rate, wacc,
-        terminal_growth, net_debt, shares,
+        base_fcf,
+        projection_years,
+        growth_rate,
+        wacc,
+        terminal_growth,
+        net_debt,
+        shares,
     )
 
     return {
@@ -193,47 +201,61 @@ async def _handle_dcf_calculator(
 # Registration
 # ---------------------------------------------------------------------------
 
-register_tool(ToolDefinition(
-    name="dcf_calculator",
-    description=(
-        "Run a Discounted Cash Flow (DCF) valuation for a stock. "
-        "Fetches real financial data, projects free cash flow, discounts it "
-        "at WACC, and returns an intrinsic value estimate with a sensitivity "
-        "table across WACC and growth-rate assumptions."
-    ),
-    parameters=[
-        ToolParameter(
-            name="ticker",
-            type="string",
-            description="Stock ticker symbol, e.g. AAPL, MSFT",
+register_tool(
+    ToolDefinition(
+        name="dcf_calculator",
+        description=(
+            "Use when the user asks for intrinsic value, fair value, upside, "
+            "or a Discounted Cash Flow valuation for one stock. Fetches latest "
+            "financial data, projects free cash flow, discounts at WACC, and "
+            "returns per-share value, assumptions, projections, and a WACC by "
+            "growth sensitivity table. Requires positive free cash flow."
         ),
-        ToolParameter(
-            name="wacc",
-            type="number",
-            description="Weighted-average cost of capital as a decimal (e.g. 0.10 for 10%). If omitted, estimated from beta.",
-            required=False,
-        ),
-        ToolParameter(
-            name="growth_rate",
-            type="number",
-            description="Annual FCF growth rate as a decimal (e.g. 0.08 for 8%). If omitted, estimated from revenue growth.",
-            required=False,
-        ),
-        ToolParameter(
-            name="projection_years",
-            type="integer",
-            description="Number of years to project (1-20, default 5).",
-            required=False,
-            default=5,
-        ),
-        ToolParameter(
-            name="terminal_growth",
-            type="number",
-            description="Perpetual growth rate for terminal value (default 0.025 = 2.5%).",
-            required=False,
-            default=0.025,
-        ),
-    ],
-    handler=_handle_dcf_calculator,
-    category="finance",
-))
+        parameters=[
+            ToolParameter(
+                name="ticker",
+                type="string",
+                description="Public equity ticker symbol to value, such as AAPL, MSFT, or NVDA.",
+            ),
+            ToolParameter(
+                name="wacc",
+                type="number",
+                description=(
+                    "Weighted-average cost of capital as a decimal, not a percent "
+                    "(0.10 means 10%). If omitted, the tool estimates WACC from beta."
+                ),
+                required=False,
+            ),
+            ToolParameter(
+                name="growth_rate",
+                type="number",
+                description=(
+                    "Annual free-cash-flow growth rate as a decimal, not a percent "
+                    "(0.08 means 8%). If omitted, the tool estimates growth from "
+                    "available revenue growth or uses a fallback."
+                ),
+                required=False,
+            ),
+            ToolParameter(
+                name="projection_years",
+                type="integer",
+                description="Number of annual forecast years to project. Valid range: 1-20. Default: 5.",
+                required=False,
+                default=5,
+            ),
+            ToolParameter(
+                name="terminal_growth",
+                type="number",
+                description=(
+                    "Perpetual terminal growth rate as a decimal, not a percent "
+                    "(0.025 means 2.5%). Must stay below WACC for a usable terminal "
+                    "value. Default: 0.025."
+                ),
+                required=False,
+                default=0.025,
+            ),
+        ],
+        handler=_handle_dcf_calculator,
+        category="finance",
+    )
+)

@@ -1,11 +1,12 @@
 import React from 'react';
 import { render, screen } from '@testing-library/react';
-import '@testing-library/jest-dom';
 import ChatPage from '../ChatPage';
 
-jest.mock('@/features/chat/ChatScreen', () => function MockChatScreen() {
-  return <div data-testid="chat-screen">Chat Screen</div>;
-});
+vi.mock('@/features/chat/ChatScreen', () => ({
+  default: function MockChatScreen() {
+    return <div data-testid="chat-screen">Chat Screen</div>;
+  },
+}));
 
 describe('ChatPage', () => {
   it('renders ChatScreen component', () => {

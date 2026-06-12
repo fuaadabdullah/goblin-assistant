@@ -2,12 +2,12 @@
 
 from __future__ import annotations
 
-import pytest
 from unittest.mock import AsyncMock, MagicMock, patch
+
 import httpx
+import pytest
 
 from api.providers.anthropic_provider import AnthropicProvider
-from api.providers.base import ProviderResult, ProviderHealth
 
 
 def _provider(

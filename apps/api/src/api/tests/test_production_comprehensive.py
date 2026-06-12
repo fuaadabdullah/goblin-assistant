@@ -5,10 +5,10 @@ Tests: Authentication, Concurrency, Caching, and Error Handling.
 """
 
 import asyncio
-import aiohttp
-import time
 import os
-from typing import Dict, Any
+import time
+
+import aiohttp
 
 # Load API key from environment to avoid committing secrets
 API_KEY = os.getenv("API_AUTH_KEY", "")
@@ -72,9 +72,7 @@ async def run_production_tests():
             {"message": "What is the best way to deploy a FastAPI app?"},
         )
         if status == 200:
-            print(
-                f"✅ Response received in {duration:.2f}s from {data.get('provider')}"
-            )
+            print(f"✅ Response received in {duration:.2f}s from {data.get('provider')}")
             print(f"   Model: {data.get('model')}")
         else:
             print(f"❌ Provider execution failed: {data}")

@@ -1,33 +1,46 @@
-"""
-Database connection management for Goblin Assistant
-"""
+"""Database connection management for Goblin Assistant."""
 
 import os
 import ssl
-from urllib.parse import parse_qs, urlencode
-import structlog
-
-from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession
-from sqlalchemy.orm import sessionmaker
-from sqlalchemy.pool import NullPool
 from contextlib import asynccontextmanager
 from typing import AsyncGenerator
+from urllib.parse import parse_qs, urlencode
 
+import structlog
+from sqlalchemy import text
+from sqlalchemy.exc import SQLAlchemyError
+from sqlalchemy.ext.asyncio import (
+    AsyncSession,
+    async_sessionmaker,
+    create_async_engine,
+)
+from sqlalchemy.pool import AsyncAdaptedQueuePool
 
 logger = structlog.get_logger()
 
-# Get database URL from environment or use local sqlite fallback
-DATABASE_URL = os.getenv("DATABASE_URL", "sqlite+aiosqlite:///./goblin_assistant.db")
+SQLITE_DATABASE_URL = "sqlite+aiosqlite:///./goblin_assistant.db"
+POSTGRES_ASYNC_URL_PREFIX = "postgresql+asyncpg://"
+
+# Get database URL from environment or use local sqlite fallback.
+DATABASE_URL = os.getenv("DATABASE_URL", SQLITE_DATABASE_URL)
 
 # Fix for Heroku/Supabase postgres URLs if they start with postgres://
 if DATABASE_URL and DATABASE_URL.startswith("postgres://"):
-    DATABASE_URL = DATABASE_URL.replace("postgres://", "postgresql+asyncpg://", 1)
+    DATABASE_URL = DATABASE_URL.replace(
+        "postgres://",
+        POSTGRES_ASYNC_URL_PREFIX,
+        1,
+    )
 elif (
     DATABASE_URL
     and DATABASE_URL.startswith("postgresql://")
-    and not DATABASE_URL.startswith("postgresql+asyncpg://")
+    and not DATABASE_URL.startswith(POSTGRES_ASYNC_URL_PREFIX)
 ):
-    DATABASE_URL = DATABASE_URL.replace("postgresql://", "postgresql+asyncpg://", 1)
+    DATABASE_URL = DATABASE_URL.replace(
+        "postgresql://",
+        POSTGRES_ASYNC_URL_PREFIX,
+        1,
+    )
 
 
 # Handle sslmode parameter for PostgreSQL connections
@@ -35,15 +48,38 @@ def _build_ssl_context_from_mode(mode: str):
     normalized = mode.lower()
     if normalized == "disable":
         return False
-    context = ssl.create_default_context()
-    context.check_hostname = False
-    context.verify_mode = ssl.CERT_NONE
+    context = ssl.create_default_context(purpose=ssl.Purpose.SERVER_AUTH)
+    context.check_hostname = True
+    context.verify_mode = ssl.CERT_REQUIRED
+    context.minimum_version = ssl.TLSVersion.TLSv1_2
+    context.load_default_certs()
     if normalized == "verify-ca":
         context.verify_mode = ssl.CERT_REQUIRED
+        context.check_hostname = False
     elif normalized == "verify-full":
         context.verify_mode = ssl.CERT_REQUIRED
         context.check_hostname = True
     return context
+
+
+def _parse_int_env(name: str, default: int) -> int:
+    raw_value = os.getenv(name)
+    if raw_value is None:
+        return default
+    try:
+        return int(raw_value)
+    except ValueError:
+        return default
+
+
+def _parse_float_env(name: str, default: float) -> float:
+    raw_value = os.getenv(name)
+    if raw_value is None:
+        return default
+    try:
+        return float(raw_value)
+    except ValueError:
+        return default
 
 
 connect_args = {}
@@ -68,20 +104,31 @@ if "password" in DATABASE_URL.lower():
         action="ensure DSN is redacted in production logs",
     )
 
-# Create async engine
-engine = create_async_engine(
-    DATABASE_URL,
-    echo=False,
-    pool_pre_ping=True,
-    # Use NullPool for PostgreSQL to avoid connection pooler issues
-    poolclass=NullPool if "postgresql" in DATABASE_URL else None,
-    # Use connect_args for PostgreSQL SSL configuration
-    connect_args=connect_args,
-)
+is_postgres = "postgresql" in DATABASE_URL
+engine_kwargs = {
+    "echo": False,
+    "pool_pre_ping": True,
+    "connect_args": connect_args,
+}
+
+if is_postgres:
+    engine_kwargs.update(
+        {
+            "poolclass": AsyncAdaptedQueuePool,
+            "pool_size": _parse_int_env("DATABASE_POOL_SIZE", 5),
+            "max_overflow": _parse_int_env("DATABASE_MAX_OVERFLOW", 10),
+            "pool_timeout": _parse_float_env("DATABASE_POOL_TIMEOUT", 30.0),
+        }
+    )
+
+engine = create_async_engine(DATABASE_URL, **engine_kwargs)
 
 # Create async session factory
-AsyncSessionLocal = sessionmaker(
-    engine, class_=AsyncSession, expire_on_commit=False, autoflush=False
+AsyncSessionLocal = async_sessionmaker(
+    engine,
+    class_=AsyncSession,
+    expire_on_commit=False,
+    autoflush=False,
 )
 
 
@@ -91,6 +138,18 @@ async def get_db() -> AsyncGenerator[AsyncSession, None]:
     try:
         yield session
         await session.commit()
+    except Exception:
+        await session.rollback()
+        raise
+    finally:
+        await session.close()
+
+
+async def get_readonly_db() -> AsyncGenerator[AsyncSession, None]:
+    """Async generator for read-only FastAPI dependencies."""
+    session = AsyncSessionLocal()
+    try:
+        yield session
     except Exception:
         await session.rollback()
         raise
@@ -112,19 +171,40 @@ async def get_db_context() -> AsyncGenerator[AsyncSession, None]:
         await session.close()
 
 
+@asynccontextmanager
+async def get_readonly_db_context() -> AsyncGenerator[AsyncSession, None]:
+    """Context manager for read-only operations — skips commit, reducing DB I/O."""
+    session = AsyncSessionLocal()
+    try:
+        yield session
+    except Exception:
+        await session.rollback()
+        raise
+    finally:
+        await session.close()
+
+
+async def warmup_pool() -> None:
+    """Acquire and release one connection to warm the pool before first request."""
+    async with engine.connect() as conn:
+        await conn.execute(text("SELECT 1"))
+
+
 async def init_db():
     """Initialize database tables"""
     try:
         from .models import Base
 
         async with engine.begin() as conn:
+            if is_postgres:
+                await conn.execute(text("CREATE EXTENSION IF NOT EXISTS vector"))
             # Create tables if they don't exist
             await conn.run_sync(Base.metadata.create_all)
         return True
-    except Exception as e:
+    except SQLAlchemyError as exc:
         logger.warning(
             "database initialization failed",
-            error=str(e),
-            impact="continuing without database - some features may be limited",
+            error=str(exc),
+            impact=("continuing without database - some features may be limited"),
         )
         return False

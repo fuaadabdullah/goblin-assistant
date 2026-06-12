@@ -1,12 +1,23 @@
-"""Email/password auth routes: /register, /login, /refresh, /logout, /me, /validate."""
+"""Email/password auth routes:
+
+/register, /login, /refresh, /logout, /me, /validate.
+"""
 
 from datetime import timedelta
-from typing import Optional
+from typing import Annotated, Any, Optional
 
-from fastapi import APIRouter, Depends, HTTPException, Request, Response, status
+from fastapi import (
+    APIRouter,
+    Depends,
+    HTTPException,
+    Request,
+    Response,
+    status,
+)
 from fastapi.security import HTTPAuthorizationCredentials
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from ...core.contracts import SuccessEnvelope
 from . import _runtime as _ar
 from .config import ACCESS_TOKEN_EXPIRE_MINUTES
 from .cookies import _clear_auth_cookies, _set_auth_cookies
@@ -18,9 +29,10 @@ from .dependencies import (
 )
 from .passwords import hash_password, verify_password
 from .schemas import (
+    LogoutResponse,
     RefreshTokenRequest,
-    Token,
     TokenValidationRequest,
+    TokenValidationResponse,
     TokenWithRefresh,
     User,
     UserCreate,
@@ -32,12 +44,12 @@ from .tokens import create_access_token, create_refresh_token, verify_token
 router = APIRouter()
 
 
-@router.post("/register", response_model=Token)
+@router.post("/register", response_model=SuccessEnvelope[TokenWithRefresh])
 async def register(
     user_data: UserCreate,
     request: Request,
     response: Response,
-    db: AsyncSession = Depends(_ar.get_db),
+    db: Annotated[AsyncSession, Depends(_ar.get_db)],
 ):
     client_ip = request.client.host if request.client else "unknown"
 
@@ -49,7 +61,8 @@ async def register(
 
     if not await _ar.validate_csrf_token(user_data.csrf_token):
         raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN, detail="Invalid CSRF token"
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Invalid CSRF token",
         )
 
     user_service = _ar.UserService(db)
@@ -69,7 +82,10 @@ async def register(
         hashed_password=hashed_password,
     )
 
-    user_model = await user_service.create_user(user_create_data, flush_only=True)
+    user_model = await user_service.create_user(
+        user_create_data,
+        flush_only=True,
+    )
     if not user_model:
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
@@ -97,21 +113,23 @@ async def register(
 
     _set_auth_cookies(response, access_token, refresh_token)
 
-    return TokenWithRefresh(
-        access_token=access_token,
-        refresh_token=refresh_token,
-        token_type="bearer",
-        user=user,
-        expires_in=ACCESS_TOKEN_EXPIRE_MINUTES * 60,
+    return SuccessEnvelope(
+        data=TokenWithRefresh(
+            access_token=access_token,
+            refresh_token=refresh_token,
+            token_type="bearer",
+            user=user,
+            expires_in=ACCESS_TOKEN_EXPIRE_MINUTES * 60,
+        )
     )
 
 
-@router.post("/login", response_model=TokenWithRefresh)
+@router.post("/login", response_model=SuccessEnvelope[TokenWithRefresh])
 async def login(
     user_data: UserLogin,
     request: Request,
     response: Response,
-    db: AsyncSession = Depends(_ar.get_db),
+    db: Annotated[AsyncSession, Depends(_ar.get_db)],
 ):
     client_ip = request.client.host if request.client else "unknown"
 
@@ -123,7 +141,8 @@ async def login(
 
     if not await _ar.validate_csrf_token(user_data.csrf_token):
         raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN, detail="Invalid CSRF token"
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Invalid CSRF token",
         )
 
     user_service = _ar.UserService(db)
@@ -131,14 +150,16 @@ async def login(
     user_model = await user_service.get_user_by_email(user_data.email)
     if not user_model:
         raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid email or password"
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Invalid email or password",
         )
 
     if not user_model.hashed_password or not verify_password(
         user_data.password, user_model.hashed_password
     ):
         raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid email or password"
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Invalid email or password",
         )
     if not _is_user_active(user_model.is_active):
         raise HTTPException(
@@ -148,13 +169,20 @@ async def login(
 
     await user_service.update_user_last_login(user_model.id)
 
+    user_id: Any = user_model.id
+    user_email: Any = user_model.email
+    user_name: Any = user_model.name
+    user_google_id: Any = user_model.google_id
+    user_passkey_credential_id: Any = user_model.passkey_credential_id
+    user_passkey_public_key: Any = user_model.passkey_public_key
+
     user = User(
-        id=user_model.id,
-        email=user_model.email,
-        name=user_model.name,
-        google_id=user_model.google_id,
-        passkey_credential_id=user_model.passkey_credential_id,
-        passkey_public_key=user_model.passkey_public_key,
+        id=user_id,
+        email=user_email,
+        name=user_name,
+        google_id=user_google_id,
+        passkey_credential_id=user_passkey_credential_id,
+        passkey_public_key=user_passkey_public_key,
     )
 
     session_id = create_session_id(user_model.id)
@@ -170,21 +198,23 @@ async def login(
 
     _set_auth_cookies(response, access_token, refresh_token)
 
-    return TokenWithRefresh(
-        access_token=access_token,
-        refresh_token=refresh_token,
-        token_type="bearer",
-        user=user,
-        expires_in=ACCESS_TOKEN_EXPIRE_MINUTES * 60,
+    return SuccessEnvelope(
+        data=TokenWithRefresh(
+            access_token=access_token,
+            refresh_token=refresh_token,
+            token_type="bearer",
+            user=user,
+            expires_in=ACCESS_TOKEN_EXPIRE_MINUTES * 60,
+        )
     )
 
 
-@router.post("/refresh", response_model=TokenWithRefresh)
+@router.post("/refresh", response_model=SuccessEnvelope[TokenWithRefresh])
 async def refresh_token_endpoint(
     request: RefreshTokenRequest,
     http_request: Request,
     response: Response,
-    db: AsyncSession = Depends(_ar.get_db),
+    db: Annotated[AsyncSession, Depends(_ar.get_readonly_db)],
 ):
     """Exchange refresh token for new access and refresh tokens."""
     raw_refresh = request.refresh_token or http_request.cookies.get("refresh_token")
@@ -227,7 +257,7 @@ async def refresh_token_endpoint(
             detail="User account is inactive",
         )
 
-    user = User(
+    user = User(  # type: ignore[arg-type]
         id=user_model.id,
         email=user_model.email,
         name=user_model.name,
@@ -248,27 +278,34 @@ async def refresh_token_endpoint(
 
     _set_auth_cookies(response, access_token, new_refresh_token)
 
-    return TokenWithRefresh(
-        access_token=access_token,
-        refresh_token=new_refresh_token,
-        token_type="bearer",
-        user=user,
-        expires_in=ACCESS_TOKEN_EXPIRE_MINUTES * 60,
+    return SuccessEnvelope(
+        data=TokenWithRefresh(
+            access_token=access_token,
+            refresh_token=new_refresh_token,
+            token_type="bearer",
+            user=user,
+            expires_in=ACCESS_TOKEN_EXPIRE_MINUTES * 60,
+        )
     )
 
 
-@router.get("/me", response_model=User)
-async def get_current_user_info(current_user: User = Depends(get_current_user)):
-    return current_user
+@router.get("/me", response_model=SuccessEnvelope[User])
+async def get_current_user_info(
+    current_user: Annotated[User, Depends(get_current_user)],
+):
+    return SuccessEnvelope(data=current_user)
 
 
-@router.post("/logout")
+@router.post("/logout", response_model=SuccessEnvelope[LogoutResponse])
 async def logout(
     http_request: Request,
     response: Response,
-    current_user: User = Depends(get_current_user),
-    credentials: Optional[HTTPAuthorizationCredentials] = Depends(security),
-    db: AsyncSession = Depends(_ar.get_db),
+    _current_user: Annotated[User, Depends(get_current_user)],
+    credentials: Annotated[
+        Optional[HTTPAuthorizationCredentials],
+        Depends(security),
+    ],
+    db: Annotated[AsyncSession, Depends(_ar.get_db)],
 ):
     """Logout user and revoke session."""
     token = None
@@ -285,33 +322,40 @@ async def logout(
                 await _db_revoke_session(session_id, db)
 
     _clear_auth_cookies(response)
-    return {"message": "Logged out successfully"}
+    return SuccessEnvelope(
+        data=LogoutResponse(message="Logged out successfully"),
+    )
 
 
-@router.post("/validate")
+@router.post(
+    "/validate",
+    response_model=SuccessEnvelope[TokenValidationResponse],
+)
 async def validate_token(
     request: TokenValidationRequest,
-    db: AsyncSession = Depends(_ar.get_db),
+    db: Annotated[AsyncSession, Depends(_ar.get_readonly_db)],
 ):
     """Validate JWT token."""
     payload = verify_token(request.token)
     if not payload:
-        return {"valid": False}
+        return SuccessEnvelope(data=TokenValidationResponse(valid=False))
 
     user_id = payload.get("sub")
     if not user_id:
-        return {"valid": False}
+        return SuccessEnvelope(data=TokenValidationResponse(valid=False))
 
     user_service = _ar.UserService(db)
     user_model = await user_service.get_user_by_id(user_id)
     if not user_model:
-        return {"valid": False}
+        return SuccessEnvelope(data=TokenValidationResponse(valid=False))
 
-    return {
-        "valid": True,
-        "user": {
-            "id": user_model.id,
-            "email": user_model.email,
-            "name": user_model.name,
-        },
-    }
+    return SuccessEnvelope(
+        data=TokenValidationResponse(
+            valid=True,
+            user=User(
+                id=user_model.id,
+                email=user_model.email,
+                name=user_model.name,
+            ),
+        )
+    )

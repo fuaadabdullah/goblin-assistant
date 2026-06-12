@@ -4,7 +4,7 @@ import { render, screen, fireEvent } from '@testing-library/react';
 import ProviderTestResultBanner from '../ProviderTestResultBanner';
 
 describe('ProviderTestResultBanner', () => {
-  const onDismiss = jest.fn();
+  const onDismiss = vi.fn();
 
   const successResult = {
     success: true,
@@ -20,7 +20,7 @@ describe('ProviderTestResultBanner', () => {
     latency: 5000,
   };
 
-  beforeEach(() => jest.clearAllMocks());
+  beforeEach(() => vi.clearAllMocks());
 
   it('shows success heading when successful', () => {
     render(<ProviderTestResultBanner result={successResult} onDismiss={onDismiss} />);

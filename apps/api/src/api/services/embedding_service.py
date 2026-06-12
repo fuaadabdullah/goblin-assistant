@@ -2,21 +2,21 @@
 Embedding service for generating and managing semantic embeddings
 """
 
-import os
-import asyncio
+import hashlib
+import importlib
 import logging
-from typing import List, Optional, Dict, Any
-from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import text
-from sqlalchemy.orm import selectinload
+import os
+from collections import OrderedDict
+from typing import Any, Dict, List, Optional
 
-from ..storage.vector_models import (
-    EmbeddingModel,
-    ConversationSummaryModel,
-    MemoryFactModel,
-)
-from ..storage.database import get_db
+from sqlalchemy import text
+
 from ..providers.base import BaseProvider
+from ..storage.database import get_db_context
+from ..storage.vector_models import (
+    ConversationSummaryModel,
+    EmbeddingModel,
+)
 from ..utils.tokenizer import count_tokens, trim_to_tokens
 
 logger = logging.getLogger(__name__)
@@ -25,6 +25,7 @@ logger = logging.getLogger(__name__)
 class EmbeddingProviderUnavailableError(RuntimeError):
     """Raised when embedding provider is unavailable or unsupported."""
 
+
 # Provider name → (module path, class name, default config)
 _EMBEDDING_PROVIDERS: Dict[str, tuple] = {
     "openai": (
@@ -32,8 +33,9 @@ _EMBEDDING_PROVIDERS: Dict[str, tuple] = {
         "OpenAIProvider",
         {
             "api_key_env": "OPENAI_API_KEY",
-            "endpoint": os.getenv("OPENAI_BASE_URL", "https://api.openai.com"),
-            "invoke_path": "/v1/embeddings",
+            # OpenAIProvider appends /embeddings itself, so the endpoint must
+            # already include the /v1 prefix.
+            "endpoint": os.getenv("OPENAI_BASE_URL", "https://api.openai.com/v1"),
         },
     ),
     "azure_openai": (
@@ -62,17 +64,13 @@ def _resolve_embedding_provider() -> BaseProvider:
 
     if provider_name not in _EMBEDDING_PROVIDERS:
         logger.warning(
-            "Unknown EMBEDDING_PROVIDER '%s', falling back to 'openai'. "
-            "Supported: %s",
+            "Unknown EMBEDDING_PROVIDER '%s', falling back to 'openai'. Supported: %s",
             provider_name,
             ", ".join(_EMBEDDING_PROVIDERS),
         )
         provider_name = "openai"
 
     module_path, class_name, default_config = _EMBEDDING_PROVIDERS[provider_name]
-
-    # Import provider class
-    import importlib
 
     try:
         mod = importlib.import_module(module_path, package=__package__)
@@ -98,6 +96,11 @@ class EmbeddingService:
     """Service for generating and managing embeddings"""
 
     _warned_unavailable = False
+
+    # Class-level dedup tracking shared across all instances (process-wide).
+    _HASH_CACHE_MAX = 10_000
+    _content_hash_cache: OrderedDict = OrderedDict()
+    _duplicate_prevented_count: int = 0
 
     def __init__(self):
         self.provider_name = os.getenv("EMBEDDING_PROVIDER", "openai").lower()
@@ -131,6 +134,30 @@ class EmbeddingService:
             "provider": self.provider_name,
             "model": self.model,
         }
+
+    def get_dedup_stats(self) -> Dict[str, Any]:
+        """Return process-wide embedding deduplication statistics."""
+        return {
+            "duplicates_prevented": EmbeddingService._duplicate_prevented_count,
+            "hash_cache_size": len(EmbeddingService._content_hash_cache),
+        }
+
+    @classmethod
+    def _check_and_register_hash(cls, content: str) -> bool:
+        """Return True (duplicate — skip embed) if content was already embedded.
+
+        Adds the hash on first encounter. Evicts the oldest entry when cache is full.
+        """
+        content_hash = hashlib.sha256(content.encode("utf-8", errors="replace")).hexdigest()
+        if content_hash in cls._content_hash_cache:
+            cls._duplicate_prevented_count += 1
+            logger.debug("embedding_dedup_hit", hash_prefix=content_hash[:8])
+            return True
+        # Register; evict oldest if at capacity
+        if len(cls._content_hash_cache) >= cls._HASH_CACHE_MAX:
+            cls._content_hash_cache.popitem(last=False)
+        cls._content_hash_cache[content_hash] = True
+        return False
 
     async def embed_text(self, text: str) -> List[float]:
         """Generate embedding for a single text"""
@@ -167,8 +194,7 @@ class EmbeddingService:
 
         except Exception as e:
             reason = (
-                f"embedding provider '{self.provider_name}' failed for model "
-                f"'{self.model}': {e}"
+                f"embedding provider '{self.provider_name}' failed for model '{self.model}': {e}"
             )
             self._mark_degraded(reason)
             if not EmbeddingService._warned_unavailable:
@@ -226,11 +252,26 @@ class EmbeddingService:
     ) -> bool:
         """Store embedding for a message"""
         try:
+            # Skip if already stored for this message_id (idempotency).
+            async with get_db_context() as session:
+                existing = await session.execute(
+                    text(
+                        "SELECT id FROM embeddings WHERE source_id = :sid AND user_id = :uid LIMIT 1"
+                    ),
+                    {"sid": message_id, "uid": user_id},
+                )
+                if existing.fetchone():
+                    return True
+
+            # Skip if identical content was embedded recently (process-level dedup).
+            if self._check_and_register_hash(content):
+                return True
+
             embedding = await self.embed_text(content)
             if not embedding:
                 return False
 
-            async with get_db() as session:
+            async with get_db_context() as session:
                 embedding_model = EmbeddingModel(
                     user_id=user_id,
                     conversation_id=conversation_id,
@@ -248,21 +289,17 @@ class EmbeddingService:
             logger.error("Error storing message embedding: %s", e)
             return False
 
-    async def store_conversation_summary(
-        self, conversation_id: str, summary_text: str
-    ) -> bool:
+    async def store_conversation_summary(self, conversation_id: str, summary_text: str) -> bool:
         """Store embedding for a conversation summary"""
         try:
             embedding = await self.embed_text(summary_text)
             if not embedding:
                 return False
 
-            async with get_db() as session:
+            async with get_db_context() as session:
                 # Check if summary already exists
                 existing = await session.execute(
-                    text(
-                        "SELECT id FROM conversation_summaries WHERE conversation_id = :conv_id"
-                    ),
+                    text("SELECT id FROM conversation_summaries WHERE conversation_id = :conv_id"),
                     {"conv_id": conversation_id},
                 )
                 existing_summary = existing.fetchone()
@@ -270,11 +307,13 @@ class EmbeddingService:
                 if existing_summary:
                     # Update existing summary
                     await session.execute(
-                        text("""
+                        text(
+                            """
                             UPDATE conversation_summaries 
                             SET summary_text = :summary, summary_embedding = :embedding, updated_at = NOW()
                             WHERE conversation_id = :conv_id
-                        """),
+                        """
+                        ),
                         {
                             "summary": summary_text,
                             "embedding": embedding,
@@ -303,141 +342,86 @@ class EmbeddingService:
         fact_text: str,
         category: Optional[str] = None,
         metadata: Optional[Dict[str, Any]] = None,
+        source_kind: str = "memory",
+        source_id: Optional[str] = None,
+        confidence: float = 0.8,
+        allow_sensitive: bool = False,
     ) -> bool:
         """Store embedding for a memory fact"""
         try:
-            embedding = await self.embed_text(fact_text)
-            if not embedding:
-                return False
+            from .memory_core import memory_core_service  # noqa: PLC0415
 
-            async with get_db() as session:
-                fact_model = MemoryFactModel(
-                    user_id=user_id,
-                    fact_text=fact_text,
-                    fact_embedding=embedding,
-                    category=category,
-                    metadata_=metadata or {},
-                )
-                session.add(fact_model)
-                await session.commit()
-                return True
+            record = await memory_core_service.ingest_memory_fact(
+                user_id=user_id,
+                fact_text=fact_text,
+                category=category,
+                metadata=metadata,
+                source_kind=source_kind,
+                source_id=source_id,
+                confidence=confidence,
+                allow_sensitive=allow_sensitive,
+            )
+            return record is not None
 
         except Exception as e:
             logger.error("Error storing memory fact: %s", e)
             return False
 
-
-class AsyncEmbeddingWorker:
-    """Background worker for async embedding generation"""
-
-    def __init__(self):
-        self.service = None
-        self.queue = asyncio.Queue()
-        self.running = False
-
-    def _get_service(self) -> EmbeddingService:
-        if self.service is None:
-            self.service = EmbeddingService()
-        return self.service
-
-    async def start(self):
-        """Start the embedding worker"""
-        self.running = True
-        asyncio.create_task(self._worker_loop())
-
-    async def stop(self):
-        """Stop the embedding worker"""
-        self.running = False
-
-    async def _worker_loop(self):
-        """Main worker loop"""
-        while self.running:
-            try:
-                # Get next embedding task
-                task = await self.queue.get()
-                if task is None:
-                    break
-
-                # Process task
-                await self._process_task(task)
-
-            except Exception as e:
-                logger.error("Error in embedding worker: %s", e)
-
-    async def _process_task(self, task: Dict[str, Any]):
-        """Process a single embedding task"""
-        task_type = task.get("type")
-        service = self._get_service()
-
-        if task_type == "message":
-            await service.store_message_embedding(
-                user_id=task["user_id"],
-                conversation_id=task["conversation_id"],
-                message_id=task["message_id"],
-                content=task["content"],
-                metadata=task.get("metadata"),
-            )
-        elif task_type == "summary":
-            await service.store_conversation_summary(
-                conversation_id=task["conversation_id"],
-                summary_text=task["summary_text"],
-            )
-        elif task_type == "memory":
-            await service.store_memory_fact(
-                user_id=task["user_id"],
-                fact_text=task["fact_text"],
-                category=task.get("category"),
-                metadata=task.get("metadata"),
-            )
-
-    async def queue_message_embedding(
+    async def store_index_item(
         self,
         user_id: str,
-        conversation_id: str,
-        message_id: str,
+        source_type: str,
+        source_id: str,
         content: str,
         metadata: Optional[Dict[str, Any]] = None,
-    ):
-        """Queue a message embedding task"""
-        await self.queue.put(
-            {
-                "type": "message",
-                "user_id": user_id,
-                "conversation_id": conversation_id,
-                "message_id": message_id,
-                "content": content,
-                "metadata": metadata,
-            }
-        )
+    ) -> bool:
+        """Generic embedding store for any named index.
 
-    async def queue_summary_embedding(self, conversation_id: str, summary_text: str):
-        """Queue a conversation summary embedding task"""
-        await self.queue.put(
-            {
-                "type": "summary",
-                "conversation_id": conversation_id,
-                "summary_text": summary_text,
-            }
-        )
+        All index types (document, code, research, task) route through here.
+        source_type must match a value the retrieval service knows to query.
+        """
+        try:
+            embedding = await self.embed_text(content)
+            if not embedding:
+                return False
 
-    async def queue_memory_embedding(
+            async with get_db_context() as session:
+                record = EmbeddingModel(
+                    user_id=user_id,
+                    source_type=source_type,
+                    source_id=source_id,
+                    embedding=embedding,
+                    content=content,
+                    metadata_=metadata or {},
+                )
+                session.add(record)
+                await session.commit()
+                return True
+
+        except Exception as e:
+            logger.error("Error storing index item (%s): %s", source_type, e)
+            return False
+
+    async def store_document_embedding(
         self,
         user_id: str,
-        fact_text: str,
-        category: Optional[str] = None,
+        file_id: str,
+        chunk_id: str,
+        content: str,
         metadata: Optional[Dict[str, Any]] = None,
-    ):
-        """Queue a memory fact embedding task"""
-        await self.queue.put(
-            {
-                "type": "memory",
-                "user_id": user_id,
-                "fact_text": fact_text,
-                "category": category,
-                "metadata": metadata,
-            }
+    ) -> bool:
+        """Store embedding for an uploaded document chunk."""
+        return await self.store_index_item(
+            user_id=user_id,
+            source_type="document",
+            source_id=chunk_id,
+            content=content,
+            metadata={"file_id": file_id, **(metadata or {})},
         )
 
 
-# Global embedding worker instance
-embedding_worker = AsyncEmbeddingWorker()
+# Module-level singleton
+embedding_service = EmbeddingService()
+
+# AsyncEmbeddingWorker and its singleton live in embedding_worker.py.
+# Re-exported here so all existing importers continue to work without changes.

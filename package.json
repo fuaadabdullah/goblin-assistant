@@ -13,8 +13,28 @@
     "test:web": "mkdir -p .tmp && TMPDIR=\"$PWD/.tmp\" pnpm --filter @goblin/web test",
     "test:api": "cd apps/api && PYTHONPATH=src python3 -m pytest -o \"addopts=\" -v",
     "test:e2e": "mkdir -p .tmp && TMPDIR=\"$PWD/.tmp\" pnpm --filter @goblin/web test:e2e",
+    "test:critical": "bash tooling/quality/run-critical-coverage.sh",
+    "test:integration": "python3 tooling/quality/run-test-bucket.py integration",
+    "test:contract": "python3 tooling/quality/run-test-bucket.py contract",
+    "test:performance": "python3 tooling/quality/run-test-bucket.py performance",
+    "sdk:generate": "bash tooling/generators/generate-sdk-client.sh",
+    "sdk:check": "bash tooling/generators/check-sdk-generated.sh",
+    "packages:type-check": "mkdir -p .tmp && TMPDIR=\"$PWD/.tmp\" pnpm exec tsc --noEmit -p packages/shared/tsconfig.json && TMPDIR=\"$PWD/.tmp\" pnpm exec tsc --noEmit -p packages/ui/tsconfig.json && TMPDIR=\"$PWD/.tmp\" pnpm exec tsc --noEmit -p packages/config/tsconfig.json && TMPDIR=\"$PWD/.tmp\" pnpm exec tsc --noEmit -p packages/types/tsconfig.json && TMPDIR=\"$PWD/.tmp\" pnpm exec tsc --noEmit -p packages/sdk/tsconfig.json",
+    "packages:build": "mkdir -p .tmp && TMPDIR=\"$PWD/.tmp\" pnpm exec tsc -p packages/shared/tsconfig.json && TMPDIR=\"$PWD/.tmp\" pnpm exec tsc -p packages/ui/tsconfig.json && TMPDIR=\"$PWD/.tmp\" pnpm exec tsc -p packages/config/tsconfig.json && TMPDIR=\"$PWD/.tmp\" pnpm exec tsc -p packages/types/tsconfig.json && TMPDIR=\"$PWD/.tmp\" pnpm exec tsc -p packages/sdk/tsconfig.json",
+    "format": "make format",
+    "format:check": "make format-check",
     "validate-env": "mkdir -p .tmp && TMPDIR=\"$PWD/.tmp\" pnpm --filter @goblin/web validate-env",
     "api:dev": "cd apps/api && PYTHONPATH=src uvicorn api.main:app --reload --port 8001",
     "web:dev": "mkdir -p .tmp && TMPDIR=\"$PWD/.tmp\" pnpm --filter @goblin/web dev"
-  }
+  },
+  "devDependencies": {
+    "typescript": "^5.9.3"
+  },
+  "pnpm": {
+    "overrides": {
+      "postcss": ">=8.5.10",
+      "@supabase/supabase-js": "2.107.0"
+    }
+  },
+  "packageManager": "pnpm@9.15.9+sha512.68046141893c66fad01c079231128e9afb89ef87e2691d69e4d40eee228988295fd4682181bae55b58418c3a253bde65a505ec7c5f9403ece5cc3cd37dcf2531"
 }

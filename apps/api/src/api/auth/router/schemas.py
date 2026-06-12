@@ -16,6 +16,7 @@ class User(BaseModel):
 
 class UserCreate(BaseModel):
     """User registration request model with required CSRF token."""
+
     email: EmailStr
     password: str
     name: Optional[str] = None
@@ -24,6 +25,7 @@ class UserCreate(BaseModel):
 
 class UserLogin(BaseModel):
     """User login request model with required CSRF token."""
+
     email: EmailStr
     password: str
     csrf_token: str  # Required: fetch from GET /auth/csrf-token first
@@ -37,6 +39,7 @@ class Token(BaseModel):
 
 class TokenWithRefresh(BaseModel):
     """Token response that includes refresh token."""
+
     access_token: str
     refresh_token: str
     token_type: str
@@ -46,6 +49,7 @@ class TokenWithRefresh(BaseModel):
 
 class RefreshTokenRequest(BaseModel):
     """Request to refresh access token."""
+
     refresh_token: Optional[str] = None
 
 
@@ -74,3 +78,22 @@ class PasskeyAuthRequest(BaseModel):
 
 class TokenValidationRequest(BaseModel):
     token: str
+
+
+class LogoutResponse(BaseModel):
+    """Response for logout endpoint."""
+
+    message: str
+
+
+class TokenValidationResponse(BaseModel):
+    """Response for token validation endpoint."""
+
+    valid: bool
+    user: Optional[User] = None
+
+
+class CsrfTokenResponse(BaseModel):
+    """Response for CSRF token endpoint."""
+
+    csrf_token: str

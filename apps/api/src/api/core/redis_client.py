@@ -1,13 +1,14 @@
 #!/usr/bin/env python3
 """
-Singleton Redis client for shared access across the API
-Follows the same pattern as CacheManager but provides a single reusable connection
+Singleton Redis client for shared access across the API.
+Provides a single reusable connection with TLS support for rediss:// URLs.
 """
 
 import asyncio
 import logging
 import os
 from typing import Optional
+
 import redis.asyncio as redis
 
 logger = logging.getLogger(__name__)
@@ -20,31 +21,34 @@ _redis_lock = asyncio.Lock()
 async def get_redis_client() -> redis.Redis:
     """
     Get or create the singleton Redis client.
-    Uses lazy initialization with lock to ensure thread-safe singleton creation.
+    Uses lazy initialization with lock for thread-safe singleton creation.
     """
     global _redis_client
-    
+
     if _redis_client is None:
         async with _redis_lock:
             if _redis_client is None:
                 redis_url = os.getenv("REDIS_URL", "redis://localhost:6379/0")
+                kwargs: dict = {
+                    "encoding": "utf-8",
+                    "decode_responses": True,
+                    "retry_on_timeout": True,
+                    "socket_connect_timeout": 5,
+                    "socket_timeout": 5,
+                }
+                if redis_url.startswith("rediss://"):
+                    kwargs["ssl_cert_reqs"] = None
                 try:
-                    _redis_client = redis.from_url(
-                        redis_url,
-                        encoding="utf-8",
-                        decode_responses=True,
-                        retry_on_timeout=True,
-                        socket_connect_timeout=5,
-                        socket_timeout=5,
-                    )
-                    # Test connection
+                    _redis_client = redis.from_url(redis_url, **kwargs)
                     await _redis_client.ping()
-                    logger.info("Redis client connection established")
+                    host = redis_url.split("@")[-1]
+                    logger.info("Redis client connected at %s", host)
                 except Exception as e:
-                    logger.error(f"Failed to connect to Redis: {e}")
+                    host = redis_url.split("@")[-1]
+                    logger.error("Failed to connect to Redis at %s: %s", host, e)
                     _redis_client = None
                     raise
-    
+
     return _redis_client
 
 

@@ -5,17 +5,21 @@ Updated to use production-ready Redis configuration.
 """
 
 import json
-from typing import Any, Optional, Union, Callable
+import logging
 from functools import wraps
-from fastapi import Request, Response
+from typing import Any, Callable, Optional
+
+from fastapi import Request
 
 # Import our production Redis configuration
 from ..config.redis_config import (
-    redis_config,
-    get_redis_client,
-    get_cache_ttl,
     CACHE_KEYS,
+    get_cache_ttl,
+    redis_config,
 )
+from ..core.redis_client import get_redis_client
+
+logger = logging.getLogger(__name__)
 
 
 class RedisCache:
@@ -39,11 +43,11 @@ class RedisCache:
             self._redis = await get_redis_client()
             # Test the connection
             await redis_config.test_connection(self._redis)
-            print("✅ Redis cache initialized successfully")
+            logger.info("Redis cache initialized successfully")
             self._initialized = True
         except Exception as e:
-            print(f"⚠️  Redis initialization failed: {e}")
-            print("   Continuing without Redis cache - performance may be reduced")
+            logger.warning("Redis initialization failed: %s", e)
+            logger.info("Continuing without Redis cache - performance may be reduced")
             self._redis = None
             self._initialized = True
 
@@ -57,7 +61,7 @@ class RedisCache:
                 return json.loads(value)
             return None
         except Exception as e:
-            print(f"Redis get error for key {key}: {e}")
+            logger.error("Redis get error for key %s: %s", key, e)
             return None
 
     async def set(
@@ -75,7 +79,7 @@ class RedisCache:
             ttl = expire or get_cache_ttl(cache_type)
             await self._redis.set(key, json.dumps(value), ex=ttl)
         except Exception as e:
-            print(f"Redis set error for key {key}: {e}")
+            logger.error("Redis set error for key %s: %s", key, e)
 
     async def delete(self, key: str):
         """Delete value from cache with error handling"""
@@ -84,7 +88,7 @@ class RedisCache:
         try:
             await self._redis.delete(key)
         except Exception as e:
-            print(f"Redis delete error for key {key}: {e}")
+            logger.error("Redis delete error for key %s: %s", key, e)
 
     async def delete_pattern(self, pattern: str):
         """Delete keys matching pattern"""
@@ -95,7 +99,7 @@ class RedisCache:
             if keys:
                 await self._redis.delete(*keys)
         except Exception as e:
-            print(f"Redis delete pattern error for {pattern}: {e}")
+            logger.error("Redis delete pattern error for %s: %s", pattern, e)
 
     async def exists(self, key: str) -> bool:
         """Check if key exists in cache"""
@@ -104,7 +108,7 @@ class RedisCache:
         try:
             return await self._redis.exists(key) == 1
         except Exception as e:
-            print(f"Redis exists error for key {key}: {e}")
+            logger.error("Redis exists error for key %s: %s", key, e)
             return False
 
     async def get_ttl(self, key: str) -> int:
@@ -114,7 +118,7 @@ class RedisCache:
         try:
             return await self._redis.ttl(key)
         except Exception as e:
-            print(f"Redis TTL error for key {key}: {e}")
+            logger.error("Redis TTL error for key %s: %s", key, e)
             return 0
 
     async def close(self):
@@ -122,9 +126,9 @@ class RedisCache:
         if self._redis:
             try:
                 await self._redis.close()
-                print("✅ Redis cache closed successfully")
+                logger.info("Redis cache closed successfully")
             except Exception as e:
-                print(f"Redis close error: {e}")
+                logger.error("Redis close error: %s", e)
 
 
 # Global cache instance
@@ -164,9 +168,7 @@ def cache_response(expire: Optional[int] = None, cache_type: str = "DEFAULT"):
 
             # Cache response with appropriate TTL
             if request and response:
-                await cache.set(
-                    cache_key, response, expire=expire, cache_type=cache_type
-                )
+                await cache.set(cache_key, response, expire=expire, cache_type=cache_type)
 
             return response
 
@@ -177,9 +179,7 @@ def cache_response(expire: Optional[int] = None, cache_type: str = "DEFAULT"):
 
 async def cache_provider_status(provider_name: str, status: dict):
     """Cache provider status with appropriate TTL"""
-    cache_key = redis_config.get_cache_key(
-        f"{CACHE_KEYS['PROVIDER_STATUS']}:{provider_name}"
-    )
+    cache_key = redis_config.get_cache_key(f"{CACHE_KEYS['PROVIDER_STATUS']}:{provider_name}")
     await cache.set(cache_key, status, cache_type="PROVIDER_STATUS")
 
 
@@ -197,9 +197,7 @@ async def cache_task_result(task_id: str, result: dict):
 
 async def get_cached_provider_status(provider_name: str) -> Optional[dict]:
     """Get cached provider status"""
-    cache_key = redis_config.get_cache_key(
-        f"{CACHE_KEYS['PROVIDER_STATUS']}:{provider_name}"
-    )
+    cache_key = redis_config.get_cache_key(f"{CACHE_KEYS['PROVIDER_STATUS']}:{provider_name}")
     return await cache.get(cache_key)
 
 

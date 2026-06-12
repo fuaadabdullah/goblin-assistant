@@ -1,9 +1,9 @@
-import { describe, it, expect, beforeEach, jest } from '@jest/globals';
+import { describe, it, expect, beforeEach, jest } from 'vitest';
 import { renderHook, act, waitFor } from '@testing-library/react';
 import { useChatStreaming } from '../useChatStreaming';
-import { apiClient } from '@/api';
+import { apiClient } from '@/lib/api';
 
-const mockChatCompletion = jest.spyOn(apiClient, 'chatCompletion');
+const mockChatCompletion = vi.spyOn(apiClient, 'chatCompletion');
 
 describe('useChatStreaming', () => {
   beforeEach(() => {
@@ -17,9 +17,9 @@ describe('useChatStreaming', () => {
   });
 
   it('should send a message and call callbacks', async () => {
-    const onMessageStart = jest.fn();
-    const onMessageUpdate = jest.fn();
-    const onMessageComplete = jest.fn();
+    const onMessageStart = vi.fn();
+    const onMessageUpdate = vi.fn();
+    const onMessageComplete = vi.fn();
 
     mockChatCompletion.mockResolvedValue({
       content: 'Hello! How can I help?',
@@ -33,7 +33,7 @@ describe('useChatStreaming', () => {
         selectedProvider: 'openai',
         selectedModel: 'gpt-4o-mini',
         demoMode: false,
-      }),
+      })
     );
 
     await act(async () => {
@@ -47,14 +47,14 @@ describe('useChatStreaming', () => {
   });
 
   it('should handle string responses', async () => {
-    const onMessageComplete = jest.fn();
+    const onMessageComplete = vi.fn();
 
     mockChatCompletion.mockResolvedValue('Direct string response');
 
     const { result } = renderHook(() =>
       useChatStreaming({
         onMessageComplete,
-      }),
+      })
     );
 
     await act(async () => {
@@ -65,21 +65,19 @@ describe('useChatStreaming', () => {
       expect.any(String),
       expect.objectContaining({
         content: 'Direct string response',
-      }),
+      })
     );
   });
 
   it('should handle API errors gracefully', async () => {
-    const onError = jest.fn();
+    const onError = vi.fn();
 
-    mockChatCompletion.mockRejectedValue(
-      new Error('API request failed'),
-    );
+    mockChatCompletion.mockRejectedValue(new Error('API request failed'));
 
     const { result } = renderHook(() =>
       useChatStreaming({
         onError,
-      }),
+      })
     );
 
     await act(async () => {
@@ -95,7 +93,7 @@ describe('useChatStreaming', () => {
       () =>
         new Promise((resolve) => {
           resolveResponse = resolve;
-        }),
+        })
     );
 
     const { result } = renderHook(() => useChatStreaming({}));
@@ -121,7 +119,7 @@ describe('useChatStreaming', () => {
     const { result } = renderHook(() =>
       useChatStreaming({
         selectedModel: 'gpt-4o',
-      }),
+      })
     );
 
     await act(async () => {
@@ -131,19 +129,19 @@ describe('useChatStreaming', () => {
     expect(mockChatCompletion).toHaveBeenCalledWith(
       [{ role: 'user', content: 'Hello world' }],
       'gpt-4o',
-      true,
+      true
     );
   });
 
   it('should generate unique message IDs', async () => {
     mockChatCompletion.mockResolvedValue({ content: 'Response' });
     const messageIds = new Set<string>();
-    const onMessageStart = jest.fn((id: string) => messageIds.add(id));
+    const onMessageStart = vi.fn((id: string) => messageIds.add(id));
 
     const { result } = renderHook(() =>
       useChatStreaming({
         onMessageStart,
-      }),
+      })
     );
 
     await act(async () => {

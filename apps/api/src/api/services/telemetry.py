@@ -25,13 +25,13 @@ Usage:
     )
 """
 
-import os
 import logging
-from typing import Dict, Optional, Any
+import os
 from datetime import datetime
 from enum import Enum
+from typing import Any, Dict, Optional
 
-from .sanitization import mask_sensitive, hash_message_id, redact_for_logging
+from .sanitization import hash_message_id, mask_sensitive, redact_for_logging
 
 logger = logging.getLogger(__name__)
 
@@ -137,13 +137,11 @@ def log_inference_metrics(
             if error:
                 statsd.increment("goblin.inference.errors", tags=tags)
         except Exception as e:
-            logger.error(f"Failed to send metrics to Datadog: {e}")
+            logger.error("Failed to send metrics to Datadog: %s", e)
 
     # Local logging (safe)
     log_data = {
-        "event": EventType.INFERENCE_SUCCESS
-        if status_code == 200
-        else EventType.INFERENCE_ERROR,
+        "event": (EventType.INFERENCE_SUCCESS if status_code == 200 else EventType.INFERENCE_ERROR),
         "provider": provider,
         "model": model,
         "latency_ms": latency_ms,
@@ -159,7 +157,7 @@ def log_inference_metrics(
     if metadata:
         log_data["metadata"] = mask_sensitive(metadata)
 
-    logger.info(f"Inference: {log_data}")
+    logger.info("Inference: %s", log_data)
 
 
 def log_conversation_event(
@@ -204,11 +202,9 @@ def log_conversation_event(
             statsd.increment(f"goblin.conversation.{event_type.value}", tags=tags)
 
             if message_count is not None:
-                statsd.gauge(
-                    "goblin.conversation.message_count", message_count, tags=tags
-                )
+                statsd.gauge("goblin.conversation.message_count", message_count, tags=tags)
         except Exception as e:
-            logger.error(f"Failed to send conversation event to Datadog: {e}")
+            logger.error("Failed to send conversation event to Datadog: %s", e)
 
     # Local logging (safe)
     log_data = {
@@ -222,7 +218,7 @@ def log_conversation_event(
     if metadata:
         log_data["metadata"] = mask_sensitive(metadata)
 
-    logger.info(f"Conversation: {log_data}")
+    logger.info("Conversation: %s", log_data)
 
 
 def log_rag_event(
@@ -264,12 +260,10 @@ def log_rag_event(
             if query_latency_ms:
                 statsd.histogram("goblin.rag.latency", query_latency_ms, tags=tags)
         except Exception as e:
-            logger.error(f"Failed to send RAG event to Datadog: {e}")
+            logger.error("Failed to send RAG event to Datadog: %s", e)
 
     # Local logging
-    logger.info(
-        f"RAG: event={event_type.value}, docs={document_count}, success={success}"
-    )
+    logger.info("RAG: event=%s, docs=%s, success=%s", event_type.value, document_count, success)
 
 
 def log_privacy_event(
@@ -301,7 +295,7 @@ def log_privacy_event(
             if item_count is not None:
                 statsd.gauge("goblin.privacy.item_count", item_count, tags=tags)
         except Exception as e:
-            logger.error(f"Failed to send privacy event to Datadog: {e}")
+            logger.error("Failed to send privacy event to Datadog: %s", e)
 
     # Local audit log (important for compliance)
     log_data = {
@@ -313,7 +307,7 @@ def log_privacy_event(
         "timestamp": datetime.utcnow().isoformat(),
     }
 
-    logger.info(f"Privacy: {log_data}")
+    logger.info("Privacy: %s", log_data)
 
 
 def log_error_event(
@@ -341,7 +335,7 @@ def log_error_event(
         try:
             statsd.increment("goblin.error", tags=tags)
         except Exception as e:
-            logger.error(f"Failed to send error event to Datadog: {e}")
+            logger.error("Failed to send error event to Datadog: %s", e)
 
     # Local logging
     log_data = {
@@ -354,11 +348,11 @@ def log_error_event(
     }
 
     if severity == "critical":
-        logger.critical(f"Error: {log_data}")
+        logger.critical("Error: %s", log_data)
     elif severity == "warning":
-        logger.warning(f"Error: {log_data}")
+        logger.warning("Error: %s", log_data)
     else:
-        logger.error(f"Error: {log_data}")
+        logger.error("Error: %s", log_data)
 
 
 def log_message_safely(

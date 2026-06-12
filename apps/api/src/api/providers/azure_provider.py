@@ -16,9 +16,6 @@ logger = structlog.get_logger(__name__)
 
 
 class AzureOpenAIProvider(BaseProvider):
-    COST_INPUT_PER_1K = 0.005
-    COST_OUTPUT_PER_1K = 0.015
-
     def __init__(
         self,
         provider_id: str | Dict[str, Any],
@@ -112,6 +109,7 @@ class AzureOpenAIProvider(BaseProvider):
             cost = self.estimate_cost(
                 int(usage.get("prompt_tokens", 0)),
                 int(usage.get("completion_tokens", 0)),
+                model=deployment,
             )
             self.record_success()
             return ProviderResult(
@@ -157,27 +155,29 @@ class AzureOpenAIProvider(BaseProvider):
         }
         if self._is_v1_endpoint():
             body["model"] = deployment
-        async with httpx.AsyncClient(timeout=120) as client:
-            async with client.stream(
+        async with (
+            httpx.AsyncClient(timeout=120) as client,
+            client.stream(
                 "POST",
                 self._url(deployment),
                 headers=self._headers(),
                 json=body,
-            ) as resp:
-                resp.raise_for_status()
-                async for line in resp.aiter_lines():
-                    if not line.startswith("data: "):
-                        continue
-                    payload = line[6:].strip()
-                    if payload == "[DONE]":
-                        break
-                    try:
-                        chunk = json.loads(payload)
-                    except json.JSONDecodeError:
-                        continue
-                    delta = chunk["choices"][0]["delta"].get("content", "")
-                    if delta:
-                        yield {"text": delta}
+            ) as resp,
+        ):
+            resp.raise_for_status()
+            async for line in resp.aiter_lines():
+                if not line.startswith("data: "):
+                    continue
+                payload = line[6:].strip()
+                if payload == "[DONE]":
+                    break
+                try:
+                    chunk = json.loads(payload)
+                except json.JSONDecodeError:
+                    continue
+                delta = chunk["choices"][0]["delta"].get("content", "")
+                if delta:
+                    yield {"text": delta}
 
     async def health_check(self) -> ProviderHealth:
         if not self._is_configured():
@@ -185,6 +185,7 @@ class AzureOpenAIProvider(BaseProvider):
         t0 = time.perf_counter()
         try:
             from .base import is_billing_error
+
             body: Dict[str, Any] = {
                 "messages": [{"role": "user", "content": "ping"}],
                 "max_tokens": 1,

@@ -2,7 +2,11 @@ import * as fs from 'node:fs';
 import * as path from 'node:path';
 
 const srcDir = path.join(process.cwd(), 'src');
-const rawConsolePattern = /console\.(log|warn|error|info|debug)\s*\(/;
+const appDir = path.join(process.cwd(), 'app');
+// Only console.warn and console.error are permitted in runtime code.
+// console.warn calls are stripped in production builds via next.config.ts compiler.removeConsole.
+// console.error is preserved for production error reporting.
+const rawConsolePattern = /console\.(log|info|debug|trace|dir)\s*\(/;
 
 const isRuntimeSourceFile = (filePath: string) => {
   if (!filePath.endsWith('.ts') && !filePath.endsWith('.tsx')) {
@@ -12,6 +16,7 @@ const isRuntimeSourceFile = (filePath: string) => {
   return !(
     filePath.includes(`${path.sep}__tests__${path.sep}`) ||
     filePath.includes(`${path.sep}pages${path.sep}api${path.sep}`) ||
+    filePath.includes(`${path.sep}e2e${path.sep}`) ||
     filePath.endsWith('.stories.ts') ||
     filePath.endsWith('.stories.tsx') ||
     filePath.endsWith('.test.ts') ||
@@ -32,12 +37,26 @@ const collectRuntimeFiles = (directory: string): string[] =>
   });
 
 describe('console audit', () => {
-  it('does not use raw console logging in shipped frontend runtime files', () => {
-    const offenders = collectRuntimeFiles(srcDir)
+  it('does not use banned console methods (log, info, debug, trace, dir) in shipped runtime files', () => {
+    const srcOffenders = collectRuntimeFiles(srcDir)
       .filter((filePath) => path.relative(srcDir, filePath) !== 'utils/dev-log.ts')
       .filter((filePath) => rawConsolePattern.test(fs.readFileSync(filePath, 'utf8')))
       .map((filePath) => path.relative(srcDir, filePath));
 
-    expect(offenders).toEqual([]);
+    const srcMessages = srcOffenders.map((f) => `  src/${f}`);
+
+    const appOffenders: string[] = [];
+    if (fs.existsSync(appDir)) {
+      const files = collectRuntimeFiles(appDir)
+        .filter((filePath) => rawConsolePattern.test(fs.readFileSync(filePath, 'utf8')))
+        .map((filePath) => path.relative(appDir, filePath));
+      appOffenders.push(...files);
+    }
+
+    const appMessages = appOffenders.map((f) => `  app/${f}`);
+
+    const allOffenders = [...srcMessages, ...appMessages];
+
+    expect(allOffenders).toEqual([]);
   });
 });

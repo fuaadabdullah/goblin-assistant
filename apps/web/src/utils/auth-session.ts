@@ -1,27 +1,8 @@
-import { isAdminUser, type AccessUser } from './access';
+import type { AccessUser } from './access';
 
-const AUTH_FLAG_COOKIE = 'goblin_auth';
-const ADMIN_COOKIE = 'goblin_admin';
 const SESSION_TOKEN_COOKIE = 'session_token';
 const REFRESH_TOKEN_COOKIE = 'refresh_token';
-const LEGACY_TOKEN_COOKIES = ['auth_token'];
-const DEFAULT_MAX_AGE_SECONDS = 60 * 60 * 24 * 30;
-
-const cookieBase = (maxAge?: number): string => {
-  const parts = ['Path=/', 'SameSite=Lax'];
-  if (typeof maxAge === 'number' && Number.isFinite(maxAge)) {
-    parts.push(`Max-Age=${Math.max(0, Math.floor(maxAge))}`);
-  }
-  if (typeof window !== 'undefined' && window.location.protocol === 'https:') {
-    parts.push('Secure');
-  }
-  return parts.join('; ');
-};
-
-const setCookie = (name: string, value: string, maxAge?: number): void => {
-  if (typeof document === 'undefined') return;
-  document.cookie = `${name}=${encodeURIComponent(value)}; ${cookieBase(maxAge)}`;
-};
+const LEGACY_TOKEN_COOKIES = ['auth_token', 'goblin_auth', 'goblin_admin'];
 
 const clearCookie = (name: string): void => {
   if (typeof document === 'undefined') return;
@@ -29,89 +10,59 @@ const clearCookie = (name: string): void => {
 };
 
 interface PersistAuthInput {
-  token?: string | null;
-  refreshToken?: string | null;
-  user?: AccessUser | null;
-  expiresIn?: number | null;
+  token?: string | null | undefined;
+  refreshToken?: string | null | undefined;
+  user?: AccessUser | null | undefined;
+  expiresIn?: number | null | undefined;
 }
 
 /**
- * Persist authentication session.
- *
- * Auth tokens (session_token, refresh_token) are now set as HttpOnly cookies
- * by the backend — they are NOT written client-side. Only non-sensitive UI
- * flags (goblin_auth, goblin_admin) and user_data remain client-managed.
+ * Persist non-sensitive user data to localStorage for UI hydration.
+ * Session cookies are managed by @supabase/ssr — nothing to write here.
  */
-export const persistAuthSession = ({ token, refreshToken, user, expiresIn }: PersistAuthInput): void => {
+export const persistAuthSession = ({ user }: PersistAuthInput): void => {
   if (typeof window === 'undefined') return;
-
-  const maxAge =
-    typeof expiresIn === 'number' && Number.isFinite(expiresIn)
-      ? Math.max(0, expiresIn)
-      : DEFAULT_MAX_AGE_SECONDS;
-
-  if (token) {
-    // Set the legacy auth-flag cookie so Next.js middleware can gate routes.
-    // The actual JWT lives in the HttpOnly session_token cookie set by the backend.
-    setCookie(AUTH_FLAG_COOKIE, '1', maxAge);
-  }
-
-  // refreshToken: handled by HttpOnly cookie from backend — nothing to do here.
-
   if (user) {
-    // User data is non-sensitive display info — localStorage is fine here
     localStorage.setItem('user_data', JSON.stringify(user));
-    setCookie(ADMIN_COOKIE, isAdminUser(user) ? '1' : '0', maxAge);
   }
 };
 
 /**
- * Check whether the user appears to be authenticated.
- *
- * The actual JWT is in an HttpOnly cookie (not readable by JS). This helper
- * checks the JS-readable `goblin_auth` flag cookie that is set alongside it,
- * plus a legacy localStorage fallback.
- */
-export const isAuthenticated = (): boolean => {
-  if (typeof document === 'undefined') return false;
-  const flagMatch = document.cookie.match(new RegExp(`(?:^|;\\s*)${AUTH_FLAG_COOKIE}=([^;]*)`));
-  if (flagMatch?.[1] === '1') return true;
-  // Legacy fallback
-  return Boolean(localStorage.getItem('auth_token'));
-};
-
-/**
- * Retrieve the stored auth token (checks cookie, falls back to legacy localStorage).
- *
- * NOTE: With HttpOnly cookies, the session_token cookie is no longer readable
- * by client JS. This function now primarily serves legacy fallback. The actual
- * auth credential is sent automatically as an HttpOnly cookie.
+ * Retrieve the stored auth token (legacy localStorage fallback only).
+ * Session is now managed by @supabase/ssr cookies — this exists for the
+ * Zustand authStore bootstrap path until that store is removed.
  */
 export const getAuthToken = (): string | null => {
   if (typeof document === 'undefined') return null;
-  // Try cookie first
-  const match = document.cookie.match(new RegExp(`(?:^|;\\s*)${SESSION_TOKEN_COOKIE}=([^;]*)`));
+  const match = document.cookie.match(
+    new RegExp(`(?:^|;\\s*)${SESSION_TOKEN_COOKIE}=([^;]*)`),
+  );
   if (match?.[1]) return decodeURIComponent(match[1]);
-  // Legacy fallback — needed until all users re-authenticate
   return localStorage.getItem('auth_token');
 };
 
 export const getRefreshToken = (): string | null => {
   if (typeof document === 'undefined') return null;
-  const match = document.cookie.match(new RegExp(`(?:^|;\\s*)${REFRESH_TOKEN_COOKIE}=([^;]*)`));
+  const match = document.cookie.match(
+    new RegExp(`(?:^|;\\s*)${REFRESH_TOKEN_COOKIE}=([^;]*)`),
+  );
   if (match?.[1]) return decodeURIComponent(match[1]);
   return null;
 };
 
+/**
+ * Check whether the user appears to be authenticated via legacy tokens.
+ * Used only by the Zustand authStore bootstrap — will be removed with it.
+ */
+export const isAuthenticated = (): boolean => {
+  if (typeof document === 'undefined') return false;
+  return Boolean(localStorage.getItem('auth_token'));
+};
+
 export const clearAuthSession = (): void => {
   if (typeof window === 'undefined') return;
-
   localStorage.removeItem('auth_token');
   localStorage.removeItem('user_data');
-
-  clearCookie(AUTH_FLAG_COOKIE);
-  clearCookie(ADMIN_COOKIE);
-  clearCookie(SESSION_TOKEN_COOKIE);
-  clearCookie(REFRESH_TOKEN_COOKIE);
-  LEGACY_TOKEN_COOKIES.forEach(clearCookie);
+  // Clear legacy flag cookies and any leftover backend-set cookies
+  [SESSION_TOKEN_COOKIE, REFRESH_TOKEN_COOKIE, ...LEGACY_TOKEN_COOKIES].forEach(clearCookie);
 };

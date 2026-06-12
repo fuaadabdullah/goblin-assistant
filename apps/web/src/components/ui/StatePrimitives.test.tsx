@@ -6,14 +6,14 @@ import SectionLoadingState from './SectionLoadingState';
 
 describe('state primitives', () => {
   it('renders an empty state action', () => {
-    const onAction = jest.fn();
+    const onAction = vi.fn();
     render(
       <EmptyState
         title="No items"
         description="Create one to get started."
         actionLabel="Create"
         onAction={onAction}
-      />,
+      />
     );
 
     fireEvent.click(screen.getByRole('button', { name: 'Create' }));
@@ -21,7 +21,7 @@ describe('state primitives', () => {
   });
 
   it('renders an inline error retry action', () => {
-    const onRetry = jest.fn();
+    const onRetry = vi.fn();
     render(<InlineErrorState title="Request failed" message="Try again." onRetry={onRetry} />);
 
     fireEvent.click(screen.getByRole('button', { name: 'Retry' }));

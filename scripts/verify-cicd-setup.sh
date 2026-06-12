@@ -46,7 +46,7 @@ files_to_check=(
     ".github/workflows/deploy-staging.yml"
     ".github/workflows/deploy-prod.yml"
     ".circleci/config.yml"
-    "docs/runbooks/CI_CD_PIPELINE_README.md"
+    "docs/operations/CI_CD_PIPELINE_README.md"
 )
 
 all_files_exist=0
@@ -209,8 +209,8 @@ echo -e "${BLUE}7. Checking Documentation...${NC}"
 echo ""
 
 docs=(
-    "docs/runbooks/CI_CD_PIPELINE_README.md"
-    "docs/runbooks/GOBLINOS_STORAGE_README.md"
+    "docs/operations/CI_CD_PIPELINE_README.md"
+    "docs/operations/GOBLINOS_STORAGE_README.md"
 )
 
 for doc in "${docs[@]}"; do

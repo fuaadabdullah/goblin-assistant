@@ -39,17 +39,18 @@ def _validate_ticker(ticker: str) -> str:
 # ---------------------------------------------------------------------------
 
 _CACHE_PREFIX = "fin:"
-_QUOTE_TTL = 60 * 15       # 15 minutes
+_QUOTE_TTL = 60 * 15  # 15 minutes
 _FINANCIALS_TTL = 60 * 60 * 24  # 24 hours
 _EARNINGS_TTL = 60 * 60 * 24
 _RATIOS_TTL = 60 * 60 * 24
-_HISTORY_TTL = 60 * 60      # 1 hour
+_HISTORY_TTL = 60 * 60  # 1 hour
 
 
 def _get_redis():
     """Return a Redis client or None when unavailable."""
     try:
         import redis as _redis
+
         url = os.getenv("REDIS_URL", "redis://localhost:6379/0")
         return _redis.from_url(url, decode_responses=True, socket_connect_timeout=2)
     except Exception:
@@ -102,9 +103,7 @@ def _yf_get_quote(ticker: str) -> Dict[str, Any]:
     }
 
 
-def _yf_get_price_history(
-    ticker: str, period: str, interval: str
-) -> Dict[str, Any]:
+def _yf_get_price_history(ticker: str, period: str, interval: str) -> Dict[str, Any]:
     import yfinance as yf
 
     t = yf.Ticker(ticker)
@@ -114,14 +113,16 @@ def _yf_get_price_history(
 
     records = []
     for date, row in df.iterrows():
-        records.append({
-            "date": str(date.date()) if hasattr(date, "date") else str(date),
-            "open": round(float(row["Open"]), 2),
-            "high": round(float(row["High"]), 2),
-            "low": round(float(row["Low"]), 2),
-            "close": round(float(row["Close"]), 2),
-            "volume": int(row["Volume"]),
-        })
+        records.append(
+            {
+                "date": str(date.date()) if hasattr(date, "date") else str(date),
+                "open": round(float(row["Open"]), 2),
+                "high": round(float(row["High"]), 2),
+                "low": round(float(row["Low"]), 2),
+                "close": round(float(row["Close"]), 2),
+                "volume": int(row["Volume"]),
+            }
+        )
 
     return {
         "ticker": ticker,
@@ -170,12 +171,14 @@ def _yf_get_earnings(ticker: str) -> Dict[str, Any]:
         ed = t.earnings_dates
         if ed is not None and not ed.empty:
             for date, row in ed.head(8).iterrows():
-                earnings_dates.append({
-                    "date": str(date.date()) if hasattr(date, "date") else str(date),
-                    "eps_estimate": _safe_float(row.get("EPS Estimate")),
-                    "eps_actual": _safe_float(row.get("Reported EPS")),
-                    "surprise_percent": _safe_float(row.get("Surprise(%)")),
-                })
+                earnings_dates.append(
+                    {
+                        "date": (str(date.date()) if hasattr(date, "date") else str(date)),
+                        "eps_estimate": _safe_float(row.get("EPS Estimate")),
+                        "eps_actual": _safe_float(row.get("Reported EPS")),
+                        "surprise_percent": _safe_float(row.get("Surprise(%)")),
+                    }
+                )
     except Exception:
         pass
 
@@ -226,6 +229,7 @@ def _safe_float(val: Any) -> Optional[float]:
     try:
         f = float(val)
         import math
+
         return None if math.isnan(f) else round(f, 4)
     except (TypeError, ValueError):
         return None
@@ -250,7 +254,8 @@ class FinancialDataService:
 
         check_rate_limit()
         result = await with_timeout(
-            asyncio.to_thread(_yf_get_quote, ticker), ticker=ticker,
+            asyncio.to_thread(_yf_get_quote, ticker),
+            ticker=ticker,
         )
         _cache_set(f"quote:{ticker}", result, _QUOTE_TTL)
         return result
@@ -264,7 +269,18 @@ class FinancialDataService:
         from .financial_guardrails import check_rate_limit, with_timeout
 
         ticker = _validate_ticker(ticker)
-        allowed_periods = {"1d", "5d", "1mo", "3mo", "6mo", "1y", "2y", "5y", "ytd", "max"}
+        allowed_periods = {
+            "1d",
+            "5d",
+            "1mo",
+            "3mo",
+            "6mo",
+            "1y",
+            "2y",
+            "5y",
+            "ytd",
+            "max",
+        }
         allowed_intervals = {"1m", "5m", "15m", "30m", "1h", "1d", "1wk", "1mo"}
         if period not in allowed_periods:
             period = "1y"
@@ -296,7 +312,8 @@ class FinancialDataService:
 
         check_rate_limit()
         result = await with_timeout(
-            asyncio.to_thread(_yf_get_financials, ticker), ticker=ticker,
+            asyncio.to_thread(_yf_get_financials, ticker),
+            ticker=ticker,
         )
         _cache_set(f"fin:{ticker}", result, _FINANCIALS_TTL)
         return result
@@ -312,7 +329,8 @@ class FinancialDataService:
 
         check_rate_limit()
         result = await with_timeout(
-            asyncio.to_thread(_yf_get_earnings, ticker), ticker=ticker,
+            asyncio.to_thread(_yf_get_earnings, ticker),
+            ticker=ticker,
         )
         _cache_set(f"earn:{ticker}", result, _EARNINGS_TTL)
         return result
@@ -328,7 +346,8 @@ class FinancialDataService:
 
         check_rate_limit()
         result = await with_timeout(
-            asyncio.to_thread(_yf_get_key_ratios, ticker), ticker=ticker,
+            asyncio.to_thread(_yf_get_key_ratios, ticker),
+            ticker=ticker,
         )
         _cache_set(f"ratios:{ticker}", result, _RATIOS_TTL)
         return result

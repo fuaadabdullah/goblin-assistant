@@ -45,7 +45,9 @@ describe('estimateFromText', () => {
   });
 
   it('returns valid numeric results', () => {
-    const result = estimateFromText('A longer text to test with enough characters for a proper estimate');
+    const result = estimateFromText(
+      'A longer text to test with enough characters for a proper estimate'
+    );
     expect(result.estimated_tokens).toBeGreaterThan(0);
     expect(Number.isFinite(result.estimated_cost_usd)).toBe(true);
     expect(result.estimated_cost_usd).toBeGreaterThan(0);

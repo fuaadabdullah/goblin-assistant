@@ -1,24 +1,37 @@
 import React from 'react';
 import { render, screen, fireEvent } from '@testing-library/react';
-import '@testing-library/jest-dom';
 
-jest.mock('../../ui/Button', () => {
-  return function MockButton({ children, onClick, disabled, variant }: { children: React.ReactNode; onClick?: () => void; disabled?: boolean; variant?: string }) {
-    return <button onClick={onClick} disabled={disabled} data-variant={variant}>{children}</button>;
-  };
-});
+vi.mock('../../ui/Button', () => ({
+  default: function MockButton({
+    children,
+    onClick,
+    disabled,
+    variant,
+  }: {
+    children: React.ReactNode;
+    onClick?: () => void;
+    disabled?: boolean;
+    variant?: string;
+  }) {
+    return (
+      <button onClick={onClick} disabled={disabled} data-variant={variant}>
+        {children}
+      </button>
+    );
+  },
+}));
 
 import { DashboardHeader } from '../DashboardHeader';
 
 describe('DashboardHeader', () => {
   const defaultProps = {
-    onRefresh: jest.fn(),
+    onRefresh: vi.fn(),
     autoRefresh: false,
-    onToggleAutoRefresh: jest.fn(),
+    onToggleAutoRefresh: vi.fn(),
     loading: false,
   };
 
-  beforeEach(() => jest.clearAllMocks());
+  beforeEach(() => vi.clearAllMocks());
 
   it('renders the welcome heading', () => {
     render(<DashboardHeader {...defaultProps} />);

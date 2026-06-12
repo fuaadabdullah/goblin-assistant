@@ -2,7 +2,7 @@ import type { FormEvent } from 'react';
 import { useCallback, useState } from 'react';
 import { sendSupportMessage } from '../api';
 import { toUiError } from '../../../lib/ui-error';
-import { useToast } from '../../../contexts/ToastContext';
+import { useToast } from '../../../hooks/useToast';
 
 export interface SupportFormState {
   message: string;

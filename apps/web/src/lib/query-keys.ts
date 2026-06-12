@@ -13,8 +13,7 @@ export const queryKeys = {
   models: ['chat', 'models'] as const,
   routingInfo: ['chat', 'routing-info'] as const,
   chatThreads: ['chat', 'threads'] as const,
-  chatConversation: (conversationId: string) =>
-    ['chat', 'conversation', conversationId] as const,
+  chatConversation: (conversationId: string) => ['chat', 'conversation', conversationId] as const,
 
   // Search
   collections: ['search', 'collections'] as const,
@@ -30,9 +29,14 @@ export const queryKeys = {
   // Auth
   authValidate: ['auth', 'validate'] as const,
 
+  // Dashboard
+  costSummary: ['dashboard', 'cost-summary'] as const,
+
   // Routing
   routingProviders: (capability?: string) =>
-    capability ? ['routing', 'providers', capability] as const : ['routing', 'providers'] as const,
+    capability
+      ? (['routing', 'providers', capability] as const)
+      : (['routing', 'providers'] as const),
   routingHealth: ['routing', 'health'] as const,
 
   // Goblins

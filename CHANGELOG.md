@@ -7,6 +7,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.2.0] - 2026-06-06
+
+### Changed
+
+- Jira versions/releases are now the issue-level source of truth for release notes, while `CHANGELOG.md` remains the curated public summary.
+- Jira provider incident automation is now wired to the live `PROVOPS` project workflow with incoming-webhook incident creation.
+
 ### Added
 
 - **Mobile Drawer + Chat FAB (mobile)**: Mobile drawer navigation with accessible focus trapping, reduced-motion support, and a prominent Chat floating action button (FAB).
@@ -84,7 +91,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Enhanced README with screenshots section and improved navigation
 - Updated wiki documentation with visual references
 
-## [1.0.0] - 2024-01-XX
+## [1.0.0] - 2026-03-05
 
 - Initial release of Goblin Assistant
 - Multi-provider AI chat interface (31+ providers supported)
@@ -125,4 +132,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## Versioning
 
-This project uses [Semantic Versioning](https://semver.org/). For the versions available, see the [tags on this repository](https://github.com/yourusername/goblin-assistant/tags).
+This project uses [Semantic Versioning](https://semver.org/). For the versions available, see the [tags on this repository](https://github.com/fuaadabdullah/goblin-assistant/tags).
+
+As of June 1, 2026, there are no Git tags for releases yet; this changelog is being normalized from an unversioned state.

@@ -2,34 +2,34 @@ import { createRef } from 'react';
 import { fireEvent, render, screen } from '@testing-library/react';
 import ChatMessageList from '../ChatMessageList';
 
-jest.mock('../StreamingMessage', () => ({
+vi.mock('../StreamingMessage', () => ({
   __esModule: true,
   default: ({ message }: { message: { content: string } }) => <span>{message.content}</span>,
 }));
 
-jest.mock('../MessageTimestamp', () => ({
+vi.mock('../MessageTimestamp', () => ({
   __esModule: true,
   default: ({ createdAt }: { createdAt: string }) => <time>{createdAt}</time>,
 }));
 
-jest.mock('../MessageActions', () => ({
+vi.mock('../MessageActions', () => ({
   __esModule: true,
   default: () => null,
 }));
 
-jest.mock('../ChatEmptyState', () => ({
+vi.mock('../ChatEmptyState', () => ({
   __esModule: true,
   default: () => <div>Empty state</div>,
 }));
 
-jest.mock('../MessageMarkdown', () => ({
+vi.mock('../MessageMarkdown', () => ({
   __esModule: true,
   default: ({ content }: { content: string }) => <span>{content}</span>,
 }));
 
 const baseProps = {
   quickPrompts: [],
-  onPromptClick: jest.fn(),
+  onPromptClick: vi.fn(),
   bottomRef: createRef<HTMLDivElement>(),
   isSending: false,
 };
@@ -57,12 +57,7 @@ const messages = [
 
 describe('ChatMessageList', () => {
   it('preserves DOM identity for messages across reorder and delete operations', () => {
-    const { rerender } = render(
-      <ChatMessageList
-        {...baseProps}
-        messages={messages}
-      />
-    );
+    const { rerender } = render(<ChatMessageList {...baseProps} messages={messages} />);
 
     const alphaNode = screen.getByText('Alpha').closest('li');
     const betaNode = screen.getByText('Beta').closest('li');
@@ -72,24 +67,14 @@ describe('ChatMessageList', () => {
     expect(betaNode).not.toBeNull();
     expect(gammaNode).not.toBeNull();
 
-    rerender(
-      <ChatMessageList
-        {...baseProps}
-        messages={[messages[2], messages[0], messages[1]]}
-      />
-    );
+    rerender(<ChatMessageList {...baseProps} messages={[messages[2], messages[0], messages[1]]} />);
 
     const reorderedItems = screen.getAllByRole('listitem');
     expect(reorderedItems[0]).toBe(gammaNode);
     expect(reorderedItems[1]).toBe(alphaNode);
     expect(reorderedItems[2]).toBe(betaNode);
 
-    rerender(
-      <ChatMessageList
-        {...baseProps}
-        messages={[messages[2], messages[1]]}
-      />
-    );
+    rerender(<ChatMessageList {...baseProps} messages={[messages[2], messages[1]]} />);
 
     const remainingItems = screen.getAllByRole('listitem');
     expect(remainingItems[0]).toBe(gammaNode);

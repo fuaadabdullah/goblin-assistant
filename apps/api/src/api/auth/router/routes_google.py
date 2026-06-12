@@ -5,6 +5,7 @@ from datetime import timedelta
 from fastapi import APIRouter, Depends, HTTPException, Response, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from ...core.contracts import SuccessEnvelope
 from ..oauth import GoogleOAuth
 from . import _runtime as _ar
 from .config import ACCESS_TOKEN_EXPIRE_MINUTES
@@ -43,9 +44,7 @@ async def _issue_google_session_tokens(
     if not user_model:
         existing_user = await user_service.get_user_by_email(email)
         if existing_user:
-            await user_service.update_user(
-                existing_user.id, google_id=google_id, flush_only=True
-            )
+            await user_service.update_user(existing_user.id, google_id=google_id, flush_only=True)
             user_model = existing_user
         else:
             user_create_data = _ar.UserCreateData(
@@ -92,16 +91,18 @@ async def _issue_google_session_tokens(
 
     _set_auth_cookies(response, access_token, refresh_token)
 
-    return TokenWithRefresh(
-        access_token=access_token,
-        refresh_token=refresh_token,
-        token_type="bearer",
-        user=user,
-        expires_in=ACCESS_TOKEN_EXPIRE_MINUTES * 60,
+    return SuccessEnvelope(
+        data=TokenWithRefresh(
+            access_token=access_token,
+            refresh_token=refresh_token,
+            token_type="bearer",
+            user=user,
+            expires_in=ACCESS_TOKEN_EXPIRE_MINUTES * 60,
+        )
     )
 
 
-@router.post("/google", response_model=TokenWithRefresh)
+@router.post("/google", response_model=SuccessEnvelope[TokenWithRefresh])
 async def google_auth(
     auth_request: GoogleAuthRequest,
     response: Response,
@@ -109,9 +110,7 @@ async def google_auth(
 ):
     google_user = await GoogleOAuth.verify_token(auth_request.token)
     if not google_user:
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid Google token"
-        )
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid Google token")
     return await _issue_google_session_tokens(google_user, db, response)
 
 
@@ -122,12 +121,10 @@ async def get_google_auth_url():
         auth_url = GoogleOAuth.get_authorization_url()
         return {"authorization_url": auth_url}
     except ValueError as e:
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=str(e)
-        )
+        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=str(e))
 
 
-@router.post("/google/callback", response_model=TokenWithRefresh)
+@router.post("/google/callback", response_model=SuccessEnvelope[TokenWithRefresh])
 async def google_auth_callback(
     callback_data: GoogleAuthCallback,
     response: Response,

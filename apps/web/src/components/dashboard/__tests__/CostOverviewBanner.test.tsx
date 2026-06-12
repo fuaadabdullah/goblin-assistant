@@ -1,8 +1,7 @@
 import React from 'react';
 import { render, screen } from '@testing-library/react';
-import '@testing-library/jest-dom';
 
-jest.mock('@/utils/format-cost', () => ({
+vi.mock('@/utils/format-cost', () => ({
   formatCost: (v: number) => `$${v.toFixed(2)}`,
 }));
 
@@ -42,12 +41,7 @@ describe('CostOverviewBanner', () => {
   });
 
   it('shows provider breakdown when byProvider has entries', () => {
-    render(
-      <CostOverviewBanner
-        {...baseProps}
-        byProvider={{ openai: 50, anthropic: 30 }}
-      />
-    );
+    render(<CostOverviewBanner {...baseProps} byProvider={{ openai: 50, anthropic: 30 }} />);
     expect(screen.getByText(/openai/)).toBeInTheDocument();
     expect(screen.getByText(/anthropic/)).toBeInTheDocument();
   });

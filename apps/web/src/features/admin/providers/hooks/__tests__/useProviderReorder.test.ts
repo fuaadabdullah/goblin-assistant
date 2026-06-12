@@ -14,10 +14,10 @@ describe('useProviderReorder', () => {
   const providerA = makeProvider('a');
   const providerB = makeProvider('b');
   const providerC = makeProvider('c');
-  let onReorder: jest.Mock;
+  let onReorder: vi.Mock;
 
   beforeEach(() => {
-    onReorder = jest.fn().mockResolvedValue(undefined);
+    onReorder = vi.fn().mockResolvedValue(undefined);
   });
 
   it('returns initial state with no dragged provider', () => {
@@ -42,7 +42,7 @@ describe('useProviderReorder', () => {
     const { result } = renderHook(() =>
       useProviderReorder({ providers: [providerA, providerB], onReorder })
     );
-    const e = { preventDefault: jest.fn() } as unknown as React.DragEvent<HTMLDivElement>;
+    const e = { preventDefault: vi.fn() } as unknown as React.DragEvent<HTMLDivElement>;
     act(() => result.current.handleDragOver(e));
     expect(e.preventDefault).toHaveBeenCalled();
   });
@@ -51,7 +51,9 @@ describe('useProviderReorder', () => {
     const { result } = renderHook(() =>
       useProviderReorder({ providers: [providerA, providerB], onReorder })
     );
-    await act(async () => { await result.current.handleDrop(providerB); });
+    await act(async () => {
+      await result.current.handleDrop(providerB);
+    });
     expect(onReorder).not.toHaveBeenCalled();
   });
 
@@ -60,7 +62,9 @@ describe('useProviderReorder', () => {
       useProviderReorder({ providers: [providerA, providerB], onReorder })
     );
     act(() => result.current.handleDragStart(providerA));
-    await act(async () => { await result.current.handleDrop(providerA); });
+    await act(async () => {
+      await result.current.handleDrop(providerA);
+    });
     expect(onReorder).not.toHaveBeenCalled();
   });
 
@@ -69,7 +73,9 @@ describe('useProviderReorder', () => {
       useProviderReorder({ providers: [providerA, providerB, providerC], onReorder })
     );
     act(() => result.current.handleDragStart(providerA));
-    await act(async () => { await result.current.handleDrop(providerC); });
+    await act(async () => {
+      await result.current.handleDrop(providerC);
+    });
     expect(onReorder).toHaveBeenCalledWith([providerB, providerC, providerA]);
     expect(result.current.draggedProvider).toBeNull();
   });
@@ -81,7 +87,11 @@ describe('useProviderReorder', () => {
     );
     act(() => result.current.handleDragStart(providerA));
     await act(async () => {
-      try { await result.current.handleDrop(providerB); } catch { /* expected */ }
+      try {
+        await result.current.handleDrop(providerB);
+      } catch {
+        /* expected */
+      }
     });
     expect(result.current.draggedProvider).toBeNull();
   });
@@ -92,7 +102,9 @@ describe('useProviderReorder', () => {
       useProviderReorder({ providers: [providerA, providerB], onReorder })
     );
     act(() => result.current.handleDragStart(orphan));
-    await act(async () => { await result.current.handleDrop(providerA); });
+    await act(async () => {
+      await result.current.handleDrop(providerA);
+    });
     expect(onReorder).not.toHaveBeenCalled();
   });
 
@@ -102,7 +114,9 @@ describe('useProviderReorder', () => {
       useProviderReorder({ providers: [providerA, providerB], onReorder })
     );
     act(() => result.current.handleDragStart(providerA));
-    await act(async () => { await result.current.handleDrop(orphan); });
+    await act(async () => {
+      await result.current.handleDrop(orphan);
+    });
     expect(onReorder).not.toHaveBeenCalled();
   });
 });

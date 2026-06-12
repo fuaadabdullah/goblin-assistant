@@ -7,11 +7,16 @@ const buttonVariants = cva(
   {
     variants: {
       variant: {
-        primary: 'bg-primary text-text hover:bg-primary-600 active:bg-primary-600/90 shadow-md hover:shadow-lg',
-        secondary: 'bg-surface text-text border border-border hover:bg-surface-hover hover:border-primary/50 active:bg-surface-active shadow-sm hover:shadow-md',
-        danger: 'bg-danger text-text hover:bg-danger/90 active:bg-danger/80 shadow-md hover:shadow-lg',
-        success: 'bg-success text-text hover:bg-success/90 active:bg-success/80 shadow-md hover:shadow-lg',
-        ghost: 'bg-transparent text-text border border-border hover:bg-surface/50 active:bg-surface/70',
+        primary:
+          'bg-primary text-text hover:bg-primary-600 active:bg-primary-600/90 shadow-md hover:shadow-lg',
+        secondary:
+          'bg-surface text-text border border-border hover:bg-surface-hover hover:border-primary/50 active:bg-surface-active shadow-sm hover:shadow-md',
+        danger:
+          'bg-danger text-text hover:bg-danger/90 active:bg-danger/80 shadow-md hover:shadow-lg',
+        success:
+          'bg-success text-text hover:bg-success/90 active:bg-success/80 shadow-md hover:shadow-lg',
+        ghost:
+          'bg-transparent text-text border border-border hover:bg-surface/50 active:bg-surface/70',
       },
       size: {
         sm: 'h-8 px-3 text-sm',
@@ -33,11 +38,10 @@ const buttonVariants = cva(
 
 export type ButtonVariantProps = VariantProps<typeof buttonVariants>;
 
-export interface ButtonProps 
-  extends Omit<ButtonHTMLAttributes<HTMLButtonElement>, 'size'>,
-          ButtonVariantProps {
-  icon?: ReactNode;
-  loading?: boolean;
+export interface ButtonProps
+  extends Omit<ButtonHTMLAttributes<HTMLButtonElement>, 'size'>, ButtonVariantProps {
+  icon?: ReactNode | undefined;
+  loading?: boolean | undefined;
   children: ReactNode;
 }
 
@@ -46,18 +50,21 @@ export interface ButtonProps
  * Enforces design system: warm palette, consistent shadows, focus ring.
  */
 const Button = forwardRef<HTMLButtonElement, ButtonProps>(
-  ({
-    variant = 'primary',
-    size = 'md',
-    fullWidth = false,
-    icon,
-    loading = false,
-    disabled,
-    type = 'button',
-    className,
-    children,
-    ...props
-  }, ref) => {
+  (
+    {
+      variant = 'primary',
+      size = 'md',
+      fullWidth = false,
+      icon,
+      loading = false,
+      disabled,
+      type = 'button',
+      className,
+      children,
+      ...props
+    },
+    ref
+  ) => {
     return (
       <button
         ref={ref}
@@ -67,7 +74,11 @@ const Button = forwardRef<HTMLButtonElement, ButtonProps>(
         aria-busy={loading ? 'true' : undefined}
         {...props}
       >
-        {loading && <span className="animate-spin" aria-hidden="true">⟳</span>}
+        {loading && (
+          <span className="animate-spin" aria-hidden="true">
+            ⟳
+          </span>
+        )}
         {!loading && icon && <span aria-hidden="true">{icon}</span>}
         {children}
       </button>

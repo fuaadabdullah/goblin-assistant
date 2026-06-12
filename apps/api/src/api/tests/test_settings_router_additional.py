@@ -11,7 +11,7 @@ def _jwt_secret_for_app(monkeypatch):
 
 
 def _make_client():
-    import api.main as main
+    from api import main
 
     return TestClient(main.app)
 
@@ -19,17 +19,17 @@ def _make_client():
 def test_provider_models_deduplicates_and_sorts():
     from api.settings_router import _provider_models
 
-    assert _provider_models(
-        {"models": ["b", "a", "a"], "default_model": "c"}
-    ) == ["a", "b", "c"]
+    assert _provider_models({"models": ["b", "a", "a"], "default_model": "c"}) == [
+        "a",
+        "b",
+        "c",
+    ]
 
 
 def test_provider_models_ignores_blank_values():
     from api.settings_router import _provider_models
 
-    assert _provider_models(
-        {"models": ["", "alpha"], "default_model": " "}
-    ) == ["alpha"]
+    assert _provider_models({"models": ["", "alpha"], "default_model": " "}) == ["alpha"]
 
 
 def test_get_settings_success():
@@ -44,22 +44,27 @@ def test_get_settings_success():
         }
     ]
 
-    with patch(
-        "api.settings_router.dispatcher.get_provider_inventory",
-        new_callable=AsyncMock,
-        return_value=inventory,
-    ), patch(
-        "api.settings_router.top_providers_for",
-        return_value=["openai"],
-    ), patch(
-        "api.settings_router.dispatcher.get_provider_config",
-        return_value={"default_model": "gpt-4o-mini"},
-    ), patch(
-        "api.settings_router.dispatcher.get_provider",
-        return_value=MagicMock(default_model="gpt-4o-mini"),
+    with (
+        patch(
+            "api.settings_router.dispatcher.get_provider_inventory",
+            new_callable=AsyncMock,
+            return_value=inventory,
+        ),
+        patch(
+            "api.settings_router.top_providers_for",
+            return_value=["openai"],
+        ),
+        patch(
+            "api.settings_router.dispatcher.get_provider_config",
+            return_value={"default_model": "gpt-4o-mini"},
+        ),
+        patch(
+            "api.settings_router.dispatcher.get_provider",
+            return_value=MagicMock(default_model="gpt-4o-mini"),
+        ),
+        _make_client() as client,
     ):
-        with _make_client() as client:
-            response = client.get("/settings/")
+        response = client.get("/settings/")
 
     assert response.status_code == 200
     body = response.json()
@@ -69,13 +74,15 @@ def test_get_settings_success():
 
 
 def test_get_settings_failure():
-    with patch(
-        "api.settings_router.dispatcher.get_provider_inventory",
-        new_callable=AsyncMock,
-        side_effect=RuntimeError("boom"),
+    with (
+        patch(
+            "api.settings_router.dispatcher.get_provider_inventory",
+            new_callable=AsyncMock,
+            side_effect=RuntimeError("boom"),
+        ),
+        _make_client() as client,
     ):
-        with _make_client() as client:
-            response = client.get("/settings/")
+        response = client.get("/settings/")
 
     assert response.status_code == 500
     assert "Failed to get settings" in response.json()["detail"]

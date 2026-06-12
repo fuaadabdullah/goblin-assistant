@@ -1,17 +1,20 @@
 name: Build and Sign Sandbox Image
 
 on:
-  push:
-    branches: [ main, develop ]
-    paths:
-      - 'Dockerfile.sandbox'
-      - 'sandbox_runner.py'
-      - '.github/workflows/build-sandbox.yml'
-  pull_request:
-    paths:
-      - 'Dockerfile.sandbox'
-      - 'sandbox_runner.py'
-      - '.github/workflows/build-sandbox.yml'
+  workflow_dispatch:
+# Auto-push disabled: GitHub Actions billing locked.
+# Re-enable when billing is resolved:
+#  push:
+#    branches: [ main, develop ]
+#    paths:
+#      - 'Dockerfile.sandbox'
+#      - 'sandbox_runner.py'
+#      - '.github/workflows/build-sandbox.yml'
+#  pull_request:
+#    paths:
+#      - 'Dockerfile.sandbox'
+#      - 'sandbox_runner.py'
+#      - '.github/workflows/build-sandbox.yml'
 
 env:
   REGISTRY: ghcr.io

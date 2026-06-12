@@ -76,7 +76,7 @@ def main() -> int:
     )
 
     with urllib.request.urlopen(put_req, timeout=60, context=ctx):
-        pass
+        ...
 
     print(f"UPDATED_ENV_KEYS {before} -> {len(env)}")
     print(f"SET_VERTEX_AI_PROJECT {project}")

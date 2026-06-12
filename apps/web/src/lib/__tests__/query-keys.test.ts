@@ -22,11 +22,23 @@ describe('query-keys', () => {
   });
 
   it('generates searchResults key with defaults', () => {
-    expect(queryKeys.searchResults('col1', 'hello')).toEqual(['search', 'results', 'col1', 'hello', 8]);
+    expect(queryKeys.searchResults('col1', 'hello')).toEqual([
+      'search',
+      'results',
+      'col1',
+      'hello',
+      8,
+    ]);
   });
 
   it('generates searchResults key with custom limit', () => {
-    expect(queryKeys.searchResults('col1', 'hello', 20)).toEqual(['search', 'results', 'col1', 'hello', 20]);
+    expect(queryKeys.searchResults('col1', 'hello', 20)).toEqual([
+      'search',
+      'results',
+      'col1',
+      'hello',
+      20,
+    ]);
   });
 
   it('exposes static settings keys', () => {

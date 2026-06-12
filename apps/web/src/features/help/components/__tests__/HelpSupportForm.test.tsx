@@ -1,11 +1,11 @@
 import React from 'react';
 import { render, screen, fireEvent } from '@testing-library/react';
 
-jest.mock('next/link', () =>
-  function MockLink({ children, href }: { children: React.ReactNode; href: string }) {
+vi.mock('next/link', () => ({
+  default: function MockLink({ children, href }: { children: React.ReactNode; href: string }) {
     return <a href={href}>{children}</a>;
-  }
-);
+  },
+}));
 
 import HelpSupportForm from '../HelpSupportForm';
 
@@ -13,11 +13,11 @@ describe('HelpSupportForm', () => {
   const defaultProps = {
     message: '',
     sent: false,
-    onMessageChange: jest.fn(),
-    onSubmit: jest.fn(),
+    onMessageChange: vi.fn(),
+    onSubmit: vi.fn(),
   };
 
-  beforeEach(() => jest.clearAllMocks());
+  beforeEach(() => vi.clearAllMocks());
 
   it('renders heading', () => {
     render(<HelpSupportForm {...defaultProps} />);

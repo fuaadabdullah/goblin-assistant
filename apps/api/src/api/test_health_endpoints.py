@@ -1,4 +1,5 @@
 """Tests for health endpoints"""
+
 from unittest.mock import AsyncMock, patch
 
 
@@ -11,13 +12,16 @@ def test_health(client):
 
 
 def test_health_uses_cached_provider_status(client):
-    with patch(
-        "api.services.provider_health.health_monitor.refresh",
-        new_callable=AsyncMock,
-    ) as refresh, patch(
-        "api.services.provider_health.dispatcher.get_provider_inventory",
-        new_callable=AsyncMock,
-    ) as inventory:
+    with (
+        patch(
+            "api.services.provider_health.health_monitor.refresh",
+            new_callable=AsyncMock,
+        ) as refresh,
+        patch(
+            "api.services.provider_health.dispatcher.get_provider_inventory",
+            new_callable=AsyncMock,
+        ) as inventory,
+    ):
         resp = client.get("/health")
 
     assert resp.status_code == 200

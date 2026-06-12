@@ -2,10 +2,12 @@
 Pytest configuration and shared fixtures for API tests.
 """
 
-import pytest
+import importlib
 import sys
 import types
-from unittest.mock import MagicMock, AsyncMock
+from unittest.mock import AsyncMock, MagicMock
+
+import pytest
 from fastapi import APIRouter
 
 
@@ -24,11 +26,14 @@ class _ArtifactCleanupServiceStub:
 
 
 if "api.sandbox_api" not in sys.modules:
-    sys.modules["api.sandbox_api"] = _router_module(
-        "api.sandbox_api",
-        "/sandbox",
-        "sandbox",
-    )
+    try:
+        importlib.import_module("api.sandbox_api")
+    except Exception:
+        sys.modules["api.sandbox_api"] = _router_module(
+            "api.sandbox_api",
+            "/sandbox",
+            "sandbox",
+        )
 
 if "api.routes.privacy" not in sys.modules:
     sys.modules["api.routes.privacy"] = _router_module(
@@ -50,6 +55,9 @@ class _EmbeddingServiceStub:
     async def embed_text(self, _text: str):
         return []
 
+    def get_dedup_stats(self):
+        return {"duplicates_prevented": 0, "hash_cache_size": 0}
+
 
 class _AsyncEmbeddingWorkerStub:
     def __init__(self):
@@ -69,6 +77,7 @@ if "api.services.embedding_service" not in sys.modules:
     _mock_embedding.EmbeddingService = _EmbeddingServiceStub
     _mock_embedding.AsyncEmbeddingWorker = _AsyncEmbeddingWorkerStub
     _mock_embedding.embedding_worker = _AsyncEmbeddingWorkerStub()
+    _mock_embedding.embedding_service = _EmbeddingServiceStub()
     sys.modules["api.services.providers"] = _mock_providers
     sys.modules["api.services.embedding_service"] = _mock_embedding
 
@@ -189,8 +198,8 @@ class _FakeYfTicker:
         self.earnings_dates = None
 
     def history(self, period="1y", interval="1d"):
-        import pandas as pd
         import numpy as np
+        import pandas as pd
 
         np.random.seed(hash(self._ticker) % 2**31)
         base_price = self.info.get("currentPrice", 150.0)
@@ -202,13 +211,16 @@ class _FakeYfTicker:
         prices = prices[1:]
 
         dates = pd.bdate_range(end="2026-03-10", periods=n)
-        df = pd.DataFrame({
-            "Open": [p * 0.999 for p in prices],
-            "High": [p * 1.01 for p in prices],
-            "Low": [p * 0.99 for p in prices],
-            "Close": prices,
-            "Volume": [int(50_000_000 * (0.8 + 0.4 * np.random.random())) for _ in prices],
-        }, index=dates)
+        df = pd.DataFrame(
+            {
+                "Open": [p * 0.999 for p in prices],
+                "High": [p * 1.01 for p in prices],
+                "Low": [p * 0.99 for p in prices],
+                "Close": prices,
+                "Volume": [int(50_000_000 * (0.8 + 0.4 * np.random.random())) for _ in prices],
+            },
+            index=dates,
+        )
         return df
 
 
@@ -223,3 +235,32 @@ def mock_yfinance():
 
 
 __all__ = ["_build_authenticated_client"]
+
+
+# ---------------------------------------------------------------------------
+# benchmark fixture fallback
+# ---------------------------------------------------------------------------
+# pytest-benchmark is an optional dependency (pip install goblin-assistant-api[benchmark]).
+# When it is not installed the `benchmark` fixture is unavailable and the
+# test_benchmarks.py suite would fail at collection time.  The stub below lets
+# the tests run as plain assertions so the suite never hard-fails due to a
+# missing plugin.  When pytest-benchmark IS installed its own fixture takes
+# precedence via the normal pytest fixture resolution order.
+
+try:
+    import pytest_benchmark  # noqa: F401  # plugin registers its own fixture
+except ImportError:
+
+    @pytest.fixture
+    def benchmark(request):
+        """No-op stand-in for pytest-benchmark's fixture.
+
+        Calls the function once and returns the result so tests pass without
+        the plugin installed.  Install pytest-benchmark[histogram] to get
+        real timing measurements.
+        """
+
+        def _run(func, *args, **kwargs):
+            return func(*args, **kwargs)
+
+        return _run

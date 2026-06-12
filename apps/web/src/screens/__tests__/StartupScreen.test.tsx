@@ -1,38 +1,45 @@
 import React from 'react';
 import { render, screen } from '@testing-library/react';
-import '@testing-library/jest-dom';
 
-const mockReplace = jest.fn().mockResolvedValue(true);
-const mockPrefetch = jest.fn().mockResolvedValue(undefined);
-jest.mock('next/router', () => ({
+const mockReplace = vi.fn().mockResolvedValue(true);
+const mockPrefetch = vi.fn().mockResolvedValue(undefined);
+vi.mock('next/navigation', () => ({
   useRouter: () => ({
     replace: mockReplace,
     prefetch: mockPrefetch,
-    push: jest.fn(),
-    pathname: '/startup',
-    asPath: '/startup',
-    isReady: true,
-    query: {},
-    events: { on: jest.fn(), off: jest.fn() },
+    push: vi.fn(),
+    back: vi.fn(),
+    forward: vi.fn(),
+    refresh: vi.fn(),
   }),
+  usePathname: () => '/startup',
+  useSearchParams: () => new URLSearchParams(),
 }));
 
-let mockStartupReturn = { status: 'loading' as string, message: 'Initializing...', destinationRoute: null as string | null };
-jest.mock('../../features/startup/hooks/useStartupFlow', () => ({
+let mockStartupReturn = {
+  status: 'loading' as string,
+  message: 'Initializing...',
+  destinationRoute: null as string | null,
+};
+vi.mock('../../features/startup/hooks/useStartupFlow', () => ({
   useStartupFlow: () => mockStartupReturn,
 }));
 
-jest.mock('../../features/startup/components/GoblinBootScreen', () => {
-  return function MockBootScreen(props: { status: string; message: string }) {
-    return <div data-testid="boot-screen" data-status={props.status}>{props.message}</div>;
-  };
-});
+vi.mock('../../features/startup/components/GoblinBootScreen', () => ({
+  default: function MockBootScreen(props: { status: string; message: string }) {
+    return (
+      <div data-testid="boot-screen" data-status={props.status}>
+        {props.message}
+      </div>
+    );
+  },
+}));
 
 import StartupScreen from '../StartupScreen';
 
 describe('StartupScreen', () => {
   beforeEach(() => {
-    jest.clearAllMocks();
+    vi.clearAllMocks();
     mockStartupReturn = { status: 'loading', message: 'Initializing...', destinationRoute: null };
   });
 
@@ -60,7 +67,11 @@ describe('StartupScreen', () => {
   });
 
   it('redirects on error with destination', () => {
-    mockStartupReturn = { status: 'error', message: 'Failed', destinationRoute: '/help?reason=startup_failed' };
+    mockStartupReturn = {
+      status: 'error',
+      message: 'Failed',
+      destinationRoute: '/help?reason=startup_failed',
+    };
     render(<StartupScreen />);
     expect(mockReplace).toHaveBeenCalledWith('/help?reason=startup_failed');
   });

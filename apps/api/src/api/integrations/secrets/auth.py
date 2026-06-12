@@ -6,8 +6,8 @@ Provides common authentication mechanisms for different backends.
 
 import asyncio
 import logging
-from typing import Dict, Optional, Any
 from datetime import datetime, timedelta
+from typing import Dict, Optional
 
 logger = logging.getLogger(__name__)
 
@@ -81,7 +81,7 @@ class AuthManager:
             credentials: The credentials to store
         """
         self._credentials_store[name] = credentials
-        logger.debug(f"Stored credentials for: {name}")
+        logger.debug("Stored credentials for: %s", name)
 
     def get_credentials(self, name: str) -> Optional[AuthCredentials]:
         """
@@ -95,9 +95,7 @@ class AuthManager:
         """
         return self._credentials_store.get(name)
 
-    async def rotate_credentials(
-        self, name: str, new_credentials: AuthCredentials
-    ) -> None:
+    async def rotate_credentials(self, name: str, new_credentials: AuthCredentials) -> None:
         """
         Rotate stored credentials.
 
@@ -113,7 +111,7 @@ class AuthManager:
             self._renewal_tasks[name].cancel()
             del self._renewal_tasks[name]
 
-        logger.info(f"Rotated credentials for: {name}")
+        logger.info("Rotated credentials for: %s", name)
 
         # If old credentials had renewal tasks, stop them
         if old_credentials and hasattr(old_credentials, "stop_renewal"):
@@ -140,7 +138,7 @@ class AuthManager:
         self._renewal_tasks[name] = asyncio.create_task(
             self._renewal_loop(name, renewal_func, interval_seconds)
         )
-        logger.debug(f"Started token renewal for: {name}")
+        logger.debug("Started token renewal for: %s", name)
 
     async def _renewal_loop(
         self,
@@ -162,7 +160,7 @@ class AuthManager:
 
                 credentials = self._credentials_store.get(name)
                 if not credentials:
-                    logger.warning(f"No credentials found for renewal: {name}")
+                    logger.warning("No credentials found for renewal: %s", name)
                     continue
 
                 # Check if renewal is needed (renew at 75% of lifetime)
@@ -171,24 +169,24 @@ class AuthManager:
                     renewal_threshold = timedelta(seconds=interval_seconds * 1.5)
 
                     if time_until_expiry <= renewal_threshold:
-                        logger.info(f"Renewing token for: {name}")
+                        logger.info("Renewing token for: %s", name)
                         try:
                             await renewal_func(name, credentials)
                         except Exception as e:
-                            logger.error(f"Token renewal failed for {name}: {e}")
+                            logger.error("Token renewal failed for %s: %s", name, e)
                 elif isinstance(credentials, AppRoleCredentials):
                     # Handle AppRole token renewal
                     if not credentials.is_session_valid():
-                        logger.info(f"Renewing AppRole session for: {name}")
+                        logger.info("Renewing AppRole session for: %s", name)
                         try:
                             await renewal_func(name, credentials)
                         except Exception as e:
-                            logger.error(f"AppRole renewal failed for {name}: {e}")
+                            logger.error("AppRole renewal failed for %s: %s", name, e)
 
         except asyncio.CancelledError:
-            logger.debug(f"Token renewal cancelled for: {name}")
+            logger.debug("Token renewal cancelled for: %s", name)
         except Exception as e:
-            logger.error(f"Token renewal error for {name}: {e}")
+            logger.error("Token renewal error for %s: %s", name, e)
 
     def stop_renewal(self, name: str) -> None:
         """
@@ -200,7 +198,7 @@ class AuthManager:
         if name in self._renewal_tasks:
             self._renewal_tasks[name].cancel()
             del self._renewal_tasks[name]
-            logger.debug(f"Stopped token renewal for: {name}")
+            logger.debug("Stopped token renewal for: %s", name)
 
     async def stop_all_renewals(self) -> None:
         """Stop all token renewal tasks."""
@@ -217,7 +215,7 @@ class AuthManager:
         self.stop_renewal(name)
         if name in self._credentials_store:
             del self._credentials_store[name]
-            logger.debug(f"Cleaned up credentials for: {name}")
+            logger.debug("Cleaned up credentials for: %s", name)
 
 
 # Global auth manager instance
@@ -229,9 +227,7 @@ def get_auth_manager() -> AuthManager:
     return _auth_manager
 
 
-async def refresh_vault_token(
-    credentials_name: str, credentials: AppRoleCredentials
-) -> None:
+async def refresh_vault_token(credentials_name: str, credentials: AppRoleCredentials) -> None:
     """
     Refresh HashiCorp Vault token using AppRole.
 
@@ -248,7 +244,7 @@ async def refresh_vault_token(
     )
     credentials.set_session_token(token_credentials)
     get_auth_manager().store_credentials(credentials_name, credentials)
-    logger.info(f"Refreshed Vault AppRole token for: {credentials_name}")
+    logger.info("Refreshed Vault AppRole token for: %s", credentials_name)
 
 
 def setup_vault_approle_renewal(
@@ -298,6 +294,6 @@ def setup_vault_token_renewal(
         """Renew Vault token."""
         # This will be implemented in vault_adapter.py
         # For now, just log the renewal attempt
-        logger.info(f"Would renew Vault token for {creds_name}")
+        logger.info("Would renew Vault token for %s", creds_name)
 
     auth_manager.start_token_renewal(name, renewal_func, interval_seconds)

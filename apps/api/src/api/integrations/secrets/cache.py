@@ -5,10 +5,10 @@ Provides LRU cache with TTL (time-to-live) support for secrets data.
 """
 
 import asyncio
-import time
-from typing import Dict, Optional, Any, Tuple
-from collections import OrderedDict
 import logging
+import time
+from collections import OrderedDict
+from typing import Any, Dict, Optional, Tuple
 
 logger = logging.getLogger(__name__)
 
@@ -63,24 +63,22 @@ class TTLCache:
             except asyncio.CancelledError:
                 break
             except Exception as e:
-                logger.error(f"Error in cache cleanup: {e}")
+                logger.error("Error in cache cleanup: %s", e)
 
     async def _cleanup_expired(self) -> None:
         """Remove expired entries from cache."""
         async with self._lock:
             current_time = time.time()
             expired_keys = [
-                key
-                for key, (_, expires_at) in self._cache.items()
-                if expires_at <= current_time
+                key for key, (_, expires_at) in self._cache.items() if expires_at <= current_time
             ]
 
             for key in expired_keys:
                 del self._cache[key]
-                logger.debug(f"Evicted expired cache entry: {key}")
+                logger.debug("Evicted expired cache entry: %s", key)
 
             if expired_keys:
-                logger.debug(f"Cleaned up {len(expired_keys)} expired cache entries")
+                logger.debug("Cleaned up %s expired cache entries", len(expired_keys))
 
     async def get(self, key: str) -> Optional[Any]:
         """
@@ -101,7 +99,7 @@ class TTLCache:
             # Check if expired
             if time.time() > expires_at:
                 del self._cache[key]
-                logger.debug(f"Cache entry expired: {key}")
+                logger.debug("Cache entry expired: %s", key)
                 return None
 
             # Move to end (LRU)
@@ -136,7 +134,7 @@ class TTLCache:
             while len(self._cache) > self.max_size:
                 oldest_key = next(iter(self._cache))
                 del self._cache[oldest_key]
-                logger.debug(f"Evicted LRU cache entry: {oldest_key}")
+                logger.debug("Evicted LRU cache entry: %s", oldest_key)
 
     async def delete(self, key: str) -> bool:
         """
@@ -175,9 +173,7 @@ class TTLCache:
         async with self._lock:
             current_time = time.time()
             expired_count = sum(
-                1
-                for _, expires_at in self._cache.values()
-                if expires_at <= current_time
+                1 for _, expires_at in self._cache.values() if expires_at <= current_time
             )
 
             return {
@@ -267,7 +263,7 @@ class SecretCache:
                 await self.ttl_cache.delete(key)
 
             del self._path_to_keys[path]
-            logger.debug(f"Invalidated cache entries for path: {path}")
+            logger.debug("Invalidated cache entries for path: %s", path)
 
     async def invalidate_key(self, path: str, version: Optional[int] = None) -> None:
         """
@@ -286,7 +282,7 @@ class SecretCache:
             if not self._path_to_keys[path]:  # Remove empty set
                 del self._path_to_keys[path]
 
-        logger.debug(f"Invalidated cache entry: {key}")
+        logger.debug("Invalidated cache entry: %s", key)
 
     async def clear(self) -> None:
         """Clear all cached secrets."""
@@ -300,9 +296,7 @@ class SecretCache:
         base_stats.update(
             {
                 "tracked_paths": len(self._path_to_keys),
-                "total_path_keys": sum(
-                    len(keys) for keys in self._path_to_keys.values()
-                ),
+                "total_path_keys": sum(len(keys) for keys in self._path_to_keys.values()),
             }
         )
         return base_stats

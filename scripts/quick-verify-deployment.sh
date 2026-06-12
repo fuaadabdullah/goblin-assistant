@@ -7,7 +7,7 @@ echo "🚀 Goblin Assistant - Quick Deployment Status"
 echo "=============================================="
 echo ""
 
-BACKEND_URL="https://goblin-assistant-backend.onrender.com"
+BACKEND_URL="https://goblin-backend-dt30.onrender.com"
 FRONTEND_URL="https://goblin-assistant.vercel.app"
 
 # Quick timeout check (3 second timeout)

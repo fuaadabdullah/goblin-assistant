@@ -1,4 +1,3 @@
-import os
 import sqlite3
 import sys
 from types import SimpleNamespace
@@ -38,24 +37,24 @@ def test_cost_tracking_postgres_success(client, monkeypatch):
     # Simulate psycopg with a fake connect that returns the expected row
     class FakeCursor:
         def execute(self, q):
-            pass
+            return None
 
         def fetchone(self):
             return (99.99,)
 
         def close(self):
-            pass
+            return None
 
     class FakeConn:
         def cursor(self):
             return FakeCursor()
 
         def close(self):
-            pass
+            return None
 
     class FakePsycopgModule(SimpleNamespace):
         @staticmethod
-        def connect(dsn, connect_timeout=2):
+        def connect(_dsn: str, _connect_timeout: int = 2) -> "FakeConn":  # type: ignore[name-defined]
             return FakeConn()
 
     monkeypatch.setitem(sys.modules, "psycopg", FakePsycopgModule())

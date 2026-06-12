@@ -46,18 +46,14 @@ export function estimateFromText(text: string): TextCostEstimate {
   // Emoji: ~2 tokens per emoji (often split into multiple tokens)
   const estimatedTokens = Math.max(
     8,
-    Math.round(charCount / 4 + unicodeCount / 2 + emojiCount * 2),
+    Math.round(charCount / 4 + unicodeCount / 2 + emojiCount * 2)
   );
 
   const estimatedCostUsd = (estimatedTokens / 1000) * DEFAULT_USD_PER_1K_TOKENS;
 
   // Validate numeric results
-  const validTokens =
-    !isNaN(estimatedTokens) && isFinite(estimatedTokens) ? estimatedTokens : 0;
-  const validCost =
-    !isNaN(estimatedCostUsd) && isFinite(estimatedCostUsd)
-      ? estimatedCostUsd
-      : 0;
+  const validTokens = !isNaN(estimatedTokens) && isFinite(estimatedTokens) ? estimatedTokens : 0;
+  const validCost = !isNaN(estimatedCostUsd) && isFinite(estimatedCostUsd) ? estimatedCostUsd : 0;
 
   return {
     estimated_tokens: validTokens,

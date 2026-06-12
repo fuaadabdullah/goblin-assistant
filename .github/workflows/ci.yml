@@ -1,99 +1,28 @@
-name: CI
+name: CI (GitHub-native gates)
+
+# GitHub Actions handles only GitHub-native concerns.
+# All heavy compute (format, lint, typecheck, tests, build, deploy)
+# runs on CircleCI where it is not billing-constrained.
 
 on:
-  push:
-    branches: [main, develop]
-  pull_request:
-    branches: [main, develop]
+  workflow_dispatch:
+# Auto-push disabled: CircleCI handles all CI. GitHub Actions billing locked.
+# Re-enable when billing is resolved:
+#  push:
+#    branches: [main, develop]
+#  pull_request:
+#    branches: [main, develop]
 
 jobs:
-  web:
-    name: Web Lint, Typecheck, Test, Build
+  # ---------------------------------------------------------------------------
+  # Policy: branch-name + commit-message conventions (needs GitHub env vars)
+  # ---------------------------------------------------------------------------
+  policy:
+    name: policy
     runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-
-      - uses: pnpm/action-setup@v4
-        with:
-          version: 9
-
-      - uses: actions/setup-node@v4
-        with:
-          node-version: '20'
-          cache: 'pnpm'
-
-      - name: Install web deps
-        run: pnpm install --frozen-lockfile=false
-
-      - name: Lint
-        run: pnpm --filter @goblin/web lint
-
-      - name: Typecheck
-        run: pnpm --filter @goblin/web type-check
-
-      - name: Test
-        run: pnpm --filter @goblin/web test:ci
-
-      - name: Build
-        run: pnpm --filter @goblin/web build
-
-  storybook:
-    name: Storybook Build + Chromatic
-    if: github.event_name == 'pull_request'
-    runs-on: ubuntu-latest
-    env:
-      CHROMATIC_PROJECT_TOKEN: ${{ secrets.CHROMATIC_PROJECT_TOKEN }}
     steps:
       - uses: actions/checkout@v4
         with:
           fetch-depth: 0
-
-      - uses: pnpm/action-setup@v4
-        with:
-          version: 9
-
-      - uses: actions/setup-node@v4
-        with:
-          node-version: '20'
-          cache: 'pnpm'
-
-      - name: Install web deps
-        run: pnpm install --frozen-lockfile=false
-
-      - name: Build Storybook
-        run: pnpm --filter @goblin/web build-storybook
-
-      - name: Run Chromatic
-        if: env.CHROMATIC_PROJECT_TOKEN != ''
-        run: pnpm --filter @goblin/web chromatic
-
-  api:
-    name: API Tests
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-
-      - uses: actions/setup-python@v5
-        with:
-          python-version: '3.11'
-          cache: 'pip'
-
-      - name: Install API deps
-        run: |
-          cd apps/api
-          python -m pip install --upgrade pip
-          pip install -r requirements.txt -r requirements-vector.txt
-
-      - name: Run pytest
-        run: |
-          cd apps/api
-          PYTHONPATH=src python -m pytest -o "addopts=" -v
-
-      - name: Context Assembly Coverage Gate (>=90%)
-        run: |
-          cd apps/api
-          PYTHONPATH=src python -m pytest -o "addopts=" -v \
-            src/api/tests/test_context_assembly*.py \
-            --cov=src/api/services/context_assembly_service \
-            --cov-report=term-missing \
-            --cov-fail-under=90
+      - name: Enforce branch + commit policy
+        run: bash tooling/automation/ci-policy-check.sh

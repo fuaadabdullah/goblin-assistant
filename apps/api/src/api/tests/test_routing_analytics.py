@@ -19,18 +19,23 @@ def _client() -> TestClient:
 def test_get_provider_health_returns_summary():
     client = _client()
 
-    with patch(
-        "api.routes.routing_analytics.health_monitor.refresh",
-        new_callable=AsyncMock,
-    ) as mock_refresh, patch(
-        "api.routes.routing_analytics.health_monitor.get_all_status",
-        return_value={"openai": {"status": "healthy"}},
-    ), patch(
-        "api.routes.routing_analytics.health_monitor.get_healthy_providers",
-        return_value=["openai"],
-    ), patch(
-        "api.routes.routing_analytics.health_monitor.get_best_providers",
-        return_value=["openai"],
+    with (
+        patch(
+            "api.routes.routing_analytics.health_monitor.refresh",
+            new_callable=AsyncMock,
+        ) as mock_refresh,
+        patch(
+            "api.routes.routing_analytics.health_monitor.get_all_status",
+            return_value={"openai": {"status": "healthy"}},
+        ),
+        patch(
+            "api.routes.routing_analytics.health_monitor.get_healthy_providers",
+            return_value=["openai"],
+        ),
+        patch(
+            "api.routes.routing_analytics.health_monitor.get_best_providers",
+            return_value=["openai"],
+        ),
     ):
         response = client.get("/routing/health")
 
@@ -42,13 +47,16 @@ def test_get_provider_health_returns_summary():
 def test_get_provider_health_detail_success():
     client = _client()
 
-    with patch(
-        "api.routes.routing_analytics.health_monitor.probe_provider",
-        new_callable=AsyncMock,
-        return_value={"status": "healthy"},
-    ), patch(
-        "api.routes.routing_analytics.health_monitor.get_status",
-        return_value={"status": "healthy"},
+    with (
+        patch(
+            "api.routes.routing_analytics.health_monitor.probe_provider",
+            new_callable=AsyncMock,
+            return_value={"status": "healthy"},
+        ),
+        patch(
+            "api.routes.routing_analytics.health_monitor.get_status",
+            return_value={"status": "healthy"},
+        ),
     ):
         response = client.get("/routing/health/openai")
 
@@ -59,13 +67,16 @@ def test_get_provider_health_detail_success():
 def test_get_provider_health_detail_not_found():
     client = _client()
 
-    with patch(
-        "api.routes.routing_analytics.health_monitor.probe_provider",
-        new_callable=AsyncMock,
-        return_value={"error": "not found"},
-    ), patch(
-        "api.routes.routing_analytics.health_monitor.get_status",
-        return_value={"error": "not found"},
+    with (
+        patch(
+            "api.routes.routing_analytics.health_monitor.probe_provider",
+            new_callable=AsyncMock,
+            return_value={"error": "not found"},
+        ),
+        patch(
+            "api.routes.routing_analytics.health_monitor.get_status",
+            return_value={"error": "not found"},
+        ),
     ):
         response = client.get("/routing/health/missing")
 
@@ -96,16 +107,20 @@ def test_get_routing_status_includes_inventory_and_router_status():
     fake_router = MagicMock()
     fake_router.get_status.return_value = {"strategy": "balanced"}
 
-    with patch(
-        "api.routes.routing_analytics.health_monitor.refresh",
-        new_callable=AsyncMock,
-    ), patch(
-        "api.routes.routing_analytics.smart_router",
-        fake_router,
-    ), patch(
-        "api.routes.routing_analytics.dispatcher.get_provider_inventory",
-        new_callable=AsyncMock,
-        return_value=fake_inventory,
+    with (
+        patch(
+            "api.routes.routing_analytics.health_monitor.refresh",
+            new_callable=AsyncMock,
+        ),
+        patch(
+            "api.routes.routing_analytics.smart_router",
+            fake_router,
+        ),
+        patch(
+            "api.routes.routing_analytics.dispatcher.get_provider_inventory",
+            new_callable=AsyncMock,
+            return_value=fake_inventory,
+        ),
     ):
         response = client.get("/routing/status")
 
@@ -142,19 +157,24 @@ def test_list_available_providers_maps_provider_data():
     fake_registry = MagicMock()
     fake_registry.snapshot.return_value = {"openai": {"requests": 3}}
 
-    with patch(
-        "api.routes.routing_analytics.health_monitor.refresh",
-        new_callable=AsyncMock,
-    ), patch(
-        "api.routes.routing_analytics.dispatcher.get_provider_inventory",
-        new_callable=AsyncMock,
-        return_value=fake_inventory,
-    ), patch(
-        "api.routes.routing_analytics.registry",
-        fake_registry,
-    ), patch(
-        "api.routes.routing_analytics.health_monitor.get_status",
-        return_value={"status": "healthy"},
+    with (
+        patch(
+            "api.routes.routing_analytics.health_monitor.refresh",
+            new_callable=AsyncMock,
+        ),
+        patch(
+            "api.routes.routing_analytics.dispatcher.get_provider_inventory",
+            new_callable=AsyncMock,
+            return_value=fake_inventory,
+        ),
+        patch(
+            "api.routes.routing_analytics.registry",
+            fake_registry,
+        ),
+        patch(
+            "api.routes.routing_analytics.health_monitor.get_status",
+            return_value={"status": "healthy"},
+        ),
     ):
         response = client.get("/routing/providers")
 
@@ -200,12 +220,15 @@ def test_get_routing_audit_clamps_limit_and_returns_count():
     fake_hybrid = MagicMock()
     fake_hybrid.cost_weight = 0.35
 
-    with patch(
-        "api.routes.routing_analytics.registry",
-        fake_registry,
-    ), patch(
-        "api.routes.routing_analytics.hybrid_router",
-        fake_hybrid,
+    with (
+        patch(
+            "api.routes.routing_analytics.registry",
+            fake_registry,
+        ),
+        patch(
+            "api.routes.routing_analytics.hybrid_router",
+            fake_hybrid,
+        ),
     ):
         response = client.get("/routing/audit?limit=5000")
 

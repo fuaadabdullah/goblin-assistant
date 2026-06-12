@@ -9,14 +9,14 @@ from __future__ import annotations
 
 from typing import Any, Dict, List
 
-from ..registry import ToolDefinition, ToolParameter, register_tool
 from ...services.financial_data_service import financial_data_service
 from ...services.financial_guardrails import safe_skill
-
+from ..registry import ToolDefinition, ToolParameter, register_tool
 
 # ---------------------------------------------------------------------------
 # Handler
 # ---------------------------------------------------------------------------
+
 
 @safe_skill
 async def _handle_earnings_summarizer(
@@ -47,13 +47,15 @@ async def _handle_earnings_summarizer(
             else:
                 verdict = "inline"
 
-        quarters.append({
-            "date": q.get("date"),
-            "eps_estimate": eps_est,
-            "eps_actual": eps_act,
-            "surprise_pct": surprise,
-            "verdict": verdict,
-        })
+        quarters.append(
+            {
+                "date": q.get("date"),
+                "eps_estimate": eps_est,
+                "eps_actual": eps_act,
+                "surprise_pct": surprise,
+                "verdict": verdict,
+            }
+        )
 
     # Streak analysis
     beats = sum(1 for q in quarters if q["verdict"] == "beat")
@@ -82,10 +84,14 @@ async def _handle_earnings_summarizer(
             "beats": beats,
             "misses": misses,
             "total": len(quarters),
-            "current_streak": {
-                "type": streak_type,
-                "count": streak_count,
-            } if streak_type and streak_type in ("beat", "miss") else None,
+            "current_streak": (
+                {
+                    "type": streak_type,
+                    "count": streak_count,
+                }
+                if streak_type and streak_type in ("beat", "miss")
+                else None
+            ),
         },
         "key_metrics": {
             "trailing_eps": earnings.get("trailing_eps"),
@@ -103,27 +109,30 @@ async def _handle_earnings_summarizer(
 # Registration
 # ---------------------------------------------------------------------------
 
-register_tool(ToolDefinition(
-    name="earnings_summarizer",
-    description=(
-        "Summarize recent earnings for a stock: beat/miss verdicts for each "
-        "quarter, EPS actual vs. estimate, surprise percentage, streak "
-        "analysis, and key valuation metrics."
-    ),
-    parameters=[
-        ToolParameter(
-            name="ticker",
-            type="string",
-            description="Stock ticker symbol, e.g. NVDA, AAPL",
+register_tool(
+    ToolDefinition(
+        name="earnings_summarizer",
+        description=(
+            "Use when the user wants an interpreted earnings recap for one stock, "
+            "including recent quarter beat/miss verdicts, EPS actual versus "
+            "estimate, surprise percentages, streak analysis, and related "
+            "valuation metrics. Prefer get_earnings for raw earnings fields only."
         ),
-        ToolParameter(
-            name="num_quarters",
-            type="integer",
-            description="Number of recent quarters to include (1-8, default 4).",
-            required=False,
-            default=4,
-        ),
-    ],
-    handler=_handle_earnings_summarizer,
-    category="finance",
-))
+        parameters=[
+            ToolParameter(
+                name="ticker",
+                type="string",
+                description="Public equity ticker symbol to summarize, such as NVDA, AAPL, or MSFT.",
+            ),
+            ToolParameter(
+                name="num_quarters",
+                type="integer",
+                description="Number of most recent quarters to include. Valid range: 1-8. Default: 4.",
+                required=False,
+                default=4,
+            ),
+        ],
+        handler=_handle_earnings_summarizer,
+        category="finance",
+    )
+)

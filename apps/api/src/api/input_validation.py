@@ -3,9 +3,10 @@ Input validation and sanitization utilities for Goblin Assistant API
 Provides protection against XSS, injection attacks, and other input-based vulnerabilities
 """
 
-import re
 import html
-from typing import Optional, Dict, Any, Tuple
+import re
+from typing import Any, Dict, Optional, Tuple
+
 from fastapi import HTTPException
 
 try:
@@ -19,7 +20,12 @@ def _strip_html_tags(value: str) -> str:
     return re.sub(r"<[^>]+>", "", value)
 
 
-def _clean_html(value: str, tags: Optional[list[str]] = None, attributes: Optional[Dict[str, Any]] = None, strip: bool = True) -> str:
+def _clean_html(
+    value: str,
+    tags: Optional[list[str]] = None,
+    attributes: Optional[Dict[str, Any]] = None,
+    strip: bool = True,
+) -> str:
     if bleach is not None:
         return bleach.clean(value, tags=tags or [], attributes=attributes or {}, strip=strip)
     return _strip_html_tags(value) if strip else value
@@ -30,31 +36,46 @@ class InputSanitizer:
 
     # Maximum allowed lengths
     MAX_MESSAGE_LENGTH = 10000  # 10KB max for chat messages
-    MAX_TITLE_LENGTH = 200      # Max conversation title length
-    MAX_USER_ID_LENGTH = 100    # Max user ID length
+    MAX_TITLE_LENGTH = 200  # Max conversation title length
+    MAX_USER_ID_LENGTH = 100  # Max user ID length
 
     # XSS protection patterns
     DANGEROUS_PATTERNS = [
-        r'<script[^>]*>.*?</script>',  # Script tags
-        r'javascript:',                 # JavaScript URLs
-        r'vbscript:',                   # VBScript URLs
-        r'on\w+\s*=',                   # Event handlers
-        r'<iframe[^>]*>.*?</iframe>',   # Iframe tags
-        r'<object[^>]*>.*?</object>',   # Object tags
-        r'<embed[^>]*>.*?</embed>',     # Embed tags
+        r"<script[^>]*>.*?</script>",  # Script tags
+        r"javascript:",  # JavaScript URLs
+        r"vbscript:",  # VBScript URLs
+        r"on\w+\s*=",  # Event handlers
+        r"<iframe[^>]*>.*?</iframe>",  # Iframe tags
+        r"<object[^>]*>.*?</object>",  # Object tags
+        r"<embed[^>]*>.*?</embed>",  # Embed tags
     ]
 
     # Allowed HTML tags for rich text (if needed)
     ALLOWED_TAGS = [
-        'p', 'br', 'strong', 'em', 'u', 'h1', 'h2', 'h3', 'h4', 'h5', 'h6',
-        'ul', 'ol', 'li', 'blockquote', 'code', 'pre'
+        "p",
+        "br",
+        "strong",
+        "em",
+        "u",
+        "h1",
+        "h2",
+        "h3",
+        "h4",
+        "h5",
+        "h6",
+        "ul",
+        "ol",
+        "li",
+        "blockquote",
+        "code",
+        "pre",
     ]
 
     # Allowed HTML attributes
     ALLOWED_ATTRIBUTES = {
-        '*': ['class'],
-        'a': ['href', 'title'],
-        'img': ['src', 'alt', 'title'],
+        "*": ["class"],
+        "a": ["href", "title"],
+        "img": ["src", "alt", "title"],
     }
 
     @classmethod
@@ -70,15 +91,14 @@ class InputSanitizer:
         """
         if not content or not isinstance(content, str):
             raise HTTPException(
-                status_code=400,
-                detail="Message content must be a non-empty string"
+                status_code=400, detail="Message content must be a non-empty string"
             )
 
         # Check length
         if len(content) > cls.MAX_MESSAGE_LENGTH:
             raise HTTPException(
                 status_code=413,
-                detail=f"Message too long. Maximum {cls.MAX_MESSAGE_LENGTH} characters allowed."
+                detail=f"Message too long. Maximum {cls.MAX_MESSAGE_LENGTH} characters allowed.",
             )
 
         # Remove null bytes and other control characters
@@ -89,7 +109,7 @@ class InputSanitizer:
             "original_length": len(content),
             "sanitized": False,
             "dangerous_patterns_found": [],
-            "length_after_sanitization": 0
+            "length_after_sanitization": 0,
         }
 
         dangerous_found = []
@@ -107,7 +127,7 @@ class InputSanitizer:
                 content,
                 tags=cls.ALLOWED_TAGS,
                 attributes=cls.ALLOWED_ATTRIBUTES,
-                strip=True
+                strip=True,
             )
 
             # Additional HTML entity encoding for safety
@@ -136,7 +156,7 @@ class InputSanitizer:
 
         # Check length
         if len(title) > cls.MAX_TITLE_LENGTH:
-            title = title[:cls.MAX_TITLE_LENGTH - 3] + "..."
+            title = title[: cls.MAX_TITLE_LENGTH - 3] + "..."
 
         # Remove control characters
         title = cls._remove_control_characters(title)
@@ -169,17 +189,17 @@ class InputSanitizer:
         if len(user_id) > cls.MAX_USER_ID_LENGTH:
             raise HTTPException(
                 status_code=400,
-                detail=f"User ID too long. Maximum {cls.MAX_USER_ID_LENGTH} characters allowed."
+                detail=f"User ID too long. Maximum {cls.MAX_USER_ID_LENGTH} characters allowed.",
             )
 
         # Remove control characters
         user_id = cls._remove_control_characters(user_id)
 
         # Only allow alphanumeric, hyphens, and underscores
-        if not re.match(r'^[a-zA-Z0-9_-]+$', user_id):
+        if not re.match(r"^[a-zA-Z0-9_-]+$", user_id):
             raise HTTPException(
                 status_code=400,
-                detail="User ID contains invalid characters. Only alphanumeric, hyphens, and underscores allowed."
+                detail="User ID contains invalid characters. Only alphanumeric, hyphens, and underscores allowed.",
             )
 
         return user_id
@@ -206,7 +226,7 @@ class InputSanitizer:
             # Sanitize keys
             if not isinstance(key, str):
                 continue
-            safe_key = re.sub(r'[^\w\-_]', '', key)[:100]  # Limit key length
+            safe_key = re.sub(r"[^\w\-_]", "", key)[:100]  # Limit key length
 
             # Sanitize values
             if isinstance(value, str):
@@ -226,7 +246,7 @@ class InputSanitizer:
         """Remove control characters that could cause issues"""
         # Remove null bytes and other problematic control characters
         # Keep newlines and tabs for formatting
-        return re.sub(r'[\x00-\x08\x0b\x0c\x0e-\x1f\x7f]', '', text)
+        return re.sub(r"[\x00-\x08\x0b\x0c\x0e-\x1f\x7f]", "", text)
 
     @classmethod
     def validate_file_path(cls, file_path: str) -> str:
@@ -243,14 +263,14 @@ class InputSanitizer:
             raise HTTPException(status_code=400, detail="Invalid file path")
 
         # Check for directory traversal attempts
-        if '..' in file_path or file_path.startswith('/'):
+        if ".." in file_path or file_path.startswith("/"):
             raise HTTPException(
                 status_code=400,
-                detail="Invalid file path: directory traversal not allowed"
+                detail="Invalid file path: directory traversal not allowed",
             )
 
         # Remove dangerous characters
-        file_path = re.sub(r'[<>:"|?*]', '', file_path)
+        file_path = re.sub(r'[<>:"|?*]', "", file_path)
 
         return file_path
 
@@ -293,7 +313,9 @@ def sanitize_title(title: str) -> str:
     return InputSanitizer.sanitize_conversation_title(title)
 
 
-def validate_and_sanitize_user_input(message: str, title: Optional[str] = None, user_id: Optional[str] = None) -> Dict[str, Any]:
+def validate_and_sanitize_user_input(
+    message: str, title: Optional[str] = None, user_id: Optional[str] = None
+) -> Dict[str, Any]:
     """
     Comprehensive input validation and sanitization
 

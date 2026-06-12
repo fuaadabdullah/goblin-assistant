@@ -4,12 +4,12 @@
  */
 
 import { logErrorToService } from './monitoring';
-import { devInfo } from './dev-log';
+import { devWarn } from './dev-log';
 
 // Lightweight logging helpers (replace former Datadog calls)
 const logEvent = (message: string, context?: Record<string, unknown>) => {
-  if (process.env.NODE_ENV === 'development') {
-    devInfo(`[event] ${message}`, context);
+  if (process.env['NODE_ENV'] === 'development') {
+    devWarn(`[event] ${message}`, context);
   }
 };
 
@@ -32,7 +32,7 @@ export class APIError extends Error {
     public statusCode?: number,
     public endpoint?: string,
     public method?: string,
-    public context?: Record<string, unknown>,
+    public context?: Record<string, unknown>
   ) {
     super(message);
     this.name = 'APIError';
@@ -43,7 +43,7 @@ export class NetworkError extends Error {
   constructor(
     message: string,
     public endpoint?: string,
-    public originalError?: Error,
+    public originalError?: Error
   ) {
     super(message);
     this.name = 'NetworkError';
@@ -54,7 +54,7 @@ export class ValidationError extends Error {
   constructor(
     message: string,
     public field?: string,
-    public value?: unknown,
+    public value?: unknown
   ) {
     super(message);
     this.name = 'ValidationError';
@@ -66,11 +66,11 @@ export const withErrorTracking = async <T>(
   operation: () => Promise<T>,
   context: {
     operation: string;
-    endpoint?: string;
-    method?: string;
-    userId?: string;
-    additionalContext?: Record<string, unknown>;
-  },
+    endpoint?: string | undefined;
+    method?: string | undefined;
+    userId?: string | undefined;
+    additionalContext?: Record<string, unknown> | undefined;
+  }
 ): Promise<T> => {
   const startTime = Date.now();
 
@@ -96,8 +96,7 @@ export const withErrorTracking = async <T>(
       duration,
       success: false,
       timestamp: new Date().toISOString(),
-      userAgent:
-        typeof navigator !== 'undefined' ? navigator.userAgent : 'server',
+      userAgent: typeof navigator !== 'undefined' ? navigator.userAgent : 'server',
       url: typeof window !== 'undefined' ? window.location.href : 'server',
       error: {
         name: error instanceof Error ? error.name : 'Unknown',
@@ -107,18 +106,13 @@ export const withErrorTracking = async <T>(
     };
 
     // Log to Datadog
-    logError(
-      error instanceof Error ? error : new Error(String(error)),
-      errorContext,
-    );
+    logError(error instanceof Error ? error : new Error(String(error)), errorContext);
 
     // Re-throw with enhanced context
     if (error instanceof Error) {
       throw error;
     } else {
-      throw new Error(
-        `Operation failed: ${context.operation} - ${String(error)}`,
-      );
+      throw new Error(`Operation failed: ${context.operation} - ${String(error)}`);
     }
   }
 };
@@ -128,7 +122,7 @@ export const trackApiCall = async <T>(
   apiCall: () => Promise<T>,
   endpoint: string,
   method: string = 'GET',
-  additionalContext?: Record<string, unknown>,
+  additionalContext?: Record<string, unknown>
 ): Promise<T> => {
   return withErrorTracking(apiCall, {
     operation: `API ${method} ${endpoint}`,
@@ -148,7 +142,7 @@ export const trackLLMOperation = async <T>(
     inputTokens?: number;
     outputTokens?: number;
     cost?: number;
-  },
+  }
 ): Promise<T> => {
   const startTime = Date.now();
 
@@ -157,12 +151,7 @@ export const trackLLMOperation = async <T>(
     const duration = Date.now() - startTime;
 
     // Track successful LLM call
-    trackLLMCall(
-      context.provider,
-      context.model,
-      context.outputTokens,
-      context.cost,
-    );
+    trackLLMCall(context.provider, context.model, context.outputTokens, context.cost);
 
     logEvent(`LLM operation completed: ${context.operation}`, {
       ...context,
@@ -191,7 +180,7 @@ export const trackRoutingOperation = (
   fromProvider: string,
   toProvider: string,
   reason: string,
-  context?: Record<string, unknown>,
+  context?: Record<string, unknown>
 ) => {
   trackRoutingDecision(fromProvider, toProvider, reason);
 
@@ -205,15 +194,11 @@ export const trackRoutingOperation = (
 };
 
 // User interaction tracking
-export const trackUserAction = (
-  action: string,
-  context?: Record<string, unknown>,
-) => {
+export const trackUserAction = (action: string, context?: Record<string, unknown>) => {
   logEvent(`User action: ${action}`, {
     ...context,
     timestamp: new Date().toISOString(),
-    userAgent:
-      typeof navigator !== 'undefined' ? navigator.userAgent : 'server',
+    userAgent: typeof navigator !== 'undefined' ? navigator.userAgent : 'server',
     url: typeof window !== 'undefined' ? window.location.href : 'server',
   });
 };
@@ -222,7 +207,7 @@ export const trackUserAction = (
 export const trackPerformance = (
   metric: string,
   value: number,
-  context?: Record<string, unknown>,
+  context?: Record<string, unknown>
 ) => {
   logEvent(`Performance metric: ${metric}`, {
     value,
@@ -236,7 +221,7 @@ export const logComponentError = (
   error: Error,
   errorInfo: { componentStack: string },
   componentName: string,
-  additionalContext?: Record<string, unknown>,
+  additionalContext?: Record<string, unknown>
 ) => {
   // Log to Datadog
   logError(error, {
@@ -244,8 +229,7 @@ export const logComponentError = (
     componentStack: errorInfo.componentStack,
     ...additionalContext,
     timestamp: new Date().toISOString(),
-    userAgent:
-      typeof navigator !== 'undefined' ? navigator.userAgent : 'server',
+    userAgent: typeof navigator !== 'undefined' ? navigator.userAgent : 'server',
     url: typeof window !== 'undefined' ? window.location.href : 'server',
   });
 

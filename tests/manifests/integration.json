@@ -1,0 +1,29 @@
+{
+  "bucket": "integration",
+  "description": "Integration boundaries across API routes/services and platform interactions.",
+  "paths": [
+    "apps/api/src/api/tests/test_executor_tracing_integration.py",
+    "apps/api/src/api/tests/test_sandbox_integration.py",
+    "apps/api/src/api/tests/test_integration_e2e.py",
+    "apps/api/src/api/tests/test_provider_dispatcher_authority.py",
+    "apps/api/src/api/tests/test_rag_context_bundle_and_builder.py",
+    "apps/api/src/api/tests/test_retrieval_by_source.py",
+    "apps/api/src/api/tests/test_chat_router_core.py",
+    "tests/integration/conftest.py",
+    "tests/integration/auth_flow_test.py",
+    "tests/integration/provider_routing_test.py",
+    "tests/integration/chat_completion_test.py",
+    "tests/integration/retrieval_pipeline_test.py",
+    "tests/integration/sandbox_execution_test.py"
+  ],
+  "commands": [
+    {
+      "name": "api-integration-suite",
+      "run": "cd apps/api && PYTHONPATH=src python3.11 -m pytest -o \"addopts=\" -v src/api/tests/test_executor_tracing_integration.py src/api/tests/test_sandbox_integration.py src/api/tests/test_integration_e2e.py src/api/tests/test_provider_dispatcher_authority.py src/api/tests/test_rag_context_bundle_and_builder.py src/api/tests/test_retrieval_by_source.py src/api/tests/test_chat_router_core.py"
+    },
+    {
+      "name": "real-integration-suite",
+      "run": "cd apps/api && PYTHONPATH=src python3.11 -m pytest -o \"testpaths=\" -o \"addopts=\" --asyncio-mode=auto -v ../../../../tests/integration/"
+    }
+  ]
+}

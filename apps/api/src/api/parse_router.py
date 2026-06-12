@@ -1,7 +1,9 @@
+from typing import Optional
+
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel
-from typing import Optional
-from .core.orchestration import parse_natural_language, OrchestrationPlan
+
+from .core.orchestration import OrchestrationPlan, parse_natural_language
 
 router = APIRouter(prefix="/parse", tags=["parse"])
 
@@ -17,6 +19,4 @@ async def parse_orchestration(request: ParseRequest):
     try:
         return parse_natural_language(request.text, request.default_goblin)
     except Exception as e:
-        raise HTTPException(
-            status_code=500, detail=f"Failed to parse orchestration: {str(e)}"
-        )
+        raise HTTPException(status_code=500, detail=f"Failed to parse orchestration: {str(e)}")

@@ -1,43 +1,52 @@
-import { describe, it, expect, beforeEach, jest } from '@jest/globals';
+import { describe, it, expect, beforeEach } from 'vitest';
 import { renderHook } from '@testing-library/react';
 
-jest.mock('@tanstack/react-query', () => ({
-  useQuery: jest.fn(),
-  useQueryClient: jest.fn(() => ({
-    setQueryData: jest.fn(),
-    invalidateQueries: jest.fn(),
+vi.mock('@tanstack/react-query', () => ({
+  useQuery: vi.fn(),
+  useQueryClient: vi.fn(() => ({
+    setQueryData: vi.fn(),
+    invalidateQueries: vi.fn(),
   })),
 }));
 
-jest.mock('../../api', () => ({
+vi.mock('../../api', () => ({
   chatClient: {
-    listConversations: jest.fn(),
+    listConversations: vi.fn(),
   },
 }));
 
-jest.mock('../../../../lib/chat-history', () => ({
-  buildThreadKey: jest.requireActual('../../../../lib/chat-history').buildThreadKey,
-  readChatThreads: jest.fn(() => []),
-  removeChatMessages: jest.fn(),
-  removeChatThread: jest.fn(),
-  sortChatThreads: jest.requireActual('../../../../lib/chat-history').sortChatThreads,
-  writeChatThreads: jest.fn(),
-}));
+vi.mock('../../../../lib/chat-history', async () => {
+  const actual = await vi.importActual<typeof import('../../../../lib/chat-history')>(
+    '../../../../lib/chat-history'
+  );
+  return {
+    buildThreadKey: actual.buildThreadKey,
+    markChatMigrationCompleted: vi.fn(),
+    readChatThreads: vi.fn(() => []),
+    readChatMigrationMeta: vi.fn(() => ({ migrationCompleted: false })),
+    removeChatMessages: vi.fn(),
+    removeChatThread: vi.fn(),
+    sortChatThreads: actual.sortChatThreads,
+    writeChatThreads: vi.fn(),
+  };
+});
 
-const { useQuery } = require('@tanstack/react-query') as {
-  useQuery: jest.Mock;
-};
-const { chatClient } = require('../../api') as typeof import('../../api');
-const { readChatThreads } = require('../../../../lib/chat-history') as typeof import('../../../../lib/chat-history');
-const { useChatThreads } = require('../useChatThreads') as typeof import('../useChatThreads');
+import { useQuery } from '@tanstack/react-query';
+import { chatClient } from '../../api';
+import {
+  markChatMigrationCompleted,
+  readChatMigrationMeta,
+  readChatThreads,
+} from '../../../../lib/chat-history';
+import { useChatThreads } from '../useChatThreads';
 
 describe('useChatThreads', () => {
   beforeEach(() => {
-    jest.clearAllMocks();
+    vi.clearAllMocks();
   });
 
-  it('merges backend conversations with legacy local threads and sorts by updatedAt', async () => {
-    (chatClient.listConversations as jest.Mock).mockResolvedValue([
+  it('prefers backend conversations and marks migration complete after hydration', async () => {
+    vi.mocked(chatClient.listConversations).mockResolvedValue([
       {
         conversationId: 'conv-backend',
         title: 'Backend thread',
@@ -46,8 +55,8 @@ describe('useChatThreads', () => {
         updatedAt: '2026-03-07T12:00:00.000Z',
         messageCount: 2,
       },
-    ]);
-    (readChatThreads as jest.Mock).mockReturnValue([
+    ] as never);
+    vi.mocked(readChatThreads).mockReturnValue([
       {
         id: 'legacy-1',
         source: 'legacy-local',
@@ -57,28 +66,113 @@ describe('useChatThreads', () => {
         createdAt: '2026-03-07T09:00:00.000Z',
         updatedAt: '2026-03-07T11:00:00.000Z',
       },
-    ]);
-    useQuery.mockImplementation(({ queryFn }: { queryFn: () => Promise<unknown> }) => ({
-      data: undefined,
-      isLoading: false,
-      queryFn,
-    }));
+    ] as never);
+    vi.mocked(useQuery).mockImplementation(
+      ({ queryFn }: { queryFn: () => Promise<unknown> }) =>
+        ({
+          data: undefined,
+          isLoading: false,
+          queryFn,
+        }) as never
+    );
 
     renderHook(() => useChatThreads());
-    const merged = await (useQuery.mock.calls[0][0].queryFn as () => Promise<any>)();
+    const merged = await (vi.mocked(useQuery).mock.calls[0][0].queryFn as () => Promise<any>)();
 
-    expect(merged).toHaveLength(2);
+    expect(merged).toHaveLength(1);
     expect(merged[0]).toEqual(
       expect.objectContaining({
         id: 'conv-backend',
         source: 'backend',
       })
     );
-    expect(merged[1]).toEqual(
+    expect(markChatMigrationCompleted).toHaveBeenCalledTimes(1);
+  });
+
+  it('does not include legacy threads after migration completion', async () => {
+    vi.mocked(readChatMigrationMeta).mockReturnValue({
+      migrationCompleted: true,
+      completedAt: '2026-03-07T13:00:00.000Z',
+    } as never);
+    vi.mocked(chatClient.listConversations).mockResolvedValue([
+      {
+        conversationId: 'conv-backend',
+        title: 'Backend thread',
+        snippet: 'Remote',
+        createdAt: '2026-03-07T10:00:00.000Z',
+        updatedAt: '2026-03-07T12:00:00.000Z',
+        messageCount: 2,
+      },
+    ] as never);
+    vi.mocked(readChatThreads).mockReturnValue([
+      {
+        id: 'legacy-1',
+        source: 'legacy-local',
+        threadKey: 'legacy-local:legacy-1',
+        title: 'Legacy thread',
+        snippet: 'Local',
+        createdAt: '2026-03-07T09:00:00.000Z',
+        updatedAt: '2026-03-07T11:00:00.000Z',
+      },
+    ] as never);
+    vi.mocked(useQuery).mockImplementation(
+      ({ queryFn }: { queryFn: () => Promise<unknown> }) =>
+        ({
+          data: undefined,
+          isLoading: false,
+          queryFn,
+        }) as never
+    );
+
+    renderHook(() => useChatThreads());
+    const merged = await (vi.mocked(useQuery).mock.calls[0][0].queryFn as () => Promise<any>)();
+
+    expect(merged).toHaveLength(1);
+    expect(merged[0]).toEqual(
+      expect.objectContaining({
+        id: 'conv-backend',
+        source: 'backend',
+      })
+    );
+    expect(readChatThreads).not.toHaveBeenCalled();
+    expect(markChatMigrationCompleted).not.toHaveBeenCalled();
+  });
+
+  it('keeps migration incomplete when backend hydration fails', async () => {
+    vi.mocked(readChatMigrationMeta).mockReturnValue({
+      migrationCompleted: false,
+    } as never);
+    vi.mocked(chatClient.listConversations).mockRejectedValue(new Error('network'));
+    vi.mocked(readChatThreads).mockReturnValue([
+      {
+        id: 'legacy-1',
+        source: 'legacy-local',
+        threadKey: 'legacy-local:legacy-1',
+        title: 'Legacy thread',
+        snippet: 'Local',
+        createdAt: '2026-03-07T09:00:00.000Z',
+        updatedAt: '2026-03-07T11:00:00.000Z',
+      },
+    ] as never);
+    vi.mocked(useQuery).mockImplementation(
+      ({ queryFn }: { queryFn: () => Promise<unknown> }) =>
+        ({
+          data: undefined,
+          isLoading: false,
+          queryFn,
+        }) as never
+    );
+
+    renderHook(() => useChatThreads());
+    const merged = await (vi.mocked(useQuery).mock.calls[0][0].queryFn as () => Promise<any>)();
+
+    expect(merged).toHaveLength(1);
+    expect(merged[0]).toEqual(
       expect.objectContaining({
         id: 'legacy-1',
         source: 'legacy-local',
       })
     );
+    expect(markChatMigrationCompleted).not.toHaveBeenCalled();
   });
 });

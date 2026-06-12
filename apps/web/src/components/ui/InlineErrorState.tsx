@@ -3,13 +3,13 @@ import Alert from './Alert';
 import Button from './Button';
 
 export interface InlineErrorStateProps {
-  title?: string;
+  title?: string | undefined;
   message: string | ReactNode;
-  retryLabel?: string;
-  onRetry?: () => void;
-  dismissible?: boolean;
-  onDismiss?: () => void;
-  className?: string;
+  retryLabel?: string | undefined;
+  onRetry?: (() => void) | undefined;
+  dismissible?: boolean | undefined;
+  onDismiss?: (() => void) | undefined;
+  className?: string | undefined;
 }
 
 export default function InlineErrorState({

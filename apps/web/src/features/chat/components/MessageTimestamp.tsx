@@ -27,8 +27,10 @@ const MessageTimestamp = ({ createdAt, showRelative = true }: MessageTimestampPr
       return `Yesterday at ${formatTime(d)}`;
     }
 
-    return d.toLocaleDateString([], { month: 'short', day: 'numeric', year: 'numeric' }) +
-      ` at ${formatTime(d)}`;
+    return (
+      d.toLocaleDateString([], { month: 'short', day: 'numeric', year: 'numeric' }) +
+      ` at ${formatTime(d)}`
+    );
   };
 
   const displayText = showRelative ? formatFullDate(date) : formatTime(date);

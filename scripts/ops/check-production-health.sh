@@ -36,7 +36,7 @@ print_info() {
 # Health check functions
 check_api_health() {
     print_info "Checking API health..."
-    if curl -s -f --max-time 10 https://goblin-assistant-backend.onrender.com/health > /dev/null 2>&1; then
+    if curl -s -f --max-time 10 https://goblin-backend-dt30.onrender.com/health > /dev/null 2>&1; then
         print_status "API is healthy"
         return 0
     else

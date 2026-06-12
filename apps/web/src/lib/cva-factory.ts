@@ -1,7 +1,7 @@
 /**
  * CVA Factory - Helper functions for consistent component styling
  * Reduces boilerplate by providing pre-configured base classes and variants
- * 
+ *
  * Design system rules enforced:
  * - One focus ring style (outline primary color)
  * - One disabled state handling
@@ -15,7 +15,8 @@ import { cva, type VariantProps } from 'class-variance-authority';
  * Standard focus ring classes for keyboard navigation
  * Used consistently across all interactive components
  */
-const FOCUS_RING = 'focus-visible:outline focus-visible:outline-2 focus-visible:outline-primary focus-visible:outline-offset-2';
+const FOCUS_RING =
+  'focus-visible:outline focus-visible:outline-2 focus-visible:outline-primary focus-visible:outline-offset-2';
 
 /**
  * Standard disabled state styling
@@ -31,7 +32,7 @@ const TRANSITION = 'transition-all duration-150';
 
 /**
  * Create a button variant definition with sensible defaults
- * 
+ *
  * Usage:
  * ```tsx
  * const buttonVariants = cva(
@@ -59,7 +60,7 @@ export function getBaseComponentClasses(): string {
 /**
  * Create a button-style component with common defaults
  * Returns CVA function that handles variant + size combinations
- * 
+ *
  * Pre-configured:
  * - Focus ring
  * - Disabled state
@@ -73,10 +74,14 @@ export const buttonBase = cva(
   {
     variants: {
       variant: {
-        primary: 'bg-primary text-text hover:bg-primary-600 active:bg-primary-600/90 shadow-md hover:shadow-lg',
-        secondary: 'bg-surface text-text border border-border hover:bg-surface-hover hover:border-primary/50 active:bg-surface-active shadow-sm hover:shadow-md',
-        accent: 'bg-accent text-text hover:bg-accent-600 active:bg-accent-600/90 shadow-md hover:shadow-lg',
-        danger: 'bg-danger text-text hover:bg-danger/90 active:bg-danger/80 shadow-md hover:shadow-lg',
+        primary:
+          'bg-primary text-text hover:bg-primary-600 active:bg-primary-600/90 shadow-md hover:shadow-lg',
+        secondary:
+          'bg-surface text-text border border-border hover:bg-surface-hover hover:border-primary/50 active:bg-surface-active shadow-sm hover:shadow-md',
+        accent:
+          'bg-accent text-text hover:bg-accent-600 active:bg-accent-600/90 shadow-md hover:shadow-lg',
+        danger:
+          'bg-danger text-text hover:bg-danger/90 active:bg-danger/80 shadow-md hover:shadow-lg',
         ghost: 'text-text hover:bg-surface/50 active:bg-surface/70',
       },
       size: {
@@ -104,10 +109,14 @@ export const iconButtonBase = cva(
   {
     variants: {
       variant: {
-        primary: 'bg-primary text-text hover:bg-primary-600 active:bg-primary-600/90 shadow-sm hover:shadow-md',
-        secondary: 'bg-surface text-text border border-border hover:bg-surface-hover active:bg-surface-active shadow-sm hover:shadow-md',
-        accent: 'bg-accent text-text hover:bg-accent-600 active:bg-accent-600/90 shadow-sm hover:shadow-md',
-        danger: 'bg-danger text-text hover:bg-danger/90 active:bg-danger/80 shadow-sm hover:shadow-md',
+        primary:
+          'bg-primary text-text hover:bg-primary-600 active:bg-primary-600/90 shadow-sm hover:shadow-md',
+        secondary:
+          'bg-surface text-text border border-border hover:bg-surface-hover active:bg-surface-active shadow-sm hover:shadow-md',
+        accent:
+          'bg-accent text-text hover:bg-accent-600 active:bg-accent-600/90 shadow-sm hover:shadow-md',
+        danger:
+          'bg-danger text-text hover:bg-danger/90 active:bg-danger/80 shadow-sm hover:shadow-md',
         ghost: 'text-text hover:bg-surface/50 active:bg-surface/70',
       },
       size: {
@@ -185,28 +194,25 @@ export type BadgeVariants = VariantProps<typeof badgeBase>;
 /**
  * Create a card/surface variant
  */
-export const cardBase = cva(
-  `rounded-md border border-border bg-surface ${TRANSITION}`,
-  {
-    variants: {
-      variant: {
-        default: 'hover:border-primary/50 hover:shadow-md',
-        interactive: `cursor-pointer hover:bg-surface-hover hover:border-primary/50 hover:shadow-md ${FOCUS_RING}`,
-        elevated: 'shadow-lg hover:shadow-xl',
-      },
-      padding: {
-        none: '',
-        sm: 'p-3',
-        md: 'p-4',
-        lg: 'p-6',
-      },
+export const cardBase = cva(`rounded-md border border-border bg-surface ${TRANSITION}`, {
+  variants: {
+    variant: {
+      default: 'hover:border-primary/50 hover:shadow-md',
+      interactive: `cursor-pointer hover:bg-surface-hover hover:border-primary/50 hover:shadow-md ${FOCUS_RING}`,
+      elevated: 'shadow-lg hover:shadow-xl',
     },
-    defaultVariants: {
-      variant: 'default',
-      padding: 'md',
+    padding: {
+      none: '',
+      sm: 'p-3',
+      md: 'p-4',
+      lg: 'p-6',
     },
-  }
-);
+  },
+  defaultVariants: {
+    variant: 'default',
+    padding: 'md',
+  },
+});
 
 export type CardVariants = VariantProps<typeof cardBase>;
 

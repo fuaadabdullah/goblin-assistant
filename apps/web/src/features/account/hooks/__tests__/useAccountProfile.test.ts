@@ -1,19 +1,22 @@
 import { renderHook, act } from '@testing-library/react';
+import { useUIStore } from '@/store/uiStore';
 
-jest.mock('../../api', () => ({
-  saveProfile: jest.fn(),
-  savePreferences: jest.fn(),
+vi.mock('../../api', () => ({
+  saveProfile: vi.fn(),
+  savePreferences: vi.fn(),
+  loadPreferences: vi.fn().mockReturnValue(null),
 }));
 
 import { useAccountProfile } from '../useAccountProfile';
 import { saveProfile, savePreferences } from '../../api';
 
-const mockSaveProfile = saveProfile as jest.Mock;
-const mockSavePreferences = savePreferences as jest.Mock;
+const mockSaveProfile = saveProfile as vi.Mock;
+const mockSavePreferences = savePreferences as vi.Mock;
 
 describe('useAccountProfile', () => {
   beforeEach(() => {
-    jest.clearAllMocks();
+    vi.clearAllMocks();
+    useUIStore.setState({ toasts: [] });
     mockSaveProfile.mockResolvedValue(undefined);
     mockSavePreferences.mockResolvedValue(undefined);
   });
@@ -53,37 +56,53 @@ describe('useAccountProfile', () => {
 
   it('handleSave calls saveProfile and savePreferences', async () => {
     const { result } = renderHook(() => useAccountProfile({ name: 'X', email: 'x@y.com' }));
-    const fakeEvent = { preventDefault: jest.fn() } as unknown as React.FormEvent;
-    await act(async () => { await result.current.handleSave(fakeEvent); });
+    const fakeEvent = { preventDefault: vi.fn() } as unknown as React.FormEvent;
+    await act(async () => {
+      await result.current.handleSave(fakeEvent);
+    });
     expect(mockSaveProfile).toHaveBeenCalled();
     expect(mockSavePreferences).toHaveBeenCalled();
   });
 
   it('sets saved to true on success', async () => {
     const { result } = renderHook(() => useAccountProfile(null));
-    const fakeEvent = { preventDefault: jest.fn() } as unknown as React.FormEvent;
-    await act(async () => { await result.current.handleSave(fakeEvent); });
+    const fakeEvent = { preventDefault: vi.fn() } as unknown as React.FormEvent;
+    await act(async () => {
+      await result.current.handleSave(fakeEvent);
+    });
     expect(result.current.saved).toBe(true);
   });
 
   it('sets error on failure', async () => {
     mockSaveProfile.mockRejectedValue(new Error('Network error'));
     const { result } = renderHook(() => useAccountProfile(null));
-    const fakeEvent = { preventDefault: jest.fn() } as unknown as React.FormEvent;
-    await act(async () => { await result.current.handleSave(fakeEvent); });
+    const fakeEvent = { preventDefault: vi.fn() } as unknown as React.FormEvent;
+    await act(async () => {
+      await result.current.handleSave(fakeEvent);
+    });
     expect(result.current.error).toBeTruthy();
   });
 
   it('sets saving during save', async () => {
     let resolve: () => void;
-    mockSaveProfile.mockImplementation(() => new Promise(r => { resolve = r; }));
+    mockSaveProfile.mockImplementation(
+      () =>
+        new Promise((r) => {
+          resolve = r;
+        })
+    );
     mockSavePreferences.mockResolvedValue(undefined);
     const { result } = renderHook(() => useAccountProfile(null));
-    const fakeEvent = { preventDefault: jest.fn() } as unknown as React.FormEvent;
+    const fakeEvent = { preventDefault: vi.fn() } as unknown as React.FormEvent;
     let promise: Promise<void>;
-    act(() => { promise = result.current.handleSave(fakeEvent); });
+    act(() => {
+      promise = result.current.handleSave(fakeEvent);
+    });
     expect(result.current.saving).toBe(true);
-    await act(async () => { resolve!(); await promise!; });
+    await act(async () => {
+      resolve!();
+      await promise!;
+    });
     expect(result.current.saving).toBe(false);
   });
 });

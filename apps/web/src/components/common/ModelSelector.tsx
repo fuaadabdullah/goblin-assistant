@@ -1,13 +1,7 @@
 import React, { useEffect, useState } from 'react';
-import { runtimeClient } from '@/api';
+import { runtimeClient } from '@/lib/api/runtimeClient';
 import type { ProviderModelOption } from '@/types/api';
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/Select';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui';
 import { devError } from '@/utils/dev-log';
 
 interface Props {
@@ -68,7 +62,7 @@ const ModelSelector: React.FC<Props> = ({ provider, selected, onChange }) => {
           <SelectValue placeholder="Select a model..." />
         </SelectTrigger>
         <SelectContent>
-          {(models || []).map(model => (
+          {(models || []).map((model) => (
             <SelectItem
               key={model.name}
               value={model.name}

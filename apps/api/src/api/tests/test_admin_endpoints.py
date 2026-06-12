@@ -3,11 +3,13 @@
 Test script for admin endpoints
 """
 
+import pytest
 import requests
-import json
-import time
 
 BASE_URL = "http://localhost:8003"
+pytestmark = pytest.mark.skip(
+    reason="Manual smoke script; requires live admin server on localhost:8003"
+)
 
 
 def test_endpoint(endpoint, description):
@@ -23,17 +25,17 @@ def test_endpoint(endpoint, description):
                 data = response.json()
                 print(f"   📊 Response keys: {list(data.keys())}")
                 return True
-            except:
-                print(f"   ⚠️  Invalid JSON response")
+            except Exception:
+                print("   ⚠️  Invalid JSON response")
                 return False
         else:
             print(f"   ❌ Failed (Status: {response.status_code})")
             return False
     except requests.exceptions.ConnectionError:
-        print(f"   ❌ Connection failed - server may not be running")
+        print("   ❌ Connection failed - server may not be running")
         return False
     except requests.exceptions.Timeout:
-        print(f"   ⏰ Timeout - server may be slow")
+        print("   ⏰ Timeout - server may be slow")
         return False
     except Exception as e:
         print(f"   ❌ Error: {e}")
@@ -52,6 +54,7 @@ def main():
         ("/ops/performance/snapshot", "Performance Snapshot"),
         ("/ops/queues/snapshot", "Task Queue Monitor"),
         ("/ops/circuit-breakers", "Circuit Breaker Status"),
+        ("/admin/providers/state", "Provider Registry State"),
     ]
 
     results = []

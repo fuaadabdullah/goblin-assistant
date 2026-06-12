@@ -24,16 +24,19 @@ BROKEN_ITEMS.md
 
 # Supabase migration backups
 supabase/migrations.bak*/
+supabase/.temp/
 
 # Runtime artifacts
 sandbox_jobs/
 instance/
+.tmp/
 
 # Hash artifacts
 api/[0-9a-f][0-9a-f]*
 
 # Database
 *.db
+*.db-journal
 *.sqlite
 *.sqlite3
 
@@ -45,6 +48,9 @@ node_modules/
 dist/
 build/
 coverage/
+htmlcov/
+coverage.xml
+.coverage
 .playwright/
 *.tsbuildinfo
 
@@ -55,6 +61,7 @@ __pycache__/
 .venv/
 venv/
 *.egg-info/
+.mypy_cache/
 
 # IDE
 .idea/
@@ -63,6 +70,7 @@ venv/
 # Storybook
 *storybook.log
 storybook-static
+apps/web/storybook-static/
 
 # OS
 .DS_Store
@@ -75,3 +83,9 @@ storybook-static
 !api/tools/
 !api/tools/**
 terraform.tfvars
+
+# Test uploads
+apps/api/src/uploads/
+
+# Generated analysis reports
+reports/*.md

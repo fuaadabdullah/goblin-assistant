@@ -16,9 +16,6 @@ logger = structlog.get_logger(__name__)
 
 
 class OllamaProvider(BaseProvider):
-    COST_INPUT_PER_1K = 0.0
-    COST_OUTPUT_PER_1K = 0.0
-
     def __init__(
         self,
         provider_id: str | Dict[str, Any],
@@ -46,9 +43,7 @@ class OllamaProvider(BaseProvider):
         prompt: str = "",
         **kwargs: Any,
     ) -> ProviderResult:
-        normalized_messages = self.normalize_messages(
-            messages, prompt=prompt, **kwargs
-        )
+        normalized_messages = self.normalize_messages(messages, prompt=prompt, **kwargs)
         model_name = model or self.default_model or "qwen2.5:3b"
         if not self._base_url:
             return ProviderResult(
@@ -80,9 +75,7 @@ class OllamaProvider(BaseProvider):
 
             text = data["choices"][0]["message"]["content"]
             if not text:
-                raise ValueError(
-                    "Empty response content — check Ollama model and endpoint config"
-                )
+                raise ValueError("Empty response content — check Ollama model and endpoint config")
             usage = data.get("usage", {})
             self.record_success()
             return ProviderResult(
@@ -122,9 +115,7 @@ class OllamaProvider(BaseProvider):
         prompt: str = "",
         **kwargs: Any,
     ) -> AsyncGenerator[Dict[str, Any], None]:
-        normalized_messages = self.normalize_messages(
-            messages, prompt=prompt, **kwargs
-        )
+        normalized_messages = self.normalize_messages(messages, prompt=prompt, **kwargs)
         model_name = model or self.default_model or "qwen2.5:3b"
         body = {
             "model": model_name,
@@ -132,26 +123,28 @@ class OllamaProvider(BaseProvider):
             "stream": True,
             "options": {"num_predict": max_tokens, "temperature": temperature},
         }
-        async with httpx.AsyncClient(timeout=180) as client:
-            async with client.stream(
+        async with (
+            httpx.AsyncClient(timeout=180) as client,
+            client.stream(
                 "POST",
                 f"{self._base_url}/api/chat",
                 headers=self._headers(),
                 json=body,
-            ) as resp:
-                resp.raise_for_status()
-                async for line in resp.aiter_lines():
-                    if not line.strip():
-                        continue
-                    try:
-                        chunk = json.loads(line)
-                    except json.JSONDecodeError:
-                        continue
-                    text = chunk.get("message", {}).get("content", "")
-                    if text:
-                        yield {"text": text}
-                    if chunk.get("done"):
-                        break
+            ) as resp,
+        ):
+            resp.raise_for_status()
+            async for line in resp.aiter_lines():
+                if not line.strip():
+                    continue
+                try:
+                    chunk = json.loads(line)
+                except json.JSONDecodeError:
+                    continue
+                text = chunk.get("message", {}).get("content", "")
+                if text:
+                    yield {"text": text}
+                if chunk.get("done"):
+                    break
 
     async def health_check(self) -> ProviderHealth:
         if not self._base_url:
@@ -165,10 +158,7 @@ class OllamaProvider(BaseProvider):
                 self.provider_id,
                 resp.status_code == 200,
                 latency_ms=latency,
-                error=(
-                    None if resp.status_code == 200
-                    else f"HTTP {resp.status_code}"
-                ),
+                error=(None if resp.status_code == 200 else f"HTTP {resp.status_code}"),
             )
         except Exception as exc:
             latency = (time.perf_counter() - t0) * 1000

@@ -1,19 +1,21 @@
+'use client';
+
 import type { FC } from 'react';
 import { useMemo, useState } from 'react';
-import { useRouter } from 'next/router';
+import { useSearchParams } from 'next/navigation';
 import { useAuthSession } from '../../hooks/api/useAuthSession';
 import AuthPrompt from '../../components/auth/AuthPrompt';
 import { useSandboxSession } from './hooks/useSandboxSession';
 import SandboxView from './components/SandboxView';
 
 const SandboxScreen: FC = () => {
-  const router = useRouter();
+  const searchParams = useSearchParams();
   const { isAuthenticated } = useAuthSession();
   const [showAuthPrompt, setShowAuthPrompt] = useState(false);
+  const guestParam = searchParams.get('guest');
   const allowGuest = useMemo(() => {
-    if (!router.isReady) return false;
-    return router.query.guest === '1' || router.query.guest === 'true';
-  }, [router.isReady, router.query.guest]);
+    return guestParam === '1' || guestParam === 'true';
+  }, [guestParam]);
   const isGuest = !isAuthenticated && allowGuest;
   const session = useSandboxSession({ isGuest });
 
@@ -34,11 +36,7 @@ const SandboxScreen: FC = () => {
           onClose={() => setShowAuthPrompt(false)}
         />
       )}
-      <SandboxView
-        session={session}
-        isGuest={isGuest}
-        onRequireAuth={requireAuthModal}
-      />
+      <SandboxView session={session} isGuest={isGuest} onRequireAuth={requireAuthModal} />
     </>
   );
 };

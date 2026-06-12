@@ -9,7 +9,10 @@ describe('orchestrationReducer', () => {
     let state = initialOrchestrationState;
 
     state = orchestrationReducer(state, { type: 'SET_CODE_INPUT', payload: 'const x = 1;' });
-    state = orchestrationReducer(state, { type: 'SET_ORCHESTRATION', payload: 'docs-writer: test' });
+    state = orchestrationReducer(state, {
+      type: 'SET_ORCHESTRATION',
+      payload: 'docs-writer: test',
+    });
     state = orchestrationReducer(state, { type: 'SET_RUNNING', payload: true });
     state = orchestrationReducer(state, { type: 'SET_IS_STREAMING', payload: true });
 
@@ -25,7 +28,7 @@ describe('orchestrationReducer', () => {
     state = orchestrationReducer(state, { type: 'SET_STREAMING_TEXT', payload: 'chunk-1' });
     state = orchestrationReducer(state, {
       type: 'SET_STREAMING_TEXT',
-      payload: prev => `${prev}\nchunk-2`,
+      payload: (prev) => `${prev}\nchunk-2`,
     });
 
     expect(state.streamingText).toBe('chunk-1\nchunk-2');

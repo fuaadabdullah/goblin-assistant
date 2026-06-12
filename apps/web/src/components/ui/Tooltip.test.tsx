@@ -1,4 +1,4 @@
-import { describe, it, expect } from '@jest/globals';
+import { describe, it, expect } from 'vitest';
 import { render, fireEvent, waitFor } from '@testing-library/react';
 import Tooltip from './Tooltip';
 

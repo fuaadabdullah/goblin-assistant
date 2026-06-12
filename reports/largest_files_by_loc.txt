@@ -1,0 +1,88 @@
+=== Largest Files by Lines of Code ===
+
+Generated: 2026-06-06
+Excludes: .git, node_modules, .mypy_cache, .playwright, storybook-static, .next, dist, __pycache__
+
+=== Top 50 ===
+ 13125   ./packages/sdk/src/generated/openapi.ts
+  1325   ./apps/web/src/styles/dark-theme.css
+  1208   ./apps/api/src/api/tests/test_provider_dispatcher_authority.py
+  1159   ./apps/api/src/api/tests/test_context_assembly_coverage.py
+  1117   ./apps/api/src/api/tests/test_chat_router_core.py
+  1111   ./apps/api/src/api/tests/test_provider_dispatcher_routing.py
+   869   ./apps/api/src/api/providers/dispatcher.py
+   793   ./apps/api/src/api/tests/test_sse_errors.py
+   788   ./apps/api/src/api/providers/quota_service.py
+   778   ./apps/api/src/api/routing/router.py
+   777   ./apps/api/src/api/health.py
+   744   ./apps/api/src/api/observability/debug_router.py
+   733   ./apps/api/src/api/services/observability_service.py
+   708   ./apps/api/src/api/tests/test_sandbox_api_runtime.py
+   707   ./apps/api/src/api/integrations/secrets/bitwarden_adapter.py
+   699   ./apps/api/src/api/tests/test_auth_additional_coverage.py
+   661   ./apps/web/src/index.css
+   655   ./apps/api/src/api/sandbox_api.py
+   654   ./apps/api/src/api/integrations/secrets/vault_adapter.py
+   637   ./apps/api/src/api/observability/context_snapshotter.py
+   635   ./apps/api/src/api/chat_router/messages/router.py
+   634   ./apps/api/src/api/observability/retrieval_tracer.py
+   624   ./apps/api/src/api/providers/dispatcher_pkg/execution.py
+   619   ./apps/api/src/api/tests/test_financial_memory_integration.py
+   602   ./apps/api/src/api/tests/test_context_assembly_layers.py
+   595   ./apps/api/src/api/services/embedding_service.py
+   589   ./apps/api/src/api/api_router.py
+   582   ./apps/web/src/screens/SettingsPage.tsx
+   578   ./apps/api/src/api/tests/test_visualization_service.py
+   576   ./apps/api/src/api/assistant_tools/skills/git_tool.py
+   574   ./apps/api/src/api/services/write_time_matrix.py
+   560   ./apps/api/src/api/tests/test_api_router.py
+   559   ./apps/web/src/test/handlers.ts
+   553   ./apps/api/src/api/tests/test_tool_pipeline_route_integration.py
+   547   ./apps/api/src/api/providers/base.py
+   545   ./apps/api/src/api/observability/alerting_system.py
+   544   ./apps/web/src/lib/__tests__/api.test.ts
+   538   ./apps/api/src/api/services/write_time_matrix_enhanced.py
+   535   ./apps/api/src/api/assistant_tools/skills/file_tool.py
+   526   ./apps/api/src/api/observability/tool_tracer.py
+   523   ./apps/api/src/api/services/context_monitoring.py
+   522   ./apps/api/src/api/tests/test_semantic_retrieval.py
+   511   ./apps/api/src/api/services/message_classifier.py
+   501   ./apps/web/src/lib/api/shared.ts
+   493   ./apps/api/src/api/tests/test_openai_provider.py
+   492   ./apps/api/src/api/services/sanitization.py
+   489   ./apps/web/src/features/chat/hooks/useMessages.ts
+   485   ./apps/api/src/api/semantic_chat_router.py
+   483   ./apps/api/src/api/tests/test_conversations.py
+   479   ./apps/api/src/api/assistant_tools/skills/research_tool.py
+   478   ./apps/api/src/api/tests/test_write_time_intelligence.py
+   470   ./apps/web/src/types/api.ts
+   466   ./apps/api/src/api/tests/test_attestation_service.py
+   466   ./apps/api/src/api/services/visualization_service.py
+   462   ./apps/api/src/api/tests/test_observability_integration.py
+
+=== SRP Assessment (top 5 non-test, non-generated source files) ===
+
+Assessed: 2026-06-06
+
+1. apps/api/src/api/providers/dispatcher.py (869 lines)
+   Verdict: GOOD — already a thin façade over dispatcher_pkg/ sub-package
+   (config, execution, health, routing, sanitization, test_mode). No split needed.
+
+2. apps/api/src/api/providers/quota_service.py (788 lines)
+   Verdict: ACCEPTABLE — single-concern Redis-backed quota service.
+   Long but cohesive (reservation, rate-limit, cooldown are all quota logic).
+
+3. apps/api/src/api/routing/router.py (778 lines)
+   Verdict: CANDIDATE — RoutingRegistryStore (SQLite persistence of provider
+   stats) is a distinct concern from routing strategy selection. Candidate split:
+   extract RoutingRegistryStore → routing/registry_store.py (~150 lines).
+
+4. apps/api/src/api/health.py (777 lines)
+   Verdict: CANDIDATE — contains two APIRouter instances (router + ops_health_router).
+   The ops_health_router was consolidated from ops_routes/health.py as a workaround
+   for circular imports. Candidate split: extract ops endpoints → health_ops.py once
+   the circular import root cause is resolved.
+
+5. apps/api/src/api/observability/debug_router.py (744 lines)
+   Verdict: ACCEPTABLE — single /debug prefix with cohesive observability endpoints.
+   Long but all endpoints serve the same concern.

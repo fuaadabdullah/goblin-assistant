@@ -58,19 +58,106 @@ async def test_refresh_updates_health_data():
     fake_stats = MagicMock()
     fake_stats.success_rate = 0.97
 
-    with patch(
-        "api.services.provider_health.dispatcher.get_provider_inventory",
-        new_callable=AsyncMock,
-        return_value=inventory,
-    ), patch(
-        "api.services.provider_health.registry.get",
-        return_value=fake_stats,
+    with (
+        patch(
+            "api.services.provider_health.dispatcher.get_provider_inventory",
+            new_callable=AsyncMock,
+            return_value=inventory,
+        ),
+        patch(
+            "api.services.provider_health.registry.get",
+            return_value=fake_stats,
+        ),
     ):
         result = await monitor.refresh(include_hidden=False)
 
     assert "openai" in result
     assert result["openai"].status == HealthStatus.HEALTHY
     assert result["mock"].status == HealthStatus.UNKNOWN
+
+
+@pytest.mark.asyncio
+async def test_refresh_emits_jira_once_for_unhealthy_transition() -> None:
+    monitor = ProviderHealthMonitor()
+    fake_stats = MagicMock()
+    fake_stats.success_rate = 0.12
+    inventory = [
+        {
+            "id": "openai",
+            "configured": True,
+            "healthy": False,
+            "health_reason": "timeout",
+        }
+    ]
+
+    with (
+        patch(
+            "api.services.provider_health.dispatcher.get_provider_inventory",
+            new_callable=AsyncMock,
+            return_value=inventory,
+        ),
+        patch("api.services.provider_health.registry.get", return_value=fake_stats),
+        patch("api.services.provider_health._push_status"),
+        patch(
+            "api.services.provider_health.event_emitter.emit",
+            new_callable=AsyncMock,
+        ),
+        patch(
+            "api.services.provider_health.publish_provider_health_incident",
+            new_callable=AsyncMock,
+            return_value=True,
+        ) as publish_incident,
+    ):
+        await monitor.refresh(include_hidden=False)
+        await monitor.refresh(include_hidden=False)
+
+    publish_incident.assert_awaited_once()
+
+
+@pytest.mark.asyncio
+async def test_refresh_does_not_emit_jira_for_steady_state_healthy_provider() -> None:
+    monitor = ProviderHealthMonitor()
+    fake_stats = MagicMock()
+    fake_stats.success_rate = 0.99
+    inventory = [
+        {
+            "id": "openai",
+            "configured": True,
+            "healthy": True,
+            "latency_ms": 18,
+        }
+    ]
+
+    with (
+        patch.dict(
+            "os.environ",
+            {
+                "JIRA_PROVIDER_OPS_WEBHOOK_URL": "https://jira.example/webhook",
+                "JIRA_PROVIDER_OPS_PROJECT_KEY": "PROVOPS",
+            },
+            clear=False,
+        ),
+        patch(
+            "api.services.provider_health.dispatcher.get_provider_inventory",
+            new_callable=AsyncMock,
+            return_value=inventory,
+        ),
+        patch("api.services.provider_health.registry.get", return_value=fake_stats),
+        patch("api.services.provider_health._push_status"),
+        patch(
+            "api.services.provider_health.event_emitter.emit",
+            new_callable=AsyncMock,
+        ),
+        patch(
+            "api.ops.integrations.jira.post_jira_provider_ops_payload",
+            new_callable=AsyncMock,
+            return_value=True,
+        ) as post_payload,
+    ):
+        await monitor.refresh(include_hidden=False)
+        await monitor.refresh(include_hidden=False)
+
+    post_payload.assert_not_awaited()
 
 
 @pytest.mark.asyncio
@@ -99,21 +186,25 @@ async def test_probe_provider_updates_state():
     fake_stats = MagicMock()
     fake_stats.success_rate = 0.91
 
-    with patch(
-        "api.services.provider_health.dispatcher.check_provider",
-        new_callable=AsyncMock,
-        return_value={
-            "configured": True,
-            "healthy": True,
-            "latency_ms": 18,
-            "health_reason": None,
-        },
-    ), patch(
-        "api.services.provider_health.registry.get",
-        return_value=fake_stats,
-    ), patch(
-        "api.services.provider_health.canonical_provider_id",
-        return_value="openai",
+    with (
+        patch(
+            "api.services.provider_health.dispatcher.check_provider",
+            new_callable=AsyncMock,
+            return_value={
+                "configured": True,
+                "healthy": True,
+                "latency_ms": 18,
+                "health_reason": None,
+            },
+        ),
+        patch(
+            "api.services.provider_health.registry.get",
+            return_value=fake_stats,
+        ),
+        patch(
+            "api.services.provider_health.canonical_provider_id",
+            return_value="openai",
+        ),
     ):
         status = await monitor.probe_provider("openai")
 
@@ -140,6 +231,23 @@ def test_get_status_unknown_provider_returns_error():
         result = monitor.get_status("missing")
 
     assert result["error"] == "Unknown provider: missing"
+
+
+def test_get_all_status_excludes_hidden_cached_providers_by_default():
+    monitor = ProviderHealthMonitor()
+    monitor.health_data = {
+        "visible": ProviderHealth(provider_id="visible"),
+        "hidden": ProviderHealth(provider_id="hidden"),
+    }
+
+    with patch(
+        "api.services.provider_health.dispatcher.provider_ids",
+        side_effect=lambda include_hidden=False: (
+            ["visible", "hidden"] if include_hidden else ["visible"]
+        ),
+    ):
+        assert set(monitor.get_all_status()) == {"visible"}
+        assert set(monitor.get_all_status(include_hidden=True)) == {"hidden", "visible"}
 
 
 def test_get_best_providers_sorts_by_latency_and_success_rate():

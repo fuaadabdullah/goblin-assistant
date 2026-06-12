@@ -13,36 +13,37 @@ import sys
 import pytest
 
 # Stubs are provided by conftest.py (mock_embedding_service, mock_yfinance)
-
-from api.tools.registry import TOOL_REGISTRY
-from api.tools.skills.dcf_calculator import (
-    _project_fcf,
+from api.assistant_tools.registry import TOOL_REGISTRY
+from api.assistant_tools.skills.dcf_calculator import (
     _discount_fcf,
-    _terminal_value,
     _handle_dcf_calculator,
+    _project_fcf,
+    _terminal_value,
 )
-from api.tools.skills.portfolio_analyzer import (
-    _daily_returns,
+from api.assistant_tools.skills.earnings_summarizer import _handle_earnings_summarizer
+from api.assistant_tools.skills.portfolio_analyzer import (
     _annualized_return,
     _annualized_volatility,
-    _sharpe_ratio,
-    _max_drawdown,
-    _var_95,
     _correlation,
+    _daily_returns,
     _handle_portfolio_analyzer,
+    _max_drawdown,
+    _sharpe_ratio,
+    _var_95,
 )
-from api.tools.skills.earnings_summarizer import _handle_earnings_summarizer
-from api.tools.skills.stock_screener import _handle_stock_screener
+from api.assistant_tools.skills.stock_screener import _handle_stock_screener
 
 
 # Disable Redis caching and rate limiting for all tests
 @pytest.fixture(autouse=True)
 def _no_redis(monkeypatch):
     import api.services.financial_data_service as fds
+
     monkeypatch.setattr(fds, "_cache_get", lambda key: None)
     monkeypatch.setattr(fds, "_cache_set", lambda key, value, ttl: None)
 
     import api.services.financial_guardrails as fg
+
     monkeypatch.setattr(fg, "check_rate_limit", lambda: None)
 
 
@@ -161,6 +162,7 @@ class TestPortfolioHelpers:
 
     def test_var_95(self):
         import random
+
         random.seed(42)
         rets = [random.gauss(0, 0.02) for _ in range(252)]
         var = _var_95(rets)
@@ -252,11 +254,14 @@ class TestEarningsSummarizer:
             def __init__(self, ticker):
                 super().__init__(ticker)
                 dates = pd.date_range("2025-01-01", periods=4, freq="QS")
-                self.earnings_dates = pd.DataFrame({
-                    "EPS Estimate": [1.50, 1.40, 1.30, 1.20],
-                    "Reported EPS": [1.60, 1.35, 1.45, 1.25],
-                    "Surprise(%)": [6.67, -3.57, 11.54, 4.17],
-                }, index=dates)
+                self.earnings_dates = pd.DataFrame(
+                    {
+                        "EPS Estimate": [1.50, 1.40, 1.30, 1.20],
+                        "Reported EPS": [1.60, 1.35, 1.45, 1.25],
+                        "Surprise(%)": [6.67, -3.57, 11.54, 4.17],
+                    },
+                    index=dates,
+                )
 
         _yf_mod.Ticker = _PatchedTicker
         try:
@@ -364,7 +369,12 @@ class TestAllSkillsRegistered:
         assert expected.issubset(set(TOOL_REGISTRY.keys()))
 
     def test_all_have_openai_schemas(self):
-        for name in ["dcf_calculator", "portfolio_analyzer", "earnings_summarizer", "stock_screener"]:
+        for name in [
+            "dcf_calculator",
+            "portfolio_analyzer",
+            "earnings_summarizer",
+            "stock_screener",
+        ]:
             tool = TOOL_REGISTRY[name]
             schema = tool.to_openai_schema()
             assert schema["type"] == "function"

@@ -11,8 +11,8 @@ import { debugError, debugLog, debugWarn } from '@/lib/utils/debug';
 export interface UseOrchestrationExecutionOptions {
   dispatch: React.Dispatch<OrchestrationAction>;
   runtimeClient: RuntimeClient;
-  provider?: string | null;
-  model?: string | null;
+  provider?: string | null | undefined;
+  model?: string | null | undefined;
 }
 
 export interface UseOrchestrationExecutionReturn {

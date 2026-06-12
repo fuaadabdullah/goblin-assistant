@@ -23,12 +23,12 @@ const alertVariants = cva(
 export type AlertVariantProps = VariantProps<typeof alertVariants>;
 
 export interface AlertProps extends AlertVariantProps {
-  title?: string;
+  title?: string | undefined;
   message: string | ReactNode;
-  dismissible?: boolean;
-  onDismiss?: () => void;
-  icon?: ReactNode;
-  className?: string;
+  dismissible?: boolean | undefined;
+  onDismiss?: (() => void) | undefined;
+  icon?: ReactNode | undefined;
+  className?: string | undefined;
 }
 
 const defaultIcons: Record<string, string> = {
@@ -59,11 +59,11 @@ export default function Alert({
       role="alert"
       aria-live={variant === 'danger' ? 'assertive' : 'polite'}
     >
-      <span className="flex-shrink-0 text-lg" aria-hidden="true">{displayIcon}</span>
+      <span className="flex-shrink-0 text-lg" aria-hidden="true">
+        {displayIcon}
+      </span>
       <div className="flex-1">
-        {title && (
-          <h3 className="font-semibold text-sm mb-1">{title}</h3>
-        )}
+        {title && <h3 className="font-semibold text-sm mb-1">{title}</h3>}
         <div className="text-sm text-text">{message}</div>
       </div>
       {dismissible && onDismiss && (

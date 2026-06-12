@@ -1,22 +1,21 @@
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
-import '@testing-library/jest-dom';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 
 // Mock apiClient
-const mockPasskeyChallenge = jest.fn();
-const mockPasskeyRegister = jest.fn();
-const mockPasskeyAuth = jest.fn();
-jest.mock('@/api', () => ({
+const mockPasskeyChallenge = vi.fn();
+const mockPasskeyRegister = vi.fn();
+const mockPasskeyAuth = vi.fn();
+vi.mock('@/lib/api', () => ({
   apiClient: {
     passkeyChallenge: (...args: unknown[]) => mockPasskeyChallenge(...args),
     passkeyRegister: (...args: unknown[]) => mockPasskeyRegister(...args),
     passkeyAuth: (...args: unknown[]) => mockPasskeyAuth(...args),
   },
 }));
-jest.mock('@/utils/auth-session', () => ({
-  persistAuthSession: jest.fn(),
+vi.mock('@/utils/auth-session', () => ({
+  persistAuthSession: vi.fn(),
 }));
-jest.mock('@/lib/query-keys', () => ({
+vi.mock('@/lib/query-keys', () => ({
   queryKeys: { authValidate: ['auth', 'validate'] },
 }));
 
@@ -29,15 +28,19 @@ function wrapper({ children }: { children: React.ReactNode }) {
 
 const defaultProps = {
   email: 'test@example.com',
-  onSuccess: jest.fn(),
-  onError: jest.fn(),
+  onSuccess: vi.fn(),
+  onError: vi.fn(),
 };
 
 describe('PasskeyPanel', () => {
   beforeEach(() => {
-    jest.clearAllMocks();
+    vi.clearAllMocks();
     // Mock WebAuthn API
-    Object.defineProperty(window, 'PublicKeyCredential', { value: class {}, writable: true, configurable: true });
+    Object.defineProperty(window, 'PublicKeyCredential', {
+      value: class {},
+      writable: true,
+      configurable: true,
+    });
   });
 
   it('renders passkey registration and authentication buttons', () => {
@@ -46,7 +49,11 @@ describe('PasskeyPanel', () => {
   });
 
   it('shows browser not supported message when WebAuthn is unavailable', () => {
-    Object.defineProperty(window, 'PublicKeyCredential', { value: undefined, writable: true, configurable: true });
+    Object.defineProperty(window, 'PublicKeyCredential', {
+      value: undefined,
+      writable: true,
+      configurable: true,
+    });
     render(<PasskeyPanel {...defaultProps} />, { wrapper });
     // Should indicate passkeys are not supported or show nothing actionable
   });
@@ -81,9 +88,9 @@ describe('PasskeyPanel', () => {
       pubKeyCredParams: [{ type: 'public-key', alg: -7 }],
     });
     // Mock navigator.credentials.create
-    const mockCreate = jest.fn().mockRejectedValue(new Error('User cancelled'));
+    const mockCreate = vi.fn().mockRejectedValue(new Error('User cancelled'));
     Object.defineProperty(navigator, 'credentials', {
-      value: { create: mockCreate, get: jest.fn() },
+      value: { create: mockCreate, get: vi.fn() },
       writable: true,
       configurable: true,
     });

@@ -3,11 +3,11 @@ Tests for secrets_router
 Tests secure secret management endpoints
 """
 
-from fastapi.testclient import TestClient
 from unittest.mock import patch
 
-from api.main import app
+from fastapi.testclient import TestClient
 
+from api.main import app
 
 client = TestClient(app)
 
@@ -27,9 +27,7 @@ class TestSecretsRouterList:
         response = client.get("/secrets/")
 
         # Should require auth
-        assert response.status_code in [
-            200, 401, 403, 404
-        ]
+        assert response.status_code in [200, 401, 403, 404]
 
 
 class TestSecretsRouterCreate:
@@ -43,9 +41,7 @@ class TestSecretsRouterCreate:
                 json={"key": "API_KEY", "value": "secret123"},
             )
 
-            assert response.status_code in [
-                200, 201, 400, 401, 403, 404, 422
-            ]
+            assert response.status_code in [200, 201, 400, 401, 403, 404, 422]
 
     def test_create_secret_validation(self):
         """Test secret creation validates input"""
@@ -55,9 +51,7 @@ class TestSecretsRouterCreate:
         )
 
         # Should reject empty values
-        assert response.status_code in [
-            400, 422, 401, 403, 404
-        ]
+        assert response.status_code in [400, 422, 401, 403, 404]
 
     def test_create_secret_requires_auth(self):
         """Test secret creation requires authentication"""
@@ -66,9 +60,7 @@ class TestSecretsRouterCreate:
             json={"key": "test", "value": "test"},
         )
 
-        assert response.status_code in [
-            200, 201, 400, 401, 403, 404, 422
-        ]
+        assert response.status_code in [200, 201, 400, 401, 403, 404, 422]
 
 
 class TestSecretsRouterUpdate:
@@ -81,9 +73,7 @@ class TestSecretsRouterUpdate:
             json={"value": "new_secret"},
         )
 
-        assert response.status_code in [
-            200, 400, 401, 403, 404, 422
-        ]
+        assert response.status_code in [200, 400, 401, 403, 404, 422]
 
     def test_update_nonexistent_secret(self):
         """Test updating nonexistent secret"""
@@ -92,9 +82,7 @@ class TestSecretsRouterUpdate:
             json={"value": "value"},
         )
 
-        assert response.status_code in [
-            404, 400, 401, 403, 422
-        ]
+        assert response.status_code in [404, 400, 401, 403, 422]
 
 
 class TestSecretsRouterDelete:
@@ -104,17 +92,13 @@ class TestSecretsRouterDelete:
         """Test deleting secret endpoint"""
         response = client.delete("/secrets/API_KEY")
 
-        assert response.status_code in [
-            200, 204, 400, 401, 403, 404
-        ]
+        assert response.status_code in [200, 204, 400, 401, 403, 404]
 
     def test_delete_nonexistent_secret(self):
         """Test deleting nonexistent secret"""
         response = client.delete("/secrets/NONEXISTENT")
 
-        assert response.status_code in [
-            404, 200, 204, 400, 401, 403
-        ]
+        assert response.status_code in [404, 200, 204, 400, 401, 403]
 
 
 class TestSecretsRouterSecurity:
@@ -136,15 +120,11 @@ class TestSecretsRouterSecurity:
         response = client.get("/secrets/")
 
         # Values should be masked or not returned
-        assert response.status_code in [
-            200, 401, 403, 404
-        ]
+        assert response.status_code in [200, 401, 403, 404]
 
     def test_audit_log_on_secret_access(self):
         """Test audit logging for secret operations"""
-        with patch(
-            "api.secrets_router.audit_log"
-        ) as mock_audit:
+        with patch("api.secrets_router.audit_log") as mock_audit:
             client.get("/secrets/")
 
             # Should log access attempts
@@ -163,9 +143,7 @@ class TestSecretsRouterValidation:
         )
 
         # Should validate key format
-        assert response.status_code in [
-            400, 422, 200, 201, 401, 403, 404
-        ]
+        assert response.status_code in [400, 422, 200, 201, 401, 403, 404]
 
     def test_value_encoding(self):
         """Test secret value encoding"""
@@ -175,9 +153,7 @@ class TestSecretsRouterValidation:
         )
 
         # Should handle special characters
-        assert response.status_code in [
-            200, 201, 400, 422, 401, 403, 404
-        ]
+        assert response.status_code in [200, 201, 400, 422, 401, 403, 404]
 
     def test_max_secret_size(self):
         """Test maximum secret size limit"""
@@ -188,6 +164,4 @@ class TestSecretsRouterValidation:
         )
 
         # Should reject oversized values
-        assert response.status_code in [
-            400, 422, 200, 201, 401, 403, 404
-        ]
+        assert response.status_code in [400, 422, 200, 201, 401, 403, 404]

@@ -12,8 +12,7 @@
   --bg-gradient:
     radial-gradient(900px at 18% 12%, rgba(212, 165, 116, 0.08), transparent 55%),
     radial-gradient(850px at 86% 8%, rgba(244, 150, 122, 0.08), transparent 55%),
-    radial-gradient(700px at 70% 90%, rgba(230, 158, 29, 0.06), transparent 55%),
-    var(--bg);
+    radial-gradient(700px at 70% 90%, rgba(230, 158, 29, 0.06), transparent 55%), var(--bg);
   --surface: #26211b;
   --surface-hover: #2f2722;
   --surface-active: #3d3631;
@@ -22,19 +21,19 @@
   --muted: #b8a394;
 
   /* Brand colors - Warm, premium aesthetic */
-  --primary: #d4a574;      /* Muted amber/caramel - primary actions */
-  --primary-600: #b68a5c;  /* Darker variant */
-  --primary-300: #e0b88a;  /* Lighter variant */
+  --primary: #d4a574; /* Muted amber/caramel - primary actions */
+  --primary-600: #b68a5c; /* Darker variant */
+  --primary-300: #e0b88a; /* Lighter variant */
   --primary-hover: #cba069;
 
-  --accent: #f4967a;       /* Warm coral - secondary actions */
-  --accent-600: #e0845c;   /* Darker variant */
-  --accent-300: #f8b398;   /* Lighter variant */
+  --accent: #f4967a; /* Warm coral - secondary actions */
+  --accent-600: #e0845c; /* Darker variant */
+  --accent-300: #f8b398; /* Lighter variant */
   --accent-hover: #f0a08a;
 
-  --cta: #e69e1d;          /* Warm orange-gold - call-to-action (bright) */
-  --cta-600: #d4891a;      /* Darker variant */
-  --cta-300: #f0b547;      /* Lighter variant */
+  --cta: #e69e1d; /* Warm orange-gold - call-to-action (bright) */
+  --cta-600: #d4891a; /* Darker variant */
+  --cta-300: #f0b547; /* Lighter variant */
   --cta-hover: #e8a426;
 
   /* Compatibility aliases (used by SVG/logo utilities and older styles) */
@@ -47,10 +46,10 @@
   --color-accent: var(--accent);
 
   /* Semantic colors */
-  --success: #6cc24a;      /* Green (keep for validation, slightly warmed) */
-  --warning: #e8a426;      /* Warm gold warning */
-  --danger: #e74c3c;       /* Warm red for errors */
-  --info: #8bb3e8;         /* Slightly warmed blue info */
+  --success: #6cc24a; /* Green (keep for validation, slightly warmed) */
+  --warning: #e8a426; /* Warm gold warning */
+  --danger: #e74c3c; /* Warm red for errors */
+  --info: #8bb3e8; /* Slightly warmed blue info */
 
   /* Text hierarchy - explicit semantic roles */
   --text-primary: #f8f0e8;
@@ -93,11 +92,11 @@
   --space-8: 32px;
 
   /* Border radius - design rule: 14px is max, scale down consistently */
-  --radius: 14px;          /* max: used for most components */
-  --radius-lg: 14px;       /* large: same as default */
-  --radius-md: 12px;       /* medium: radius - 2px */
-  --radius-sm: 10px;       /* small: radius - 4px */
-  --radius-xs: 8px;        /* extra small: minimal radius */
+  --radius: 14px; /* max: used for most components */
+  --radius-lg: 14px; /* large: same as default */
+  --radius-md: 12px; /* medium: radius - 2px */
+  --radius-sm: 10px; /* small: radius - 4px */
+  --radius-xs: 8px; /* extra small: minimal radius */
 
   /* Legacy shadow names (keeping for backwards compat, prefer --shadow-*) */
   --shadow-card: var(--shadow-md);
@@ -118,17 +117,17 @@
   --text-inverse: #000000;
   --muted: #e5e7eb;
 
-  --primary: #ffd89b;      /* Bright warm amber for HC mode */
+  --primary: #ffd89b; /* Bright warm amber for HC mode */
   --primary-600: #f5c35f;
   --primary-300: #ffe4bc;
   --primary-hover: #ffd8a8;
 
-  --accent: #f98b7d;       /* Bright warm coral */
+  --accent: #f98b7d; /* Bright warm coral */
   --accent-600: #f07560;
   --accent-300: #fcb3a8;
   --accent-hover: #f9a08d;
 
-  --cta: #ffb020;          /* Keep bright orange for CTA */
+  --cta: #ffb020; /* Keep bright orange for CTA */
   --cta-600: #e69e1d;
   --cta-300: #ffd07a;
   --cta-hover: #f0a51f;
@@ -194,8 +193,7 @@
   --bg-gradient:
     radial-gradient(900px at 18% 12%, rgba(212, 165, 116, 0.06), transparent 55%),
     radial-gradient(850px at 86% 8%, rgba(244, 150, 122, 0.06), transparent 55%),
-    radial-gradient(700px at 70% 90%, rgba(230, 158, 29, 0.04), transparent 55%),
-    var(--bg);
+    radial-gradient(700px at 70% 90%, rgba(230, 158, 29, 0.04), transparent 55%), var(--bg);
   --surface: #ffffff;
   --surface-hover: #f0e9e0;
   --surface-active: #e5ddd4;
@@ -227,9 +225,9 @@
   --text-secondary: #4a3f36;
   --text-muted: #7a6e62;
 
-  --glow-primary: rgba(158, 111, 58, 0.10);
-  --glow-accent: rgba(201, 90, 66, 0.10);
-  --glow-cta: rgba(192, 125, 14, 0.10);
+  --glow-primary: rgba(158, 111, 58, 0.1);
+  --glow-accent: rgba(201, 90, 66, 0.1);
+  --glow-cta: rgba(192, 125, 14, 0.1);
   --scanline: transparent;
   --scanline-pattern: none;
 
@@ -238,7 +236,7 @@
 
   --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.05);
   --shadow-md: 0 4px 8px rgba(0, 0, 0, 0.08);
-  --shadow-lg: 0 10px 20px rgba(0, 0, 0, 0.10);
+  --shadow-lg: 0 10px 20px rgba(0, 0, 0, 0.1);
   --shadow-xl: 0 20px 40px rgba(0, 0, 0, 0.12);
 
   --color-brand-primary: var(--primary);
@@ -258,7 +256,7 @@
 }
 
 .scanlines::after {
-  content: "";
+  content: '';
   position: absolute;
   inset: 0;
   pointer-events: none;
@@ -298,6 +296,7 @@
     animation-duration: 0.01ms !important;
     animation-iteration-count: 1 !important;
     transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
   }
 
   .glitch,

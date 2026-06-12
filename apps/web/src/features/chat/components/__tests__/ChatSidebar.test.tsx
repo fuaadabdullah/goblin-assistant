@@ -1,10 +1,23 @@
 import React from 'react';
 import { render, screen, fireEvent } from '@testing-library/react';
-import '@testing-library/jest-dom';
 
-jest.mock('next/link', () => function MockLink({ children, href, ...rest }: { children: React.ReactNode; href: string; [key: string]: unknown }) {
-  return <a href={href} {...rest}>{children}</a>;
-});
+vi.mock('next/link', () => ({
+  default: function MockLink({
+    children,
+    href,
+    ...rest
+  }: {
+    children: React.ReactNode;
+    href: string;
+    [key: string]: unknown;
+  }) {
+    return (
+      <a href={href} {...rest}>
+        {children}
+      </a>
+    );
+  },
+}));
 
 import ChatSidebar from '../ChatSidebar';
 import type { ChatThread } from '../../types';
@@ -35,15 +48,15 @@ describe('ChatSidebar', () => {
     threads: mockThreads,
     isThreadsLoading: false,
     activeThreadKey: null,
-    onSelectThread: jest.fn(),
-    onNewConversation: jest.fn(),
+    onSelectThread: vi.fn(),
+    onNewConversation: vi.fn(),
     isAdmin: false,
     totalTokens: 0,
     messageCount: 0,
   };
 
   beforeEach(() => {
-    jest.clearAllMocks();
+    vi.clearAllMocks();
   });
 
   it('renders Conversations heading and New Conversation button', () => {

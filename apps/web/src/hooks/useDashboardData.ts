@@ -1,6 +1,6 @@
 import { useMemo } from 'react';
 import { useQuery } from '@tanstack/react-query';
-import { apiClient } from '@/api';
+import { apiClient } from '@/lib/api';
 import { queryKeys } from '../lib/query-keys';
 
 export interface ServiceStatus {
@@ -55,11 +55,11 @@ export const useDashboardData = () => {
 
     return {
       cost: defaultCostData,
-      backend: health.services?.api || defaultService,
-      chroma: health.services?.chroma || defaultService,
-      mcp: health.services?.mcp || defaultService,
-      rag: health.services?.rag || defaultService,
-      sandbox: health.services?.sandbox || defaultService,
+      backend: health.services?.['api'] || defaultService,
+      chroma: health.services?.['chroma'] || defaultService,
+      mcp: health.services?.['mcp'] || defaultService,
+      rag: health.services?.['rag'] || defaultService,
+      sandbox: health.services?.['sandbox'] || defaultService,
     };
   }, [healthQuery.data]);
 

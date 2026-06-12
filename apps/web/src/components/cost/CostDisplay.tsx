@@ -18,7 +18,7 @@ export const CostDisplay = ({ estimate }: Props) => {
       </div>
       {estimate.breakdown && estimate.breakdown.length > 0 && (
         <div className="estimate-breakdown">
-          {estimate.breakdown.map(item => (
+          {estimate.breakdown.map((item) => (
             <div key={item.label} className="estimate-row">
               <span>{item.label}</span>
               <span>

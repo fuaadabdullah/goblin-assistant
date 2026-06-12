@@ -1,23 +1,34 @@
 import React from 'react';
 import { render, screen, fireEvent } from '@testing-library/react';
 
-jest.mock('../../../../../components/ui', () => ({
-  Button: ({ children, onClick, disabled }: { children: React.ReactNode; onClick: () => void; disabled?: boolean }) =>
-    <button onClick={onClick} disabled={disabled}>{children}</button>,
+vi.mock('../../../../../components/ui', () => ({
+  Button: ({
+    children,
+    onClick,
+    disabled,
+  }: {
+    children: React.ReactNode;
+    onClick: () => void;
+    disabled?: boolean;
+  }) => (
+    <button onClick={onClick} disabled={disabled}>
+      {children}
+    </button>
+  ),
 }));
 
 import ProviderPromptTest from '../ProviderPromptTest';
 
 const defaultProps = {
   prompt: 'Test prompt',
-  onPromptChange: jest.fn(),
-  onTest: jest.fn(),
+  onPromptChange: vi.fn(),
+  onTest: vi.fn(),
   isTesting: false,
   disabled: false,
 };
 
 describe('ProviderPromptTest', () => {
-  beforeEach(() => jest.clearAllMocks());
+  beforeEach(() => vi.clearAllMocks());
 
   it('renders heading', () => {
     render(<ProviderPromptTest {...defaultProps} />);

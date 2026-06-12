@@ -31,9 +31,7 @@ export const AuthRequired = ({ className = '' }: AuthRequiredProps) => {
           />
         </svg>
         <div className="flex-1">
-          <h3 className="text-sm font-semibold text-warning mb-1">
-            Sign in required
-          </h3>
+          <h3 className="text-sm font-semibold text-warning mb-1">Sign in required</h3>
           <p className="text-sm text-text/80 mb-3">
             You need to be signed in to send messages. Create a free account or sign in to continue.
           </p>

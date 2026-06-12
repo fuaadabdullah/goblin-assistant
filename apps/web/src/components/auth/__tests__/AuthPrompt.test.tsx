@@ -1,12 +1,15 @@
 import { render, screen, fireEvent } from '@testing-library/react';
-import '@testing-library/jest-dom';
 
-jest.mock('next/link', () => function MockLink({ children, href }: { children: React.ReactNode; href: string }) {
-  return <a href={href}>{children}</a>;
-});
-const mockPush = jest.fn();
-jest.mock('next/router', () => ({
-  useRouter: () => ({ pathname: '/chat', push: mockPush, query: {} }),
+vi.mock('next/link', () => ({
+  default: function MockLink({ children, href }: { children: React.ReactNode; href: string }) {
+    return <a href={href}>{children}</a>;
+  },
+}));
+const mockPush = vi.fn();
+vi.mock('next/navigation', () => ({
+  usePathname: () => '/chat',
+  useSearchParams: () => new URLSearchParams(),
+  useRouter: () => ({ push: mockPush, replace: vi.fn() }),
 }));
 
 import AuthPrompt from '../AuthPrompt';
@@ -34,9 +37,11 @@ describe('AuthPrompt', () => {
   });
 
   it('renders close button when onClose provided', () => {
-    const onClose = jest.fn();
+    const onClose = vi.fn();
     render(<AuthPrompt onClose={onClose} />);
-    const closeBtn = screen.queryByLabelText(/close/i) || screen.queryByRole('button', { name: /close|dismiss|×/i });
+    const closeBtn =
+      screen.queryByLabelText(/close/i) ||
+      screen.queryByRole('button', { name: /close|dismiss|×/i });
     if (closeBtn) {
       fireEvent.click(closeBtn);
       expect(onClose).toHaveBeenCalled();

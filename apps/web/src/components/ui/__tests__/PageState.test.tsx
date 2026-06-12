@@ -1,6 +1,5 @@
 import React from 'react';
 import { render, screen, fireEvent } from '@testing-library/react';
-import '@testing-library/jest-dom';
 import PageState from '../PageState';
 
 describe('PageState', () => {
@@ -50,7 +49,7 @@ describe('PageState', () => {
     });
 
     it('renders action button and calls onAction', () => {
-      const onAction = jest.fn();
+      const onAction = vi.fn();
       render(
         <PageState
           variant="empty"
@@ -106,18 +105,14 @@ describe('PageState', () => {
   describe('error variant', () => {
     it('renders title and message', () => {
       render(
-        <PageState
-          variant="error"
-          title="Something broke"
-          description="Try again in a moment."
-        />
+        <PageState variant="error" title="Something broke" description="Try again in a moment." />
       );
       expect(screen.getByText('Something broke')).toBeInTheDocument();
       expect(screen.getByText('Try again in a moment.')).toBeInTheDocument();
     });
 
     it('renders retry button when onAction is provided and triggers it', () => {
-      const onAction = jest.fn();
+      const onAction = vi.fn();
       render(
         <PageState
           variant="error"
@@ -132,7 +127,7 @@ describe('PageState', () => {
     });
 
     it('falls back to actionLabel when retryLabel is missing', () => {
-      const onAction = jest.fn();
+      const onAction = vi.fn();
       render(
         <PageState
           variant="error"
@@ -154,20 +149,13 @@ describe('PageState', () => {
   describe('layout', () => {
     it('applies custom className to outer wrapper', () => {
       const { container } = render(
-        <PageState
-          variant="empty"
-          title="t"
-          description="d"
-          className="custom-page"
-        />
+        <PageState variant="empty" title="t" description="d" className="custom-page" />
       );
       expect((container.firstChild as HTMLElement).className).toContain('custom-page');
     });
 
     it('renders min-h-screen background container', () => {
-      const { container } = render(
-        <PageState variant="empty" title="t" description="d" />
-      );
+      const { container } = render(<PageState variant="empty" title="t" description="d" />);
       expect((container.firstChild as HTMLElement).className).toContain('min-h-screen');
     });
   });

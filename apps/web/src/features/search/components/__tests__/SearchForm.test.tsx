@@ -1,5 +1,4 @@
 import { render, screen, fireEvent } from '@testing-library/react';
-import '@testing-library/jest-dom';
 import React from 'react';
 
 import SearchForm from '../SearchForm';
@@ -13,14 +12,14 @@ describe('SearchForm', () => {
     collectionsLoading: false,
     searching: false,
     queryRef: { current: null } as React.RefObject<HTMLInputElement>,
-    onQueryChange: jest.fn(),
-    onScopeChange: jest.fn(),
-    onCollectionChange: jest.fn(),
-    onSubmit: jest.fn(),
-    onClear: jest.fn(),
+    onQueryChange: vi.fn(),
+    onScopeChange: vi.fn(),
+    onCollectionChange: vi.fn(),
+    onSubmit: vi.fn(),
+    onClear: vi.fn(),
   };
 
-  beforeEach(() => jest.clearAllMocks());
+  beforeEach(() => vi.clearAllMocks());
 
   it('renders search input', () => {
     render(<SearchForm {...baseProps} />);

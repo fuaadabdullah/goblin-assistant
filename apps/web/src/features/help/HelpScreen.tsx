@@ -1,21 +1,27 @@
+'use client';
+
 import type { FC } from 'react';
 import { useEffect, useMemo, useState } from 'react';
-import { useRouter } from 'next/router';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { useSupportForm } from './hooks/useSupportForm';
+import { useTriageForm } from './hooks/useTriageForm';
 import HelpView from './components/HelpView';
 import type { StartupDiagnostics } from '../../utils/startup-diagnostics';
 import { readStartupDiagnostics, clearStartupDiagnostics } from '../../utils/startup-diagnostics';
 
 const HelpScreen: FC = () => {
   const form = useSupportForm();
+  const triage = useTriageForm();
   const router = useRouter();
+  const searchParams = useSearchParams();
   const [startupDiagnostics, setStartupDiagnostics] = useState<StartupDiagnostics | null>(null);
 
+  const reasonParam = searchParams.get('reason');
+  const logIdParam = searchParams.get('logId');
+
   const isStartupFailed = useMemo(() => {
-    if (!router.isReady) return false;
-    const reason = router.query.reason;
-    return reason === 'startup_failed' || (Array.isArray(reason) && reason.includes('startup_failed'));
-  }, [router.isReady, router.query.reason]);
+    return reasonParam === 'startup_failed';
+  }, [reasonParam]);
 
   useEffect(() => {
     if (!isStartupFailed) return;
@@ -23,15 +29,12 @@ const HelpScreen: FC = () => {
   }, [isStartupFailed]);
 
   const logId = useMemo(() => {
-    if (!router.isReady) return null;
-    const value = router.query.logId;
-    if (Array.isArray(value)) return value[0] ?? null;
-    return typeof value === 'string' ? value : null;
-  }, [router.isReady, router.query.logId]);
+    return logIdParam ?? null;
+  }, [logIdParam]);
 
   const handleRetry = () => {
     clearStartupDiagnostics();
-    router.push('/startup').catch(() => undefined);
+    router.push('/startup');
   };
 
   const startupFailure = isStartupFailed
@@ -42,7 +45,7 @@ const HelpScreen: FC = () => {
       }
     : undefined;
 
-  return <HelpView form={form} startupFailure={startupFailure} />;
+  return <HelpView form={form} triage={triage} startupFailure={startupFailure} />;
 };
 
 export default HelpScreen;

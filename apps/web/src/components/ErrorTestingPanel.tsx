@@ -1,7 +1,7 @@
 import React from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from './ui/card';
 import Alert from './ui/Alert';
-import { useToast } from '../contexts/ToastContext';
+import { useToast } from '../hooks/useToast';
 import { Button } from './ui';
 import { useErrorTesting } from '../hooks/useErrorTesting';
 import { ErrorTestButtons } from './error-testing/ErrorTestButtons';
@@ -30,14 +30,16 @@ export const ErrorTestingPanel: React.FC = () => {
       <CardHeader>
         <CardTitle>Error Testing Panel</CardTitle>
         <CardDescription>
-          Generate various types of errors to test RUM error tracking. All errors will be
-          captured and sent to your configured monitoring dashboard.
+          Generate various types of errors to test RUM error tracking. All errors will be captured
+          and sent to your configured monitoring dashboard.
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-4">
-        <Alert message={
+        <Alert
+          message={
             '⚠️ This panel is for testing purposes only. It will intentionally generate errors that should appear in your RUM dashboard.'
-        } />
+          }
+        />
 
         <ErrorTestButtons
           onJavaScriptError={testJavaScriptError}
@@ -61,9 +63,11 @@ export const ErrorTestingPanel: React.FC = () => {
 
         <ErrorTestResults results={results} />
 
-        <Alert message={
+        <Alert
+          message={
             '📊 After running tests, check your RUM dashboard under "Error Tracking" to see if the errors were captured. Look for errors with the source "browser" and check the error details and stack traces.'
-        } />
+          }
+        />
       </CardContent>
     </Card>
   );

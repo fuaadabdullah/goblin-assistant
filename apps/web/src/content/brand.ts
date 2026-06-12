@@ -2,8 +2,7 @@ export const BRAND_NAME = 'Goblin Assistant';
 
 export const BRAND_HEADLINE = 'The Resourceful AI Assistant';
 
-export const BRAND_TAGLINE =
-  'Finance. Code. Learning. Whatever you need — Goblin figures it out.';
+export const BRAND_TAGLINE = 'Finance. Code. Learning. Whatever you need — Goblin figures it out.';
 
 export const HOME_VALUE_PROPS = [
   {
@@ -65,8 +64,7 @@ export const HOME_EXAMPLE_CARDS = [
   },
 ] as const;
 
-export const CHAT_COMPOSER_PLACEHOLDER =
-  'Ask anything — finance, code, research, or learning...';
+export const CHAT_COMPOSER_PLACEHOLDER = 'Ask anything — finance, code, research, or learning...';
 
 export const CHAT_COMPOSER_TIP =
   'Try: "Analyze AAPL", "Explain recursion with examples", "Debug this Python code"';

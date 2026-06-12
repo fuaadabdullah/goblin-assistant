@@ -8,24 +8,22 @@ and custom exception types used by the financial tool system.
 from __future__ import annotations
 
 import asyncio
-import time
 from typing import Any, Dict
 from unittest.mock import AsyncMock, patch
 
 import pytest
 
 from api.services.financial_guardrails import (
-    FinancialDataError,
+    DataUnavailableError,
     FetchTimeoutError,
+    FinancialDataError,
     RateLimitError,
     TickerNotFoundError,
-    DataUnavailableError,
     _TokenBucket,
     check_rate_limit,
     safe_skill,
     with_timeout,
 )
-
 
 # ---------------------------------------------------------------------------
 # TokenBucket
@@ -213,12 +211,17 @@ class TestDataServiceGuardrails:
 
     @pytest.mark.asyncio
     async def test_get_current_quote_checks_rate_limit(self):
-        with patch("api.services.financial_guardrails.check_rate_limit") as mock_rl, \
-             patch("api.services.financial_data_service._cache_get", return_value=None), \
-             patch("api.services.financial_guardrails.with_timeout", new_callable=AsyncMock) as mock_to:
+        with (
+            patch("api.services.financial_guardrails.check_rate_limit") as mock_rl,
+            patch("api.services.financial_data_service._cache_get", return_value=None),
+            patch(
+                "api.services.financial_guardrails.with_timeout", new_callable=AsyncMock
+            ) as mock_to,
+        ):
             mock_to.return_value = {"ticker": "AAPL", "price": 190.0}
 
             from api.services.financial_data_service import financial_data_service
+
             result = await financial_data_service.get_current_quote("AAPL")
 
             mock_rl.assert_called_once()
@@ -228,9 +231,15 @@ class TestDataServiceGuardrails:
     @pytest.mark.asyncio
     async def test_cached_quote_skips_rate_limit(self):
         cached_data = {"ticker": "AAPL", "price": 190.0}
-        with patch("api.services.financial_guardrails.check_rate_limit") as mock_rl, \
-             patch("api.services.financial_data_service._cache_get", return_value=cached_data):
+        with (
+            patch("api.services.financial_guardrails.check_rate_limit") as mock_rl,
+            patch(
+                "api.services.financial_data_service._cache_get",
+                return_value=cached_data,
+            ),
+        ):
             from api.services.financial_data_service import financial_data_service
+
             result = await financial_data_service.get_current_quote("AAPL")
 
             mock_rl.assert_not_called()
@@ -238,11 +247,14 @@ class TestDataServiceGuardrails:
 
     @pytest.mark.asyncio
     async def test_rate_limit_error_propagates(self):
-        with patch("api.services.financial_data_service._cache_get", return_value=None), \
-             patch("api.services.financial_guardrails._yfinance_bucket") as mock_bucket:
+        with (
+            patch("api.services.financial_data_service._cache_get", return_value=None),
+            patch("api.services.financial_guardrails._yfinance_bucket") as mock_bucket,
+        ):
             mock_bucket.try_acquire.return_value = False
 
             from api.services.financial_data_service import financial_data_service
+
             with pytest.raises(RateLimitError):
                 await financial_data_service.get_current_quote("AAPL")
 
@@ -256,15 +268,19 @@ class TestExecutorGuardrailHandling:
     @pytest.mark.asyncio
     async def test_executor_converts_financial_error(self):
         """execute_tool_call converts FinancialDataError to clean dict."""
-        from api.tools.executor import execute_tool_call
+        from api.assistant_tools.executor import execute_tool_call
 
         async def handler_that_raises(**kwargs):
             raise RateLimitError("rate limit reached")
 
-        with patch("api.tools.executor.get_tool") as mock_get:
-            mock_tool = type("T", (), {
-                "handler": staticmethod(handler_that_raises),
-            })()
+        with patch("api.assistant_tools.executor.get_tool") as mock_get:
+            mock_tool = type(
+                "T",
+                (),
+                {
+                    "handler": staticmethod(handler_that_raises),
+                },
+            )()
             mock_get.return_value = mock_tool
 
             result = await execute_tool_call("dcf_calculator", {"ticker": "AAPL"})

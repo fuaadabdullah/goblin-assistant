@@ -17,9 +17,7 @@ export function TerminalShowcase({
   ],
   title = 'Goblin Shell',
 }: TerminalShowcaseProps) {
-  const normalizedLines = lines.map((line) =>
-    typeof line === 'string' ? { output: line } : line
-  );
+  const normalizedLines = lines.map((line) => (typeof line === 'string' ? { output: line } : line));
 
   return (
     <section aria-label={title} className="space-y-3">
