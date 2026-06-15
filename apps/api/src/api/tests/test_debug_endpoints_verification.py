@@ -26,8 +26,8 @@ def test_debug_endpoints_are_registered():
     )
 
 
-def test_tool_trace_debug_endpoint():
-    """Test GET /debug/tool-trace/{request_id} endpoint"""
+def test_tool_trace_debug_endpoint_requires_auth():
+    """Test GET /debug/tool-trace/{request_id} returns 401 without valid ops credentials."""
     # Create a trace
     request_id = "test-req-verify-001"
     conversation_id = "test-conv-verify"
@@ -57,28 +57,20 @@ def test_tool_trace_debug_endpoint():
         final_message_tokens=100,
     )
 
-    # Query the endpoint
+    # Query the endpoint without credentials
     response = client.get(f"/debug/tool-trace/{request_id}")
 
-    # With ops access decorator, should be 401 Unauthorized (auth required)
-    # or 403 Forbidden (no permission)
-    # or 200 OK (if auth is mocked/disabled in tests)
-    assert response.status_code in [
-        200,
-        401,
-        403,
-    ], f"Unexpected status code: {response.status_code}"
-
-    # If auth is disabled in tests, verify response structure
-    if response.status_code == 200:
-        data = response.json()
-        assert "trace" in data
-        assert "summary" in data
-        assert data["trace"]["request_id"] == request_id
+    # Without credentials, the ops access decorator returns 401 Unauthorized
+    assert response.status_code == 401, (
+        f"Expected 401 Unauthorized without credentials, got {response.status_code}: {response.json()}"
+    )
+    body = response.json()
+    assert "detail" in body
+    assert "Authentication required" in body["detail"] or "required" in body["detail"].lower()
 
 
-def test_conversation_traces_debug_endpoint():
-    """Test GET /debug/tool-trace/conversation/{conversation_id} endpoint"""
+def test_conversation_traces_debug_endpoint_requires_auth():
+    """Test GET /debug/tool-trace/conversation/{conversation_id} returns 401 without credentials."""
     conversation_id = "test-conv-endpoint"
 
     # Create a trace
@@ -108,29 +100,27 @@ def test_conversation_traces_debug_endpoint():
         final_message_tokens=100,
     )
 
-    # Query the endpoint
+    # Query the endpoint without credentials
     response = client.get(f"/debug/tool-trace/conversation/{conversation_id}")
 
-    assert response.status_code in [200, 401, 403]
+    # Without credentials, the ops access decorator returns 401 Unauthorized
+    assert response.status_code == 401, (
+        f"Expected 401 Unauthorized without credentials, got {response.status_code}: {response.json()}"
+    )
+    body = response.json()
+    assert "detail" in body
 
-    if response.status_code == 200:
-        data = response.json()
-        assert "conversation_id" in data
-        assert "traces" in data
-        assert data["conversation_id"] == conversation_id
 
-
-def test_stats_debug_endpoint():
-    """Test GET /debug/tool-trace/stats endpoint"""
+def test_stats_debug_endpoint_requires_auth():
+    """Test GET /debug/tool-trace/stats returns 401 without credentials."""
     response = client.get("/debug/tool-trace/stats")
 
-    # Expect 401 (auth required), 403 (no permission), or 200 (success)
-    assert response.status_code in [200, 401, 403]
-
-    if response.status_code == 200:
-        data = response.json()
-        assert "trace_count" in data
-        assert "stats" in data
+    # Without credentials, the ops access decorator returns 401 Unauthorized
+    assert response.status_code == 401, (
+        f"Expected 401 Unauthorized without credentials, got {response.status_code}: {response.json()}"
+    )
+    body = response.json()
+    assert "detail" in body
 
 
 @pytest.mark.asyncio

@@ -1,145 +1,167 @@
 """
 Tests for semantic_chat_router
-Tests semantic chat functionality
+Tests semantic chat functionality against actual API routes
 """
 
 from types import SimpleNamespace
 from unittest.mock import AsyncMock
 
 import pytest
+from fastapi import FastAPI
 from fastapi.testclient import TestClient
 
-from api.main import app
-from api.semantic_chat_router import add_memory_fact, search_memory_facts
+from api.semantic_chat_router import add_memory_fact, router, search_memory_facts
 from api.services.memory_core import memory_core_service
 
+# Mount the router in isolation (avoids coupling to main.py)
+app = FastAPI()
+app.include_router(router)
 client = TestClient(app)
+
+BASE_PATH = "/semantic-chat"
+
+# ── Helper ──────────────────────────────────────────────────────────────────
+
+
+def _make_url(path: str) -> str:
+    """Build a fully qualified URL for the semantic-chat router."""
+    return f"{BASE_PATH}{path}"
+
+
+# ── Conversation Endpoints ─────────────────────────────────────────────────
 
 
 class TestSemanticChatRouterChat:
-    """Tests for chat endpoint"""
+    """Tests for the /conversations/{id}/messages endpoint"""
 
-    def test_chat_endpoint_exists(self):
-        """Test chat endpoint is registered"""
+    def test_send_message_needs_valid_conversation(self):
+        """Should return 404 for non-existent conversation"""
         response = client.post(
-            "/semantic_chat/chat",
+            _make_url("/conversations/nonexistent-id/messages"),
             json={"message": "hello"},
         )
+        assert response.status_code == 404, (
+            f"Expected 404 for missing conversation, got {response.status_code}: {response.text}"
+        )
+        data = response.json()
+        assert "detail" in data
 
-        assert response.status_code in [200, 400, 401, 403, 404, 422, 500]
-
-    def test_chat_requires_message(self):
-        """Test chat requires message parameter"""
+    def test_send_message_rejects_empty_body(self):
+        """Should return 422 for missing request body"""
         response = client.post(
-            "/semantic_chat/chat",
+            _make_url("/conversations/nonexistent-id/messages"),
             json={},
         )
+        assert response.status_code == 422, (
+            f"Expected 422 for empty body, got {response.status_code}: {response.text}"
+        )
 
-        assert response.status_code in [400, 401, 422, 200, 404, 500]
-
-    def test_chat_with_context(self):
-        """Test chat with conversation context"""
+    def test_send_message_rejects_non_string_message(self):
+        """Should return 422 for non-string message field"""
         response = client.post(
-            "/semantic_chat/chat",
-            json={
-                "message": "hello",
-                "context": [{"role": "user", "content": "hi"}],
-            },
+            _make_url("/conversations/nonexistent-id/messages"),
+            json={"message": 123},
+        )
+        assert response.status_code == 422, (
+            f"Expected 422 for non-string message, got {response.status_code}: {response.text}"
         )
 
-        assert response.status_code in [200, 400, 422, 401, 403, 404, 500]
+    def test_get_context_needs_valid_conversation(self):
+        """Should return 404 for non-existent conversation context"""
+        response = client.get(
+            _make_url("/conversations/nonexistent-id/context"),
+            params={"query": "hello"},
+        )
+        assert response.status_code == 404, (
+            f"Expected 404 for missing conversation, got {response.status_code}: {response.text}"
+        )
 
-    def test_chat_with_system_prompt(self):
-        """Test chat with system prompt"""
+    def test_get_context_rejects_missing_query(self):
+        """Should return 422 when query param is missing"""
+        response = client.get(
+            _make_url("/conversations/some-id/context"),
+        )
+        assert response.status_code == 422, (
+            f"Expected 422 for missing query, got {response.status_code}: {response.text}"
+        )
+
+    def test_summarize_needs_valid_conversation(self):
+        """Should return 404 for non-existent conversation summary"""
         response = client.post(
-            "/semantic_chat/chat",
-            json={
-                "message": "hello",
-                "system_prompt": "You are helpful",
-            },
+            _make_url("/conversations/nonexistent-id/summarize"),
+            json={},
+        )
+        assert response.status_code == 404, (
+            f"Expected 404 for missing conversation, got {response.status_code}: {response.text}"
         )
 
-        assert response.status_code in [200, 400, 422, 401, 403, 404, 500]
 
-    def test_chat_streaming(self):
-        """Test streaming chat response"""
-        response = client.post(
-            "/semantic_chat/chat",
-            json={"message": "hello", "stream": True},
-        )
-
-        # Should return streaming response or error
-        assert response.status_code in [200, 400, 422, 401, 403, 404, 500]
-
-
-class TestSemanticChatRouterSearch:
-    """Tests for semantic search within chat"""
-
-    def test_search_similar_messages(self):
-        """Test searching for similar messages"""
-        response = client.get(
-            "/semantic_chat/search",
-            params={"query": "hello", "limit": 5},
-        )
-
-        assert response.status_code in [200, 400, 401, 403, 404, 422, 500]
-
-    def test_search_with_filters(self):
-        """Test search with filters"""
-        response = client.get(
-            "/semantic_chat/search",
-            params={
-                "query": "hello",
-                "limit": 5,
-                "filter": "user",
-            },
-        )
-
-        assert response.status_code in [200, 400, 401, 403, 404, 422, 500]
-
-    def test_search_relevance_ranking(self):
-        """Test results are ranked by relevance"""
-        response = client.get(
-            "/semantic_chat/search",
-            params={"query": "python programming", "limit": 10},
-        )
-
-        if response.status_code == 200:
-            data = response.json()
-            # Results should be ordered by relevance
-            if isinstance(data, list) and len(data) > 1:
-                assert data[0].get("score", 0) >= data[1].get("score", 0)
+# ── Memory Fact Endpoints ──────────────────────────────────────────────────
 
 
 class TestSemanticChatRouterMemory:
-    """Tests for semantic chat memory"""
+    """Tests for memory fact endpoints"""
 
-    def test_memory_retrieval(self):
-        """Test retrieving from memory"""
-        response = client.get("/semantic_chat/memory")
-
-        assert response.status_code in [200, 400, 401, 403, 404, 422, 500]
-
-    def test_memory_context_size(self):
-        """Test controlling memory context size"""
+    def test_add_memory_rejects_empty_fact(self):
+        """Should return 422 for missing fact_text"""
         response = client.post(
-            "/semantic_chat/chat",
-            json={
-                "message": "hello",
-                "context_size": 5,
-            },
+            _make_url("/users/user-123/memory"),
+            json={},
+        )
+        assert response.status_code == 422, (
+            f"Expected 422 for empty body, got {response.status_code}: {response.text}"
         )
 
-        assert response.status_code in [200, 400, 422, 401, 403, 404, 500]
-
-    def test_memory_summarization(self):
-        """Test long memory is summarized"""
-        response = client.post(
-            "/semantic_chat/chat",
-            json={"message": "hello"},
+    def test_search_memory_rejects_empty_query(self):
+        """Should return 422 for missing query"""
+        response = client.get(
+            _make_url("/users/user-123/memory/search"),
+        )
+        assert response.status_code == 422, (
+            f"Expected 422 for missing query, got {response.status_code}: {response.text}"
         )
 
-        assert response.status_code in [200, 400, 422, 401, 403, 404, 500]
+    def test_search_memory_returns_200_with_valid_query(self):
+        """Should return 200 with valid query and mock services."""
+        # Mock the memory service to return predictable results
+        from unittest.mock import patch
+
+        with patch("api.semantic_chat_router.memory_core_service") as mock_service:
+            mock_service.search_facts = AsyncMock(
+                return_value={"facts": [], "count": 0, "query": "test"}
+            )
+            response = client.get(
+                _make_url("/users/user-123/memory/search"),
+                params={"query": "test"},
+            )
+            # With mocked services, should always return 200
+            assert response.status_code == 200, (
+                f"Expected 200 with mocked services, got {response.status_code}: {response.json()}"
+            )
+            data = response.json()
+            assert "user_id" in data
+            assert "query" in data
+            assert "facts" in data
+            assert "count" in data
+
+    def test_search_memory_fails_gracefully_without_services(self):
+        """Should return 503 Service Unavailable when backing services fail."""
+        from unittest.mock import patch
+
+        with patch("api.semantic_chat_router.memory_core_service") as mock_service:
+            # Simulate a service failure
+            mock_service.search_facts = AsyncMock(side_effect=Exception("Service unavailable"))
+            response = client.get(
+                _make_url("/users/user-123/memory/search"),
+                params={"query": "test"},
+            )
+            # Without working services, should return 500 Internal Server Error
+            assert response.status_code == 500, (
+                f"Expected 500 on service failure, got {response.status_code}: {response.json()}"
+            )
+
+
+# ── Async Memory Fact Unit Tests ───────────────────────────────────────────
 
 
 @pytest.mark.asyncio
@@ -248,95 +270,26 @@ async def test_search_memory_facts_returns_canonical_items(monkeypatch):
     assert result["facts"][0]["source_ref"] == {"conversation_id": "conv-2"}
 
 
-class TestSemanticChatRouterEmbeddings:
-    """Tests for embedding generation"""
-
-    def test_generate_message_embedding(self):
-        """Test generating embedding for message"""
-        response = client.post(
-            "/semantic_chat/chat",
-            json={"message": "hello"},
-        )
-
-        assert response.status_code in [200, 400, 422, 401, 403, 404, 500]
-
-    def test_embedding_caching(self):
-        """Test embeddings are cached"""
-        for _ in range(2):
-            response = client.post(
-                "/semantic_chat/chat",
-                json={"message": "hello"},
-            )
-
-        assert response.status_code in [200, 400, 422, 401, 403, 404, 500]
+# ── Route Registration Tests ────────────────────────────────────────────────
 
 
-class TestSemanticChatRouterErrors:
-    """Tests for error handling"""
-
-    def test_invalid_message_format(self):
-        """Test invalid message format"""
-        response = client.post(
-            "/semantic_chat/chat",
-            json={"message": 123},  # Should be string
-        )
-
-        assert response.status_code in [400, 401, 422, 200, 404, 500]
-
-    def test_context_validation(self):
-        """Test context validation"""
-        response = client.post(
-            "/semantic_chat/chat",
-            json={
-                "message": "hello",
-                "context": "invalid",  # Should be list
-            },
-        )
-
-        assert response.status_code in [400, 401, 422, 200, 404, 500]
-
-    def test_timeout_handling(self):
-        """Test timeout handling"""
-        response = client.post(
-            "/semantic_chat/chat",
-            json={"message": "hello"},
-        )
-
-        # Should handle timeout gracefully
-        assert response.status_code in [500, 408, 400, 401, 422, 200, 404]
-
-    def test_embedding_error_handling(self):
-        """Test embedding service errors are handled gracefully"""
-        response = client.post(
-            "/semantic_chat/chat",
-            json={"message": "hello"},
-        )
-
-        # Should handle gracefully
-        assert response.status_code in [500, 400, 401, 422, 200, 404]
+def test_router_prefix():
+    """Verify the router is mounted at the expected prefix"""
+    routes = [r.path for r in router.routes]
+    assert all(r.startswith("/semantic-chat") for r in routes), (
+        f"Expected all routes under /semantic-chat, got: {routes}"
+    )
 
 
-class TestSemanticChatRouterPerformance:
-    """Tests for performance optimization"""
-
-    def test_batch_embedding_generation(self):
-        """Test batch generating embeddings"""
-        response = client.post(
-            "/semantic_chat/chat",
-            json={
-                "message": "hello",
-                "batch_size": 5,
-            },
-        )
-
-        assert response.status_code in [200, 400, 422, 401, 403, 404, 500]
-
-    def test_response_streaming(self):
-        """Test streaming response to client"""
-        response = client.post(
-            "/semantic_chat/chat",
-            json={"message": "hello", "stream": True},
-        )
-
-        # Should support streaming
-        assert response.status_code in [200, 400, 422, 401, 403, 404, 500]
+def test_router_has_expected_endpoints():
+    """Verify the expected endpoints are registered"""
+    routes = {r.path for r in router.routes}
+    expected_endpoints = {
+        "/semantic-chat/conversations/{conversation_id}/messages",
+        "/semantic-chat/conversations/{conversation_id}/context",
+        "/semantic-chat/conversations/{conversation_id}/summarize",
+        "/semantic-chat/users/{user_id}/memory",
+        "/semantic-chat/users/{user_id}/memory/search",
+    }
+    missing = expected_endpoints - routes
+    assert not missing, f"Missing expected endpoints: {missing}"

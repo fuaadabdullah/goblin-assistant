@@ -135,9 +135,13 @@ def test_data_export_without_vectors_or_conversations(auth_client: TestClient) -
 
 
 def test_data_export_requires_auth(anon_client: TestClient) -> None:
-    """POST /api/privacy/export must reject unauthenticated requests."""
+    """POST /api/privacy/export must return 401 Unauthorized without auth."""
     response = anon_client.post("/api/privacy/export")
-    assert response.status_code in (401, 403)
+    assert response.status_code == 401, (
+        f"Expected 401 Unauthorized, got {response.status_code}: {response.json()}"
+    )
+    body = response.json()
+    assert "detail" in body
 
 
 # ---------------------------------------------------------------------------
@@ -146,9 +150,13 @@ def test_data_export_requires_auth(anon_client: TestClient) -> None:
 
 
 def test_data_delete_requires_auth(anon_client: TestClient) -> None:
-    """DELETE /api/privacy/delete must reject unauthenticated requests."""
+    """DELETE /api/privacy/delete must return 401 Unauthorized without auth."""
     response = anon_client.delete("/api/privacy/delete")
-    assert response.status_code in (401, 403)
+    assert response.status_code == 401, (
+        f"Expected 401 Unauthorized, got {response.status_code}: {response.json()}"
+    )
+    body = response.json()
+    assert "detail" in body
 
 
 def test_data_delete_requires_confirm_flag(auth_client: TestClient) -> None:
@@ -188,9 +196,13 @@ def test_data_summary_returns_200(auth_client: TestClient) -> None:
 
 
 def test_data_summary_requires_auth(anon_client: TestClient) -> None:
-    """GET /api/privacy/data-summary must reject unauthenticated requests."""
+    """GET /api/privacy/data-summary must return 401 Unauthorized without auth."""
     response = anon_client.get("/api/privacy/data-summary")
-    assert response.status_code in (401, 403)
+    assert response.status_code == 401, (
+        f"Expected 401 Unauthorized, got {response.status_code}: {response.json()}"
+    )
+    body = response.json()
+    assert "detail" in body
 
 
 # ---------------------------------------------------------------------------
@@ -225,9 +237,13 @@ def test_rag_consent_revoke_returns_200(auth_client: TestClient) -> None:
 
 
 def test_rag_consent_requires_auth(anon_client: TestClient) -> None:
-    """POST /api/privacy/consent/rag must reject unauthenticated requests."""
+    """POST /api/privacy/consent/rag must return 401 Unauthorized without auth."""
     response = anon_client.post(
         "/api/privacy/consent/rag",
         params={"consent_given": "true"},
     )
-    assert response.status_code in (401, 403)
+    assert response.status_code == 401, (
+        f"Expected 401 Unauthorized, got {response.status_code}: {response.json()}"
+    )
+    body = response.json()
+    assert "detail" in body

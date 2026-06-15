@@ -89,13 +89,13 @@ class TestCSRFProtection:
     def test_csrf_token_one_time_use(self, client):
         """
         CSRF token should be one-time use.
-        After successful validation, reusing the same token should fail.
+        After using a valid token (even if login fails), reusing it should fail with 403.
         """
         # Get a valid CSRF token
         csrf_response = client.get("/auth/csrf-token")
         csrf_token = csrf_response.json()["csrf_token"]
 
-        # First use: should be rejected due to user not existing (but CSRF token should be consumed)
+        # First use: CSRF token is valid, but user doesn't exist -> returns 401
         response1 = client.post(
             "/auth/login",
             json={
@@ -104,10 +104,14 @@ class TestCSRFProtection:
                 "csrf_token": csrf_token,
             },
         )
-        # Should fail with 401 (unauthorized, user not found) or 403 (CSRF)
-        assert response1.status_code in [401, 403]
+        # Valid CSRF token, but user not found -> 401 Unauthorized
+        assert response1.status_code == 401, (
+            f"Expected 401 Unauthorized for nonexistent user, "
+            f"got {response1.status_code}: {response1.json()}"
+        )
+        assert "Invalid email or password" in response1.json()["detail"]
 
-        # Second use: Try to reuse the same token - should always fail with 403 CSRF
+        # Second use: Try to reuse the same token - should fail with 403 (token already used)
         response2 = client.post(
             "/auth/login",
             json={
@@ -116,8 +120,12 @@ class TestCSRFProtection:
                 "csrf_token": csrf_token,  # Reusing the same token
             },
         )
-        # Should definitely fail with 403 because token is already used
-        assert response2.status_code == 403
+        # Token was already consumed on first use -> 403 Forbidden
+        assert response2.status_code == 403, (
+            f"Expected 403 Forbidden for reused CSRF token, "
+            f"got {response2.status_code}: {response2.json()}"
+        )
+        assert "CSRF" in response2.json()["detail"]
         data = response2.json()
         assert "CSRF" in data["detail"]
 

@@ -228,16 +228,31 @@ def test_routing_providers_endpoint(client):
 def test_api_keys_status_endpoint(client):
     """Test the API keys status endpoint."""
     response = client.get("/settings/api-keys/status")
-    assert response.status_code in [200, 404, 500]
+    assert response.status_code == 200, (
+        f"Expected 200 for api-keys status, got {response.status_code}: {response.text}"
+    )
 
 
 def test_execute_router_removed(client):
-    """Guard: /execute was retired and must not be reintroduced."""
+    """Guard: /execute was retired and must not be reintroduced.
+
+    Expects 404 Not Found since the endpoint should not exist at all.
+    """
     response = client.post(
         "/execute/",
         json={"goblin": "test", "task": "test"},
     )
-    assert response.status_code in [404, 405]
+    assert response.status_code == 404, (
+        f"Expected 404 Not Found for retired /execute endpoint, "
+        f"got {response.status_code}: {response.json()}"
+    )
+    body = response.json()
+    assert "detail" in body
 
     response = client.get("/execute/status/00000000-0000-0000-0000-000000000000")
-    assert response.status_code in [404, 405]
+    assert response.status_code == 404, (
+        f"Expected 404 Not Found for retired /execute/status endpoint, "
+        f"got {response.status_code}: {response.json()}"
+    )
+    body = response.json()
+    assert "detail" in body
