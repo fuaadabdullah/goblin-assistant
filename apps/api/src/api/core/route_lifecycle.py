@@ -4,6 +4,8 @@ from dataclasses import dataclass
 from enum import Enum
 from typing import Optional
 
+API_V1_PREFIX = "/api/v1"
+
 
 class RouteLifecycle(str, Enum):
     STABLE = "stable"
@@ -49,15 +51,19 @@ _EXPERIMENTAL_PREFIXES = ()
 
 
 def _strip_version_prefix(path: str) -> str:
-    if path == "/api/v1":
+    if path == API_V1_PREFIX:
         return "/"
-    if path.startswith("/api/v1/"):
-        stripped = path[len("/api/v1") :]
+    if path.startswith(f"{API_V1_PREFIX}/"):
+        stripped = path[len(API_V1_PREFIX) :]
         return stripped if stripped else "/"
     return path
 
 
 def classify_route_lifecycle(path: str) -> LifecycleDecision:
+    # Versioned routes are always stable (no deprecation headers)
+    if path.startswith(API_V1_PREFIX):
+        return LifecycleDecision(RouteLifecycle.STABLE)
+
     normalized_path = _strip_version_prefix(path)
 
     if normalized_path == "/":
