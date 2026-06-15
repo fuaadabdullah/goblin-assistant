@@ -187,11 +187,11 @@ def test_stream_task_returns_sse_response_defaults(monkeypatch):
     monkeypatch.setattr(stream, "generate_stream_events", fake_generate_stream_events)
 
     app = FastAPI()
-    app.include_router(stream.router)
+    app.include_router(stream.router, prefix="/api/v1")
     client = TestClient(app)
 
     response = client.post(
-        "/stream",
+        "/api/v1/stream",
         json={"task_id": "task-1", "messages": [{"role": "user", "content": "hi"}]},
     )
 

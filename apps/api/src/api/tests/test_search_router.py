@@ -27,7 +27,7 @@ async def _empty_db():
 
 def _client() -> TestClient:
     app = FastAPI()
-    app.include_router(router)
+    app.include_router(router, prefix="/api/v1")
     app.dependency_overrides[get_current_user] = lambda: User(
         id="u-1",
         email="test@example.com",
@@ -41,7 +41,7 @@ def test_query_returns_empty_when_embedding_is_empty() -> None:
     with patch("api.services.embedding_service.EmbeddingService") as svc_cls:
         svc = svc_cls.return_value
         svc.embed_text = AsyncMock(return_value=[])
-        response = client.post("/search/query", json={"query": "python"})
+        response = client.post("/api/v1/search/query", json={"query": "python"})
 
     assert response.status_code == 200
     payload = response.json()
@@ -82,7 +82,7 @@ def test_query_merges_and_limits_ranked_results() -> None:
         ]
 
         response = client.post(
-            "/search/query",
+            "/api/v1/search/query",
             json={"query": "python", "source_types": ["document", "code"], "k": 1},
         )
 
@@ -96,7 +96,7 @@ def test_list_collections_returns_success_envelope() -> None:
     client = _client()
 
     with patch("api.search_router.get_db", _empty_db):
-        response = client.get("/search/collections")
+        response = client.get("/api/v1/search/collections")
 
     assert response.status_code == 200
     assert response.json()["data"]["collections"] == []

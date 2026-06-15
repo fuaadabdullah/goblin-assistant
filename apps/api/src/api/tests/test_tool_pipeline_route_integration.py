@@ -23,7 +23,7 @@ def mock_user():
 @pytest.fixture
 def client(mock_user):
     app = FastAPI()
-    app.include_router(router)
+    app.include_router(router, prefix="/api/v1")
     app.dependency_overrides[get_current_user] = lambda: mock_user
     return TestClient(app)
 
@@ -172,7 +172,7 @@ class TestToolPipelineRouteIntegration:
             patch("api.chat_router.invoke_provider", side_effect=invoke),
         ):
             response = client.post(
-                "/chat/conversations/conv_1/messages",
+                "/api/v1/chat/conversations/conv_1/messages",
                 json={"message": "hello", "provider": "openai", "model": "gpt-4o-mini"},
             )
 
@@ -202,7 +202,7 @@ class TestToolPipelineRouteIntegration:
             patch("api.chat_router.invoke_provider", side_effect=invoke),
         ):
             response = client.post(
-                "/chat/conversations/conv_1/messages",
+                "/api/v1/chat/conversations/conv_1/messages",
                 json={"message": "hello", "provider": "huggingface", "model": "test-model"},
             )
 
@@ -226,7 +226,7 @@ class TestToolPipelineRouteIntegration:
             patch("api.chat_router.invoke_provider", side_effect=invoke),
         ):
             response = client.post(
-                "/chat/conversations/conv_1/messages",
+                "/api/v1/chat/conversations/conv_1/messages",
                 json={
                     "message": "research agent check",
                     "provider": "openai",
@@ -260,7 +260,7 @@ class TestToolPipelineRouteIntegration:
             patch("api.services.tool_result_memory_service.extract_and_promote", mock_promote),
         ):
             response = client.post(
-                "/chat/conversations/conv_1/messages",
+                "/api/v1/chat/conversations/conv_1/messages",
                 json={"message": "price of AAPL", "provider": "openai", "model": "gpt-4o-mini"},
             )
 
@@ -290,7 +290,7 @@ class TestToolPipelineRouteIntegration:
             patch("api.assistant_tools.executor.execute_tool_call", mock_exec),
         ):
             response = client.post(
-                "/chat/conversations/conv_1/messages",
+                "/api/v1/chat/conversations/conv_1/messages",
                 json={
                     "message": "price of NVDA",
                     "provider": "anthropic",
@@ -323,7 +323,7 @@ class TestToolPipelineRouteIntegration:
                 patch("api.assistant_tools.executor.execute_tool_call", mock_exec),
             ):
                 response = client.post(
-                    "/chat/conversations/conv_1/messages",
+                    "/api/v1/chat/conversations/conv_1/messages",
                     json={"message": "price of MSFT", "provider": provider, "model": "test-model"},
                 )
 
@@ -351,7 +351,7 @@ class TestToolPipelineRouteIntegration:
             patch("api.assistant_tools.executor.execute_tool_call", mock_exec),
         ):
             response = client.post(
-                "/chat/conversations/conv_1/messages",
+                "/api/v1/chat/conversations/conv_1/messages",
                 json={"message": "price", "provider": "openai", "model": "gpt-4o-mini"},
             )
 
@@ -389,7 +389,7 @@ class TestToolPipelineRouteIntegration:
             patch("api.assistant_tools.executor.execute_tool_call", mock_exec),
         ):
             response = client.post(
-                "/chat/conversations/conv_1/messages",
+                "/api/v1/chat/conversations/conv_1/messages",
                 json={"message": "price", "provider": "openai", "model": "gpt-4o-mini"},
             )
 
@@ -425,7 +425,7 @@ class TestToolPipelineRouteIntegration:
             patch("api.assistant_tools.executor.execute_tool_call", mock_exec),
         ):
             response = client.post(
-                "/chat/conversations/conv_1/messages",
+                "/api/v1/chat/conversations/conv_1/messages",
                 json={"message": "multi", "provider": "openai", "model": "gpt-4o-mini"},
             )
 
@@ -462,7 +462,7 @@ class TestToolPipelineRouteIntegration:
             patch("api.assistant_tools.executor.execute_tool_call", mock_exec),
         ):
             response = client.post(
-                "/chat/conversations/conv_1/messages",
+                "/api/v1/chat/conversations/conv_1/messages",
                 json={"message": "list projects", "provider": "openai", "model": "gpt-4o-mini"},
             )
 
@@ -495,7 +495,7 @@ class TestToolPipelineRouteIntegration:
             patch("api.assistant_tools.executor.execute_tool_call", mock_exec),
         ):
             response = client.post(
-                "/chat/conversations/conv_1/messages",
+                "/api/v1/chat/conversations/conv_1/messages",
                 json={"message": "create a task", "provider": "openai", "model": "gpt-4o-mini"},
             )
 
@@ -535,7 +535,7 @@ class TestToolPipelineRouteIntegration:
             patch("api.assistant_tools.executor.execute_tool_call", mock_exec),
         ):
             response = client.post(
-                "/chat/conversations/conv_1/messages",
+                "/api/v1/chat/conversations/conv_1/messages",
                 json={
                     "message": "research battery breakthroughs",
                     "provider": "openai",

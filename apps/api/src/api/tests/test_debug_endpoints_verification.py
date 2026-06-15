@@ -10,7 +10,7 @@ from api.observability.debug_router import get_memory_debug_info, router
 from api.observability.tool_tracer import ToolExecutionStatus, tool_tracer
 
 app = FastAPI()
-app.include_router(router)
+app.include_router(router, prefix="/api/v1")
 
 
 client = TestClient(app)
@@ -21,13 +21,13 @@ def test_debug_endpoints_are_registered():
     routes = [route.path for route in app.routes]
 
     # Check that tool trace endpoints exist
-    assert any("/debug/tool-trace/" in r for r in routes), (
+    assert any("/api/v1/debug/tool-trace/" in r for r in routes), (
         "Tool trace endpoints not registered in debug router"
     )
 
 
 def test_tool_trace_debug_endpoint_requires_auth():
-    """Test GET /debug/tool-trace/{request_id} returns 401 without valid ops credentials."""
+    """Test GET /api/v1/debug/tool-trace/{request_id} returns 401 without valid ops credentials."""
     # Create a trace
     request_id = "test-req-verify-001"
     conversation_id = "test-conv-verify"
@@ -58,7 +58,7 @@ def test_tool_trace_debug_endpoint_requires_auth():
     )
 
     # Query the endpoint without credentials
-    response = client.get(f"/debug/tool-trace/{request_id}")
+    response = client.get(f"/api/v1/debug/tool-trace/{request_id}")
 
     # Without credentials, the ops access decorator returns 401 Unauthorized
     assert response.status_code == 401, (
@@ -70,7 +70,7 @@ def test_tool_trace_debug_endpoint_requires_auth():
 
 
 def test_conversation_traces_debug_endpoint_requires_auth():
-    """Test GET /debug/tool-trace/conversation/{conversation_id} returns 401 without credentials."""
+    """Test GET /api/v1/debug/tool-trace/conversation/{conversation_id} returns 401 without credentials."""
     conversation_id = "test-conv-endpoint"
 
     # Create a trace
@@ -101,7 +101,7 @@ def test_conversation_traces_debug_endpoint_requires_auth():
     )
 
     # Query the endpoint without credentials
-    response = client.get(f"/debug/tool-trace/conversation/{conversation_id}")
+    response = client.get(f"/api/v1/debug/tool-trace/conversation/{conversation_id}")
 
     # Without credentials, the ops access decorator returns 401 Unauthorized
     assert response.status_code == 401, (
@@ -112,8 +112,8 @@ def test_conversation_traces_debug_endpoint_requires_auth():
 
 
 def test_stats_debug_endpoint_requires_auth():
-    """Test GET /debug/tool-trace/stats returns 401 without credentials."""
-    response = client.get("/debug/tool-trace/stats")
+    """Test GET /api/v1/debug/tool-trace/stats returns 401 without credentials."""
+    response = client.get("/api/v1/debug/tool-trace/stats")
 
     # Without credentials, the ops access decorator returns 401 Unauthorized
     assert response.status_code == 401, (

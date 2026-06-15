@@ -617,7 +617,7 @@ class TestTokenHelpers:
         second = tokens_module._get_jwks_client()
 
         assert first is second
-        assert created["url"].endswith("/auth/v1/.well-known/jwks.json")
+        assert created["url"].endswith("/api/v1/auth/v1/.well-known/jwks.json")
         assert created["cache_keys"] is True
 
     @pytest.mark.asyncio

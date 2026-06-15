@@ -136,11 +136,11 @@ def test_decode_helpers_cover_empty_and_numeric_exit_code() -> None:
 
 def test_sandbox_health_http_response_uses_success_envelope() -> None:
     app = FastAPI()
-    app.include_router(sandbox_api.router)
+    app.include_router(sandbox_api.router, prefix="/api/v1")
     client = TestClient(app)
 
     with patch.object(sandbox_api, "SANDBOX_ENABLED", False):
-        response = client.get("/sandbox/health/status")
+        response = client.get("/api/v1/sandbox/health/status")
 
     assert response.status_code == 200
     body = response.json()

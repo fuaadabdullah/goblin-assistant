@@ -1,4 +1,4 @@
-"""Tests for routing/feedback_router.py — POST /routing/feedback and GET /feedback/stats."""
+"""Tests for routing/feedback_router.py — POST /api/v1/routing/feedback and GET /api/v1/feedback/stats."""
 
 from __future__ import annotations
 
@@ -20,7 +20,7 @@ from api.routing.feedback_router import (
 @pytest.fixture
 def client():
     app = FastAPI()
-    app.include_router(router)
+    app.include_router(router, prefix="/api/v1")
     return TestClient(app)
 
 
@@ -39,45 +39,51 @@ def _no_supabase(monkeypatch=None):
 class TestFeedbackRequestValidation:
     def test_valid_thumbs_up(self, client):
         with _no_supabase():
-            resp = client.post("/routing/feedback", json={"request_id": "req-1", "rating": 1})
+            resp = client.post(
+                "/api/v1/routing/feedback", json={"request_id": "req-1", "rating": 1}
+            )
         assert resp.status_code == 200
 
     def test_valid_thumbs_down(self, client):
         with _no_supabase():
-            resp = client.post("/routing/feedback", json={"request_id": "req-1", "rating": -1})
+            resp = client.post(
+                "/api/v1/routing/feedback", json={"request_id": "req-1", "rating": -1}
+            )
         assert resp.status_code == 200
 
     def test_rating_zero_rejected(self, client):
-        resp = client.post("/routing/feedback", json={"request_id": "req-1", "rating": 0})
+        resp = client.post("/api/v1/routing/feedback", json={"request_id": "req-1", "rating": 0})
         assert resp.status_code == 422
 
     def test_rating_two_rejected(self, client):
-        resp = client.post("/routing/feedback", json={"request_id": "req-1", "rating": 2})
+        resp = client.post("/api/v1/routing/feedback", json={"request_id": "req-1", "rating": 2})
         assert resp.status_code == 422
 
     def test_rating_none_accepted(self, client):
         with _no_supabase():
-            resp = client.post("/routing/feedback", json={"request_id": "req-1", "signal": "copy"})
+            resp = client.post(
+                "/api/v1/routing/feedback", json={"request_id": "req-1", "signal": "copy"}
+            )
         assert resp.status_code == 200
 
     def test_missing_request_id_rejected(self, client):
-        resp = client.post("/routing/feedback", json={"rating": 1})
+        resp = client.post("/api/v1/routing/feedback", json={"rating": 1})
         assert resp.status_code == 422
 
     def test_all_optional_fields_omitted(self, client):
         with _no_supabase():
-            resp = client.post("/routing/feedback", json={"request_id": "req-only"})
+            resp = client.post("/api/v1/routing/feedback", json={"request_id": "req-only"})
         assert resp.status_code == 200
 
 
-# ── POST /routing/feedback — basic response ───────────────────────────────────
+# ── POST /api/v1/routing/feedback — basic response ───────────────────────────────────
 
 
 class TestSubmitFeedback:
     def test_returns_ok_true(self, client):
         with _no_supabase():
             resp = client.post(
-                "/routing/feedback",
+                "/api/v1/routing/feedback",
                 json={
                     "request_id": "req-1",
                     "rating": 1,
@@ -91,7 +97,7 @@ class TestSubmitFeedback:
     def test_signal_copy_no_rating_still_returns_ok(self, client):
         with _no_supabase():
             resp = client.post(
-                "/routing/feedback",
+                "/api/v1/routing/feedback",
                 json={"request_id": "req-1", "signal": "copy", "message_id": "msg-1"},
             )
         assert resp.status_code == 200
@@ -100,7 +106,7 @@ class TestSubmitFeedback:
     def test_signal_regenerate_returns_ok(self, client):
         with _no_supabase():
             resp = client.post(
-                "/routing/feedback",
+                "/api/v1/routing/feedback",
                 json={"request_id": "req-1", "signal": "regenerate", "message_id": "msg-1"},
             )
         assert resp.status_code == 200
@@ -108,7 +114,7 @@ class TestSubmitFeedback:
     def test_signal_delete_returns_ok(self, client):
         with _no_supabase():
             resp = client.post(
-                "/routing/feedback",
+                "/api/v1/routing/feedback",
                 json={"request_id": "req-1", "signal": "delete", "message_id": "msg-1"},
             )
         assert resp.status_code == 200
@@ -129,7 +135,7 @@ class TestSubmitFeedback:
             ),
         ):
             resp = client.post(
-                "/routing/feedback",
+                "/api/v1/routing/feedback",
                 json={
                     "request_id": "req-1",
                     "rating": 1,
@@ -141,7 +147,7 @@ class TestSubmitFeedback:
         assert resp.json()["ok"] is True
 
 
-# ── POST /routing/feedback — bandit update path ───────────────────────────────
+# ── POST /api/v1/routing/feedback — bandit update path ───────────────────────────────
 
 
 class TestBanditUpdatePath:
@@ -166,7 +172,7 @@ class TestBanditUpdatePath:
             ),
         ):
             client.post(
-                "/routing/feedback",
+                "/api/v1/routing/feedback",
                 json={
                     "request_id": "req-1",
                     "rating": 1,
@@ -195,7 +201,7 @@ class TestBanditUpdatePath:
             ),
         ):
             client.post(
-                "/routing/feedback",
+                "/api/v1/routing/feedback",
                 json={
                     "request_id": "req-1",
                     "signal": "copy",
@@ -207,7 +213,7 @@ class TestBanditUpdatePath:
         bandit_update.assert_not_called()
 
 
-# ── POST /routing/feedback — feedback_service path ───────────────────────────
+# ── POST /api/v1/routing/feedback — feedback_service path ───────────────────────────
 
 
 class TestFeedbackServicePath:
@@ -240,7 +246,7 @@ class TestFeedbackServicePath:
             ),
         ):
             client.post(
-                "/routing/feedback",
+                "/api/v1/routing/feedback",
                 json={
                     "request_id": "req-1",
                     "rating": 1,
@@ -280,7 +286,7 @@ class TestFeedbackServicePath:
             ),
         ):
             client.post(
-                "/routing/feedback",
+                "/api/v1/routing/feedback",
                 json={
                     "request_id": "req-1",
                     "signal": "copy",
@@ -292,7 +298,7 @@ class TestFeedbackServicePath:
         mock_service.record_copied.assert_awaited_once()
 
 
-# ── GET /feedback/stats ───────────────────────────────────────────────────────
+# ── GET /api/v1/feedback/stats ───────────────────────────────────────────────────────
 
 
 class TestFeedbackStats:
@@ -333,7 +339,7 @@ class TestFeedbackStats:
                 },
             ),
         ):
-            resp = client.get("/feedback/stats")
+            resp = client.get("/api/v1/feedback/stats")
 
         assert resp.status_code == 200
         data = resp.json()
@@ -349,7 +355,7 @@ class TestFeedbackStats:
                 ),
             },
         ):
-            resp = client.get("/feedback/stats")
+            resp = client.get("/api/v1/feedback/stats")
 
         assert resp.status_code == 200
         data = resp.json()
@@ -364,7 +370,7 @@ class TestFeedbackStats:
                 ),
             },
         ):
-            resp = client.get("/feedback/stats?days=30")
+            resp = client.get("/api/v1/feedback/stats?days=30")
 
         assert resp.status_code == 200
 

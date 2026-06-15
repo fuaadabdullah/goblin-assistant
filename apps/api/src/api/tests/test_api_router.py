@@ -22,7 +22,7 @@ def _clear_streams():
 
 def _client() -> TestClient:
     app = FastAPI()
-    app.include_router(api_router.router)
+    app.include_router(api_router.router, prefix="/api/v1")
     return TestClient(app)
 
 
@@ -40,7 +40,7 @@ def test_simple_chat_returns_provider_result_text():
         },
     ):
         response = client.post(
-            "/api/chat",
+            "/api/v1/api/chat",
             json={"messages": [{"role": "user", "content": "Hi"}]},
         )
 
@@ -61,7 +61,7 @@ def test_simple_chat_returns_error_payload_for_provider_failure_and_exception():
         return_value={"ok": False, "error": "provider down"},
     ):
         failed = client.post(
-            "/api/chat",
+            "/api/v1/api/chat",
             json={"messages": [{"role": "user", "content": "Hi"}]},
         )
 
@@ -71,7 +71,7 @@ def test_simple_chat_returns_error_payload_for_provider_failure_and_exception():
         side_effect=RuntimeError("boom"),
     ):
         errored = client.post(
-            "/api/chat",
+            "/api/v1/api/chat",
             json={"messages": [{"role": "user", "content": "Hi"}]},
         )
 
@@ -88,7 +88,7 @@ def test_simple_chat_rejects_oversized_message():
     max_len = api_router.InputSanitizer.MAX_MESSAGE_LENGTH
 
     response = client.post(
-        "/api/chat",
+        "/api/v1/api/chat",
         json={
             "messages": [
                 {
@@ -108,7 +108,7 @@ def test_simple_chat_rejects_oversized_message():
 def test_generate_requires_messages_or_prompt():
     client = _client()
 
-    response = client.post("/api/generate", json={"model": "gpt-4o-mini"})
+    response = client.post("/api/v1/api/generate", json={"model": "gpt-4o-mini"})
 
     assert response.status_code == 400
     assert response.json()["detail"] == ("Either 'messages' or 'prompt' must be provided")
@@ -123,7 +123,7 @@ def test_generate_uses_prompt_and_returns_openai_style_response():
         return_value={"ok": True, "text": "prompt reply"},
     ):
         response = client.post(
-            "/api/generate",
+            "/api/v1/api/generate",
             json={"prompt": "Tell me a joke", "provider": "mock"},
         )
 
@@ -147,7 +147,7 @@ def test_generate_uses_messages_payload():
         },
     ):
         response = client.post(
-            "/api/generate",
+            "/api/v1/api/generate",
             json={
                 "messages": [{"role": "user", "content": "Tell me a story"}],
                 "provider": "openai",
@@ -165,7 +165,7 @@ def test_generate_handles_oversized_prompt_provider_error_and_exception():
     client = _client()
     max_len = api_router.InputSanitizer.MAX_MESSAGE_LENGTH
 
-    oversized = client.post("/api/generate", json={"prompt": "x" * (max_len + 1)})
+    oversized = client.post("/api/v1/api/generate", json={"prompt": "x" * (max_len + 1)})
     assert oversized.status_code == 413
 
     with patch(
@@ -173,14 +173,14 @@ def test_generate_handles_oversized_prompt_provider_error_and_exception():
         new_callable=AsyncMock,
         return_value={"ok": False, "error": "nope"},
     ):
-        provider_error = client.post("/api/generate", json={"prompt": "hi"})
+        provider_error = client.post("/api/v1/api/generate", json={"prompt": "hi"})
 
     with patch(
         "api.api_router.invoke_provider",
         new_callable=AsyncMock,
         side_effect=RuntimeError("explode"),
     ):
-        exception_response = client.post("/api/generate", json={"prompt": "hi"})
+        exception_response = client.post("/api/v1/api/generate", json={"prompt": "hi"})
 
     assert provider_error.status_code == 200
     assert provider_error.json()["error"] == "nope"
@@ -204,9 +204,10 @@ def test_router_helpers_cover_text_fallback_stream_messages_and_timestamp_sort()
 
     assert api_router._timestamp_sort_key(10) == 10.0
     assert api_router._timestamp_sort_key(10.5) == 10.5
-    assert api_router._timestamp_sort_key("2026-01-01T00:00:00") == api_router.datetime.fromisoformat(
-        "2026-01-01T00:00:00"
-    ).timestamp()
+    assert (
+        api_router._timestamp_sort_key("2026-01-01T00:00:00")
+        == api_router.datetime.fromisoformat("2026-01-01T00:00:00").timestamp()
+    )
     assert api_router._timestamp_sort_key("not-a-timestamp") == 0.0
     assert api_router._timestamp_sort_key(object()) == 0.0
 
@@ -220,7 +221,7 @@ def test_route_task_returns_task_identifier():
         return_value={"ok": True, "result": {"text": "hi"}, "selected_provider": "openai"},
     ):
         response = client.post(
-            "/api/route_task",
+            "/api/v1/api/route_task",
             json={"task_type": "chat", "payload": {"message": "hi"}},
         )
 
@@ -245,7 +246,7 @@ def test_route_task_failure_and_exception_paths():
         ),
     ):
         failed = client.post(
-            "/api/route_task",
+            "/api/v1/api/route_task",
             json={"task_type": "chat", "payload": {"message": "hi"}},
         )
 
@@ -262,7 +263,7 @@ def test_route_task_failure_and_exception_paths():
         ),
     ):
         errored = client.post(
-            "/api/route_task",
+            "/api/v1/api/route_task",
             json={"task_type": "chat", "payload": {"message": "hi"}},
         )
 
@@ -406,8 +407,7 @@ def test_get_goblins_and_history_limits():
                 "result": {"selected_provider": "docs-writer", "result": {"text": "done"}},
                 "created_at": "2026-01-01T00:00:00",
                 "updated_at": "2026-01-01T00:00:10",
-            }
-        ,
+            },
             {
                 "task_id": "t2",
                 "task_type": "chat",
@@ -446,8 +446,8 @@ def test_get_goblins_and_history_limits():
         ),
         patch("api.api_router.asyncio.create_task", side_effect=_drop_task),
     ):
-        goblins = client.get("/api/goblins")
-        history = client.get("/api/history/docs-writer?limit=25")
+        goblins = client.get("/api/v1/api/goblins")
+        history = client.get("/api/v1/api/history/docs-writer?limit=25")
 
     assert goblins.status_code == 200
     assert goblins.json()[0]["id"] == "docs-writer"
@@ -482,8 +482,8 @@ def test_get_goblin_stats_and_empty_history_defaults():
             },
         ),
     ):
-        stats = client.get("/api/stats/docs-writer")
-        history = client.get("/api/history/docs-writer?limit=999")
+        stats = client.get("/api/v1/api/stats/docs-writer")
+        history = client.get("/api/v1/api/history/docs-writer?limit=999")
 
     assert stats.status_code == 200
     assert stats.json()["goblin_id"] == "docs-writer"
@@ -507,7 +507,7 @@ def test_get_goblins_degrades_when_health_flag_is_missing():
             }
         ],
     ):
-        response = client.get("/api/goblins")
+        response = client.get("/api/v1/api/goblins")
 
     assert response.status_code == 200
     body = response.json()
@@ -549,7 +549,7 @@ def test_get_goblin_history_includes_chat_completions_from_conversations():
             return_value=[fake_conversation],
         ),
     ):
-        history = client.get("/api/history/docs-writer?limit=10")
+        history = client.get("/api/v1/api/history/docs-writer?limit=10")
 
     assert history.status_code == 200
     body = history.json()
@@ -604,7 +604,7 @@ def test_get_goblin_history_filters_other_provider_chat_and_task_entries():
             return_value=[fake_conversation],
         ),
     ):
-        history = client.get("/api/history/docs-writer?limit=10")
+        history = client.get("/api/v1/api/history/docs-writer?limit=10")
 
     assert history.status_code == 200
     body = history.json()
@@ -677,7 +677,7 @@ def test_orchestration_parse_stores_plan_and_execute_runs_background_task():
         patch("api.orchestration_router.asyncio.create_task", new=MagicMock()),
     ):
         parsed = client.post(
-            "/api/orchestrate/parse",
+            "/api/v1/api/orchestrate/parse",
             json={"text": "write docs", "default_goblin": "docs-writer"},
         )
         assert parsed.status_code == 200
@@ -686,14 +686,14 @@ def test_orchestration_parse_stores_plan_and_execute_runs_background_task():
         assert parse_data["steps"][0]["goblin"] == "general-goblin"
         assert parse_data["complexity"] == "low"
 
-        executed = client.post("/api/orchestrate/execute", params={"plan_id": "plan-1"})
+        executed = client.post("/api/v1/api/orchestrate/execute", params={"plan_id": "plan-1"})
         assert executed.status_code == 200
         exec_data = executed.json()
         assert exec_data["plan_id"] == "plan-1"
         assert exec_data["status"] == "started"
         assert "execution_id" in exec_data
 
-        poll = client.get("/api/orchestrate/plans/plan-1")
+        poll = client.get("/api/v1/api/orchestrate/plans/plan-1")
         assert poll.status_code == 200
         poll_data = poll.json()
         assert poll_data["plan_id"] == "plan-1"
@@ -710,8 +710,8 @@ def test_orchestration_execute_and_plan_not_found_paths():
     fake_store.list_tasks = AsyncMock(return_value=[])
 
     with patch("api.api_router.get_task_store", new_callable=AsyncMock, return_value=fake_store):
-        missing_exec = client.post("/api/orchestrate/execute", params={"plan_id": "missing"})
-        missing_plan = client.get("/api/orchestrate/plans/missing")
+        missing_exec = client.post("/api/v1/api/orchestrate/execute", params={"plan_id": "missing"})
+        missing_plan = client.get("/api/v1/api/orchestrate/plans/missing")
 
     assert missing_exec.status_code == 404
     assert missing_plan.status_code == 404

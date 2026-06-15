@@ -6,7 +6,7 @@ from api.ops_router import router as ops_router
 
 def _ops_app() -> FastAPI:
     app = FastAPI()
-    app.include_router(ops_router)
+    app.include_router(ops_router, prefix="/api/v1")
     return app
 
 
@@ -16,7 +16,7 @@ def test_reset_route_registered_once() -> None:
         route
         for route in app.routes
         if isinstance(route, APIRoute)
-        and route.path == "/ops/circuit-breakers/{provider_name}/reset"
+        and route.path == "/api/v1/ops/circuit-breakers/{provider_name}/reset"
         and "POST" in route.methods
     ]
     assert len(matches) == 1
@@ -27,19 +27,19 @@ def test_expected_ops_routes_present() -> None:
     paths = {
         route.path
         for route in app.routes
-        if isinstance(route, APIRoute) and route.path.startswith("/ops/")
+        if isinstance(route, APIRoute) and route.path.startswith("/api/v1/ops/")
     }
 
-    assert "/ops/health/summary" in paths
-    assert "/ops/providers/status" in paths
-    assert "/ops/performance/snapshot" in paths
-    assert "/ops/queues/snapshot" in paths
-    assert "/ops/circuit-breakers" in paths
-    assert "/ops/circuit-breakers/{provider_name}/reset" in paths
-    assert "/ops/metrics/history" in paths
-    assert "/ops/aggregated" in paths
-    assert "/ops/health/trends" in paths
-    assert "/ops/streaming/analysis" in paths
-    assert "/ops/security/status" in paths
-    assert "/ops/audit/log" in paths
-    assert "/ops/recommendations" in paths
+    assert "/api/v1/ops/health/summary" in paths
+    assert "/api/v1/ops/providers/status" in paths
+    assert "/api/v1/ops/performance/snapshot" in paths
+    assert "/api/v1/ops/queues/snapshot" in paths
+    assert "/api/v1/ops/circuit-breakers" in paths
+    assert "/api/v1/ops/circuit-breakers/{provider_name}/reset" in paths
+    assert "/api/v1/ops/metrics/history" in paths
+    assert "/api/v1/ops/aggregated" in paths
+    assert "/api/v1/ops/health/trends" in paths
+    assert "/api/v1/ops/streaming/analysis" in paths
+    assert "/api/v1/ops/security/status" in paths
+    assert "/api/v1/ops/audit/log" in paths
+    assert "/api/v1/ops/recommendations" in paths

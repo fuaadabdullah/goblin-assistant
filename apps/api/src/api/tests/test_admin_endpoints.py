@@ -48,13 +48,13 @@ def main():
     print("=" * 50)
 
     endpoints = [
-        ("/health", "System Health"),
+        ("/api/v1/health", "System Health"),
         ("/ops/health/summary", "Admin Health Summary"),
         ("/ops/providers/status", "Provider Status Matrix"),
         ("/ops/performance/snapshot", "Performance Snapshot"),
         ("/ops/queues/snapshot", "Task Queue Monitor"),
         ("/ops/circuit-breakers", "Circuit Breaker Status"),
-        ("/admin/providers/state", "Provider Registry State"),
+        ("/api/v1/admin/providers/state", "Provider Registry State"),
     ]
 
     results = []

@@ -31,7 +31,7 @@ def app(mock_user):
     actually take effect.
     """
     app = FastAPI()
-    app.include_router(router)
+    app.include_router(router, prefix="/api/v1")
     app.dependency_overrides[get_current_user] = lambda: mock_user
     return app
 
@@ -43,7 +43,7 @@ def client(app):
 
 
 class TestCreateConversation:
-    """Tests for POST /chat/conversations endpoint."""
+    """Tests for POST /api/v1/chat/conversations endpoint."""
 
     def test_create_conversation_success(self, client):
         """Test successful conversation creation."""
@@ -57,7 +57,7 @@ class TestCreateConversation:
             )
 
             response = client.post(
-                "/chat/conversations",
+                "/api/v1/chat/conversations",
                 json={"title": "New Chat"},
             )
 
@@ -78,7 +78,7 @@ class TestCreateConversation:
             )
 
             response = client.post(
-                "/chat/conversations",
+                "/api/v1/chat/conversations",
                 json={},
             )
 
@@ -86,7 +86,7 @@ class TestCreateConversation:
 
 
 class TestListConversations:
-    """Tests for GET /chat/conversations endpoint."""
+    """Tests for GET /api/v1/chat/conversations endpoint."""
 
     def test_list_conversations_success(self, client):
         """Test successful conversation listing."""
@@ -102,7 +102,7 @@ class TestListConversations:
             )
             mock_store.list_conversations = AsyncMock(return_value=[mock_conv1])
 
-            response = client.get("/chat/conversations")
+            response = client.get("/api/v1/chat/conversations")
 
             assert response.status_code == 200
             data = _payload(response)
@@ -113,7 +113,7 @@ class TestListConversations:
         with patch("api.chat_router.conversation_store") as mock_store:
             mock_store.list_conversations = AsyncMock(return_value=[])
 
-            response = client.get("/chat/conversations")
+            response = client.get("/api/v1/chat/conversations")
 
             assert response.status_code == 200
             data = _payload(response)
@@ -121,7 +121,7 @@ class TestListConversations:
 
 
 class TestGetConversation:
-    """Tests for GET /chat/conversations/{conversation_id} endpoint."""
+    """Tests for GET /api/v1/chat/conversations/{conversation_id} endpoint."""
 
     def test_get_conversation_success(self, client):
         """Test successful conversation retrieval."""
@@ -139,7 +139,7 @@ class TestGetConversation:
             )
             mock_store.get_conversation = AsyncMock(return_value=mock_conv)
 
-            response = client.get(f"/chat/conversations/{conv_id}")
+            response = client.get(f"/api/v1/chat/conversations/{conv_id}")
 
             assert response.status_code == 200
             data = _payload(response)
@@ -150,7 +150,7 @@ class TestGetConversation:
         with patch("api.chat_router.conversation_store") as mock_store:
             mock_store.get_conversation = AsyncMock(return_value=None)
 
-            response = client.get("/chat/conversations/invalid_id")
+            response = client.get("/api/v1/chat/conversations/invalid_id")
 
             assert response.status_code == 404
 
@@ -164,13 +164,13 @@ class TestGetConversation:
             )
             mock_store.get_conversation = AsyncMock(return_value=mock_conv)
 
-            response = client.get("/chat/conversations/conv_123")
+            response = client.get("/api/v1/chat/conversations/conv_123")
 
             assert response.status_code == 404
 
 
 class TestUpdateConversationTitle:
-    """Tests for PUT /chat/conversations/{conversation_id}/title endpoint."""
+    """Tests for PUT /api/v1/chat/conversations/{conversation_id}/title endpoint."""
 
     def test_update_title_success(self, client):
         """Test successful title update."""
@@ -179,7 +179,7 @@ class TestUpdateConversationTitle:
             mock_store.update_conversation_title = AsyncMock(return_value=True)
 
             response = client.put(
-                "/chat/conversations/conv_123/title",
+                "/api/v1/chat/conversations/conv_123/title",
                 json={"title": "Updated Title"},
             )
 
@@ -191,7 +191,7 @@ class TestUpdateConversationTitle:
             mock_store.check_conversation_owner = AsyncMock(return_value=False)
 
             response = client.put(
-                "/chat/conversations/invalid_id/title",
+                "/api/v1/chat/conversations/invalid_id/title",
                 json={"title": "New Title"},
             )
 
@@ -199,7 +199,7 @@ class TestUpdateConversationTitle:
 
 
 class TestDeleteConversation:
-    """Tests for DELETE /chat/conversations/{conversation_id} endpoint."""
+    """Tests for DELETE /api/v1/chat/conversations/{conversation_id} endpoint."""
 
     def test_delete_conversation_success(self, client):
         """Test successful conversation deletion."""
@@ -207,7 +207,7 @@ class TestDeleteConversation:
             mock_store.check_conversation_owner = AsyncMock(return_value=True)
             mock_store.delete_conversation = AsyncMock(return_value=True)
 
-            response = client.delete("/chat/conversations/conv_123")
+            response = client.delete("/api/v1/chat/conversations/conv_123")
 
             assert response.status_code == 200
 
@@ -216,7 +216,7 @@ class TestDeleteConversation:
         with patch("api.chat_router.conversation_store") as mock_store:
             mock_store.check_conversation_owner = AsyncMock(return_value=False)
 
-            response = client.delete("/chat/conversations/invalid_id")
+            response = client.delete("/api/v1/chat/conversations/invalid_id")
 
             assert response.status_code == 404
 
@@ -489,7 +489,7 @@ class TestSendMessageArchiving:
             ),
         ):
             response = client.post(
-                f"/chat/conversations/{conversation_id}/messages",
+                f"/api/v1/chat/conversations/{conversation_id}/messages",
                 json={
                     "message": "hello",
                     "provider": "openai",
@@ -586,7 +586,7 @@ class TestSendMessageArchiving:
             ),
         ):
             response = client.post(
-                f"/chat/conversations/{conversation_id}/messages",
+                f"/api/v1/chat/conversations/{conversation_id}/messages",
                 json={
                     "message": "hello",
                     "provider": "openai",
@@ -661,7 +661,7 @@ class TestSendMessageObservability:
             ) as mock_emit,
         ):
             response = client.post(
-                f"/chat/conversations/{conversation_id}/messages",
+                f"/api/v1/chat/conversations/{conversation_id}/messages",
                 json={"message": "hello", "provider": "openai", "model": "gpt-4o-mini"},
             )
 
@@ -714,7 +714,7 @@ class TestSendMessageObservability:
             ) as mock_emit,
         ):
             response = client.post(
-                f"/chat/conversations/{conversation_id}/messages",
+                f"/api/v1/chat/conversations/{conversation_id}/messages",
                 json={"message": "hello", "provider": "openai", "model": "gpt-4o-mini"},
             )
 
@@ -803,7 +803,7 @@ class TestSendMessageObservability:
             ),
         ):
             response = client.post(
-                f"/chat/conversations/{conversation_id}/messages",
+                f"/api/v1/chat/conversations/{conversation_id}/messages",
                 json={"message": "hello", "provider": "openai", "model": "gpt-4o-mini"},
             )
 
@@ -811,12 +811,12 @@ class TestSendMessageObservability:
         sentry_sdk.set_tag.assert_any_call("conversation_id", conversation_id)
         sentry_sdk.set_tag.assert_any_call("operation", "chat.send_message")
         sentry_sdk.set_transaction_name.assert_called_once_with(
-            "POST /chat/conversations/{conversation_id}/messages"
+            "POST /api/v1/chat/conversations/{conversation_id}/messages"
         )
 
 
 class TestEstimateTokens:
-    """Tests for POST /chat/estimate-tokens — read-only token/cost preview."""
+    """Tests for POST /api/v1/chat/estimate-tokens — read-only token/cost preview."""
 
     @staticmethod
     def _stub_assembly_service(total_tokens: int, layers: list[dict]):
@@ -871,7 +871,7 @@ class TestEstimateTokens:
             ),
         ):
             response = client.post(
-                "/chat/estimate-tokens",
+                "/api/v1/chat/estimate-tokens",
                 json={"message": "hello", "provider": "openai"},
             )
 
@@ -915,7 +915,7 @@ class TestEstimateTokens:
             ),
         ):
             response = client.post(
-                "/chat/estimate-tokens?conversation_id=conv-1",
+                "/api/v1/chat/estimate-tokens?conversation_id=conv-1",
                 json={"message": "hello"},
             )
 
@@ -937,7 +937,7 @@ class TestEstimateTokens:
             side_effect=fake_require,
         ):
             response = client.post(
-                "/chat/estimate-tokens?conversation_id=conv-other",
+                "/api/v1/chat/estimate-tokens?conversation_id=conv-other",
                 json={"message": "hello"},
             )
 
@@ -973,7 +973,7 @@ class TestEstimateTokens:
             ),
         ):
             response = client.post(
-                "/chat/estimate-tokens",
+                "/api/v1/chat/estimate-tokens",
                 json={"message": "hello", "provider": "openai"},
             )
 
@@ -996,7 +996,7 @@ class TestEstimateTokens:
             ),
         ):
             response = client.post(
-                "/chat/estimate-tokens",
+                "/api/v1/chat/estimate-tokens",
                 json={"message": "hello"},
             )
 
@@ -1088,7 +1088,7 @@ class TestContextualChatRoute:
             ),
         ):
             response = client.post(
-                "/chat/contextual-chat",
+                "/api/v1/chat/contextual-chat",
                 json={
                     "message": "What changed?",
                     "conversation_id": "conv_123",

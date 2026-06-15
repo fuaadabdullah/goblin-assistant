@@ -218,13 +218,13 @@ def test_provider_state_route_is_mounted_in_root_and_v1(monkeypatch, provider_st
     monkeypatch.setattr(provider_state, "quota_service", _QuotaStub())
 
     app = FastAPI()
-    app.include_router(admin_router)
+    app.include_router(admin_router, prefix="/api/v1")
     app.include_router(admin_router, prefix="/v1")
 
     client = TestClient(app)
 
-    root_response = client.get("/admin/providers/state")
-    versioned_response = client.get("/v1/admin/providers/state")
+    root_response = client.get("/api/v1/admin/providers/state")
+    versioned_response = client.get("/v1/api/v1/admin/providers/state")
 
     assert root_response.status_code == 200
     assert versioned_response.status_code == 200

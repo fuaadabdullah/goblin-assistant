@@ -1,4 +1,4 @@
-"""Tests for POST /ops/colab-worker/register and dispatcher.update_provider_endpoint."""
+"""Tests for POST /ops/api/v1/colab-worker/register and dispatcher.update_provider_endpoint."""
 
 from __future__ import annotations
 
@@ -82,7 +82,7 @@ def _make_app():
     from api.ops_routes.colab_worker import router
 
     app = FastAPI()
-    app.include_router(router)
+    app.include_router(router, prefix="/api/v1")
     return app
 
 
@@ -129,11 +129,11 @@ def test_register_endpoint_success():
         from api.ops_routes.colab_worker import router
 
         app = FastAPI()
-        app.include_router(router)
+        app.include_router(router, prefix="/api/v1")
         client = TestClient(app)
 
         resp = client.post(
-            "/colab-worker/register",
+            "/api/v1/colab-worker/register",
             json={"endpoint": _TUNNEL_URL},
             headers={"Authorization": f"Bearer {_API_KEY}"},
         )
@@ -150,11 +150,11 @@ def test_register_endpoint_wrong_key():
         from api.ops_routes.colab_worker import router
 
         app = FastAPI()
-        app.include_router(router)
+        app.include_router(router, prefix="/api/v1")
         client = TestClient(app)
 
         resp = client.post(
-            "/colab-worker/register",
+            "/api/v1/colab-worker/register",
             json={"endpoint": _TUNNEL_URL},
             headers={"Authorization": "Bearer wrong-key"},
         )
@@ -168,10 +168,10 @@ def test_register_endpoint_no_auth():
         from api.ops_routes.colab_worker import router
 
         app = FastAPI()
-        app.include_router(router)
+        app.include_router(router, prefix="/api/v1")
         client = TestClient(app)
 
-        resp = client.post("/colab-worker/register", json={"endpoint": _TUNNEL_URL})
+        resp = client.post("/api/v1/colab-worker/register", json={"endpoint": _TUNNEL_URL})
         assert resp.status_code == 401
 
 
@@ -188,7 +188,7 @@ def test_register_endpoint_probe_timeout():
         from api.ops_routes.colab_worker import router
 
         app = FastAPI()
-        app.include_router(router)
+        app.include_router(router, prefix="/api/v1")
 
         async def _timeout(_url, _key):
             raise HTTPException(status_code=504, detail="timeout")
@@ -199,7 +199,7 @@ def test_register_endpoint_probe_timeout():
         ):
             client = TestClient(app, raise_server_exceptions=False)
             resp = client.post(
-                "/colab-worker/register",
+                "/api/v1/colab-worker/register",
                 json={"endpoint": _TUNNEL_URL},
                 headers={"Authorization": f"Bearer {_API_KEY}"},
             )
@@ -221,11 +221,11 @@ def test_register_endpoint_probe_unhealthy():
         from api.ops_routes.colab_worker import router
 
         app = FastAPI()
-        app.include_router(router)
+        app.include_router(router, prefix="/api/v1")
         client = TestClient(app, raise_server_exceptions=False)
 
         resp = client.post(
-            "/colab-worker/register",
+            "/api/v1/colab-worker/register",
             json={"endpoint": _TUNNEL_URL},
             headers={"Authorization": f"Bearer {_API_KEY}"},
         )
@@ -247,11 +247,11 @@ def test_env_not_written_in_production():
         from api.ops_routes.colab_worker import router
 
         app = FastAPI()
-        app.include_router(router)
+        app.include_router(router, prefix="/api/v1")
         client = TestClient(app)
 
         resp = client.post(
-            "/colab-worker/register",
+            "/api/v1/colab-worker/register",
             json={"endpoint": _TUNNEL_URL},
             headers={"Authorization": f"Bearer {_API_KEY}"},
         )

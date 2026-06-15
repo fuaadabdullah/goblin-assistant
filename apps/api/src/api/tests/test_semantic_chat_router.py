@@ -15,7 +15,7 @@ from api.services.memory_core import memory_core_service
 
 # Mount the router in isolation (avoids coupling to main.py)
 app = FastAPI()
-app.include_router(router)
+app.include_router(router, prefix="/api/v1")
 client = TestClient(app)
 
 BASE_PATH = "/semantic-chat"
@@ -285,11 +285,11 @@ def test_router_has_expected_endpoints():
     """Verify the expected endpoints are registered"""
     routes = {r.path for r in router.routes}
     expected_endpoints = {
-        "/semantic-chat/conversations/{conversation_id}/messages",
-        "/semantic-chat/conversations/{conversation_id}/context",
-        "/semantic-chat/conversations/{conversation_id}/summarize",
-        "/semantic-chat/users/{user_id}/memory",
-        "/semantic-chat/users/{user_id}/memory/search",
+        "/api/v1/semantic-chat/conversations/{conversation_id}/messages",
+        "/api/v1/semantic-chat/conversations/{conversation_id}/context",
+        "/api/v1/semantic-chat/conversations/{conversation_id}/summarize",
+        "/api/v1/semantic-chat/users/{user_id}/memory",
+        "/api/v1/semantic-chat/users/{user_id}/memory/search",
     }
     missing = expected_endpoints - routes
     assert not missing, f"Missing expected endpoints: {missing}"

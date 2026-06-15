@@ -14,24 +14,24 @@ from api import routing_router as _routing_router_module
 @pytest.fixture
 def client():
     app = FastAPI()
-    app.include_router(_routing_router_module.router)
+    app.include_router(_routing_router_module.router, prefix="/api/v1")
     return TestClient(app)
 
 
 # ---------------------------------------------------------------------------
-# GET /routing/providers  (deprecated — still must not 500)
+# GET /api/v1/routing/providers  (deprecated — still must not 500)
 # ---------------------------------------------------------------------------
 
 
 class TestGetProviders:
     def test_returns_list(self, client):
-        response = client.get("/routing/providers")
+        response = client.get("/api/v1/routing/providers")
         assert response.status_code == 200
         data = response.json()
         assert isinstance(data, list)
 
     def test_returns_only_configured_providers(self, client):
-        response = client.get("/routing/providers")
+        response = client.get("/api/v1/routing/providers")
         data = response.json()
         assert isinstance(data, list)
         assert "mock" not in data
@@ -48,7 +48,7 @@ class TestGetProviders:
                 return_value=["general", "coding"],
             ),
         ):
-            response = client.get("/routing/providers")
+            response = client.get("/api/v1/routing/providers")
             assert response.status_code == 200
             assert response.json() == ["general", "coding"]
 
@@ -64,19 +64,19 @@ class TestGetProviders:
                 return_value=["general", "reasoning"],
             ),
         ):
-            response = client.get("/routing/providers")
+            response = client.get("/api/v1/routing/providers")
             assert response.status_code == 200
             assert response.json() == ["general", "reasoning"]
 
 
 # ---------------------------------------------------------------------------
-# GET /routing/departments  +  GET /routing/departments/{id}
+# GET /api/v1/routing/departments  +  GET /api/v1/routing/departments/{id}
 # ---------------------------------------------------------------------------
 
 
 class TestGetDepartments:
     def test_list_departments_returns_list(self, client):
-        response = client.get("/routing/departments")
+        response = client.get("/api/v1/routing/departments")
         assert response.status_code == 200
         data = response.json()
         assert isinstance(data, list)
@@ -87,7 +87,7 @@ class TestGetDepartments:
             "api.routing_router.DEPARTMENT_REGISTRY.list_public",
             return_value=fake,
         ):
-            response = client.get("/routing/departments")
+            response = client.get("/api/v1/routing/departments")
             assert response.status_code == 200
             data = response.json()
             assert all("department" in item for item in data)
@@ -103,7 +103,7 @@ class TestGetDepartments:
             "api.routing_router.DEPARTMENT_REGISTRY.get_by_id_str",
             return_value=policy,
         ):
-            response = client.get("/routing/departments/reasoning")
+            response = client.get("/api/v1/routing/departments/reasoning")
             assert response.status_code == 200
             data = response.json()
             assert data["department"] == "reasoning"
@@ -115,18 +115,18 @@ class TestGetDepartments:
             "api.routing_router.DEPARTMENT_REGISTRY.get_by_id_str",
             side_effect=KeyError("nope"),
         ):
-            response = client.get("/routing/departments/nonexistent")
+            response = client.get("/api/v1/routing/departments/nonexistent")
             assert response.status_code == 404
 
 
 # ---------------------------------------------------------------------------
-# GET /routing/providers/{capability}  (deprecated — dict-lookup behaviour)
+# GET /api/v1/routing/providers/{capability}  (deprecated — dict-lookup behaviour)
 # ---------------------------------------------------------------------------
 
 
 class TestGetProvidersByCapability:
     def test_chat_capability_returns_known_departments(self, client):
-        response = client.get("/routing/providers/chat")
+        response = client.get("/api/v1/routing/providers/chat")
         assert response.status_code == 200
         data = response.json()
         assert isinstance(data, list)
@@ -134,7 +134,7 @@ class TestGetProvidersByCapability:
         assert "general" in data
 
     def test_coding_capability_returns_coding_department(self, client):
-        response = client.get("/routing/providers/coding")
+        response = client.get("/api/v1/routing/providers/coding")
         assert response.status_code == 200
         data = response.json()
         assert "coding" in data
@@ -144,21 +144,21 @@ class TestGetProvidersByCapability:
             "api.routing_router.DEPARTMENT_REGISTRY.list_ids",
             return_value=["general", "coding", "reasoning"],
         ):
-            response = client.get("/routing/providers/telekinesis")
+            response = client.get("/api/v1/routing/providers/telekinesis")
             assert response.status_code == 200
             data = response.json()
             assert data == ["general", "coding", "reasoning"]
 
     def test_capability_lookup_is_case_insensitive(self, client):
-        response_lower = client.get("/routing/providers/chat")
-        response_upper = client.get("/routing/providers/CHAT")
+        response_lower = client.get("/api/v1/routing/providers/chat")
+        response_upper = client.get("/api/v1/routing/providers/CHAT")
         assert response_lower.status_code == 200
         assert response_upper.status_code == 200
         assert response_lower.json() == response_upper.json()
 
 
 # ---------------------------------------------------------------------------
-# POST /routing/route
+# POST /api/v1/routing/route
 # ---------------------------------------------------------------------------
 
 
@@ -176,7 +176,7 @@ class TestRouteRequest:
             return_value=fake_result,
         ):
             response = client.post(
-                "/routing/route",
+                "/api/v1/routing/route",
                 json={
                     "department": "general",
                     "payload": {"messages": [{"role": "user", "content": "hi"}]},
@@ -200,7 +200,7 @@ class TestRouteRequest:
             return_value=fake_result,
         ):
             response = client.post(
-                "/routing/route",
+                "/api/v1/routing/route",
                 json={"department": "general", "payload": {}},
             )
             data = response.json()
@@ -213,7 +213,7 @@ class TestRouteRequest:
             side_effect=KeyError("nope"),
         ):
             response = client.post(
-                "/routing/route",
+                "/api/v1/routing/route",
                 json={"department": "imaginary", "payload": {}},
             )
             assert response.status_code == 404
@@ -225,7 +225,7 @@ class TestRouteRequest:
             side_effect=RuntimeError("provider unavailable"),
         ):
             response = client.post(
-                "/routing/route",
+                "/api/v1/routing/route",
                 json={"department": "general", "payload": {}},
             )
             assert response.status_code == 500
@@ -246,7 +246,7 @@ class TestRouteRequest:
             side_effect=capture_dispatch,
         ):
             client.post(
-                "/routing/route",
+                "/api/v1/routing/route",
                 json={"department": "general", "payload": {}},
             )
         assert captured.get("stream") is False

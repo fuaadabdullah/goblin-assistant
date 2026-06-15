@@ -31,7 +31,7 @@ def _build_app_with_working_adapter(
 ) -> FastAPI:
     """FastAPI app with a working mock secrets adapter."""
     app = FastAPI()
-    app.include_router(router)
+    app.include_router(router, prefix="/api/v1")
 
     # Mock adapter that returns secrets
     mock_adapter = AsyncMock()
@@ -61,7 +61,7 @@ def _build_app_with_working_adapter(
 def _build_app_with_failed_adapter(error: Exception) -> FastAPI:
     """FastAPI app where get_secrets_adapter raises an exception."""
     app = FastAPI()
-    app.include_router(router)
+    app.include_router(router, prefix="/api/v1")
 
     async def failing_get_adapter():
         raise error
@@ -101,11 +101,11 @@ def unavailable_client() -> TestClient:
 
 
 class TestListSecrets:
-    """GET /secrets/ — list all secrets"""
+    """GET /api/v1/secrets/ — list all secrets"""
 
     def test_returns_200_with_secret_list(self, working_client: TestClient) -> None:
         """Authenticated list returns 200 with paths."""
-        response = working_client.get("/secrets/")
+        response = working_client.get("/api/v1/secrets/")
         assert response.status_code == status.HTTP_200_OK
         body = response.json()
         assert "paths" in body
@@ -113,7 +113,7 @@ class TestListSecrets:
 
     def test_authorization_failure_returns_403(self, unauthorized_client: TestClient) -> None:
         """Unauthorized adapter raises 403 Forbidden."""
-        response = unauthorized_client.get("/secrets/")
+        response = unauthorized_client.get("/api/v1/secrets/")
         assert response.status_code == status.HTTP_403_FORBIDDEN
         body = response.json()
         assert "detail" in body
@@ -121,19 +121,19 @@ class TestListSecrets:
 
     def test_backend_unavailable_returns_503(self, unavailable_client: TestClient) -> None:
         """Unavailable backend raises 503 Service Unavailable."""
-        response = unavailable_client.get("/secrets/")
+        response = unavailable_client.get("/api/v1/secrets/")
         assert response.status_code == status.HTTP_503_SERVICE_UNAVAILABLE
         body = response.json()
         assert "detail" in body
 
     def test_respects_prefix_parameter(self, working_client: TestClient) -> None:
         """List endpoint filters by prefix."""
-        response = working_client.get("/secrets/?prefix=APP_")
+        response = working_client.get("/api/v1/secrets/?prefix=APP_")
         assert response.status_code == status.HTTP_200_OK
 
     def test_respects_limit_parameter(self, working_client: TestClient) -> None:
         """List endpoint respects limit parameter."""
-        response = working_client.get("/secrets/?limit=10")
+        response = working_client.get("/api/v1/secrets/?limit=10")
         assert response.status_code == status.HTTP_200_OK
 
 
@@ -141,14 +141,14 @@ class TestListSecrets:
 
 
 class TestGetSecret:
-    """GET /secrets/{path} — retrieve a single secret"""
+    """GET /api/v1/secrets/{path} — retrieve a single secret"""
 
     def test_returns_200_with_secret_data(self, working_client: TestClient) -> None:
         """Authenticated read returns 200 with secret response."""
         app = _build_app_with_working_adapter({"API_KEY": {"key": "my-secret"}})
         client = TestClient(app, raise_server_exceptions=False)
 
-        response = client.get("/secrets/API_KEY")
+        response = client.get("/api/v1/secrets/API_KEY")
         assert response.status_code == status.HTTP_200_OK
         body = response.json()
         assert body["path"] == "API_KEY"
@@ -157,19 +157,19 @@ class TestGetSecret:
 
     def test_nonexistent_secret_returns_404(self, working_client: TestClient) -> None:
         """Reading nonexistent secret returns 404."""
-        response = working_client.get("/secrets/DOES_NOT_EXIST")
+        response = working_client.get("/api/v1/secrets/DOES_NOT_EXIST")
         assert response.status_code == status.HTTP_404_NOT_FOUND
         body = response.json()
         assert "detail" in body
 
     def test_authorization_failure_returns_403(self, unauthorized_client: TestClient) -> None:
         """Unauthorized adapter raises 403."""
-        response = unauthorized_client.get("/secrets/ANY_KEY")
+        response = unauthorized_client.get("/api/v1/secrets/ANY_KEY")
         assert response.status_code == status.HTTP_403_FORBIDDEN
 
     def test_backend_unavailable_returns_503(self, unavailable_client: TestClient) -> None:
         """Unavailable backend raises 503."""
-        response = unavailable_client.get("/secrets/ANY_KEY")
+        response = unavailable_client.get("/api/v1/secrets/ANY_KEY")
         assert response.status_code == status.HTTP_503_SERVICE_UNAVAILABLE
 
 
@@ -177,12 +177,12 @@ class TestGetSecret:
 
 
 class TestPutSecret:
-    """PUT /secrets/{path} — create or update a secret"""
+    """PUT /api/v1/secrets/{path} — create or update a secret"""
 
     def test_creates_secret_returns_200(self, working_client: TestClient) -> None:
         """Creating a new secret returns 200."""
         response = working_client.put(
-            "/secrets/NEW_SECRET",
+            "/api/v1/secrets/NEW_SECRET",
             json=SecretRequest(
                 path="NEW_SECRET",
                 data={"password": "secret123"},
@@ -195,7 +195,7 @@ class TestPutSecret:
     def test_path_mismatch_returns_400(self, working_client: TestClient) -> None:
         """Path in URL must match path in body."""
         response = working_client.put(
-            "/secrets/URL_PATH",
+            "/api/v1/secrets/URL_PATH",
             json=SecretRequest(
                 path="BODY_PATH",  # Mismatch!
                 data={"password": "secret123"},
@@ -217,7 +217,7 @@ class TestPutSecret:
         client = TestClient(app, raise_server_exceptions=False)
 
         response = client.put(
-            "/secrets/TEST",
+            "/api/v1/secrets/TEST",
             json=SecretRequest(
                 path="TEST",
                 data={"key": ""},  # Empty value
@@ -228,7 +228,7 @@ class TestPutSecret:
     def test_authorization_failure_returns_403(self, unauthorized_client: TestClient) -> None:
         """Unauthorized adapter raises 403."""
         response = unauthorized_client.put(
-            "/secrets/TEST",
+            "/api/v1/secrets/TEST",
             json=SecretRequest(
                 path="TEST",
                 data={"key": "value"},
@@ -239,7 +239,7 @@ class TestPutSecret:
     def test_backend_unavailable_returns_503(self, unavailable_client: TestClient) -> None:
         """Unavailable backend raises 503."""
         response = unavailable_client.put(
-            "/secrets/TEST",
+            "/api/v1/secrets/TEST",
             json=SecretRequest(
                 path="TEST",
                 data={"key": "value"},
@@ -252,7 +252,7 @@ class TestPutSecret:
 
 
 class TestDeleteSecret:
-    """DELETE /secrets/{path} — delete a secret"""
+    """DELETE /api/v1/secrets/{path} — delete a secret"""
 
     def test_deletes_secret_returns_200(self, working_client: TestClient) -> None:
         """Deleting a secret returns 200 with confirmation."""
@@ -262,7 +262,7 @@ class TestDeleteSecret:
         app.dependency_overrides[get_secrets_adapter] = lambda: mock_adapter
         client = TestClient(app, raise_server_exceptions=False)
 
-        response = client.delete("/secrets/API_KEY")
+        response = client.delete("/api/v1/secrets/API_KEY")
         assert response.status_code == status.HTTP_200_OK
         body = response.json()
         assert "message" in body
@@ -276,17 +276,17 @@ class TestDeleteSecret:
         app.dependency_overrides[get_secrets_adapter] = lambda: mock_adapter
         client = TestClient(app, raise_server_exceptions=False)
 
-        response = client.delete("/secrets/DOES_NOT_EXIST")
+        response = client.delete("/api/v1/secrets/DOES_NOT_EXIST")
         assert response.status_code == status.HTTP_404_NOT_FOUND
 
     def test_authorization_failure_returns_403(self, unauthorized_client: TestClient) -> None:
         """Unauthorized adapter raises 403."""
-        response = unauthorized_client.delete("/secrets/API_KEY")
+        response = unauthorized_client.delete("/api/v1/secrets/API_KEY")
         assert response.status_code == status.HTTP_403_FORBIDDEN
 
     def test_backend_unavailable_returns_503(self, unavailable_client: TestClient) -> None:
         """Unavailable backend raises 503."""
-        response = unavailable_client.delete("/secrets/API_KEY")
+        response = unavailable_client.delete("/api/v1/secrets/API_KEY")
         assert response.status_code == status.HTTP_503_SERVICE_UNAVAILABLE
 
 

@@ -48,7 +48,7 @@ def app(mock_db):
     so post-registration attribute patches don't take effect.
     """
     app = FastAPI()
-    app.include_router(router)
+    app.include_router(router, prefix="/api/v1")
     app.dependency_overrides[get_db] = lambda: mock_db
     app.dependency_overrides[get_readonly_db] = lambda: mock_db
     return app
@@ -280,7 +280,7 @@ class TestRegisterEndpoint:
             patch.object(routes_email, "_db_create_session", new=AsyncMock()),
         ):
             response = client.post(
-                "/auth/register",
+                "/api/v1/auth/register",
                 json={
                     "email": "test@example.com",
                     "password": "password123",
@@ -310,7 +310,7 @@ class TestRegisterEndpoint:
             patch.object(routes_email, "_db_create_session", new=AsyncMock()),
         ):
             response = client.post(
-                "/auth/register",
+                "/api/v1/auth/register",
                 json={
                     "email": "existing@example.com",
                     "password": "password123",
@@ -329,7 +329,7 @@ class TestRegisterEndpoint:
             new=AsyncMock(return_value=False),
         ):
             response = client.post(
-                "/auth/register",
+                "/api/v1/auth/register",
                 json={
                     "email": "user@example.com",
                     "password": "password123",
@@ -365,7 +365,7 @@ class TestLoginEndpoint:
             return_value=mock_service,
         ):
             response = client.post(
-                "/auth/login",
+                "/api/v1/auth/login",
                 json={
                     "email": "user@example.com",
                     "password": password,
@@ -390,7 +390,7 @@ class TestLoginEndpoint:
             return_value=mock_service,
         ):
             response = client.post(
-                "/auth/login",
+                "/api/v1/auth/login",
                 json={
                     "email": "nonexistent@example.com",
                     "password": "password123",
@@ -418,7 +418,7 @@ class TestLoginEndpoint:
             return_value=mock_service,
         ):
             response = client.post(
-                "/auth/login",
+                "/api/v1/auth/login",
                 json={
                     "email": "user@example.com",
                     "password": "wrong_password",
@@ -435,7 +435,7 @@ class TestLoginEndpoint:
             new=AsyncMock(return_value=False),
         ):
             response = client.post(
-                "/auth/login",
+                "/api/v1/auth/login",
                 json={
                     "email": "user@example.com",
                     "password": "password123",
