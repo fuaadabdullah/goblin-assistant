@@ -76,4 +76,13 @@ def normalize_provider_response(
             provider_response.get("provider", request_provider or "unknown"),
             provider_response.get("model", request_model or "unknown"),
         )
+    # Fallback: convert to JSON-serializable string, not Python repr
+    import json
+
+    if isinstance(provider_response, dict):
+        return (
+            json.dumps(provider_response),
+            request_provider or "unknown",
+            request_model or "unknown",
+        )
     return str(provider_response), request_provider or "unknown", request_model or "unknown"
