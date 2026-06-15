@@ -23,6 +23,9 @@ class ProviderStats:
     failure_count: int = 0
     total_cost_usd: float = 0.0
     last_used: float = field(default_factory=time.time)
+    ewma_tokens_per_sec: float = 0.0
+    total_output_tokens: int = 0
+    _latency_window: list = field(default_factory=list)
 
     def update_latency(self, latency_ms: float) -> None:
         self.ewma_latency_ms = (
@@ -33,6 +36,14 @@ class ProviderStats:
     def success_rate(self) -> float:
         total = self.success_count + self.failure_count
         return self.success_count / total if total > 0 else 1.0
+
+    @property
+    def p95_latency_ms(self) -> float:
+        if not self._latency_window:
+            return self.ewma_latency_ms
+        s = sorted(self._latency_window)
+        idx = int(len(s) * 0.95)
+        return s[min(idx, len(s) - 1)]
 
 
 class RoutingRegistryStore:
@@ -56,7 +67,9 @@ class RoutingRegistryStore:
                 rows = conn.execute(
                     """
                     SELECT provider_id, ewma_latency_ms, ewma_alpha, success_count,
-                           failure_count, total_cost_usd, last_used
+                           failure_count, total_cost_usd, last_used,
+                           COALESCE(ewma_tokens_per_sec, 0.0),
+                           COALESCE(total_output_tokens, 0)
                     FROM provider_routing_stats
                     """
                 ).fetchall()
@@ -71,6 +84,8 @@ class RoutingRegistryStore:
                     failure_count=int(row[4]),
                     total_cost_usd=float(row[5]),
                     last_used=float(row[6]),
+                    ewma_tokens_per_sec=float(row[7]),
+                    total_output_tokens=int(row[8]),
                 )
                 for row in rows
             }
@@ -117,8 +132,9 @@ class RoutingRegistryStore:
                     """
                     INSERT INTO provider_routing_stats (
                         provider_id, ewma_latency_ms, ewma_alpha, success_count,
-                        failure_count, total_cost_usd, last_used, updated_at
-                    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+                        failure_count, total_cost_usd, last_used, updated_at,
+                        ewma_tokens_per_sec, total_output_tokens
+                    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                     ON CONFLICT(provider_id) DO UPDATE SET
                         ewma_latency_ms = excluded.ewma_latency_ms,
                         ewma_alpha = excluded.ewma_alpha,
@@ -126,7 +142,9 @@ class RoutingRegistryStore:
                         failure_count = excluded.failure_count,
                         total_cost_usd = excluded.total_cost_usd,
                         last_used = excluded.last_used,
-                        updated_at = excluded.updated_at
+                        updated_at = excluded.updated_at,
+                        ewma_tokens_per_sec = excluded.ewma_tokens_per_sec,
+                        total_output_tokens = excluded.total_output_tokens
                     """,
                     [
                         (
@@ -138,6 +156,8 @@ class RoutingRegistryStore:
                             item.total_cost_usd,
                             item.last_used,
                             now,
+                            item.ewma_tokens_per_sec,
+                            item.total_output_tokens,
                         )
                         for item in stats.values()
                     ],
@@ -176,10 +196,24 @@ class RoutingRegistryStore:
                 failure_count INTEGER NOT NULL,
                 total_cost_usd REAL NOT NULL,
                 last_used REAL NOT NULL,
-                updated_at REAL NOT NULL
+                updated_at REAL NOT NULL,
+                ewma_tokens_per_sec REAL DEFAULT 0.0,
+                total_output_tokens INTEGER DEFAULT 0
             )
             """
         )
+        try:
+            conn.execute(
+                "ALTER TABLE provider_routing_stats ADD COLUMN ewma_tokens_per_sec REAL DEFAULT 0.0"
+            )
+        except sqlite3.OperationalError:
+            pass
+        try:
+            conn.execute(
+                "ALTER TABLE provider_routing_stats ADD COLUMN total_output_tokens INTEGER DEFAULT 0"
+            )
+        except sqlite3.OperationalError:
+            pass
         conn.execute(
             """
             CREATE TABLE IF NOT EXISTS provider_hourly_spend (

@@ -89,6 +89,12 @@ class RoutingRegistry:
         stats.last_used = now
         bucket = self._hourly_spend.setdefault(self._current_hour_bucket(now), {})
         bucket[provider_id] = bucket.get(provider_id, 0.0) + float(cost_usd)
+        if latency_ms > 0:
+            stats._latency_window = (stats._latency_window + [latency_ms])[-100:]
+        if input_tokens and output_tokens and latency_ms > 0:
+            tps = (input_tokens + output_tokens) / (latency_ms / 1000.0)
+            stats.ewma_tokens_per_sec = 0.2 * tps + 0.8 * stats.ewma_tokens_per_sec
+            stats.total_output_tokens += output_tokens
         if request_id is not None:
             self._decision_log.append(
                 {
@@ -151,9 +157,12 @@ class RoutingRegistry:
         return {
             pid: {
                 "ewma_latency_ms": round(s.ewma_latency_ms, 1),
+                "p95_latency_ms": round(s.p95_latency_ms, 1),
                 "success_rate": round(s.success_rate, 3),
                 "total_cost_usd": round(s.total_cost_usd, 6),
                 "last_used": s.last_used,
+                "ewma_tokens_per_sec": round(s.ewma_tokens_per_sec, 1),
+                "total_output_tokens": s.total_output_tokens,
             }
             for pid, s in self._stats.items()
         }
