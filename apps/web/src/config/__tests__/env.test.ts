@@ -29,11 +29,9 @@ describe('env config', () => {
       NEXT_PUBLIC_FEATURE_MULTI_PROVIDER: 'true',
       NEXT_PUBLIC_FEATURE_PASSKEY_AUTH: 'false',
       NEXT_PUBLIC_FEATURE_GOOGLE_AUTH: 'true',
-      NEXT_PUBLIC_FEATURE_ORCHESTRATION: 'false',
       NEXT_PUBLIC_FEATURE_SANDBOX: 'true',
       NEXT_PUBLIC_FEATURE_SEARCH: 'false',
       NEXT_PUBLIC_FEATURE_ADMIN: 'true',
-      NEXT_PUBLIC_ENABLE_ANALYTICS: 'true',
       NEXT_PUBLIC_DEBUG_MODE: 'true',
       NEXT_PUBLIC_TURNSTILE_SITE_KEY_CHAT: '0xchat-key',
       NEXT_PUBLIC_TURNSTILE_SITE_KEY_LOGIN: '0xlogin-key',
@@ -59,11 +57,9 @@ describe('env config', () => {
     expect(env.features.multiProvider).toBe(true);
     expect(env.features.passkeyAuth).toBe(false);
     expect(env.features.googleAuth).toBe(true);
-    expect(env.features.orchestration).toBe(false);
     expect(env.features.sandbox).toBe(true);
     expect(env.features.search).toBe(false);
     expect(env.features.admin).toBe(true);
-    expect(env.features.analytics).toBe(true);
     expect(env.features.debugMode).toBe(true);
     expect(env.turnstile.chat).toBe('0xchat-key');
     expect(env.turnstile.login).toBe('0xlogin-key');

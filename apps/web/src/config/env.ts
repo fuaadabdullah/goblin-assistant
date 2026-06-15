@@ -24,11 +24,9 @@ interface EnvConfig {
     multiProvider: boolean;
     passkeyAuth: boolean;
     googleAuth: boolean;
-    orchestration: boolean;
     sandbox: boolean;
     search: boolean;
     admin: boolean;
-    analytics: boolean;
     debugMode: boolean;
   };
 
@@ -94,11 +92,9 @@ export const env: EnvConfig = {
     multiProvider: getOptionalEnv('NEXT_PUBLIC_FEATURE_MULTI_PROVIDER') === 'true',
     passkeyAuth: getOptionalEnv('NEXT_PUBLIC_FEATURE_PASSKEY_AUTH') === 'true',
     googleAuth: getOptionalEnv('NEXT_PUBLIC_FEATURE_GOOGLE_AUTH', 'true') === 'true',
-    orchestration: getOptionalEnv('NEXT_PUBLIC_FEATURE_ORCHESTRATION') === 'true',
     sandbox: getOptionalEnv('NEXT_PUBLIC_FEATURE_SANDBOX') === 'true',
     search: getOptionalEnv('NEXT_PUBLIC_FEATURE_SEARCH', 'true') === 'true',
     admin: getOptionalEnv('NEXT_PUBLIC_FEATURE_ADMIN', 'false') === 'true',
-    analytics: getOptionalEnv('NEXT_PUBLIC_ENABLE_ANALYTICS') === 'true',
     debugMode: getOptionalEnv('NEXT_PUBLIC_DEBUG_MODE') === 'true',
   },
 

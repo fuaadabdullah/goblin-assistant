@@ -11,11 +11,9 @@ export interface FeatureFlags {
   multiProvider: boolean;
   passkeyAuth: boolean;
   googleAuth: boolean;
-  orchestration: boolean;
   sandbox: boolean;
   search: boolean;
   admin: boolean;
-  analytics: boolean;
   debugMode: boolean;
 }
 
