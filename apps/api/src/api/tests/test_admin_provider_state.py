@@ -212,21 +212,18 @@ async def test_build_provider_state_includes_warmup_circuit_and_quota(
     assert state["providers"]["local_stub"]["circuit_breaker"]["cooldown_remaining_seconds"] == 0.0
 
 
-def test_provider_state_route_is_mounted_in_root_and_v1(monkeypatch, provider_state_env):
+def test_provider_state_route_is_mounted_in_v1(monkeypatch, provider_state_env):
     _ = provider_state_env
     monkeypatch.setattr(provider_state, "dispatcher", _DispatcherStub())
     monkeypatch.setattr(provider_state, "quota_service", _QuotaStub())
 
     app = FastAPI()
     app.include_router(admin_router, prefix="/api/v1")
-    app.include_router(admin_router, prefix="/v1")
 
     client = TestClient(app)
 
-    root_response = client.get("/api/v1/admin/providers/state")
-    versioned_response = client.get("/v1/api/v1/admin/providers/state")
+    response = client.get("/api/v1/admin/providers/state")
 
-    assert root_response.status_code == 200
-    assert versioned_response.status_code == 200
-    assert root_response.json()["summary"]["total_providers"] == 2
-    assert versioned_response.json()["providers"]["local_stub"]["skip_reason"] == "warmup_warming"
+    assert response.status_code == 200
+    assert response.json()["summary"]["total_providers"] == 2
+    assert response.json()["providers"]["local_stub"]["skip_reason"] == "warmup_warming"

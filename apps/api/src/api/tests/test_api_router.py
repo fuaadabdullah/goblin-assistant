@@ -341,20 +341,20 @@ def test_start_poll_and_cancel_stream_task_flow():
         patch("api.api_router.get_stream_state_store", return_value=_FakeStore()),
     ):
         start = client.post(
-            "/api/route_task_stream_start",
+            "/api/v1/api/route_task_stream_start",
             json={"goblin": "docs-writer", "task": "Write docs"},
         )
         assert start.status_code == 200
         stream_id = start.json()["stream_id"]
         mock_task.assert_called_once()
 
-        poll = client.get(f"/api/route_task_stream_poll/{stream_id}")
+        poll = client.get(f"/api/v1/api/route_task_stream_poll/{stream_id}")
         assert poll.status_code == 200
         assert poll.json()["status"] == "running"
         assert poll.json()["chunks"] == []
         assert poll.json()["done"] is False
 
-        cancel = client.post(f"/api/route_task_stream_cancel/{stream_id}")
+        cancel = client.post(f"/api/v1/api/route_task_stream_cancel/{stream_id}")
         assert cancel.status_code == 200
         assert cancel.json()["status"] == "cancelled"
 
@@ -367,7 +367,7 @@ def test_start_stream_task_failure_and_cancel_404():
         side_effect=RuntimeError("store unavailable"),
     ):
         failed = client.post(
-            "/api/route_task_stream_start",
+            "/api/v1/api/route_task_stream_start",
             json={"goblin": "docs-writer", "task": "Write docs"},
         )
 
@@ -380,7 +380,7 @@ def test_start_stream_task_failure_and_cancel_404():
             return False
 
     with patch("api.api_router.get_stream_state_store", return_value=_MissingStore()):
-        missing = client.post("/api/route_task_stream_cancel/missing")
+        missing = client.post("/api/v1/api/route_task_stream_cancel/missing")
 
     assert missing.status_code == 404
 
@@ -388,7 +388,7 @@ def test_start_stream_task_failure_and_cancel_404():
 def test_poll_stream_task_404_for_missing_stream():
     client = _client()
 
-    response = client.get("/api/route_task_stream_poll/missing")
+    response = client.get("/api/v1/api/route_task_stream_poll/missing")
 
     assert response.status_code == 404
     assert response.json()["detail"] == "Stream not found"
