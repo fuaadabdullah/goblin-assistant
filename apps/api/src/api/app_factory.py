@@ -93,17 +93,4 @@ def create_app() -> FastAPI:
         routing_analytics_router=routing_analytics_router,
     )
 
-    @app.get("/")
-    async def root():
-        return {
-            "message": "Goblin Assistant API",
-            "version": app.version,
-            "docs": "/docs",
-            "health": "/health",
-        }
-
-    @app.get("/test")
-    async def test_endpoint():
-        return {"message": "Server is working", "status": "ok"}
-
     return app

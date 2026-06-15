@@ -2,10 +2,7 @@ from __future__ import annotations
 
 from fastapi import FastAPI
 
-from ..route_mounting import (
-    mount_primary_routes,
-    mount_versioned_primary_routes,
-)
+from ..route_mounting import mount_versioned_primary_routes
 
 
 def register_routes(
@@ -38,29 +35,6 @@ def register_routes(
     routing_analytics_available: bool,
     routing_analytics_router,
 ) -> None:
-    mount_primary_routes(
-        app,
-        api_router=api_router,
-        auth_router=auth_router,
-        routing_router=routing_router,
-        parse_router=parse_router,
-        search_router=search_router,
-        stream_router=stream_router,
-        chat_router=chat_router,
-        write_time_router=write_time_router,
-        health_router=health_router,
-        ops_router=ops_router,
-        admin_router=admin_router,
-        secrets_router=secrets_router,
-        sandbox_router=sandbox_router,
-        semantic_chat_router=semantic_chat_router,
-        model_suggestion_debug_router=model_suggestion_debug_router,
-        observability_debug_router=observability_debug_router,
-        retrieval_metrics_router=retrieval_metrics_router,
-        routing_analytics_available=routing_analytics_available,
-        routing_analytics_router=routing_analytics_router,
-    )
-
     mount_versioned_primary_routes(
         app,
         health_router=health_router,
@@ -83,4 +57,10 @@ def register_routes(
         ops_router=ops_router,
         admin_router=admin_router,
         secrets_router=secrets_router,
+        semantic_chat_router=semantic_chat_router,
+        model_suggestion_debug_router=model_suggestion_debug_router,
+        observability_debug_router=observability_debug_router,
+        retrieval_metrics_router=retrieval_metrics_router,
+        routing_analytics_available=routing_analytics_available,
+        routing_analytics_router=routing_analytics_router,
     )
