@@ -59,30 +59,36 @@ def normalize_provider_response(
     request_provider: Optional[str],
     request_model: Optional[str],
 ) -> Tuple[str, str, str]:
-    """Return (content, used_provider, used_model) from a dispatcher response.
+    """Return (content, used_provider, used_model) from a dispatcher response."""
+    provider = request_provider or "unknown"
+    model = request_model or "unknown"
 
-    Caller is responsible for detecting and raising on error responses before
-    calling this — the fallback branch handles unexpected/unknown shapes only.
-    """
-    if isinstance(provider_response, dict) and provider_response.get("ok"):
-        return (
-            provider_response.get("result", {}).get("text", ""),
-            provider_response.get("provider", request_provider or "unknown"),
-            provider_response.get("model", request_model or "unknown"),
-        )
+    # OpenAI-compatible format
     if isinstance(provider_response, dict) and "choices" in provider_response:
         return (
             provider_response["choices"][0]["message"]["content"],
-            provider_response.get("provider", request_provider or "unknown"),
-            provider_response.get("model", request_model or "unknown"),
+            provider_response.get("provider", provider),
+            provider_response.get("model", model),
         )
-    # Fallback: convert to JSON-serializable string, not Python repr
+
+    # LiteLLM/other format with 'ok' flag
+    if isinstance(provider_response, dict) and provider_response.get("ok"):
+        return (
+            provider_response.get("result", {}).get("text", ""),
+            provider_response.get("provider", provider),
+            provider_response.get("model", model),
+        )
+
+    # Fallback: JSON-serialize dicts, stringify primitives
     import json
 
+    content = ""
     if isinstance(provider_response, dict):
-        return (
-            json.dumps(provider_response),
-            request_provider or "unknown",
-            request_model or "unknown",
-        )
-    return str(provider_response), request_provider or "unknown", request_model or "unknown"
+        try:
+            content = json.dumps(provider_response)
+        except (TypeError, ValueError):
+            content = str(provider_response) or ""
+    elif provider_response:
+        content = str(provider_response)
+
+    return content, provider, model
