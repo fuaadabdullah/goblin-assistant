@@ -29,12 +29,16 @@ async def get_redis_client() -> redis.Redis:
         async with _redis_lock:
             if _redis_client is None:
                 redis_url = os.getenv("REDIS_URL", "redis://localhost:6379/0")
+                is_test = bool(
+                    os.getenv("PYTEST_CURRENT_TEST") or os.getenv("RATE_LIMIT_ENABLED") == "false"
+                )
+                socket_timeout = 0.1 if is_test else 5
                 kwargs: dict = {
                     "encoding": "utf-8",
                     "decode_responses": True,
                     "retry_on_timeout": True,
-                    "socket_connect_timeout": 5,
-                    "socket_timeout": 5,
+                    "socket_connect_timeout": socket_timeout,
+                    "socket_timeout": socket_timeout,
                 }
                 if redis_url.startswith("rediss://"):
                     kwargs["ssl_cert_reqs"] = None

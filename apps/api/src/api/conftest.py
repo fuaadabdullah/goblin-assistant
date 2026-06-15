@@ -8,6 +8,10 @@ from fastapi.testclient import TestClient
 # Ensure the package root (apps/goblin-assistant) is on sys.path so relative imports work
 pkg_root = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
 sys.path.insert(0, pkg_root)
+sys.modules.setdefault("conftest", sys.modules[__name__])
+
+# Set test environment BEFORE any app imports
+os.environ.setdefault("RATE_LIMIT_ENABLED", "false")
 
 
 @pytest.fixture(autouse=True)
@@ -19,18 +23,21 @@ def set_local_llm_api_key(monkeypatch):
 
 @pytest.fixture(autouse=True)
 def in_memory_conversation_store():
-    from api.storage.conversations import (
-        InMemoryConversationStore,
-        conversation_store,
-    )
+    from api.storage.conversations import conversation_store
 
-    original_store = conversation_store._store
-    conversation_store._store = InMemoryConversationStore()
+    store = conversation_store._store
+    if hasattr(store, "_conversations"):
+        store._conversations.clear()
+    elif hasattr(store, "clear"):
+        store.clear()
 
     try:
-        yield conversation_store._store
+        yield store
     finally:
-        conversation_store._store = original_store
+        if hasattr(store, "_conversations"):
+            store._conversations.clear()
+        elif hasattr(store, "clear"):
+            store.clear()
 
 
 @pytest.fixture
@@ -54,8 +61,6 @@ def client(monkeypatch):
 def _build_authenticated_client(user_id: str, email: str):
     from importlib import import_module
 
-    import redis.asyncio as redis
-
     from api.auth.router import User, get_current_user
     from api.services import embedding_service
     from api.services.embedding_service import AsyncEmbeddingWorker
@@ -71,35 +76,14 @@ def _build_authenticated_client(user_id: str, email: str):
 
     original_service_worker = embedding_service.embedding_worker
     fresh_worker = AsyncEmbeddingWorker()
-    fresh_rate_limiter_client = None
 
     app.dependency_overrides[get_current_user] = override_current_user
     embedding_service.embedding_worker = fresh_worker
-
-    if hasattr(mod, "rate_limiter"):
-        fresh_rate_limiter_client = redis.from_url(
-            os.getenv("REDIS_URL", "redis://localhost:6379"),
-            decode_responses=True,
-        )
-        mod.rate_limiter.redis_client = fresh_rate_limiter_client
 
     try:
         with TestClient(app) as test_client:
             yield test_client
     finally:
-        if fresh_rate_limiter_client is not None:
-            try:
-                import asyncio
-
-                try:
-                    loop = asyncio.get_event_loop()
-                except RuntimeError:
-                    loop = asyncio.new_event_loop()
-                    asyncio.set_event_loop(loop)
-
-                loop.run_until_complete(fresh_rate_limiter_client.aclose())
-            except Exception:
-                pass
         app.dependency_overrides.pop(get_current_user, None)
         embedding_service.embedding_worker = original_service_worker
         if original_local_llm_key is None:
