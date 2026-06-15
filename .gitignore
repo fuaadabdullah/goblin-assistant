@@ -89,3 +89,6 @@ apps/api/src/uploads/
 
 # Generated analysis reports
 reports/*.md
+
+# Mutation testing output
+apps/api/mutants/
