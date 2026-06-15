@@ -6,7 +6,6 @@
  */
 
 import axios, { AxiosError, type AxiosRequestConfig, type InternalAxiosRequestConfig } from 'axios';
-import { authGetSession, authRefreshSession, supabaseConfigured } from '../supabase';
 import { env } from '../../config/env';
 import {
   clearAuthSession,
@@ -36,15 +35,26 @@ export const backendHttp = axios.create({
   },
 });
 
-// Attach Supabase access token as Bearer before every backend request.
-// Supabase auto-refreshes tokens; getSession() is a fast local read.
-backendHttp.interceptors.request.use(async (config: InternalAxiosRequestConfig) => {
-  const { session } = await authGetSession();
-  if (session?.access_token) {
-    config.headers.Authorization = `Bearer ${session.access_token}`;
-  }
-  return config;
-});
+// Lazy-load Supabase to avoid bloating public routes. Attached only on first request.
+let supabaseInterceptorAttached = false;
+
+export async function attachSupabaseInterceptor() {
+  if (supabaseInterceptorAttached) return;
+  supabaseInterceptorAttached = true;
+
+  // Dynamic import to keep supabase out of public route bundles.
+  const { authGetSession } = await import('../supabase');
+
+  // Attach Supabase access token as Bearer before every backend request.
+  // Supabase auto-refreshes tokens; getSession() is a fast local read.
+  backendHttp.interceptors.request.use(async (config: InternalAxiosRequestConfig) => {
+    const { session } = await authGetSession();
+    if (session?.access_token) {
+      config.headers.Authorization = `Bearer ${session.access_token}`;
+    }
+    return config;
+  });
+}
 
 export const frontendHttp = axios.create({
   timeout: 45000,
@@ -65,10 +75,12 @@ export const refreshAccessToken = async (): Promise<string | null> => {
   // Supabase sessions refresh through the Supabase client, not the legacy
   // backend endpoint — hitting /auth/refresh with no legacy session would
   // fail and wipe the auth cookies mid-session.
+  const { authGetSession: getSupabaseSession, authRefreshSession: refreshSupabaseSession, supabaseConfigured } = await import('../supabase');
+
   if (supabaseConfigured) {
-    const { session: existing } = await authGetSession();
+    const { session: existing } = await getSupabaseSession();
     if (existing) {
-      const { session } = await authRefreshSession();
+      const { session } = await refreshSupabaseSession();
       return session?.access_token ?? null;
     }
   }
