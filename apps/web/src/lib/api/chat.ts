@@ -112,7 +112,7 @@ export const chatMethods = {
 
     return {
       messageId: response.message_id,
-      content: response.response,
+      content: typeof response.response === 'string' ? response.response : JSON.stringify(response.response),
       department: (response as any).department || "general",
       department_reason: (response as any).department_reason || "",
       provider: response.provider,
