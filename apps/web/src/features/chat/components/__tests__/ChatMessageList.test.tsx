@@ -2,6 +2,19 @@ import { createRef } from 'react';
 import { fireEvent, render, screen } from '@testing-library/react';
 import ChatMessageList from '../ChatMessageList';
 
+vi.mock('next/dynamic', () => ({
+  default: vi.fn(
+    (loader: () => Promise<{ default: React.ComponentType<any> }>) =>
+      function DynamicComponent(props: any) {
+        const [Component, setComponent] = React.useState<React.ComponentType<any> | null>(null);
+        React.useEffect(() => {
+          loader().then((mod) => setComponent(() => mod.default));
+        }, []);
+        return Component ? <Component {...props} /> : null;
+      }
+  ),
+}));
+
 vi.mock('../StreamingMessage', () => ({
   __esModule: true,
   default: ({ message }: { message: { content: string } }) => <span>{message.content}</span>,

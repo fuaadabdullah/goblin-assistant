@@ -2,13 +2,18 @@
 
 import type { RefObject } from 'react';
 import { useMemo, useState } from 'react';
+import dynamic from 'next/dynamic';
 import type { ChatMessage, QuickPrompt } from '../types';
 import StreamingMessage from './StreamingMessage';
 import MessageTimestamp from './MessageTimestamp';
 import MessageActions from './MessageActions';
 import ChatEmptyState from './ChatEmptyState';
-import MessageMarkdown from './MessageMarkdown';
 import { FinancialVisualization } from '@/features/finance';
+
+const MessageMarkdown = dynamic(() => import('./MessageMarkdown'), {
+  loading: () => <span className="text-muted-foreground text-sm">…</span>,
+  ssr: false,
+});
 import type { VisualizationBlock } from '@/features/finance';
 import { Paperclip } from 'lucide-react';
 import { formatCost } from '@/utils/format-cost';
