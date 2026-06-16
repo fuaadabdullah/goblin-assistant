@@ -50,15 +50,6 @@ export const getRefreshToken = (): string | null => {
   return null;
 };
 
-/**
- * Check whether the user appears to be authenticated via legacy tokens.
- * Used only by the Zustand authStore bootstrap — will be removed with it.
- */
-export const isAuthenticated = (): boolean => {
-  if (typeof document === 'undefined') return false;
-  return Boolean(localStorage.getItem('auth_token'));
-};
-
 export const clearAuthSession = (): void => {
   if (typeof window === 'undefined') return;
   localStorage.removeItem('auth_token');

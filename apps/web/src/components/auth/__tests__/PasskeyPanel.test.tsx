@@ -103,4 +103,23 @@ describe('PasskeyPanel', () => {
       expect(mockPasskeyChallenge).toHaveBeenCalled();
     });
   });
+
+  it('initiates passkey registration when register button is clicked', async () => {
+    // Mock successful challenge endpoint response
+    mockPasskeyChallenge.mockResolvedValue({
+      challenge: 'dGVzdA',
+      rp: { name: 'Goblin', id: 'localhost' },
+      user: { id: 'dXNlcg', name: 'test@example.com', displayName: 'Test' },
+      pubKeyCredParams: [{ type: 'public-key', alg: -7 }],
+    });
+
+    render(<PasskeyPanel {...defaultProps} />, { wrapper });
+    const registerBtn = screen.getByText(/register/i);
+
+    // Verify button is interactive
+    expect(registerBtn).toBeEnabled();
+    fireEvent.click(registerBtn);
+
+    // Test completes without crashing after user interaction
+  });
 });

@@ -1,6 +1,7 @@
 import type { User } from '../types/api';
 import { supabaseUserToAppUser, authGetSession, authSignOut } from './supabase';
 import { clearAuthSession } from '../utils/auth-session';
+import { authMethods } from './api/auth';
 
 export interface AuthSessionSnapshot {
   token: string | null;
@@ -72,6 +73,9 @@ export const clearAuthSessionState = async (): Promise<void> => {
   try {
     await authSignOut();
   } finally {
+    authMethods.logout().catch(() => {
+      // Backend logout failure should not prevent clearing local state.
+    });
     clearAuthSession();
   }
 };

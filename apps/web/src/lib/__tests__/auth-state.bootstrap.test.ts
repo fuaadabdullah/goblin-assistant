@@ -33,13 +33,21 @@ vi.mock('../../utils/auth-session', () => ({
   clearAuthSession: vi.fn(),
 }));
 
+vi.mock('../api/auth', () => ({
+  authMethods: {
+    logout: vi.fn(),
+  },
+}));
+
 // Get references to the mock functions after hoisting resolves
 import { authGetSession, authSignOut } from '../supabase';
 import { clearAuthSession } from '../../utils/auth-session';
+import { authMethods } from '../api/auth';
 
 const mockGetSession = authGetSession as vi.MockedFunction<typeof authGetSession>;
 const mockSignOut = authSignOut as vi.MockedFunction<typeof authSignOut>;
 const mockClearAuthSession = clearAuthSession as vi.MockedFunction<typeof clearAuthSession>;
+const mockAuthMethodsLogout = authMethods.logout as vi.MockedFunction<typeof authMethods.logout>;
 
 const testUser = {
   id: 'u1',
@@ -58,6 +66,7 @@ beforeEach(() => {
   vi.clearAllMocks();
   clearValidationCache();
   mockSignOut.mockResolvedValue({ error: null });
+  mockAuthMethodsLogout.mockResolvedValue(undefined);
 });
 
 describe('bootstrapAuthSession — SSR guard', () => {
@@ -140,10 +149,11 @@ describe('snapshotFromSupabaseSession', () => {
 });
 
 describe('clearAuthSessionState', () => {
-  it('calls supabase.auth.signOut and clears local session', async () => {
+  it('calls supabase.auth.signOut, backend logout, and clears local session', async () => {
     await clearAuthSessionState();
 
     expect(mockSignOut).toHaveBeenCalled();
+    expect(mockAuthMethodsLogout).toHaveBeenCalled();
     expect(mockClearAuthSession).toHaveBeenCalled();
   });
 
@@ -151,6 +161,14 @@ describe('clearAuthSessionState', () => {
     mockSignOut.mockRejectedValue(new Error('Network error'));
 
     await clearAuthSessionState().catch(() => {});
+    expect(mockClearAuthSession).toHaveBeenCalled();
+    expect(mockAuthMethodsLogout).toHaveBeenCalled();
+  });
+
+  it('still clears local session even when backend logout errors', async () => {
+    mockAuthMethodsLogout.mockRejectedValue(new Error('Backend unavailable'));
+
+    await clearAuthSessionState();
     expect(mockClearAuthSession).toHaveBeenCalled();
   });
 });

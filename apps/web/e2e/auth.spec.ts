@@ -159,11 +159,9 @@ test.describe('Logout', () => {
     });
 
     await context.addCookies([
-      { name: 'goblin_auth', value: '1', domain: 'localhost', path: '/' },
       { name: 'session_token', value: 'mock-session-token-e2e', domain: 'localhost', path: '/' },
     ]);
     await context.addInitScript(() => {
-      document.cookie = 'goblin_auth=1; Path=/';
       window.localStorage.setItem(
         'user_data',
         JSON.stringify({ id: 'test_user', email: 'test@example.com', role: 'user' })
@@ -232,10 +230,10 @@ test.describe('Logout', () => {
       await logoutButton.click();
       await page.waitForURL(/\/login|\/startup/, { timeout: 5000 });
 
-      // Auth cookie should be cleared
+      // Auth cookies should be cleared
       const cookies = await page.context().cookies();
-      const authCookie = cookies.find((c) => c.name === 'goblin_auth' && c.value === '1');
-      expect(authCookie).toBeUndefined();
+      const sessionCookie = cookies.find((c) => c.name === 'session_token' && c.value !== '');
+      expect(sessionCookie).toBeUndefined();
     }
   });
 });
@@ -257,11 +255,9 @@ test.describe('Session Persistence', () => {
     });
 
     await context.addCookies([
-      { name: 'goblin_auth', value: '1', domain: 'localhost', path: '/' },
       { name: 'session_token', value: 'mock-session-token-e2e', domain: 'localhost', path: '/' },
     ]);
     await context.addInitScript(() => {
-      document.cookie = 'goblin_auth=1; Path=/';
       window.localStorage.setItem(
         'user_data',
         JSON.stringify({ id: 'test_user', email: 'test@example.com', role: 'user' })

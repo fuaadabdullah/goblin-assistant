@@ -25,18 +25,18 @@ describe('AuthRequired', () => {
     expect(screen.getByText(/need to be signed in/)).toBeInTheDocument();
   });
 
-  it('renders sign in link to /auth/login', () => {
+  it('renders sign in link to /login', () => {
     render(<AuthRequired />);
     const link = screen.getByText('Sign In');
     expect(link).toBeInTheDocument();
-    expect(link.closest('a')).toHaveAttribute('href', '/auth/login');
+    expect(link.closest('a')).toHaveAttribute('href', '/login');
   });
 
-  it('renders create account link to /auth/register', () => {
+  it('renders create account link to /login?mode=register', () => {
     render(<AuthRequired />);
     const link = screen.getByText('Create Account');
     expect(link).toBeInTheDocument();
-    expect(link.closest('a')).toHaveAttribute('href', '/auth/register');
+    expect(link.closest('a')).toHaveAttribute('href', '/login?mode=register');
   });
 
   it('applies custom className', () => {

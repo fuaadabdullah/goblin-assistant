@@ -2,7 +2,6 @@ import {
   persistAuthSession,
   clearAuthSession,
   getAuthToken,
-  isAuthenticated,
 } from '../auth-session';
 
 describe('Auth Session Utilities', () => {
@@ -46,17 +45,6 @@ describe('Auth Session Utilities', () => {
 
       expect(document.cookie).not.toContain('session_token=');
       expect(document.cookie).not.toContain('refresh_token=');
-    });
-  });
-
-  describe('isAuthenticated', () => {
-    it('should return false when no session exists', () => {
-      expect(isAuthenticated()).toBe(false);
-    });
-
-    it('should return true for legacy localStorage auth_token', () => {
-      localStorage.setItem('auth_token', 'legacy-token');
-      expect(isAuthenticated()).toBe(true);
     });
   });
 
