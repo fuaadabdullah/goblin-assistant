@@ -33,6 +33,7 @@ ignore_decorators = [ "@app.route", "@router.*", "@pytest.*",]
 [tool.ruff]
 target-version = "py311"
 line-length = 100
+src = [ "src",]
 
 [tool.setuptools.package-dir]
 "" = "src"

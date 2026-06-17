@@ -3,6 +3,7 @@
 
 from __future__ import annotations
 
+import os
 import sys
 from pathlib import Path
 
@@ -11,6 +12,10 @@ REPO_ROOT = Path(__file__).resolve().parents[2]
 API_SRC_ROOT = REPO_ROOT / "apps" / "api" / "src"
 if str(API_SRC_ROOT) not in sys.path:
     sys.path.insert(0, str(API_SRC_ROOT))
+
+# auth/router/config.py raises at import time without JWT_SECRET_KEY;
+# set a dummy so the app can register routes for inspection without fully booting.
+os.environ.setdefault("JWT_SECRET_KEY", "check-route-lifecycle-dummy-secret")
 
 from api.core.route_lifecycle import RouteLifecycle, classify_route_lifecycle  # noqa: E402
 from api.main import app  # noqa: E402

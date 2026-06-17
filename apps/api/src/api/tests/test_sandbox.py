@@ -7,9 +7,8 @@ import os
 import shutil
 import sys
 
-from docker.errors import DockerException
-
 import docker
+from docker.errors import DockerException
 
 
 def test_sandbox_execution():

@@ -227,7 +227,7 @@ async def main():
     try:
         from dotenv import load_dotenv
 
-        if os.path.exists(".env.local"):
+        if os.path.exists(".env.local"):  # noqa: ASYNC240
             load_dotenv(".env.local")
             print("✅ Loaded .env.local")
     except ImportError:

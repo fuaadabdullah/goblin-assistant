@@ -117,7 +117,7 @@ async def test_generate_stream_events_marks_completed_when_stream_exhausts(monke
         del kwargs
         yield {"content": "partial", "done": False}
 
-    monkeypatch.setattr(stream, "get_stream_state_store", lambda: FakeStore())
+    monkeypatch.setattr(stream, "get_stream_state_store", FakeStore)
     monkeypatch.setattr(stream, "iter_task_stream_chunks", fake_iter_task_stream_chunks)
 
     events = []
@@ -153,7 +153,7 @@ async def test_generate_stream_events_emits_failure_event_on_iteration_error(mon
         raise RuntimeError("boom")
         yield  # pragma: no cover
 
-    monkeypatch.setattr(stream, "get_stream_state_store", lambda: FakeStore())
+    monkeypatch.setattr(stream, "get_stream_state_store", FakeStore)
     monkeypatch.setattr(stream, "iter_task_stream_chunks", fake_iter_task_stream_chunks)
 
     events = []

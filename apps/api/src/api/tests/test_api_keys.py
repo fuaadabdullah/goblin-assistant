@@ -77,7 +77,7 @@ class TestFileAPIKeyStore:
                 data = json.load(f)
             assert data["openai"] == "sk-abc123"
         finally:
-            Path(path).unlink(missing_ok=True)
+            Path(path).unlink(missing_ok=True)  # noqa: ASYNC240
 
     @pytest.mark.asyncio
     async def test_set_overwrites_existing(self):
@@ -91,7 +91,7 @@ class TestFileAPIKeyStore:
             result = await store.get("openai")
             assert result == "sk-new"
         finally:
-            Path(path).unlink(missing_ok=True)
+            Path(path).unlink(missing_ok=True)  # noqa: ASYNC240
 
     @pytest.mark.asyncio
     async def test_get_returns_none_on_corrupt_json(self):
@@ -104,7 +104,7 @@ class TestFileAPIKeyStore:
             result = await store.get("anthropic")
             assert result is None
         finally:
-            Path(path).unlink(missing_ok=True)
+            Path(path).unlink(missing_ok=True)  # noqa: ASYNC240
 
     @pytest.mark.asyncio
     async def test_set_handles_corrupt_existing_file(self):
@@ -118,7 +118,7 @@ class TestFileAPIKeyStore:
             result = await store.get("groq")
             assert result == "gsk-test"
         finally:
-            Path(path).unlink(missing_ok=True)
+            Path(path).unlink(missing_ok=True)  # noqa: ASYNC240
 
 
 # ---------------------------------------------------------------------------
