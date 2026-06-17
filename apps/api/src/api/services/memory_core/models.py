@@ -192,7 +192,9 @@ _MEMORY_STATE_RANK: Dict[MemoryLifecycleState, int] = {
 }
 
 
-def _safe_memory_state(value: Optional[str], fallback: MemoryLifecycleState = MemoryLifecycleState.ACTIVE) -> MemoryLifecycleState:
+def _safe_memory_state(
+    value: Optional[str], fallback: MemoryLifecycleState = MemoryLifecycleState.ACTIVE
+) -> MemoryLifecycleState:
     if not value:
         return fallback
     try:

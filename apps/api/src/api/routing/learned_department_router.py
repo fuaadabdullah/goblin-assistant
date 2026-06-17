@@ -216,8 +216,10 @@ class LearnedDepartmentRouter:
         Supply either features or a pre-built feature_vec.
         """
         self._ensure_bootstrapped()
-        vec = feature_vec if feature_vec is not None else (
-            _feature_vector(features) if features is not None else {}
+        vec = (
+            feature_vec
+            if feature_vec is not None
+            else (_feature_vector(features) if features is not None else {})
         )
         if not vec:
             return
@@ -238,9 +240,7 @@ class LearnedDepartmentRouter:
         error = actual - predicted
         for feat_name, feat_val in vec.items():
             old = w.weights.get(feat_name, 0.0)
-            w.weights[feat_name] = round(
-                max(-5.0, min(5.0, old + lr * error * feat_val)), 6
-            )
+            w.weights[feat_name] = round(max(-5.0, min(5.0, old + lr * error * feat_val)), 6)
 
         w.observation_count += 1
         w.last_updated_at = time.time()
@@ -321,9 +321,7 @@ class LearnedDepartmentRouter:
                     w.observation_count = obs_by_dept.get(dept_id, 0)
 
             self._bootstrapped = True
-            logger.info(
-                "department_router_weights_restored departments=%d", len(by_dept)
-            )
+            logger.info("department_router_weights_restored departments=%d", len(by_dept))
         except Exception as exc:
             logger.warning("department_router_weights_restore_failed error=%s", exc)
 

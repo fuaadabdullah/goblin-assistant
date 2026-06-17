@@ -34,18 +34,14 @@ export const persistAuthSession = ({ user }: PersistAuthInput): void => {
  */
 export const getAuthToken = (): string | null => {
   if (typeof document === 'undefined') return null;
-  const match = document.cookie.match(
-    new RegExp(`(?:^|;\\s*)${SESSION_TOKEN_COOKIE}=([^;]*)`),
-  );
+  const match = document.cookie.match(new RegExp(`(?:^|;\\s*)${SESSION_TOKEN_COOKIE}=([^;]*)`));
   if (match?.[1]) return decodeURIComponent(match[1]);
   return localStorage.getItem('auth_token');
 };
 
 export const getRefreshToken = (): string | null => {
   if (typeof document === 'undefined') return null;
-  const match = document.cookie.match(
-    new RegExp(`(?:^|;\\s*)${REFRESH_TOKEN_COOKIE}=([^;]*)`),
-  );
+  const match = document.cookie.match(new RegExp(`(?:^|;\\s*)${REFRESH_TOKEN_COOKIE}=([^;]*)`));
   if (match?.[1]) return decodeURIComponent(match[1]);
   return null;
 };

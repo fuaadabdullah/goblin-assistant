@@ -32,7 +32,8 @@ export default function ProviderDetails({
 }) {
   const { data: routingData } = useRoutingProviders();
 
-  const routingStats: RoutingStats | null = routingData?.providers?.[provider.name]?.routing_stats || null;
+  const routingStats: RoutingStats | null =
+    routingData?.providers?.[provider.name]?.routing_stats || null;
   const health = routingData?.providers?.[provider.name]?.health;
 
   return (
@@ -75,27 +76,39 @@ export default function ProviderDetails({
           <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
             <div className="bg-bg rounded-lg p-3">
               <div className="text-xs text-muted mb-1">Avg Latency (EWMA)</div>
-              <div className="text-base font-semibold text-text">{routingStats.ewma_latency_ms.toFixed(0)}ms</div>
+              <div className="text-base font-semibold text-text">
+                {routingStats.ewma_latency_ms.toFixed(0)}ms
+              </div>
             </div>
             <div className="bg-bg rounded-lg p-3">
               <div className="text-xs text-muted mb-1">P95 Latency</div>
-              <div className="text-base font-semibold text-text">{routingStats.p95_latency_ms.toFixed(0)}ms</div>
+              <div className="text-base font-semibold text-text">
+                {routingStats.p95_latency_ms.toFixed(0)}ms
+              </div>
             </div>
             <div className="bg-bg rounded-lg p-3">
               <div className="text-xs text-muted mb-1">Success Rate</div>
-              <div className="text-base font-semibold text-success">{(routingStats.success_rate * 100).toFixed(1)}%</div>
+              <div className="text-base font-semibold text-success">
+                {(routingStats.success_rate * 100).toFixed(1)}%
+              </div>
             </div>
             <div className="bg-bg rounded-lg p-3">
               <div className="text-xs text-muted mb-1">Hour Cost</div>
-              <div className="text-base font-semibold text-text">${routingStats.total_cost_usd.toFixed(4)}</div>
+              <div className="text-base font-semibold text-text">
+                ${routingStats.total_cost_usd.toFixed(4)}
+              </div>
             </div>
             <div className="bg-bg rounded-lg p-3">
               <div className="text-xs text-muted mb-1">Throughput</div>
-              <div className="text-base font-semibold text-text">{routingStats.ewma_tokens_per_sec.toFixed(0)} tok/s</div>
+              <div className="text-base font-semibold text-text">
+                {routingStats.ewma_tokens_per_sec.toFixed(0)} tok/s
+              </div>
             </div>
             <div className="bg-bg rounded-lg p-3">
               <div className="text-xs text-muted mb-1">Total Tokens</div>
-              <div className="text-base font-semibold text-text">{routingStats.total_output_tokens.toLocaleString()}</div>
+              <div className="text-base font-semibold text-text">
+                {routingStats.total_output_tokens.toLocaleString()}
+              </div>
             </div>
           </div>
         </div>
@@ -105,7 +118,9 @@ export default function ProviderDetails({
       {health && (
         <div className="mb-6">
           <h3 className="text-sm font-semibold text-text mb-2">Circuit Breaker State</h3>
-          <div className={`inline-flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-medium ${getCircuitStateColor(health.status)}`}>
+          <div
+            className={`inline-flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-medium ${getCircuitStateColor(health.status)}`}
+          >
             <span className="w-2 h-2 rounded-full bg-current" />
             {health.status?.toUpperCase() || 'UNKNOWN'}
           </div>

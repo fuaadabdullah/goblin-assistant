@@ -48,7 +48,10 @@ const buildCompletedResponse = (payload: Record<string, unknown>): TaskResponse 
   done: true,
 });
 
-const parseStreamEvent = (payloadText: string, onChunk: (chunk: StreamChunk) => void): TaskResponse | null => {
+const parseStreamEvent = (
+  payloadText: string,
+  onChunk: (chunk: StreamChunk) => void
+): TaskResponse | null => {
   const payload = JSON.parse(payloadText) as Record<string, unknown>;
   const errorMessage = readStreamErrorMessage(payload);
   if (errorMessage) throw new Error(errorMessage);

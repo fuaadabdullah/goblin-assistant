@@ -70,7 +70,8 @@ const ChatView = ({ session, isAdmin, isGuest = false }: ChatViewProps) => {
         const provider = msg?.meta?.provider;
         const department = msg?.meta?.department || msg?.meta?.department_reason;
         // Use the active thread id as conversation_id for feedback context
-        const conversationId = session.threads.find(t => t.threadKey === session.activeThreadKey)?.id || '';
+        const conversationId =
+          session.threads.find((t) => t.threadKey === session.activeThreadKey)?.id || '';
         await apiClient.submitRoutingFeedback({
           requestId,
           rating,

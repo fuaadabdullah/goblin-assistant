@@ -255,9 +255,7 @@ async def _lookup_routing_event(request_id: str):
     return None, None, None
 
 
-def _update_learned_dept_router(
-    request_id: str, department: str, rating: Optional[int]
-) -> None:
+def _update_learned_dept_router(request_id: str, department: str, rating: Optional[int]) -> None:
     """Apply a user rating to the learned department router's weight model."""
     try:
         from api.routing.learned_department_router import (  # noqa: PLC0415

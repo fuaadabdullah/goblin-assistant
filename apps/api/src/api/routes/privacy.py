@@ -184,9 +184,7 @@ async def export_user_data(
                     "count": len(memory_export),
                     "records": memory_export,
                 }
-                logger.info(
-                    "Exported %s memory records for user %s", len(memory_export), user_id
-                )
+                logger.info("Exported %s memory records for user %s", len(memory_export), user_id)
         except Exception as memory_error:
             logger.error("Memory export error: %s", memory_error)
 

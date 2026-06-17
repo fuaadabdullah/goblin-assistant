@@ -75,7 +75,11 @@ export const refreshAccessToken = async (): Promise<string | null> => {
   // Supabase sessions refresh through the Supabase client, not the legacy
   // backend endpoint — hitting /auth/refresh with no legacy session would
   // fail and wipe the auth cookies mid-session.
-  const { authGetSession: getSupabaseSession, authRefreshSession: refreshSupabaseSession, supabaseConfigured } = await import('../supabase');
+  const {
+    authGetSession: getSupabaseSession,
+    authRefreshSession: refreshSupabaseSession,
+    supabaseConfigured,
+  } = await import('../supabase');
 
   if (supabaseConfigured) {
     const { session: existing } = await getSupabaseSession();

@@ -36,6 +36,7 @@ def _get_learned_router():
             from api.routing.learned_department_router import (  # noqa: PLC0415
                 learned_department_router,
             )
+
             _learned_router = learned_department_router
         except Exception:
             pass
@@ -157,7 +158,9 @@ class DepartmentRouter:
                 return rule_dept_id, 0.0
             learned_dept_str, confidence = lr.select(routing_features, request_id=request_id)
             if lr.is_live:
-                return self._resolve_learned_dept(learned_dept_str, rule_dept_id, confidence, reason_parts)
+                return self._resolve_learned_dept(
+                    learned_dept_str, rule_dept_id, confidence, reason_parts
+                )
             # Shadow mode
             if learned_dept_str != rule_dept_id.value:
                 logger.debug(

@@ -557,7 +557,7 @@
       "invoke_path": "/v1/chat/completions"
     },
     "replicate": {
-      "endpoint": "https://openai-compatible.replicate.com/v1",
+      "endpoint": "https://api.replicate.com/v1",
       "endpoint_env": "REPLICATE_ENDPOINT",
       "api_key_env": "REPLICATE_API_KEY",
       "priority_tier": 48,
@@ -581,7 +581,8 @@
       "default_timeout_ms": 30000,
       "rate_limit_per_min": 60,
       "display_name": "Replicate",
-      "is_active": true
+      "is_active": false,
+      "invoke_path": "/predictions"
     },
     "huggingface": {
       "endpoint": "https://router.huggingface.co",
@@ -708,7 +709,7 @@
       "default_timeout_ms": 60000,
       "rate_limit_per_min": 120,
       "display_name": "GCP Self-Hosted",
-      "is_active": true
+      "is_active": false
     },
     "mock": {
       "endpoint": "mock://localhost",
@@ -733,6 +734,27 @@
       "default_timeout_ms": 1000,
       "rate_limit_per_min": 9999,
       "display_name": "Mock Provider",
+      "is_active": true
+    },
+    "rovo_dev": {
+      "endpoint": "https://mcp.atlassian.com/v1/mcp",
+      "endpoint_env": "ROVO_DEV_ENDPOINT",
+      "api_key_env": "ATLASSIAN_API_TOKEN",
+      "priority_tier": 5,
+      "capabilities": [
+        "code"
+      ],
+      "models": [
+        "rovo_dev"
+      ],
+      "cost_score": 0.0,
+      "cost_input_per1k": 0.0,
+      "cost_output_per1k": 0.0,
+      "costs": {},
+      "rate_limits": {},
+      "default_timeout_ms": 120000,
+      "rate_limit_per_min": 60,
+      "display_name": "Rovo Dev (Goblin Coder)",
       "is_active": true
     }
   }

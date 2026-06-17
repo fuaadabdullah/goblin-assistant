@@ -1,8 +1,4 @@
-import {
-  persistAuthSession,
-  clearAuthSession,
-  getAuthToken,
-} from '../auth-session';
+import { persistAuthSession, clearAuthSession, getAuthToken } from '../auth-session';
 
 describe('Auth Session Utilities', () => {
   beforeEach(() => {
@@ -22,7 +18,7 @@ describe('Auth Session Utilities', () => {
       const stored = localStorage.getItem('user_data');
       expect(stored).toBeDefined();
       expect(JSON.parse(stored!)).toEqual(
-        expect.objectContaining({ id: '123', email: 'test@example.com' }),
+        expect.objectContaining({ id: '123', email: 'test@example.com' })
       );
     });
 

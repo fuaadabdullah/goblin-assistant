@@ -6,10 +6,10 @@ import type { ChatMessage } from '../types';
 export interface ChatResponse {
   messageId?: string | undefined;
   content?: string | undefined;
-  department?: string | undefined;        // Which brain department handled this
-  department_reason?: string | undefined;  // Why this department was chosen
-  model?: string | undefined;             // Deprecated: internal
-  provider?: string | undefined;          // Deprecated: internal
+  department?: string | undefined; // Which brain department handled this
+  department_reason?: string | undefined; // Why this department was chosen
+  model?: string | undefined; // Deprecated: internal
+  provider?: string | undefined; // Deprecated: internal
   usage?:
     | {
         input_tokens?: number | undefined;
@@ -79,9 +79,9 @@ export interface SendMessageParams {
   conversationId: string;
   prompt?: string | undefined;
   messages?: ChatMessage[] | undefined;
-  department?: string | undefined;  // e.g. "reasoning", "coding", "creative", "research"
-  model?: string | undefined;       // Deprecated: use department instead
-  provider?: string | undefined;    // Deprecated: use department instead
+  department?: string | undefined; // e.g. "reasoning", "coding", "creative", "research"
+  model?: string | undefined; // Deprecated: use department instead
+  provider?: string | undefined; // Deprecated: use department instead
   attachment_ids?: string[] | undefined;
 }
 

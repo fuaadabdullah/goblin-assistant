@@ -66,7 +66,12 @@ def _dedupe(values: Iterable[Any]) -> List[str]:
     return result
 
 
-def _extract_tags(metadata: Dict[str, Any], category: Optional[str], memory_type: Optional[str], source: Optional[str]) -> List[str]:
+def _extract_tags(
+    metadata: Dict[str, Any],
+    category: Optional[str],
+    memory_type: Optional[str],
+    source: Optional[str],
+) -> List[str]:
     tags: List[str] = []
     raw_tags = metadata.get("tags")
     if isinstance(raw_tags, list):
@@ -107,10 +112,15 @@ def _derive_scope(metadata: Dict[str, Any]) -> str:
         return "project"
     if metadata.get("conversation_id") or metadata.get("source_conversation"):
         return "conversation"
-    if metadata.get("tool_name") or metadata.get("tool") or metadata.get("source_kind") in {
-        "tool",
-        "tool_result",
-    }:
+    if (
+        metadata.get("tool_name")
+        or metadata.get("tool")
+        or metadata.get("source_kind")
+        in {
+            "tool",
+            "tool_result",
+        }
+    ):
         return "tool"
     return DEFAULT_SCOPE
 
@@ -141,7 +151,11 @@ def _derive_source_ref(
 
     if source_kind in {"summary", "conversation"} and not conversation_id and source_id:
         conversation_id = source_id
-    if source_kind in {"message", "user_message", "assistant_message"} and not message_id and source_id:
+    if (
+        source_kind in {"message", "user_message", "assistant_message"}
+        and not message_id
+        and source_id
+    ):
         message_id = source_id
 
     if conversation_id:
@@ -265,10 +279,15 @@ def build_memory_contract_payload(
     resolved_last_accessed_at = _as_datetime(last_accessed_at)
     resolved_expires_at = _as_datetime(expires_at)
     resolved_scope = _as_str(scope or metadata.get("scope")) or _derive_scope(metadata)
-    resolved_memory_type = _as_str(
-        memory_type or metadata.get("memory_type") or metadata.get("record_type") or category
-    ) or "fact"
-    resolved_source_kind = _as_str(source_kind or metadata.get("source_kind") or source_type or "memory")
+    resolved_memory_type = (
+        _as_str(
+            memory_type or metadata.get("memory_type") or metadata.get("record_type") or category
+        )
+        or "fact"
+    )
+    resolved_source_kind = _as_str(
+        source_kind or metadata.get("source_kind") or source_type or "memory"
+    )
     resolved_confidence = float(_first_defined(confidence, metadata.get("confidence"), 0.0))
     resolved_importance = float(
         _first_defined(
@@ -279,20 +298,29 @@ def build_memory_contract_payload(
             0.0,
         )
     )
-    resolved_sensitivity = _as_str(
-        sensitivity_level or metadata.get("sensitivity_level") or metadata.get("sensitivity")
-    ) or DEFAULT_SENSITIVITY
-    resolved_confirmation_count = int(_first_defined(confirmation_count, metadata.get("confirmation_count"), 0))
+    resolved_sensitivity = (
+        _as_str(
+            sensitivity_level or metadata.get("sensitivity_level") or metadata.get("sensitivity")
+        )
+        or DEFAULT_SENSITIVITY
+    )
+    resolved_confirmation_count = int(
+        _first_defined(confirmation_count, metadata.get("confirmation_count"), 0)
+    )
     resolved_authored = bool(_first_defined(authored, metadata.get("authored"), False))
     resolved_inferred = bool(_first_defined(inferred, metadata.get("inferred"), False))
     resolved_direct_correction = bool(
         _first_defined(direct_correction, metadata.get("direct_correction"), False)
     )
-    resolved_contradiction = bool(_first_defined(contradiction, metadata.get("contradiction"), False))
+    resolved_contradiction = bool(
+        _first_defined(contradiction, metadata.get("contradiction"), False)
+    )
     resolved_later_contradicted = bool(
         _first_defined(later_contradicted, metadata.get("later_contradicted"), False)
     )
-    resolved_repetition_count = int(_first_defined(repetition_count, metadata.get("repetition_count"), 1))
+    resolved_repetition_count = int(
+        _first_defined(repetition_count, metadata.get("repetition_count"), 1)
+    )
     resolved_explicitness_score = float(
         _first_defined(
             explicitness_score,
@@ -301,12 +329,17 @@ def build_memory_contract_payload(
         )
     )
     resolved_related_memory_ids = _dedupe(
-        related_memory_ids or metadata.get("related_memory_ids") or metadata.get("related_ids") or []
+        related_memory_ids
+        or metadata.get("related_memory_ids")
+        or metadata.get("related_ids")
+        or []
     )
     resolved_entity_refs = list(entity_refs or metadata.get("entity_refs") or [])
     resolved_embedding_id = _as_str(embedding_id or metadata.get("embedding_id"))
     resolved_summary = _derive_summary(resolved_content, metadata)
-    resolved_tags = _extract_tags(metadata, _as_str(category), resolved_memory_type, resolved_source_kind)
+    resolved_tags = _extract_tags(
+        metadata, _as_str(category), resolved_memory_type, resolved_source_kind
+    )
     resolved_entities = _extract_entities(metadata, resolved_entity_refs)
     resolved_source_ref = _derive_source_ref(metadata, resolved_source_kind, _as_str(source_id))
     resolved_state = _derive_state(
@@ -317,9 +350,15 @@ def build_memory_contract_payload(
     )
     resolved_status = resolved_state
     resolved_recency_score = _derive_recency_score(resolved_created_at, resolved_last_accessed_at)
-    resolved_confidence_band = confidence_band or metadata.get("confidence_band") or confidence_band_from_score(resolved_confidence)
+    resolved_confidence_band = (
+        confidence_band
+        or metadata.get("confidence_band")
+        or confidence_band_from_score(resolved_confidence)
+    )
     resolved_importance_band = (
-        importance_band or metadata.get("importance_band") or importance_band_from_score(resolved_importance)
+        importance_band
+        or metadata.get("importance_band")
+        or importance_band_from_score(resolved_importance)
     )
 
     payload: Dict[str, Any] = {
@@ -366,7 +405,9 @@ def build_memory_contract_payload(
         "source_id": _as_str(source_id),
         "salience_score": resolved_importance,
         "sensitivity_level": resolved_sensitivity,
-        "retention_days": int(retention_days if retention_days is not None else metadata.get("retention_days") or 0),
+        "retention_days": int(
+            retention_days if retention_days is not None else metadata.get("retention_days") or 0
+        ),
         "confirmation_count": resolved_confirmation_count,
         "is_archived": bool(is_archived or resolved_state in _TERMINAL_MEMORY_STATES),
         "related_memory_ids": resolved_related_memory_ids,
@@ -389,13 +430,20 @@ def canonicalize_memory_item(
     return build_memory_contract_payload(
         id=_as_str(item.get("id")) or "",
         user_id=user_id or _as_str(item.get("user_id")),
-        content=_as_str(item.get("content") or item.get("fact_text") or item.get("summary_text") or ""),
+        content=_as_str(
+            item.get("content") or item.get("fact_text") or item.get("summary_text") or ""
+        ),
         scope=item.get("scope") or metadata.get("scope"),
         memory_type=item.get("memory_type") or metadata.get("memory_type") or item.get("category"),
         category=item.get("category") or metadata.get("category"),
-        source_kind=item.get("source_kind") or metadata.get("source_kind") or source_type or item.get("source_type"),
+        source_kind=item.get("source_kind")
+        or metadata.get("source_kind")
+        or source_type
+        or item.get("source_type"),
         source_id=item.get("source_id") or metadata.get("source_id"),
-        confidence=_first_defined(item.get("confidence"), metadata.get("confidence"), item.get("score")),
+        confidence=_first_defined(
+            item.get("confidence"), metadata.get("confidence"), item.get("score")
+        ),
         confidence_band=item.get("confidence_band") or metadata.get("confidence_band"),
         confidence_reason=item.get("confidence_reason") or metadata.get("confidence_reason"),
         importance=_first_defined(
@@ -406,12 +454,16 @@ def canonicalize_memory_item(
         ),
         importance_band=item.get("importance_band") or metadata.get("importance_band"),
         importance_reason=item.get("importance_reason") or metadata.get("importance_reason"),
-        salience_score=_first_defined(item.get("salience_score"), metadata.get("salience_score"), item.get("score")),
+        salience_score=_first_defined(
+            item.get("salience_score"), metadata.get("salience_score"), item.get("score")
+        ),
         sensitivity_level=item.get("sensitivity_level") or metadata.get("sensitivity_level"),
         retention_days=_first_defined(item.get("retention_days"), metadata.get("retention_days")),
         expires_at=item.get("expires_at") or metadata.get("expires_at"),
         last_accessed_at=item.get("last_accessed_at") or metadata.get("last_accessed_at"),
-        confirmation_count=_first_defined(item.get("confirmation_count"), metadata.get("confirmation_count")),
+        confirmation_count=_first_defined(
+            item.get("confirmation_count"), metadata.get("confirmation_count")
+        ),
         is_archived=bool(item.get("is_archived") or metadata.get("is_archived")),
         state=item.get("state") or metadata.get("state"),
         memory_state=item.get("memory_state") or metadata.get("memory_state"),
@@ -424,8 +476,12 @@ def canonicalize_memory_item(
         later_contradicted=(
             _first_defined(item.get("later_contradicted"), metadata.get("later_contradicted"))
         ),
-        repetition_count=_first_defined(item.get("repetition_count"), metadata.get("repetition_count")),
-        explicitness_score=_first_defined(item.get("explicitness_score"), metadata.get("explicitness_score")),
+        repetition_count=_first_defined(
+            item.get("repetition_count"), metadata.get("repetition_count")
+        ),
+        explicitness_score=_first_defined(
+            item.get("explicitness_score"), metadata.get("explicitness_score")
+        ),
         related_memory_ids=item.get("related_memory_ids") or metadata.get("related_memory_ids"),
         entity_refs=item.get("entity_refs") or metadata.get("entity_refs"),
         metadata=metadata,

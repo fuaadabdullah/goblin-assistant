@@ -57,7 +57,9 @@ def _derive_explicitness_score(text: str, metadata: Dict[str, Any]) -> float:
         return 0.95
     if metadata.get("is_explicit") is False:
         return 0.45
-    if any(token in text.lower() for token in ("i prefer", "i want", "remember", "please remember")):
+    if any(
+        token in text.lower() for token in ("i prefer", "i want", "remember", "please remember")
+    ):
         return 0.9
     return 0.65
 
@@ -92,9 +94,7 @@ def _memory_importance_reason(metadata: Dict[str, Any]) -> str:
     if metadata.get("dependency_level") is not None:
         reasons.append(f"dependency {float(metadata.get('dependency_level', 0.0)):.2f}")
     if metadata.get("future_behavior_impact") is not None:
-        reasons.append(
-            f"future impact {float(metadata.get('future_behavior_impact', 0.0)):.2f}"
-        )
+        reasons.append(f"future impact {float(metadata.get('future_behavior_impact', 0.0)):.2f}")
     return "; ".join(reasons) if reasons else "derived from frequency, relevance, and impact"
 
 
@@ -143,13 +143,16 @@ def _compute_memory_importance(
         if task_relevance is not None
         else (
             0.9
-            if memory_type in {MemoryKind.PROJECT_STATE, MemoryKind.DECISION, MemoryKind.TASK_SIGNAL}
+            if memory_type
+            in {MemoryKind.PROJECT_STATE, MemoryKind.DECISION, MemoryKind.TASK_SIGNAL}
             else 0.6
         ),
         0.0,
     )
     emphasis_score = _clamp_score(
-        explicit_emphasis if explicit_emphasis is not None else 0.5 + 0.1 * max(repetition_count - 1, 0),
+        explicit_emphasis
+        if explicit_emphasis is not None
+        else 0.5 + 0.1 * max(repetition_count - 1, 0),
         0.5,
     )
     dependency_score = _clamp_score(

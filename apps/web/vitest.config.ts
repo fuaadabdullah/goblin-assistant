@@ -3,7 +3,8 @@ import react from '@vitejs/plugin-react';
 import path from 'path';
 
 const criticalCoverageThreshold = Number(process.env['WEB_CRITICAL_THRESHOLD'] ?? 70);
-const criticalCoverageInclude = process.env['VITEST_COVERAGE_INCLUDE']?.split(',')
+const criticalCoverageInclude = process.env['VITEST_COVERAGE_INCLUDE']
+  ?.split(',')
   .map((entry) => entry.trim())
   .filter(Boolean);
 

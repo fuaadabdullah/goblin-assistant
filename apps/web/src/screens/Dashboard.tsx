@@ -5,15 +5,13 @@ import Link from 'next/link';
 import { Activity, BarChart3, Clock, Rocket } from 'lucide-react';
 import { getChartPaletteColor } from '@/components/cost/chartPalette';
 
-const CostBreakdownChart = dynamic(
-  () => import('@/components/cost/CostBreakdownChart'),
-  { loading: () => <div className="h-64 animate-pulse rounded bg-muted" /> }
-);
+const CostBreakdownChart = dynamic(() => import('@/components/cost/CostBreakdownChart'), {
+  loading: () => <div className="h-64 animate-pulse rounded bg-muted" />,
+});
 
-const ProviderUsageChart = dynamic(
-  () => import('@/components/cost/ProviderUsageChart'),
-  { loading: () => <div className="h-64 animate-pulse rounded bg-muted" /> }
-);
+const ProviderUsageChart = dynamic(() => import('@/components/cost/ProviderUsageChart'), {
+  loading: () => <div className="h-64 animate-pulse rounded bg-muted" />,
+});
 import { runtimeClient } from '@/lib/api/runtimeClient';
 import { queryKeys } from '@/lib/query-keys';
 import { useSystemStatus } from '@/hooks/useSystemStatus';

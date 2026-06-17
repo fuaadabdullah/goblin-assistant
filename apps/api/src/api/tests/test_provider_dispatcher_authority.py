@@ -195,14 +195,19 @@ def test_dispatcher_reload_and_endpoint_update_paths(monkeypatch):
     assert dispatcher._runtime_config("openai") == dispatcher._configs["openai"]
 
     dispatcher.update_backend_endpoint("openai", "chat", "https://new-backend.example.com")
-    assert dispatcher._configs["openai"]["backends"][0]["endpoint"] == "https://new-backend.example.com"
+    assert (
+        dispatcher._configs["openai"]["backends"][0]["endpoint"]
+        == "https://new-backend.example.com"
+    )
     assert os.environ["OPENAI_BACKEND_ENDPOINT"] == "https://new-backend.example.com"
 
     dispatcher.update_provider_endpoint("openai", "https://new.example.com")
     assert dispatcher._configs["openai"]["endpoint"] == "https://new.example.com"
     assert os.environ["OPENAI_ENDPOINT"] == "https://new.example.com"
 
-    monkeypatch.setattr(dispatcher_module, "_load_provider_toml", lambda logger: {"providers": True})
+    monkeypatch.setattr(
+        dispatcher_module, "_load_provider_toml", lambda logger: {"providers": True}
+    )
     monkeypatch.setattr(
         dispatcher_module,
         "_load_toml_providers",
@@ -219,7 +224,9 @@ def test_dispatcher_reload_and_endpoint_update_paths(monkeypatch):
     monkeypatch.setattr(dispatcher_module, "validate_model_alias_targets", validate_mock)
 
     dispatcher_module.reload_provider_catalog()
-    assert dispatcher_module._PROVIDER_CONFIGS == {"openai": {"endpoint": "https://reload.example.com"}}
+    assert dispatcher_module._PROVIDER_CONFIGS == {
+        "openai": {"endpoint": "https://reload.example.com"}
+    }
     validate_mock.assert_called_once()
     assert dispatcher_module.canonical_provider_id(None) is None
     assert dispatcher_module.canonical_provider_id("   ") is None
@@ -498,7 +505,9 @@ async def test_dispatcher_inventory_debug_and_module_helpers(monkeypatch):
     assert debug["routing_table"][0]["configured"] is True
     assert debug["registry_stats"] == {"openai": {"success_rate": 1.0}}
 
-    monkeypatch.setattr(dispatcher_module.dispatcher, "health_all", AsyncMock(return_value={"ok": True}))
+    monkeypatch.setattr(
+        dispatcher_module.dispatcher, "health_all", AsyncMock(return_value={"ok": True})
+    )
     monkeypatch.setattr(
         dispatcher_module.dispatcher,
         "list_providers",
@@ -1060,7 +1069,9 @@ async def test_health_inventory_times_out_hung_provider(monkeypatch):
 @pytest.mark.asyncio
 async def test_select_provider_and_invoke_with_fallback_helpers():
     class _ProbeProvider:
-        def __init__(self, provider_id: str, healthy: bool, latency_ms: float, result: str | None = None):
+        def __init__(
+            self, provider_id: str, healthy: bool, latency_ms: float, result: str | None = None
+        ):
             self.provider_id = provider_id
             self._healthy = healthy
             self._latency_ms = latency_ms
@@ -1083,13 +1094,18 @@ async def test_select_provider_and_invoke_with_fallback_helpers():
     slower = _ProbeProvider("slow", True, 20.0, result="slow")
     unhealthy = _ProbeProvider("down", False, 5.0, result=None)
 
-    assert await dispatcher_module.select_provider([preferred, slower], preferred="fast") is preferred
+    assert (
+        await dispatcher_module.select_provider([preferred, slower], preferred="fast") is preferred
+    )
     assert await dispatcher_module.select_provider([preferred, slower]) is preferred
     assert await dispatcher_module.select_provider([unhealthy]) is unhealthy
 
     failing = _ProbeProvider("fail", True, 1.0, result=None)
     succeeding = _ProbeProvider("ok", True, 1.0, result="done")
-    assert await dispatcher_module.invoke_with_fallback("prompt", providers=[failing, succeeding]) == "done"
+    assert (
+        await dispatcher_module.invoke_with_fallback("prompt", providers=[failing, succeeding])
+        == "done"
+    )
 
     with pytest.raises(RuntimeError, match="fail"):
         await dispatcher_module.invoke_with_fallback("prompt", providers=[failing])

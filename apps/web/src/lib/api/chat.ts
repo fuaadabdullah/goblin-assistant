@@ -112,9 +112,12 @@ export const chatMethods = {
 
     return {
       messageId: response.message_id,
-      content: typeof response.response === 'string' ? response.response : JSON.stringify(response.response),
-      department: (response as any).department || "general",
-      department_reason: (response as any).department_reason || "",
+      content:
+        typeof response.response === 'string'
+          ? response.response
+          : JSON.stringify(response.response),
+      department: (response as any).department || 'general',
+      department_reason: (response as any).department_reason || '',
       provider: response.provider,
       model: response.model,
       createdAt: response.timestamp,
@@ -240,9 +243,6 @@ export const chatMethods = {
       created_at: string | null;
     }>;
   }> {
-    return getBackend(
-      `${V1_API_PREFIX}/feedback/stats?days=${days}`,
-      withAuth()
-    );
+    return getBackend(`${V1_API_PREFIX}/feedback/stats?days=${days}`, withAuth());
   },
 };

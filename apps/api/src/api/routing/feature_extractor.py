@@ -131,7 +131,8 @@ class FeatureExtractor:
         turn = min(len(conversation_history), 10)
 
         retrieval = min(
-            sum(1.0 for kw in _RETRIEVAL_KEYWORDS if kw in lower) / max(len(_RETRIEVAL_KEYWORDS) * 0.3, 1.0),
+            sum(1.0 for kw in _RETRIEVAL_KEYWORDS if kw in lower)
+            / max(len(_RETRIEVAL_KEYWORDS) * 0.3, 1.0),
             1.0,
         )
         tool = min(

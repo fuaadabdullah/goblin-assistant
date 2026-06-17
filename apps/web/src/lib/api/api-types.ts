@@ -100,10 +100,10 @@ export interface ConversationDetailResponse {
 export interface ConversationSendResponse {
   message_id: string;
   response: string;
-  department?: string;       // Which brain department handled this
+  department?: string; // Which brain department handled this
   department_reason?: string; // Why this department was chosen
-  provider: string;           // Internal: deprecated, use department
-  model: string;              // Internal: deprecated, use department
+  provider: string; // Internal: deprecated, use department
+  model: string; // Internal: deprecated, use department
   timestamp: string;
   usage?: ChatUsage;
   cost_usd?: number;
