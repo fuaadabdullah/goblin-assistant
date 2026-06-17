@@ -369,8 +369,6 @@ jobs:
             else
               TMPDIR=~/repo/.tmp pnpm chromatic --exit-zero-on-changes
             fi
-          environment:
-            CHROMATIC_PROJECT_TOKEN: $CHROMATIC_PROJECT_TOKEN
 
   # ── Vercel (frontend) ────────────────────────────────────────────────────
   deploy-vercel:

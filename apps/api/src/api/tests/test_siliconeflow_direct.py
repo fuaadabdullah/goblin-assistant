@@ -27,7 +27,8 @@ print(f"   Starts with 'sk-': {api_key.startswith('sk-')}")
 
 if not api_key or api_key == "your_siliconeflow_key_here":
     print("\n❌ API key not properly configured!")
-    sys.exit(1)
+    if __name__ == "__main__":
+        sys.exit(1)
 
 
 # Test direct API call
