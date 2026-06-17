@@ -857,6 +857,24 @@ class TestGoogleRoutes:
         with pytest.raises(HTTPException, match="Failed to exchange code"):
             await routes_google.google_auth_callback(GoogleAuthCallback(code="bad"), response, db)
 
+    @pytest.mark.asyncio
+    async def test_google_auth_with_invalid_token(self, monkeypatch):
+        """P2: GoogleOAuth.verify_token returning None should raise 401."""
+        response = Response()
+        db = MagicMock()
+
+        monkeypatch.setattr(
+            routes_google.GoogleOAuth,
+            "verify_token",
+            AsyncMock(return_value=None),
+        )
+
+        with pytest.raises(HTTPException) as exc_info:
+            await routes_google.google_auth(GoogleAuthRequest(token="invalid"), response, db)
+
+        assert exc_info.value.status_code == 401
+        assert "Invalid Google token" in str(exc_info.value.detail)
+
 
 class TestPasskeyRoutes:
     @pytest.mark.asyncio

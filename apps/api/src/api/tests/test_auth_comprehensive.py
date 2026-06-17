@@ -71,7 +71,7 @@ def mock_db():
 def csrf_always_valid():
     """Patch the CSRF check used by routes to always succeed."""
     with patch(
-        "api.auth.router.validate_csrf_token",
+        "api.auth.router._runtime.validate_csrf_token",
         new=AsyncMock(return_value=True),
     ):
         yield
@@ -81,7 +81,7 @@ def csrf_always_valid():
 def rate_limit_open():
     """Patch the rate-limiter used by routes to always allow."""
     with patch(
-        "api.auth.router.check_rate_limit",
+        "api.auth.router._runtime.check_rate_limit",
         new=AsyncMock(return_value=True),
     ):
         yield
@@ -325,7 +325,7 @@ class TestRegisterEndpoint:
     def test_register_rate_limited(self, client, csrf_always_valid):
         # Force the rate-limiter to deny — verifies the route returns 429.
         with patch(
-            "api.auth.router.check_rate_limit",
+            "api.auth.router._runtime.check_rate_limit",
             new=AsyncMock(return_value=False),
         ):
             response = client.post(
@@ -431,7 +431,7 @@ class TestLoginEndpoint:
 
     def test_login_rate_limited(self, client, csrf_always_valid):
         with patch(
-            "api.auth.router.check_rate_limit",
+            "api.auth.router._runtime.check_rate_limit",
             new=AsyncMock(return_value=False),
         ):
             response = client.post(
@@ -443,3 +443,55 @@ class TestLoginEndpoint:
                 },
             )
         assert response.status_code == 429
+
+
+class TestMeEndpoint:
+    """Tests for GET /auth/me — user profile endpoint."""
+
+    def test_me_with_valid_user(self, client):
+        """GET /auth/me with a valid user override returns 200 + user data."""
+        from api.auth.router.routes_email import get_current_user
+
+        mock_user = MagicMock()
+        mock_user.id = "user_456"
+        mock_user.email = "me@example.com"
+        mock_user.name = "My Name"
+        mock_user.is_active = True
+        mock_user.google_id = None
+        mock_user.passkey_credential_id = None
+        mock_user.passkey_public_key = None
+
+        app = client.app
+        app.dependency_overrides[get_current_user] = lambda: mock_user
+
+        try:
+            response = client.get("/api/v1/auth/me")
+            assert response.status_code == 200
+            body = response.json()
+            assert body["success"] is True
+            data = body["data"]
+            assert data["id"] == "user_456"
+            assert data["email"] == "me@example.com"
+            assert data["name"] == "My Name"
+        finally:
+            app.dependency_overrides.clear()
+
+    def test_me_without_auth(self, client):
+        """GET /auth/me without valid authentication returns 401."""
+        from fastapi import HTTPException
+
+        from api.auth.router.routes_email import get_current_user
+
+        app = client.app
+
+        def raise_unauthorized():
+            raise HTTPException(status_code=401, detail="Unauthorized")
+
+        # Override to raise 401 like the real dependency would
+        app.dependency_overrides[get_current_user] = raise_unauthorized
+
+        try:
+            response = client.get("/api/v1/auth/me")
+            assert response.status_code == 401
+        finally:
+            app.dependency_overrides.clear()
