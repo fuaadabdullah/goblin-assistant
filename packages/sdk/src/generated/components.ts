@@ -5,13 +5,6 @@
 
 export interface components {
     schemas: {
-        /** AddDocumentResponse */
-        AddDocumentResponse: {
-            /** Document Id */
-            document_id: string;
-            /** Status */
-            status: string;
-        };
         /** ApiKeyRequest */
         ApiKeyRequest: {
             /** Key */
@@ -40,8 +33,8 @@ export interface components {
             /** Artifacts */
             artifacts: components["schemas"]["ArtifactInfo"][];
         };
-        /** Body_get_debug_suggestion_debug_suggest_post */
-        Body_get_debug_suggestion_debug_suggest_post: {
+        /** Body_get_debug_suggestion_api_v1_debug_suggest_post */
+        Body_get_debug_suggestion_api_v1_debug_suggest_post: {
             /**
              * Context
              * @description Context data for the debug task
@@ -57,18 +50,7 @@ export interface components {
         };
         /** Body_upload_file_api_v1_chat_upload_file_post */
         Body_upload_file_api_v1_chat_upload_file_post: {
-            /**
-             * File
-             * Format: binary
-             */
-            file: string;
-        };
-        /** Body_upload_file_chat_upload_file_post */
-        Body_upload_file_chat_upload_file_post: {
-            /**
-             * File
-             * Format: binary
-             */
+            /** File */
             file: string;
         };
         /**
@@ -107,12 +89,10 @@ export interface components {
             /** Timestamp */
             timestamp?: string | null;
         };
-        /** CollectionDocumentsResponse */
-        CollectionDocumentsResponse: {
-            /** Documents */
-            documents: {
-                [key: string]: unknown;
-            }[];
+        /** ColabRegisterRequest */
+        ColabRegisterRequest: {
+            /** Endpoint */
+            endpoint: string;
         };
         /** CollectionsResponse */
         CollectionsResponse: {
@@ -126,6 +106,8 @@ export interface components {
         ContextualChatRequest: {
             /** Conversation Id */
             conversation_id?: string | null;
+            /** Department */
+            department?: string | null;
             /**
              * Enable Context Assembly
              * @default true
@@ -160,12 +142,15 @@ export interface components {
             context_assembly?: {
                 [key: string]: unknown;
             } | null;
+            /** Department */
+            department: string;
+            /**
+             * Department Reason
+             * @default
+             */
+            department_reason: string;
             /** Message Id */
             message_id: string;
-            /** Model */
-            model: string;
-            /** Provider */
-            provider: string;
             /** Response */
             response: string;
             /** Timestamp */
@@ -181,6 +166,8 @@ export interface components {
         };
         /** ConversationInfo */
         ConversationInfo: {
+            /** Category */
+            category?: string | null;
             /** Conversation Id */
             conversation_id: string;
             /** Created At */
@@ -236,6 +223,26 @@ export interface components {
             /** Timestamp */
             timestamp: string;
         };
+        /**
+         * DepartmentRouteRequest
+         * @description Request to route through a department (not a raw provider).
+         */
+        DepartmentRouteRequest: {
+            /**
+             * Department
+             * @default general
+             */
+            department: string;
+            /** Payload */
+            payload: {
+                [key: string]: unknown;
+            };
+            /**
+             * Stream
+             * @default false
+             */
+            stream: boolean | null;
+        };
         /** EstimateTokensResponse */
         EstimateTokensResponse: {
             /**
@@ -245,6 +252,11 @@ export interface components {
             degraded_mode: boolean;
             /** Degraded Reason */
             degraded_reason?: string | null;
+            /**
+             * Department
+             * @default general
+             */
+            department: string;
             /** Estimated Cost Usd */
             estimated_cost_usd: number;
             /** Estimated Output Tokens */
@@ -253,10 +265,6 @@ export interface components {
             input_tokens: number;
             /** Layers */
             layers: components["schemas"]["LayerEstimate"][];
-            /** Model */
-            model?: string | null;
-            /** Provider */
-            provider: string;
         };
         /** EventEnvelope[dict[str, JsonValue]] */
         EventEnvelope_dict_str__JsonValue__: {
@@ -270,7 +278,7 @@ export interface components {
              * Event Type
              * @enum {string}
              */
-            event_type: "chat.message.created" | "provider.health.updated" | "sandbox.execution.completed" | "memory.item.promoted";
+            event_type: "chat.message.created" | "chat.message.failed" | "provider.health.updated" | "sandbox.execution.completed" | "memory.item.promoted" | "wti.failed";
             /** Occurred At */
             occurred_at: string;
             /** Payload */
@@ -286,6 +294,104 @@ export interface components {
             events: components["schemas"]["EventEnvelope_dict_str__JsonValue__"][];
             /** Total */
             total: number;
+        };
+        /** FeedbackRequest */
+        FeedbackRequest: {
+            /** Conversation Id */
+            conversation_id?: string | null;
+            /** Department */
+            department?: string | null;
+            /** Message Id */
+            message_id?: string | null;
+            /** Model */
+            model?: string | null;
+            /** Provider Id */
+            provider_id?: string | null;
+            /** Rating */
+            rating?: number | null;
+            /** Request Id */
+            request_id: string;
+            /** Signal */
+            signal?: string | null;
+            /** Task Type */
+            task_type?: string | null;
+        };
+        /** FeedbackResponse */
+        FeedbackResponse: {
+            /** Ok */
+            ok: boolean;
+        };
+        /** FeedbackStatsResponse */
+        FeedbackStatsResponse: {
+            /**
+             * By Department
+             * @default {}
+             */
+            by_department: {
+                [key: string]: unknown;
+            };
+            /**
+             * By Provider
+             * @default {}
+             */
+            by_provider: {
+                [key: string]: unknown;
+            };
+            /**
+             * Continue Count
+             * @default 0
+             */
+            continue_count: number;
+            /**
+             * Copy Count
+             * @default 0
+             */
+            copy_count: number;
+            /**
+             * Delete Count
+             * @default 0
+             */
+            delete_count: number;
+            /**
+             * Model Switch Count
+             * @default 0
+             */
+            model_switch_count: number;
+            /**
+             * Provider Switch Count
+             * @default 0
+             */
+            provider_switch_count: number;
+            /**
+             * Recent Events
+             * @default []
+             */
+            recent_events: unknown[];
+            /**
+             * Regenerate Count
+             * @default 0
+             */
+            regenerate_count: number;
+            /**
+             * Thumbs Down Count
+             * @default 0
+             */
+            thumbs_down_count: number;
+            /**
+             * Thumbs Up Count
+             * @default 0
+             */
+            thumbs_up_count: number;
+            /**
+             * Thumbs Up Rate
+             * @default 0
+             */
+            thumbs_up_rate: number;
+            /**
+             * Total Events
+             * @default 0
+             */
+            total_events: number;
         };
         /** FileUploadResponse */
         FileUploadResponse: {
@@ -361,6 +467,29 @@ export interface components {
         ImportConversationRequest: {
             /** Messages */
             messages: components["schemas"]["ChatMessage"][];
+        };
+        /** IndexRequest */
+        IndexRequest: {
+            /** Content */
+            content: string;
+            /** Metadata */
+            metadata?: {
+                [key: string]: unknown;
+            } | null;
+            /** Source Id */
+            source_id?: string | null;
+            /**
+             * Source Type
+             * @default document
+             */
+            source_type: string;
+        };
+        /** IndexResponse */
+        IndexResponse: {
+            /** Source Id */
+            source_id: string;
+            /** Status */
+            status: string;
         };
         /** JobLogsResponse */
         JobLogsResponse: {
@@ -588,35 +717,6 @@ export interface components {
             /** Refresh Token */
             refresh_token?: string | null;
         };
-        /** RouteRequest */
-        RouteRequest: {
-            /**
-             * Max Retries
-             * @default 2
-             */
-            max_retries: number | null;
-            /** Payload */
-            payload: {
-                [key: string]: unknown;
-            };
-            /**
-             * Prefer Cost
-             * @default false
-             */
-            prefer_cost: boolean | null;
-            /**
-             * Prefer Local
-             * @default false
-             */
-            prefer_local: boolean | null;
-            /**
-             * Stream
-             * @default false
-             */
-            stream: boolean | null;
-            /** Task Type */
-            task_type: string;
-        };
         /** RouteTaskRequest */
         RouteTaskRequest: {
             /**
@@ -691,18 +791,19 @@ export interface components {
         };
         /** SearchQuery */
         SearchQuery: {
+            /** Collection Name */
+            collection_name?: string | null;
             /**
-             * Collection Name
-             * @default documents
-             */
-            collection_name: string;
-            /**
-             * N Results
+             * K
              * @default 10
              */
-            n_results: number;
+            k: number;
+            /** N Results */
+            n_results?: number | null;
             /** Query */
             query: string;
+            /** Source Types */
+            source_types?: string[] | null;
         };
         /** SearchResponse */
         SearchResponse: {
@@ -723,6 +824,10 @@ export interface components {
             } | null;
             /** Score */
             score?: number | null;
+            /** Source Id */
+            source_id?: string | null;
+            /** Source Type */
+            source_type: string;
         };
         /**
          * SecretRequest
@@ -776,6 +881,8 @@ export interface components {
         };
         /** SemanticSendMessageRequest */
         SemanticSendMessageRequest: {
+            /** Department */
+            department?: string | null;
             /**
              * Max Age Hours
              * @default 168
@@ -820,12 +927,13 @@ export interface components {
             } | null;
             /** Context Used */
             context_used: boolean;
+            /**
+             * Department
+             * @default general
+             */
+            department: string;
             /** Message Id */
             message_id: string;
-            /** Model */
-            model: string;
-            /** Provider */
-            provider: string;
             /** Response */
             response: string;
             /** Timestamp */
@@ -835,6 +943,8 @@ export interface components {
         SendMessageRequest: {
             /** Attachment Ids */
             attachment_ids?: string[] | null;
+            /** Department */
+            department?: string | null;
             /**
              * Enable Context Assembly
              * @default true
@@ -864,12 +974,15 @@ export interface components {
             correlation_id?: string | null;
             /** Cost Usd */
             cost_usd?: number | null;
+            /** Department */
+            department: string;
+            /**
+             * Department Reason
+             * @default
+             */
+            department_reason: string;
             /** Message Id */
             message_id: string;
-            /** Model */
-            model: string;
-            /** Provider */
-            provider: string;
             /** Response */
             response: string;
             /** Timestamp */
@@ -943,6 +1056,8 @@ export interface components {
         StreamChatRequest: {
             /** Conversation Id */
             conversation_id: string;
+            /** Department */
+            department?: string | null;
             /** Message */
             message: string;
             /** Metadata */
@@ -976,15 +1091,6 @@ export interface components {
             /** Job Id */
             job_id: string;
         };
-        /** SuccessEnvelope[AddDocumentResponse] */
-        SuccessEnvelope_AddDocumentResponse_: {
-            data: components["schemas"]["AddDocumentResponse"];
-            /**
-             * Success
-             * @default true
-             */
-            success: boolean;
-        };
         /** SuccessEnvelope[ArtifactListResponse] */
         SuccessEnvelope_ArtifactListResponse_: {
             data: components["schemas"]["ArtifactListResponse"];
@@ -997,15 +1103,6 @@ export interface components {
         /** SuccessEnvelope[CancelJobResponse] */
         SuccessEnvelope_CancelJobResponse_: {
             data: components["schemas"]["CancelJobResponse"];
-            /**
-             * Success
-             * @default true
-             */
-            success: boolean;
-        };
-        /** SuccessEnvelope[CollectionDocumentsResponse] */
-        SuccessEnvelope_CollectionDocumentsResponse_: {
-            data: components["schemas"]["CollectionDocumentsResponse"];
             /**
              * Success
              * @default true
@@ -1033,15 +1130,6 @@ export interface components {
         /** SuccessEnvelope[CreateConversationResponse] */
         SuccessEnvelope_CreateConversationResponse_: {
             data: components["schemas"]["CreateConversationResponse"];
-            /**
-             * Success
-             * @default true
-             */
-            success: boolean;
-        };
-        /** SuccessEnvelope[CsrfTokenResponse] */
-        SuccessEnvelope_CsrfTokenResponse_: {
-            data: components["schemas"]["CsrfTokenResponse"];
             /**
              * Success
              * @default true
@@ -1090,6 +1178,15 @@ export interface components {
         /** SuccessEnvelope[FileUploadResponse] */
         SuccessEnvelope_FileUploadResponse_: {
             data: components["schemas"]["FileUploadResponse"];
+            /**
+             * Success
+             * @default true
+             */
+            success: boolean;
+        };
+        /** SuccessEnvelope[IndexResponse] */
+        SuccessEnvelope_IndexResponse_: {
+            data: components["schemas"]["IndexResponse"];
             /**
              * Success
              * @default true
@@ -1240,6 +1337,15 @@ export interface components {
              */
             success: boolean;
         };
+        /** SuccessEnvelope[TriageResponse] */
+        SuccessEnvelope_TriageResponse_: {
+            data: components["schemas"]["TriageResponse"];
+            /**
+             * Success
+             * @default true
+             */
+            success: boolean;
+        };
         /** SuccessEnvelope[User] */
         SuccessEnvelope_User_: {
             data: components["schemas"]["User"];
@@ -1351,6 +1457,38 @@ export interface components {
             token_type: string;
             user: components["schemas"]["User"];
         };
+        /** TriageRequest */
+        TriageRequest: {
+            /** Context */
+            context?: string | null;
+            /** Description */
+            description: string;
+        };
+        /** TriageResponse */
+        TriageResponse: {
+            /** Id */
+            id: string;
+            /** Issue Number */
+            issue_number?: number | null;
+            /** Issue Url */
+            issue_url?: string | null;
+            triage: components["schemas"]["TriageResult"];
+        };
+        /** TriageResult */
+        TriageResult: {
+            /** Affected Service */
+            affected_service: string;
+            /** Category */
+            category: string;
+            /** Cleaned Description */
+            cleaned_description: string;
+            /** Priority */
+            priority: string;
+            /** Stack Trace */
+            stack_trace?: string | null;
+            /** Title */
+            title: string;
+        };
         /** UpdateConversationTitleRequest */
         UpdateConversationTitleRequest: {
             /** Title */
@@ -1405,6 +1543,10 @@ export interface components {
         };
         /** ValidationError */
         ValidationError: {
+            /** Context */
+            ctx?: Record<string, never>;
+            /** Input */
+            input?: unknown;
             /** Location */
             loc: (string | number)[];
             /** Message */
@@ -1413,7 +1555,7 @@ export interface components {
             type: string;
         };
         /** StreamTaskRequest */
-        api__api_router__StreamTaskRequest: {
+        api__api_models__StreamTaskRequest: {
             /** Code */
             code?: string | null;
             /** Goblin */

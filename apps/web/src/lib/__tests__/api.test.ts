@@ -170,7 +170,7 @@ describe('apiClient', () => {
     it('calls backend GET with limit', async () => {
       mockHttp.get.mockResolvedValueOnce({ data: [] });
       await apiClient.getRaptorLogs(50);
-      expect(mockHttp.get).toHaveBeenCalledWith('/logs?limit=50', undefined);
+      expect(mockHttp.get).toHaveBeenCalledWith('/api/v1/raptor/logs?limit=50', undefined);
     });
   });
 

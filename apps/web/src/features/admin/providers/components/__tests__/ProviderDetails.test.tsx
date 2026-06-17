@@ -1,6 +1,12 @@
 import React from 'react';
 import { render, screen, fireEvent } from '@testing-library/react';
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import ProviderDetails from '../ProviderDetails';
+
+function renderWithQuery(ui: React.ReactElement) {
+  const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+  return render(<QueryClientProvider client={queryClient}>{ui}</QueryClientProvider>);
+}
 
 const baseProvider = {
   name: 'OpenAI',
@@ -21,13 +27,13 @@ describe('ProviderDetails', () => {
   });
 
   it('renders provider name and subtitle', () => {
-    render(<ProviderDetails provider={baseProvider} onSetPriority={onSetPriority} />);
+    renderWithQuery(<ProviderDetails provider={baseProvider} onSetPriority={onSetPriority} />);
     expect(screen.getByText('OpenAI')).toBeInTheDocument();
     expect(screen.getByText('Provider Configuration & Testing')).toBeInTheDocument();
   });
 
   it('shows enabled status', () => {
-    render(<ProviderDetails provider={baseProvider} onSetPriority={onSetPriority} />);
+    renderWithQuery(<ProviderDetails provider={baseProvider} onSetPriority={onSetPriority} />);
     expect(screen.getByText('Enabled')).toBeInTheDocument();
   });
 
@@ -89,13 +95,13 @@ describe('ProviderDetails', () => {
   });
 
   it('calls onSetPriority as primary', () => {
-    render(<ProviderDetails provider={baseProvider} onSetPriority={onSetPriority} />);
+    renderWithQuery(<ProviderDetails provider={baseProvider} onSetPriority={onSetPriority} />);
     fireEvent.click(screen.getByText(/Set as Primary/));
     expect(onSetPriority).toHaveBeenCalledWith(1, 1, 'primary');
   });
 
   it('calls onSetPriority as fallback', () => {
-    render(<ProviderDetails provider={baseProvider} onSetPriority={onSetPriority} />);
+    renderWithQuery(<ProviderDetails provider={baseProvider} onSetPriority={onSetPriority} />);
     fireEvent.click(screen.getByText(/Set as Fallback/));
     expect(onSetPriority).toHaveBeenCalledWith(1, 10, 'fallback');
   });
@@ -112,7 +118,7 @@ describe('ProviderDetails', () => {
   });
 
   it('shows base URL', () => {
-    render(<ProviderDetails provider={baseProvider} onSetPriority={onSetPriority} />);
+    renderWithQuery(<ProviderDetails provider={baseProvider} onSetPriority={onSetPriority} />);
     const input = screen.getByLabelText('Base URL') as HTMLInputElement;
     expect(input.value).toBe('https://api.openai.com');
   });
@@ -129,7 +135,7 @@ describe('ProviderDetails', () => {
   });
 
   it('shows configured API key status', () => {
-    render(<ProviderDetails provider={baseProvider} onSetPriority={onSetPriority} />);
+    renderWithQuery(<ProviderDetails provider={baseProvider} onSetPriority={onSetPriority} />);
     expect(screen.getByText('✓ Configured')).toBeInTheDocument();
   });
 

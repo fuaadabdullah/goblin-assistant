@@ -22,15 +22,16 @@ from api.main import app  # noqa: E402
 def main() -> int:
     schema = app.openapi()
 
-    # Strip /api/v1-prefixed paths to avoid duplicating every route.
-    # The v1 alias routes are just re-mounts of the same routers; clients should
-    # use the canonical (non-prefixed) paths directly.
+    # Strip the /api/v1 prefix so SDK clients use canonical unprefixed paths.
+    # All routes are now mounted exclusively under /api/v1, so we strip the
+    # prefix rather than excluding those paths entirely.
     if "paths" in schema:
-        schema["paths"] = {
-            path: spec
-            for path, spec in schema["paths"].items()
-            if not path.startswith("/api/v1")
-        }
+        stripped: dict = {}
+        for path, spec in schema["paths"].items():
+            canonical = path.removeprefix("/api/v1") if path.startswith("/api/v1") else path
+            if canonical not in stripped:  # deduplicate if both forms ever coexist
+                stripped[canonical] = spec
+        schema["paths"] = stripped
 
     OUTPUT_PATH.parent.mkdir(parents=True, exist_ok=True)
     OUTPUT_PATH.write_text(json.dumps(schema, indent=2, sort_keys=True) + "\n", encoding="utf-8")
