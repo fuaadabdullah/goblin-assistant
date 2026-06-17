@@ -1,5 +1,11 @@
 import os
 
+# Scripts masquerading as test files — exclude from pytest collection.
+collect_ignore = [
+    "src/api/tests/test_vertex_creds.py",
+    "src/api/tests/test_siliconeflow_direct.py",
+]
+
 
 def pytest_configure(config):
     """Set required env vars before any test module is collected.

@@ -13,6 +13,67 @@ from enum import Enum
 from typing import Any, Dict, Iterable, List, Optional
 
 DEFAULT_SCOPE = "global"
+
+_deprecated_field_counts: Dict[str, int] = {}
+
+
+def get_deprecated_memory_contract_field_counts() -> Dict[str, int]:
+    return dict(_deprecated_field_counts)
+
+
+def reset_deprecated_memory_contract_field_counts() -> None:
+    _deprecated_field_counts.clear()
+
+
+class MemoryContractInput:
+    """Normalized, coerced input derived from legacy kwargs."""
+
+    def __init__(
+        self,
+        *,
+        id: str,
+        content: str,
+        user_id: str,
+        summary: str,
+        scope: str,
+        source_ref: Dict[str, Any],
+        recency_score: float,
+    ) -> None:
+        self.id = id
+        self.content = content
+        self.user_id = user_id
+        self.summary = summary
+        self.scope = scope
+        self.source_ref = source_ref
+        self.recency_score = recency_score
+
+    @classmethod
+    def from_legacy_kwargs(
+        cls,
+        *,
+        id: Any,
+        content: Any,
+        user_id: Any = None,
+        metadata: Optional[Dict[str, Any]] = None,
+        source_kind: Optional[str] = None,
+        source_id: Optional[str] = None,
+        authored: bool = False,  # noqa: ARG003
+        **_kwargs: Any,
+    ) -> "MemoryContractInput":
+        meta = metadata or {}
+        return cls(
+            id=_as_str(id) or "",
+            content=_collapse_whitespace(str(content)) if content else "",
+            user_id=_as_str(user_id) or "",
+            summary=_collapse_whitespace(
+                _as_str(meta.get("summary") or meta.get("short_summary")) or ""
+            ),
+            scope=source_kind or _derive_scope(meta) or DEFAULT_SCOPE,
+            source_ref=_derive_source_ref(meta, source_kind, _as_str(source_id)),
+            recency_score=0.5,
+        )
+
+
 DEFAULT_SENSITIVITY = "low"
 RECENCY_DECAY = 0.012
 DEFAULT_MEMORY_STATE = "active"
@@ -230,6 +291,9 @@ def importance_band_from_score(score: float) -> str:
     return "low"
 
 
+_DEPRECATED_KWARGS = ("memory_type", "salience_score", "sensitivity_level", "memory_state")
+
+
 def build_memory_contract_payload(
     *,
     id: str,
@@ -250,6 +314,7 @@ def build_memory_contract_payload(
     sensitivity_level: Optional[Any] = None,
     state: Optional[str] = None,
     memory_state: Optional[str] = None,
+    _extra_deprecated: Optional[List[str]] = None,
     retention_days: Optional[Any] = None,
     expires_at: Optional[Any] = None,
     last_accessed_at: Optional[Any] = None,
@@ -361,8 +426,23 @@ def build_memory_contract_payload(
         or importance_band_from_score(resolved_importance)
     )
 
+    # Track deprecated field usage.
+    deprecated_fields: List[str] = list(_extra_deprecated or [])
+    _kwarg_vals = {
+        "memory_type": memory_type,
+        "salience_score": salience_score,
+        "sensitivity_level": sensitivity_level,
+        "memory_state": memory_state,
+    }
+    for _field in _DEPRECATED_KWARGS:
+        if _kwarg_vals[_field] is not None:
+            deprecated_fields.append(_field)
+            _deprecated_field_counts[_field] = _deprecated_field_counts.get(_field, 0) + 1
+
     payload: Dict[str, Any] = {
         "id": id,
+        "memory_id": id,
+        "schema_version": "1.0",
         "user_id": user_id,
         "scope": resolved_scope,
         "type": resolved_memory_type,
@@ -416,6 +496,7 @@ def build_memory_contract_payload(
         "source_type": _as_str(source_type) or "memory",
         "score": float(score) if score is not None else None,
         "rerank_score": float(rerank_score) if rerank_score is not None else None,
+        "deprecated_fields": deprecated_fields,
     }
     return payload
 
@@ -427,7 +508,12 @@ def canonicalize_memory_item(
     source_type: Optional[str] = None,
 ) -> Dict[str, Any]:
     metadata = item.get("metadata") if isinstance(item.get("metadata"), dict) else {}
+    extra_deprecated: List[str] = []
+    if "fact_text" in item and not item.get("content"):
+        extra_deprecated.append("fact_text")
+        _deprecated_field_counts["fact_text"] = _deprecated_field_counts.get("fact_text", 0) + 1
     return build_memory_contract_payload(
+        _extra_deprecated=extra_deprecated,
         id=_as_str(item.get("id")) or "",
         user_id=user_id or _as_str(item.get("user_id")),
         content=_as_str(
