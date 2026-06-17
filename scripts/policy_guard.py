@@ -26,6 +26,7 @@ PURE_ZONE_EXCLUDES = (
     "apps/api/src/api/services/*storage*.py",
     "apps/api/src/api/services/**/*adapter*.py",
     "apps/api/src/api/core/redis_client.py",
+    "apps/api/src/api/core/rate_limiter_auth.py",
     "apps/web/src/lib/api/**/*",
 )
 

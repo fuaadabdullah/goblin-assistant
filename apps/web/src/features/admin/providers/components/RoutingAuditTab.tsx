@@ -1,20 +1,5 @@
 import { useRoutingAudit } from '../hooks/useRoutingAnalytics';
 
-interface RoutingAuditRecord {
-  event: string;
-  request_id: string;
-  provider_id?: string;
-  model?: string;
-  actual_latency_ms?: number;
-  actual_cost_usd?: number;
-  input_tokens?: number;
-  output_tokens?: number;
-  timestamp: number;
-  candidates?: string[];
-  attempted_providers?: string[];
-  selected_provider?: string;
-}
-
 export default function RoutingAuditTab({ providerId }: { providerId?: string }) {
   const { data, isLoading } = useRoutingAudit(50);
 
@@ -97,10 +82,10 @@ export default function RoutingAuditTab({ providerId }: { providerId?: string })
                   {record.attempted_providers ? record.attempted_providers.join(', ') : '—'}
                 </td>
                 <td className="px-4 py-3 text-right text-text text-xs font-mono">
-                  {record.actual_latency_ms ? record.actual_latency_ms.toFixed(0) : '—'}
+                  {record.latency_ms ? record.latency_ms.toFixed(0) : '—'}
                 </td>
                 <td className="px-4 py-3 text-right text-text text-xs font-mono">
-                  {record.actual_cost_usd ? record.actual_cost_usd.toFixed(6) : '—'}
+                  {record.cost_usd ? record.cost_usd.toFixed(6) : '—'}
                 </td>
                 <td className="px-4 py-3 text-right text-text text-xs font-mono">
                   {record.input_tokens && record.output_tokens
