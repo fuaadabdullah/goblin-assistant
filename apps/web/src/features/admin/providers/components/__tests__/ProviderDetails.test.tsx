@@ -38,7 +38,7 @@ describe('ProviderDetails', () => {
   });
 
   it('shows disabled status', () => {
-    render(
+    renderWithQuery(
       <ProviderDetails
         provider={{ ...baseProvider, enabled: false }}
         onSetPriority={onSetPriority}
@@ -48,7 +48,7 @@ describe('ProviderDetails', () => {
   });
 
   it('shows priority value', () => {
-    const { container } = render(
+    const { container } = renderWithQuery(
       <ProviderDetails provider={baseProvider} onSetPriority={onSetPriority} />
     );
     const metrics = container.querySelectorAll('.bg-bg.rounded-lg.p-4');
@@ -57,7 +57,7 @@ describe('ProviderDetails', () => {
   });
 
   it('shows N/A for missing priority', () => {
-    const { container } = render(
+    const { container } = renderWithQuery(
       <ProviderDetails
         provider={{ ...baseProvider, priority: undefined }}
         onSetPriority={onSetPriority}
@@ -68,7 +68,7 @@ describe('ProviderDetails', () => {
   });
 
   it('shows weight', () => {
-    const { container } = render(
+    const { container } = renderWithQuery(
       <ProviderDetails provider={{ ...baseProvider, weight: 2.5 }} onSetPriority={onSetPriority} />
     );
     const metrics = container.querySelectorAll('.bg-bg.rounded-lg.p-4');
@@ -76,7 +76,7 @@ describe('ProviderDetails', () => {
   });
 
   it('shows model count', () => {
-    const { container } = render(
+    const { container } = renderWithQuery(
       <ProviderDetails provider={baseProvider} onSetPriority={onSetPriority} />
     );
     const metrics = container.querySelectorAll('.bg-bg.rounded-lg.p-4');
@@ -84,7 +84,7 @@ describe('ProviderDetails', () => {
   });
 
   it('shows 0 when no models', () => {
-    const { container } = render(
+    const { container } = renderWithQuery(
       <ProviderDetails
         provider={{ ...baseProvider, models: undefined }}
         onSetPriority={onSetPriority}
@@ -107,7 +107,7 @@ describe('ProviderDetails', () => {
   });
 
   it('disables priority buttons when no id', () => {
-    render(
+    renderWithQuery(
       <ProviderDetails
         provider={{ ...baseProvider, id: undefined }}
         onSetPriority={onSetPriority}
@@ -124,7 +124,7 @@ describe('ProviderDetails', () => {
   });
 
   it('shows Not configured for missing base_url', () => {
-    render(
+    renderWithQuery(
       <ProviderDetails
         provider={{ ...baseProvider, base_url: undefined }}
         onSetPriority={onSetPriority}
@@ -140,7 +140,7 @@ describe('ProviderDetails', () => {
   });
 
   it('shows not configured API key status', () => {
-    render(
+    renderWithQuery(
       <ProviderDetails
         provider={{ ...baseProvider, api_key: undefined }}
         onSetPriority={onSetPriority}

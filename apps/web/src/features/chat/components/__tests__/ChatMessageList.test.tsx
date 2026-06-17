@@ -3,14 +3,12 @@ import { fireEvent, render, screen } from '@testing-library/react';
 import ChatMessageList from '../ChatMessageList';
 
 vi.mock('next/dynamic', () => ({
+  // Synchronous wrapper — avoids async useState/useEffect that leaves content
+  // null on first render. MessageMarkdown is already mocked below.
   default: vi.fn(
-    (loader: () => Promise<{ default: React.ComponentType<any> }>) =>
-      function DynamicComponent(props: any) {
-        const [Component, setComponent] = React.useState<React.ComponentType<any> | null>(null);
-        React.useEffect(() => {
-          loader().then((mod) => setComponent(() => mod.default));
-        }, []);
-        return Component ? <Component {...props} /> : null;
+    (_loader: unknown) =>
+      function DynamicComponent({ content }: { content?: string }) {
+        return content != null ? <span>{content}</span> : null;
       }
   ),
 }));

@@ -20,7 +20,9 @@ vi.mock('@/utils/auth-session', () => ({
 }));
 
 vi.mock('@/config/backendOrigin', () => ({
+  DEFAULT_BACKEND_ORIGIN: 'http://api.example.test:8000',
   resolvePublicBackendOrigin: () => 'http://api.example.test:8000',
+  resolveBackendOrigin: () => 'http://api.example.test:8000',
 }));
 
 vi.mock('@/utils/dev-log', () => ({ devError: vi.fn(), devWarn: vi.fn(), devLog: vi.fn() }));
