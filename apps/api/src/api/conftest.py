@@ -10,8 +10,11 @@ pkg_root = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
 sys.path.insert(0, pkg_root)
 sys.modules.setdefault("conftest", sys.modules[__name__])
 
-# Set test environment BEFORE any app imports
+# Set test environment BEFORE any app imports.
+# JWT_SECRET_KEY must be set before auth.router.config is imported at module
+# level — pytest_configure runs before collection so test files can import api.main.
 os.environ.setdefault("RATE_LIMIT_ENABLED", "false")
+os.environ.setdefault("JWT_SECRET_KEY", "test-secret-pytest-only-not-for-production")
 
 
 @pytest.fixture(autouse=True)

@@ -11,7 +11,7 @@ parameters:
 executors:
   node:
     docker:
-      - image: cimg/node:20.9
+      - image: cimg/node:22.15
     working_directory: ~/repo
     resource_class: medium
 
@@ -321,7 +321,7 @@ jobs:
   # ── Lighthouse CI ────────────────────────────────────────────────────────
   lighthouse-ci:
     docker:
-      - image: cimg/node:20.9-browsers
+      - image: cimg/node:22.15-browsers
     working_directory: ~/repo
     resource_class: medium
     steps:
