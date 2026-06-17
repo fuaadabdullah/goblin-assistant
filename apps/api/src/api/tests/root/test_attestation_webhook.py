@@ -41,7 +41,7 @@ class FakeAuthApi:
 fake_client = SimpleNamespace(
     V1TokenReviewSpec=FakeV1TokenReviewSpec,
     V1TokenReview=FakeV1TokenReview,
-    AuthenticationV1Api=lambda: FakeAuthApi(),
+    AuthenticationV1Api=FakeAuthApi,
 )
 
 fake_config = SimpleNamespace(load_incluster_config=lambda: None)

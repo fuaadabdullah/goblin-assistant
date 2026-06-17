@@ -59,7 +59,7 @@ async def raptor_logs(request: LogsRequest):
     try:
         # Try to read from log file if it exists
         log_file = "logs/raptor.log"
-        if os.path.exists(log_file):
+        if os.path.exists(log_file):  # noqa: ASYNC240
             content = await asyncio.to_thread(_read_text_file, log_file)
             # Return last max_chars characters
             log_tail = (

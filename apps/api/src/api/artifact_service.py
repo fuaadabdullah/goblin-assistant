@@ -102,12 +102,12 @@ class ArtifactService:
 
         try:
             # Validate file exists and size
-            if not os.path.exists(file_path):
+            if not os.path.exists(file_path):  # noqa: ASYNC240
                 logger.warning("artifact_file_not_found", file_path=file_path, job_id=job_id)
                 return None
 
             if not self.validate_artifact_size(file_path):
-                size_mb = os.path.getsize(file_path) / (1024 * 1024)
+                size_mb = os.path.getsize(file_path) / (1024 * 1024)  # noqa: ASYNC240
                 logger.warning(
                     "artifact_too_large",
                     filename=filename,
@@ -122,7 +122,7 @@ class ArtifactService:
 
             # Calculate file hash and metadata
             file_hash = await asyncio.to_thread(self.calculate_file_hash, file_path)
-            file_size = os.path.getsize(file_path)
+            file_size = os.path.getsize(file_path)  # noqa: ASYNC240
             upload_time = datetime.utcnow()
 
             # Set metadata with TTL

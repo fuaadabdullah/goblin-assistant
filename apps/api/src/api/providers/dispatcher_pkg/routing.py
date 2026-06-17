@@ -123,7 +123,7 @@ def _apply_budget_rerank(
     logger: Any,
 ) -> List[str]:
     budget_status = _budget_status(
-        lambda pt: _load_hourly_budget_cap(pt),
+        _load_hourly_budget_cap,
         provider_toml,
     )
     if not budget_status["over_budget"]:

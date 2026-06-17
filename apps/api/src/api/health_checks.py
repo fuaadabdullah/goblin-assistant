@@ -30,9 +30,9 @@ async def _check_chroma() -> Dict[str, Any]:
     path = os.environ.get("CHROMA_DB_PATH") or os.path.join(
         os.getcwd(), "chroma_db", "chroma.sqlite3"
     )
-    if os.path.exists(path):
+    if os.path.exists(path):  # noqa: ASYNC240
         try:
-            size = os.path.getsize(path)
+            size = os.path.getsize(path)  # noqa: ASYNC240
             async with (
                 aiosqlite.connect(path) as conn,
                 conn.execute("SELECT name FROM sqlite_master WHERE type='table';") as cur,
