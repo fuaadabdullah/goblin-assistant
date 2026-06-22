@@ -57,17 +57,20 @@ function buildValidationError(error: unknown): AppError {
 }
 
 function buildRetryableHttpError(status: number, error: unknown): AppError {
+  const errorRecord =
+    error && typeof error === 'object' ? (error as Record<string, unknown>) : undefined;
   const responsePayload =
-    error && typeof error === 'object'
-      ? ((error as Record<string, unknown>)['response'] as Record<string, unknown> | undefined)?.[
-          'data'
-        ]
-      : undefined;
+    errorRecord?.['responseData'] ??
+    (errorRecord
+      ? (errorRecord['response'] as Record<string, unknown> | undefined)?.['data']
+      : undefined);
+  const errorMessage = error instanceof Error ? error.message : '';
 
   return {
     code: `HTTP_${status}`,
     userMessage:
       extractApiErrorMessage(responsePayload, '') ||
+      errorMessage ||
       'A server error occurred. Please try again in a moment.',
     severity: 'error',
     retryable: true,

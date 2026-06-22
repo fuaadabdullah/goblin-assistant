@@ -24,9 +24,9 @@ export const extractApiErrorMessage = (payload: unknown, fallback = 'Request fai
     const message = (envelopeError as Record<string, unknown>)['message'];
     if (typeof message === 'string' && message.trim()) return message;
   }
-  if (typeof envelopeError === 'string' && envelopeError.trim()) return envelopeError;
   if (typeof data['message'] === 'string' && data['message'].trim()) return data['message'];
   if (typeof data['detail'] === 'string' && data['detail'].trim()) return data['detail'];
+  if (typeof envelopeError === 'string' && envelopeError.trim()) return envelopeError;
   return fallback;
 };
 

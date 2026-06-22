@@ -29,5 +29,22 @@ describe('error handler', () => {
     expect(handled.code).toBe('HTTP_502');
     expect(handled.userMessage).toBe('A server error occurred. Please try again in a moment.');
   });
-});
 
+  it('preserves normalized responseData details for retryable HTTP errors', () => {
+    const error = Object.assign(new Error('Request failed'), {
+      status: 503,
+      responseData: {
+        error: 'real-runtime-unavailable',
+        detail: 'Real model runtime is unavailable. Please try again later.',
+        reason: 'mock-provider-selected',
+      },
+    });
+
+    const handled = handleError(error);
+
+    expect(handled.code).toBe('HTTP_503');
+    expect(handled.userMessage).toBe(
+      'Real model runtime is unavailable. Please try again later.'
+    );
+  });
+});
