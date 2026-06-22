@@ -55,6 +55,8 @@ Infra Vault/
 ├── goblin-dev-cloudinary-key
 ├── goblin-dev-groq-key
 ├── goblin-dev-anthropic-key
+├── goblin-dev-google-ai-key
+├── goblin-dev-siliconeflow-key
 ├── goblin-prod-fastapi-secret
 ├── goblin-prod-db-url
 ├── goblin-prod-jwt-secret
@@ -63,6 +65,8 @@ Infra Vault/
 ├── goblin-prod-cloudinary-key
 ├── goblin-prod-groq-key
 ├── goblin-prod-anthropic-key
+├── goblin-prod-google-ai-key
+├── goblin-prod-siliconeflow-key
 └── goblin-ssh-private-key
 ```
 

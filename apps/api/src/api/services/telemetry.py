@@ -161,12 +161,12 @@ def log_inference_metrics(
 
 
 def log_conversation_event(
-    event_type: EventType,
+    event_type: EventType | str,
     user_id: str,
     session_id: Optional[str] = None,
     message_count: Optional[int] = None,
     metadata: Optional[Dict] = None,
-) -> None:
+) -> Dict[str, Any]:
     """
     Log conversation events with redaction.
 
@@ -186,12 +186,14 @@ def log_conversation_event(
         ...     session_id="session_xyz"
         ... )
     """
+    event_name = event_type.value if isinstance(event_type, EventType) else str(event_type)
+
     # Hash identifiers for privacy
     user_hash = hash_message_id(user_id)
     session_hash = hash_message_id(session_id) if session_id else None
 
     # Create tags
-    tags = [f"event_type:{event_type.value}", f"user_hash:{user_hash[:8]}"]
+    tags = [f"event_type:{event_name}", f"user_hash:{user_hash[:8]}"]
 
     if session_hash:
         tags.append(f"session_hash:{session_hash[:8]}")
@@ -199,7 +201,7 @@ def log_conversation_event(
     # Send to Datadog
     if DATADOG_AVAILABLE and ENABLE_DATADOG:
         try:
-            statsd.increment(f"goblin.conversation.{event_type.value}", tags=tags)
+            statsd.increment(f"goblin.conversation.{event_name}", tags=tags)
 
             if message_count is not None:
                 statsd.gauge("goblin.conversation.message_count", message_count, tags=tags)
@@ -208,8 +210,9 @@ def log_conversation_event(
 
     # Local logging (safe)
     log_data = {
-        "event": event_type.value,
+        "event": event_name,
         "user_hash": user_hash[:8],
+        "user_id_hash": user_hash[:8],
         "session_hash": session_hash[:8] if session_hash else None,
         "message_count": message_count,
         "timestamp": datetime.utcnow().isoformat(),
@@ -219,6 +222,7 @@ def log_conversation_event(
         log_data["metadata"] = mask_sensitive(metadata)
 
     logger.info("Conversation: %s", log_data)
+    return log_data
 
 
 def log_rag_event(

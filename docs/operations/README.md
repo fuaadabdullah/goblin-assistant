@@ -25,8 +25,13 @@ This directory is the canonical home for operational documentation previously un
 - `JIRA_PROVIDER_OPS.md`: Jira provider incident automation, backlog conventions, and release workflow.
 - `CONFLUENCE_PROVIDER_ARCHITECTURE.md`: repo-first Confluence workflow, source mapping, and provider-doc maintenance rules.
 
+## Release operations
+
+- `RELEASE_PROCESS.md`: release cut checklist, tag policy, and verification flow.
+
 ## Notes
 
+- Governance and lifecycle rules live in `docs/decisions/` (including release process, documentation ownership, and deprecation lifecycle ADRs).
 - Keep architecture decisions in `docs/decisions/`.
 - Keep security policy narratives in `docs/security/`.
 - Keep deprecated or historical material in `docs/archive/`.

@@ -1,5 +1,6 @@
 import { renderHook, act } from '@testing-library/react';
 import { useUIStore } from '@/store/uiStore';
+import { UiError } from '@/lib/ui-error';
 
 vi.mock('../../api', () => ({
   saveProfile: vi.fn(),
@@ -74,13 +75,18 @@ describe('useAccountProfile', () => {
   });
 
   it('sets error on failure', async () => {
-    mockSaveProfile.mockRejectedValue(new Error('Network error'));
+    mockSaveProfile.mockRejectedValue(
+      new UiError({
+        code: 'ACCOUNT_PROFILE_SAVE_FAILED',
+        userMessage: 'Profile update blocked',
+      })
+    );
     const { result } = renderHook(() => useAccountProfile(null));
     const fakeEvent = { preventDefault: vi.fn() } as unknown as React.FormEvent;
     await act(async () => {
       await result.current.handleSave(fakeEvent);
     });
-    expect(result.current.error).toBeTruthy();
+    expect(result.current.error).toBe('Profile update blocked');
   });
 
   it('sets saving during save', async () => {

@@ -5,6 +5,7 @@ import { apiClient } from '@/lib/api';
 import { queryKeys } from '../lib/query-keys';
 import { Button, Alert } from '../components/ui';
 import { ListSkeleton } from '../components/LoadingSkeleton';
+import { getUserMessage } from '../lib/error/toast';
 
 interface LogEntry {
   id: string;
@@ -374,7 +375,7 @@ const LogsPageContent = () => {
           message={
             <>
               <p className="mb-3">
-                {error instanceof Error ? error.message : 'Failed to load logs'}
+                {getUserMessage(error)}
               </p>
               <Button
                 variant="danger"

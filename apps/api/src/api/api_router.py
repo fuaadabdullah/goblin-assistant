@@ -3,7 +3,6 @@ from __future__ import annotations
 import asyncio
 import time
 import uuid
-from datetime import datetime
 from typing import Any, Dict, List
 
 from fastapi import APIRouter, HTTPException
@@ -17,6 +16,15 @@ from .api_models import (
     StreamResponse,
     StreamTaskRequest,
 )
+from .api_router_pkg import (
+    build_stream_messages as _build_stream_messages_helper,
+)
+from .api_router_pkg import (
+    collect_chat_history_entries as _collect_chat_history_entries_helper,
+)
+from .api_router_pkg import extract_result_text as _extract_result_text_helper
+from .api_router_pkg import run_stream_task_background as _run_stream_task_background_helper
+from .api_router_pkg import timestamp_sort_key as _timestamp_sort_key_helper
 from .core.orchestration import parse_natural_language
 from .input_validation import InputSanitizer
 from .orchestration_router import router as orchestration_router
@@ -26,7 +34,6 @@ from .routing.router import registry as routing_registry
 from .routing.router import route_task as route_task_runtime
 from .services.stream_state_store import get_stream_state_store
 from .services.task_streaming import run_task_stream_to_state
-from .storage import conversation_store
 from .storage.tasks import get_task_store
 
 # Backward-compatible alias preserved for tests/integrations still patching
@@ -38,112 +45,40 @@ router.include_router(orchestration_router)
 router.include_router(_feedback_router)
 
 
-def _extract_result_text(response: Dict[str, Any]) -> str:
-    result_data = response.get("result", {})
-    if isinstance(result_data, dict):
-        text = result_data.get("text")
-        if isinstance(text, str) and text:
-            return text
-    fallback_text = response.get("text")
-    if isinstance(fallback_text, str):
-        return fallback_text
-    return ""
-
-
 def _build_stream_messages(request: StreamTaskRequest) -> List[Dict[str, str]]:
-    payload_lines = [request.task.strip()]
-    if request.code:
-        payload_lines.append("\nCode:\n" + request.code.strip())
-    user_message = "\n".join(line for line in payload_lines if line)
-    return [{"role": "user", "content": user_message}]
+    return _build_stream_messages_helper(request)
+
+
+def _extract_result_text(response: Dict[str, Any]) -> str:
+    return _extract_result_text_helper(response)
 
 
 def _timestamp_sort_key(value: Any) -> float:
-    if isinstance(value, (int, float)):
-        return float(value)
-    if isinstance(value, datetime):
-        return value.timestamp()
-    if isinstance(value, str):
-        try:
-            return datetime.fromisoformat(value).timestamp()
-        except ValueError:
-            return 0.0
-    return 0.0
+    return _timestamp_sort_key_helper(value)
+
+
+def _response_error_message(response: Any) -> str:
+    if isinstance(response, dict):
+        return str(
+            response.get("error")
+            or response.get("detail")
+            or response.get("message")
+            or "Request failed"
+        )
+    return str(response)
 
 
 async def _run_stream_task_background(stream_id: str, request: StreamTaskRequest) -> None:
-    try:
-        await run_task_stream_to_state(
-            stream_id=stream_id,
-            task_id=stream_id,
-            messages=_build_stream_messages(request),
-            provider=request.provider,
-            model=request.model,
-            metadata={
-                "goblin": request.goblin,
-                "task": request.task,
-                "source": "legacy_api_router",
-            },
-            initialize_state=False,
-        )
-    except Exception as exc:
-        import structlog  # noqa: PLC0415
-
-        structlog.get_logger().error(
-            "stream_task_background_failed",
-            stream_id=stream_id,
-            error=str(exc),
-        )
-        try:
-            _store = get_stream_state_store()
-            await _store.mark_status(
-                stream_id,
-                status="failed",
-                done=True,
-                updates={"error": str(exc)},
-            )
-        except Exception as cleanup_exc:
-            structlog.get_logger().warning(
-                "stream_status_update_failed",
-                stream_id=stream_id,
-                error=str(cleanup_exc),
-            )
+    await _run_stream_task_background_helper(
+        stream_id,
+        request,
+        run_stream_fn=run_task_stream_to_state,
+        store_getter=get_stream_state_store,
+    )
 
 
 async def _collect_chat_history_entries(goblin_id: str, limit: int = 500) -> List[Dict[str, Any]]:
-    entries: List[Dict[str, Any]] = []
-    conversations = await conversation_store.list_conversations(limit=limit)
-
-    for conversation in conversations:
-        last_user_prompt = ""
-        for message in conversation.messages:
-            if message.role == "user":
-                last_user_prompt = message.content
-                continue
-
-            if message.role != "assistant":
-                continue
-
-            metadata = message.metadata if isinstance(message.metadata, dict) else {}
-            provider = metadata.get("provider")
-            if provider and provider != goblin_id:
-                continue
-
-            timestamp = message.timestamp
-            entries.append(
-                {
-                    "id": message.message_id,
-                    "goblin": goblin_id,
-                    "task": last_user_prompt or "chat",
-                    "response": message.content,
-                    "timestamp": (
-                        timestamp.isoformat() if isinstance(timestamp, datetime) else timestamp
-                    ),
-                    "kpis": f"status:completed source:chat conversation:{conversation.conversation_id}",
-                }
-            )
-
-    return entries
+    return await _collect_chat_history_entries_helper(goblin_id, limit=limit)
 
 
 @router.post("/chat", response_model=SimpleChatResponse)
@@ -179,10 +114,7 @@ async def simple_chat(request: SimpleChatRequest):
                 provider=str(response.get("provider", "unknown")),
                 model=str(response.get("model", "unknown")),
             )
-        error_msg = (
-            response.get("error", "Unknown error") if isinstance(response, dict) else str(response)
-        )
-        return SimpleChatResponse(ok=False, error=str(error_msg))
+        return SimpleChatResponse(ok=False, error=_response_error_message(response))
     except HTTPException as exc:
         return SimpleChatResponse(ok=False, error=str(exc.detail))
     except Exception as exc:
@@ -234,10 +166,7 @@ async def generate(request: GenerateRequest):
                 content=text,
                 choices=[{"message": {"role": "assistant", "content": text}}],
             )
-        error_msg = (
-            response.get("error", "Unknown error") if isinstance(response, dict) else str(response)
-        )
-        return GenerateResponse(error=str(error_msg))
+        return GenerateResponse(error=_response_error_message(response))
     except HTTPException:
         raise
     except Exception as exc:

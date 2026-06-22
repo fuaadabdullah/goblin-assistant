@@ -8,6 +8,7 @@ import Seo from '../../components/Seo';
 import { useProvider } from '../../contexts/ProviderContext';
 import { useToast } from '../../hooks/useToast';
 import { apiClient } from '@/lib/api';
+import { getUserMessage } from '@/lib/error/toast';
 import { Card, InlineErrorState, PageState } from '../../components/ui';
 import { ProviderStatusSection } from './ProviderStatusSection';
 import { ModelPreferencesSection } from './ModelPreferencesSection';
@@ -124,8 +125,8 @@ const SettingsPageContent: React.FC = () => {
         default_model: selectedModel,
       });
       showSuccess('Preferences saved', 'Your model preferences have been saved.');
-    } catch {
-      showError('Save failed', 'Could not save preferences. Please try again.');
+    } catch (error) {
+      showError('Save failed', getUserMessage(error));
     } finally {
       setIsSaving(false);
     }

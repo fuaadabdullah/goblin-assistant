@@ -166,6 +166,17 @@ test-integration:
 test-contract:
 	$(PYTHON) tooling/quality/run-test-bucket.py contract
 
+test-engine:
+	@echo "==> Engine smoke test — exercises all six pillars"
+	cd apps/api && PYTHONPATH=src $(PYTHON) -m pytest -o "addopts=" -v \
+		../../tests/contract/test_engine_routing_contract.py \
+		../../tests/contract/test_engine_memory_contract.py \
+		../../tests/contract/test_engine_sandbox_contract.py \
+		../../tests/contract/test_engine_auth_contract.py \
+		../../tests/contract/test_engine_observability_contract.py \
+		--tb=short -q
+	@echo "==> Engine smoke test complete"
+
 test-performance:
 	$(PYTHON) tooling/quality/run-test-bucket.py performance
 

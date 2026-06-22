@@ -11,7 +11,7 @@ from typing import Any, Dict, List, Optional
 
 import structlog
 
-from .router_store import ProviderStats, RoutingRegistryStore
+from .registry_store import ProviderStats, RoutingRegistryStore
 from .router_supabase import restore_from_supabase, schedule_mirror
 
 logger = structlog.get_logger()

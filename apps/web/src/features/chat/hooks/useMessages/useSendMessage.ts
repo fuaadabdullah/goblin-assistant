@@ -2,13 +2,18 @@ import { useCallback } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import { chatClient } from '../../api';
 import { toUiError } from '../../../../lib/ui-error';
+import { getUserMessage } from '../../../../lib/error/toast';
 import type { ChatMessage, ChatThread } from '../../types';
 import { buildThreadKey } from '../../../../lib/chat-history';
 import { queryKeys } from '../../../../lib/query-keys';
+import { ANALYTICS_EVENTS, ANALYTICS_STORAGE_KEYS } from '../../../../lib/analytics-events';
 import { useToast } from '../../../../hooks/useToast';
 import { useAuthSession } from '../../../../hooks/api/useAuthSession';
+import { trackEvent } from '../../../../utils/analytics';
 import type { PendingAttachment } from '../useChatSession';
 import { createMessageId, createAssistantMessage, mapAttachments } from './factories';
+
+export const formatSendMessageError = (error: unknown): string => getUserMessage(error);
 
 interface SendMessageDeps {
   input: string;
@@ -27,6 +32,34 @@ interface SendMessageDeps {
   showError: ReturnType<typeof useToast>['showError'];
   showInfo: ReturnType<typeof useToast>['showInfo'];
 }
+
+const recordSuccessfulMessageSend = (): number => {
+  if (typeof window === 'undefined') return 0;
+
+  try {
+    const rawCount = window.sessionStorage.getItem(
+      ANALYTICS_STORAGE_KEYS.successful_message_count
+    );
+    const currentCount = Number(rawCount) || 0;
+    const nextCount = currentCount + 1;
+    window.sessionStorage.setItem(
+      ANALYTICS_STORAGE_KEYS.successful_message_count,
+      String(nextCount)
+    );
+    return nextCount;
+  } catch {
+    return 0;
+  }
+};
+
+const trackSuccessfulMessageSend = (): void => {
+  const count = recordSuccessfulMessageSend();
+  if (count === 1) {
+    trackEvent(ANALYTICS_EVENTS.first_message_sent);
+  } else if (count === 2) {
+    trackEvent(ANALYTICS_EVENTS.second_message_sent);
+  }
+};
 
 export const useSendMessage = ({
   input,
@@ -87,6 +120,7 @@ export const useSendMessage = ({
             content: text,
           };
           applyMessages([...updatedMessages, assistantMsg]);
+          trackSuccessfulMessageSend();
           return;
         }
 
@@ -131,6 +165,7 @@ export const useSendMessage = ({
         const assistantMsg = createAssistantMessage(result ?? {});
         const nextMessages = [...updatedMessages, assistantMsg];
         applyMessages(nextMessages);
+        trackSuccessfulMessageSend();
 
         queryClient.setQueryData(
           queryKeys.chatConversation(conversationId),
@@ -181,11 +216,16 @@ export const useSendMessage = ({
       } catch (err: unknown) {
         const uiError = toUiError(err, {
           code: 'CHAT_SEND_FAILED',
-          userMessage: 'Sorry, we could not send that message right now.',
+          userMessage: formatSendMessageError(err),
         });
 
         if (uiError.code === 'AUTHENTICATION_REQUIRED') {
           showInfo('Sign in required', 'Sign in to continue this conversation.');
+        } else if (
+          uiError.code === 'CHAT_PROVIDER_ACCESS_DENIED' ||
+          uiError.code === 'CHAT_PROVIDER_UNAVAILABLE'
+        ) {
+          showInfo('Provider unavailable', uiError.userMessage);
         } else {
           const assistantMsg: ChatMessage = {
             id: `msg-error-${Date.now()}`,

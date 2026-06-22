@@ -15,6 +15,12 @@ Legacy session compatibility helpers were removed at the v0.x -> v1.0 cutoff;
 use the async DB-backed helpers from `api.auth.router.sessions` instead.
 """
 
+from __future__ import annotations
+
+import sys
+from importlib import import_module
+from types import ModuleType
+
 from fastapi import APIRouter
 
 # --- Public re-exports for callers + tests ---
@@ -34,6 +40,8 @@ from . import routes_csrf as _csrf
 from . import routes_email as _email
 from . import routes_google as _google
 from . import routes_passkey as _passkey
+
+_dependencies_module = import_module(".dependencies", __name__)
 from .config import (  # noqa: F401
     ACCESS_TOKEN_EXPIRE_MINUTES,
     ALGORITHM,
@@ -81,3 +89,55 @@ router.include_router(_email.router)
 router.include_router(_google.router)
 router.include_router(_passkey.router)
 router.include_router(_csrf.router)
+
+
+class _DependencyList(list):
+    def __getattr__(self, name: str):
+        return getattr(_dependencies_module, name)
+
+    def __setattr__(self, name: str, value):
+        setattr(_dependencies_module, name, value)
+
+
+dependencies = _DependencyList(router.dependencies)
+
+
+class _RouterPackage(ModuleType):
+    _SUBMODULE_NAMES = {
+        "config",
+        "cookies",
+        "passwords",
+        "routes_csrf",
+        "routes_email",
+        "routes_google",
+        "routes_passkey",
+        "schemas",
+        "sessions",
+        "tokens",
+    }
+
+    def __getattribute__(self, name: str):
+        if name in _RouterPackage._SUBMODULE_NAMES:
+            caller = sys._getframe(1).f_globals.get("__name__", "")
+            if caller.startswith("importlib.") or caller.startswith("_frozen_importlib"):
+                return import_module(f".{name}", __name__)
+        if name == "dependencies":
+            return super().__getattribute__(name)
+        if name != "router":
+            try:
+                return getattr(router, name)
+            except AttributeError:
+                pass
+        return super().__getattribute__(name)
+
+    def __setattr__(self, name: str, value):
+        if name != "router":
+            try:
+                setattr(router, name, value)
+                return
+            except AttributeError:
+                pass
+        super().__setattr__(name, value)
+
+
+sys.modules[__name__].__class__ = _RouterPackage

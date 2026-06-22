@@ -64,7 +64,7 @@ class TestMessageProcessing:
             response = client.post("/api/v1/write-time/test", json={"content": "test"})
 
             assert response.status_code == 500
-            assert "Processing failed" in response.json()["detail"]
+            assert response.json()["detail"] == "Test processing failed: Processing failed"
 
 
 class TestCacheStatsEndpoint:
@@ -97,6 +97,7 @@ class TestCacheStatsEndpoint:
             response = client.get("/api/v1/write-time/cache/stats")
 
             assert response.status_code == 500
+            assert response.json()["detail"] == "Failed to get cache stats: Redis connection failed"
 
 
 class TestCacheCleanupEndpoint:
@@ -126,6 +127,7 @@ class TestCacheCleanupEndpoint:
             response = client.post("/api/v1/write-time/cache/cleanup")
 
             assert response.status_code == 500
+            assert response.json()["detail"] == "Cache cleanup failed: Cleanup failed"
 
 
 class TestDecisionMatrixConfigEndpoint:
@@ -163,6 +165,7 @@ class TestDecisionMatrixConfigEndpoint:
             response = client.get("/api/v1/write-time/matrix/config")
 
             assert response.status_code == 500
+            assert response.json()["detail"] == "Failed to get matrix config: Matrix load failed"
 
 
 class TestWriteTimeMetricsEndpoint:
@@ -227,6 +230,7 @@ class TestCacheClearEndpoint:
             response = client.post("/api/v1/write-time/cache/clear")
 
             assert response.status_code == 500
+            assert response.json()["detail"] == "Failed to clear cache"
 
 
 class TestTestExamplesEndpoint:
@@ -298,6 +302,21 @@ class TestBatchProcessingEndpoint:
             assert response.status_code == 200
             data = response.json()
             assert data["total_messages"] == 0
+
+    def test_batch_processing_exception(self, client):
+        """Test batch processing with exception."""
+        with patch("api.write_time_router._get_write_time_intelligence") as mock_get:
+            mock_intelligence = AsyncMock()
+            mock_get.return_value = mock_intelligence
+            mock_intelligence.process_message.side_effect = Exception("Batch failure")
+
+            response = client.post(
+                "/api/v1/write-time/test/batch",
+                json=[{"content": "Hello", "role": "user"}],
+            )
+
+            assert response.status_code == 500
+            assert response.json()["detail"] == "Batch testing failed: Batch failure"
 
 
 class TestConstantData:

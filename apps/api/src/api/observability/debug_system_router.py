@@ -19,6 +19,13 @@ logger = structlog.get_logger()
 router = APIRouter()
 
 
+def _detail_message(prefix: str, error: Exception) -> str:
+    message = str(error).strip()
+    if message:
+        return f"{prefix}: {message}"
+    return f"{prefix}: Request failed"
+
+
 @router.get("/system/observability/summary")
 @require_ops_access("read")
 async def get_observability_summary(
@@ -86,7 +93,8 @@ async def get_observability_summary(
     except Exception as e:
         logger.error("Failed to get observability summary:", error=str(e))
         raise HTTPException(
-            status_code=500, detail=f"Failed to get observability summary: {str(e)}"
+            status_code=500,
+            detail=_detail_message("Failed to get observability summary", e),
         )
 
 
@@ -134,7 +142,10 @@ async def get_system_health(
         }
     except Exception as e:
         logger.error("Failed to get system health:", error=str(e))
-        raise HTTPException(status_code=500, detail=f"Failed to get system health: {str(e)}")
+        raise HTTPException(
+            status_code=500,
+            detail=_detail_message("Failed to get system health", e),
+        )
 
 
 def _combine_recommendations(recommendation_lists: List[List[str]]) -> List[str]:
@@ -172,7 +183,7 @@ async def clear_observability_cache() -> Dict[str, Any]:
         }
     except Exception as e:
         logger.error("Failed to clear observability cache:", error=str(e))
-        raise HTTPException(status_code=500, detail=f"Failed to clear cache: {str(e)}")
+        raise HTTPException(status_code=500, detail=_detail_message("Failed to clear cache", e))
 
 
 @router.post("/system/observability/reset-counters")
@@ -190,7 +201,7 @@ async def reset_observability_counters() -> Dict[str, Any]:
     except Exception as e:
         raise HTTPException(
             status_code=500,
-            detail=f"Failed to reset observability counters: {str(e)}",
+            detail=_detail_message("Failed to reset observability counters", e),
         )
 
 
@@ -209,7 +220,7 @@ async def get_tool_trace(request_id: str) -> Dict[str, Any]:
         raise
     except Exception as e:
         logger.error("Failed to get tool trace:", error=str(e))
-        raise HTTPException(status_code=500, detail=f"Failed to get tool trace: {str(e)}")
+        raise HTTPException(status_code=500, detail=_detail_message("Failed to get tool trace", e))
 
 
 @router.get("/tool-trace/conversation/{conversation_id}")
@@ -231,7 +242,7 @@ async def get_conversation_tool_traces(
         logger.error("Failed to get conversation tool traces:", error=str(e))
         raise HTTPException(
             status_code=500,
-            detail=f"Failed to get conversation tool traces: {str(e)}",
+            detail=_detail_message("Failed to get conversation tool traces", e),
         )
 
 
@@ -256,5 +267,5 @@ async def get_tool_trace_stats(
         logger.error("Failed to get tool trace stats:", error=str(e))
         raise HTTPException(
             status_code=500,
-            detail=f"Failed to get tool trace stats: {str(e)}",
+            detail=_detail_message("Failed to get tool trace stats", e),
         )

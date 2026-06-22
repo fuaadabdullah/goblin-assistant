@@ -199,7 +199,9 @@ def local_order(
 ) -> List[str]:
     providers = list_providers_fn(include_hidden=False)
     local_candidates = [
-        item["id"] for item in providers if item["local_routing"] or item["tier"] == "self_hosted"
+        item["id"]
+        for item in providers
+        if bool(item.get("local_routing", False)) or item.get("tier") == "self_hosted"
     ]
     return _apply_budget_rerank(
         ensure_provider_fn,

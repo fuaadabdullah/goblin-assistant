@@ -30,13 +30,19 @@ This directory is the canonical ADR location (moved from `docs/adr/`).
 - `2026-05-29-event-and-orchestration-boundary.md`
 - `2026-05-29-api-envelope-and-compat-lifecycle-policy.md`
 - `2026-05-30-assistant-tools-canonicalization.md`
+- `2026-06-20-router-decomposition.md`
+- `2026-06-20-dispatcher-decomposition.md`
+- `2026-06-20-release-process.md`
+- `2026-06-20-release-tag-strategy.md`
+- `2026-06-20-documentation-ownership.md`
+- `2026-06-20-deprecation-lifecycle.md`
 
 ## Status
 
 - Canonical ADR directory exists and is active.
-- ADR coverage is currently focused on API boundaries, provider contracts, and tool canonicalization.
+- ADR coverage is currently focused on API boundaries, provider contracts, tool canonicalization, router/dispatcher decomposition, and release policy.
 
 ## Next ADR candidates
 
-- Release/versioning policy for changelog and tag lifecycle.
-- Documentation ownership and quality gates for `docs/operations/` and `docs/security/`.
+- Documentation index hygiene: owner metadata, review cadence, and archive/supersession cleanup.
+- ADR status audit for older decisions that may need `deprecated` or `superseded` status.

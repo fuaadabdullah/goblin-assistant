@@ -1,40 +1,15 @@
-"""
-Task tools for Goblin Assistant.
-
-Provides lightweight task management (create/list/update/complete) using
-the existing TaskStore persistence abstraction.
-"""
+"""Task and scheduling tools for Goblin Assistant."""
 
 from __future__ import annotations
 
-import uuid
-from datetime import datetime
 from typing import Any, Dict, List, Optional
 
-from api.storage.tasks import task_store
-
+from ...services.scheduling_service import scheduling_provider
 from ..registry import ToolDefinition, ToolParameter, register_tool
 
 TASK_TYPE = "assistant_task"
 ALLOWED_STATUS = {"pending", "in_progress", "completed"}
 ALLOWED_PRIORITY = {"low", "medium", "high"}
-
-
-def _normalize_task(task: Dict[str, Any]) -> Dict[str, Any]:
-    payload = task.get("payload") if isinstance(task.get("payload"), dict) else {}
-    return {
-        "task_id": task.get("task_id"),
-        "title": payload.get("title", ""),
-        "details": payload.get("details", ""),
-        "priority": payload.get("priority", "medium"),
-        "due_date": payload.get("due_date"),
-        "project_path": payload.get("project_path"),
-        "tags": payload.get("tags", []),
-        "status": task.get("status", "pending"),
-        "created_at": task.get("created_at"),
-        "updated_at": task.get("updated_at"),
-        "completion_note": (task.get("result") or {}).get("completion_note"),
-    }
 
 
 async def _handle_create_task(
@@ -46,35 +21,15 @@ async def _handle_create_task(
     tags: Optional[List[str]] = None,
     user_id: Optional[str] = None,
 ) -> Dict[str, Any]:
-    if priority not in ALLOWED_PRIORITY:
-        return {"error": f"Invalid priority: {priority}. Allowed: {sorted(ALLOWED_PRIORITY)}"}
-    if not title.strip():
-        return {"error": "title must be non-empty"}
-
-    task_id = str(uuid.uuid4())
-    payload = {
-        "title": title.strip(),
-        "details": (details or "").strip(),
-        "priority": priority,
-        "due_date": due_date,
-        "project_path": project_path,
-        "tags": tags or [],
-    }
-
-    task_data = {
-        "task_id": task_id,
-        "user_id": user_id,
-        "status": "pending",
-        "task_type": TASK_TYPE,
-        "payload": payload,
-        "result": None,
-        "metadata": {"source": "assistant_tools"},
-    }
-    await task_store.save_task(task_id, task_data)
-    created = await task_store.get_task(task_id)
-    if not created:
-        return {"error": "Failed to persist created task"}
-    return {"created": True, "task": _normalize_task(created)}
+    return await scheduling_provider.create_task(
+        title=title,
+        details=details,
+        priority=priority,
+        due_at=due_date,
+        project_path=project_path,
+        tags=tags,
+        user_id=user_id,
+    )
 
 
 async def _handle_list_tasks(
@@ -84,28 +39,13 @@ async def _handle_list_tasks(
     tag: Optional[str] = None,
     user_id: Optional[str] = None,
 ) -> Dict[str, Any]:
-    if status is not None and status not in ALLOWED_STATUS:
-        return {"error": f"Invalid status: {status}. Allowed: {sorted(ALLOWED_STATUS)}"}
-
-    capped_limit = max(1, min(limit, 200))
-    raw_tasks = await task_store.list_tasks(status=status, limit=capped_limit * 4)
-    filtered: List[Dict[str, Any]] = []
-    for task in raw_tasks:
-        if task.get("task_type") != TASK_TYPE:
-            continue
-        if user_id and task.get("user_id") not in (None, user_id):
-            continue
-        payload = task.get("payload") if isinstance(task.get("payload"), dict) else {}
-        if project_path and payload.get("project_path") != project_path:
-            continue
-        tags = payload.get("tags") if isinstance(payload.get("tags"), list) else []
-        if tag and tag not in tags:
-            continue
-        filtered.append(_normalize_task(task))
-        if len(filtered) >= capped_limit:
-            break
-
-    return {"tasks": filtered, "count": len(filtered)}
+    return await scheduling_provider.list_tasks(
+        status=status,
+        limit=limit,
+        project_path=project_path,
+        tag=tag,
+        user_id=user_id,
+    )
 
 
 async def _handle_update_task(
@@ -118,43 +58,16 @@ async def _handle_update_task(
     status: Optional[str] = None,
     user_id: Optional[str] = None,
 ) -> Dict[str, Any]:
-    existing = await task_store.get_task(task_id)
-    if not existing:
-        return {"error": f"Task not found: {task_id}"}
-    if existing.get("task_type") != TASK_TYPE:
-        return {"error": f"Task is not managed by assistant tools: {task_id}"}
-    if user_id and existing.get("user_id") not in (None, user_id):
-        return {"error": f"Task not accessible for current user: {task_id}"}
-
-    payload = dict(existing.get("payload") or {})
-    if title is not None:
-        if not title.strip():
-            return {"error": "title must be non-empty when provided"}
-        payload["title"] = title.strip()
-    if details is not None:
-        payload["details"] = details.strip()
-    if priority is not None:
-        if priority not in ALLOWED_PRIORITY:
-            return {"error": f"Invalid priority: {priority}. Allowed: {sorted(ALLOWED_PRIORITY)}"}
-        payload["priority"] = priority
-    if due_date is not None:
-        payload["due_date"] = due_date
-    if tags is not None:
-        payload["tags"] = tags
-
-    if status is not None and status not in ALLOWED_STATUS:
-        return {"error": f"Invalid status: {status}. Allowed: {sorted(ALLOWED_STATUS)}"}
-
-    existing["payload"] = payload
-    if status is not None:
-        existing["status"] = status
-    existing["updated_at"] = datetime.utcnow().isoformat()
-
-    await task_store.save_task(task_id, existing)
-    updated = await task_store.get_task(task_id)
-    if not updated:
-        return {"error": f"Failed to load updated task: {task_id}"}
-    return {"updated": True, "task": _normalize_task(updated)}
+    return await scheduling_provider.update_task(
+        task_id=task_id,
+        title=title,
+        details=details,
+        priority=priority,
+        due_at=due_date,
+        tags=tags,
+        status=status,
+        user_id=user_id,
+    )
 
 
 async def _handle_complete_task(
@@ -162,21 +75,79 @@ async def _handle_complete_task(
     completion_note: Optional[str] = None,
     user_id: Optional[str] = None,
 ) -> Dict[str, Any]:
-    existing = await task_store.get_task(task_id)
-    if not existing:
-        return {"error": f"Task not found: {task_id}"}
-    if existing.get("task_type") != TASK_TYPE:
-        return {"error": f"Task is not managed by assistant tools: {task_id}"}
-    if user_id and existing.get("user_id") not in (None, user_id):
-        return {"error": f"Task not accessible for current user: {task_id}"}
+    return await scheduling_provider.complete_task(
+        task_id=task_id,
+        completion_note=completion_note,
+        user_id=user_id,
+    )
 
-    existing["status"] = "completed"
-    existing["result"] = {"completion_note": completion_note or ""}
-    await task_store.save_task(task_id, existing)
-    completed = await task_store.get_task(task_id)
-    if not completed:
-        return {"error": f"Failed to load completed task: {task_id}"}
-    return {"completed": True, "task": _normalize_task(completed)}
+
+async def _handle_create_reminder(
+    title: str,
+    trigger_at: str,
+    note: Optional[str] = None,
+    task_id: Optional[str] = None,
+    status: str = "scheduled",
+    user_id: Optional[str] = None,
+) -> Dict[str, Any]:
+    return await scheduling_provider.create_reminder(
+        title=title,
+        trigger_at=trigger_at,
+        note=note,
+        task_id=task_id,
+        status=status,
+        user_id=user_id,
+    )
+
+
+async def _handle_list_reminders(
+    status: Optional[str] = None,
+    limit: int = 50,
+    user_id: Optional[str] = None,
+) -> Dict[str, Any]:
+    return await scheduling_provider.list_reminders(
+        status=status,
+        limit=limit,
+        user_id=user_id,
+    )
+
+
+async def _handle_create_calendar_event(
+    title: str,
+    start_time: str,
+    end_time: Optional[str] = None,
+    description: Optional[str] = None,
+    location: Optional[str] = None,
+    notes: Optional[str] = None,
+    attendees: Optional[List[str]] = None,
+    status: str = "planned",
+    task_id: Optional[str] = None,
+    user_id: Optional[str] = None,
+) -> Dict[str, Any]:
+    return await scheduling_provider.create_calendar_event(
+        title=title,
+        start_time=start_time,
+        end_time=end_time,
+        description=description,
+        location=location,
+        notes=notes,
+        attendees=attendees,
+        status=status,
+        task_id=task_id,
+        user_id=user_id,
+    )
+
+
+async def _handle_list_calendar_events(
+    status: Optional[str] = None,
+    limit: int = 50,
+    user_id: Optional[str] = None,
+) -> Dict[str, Any]:
+    return await scheduling_provider.list_calendar_events(
+        status=status,
+        limit=limit,
+        user_id=user_id,
+    )
 
 
 register_tool(
@@ -278,29 +249,29 @@ register_tool(
     ToolDefinition(
         name="update_task",
         description=(
-            "Use when the user wants to modify an existing assistant task. "
-            "Supports partial field updates and optional status transitions."
+            "Use when the user wants to update an existing assistant-managed task "
+            "without completing it."
         ),
         parameters=[
-            ToolParameter(name="task_id", type="string", description="Task ID to update."),
+            ToolParameter(name="task_id", type="string", description="Task identifier."),
             ToolParameter(
                 name="title",
                 type="string",
-                description="Optional new title.",
+                description="Optional new task title.",
                 required=False,
                 default=None,
             ),
             ToolParameter(
                 name="details",
                 type="string",
-                description="Optional new details.",
+                description="Optional updated details.",
                 required=False,
                 default=None,
             ),
             ToolParameter(
                 name="priority",
                 type="string",
-                description="Optional priority update.",
+                description="Optional priority update: low, medium, or high.",
                 required=False,
                 enum=["low", "medium", "high"],
                 default=None,
@@ -308,14 +279,14 @@ register_tool(
             ToolParameter(
                 name="due_date",
                 type="string",
-                description="Optional due date update.",
+                description="Optional due date text or ISO timestamp.",
                 required=False,
                 default=None,
             ),
             ToolParameter(
                 name="tags",
                 type="array",
-                description="Optional full tag replacement.",
+                description="Optional replacement tags.",
                 required=False,
                 default=None,
                 items={"type": "string"},
@@ -323,7 +294,7 @@ register_tool(
             ToolParameter(
                 name="status",
                 type="string",
-                description="Optional status transition.",
+                description="Optional status update.",
                 required=False,
                 enum=["pending", "in_progress", "completed"],
                 default=None,
@@ -337,12 +308,9 @@ register_tool(
 register_tool(
     ToolDefinition(
         name="complete_task",
-        description=(
-            "Use when the user marks a task complete. Sets status to completed "
-            "and optionally stores a completion note."
-        ),
+        description=("Use when the user wants to mark an assistant-managed task as completed."),
         parameters=[
-            ToolParameter(name="task_id", type="string", description="Task ID to complete."),
+            ToolParameter(name="task_id", type="string", description="Task identifier."),
             ToolParameter(
                 name="completion_note",
                 type="string",
@@ -352,6 +320,160 @@ register_tool(
             ),
         ],
         handler=_handle_complete_task,
+        category="tasks",
+    )
+)
+
+register_tool(
+    ToolDefinition(
+        name="create_reminder",
+        description=("Use when the user wants to schedule a reminder tied to a task or date."),
+        parameters=[
+            ToolParameter(name="title", type="string", description="Reminder title."),
+            ToolParameter(
+                name="trigger_at",
+                type="string",
+                description="Reminder trigger time as text or ISO timestamp.",
+            ),
+            ToolParameter(
+                name="note",
+                type="string",
+                description="Optional reminder note.",
+                required=False,
+                default=None,
+            ),
+            ToolParameter(
+                name="task_id",
+                type="string",
+                description="Optional linked task identifier.",
+                required=False,
+                default=None,
+            ),
+            ToolParameter(
+                name="status",
+                type="string",
+                description="Reminder status: scheduled, triggered, dismissed, or cancelled.",
+                required=False,
+                enum=["scheduled", "triggered", "dismissed", "cancelled"],
+                default="scheduled",
+            ),
+        ],
+        handler=_handle_create_reminder,
+        category="tasks",
+    )
+)
+
+register_tool(
+    ToolDefinition(
+        name="list_reminders",
+        description="Use when the user wants to view assistant-managed reminders.",
+        parameters=[
+            ToolParameter(
+                name="status",
+                type="string",
+                description="Optional reminder status filter.",
+                required=False,
+                enum=["scheduled", "triggered", "dismissed", "cancelled"],
+                default=None,
+            ),
+            ToolParameter(
+                name="limit",
+                type="integer",
+                description="Maximum reminders to return (1-200). Defaults to 50.",
+                required=False,
+                default=50,
+            ),
+        ],
+        handler=_handle_list_reminders,
+        category="tasks",
+    )
+)
+
+register_tool(
+    ToolDefinition(
+        name="create_calendar_event",
+        description=(
+            "Use when the user wants to draft or store a calendar event in the scheduling layer."
+        ),
+        parameters=[
+            ToolParameter(name="title", type="string", description="Event title."),
+            ToolParameter(
+                name="start_time",
+                type="string",
+                description="Event start time as text or ISO timestamp.",
+            ),
+            ToolParameter(
+                name="end_time",
+                type="string",
+                description="Optional event end time.",
+                required=False,
+                default=None,
+            ),
+            ToolParameter(
+                name="description",
+                type="string",
+                description="Optional event description.",
+                required=False,
+                default=None,
+            ),
+            ToolParameter(
+                name="location",
+                type="string",
+                description="Optional event location.",
+                required=False,
+                default=None,
+            ),
+            ToolParameter(
+                name="notes",
+                type="string",
+                description="Optional event notes.",
+                required=False,
+                default=None,
+            ),
+            ToolParameter(
+                name="attendees",
+                type="array",
+                description="Optional list of attendee names or emails.",
+                required=False,
+                default=None,
+                items={"type": "string"},
+            ),
+            ToolParameter(
+                name="status",
+                type="string",
+                description="Event status: planned, confirmed, cancelled, completed.",
+                required=False,
+                enum=["planned", "confirmed", "cancelled", "completed"],
+                default="planned",
+            ),
+        ],
+        handler=_handle_create_calendar_event,
+        category="tasks",
+    )
+)
+
+register_tool(
+    ToolDefinition(
+        name="list_calendar_events",
+        description="Use when the user wants to view assistant-managed calendar events.",
+        parameters=[
+            ToolParameter(
+                name="status",
+                type="string",
+                description="Optional event status filter.",
+                required=False,
+                enum=["planned", "confirmed", "cancelled", "completed"],
+                default=None,
+            ),
+            ToolParameter(
+                name="limit",
+                type="integer",
+                description="Maximum events to return (1-200). Defaults to 50.",
+                required=False,
+                default=50,
+            ),
+        ],
+        handler=_handle_list_calendar_events,
         category="tasks",
     )
 )

@@ -78,7 +78,7 @@ describe('APIKeyManager', () => {
     await user.type(screen.getByLabelText('Key'), 'bad-key');
     await user.click(screen.getByText('Save'));
     await waitFor(() => {
-      expect(screen.getByText(/Failed to save/)).toBeInTheDocument();
+      expect(screen.getByText('Failed to save: network error')).toBeInTheDocument();
     });
   });
 
@@ -109,7 +109,7 @@ describe('APIKeyManager', () => {
     render(<APIKeyManager {...defaultProps} />);
     await user.click(screen.getByText('Check'));
     await waitFor(() => {
-      expect(screen.getByText(/Failed to read/)).toBeInTheDocument();
+      expect(screen.getByText('Failed to read: timeout')).toBeInTheDocument();
     });
   });
 
@@ -130,7 +130,7 @@ describe('APIKeyManager', () => {
     render(<APIKeyManager {...defaultProps} />);
     await user.click(screen.getByText('Clear'));
     await waitFor(() => {
-      expect(screen.getByText(/Failed to clear/)).toBeInTheDocument();
+      expect(screen.getByText('Failed to clear: forbidden')).toBeInTheDocument();
     });
   });
 

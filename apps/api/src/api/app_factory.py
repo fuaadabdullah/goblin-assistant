@@ -57,6 +57,14 @@ def create_app() -> FastAPI:
         lifespan=lifespan,
     )
 
+    @app.get("/")
+    async def root() -> dict[str, str]:
+        return {"message": "Goblin Assistant API"}
+
+    @app.get("/test")
+    async def test() -> dict[str, str]:
+        return {"status": "ok"}
+
     app.middleware("http")(add_contract_lifecycle_headers)
     register_exception_handlers(app)
 

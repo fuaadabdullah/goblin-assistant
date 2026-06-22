@@ -2,6 +2,7 @@ import { useQuery } from '@tanstack/react-query';
 import { apiClient } from '@/lib/api';
 import { queryKeys } from '@/lib/query-keys';
 import { normalizeProviderId, PROVIDER_ID_ALIASES } from '@/lib/providers/normalizeProvider';
+import { getUserMessage } from '@/lib/error/toast';
 
 interface RegistryModel {
   name?: string;
@@ -162,11 +163,7 @@ export function useProviderHealth() {
     }
   }
 
-  const error = registryQuery.error
-    ? registryQuery.error instanceof Error
-      ? registryQuery.error.message
-      : 'Unknown error loading providers'
-    : null;
+  const error = registryQuery.error ? getUserMessage(registryQuery.error) : null;
 
   return {
     providers: providerNames,

@@ -1,5 +1,6 @@
 import { useCallback, useState } from 'react';
 import * as Sentry from '@sentry/react';
+import { getUserMessage } from '@/lib/error/toast';
 
 // @sentry/react re-exports these from @sentry/browser at runtime but the type declarations
 // don't resolve them without @sentry/browser installed as a direct dep.
@@ -25,6 +26,8 @@ export interface ErrorTestResult {
 
 const createId = () => `${Date.now()}-${Math.random().toString(16).slice(2)}`;
 
+export const formatErrorTestMessage = (error: unknown): string => getUserMessage(error);
+
 export const useErrorTesting = (onSuccess?: (title: string, message?: string) => void) => {
   const [results, setResults] = useState<ErrorTestResult[]>([]);
   const [isLoading, setIsLoading] = useState(false);
@@ -49,7 +52,7 @@ export const useErrorTesting = (onSuccess?: (title: string, message?: string) =>
         addResult(label, 'success');
         onSuccess?.('Test completed', label);
       } catch (error) {
-        addResult(label, 'failed', error instanceof Error ? error.message : String(error));
+        addResult(label, 'failed', formatErrorTestMessage(error));
       }
     },
     [addResult, onSuccess]

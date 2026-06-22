@@ -10,6 +10,13 @@ from ..ops.security import require_ops_access
 router = APIRouter()
 
 
+def _detail_message(prefix: str, error: Exception) -> str:
+    message = str(error).strip()
+    if message:
+        return f"{prefix}: {message}"
+    return f"{prefix}: Request failed"
+
+
 @router.get("/aggregated")
 @require_ops_access("read")
 async def get_aggregated_metrics(request: Request) -> Dict[str, Any]:
@@ -22,7 +29,10 @@ async def get_aggregated_metrics(request: Request) -> Dict[str, Any]:
             "message": "Aggregated metrics retrieved successfully",
         }
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Failed to get aggregated metrics: {str(e)}")
+        raise HTTPException(
+            status_code=500,
+            detail=_detail_message("Failed to get aggregated metrics", e),
+        )
 
 
 @router.get("/health/trends")
@@ -46,7 +56,10 @@ async def get_health_trends(request: Request) -> Dict[str, Any]:
             "message": "Health trends calculated successfully",
         }
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Failed to get health trends: {str(e)}")
+        raise HTTPException(
+            status_code=500,
+            detail=_detail_message("Failed to get health trends", e),
+        )
 
 
 @router.get("/streaming/analysis")
@@ -76,7 +89,10 @@ async def get_streaming_analysis(request: Request) -> Dict[str, Any]:
             "message": "Streaming analysis completed successfully",
         }
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Failed to get streaming analysis: {str(e)}")
+        raise HTTPException(
+            status_code=500,
+            detail=_detail_message("Failed to get streaming analysis", e),
+        )
 
 
 @router.get("/recommendations")
@@ -114,4 +130,7 @@ async def get_system_recommendations(request: Request) -> Dict[str, Any]:
             "message": "System recommendations generated successfully",
         }
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Failed to get recommendations: {str(e)}")
+        raise HTTPException(
+            status_code=500,
+            detail=_detail_message("Failed to get recommendations", e),
+        )

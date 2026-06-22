@@ -48,7 +48,7 @@ async def check_redis_health() -> Dict[str, Any]:
     """Check Redis connectivity and performance health"""
     redis_url = os.getenv("REDIS_URL")
     if not redis_url:
-        return {"status": "unconfigured", "error": "REDIS_URL not set"}
+        return {"status": "unknown", "error": "REDIS_URL not set"}
 
     try:
         import redis.asyncio as _redis
@@ -108,13 +108,13 @@ def _summarize_provider_health(provider_status: Dict[str, Dict[str, Any]]) -> st
 
 
 def overall_status_from(component_statuses: list) -> str:
-    return (
-        "healthy"
-        if all(status == "healthy" for status in component_statuses)
-        else "degraded"
-        if "degraded" in component_statuses
-        else "warnings"
-    )
+    if all(status == "healthy" for status in component_statuses):
+        return "healthy"
+    if "unhealthy" in component_statuses:
+        return "unhealthy"
+    if "degraded" in component_statuses:
+        return "degraded"
+    return "warnings"
 
 
 async def build_health_payload(

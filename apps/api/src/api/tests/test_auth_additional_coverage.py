@@ -875,6 +875,27 @@ class TestGoogleRoutes:
         assert exc_info.value.status_code == 401
         assert "Invalid Google token" in str(exc_info.value.detail)
 
+    @pytest.mark.asyncio
+    async def test_google_auth_callback_preserves_exception_message(self, monkeypatch):
+        """Callback exceptions should preserve the underlying error text."""
+        response = Response()
+        db = MagicMock()
+
+        monkeypatch.setattr(
+            routes_google.GoogleOAuth,
+            "exchange_code_for_token",
+            AsyncMock(side_effect=RuntimeError("callback backend unavailable")),
+        )
+
+        with pytest.raises(HTTPException) as exc_info:
+            await routes_google.google_auth_callback(GoogleAuthCallback(code="bad"), response, db)
+
+        assert exc_info.value.status_code == 401
+        assert (
+            str(exc_info.value.detail)
+            == "Google authentication failed: callback backend unavailable"
+        )
+
 
 class TestPasskeyRoutes:
     @pytest.mark.asyncio

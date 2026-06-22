@@ -428,7 +428,7 @@ describe('apiClient', () => {
       await apiClient.runSandboxCode({ code: 'print("hello")', language: 'python' });
       expect(mockHttp.post).toHaveBeenCalledWith(
         '/api/v1/sandbox/run',
-        { code: 'print("hello")', language: 'python' },
+        { source: 'print("hello")', language: 'python' },
         undefined
       );
     });

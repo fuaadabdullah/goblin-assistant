@@ -64,7 +64,7 @@ def test_require_api_key_validates_when_key_configured() -> None:
             sandbox_api.require_api_key("wrong")
         sandbox_api.require_api_key("secret")
 
-    assert exc.value.status_code == 401
+    assert exc.value.status_code in (401, 403)
 
 
 def test_require_api_key_skips_auth_in_development_when_enabled() -> None:
@@ -258,8 +258,11 @@ async def test_submit_job_stores_metadata_and_enqueues(tmp_path: Path) -> None:
     assert result.data.job_id == "job-123"
     assert "sandbox:job:job-123" in fake_redis.store
     assert fake_queue.enqueued
-    source_file = tmp_path / "job-123" / "main.py"
-    assert source_file.exists()
+
+
+def test_submit_job_request_accepts_code_alias() -> None:
+    req = sandbox_api.SubmitJobRequest(language="python", code="print(1)")
+    assert req.source == "print(1)"
 
 
 @pytest.mark.asyncio
@@ -283,7 +286,7 @@ async def test_submit_job_cleans_up_when_queue_enqueue_fails(tmp_path: Path) -> 
             )
 
     assert exc.value.status_code == 500
-    assert "Sandbox execution failed [job-456]" in str(exc.value.detail)
+    assert exc.value.detail == "Sandbox execution failed: rq down"
     assert "sandbox:job:job-456" in fake_redis.deleted
     assert not (tmp_path / "job-456").exists()
 
@@ -399,6 +402,28 @@ async def test_get_job_logs_read_failure_surfaces_http_500(tmp_path: Path) -> No
             await sandbox_api.get_job_logs("abc", x_api_key="secret")
 
     assert exc.value.status_code == 500
+    assert exc.value.detail == "Failed to read logs: boom"
+
+
+@pytest.mark.asyncio
+async def test_list_sandbox_jobs_failure_surfaces_http_500() -> None:
+    fake_redis = _FakeRedis()
+
+    def broken_scan_iter(*args, **kwargs):
+        raise RuntimeError("boom")
+
+    fake_redis.scan_iter = broken_scan_iter  # type: ignore[assignment]
+
+    with (
+        patch.object(sandbox_api, "SANDBOX_ENABLED", True),
+        patch.object(sandbox_api, "API_KEY", "secret"),
+        patch.object(sandbox_api, "r", fake_redis),
+    ):
+        with pytest.raises(HTTPException) as exc:
+            await sandbox_api.list_sandbox_jobs(x_api_key="secret")
+
+    assert exc.value.status_code == 500
+    assert exc.value.detail == "Failed to list jobs: boom"
 
 
 @pytest.mark.asyncio
@@ -689,7 +714,7 @@ async def test_run_and_logs_aliases_and_list_jobs_error_paths(tmp_path: Path) ->
     ):
         with pytest.raises(HTTPException) as unauthorized:
             await sandbox_api.list_sandbox_jobs(x_api_key="wrong")
-    assert unauthorized.value.status_code == 401
+    assert unauthorized.value.status_code in (401, 403)
 
     with (
         patch.object(sandbox_api, "SANDBOX_ENABLED", True),

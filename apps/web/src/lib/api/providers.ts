@@ -36,15 +36,84 @@ const isSelectableFlag = (value: unknown): boolean => value !== false;
 
 async function loadModelRegistry(): Promise<ModelRegistryResponse> {
   try {
-    const data = await getFrontend<ModelRegistryResponse>('/api/models');
+    const registryResponse = await getFrontend<ModelRegistryResponse>('/api/models');
     return {
-      models: Array.isArray(data?.models) ? data.models : [],
-      providers: Array.isArray(data?.providers) ? data.providers : [],
+      models: Array.isArray(registryResponse?.models) ? registryResponse.models : [],
+      providers: Array.isArray(registryResponse?.providers) ? registryResponse.providers : [],
     };
   } catch {
     return { models: [], providers: [] };
   }
 }
+
+const collectRegistryProviderIds = (items: ProviderRegistryItem[]) => {
+  const seen = new Set<string>();
+  const ids: string[] = [];
+
+  for (const item of items) {
+    const id = normalizeProviderId(typeof item?.id === 'string' ? item.id : '');
+    if (!id || seen.has(id)) continue;
+    seen.add(id);
+    ids.push(id);
+  }
+
+  return ids;
+};
+
+const collectModelProviderIds = (items: ModelRegistryItem[]) => {
+  const seen = new Set<string>();
+  const ids: string[] = [];
+
+  for (const item of items) {
+    const id = normalizeProviderId(typeof item?.provider === 'string' ? item.provider : '');
+    if (!id || seen.has(id)) continue;
+    seen.add(id);
+    ids.push(id);
+  }
+
+  return ids;
+};
+
+const toProviderModelOption = (item: ModelRegistryItem): ProviderModelOption => ({
+  name: typeof item?.name === 'string' ? item.name.trim() : '',
+  provider: normalizeProviderId(typeof item?.provider === 'string' ? item.provider : ''),
+  health: normalizeHealth(item?.health),
+  isSelectable: isSelectableFlag(item?.is_selectable),
+  healthReason: typeof item?.health_reason === 'string' ? item.health_reason : null,
+});
+
+const mergeProviderModelOption = (
+  merged: Map<string, ProviderModelOption>,
+  incoming: ProviderModelOption
+) => {
+  const existing = merged.get(incoming.name);
+  if (!existing) {
+    merged.set(incoming.name, incoming);
+    return;
+  }
+
+  const selectable = existing.isSelectable || incoming.isSelectable;
+  merged.set(incoming.name, {
+    ...existing,
+    isSelectable: selectable,
+    health: selectable ? 'healthy' : incoming.health || existing.health,
+    healthReason: selectable ? null : (incoming.healthReason ?? existing.healthReason ?? null),
+  });
+};
+
+const mergeSelectableModelOptions = (items: ModelRegistryItem[], target: string) => {
+  const merged = new Map<string, ProviderModelOption>();
+
+  for (const item of items) {
+    const incoming = toProviderModelOption(item);
+    const { provider: pid, name } = incoming;
+    if (!pid || !name || pid !== target) continue;
+
+    mergeProviderModelOption(merged, incoming);
+  }
+
+  return Array.from(merged.values()).sort((a, b) => a.name.localeCompare(b.name));
+};
 
 const emptyCostSummary: CostSummary = {
   total_cost: 0,
@@ -92,26 +161,10 @@ export const providersMethods = {
 
   async getProviders(): Promise<string[]> {
     const registry = await loadModelRegistry();
-    const seen = new Set<string>();
-    const providers: string[] = [];
-
-    for (const entry of registry.providers ?? []) {
-      const id = normalizeProviderId(typeof entry?.id === 'string' ? entry.id : '');
-      if (!id || seen.has(id)) continue;
-      seen.add(id);
-      providers.push(id);
-    }
-
+    const providers = collectRegistryProviderIds(registry.providers ?? []);
     if (providers.length > 0) return providers;
 
-    for (const item of registry.models ?? []) {
-      const id = normalizeProviderId(typeof item?.provider === 'string' ? item.provider : '');
-      if (!id || seen.has(id)) continue;
-      seen.add(id);
-      providers.push(id);
-    }
-
-    return providers;
+    return collectModelProviderIds(registry.models ?? []);
   },
 
   async getProviderModelOptions(provider: string): Promise<ProviderModelOption[]> {
@@ -119,37 +172,7 @@ export const providersMethods = {
     if (!target) return [];
 
     const registry = await loadModelRegistry();
-    const merged = new Map<string, ProviderModelOption>();
-
-    for (const item of registry.models ?? []) {
-      const pid = normalizeProviderId(typeof item?.provider === 'string' ? item.provider : '');
-      const name = typeof item?.name === 'string' ? item.name.trim() : '';
-      if (!pid || !name || pid !== target) continue;
-
-      const incoming: ProviderModelOption = {
-        name,
-        provider: pid,
-        health: normalizeHealth(item?.health),
-        isSelectable: isSelectableFlag(item?.is_selectable),
-        healthReason: typeof item?.health_reason === 'string' ? item.health_reason : null,
-      };
-
-      const existing = merged.get(name);
-      if (!existing) {
-        merged.set(name, incoming);
-        continue;
-      }
-
-      const selectable = existing.isSelectable || incoming.isSelectable;
-      merged.set(name, {
-        ...existing,
-        isSelectable: selectable,
-        health: selectable ? 'healthy' : incoming.health || existing.health,
-        healthReason: selectable ? null : (incoming.healthReason ?? existing.healthReason ?? null),
-      });
-    }
-
-    return Array.from(merged.values()).sort((a, b) => a.name.localeCompare(b.name));
+    return mergeSelectableModelOptions(registry.models ?? [], target);
   },
 
   async getProviderModels(provider: string): Promise<string[]> {

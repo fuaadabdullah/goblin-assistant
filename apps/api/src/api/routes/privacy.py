@@ -39,6 +39,13 @@ VECTOR_STORE_AVAILABLE = (
 _vector_store = None
 
 
+def _detail_message(prefix: str, error: Exception) -> str:
+    message = str(error).strip()
+    if message:
+        return f"{prefix}: {message}"
+    return f"{prefix}: Request failed"
+
+
 def _get_vector_store():
     global _vector_store
 
@@ -118,7 +125,10 @@ async def export_user_data(
                 )
             else:
                 export_data["data"]["vectors"] = {
-                    "error": vector_export.get("error", "Unknown error")
+                    "error": vector_export.get("error")
+                    or vector_export.get("detail")
+                    or vector_export.get("message")
+                    or "Export unavailable",
                 }
 
         # Export conversations from database
@@ -156,7 +166,7 @@ async def export_user_data(
             except Exception as conv_error:
                 logger.error("Conversation export error: %s", conv_error)
                 export_data["data"]["conversations"] = {
-                    "error": str(conv_error),
+                    "error": _detail_message("Conversation export failed", conv_error),
                     "count": 0,
                 }
 
@@ -171,7 +181,7 @@ async def export_user_data(
             except Exception as pref_error:
                 logger.error("Preferences export error: %s", pref_error)
                 export_data["data"]["preferences"] = {
-                    "error": str(pref_error),
+                    "error": _detail_message("Preferences export failed", pref_error),
                 }
 
         # Export memory records
@@ -196,7 +206,7 @@ async def export_user_data(
 
     except Exception as e:
         logger.error("Export failed for user %s: %s", user_id, e)
-        raise HTTPException(status_code=500, detail=f"Export failed: {str(e)}")
+        raise HTTPException(status_code=500, detail=_detail_message("Export failed", e))
 
 
 @router.delete("/delete", response_model=Dict[str, Any])
@@ -322,7 +332,7 @@ async def delete_user_data(
             user_id=user_id,
             metadata={"action": "full_deletion", "success": False},
         )
-        raise HTTPException(status_code=500, detail=f"Deletion failed: {str(e)}")
+        raise HTTPException(status_code=500, detail=_detail_message("Deletion failed", e))
 
 
 @router.get("/data-summary", response_model=Dict[str, Any])
@@ -423,7 +433,10 @@ async def get_data_summary(user_id: str = Depends(get_current_user)) -> Dict[str
 
     except Exception as e:
         logger.error("Summary failed for user %s: %s", user_id, e)
-        raise HTTPException(status_code=500, detail=f"Failed to generate summary: {str(e)}")
+        raise HTTPException(
+            status_code=500,
+            detail=_detail_message("Failed to generate summary", e),
+        )
 
 
 @router.post("/consent/rag", response_model=Dict[str, Any])
@@ -458,7 +471,7 @@ async def update_rag_consent(
             logger.error("Failed to store RAG consent: %s", consent_error)
             raise HTTPException(
                 status_code=500,
-                detail=f"Failed to store consent: {str(consent_error)}",
+                detail=_detail_message("Failed to store consent", consent_error),
             )
 
         if not consent_given:
@@ -488,9 +501,11 @@ async def update_rag_consent(
             "message": ("Consent updated" if consent_given else "Consent revoked and data deleted"),
         }
 
+    except HTTPException:
+        raise
     except Exception as e:
         logger.error("Consent update failed for user %s: %s", user_id, e)
-        raise HTTPException(status_code=500, detail=f"Consent update failed: {str(e)}")
+        raise HTTPException(status_code=500, detail=_detail_message("Consent update failed", e))
 
 
 # Export router

@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from api.assistant_tools import skills  # noqa: F401
 from api.assistant_tools.registry import (
     ToolDefinition,
     ToolParameter,
@@ -80,6 +81,29 @@ def test_exported_financial_tools_include_model_inference_guidance():
     portfolio_period = tools["portfolio_analyzer"]["parameters"]["properties"]["period"]
     assert portfolio_period["default"] == "1y"
     assert portfolio_period["enum"] == ["1mo", "3mo", "6mo", "1y", "2y", "5y"]
+
+    assert "get_market_news" in tools
+    assert "news_summarizer" in tools
+    assert "search_filings" in tools
+    assert "create_reminder" in tools
+    assert "create_calendar_event" in tools
+    market_news = tools["get_market_news"]
+    assert market_news["parameters"]["properties"]["limit"]["default"] == 10
+    assert "market-moving headlines" in market_news["description"]
+
+    news_summary = tools["news_summarizer"]
+    assert news_summary["parameters"]["properties"]["max_items"]["default"] == 6
+    assert "concise synthesis" in news_summary["description"]
+
+    filing_search = tools["search_filings"]
+    assert filing_search["parameters"]["properties"]["limit"]["default"] == 5
+    assert "structured filing metadata" in filing_search["description"]
+
+    reminder_tool = tools["create_reminder"]
+    assert reminder_tool["parameters"]["properties"]["status"]["default"] == "scheduled"
+
+    calendar_tool = tools["create_calendar_event"]
+    assert calendar_tool["parameters"]["properties"]["status"]["default"] == "planned"
 
 
 def test_exported_tools_include_memory_recall_contract():

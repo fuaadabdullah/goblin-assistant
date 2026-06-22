@@ -20,6 +20,24 @@ function delay(ms: number): Promise<void> {
   return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
+function computeBackoffMs(baseDelayMs: number, attempt: number, maxDelayMs: number): number {
+  const jitter = Math.random() * 200;
+  return Math.min(baseDelayMs * 2 ** (attempt - 1) + jitter, maxDelayMs);
+}
+
+function shouldAbortRetry(
+  attempt: number,
+  maxAttempts: number,
+  error: unknown,
+  shouldRetry: (error: unknown) => boolean,
+  onRetry: ((attempt: number, error: unknown) => boolean | void) | undefined
+): boolean {
+  if (attempt === maxAttempts) return true;
+  if (!shouldRetry(error)) return true;
+  const continueRetry = onRetry?.(attempt, error);
+  return continueRetry === false;
+}
+
 /**
  * Calls `fn` up to `maxAttempts` times with exponential backoff.
  *
@@ -50,14 +68,9 @@ export async function withRetry<T>(fn: () => Promise<T>, opts: RetryOptions = {}
     } catch (error) {
       lastError = error;
 
-      const isLast = attempt === maxAttempts;
-      if (isLast || !shouldRetry(error)) throw error;
+      if (shouldAbortRetry(attempt, maxAttempts, error, shouldRetry, onRetry)) throw error;
 
-      const continueRetry = onRetry?.(attempt, error);
-      if (continueRetry === false) throw error;
-
-      const jitter = Math.random() * 200;
-      const backoff = Math.min(baseDelayMs * 2 ** (attempt - 1) + jitter, maxDelayMs);
+      const backoff = computeBackoffMs(baseDelayMs, attempt, maxDelayMs);
       await delay(backoff);
     }
   }

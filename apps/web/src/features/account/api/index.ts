@@ -1,5 +1,6 @@
 import { authUpdateUser } from '@/lib/supabase';
 import { UiError } from '../../../lib/ui-error';
+import { getUserMessage } from '../../../lib/error/toast';
 import type { AccountPreferencesPayload, AccountProfilePayload } from '../types';
 
 export type { AccountPreferencesPayload, AccountProfilePayload } from '../types';
@@ -12,7 +13,7 @@ export const saveProfile = async (payload: AccountProfilePayload): Promise<void>
     throw new UiError(
       {
         code: 'ACCOUNT_PROFILE_SAVE_FAILED',
-        userMessage: 'We could not save your profile. Please try again.',
+        userMessage: getUserMessage(error),
       },
       error
     );
@@ -26,7 +27,7 @@ export const savePreferences = async (payload: AccountPreferencesPayload): Promi
     throw new UiError(
       {
         code: 'ACCOUNT_PREFERENCES_SAVE_FAILED',
-        userMessage: 'We could not save your preferences. Please try again.',
+        userMessage: getUserMessage(error),
       },
       error
     );

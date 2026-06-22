@@ -263,6 +263,15 @@ async def _stop_colab_heartbeat():
         )
 
 
+def _log_startup_task_result(task: asyncio.Task) -> None:
+    try:
+        task.result()
+    except asyncio.CancelledError:
+        logger.warning("Background startup task cancelled")
+    except Exception as exc:
+        logger.warning("Background startup task failed", error=str(exc))
+
+
 @asynccontextmanager
 async def lifespan(_app: FastAPI):
     """Application lifespan: startup and shutdown logic."""
@@ -304,7 +313,16 @@ async def lifespan(_app: FastAPI):
                 pass
             logger.info("Background services started")
 
-        asyncio.create_task(_start_all_services())
+        startup_task = asyncio.create_task(_start_all_services())
+        startup_task.add_done_callback(_log_startup_task_result)
+        startup_wait_seconds = float(os.getenv("LIFESPAN_STARTUP_WAIT_SECONDS", "0.5"))
+        try:
+            await asyncio.wait_for(asyncio.shield(startup_task), timeout=startup_wait_seconds)
+        except asyncio.TimeoutError:
+            logger.info(
+                "Background startup continuing asynchronously",
+                timeout_seconds=startup_wait_seconds,
+            )
         logger.info("Backend startup complete", status="ready")
     except Exception as exc:
         logger.error(
@@ -354,7 +372,7 @@ async def lifespan(_app: FastAPI):
             )
 
         try:
-            from .services.embedding_service import (  # noqa: PLC0415
+            from .services.embedding_worker import (  # noqa: PLC0415
                 embedding_worker,
             )
 

@@ -9,9 +9,8 @@ import asyncio
 from datetime import datetime
 from typing import Any, Dict
 
-from fastapi import APIRouter, Request
+from fastapi import APIRouter, HTTPException, Request
 
-from .core.contracts import SuccessEnvelope
 from .health_checks import (
     _check_chroma,
     _check_cost_tracking,
@@ -32,10 +31,18 @@ from .ops_health import ops_health_router  # noqa: F401 — re-exported for ops_
 router = APIRouter(tags=["health"])
 
 
+class HealthPayload(dict):
+    """Dict payload that also exposes `.data` for direct-call test compatibility."""
+
+    @property
+    def data(self) -> "HealthPayload":
+        return self
+
+
 @router.get("/health")
 async def health_check(
     request: Request = None,  # type: ignore[assignment] — None only when called directly (tests, ops)
-) -> Dict[str, Any] | SuccessEnvelope[Dict[str, Any]]:
+) -> Dict[str, Any]:
     """Unified health endpoint covering all subsystems.
 
     Strategy: Prioritizes fast response times over comprehensive validation.
@@ -50,13 +57,11 @@ async def health_check(
         redis_check=check_redis_health,
         api_check=check_api_health,
     )
-    if request is None or request.url.path.startswith("/api/v1/"):
-        return SuccessEnvelope(data=payload)
-    return payload
+    return HealthPayload(payload)
 
 
 @router.get("/health/stream")
-async def health_stream(request: Request) -> Dict[str, Any] | SuccessEnvelope[Dict[str, Any]]:
+async def health_stream(request: Request) -> Dict[str, Any]:
     """Streaming health check endpoint (legacy compatibility)"""
     # For backward compatibility, redirect to main health endpoint
     return await health_check(request)
@@ -225,6 +230,21 @@ async def health_routing() -> Dict[str, Any]:
             "service": "routing",
             "timestamp": datetime.utcnow().isoformat(),
         }
+
+
+@router.get("/health/{component}")
+async def health_component(component: str) -> Dict[str, Any]:
+    """Return a specific subsystem probe for compatibility with older clients."""
+    normalized = component.strip().lower()
+    if normalized == "api":
+        return await check_api_health()
+    if normalized == "database":
+        return await check_db_health()
+    if normalized == "redis":
+        return await check_redis_health()
+    if normalized == "routing":
+        return await check_routing_health()
+    raise HTTPException(status_code=404, detail="Unknown health component")
 
 
 @router.get("/health/streaming")

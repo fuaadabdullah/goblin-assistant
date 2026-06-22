@@ -142,6 +142,21 @@ class ProviderQuotaService:
             self._last_skip_reason = "capacity"
         return reservation if ok else None
 
+    async def _reserve_with_redis(
+        self,
+        redis_client: Any,
+        reservation: QuotaReservation,
+        provider_limit: Any,
+        shared_limit: Any,
+    ) -> bool:
+        self._sync_test_context()
+        return await self._redis_backend.reserve_with_client(
+            redis_client,
+            reservation,
+            provider_limit,
+            shared_limit,
+        )
+
     async def commit(
         self,
         reservation: QuotaReservation,

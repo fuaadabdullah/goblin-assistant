@@ -17,6 +17,7 @@ from .chat_router.helpers import _raise_structured_provider_error
 from .input_validation import InputSanitizer
 from .providers.dispatcher import invoke_provider
 from .services.memory_core import memory_core_service
+from .services.retrieval_service import retrieval_service as _retrieval_service
 from .storage.conversations import conversation_store
 
 logger = structlog.get_logger()
@@ -39,9 +40,7 @@ def _get_embedding_worker():
 
 
 def _get_retrieval_singleton():
-    from .services.retrieval_service import retrieval_service
-
-    return retrieval_service
+    return _retrieval_service
 
 
 class SemanticSendMessageRequest(BaseModel):

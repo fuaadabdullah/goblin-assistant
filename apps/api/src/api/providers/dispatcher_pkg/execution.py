@@ -176,11 +176,26 @@ async def dispatch_request(
     prompt = payload.get("prompt", "")
     candidates = dispatcher._candidate_order(resolved_pid)
     if not candidates:
-        return {
-            "ok": False,
-            "error": f"unknown-provider:{pid}",
-            "latency_ms": 0.0,
-        }
+        try:
+            if dispatcher.is_configured("mock") and dispatcher._ensure_provider("mock") is not None:
+                candidates = ["mock"]
+                logger.warning(
+                    "dispatch_mock_fallback",
+                    routing_mode="auto"
+                    if resolved_pid in (None, "auto", "cheapest", "local")
+                    else "explicit",
+                    provider_id=pid or "auto",
+                    model=resolved_model or "",
+                )
+        except Exception:
+            candidates = []
+
+        if not candidates:
+            return {
+                "ok": False,
+                "error": f"unknown-provider:{pid}",
+                "latency_ms": 0.0,
+            }
 
     explicit_mode = resolved_pid not in (None, "auto", "cheapest", "local")
     if explicit_mode:
@@ -210,11 +225,21 @@ async def dispatch_request(
     if explicit_mode and not ordered:
         ordered = candidates
     if not ordered:
-        return {
-            "ok": False,
-            "error": "no-configured-providers",
-            "latency_ms": 0.0,
-        }
+        mock_provider = None
+        try:
+            if dispatcher.is_configured("mock"):
+                mock_provider = dispatcher._ensure_provider("mock")
+        except Exception:
+            mock_provider = None
+
+        if mock_provider is not None:
+            ordered = ["mock"]
+        else:
+            return {
+                "ok": False,
+                "error": "no-configured-providers",
+                "latency_ms": 0.0,
+            }
 
     if user_id:
         allowed = [p for p in ordered if await check_provider_access(user_id, p)]

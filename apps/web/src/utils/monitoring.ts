@@ -1,5 +1,6 @@
 // src/utils/monitoring.ts - Error monitoring with Sentry integration
 import * as Sentry from '@sentry/react';
+import { apiClient } from '@/lib/api';
 import { env } from '../config/env';
 import { devError } from './dev-log';
 
@@ -84,18 +85,14 @@ export function logErrorToService(error: unknown, context?: ErrorContext): strin
       });
     }
 
-    // Fallback: Send to custom endpoint
-    fetch('/api/errors', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        message: normalizedError.message,
-        stack: normalizedError.stack,
-        context,
-        timestamp: new Date().toISOString(),
-        userAgent: navigator.userAgent,
-        url: window.location.href,
-      }),
+    // Fallback: Send to the app API boundary, not a raw fetch from the utility module.
+    void apiClient.submitErrorReport({
+      message: normalizedError.message,
+      stack: normalizedError.stack,
+      timestamp: new Date().toISOString(),
+      userAgent: navigator.userAgent,
+      url: window.location.href,
+      context,
     }).catch(() => {
       // Silent fail - don't break app if logging fails
     });

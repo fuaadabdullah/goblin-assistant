@@ -28,6 +28,18 @@ get_secret() {
     fi
 }
 
+get_secret_any() {
+    local value=""
+    for candidate in "$@"; do
+        value=$(get_secret "$candidate")
+        if [ -n "$value" ]; then
+            echo "$value"
+            return 0
+        fi
+    done
+    echo ""
+}
+
 # Retrieve secrets
 echo "🔑 Retrieving secrets..."
 
@@ -36,6 +48,9 @@ JWT_SECRET_KEY=$(get_secret "JWT Secret")
 REDIS_URL=$(get_secret "Redis URL")
 ANTHROPIC_API_KEY=$(get_secret "Anthropic API Key")
 OPENAI_API_KEY=$(get_secret "OpenAI API Key")
+GROQ_API_KEY=$(get_secret_any "Groq API Key" "goblin-prod-groq-key")
+SILICONEFLOW_API_KEY=$(get_secret_any "SiliconeFlow API Key" "SiliconFlow API Key" "goblin-prod-siliconeflow-key")
+GOOGLE_AI_API_KEY=$(get_secret_any "Google AI API Key" "Google Gemini API Key" "goblin-prod-google-ai-key")
 SUPABASE_URL=$(get_secret "Supabase URL")
 SUPABASE_ANON_KEY=$(get_secret "Supabase Anon Key")
 SUPABASE_SERVICE_ROLE_KEY=$(get_secret "Supabase Service Role Key")
@@ -82,6 +97,27 @@ if [ -n "$OPENAI_API_KEY" ]; then
     echo "✅ OPENAI_API_KEY updated"
 else
     echo "⚠️  OPENAI_API_KEY not found in Bitwarden"
+fi
+
+if [ -n "$GROQ_API_KEY" ]; then
+    sed -i.bak "s|GROQ_API_KEY=.*|GROQ_API_KEY=$GROQ_API_KEY|" .env.production
+    echo "✅ GROQ_API_KEY updated"
+else
+    echo "⚠️  GROQ_API_KEY not found in Bitwarden"
+fi
+
+if [ -n "$SILICONEFLOW_API_KEY" ]; then
+    sed -i.bak "s|SILICONEFLOW_API_KEY=.*|SILICONEFLOW_API_KEY=$SILICONEFLOW_API_KEY|" .env.production
+    echo "✅ SILICONEFLOW_API_KEY updated"
+else
+    echo "⚠️  SILICONEFLOW_API_KEY not found in Bitwarden"
+fi
+
+if [ -n "$GOOGLE_AI_API_KEY" ]; then
+    sed -i.bak "s|GOOGLE_AI_API_KEY=.*|GOOGLE_AI_API_KEY=$GOOGLE_AI_API_KEY|" .env.production
+    echo "✅ GOOGLE_AI_API_KEY updated"
+else
+    echo "⚠️  GOOGLE_AI_API_KEY not found in Bitwarden"
 fi
 
 if [ -n "$SUPABASE_URL" ]; then

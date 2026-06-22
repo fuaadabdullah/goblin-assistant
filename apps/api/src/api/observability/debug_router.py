@@ -24,6 +24,7 @@ from .debug_system_router import (
     router as system_router,
 )
 from .debug_write_router import (  # noqa: F401
+    event_emitter,  # noqa: F401
     get_write_decisions,
     search_memory_promotions,
     search_write_decisions,

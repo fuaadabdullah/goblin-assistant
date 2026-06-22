@@ -1,6 +1,6 @@
 import { describe, it, expect, beforeEach, jest } from 'vitest';
 import { renderHook, act, waitFor } from '@testing-library/react';
-import { useChatStreaming } from '../useChatStreaming';
+import { formatChatStreamingError, useChatStreaming } from '../useChatStreaming';
 import { apiClient } from '@/lib/api';
 
 const mockChatCompletion = vi.spyOn(apiClient, 'chatCompletion');
@@ -85,6 +85,10 @@ describe('useChatStreaming', () => {
     });
 
     expect(onError).toHaveBeenCalledWith('Chat error', 'API request failed');
+  });
+
+  it('preserves non-Error chat failures', () => {
+    expect(formatChatStreamingError('stream backend unavailable')).toBe('stream backend unavailable');
   });
 
   it('should set loading state during request', async () => {

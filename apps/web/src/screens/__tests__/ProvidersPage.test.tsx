@@ -133,4 +133,15 @@ describe('ProvidersPage', () => {
     fireEvent.click(openaiBtn);
     // Should show provider detail or update selection
   });
+
+  it('shows provider load errors with the underlying message', () => {
+    mockProviderSettings.mockReturnValue({
+      data: null,
+      isLoading: false,
+      error: new Error('registry unavailable'),
+      refetch: vi.fn(),
+    });
+    render(<ProvidersPage />, { wrapper });
+    expect(screen.getByText('Failed to load providers: registry unavailable')).toBeInTheDocument();
+  });
 });

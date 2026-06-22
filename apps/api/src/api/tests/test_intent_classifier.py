@@ -73,6 +73,10 @@ class TestKeywordClassification:
         result = classifier.classify("How do I backtest a mean-reversion trading strategy?")
         assert result.label == IntentLabel.FINANCE
 
+    def test_finance_from_market_news(self, classifier):
+        result = classifier.classify("Give me the latest market news on AAPL and NVDA")
+        assert result.label == IntentLabel.FINANCE
+
     def test_reasoning_from_pros_cons(self, classifier):
         result = classifier.classify("What are the pros and cons of microservices vs monolith?")
         assert result.label == IntentLabel.REASONING

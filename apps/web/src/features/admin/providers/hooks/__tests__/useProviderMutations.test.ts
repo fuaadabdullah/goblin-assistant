@@ -23,6 +23,7 @@ vi.mock('@/lib/query-keys', () => ({
 }));
 
 import { useProviderMutations } from '../useProviderMutations';
+import { formatProviderTestMessage } from '../useProviderMutations';
 
 function wrapper({ children }: { children: React.ReactNode }) {
   const qc = new QueryClient({ defaultOptions: { queries: { retry: false } } });
@@ -82,5 +83,9 @@ describe('useProviderMutations', () => {
   it('testing state reflects current test', async () => {
     const { result } = renderHook(() => useProviderMutations(), { wrapper });
     expect(result.current.testing).toBeNull();
+  });
+
+  it('preserves non-Error test failures in the formatter', () => {
+    expect(formatProviderTestMessage('provider offline')).toBe('provider offline');
   });
 });

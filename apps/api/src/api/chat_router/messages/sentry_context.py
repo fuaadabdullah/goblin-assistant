@@ -34,6 +34,8 @@ def set_sentry_chat_context(
                 "model": model,
             },
         )
-        sentry_sdk.set_transaction_name("POST /chat/conversations/{conversation_id}/messages")
+        sentry_sdk.set_transaction_name(
+            "POST /api/v1/chat/conversations/{conversation_id}/messages"
+        )
     except Exception:
         return

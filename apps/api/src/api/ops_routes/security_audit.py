@@ -7,6 +7,13 @@ from ..ops.security import get_ops_audit_log, get_security_summary, require_ops_
 router = APIRouter()
 
 
+def _detail_message(prefix: str, error: Exception) -> str:
+    message = str(error).strip()
+    if message:
+        return f"{prefix}: {message}"
+    return f"{prefix}: Request failed"
+
+
 @router.get("/security/status")
 @require_ops_access("read")
 async def get_security_status(request: Request) -> Dict[str, Any]:
@@ -18,7 +25,10 @@ async def get_security_status(request: Request) -> Dict[str, Any]:
             "message": "Security status retrieved successfully",
         }
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Failed to get security status: {str(e)}")
+        raise HTTPException(
+            status_code=500,
+            detail=_detail_message("Failed to get security status", e),
+        )
 
 
 @router.get("/audit/log")
@@ -42,4 +52,4 @@ async def get_audit_log(
             "message": "Audit log retrieved successfully",
         }
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Failed to get audit log: {str(e)}")
+        raise HTTPException(status_code=500, detail=_detail_message("Failed to get audit log", e))

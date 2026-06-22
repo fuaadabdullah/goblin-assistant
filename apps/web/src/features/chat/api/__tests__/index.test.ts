@@ -79,4 +79,108 @@ describe('chatClient conversation API', () => {
       message: 'Retry me',
     });
   });
+
+  it('falls back to the completion proxy when conversation send fails', async () => {
+    const sendSpy = vi
+      .spyOn(apiClient, 'sendConversationMessage')
+      .mockRejectedValueOnce(new Error('no-configured-providers'));
+    const completionSpy = vi.spyOn(apiClient, 'chatCompletion').mockResolvedValue('mock reply');
+
+    const response = await chatClient.sendMessage({
+      conversationId: 'conv-4',
+      prompt: 'Hi',
+      messages: [
+        { id: 'm1', createdAt: '2026-02-21T00:00:00.000Z', role: 'user', content: 'Hi' },
+      ],
+    });
+
+    expect(sendSpy).toHaveBeenCalledTimes(1);
+    expect(completionSpy).toHaveBeenCalled();
+    expect(response.content).toBe('mock reply');
+    expect(response.provider).toBe('mock');
+  });
+
+  it('surfaces provider access errors when fallback completion also fails', async () => {
+    vi.spyOn(apiClient, 'sendConversationMessage').mockRejectedValueOnce({
+      response: {
+        status: 200,
+        data: { error: 'provider-access-denied' },
+      },
+    });
+    vi.spyOn(apiClient, 'chatCompletion').mockRejectedValueOnce(new Error('fallback failed'));
+
+    await expect(
+      chatClient.sendMessage({
+        conversationId: 'conv-5',
+        prompt: 'Hi',
+      })
+    ).rejects.toMatchObject({
+      code: 'CHAT_PROVIDER_ACCESS_DENIED',
+        userMessage: 'Your account does not have access to any providers right now.',
+      });
+  });
+
+  it('falls back from streaming when the backend returns provider errors in the body', async () => {
+    const onChunk = vi.fn();
+    const onComplete = vi.fn();
+    const onError = vi.fn();
+    const fetchMock = vi.fn().mockResolvedValue({
+      ok: false,
+      status: 200,
+      statusText: 'OK',
+      text: vi.fn().mockResolvedValue('no-configured-providers'),
+    });
+
+    vi.spyOn(apiClient, 'chatCompletion').mockResolvedValue('stream fallback reply');
+    vi.stubGlobal('fetch', fetchMock as unknown as typeof fetch);
+
+    await chatClient.sendMessageStreaming({
+      conversationId: 'conv-6',
+      prompt: 'Stream this',
+      onChunk,
+      onComplete,
+      onError,
+    });
+
+    expect(fetchMock).toHaveBeenCalled();
+    expect(apiClient.chatCompletion).toHaveBeenCalledWith(
+      [{ role: 'user', content: 'Stream this' }],
+      undefined
+    );
+    expect(onChunk).toHaveBeenCalledWith('stream fallback reply', 0, 0);
+    expect(onComplete).toHaveBeenCalledWith(
+      expect.objectContaining({
+        content: 'stream fallback reply',
+        provider: 'mock',
+        model: 'mock-gpt',
+      })
+    );
+    expect(onError).not.toHaveBeenCalled();
+  });
+
+  it('preserves non-Error streaming failures in the error callback', async () => {
+    const onChunk = vi.fn();
+    const onComplete = vi.fn();
+    const onError = vi.fn();
+    const fetchMock = vi.fn().mockRejectedValue('stream backend unavailable');
+
+    vi.stubGlobal('fetch', fetchMock as unknown as typeof fetch);
+
+    await expect(
+      chatClient.sendMessageStreaming({
+        conversationId: 'conv-7',
+        prompt: 'Stream this',
+        onChunk,
+        onComplete,
+        onError,
+      })
+    ).rejects.toMatchObject({
+      code: 'CHAT_STREAM_FAILED',
+      userMessage: 'The connection was interrupted. Please try again.',
+    });
+
+    expect(onError).toHaveBeenCalledWith(expect.any(Error));
+    expect((onError.mock.calls[0]?.[0] as Error).message).toBe('stream backend unavailable');
+    expect(onComplete).not.toHaveBeenCalled();
+  });
 });

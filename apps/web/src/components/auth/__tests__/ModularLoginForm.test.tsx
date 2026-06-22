@@ -82,6 +82,7 @@ vi.mock('../../../config/turnstile', () => ({
 }));
 
 import ModularLoginForm from '../ModularLoginForm';
+import { formatLoginError } from '../ModularLoginForm';
 
 function Wrapper({ children }: { children: React.ReactNode }) {
   const qc = new QueryClient({ defaultOptions: { queries: { retry: false } } });
@@ -126,5 +127,11 @@ describe('ModularLoginForm', () => {
     expect(
       screen.getByText(/usage data/i) || screen.getByText(/disclaimer/i) || document.body
     ).toBeTruthy();
+  });
+
+  it('preserves non-Error login failures through the shared formatter', () => {
+    expect(formatLoginError('oauth backend unavailable', 'Authentication failed')).toBe(
+      'oauth backend unavailable'
+    );
   });
 });

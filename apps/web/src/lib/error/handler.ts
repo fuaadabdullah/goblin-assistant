@@ -1,4 +1,5 @@
 import { UiError } from '../ui-error';
+import { extractApiErrorMessage } from '../api/http-helpers';
 
 export type ErrorSeverity = 'fatal' | 'error' | 'warning';
 
@@ -25,6 +26,72 @@ function getHttpStatus(error: unknown): number | null {
   return typeof status === 'number' ? status : null;
 }
 
+function buildFatalAuthError(error: unknown): AppError {
+  return {
+    code: 'AUTH_ERROR',
+    userMessage: 'You need to sign in to continue.',
+    severity: 'fatal',
+    retryable: false,
+    cause: error,
+  };
+}
+
+function buildNotFoundError(error: unknown): AppError {
+  return {
+    code: 'NOT_FOUND',
+    userMessage: 'The requested resource was not found.',
+    severity: 'error',
+    retryable: false,
+    cause: error,
+  };
+}
+
+function buildValidationError(error: unknown): AppError {
+  return {
+    code: 'VALIDATION_ERROR',
+    userMessage: 'The request was invalid. Please check your input and try again.',
+    severity: 'warning',
+    retryable: false,
+    cause: error,
+  };
+}
+
+function buildRetryableHttpError(status: number, error: unknown): AppError {
+  const responsePayload =
+    error && typeof error === 'object'
+      ? ((error as Record<string, unknown>)['response'] as Record<string, unknown> | undefined)?.[
+          'data'
+        ]
+      : undefined;
+
+  return {
+    code: `HTTP_${status}`,
+    userMessage:
+      extractApiErrorMessage(responsePayload, '') ||
+      'A server error occurred. Please try again in a moment.',
+    severity: 'error',
+    retryable: true,
+    cause: error,
+  };
+}
+
+function buildGenericError(error: unknown, fallbackCode: string): AppError {
+  const message =
+    error instanceof Error
+      ? error.message
+      : typeof error === 'string'
+        ? error
+        : 'An unexpected error occurred.';
+
+  return {
+    code: fallbackCode,
+    userMessage: message || 'An unexpected error occurred.',
+    severity: 'error',
+    retryable: false,
+    cause: error,
+  };
+}
+
 /**
  * Converts any thrown value into a structured `AppError`.
  *
@@ -49,60 +116,23 @@ export function handleError(error: unknown, fallbackCode = 'UNKNOWN_ERROR'): App
 
   if (status !== null) {
     if (FATAL_STATUSES.has(status)) {
-      return {
-        code: 'AUTH_ERROR',
-        userMessage: 'You need to sign in to continue.',
-        severity: 'fatal',
-        retryable: false,
-        cause: error,
-      };
+      return buildFatalAuthError(error);
     }
 
     if (status === 404) {
-      return {
-        code: 'NOT_FOUND',
-        userMessage: 'The requested resource was not found.',
-        severity: 'error',
-        retryable: false,
-        cause: error,
-      };
+      return buildNotFoundError(error);
     }
 
     if (status === 422 || status === 400) {
-      return {
-        code: 'VALIDATION_ERROR',
-        userMessage: 'The request was invalid. Please check your input and try again.',
-        severity: 'warning',
-        retryable: false,
-        cause: error,
-      };
+      return buildValidationError(error);
     }
 
     if (RETRYABLE_STATUSES.has(status)) {
-      return {
-        code: `HTTP_${status}`,
-        userMessage: 'A server error occurred. Please try again in a moment.',
-        severity: 'error',
-        retryable: true,
-        cause: error,
-      };
+      return buildRetryableHttpError(status, error);
     }
   }
 
-  const message =
-    error instanceof Error
-      ? error.message
-      : typeof error === 'string'
-        ? error
-        : 'An unexpected error occurred.';
-
-  return {
-    code: fallbackCode,
-    userMessage: message || 'An unexpected error occurred.',
-    severity: 'error',
-    retryable: false,
-    cause: error,
-  };
+  return buildGenericError(error, fallbackCode);
 }
 
 /** Returns true when the error is worth retrying automatically. */

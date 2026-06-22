@@ -19,6 +19,14 @@ const STATUS_MESSAGES: Record<StartupStatus, string> = {
 const delay = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 const now = () => (typeof performance !== 'undefined' ? performance.now() : Date.now());
 
+export const buildStartupErrorMessage = (error: unknown): string => {
+  if (error instanceof Error && error.message.trim()) {
+    return error.message;
+  }
+
+  return 'We hit a snag while booting. Redirecting to help.';
+};
+
 export const resolveStartupDestinationRoute = (input: {
   isAuthenticated: boolean;
   isAdmin: boolean;
@@ -150,7 +158,7 @@ export const useStartupFlow = (): StartupState => {
         }));
       } catch (error) {
         if (cancelled) return;
-        fail('We hit a snag while booting. Redirecting to help.');
+        fail(buildStartupErrorMessage(error));
       }
     };
 

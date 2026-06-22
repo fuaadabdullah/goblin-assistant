@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { runtimeClient } from '@/lib/api/runtimeClient';
+import { getUserMessage } from '@/lib/error/toast';
 
 interface Props {
   providers: string[];
@@ -11,8 +12,6 @@ export default function APIKeyManager({ providers, selectedProvider, onProviderC
   const [key, setKey] = useState<string>('');
   const [status, setStatus] = useState<string>('');
 
-  const formatError = (error: unknown) => (error instanceof Error ? error.message : String(error));
-
   async function handleSave() {
     if (!selectedProvider) return;
     try {
@@ -21,7 +20,7 @@ export default function APIKeyManager({ providers, selectedProvider, onProviderC
       setStatus('Saved securely');
       setKey('');
     } catch (e) {
-      setStatus('Failed to save: ' + formatError(e));
+      setStatus('Failed to save: ' + getUserMessage(e));
     }
   }
 
@@ -31,7 +30,7 @@ export default function APIKeyManager({ providers, selectedProvider, onProviderC
       const k = await runtimeClient.getApiKey(selectedProvider);
       setStatus(k ? 'Key present' : 'No key stored');
     } catch (e) {
-      setStatus('Failed to read: ' + formatError(e));
+      setStatus('Failed to read: ' + getUserMessage(e));
     }
   }
 
@@ -41,7 +40,7 @@ export default function APIKeyManager({ providers, selectedProvider, onProviderC
       await runtimeClient.clearApiKey(selectedProvider);
       setStatus('Cleared');
     } catch (e) {
-      setStatus('Failed to clear: ' + formatError(e));
+      setStatus('Failed to clear: ' + getUserMessage(e));
     }
   }
 

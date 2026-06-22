@@ -12,12 +12,15 @@ import TurnstileWidget from '../TurnstileWidget';
 import { useTurnstile } from '../../config/turnstile';
 import { featureFlags } from '../../config/features';
 import { devError } from '@/utils/dev-log';
+import { getUserMessage } from '@/lib/error/toast';
 
 interface ModularLoginFormProps {
   onSuccess: () => void;
   onError: (message: string) => void;
   initialMode?: 'login' | 'register';
 }
+
+export const formatLoginError = (error: unknown, fallback: string): string => getUserMessage(error) || fallback;
 
 export default function ModularLoginForm({
   onSuccess,
@@ -64,8 +67,7 @@ export default function ModularLoginForm({
       queryClient.setQueryData(queryKeys.authValidate, snapshotFromSupabaseSession(session));
       onSuccess();
     } catch (error) {
-      const message = error instanceof Error ? error.message : 'Authentication failed';
-      onError(message);
+      onError(formatLoginError(error, 'Authentication failed'));
       setTurnstileToken('');
     } finally {
       setIsLoading(false);
@@ -88,7 +90,7 @@ export default function ModularLoginForm({
       // Redirect happens — no further action needed here
     } catch (error) {
       devError('Google OAuth error:', error);
-      onError(error instanceof Error ? error.message : 'Google sign-in failed');
+      onError(formatLoginError(error, 'Google sign-in failed'));
       setIsLoading(false);
     }
   };

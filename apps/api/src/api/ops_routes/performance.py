@@ -13,13 +13,23 @@ from ..storage.tasks import task_store
 router = APIRouter()
 
 
+def _detail_message(prefix: str, error: Exception) -> str:
+    message = str(error).strip()
+    if message:
+        return f"{prefix}: {message}"
+    return f"{prefix}: Request failed"
+
+
 @router.get("/performance/snapshot")
 async def performance_snapshot() -> Dict[str, Any]:
     try:
         result = await compute_performance_snapshot(cache, task_store)
         return result
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Performance snapshot failed: {str(e)}")
+        raise HTTPException(
+            status_code=500,
+            detail=_detail_message("Performance snapshot failed", e),
+        )
 
 
 @router.get("/queues/snapshot")
@@ -28,7 +38,10 @@ async def queues_snapshot() -> Dict[str, Any]:
         result = await compute_queues_snapshot(task_store)
         return result
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Queue snapshot failed: {str(e)}")
+        raise HTTPException(
+            status_code=500,
+            detail=_detail_message("Queue snapshot failed", e),
+        )
 
 
 @router.get("/metrics/history")
@@ -72,4 +85,4 @@ async def metrics_history(
             "timestamp": datetime.utcnow().isoformat(),
         }
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Metrics history failed: {str(e)}")
+        raise HTTPException(status_code=500, detail=_detail_message("Metrics history failed", e))

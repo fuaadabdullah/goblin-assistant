@@ -10,6 +10,13 @@ from .shared import circuit_breakers
 router = APIRouter()
 
 
+def _detail_message(prefix: str, error: Exception) -> str:
+    message = str(error).strip()
+    if message:
+        return f"{prefix}: {message}"
+    return f"{prefix}: Request failed"
+
+
 @router.get("/circuit-breakers")
 async def circuit_breakers_status() -> Dict[str, Any]:
     try:
@@ -30,7 +37,10 @@ async def circuit_breakers_status() -> Dict[str, Any]:
             },
         }
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Circuit breaker status failed: {str(e)}")
+        raise HTTPException(
+            status_code=500,
+            detail=_detail_message("Circuit breaker status failed", e),
+        )
 
 
 @router.post("/circuit-breakers/{provider_name}/reset")
@@ -59,4 +69,7 @@ async def reset_circuit_breaker(request: Request, provider_name: str) -> Dict[st
             "message": f"Circuit breaker for {provider_name} reset successfully",
         }
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Failed to reset circuit breaker: {str(e)}")
+        raise HTTPException(
+            status_code=500,
+            detail=_detail_message("Failed to reset circuit breaker", e),
+        )

@@ -15,6 +15,13 @@ logger = structlog.get_logger()
 router = APIRouter()
 
 
+def _detail_message(prefix: str, error: Exception) -> str:
+    message = str(error).strip()
+    if message:
+        return f"{prefix}: {message}"
+    return f"{prefix}: Request failed"
+
+
 @router.get("/retrieval/trace/{request_id}")
 @require_ops_access("read")
 async def get_retrieval_trace(request_id: str) -> Dict[str, Any]:
@@ -46,7 +53,10 @@ async def get_retrieval_trace(request_id: str) -> Dict[str, Any]:
         raise
     except Exception as e:
         logger.error("Failed to get retrieval trace:", error=str(e))
-        raise HTTPException(status_code=500, detail=f"Failed to get retrieval trace: {str(e)}")
+        raise HTTPException(
+            status_code=500,
+            detail=_detail_message("Failed to get retrieval trace", e),
+        )
 
 
 @router.get("/retrieval/history")
@@ -90,7 +100,10 @@ async def get_retrieval_history(
         }
     except Exception as e:
         logger.error("Failed to get retrieval history:", error=str(e))
-        raise HTTPException(status_code=500, detail=f"Failed to get retrieval history: {str(e)}")
+        raise HTTPException(
+            status_code=500,
+            detail=_detail_message("Failed to get retrieval history", e),
+        )
 
 
 @router.get("/retrieval/quality/{user_id}")
@@ -102,7 +115,10 @@ async def get_retrieval_quality(user_id: str) -> Dict[str, Any]:
         return quality_report
     except Exception as e:
         logger.error("Failed to get retrieval quality:", error=str(e))
-        raise HTTPException(status_code=500, detail=f"Failed to get retrieval quality: {str(e)}")
+        raise HTTPException(
+            status_code=500,
+            detail=_detail_message("Failed to get retrieval quality", e),
+        )
 
 
 @router.get("/retrieval/stats")
@@ -126,4 +142,7 @@ async def get_retrieval_stats(
         }
     except Exception as e:
         logger.error("Failed to get retrieval stats:", error=str(e))
-        raise HTTPException(status_code=500, detail=f"Failed to get retrieval stats: {str(e)}")
+        raise HTTPException(
+            status_code=500,
+            detail=_detail_message("Failed to get retrieval stats", e),
+        )

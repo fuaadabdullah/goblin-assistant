@@ -3,6 +3,13 @@ import { getBackend } from '../http-helpers';
 
 vi.mock('../http-helpers', () => ({
   getBackend: vi.fn(),
+  extractApiErrorMessage: (payload: unknown, fallback = 'Request failed') => {
+    if (!payload || typeof payload !== 'object') return fallback;
+    const data = payload as Record<string, unknown>;
+    if (typeof data['detail'] === 'string' && data['detail'].trim()) return data['detail'];
+    if (typeof data['message'] === 'string' && data['message'].trim()) return data['message'];
+    return fallback;
+  },
 }));
 
 describe('CSRF Token Management', () => {
@@ -61,8 +68,14 @@ describe('CSRF Token Management', () => {
 
     prefetchCsrfToken();
 
-    await expect(getCsrfToken()).rejects.toThrow('Unable to initialize authentication');
+    await expect(getCsrfToken()).rejects.toThrow('Network error');
     expect(vi.mocked(getBackend)).toHaveBeenCalled();
+  });
+
+  it('preserves backend details when csrf token payload is missing', async () => {
+    vi.mocked(getBackend).mockResolvedValueOnce({ detail: 'Auth service warming up' });
+
+    await expect(getCsrfToken()).rejects.toThrow('Auth service warming up');
   });
 
   it('retries after prefetch failure', async () => {

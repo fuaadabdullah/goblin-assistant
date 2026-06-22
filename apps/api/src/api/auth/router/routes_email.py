@@ -6,14 +6,7 @@
 from datetime import timedelta
 from typing import Annotated, Any, Optional
 
-from fastapi import (
-    APIRouter,
-    Depends,
-    HTTPException,
-    Request,
-    Response,
-    status,
-)
+from fastapi import APIRouter, Depends, Header, HTTPException, Request, Response, status
 from fastapi.security import HTTPAuthorizationCredentials
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -42,6 +35,38 @@ from .sessions import _db_create_session, _db_revoke_session, create_session_id
 from .tokens import create_access_token, create_refresh_token, verify_token
 
 router = APIRouter()
+
+
+async def _validate_token_payload(
+    token: str | None,
+    db: Annotated[AsyncSession, Depends(_ar.get_readonly_db)],
+):
+    if not token:
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Missing token")
+
+    payload = verify_token(token)
+    if not payload:
+        return SuccessEnvelope(data=TokenValidationResponse(valid=False))
+
+    user_id = payload.get("sub")
+    if not user_id:
+        return SuccessEnvelope(data=TokenValidationResponse(valid=False))
+
+    user_service = _ar.UserService(db)
+    user_model = await user_service.get_user_by_id(user_id)
+    if not user_model:
+        return SuccessEnvelope(data=TokenValidationResponse(valid=False))
+
+    return SuccessEnvelope(
+        data=TokenValidationResponse(
+            valid=True,
+            user=User(
+                id=user_model.id,
+                email=user_model.email,
+                name=user_model.name,
+            ),
+        )
+    )
 
 
 @router.post("/register", response_model=SuccessEnvelope[TokenWithRefresh])
@@ -336,26 +361,22 @@ async def validate_token(
     db: Annotated[AsyncSession, Depends(_ar.get_readonly_db)],
 ):
     """Validate JWT token."""
-    payload = verify_token(request.token)
-    if not payload:
-        return SuccessEnvelope(data=TokenValidationResponse(valid=False))
+    return await _validate_token_payload(request.token, db)
 
-    user_id = payload.get("sub")
-    if not user_id:
-        return SuccessEnvelope(data=TokenValidationResponse(valid=False))
 
-    user_service = _ar.UserService(db)
-    user_model = await user_service.get_user_by_id(user_id)
-    if not user_model:
-        return SuccessEnvelope(data=TokenValidationResponse(valid=False))
-
-    return SuccessEnvelope(
-        data=TokenValidationResponse(
-            valid=True,
-            user=User(
-                id=user_model.id,
-                email=user_model.email,
-                name=user_model.name,
-            ),
-        )
-    )
+@router.get("/validate", response_model=SuccessEnvelope[TokenValidationResponse])
+async def validate_token_legacy(
+    authorization: str | None = Header(default=None),
+    token: str | None = None,
+    db: Annotated[AsyncSession, Depends(_ar.get_readonly_db)] = None,
+):
+    """Legacy GET alias used by contract tests and older clients."""
+    bearer_token = token
+    if not bearer_token and isinstance(authorization, str):
+        prefix = "Bearer "
+        if authorization.startswith(prefix):
+            bearer_token = authorization[len(prefix) :].strip()
+    result = await _validate_token_payload(bearer_token, db)
+    if not result.data.valid:
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid token")
+    return result

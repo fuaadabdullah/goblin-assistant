@@ -4,6 +4,7 @@ import { useRoutingHealth } from '../hooks/api/useHealth';
 import { useProviderMutations } from '../features/admin/providers/hooks/useProviderMutations';
 import TwoColumnLayout from '../components/TwoColumnLayout';
 import { ProviderCardSkeleton } from '../components/LoadingSkeleton';
+import { getUserMessage } from '../lib/error/toast';
 
 const ProvidersPage = () => {
   const { data: providers, isLoading, error, refetch } = useProviderSettings();
@@ -103,7 +104,7 @@ const ProvidersPage = () => {
 
       {error && (
         <div className="bg-surface border border-danger rounded-lg p-4">
-          <p className="text-danger">Failed to load providers: {(error as Error).message}</p>
+          <p className="text-danger">Failed to load providers: {getUserMessage(error)}</p>
         </div>
       )}
 

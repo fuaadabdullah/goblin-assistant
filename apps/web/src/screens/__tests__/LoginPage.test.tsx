@@ -1,6 +1,6 @@
 import { fireEvent, render, screen } from '@testing-library/react';
 import type { ReactNode } from 'react';
-import LoginPage from '../LoginPage';
+import LoginPage, { resolveOauthErrorMessage } from '../LoginPage';
 
 const pushMock = vi.fn();
 let query: Record<string, string> = {};
@@ -70,5 +70,21 @@ describe('LoginPage redirects', () => {
     fireEvent.click(screen.getByRole('button', { name: 'complete-login' }));
 
     expect(pushMock).toHaveBeenCalledWith('/');
+  });
+});
+
+describe('resolveOauthErrorMessage', () => {
+  it('maps known oauth errors to user-friendly copy', () => {
+    expect(resolveOauthErrorMessage('oauth_failed')).toBe('Google sign-in failed. Please try again.');
+    expect(resolveOauthErrorMessage('no_code')).toBe(
+      'Google sign-in did not return an authorization code.'
+    );
+    expect(resolveOauthErrorMessage('callback_failed')).toBe(
+      'Google sign-in could not be completed. Try again.'
+    );
+  });
+
+  it('keeps unknown oauth error codes visible', () => {
+    expect(resolveOauthErrorMessage('invalid_scope')).toBe('Authentication error: invalid_scope');
   });
 });

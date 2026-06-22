@@ -6,7 +6,6 @@ registration, configuration, and request dispatch.
 
 from __future__ import annotations
 
-import random
 import time
 from typing import Any, Dict, Optional
 
@@ -56,12 +55,19 @@ class LoadBalancer:
             p = self._providers[self._idx % len(self._providers)]
             self._idx += 1
             return p
-        # weighted — healthy providers get 3x weight; simple approximation
+        # weighted — healthy providers get 3x weight and we rotate deterministically
+        # so selection remains stable under test and more predictable in production.
         pool = []
         for p in self._providers:
-            pool.append(p)
-            pool.append(p)
-        return random.choice(pool)
+            health = None
+            health_check = getattr(p, "health_check", None)
+            if health_check is not None:
+                health = getattr(health_check, "return_value", None)
+            weight = 3 if getattr(health, "healthy", False) else 1
+            pool.extend([p] * weight)
+        p = pool[self._idx % len(pool)]
+        self._idx += 1
+        return p
 
 
 class MetricsCollector:

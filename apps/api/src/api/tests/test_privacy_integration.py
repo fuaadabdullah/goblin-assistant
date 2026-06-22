@@ -183,7 +183,8 @@ class TestVectorStore:
         )
 
         # Run cleanup
-        deleted_count = await vector_store.cleanup_expired()
+        cleanup_result = await vector_store.cleanup_expired()
+        deleted_count = cleanup_result["deleted_count"]
 
         # Should have deleted at least 1
         assert deleted_count >= 0  # May be 0 if timing is tight

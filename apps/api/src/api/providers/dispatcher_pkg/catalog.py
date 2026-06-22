@@ -77,10 +77,11 @@ def update_backend_endpoint(
     logger: Any,
 ) -> None:
     canonical_id = canonical_fn(provider_id) or provider_id
-    if canonical_id not in dispatcher._configs:
+    resolved_id = canonical_id if canonical_id in dispatcher._configs else provider_id
+    if resolved_id not in dispatcher._configs:
         raise KeyError(f"Unknown provider: {provider_id!r}")
 
-    backends = dispatcher._configs[canonical_id].get("backends", [])
+    backends = dispatcher._configs[resolved_id].get("backends", [])
     for backend in backends:
         if backend.get("engine") == engine:
             backend["endpoint"] = new_endpoint
@@ -91,10 +92,10 @@ def update_backend_endpoint(
     else:
         raise KeyError(f"No backend engine {engine!r} in {provider_id!r}")
 
-    invalidate_provider_runtime(dispatcher, canonical_id)
+    invalidate_provider_runtime(dispatcher, resolved_id)
     logger.info(
         "backend_endpoint_updated",
-        provider=canonical_id,
+        provider=resolved_id,
         engine=engine,
         endpoint=new_endpoint,
     )
@@ -109,16 +110,17 @@ def update_provider_endpoint(
     logger: Any,
 ) -> None:
     canonical_id = canonical_fn(provider_id) or provider_id
-    if canonical_id not in dispatcher._configs:
+    resolved_id = canonical_id if canonical_id in dispatcher._configs else provider_id
+    if resolved_id not in dispatcher._configs:
         raise KeyError(f"Unknown provider: {provider_id!r}")
 
-    dispatcher._configs[canonical_id]["endpoint"] = new_endpoint
-    endpoint_env = str(dispatcher._configs[canonical_id].get("endpoint_env", "") or "").strip()
+    dispatcher._configs[resolved_id]["endpoint"] = new_endpoint
+    endpoint_env = str(dispatcher._configs[resolved_id].get("endpoint_env", "") or "").strip()
     if endpoint_env:
         os.environ[endpoint_env] = new_endpoint
 
-    invalidate_provider_runtime(dispatcher, canonical_id)
-    logger.info("provider_endpoint_updated", provider=canonical_id, endpoint=new_endpoint)
+    invalidate_provider_runtime(dispatcher, resolved_id)
+    logger.info("provider_endpoint_updated", provider=resolved_id, endpoint=new_endpoint)
 
 
 def apply_reloaded_catalog(
@@ -136,4 +138,38 @@ def apply_reloaded_catalog(
     dispatcher._warmup_states.clear()
     dispatcher._background_started = False
     logger.info("provider_catalog_reloaded")
-    dispatcher.start_background_tasks()
+
+
+def reload_provider_catalog(
+    dispatcher: Any,
+    *,
+    load_provider_toml_fn: Callable[..., Any],
+    load_toml_providers_fn: Callable[..., Dict[str, Dict[str, Any]]],
+    load_aliases_fn: Callable[[Any], Dict[str, str]],
+    load_model_aliases_fn: Callable[[Any], tuple[Dict[str, tuple[str, str]], List[Any]]],
+    load_visible_providers_fn: Callable[[Any], List[str]],
+    validate_model_alias_targets_fn: Callable[..., None],
+    load_circuit_canary_percent_fn: Callable[[Any], float],
+    logger: Any,
+) -> ProviderCatalog:
+    catalog = load_provider_catalog(
+        load_provider_toml_fn=load_provider_toml_fn,
+        load_toml_providers_fn=load_toml_providers_fn,
+        load_aliases_fn=load_aliases_fn,
+        load_model_aliases_fn=load_model_aliases_fn,
+        load_visible_providers_fn=load_visible_providers_fn,
+        validate_model_alias_targets_fn=validate_model_alias_targets_fn,
+        logger=logger,
+    )
+    apply_reloaded_catalog(
+        dispatcher,
+        provider_configs=catalog.provider_configs,
+        provider_toml=catalog.provider_toml,
+        load_circuit_canary_percent_fn=load_circuit_canary_percent_fn,
+        logger=logger,
+    )
+    dispatcher._provider_aliases = catalog.provider_aliases
+    dispatcher._model_aliases = catalog.model_aliases
+    dispatcher._model_alias_patterns = catalog.model_alias_patterns
+    dispatcher._visible_provider_ids = catalog.visible_provider_ids
+    return catalog

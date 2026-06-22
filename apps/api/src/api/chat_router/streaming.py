@@ -30,6 +30,13 @@ logger = structlog.get_logger()
 router = APIRouter()
 
 
+def _format_unhandled_stream_error(error: Exception) -> str:
+    message = str(error).strip()
+    if message:
+        return message
+    return "An unexpected error occurred. Your message was saved if it got this far."
+
+
 async def generate_chat_stream(
     message: str,
     conversation_id: str,
@@ -484,7 +491,7 @@ async def generate_chat_stream(
         error_event = {
             "type": "error",
             "code": "internal-error",
-            "message": "An unexpected error occurred. Your message was saved if it got this far.",
+            "message": _format_unhandled_stream_error(exc),
             "is_recoverable": False,
             "done": True,
         }

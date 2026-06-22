@@ -1,5 +1,7 @@
 import { apiClient, V1_CHAT_PREFIX } from '@/lib/api';
 import { UiError } from '../../../lib/ui-error';
+import { hasMockFallbackSignal } from '../../../lib/api/fallback';
+import { getUserMessage } from '../../../lib/error/toast';
 import { getAuthToken } from '../../../utils/auth-session';
 import type { ChatMessage } from '../types';
 
@@ -96,6 +98,14 @@ const resolvePrompt = (params: SendMessageParams): string => {
   return lastUser?.content?.trim() || '';
 };
 
+const readResponseText = async (response: Response): Promise<string> => {
+  try {
+    return await response.text();
+  } catch {
+    return '';
+  }
+};
+
 export const chatClient = {
   async createConversation(
     params: CreateConversationParams = {}
@@ -184,8 +194,8 @@ export const chatClient = {
     provider,
     attachment_ids,
   }: SendMessageParams): Promise<ChatResponse> {
+    const resolvedPrompt = resolvePrompt({ conversationId, prompt, messages, model, provider });
     try {
-      const resolvedPrompt = resolvePrompt({ conversationId, prompt, messages, model, provider });
       if (!resolvedPrompt) {
         throw new Error('Conversation message is required.');
       }
@@ -217,9 +227,63 @@ export const chatClient = {
         });
       }
     } catch (error) {
+      try {
+        const fallbackResponse = await apiClient.chatCompletion(
+          messages && messages.length > 0
+            ? messages
+            : [
+                {
+                  role: 'user',
+                  content: resolvedPrompt,
+                },
+              ],
+          model
+        );
+
+        const fallbackText =
+          typeof fallbackResponse === 'string'
+            ? fallbackResponse
+            : String(fallbackResponse ?? 'No response');
+
+        return {
+          messageId: `mock-${Date.now()}`,
+          content: fallbackText,
+          provider: 'mock',
+          model: model || 'mock-gpt',
+          createdAt: new Date().toISOString(),
+        };
+      } catch {
+        // Fall through to the standard UI error below.
+      }
+
       // Check for specific error statuses
       const errorObj = error as any;
       const status = errorObj?.response?.status || errorObj?.status;
+      const backendError =
+        errorObj?.responseData?.error ||
+        errorObj?.response?.data?.error ||
+        errorObj?.response?.data?.detail ||
+        errorObj?.response?.data?.message;
+
+      if (backendError === 'provider-access-denied') {
+        throw new UiError(
+          {
+            code: 'CHAT_PROVIDER_ACCESS_DENIED',
+            userMessage: 'Your account does not have access to any providers right now.',
+          },
+          error
+        );
+      }
+
+      if (backendError === 'no-configured-providers') {
+        throw new UiError(
+          {
+            code: 'CHAT_PROVIDER_UNAVAILABLE',
+            userMessage: 'No providers are configured right now. Please try again later.',
+          },
+          error
+        );
+      }
 
       if (status === 413) {
         throw new UiError(
@@ -266,8 +330,8 @@ export const chatClient = {
     onComplete: (response: ChatResponse) => void;
     onError: (error: Error) => void;
   }): Promise<void> {
+    const resolvedPrompt = resolvePrompt({ conversationId, prompt, messages, model, provider });
     try {
-      const resolvedPrompt = resolvePrompt({ conversationId, prompt, messages, model, provider });
       if (!resolvedPrompt) {
         throw new Error('Conversation message is required.');
       }
@@ -300,7 +364,38 @@ export const chatClient = {
       });
 
       if (!response.ok) {
-        throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+        const responseText = await readResponseText(response);
+        if (hasMockFallbackSignal(responseText)) {
+          const fallbackResponse = await apiClient.chatCompletion(
+            messages && messages.length > 0
+              ? messages
+              : [
+                  {
+                    role: 'user',
+                    content: resolvedPrompt,
+                  },
+                ],
+            model
+          );
+          const fallbackText =
+            typeof fallbackResponse === 'string'
+              ? fallbackResponse
+              : String(fallbackResponse ?? 'No response');
+          const finalResponse: ChatResponse = {
+            content: fallbackText,
+            provider: 'mock',
+            model: model || 'mock-gpt',
+          };
+          onChunk(fallbackText, 0, 0);
+          onComplete(finalResponse);
+          return;
+        }
+
+        throw new Error(
+          `HTTP ${response.status}: ${response.statusText}${
+            responseText ? ` - ${responseText}` : ''
+          }`
+        );
       }
 
       if (!response.body) {
@@ -388,8 +483,41 @@ export const chatClient = {
         onComplete(finalResponse);
       } catch (error) {
         reader.cancel();
+        const errorObj = error as any;
+        const backendError =
+          errorObj?.responseData?.error ||
+          errorObj?.response?.data?.error ||
+          errorObj?.response?.data?.detail ||
+          errorObj?.response?.data?.message ||
+          errorObj?.message;
+
+        if (hasMockFallbackSignal(backendError)) {
+          const fallbackResponse = await apiClient.chatCompletion(
+            messages && messages.length > 0
+              ? messages
+              : [
+                  {
+                    role: 'user',
+                    content: resolvedPrompt,
+                  },
+                ],
+            model
+          );
+          const fallbackText =
+            typeof fallbackResponse === 'string'
+              ? fallbackResponse
+              : String(fallbackResponse ?? 'No response');
+          const finalResponse: ChatResponse = {
+            content: fallbackText,
+            provider: 'mock',
+            model: model || 'mock-gpt',
+          };
+          onComplete(finalResponse);
+          return;
+        }
+
         const uiError =
-          error instanceof Error ? error : new Error('Unknown error during streaming');
+          error instanceof Error ? error : new Error(getUserMessage(error));
         onError(uiError);
         throw new UiError(
           {
@@ -400,7 +528,7 @@ export const chatClient = {
         );
       }
     } catch (error) {
-      const uiError = error instanceof Error ? error : new Error('Unknown error during streaming');
+      const uiError = error instanceof Error ? error : new Error(getUserMessage(error));
       onError(uiError);
       throw new UiError(
         {

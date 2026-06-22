@@ -1,20 +1,16 @@
-"""Routing strategies and runtime statistics for provider selection.
+"""Public routing façade.
 
-Implementation is split across focused sub-modules:
-  router_store.py          — SQLite persistence (RoutingRegistryStore, ProviderStats)
-  router_supabase.py       — Supabase mirror / restore helpers
-  router_registry.py       — In-memory RoutingRegistry + registry singleton
-  router_strategies.py     — LatencyRouter, CostRouter, HybridRouter, ModelTierRouter
-  router_orchestration.py  — top_providers_for, route_task, route_task_sync
+The implementation lives in focused modules:
+  selection.py       - top_providers_for, route_task, route_task_sync
+  policy_engine.py    - LatencyRouter, CostRouter, HybridRouter, ModelTierRouter
+  registry_store.py   - ProviderStats, RoutingRegistryStore
+  router_registry.py  - RoutingRegistry + registry singleton
 
-All names that external code imports from this module are re-exported below so
-no callers need to change.
+This module re-exports the routing surface for compatibility and keeps the
+package entrypoint router-first.
 """
 
-from .router_orchestration import route_task, route_task_sync, top_providers_for
-from .router_registry import RoutingRegistry, registry
-from .router_store import ProviderStats, RoutingRegistryStore
-from .router_strategies import (
+from .policy_engine import (
     CostRouter,
     HybridRouter,
     LatencyRouter,
@@ -24,6 +20,9 @@ from .router_strategies import (
     latency_router,
     tier_router,
 )
+from .registry_store import ProviderStats, RoutingRegistryStore
+from .router_registry import RoutingRegistry, registry
+from .selection import route_task, route_task_sync, top_providers_for
 
 __all__ = [
     # data / persistence

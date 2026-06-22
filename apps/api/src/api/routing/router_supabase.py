@@ -8,7 +8,7 @@ from typing import Dict
 
 import structlog
 
-from .router_store import ProviderStats
+from .registry_store import ProviderStats
 
 logger = structlog.get_logger()
 

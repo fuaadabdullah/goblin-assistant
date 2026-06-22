@@ -40,7 +40,8 @@ export interface PasskeyCredential {
 }
 
 export interface SandboxRunPayload {
-  code: string;
+  code?: string;
+  source?: string;
   language?: string;
   timeout?: number;
 }

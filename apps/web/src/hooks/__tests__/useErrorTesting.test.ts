@@ -7,7 +7,7 @@ vi.mock('@sentry/react', () => ({
 }));
 
 import * as Sentry from '@sentry/react';
-import { useErrorTesting } from '../useErrorTesting';
+import { formatErrorTestMessage, useErrorTesting } from '../useErrorTesting';
 
 // Mock fetch for network error test
 const originalFetch = global.fetch;
@@ -78,6 +78,10 @@ describe('useErrorTesting', () => {
     expect(result.current.results).toHaveLength(1);
     expect(result.current.results[0].label).toBe('Type Error');
     expect(result.current.results[0].status).toBe('failed');
+  });
+
+  it('preserves non-Error failure messages', () => {
+    expect(formatErrorTestMessage('registry unavailable')).toBe('registry unavailable');
   });
 
   it('testCustomError adds a result', async () => {

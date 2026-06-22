@@ -46,6 +46,24 @@ async def execute_tool_call(
         return {"error": f"Tool {tool_name} has no handler registered"}
 
     try:
+        if runtime_context and runtime_context.get("user_id"):
+            try:
+                from api.capabilities.permissions import CapabilityPermissionStore
+                from api.capabilities.registry import capability_registry
+
+                capability = capability_registry.get_for_tool(tool_name)
+                if capability and capability.requires_explicit_grant:
+                    permission_store = CapabilityPermissionStore()
+                    allowed = await permission_store.check_permission(
+                        runtime_context["user_id"],
+                        capability.id,
+                        conversation_id=runtime_context.get("conversation_id"),
+                    )
+                    if not allowed:
+                        return {"error": f"Tool {tool_name} requires an explicit grant"}
+            except ImportError:
+                pass
+
         call_args = dict(arguments)
         if runtime_context:
             signature = inspect.signature(tool.handler)

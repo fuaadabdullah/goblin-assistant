@@ -7,7 +7,7 @@ from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
-from api import health
+from api import health, health_core
 from api.services import provider_health
 
 
@@ -140,6 +140,60 @@ async def test_health_returns_degraded_when_db_fails() -> None:
 
 
 @pytest.mark.asyncio
+async def test_health_returns_unhealthy_when_any_component_is_unhealthy() -> None:
+    provider_monitor = _provider_health_monitor({"openai": {"status": "healthy"}})
+
+    with ExitStack() as stack:
+        stack.enter_context(
+            patch.object(
+                provider_health,
+                "health_monitor",
+                provider_monitor,
+                create=True,
+            )
+        )
+        stack.enter_context(
+            patch.object(
+                health,
+                "check_routing_health",
+                new=AsyncMock(return_value={"status": "healthy"}),
+            )
+        )
+        stack.enter_context(
+            patch.object(
+                health,
+                "check_db_health",
+                new=AsyncMock(return_value={"status": "unhealthy"}),
+            )
+        )
+        stack.enter_context(
+            patch.object(
+                health,
+                "check_redis_health",
+                new=AsyncMock(return_value={"status": "healthy"}),
+            )
+        )
+        stack.enter_context(
+            patch.object(
+                health,
+                "check_api_health",
+                new=AsyncMock(return_value={"status": "healthy"}),
+            )
+        )
+        stack.enter_context(
+            patch("api.security_config.SecurityConfig.validate_config", return_value=[])
+        )
+        stack.enter_context(patch("api.security_config.SecurityConfig.DEBUG", False))
+        stack.enter_context(
+            patch("api.security_config.SecurityConfig.ALLOWED_ORIGINS", ["https://example.com"])
+        )
+        response = await health.health_check()
+
+    assert response.data["status"] == "unhealthy"
+    assert response.data["components"]["database"]["status"] == "unhealthy"
+
+
+@pytest.mark.asyncio
 async def test_health_returns_warnings_on_security_issues() -> None:
     provider_monitor = _provider_health_monitor({"openai": {"status": "healthy"}})
 
@@ -269,6 +323,12 @@ async def test_check_routing_health_success_and_failure() -> None:
 
     assert degraded["status"] == "degraded"
     assert "router exploded" in degraded["error"]
+
+
+def test_overall_status_prioritizes_unhealthy_over_warnings_and_degraded() -> None:
+    assert health_core.overall_status_from(["healthy", "warnings"]) == "warnings"
+    assert health_core.overall_status_from(["healthy", "degraded"]) == "degraded"
+    assert health_core.overall_status_from(["healthy", "unhealthy"]) == "unhealthy"
 
 
 # End of health coverage tests.

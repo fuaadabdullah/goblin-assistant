@@ -193,3 +193,43 @@ register_tool(
         handler=_handle_get_key_ratios,
     )
 )
+
+
+# ---------------------------------------------------------------------------
+# get_market_news
+# ---------------------------------------------------------------------------
+
+
+async def _handle_get_market_news(query: str, limit: int = 10) -> dict:
+    return await financial_data_service.get_market_news(query, limit)
+
+
+register_tool(
+    ToolDefinition(
+        name="get_market_news",
+        description=(
+            "Use when the user asks for market-moving headlines, company news, "
+            "earnings coverage, analyst updates, or recent financial news about "
+            "a ticker or topic. Returns headlines, links, publishers, snippets, "
+            "and published timestamps from a live news feed."
+        ),
+        parameters=[
+            ToolParameter(
+                name="query",
+                type="string",
+                description=(
+                    "Search query for market news. Use a ticker like AAPL or a topic "
+                    "like 'semiconductor earnings'."
+                ),
+            ),
+            ToolParameter(
+                name="limit",
+                type="integer",
+                description="Number of headlines to return (1-10). Defaults to 10.",
+                required=False,
+                default=10,
+            ),
+        ],
+        handler=_handle_get_market_news,
+    )
+)

@@ -9,6 +9,7 @@ All tests are fully mocked — no network calls.
 from __future__ import annotations
 
 import sys
+from unittest.mock import AsyncMock
 
 import pytest
 
@@ -21,6 +22,7 @@ from api.assistant_tools.skills.dcf_calculator import (
     _terminal_value,
 )
 from api.assistant_tools.skills.earnings_summarizer import _handle_earnings_summarizer
+from api.assistant_tools.skills.news_summarizer import _handle_news_summarizer
 from api.assistant_tools.skills.portfolio_analyzer import (
     _annualized_return,
     _annualized_volatility,
@@ -281,6 +283,81 @@ class TestEarningsSummarizer:
     @pytest.mark.asyncio
     async def test_registered(self):
         assert "earnings_summarizer" in TOOL_REGISTRY
+
+
+# ===================================================================
+# News Summarizer
+# ===================================================================
+
+
+class TestNewsSummarizer:
+    @pytest.mark.asyncio
+    async def test_basic_summary_from_ticker(self, monkeypatch):
+        mock_news = {
+            "query": "AAPL",
+            "normalized_query": "AAPL",
+            "ticker": "AAPL",
+            "count": 2,
+            "results": [
+                {
+                    "title": "Apple beats estimates on services growth",
+                    "url": "https://example.com/a",
+                    "snippet": "Apple reports better-than-expected earnings.",
+                    "publisher": "Reuters",
+                    "published_at": "Mon, 01 Jun 2026 10:00:00 GMT",
+                    "ticker": "AAPL",
+                    "tickers": ["AAPL"],
+                },
+                {
+                    "title": "Analysts raise Apple price targets",
+                    "url": "https://example.com/b",
+                    "snippet": "Several firms upgraded the stock after results.",
+                    "publisher": "Bloomberg",
+                    "published_at": "Mon, 01 Jun 2026 11:00:00 GMT",
+                    "ticker": "AAPL",
+                    "tickers": ["AAPL"],
+                },
+            ],
+        }
+        monkeypatch.setattr(
+            "api.assistant_tools.skills.news_summarizer.financial_data_service.get_market_news",
+            AsyncMock(return_value=mock_news),
+        )
+
+        result = await _handle_news_summarizer(ticker="AAPL")
+
+        assert result["ticker"] == "AAPL"
+        assert result["normalized_query"] == "AAPL"
+        assert result["source_count"] == 2
+        assert result["sentiment"]["label"] == "positive"
+        assert "earnings" in result["themes"]
+        assert result["headline_highlights"]
+        assert "Reuters" in result["publisher_counts"]
+
+    @pytest.mark.asyncio
+    async def test_normalizes_provided_sources(self):
+        result = await _handle_news_summarizer(
+            ticker="NVDA",
+            sources=[
+                {
+                    "title": "Nvidia gains after new chip demand",
+                    "url": "https://www.bloomberg.com/news/articles/1",
+                    "snippet": "Analysts are raising targets.",
+                    "publisher": "bloomberg",
+                }
+            ],
+        )
+
+        assert result["ticker"] == "NVDA"
+        assert result["source_count"] == 1
+        assert result["sources"][0]["publisher"] == "Bloomberg"
+        assert result["sources"][0]["ticker"] == "NVDA"
+        assert result["themes"]
+        assert result["sentiment"]["label"] in {"positive", "neutral"}
+
+    @pytest.mark.asyncio
+    async def test_registered(self):
+        assert "news_summarizer" in TOOL_REGISTRY
 
 
 # ===================================================================

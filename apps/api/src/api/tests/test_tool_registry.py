@@ -10,6 +10,7 @@ from unittest.mock import AsyncMock, MagicMock, patch
 import pytest
 
 import api.assistant_tools.executor as executor_module
+from api.assistant_tools import skills  # noqa: F401
 from api.assistant_tools.executor import (
     execute_tool_call,
     extract_tool_calls,
@@ -91,6 +92,16 @@ class TestToolRegistry:
             "get_financials",
             "get_earnings",
             "get_key_ratios",
+            "get_market_news",
+            "news_summarizer",
+            "search_filings",
+            "get_filing",
+            "get_filing_section",
+            "summarize_filing_section",
+            "create_reminder",
+            "list_reminders",
+            "create_calendar_event",
+            "list_calendar_events",
         }
         assert expected.issubset(set(TOOL_REGISTRY.keys()))
 

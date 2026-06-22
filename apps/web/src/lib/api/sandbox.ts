@@ -9,7 +9,16 @@ export const sandboxMethods = {
     return getBackend(`${V1_API_PREFIX}/sandbox/jobs/${jobId}/logs`);
   },
 
-  async runSandboxCode(payload: { code: string; language?: string; timeout?: number }) {
-    return postBackend(`${V1_API_PREFIX}/sandbox/run`, payload);
+  async runSandboxCode(payload: {
+    code?: string;
+    source?: string;
+    language?: string;
+    timeout?: number;
+  }) {
+    return postBackend(`${V1_API_PREFIX}/sandbox/run`, {
+      source: payload.source ?? payload.code,
+      language: payload.language,
+      timeout: payload.timeout,
+    });
   },
 };

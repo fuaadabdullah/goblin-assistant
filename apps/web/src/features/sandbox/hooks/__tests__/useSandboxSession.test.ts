@@ -98,7 +98,7 @@ describe('useSandboxSession', () => {
     await act(async () => {
       await result.current.runCode();
     });
-    expect(result.current.logs).toBe('Unable to run that code right now.');
+    expect(result.current.logs).toBe('We could not run that code right now.');
     expect(result.current.loading).toBe(false);
   });
 
@@ -130,7 +130,7 @@ describe('useSandboxSession', () => {
     await act(async () => {
       await result.current.selectJob(job);
     });
-    expect(result.current.logs).toBe('Unable to load logs for that job.');
+    expect(result.current.logs).toBe('We could not load logs for that job.');
   });
 
   it('refreshJobs reloads job list', async () => {

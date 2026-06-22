@@ -57,11 +57,18 @@ from .sandbox_models import (
 logger = structlog.get_logger()
 
 
+def _detail_message(prefix: str, error: Exception) -> str:
+    message = str(error).strip()
+    if message:
+        return f"{prefix}: {message}"
+    return f"{prefix}: Request failed"
+
+
 def _path_exists(path: str) -> bool:
     return os.path.exists(path)
 
 
-def require_api_key(x_api_key: str = Header(...)) -> None:
+def require_api_key(x_api_key: str = Header(default="")) -> None:
     """Validate the X-Api-Key header. Defined here so tests can patch module-level API_KEY."""
     if SANDBOX_ENABLED and os.getenv("ENVIRONMENT", "development") == "development":
         return
@@ -73,7 +80,7 @@ def require_api_key(x_api_key: str = Header(...)) -> None:
             detail="sandbox API key is not configured (set API_AUTH_KEY)",
         )
     if x_api_key != API_KEY:
-        raise HTTPException(status_code=401, detail="unauthorized")
+        raise HTTPException(status_code=403, detail="unauthorized")
 
 
 router = APIRouter(prefix="/sandbox", tags=["sandbox"])
@@ -82,7 +89,7 @@ router = APIRouter(prefix="/sandbox", tags=["sandbox"])
 @router.post("/submit", response_model=SuccessEnvelope[SubmitJobResponse])
 async def submit_job(
     req: SubmitJobRequest,
-    x_api_key: str = Header(...),
+    x_api_key: str = Header(default=""),
     request: Any = None,
 ) -> SuccessEnvelope[SubmitJobResponse]:
     """Submit a job for sandbox execution"""
@@ -107,6 +114,10 @@ async def submit_job(
     if req.timeout and (req.timeout < 1 or req.timeout > 300):
         raise HTTPException(status_code=400, detail="timeout must be between 1-300 seconds")
 
+    runtime_args = (req.runtime_args or "").strip()
+    if len(runtime_args) > 512:
+        raise HTTPException(status_code=400, detail="runtime_args must be 512 characters or less")
+
     if (
         os.getenv("PYTEST_CURRENT_TEST")
         and request is not None
@@ -120,14 +131,14 @@ async def submit_job(
 
     mainfile = {"python": "main.py", "javascript": "main.js"}.get(req.language, "main")
     source_path = os.path.join(job_path, mainfile)
-    await _run_blocking(_write_text_file, source_path, req.source)
+    await _run_blocking(_write_text_file, source_path, req.source.strip())
 
     job_meta = {
         "job_id": job_id,
         "status": "queued",
         "language": req.language,
         "timeout": req.timeout or 10,
-        "runtime_args": req.runtime_args or "",
+        "runtime_args": runtime_args,
         "created_at": datetime.utcnow().isoformat(),
         "path": job_path,
         "source_file": mainfile,
@@ -141,7 +152,7 @@ async def submit_job(
             job_id=job_id,
             language=req.language,
             timeout=req.timeout or 10,
-            runtime_args=req.runtime_args or "",
+            runtime_args=runtime_args,
             job_path=job_path,
         )
         record_job_submitted(job_id, req.language)
@@ -152,21 +163,27 @@ async def submit_job(
 
         await _run_blocking(shutil.rmtree, job_path, True)
         await _run_blocking(r.delete, f"sandbox:job:{job_id}")
-        err = SandboxExecutionError(job_id=job_id, container_id=None, reason=str(e))
+        error_message = _detail_message("Sandbox execution failed", e)
+        err = SandboxExecutionError(job_id=job_id, container_id=None, reason=error_message)
         logger.error(
             "sandbox_job_queue_failed",
             job_id=job_id,
             language=req.language,
-            error=str(e),
+            error=error_message,
             error_type=type(e).__name__,
         )
-        raise HTTPException(status_code=500, detail=str(err)) from err
+        raise HTTPException(
+            status_code=500,
+            detail=error_message,
+        ) from err
 
     return SuccessEnvelope(data=SubmitJobResponse(job_id=job_id))
 
 
 @router.get("/status/{job_id}", response_model=SuccessEnvelope[JobStatus])
-async def get_job_status(job_id: str, x_api_key: str = Header(...)) -> SuccessEnvelope[JobStatus]:
+async def get_job_status(
+    job_id: str, x_api_key: str = Header(default="")
+) -> SuccessEnvelope[JobStatus]:
     """Get the status of a sandbox job"""
     require_api_key(x_api_key)
 
@@ -179,9 +196,20 @@ async def get_job_status(job_id: str, x_api_key: str = Header(...)) -> SuccessEn
     return SuccessEnvelope(data=_job_status(job_id, job_info))
 
 
+@router.get("/jobs/{job_id}", response_model=SuccessEnvelope[JobStatus])
+async def get_job_status_alias(
+    job_id: str, x_api_key: str = Header(default="")
+) -> SuccessEnvelope[JobStatus]:
+    """Legacy alias for `/status/{job_id}` used by public contract tests."""
+    job_data = await _run_blocking(r.hgetall, f"sandbox:job:{job_id}")
+    if not job_data:
+        raise HTTPException(status_code=404, detail="job not found")
+    return await get_job_status(job_id, x_api_key)
+
+
 @router.get("/logs/{job_id}", response_model=SuccessEnvelope[JobLogsResponse])
 async def get_job_logs(
-    job_id: str, x_api_key: str = Header(...)
+    job_id: str, x_api_key: str = Header(default="")
 ) -> SuccessEnvelope[JobLogsResponse]:
     """Get logs for a completed sandbox job"""
     require_api_key(x_api_key)
@@ -207,12 +235,12 @@ async def get_job_logs(
         logs = await _run_blocking(_read_text_file, log_file)
         return SuccessEnvelope(data=JobLogsResponse(logs=logs))
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"failed to read logs: {str(e)}")
+        raise HTTPException(status_code=500, detail=_detail_message("Failed to read logs", e))
 
 
 @router.get("/artifacts/{job_id}", response_model=SuccessEnvelope[ArtifactListResponse])
 async def list_job_artifacts(
-    job_id: str, x_api_key: str = Header(...)
+    job_id: str, x_api_key: str = Header(default="")
 ) -> SuccessEnvelope[ArtifactListResponse]:
     """List artifacts for a completed sandbox job"""
     require_api_key(x_api_key)
@@ -265,7 +293,7 @@ async def download_artifact(job_id: str, filename: str, x_api_key: str = Header(
 
 @router.post("/cancel/{job_id}", response_model=SuccessEnvelope[CancelJobResponse])
 async def cancel_job(
-    job_id: str, x_api_key: str = Header(...)
+    job_id: str, x_api_key: str = Header(default="")
 ) -> SuccessEnvelope[CancelJobResponse]:
     """Cancel a running sandbox job"""
     require_api_key(x_api_key)
@@ -309,7 +337,11 @@ async def cancel_job(
                 )
                 await asyncio.wait_for(proc.communicate(), timeout=10)
             except Exception as e:
-                logger.warning("failed_to_kill_container", container_id=container_id, error=str(e))
+                logger.warning(
+                    "failed_to_kill_container",
+                    container_id=container_id,
+                    error=_detail_message("Failed to kill container", e),
+                )
 
     await _emit_sandbox_completed(job_id, job_info)
     return SuccessEnvelope(data=CancelJobResponse(message="job cancelled successfully"))
@@ -364,10 +396,16 @@ async def sandbox_health() -> SuccessEnvelope[SandboxHealthResponse]:
     )
 
 
+@router.get("/health", response_model=SuccessEnvelope[SandboxHealthResponse])
+async def sandbox_health_legacy() -> SuccessEnvelope[SandboxHealthResponse]:
+    """Legacy alias for `/health/status` used by contract tests and clients."""
+    return await sandbox_health()
+
+
 @router.post("/run", response_model=SuccessEnvelope[SubmitJobResponse])
 async def run_sandbox_code(
     req: SubmitJobRequest,
-    x_api_key: str = Header(...),
+    x_api_key: str = Header(default=""),
 ) -> SuccessEnvelope[SubmitJobResponse]:
     """Alias for /submit - Execute code in sandbox"""
     return await submit_job(req, x_api_key)
@@ -401,7 +439,7 @@ async def list_sandbox_jobs(
             await _emit_sandbox_completed(job_info.get("job_id", ""), job_info)
             jobs.append(_job_summary(job_info))
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"failed to list jobs: {str(e)}")
+        raise HTTPException(status_code=500, detail=_detail_message("Failed to list jobs", e))
 
     jobs.sort(key=lambda job: job.created_at, reverse=True)
     jobs = jobs[:limit]

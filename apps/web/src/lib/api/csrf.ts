@@ -6,7 +6,7 @@
  */
 
 import { AUTH_REQUEST_TIMEOUT_MS, V1_API_PREFIX } from './http-client';
-import { getBackend } from './http-helpers';
+import { extractApiErrorMessage, getBackend } from './http-helpers';
 
 // Single in-flight promise so concurrent callers share one request.
 // Token is consumed on first use so it cannot be replayed.
@@ -18,7 +18,8 @@ const fetchCsrfTokenFromBackend = async (): Promise<string> => {
   });
   const token = response?.csrf_token;
   if (!token || typeof token !== 'string') {
-    throw new Error('Unable to initialize authentication. Please try again.');
+    const message = extractApiErrorMessage(response, 'Unable to initialize authentication. Please try again.');
+    throw new Error(message);
   }
   return token;
 };
@@ -26,10 +27,14 @@ const fetchCsrfTokenFromBackend = async (): Promise<string> => {
 /** Warm the CSRF token in the background so submit() has it ready. */
 export const prefetchCsrfToken = (): void => {
   if (!_csrfPrefetch) {
-    _csrfPrefetch = fetchCsrfTokenFromBackend().catch(() => {
+    _csrfPrefetch = fetchCsrfTokenFromBackend().catch((error: unknown) => {
       // Reset on failure so the next call tries again.
       _csrfPrefetch = null;
-      return Promise.reject(new Error('Unable to initialize authentication. Please try again.'));
+      return Promise.reject(
+        error instanceof Error
+          ? error
+          : new Error('Unable to initialize authentication. Please try again.')
+      );
     });
   }
 };

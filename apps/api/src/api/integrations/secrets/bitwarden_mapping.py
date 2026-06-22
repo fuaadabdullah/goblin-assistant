@@ -59,8 +59,20 @@ def item_to_secret(
     # Extract data based on field_name
     if field_name:
         # Return specific field
-        if field_name in item.get("fields", {}):
-            secret_data = {"value": item["fields"][field_name]}
+        fields = item.get("fields", [])
+        if isinstance(fields, list):
+            field_map = {
+                field.get("name"): field.get("value", "")
+                for field in fields
+                if isinstance(field, dict) and field.get("name")
+            }
+        elif isinstance(fields, dict):
+            field_map = dict(fields)
+        else:
+            field_map = {}
+
+        if field_name in field_map:
+            secret_data = {"value": field_map[field_name]}
         elif field_name == "username":
             secret_data = {"value": item.get("login", {}).get("username", "")}
         elif field_name == "password":

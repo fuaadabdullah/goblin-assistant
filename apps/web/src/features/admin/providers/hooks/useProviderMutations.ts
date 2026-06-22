@@ -4,6 +4,9 @@ import type { ProviderConfig } from '../../../../hooks/api/useSettings';
 import type { ProviderTestResponse } from '../../../../types/api';
 import { queryKeys } from '../../../../lib/query-keys';
 import { providersAdminApi } from '../api';
+import { getUserMessage } from '../../../../lib/error/toast';
+
+export const formatProviderTestMessage = (error: unknown): string => getUserMessage(error);
 
 export interface TestResult {
   success: boolean;
@@ -47,7 +50,7 @@ export const useProviderMutations = () => {
     onError: (error: unknown) => {
       setTestResult({
         success: false,
-        message: error instanceof Error ? error.message : 'Connection test failed',
+        message: formatProviderTestMessage(error),
         latency: 0,
       });
     },
@@ -90,7 +93,7 @@ export const useProviderMutations = () => {
     onError: (error: unknown) => {
       setTestResult({
         success: false,
-        message: error instanceof Error ? error.message : 'Test failed',
+        message: formatProviderTestMessage(error),
         latency: 0,
       });
     },

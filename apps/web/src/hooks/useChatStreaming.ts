@@ -1,6 +1,9 @@
 import { useState } from 'react';
 import { apiClient } from '@/lib/api';
+import { getUserMessage } from '@/lib/error/toast';
 import { generateMessageId } from '../lib/id-generation';
+
+export const formatChatStreamingError = (error: unknown): string => getUserMessage(error);
 
 interface UseChatStreamingOptions {
   demoMode?: boolean;
@@ -54,7 +57,7 @@ export const useChatStreaming = ({
         demoMode,
       });
     } catch (error) {
-      const messageText = error instanceof Error ? error.message : 'Failed to send message';
+      const messageText = formatChatStreamingError(error);
       onError?.('Chat error', messageText);
     } finally {
       setIsLoading(false);

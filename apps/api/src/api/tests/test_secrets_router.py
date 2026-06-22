@@ -17,6 +17,7 @@ from api.integrations.secrets import (
     SecretUnauthorizedError,
     SecretValidationError,
 )
+from api.integrations.secrets.models import Secret, SecretMetadata
 from api.secrets_router import (
     SecretRequest,
     get_secrets_adapter,
@@ -33,27 +34,38 @@ def _build_app_with_working_adapter(
     app = FastAPI()
     app.include_router(router, prefix="/api/v1")
 
-    # Mock adapter that returns secrets
-    mock_adapter = AsyncMock()
     secrets_data = secrets_data or {}
 
-    async def mock_list_secrets(prefix: str = "", limit: int = 100):
-        return list(secrets_data.keys())
+    class WorkingAdapter:
+        async def list_secrets(self, prefix: str = "", limit: int = 100):
+            return list(secrets_data.keys())
 
-    async def mock_get_secret(path: str, version: int | None = None):
-        if path not in secrets_data:
-            raise SecretNotFoundError(f"Secret not found: {path}")
-        from api.integrations.secrets.models import Secret, SecretMetadata
+        async def get_secret(self, path: str, version: int | None = None):
+            if path not in secrets_data:
+                raise SecretNotFoundError(f"Secret not found: {path}")
+            return Secret(
+                path=path,
+                data=secrets_data[path],
+                metadata=SecretMetadata(version=1),
+            )
 
-        return Secret(
-            path=path,
-            data=secrets_data[path],
-            metadata=SecretMetadata(version=1),
-        )
+        async def put_secret(self, path: str, data: dict[str, str], metadata=None, version=None):
+            return Secret(
+                path=path,
+                data=data,
+                metadata=SecretMetadata(version=version or 1, custom_metadata=metadata or {}),
+            )
 
-    mock_adapter.list_secrets = mock_list_secrets
-    mock_adapter.get_secret = mock_get_secret
+        async def delete_secret(self, path: str, version: int | None = None):
+            return None
 
+        async def rotate_secret(self, path: str):
+            return "rotated-secret-value"
+
+        async def health(self):
+            return {"status": "healthy", "timestamp": "2026-01-01T00:00:00Z"}
+
+    mock_adapter = WorkingAdapter()
     app.dependency_overrides[get_secrets_adapter] = lambda: mock_adapter
     return app
 
@@ -63,10 +75,28 @@ def _build_app_with_failed_adapter(error: Exception) -> FastAPI:
     app = FastAPI()
     app.include_router(router, prefix="/api/v1")
 
-    async def failing_get_adapter():
-        raise error
+    class FailingAdapter:
+        async def list_secrets(self, prefix: str = "", limit: int = 100):
+            raise error
 
-    app.dependency_overrides[get_secrets_adapter] = failing_get_adapter
+        async def get_secret(self, path: str, version: int | None = None):
+            raise error
+
+        async def put_secret(self, path: str, data: dict[str, str], metadata=None, version=None):
+            raise error
+
+        async def delete_secret(self, path: str, version: int | None = None):
+            raise error
+
+        async def rotate_secret(self, path: str):
+            raise error
+
+        async def health(self):
+            raise error
+
+    mock_adapter = FailingAdapter()
+
+    app.dependency_overrides[get_secrets_adapter] = lambda: mock_adapter
     return app
 
 
@@ -117,7 +147,7 @@ class TestListSecrets:
         assert response.status_code == status.HTTP_403_FORBIDDEN
         body = response.json()
         assert "detail" in body
-        assert "Unauthorized" in body["detail"]
+        assert body["detail"] == "Unauthorized: Unauthorized"
 
     def test_backend_unavailable_returns_503(self, unavailable_client: TestClient) -> None:
         """Unavailable backend raises 503 Service Unavailable."""
@@ -125,6 +155,7 @@ class TestListSecrets:
         assert response.status_code == status.HTTP_503_SERVICE_UNAVAILABLE
         body = response.json()
         assert "detail" in body
+        assert body["detail"] == "Secret backend unavailable: Backend unavailable"
 
     def test_respects_prefix_parameter(self, working_client: TestClient) -> None:
         """List endpoint filters by prefix."""
@@ -161,16 +192,22 @@ class TestGetSecret:
         assert response.status_code == status.HTTP_404_NOT_FOUND
         body = response.json()
         assert "detail" in body
+        assert (
+            body["detail"]
+            == "Secret not found: Secret not found at path: Secret not found: DOES_NOT_EXIST"
+        )
 
     def test_authorization_failure_returns_403(self, unauthorized_client: TestClient) -> None:
         """Unauthorized adapter raises 403."""
         response = unauthorized_client.get("/api/v1/secrets/ANY_KEY")
         assert response.status_code == status.HTTP_403_FORBIDDEN
+        assert response.json()["detail"] == "Unauthorized: Unauthorized"
 
     def test_backend_unavailable_returns_503(self, unavailable_client: TestClient) -> None:
         """Unavailable backend raises 503."""
         response = unavailable_client.get("/api/v1/secrets/ANY_KEY")
         assert response.status_code == status.HTTP_503_SERVICE_UNAVAILABLE
+        assert response.json()["detail"] == "Secret backend unavailable: Backend unavailable"
 
 
 # ── Put Secret Tests ────────────────────────────────────────────────────────
@@ -224,6 +261,7 @@ class TestPutSecret:
             ).model_dump(),
         )
         assert response.status_code == status.HTTP_422_UNPROCESSABLE_ENTITY
+        assert response.json()["detail"] == "Validation failed: Invalid secret format"
 
     def test_authorization_failure_returns_403(self, unauthorized_client: TestClient) -> None:
         """Unauthorized adapter raises 403."""
@@ -235,6 +273,7 @@ class TestPutSecret:
             ).model_dump(),
         )
         assert response.status_code == status.HTTP_403_FORBIDDEN
+        assert response.json()["detail"] == "Unauthorized: Unauthorized"
 
     def test_backend_unavailable_returns_503(self, unavailable_client: TestClient) -> None:
         """Unavailable backend raises 503."""
@@ -246,6 +285,7 @@ class TestPutSecret:
             ).model_dump(),
         )
         assert response.status_code == status.HTTP_503_SERVICE_UNAVAILABLE
+        assert response.json()["detail"] == "Secret backend unavailable: Backend unavailable"
 
 
 # ── Delete Secret Tests ─────────────────────────────────────────────────────
@@ -278,16 +318,45 @@ class TestDeleteSecret:
 
         response = client.delete("/api/v1/secrets/DOES_NOT_EXIST")
         assert response.status_code == status.HTTP_404_NOT_FOUND
+        assert (
+            response.json()["detail"]
+            == "Secret not found: Secret not found at path: Secret not found"
+        )
 
     def test_authorization_failure_returns_403(self, unauthorized_client: TestClient) -> None:
         """Unauthorized adapter raises 403."""
         response = unauthorized_client.delete("/api/v1/secrets/API_KEY")
         assert response.status_code == status.HTTP_403_FORBIDDEN
+        assert response.json()["detail"] == "Unauthorized: Unauthorized"
 
     def test_backend_unavailable_returns_503(self, unavailable_client: TestClient) -> None:
         """Unavailable backend raises 503."""
         response = unavailable_client.delete("/api/v1/secrets/API_KEY")
         assert response.status_code == status.HTTP_503_SERVICE_UNAVAILABLE
+        assert response.json()["detail"] == "Secret backend unavailable: Backend unavailable"
+
+
+# ── Health Tests ───────────────────────────────────────────────────────────
+
+
+class TestSecretsHealth:
+    """GET /api/v1/secrets/health — health report"""
+
+    def test_health_failure_includes_detail(self) -> None:
+        app = _build_app_with_working_adapter()
+
+        class BrokenAdapter:
+            async def health(self):
+                raise RuntimeError("boom")
+
+        app.dependency_overrides[get_secrets_adapter] = lambda: BrokenAdapter()
+        client = TestClient(app, raise_server_exceptions=False)
+
+        response = client.get("/api/v1/secrets/health")
+        assert response.status_code == status.HTTP_200_OK
+        body = response.json()
+        assert body["status"] == "unhealthy"
+        assert body["details"]["error"] == "Health check failed: boom"
 
 
 # ── Router Registration Tests ───────────────────────────────────────────────
@@ -295,17 +364,24 @@ class TestDeleteSecret:
 
 def test_router_registered_endpoints() -> None:
     """Verify the router registers all expected endpoints."""
-    routes = {(r.path, frozenset(r.methods or [])) for r in router.routes}
+    app = FastAPI()
+    app.include_router(router, prefix="/api/v1")
+    routes = {(r.path, frozenset(r.methods or [])) for r in app.routes}
 
-    # Check list endpoint (GET /, PUT /)
-    assert any(r[0] == "/" and "GET" in r[1] for r in routes), "Missing GET /"
-    assert any(r[0] == "/" and "PUT" in r[1] for r in routes), "Missing PUT /"
+    # Check list endpoint (GET /)
+    assert any(r[0] in {"/api/v1/secrets", "/api/v1/secrets/"} and "GET" in r[1] for r in routes), (
+        "Missing GET /"
+    )
 
     # Check detail endpoint (GET /{path}, DELETE /{path})
-    assert any(r[0] == "/{path:path}" and "GET" in r[1] for r in routes), "Missing GET /{path}"
-    assert any(r[0] == "/{path:path}" and "DELETE" in r[1] for r in routes), (
+    assert any(r[0] == "/api/v1/secrets/{path:path}" and "GET" in r[1] for r in routes), (
+        "Missing GET /{path}"
+    )
+    assert any(r[0] == "/api/v1/secrets/{path:path}" and "DELETE" in r[1] for r in routes), (
         "Missing DELETE /{path}"
     )
 
     # Check rotate endpoint
-    assert any("rotate" in r[0] and "POST" in r[1] for r in routes), "Missing POST /rotate"
+    assert any(r[0] == "/api/v1/secrets/{path:path}/rotate" and "POST" in r[1] for r in routes), (
+        "Missing POST /rotate"
+    )

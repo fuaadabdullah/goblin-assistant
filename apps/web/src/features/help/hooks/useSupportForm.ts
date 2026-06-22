@@ -2,6 +2,7 @@ import type { FormEvent } from 'react';
 import { useCallback, useState } from 'react';
 import { sendSupportMessage } from '../api';
 import { toUiError } from '../../../lib/ui-error';
+import { getUserMessage } from '../../../lib/error/toast';
 import { useToast } from '../../../hooks/useToast';
 
 export interface SupportFormState {
@@ -35,7 +36,7 @@ export const useSupportForm = (): SupportFormState => {
       } catch (err) {
         const uiError = toUiError(err, {
           code: 'SUPPORT_MESSAGE_FAILED',
-          userMessage: 'We could not send your message. Please try again.',
+          userMessage: getUserMessage(err),
         });
         setError(uiError.userMessage);
         showError('Support request failed', uiError.userMessage);

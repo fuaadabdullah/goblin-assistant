@@ -20,7 +20,7 @@ class UserCreate(BaseModel):
     email: EmailStr
     password: str
     name: Optional[str] = None
-    csrf_token: str  # Required: fetch from GET /auth/csrf-token first
+    csrf_token: Optional[str] = None  # Optional for compatibility; validated at runtime.
 
 
 class UserLogin(BaseModel):
@@ -28,7 +28,7 @@ class UserLogin(BaseModel):
 
     email: EmailStr
     password: str
-    csrf_token: str  # Required: fetch from GET /auth/csrf-token first
+    csrf_token: Optional[str] = None  # Optional for compatibility; validated at runtime.
 
 
 class Token(BaseModel):

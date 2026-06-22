@@ -38,59 +38,19 @@ export const backendHttp = axios.create({
 // Lazy-load Supabase to avoid bloating public routes. Attached only on first request.
 let supabaseInterceptorAttached = false;
 
-export async function attachSupabaseInterceptor() {
-  if (supabaseInterceptorAttached) return;
-  supabaseInterceptorAttached = true;
+const setAuthorizationHeader = (
+  headers: InternalAxiosRequestConfig['headers'],
+  token: string
+) => {
+  headers['Authorization'] = `Bearer ${token}`;
+};
 
-  // Dynamic import to keep supabase out of public route bundles.
-  const { authGetSession } = await import('../supabase');
+const loadSupabaseAuthHelpers = async () => {
+  const { authGetSession, authRefreshSession, supabaseConfigured } = await import('../supabase');
+  return { authGetSession, authRefreshSession, supabaseConfigured };
+};
 
-  // Attach Supabase access token as Bearer before every backend request.
-  // Supabase auto-refreshes tokens; getSession() is a fast local read.
-  backendHttp.interceptors.request.use(async (config: InternalAxiosRequestConfig) => {
-    const { session } = await authGetSession();
-    if (session?.access_token) {
-      config.headers.Authorization = `Bearer ${session.access_token}`;
-    }
-    return config;
-  });
-}
-
-export const frontendHttp = axios.create({
-  timeout: 45000,
-  headers: {
-    'Content-Type': 'application/json',
-  },
-});
-
-// ============================================================================
-// Auth & Token Refresh
-// ============================================================================
-
-type RetryableRequestConfig = AxiosRequestConfig & { _retry?: boolean };
-
-let refreshPromise: Promise<string | null> | null = null;
-
-export const refreshAccessToken = async (): Promise<string | null> => {
-  // Supabase sessions refresh through the Supabase client, not the legacy
-  // backend endpoint — hitting /auth/refresh with no legacy session would
-  // fail and wipe the auth cookies mid-session.
-  const {
-    authGetSession: getSupabaseSession,
-    authRefreshSession: refreshSupabaseSession,
-    supabaseConfigured,
-  } = await import('../supabase');
-
-  if (supabaseConfigured) {
-    const { session: existing } = await getSupabaseSession();
-    if (existing) {
-      const { session } = await refreshSupabaseSession();
-      return session?.access_token ?? null;
-    }
-  }
-
-  const refreshToken = getRefreshToken();
-
+const refreshAccessTokenViaBackend = async (refreshToken: string | null): Promise<string | null> => {
   try {
     const response = await backendHttp.post<{
       access_token: string;
@@ -116,6 +76,61 @@ export const refreshAccessToken = async (): Promise<string | null> => {
     clearAuthSession();
     return null;
   }
+};
+
+const refreshAccessTokenViaSupabase = async (): Promise<string | null> => {
+  const { authGetSession, authRefreshSession, supabaseConfigured } = await loadSupabaseAuthHelpers();
+
+  if (!supabaseConfigured) return null;
+
+  const { session: existing } = await authGetSession();
+  if (!existing) return null;
+
+  const { session } = await authRefreshSession();
+  return session?.access_token ?? null;
+};
+
+export async function attachSupabaseInterceptor() {
+  if (supabaseInterceptorAttached) return;
+  supabaseInterceptorAttached = true;
+
+  // Dynamic import to keep supabase out of public route bundles.
+  const { authGetSession } = await import('../supabase');
+
+  // Attach Supabase access token as Bearer before every backend request.
+  // Supabase auto-refreshes tokens; getSession() is a fast local read.
+  backendHttp.interceptors.request.use(async (config: InternalAxiosRequestConfig) => {
+    const { session } = await authGetSession();
+    if (session?.access_token) {
+      setAuthorizationHeader(config.headers, session.access_token);
+    }
+    return config;
+  });
+}
+
+export const frontendHttp = axios.create({
+  timeout: 45000,
+  headers: {
+    'Content-Type': 'application/json',
+  },
+});
+
+// ============================================================================
+// Auth & Token Refresh
+// ============================================================================
+
+type RetryableRequestConfig = AxiosRequestConfig & { _retry?: boolean };
+
+let refreshPromise: Promise<string | null> | null = null;
+
+export const refreshAccessToken = async (): Promise<string | null> => {
+  // Supabase sessions refresh through the Supabase client, not the legacy
+  // backend endpoint — hitting /auth/refresh with no legacy session would
+  // fail and wipe the auth cookies mid-session.
+  const supabaseToken = await refreshAccessTokenViaSupabase();
+  if (supabaseToken) return supabaseToken;
+
+  return refreshAccessTokenViaBackend(getRefreshToken());
 };
 
 backendHttp.interceptors.response.use(

@@ -25,6 +25,86 @@ const trackRoutingDecision = (fromProvider: string, toProvider: string, reason: 
   logEvent('routing_decision', { from_provider: fromProvider, to_provider: toProvider, reason });
 };
 
+const nowIso = () => new Date().toISOString();
+
+const getRuntimeMetadata = () => ({
+  userAgent: typeof navigator !== 'undefined' ? navigator.userAgent : 'server',
+  url: typeof window !== 'undefined' ? window.location.href : 'server',
+});
+
+const buildOperationLogContext = <TContext extends Record<string, unknown>>(
+  context: TContext,
+  duration: number,
+  success: boolean
+) => ({
+  ...context,
+  duration,
+  success,
+  timestamp: nowIso(),
+});
+
+const buildErrorPayload = (error: unknown) => ({
+  name: error instanceof Error ? error.name : 'Unknown',
+  message: error instanceof Error ? error.message : String(error),
+  stack: error instanceof Error ? error.stack : undefined,
+});
+
+const normalizeError = (error: unknown) => (error instanceof Error ? error : new Error(String(error)));
+
+const rethrowOperationError = (error: unknown, operation: string): never => {
+  if (error instanceof Error) {
+    throw error;
+  }
+
+  throw new Error(`Operation failed: ${operation} - ${String(error)}`);
+};
+
+const createGlobalErrorListener =
+  (type: 'unhandledrejection' | 'uncaughterror') =>
+  (event: PromiseRejectionEvent | ErrorEvent) => {
+    if (type === 'unhandledrejection') {
+      const rejectionEvent = event as PromiseRejectionEvent;
+      const error = new Error(`Unhandled promise rejection: ${rejectionEvent.reason}`);
+
+      logError(error, {
+        type,
+        reason: rejectionEvent.reason,
+        timestamp: nowIso(),
+        ...getRuntimeMetadata(),
+      });
+      logErrorToService(error, {
+        type,
+        reason: rejectionEvent.reason,
+      });
+      return;
+    }
+
+    const errorEvent = event as ErrorEvent;
+    const error = errorEvent.error || new Error(errorEvent.message);
+
+    logError(error, {
+      type,
+      filename: errorEvent.filename,
+      lineno: errorEvent.lineno,
+      colno: errorEvent.colno,
+      timestamp: nowIso(),
+      ...getRuntimeMetadata(),
+    });
+    logErrorToService(error, {
+      type,
+      filename: errorEvent.filename,
+      lineno: errorEvent.lineno,
+      colno: errorEvent.colno,
+    });
+  };
+
+const handleVisibilityChange = () => {
+  logEvent('Page visibility changed', {
+    hidden: document.hidden,
+    timestamp: nowIso(),
+  });
+};
+
 // Custom error types for better categorization
 export class APIError extends Error {
   constructor(
@@ -78,42 +158,19 @@ export const withErrorTracking = async <T>(
     const result = await operation();
     const duration = Date.now() - startTime;
 
-    // Log successful operations for performance monitoring
-    logEvent(`API call completed: ${context.operation}`, {
-      ...context,
-      duration,
-      success: true,
-      timestamp: new Date().toISOString(),
-    });
+    logEvent(`API call completed: ${context.operation}`, buildOperationLogContext(context, duration, true));
 
     return result;
   } catch (error) {
     const duration = Date.now() - startTime;
 
-    // Enhanced error logging with context
-    const errorContext = {
-      ...context,
-      duration,
-      success: false,
-      timestamp: new Date().toISOString(),
-      userAgent: typeof navigator !== 'undefined' ? navigator.userAgent : 'server',
-      url: typeof window !== 'undefined' ? window.location.href : 'server',
-      error: {
-        name: error instanceof Error ? error.name : 'Unknown',
-        message: error instanceof Error ? error.message : String(error),
-        stack: error instanceof Error ? error.stack : undefined,
-      },
-    };
+    logError(normalizeError(error), {
+      ...buildOperationLogContext(context, duration, false),
+      ...getRuntimeMetadata(),
+      error: buildErrorPayload(error),
+    });
 
-    // Log to Datadog
-    logError(error instanceof Error ? error : new Error(String(error)), errorContext);
-
-    // Re-throw with enhanced context
-    if (error instanceof Error) {
-      throw error;
-    } else {
-      throw new Error(`Operation failed: ${context.operation} - ${String(error)}`);
-    }
+    return rethrowOperationError(error, context.operation);
   }
 };
 
@@ -157,7 +214,7 @@ export const trackLLMOperation = async <T>(
       ...context,
       duration,
       success: true,
-      timestamp: new Date().toISOString(),
+      timestamp: nowIso(),
     });
 
     return result;
@@ -168,7 +225,7 @@ export const trackLLMOperation = async <T>(
       ...context,
       duration,
       success: false,
-      timestamp: new Date().toISOString(),
+      timestamp: nowIso(),
     });
 
     throw error;
@@ -189,7 +246,7 @@ export const trackRoutingOperation = (
     toProvider,
     reason,
     ...context,
-    timestamp: new Date().toISOString(),
+    timestamp: nowIso(),
   });
 };
 
@@ -197,9 +254,8 @@ export const trackRoutingOperation = (
 export const trackUserAction = (action: string, context?: Record<string, unknown>) => {
   logEvent(`User action: ${action}`, {
     ...context,
-    timestamp: new Date().toISOString(),
-    userAgent: typeof navigator !== 'undefined' ? navigator.userAgent : 'server',
-    url: typeof window !== 'undefined' ? window.location.href : 'server',
+    timestamp: nowIso(),
+    ...getRuntimeMetadata(),
   });
 };
 
@@ -212,7 +268,7 @@ export const trackPerformance = (
   logEvent(`Performance metric: ${metric}`, {
     value,
     ...context,
-    timestamp: new Date().toISOString(),
+    timestamp: nowIso(),
   });
 };
 
@@ -228,9 +284,8 @@ export const logComponentError = (
     component: componentName,
     componentStack: errorInfo.componentStack,
     ...additionalContext,
-    timestamp: new Date().toISOString(),
-    userAgent: typeof navigator !== 'undefined' ? navigator.userAgent : 'server',
-    url: typeof window !== 'undefined' ? window.location.href : 'server',
+    timestamp: nowIso(),
+    ...getRuntimeMetadata(),
   });
 
   // Log to Sentry
@@ -246,49 +301,9 @@ export const setupGlobalErrorTracking = () => {
   // Skip setup on server-side
   if (typeof window === 'undefined') return;
 
-  // Handle unhandled promise rejections
-  window.addEventListener('unhandledrejection', (event) => {
-    const error = new Error(`Unhandled promise rejection: ${event.reason}`);
-    logError(error, {
-      type: 'unhandledrejection',
-      reason: event.reason,
-      timestamp: new Date().toISOString(),
-      userAgent: navigator.userAgent,
-      url: window.location.href,
-    });
-    logErrorToService(error, {
-      type: 'unhandledrejection',
-      reason: event.reason,
-    });
-  });
-
-  // Handle uncaught errors
-  window.addEventListener('error', (event) => {
-    const error = event.error || new Error(event.message);
-    logError(error, {
-      type: 'uncaughterror',
-      filename: event.filename,
-      lineno: event.lineno,
-      colno: event.colno,
-      timestamp: new Date().toISOString(),
-      userAgent: navigator.userAgent,
-      url: window.location.href,
-    });
-    logErrorToService(error, {
-      type: 'uncaughterror',
-      filename: event.filename,
-      lineno: event.lineno,
-      colno: event.colno,
-    });
-  });
-
-  // Log page visibility changes (useful for performance monitoring)
-  document.addEventListener('visibilitychange', () => {
-    logEvent('Page visibility changed', {
-      hidden: document.hidden,
-      timestamp: new Date().toISOString(),
-    });
-  });
+  window.addEventListener('unhandledrejection', createGlobalErrorListener('unhandledrejection'));
+  window.addEventListener('error', createGlobalErrorListener('uncaughterror'));
+  document.addEventListener('visibilitychange', handleVisibilityChange);
 };
 
 // Network status monitoring
@@ -299,7 +314,7 @@ export const monitorNetworkStatus = () => {
   const logNetworkStatus = (online: boolean) => {
     logEvent(`Network status changed: ${online ? 'online' : 'offline'}`, {
       online,
-      timestamp: new Date().toISOString(),
+      timestamp: nowIso(),
       userAgent: navigator.userAgent,
     });
   };

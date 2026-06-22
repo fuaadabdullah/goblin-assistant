@@ -28,6 +28,13 @@ logger = structlog.get_logger()
 router = APIRouter()
 
 
+def _detail_message(prefix: str, error: Exception) -> str:
+    message = str(error).strip()
+    if message:
+        return f"{prefix}: {message}"
+    return f"{prefix}: Request failed"
+
+
 @router.get("/api/migration-metrics")
 @require_ops_access("read")
 async def get_api_migration_metrics() -> Dict[str, Any]:
@@ -139,7 +146,10 @@ async def get_write_decisions(
         }
     except Exception as e:
         logger.error("Failed to get write decisions:", error=str(e))
-        raise HTTPException(status_code=500, detail=f"Failed to get write decisions: {str(e)}")
+        raise HTTPException(
+            status_code=500,
+            detail=_detail_message("Failed to get write decisions", e),
+        )
 
 
 @router.get("/write/decisions/stats")
@@ -161,7 +171,9 @@ async def get_write_decision_stats(
         }
     except Exception as e:
         logger.error("Failed to get decision stats:", error=str(e))
-        raise HTTPException(status_code=500, detail=f"Failed to get decision stats: {str(e)}")
+        raise HTTPException(
+            status_code=500, detail=_detail_message("Failed to get decision stats", e)
+        )
 
 
 @router.get("/write/decisions/search")
@@ -260,7 +272,10 @@ async def search_write_decisions(
         }
     except Exception as e:
         logger.error("Failed to search write decisions:", error=str(e))
-        raise HTTPException(status_code=500, detail=f"Failed to search write decisions: {str(e)}")
+        raise HTTPException(
+            status_code=500,
+            detail=_detail_message("Failed to search write decisions", e),
+        )
 
 
 # Memory Promotion Endpoints
@@ -302,7 +317,7 @@ async def get_user_memory(
         }
     except Exception as e:
         logger.error("Failed to get user memory:", error=str(e))
-        raise HTTPException(status_code=500, detail=f"Failed to get user memory: {str(e)}")
+        raise HTTPException(status_code=500, detail=_detail_message("Failed to get user memory", e))
 
 
 @router.get("/memory/promotions/stats")
@@ -326,7 +341,10 @@ async def get_memory_promotion_stats(
         }
     except Exception as e:
         logger.error("Failed to get promotion stats:", error=str(e))
-        raise HTTPException(status_code=500, detail=f"Failed to get promotion stats: {str(e)}")
+        raise HTTPException(
+            status_code=500,
+            detail=_detail_message("Failed to get promotion stats", e),
+        )
 
 
 @router.get("/memory/health/{user_id}")
@@ -338,7 +356,9 @@ async def get_memory_health(user_id: str) -> Dict[str, Any]:
         return health_report
     except Exception as e:
         logger.error("Failed to get memory health:", error=str(e))
-        raise HTTPException(status_code=500, detail=f"Failed to get memory health: {str(e)}")
+        raise HTTPException(
+            status_code=500, detail=_detail_message("Failed to get memory health", e)
+        )
 
 
 @router.get("/memory/promotions/search")
@@ -441,7 +461,10 @@ async def search_memory_promotions(
         }
     except Exception as e:
         logger.error("Failed to search memory promotions:", error=str(e))
-        raise HTTPException(status_code=500, detail=f"Failed to search memory promotions: {str(e)}")
+        raise HTTPException(
+            status_code=500,
+            detail=_detail_message("Failed to search memory promotions", e),
+        )
 
 
 def _decision_flag(decision: Any, field: str) -> bool:

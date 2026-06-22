@@ -22,3 +22,5 @@ Security, privacy, and secrets management documentation.
 
 Use this directory for canonical security and privacy policy documents.
 Operational procedures stay in `docs/operations/`.
+
+Security document ownership is shared with the relevant subsystem maintainer, but security policy changes should be reviewed against the security docs index and the owning ADRs in `docs/decisions/`.

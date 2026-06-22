@@ -18,6 +18,13 @@ from .tokens import create_access_token, create_refresh_token
 router = APIRouter()
 
 
+def _detail_message(prefix: str, error: Exception) -> str:
+    message = str(error).strip()
+    if message:
+        return f"{prefix}: {message}"
+    return f"{prefix}: Request failed"
+
+
 async def _issue_google_session_tokens(
     google_user: dict,
     db: AsyncSession,
@@ -121,7 +128,10 @@ async def get_google_auth_url():
         auth_url = GoogleOAuth.get_authorization_url()
         return {"authorization_url": auth_url}
     except ValueError as e:
-        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=str(e))
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=_detail_message("Google auth URL failed", e),
+        )
 
 
 @router.post("/google/callback", response_model=SuccessEnvelope[TokenWithRefresh])
@@ -156,5 +166,5 @@ async def google_auth_callback(
     except Exception as e:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
-            detail=f"Google authentication failed: {str(e)}",
+            detail=_detail_message("Google authentication failed", e),
         )

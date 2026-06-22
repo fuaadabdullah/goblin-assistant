@@ -9,6 +9,13 @@ from pydantic import BaseModel
 router = APIRouter(prefix="/api-keys", tags=["api-keys"])
 
 
+def _detail_message(prefix: str, error: Exception) -> str:
+    message = str(error).strip()
+    if message:
+        return f"{prefix}: {message}"
+    return f"{prefix}: Request failed"
+
+
 class ApiKeyRequest(BaseModel):
     key: str
 
@@ -56,7 +63,7 @@ async def store_api_key(provider: str, request: ApiKeyRequest):
         await save_api_keys_async(keys)
         return {"message": f"API key stored for {provider}"}
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Failed to store API key: {str(e)}")
+        raise HTTPException(status_code=500, detail=_detail_message("Failed to store API key", e))
 
 
 @router.get("/{provider}", response_model=ApiKeyResponse)
@@ -67,7 +74,10 @@ async def get_api_key(provider: str):
         key = keys.get(provider)
         return ApiKeyResponse(key=key, provider=provider)
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Failed to retrieve API key: {str(e)}")
+        raise HTTPException(
+            status_code=500,
+            detail=_detail_message("Failed to retrieve API key", e),
+        )
 
 
 @router.delete("/{provider}")
@@ -80,4 +90,4 @@ async def delete_api_key(provider: str):
             await save_api_keys_async(keys)
         return {"message": f"API key deleted for {provider}"}
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Failed to delete API key: {str(e)}")
+        raise HTTPException(status_code=500, detail=_detail_message("Failed to delete API key", e))

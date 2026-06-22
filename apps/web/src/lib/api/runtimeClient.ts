@@ -1,6 +1,6 @@
 import { providerKeys } from '@/lib/provider-keys';
-import { env } from '@/config/env';
-import { getAuthToken } from '@/utils/auth-session';
+import { streamRuntimeTask } from '@/api/runtime-stream';
+import { hasMockFallbackSignal } from './fallback';
 import type {
   CostSummary,
   GoblinStats,
@@ -54,21 +54,43 @@ const runtimeClientImpl: RuntimeClient = {
   async executeTask(
     goblin: string,
     task: string,
-    _streaming?: boolean,
+    streaming?: boolean,
     code?: string,
     provider?: string,
     model?: string
   ): Promise<string> {
     const conversationId = await ensureRuntimeConversation();
     const prompt = buildRuntimePrompt(goblin, task, code);
-    const response = await apiClient.sendConversationMessage({
-      conversationId,
-      message: prompt,
-      provider,
-      model,
-      metadata: { source: 'runtime-client', goblin },
-    });
-    return response.content || '';
+    try {
+      const response = await apiClient.sendConversationMessage({
+        conversationId,
+        message: prompt,
+        provider,
+        model,
+        metadata: { source: 'runtime-client', goblin },
+      });
+      return response.content || '';
+    } catch (error) {
+      const errorObj = error as any;
+      const backendError =
+        errorObj?.responseData?.error ||
+        errorObj?.response?.data?.error ||
+        errorObj?.response?.data?.detail ||
+        errorObj?.response?.data?.message ||
+        errorObj?.message;
+
+      if (hasMockFallbackSignal(backendError)) {
+        const fallbackResponse = await apiClient.chatCompletion(
+          [{ role: 'user', content: prompt }],
+          model
+        );
+        return typeof fallbackResponse === 'string'
+          ? fallbackResponse
+          : String(fallbackResponse ?? '');
+      }
+
+      throw error;
+    }
   },
 
   async executeTaskStreaming(
@@ -82,96 +104,19 @@ const runtimeClientImpl: RuntimeClient = {
   ): Promise<void> {
     const conversationId = await ensureRuntimeConversation();
     const prompt = buildRuntimePrompt(goblin, task, code);
-    const token = getAuthToken();
-    const headers: Record<string, string> = {
-      'Content-Type': 'application/json',
-    };
-    if (token) {
-      headers['Authorization'] = `Bearer ${token}`;
-    }
-
-    const response = await fetch(`${env.apiBaseUrl}${V1_CHAT_PREFIX}/stream`, {
-      method: 'POST',
-      headers,
-      body: JSON.stringify({
-        conversation_id: conversationId,
-        message: prompt,
+    await streamRuntimeTask(
+      {
+        conversationId,
+        prompt,
         provider,
         model,
-        metadata: { source: 'runtime-client', goblin },
-      }),
-      credentials: 'include',
-    });
-
-    if (!response.ok) {
-      throw new Error(`Streaming request failed with HTTP ${response.status}`);
-    }
-    if (!response.body) {
-      throw new Error('Streaming response body is empty');
-    }
-
-    const reader = response.body.getReader();
-    const decoder = new TextDecoder();
-    let buffer = '';
-    let finalResponse: TaskResponse | null = null;
-
-    while (true) {
-      const { done, value } = await reader.read();
-      if (done) break;
-
-      buffer += decoder.decode(value, { stream: true });
-      const lines = buffer.split('\n');
-      buffer = lines[lines.length - 1] || '';
-
-      for (let i = 0; i < lines.length - 1; i++) {
-        const line = lines[i]?.trim();
-        if (!line || !line.startsWith('data: ')) continue;
-
-        const payload = JSON.parse(line.slice(6)) as Record<string, unknown>;
-        if (payload['type'] === 'error' || typeof payload['error'] === 'string') {
-          const message =
-            (typeof payload['message'] === 'string' && payload['message']) ||
-            (typeof payload['error'] === 'string' && payload['error']) ||
-            'Streaming failed';
-          throw new Error(message);
-        }
-
-        const chunkContent =
-          typeof payload['content'] === 'string'
-            ? payload['content']
-            : typeof payload['result'] === 'string'
-              ? payload['result']
-              : undefined;
-
-        onChunk({
-          content: chunkContent,
-          done: payload['done'] === true,
-          token_count: Number(payload['token_count']) || undefined,
-          cost_delta: Number(payload['cost_delta']) || undefined,
-          result: payload['result'],
-        });
-
-        if (payload['done'] === true) {
-          finalResponse = {
-            result: payload['result'],
-            message_id: payload['message_id'],
-            provider: payload['provider'],
-            model: payload['model'],
-            tokens: payload['tokens'],
-            cost: payload['cost'],
-            duration_ms: payload['duration_ms'],
-            done: true,
-          };
-          onComplete?.(finalResponse);
-          await reader.cancel();
-          return;
-        }
+        goblin,
+      },
+      {
+        onChunk,
+        onComplete,
       }
-    }
-
-    if (!finalResponse) {
-      onComplete?.({ result: { message: 'Stream closed without completion event.' } });
-    }
+    );
   },
 
   async setProviderApiKey(provider: string, key: string): Promise<void> {

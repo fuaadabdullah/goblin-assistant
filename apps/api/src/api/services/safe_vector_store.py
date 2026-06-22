@@ -173,7 +173,7 @@ class SafeVectorStore:
             logger.warning("Sensitive content detected in doc %s", doc_id)
             return {
                 "success": False,
-                "error": "Document contains sensitive content - cannot embed",
+                "error": "Document contains sensitive content (PII/secret) - cannot embed",
                 "doc_id": doc_id,
                 "suggestion": "Remove PII/secrets before adding to RAG",
             }

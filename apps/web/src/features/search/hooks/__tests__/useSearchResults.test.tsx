@@ -16,10 +16,6 @@ vi.mock('../../api', () => ({
   searchCollectionByName: (...args: unknown[]) => mockSearchCollectionByName(...args),
 }));
 
-vi.mock('@/lib/ui-error', () => ({
-  toUiError: (_err: unknown, opts: { userMessage: string }) => ({ userMessage: opts.userMessage }),
-}));
-
 vi.mock('@/lib/query-keys', () => ({
   queryKeys: { collections: ['collections'] },
 }));
@@ -93,7 +89,7 @@ describe('useSearchResults', () => {
   });
 
   it('handleSearch sets error on failure', async () => {
-    mockSearchCollectionByName.mockRejectedValueOnce(new Error('fail'));
+    mockSearchCollectionByName.mockRejectedValueOnce(new Error('Search service unavailable'));
     const { result } = renderHook(() => useSearchResults(), { wrapper });
     await waitFor(() => expect(result.current.selectedCollection).toBe('docs'));
     act(() => {
@@ -103,7 +99,7 @@ describe('useSearchResults', () => {
     await act(async () => {
       await result.current.handleSearch(mockEvent);
     });
-    expect(result.current.error).toBe('Search failed. Please try again.');
+    expect(result.current.error).toBe('Search service unavailable');
     expect(result.current.results).toEqual([]);
   });
 
@@ -129,10 +125,10 @@ describe('useSearchResults', () => {
   });
 
   it('sets error when collections fail to load', async () => {
-    mockFetchCollections.mockRejectedValueOnce(new Error('collections fail'));
+    mockFetchCollections.mockRejectedValueOnce(new Error('Collections index unavailable'));
     const { result } = renderHook(() => useSearchResults(), { wrapper });
     await waitFor(() => {
-      expect(result.current.error).toBe('We could not load collections. Please try again.');
+      expect(result.current.error).toBe('Collections index unavailable');
     });
   });
 });

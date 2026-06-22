@@ -2,6 +2,7 @@ import type { FormEvent } from 'react';
 import { useCallback, useMemo, useState } from 'react';
 import { savePreferences, saveProfile, loadPreferences } from '../api';
 import type { AccountPreferencesPayload } from '../types';
+import { toUiError } from '../../../lib/ui-error';
 import { useToast } from '../../../hooks/useToast';
 
 interface AccountUser {
@@ -52,8 +53,12 @@ export const useAccountProfile = (user?: AccountUser | null): AccountState => {
         setSaved(true);
         showSuccess('Account updated', 'Your profile and preferences were saved.');
         setTimeout(() => setSaved(false), 2000);
-      } catch {
-        setError('We could not save your account changes.');
+      } catch (err) {
+        const uiError = toUiError(err, {
+          code: 'ACCOUNT_SAVE_FAILED',
+          userMessage: 'We could not save your account changes.',
+        });
+        setError(uiError.userMessage);
       } finally {
         setSaving(false);
       }

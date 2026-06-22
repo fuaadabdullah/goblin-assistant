@@ -3,16 +3,15 @@ Sandbox worker for secure code execution
 Processes jobs from Redis queue and executes them in hardened containers
 """
 
-import os
-import subprocess
 import json
-import time
-import shutil
+import os
+import shlex
+import subprocess
 from datetime import datetime
 
 import redis
 from docker import DockerClient
-from docker.errors import DockerException, APIError, ContainerError
+from docker.errors import DockerException
 
 # Configuration from environment
 REDIS_URL = os.getenv("REDIS_URL", "redis://redis:6379/0")
@@ -26,6 +25,7 @@ S3_BUCKET = os.getenv("S3_BUCKET")
 # Initialize clients
 docker_client = DockerClient(base_url="unix://var/run/docker.sock")
 redis_client = redis.from_url(REDIS_URL)
+
 
 def verify_image_signature(image: str) -> bool:
     """
@@ -42,7 +42,8 @@ def verify_image_signature(image: str) -> bool:
             cmd,
             capture_output=True,
             text=True,
-            timeout=30
+            timeout=30,
+            check=False,
         )
 
         if result.returncode == 0:
@@ -62,12 +63,17 @@ def verify_image_signature(image: str) -> bool:
         print(f"❌ Error during image verification for {image}: {str(e)}")
         return False
 
+
 # Import services
 from api.artifact_service import artifact_service
 from api.sandbox_metrics import (
-    record_job_started, record_job_completed, record_job_failed,
-    record_container_killed, record_artifact_upload, record_cleanup_run
+    record_artifact_upload,
+    record_container_killed,
+    record_job_completed,
+    record_job_failed,
+    record_job_started,
 )
+
 
 def upload_artifacts_to_s3(job_path: str, job_id: str) -> bool:
     """
@@ -117,6 +123,7 @@ def upload_artifacts_to_s3(job_path: str, job_id: str) -> bool:
         print(f"❌ Failed to upload artifacts: {str(e)}")
         return False
 
+
 # Domain allowlist for jobs that request network access (financial data APIs)
 FINANCE_NETWORK_ALLOWLIST = {
     "query1.finance.yahoo.com",
@@ -125,7 +132,41 @@ FINANCE_NETWORK_ALLOWLIST = {
     "www.alphavantage.co",
 }
 
-def run_job(job_id: str, language: str, timeout: int, runtime_args: str, job_path: str, allow_network: bool = False):
+
+def _parse_runtime_args(runtime_args: str) -> list[str]:
+    """Parse runtime args without invoking a shell."""
+    if not runtime_args:
+        return []
+    args = shlex.split(runtime_args)
+    if len(args) > 16:
+        raise ValueError("Too many runtime arguments")
+    if any(len(arg) > 128 for arg in args):
+        raise ValueError("Runtime argument too long")
+    return args
+
+
+def _build_command(language: str, runtime_args: str) -> list[str]:
+    args = _parse_runtime_args(runtime_args)
+    if language == "python":
+        command = ["python", "/work/main.py"]
+    elif language == "javascript":
+        command = ["node", "/work/main.js"]
+    elif language == "bash":
+        command = ["bash", "/work/script.sh"]
+    else:
+        raise ValueError(f"Unsupported language: {language}")
+    command.extend(args)
+    return command
+
+
+def run_job(
+    job_id: str,
+    language: str,
+    timeout: int,
+    runtime_args: str,
+    job_path: str,
+    allow_network: bool = False,
+):
     """
     Execute a sandbox job in a container
     This function is called by RQ worker
@@ -145,33 +186,29 @@ def run_job(job_id: str, language: str, timeout: int, runtime_args: str, job_pat
         # Verify image signature before use
         if not verify_image_signature(SANDBOX_IMAGE):
             error_msg = "Container image signature verification failed"
-            redis_client.hset(job_key, mapping={
-                "status": "failed",
-                "error": error_msg,
-                "finished_at": datetime.utcnow().isoformat()
-            })
+            redis_client.hset(
+                job_key,
+                mapping={
+                    "status": "failed",
+                    "error": error_msg,
+                    "finished_at": datetime.utcnow().isoformat(),
+                },
+            )
             return
 
-        # Determine command based on language
-        if language == "python":
-            command = ["python", "/work/main.py"]
-            if runtime_args:
-                command.extend(runtime_args.split())
-        elif language == "javascript":
-            command = ["node", "/work/main.js"]
-            if runtime_args:
-                command.extend(runtime_args.split())
-        elif language == "bash":
-            command = ["bash", "/work/script.sh"]
-            if runtime_args:
-                command.extend(runtime_args.split())
-        else:
-            error_msg = f"Unsupported language: {language}"
-            redis_client.hset(job_key, mapping={
-                "status": "failed",
-                "error": error_msg,
-                "finished_at": datetime.utcnow().isoformat()
-            })
+        # Determine command based on language using shell-free argument parsing.
+        try:
+            command = _build_command(language, runtime_args)
+        except ValueError as exc:
+            error_msg = str(exc)
+            redis_client.hset(
+                job_key,
+                mapping={
+                    "status": "failed",
+                    "error": error_msg,
+                    "finished_at": datetime.utcnow().isoformat(),
+                },
+            )
             return
 
         # Container configuration with security hardening
@@ -211,7 +248,8 @@ def run_job(job_id: str, language: str, timeout: int, runtime_args: str, job_pat
                 ["apparmor_status", "--profiled"],
                 capture_output=True,
                 text=True,
-                timeout=5
+                timeout=5,
+                check=False,
             )
             if apparmor_profile in result.stdout:
                 container_config["security_opt"].append(f"apparmor={apparmor_profile}")
@@ -235,7 +273,7 @@ def run_job(job_id: str, language: str, timeout: int, runtime_args: str, job_pat
             print(f"✅ Container finished with exit code {exit_code}")
 
             # Capture logs
-            logs = container.logs(stdout=True, stderr=True).decode('utf-8', errors='replace')
+            logs = container.logs(stdout=True, stderr=True).decode("utf-8", errors="replace")
             log_file = os.path.join(job_path, "stdout.log")
             with open(log_file, "w") as f:
                 f.write(logs)
@@ -244,7 +282,7 @@ def run_job(job_id: str, language: str, timeout: int, runtime_args: str, job_pat
             job_update = {
                 "status": "finished" if exit_code == 0 else "failed",
                 "exit_code": str(exit_code),
-                "finished_at": datetime.utcnow().isoformat()
+                "finished_at": datetime.utcnow().isoformat(),
             }
 
             if exit_code != 0:
@@ -263,11 +301,14 @@ def run_job(job_id: str, language: str, timeout: int, runtime_args: str, job_pat
         except subprocess.TimeoutExpired:
             print(f"⏰ Container timed out after {timeout}s, killing...")
             container.kill()
-            redis_client.hset(job_key, mapping={
-                "status": "failed",
-                "error": f"Job timed out after {timeout} seconds",
-                "finished_at": datetime.utcnow().isoformat()
-            })
+            redis_client.hset(
+                job_key,
+                mapping={
+                    "status": "failed",
+                    "error": f"Job timed out after {timeout} seconds",
+                    "finished_at": datetime.utcnow().isoformat(),
+                },
+            )
 
             # Record timeout metrics
             record_container_killed("timeout")
@@ -284,11 +325,14 @@ def run_job(job_id: str, language: str, timeout: int, runtime_args: str, job_pat
     except DockerException as e:
         error_msg = f"Docker error: {str(e)}"
         print(f"❌ {error_msg}")
-        redis_client.hset(job_key, mapping={
-            "status": "failed",
-            "error": error_msg,
-            "finished_at": datetime.utcnow().isoformat()
-        })
+        redis_client.hset(
+            job_key,
+            mapping={
+                "status": "failed",
+                "error": error_msg,
+                "finished_at": datetime.utcnow().isoformat(),
+            },
+        )
 
         # Record failure metrics
         record_job_failed(job_id, "container_error")
@@ -296,11 +340,14 @@ def run_job(job_id: str, language: str, timeout: int, runtime_args: str, job_pat
     except Exception as e:
         error_msg = f"Unexpected error: {str(e)}"
         print(f"❌ {error_msg}")
-        redis_client.hset(job_key, mapping={
-            "status": "failed",
-            "error": error_msg,
-            "finished_at": datetime.utcnow().isoformat()
-        })
+        redis_client.hset(
+            job_key,
+            mapping={
+                "status": "failed",
+                "error": error_msg,
+                "finished_at": datetime.utcnow().isoformat(),
+            },
+        )
 
         # Record failure metrics
         record_job_failed(job_id, "unexpected_error")
@@ -308,12 +355,14 @@ def run_job(job_id: str, language: str, timeout: int, runtime_args: str, job_pat
     # Clean up job directory after retention period (optional)
     # For now, keep jobs for debugging - in production, implement cleanup
 
+
 if __name__ == "__main__":
     # For testing the worker directly
     print("🧪 Testing sandbox worker...")
 
     # Create a test job
     import uuid
+
     test_job_id = str(uuid.uuid4())
     test_job_path = f"/tmp/test_job_{test_job_id}"
 

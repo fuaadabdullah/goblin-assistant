@@ -23,7 +23,16 @@ def isolated_task_store():
 
 
 class TestTaskToolRegistration:
-    EXPECTED = {"create_task", "list_tasks", "update_task", "complete_task"}
+    EXPECTED = {
+        "create_task",
+        "list_tasks",
+        "update_task",
+        "complete_task",
+        "create_reminder",
+        "list_reminders",
+        "create_calendar_event",
+        "list_calendar_events",
+    }
 
     def test_tools_registered(self):
         assert self.EXPECTED.issubset(TOOL_REGISTRY.keys())
@@ -79,6 +88,42 @@ class TestTaskLifecycle:
         assert completed["completed"] is True
         assert completed["task"]["status"] == "completed"
         assert completed["task"]["completion_note"] == "Done"
+
+    @pytest.mark.asyncio
+    async def test_create_and_list_reminders(self):
+        created = await TOOL_REGISTRY["create_reminder"].handler(
+            title="Check inbox",
+            trigger_at="2026-06-21T09:00:00Z",
+            note="Follow up on onboarding",
+            user_id="u1",
+        )
+        assert created["created"] is True
+        reminder_id = created["reminder"]["reminder_id"]
+
+        listed = await TOOL_REGISTRY["list_reminders"].handler(status="scheduled", user_id="u1")
+        assert listed["count"] == 1
+        assert listed["reminders"][0]["reminder_id"] == reminder_id
+        assert listed["reminders"][0]["trigger_at"] == "2026-06-21T09:00:00Z"
+
+    @pytest.mark.asyncio
+    async def test_create_and_list_calendar_events(self):
+        created = await TOOL_REGISTRY["create_calendar_event"].handler(
+            title="Sprint review",
+            start_time="2026-06-21T14:00:00Z",
+            end_time="2026-06-21T14:30:00Z",
+            attendees=["a@example.com"],
+            status="confirmed",
+            user_id="u1",
+        )
+        assert created["created"] is True
+        event_id = created["event"]["event_id"]
+
+        listed = await TOOL_REGISTRY["list_calendar_events"].handler(
+            status="confirmed", user_id="u1"
+        )
+        assert listed["count"] == 1
+        assert listed["events"][0]["event_id"] == event_id
+        assert listed["events"][0]["attendees"] == ["a@example.com"]
 
     @pytest.mark.asyncio
     async def test_invalid_status_rejected(self):

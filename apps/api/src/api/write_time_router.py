@@ -14,6 +14,13 @@ from .services.cache_service import cache_service
 router = APIRouter(prefix="/write-time", tags=["write-time"])
 
 
+def _detail_message(prefix: str, error: Exception) -> str:
+    message = str(error).strip()
+    if message:
+        return f"{prefix}: {message}"
+    return f"{prefix}: Request failed"
+
+
 def _get_write_time_decision_matrix():
     from .services.write_time_matrix import WriteTimeDecisionMatrix
 
@@ -91,8 +98,10 @@ async def test_message_processing(request: TestMessageRequest):
             processed_at=result["processed_at"],
         )
 
+    except HTTPException:
+        raise
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Test processing failed: {str(e)}")
+        raise HTTPException(status_code=500, detail=_detail_message("Test processing failed", e))
 
 
 @router.get("/cache/stats", response_model=CacheStatsResponse)
@@ -106,8 +115,10 @@ async def get_cache_stats():
             redis_info=stats.get("redis_info", {}),
             timestamp=stats.get("timestamp", datetime.utcnow().isoformat()),
         )
+    except HTTPException:
+        raise
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Failed to get cache stats: {str(e)}")
+        raise HTTPException(status_code=500, detail=_detail_message("Failed to get cache stats", e))
 
 
 @router.post("/cache/cleanup")
@@ -120,8 +131,10 @@ async def cleanup_cache():
             "message": result.get("message", "Cache cleanup completed"),
             "timestamp": datetime.utcnow().isoformat(),
         }
+    except HTTPException:
+        raise
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Cache cleanup failed: {str(e)}")
+        raise HTTPException(status_code=500, detail=_detail_message("Cache cleanup failed", e))
 
 
 @router.get("/matrix/config", response_model=DecisionMatrixResponse)
@@ -143,8 +156,12 @@ async def get_decision_matrix_config():
 
         return DecisionMatrixResponse(**config)
 
+    except HTTPException:
+        raise
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Failed to get matrix config: {str(e)}")
+        raise HTTPException(
+            status_code=500, detail=_detail_message("Failed to get matrix config", e)
+        )
 
 
 @router.get("/metrics")
@@ -181,8 +198,10 @@ async def get_write_time_metrics():
 
         return metrics
 
+    except HTTPException:
+        raise
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Failed to get metrics: {str(e)}")
+        raise HTTPException(status_code=500, detail=_detail_message("Failed to get metrics", e))
 
 
 @router.post("/cache/clear")
@@ -199,8 +218,10 @@ async def clear_cache():
         else:
             raise HTTPException(status_code=500, detail="Failed to clear cache")
 
+    except HTTPException:
+        raise
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Cache clear failed: {str(e)}")
+        raise HTTPException(status_code=500, detail=_detail_message("Cache clear failed", e))
 
 
 # Test data for common message types
@@ -283,4 +304,4 @@ async def test_batch_messages(messages: List[TestMessageRequest]):
         }
 
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Batch testing failed: {str(e)}")
+        raise HTTPException(status_code=500, detail=_detail_message("Batch testing failed", e))

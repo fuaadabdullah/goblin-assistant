@@ -41,3 +41,4 @@ async def test_parse_orchestration_failure(monkeypatch):
         await parse_orchestration(req)
 
     assert exc.value.status_code == 500
+    assert exc.value.detail == "Failed to parse orchestration: boom"

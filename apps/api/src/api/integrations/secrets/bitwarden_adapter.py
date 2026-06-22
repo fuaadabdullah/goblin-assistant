@@ -5,12 +5,10 @@ Provides async interface to Bitwarden using the bw CLI tool.
 Supports authentication via session tokens and login.
 """
 
-import asyncio
 import json
 import logging
 import os
 import re
-import subprocess
 import tempfile
 from datetime import datetime
 from typing import Any, Dict, List, Optional
@@ -25,6 +23,7 @@ from .base import (
     SecretUnauthorizedError,
     SecretValidationError,
 )
+from .bitwarden_cli import run_bw_command
 from .cache import SecretCache
 
 logger = logging.getLogger(__name__)
@@ -98,55 +97,23 @@ class BitwardenAdapter(SecretAdapter):
         Raises:
             SecretBackendError: If command fails
         """
-        # Build full command
-        full_command = ["bw"] + command
-
-        # Set environment with session token if available
-        env = os.environ.copy()
-        if self.session_token:
-            env["BW_SESSION"] = self.session_token
-
-        # Add server URL if custom
-        if self.server_url != "https://vault.bitwarden.com":
-            env["BW_SERVER"] = self.server_url
-
         try:
-            # Run command asynchronously
-            process = await asyncio.create_subprocess_exec(
-                *full_command,
-                stdin=subprocess.PIPE if input_data else None,
-                stdout=subprocess.PIPE if capture_output else None,
-                stderr=subprocess.PIPE,
-                env=env,
+            return await run_bw_command(
+                command,
+                session_token=self.session_token,
+                server_url=self.server_url,
+                input_data=input_data,
+                capture_output=capture_output,
+                timeout=self.timeout,
             )
-
-            # Write input if provided
-            if input_data:
-                process.stdin.write(input_data.encode())
-                await process.stdin.drain()
-                process.stdin.close()
-
-            # Wait for completion
-            stdout, stderr = await asyncio.wait_for(process.communicate(), timeout=self.timeout)
-
-            returncode = await process.wait()
-
-            if returncode != 0:
-                error_msg = stderr.decode().strip() if stderr else "Unknown error"
-                # Check for specific error conditions
-                if "not logged in" in error_msg.lower() or "unauthorized" in error_msg.lower():
-                    raise SecretUnauthorizedError(f"Bitwarden authentication failed: {error_msg}")
-                elif "not found" in error_msg.lower():
-                    raise SecretNotFoundError(f"Item not found: {error_msg}")
-                else:
-                    raise SecretBackendError(f"Bitwarden CLI error: {error_msg}")
-
-            return stdout.decode().strip() if stdout else ""
-
-        except asyncio.TimeoutError:
-            raise SecretBackendError(f"Bitwarden CLI command timed out after {self.timeout}s")
-        except FileNotFoundError:
-            raise SecretBackendError("Bitwarden CLI (bw) not found. Please install it first.")
+        except SecretUnauthorizedError:
+            raise
+        except SecretNotFoundError:
+            raise
+        except SecretBackendError:
+            raise
+        except Exception as exc:
+            raise SecretBackendError(f"Bitwarden CLI error: {exc}")
 
     async def _ensure_authenticated(self) -> None:
         """Ensure Bitwarden CLI is authenticated."""
@@ -271,71 +238,9 @@ class BitwardenAdapter(SecretAdapter):
         return item_path, field_name
 
     def _item_to_secret(self, item: Dict[str, Any], field_name: Optional[str] = None) -> Secret:
-        """
-        Convert Bitwarden item to Secret object.
+        from .bitwarden_mapping import item_to_secret as _item_to_secret
 
-        Args:
-            item: Bitwarden item data
-            field_name: Optional specific field name
-
-        Returns:
-            Secret object
-        """
-        # Extract data based on field_name
-        if field_name:
-            # Return specific field
-            if field_name in item.get("fields", {}):
-                secret_data = {"value": item["fields"][field_name]}
-            elif field_name == "username":
-                secret_data = {"value": item.get("login", {}).get("username", "")}
-            elif field_name == "password":
-                secret_data = {"value": item.get("login", {}).get("password", "")}
-            elif field_name == "totp":
-                secret_data = {"value": item.get("login", {}).get("totp", "")}
-            else:
-                secret_data = {"value": ""}
-        else:
-            # Return entire item as structured data
-            secret_data = {
-                "name": item.get("name", ""),
-                "username": item.get("login", {}).get("username", ""),
-                "password": item.get("login", {}).get("password", ""),
-                "uri": (
-                    item.get("login", {}).get("uris", [{}])[0].get("uri", "")
-                    if item.get("login", {}).get("uris")
-                    else ""
-                ),
-                "notes": item.get("notes", ""),
-                "totp": item.get("login", {}).get("totp", ""),
-            }
-            # Add custom fields
-            for field in item.get("fields", []):
-                secret_data[field["name"]] = field.get("value", "")
-
-        # Create metadata
-        metadata = SecretMetadata(
-            created_at=_parse_bw_time(item.get("creationDate")),
-            updated_at=_parse_bw_time(item.get("revisionDate")),
-            custom_metadata={
-                "item_id": item.get("id"),
-                "organization_id": item.get("organizationId"),
-                "collection_ids": item.get("collectionIds", []),
-                "folder_id": item.get("folderId"),
-                "type": item.get("type"),
-                "favorite": item.get("favorite", False),
-            },
-            backend_specific={
-                "bitwarden_item_id": item.get("id"),
-                "bitwarden_type": item.get("type"),
-                "bitwarden_folder_id": item.get("folderId"),
-            },
-        )
-
-        return Secret(
-            path=f"{item.get('folderId', 'root')}/{item.get('name', item.get('id'))}",
-            data=secret_data,
-            metadata=metadata,
-        )
+        return _item_to_secret(item, field_name)
 
     async def _get_cached_secret(self, path: str, version: Optional[int]) -> Optional[Secret]:
         """Get a secret from cache if present."""

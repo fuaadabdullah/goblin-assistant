@@ -162,4 +162,29 @@ describe('SettingsPage', () => {
     fireEvent.change(screen.getByLabelText('Search providers'), { target: { value: 'not-found' } });
     expect(screen.getByText('No providers match this search.')).toBeInTheDocument();
   });
+
+  it('surfaces the backend message when saving preferences fails', async () => {
+    mockSavePrefs.mockRejectedValueOnce({
+      status: 503,
+      response: {
+        status: 503,
+        data: {
+          error: {
+            message: 'Settings write blocked',
+          },
+        },
+      },
+    });
+    mockProviderSettings.mockReturnValue({
+      data: [{ name: 'openai', enabled: true, configured: true, models: ['gpt-4'] }],
+      isLoading: false,
+    });
+
+    render(<SettingsPageContent />, { wrapper });
+    fireEvent.click(screen.getByRole('button', { name: 'Save preferences' }));
+
+    await waitFor(() => {
+      expect(mockShowError).toHaveBeenCalledWith('Save failed', 'Settings write blocked');
+    });
+  });
 });

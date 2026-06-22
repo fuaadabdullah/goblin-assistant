@@ -134,6 +134,15 @@ def test_data_export_without_vectors_or_conversations(auth_client: TestClient) -
     assert response.json()["data"] == {}
 
 
+def test_data_export_failure_detail(auth_client: TestClient) -> None:
+    """Export failures should preserve the underlying error detail."""
+    with patch("api.routes.privacy._get_vector_store", side_effect=Exception("boom")):
+        response = auth_client.post("/api/v1/api/privacy/export")
+
+    assert response.status_code == 500
+    assert response.json()["detail"] == "Export failed: boom"
+
+
 def test_data_export_requires_auth(anon_client: TestClient) -> None:
     """POST /api/v1/api/privacy/export must return 401 Unauthorized without auth."""
     response = anon_client.post("/api/v1/api/privacy/export")
@@ -181,6 +190,18 @@ def test_data_delete_with_confirm_returns_200(auth_client: TestClient) -> None:
     assert "deleted_at" in body
 
 
+def test_data_delete_failure_detail(auth_client: TestClient) -> None:
+    """Delete failures should preserve the underlying error detail."""
+    vector_store = MagicMock()
+    vector_store.delete_user_data = AsyncMock(side_effect=Exception("boom"))
+
+    with patch("api.routes.privacy._get_vector_store", return_value=vector_store):
+        response = auth_client.delete("/api/v1/api/privacy/delete", params={"confirm": "true"})
+
+    assert response.status_code == 500
+    assert response.json()["detail"] == "Deletion failed: boom"
+
+
 # ---------------------------------------------------------------------------
 # Data-summary endpoint (GET /api/v1/api/privacy/data-summary)
 # ---------------------------------------------------------------------------
@@ -193,6 +214,15 @@ def test_data_summary_returns_200(auth_client: TestClient) -> None:
     body = response.json()
     assert "user_id" in body
     assert "data_summary" in body
+
+
+def test_data_summary_failure_detail(auth_client: TestClient) -> None:
+    """Summary failures should preserve the underlying error detail."""
+    with patch("api.routes.privacy._get_vector_store", side_effect=Exception("boom")):
+        response = auth_client.get("/api/v1/api/privacy/data-summary")
+
+    assert response.status_code == 500
+    assert response.json()["detail"] == "Failed to generate summary: boom"
 
 
 def test_data_summary_requires_auth(anon_client: TestClient) -> None:
@@ -234,6 +264,19 @@ def test_rag_consent_revoke_returns_200(auth_client: TestClient) -> None:
     assert response.status_code == 200
     body = response.json()
     assert body.get("consent_given") is False
+
+
+def test_rag_consent_failure_detail(auth_client: TestClient) -> None:
+    """Consent failures should preserve the underlying error detail."""
+    with patch("api.storage.preferences_service.preferences_service") as mock_prefs:
+        mock_prefs.update_rag_consent = AsyncMock(side_effect=Exception("boom"))
+        response = auth_client.post(
+            "/api/v1/api/privacy/consent/rag",
+            params={"consent_given": "true"},
+        )
+
+    assert response.status_code == 500
+    assert response.json()["detail"] == "Failed to store consent: boom"
 
 
 def test_rag_consent_requires_auth(anon_client: TestClient) -> None:

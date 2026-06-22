@@ -3,6 +3,7 @@ import { useCallback, useState } from 'react';
 import { triageIssue } from '../api';
 import type { TriageResponse } from '../api';
 import { toUiError } from '../../../lib/ui-error';
+import { getUserMessage } from '../../../lib/error/toast';
 import { useToast } from '../../../hooks/useToast';
 
 export interface TriageFormState {
@@ -36,7 +37,7 @@ export const useTriageForm = (): TriageFormState => {
       } catch (err) {
         const uiError = toUiError(err, {
           code: 'TRIAGE_FAILED',
-          userMessage: 'Could not triage your report. Please try again.',
+          userMessage: getUserMessage(err),
         });
         setError(uiError.userMessage);
         showError('Triage failed', uiError.userMessage);

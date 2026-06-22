@@ -8,6 +8,13 @@ from .core.orchestration import OrchestrationPlan, parse_natural_language
 router = APIRouter(prefix="/parse", tags=["parse"])
 
 
+def _detail_message(prefix: str, error: Exception) -> str:
+    message = str(error).strip()
+    if message:
+        return f"{prefix}: {message}"
+    return f"{prefix}: Request failed"
+
+
 class ParseRequest(BaseModel):
     text: str
     default_goblin: Optional[str] = None
@@ -19,4 +26,7 @@ async def parse_orchestration(request: ParseRequest):
     try:
         return parse_natural_language(request.text, request.default_goblin)
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Failed to parse orchestration: {str(e)}")
+        raise HTTPException(
+            status_code=500,
+            detail=_detail_message("Failed to parse orchestration", e),
+        )

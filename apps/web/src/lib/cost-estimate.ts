@@ -7,56 +7,56 @@ export interface TextCostEstimate {
 // Interpreted as USD per 1k tokens.
 const DEFAULT_USD_PER_1K_TOKENS = 0.02;
 
+const isEmojiCodePoint = (code: number): boolean =>
+  (code >= 0x1f300 && code <= 0x1f9ff) ||
+  (code >= 0x2600 && code <= 0x27bf) ||
+  (code >= 0x1f600 && code <= 0x1f64f);
+
+const countTextCharacterTypes = (text: string) => {
+  let charCount = 0;
+  let emojiCount = 0;
+  let unicodeCount = 0;
+
+  for (const char of text) {
+    const code = char.charCodeAt(0);
+
+    if (isEmojiCodePoint(code)) {
+      emojiCount++;
+    } else if (code > 127) {
+      unicodeCount++;
+    } else {
+      charCount++;
+    }
+  }
+
+  return { charCount, emojiCount, unicodeCount };
+};
+
+const estimateTokenCount = ({
+  charCount,
+  emojiCount,
+  unicodeCount,
+}: {
+  charCount: number;
+  emojiCount: number;
+  unicodeCount: number;
+}): number =>
+  Math.max(8, Math.round(charCount / 4 + unicodeCount / 2 + emojiCount * 2));
+
+const normalizeNumber = (value: number): number =>
+  !isNaN(value) && isFinite(value) ? value : 0;
+
 export function estimateFromText(text: string): TextCostEstimate {
   const cleaned = (text || '').trim();
   if (!cleaned) {
     return { estimated_tokens: 0, estimated_cost_usd: 0 };
   }
 
-  // Enhanced heuristic that accounts for different character types
-  let charCount = 0;
-  let emojiCount = 0;
-  let unicodeCount = 0;
-
-  // Basic character type counting
-  for (const char of cleaned) {
-    const code = char.charCodeAt(0);
-
-    // Emoji detection (approximate ranges)
-    if (
-      (code >= 0x1f300 && code <= 0x1f9ff) || // Emoji blocks
-      (code >= 0x2600 && code <= 0x27bf) || // Misc symbols
-      (code >= 0x1f600 && code <= 0x1f64f) // Emoticons
-    ) {
-      emojiCount++;
-    }
-    // Non-ASCII Unicode
-    else if (code > 127) {
-      unicodeCount++;
-    }
-    // Regular ASCII
-    else {
-      charCount++;
-    }
-  }
-
-  // Token estimation with better handling for different character types
-  // ASCII: ~4 chars per token
-  // Unicode: ~2 chars per token (more compact in tokenization)
-  // Emoji: ~2 tokens per emoji (often split into multiple tokens)
-  const estimatedTokens = Math.max(
-    8,
-    Math.round(charCount / 4 + unicodeCount / 2 + emojiCount * 2)
-  );
-
+  const estimatedTokens = estimateTokenCount(countTextCharacterTypes(cleaned));
   const estimatedCostUsd = (estimatedTokens / 1000) * DEFAULT_USD_PER_1K_TOKENS;
 
-  // Validate numeric results
-  const validTokens = !isNaN(estimatedTokens) && isFinite(estimatedTokens) ? estimatedTokens : 0;
-  const validCost = !isNaN(estimatedCostUsd) && isFinite(estimatedCostUsd) ? estimatedCostUsd : 0;
-
   return {
-    estimated_tokens: validTokens,
-    estimated_cost_usd: Number(validCost.toFixed(6)),
+    estimated_tokens: normalizeNumber(estimatedTokens),
+    estimated_cost_usd: Number(normalizeNumber(estimatedCostUsd).toFixed(6)),
   };
 }

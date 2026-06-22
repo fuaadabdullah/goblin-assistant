@@ -1,5 +1,6 @@
 """Authentication and rate-limiting middleware for the attestation webhook."""
 
+import importlib
 import logging
 import os
 import time
@@ -44,7 +45,11 @@ def rate_limit(
             try:
                 import redis as _redis
 
-                from ..attestation_service import get_attestation_service
+                webhook_module = importlib.import_module("api.attestation_webhook")
+                get_attestation_service = getattr(
+                    webhook_module,
+                    "get_attestation_service",
+                )
 
                 redis_client = get_attestation_service().redis_client
                 now = int(time.time())

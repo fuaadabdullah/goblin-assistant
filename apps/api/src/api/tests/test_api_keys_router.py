@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import json
 from pathlib import Path
+from unittest.mock import AsyncMock
 
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
@@ -39,6 +40,22 @@ def test_store_get_and_delete_api_key_round_trip(tmp_path, monkeypatch):
     assert missing.status_code == 200
     assert missing.json() == {"key": None, "provider": "openai"}
     assert json.loads(Path(keys_file).read_text(encoding="utf-8")) == {}
+
+
+def test_store_api_key_failure_preserves_message(tmp_path, monkeypatch):
+    keys_file = tmp_path / "api_keys.json"
+    monkeypatch.setattr(api_keys_router, "API_KEYS_FILE", str(keys_file))
+    monkeypatch.setattr(
+        api_keys_router,
+        "save_api_keys_async",
+        AsyncMock(side_effect=RuntimeError("disk full")),
+    )
+    client = _client()
+
+    response = client.post("/api/v1/api-keys/openai", json={"key": "secret-123"})
+
+    assert response.status_code == 500
+    assert response.json()["detail"] == "Failed to store API key: disk full"
 
 
 def test_load_api_keys_handles_missing_and_invalid_files(

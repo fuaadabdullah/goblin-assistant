@@ -9,12 +9,16 @@ synchronous yfinance library.
 from __future__ import annotations
 
 import asyncio
+import html
 import json
 import os
 import re
+import xml.etree.ElementTree as ET
 from datetime import datetime
 from typing import Any, Dict, Optional
+from urllib.parse import urlsplit
 
+import httpx
 import structlog
 
 logger = structlog.get_logger(__name__)
@@ -44,6 +48,34 @@ _FINANCIALS_TTL = 60 * 60 * 24  # 24 hours
 _EARNINGS_TTL = 60 * 60 * 24
 _RATIOS_TTL = 60 * 60 * 24
 _HISTORY_TTL = 60 * 60  # 1 hour
+_NEWS_TTL = 60 * 5
+_GOOGLE_NEWS_RSS = "https://news.google.com/rss/search"
+_NEWS_PUBLISHER_ALIASES = {
+    "reuters": "Reuters",
+    "ap": "AP News",
+    "associated press": "AP News",
+    "bloomberg": "Bloomberg",
+    "cnbc": "CNBC",
+    "yahoo finance": "Yahoo Finance",
+    "marketwatch": "MarketWatch",
+    "wsj": "Wall Street Journal",
+    "wall street journal": "Wall Street Journal",
+    "investing.com": "Investing.com",
+    "business wire": "Business Wire",
+    "pr newswire": "PR Newswire",
+}
+_NEWS_DOMAIN_ALIASES = {
+    "reuters.com": "Reuters",
+    "apnews.com": "AP News",
+    "bloomberg.com": "Bloomberg",
+    "cnbc.com": "CNBC",
+    "finance.yahoo.com": "Yahoo Finance",
+    "marketwatch.com": "MarketWatch",
+    "wsj.com": "Wall Street Journal",
+    "investing.com": "Investing.com",
+    "businesswire.com": "Business Wire",
+    "prnewswire.com": "PR Newswire",
+}
 
 
 def _get_redis():
@@ -235,6 +267,172 @@ def _safe_float(val: Any) -> Optional[float]:
         return None
 
 
+def _strip_html(value: str) -> str:
+    return re.sub(r"<[^>]+>", "", html.unescape(value or "")).strip()
+
+
+def _extract_market_ticker(query: str) -> Optional[str]:
+    cleaned = query.strip().upper()
+    if not cleaned:
+        return None
+
+    # Prefer direct ticker-style tokens over the whole query.
+    candidates = re.split(r"[^A-Z0-9.]+", cleaned)
+    for candidate in candidates:
+        token = candidate.strip()
+        if not token:
+            continue
+        if _TICKER_RE.match(token):
+            return token
+    return None
+
+
+def _normalize_news_publisher(source: str, link: str = "") -> str:
+    raw = re.sub(r"\s+", " ", (source or "").strip())
+    if not raw and link:
+        raw = _domain_from_url(link)
+    if not raw:
+        return "Unknown"
+
+    key = raw.lower()
+    if key in _NEWS_PUBLISHER_ALIASES:
+        return _NEWS_PUBLISHER_ALIASES[key]
+
+    domain = _domain_from_url(link)
+    if domain and domain in _NEWS_DOMAIN_ALIASES:
+        return _NEWS_DOMAIN_ALIASES[domain]
+
+    if raw.isupper() and len(raw) <= 6:
+        return raw
+    return raw.title()
+
+
+def _domain_from_url(url: str) -> str:
+    try:
+        parsed = urlsplit(url.strip())
+    except Exception:  # noqa: BLE001
+        return ""
+
+    if parsed.scheme not in {"http", "https"} or not parsed.netloc:
+        return ""
+    domain = parsed.netloc.lower().strip()
+    return domain[4:] if domain.startswith("www.") else domain
+
+
+def normalize_market_news_sources(query: str, sources: list[Dict[str, Any]]) -> Dict[str, Any]:
+    """Normalize market news sources with optional ticker awareness."""
+
+    query = query.strip()
+    ticker = _extract_market_ticker(query)
+    normalized_query = ticker or query
+    normalized_sources = []
+
+    for source in sources:
+        title = str(source.get("title", "")).strip()
+        link = str(source.get("url") or source.get("link") or "").strip()
+        snippet = str(source.get("snippet") or source.get("abstract") or "").strip()
+        publisher = _normalize_news_publisher(
+            str(source.get("publisher") or source.get("source") or ""),
+            link,
+        )
+        source_domain = _domain_from_url(link)
+        normalized_item = {
+            "title": title,
+            "url": link,
+            "snippet": snippet or title,
+            "publisher": publisher,
+            "source_domain": source_domain,
+            "published_at": str(source.get("published_at") or source.get("pubDate") or "").strip(),
+            "source": "google_news",
+        }
+        if ticker:
+            normalized_item["ticker"] = ticker
+            normalized_item["tickers"] = [ticker]
+        elif source.get("ticker"):
+            normalized_item["ticker"] = str(source.get("ticker")).strip().upper()
+            normalized_item["tickers"] = [normalized_item["ticker"]]
+        elif source.get("tickers"):
+            normalized_item["tickers"] = [
+                str(item).strip().upper() for item in source.get("tickers", []) if str(item).strip()
+            ]
+            if normalized_item["tickers"]:
+                normalized_item["ticker"] = normalized_item["tickers"][0]
+        normalized_sources.append(normalized_item)
+
+    return {
+        "query": query,
+        "normalized_query": normalized_query,
+        "ticker": ticker,
+        "results": normalized_sources,
+        "count": len(normalized_sources),
+    }
+
+
+def _fetch_market_news(query: str, limit: int) -> Dict[str, Any]:
+    params = {
+        "q": query,
+        "hl": "en-US",
+        "gl": "US",
+        "ceid": "US:en",
+    }
+
+    try:
+        with httpx.Client(timeout=15.0, follow_redirects=True) as client:
+            resp = client.get(_GOOGLE_NEWS_RSS, params=params)
+            resp.raise_for_status()
+            xml_text = resp.text
+    except Exception as exc:  # noqa: BLE001
+        return {"error": f"Market news request failed: {exc}"}
+
+    try:
+        root = ET.fromstring(xml_text)
+    except ET.ParseError as exc:
+        return {"error": f"Market news XML parse error: {exc}"}
+
+    channel = root.find("channel")
+    items = [] if channel is None else channel.findall("item")
+    raw_results = []
+    for item in items[:limit]:
+        title_el = item.find("title")
+        link_el = item.find("link")
+        source_el = item.find("source")
+        pub_date_el = item.find("pubDate")
+        desc_el = item.find("description")
+
+        title = (title_el.text or "").strip() if title_el is not None else ""
+        link = (link_el.text or "").strip() if link_el is not None else ""
+        source = (source_el.text or "").strip() if source_el is not None else ""
+        published_at = (pub_date_el.text or "").strip() if pub_date_el is not None else ""
+        summary = _strip_html(desc_el.text or "") if desc_el is not None else ""
+        if not summary:
+            summary = title
+
+        if not title and not link:
+            continue
+
+        raw_results.append(
+            {
+                "title": title,
+                "url": link,
+                "snippet": summary,
+                "publisher": source,
+                "published_at": published_at,
+                "source": "google_news",
+            }
+        )
+
+    normalized = normalize_market_news_sources(query, raw_results)
+    results = normalized["results"]
+    return {
+        "query": normalized["query"],
+        "normalized_query": normalized["normalized_query"],
+        "ticker": normalized["ticker"],
+        "provider": "google_news_rss",
+        "count": len(results),
+        "results": results,
+    }
+
+
 # ---------------------------------------------------------------------------
 # Public async API
 # ---------------------------------------------------------------------------
@@ -350,6 +548,30 @@ class FinancialDataService:
             ticker=ticker,
         )
         _cache_set(f"ratios:{ticker}", result, _RATIOS_TTL)
+        return result
+
+    async def get_market_news(self, query: str, limit: int = 10) -> Dict[str, Any]:
+        from .financial_guardrails import check_rate_limit, with_timeout
+
+        raw_query = query.strip()
+        if not raw_query:
+            raise ValueError("query is required")
+
+        limit = max(1, min(int(limit), 10))
+        ticker = _extract_market_ticker(raw_query)
+        normalized_query = ticker or raw_query
+        cache_key = f"news:{normalized_query.lower()}:{limit}"
+        cached = _cache_get(cache_key)
+        if cached:
+            cached["_cached"] = True
+            return cached
+
+        check_rate_limit()
+        result = await with_timeout(
+            asyncio.to_thread(_fetch_market_news, raw_query, limit),
+            ticker=ticker or normalized_query,
+        )
+        _cache_set(cache_key, result, _NEWS_TTL)
         return result
 
 

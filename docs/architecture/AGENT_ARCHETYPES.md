@@ -57,8 +57,8 @@ Handles everyday task management, scheduling, reminders, lightweight planning, b
 
 | Capability | Purpose | Priority | Current Status |
 | --- | --- | --- | --- |
-| Calendar read/write | Inspect availability, propose schedules, draft events, update meetings after confirmation | P0 | Gap |
-| Task/reminder integration | Create, update, complete, and query tasks and reminders | P0 | Partial: assistant task tools are present; external calendar/reminder connectors are gaps |
+| Calendar read/write | Inspect availability, propose schedules, draft events, update meetings after confirmation | P0 | Partial: scheduling abstraction and calendar-event tools exist; external calendar providers are still gaps |
+| Task/reminder integration | Create, update, complete, and query tasks and reminders | P0 | Partial: assistant task tools now sit behind a scheduling provider; external calendar/reminder connectors are still gaps |
 | Email integration | Search inbox context, draft replies, summarize threads, prepare follow-ups | P1 | Gap |
 | Contacts integration | Resolve people, organizations, and communication channels | P1 | Gap |
 | Basic web search | Check current facts, find links, and perform lightweight research | P0 | Present: `web_search` plus `lightweight_research` orchestration |
@@ -321,7 +321,7 @@ Analyzes markets, equities, portfolios, earnings, valuation, and investment-rele
 | DCF valuation | Run assumption-driven intrinsic value scenarios | P1 | Present: `dcf_calculator` |
 | Portfolio analytics | Analyze holdings, benchmark comparison, volatility, Sharpe, and drawdown | P1 | Present: `portfolio_analyzer` |
 | Market news aggregation | Retrieve relevant company, sector, macro, and market-moving news | P0 | Gap |
-| SEC filings | Retrieve and summarize 10-K, 10-Q, 8-K, Form 4, and prospectus filings | P0 | Gap |
+| SEC filings | Retrieve and summarize 10-K, 10-Q, 8-K, Form 4, and prospectus filings | P0 | Partial: filing search, fetch, section extraction, and summaries are now available |
 | Earnings transcripts | Retrieve and summarize call transcripts and Q&A | P1 | Gap |
 | Real-time feed quality | Low-latency quotes, extended-hours data, and exchange-backed reliability | P1 | Gap: yfinance is useful but not a production-grade real-time feed |
 | Sentiment analysis | Score and explain sentiment across news, transcripts, and social sources | P1 | Gap |
@@ -583,10 +583,10 @@ The current repo has a canonical assistant tool registry and financial tools for
 | Priority | Integration | Serves | Why It Matters | Notes |
 | --- | --- | --- | --- | --- |
 | P0 | Web search tool | General Assistant, Deep Research, ForgeTM Analyst | Many answers require current external facts and source links | Add domain/recency controls and source metadata |
-| P0 | Calendar + task/reminder connectors | General Assistant | Core assistant workflow depends on scheduling and follow-up actions | Require explicit confirmation before writes |
+| P0 | Calendar + task/reminder connectors | General Assistant | Core assistant workflow depends on scheduling and follow-up actions | Require explicit confirmation before writes; local scheduling provider is now in place |
 | P0 | Academic search connector | Deep Research | Literature reviews need primary-source discovery | Start with arXiv/Semantic Scholar/OpenAlex-style provider abstraction |
 | P0 | PDF parsing and metadata extraction | Deep Research, ForgeTM Analyst | Research and filings workflows depend on reliable document ingestion | Include references, tables, sections, and page spans |
-| P0 | SEC filings connector | ForgeTM Analyst, Deep Research | Financial analysis needs primary company disclosures | Prioritize 10-K, 10-Q, 8-K, Form 4, filing search |
+| P0 | SEC filings connector | ForgeTM Analyst, Deep Research | Financial analysis needs primary company disclosures | Prioritize 10-K, 10-Q, 8-K, Form 4, filing search; structured filing retrieval is now implemented |
 | P0 | Market news aggregation | ForgeTM Analyst, General Assistant | Market questions require current news and event context | Include provider timestamps and deduplication |
 | P1 | Citation graph traversal | Deep Research | Chasing citations is central to high-quality synthesis | Support backward references and forward citations |
 | P1 | Email connector | General Assistant | Thread summaries and follow-up drafting are high-value | Start read/search/draft; delay send until confirmation controls are mature |

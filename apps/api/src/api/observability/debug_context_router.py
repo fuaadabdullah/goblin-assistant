@@ -15,6 +15,13 @@ logger = structlog.get_logger()
 router = APIRouter()
 
 
+def _detail_message(prefix: str, error: Exception) -> str:
+    message = str(error).strip()
+    if message:
+        return f"{prefix}: {message}"
+    return f"{prefix}: Request failed"
+
+
 @router.get("/context/snapshot/{request_id}")
 @require_ops_access("read")
 async def get_context_snapshot(request_id: str) -> Dict[str, Any]:
@@ -30,7 +37,10 @@ async def get_context_snapshot(request_id: str) -> Dict[str, Any]:
         raise
     except Exception as e:
         logger.error("Failed to get context snapshot:", error=str(e))
-        raise HTTPException(status_code=500, detail=f"Failed to get context snapshot: {str(e)}")
+        raise HTTPException(
+            status_code=500,
+            detail=_detail_message("Failed to get context snapshot", e),
+        )
 
 
 @router.get("/context/replay/{request_id}")
@@ -48,7 +58,7 @@ async def replay_context(request_id: str) -> Dict[str, Any]:
         raise
     except Exception as e:
         logger.error("Failed to replay context:", error=str(e))
-        raise HTTPException(status_code=500, detail=f"Failed to replay context: {str(e)}")
+        raise HTTPException(status_code=500, detail=_detail_message("Failed to replay context", e))
 
 
 @router.get("/context/history")
@@ -92,7 +102,9 @@ async def get_context_history(
         }
     except Exception as e:
         logger.error("Failed to get context history:", error=str(e))
-        raise HTTPException(status_code=500, detail=f"Failed to get context history: {str(e)}")
+        raise HTTPException(
+            status_code=500, detail=_detail_message("Failed to get context history", e)
+        )
 
 
 @router.get("/context/health/{user_id}")
@@ -104,4 +116,6 @@ async def get_context_health(user_id: str) -> Dict[str, Any]:
         return health_report
     except Exception as e:
         logger.error("Failed to get context health:", error=str(e))
-        raise HTTPException(status_code=500, detail=f"Failed to get context health: {str(e)}")
+        raise HTTPException(
+            status_code=500, detail=_detail_message("Failed to get context health", e)
+        )

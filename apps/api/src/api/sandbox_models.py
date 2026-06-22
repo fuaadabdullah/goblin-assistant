@@ -8,7 +8,7 @@ compatibility, or directly from here for new code.
 
 from typing import Optional
 
-from pydantic import BaseModel
+from pydantic import AliasChoices, BaseModel, ConfigDict, Field
 
 
 class SandboxExecutionError(Exception):
@@ -22,8 +22,12 @@ class SandboxExecutionError(Exception):
 
 
 class SubmitJobRequest(BaseModel):
+    model_config = ConfigDict(populate_by_name=True, extra="ignore")
+
     language: str
-    source: str
+    source: str = Field(
+        validation_alias=AliasChoices("source", "code", "task"),
+    )
     timeout: Optional[int] = 10
     runtime_args: Optional[str] = ""
 

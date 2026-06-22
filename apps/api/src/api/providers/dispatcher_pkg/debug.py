@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import asyncio
 from typing import Any, Dict, List
 
 
@@ -56,4 +57,49 @@ def build_debug_info(
         "model_alias_patterns": [pattern.pattern for pattern, _, _ in model_alias_patterns],
         "provider_aliases": dict(provider_aliases),
         "visible_provider_order": list(visible_provider_ids),
+    }
+
+
+async def build_provider_inventory(
+    dispatcher: Any,
+    *,
+    include_hidden: bool = False,
+) -> List[Dict[str, Any]]:
+    providers = dispatcher.list_providers(include_hidden=include_hidden)
+    checks = await asyncio.gather(
+        *(dispatcher.check_provider(item["id"]) for item in providers),
+        return_exceptions=True,
+    )
+    inventory: List[Dict[str, Any]] = []
+    for meta, health in zip(providers, checks):
+        if isinstance(health, Exception):
+            health = {
+                "configured": False,
+                "healthy": False,
+                "health": "unknown",
+                "health_reason": dispatcher._sanitize_error(health),
+                "is_selectable": False,
+                "latency_ms": 0.0,
+            }
+        inventory.append({**meta, **health})
+    return inventory
+
+
+async def build_health_all(
+    dispatcher: Any,
+    *,
+    include_hidden: bool = False,
+) -> Dict[str, Any]:
+    inventory = await build_provider_inventory(dispatcher, include_hidden=include_hidden)
+    return {
+        item["id"]: {
+            "healthy": bool(item["healthy"]),
+            "configured": bool(item["configured"]),
+            "health": item["health"],
+            "latency_ms": item["latency_ms"],
+            "error": item["health_reason"],
+            "is_selectable": bool(item["is_selectable"]),
+            "circuit_breaker": item.get("circuit_breaker", {}),
+        }
+        for item in inventory
     }

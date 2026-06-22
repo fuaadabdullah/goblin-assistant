@@ -9,13 +9,13 @@ This wraps the existing ProviderDispatcher with department-level logic:
 
 from __future__ import annotations
 
-import random
 from typing import Any, AsyncGenerator, Dict, List, Optional
 
 import structlog
 
 from ..providers.base import ProviderErrorCategory
 from ..providers.dispatcher import dispatcher as _provider_dispatcher
+from .dispatcher_pkg import build_chain, reorder_chain_by_bandit
 from .models import DepartmentSelection
 from .registry import DEPARTMENT_REGISTRY
 
@@ -223,71 +223,14 @@ class DepartmentDispatcher:
             return None
 
     def _build_chain(self, selection: DepartmentSelection) -> List[tuple[str, str]]:
-        """Build the ordered provider chain to try.
-
-        After assembling the full chain, reorder by Thompson Sampling bandit scores
-        so learned quality data influences which provider is tried first.
-        """
-        chain: List[tuple[str, str]] = []
-
-        # Primary
-        if selection.resolved_provider:
-            chain.append((selection.resolved_provider, selection.resolved_model))
-
-        # Fallbacks from the policy
-        try:
-            policy = DEPARTMENT_REGISTRY.get(selection.department_id)
-            for pid, model_name in policy.fallback_providers:
-                # Don't duplicate the primary
-                if pid != selection.resolved_provider:
-                    chain.append((pid, model_name))
-        except KeyError:
-            pass
-
-        # Deduplicate
-        seen = set()
-        deduped: List[tuple[str, str]] = []
-        for pid, model_name in chain:
-            key = f"{pid}:{model_name}"
-            if key not in seen:
-                seen.add(key)
-                deduped.append((pid, model_name))
-
-        # Reorder by bandit scores when sufficient data exists
-        return self._reorder_chain_by_bandit(deduped, selection.department_id.value)
+        return build_chain(selection)
 
     def _reorder_chain_by_bandit(
         self,
         chain: List[tuple[str, str]],
         task_type: str,
     ) -> List[tuple[str, str]]:
-        """Reorder provider chain using Thompson Sampling scores.
-
-        Providers with enough observations are sorted by a Beta(alpha, beta) sample.
-        Providers without sufficient data keep their original relative order.
-        Falls back to the original chain if bandit data is unavailable.
-        """
-        if len(chain) <= 1:
-            return chain
-        try:
-            from api.routing.ml_router import _MIN_OBSERVATIONS, bandit_cache  # noqa: PLC0415
-
-            scored: List[tuple[float, int, str, str]] = []
-            for idx, (pid, model_name) in enumerate(chain):
-                state = bandit_cache.get(task_type, pid)
-                if state.observation_count >= _MIN_OBSERVATIONS:
-                    score = random.betavariate(max(state.alpha, 0.01), max(state.beta, 0.01))
-                else:
-                    # Not enough data — use original position as a stable sort key
-                    # so the policy-defined order is preserved for cold-start providers
-                    score = 0.5 - idx * 0.001
-                scored.append((score, idx, pid, model_name))
-
-            scored.sort(key=lambda x: x[0], reverse=True)
-            return [(pid, model_name) for _, _, pid, model_name in scored]
-        except Exception as exc:
-            logger.debug("department_bandit_reorder_failed", task_type=task_type, error=str(exc))
-            return chain
+        return reorder_chain_by_bandit(chain, task_type)
 
 
 # Singleton

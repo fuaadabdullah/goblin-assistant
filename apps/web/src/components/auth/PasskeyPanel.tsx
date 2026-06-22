@@ -5,6 +5,7 @@ import { queryKeys } from '../../lib/query-keys';
 import { persistAuthSession } from '../../utils/auth-session';
 import { PasskeyChallenge, PasskeyVerificationChallenge, LoginResponse } from '../../types/api';
 import type { PasskeyCredential } from '@/lib/api/shared';
+import { getUserMessage } from '@/lib/error/toast';
 
 interface PasskeyPanelProps {
   email: string;
@@ -137,7 +138,7 @@ const PasskeyPanel: React.FC<PasskeyPanelProps> = ({ email, onSuccess, onError }
       setStatus('Passkey registered');
       onSuccess();
     } catch (e) {
-      onError(e instanceof Error ? e.message : 'Passkey registration failed');
+      onError(getUserMessage(e));
     } finally {
       setRegistering(false);
     }
@@ -194,7 +195,7 @@ const PasskeyPanel: React.FC<PasskeyPanelProps> = ({ email, onSuccess, onError }
       setStatus('Passkey authentication successful');
       onSuccess();
     } catch (e) {
-      onError(e instanceof Error ? e.message : 'Passkey authentication failed');
+      onError(getUserMessage(e));
     } finally {
       setAuthenticating(false);
     }

@@ -29,6 +29,13 @@ router = APIRouter(prefix="/secrets", tags=["secrets"])
 _secrets_adapter: Optional[SecretAdapter] = None
 
 
+def _detail_message(prefix: str, error: Exception) -> str:
+    message = str(error).strip()
+    if message:
+        return f"{prefix}: {message}"
+    return f"{prefix}: Request failed"
+
+
 class SecretRequest(BaseModel):
     """Request model for creating/updating secrets."""
 
@@ -151,7 +158,7 @@ async def cleanup_secrets_adapter() -> None:
         logger.info("Cleaned up secrets adapter")
 
 
-@router.get("/", response_model=Dict[str, str])
+@router.get("/", response_model=Dict[str, Any])
 async def list_secrets(
     prefix: str = "",
     limit: int = 100,
@@ -173,14 +180,67 @@ async def list_secrets(
         return {"paths": secret_paths}
 
     except SecretUnauthorizedError as e:
-        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail=str(e))
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail=_detail_message("Unauthorized", e),
+        )
     except SecretBackendError as e:
-        raise HTTPException(status_code=status.HTTP_503_SERVICE_UNAVAILABLE, detail=str(e))
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail=_detail_message("Secret backend unavailable", e),
+        )
     except Exception as e:
         logger.error("Unexpected error listing secrets: %s", e)
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="Internal server error",
+        )
+
+
+@router.get("/health", response_model=HealthResponse)
+async def secrets_health(adapter: SecretAdapter = Depends(get_secrets_adapter)):
+    """
+    Check the health of the secrets adapter.
+
+    Args:
+        adapter: The secrets adapter instance
+
+    Returns:
+        Health status and details
+    """
+    try:
+        health_data = await adapter.health()
+
+        # Get backend type dynamically
+        backend = "unknown"
+        if hasattr(adapter, "__class__"):
+            class_name = adapter.__class__.__name__.lower()
+            if "vault" in class_name:
+                backend = "vault"
+            elif "bitwarden" in class_name:
+                backend = "bitwarden"
+            elif "env" in class_name:
+                backend = "env"
+
+        # Get cache stats if available
+        cache_stats = None
+        if hasattr(adapter, "cache") and hasattr(adapter.cache, "stats"):
+            cache_stats = await adapter.cache.stats()
+
+        return HealthResponse(
+            status=health_data.get("status", "unknown"),
+            backend=backend,
+            details=health_data,
+            timestamp=health_data.get("timestamp"),
+            cache_stats=cache_stats,
+        )
+
+    except Exception as e:
+        logger.error("Health check failed: %s", e)
+        return HealthResponse(
+            status="unhealthy",
+            backend="unknown",
+            details={"error": _detail_message("Health check failed", e)},
         )
 
 
@@ -221,11 +281,19 @@ async def get_secret(
         )
 
     except SecretNotFoundError as e:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(e))
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail=_detail_message("Secret not found", e)
+        )
     except SecretUnauthorizedError as e:
-        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail=str(e))
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail=_detail_message("Unauthorized", e),
+        )
     except SecretBackendError as e:
-        raise HTTPException(status_code=status.HTTP_503_SERVICE_UNAVAILABLE, detail=str(e))
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail=_detail_message("Secret backend unavailable", e),
+        )
     except Exception as e:
         logger.error("Unexpected error retrieving secret %s: %s", path, e)
         raise HTTPException(
@@ -282,12 +350,23 @@ async def put_secret(
             backend_specific=secret.metadata.backend_specific,
         )
 
+    except HTTPException:
+        raise
     except SecretValidationError as e:
-        raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail=str(e))
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail=_detail_message("Validation failed", e),
+        )
     except SecretUnauthorizedError as e:
-        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail=str(e))
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail=_detail_message("Unauthorized", e),
+        )
     except SecretBackendError as e:
-        raise HTTPException(status_code=status.HTTP_503_SERVICE_UNAVAILABLE, detail=str(e))
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail=_detail_message("Secret backend unavailable", e),
+        )
     except Exception as e:
         logger.error("Unexpected error storing secret %s: %s", path, e)
         raise HTTPException(
@@ -315,11 +394,19 @@ async def delete_secret(
         return {"message": f"Secret deleted: {path}"}
 
     except SecretNotFoundError as e:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(e))
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail=_detail_message("Secret not found", e)
+        )
     except SecretUnauthorizedError as e:
-        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail=str(e))
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail=_detail_message("Unauthorized", e),
+        )
     except SecretBackendError as e:
-        raise HTTPException(status_code=status.HTTP_503_SERVICE_UNAVAILABLE, detail=str(e))
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail=_detail_message("Secret backend unavailable", e),
+        )
     except Exception as e:
         logger.error("Unexpected error deleting secret %s: %s", path, e)
         raise HTTPException(
@@ -345,61 +432,22 @@ async def rotate_secret(path: str, adapter: SecretAdapter = Depends(get_secrets_
         return {"path": path, "new_value": new_value}
 
     except SecretNotFoundError as e:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(e))
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail=_detail_message("Secret not found", e)
+        )
     except SecretUnauthorizedError as e:
-        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail=str(e))
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail=_detail_message("Unauthorized", e),
+        )
     except SecretBackendError as e:
-        raise HTTPException(status_code=status.HTTP_503_SERVICE_UNAVAILABLE, detail=str(e))
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail=_detail_message("Secret backend unavailable", e),
+        )
     except Exception as e:
         logger.error("Unexpected error rotating secret %s: %s", path, e)
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="Internal server error",
-        )
-
-
-@router.get("/health", response_model=HealthResponse)
-async def secrets_health(adapter: SecretAdapter = Depends(get_secrets_adapter)):
-    """
-    Check the health of the secrets adapter.
-
-    Args:
-        adapter: The secrets adapter instance
-
-    Returns:
-        Health status and details
-    """
-    try:
-        health_data = await adapter.health()
-
-        # Get backend type dynamically
-        backend = "unknown"
-        if hasattr(adapter, "__class__"):
-            class_name = adapter.__class__.__name__.lower()
-            if "vault" in class_name:
-                backend = "vault"
-            elif "bitwarden" in class_name:
-                backend = "bitwarden"
-            elif "env" in class_name:
-                backend = "env"
-
-        # Get cache stats if available
-        cache_stats = None
-        if hasattr(adapter, "cache") and hasattr(adapter.cache, "stats"):
-            cache_stats = await adapter.cache.stats()
-
-        return HealthResponse(
-            status=health_data.get("status", "unknown"),
-            backend=backend,
-            details=health_data,
-            timestamp=health_data.get("timestamp"),
-            cache_stats=cache_stats,
-        )
-
-    except Exception as e:
-        logger.error("Health check failed: %s", e)
-        return HealthResponse(
-            status="unhealthy",
-            backend="unknown",
-            details={"error": str(e)},
         )

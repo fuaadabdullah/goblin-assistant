@@ -197,47 +197,53 @@ class MemoryEntityRelationModel(Base):
 # Add relationships to existing models
 def add_vector_relationships():
     """Add vector relationships to existing models"""
+    if not hasattr(UserModel, "embeddings"):
+        UserModel.embeddings = relationship(
+            "EmbeddingModel",
+            back_populates="user",
+            cascade="all, delete-orphan",
+        )
+    if not hasattr(UserModel, "memory_facts"):
+        UserModel.memory_facts = relationship(
+            "MemoryFactModel",
+            back_populates="user",
+            cascade="all, delete-orphan",
+        )
+    if not hasattr(UserModel, "memory_entities"):
+        UserModel.memory_entities = relationship(
+            "MemoryEntityModel",
+            back_populates="user",
+            cascade="all, delete-orphan",
+        )
 
-    UserModel.embeddings = relationship(
-        "EmbeddingModel",
-        back_populates="user",
-        cascade="all, delete-orphan",
-    )
-    UserModel.memory_facts = relationship(
-        "MemoryFactModel",
-        back_populates="user",
-        cascade="all, delete-orphan",
-    )
-    UserModel.memory_entities = relationship(
-        "MemoryEntityModel",
-        back_populates="user",
-        cascade="all, delete-orphan",
-    )
+    if not hasattr(MemoryEntityModel, "source_relations"):
+        MemoryEntityModel.source_relations = relationship(
+            "MemoryEntityRelationModel",
+            foreign_keys="MemoryEntityRelationModel.source_entity_id",
+            back_populates="source_entity",
+            cascade="all, delete-orphan",
+        )
+    if not hasattr(MemoryEntityModel, "target_relations"):
+        MemoryEntityModel.target_relations = relationship(
+            "MemoryEntityRelationModel",
+            foreign_keys="MemoryEntityRelationModel.target_entity_id",
+            back_populates="target_entity",
+            cascade="all, delete-orphan",
+        )
 
-    MemoryEntityModel.source_relations = relationship(
-        "MemoryEntityRelationModel",
-        foreign_keys="MemoryEntityRelationModel.source_entity_id",
-        back_populates="source_entity",
-        cascade="all, delete-orphan",
-    )
-    MemoryEntityModel.target_relations = relationship(
-        "MemoryEntityRelationModel",
-        foreign_keys="MemoryEntityRelationModel.target_entity_id",
-        back_populates="target_entity",
-        cascade="all, delete-orphan",
-    )
-
-    ConversationModel.embeddings = relationship(
-        "EmbeddingModel",
-        back_populates="conversation",
-        cascade="all, delete-orphan",
-    )
-    ConversationModel.summary = relationship(
-        "ConversationSummaryModel",
-        back_populates="conversation",
-        uselist=False,
-        cascade="all, delete-orphan",
-    )
+    if not hasattr(ConversationModel, "embeddings"):
+        ConversationModel.embeddings = relationship(
+            "EmbeddingModel",
+            back_populates="conversation",
+            cascade="all, delete-orphan",
+        )
+    if not hasattr(ConversationModel, "summary"):
+        ConversationModel.summary = relationship(
+            "ConversationSummaryModel",
+            back_populates="conversation",
+            uselist=False,
+            cascade="all, delete-orphan",
+        )
 
 
 # Ensure back_populates relationships are available as soon as the module is imported.

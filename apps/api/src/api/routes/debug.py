@@ -17,6 +17,13 @@ logger = logging.getLogger(__name__)
 model_router = ModelRouter()
 
 
+def _detail_message(prefix: str, error: Exception) -> str:
+    message = str(error).strip()
+    if message:
+        return f"{prefix}: {message}"
+    return f"{prefix}: Request failed"
+
+
 @router.post("/suggest")
 async def get_debug_suggestion(
     task: str = Body(..., description="Debug task type (e.g., 'quick_fix', 'summarize_trace')"),
@@ -50,7 +57,7 @@ async def get_debug_suggestion(
         route = model_router.choose_model(task, context)
     except RuntimeError as e:
         logger.error("Model routing failed for task '%s': %s", task, e)
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail=_detail_message("Model routing failed", e))
 
     payload = {
         "task": task,
@@ -62,7 +69,7 @@ async def get_debug_suggestion(
         result = await model_router.call_model(route, payload)
     except Exception as e:
         logger.exception("Model call failed for %s: %s", route.model_name, e)
-        raise HTTPException(status_code=502, detail=f"Model call failed: {str(e)}")
+        raise HTTPException(status_code=502, detail=_detail_message("Model call failed", e))
 
     # Extract suggestion with fallback
     suggestion = result.get("suggestion") or result.get("text") or result.get("response") or ""

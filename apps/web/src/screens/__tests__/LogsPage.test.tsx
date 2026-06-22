@@ -73,6 +73,7 @@ describe('LogsPage', () => {
     await waitFor(() => {
       expect(screen.getByText('Failed to Load Logs')).toBeInTheDocument();
     });
+    expect(screen.getByText('Network failure')).toBeInTheDocument();
   });
 
   it('filters logs by level', async () => {

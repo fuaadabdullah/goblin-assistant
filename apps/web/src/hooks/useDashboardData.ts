@@ -1,6 +1,7 @@
 import { useMemo } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { apiClient } from '@/lib/api';
+import { getUserMessage } from '@/lib/error/toast';
 import { queryKeys } from '../lib/query-keys';
 
 export interface ServiceStatus {
@@ -66,7 +67,7 @@ export const useDashboardData = () => {
   return {
     dashboard,
     loading: healthQuery.isLoading,
-    error: healthQuery.error instanceof Error ? healthQuery.error.message : null,
+    error: healthQuery.error ? getUserMessage(healthQuery.error) : null,
     refresh: healthQuery.refetch,
   };
 };

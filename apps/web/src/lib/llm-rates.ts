@@ -35,33 +35,47 @@ function roundUsd(value: number): number {
   return Number(value.toFixed(6));
 }
 
+const getKnownRate = (provider: string | undefined) => {
+  const keys = providerRateLookupKeys(provider);
+  return keys.map((key) => PROVIDER_RATES_USD_PER_1K[key]).find((candidate) => Boolean(candidate));
+};
+
+const computeFallbackCost = (usage: NormalizedUsage): number => {
+  const tokens = usage.total_tokens ?? (usage.input_tokens || 0) + (usage.output_tokens || 0);
+  return roundUsd((tokens / 1000) * 0.02);
+};
+
+const inferUsageSplit = (usage: NormalizedUsage, rate: { input: number; output: number }) => {
+  const input = usage.input_tokens ?? 0;
+  const output = usage.output_tokens ?? 0;
+  const total = usage.total_tokens ?? input + output;
+  const inferredInput = input || (output ? 0 : Math.round(total * 0.4));
+  const inferredOutput = output || (input ? 0 : total - inferredInput);
+
+  return {
+    inferredInput,
+    inferredOutput,
+    cost: (inferredInput / 1000) * rate.input + (inferredOutput / 1000) * rate.output,
+  };
+};
+
 export function computeCostUsd(
   usage: NormalizedUsage | undefined,
   provider: string | undefined,
-  _model?: string | undefined
+  modelName?: string | undefined
 ): CostComputationResult {
-  const keys = providerRateLookupKeys(provider);
+  void modelName;
+
   if (!usage || (!usage.total_tokens && !usage.input_tokens && !usage.output_tokens)) {
     return { cost_usd: 0, approx: true, source: 'rates' };
   }
 
-  const rate = keys
-    .map((key) => PROVIDER_RATES_USD_PER_1K[key])
-    .find((candidate) => Boolean(candidate));
+  const rate = getKnownRate(provider);
   if (!rate) {
     // Unknown provider: fall back to a generic blended rate.
-    const tokens = usage.total_tokens ?? (usage.input_tokens || 0) + (usage.output_tokens || 0);
-    return { cost_usd: roundUsd((tokens / 1000) * 0.02), approx: true, source: 'rates' };
+    return { cost_usd: computeFallbackCost(usage), approx: true, source: 'rates' };
   }
 
-  const input = usage.input_tokens ?? 0;
-  const output = usage.output_tokens ?? 0;
-  const total = usage.total_tokens ?? input + output;
-
-  // If we only have total tokens, treat them as output-heavy by default.
-  const inferredInput = input || (output ? 0 : Math.round(total * 0.4));
-  const inferredOutput = output || (input ? 0 : total - inferredInput);
-
-  const cost = (inferredInput / 1000) * rate.input + (inferredOutput / 1000) * rate.output;
+  const { cost } = inferUsageSplit(usage, rate);
   return { cost_usd: roundUsd(cost), approx: true, source: 'rates' };
 }

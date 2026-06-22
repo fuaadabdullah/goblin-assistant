@@ -62,12 +62,26 @@ class GoogleCloudSelfhostedProvider(BaseProvider):
         super().__init__(provider_id, config)
         raw_backends: List[Dict[str, Any]] = list(self.config.get("backends", []))
         self._backends: List[BaseProvider] = self._init_backends(raw_backends)
+        if not self.endpoint:
+            self.endpoint = self._legacy_endpoint_fallback()
         if not self._backends:
             logger.warning(
                 "google_cloud_selfhosted_no_backends",
                 provider=self.provider_id,
                 hint="Set at least one backend endpoint env var",
             )
+
+    def _legacy_endpoint_fallback(self) -> str:
+        for env_name in (
+            "LLAMACPP_GCP_ENDPOINT",
+            "OLLAMA_GCP_ENDPOINT",
+            "GCP_VM_ENDPOINT",
+            "PROVIDER_GCP_VM_ENDPOINT",
+        ):
+            value = os.getenv(env_name, "").strip()
+            if value:
+                return value.rstrip("/")
+        return ""
 
     def _init_backends(self, backend_configs: List[Dict[str, Any]]) -> List[BaseProvider]:
         ordered = sorted(backend_configs, key=lambda bc: int(bc.get("priority", 99)))

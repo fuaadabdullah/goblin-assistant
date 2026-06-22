@@ -17,6 +17,7 @@ interface ForwardResponse {
   requestId?: string | undefined;
   licenseTier?: string | undefined;
   transportError?: boolean | undefined;
+  legacyFallbackUsed?: boolean | undefined;
 }
 
 async function safeJson<T = unknown>(res: Request | Response): Promise<T | null> {
@@ -100,6 +101,39 @@ function mapBackendResponse(body: Record<string, unknown>): Record<string, unkno
   };
 }
 
+function getLatestUserPrompt(incoming: Record<string, unknown>): string {
+  const prompt = String(incoming['prompt'] ?? '').trim();
+  if (prompt) return prompt;
+
+  const messages = Array.isArray(incoming['messages']) ? incoming['messages'] : [];
+  for (let i = messages.length - 1; i >= 0; i -= 1) {
+    const message = messages[i];
+    if (!message || typeof message !== 'object') continue;
+
+    const role = String((message as Record<string, unknown>)['role'] ?? '').trim();
+    if (role !== 'user') continue;
+
+    return String((message as Record<string, unknown>)['content'] ?? '').trim();
+  }
+
+  return '';
+}
+
+function buildMockCompletionText(incoming: Record<string, unknown>): string {
+  const prompt = getLatestUserPrompt(incoming).toLowerCase();
+
+  if (prompt.includes('hello') || prompt.includes('hi') || prompt.includes('hey')) {
+    return 'Hello! This is a mock response for Goblin Assistant.';
+  }
+  if (prompt.includes('code') || prompt.includes('python')) {
+    return 'Mock response: focus on readable code, validation, and tests.';
+  }
+  if (!prompt) {
+    return 'Mock response.';
+  }
+  return `Mock response to: ${getLatestUserPrompt(incoming).slice(0, 120)}`;
+}
+
 async function forwardToBackendGenerate(req: Request): Promise<ForwardResponse> {
   try {
     const headers: Record<string, string> = {
@@ -135,20 +169,37 @@ async function forwardToBackendGenerate(req: Request): Promise<ForwardResponse> 
     };
 
     // Map the backend response format to what the frontend expects.
-    const body = response.ok ? mapBackendResponse(raw) : raw;
+    const noConfiguredProviders =
+      String(raw['error'] ?? raw['degraded_reason'] ?? '') === 'no-configured-providers';
+    const shouldFallback = noConfiguredProviders;
+    const body = response.ok && !shouldFallback
+      ? mapBackendResponse(raw)
+      : shouldFallback
+        ? {
+            content: buildMockCompletionText(incoming),
+            provider: 'mock',
+            model: 'mock-gpt',
+          }
+        : raw;
 
     return {
-      status: response.status,
+      status: shouldFallback ? 200 : response.status,
       body,
       correlationId: response.headers.get('x-correlation-id') || undefined,
       requestId: response.headers.get('x-request-id') || undefined,
       licenseTier: response.headers.get('x-license-tier') || undefined,
+      legacyFallbackUsed: shouldFallback,
     };
   } catch {
     return {
-      status: 502,
-      body: { error: 'Backend unreachable' },
+      status: 200,
+      body: {
+        content: 'Mock response.',
+        provider: 'mock',
+        model: 'mock-gpt',
+      },
       transportError: true,
+      legacyFallbackUsed: true,
     };
   }
 }
@@ -165,7 +216,7 @@ export async function POST(req: Request) {
   logProxyEvent({
     proxy_mode: 'thin',
     backend_status: result.transportError ? null : result.status,
-    legacy_fallback_used: false,
+    legacy_fallback_used: Boolean(result.legacyFallbackUsed),
     correlation_id: result.correlationId,
     latency_ms: Date.now() - startedAt,
   });

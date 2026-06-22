@@ -23,7 +23,7 @@
     "test:e2e:run": "mkdir -p ../../.tmp ../../.playwright/browsers && TMPDIR=../../.tmp PLAYWRIGHT_BROWSERS_PATH=../../.playwright/browsers playwright test",
     "test:e2e": "npm run test:e2e:prepare && npm run test:e2e:run",
     "guard:no-client-v1": "node ../../tooling/quality/guard-no-client-v1.js",
-    "security:audit": "npm audit --audit-level moderate",
+    "security:audit": "pnpm audit --audit-level moderate",
     "security:audit:python": "../../.venv/bin/python -m pip_audit -r ../api/requirements.txt",
     "security:audit-ci": "npx audit-ci --moderate",
     "validate-env": "tsx src/config/env.ts",
@@ -115,7 +115,7 @@
   },
   "overrides": {
     "marked": "^14.1.0",
-    "esbuild": "^0.25.0",
+    "esbuild": "0.28.1",
     "next": "16.2.6",
     "minimatch": "^10.0.3",
     "diff": "^7.0.0",
@@ -124,7 +124,15 @@
     "got": ">=11.8.5",
     "cross-spawn": "^7.0.5",
     "semver": "^7.6.3",
-    "micromatch": "^4.0.8",
-    "braces": "^3.0.3"
+    "micromatch": "4.0.8",
+    "braces": "^3.0.3",
+    "form-data": "4.0.6",
+    "js-yaml": "4.2.0",
+    "cookie": "0.7.0",
+    "tmp": "0.2.7",
+    "smol-toml": "1.6.1",
+    "picomatch": "4.0.4",
+    "uuid": "11.1.1",
+    "vitest": "3.2.6"
   }
 }

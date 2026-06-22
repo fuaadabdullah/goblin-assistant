@@ -80,6 +80,16 @@ describe('PasskeyPanel', () => {
     }
   });
 
+  it('preserves non-Error passkey failures', async () => {
+    mockPasskeyChallenge.mockRejectedValue('passkey backend unavailable');
+    render(<PasskeyPanel {...defaultProps} />, { wrapper });
+    const registerBtn = screen.getByText(/register/i);
+    fireEvent.click(registerBtn);
+    await waitFor(() => {
+      expect(defaultProps.onError).toHaveBeenCalledWith('passkey backend unavailable');
+    });
+  });
+
   it('calls passkey challenge API on register', async () => {
     mockPasskeyChallenge.mockResolvedValue({
       challenge: 'dGVzdA',

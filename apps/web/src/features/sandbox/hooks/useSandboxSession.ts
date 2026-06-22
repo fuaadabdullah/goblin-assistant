@@ -47,7 +47,7 @@ export const useSandboxSession = ({
     } catch (error) {
       const uiError = toUiError(error, {
         code: 'SANDBOX_JOBS_FAILED',
-        userMessage: 'Unable to load sandbox jobs.',
+        userMessage: 'We could not load sandbox jobs right now.',
       });
       setJobsError(uiError.userMessage);
       devError('Failed to load sandbox jobs:', uiError);
@@ -70,7 +70,7 @@ export const useSandboxSession = ({
     } catch (error) {
       const uiError = toUiError(error, {
         code: 'SANDBOX_RUN_FAILED',
-        userMessage: 'Unable to run that code right now.',
+        userMessage: 'We could not run that code right now.',
       });
       setLogs(uiError.userMessage);
     } finally {
@@ -91,7 +91,7 @@ export const useSandboxSession = ({
       } catch (error) {
         const uiError = toUiError(error, {
           code: 'SANDBOX_LOGS_FAILED',
-          userMessage: 'Unable to load logs for that job.',
+          userMessage: 'We could not load logs for that job.',
         });
         setLogs(uiError.userMessage);
       }

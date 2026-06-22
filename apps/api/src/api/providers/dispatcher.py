@@ -7,7 +7,6 @@ Config is loaded from config/providers.toml — the SINGLE source of truth.
 from __future__ import annotations
 
 import asyncio
-import os
 import random
 from contextlib import asynccontextmanager
 from typing import Any, Dict, List, Optional
@@ -21,6 +20,8 @@ from .base import (
     classify_provider_error,
 )
 from .contracts import ProviderAdapter
+from .dispatcher_pkg.catalog import canonical_provider_id as _canonical_provider_id
+from .dispatcher_pkg.catalog import reload_provider_catalog as _reload_provider_catalog_state
 from .dispatcher_pkg.config import (
     expand_alias_template as _expand_alias_template,
 )
@@ -42,6 +43,9 @@ from .dispatcher_pkg.config import (
 from .dispatcher_pkg.config import (
     normalize_token as _normalize_token,
 )
+from .dispatcher_pkg.debug import build_debug_info as _build_debug_info
+from .dispatcher_pkg.debug import build_health_all as _build_health_all
+from .dispatcher_pkg.debug import build_provider_inventory as _build_provider_inventory
 from .dispatcher_pkg.discovery import (
     build_provider_list as _build_provider_list_fn,
 )
@@ -106,6 +110,9 @@ from .dispatcher_pkg.routing import (
 from .dispatcher_pkg.routing import (
     candidate_order as _candidate_order_fn,
 )
+from .dispatcher_pkg.routing import (
+    top_providers_for as _top_providers_for,
+)
 from .dispatcher_pkg.sanitization import (
     get_provider_logger as _get_provider_logger,
 )
@@ -115,6 +122,10 @@ from .dispatcher_pkg.sanitization import (
 from .dispatcher_pkg.sanitization import (
     sanitize_error_message as _sanitize_error_message,
 )
+from .dispatcher_pkg.selection import (
+    invoke_with_fallback as _invoke_with_fallback_helper,
+)
+from .dispatcher_pkg.selection import select_provider as _select_provider_helper
 from .dispatcher_pkg.test_mode import (
     active_test_mode_state as _active_test_mode_state,
 )
@@ -191,33 +202,34 @@ validate_model_alias_targets(
 
 
 def reload_provider_catalog() -> None:
-    global \
-        _provider_toml, \
-        _PROVIDER_CONFIGS, \
-        _PROVIDER_ALIASES, \
-        _MODEL_ALIASES, \
-        _MODEL_ALIAS_PATTERNS, \
-        _VISIBLE_PROVIDER_IDS
+    global _provider_toml, _PROVIDER_CONFIGS, _PROVIDER_ALIASES, _MODEL_ALIASES
+    global _MODEL_ALIAS_PATTERNS, _VISIBLE_PROVIDER_IDS
 
-    _provider_toml = _load_provider_toml(logger=logger)
-    _PROVIDER_CONFIGS = _load_toml_providers(_provider_toml, logger=logger)
-    _PROVIDER_ALIASES = _load_aliases(_provider_toml)
-    _MODEL_ALIASES, _MODEL_ALIAS_PATTERNS = _load_model_aliases(_provider_toml)
-    _VISIBLE_PROVIDER_IDS = _load_visible_providers(_provider_toml)
-    validate_model_alias_targets(
-        provider_toml=_provider_toml,
-        provider_configs=_PROVIDER_CONFIGS,
+    catalog = _reload_provider_catalog_state(
+        dispatcher=dispatcher,
+        load_provider_toml_fn=_load_provider_toml,
+        load_toml_providers_fn=_load_toml_providers,
+        load_aliases_fn=_load_aliases,
+        load_model_aliases_fn=_load_model_aliases,
+        load_visible_providers_fn=_load_visible_providers,
+        validate_model_alias_targets_fn=validate_model_alias_targets,
+        load_circuit_canary_percent_fn=_load_circuit_canary_percent_fn,
         logger=logger,
     )
+    _provider_toml = catalog.provider_toml
+    _PROVIDER_CONFIGS = catalog.provider_configs
+    _PROVIDER_ALIASES = catalog.provider_aliases
+    _MODEL_ALIASES = catalog.model_aliases
+    _MODEL_ALIAS_PATTERNS = catalog.model_alias_patterns
+    _VISIBLE_PROVIDER_IDS = catalog.visible_provider_ids
 
 
 def canonical_provider_id(value: Optional[str]) -> Optional[str]:
-    if value is None:
-        return None
-    normalized = _normalize_token(value)
-    if not normalized:
-        return None
-    return _PROVIDER_ALIASES.get(normalized, normalized)
+    return _canonical_provider_id(
+        value,
+        aliases=_PROVIDER_ALIASES,
+        normalize_fn=_normalize_token,
+    )
 
 
 class ProviderDispatcher:
@@ -347,57 +359,43 @@ class ProviderDispatcher:
         engine: str,
         new_endpoint: str,
     ) -> None:
-        canonical_id = canonical_provider_id(provider_id) or provider_id
-        if canonical_id not in self._configs:
-            raise KeyError(f"Unknown provider: {provider_id!r}")
+        from .dispatcher_pkg.catalog import update_backend_endpoint as _update_backend_endpoint
 
-        backends = self._configs[canonical_id].get("backends", [])
-        for bc in backends:
-            if bc.get("engine") == engine:
-                bc["endpoint"] = new_endpoint
-                ep_env = str(bc.get("endpoint_env", "") or "").strip()
-                if ep_env:
-                    os.environ[ep_env] = new_endpoint
-                break
-        else:
-            raise KeyError(f"No backend engine {engine!r} in {provider_id!r}")
-
-        self._providers.pop(canonical_id, None)
-        self._provider_list_cache.clear()
-        self._warmup_states.pop(canonical_id, None)
-        logger.info(
-            "backend_endpoint_updated",
-            provider=canonical_id,
-            engine=engine,
-            endpoint=new_endpoint,
+        _update_backend_endpoint(
+            self,
+            provider_id,
+            engine,
+            new_endpoint,
+            canonical_fn=canonical_provider_id,
+            logger=logger,
         )
 
     def update_provider_endpoint(self, provider_id: str, new_endpoint: str) -> None:
-        canonical_id = canonical_provider_id(provider_id) or provider_id
-        if canonical_id not in self._configs:
-            raise KeyError(f"Unknown provider: {provider_id!r}")
+        from .dispatcher_pkg.catalog import update_provider_endpoint as _update_provider_endpoint
 
-        self._configs[canonical_id]["endpoint"] = new_endpoint
-
-        endpoint_env = str(self._configs[canonical_id].get("endpoint_env", "") or "").strip()
-        if endpoint_env:
-            os.environ[endpoint_env] = new_endpoint
-
-        self._providers.pop(canonical_id, None)
-        self._provider_list_cache.clear()
-        self._warmup_states.pop(canonical_id, None)
-
-        logger.info("provider_endpoint_updated", provider=canonical_id, endpoint=new_endpoint)
+        _update_provider_endpoint(
+            self,
+            provider_id,
+            new_endpoint,
+            canonical_fn=canonical_provider_id,
+            logger=logger,
+        )
 
     def reload_config(self) -> None:
-        reload_provider_catalog()
-        self._configs = _PROVIDER_CONFIGS
-        self._circuit_canary_percent = _load_circuit_canary_percent_fn(_provider_toml)
-        self._providers.clear()
-        self._provider_list_cache.clear()
-        self._warmup_states.clear()
-        self._background_started = False
-        logger.info("provider_catalog_reloaded")
+        if self is dispatcher:
+            reload_provider_catalog()
+        else:
+            _reload_provider_catalog_state(
+                dispatcher=self,
+                load_provider_toml_fn=_load_provider_toml,
+                load_toml_providers_fn=_load_toml_providers,
+                load_aliases_fn=_load_aliases,
+                load_model_aliases_fn=_load_model_aliases,
+                load_visible_providers_fn=_load_visible_providers,
+                validate_model_alias_targets_fn=validate_model_alias_targets,
+                load_circuit_canary_percent_fn=_load_circuit_canary_percent_fn,
+                logger=logger,
+            )
         self.start_background_tasks()
 
     # ── Warmup Delegation ─────────────────────────────────────────────────
@@ -528,16 +526,15 @@ class ProviderDispatcher:
         return re_ranked
 
     def _candidate_order(self, provider_id: Optional[str]) -> List[str]:
-        def _priority_list_fn(include_hidden: bool = False) -> List[Dict[str, Any]]:
-            _ = include_hidden
-            return [{"id": pid} for pid in self._priority_order()]
+        def _provider_list_fn(include_hidden: bool = False) -> List[Dict[str, Any]]:
+            return self.list_providers(include_hidden=include_hidden)
 
         return _candidate_order_fn(
             provider_id,
             canonical_provider_id,
             self._configs,
             self._ensure_provider,
-            _priority_list_fn,
+            _provider_list_fn,
             provider_toml=_provider_toml,
             logger=logger,
         )
@@ -557,20 +554,16 @@ class ProviderDispatcher:
         prefer_cost: bool = False,
         limit: int = 6,
     ) -> List[str]:
-        cap = capability.strip().lower()
-        providers = self.list_providers(include_hidden=False)
-        candidates = [
-            item["id"]
-            for item in providers
-            if cap in {c.lower() for c in item["capabilities"]} and self.is_configured(item["id"])
-        ]
-        if prefer_local:
-            local_candidates = [p for p in self._local_order() if p in candidates]
-            candidates = local_candidates
-        elif prefer_cost:
-            ranked = self._cheapest_order()
-            candidates = [p for p in ranked if p in candidates]
-        return candidates[: max(1, limit)]
+        return _top_providers_for(
+            self.list_providers,
+            self.is_configured,
+            self._local_order,
+            self._cheapest_order,
+            capability,
+            prefer_local=prefer_local,
+            prefer_cost=prefer_cost,
+            limit=limit,
+        )
 
     # ── Model Alias Resolution ────────────────────────────────────────────
 
@@ -685,39 +678,10 @@ class ProviderDispatcher:
         self,
         include_hidden: bool = False,
     ) -> List[Dict[str, Any]]:
-        providers = self.list_providers(include_hidden=include_hidden)
-        checks = await asyncio.gather(
-            *(self.check_provider(item["id"]) for item in providers),
-            return_exceptions=True,
-        )
-        inventory: List[Dict[str, Any]] = []
-        for meta, health in zip(providers, checks):
-            if isinstance(health, Exception):
-                health = {
-                    "configured": False,
-                    "healthy": False,
-                    "health": "unknown",
-                    "health_reason": self._sanitize_error(health),
-                    "is_selectable": False,
-                    "latency_ms": 0.0,
-                }
-            inventory.append({**meta, **health})
-        return inventory
+        return await _build_provider_inventory(self, include_hidden=include_hidden)
 
     async def health_all(self, include_hidden: bool = False) -> Dict[str, Any]:
-        inventory = await self.get_provider_inventory(include_hidden=include_hidden)
-        return {
-            item["id"]: {
-                "healthy": bool(item["healthy"]),
-                "configured": bool(item["configured"]),
-                "health": item["health"],
-                "latency_ms": item["latency_ms"],
-                "error": item["health_reason"],
-                "is_selectable": bool(item["is_selectable"]),
-                "circuit_breaker": item.get("circuit_breaker", {}),
-            }
-            for item in inventory
-        }
+        return await _build_health_all(self, include_hidden=include_hidden)
 
     # ── Stream Wrap / Dispatch ────────────────────────────────────────────
 
@@ -772,45 +736,13 @@ class ProviderDispatcher:
         )
 
     def debug_info(self) -> Dict[str, Any]:
-        from ..routing.router import registry
-
-        routing_table = [
-            {
-                "provider_id": item["id"],
-                "name": item["name"],
-                "priority_tier": item["priority_tier"],
-                "tier": item["tier"],
-                "local_routing": item["local_routing"],
-                "configured": self.is_configured(item["id"]),
-                "instantiated": item["id"] in self._providers,
-                "circuit_breaker": (
-                    self._providers[item["id"]].circuit_status()
-                    if item["id"] in self._providers
-                    else {}
-                ),
-                "hidden": item["hidden"],
-                "capabilities": item["capabilities"],
-                "default_model": item["default_model"],
-                "warmup": self._warmup_state_for(item["id"]),
-            }
-            for item in self.list_providers(include_hidden=True)
-        ]
-
-        return {
-            "routing_table": routing_table,
-            "registry_stats": registry.snapshot(),
-            "registry_metrics": registry.metrics_snapshot(),
-            "registry_persisted_snapshot": registry.persisted_snapshot(),
-            "registry_persistence": registry.persistence_status(),
-            "budget_status": self._budget_status(),
-            "warmup_states": dict(self._warmup_states),
-            "routing_min_success_rate": self._routing_min_success_rate,
-            "circuit_canary_percent": self._circuit_canary_percent,
-            "model_aliases": {k: list(v) for k, v in _MODEL_ALIASES.items()},
-            "model_alias_patterns": [pattern.pattern for pattern, _, _ in _MODEL_ALIAS_PATTERNS],
-            "provider_aliases": dict(_PROVIDER_ALIASES),
-            "visible_provider_order": list(_VISIBLE_PROVIDER_IDS),
-        }
+        return _build_debug_info(
+            self,
+            model_aliases=_MODEL_ALIASES,
+            model_alias_patterns=_MODEL_ALIAS_PATTERNS,
+            provider_aliases=_PROVIDER_ALIASES,
+            visible_provider_ids=_VISIBLE_PROVIDER_IDS,
+        )
 
     async def invoke_provider(
         self,
@@ -867,38 +799,8 @@ def get_debug_info() -> Dict[str, Any]:
 
 
 async def select_provider(providers: list, *, preferred: Optional[str] = None) -> Any:
-    """Select the best provider from a list based on health and latency."""
-    if preferred:
-        for p in providers:
-            health = await p.health_check()
-            if p.provider_id == preferred and health.healthy:
-                return p
-
-    healthy = []
-    for p in providers:
-        health = await p.health_check()
-        if health.healthy:
-            healthy.append((health.latency_ms, p))
-
-    if healthy:
-        healthy.sort(key=lambda x: x[0])
-        return healthy[0][1]
-
-    # All unhealthy — pick lowest latency anyway
-    all_checked = []
-    for p in providers:
-        health = await p.health_check()
-        all_checked.append((health.latency_ms, p))
-    all_checked.sort(key=lambda x: x[0])
-    return all_checked[0][1] if all_checked else providers[0]
+    return await _select_provider_helper(providers, preferred=preferred)
 
 
 async def invoke_with_fallback(prompt: str, *, providers: list) -> Any:
-    """Try each provider in order; raise if all fail."""
-    last_exc: Optional[Exception] = None
-    for p in providers:
-        try:
-            return await p.invoke(prompt)
-        except Exception as exc:
-            last_exc = exc
-    raise last_exc or RuntimeError("No providers available")
+    return await _invoke_with_fallback_helper(prompt, providers=providers)

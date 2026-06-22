@@ -18,6 +18,20 @@ const resolveSafeRedirect = (value: string | string[] | null | undefined): strin
   return candidate;
 };
 
+export const resolveOauthErrorMessage = (oauthError: string | null | undefined): string | null => {
+  if (!oauthError) return null;
+
+  const map: Record<string, string> = {
+    oauth_failed: 'Google sign-in failed. Please try again.',
+    no_code: 'Google sign-in did not return an authorization code.',
+    callback_failed: 'Google sign-in could not be completed. Try again.',
+    access_denied: 'Google sign-in was denied.',
+    consent_required: 'Google sign-in requires consent before continuing.',
+  };
+
+  return map[oauthError] || `Authentication error: ${oauthError}`;
+};
+
 export default function LoginPage({ initialMode = 'login' }: LoginPageProps) {
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -33,15 +47,7 @@ export default function LoginPage({ initialMode = 'login' }: LoginPageProps) {
 
   const oauthError = oauthErrorParam ?? undefined;
 
-  const oauthMessage = useMemo(() => {
-    if (!oauthError) return null;
-    const map: Record<string, string> = {
-      oauth_failed: 'Google sign-in failed. Please try again.',
-      no_code: 'Google sign-in did not return an authorization code.',
-      callback_failed: 'Google sign-in could not be completed. Try again.',
-    };
-    return map[oauthError] || 'Authentication error. Please try again.';
-  }, [oauthError]);
+  const oauthMessage = useMemo(() => resolveOauthErrorMessage(oauthError), [oauthError]);
 
   useEffect(() => {
     setDismissedOauthMessage(false);

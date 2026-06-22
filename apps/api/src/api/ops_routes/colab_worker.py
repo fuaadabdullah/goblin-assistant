@@ -15,7 +15,11 @@ import structlog
 from fastapi import APIRouter, HTTPException, Request, status
 from pydantic import BaseModel, field_validator
 
-from ._colab_store import load_endpoint_from_db, save_endpoint_to_db, write_env_file
+from ._colab_store import (
+    _ENV_FILE_PATH,
+    load_endpoint_from_db,
+    save_endpoint_to_db,
+)
 
 logger = structlog.get_logger(__name__)
 
@@ -23,6 +27,32 @@ router = APIRouter()
 
 _HEALTH_PROBE_TIMEOUT_S = 10
 _PROVIDER_NAME = "colab_worker"
+
+
+def _write_env_file(key: str, value: str) -> bool:
+    """Persist a key=value pair to the local .env file used by this module."""
+    env_path = _ENV_FILE_PATH
+    if not env_path.exists():
+        logger.warning("env_file_not_found", path=str(env_path))
+        return False
+    try:
+        lines = env_path.read_text(encoding="utf-8").splitlines(keepends=True)
+        new_line = f"{key}={value}\n"
+        found = False
+        new_lines = []
+        for line in lines:
+            if line.startswith(f"{key}=") or line.startswith(f"{key} ="):
+                new_lines.append(new_line)
+                found = True
+            else:
+                new_lines.append(line)
+        if not found:
+            new_lines.append(new_line)
+        env_path.write_text("".join(new_lines), encoding="utf-8")
+        return True
+    except OSError as exc:
+        logger.warning("env_file_write_failed", path=str(env_path), error=str(exc))
+        return False
 
 
 class ColabWorkerRegisterRequest(BaseModel):
@@ -116,7 +146,7 @@ async def register_colab_worker(
 
     env_written = False
     if os.getenv("ENVIRONMENT", "development").lower() == "development":
-        env_written = write_env_file("COLAB_WORKER_ENDPOINT", endpoint)
+        env_written = _write_env_file("COLAB_WORKER_ENDPOINT", endpoint)
 
     probe_result: str = "skipped"
     try:

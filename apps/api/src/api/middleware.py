@@ -14,8 +14,8 @@ from fastapi.responses import JSONResponse
 from starlette.middleware.base import BaseHTTPMiddleware
 from starlette.types import ASGIApp
 
-from .core.contracts import ApiErrorPayload, ErrorEnvelope
-from .core.error_types import ErrorType
+from api.core.contracts import ApiErrorPayload, ErrorEnvelope
+from api.core.error_types import ErrorType
 
 # Configure structlog
 structlog.configure(
@@ -78,10 +78,18 @@ class AuthenticationMiddleware(BaseHTTPMiddleware):
             self.exclude_paths = base_paths
 
         self.api_key = os.getenv("LOCAL_LLM_API_KEY", "")
+        self.allow_unauthenticated_requests = is_development and allow_unauth
 
     async def dispatch(self, request: Request, call_next):
         # Skip authentication for excluded paths
         if any(request.url.path.startswith(path) for path in self.exclude_paths):
+            return await call_next(request)
+
+        if self.allow_unauthenticated_requests:
+            logger.warning(
+                "SECURITY RISK: Allowing unauthenticated requests in development mode. "
+                "Set ALLOW_UNAUTHENTICATED_REQUESTS=false to require authentication."
+            )
             return await call_next(request)
 
         # Check for API key in headers
@@ -94,42 +102,26 @@ class AuthenticationMiddleware(BaseHTTPMiddleware):
 
         if not self.api_key:
             # SECURITY: Check if we're in development mode
-            environment = os.getenv("ENVIRONMENT", "development").lower()
-            is_development = environment in ["development", "dev", "local"]
             request_id = str(uuid.uuid4())
             timestamp = datetime.now(timezone.utc).isoformat()
 
-            if (
-                is_development
-                and os.getenv("ALLOW_UNAUTHENTICATED_REQUESTS", "false").lower() == "true"
-            ):
-                # SECURITY WARNING: Only allow unauthenticated requests
-                # in development with explicit opt-in via environment variable
-                logger.warning(
-                    "SECURITY RISK: Allowing unauthenticated requests in "
-                    "development mode. Set ALLOW_UNAUTHENTICATED_REQUESTS="
-                    "false to require authentication."
-                )
-                return await call_next(request)
-            else:
-                # PRODUCTION BEHAVIOR: Require authentication
-                logger.error(
-                    "SECURITY: No LOCAL_LLM_API_KEY configured and not in development bypass mode"
-                )
-                return JSONResponse(
-                    status_code=500,
-                    headers={"X-Request-ID": request_id},
-                    content=ErrorEnvelope(
-                        error=ApiErrorPayload(
-                            code="CONFIGURATION_ERROR",
-                            type=ErrorType.AUTHENTICATION,
-                            message="API authentication not configured",
-                            request_id=request_id,
-                            timestamp=timestamp,
-                            details={"reason": "missing_api_key"},
-                        )
-                    ).model_dump(exclude_none=True),
-                )
+            logger.error(
+                "SECURITY: No LOCAL_LLM_API_KEY configured and not in development bypass mode"
+            )
+            return JSONResponse(
+                status_code=500,
+                headers={"X-Request-ID": request_id},
+                content=ErrorEnvelope(
+                    error=ApiErrorPayload(
+                        code="CONFIGURATION_ERROR",
+                        type=ErrorType.AUTHENTICATION,
+                        message="API authentication not configured",
+                        request_id=request_id,
+                        timestamp=timestamp,
+                        details={"reason": "missing_api_key"},
+                    )
+                ).model_dump(exclude_none=True),
+            )
 
         if not api_key_header or api_key_header != self.api_key:
             request_id = str(uuid.uuid4())

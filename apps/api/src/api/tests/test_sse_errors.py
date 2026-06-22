@@ -11,6 +11,7 @@ from fastapi import HTTPException
 
 from api.auth.router import User as AuthenticatedUser
 from api.chat_router import generate_chat_stream
+from api.chat_router.streaming import _format_unhandled_stream_error
 from api.storage.conversations import Conversation
 
 
@@ -57,6 +58,13 @@ def _error_events(events):
 
 def _content_events(events):
     return [event for event in _parsed_events(events) if "content" in event]
+
+
+def test_unhandled_stream_error_formatter_preserves_message():
+    assert _format_unhandled_stream_error(RuntimeError("boom")) == "boom"
+    assert _format_unhandled_stream_error(RuntimeError("")) == (
+        "An unexpected error occurred. Your message was saved if it got this far."
+    )
 
 
 @pytest.mark.asyncio

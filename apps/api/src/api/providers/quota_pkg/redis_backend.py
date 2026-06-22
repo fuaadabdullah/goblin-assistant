@@ -79,10 +79,19 @@ class RedisQuotaBackend(QuotaBackend):
         provider_limit: Any,
         shared_limit: Any,
     ) -> bool:
-        self._last_skip_reason = ""
         rc = await self.get_redis_client()
         if rc is None:
             return False  # caller should use memory backend instead
+        return await self.reserve_with_client(rc, reservation, provider_limit, shared_limit)
+
+    async def reserve_with_client(
+        self,
+        rc: Any,
+        reservation: QuotaReservation,
+        provider_limit: Any,
+        shared_limit: Any,
+    ) -> bool:
+        self._last_skip_reason = ""
 
         # Re-check cooldown inside the Redis path for safety (TOCTOU guard).
         if await rc.exists(cooldown_key(reservation.provider_scope)):

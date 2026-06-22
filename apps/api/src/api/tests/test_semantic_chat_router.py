@@ -18,7 +18,7 @@ app = FastAPI()
 app.include_router(router, prefix="/api/v1")
 client = TestClient(app)
 
-BASE_PATH = "/semantic-chat"
+BASE_PATH = "/api/v1/semantic-chat"
 
 # ── Helper ──────────────────────────────────────────────────────────────────
 
@@ -148,9 +148,11 @@ class TestSemanticChatRouterMemory:
         """Should return 503 Service Unavailable when backing services fail."""
         from unittest.mock import patch
 
-        with patch("api.semantic_chat_router.memory_core_service") as mock_service:
+        with patch("api.semantic_chat_router._get_retrieval_singleton") as mock_singleton:
             # Simulate a service failure
-            mock_service.search_facts = AsyncMock(side_effect=Exception("Service unavailable"))
+            mock_singleton.return_value.retrieve_memory_facts = AsyncMock(
+                side_effect=Exception("Service unavailable")
+            )
             response = client.get(
                 _make_url("/users/user-123/memory/search"),
                 params={"query": "test"},
@@ -285,11 +287,11 @@ def test_router_has_expected_endpoints():
     """Verify the expected endpoints are registered"""
     routes = {r.path for r in router.routes}
     expected_endpoints = {
-        "/api/v1/semantic-chat/conversations/{conversation_id}/messages",
-        "/api/v1/semantic-chat/conversations/{conversation_id}/context",
-        "/api/v1/semantic-chat/conversations/{conversation_id}/summarize",
-        "/api/v1/semantic-chat/users/{user_id}/memory",
-        "/api/v1/semantic-chat/users/{user_id}/memory/search",
+        "/semantic-chat/conversations/{conversation_id}/messages",
+        "/semantic-chat/conversations/{conversation_id}/context",
+        "/semantic-chat/conversations/{conversation_id}/summarize",
+        "/semantic-chat/users/{user_id}/memory",
+        "/semantic-chat/users/{user_id}/memory/search",
     }
     missing = expected_endpoints - routes
     assert not missing, f"Missing expected endpoints: {missing}"

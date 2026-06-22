@@ -11,7 +11,7 @@ This file describes what the current `goblin-assistant` codebase implements, not
 | Startup flow | Working path | `apps/web/src/features/startup/hooks/useStartupFlow.ts` boots auth, routing info, and provider registry before redirecting |
 | Auth screens | Partial | Login/register UI, Google OAuth UI, Turnstile, and passkey UI exist; frontend currently calls `/v1/auth/*`, while local FastAPI routers are mounted at `/auth/*` |
 | Search UI | Working path | Search routes are wired at `pages/search.tsx` and `pages/chat/search-page.tsx`, using `features/search/*` with backend calls to `/search/collections` and `/search/query` |
-| Sandbox UI | Partial | Guest mode and sandbox screen exist, but the frontend expects `/v1/sandbox/run` and `/v1/sandbox/jobs`; the local backend exposes `/sandbox/submit`, `/sandbox/status/{job_id}`, and related job endpoints |
+| Sandbox UI | Partial | Guest mode and sandbox screen exist, and the frontend client now handles the job-based `/api/v1/sandbox/run` flow with logs fetched from `/api/v1/sandbox/jobs/{job_id}/logs`; the local backend also keeps `/sandbox/submit`, `/sandbox/status/{job_id}`, and related job endpoints |
 | Admin/provider screens | Partial | Admin pages and provider manager UI exist, but provider registry loading depends on `/api/models` -> backend `/v1/providers/models`, which is not implemented in `api/` |
 | Account page | Partial | Account/profile UI exists, but frontend save calls expect `/v1/account/profile` and `/v1/account/preferences`; no matching backend router is checked in |
 | Help/support form | Partial | Help page exists and can display startup diagnostics, but support form submission expects `/v1/support/message`; no matching backend route is checked in |
@@ -27,7 +27,7 @@ This file describes what the current `goblin-assistant` codebase implements, not
 | Search backend | Implemented but simple | In-memory collection storage with text matching, not a full vector-search pipeline by default |
 | Privacy endpoints | Implemented | GDPR/CCPA-style export/delete/summary/consent routes under `/api/privacy` |
 | Secrets management | Implemented | Secrets router and adapter initialization are wired in the FastAPI app |
-| Sandbox backend | Implemented but separate contract | RQ/Redis-backed sandbox job submission and artifact endpoints exist, but they are not aligned with the current frontend client API |
+| Sandbox backend | Implemented with compatibility aliases | RQ/Redis-backed sandbox job submission and artifact endpoints exist, and the request/response aliases are now aligned with the current frontend client API |
 
 ## Known Integration Mismatches
 

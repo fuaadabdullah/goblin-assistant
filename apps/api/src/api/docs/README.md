@@ -76,6 +76,7 @@ Defined in `../health.py` and `../ops_router.py`:
 - `GET /ops/health/summary`
 - `GET /ops/providers/status`
 - `GET /ops/performance/snapshot`
+- `GET /api/v1/admin/providers/state` (ops-only snapshot; excluded from OpenAPI via `include_in_schema=False`)
 
 ### Routing and task APIs
 
