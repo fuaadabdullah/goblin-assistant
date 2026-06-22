@@ -25,6 +25,7 @@ export interface MessagesProps {
   selectedModel?: string | undefined;
   pendingAttachments: PendingAttachment[];
   onMessagesLoading?: ((loading: boolean) => void) | undefined;
+  onSendSuccess?: (() => void) | undefined;
   onThreadUpdated?: ((thread: ChatThread) => void) | undefined;
   onThreadRemoved?: ((thread: ChatThread) => void) | undefined;
   onThreadsInvalidated?: (() => void) | undefined;

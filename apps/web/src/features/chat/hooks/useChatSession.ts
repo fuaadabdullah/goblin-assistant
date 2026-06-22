@@ -125,6 +125,7 @@ export const useChatSession = (): ChatSessionState => {
     selectedProvider: quickActionsState.selectedProvider,
     selectedModel: quickActionsState.selectedModel,
     pendingAttachments: uiState.pendingAttachments,
+    onSendSuccess: () => uiState.setInput(''),
     onThreadUpdated: upsertThread,
     onThreadRemoved: removeThread,
     onThreadsInvalidated: invalidateThreads,

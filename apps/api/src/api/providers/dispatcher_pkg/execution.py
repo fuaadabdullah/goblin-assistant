@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import asyncio
+import os
 from contextlib import nullcontext
 from datetime import datetime, timezone
 from typing import Any, AsyncGenerator, Dict, List, Optional
@@ -20,6 +21,13 @@ try:
     from ddtrace import tracer as _dd_tracer
 except ImportError:
     _dd_tracer = None  # type: ignore[assignment]
+
+
+def mock_fallback_enabled() -> bool:
+    environment = os.getenv("ENVIRONMENT", "development").strip().lower()
+    if os.getenv("ALLOW_MOCK_PROVIDER_FALLBACK", "").strip().lower() == "true":
+        return True
+    return environment in {"development", "dev", "local", "test"}
 
 
 def _tag(span: Any, key: str, val: Any) -> None:
@@ -177,7 +185,11 @@ async def dispatch_request(
     candidates = dispatcher._candidate_order(resolved_pid)
     if not candidates:
         try:
-            if dispatcher.is_configured("mock") and dispatcher._ensure_provider("mock") is not None:
+            if (
+                mock_fallback_enabled()
+                and dispatcher.is_configured("mock")
+                and dispatcher._ensure_provider("mock") is not None
+            ):
                 candidates = ["mock"]
                 logger.warning(
                     "dispatch_mock_fallback",
@@ -227,7 +239,7 @@ async def dispatch_request(
     if not ordered:
         mock_provider = None
         try:
-            if dispatcher.is_configured("mock"):
+            if mock_fallback_enabled() and dispatcher.is_configured("mock"):
                 mock_provider = dispatcher._ensure_provider("mock")
         except Exception:
             mock_provider = None

@@ -25,6 +25,7 @@ interface SendMessageDeps {
   selectedProvider?: string | undefined;
   pendingAttachments: PendingAttachment[];
   applyMessages: (msgs: ChatMessage[]) => void;
+  onSendSuccess?: (() => void) | undefined;
   onThreadUpdated?: ((thread: ChatThread) => void) | undefined;
   onThreadRemoved?: ((thread: ChatThread) => void) | undefined;
   onThreadsInvalidated?: (() => void) | undefined;
@@ -71,6 +72,7 @@ export const useSendMessage = ({
   selectedProvider,
   pendingAttachments,
   applyMessages,
+  onSendSuccess,
   onThreadUpdated,
   onThreadRemoved,
   onThreadsInvalidated,
@@ -120,6 +122,7 @@ export const useSendMessage = ({
             content: text,
           };
           applyMessages([...updatedMessages, assistantMsg]);
+          onSendSuccess?.();
           trackSuccessfulMessageSend();
           return;
         }
@@ -165,6 +168,7 @@ export const useSendMessage = ({
         const assistantMsg = createAssistantMessage(result ?? {});
         const nextMessages = [...updatedMessages, assistantMsg];
         applyMessages(nextMessages);
+        onSendSuccess?.();
         trackSuccessfulMessageSend();
 
         queryClient.setQueryData(
@@ -250,6 +254,7 @@ export const useSendMessage = ({
       selectedProvider,
       pendingAttachments,
       applyMessages,
+      onSendSuccess,
       queryClient,
       onThreadUpdated,
       onThreadRemoved,

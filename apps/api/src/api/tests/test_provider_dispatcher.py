@@ -187,6 +187,22 @@ class TestCircuitBreaker:
 class TestProviderFallback:
     """Tests for provider fallback mechanism"""
 
+    def test_mock_provider_fallback_is_disabled_in_production(self, monkeypatch):
+        from api.providers.dispatcher_pkg.execution import mock_fallback_enabled
+
+        monkeypatch.setenv("ENVIRONMENT", "production")
+        monkeypatch.delenv("ALLOW_MOCK_PROVIDER_FALLBACK", raising=False)
+
+        assert mock_fallback_enabled() is False
+
+    def test_mock_provider_fallback_can_be_explicitly_enabled(self, monkeypatch):
+        from api.providers.dispatcher_pkg.execution import mock_fallback_enabled
+
+        monkeypatch.setenv("ENVIRONMENT", "production")
+        monkeypatch.setenv("ALLOW_MOCK_PROVIDER_FALLBACK", "true")
+
+        assert mock_fallback_enabled() is True
+
     @pytest.mark.asyncio
     async def test_fallback_on_primary_failure(self):
         """Test fallback when primary provider fails"""

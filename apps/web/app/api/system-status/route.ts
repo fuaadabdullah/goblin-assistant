@@ -58,15 +58,22 @@ export async function GET() {
     let routing: ServiceState = 'unknown';
     if (healthRes.status === 'fulfilled' && healthRes.value.ok) {
       const body = await safeJson<{
+        status?: string;
+        components?: {
+          providers?: { status?: string };
+          routing?: { status?: string };
+        };
         data?: {
+          status?: string;
           components?: {
             providers?: { status?: string };
             routing?: { status?: string };
           };
         };
       }>(healthRes.value);
-      models = mapStatus(body?.data?.components?.providers?.status);
-      routing = mapStatus(body?.data?.components?.routing?.status);
+      const components = body?.components ?? body?.data?.components;
+      models = mapStatus(components?.providers?.status);
+      routing = mapStatus(components?.routing?.status);
     }
 
     // Parse sandbox health response

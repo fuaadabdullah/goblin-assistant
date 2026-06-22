@@ -1,6 +1,5 @@
 import { apiClient, V1_CHAT_PREFIX } from '@/lib/api';
 import { UiError } from '../../../lib/ui-error';
-import { hasMockFallbackSignal } from '../../../lib/api/fallback';
 import { getUserMessage } from '../../../lib/error/toast';
 import { getAuthToken } from '../../../utils/auth-session';
 import type { ChatMessage } from '../types';
@@ -227,35 +226,6 @@ export const chatClient = {
         });
       }
     } catch (error) {
-      try {
-        const fallbackResponse = await apiClient.chatCompletion(
-          messages && messages.length > 0
-            ? messages
-            : [
-                {
-                  role: 'user',
-                  content: resolvedPrompt,
-                },
-              ],
-          model
-        );
-
-        const fallbackText =
-          typeof fallbackResponse === 'string'
-            ? fallbackResponse
-            : String(fallbackResponse ?? 'No response');
-
-        return {
-          messageId: `mock-${Date.now()}`,
-          content: fallbackText,
-          provider: 'mock',
-          model: model || 'mock-gpt',
-          createdAt: new Date().toISOString(),
-        };
-      } catch {
-        // Fall through to the standard UI error below.
-      }
-
       // Check for specific error statuses
       const errorObj = error as any;
       const status = errorObj?.response?.status || errorObj?.status;
@@ -365,32 +335,6 @@ export const chatClient = {
 
       if (!response.ok) {
         const responseText = await readResponseText(response);
-        if (hasMockFallbackSignal(responseText)) {
-          const fallbackResponse = await apiClient.chatCompletion(
-            messages && messages.length > 0
-              ? messages
-              : [
-                  {
-                    role: 'user',
-                    content: resolvedPrompt,
-                  },
-                ],
-            model
-          );
-          const fallbackText =
-            typeof fallbackResponse === 'string'
-              ? fallbackResponse
-              : String(fallbackResponse ?? 'No response');
-          const finalResponse: ChatResponse = {
-            content: fallbackText,
-            provider: 'mock',
-            model: model || 'mock-gpt',
-          };
-          onChunk(fallbackText, 0, 0);
-          onComplete(finalResponse);
-          return;
-        }
-
         throw new Error(
           `HTTP ${response.status}: ${response.statusText}${
             responseText ? ` - ${responseText}` : ''
@@ -490,31 +434,6 @@ export const chatClient = {
           errorObj?.response?.data?.detail ||
           errorObj?.response?.data?.message ||
           errorObj?.message;
-
-        if (hasMockFallbackSignal(backendError)) {
-          const fallbackResponse = await apiClient.chatCompletion(
-            messages && messages.length > 0
-              ? messages
-              : [
-                  {
-                    role: 'user',
-                    content: resolvedPrompt,
-                  },
-                ],
-            model
-          );
-          const fallbackText =
-            typeof fallbackResponse === 'string'
-              ? fallbackResponse
-              : String(fallbackResponse ?? 'No response');
-          const finalResponse: ChatResponse = {
-            content: fallbackText,
-            provider: 'mock',
-            model: model || 'mock-gpt',
-          };
-          onComplete(finalResponse);
-          return;
-        }
 
         const uiError =
           error instanceof Error ? error : new Error(getUserMessage(error));

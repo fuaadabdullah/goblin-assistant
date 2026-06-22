@@ -17,7 +17,6 @@ interface ForwardResponse {
   requestId?: string | undefined;
   licenseTier?: string | undefined;
   transportError?: boolean | undefined;
-  legacyFallbackUsed?: boolean | undefined;
 }
 
 async function safeJson<T = unknown>(res: Request | Response): Promise<T | null> {
@@ -48,7 +47,7 @@ async function fetchWithTimeout(
 function logProxyEvent(payload: {
   proxy_mode: 'thin';
   backend_status: number | null;
-  legacy_fallback_used: boolean;
+  runtime_unavailable: boolean;
   correlation_id?: string | undefined;
   latency_ms: number;
 }) {
@@ -101,37 +100,30 @@ function mapBackendResponse(body: Record<string, unknown>): Record<string, unkno
   };
 }
 
-function getLatestUserPrompt(incoming: Record<string, unknown>): string {
-  const prompt = String(incoming['prompt'] ?? '').trim();
-  if (prompt) return prompt;
-
-  const messages = Array.isArray(incoming['messages']) ? incoming['messages'] : [];
-  for (let i = messages.length - 1; i >= 0; i -= 1) {
-    const message = messages[i];
-    if (!message || typeof message !== 'object') continue;
-
-    const role = String((message as Record<string, unknown>)['role'] ?? '').trim();
-    if (role !== 'user') continue;
-
-    return String((message as Record<string, unknown>)['content'] ?? '').trim();
-  }
-
-  return '';
+function buildRuntimeUnavailableBody(reason: string, detail?: unknown): Record<string, unknown> {
+  return {
+    error: 'real-runtime-unavailable',
+    detail:
+      typeof detail === 'string' && detail.trim()
+        ? detail
+        : 'Real model runtime is unavailable. Please try again later.',
+    reason,
+  };
 }
 
-function buildMockCompletionText(incoming: Record<string, unknown>): string {
-  const prompt = getLatestUserPrompt(incoming).toLowerCase();
+function isMockProvider(value: unknown): boolean {
+  return typeof value === 'string' && value.trim().toLowerCase() === 'mock';
+}
 
-  if (prompt.includes('hello') || prompt.includes('hi') || prompt.includes('hey')) {
-    return 'Hello! This is a mock response for Goblin Assistant.';
-  }
-  if (prompt.includes('code') || prompt.includes('python')) {
-    return 'Mock response: focus on readable code, validation, and tests.';
-  }
-  if (!prompt) {
-    return 'Mock response.';
-  }
-  return `Mock response to: ${getLatestUserPrompt(incoming).slice(0, 120)}`;
+function backendReturnedMock(body: Record<string, unknown>): boolean {
+  return isMockProvider(body['provider']);
+}
+
+function backendUnavailableReason(body: Record<string, unknown>): string | null {
+  const error = String(body['error'] ?? body['degraded_reason'] ?? body['detail'] ?? '');
+  if (error === 'no-configured-providers') return 'no-configured-providers';
+  if (error === 'provider-access-denied') return 'provider-access-denied';
+  return null;
 }
 
 async function forwardToBackendGenerate(req: Request): Promise<ForwardResponse> {
@@ -168,38 +160,35 @@ async function forwardToBackendGenerate(req: Request): Promise<ForwardResponse> 
       detail: 'Backend returned a non-JSON response',
     };
 
-    // Map the backend response format to what the frontend expects.
-    const noConfiguredProviders =
-      String(raw['error'] ?? raw['degraded_reason'] ?? '') === 'no-configured-providers';
-    const shouldFallback = noConfiguredProviders;
-    const body = response.ok && !shouldFallback
-      ? mapBackendResponse(raw)
-      : shouldFallback
-        ? {
-            content: buildMockCompletionText(incoming),
-            provider: 'mock',
-            model: 'mock-gpt',
-          }
-        : raw;
+    const unavailableReason = backendUnavailableReason(raw);
+    const body = response.ok ? mapBackendResponse(raw) : raw;
+    const mockRuntime = response.ok && (backendReturnedMock(raw) || backendReturnedMock(body));
+
+    if (unavailableReason || mockRuntime) {
+      return {
+        status: 503,
+        body: buildRuntimeUnavailableBody(
+          unavailableReason ?? 'mock-provider-selected',
+          raw['error'] ?? raw['detail']
+        ),
+        correlationId: response.headers.get('x-correlation-id') || undefined,
+        requestId: response.headers.get('x-request-id') || undefined,
+        licenseTier: response.headers.get('x-license-tier') || undefined,
+      };
+    }
 
     return {
-      status: shouldFallback ? 200 : response.status,
+      status: response.status,
       body,
       correlationId: response.headers.get('x-correlation-id') || undefined,
       requestId: response.headers.get('x-request-id') || undefined,
       licenseTier: response.headers.get('x-license-tier') || undefined,
-      legacyFallbackUsed: shouldFallback,
     };
   } catch {
     return {
-      status: 200,
-      body: {
-        content: 'Mock response.',
-        provider: 'mock',
-        model: 'mock-gpt',
-      },
+      status: 503,
+      body: buildRuntimeUnavailableBody('backend-transport-error'),
       transportError: true,
-      legacyFallbackUsed: true,
     };
   }
 }
@@ -216,7 +205,7 @@ export async function POST(req: Request) {
   logProxyEvent({
     proxy_mode: 'thin',
     backend_status: result.transportError ? null : result.status,
-    legacy_fallback_used: Boolean(result.legacyFallbackUsed),
+    runtime_unavailable: result.status === 503,
     correlation_id: result.correlationId,
     latency_ms: Date.now() - startedAt,
   });

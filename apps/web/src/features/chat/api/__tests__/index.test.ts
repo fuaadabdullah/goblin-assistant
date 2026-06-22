@@ -80,24 +80,27 @@ describe('chatClient conversation API', () => {
     });
   });
 
-  it('falls back to the completion proxy when conversation send fails', async () => {
+  it('surfaces conversation send failures instead of falling back to mock completion', async () => {
     const sendSpy = vi
       .spyOn(apiClient, 'sendConversationMessage')
       .mockRejectedValueOnce(new Error('no-configured-providers'));
-    const completionSpy = vi.spyOn(apiClient, 'chatCompletion').mockResolvedValue('mock reply');
+    const completionSpy = vi.spyOn(apiClient, 'chatCompletion');
 
-    const response = await chatClient.sendMessage({
-      conversationId: 'conv-4',
-      prompt: 'Hi',
-      messages: [
-        { id: 'm1', createdAt: '2026-02-21T00:00:00.000Z', role: 'user', content: 'Hi' },
-      ],
+    await expect(
+      chatClient.sendMessage({
+        conversationId: 'conv-4',
+        prompt: 'Hi',
+        messages: [
+          { id: 'm1', createdAt: '2026-02-21T00:00:00.000Z', role: 'user', content: 'Hi' },
+        ],
+      })
+    ).rejects.toMatchObject({
+      code: 'CHAT_SEND_FAILED',
+      userMessage: 'We could not send that message. Please try again.',
     });
 
     expect(sendSpy).toHaveBeenCalledTimes(1);
-    expect(completionSpy).toHaveBeenCalled();
-    expect(response.content).toBe('mock reply');
-    expect(response.provider).toBe('mock');
+    expect(completionSpy).not.toHaveBeenCalled();
   });
 
   it('surfaces provider access errors when fallback completion also fails', async () => {
@@ -120,7 +123,7 @@ describe('chatClient conversation API', () => {
       });
   });
 
-  it('falls back from streaming when the backend returns provider errors in the body', async () => {
+  it('surfaces streaming provider errors instead of falling back to mock completion', async () => {
     const onChunk = vi.fn();
     const onComplete = vi.fn();
     const onError = vi.fn();
@@ -131,31 +134,26 @@ describe('chatClient conversation API', () => {
       text: vi.fn().mockResolvedValue('no-configured-providers'),
     });
 
-    vi.spyOn(apiClient, 'chatCompletion').mockResolvedValue('stream fallback reply');
+    vi.spyOn(apiClient, 'chatCompletion');
     vi.stubGlobal('fetch', fetchMock as unknown as typeof fetch);
 
-    await chatClient.sendMessageStreaming({
-      conversationId: 'conv-6',
-      prompt: 'Stream this',
-      onChunk,
-      onComplete,
-      onError,
+    await expect(
+      chatClient.sendMessageStreaming({
+        conversationId: 'conv-6',
+        prompt: 'Stream this',
+        onChunk,
+        onComplete,
+        onError,
+      })
+    ).rejects.toMatchObject({
+      code: 'CHAT_STREAM_FAILED',
+      userMessage: 'The connection was interrupted. Please try again.',
     });
 
     expect(fetchMock).toHaveBeenCalled();
-    expect(apiClient.chatCompletion).toHaveBeenCalledWith(
-      [{ role: 'user', content: 'Stream this' }],
-      undefined
-    );
-    expect(onChunk).toHaveBeenCalledWith('stream fallback reply', 0, 0);
-    expect(onComplete).toHaveBeenCalledWith(
-      expect.objectContaining({
-        content: 'stream fallback reply',
-        provider: 'mock',
-        model: 'mock-gpt',
-      })
-    );
-    expect(onError).not.toHaveBeenCalled();
+    expect(apiClient.chatCompletion).not.toHaveBeenCalled();
+    expect(onChunk).not.toHaveBeenCalled();
+    expect(onComplete).not.toHaveBeenCalled();
   });
 
   it('preserves non-Error streaming failures in the error callback', async () => {

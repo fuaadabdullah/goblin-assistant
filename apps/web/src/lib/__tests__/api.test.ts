@@ -73,6 +73,16 @@ describe('apiClient', () => {
       );
       expect(result).toEqual({ content: 'hello' });
     });
+
+    it('rejects mock runtime responses from frontend generate', async () => {
+      mockHttp.post.mockResolvedValueOnce({
+        data: { content: 'Mock response.', provider: 'mock', model: 'mock-gpt' },
+      });
+
+      await expect(apiClient.generate('test prompt')).rejects.toThrow(
+        'Real model runtime is unavailable'
+      );
+    });
   });
 
   describe('getAllHealth', () => {
