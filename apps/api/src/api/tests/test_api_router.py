@@ -83,6 +83,33 @@ def test_simple_chat_returns_error_payload_for_provider_failure_and_exception():
     assert "boom" in errored.json()["error"]
 
 
+def test_simple_chat_rejects_mock_provider_when_fallback_disabled():
+    client = _client()
+
+    with (
+        patch("api.api_router.mock_fallback_enabled", return_value=False),
+        patch(
+            "api.api_router.invoke_provider",
+            new_callable=AsyncMock,
+            return_value={
+                "ok": True,
+                "result": {"text": "Mock response to: Hi"},
+                "provider": "mock",
+                "model": "mock-gpt",
+            },
+        ),
+    ):
+        response = client.post(
+            "/api/v1/api/chat",
+            json={"messages": [{"role": "user", "content": "Hi"}]},
+        )
+
+    assert response.status_code == 200
+    data = response.json()
+    assert data["ok"] is False
+    assert data["error"] == "no-configured-providers"
+
+
 def test_simple_chat_rejects_oversized_message():
     client = _client()
     max_len = api_router.InputSanitizer.MAX_MESSAGE_LENGTH
@@ -159,6 +186,32 @@ def test_generate_uses_messages_payload():
     data = response.json()
     assert data["content"] == "messages reply"
     assert data["choices"][0]["message"]["content"] == "messages reply"
+
+
+def test_generate_rejects_mock_provider_when_fallback_disabled():
+    client = _client()
+
+    with (
+        patch("api.api_router.mock_fallback_enabled", return_value=False),
+        patch(
+            "api.api_router.invoke_provider",
+            new_callable=AsyncMock,
+            return_value={
+                "ok": True,
+                "result": {"text": "Mock response to: Hi"},
+                "provider": "mock",
+                "model": "mock-gpt",
+            },
+        ),
+    ):
+        response = client.post(
+            "/api/v1/api/generate",
+            json={"messages": [{"role": "user", "content": "Hi"}]},
+        )
+
+    assert response.status_code == 200
+    data = response.json()
+    assert data["error"] == "no-configured-providers"
 
 
 def test_generate_handles_oversized_prompt_provider_error_and_exception():

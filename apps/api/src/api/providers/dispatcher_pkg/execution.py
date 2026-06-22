@@ -24,9 +24,9 @@ except ImportError:
 
 
 def mock_fallback_enabled() -> bool:
-    environment = os.getenv("ENVIRONMENT", "development").strip().lower()
     if os.getenv("ALLOW_MOCK_PROVIDER_FALLBACK", "").strip().lower() == "true":
         return True
+    environment = os.getenv("ENVIRONMENT", "").strip().lower()
     return environment in {"development", "dev", "local", "test"}
 
 

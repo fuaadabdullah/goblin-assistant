@@ -195,6 +195,14 @@ class TestProviderFallback:
 
         assert mock_fallback_enabled() is False
 
+    def test_mock_provider_fallback_is_disabled_without_explicit_environment(self, monkeypatch):
+        from api.providers.dispatcher_pkg.execution import mock_fallback_enabled
+
+        monkeypatch.delenv("ENVIRONMENT", raising=False)
+        monkeypatch.delenv("ALLOW_MOCK_PROVIDER_FALLBACK", raising=False)
+
+        assert mock_fallback_enabled() is False
+
     def test_mock_provider_fallback_can_be_explicitly_enabled(self, monkeypatch):
         from api.providers.dispatcher_pkg.execution import mock_fallback_enabled
 
@@ -368,6 +376,7 @@ class TestDispatchRequestFallback:
         from api.providers.dispatcher_pkg.execution import dispatch_request
 
         dispatcher = ProviderDispatcher()
+        monkeypatch.setenv("ENVIRONMENT", "test")
 
         monkeypatch.setattr(dispatcher, "_candidate_order", lambda _provider_id: [])
         monkeypatch.setattr(dispatcher, "_resolve_model_alias", lambda pid, model: (pid, model))

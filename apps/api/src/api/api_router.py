@@ -29,6 +29,7 @@ from .core.orchestration import parse_natural_language
 from .input_validation import InputSanitizer
 from .orchestration_router import router as orchestration_router
 from .providers.dispatcher import dispatcher, invoke_provider
+from .providers.dispatcher_pkg.execution import mock_fallback_enabled
 from .routing.feedback_router import router as _feedback_router
 from .routing.router import registry as routing_registry
 from .routing.router import route_task as route_task_runtime
@@ -68,6 +69,14 @@ def _response_error_message(response: Any) -> str:
     return str(response)
 
 
+def _is_disallowed_mock_response(response: Any) -> bool:
+    return (
+        isinstance(response, dict)
+        and str(response.get("provider", "")).strip().lower() == "mock"
+        and not mock_fallback_enabled()
+    )
+
+
 async def _run_stream_task_background(stream_id: str, request: StreamTaskRequest) -> None:
     await _run_stream_task_background_helper(
         stream_id,
@@ -105,6 +114,8 @@ async def simple_chat(request: SimpleChatRequest):
             timeout_ms=30000,
             stream=bool(request.stream),
         )
+        if _is_disallowed_mock_response(response):
+            return SimpleChatResponse(ok=False, error="no-configured-providers")
         if isinstance(response, dict) and response.get("ok"):
             text = _extract_result_text(response)
             result_data = response.get("result", {})
@@ -160,6 +171,8 @@ async def generate(request: GenerateRequest):
             timeout_ms=30000,
             stream=False,
         )
+        if _is_disallowed_mock_response(response):
+            return GenerateResponse(error="no-configured-providers")
         if isinstance(response, dict) and response.get("ok"):
             text = _extract_result_text(response)
             return GenerateResponse(
