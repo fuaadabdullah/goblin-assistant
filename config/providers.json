@@ -696,6 +696,7 @@
         "code"
       ],
       "models": [
+        "qwen2.5:3b",
         "gemma-3-12b",
         "qwen3-14b",
         "gemini-2.5-flash",
@@ -710,7 +711,7 @@
       "default_timeout_ms": 60000,
       "rate_limit_per_min": 120,
       "display_name": "GCP Self-Hosted",
-      "is_active": false
+      "is_active": true
     },
     "mock": {
       "endpoint": "mock://localhost",

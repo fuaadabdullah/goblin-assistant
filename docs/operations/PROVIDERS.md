@@ -44,6 +44,7 @@ This document is the canonical operations reference for provider configuration m
 | `gemini` | `GOOGLE_AI_API_KEY`, `GEMINI_ENDPOINT` | `gemini-2.0-flash` | `cloud` | Yes | Yes | Requires `GOOGLE_AI_API_KEY` |
 | `azure_openai` | `AZURE_API_KEY`, `AZURE_OPENAI_ENDPOINT`, `AZURE_DEPLOYMENT_ID` (or TOML `default_deployment`), `AZURE_REGION` (listed in `requires_env`) | `gpt-4o-mini` | `private` | Yes | Yes | Requires API key + endpoint + deployment value |
 | `vertex_ai` | `VERTEX_AI_PROJECT` (or `GCP_PROJECT_ID`), one of `GOOGLE_APPLICATION_CREDENTIALS` / `VERTEX_AI_SERVICE_ACCOUNT_JSON` / `GCP_SERVICE_ACCOUNT_KEY`, optional `VERTEX_AI_ENDPOINT` | `gemini-2.5-flash` | `private` | Yes | Yes | Requires project + credentials |
+| `gcp_vm` | `OLLAMA_GCP_ENDPOINT`, `LLAMACPP_GCP_ENDPOINT`, `COLAB_WORKER_ENDPOINT`, `COLAB_WORKER_API_KEY`, `VERTEX_AI_PROJECT` + credentials | `qwen2.5:3b` | `self_hosted` | Yes | Yes | Requires at least one backend env; aggregates Ollama, llama.cpp, Colab, and Vertex backends |
 | `aliyun` | `DASHSCOPE_API_KEY`, `DASHSCOPE_ENDPOINT` | `qwen-plus` | `private` | Yes | Yes | Requires `DASHSCOPE_API_KEY` |
 | `huggingface` | `HUGGINGFACE_API_KEY`, `HUGGINGFACE_ENDPOINT` | — (not set) | `cloud` | Yes | Yes | Requires `HUGGINGFACE_API_KEY` |
 | `ollama_gcp` | `OLLAMA_GCP_ENDPOINT` | `qwen2.5:3b` | `self_hosted` | Yes | Yes | `selectable_requires_env=true` ⇒ requires `OLLAMA_GCP_ENDPOINT` |
