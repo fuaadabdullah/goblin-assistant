@@ -1263,6 +1263,41 @@ async def test_dispatcher_allows_self_hosted_providers_while_warming(monkeypatch
 
 
 @pytest.mark.asyncio
+async def test_dispatcher_blocks_self_hosted_providers_when_warmup_failed(monkeypatch):
+    monkeypatch.setenv("LOCAL_STUB_ENDPOINT", "http://localhost")
+    dispatcher = ProviderDispatcher(
+        configs={
+            "local_stub": {
+                "tier": "self_hosted",
+                "endpoint_env": "LOCAL_STUB_ENDPOINT",
+                "default_model": "stub-model",
+                "capabilities": ["chat"],
+            }
+        },
+        class_map={"local_stub": _StubProvider},
+    )
+    dispatcher._warmup_states["local_stub"] = {"state": "failed", "latency_ms": 10.0}
+
+    import api.providers.dispatcher_pkg.execution as execution_module
+
+    async def fail_if_called(*args, **kwargs):
+        _ = args, kwargs
+        raise AssertionError("quota reservation should not be attempted for failed warmup")
+
+    monkeypatch.setattr(execution_module.quota_service, "reserve", fail_if_called)
+
+    result = await dispatcher.dispatch(
+        pid="local_stub",
+        model=None,
+        payload={"messages": [{"role": "user", "content": "hello"}]},
+    )
+
+    assert result["ok"] is False
+    assert result["error"] == "provider warming up"
+    assert dispatcher._warmup_state_for("local_stub")["state"] == "failed"
+
+
+@pytest.mark.asyncio
 async def test_dispatcher_test_mode_injects_failures_and_restores(monkeypatch):
     dispatcher = ProviderDispatcher()
     provider = dispatcher.get_provider("openai")
