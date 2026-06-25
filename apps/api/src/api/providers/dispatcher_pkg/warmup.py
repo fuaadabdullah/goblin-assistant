@@ -99,7 +99,10 @@ def is_warmup_routing_blocked(
     if not _is_self_hosted(config):
         return False
     warmup_state = str(warmup_state_for(warmup_states, provider_id).get("state", "idle")).strip()
-    return warmup_state in {"warming", "failed"}
+    # A provider that is still warming should remain routable so live traffic
+    # can finish validating a healthy self-hosted backend. Only a failed warmup
+    # should hard-block routing.
+    return warmup_state == "failed"
 
 
 def start_background_tasks(

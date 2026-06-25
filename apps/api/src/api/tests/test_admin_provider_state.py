@@ -128,12 +128,8 @@ class _DispatcherStub:
 
 class _QuotaStub:
     async def snapshot_provider(self, provider_id: str, model: str | None = None) -> Dict[str, Any]:
-        if provider_id == "local_stub":
-            remaining_requests = 0
-            remaining_tokens = 0
-        else:
-            remaining_requests = 45
-            remaining_tokens = 8000
+        remaining_requests = 45
+        remaining_tokens = 8000
 
         return {
             "provider_id": provider_id,
@@ -205,8 +201,8 @@ async def test_build_provider_state_includes_warmup_circuit_and_quota(
     state = await provider_state._build_provider_state()
 
     assert state["summary"]["total_providers"] == 2
-    assert state["providers"]["local_stub"]["skip_reason"] == "warmup_warming"
-    assert state["providers"]["local_stub"]["can_route"] is False
+    assert state["providers"]["local_stub"]["skip_reason"] is None
+    assert state["providers"]["local_stub"]["can_route"] is True
     assert state["providers"]["openai"]["can_route"] is True
     assert state["providers"]["openai"]["quota"]["provider_scope"]["remaining_requests"] == 45
     assert state["providers"]["local_stub"]["circuit_breaker"]["cooldown_remaining_seconds"] == 0.0
@@ -226,4 +222,4 @@ def test_provider_state_route_is_mounted_in_v1(monkeypatch, provider_state_env):
 
     assert response.status_code == 200
     assert response.json()["summary"]["total_providers"] == 2
-    assert response.json()["providers"]["local_stub"]["skip_reason"] == "warmup_warming"
+    assert response.json()["providers"]["local_stub"]["skip_reason"] is None

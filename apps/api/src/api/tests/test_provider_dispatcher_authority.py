@@ -561,7 +561,14 @@ async def test_self_hosted_provider_is_not_selectable_without_env(monkeypatch):
 def test_candidate_order_auto_uses_hybrid_router(monkeypatch):
     dispatcher = ProviderDispatcher()
 
-    monkeypatch.setattr(dispatcher, "_priority_order", lambda: ["p1", "p2"])
+    monkeypatch.setattr(
+        dispatcher,
+        "list_providers",
+        lambda include_hidden=False: [
+            {"id": "p1", "priority_tier": 1, "tier": "cloud", "local_routing": False},
+            {"id": "p2", "priority_tier": 2, "tier": "cloud", "local_routing": False},
+        ],
+    )
     monkeypatch.setattr(dispatcher, "_provider_costs", lambda _pid: (0.1, 0.2))
 
     called = {"count": 0}
@@ -1213,7 +1220,7 @@ async def test_dispatcher_prewarm_updates_warmup_state(monkeypatch):
 
 
 @pytest.mark.asyncio
-async def test_dispatcher_skips_self_hosted_providers_while_warming(monkeypatch):
+async def test_dispatcher_allows_self_hosted_providers_while_warming(monkeypatch):
     monkeypatch.setenv("LOCAL_STUB_ENDPOINT", "http://localhost")
     dispatcher = ProviderDispatcher(
         configs={
@@ -1230,21 +1237,29 @@ async def test_dispatcher_skips_self_hosted_providers_while_warming(monkeypatch)
 
     import api.providers.dispatcher_pkg.execution as execution_module
 
-    async def fail_if_called(*args, **kwargs):
-        _ = args, kwargs
-        raise AssertionError("quota reservation should not be attempted for warming providers")
-
-    monkeypatch.setattr(execution_module.quota_service, "reserve", fail_if_called)
+    reservation = type(
+        "QuotaReservationStub",
+        (),
+        {"estimated_input_tokens": 1, "estimated_output_tokens": 1},
+    )()
+    monkeypatch.setattr(
+        execution_module.quota_service,
+        "reserve",
+        AsyncMock(return_value=reservation),
+    )
+    monkeypatch.setattr(execution_module.quota_service, "commit", AsyncMock())
+    monkeypatch.setattr(execution_module.quota_service, "release", AsyncMock())
+    monkeypatch.setattr(execution_module.quota_service, "mark_rate_limited", AsyncMock())
 
     result = await dispatcher.dispatch(
-        pid=None,
+        pid="local_stub",
         model=None,
         payload={"messages": [{"role": "user", "content": "hello"}]},
     )
 
-    assert result["ok"] is False
-    assert result["error"] == "provider warming up"
-    assert dispatcher._warmup_state_for("local_stub")["state"] == "warming"
+    assert result["ok"] is True
+    assert result["provider"] == "local_stub"
+    assert dispatcher._warmup_state_for("local_stub")["state"] == "warm"
 
 
 @pytest.mark.asyncio
