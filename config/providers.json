@@ -378,6 +378,7 @@
         "code"
       ],
       "models": [
+        "Qwen/Qwen2.5-72B-Instruct",
         "Qwen/Qwen2.5-7B-Instruct",
         "Qwen/Qwen2.5-Coder-7B-Instruct",
         "deepseek-ai/DeepSeek-V2.5"

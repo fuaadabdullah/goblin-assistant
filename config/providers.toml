@@ -373,8 +373,13 @@ endpoint                = "https://api.siliconflow.com"
 endpoint_env            = "SILICONEFLOW_ENDPOINT"
 invoke_path             = "/v1/chat/completions"
 api_key_env             = "SILICONEFLOW_API_KEY"
-default_model           = "Qwen/Qwen2.5-7B-Instruct"
-models                  = ["Qwen/Qwen2.5-7B-Instruct", "Qwen/Qwen2.5-Coder-7B-Instruct", "deepseek-ai/DeepSeek-V2.5"]
+default_model           = "Qwen/Qwen2.5-72B-Instruct"
+models                  = [
+  "Qwen/Qwen2.5-72B-Instruct",
+  "Qwen/Qwen2.5-7B-Instruct",
+  "Qwen/Qwen2.5-Coder-7B-Instruct",
+  "deepseek-ai/DeepSeek-V2.5",
+]
 capabilities            = ["chat", "reasoning", "code"]
 priority_tier           = 25
 cost_score              = 0.10

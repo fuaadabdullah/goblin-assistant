@@ -334,3 +334,23 @@ class TestDryRun:
         d = _make_dispatcher({"openai": {}})
         result = await d.dispatch(None, None, {}, dry_run=True)
         assert result["routing_mode"] == "auto"
+
+    @pytest.mark.asyncio
+    async def test_dry_run_auto_resolves_siliconeflow_default_model(self):
+        d = _make_dispatcher(
+            {
+                "siliconeflow": {
+                    "default_model": "Qwen/Qwen2.5-72B-Instruct",
+                    "priority_tier": 1,
+                }
+            }
+        )
+        result = await d.dispatch(
+            None,
+            None,
+            {"messages": [{"role": "user", "content": "hi"}]},
+            dry_run=True,
+        )
+        assert result["ok"] is True
+        assert result["resolved_provider"] == "siliconeflow"
+        assert result["resolved_model"] == "Qwen/Qwen2.5-72B-Instruct"
