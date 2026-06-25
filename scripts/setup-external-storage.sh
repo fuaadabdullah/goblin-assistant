@@ -194,7 +194,7 @@ When running in CI:
 - Verify Python installation: `python3 --version`
 - Reinstall venv: `python3 -m venv /Volumes/GOBLINOS\ 1/goblin-assistant/venv`
 EOF
-echo "✅ Created docs/runbooks/GOBLINOS_STORAGE_README.md"
+echo "✅ Created docs/operations/GOBLINOS_STORAGE_README.md"
 
 # Create a convenience activation script
 echo ""
@@ -232,7 +232,7 @@ echo "📍 Storage Location: $GOBLINOS_PATH"
 echo "💾 Available Directories:"
 ls -lh "$GOBLINOS_PATH" | tail -n +2 | awk '{print "   • " $9 " (" $5 ")"}'
 echo ""
-echo "📚 Documentation: docs/runbooks/GOBLINOS_STORAGE_README.md"
+echo "📚 Documentation: docs/operations/GOBLINOS_STORAGE_README.md"
 echo ""
 echo "🚀 Quick Start:"
 echo "   1. Load config: source .env.storage"

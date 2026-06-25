@@ -1,13 +1,12 @@
 import React from 'react';
 import { render, screen, fireEvent } from '@testing-library/react';
-import '@testing-library/jest-dom';
 import SearchQuickQueries from '../SearchQuickQueries';
 
 describe('SearchQuickQueries', () => {
   const queries = ['How to reset?', 'What is Goblin?', 'API docs'];
-  const onSelect = jest.fn();
+  const onSelect = vi.fn();
 
-  beforeEach(() => jest.clearAllMocks());
+  beforeEach(() => vi.clearAllMocks());
 
   it('renders heading', () => {
     render(<SearchQuickQueries queries={queries} onSelect={onSelect} />);
@@ -21,7 +20,7 @@ describe('SearchQuickQueries', () => {
 
   it('renders all query buttons', () => {
     render(<SearchQuickQueries queries={queries} onSelect={onSelect} />);
-    queries.forEach(q => expect(screen.getByText(q)).toBeInTheDocument());
+    queries.forEach((q) => expect(screen.getByText(q)).toBeInTheDocument());
   });
 
   it('calls onSelect when a query is clicked', () => {

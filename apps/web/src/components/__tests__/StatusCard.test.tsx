@@ -1,24 +1,59 @@
 import React from 'react';
 import { render, screen } from '@testing-library/react';
-import '@testing-library/jest-dom';
 
-jest.mock('../Card', () => {
-  return function MockCard({ children, className, ...props }: { children: React.ReactNode; className?: string; [k: string]: unknown }) {
-    return <div data-testid="card" className={className} {...props}>{children}</div>;
-  };
-});
+vi.mock('../Card', () => ({
+  default: function MockCard({
+    children,
+    className,
+    ...props
+  }: {
+    children: React.ReactNode;
+    className?: string;
+    [k: string]: unknown;
+  }) {
+    return (
+      <div data-testid="card" className={className} {...props}>
+        {children}
+      </div>
+    );
+  },
+}));
 
-jest.mock('../ui/Badge', () => {
-  return function MockBadge({ children, icon, variant, ...props }: { children: React.ReactNode; icon?: string; variant?: string; [k: string]: unknown }) {
-    return <span data-testid="badge" data-variant={variant} {...props}>{icon} {children}</span>;
-  };
-});
+vi.mock('../ui/Badge', () => ({
+  default: function MockBadge({
+    children,
+    icon,
+    variant,
+    ...props
+  }: {
+    children: React.ReactNode;
+    icon?: string;
+    variant?: string;
+    [k: string]: unknown;
+  }) {
+    return (
+      <span data-testid="badge" data-variant={variant} {...props}>
+        {icon} {children}
+      </span>
+    );
+  },
+}));
 
-jest.mock('../ui/Tooltip', () => {
-  return function MockTooltip({ children, content }: { children: React.ReactNode; content: string }) {
-    return <div data-testid="tooltip" title={content}>{children}</div>;
-  };
-});
+vi.mock('../ui/Tooltip', () => ({
+  default: function MockTooltip({
+    children,
+    content,
+  }: {
+    children: React.ReactNode;
+    content: string;
+  }) {
+    return (
+      <div data-testid="tooltip" title={content}>
+        {children}
+      </div>
+    );
+  },
+}));
 
 import StatusCard from '../StatusCard';
 

@@ -1,46 +1,88 @@
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
-import '@testing-library/jest-dom';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 
-jest.mock('@tanstack/react-query', () => {
-  const actual = jest.requireActual('@tanstack/react-query');
-  return { ...actual, useQueryClient: () => ({ invalidateQueries: jest.fn() }) };
+vi.mock('@tanstack/react-query', async () => {
+  const actual = await vi.importActual('@tanstack/react-query');
+  return { ...actual, useQueryClient: () => ({ invalidateQueries: vi.fn() }) };
 });
-const mockLogin = jest.fn().mockResolvedValue({ token: 'abc' });
-const mockRegister = jest.fn().mockResolvedValue({ token: 'abc' });
-const mockGetGoogleAuthUrl = jest.fn().mockResolvedValue('https://google.com/oauth');
-jest.mock('@/api', () => ({
-  apiClient: {
-    login: (...args: unknown[]) => mockLogin(...args),
-    register: (...args: unknown[]) => mockRegister(...args),
-    getGoogleAuthUrl: (...args: unknown[]) => mockGetGoogleAuthUrl(...args),
+vi.mock('@/lib/supabase', () => ({
+  supabase: {
+    auth: {
+      signInWithPassword: vi.fn().mockResolvedValue({
+        data: {
+          session: {
+            access_token: 'test-token',
+            user: { id: 'u1', email: 'test@test.com', role: 'authenticated', user_metadata: {} },
+          },
+          user: { id: 'u1', email: 'test@test.com', role: 'authenticated', user_metadata: {} },
+        },
+        error: null,
+      }),
+      signUp: vi.fn().mockResolvedValue({
+        data: {
+          session: {
+            access_token: 'test-token',
+            user: { id: 'u1', email: 'test@test.com', role: 'authenticated', user_metadata: {} },
+          },
+          user: { id: 'u1', email: 'test@test.com', role: 'authenticated', user_metadata: {} },
+        },
+        error: null,
+      }),
+      signInWithOAuth: vi.fn().mockResolvedValue({ data: {}, error: null }),
+    },
   },
+  supabaseUserToAppUser: (u: { id: string; email: string }) => ({ id: u.id, email: u.email }),
 }));
-jest.mock('../../../lib/query-keys', () => ({ queryKeys: { authValidate: ['auth'] } }));
-jest.mock('@/utils/dev-log', () => ({ devError: jest.fn() }));
+vi.mock('../../../lib/query-keys', () => ({ queryKeys: { authValidate: ['auth'] } }));
+vi.mock('@/utils/dev-log', () => ({ devError: vi.fn() }));
 
 // Mock child components
-jest.mock('../LoginHeader', () => function MockLoginHeader({ isRegister }: { isRegister: boolean }) {
-  return <div data-testid="login-header">{isRegister ? 'Register' : 'Login'}</div>;
-});
-jest.mock('../EmailPasswordForm', () => {
-  return function MockEmailForm(props: { onSubmit?: (e: string, p: string) => void }) {
+vi.mock('../LoginHeader', () => ({
+  default: function MockLoginHeader({ isRegister }: { isRegister: boolean }) {
+    return <div data-testid="login-header">{isRegister ? 'Register' : 'Login'}</div>;
+  },
+}));
+vi.mock('../EmailPasswordForm', () => ({
+  default: function MockEmailForm(props: { onSubmit?: (e: string, p: string) => void }) {
     return (
-      <form data-testid="email-form" onSubmit={(e) => { e.preventDefault(); props.onSubmit?.('test@test.com', 'pass'); }}>
+      <form
+        data-testid="email-form"
+        onSubmit={(e) => {
+          e.preventDefault();
+          props.onSubmit?.('test@test.com', 'pass');
+        }}
+      >
         <button type="submit">Submit</button>
       </form>
     );
-  };
-});
-jest.mock('../SocialLoginButtons', () => function MockSocial() { return <div data-testid="social-buttons" />; });
-jest.mock('../Divider', () => function MockDivider() { return <hr data-testid="divider" />; });
-jest.mock('../PasskeyPanel', () => function MockPasskey() { return <div data-testid="passkey-panel" />; });
-jest.mock('../../TurnstileWidget', () => function MockTurnstile() { return <div data-testid="turnstile" />; });
-jest.mock('../../../config/turnstile', () => ({
-  useTurnstile: () => ({ token: 'mock-token', isEnabled: false, reset: jest.fn() }),
+  },
+}));
+vi.mock('../SocialLoginButtons', () => ({
+  default: function MockSocial() {
+    return <div data-testid="social-buttons" />;
+  },
+}));
+vi.mock('../Divider', () => ({
+  default: function MockDivider() {
+    return <hr data-testid="divider" />;
+  },
+}));
+vi.mock('../PasskeyPanel', () => ({
+  default: function MockPasskey() {
+    return <div data-testid="passkey-panel" />;
+  },
+}));
+vi.mock('../../TurnstileWidget', () => ({
+  default: function MockTurnstile() {
+    return <div data-testid="turnstile" />;
+  },
+}));
+vi.mock('../../../config/turnstile', () => ({
+  useTurnstile: () => ({ token: 'mock-token', isEnabled: false, reset: vi.fn() }),
 }));
 
 import ModularLoginForm from '../ModularLoginForm';
+import { formatLoginError } from '../ModularLoginForm';
 
 function Wrapper({ children }: { children: React.ReactNode }) {
   const qc = new QueryClient({ defaultOptions: { queries: { retry: false } } });
@@ -48,10 +90,10 @@ function Wrapper({ children }: { children: React.ReactNode }) {
 }
 
 describe('ModularLoginForm', () => {
-  const onSuccess = jest.fn();
-  const onError = jest.fn();
+  const onSuccess = vi.fn();
+  const onError = vi.fn();
 
-  beforeEach(() => jest.clearAllMocks());
+  beforeEach(() => vi.clearAllMocks());
 
   it('renders login form by default', () => {
     render(<ModularLoginForm onSuccess={onSuccess} onError={onError} />, { wrapper: Wrapper });
@@ -60,7 +102,9 @@ describe('ModularLoginForm', () => {
   });
 
   it('renders register form when initialMode is register', () => {
-    render(<ModularLoginForm onSuccess={onSuccess} onError={onError} initialMode="register" />, { wrapper: Wrapper });
+    render(<ModularLoginForm onSuccess={onSuccess} onError={onError} initialMode="register" />, {
+      wrapper: Wrapper,
+    });
     expect(screen.getByTestId('login-header')).toHaveTextContent('Register');
   });
 
@@ -80,6 +124,14 @@ describe('ModularLoginForm', () => {
 
   it('renders disclaimer text', () => {
     render(<ModularLoginForm onSuccess={onSuccess} onError={onError} />, { wrapper: Wrapper });
-    expect(screen.getByText(/usage data/i) || screen.getByText(/disclaimer/i) || document.body).toBeTruthy();
+    expect(
+      screen.getByText(/usage data/i) || screen.getByText(/disclaimer/i) || document.body
+    ).toBeTruthy();
+  });
+
+  it('preserves non-Error login failures through the shared formatter', () => {
+    expect(formatLoginError('oauth backend unavailable', 'Authentication failed')).toBe(
+      'oauth backend unavailable'
+    );
   });
 });

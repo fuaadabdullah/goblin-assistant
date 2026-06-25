@@ -9,6 +9,26 @@
 #   - RAPTOR router: apps/api/src/api/raptor_router.py
 # =============================================================================
 
+# ---------------------------------------------------------------------------
+# Visible provider IDs  —  order controls UI / API listing order
+# ---------------------------------------------------------------------------
+visible_providers = [
+  "groq",
+  "deepseek",
+  "gemini",
+  "siliconeflow",
+  "openai",
+  "azure_openai",
+  "anthropic",
+  "together",
+  "replicate",
+  "cohere",
+  "huggingface",
+  "aliyun",
+  "gcp_vllm",
+  "gcp_vm",
+]
+
 [default]
 timeout_ms = 12000
 
@@ -33,7 +53,7 @@ preferred_providers_under_budget = [
 ]
 
 [default.health]
-health_check_interval = 60
+health_check_interval = 30
 timeout_seconds = 10
 retry_attempts = 3
 
@@ -61,6 +81,8 @@ recovery_threshold = 2
 failover_to_backup = true
 max_failover_time = 60
 circuit_breaker_enabled = true
+circuit_breaker_failure_threshold = 3
+circuit_breaker_recovery_timeout = 30
 
 [load_balancing.health_checks]
 ollama_health = "/api/tags"
@@ -78,19 +100,39 @@ backup_router = "45.61.51.220:8000"
 azure                    = "azure_openai"
 azure_openai             = "azure_openai"
 azure-openai             = "azure_openai"
-vertex                   = "vertex_ai"
-vertex-ai                = "vertex_ai"
 google                   = "gemini"
 siliconflow              = "siliconeflow"
 silicon_flow             = "siliconeflow"
 silicone-flow            = "siliconeflow"
 silicone_flow            = "siliconeflow"
-ollama                   = "ollama_local"
-ollama-local             = "ollama_local"
-ollama-gcp               = "ollama_gcp"
-llamacpp                 = "llamacpp_gcp"
-llama_cpp                = "llamacpp_gcp"
-llamacpp-gcp             = "llamacpp_gcp"
+ollama                   = "gcp_vm"
+ollama-local             = "gcp_vm"
+# GCP inference providers
+gcs                      = "gcp_vm"
+gcp                      = "gcp_vm"
+gcp_vm                   = "gcp_vm"
+gcp-vm                   = "gcp_vm"
+gcp_vllm                 = "gcp_vllm"
+# Rovo Dev / Goblin Coder
+rovo-dev                 = "rovo_dev"
+goblin_coder             = "rovo_dev"
+goblin-coder             = "rovo_dev"
+gcp-vllm                 = "gcp_vllm"
+google_cloud             = "gcp_vllm"
+google_cloud_selfhosted  = "gcp_vm"
+# Legacy GCP provider aliases
+ollama_gcp               = "gcp_vm"
+ollama-gcp               = "gcp_vm"
+llamacpp                 = "gcp_vm"
+llama_cpp                = "gcp_vm"
+llamacpp_gcp             = "gcp_vm"
+llamacpp-gcp             = "gcp_vm"
+colab                    = "gcp_vm"
+colab_worker             = "gcp_vm"
+colab-worker             = "gcp_vm"
+vertex                   = "gcp_vm"
+vertex_ai                = "gcp_vm"
+vertex-ai                = "gcp_vm"
 
 # ---------------------------------------------------------------------------
 # Model aliases  —  short name → { provider, model }
@@ -106,26 +148,15 @@ llamacpp-gcp             = "llamacpp_gcp"
 "qwen-coder"                          = { provider = "siliconeflow",  model = "Qwen/Qwen2.5-Coder-7B-Instruct" }
 "deepseek-chat"                       = { provider = "deepseek",      model = "deepseek-chat" }
 "gemini-flash"                        = { provider = "gemini",        model = "gemini-2.0-flash" }
-"qwen-3b"                             = { provider = "ollama_gcp",    model = "qwen2.5:3b" }
-"qwen-local"                          = { provider = "ollama_local",  model = "qwen2.5:3b" }
-
-# ---------------------------------------------------------------------------
-# Visible provider IDs  —  order controls UI / API listing order
-# ---------------------------------------------------------------------------
-visible_providers = [
-  "openai",
-  "anthropic",
-  "groq",
-  "siliconeflow",
-  "deepseek",
-  "gemini",
-  "azure_openai",
-  "vertex_ai",
-  "aliyun",
-  "ollama_gcp",
-  "llamacpp_gcp",
-  "ollama_local",
-]
+# GCP vLLM model shortcuts (big models — gcp_vllm cluster)
+"qwen3"                               = { provider = "gcp_vllm",     model = "qwen3-32b" }
+"qwen3-32b"                           = { provider = "gcp_vllm",     model = "qwen3-32b" }
+"gemma3"                              = { provider = "gcp_vllm",     model = "gemma3-27b" }
+"gemma3-27b"                          = { provider = "gcp_vllm",     model = "gemma3-27b" }
+"deepseek-r1"                         = { provider = "gcp_vllm",     model = "deepseek-r1-32b" }
+"deepseek-r1-32b"                     = { provider = "gcp_vllm",     model = "deepseek-r1-32b" }
+"bge-m3"                              = { provider = "gcp_vllm",     model = "bge-m3" }
+"bge-reranker"                        = { provider = "gcp_vllm",     model = "bge-reranker-v2-m3" }
 
 # ---------------------------------------------------------------------------
 # Per-model context windows  (tokens)
@@ -165,8 +196,8 @@ api_key_env             = "OPENAI_API_KEY"
 default_model           = "gpt-4o-mini"
 models                  = ["gpt-4o", "gpt-4o-mini", "gpt-4-turbo"]
 capabilities            = ["chat", "reasoning", "code", "embedding", "image"]
-priority_tier           = 10
-cost_score              = 0.8
+priority_tier           = 30
+cost_score              = 0.75
 cost_input_per1k        = 0.0025
 cost_output_per1k       = 0.01
 default_timeout_ms      = 10000
@@ -177,6 +208,20 @@ cot_suppression_prompt  = "Answer directly without showing your reasoning."
 tier                    = "cloud"
 display_name            = "OpenAI"
 is_active               = true
+
+[providers.openai.costs]
+default                   = { input_per1k = 0.005, output_per1k = 0.015 }
+"gpt-4o"                  = { input_per1k = 0.005, output_per1k = 0.015 }
+"gpt-4o-mini"             = { input_per1k = 0.00015, output_per1k = 0.0006 }
+"gpt-4-turbo"             = { input_per1k = 0.01, output_per1k = 0.03 }
+"o1"                      = { input_per1k = 0.015, output_per1k = 0.06 }
+"o1-mini"                 = { input_per1k = 0.003, output_per1k = 0.012 }
+"o3-mini"                 = { input_per1k = 0.0011, output_per1k = 0.0044 }
+
+[providers.openai.rate_limits]
+default                   = { requests_per_minute = 60, tokens_per_minute = 200000, concurrency = 0 }
+"gpt-4o"                  = { requests_per_minute = 500, tokens_per_minute = 200000, concurrency = 0 }
+"gpt-4o-mini"             = { requests_per_minute = 500, tokens_per_minute = 200000, concurrency = 0 }
 
 # ---------------------------------------------------------------------------
 # Anthropic
@@ -190,8 +235,8 @@ api_key_env             = "ANTHROPIC_API_KEY"
 default_model           = "claude-3-5-haiku-latest"
 models                  = ["claude-sonnet-4-20250514", "claude-3-5-haiku-latest"]
 capabilities            = ["chat", "reasoning", "code"]
-priority_tier           = 20
-cost_score              = 0.9
+priority_tier           = 40
+cost_score              = 0.80
 cost_input_per1k        = 0.003
 cost_output_per1k       = 0.015
 default_timeout_ms      = 15000
@@ -202,6 +247,20 @@ cot_suppression_prompt  = "Be direct and concise."
 tier                    = "cloud"
 display_name            = "Anthropic"
 is_active               = true
+
+[providers.anthropic.costs]
+default                      = { input_per1k = 0.003, output_per1k = 0.015 }
+"claude-3-5-sonnet"          = { input_per1k = 0.003, output_per1k = 0.015 }
+"claude-sonnet-4-20250514"   = { input_per1k = 0.003, output_per1k = 0.015 }
+"claude-3-5-haiku-latest"    = { input_per1k = 0.0008, output_per1k = 0.004 }
+"claude-3-opus"              = { input_per1k = 0.015, output_per1k = 0.075 }
+"claude-3-sonnet"            = { input_per1k = 0.003, output_per1k = 0.015 }
+"claude-3-haiku"             = { input_per1k = 0.00025, output_per1k = 0.00125 }
+
+[providers.anthropic.rate_limits]
+default                      = { requests_per_minute = 60, tokens_per_minute = 200000, concurrency = 0 }
+"claude-sonnet-4-20250514"   = { requests_per_minute = 300, tokens_per_minute = 200000, concurrency = 0 }
+"claude-3-5-haiku-latest"    = { requests_per_minute = 300, tokens_per_minute = 200000, concurrency = 0 }
 
 # ---------------------------------------------------------------------------
 # Google Gemini
@@ -214,8 +273,8 @@ api_key_env             = "GOOGLE_AI_API_KEY"
 default_model           = "gemini-2.0-flash"
 models                  = ["gemini-2.0-flash", "gemini-2.0-flash-lite"]
 capabilities            = ["chat", "reasoning", "code", "image"]
-priority_tier           = 50
-cost_score              = 0.6
+priority_tier           = 20
+cost_score              = 0.05
 cost_input_per1k        = 0.000075
 cost_output_per1k       = 0.0003
 default_timeout_ms      = 12000
@@ -226,6 +285,15 @@ cot_suppression_prompt  = "Provide direct answers without explanation."
 tier                    = "cloud"
 display_name            = "Google Gemini"
 is_active               = true
+
+[providers.gemini.costs]
+default                 = { input_per1k = 0.000075, output_per1k = 0.0003 }
+"gemini-2.0-flash"      = { input_per1k = 0.000075, output_per1k = 0.0003 }
+"gemini-2.0-flash-lite" = { input_per1k = 0.000075, output_per1k = 0.0003 }
+"gemini-2.5-flash"      = { input_per1k = 0.000075, output_per1k = 0.0003 }
+
+[providers.gemini.rate_limits]
+default                 = { requests_per_minute = 60, tokens_per_minute = 200000, concurrency = 0 }
 
 # ---------------------------------------------------------------------------
 # DeepSeek
@@ -239,8 +307,8 @@ api_key_env             = "DEEPSEEK_API_KEY"
 default_model           = "deepseek-chat"
 models                  = ["deepseek-chat", "deepseek-coder"]
 capabilities            = ["chat", "reasoning", "code"]
-priority_tier           = 40
-cost_score              = 0.3
+priority_tier           = 15
+cost_score              = 0.15
 cost_input_per1k        = 0.00027
 cost_output_per1k       = 0.0011
 default_timeout_ms      = 10000
@@ -252,6 +320,14 @@ tier                    = "cloud"
 display_name            = "DeepSeek"
 is_active               = true
 
+[providers.deepseek.costs]
+default                 = { input_per1k = 0.00027, output_per1k = 0.0011 }
+"deepseek-chat"         = { input_per1k = 0.00027, output_per1k = 0.0011 }
+"deepseek-coder"        = { input_per1k = 0.00027, output_per1k = 0.0011 }
+
+[providers.deepseek.rate_limits]
+default                 = { requests_per_minute = 60, tokens_per_minute = 200000, concurrency = 0 }
+
 # ---------------------------------------------------------------------------
 # Groq
 # ---------------------------------------------------------------------------
@@ -260,12 +336,13 @@ name                    = "Groq"
 endpoint                = "https://api.groq.com/openai/v1"
 endpoint_env            = "GROQ_ENDPOINT"
 invoke_path             = "/chat/completions"
+health_path             = "/models"
 api_key_env             = "GROQ_API_KEY"
 default_model           = "llama-3.1-8b-instant"
 models                  = ["llama-3.1-8b-instant", "llama-3.3-70b-versatile", "mixtral-8x7b-32768"]
 capabilities            = ["chat", "reasoning", "code"]
-priority_tier           = 30
-cost_score              = 0.4
+priority_tier           = 10
+cost_score              = 0.25
 cost_input_per1k        = 0.00059
 cost_output_per1k       = 0.00079
 default_timeout_ms      = 8000
@@ -273,10 +350,19 @@ bandwidth_score         = 0.95
 rate_limit_per_min      = 60
 supports_cot            = true
 cot_suppression_prompt  = "Be direct."
-supports_openai_tools   = false
+supports_openai_tools   = true
 tier                    = "cloud"
 display_name            = "Groq"
 is_active               = true
+
+[providers.groq.costs]
+default                 = { input_per1k = 0.00059, output_per1k = 0.00079 }
+"llama-3.1-8b-instant"   = { input_per1k = 0.00059, output_per1k = 0.00079 }
+"llama-3.3-70b-versatile" = { input_per1k = 0.00059, output_per1k = 0.00079 }
+"mixtral-8x7b-32768"    = { input_per1k = 0.00059, output_per1k = 0.00079 }
+
+[providers.groq.rate_limits]
+default                 = { requests_per_minute = 60, tokens_per_minute = 200000, concurrency = 0 }
 
 # ---------------------------------------------------------------------------
 # SiliconeFlow
@@ -287,11 +373,16 @@ endpoint                = "https://api.siliconflow.com"
 endpoint_env            = "SILICONEFLOW_ENDPOINT"
 invoke_path             = "/v1/chat/completions"
 api_key_env             = "SILICONEFLOW_API_KEY"
-default_model           = "Qwen/Qwen2.5-7B-Instruct"
-models                  = ["Qwen/Qwen2.5-7B-Instruct", "Qwen/Qwen2.5-Coder-7B-Instruct", "deepseek-ai/DeepSeek-V2.5"]
+default_model           = "Qwen/Qwen2.5-72B-Instruct"
+models                  = [
+  "Qwen/Qwen2.5-72B-Instruct",
+  "Qwen/Qwen2.5-7B-Instruct",
+  "Qwen/Qwen2.5-Coder-7B-Instruct",
+  "deepseek-ai/DeepSeek-V2.5",
+]
 capabilities            = ["chat", "reasoning", "code"]
-priority_tier           = 35
-cost_score              = 0.3
+priority_tier           = 25
+cost_score              = 0.10
 cost_input_per1k        = 0.00014
 cost_output_per1k       = 0.00014
 default_timeout_ms      = 10000
@@ -302,6 +393,15 @@ cot_suppression_prompt  = "Be direct."
 tier                    = "cloud"
 display_name            = "SiliconeFlow"
 is_active               = true
+
+[providers.siliconeflow.costs]
+default                          = { input_per1k = 0.00014, output_per1k = 0.00014 }
+"Qwen/Qwen2.5-7B-Instruct"       = { input_per1k = 0.00014, output_per1k = 0.00014 }
+"Qwen/Qwen2.5-Coder-7B-Instruct" = { input_per1k = 0.00014, output_per1k = 0.00014 }
+"deepseek-ai/DeepSeek-V2.5"      = { input_per1k = 0.00014, output_per1k = 0.00014 }
+
+[providers.siliconeflow.rate_limits]
+default                          = { requests_per_minute = 60, tokens_per_minute = 200000, concurrency = 0 }
 
 # ---------------------------------------------------------------------------
 # Azure OpenAI
@@ -316,8 +416,8 @@ default_model           = "gpt-4o-mini"
 default_deployment      = "gpt-4o-mini"
 models                  = ["gpt-4o-mini", "gpt-4o", "gpt-4.1"]
 capabilities            = ["chat", "reasoning", "code", "embedding"]
-priority_tier           = 25
-cost_score              = 0.7
+priority_tier           = 35
+cost_score              = 0.60
 cost_input_per1k        = 0.0015
 cost_output_per1k       = 0.006
 default_timeout_ms      = 15000
@@ -330,28 +430,16 @@ tier                    = "private"
 display_name            = "Azure OpenAI"
 is_active               = true
 
-# ---------------------------------------------------------------------------
-# Google Vertex AI
-# ---------------------------------------------------------------------------
-[providers.vertex_ai]
-name                    = "Google Vertex AI"
-endpoint_env            = "VERTEX_AI_ENDPOINT"
-project_env             = "VERTEX_AI_PROJECT"
-default_model           = "gemini-2.5-flash"
-models                  = ["gemini-2.5-flash", "gemini-2.0-flash", "gemini-2.0-flash-lite"]
-capabilities            = ["chat", "reasoning", "code", "image"]
-priority_tier           = 45
-cost_score              = 0.7
-cost_input_per1k        = 0.000075
-cost_output_per1k       = 0.0003
-default_timeout_ms      = 15000
-bandwidth_score         = 0.8
-rate_limit_per_min      = 60
-supports_cot            = true
-cot_suppression_prompt  = "Provide direct answers without explanation."
-tier                    = "private"
-display_name            = "Google Vertex AI"
-is_active               = true
+[providers.azure_openai.costs]
+default                = { input_per1k = 0.005, output_per1k = 0.015 }
+"gpt-4o-mini"          = { input_per1k = 0.0015, output_per1k = 0.006 }
+"gpt-4o"               = { input_per1k = 0.005, output_per1k = 0.015 }
+"gpt-4.1"              = { input_per1k = 0.005, output_per1k = 0.015 }
+
+[providers.azure_openai.rate_limits]
+default                = { requests_per_minute = 60, tokens_per_minute = 200000, concurrency = 0 }
+"gpt-4o-mini"          = { requests_per_minute = 500, tokens_per_minute = 200000, concurrency = 0 }
+"gpt-4o"               = { requests_per_minute = 500, tokens_per_minute = 200000, concurrency = 0 }
 
 # ---------------------------------------------------------------------------
 # Aliyun DashScope
@@ -366,7 +454,7 @@ default_model           = "qwen-plus"
 models                  = ["qwen-turbo", "qwen-plus", "qwen-max", "qwen-long", "qwen2.5-7b-instruct"]
 capabilities            = ["chat", "reasoning", "code"]
 priority_tier           = 60
-cost_score              = 0.2
+cost_score              = 0.15
 cost_input_per1k        = 0.00014
 cost_output_per1k       = 0.00014
 default_timeout_ms      = 15000
@@ -380,6 +468,16 @@ tier                    = "private"
 display_name            = "Aliyun DashScope"
 is_active               = true
 
+[providers.aliyun.costs]
+default                = { input_per1k = 0.00014, output_per1k = 0.00014 }
+"qwen-turbo"           = { input_per1k = 0.0002, output_per1k = 0.0006 }
+"qwen-plus"            = { input_per1k = 0.0008, output_per1k = 0.002 }
+"qwen-max"             = { input_per1k = 0.004, output_per1k = 0.012 }
+"qwen2.5-7b-instruct"  = { input_per1k = 0.0001, output_per1k = 0.0001 }
+
+[providers.aliyun.rate_limits]
+default                = { requests_per_minute = 60, tokens_per_minute = 200000, concurrency = 0 }
+
 # ---------------------------------------------------------------------------
 # Together AI
 # ---------------------------------------------------------------------------
@@ -387,11 +485,15 @@ is_active               = true
 name                    = "Together AI"
 endpoint                = "https://api.together.xyz"
 endpoint_env            = "TOGETHER_ENDPOINT"
+invoke_path             = "/v1/chat/completions"
 api_key_env             = "TOGETHER_API_KEY"
-models                  = ["llama-2-70b", "codellama-34b"]
+default_model           = "meta-llama/Meta-Llama-3.1-8B-Instruct-Turbo"
+models                  = ["meta-llama/Meta-Llama-3.1-8B-Instruct-Turbo", "meta-llama/Meta-Llama-3.3-70B-Instruct-Turbo", "mistralai/Mixtral-8x7B-Instruct-v0.1"]
 capabilities            = ["chat", "reasoning", "code", "image"]
-priority_tier           = 3
-cost_score              = 0.5
+priority_tier           = 45
+cost_score              = 0.30
+cost_input_per1k        = 0.00018
+cost_output_per1k       = 0.00018
 default_timeout_ms      = 10000
 bandwidth_score         = 0.8
 rate_limit_per_min      = 60
@@ -406,54 +508,72 @@ is_active               = true
 # ---------------------------------------------------------------------------
 [providers.replicate]
 name                    = "Replicate"
-endpoint                = "https://api.replicate.com"
+endpoint                = "https://api.replicate.com/v1"
 endpoint_env            = "REPLICATE_ENDPOINT"
+invoke_path             = "/predictions"
 api_key_env             = "REPLICATE_API_KEY"
-models                  = ["llama-2-70b", "codellama-34b"]
+default_model           = "meta/llama-4-scout-instruct-17b-16e"
+models                  = [
+  "meta/llama-4-scout-instruct-17b-16e",
+  "meta/llama-4-maverick-instruct-17b-128e",
+  "meta/llama-3.1-405b-instruct",
+  "meta/llama-3.3-70b-instruct",
+]
 capabilities            = ["chat", "reasoning", "code", "image"]
-priority_tier           = 3
-cost_score              = 0.6
-default_timeout_ms      = 20000
-bandwidth_score         = 0.7
-rate_limit_per_min      = 30
+priority_tier           = 48
+cost_score              = 0.50
+cost_input_per1k        = 0.00090
+cost_output_per1k       = 0.00090
+default_timeout_ms      = 30000
+bandwidth_score         = 0.75
+rate_limit_per_min      = 60
 supports_cot            = true
 cot_suppression_prompt  = "Be concise."
 tier                    = "cloud"
 display_name            = "Replicate"
 is_active               = false
+hidden                  = true
 
 # ---------------------------------------------------------------------------
 # Hugging Face
 # ---------------------------------------------------------------------------
 [providers.huggingface]
 name                    = "Hugging Face"
-endpoint                = "https://api-inference.huggingface.co"
+endpoint                = "https://router.huggingface.co"
 endpoint_env            = "HUGGINGFACE_ENDPOINT"
+invoke_path             = "/v1/chat/completions"
 api_key_env             = "HUGGINGFACE_API_KEY"
-models                  = ["microsoft/DialoGPT-medium", "facebook/blenderbot-400M-distill"]
+default_model           = "Qwen/Qwen2.5-7B-Instruct"
+models                  = ["Qwen/Qwen2.5-7B-Instruct", "meta-llama/Llama-3.1-8B-Instruct", "mistralai/Mistral-7B-Instruct-v0.3"]
 capabilities            = ["chat", "reasoning", "code"]
-priority_tier           = 4
-cost_score              = 0.2
+priority_tier           = 55
+cost_score              = 0.15
 default_timeout_ms      = 15000
 bandwidth_score         = 0.6
 rate_limit_per_min      = 30
 supports_cot            = false
+supports_openai_tools    = false
 tier                    = "cloud"
 display_name            = "Hugging Face"
-is_active               = false
+is_active               = true
 
 # ---------------------------------------------------------------------------
 # Cohere
 # ---------------------------------------------------------------------------
 [providers.cohere]
 name                    = "Cohere"
-endpoint                = "https://api.cohere.ai"
+endpoint                = "https://api.cohere.com/compatibility/v1"
 endpoint_env            = "COHERE_ENDPOINT"
+invoke_path             = "/chat/completions"
+health_path             = "/models"
 api_key_env             = "COHERE_API_KEY"
-models                  = ["command", "base"]
+default_model           = "command-r-08-2024"
+models                  = ["command-r-08-2024", "command-r-plus-08-2024", "command-a-03-2025"]
 capabilities            = ["chat", "reasoning", "code", "embedding"]
-priority_tier           = 3
-cost_score              = 0.7
+priority_tier           = 50
+cost_score              = 0.40
+cost_input_per1k        = 0.0005
+cost_output_per1k       = 0.0015
 default_timeout_ms      = 10000
 bandwidth_score         = 0.75
 rate_limit_per_min      = 30
@@ -461,51 +581,7 @@ supports_cot            = true
 cot_suppression_prompt  = "Answer directly."
 tier                    = "cloud"
 display_name            = "Cohere"
-is_active               = false
-
-# ---------------------------------------------------------------------------
-# Ollama GCP
-# ---------------------------------------------------------------------------
-[providers.ollama_gcp]
-name                    = "Ollama GCP"
-endpoint                = "http://34.60.255.199:11434"
-endpoint_env            = "OLLAMA_GCP_ENDPOINT"
-default_model           = "qwen2.5:3b"
-models                  = ["qwen2.5:3b", "llama3.2:1b"]
-capabilities            = ["chat", "reasoning", "code"]
-priority_tier           = 70
-cost_score              = 0.1
-default_timeout_ms      = 60000
-bandwidth_score         = 0.5
-rate_limit_per_min      = 120
-supports_cot            = true
-cot_suppression_prompt  = "Be concise."
-tier                    = "self_hosted"
-display_name            = "Ollama (GCP)"
 is_active               = true
-selectable_requires_env = true
-
-# ---------------------------------------------------------------------------
-# Llama.cpp GCP
-# ---------------------------------------------------------------------------
-[providers.llamacpp_gcp]
-name                    = "LlamaCPP GCP"
-endpoint                = "http://34.132.226.143:8000"
-endpoint_env            = "LLAMACPP_GCP_ENDPOINT"
-default_model           = ""
-models                  = ["qwen2.5-3b-instruct-q4_k_m"]
-capabilities            = ["chat", "reasoning", "code"]
-priority_tier           = 75
-cost_score              = 0.05
-default_timeout_ms      = 60000
-bandwidth_score         = 0.5
-rate_limit_per_min      = 120
-supports_cot            = true
-cot_suppression_prompt  = "Be concise."
-tier                    = "self_hosted"
-display_name            = "Llama.cpp (GCP)"
-is_active               = true
-selectable_requires_env = true
 
 # ---------------------------------------------------------------------------
 # Ollama Local
@@ -517,7 +593,7 @@ endpoint_env            = "OLLAMA_LOCAL_ENDPOINT"
 default_model           = "qwen2.5:3b"
 models                  = ["qwen2.5:3b"]
 capabilities            = ["chat", "reasoning", "code"]
-priority_tier           = 80
+priority_tier           = 999
 cost_score              = 0.0
 default_timeout_ms      = 60000
 bandwidth_score         = 1.0
@@ -526,8 +602,80 @@ supports_cot            = true
 cot_suppression_prompt  = "Be concise."
 tier                    = "self_hosted"
 display_name            = "Ollama Local"
+is_active               = false
+hidden                  = true
+selectable_requires_env = true
+
+# ---------------------------------------------------------------------------
+# GCP vLLM  (large model cluster — Qwen3 32B, Gemma3 27B, DeepSeek R1 32B)
+# Configure: GOOGLE_CLOUD_VLLM_ENDPOINT=http://<your-vm-ip>:8000
+# ---------------------------------------------------------------------------
+[providers.gcp_vllm]
+name                    = "GCP vLLM"
+endpoint_env            = "GOOGLE_CLOUD_VLLM_ENDPOINT"
+endpoint                = ""
+api_key_env             = "GOOGLE_CLOUD_VLLM_API_KEY"
+default_model           = "qwen3-32b"
+embed_model             = "bge-m3"
+rerank_model            = "bge-reranker-v2-m3"
+models                  = [
+  "qwen3-32b",
+  "gemma3-27b",
+  "deepseek-r1-32b",
+  "bge-m3",
+  "bge-reranker-v2-m3",
+]
+capabilities            = ["chat", "reasoning", "code", "embedding"]
+priority_tier           = 65
+cost_score              = 0.0
+cost_input_per1k        = 0.0
+cost_output_per1k       = 0.0
+default_timeout_ms      = 60000
+bandwidth_score         = 0.85
+rate_limit_per_min      = 120
+supports_cot            = true
+cot_suppression_prompt  = "Be concise."
+supports_embeddings     = true
+tier                    = "private"
+display_name            = "GCP vLLM"
 is_active               = true
 selectable_requires_env = true
+
+# ---------------------------------------------------------------------------
+# GCP VM  (google_cloud_selfhosted — Colab + Vertex backends)
+# Ollama/LlamaCPP VM backends removed (preemptible VMs terminated 2026-01-11)
+# ---------------------------------------------------------------------------
+[providers.gcp_vm]
+name                    = "GCP Self-Hosted"
+tier                    = "self_hosted"
+priority_tier           = 70
+cost_score              = 0.05
+default_timeout_ms      = 60000
+default_model           = "gemini-2.5-flash"
+bandwidth_score         = 0.5
+rate_limit_per_min      = 120
+capabilities            = ["chat", "reasoning", "code"]
+models                  = [
+  "gemini-2.5-flash",
+  "gemini-2.0-flash",
+  "gemini-2.0-flash-lite",
+  "qwen2.5:3b",
+  "gemma-3-12b",
+  "qwen3-14b",
+]
+supports_cot            = true
+cot_suppression_prompt  = "Be concise."
+display_name            = "GCP Self-Hosted"
+is_active               = true
+selectable_requires_env = true
+hidden                  = false
+
+[[providers.gcp_vm.backends]]
+engine        = "vertex"
+project_env   = "VERTEX_AI_PROJECT"
+default_model = "gemini-2.5-flash"
+models        = ["gemini-2.5-flash", "gemini-2.0-flash", "gemini-2.0-flash-lite"]
+priority      = 1
 
 # ---------------------------------------------------------------------------
 # Mock (testing only)
@@ -553,6 +701,28 @@ is_active               = true
 force_fallback          = true
 hidden                  = true
 
+# ---------------------------------------------------------------------------
+# Rovo Dev — Atlassian AI coding agent (internal only, not user-facing)
+# Not in visible_providers — hidden from user-facing lists while still
+# participating in capability-based routing for code tasks.
+# ---------------------------------------------------------------------------
+[providers.rovo_dev]
+name                    = "Rovo Dev (Goblin Coder)"
+endpoint                = "https://mcp.atlassian.com/v1/mcp"
+endpoint_env            = "ROVO_DEV_ENDPOINT"
+api_key_env             = "ATLASSIAN_API_TOKEN"
+default_model           = "rovo_dev"
+models                  = ["rovo_dev"]
+capabilities            = ["code"]
+priority_tier           = 5
+cost_score              = 0.0
+cost_input_per1k        = 0.0
+cost_output_per1k       = 0.0
+default_timeout_ms      = 120000
+health_check_timeout_ms = 15000
+tier                    = "cloud"
+is_active               = true
+
 # =============================================================================
 # LEGACY — GCP servers removed (preemptible VMs terminated 2026-01-11)
 # =============================================================================
@@ -563,6 +733,24 @@ hidden                  = true
 # Per-model default settings  (max_tokens, temperature, supports_streaming)
 # Used by monitoring/budget as fallback when no window is configured above
 # =============================================================================
+[model_budgets]
+"gpt-4o"                        = { requests_per_minute = 500, tokens_per_minute = 200000, concurrency = 0 }
+"gpt-4o-mini"                   = { requests_per_minute = 1000, tokens_per_minute = 400000, concurrency = 0 }
+"gpt-4-turbo"                   = { requests_per_minute = 300, tokens_per_minute = 200000, concurrency = 0 }
+"claude-sonnet-4-20250514"      = { requests_per_minute = 300, tokens_per_minute = 200000, concurrency = 0 }
+"claude-3-5-haiku-latest"       = { requests_per_minute = 300, tokens_per_minute = 200000, concurrency = 0 }
+"gemini-2.0-flash"              = { requests_per_minute = 600, tokens_per_minute = 300000, concurrency = 0 }
+"gemini-2.0-flash-lite"         = { requests_per_minute = 600, tokens_per_minute = 300000, concurrency = 0 }
+"gemini-2.5-flash"              = { requests_per_minute = 600, tokens_per_minute = 300000, concurrency = 0 }
+"deepseek-chat"                 = { requests_per_minute = 300, tokens_per_minute = 200000, concurrency = 0 }
+"deepseek-coder"                = { requests_per_minute = 300, tokens_per_minute = 200000, concurrency = 0 }
+"llama-3.1-8b-instant"          = { requests_per_minute = 300, tokens_per_minute = 200000, concurrency = 0 }
+"llama-3.3-70b-versatile"       = { requests_per_minute = 300, tokens_per_minute = 200000, concurrency = 0 }
+"mixtral-8x7b-32768"            = { requests_per_minute = 300, tokens_per_minute = 200000, concurrency = 0 }
+"qwen-turbo"                    = { requests_per_minute = 300, tokens_per_minute = 200000, concurrency = 0 }
+"qwen-plus"                     = { requests_per_minute = 300, tokens_per_minute = 200000, concurrency = 0 }
+"qwen-max"                      = { requests_per_minute = 300, tokens_per_minute = 200000, concurrency = 0 }
+
 [model_defaults]
 [model_defaults.gpt-4o]
 provider            = "openai"
@@ -601,7 +789,7 @@ temperature         = 0.7
 supports_streaming  = true
 
 [model_defaults.qwen2.5-3b-instruct-q4_k_m]
-provider            = "llamacpp_gcp"
+provider            = "gcp_vm"
 max_tokens          = 4000
 temperature         = 0.2
 supports_streaming  = true
@@ -655,7 +843,7 @@ temperature         = 0.7
 supports_streaming  = true
 
 ["model_defaults.qwen2.5:3b"]
-provider            = "ollama_gcp"
+provider            = "gcp_vm"
 max_tokens          = 4000
 temperature         = 0.2
 supports_streaming  = true

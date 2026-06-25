@@ -2,25 +2,29 @@ import React from 'react';
 import { render, screen } from '@testing-library/react';
 
 // Mock recharts
-jest.mock('recharts', () => ({
-  BarChart: ({ children }: { children: React.ReactNode }) => <div data-testid="bar-chart">{children}</div>,
+vi.mock('recharts', () => ({
+  BarChart: ({ children }: { children: React.ReactNode }) => (
+    <div data-testid="bar-chart">{children}</div>
+  ),
   Bar: ({ name }: { name?: string }) => <div data-testid="bar" data-name={name} />,
   XAxis: () => <div data-testid="x-axis" />,
   YAxis: () => <div data-testid="y-axis" />,
   CartesianGrid: () => <div data-testid="grid" />,
   Tooltip: () => <div data-testid="tooltip" />,
   Legend: () => <div data-testid="legend" />,
-  ResponsiveContainer: ({ children }: { children: React.ReactNode }) => <div data-testid="responsive-container">{children}</div>,
+  ResponsiveContainer: ({ children }: { children: React.ReactNode }) => (
+    <div data-testid="responsive-container">{children}</div>
+  ),
 }));
 
-jest.mock('@/utils/format-cost', () => ({
+vi.mock('@/utils/format-cost', () => ({
   formatCost: (value: number) => `$${value.toFixed(2)}`,
 }));
 
 // Mock getComputedStyle
 const origGetComputedStyle = window.getComputedStyle;
 beforeAll(() => {
-  window.getComputedStyle = jest.fn().mockReturnValue({
+  window.getComputedStyle = vi.fn().mockReturnValue({
     getPropertyValue: () => '#ffffff',
   });
 });

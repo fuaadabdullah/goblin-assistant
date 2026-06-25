@@ -5,10 +5,10 @@ Tests: Authentication, Concurrency, Caching, and Error Handling.
 """
 
 import asyncio
-import aiohttp
-import time
 import os
-from typing import Dict, Any
+import time
+
+import aiohttp
 
 # Load API key from environment to avoid committing secrets
 API_KEY = os.getenv("API_AUTH_KEY", "")
@@ -38,11 +38,11 @@ async def run_production_tests():
 
     async with aiohttp.ClientSession() as session:
         # 1. Test Unauthenticated Access (Should Fail)
-        print("🔐 Test 1: Unauthenticated access to /chat/conversations")
+        print("🔐 Test 1: Unauthenticated access to /api/v1/chat/conversations")
         status, data, _ = await test_endpoint(
             session,
             "POST",
-            "/chat/conversations",
+            "/api/v1/chat/conversations",
             {"title": "Auth Test"},
             use_auth=False,
         )
@@ -54,7 +54,7 @@ async def run_production_tests():
         # 2. Test Authenticated Access (Should Succeed)
         print("\n🔑 Test 2: Authenticated access")
         status, data, _ = await test_endpoint(
-            session, "POST", "/chat/conversations", {"title": "Production Test"}
+            session, "POST", "/api/v1/chat/conversations", {"title": "Production Test"}
         )
         if status == 200:
             conv_id = data["conversation_id"]
@@ -68,13 +68,11 @@ async def run_production_tests():
         status, data, duration = await test_endpoint(
             session,
             "POST",
-            f"/chat/conversations/{conv_id}/messages",
+            f"/api/v1/chat/conversations/{conv_id}/messages",
             {"message": "What is the best way to deploy a FastAPI app?"},
         )
         if status == 200:
-            print(
-                f"✅ Response received in {duration:.2f}s from {data.get('provider')}"
-            )
+            print(f"✅ Response received in {duration:.2f}s from {data.get('provider')}")
             print(f"   Model: {data.get('model')}")
         else:
             print(f"❌ Provider execution failed: {data}")
@@ -85,7 +83,7 @@ async def run_production_tests():
         status, data, duration2 = await test_endpoint(
             session,
             "POST",
-            f"/chat/conversations/{conv_id}/messages",
+            f"/api/v1/chat/conversations/{conv_id}/messages",
             {"message": "What is the best way to deploy a FastAPI app?"},
         )
         if status == 200:
@@ -103,7 +101,7 @@ async def run_production_tests():
             test_endpoint(
                 session,
                 "POST",
-                f"/chat/conversations/{conv_id}/messages",
+                f"/api/v1/chat/conversations/{conv_id}/messages",
                 {"message": f"Question {i}"},
             )
             for i in range(3)

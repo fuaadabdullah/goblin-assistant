@@ -1,6 +1,6 @@
 import React from 'react';
 import { X, CheckCircle, AlertCircle, Info, AlertTriangle } from 'lucide-react';
-import { Toast, ToastType } from '../contexts/ToastContext';
+import type { Toast, ToastType } from '../hooks/useToast';
 
 interface ToastItemProps {
   toast: Toast;
@@ -49,7 +49,9 @@ export const ToastItem: React.FC<ToastItemProps> = ({ toast, onRemove }) => {
       aria-live={ariaLive}
       aria-atomic="true"
     >
-      <div className="flex-shrink-0" aria-hidden="true">{getToastIcon(toast.type)}</div>
+      <div className="flex-shrink-0" aria-hidden="true">
+        {getToastIcon(toast.type)}
+      </div>
       <div className="ml-3 flex-1">
         <p className="text-sm font-medium">{toast.title}</p>
         {toast.message && <p className="mt-1 text-sm opacity-90">{toast.message}</p>}

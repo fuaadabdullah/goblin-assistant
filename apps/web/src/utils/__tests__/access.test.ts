@@ -4,7 +4,7 @@ describe('isAdminUser', () => {
   const originalEnv = process.env;
 
   beforeEach(() => {
-    jest.resetModules();
+    vi.resetModules();
     process.env = { ...originalEnv };
     delete process.env.NEXT_PUBLIC_ADMIN_EMAILS;
     delete process.env.NEXT_PUBLIC_ADMIN_DOMAINS;

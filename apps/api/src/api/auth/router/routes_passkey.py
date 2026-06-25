@@ -5,12 +5,18 @@ from datetime import timedelta
 from fastapi import APIRouter, Depends, HTTPException, Response, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from ...core.contracts import SuccessEnvelope
 from ..passkeys import WebAuthnPasskey
 from . import _runtime as _ar
 from .config import ACCESS_TOKEN_EXPIRE_MINUTES
 from .cookies import _set_auth_cookies
 from .dependencies import _is_user_active
-from .schemas import PasskeyAuthRequest, PasskeyRegistrationRequest, TokenWithRefresh, User
+from .schemas import (
+    PasskeyAuthRequest,
+    PasskeyRegistrationRequest,
+    TokenWithRefresh,
+    User,
+)
 from .sessions import _db_create_session, create_session_id
 from .tokens import create_access_token, create_refresh_token
 
@@ -33,9 +39,7 @@ async def register_passkey(
 
     user_model = await user_service.get_user_by_email(request.email)
     if not user_model:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND, detail="User not found"
-        )
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="User not found")
 
     await user_service.update_user(
         user_model.id,
@@ -46,7 +50,7 @@ async def register_passkey(
     return {"message": "Passkey registered successfully"}
 
 
-@router.post("/passkey/auth", response_model=TokenWithRefresh)
+@router.post("/passkey/auth", response_model=SuccessEnvelope[TokenWithRefresh])
 async def authenticate_passkey(
     request: PasskeyAuthRequest,
     response: Response,
@@ -55,11 +59,7 @@ async def authenticate_passkey(
     user_service = _ar.UserService(db)
 
     user_model = await user_service.get_user_by_email(request.email)
-    if (
-        not user_model
-        or not user_model.passkey_credential_id
-        or not user_model.passkey_public_key
-    ):
+    if not user_model or not user_model.passkey_credential_id or not user_model.passkey_public_key:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Passkey not registered for this user",
@@ -78,11 +78,7 @@ async def authenticate_passkey(
                 detail="User account is inactive",
             )
 
-        if (
-            not request.authenticator_data
-            or not request.client_data_json
-            or not request.signature
-        ):
+        if not request.authenticator_data or not request.client_data_json or not request.signature:
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
                 detail="Invalid passkey authentication data",
@@ -112,12 +108,14 @@ async def authenticate_passkey(
 
         _set_auth_cookies(response, access_token, refresh_token)
 
-        return TokenWithRefresh(
-            access_token=access_token,
-            refresh_token=refresh_token,
-            token_type="bearer",
-            user=user,
-            expires_in=ACCESS_TOKEN_EXPIRE_MINUTES * 60,
+        return SuccessEnvelope(
+            data=TokenWithRefresh(
+                access_token=access_token,
+                refresh_token=refresh_token,
+                token_type="bearer",
+                user=user,
+                expires_in=ACCESS_TOKEN_EXPIRE_MINUTES * 60,
+            )
         )
 
     except HTTPException:

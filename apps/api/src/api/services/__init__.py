@@ -5,23 +5,20 @@ import os
 
 # Privacy & Security Services
 from .sanitization import (
-    sanitize_input_for_model,
-    is_sensitive_content,
-    mask_sensitive,
-    hash_message_id,
     PII_PATTERNS,
     SENSITIVE_KEYWORDS,
+    hash_message_id,
+    is_sensitive_content,
+    mask_sensitive,
+    sanitize_input_for_model,
 )
-
 from .telemetry import (
-    log_inference_metrics,
     log_conversation_event,
+    log_inference_metrics,
 )
 
 _VECTOR_STORE_DEFAULT = (
-    "false"
-    if os.getenv("ENVIRONMENT", "development").lower() == "production"
-    else "true"
+    "false" if os.getenv("ENVIRONMENT", "development").lower() == "production" else "true"
 )
 VECTOR_STORE_AVAILABLE = (
     os.getenv("ENABLE_VECTOR_STORE", _VECTOR_STORE_DEFAULT).strip().lower()
@@ -40,6 +37,7 @@ def __getattr__(name: str):
         return _SafeVectorStore
 
     raise AttributeError(f"module {__name__!r} has no attribute {name!r}")
+
 
 __all__ = [
     # Privacy & Security

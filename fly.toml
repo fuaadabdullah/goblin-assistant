@@ -1,0 +1,51 @@
+# ARCHIVED — Render (render.yaml) is the active deployment platform.
+# goblin-backend-dt30.onrender.com is the canonical backend URL.
+# This file is kept for reference; do not deploy from it without updating
+# RELEASE_VERSION and environment variables to match the current state.
+
+app = "goblin-backend"
+primary_region = "sea"
+
+[build]
+  dockerfile = "Dockerfile"
+
+[env]
+  ENVIRONMENT      = "production"
+  DEBUG            = "false"
+  LOG_LEVEL        = "info"
+  PORT             = "8080"
+  RELEASE_VERSION  = "goblin-assistant@1.0.0"
+  ALLOWED_ORIGINS  = "https://goblin-assistant.vercel.app,https://goblin-backend-dt30.onrender.com"
+  RATE_LIMIT_ENABLED    = "true"
+  RATE_LIMIT_PER_MINUTE = "100"
+  RATE_LIMIT_PER_HOUR   = "1000"
+  FRONTEND_URL     = "https://goblin-assistant.vercel.app"
+  BACKEND_URL      = "https://goblin-backend-dt30.onrender.com"
+  SANDBOX_ENABLED  = "false"
+
+[http_service]
+  internal_port        = 8080
+  force_https          = true
+  auto_stop_machines   = "stop"
+  auto_start_machines  = true
+  min_machines_running = 0
+
+  [http_service.concurrency]
+    type       = "requests"
+    hard_limit = 250
+    soft_limit = 200
+
+[[vm]]
+  memory   = "1gb"
+  cpu_kind = "shared"
+  cpus     = 1
+
+[checks]
+  [checks.health]
+    grace_period = "30s"
+    interval     = "15s"
+    method       = "GET"
+    path         = "/health"
+    port         = 8080
+    timeout      = "10s"
+    type         = "http"

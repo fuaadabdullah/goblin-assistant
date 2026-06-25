@@ -1,15 +1,7 @@
 import React from 'react';
 import { render, screen } from '@testing-library/react';
-import '@testing-library/jest-dom';
 
-jest.mock('lucide-react', () => new Proxy({}, {
-  get: (_, name) => {
-    if (name === '__esModule') return true;
-    return (props: Record<string, unknown>) => <span data-testid={`icon-${String(name)}`} {...props} />;
-  },
-}));
-
-jest.mock('../../../content/brand', () => ({
+vi.mock('../../../content/brand', () => ({
   BRAND_NAME: 'TestGoblin',
 }));
 

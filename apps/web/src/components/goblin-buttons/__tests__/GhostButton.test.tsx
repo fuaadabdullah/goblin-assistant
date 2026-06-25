@@ -1,9 +1,8 @@
 import React from 'react';
 import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import '@testing-library/jest-dom';
 
-jest.mock('../buttonStyles', () => ({
+vi.mock('../buttonStyles', () => ({
   getButtonClasses: (_variant: string, extra: string) => `ghost-btn ${extra}`,
 }));
 
@@ -17,7 +16,7 @@ describe('GhostButton', () => {
 
   it('calls onClick when clicked', async () => {
     const user = userEvent.setup();
-    const onClick = jest.fn();
+    const onClick = vi.fn();
     render(<GhostButton onClick={onClick}>Click</GhostButton>);
     await user.click(screen.getByText('Click'));
     expect(onClick).toHaveBeenCalledTimes(1);
@@ -25,8 +24,12 @@ describe('GhostButton', () => {
 
   it('does not fire onClick when disabled', async () => {
     const user = userEvent.setup();
-    const onClick = jest.fn();
-    render(<GhostButton onClick={onClick} disabled>Click</GhostButton>);
+    const onClick = vi.fn();
+    render(
+      <GhostButton onClick={onClick} disabled>
+        Click
+      </GhostButton>
+    );
     await user.click(screen.getByText('Click'));
     expect(onClick).not.toHaveBeenCalled();
   });

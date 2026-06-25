@@ -14,8 +14,8 @@ const GoblinLoader = ({ size = 96, className = '' }: GoblinLoaderProps) => {
   useEffect(() => {
     let mounted = true;
     fetch('/goblin_loader.json')
-      .then(response => (response.ok ? response.json() : null))
-      .then(data => {
+      .then((response) => (response.ok ? response.json() : null))
+      .then((data) => {
         if (mounted && data) setAnimationData(data);
       })
       .catch(() => undefined);

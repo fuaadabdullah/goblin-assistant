@@ -109,5 +109,64 @@ groups:
           slo: latency
         annotations:
           summary: "Sandbox latency above SLO"
-          description: "7-day P95 latency is {{ $value | printf \"%.1f\" }}s (SLO: 120s)"
+          description: "7-day P95 latency is {{ $value | printf \"%.1f\" }}s (SLO: 120s). Error budget: 2190 min/month."
           runbook_url: "https://goblin-assistant.vercel.app/docs/sandbox/slo#latency"
+          response_time_expectation: "P95 job duration must stay below 120s over a 7-day window"
+
+  - name: api_slos
+    rules:
+      # API Availability SLO: 99.9% — error budget 43.8 min/month
+      - alert: APIAvailabilityLow
+        expr: (1 - (rate(http_requests_total{status=~"5.."}[7d]) / rate(http_requests_total[7d]))) < 0.999
+        for: 1h
+        labels:
+          severity: critical
+          service: goblin-api
+          slo: availability
+        annotations:
+          summary: "API availability below SLO (99.9%)"
+          description: "7-day HTTP success rate is {{ $value | printf \"%.4f\" }} (SLO: 0.999). Error budget: 43.8 min/month — check /health for subsystem failures."
+          runbook_url: "https://goblin-assistant.vercel.app/docs/operations/slo#api-availability-runbook"
+          response_time_expectation: "Less than 0.1% of HTTP requests may return 5xx over a 7-day window"
+
+      # Chat Latency SLO: P95 < 2s — latency budget, not error budget
+      - alert: ChatLatencyHigh
+        expr: histogram_quantile(0.95, rate(goblin_chat_duration_seconds_bucket[7d])) > 2
+        for: 1h
+        labels:
+          severity: warning
+          service: goblin-api
+          slo: chat-latency
+        annotations:
+          summary: "Chat P95 latency above SLO (2s)"
+          description: "7-day P95 chat duration is {{ $value | printf \"%.2f\" }}s (SLO: 2s). Check slow providers via /api/v1/health/routing."
+          runbook_url: "https://goblin-assistant.vercel.app/docs/operations/slo#chat-latency-runbook"
+          response_time_expectation: "95th percentile chat completion must be under 2 seconds over a 7-day window"
+
+      # Auth Success Rate SLO: 99.9% — error budget 43.8 min/month
+      - alert: AuthSuccessRateLow
+        expr: (rate(auth_success_total[7d]) / rate(auth_attempts_total[7d])) < 0.999
+        for: 1h
+        labels:
+          severity: critical
+          service: goblin-api
+          slo: auth-success-rate
+        annotations:
+          summary: "Auth success rate below SLO (99.9%)"
+          description: "7-day auth success rate is {{ $value | printf \"%.4f\" }} (SLO: 0.999). Error budget: 43.8 min/month — check DB connectivity and CSRF config."
+          runbook_url: "https://goblin-assistant.vercel.app/docs/operations/slo#auth-success-rate-runbook"
+          response_time_expectation: "Less than 0.1% of authentication attempts may fail over a 7-day window"
+
+      # LLM Provider Availability SLO: 99.5% — error budget 219 min/month
+      - alert: LLMProviderAvailabilityLow
+        expr: (rate(goblin_provider_requests_total{result="success"}[7d]) / rate(goblin_provider_requests_total[7d])) < 0.995
+        for: 1h
+        labels:
+          severity: warning
+          service: goblin-api
+          slo: llm-availability
+        annotations:
+          summary: "LLM provider availability below SLO (99.5%)"
+          description: "7-day provider success rate is {{ $value | printf \"%.4f\" }} (SLO: 0.995). Error budget: 219 min/month — check /api/v1/providers/status for circuit breaker state."
+          runbook_url: "https://goblin-assistant.vercel.app/docs/operations/slo#llm-provider-availability-runbook"
+          response_time_expectation: "Less than 0.5% of LLM provider requests may fail over a 7-day window"

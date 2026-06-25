@@ -39,7 +39,9 @@ _privacy_mod = importlib.import_module("api.routes.privacy")
 _real_router = _privacy_mod.router
 
 # These imports happen AFTER the env-var is set.
-from api.auth.router import get_current_user  # noqa: F401 — used as dependency_overrides key
+from api.auth.router import (
+    get_current_user,
+)  # noqa: F401 — used as dependency_overrides key
 from api.storage.database import get_db  # noqa: F401 — used as dependency_overrides key
 
 
@@ -54,10 +56,11 @@ async def _stub_db() -> AsyncGenerator[Any, None]:
 # App factories
 # ---------------------------------------------------------------------------
 
+
 def _build_auth_app(user_id: str = "u-privacy-test") -> FastAPI:
     """FastAPI app with the privacy router and auth bypassed."""
     app = FastAPI()
-    app.include_router(_real_router)
+    app.include_router(_real_router, prefix="/api/v1")
 
     # Return a plain string — the privacy router declares `user_id: str = Depends(...)`.
     async def _auth_override() -> str:
@@ -73,7 +76,7 @@ def _build_auth_app(user_id: str = "u-privacy-test") -> FastAPI:
 def _build_anon_app() -> FastAPI:
     """FastAPI app with privacy router but NO auth override — triggers 401."""
     app = FastAPI()
-    app.include_router(_real_router)
+    app.include_router(_real_router, prefix="/api/v1")
     # Still stub get_db so the real get_current_user can resolve its dependency
     # without touching the filesystem.
     app.dependency_overrides[get_db] = _stub_db
@@ -83,6 +86,7 @@ def _build_anon_app() -> FastAPI:
 # ---------------------------------------------------------------------------
 # Fixtures
 # ---------------------------------------------------------------------------
+
 
 @pytest.fixture(scope="module")
 def auth_client() -> TestClient:
@@ -95,12 +99,13 @@ def anon_client() -> TestClient:
 
 
 # ---------------------------------------------------------------------------
-# Export endpoint (POST /api/privacy/export)
+# Export endpoint (POST /api/v1/api/privacy/export)
 # ---------------------------------------------------------------------------
 
+
 def test_data_export_returns_200(auth_client: TestClient) -> None:
-    """Authenticated POST /api/privacy/export must return 200."""
-    response = auth_client.post("/api/privacy/export")
+    """Authenticated POST /api/v1/api/privacy/export must return 200."""
+    response = auth_client.post("/api/v1/api/privacy/export")
     assert response.status_code == 200
     body = response.json()
     assert "user_id" in body
@@ -110,7 +115,7 @@ def test_data_export_returns_200(auth_client: TestClient) -> None:
 
 def test_data_export_contains_correct_user(auth_client: TestClient) -> None:
     """The export payload must reflect the authenticated user's ID."""
-    response = auth_client.post("/api/privacy/export")
+    response = auth_client.post("/api/v1/api/privacy/export")
     assert response.status_code == 200
     assert response.json()["user_id"] == "u-privacy-test"
 
@@ -118,7 +123,7 @@ def test_data_export_contains_correct_user(auth_client: TestClient) -> None:
 def test_data_export_without_vectors_or_conversations(auth_client: TestClient) -> None:
     """Optional sections can be disabled via query params."""
     response = auth_client.post(
-        "/api/privacy/export",
+        "/api/v1/api/privacy/export",
         params={
             "include_vectors": "false",
             "include_conversations": "false",
@@ -129,37 +134,55 @@ def test_data_export_without_vectors_or_conversations(auth_client: TestClient) -
     assert response.json()["data"] == {}
 
 
+def test_data_export_failure_detail(auth_client: TestClient) -> None:
+    """Export failures should preserve the underlying error detail."""
+    with patch("api.routes.privacy._get_vector_store", side_effect=Exception("boom")):
+        response = auth_client.post("/api/v1/api/privacy/export")
+
+    assert response.status_code == 500
+    assert response.json()["detail"] == "Export failed: boom"
+
+
 def test_data_export_requires_auth(anon_client: TestClient) -> None:
-    """POST /api/privacy/export must reject unauthenticated requests."""
-    response = anon_client.post("/api/privacy/export")
-    assert response.status_code in (401, 403)
+    """POST /api/v1/api/privacy/export must return 401 Unauthorized without auth."""
+    response = anon_client.post("/api/v1/api/privacy/export")
+    assert response.status_code == 401, (
+        f"Expected 401 Unauthorized, got {response.status_code}: {response.json()}"
+    )
+    body = response.json()
+    assert "detail" in body
 
 
 # ---------------------------------------------------------------------------
-# Delete endpoint (DELETE /api/privacy/delete)
+# Delete endpoint (DELETE /api/v1/api/privacy/delete)
 # ---------------------------------------------------------------------------
+
 
 def test_data_delete_requires_auth(anon_client: TestClient) -> None:
-    """DELETE /api/privacy/delete must reject unauthenticated requests."""
-    response = anon_client.delete("/api/privacy/delete")
-    assert response.status_code in (401, 403)
+    """DELETE /api/v1/api/privacy/delete must return 401 Unauthorized without auth."""
+    response = anon_client.delete("/api/v1/api/privacy/delete")
+    assert response.status_code == 401, (
+        f"Expected 401 Unauthorized, got {response.status_code}: {response.json()}"
+    )
+    body = response.json()
+    assert "detail" in body
 
 
 def test_data_delete_requires_confirm_flag(auth_client: TestClient) -> None:
     """DELETE without confirm=true must return 400, not silently erase data."""
-    response = auth_client.delete("/api/privacy/delete")
+    response = auth_client.delete("/api/v1/api/privacy/delete")
     assert response.status_code == 400
 
 
 def test_data_delete_confirm_false_returns_400(auth_client: TestClient) -> None:
     """Explicit confirm=false must also return 400."""
-    response = auth_client.delete("/api/privacy/delete", params={"confirm": "false"})
+    response = auth_client.delete("/api/v1/api/privacy/delete", params={"confirm": "false"})
     assert response.status_code == 400
 
 
 def test_data_delete_with_confirm_returns_200(auth_client: TestClient) -> None:
     """DELETE with confirm=true must return 200 with a success payload."""
-    response = auth_client.delete("/api/privacy/delete", params={"confirm": "true"})
+    response = auth_client.delete("/api/v1/api/privacy/delete", params={"confirm": "true"})
     assert response.status_code == 200
     body = response.json()
     assert body["success"] is True
@@ -167,35 +190,62 @@ def test_data_delete_with_confirm_returns_200(auth_client: TestClient) -> None:
     assert "deleted_at" in body
 
 
+def test_data_delete_failure_detail(auth_client: TestClient) -> None:
+    """Delete failures should preserve the underlying error detail."""
+    vector_store = MagicMock()
+    vector_store.delete_user_data = AsyncMock(side_effect=Exception("boom"))
+
+    with patch("api.routes.privacy._get_vector_store", return_value=vector_store):
+        response = auth_client.delete("/api/v1/api/privacy/delete", params={"confirm": "true"})
+
+    assert response.status_code == 500
+    assert response.json()["detail"] == "Deletion failed: boom"
+
+
 # ---------------------------------------------------------------------------
-# Data-summary endpoint (GET /api/privacy/data-summary)
+# Data-summary endpoint (GET /api/v1/api/privacy/data-summary)
 # ---------------------------------------------------------------------------
 
+
 def test_data_summary_returns_200(auth_client: TestClient) -> None:
-    """GET /api/privacy/data-summary must return 200 with the expected shape."""
-    response = auth_client.get("/api/privacy/data-summary")
+    """GET /api/v1/api/privacy/data-summary must return 200 with the expected shape."""
+    response = auth_client.get("/api/v1/api/privacy/data-summary")
     assert response.status_code == 200
     body = response.json()
     assert "user_id" in body
     assert "data_summary" in body
 
 
+def test_data_summary_failure_detail(auth_client: TestClient) -> None:
+    """Summary failures should preserve the underlying error detail."""
+    with patch("api.routes.privacy._get_vector_store", side_effect=Exception("boom")):
+        response = auth_client.get("/api/v1/api/privacy/data-summary")
+
+    assert response.status_code == 500
+    assert response.json()["detail"] == "Failed to generate summary: boom"
+
+
 def test_data_summary_requires_auth(anon_client: TestClient) -> None:
-    """GET /api/privacy/data-summary must reject unauthenticated requests."""
-    response = anon_client.get("/api/privacy/data-summary")
-    assert response.status_code in (401, 403)
+    """GET /api/v1/api/privacy/data-summary must return 401 Unauthorized without auth."""
+    response = anon_client.get("/api/v1/api/privacy/data-summary")
+    assert response.status_code == 401, (
+        f"Expected 401 Unauthorized, got {response.status_code}: {response.json()}"
+    )
+    body = response.json()
+    assert "detail" in body
 
 
 # ---------------------------------------------------------------------------
-# RAG consent endpoint (POST /api/privacy/consent/rag)
+# RAG consent endpoint (POST /api/v1/api/privacy/consent/rag)
 # ---------------------------------------------------------------------------
+
 
 def test_rag_consent_grant_returns_200(auth_client: TestClient) -> None:
-    """POST /api/privacy/consent/rag?consent_given=true must return 200."""
+    """POST /api/v1/api/privacy/consent/rag?consent_given=true must return 200."""
     with patch("api.storage.preferences_service.preferences_service") as mock_prefs:
         mock_prefs.update_rag_consent = AsyncMock()
         response = auth_client.post(
-            "/api/privacy/consent/rag",
+            "/api/v1/api/privacy/consent/rag",
             params={"consent_given": "true"},
         )
     assert response.status_code == 200
@@ -204,11 +254,11 @@ def test_rag_consent_grant_returns_200(auth_client: TestClient) -> None:
 
 
 def test_rag_consent_revoke_returns_200(auth_client: TestClient) -> None:
-    """POST /api/privacy/consent/rag?consent_given=false must return 200."""
+    """POST /api/v1/api/privacy/consent/rag?consent_given=false must return 200."""
     with patch("api.storage.preferences_service.preferences_service") as mock_prefs:
         mock_prefs.update_rag_consent = AsyncMock()
         response = auth_client.post(
-            "/api/privacy/consent/rag",
+            "/api/v1/api/privacy/consent/rag",
             params={"consent_given": "false"},
         )
     assert response.status_code == 200
@@ -216,10 +266,27 @@ def test_rag_consent_revoke_returns_200(auth_client: TestClient) -> None:
     assert body.get("consent_given") is False
 
 
+def test_rag_consent_failure_detail(auth_client: TestClient) -> None:
+    """Consent failures should preserve the underlying error detail."""
+    with patch("api.storage.preferences_service.preferences_service") as mock_prefs:
+        mock_prefs.update_rag_consent = AsyncMock(side_effect=Exception("boom"))
+        response = auth_client.post(
+            "/api/v1/api/privacy/consent/rag",
+            params={"consent_given": "true"},
+        )
+
+    assert response.status_code == 500
+    assert response.json()["detail"] == "Failed to store consent: boom"
+
+
 def test_rag_consent_requires_auth(anon_client: TestClient) -> None:
-    """POST /api/privacy/consent/rag must reject unauthenticated requests."""
+    """POST /api/v1/api/privacy/consent/rag must return 401 Unauthorized without auth."""
     response = anon_client.post(
-        "/api/privacy/consent/rag",
+        "/api/v1/api/privacy/consent/rag",
         params={"consent_given": "true"},
     )
-    assert response.status_code in (401, 403)
+    assert response.status_code == 401, (
+        f"Expected 401 Unauthorized, got {response.status_code}: {response.json()}"
+    )
+    body = response.json()
+    assert "detail" in body

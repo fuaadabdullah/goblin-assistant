@@ -1,0 +1,14 @@
+{
+  "bucket": "performance",
+  "description": "Performance and concurrency stability checks for critical runtime behavior.",
+  "paths": [
+    "apps/api/src/api/tests/test_concurrency.py",
+    "scripts/load-test.py"
+  ],
+  "commands": [
+    {
+      "name": "performance-harness-syntax-check",
+      "run": "python3.11 -m py_compile scripts/load-test.py apps/api/src/api/tests/test_concurrency.py"
+    }
+  ]
+}

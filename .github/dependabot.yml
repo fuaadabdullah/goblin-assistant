@@ -1,0 +1,55 @@
+version: 2
+updates:
+  # Python (API)
+  - package-ecosystem: pip
+    directory: /apps/api
+    schedule:
+      interval: weekly
+      day: monday
+    groups:
+      dev-dependencies:
+        dependency-type: development
+      prod-dependencies:
+        dependency-type: production
+    target-branch: main
+    labels:
+      - dependencies
+      - python
+
+  # Node.js (Web)
+  - package-ecosystem: npm
+    directory: /apps/web
+    schedule:
+      interval: weekly
+      day: monday
+    groups:
+      dev-dependencies:
+        dependency-type: development
+      prod-dependencies:
+        dependency-type: production
+    target-branch: main
+    labels:
+      - dependencies
+      - javascript
+
+  # Terraform
+  - package-ecosystem: terraform
+    directory: /terraform
+    schedule:
+      interval: weekly
+      day: monday
+    target-branch: main
+    labels:
+      - dependencies
+      - terraform
+
+  # GitHub Actions
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: weekly
+      day: monday
+    target-branch: main
+    labels:
+      - dependencies
+      - github-actions

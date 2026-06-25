@@ -9,10 +9,10 @@ describe('SandboxMain', () => {
     language: 'python',
     logs: '',
     selectedJob: null,
-    onCodeChange: jest.fn(),
+    onCodeChange: vi.fn(),
   };
 
-  beforeEach(() => jest.clearAllMocks());
+  beforeEach(() => vi.clearAllMocks());
 
   it('renders heading', () => {
     render(<SandboxMain {...defaultProps} />);
@@ -55,7 +55,7 @@ describe('SandboxMain', () => {
   });
 
   it('shows line count', () => {
-    const { container } = render(<SandboxMain {...defaultProps} code={"a\nb\nc"} />);
+    const { container } = render(<SandboxMain {...defaultProps} code={'a\nb\nc'} />);
     const metaDiv = container.querySelector('.text-xs.text-muted');
     expect(metaDiv?.textContent).toContain('3');
   });

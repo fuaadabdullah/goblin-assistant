@@ -4,9 +4,10 @@ Simple settings verification script.
 Not part of automated pytest collection.
 """
 
-import sys
 import os
+import sys
 from pathlib import Path
+
 import pytest
 
 pytest.skip("Legacy script-style test; excluded from pytest suite.", allow_module_level=True)
@@ -19,10 +20,12 @@ os.environ["SETTINGS_ENCRYPTION_KEY"] = "R-gey0ZNSPehux88bohbsUm9My8LAd09L2CbC_M
 backend_dir = Path(__file__).parent / "backend"
 sys.path.insert(0, str(backend_dir))
 
+
 def test_settings_service():
     """Test the settings service functionality"""
     from database import SessionLocal, create_tables
     from services.settings import SettingsService
+
     print("🧪 Testing Settings Service...")
 
     # Create tables

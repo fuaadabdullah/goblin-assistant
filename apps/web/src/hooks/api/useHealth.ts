@@ -1,22 +1,18 @@
+import { useMemo } from 'react';
 import { useQuery } from '@tanstack/react-query';
-import { apiClient } from '@/api';
+import { apiClient } from '@/lib/api';
 import { queryKeys } from '../../lib/query-keys';
+import { useProviderStatus } from '../useProviderStatus';
 
-/**
- * Hook to fetch system health status with live updates
- */
 export const useHealth = (refetchInterval?: number) => {
   return useQuery({
     queryKey: queryKeys.health,
     queryFn: () => apiClient.getAllHealth(),
-    refetchInterval: refetchInterval || 10000, // Refetch every 10s by default
-    staleTime: 5000, // Consider stale after 5s
+    refetchInterval: refetchInterval || 10000,
+    staleTime: 5000,
   });
 };
 
-/**
- * Hook to fetch streaming health
- */
 export const useStreamingHealth = (refetchInterval?: number) => {
   return useQuery({
     queryKey: queryKeys.streamingHealth,
@@ -26,12 +22,37 @@ export const useStreamingHealth = (refetchInterval?: number) => {
 };
 
 /**
- * Hook to fetch routing health
+ * Routing health derived from Supabase Realtime provider_status rows.
+ * Falls back to HTTP polling when Supabase is not configured.
  */
 export const useRoutingHealth = (refetchInterval?: number) => {
-  return useQuery({
+  const { statuses, isLoading, connected } = useProviderStatus();
+
+  // Derive an overall routing status from the live provider snapshots
+  const realtimeData = useMemo(() => {
+    const rows = Object.values(statuses);
+    if (rows.length === 0) return null;
+    const healthy = rows.filter((r) => r.is_healthy).length;
+    const total = rows.length;
+    const status = healthy === total ? 'Healthy' : healthy === 0 ? 'Unhealthy' : 'Degraded';
+    return { status, healthy, total, providers: statuses, realtime: true };
+  }, [statuses]);
+
+  // Fallback HTTP query — only runs when Realtime is not yet connected
+  const fallback = useQuery({
     queryKey: queryKeys.routingHealth,
     queryFn: () => apiClient.getRoutingHealth(),
-    refetchInterval: refetchInterval || 15000,
+    refetchInterval: connected ? false : refetchInterval || 15000,
+    enabled: !connected,
   });
+
+  if (connected || (!isLoading && realtimeData)) {
+    return {
+      data: realtimeData,
+      isLoading,
+      error: null,
+      isSuccess: Boolean(realtimeData),
+    };
+  }
+  return fallback;
 };

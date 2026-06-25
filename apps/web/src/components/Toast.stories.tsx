@@ -1,8 +1,7 @@
 import type { Meta, StoryObj } from '@storybook/react';
-import { ToastProvider } from '../contexts/ToastContext';
 import { ToastItem } from './ToastItem';
 import { ToastContainer } from './ToastContainer';
-import { useToast } from '../contexts/ToastContext';
+import { useToast } from '../hooks/useToast';
 import Button from './ui/Button';
 
 const meta = {
@@ -42,9 +41,5 @@ function ToastHarness() {
 }
 
 export const Container: Story = {
-  render: () => (
-    <ToastProvider>
-      <ToastHarness />
-    </ToastProvider>
-  ),
+  render: () => <ToastHarness />,
 };

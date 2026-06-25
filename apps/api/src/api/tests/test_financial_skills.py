@@ -9,40 +9,43 @@ All tests are fully mocked — no network calls.
 from __future__ import annotations
 
 import sys
+from unittest.mock import AsyncMock
 
 import pytest
 
 # Stubs are provided by conftest.py (mock_embedding_service, mock_yfinance)
-
-from api.tools.registry import TOOL_REGISTRY
-from api.tools.skills.dcf_calculator import (
-    _project_fcf,
+from api.assistant_tools.registry import TOOL_REGISTRY
+from api.assistant_tools.skills.dcf_calculator import (
     _discount_fcf,
-    _terminal_value,
     _handle_dcf_calculator,
+    _project_fcf,
+    _terminal_value,
 )
-from api.tools.skills.portfolio_analyzer import (
-    _daily_returns,
+from api.assistant_tools.skills.earnings_summarizer import _handle_earnings_summarizer
+from api.assistant_tools.skills.news_summarizer import _handle_news_summarizer
+from api.assistant_tools.skills.portfolio_analyzer import (
     _annualized_return,
     _annualized_volatility,
-    _sharpe_ratio,
-    _max_drawdown,
-    _var_95,
     _correlation,
+    _daily_returns,
     _handle_portfolio_analyzer,
+    _max_drawdown,
+    _sharpe_ratio,
+    _var_95,
 )
-from api.tools.skills.earnings_summarizer import _handle_earnings_summarizer
-from api.tools.skills.stock_screener import _handle_stock_screener
+from api.assistant_tools.skills.stock_screener import _handle_stock_screener
 
 
 # Disable Redis caching and rate limiting for all tests
 @pytest.fixture(autouse=True)
 def _no_redis(monkeypatch):
     import api.services.financial_data_service as fds
+
     monkeypatch.setattr(fds, "_cache_get", lambda key: None)
     monkeypatch.setattr(fds, "_cache_set", lambda key, value, ttl: None)
 
     import api.services.financial_guardrails as fg
+
     monkeypatch.setattr(fg, "check_rate_limit", lambda: None)
 
 
@@ -161,6 +164,7 @@ class TestPortfolioHelpers:
 
     def test_var_95(self):
         import random
+
         random.seed(42)
         rets = [random.gauss(0, 0.02) for _ in range(252)]
         var = _var_95(rets)
@@ -252,11 +256,14 @@ class TestEarningsSummarizer:
             def __init__(self, ticker):
                 super().__init__(ticker)
                 dates = pd.date_range("2025-01-01", periods=4, freq="QS")
-                self.earnings_dates = pd.DataFrame({
-                    "EPS Estimate": [1.50, 1.40, 1.30, 1.20],
-                    "Reported EPS": [1.60, 1.35, 1.45, 1.25],
-                    "Surprise(%)": [6.67, -3.57, 11.54, 4.17],
-                }, index=dates)
+                self.earnings_dates = pd.DataFrame(
+                    {
+                        "EPS Estimate": [1.50, 1.40, 1.30, 1.20],
+                        "Reported EPS": [1.60, 1.35, 1.45, 1.25],
+                        "Surprise(%)": [6.67, -3.57, 11.54, 4.17],
+                    },
+                    index=dates,
+                )
 
         _yf_mod.Ticker = _PatchedTicker
         try:
@@ -276,6 +283,81 @@ class TestEarningsSummarizer:
     @pytest.mark.asyncio
     async def test_registered(self):
         assert "earnings_summarizer" in TOOL_REGISTRY
+
+
+# ===================================================================
+# News Summarizer
+# ===================================================================
+
+
+class TestNewsSummarizer:
+    @pytest.mark.asyncio
+    async def test_basic_summary_from_ticker(self, monkeypatch):
+        mock_news = {
+            "query": "AAPL",
+            "normalized_query": "AAPL",
+            "ticker": "AAPL",
+            "count": 2,
+            "results": [
+                {
+                    "title": "Apple beats estimates on services growth",
+                    "url": "https://example.com/a",
+                    "snippet": "Apple reports better-than-expected earnings.",
+                    "publisher": "Reuters",
+                    "published_at": "Mon, 01 Jun 2026 10:00:00 GMT",
+                    "ticker": "AAPL",
+                    "tickers": ["AAPL"],
+                },
+                {
+                    "title": "Analysts raise Apple price targets",
+                    "url": "https://example.com/b",
+                    "snippet": "Several firms upgraded the stock after results.",
+                    "publisher": "Bloomberg",
+                    "published_at": "Mon, 01 Jun 2026 11:00:00 GMT",
+                    "ticker": "AAPL",
+                    "tickers": ["AAPL"],
+                },
+            ],
+        }
+        monkeypatch.setattr(
+            "api.assistant_tools.skills.news_summarizer.financial_data_service.get_market_news",
+            AsyncMock(return_value=mock_news),
+        )
+
+        result = await _handle_news_summarizer(ticker="AAPL")
+
+        assert result["ticker"] == "AAPL"
+        assert result["normalized_query"] == "AAPL"
+        assert result["source_count"] == 2
+        assert result["sentiment"]["label"] == "positive"
+        assert "earnings" in result["themes"]
+        assert result["headline_highlights"]
+        assert "Reuters" in result["publisher_counts"]
+
+    @pytest.mark.asyncio
+    async def test_normalizes_provided_sources(self):
+        result = await _handle_news_summarizer(
+            ticker="NVDA",
+            sources=[
+                {
+                    "title": "Nvidia gains after new chip demand",
+                    "url": "https://www.bloomberg.com/news/articles/1",
+                    "snippet": "Analysts are raising targets.",
+                    "publisher": "bloomberg",
+                }
+            ],
+        )
+
+        assert result["ticker"] == "NVDA"
+        assert result["source_count"] == 1
+        assert result["sources"][0]["publisher"] == "Bloomberg"
+        assert result["sources"][0]["ticker"] == "NVDA"
+        assert result["themes"]
+        assert result["sentiment"]["label"] in {"positive", "neutral"}
+
+    @pytest.mark.asyncio
+    async def test_registered(self):
+        assert "news_summarizer" in TOOL_REGISTRY
 
 
 # ===================================================================
@@ -364,7 +446,12 @@ class TestAllSkillsRegistered:
         assert expected.issubset(set(TOOL_REGISTRY.keys()))
 
     def test_all_have_openai_schemas(self):
-        for name in ["dcf_calculator", "portfolio_analyzer", "earnings_summarizer", "stock_screener"]:
+        for name in [
+            "dcf_calculator",
+            "portfolio_analyzer",
+            "earnings_summarizer",
+            "stock_screener",
+        ]:
             tool = TOOL_REGISTRY[name]
             schema = tool.to_openai_schema()
             assert schema["type"] == "function"

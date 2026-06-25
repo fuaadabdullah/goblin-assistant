@@ -7,23 +7,23 @@ describe('useFocusTrap', () => {
   beforeEach(() => {
     container = document.createElement('div');
     document.body.appendChild(container);
-    jest.useFakeTimers();
+    vi.useFakeTimers();
   });
 
   afterEach(() => {
     document.body.removeChild(container);
     document.body.style.overflow = '';
-    jest.useRealTimers();
+    vi.useRealTimers();
   });
 
   it('returns a ref object', () => {
-    const onClose = jest.fn();
+    const onClose = vi.fn();
     const { result } = renderHook(() => useFocusTrap(false, onClose));
     expect(result.current).toHaveProperty('current');
   });
 
   it('locks body scroll when active', () => {
-    const onClose = jest.fn();
+    const onClose = vi.fn();
     const { result } = renderHook(() => useFocusTrap(true, onClose));
     // Attach ref to container
     Object.defineProperty(result.current, 'current', { value: container, writable: true });
@@ -32,14 +32,14 @@ describe('useFocusTrap', () => {
   });
 
   it('does not lock body scroll when inactive', () => {
-    const onClose = jest.fn();
+    const onClose = vi.fn();
     document.body.style.overflow = '';
     renderHook(() => useFocusTrap(false, onClose));
     expect(document.body.style.overflow).toBe('');
   });
 
   it('calls onClose on Escape key', () => {
-    const onClose = jest.fn();
+    const onClose = vi.fn();
     const { result } = renderHook(() => useFocusTrap(true, onClose));
     Object.defineProperty(result.current, 'current', { value: container, writable: true });
 
@@ -50,7 +50,7 @@ describe('useFocusTrap', () => {
   });
 
   it('does not call onClose on Escape when inactive', () => {
-    const onClose = jest.fn();
+    const onClose = vi.fn();
     renderHook(() => useFocusTrap(false, onClose));
 
     act(() => {
@@ -60,7 +60,7 @@ describe('useFocusTrap', () => {
   });
 
   it('restores body overflow on cleanup', () => {
-    const onClose = jest.fn();
+    const onClose = vi.fn();
     const { unmount } = renderHook(() => useFocusTrap(true, onClose));
     expect(document.body.style.overflow).toBe('hidden');
     unmount();
@@ -74,7 +74,7 @@ describe('useFocusTrap', () => {
     container.appendChild(btn2);
     btn2.focus();
 
-    const onClose = jest.fn();
+    const onClose = vi.fn();
     const { result } = renderHook(() => useFocusTrap(true, onClose));
     Object.defineProperty(result.current, 'current', { value: container, writable: true });
 
@@ -91,12 +91,12 @@ describe('useFocusTrap', () => {
     const btn = document.createElement('button');
     container.appendChild(btn);
 
-    const onClose = jest.fn();
+    const onClose = vi.fn();
     const { result } = renderHook(() => useFocusTrap(true, onClose));
     Object.defineProperty(result.current, 'current', { value: container, writable: true });
 
     act(() => {
-      jest.advanceTimersByTime(300);
+      vi.advanceTimersByTime(300);
     });
     // Timer should have fired
   });

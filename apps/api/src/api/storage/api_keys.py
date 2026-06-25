@@ -5,12 +5,13 @@ Provides a unified interface for storing and retrieving API keys
 across different environments (development, production).
 """
 
-from abc import ABC, abstractmethod
-from typing import Optional
-import os
+import asyncio
 import json
+import os
 import warnings
+from abc import ABC, abstractmethod
 from pathlib import Path
+from typing import Optional
 
 
 class APIKeyStore(ABC):
@@ -19,12 +20,12 @@ class APIKeyStore(ABC):
     @abstractmethod
     async def get(self, provider: str) -> Optional[str]:
         """Retrieve an API key for the given provider."""
-        pass
+        ...
 
     @abstractmethod
     async def set(self, provider: str, key: str) -> None:
         """Store an API key for the given provider."""
-        pass
+        ...
 
 
 class FileAPIKeyStore(APIKeyStore):
@@ -42,29 +43,37 @@ class FileAPIKeyStore(APIKeyStore):
 
     async def get(self, provider: str) -> Optional[str]:
         """Get API key from JSON file."""
-        if not self.path.exists():
-            return None
-        try:
-            with open(self.path, "r") as f:
-                data = json.load(f)
-                return data.get(provider)
-        except (FileNotFoundError, json.JSONDecodeError):
-            return None
 
-    async def set(self, provider: str, key: str) -> None:
-        """Store API key in JSON file."""
-        data = {}
-        if self.path.exists():
+        def _read() -> Optional[str]:
+            if not self.path.exists():
+                return None
             try:
                 with open(self.path, "r") as f:
                     data = json.load(f)
-            except json.JSONDecodeError:
-                data = {}
+                    return data.get(provider)
+            except (FileNotFoundError, json.JSONDecodeError):
+                return None
 
-        data[provider] = key
+        return await asyncio.to_thread(_read)
 
-        with open(self.path, "w") as f:
-            json.dump(data, f, indent=2)
+    async def set(self, provider: str, key: str) -> None:
+        """Store API key in JSON file."""
+
+        def _write() -> None:
+            data = {}
+            if self.path.exists():
+                try:
+                    with open(self.path, "r") as f:
+                        data = json.load(f)
+                except json.JSONDecodeError:
+                    data = {}
+
+            data[provider] = key
+
+            with open(self.path, "w") as f:
+                json.dump(data, f, indent=2)
+
+        await asyncio.to_thread(_write)
 
 
 class SecretManagerAPIKeyStore(APIKeyStore):
@@ -94,7 +103,6 @@ class SecretManagerAPIKeyStore(APIKeyStore):
 
     async def get(self, provider: str) -> Optional[str]:
         """Retrieve API key from Vault KV v2 at path api-keys/{provider}."""
-        import asyncio
 
         def _read():
             client = self._get_client()
@@ -105,7 +113,7 @@ class SecretManagerAPIKeyStore(APIKeyStore):
             return secret["data"]["data"].get("key")
 
         try:
-            return await asyncio.get_event_loop().run_in_executor(None, _read)
+            return await asyncio.to_thread(_read)
         except Exception as exc:
             if "404" in str(exc) or "InvalidPath" in type(exc).__name__:
                 return None
@@ -113,7 +121,6 @@ class SecretManagerAPIKeyStore(APIKeyStore):
 
     async def set(self, provider: str, key: str) -> None:
         """Store API key in Vault KV v2 at path api-keys/{provider}."""
-        import asyncio
 
         def _write():
             client = self._get_client()
@@ -122,7 +129,7 @@ class SecretManagerAPIKeyStore(APIKeyStore):
                 secret={"key": key},
             )
 
-        await asyncio.get_event_loop().run_in_executor(None, _write)
+        await asyncio.to_thread(_write)
 
 
 # Factory function to create appropriate store based on environment

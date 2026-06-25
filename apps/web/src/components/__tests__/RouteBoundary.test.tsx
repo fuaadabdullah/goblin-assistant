@@ -1,19 +1,18 @@
-import { describe, it, expect, beforeEach, afterAll, jest } from '@jest/globals';
+import { describe, it, expect, beforeEach, afterAll } from 'vitest';
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
-import {
-  RouteBoundaryFallback,
-  withRouteErrorBoundary,
-} from '../RouteBoundary';
+import { RouteBoundaryFallback, withRouteErrorBoundary } from '../RouteBoundary';
 
-jest.mock('next/router', () => ({
+vi.mock('next/navigation', () => ({
   useRouter: () => ({
-    asPath: '/admin',
-    replace: jest.fn().mockResolvedValue(true),
-    prefetch: jest.fn().mockResolvedValue(undefined),
+    replace: vi.fn().mockResolvedValue(true),
+    prefetch: vi.fn().mockResolvedValue(undefined),
+    push: vi.fn(),
   }),
+  usePathname: () => '/admin',
+  useSearchParams: () => new URLSearchParams(),
 }));
 
-jest.mock('../../hooks/api/useAuthSession', () => ({
+vi.mock('../../hooks/api/useAuthSession', () => ({
   useAuthSession: () => ({
     isAuthenticated: true,
     isHydrated: true,
@@ -21,20 +20,22 @@ jest.mock('../../hooks/api/useAuthSession', () => ({
   }),
 }));
 
-jest.mock('../../components/Navigation', () => () => <nav data-testid="admin-navigation" />);
-jest.mock('../../components/Seo', () => () => null);
+vi.mock('../../components/Navigation', () => ({
+  default: () => <nav data-testid="admin-navigation" />,
+}));
+vi.mock('../../components/Seo', () => ({ default: () => null }));
 
-const AdminLayout = require('../../layout/AdminLayout').default;
+import AdminLayout from '../../layout/AdminLayout';
 
 describe('RouteBoundaryFallback', () => {
-  const consoleErrorSpy = jest.spyOn(console, 'error').mockImplementation(() => {});
+  const consoleErrorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
 
   beforeEach(() => {
-    jest.clearAllMocks();
+    vi.clearAllMocks();
     Object.defineProperty(global.navigator, 'clipboard', {
       configurable: true,
       value: {
-        writeText: jest.fn().mockResolvedValue(undefined),
+        writeText: vi.fn().mockResolvedValue(undefined),
       },
     });
   });
@@ -97,19 +98,18 @@ describe('RouteBoundaryFallback', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Copy Error ID' }));
 
     await waitFor(() => {
-      expect((global.navigator.clipboard.writeText as jest.Mock)).toHaveBeenCalledWith('evt-copy');
+      expect(global.navigator.clipboard.writeText as vi.Mock).toHaveBeenCalledWith('evt-copy');
     });
 
-    expect(screen.getByRole('button', { name: 'Copied Error ID' })).toBeInTheDocument();
+    await waitFor(() => {
+      expect(screen.getByRole('button', { name: 'Copied Error ID' })).toBeInTheDocument();
+    });
   });
 
   it('shows the chat-specific fallback when a wrapped chat component throws', () => {
-    const WrappedChat = withRouteErrorBoundary(
-      () => {
-        throw new Error('chat boom');
-      },
-      'chat'
-    );
+    const WrappedChat = withRouteErrorBoundary(() => {
+      throw new Error('chat boom');
+    }, 'chat');
 
     render(<WrappedChat />);
 
@@ -118,12 +118,9 @@ describe('RouteBoundaryFallback', () => {
   });
 
   it('renders admin fallback inside AdminLayout so navigation remains available', () => {
-    const WrappedAdminContent = withRouteErrorBoundary(
-      () => {
-        throw new Error('admin boom');
-      },
-      'adminIndex'
-    );
+    const WrappedAdminContent = withRouteErrorBoundary(() => {
+      throw new Error('admin boom');
+    }, 'adminIndex');
 
     render(
       <AdminLayout mainId="main-content" mainLabel="Admin Dashboard">

@@ -1,20 +1,40 @@
 import { render, screen, fireEvent } from '@testing-library/react';
-import '@testing-library/jest-dom';
 
-jest.mock('@/components/ui', () => ({
-  Button: ({ children, ...props }: { children: React.ReactNode; onClick?: () => void; disabled?: boolean }) => (
-    <button {...props}>{children}</button>
-  ),
+vi.mock('@/components/ui', () => ({
+  Button: ({
+    children,
+    ...props
+  }: {
+    children: React.ReactNode;
+    onClick?: () => void;
+    disabled?: boolean;
+  }) => <button {...props}>{children}</button>,
 }));
-jest.mock('@/components/LoadingSkeleton', () => ({
+vi.mock('@/components/LoadingSkeleton', () => ({
   ProviderCardSkeleton: () => <div data-testid="skeleton" />,
 }));
 
 import ProviderSidebar from '../ProviderSidebar';
 
 const mockProviders = [
-  { id: 'p1', name: 'openai', enabled: true, configured: true, priority: 1, base_url: '', models: ['gpt-4'] },
-  { id: 'p2', name: 'ollama', enabled: false, configured: false, priority: 2, base_url: '', models: [] },
+  {
+    id: 'p1',
+    name: 'openai',
+    enabled: true,
+    configured: true,
+    priority: 1,
+    base_url: '',
+    models: ['gpt-4'],
+  },
+  {
+    id: 'p2',
+    name: 'ollama',
+    enabled: false,
+    configured: false,
+    priority: 2,
+    base_url: '',
+    models: [],
+  },
 ];
 
 describe('ProviderSidebar', () => {
@@ -22,20 +42,20 @@ describe('ProviderSidebar', () => {
     providers: mockProviders as never[],
     isLoading: false,
     selectedProvider: null,
-    onSelectProvider: jest.fn(),
-    onRefresh: jest.fn(),
+    onSelectProvider: vi.fn(),
+    onRefresh: vi.fn(),
     routingStatus: 'Healthy',
     showRoutingHealth: true,
     testingProviderName: null,
-    onQuickTest: jest.fn(),
+    onQuickTest: vi.fn(),
     draggedProvider: null,
     isReordering: false,
-    onDragStart: jest.fn(),
-    onDragOver: jest.fn(),
-    onDrop: jest.fn(),
+    onDragStart: vi.fn(),
+    onDragOver: vi.fn(),
+    onDrop: vi.fn(),
   };
 
-  beforeEach(() => jest.clearAllMocks());
+  beforeEach(() => vi.clearAllMocks());
 
   it('renders provider list', () => {
     render(<ProviderSidebar {...baseProps} />);

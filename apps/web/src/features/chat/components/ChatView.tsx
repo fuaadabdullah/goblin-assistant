@@ -2,7 +2,8 @@ import ChatHeader from './ChatHeader';
 import ChatMessageList from './ChatMessageList';
 import ChatComposer from './ChatComposer';
 import ChatSidebar from './ChatSidebar';
-import { useCallback } from 'react';
+import { useCallback, useState } from 'react';
+import { apiClient } from '../../../lib/api';
 import type { ChatSessionState } from '../hooks/useChatSession';
 import Seo from '../../../components/Seo';
 import { useAuthSession } from '../../../hooks/api/useAuthSession';
@@ -12,18 +13,22 @@ import { Input } from '../../../components/ui/input';
 import { useUIStore } from '../../../store/uiStore';
 import { useFocusTrap } from '../../../hooks/useFocusTrap';
 
+type MobileChatPanelTab = 'conversations' | 'preview';
+
 interface ChatViewProps {
   /** Chat session state + handlers. */
   session: ChatSessionState;
   /** Is the current user an admin. */
   isAdmin: boolean;
+  /** Unauthenticated guest session (via ?guest=1). */
+  isGuest?: boolean;
 }
 
-const ChatView = ({ session, isAdmin }: ChatViewProps) => {
+const ChatView = ({ session, isAdmin, isGuest = false }: ChatViewProps) => {
   const { isAuthenticated } = useAuthSession();
   const chatSidebarOpen = useUIStore((state) => state.chatSidebarOpen);
-  const toggleChatSidebar = useUIStore((state) => state.toggleChatSidebar);
   const setChatSidebarOpen = useUIStore((state) => state.setChatSidebarOpen);
+  const [mobilePanelTab, setMobilePanelTab] = useState<MobileChatPanelTab>('conversations');
   const {
     messages,
     input,
@@ -56,14 +61,38 @@ const ChatView = ({ session, isAdmin }: ChatViewProps) => {
     removePendingAttachment,
   } = session;
 
-  const closeSidebar = useCallback(() => setChatSidebarOpen(false), [setChatSidebarOpen]);
-  const drawerRef = useFocusTrap(chatSidebarOpen, closeSidebar);
+  const rateFeedback = useCallback(
+    async (messageId: string, rating: 1 | -1) => {
+      const msg = messages.find((m) => m.id === messageId);
+      const requestId = msg?.meta?.correlation_id;
+      if (!requestId) return;
+      try {
+        const provider = msg?.meta?.provider;
+        const department = msg?.meta?.department || msg?.meta?.department_reason;
+        // Use the active thread id as conversation_id for feedback context
+        const conversationId =
+          session.threads.find((t) => t.threadKey === session.activeThreadKey)?.id || '';
+        await apiClient.submitRoutingFeedback({
+          requestId,
+          rating,
+          ...(provider && { providerId: provider }),
+          ...(msg?.meta?.model && { model: msg.meta.model }),
+          ...(department && { department: department }),
+          messageId,
+          conversationId,
+        });
+      } catch {
+        // best-effort — feedback failure is silent
+      }
+    },
+    [messages]
+  );
 
-  const chatPreviewOpen = useUIStore((state) => state.chatPreviewOpen);
-  const toggleChatPreview = useUIStore((state) => state.toggleChatPreview);
-  const setChatPreviewOpen = useUIStore((state) => state.setChatPreviewOpen);
-  const closePreview = useCallback(() => setChatPreviewOpen(false), [setChatPreviewOpen]);
-  const previewDrawerRef = useFocusTrap(chatPreviewOpen, closePreview);
+  const closeMobilePanel = useCallback(() => setChatSidebarOpen(false), [setChatSidebarOpen]);
+  const mobilePanelRef = useFocusTrap(chatSidebarOpen, closeMobilePanel);
+  const toggleMobilePanel = useCallback(() => {
+    setChatSidebarOpen(!chatSidebarOpen);
+  }, [chatSidebarOpen, setChatSidebarOpen]);
 
   const handleThreadSelect = (threadKey: string) => {
     selectThread(threadKey);
@@ -75,7 +104,7 @@ const ChatView = ({ session, isAdmin }: ChatViewProps) => {
     setChatSidebarOpen(false);
   };
 
-  if (!isAuthenticated) {
+  if (!isAuthenticated && !isGuest) {
     return (
       <div className="min-h-[calc(100vh-64px)] bg-bg flex items-center justify-center px-4">
         <Seo
@@ -115,9 +144,15 @@ const ChatView = ({ session, isAdmin }: ChatViewProps) => {
             <div className="mt-6">
               <div className="text-sm text-muted">Features</div>
               <div className="mt-3 flex flex-wrap gap-2">
-                <span className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-surface-hover text-sm">Finance analysis</span>
-                <span className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-surface-hover text-sm">Live code</span>
-                <span className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-surface-hover text-sm">Smart memory</span>
+                <span className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-surface-hover text-sm">
+                  Finance analysis
+                </span>
+                <span className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-surface-hover text-sm">
+                  Live code
+                </span>
+                <span className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-surface-hover text-sm">
+                  Smart memory
+                </span>
               </div>
             </div>
           </aside>
@@ -135,79 +170,84 @@ const ChatView = ({ session, isAdmin }: ChatViewProps) => {
       />
       <div className="relative flex">
         <div
-          ref={drawerRef}
-            role="dialog"
-            aria-label="Conversations"
+          ref={mobilePanelRef}
+          role="dialog"
+          aria-label="Chat mobile panel"
           className={`fixed inset-0 z-40 lg:hidden ${
             chatSidebarOpen ? 'pointer-events-auto' : 'pointer-events-none'
           }`}
         >
           <button
             type="button"
-            aria-label="Close conversations drawer"
+            aria-label="Close chat panel"
             className={`absolute inset-0 bg-black/50 backdrop-blur-sm transition-opacity duration-200 ${
               chatSidebarOpen ? 'opacity-100' : 'opacity-0'
             }`}
             onClick={() => setChatSidebarOpen(false)}
           />
           <div
-            id="mobile-chat-sidebar"
-            className={`absolute inset-y-0 left-0 transition-transform duration-200 ease-out ${
+            id="mobile-chat-panel"
+            className={`absolute inset-y-0 left-0 flex w-[88vw] max-w-sm flex-col border-r border-border bg-surface shadow-2xl transition-transform duration-200 ease-out ${
               chatSidebarOpen ? 'translate-x-0' : '-translate-x-full'
             } pt-[max(0px,env(safe-area-inset-top))]`}
           >
-            <ChatSidebar
-              threads={threads}
-              isThreadsLoading={isThreadsLoading}
-              activeThreadKey={activeThreadKey}
-              onSelectThread={handleThreadSelect}
-              onNewConversation={handleNewConversation}
-              isAdmin={isAdmin}
-              totalTokens={totalTokens}
-              messageCount={messages.length}
-              className="h-full w-[85vw] max-w-sm shadow-2xl"
-            />
-          </div>
-        </div>
-
-        {/* Mobile preview drawer */}
-        <div
-          ref={previewDrawerRef}
-          className={`fixed inset-0 z-40 lg:hidden ${
-            chatPreviewOpen ? 'pointer-events-auto' : 'pointer-events-none'
-          }`}
-        >
-          <button
-            type="button"
-            aria-label="Close preview drawer"
-            className={`absolute inset-0 bg-black/50 backdrop-blur-sm transition-opacity duration-200 ${
-              chatPreviewOpen ? 'opacity-100' : 'opacity-0'
-            }`}
-            onClick={() => setChatPreviewOpen(false)}
-          />
-          <div
-            id="mobile-chat-preview"
-            className={`absolute inset-y-0 right-0 transition-transform duration-200 ease-out ${
-              chatPreviewOpen ? 'translate-x-0' : 'translate-x-full'
-            } pt-[max(0px,env(safe-area-inset-top))]`}
-          >
-            <div className="h-full w-[85vw] max-w-sm shadow-2xl p-6 bg-surface border border-border rounded-2xl">
-              <ChatPreviewPanel />
+            <div className="border-b border-border p-3">
+              <div
+                className="grid grid-cols-2 gap-2 rounded-lg bg-bg p-1"
+                role="tablist"
+                aria-label="Chat panel sections"
+              >
+                {(['conversations', 'preview'] as const).map((tab) => (
+                  <button
+                    key={tab}
+                    type="button"
+                    role="tab"
+                    aria-selected={mobilePanelTab === tab}
+                    onClick={() => setMobilePanelTab(tab)}
+                    className={`rounded-md px-3 py-2 text-sm font-medium transition-colors ${
+                      mobilePanelTab === tab
+                        ? 'bg-primary text-text-inverse'
+                        : 'text-muted hover:bg-surface-hover hover:text-text'
+                    }`}
+                  >
+                    {tab === 'conversations' ? 'Conversations' : 'Preview'}
+                  </button>
+                ))}
+              </div>
             </div>
+            {mobilePanelTab === 'conversations' ? (
+              <ChatSidebar
+                threads={threads}
+                isThreadsLoading={isThreadsLoading}
+                activeThreadKey={activeThreadKey}
+                onSelectThread={handleThreadSelect}
+                onNewConversation={handleNewConversation}
+                isAdmin={isAdmin}
+                totalTokens={totalTokens}
+                messageCount={messages.length}
+                className="h-full w-full border-0 shadow-none"
+              />
+            ) : (
+              <div className="h-full overflow-y-auto p-4">
+                <ChatPreviewPanel />
+              </div>
+            )}
           </div>
         </div>
 
-        <ChatSidebar
-          threads={threads}
-          isThreadsLoading={isThreadsLoading}
-          activeThreadKey={activeThreadKey}
-          onSelectThread={handleThreadSelect}
-          onNewConversation={handleNewConversation}
-          isAdmin={isAdmin}
-          totalTokens={totalTokens}
-          messageCount={messages.length}
-          className="hidden lg:flex sticky top-0 h-screen"
-        />
+        {!isGuest && (
+          <ChatSidebar
+            threads={threads}
+            isThreadsLoading={isThreadsLoading}
+            activeThreadKey={activeThreadKey}
+            onSelectThread={handleThreadSelect}
+            onNewConversation={handleNewConversation}
+            isAdmin={isAdmin}
+            totalTokens={totalTokens}
+            messageCount={messages.length}
+            className="hidden lg:flex sticky top-0 h-screen"
+          />
+        )}
 
         <main
           className="flex-1 flex flex-col bg-bg"
@@ -218,13 +258,31 @@ const ChatView = ({ session, isAdmin }: ChatViewProps) => {
           <ChatHeader
             isAdmin={isAdmin}
             onClear={handleClearChat}
-            showSidebarToggle
-            onToggleSidebar={toggleChatSidebar}
-            isSidebarOpen={chatSidebarOpen}
-            showPreviewToggle
-            onTogglePreview={toggleChatPreview}
-            isPreviewOpen={chatPreviewOpen}
+            showMobilePanelToggle
+            onToggleMobilePanel={toggleMobilePanel}
+            isMobilePanelOpen={chatSidebarOpen}
+            activeMobilePanelTab={mobilePanelTab}
           />
+          {isGuest && (
+            <div className="mx-4 mt-4 rounded-xl border border-primary/40 bg-surface p-4 text-sm flex items-start justify-between gap-4">
+              <div>
+                <p className="font-semibold text-primary">Guest session</p>
+                <p className="text-muted mt-1">
+                  Messages are not saved.{' '}
+                  <Link href="/login" className="text-primary hover:underline font-medium">
+                    Sign in
+                  </Link>{' '}
+                  to keep your history.
+                </p>
+              </div>
+              <Link
+                href="/login"
+                className="shrink-0 px-3 py-1.5 rounded-lg bg-primary text-text-inverse text-sm font-medium"
+              >
+                Sign in
+              </Link>
+            </div>
+          )}
           <section className="flex-1 overflow-y-auto px-4 py-8">
             <ChatMessageList
               messages={messages}
@@ -236,6 +294,7 @@ const ChatView = ({ session, isAdmin }: ChatViewProps) => {
               onDeleteMessage={deleteMessage}
               onCopyMessage={copyMessage}
               onRegenerateMessage={regenerateMessage}
+              onRateFeedback={rateFeedback}
             />
           </section>
           <footer>
@@ -250,7 +309,7 @@ const ChatView = ({ session, isAdmin }: ChatViewProps) => {
               onSend={() => sendMessage()}
               onKeyDown={handleKeyDown}
               onPromptClick={handlePromptClick}
-              onFileSelected={handleFileSelected}
+              onFileSelected={isGuest ? undefined : handleFileSelected}
               selectedProvider={selectedProvider}
               selectedModel={selectedModel}
               estimatedTokens={inputEstimate?.estimated_tokens}
@@ -269,4 +328,3 @@ const ChatView = ({ session, isAdmin }: ChatViewProps) => {
 };
 
 export default ChatView;
-

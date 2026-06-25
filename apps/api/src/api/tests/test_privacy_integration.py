@@ -11,15 +11,16 @@ Tests:
 
 import pytest
 
+from api.services.safe_vector_store import SafeVectorStore
+
 # Import modules
 from api.services.sanitization import (
-    sanitize_input_for_model,
+    hash_message_id,
     is_sensitive_content,
     mask_sensitive,
-    hash_message_id,
+    sanitize_input_for_model,
 )
-from api.services.safe_vector_store import SafeVectorStore
-from api.services.telemetry import log_inference_metrics, log_conversation_event
+from api.services.telemetry import log_conversation_event, log_inference_metrics
 
 
 class TestSanitization:
@@ -182,7 +183,8 @@ class TestVectorStore:
         )
 
         # Run cleanup
-        deleted_count = await vector_store.cleanup_expired()
+        cleanup_result = await vector_store.cleanup_expired()
+        deleted_count = cleanup_result["deleted_count"]
 
         # Should have deleted at least 1
         assert deleted_count >= 0  # May be 0 if timing is tight

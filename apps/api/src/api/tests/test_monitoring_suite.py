@@ -1,12 +1,14 @@
 """Test suite for monitoring.py"""
 
-import pytest
 import asyncio
-from unittest.mock import patch, AsyncMock
+from unittest.mock import AsyncMock, patch
+
+import pytest
+
 from api.monitoring import (
-    ProviderMonitor,
     HEALTH_CHECK_INTERVAL,
     PROVIDER_HEALTH_KEY,
+    ProviderMonitor,
 )
 
 
@@ -33,9 +35,7 @@ class TestProviderMonitor:
     @pytest.mark.asyncio
     async def test_provider_monitor_start(self, provider_monitor):
         """Test starting the provider monitor"""
-        with patch.object(
-            provider_monitor, "_monitor_loop", new_callable=AsyncMock
-        ):
+        with patch.object(provider_monitor, "_monitor_loop", new_callable=AsyncMock):
             await provider_monitor.start()
 
             assert provider_monitor._running is True
@@ -44,13 +44,9 @@ class TestProviderMonitor:
             await provider_monitor.stop()
 
     @pytest.mark.asyncio
-    async def test_provider_monitor_start_already_running(
-        self, provider_monitor
-    ):
+    async def test_provider_monitor_start_already_running(self, provider_monitor):
         """Test that starting twice doesn't create duplicate tasks"""
-        with patch.object(
-            provider_monitor, "_monitor_loop", new_callable=AsyncMock
-        ):
+        with patch.object(provider_monitor, "_monitor_loop", new_callable=AsyncMock):
             await provider_monitor.start()
             first_task = provider_monitor._task
 
@@ -66,9 +62,7 @@ class TestProviderMonitor:
     @pytest.mark.asyncio
     async def test_provider_monitor_stop(self, provider_monitor):
         """Test stopping the provider monitor"""
-        with patch.object(
-            provider_monitor, "_monitor_loop", new_callable=AsyncMock
-        ):
+        with patch.object(provider_monitor, "_monitor_loop", new_callable=AsyncMock):
             await provider_monitor.start()
             assert provider_monitor._running is True
 
@@ -76,22 +70,16 @@ class TestProviderMonitor:
             assert provider_monitor._running is False
 
     @pytest.mark.asyncio
-    async def test_provider_monitor_stop_when_not_running(
-        self, provider_monitor
-    ):
+    async def test_provider_monitor_stop_when_not_running(self, provider_monitor):
         """Test stopping when not running doesn't raise error"""
         # Should not raise an exception
         await provider_monitor.stop()
         assert provider_monitor._running is False
 
     @pytest.mark.asyncio
-    async def test_provider_monitor_check_connectivity_success(
-        self, provider_monitor
-    ):
+    async def test_provider_monitor_check_connectivity_success(self, provider_monitor):
         """Test successful provider connectivity check"""
-        with patch(
-            "api.monitoring.httpx.AsyncClient"
-        ) as mock_client_class:
+        with patch("api.monitoring.httpx.AsyncClient") as mock_client_class:
             mock_client = AsyncMock()
             mock_response = AsyncMock()
             mock_response.status_code = 200
@@ -100,37 +88,27 @@ class TestProviderMonitor:
             mock_client.get.return_value = mock_response
             mock_client_class.return_value = mock_client
 
-            result = await provider_monitor._check_connectivity(
-                "http://example.com"
-            )
+            result = await provider_monitor._check_connectivity("http://example.com")
 
             assert result["ok"] is True
 
     @pytest.mark.asyncio
-    async def test_provider_monitor_check_connectivity_failure(
-        self, provider_monitor
-    ):
+    async def test_provider_monitor_check_connectivity_failure(self, provider_monitor):
         """Test failed provider connectivity check"""
-        with patch(
-            "api.monitoring.httpx.AsyncClient"
-        ) as mock_client_class:
+        with patch("api.monitoring.httpx.AsyncClient") as mock_client_class:
             mock_client = AsyncMock()
             mock_client.__aenter__.return_value = mock_client
             mock_client.__aexit__.return_value = None
             mock_client.get.side_effect = Exception("Connection failed")
             mock_client_class.return_value = mock_client
 
-            result = await provider_monitor._check_connectivity(
-                "http://example.com"
-            )
+            result = await provider_monitor._check_connectivity("http://example.com")
 
             assert result["ok"] is False
             assert "error" in result
 
     @pytest.mark.asyncio
-    async def test_provider_monitor_check_providers(
-        self, provider_monitor
-    ):
+    async def test_provider_monitor_check_providers(self, provider_monitor):
         """Test checking multiple providers"""
         mock_providers = [
             {
@@ -150,27 +128,27 @@ class TestProviderMonitor:
             },
         ]
 
-        with patch(
-            "api.monitoring.get_provider_settings",
-            return_value=mock_providers,
-        ):
-            with patch.object(
+        with (
+            patch(
+                "api.monitoring.get_provider_settings",
+                return_value=mock_providers,
+            ),
+            patch.object(
                 provider_monitor,
                 "_check_connectivity",
                 new_callable=AsyncMock,
-            ) as mock_check:
-                mock_check.return_value = {"ok": True, "latency_ms": 100}
+            ) as mock_check,
+        ):
+            mock_check.return_value = {"ok": True, "latency_ms": 100}
 
-                with patch("api.monitoring.cache.set", new_callable=AsyncMock):
-                    await provider_monitor._check_providers()
+            with patch("api.monitoring.cache.set", new_callable=AsyncMock):
+                await provider_monitor._check_providers()
 
-                # Should only check enabled providers
-                assert mock_check.call_count == 2
+            # Should only check enabled providers
+            assert mock_check.call_count == 2
 
     @pytest.mark.asyncio
-    async def test_provider_monitor_check_providers_updates_status(
-        self, provider_monitor
-    ):
+    async def test_provider_monitor_check_providers_updates_status(self, provider_monitor):
         """Test that provider status is updated after checks"""
         mock_providers = [
             {
@@ -180,29 +158,29 @@ class TestProviderMonitor:
             },
         ]
 
-        with patch(
-            "api.monitoring.get_provider_settings",
-            return_value=mock_providers,
-        ):
-            with patch.object(
+        with (
+            patch(
+                "api.monitoring.get_provider_settings",
+                return_value=mock_providers,
+            ),
+            patch.object(
                 provider_monitor,
                 "_check_connectivity",
                 new_callable=AsyncMock,
-            ) as mock_check:
-                mock_check.return_value = {"ok": True, "latency_ms": 50}
+            ) as mock_check,
+        ):
+            mock_check.return_value = {"ok": True, "latency_ms": 50}
 
-                with patch("api.monitoring.cache.set", new_callable=AsyncMock):
-                    await provider_monitor._check_providers()
+            with patch("api.monitoring.cache.set", new_callable=AsyncMock):
+                await provider_monitor._check_providers()
 
-                assert "test_provider" in provider_monitor._provider_status
-                status = provider_monitor._provider_status["test_provider"]
-                assert status["status"] == "healthy"
-                assert status["latency_ms"] == 50
+            assert "test_provider" in provider_monitor._provider_status
+            status = provider_monitor._provider_status["test_provider"]
+            assert status["status"] == "healthy"
+            assert status["latency_ms"] == 50
 
     @pytest.mark.asyncio
-    async def test_provider_monitor_check_providers_unhealthy_status(
-        self, provider_monitor
-    ):
+    async def test_provider_monitor_check_providers_unhealthy_status(self, provider_monitor):
         """Test unhealthy provider status"""
         mock_providers = [
             {
@@ -212,33 +190,31 @@ class TestProviderMonitor:
             },
         ]
 
-        with patch(
-            "api.monitoring.get_provider_settings",
-            return_value=mock_providers,
-        ):
-            with patch.object(
+        with (
+            patch(
+                "api.monitoring.get_provider_settings",
+                return_value=mock_providers,
+            ),
+            patch.object(
                 provider_monitor,
                 "_check_connectivity",
                 new_callable=AsyncMock,
-            ) as mock_check:
-                mock_check.return_value = {
-                    "ok": False,
-                    "error": "Connection timeout",
-                }
+            ) as mock_check,
+        ):
+            mock_check.return_value = {
+                "ok": False,
+                "error": "Connection timeout",
+            }
 
-                with patch("api.monitoring.cache.set", new_callable=AsyncMock):
-                    await provider_monitor._check_providers()
+            with patch("api.monitoring.cache.set", new_callable=AsyncMock):
+                await provider_monitor._check_providers()
 
-                status = provider_monitor._provider_status[
-                    "unhealthy_provider"
-                ]
-                assert status["status"] == "unhealthy"
-                assert status["error"] == "Connection timeout"
+            status = provider_monitor._provider_status["unhealthy_provider"]
+            assert status["status"] == "unhealthy"
+            assert status["error"] == "Connection timeout"
 
     @pytest.mark.asyncio
-    async def test_provider_monitor_caches_status(
-        self, provider_monitor
-    ):
+    async def test_provider_monitor_caches_status(self, provider_monitor):
         """Test that provider status is cached"""
         mock_providers = [
             {
@@ -248,34 +224,29 @@ class TestProviderMonitor:
             },
         ]
 
-        with patch(
-            "api.monitoring.get_provider_settings",
-            return_value=mock_providers,
-        ):
-            with patch.object(
+        with (
+            patch(
+                "api.monitoring.get_provider_settings",
+                return_value=mock_providers,
+            ),
+            patch.object(
                 provider_monitor,
                 "_check_connectivity",
                 new_callable=AsyncMock,
-            ) as mock_check:
-                mock_check.return_value = {"ok": True, "latency_ms": 100}
+            ) as mock_check,
+        ):
+            mock_check.return_value = {"ok": True, "latency_ms": 100}
 
-                with patch(
-                    "api.monitoring.cache.set", new_callable=AsyncMock
-                ) as mock_cache_set:
-                    await provider_monitor._check_providers()
+            with patch("api.monitoring.cache.set", new_callable=AsyncMock) as mock_cache_set:
+                await provider_monitor._check_providers()
 
-                    mock_cache_set.assert_called_once()
-                    call_args = mock_cache_set.call_args
-                    assert call_args[0][0] == PROVIDER_HEALTH_KEY
-                    assert (
-                        call_args[1]["expire"]
-                        == HEALTH_CHECK_INTERVAL * 2
-                    )
+                mock_cache_set.assert_called_once()
+                call_args = mock_cache_set.call_args
+                assert call_args[0][0] == PROVIDER_HEALTH_KEY
+                assert call_args[1]["expire"] == HEALTH_CHECK_INTERVAL * 2
 
     @pytest.mark.asyncio
-    async def test_provider_monitor_monitor_loop(
-        self, provider_monitor
-    ):
+    async def test_provider_monitor_monitor_loop(self, provider_monitor):
         """Test monitor loop runs and checks providers"""
         provider_monitor._running = True
 
@@ -288,20 +259,20 @@ class TestProviderMonitor:
                 # Stop after 2 iterations
                 provider_monitor._running = False
 
-        with patch.object(
-            provider_monitor,
-            "_check_providers",
-            side_effect=mock_check_providers,
+        with (
+            patch.object(
+                provider_monitor,
+                "_check_providers",
+                side_effect=mock_check_providers,
+            ),
+            patch("asyncio.sleep", new_callable=AsyncMock),
         ):
-            with patch("asyncio.sleep", new_callable=AsyncMock):
-                await provider_monitor._monitor_loop()
+            await provider_monitor._monitor_loop()
 
         assert iteration_count >= 1
 
     @pytest.mark.asyncio
-    async def test_provider_monitor_loop_exception_handling(
-        self, provider_monitor
-    ):
+    async def test_provider_monitor_loop_exception_handling(self, provider_monitor):
         """Test monitor loop exception handling"""
         provider_monitor._running = True
 
@@ -315,22 +286,22 @@ class TestProviderMonitor:
                 raise ValueError("Test error")
             raise asyncio.CancelledError()
 
-        with patch.object(
-            provider_monitor,
-            "_check_providers",
-            side_effect=mock_check_with_error,
+        with (
+            patch.object(
+                provider_monitor,
+                "_check_providers",
+                side_effect=mock_check_with_error,
+            ),
+            patch("asyncio.sleep", new_callable=AsyncMock),
         ):
-            with pytest.raises(ValueError):
-                await provider_monitor._monitor_loop()
+            await provider_monitor._monitor_loop()
+
+        assert call_count == 1
 
     @pytest.mark.asyncio
-    async def test_provider_monitor_multiple_start_stop_cycles(
-        self, provider_monitor
-    ):
+    async def test_provider_monitor_multiple_start_stop_cycles(self, provider_monitor):
         """Test multiple start/stop cycles work correctly"""
-        with patch.object(
-            provider_monitor, "_monitor_loop", new_callable=AsyncMock
-        ):
+        with patch.object(provider_monitor, "_monitor_loop", new_callable=AsyncMock):
             for _ in range(3):
                 await provider_monitor.start()
                 assert provider_monitor._running is True

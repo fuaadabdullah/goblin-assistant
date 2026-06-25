@@ -1,5 +1,5 @@
 [build-system]
-requires = ["setuptools>=68", "wheel"]
+requires = [ "setuptools>=68", "wheel",]
 build-backend = "setuptools.build_meta"
 
 [project]
@@ -10,18 +10,71 @@ requires-python = ">=3.11"
 readme = "src/api/README.md"
 dependencies = []
 
-[tool.setuptools]
-package-dir = {"" = "src"}
+[project.optional-dependencies]
+benchmark = [ "pytest-benchmark>=4.0",]
 
-[tool.setuptools.packages.find]
-where = ["src"]
-include = ["api*"]
+[tool.mypy]
+python_version = "3.11"
+pretty = true
+show_error_codes = true
+namespace_packages = true
+explicit_package_bases = true
+mypy_path = "src"
+disallow_any_generics = true
+ignore_missing_imports = true
+exclude = [ "^src/api/docs/.*", "^src/api/tests/.*", "^src/api/test_.*\\.py$",]
+
+[tool.vulture]
+min_confidence = 80
+paths = [ "src/api",]
+ignore_names = [ "test_*", "*_test", "conftest",]
+ignore_decorators = [ "@app.route", "@router.*", "@pytest.*",]
+
+[tool.ruff]
+target-version = "py311"
+line-length = 100
+src = [ "src",]
+
+[tool.setuptools.package-dir]
+"" = "src"
 
 [tool.pytest.ini_options]
-cache_dir = "/Volumes/GOBLINOS 1/apps/.tmp/pytest_cache"
-testpaths = ["src/api", "src/api/tests"]
-python_files = ["test_*.py"]
-python_classes = ["Test*"]
-python_functions = ["test_*"]
-addopts = ["--strict-markers", "--strict-config", "--disable-warnings", "--tb=short"]
+cache_dir = ".tmp/pytest_cache"
+testpaths = [ "src/api", "src/api/tests",]
+python_files = [ "test_*.py",]
+python_classes = [ "Test*",]
+python_functions = [ "test_*",]
+addopts = [ "--strict-markers", "--strict-config", "--disable-warnings", "--tb=short",]
 asyncio_mode = "auto"
+asyncio_default_fixture_loop_scope = "function"
+filterwarnings = [
+  "ignore:Using `httpx` with `starlette.testclient` is deprecated:starlette.exceptions.StarletteDeprecationWarning:ddtrace.internal.module",
+]
+
+[tool.coverage.run]
+source = [ "api",]
+branch = true
+omit = [ "*/tests/*", "*/test_*.py", "*/__pycache__/*", "*/migrations/*", "*/conftest.py",]
+
+[tool.coverage.report]
+show_missing = true
+skip_covered = false
+fail_under = 70
+exclude_lines = [ "pragma: no cover", "if TYPE_CHECKING:", "raise NotImplementedError", "@(abc\\.)?abstractmethod",]
+
+[tool.ruff.lint]
+select = [ "E", "F", "I", "N", "PL", "SIM", "ARG", "ASYNC",]
+ignore = [ "E402", "E501", "PLC0415", "PLR0913", "PLR2004", "ARG001", "N806", "N815", "PLW2901", "SIM102", "SIM105", "SIM108", "SIM117", "PLR0912", "PLR0915", "PLR0911", "PLW0603", "ASYNC109", "ARG002", "ARG005", "SIM103",]
+
+[tool.setuptools.packages.find]
+where = [ "src",]
+include = [ "api*",]
+
+[tool.ruff.lint.isort]
+known-first-party = [ "api",]
+
+[tool.ruff.lint.pylint]
+max-statements = 40
+max-branches = 10
+max-returns = 8
+max-nested-blocks = 3

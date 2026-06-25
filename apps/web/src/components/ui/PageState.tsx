@@ -9,13 +9,13 @@ export interface PageStateProps {
   variant: PageStateVariant;
   title: string;
   description: string;
-  icon?: ReactNode;
-  actionLabel?: string;
-  onAction?: () => void;
-  actionHref?: string;
-  secondaryAction?: ReactNode;
-  retryLabel?: string;
-  className?: string;
+  icon?: ReactNode | undefined;
+  actionLabel?: string | undefined;
+  onAction?: (() => void) | undefined;
+  actionHref?: string | undefined;
+  secondaryAction?: ReactNode | undefined;
+  retryLabel?: string | undefined;
+  className?: string | undefined;
 }
 
 export default function PageState(props: PageStateProps) {

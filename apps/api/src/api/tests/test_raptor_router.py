@@ -35,5 +35,8 @@ async def test_raptor_start_stop_status_logs_demo(tmp_path, monkeypatch):
 
 @pytest.mark.asyncio
 async def test_raptor_demo_boom_raises_http_exception():
-    with pytest.raises(raptor.HTTPException):
+    with pytest.raises(raptor.HTTPException) as exc:
         await raptor.raptor_demo("boom")
+
+    assert exc.value.status_code == 500
+    assert exc.value.detail == "Demo failed: Demo error triggered"

@@ -1,5 +1,7 @@
+'use client';
+
 import Link from 'next/link';
-import { useRouter } from 'next/router';
+import { usePathname, useSearchParams } from 'next/navigation';
 import type { KeyboardEvent } from 'react';
 import { useEffect, useId, useRef } from 'react';
 
@@ -18,10 +20,12 @@ const AuthPrompt = ({
   mode = 'inline',
   onClose,
   allowGuest = false,
-  guestHref = '/sandbox?guest=1',
+  guestHref = '/chat?guest=1',
 }: AuthPromptProps) => {
-  const router = useRouter();
-  const from = typeof router.asPath === 'string' ? router.asPath : '/';
+  const pathname = usePathname();
+  const searchParams = useSearchParams();
+  const query = searchParams.toString();
+  const from = pathname ? (query ? `${pathname}?${query}` : pathname) : '/';
   const loginHref = { pathname: '/login', query: { from } };
   const registerHref = { pathname: '/login', query: { mode: 'register', from } };
   const titleId = useId();
@@ -60,8 +64,8 @@ const AuthPrompt = ({
     if (event.key !== 'Tab') return;
     const focusable = getFocusableElements();
     if (focusable.length === 0) return;
-    const first = focusable[0];
-    const last = focusable[focusable.length - 1];
+    const first = focusable[0]!;
+    const last = focusable[focusable.length - 1]!;
     if (event.shiftKey && document.activeElement === first) {
       event.preventDefault();
       last.focus();

@@ -22,6 +22,7 @@ def _get_encoding():
         return None
     try:
         import tiktoken
+
         _encoding = tiktoken.get_encoding("cl100k_base")
         return _encoding
     except Exception as e:

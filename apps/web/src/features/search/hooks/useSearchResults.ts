@@ -3,6 +3,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { useMutation, useQuery } from '@tanstack/react-query';
 import { fetchCollections, searchCollectionByName } from '../api';
 import { toUiError } from '../../../lib/ui-error';
+import { getUserMessage } from '../../../lib/error/toast';
 import type { SearchResult, SearchScope } from '../types';
 import { SEARCH_QUICK_QUERIES } from '../../../content/brand';
 import { queryKeys } from '../../../lib/query-keys';
@@ -17,7 +18,7 @@ export interface SearchState {
   searching: boolean;
   collectionsLoading: boolean;
   collectionsData: string[] | undefined;
-  queryRef: RefObject<HTMLInputElement>;
+  queryRef: RefObject<HTMLInputElement | null>;
   setQuery: (value: string) => void;
   setScope: (value: SearchScope) => void;
   setSelectedCollection: (value: string) => void;
@@ -43,13 +44,18 @@ export const useSearchResults = (): SearchState => {
   });
 
   const searchMutation = useMutation({
-    mutationFn: async ({ collectionName, queryText }: { collectionName: string; queryText: string }) =>
-      searchCollectionByName(collectionName, queryText, 20),
+    mutationFn: async ({
+      collectionName,
+      queryText,
+    }: {
+      collectionName: string;
+      queryText: string;
+    }) => searchCollectionByName(collectionName, queryText, 20),
   });
 
   useEffect(() => {
     if (collectionsQuery.data && collectionsQuery.data.length > 0 && !selectedCollection) {
-      setSelectedCollection(collectionsQuery.data[0]);
+      setSelectedCollection(collectionsQuery.data[0]!);
     }
   }, [collectionsQuery.data, selectedCollection]);
 
@@ -57,7 +63,7 @@ export const useSearchResults = (): SearchState => {
     if (!collectionsQuery.error) return;
     const uiError = toUiError(collectionsQuery.error, {
       code: 'SEARCH_COLLECTIONS_FAILED',
-      userMessage: 'We could not load collections. Please try again.',
+      userMessage: getUserMessage(collectionsQuery.error),
     });
     setError(uiError.userMessage);
   }, [collectionsQuery.error]);
@@ -76,7 +82,7 @@ export const useSearchResults = (): SearchState => {
       } catch (err) {
         const uiError = toUiError(err, {
           code: 'SEARCH_QUERY_FAILED',
-          userMessage: 'Search failed. Please try again.',
+          userMessage: getUserMessage(err),
         });
         setError(uiError.userMessage);
         setResults([]);

@@ -11,7 +11,10 @@ interface StreamingMessageProps {
   prefersReducedMotion?: boolean;
 }
 
-const Lottie = dynamic(() => import('lottie-react'), { ssr: false });
+const Lottie = dynamic(() => import('lottie-react'), {
+  ssr: false,
+  loading: () => <div className="w-6 h-6 rounded-full bg-primary/20 animate-pulse" />,
+});
 
 const StreamingMessage = ({
   message,
@@ -28,12 +31,7 @@ const StreamingMessage = ({
         <div className="mt-3 flex items-center gap-2">
           <div className="w-6 h-6">
             {!prefersReducedMotion && animationData ? (
-              <Lottie
-                animationData={animationData}
-                loop
-                autoplay
-                className="h-full w-full"
-              />
+              <Lottie animationData={animationData} loop autoplay className="h-full w-full" />
             ) : (
               <div className="text-sm text-muted">Generating...</div>
             )}

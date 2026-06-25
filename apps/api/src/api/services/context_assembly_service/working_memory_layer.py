@@ -8,7 +8,7 @@ from typing import Any, Dict, List, Optional
 
 import structlog
 
-from ...storage.database import get_db
+from ...storage.database import get_readonly_db_context
 from ...storage.vector_models import ConversationSummaryModel
 from ...utils.tokenizer import count_tokens, trim_to_tokens
 from .models import ContextBudget, ContextLayer
@@ -24,10 +24,18 @@ async def get_working_memory_summaries(
     try:
         from sqlalchemy import select
 
-        async with get_db() as session:
+        from ...storage.models import ConversationModel
+
+        async with get_readonly_db_context() as session:
+            # Summaries carry no user_id column — ownership lives on the
+            # conversation, so scope through a join to enforce it.
             stmt = (
                 select(ConversationSummaryModel)
-                .filter(ConversationSummaryModel.user_id == user_id)
+                .join(
+                    ConversationModel,
+                    ConversationModel.conversation_id == ConversationSummaryModel.conversation_id,
+                )
+                .filter(ConversationModel.user_id == user_id)
                 .filter(ConversationSummaryModel.conversation_id == conversation_id)
                 .order_by(ConversationSummaryModel.created_at.desc())
                 .limit(5)
@@ -78,9 +86,7 @@ async def assemble_working_memory(
         tokens = count_tokens(summary_content)
 
         if tokens > budget.working_memory_tokens:
-            summary_content = trim_to_tokens(
-                summary_content, budget.working_memory_tokens
-            )
+            summary_content = trim_to_tokens(summary_content, budget.working_memory_tokens)
             tokens = budget.working_memory_tokens
 
         return ContextLayer(

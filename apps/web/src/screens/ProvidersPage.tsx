@@ -1,57 +1,26 @@
 import { useState, ReactNode } from 'react';
 import { useProviderSettings, ProviderConfig } from '../hooks/api/useSettings';
 import { useRoutingHealth } from '../hooks/api/useHealth';
-import { apiClient } from '@/api';
+import { useProviderMutations } from '../features/admin/providers/hooks/useProviderMutations';
 import TwoColumnLayout from '../components/TwoColumnLayout';
+import { ProviderCardSkeleton } from '../components/LoadingSkeleton';
+import { getUserMessage } from '../lib/error/toast';
 
-/**
- * Provider Manager: Select, test, and prioritize AI providers
- */
 const ProvidersPage = () => {
   const { data: providers, isLoading, error, refetch } = useProviderSettings();
   const { data: routingHealth } = useRoutingHealth();
+  const {
+    testing,
+    testResult,
+    setTestResult,
+    quickTest: handleTestConnection,
+  } = useProviderMutations();
   const providerList = providers as ProviderConfig[] | undefined;
   const routingStatus: string =
-    (routingHealth && typeof routingHealth === 'object' && 'status' in routingHealth)
+    routingHealth && typeof routingHealth === 'object' && 'status' in routingHealth
       ? String((routingHealth as { status: unknown }).status)
       : 'Healthy';
   const [selectedProvider, setSelectedProvider] = useState<ProviderConfig | null>(null);
-  const [testing, setTesting] = useState<string | null>(null);
-  const [testResult, setTestResult] = useState<{
-    success: boolean;
-    message: string;
-    latency?: number;
-  } | null>(null);
-
-  const handleTestConnection = async (provider: ProviderConfig) => {
-    setTesting(provider.name);
-    setTestResult(null);
-
-    try {
-      // Use real backend endpoint when providerId is available
-      if (provider.id) {
-        const result = (await apiClient.testProviderConnection(provider.id)) as {
-          success: boolean;
-          message: string;
-          latency?: number;
-        };
-        setTestResult(result);
-      } else {
-        // Fallback for providers without IDs (shouldn't happen in production)
-        setTestResult({
-          success: false,
-          message: 'Provider ID not available. Cannot test connection.',
-        });
-      }
-    } catch (error) {
-      setTestResult({
-        success: false,
-        message: error instanceof Error ? error.message : 'Connection test failed',
-      });
-    } finally {
-      setTesting(null);
-    }
-  };
 
   const sidebar: ReactNode = (
     <div className="space-y-4">
@@ -94,7 +63,10 @@ const ProvidersPage = () => {
           Active Providers
         </h3>
         {isLoading ? (
-          <div className="text-xs text-muted">Loading...</div>
+          <div className="space-y-2" role="status" aria-label="Loading providers">
+            <ProviderCardSkeleton />
+            <ProviderCardSkeleton />
+          </div>
         ) : providerList && providerList.length > 0 ? (
           providerList.map((provider: ProviderConfig) => (
             <button
@@ -132,7 +104,7 @@ const ProvidersPage = () => {
 
       {error && (
         <div className="bg-surface border border-danger rounded-lg p-4">
-          <p className="text-danger">Failed to load providers: {(error as Error).message}</p>
+          <p className="text-danger">Failed to load providers: {getUserMessage(error)}</p>
         </div>
       )}
 
@@ -266,7 +238,7 @@ const ProvidersPage = () => {
               <div>
                 <h3 className="text-sm font-semibold text-text mb-3">Available Models</h3>
                 <div className="flex flex-wrap gap-2">
-                  {selectedProvider.models.map(model => (
+                  {selectedProvider.models.map((model) => (
                     <span
                       key={model}
                       className="px-3 py-1 bg-primary/20 text-primary rounded-full text-xs font-medium"

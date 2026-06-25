@@ -12,10 +12,10 @@ export interface StartupDiagnostics {
   status: StartupDiagnosticStatus;
   message: string;
   timestamp: string;
-  authMs?: number;
-  configMs?: number;
-  runtimeMs?: number;
-  totalMs?: number;
+  authMs?: number | undefined;
+  configMs?: number | undefined;
+  runtimeMs?: number | undefined;
+  totalMs?: number | undefined;
 }
 
 const STORAGE_KEY = 'goblin_startup_diagnostics';

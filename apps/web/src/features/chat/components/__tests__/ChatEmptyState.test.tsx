@@ -1,12 +1,13 @@
 import React from 'react';
 import { render, screen, fireEvent } from '@testing-library/react';
 
-jest.mock('next/dynamic', () => () => {
-  return function MockLottie() {
-    return <div data-testid="lottie" />;
-  };
-});
-jest.mock('../../hooks/useGoblinLoaderAnimation', () => ({
+vi.mock('next/dynamic', () => ({
+  default: () =>
+    function MockLottie() {
+      return <div data-testid="lottie" />;
+    },
+}));
+vi.mock('../../hooks/useGoblinLoaderAnimation', () => ({
   __esModule: true,
   default: () => ({ frames: [] }),
 }));
@@ -20,9 +21,9 @@ const prompts = [
 ];
 
 describe('ChatEmptyState', () => {
-  const onPromptClick = jest.fn();
+  const onPromptClick = vi.fn();
 
-  beforeEach(() => jest.clearAllMocks());
+  beforeEach(() => vi.clearAllMocks());
 
   it('renders heading', () => {
     render(<ChatEmptyState quickPrompts={prompts} onPromptClick={onPromptClick} />);
@@ -51,7 +52,7 @@ describe('ChatEmptyState', () => {
     render(<ChatEmptyState quickPrompts={prompts} onPromptClick={onPromptClick} />);
     fireEvent.click(screen.getByText('Analyze a stock'));
     expect(onPromptClick).toHaveBeenCalledWith(
-      'Pull the latest data for AAPL \u2014 price, P/E, recent earnings summary, and analyst consensus.',
+      'Pull the latest data for AAPL \u2014 price, P/E, recent earnings summary, and analyst consensus.'
     );
   });
 
@@ -59,7 +60,7 @@ describe('ChatEmptyState', () => {
     render(<ChatEmptyState quickPrompts={prompts} onPromptClick={onPromptClick} />);
     fireEvent.click(screen.getByText('Run some code'));
     expect(onPromptClick).toHaveBeenCalledWith(
-      'Open the Python sandbox and show me how to fetch stock data with yfinance.',
+      'Open the Python sandbox and show me how to fetch stock data with yfinance.'
     );
   });
 
@@ -69,9 +70,11 @@ describe('ChatEmptyState', () => {
   });
 
   it('renders static icon when prefersReducedMotion', () => {
-    render(<ChatEmptyState quickPrompts={prompts} onPromptClick={onPromptClick} prefersReducedMotion />);
+    render(
+      <ChatEmptyState quickPrompts={prompts} onPromptClick={onPromptClick} prefersReducedMotion />
+    );
     expect(screen.queryByTestId('lottie')).not.toBeInTheDocument();
-    expect(screen.getByText('🧠')).toBeInTheDocument();
+    expect(screen.getByTestId('icon-Brain')).toBeInTheDocument();
   });
 
   it('renders help text at bottom', () => {

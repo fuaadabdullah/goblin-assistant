@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-import api.services.telemetry as telemetry
+from api.services import telemetry
 from api.services.telemetry import EventType
 
 
@@ -146,9 +146,7 @@ def test_log_error_event_routes_by_severity(monkeypatch):
 def test_hash_message_id_is_deterministic():
     masked = telemetry.mask_sensitive({"password": "x"})
     assert masked["password"] == "[REDACTED]"
-    assert telemetry.hash_message_id("hello") == telemetry.hash_message_id(
-        "hello"
-    )
+    assert telemetry.hash_message_id("hello") == telemetry.hash_message_id("hello")
 
 
 def test_event_type_contains_expected_values():

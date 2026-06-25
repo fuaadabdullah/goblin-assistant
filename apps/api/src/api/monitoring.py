@@ -3,14 +3,21 @@ Provider health monitoring and metrics collection
 """
 
 import asyncio
+import logging
 import time
-from typing import Dict, List, Any
+from typing import Any, Dict
+
 import httpx
+
 from .config.providers import get_provider_settings
 from .storage.cache import cache
 
-# Health check configuration
-HEALTH_CHECK_INTERVAL = 60  # seconds
+logger = logging.getLogger(__name__)
+
+# Health check configuration — sourced from providers.toml [default.health]
+from .config.providers import get_provider_config as _get_provider_config
+
+HEALTH_CHECK_INTERVAL: int = _get_provider_config().get("health_check_interval", 30)
 PROVIDER_HEALTH_KEY = "provider_health_status"
 
 
@@ -27,7 +34,7 @@ class ProviderMonitor:
 
         self._running = True
         self._task = asyncio.create_task(self._monitor_loop())
-        print("Provider monitor started")
+        logger.info("Provider monitor started")
 
     async def stop(self):
         """Stop the monitoring task"""
@@ -38,7 +45,7 @@ class ProviderMonitor:
                 await self._task
             except asyncio.CancelledError:
                 pass
-        print("Provider monitor stopped")
+        logger.info("Provider monitor stopped")
 
     async def _monitor_loop(self):
         """Main monitoring loop"""
@@ -46,9 +53,7 @@ class ProviderMonitor:
             try:
                 await self._check_providers()
             except Exception as e:
-                print(f"Error in provider monitor: {e}")
-                # Re-raise to see the full traceback for debugging
-                raise
+                logger.exception("Error in provider monitor: %s", e)
 
             await asyncio.sleep(HEALTH_CHECK_INTERVAL)
 

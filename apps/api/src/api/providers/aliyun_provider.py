@@ -15,14 +15,16 @@ from .base import BaseProvider, ProviderHealth, ProviderResult
 logger = structlog.get_logger(__name__)
 
 _DEFAULT_ENDPOINT = "https://dashscope-intl.aliyuncs.com/compatible-mode"
-_COST_TABLE: Dict[str, Dict[str, float]] = {
-    "qwen-max": {"input": 0.004, "output": 0.012},
-    "qwen-plus": {"input": 0.0008, "output": 0.002},
-    "qwen-turbo": {"input": 0.0002, "output": 0.0006},
-    "qwen2.5-72b": {"input": 0.0009, "output": 0.0009},
-    "qwen2.5-32b": {"input": 0.00045, "output": 0.00045},
-    "qwen2.5-14b": {"input": 0.00023, "output": 0.00023},
-    "qwen2.5-7b": {"input": 0.0001, "output": 0.0001},
+_BODY_PASSTHROUGH = {
+    "top_p",
+    "stream",
+    "tools",
+    "tool_choice",
+    "response_format",
+    "stop",
+    "seed",
+    "presence_penalty",
+    "frequency_penalty",
 }
 
 
@@ -34,9 +36,6 @@ def _normalize_compatible_base_url(value: str) -> str:
 
 
 class AliyunProvider(BaseProvider):
-    COST_INPUT_PER_1K = 0.0008
-    COST_OUTPUT_PER_1K = 0.002
-
     def __init__(
         self,
         provider_id: str | Dict[str, Any],
@@ -44,10 +43,12 @@ class AliyunProvider(BaseProvider):
     ) -> None:
         super().__init__(provider_id, config)
         self._api_key = os.getenv(self.config.get("api_key_env", "DASHSCOPE_API_KEY"), "").strip()
-        self._base_url = _normalize_compatible_base_url(os.getenv(
-            "DASHSCOPE_ENDPOINT",
-            self.endpoint or _DEFAULT_ENDPOINT,
-        ))
+        self._base_url = _normalize_compatible_base_url(
+            os.getenv(
+                "DASHSCOPE_ENDPOINT",
+                self.endpoint or _DEFAULT_ENDPOINT,
+            )
+        )
         self.endpoint = self._base_url
 
     def _headers(self) -> Dict[str, str]:
@@ -55,13 +56,6 @@ class AliyunProvider(BaseProvider):
             "Authorization": f"Bearer {self._api_key}",
             "Content-Type": "application/json",
         }
-
-    def _model_cost(self, model: str) -> Dict[str, float]:
-        lowered = model.lower()
-        for key, costs in _COST_TABLE.items():
-            if key in lowered:
-                return costs
-        return {"input": self.COST_INPUT_PER_1K, "output": self.COST_OUTPUT_PER_1K}
 
     async def invoke(
         self,
@@ -89,7 +83,7 @@ class AliyunProvider(BaseProvider):
             "messages": normalized_messages,
             "max_tokens": max_tokens,
             "temperature": temperature,
-            **kwargs,
+            **{k: v for k, v in kwargs.items() if k in _BODY_PASSTHROUGH},
         }
         t0 = time.perf_counter()
         try:
@@ -100,15 +94,37 @@ class AliyunProvider(BaseProvider):
                     json=body,
                 )
             latency = (time.perf_counter() - t0) * 1000
+            if resp.status_code == 401:
+                self.record_failure("invalid_api_key")
+                return ProviderResult(
+                    ok=False,
+                    provider=self.provider_id,
+                    model=model_name,
+                    latency_ms=latency,
+                    error="DASHSCOPE_API_KEY rejected by Aliyun (401 invalid_api_key)",
+                )
+            if resp.status_code == 403:
+                self.record_failure("model_access_denied")
+                return ProviderResult(
+                    ok=False,
+                    provider=self.provider_id,
+                    model=model_name,
+                    latency_ms=latency,
+                    error=(
+                        f"Model '{model_name}' access denied by Aliyun (403). "
+                        "Activate it in Model Studio → Model Gallery, "
+                        "or ensure workspace has free quota / billing."
+                    ),
+                )
             resp.raise_for_status()
             data = resp.json()
 
             text = data["choices"][0]["message"]["content"]
             usage = data.get("usage", {})
-            costs = self._model_cost(model_name)
-            cost = (
-                int(usage.get("prompt_tokens", 0)) * costs["input"] / 1000
-                + int(usage.get("completion_tokens", 0)) * costs["output"] / 1000
+            cost = self.estimate_cost(
+                int(usage.get("prompt_tokens", 0)),
+                int(usage.get("completion_tokens", 0)),
+                model=model_name,
             )
             self.record_success()
             return ProviderResult(
@@ -151,29 +167,31 @@ class AliyunProvider(BaseProvider):
             "max_tokens": max_tokens,
             "temperature": temperature,
             "stream": True,
-            **kwargs,
+            **{k: v for k, v in kwargs.items() if k in _BODY_PASSTHROUGH and k != "stream"},
         }
-        async with httpx.AsyncClient(timeout=120) as client:
-            async with client.stream(
+        async with (
+            httpx.AsyncClient(timeout=120) as client,
+            client.stream(
                 "POST",
                 f"{self._base_url}/v1/chat/completions",
                 headers=self._headers(),
                 json=body,
-            ) as resp:
-                resp.raise_for_status()
-                async for line in resp.aiter_lines():
-                    if not line.startswith("data: "):
-                        continue
-                    payload = line[6:].strip()
-                    if payload == "[DONE]":
-                        break
-                    try:
-                        chunk = json.loads(payload)
-                    except json.JSONDecodeError:
-                        continue
-                    delta = chunk["choices"][0]["delta"].get("content", "")
-                    if delta:
-                        yield {"text": delta}
+            ) as resp,
+        ):
+            resp.raise_for_status()
+            async for line in resp.aiter_lines():
+                if not line.startswith("data: "):
+                    continue
+                payload = line[6:].strip()
+                if payload == "[DONE]":
+                    break
+                try:
+                    chunk = json.loads(payload)
+                except json.JSONDecodeError:
+                    continue
+                delta = chunk["choices"][0]["delta"].get("content", "")
+                if delta:
+                    yield {"text": delta}
 
     async def health_check(self) -> ProviderHealth:
         if not self._api_key:
@@ -188,11 +206,7 @@ class AliyunProvider(BaseProvider):
                 self.provider_id,
                 resp.status_code < 400,
                 latency_ms=latency,
-                error=(
-                    None
-                    if resp.status_code < 400
-                    else f"HTTP {resp.status_code}"
-                ),
+                error=(None if resp.status_code < 400 else f"HTTP {resp.status_code}"),
             )
         except httpx.TimeoutException:
             latency = (time.perf_counter() - t0) * 1000

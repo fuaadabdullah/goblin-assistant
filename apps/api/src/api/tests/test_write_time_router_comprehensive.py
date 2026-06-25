@@ -1,19 +1,20 @@
 """Tests for write_time_router module."""
 
-import pytest
-from unittest.mock import AsyncMock, MagicMock, patch
 from datetime import datetime
-from fastapi.testclient import TestClient
-from fastapi import FastAPI
+from unittest.mock import AsyncMock, MagicMock, patch
 
-from api.write_time_router import router, TEST_MESSAGES
+import pytest
+from fastapi import FastAPI
+from fastapi.testclient import TestClient
+
+from api.write_time_router import TEST_MESSAGES, router
 
 
 @pytest.fixture
 def app():
     """Create a FastAPI test app with write_time router."""
     app = FastAPI()
-    app.include_router(router)
+    app.include_router(router, prefix="/api/v1")
     return app
 
 
@@ -28,9 +29,7 @@ class TestMessageProcessing:
 
     def test_test_message_processing_success(self, client):
         """Test successful message processing."""
-        with patch(
-            "api.write_time_router._get_write_time_intelligence"
-        ) as mock_get:
+        with patch("api.write_time_router._get_write_time_intelligence") as mock_get:
             mock_intelligence = AsyncMock()
             mock_get.return_value = mock_intelligence
 
@@ -48,7 +47,7 @@ class TestMessageProcessing:
                 "user_id": "user_123",
             }
 
-            response = client.post("/write-time/test", json=request_data)
+            response = client.post("/api/v1/write-time/test", json=request_data)
 
             assert response.status_code == 200
             data = response.json()
@@ -57,22 +56,15 @@ class TestMessageProcessing:
 
     def test_message_processing_exception(self, client):
         """Test message processing with exception."""
-        with patch(
-            "api.write_time_router._get_write_time_intelligence"
-        ) as mock_get:
+        with patch("api.write_time_router._get_write_time_intelligence") as mock_get:
             mock_intelligence = AsyncMock()
             mock_get.return_value = mock_intelligence
-            mock_intelligence.process_message.side_effect = Exception(
-                "Processing failed"
-            )
+            mock_intelligence.process_message.side_effect = Exception("Processing failed")
 
-            response = client.post(
-                "/write-time/test",
-                json={"content": "test"}
-            )
+            response = client.post("/api/v1/write-time/test", json={"content": "test"})
 
             assert response.status_code == 500
-            assert "Processing failed" in response.json()["detail"]
+            assert response.json()["detail"] == "Test processing failed: Processing failed"
 
 
 class TestCacheStatsEndpoint:
@@ -80,9 +72,7 @@ class TestCacheStatsEndpoint:
 
     def test_cache_stats_success(self, client):
         """Test cache stats retrieval."""
-        with patch(
-            "api.write_time_router.cache_service"
-        ) as mock_cache:
+        with patch("api.write_time_router.cache_service") as mock_cache:
             mock_cache.get_cache_stats = AsyncMock(
                 return_value={
                     "status": "healthy",
@@ -92,7 +82,7 @@ class TestCacheStatsEndpoint:
                 }
             )
 
-            response = client.get("/write-time/cache/stats")
+            response = client.get("/api/v1/write-time/cache/stats")
 
             assert response.status_code == 200
             data = response.json()
@@ -101,16 +91,13 @@ class TestCacheStatsEndpoint:
 
     def test_cache_stats_exception(self, client):
         """Test cache stats with exception."""
-        with patch(
-            "api.write_time_router.cache_service"
-        ) as mock_cache:
-            mock_cache.get_cache_stats = AsyncMock(
-                side_effect=Exception("Redis connection failed")
-            )
+        with patch("api.write_time_router.cache_service") as mock_cache:
+            mock_cache.get_cache_stats = AsyncMock(side_effect=Exception("Redis connection failed"))
 
-            response = client.get("/write-time/cache/stats")
+            response = client.get("/api/v1/write-time/cache/stats")
 
             assert response.status_code == 500
+            assert response.json()["detail"] == "Failed to get cache stats: Redis connection failed"
 
 
 class TestCacheCleanupEndpoint:
@@ -118,9 +105,7 @@ class TestCacheCleanupEndpoint:
 
     def test_cache_cleanup_success(self, client):
         """Test cache cleanup."""
-        with patch(
-            "api.write_time_router.cache_service"
-        ) as mock_cache:
+        with patch("api.write_time_router.cache_service") as mock_cache:
             mock_cache.cleanup_expired_keys = AsyncMock(
                 return_value={
                     "status": "success",
@@ -128,7 +113,7 @@ class TestCacheCleanupEndpoint:
                 }
             )
 
-            response = client.post("/write-time/cache/cleanup")
+            response = client.post("/api/v1/write-time/cache/cleanup")
 
             assert response.status_code == 200
             data = response.json()
@@ -136,16 +121,13 @@ class TestCacheCleanupEndpoint:
 
     def test_cache_cleanup_exception(self, client):
         """Test cache cleanup with exception."""
-        with patch(
-            "api.write_time_router.cache_service"
-        ) as mock_cache:
-            mock_cache.cleanup_expired_keys = AsyncMock(
-                side_effect=Exception("Cleanup failed")
-            )
+        with patch("api.write_time_router.cache_service") as mock_cache:
+            mock_cache.cleanup_expired_keys = AsyncMock(side_effect=Exception("Cleanup failed"))
 
-            response = client.post("/write-time/cache/cleanup")
+            response = client.post("/api/v1/write-time/cache/cleanup")
 
             assert response.status_code == 500
+            assert response.json()["detail"] == "Cache cleanup failed: Cleanup failed"
 
 
 class TestDecisionMatrixConfigEndpoint:
@@ -153,9 +135,7 @@ class TestDecisionMatrixConfigEndpoint:
 
     def test_decision_matrix_config(self, client):
         """Test decision matrix config retrieval."""
-        with patch(
-            "api.write_time_router._get_write_time_decision_matrix"
-        ) as mock_get:
+        with patch("api.write_time_router._get_write_time_decision_matrix") as mock_get:
             mock_matrix_class = MagicMock()
             mock_instance = MagicMock()
             mock_matrix_class.return_value = mock_instance
@@ -170,7 +150,7 @@ class TestDecisionMatrixConfigEndpoint:
 
             mock_get.return_value = mock_matrix_class
 
-            response = client.get("/write-time/matrix/config")
+            response = client.get("/api/v1/write-time/matrix/config")
 
             assert response.status_code == 200
             data = response.json()
@@ -179,14 +159,13 @@ class TestDecisionMatrixConfigEndpoint:
 
     def test_decision_matrix_exception(self, client):
         """Test decision matrix with exception."""
-        with patch(
-            "api.write_time_router._get_write_time_decision_matrix"
-        ) as mock_get:
+        with patch("api.write_time_router._get_write_time_decision_matrix") as mock_get:
             mock_get.side_effect = Exception("Matrix load failed")
 
-            response = client.get("/write-time/matrix/config")
+            response = client.get("/api/v1/write-time/matrix/config")
 
             assert response.status_code == 500
+            assert response.json()["detail"] == "Failed to get matrix config: Matrix load failed"
 
 
 class TestWriteTimeMetricsEndpoint:
@@ -194,11 +173,10 @@ class TestWriteTimeMetricsEndpoint:
 
     def test_write_time_metrics(self, client):
         """Test metrics retrieval."""
-        with patch(
-            "api.write_time_router.cache_service"
-        ) as mock_cache, patch(
-            "api.write_time_router._get_write_time_decision_matrix"
-        ) as mock_get:
+        with (
+            patch("api.write_time_router.cache_service") as mock_cache,
+            patch("api.write_time_router._get_write_time_decision_matrix") as mock_get,
+        ):
             mock_cache.get_cache_stats = AsyncMock(
                 return_value={
                     "status": "healthy",
@@ -223,7 +201,7 @@ class TestWriteTimeMetricsEndpoint:
 
             mock_get.return_value = mock_matrix_class
 
-            response = client.get("/write-time/metrics")
+            response = client.get("/api/v1/write-time/metrics")
 
             assert response.status_code == 200
             data = response.json()
@@ -235,12 +213,10 @@ class TestCacheClearEndpoint:
 
     def test_cache_clear_success(self, client):
         """Test cache clear."""
-        with patch(
-            "api.write_time_router.cache_service"
-        ) as mock_cache:
+        with patch("api.write_time_router.cache_service") as mock_cache:
             mock_cache.flush = AsyncMock(return_value=True)
 
-            response = client.post("/write-time/cache/clear")
+            response = client.post("/api/v1/write-time/cache/clear")
 
             assert response.status_code == 200
             data = response.json()
@@ -248,14 +224,13 @@ class TestCacheClearEndpoint:
 
     def test_cache_clear_failure(self, client):
         """Test cache clear failure."""
-        with patch(
-            "api.write_time_router.cache_service"
-        ) as mock_cache:
+        with patch("api.write_time_router.cache_service") as mock_cache:
             mock_cache.flush = AsyncMock(return_value=False)
 
-            response = client.post("/write-time/cache/clear")
+            response = client.post("/api/v1/write-time/cache/clear")
 
             assert response.status_code == 500
+            assert response.json()["detail"] == "Failed to clear cache"
 
 
 class TestTestExamplesEndpoint:
@@ -263,7 +238,7 @@ class TestTestExamplesEndpoint:
 
     def test_test_examples(self, client):
         """Test examples endpoint."""
-        response = client.get("/write-time/test/examples")
+        response = client.get("/api/v1/write-time/test/examples")
 
         assert response.status_code == 200
         data = response.json()
@@ -283,9 +258,7 @@ class TestBatchProcessingEndpoint:
 
     def test_batch_processing_success(self, client):
         """Test batch message processing."""
-        with patch(
-            "api.write_time_router._get_write_time_intelligence"
-        ) as mock_get:
+        with patch("api.write_time_router._get_write_time_intelligence") as mock_get:
             mock_intelligence = AsyncMock()
             mock_get.return_value = mock_intelligence
 
@@ -301,9 +274,7 @@ class TestBatchProcessingEndpoint:
                     "message_id": "batch_1",
                     "classification": {"type": "fact"},
                     "decision": {"action": "store_and_embed"},
-                    "execution": {
-                        "actions_executed": ["store", "embed"]
-                    },
+                    "execution": {"actions_executed": ["store", "embed"]},
                     "processed_at": datetime.utcnow().isoformat(),
                 },
             ]
@@ -313,7 +284,7 @@ class TestBatchProcessingEndpoint:
                 {"content": "I am a developer", "role": "user"},
             ]
 
-            response = client.post("/write-time/test/batch", json=request_data)
+            response = client.post("/api/v1/write-time/test/batch", json=request_data)
 
             assert response.status_code == 200
             data = response.json()
@@ -322,17 +293,30 @@ class TestBatchProcessingEndpoint:
 
     def test_batch_processing_empty(self, client):
         """Test batch with empty list."""
-        with patch(
-            "api.write_time_router._get_write_time_intelligence"
-        ) as mock_get:
+        with patch("api.write_time_router._get_write_time_intelligence") as mock_get:
             mock_intelligence = AsyncMock()
             mock_get.return_value = mock_intelligence
 
-            response = client.post("/write-time/test/batch", json=[])
+            response = client.post("/api/v1/write-time/test/batch", json=[])
 
             assert response.status_code == 200
             data = response.json()
             assert data["total_messages"] == 0
+
+    def test_batch_processing_exception(self, client):
+        """Test batch processing with exception."""
+        with patch("api.write_time_router._get_write_time_intelligence") as mock_get:
+            mock_intelligence = AsyncMock()
+            mock_get.return_value = mock_intelligence
+            mock_intelligence.process_message.side_effect = Exception("Batch failure")
+
+            response = client.post(
+                "/api/v1/write-time/test/batch",
+                json=[{"content": "Hello", "role": "user"}],
+            )
+
+            assert response.status_code == 500
+            assert response.json()["detail"] == "Batch testing failed: Batch failure"
 
 
 class TestConstantData:
@@ -342,9 +326,7 @@ class TestConstantData:
         """Test TEST_MESSAGES structure."""
         assert isinstance(TEST_MESSAGES, dict)
 
-        required = [
-            "chat", "fact", "preference", "task_result", "system"
-        ]
+        required = ["chat", "fact", "preference", "task_result", "system"]
         for category in required:
             assert category in TEST_MESSAGES
             assert isinstance(TEST_MESSAGES[category], list)

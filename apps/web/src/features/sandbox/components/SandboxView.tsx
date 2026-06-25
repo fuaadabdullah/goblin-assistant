@@ -37,6 +37,7 @@ const SandboxView = ({ session, isGuest = false, onRequireAuth }: SandboxViewPro
       loading={session.loading}
       code={session.code}
       jobs={isGuest ? [] : session.jobs}
+      jobsError={isGuest ? null : session.jobsError}
       selectedJobId={session.selectedJob?.id}
       onLanguageChange={session.setLanguage}
       onRun={session.runCode}
@@ -60,7 +61,11 @@ const SandboxView = ({ session, isGuest = false, onRequireAuth }: SandboxViewPro
 
   return (
     <>
-      <Seo title="Sandbox" description="Run safe experiments in Goblin Assistant." robots="noindex,nofollow" />
+      <Seo
+        title="Sandbox"
+        description="Run safe experiments in Goblin Assistant."
+        robots="noindex,nofollow"
+      />
       <TwoColumnLayout sidebar={sidebar}>{mainContent}</TwoColumnLayout>
     </>
   );

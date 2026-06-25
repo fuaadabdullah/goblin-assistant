@@ -1,0 +1,154 @@
+{
+  "capabilities": [
+    {
+      "name": "chat",
+      "owned_modules": [
+        "api.chat_router",
+        "api.semantic_chat_router",
+        "api.stream_router"
+      ],
+      "allowed_dependency_prefixes": [
+        "api.chat_router",
+        "api.services",
+        "api.core",
+        "api.auth",
+        "api.routing",
+        "api.providers.dispatcher",
+        "api.providers.base",
+        "api.providers.contracts",
+        "api.storage",
+        "api.input_validation",
+        "api.assistant_tools",
+        "api.config",
+        "api.observability",
+        "api.integrations"
+      ]
+    },
+    {
+      "name": "providers",
+      "owned_modules": [
+        "api.providers",
+        "api.services.provider_health"
+      ],
+      "allowed_dependency_prefixes": [
+        "api.providers",
+        "api.services.provider_health",
+        "api.core",
+        "api.config",
+        "api.routing",
+        "api.observability"
+      ]
+    },
+    {
+      "name": "memory",
+      "owned_modules": [
+        "api.services.retrieval_service",
+        "api.services.memory_promotion_service",
+        "api.services.tool_result_memory_service",
+        "api.services.embedding_service",
+        "api.services.safe_vector_store"
+      ],
+      "allowed_dependency_prefixes": [
+        "api.services",
+        "api.storage",
+        "api.providers.base",
+        "api.utils",
+        "api.core",
+        "api.observability",
+        "api.config"
+      ]
+    },
+    {
+      "name": "sandbox",
+      "owned_modules": [
+        "api.sandbox_api",
+        "api.assistant_tools"
+      ],
+      "allowed_dependency_prefixes": [
+        "api.sandbox_api",
+        "api.assistant_tools",
+        "api.services",
+        "api.middleware",
+        "api.artifact_service",
+        "api.sandbox_metrics",
+        "api.core",
+        "api.storage",
+        "api.observability",
+        "api.config"
+      ]
+    },
+    {
+      "name": "auth",
+      "owned_modules": [
+        "api.auth"
+      ],
+      "allowed_dependency_prefixes": [
+        "api.auth",
+        "api.core",
+        "api.storage",
+        "api.config",
+        "api.observability",
+        "api.integrations"
+      ]
+    },
+    {
+      "name": "orchestration",
+      "owned_modules": [
+        "api.parse_router",
+        "api.routing",
+        "api.write_time_router",
+        "api.core.orchestration"
+      ],
+      "allowed_dependency_prefixes": [
+        "api.parse_router",
+        "api.routing",
+        "api.write_time_router",
+        "api.core.orchestration",
+        "api.services",
+        "api.core",
+        "api.providers.dispatcher",
+        "api.providers.base",
+        "api.providers.contracts",
+        "api.config",
+        "api.observability"
+      ]
+    }
+  ],
+  "rules": {
+    "global_forbidden_provider_module_prefixes": [
+      "api.providers.openai_provider",
+      "api.providers.anthropic_provider",
+      "api.providers.azure_provider",
+      "api.providers.vertex_provider",
+      "api.providers.aliyun_provider",
+      "api.providers.ollama_provider",
+      "api.providers.llamacpp_provider",
+      "api.providers.openai_compatible",
+      "api.providers.siliconeflow",
+      "api.providers.mock_provider"
+    ],
+    "global_provider_import_owner_prefixes": [
+      "api.providers.__init__",
+      "api.providers.dispatcher",
+      "api.providers.generic",
+      "api.providers.gemini",
+      "api.providers.groq",
+      "api.providers.siliconeflow",
+      "api.services.provider_health",
+      "api.tests"
+    ],
+    "orchestration_forbidden_import_prefixes": [
+      "api.storage.",
+      "api.providers.openai_provider",
+      "api.providers.anthropic_provider",
+      "api.providers.azure_provider",
+      "api.providers.vertex_provider",
+      "api.providers.aliyun_provider",
+      "api.providers.ollama_provider",
+      "api.providers.llamacpp_provider",
+      "api.providers.openai_compatible",
+      "api.providers.siliconeflow",
+      "api.providers.mock_provider"
+    ]
+  }
+}

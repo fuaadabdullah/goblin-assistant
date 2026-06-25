@@ -1,6 +1,8 @@
+'use client';
+
 import React from 'react';
 import Link from 'next/link';
-import { useRouter } from 'next/router';
+import { useRouter, usePathname } from 'next/navigation';
 import { MessageSquare, Search, Settings, LogOut, Home, X, Menu } from 'lucide-react';
 import Logo from './Logo';
 import MobileDrawer from './MobileDrawer';
@@ -12,6 +14,7 @@ interface LayoutProps {
 
 const Layout: React.FC<LayoutProps> = ({ children }) => {
   const router = useRouter();
+  const pathname = usePathname();
   const setMobileNavOpen = useUIStore((s) => s.setMobileNavOpen);
   const isMobileMenuOpen = useUIStore((s) => s.mobileNavOpen);
 
@@ -25,9 +28,9 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
   React.useEffect(() => {
     // Close mobile nav on route changes
     setMobileNavOpen(false);
-  }, [router.asPath, setMobileNavOpen]);
+  }, [pathname, setMobileNavOpen]);
 
-  const isActive = (path: string) => router.pathname === path;
+  const isActive = (path: string) => pathname === path;
 
   const navItems = [
     { path: '/', icon: Home, label: 'Home' },
@@ -48,23 +51,30 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
                 href="/"
                 className="flex items-center space-x-3 hover:opacity-80 transition-opacity"
               >
-                <Logo size="sm" variant="simple" animated={false} decorative ariaLabel="Goblin Assistant" />
+                <Logo
+                  size="sm"
+                  variant="simple"
+                  animated={false}
+                  decorative
+                  ariaLabel="Goblin Assistant"
+                />
                 <h1 className="text-xl font-bold text-text hidden sm:block">Goblin Assistant</h1>
               </Link>
             </div>
 
             {/* Desktop Navigation */}
             <nav className="hidden md:flex items-center space-x-1">
-              {navItems.map(item => {
+              {navItems.map((item) => {
                 const Icon = item.icon;
                 return (
                   <Link
                     key={item.path}
                     href={item.path}
-                    className={`flex items-center space-x-2 px-3 py-2 rounded-md text-sm font-medium transition-colors ${isActive(item.path)
+                    className={`flex items-center space-x-2 px-3 py-2 rounded-md text-sm font-medium transition-colors ${
+                      isActive(item.path)
                         ? 'text-primary bg-primary/10 border border-primary/30'
                         : 'text-muted hover:text-text hover:bg-surface-hover'
-                      }`}
+                    }`}
                   >
                     <Icon className="h-4 w-4" />
                     <span>{item.label}</span>
@@ -98,17 +108,18 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
         {/* Mobile Navigation rendered via MobileDrawer */}
         <MobileDrawer title="Menu" ariaLabel="Primary mobile navigation">
           <div className="px-2 pt-2 pb-3 space-y-1">
-            {navItems.map(item => {
+            {navItems.map((item) => {
               const Icon = item.icon;
               return (
                 <Link
                   key={item.path}
                   href={item.path}
                   onClick={() => setMobileNavOpen(false)}
-                  className={`flex items-center space-x-3 px-3 py-2 rounded-md text-base font-medium transition-colors ${isActive(item.path)
+                  className={`flex items-center space-x-3 px-3 py-2 rounded-md text-base font-medium transition-colors ${
+                    isActive(item.path)
                       ? 'text-primary bg-primary/10 border border-primary/30'
                       : 'text-muted hover:text-text hover:bg-surface-hover'
-                    }`}
+                  }`}
                 >
                   <Icon className="h-5 w-5" />
                   <span>{item.label}</span>

@@ -1,4 +1,5 @@
-import { resolveStartupDestinationRoute } from '../useStartupFlow';
+import { describe, expect, it } from 'vitest';
+import { buildStartupErrorMessage, resolveStartupDestinationRoute } from '../useStartupFlow';
 
 describe('resolveStartupDestinationRoute', () => {
   it('returns / for unauthenticated users', () => {
@@ -41,3 +42,18 @@ describe('resolveStartupDestinationRoute', () => {
     ).toBe('/chat');
   });
 });
+
+describe('buildStartupErrorMessage', () => {
+  it('preserves underlying error messages', () => {
+    expect(buildStartupErrorMessage(new Error('Auth bootstrap failed'))).toBe(
+      'Auth bootstrap failed'
+    );
+  });
+
+  it('falls back for unknown values', () => {
+    expect(buildStartupErrorMessage('bad')).toBe(
+      'We hit a snag while booting. Redirecting to help.'
+    );
+  });
+});
+

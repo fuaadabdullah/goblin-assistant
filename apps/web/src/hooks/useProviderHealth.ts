@@ -1,10 +1,8 @@
 import { useQuery } from '@tanstack/react-query';
-import { apiClient } from '@/api';
+import { apiClient } from '@/lib/api';
 import { queryKeys } from '@/lib/query-keys';
-import {
-  normalizeProviderId,
-  PROVIDER_ID_ALIASES,
-} from '@/lib/providers/normalizeProvider';
+import { normalizeProviderId, PROVIDER_ID_ALIASES } from '@/lib/providers/normalizeProvider';
+import { getUserMessage } from '@/lib/error/toast';
 
 interface RegistryModel {
   name?: string;
@@ -80,7 +78,7 @@ export function useProviderHealth() {
     for (const providerEntry of registryProviders) {
       const provider = normalizeProviderId(
         typeof providerEntry?.id === 'string' ? providerEntry.id : '',
-        PROVIDER_ID_ALIASES,
+        PROVIDER_ID_ALIASES
       );
       if (!provider) continue;
 
@@ -100,9 +98,7 @@ export function useProviderHealth() {
         health: normalizeHealth(providerEntry?.health),
         is_selectable: isSelectable(providerEntry?.is_selectable),
         health_reason:
-          typeof providerEntry?.health_reason === 'string'
-            ? providerEntry.health_reason
-            : null,
+          typeof providerEntry?.health_reason === 'string' ? providerEntry.health_reason : null,
         model_metadata: {},
       });
     }
@@ -110,7 +106,7 @@ export function useProviderHealth() {
     for (const item of registryModels) {
       const provider = normalizeProviderId(
         typeof item?.provider === 'string' ? item.provider : '',
-        PROVIDER_ID_ALIASES,
+        PROVIDER_ID_ALIASES
       );
       const model = typeof item?.name === 'string' ? item.name.trim() : '';
       if (!provider || !model) continue;
@@ -147,8 +143,7 @@ export function useProviderHealth() {
         metadata[modelName] = {
           health: normalizeHealth(meta?.health),
           is_selectable: isSelectable(meta?.is_selectable),
-          health_reason:
-            typeof meta?.health_reason === 'string' ? meta.health_reason : null,
+          health_reason: typeof meta?.health_reason === 'string' ? meta.health_reason : null,
         };
       }
 
@@ -168,11 +163,7 @@ export function useProviderHealth() {
     }
   }
 
-  const error = registryQuery.error
-    ? registryQuery.error instanceof Error
-      ? registryQuery.error.message
-      : 'Unknown error loading providers'
-    : null;
+  const error = registryQuery.error ? getUserMessage(registryQuery.error) : null;
 
   return {
     providers: providerNames,

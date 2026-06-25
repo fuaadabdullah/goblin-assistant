@@ -1,21 +1,41 @@
 import { useQuery } from '@tanstack/react-query';
-import { apiClient } from '@/api';
+import { apiClient } from '@/lib/api';
 import { queryKeys } from '../lib/query-keys';
 import type { HealthStatus } from '../types/api';
 
 interface HealthData {
   status: 'healthy' | 'degraded' | 'down';
-  latency_ms?: number;
-  last_check?: string;
-  services?: Record<string, string>;
+  latency_ms?: number | undefined;
+  last_check?: string | undefined;
+  services?: Record<string, string> | undefined;
 }
 
-const mapOverallStatus = (
-  overall: HealthStatus['overall'] | undefined
-): HealthData['status'] => {
-  if (overall === 'healthy') return 'healthy';
-  if (overall === 'degraded') return 'degraded';
+const mapOverallStatus = (overall: string | undefined): HealthData['status'] => {
+  if (overall === 'healthy' || overall === 'ok') return 'healthy';
+  if (overall === 'degraded' || overall === 'warnings' || overall === 'warning') return 'degraded';
   return 'down';
+};
+
+const getOverallHealth = (data: HealthStatus): string | undefined => {
+  const record = data as unknown as Record<string, unknown>;
+  return typeof record['overall'] === 'string'
+    ? record['overall']
+    : typeof record['status'] === 'string'
+      ? record['status']
+      : undefined;
+};
+
+const getHealthServices = (data: HealthStatus): Record<string, { status?: string }> => {
+  const record = data as unknown as Record<string, unknown>;
+  const services = record['services'];
+  if (services && typeof services === 'object') {
+    return services as Record<string, { status?: string }>;
+  }
+  const components = record['components'];
+  if (components && typeof components === 'object') {
+    return components as Record<string, { status?: string }>;
+  }
+  return {};
 };
 
 interface HealthHeaderProps {
@@ -31,13 +51,13 @@ const createHealthData = async (): Promise<HealthData> => {
     const data = await apiClient.getAllHealth();
     const latency = Date.now() - startTime;
 
-    const services = data.services || {};
-    const serviceStatuses = Object.values(services).map(service => service?.status);
-    let status: HealthData['status'] = mapOverallStatus(data.overall);
+    const services = getHealthServices(data);
+    const serviceStatuses = Object.values(services).map((service) => service?.status);
+    let status: HealthData['status'] = mapOverallStatus(getOverallHealth(data));
 
-    if (serviceStatuses.some(s => s === 'unhealthy')) {
+    if (serviceStatuses.some((s) => s === 'unhealthy' || s === 'down' || s === 'error')) {
       status = 'down';
-    } else if (serviceStatuses.some(s => s === 'degraded')) {
+    } else if (serviceStatuses.some((s) => s === 'degraded' || s === 'unknown')) {
       status = 'degraded';
     }
 
@@ -45,12 +65,15 @@ const createHealthData = async (): Promise<HealthData> => {
       status,
       latency_ms: latency,
       last_check: new Date().toISOString(),
-      services: Object.entries(services).reduce<NonNullable<HealthData['services']>>((acc, [key, value]) => {
-        if (typeof value?.status === 'string') {
-          acc[key as keyof HealthData['services']] = value.status;
-        }
-        return acc;
-      }, {}),
+      services: Object.entries(services).reduce<NonNullable<HealthData['services']>>(
+        (acc, [key, value]) => {
+          if (typeof value?.status === 'string') {
+            acc[key as keyof HealthData['services']] = value.status;
+          }
+          return acc;
+        },
+        {}
+      ),
     };
   } catch {
     return {

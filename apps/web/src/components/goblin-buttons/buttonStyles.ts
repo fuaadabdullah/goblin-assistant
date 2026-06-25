@@ -1,6 +1,14 @@
-export type ButtonStyleVariant = 'primary' | 'cta' | 'danger' | 'ghost' | 'icon-ghost' | 'icon-primary' | 'icon-danger';
+export type ButtonStyleVariant =
+  | 'primary'
+  | 'cta'
+  | 'danger'
+  | 'ghost'
+  | 'icon-ghost'
+  | 'icon-primary'
+  | 'icon-danger';
 
-export const baseButtonStyles = 'rounded-md text-sm font-semibold tracking-wide transition-all duration-150 disabled:opacity-50 disabled:cursor-not-allowed focus-visible:outline focus-visible:outline-2 focus-visible:outline-primary focus-visible:outline-offset-2';
+export const baseButtonStyles =
+  'rounded-md text-sm font-semibold tracking-wide transition-all duration-150 disabled:opacity-50 disabled:cursor-not-allowed focus-visible:outline focus-visible:outline-2 focus-visible:outline-primary focus-visible:outline-offset-2';
 
 export const getButtonClasses = (variant: ButtonStyleVariant, className = ''): string => {
   switch (variant) {

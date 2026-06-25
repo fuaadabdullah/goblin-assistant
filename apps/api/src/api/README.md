@@ -78,4 +78,4 @@ That means:
 ## What To Read Next
 
 - `docs/README.md`: route inventory and current API notes
-- `../docs/ARCHITECTURE_OVERVIEW.md`: how the frontend talks to this backend
+- `../docs/architecture/ARCHITECTURE_OVERVIEW.md`: how the frontend talks to this backend

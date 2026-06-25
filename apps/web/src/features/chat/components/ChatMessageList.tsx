@@ -2,13 +2,18 @@
 
 import type { RefObject } from 'react';
 import { useMemo, useState } from 'react';
+import dynamic from 'next/dynamic';
 import type { ChatMessage, QuickPrompt } from '../types';
 import StreamingMessage from './StreamingMessage';
 import MessageTimestamp from './MessageTimestamp';
 import MessageActions from './MessageActions';
 import ChatEmptyState from './ChatEmptyState';
-import MessageMarkdown from './MessageMarkdown';
 import { FinancialVisualization } from '@/features/finance';
+
+const MessageMarkdown = dynamic(() => import('./MessageMarkdown'), {
+  loading: () => <span className="text-muted-foreground text-sm">…</span>,
+  ssr: false,
+});
 import type { VisualizationBlock } from '@/features/finance';
 import { Paperclip } from 'lucide-react';
 import { formatCost } from '@/utils/format-cost';
@@ -20,7 +25,7 @@ interface ChatMessageListProps {
   /** Callback for clicking a quick prompt. */
   onPromptClick: (prompt: string) => void;
   /** Scroll anchor for auto-scrolling. */
-  bottomRef: RefObject<HTMLDivElement>;
+  bottomRef: RefObject<HTMLDivElement | null>;
   /** Whether the assistant is currently responding. */
   isSending: boolean;
   /** Whether the selected thread is loading from the backend. */
@@ -31,6 +36,8 @@ interface ChatMessageListProps {
   onCopyMessage?: (content: string) => Promise<void>;
   /** Handler for regenerating a response */
   onRegenerateMessage?: (messageId: string) => Promise<void>;
+  /** Handler for submitting thumbs-up/down feedback on a response */
+  onRateFeedback?: (messageId: string, rating: 1 | -1) => Promise<void>;
   /** Prefer reduced motion */
   prefersReducedMotion?: boolean;
 }
@@ -45,12 +52,13 @@ const ChatMessageList = ({
   onDeleteMessage,
   onCopyMessage,
   onRegenerateMessage,
+  onRateFeedback,
   prefersReducedMotion = false,
 }: ChatMessageListProps) => {
   const [expanded, setExpanded] = useState<Record<string, boolean>>({});
 
   const toggle = (id: string) => {
-    setExpanded(prev => ({ ...prev, [id]: !prev[id] }));
+    setExpanded((prev) => ({ ...prev, [id]: !prev[id] }));
   };
 
   const messageList = useMemo(() => messages.filter(Boolean), [messages]);
@@ -63,7 +71,7 @@ const ChatMessageList = ({
       .reverse()
       .findIndex((msg) => msg.role === 'assistant');
     if (lastAssistantIndex === -1) return null;
-    const assistantMessage = messageList[messageList.length - 1 - lastAssistantIndex];
+    const assistantMessage = messageList[messageList.length - 1 - lastAssistantIndex]!;
     return assistantMessage.id;
   }, [messageList, isSending]);
 
@@ -93,11 +101,7 @@ const ChatMessageList = ({
 
   return (
     <section className="max-w-4xl mx-auto space-y-6" aria-label="Chat transcript">
-      <ol
-        aria-live="polite"
-        aria-relevant="additions"
-        className="space-y-5"
-      >
+      <ol aria-live="polite" aria-relevant="additions" className="space-y-5">
         {messageList.map((msg) => {
           const messageId = msg.id;
           const isUser = msg.role === 'user';
@@ -106,7 +110,12 @@ const ChatMessageList = ({
 
           const hasMeta =
             !isUser &&
-            !!(msg.meta?.model || msg.meta?.provider || msg.meta?.usage || typeof msg.meta?.cost_usd === 'number');
+            !!(
+              msg.meta?.model ||
+              msg.meta?.provider ||
+              msg.meta?.usage ||
+              typeof msg.meta?.cost_usd === 'number'
+            );
           const isExpanded = !!expanded[messageId];
 
           const usage = msg.meta?.usage;
@@ -183,7 +192,7 @@ const ChatMessageList = ({
                   </div>
 
                   {/* Message Actions - Hover overlay */}
-                  {(onCopyMessage || onDeleteMessage || onRegenerateMessage) && (
+                  {(onCopyMessage || onDeleteMessage || onRegenerateMessage || onRateFeedback) && (
                     <div
                       className={`absolute ${
                         isUser ? 'right-0 bottom-0' : 'left-0 bottom-0'
@@ -192,10 +201,16 @@ const ChatMessageList = ({
                       <MessageActions
                         role={msg.role as 'user' | 'assistant'}
                         onCopy={() => onCopyMessage?.(msg.content)}
-                        onRegenerate={() =>
-                          onRegenerateMessage?.(messageId)
-                        }
+                        onRegenerate={() => onRegenerateMessage?.(messageId)}
                         onDelete={() => onDeleteMessage?.(messageId)}
+                        {...(onRateFeedback && {
+                          onThumbsUp: () => {
+                            void onRateFeedback(messageId, 1);
+                          },
+                          onThumbsDown: () => {
+                            void onRateFeedback(messageId, -1);
+                          },
+                        })}
                         showRegenerate={true}
                         showDelete={true}
                       />
@@ -224,8 +239,7 @@ const ChatMessageList = ({
                           model: <span className="text-text">{msg.meta?.model || '—'}</span>
                         </div>
                         <div>
-                          provider:{' '}
-                          <span className="text-text">{msg.meta?.provider || '—'}</span>
+                          provider: <span className="text-text">{msg.meta?.provider || '—'}</span>
                         </div>
                         <div>
                           tokens: <span className="text-text">{tokens ?? '—'}</span>

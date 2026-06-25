@@ -78,6 +78,8 @@ create_secret "goblin-dev-openai-key" "OpenAI API key for development"
 create_secret "goblin-dev-cloudinary-key" "Cloudinary API key for development"
 create_secret "goblin-dev-groq-key" "Groq API key for development"
 create_secret "goblin-dev-anthropic-key" "Anthropic API key for development"
+create_secret "goblin-dev-google-ai-key" "Google AI / Gemini API key for development"
+create_secret "goblin-dev-siliconeflow-key" "SiliconeFlow API key for development"
 
 # Production secrets
 echo ""
@@ -90,6 +92,8 @@ create_secret "goblin-prod-openai-key" "OpenAI API key for production"
 create_secret "goblin-prod-cloudinary-key" "Cloudinary API key for production"
 create_secret "goblin-prod-groq-key" "Groq API key for production"
 create_secret "goblin-prod-anthropic-key" "Anthropic API key for production"
+create_secret "goblin-prod-google-ai-key" "Google AI / Gemini API key for production"
+create_secret "goblin-prod-siliconeflow-key" "SiliconeFlow API key for production"
 
 # SSH Key (optional)
 echo ""

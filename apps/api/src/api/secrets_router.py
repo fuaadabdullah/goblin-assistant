@@ -4,20 +4,20 @@ Secrets management router for FastAPI.
 Provides HTTP endpoints for secrets operations using the universal secrets adapter.
 """
 
-import os
 import logging
-from typing import Dict, List, Optional, Any
-from fastapi import APIRouter, HTTPException, Depends, status
+import os
+from typing import Any, Dict, Optional
+
+from fastapi import APIRouter, Depends, HTTPException, status
 from pydantic import BaseModel, Field
 
 from .integrations.secrets import (
-    create_adapter,
     SecretAdapter,
-    SecretAdapterError,
+    SecretBackendError,
     SecretNotFoundError,
     SecretUnauthorizedError,
-    SecretBackendError,
     SecretValidationError,
+    create_adapter,
 )
 
 logger = logging.getLogger(__name__)
@@ -29,17 +29,20 @@ router = APIRouter(prefix="/secrets", tags=["secrets"])
 _secrets_adapter: Optional[SecretAdapter] = None
 
 
+def _detail_message(prefix: str, error: Exception) -> str:
+    message = str(error).strip()
+    if message:
+        return f"{prefix}: {message}"
+    return f"{prefix}: Request failed"
+
+
 class SecretRequest(BaseModel):
     """Request model for creating/updating secrets."""
 
     path: str = Field(..., description="Secret path within the mount point")
     data: Dict[str, str] = Field(..., description="Secret data as key-value pairs")
-    metadata: Optional[Dict[str, Any]] = Field(
-        None, description="Optional custom metadata"
-    )
-    version: Optional[int] = Field(
-        None, description="Optional version for conditional updates"
-    )
+    metadata: Optional[Dict[str, Any]] = Field(None, description="Optional custom metadata")
+    version: Optional[int] = Field(None, description="Optional version for conditional updates")
 
 
 class SecretResponse(BaseModel):
@@ -63,7 +66,6 @@ class HealthResponse(BaseModel):
 
 def get_secrets_adapter() -> SecretAdapter:
     """Dependency to get the secrets adapter instance."""
-    global _secrets_adapter
     if _secrets_adapter is None:
         raise HTTPException(
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
@@ -118,16 +120,18 @@ async def init_secrets_adapter() -> None:
                     vault_url=vault_url,
                     mount_point=vault_mount_point,
                 )
-                
+
                 # Authenticate with AppRole
                 try:
                     token_credentials = await _secrets_adapter.authenticate_with_approle(
                         vault_role_id, vault_secret_id
                     )
                     credentials.set_session_token(token_credentials)
-                    logger.info("Successfully initialized Vault adapter with AppRole authentication")
+                    logger.info(
+                        "Successfully initialized Vault adapter with AppRole authentication"
+                    )
                 except Exception as auth_error:
-                    logger.error(f"AppRole authentication failed: {auth_error}")
+                    logger.error("AppRole authentication failed: %s", auth_error)
                     raise ValueError(f"AppRole authentication failed: {auth_error}")
 
             else:
@@ -138,12 +142,10 @@ async def init_secrets_adapter() -> None:
         else:
             raise ValueError(f"Unsupported secrets backend: {secrets_backend}")
 
-        logger.info(
-            f"Successfully initialized secrets adapter for backend: {secrets_backend}"
-        )
+        logger.info("Successfully initialized secrets adapter for backend: %s", secrets_backend)
 
     except Exception as e:
-        logger.error(f"Failed to initialize secrets adapter: {e}")
+        logger.error("Failed to initialize secrets adapter: %s", e)
         raise
 
 
@@ -156,7 +158,7 @@ async def cleanup_secrets_adapter() -> None:
         logger.info("Cleaned up secrets adapter")
 
 
-@router.get("/", response_model=Dict[str, str])
+@router.get("/", response_model=Dict[str, Any])
 async def list_secrets(
     prefix: str = "",
     limit: int = 100,
@@ -178,199 +180,17 @@ async def list_secrets(
         return {"paths": secret_paths}
 
     except SecretUnauthorizedError as e:
-        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail=str(e))
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail=_detail_message("Unauthorized", e),
+        )
     except SecretBackendError as e:
         raise HTTPException(
-            status_code=status.HTTP_503_SERVICE_UNAVAILABLE, detail=str(e)
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail=_detail_message("Secret backend unavailable", e),
         )
     except Exception as e:
-        logger.error(f"Unexpected error listing secrets: {e}")
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="Internal server error",
-        )
-
-
-@router.get("/{path:path}", response_model=SecretResponse)
-async def get_secret(
-    path: str,
-    version: Optional[int] = None,
-    adapter: SecretAdapter = Depends(get_secrets_adapter),
-):
-    """
-    Retrieve a secret by path.
-
-    Args:
-        path: Secret path
-        version: Optional specific version
-        adapter: The secrets adapter instance
-
-    Returns:
-        Secret data and metadata
-    """
-    try:
-        secret = await adapter.get_secret(path, version)
-
-        return SecretResponse(
-            path=secret.path,
-            data=secret.data,
-            metadata={
-                "created_at": secret.metadata.created_at.isoformat()
-                if secret.metadata.created_at
-                else None,
-                "updated_at": secret.metadata.updated_at.isoformat()
-                if secret.metadata.updated_at
-                else None,
-                "version": secret.metadata.version,
-                "custom_metadata": secret.metadata.custom_metadata,
-            },
-            backend_specific=secret.metadata.backend_specific,
-        )
-
-    except SecretNotFoundError as e:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(e))
-    except SecretUnauthorizedError as e:
-        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail=str(e))
-    except SecretBackendError as e:
-        raise HTTPException(
-            status_code=status.HTTP_503_SERVICE_UNAVAILABLE, detail=str(e)
-        )
-    except Exception as e:
-        logger.error(f"Unexpected error retrieving secret {path}: {e}")
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="Internal server error",
-        )
-
-
-@router.put("/{path:path}", response_model=SecretResponse)
-async def put_secret(
-    path: str,
-    request: SecretRequest,
-    adapter: SecretAdapter = Depends(get_secrets_adapter),
-):
-    """
-    Create or update a secret.
-
-    Args:
-        path: Secret path
-        request: Secret data and metadata
-        adapter: The secrets adapter instance
-
-    Returns:
-        Stored secret information
-    """
-    try:
-        # Ensure path in request matches path parameter
-        if request.path != path:
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail="Path in request body must match URL path",
-            )
-
-        secret = await adapter.put_secret(
-            path=path,
-            data=request.data,
-            metadata=request.metadata,
-            version=request.version,
-        )
-
-        return SecretResponse(
-            path=secret.path,
-            data=secret.data,
-            metadata={
-                "created_at": secret.metadata.created_at.isoformat()
-                if secret.metadata.created_at
-                else None,
-                "updated_at": secret.metadata.updated_at.isoformat()
-                if secret.metadata.updated_at
-                else None,
-                "version": secret.metadata.version,
-                "custom_metadata": secret.metadata.custom_metadata,
-            },
-            backend_specific=secret.metadata.backend_specific,
-        )
-
-    except SecretValidationError as e:
-        raise HTTPException(
-            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail=str(e)
-        )
-    except SecretUnauthorizedError as e:
-        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail=str(e))
-    except SecretBackendError as e:
-        raise HTTPException(
-            status_code=status.HTTP_503_SERVICE_UNAVAILABLE, detail=str(e)
-        )
-    except Exception as e:
-        logger.error(f"Unexpected error storing secret {path}: {e}")
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="Internal server error",
-        )
-
-
-@router.delete("/{path:path}")
-async def delete_secret(
-    path: str,
-    version: Optional[int] = None,
-    adapter: SecretAdapter = Depends(get_secrets_adapter),
-):
-    """
-    Delete a secret.
-
-    Args:
-        path: Secret path
-        version: Optional specific version to delete
-        adapter: The secrets adapter instance
-    """
-    try:
-        await adapter.delete_secret(path, version)
-        return {"message": f"Secret deleted: {path}"}
-
-    except SecretNotFoundError as e:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(e))
-    except SecretUnauthorizedError as e:
-        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail=str(e))
-    except SecretBackendError as e:
-        raise HTTPException(
-            status_code=status.HTTP_503_SERVICE_UNAVAILABLE, detail=str(e)
-        )
-    except Exception as e:
-        logger.error(f"Unexpected error deleting secret {path}: {e}")
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="Internal server error",
-        )
-
-
-@router.post("/{path:path}/rotate")
-async def rotate_secret(
-    path: str, adapter: SecretAdapter = Depends(get_secrets_adapter)
-):
-    """
-    Rotate a secret value.
-
-    Args:
-        path: Secret path
-        adapter: The secrets adapter instance
-
-    Returns:
-        New secret value
-    """
-    try:
-        new_value = await adapter.rotate_secret(path)
-        return {"path": path, "new_value": new_value}
-
-    except SecretNotFoundError as e:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(e))
-    except SecretUnauthorizedError as e:
-        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail=str(e))
-    except SecretBackendError as e:
-        raise HTTPException(
-            status_code=status.HTTP_503_SERVICE_UNAVAILABLE, detail=str(e)
-        )
-    except Exception as e:
-        logger.error(f"Unexpected error rotating secret {path}: {e}")
+        logger.error("Unexpected error listing secrets: %s", e)
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="Internal server error",
@@ -416,9 +236,218 @@ async def secrets_health(adapter: SecretAdapter = Depends(get_secrets_adapter)):
         )
 
     except Exception as e:
-        logger.error(f"Health check failed: {e}")
+        logger.error("Health check failed: %s", e)
         return HealthResponse(
             status="unhealthy",
             backend="unknown",
-            details={"error": str(e)},
+            details={"error": _detail_message("Health check failed", e)},
+        )
+
+
+@router.get("/{path:path}", response_model=SecretResponse)
+async def get_secret(
+    path: str,
+    version: Optional[int] = None,
+    adapter: SecretAdapter = Depends(get_secrets_adapter),
+):
+    """
+    Retrieve a secret by path.
+
+    Args:
+        path: Secret path
+        version: Optional specific version
+        adapter: The secrets adapter instance
+
+    Returns:
+        Secret data and metadata
+    """
+    try:
+        secret = await adapter.get_secret(path, version)
+
+        return SecretResponse(
+            path=secret.path,
+            data=secret.data,
+            metadata={
+                "created_at": (
+                    secret.metadata.created_at.isoformat() if secret.metadata.created_at else None
+                ),
+                "updated_at": (
+                    secret.metadata.updated_at.isoformat() if secret.metadata.updated_at else None
+                ),
+                "version": secret.metadata.version,
+                "custom_metadata": secret.metadata.custom_metadata,
+            },
+            backend_specific=secret.metadata.backend_specific,
+        )
+
+    except SecretNotFoundError as e:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail=_detail_message("Secret not found", e)
+        )
+    except SecretUnauthorizedError as e:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail=_detail_message("Unauthorized", e),
+        )
+    except SecretBackendError as e:
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail=_detail_message("Secret backend unavailable", e),
+        )
+    except Exception as e:
+        logger.error("Unexpected error retrieving secret %s: %s", path, e)
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Internal server error",
+        )
+
+
+@router.put("/{path:path}", response_model=SecretResponse)
+async def put_secret(
+    path: str,
+    request: SecretRequest,
+    adapter: SecretAdapter = Depends(get_secrets_adapter),
+):
+    """
+    Create or update a secret.
+
+    Args:
+        path: Secret path
+        request: Secret data and metadata
+        adapter: The secrets adapter instance
+
+    Returns:
+        Stored secret information
+    """
+    try:
+        # Ensure path in request matches path parameter
+        if request.path != path:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Path in request body must match URL path",
+            )
+
+        secret = await adapter.put_secret(
+            path=path,
+            data=request.data,
+            metadata=request.metadata,
+            version=request.version,
+        )
+
+        return SecretResponse(
+            path=secret.path,
+            data=secret.data,
+            metadata={
+                "created_at": (
+                    secret.metadata.created_at.isoformat() if secret.metadata.created_at else None
+                ),
+                "updated_at": (
+                    secret.metadata.updated_at.isoformat() if secret.metadata.updated_at else None
+                ),
+                "version": secret.metadata.version,
+                "custom_metadata": secret.metadata.custom_metadata,
+            },
+            backend_specific=secret.metadata.backend_specific,
+        )
+
+    except HTTPException:
+        raise
+    except SecretValidationError as e:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail=_detail_message("Validation failed", e),
+        )
+    except SecretUnauthorizedError as e:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail=_detail_message("Unauthorized", e),
+        )
+    except SecretBackendError as e:
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail=_detail_message("Secret backend unavailable", e),
+        )
+    except Exception as e:
+        logger.error("Unexpected error storing secret %s: %s", path, e)
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Internal server error",
+        )
+
+
+@router.delete("/{path:path}")
+async def delete_secret(
+    path: str,
+    version: Optional[int] = None,
+    adapter: SecretAdapter = Depends(get_secrets_adapter),
+):
+    """
+    Delete a secret.
+
+    Args:
+        path: Secret path
+        version: Optional specific version to delete
+        adapter: The secrets adapter instance
+    """
+    try:
+        await adapter.delete_secret(path, version)
+        return {"message": f"Secret deleted: {path}"}
+
+    except SecretNotFoundError as e:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail=_detail_message("Secret not found", e)
+        )
+    except SecretUnauthorizedError as e:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail=_detail_message("Unauthorized", e),
+        )
+    except SecretBackendError as e:
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail=_detail_message("Secret backend unavailable", e),
+        )
+    except Exception as e:
+        logger.error("Unexpected error deleting secret %s: %s", path, e)
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Internal server error",
+        )
+
+
+@router.post("/{path:path}/rotate")
+async def rotate_secret(path: str, adapter: SecretAdapter = Depends(get_secrets_adapter)):
+    """
+    Rotate a secret value.
+
+    Args:
+        path: Secret path
+        adapter: The secrets adapter instance
+
+    Returns:
+        New secret value
+    """
+    try:
+        new_value = await adapter.rotate_secret(path)
+        return {"path": path, "new_value": new_value}
+
+    except SecretNotFoundError as e:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail=_detail_message("Secret not found", e)
+        )
+    except SecretUnauthorizedError as e:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail=_detail_message("Unauthorized", e),
+        )
+    except SecretBackendError as e:
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail=_detail_message("Secret backend unavailable", e),
+        )
+    except Exception as e:
+        logger.error("Unexpected error rotating secret %s: %s", path, e)
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Internal server error",
         )

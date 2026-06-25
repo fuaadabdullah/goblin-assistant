@@ -11,14 +11,14 @@ from __future__ import annotations
 import math
 from typing import Any, Dict, List, Optional
 
-from ..registry import ToolDefinition, ToolParameter, register_tool
 from ...services.financial_data_service import financial_data_service
 from ...services.financial_guardrails import safe_skill
-
+from ..registry import ToolDefinition, ToolParameter, register_tool
 
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
+
 
 def _daily_returns(prices: List[float]) -> List[float]:
     """Calculate simple daily returns from a price series."""
@@ -56,11 +56,9 @@ def _max_drawdown(prices: List[float]) -> float:
     peak = prices[0]
     max_dd = 0.0
     for p in prices:
-        if p > peak:
-            peak = p
+        peak = max(peak, p)
         dd = (peak - p) / peak
-        if dd > max_dd:
-            max_dd = dd
+        max_dd = max(max_dd, dd)
     return max_dd
 
 
@@ -92,6 +90,7 @@ def _correlation(a: List[float], b: List[float]) -> float:
 # ---------------------------------------------------------------------------
 # Handler
 # ---------------------------------------------------------------------------
+
 
 @safe_skill
 async def _handle_portfolio_analyzer(
@@ -148,14 +147,20 @@ async def _handle_portfolio_analyzer(
         all_daily_rets[t] = dr
         ann_ret = _annualized_return(dr)
         ann_vol = _annualized_volatility(dr)
-        holding_metrics.append({
-            "ticker": t,
-            "weight_pct": round(weights[t] * 100, 2),
-            "annualized_return_pct": round(ann_ret * 100, 2),
-            "annualized_volatility_pct": round(ann_vol * 100, 2),
-            "sharpe_ratio": round(_sharpe_ratio(ann_ret, ann_vol), 2) if _sharpe_ratio(ann_ret, ann_vol) is not None else None,
-            "max_drawdown_pct": round(_max_drawdown(histories[t]) * 100, 2),
-        })
+        holding_metrics.append(
+            {
+                "ticker": t,
+                "weight_pct": round(weights[t] * 100, 2),
+                "annualized_return_pct": round(ann_ret * 100, 2),
+                "annualized_volatility_pct": round(ann_vol * 100, 2),
+                "sharpe_ratio": (
+                    round(_sharpe_ratio(ann_ret, ann_vol), 2)
+                    if _sharpe_ratio(ann_ret, ann_vol) is not None
+                    else None
+                ),
+                "max_drawdown_pct": round(_max_drawdown(histories[t]) * 100, 2),
+            }
+        )
 
     # Portfolio-level metrics (weighted daily returns)
     min_len = min(len(all_daily_rets[t]) for t in tickers)
@@ -194,7 +199,9 @@ async def _handle_portfolio_analyzer(
     # Benchmark comparison
     bench_data: Optional[Dict[str, Any]] = None
     try:
-        bench_hist = await financial_data_service.get_price_history(benchmark, period=period, interval="1d")
+        bench_hist = await financial_data_service.get_price_history(
+            benchmark, period=period, interval="1d"
+        )
         bench_prices = [d["close"] for d in bench_hist.get("data", [])]
         if bench_prices:
             bench_dr = _daily_returns(bench_prices)
@@ -204,7 +211,11 @@ async def _handle_portfolio_analyzer(
                 "ticker": benchmark,
                 "annualized_return_pct": round(bench_ann_ret * 100, 2),
                 "annualized_volatility_pct": round(bench_ann_vol * 100, 2),
-                "sharpe_ratio": round(_sharpe_ratio(bench_ann_ret, bench_ann_vol), 2) if _sharpe_ratio(bench_ann_ret, bench_ann_vol) is not None else None,
+                "sharpe_ratio": (
+                    round(_sharpe_ratio(bench_ann_ret, bench_ann_vol), 2)
+                    if _sharpe_ratio(bench_ann_ret, bench_ann_vol) is not None
+                    else None
+                ),
                 "max_drawdown_pct": round(_max_drawdown(bench_prices) * 100, 2),
             }
     except Exception:
@@ -228,39 +239,45 @@ async def _handle_portfolio_analyzer(
 # Registration
 # ---------------------------------------------------------------------------
 
-register_tool(ToolDefinition(
-    name="portfolio_analyzer",
-    description=(
-        "Analyze a stock portfolio: calculate allocation weights, annualized "
-        "return, volatility, Sharpe ratio, max drawdown, Value-at-Risk, "
-        "and a correlation matrix. Compares performance to a benchmark (default SPY)."
-    ),
-    parameters=[
-        ToolParameter(
-            name="holdings",
-            type="array",
-            description=(
-                'Array of holdings, each with "ticker" (string) and either '
-                '"shares" (number) or "weight" (number). '
-                'Example: [{"ticker":"AAPL","shares":10},{"ticker":"MSFT","shares":5}]'
+register_tool(
+    ToolDefinition(
+        name="portfolio_analyzer",
+        description=(
+            "Use when the user provides multiple holdings and asks for portfolio "
+            "allocation, risk, performance, diversification, benchmark comparison, "
+            "or correlation analysis. Returns per-holding weights and metrics, "
+            "portfolio annualized return/volatility, Sharpe ratio, max drawdown, "
+            "daily 95% VaR, correlation matrix, and benchmark metrics."
+        ),
+        parameters=[
+            ToolParameter(
+                name="holdings",
+                type="array",
+                description=(
+                    'Array of holding objects. Each object needs "ticker" and may '
+                    'include either "shares" or "weight"; weights can be any '
+                    "positive numbers and are normalized by the tool. Example: "
+                    '[{"ticker":"AAPL","shares":10},{"ticker":"MSFT","shares":5}].'
+                ),
+                items={"type": "object"},
             ),
-            items={"type": "object"},
-        ),
-        ToolParameter(
-            name="benchmark",
-            type="string",
-            description="Benchmark ticker for comparison (default SPY).",
-            required=False,
-            default="SPY",
-        ),
-        ToolParameter(
-            name="period",
-            type="string",
-            description="Lookback period: 1mo, 3mo, 6mo, 1y, 2y, 5y (default 1y).",
-            required=False,
-            default="1y",
-        ),
-    ],
-    handler=_handle_portfolio_analyzer,
-    category="finance",
-))
+            ToolParameter(
+                name="benchmark",
+                type="string",
+                description="Benchmark ticker for performance comparison. Default: SPY.",
+                required=False,
+                default="SPY",
+            ),
+            ToolParameter(
+                name="period",
+                type="string",
+                description="Historical lookback period for portfolio metrics. Default: 1y.",
+                required=False,
+                enum=["1mo", "3mo", "6mo", "1y", "2y", "5y"],
+                default="1y",
+            ),
+        ],
+        handler=_handle_portfolio_analyzer,
+        category="finance",
+    )
+)

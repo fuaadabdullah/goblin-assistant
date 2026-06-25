@@ -2,8 +2,9 @@
 
 from __future__ import annotations
 
-from fastapi import APIRouter, HTTPException
 from typing import Any, Dict
+
+from fastapi import APIRouter, HTTPException
 
 from api.providers.dispatcher import dispatcher
 from api.routing.router import hybrid_router, registry

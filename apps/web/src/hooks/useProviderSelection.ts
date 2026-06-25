@@ -1,8 +1,5 @@
 import { useState, useEffect } from 'react';
-import {
-  normalizeProviderId,
-  PROVIDER_ID_ALIASES,
-} from '@/lib/providers/normalizeProvider';
+import { normalizeProviderId, PROVIDER_ID_ALIASES } from '@/lib/providers/normalizeProvider';
 
 interface UseProviderSelectionOptions {
   providers: string[];
@@ -13,13 +10,17 @@ export function useProviderSelection({ providers, models }: UseProviderSelection
   const [selectedProvider, setSelectedProviderState] = useState<string>('');
   const [selectedModel, setSelectedModelState] = useState<string>('');
 
+  // Use string keys to avoid infinite loops when callers pass new array literals each render
+  const providersKey = providers.join(',');
+  const modelsKey = models.join(',');
+
   // Load from localStorage on mount (SSR safe)
   useEffect(() => {
     if (typeof window === 'undefined') return;
 
     const storedProvider = normalizeProviderId(
       localStorage.getItem('selectedProvider') || '',
-      PROVIDER_ID_ALIASES,
+      PROVIDER_ID_ALIASES
     );
     const storedModel = localStorage.getItem('selectedModel');
 
@@ -32,7 +33,7 @@ export function useProviderSelection({ providers, models }: UseProviderSelection
     if (storedProvider && providers.includes(storedProvider)) {
       setSelectedProviderState(storedProvider);
     } else {
-      setSelectedProviderState(providers[0]);
+      setSelectedProviderState(providers[0]!);
     }
 
     if (storedModel && models.includes(storedModel)) {
@@ -40,7 +41,8 @@ export function useProviderSelection({ providers, models }: UseProviderSelection
     } else {
       setSelectedModelState('');
     }
-  }, [providers, models]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [providersKey, modelsKey]);
 
   // Save to localStorage when values change (SSR safe)
   useEffect(() => {
@@ -71,7 +73,7 @@ export function useProviderSelection({ providers, models }: UseProviderSelection
 
   const updateProviders = (newProviders: string[]) => {
     return Array.from(
-      new Set(newProviders.map(p => normalizeProviderId(p, PROVIDER_ID_ALIASES)).filter(Boolean)),
+      new Set(newProviders.map((p) => normalizeProviderId(p, PROVIDER_ID_ALIASES)).filter(Boolean))
     );
   };
 

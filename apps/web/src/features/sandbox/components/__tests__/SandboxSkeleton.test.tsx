@@ -1,12 +1,22 @@
 import React from 'react';
 import { render, screen } from '@testing-library/react';
-import '@testing-library/jest-dom';
 
-jest.mock('../../../../components/TwoColumnLayout', () => {
-  return function MockTwoColumnLayout({ children, sidebar }: { children: React.ReactNode; sidebar: React.ReactNode }) {
-    return <div data-testid="two-col"><div data-testid="sidebar">{sidebar}</div><div data-testid="main">{children}</div></div>;
-  };
-});
+vi.mock('../../../../components/TwoColumnLayout', () => ({
+  default: function MockTwoColumnLayout({
+    children,
+    sidebar,
+  }: {
+    children: React.ReactNode;
+    sidebar: React.ReactNode;
+  }) {
+    return (
+      <div data-testid="two-col">
+        <div data-testid="sidebar">{sidebar}</div>
+        <div data-testid="main">{children}</div>
+      </div>
+    );
+  },
+}));
 
 import SandboxSkeleton from '../SandboxSkeleton';
 

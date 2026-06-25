@@ -15,11 +15,13 @@ const colorFor = (s: Status) => {
   }
 };
 
-export default function StatusIndicator(props: Readonly<{
-  label: string;
-  status: Status;
-  size?: 'sm' | 'md';
-}>) {
+export default function StatusIndicator(
+  props: Readonly<{
+    label: string;
+    status: Status;
+    size?: 'sm' | 'md';
+  }>
+) {
   const { label, status, size = 'md' } = props;
   const dotSize = size === 'sm' ? 'w-2 h-2' : 'w-3 h-3';
 

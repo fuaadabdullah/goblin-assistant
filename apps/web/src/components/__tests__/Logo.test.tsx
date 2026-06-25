@@ -1,9 +1,8 @@
 import { render, screen } from '@testing-library/react';
-import '@testing-library/jest-dom';
 import Logo from '../Logo';
 
 // Mock lucide-react Bot icon
-jest.mock('lucide-react', () => ({
+vi.mock('lucide-react', () => ({
   Bot: (props: Record<string, unknown>) => <span data-testid="bot-icon" {...props} />,
 }));
 

@@ -1,7 +1,24 @@
+'use client';
+
 import Link from 'next/link';
-import { useRouter } from 'next/router';
-import { useEffect, useState } from 'react';
-import { Home, MessageSquare, Search, FlaskConical, User, HelpCircle, LayoutDashboard, Puzzle, ScrollText, Settings, Users, LogOut, Menu, X } from 'lucide-react';
+import { useRouter, usePathname } from 'next/navigation';
+import { useEffect } from 'react';
+import {
+  Home,
+  MessageSquare,
+  Search,
+  FlaskConical,
+  User,
+  HelpCircle,
+  LayoutDashboard,
+  Puzzle,
+  ScrollText,
+  Settings,
+  Users,
+  LogOut,
+  Menu,
+  X,
+} from 'lucide-react';
 import HealthHeader from './HealthHeader';
 import ContrastModeToggle from './ContrastModeToggle';
 import Logo from './Logo';
@@ -17,6 +34,7 @@ interface NavigationProps {
 
 const Navigation = ({ onLogout, showLogout = false, variant = 'customer' }: NavigationProps) => {
   const router = useRouter();
+  const pathname = usePathname();
   const { logout } = useAuthSession();
   const isMobileMenuOpen = useUIStore((s) => s.mobileNavOpen);
   const setIsMobileMenuOpen = useUIStore((s) => s.setMobileNavOpen);
@@ -26,10 +44,12 @@ const Navigation = ({ onLogout, showLogout = false, variant = 'customer' }: Navi
     if (onLogout) {
       await onLogout();
     }
-    await router.push('/login');
+    router.push('/login');
   };
 
-  const customerItems = [
+  type NavItem = { path: string; label: string; Icon: React.ElementType };
+
+  const customerItems: NavItem[] = [
     { path: '/', label: 'Home', Icon: Home },
     { path: '/chat', label: 'Chat', Icon: MessageSquare },
     { path: '/search', label: 'Search', Icon: Search },
@@ -38,7 +58,7 @@ const Navigation = ({ onLogout, showLogout = false, variant = 'customer' }: Navi
     { path: '/help', label: 'Help', Icon: HelpCircle },
   ];
 
-  const adminItems = [
+  const adminItems: NavItem[] = [
     { path: '/admin', label: 'Dashboard', Icon: LayoutDashboard },
     { path: '/admin/providers', label: 'Providers', Icon: Puzzle },
     { path: '/admin/logs', label: 'Logs', Icon: ScrollText },
@@ -46,12 +66,18 @@ const Navigation = ({ onLogout, showLogout = false, variant = 'customer' }: Navi
     { path: '/', label: 'Customer View', Icon: Users },
   ];
 
+  // Admin routes use dynamic imports with heavy dashboards; disable prefetch so
+  // hovering the nav doesn't eagerly fetch large JS chunks the user hasn't
+  // explicitly navigated to yet. Customer primary paths keep default prefetch.
+  const getItemPrefetch = (path: string): false | 'auto' =>
+    variant === 'admin' && path !== '/' ? false : 'auto';
+
   const navItems = variant === 'admin' ? adminItems : customerItems;
 
   useEffect(() => {
     // close mobile nav on route changes
     setIsMobileMenuOpen(false);
-  }, [router.asPath, setIsMobileMenuOpen]);
+  }, [pathname, setIsMobileMenuOpen]);
 
   return (
     <nav
@@ -75,16 +101,19 @@ const Navigation = ({ onLogout, showLogout = false, variant = 'customer' }: Navi
           </div>
           {/* Desktop Navigation */}
           <div className="hidden lg:flex items-center space-x-3">
-            {navItems.map(item => {
-              const isActive = router.pathname === item.path || (item.path !== '/' && router.pathname.startsWith(item.path));
+            {navItems.map((item) => {
+              const isActive =
+                pathname === item.path || (item.path !== '/' && pathname.startsWith(item.path));
               return (
                 <Link
                   key={item.path}
                   href={item.path}
-                  className={`flex items-center space-x-2 px-4 py-3 min-h-[44px] text-sm font-medium rounded-lg transition-colors outline-offset-2 focus-visible:outline focus-visible:outline-2 focus-visible:outline-primary ${isActive
-                    ? 'text-text bg-surface-active shadow-glow-primary border border-border'
-                    : 'text-muted hover:text-text hover:bg-surface-hover'
-                    }`}
+                  prefetch={getItemPrefetch(item.path)}
+                  className={`flex items-center space-x-2 px-4 py-3 min-h-[44px] text-sm font-medium rounded-lg transition-colors outline-offset-2 focus-visible:outline focus-visible:outline-2 focus-visible:outline-primary ${
+                    isActive
+                      ? 'text-text bg-surface-active shadow-glow-primary border border-border'
+                      : 'text-muted hover:text-text hover:bg-surface-hover'
+                  }`}
                   title={item.label}
                 >
                   <item.Icon className="w-5 h-5" aria-hidden="true" />
@@ -99,6 +128,7 @@ const Navigation = ({ onLogout, showLogout = false, variant = 'customer' }: Navi
               </div>
               {showLogout && (
                 <button
+                  type="button"
                   onClick={() => {
                     void handleLogout();
                   }}
@@ -122,14 +152,21 @@ const Navigation = ({ onLogout, showLogout = false, variant = 'customer' }: Navi
               className="inline-flex items-center justify-center rounded-lg border border-border bg-surface-hover p-2 text-text hover:bg-surface-active"
               aria-label={isMobileMenuOpen ? 'Close navigation menu' : 'Open navigation menu'}
             >
-              {isMobileMenuOpen ? <X className="w-5 h-5" aria-hidden="true" /> : <Menu className="w-5 h-5" aria-hidden="true" />}
+              {isMobileMenuOpen ? (
+                <X className="w-5 h-5" aria-hidden="true" />
+              ) : (
+                <Menu className="w-5 h-5" aria-hidden="true" />
+              )}
             </button>
           </div>
         </div>
       </div>
 
       {/* Mobile drawer rendered via Framer Motion and the MobileDrawer component */}
-      <MobileDrawer title={variant === 'admin' ? 'Admin' : 'Menu'} ariaLabel="Primary mobile navigation">
+      <MobileDrawer
+        title={variant === 'admin' ? 'Admin' : 'Menu'}
+        ariaLabel="Primary mobile navigation"
+      >
         <div className="space-y-3">
           {variant === 'admin' ? (
             <div className="rounded-lg border border-border bg-surface-hover p-3">
@@ -137,12 +174,14 @@ const Navigation = ({ onLogout, showLogout = false, variant = 'customer' }: Navi
             </div>
           ) : null}
 
-          {navItems.map(item => {
-            const isActive = router.pathname === item.path || (item.path !== '/' && router.pathname.startsWith(item.path));
+          {navItems.map((item) => {
+            const isActive =
+              pathname === item.path || (item.path !== '/' && pathname.startsWith(item.path));
             return (
               <Link
                 key={item.path}
                 href={item.path}
+                prefetch={getItemPrefetch(item.path)}
                 className={`flex items-center space-x-3 px-3 py-2 rounded-lg text-sm font-medium min-h-[44px] ${
                   isActive
                     ? 'text-text bg-surface-active border border-border'

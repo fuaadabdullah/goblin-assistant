@@ -8,7 +8,7 @@
  * - Easier testing
  */
 
-import { devError, devLog, devWarn } from '../utils/dev-log';
+import { devError, devWarn } from '../utils/dev-log';
 import { DEFAULT_BACKEND_ORIGIN } from './backendOrigin';
 
 interface EnvConfig {
@@ -24,11 +24,9 @@ interface EnvConfig {
     multiProvider: boolean;
     passkeyAuth: boolean;
     googleAuth: boolean;
-    orchestration: boolean;
     sandbox: boolean;
     search: boolean;
     admin: boolean;
-    analytics: boolean;
     debugMode: boolean;
   };
 
@@ -93,12 +91,10 @@ export const env: EnvConfig = {
     ragEnabled: getOptionalEnv('NEXT_PUBLIC_FEATURE_RAG_ENABLED') === 'true',
     multiProvider: getOptionalEnv('NEXT_PUBLIC_FEATURE_MULTI_PROVIDER') === 'true',
     passkeyAuth: getOptionalEnv('NEXT_PUBLIC_FEATURE_PASSKEY_AUTH') === 'true',
-    googleAuth: getOptionalEnv('NEXT_PUBLIC_FEATURE_GOOGLE_AUTH') === 'true',
-    orchestration: getOptionalEnv('NEXT_PUBLIC_FEATURE_ORCHESTRATION') === 'true',
+    googleAuth: getOptionalEnv('NEXT_PUBLIC_FEATURE_GOOGLE_AUTH', 'true') === 'true',
     sandbox: getOptionalEnv('NEXT_PUBLIC_FEATURE_SANDBOX') === 'true',
     search: getOptionalEnv('NEXT_PUBLIC_FEATURE_SEARCH', 'true') === 'true',
     admin: getOptionalEnv('NEXT_PUBLIC_FEATURE_ADMIN', 'false') === 'true',
-    analytics: getOptionalEnv('NEXT_PUBLIC_ENABLE_ANALYTICS') === 'true',
     debugMode: getOptionalEnv('NEXT_PUBLIC_DEBUG_MODE') === 'true',
   },
 
@@ -111,9 +107,9 @@ export const env: EnvConfig = {
   sentryDsn: getOptionalEnv('NEXT_PUBLIC_SENTRY_DSN'),
   gaMeasurementId: getOptionalEnv('NEXT_PUBLIC_GA_MEASUREMENT_ID'),
 
-  mode: (process.env.NODE_ENV as EnvConfig['mode']) || 'development',
-  isDevelopment: process.env.NODE_ENV === 'development',
-  isProduction: process.env.NODE_ENV === 'production',
+  mode: (process.env['NODE_ENV'] as EnvConfig['mode']) || 'development',
+  isDevelopment: process.env['NODE_ENV'] === 'development',
+  isProduction: process.env['NODE_ENV'] === 'production',
 };
 
 // Validate on import
@@ -121,7 +117,7 @@ validateEnvConfig(env);
 
 // Log configuration in development
 if (env.isDevelopment) {
-  devLog('📝 Environment Configuration:', {
+  devWarn('📝 Environment Configuration:', {
     ...env,
     apiBaseUrl: env.apiBaseUrl,
     mode: env.mode,

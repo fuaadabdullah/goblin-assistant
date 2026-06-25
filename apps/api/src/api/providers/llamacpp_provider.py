@@ -16,9 +16,6 @@ logger = structlog.get_logger(__name__)
 
 
 class LlamaCPPProvider(BaseProvider):
-    COST_INPUT_PER_1K = 0.0
-    COST_OUTPUT_PER_1K = 0.0
-
     def __init__(
         self,
         provider_id: str | Dict[str, Any],
@@ -57,9 +54,7 @@ class LlamaCPPProvider(BaseProvider):
         prompt: str = "",
         **kwargs: Any,
     ) -> ProviderResult:
-        normalized_messages = self.normalize_messages(
-            messages, prompt=prompt, **kwargs
-        )
+        normalized_messages = self.normalize_messages(messages, prompt=prompt, **kwargs)
         if not self._base_url:
             return ProviderResult(
                 ok=False,
@@ -129,9 +124,7 @@ class LlamaCPPProvider(BaseProvider):
         prompt: str = "",
         **kwargs: Any,
     ) -> AsyncGenerator[Dict[str, Any], None]:
-        normalized_messages = self.normalize_messages(
-            messages, prompt=prompt, **kwargs
-        )
+        normalized_messages = self.normalize_messages(messages, prompt=prompt, **kwargs)
         model_name = model or await self._resolve_model()
         body = {
             "model": model_name,
@@ -141,27 +134,29 @@ class LlamaCPPProvider(BaseProvider):
             "stream": True,
             **kwargs,
         }
-        async with httpx.AsyncClient(timeout=180) as client:
-            async with client.stream(
+        async with (
+            httpx.AsyncClient(timeout=180) as client,
+            client.stream(
                 "POST",
                 f"{self._base_url}/v1/chat/completions",
                 headers=self._headers(),
                 json=body,
-            ) as resp:
-                resp.raise_for_status()
-                async for line in resp.aiter_lines():
-                    if not line.startswith("data: "):
-                        continue
-                    payload = line[6:].strip()
-                    if payload == "[DONE]":
-                        break
-                    try:
-                        chunk = json.loads(payload)
-                    except json.JSONDecodeError:
-                        continue
-                    delta = chunk["choices"][0]["delta"].get("content", "")
-                    if delta:
-                        yield {"text": delta}
+            ) as resp,
+        ):
+            resp.raise_for_status()
+            async for line in resp.aiter_lines():
+                if not line.startswith("data: "):
+                    continue
+                payload = line[6:].strip()
+                if payload == "[DONE]":
+                    break
+                try:
+                    chunk = json.loads(payload)
+                except json.JSONDecodeError:
+                    continue
+                delta = chunk["choices"][0]["delta"].get("content", "")
+                if delta:
+                    yield {"text": delta}
 
     async def health_check(self) -> ProviderHealth:
         if not self._base_url:

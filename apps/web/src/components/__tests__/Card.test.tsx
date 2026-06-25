@@ -1,6 +1,5 @@
 import React from 'react';
 import { render, screen } from '@testing-library/react';
-import '@testing-library/jest-dom';
 import Card from '../Card';
 
 describe('Card', () => {
@@ -32,7 +31,11 @@ describe('Card', () => {
   });
 
   it('accepts additional div props', () => {
-    render(<Card id="test-card" data-testid="card">Content</Card>);
+    render(
+      <Card id="test-card" data-testid="card">
+        Content
+      </Card>
+    );
     expect(screen.getByTestId('card')).toBeInTheDocument();
   });
 });

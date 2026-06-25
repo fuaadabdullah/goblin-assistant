@@ -1,5 +1,7 @@
+'use client';
+
 import { useEffect, useMemo, useState } from 'react';
-import { useRouter } from 'next/router';
+import { useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import ModularLoginForm from '../components/auth/ModularLoginForm';
 import Seo from '../components/Seo';
@@ -9,16 +11,32 @@ interface LoginPageProps {
   initialMode?: 'login' | 'register';
 }
 
-const resolveSafeRedirect = (value: string | string[] | undefined): string | null => {
+const resolveSafeRedirect = (value: string | string[] | null | undefined): string | null => {
   const candidate = Array.isArray(value) ? value[0] : value;
   if (typeof candidate !== 'string') return null;
   if (!candidate.startsWith('/') || candidate.startsWith('//')) return null;
   return candidate;
 };
 
+export const resolveOauthErrorMessage = (oauthError: string | null | undefined): string | null => {
+  if (!oauthError) return null;
+
+  const map: Record<string, string> = {
+    oauth_failed: 'Google sign-in failed. Please try again.',
+    no_code: 'Google sign-in did not return an authorization code.',
+    callback_failed: 'Google sign-in could not be completed. Try again.',
+    access_denied: 'Google sign-in was denied.',
+    consent_required: 'Google sign-in requires consent before continuing.',
+  };
+
+  return map[oauthError] || `Authentication error: ${oauthError}`;
+};
+
 export default function LoginPage({ initialMode = 'login' }: LoginPageProps) {
   const router = useRouter();
-  const { mode: paramMode, error: oauthErrorParam } = router.query;
+  const searchParams = useSearchParams();
+  const paramMode = searchParams.get('mode');
+  const oauthErrorParam = searchParams.get('error');
   const [error, setError] = useState<string | null>(null);
   const [dismissedOauthMessage, setDismissedOauthMessage] = useState(false);
 
@@ -27,17 +45,9 @@ export default function LoginPage({ initialMode = 'login' }: LoginPageProps) {
     return initialMode;
   }, [initialMode, paramMode]);
 
-  const oauthError = oauthErrorParam as string | undefined;
+  const oauthError = oauthErrorParam ?? undefined;
 
-  const oauthMessage = useMemo(() => {
-    if (!oauthError) return null;
-    const map: Record<string, string> = {
-      oauth_failed: 'Google sign-in failed. Please try again.',
-      no_code: 'Google sign-in did not return an authorization code.',
-      callback_failed: 'Google sign-in could not be completed. Try again.',
-    };
-    return map[oauthError] || 'Authentication error. Please try again.';
-  }, [oauthError]);
+  const oauthMessage = useMemo(() => resolveOauthErrorMessage(oauthError), [oauthError]);
 
   useEffect(() => {
     setDismissedOauthMessage(false);
@@ -48,8 +58,8 @@ export default function LoginPage({ initialMode = 'login' }: LoginPageProps) {
   const handleSuccess = () => {
     setError(null);
     const redirectTo =
-      resolveSafeRedirect(router.query.redirect) ??
-      resolveSafeRedirect(router.query.from) ??
+      resolveSafeRedirect(searchParams.get('redirect')) ??
+      resolveSafeRedirect(searchParams.get('from')) ??
       '/';
     router.push(redirectTo);
   };
@@ -85,17 +95,12 @@ export default function LoginPage({ initialMode = 'login' }: LoginPageProps) {
 
         <div className="mt-6 bg-surface border border-border rounded-xl p-4 text-sm text-muted text-center">
           Want to explore first?{' '}
-          <Link href="/sandbox?guest=1" className="text-primary font-medium hover:underline">
+          <Link href="/chat?guest=1" className="text-primary font-medium hover:underline">
             Continue as guest
           </Link>{' '}
-          to try the sandbox without saving runs.
+          to chat without an account.
         </div>
       </div>
     </div>
   );
 }
-
-// Prevent static generation - requires server-side data
-export const getServerSideProps = async () => {
-  return { props: {} };
-};

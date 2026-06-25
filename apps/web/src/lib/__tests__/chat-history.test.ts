@@ -1,4 +1,10 @@
-import { readChatMessages, writeChatMessages } from '../chat-history';
+import {
+  markChatMigrationCompleted,
+  readChatMessages,
+  readChatMigrationMeta,
+  resetChatMigrationMeta,
+  writeChatMessages,
+} from '../chat-history';
 
 describe('chat-history', () => {
   beforeEach(() => {
@@ -53,5 +59,23 @@ describe('chat-history', () => {
     expect(typeof read[0].id).toBe('string');
     expect(typeof read[0].createdAt).toBe('string');
   });
-});
 
+  test('marks and reads migration metadata', () => {
+    expect(readChatMigrationMeta()).toEqual({ migrationCompleted: false });
+
+    const meta = markChatMigrationCompleted();
+    expect(meta.migrationCompleted).toBe(true);
+
+    const stored = readChatMigrationMeta();
+    expect(stored.migrationCompleted).toBe(true);
+    expect(typeof stored.completedAt).toBe('string');
+  });
+
+  test('resets migration metadata', () => {
+    markChatMigrationCompleted();
+    expect(readChatMigrationMeta().migrationCompleted).toBe(true);
+
+    resetChatMigrationMeta();
+    expect(readChatMigrationMeta()).toEqual({ migrationCompleted: false });
+  });
+});

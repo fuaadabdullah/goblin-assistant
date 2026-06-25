@@ -1,10 +1,19 @@
+import asyncio
+import json
+import os
+from typing import Optional
+
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel
-from typing import Optional
-import os
-import json
 
 router = APIRouter(prefix="/api-keys", tags=["api-keys"])
+
+
+def _detail_message(prefix: str, error: Exception) -> str:
+    message = str(error).strip()
+    if message:
+        return f"{prefix}: {message}"
+    return f"{prefix}: Request failed"
 
 
 class ApiKeyRequest(BaseModel):
@@ -37,30 +46,37 @@ def save_api_keys(keys):
         json.dump(keys, f, indent=2)
 
 
+async def load_api_keys_async():
+    return await asyncio.to_thread(load_api_keys)
+
+
+async def save_api_keys_async(keys):
+    await asyncio.to_thread(save_api_keys, keys)
+
+
 @router.post("/{provider}")
 async def store_api_key(provider: str, request: ApiKeyRequest):
     """Store an API key for a provider"""
     try:
-        keys = load_api_keys()
+        keys = await load_api_keys_async()
         keys[provider] = request.key
-        save_api_keys(keys)
+        await save_api_keys_async(keys)
         return {"message": f"API key stored for {provider}"}
     except Exception as e:
-        raise HTTPException(
-            status_code=500, detail=f"Failed to store API key: {str(e)}"
-        )
+        raise HTTPException(status_code=500, detail=_detail_message("Failed to store API key", e))
 
 
 @router.get("/{provider}", response_model=ApiKeyResponse)
 async def get_api_key(provider: str):
     """Get an API key for a provider"""
     try:
-        keys = load_api_keys()
+        keys = await load_api_keys_async()
         key = keys.get(provider)
         return ApiKeyResponse(key=key, provider=provider)
     except Exception as e:
         raise HTTPException(
-            status_code=500, detail=f"Failed to retrieve API key: {str(e)}"
+            status_code=500,
+            detail=_detail_message("Failed to retrieve API key", e),
         )
 
 
@@ -68,12 +84,10 @@ async def get_api_key(provider: str):
 async def delete_api_key(provider: str):
     """Delete an API key for a provider"""
     try:
-        keys = load_api_keys()
+        keys = await load_api_keys_async()
         if provider in keys:
             del keys[provider]
-            save_api_keys(keys)
+            await save_api_keys_async(keys)
         return {"message": f"API key deleted for {provider}"}
     except Exception as e:
-        raise HTTPException(
-            status_code=500, detail=f"Failed to delete API key: {str(e)}"
-        )
+        raise HTTPException(status_code=500, detail=_detail_message("Failed to delete API key", e))

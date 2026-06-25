@@ -1,22 +1,23 @@
 import React from 'react';
 import { render, screen, waitFor } from '@testing-library/react';
-import '@testing-library/jest-dom';
 
-const mockReplace = jest.fn();
-const mockUseRouter = jest.fn();
-const mockUseAuthSession = jest.fn();
-const mockNavigation = jest.fn();
-const mockSeo = jest.fn();
+const mockReplace = vi.fn();
+const mockUseRouter = vi.fn();
+const mockUseAuthSession = vi.fn();
+const mockNavigation = vi.fn();
+const mockSeo = vi.fn();
 
-jest.mock('next/router', () => ({
-  useRouter: () => mockUseRouter(),
+vi.mock('next/navigation', () => ({
+  useRouter: () => ({ replace: mockReplace }),
+  usePathname: () => '/admin/logs',
+  useSearchParams: () => new URLSearchParams('tab=stream'),
 }));
 
-jest.mock('../../hooks/api/useAuthSession', () => ({
+vi.mock('../../hooks/api/useAuthSession', () => ({
   useAuthSession: () => mockUseAuthSession(),
 }));
 
-jest.mock('../../components/Navigation', () => ({
+vi.mock('../../components/Navigation', () => ({
   __esModule: true,
   default: (props: Record<string, unknown>) => {
     mockNavigation(props);
@@ -30,7 +31,7 @@ jest.mock('../../components/Navigation', () => ({
   },
 }));
 
-jest.mock('../../components/Seo', () => ({
+vi.mock('../../components/Seo', () => ({
   __esModule: true,
   default: (props: Record<string, unknown>) => {
     mockSeo(props);
@@ -42,11 +43,7 @@ import AdminLayout from '../AdminLayout';
 
 describe('AdminLayout', () => {
   beforeEach(() => {
-    jest.clearAllMocks();
-    mockUseRouter.mockReturnValue({
-      asPath: '/admin/logs?tab=stream',
-      replace: mockReplace,
-    });
+    vi.clearAllMocks();
     mockUseAuthSession.mockReturnValue({
       isAuthenticated: true,
       isHydrated: true,

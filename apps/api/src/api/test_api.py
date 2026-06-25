@@ -1,7 +1,8 @@
 #!/usr/bin/env python3
-import requests
 import json
 import time
+
+import requests
 
 # Give the server time to start
 time.sleep(2)

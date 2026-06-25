@@ -1,22 +1,22 @@
 import React from 'react';
 import { render, screen, waitFor } from '@testing-library/react';
-import '@testing-library/jest-dom';
 
-jest.mock('next/dynamic', () => () => {
-  return function MockLottie(props: { animationData: unknown }) {
-    return <div data-testid="lottie" />;
-  };
-});
+vi.mock('next/dynamic', () => ({
+  default: () =>
+    function MockLottie(props: { animationData: unknown }) {
+      return <div data-testid="lottie" />;
+    },
+}));
 
 // Mock fetch
-const mockFetch = jest.fn();
+const mockFetch = vi.fn();
 global.fetch = mockFetch;
 
 import GoblinLoader from '../GoblinLoader';
 
 describe('GoblinLoader', () => {
   beforeEach(() => {
-    jest.clearAllMocks();
+    vi.clearAllMocks();
   });
 
   it('renders fallback emoji initially', () => {

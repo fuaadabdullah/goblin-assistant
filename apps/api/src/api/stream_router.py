@@ -1,12 +1,13 @@
+import json
+import logging
+from typing import Dict, List, Optional
+
 from fastapi import APIRouter, HTTPException
 from fastapi.responses import StreamingResponse
 from pydantic import BaseModel
-from typing import Optional, Dict, Any, List
-import json
-import time
-import logging
 
-from .providers.dispatcher import invoke_provider
+from .services.stream_state_store import get_stream_state_store
+from .services.task_streaming import iter_task_stream_chunks
 
 router = APIRouter(prefix="/stream", tags=["stream"])
 logger = logging.getLogger(__name__)
@@ -14,6 +15,7 @@ logger = logging.getLogger(__name__)
 
 class StreamTaskRequest(BaseModel):
     """Request model for streaming task execution"""
+
     task_id: str
     messages: List[Dict[str, str]]
     provider: Optional[str] = None
@@ -26,77 +28,45 @@ async def generate_stream_events(
     provider: str,
     model: str,
 ):
-    """Generate server-sent events for task streaming using real provider"""
+    """Generate server-sent events for task streaming using real provider."""
     # Send initial status
     yield f"data: {json.dumps({'status': 'started', 'task_id': task_id})}\n\n"
-
-    accumulated_text = ""
-    total_tokens = 0
-    total_cost = 0.0
-    used_provider = provider or "unknown"
-    used_model = model or "unknown"
-    start_time = time.time()
+    store = get_stream_state_store()
+    await store.create_stream(
+        task_id,
+        metadata={
+            "task_id": task_id,
+            "provider": provider or "auto",
+            "model": model or "",
+            "source": "stream_router",
+        },
+    )
 
     try:
-        # Build payload
-        payload = {"messages": messages, "model": model}
-
-        # Invoke provider with streaming
-        provider_response = await invoke_provider(
-            pid=provider,
+        async for chunk in iter_task_stream_chunks(
+            task_id=task_id,
+            messages=messages,
+            provider=provider,
             model=model,
-            payload=payload,
-            timeout_ms=30000,
-            stream=True,
-        )
-
-        if not isinstance(provider_response, dict) or not provider_response.get("ok"):
-            # Provider returned an error — fall back to non-streaming
-            provider_response = await invoke_provider(
-                pid=provider,
-                model=model,
-                payload=payload,
-                timeout_ms=30000,
-                stream=False,
-            )
-            if isinstance(provider_response, dict) and provider_response.get("ok"):
-                result_data = provider_response.get("result", {})
-                accumulated_text = result_data.get("text", str(provider_response))
-                used_provider = provider_response.get("provider", used_provider)
-                used_model = provider_response.get("model", used_model)
-                yield f"data: {json.dumps({'content': accumulated_text, 'token_count': 0, 'cost_delta': 0, 'done': False})}\n\n"
-            else:
-                error_msg = provider_response.get("error", "unknown-error") if isinstance(provider_response, dict) else "provider-error"
-                yield f"data: {json.dumps({'error': error_msg, 'done': True})}\n\n"
+        ):
+            await store.append_chunk(task_id, chunk)
+            yield f"data: {json.dumps(chunk)}\n\n"
+            if chunk.get("done") is True:
+                if chunk.get("error"):
+                    await store.mark_status(
+                        task_id,
+                        status="failed",
+                        done=True,
+                        updates={"error": chunk.get("error")},
+                    )
+                else:
+                    await store.mark_status(task_id, status="completed", done=True)
                 return
-
-        elif provider_response.get("stream"):
-            # Real streaming path — consume async generator from provider
-            stream_gen = provider_response["stream"]
-            async for chunk in stream_gen:
-                chunk_text = chunk.get("text", "") if isinstance(chunk, dict) else str(chunk)
-                if not chunk_text:
-                    continue
-                accumulated_text += chunk_text
-                token_estimate = max(1, len(chunk_text) // 4)
-                total_tokens += token_estimate
-                yield f"data: {json.dumps({'content': chunk_text, 'token_count': token_estimate, 'cost_delta': 0, 'done': False})}\n\n"
-        else:
-            # Provider returned ok but no stream key — extract text directly
-            result_data = provider_response.get("result", {})
-            accumulated_text = result_data.get("text", "")
-            used_provider = provider_response.get("provider", used_provider)
-            used_model = provider_response.get("model", used_model)
-            if accumulated_text:
-                yield f"data: {json.dumps({'content': accumulated_text, 'token_count': 0, 'cost_delta': 0, 'done': False})}\n\n"
-
-        duration_ms = int((time.time() - start_time) * 1000)
-
-        # Send completion event
-        yield f"data: {json.dumps({'result': accumulated_text, 'cost': total_cost, 'tokens': total_tokens, 'model': used_model, 'provider': used_provider, 'duration_ms': duration_ms, 'task_id': task_id, 'done': True})}\n\n"
-
+        await store.mark_status(task_id, status="completed", done=True)
     except Exception as exc:
-        logger.error(f"Streaming error for task {task_id}: {exc}")
+        logger.error("Streaming error for task %s: %s", task_id, exc)
+        await store.append_chunk(task_id, {"error": "Streaming failed", "done": True})
+        await store.mark_status(task_id, status="failed", done=True, updates={"error": str(exc)})
         yield f"data: {json.dumps({'error': 'Streaming failed', 'done': True})}\n\n"
 
 
@@ -120,5 +90,5 @@ async def stream_task(request: StreamTaskRequest):
             },
         )
     except Exception as e:
-        logger.error(f"Stream task failed: {e}")
+        logger.error("Stream task failed: %s", e)
         raise HTTPException(status_code=500, detail="Task streaming failed")

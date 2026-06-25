@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { apiClient } from '@/api';
+import { apiClient } from '@/lib/api';
 import { getRuntimeClient } from '../../../services/provider-router';
 import { storeStartupDiagnostics } from '../../../utils/startup-diagnostics';
 import { getEnabledModules } from '../../../config/features';
@@ -16,8 +16,16 @@ const STATUS_MESSAGES: Record<StartupStatus, string> = {
   error: 'Something went wrong while booting.',
 };
 
-const delay = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
+const delay = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 const now = () => (typeof performance !== 'undefined' ? performance.now() : Date.now());
+
+export const buildStartupErrorMessage = (error: unknown): string => {
+  if (error instanceof Error && error.message.trim()) {
+    return error.message;
+  }
+
+  return 'We hit a snag while booting. Redirecting to help.';
+};
 
 export const resolveStartupDestinationRoute = (input: {
   isAuthenticated: boolean;
@@ -52,7 +60,7 @@ export const useStartupFlow = (): StartupState => {
 
     const setStep = (status: StartupStatus, message?: string, extras?: Partial<StartupState>) => {
       currentStatusRef.current = status;
-      setState(prev => ({
+      setState((prev) => ({
         ...prev,
         status,
         message: message ?? STATUS_MESSAGES[status] ?? STATUS_MESSAGES.error,
@@ -142,7 +150,7 @@ export const useStartupFlow = (): StartupState => {
         window.clearTimeout(watchdog);
         timings.totalMs = Math.round(now() - bootStart);
         trackPerformance('startup_total_ms', timings.totalMs);
-        setState(prev => ({
+        setState((prev) => ({
           ...prev,
           status: 'ready',
           message: STATUS_MESSAGES.ready,
@@ -150,7 +158,7 @@ export const useStartupFlow = (): StartupState => {
         }));
       } catch (error) {
         if (cancelled) return;
-        fail('We hit a snag while booting. Redirecting to help.');
+        fail(buildStartupErrorMessage(error));
       }
     };
 

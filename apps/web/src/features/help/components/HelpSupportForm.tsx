@@ -27,13 +27,11 @@ const HelpSupportForm = ({
 }: HelpSupportFormProps) => (
   <section className="bg-surface border border-border rounded-2xl p-6 space-y-4">
     <h2 className="text-lg font-semibold text-text">Chat with Support</h2>
-    <p className="text-sm text-muted">
-      Describe the issue and we will connect you with a human.
-    </p>
+    <p className="text-sm text-muted">Describe the issue and we will connect you with a human.</p>
     <form onSubmit={onSubmit} className="space-y-3">
       <textarea
         value={message}
-        onChange={e => onMessageChange(e.target.value)}
+        onChange={(e) => onMessageChange(e.target.value)}
         placeholder="Tell us what you need help with..."
         rows={4}
         className="w-full px-3 py-2 rounded-lg border border-border bg-surface-hover text-sm text-text"

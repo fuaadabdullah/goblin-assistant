@@ -1,0 +1,26 @@
+{
+  "$schema": "https://unpkg.com/knip@5/schema.json",
+  "entry": [
+    "app/**/*.{ts,tsx}",
+    "eslint.config.cjs",
+    "vitest.config.ts",
+    "vitest.setup.ts",
+    ".storybook/**/*.{ts,tsx,js}",
+    "e2e/**/*.ts"
+  ],
+  "project": ["app/**/*.{ts,tsx}", "src/**/*.{ts,tsx}", ".storybook/**/*.{ts,tsx,js}"],
+  "ignore": ["src/test/**", "src/__mocks__/**", "**/__mocks__/**"],
+  "ignoreDependencies": [
+    "@storybook/react",
+    "@storybook/nextjs",
+    "openapi-typescript",
+    "ts-node",
+    "lint-staged",
+    "cross-fetch",
+    "web-streams-polyfill",
+    "msw"
+  ],
+  "paths": {
+    "@/*": ["src/*"]
+  }
+}

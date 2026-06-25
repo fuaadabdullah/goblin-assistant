@@ -1,34 +1,19 @@
-import { describe, it, expect, beforeEach, afterEach, jest } from '@jest/globals';
+import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 
-const backendGetMock = jest.fn();
-const backendPostMock = jest.fn();
-const backendPutMock = jest.fn();
-const backendPatchMock = jest.fn();
-const frontendGetMock = jest.fn();
-const frontendPostMock = jest.fn();
+const backendGetMock = vi.fn();
+const backendPostMock = vi.fn();
+const backendPutMock = vi.fn();
+const backendPatchMock = vi.fn();
+const backendDeleteMock = vi.fn();
+const frontendGetMock = vi.fn();
+const frontendPostMock = vi.fn();
 
-jest.mock('axios', () => {
-  const create = jest
-    .fn()
-    .mockImplementationOnce(() => ({
-      interceptors: {
-        response: { use: jest.fn() },
-      },
-      get: backendGetMock,
-      post: backendPostMock,
-      put: backendPutMock,
-      patch: backendPatchMock,
-    }))
-    .mockImplementationOnce(() => ({
-      get: frontendGetMock,
-      post: frontendPostMock,
-    }));
-
+vi.mock('axios', () => {
+  const create = vi.fn();
   const axios = {
     create,
-    isAxiosError: jest.fn(() => false),
+    isAxiosError: vi.fn(() => false),
   };
-
   return {
     __esModule: true,
     default: axios,
@@ -37,19 +22,34 @@ jest.mock('axios', () => {
   };
 });
 
-jest.mock('../../utils/auth-session', () => ({
-  getAuthToken: jest.fn(() => 'session-token-123'),
-  getRefreshToken: jest.fn(() => null),
-  persistAuthSession: jest.fn(),
-  clearAuthSession: jest.fn(),
+vi.mock('../../utils/auth-session', () => ({
+  getAuthToken: vi.fn(() => 'session-token-123'),
+  getRefreshToken: vi.fn(() => null),
+  persistAuthSession: vi.fn(),
+  clearAuthSession: vi.fn(),
 }));
 
 describe('apiClient chat conversations', () => {
   const originalEnv = process.env;
 
-  beforeEach(() => {
-    jest.resetModules();
-    jest.clearAllMocks();
+  beforeEach(async () => {
+    vi.resetModules();
+    vi.clearAllMocks();
+    // Re-apply per-call implementations after clearAllMocks
+    const { default: axios } = await import('axios');
+    vi.mocked(axios.create)
+      .mockImplementationOnce(() => ({
+        interceptors: { request: { use: vi.fn() }, response: { use: vi.fn() } },
+        get: backendGetMock,
+        post: backendPostMock,
+        put: backendPutMock,
+        patch: backendPatchMock,
+        delete: backendDeleteMock,
+      }))
+      .mockImplementationOnce(() => ({
+        get: frontendGetMock,
+        post: frontendPostMock,
+      }));
     process.env = {
       ...originalEnv,
       NEXT_PUBLIC_API_BASE_URL: 'https://backend.example',
@@ -60,7 +60,7 @@ describe('apiClient chat conversations', () => {
 
   afterEach(() => {
     process.env = originalEnv;
-    jest.restoreAllMocks();
+    vi.restoreAllMocks();
   });
 
   it('maps backend createConversation responses and sends bearer auth', async () => {
@@ -81,13 +81,23 @@ describe('apiClient chat conversations', () => {
       createdAt: '2026-03-07T12:00:00.000Z',
     });
     expect(backendPostMock).toHaveBeenCalledWith(
-      '/chat/conversations',
+      '/api/v1/chat/conversations',
       { title: 'Persisted' },
       expect.objectContaining({
         headers: expect.objectContaining({
           Authorization: 'Bearer session-token-123',
         }),
-      }),
+      })
     );
+  });
+
+  it('routes legacy api.delete through the backend DELETE helper', async () => {
+    backendDeleteMock.mockResolvedValue({ data: { deleted: true } });
+
+    const { api } = await import('@/api');
+    const result = await api.delete<{ deleted: boolean }>('/api/notifications/123');
+
+    expect(result).toEqual({ data: { deleted: true } });
+    expect(backendDeleteMock).toHaveBeenCalledWith('/api/notifications/123', undefined);
   });
 });

@@ -1,11 +1,31 @@
 import React from 'react';
 import { render, screen } from '@testing-library/react';
-import '@testing-library/jest-dom';
-import SandboxPage from '../SandboxPage';
 
-jest.mock('@/features/sandbox/SandboxScreen', () => function MockSandboxScreen() {
-  return <div data-testid="sandbox-screen">Sandbox Screen</div>;
-});
+// SandboxPage uses next/dynamic, so we mock next/dynamic to render synchronously
+vi.mock('next/dynamic', () => ({
+  default: function mockDynamic(importFn: () => Promise<{ default: React.ComponentType }>) {
+    const MockDynamic = function () {
+      return React.createElement('div', { 'data-testid': 'sandbox-screen' }, 'Sandbox Screen');
+    };
+    MockDynamic.displayName = 'DynamicSandboxScreen';
+    return MockDynamic;
+  },
+}));
+
+// Also mock the features module in case it is resolved directly
+vi.mock('@/features/sandbox/SandboxScreen', () => ({
+  default: function MockSandboxScreen() {
+    return <div data-testid="sandbox-screen">Sandbox Screen</div>;
+  },
+}));
+
+vi.mock('../../features/sandbox/components/SandboxSkeleton', () => ({
+  default: function MockSandboxSkeleton() {
+    return <div data-testid="sandbox-skeleton" />;
+  },
+}));
+
+import SandboxPage from '../SandboxPage';
 
 describe('SandboxPage', () => {
   it('renders SandboxScreen component', () => {

@@ -1,19 +1,19 @@
 import React from 'react';
 import { render, screen, fireEvent } from '@testing-library/react';
 
-jest.mock('../../theme/theme', () => ({
-  applyThemePreset: jest.fn(),
+vi.mock('../../theme/theme', () => ({
+  applyThemePreset: vi.fn(),
 }));
 
 import ThemePreview from '../ThemePreview';
 import { applyThemePreset } from '../../theme/theme';
 
-const mockApply = applyThemePreset as jest.Mock;
+const mockApply = applyThemePreset as vi.Mock;
 
 describe('ThemePreview', () => {
   beforeEach(() => {
-    jest.clearAllMocks();
-    Storage.prototype.getItem = jest.fn(() => null);
+    vi.clearAllMocks();
+    Storage.prototype.getItem = vi.fn(() => null);
   });
 
   it('renders section heading', () => {
@@ -34,7 +34,7 @@ describe('ThemePreview', () => {
   });
 
   it('applies stored theme from localStorage', () => {
-    Storage.prototype.getItem = jest.fn(() => 'nocturne');
+    Storage.prototype.getItem = vi.fn(() => 'nocturne');
     render(<ThemePreview />);
     expect(mockApply).toHaveBeenCalledWith('nocturne');
   });
@@ -42,7 +42,7 @@ describe('ThemePreview', () => {
   it('switches theme when button clicked', () => {
     render(<ThemePreview />);
     const buttons = screen.getAllByRole('button');
-    const emberBtn = buttons.find(b => b.textContent === 'Ember Blaze');
+    const emberBtn = buttons.find((b) => b.textContent === 'Ember Blaze');
     fireEvent.click(emberBtn!);
     expect(mockApply).toHaveBeenCalledWith('ember');
   });
@@ -63,7 +63,9 @@ describe('ThemePreview', () => {
 
   it('highlights active theme button', () => {
     render(<ThemePreview />);
-    const defaultBtn = screen.getAllByRole('button').find(b => b.textContent === 'Goblin Default');
+    const defaultBtn = screen
+      .getAllByRole('button')
+      .find((b) => b.textContent === 'Goblin Default');
     expect(defaultBtn?.className).toContain('border-primary');
   });
 });

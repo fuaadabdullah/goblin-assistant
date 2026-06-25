@@ -2,6 +2,7 @@
 
 import os
 from unittest.mock import patch
+
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
 
@@ -29,8 +30,15 @@ def _build_test_app():
 class TestAuthenticationMiddleware:
     """Tests for AuthenticationMiddleware"""
 
+    @patch.dict(
+        os.environ,
+        {
+            "ENVIRONMENT": "production",
+            "LOCAL_LLM_API_KEY": "",
+        },
+    )
     def test_auth_middleware_excludes_health_endpoint(self):
-        """Test that health endpoint is excluded from auth"""
+        """Health probes remain public when production auth is unconfigured."""
         app = _build_test_app()
         app.add_middleware(
             AuthenticationMiddleware,
@@ -49,9 +57,7 @@ class TestAuthenticationMiddleware:
             "ALLOW_UNAUTHENTICATED_REQUESTS": "true",
         },
     )
-    def test_auth_middleware_dev_mode_allows_unauthenticated(
-        self
-    ):
+    def test_auth_middleware_dev_mode_allows_unauthenticated(self):
         """Test that dev mode allows unauthenticated requests"""
         app = _build_test_app()
         app.add_middleware(AuthenticationMiddleware)
@@ -62,17 +68,13 @@ class TestAuthenticationMiddleware:
         assert response.status_code == 200
 
     @patch.dict(os.environ, {"LOCAL_LLM_API_KEY": "test-key"})
-    def test_auth_middleware_accepts_valid_api_key_header(
-        self
-    ):
+    def test_auth_middleware_accepts_valid_api_key_header(self):
         """Test that valid API key in header is accepted"""
         app = _build_test_app()
         app.add_middleware(AuthenticationMiddleware)
         client = TestClient(app)
 
-        response = client.get(
-            "/protected", headers={"x-api-key": "test-key"}
-        )
+        response = client.get("/protected", headers={"x-api-key": "test-key"})
 
         assert response.status_code == 200
 
@@ -97,16 +99,12 @@ class TestAuthenticationMiddleware:
         app.add_middleware(AuthenticationMiddleware)
         client = TestClient(app)
 
-        response = client.get(
-            "/protected", headers={"x-api-key": "wrong-key"}
-        )
+        response = client.get("/protected", headers={"x-api-key": "wrong-key"})
 
         assert response.status_code == 401
 
     @patch.dict(os.environ, {"LOCAL_LLM_API_KEY": ""})
-    def test_auth_middleware_unconfigured_in_production(
-        self
-    ):
+    def test_auth_middleware_unconfigured_in_production(self):
         """Test unconfigured API key in production mode"""
         with patch.dict(os.environ, {"ENVIRONMENT": "production"}):
             app = _build_test_app()
@@ -116,7 +114,7 @@ class TestAuthenticationMiddleware:
             response = client.get("/protected")
 
             assert response.status_code == 500
-            assert "configuration_error" in response.json()["error"]["code"]
+            assert response.json()["error"]["code"] == "CONFIGURATION_ERROR"
 
     def test_auth_middleware_custom_exclude_paths(self):
         """Test custom excluded paths"""
@@ -135,9 +133,50 @@ class TestAuthenticationMiddleware:
 
         assert response.status_code == 200
 
-    def test_auth_middleware_excludes_docs_endpoints(
-        self
-    ):
+    @patch.dict(
+        os.environ,
+        {
+            "ENVIRONMENT": "production",
+            "LOCAL_LLM_API_KEY": "machine-key",
+        },
+    )
+    def test_auth_middleware_defers_chat_routes_to_jwt_dependencies(self):
+        """User-authenticated chat routes are not treated as machine API-key routes."""
+        app = FastAPI()
+
+        @app.get("/api/v1/chat/conversations")
+        async def conversations():
+            return {"message": "JWT dependency owns authentication"}
+
+        app.add_middleware(AuthenticationMiddleware)
+        client = TestClient(app)
+
+        response = client.get(
+            "/api/v1/chat/conversations",
+            headers={"Authorization": "Bearer user-jwt"},
+        )
+
+        assert response.status_code == 200
+
+    @patch.dict(os.environ, {"LOCAL_LLM_API_KEY": "machine-key"})
+    def test_auth_middleware_keeps_chat_debug_route_machine_key_protected(self):
+        app = FastAPI()
+
+        @app.get("/api/v1/chat/debug/context-assembly")
+        async def debug_context():
+            return {"message": "protected"}
+
+        app.add_middleware(AuthenticationMiddleware)
+        client = TestClient(app)
+
+        response = client.get(
+            "/api/v1/chat/debug/context-assembly",
+            headers={"Authorization": "Bearer user-jwt"},
+        )
+
+        assert response.status_code == 401
+
+    def test_auth_middleware_excludes_docs_endpoints(self):
         """Test that documentation endpoints are excluded"""
         app = _build_test_app()
         app.add_middleware(AuthenticationMiddleware)

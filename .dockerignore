@@ -1,90 +1,74 @@
-# Docker ignore file for Goblin Assistant
-# Exclude files and directories that don't need to be in the Docker image
-
 # Version control
 .git
 .gitignore
 .gitattributes
 
-# Python cache and virtual environments
-__pycache__
-*.pyc
+# Docker/build metadata
+.dockerignore
+Dockerfile.sandbox
+
+# Local environment and secrets
+.env
+.env.*
+!.env.example
+
+# Python artifacts
+__pycache__/
+*.py[cod]
 *.pyo
 *.pyd
-.Python
-*.egg-info
-.pytest_cache
-.mypy_cache
-.coverage
-htmlcov/
+*.egg-info/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
 .tox/
 .nox/
 .venv/
 venv/
 env/
+.coverage
+coverage/
+htmlcov/
 
-# Node.js (if any frontend assets)
+# Node artifacts
 node_modules/
-npm-debug.log*
-yarn-debug.log*
-yarn-error.log*
+.pnpm-store/
+.npm/
 
-# IDE files
+# SQLite and local DB artifacts
+goblin_assistant.db
+*.sqlite
+*.sqlite3
+*.db
+
+# Local caches/temp outputs
+.tmp/
+tmp/
+temp/
+*.tmp
+*.temp
+.playwright/
+
+# Tooling/editor/OS
 .vscode/
 .idea/
+.DS_Store
+Thumbs.db
 *.swp
 *.swo
 *~
 
-# OS files
-.DS_Store
-Thumbs.db
-*.log
-
-# Documentation and examples
-README.md
-docs/
-examples/
-*.md
-
-# Test files (unless needed at runtime)
-tests/
-test_*.py
-*_test.py
-
-# Development tools
-scripts/
-tools/
+# CI/docs/tests and local reports (not needed for runtime image)
 .github/
 .circleci/
+docs/
+tests/
+reports/
+screenshots/
 
-# Local configuration
-.env*
-.env.local
-.env.development
-.env.test
-.env.production
-
-# Backup files
-*.bak
-*.backup
-*.tmp
-
-# Large data files
+# Large local data/model dirs
 data/
 models/
 vector_db/
 chroma_db/
-
-# Temporary files
-*.tmp
-*.temp
-tmp/
-temp/
-
-# CI/CD files
-.github/
-.circleci/
-.dockerignore
-.dockerfile
-Dockerfile*
+data-gym-cache/

@@ -3,15 +3,18 @@ import { renderHook, waitFor } from '@testing-library/react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { useDashboardData } from '../useDashboardData';
 
-jest.mock('@/api', () => ({
+vi.mock('@/lib/api', () => ({
   apiClient: {
-    getAllHealth: jest.fn().mockResolvedValue({
+    getAllHealth: vi.fn().mockResolvedValue({
       services: {
         api: { status: 'healthy', latency: 50 },
         chroma: { status: 'healthy', latency: 100 },
       },
     }),
   },
+}));
+vi.mock('@/lib/error/toast', () => ({
+  getUserMessage: (error: unknown) => (error instanceof Error ? error.message : String(error)),
 }));
 
 const createWrapper = () => {
@@ -55,5 +58,18 @@ describe('useDashboardData Hook', () => {
     });
 
     expect(result.current.error).toBeNull();
+  });
+
+  it('surfaces dashboard load errors as user messages', async () => {
+    const { apiClient } = await import('@/lib/api');
+    (apiClient.getAllHealth as vi.Mock).mockRejectedValueOnce(new Error('health unavailable'));
+
+    const { result } = renderHook(() => useDashboardData(), {
+      wrapper: createWrapper(),
+    });
+
+    await waitFor(() => {
+      expect(result.current.error).toBe('health unavailable');
+    });
   });
 });

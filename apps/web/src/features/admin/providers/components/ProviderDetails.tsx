@@ -1,4 +1,27 @@
 import type { ProviderConfig } from '../../../../hooks/api/useSettings';
+import { useRoutingProviders } from '../hooks/useRoutingAnalytics';
+
+interface RoutingStats {
+  ewma_latency_ms: number;
+  p95_latency_ms: number;
+  success_rate: number;
+  total_cost_usd: number;
+  ewma_tokens_per_sec: number;
+  total_output_tokens: number;
+}
+
+function getCircuitStateColor(state?: string): string {
+  switch (state?.toLowerCase()) {
+    case 'closed':
+      return 'bg-success/20 text-success border border-success/30';
+    case 'soft_open':
+      return 'bg-warning/20 text-warning border border-warning/30';
+    case 'hard_open':
+      return 'bg-danger/20 text-danger border border-danger/30';
+    default:
+      return 'bg-muted/20 text-muted border border-muted/30';
+  }
+}
 
 export default function ProviderDetails({
   provider,
@@ -7,6 +30,12 @@ export default function ProviderDetails({
   provider: ProviderConfig;
   onSetPriority: (providerId: number, priority: number, role?: 'primary' | 'fallback') => void;
 }) {
+  const { data: routingData } = useRoutingProviders();
+
+  const routingStats: RoutingStats | null =
+    routingData?.providers?.[provider.name]?.routing_stats || null;
+  const health = routingData?.providers?.[provider.name]?.health;
+
   return (
     <div className="bg-surface rounded-xl shadow-sm border border-border p-6">
       <div className="flex items-center justify-between mb-6">
@@ -21,9 +50,7 @@ export default function ProviderDetails({
         <div className="bg-bg rounded-lg p-4">
           <div className="text-xs text-muted mb-1">Status</div>
           <div
-            className={`text-lg font-semibold ${
-              provider.enabled ? 'text-success' : 'text-muted'
-            }`}
+            className={`text-lg font-semibold ${provider.enabled ? 'text-success' : 'text-muted'}`}
           >
             {provider.enabled ? 'Enabled' : 'Disabled'}
           </div>
@@ -41,6 +68,64 @@ export default function ProviderDetails({
           <div className="text-lg font-semibold text-text">{provider.models?.length || 0}</div>
         </div>
       </div>
+
+      {/* Live Routing Metrics */}
+      {routingStats && (
+        <div className="mb-6">
+          <h3 className="text-sm font-semibold text-text mb-3">Live Routing Metrics</h3>
+          <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+            <div className="bg-bg rounded-lg p-3">
+              <div className="text-xs text-muted mb-1">Avg Latency (EWMA)</div>
+              <div className="text-base font-semibold text-text">
+                {routingStats.ewma_latency_ms.toFixed(0)}ms
+              </div>
+            </div>
+            <div className="bg-bg rounded-lg p-3">
+              <div className="text-xs text-muted mb-1">P95 Latency</div>
+              <div className="text-base font-semibold text-text">
+                {routingStats.p95_latency_ms.toFixed(0)}ms
+              </div>
+            </div>
+            <div className="bg-bg rounded-lg p-3">
+              <div className="text-xs text-muted mb-1">Success Rate</div>
+              <div className="text-base font-semibold text-success">
+                {(routingStats.success_rate * 100).toFixed(1)}%
+              </div>
+            </div>
+            <div className="bg-bg rounded-lg p-3">
+              <div className="text-xs text-muted mb-1">Hour Cost</div>
+              <div className="text-base font-semibold text-text">
+                ${routingStats.total_cost_usd.toFixed(4)}
+              </div>
+            </div>
+            <div className="bg-bg rounded-lg p-3">
+              <div className="text-xs text-muted mb-1">Throughput</div>
+              <div className="text-base font-semibold text-text">
+                {routingStats.ewma_tokens_per_sec.toFixed(0)} tok/s
+              </div>
+            </div>
+            <div className="bg-bg rounded-lg p-3">
+              <div className="text-xs text-muted mb-1">Total Tokens</div>
+              <div className="text-base font-semibold text-text">
+                {routingStats.total_output_tokens.toLocaleString()}
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Circuit State */}
+      {health && (
+        <div className="mb-6">
+          <h3 className="text-sm font-semibold text-text mb-2">Circuit Breaker State</h3>
+          <div
+            className={`inline-flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-medium ${getCircuitStateColor(health.status)}`}
+          >
+            <span className="w-2 h-2 rounded-full bg-current" />
+            {health.status?.toUpperCase() || 'UNKNOWN'}
+          </div>
+        </div>
+      )}
 
       {/* Priority Actions */}
       <div className="flex gap-2 mb-6 flex-wrap">
@@ -65,10 +150,7 @@ export default function ProviderDetails({
       {/* Configuration Details */}
       <div className="space-y-3">
         <div>
-          <label
-            htmlFor="provider-base-url"
-            className="block text-xs font-medium text-text mb-1"
-          >
+          <label htmlFor="provider-base-url" className="block text-xs font-medium text-text mb-1">
             Base URL
           </label>
           <input
@@ -95,4 +177,3 @@ export default function ProviderDetails({
     </div>
   );
 }
-

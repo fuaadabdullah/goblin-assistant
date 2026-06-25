@@ -62,6 +62,8 @@ Please include a summary of the changes and the related issue. Please also inclu
 - [ ] Unit tests pass
 - [ ] Integration tests pass
 - [ ] E2E tests pass
+- [ ] Critical-path tests updated for Tier 0 risk surfaces touched by this PR
+- [ ] Contract tests added/updated when API boundary behavior changed
 - [ ] Linting passes
 - [ ] Type checking passes
 
@@ -76,6 +78,8 @@ Please add screenshots to show visual changes.
 - [ ] I have commented my code, particularly in hard-to-understand areas
 - [ ] My changes generate no new warnings or errors
 - [ ] I have added tests that prove my fix is effective or that my feature works
+- [ ] I classified new/updated tests by pyramid layer (unit/integration/e2e) and kept E2E minimal
+- [ ] If touching auth/contracts/execution/sandbox/persistence/trading/money-data paths, I updated Tier 0 tests
 - [ ] New and existing unit tests pass locally with my changes
 - [ ] Any dependent changes have been merged and published in downstream modules
 

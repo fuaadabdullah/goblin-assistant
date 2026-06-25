@@ -1,6 +1,5 @@
 import React from 'react';
 import { render, screen, fireEvent } from '@testing-library/react';
-import '@testing-library/jest-dom';
 import {
   Dialog,
   DialogTrigger,
@@ -129,7 +128,7 @@ describe('Dialog', () => {
   });
 
   it('calls onOpenChange when state transitions', () => {
-    const onOpenChange = jest.fn();
+    const onOpenChange = vi.fn();
     render(
       <Dialog onOpenChange={onOpenChange}>
         <DialogTrigger>Open</DialogTrigger>

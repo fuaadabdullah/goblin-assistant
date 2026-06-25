@@ -9,8 +9,8 @@ from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
+from api import lifespan as lifespan_module
 from api import main
-from api.services import provider_health
 
 
 def _provider_health_stub(
@@ -37,8 +37,8 @@ def test_app_registers_runtime_middlewares_and_core_routes() -> None:
     paths = {route.path for route in main.app.routes if hasattr(route, "path")}
     assert "/" in paths
     assert "/test" in paths
-    assert "/health" in paths
-    assert "/search/query" in paths
+    assert "/api/v1/health" in paths
+    assert "/api/v1/search/query" in paths
 
 
 def test_app_auth_middleware_excludes_public_auth_bootstrap_routes() -> None:
@@ -49,6 +49,7 @@ def test_app_auth_middleware_excludes_public_auth_bootstrap_routes() -> None:
     )
     excluded_paths = set(auth_middleware.kwargs["exclude_paths"])
 
+    assert "/health" in excluded_paths
     assert "/auth/csrf-token" in excluded_paths
     assert "/auth/google/url" in excluded_paths
     assert "/auth/passkey/challenge" in excluded_paths
@@ -69,25 +70,13 @@ async def test_lifespan_startup_and_shutdown_calls_integrations() -> None:
     fake_cleanup_stop = AsyncMock(return_value=None)
 
     with ExitStack() as stack:
-        stack.enter_context(
-            patch.object(provider_health, "health_monitor", health_monitor)
-        )
-        stack.enter_context(
-            patch.object(main.cache, "init_redis", fake_redis_init)
-        )
+        stack.enter_context(patch.object(lifespan_module, "health_monitor", health_monitor))
+        stack.enter_context(patch.object(main.cache, "init_redis", fake_redis_init))
         stack.enter_context(patch.object(main, "init_db", fake_db_init))
-        stack.enter_context(
-            patch.object(main.monitor, "start", fake_monitor_start)
-        )
-        stack.enter_context(
-            patch.object(main.monitor, "stop", fake_monitor_stop)
-        )
-        stack.enter_context(
-            patch.object(main.cache, "close", fake_cache_close)
-        )
-        stack.enter_context(
-            patch.object(main, "init_secrets_adapter", fake_init_secrets)
-        )
+        stack.enter_context(patch.object(main.monitor, "start", fake_monitor_start))
+        stack.enter_context(patch.object(main.monitor, "stop", fake_monitor_stop))
+        stack.enter_context(patch.object(main.cache, "close", fake_cache_close))
+        stack.enter_context(patch.object(main, "init_secrets_adapter", fake_init_secrets))
         stack.enter_context(
             patch.object(
                 main,
@@ -137,40 +126,34 @@ async def test_lifespan_logs_bad_provider_creds_but_continues() -> None:
     fake_cleanup_start = AsyncMock(return_value=None)
     fake_init_secrets = AsyncMock(return_value=None)
 
-    with patch.dict(
-        os.environ,
-        {"FAIL_ON_PROVIDER_CREDENTIAL_ERRORS": "true"},
-        clear=False,
+    with (
+        patch.dict(
+            os.environ,
+            {"FAIL_ON_PROVIDER_CREDENTIAL_ERRORS": "true"},
+            clear=False,
+        ),
+        ExitStack() as stack,
     ):
-        with ExitStack() as stack:
-            stack.enter_context(
-                patch.object(provider_health, "health_monitor", health_monitor)
+        stack.enter_context(patch.object(lifespan_module, "health_monitor", health_monitor))
+        stack.enter_context(patch.object(main.cache, "init_redis", fake_redis_init))
+        stack.enter_context(patch.object(main, "init_db", fake_db_init))
+        stack.enter_context(patch.object(main.monitor, "start", fake_monitor_start))
+        stack.enter_context(
+            patch.object(
+                main.artifact_cleanup_service,
+                "start",
+                fake_cleanup_start,
             )
-            stack.enter_context(
-                patch.object(main.cache, "init_redis", fake_redis_init)
+        )
+        stack.enter_context(
+            patch.object(
+                main,
+                "init_secrets_adapter",
+                fake_init_secrets,
             )
-            stack.enter_context(
-                patch.object(main, "init_db", fake_db_init)
-            )
-            stack.enter_context(
-                patch.object(main.monitor, "start", fake_monitor_start)
-            )
-            stack.enter_context(
-                patch.object(
-                    main.artifact_cleanup_service,
-                    "start",
-                    fake_cleanup_start,
-                )
-            )
-            stack.enter_context(
-                patch.object(
-                    main,
-                    "init_secrets_adapter",
-                    fake_init_secrets,
-                )
-            )
-            async with main.lifespan(main.app):
-                await asyncio.sleep(0)
+        )
+        async with main.lifespan(main.app):
+            await asyncio.sleep(0)
 
     fake_redis_init.assert_awaited_once()
     fake_db_init.assert_awaited_once()

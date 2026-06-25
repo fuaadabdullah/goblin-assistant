@@ -1,16 +1,19 @@
 import { useCallback, useState } from 'react';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
-import { apiClient } from '@/api';
 import type { ProviderConfig } from '../../../../hooks/api/useSettings';
 import type { ProviderTestResponse } from '../../../../types/api';
 import { queryKeys } from '../../../../lib/query-keys';
+import { providersAdminApi } from '../api';
+import { getUserMessage } from '../../../../lib/error/toast';
+
+export const formatProviderTestMessage = (error: unknown): string => getUserMessage(error);
 
 export interface TestResult {
   success: boolean;
   message: string;
   latency: number;
-  response?: string;
-  model_used?: string;
+  response?: string | undefined;
+  model_used?: string | undefined;
 }
 
 export type ProviderRole = 'primary' | 'fallback';
@@ -30,7 +33,9 @@ export const useProviderMutations = () => {
         };
       }
 
-      const result = await apiClient.testProviderConnection(provider.id) as ProviderTestResponse;
+      const result = (await providersAdminApi.testProviderConnection(
+        provider.id
+      )) as ProviderTestResponse;
       return {
         success: Boolean(result?.success),
         message: result?.message ?? 'Connection test completed.',
@@ -45,7 +50,7 @@ export const useProviderMutations = () => {
     onError: (error: unknown) => {
       setTestResult({
         success: false,
-        message: error instanceof Error ? error.message : 'Connection test failed',
+        message: formatProviderTestMessage(error),
         latency: 0,
       });
     },
@@ -68,7 +73,10 @@ export const useProviderMutations = () => {
         };
       }
 
-      const result = await apiClient.testProviderWithPrompt(provider.id, prompt) as ProviderTestResponse;
+      const result = (await providersAdminApi.testProviderWithPrompt(
+        provider.id,
+        prompt
+      )) as ProviderTestResponse;
       return {
         success: Boolean(result?.success),
         message: result?.message ?? 'Prompt test completed.',
@@ -85,7 +93,7 @@ export const useProviderMutations = () => {
     onError: (error: unknown) => {
       setTestResult({
         success: false,
-        message: error instanceof Error ? error.message : 'Test failed',
+        message: formatProviderTestMessage(error),
         latency: 0,
       });
     },
@@ -100,15 +108,15 @@ export const useProviderMutations = () => {
     }: {
       providerId: number;
       priority: number;
-      role?: ProviderRole;
-    }) => apiClient.setProviderPriority(providerId, priority, role),
+      role?: ProviderRole | undefined;
+    }) => providersAdminApi.setProviderPriority(providerId, priority, role),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: queryKeys.providers });
     },
   });
 
   const reorderMutation = useMutation({
-    mutationFn: async (providerIds: number[]) => apiClient.reorderProviders(providerIds),
+    mutationFn: async (providerIds: number[]) => providersAdminApi.reorderProviders(providerIds),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: queryKeys.providers });
     },
@@ -137,7 +145,7 @@ export const useProviderMutations = () => {
 
   const reorderProviders = useCallback(
     async (newOrder: ProviderConfig[]) => {
-      const providerIds = newOrder.map(p => p.id).filter((id): id is number => id !== undefined);
+      const providerIds = newOrder.map((p) => p.id).filter((id): id is number => id !== undefined);
       await reorderMutation.mutateAsync(providerIds);
     },
     [reorderMutation]

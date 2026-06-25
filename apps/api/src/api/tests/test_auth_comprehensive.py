@@ -29,8 +29,10 @@ from api.auth.router import (
     SECRET_KEY,
     create_access_token,
     get_db,
+    get_readonly_db,
     hash_password,
     router,
+    routes_email,
     verify_password,
     verify_token,
 )
@@ -46,8 +48,9 @@ def app(mock_db):
     so post-registration attribute patches don't take effect.
     """
     app = FastAPI()
-    app.include_router(router)
+    app.include_router(router, prefix="/api/v1")
     app.dependency_overrides[get_db] = lambda: mock_db
+    app.dependency_overrides[get_readonly_db] = lambda: mock_db
     return app
 
 
@@ -68,7 +71,7 @@ def mock_db():
 def csrf_always_valid():
     """Patch the CSRF check used by routes to always succeed."""
     with patch(
-        "api.auth.router.validate_csrf_token",
+        "api.auth.router._runtime.validate_csrf_token",
         new=AsyncMock(return_value=True),
     ):
         yield
@@ -78,7 +81,7 @@ def csrf_always_valid():
 def rate_limit_open():
     """Patch the rate-limiter used by routes to always allow."""
     with patch(
-        "api.auth.router.check_rate_limit",
+        "api.auth.router._runtime.check_rate_limit",
         new=AsyncMock(return_value=True),
     ):
         yield
@@ -96,7 +99,6 @@ def _reset_csrf_fallback():
 
 
 class TestPasswordHashing:
-
     def test_hash_password_returns_string(self):
         hashed = hash_password("test_password_123")
         assert isinstance(hashed, str)
@@ -120,7 +122,6 @@ class TestPasswordHashing:
 
 
 class TestJWTTokens:
-
     def test_create_access_token(self):
         token = create_access_token({"sub": "user_123"})
         assert isinstance(token, str)
@@ -161,7 +162,6 @@ def _fail_redis():
 
 
 class TestCSRFProtection:
-
     @pytest.mark.asyncio
     async def test_generate_csrf_token_returns_string(self):
         with _fail_redis():
@@ -214,7 +214,6 @@ def _redis_mock_for_rate_limit(count_sequence):
 
 
 class TestRateLimiting:
-
     @pytest.mark.asyncio
     async def test_rate_limit_allows_under_limit(self):
         from api.core.rate_limiter_auth import check_rate_limit
@@ -261,7 +260,6 @@ class TestRateLimiting:
 
 
 class TestRegisterEndpoint:
-
     def test_register_success(self, client, csrf_always_valid, rate_limit_open):
         mock_service = AsyncMock()
         mock_service.get_user_by_email = AsyncMock(return_value=None)
@@ -273,9 +271,16 @@ class TestRegisterEndpoint:
         mock_user_model.hashed_password = hash_password("password123")
         mock_service.create_user = AsyncMock(return_value=mock_user_model)
 
-        with patch("api.auth.router.UserService", return_value=mock_service):
+        with (
+            patch.object(
+                routes_email._ar,
+                "UserService",
+                return_value=mock_service,
+            ),
+            patch.object(routes_email, "_db_create_session", new=AsyncMock()),
+        ):
             response = client.post(
-                "/auth/register",
+                "/api/v1/auth/register",
                 json={
                     "email": "test@example.com",
                     "password": "password123",
@@ -285,20 +290,27 @@ class TestRegisterEndpoint:
             )
 
         assert response.status_code == 200, response.text
-        data = response.json()
+        body = response.json()
+        data = body["data"]
+        assert body["success"] is True
         assert "access_token" in data
         assert data["token_type"] == "bearer"
         assert data["user"]["email"] == "test@example.com"
 
-    def test_register_duplicate_email(
-        self, client, csrf_always_valid, rate_limit_open
-    ):
+    def test_register_duplicate_email(self, client, csrf_always_valid, rate_limit_open):
         mock_service = AsyncMock()
         mock_service.get_user_by_email = AsyncMock(return_value=MagicMock())
 
-        with patch("api.auth.router.UserService", return_value=mock_service):
+        with (
+            patch.object(
+                routes_email._ar,
+                "UserService",
+                return_value=mock_service,
+            ),
+            patch.object(routes_email, "_db_create_session", new=AsyncMock()),
+        ):
             response = client.post(
-                "/auth/register",
+                "/api/v1/auth/register",
                 json={
                     "email": "existing@example.com",
                     "password": "password123",
@@ -313,11 +325,11 @@ class TestRegisterEndpoint:
     def test_register_rate_limited(self, client, csrf_always_valid):
         # Force the rate-limiter to deny — verifies the route returns 429.
         with patch(
-            "api.auth.router.check_rate_limit",
+            "api.auth.router._runtime.check_rate_limit",
             new=AsyncMock(return_value=False),
         ):
             response = client.post(
-                "/auth/register",
+                "/api/v1/auth/register",
                 json={
                     "email": "user@example.com",
                     "password": "password123",
@@ -331,7 +343,6 @@ class TestRegisterEndpoint:
 
 
 class TestLoginEndpoint:
-
     def test_login_success(self, client, csrf_always_valid, rate_limit_open):
         password = "password123"
         mock_service = AsyncMock()
@@ -348,9 +359,13 @@ class TestLoginEndpoint:
         mock_service.get_user_by_email = AsyncMock(return_value=mock_user_model)
         mock_service.update_user_last_login = AsyncMock()
 
-        with patch("api.auth.router.UserService", return_value=mock_service):
+        with patch.object(
+            routes_email._ar,
+            "UserService",
+            return_value=mock_service,
+        ):
             response = client.post(
-                "/auth/login",
+                "/api/v1/auth/login",
                 json={
                     "email": "user@example.com",
                     "password": password,
@@ -359,7 +374,9 @@ class TestLoginEndpoint:
             )
 
         assert response.status_code == 200, response.text
-        data = response.json()
+        body = response.json()
+        data = body["data"]
+        assert body["success"] is True
         assert "access_token" in data
         assert data["user"]["email"] == "user@example.com"
 
@@ -367,9 +384,13 @@ class TestLoginEndpoint:
         mock_service = AsyncMock()
         mock_service.get_user_by_email = AsyncMock(return_value=None)
 
-        with patch("api.auth.router.UserService", return_value=mock_service):
+        with patch.object(
+            routes_email._ar,
+            "UserService",
+            return_value=mock_service,
+        ):
             response = client.post(
-                "/auth/login",
+                "/api/v1/auth/login",
                 json={
                     "email": "nonexistent@example.com",
                     "password": "password123",
@@ -380,9 +401,7 @@ class TestLoginEndpoint:
         assert response.status_code == 401
         assert "Invalid email or password" in response.json()["detail"]
 
-    def test_login_invalid_password(
-        self, client, csrf_always_valid, rate_limit_open
-    ):
+    def test_login_invalid_password(self, client, csrf_always_valid, rate_limit_open):
         password = "correct_password"
         mock_service = AsyncMock()
 
@@ -393,9 +412,13 @@ class TestLoginEndpoint:
         mock_user_model.hashed_password = hash_password(password)
         mock_service.get_user_by_email = AsyncMock(return_value=mock_user_model)
 
-        with patch("api.auth.router.UserService", return_value=mock_service):
+        with patch.object(
+            routes_email._ar,
+            "UserService",
+            return_value=mock_service,
+        ):
             response = client.post(
-                "/auth/login",
+                "/api/v1/auth/login",
                 json={
                     "email": "user@example.com",
                     "password": "wrong_password",
@@ -408,11 +431,11 @@ class TestLoginEndpoint:
 
     def test_login_rate_limited(self, client, csrf_always_valid):
         with patch(
-            "api.auth.router.check_rate_limit",
+            "api.auth.router._runtime.check_rate_limit",
             new=AsyncMock(return_value=False),
         ):
             response = client.post(
-                "/auth/login",
+                "/api/v1/auth/login",
                 json={
                     "email": "user@example.com",
                     "password": "password123",
@@ -420,3 +443,55 @@ class TestLoginEndpoint:
                 },
             )
         assert response.status_code == 429
+
+
+class TestMeEndpoint:
+    """Tests for GET /auth/me — user profile endpoint."""
+
+    def test_me_with_valid_user(self, client):
+        """GET /auth/me with a valid user override returns 200 + user data."""
+        from api.auth.router.routes_email import get_current_user
+
+        mock_user = MagicMock()
+        mock_user.id = "user_456"
+        mock_user.email = "me@example.com"
+        mock_user.name = "My Name"
+        mock_user.is_active = True
+        mock_user.google_id = None
+        mock_user.passkey_credential_id = None
+        mock_user.passkey_public_key = None
+
+        app = client.app
+        app.dependency_overrides[get_current_user] = lambda: mock_user
+
+        try:
+            response = client.get("/api/v1/auth/me")
+            assert response.status_code == 200
+            body = response.json()
+            assert body["success"] is True
+            data = body["data"]
+            assert data["id"] == "user_456"
+            assert data["email"] == "me@example.com"
+            assert data["name"] == "My Name"
+        finally:
+            app.dependency_overrides.clear()
+
+    def test_me_without_auth(self, client):
+        """GET /auth/me without valid authentication returns 401."""
+        from fastapi import HTTPException
+
+        from api.auth.router.routes_email import get_current_user
+
+        app = client.app
+
+        def raise_unauthorized():
+            raise HTTPException(status_code=401, detail="Unauthorized")
+
+        # Override to raise 401 like the real dependency would
+        app.dependency_overrides[get_current_user] = raise_unauthorized
+
+        try:
+            response = client.get("/api/v1/auth/me")
+            assert response.status_code == 401
+        finally:
+            app.dependency_overrides.clear()

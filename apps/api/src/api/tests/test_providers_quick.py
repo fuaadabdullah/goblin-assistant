@@ -6,8 +6,9 @@ Quick test script for SiliconeFlow and LlamaCPP providers.
 import asyncio
 import os
 import sys
-import httpx
 import time
+
+import httpx
 
 # Add parent directory to path
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
@@ -191,9 +192,7 @@ async def diagnose_llamacpp():
                 elapsed_ms = (time.perf_counter() - start) * 1000
 
                 status_icon = "✅" if 200 <= response.status_code < 300 else "⚠️"
-                print(
-                    f"{status_icon} {path:30} → {response.status_code} ({elapsed_ms:.0f}ms)"
-                )
+                print(f"{status_icon} {path:30} → {response.status_code} ({elapsed_ms:.0f}ms)")
 
                 if response.status_code == 200 and len(response.text) < 200:
                     print(f"   Response: {response.text}")
@@ -228,7 +227,7 @@ async def main():
     try:
         from dotenv import load_dotenv
 
-        if os.path.exists(".env.local"):
+        if os.path.exists(".env.local"):  # noqa: ASYNC240
             load_dotenv(".env.local")
             print("✅ Loaded .env.local")
     except ImportError:

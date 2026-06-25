@@ -12,11 +12,23 @@ import os
 
 # Configuration
 API_BASE_URL = "http://localhost:8001"  # Adjust as needed
-# Read API key from environment to avoid committing secrets
-API_KEY = os.getenv("API_AUTH_KEY") or os.getenv("SANDBOX_API_KEY") or "devkey"
+
+
+def resolve_api_key() -> str:
+    """Read sandbox API key from environment and fail fast if missing."""
+    api_key = os.getenv("API_AUTH_KEY") or os.getenv("SANDBOX_API_KEY")
+    if api_key:
+        return api_key
+
+    print(
+        "❌ Missing API key: set API_AUTH_KEY or SANDBOX_API_KEY before running sandbox_demo.py",
+        file=sys.stderr,
+    )
+    raise SystemExit(1)
 
 def demo_sandbox_api():
     """Demonstrate sandbox API usage"""
+    api_key = resolve_api_key()
     print("🚀 Sandbox API Demo")
     print("=" * 40)
 
@@ -56,7 +68,7 @@ print("File written successfully")
 
     headers = {
         "Content-Type": "application/json",
-        "X-API-Key": API_KEY
+        "X-API-Key": api_key
     }
 
     job_data = {

@@ -1,0 +1,523 @@
+"""
+SQL retrieval functions for the RetrievalService.
+
+Each function encapsulates a specific SQL query + row-mapping pattern.
+All are async functions that accept explicit parameters and return
+``List[Dict[str, Any]]``.
+"""
+
+from typing import Any, Dict, List, Optional
+
+import structlog
+from sqlalchemy import text
+
+from ...storage.database import get_readonly_db_context
+from ..memory_contract import canonicalize_memory_item
+
+logger = structlog.get_logger()
+
+# Finance categories that receive retrieval score boosts
+FINANCE_CATEGORIES = {
+    "instrument",
+    "risk_signal",
+    "regulatory_constraint",
+    "portfolio_action",
+    "macro_event",
+}
+FINANCE_BOOST_FACTOR = 1.8
+GENERIC_BOOST_FACTOR = 1.5
+SUMMARY_BOOST_FACTOR = 1.2
+
+
+async def retrieve_memory_facts_stratified(
+    query_embedding: List[float],
+    user_id: str,
+    k: int = 3,
+) -> List[Dict[str, Any]]:
+    """Retrieve long-term memory facts with priority scoring.
+
+    Finance-category facts receive a higher similarity boost
+    (1.8x) than generic facts (1.5x) so that domain knowledge
+    surfaces ahead of general conversation artifacts.
+    """
+    try:
+        async with get_readonly_db_context() as session:
+            query_sql = text(
+                """
+                SELECT
+                    mf.id,
+                    mf.fact_text as content,
+                    mf.category,
+                    mf.memory_type,
+                    mf.source_kind,
+                    mf.source_id,
+                    mf.salience_score,
+                    mf.confidence,
+                    mf.memory_state,
+                    mf.sensitivity_level,
+                    mf.retention_days,
+                    mf.expires_at,
+                    mf.last_accessed_at,
+                    mf.confirmation_count,
+                    mf.is_archived,
+                    mf.related_memory_ids,
+                    mf.entity_refs,
+                    mf.metadata,
+                    mf.created_at,
+                    (1 - (mf.fact_embedding <=> :query_embedding))
+                        * CASE
+                            WHEN mf.category IN ('instrument','risk_signal',
+                                'regulatory_constraint','portfolio_action',
+                                'macro_event')
+                            THEN :finance_boost
+                            ELSE :generic_boost
+                          END
+                        AS score
+                FROM memory_facts mf
+                WHERE mf.user_id = :user_id
+                  AND COALESCE(mf.memory_state, 'active') NOT IN ('archived', 'deleted')
+                  AND (mf.expires_at IS NULL OR mf.expires_at > NOW())
+                ORDER BY
+                    CASE
+                        WHEN COALESCE(mf.memory_state, 'active') = 'verified' THEN 4
+                        WHEN COALESCE(mf.memory_state, 'active') = 'active' THEN 3
+                        WHEN COALESCE(mf.memory_state, 'active') = 'candidate' THEN 2
+                        WHEN COALESCE(mf.memory_state, 'active') = 'deprecated' THEN 1
+                        ELSE 0
+                    END DESC,
+                    CASE
+                        WHEN COALESCE(mf.confidence, 0) >= 0.90 THEN 3
+                        WHEN COALESCE(mf.confidence, 0) >= 0.70 THEN 2
+                        WHEN COALESCE(mf.confidence, 0) >= 0.40 THEN 1
+                        ELSE 0
+                    END DESC,
+                    score DESC
+                , COALESCE(mf.salience_score, 0) DESC
+                , mf.created_at DESC
+                LIMIT :k
+            """
+            )
+
+            result = await session.execute(
+                query_sql,
+                {
+                    "query_embedding": query_embedding,
+                    "user_id": user_id,
+                    "k": k,
+                    "finance_boost": FINANCE_BOOST_FACTOR,
+                    "generic_boost": GENERIC_BOOST_FACTOR,
+                },
+            )
+
+            rows = result.fetchall()
+
+            return [
+                canonicalize_memory_item(
+                    {
+                        "id": row.id,
+                        "content": row.content,
+                        "source_type": "memory",
+                        "source_id": row.id,
+                        "metadata": {
+                            "memory_type": row.memory_type or row.category,
+                            "category": row.category,
+                            "source_kind": row.source_kind,
+                            "source_id": row.source_id,
+                            "salience_score": row.salience_score,
+                            "confidence": row.confidence,
+                            "memory_state": row.memory_state,
+                            "sensitivity_level": row.sensitivity_level,
+                            "retention_days": row.retention_days,
+                            "expires_at": row.expires_at,
+                            "last_accessed_at": row.last_accessed_at,
+                            "confirmation_count": row.confirmation_count,
+                            "is_archived": row.is_archived,
+                            "related_memory_ids": row.related_memory_ids,
+                            "entity_refs": row.entity_refs,
+                            "source": "long_term_memory",
+                            "finance_boosted": row.category in FINANCE_CATEGORIES,
+                            "embedding_id": None,
+                        },
+                        "created_at": row.created_at,
+                        "score": float(row.score) if row.score else 0.0,
+                        "user_id": user_id,
+                    },
+                    user_id=user_id,
+                    source_type="memory",
+                )
+                for row in rows
+            ]
+
+    except Exception as e:
+        logger.error(
+            "error retrieving memory facts (stratified)",
+            error=str(e),
+            user_id=user_id,
+        )
+        return []
+
+
+async def retrieve_summaries_stratified(
+    query_embedding: List[float],
+    user_id: str,
+    conversation_id: Optional[str] = None,
+    k: int = 2,
+) -> List[Dict[str, Any]]:
+    """Retrieve working memory summaries."""
+    try:
+        async with get_readonly_db_context() as session:
+            conv_filter = "AND cs.conversation_id = :conversation_id" if conversation_id else ""
+            params: dict = {
+                "user_id": user_id,
+                "query_embedding": query_embedding,
+                "k": k,
+                "summary_boost": SUMMARY_BOOST_FACTOR,
+            }
+            if conversation_id:
+                params["conversation_id"] = conversation_id
+
+            query_sql = text(
+                f"""
+                SELECT
+                    cs.id,
+                    cs.conversation_id,
+                    cs.summary_text AS content,
+                    cs.created_at,
+                    (1 - (cs.summary_embedding <=> :query_embedding))
+                        * :summary_boost AS score
+                FROM conversation_summaries cs
+                JOIN conversations c
+                  ON cs.conversation_id = c.conversation_id
+                WHERE c.user_id = :user_id
+                {conv_filter}
+                ORDER BY score DESC
+                LIMIT :k
+                """
+            )
+
+            result = await session.execute(query_sql, params)
+            rows = result.fetchall()
+
+            return [
+                canonicalize_memory_item(
+                    {
+                        "id": row.id,
+                        "content": row.content,
+                        "source_type": "summary",
+                        "source_id": row.conversation_id,
+                        "metadata": {
+                            "conversation_id": row.conversation_id,
+                            "source": "working_memory",
+                        },
+                        "created_at": row.created_at,
+                        "score": float(row.score) if row.score else 0.0,
+                    },
+                    user_id=user_id,
+                    source_type="summary",
+                )
+                for row in rows
+            ]
+
+    except Exception as e:
+        logger.error(
+            "error retrieving summaries (stratified)",
+            error=str(e),
+            user_id=user_id,
+            conversation_id=conversation_id,
+        )
+        return []
+
+
+async def retrieve_messages_stratified(
+    query_embedding: List[float],
+    user_id: str,
+    conversation_id: Optional[str] = None,
+    k: int = 3,
+) -> List[Dict[str, Any]]:
+    """Retrieve relevant messages with semantic search."""
+    try:
+        async with get_readonly_db_context() as session:
+            where_clauses = ["e.user_id = :user_id", "e.source_type = 'message'"]
+            params = {
+                "user_id": user_id,
+                "query_embedding": query_embedding,
+                "k": k,
+            }
+
+            if conversation_id:
+                where_clauses.append("e.conversation_id = :conversation_id")
+                params["conversation_id"] = conversation_id
+
+            where_clause = " AND ".join(where_clauses)
+
+            query_sql = text(
+                f"""
+                SELECT
+                    e.id,
+                    e.content,
+                    e.conversation_id,
+                    e.metadata,
+                    e.created_at,
+                    (
+                        0.8 * (1 - (e.embedding <=> :query_embedding)) +
+                        0.2 * EXP(-0.001 * EXTRACT(EPOCH FROM (NOW() - e.created_at)))
+                    ) as score
+                FROM embeddings e
+                WHERE {where_clause}
+                ORDER BY score DESC
+                LIMIT :k
+            """
+            )
+
+            result = await session.execute(query_sql, params)
+            rows = result.fetchall()
+
+            return [
+                {
+                    "id": row.id,
+                    "content": row.content,
+                    "source_type": "message",
+                    "source_id": row.conversation_id,
+                    "metadata": row.metadata,
+                    "created_at": row.created_at,
+                    "score": float(row.score) if row.score else 0.0,
+                }
+                for row in rows
+            ]
+
+    except Exception as e:
+        logger.error(
+            "error retrieving messages (stratified)",
+            error=str(e),
+            user_id=user_id,
+            conversation_id=conversation_id,
+        )
+        return []
+
+
+async def retrieve_by_source_type(
+    query_embedding: List[float],
+    user_id: str,
+    source_type: str,
+    k: int = 5,
+) -> List[Dict[str, Any]]:
+    """Generic cosine-similarity retrieval for any source_type in the embeddings table.
+
+    No recency decay — documents, code, research, and task items are treated as
+    durable. Score is pure cosine similarity.
+    """
+    try:
+        async with get_readonly_db_context() as session:
+            query_sql = text(
+                """
+                SELECT
+                    e.id,
+                    e.content,
+                    e.source_type,
+                    e.source_id,
+                    e.metadata,
+                    e.created_at,
+                    (1 - (e.embedding <=> :query_embedding)) AS score
+                FROM embeddings e
+                WHERE e.user_id = :user_id
+                  AND e.source_type = :source_type
+                ORDER BY score DESC
+                LIMIT :k
+                """
+            )
+
+            result = await session.execute(
+                query_sql,
+                {
+                    "query_embedding": query_embedding,
+                    "user_id": user_id,
+                    "source_type": source_type,
+                    "k": k,
+                },
+            )
+            rows = result.fetchall()
+
+            return [
+                {
+                    "id": row.id,
+                    "content": row.content,
+                    "source_type": row.source_type,
+                    "source_id": row.source_id,
+                    "metadata": row.metadata,
+                    "created_at": row.created_at,
+                    "score": float(row.score) if row.score else 0.0,
+                }
+                for row in rows
+            ]
+
+    except Exception as e:
+        logger.error(
+            "error retrieving by source_type",
+            error=str(e),
+            user_id=user_id,
+            source_type=source_type,
+        )
+        return []
+
+
+async def retrieve_recent_messages(
+    user_id: str,
+    conversation_id: Optional[str] = None,
+    k: int = 2,
+) -> List[Dict[str, Any]]:
+    """Retrieve recent ephemeral messages."""
+    try:
+        async with get_readonly_db_context() as session:
+            where_clauses = ["m.user_id = :user_id"]
+            params = {"user_id": user_id, "k": k}
+
+            if conversation_id:
+                where_clauses.append("m.conversation_id = :conversation_id")
+                params["conversation_id"] = conversation_id
+
+            where_clause = " AND ".join(where_clauses)
+
+            query_sql = text(
+                f"""
+                SELECT
+                    m.id,
+                    m.content,
+                    m.conversation_id,
+                    m.role,
+                    m.created_at
+                FROM messages m
+                WHERE {where_clause}
+                ORDER BY m.created_at DESC
+                LIMIT :k
+            """
+            )
+
+            result = await session.execute(query_sql, params)
+            rows = result.fetchall()
+
+            return [
+                {
+                    "id": row.id,
+                    "content": row.content,
+                    "source_type": "ephemeral",
+                    "source_id": row.conversation_id,
+                    "metadata": {"role": row.role, "source": "ephemeral_memory"},
+                    "created_at": row.created_at,
+                    "score": 0.1,
+                }
+                for row in rows
+            ]
+
+    except Exception as e:
+        logger.error(
+            "error retrieving recent messages",
+            error=str(e),
+            user_id=user_id,
+            conversation_id=conversation_id,
+        )
+        return []
+
+
+async def retrieve_graph_expanded_memories(
+    user_id: str,
+    seed_memory_ids: List[str],
+    k: int = 5,
+) -> List[Dict[str, Any]]:
+    """Retrieve memory facts connected to seed facts via the entity relation graph.
+
+    Two-hop traversal: find all entities touched by the seed facts, then find
+    all other memory facts connected to those same entities. Returns up to k
+    results ordered by salience_score descending.
+    """
+    if not seed_memory_ids:
+        return []
+    try:
+        async with get_readonly_db_context() as session:
+            query_sql = text(
+                """
+                WITH seed_entities AS (
+                    SELECT DISTINCT mer.source_entity_id AS eid
+                    FROM memory_entity_relations mer
+                    WHERE mer.memory_fact_id = ANY(:seed_ids)
+                      AND mer.user_id = :user_id
+                    UNION
+                    SELECT DISTINCT mer.target_entity_id AS eid
+                    FROM memory_entity_relations mer
+                    WHERE mer.memory_fact_id = ANY(:seed_ids)
+                      AND mer.user_id = :user_id
+                ),
+                related_facts AS (
+                    SELECT DISTINCT mer2.memory_fact_id
+                    FROM memory_entity_relations mer2
+                    JOIN seed_entities se
+                      ON (mer2.source_entity_id = se.eid OR mer2.target_entity_id = se.eid)
+                    WHERE mer2.user_id = :user_id
+                      AND mer2.memory_fact_id IS NOT NULL
+                      AND mer2.memory_fact_id != ALL(:seed_ids)
+                )
+                SELECT
+                    mf.id,
+                    mf.fact_text AS content,
+                    mf.category,
+                    mf.memory_type,
+                    mf.source_kind,
+                    mf.source_id,
+                    mf.salience_score,
+                    mf.confidence,
+                    mf.sensitivity_level,
+                    mf.last_accessed_at,
+                    mf.confirmation_count,
+                    mf.is_archived,
+                    mf.related_memory_ids,
+                    mf.entity_refs,
+                    mf.metadata,
+                    mf.created_at,
+                    mf.scope
+                FROM memory_facts mf
+                JOIN related_facts rf ON mf.id = rf.memory_fact_id
+                WHERE mf.user_id = :user_id
+                  AND COALESCE(mf.is_archived, false) = false
+                  AND (mf.expires_at IS NULL OR mf.expires_at > NOW())
+                ORDER BY COALESCE(mf.salience_score, 0) DESC
+                LIMIT :k
+                """
+            )
+            result = await session.execute(
+                query_sql,
+                {"user_id": user_id, "seed_ids": seed_memory_ids, "k": k},
+            )
+            rows = result.fetchall()
+            return [
+                canonicalize_memory_item(
+                    {
+                        "id": row.id,
+                        "content": row.content,
+                        "category": row.category,
+                        "memory_type": row.memory_type or row.category,
+                        "source_kind": row.source_kind,
+                        "source_id": row.source_id,
+                        "salience_score": row.salience_score,
+                        "confidence": row.confidence,
+                        "sensitivity_level": row.sensitivity_level,
+                        "last_accessed_at": row.last_accessed_at,
+                        "confirmation_count": row.confirmation_count,
+                        "is_archived": row.is_archived,
+                        "related_memory_ids": row.related_memory_ids,
+                        "entity_refs": row.entity_refs,
+                        "metadata": dict(row.metadata or {}, graph_expanded=True, scope=row.scope),
+                        "created_at": row.created_at,
+                        "score": float(row.salience_score or 0.0),
+                        "source_type": "memory",
+                    },
+                    user_id=user_id,
+                    source_type="memory",
+                )
+                for row in rows
+            ]
+    except Exception as e:
+        logger.error(
+            "error retrieving graph expanded memories",
+            error=str(e),
+            user_id=user_id,
+        )
+        return []

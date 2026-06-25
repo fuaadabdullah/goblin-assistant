@@ -66,6 +66,11 @@ async def assemble_semantic_retrieval(
             max_age_hours=168,
         )
 
+        if context_results:
+            from ..memory_reranker import memory_reranker  # noqa: PLC0415
+
+            context_results = memory_reranker.rerank(context_results, query=query)
+
         if not context_results:
             await retrieval_tracer.end_trace(
                 trace_id=trace_id, results_count=0, status="no_results"

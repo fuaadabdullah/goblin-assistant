@@ -1,2 +1,5 @@
-echo "🔍 Skipping local pre-push lint/test to allow push; CI will run full checks."
-echo "If you prefer local validation, run: npm run lint && npm run type-check && npm run test"
+#!/usr/bin/env sh
+set -e
+
+echo "Running type-check before push..."
+TMPDIR=/tmp pnpm --filter @goblin/web run type-check

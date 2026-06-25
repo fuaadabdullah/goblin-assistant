@@ -2,9 +2,12 @@
 
 from __future__ import annotations
 
-from fastapi import APIRouter, HTTPException
 from typing import Any, Dict, List
 
+from fastapi import APIRouter
+
+from api.core.contracts import SuccessEnvelope
+from api.core.errors import DomainError
 from api.providers.dispatcher import dispatcher
 
 router = APIRouter(tags=["providers"])
@@ -18,8 +21,8 @@ def _provider_models(entry: Dict[str, Any]) -> List[str]:
     return sorted({model for model in models if model})
 
 
-@router.get("/providers/models")
-async def get_provider_models() -> Dict[str, Any]:
+@router.get("/providers/models", response_model=SuccessEnvelope[Dict[str, Any]])
+async def get_provider_models() -> SuccessEnvelope[Dict[str, Any]]:
     try:
         inventory = await dispatcher.get_provider_inventory(include_hidden=False)
         providers: List[Dict[str, Any]] = []
@@ -55,12 +58,19 @@ async def get_provider_models() -> Dict[str, Any]:
                     }
                 )
 
-        return {
-            "models": models,
-            "providers": providers,
-            "source": "configured_with_health",
-            "total_models": len(models),
-            "total_providers": len(providers),
-        }
+        return SuccessEnvelope(
+            data={
+                "models": models,
+                "providers": providers,
+                "source": "configured_with_health",
+                "total_models": len(models),
+                "total_providers": len(providers),
+            }
+        )
     except Exception as exc:
-        raise HTTPException(status_code=500, detail=f"Failed to get models: {exc}") from exc
+        raise DomainError(
+            code="PROVIDER_MODELS_FETCH_FAILED",
+            message="Failed to get models",
+            status_code=500,
+            details={"reason": str(exc)},
+        ) from exc

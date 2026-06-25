@@ -3,11 +3,12 @@
 Direct test of SiliconeFlow API with debugging.
 """
 
+import asyncio
 import os
 import sys
-import httpx
-import asyncio
 import time
+
+import httpx
 
 # Load environment
 try:
@@ -15,20 +16,19 @@ try:
 
     load_dotenv(".env.local")
     print("✅ Loaded .env.local")
-except:
+except Exception:
     print("⚠️  Could not load .env.local")
 
 # Get API key
 api_key = os.getenv("SILICONEFLOW_API_KEY", "")
-print(
-    f"\n🔑 API Key from environment: {api_key[:15]}...{api_key[-4:] if len(api_key) > 4 else ''}"
-)
+print(f"\n🔑 API Key from environment: {api_key[:15]}...{api_key[-4:] if len(api_key) > 4 else ''}")
 print(f"   Length: {len(api_key)} characters")
 print(f"   Starts with 'sk-': {api_key.startswith('sk-')}")
 
 if not api_key or api_key == "your_siliconeflow_key_here":
     print("\n❌ API key not properly configured!")
-    sys.exit(1)
+    if __name__ == "__main__":
+        sys.exit(1)
 
 
 # Test direct API call
@@ -44,9 +44,7 @@ async def test_direct_call():
 
     payload = {
         "model": "Qwen/Qwen2.5-7B-Instruct",
-        "messages": [
-            {"role": "user", "content": "What is 2+2? Answer with just the number."}
-        ],
+        "messages": [{"role": "user", "content": "What is 2+2? Answer with just the number."}],
         "max_tokens": 50,
         "temperature": 0.1,
     }
@@ -68,20 +66,20 @@ async def test_direct_call():
 
         if response.status_code == 200:
             data = response.json()
-            print(f"\n📦 Response Data:")
+            print("\n📦 Response Data:")
             print(f"   Model: {data.get('model', 'unknown')}")
 
             choices = data.get("choices", [])
             if choices:
                 text = choices[0].get("message", {}).get("content", "")
                 print(f"   Response: '{text}'")
-                print(f"\n✅ SiliconeFlow API is working!")
+                print("\n✅ SiliconeFlow API is working!")
                 return True
             else:
-                print(f"   ❌ No choices in response")
+                print("   ❌ No choices in response")
                 return False
         else:
-            print(f"\n❌ API Error:")
+            print("\n❌ API Error:")
             print(f"   Status: {response.status_code}")
             print(f"   Response: {response.text[:500]}")
             return False
@@ -112,7 +110,7 @@ async def test_with_provider():
 
         # Check config
         config = dispatcher.get_provider_config("siliconeflow")
-        print(f"\n📋 Provider Config:")
+        print("\n📋 Provider Config:")
         print(f"   Endpoint: {config.get('endpoint', 'NOT SET')}")
         print(f"   API Key Env: {config.get('api_key_env', 'NOT SET')}")
 
@@ -126,7 +124,7 @@ async def test_with_provider():
             print(f"   API Key: {provider.api_key[:15]}...{provider.api_key[-4:]}")
 
         # Make request
-        print(f"\n📝 Making request through provider...")
+        print("\n📝 Making request through provider...")
         result = await provider.invoke(
             prompt="What is 2+2? Answer with just the number.",
             model="Qwen/Qwen2.5-7B-Instruct",

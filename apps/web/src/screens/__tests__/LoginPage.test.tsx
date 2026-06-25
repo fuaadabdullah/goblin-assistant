@@ -1,18 +1,17 @@
 import { fireEvent, render, screen } from '@testing-library/react';
 import type { ReactNode } from 'react';
-import LoginPage from '../LoginPage';
+import LoginPage, { resolveOauthErrorMessage } from '../LoginPage';
 
-const pushMock = jest.fn();
-let query: Record<string, unknown> = {};
+const pushMock = vi.fn();
+let query: Record<string, string> = {};
 
-jest.mock('next/router', () => ({
-  useRouter: () => ({
-    query,
-    push: pushMock,
-  }),
+vi.mock('next/navigation', () => ({
+  useRouter: () => ({ push: pushMock, replace: vi.fn() }),
+  useSearchParams: () => new URLSearchParams(query),
+  usePathname: () => '/login',
 }));
 
-jest.mock('../../components/auth/ModularLoginForm', () => ({
+vi.mock('../../components/auth/ModularLoginForm', () => ({
   __esModule: true,
   default: ({ onSuccess }: { onSuccess: () => void }) => (
     <button type="button" onClick={onSuccess}>
@@ -21,12 +20,12 @@ jest.mock('../../components/auth/ModularLoginForm', () => ({
   ),
 }));
 
-jest.mock('../../components/Seo', () => ({
+vi.mock('../../components/Seo', () => ({
   __esModule: true,
   default: () => null,
 }));
 
-jest.mock('next/link', () => ({
+vi.mock('next/link', () => ({
   __esModule: true,
   default: ({ children }: { children: ReactNode }) => <>{children}</>,
 }));
@@ -71,5 +70,21 @@ describe('LoginPage redirects', () => {
     fireEvent.click(screen.getByRole('button', { name: 'complete-login' }));
 
     expect(pushMock).toHaveBeenCalledWith('/');
+  });
+});
+
+describe('resolveOauthErrorMessage', () => {
+  it('maps known oauth errors to user-friendly copy', () => {
+    expect(resolveOauthErrorMessage('oauth_failed')).toBe('Google sign-in failed. Please try again.');
+    expect(resolveOauthErrorMessage('no_code')).toBe(
+      'Google sign-in did not return an authorization code.'
+    );
+    expect(resolveOauthErrorMessage('callback_failed')).toBe(
+      'Google sign-in could not be completed. Try again.'
+    );
+  });
+
+  it('keeps unknown oauth error codes visible', () => {
+    expect(resolveOauthErrorMessage('invalid_scope')).toBe('Authentication error: invalid_scope');
   });
 });

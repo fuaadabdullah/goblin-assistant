@@ -54,9 +54,7 @@ export default function EnhancedDashboard() {
         </div>
 
         {/* Error banner (non-blocking) */}
-        {error && dashboard && (
-          <DashboardError error={error} onRetry={refresh} />
-        )}
+        {error && dashboard && <DashboardError error={error} onRetry={refresh} />}
 
         {/* Cost Overview Banner */}
         {dashboard && (
@@ -130,20 +128,18 @@ export default function EnhancedDashboard() {
               Advanced Tools
             </h3>
             <Grid gap="sm">
-            <Link
-              href="/admin/providers"
-              className="px-4 py-3 bg-primary/15 text-text border border-border rounded-lg hover:bg-primary/20 transition-all text-center font-medium block"
-            >
-              Connections
-              <span className="block text-xs text-muted mt-1">
-                Manage AI providers and keys
-              </span>
-            </Link>
-            <Link
-              href="/admin/logs"
-              className="px-4 py-3 bg-surface-hover text-text border border-border rounded-lg hover:bg-surface-active transition-all text-center font-medium block"
-            >
-              Activity
+              <Link
+                href="/admin/providers"
+                className="px-4 py-3 bg-primary/15 text-text border border-border rounded-lg hover:bg-primary/20 transition-all text-center font-medium block"
+              >
+                Connections
+                <span className="block text-xs text-muted mt-1">Manage AI providers and keys</span>
+              </Link>
+              <Link
+                href="/admin/logs"
+                className="px-4 py-3 bg-surface-hover text-text border border-border rounded-lg hover:bg-surface-active transition-all text-center font-medium block"
+              >
+                Activity
                 <span className="block text-xs text-muted mt-1">
                   Review system events and alerts
                 </span>

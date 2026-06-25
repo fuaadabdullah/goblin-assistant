@@ -79,10 +79,8 @@ def _extract_usage_and_cost(
 
 
 def _raise_structured_provider_error(provider_response: Dict[str, Any]) -> None:
-    error_msg = str(provider_response.get("error") or "unknown-error")
     category_raw = provider_response.get("error_category")
     category = str(category_raw or ProviderErrorCategory.UNKNOWN.value)
-    used_provider = str(provider_response.get("provider") or "unknown")
 
     if category == ProviderErrorCategory.AUTH.value:
         raise HTTPException(
@@ -90,9 +88,7 @@ def _raise_structured_provider_error(provider_response: Dict[str, Any]) -> None:
             detail={
                 "code": "AUTHENTICATION_REQUIRED",
                 "category": category,
-                "message": "Authentication failed while contacting the AI provider.",
-                "provider": used_provider,
-                "provider_error": error_msg,
+                "message": "Authentication failed. Please check your credentials.",
             },
         )
 
@@ -102,9 +98,7 @@ def _raise_structured_provider_error(provider_response: Dict[str, Any]) -> None:
             detail={
                 "code": "CHAT_RATE_LIMITED",
                 "category": category,
-                "message": "The AI provider is rate limiting requests. Please retry shortly.",
-                "provider": used_provider,
-                "provider_error": error_msg,
+                "message": "Request rate limit exceeded. Please retry shortly.",
                 "retry_after": 2,
             },
         )
@@ -115,9 +109,7 @@ def _raise_structured_provider_error(provider_response: Dict[str, Any]) -> None:
             detail={
                 "code": "CHAT_TIMEOUT",
                 "category": category,
-                "message": "The AI provider took too long to respond.",
-                "provider": used_provider,
-                "provider_error": error_msg,
+                "message": "The request took too long to process.",
             },
         )
 
@@ -125,11 +117,9 @@ def _raise_structured_provider_error(provider_response: Dict[str, Any]) -> None:
         raise HTTPException(
             status_code=400,
             detail={
-                "code": "CHAT_PROVIDER_UNAVAILABLE",
+                "code": "CHAT_PROCESSING_UNAVAILABLE",
                 "category": category,
-                "message": "The selected model or provider could not process this request.",
-                "provider": used_provider,
-                "provider_error": error_msg,
+                "message": "Unable to process this request with the current configuration.",
             },
         )
 
@@ -142,19 +132,15 @@ def _raise_structured_provider_error(provider_response: Dict[str, Any]) -> None:
             detail={
                 "code": "CHAT_BACKEND_UNAVAILABLE",
                 "category": category,
-                "message": "The AI backend is temporarily unavailable. Please retry in a moment.",
-                "provider": used_provider,
-                "provider_error": error_msg,
+                "message": "The processing service is temporarily unavailable. Please retry in a moment.",
             },
         )
 
     raise HTTPException(
         status_code=502,
         detail={
-            "code": "CHAT_PROVIDER_ERROR",
+            "code": "CHAT_PROCESSING_ERROR",
             "category": category,
-            "message": "The AI provider returned an unexpected error.",
-            "provider": used_provider,
-            "provider_error": error_msg,
+            "message": "An unexpected processing error occurred.",
         },
     )

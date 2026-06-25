@@ -5,19 +5,19 @@ from __future__ import annotations
 import pytest
 
 from api.services.visualization_service import (
-    extract_visualizations,
     _extract_dcf_visualizations,
-    _extract_portfolio_visualizations,
     _extract_earnings_visualizations,
+    _extract_portfolio_visualizations,
     _extract_screener_visualizations,
     _fmt_market_cap,
     _fmt_metric,
+    extract_visualizations,
 )
-
 
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
+
 
 class TestFmtMarketCap:
     def test_trillions(self):
@@ -50,6 +50,7 @@ class TestFmtMetric:
 # ---------------------------------------------------------------------------
 # DCF Visualizations
 # ---------------------------------------------------------------------------
+
 
 class TestDCFVisualizations:
     SAMPLE_DCF_RESULT = {
@@ -127,6 +128,7 @@ class TestDCFVisualizations:
 # ---------------------------------------------------------------------------
 # Portfolio Visualizations
 # ---------------------------------------------------------------------------
+
 
 class TestPortfolioVisualizations:
     SAMPLE_PORTFOLIO_RESULT = {
@@ -222,15 +224,34 @@ class TestPortfolioVisualizations:
 # Earnings Visualizations
 # ---------------------------------------------------------------------------
 
+
 class TestEarningsVisualizations:
     SAMPLE_EARNINGS_RESULT = {
         "ticker": "AAPL",
         "company_name": "Apple Inc.",
         "current_price": 170.0,
         "quarters": [
-            {"date": "2024-Q4", "eps_estimate": 1.50, "eps_actual": 1.65, "surprise_pct": 10.0, "verdict": "beat"},
-            {"date": "2024-Q3", "eps_estimate": 1.40, "eps_actual": 1.35, "surprise_pct": -3.6, "verdict": "miss"},
-            {"date": "2024-Q2", "eps_estimate": 1.30, "eps_actual": 1.38, "surprise_pct": 6.2, "verdict": "beat"},
+            {
+                "date": "2024-Q4",
+                "eps_estimate": 1.50,
+                "eps_actual": 1.65,
+                "surprise_pct": 10.0,
+                "verdict": "beat",
+            },
+            {
+                "date": "2024-Q3",
+                "eps_estimate": 1.40,
+                "eps_actual": 1.35,
+                "surprise_pct": -3.6,
+                "verdict": "miss",
+            },
+            {
+                "date": "2024-Q2",
+                "eps_estimate": 1.30,
+                "eps_actual": 1.38,
+                "surprise_pct": 6.2,
+                "verdict": "beat",
+            },
         ],
         "key_metrics": {
             "trailing_eps": 6.50,
@@ -278,15 +299,37 @@ class TestEarningsVisualizations:
 # Screener Visualizations
 # ---------------------------------------------------------------------------
 
+
 class TestScreenerVisualizations:
     SAMPLE_SCREENER_RESULT = {
         "matches": 3,
         "screened": 50,
         "criteria": {"min_market_cap": 100e9},
         "results": [
-            {"ticker": "AAPL", "name": "Apple", "price": 170.0, "market_cap": 2.8e12, "pe_trailing": 28.5, "dividend_yield_pct": 0.55},
-            {"ticker": "MSFT", "name": "Microsoft", "price": 380.0, "market_cap": 2.9e12, "pe_trailing": 35.2, "dividend_yield_pct": 0.72},
-            {"ticker": "GOOGL", "name": "Alphabet", "price": 140.0, "market_cap": 1.8e12, "pe_trailing": 24.1, "dividend_yield_pct": None},
+            {
+                "ticker": "AAPL",
+                "name": "Apple",
+                "price": 170.0,
+                "market_cap": 2.8e12,
+                "pe_trailing": 28.5,
+                "dividend_yield_pct": 0.55,
+            },
+            {
+                "ticker": "MSFT",
+                "name": "Microsoft",
+                "price": 380.0,
+                "market_cap": 2.9e12,
+                "pe_trailing": 35.2,
+                "dividend_yield_pct": 0.72,
+            },
+            {
+                "ticker": "GOOGL",
+                "name": "Alphabet",
+                "price": 140.0,
+                "market_cap": 1.8e12,
+                "pe_trailing": 24.1,
+                "dividend_yield_pct": None,
+            },
         ],
     }
 
@@ -335,6 +378,7 @@ class TestScreenerVisualizations:
 # Public API: extract_visualizations
 # ---------------------------------------------------------------------------
 
+
 class TestExtractVisualizations:
     def test_known_tool(self):
         result = TestDCFVisualizations.SAMPLE_DCF_RESULT
@@ -367,6 +411,7 @@ class TestExtractVisualizations:
 # Executor visualization wiring
 # ---------------------------------------------------------------------------
 
+
 class TestExecutorVisualizationWiring:
     """Test that run_tool_loop collects visualizations."""
 
@@ -374,7 +419,8 @@ class TestExecutorVisualizationWiring:
     async def test_tool_loop_collects_visualizations(self):
         """run_tool_loop should attach visualizations[] to the final response."""
         from unittest.mock import AsyncMock, patch
-        from api.tools.executor import run_tool_loop
+
+        from api.assistant_tools.executor import run_tool_loop
 
         # First call returns tool_calls, second call returns text response
         tool_call_response = {
@@ -382,31 +428,40 @@ class TestExecutorVisualizationWiring:
             "result": {
                 "text": "",
                 "raw": {
-                    "choices": [{
-                        "finish_reason": "tool_calls",
-                        "message": {
-                            "tool_calls": [{
-                                "id": "tc_1",
-                                "function": {
-                                    "name": "dcf_calculator",
-                                    "arguments": '{"ticker": "AAPL"}',
-                                },
-                            }],
-                        },
-                    }],
+                    "choices": [
+                        {
+                            "finish_reason": "tool_calls",
+                            "message": {
+                                "tool_calls": [
+                                    {
+                                        "id": "tc_1",
+                                        "function": {
+                                            "name": "dcf_calculator",
+                                            "arguments": '{"ticker": "AAPL"}',
+                                        },
+                                    }
+                                ],
+                            },
+                        }
+                    ],
                 },
             },
         }
         final_response = {
             "ok": True,
-            "result": {"text": "AAPL is undervalued.", "raw": {"choices": [{"message": {"content": "..."}}]}},
+            "result": {
+                "text": "AAPL is undervalued.",
+                "raw": {"choices": [{"message": {"content": "..."}}]},
+            },
         }
 
         invoke_fn = AsyncMock(side_effect=[tool_call_response, final_response])
 
         dcf_result = TestDCFVisualizations.SAMPLE_DCF_RESULT
 
-        with patch("api.tools.executor.execute_tool_call", new_callable=AsyncMock) as mock_exec:
+        with patch(
+            "api.assistant_tools.executor.execute_tool_call", new_callable=AsyncMock
+        ) as mock_exec:
             mock_exec.return_value = dcf_result
             result = await run_tool_loop(
                 messages=[{"role": "user", "content": "Value AAPL"}],
@@ -420,36 +475,46 @@ class TestExecutorVisualizationWiring:
     async def test_tool_loop_no_viz_for_non_financial_tools(self):
         """Tools without extractors should produce empty visualizations."""
         from unittest.mock import AsyncMock, patch
-        from api.tools.executor import run_tool_loop
+
+        from api.assistant_tools.executor import run_tool_loop
 
         tool_call_response = {
             "ok": True,
             "result": {
                 "text": "",
                 "raw": {
-                    "choices": [{
-                        "finish_reason": "tool_calls",
-                        "message": {
-                            "tool_calls": [{
-                                "id": "tc_1",
-                                "function": {
-                                    "name": "get_stock_quote",
-                                    "arguments": '{"ticker": "AAPL"}',
-                                },
-                            }],
-                        },
-                    }],
+                    "choices": [
+                        {
+                            "finish_reason": "tool_calls",
+                            "message": {
+                                "tool_calls": [
+                                    {
+                                        "id": "tc_1",
+                                        "function": {
+                                            "name": "get_stock_quote",
+                                            "arguments": '{"ticker": "AAPL"}',
+                                        },
+                                    }
+                                ],
+                            },
+                        }
+                    ],
                 },
             },
         }
         final_response = {
             "ok": True,
-            "result": {"text": "Here's AAPL.", "raw": {"choices": [{"message": {"content": "..."}}]}},
+            "result": {
+                "text": "Here's AAPL.",
+                "raw": {"choices": [{"message": {"content": "..."}}]},
+            },
         }
 
         invoke_fn = AsyncMock(side_effect=[tool_call_response, final_response])
 
-        with patch("api.tools.executor.execute_tool_call", new_callable=AsyncMock) as mock_exec:
+        with patch(
+            "api.assistant_tools.executor.execute_tool_call", new_callable=AsyncMock
+        ) as mock_exec:
             mock_exec.return_value = {"price": 170.0, "ticker": "AAPL"}
             result = await run_tool_loop(
                 messages=[{"role": "user", "content": "AAPL quote"}],
@@ -463,36 +528,46 @@ class TestExecutorVisualizationWiring:
     async def test_tool_loop_skips_viz_on_error(self):
         """Error tool results should not generate visualizations."""
         from unittest.mock import AsyncMock, patch
-        from api.tools.executor import run_tool_loop
+
+        from api.assistant_tools.executor import run_tool_loop
 
         tool_call_response = {
             "ok": True,
             "result": {
                 "text": "",
                 "raw": {
-                    "choices": [{
-                        "finish_reason": "tool_calls",
-                        "message": {
-                            "tool_calls": [{
-                                "id": "tc_1",
-                                "function": {
-                                    "name": "dcf_calculator",
-                                    "arguments": '{"ticker": "AAPL"}',
-                                },
-                            }],
-                        },
-                    }],
+                    "choices": [
+                        {
+                            "finish_reason": "tool_calls",
+                            "message": {
+                                "tool_calls": [
+                                    {
+                                        "id": "tc_1",
+                                        "function": {
+                                            "name": "dcf_calculator",
+                                            "arguments": '{"ticker": "AAPL"}',
+                                        },
+                                    }
+                                ],
+                            },
+                        }
+                    ],
                 },
             },
         }
         final_response = {
             "ok": True,
-            "result": {"text": "Sorry, failed.", "raw": {"choices": [{"message": {"content": "..."}}]}},
+            "result": {
+                "text": "Sorry, failed.",
+                "raw": {"choices": [{"message": {"content": "..."}}]},
+            },
         }
 
         invoke_fn = AsyncMock(side_effect=[tool_call_response, final_response])
 
-        with patch("api.tools.executor.execute_tool_call", new_callable=AsyncMock) as mock_exec:
+        with patch(
+            "api.assistant_tools.executor.execute_tool_call", new_callable=AsyncMock
+        ) as mock_exec:
             mock_exec.return_value = {"error": "Ticker not found"}
             result = await run_tool_loop(
                 messages=[{"role": "user", "content": "Value XYZ"}],

@@ -44,7 +44,7 @@ const SandboxMain = ({
       <h2 className="text-lg font-semibold text-text mb-4">Code Editor</h2>
       <textarea
         value={code}
-        onChange={e => onCodeChange(e.target.value)}
+        onChange={(e) => onCodeChange(e.target.value)}
         placeholder={`Enter your ${language} code here...`}
         className="w-full h-64 px-4 py-3 font-mono text-sm border border-border rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent resize-none bg-bg"
       />

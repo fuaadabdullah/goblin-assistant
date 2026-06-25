@@ -4,21 +4,62 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { ProviderProvider, useProvider } from '../ProviderContext';
 
 /* Mock the API client used by useProviderHealth */
-const mockGetModelConfigs = jest.fn();
-jest.mock('@/api', () => ({
+const mockGetModelConfigs = vi.fn();
+vi.mock('@/lib/api', () => ({
   apiClient: {
     getModelConfigs: (...args: unknown[]) => mockGetModelConfigs(...args),
   },
 }));
 
 const Probe = () => {
-  const { providers, selectedProvider, models, providerError } = useProvider();
+  const {
+    providers,
+    selectedProvider,
+    selectedModel,
+    models,
+    loadingProviders,
+    loadingModels,
+    providerError,
+    setLoadingProviders,
+    setLoadingModels,
+    setSelectedProvider,
+    setSelectedModel,
+    updateProviders,
+    updateModels,
+  } = useProvider();
   return (
     <div>
       <div data-testid="providers">{providers.join(',')}</div>
       <div data-testid="selected-provider">{selectedProvider}</div>
+      <div data-testid="selected-model">{selectedModel}</div>
       <div data-testid="models">{models.join(',')}</div>
+      <div data-testid="loading-providers">{String(loadingProviders)}</div>
+      <div data-testid="loading-models">{String(loadingModels)}</div>
       <div data-testid="provider-error">{providerError || ''}</div>
+      <button data-testid="set-loading-providers" onClick={() => setLoadingProviders(true)}>
+        set loading providers
+      </button>
+      <button data-testid="set-loading-models" onClick={() => setLoadingModels(true)}>
+        set loading models
+      </button>
+      <button data-testid="set-selected-provider" onClick={() => setSelectedProvider('anthropic')}>
+        set provider
+      </button>
+      <button
+        data-testid="set-selected-model"
+        onClick={() => setSelectedModel('claude-3.5-sonnet')}
+      >
+        set model
+      </button>
+      <button
+        data-testid="update-providers"
+        onClick={() => updateProviders(['openai', 'azure-openai'])}
+      >
+        update providers
+      </button>
+      <button data-testid="update-models" onClick={() => updateModels(['gpt-4o'])}>
+        update models
+      </button>
     </div>
   );
 };
@@ -49,14 +90,14 @@ describe('ProviderContext', () => {
         lastError = error;
       }
 
-      await new Promise(resolve => setTimeout(resolve, 20));
+      await new Promise((resolve) => setTimeout(resolve, 20));
     }
 
     throw lastError ?? new Error('Timed out waiting for assertion');
   };
 
   beforeEach(() => {
-    jest.resetAllMocks();
+    vi.resetAllMocks();
     localStorage.clear();
     queryClient = new QueryClient({
       defaultOptions: { queries: { retry: false } },
@@ -94,7 +135,7 @@ describe('ProviderContext', () => {
           <ProviderProvider>
             <Probe />
           </ProviderProvider>
-        </QueryClientProvider>,
+        </QueryClientProvider>
       );
     });
 
@@ -120,7 +161,7 @@ describe('ProviderContext', () => {
           <ProviderProvider>
             <Probe />
           </ProviderProvider>
-        </QueryClientProvider>,
+        </QueryClientProvider>
       );
     });
 
@@ -142,7 +183,7 @@ describe('ProviderContext', () => {
           <ProviderProvider>
             <Probe />
           </ProviderProvider>
-        </QueryClientProvider>,
+        </QueryClientProvider>
       );
     });
 
@@ -172,7 +213,7 @@ describe('ProviderContext', () => {
           <ProviderProvider>
             <Probe />
           </ProviderProvider>
-        </QueryClientProvider>,
+        </QueryClientProvider>
       );
     });
 

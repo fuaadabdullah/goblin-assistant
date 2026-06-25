@@ -1,15 +1,14 @@
 import React from 'react';
 import { render, screen } from '@testing-library/react';
-import '@testing-library/jest-dom';
 
-const mockUseSearchResults = jest.fn();
-const mockSearchView = jest.fn();
+const mockUseSearchResults = vi.fn();
+const mockSearchView = vi.fn();
 
-jest.mock('../hooks/useSearchResults', () => ({
+vi.mock('../hooks/useSearchResults', () => ({
   useSearchResults: () => mockUseSearchResults(),
 }));
 
-jest.mock('../components/SearchView', () => ({
+vi.mock('../components/SearchView', () => ({
   __esModule: true,
   default: (props: Record<string, unknown>) => {
     mockSearchView(props);
@@ -21,7 +20,7 @@ import SearchScreen from '../SearchScreen';
 
 describe('SearchScreen', () => {
   beforeEach(() => {
-    jest.clearAllMocks();
+    vi.clearAllMocks();
     mockUseSearchResults.mockReturnValue({
       query: '',
       results: [],
@@ -33,12 +32,12 @@ describe('SearchScreen', () => {
       collectionsLoading: false,
       collectionsData: [],
       queryRef: { current: null },
-      setQuery: jest.fn(),
-      setScope: jest.fn(),
-      setSelectedCollection: jest.fn(),
-      handleSearch: jest.fn(),
-      handleQuickQuery: jest.fn(),
-      handleClear: jest.fn(),
+      setQuery: vi.fn(),
+      setScope: vi.fn(),
+      setSelectedCollection: vi.fn(),
+      handleSearch: vi.fn(),
+      handleQuickQuery: vi.fn(),
+      handleClear: vi.fn(),
     });
   });
 
@@ -59,12 +58,12 @@ describe('SearchScreen', () => {
       collectionsLoading: false,
       collectionsData: ['docs'],
       queryRef: { current: null },
-      setQuery: jest.fn(),
-      setScope: jest.fn(),
-      setSelectedCollection: jest.fn(),
-      handleSearch: jest.fn(),
-      handleQuickQuery: jest.fn(),
-      handleClear: jest.fn(),
+      setQuery: vi.fn(),
+      setScope: vi.fn(),
+      setSelectedCollection: vi.fn(),
+      handleSearch: vi.fn(),
+      handleQuickQuery: vi.fn(),
+      handleClear: vi.fn(),
     };
     mockUseSearchResults.mockReturnValue(state);
 

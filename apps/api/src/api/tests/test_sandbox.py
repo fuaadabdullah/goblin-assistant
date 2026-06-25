@@ -2,12 +2,14 @@
 """
 Simple test script to verify sandbox execution works without RQ
 """
+
 import os
-import subprocess
-import tempfile
 import shutil
+import sys
+
 import docker
 from docker.errors import DockerException
+
 
 def test_sandbox_execution():
     print("🧪 Testing sandbox execution functionality...")
@@ -53,8 +55,8 @@ def test_sandbox_execution():
             "environment": {
                 "SANDBOX_LANGUAGE": "python",
                 "SANDBOX_TIMEOUT": "10",
-                "SANDBOX_RUNTIME_ARGS": ""
-            }
+                "SANDBOX_RUNTIME_ARGS": "",
+            },
         }
 
         print("🐳 Starting Python test container...")
@@ -70,7 +72,7 @@ def test_sandbox_execution():
         exit_code = result.get("StatusCode", -1)
 
         # Get logs
-        logs = container.logs(stdout=True, stderr=True).decode('utf-8', errors='replace')
+        logs = container.logs(stdout=True, stderr=True).decode("utf-8", errors="replace")
         print(f"📝 Container exit code: {exit_code}")
         print(f"📝 Container logs:\n{logs}")
 
@@ -94,6 +96,7 @@ def test_sandbox_execution():
         # Clean up test files
         shutil.rmtree(test_job_path, ignore_errors=True)
 
+
 if __name__ == "__main__":
     success = test_sandbox_execution()
-    exit(0 if success else 1)
+    sys.exit(0 if success else 1)

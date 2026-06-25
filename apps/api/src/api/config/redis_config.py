@@ -6,7 +6,7 @@ for caching, session storage, and rate limiting in production.
 """
 
 import os
-from typing import Optional
+
 from redis.asyncio import Redis
 from redis.exceptions import ConnectionError, TimeoutError
 
@@ -17,28 +17,24 @@ class RedisConfig:
     def __init__(self):
         # Redis connection settings
         self.host = os.getenv("REDIS_HOST", "localhost")
-        self.port = int(os.getenv("REDIS_PORT", 6379))
-        self.db = int(os.getenv("REDIS_DB", 0))
+        self.port = int(os.getenv("REDIS_PORT", "6379"))
+        self.db = int(os.getenv("REDIS_DB", "0"))
         self.password = os.getenv("REDIS_PASSWORD", None)
         self.url = os.getenv("REDIS_URL", None)
 
         # Connection pool settings
-        self.max_connections = int(os.getenv("REDIS_MAX_CONNECTIONS", 50))
-        self.socket_timeout = float(os.getenv("REDIS_SOCKET_TIMEOUT", 5.0))
-        self.socket_connect_timeout = float(os.getenv("REDIS_CONNECT_TIMEOUT", 5.0))
-        self.retry_on_timeout = (
-            os.getenv("REDIS_RETRY_ON_TIMEOUT", "true").lower() == "true"
-        )
+        self.max_connections = int(os.getenv("REDIS_MAX_CONNECTIONS", "50"))
+        self.socket_timeout = float(os.getenv("REDIS_SOCKET_TIMEOUT", "5.0"))
+        self.socket_connect_timeout = float(os.getenv("REDIS_CONNECT_TIMEOUT", "5.0"))
+        self.retry_on_timeout = os.getenv("REDIS_RETRY_ON_TIMEOUT", "true").lower() == "true"
 
         # Production settings
-        self.health_check_interval = int(os.getenv("REDIS_HEALTH_CHECK_INTERVAL", 30))
-        self.socket_keepalive = (
-            os.getenv("REDIS_SOCKET_KEEPALIVE", "true").lower() == "true"
-        )
+        self.health_check_interval = int(os.getenv("REDIS_HEALTH_CHECK_INTERVAL", "30"))
+        self.socket_keepalive = os.getenv("REDIS_SOCKET_KEEPALIVE", "true").lower() == "true"
         self.socket_keepalive_options = {}
 
         # Cache settings
-        self.default_ttl = int(os.getenv("REDIS_DEFAULT_TTL", 3600))  # 1 hour
+        self.default_ttl = int(os.getenv("REDIS_DEFAULT_TTL", "3600"))  # 1 hour
         self.cache_prefix = os.getenv("REDIS_CACHE_PREFIX", "goblin_assistant:")
 
     def get_redis_url(self) -> str:

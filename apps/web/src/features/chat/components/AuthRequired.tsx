@@ -31,21 +31,19 @@ export const AuthRequired = ({ className = '' }: AuthRequiredProps) => {
           />
         </svg>
         <div className="flex-1">
-          <h3 className="text-sm font-semibold text-warning mb-1">
-            Sign in required
-          </h3>
+          <h3 className="text-sm font-semibold text-warning mb-1">Sign in required</h3>
           <p className="text-sm text-text/80 mb-3">
             You need to be signed in to send messages. Create a free account or sign in to continue.
           </p>
           <div className="flex flex-wrap gap-2">
             <Link
-              href="/auth/login"
+              href="/login"
               className="inline-flex items-center px-4 py-2 bg-primary text-white text-sm font-medium rounded-lg hover:bg-primary-hover transition-colors focus:outline-none focus:ring-2 focus:ring-primary/40"
             >
               Sign In
             </Link>
             <Link
-              href="/auth/register"
+              href="/login?mode=register"
               className="inline-flex items-center px-4 py-2 bg-surface-hover text-text text-sm font-medium rounded-lg hover:bg-surface-active transition-colors focus:outline-none focus:ring-2 focus:ring-border"
             >
               Create Account

@@ -5,15 +5,22 @@ consumes entries from it when an `attachment_ids` list is supplied with a
 send-message request. In production this should be Redis or similar.
 """
 
+import asyncio
+import copy
 import hashlib
 import os
 import uuid
+from pathlib import Path
 from typing import Any, Dict
 
 import structlog
 from fastapi import APIRouter, Depends, File, HTTPException, UploadFile
+from fastapi.responses import FileResponse
 
-from ..auth.router import User as AuthenticatedUser, get_current_user
+from ..auth.router import User as AuthenticatedUser
+from ..auth.router import get_current_user
+from ..core.contracts import SuccessEnvelope
+from ..services.pdf_extraction_service import extract_pdf
 from .constants import ALLOWED_MIME_TYPES, MAX_UPLOAD_SIZE_BYTES, UPLOAD_DIR
 from .schemas import FileUploadResponse
 
@@ -23,9 +30,16 @@ router = APIRouter()
 
 # Shared between this module and messages.py
 _pending_uploads: Dict[str, Dict[str, Any]] = {}
+_pdf_extraction_cache_by_hash: Dict[str, Dict[str, Any]] = {}
+_pdf_embedding_cache_by_user_hash: set[tuple[str, str]] = set()
 
 
-@router.post("/upload-file", response_model=FileUploadResponse)
+def _write_bytes(path: str, contents: bytes) -> None:
+    with open(path, "wb") as f:
+        f.write(contents)
+
+
+@router.post("/upload-file", response_model=SuccessEnvelope[FileUploadResponse])
 async def upload_file(
     file: UploadFile = File(...),
     current_user: AuthenticatedUser = Depends(get_current_user),
@@ -51,12 +65,11 @@ async def upload_file(
 
     # Persist to local uploads directory (swap for S3 in production)
     dest_dir = os.path.join(UPLOAD_DIR, current_user.id, file_id)
-    os.makedirs(dest_dir, exist_ok=True)
+    await asyncio.to_thread(os.makedirs, dest_dir, exist_ok=True)
     dest_path = os.path.join(dest_dir, safe_filename)
-    with open(dest_path, "wb") as f:
-        f.write(contents)
+    await asyncio.to_thread(_write_bytes, dest_path, contents)
 
-    _pending_uploads[file_id] = {
+    upload_meta: Dict[str, Any] = {
         "file_id": file_id,
         "user_id": current_user.id,
         "filename": safe_filename,
@@ -66,6 +79,52 @@ async def upload_file(
         "upload_hash": file_hash,
         "path": dest_path,
     }
+    if mime == "application/pdf":
+        cached_pdf_meta = _pdf_extraction_cache_by_hash.get(file_hash)
+        if cached_pdf_meta is not None:
+            pdf_meta = copy.deepcopy(cached_pdf_meta)
+            upload_meta["pdf_extraction_cache_hit"] = True
+        else:
+            pdf_meta = await asyncio.to_thread(extract_pdf, dest_path)
+            _pdf_extraction_cache_by_hash[file_hash] = copy.deepcopy(pdf_meta)
+            upload_meta["pdf_extraction_cache_hit"] = False
+
+        upload_meta.update(pdf_meta)
+
+        chunks = upload_meta.get("chunks") or []
+        embed_cache_key = (current_user.id, file_hash)
+        if chunks and embed_cache_key not in _pdf_embedding_cache_by_user_hash:
+            from ..services.embedding_service import (  # noqa: PLC0415
+                embedding_worker,
+            )
+
+            queue_document_embedding = getattr(embedding_worker, "queue_document_embedding", None)
+            if callable(queue_document_embedding):
+                for chunk in chunks:
+                    asyncio.create_task(
+                        queue_document_embedding(
+                            user_id=current_user.id,
+                            file_id=file_id,
+                            chunk_id=chunk["chunk_id"],
+                            content=chunk["text"],
+                            metadata={
+                                "filename": safe_filename,
+                                "page_start": chunk.get("page_start"),
+                            },
+                        )
+                    )
+            else:
+                logger.warning(
+                    "embedding_worker_missing_document_queue",
+                    user_id=current_user.id,
+                    file_id=file_id,
+                )
+            _pdf_embedding_cache_by_user_hash.add(embed_cache_key)
+            upload_meta["pdf_embedding_cache_hit"] = False
+        elif chunks:
+            upload_meta["pdf_embedding_cache_hit"] = True
+
+    _pending_uploads[file_id] = upload_meta
 
     logger.info(
         "file_uploaded",
@@ -73,6 +132,7 @@ async def upload_file(
         filename=safe_filename,
         size_bytes=len(contents),
         user_id=current_user.id,
+        pdf_extraction_status=upload_meta.get("pdf_extraction_status"),
     )
 
     return FileUploadResponse(
@@ -89,14 +149,12 @@ async def download_file(
     current_user: AuthenticatedUser = Depends(get_current_user),
 ):
     """Download an uploaded file. Only the owning user can access it."""
-    from fastapi.responses import FileResponse
-
     meta = _pending_uploads.get(file_id)
     if not meta or meta["user_id"] != current_user.id:
         raise HTTPException(status_code=404, detail="File not found")
 
     file_path = meta["path"]
-    if not os.path.exists(file_path):
+    if not await asyncio.to_thread(Path(file_path).exists):
         raise HTTPException(status_code=404, detail="File not found on disk")
 
     return FileResponse(

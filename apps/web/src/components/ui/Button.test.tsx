@@ -34,7 +34,7 @@ describe('Button', () => {
   });
 
   test('handles click events', () => {
-  const handleClick = jest.fn();
+    const handleClick = vi.fn();
     const { getByRole } = render(<Button onClick={handleClick}>Click me</Button>);
 
     const button = getByRole('button');
@@ -51,7 +51,7 @@ describe('Button', () => {
   });
 
   test('can be disabled', () => {
-  const handleClick = jest.fn();
+    const handleClick = vi.fn();
     const { getByRole } = render(
       <Button onClick={handleClick} disabled>
         Disabled

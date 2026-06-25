@@ -1,347 +1,519 @@
 version: 2.1
 
-# ============================================================================
-# Orbs - Reusable configurations
-# ============================================================================
-orbs:
-  node: circleci/node@5.0.3
-  python: circleci/python@2.1.1
-  docker: circleci/docker@2.4.0
-  codecov: codecov/codecov@3.2.4
+# No orbs — uses only official Docker images and shell steps.
+# Orb security settings can be enabled later in CircleCI Org Settings → Security.
 
-# ============================================================================
-# Parameters - Dynamic workflow control
-# ============================================================================
 parameters:
-  terraform_apply:
-    type: boolean
-    default: false
-    description: "Apply Terraform changes"
   run_e2e_tests:
     type: boolean
     default: false
-    description: "Run end-to-end tests"
 
-# ============================================================================
-# Executors - Define execution environments
-# ============================================================================
 executors:
-  node-executor:
+  node:
     docker:
-      - image: circleci/node:20.9.0
-        auth:
-          username: $DOCKER_LOGIN
-          password: $DOCKER_PASSWORD
+      - image: cimg/node:22.15
     working_directory: ~/repo
-    resource_class: large
+    resource_class: medium
 
-  python-executor:
+  python:
     docker:
-      - image: circleci/python:3.11-node
-        auth:
-          username: $DOCKER_LOGIN
-          password: $DOCKER_PASSWORD
+      - image: cimg/python:3.11
     working_directory: ~/repo
-    resource_class: large
+    resource_class: medium
 
-  docker-executor:
+  node-python:
+    docker:
+      - image: cimg/python:3.11-node
+    working_directory: ~/repo
+    resource_class: medium
+
+  base:
     docker:
       - image: cimg/base:current
-        auth:
-          username: $DOCKER_LOGIN
-          password: $DOCKER_PASSWORD
-    resource_class: large
+    working_directory: ~/repo
+    resource_class: medium
 
-# ============================================================================
-# Commands - Reusable sets of steps
-# ============================================================================
 commands:
-  checkout-and-setup:
-    description: "Checkout code and setup workspace"
+  trigger-autofix:
     steps:
-      - checkout
       - run:
-          name: "Set environment variables"
+          name: Claude autofix (on failure)
+          when: on_fail
           command: |
-            echo 'export CI_COMMIT_SHA=${CIRCLE_SHA1:0:7}' >> $BASH_ENV
-            echo 'export DOCKER_TAG=${CIRCLE_BRANCH}-${CI_COMMIT_SHA}' >> $BASH_ENV
-            source $BASH_ENV
+            pip install --quiet anthropic
+            python3 tooling/automation/ci_autofix_trigger.py
 
-  install-node-dependencies:
-    description: "Install Node.js dependencies with caching"
+  setup-tmpdir:
     steps:
-      - restore_cache:
-          key: node-v1-{{ checksum "package-lock.json" }}
       - run:
-          name: "Install dependencies"
-          command: npm ci
+          name: Create .tmp directory
+          command: mkdir -p ~/repo/.tmp
+
+  install-pnpm:
+    steps:
+      - run:
+          name: Install pnpm
+          command: sudo npm install -g pnpm@9
+      - restore_cache:
+          keys:
+            - pnpm-v1-{{ checksum "pnpm-lock.yaml" }}
+            - pnpm-v1-
+      - run:
+          name: Install Node deps
+          command: TMPDIR=~/repo/.tmp pnpm install --frozen-lockfile=false
       - save_cache:
-          key: node-v1-{{ checksum "package-lock.json" }}
+          key: pnpm-v1-{{ checksum "pnpm-lock.yaml" }}
           paths:
-            - node_modules
+            - ~/.local/share/pnpm/store
 
-  install-python-dependencies:
-    description: "Install Python dependencies with caching"
+  install-python:
     steps:
       - restore_cache:
-          key: python-v1-{{ checksum "api/requirements.txt" }}
+          keys:
+            - pip-v1-{{ checksum "apps/api/requirements.txt" }}-{{ checksum "apps/api/requirements-vector.txt" }}
+            - pip-v1-
       - run:
-          name: "Install dependencies"
+          name: Install Python deps
           command: |
-            python -m venv venv
-            source venv/bin/activate
             pip install --upgrade pip
-            pip install -r api/requirements.txt
+            pip install -r apps/api/requirements.txt -r apps/api/requirements-vector.txt
       - save_cache:
-          key: python-v1-{{ checksum "api/requirements.txt" }}
+          key: pip-v1-{{ checksum "apps/api/requirements.txt" }}-{{ checksum "apps/api/requirements-vector.txt" }}
           paths:
-            - venv
+            - ~/.cache/pip
 
-  docker-login:
-    description: "Login to Docker registries"
-    steps:
-      - run:
-          name: "Login to GitHub Container Registry"
-          command: |
-            echo $GITHUB_TOKEN | docker login ghcr.io -u $GITHUB_USER --password-stdin
-
-# ============================================================================
-# Jobs
-# ============================================================================
 jobs:
-  # ============================================================================
-  # Code Quality & Linting
-  # ============================================================================
-  lint:
-    executor: node-executor
-    steps:
-      - checkout-and-setup
-      - install-node-dependencies
-      - run:
-          name: "Run ESLint"
-          command: npm run lint
-      - run:
-          name: "Run Prettier check"
-          command: npx prettier --check "src/**/*.{ts,tsx,js,jsx,json,md}"
-
-  type-check:
-    executor: node-executor
-    steps:
-      - checkout-and-setup
-      - install-node-dependencies
-      - run:
-          name: "TypeScript type check"
-          command: npm run type-check
-
-  # ============================================================================
-  # Backend Testing
-  # ============================================================================
-  backend-test:
-    executor: python-executor
-    steps:
-      - checkout-and-setup
-      - install-python-dependencies
-      - run:
-          name: "Run backend tests"
-          command: |
-            source venv/bin/activate
-            python -m pytest \
-              api/ \
-              --cov=api \
-              --cov-report=xml \
-              --cov-report=html \
-              --junitxml=test-results.xml \
-              --tb=short
-      - store_test_results:
-          path: test-results.xml
-      - store_artifacts:
-          path: htmlcov
-      - codecov/upload:
-          files: ./coverage.xml
-          flags: backend
-
-  # ============================================================================
-  # Frontend Testing
-  # ============================================================================
-  frontend-test:
-    executor: node-executor
-    steps:
-      - checkout-and-setup
-      - install-node-dependencies
-      - run:
-          name: "Run frontend tests"
-          command: |
-            npm run test:coverage -- \
-              --watchAll=false \
-              --passWithNoTests
-      - store_test_results:
-          path: coverage/coverage-final.json
-      - store_artifacts:
-          path: coverage
-      - codecov/upload:
-          files: ./coverage/lcov.info
-          flags: frontend
-
-  # ============================================================================
-  # Build Application
-  # ============================================================================
-  build:
-    executor: node-executor
-    steps:
-      - checkout-and-setup
-      - install-node-dependencies
-      - run:
-          name: "Build frontend"
-          command: npm run build
-      - store_artifacts:
-          path: .next
-      - run:
-          name: "Check build size"
-          command: du -sh .next
-
-  # ============================================================================
-  # Build Docker Image
-  # ============================================================================
-  build-docker:
-    executor: docker-executor
-    steps:
-      - checkout-and-setup
-      - setup_remote_docker:
-          version: 20.10.7
-          docker_layer_caching: true
-      - docker-login
-      - run:
-          name: "Build Docker image"
-          command: |
-            docker build \
-              -t ghcr.io/$GITHUB_USER/goblin-assistant:$DOCKER_TAG \
-              -t ghcr.io/$GITHUB_USER/goblin-assistant:latest \
-              -f Dockerfile .
-      - run:
-          name: "Push Docker image"
-          command: |
-            docker push ghcr.io/$GITHUB_USER/goblin-assistant:$DOCKER_TAG
-            docker push ghcr.io/$GITHUB_USER/goblin-assistant:latest
-
-  # ============================================================================
-  # Terraform Validation
-  # ============================================================================
-  terraform-validate:
-    docker:
-      - image: hashicorp/terraform:1.6.0
+  # ── Policy ───────────────────────────────────────────────────────────────
+  policy:
+    executor: base
     steps:
       - checkout
       - run:
-          name: "Initialize Terraform"
-          command: |
-            cd terraform
-            terraform init -backend=false
-      - run:
-          name: "Validate Terraform"
-          command: |
-            cd terraform
-            terraform validate
-      - run:
-          name: "Format check"
-          command: |
-            cd terraform
-            terraform fmt -check -recursive
+          name: Branch + commit policy
+          command: bash tooling/automation/ci-policy-check.sh
 
-  # ============================================================================
-  # Deploy to Staging
-  # ============================================================================
-  deploy-staging:
-    executor: docker-executor
+  # ── Format ───────────────────────────────────────────────────────────────
+  format-check:
+    executor: node-python
     steps:
-      - checkout-and-setup
+      - checkout
+      - setup-tmpdir
+      - install-pnpm
+      - install-python
       - run:
-          name: "Deploy to staging"
+          name: Ruff format check
+          command: cd apps/api && PYTHONPATH=src python -m ruff format --check src/api
+      - run:
+          name: Prettier check
+          command: cd apps/web && TMPDIR=~/repo/.tmp pnpm exec prettier --check .
+
+  # ── Security ─────────────────────────────────────────────────────────────
+  security-scan:
+    executor: node-python
+    steps:
+      - checkout
+      - setup-tmpdir
+      - install-pnpm
+      - run:
+          name: Install pip-audit
+          command: pip install pip-audit
+      - run:
+          name: Secret scan
+          command: python scripts/security/scan_secrets.py
+      - run:
+          name: Audit npm deps
+          command: npx audit-ci --config audit-ci.json
+      - run:
+          name: Audit Python deps
+          command: python -m pip_audit -r apps/api/requirements.txt
+
+  # ── Lint ─────────────────────────────────────────────────────────────────
+  lint:
+    executor: node-python
+    steps:
+      - checkout
+      - setup-tmpdir
+      - install-pnpm
+      - install-python
+      - run:
+          name: Lint (ruff + eslint + policy guard)
+          command: make lint 2>&1 | tee /tmp/ci_failure_output.txt; exit ${PIPESTATUS[0]}
+      - trigger-autofix
+
+  # ── Type check ───────────────────────────────────────────────────────────
+  typecheck:
+    executor: node-python
+    steps:
+      - checkout
+      - setup-tmpdir
+      - install-pnpm
+      - install-python
+      - run:
+          name: Install pyright
+          command: pip install pyright
+      - run:
+          name: TypeScript
+          command: TMPDIR=~/repo/.tmp pnpm --filter @goblin/web type-check
+      - run:
+          name: mypy
+          command: make type-check-api-mypy
+      - run:
+          name: pyright
+          command: make type-check-api-pyright
+      - run:
+          name: Route lifecycle policy
+          command: make check-route-lifecycle
+      - run:
+          name: SDK artifacts current
+          command: make sdk-check
+      - run:
+          name: Providers JSON current
+          command: make check-providers-json
+      - trigger-autofix
+
+  # ── Backend tests ─────────────────────────────────────────────────────────
+  test-backend:
+    executor: python
+    steps:
+      - checkout
+      - setup-tmpdir
+      - install-python
+      - run:
+          name: pytest with coverage
           command: |
-            echo "Deploying to Render staging..."
-            curl -X POST \
-              "https://api.render.com/v1/services/$RENDER_SERVICE_ID_STAGING/deploys" \
-              -H "Authorization: Bearer $RENDER_API_KEY" \
+            pip install pytest-cov
+            cd apps/api
+            PYTHONPATH=src python -m pytest \
+              -o "addopts=" \
+              --cov=src/api \
+              --cov-report=xml:coverage.xml \
+              --cov-report=html:htmlcov \
+              --cov-fail-under=60 \
+              --junitxml=test-results.xml \
+              --tb=short -v 2>&1 | tee /tmp/ci_failure_output.txt; exit ${PIPESTATUS[0]}
+      - run:
+          name: Contract tests
+          command: |
+            cd apps/api
+            PYTHONPATH=src python -m pytest \
+              -o "addopts=" \
+              src/api/tests/test_contract_boundaries.py \
+              src/api/tests/test_chat_route_version_aliases.py \
+              --tb=short -v 2>&1 | tee -a /tmp/ci_failure_output.txt; exit ${PIPESTATUS[0]}
+      - trigger-autofix
+      - store_test_results:
+          path: apps/api/test-results.xml
+      - store_artifacts:
+          path: apps/api/htmlcov
+          destination: coverage-html
+      - run:
+          name: Upload to Codecov
+          command: |
+            if [ -z "$CODECOV_TOKEN" ]; then
+              echo "Warning: CODECOV_TOKEN not set, skipping Codecov upload"
+              exit 0
+            fi
+            curl -Os https://uploader.codecov.io/latest/linux/codecov
+            chmod +x codecov
+            ./codecov -t "${CODECOV_TOKEN}" -f apps/api/coverage.xml -F backend
+
+  # ── Frontend tests ────────────────────────────────────────────────────────
+  test-frontend:
+    executor: node
+    steps:
+      - checkout
+      - setup-tmpdir
+      - install-pnpm
+      - run:
+          name: Web tests
+          command: TMPDIR=~/repo/.tmp pnpm --filter @goblin/web test:ci 2>&1 | tee /tmp/ci_failure_output.txt; exit ${PIPESTATUS[0]}
+      - trigger-autofix
+      - store_artifacts:
+          path: apps/web/coverage
+          destination: web-coverage
+      - run:
+          name: Upload frontend coverage to Codecov
+          command: |
+            if [ -z "$CODECOV_TOKEN" ]; then
+              echo "Warning: CODECOV_TOKEN not set, skipping Codecov upload"
+              exit 0
+            fi
+            curl -Os https://uploader.codecov.io/latest/linux/codecov
+            chmod +x codecov
+            ./codecov -t "${CODECOV_TOKEN}" -f apps/web/coverage/coverage-final.json -F frontend
+      - run:
+          name: E2E budget check (max 8 critical journeys)
+          command: make test-e2e-budget
+
+  # ── Build ─────────────────────────────────────────────────────────────────
+  build:
+    executor: node-python
+    steps:
+      - checkout
+      - setup-tmpdir
+      - install-pnpm
+      - install-python
+      - run:
+          name: Next.js production build
+          command: TMPDIR=~/repo/.tmp make build
+      - store_artifacts:
+          path: apps/web/.next
+          destination: next-build
+
+  # ── Docker ────────────────────────────────────────────────────────────────
+  docker-build:
+    executor: base
+    steps:
+      - checkout
+      - setup_remote_docker:
+          docker_layer_caching: true
+      - run:
+          name: Validate Docker credentials
+          command: |
+            if [ -z "$GITHUB_USER" ] || [ -z "$GITHUB_TOKEN" ]; then
+              echo "Error: GITHUB_USER or GITHUB_TOKEN not set"
+              echo "Set these in CircleCI project settings → Environment Variables"
+              exit 1
+            fi
+      - run:
+          name: Build and push Docker image
+          command: |
+            SHORT="${CIRCLE_SHA1:0:7}"
+            TAG="ghcr.io/${GITHUB_USER}/goblin-assistant:${CIRCLE_BRANCH}-${SHORT}"
+            docker build -t "$TAG" -t "ghcr.io/${GITHUB_USER}/goblin-assistant:latest" -f Dockerfile .
+            echo "$GITHUB_TOKEN" | docker login ghcr.io -u "$GITHUB_USER" --password-stdin
+            docker push "$TAG"
+            docker push "ghcr.io/${GITHUB_USER}/goblin-assistant:latest"
+
+  # ── Deploy ────────────────────────────────────────────────────────────────
+  deploy-render:
+    executor: base
+    steps:
+      - run:
+          name: Validate Render credentials
+          command: |
+            if [ -z "$RENDER_SERVICE_ID" ] || [ -z "$RENDER_API_KEY" ]; then
+              echo "Error: RENDER_SERVICE_ID or RENDER_API_KEY not set"
+              echo "Set these in CircleCI project settings → Environment Variables"
+              exit 1
+            fi
+      - run:
+          name: Trigger Render deploy
+          command: |
+            curl -sf -X POST \
+              "https://api.render.com/v1/services/${RENDER_SERVICE_ID}/deploys" \
+              -H "Authorization: Bearer ${RENDER_API_KEY}" \
               -H "Content-Type: application/json" \
-              -d '{"clearCache":"full"}'
+              -d '{"clearCache":"do_not_clear"}'
       - run:
-          name: "Health check"
+          name: Wait for health check
           command: |
-            sleep 30
-            for i in {1..30}; do
-              if curl -f https://goblin-assistant-staging.onrender.com/health; then
-                echo "✅ Staging deployment successful"
-                exit 0
-              fi
-              sleep 10
+            sleep 60
+            for i in $(seq 1 20); do
+              STATUS=$(curl -sf -o /dev/null -w "%{http_code}" \
+                https://goblin-backend-dt30.onrender.com/health || echo "000")
+              [ "$STATUS" = "200" ] && echo "Healthy after $i attempts." && exit 0
+              echo "Attempt $i: $STATUS — retrying in 15s"
+              sleep 15
             done
-            exit 1
+            echo "Health check timed out." && exit 1
 
-# ============================================================================
-# Workflows - Orchestrate jobs
-# ============================================================================
+  # ── Lighthouse CI ────────────────────────────────────────────────────────
+  lighthouse-ci:
+    docker:
+      - image: cimg/node:22.15-browsers
+    working_directory: ~/repo
+    resource_class: medium
+    steps:
+      - checkout
+      - setup-tmpdir
+      - install-pnpm
+      - run:
+          name: Build Next.js for Lighthouse
+          command: TMPDIR=~/repo/.tmp make build
+      - run:
+          name: Run Lighthouse CI
+          command: |
+            cd apps/web
+            TMPDIR=~/repo/.tmp pnpm lhci autorun
+          environment:
+            LHCI_BUILD_CONTEXT__CURRENT_HASH: << pipeline.git.revision >>
+            LHCI_BUILD_CONTEXT__COMMIT_TIME: << pipeline.git.base_revision >>
+      - store_artifacts:
+          path: apps/web/.lighthouseci
+          destination: lighthouse-reports
+
+  # ── Chromatic (visual regression) ────────────────────────────────────────
+  chromatic:
+    executor: node
+    working_directory: ~/repo
+    steps:
+      - checkout
+      - setup-tmpdir
+      - install-pnpm
+      - run:
+          name: Publish to Chromatic
+          command: |
+            cd apps/web
+            if [ -z "$CHROMATIC_PROJECT_TOKEN" ]; then
+              echo "CHROMATIC_PROJECT_TOKEN not set — skipping visual regression."
+              echo "Add the token from chromatic.com/manage to CircleCI env vars to enable."
+              exit 0
+            fi
+            # On main, auto-accept so baseline advances without manual review.
+            # On all other branches, upload and flag diffs for async review —
+            # exit-zero-on-changes keeps the build green while visual review
+            # happens in the Chromatic UI.
+            if [ "$CIRCLE_BRANCH" = "main" ]; then
+              TMPDIR=~/repo/.tmp pnpm chromatic --auto-accept-changes
+            else
+              TMPDIR=~/repo/.tmp pnpm chromatic --exit-zero-on-changes
+            fi
+
+  # ── Vercel (frontend) ────────────────────────────────────────────────────
+  deploy-vercel:
+    executor: node
+    steps:
+      - checkout
+      - setup-tmpdir
+      - run:
+          name: Validate Vercel credentials
+          command: |
+            if [ -z "$VERCEL_TOKEN" ] || [ -z "$VERCEL_ORG_ID" ] || [ -z "$VERCEL_PROJECT_ID" ]; then
+              echo "Error: VERCEL_TOKEN, VERCEL_ORG_ID, or VERCEL_PROJECT_ID not set"
+              echo "Set these in CircleCI project settings → Environment Variables"
+              exit 1
+            fi
+      - run:
+          name: Install Vercel CLI
+          command: TMPDIR=~/repo/.tmp pnpm add -g vercel
+      - run:
+          name: Deploy to Vercel (production)
+          command: |
+            vercel pull --yes --environment=production --token=$VERCEL_TOKEN
+            vercel build --prod --token=$VERCEL_TOKEN
+            DEPLOY_URL=$(vercel deploy --prebuilt --prod --token=$VERCEL_TOKEN)
+            echo "Deployed: $DEPLOY_URL"
+          environment:
+            VERCEL_ORG_ID: $VERCEL_ORG_ID
+            VERCEL_PROJECT_ID: $VERCEL_PROJECT_ID
+
+  # ── Notify ────────────────────────────────────────────────────────────────
+  notify-deploy:
+    executor: base
+    steps:
+      - run:
+          name: Notify Slack
+          when: always
+          command: |
+            if [ -z "$SLACK_WEBHOOK_URL" ]; then
+              echo "SLACK_WEBHOOK_URL not set — skipping notification."
+              exit 0
+            fi
+            SHORT="${CIRCLE_SHA1:0:7}"
+            MSG="${CIRCLE_WORKFLOW_JOB_ID:+✅ Goblin deployed to production}"
+            MSG="${MSG:-❌ Goblin deployment FAILED}"
+            curl -sf -X POST "$SLACK_WEBHOOK_URL" \
+              -H "Content-Type: application/json" \
+              -d "{
+                \"text\": \"$MSG\",
+                \"blocks\": [{
+                  \"type\": \"section\",
+                  \"text\": {
+                    \"type\": \"mrkdwn\",
+                    \"text\": \"*$MSG*\nCommit: \`$SHORT\` on \`$CIRCLE_BRANCH\`\nAPI: https://goblin-backend-dt30.onrender.com\nFrontend: https://goblin-assistant.vercel.app\n<$CIRCLE_BUILD_URL|View build>\"
+                  }
+                }]
+              }"
+
+  # ── Smoke Tests ──────────────────────────────────────────────────────────
+  smoke-test:
+    executor: base
+    steps:
+      - run:
+          name: Health check
+          command: |
+            for i in $(seq 1 5); do
+              STATUS=$(curl -sf -o /dev/null -w "%{http_code}" \
+                https://goblin-backend-dt30.onrender.com/health || echo "000")
+              [ "$STATUS" = "200" ] && echo "Health check passed." && break
+              echo "Attempt $i: $STATUS — retrying in 10s"
+              sleep 10
+              [ "$i" = "5" ] && echo "Health check failed after 5 attempts." && exit 1
+            done
+      - run:
+          name: Readiness check
+          command: |
+            STATUS=$(curl -sf -o /dev/null -w "%{http_code}" \
+              https://goblin-backend-dt30.onrender.com/health/ready || echo "000")
+            [ "$STATUS" = "200" ] && echo "Readiness check passed." && exit 0
+            echo "Readiness check returned $STATUS." && exit 1
+
 workflows:
-  version: 2
-
-  # ============================================================================
-  # Main CI/CD Pipeline
-  # ============================================================================
-  main:
+  ci:
     jobs:
-      # Quality gates
-      - lint
-      - type-check
-
-      # Testing
-      - backend-test:
-          requires:
-            - lint
-            - type-check
-      - frontend-test:
-          requires:
-            - lint
-            - type-check
-
-      # Build
+      - policy
+      - format-check:
+          requires: [policy]
+      - security-scan:
+          requires: [policy]
+      - lint:
+          requires: [format-check, security-scan]
+      - typecheck:
+          requires: [format-check, security-scan]
+      - test-backend:
+          requires: [lint, typecheck]
+      - test-frontend:
+          requires: [lint, typecheck]
       - build:
-          requires:
-            - backend-test
-            - frontend-test
-
-      # Docker
-      - build-docker:
-          requires:
-            - build
+          requires: [test-backend, test-frontend]
+      - chromatic:
+          requires: [lint, typecheck]
+      - lighthouse-ci:
+          requires: [build]
           filters:
             branches:
-              only:
-                - main
-                - develop
-
-      # Infrastructure
-      - terraform-validate:
-          requires:
-            - build
-
-      # Deploy to staging (auto on main)
-      - deploy-staging:
-          requires:
-            - build-docker
-            - terraform-validate
+              only: [main, develop]
+      - docker-build:
+          requires: [build]
+          filters:
+            branches:
+              only: [main, develop]
+      - deploy-render:
+          requires: [docker-build]
+          filters:
+            branches:
+              only: main
+      - deploy-vercel:
+          requires: [build]
+          filters:
+            branches:
+              only: main
+      - smoke-test:
+          requires: [deploy-render]
+          filters:
+            branches:
+              only: main
+      - notify-deploy:
+          requires: [smoke-test, deploy-vercel]
           filters:
             branches:
               only: main
 
-  # ============================================================================
-  # Scheduled Nightly Tests
-  # ============================================================================
   nightly:
     triggers:
       - schedule:
-          cron: "0 2 * * *"
+          cron: "0 3 * * *"
           filters:
             branches:
               only: main
     jobs:
-      - backend-test
-      - frontend-test
-      - build-docker
+      - security-scan
+      - test-backend
+      - test-frontend
+      - build
+      - chromatic:
+          requires: [build]
+      - lighthouse-ci:
+          requires: [build]
+      - smoke-test
