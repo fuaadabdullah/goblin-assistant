@@ -39,9 +39,6 @@ def _derive_skip_reason(
     if not bool(entry.get("configured")):
         return "not_configured"
 
-    if str(warmup.get("state", "idle")) == "failed" and str(entry.get("tier")) == "self_hosted":
-        return "warmup_failed"
-
     circuit_state = str(circuit.get("state", "")).lower()
     if circuit_state in {"soft_open", "hard_open"} or not bool(circuit.get("available", True)):
         return "circuit_open"

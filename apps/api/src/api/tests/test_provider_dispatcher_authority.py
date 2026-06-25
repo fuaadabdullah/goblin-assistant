@@ -1263,7 +1263,7 @@ async def test_dispatcher_allows_self_hosted_providers_while_warming(monkeypatch
 
 
 @pytest.mark.asyncio
-async def test_dispatcher_blocks_self_hosted_providers_when_warmup_failed(monkeypatch):
+async def test_dispatcher_allows_self_hosted_providers_when_warmup_failed(monkeypatch):
     monkeypatch.setenv("LOCAL_STUB_ENDPOINT", "http://localhost")
     dispatcher = ProviderDispatcher(
         configs={
@@ -1280,11 +1280,21 @@ async def test_dispatcher_blocks_self_hosted_providers_when_warmup_failed(monkey
 
     import api.providers.dispatcher_pkg.execution as execution_module
 
-    async def fail_if_called(*args, **kwargs):
-        _ = args, kwargs
-        raise AssertionError("quota reservation should not be attempted for failed warmup")
+    reservation = AsyncMock(
+        return_value={
+            "ok": True,
+            "provider_id": "local_stub",
+            "model": "stub-model",
+            "reservation_id": "res-1",
+        }
+    )
 
-    monkeypatch.setattr(execution_module.quota_service, "reserve", fail_if_called)
+    monkeypatch.setattr(execution_module.quota_service, "reserve", reservation)
+    monkeypatch.setattr(execution_module.quota_service, "commit", AsyncMock())
+    monkeypatch.setattr(execution_module.quota_service, "release", AsyncMock())
+    monkeypatch.setattr(execution_module.quota_service, "mark_rate_limited", AsyncMock())
+
+    assert dispatcher._warmup_state_for("local_stub")["state"] == "failed"
 
     result = await dispatcher.dispatch(
         pid="local_stub",
@@ -1292,9 +1302,10 @@ async def test_dispatcher_blocks_self_hosted_providers_when_warmup_failed(monkey
         payload={"messages": [{"role": "user", "content": "hello"}]},
     )
 
-    assert result["ok"] is False
-    assert result["error"] == "provider warming up"
-    assert dispatcher._warmup_state_for("local_stub")["state"] == "failed"
+    assert result["ok"] is True
+    assert result["provider"] == "local_stub"
+    assert reservation.await_count == 1
+    assert dispatcher._warmup_state_for("local_stub")["state"] == "warm"
 
 
 @pytest.mark.asyncio
