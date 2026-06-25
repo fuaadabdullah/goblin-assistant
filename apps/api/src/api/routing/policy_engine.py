@@ -140,7 +140,7 @@ class ModelTierRouter:
             "azure_openai": "gpt-4o",
         },
         "local": {
-            "gcp_vm": "qwen2.5:3b",
+            "gcp_vm": "gemini-2.5-flash",
             "ollama_local": "qwen2.5:3b",
             "aliyun": "qwen-plus",
         },

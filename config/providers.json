@@ -696,12 +696,12 @@
         "code"
       ],
       "models": [
-        "qwen2.5:3b",
-        "gemma-3-12b",
-        "qwen3-14b",
         "gemini-2.5-flash",
         "gemini-2.0-flash",
-        "gemini-2.0-flash-lite"
+        "gemini-2.0-flash-lite",
+        "qwen2.5:3b",
+        "gemma-3-12b",
+        "qwen3-14b"
       ],
       "cost_score": 0.05,
       "cost_input_per1k": 0.0,

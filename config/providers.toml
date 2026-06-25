@@ -651,16 +651,17 @@ tier                    = "self_hosted"
 priority_tier           = 70
 cost_score              = 0.05
 default_timeout_ms      = 60000
+default_model           = "gemini-2.5-flash"
 bandwidth_score         = 0.5
 rate_limit_per_min      = 120
 capabilities            = ["chat", "reasoning", "code"]
 models                  = [
-  "qwen2.5:3b",
-  "gemma-3-12b",
-  "qwen3-14b",
   "gemini-2.5-flash",
   "gemini-2.0-flash",
   "gemini-2.0-flash-lite",
+  "qwen2.5:3b",
+  "gemma-3-12b",
+  "qwen3-14b",
 ]
 supports_cot            = true
 cot_suppression_prompt  = "Be concise."
@@ -670,18 +671,25 @@ selectable_requires_env = true
 hidden                  = false
 
 [[providers.gcp_vm.backends]]
+engine        = "vertex"
+project_env   = "VERTEX_AI_PROJECT"
+default_model = "gemini-2.5-flash"
+models        = ["gemini-2.5-flash", "gemini-2.0-flash", "gemini-2.0-flash-lite"]
+priority      = 1
+
+[[providers.gcp_vm.backends]]
 engine        = "ollama"
 endpoint_env  = "OLLAMA_GCP_ENDPOINT"
 default_model = "qwen2.5:3b"
 models        = ["qwen2.5:3b"]
-priority      = 1
+priority      = 2
 
 [[providers.gcp_vm.backends]]
 engine        = "llamacpp"
 endpoint_env  = "LLAMACPP_GCP_ENDPOINT"
 default_model = "qwen2.5:3b"
 models        = ["qwen2.5:3b"]
-priority      = 2
+priority      = 3
 
 [[providers.gcp_vm.backends]]
 engine        = "colab"
@@ -690,13 +698,6 @@ invoke_path   = "/chat"
 api_key_env   = "COLAB_WORKER_API_KEY"
 default_model = "gemma-3-12b"
 models        = ["gemma-3-12b", "qwen3-14b"]
-priority      = 3
-
-[[providers.gcp_vm.backends]]
-engine        = "vertex"
-project_env   = "VERTEX_AI_PROJECT"
-default_model = "gemini-2.5-flash"
-models        = ["gemini-2.5-flash", "gemini-2.0-flash", "gemini-2.0-flash-lite"]
 priority      = 4
 
 # ---------------------------------------------------------------------------
