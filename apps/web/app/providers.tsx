@@ -19,14 +19,20 @@ import ChatFAB from '@/components/ChatFAB';
 import StatusBar from '@/components/StatusBar';
 import PageTransition from '@/components/PageTransition';
 
+function sanitizeDatadogTagValue(value: string | undefined, fallback?: string): string | undefined {
+  const normalized = value?.trim().replace(/[^a-zA-Z0-9_-]+/g, '-').replace(/-+/g, '-').replace(/^[-_]+|[-_]+$/g, '');
+  if (normalized) return normalized;
+  return fallback;
+}
+
 function initDatadog() {
   const appId = process.env['NEXT_PUBLIC_DD_APPLICATION_ID'];
   const clientToken = process.env['NEXT_PUBLIC_DD_CLIENT_TOKEN'];
   if (!appId || !clientToken) return;
 
   const site = process.env['NEXT_PUBLIC_DD_SITE'] ?? 'datadoghq.com';
-  const env = process.env['NEXT_PUBLIC_DD_ENV'] ?? process.env['NODE_ENV'] ?? 'development';
-  const version = process.env['NEXT_PUBLIC_DD_VERSION'] ?? '1.0.0';
+  const env = sanitizeDatadogTagValue(process.env['NEXT_PUBLIC_DD_ENV'] ?? process.env['NODE_ENV'], 'development');
+  const version = sanitizeDatadogTagValue(process.env['NEXT_PUBLIC_DD_VERSION'], '0');
 
   datadogRum.init({
     applicationId: appId,

@@ -15,7 +15,7 @@ export const dynamic = 'force-dynamic';
 
 export const metadata: Metadata = {
   icons: {
-    icon: '/favicon.svg',
+    icon: '/favicon.ico',
     apple: '/GoblinOSIcon.png',
   },
   manifest: '/site.webmanifest',
