@@ -6,6 +6,8 @@ interface SandboxSidebarProps {
   language: string;
   /** Whether a run is in progress. */
   loading: boolean;
+  /** Sandbox availability state. */
+  sandboxState?: 'loading' | 'enabled' | 'disabled';
   /** Current code value (for enabling run). */
   code: string;
   /** Jobs list. */
@@ -41,6 +43,7 @@ const SandboxSidebar = ({
   onRefresh,
   onSelectJob,
   isGuest = false,
+  sandboxState = 'enabled',
 }: SandboxSidebarProps) => (
   <div className="space-y-4">
     <div>
@@ -65,10 +68,18 @@ const SandboxSidebar = ({
       <p className="mt-2 text-xs text-muted">GCP sandbox execution currently supports Python.</p>
     </div>
 
+    {sandboxState !== 'enabled' && !isGuest && (
+      <div className="rounded-lg border border-dashed border-border bg-surface-hover p-3 text-xs text-muted">
+        {sandboxState === 'loading'
+          ? 'Checking sandbox availability...'
+          : 'Sandbox service is currently disabled.'}
+      </div>
+    )}
+
     <div className="space-y-2">
       <button
         onClick={onRun}
-        disabled={!code || loading}
+        disabled={!code || loading || sandboxState !== 'enabled'}
         className="w-full px-3 py-2 text-sm font-medium text-text-inverse bg-success rounded-lg hover:bg-success/90 disabled:bg-surface-hover disabled:cursor-not-allowed transition-colors shadow-glow-primary"
       >
         {loading ? (
@@ -92,6 +103,7 @@ const SandboxSidebar = ({
       </button>
       <button
         onClick={onRefresh}
+        disabled={sandboxState !== 'enabled'}
         className="w-full px-3 py-2 text-sm font-medium text-primary bg-primary/20 rounded-lg hover:bg-primary/30 transition-colors"
       >
         <RefreshCw className="w-4 h-4 inline mr-1" />

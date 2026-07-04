@@ -51,6 +51,13 @@ describe('useSandboxSession', () => {
     expect(result.current.jobs).toEqual([]);
   });
 
+  it('does not fetch jobs when sandbox is disabled', async () => {
+    const { result } = renderHook(() => useSandboxSession({ sandboxState: 'disabled' }));
+    await act(async () => {});
+    expect(mockFetchJobs).not.toHaveBeenCalled();
+    expect(result.current.jobsError).toContain('disabled');
+  });
+
   it('setCode updates code', () => {
     const { result } = renderHook(() => useSandboxSession());
     act(() => result.current.setCode('print("hi")'));

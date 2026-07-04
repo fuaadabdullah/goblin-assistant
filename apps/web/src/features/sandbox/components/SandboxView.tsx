@@ -10,11 +10,18 @@ interface SandboxViewProps {
   session: SandboxSessionState;
   /** Whether the viewer is in guest mode. */
   isGuest?: boolean;
+  /** Sandbox availability state. */
+  sandboxState?: 'loading' | 'enabled' | 'disabled';
   /** Trigger auth flow when a protected action is attempted. */
   onRequireAuth?: () => void;
 }
 
-const SandboxView = ({ session, isGuest = false, onRequireAuth }: SandboxViewProps) => {
+const SandboxView = ({
+  session,
+  isGuest = false,
+  sandboxState = 'enabled',
+  onRequireAuth,
+}: SandboxViewProps) => {
   const handleRefresh = () => {
     if (isGuest) {
       onRequireAuth?.();
@@ -35,6 +42,7 @@ const SandboxView = ({ session, isGuest = false, onRequireAuth }: SandboxViewPro
     <SandboxSidebar
       language={session.language}
       loading={session.loading}
+      sandboxState={sandboxState}
       code={session.code}
       jobs={isGuest ? [] : session.jobs}
       jobsError={isGuest ? null : session.jobsError}
@@ -54,6 +62,7 @@ const SandboxView = ({ session, isGuest = false, onRequireAuth }: SandboxViewPro
       language={session.language}
       logs={session.logs}
       selectedJob={session.selectedJob}
+      sandboxState={sandboxState}
       onCodeChange={session.setCode}
       isGuest={isGuest}
     />

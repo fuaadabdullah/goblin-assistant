@@ -90,6 +90,13 @@ describe('SandboxSidebar', () => {
     expect(screen.getByText(/Running.../)).toBeInTheDocument();
   });
 
+  it('disables controls when sandbox is unavailable', () => {
+    render(<SandboxSidebar {...defaultProps} sandboxState="disabled" />);
+    expect(screen.getByText(/sandbox service is currently disabled/i)).toBeInTheDocument();
+    expect(screen.getByText(/Run Code/).closest('button')).toBeDisabled();
+    expect(screen.getByText(/Refresh Jobs/).closest('button')).toBeDisabled();
+  });
+
   it('calls onClear when Clear is clicked', () => {
     render(<SandboxSidebar {...defaultProps} />);
     fireEvent.click(screen.getByText(/Clear/));

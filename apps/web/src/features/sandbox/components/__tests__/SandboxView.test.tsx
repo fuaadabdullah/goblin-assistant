@@ -19,12 +19,24 @@ vi.mock('../../../../components/TwoColumnLayout', () => ({
 }));
 vi.mock('../SandboxSidebar', () => ({
   default: function MockSidebar(props: Record<string, unknown>) {
-    return <div data-testid="sandbox-sidebar" data-is-guest={String(props.isGuest)} />;
+    return (
+      <div
+        data-testid="sandbox-sidebar"
+        data-is-guest={String(props.isGuest)}
+        data-sandbox-state={String(props.sandboxState)}
+      />
+    );
   },
 }));
 vi.mock('../SandboxMain', () => ({
   default: function MockMain(props: Record<string, unknown>) {
-    return <div data-testid="sandbox-main" data-is-guest={String(props.isGuest)} />;
+    return (
+      <div
+        data-testid="sandbox-main"
+        data-is-guest={String(props.isGuest)}
+        data-sandbox-state={String(props.sandboxState)}
+      />
+    );
   },
 }));
 vi.mock('../../../../components/Seo', () => ({
@@ -64,6 +76,12 @@ describe('SandboxView', () => {
   it('passes isGuest to sidebar', () => {
     render(<SandboxView session={makeSession()} isGuest />);
     expect(screen.getByTestId('sandbox-sidebar')).toHaveAttribute('data-is-guest', 'true');
+  });
+
+  it('passes sandbox state to sidebar and main', () => {
+    render(<SandboxView session={makeSession()} sandboxState="disabled" />);
+    expect(screen.getByTestId('sandbox-sidebar')).toHaveAttribute('data-sandbox-state', 'disabled');
+    expect(screen.getByTestId('sandbox-main')).toHaveAttribute('data-sandbox-state', 'disabled');
   });
 
   it('passes isGuest to main', () => {

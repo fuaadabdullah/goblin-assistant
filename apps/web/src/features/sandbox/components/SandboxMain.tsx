@@ -9,6 +9,8 @@ interface SandboxMainProps {
   logs: string;
   /** Selected job for output display. */
   selectedJob: SandboxJob | null;
+  /** Sandbox availability state. */
+  sandboxState?: 'loading' | 'enabled' | 'disabled';
   /** Code change handler. */
   onCodeChange: (value: string) => void;
   /** Whether the viewer is in guest mode. */
@@ -20,6 +22,7 @@ const SandboxMain = ({
   language,
   logs,
   selectedJob,
+  sandboxState = 'enabled',
   onCodeChange,
   isGuest = false,
 }: SandboxMainProps) => (
@@ -36,6 +39,21 @@ const SandboxMain = ({
         <p className="font-semibold text-primary">Guest session</p>
         <p className="text-muted mt-1">
           Runs are temporary and won’t be saved to your history. Sign in to keep results.
+        </p>
+      </div>
+    )}
+
+    {sandboxState !== 'enabled' && !isGuest && (
+      <div className="bg-surface border border-border rounded-xl p-4 text-sm text-text">
+        <p className="font-semibold text-warning">
+          {sandboxState === 'loading'
+            ? 'Checking sandbox availability'
+            : 'Sandbox service unavailable'}
+        </p>
+        <p className="text-muted mt-1">
+          {sandboxState === 'loading'
+            ? 'We are checking whether code execution is available.'
+            : 'The sandbox is currently disabled in this environment, so runs and job history are unavailable.'}
         </p>
       </div>
     )}

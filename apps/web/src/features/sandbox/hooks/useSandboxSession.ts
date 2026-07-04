@@ -22,10 +22,12 @@ export interface SandboxSessionState {
 
 interface SandboxSessionOptions {
   isGuest?: boolean;
+  sandboxState?: 'loading' | 'enabled' | 'disabled';
 }
 
 export const useSandboxSession = ({
   isGuest = false,
+  sandboxState = 'enabled',
 }: SandboxSessionOptions = {}): SandboxSessionState => {
   const [jobs, setJobs] = useState<SandboxJob[]>([]);
   const [jobsError, setJobsError] = useState<string | null>(null);
@@ -34,10 +36,20 @@ export const useSandboxSession = ({
   const [language, setLanguage] = useState('python');
   const [logs, setLogs] = useState('');
   const [loading, setLoading] = useState(false);
+  const sandboxUnavailable = sandboxState !== 'enabled';
 
   const refreshJobs = useCallback(async () => {
     if (isGuest) {
       setJobs([]);
+      return;
+    }
+    if (sandboxUnavailable) {
+      setJobs([]);
+      setJobsError(
+        sandboxState === 'loading'
+          ? 'Checking sandbox availability...'
+          : 'Sandbox service is currently disabled.'
+      );
       return;
     }
     try {
@@ -52,16 +64,32 @@ export const useSandboxSession = ({
       setJobsError(uiError.userMessage);
       devError('Failed to load sandbox jobs:', uiError);
     }
-  }, [isGuest]);
+  }, [isGuest, sandboxState, sandboxUnavailable]);
 
   useEffect(() => {
+    if (isGuest) {
+      return;
+    }
+    if (sandboxUnavailable) {
+      setJobs([]);
+      setJobsError(
+        sandboxState === 'loading'
+          ? 'Checking sandbox availability...'
+          : 'Sandbox service is currently disabled.'
+      );
+      return;
+    }
     if (!isGuest) {
       refreshJobs();
     }
-  }, [isGuest, refreshJobs]);
+  }, [isGuest, refreshJobs, sandboxState, sandboxUnavailable]);
 
   const runCode = useCallback(async () => {
     if (!code) return;
+    if (sandboxUnavailable) {
+      setLogs('Sandbox service is currently disabled.');
+      return;
+    }
     setLoading(true);
     try {
       const output = await runSandboxCode({ code, language });
@@ -76,12 +104,16 @@ export const useSandboxSession = ({
     } finally {
       setLoading(false);
     }
-  }, [code, language, refreshJobs]);
+  }, [code, language, refreshJobs, sandboxUnavailable]);
 
   const selectJob = useCallback(
     async (job: SandboxJob) => {
       if (isGuest) {
         setLogs('Sign in to view saved runs and logs.');
+        return;
+      }
+      if (sandboxUnavailable) {
+        setLogs('Sandbox service is currently disabled.');
         return;
       }
       setSelectedJob(job);
@@ -96,7 +128,7 @@ export const useSandboxSession = ({
         setLogs(uiError.userMessage);
       }
     },
-    [isGuest]
+    [isGuest, sandboxUnavailable]
   );
 
   const clearCode = useCallback(() => {
