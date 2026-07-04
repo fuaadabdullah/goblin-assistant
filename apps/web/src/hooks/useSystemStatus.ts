@@ -16,6 +16,12 @@ const DEFAULT: SystemStatus = {
   sandbox: 'unknown',
 };
 
+const EMPTY_ENDPOINTS = Object.freeze({}) as Readonly<{
+  models?: string;
+  routing?: string;
+  sandbox?: string;
+}>;
+
 interface ModelHealth {
   health?: string;
   health_reason?: string;
@@ -47,7 +53,9 @@ type StatusOptions = Readonly<{
  * const { status } = useSystemStatus({ useWebSocket: true });
  */
 export function useSystemStatus(opts?: StatusOptions) {
-  const { pollIntervalMs = 15000, useWebSocket = false, endpoints = {} } = opts ?? {};
+  const pollIntervalMs = opts?.pollIntervalMs ?? 15000;
+  const useWebSocket = opts?.useWebSocket ?? false;
+  const endpoints = opts?.endpoints ?? EMPTY_ENDPOINTS;
 
   const [status, setStatus] = useState<SystemStatus>(DEFAULT);
   const [loading, setLoading] = useState(true);
@@ -162,17 +170,19 @@ export function useSystemStatus(opts?: StatusOptions) {
     mounted.current = true;
     if (useWebSocket) {
       connectWebSocket();
-    } else {
-      fetchStatus();
-      const id = setInterval(fetchStatus, pollIntervalMs);
-      return () => clearInterval(id);
+      return () => {
+        if (wsRef.current) {
+          wsRef.current.close();
+          wsRef.current = null;
+        }
+        mounted.current = false;
+      };
     }
 
+    fetchStatus();
+    const id = setInterval(fetchStatus, pollIntervalMs);
     return () => {
-      if (wsRef.current) {
-        wsRef.current.close();
-        wsRef.current = null;
-      }
+      clearInterval(id);
       mounted.current = false;
     };
   }, [fetchStatus, pollIntervalMs, useWebSocket, connectWebSocket]);
