@@ -72,7 +72,12 @@ const ConnectivityDebug: FC = () => {
       {/* Status Summary */}
       <section className={styles['sectionSummary']}>
         <h3>Summary</h3>
-        <StatusSummary chatTestResult={chatTestResult} health={health} isAuthenticated={isAuthenticated} />
+        <StatusSummary
+          chatTestResult={chatTestResult}
+          chatError={chatError}
+          health={health}
+          isAuthenticated={isAuthenticated}
+        />
       </section>
     </div>
   );
