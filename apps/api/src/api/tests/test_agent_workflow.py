@@ -52,7 +52,7 @@ def test_build_agent_worker_payload_uses_persistent_sprite_and_aider_split():
     assert payload["worker_profile"]["publish_strategy"] == "create-pull-request-only"
     assert payload["worker_profile"]["auto_merge"] is False
     assert payload["worker_profile"]["github_publish"]["library"] == "PyGithub"
-    assert payload["worker_profile"]["github_publish"]["token_env"] == "AGENT_GITHUB_TOKEN"
+    assert payload["worker_profile"]["github_publish"]["token_env"] == "GH_TOKEN"
     assert payload["worker_profile"]["isolation"]["hardware"] == "firecracker/kvm"
     assert payload["worker_profile"]["isolation"]["networking"] == "private-per-sandbox"
     assert payload["execution"]["persistent_sprite"] is True

@@ -16,7 +16,7 @@ Scripts
 ```
 
 - `setup-github-secrets.sh`
-  - Uses the GitHub CLI (`gh`) to create repository secrets: `RENDER_API_KEY`, `RENDER_SERVICE_ID_STAGING`, `RENDER_SERVICE_ID_PROD`, `GITHUB_TOKEN`.
+  - Uses the GitHub CLI (`gh`) to create repository secrets: `RENDER_API_KEY`, `RENDER_SERVICE_ID_STAGING`, `RENDER_SERVICE_ID_PROD`, `GH_TOKEN`.
   - Requires `gh auth login` beforehand.
   - Usage:
 

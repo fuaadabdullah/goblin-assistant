@@ -9,6 +9,7 @@ import httpx
 _BASE = "https://api.github.com"
 _TIMEOUT = 15.0
 _REPO_SCOPE_ENV_VARS = ("AGENT_GITHUB_ALLOWED_REPOSITORY", "GITHUB_REPOSITORY")
+_TOKEN_ENV_VARS = ("GH_TOKEN", "GITHUB_TOKEN")
 
 
 def _normalize_repo(value: str) -> str:
@@ -48,7 +49,11 @@ def _validate_repo_path(path: str) -> None:
 
 
 def headers() -> Dict[str, str]:
-    token = os.environ.get("GITHUB_TOKEN", "")
+    token = ""
+    for env_name in _TOKEN_ENV_VARS:
+        token = os.environ.get(env_name, "").strip()
+        if token:
+            break
     req_headers = {
         "Accept": "application/vnd.github+json",
         "X-GitHub-Api-Version": "2022-11-28",

@@ -212,7 +212,7 @@ async def triage_issue(request: TriageRequest) -> SuccessEnvelope[TriageResponse
     # --- GitHub issue ---
     issue_url: Optional[str] = None
     issue_number: Optional[int] = None
-    gh_token = os.environ.get("GITHUB_TOKEN", "")
+    gh_token = os.environ.get("GH_TOKEN", "").strip() or os.environ.get("GITHUB_TOKEN", "").strip()
     gh_owner = os.environ.get("GITHUB_REPO_OWNER", "")
     gh_repo = os.environ.get("GITHUB_REPO_NAME", "")
 
