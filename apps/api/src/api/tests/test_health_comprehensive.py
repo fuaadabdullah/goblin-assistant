@@ -331,5 +331,9 @@ def test_overall_status_prioritizes_unhealthy_over_warnings_and_degraded() -> No
     assert health_core.overall_status_from(["healthy", "unhealthy"]) == "unhealthy"
 
 
+def test_overall_status_ignores_unknown_optional_components() -> None:
+    assert health_core.overall_status_from(["healthy", "unknown", "healthy"]) == "healthy"
+
+
 # End of health coverage tests.
 HEALTH_TESTS_READY = True

@@ -25,6 +25,17 @@ def test_provider_health_degrades_without_healthy_provider() -> None:
     assert status == "degraded"
 
 
+def test_provider_health_warns_when_only_unknown_and_unhealthy_remain() -> None:
+    status = _summarize_provider_health(
+        {
+            "openai": {"status": "unhealthy"},
+            "gemini": {"status": "unknown"},
+        }
+    )
+
+    assert status == "warnings"
+
+
 def test_provider_health_accepts_non_failing_provider_states() -> None:
     status = _summarize_provider_health(
         {

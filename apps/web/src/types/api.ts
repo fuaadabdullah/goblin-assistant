@@ -423,6 +423,29 @@ export interface CostSummary {
   requests_by_provider?: Record<string, number>;
 }
 
+export interface ModelUsageRollup {
+  provider: string;
+  model: string;
+  usage_date: string;
+  request_count: number;
+  prompt_tokens: number;
+  completion_tokens: number;
+  total_tokens: number;
+  total_cost_usd: number;
+  total_latency_ms: number;
+}
+
+export interface ModelUsageRollupSummary {
+  request_count: number;
+  total_cost_usd: number;
+  total_latency_ms: number;
+}
+
+export interface ModelUsageRollupResponse {
+  rows: ModelUsageRollup[];
+  summary: ModelUsageRollupSummary;
+}
+
 export interface OrchestrationStep {
   id: string;
   goblin: string;

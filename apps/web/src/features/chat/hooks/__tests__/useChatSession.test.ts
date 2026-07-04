@@ -43,6 +43,17 @@ vi.mock('../../api', () => ({
 }));
 
 vi.mock('../../../../lib/ui-error', () => ({
+  UiError: class UiError extends Error {
+    code: string;
+    userMessage: string;
+
+    constructor(payload: { code: string; userMessage: string }, cause?: unknown) {
+      super(payload.userMessage);
+      this.code = payload.code;
+      this.userMessage = payload.userMessage;
+      this.cause = cause;
+    }
+  },
   toUiError: vi.fn(() => ({
     code: 'CHAT_SEND_FAILED',
     userMessage: 'Sorry, we could not send that message right now.',

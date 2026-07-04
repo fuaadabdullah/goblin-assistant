@@ -46,6 +46,86 @@ export interface SandboxRunPayload {
   timeout?: number;
 }
 
+export interface AgentTaskSubmitPayload {
+  task: string;
+  repo_url?: string | undefined;
+  base_branch?: string | undefined;
+  branch_name?: string | undefined;
+  tests_command?: string | undefined;
+  source?: string | undefined;
+  issue_url?: string | undefined;
+  issue_number?: number | undefined;
+  issue_title?: string | undefined;
+  issue_body?: string | undefined;
+  metadata?: Record<string, unknown> | undefined;
+}
+
+export interface AgentTaskEvent {
+  event_id: string;
+  type: string;
+  message: string;
+  timestamp: string;
+  metadata?: Record<string, unknown>;
+}
+
+export interface AgentTaskRecord {
+  task_id: string;
+  status: string;
+  phase: string;
+  source: string;
+  task: string;
+  repo_url: string;
+  base_branch: string;
+  branch_name: string;
+  tests_command: string;
+  issue_url?: string | null;
+  issue_number?: number | null;
+  issue_title?: string | null;
+  issue_body?: string | null;
+  worker_status?: string | null;
+  worker_error?: string | null;
+  pr_url?: string | null;
+  callback_url?: string | null;
+  workspace_id?: string | null;
+  workspace_family?: string | null;
+  sprite_name?: string | null;
+  checkout_ref?: string | null;
+  workspace_provider?: string | null;
+  architect_model?: string | null;
+  editor_model?: string | null;
+  aider_mode?: string | null;
+  auto_commit_each_change?: boolean | null;
+  repair_attempts?: number | null;
+  phase0_ci_commands?: Array<Record<string, unknown>>;
+  workspace?: Record<string, unknown>;
+  worker_profile?: Record<string, unknown>;
+  created_at: string;
+  updated_at: string;
+  events: AgentTaskEvent[];
+  payload: Record<string, unknown>;
+  metadata: Record<string, unknown>;
+  result: Record<string, unknown>;
+}
+
+export interface AgentTaskEventsResponse {
+  task_id: string;
+  status: string;
+  phase: string;
+  events: AgentTaskEvent[];
+  total: number;
+}
+
+export interface AgentTaskStatusResponse {
+  task: AgentTaskRecord;
+}
+
+export interface AgentTaskWebhookResponse {
+  accepted: boolean;
+  ignored?: boolean;
+  reason?: string | null;
+  task?: AgentTaskRecord | null;
+}
+
 export interface AccountProfile {
   name?: string;
   email?: string;
@@ -142,3 +222,9 @@ export type {
   HealthStatus,
   ValidateTokenResponse,
 };
+
+export type {
+  ModelUsageRollup,
+  ModelUsageRollupResponse,
+  ModelUsageRollupSummary,
+} from '../../types/api';

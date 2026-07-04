@@ -86,6 +86,7 @@ async def record_usage_event(
     usage: Optional[Dict[str, Any]],
     cost_usd: Optional[float],
     correlation_id: Optional[str],
+    latency_ms: Optional[float] = None,
 ) -> None:
     """Persist a usage event for billing/quota tracking.
 
@@ -96,6 +97,7 @@ async def record_usage_event(
     await usage_store.save_event(
         {
             "user_id": user_id,
+            "request_id": correlation_id,
             "conversation_id": conversation_id,
             "message_id": message_id,
             "provider": provider,
@@ -104,6 +106,7 @@ async def record_usage_event(
             "completion_tokens": completion_tokens,
             "total_tokens": total_tokens,
             "cost_usd": float(cost_usd or 0.0),
+            "latency_ms": latency_ms,
             "metadata": {
                 "source": "chat.send_message",
                 "correlation_id": correlation_id,

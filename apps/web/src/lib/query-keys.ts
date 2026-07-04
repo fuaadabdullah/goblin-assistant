@@ -31,6 +31,8 @@ export const queryKeys = {
 
   // Dashboard
   costSummary: ['dashboard', 'cost-summary'] as const,
+  observabilityModelUsage: ['dashboard', 'observability', 'model-usage'] as const,
+  observabilityMetrics: ['dashboard', 'observability', 'metrics'] as const,
 
   // Routing
   routingProviders: (capability?: string) =>

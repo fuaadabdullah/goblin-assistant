@@ -43,7 +43,7 @@ This document is the canonical operations reference for provider configuration m
 | `deepseek` | `DEEPSEEK_API_KEY`, `DEEPSEEK_ENDPOINT` | `deepseek-chat` | `cloud` | Yes | Yes | Requires `DEEPSEEK_API_KEY` |
 | `gemini` | `GOOGLE_AI_API_KEY`, `GEMINI_ENDPOINT` | `gemini-2.0-flash` | `cloud` | Yes | Yes | Requires `GOOGLE_AI_API_KEY` |
 | `azure_openai` | `AZURE_API_KEY`, `AZURE_OPENAI_ENDPOINT`, `AZURE_DEPLOYMENT_ID` (or TOML `default_deployment`), `AZURE_REGION` (listed in `requires_env`) | `gpt-4o-mini` | `private` | Yes | Yes | Requires API key + endpoint + deployment value |
-| `vertex_ai` | `VERTEX_AI_PROJECT` (or `GCP_PROJECT_ID`), one of `GOOGLE_APPLICATION_CREDENTIALS` / `VERTEX_AI_SERVICE_ACCOUNT_JSON` / `GCP_SERVICE_ACCOUNT_KEY`, optional `VERTEX_AI_ENDPOINT` | `gemini-2.5-flash` | `private` | Yes | Yes | Requires project + credentials |
+| `vertex_ai` | `VERTEX_AI_PROJECT` (or `GCP_PROJECT_ID`), `VERTEX_AI_LOCATION` (or `GCP_REGION`), one of `GOOGLE_APPLICATION_CREDENTIALS` / `VERTEX_AI_SERVICE_ACCOUNT_JSON` / `GCP_SERVICE_ACCOUNT_KEY`, optional `VERTEX_AI_ENDPOINT` | `gemini-2.5-flash` | `private` | Yes | Yes | Requires project + credentials |
 | `gcp_vm` | `OLLAMA_GCP_ENDPOINT`, `LLAMACPP_GCP_ENDPOINT`, `COLAB_WORKER_ENDPOINT`, `COLAB_WORKER_API_KEY`, `VERTEX_AI_PROJECT` + credentials | `qwen2.5:3b` | `self_hosted` | Yes | Yes | Requires at least one backend env; aggregates Ollama, llama.cpp, Colab, and Vertex backends |
 | `aliyun` | `DASHSCOPE_API_KEY`, `DASHSCOPE_ENDPOINT` | `qwen-plus` | `private` | Yes | Yes | Requires `DASHSCOPE_API_KEY` |
 | `huggingface` | `HUGGINGFACE_API_KEY`, `HUGGINGFACE_ENDPOINT` | — (not set) | `cloud` | Yes | Yes | Requires `HUGGINGFACE_API_KEY` |
@@ -92,9 +92,16 @@ This document is the canonical operations reference for provider configuration m
   - `REPLICATE_API_KEY`
   - `OLLAMA_GCP_ENDPOINT`, `LLAMACPP_GCP_ENDPOINT`, `OLLAMA_LOCAL_ENDPOINT`
   - `COLAB_WORKER_ENDPOINT`, `COLAB_WORKER_API_KEY`
-  - `VERTEX_AI_PROJECT` and credential variables (`GOOGLE_APPLICATION_CREDENTIALS`, `VERTEX_AI_SERVICE_ACCOUNT_JSON`, `GCP_SERVICE_ACCOUNT_KEY`)
+  - `VERTEX_AI_PROJECT`, `VERTEX_AI_LOCATION`, and credential variables (`GOOGLE_APPLICATION_CREDENTIALS`, `VERTEX_AI_SERVICE_ACCOUNT_JSON`, `GCP_SERVICE_ACCOUNT_KEY`)
+
+### LiteLLM router note
+
+- Vertex backends in `config/providers.toml` now forward `vertex_project`, `vertex_location`, and `vertex_credentials` into `litellm_params` when the corresponding env vars are present.
+- The default config uses `VERTEX_AI_PROJECT`, `VERTEX_AI_LOCATION`, and `GOOGLE_APPLICATION_CREDENTIALS` so ADC/service-account setups work without extra wiring.
+- If you need a quick unblocker before Vertex OAuth/ADC is ready, `gemini/` with `GOOGLE_AI_API_KEY` remains available as the non-GCP-hosted fallback path.
 
 ## Notes for maintainers
 
 - If `config/providers.toml` changes (provider IDs, `visible_providers`, env field names, or selectability flags), update this matrix in the same PR.
 - Keep IDs canonical in docs and telemetry (`siliconeflow` remains canonical; legacy alias forms should not be persisted).
+- The self-development agent loop depends on the logical router models `router-reason` and `router-code`; keep both groups available when updating the router config.

@@ -1,22 +1,15 @@
 name: CI (GitHub-native gates)
 
-# GitHub Actions handles only GitHub-native concerns.
-# All heavy compute (format, lint, typecheck, tests, build, deploy)
-# runs on CircleCI where it is not billing-constrained.
-
+# GitHub keeps the low-cost guardrails.
+# CircleCI owns the heavier lint/test/build/deploy work.
 on:
+  push:
+    branches: [main, develop]
+  pull_request:
+    branches: [main, develop]
   workflow_dispatch:
-# Auto-push disabled: CircleCI handles all CI. GitHub Actions billing locked.
-# Re-enable when billing is resolved:
-#  push:
-#    branches: [main, develop]
-#  pull_request:
-#    branches: [main, develop]
 
 jobs:
-  # ---------------------------------------------------------------------------
-  # Policy: branch-name + commit-message conventions (needs GitHub env vars)
-  # ---------------------------------------------------------------------------
   policy:
     name: policy
     runs-on: ubuntu-latest
@@ -26,3 +19,139 @@ jobs:
           fetch-depth: 0
       - name: Enforce branch + commit policy
         run: bash tooling/automation/ci-policy-check.sh
+
+  lint:
+    name: lint
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+          cache-dependency-path: |
+            apps/api/requirements.txt
+            apps/api/requirements-vector.txt
+
+      - name: Install Python dependencies
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install -r apps/api/requirements.txt -r apps/api/requirements-vector.txt
+
+      - name: Run API lint (Ruff)
+        run: cd apps/api && PYTHONPATH=src python -m ruff check --config pyproject.toml src/api
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: "pnpm"
+
+      - name: Set up pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 9
+
+      - name: Install frontend dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Run web lint (ESLint)
+        run: pnpm --filter @goblin/web lint
+
+      - name: Run lint policy
+        run: python scripts/policy_guard.py --strict
+
+  test-backend:
+    name: test-backend
+    runs-on: ubuntu-latest
+    needs: [policy, lint]
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+          cache-dependency-path: |
+            apps/api/requirements.txt
+            apps/api/requirements-vector.txt
+
+      - name: Install backend dependencies
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install -r apps/api/requirements.txt -r apps/api/requirements-vector.txt
+
+      - name: Run API tests (pytest)
+        run: |
+          cd apps/api
+          PYTHONPATH=src python -m pytest -o "addopts=" -v
+
+  test-frontend:
+    name: test-frontend
+    runs-on: ubuntu-latest
+    needs: [lint]
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: "pnpm"
+
+      - name: Set up pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 9
+
+      - name: Install frontend dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Run web tests (Vitest)
+        run: pnpm --filter @goblin/web test
+
+  build:
+    name: build
+    runs-on: ubuntu-latest
+    needs: [test-backend, test-frontend]
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+          cache-dependency-path: |
+            apps/api/requirements.txt
+            apps/api/requirements-vector.txt
+
+      - name: Install Python dependencies (for codegen)
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install -r apps/api/requirements.txt -r apps/api/requirements-vector.txt
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: "pnpm"
+
+      - name: Set up pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 9
+
+      - name: Install frontend dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Run build
+        run: |
+          PYTHONPATH=packages/shared/src python tooling/generators/generate-providers-json.py --check
+          pnpm --filter @goblin/web build

@@ -200,6 +200,11 @@ class ObservabilityService:
     def get_context_snapshot(self, request_id: str) -> Dict[str, Any]:
         return self._dashboard_facet.get_context_snapshot(request_id=request_id)
 
+    def get_model_usage(
+        self, provider: Optional[str] = None, model: Optional[str] = None
+    ) -> Dict[str, Any]:
+        return self._dashboard_facet.get_model_usage(provider=provider, model=model)
+
     def get_critical_metrics(self) -> Dict[str, Any]:
         return self._dashboard_facet.get_critical_metrics()
 

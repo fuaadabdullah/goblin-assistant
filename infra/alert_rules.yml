@@ -1,0 +1,71 @@
+groups:
+  - name: goblin-assistant-observability
+    rules:
+      - alert: APIHighErrorRate
+        expr: |
+          sum(rate(goblin_http_requests_total{status_code=~"5.."}[5m]))
+          /
+          clamp_min(sum(rate(goblin_http_requests_total[5m])), 1e-9)
+          > 0.05
+        for: 10m
+        labels:
+          severity: critical
+          service: goblin-assistant
+          team: goblin
+        annotations:
+          summary: "API error rate is above 5%"
+          description: "The HTTP 5xx rate has exceeded 5% over the last 5 minutes."
+
+      - alert: APILatencyHigh
+        expr: |
+          histogram_quantile(
+            0.95,
+            sum(rate(goblin_http_request_duration_seconds_bucket[5m])) by (le)
+          ) > 2
+        for: 10m
+        labels:
+          severity: warning
+          service: goblin-assistant
+          team: goblin
+        annotations:
+          summary: "API p95 latency is above 2 seconds"
+          description: "The 95th percentile HTTP latency has exceeded the 2 second target."
+
+      - alert: AuthFailureSpike
+        expr: |
+          sum(rate(goblin_auth_events_total{success="false"}[10m]))
+          /
+          clamp_min(sum(rate(goblin_auth_events_total[10m])), 1e-9)
+          > 0.1
+        for: 15m
+        labels:
+          severity: warning
+          service: goblin-assistant
+          team: goblin
+        annotations:
+          summary: "Authentication failure rate is elevated"
+          description: "More than 10% of auth events are failing over a 10 minute window."
+
+      - alert: LLMCostSpike
+        expr: |
+          increase(goblin_llm_callback_cost_usd_total[1h]) > 5
+        for: 15m
+        labels:
+          severity: warning
+          service: goblin-assistant
+          team: goblin
+        annotations:
+          summary: "LLM spend is spiking"
+          description: "LLM callback cost has increased by more than $5 in the last hour."
+
+      - alert: RouterCostGuardTriggered
+        expr: |
+          increase(goblin_router_cost_guard_events_total[1h]) > 0
+        for: 5m
+        labels:
+          severity: critical
+          service: goblin-assistant
+          team: goblin
+        annotations:
+          summary: "Router cost guard has triggered"
+          description: "The router cost guard or kill switch has been activated at least once in the last hour."

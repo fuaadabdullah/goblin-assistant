@@ -194,6 +194,44 @@ class MemoryEntityRelationModel(Base):
     )
 
 
+class MemoryEntryModel(Base):
+    """Semantic memory corpus for repo docs, code, and prior runs."""
+
+    __tablename__ = "memory_entries"
+
+    id = Column(String, primary_key=True, default=lambda: str(uuid.uuid4()))
+    user_id = Column(String, ForeignKey("users.id"), nullable=False, index=True)
+    source_kind = Column(String, nullable=False, index=True)
+    source_id = Column(String, nullable=False, index=True)
+    chunk_index = Column(Integer, nullable=False, default=0)
+    chunk_text = Column(Text, nullable=False)
+    chunk_embedding = Column(VectorType(1536))
+    chunk_hash = Column(String, nullable=False, index=True)
+    repository = Column(String, nullable=True, index=True)
+    commit_sha = Column(String, nullable=True, index=True)
+    run_id = Column(String, nullable=True, index=True)
+    session_id = Column(String, nullable=True, index=True)
+    conversation_id = Column(
+        String, ForeignKey("conversations.conversation_id"), nullable=True, index=True
+    )
+    metadata_ = Column("metadata", JSON, default=dict)
+    created_at = Column(DateTime, default=datetime.utcnow)
+    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+
+    conversation = relationship("ConversationModel")
+
+    __table_args__ = (
+        Index("idx_memory_entries_user_kind", "user_id", "source_kind"),
+        Index("idx_memory_entries_user_created", "user_id", "created_at"),
+        Index(
+            "idx_memory_entries_embedding_hnsw",
+            "chunk_embedding",
+            postgresql_using="hnsw",
+            postgresql_ops={"chunk_embedding": "vector_cosine_ops"},
+        ),
+    )
+
+
 # Add relationships to existing models
 def add_vector_relationships():
     """Add vector relationships to existing models"""

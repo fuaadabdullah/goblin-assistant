@@ -25,9 +25,17 @@ class _DispatcherProxy:
         module = importlib.import_module("api.providers.dispatcher")
         return module.dispatcher.get_provider_inventory(*args, **kwargs)
 
+    def get_provider(self, *args: Any, **kwargs: Any) -> Any:
+        module = importlib.import_module("api.providers.dispatcher")
+        return module.dispatcher.get_provider(*args, **kwargs)
+
     def get_provider_config(self, *args: Any, **kwargs: Any) -> Any:
         module = importlib.import_module("api.providers.dispatcher")
         return module.dispatcher.get_provider_config(*args, **kwargs)
+
+    def is_configured(self, *args: Any, **kwargs: Any) -> Any:
+        module = importlib.import_module("api.providers.dispatcher")
+        return module.dispatcher.is_configured(*args, **kwargs)
 
     def check_provider(self, *args: Any, **kwargs: Any) -> Any:
         module = importlib.import_module("api.providers.dispatcher")

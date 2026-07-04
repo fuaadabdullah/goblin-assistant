@@ -11,6 +11,11 @@ vi.mock('@/lib/api', () => ({
         chroma: { status: 'healthy', latency: 100 },
       },
     }),
+    getModelUsage: vi.fn().mockResolvedValue({
+      rows: [],
+      summary: { request_count: 0, total_cost_usd: 0, total_latency_ms: 0 },
+    }),
+    getPrometheusMetrics: vi.fn().mockResolvedValue(''),
   },
 }));
 vi.mock('@/lib/error/toast', () => ({

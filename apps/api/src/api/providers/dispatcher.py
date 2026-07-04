@@ -160,6 +160,7 @@ from .dispatcher_utils import (  # noqa: F401 — re-exported for backward compa
     MetricsCollector,
 )
 from .model_registry import validate_model_alias_targets
+from .provider_config_runtime import invalidate_cache as _invalidate_provider_config_cache
 from .provider_registry import (
     DEFAULT_PROVIDER_CLASS_MAP,
     ProviderRegistry,
@@ -205,6 +206,7 @@ def reload_provider_catalog() -> None:
     global _provider_toml, _PROVIDER_CONFIGS, _PROVIDER_ALIASES, _MODEL_ALIASES
     global _MODEL_ALIAS_PATTERNS, _VISIBLE_PROVIDER_IDS
 
+    _invalidate_provider_config_cache()
     catalog = _reload_provider_catalog_state(
         dispatcher=dispatcher,
         load_provider_toml_fn=_load_provider_toml,
@@ -222,6 +224,12 @@ def reload_provider_catalog() -> None:
     _MODEL_ALIASES = catalog.model_aliases
     _MODEL_ALIAS_PATTERNS = catalog.model_alias_patterns
     _VISIBLE_PROVIDER_IDS = catalog.visible_provider_ids
+    try:
+        from .router_service import invalidate_router_cache
+
+        invalidate_router_cache()
+    except Exception:
+        pass
 
 
 def canonical_provider_id(value: Optional[str]) -> Optional[str]:

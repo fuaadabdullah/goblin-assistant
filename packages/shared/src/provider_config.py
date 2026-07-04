@@ -159,6 +159,35 @@ class ModelDefaults(BaseModel):
     supports_streaming: bool = True
 
 
+class RouterBackend(BaseModel):
+    provider_id: str
+    litellm_provider: str
+    model: str
+    api_key_env: Optional[str] = None
+    endpoint_env: Optional[str] = None
+    project_env: Optional[str] = None
+    vertex_location_env: Optional[str] = None
+    vertex_credentials_env: Optional[str] = None
+    order: int = 1
+    weight: float = 0.0
+    cost_input_per1k: float = 0.0
+    cost_output_per1k: float = 0.0
+    enabled: bool = True
+
+
+class RouterModelGroup(BaseModel):
+    model_config = {"extra": "allow"}
+
+    description: str = ""
+    backends: List[RouterBackend] = Field(default_factory=list)
+    routing_strategy: str = "cost-based-routing"
+    num_retries: int = 2
+    enable_pre_call_checks: bool = True
+    fallbacks: List[str] = Field(default_factory=list)
+    context_window_fallbacks: List[str] = Field(default_factory=list)
+    content_policy_fallbacks: List[str] = Field(default_factory=list)
+
+
 # ── Root ──────────────────────────────────────────────────────────────────────
 
 
@@ -171,6 +200,7 @@ class ProviderToml(BaseModel):
     model_aliases: Dict[str, ModelAlias] = {}
     visible_providers: List[str] = []
     model_context_windows: Dict[str, int] = {}
+    router_models: Dict[str, RouterModelGroup] = Field(default_factory=dict)
     providers: Dict[str, ProviderConfig] = {}
     model_defaults: Dict[str, ModelDefaults] = {}
     model_budgets: Dict[str, RateLimitEntry] = {}
@@ -218,6 +248,10 @@ class ProviderToml(BaseModel):
         if not isinstance(model_budgets_raw, dict):
             model_budgets_raw = {}
 
+        router_models_raw = raw.get("router_models", {})
+        if not isinstance(router_models_raw, dict):
+            router_models_raw = {}
+
         return cls(
             default=defaults_raw,
             load_balancing=raw.get("load_balancing", {}),
@@ -231,6 +265,7 @@ class ProviderToml(BaseModel):
                 k: int(v) for k, v in raw.get("model_context_windows", {}).items()
                 if isinstance(v, (int, float))
             },
+            router_models=router_models_raw,
             providers=providers_raw,
             model_defaults=model_defaults_raw,
             model_budgets=model_budgets_raw,

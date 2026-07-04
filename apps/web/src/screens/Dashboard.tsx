@@ -112,6 +112,14 @@ const DashboardContent: React.FC = () => {
         )
       : 0;
   const activeProviders = costData.length;
+  const observability = dashboard.observability ?? { modelUsage: null, metricsPreview: '' };
+  const topModelUsage = React.useMemo(
+    () =>
+      [...(observability.modelUsage?.rows ?? [])]
+        .sort((a, b) => b.total_cost_usd - a.total_cost_usd)
+        .slice(0, 3),
+    [observability.modelUsage?.rows]
+  );
 
   const statusDot = (state: string) => {
     if (state === 'ok') return 'bg-success';
@@ -306,6 +314,97 @@ const DashboardContent: React.FC = () => {
           </div>
         )}
       </TristateWrapper>
+
+      <div className="mt-8 grid gap-6 lg:grid-cols-2">
+        <Card variant="default" padding="md" className="shadow-card">
+          <div className="mb-4 flex items-center justify-between gap-4">
+            <div>
+              <h2 className="text-lg font-semibold text-text">Model Usage</h2>
+              <p className="mt-1 text-sm text-muted">
+                Postgres rollups from LiteLLM callback ingestion.
+              </p>
+            </div>
+            <a
+              href="/api/v1/system/observability/model-usage"
+              className="text-sm font-medium text-primary hover:underline"
+              target="_blank"
+              rel="noreferrer"
+            >
+              Open JSON
+            </a>
+          </div>
+          {topModelUsage.length > 0 ? (
+            <div className="space-y-3">
+              {topModelUsage.map((row) => (
+                <div
+                  key={`${row.provider}:${row.model}:${row.usage_date}`}
+                  className="rounded-md border border-border bg-bg p-3"
+                >
+                  <div className="flex items-start justify-between gap-3">
+                    <div>
+                      <div className="text-sm font-semibold text-text">
+                        {formatProviderName(row.provider)} / {row.model}
+                      </div>
+                      <div className="text-xs text-muted">{row.usage_date}</div>
+                    </div>
+                    <div className="text-right text-sm text-muted">
+                      <div>{row.request_count.toLocaleString()} reqs</div>
+                      <div>${row.total_cost_usd.toFixed(4)}</div>
+                    </div>
+                  </div>
+                </div>
+              ))}
+              <div className="grid grid-cols-3 gap-3 text-sm">
+                <div className="rounded-md bg-bg p-3">
+                  <div className="text-xs text-muted">Requests</div>
+                  <div className="font-semibold text-text">
+                    {observability.modelUsage?.summary.request_count?.toLocaleString() ?? '0'}
+                  </div>
+                </div>
+                <div className="rounded-md bg-bg p-3">
+                  <div className="text-xs text-muted">Cost</div>
+                  <div className="font-semibold text-text">
+                    ${(observability.modelUsage?.summary.total_cost_usd ?? 0).toFixed(4)}
+                  </div>
+                </div>
+                <div className="rounded-md bg-bg p-3">
+                  <div className="text-xs text-muted">Latency</div>
+                  <div className="font-semibold text-text">
+                    {(observability.modelUsage?.summary.total_latency_ms ?? 0).toFixed(0)} ms
+                  </div>
+                </div>
+              </div>
+            </div>
+          ) : (
+            <EmptyState
+              title="No rollups yet"
+              description="LiteLLM callback data will populate this panel once requests land."
+            />
+          )}
+        </Card>
+
+        <Card variant="default" padding="md" className="shadow-card">
+          <div className="mb-4 flex items-center justify-between gap-4">
+            <div>
+              <h2 className="text-lg font-semibold text-text">Metrics Snapshot</h2>
+              <p className="mt-1 text-sm text-muted">
+                Prometheus exposition from the live API.
+              </p>
+            </div>
+            <a
+              href="/api/v1/metrics"
+              className="text-sm font-medium text-primary hover:underline"
+              target="_blank"
+              rel="noreferrer"
+            >
+              Open metrics
+            </a>
+          </div>
+          <pre className="max-h-72 overflow-auto rounded-md bg-bg p-3 text-xs leading-5 text-muted">
+            {observability.metricsPreview || 'Metrics will appear after the next scrape.'}
+          </pre>
+        </Card>
+      </div>
 
       <Card variant="default" padding="md" className="mt-8 shadow-card">
         <div className="mb-4 flex items-center justify-between gap-4">

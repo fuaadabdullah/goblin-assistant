@@ -65,6 +65,7 @@ export default defineConfig({
   resolve: {
     alias: [
       { find: '@', replacement: path.resolve(__dirname, 'src') },
+      { find: '@goblin/shared', replacement: path.resolve(__dirname, '../../packages/shared/src') },
       {
         find: 'lucide-react',
         replacement: path.resolve(__dirname, 'src/__mocks__/lucide-react.tsx'),

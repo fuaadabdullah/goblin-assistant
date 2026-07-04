@@ -5,6 +5,7 @@ import { useRouter, usePathname } from 'next/navigation';
 import { useEffect } from 'react';
 import {
   Home,
+  Cpu,
   MessageSquare,
   Search,
   FlaskConical,
@@ -54,6 +55,7 @@ const Navigation = ({ onLogout, showLogout = false, variant = 'customer' }: Navi
     { path: '/chat', label: 'Chat', Icon: MessageSquare },
     { path: '/search', label: 'Search', Icon: Search },
     { path: '/sandbox', label: 'Sandbox', Icon: FlaskConical },
+    { path: '/agent', label: 'Agent', Icon: Cpu },
     { path: '/account', label: 'Account', Icon: User },
     { path: '/help', label: 'Help', Icon: HelpCircle },
   ];

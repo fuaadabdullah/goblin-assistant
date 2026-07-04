@@ -21,6 +21,7 @@ export type RouteBoundaryKey =
   | 'home'
   | 'account'
   | 'chat'
+  | 'agent'
   | 'googleCallback'
   | 'help'
   | 'login'
@@ -100,6 +101,10 @@ const routeBoundaryConfig: Record<RouteBoundaryKey, RouteBoundaryConfig> = {
       { type: 'copyErrorId', label: 'Copy Error ID', variant: 'secondary' },
     ],
   },
+  agent: workspaceConfig(
+    'Agent loop is temporarily unavailable',
+    'The self-development task screen failed before it could load.'
+  ),
   googleCallback: authConfig(
     'Sign-in callback failed',
     'We could not finish the Google sign-in handoff screen.'

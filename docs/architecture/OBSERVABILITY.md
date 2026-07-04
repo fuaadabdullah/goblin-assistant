@@ -340,9 +340,10 @@ COST_TRACKING_DSN = "sqlite:///data/costs.db"  # SQLite or Postgres DSN
 ## Related Documents
 
 - `ENGINE_CONTRACTS.md` — Canonical interface contract for this pillar
-- `prometheus_rules.yml` — Alert rule definitions
+- `infra/alert_rules.yml` — Alert rule definitions
 - `static-analysis.datadog.yml` — Datadog configuration
 - `datadog/DATADOG_SLOS.md` — SLO definitions and dashboard references
+- `infra/grafana-dashboard.json` — Grafana dashboard export
 - `apps/api/src/api/health.py` — Health router
 - `apps/api/src/api/health_core.py` — Core health check functions
 - `apps/api/src/api/monitoring.py` — Provider monitoring loop

@@ -87,10 +87,26 @@ def test_get_provider_models_endpoint_returns_providers_and_models():
     assert response.status_code == 200
     data = response.json()["data"]
     assert data["total_providers"] == 2
-    assert data["total_models"] == 4
-    assert data["source"] == "configured_with_health"
+    assert data["total_models"] == 7
+    assert data["total_router_models"] == 3
+    assert data["source"] == "configured_with_health_plus_router"
     assert len(data["providers"]) == 2
     assert any(model["name"] == "gpt-4.1" for model in data["models"])
+    assert {
+        model["name"] for model in data["models"] if model["provider_id"] == "litellm_router"
+    } == {
+        "router-cheap",
+        "router-code",
+        "router-reason",
+    }
+    cheap_router = next(group for group in data["router_models"] if group["name"] == "router-cheap")
+    assert cheap_router["routing_strategy"] == "latency-based-routing"
+    assert cheap_router["fallbacks"] == ["router-code"]
+    assert {group["name"] for group in data["router_models"]} == {
+        "router-cheap",
+        "router-code",
+        "router-reason",
+    }
 
 
 def test_get_provider_models_endpoint_handles_errors():

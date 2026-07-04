@@ -177,6 +177,61 @@ models = ["gpt-4o-mini"]
     }
 
 
+def test_provider_toml_parses_router_model_groups(tmp_path: Path) -> None:
+    config_path = tmp_path / "providers.toml"
+    config_path.write_text(
+        """
+[router_models."router-cheap"]
+description = "Budget-first routing"
+routing_strategy = "latency-based-routing"
+num_retries = 2
+enable_pre_call_checks = true
+fallbacks = ["router-code"]
+context_window_fallbacks = ["gemini-2.5-flash"]
+content_policy_fallbacks = ["gemini-2.5-flash"]
+
+[[router_models."router-cheap".backends]]
+provider_id = "dashscope"
+litellm_provider = "dashscope"
+model = "qwen-turbo"
+api_key_env = "DASHSCOPE_API_KEY"
+order = 1
+cost_input_per1k = 0.00005
+cost_output_per1k = 0.0002
+
+[[router_models."router-cheap".backends]]
+provider_id = "vertex_ai"
+litellm_provider = "vertex_ai"
+model = "gemini-2.5-flash-lite"
+project_env = "VERTEX_AI_PROJECT"
+vertex_location_env = "VERTEX_AI_LOCATION"
+vertex_credentials_env = "GOOGLE_APPLICATION_CREDENTIALS"
+order = 2
+cost_input_per1k = 0.0001
+cost_output_per1k = 0.0004
+""".strip(),
+        encoding="utf-8",
+    )
+
+    provider_toml = ProviderToml.load(config_path)
+
+    router_group = provider_toml.router_models["router-cheap"]
+    assert router_group.description == "Budget-first routing"
+    assert router_group.routing_strategy == "latency-based-routing"
+    assert router_group.num_retries == 2
+    assert router_group.enable_pre_call_checks is True
+    assert router_group.fallbacks == ["router-code"]
+    assert router_group.context_window_fallbacks == ["gemini-2.5-flash"]
+    assert router_group.content_policy_fallbacks == ["gemini-2.5-flash"]
+    assert router_group.backends[0].provider_id == "dashscope"
+    assert router_group.backends[0].litellm_provider == "dashscope"
+    assert router_group.backends[0].model == "qwen-turbo"
+    assert router_group.backends[0].order == 1
+    assert router_group.backends[1].provider_id == "vertex_ai"
+    assert router_group.backends[1].vertex_location_env == "VERTEX_AI_LOCATION"
+    assert router_group.backends[1].vertex_credentials_env == "GOOGLE_APPLICATION_CREDENTIALS"
+
+
 def test_dispatcher_reload_config_refreshes_provider_pricing(monkeypatch):
     original_state = {
         "_provider_toml": dispatcher_module._provider_toml,

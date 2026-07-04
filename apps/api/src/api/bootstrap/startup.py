@@ -143,6 +143,15 @@ def init_ddtrace() -> None:
         logger.warning("Failed to initialize Datadog APM", error=str(exc))
 
 
+def init_otel() -> None:
+    try:
+        from ..observability.telemetry import init_open_telemetry
+
+        init_open_telemetry()
+    except Exception as exc:
+        logger.warning("Failed to initialize OpenTelemetry", error=str(exc))
+
+
 def resolve_optional_routing_analytics_router() -> Tuple[bool, Optional[Any]]:
     try:
         from ..routes.routing_analytics import router as routing_analytics_router

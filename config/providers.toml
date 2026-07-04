@@ -26,7 +26,6 @@ visible_providers = [
   "huggingface",
   "aliyun",
   "gcp_vllm",
-  "gcp_vm",
 ]
 
 [default]
@@ -666,9 +665,9 @@ models                  = [
 supports_cot            = true
 cot_suppression_prompt  = "Be concise."
 display_name            = "GCP Self-Hosted"
-is_active               = true
+is_active               = false
 selectable_requires_env = true
-hidden                  = false
+hidden                  = true
 
 [[providers.gcp_vm.backends]]
 engine        = "vertex"
@@ -676,6 +675,99 @@ project_env   = "VERTEX_AI_PROJECT"
 default_model = "gemini-2.5-flash"
 models        = ["gemini-2.5-flash", "gemini-2.0-flash", "gemini-2.0-flash-lite"]
 priority      = 1
+
+# ---------------------------------------------------------------------------
+# LiteLLM smart-routing model groups
+# ---------------------------------------------------------------------------
+[router_models."router-cheap"]
+description = "Budget-first routing for routine chat"
+routing_strategy = "latency-based-routing"
+num_retries = 2
+enable_pre_call_checks = true
+fallbacks = ["router-code"]
+context_window_fallbacks = ["gemini-2.5-flash"]
+content_policy_fallbacks = ["gemini-2.5-flash"]
+
+[[router_models."router-cheap".backends]]
+provider_id       = "dashscope"
+litellm_provider   = "dashscope"
+model             = "qwen-turbo"
+api_key_env       = "DASHSCOPE_API_KEY"
+endpoint_env      = "DASHSCOPE_ENDPOINT"
+order             = 1
+cost_input_per1k  = 0.00005
+cost_output_per1k = 0.00020
+
+[[router_models."router-cheap".backends]]
+provider_id       = "vertex_ai"
+litellm_provider   = "vertex_ai"
+model             = "gemini-2.5-flash-lite"
+project_env       = "VERTEX_AI_PROJECT"
+vertex_location_env    = "VERTEX_AI_LOCATION"
+vertex_credentials_env  = "GOOGLE_APPLICATION_CREDENTIALS"
+order             = 2
+cost_input_per1k  = 0.00010
+cost_output_per1k = 0.00040
+
+[router_models."router-code"]
+description = "Code-first routing for implementation work"
+routing_strategy = "cost-based-routing"
+num_retries = 2
+enable_pre_call_checks = true
+fallbacks = ["router-cheap"]
+context_window_fallbacks = ["gemini-2.5-flash"]
+content_policy_fallbacks = ["gemini-2.5-flash"]
+
+[[router_models."router-code".backends]]
+provider_id       = "dashscope"
+litellm_provider   = "dashscope"
+model             = "qwen3-coder"
+api_key_env       = "DASHSCOPE_API_KEY"
+endpoint_env      = "DASHSCOPE_ENDPOINT"
+order             = 1
+cost_input_per1k  = 0.00011
+cost_output_per1k = 0.00080
+
+[[router_models."router-code".backends]]
+provider_id       = "vertex_ai"
+litellm_provider   = "vertex_ai"
+model             = "gemini-2.5-flash"
+project_env       = "VERTEX_AI_PROJECT"
+vertex_location_env    = "VERTEX_AI_LOCATION"
+vertex_credentials_env  = "GOOGLE_APPLICATION_CREDENTIALS"
+order             = 2
+cost_input_per1k  = 0.00030
+cost_output_per1k = 0.00250
+
+[router_models."router-reason"]
+description = "Reasoning-first routing with a lower-cost fallback"
+routing_strategy = "cost-based-routing"
+num_retries = 2
+enable_pre_call_checks = true
+fallbacks = ["router-code"]
+context_window_fallbacks = ["gemini-2.5-flash"]
+content_policy_fallbacks = ["gemini-2.5-flash"]
+
+[[router_models."router-reason".backends]]
+provider_id       = "vertex_ai"
+litellm_provider   = "vertex_ai"
+model             = "gemini-2.5-pro"
+project_env       = "VERTEX_AI_PROJECT"
+vertex_location_env    = "VERTEX_AI_LOCATION"
+vertex_credentials_env  = "GOOGLE_APPLICATION_CREDENTIALS"
+order             = 1
+cost_input_per1k  = 0.00125
+cost_output_per1k = 0.01000
+
+[[router_models."router-reason".backends]]
+provider_id       = "dashscope"
+litellm_provider   = "dashscope"
+model             = "qwen-max"
+api_key_env       = "DASHSCOPE_API_KEY"
+endpoint_env      = "DASHSCOPE_ENDPOINT"
+order             = 2
+cost_input_per1k  = 0.00400
+cost_output_per1k = 0.01200
 
 # ---------------------------------------------------------------------------
 # Mock (testing only)

@@ -4,9 +4,13 @@ from sqlalchemy import text
 from sqlalchemy.ext.asyncio import create_async_engine
 
 
-async def enable_vector():
-    db_url = "postgresql+asyncpg://postgres:3ZeErPfTdYu%23adzhKDEs@db.dhxoowakvmobjxsffpst.supabase.co:5432/postgres?sslmode=require"
-    engine = create_async_engine(db_url)
+async def enable_vector() -> None:
+    # Supabase connection with proper SSL for asyncpg
+    db_url = "postgresql+asyncpg://postgres:3ZeErPfTdYu%23adzhKDEs@db.dhxoowakvmobjxsffpst.supabase.co:5432/postgres"
+    engine = create_async_engine(
+        db_url,
+        connect_args={"ssl": "require"},
+    )
 
     try:
         async with engine.begin() as conn:

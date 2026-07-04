@@ -35,6 +35,8 @@ import { searchMethods } from './search';
 import { loggingMethods } from './logging';
 import { supportMethods } from './support';
 import { runtimeMethods } from './runtime';
+import { agentMethods } from './agent';
+import { observabilityMethods } from './observability';
 
 // Export all shared types and utilities
 export * from './shared';
@@ -70,6 +72,12 @@ export const apiClient = {
 
   // Support methods
   ...supportMethods,
+
+  // Observability methods
+  ...observabilityMethods,
+
+  // Agent methods
+  ...agentMethods,
 
   // Runtime/orchestration methods
   ...runtimeMethods,

@@ -10,11 +10,13 @@ from typing import Any, AsyncGenerator, Dict, List, Optional
 import httpx
 import structlog
 
+from ..utils.tokenizer import count_tokens, trim_to_tokens
 from .base import BaseProvider, ProviderHealth, ProviderResult
 
 logger = structlog.get_logger(__name__)
 
 _DEFAULT_ENDPOINT = "https://dashscope-intl.aliyuncs.com/compatible-mode"
+_DASHSCOPE_PROMPT_BUDGET_ENV = "DASHSCOPE_PROMPT_TOKEN_BUDGET"
 _BODY_PASSTHROUGH = {
     "top_p",
     "stream",
@@ -26,6 +28,38 @@ _BODY_PASSTHROUGH = {
     "presence_penalty",
     "frequency_penalty",
 }
+
+
+def _env_int(name: str, default: int = 0) -> int:
+    raw = os.getenv(name, "").strip()
+    if not raw:
+        return default
+    try:
+        return int(raw)
+    except ValueError:
+        return default
+
+
+def _apply_prompt_budget(messages: List[Dict[str, str]]) -> List[Dict[str, str]]:
+    budget = _env_int(_DASHSCOPE_PROMPT_BUDGET_ENV, 0)
+    if budget <= 0:
+        return messages
+
+    joined = "\n\n".join(
+        str(message.get("content", "")) for message in messages if isinstance(message, dict)
+    )
+    if count_tokens(joined) <= budget:
+        return messages
+
+    system_messages = [message for message in messages if message.get("role") == "system"]
+    non_system = [
+        str(message.get("content", "")) for message in messages if message.get("role") != "system"
+    ]
+    trimmed = trim_to_tokens("\n\n".join(non_system), budget)
+    compact_messages = list(system_messages)
+    if trimmed.strip():
+        compact_messages.append({"role": "user", "content": trimmed})
+    return compact_messages
 
 
 def _normalize_compatible_base_url(value: str) -> str:
@@ -69,6 +103,7 @@ class AliyunProvider(BaseProvider):
         **kwargs: Any,
     ) -> ProviderResult:
         normalized_messages = self.normalize_messages(messages, prompt=prompt, **kwargs)
+        normalized_messages = _apply_prompt_budget(normalized_messages)
         model_name = model or self.default_model or "qwen-plus"
         if not self._api_key:
             return ProviderResult(
@@ -160,6 +195,7 @@ class AliyunProvider(BaseProvider):
         **kwargs: Any,
     ) -> AsyncGenerator[Dict[str, Any], None]:
         normalized_messages = self.normalize_messages(messages, prompt=prompt, **kwargs)
+        normalized_messages = _apply_prompt_budget(normalized_messages)
         model_name = model or self.default_model or "qwen-plus"
         body = {
             "model": model_name,

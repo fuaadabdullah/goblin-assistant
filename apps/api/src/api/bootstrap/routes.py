@@ -28,10 +28,12 @@ def register_routes(
     model_suggestion_debug_router,
     observability_debug_router,
     retrieval_metrics_router,
+    prometheus_router,
     sandbox_router,
     providers_models_router,
     account_router,
     support_router,
+    agent_router,
     routing_analytics_available: bool,
     routing_analytics_router,
 ) -> None:
@@ -47,6 +49,7 @@ def register_routes(
         sandbox_router=sandbox_router,
         account_router=account_router,
         support_router=support_router,
+        agent_router=agent_router,
         raptor_router=raptor_router,
         api_keys_router=api_keys_router,
         privacy_router=privacy_router,
@@ -61,6 +64,7 @@ def register_routes(
         model_suggestion_debug_router=model_suggestion_debug_router,
         observability_debug_router=observability_debug_router,
         retrieval_metrics_router=retrieval_metrics_router,
+        prometheus_router=prometheus_router,
         routing_analytics_available=routing_analytics_available,
         routing_analytics_router=routing_analytics_router,
     )

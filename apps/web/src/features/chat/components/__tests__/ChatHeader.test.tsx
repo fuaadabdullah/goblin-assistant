@@ -1,10 +1,17 @@
-import React from 'react';
+import type { ReactNode } from 'react';
 import { render, screen, fireEvent } from '@testing-library/react';
 
 vi.mock('next/link', () => ({
-  default: function MockLink({ children, href }: { children: React.ReactNode; href: string }) {
+  default: function MockLink({ children, href }: { children: ReactNode; href: string }) {
     return <a href={href}>{children}</a>;
   },
+}));
+vi.mock('../../../../hooks/useHealthCheck', () => ({
+  useHealthCheck: () => ({
+    data: { overall: 'healthy' },
+    isLoading: false,
+    isError: false,
+  }),
 }));
 
 import ChatHeader from '../ChatHeader';

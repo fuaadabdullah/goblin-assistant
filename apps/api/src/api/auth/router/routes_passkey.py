@@ -6,6 +6,7 @@ from fastapi import APIRouter, Depends, HTTPException, Response, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from ...core.contracts import SuccessEnvelope
+from ...observability.telemetry import record_auth_event
 from ..passkeys import WebAuthnPasskey
 from . import _runtime as _ar
 from .config import ACCESS_TOKEN_EXPIRE_MINUTES
@@ -107,6 +108,7 @@ async def authenticate_passkey(
         refresh_token = create_refresh_token(user_model.id, session_id)
 
         _set_auth_cookies(response, access_token, refresh_token)
+        record_auth_event(event="login", method="passkey", success=True)
 
         return SuccessEnvelope(
             data=TokenWithRefresh(

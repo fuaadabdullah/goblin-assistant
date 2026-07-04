@@ -89,6 +89,7 @@ async def record_completion_artifacts(
     usage: Optional[dict],
     cost_usd: Optional[float],
     correlation_id: Optional[str],
+    latency_ms: Optional[float] = None,
 ) -> None:
     """Record task history + usage event (both best-effort)."""
     try:
@@ -122,6 +123,7 @@ async def record_completion_artifacts(
             usage=usage,
             cost_usd=cost_usd,
             correlation_id=correlation_id,
+            latency_ms=latency_ms,
         )
     except Exception as usage_err:
         logger.warning(

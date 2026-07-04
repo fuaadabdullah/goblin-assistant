@@ -11,7 +11,7 @@ Hybrid two-phase worker:
 
 Auth:
   - Atlassian MCP : Bearer base64(email:token) + Accept: application/json, text/event-stream
-  - GitHub Actions: Authorization: Bearer <GITHUB_TOKEN>
+  - GitHub Actions: Authorization: Bearer <AGENT_GITHUB_TOKEN>
 
 Protocol notes:
   - MCP endpoint is SSE-based and session-scoped.
@@ -140,7 +140,7 @@ class RovoDevProvider(BaseProvider):
             os.getenv("ROVO_DEV_ENDPOINT", "").strip() or str(cfg.get("endpoint", _MCP_ENDPOINT))
         ).rstrip("/")
 
-        self._gh_token = os.getenv("GITHUB_TOKEN", "").strip()
+        self._gh_token = os.getenv("AGENT_GITHUB_TOKEN", "").strip()
         self._gh_owner = os.getenv("GITHUB_REPO_OWNER", "").strip()
         self._gh_repo = os.getenv("GITHUB_REPO_NAME", "").strip()
 
@@ -330,7 +330,7 @@ class RovoDevProvider(BaseProvider):
     ) -> ProviderResult:
         missing = []
         if not self._gh_token:
-            missing.append("GITHUB_TOKEN")
+            missing.append("AGENT_GITHUB_TOKEN")
         if not self._gh_owner:
             missing.append("GITHUB_REPO_OWNER")
         if not self._gh_repo:
@@ -421,7 +421,7 @@ class RovoDevProvider(BaseProvider):
         if not (self._email and self._atl_token):
             missing.append("Atlassian credentials")
         if not self._gh_token:
-            missing.append("GITHUB_TOKEN")
+            missing.append("AGENT_GITHUB_TOKEN")
         if missing:
             return ProviderHealth(
                 self.provider_id,

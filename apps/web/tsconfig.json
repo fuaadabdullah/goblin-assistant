@@ -18,7 +18,8 @@
     "baseUrl": ".",
     "paths": {
       "@/*": ["src/*"],
-      "@goblin/ui": ["../../packages/ui/src/index.ts"]
+      "@goblin/ui": ["../../packages/ui/src/index.ts"],
+      "@goblin/shared": ["../../packages/shared/src/index.ts"]
     },
     "noEmit": true,
     "incremental": true,

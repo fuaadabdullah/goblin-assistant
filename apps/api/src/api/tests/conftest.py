@@ -52,11 +52,93 @@ from api.conftest import _build_authenticated_client
 
 
 class _EmbeddingServiceStub:
+    _content_hash_cache: dict[str, bool] = {}
+    _duplicate_prevented_count: int = 0
+    _HASH_CACHE_MAX: int = 10_000
+
     async def embed_text(self, _text: str):
-        return []
+        return [0.0] * 1536
+
+    async def embed_batch(self, texts):
+        return [await self.embed_text(text) for text in texts]
+
+    @classmethod
+    def _check_and_register_hash(cls, content: str) -> bool:
+        if content in cls._content_hash_cache:
+            cls._duplicate_prevented_count += 1
+            return True
+        if len(cls._content_hash_cache) >= cls._HASH_CACHE_MAX:
+            cls._content_hash_cache.pop(next(iter(cls._content_hash_cache)))
+        cls._content_hash_cache[content] = True
+        return False
 
     def get_dedup_stats(self):
-        return {"duplicates_prevented": 0, "hash_cache_size": 0}
+        return {
+            "duplicates_prevented": self._duplicate_prevented_count,
+            "hash_cache_size": len(self._content_hash_cache),
+        }
+
+    async def store_message_embedding(
+        self,
+        user_id: str,
+        conversation_id: str,
+        message_id: str,
+        content: str,
+        metadata=None,
+    ):
+        from sqlalchemy import text as sa_text
+
+        import api.services.embedding_service as module
+        from api.storage.vector_models import EmbeddingModel
+
+        async with module.get_db_context() as session:
+            existing = await session.execute(
+                sa_text(
+                    "SELECT id FROM embeddings WHERE source_id = :sid AND user_id = :uid LIMIT 1"
+                ),
+                {"sid": message_id, "uid": user_id},
+            )
+            if existing.fetchone():
+                return True
+
+            embedding = await self.embed_text(content)
+            session.add(
+                EmbeddingModel(
+                    user_id=user_id,
+                    conversation_id=conversation_id,
+                    source_type="message",
+                    source_id=message_id,
+                    embedding=embedding,
+                    content=content,
+                    metadata_=metadata or {},
+                )
+            )
+            if hasattr(session, "flush"):
+                await session.flush()
+        return True
+
+    async def store_memory_fact(
+        self,
+        user_id: str,
+        fact_text: str,
+        category=None,
+        metadata=None,
+    ):
+        import api.services.embedding_service as module
+        from api.storage.vector_models import MemoryFactModel
+
+        async with module.get_db_context() as session:
+            session.add(
+                MemoryFactModel(
+                    user_id=user_id,
+                    fact_text=fact_text,
+                    category=category,
+                    metadata_=metadata or {},
+                )
+            )
+            if hasattr(session, "flush"):
+                await session.flush()
+        return True
 
 
 class _AsyncEmbeddingWorkerStub:
@@ -68,12 +150,19 @@ class _AsyncEmbeddingWorkerStub:
         self.queue_memory_embedding = AsyncMock()
 
 
+async def _stub_db_context():  # pragma: no cover - compatibility shim
+    raise RuntimeError("embedding service stub does not provide a DB context")
+
+
 # Stub embedding service at module level so it's available at import time
 # for all other test modules that chain through retrieval_service, etc.
 if "api.services.embedding_service" not in sys.modules:
     _mock_providers = MagicMock()
     _mock_embedding = types.ModuleType("api.services.embedding_service")
     _mock_embedding.EmbeddingProviderUnavailableError = RuntimeError
+    from api.storage.database import get_db_context as _real_get_db_context
+
+    _mock_embedding.get_db_context = _real_get_db_context
     _mock_embedding.EmbeddingService = _EmbeddingServiceStub
     _mock_embedding.AsyncEmbeddingWorker = _AsyncEmbeddingWorkerStub
     _mock_embedding.embedding_worker = _AsyncEmbeddingWorkerStub()

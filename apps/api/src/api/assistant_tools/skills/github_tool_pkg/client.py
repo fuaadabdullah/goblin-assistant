@@ -1,12 +1,50 @@
 from __future__ import annotations
 
 import os
+import re
 from typing import Any, Dict, Optional
 
 import httpx
 
 _BASE = "https://api.github.com"
 _TIMEOUT = 15.0
+_REPO_SCOPE_ENV_VARS = ("AGENT_GITHUB_ALLOWED_REPOSITORY", "GITHUB_REPOSITORY")
+
+
+def _normalize_repo(value: str) -> str:
+    return (
+        value.strip()
+        .removeprefix("https://github.com/")
+        .removeprefix("http://github.com/")
+        .strip("/")
+        .lower()
+    )
+
+
+def get_allowed_repository() -> Optional[str]:
+    for env_name in _REPO_SCOPE_ENV_VARS:
+        raw = os.environ.get(env_name, "").strip()
+        if raw:
+            return _normalize_repo(raw)
+    return None
+
+
+def require_repo_scope(owner: str, repo: str) -> None:
+    allowed = get_allowed_repository()
+    if not allowed:
+        return
+    requested = f"{owner}/{repo}".strip("/").lower()
+    if requested != allowed:
+        raise ValueError(
+            f"GitHub access is scoped to {allowed}; refusing repository access for {requested}"
+        )
+
+
+def _validate_repo_path(path: str) -> None:
+    match = re.match(r"^/repos/([^/]+)/([^/]+)(/|$)", path)
+    if not match:
+        return
+    require_repo_scope(match.group(1), match.group(2))
 
 
 def headers() -> Dict[str, str]:
@@ -21,6 +59,7 @@ def headers() -> Dict[str, str]:
 
 
 async def get(path: str, params: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:
+    _validate_repo_path(path)
     async with httpx.AsyncClient(
         base_url=_BASE,
         headers=headers(),
@@ -36,6 +75,7 @@ async def get(path: str, params: Optional[Dict[str, Any]] = None) -> Dict[str, A
 
 
 async def post(path: str, body: Dict[str, Any]) -> Dict[str, Any]:
+    _validate_repo_path(path)
     async with httpx.AsyncClient(
         base_url=_BASE,
         headers=headers(),

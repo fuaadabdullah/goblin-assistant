@@ -23,7 +23,7 @@
     },
     {
       "name": "real-integration-suite",
-      "run": "cd apps/api && PYTHONPATH=src python3.11 -m pytest -o \"testpaths=\" -o \"addopts=\" --asyncio-mode=auto -v ../../../../tests/integration/"
+      "run": "cd apps/api && PYTHONPATH=src python3.11 -m pytest -o \"testpaths=\" -o \"addopts=\" --asyncio-mode=auto -v ../../tests/integration/"
     }
   ]
 }

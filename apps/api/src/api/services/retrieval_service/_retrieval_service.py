@@ -208,6 +208,22 @@ class RetrievalService:
             )
         timings["index"] = (time.perf_counter() - t0) * 1000
 
+        t0 = time.perf_counter()
+        try:
+            from ..memory_entries_service import memory_entries_service  # noqa: PLC0415
+
+            all_results.extend(
+                await memory_entries_service.search(
+                    query,
+                    user_id=user_id,
+                    source_kinds=["repo_doc", "repo_code", "agent_run"],
+                    limit=min(k, 4),
+                )
+            )
+        except Exception:
+            pass
+        timings["memory_entries"] = (time.perf_counter() - t0) * 1000
+
         # Stage 4: Graph expansion — find memory facts connected via entity relations
         t0 = time.perf_counter()
         seed_ids = [

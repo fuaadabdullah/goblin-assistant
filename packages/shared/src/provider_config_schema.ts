@@ -136,6 +136,33 @@ export interface ModelDefaults {
   supports_streaming: boolean;
 }
 
+export interface RouterBackend {
+  provider_id: string;
+  litellm_provider: string;
+  model: string;
+  api_key_env?: string | null;
+  endpoint_env?: string | null;
+  project_env?: string | null;
+  vertex_location_env?: string | null;
+  vertex_credentials_env?: string | null;
+  order: number;
+  weight: number;
+  cost_input_per1k: number;
+  cost_output_per1k: number;
+  enabled: boolean;
+}
+
+export interface RouterModelGroup {
+  description: string;
+  backends: RouterBackend[];
+  routing_strategy: string;
+  num_retries: number;
+  enable_pre_call_checks: boolean;
+  fallbacks: string[];
+  context_window_fallbacks: string[];
+  content_policy_fallbacks: string[];
+}
+
 export interface ProviderTomlConfig {
   default: DefaultConfig;
   load_balancing: LoadBalancing;
@@ -143,6 +170,7 @@ export interface ProviderTomlConfig {
   model_aliases: Record<string, ModelAlias>;
   visible_providers: string[];
   model_context_windows: Record<string, number>;
+  router_models: Record<string, RouterModelGroup>;
   providers: Record<string, ProviderConfigEntry>;
   model_defaults: Record<string, ModelDefaults>;
   model_budgets: Record<string, RateLimitEntry>;

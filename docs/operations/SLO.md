@@ -150,7 +150,7 @@ Multi-window, multi-burn-rate alerting catches both fast exhaustion (short spike
 | Warning (ticket) | 3× | 1 day | 10% in 1 day | Create incident ticket |
 | Warning (ticket) | 1× | 3 days | 10% in 3 days | Review in weekly sync |
 
-The Prometheus rules in `prometheus_rules.yml` currently implement single-window SLO breach alerts (simpler). Upgrade to multi-burn-rate alerts when Prometheus recording rules are wired up for all SLIs.
+The Prometheus rules in `infra/alert_rules.yml` currently implement single-window SLO breach alerts (simpler). Upgrade to multi-burn-rate alerts when Prometheus recording rules are wired up for all SLIs.
 
 ---
 

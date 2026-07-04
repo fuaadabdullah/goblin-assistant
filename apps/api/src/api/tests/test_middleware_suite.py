@@ -176,6 +176,21 @@ class TestAuthenticationMiddleware:
 
         assert response.status_code == 401
 
+    @patch.dict(os.environ, {"LOCAL_LLM_API_KEY": "machine-key"})
+    def test_auth_middleware_excludes_agent_routes_for_jwt_auth(self):
+        app = FastAPI()
+
+        @app.get("/api/v1/agent/task")
+        async def agent_task():
+            return {"message": "jwt protected"}
+
+        app.add_middleware(AuthenticationMiddleware)
+        client = TestClient(app)
+
+        response = client.get("/api/v1/agent/task", headers={"Authorization": "Bearer user-jwt"})
+
+        assert response.status_code == 200
+
     def test_auth_middleware_excludes_docs_endpoints(self):
         """Test that documentation endpoints are excluded"""
         app = _build_test_app()

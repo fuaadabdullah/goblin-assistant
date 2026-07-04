@@ -83,6 +83,33 @@ class TestGitHubClient:
         assert headers["Authorization"] == "Bearer ghp_test"
         assert headers["Accept"] == "application/vnd.github+json"
 
+    def test_repo_scope_is_enforced_for_repo_paths(self, monkeypatch):
+        monkeypatch.setenv("AGENT_GITHUB_ALLOWED_REPOSITORY", "acme/goblin-assistant")
+
+        with pytest.raises(ValueError, match="scoped to acme/goblin-assistant"):
+            client.require_repo_scope("acme", "other-repo")
+
+    @pytest.mark.asyncio
+    async def test_repo_scoped_search_code_adds_repo_qualifier(self, monkeypatch):
+        monkeypatch.setenv("AGENT_GITHUB_ALLOWED_REPOSITORY", "acme/goblin-assistant")
+        response = _FakeResponse(200, {"total_count": 0, "items": []})
+        seen = {}
+
+        class _CaptureClient(_FakeAsyncClient):
+            async def get(self, path, params=None):
+                seen["params"] = params
+                return await super().get(path, params)
+
+        monkeypatch.setattr(
+            client.httpx,
+            "AsyncClient",
+            lambda *args, **kwargs: _CaptureClient(get_response=response),
+        )
+
+        await handlers.handle_github_search_code("auth middleware")
+
+        assert seen["params"]["q"].startswith("repo:acme/goblin-assistant ")
+
     @pytest.mark.asyncio
     async def test_get_success_returns_json(self, monkeypatch):
         response = _FakeResponse(200, {"full_name": "octo/repo"})

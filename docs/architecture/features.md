@@ -12,6 +12,7 @@ This file describes what the current `goblin-assistant` codebase implements, not
 | Auth screens | Partial | Login/register UI, Google OAuth UI, Turnstile, and passkey UI exist; frontend currently calls `/v1/auth/*`, while local FastAPI routers are mounted at `/auth/*` |
 | Search UI | Working path | Search routes are wired at `pages/search.tsx` and `pages/chat/search-page.tsx`, using `features/search/*` with backend calls to `/search/collections` and `/search/query` |
 | Sandbox UI | Partial | Guest mode and sandbox screen exist, and the frontend client now handles the job-based `/api/v1/sandbox/run` flow with logs fetched from `/api/v1/sandbox/jobs/{job_id}/logs`; the local backend also keeps `/sandbox/submit`, `/sandbox/status/{job_id}`, and related job endpoints |
+| Agent loop UI | Working path | A dedicated `/agent` screen can submit self-development tasks, poll task state, and surface PR links from the new `/api/v1/agent/task` workflow |
 | Admin/provider screens | Partial | Admin pages and provider manager UI exist, but provider registry loading depends on `/api/models` -> backend `/v1/providers/models`, which is not implemented in `api/` |
 | Account page | Partial | Account/profile UI exists, but frontend save calls expect `/v1/account/profile` and `/v1/account/preferences`; no matching backend router is checked in |
 | Help/support form | Partial | Help page exists and can display startup diagnostics, but support form submission expects `/v1/support/message`; no matching backend route is checked in |
@@ -23,6 +24,7 @@ This file describes what the current `goblin-assistant` codebase implements, not
 | Auth | Implemented | Email/password, JWT validation, Google OAuth helpers, CSRF token issuance, passkey challenge/register/auth endpoints in `api/auth/router.py` |
 | Conversations and chat | Implemented | Conversation CRUD, message send, OpenAI-style completions, contextual chat, semantic chat, and streaming endpoints in `api/chat_router.py` and `api/semantic_chat_router.py` |
 | Routing/orchestration | Implemented | Routing endpoints under `/routing`, task/orchestration endpoints under `/api`, `/parse`, and `/execute` |
+| Self-development agent loop | Implemented | `/api/v1/agent/task` persists lifecycle state, derives a persistent Sprite workspace, normalizes GitHub issue triggers, and accepts worker callbacks for planning/editing/testing/repair/PR creation progress |
 | Health/ops/debug | Implemented | Health, provider checks, ops snapshots, observability debug endpoints, and routing analytics endpoints are included in `apps/api/src/api/main.py` |
 | Search backend | Implemented but simple | In-memory collection storage with text matching, not a full vector-search pipeline by default |
 | Privacy endpoints | Implemented | GDPR/CCPA-style export/delete/summary/consent routes under `/api/privacy` |

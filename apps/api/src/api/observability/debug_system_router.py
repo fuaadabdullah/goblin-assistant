@@ -8,6 +8,7 @@ import structlog
 from fastapi import APIRouter, HTTPException, Query
 
 from ..ops.security import require_ops_access, require_ops_write_access
+from ..storage.usage_events import usage_event_store
 from .context_snapshotter import context_snapshotter
 from .decision_logger import decision_logger
 from .memory_logger import memory_promotion_logger
@@ -269,3 +270,28 @@ async def get_tool_trace_stats(
             status_code=500,
             detail=_detail_message("Failed to get tool trace stats", e),
         )
+
+
+@router.get("/model-usage")
+@require_ops_access("read")
+async def get_model_usage(
+    provider: Optional[str] = Query(None, description="Filter by provider"),
+    model: Optional[str] = Query(None, description="Filter by model"),
+    limit: int = Query(50, ge=1, le=500, description="Results per page"),
+) -> Dict[str, Any]:
+    """Get model/provider usage rollups for dashboarding."""
+    try:
+        rows = await usage_event_store.get_model_rollup(provider=provider, model=model, limit=limit)
+        return {
+            "provider": provider,
+            "model": model,
+            "rows": rows,
+            "summary": {
+                "request_count": sum(int(row.get("request_count", 0)) for row in rows),
+                "total_cost_usd": sum(float(row.get("total_cost_usd", 0.0)) for row in rows),
+                "total_latency_ms": sum(float(row.get("total_latency_ms", 0.0)) for row in rows),
+            },
+        }
+    except Exception as e:
+        logger.error("Failed to get model usage:", error=str(e))
+        raise HTTPException(status_code=500, detail=_detail_message("Failed to get model usage", e))

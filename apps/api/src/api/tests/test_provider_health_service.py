@@ -221,6 +221,18 @@ def test_is_available_uses_cached_state():
     assert monitor.is_available("openai") is True
 
 
+def test_is_available_falls_back_to_dispatcher_when_cache_missing():
+    monitor = ProviderHealthMonitor()
+    provider = MagicMock()
+    provider.is_available.return_value = True
+
+    with (
+        patch("api.services.provider_health.dispatcher.get_provider", return_value=provider),
+        patch("api.services.provider_health.dispatcher.is_configured", return_value=True),
+    ):
+        assert monitor.is_available("openai") is True
+
+
 def test_get_status_unknown_provider_returns_error():
     monitor = ProviderHealthMonitor()
 

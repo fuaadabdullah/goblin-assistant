@@ -16,6 +16,11 @@ from starlette.types import ASGIApp
 
 from api.core.contracts import ApiErrorPayload, ErrorEnvelope
 from api.core.error_types import ErrorType
+from api.observability.telemetry import (
+    record_request_end,
+    record_request_observation,
+    record_request_start,
+)
 
 # Configure structlog
 structlog.configure(
@@ -58,6 +63,7 @@ class AuthenticationMiddleware(BaseHTTPMiddleware):
             "/api/v1/health",
             "/api/v1/auth",
             "/sandbox",
+            "/api/v1/agent",
             *JWT_AUTH_ROUTE_PREFIXES,
         ]
 
@@ -198,6 +204,7 @@ class ErrorHandlingMiddleware(BaseHTTPMiddleware):
     async def dispatch(self, request: Request, call_next):
         start_time = time.time()
         request_id = str(uuid.uuid4())
+        route = request.url.path
 
         # Add request context
         structlog.contextvars.clear_contextvars()
@@ -206,6 +213,7 @@ class ErrorHandlingMiddleware(BaseHTTPMiddleware):
             path=request.url.path,
             method=request.method,
         )
+        record_request_start(request.method, route)
 
         try:
             response = await call_next(request)
@@ -214,6 +222,16 @@ class ErrorHandlingMiddleware(BaseHTTPMiddleware):
             process_time = time.time() - start_time
             response.headers["X-Process-Time"] = str(process_time)
             response.headers["X-Request-ID"] = request_id
+
+            route = getattr(request.scope.get("route"), "path", request.url.path)
+            record_request_observation(
+                method=request.method,
+                route=route,
+                status_code=response.status_code,
+                latency_s=process_time,
+                request_id=request_id,
+                user_id=getattr(request.state, "auth_user_id", None),
+            )
 
             logger.info(
                 "request_completed",
@@ -225,6 +243,16 @@ class ErrorHandlingMiddleware(BaseHTTPMiddleware):
 
         except Exception as e:
             process_time = time.time() - start_time
+            route = getattr(request.scope.get("route"), "path", request.url.path)
+            record_request_observation(
+                method=request.method,
+                route=route,
+                status_code=500,
+                latency_s=process_time,
+                request_id=request_id,
+                user_id=getattr(request.state, "auth_user_id", None),
+                metadata={"error_type": type(e).__name__},
+            )
             logger.error(
                 "request_failed",
                 error=str(e),
@@ -255,3 +283,5 @@ class ErrorHandlingMiddleware(BaseHTTPMiddleware):
                     )
                 ).model_dump(exclude_none=True),
             )
+        finally:
+            record_request_end(request.method, route)

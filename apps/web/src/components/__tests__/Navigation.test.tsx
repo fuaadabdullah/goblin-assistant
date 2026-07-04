@@ -1,7 +1,8 @@
 import { render, screen, fireEvent } from '@testing-library/react';
+import type { ReactNode } from 'react';
 
 vi.mock('next/link', () => ({
-  default: function MockLink({ children, href }: { children: React.ReactNode; href: string }) {
+  default: function MockLink({ children, href }: { children: ReactNode; href: string }) {
     return <a href={href}>{children}</a>;
   },
 }));
@@ -23,6 +24,11 @@ vi.mock('../ContrastModeToggle', () => ({
 vi.mock('../Logo', () => ({
   default: function MockLogo() {
     return <div data-testid="logo" />;
+  },
+}));
+vi.mock('../MobileDrawer', () => ({
+  default: function MockMobileDrawer({ children }: { children?: ReactNode }) {
+    return <div data-testid="mobile-drawer">{children}</div>;
   },
 }));
 const mockLogout = vi.fn();

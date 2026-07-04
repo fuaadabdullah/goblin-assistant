@@ -3,7 +3,7 @@ from __future__ import annotations
 import base64
 from typing import Any, Dict, List, Optional
 
-from .client import get, post
+from .client import get, get_allowed_repository, post
 
 
 async def handle_github_get_repo(owner: str, repo: str) -> Dict[str, Any]:
@@ -258,9 +258,13 @@ async def handle_github_search_code(
     query: str,
     limit: int = 10,
 ) -> Dict[str, Any]:
+    allowed_repo = get_allowed_repository()
+    scoped_query = query
+    if allowed_repo and f"repo:{allowed_repo}" not in query:
+        scoped_query = f"repo:{allowed_repo} {query}"
     data = await get(
         "/search/code",
-        {"q": query, "per_page": min(limit, 30)},
+        {"q": scoped_query, "per_page": min(limit, 30)},
     )
     if "error" in data:
         return data

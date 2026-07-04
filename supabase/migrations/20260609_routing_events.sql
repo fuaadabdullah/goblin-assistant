@@ -47,18 +47,21 @@ ALTER TABLE public.routing_events ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.routing_bandit_state ENABLE ROW LEVEL SECURITY;
 
 -- Service role inserts routing events (backend writes only)
+DROP POLICY IF EXISTS "routing_events_service_insert" ON public.routing_events;
 CREATE POLICY "routing_events_service_insert"
     ON public.routing_events
     FOR INSERT
     WITH CHECK (true);
 
 -- Authenticated users can read their own routing events
+DROP POLICY IF EXISTS "routing_events_user_select_own" ON public.routing_events;
 CREATE POLICY "routing_events_user_select_own"
     ON public.routing_events
     FOR SELECT
     USING (user_id = auth.uid());
 
 -- Admins can update user_rating (feedback writes routed through service role)
+DROP POLICY IF EXISTS "routing_events_service_update" ON public.routing_events;
 CREATE POLICY "routing_events_service_update"
     ON public.routing_events
     FOR UPDATE
@@ -66,6 +69,7 @@ CREATE POLICY "routing_events_service_update"
     WITH CHECK (true);
 
 -- Bandit state is internal — service role has full access, no user access
+DROP POLICY IF EXISTS "routing_bandit_state_service_all" ON public.routing_bandit_state;
 CREATE POLICY "routing_bandit_state_service_all"
     ON public.routing_bandit_state
     FOR ALL

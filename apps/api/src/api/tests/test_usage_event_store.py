@@ -67,6 +67,8 @@ class TestUsageEventStoreInMemory:
         await store.save_event(
             {
                 "user_id": "u1",
+                "request_id": "req-1",
+                "route": "/api/v1/chat/stream",
                 "conversation_id": "c1",
                 "message_id": "m1",
                 "provider": "openai",
@@ -75,6 +77,8 @@ class TestUsageEventStoreInMemory:
                 "completion_tokens": 30,
                 "total_tokens": 150,
                 "cost_usd": 0.002,
+                "latency_ms": 123.4,
+                "status_code": 200,
             }
         )
 
@@ -84,6 +88,10 @@ class TestUsageEventStoreInMemory:
         assert usage["completion_tokens"] == 30
         assert usage["total_tokens"] == 150
         assert usage["total_cost_usd"] == pytest.approx(0.002)
+
+        rollup = await store.get_model_rollup(provider="openai", model="gpt-4o-mini")
+        assert rollup[0]["request_count"] == 1
+        assert rollup[0]["total_latency_ms"] == pytest.approx(123.4)
 
     async def test_check_limits_uses_daily_aggregate(self, monkeypatch):
         store = _make_in_memory_store()
@@ -110,6 +118,7 @@ class TestUsageEventStoreDB:
         await db_store.save_event(
             {
                 "user_id": "db-user",
+                "request_id": "req-2",
                 "conversation_id": "conv-1",
                 "message_id": "msg-1",
                 "provider": "openai",
@@ -117,6 +126,7 @@ class TestUsageEventStoreDB:
                 "prompt_tokens": 50,
                 "completion_tokens": 20,
                 "cost_usd": 0.001,
+                "latency_ms": 42.0,
             }
         )
 
@@ -126,3 +136,7 @@ class TestUsageEventStoreDB:
         assert usage["prompt_tokens"] == 50
         assert usage["completion_tokens"] == 20
         assert usage["total_cost_usd"] == pytest.approx(0.001)
+
+        rollup = await db_store.get_model_rollup(provider="openai", model="gpt-4o-mini")
+        assert rollup[0]["request_count"] == 1
+        assert rollup[0]["total_latency_ms"] == pytest.approx(42.0)

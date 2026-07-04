@@ -14,6 +14,7 @@ from .bootstrap.middleware import (
 from .bootstrap.routes import register_routes
 from .bootstrap.startup import (
     init_ddtrace,
+    init_otel,
     init_sentry,
     load_env_files,
     resolve_optional_routing_analytics_router,
@@ -24,10 +25,13 @@ from .health import router as health_router
 from .lifespan import lifespan
 from .observability.debug_router import router as observability_debug_router
 from .observability.metrics_router import router as retrieval_metrics_router
+from .observability.prometheus_router import router as prometheus_router
+from .observability.telemetry import instrument_fastapi_app
 from .ops_router import router as ops_router
 from .parse_router import router as parse_router
 from .raptor_router import router as raptor_router
 from .routes.account_router import router as account_router
+from .routes.agent import router as agent_router
 from .routes.debug import router as model_suggestion_debug_router
 from .routes.privacy import router as privacy_router
 from .routes.providers_models import router as providers_models_router
@@ -45,6 +49,7 @@ from .write_time_router import router as write_time_router
 def create_app() -> FastAPI:
     load_env_files()
     init_sentry()
+    init_otel()
     init_ddtrace()
     routing_analytics_available, routing_analytics_router = (
         resolve_optional_routing_analytics_router()
@@ -56,6 +61,7 @@ def create_app() -> FastAPI:
         version=get_version(),
         lifespan=lifespan,
     )
+    instrument_fastapi_app(app)
 
     @app.get("/")
     async def root() -> dict[str, str]:
@@ -93,10 +99,12 @@ def create_app() -> FastAPI:
         model_suggestion_debug_router=model_suggestion_debug_router,
         observability_debug_router=observability_debug_router,
         retrieval_metrics_router=retrieval_metrics_router,
+        prometheus_router=prometheus_router,
         sandbox_router=sandbox_router,
         providers_models_router=providers_models_router,
         account_router=account_router,
         support_router=support_router,
+        agent_router=agent_router,
         routing_analytics_available=routing_analytics_available,
         routing_analytics_router=routing_analytics_router,
     )

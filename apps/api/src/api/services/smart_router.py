@@ -20,6 +20,7 @@ from .provider_health import health_monitor
 from .smart_router_pkg.cost import CostTracker
 from .smart_router_pkg.cost import provider_pricing as _provider_pricing
 from .smart_router_pkg.types import (
+    ProviderCost,
     ProviderSelection,
     RoutingStrategy,
     TaskType,
@@ -327,3 +328,13 @@ smart_router = SmartRouter(strategy=RoutingStrategy.ML_BANDIT)
 
 def get_smart_router() -> SmartRouter:
     return smart_router
+
+
+__all__ = [
+    "ProviderCost",
+    "ProviderSelection",
+    "RoutingStrategy",
+    "TaskType",
+    "CostTracker",
+    "SmartRouter",
+]

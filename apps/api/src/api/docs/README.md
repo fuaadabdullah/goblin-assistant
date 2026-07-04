@@ -85,6 +85,9 @@ Defined in `../health.py` and `../ops_router.py`:
 - `POST /routing/route`
 - `POST /api/chat`
 - `POST /api/route_task`
+- `POST /api/v1/agent/task`
+- `GET /api/v1/agent/task/{task_id}`
+- `GET /api/v1/agent/task/{task_id}/events`
 - `POST /parse/`
 - `POST /execute/`
 

@@ -62,6 +62,7 @@ def test_mount_versioned_primary_routes_includes_public_v1_routes() -> None:
     sandbox = _mk_router("/sandbox", "/run")
     account = _mk_router("/account", "/profile")
     support = _mk_router("/support", "/message")
+    agent = _mk_router("/agent", "/task")
     raptor = _mk_router("/raptor", "/status")
     api_keys = _mk_router("/api-keys", "/provider")
     privacy = _mk_router("/api/privacy", "/export")
@@ -85,6 +86,7 @@ def test_mount_versioned_primary_routes_includes_public_v1_routes() -> None:
         sandbox_router=sandbox,
         account_router=account,
         support_router=support,
+        agent_router=agent,
         raptor_router=raptor,
         api_keys_router=api_keys,
         privacy_router=privacy,
@@ -108,6 +110,7 @@ def test_mount_versioned_primary_routes_includes_public_v1_routes() -> None:
     assert "/api/v1/sandbox/run" in paths
     assert "/api/v1/account/profile" in paths
     assert "/api/v1/support/message" in paths
+    assert "/api/v1/agent/task" in paths
     assert "/api/v1/raptor/status" in paths
     assert "/api/v1/api-keys/provider" in paths
     assert "/api/v1/api/privacy/export" in paths
@@ -118,6 +121,5 @@ def test_mount_versioned_primary_routes_includes_public_v1_routes() -> None:
     assert "/api/v1/ops/aggregated" in paths
     assert "/api/v1/admin/providers" in paths
     assert "/api/v1/secrets/health" in paths
-    assert not any(path.startswith("/api/v1/agent") for path in paths)
     assert "/chat/conversations" not in paths
     assert "/api/chat" not in paths

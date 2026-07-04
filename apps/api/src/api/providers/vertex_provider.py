@@ -19,6 +19,13 @@ logger = structlog.get_logger(__name__)
 
 _VERTEX_SERVICE_ACCOUNT_FILE = Path("/tmp/goblin_vertex_service_account.json")
 _JSON_CONTENT_TYPE = "application/json"
+_VERTEX_BATCH_MODE_ENV = "VERTEX_AGENT_BATCH_MODE"
+_VERTEX_CONTEXT_CACHING_ENV = "VERTEX_CONTEXT_CACHING_ENABLED"
+_VERTEX_CONTEXT_CACHE_ENV = "VERTEX_CONTEXT_CACHE_NAME"
+
+
+def _env_flag(name: str) -> bool:
+    return os.getenv(name, "").strip().lower() in {"1", "true", "yes", "on"}
 
 
 def _parse_google_credentials_payload(payload: str) -> Optional[str]:
@@ -192,6 +199,12 @@ class VertexAIProvider(BaseProvider):
         }
         if system_instruction:
             body["systemInstruction"] = {"parts": [{"text": system_instruction}]}
+        if _env_flag(_VERTEX_BATCH_MODE_ENV):
+            body["batchMode"] = True
+        if _env_flag(_VERTEX_CONTEXT_CACHING_ENV):
+            cache_name = os.getenv(_VERTEX_CONTEXT_CACHE_ENV, "").strip()
+            if cache_name:
+                body["cachedContent"] = cache_name
 
         headers = {
             "Authorization": f"Bearer {token}",
@@ -280,6 +293,12 @@ class VertexAIProvider(BaseProvider):
         }
         if system_instruction:
             body["systemInstruction"] = {"parts": [{"text": system_instruction}]}
+        if _env_flag(_VERTEX_BATCH_MODE_ENV):
+            body["batchMode"] = True
+        if _env_flag(_VERTEX_CONTEXT_CACHING_ENV):
+            cache_name = os.getenv(_VERTEX_CONTEXT_CACHE_ENV, "").strip()
+            if cache_name:
+                body["cachedContent"] = cache_name
 
         url = self._endpoint(model_name).replace(":generateContent", ":streamGenerateContent")
         headers = {

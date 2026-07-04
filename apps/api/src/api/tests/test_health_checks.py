@@ -11,6 +11,7 @@ from api.health_checks import (
     _check_raptor,
     _check_sandbox,
 )
+from api.health_core import check_redis_health
 
 # ── _check_chroma ─────────────────────────────────────────────────────────────
 
@@ -174,6 +175,16 @@ class TestCheckCostTracking:
         result = await _check_cost_tracking()
         # No DB URL even with enabled flag → falls through to degraded/unknown
         assert "status" in result
+
+    @pytest.mark.asyncio
+    async def test_placeholder_redis_url_returns_unknown(self, monkeypatch):
+        monkeypatch.setenv(
+            "REDIS_URL",
+            "redis://default:<your-upstash-password>@<your-cluster>.upstash.io:6379",
+        )
+        result = await check_redis_health()
+        assert result["status"] == "unknown"
+        assert "placeholder" in result["error"]
 
     @pytest.mark.asyncio
     async def test_postgres_url_without_psycopg_returns_degraded(self, monkeypatch):

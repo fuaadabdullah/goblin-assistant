@@ -1,4 +1,4 @@
-.PHONY: help install dev web-dev api-dev build build-packages lint lint-web lint-api lint-policy type-check type-check-packages test test-unit test-web test-api test-api-context-coverage test-e2e test-e2e-budget test-integration test-contract test-performance generate-providers-json check-providers-json check-api-boundaries check-api-cycles check-capability-boundaries check-route-lifecycle type-check-api-mypy type-check-api-pyright format format-check test-critical sdk-generate sdk-check secret-scan check-unused-deps check-dead-code
+.PHONY: help install dev web-dev api-dev build build-packages lint lint-web lint-api lint-policy type-check type-check-packages test test-unit test-web test-api test-api-context-coverage test-e2e test-e2e-budget test-integration test-contract test-performance generate-providers-json check-providers-json check-api-boundaries check-api-cycles check-capability-boundaries check-route-lifecycle type-check-api-mypy type-check-api-pyright format format-check test-critical sdk-generate sdk-check secret-scan check-unused-deps check-dead-code phase-gates
 PNPM_TMP := TMPDIR="$(PWD)/.tmp"
 PYTHON ?= python3
 
@@ -19,6 +19,7 @@ help:
 	@echo "  make test-contract        - run contract bucket only"
 	@echo "  make test-performance     - run performance bucket from tests/manifests"
 	@echo "  make test-critical        - run critical-path coverage gates"
+	@echo "  make phase-gates          - run rollout phase-gate checks"
 	@echo "  make check-dead-code      - find unused Python functions and TS exports"
 	@echo "  make secret-scan          - scan config/env/docs for embedded secrets"
 	@echo "  make format               - auto-format web + api"
@@ -179,6 +180,9 @@ test-engine:
 
 test-performance:
 	$(PYTHON) tooling/quality/run-test-bucket.py performance
+
+phase-gates:
+	$(PYTHON) scripts/phase_gates.py all
 
 sdk-generate:
 	bash tooling/generators/generate-sdk-client.sh

@@ -16,6 +16,7 @@ def mount_versioned_primary_routes(
     sandbox_router,
     account_router,
     support_router,
+    agent_router,
     raptor_router,
     api_keys_router,
     privacy_router,
@@ -30,6 +31,7 @@ def mount_versioned_primary_routes(
     model_suggestion_debug_router=None,
     observability_debug_router=None,
     retrieval_metrics_router=None,
+    prometheus_router=None,
     routing_analytics_available: bool = False,
     routing_analytics_router=None,
 ) -> None:
@@ -44,6 +46,7 @@ def mount_versioned_primary_routes(
         sandbox_router,
         account_router,
         support_router,
+        agent_router,
         raptor_router,
         api_keys_router,
         privacy_router,
@@ -58,6 +61,7 @@ def mount_versioned_primary_routes(
         model_suggestion_debug_router,
         observability_debug_router,
         retrieval_metrics_router,
+        prometheus_router,
     )
     app.include_router(health_router, prefix="/api/v1")
     app.include_router(settings_router, prefix="/api/v1")
@@ -69,6 +73,7 @@ def mount_versioned_primary_routes(
     app.include_router(sandbox_router, prefix="/api/v1")
     app.include_router(account_router, prefix="/api/v1")
     app.include_router(support_router, prefix="/api/v1")
+    app.include_router(agent_router, prefix="/api/v1")
     app.include_router(raptor_router, prefix="/api/v1")
     app.include_router(api_keys_router, prefix="/api/v1")
     app.include_router(privacy_router, prefix="/api/v1")
@@ -87,6 +92,8 @@ def mount_versioned_primary_routes(
         app.include_router(observability_debug_router, prefix="/api/v1")
     if retrieval_metrics_router is not None:
         app.include_router(retrieval_metrics_router, prefix="/api/v1")
+    if prometheus_router is not None:
+        app.include_router(prometheus_router)
 
     if routing_analytics_available and routing_analytics_router:
         app.include_router(routing_analytics_router, prefix="/api/v1")

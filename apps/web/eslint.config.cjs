@@ -17,6 +17,8 @@ module.exports = [
       '**/*.stories.*',
       'tests/test_connection.js',
       'scripts/root-tools/**',
+      // Debug page is a developer tool - relaxed linting rules
+      'app/debug/**',
     ],
   },
   {

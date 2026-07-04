@@ -27,6 +27,14 @@ from .retrieval_tracer import (
     retrieval_tracer,
     trace_retrieval,
 )
+from .telemetry import (
+    record_agent_task_event,
+    record_auth_event,
+    record_llm_callback,
+    record_request_observation,
+    record_router_cost_guard_event,
+    redact_payload,
+)
 
 
 # Initialize observability systems
@@ -77,6 +85,12 @@ __all__ = [
     "RetrievedItem",
     "SystemMetrics",
     "Alert",
+    "record_request_observation",
+    "record_auth_event",
+    "record_agent_task_event",
+    "record_llm_callback",
+    "record_router_cost_guard_event",
+    "redact_payload",
     # Functions
     "log_write_time_decision",
     "log_memory_promotion",

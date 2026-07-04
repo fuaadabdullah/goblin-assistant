@@ -11,6 +11,7 @@ from fastapi.security import HTTPAuthorizationCredentials
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from ...core.contracts import SuccessEnvelope
+from ...observability.telemetry import record_auth_event
 from . import _runtime as _ar
 from .config import ACCESS_TOKEN_EXPIRE_MINUTES
 from .cookies import _clear_auth_cookies, _set_auth_cookies
@@ -137,6 +138,7 @@ async def register(
     refresh_token = create_refresh_token(user_model.id, session_id)
 
     _set_auth_cookies(response, access_token, refresh_token)
+    record_auth_event(event="register", method="password", success=True)
 
     return SuccessEnvelope(
         data=TokenWithRefresh(
@@ -222,6 +224,7 @@ async def login(
     refresh_token = create_refresh_token(user_model.id, session_id)
 
     _set_auth_cookies(response, access_token, refresh_token)
+    record_auth_event(event="login", method="password", success=True)
 
     return SuccessEnvelope(
         data=TokenWithRefresh(
@@ -302,6 +305,7 @@ async def refresh_token_endpoint(
     new_refresh_token = create_refresh_token(user_id, session_id)
 
     _set_auth_cookies(response, access_token, new_refresh_token)
+    record_auth_event(event="refresh", method="password", success=True)
 
     return SuccessEnvelope(
         data=TokenWithRefresh(
@@ -347,6 +351,7 @@ async def logout(
                 await _db_revoke_session(session_id, db)
 
     _clear_auth_cookies(response)
+    record_auth_event(event="logout", method="password", success=True)
     return SuccessEnvelope(
         data=LogoutResponse(message="Logged out successfully"),
     )
@@ -361,7 +366,9 @@ async def validate_token(
     db: Annotated[AsyncSession, Depends(_ar.get_readonly_db)],
 ):
     """Validate JWT token."""
-    return await _validate_token_payload(request.token, db)
+    result = await _validate_token_payload(request.token, db)
+    record_auth_event(event="validate", method="jwt", success=result.data.valid)
+    return result
 
 
 @router.get("/validate", response_model=SuccessEnvelope[TokenValidationResponse])
@@ -378,5 +385,7 @@ async def validate_token_legacy(
             bearer_token = authorization[len(prefix) :].strip()
     result = await _validate_token_payload(bearer_token, db)
     if not result.data.valid:
+        record_auth_event(event="validate", method="jwt", success=False)
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid token")
+    record_auth_event(event="validate", method="jwt", success=True)
     return result

@@ -9,6 +9,7 @@ from fastapi import APIRouter
 from api.core.contracts import SuccessEnvelope
 from api.core.errors import DomainError
 from api.providers.dispatcher import dispatcher
+from api.providers.router_service import ROUTER_PROVIDER_ID, summarize_router_models
 
 router = APIRouter(tags=["providers"])
 
@@ -21,12 +22,34 @@ def _provider_models(entry: Dict[str, Any]) -> List[str]:
     return sorted({model for model in models if model})
 
 
+def _router_model_entry(entry: Dict[str, Any]) -> Dict[str, Any]:
+    return {
+        "name": entry["name"],
+        "provider": ROUTER_PROVIDER_ID,
+        "provider_id": ROUTER_PROVIDER_ID,
+        "size": None,
+        "health": entry.get("health", "unknown"),
+        "is_selectable": bool(entry.get("is_selectable")),
+        "health_reason": entry.get("health_reason"),
+        "description": entry.get("description"),
+        "routing_strategy": entry.get("routing_strategy"),
+        "num_retries": entry.get("num_retries"),
+        "enable_pre_call_checks": entry.get("enable_pre_call_checks"),
+        "fallbacks": entry.get("fallbacks", []),
+        "context_window_fallbacks": entry.get("context_window_fallbacks", []),
+        "content_policy_fallbacks": entry.get("content_policy_fallbacks", []),
+        "backends": entry.get("backends", []),
+    }
+
+
 @router.get("/providers/models", response_model=SuccessEnvelope[Dict[str, Any]])
 async def get_provider_models() -> SuccessEnvelope[Dict[str, Any]]:
     try:
         inventory = await dispatcher.get_provider_inventory(include_hidden=False)
         providers: List[Dict[str, Any]] = []
         models: List[Dict[str, Any]] = []
+        router_models = summarize_router_models()
+        router_model_rows: List[Dict[str, Any]] = []
 
         for entry in inventory:
             provider_id = entry["id"]
@@ -58,13 +81,18 @@ async def get_provider_models() -> SuccessEnvelope[Dict[str, Any]]:
                     }
                 )
 
+        for entry in router_models:
+            router_model_rows.append(_router_model_entry(entry))
+
         return SuccessEnvelope(
             data={
-                "models": models,
+                "models": models + router_model_rows,
                 "providers": providers,
-                "source": "configured_with_health",
-                "total_models": len(models),
+                "router_models": router_models,
+                "source": "configured_with_health_plus_router",
+                "total_models": len(models) + len(router_model_rows),
                 "total_providers": len(providers),
+                "total_router_models": len(router_model_rows),
             }
         )
     except Exception as exc:

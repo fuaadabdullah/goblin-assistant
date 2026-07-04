@@ -159,6 +159,15 @@ SUPABASE_SERVICE_ROLE_KEY=your_service_role_key
 SUPABASE_ANON_KEY=your_anon_key
 ```
 
+### Supabase Keep-Alive
+
+If you are on the Supabase free tier, add a GitHub Actions secret named
+`SUPABASE_DB_URL` and enable the scheduled workflow at
+`.github/workflows/supabase-keepalive.yml`.
+
+The workflow runs a single `SELECT 1` on a daily cron to keep the project warm
+without doing any application work.
+
 ## Security Considerations
 
 ### Database URL Security

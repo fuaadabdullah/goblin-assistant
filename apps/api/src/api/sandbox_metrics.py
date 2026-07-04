@@ -8,13 +8,9 @@ import time
 from typing import Any, Dict
 
 from fastapi import Response
-from prometheus_client import (
-    CONTENT_TYPE_LATEST,
-    Counter,
-    Gauge,
-    Histogram,
-    generate_latest,
-)
+from prometheus_client import Counter, Gauge, Histogram
+
+from .observability.telemetry import get_prometheus_content_type, get_prometheus_metrics_text
 
 logger = logging.getLogger(__name__)
 
@@ -202,12 +198,12 @@ def update_queue_depth(current_depth: int):
 
 def get_metrics_text() -> str:
     """Get metrics in Prometheus text format"""
-    return generate_latest().decode("utf-8")
+    return get_prometheus_metrics_text()
 
 
 def get_metrics_endpoint():
     """FastAPI endpoint for Prometheus metrics"""
-    return Response(content=get_metrics_text(), media_type=CONTENT_TYPE_LATEST)
+    return Response(content=get_metrics_text(), media_type=get_prometheus_content_type())
 
 
 # Utility functions for integration

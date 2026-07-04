@@ -443,12 +443,14 @@ async def generate_chat_stream(
             await usage_store.save_event(
                 {
                     "user_id": current_user.id,
+                    "request_id": response_message_id,
                     "conversation_id": conversation_id,
                     "message_id": response_message_id,
                     "provider": used_provider,
                     "model": used_model,
                     "total_tokens": int(total_tokens),
                     "cost_usd": float(total_cost),
+                    "latency_ms": (time.time() - start_time) * 1000.0,
                     "metadata": {"source": "chat.generate_chat_stream"},
                 }
             )

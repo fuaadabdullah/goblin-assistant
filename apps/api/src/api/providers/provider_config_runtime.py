@@ -19,6 +19,8 @@ _SPEC.loader.exec_module(_MODULE)
 
 ModelAlias = _MODULE.ModelAlias
 ModelDefaults = _MODULE.ModelDefaults
+RouterBackend = _MODULE.RouterBackend
+RouterModelGroup = _MODULE.RouterModelGroup
 ProviderConfig = _MODULE.ProviderConfig
 ProviderToml = _MODULE.ProviderToml
 invalidate_cache = _MODULE.invalidate_cache
@@ -27,6 +29,8 @@ load_provider_config = _MODULE.load_provider_config
 __all__ = [
     "ModelAlias",
     "ModelDefaults",
+    "RouterBackend",
+    "RouterModelGroup",
     "ProviderConfig",
     "ProviderToml",
     "invalidate_cache",

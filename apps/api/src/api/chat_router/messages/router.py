@@ -8,6 +8,7 @@ in sibling modules:
 - `post_response.py` — persistence, usage recording, learning tasks
 """
 
+import time
 import uuid
 from datetime import datetime
 from importlib import import_module
@@ -86,6 +87,7 @@ async def send_message(
     Pipeline: WTI → attachments → context assembly → provider dispatch →
     tool loop → normalize → persist → respond.
     """
+    request_start = time.time()
     message_id: Optional[str] = None
     try:
         set_sentry_chat_context(
@@ -330,6 +332,7 @@ async def send_message(
             usage=usage,
             cost_usd=cost_usd,
             correlation_id=correlation_id,
+            latency_ms=(time.time() - request_start) * 1000.0,
         )
 
         # Fire-and-forget learning tasks

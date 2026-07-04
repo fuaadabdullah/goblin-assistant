@@ -15,6 +15,7 @@ from ..base import (
 )
 from ..metrics import record_dispatch
 from ..quota_service import quota_service
+from ..router_service import get_router_model_names
 from ..supabase_events import check_provider_access, insert_routing_audit
 
 try:
@@ -177,6 +178,22 @@ async def dispatch_request(
     logger: Any,
 ) -> Dict[str, Any]:
     from ...routing.router import registry
+
+    logical_model_names = set(get_router_model_names())
+    should_route_logical = bool(model) and str(model).strip() in (
+        logical_model_names | {"auto", "cheapest", "local"}
+    )
+    if should_route_logical:
+        from ...providers.router_service import route_logical_model
+
+        router_response = await route_logical_model(
+            model,
+            payload,
+            timeout_ms=timeout_ms,
+            stream=stream,
+        )
+        if router_response is not None:
+            return router_response
 
     resolved_pid, resolved_model = dispatcher._resolve_model_alias(pid, model)
     user_id: Optional[str] = payload.get("user_id") or None

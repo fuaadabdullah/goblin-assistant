@@ -241,6 +241,8 @@ class UsageEventModel(Base):
 
     event_id = Column(String, primary_key=True, default=lambda: str(uuid.uuid4()))
     user_id = Column(String, ForeignKey("users.id"), nullable=False, index=True)
+    request_id = Column(String, nullable=True, index=True)
+    route = Column(String, nullable=True, index=True)
     conversation_id = Column(String, nullable=True, index=True)
     message_id = Column(String, nullable=True, index=True)
     provider = Column(String, nullable=True, index=True)
@@ -249,12 +251,15 @@ class UsageEventModel(Base):
     completion_tokens = Column(Integer, nullable=False, default=0)
     total_tokens = Column(Integer, nullable=False, default=0)
     cost_usd = Column(Float, nullable=False, default=0.0)
+    latency_ms = Column(Float, nullable=True)
+    status_code = Column(Integer, nullable=True)
     metadata_ = Column("metadata", JSON, default=dict)
     created_at = Column(DateTime, default=datetime.utcnow, nullable=False, index=True)
 
     __table_args__ = (
         Index("idx_usage_events_user_created", "user_id", "created_at"),
         Index("idx_usage_events_conversation_created", "conversation_id", "created_at"),
+        Index("idx_usage_events_provider_model_created", "provider", "model", "created_at"),
     )
 
 
@@ -276,6 +281,61 @@ class UsageDailyAggregateModel(Base):
     __table_args__ = (
         UniqueConstraint("user_id", "usage_date", name="uq_usage_daily_user_date"),
         Index("idx_usage_daily_user_date", "user_id", "usage_date"),
+    )
+
+
+class ModelUsageDailyAggregateModel(Base):
+    """Daily model/provider rollups for dashboard queries."""
+
+    __tablename__ = "model_usage_daily_aggregates"
+
+    id = Column(String, primary_key=True, default=lambda: str(uuid.uuid4()))
+    provider = Column(String, nullable=False, index=True)
+    model = Column(String, nullable=False, index=True)
+    usage_date = Column(Date, nullable=False, index=True)
+    request_count = Column(Integer, nullable=False, default=0)
+    prompt_tokens = Column(Integer, nullable=False, default=0)
+    completion_tokens = Column(Integer, nullable=False, default=0)
+    total_tokens = Column(Integer, nullable=False, default=0)
+    total_cost_usd = Column(Float, nullable=False, default=0.0)
+    total_latency_ms = Column(Float, nullable=False, default=0.0)
+    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+
+    __table_args__ = (
+        UniqueConstraint("provider", "model", "usage_date", name="uq_model_usage_daily"),
+        Index("idx_model_usage_daily_provider_model_date", "provider", "model", "usage_date"),
+    )
+
+
+class TaskRoutingDecisionModel(Base):
+    """Append-only records for task-aware logical-model routing decisions."""
+
+    __tablename__ = "task_routing_decisions"
+
+    decision_id = Column(String, primary_key=True, default=lambda: str(uuid.uuid4()))
+    request_id = Column(String, nullable=False, index=True)
+    requested_model = Column(String, nullable=True, index=True)
+    task_class = Column(String, nullable=False, index=True)
+    classifier_source = Column(String, nullable=False)
+    classifier_confidence = Column(Float, nullable=False, default=0.0)
+    classifier_reason = Column(Text, nullable=True)
+    classifier_model = Column(String, nullable=True)
+    logical_model = Column(String, nullable=False, index=True)
+    backend_provider_id = Column(String, nullable=True, index=True)
+    backend_model = Column(String, nullable=True)
+    prompt_tokens = Column(Integer, nullable=False, default=0)
+    completion_tokens = Column(Integer, nullable=False, default=0)
+    total_tokens = Column(Integer, nullable=False, default=0)
+    cost_usd = Column(Float, nullable=False, default=0.0)
+    latency_ms = Column(Float, nullable=False, default=0.0)
+    success = Column(Boolean, nullable=False, default=True, server_default=true())
+    error_message = Column(Text, nullable=True)
+    metadata_ = Column("metadata", JSON, default=dict)
+    created_at = Column(DateTime, default=datetime.utcnow, nullable=False, index=True)
+
+    __table_args__ = (
+        Index("idx_task_routing_decisions_request_created", "request_id", "created_at"),
+        Index("idx_task_routing_decisions_task_class_created", "task_class", "created_at"),
     )
 
 

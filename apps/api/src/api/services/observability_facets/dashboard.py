@@ -11,6 +11,7 @@ from ...observability.decision_logger import decision_logger
 from ...observability.memory_logger import memory_promotion_logger
 from ...observability.metrics_collector import metrics_collector
 from ...observability.retrieval_tracer import retrieval_tracer
+from ...storage.usage_events import usage_event_store
 
 logger = structlog.get_logger()
 
@@ -296,6 +297,38 @@ class ObservabilityDashboardFacet:
             }
         except Exception as e:
             logger.error("Failed to get context snapshot", request_id=request_id, error=str(e))
+            return {"error": str(e)}
+
+    def get_model_usage(
+        self, provider: str | None = None, model: str | None = None
+    ) -> Dict[str, Any]:
+        try:
+            import asyncio  # noqa: PLC0415
+
+            async def _load() -> List[Dict[str, Any]]:
+                return await usage_event_store.get_model_rollup(provider=provider, model=model)
+
+            try:
+                loop = asyncio.get_running_loop()
+                future = asyncio.run_coroutine_threadsafe(_load(), loop)
+                rows = future.result(timeout=2)
+            except (RuntimeError, TimeoutError, Exception):
+                rows = []
+
+            return {
+                "provider": provider,
+                "model": model,
+                "rows": rows,
+                "summary": {
+                    "request_count": sum(int(row.get("request_count", 0)) for row in rows),
+                    "total_cost_usd": sum(float(row.get("total_cost_usd", 0.0)) for row in rows),
+                    "total_latency_ms": sum(
+                        float(row.get("total_latency_ms", 0.0)) for row in rows
+                    ),
+                },
+            }
+        except Exception as e:
+            logger.error("Failed to get model usage", provider=provider, model=model, error=str(e))
             return {"error": str(e)}
 
     def get_critical_metrics(self) -> Dict[str, Any]:
