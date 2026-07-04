@@ -14,8 +14,10 @@ from typing import Any, Dict
 from . import attestation as _attestation
 from .attestation import providers as _providers
 from .attestation import service as _service
+from .attestation.api import create_admission_webhook  # noqa: F401 - compatibility export
 from .attestation.models import (
     VERIFIED_TRUE,
+    CachedAttestation,  # noqa: F401 - compatibility export
 )
 from .attestation.providers import AWSNitroProvider as _AWSNitroProvider
 from .attestation.providers import TPMAttestationProvider as _TPMAttestationProvider

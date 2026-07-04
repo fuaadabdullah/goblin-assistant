@@ -3,6 +3,7 @@ from __future__ import annotations
 import asyncio
 import time
 import uuid
+from datetime import datetime  # noqa: F401 - compatibility alias for tests
 from typing import Any, Dict, List
 
 from fastapi import APIRouter, HTTPException
@@ -35,6 +36,7 @@ from .routing.router import registry as routing_registry
 from .routing.router import route_task as route_task_runtime
 from .services.stream_state_store import get_stream_state_store
 from .services.task_streaming import run_task_stream_to_state
+from .storage import conversation_store  # noqa: F401 - compatibility alias for tests
 from .storage.tasks import get_task_store
 
 # Backward-compatible alias preserved for tests/integrations still patching

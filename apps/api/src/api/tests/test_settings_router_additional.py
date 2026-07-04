@@ -67,7 +67,7 @@ def test_get_settings_success():
         response = client.get("/settings/")
 
     assert response.status_code == 200
-    body = response.json()
+    body = response.json()["data"]
     assert body["default_provider"] == "openai"
     assert body["default_model"] == "gpt-4o-mini"
     assert body["providers"][0]["enabled"] is True
@@ -85,7 +85,7 @@ def test_get_settings_failure():
         response = client.get("/settings/")
 
     assert response.status_code == 500
-    assert "Failed to get settings" in response.json()["detail"]
+    assert response.json()["error"]["code"] == "SETTINGS_FETCH_FAILED"
 
 
 def test_update_provider_and_model_settings():
@@ -101,7 +101,7 @@ def test_update_provider_and_model_settings():
             },
         )
         assert provider_resp.status_code == 200
-        assert provider_resp.json()["status"] == "success"
+        assert provider_resp.json()["data"]["message"] == "Settings updated for provider: openai"
 
         model_resp = client.put(
             "/settings/models/gpt-4o-mini",
@@ -114,4 +114,4 @@ def test_update_provider_and_model_settings():
             },
         )
         assert model_resp.status_code == 200
-        assert model_resp.json()["status"] == "success"
+        assert model_resp.json()["data"]["message"] == "Settings updated for model: gpt-4o-mini"

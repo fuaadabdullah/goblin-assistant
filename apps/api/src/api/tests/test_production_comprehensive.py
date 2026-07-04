@@ -14,7 +14,7 @@ import aiohttp
 API_KEY = os.getenv("API_AUTH_KEY", "")
 
 
-async def test_endpoint(session, method, path, json_data=None, use_auth=True):
+async def _test_endpoint(session, method, path, json_data=None, use_auth=True):
     base_url = "http://localhost:8004"
     headers = {}
     if use_auth:
@@ -39,7 +39,7 @@ async def run_production_tests():
     async with aiohttp.ClientSession() as session:
         # 1. Test Unauthenticated Access (Should Fail)
         print("🔐 Test 1: Unauthenticated access to /api/v1/chat/conversations")
-        status, data, _ = await test_endpoint(
+        status, data, _ = await _test_endpoint(
             session,
             "POST",
             "/api/v1/chat/conversations",
@@ -53,7 +53,7 @@ async def run_production_tests():
 
         # 2. Test Authenticated Access (Should Succeed)
         print("\n🔑 Test 2: Authenticated access")
-        status, data, _ = await test_endpoint(
+        status, data, _ = await _test_endpoint(
             session, "POST", "/api/v1/chat/conversations", {"title": "Production Test"}
         )
         if status == 200:
@@ -65,7 +65,7 @@ async def run_production_tests():
 
         # 3. Test Provider Execution (Kamatera)
         print("\n⚡ Test 3: Provider execution (Kamatera via Dispatcher)")
-        status, data, duration = await test_endpoint(
+        status, data, duration = await _test_endpoint(
             session,
             "POST",
             f"/api/v1/chat/conversations/{conv_id}/messages",
@@ -80,7 +80,7 @@ async def run_production_tests():
         # 4. Test Caching (Second identical request)
         # Note: Backend would need caching logic enabled for this to show difference
         print("\n💾 Test 4: Caching behavior (Repeating identical message)")
-        status, data, duration2 = await test_endpoint(
+        status, data, duration2 = await _test_endpoint(
             session,
             "POST",
             f"/api/v1/chat/conversations/{conv_id}/messages",
@@ -98,7 +98,7 @@ async def run_production_tests():
         # 5. Test Concurrency
         print("\n🔥 Test 5: Concurrency (3 simultaneous requests)")
         tasks = [
-            test_endpoint(
+            _test_endpoint(
                 session,
                 "POST",
                 f"/api/v1/chat/conversations/{conv_id}/messages",

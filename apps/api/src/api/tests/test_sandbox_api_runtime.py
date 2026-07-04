@@ -43,6 +43,18 @@ def test_sandbox_api_key_default_when_env_unset() -> None:
         importlib.reload(sandbox_api)
 
 
+def test_sandbox_config_ignores_invalid_redis_url(monkeypatch) -> None:
+    monkeypatch.setenv("REDIS_URL", "not-a-redis-url")
+
+    from api import sandbox_config
+
+    module = importlib.reload(sandbox_config)
+
+    assert module.REDIS_URL == "not-a-redis-url"
+    assert module._resolve_redis_url(module.REDIS_URL) == "redis://localhost:6379/0"
+    assert module.r is not None
+
+
 def test_require_api_key_fails_closed_when_key_missing() -> None:
     with (
         patch.object(sandbox_api, "SANDBOX_ENABLED", False),

@@ -1,5 +1,6 @@
 """Provider package exports."""
 
+from . import dispatcher_pkg  # noqa: F401 - compatibility alias for tests and patch targets
 from .aliyun_provider import AliyunProvider
 from .anthropic_provider import AnthropicProvider
 from .azure_provider import AzureOpenAIProvider
@@ -47,6 +48,7 @@ __all__ = [
     "SiliconeFlowProvider",
     "VertexAIProvider",
     "dispatcher",
+    "dispatcher_pkg",
     "get_model_registry",
     "invalidate_model_registry",
     "invoke_provider",

@@ -11,6 +11,7 @@ import structlog
 from .middleware.rate_limiter import RateLimiter
 
 logger = structlog.get_logger()
+_DEFAULT_REDIS_URL = "redis://localhost:6379/0"
 
 # ---------------------------------------------------------------------------
 # Configuration from environment
@@ -28,7 +29,19 @@ JOBS_DIR = os.getenv("JOBS_DIR", "/tmp/goblin_sandbox")
 # Redis, RQ queue, rate limiter — module-level singletons
 # ---------------------------------------------------------------------------
 
-r = redis.from_url(REDIS_URL)
+
+def _resolve_redis_url(redis_url: str) -> str:
+    if redis_url.startswith(("redis://", "rediss://", "unix://")):
+        return redis_url
+    logger.warning(
+        "sandbox_redis_url_invalid",
+        configured_redis_url=redis_url,
+        fallback_redis_url=_DEFAULT_REDIS_URL,
+    )
+    return _DEFAULT_REDIS_URL
+
+
+r = redis.from_url(_resolve_redis_url(REDIS_URL))
 queue = rq.Queue("sandbox-jobs", connection=r)
 
 sandbox_rate_limiter = RateLimiter(
