@@ -56,12 +56,13 @@ const normalizeHealth = (value: unknown): string => {
 
 const isSelectable = (value: unknown): boolean => value !== false;
 
-export function useProviderHealth() {
+export function useProviderHealth(enabled = true) {
   const registryQuery = useQuery<ModelsRegistryResponse>({
     queryKey: queryKeys.models,
     queryFn: async () => (await apiClient.getModelConfigs()) as ModelsRegistryResponse,
     staleTime: 5 * 60 * 1000,
     retry: 1,
+    enabled,
   });
 
   const data = registryQuery.data;

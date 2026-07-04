@@ -25,6 +25,17 @@ function sanitizeDatadogTagValue(value: string | undefined, fallback?: string): 
   return fallback;
 }
 
+function shouldLoadProviderRegistry(pathname: string | null): boolean {
+  if (!pathname) return true;
+  return !['/login', '/register'].some(
+    (route) => pathname === route || pathname.startsWith(`${route}/`)
+  );
+}
+
+function shouldRenderAnalytics(): boolean {
+  return process.env['VERCEL_ENV'] === 'production';
+}
+
 function initDatadog() {
   const appId = process.env['NEXT_PUBLIC_DD_APPLICATION_ID'];
   const clientToken = process.env['NEXT_PUBLIC_DD_CLIENT_TOKEN'];
@@ -63,6 +74,8 @@ function initDatadog() {
 export default function Providers({ children }: { children: ReactNode }) {
   const [queryClient] = useState(() => createQueryClient());
   const pathname = usePathname();
+  const enableProviderRegistry = shouldLoadProviderRegistry(pathname);
+  const enableAnalytics = shouldRenderAnalytics();
 
   useEffect(() => {
     initDatadog();
@@ -90,7 +103,7 @@ export default function Providers({ children }: { children: ReactNode }) {
     >
       <QueryClientProvider client={queryClient}>
         <AuthBootstrapper />
-        <ProviderProvider>
+        <ProviderProvider enableRegistry={enableProviderRegistry}>
           <ContrastModeProvider>
             <a href="#main-content" className="skip-link">
               Skip to main content
@@ -98,7 +111,7 @@ export default function Providers({ children }: { children: ReactNode }) {
             <PageTransition routeKey={pathname ?? '/'}>{children}</PageTransition>
             <ChatFAB />
             <StatusBar />
-            <Analytics />
+            {enableAnalytics ? <Analytics /> : null}
           </ContrastModeProvider>
         </ProviderProvider>
       </QueryClientProvider>

@@ -223,4 +223,23 @@ describe('ProviderContext', () => {
     expect(getByTestId('selected-provider').textContent).toBe('azure_openai');
     expect(getByTestId('provider-error').textContent).toBe('');
   });
+
+  test('can skip loading the registry on auth-only routes', async () => {
+    act(() => {
+      root.render(
+        <QueryClientProvider client={queryClient}>
+          <ProviderProvider enableRegistry={false}>
+            <Probe />
+          </ProviderProvider>
+        </QueryClientProvider>
+      );
+    });
+
+    await waitForAssertion(() => {
+      expect(getByTestId('providers').textContent).toBe('');
+      expect(getByTestId('models').textContent).toBe('');
+    });
+    expect(mockGetModelConfigs).not.toHaveBeenCalled();
+    expect(getByTestId('provider-error').textContent).toBe('');
+  });
 });

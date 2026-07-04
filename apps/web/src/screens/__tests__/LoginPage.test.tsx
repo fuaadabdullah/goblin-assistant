@@ -3,6 +3,7 @@ import type { ReactNode } from 'react';
 import LoginPage, { resolveOauthErrorMessage } from '../LoginPage';
 
 const pushMock = vi.fn();
+const seoMock = vi.fn();
 let query: Record<string, string> = {};
 
 vi.mock('next/navigation', () => ({
@@ -22,7 +23,10 @@ vi.mock('../../components/auth/ModularLoginForm', () => ({
 
 vi.mock('../../components/Seo', () => ({
   __esModule: true,
-  default: () => null,
+  default: (props: Record<string, unknown>) => {
+    seoMock(props);
+    return null;
+  },
 }));
 
 vi.mock('next/link', () => ({
@@ -34,6 +38,7 @@ describe('LoginPage redirects', () => {
   beforeEach(() => {
     query = {};
     pushMock.mockClear();
+    seoMock.mockClear();
   });
 
   it('prefers redirect over from', () => {
@@ -70,6 +75,13 @@ describe('LoginPage redirects', () => {
     fireEvent.click(screen.getByRole('button', { name: 'complete-login' }));
 
     expect(pushMock).toHaveBeenCalledWith('/');
+  });
+
+  it('is crawlable for lighthouse', () => {
+    render(<LoginPage />);
+    expect(seoMock).toHaveBeenCalledWith(
+      expect.objectContaining({ robots: 'index,follow', title: 'Sign In' })
+    );
   });
 });
 
