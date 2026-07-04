@@ -44,7 +44,7 @@ jobs:
         run: cd apps/api && PYTHONPATH=src python -m ruff check --config pyproject.toml src/api
 
       - name: Set up Node.js
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v6
         with:
           node-version: "20"
           cache: "pnpm"
@@ -99,7 +99,7 @@ jobs:
       - uses: actions/checkout@v4
 
       - name: Set up Node.js
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v6
         with:
           node-version: "20"
           cache: "pnpm"
@@ -138,7 +138,7 @@ jobs:
           python -m pip install -r apps/api/requirements.txt -r apps/api/requirements-vector.txt
 
       - name: Set up Node.js
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v6
         with:
           node-version: "20"
           cache: "pnpm"
