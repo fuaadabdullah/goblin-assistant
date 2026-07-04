@@ -18,17 +18,38 @@ describe('StatusSummary', () => {
     expect(screen.getByText('⚠ Not authenticated')).toBeInTheDocument();
   });
 
-  it('shows connected status after health resolves successfully', () => {
+  it('shows healthy status when backend health is healthy', () => {
     render(
       <StatusSummary
         chatTestResult={{ status: 'ok' }}
         chatError={null}
-        health={{ isLoading: false, isError: false }}
+        health={{
+          isLoading: false,
+          isError: false,
+          data: { overall: 'healthy', timestamp: '2026-07-04T00:00:00Z', services: {} },
+        }}
         isAuthenticated={true}
       />
     );
 
     expect(screen.getAllByText('✓ Connected')).toHaveLength(2);
     expect(screen.getByText('✓ Authenticated')).toBeInTheDocument();
+  });
+
+  it('shows unknown status when health payload is not healthy', () => {
+    render(
+      <StatusSummary
+        chatTestResult={null}
+        chatError={null}
+        health={{
+          isLoading: false,
+          isError: false,
+          data: { overall: 'unknown', timestamp: '2026-07-04T00:00:00Z', services: {} },
+        }}
+        isAuthenticated={false}
+      />
+    );
+
+    expect(screen.getByText('⚠ Unknown')).toBeInTheDocument();
   });
 });

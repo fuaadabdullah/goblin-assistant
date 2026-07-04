@@ -2,11 +2,16 @@
 
 import { type FC } from 'react';
 import styles from '../page.module.css';
+import type { HealthStatus } from '@/types/api';
 
 interface StatusSummaryProps {
   chatTestResult: { status: string } | null;
   chatError: string | null;
-  health: { isError: boolean; isLoading: boolean };
+  health: {
+    isError: boolean;
+    isLoading: boolean;
+    data?: HealthStatus | undefined;
+  };
   isAuthenticated: boolean;
 }
 
@@ -21,8 +26,14 @@ const StatusSummary: FC<StatusSummaryProps> = ({ chatTestResult, chatError, heal
         <span className={styles['grayText']}>… Loading</span>
       ) : health.isError ? (
         <span className={styles['errorText']}>✗ Failed</span>
-      ) : (
+      ) : health.data?.overall === 'healthy' ? (
         <span className={styles['successText']}>✓ Connected</span>
+      ) : health.data?.overall === 'degraded' ? (
+        <span className={styles['warningText']}>⚠ Degraded</span>
+      ) : health.data?.overall === 'unhealthy' ? (
+        <span className={styles['errorText']}>✗ Failed</span>
+      ) : (
+        <span className={styles['grayText']}>⚠ Unknown</span>
       )}
     </li>
     <li>
