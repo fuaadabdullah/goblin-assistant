@@ -6,6 +6,8 @@ from typing import Optional
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel
 
+from api.storage.api_keys import create_api_key_store
+
 router = APIRouter(prefix="/api-keys", tags=["api-keys"])
 
 
@@ -58,9 +60,8 @@ async def save_api_keys_async(keys):
 async def store_api_key(provider: str, request: ApiKeyRequest):
     """Store an API key for a provider"""
     try:
-        keys = await load_api_keys_async()
-        keys[provider] = request.key
-        await save_api_keys_async(keys)
+        store = create_api_key_store()
+        await store.set(provider, request.key)
         return {"message": f"API key stored for {provider}"}
     except Exception as e:
         raise HTTPException(status_code=500, detail=_detail_message("Failed to store API key", e))
@@ -70,8 +71,8 @@ async def store_api_key(provider: str, request: ApiKeyRequest):
 async def get_api_key(provider: str):
     """Get an API key for a provider"""
     try:
-        keys = await load_api_keys_async()
-        key = keys.get(provider)
+        store = create_api_key_store()
+        key = await store.get(provider)
         return ApiKeyResponse(key=key, provider=provider)
     except Exception as e:
         raise HTTPException(
@@ -84,10 +85,8 @@ async def get_api_key(provider: str):
 async def delete_api_key(provider: str):
     """Delete an API key for a provider"""
     try:
-        keys = await load_api_keys_async()
-        if provider in keys:
-            del keys[provider]
-            await save_api_keys_async(keys)
+        store = create_api_key_store()
+        await store.delete(provider)
         return {"message": f"API key deleted for {provider}"}
     except Exception as e:
         raise HTTPException(status_code=500, detail=_detail_message("Failed to delete API key", e))

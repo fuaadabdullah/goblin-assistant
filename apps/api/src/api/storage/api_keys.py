@@ -10,8 +10,15 @@ import json
 import os
 import warnings
 from abc import ABC, abstractmethod
+from datetime import datetime
 from pathlib import Path
 from typing import Optional
+
+from sqlalchemy import delete, select
+
+from .crypto import decrypt_secret, encrypt_secret
+from .database import get_db_context
+from .models import ApiKeyModel
 
 
 class APIKeyStore(ABC):
@@ -132,6 +139,47 @@ class SecretManagerAPIKeyStore(APIKeyStore):
         await asyncio.to_thread(_write)
 
 
+class DatabaseAPIKeyStore(APIKeyStore):
+    """Encrypted database-backed API key store."""
+
+    async def get(self, provider: str) -> Optional[str]:
+        async with get_db_context() as session:
+            result = await session.execute(
+                select(ApiKeyModel).where(
+                    ApiKeyModel.provider_name == provider, ApiKeyModel.user_id.is_(None)
+                )
+            )
+            row = result.scalar_one_or_none()
+            if row is None:
+                return None
+            return decrypt_secret(row.ciphertext)
+
+    async def set(self, provider: str, key: str) -> None:
+        async with get_db_context() as session:
+            result = await session.execute(
+                select(ApiKeyModel).where(
+                    ApiKeyModel.provider_name == provider, ApiKeyModel.user_id.is_(None)
+                )
+            )
+            row = result.scalar_one_or_none()
+            if row is None:
+                row = ApiKeyModel(provider_name=provider, ciphertext=encrypt_secret(key))
+                session.add(row)
+            else:
+                row.ciphertext = encrypt_secret(key)
+                row.updated_at = datetime.utcnow()
+                row.is_active = True
+            await session.flush()
+
+    async def delete(self, provider: str) -> None:
+        async with get_db_context() as session:
+            await session.execute(
+                delete(ApiKeyModel).where(
+                    ApiKeyModel.provider_name == provider, ApiKeyModel.user_id.is_(None)
+                )
+            )
+
+
 # Factory function to create appropriate store based on environment
 def create_api_key_store() -> APIKeyStore:
     """Factory function that returns the appropriate API key store for the current environment."""
@@ -139,5 +187,4 @@ def create_api_key_store() -> APIKeyStore:
 
     if environment == "production":
         return SecretManagerAPIKeyStore()
-    else:
-        return FileAPIKeyStore()
+    return DatabaseAPIKeyStore()

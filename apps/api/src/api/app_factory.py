@@ -33,6 +33,8 @@ from .raptor_router import router as raptor_router
 from .routes.account_router import router as account_router
 from .routes.agent import router as agent_router
 from .routes.debug import router as model_suggestion_debug_router
+from .routes.feature_flags_router import router as feature_flags_router
+from .routes.notifications_router import router as notifications_router
 from .routes.privacy import router as privacy_router
 from .routes.providers_models import router as providers_models_router
 from .routes.support_router import router as support_router
@@ -104,6 +106,8 @@ def create_app() -> FastAPI:
         providers_models_router=providers_models_router,
         account_router=account_router,
         support_router=support_router,
+        feature_flags_router=feature_flags_router,
+        notifications_router=notifications_router,
         agent_router=agent_router,
         routing_analytics_available=routing_analytics_available,
         routing_analytics_router=routing_analytics_router,

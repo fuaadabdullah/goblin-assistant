@@ -197,6 +197,9 @@ class UserPreferencesModel(Base):
     default_model = Column(String, nullable=True)
     rag_consent = Column(String, default="false")  # Using string for SQLite compatibility
     privacy_settings = Column(JSON, default=dict)
+    ui_preferences = Column(JSON, default=dict)
+    chat_preferences = Column(JSON, default=dict)
+    version = Column(Integer, nullable=False, default=1)
     created_at = Column(DateTime, default=datetime.utcnow)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
 
@@ -230,7 +233,132 @@ class ProviderSettingsModel(Base):
     __tablename__ = "provider_settings"
 
     provider_name = Column(String, primary_key=True)
-    endpoint = Column(Text, nullable=False)
+    endpoint = Column(Text, nullable=True)
+    enabled = Column(Boolean, default=True, nullable=False, server_default=true())
+    priority = Column(Integer, nullable=False, default=0)
+    weight = Column(Float, nullable=False, default=1.0)
+    api_key_encrypted = Column(Text, nullable=True)
+    base_url = Column(Text, nullable=True)
+    models = Column(JSON, nullable=False, default=list)
+    metadata_ = Column("metadata", JSON, default=dict)
+    version = Column(Integer, nullable=False, default=1)
+    created_at = Column(DateTime, default=datetime.utcnow)
+    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+
+
+class ChatSettingsModel(Base):
+    """Per-user chat preferences and defaults."""
+
+    __tablename__ = "chat_settings"
+
+    id = Column(String, primary_key=True, default=lambda: str(uuid.uuid4()))
+    user_id = Column(String, ForeignKey("users.id"), nullable=False, unique=True, index=True)
+    default_provider = Column(String, nullable=True)
+    default_model = Column(String, nullable=True)
+    system_prompt = Column(Text, nullable=True)
+    temperature = Column(Float, nullable=True, default=0.7)
+    max_tokens = Column(Integer, nullable=True)
+    summary_enabled = Column(Boolean, default=True, nullable=False, server_default=true())
+    metadata_ = Column("metadata", JSON, default=dict)
+    version = Column(Integer, nullable=False, default=1)
+    created_at = Column(DateTime, default=datetime.utcnow)
+    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+
+    user = relationship("UserModel", foreign_keys=[user_id])
+
+
+class ApiKeyModel(Base):
+    """Encrypted provider/user API key storage."""
+
+    __tablename__ = "api_keys"
+
+    id = Column(String, primary_key=True, default=lambda: str(uuid.uuid4()))
+    user_id = Column(String, ForeignKey("users.id"), nullable=True, index=True)
+    provider_name = Column(String, nullable=False, index=True)
+    secret_name = Column(String, nullable=True)
+    ciphertext = Column(Text, nullable=False)
+    key_version = Column(Integer, nullable=False, default=1)
+    is_active = Column(Boolean, default=True, nullable=False, server_default=true())
+    last_validated_at = Column(DateTime, nullable=True)
+    last_used_at = Column(DateTime, nullable=True)
+    metadata_ = Column("metadata", JSON, default=dict)
+    created_at = Column(DateTime, default=datetime.utcnow)
+    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+
+    user = relationship("UserModel", foreign_keys=[user_id])
+
+    __table_args__ = (
+        UniqueConstraint("user_id", "provider_name", name="uq_api_keys_user_provider"),
+    )
+
+
+class SupportTicketModel(Base):
+    """Durable support ticket records."""
+
+    __tablename__ = "support_tickets"
+
+    ticket_id = Column(String, primary_key=True, default=lambda: str(uuid.uuid4()))
+    user_id = Column(String, ForeignKey("users.id"), nullable=True, index=True)
+    email = Column(String, nullable=True, index=True)
+    category = Column(String, nullable=True, index=True)
+    priority = Column(String, nullable=True, index=True)
+    status = Column(String, nullable=False, default="received")
+    subject = Column(String, nullable=True)
+    message = Column(Text, nullable=False)
+    attachment_url = Column(Text, nullable=True)
+    triage = Column(JSON, default=dict)
+    metadata_ = Column("metadata", JSON, default=dict)
+    created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
+    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+
+    user = relationship("UserModel", foreign_keys=[user_id])
+
+
+class NotificationModel(Base):
+    """Persistent user notification records."""
+
+    __tablename__ = "notifications"
+
+    notification_id = Column(String, primary_key=True, default=lambda: str(uuid.uuid4()))
+    user_id = Column(String, ForeignKey("users.id"), nullable=False, index=True)
+    channel = Column(String, nullable=False, default="in_app")
+    title = Column(String, nullable=False)
+    body = Column(Text, nullable=False)
+    category = Column(String, nullable=True, index=True)
+    is_read = Column(Boolean, default=False, nullable=False, server_default=false())
+    read_at = Column(DateTime, nullable=True)
+    metadata_ = Column("metadata", JSON, default=dict)
+    created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
+    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+
+    user = relationship("UserModel", foreign_keys=[user_id])
+
+
+class FeatureFlagModel(Base):
+    """Hierarchical feature flag state."""
+
+    __tablename__ = "feature_flags"
+
+    flag_key = Column(String, primary_key=True)
+    enabled = Column(Boolean, default=False, nullable=False, server_default=false())
+    default_value = Column(JSON, default=dict)
+    user_overrides = Column(JSON, default=dict)
+    rollout_percent = Column(Integer, nullable=False, default=0)
+    target_users = Column(JSON, default=list)
+    target_roles = Column(JSON, default=list)
+    metadata_ = Column("metadata", JSON, default=dict)
+    version = Column(Integer, nullable=False, default=1)
+    created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
+    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+
+
+class GlobalSettingModel(Base):
+    """Durable key/value settings used by the generic settings endpoint."""
+
+    __tablename__ = "global_settings"
+
+    key = Column(String, primary_key=True)
+    value = Column(JSON, nullable=False, default=dict)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
 
 

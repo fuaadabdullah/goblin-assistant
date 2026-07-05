@@ -1,5 +1,5 @@
 import type { FormEvent } from 'react';
-import { useCallback, useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { savePreferences, saveProfile, loadPreferences } from '../api';
 import type { AccountPreferencesPayload } from '../types';
 import { toUiError } from '../../../lib/ui-error';
@@ -35,36 +35,46 @@ export const useAccountProfile = (user?: AccountUser | null): AccountState => {
   const [saved, setSaved] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
-  const [preferences, setPreferences] = useState<AccountPreferencesPayload>(
-    () => loadPreferences() ?? defaultPreferences
-  );
+  const [preferences, setPreferences] = useState<AccountPreferencesPayload>(defaultPreferences);
 
-  const togglePreference = useCallback((key: keyof AccountPreferencesPayload) => {
-    setPreferences((prev) => ({ ...prev, [key]: !prev[key] }));
+  useEffect(() => {
+    setName(user?.name || '');
+  }, [user?.name]);
+
+  useEffect(() => {
+    let cancelled = false;
+    loadPreferences().then((stored) => {
+      if (cancelled || !stored) return;
+      setPreferences(stored);
+    });
+    return () => {
+      cancelled = true;
+    };
   }, []);
 
-  const handleSave = useCallback(
-    async (e: FormEvent) => {
-      e.preventDefault();
-      setError(null);
-      setSaving(true);
-      try {
-        await Promise.all([saveProfile({ name }), savePreferences(preferences)]);
-        setSaved(true);
-        showSuccess('Account updated', 'Your profile and preferences were saved.');
-        setTimeout(() => setSaved(false), 2000);
-      } catch (err) {
-        const uiError = toUiError(err, {
-          code: 'ACCOUNT_SAVE_FAILED',
-          userMessage: 'We could not save your account changes.',
-        });
-        setError(uiError.userMessage);
-      } finally {
-        setSaving(false);
-      }
-    },
-    [name, preferences, showSuccess]
-  );
+  const togglePreference = (key: keyof AccountPreferencesPayload) => {
+    setPreferences((prev) => ({ ...prev, [key]: !prev[key] }));
+  };
+
+  const handleSave = async (e: FormEvent) => {
+    e.preventDefault();
+    setError(null);
+    setSaving(true);
+    try {
+      await Promise.all([saveProfile({ name }), savePreferences(preferences)]);
+      setSaved(true);
+      showSuccess('Account updated', 'Your profile and preferences were saved.');
+      setTimeout(() => setSaved(false), 2000);
+    } catch (err) {
+      const uiError = toUiError(err, {
+        code: 'ACCOUNT_SAVE_FAILED',
+        userMessage: 'We could not save your account changes.',
+      });
+      setError(uiError.userMessage);
+    } finally {
+      setSaving(false);
+    }
+  };
 
   return {
     name,

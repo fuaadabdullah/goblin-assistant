@@ -1,15 +1,14 @@
-import { authUpdateUser } from '@/lib/supabase';
+import { apiClient } from '@/lib/api';
 import { UiError } from '../../../lib/ui-error';
 import { getUserMessage } from '../../../lib/error/toast';
 import type { AccountPreferencesPayload, AccountProfilePayload } from '../types';
 
 export type { AccountPreferencesPayload, AccountProfilePayload } from '../types';
 
-const PREFS_KEY = 'goblin-account-preferences';
-
 export const saveProfile = async (payload: AccountProfilePayload): Promise<void> => {
-  const { error } = await authUpdateUser({ data: { name: payload.name } });
-  if (error) {
+  try {
+    await apiClient.saveAccountProfile(payload);
+  } catch (error) {
     throw new UiError(
       {
         code: 'ACCOUNT_PROFILE_SAVE_FAILED',
@@ -22,7 +21,7 @@ export const saveProfile = async (payload: AccountProfilePayload): Promise<void>
 
 export const savePreferences = async (payload: AccountPreferencesPayload): Promise<void> => {
   try {
-    localStorage.setItem(PREFS_KEY, JSON.stringify(payload));
+    await apiClient.saveAccountPreferences(payload);
   } catch (error) {
     throw new UiError(
       {
@@ -34,10 +33,19 @@ export const savePreferences = async (payload: AccountPreferencesPayload): Promi
   }
 };
 
-export const loadPreferences = (): AccountPreferencesPayload | null => {
+export const loadPreferences = async (): Promise<AccountPreferencesPayload | null> => {
   try {
-    const raw = localStorage.getItem(PREFS_KEY);
-    return raw ? (JSON.parse(raw) as AccountPreferencesPayload) : null;
+    const response = await apiClient.getAccountPreferences();
+    if (!response) return null;
+    const record = response as Record<string, unknown>;
+    const uiPreferences = (record['ui_preferences'] as Record<string, unknown> | undefined) ?? {};
+    return {
+      summaries: Boolean(record['summaries'] ?? uiPreferences['summaries'] ?? true),
+      notifications: Boolean(
+        record['notifications_enabled'] ?? uiPreferences['notifications'] ?? true
+      ),
+      familyMode: Boolean(record['familyMode'] ?? uiPreferences['familyMode'] ?? false),
+    };
   } catch {
     return null;
   }

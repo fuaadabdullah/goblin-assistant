@@ -68,6 +68,16 @@ def test_get_settings_maps_inventory_to_response():
             "api.settings_router.dispatcher.get_provider",
             return_value=fake_provider,
         ),
+        patch(
+            "api.settings_router.SaaSSettingsService.list_provider_settings",
+            new_callable=AsyncMock,
+            return_value=[],
+        ),
+        patch(
+            "api.settings_router.SaaSSettingsService.get_global_setting",
+            new_callable=AsyncMock,
+            return_value=None,
+        ),
     ):
         response = client.get("/api/v1/settings/")
 
@@ -82,10 +92,17 @@ def test_get_settings_maps_inventory_to_response():
 def test_get_settings_returns_500_on_inventory_failure():
     client = _client()
 
-    with patch(
-        "api.settings_router.dispatcher.get_provider_inventory",
-        new_callable=AsyncMock,
-        side_effect=RuntimeError("boom"),
+    with (
+        patch(
+            "api.settings_router.dispatcher.get_provider_inventory",
+            new_callable=AsyncMock,
+            side_effect=RuntimeError("boom"),
+        ),
+        patch(
+            "api.settings_router.SaaSSettingsService.list_provider_settings",
+            new_callable=AsyncMock,
+            return_value=[],
+        ),
     ):
         response = client.get("/api/v1/settings/")
 
@@ -109,14 +126,19 @@ def test_update_provider_settings_rejects_blank_name():
 def test_update_model_settings_accepts_valid_payload():
     client = _client()
 
-    response = client.put(
-        "/api/v1/settings/models/gpt-4o-mini",
-        json={
-            "name": "gpt-4o-mini",
-            "provider": "openai",
-            "model_id": "gpt-4o-mini",
-        },
-    )
+    with patch(
+        "api.settings_router.SaaSSettingsService.set_global_setting",
+        new_callable=AsyncMock,
+        return_value={"key": "model:gpt-4o-mini", "value": {"name": "gpt-4o-mini"}},
+    ):
+        response = client.put(
+            "/api/v1/settings/models/gpt-4o-mini",
+            json={
+                "name": "gpt-4o-mini",
+                "provider": "openai",
+                "model_id": "gpt-4o-mini",
+            },
+        )
 
     assert response.status_code == 200
     data = response.json()["data"]
@@ -172,6 +194,16 @@ def test_settings_legacy_route_is_not_mounted():
             return_value={"default_model": "gpt-4o-mini"},
         ),
         patch("api.settings_router.dispatcher.get_provider", return_value=fake_provider),
+        patch(
+            "api.settings_router.SaaSSettingsService.list_provider_settings",
+            new_callable=AsyncMock,
+            return_value=[],
+        ),
+        patch(
+            "api.settings_router.SaaSSettingsService.get_global_setting",
+            new_callable=AsyncMock,
+            return_value=None,
+        ),
     ):
         v1 = client.get("/api/v1/settings/")
 

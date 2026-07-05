@@ -14,6 +14,7 @@ from api.auth.router import get_current_user
 from api.core.contracts import JsonObject, SuccessEnvelope
 from api.core.errors import DomainError
 from api.storage.database import get_db
+from api.storage.saas_service import SaaSSettingsService
 from api.storage.user_service import UserService
 
 router = APIRouter(prefix="/account", tags=["account"])
@@ -26,6 +27,9 @@ class ProfileUpdate(BaseModel):
 
 
 class PreferencesUpdate(BaseModel):
+    summaries: Optional[bool] = None
+    notifications: Optional[bool] = None
+    familyMode: Optional[bool] = None
     theme: Optional[str] = None
     default_model: Optional[str] = None
     default_provider: Optional[str] = None
@@ -47,7 +51,30 @@ class PreferencesResponse(BaseModel):
     default_provider: Optional[str]
     notifications_enabled: bool
     language: Optional[str]
+    summaries: bool = True
+    familyMode: bool = False
     other: Optional[JsonObject]
+
+
+class ChatSettingsUpdate(BaseModel):
+    default_provider: Optional[str] = None
+    default_model: Optional[str] = None
+    system_prompt: Optional[str] = None
+    temperature: Optional[float] = None
+    max_tokens: Optional[int] = None
+    summary_enabled: Optional[bool] = None
+    metadata: Optional[JsonObject] = None
+
+
+class ChatSettingsResponse(BaseModel):
+    user_id: str
+    default_provider: Optional[str]
+    default_model: Optional[str]
+    system_prompt: Optional[str]
+    temperature: Optional[float]
+    max_tokens: Optional[int]
+    summary_enabled: bool
+    metadata: Optional[JsonObject]
 
 
 @router.put("/profile", response_model=SuccessEnvelope[ProfileResponse])
@@ -104,26 +131,56 @@ async def save_profile(
         ) from e
 
 
+@router.get("/profile", response_model=SuccessEnvelope[ProfileResponse])
+async def get_profile(
+    current_user: AuthenticatedUser = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+) -> SuccessEnvelope[ProfileResponse]:
+    service = SaaSSettingsService(db)
+    profile = await service.get_account_profile(current_user.id)
+    if profile is None:
+        raise DomainError(
+            code="ACCOUNT_USER_NOT_FOUND",
+            message="User not found",
+            status_code=404,
+        )
+    return SuccessEnvelope(data=ProfileResponse(**profile))
+
+
 @router.put("/preferences", response_model=SuccessEnvelope[PreferencesResponse])
 async def save_preferences(
     preferences: PreferencesUpdate,
     current_user: AuthenticatedUser = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
 ) -> SuccessEnvelope[PreferencesResponse]:
     """Save user preferences"""
     try:
-        # Return success response with user preferences
+        service = SaaSSettingsService(db)
+        saved = await service.save_account_preferences(
+            current_user.id,
+            {
+                "summaries": preferences.summaries,
+                "notifications_enabled": preferences.notifications_enabled
+                if preferences.notifications_enabled is not None
+                else preferences.notifications,
+                "familyMode": preferences.familyMode,
+                "theme": preferences.theme,
+                "default_model": preferences.default_model,
+                "default_provider": preferences.default_provider,
+                "language": preferences.language,
+                "other": preferences.other or {},
+            },
+        )
         return SuccessEnvelope(
             data=PreferencesResponse(
-                theme=preferences.theme or "light",
-                default_model=preferences.default_model,
-                default_provider=preferences.default_provider,
-                notifications_enabled=(
-                    preferences.notifications_enabled
-                    if preferences.notifications_enabled is not None
-                    else True
-                ),
-                language=preferences.language or "en",
-                other=preferences.other or {},
+                theme=saved.get("theme"),
+                default_model=saved.get("default_model"),
+                default_provider=saved.get("default_provider"),
+                notifications_enabled=bool(saved.get("notifications_enabled", True)),
+                language=saved.get("language"),
+                summaries=bool(saved.get("summaries", True)),
+                familyMode=bool(saved.get("familyMode", False)),
+                other=saved.get("other") or {},
             )
         )
     except Exception as e:
@@ -133,3 +190,67 @@ async def save_preferences(
             status_code=500,
             details={"reason": str(e)},
         ) from e
+
+
+@router.get("/preferences", response_model=SuccessEnvelope[PreferencesResponse])
+async def get_preferences(
+    current_user: AuthenticatedUser = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+) -> SuccessEnvelope[PreferencesResponse]:
+    service = SaaSSettingsService(db)
+    preferences = await service.get_account_preferences(current_user.id)
+    if preferences is None:
+        preferences = {
+            "theme": "light",
+            "default_model": None,
+            "default_provider": None,
+            "notifications_enabled": True,
+            "language": "en",
+            "summaries": True,
+            "familyMode": False,
+            "other": {},
+        }
+    return SuccessEnvelope(data=PreferencesResponse(**preferences))
+
+
+@router.get("/chat-settings", response_model=SuccessEnvelope[ChatSettingsResponse])
+async def get_chat_settings(
+    current_user: AuthenticatedUser = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+) -> SuccessEnvelope[ChatSettingsResponse]:
+    service = SaaSSettingsService(db)
+    settings = await service.get_chat_settings(current_user.id)
+    if settings is None:
+        settings = {
+            "user_id": current_user.id,
+            "default_provider": None,
+            "default_model": None,
+            "system_prompt": None,
+            "temperature": 0.7,
+            "max_tokens": None,
+            "summary_enabled": True,
+            "metadata": {},
+        }
+    return SuccessEnvelope(data=ChatSettingsResponse(**settings))
+
+
+@router.put("/chat-settings", response_model=SuccessEnvelope[ChatSettingsResponse])
+async def save_chat_settings(
+    settings: ChatSettingsUpdate,
+    current_user: AuthenticatedUser = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+) -> SuccessEnvelope[ChatSettingsResponse]:
+    service = SaaSSettingsService(db)
+    saved = await service.save_chat_settings(
+        current_user.id,
+        {
+            "default_provider": settings.default_provider,
+            "default_model": settings.default_model,
+            "system_prompt": settings.system_prompt,
+            "temperature": settings.temperature,
+            "max_tokens": settings.max_tokens,
+            "summary_enabled": settings.summary_enabled,
+            "metadata": settings.metadata or {},
+        },
+    )
+    return SuccessEnvelope(data=ChatSettingsResponse(**saved))

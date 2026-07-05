@@ -62,6 +62,16 @@ def test_get_settings_success():
             "api.settings_router.dispatcher.get_provider",
             return_value=MagicMock(default_model="gpt-4o-mini"),
         ),
+        patch(
+            "api.settings_router.SaaSSettingsService.list_provider_settings",
+            new_callable=AsyncMock,
+            return_value=[],
+        ),
+        patch(
+            "api.settings_router.SaaSSettingsService.get_global_setting",
+            new_callable=AsyncMock,
+            return_value=None,
+        ),
         _make_client() as client,
     ):
         response = client.get("/settings/")
@@ -80,6 +90,11 @@ def test_get_settings_failure():
             new_callable=AsyncMock,
             side_effect=RuntimeError("boom"),
         ),
+        patch(
+            "api.settings_router.SaaSSettingsService.list_provider_settings",
+            new_callable=AsyncMock,
+            return_value=[],
+        ),
         _make_client() as client,
     ):
         response = client.get("/settings/")
@@ -89,7 +104,29 @@ def test_get_settings_failure():
 
 
 def test_update_provider_and_model_settings():
-    with _make_client() as client:
+    with (
+        _make_client() as client,
+        (
+            patch(
+                "api.settings_router.SaaSSettingsService.upsert_provider_settings",
+                new_callable=AsyncMock,
+                return_value=MagicMock(
+                    provider_name="openai",
+                    endpoint="https://api.openai.com",
+                    base_url="https://api.openai.com",
+                    enabled=True,
+                    priority=None,
+                    weight=None,
+                    models=["gpt-4o-mini"],
+                ),
+            ),
+            patch(
+                "api.settings_router.SaaSSettingsService.set_global_setting",
+                new_callable=AsyncMock,
+                return_value={"key": "model:gpt-4o-mini", "value": {"name": "gpt-4o-mini"}},
+            ),
+        ),
+    ):
         provider_resp = client.put(
             "/settings/providers/openai",
             json={

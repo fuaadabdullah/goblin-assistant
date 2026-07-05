@@ -19,10 +19,15 @@ from datetime import datetime
 from typing import Any, Dict
 
 from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException
+from sqlalchemy import select
+from sqlalchemy.ext.asyncio import AsyncSession
 
 # Import auth dependencies
 from ..auth.router import get_current_user
 from ..services.telemetry import EventType, log_conversation_event
+from ..storage.database import get_db
+from ..storage.models import ApiKeyModel, FeatureFlagModel, SupportTicketModel
+from ..storage.saas_service import SaaSSettingsService
 
 logger = logging.getLogger(__name__)
 
@@ -66,6 +71,7 @@ async def export_user_data(
     include_vectors: bool = True,
     include_conversations: bool = True,
     include_preferences: bool = True,
+    db: AsyncSession = Depends(get_db),
 ) -> Dict[str, Any]:
     """
     Export all user data (GDPR Article 20 - Right to Data Portability).
@@ -173,16 +179,48 @@ async def export_user_data(
         # Export user preferences from database
         if include_preferences:
             try:
-                from ..storage.preferences_service import preferences_service
-
-                prefs = await preferences_service.get_preferences(user_id)
-                export_data["data"]["preferences"] = prefs if prefs else {}
+                service = SaaSSettingsService(db)
+                export_data["data"]["preferences"] = (
+                    await service.get_account_preferences(user_id) or {}
+                )
+                export_data["data"]["chat_settings"] = (
+                    await service.get_chat_settings(user_id) or {}
+                )
                 logger.info("Exported preferences for user %s", user_id)
             except Exception as pref_error:
                 logger.error("Preferences export error: %s", pref_error)
                 export_data["data"]["preferences"] = {
                     "error": _detail_message("Preferences export failed", pref_error),
                 }
+
+        try:
+            service = SaaSSettingsService(db)
+            export_data["data"]["support_tickets"] = {
+                "count": (
+                    await db.execute(
+                        select(SupportTicketModel).where(SupportTicketModel.user_id == user_id)
+                    )
+                )
+                .scalars()
+                .all()
+                .__len__()
+            }
+            export_data["data"]["notifications"] = {
+                "count": len(await service.list_notifications(user_id))
+            }
+            export_data["data"]["api_keys"] = {
+                "count": (
+                    await db.execute(select(ApiKeyModel).where(ApiKeyModel.user_id == user_id))
+                )
+                .scalars()
+                .all()
+                .__len__()
+            }
+            export_data["data"]["feature_flags"] = {
+                "count": (await db.execute(select(FeatureFlagModel))).scalars().all().__len__()
+            }
+        except Exception as extra_error:
+            logger.error("Extra settings export error: %s", extra_error)
 
         # Export memory records
         try:
@@ -214,6 +252,7 @@ async def delete_user_data(
     background_tasks: BackgroundTasks,
     user_id: str = Depends(get_current_user),
     confirm: bool = False,
+    db: AsyncSession = Depends(get_db),
 ) -> Dict[str, Any]:
     """
     Delete all user data (GDPR Article 17 - Right to Erasure).
@@ -254,7 +293,16 @@ async def delete_user_data(
 
     logger.warning("Data deletion requested by user: %s", user_id)
 
-    deleted_counts = {"vectors": 0, "conversations": 0, "preferences": 0, "memory": 0}
+    deleted_counts = {
+        "vectors": 0,
+        "conversations": 0,
+        "preferences": 0,
+        "chat_settings": 0,
+        "api_keys": 0,
+        "notifications": 0,
+        "support_tickets": 0,
+        "memory": 0,
+    }
 
     try:
         vector_store = _get_vector_store()
@@ -287,10 +335,10 @@ async def delete_user_data(
 
         # Delete user preferences from database
         try:
-            from ..storage.preferences_service import preferences_service
-
-            prefs_deleted = await preferences_service.delete_preferences(user_id)
-            deleted_counts["preferences"] = 1 if prefs_deleted else 0
+            service = SaaSSettingsService(db)
+            deleted = await service.delete_user_data(user_id)
+            deleted_counts.update(deleted)
+            deleted_counts["preferences"] = deleted.get("preferences", 0)
             logger.info("Deleted preferences for user %s", user_id)
         except Exception as pref_error:
             logger.error("Preferences deletion error: %s", pref_error)
@@ -336,7 +384,10 @@ async def delete_user_data(
 
 
 @router.get("/data-summary", response_model=Dict[str, Any])
-async def get_data_summary(user_id: str = Depends(get_current_user)) -> Dict[str, Any]:
+async def get_data_summary(
+    user_id: str = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+) -> Dict[str, Any]:
     """
     Get summary of stored user data (GDPR Article 15 - Right of Access).
 
@@ -388,10 +439,8 @@ async def get_data_summary(user_id: str = Depends(get_current_user)) -> Dict[str
 
         # Get preferences from database
         try:
-            from ..storage.preferences_service import preferences_service
-
-            prefs = await preferences_service.get_preferences(user_id)
-            has_preferences = prefs is not None
+            service = SaaSSettingsService(db)
+            has_preferences = (await service.get_account_preferences(user_id)) is not None
         except Exception as pref_error:
             logger.error("Preferences fetch error: %s", pref_error)
             has_preferences = False
@@ -420,6 +469,22 @@ async def get_data_summary(user_id: str = Depends(get_current_user)) -> Dict[str
                 "preferences": {
                     "exists": has_preferences,
                     "description": "User settings and preferences",
+                },
+                "chat_settings": {
+                    "exists": (await SaaSSettingsService(db).get_chat_settings(user_id))
+                    is not None,
+                    "description": "Chat defaults and generation controls",
+                },
+                "support_tickets": {
+                    "count": (
+                        await db.execute(
+                            select(SupportTicketModel).where(SupportTicketModel.user_id == user_id)
+                        )
+                    )
+                    .scalars()
+                    .all()
+                    .__len__(),
+                    "description": "Submitted support requests",
                 },
                 "memory": {
                     "count": memory_count,

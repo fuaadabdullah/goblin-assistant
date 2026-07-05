@@ -139,6 +139,15 @@ export interface AccountPreferences {
   [key: string]: string | boolean | number | undefined;
 }
 
+export interface AccountPreferencesRecord {
+  theme?: string | null;
+  default_model?: string | null;
+  default_provider?: string | null;
+  notifications_enabled?: boolean;
+  language?: string | null;
+  other?: Record<string, unknown>;
+}
+
 export interface ConversationCreateResponse {
   conversation_id: string;
   title: string;

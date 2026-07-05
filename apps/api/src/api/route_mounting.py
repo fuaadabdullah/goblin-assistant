@@ -16,6 +16,8 @@ def mount_versioned_primary_routes(
     sandbox_router,
     account_router,
     support_router,
+    feature_flags_router,
+    notifications_router,
     agent_router,
     raptor_router,
     api_keys_router,
@@ -46,6 +48,8 @@ def mount_versioned_primary_routes(
         sandbox_router,
         account_router,
         support_router,
+        feature_flags_router,
+        notifications_router,
         agent_router,
         raptor_router,
         api_keys_router,
@@ -74,6 +78,8 @@ def mount_versioned_primary_routes(
     app.include_router(sandbox_router, prefix="/api/v1")
     app.include_router(account_router, prefix="/api/v1")
     app.include_router(support_router, prefix="/api/v1")
+    app.include_router(feature_flags_router, prefix="/api/v1")
+    app.include_router(notifications_router, prefix="/api/v1")
     app.include_router(agent_router, prefix="/api/v1")
     app.include_router(raptor_router, prefix="/api/v1")
     app.include_router(api_keys_router, prefix="/api/v1")

@@ -8,14 +8,16 @@ import logging
 import os
 import re
 import uuid
-from datetime import datetime
 from typing import Any, Dict, Optional
 
-from fastapi import APIRouter
+from fastapi import APIRouter, Depends
 from pydantic import BaseModel
+from sqlalchemy.ext.asyncio import AsyncSession
 
 from api.core.contracts import SuccessEnvelope
 from api.core.errors import DomainError
+from api.storage.database import get_db
+from api.storage.saas_service import SaaSSettingsService
 
 logger = logging.getLogger(__name__)
 
@@ -38,6 +40,7 @@ class SupportResponse(BaseModel):
 @router.post("/message", response_model=SuccessEnvelope[SupportResponse])
 async def send_support_message(
     request: SupportMessage,
+    db: AsyncSession = Depends(get_db),
 ) -> SuccessEnvelope[SupportResponse]:
     """Submit a support message"""
     try:
@@ -48,18 +51,24 @@ async def send_support_message(
                 status_code=400,
             )
 
-        support_id = str(uuid.uuid4())
-
-        # In a real implementation, this would:
-        # 1. Store in database
-        # 2. Send email notification
-        # 3. Create ticket in support system
+        service = SaaSSettingsService(db)
+        ticket = await service.create_support_ticket(
+            {
+                "email": request.email,
+                "category": request.category,
+                "subject": (request.category or "support").replace("_", " ").title(),
+                "message": request.message.strip(),
+                "attachment_url": request.attachment_url,
+                "triage": {},
+                "metadata": {"source": "support_form"},
+            }
+        )
 
         return SuccessEnvelope(
             data=SupportResponse(
-                id=support_id,
-                status="received",
-                timestamp=datetime.utcnow().isoformat(),
+                id=ticket.ticket_id,
+                status=ticket.status,
+                timestamp=ticket.created_at.isoformat(),
             )
         )
     except DomainError:

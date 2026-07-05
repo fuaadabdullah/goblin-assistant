@@ -3,8 +3,7 @@
 from __future__ import annotations
 
 import json
-from pathlib import Path
-from unittest.mock import AsyncMock
+from unittest.mock import AsyncMock, MagicMock
 
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
@@ -18,9 +17,25 @@ def _client() -> TestClient:
     return TestClient(app)
 
 
+class _FakeStore:
+    def __init__(self):
+        self.keys = {}
+
+    async def get(self, provider: str):
+        return self.keys.get(provider)
+
+    async def set(self, provider: str, key: str):
+        self.keys[provider] = key
+
+    async def delete(self, provider: str):
+        self.keys.pop(provider, None)
+
+
 def test_store_get_and_delete_api_key_round_trip(tmp_path, monkeypatch):
     keys_file = tmp_path / "api_keys.json"
     monkeypatch.setattr(api_keys_router, "API_KEYS_FILE", str(keys_file))
+    fake_store = _FakeStore()
+    monkeypatch.setattr(api_keys_router, "create_api_key_store", lambda: fake_store)
     client = _client()
 
     stored = client.post("/api/v1/api-keys/openai", json={"key": "secret-123"})
@@ -39,7 +54,7 @@ def test_store_get_and_delete_api_key_round_trip(tmp_path, monkeypatch):
 
     assert missing.status_code == 200
     assert missing.json() == {"key": None, "provider": "openai"}
-    assert json.loads(Path(keys_file).read_text(encoding="utf-8")) == {}
+    assert fake_store.keys == {}
 
 
 def test_store_api_key_failure_preserves_message(tmp_path, monkeypatch):
@@ -47,8 +62,13 @@ def test_store_api_key_failure_preserves_message(tmp_path, monkeypatch):
     monkeypatch.setattr(api_keys_router, "API_KEYS_FILE", str(keys_file))
     monkeypatch.setattr(
         api_keys_router,
-        "save_api_keys_async",
-        AsyncMock(side_effect=RuntimeError("disk full")),
+        "create_api_key_store",
+        lambda: MagicMock(set=AsyncMock(side_effect=RuntimeError("disk full"))),
+    )
+    monkeypatch.setattr(
+        api_keys_router,
+        "load_api_keys_async",
+        AsyncMock(return_value={}),
     )
     client = _client()
 

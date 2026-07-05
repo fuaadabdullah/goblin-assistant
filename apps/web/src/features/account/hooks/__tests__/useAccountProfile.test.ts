@@ -1,11 +1,13 @@
-import { renderHook, act } from '@testing-library/react';
-import { useUIStore } from '@/store/uiStore';
-import { UiError } from '@/lib/ui-error';
+// @vitest-environment jsdom
+import { act, renderHook } from '@testing-library/react';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { useUIStore } from '../../../../store/uiStore';
+import { UiError } from '../../../../lib/ui-error';
 
 vi.mock('../../api', () => ({
   saveProfile: vi.fn(),
   savePreferences: vi.fn(),
-  loadPreferences: vi.fn().mockReturnValue(null),
+  loadPreferences: vi.fn().mockResolvedValue(null),
 }));
 
 import { useAccountProfile } from '../useAccountProfile';
