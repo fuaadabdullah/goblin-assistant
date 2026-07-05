@@ -18,6 +18,9 @@ python3.11 tooling/generators/generate-api-route-inventory.py --check
 `make sdk-check` runs the generated-artifact drift check from the repo root.
 `make contract-checks` extends that by also validating frontend API path usage.
 
+For the broader contract policy, canonical artifacts, and CI failure modes, see
+[`docs/operations/API_CONTRACT_GATES.md`](../operations/API_CONTRACT_GATES.md).
+
 The generated inventory groups public routes by mounted path, highlights the
 `/api/v1` compatibility layer, and lists legacy dual mounts such as
 `/settings` where they still exist.

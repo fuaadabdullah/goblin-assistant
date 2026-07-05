@@ -93,5 +93,10 @@ A few compatibility aliases also stay mounted without `/api/v1` so older callers
 do not break during migration. The route manifest and OpenAPI export are both
 checked in so contract drift can be detected in CI.
 
+The canonical contract snapshots are `packages/sdk/openapi/openapi.json` and
+`packages/sdk/openapi/routes.json`. CI regenerates them, diffs them against the
+checked-in copies, and also validates frontend API path usage against the
+manifest.
+
 Frontend clients use `V1_API_PREFIX = '/api/v1'` and `V1_CHAT_PREFIX`
 constants from `apps/web/src/lib/api/shared.ts` rather than hardcoding paths.

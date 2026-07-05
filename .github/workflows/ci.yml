@@ -99,7 +99,7 @@ jobs:
       - name: Install frontend dependencies
         run: pnpm install --frozen-lockfile
 
-      - name: Check generated API contract artifacts
+      - name: Check OpenAPI, route manifest, and frontend API path drift
         run: make contract-checks
 
   test-backend:

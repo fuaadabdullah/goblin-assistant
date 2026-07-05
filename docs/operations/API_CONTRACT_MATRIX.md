@@ -19,3 +19,6 @@ It is intentionally narrow: auth, account, sandbox, support, and admin navigatio
 - The contract surface for auth, account, sandbox, and support is present in both the frontend API client and the generated OpenAPI.
 - The admin UI is implemented through the general settings/routing API surface, while the provider-state snapshot is exposed through an ops-only hidden route at `/api/v1/admin/providers/state`.
 - The web coverage threshold is centralized in `apps/web/vitest.config.ts`; the backend coverage gate is in `apps/api/pyproject.toml`.
+
+For the checked-in contract snapshots, regeneration commands, and CI gates,
+see [`docs/operations/API_CONTRACT_GATES.md`](API_CONTRACT_GATES.md).

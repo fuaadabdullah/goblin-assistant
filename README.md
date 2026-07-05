@@ -61,3 +61,6 @@ make test-performance
 make sdk-generate
 make contract-checks
 ```
+
+For the canonical API contract snapshots and CI gates, see
+[`docs/operations/API_CONTRACT_GATES.md`](docs/operations/API_CONTRACT_GATES.md).
