@@ -166,6 +166,294 @@ async def stream_wrap(
         )
 
 
+# ============================================================================
+# Helper: candidate resolution
+# ============================================================================
+
+
+def _resolve_and_order_candidates(
+    dispatcher: Any,
+    resolved_pid: Optional[str],
+    candidates: List[str],
+) -> tuple[bool, List[str]]:
+    """Resolve candidate ordering and mode based on dispatch mode.
+
+    Returns (explicit_mode, ordered_candidates).
+    """
+    from ...routing.router import registry
+
+    explicit_mode = resolved_pid not in (None, "auto", "cheapest", "local")
+    if explicit_mode:
+        first_config = dispatcher._configs.get(candidates[0], {}) if candidates else {}
+        if first_config.get("force_fallback"):
+            fallback_order = [p for p in dispatcher._hybrid_order() if p not in candidates]
+            return explicit_mode, [*candidates, *fallback_order]
+        return explicit_mode, candidates
+
+    configured_candidates = dispatcher._auto_configured_candidates(candidates)
+    if not configured_candidates:
+        configured_candidates = [p for p in candidates if dispatcher.is_configured(p)]
+
+    available: List[str] = []
+    for provider_id in configured_candidates:
+        current_provider = dispatcher._ensure_provider(provider_id)
+        if current_provider is None:
+            continue
+        canary = dispatcher._is_canary_attempt(provider_id, resolved_pid)
+        if current_provider.should_attempt(canary=canary) and (
+            registry.get(provider_id).success_rate >= dispatcher._routing_min_success_rate
+        ):
+            available.append(provider_id)
+    return explicit_mode, available or configured_candidates
+
+
+# ============================================================================
+# Helper: dry-run response
+# ============================================================================
+
+
+def _build_dry_run_response(
+    dispatcher: Any,
+    ordered: List[str],
+    resolved_model: Optional[str],
+    explicit_mode: bool,
+) -> Dict[str, Any]:
+    """Build dry-run response without executing dispatch."""
+    from ...routing.router import registry
+
+    candidate_detail = []
+    for provider_id in ordered:
+        current_provider = registry.get(provider_id)
+        candidate_detail.append(
+            {
+                "provider": provider_id,
+                "model": resolved_model
+                or (current_provider.default_model if current_provider else ""),
+                "configured": dispatcher.is_configured(provider_id),
+            }
+        )
+    first = candidate_detail[0]
+    return {
+        "ok": True,
+        "dry_run": True,
+        "resolved_provider": first["provider"],
+        "resolved_model": first["model"],
+        "routing_mode": "explicit" if explicit_mode else "auto",
+        "candidate_order": candidate_detail,
+    }
+
+
+# ============================================================================
+# Helper: single dispatch attempt
+# ============================================================================
+
+
+async def _execute_dispatch_attempt(
+    dispatcher: Any,
+    provider_id: str,
+    model_name: str,
+    payload: Dict[str, Any],
+    timeout_ms: int,
+    stream: bool,
+    routing_mode: str,
+    rspan: Any,
+    aspan: Any,
+    log: Any,
+    attempted: List[str],
+) -> tuple[Optional[Dict[str, Any]], Optional[str], Optional[ProviderErrorCategory]]:
+    """Execute a single dispatch attempt.
+
+    Returns (response, error, error_category) - response is set on success.
+    """
+    from ...routing.router import registry
+
+    _tag(aspan, "provider.id", provider_id)
+    _tag(aspan, "provider.model", model_name)
+
+    if dispatcher._is_warmup_routing_blocked(provider_id):
+        _tag(aspan, "dispatch.skip_reason", "warmup")
+        log.info("dispatch_warmup_skipped", warmup=dispatcher._warmup_state_for(provider_id))
+        return None, "provider warming up", ProviderErrorCategory.SERVER_ERROR
+
+    canary = dispatcher._is_canary_attempt(provider_id, model_name)
+    if not dispatcher._ensure_provider(provider_id).should_attempt(canary=canary):
+        _tag(aspan, "dispatch.skip_reason", "circuit_open")
+        log.info(
+            "dispatch_circuit_skipped",
+            circuit_state=dispatcher._ensure_provider(provider_id).circuit_state,
+        )
+        return None, "provider circuit open", ProviderErrorCategory.SERVER_ERROR
+
+    current_provider = dispatcher._ensure_provider(provider_id)
+    if current_provider.circuit_state == "soft_open":
+        if not current_provider.claim_soft_open_probe():
+            _tag(aspan, "dispatch.skip_reason", "soft_open_probe_denied")
+            log.info("dispatch_circuit_skipped", circuit_state=current_provider.circuit_state)
+            return None, "provider circuit open", ProviderErrorCategory.SERVER_ERROR
+
+    kwargs = dispatcher._build_invoke_kwargs(payload)
+    reservation = await quota_service.reserve(
+        provider_id,
+        model_name,
+        messages=payload.get("messages", []),
+        prompt=payload.get("prompt", ""),
+        max_tokens=int(payload.get("max_tokens", 0) or 0) or None,
+    )
+    if reservation is None:
+        log.info("dispatch_quota_skipped", reason=quota_service.last_skip_reason)
+        return None, "quota exhausted", ProviderErrorCategory.RATE_LIMIT
+
+    log.info("dispatch_attempt")
+
+    try:
+        if stream:
+            result = await asyncio.wait_for(
+                dispatcher._stream_wrap(
+                    provider_id,
+                    current_provider,
+                    payload.get("messages", []),
+                    model_name,
+                    prompt=payload.get("prompt", ""),
+                    **kwargs,
+                ),
+                timeout=timeout_ms / 1000,
+            )
+            if result.ok:
+                _tag(aspan, "dispatch.outcome", "success")
+                _tag(rspan, "dispatch.final_provider", provider_id)
+                await quota_service.commit(
+                    reservation,
+                    actual_input_tokens=reservation.estimated_input_tokens,
+                    actual_output_tokens=reservation.estimated_output_tokens,
+                )
+                return (
+                    {
+                        "ok": True,
+                        "stream": result.raw.get("stream_gen"),
+                        "provider": provider_id,
+                        "model": model_name,
+                    },
+                    None,
+                    None,
+                )
+            await quota_service.release(reservation)
+            return None, result.error or "stream failed", result.error_category
+
+        result = await asyncio.wait_for(
+            dispatcher._invoke_with_test_mode(
+                provider_id,
+                current_provider,
+                payload.get("messages", []),
+                model_name,
+                prompt=payload.get("prompt", ""),
+                **kwargs,
+            ),
+            timeout=timeout_ms / 1000,
+        )
+        if result.ok:
+            usage = result.usage or {}
+            await quota_service.commit(
+                reservation,
+                actual_input_tokens=int(
+                    usage.get("prompt_tokens") or usage.get("input_tokens") or 0
+                ),
+                actual_output_tokens=int(
+                    usage.get("completion_tokens") or usage.get("output_tokens") or 0
+                ),
+            )
+            current_provider.record_success()
+            registry.record_success(
+                provider_id,
+                latency_ms=float(result.latency_ms),
+                cost_usd=float(result.cost_usd or 0.0),
+            )
+            dispatcher.note_provider_result(
+                provider_id,
+                ok=True,
+                latency_ms=float(result.latency_ms),
+            )
+            record_dispatch(
+                provider_id=provider_id,
+                model=model_name,
+                latency_ms=float(result.latency_ms),
+                ok=True,
+            )
+            _tag(aspan, "dispatch.outcome", "success")
+            _tag(aspan, "dispatch.latency_ms", round(float(result.latency_ms), 1))
+            _tag(rspan, "dispatch.final_provider", provider_id)
+            log.info("dispatch_success", latency_ms=round(float(result.latency_ms), 1))
+            insert_routing_audit(
+                payload.get("request_id", ""),
+                model_name,
+                user_id=payload.get("user_id"),
+                routing_mode=routing_mode,
+                selected_provider=provider_id,
+                attempted_providers=attempted,
+                latency_ms=int(result.latency_ms),
+                input_tokens=int(
+                    (result.usage or {}).get("prompt_tokens")
+                    or (result.usage or {}).get("input_tokens")
+                    or 0
+                )
+                or None,
+                output_tokens=int(
+                    (result.usage or {}).get("completion_tokens")
+                    or (result.usage or {}).get("output_tokens")
+                    or 0
+                )
+                or None,
+                cost_usd=float(result.cost_usd or 0) or None,
+                success=True,
+            )
+            return result.to_dict(), None, None
+
+        await quota_service.release(reservation)
+        return None, result.error, result.error_category
+
+    except asyncio.TimeoutError:
+        await quota_service.release(reservation)
+        timeout_error = f"timeout after {timeout_ms}ms"
+        await _record_provider_failure(
+            provider_id, current_provider, timeout_error, category=ProviderErrorCategory.TIMEOUT
+        )
+        registry.record_failure(provider_id)
+        dispatcher.note_provider_result(provider_id, ok=False, error=timeout_error)
+        record_dispatch(
+            provider_id=provider_id,
+            model=model_name,
+            latency_ms=float(timeout_ms),
+            ok=False,
+            error_category=ProviderErrorCategory.TIMEOUT.value,
+        )
+        _tag(aspan, "dispatch.outcome", "timeout")
+        _tag(aspan, "error.category", "timeout")
+        log.warning(
+            "dispatch_timeout", error=timeout_error, error_category="timeout", latency_ms=timeout_ms
+        )
+        return None, timeout_error, ProviderErrorCategory.TIMEOUT
+
+    except Exception as exc:
+        await quota_service.release(reservation)
+        error_msg = dispatcher._sanitize_error(exc)
+        error_cat = classify_provider_error(exc)
+        await _record_provider_failure(provider_id, current_provider, error_msg, category=error_cat)
+        registry.record_failure(provider_id)
+        dispatcher.note_provider_result(provider_id, ok=False, error=error_msg)
+        record_dispatch(
+            provider_id=provider_id,
+            model=model_name,
+            latency_ms=0.0,
+            ok=False,
+            error_category=error_cat.value,
+        )
+        if error_cat == ProviderErrorCategory.RATE_LIMIT:
+            await quota_service.mark_rate_limited(provider_id, model_name)
+        _tag(aspan, "dispatch.outcome", "exception")
+        _tag(aspan, "error.category", error_cat.value)
+        log.warning("dispatch_exception", error=error_msg, error_category=error_cat.value)
+        return None, error_msg, error_cat
+
+
 async def dispatch_request(
     dispatcher: Any,
     *,
@@ -177,8 +465,7 @@ async def dispatch_request(
     dry_run: bool = False,
     logger: Any,
 ) -> Dict[str, Any]:
-    from ...routing.router import registry
-
+    """Dispatch a request to a provider with fallback support."""
     logical_model_names = set(get_router_model_names())
     should_route_logical = bool(model) and str(model).strip() in (
         logical_model_names | {"auto", "cheapest", "local"}
@@ -187,19 +474,15 @@ async def dispatch_request(
         from ...providers.router_service import route_logical_model
 
         router_response = await route_logical_model(
-            model,
-            payload,
-            timeout_ms=timeout_ms,
-            stream=stream,
+            model, payload, timeout_ms=timeout_ms, stream=stream
         )
         if router_response is not None:
             return router_response
 
     resolved_pid, resolved_model = dispatcher._resolve_model_alias(pid, model)
-    user_id: Optional[str] = payload.get("user_id") or None
-    messages = payload.get("messages", [])
-    prompt = payload.get("prompt", "")
     candidates = dispatcher._candidate_order(resolved_pid)
+
+    # Handle empty candidates with mock fallback
     if not candidates:
         try:
             if (
@@ -218,107 +501,51 @@ async def dispatch_request(
                 )
         except Exception:
             candidates = []
-
         if not candidates:
-            return {
-                "ok": False,
-                "error": f"unknown-provider:{pid}",
-                "latency_ms": 0.0,
-            }
+            return {"ok": False, "error": f"unknown-provider:{pid}", "latency_ms": 0.0}
 
-    explicit_mode = resolved_pid not in (None, "auto", "cheapest", "local")
-    if explicit_mode:
-        first_config = dispatcher._configs.get(candidates[0], {}) if candidates else {}
-        if first_config.get("force_fallback"):
-            fallback_order = [p for p in dispatcher._hybrid_order() if p not in candidates]
-            ordered = [*candidates, *fallback_order]
-        else:
-            ordered = candidates
-    else:
-        configured_candidates = dispatcher._auto_configured_candidates(candidates)
-        if not configured_candidates:
-            configured_candidates = [p for p in candidates if dispatcher.is_configured(p)]
+    explicit_mode, ordered = _resolve_and_order_candidates(dispatcher, resolved_pid, candidates)
 
-        available: List[str] = []
-        for provider_id in configured_candidates:
-            current_provider = dispatcher._ensure_provider(provider_id)
-            if current_provider is None:
-                continue
-            canary = dispatcher._is_canary_attempt(provider_id, resolved_model)
-            if current_provider.should_attempt(canary=canary) and (
-                registry.get(provider_id).success_rate >= dispatcher._routing_min_success_rate
-            ):
-                available.append(provider_id)
-        ordered = available or configured_candidates
-
+    # Apply filters: explicit mode fallback, mock fallback, access control
     if explicit_mode and not ordered:
         ordered = candidates
     if not ordered:
-        mock_provider = None
         try:
             if mock_fallback_enabled() and dispatcher.is_configured("mock"):
                 mock_provider = dispatcher._ensure_provider("mock")
+                if mock_provider is not None:
+                    ordered = ["mock"]
         except Exception:
-            mock_provider = None
+            pass
+        if not ordered:
+            return {"ok": False, "error": "no-configured-providers", "latency_ms": 0.0}
 
-        if mock_provider is not None:
-            ordered = ["mock"]
-        else:
-            return {
-                "ok": False,
-                "error": "no-configured-providers",
-                "latency_ms": 0.0,
-            }
-
-    if user_id:
-        allowed = [p for p in ordered if await check_provider_access(user_id, p)]
+    if payload.get("user_id"):
+        allowed = [p for p in ordered if await check_provider_access(payload.get("user_id"), p)]
         if not allowed:
-            return {
-                "ok": False,
-                "error": "provider-access-denied",
-                "latency_ms": 0.0,
-            }
+            return {"ok": False, "error": "provider-access-denied", "latency_ms": 0.0}
         ordered = allowed
 
     if dry_run:
-        candidate_detail = []
-        for provider_id in ordered:
-            current_provider = dispatcher._ensure_provider(provider_id)
-            candidate_detail.append(
-                {
-                    "provider": provider_id,
-                    "model": resolved_model
-                    or (current_provider.default_model if current_provider else ""),
-                    "configured": dispatcher.is_configured(provider_id),
-                }
-            )
-        first = candidate_detail[0]
-        return {
-            "ok": True,
-            "dry_run": True,
-            "resolved_provider": first["provider"],
-            "resolved_model": first["model"],
-            "routing_mode": "explicit" if explicit_mode else "auto",
-            "candidate_order": candidate_detail,
-        }
+        return _build_dry_run_response(dispatcher, ordered, resolved_model, explicit_mode)
 
     last_error = "all providers failed"
     last_category: Optional[ProviderErrorCategory] = None
-    _attempted: List[str] = []
-    _routing_mode = "explicit" if explicit_mode else resolved_pid or "auto"
+    attempted: List[str] = []
+    routing_mode = "explicit" if explicit_mode else resolved_pid or "auto"
 
-    _req_ctx = (
+    req_ctx = (
         _dd_tracer.trace(
             "dispatch.request",
-            resource=f"{_routing_mode}/{resolved_model or 'any'}",
+            resource=f"{routing_mode}/{resolved_model or 'any'}",
             service="goblin-api",
             span_type="web",
         )
         if _dd_tracer
         else nullcontext()
     )
-    with _req_ctx as rspan:
-        _tag(rspan, "dispatch.routing_mode", _routing_mode)
+    with req_ctx as rspan:
+        _tag(rspan, "dispatch.routing_mode", routing_mode)
         _tag(rspan, "dispatch.pid", pid or "auto")
         _tag(rspan, "dispatch.model", resolved_model or "")
         _tag(rspan, "dispatch.stream", stream)
@@ -329,276 +556,32 @@ async def dispatch_request(
             if current_provider is None:
                 continue
 
-            model_name = resolved_model or current_provider.default_model
-            log = logger.bind(provider=provider_id, model=model_name)
-            _attempted.append(provider_id)
+            attempted.append(provider_id)
+            log = logger.bind(provider=provider_id, model=resolved_model or "")
 
-            _att_ctx = (
-                _dd_tracer.trace(
-                    "dispatch.attempt",
-                    resource=provider_id,
-                    service="goblin-api",
-                )
+            att_ctx = (
+                _dd_tracer.trace("dispatch.attempt", resource=provider_id, service="goblin-api")
                 if _dd_tracer
                 else nullcontext()
             )
-            with _att_ctx as aspan:
-                _tag(aspan, "provider.id", provider_id)
-                _tag(aspan, "provider.model", model_name)
-
-                if dispatcher._is_warmup_routing_blocked(provider_id):
-                    last_error = "provider warming up"
-                    last_category = ProviderErrorCategory.SERVER_ERROR
-                    _tag(aspan, "dispatch.skip_reason", "warmup")
-                    log.info(
-                        "dispatch_warmup_skipped",
-                        warmup=dispatcher._warmup_state_for(provider_id),
-                    )
-                    continue
-                canary = dispatcher._is_canary_attempt(provider_id, model_name)
-                if not current_provider.should_attempt(canary=canary):
-                    last_error = "provider circuit open"
-                    last_category = ProviderErrorCategory.SERVER_ERROR
-                    _tag(aspan, "dispatch.skip_reason", "circuit_open")
-                    log.info(
-                        "dispatch_circuit_skipped",
-                        circuit_state=current_provider.circuit_state,
-                    )
-                    continue
-                if current_provider.circuit_state == "soft_open":
-                    if not current_provider.claim_soft_open_probe():
-                        last_error = "provider circuit open"
-                        last_category = ProviderErrorCategory.SERVER_ERROR
-                        _tag(
-                            aspan,
-                            "dispatch.skip_reason",
-                            "soft_open_probe_denied",
-                        )
-                        log.info(
-                            "dispatch_circuit_skipped",
-                            circuit_state=current_provider.circuit_state,
-                        )
-                        continue
-                kwargs = dispatcher._build_invoke_kwargs(payload)
-                reservation = await quota_service.reserve(
-                    provider_id,
-                    model_name,
-                    messages=messages,
-                    prompt=prompt,
-                    max_tokens=int(payload.get("max_tokens", 0) or 0) or None,
+            with att_ctx as aspan:
+                response, err, cat = await _execute_dispatch_attempt(
+                    dispatcher=dispatcher,
+                    provider_id=provider_id,
+                    model_name=resolved_model or current_provider.default_model,
+                    payload=payload,
+                    timeout_ms=timeout_ms,
+                    stream=stream,
+                    routing_mode=routing_mode,
+                    rspan=rspan,
+                    aspan=aspan,
+                    log=log,
+                    attempted=attempted,
                 )
-                if reservation is None:
-                    last_error = "quota exhausted"
-                    last_category = ProviderErrorCategory.RATE_LIMIT
-                    _tag(aspan, "dispatch.skip_reason", "quota_exhausted")
-                    log.info(
-                        "dispatch_quota_skipped",
-                        reason=quota_service.last_skip_reason,
-                    )
-                    continue
-
-                log.info("dispatch_attempt")
-
-                try:
-                    if stream:
-                        result = await asyncio.wait_for(
-                            dispatcher._stream_wrap(
-                                provider_id,
-                                current_provider,
-                                messages,
-                                model_name,
-                                prompt=prompt,
-                                **kwargs,
-                            ),
-                            timeout=timeout_ms / 1000,
-                        )
-                        if result.ok:
-                            _tag(aspan, "dispatch.outcome", "success")
-                            _tag(rspan, "dispatch.final_provider", provider_id)
-                            await quota_service.commit(
-                                reservation,
-                                actual_input_tokens=(reservation.estimated_input_tokens),
-                                actual_output_tokens=(reservation.estimated_output_tokens),
-                            )
-                            return {
-                                "ok": True,
-                                "stream": result.raw.get("stream_gen"),
-                                "provider": provider_id,
-                                "model": model_name,
-                            }
-                        await quota_service.release(reservation)
-                        last_error = dispatcher._sanitize_error(result.error or last_error)
-                        last_category = dispatcher._provider_error_category(
-                            result.error_category,
-                            last_error,
-                        )
-                        _tag(aspan, "dispatch.outcome", "failure")
-                        _tag(
-                            aspan,
-                            "error.category",
-                            last_category.value if last_category else "",
-                        )
-                        if last_category == ProviderErrorCategory.RATE_LIMIT:
-                            await quota_service.mark_rate_limited(provider_id, model_name)
-                        continue
-
-                    result = await asyncio.wait_for(
-                        dispatcher._invoke_with_test_mode(
-                            provider_id,
-                            current_provider,
-                            messages,
-                            model_name,
-                            prompt=prompt,
-                            **kwargs,
-                        ),
-                        timeout=timeout_ms / 1000,
-                    )
-                    if result.ok:
-                        usage = result.usage or {}
-                        await quota_service.commit(
-                            reservation,
-                            actual_input_tokens=int(
-                                usage.get("prompt_tokens") or usage.get("input_tokens") or 0
-                            ),
-                            actual_output_tokens=int(
-                                usage.get("completion_tokens") or usage.get("output_tokens") or 0
-                            ),
-                        )
-                        current_provider.record_success()
-                        registry.record_success(
-                            provider_id,
-                            latency_ms=float(result.latency_ms),
-                            cost_usd=float(result.cost_usd or 0.0),
-                        )
-                        dispatcher.note_provider_result(
-                            provider_id,
-                            ok=True,
-                            latency_ms=float(result.latency_ms),
-                        )
-                        record_dispatch(
-                            provider_id=provider_id,
-                            model=model_name,
-                            latency_ms=float(result.latency_ms),
-                            ok=True,
-                        )
-                        _tag(aspan, "dispatch.outcome", "success")
-                        _tag(
-                            aspan,
-                            "dispatch.latency_ms",
-                            round(float(result.latency_ms), 1),
-                        )
-                        _tag(rspan, "dispatch.final_provider", provider_id)
-                        log.info(
-                            "dispatch_success",
-                            latency_ms=round(float(result.latency_ms), 1),
-                        )
-                        usage = result.usage or {}
-                        insert_routing_audit(
-                            payload.get("request_id", ""),
-                            model_name,
-                            user_id=user_id,
-                            routing_mode=_routing_mode,
-                            selected_provider=provider_id,
-                            attempted_providers=_attempted,
-                            latency_ms=int(result.latency_ms),
-                            input_tokens=int(
-                                usage.get("prompt_tokens") or usage.get("input_tokens") or 0
-                            )
-                            or None,
-                            output_tokens=int(
-                                usage.get("completion_tokens") or usage.get("output_tokens") or 0
-                            )
-                            or None,
-                            cost_usd=float(result.cost_usd or 0) or None,
-                            success=True,
-                        )
-                        return result.to_dict()
-
-                    await quota_service.release(reservation)
-                    last_error = dispatcher._sanitize_error(result.error or last_error)
-                    last_category = dispatcher._provider_error_category(
-                        result.error_category,
-                        last_error,
-                    )
-                    await _record_provider_failure(
-                        provider_id,
-                        current_provider,
-                        last_error,
-                        category=last_category,
-                    )
-                    registry.record_failure(provider_id)
-                    dispatcher.note_provider_result(provider_id, ok=False, error=last_error)
-                    if last_category == ProviderErrorCategory.RATE_LIMIT:
-                        await quota_service.mark_rate_limited(provider_id, model_name)
-                    record_dispatch(
-                        provider_id=provider_id,
-                        model=model_name,
-                        latency_ms=float(result.latency_ms),
-                        ok=False,
-                        error_category=result.error_category,
-                    )
-                    _tag(aspan, "dispatch.outcome", "failure")
-                    _tag(aspan, "error.category", result.error_category or "")
-                    log.warning(
-                        "dispatch_failure",
-                        error=last_error,
-                        error_category=result.error_category,
-                    )
-                except asyncio.TimeoutError:
-                    await quota_service.release(reservation)
-                    last_error = f"timeout after {timeout_ms}ms"
-                    last_category = ProviderErrorCategory.TIMEOUT
-                    await _record_provider_failure(
-                        provider_id,
-                        current_provider,
-                        last_error,
-                        category=last_category,
-                    )
-                    registry.record_failure(provider_id)
-                    dispatcher.note_provider_result(provider_id, ok=False, error=last_error)
-                    record_dispatch(
-                        provider_id=provider_id,
-                        model=model_name,
-                        latency_ms=float(timeout_ms),
-                        ok=False,
-                        error_category=ProviderErrorCategory.TIMEOUT.value,
-                    )
-                    _tag(aspan, "dispatch.outcome", "timeout")
-                    _tag(aspan, "error.category", "timeout")
-                    log.warning(
-                        "dispatch_timeout",
-                        error=last_error,
-                        error_category=ProviderErrorCategory.TIMEOUT.value,
-                        latency_ms=timeout_ms,
-                    )
-                except Exception as exc:
-                    await quota_service.release(reservation)
-                    last_error = dispatcher._sanitize_error(exc)
-                    last_category = classify_provider_error(exc)
-                    await _record_provider_failure(
-                        provider_id,
-                        current_provider,
-                        last_error,
-                        category=last_category,
-                    )
-                    registry.record_failure(provider_id)
-                    dispatcher.note_provider_result(provider_id, ok=False, error=last_error)
-                    record_dispatch(
-                        provider_id=provider_id,
-                        model=model_name,
-                        latency_ms=0.0,
-                        ok=False,
-                        error_category=last_category.value,
-                    )
-                    if last_category == ProviderErrorCategory.RATE_LIMIT:
-                        await quota_service.mark_rate_limited(provider_id, model_name)
-                    _tag(aspan, "dispatch.outcome", "exception")
-                    _tag(aspan, "error.category", last_category.value)
-                    log.warning(
-                        "dispatch_exception",
-                        error=last_error,
-                        error_category=last_category.value,
-                    )
+                if response is not None:
+                    return response
+                last_error = err or "provider failed"
+                last_category = cat
 
         _tag(rspan, "dispatch.all_failed", True)
         _tag(rspan, "dispatch.error", last_error)
@@ -606,9 +589,9 @@ async def dispatch_request(
         insert_routing_audit(
             payload.get("request_id", ""),
             resolved_model or "",
-            user_id=user_id,
-            routing_mode=_routing_mode,
-            attempted_providers=_attempted,
+            user_id=payload.get("user_id"),
+            routing_mode=routing_mode,
+            attempted_providers=attempted,
             success=False,
             error_message=last_error,
             error_category=last_category.value if last_category else None,
