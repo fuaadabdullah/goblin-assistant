@@ -9,6 +9,7 @@ def test_api_v1_aliases_cover_key_routes():
         "/api/v1/auth/login",
         "/api/v1/search/query",
         "/api/v1/account/profile",
+        "/api/v1/settings/",
         "/api/v1/support/message",
         "/api/v1/chat/conversations",
         "/api/v1/providers/models",

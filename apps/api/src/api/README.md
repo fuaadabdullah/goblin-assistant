@@ -47,7 +47,8 @@ Mounted route prefixes in the current app:
 - `/health`
 - `/ops`
 - `/search`
-- `/settings`
+- `/api/v1/settings`
+- `/settings` legacy compatibility alias for `/api/v1/settings`
 - `/secrets`
 - `/sandbox`
 - `/api/privacy`

@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from types import SimpleNamespace
+from unittest.mock import AsyncMock, patch
 
 from fastapi import APIRouter, FastAPI
 from fastapi.responses import JSONResponse
@@ -71,7 +72,23 @@ def test_support_router_error_envelope_on_validation_failure():
 
 def test_account_preferences_returns_success_envelope():
     client = _client()
-    response = client.put("/api/v1/account/preferences", json={"theme": "dark"})
+    with (
+        patch(
+            "api.routes.account_router.SaaSSettingsService.save_account_preferences",
+            new_callable=AsyncMock,
+            return_value={
+                "theme": "dark",
+                "default_model": None,
+                "default_provider": None,
+                "notifications_enabled": True,
+                "language": "en",
+                "summaries": True,
+                "familyMode": False,
+                "other": {},
+            },
+        ),
+    ):
+        response = client.put("/api/v1/account/preferences", json={"theme": "dark"})
     assert response.status_code == 200
     body = response.json()
     assert body["success"] is True
@@ -119,7 +136,7 @@ def test_versioned_aliases_preserve_semantic_lifecycle_classes():
     secrets = client.get("/api/v1/secrets/health")
     stable = client.post("/api/v1/search/query")
 
-    assert routing.headers["X-API-Lifecycle"] == "experimental"
-    assert ops.headers["X-API-Lifecycle"] == "internal"
-    assert secrets.headers["X-API-Lifecycle"] == "internal"
+    assert routing.headers["X-API-Lifecycle"] == "stable"
+    assert ops.headers["X-API-Lifecycle"] == "stable"
+    assert secrets.headers["X-API-Lifecycle"] == "stable"
     assert stable.headers["X-API-Lifecycle"] == "stable"

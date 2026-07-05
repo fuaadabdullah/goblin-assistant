@@ -8,7 +8,7 @@ This is the accurate entry point for the checked-in FastAPI backend.
 - App assembly: `../main.py`
 - OpenAPI docs: `/docs`
 - Health endpoint: `/health`
-- Route versioning in code: mostly unversioned
+- Route versioning in code: mostly `/api/v1`, with a legacy `/settings` compatibility alias
 
 ## Actual Route Prefixes
 
@@ -24,7 +24,8 @@ These router groups are mounted by `../main.py`:
 - `/health`
 - `/ops`
 - `/search`
-- `/settings`
+- `/api/v1/settings`
+- `/settings` (legacy compatibility alias for `/api/v1/settings`)
 - `/secrets`
 - `/sandbox`
 - `/api/privacy`

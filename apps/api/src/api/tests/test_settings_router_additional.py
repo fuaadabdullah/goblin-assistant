@@ -75,9 +75,12 @@ def test_get_settings_success():
         _make_client() as client,
     ):
         response = client.get("/settings/")
+        legacy_response = client.get("/api/v1/settings/")
 
     assert response.status_code == 200
+    assert legacy_response.status_code == 200
     body = response.json()["data"]
+    assert legacy_response.json()["data"] == body
     assert body["default_provider"] == "openai"
     assert body["default_model"] == "gpt-4o-mini"
     assert body["providers"][0]["enabled"] is True
@@ -98,9 +101,12 @@ def test_get_settings_failure():
         _make_client() as client,
     ):
         response = client.get("/settings/")
+        legacy_response = client.get("/api/v1/settings/")
 
     assert response.status_code == 500
+    assert legacy_response.status_code == 500
     assert response.json()["error"]["code"] == "SETTINGS_FETCH_FAILED"
+    assert legacy_response.json()["error"]["code"] == "SETTINGS_FETCH_FAILED"
 
 
 def test_update_provider_and_model_settings():

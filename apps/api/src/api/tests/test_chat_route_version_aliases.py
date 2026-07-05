@@ -73,6 +73,8 @@ def test_mount_versioned_primary_routes_includes_public_v1_routes() -> None:
     ops = _mk_router("/ops", "/aggregated")
     admin = _mk_router("/admin", "/providers")
     secrets = _mk_router("/secrets", "/health")
+    feature_flags = _mk_router("/feature-flags", "/")
+    notifications = _mk_router("/notifications", "/")
 
     mount_versioned_primary_routes(
         app,
@@ -97,11 +99,14 @@ def test_mount_versioned_primary_routes_includes_public_v1_routes() -> None:
         ops_router=ops,
         admin_router=admin,
         secrets_router=secrets,
+        feature_flags_router=feature_flags,
+        notifications_router=notifications,
     )
 
     paths = {route.path for route in app.routes}
     assert "/api/v1/health" in paths
     assert "/api/v1/settings/" in paths
+    assert "/settings/" in paths
     assert "/api/v1/providers/models" in paths
     assert "/api/v1/chat/conversations" in paths
     assert "/api/v1/api/chat" in paths
@@ -121,5 +126,7 @@ def test_mount_versioned_primary_routes_includes_public_v1_routes() -> None:
     assert "/api/v1/ops/aggregated" in paths
     assert "/api/v1/admin/providers" in paths
     assert "/api/v1/secrets/health" in paths
+    assert "/api/v1/feature-flags/" in paths
+    assert "/api/v1/notifications/" in paths
     assert "/chat/conversations" not in paths
     assert "/api/chat" not in paths

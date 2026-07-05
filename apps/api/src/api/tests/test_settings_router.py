@@ -32,6 +32,7 @@ def _client() -> TestClient:
         )
 
     app.include_router(router, prefix="/api/v1")
+    app.include_router(router)
     return TestClient(app)
 
 
@@ -176,7 +177,7 @@ def test_test_provider_connection_reports_health_states():
     assert unhealthy.json()["data"]["message"] == "timeout"
 
 
-def test_settings_legacy_route_is_not_mounted():
+def test_settings_legacy_route_is_kept_for_compatibility():
     client = _client()
 
     fake_provider = MagicMock()
@@ -206,6 +207,8 @@ def test_settings_legacy_route_is_not_mounted():
         ),
     ):
         v1 = client.get("/api/v1/settings/")
+        legacy = client.get("/settings/")
 
     assert v1.status_code == 200
-    assert client.get("/settings/").status_code == 404
+    assert legacy.status_code == 200
+    assert legacy.json() == v1.json()
