@@ -24,3 +24,6 @@ For the broader contract policy, canonical artifacts, and CI failure modes, see
 The generated inventory groups public routes by mounted path, highlights the
 `/api/v1` compatibility layer, and lists legacy dual mounts such as
 `/settings` where they still exist.
+
+For the sprint-by-sprint burn-down list for those legacy settings mounts, see
+[`docs/operations/API_ROUTE_MIGRATION_TRACKER.md`](../operations/API_ROUTE_MIGRATION_TRACKER.md).

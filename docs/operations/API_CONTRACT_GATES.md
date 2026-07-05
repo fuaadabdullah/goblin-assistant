@@ -38,3 +38,5 @@ or a proxy route, CI also fails.
 - The generated route inventory in `docs/backend/API_ROUTE_INVENTORY.generated.md`
   is derived from the same snapshots and should be regenerated together with the
   contract artifacts.
+- The settings-route compatibility burn-down list lives in
+  `docs/operations/API_ROUTE_MIGRATION_TRACKER.md`.

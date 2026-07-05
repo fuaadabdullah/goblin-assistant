@@ -29,6 +29,11 @@ This directory is the canonical home for operational documentation previously un
 
 - `RELEASE_PROCESS.md`: release cut checklist, tag policy, and verification flow.
 
+## API compatibility tracking
+
+- `API_ROUTE_MIGRATION_TRACKER.md`: settings-route compatibility matrix and
+  sprint burn-down checklist.
+
 ## Notes
 
 - Governance and lifecycle rules live in `docs/decisions/` (including release process, documentation ownership, and deprecation lifecycle ADRs).
