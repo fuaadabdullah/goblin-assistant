@@ -24,6 +24,15 @@ It follows the repository compatibility lifecycle policy in
 | `/settings/providers/{provider_name}` | `/api/v1/settings/providers/{provider_name}` | `apps/web/src/lib/api/providers.ts`, `apps/api/src/api/tests/test_settings_router.py`, `apps/api/src/api/tests/test_settings_router_additional.py` | TBD | Active | Provider settings write path still needs the compatibility alias. |
 | `/settings/test-connection` | `/api/v1/settings/test-connection` | `apps/web/src/lib/api/providers.ts`, `apps/api/src/api/tests/test_settings_router.py` | TBD | Active | Keep until connection-test callers no longer hit the legacy mount. |
 
+## Follow-Up Plan
+
+When the last `/settings` consumer is removed, the next cleanup pass should:
+
+- Remove the legacy `/settings` mount from `apps/api/src/api/route_mounting.py`.
+- Update the route inventory and SDK artifacts to drop the legacy alias.
+- Re-run the settings and route-alias smoke tests to confirm only `/api/v1/settings/*` remains.
+- Mark the corresponding rows above as removed and archive the follow-up in the same sprint.
+
 ## Burn-Down Rules
 
 - Remove at least a couple of legacy rows every sprint when the callers are
