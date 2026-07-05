@@ -750,6 +750,185 @@
         "title": "ChatMessage",
         "type": "object"
       },
+      "ChatSettingsResponse": {
+        "properties": {
+          "default_model": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Default Model"
+          },
+          "default_provider": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Default Provider"
+          },
+          "max_tokens": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Max Tokens"
+          },
+          "metadata": {
+            "anyOf": [
+              {
+                "additionalProperties": {
+                  "$ref": "#/components/schemas/JsonValue"
+                },
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Metadata"
+          },
+          "summary_enabled": {
+            "title": "Summary Enabled",
+            "type": "boolean"
+          },
+          "system_prompt": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "System Prompt"
+          },
+          "temperature": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Temperature"
+          },
+          "user_id": {
+            "title": "User Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "user_id",
+          "default_provider",
+          "default_model",
+          "system_prompt",
+          "temperature",
+          "max_tokens",
+          "summary_enabled",
+          "metadata"
+        ],
+        "title": "ChatSettingsResponse",
+        "type": "object"
+      },
+      "ChatSettingsUpdate": {
+        "properties": {
+          "default_model": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Default Model"
+          },
+          "default_provider": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Default Provider"
+          },
+          "max_tokens": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Max Tokens"
+          },
+          "metadata": {
+            "anyOf": [
+              {
+                "additionalProperties": {
+                  "$ref": "#/components/schemas/JsonValue"
+                },
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Metadata"
+          },
+          "summary_enabled": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Summary Enabled"
+          },
+          "system_prompt": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "System Prompt"
+          },
+          "temperature": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Temperature"
+          }
+        },
+        "title": "ChatSettingsUpdate",
+        "type": "object"
+      },
       "ColabRegisterRequest": {
         "properties": {
           "endpoint": {
@@ -1288,6 +1467,92 @@
           "total"
         ],
         "title": "EventLogListResponse",
+        "type": "object"
+      },
+      "FeatureFlagUpsert": {
+        "properties": {
+          "default_value": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Default Value"
+          },
+          "enabled": {
+            "default": false,
+            "title": "Enabled",
+            "type": "boolean"
+          },
+          "metadata": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Metadata"
+          },
+          "rollout_percent": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Rollout Percent"
+          },
+          "target_roles": {
+            "anyOf": [
+              {
+                "items": {
+                  "type": "string"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Target Roles"
+          },
+          "target_users": {
+            "anyOf": [
+              {
+                "items": {
+                  "type": "string"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Target Users"
+          },
+          "user_overrides": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "User Overrides"
+          }
+        },
+        "title": "FeatureFlagUpsert",
         "type": "object"
       },
       "FeedbackRequest": {
@@ -1989,6 +2254,59 @@
         "title": "ModelSettings",
         "type": "object"
       },
+      "NotificationCreate": {
+        "properties": {
+          "body": {
+            "title": "Body",
+            "type": "string"
+          },
+          "category": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Category"
+          },
+          "channel": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": "in_app",
+            "title": "Channel"
+          },
+          "metadata": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Metadata"
+          },
+          "title": {
+            "title": "Title",
+            "type": "string"
+          }
+        },
+        "required": [
+          "title",
+          "body"
+        ],
+        "title": "NotificationCreate",
+        "type": "object"
+      },
       "OrchestrationPlan": {
         "properties": {
           "complexity": {
@@ -2171,6 +2489,11 @@
             ],
             "title": "Default Provider"
           },
+          "familyMode": {
+            "default": false,
+            "title": "Familymode",
+            "type": "boolean"
+          },
           "language": {
             "anyOf": [
               {
@@ -2199,6 +2522,11 @@
               }
             ],
             "title": "Other"
+          },
+          "summaries": {
+            "default": true,
+            "title": "Summaries",
+            "type": "boolean"
           },
           "theme": {
             "anyOf": [
@@ -2247,6 +2575,17 @@
             ],
             "title": "Default Provider"
           },
+          "familyMode": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Familymode"
+          },
           "language": {
             "anyOf": [
               {
@@ -2257,6 +2596,17 @@
               }
             ],
             "title": "Language"
+          },
+          "notifications": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Notifications"
           },
           "notifications_enabled": {
             "anyOf": [
@@ -2282,6 +2632,17 @@
               }
             ],
             "title": "Other"
+          },
+          "summaries": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Summaries"
           },
           "theme": {
             "anyOf": [
@@ -2431,6 +2792,17 @@
             "title": "Enabled",
             "type": "boolean"
           },
+          "endpoint": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Endpoint"
+          },
           "models": {
             "default": [],
             "items": {
@@ -2442,6 +2814,28 @@
           "name": {
             "title": "Name",
             "type": "string"
+          },
+          "priority": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Priority"
+          },
+          "weight": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Weight"
           }
         },
         "required": [
@@ -3286,6 +3680,17 @@
             "title": "Message",
             "type": "string"
           },
+          "scope": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Scope"
+          },
           "settings": {
             "additionalProperties": true,
             "title": "Settings",
@@ -3628,6 +4033,23 @@
         "title": "SuccessEnvelope[CancelJobResponse]",
         "type": "object"
       },
+      "SuccessEnvelope_ChatSettingsResponse_": {
+        "properties": {
+          "data": {
+            "$ref": "#/components/schemas/ChatSettingsResponse"
+          },
+          "success": {
+            "default": true,
+            "title": "Success",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "data"
+        ],
+        "title": "SuccessEnvelope[ChatSettingsResponse]",
+        "type": "object"
+      },
       "SuccessEnvelope_CollectionsResponse_": {
         "properties": {
           "data": {
@@ -3832,6 +4254,28 @@
           "data"
         ],
         "title": "SuccessEnvelope[JobStatus]",
+        "type": "object"
+      },
+      "SuccessEnvelope_List_Dict_str__Any___": {
+        "properties": {
+          "data": {
+            "items": {
+              "additionalProperties": true,
+              "type": "object"
+            },
+            "title": "Data",
+            "type": "array"
+          },
+          "success": {
+            "default": true,
+            "title": "Success",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "data"
+        ],
+        "title": "SuccessEnvelope[List[Dict[str, Any]]]",
         "type": "object"
       },
       "SuccessEnvelope_LogoutResponse_": {
@@ -4786,7 +5230,101 @@
         "summary": "Root"
       }
     },
+    "/account/chat-settings": {
+      "get": {
+        "operationId": "get_chat_settings_api_v1_account_chat_settings_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SuccessEnvelope_ChatSettingsResponse_"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Get Chat Settings",
+        "tags": [
+          "account"
+        ]
+      },
+      "put": {
+        "operationId": "save_chat_settings_api_v1_account_chat_settings_put",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ChatSettingsUpdate"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SuccessEnvelope_ChatSettingsResponse_"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Save Chat Settings",
+        "tags": [
+          "account"
+        ]
+      }
+    },
     "/account/preferences": {
+      "get": {
+        "operationId": "get_preferences_api_v1_account_preferences_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SuccessEnvelope_PreferencesResponse_"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Get Preferences",
+        "tags": [
+          "account"
+        ]
+      },
       "put": {
         "description": "Save user preferences",
         "operationId": "save_preferences_api_v1_account_preferences_put",
@@ -4834,6 +5372,30 @@
       }
     },
     "/account/profile": {
+      "get": {
+        "operationId": "get_profile_api_v1_account_profile_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SuccessEnvelope_ProfileResponse_"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Get Profile",
+        "tags": [
+          "account"
+        ]
+      },
       "put": {
         "description": "Save user profile information",
         "operationId": "save_profile_api_v1_account_profile_put",
@@ -9164,6 +9726,130 @@
         ]
       }
     },
+    "/feature-flags/{flag_key}": {
+      "get": {
+        "operationId": "get_feature_flag_api_v1_feature_flags__flag_key__get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "flag_key",
+            "required": true,
+            "schema": {
+              "title": "Flag Key",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "user_id",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "User Id"
+            }
+          },
+          {
+            "in": "query",
+            "name": "role",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Role"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SuccessEnvelope_Dict_str__Any__"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Get Feature Flag",
+        "tags": [
+          "feature-flags"
+        ]
+      },
+      "put": {
+        "operationId": "upsert_feature_flag_api_v1_feature_flags__flag_key__put",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "flag_key",
+            "required": true,
+            "schema": {
+              "title": "Flag Key",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/FeatureFlagUpsert"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SuccessEnvelope_Dict_str__Any__"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Upsert Feature Flag",
+        "tags": [
+          "feature-flags"
+        ]
+      }
+    },
     "/health": {
       "get": {
         "description": "Unified health endpoint covering all subsystems.\n\nStrategy: Prioritizes fast response times over comprehensive validation.\nOptional components (database, Redis) use graceful degradation patterns.\nProvider monitoring runs asynchronously to avoid blocking health endpoints.",
@@ -9608,6 +10294,123 @@
         "summary": "Metrics",
         "tags": [
           "observability"
+        ]
+      }
+    },
+    "/notifications/": {
+      "get": {
+        "operationId": "list_notifications_api_v1_notifications__get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SuccessEnvelope_List_Dict_str__Any___"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "List Notifications",
+        "tags": [
+          "notifications"
+        ]
+      },
+      "post": {
+        "operationId": "create_notification_api_v1_notifications__post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/NotificationCreate"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SuccessEnvelope_Dict_str__Any__"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Create Notification",
+        "tags": [
+          "notifications"
+        ]
+      }
+    },
+    "/notifications/{notification_id}/read": {
+      "patch": {
+        "operationId": "mark_notification_read_api_v1_notifications__notification_id__read_patch",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "notification_id",
+            "required": true,
+            "schema": {
+              "title": "Notification Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SuccessEnvelope_Dict_str__Any__"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Mark Notification Read",
+        "tags": [
+          "notifications"
         ]
       }
     },
@@ -12479,6 +13282,60 @@
           }
         },
         "summary": "Test Provider Connection",
+        "tags": [
+          "settings"
+        ]
+      }
+    },
+    "/settings/{key}": {
+      "patch": {
+        "operationId": "update_global_setting_api_v1_settings__key__patch",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "key",
+            "required": true,
+            "schema": {
+              "title": "Key",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "additionalProperties": true,
+                "title": "Payload",
+                "type": "object"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SuccessEnvelope_Dict_str__Any__"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Update Global Setting",
         "tags": [
           "settings"
         ]

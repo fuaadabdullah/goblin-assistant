@@ -260,6 +260,46 @@ export interface components {
             /** Timestamp */
             timestamp?: string | null;
         };
+        /** ChatSettingsResponse */
+        ChatSettingsResponse: {
+            /** Default Model */
+            default_model: string | null;
+            /** Default Provider */
+            default_provider: string | null;
+            /** Max Tokens */
+            max_tokens: number | null;
+            /** Metadata */
+            metadata: {
+                [key: string]: components["schemas"]["JsonValue"];
+            } | null;
+            /** Summary Enabled */
+            summary_enabled: boolean;
+            /** System Prompt */
+            system_prompt: string | null;
+            /** Temperature */
+            temperature: number | null;
+            /** User Id */
+            user_id: string;
+        };
+        /** ChatSettingsUpdate */
+        ChatSettingsUpdate: {
+            /** Default Model */
+            default_model?: string | null;
+            /** Default Provider */
+            default_provider?: string | null;
+            /** Max Tokens */
+            max_tokens?: number | null;
+            /** Metadata */
+            metadata?: {
+                [key: string]: components["schemas"]["JsonValue"];
+            } | null;
+            /** Summary Enabled */
+            summary_enabled?: boolean | null;
+            /** System Prompt */
+            system_prompt?: string | null;
+            /** Temperature */
+            temperature?: number | null;
+        };
         /** ColabRegisterRequest */
         ColabRegisterRequest: {
             /** Endpoint */
@@ -465,6 +505,32 @@ export interface components {
             events: components["schemas"]["EventEnvelope_dict_str__JsonValue__"][];
             /** Total */
             total: number;
+        };
+        /** FeatureFlagUpsert */
+        FeatureFlagUpsert: {
+            /** Default Value */
+            default_value?: {
+                [key: string]: unknown;
+            } | null;
+            /**
+             * Enabled
+             * @default false
+             */
+            enabled: boolean;
+            /** Metadata */
+            metadata?: {
+                [key: string]: unknown;
+            } | null;
+            /** Rollout Percent */
+            rollout_percent?: number | null;
+            /** Target Roles */
+            target_roles?: string[] | null;
+            /** Target Users */
+            target_users?: string[] | null;
+            /** User Overrides */
+            user_overrides?: {
+                [key: string]: unknown;
+            } | null;
         };
         /** FeedbackRequest */
         FeedbackRequest: {
@@ -742,6 +808,24 @@ export interface components {
              */
             temperature: number | null;
         };
+        /** NotificationCreate */
+        NotificationCreate: {
+            /** Body */
+            body: string;
+            /** Category */
+            category?: string | null;
+            /**
+             * Channel
+             * @default in_app
+             */
+            channel: string | null;
+            /** Metadata */
+            metadata?: {
+                [key: string]: unknown;
+            } | null;
+            /** Title */
+            title: string;
+        };
         /** OrchestrationPlan */
         OrchestrationPlan: {
             /**
@@ -817,6 +901,11 @@ export interface components {
             default_model: string | null;
             /** Default Provider */
             default_provider: string | null;
+            /**
+             * Familymode
+             * @default false
+             */
+            familyMode: boolean;
             /** Language */
             language: string | null;
             /** Notifications Enabled */
@@ -825,6 +914,11 @@ export interface components {
             other: {
                 [key: string]: components["schemas"]["JsonValue"];
             } | null;
+            /**
+             * Summaries
+             * @default true
+             */
+            summaries: boolean;
             /** Theme */
             theme: string | null;
         };
@@ -834,14 +928,20 @@ export interface components {
             default_model?: string | null;
             /** Default Provider */
             default_provider?: string | null;
+            /** Familymode */
+            familyMode?: boolean | null;
             /** Language */
             language?: string | null;
+            /** Notifications */
+            notifications?: boolean | null;
             /** Notifications Enabled */
             notifications_enabled?: boolean | null;
             /** Other */
             other?: {
                 [key: string]: components["schemas"]["JsonValue"];
             } | null;
+            /** Summaries */
+            summaries?: boolean | null;
             /** Theme */
             theme?: string | null;
         };
@@ -885,6 +985,8 @@ export interface components {
              * @default true
              */
             enabled: boolean;
+            /** Endpoint */
+            endpoint?: string | null;
             /**
              * Models
              * @default []
@@ -892,6 +994,10 @@ export interface components {
             models: string[];
             /** Name */
             name: string;
+            /** Priority */
+            priority?: number | null;
+            /** Weight */
+            weight?: number | null;
         };
         /**
          * RefreshTokenRequest
@@ -1195,6 +1301,8 @@ export interface components {
         SettingsUpdatedResponse: {
             /** Message */
             message: string;
+            /** Scope */
+            scope?: string | null;
             /** Settings */
             settings: {
                 [key: string]: unknown;
@@ -1320,6 +1428,15 @@ export interface components {
              */
             success: boolean;
         };
+        /** SuccessEnvelope[ChatSettingsResponse] */
+        SuccessEnvelope_ChatSettingsResponse_: {
+            data: components["schemas"]["ChatSettingsResponse"];
+            /**
+             * Success
+             * @default true
+             */
+            success: boolean;
+        };
         /** SuccessEnvelope[CollectionsResponse] */
         SuccessEnvelope_CollectionsResponse_: {
             data: components["schemas"]["CollectionsResponse"];
@@ -1425,6 +1542,18 @@ export interface components {
         /** SuccessEnvelope[JobStatus] */
         SuccessEnvelope_JobStatus_: {
             data: components["schemas"]["JobStatus"];
+            /**
+             * Success
+             * @default true
+             */
+            success: boolean;
+        };
+        /** SuccessEnvelope[List[Dict[str, Any]]] */
+        SuccessEnvelope_List_Dict_str__Any___: {
+            /** Data */
+            data: {
+                [key: string]: unknown;
+            }[];
             /**
              * Success
              * @default true

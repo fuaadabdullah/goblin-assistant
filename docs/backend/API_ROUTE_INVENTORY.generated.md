@@ -9,19 +9,19 @@ Generated from `packages/sdk/openapi/routes.json` and `packages/sdk/openapi/open
 
 ## Snapshot
 
-- **Mounted paths**: 186
-- **Operations**: 195
-- **OpenAPI paths**: 182
-- **Versioned compatibility alias operations (`/api/v1`)**: 188
-- **Legacy dual-mount operations**: 4
+- **Mounted paths**: 192
+- **Operations**: 206
+- **OpenAPI paths**: 187
+- **Versioned compatibility alias operations (`/api/v1`)**: 198
+- **Legacy dual-mount operations**: 5
 - **Hidden manifest operations**: 1
 
 ## Route groups
 
 | Group | Operations |
 | --- | ---: |
-| `/api/v1` | 188 |
-| `/settings` | 4 |
+| `/api/v1` | 198 |
+| `/settings` | 5 |
 | `/` | 1 |
 | `/metrics` | 1 |
 | `/test` | 1 |
@@ -32,7 +32,11 @@ The `/api/v1` routes are the compatibility layer for callers that still expect v
 
 | Method | Path | Logical Path | Summary | Tags | Operation ID |
 | --- | --- | --- | --- | --- | --- |
+| GET | /api/v1/account/chat-settings | /account/chat-settings | Get Chat Settings | account | get_chat_settings_api_v1_account_chat_settings_get |
+| PUT | /api/v1/account/chat-settings | /account/chat-settings | Save Chat Settings | account | save_chat_settings_api_v1_account_chat_settings_put |
+| GET | /api/v1/account/preferences | /account/preferences | Get Preferences | account | get_preferences_api_v1_account_preferences_get |
 | PUT | /api/v1/account/preferences | /account/preferences | Save Preferences | account | save_preferences_api_v1_account_preferences_put |
+| GET | /api/v1/account/profile | /account/profile | Get Profile | account | get_profile_api_v1_account_profile_get |
 | PUT | /api/v1/account/profile | /account/profile | Save Profile | account | save_profile_api_v1_account_profile_put |
 | POST | /api/v1/agent/task | /agent/task | Submit Agent Task | agent | submit_agent_task_api_v1_agent_task_post |
 | POST | /api/v1/agent/task/github-webhook | /agent/task/github-webhook | Submit Github Issue Webhook | agent | submit_github_issue_webhook_api_v1_agent_task_github_webhook_post |
@@ -121,6 +125,8 @@ The `/api/v1` routes are the compatibility layer for callers that still expect v
 | GET | /api/v1/debug/write/decisions/search | /debug/write/decisions/search | Search Write Decisions | debug | search_write_decisions_api_v1_debug_write_decisions_search_get |
 | GET | /api/v1/debug/write/decisions/stats | /debug/write/decisions/stats | Get Write Decision Stats | debug | get_write_decision_stats_api_v1_debug_write_decisions_stats_get |
 | GET | /api/v1/debug/write/decisions/{conversation_id} | /debug/write/decisions/{conversation_id} | Get Write Decisions | debug | get_write_decisions_api_v1_debug_write_decisions__conversation_id__get |
+| GET | /api/v1/feature-flags/{flag_key} | /feature-flags/{flag_key} | Get Feature Flag | feature-flags | get_feature_flag_api_v1_feature_flags__flag_key__get |
+| PUT | /api/v1/feature-flags/{flag_key} | /feature-flags/{flag_key} | Upsert Feature Flag | feature-flags | upsert_feature_flag_api_v1_feature_flags__flag_key__put |
 | GET | /api/v1/health | /health | Health Check | health | health_check_api_v1_health_get |
 | GET | /api/v1/health/all | /health/all | Health All | health | health_all_api_v1_health_all_get |
 | GET | /api/v1/health/chroma/status | /health/chroma/status | Health Chroma | health | health_chroma_api_v1_health_chroma_status_get |
@@ -137,6 +143,9 @@ The `/api/v1` routes are the compatibility layer for callers that still expect v
 | GET | /api/v1/health/stream | /health/stream | Health Stream | health | health_stream_api_v1_health_stream_get |
 | GET | /api/v1/health/streaming | /health/streaming | Health Streaming | health | health_streaming_api_v1_health_streaming_get |
 | GET | /api/v1/health/{component} | /health/{component} | Health Component | health | health_component_api_v1_health__component__get |
+| GET | /api/v1/notifications/ | /notifications/ | List Notifications | notifications | list_notifications_api_v1_notifications__get |
+| POST | /api/v1/notifications/ | /notifications/ | Create Notification | notifications | create_notification_api_v1_notifications__post |
+| PATCH | /api/v1/notifications/{notification_id}/read | /notifications/{notification_id}/read | Mark Notification Read | notifications | mark_notification_read_api_v1_notifications__notification_id__read_patch |
 | GET | /api/v1/ops/aggregated | /ops/aggregated | Get Aggregated Metrics | operations | get_aggregated_metrics_api_v1_ops_aggregated_get |
 | GET | /api/v1/ops/audit/log | /ops/audit/log | Get Audit Log | operations | get_audit_log_api_v1_ops_audit_log_get |
 | GET | /api/v1/ops/circuit-breakers | /ops/circuit-breakers | Circuit Breakers Status | operations | circuit_breakers_status_api_v1_ops_circuit_breakers_get |
@@ -209,6 +218,7 @@ The `/api/v1` routes are the compatibility layer for callers that still expect v
 | PUT | /api/v1/settings/models/{model_name} | /settings/models/{model_name} | Update Model Settings | settings | update_model_settings_settings_models__model_name__put |
 | PUT | /api/v1/settings/providers/{provider_name} | /settings/providers/{provider_name} | Update Provider Settings | settings | update_provider_settings_settings_providers__provider_name__put |
 | POST | /api/v1/settings/test-connection | /settings/test-connection | Test Provider Connection | settings | test_provider_connection_settings_test_connection_post |
+| PATCH | /api/v1/settings/{key} | /settings/{key} | Update Global Setting | settings | update_global_setting_settings__key__patch |
 | POST | /api/v1/stream | /stream | Stream Task | stream | stream_task_api_v1_stream_post |
 | POST | /api/v1/support/message | /support/message | Send Support Message | support | send_support_message_api_v1_support_message_post |
 | POST | /api/v1/support/triage | /support/triage | Triage Issue | support | triage_issue_api_v1_support_triage_post |
@@ -231,6 +241,7 @@ These routes are mounted both at their canonical path and at one or more compati
 | PUT | /settings/models/{model_name} | /settings/models/{model_name} | /api/v1/settings/models/{model_name} | Update Model Settings | settings | update_model_settings_settings_models__model_name__put |
 | PUT | /settings/providers/{provider_name} | /settings/providers/{provider_name} | /api/v1/settings/providers/{provider_name} | Update Provider Settings | settings | update_provider_settings_settings_providers__provider_name__put |
 | POST | /settings/test-connection | /settings/test-connection | /api/v1/settings/test-connection | Test Provider Connection | settings | test_provider_connection_settings_test_connection_post |
+| PATCH | /settings/{key} | /settings/{key} | /api/v1/settings/{key} | Update Global Setting | settings | update_global_setting_settings__key__patch |
 
 ## Notes
 

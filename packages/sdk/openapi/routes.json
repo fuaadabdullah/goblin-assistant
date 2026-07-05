@@ -1,8 +1,8 @@
 {
-  "alias_route_count": 8,
+  "alias_route_count": 10,
   "api_v1_prefix": "/api/v1",
-  "public_route_count": 195,
-  "route_count": 196,
+  "public_route_count": 206,
+  "route_count": 207,
   "routes": [
     {
       "compatibility_aliases": [],
@@ -17,11 +17,59 @@
     {
       "compatibility_aliases": [],
       "include_in_schema": true,
+      "logical_path": "/account/chat-settings",
+      "method": "GET",
+      "operation_id": "get_chat_settings_api_v1_account_chat_settings_get",
+      "path": "/api/v1/account/chat-settings",
+      "summary": "Get Chat Settings",
+      "tags": [
+        "account"
+      ]
+    },
+    {
+      "compatibility_aliases": [],
+      "include_in_schema": true,
+      "logical_path": "/account/chat-settings",
+      "method": "PUT",
+      "operation_id": "save_chat_settings_api_v1_account_chat_settings_put",
+      "path": "/api/v1/account/chat-settings",
+      "summary": "Save Chat Settings",
+      "tags": [
+        "account"
+      ]
+    },
+    {
+      "compatibility_aliases": [],
+      "include_in_schema": true,
+      "logical_path": "/account/preferences",
+      "method": "GET",
+      "operation_id": "get_preferences_api_v1_account_preferences_get",
+      "path": "/api/v1/account/preferences",
+      "summary": "Get Preferences",
+      "tags": [
+        "account"
+      ]
+    },
+    {
+      "compatibility_aliases": [],
+      "include_in_schema": true,
       "logical_path": "/account/preferences",
       "method": "PUT",
       "operation_id": "save_preferences_api_v1_account_preferences_put",
       "path": "/api/v1/account/preferences",
       "summary": "Save Preferences",
+      "tags": [
+        "account"
+      ]
+    },
+    {
+      "compatibility_aliases": [],
+      "include_in_schema": true,
+      "logical_path": "/account/profile",
+      "method": "GET",
+      "operation_id": "get_profile_api_v1_account_profile_get",
+      "path": "/api/v1/account/profile",
+      "summary": "Get Profile",
       "tags": [
         "account"
       ]
@@ -1113,6 +1161,30 @@
     {
       "compatibility_aliases": [],
       "include_in_schema": true,
+      "logical_path": "/feature-flags/{flag_key}",
+      "method": "GET",
+      "operation_id": "get_feature_flag_api_v1_feature_flags__flag_key__get",
+      "path": "/api/v1/feature-flags/{flag_key}",
+      "summary": "Get Feature Flag",
+      "tags": [
+        "feature-flags"
+      ]
+    },
+    {
+      "compatibility_aliases": [],
+      "include_in_schema": true,
+      "logical_path": "/feature-flags/{flag_key}",
+      "method": "PUT",
+      "operation_id": "upsert_feature_flag_api_v1_feature_flags__flag_key__put",
+      "path": "/api/v1/feature-flags/{flag_key}",
+      "summary": "Upsert Feature Flag",
+      "tags": [
+        "feature-flags"
+      ]
+    },
+    {
+      "compatibility_aliases": [],
+      "include_in_schema": true,
       "logical_path": "/health",
       "method": "GET",
       "operation_id": "health_check_api_v1_health_get",
@@ -1300,6 +1372,42 @@
       "summary": "Health Component",
       "tags": [
         "health"
+      ]
+    },
+    {
+      "compatibility_aliases": [],
+      "include_in_schema": true,
+      "logical_path": "/notifications/",
+      "method": "GET",
+      "operation_id": "list_notifications_api_v1_notifications__get",
+      "path": "/api/v1/notifications/",
+      "summary": "List Notifications",
+      "tags": [
+        "notifications"
+      ]
+    },
+    {
+      "compatibility_aliases": [],
+      "include_in_schema": true,
+      "logical_path": "/notifications/",
+      "method": "POST",
+      "operation_id": "create_notification_api_v1_notifications__post",
+      "path": "/api/v1/notifications/",
+      "summary": "Create Notification",
+      "tags": [
+        "notifications"
+      ]
+    },
+    {
+      "compatibility_aliases": [],
+      "include_in_schema": true,
+      "logical_path": "/notifications/{notification_id}/read",
+      "method": "PATCH",
+      "operation_id": "mark_notification_read_api_v1_notifications__notification_id__read_patch",
+      "path": "/api/v1/notifications/{notification_id}/read",
+      "summary": "Mark Notification Read",
+      "tags": [
+        "notifications"
       ]
     },
     {
@@ -2175,6 +2283,20 @@
       ]
     },
     {
+      "compatibility_aliases": [
+        "/settings/{key}"
+      ],
+      "include_in_schema": true,
+      "logical_path": "/settings/{key}",
+      "method": "PATCH",
+      "operation_id": "update_global_setting_settings__key__patch",
+      "path": "/api/v1/settings/{key}",
+      "summary": "Update Global Setting",
+      "tags": [
+        "settings"
+      ]
+    },
+    {
       "compatibility_aliases": [],
       "include_in_schema": true,
       "logical_path": "/stream",
@@ -2375,6 +2497,20 @@
       ]
     },
     {
+      "compatibility_aliases": [
+        "/api/v1/settings/{key}"
+      ],
+      "include_in_schema": true,
+      "logical_path": "/settings/{key}",
+      "method": "PATCH",
+      "operation_id": "update_global_setting_settings__key__patch",
+      "path": "/settings/{key}",
+      "summary": "Update Global Setting",
+      "tags": [
+        "settings"
+      ]
+    },
+    {
       "compatibility_aliases": [],
       "include_in_schema": true,
       "logical_path": "/test",
@@ -2386,5 +2522,5 @@
     }
   ],
   "schema_version": 1,
-  "versioned_route_count": 188
+  "versioned_route_count": 198
 }

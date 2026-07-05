@@ -22,6 +22,24 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/account/chat-settings": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get Chat Settings */
+        get: operations["get_chat_settings_api_v1_account_chat_settings_get"];
+        /** Save Chat Settings */
+        put: operations["save_chat_settings_api_v1_account_chat_settings_put"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/account/preferences": {
         parameters: {
             query?: never;
@@ -29,7 +47,8 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        get?: never;
+        /** Get Preferences */
+        get: operations["get_preferences_api_v1_account_preferences_get"];
         /**
          * Save Preferences
          * @description Save user preferences
@@ -49,7 +68,8 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        get?: never;
+        /** Get Profile */
+        get: operations["get_profile_api_v1_account_profile_get"];
         /**
          * Save Profile
          * @description Save user profile information
@@ -1787,6 +1807,24 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/feature-flags/{flag_key}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get Feature Flag */
+        get: operations["get_feature_flag_api_v1_feature_flags__flag_key__get"];
+        /** Upsert Feature Flag */
+        put: operations["upsert_feature_flag_api_v1_feature_flags__flag_key__put"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/health": {
         parameters: {
             query?: never;
@@ -2102,6 +2140,41 @@ export interface paths {
         options?: never;
         head?: never;
         patch?: never;
+        trace?: never;
+    };
+    "/notifications/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List Notifications */
+        get: operations["list_notifications_api_v1_notifications__get"];
+        put?: never;
+        /** Create Notification */
+        post: operations["create_notification_api_v1_notifications__post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/notifications/{notification_id}/read": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /** Mark Notification Read */
+        patch: operations["mark_notification_read_api_v1_notifications__notification_id__read_patch"];
         trace?: never;
     };
     "/ops/aggregated": {
@@ -3471,6 +3544,23 @@ export interface paths {
         options?: never;
         head?: never;
         patch?: never;
+        trace?: never;
+    };
+    "/settings/{key}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /** Update Global Setting */
+        patch: operations["update_global_setting_api_v1_settings__key__patch"];
         trace?: never;
     };
     "/stream": {
