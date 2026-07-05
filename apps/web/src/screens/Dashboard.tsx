@@ -325,7 +325,7 @@ const DashboardContent: React.FC = () => {
               </p>
             </div>
             <a
-              href="/api/v1/system/observability/model-usage"
+              href="/api/v1/debug/model-usage"
               className="text-sm font-medium text-primary hover:underline"
               target="_blank"
               rel="noreferrer"
@@ -392,7 +392,7 @@ const DashboardContent: React.FC = () => {
               </p>
             </div>
             <a
-              href="/api/v1/metrics"
+              href="/metrics"
               className="text-sm font-medium text-primary hover:underline"
               target="_blank"
               rel="noreferrer"

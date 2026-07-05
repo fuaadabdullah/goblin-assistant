@@ -42,13 +42,13 @@ describe('apiClient.getRoutingInfo', () => {
     vi.restoreAllMocks();
   });
 
-  it('calls /routing/info on the configured backend base URL', async () => {
+  it('calls /routing/route on the configured backend base URL', async () => {
     backendGetMock.mockResolvedValue({ data: { status: 'ok' } });
 
     const { apiClient } = await import('@/api');
     await apiClient.getRoutingInfo();
 
     expect(backendGetMock).toHaveBeenCalledTimes(1);
-    expect(backendGetMock.mock.calls[0][0]).toBe('/api/v1/routing/info');
+    expect(backendGetMock.mock.calls[0][0]).toBe('/api/v1/routing/route');
   });
 });

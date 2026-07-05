@@ -5,7 +5,7 @@ This file is the canonical task map for coding agents and developers.
 ## Where To Edit
 
 - Frontend features/pages/components: `apps/web/src`
-- Next API proxy routes: `apps/web/pages/api`
+- Next API proxy routes: `apps/web/app/api`
 - Backend API routes/services/providers: `apps/api/src/api`
 - Shared contracts/types: `packages/*` (use `packages/shared` for cross-app contracts)
 - Infra/deploy/runtime scripts: `scripts`, `.github/workflows`, `docker-compose.yml`, `render.yaml`
@@ -22,11 +22,14 @@ This file is the canonical task map for coding agents and developers.
 - E2E tests: `make test-e2e`
 - Test strategy buckets: `make test-integration`, `make test-contract`, `make test-performance`
 - SDK generation: `make sdk-generate` / `make sdk-check`
+- Route manifest export: `make generate-route-manifest`
+- Contract drift checks: `make contract-checks`
 
 ## Where To Verify
 
 - Backend health: `curl http://127.0.0.1:8001/health`
 - Frontend health proxy: `curl http://127.0.0.1:3000/api/health`
+- Contract artifacts: `make sdk-check` and `make contract-checks`
 - CI config: `.github/workflows/ci.yml`
 
 ## Rules Of Thumb

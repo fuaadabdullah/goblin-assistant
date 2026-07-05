@@ -2,8 +2,8 @@
 
 This setup guide reflects the current repository layout:
 
-- frontend: Next.js app in `apps/web/src/`
-- backend: FastAPI app in `api/`
+- frontend: Next.js App Router app in `apps/web/app/` with shared modules in `apps/web/src/`
+- backend: FastAPI app in `apps/api/src/api/`
 
 ## Prerequisites
 
@@ -18,15 +18,14 @@ Optional for broader backend coverage:
 
 ## Install Dependencies
 
-From the app root:
+From the repo root:
 
 ```bash
-cd apps/goblin-assistant
-npm install
-python3 -m pip install -r requirements.txt
+pnpm install
+cd apps/api && python3.11 -m pip install -r requirements.txt -r requirements-vector.txt
 ```
 
-`requirements.txt` is the broader backend dependency set. There is also `apps/api/requirements.txt`, but the root file is the safer choice for the current backend.
+`apps/api/requirements.txt` is the backend dependency set. The vector requirements file is needed for the current backend surface.
 
 ## Environment
 
@@ -44,7 +43,7 @@ Why these matter:
 
 - `JWT_SECRET_KEY`: required at import time by `api/auth/router.py`
 - `NEXT_PUBLIC_API_BASE_URL`: used by the frontend HTTP clients for backend calls
-- `BACKEND_URL`: used by Next API proxy routes such as `apps/web/pages/api/generate.ts`
+- `BACKEND_URL`: used by Next API proxy routes such as `apps/web/app/api/generate/route.ts`
 
 ### Common frontend env vars
 
@@ -96,13 +95,13 @@ Used across `apps/api/src/api/main.py`, auth, sandbox, and provider/config modul
 Backend:
 
 ```bash
-PYTHONPATH=apps/api/src uvicorn api.main:app --reload --port 8001
+cd apps/api && PYTHONPATH=src uvicorn api.main:app --reload --port 8001
 ```
 
 Frontend:
 
 ```bash
-npm run dev
+make web-dev
 ```
 
 Open:
@@ -128,4 +127,4 @@ Currently requires additional contract alignment before it is reliable against t
 - account preference saving
 - help/support submission
 
-Those areas mostly depend on `/v1/...` endpoints or payload shapes that do not match the local FastAPI routers.
+Those areas depend on the checked-in `/api/v1/...` contract surfaces and the thin proxy routes in `apps/web/app/api/`.

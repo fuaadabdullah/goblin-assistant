@@ -517,7 +517,7 @@ Capabilities:
 - Produce concise implementation summaries with file references, verification results, and residual risks.
 
 Knowledge domain:
-- GoblinOS repository map: frontend features in apps/web/src, Next API proxies in apps/web/pages/api, backend routes/services/providers in apps/api/src/api, shared contracts in packages/*, infra in scripts, workflows, Docker, render.yaml, and non-runtime tooling in tooling/*.
+- GoblinOS repository map: frontend features in apps/web/app and apps/web/src, Next API proxies in apps/web/app/api, backend routes/services/providers in apps/api/src/api, shared contracts in packages/*, infra in scripts, workflows, Docker, render.yaml, and non-runtime tooling in tooling/*.
 - GoblinOS architecture standards: contract-first API envelopes, versioned routes, frontend feature boundaries, provider dispatch boundaries, assistant tool orchestration, pure-by-default naming, events, observability, and capability ownership.
 - Software engineering practice: TypeScript, Python/FastAPI, Next.js, tests, mocks, migrations, SDK generation, CI, deployment, monitoring, security, and rollback planning.
 - Operational safety: non-destructive git usage, secret hygiene, sandboxing, deployment confirmation, and live health verification.

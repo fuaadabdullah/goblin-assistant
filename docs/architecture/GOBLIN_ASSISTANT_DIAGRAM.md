@@ -45,9 +45,9 @@ graph TB
 ```mermaid
 graph TB
   subgraph "Next.js Frontend"
-    PAGES["Pages<br/>(apps/web/pages)"]
+    APP["App Router<br/>(apps/web/app)"]
     FEATURES["Feature Modules<br/>(apps/web/src/features/)"]
-    API_PROXY["API Proxy Routes<br/>(apps/web/pages/api/)"]
+    API_PROXY["API Proxy Routes<br/>(apps/web/app/api/)"]
     MIDDLEWARE["Middleware<br/>Route Guard"]
     AUTH_STORE["Auth Store<br/>(store/authStore.ts)"]
     SESSION["Session Persistence<br/>(utils/auth-session.ts)"]
@@ -55,10 +55,10 @@ graph TB
     API_CLIENT["API Client<br/>(api/apiClient.ts<br/>api/http-client.ts)"]
   end
 
-  PAGES --> FEATURES
+  APP --> FEATURES
   FEATURES --> API_CLIENT
   API_CLIENT --> API_PROXY
-  MIDDLEWARE -.->|"Protects routes"| PAGES
+  MIDDLEWARE -.->|"Protects routes"| APP
   AUTH_STORE --> SESSION
   PROVIDER_CTX --> API_CLIENT
 ```
@@ -216,7 +216,7 @@ flowchart TB
   USER(["User Browser"])
   NEXT["Next.js Frontend"]
   MID["Middleware<br/>(Route Guard)"]
-  NAPI["Next API Proxy Routes<br/>pages/api/"]
+  NAPI["Next API Proxy Routes<br/>app/api/"]
   FAST["FastAPI Backend"]
   AUTH["Auth Service<br/>JWT / Passkeys"]
   REDIS[("Redis<br/>Cache / Session")]

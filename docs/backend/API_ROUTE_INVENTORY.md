@@ -15,7 +15,8 @@ python3.11 tooling/generators/generate-sdk-client.sh
 python3.11 tooling/generators/generate-api-route-inventory.py --check
 ```
 
-`make sdk-check` runs the same contract check from the repo root.
+`make sdk-check` runs the generated-artifact drift check from the repo root.
+`make contract-checks` extends that by also validating frontend API path usage.
 
 The generated inventory groups public routes by mounted path, highlights the
 `/api/v1` compatibility layer, and lists legacy dual mounts such as

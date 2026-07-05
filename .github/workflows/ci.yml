@@ -100,7 +100,7 @@ jobs:
         run: pnpm install --frozen-lockfile
 
       - name: Check generated API contract artifacts
-        run: make sdk-check
+        run: make contract-checks
 
   test-backend:
     name: test-backend

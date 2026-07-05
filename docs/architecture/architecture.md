@@ -7,8 +7,9 @@ This document is the longer companion to `ARCHITECTURE_OVERVIEW.md`.
 The repository currently contains:
 
 - a Next.js App Router frontend
+- shared feature modules and SDK consumers in `apps/web/src/`
+- a thin set of Next API proxy routes in `apps/web/app/api/`
 - a FastAPI backend
-- a thin set of Next API proxy routes
 
 It does not match the older `backend/`-based architecture described in some historical docs.
 
@@ -73,7 +74,7 @@ The cleanest end-to-end path in this repo is chat:
 
 ## Partial Areas
 
-These areas exist in code but are not fully contract-aligned:
+These areas now exist in code and should be treated as contract surfaces rather than roadmap items:
 
 - auth from the frontend
 - provider registry/admin tools
@@ -82,4 +83,4 @@ These areas exist in code but are not fully contract-aligned:
 - account save endpoints
 - support form submission
 
-For those areas, the architecture problem is mostly not missing UI. It is mismatched route versioning and differing request/response shapes between `apps/web/src/api/apiClient.ts` and the FastAPI routers.
+For those areas, the architecture concern is keeping the proxy routes, backend versioned routes, and generated contract artifacts synchronized.

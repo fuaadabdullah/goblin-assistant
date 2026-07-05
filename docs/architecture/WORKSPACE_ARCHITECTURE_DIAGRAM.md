@@ -9,7 +9,7 @@ graph TB
         ROOT["pnpm-workspace.yaml<br/>Root package.json<br/>Makefile (canonical entrypoints)"]
 
         subgraph "apps/"
-            WEB["@goblin/web<br/>Next.js Frontend (Pages Router)<br/>apps/web"]
+            WEB["@goblin/web<br/>Next.js Frontend (App Router)<br/>apps/web"]
             API["@goblin/api<br/>FastAPI Backend (Python)<br/>apps/api"]
         end
 
@@ -74,10 +74,10 @@ graph TB
 ```mermaid
 graph TB
     subgraph "Frontend (apps/web)"
-        PAGES["pages/<br/>App pages (Next.js Pages Router)"]
+        APP["app/<br/>App Router pages and layouts"]
         FEATURES["src/features/<br/>Feature modules"]
         MIDDLEWARE["middleware.ts<br/>Route guard (cookie-based)"]
-        API_PROXY["pages/api/<br/>Next API proxy routes"]
+        API_PROXY["app/api/<br/>Next API proxy routes"]
         STORE["src/store/<br/>Auth store (Zustand)"]
         CONTEXTS["src/contexts/<br/>ProviderContext, etc."]
         API_CLIENT["src/api/<br/>apiClient.ts + http-client.ts"]
@@ -104,11 +104,11 @@ graph TB
     USER["End User<br/>(Browser)"]
 
     USER -->|"HTTPS"| PAGES
-    PAGES --> FEATURES
+    APP --> FEATURES
     FEATURES --> API_CLIENT
     API_CLIENT --> API_PROXY
     API_CLIENT -->|"direct (some)"| MAIN
-    MIDDLEWARE -.->|"protects"| PAGES
+    MIDDLEWARE -.->|"protects"| APP
     STORE --> UTILS
     CONTEXTS --> API_CLIENT
 
@@ -425,7 +425,7 @@ graph TB
 goblin-assistant/
 ├── apps/                                 # Application code
 │   ├── web/                              # Next.js frontend (TypeScript)
-│   │   ├── pages/                        # Pages Router pages
+│   │   ├── app/                          # App Router pages and layouts
 │   │   │   └── api/                      # Next API proxy routes
 │   │   ├── src/                          # Source code
 │   │   │   ├── api/                      # API client code
