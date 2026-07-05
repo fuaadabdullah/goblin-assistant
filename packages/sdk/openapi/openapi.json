@@ -1,6 +1,554 @@
 {
   "components": {
     "schemas": {
+      "AgentTaskEvent": {
+        "properties": {
+          "event_id": {
+            "title": "Event Id",
+            "type": "string"
+          },
+          "message": {
+            "title": "Message",
+            "type": "string"
+          },
+          "metadata": {
+            "additionalProperties": true,
+            "title": "Metadata",
+            "type": "object"
+          },
+          "timestamp": {
+            "title": "Timestamp",
+            "type": "string"
+          },
+          "type": {
+            "title": "Type",
+            "type": "string"
+          }
+        },
+        "required": [
+          "event_id",
+          "type",
+          "message",
+          "timestamp"
+        ],
+        "title": "AgentTaskEvent",
+        "type": "object"
+      },
+      "AgentTaskEventInput": {
+        "properties": {
+          "message": {
+            "maxLength": 10000,
+            "minLength": 1,
+            "title": "Message",
+            "type": "string"
+          },
+          "metadata": {
+            "additionalProperties": true,
+            "title": "Metadata",
+            "type": "object"
+          },
+          "phase": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Phase"
+          },
+          "result": {
+            "additionalProperties": true,
+            "title": "Result",
+            "type": "object"
+          },
+          "status": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Status"
+          },
+          "type": {
+            "maxLength": 128,
+            "minLength": 1,
+            "title": "Type",
+            "type": "string"
+          }
+        },
+        "required": [
+          "type",
+          "message"
+        ],
+        "title": "AgentTaskEventInput",
+        "type": "object"
+      },
+      "AgentTaskEventsResponse": {
+        "properties": {
+          "events": {
+            "items": {
+              "$ref": "#/components/schemas/AgentTaskEvent"
+            },
+            "title": "Events",
+            "type": "array"
+          },
+          "phase": {
+            "title": "Phase",
+            "type": "string"
+          },
+          "status": {
+            "title": "Status",
+            "type": "string"
+          },
+          "task_id": {
+            "title": "Task Id",
+            "type": "string"
+          },
+          "total": {
+            "default": 0,
+            "title": "Total",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "task_id",
+          "status",
+          "phase"
+        ],
+        "title": "AgentTaskEventsResponse",
+        "type": "object"
+      },
+      "AgentTaskRecord": {
+        "properties": {
+          "aider_mode": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Aider Mode"
+          },
+          "architect_model": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Architect Model"
+          },
+          "auto_commit_each_change": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Auto Commit Each Change"
+          },
+          "base_branch": {
+            "title": "Base Branch",
+            "type": "string"
+          },
+          "branch_name": {
+            "title": "Branch Name",
+            "type": "string"
+          },
+          "callback_url": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Callback Url"
+          },
+          "checkout_ref": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Checkout Ref"
+          },
+          "created_at": {
+            "title": "Created At",
+            "type": "string"
+          },
+          "editor_model": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Editor Model"
+          },
+          "events": {
+            "items": {
+              "$ref": "#/components/schemas/AgentTaskEvent"
+            },
+            "title": "Events",
+            "type": "array"
+          },
+          "issue_body": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Issue Body"
+          },
+          "issue_number": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Issue Number"
+          },
+          "issue_title": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Issue Title"
+          },
+          "issue_url": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Issue Url"
+          },
+          "metadata": {
+            "additionalProperties": true,
+            "title": "Metadata",
+            "type": "object"
+          },
+          "payload": {
+            "additionalProperties": true,
+            "title": "Payload",
+            "type": "object"
+          },
+          "phase": {
+            "title": "Phase",
+            "type": "string"
+          },
+          "phase0_ci_commands": {
+            "items": {
+              "additionalProperties": true,
+              "type": "object"
+            },
+            "title": "Phase0 Ci Commands",
+            "type": "array"
+          },
+          "pr_url": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Pr Url"
+          },
+          "repair_attempts": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Repair Attempts"
+          },
+          "repo_url": {
+            "title": "Repo Url",
+            "type": "string"
+          },
+          "result": {
+            "additionalProperties": true,
+            "title": "Result",
+            "type": "object"
+          },
+          "source": {
+            "title": "Source",
+            "type": "string"
+          },
+          "sprite_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Sprite Name"
+          },
+          "status": {
+            "title": "Status",
+            "type": "string"
+          },
+          "task": {
+            "title": "Task",
+            "type": "string"
+          },
+          "task_id": {
+            "title": "Task Id",
+            "type": "string"
+          },
+          "tests_command": {
+            "title": "Tests Command",
+            "type": "string"
+          },
+          "updated_at": {
+            "title": "Updated At",
+            "type": "string"
+          },
+          "worker_error": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Worker Error"
+          },
+          "worker_profile": {
+            "additionalProperties": true,
+            "title": "Worker Profile",
+            "type": "object"
+          },
+          "worker_status": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Worker Status"
+          },
+          "workspace": {
+            "additionalProperties": true,
+            "title": "Workspace",
+            "type": "object"
+          },
+          "workspace_family": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Workspace Family"
+          },
+          "workspace_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Workspace Id"
+          },
+          "workspace_provider": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Workspace Provider"
+          }
+        },
+        "required": [
+          "task_id",
+          "status",
+          "phase",
+          "source",
+          "task",
+          "repo_url",
+          "base_branch",
+          "branch_name",
+          "tests_command",
+          "created_at",
+          "updated_at"
+        ],
+        "title": "AgentTaskRecord",
+        "type": "object"
+      },
+      "AgentTaskSubmitRequest": {
+        "properties": {
+          "base_branch": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Base Branch"
+          },
+          "branch_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Branch Name"
+          },
+          "issue_body": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Issue Body"
+          },
+          "issue_number": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Issue Number"
+          },
+          "issue_title": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Issue Title"
+          },
+          "issue_url": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Issue Url"
+          },
+          "metadata": {
+            "additionalProperties": true,
+            "title": "Metadata",
+            "type": "object"
+          },
+          "repo_url": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Repo Url"
+          },
+          "source": {
+            "default": "ui",
+            "title": "Source",
+            "type": "string"
+          },
+          "task": {
+            "maxLength": 10000,
+            "minLength": 1,
+            "title": "Task",
+            "type": "string"
+          },
+          "tests_command": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Tests Command"
+          }
+        },
+        "required": [
+          "task"
+        ],
+        "title": "AgentTaskSubmitRequest",
+        "type": "object"
+      },
+      "AgentTaskSubmitResponse": {
+        "properties": {
+          "task": {
+            "$ref": "#/components/schemas/AgentTaskRecord"
+          }
+        },
+        "required": [
+          "task"
+        ],
+        "title": "AgentTaskSubmitResponse",
+        "type": "object"
+      },
       "ApiKeyRequest": {
         "properties": {
           "key": {
@@ -1052,6 +1600,45 @@
           }
         },
         "title": "GenerateResponse",
+        "type": "object"
+      },
+      "GitHubWebhookResponse": {
+        "properties": {
+          "accepted": {
+            "title": "Accepted",
+            "type": "boolean"
+          },
+          "ignored": {
+            "default": false,
+            "title": "Ignored",
+            "type": "boolean"
+          },
+          "reason": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Reason"
+          },
+          "task": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/AgentTaskRecord"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "required": [
+          "accepted"
+        ],
+        "title": "GitHubWebhookResponse",
         "type": "object"
       },
       "GoogleAuthCallback": {
@@ -2956,6 +3543,57 @@
         "title": "SubmitJobResponse",
         "type": "object"
       },
+      "SuccessEnvelope_AgentTaskEventsResponse_": {
+        "properties": {
+          "data": {
+            "$ref": "#/components/schemas/AgentTaskEventsResponse"
+          },
+          "success": {
+            "default": true,
+            "title": "Success",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "data"
+        ],
+        "title": "SuccessEnvelope[AgentTaskEventsResponse]",
+        "type": "object"
+      },
+      "SuccessEnvelope_AgentTaskRecord_": {
+        "properties": {
+          "data": {
+            "$ref": "#/components/schemas/AgentTaskRecord"
+          },
+          "success": {
+            "default": true,
+            "title": "Success",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "data"
+        ],
+        "title": "SuccessEnvelope[AgentTaskRecord]",
+        "type": "object"
+      },
+      "SuccessEnvelope_AgentTaskSubmitResponse_": {
+        "properties": {
+          "data": {
+            "$ref": "#/components/schemas/AgentTaskSubmitResponse"
+          },
+          "success": {
+            "default": true,
+            "title": "Success",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "data"
+        ],
+        "title": "SuccessEnvelope[AgentTaskSubmitResponse]",
+        "type": "object"
+      },
       "SuccessEnvelope_ArtifactListResponse_": {
         "properties": {
           "data": {
@@ -3126,6 +3764,23 @@
           "data"
         ],
         "title": "SuccessEnvelope[FileUploadResponse]",
+        "type": "object"
+      },
+      "SuccessEnvelope_GitHubWebhookResponse_": {
+        "properties": {
+          "data": {
+            "$ref": "#/components/schemas/GitHubWebhookResponse"
+          },
+          "success": {
+            "default": true,
+            "title": "Success",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "data"
+        ],
+        "title": "SuccessEnvelope[GitHubWebhookResponse]",
         "type": "object"
       },
       "SuccessEnvelope_IndexResponse_": {
@@ -3887,8 +4542,15 @@
         "description": "User registration request model with required CSRF token.",
         "properties": {
           "csrf_token": {
-            "title": "Csrf Token",
-            "type": "string"
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Csrf Token"
           },
           "email": {
             "format": "email",
@@ -3913,8 +4575,7 @@
         },
         "required": [
           "email",
-          "password",
-          "csrf_token"
+          "password"
         ],
         "title": "UserCreate",
         "type": "object"
@@ -3923,8 +4584,15 @@
         "description": "User login request model with required CSRF token.",
         "properties": {
           "csrf_token": {
-            "title": "Csrf Token",
-            "type": "string"
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Csrf Token"
           },
           "email": {
             "format": "email",
@@ -3938,8 +4606,7 @@
         },
         "required": [
           "email",
-          "password",
-          "csrf_token"
+          "password"
         ],
         "title": "UserLogin",
         "type": "object"
@@ -4097,6 +4764,28 @@
   },
   "openapi": "3.1.0",
   "paths": {
+    "/": {
+      "get": {
+        "operationId": "root__get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": {
+                    "type": "string"
+                  },
+                  "title": "Response Root  Get",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Root"
+      }
+    },
     "/account/preferences": {
       "put": {
         "description": "Save user preferences",
@@ -4188,6 +4877,252 @@
         "summary": "Save Profile",
         "tags": [
           "account"
+        ]
+      }
+    },
+    "/agent/task": {
+      "post": {
+        "description": "Create a new agent task and queue it for the Sprite/Aider worker.",
+        "operationId": "submit_agent_task_api_v1_agent_task_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AgentTaskSubmitRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SuccessEnvelope_AgentTaskSubmitResponse_"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Submit Agent Task",
+        "tags": [
+          "agent"
+        ]
+      }
+    },
+    "/agent/task/github-webhook": {
+      "post": {
+        "description": "Normalize a GitHub issue webhook into the same agent task contract.",
+        "operationId": "submit_github_issue_webhook_api_v1_agent_task_github_webhook_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "additionalProperties": true,
+                "title": "Body",
+                "type": "object"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SuccessEnvelope_GitHubWebhookResponse_"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Submit Github Issue Webhook",
+        "tags": [
+          "agent"
+        ]
+      }
+    },
+    "/agent/task/{task_id}": {
+      "get": {
+        "operationId": "get_agent_task_api_v1_agent_task__task_id__get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "task_id",
+            "required": true,
+            "schema": {
+              "title": "Task Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SuccessEnvelope_AgentTaskRecord_"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Get Agent Task",
+        "tags": [
+          "agent"
+        ]
+      }
+    },
+    "/agent/task/{task_id}/events": {
+      "get": {
+        "operationId": "get_agent_task_events_api_v1_agent_task__task_id__events_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "task_id",
+            "required": true,
+            "schema": {
+              "title": "Task Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SuccessEnvelope_AgentTaskEventsResponse_"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Get Agent Task Events",
+        "tags": [
+          "agent"
+        ]
+      },
+      "post": {
+        "description": "Worker callback for progress events and final task state.",
+        "operationId": "append_agent_task_event_api_v1_agent_task__task_id__events_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "task_id",
+            "required": true,
+            "schema": {
+              "title": "Task Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "header",
+            "name": "x-agent-worker-token",
+            "required": false,
+            "schema": {
+              "default": "",
+              "title": "X-Agent-Worker-Token",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AgentTaskEventInput"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SuccessEnvelope_AgentTaskRecord_"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Append Agent Task Event",
+        "tags": [
+          "agent"
         ]
       }
     },
@@ -5109,6 +6044,28 @@
         ]
       }
     },
+    "/auth/csrf/token": {
+      "get": {
+        "description": "Legacy alias for older clients and contract tests.",
+        "operationId": "get_csrf_token_legacy_api_v1_auth_csrf_token_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CsrfTokenResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Get Csrf Token Legacy",
+        "tags": [
+          "auth"
+        ]
+      }
+    },
     "/auth/google": {
       "post": {
         "operationId": "google_auth_api_v1_auth_google_post",
@@ -5490,6 +6447,70 @@
       }
     },
     "/auth/validate": {
+      "get": {
+        "description": "Legacy GET alias used by contract tests and older clients.",
+        "operationId": "validate_token_legacy_api_v1_auth_validate_get",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "token",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Token"
+            }
+          },
+          {
+            "in": "header",
+            "name": "authorization",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SuccessEnvelope_TokenValidationResponse_"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Validate Token Legacy",
+        "tags": [
+          "auth"
+        ]
+      },
       "post": {
         "description": "Validate JWT token.",
         "operationId": "validate_token_api_v1_auth_validate_post",
@@ -6905,6 +7926,92 @@
         ]
       }
     },
+    "/debug/model-usage": {
+      "get": {
+        "description": "Get model/provider usage rollups for dashboarding.",
+        "operationId": "get_model_usage_api_v1_debug_model_usage_get",
+        "parameters": [
+          {
+            "description": "Filter by provider",
+            "in": "query",
+            "name": "provider",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Filter by provider",
+              "title": "Provider"
+            }
+          },
+          {
+            "description": "Filter by model",
+            "in": "query",
+            "name": "model",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Filter by model",
+              "title": "Model"
+            }
+          },
+          {
+            "description": "Results per page",
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "default": 50,
+              "description": "Results per page",
+              "maximum": 500,
+              "minimum": 1,
+              "title": "Limit",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Get Model Usage Api V1 Debug Model Usage Get",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Get Model Usage",
+        "tags": [
+          "debug"
+        ]
+      }
+    },
     "/debug/retrieval-metrics/cache-hit-rate": {
       "get": {
         "description": "Q3: What is the application-level Redis cache hit rate?\n\nReads in-process counters (not Redis server-global keyspace_hits).\nReset on process restart.",
@@ -8066,16 +9173,9 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "anyOf": [
-                    {
-                      "additionalProperties": true,
-                      "type": "object"
-                    },
-                    {
-                      "$ref": "#/components/schemas/SuccessEnvelope_Dict_str__Any__"
-                    }
-                  ],
-                  "title": "Response Health Check Api V1 Health Get"
+                  "additionalProperties": true,
+                  "title": "Response Health Check Api V1 Health Get",
+                  "type": "object"
                 }
               }
             },
@@ -8408,16 +9508,9 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "anyOf": [
-                    {
-                      "additionalProperties": true,
-                      "type": "object"
-                    },
-                    {
-                      "$ref": "#/components/schemas/SuccessEnvelope_Dict_str__Any__"
-                    }
-                  ],
-                  "title": "Response Health Stream Api V1 Health Stream Get"
+                  "additionalProperties": true,
+                  "title": "Response Health Stream Api V1 Health Stream Get",
+                  "type": "object"
                 }
               }
             },
@@ -8451,6 +9544,70 @@
         "summary": "Health Streaming",
         "tags": [
           "health"
+        ]
+      }
+    },
+    "/health/{component}": {
+      "get": {
+        "description": "Return a specific subsystem probe for compatibility with older clients.",
+        "operationId": "health_component_api_v1_health__component__get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "component",
+            "required": true,
+            "schema": {
+              "title": "Component",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Health Component Api V1 Health  Component  Get",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Health Component",
+        "tags": [
+          "health"
+        ]
+      }
+    },
+    "/metrics": {
+      "get": {
+        "operationId": "metrics_metrics_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Metrics",
+        "tags": [
+          "observability"
         ]
       }
     },
@@ -9654,8 +10811,9 @@
           {
             "in": "header",
             "name": "x-api-key",
-            "required": true,
+            "required": false,
             "schema": {
+              "default": "",
               "title": "X-Api-Key",
               "type": "string"
             }
@@ -9767,8 +10925,9 @@
           {
             "in": "header",
             "name": "x-api-key",
-            "required": true,
+            "required": false,
             "schema": {
+              "default": "",
               "title": "X-Api-Key",
               "type": "string"
             }
@@ -9797,6 +10956,28 @@
           }
         },
         "summary": "Cancel Job",
+        "tags": [
+          "sandbox"
+        ]
+      }
+    },
+    "/sandbox/health": {
+      "get": {
+        "description": "Legacy alias for `/health/status` used by contract tests and clients.",
+        "operationId": "sandbox_health_legacy_api_v1_sandbox_health_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SuccessEnvelope_SandboxHealthResponse_"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Sandbox Health Legacy",
         "tags": [
           "sandbox"
         ]
@@ -9894,6 +11075,59 @@
         ]
       }
     },
+    "/sandbox/jobs/{job_id}": {
+      "get": {
+        "description": "Legacy alias for `/status/{job_id}` used by public contract tests.",
+        "operationId": "get_job_status_alias_api_v1_sandbox_jobs__job_id__get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "job_id",
+            "required": true,
+            "schema": {
+              "title": "Job Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "header",
+            "name": "x-api-key",
+            "required": false,
+            "schema": {
+              "default": "",
+              "title": "X-Api-Key",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SuccessEnvelope_JobStatus_"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Get Job Status Alias",
+        "tags": [
+          "sandbox"
+        ]
+      }
+    },
     "/sandbox/jobs/{job_id}/logs": {
       "get": {
         "description": "Alias for /logs/{job_id} - Get job execution logs",
@@ -9964,8 +11198,9 @@
           {
             "in": "header",
             "name": "x-api-key",
-            "required": true,
+            "required": false,
             "schema": {
+              "default": "",
               "title": "X-Api-Key",
               "type": "string"
             }
@@ -10029,8 +11264,9 @@
           {
             "in": "header",
             "name": "x-api-key",
-            "required": true,
+            "required": false,
             "schema": {
+              "default": "",
               "title": "X-Api-Key",
               "type": "string"
             }
@@ -10091,8 +11327,9 @@
           {
             "in": "header",
             "name": "x-api-key",
-            "required": true,
+            "required": false,
             "schema": {
+              "default": "",
               "title": "X-Api-Key",
               "type": "string"
             }
@@ -10142,8 +11379,9 @@
           {
             "in": "header",
             "name": "x-api-key",
-            "required": true,
+            "required": false,
             "schema": {
+              "default": "",
               "title": "X-Api-Key",
               "type": "string"
             }
@@ -10488,9 +11726,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "additionalProperties": {
-                    "type": "string"
-                  },
+                  "additionalProperties": true,
                   "title": "Response List Secrets Api V1 Secrets  Get",
                   "type": "object"
                 }
@@ -11370,6 +12606,28 @@
         "tags": [
           "support"
         ]
+      }
+    },
+    "/test": {
+      "get": {
+        "operationId": "test_test_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": {
+                    "type": "string"
+                  },
+                  "title": "Response Test Test Get",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Test"
       }
     },
     "/write-time/cache/cleanup": {

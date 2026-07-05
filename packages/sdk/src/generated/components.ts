@@ -5,6 +5,177 @@
 
 export interface components {
     schemas: {
+        /** AgentTaskEvent */
+        AgentTaskEvent: {
+            /** Event Id */
+            event_id: string;
+            /** Message */
+            message: string;
+            /** Metadata */
+            metadata?: {
+                [key: string]: unknown;
+            };
+            /** Timestamp */
+            timestamp: string;
+            /** Type */
+            type: string;
+        };
+        /** AgentTaskEventInput */
+        AgentTaskEventInput: {
+            /** Message */
+            message: string;
+            /** Metadata */
+            metadata?: {
+                [key: string]: unknown;
+            };
+            /** Phase */
+            phase?: string | null;
+            /** Result */
+            result?: {
+                [key: string]: unknown;
+            };
+            /** Status */
+            status?: string | null;
+            /** Type */
+            type: string;
+        };
+        /** AgentTaskEventsResponse */
+        AgentTaskEventsResponse: {
+            /** Events */
+            events?: components["schemas"]["AgentTaskEvent"][];
+            /** Phase */
+            phase: string;
+            /** Status */
+            status: string;
+            /** Task Id */
+            task_id: string;
+            /**
+             * Total
+             * @default 0
+             */
+            total: number;
+        };
+        /** AgentTaskRecord */
+        AgentTaskRecord: {
+            /** Aider Mode */
+            aider_mode?: string | null;
+            /** Architect Model */
+            architect_model?: string | null;
+            /** Auto Commit Each Change */
+            auto_commit_each_change?: boolean | null;
+            /** Base Branch */
+            base_branch: string;
+            /** Branch Name */
+            branch_name: string;
+            /** Callback Url */
+            callback_url?: string | null;
+            /** Checkout Ref */
+            checkout_ref?: string | null;
+            /** Created At */
+            created_at: string;
+            /** Editor Model */
+            editor_model?: string | null;
+            /** Events */
+            events?: components["schemas"]["AgentTaskEvent"][];
+            /** Issue Body */
+            issue_body?: string | null;
+            /** Issue Number */
+            issue_number?: number | null;
+            /** Issue Title */
+            issue_title?: string | null;
+            /** Issue Url */
+            issue_url?: string | null;
+            /** Metadata */
+            metadata?: {
+                [key: string]: unknown;
+            };
+            /** Payload */
+            payload?: {
+                [key: string]: unknown;
+            };
+            /** Phase */
+            phase: string;
+            /** Phase0 Ci Commands */
+            phase0_ci_commands?: {
+                [key: string]: unknown;
+            }[];
+            /** Pr Url */
+            pr_url?: string | null;
+            /** Repair Attempts */
+            repair_attempts?: number | null;
+            /** Repo Url */
+            repo_url: string;
+            /** Result */
+            result?: {
+                [key: string]: unknown;
+            };
+            /** Source */
+            source: string;
+            /** Sprite Name */
+            sprite_name?: string | null;
+            /** Status */
+            status: string;
+            /** Task */
+            task: string;
+            /** Task Id */
+            task_id: string;
+            /** Tests Command */
+            tests_command: string;
+            /** Updated At */
+            updated_at: string;
+            /** Worker Error */
+            worker_error?: string | null;
+            /** Worker Profile */
+            worker_profile?: {
+                [key: string]: unknown;
+            };
+            /** Worker Status */
+            worker_status?: string | null;
+            /** Workspace */
+            workspace?: {
+                [key: string]: unknown;
+            };
+            /** Workspace Family */
+            workspace_family?: string | null;
+            /** Workspace Id */
+            workspace_id?: string | null;
+            /** Workspace Provider */
+            workspace_provider?: string | null;
+        };
+        /** AgentTaskSubmitRequest */
+        AgentTaskSubmitRequest: {
+            /** Base Branch */
+            base_branch?: string | null;
+            /** Branch Name */
+            branch_name?: string | null;
+            /** Issue Body */
+            issue_body?: string | null;
+            /** Issue Number */
+            issue_number?: number | null;
+            /** Issue Title */
+            issue_title?: string | null;
+            /** Issue Url */
+            issue_url?: string | null;
+            /** Metadata */
+            metadata?: {
+                [key: string]: unknown;
+            };
+            /** Repo Url */
+            repo_url?: string | null;
+            /**
+             * Source
+             * @default ui
+             */
+            source: string;
+            /** Task */
+            task: string;
+            /** Tests Command */
+            tests_command?: string | null;
+        };
+        /** AgentTaskSubmitResponse */
+        AgentTaskSubmitResponse: {
+            task: components["schemas"]["AgentTaskRecord"];
+        };
         /** ApiKeyRequest */
         ApiKeyRequest: {
             /** Key */
@@ -425,6 +596,19 @@ export interface components {
             content?: string | null;
             /** Error */
             error?: string | null;
+        };
+        /** GitHubWebhookResponse */
+        GitHubWebhookResponse: {
+            /** Accepted */
+            accepted: boolean;
+            /**
+             * Ignored
+             * @default false
+             */
+            ignored: boolean;
+            /** Reason */
+            reason?: string | null;
+            task?: components["schemas"]["AgentTaskRecord"] | null;
         };
         /** GoogleAuthCallback */
         GoogleAuthCallback: {
@@ -1091,6 +1275,33 @@ export interface components {
             /** Job Id */
             job_id: string;
         };
+        /** SuccessEnvelope[AgentTaskEventsResponse] */
+        SuccessEnvelope_AgentTaskEventsResponse_: {
+            data: components["schemas"]["AgentTaskEventsResponse"];
+            /**
+             * Success
+             * @default true
+             */
+            success: boolean;
+        };
+        /** SuccessEnvelope[AgentTaskRecord] */
+        SuccessEnvelope_AgentTaskRecord_: {
+            data: components["schemas"]["AgentTaskRecord"];
+            /**
+             * Success
+             * @default true
+             */
+            success: boolean;
+        };
+        /** SuccessEnvelope[AgentTaskSubmitResponse] */
+        SuccessEnvelope_AgentTaskSubmitResponse_: {
+            data: components["schemas"]["AgentTaskSubmitResponse"];
+            /**
+             * Success
+             * @default true
+             */
+            success: boolean;
+        };
         /** SuccessEnvelope[ArtifactListResponse] */
         SuccessEnvelope_ArtifactListResponse_: {
             data: components["schemas"]["ArtifactListResponse"];
@@ -1178,6 +1389,15 @@ export interface components {
         /** SuccessEnvelope[FileUploadResponse] */
         SuccessEnvelope_FileUploadResponse_: {
             data: components["schemas"]["FileUploadResponse"];
+            /**
+             * Success
+             * @default true
+             */
+            success: boolean;
+        };
+        /** SuccessEnvelope[GitHubWebhookResponse] */
+        SuccessEnvelope_GitHubWebhookResponse_: {
+            data: components["schemas"]["GitHubWebhookResponse"];
             /**
              * Success
              * @default true
@@ -1515,7 +1735,7 @@ export interface components {
          */
         UserCreate: {
             /** Csrf Token */
-            csrf_token: string;
+            csrf_token?: string | null;
             /**
              * Email
              * Format: email
@@ -1532,7 +1752,7 @@ export interface components {
          */
         UserLogin: {
             /** Csrf Token */
-            csrf_token: string;
+            csrf_token?: string | null;
             /**
              * Email
              * Format: email

@@ -6,9 +6,9 @@ This document is the longer companion to `ARCHITECTURE_OVERVIEW.md`.
 
 The repository currently contains:
 
-- a Next.js Pages Router frontend
+- a Next.js App Router frontend
 - a FastAPI backend
-- a few Next API proxy routes
+- a thin set of Next API proxy routes
 
 It does not match the older `backend/`-based architecture described in some historical docs.
 
@@ -18,7 +18,7 @@ The frontend lives in `apps/web/src/`.
 
 Important parts:
 
-- route files in `apps/web/pages/`
+- route files in `apps/web/app/`
 - feature modules in `apps/web/src/features/`
 - auth/bootstrap state in `apps/web/src/store/authStore.ts`
 - cookie/local-storage session persistence in `apps/web/src/utils/auth-session.ts`
@@ -40,7 +40,7 @@ Current pages include:
 
 ## Backend
 
-The backend lives in `api/`.
+The backend lives in `apps/api/src/api/`.
 
 The FastAPI app in `apps/api/src/api/main.py` wires together:
 
@@ -52,12 +52,14 @@ The FastAPI app in `apps/api/src/api/main.py` wires together:
 
 The frontend also ships a few Next API routes:
 
-- `apps/web/pages/api/generate.ts`
-- `apps/web/pages/api/models.ts`
-- `apps/web/pages/api/auth/validate.ts`
-- `apps/web/pages/api/health.ts`
+- `apps/web/app/api/generate/route.ts`
+- `apps/web/app/api/models/route.ts`
+- `apps/web/app/api/auth/validate/route.ts`
+- `apps/web/app/api/health/route.ts`
 
-Only `/api/generate` is clearly aligned with a route that exists in the checked-in FastAPI app. The other proxy routes expect `/v1/...` backend endpoints that are not mounted by `apps/api/src/api/main.py`.
+These are same-origin browser-safe proxies. Most frontend code skips them and
+calls the FastAPI app directly under `/api/v1/...` through the configured
+backend origin.
 
 ## Best-Supported Flow
 
@@ -65,8 +67,8 @@ The cleanest end-to-end path in this repo is chat:
 
 1. user opens `/chat`
 2. frontend bootstraps auth/session state
-3. thread APIs call backend `/chat/conversations*`
-4. prompt generation can also go through `/api/generate` -> backend `/api/chat`
+3. thread APIs call backend `/api/v1/chat/conversations*`
+4. prompt generation can also go through `/api/generate` -> backend `/api/v1/api/chat`
 5. provider/model metadata is attached to assistant messages when available
 
 ## Partial Areas

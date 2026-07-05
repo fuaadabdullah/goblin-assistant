@@ -5,6 +5,28 @@
 import type { components } from "./components";
 
 export interface operations {
+    root__get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: string;
+                    };
+                };
+            };
+        };
+    };
     save_preferences_api_v1_account_preferences_put: {
         parameters: {
             query?: never;
@@ -58,6 +80,173 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["SuccessEnvelope_ProfileResponse_"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    submit_agent_task_api_v1_agent_task_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["AgentTaskSubmitRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SuccessEnvelope_AgentTaskSubmitResponse_"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    submit_github_issue_webhook_api_v1_agent_task_github_webhook_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    [key: string]: unknown;
+                };
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SuccessEnvelope_GitHubWebhookResponse_"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_agent_task_api_v1_agent_task__task_id__get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                task_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SuccessEnvelope_AgentTaskRecord_"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_agent_task_events_api_v1_agent_task__task_id__events_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                task_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SuccessEnvelope_AgentTaskEventsResponse_"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    append_agent_task_event_api_v1_agent_task__task_id__events_post: {
+        parameters: {
+            query?: never;
+            header?: {
+                "x-agent-worker-token"?: string;
+            };
+            path: {
+                task_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["AgentTaskEventInput"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SuccessEnvelope_AgentTaskRecord_"];
                 };
             };
             /** @description Validation Error */
@@ -748,6 +937,26 @@ export interface operations {
             };
         };
     };
+    get_csrf_token_legacy_api_v1_auth_csrf_token_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CsrfTokenResponse"];
+                };
+            };
+        };
+    };
     google_auth_api_v1_auth_google_post: {
         parameters: {
             query?: never;
@@ -1046,6 +1255,39 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["SuccessEnvelope_TokenWithRefresh_"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    validate_token_legacy_api_v1_auth_validate_get: {
+        parameters: {
+            query?: {
+                token?: string | null;
+            };
+            header?: {
+                authorization?: string | null;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SuccessEnvelope_TokenValidationResponse_"];
                 };
             };
             /** @description Validation Error */
@@ -1892,6 +2134,44 @@ export interface operations {
             };
         };
     };
+    get_model_usage_api_v1_debug_model_usage_get: {
+        parameters: {
+            query?: {
+                /** @description Filter by provider */
+                provider?: string | null;
+                /** @description Filter by model */
+                model?: string | null;
+                /** @description Results per page */
+                limit?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: unknown;
+                    };
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     get_cache_hit_rate_api_v1_debug_retrieval_metrics_cache_hit_rate_get: {
         parameters: {
             query?: never;
@@ -2586,7 +2866,7 @@ export interface operations {
                 content: {
                     "application/json": {
                         [key: string]: unknown;
-                    } | components["schemas"]["SuccessEnvelope_Dict_str__Any__"];
+                    };
                 };
             };
         };
@@ -2889,7 +3169,7 @@ export interface operations {
                 content: {
                     "application/json": {
                         [key: string]: unknown;
-                    } | components["schemas"]["SuccessEnvelope_Dict_str__Any__"];
+                    };
                 };
             };
         };
@@ -2912,6 +3192,59 @@ export interface operations {
                     "application/json": {
                         [key: string]: unknown;
                     };
+                };
+            };
+        };
+    };
+    health_component_api_v1_health__component__get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                component: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: unknown;
+                    };
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    metrics_metrics_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
                 };
             };
         };
@@ -3896,8 +4229,8 @@ export interface operations {
     list_job_artifacts_api_v1_sandbox_artifacts__job_id__get: {
         parameters: {
             query?: never;
-            header: {
-                "x-api-key": string;
+            header?: {
+                "x-api-key"?: string;
             };
             path: {
                 job_id: string;
@@ -3963,8 +4296,8 @@ export interface operations {
     cancel_job_api_v1_sandbox_cancel__job_id__post: {
         parameters: {
             query?: never;
-            header: {
-                "x-api-key": string;
+            header?: {
+                "x-api-key"?: string;
             };
             path: {
                 job_id: string;
@@ -3989,6 +4322,26 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    sandbox_health_legacy_api_v1_sandbox_health_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SuccessEnvelope_SandboxHealthResponse_"];
                 };
             };
         };
@@ -4047,6 +4400,39 @@ export interface operations {
             };
         };
     };
+    get_job_status_alias_api_v1_sandbox_jobs__job_id__get: {
+        parameters: {
+            query?: never;
+            header?: {
+                "x-api-key"?: string;
+            };
+            path: {
+                job_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SuccessEnvelope_JobStatus_"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     get_job_logs_alias_api_v1_sandbox_jobs__job_id__logs_get: {
         parameters: {
             query?: never;
@@ -4083,8 +4469,8 @@ export interface operations {
     get_job_logs_api_v1_sandbox_logs__job_id__get: {
         parameters: {
             query?: never;
-            header: {
-                "x-api-key": string;
+            header?: {
+                "x-api-key"?: string;
             };
             path: {
                 job_id: string;
@@ -4136,8 +4522,8 @@ export interface operations {
     run_sandbox_code_api_v1_sandbox_run_post: {
         parameters: {
             query?: never;
-            header: {
-                "x-api-key": string;
+            header?: {
+                "x-api-key"?: string;
             };
             path?: never;
             cookie?: never;
@@ -4171,8 +4557,8 @@ export interface operations {
     get_job_status_api_v1_sandbox_status__job_id__get: {
         parameters: {
             query?: never;
-            header: {
-                "x-api-key": string;
+            header?: {
+                "x-api-key"?: string;
             };
             path: {
                 job_id: string;
@@ -4206,8 +4592,8 @@ export interface operations {
             query?: {
                 request?: unknown;
             };
-            header: {
-                "x-api-key": string;
+            header?: {
+                "x-api-key"?: string;
             };
             path?: never;
             cookie?: never;
@@ -4416,7 +4802,7 @@ export interface operations {
                 };
                 content: {
                     "application/json": {
-                        [key: string]: string;
+                        [key: string]: unknown;
                     };
                 };
             };
@@ -4980,6 +5366,28 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    test_test_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: string;
+                    };
                 };
             };
         };

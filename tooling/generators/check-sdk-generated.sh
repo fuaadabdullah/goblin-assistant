@@ -8,14 +8,16 @@ bash tooling/generators/generate-sdk-client.sh
 
 GENERATED_FILES=(
   packages/sdk/openapi/openapi.json
+  packages/sdk/openapi/routes.json
   packages/sdk/src/generated/openapi.ts
   packages/sdk/src/generated/components.ts
   packages/sdk/src/generated/operations.ts
   packages/sdk/src/generated/paths.ts
+  docs/backend/API_ROUTE_INVENTORY.generated.md
 )
 
 if ! git diff --quiet -- "${GENERATED_FILES[@]}"; then
-  echo "SDK generated artifacts are stale. Run: make sdk-generate"
+  echo "SDK and route generated artifacts are stale. Run: make sdk-generate"
   git --no-pager diff -- "${GENERATED_FILES[@]}"
   exit 1
 fi

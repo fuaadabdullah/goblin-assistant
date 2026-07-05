@@ -5,6 +5,23 @@
 import type { operations } from "./operations";
 
 export interface paths {
+    "/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Root */
+        get: operations["root__get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/account/preferences": {
         parameters: {
             query?: never;
@@ -39,6 +56,84 @@ export interface paths {
          */
         put: operations["save_profile_api_v1_account_profile_put"];
         post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/agent/task": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Submit Agent Task
+         * @description Create a new agent task and queue it for the Sprite/Aider worker.
+         */
+        post: operations["submit_agent_task_api_v1_agent_task_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/agent/task/github-webhook": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Submit Github Issue Webhook
+         * @description Normalize a GitHub issue webhook into the same agent task contract.
+         */
+        post: operations["submit_github_issue_webhook_api_v1_agent_task_github_webhook_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/agent/task/{task_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get Agent Task */
+        get: operations["get_agent_task_api_v1_agent_task__task_id__get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/agent/task/{task_id}/events": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get Agent Task Events */
+        get: operations["get_agent_task_events_api_v1_agent_task__task_id__events_get"];
+        put?: never;
+        /**
+         * Append Agent Task Event
+         * @description Worker callback for progress events and final task state.
+         */
+        post: operations["append_agent_task_event_api_v1_agent_task__task_id__events_post"];
         delete?: never;
         options?: never;
         head?: never;
@@ -515,6 +610,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/auth/csrf/token": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get Csrf Token Legacy
+         * @description Legacy alias for older clients and contract tests.
+         */
+        get: operations["get_csrf_token_legacy_api_v1_auth_csrf_token_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/auth/google": {
         parameters: {
             query?: never;
@@ -724,7 +839,11 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        get?: never;
+        /**
+         * Validate Token Legacy
+         * @description Legacy GET alias used by contract tests and older clients.
+         */
+        get: operations["validate_token_legacy_api_v1_auth_validate_get"];
         put?: never;
         /**
          * Validate Token
@@ -1191,6 +1310,26 @@ export interface paths {
          * @description Get long-term memory items for a user with full metadata
          */
         get: operations["get_user_memory_api_v1_debug_memory_user__user_id__get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/debug/model-usage": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get Model Usage
+         * @description Get model/provider usage rollups for dashboarding.
+         */
+        get: operations["get_model_usage_api_v1_debug_model_usage_get"];
         put?: never;
         post?: never;
         delete?: never;
@@ -1920,6 +2059,43 @@ export interface paths {
          * @description Check streaming capability health (alias for /health/stream)
          */
         get: operations["health_streaming_api_v1_health_streaming_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/health/{component}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Health Component
+         * @description Return a specific subsystem probe for compatibility with older clients.
+         */
+        get: operations["health_component_api_v1_health__component__get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/metrics": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Metrics */
+        get: operations["metrics_metrics_get"];
         put?: never;
         post?: never;
         delete?: never;
@@ -2688,6 +2864,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/sandbox/health": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Sandbox Health Legacy
+         * @description Legacy alias for `/health/status` used by contract tests and clients.
+         */
+        get: operations["sandbox_health_legacy_api_v1_sandbox_health_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/sandbox/health/status": {
         parameters: {
             query?: never;
@@ -2720,6 +2916,26 @@ export interface paths {
          * @description Get list of sandbox jobs from Redis.
          */
         get: operations["list_sandbox_jobs_api_v1_sandbox_jobs_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/sandbox/jobs/{job_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get Job Status Alias
+         * @description Legacy alias for `/status/{job_id}` used by public contract tests.
+         */
+        get: operations["get_job_status_alias_api_v1_sandbox_jobs__job_id__get"];
         put?: never;
         post?: never;
         delete?: never;
@@ -3311,6 +3527,23 @@ export interface paths {
          * @description AI-powered bug report triage: categorise, prioritise, and optionally file a GitHub issue.
          */
         post: operations["triage_issue_api_v1_support_triage_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/test": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Test */
+        get: operations["test_test_get"];
+        put?: never;
+        post?: never;
         delete?: never;
         options?: never;
         head?: never;

@@ -7,15 +7,15 @@ This file describes what the current `goblin-assistant` codebase implements, not
 | Area | Status | What the code shows |
 | --- | --- | --- |
 | Chat UI | Working path | Next.js chat page, provider selector, thread list, prompt composer, token/cost display, and backend conversation integration via `/chat/conversations/*` |
-| Prompt generation proxy | Working path | `apps/web/pages/api/generate.ts` forwards frontend prompt requests to backend `/api/chat` |
+| Prompt generation proxy | Working path | `apps/web/app/api/generate/route.ts` forwards frontend prompt requests to backend `/api/v1/api/chat` |
 | Startup flow | Working path | `apps/web/src/features/startup/hooks/useStartupFlow.ts` boots auth, routing info, and provider registry before redirecting |
-| Auth screens | Partial | Login/register UI, Google OAuth UI, Turnstile, and passkey UI exist; frontend currently calls `/v1/auth/*`, while local FastAPI routers are mounted at `/auth/*` |
-| Search UI | Working path | Search routes are wired at `pages/search.tsx` and `pages/chat/search-page.tsx`, using `features/search/*` with backend calls to `/search/collections` and `/search/query` |
+| Auth screens | Partial | Login/register UI, Google OAuth UI, Turnstile, and passkey UI exist; frontend currently calls `/api/v1/auth/*`, while local FastAPI routers are mounted at `/api/v1/auth/*` |
+| Search UI | Working path | Search routes are wired at `app/search/page.tsx` and `app/chat/page.tsx`, using `features/search/*` with backend calls to `/api/v1/search/collections` and `/api/v1/search/query` |
 | Sandbox UI | Partial | Guest mode and sandbox screen exist, and the frontend client now handles the job-based `/api/v1/sandbox/run` flow with logs fetched from `/api/v1/sandbox/jobs/{job_id}/logs`; the local backend also keeps `/sandbox/submit`, `/sandbox/status/{job_id}`, and related job endpoints |
 | Agent loop UI | Working path | A dedicated `/agent` screen can submit self-development tasks, poll task state, and surface PR links from the new `/api/v1/agent/task` workflow |
-| Admin/provider screens | Partial | Admin pages and provider manager UI exist, but provider registry loading depends on `/api/models` -> backend `/v1/providers/models`, which is not implemented in `api/` |
-| Account page | Partial | Account/profile UI exists, but frontend save calls expect `/v1/account/profile` and `/v1/account/preferences`; no matching backend router is checked in |
-| Help/support form | Partial | Help page exists and can display startup diagnostics, but support form submission expects `/v1/support/message`; no matching backend route is checked in |
+| Admin/provider screens | Partial | Admin pages and provider manager UI exist, but provider registry loading depends on `/api/models` -> backend `/api/v1/providers/models`, which is not implemented in `api/` |
+| Account page | Partial | Account/profile UI exists, but frontend save calls expect `/api/v1/account/profile` and `/api/v1/account/preferences`; no matching backend router is checked in |
+| Help/support form | Partial | Help page exists and can display startup diagnostics, but support form submission expects `/api/v1/support/message`; no matching backend route is checked in |
 
 ## Backend Capabilities
 

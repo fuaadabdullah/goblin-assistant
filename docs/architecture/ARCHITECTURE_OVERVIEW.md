@@ -6,23 +6,23 @@ description: "Current Goblin Assistant frontend/backend topology"
 
 Goblin Assistant is currently a two-part application:
 
-- Next.js Pages Router frontend in `apps/web/src/`
-- FastAPI backend in `api/`
+- Next.js App Router frontend in `apps/web/app/`
+- FastAPI backend in `apps/api/src/api/`
 
-There is also a thin proxy layer in `apps/web/pages/api/` for a few browser-safe backend calls.
+There is also a thin proxy layer in `apps/web/app/api/` for a few browser-safe backend calls.
 
 ## Topology
 
 ```mermaid
 graph LR
-  U["User"] --> FE["Next.js frontend (apps/web/src/pages, apps/web/src/features)"]
+  U["User"] --> FE["Next.js frontend (apps/web/app, apps/web/src)"]
 
   FE --> MW["Next middleware route guard"]
   FE --> NAPI["Next API routes"]
   FE --> API["FastAPI app (apps/api/src/api/main.py)"]
 
   NAPI -->|"POST /api/generate"| API
-  NAPI -->|"GET /api/models"| V1A["Expected backend /v1 endpoints"]
+  NAPI -->|"GET /api/models"| V1A["Expected backend /api/v1 endpoints"]
   NAPI -->|"POST /api/auth/validate"| V1A
 
   API --> CHAT["/chat routers"]
@@ -75,16 +75,17 @@ Startup also initializes Redis cache, database setup, provider monitoring, secre
 
 These flows line up in the checked-in code:
 
-1. Chat thread management from the frontend to backend `/chat/conversations*`
-2. Prompt submission through Next `/api/generate` to backend `/api/chat`
+1. Chat thread management from the frontend to backend `/api/v1/chat/conversations*`
+2. Prompt submission through Next `/api/generate` to backend `/api/v1/api/chat`
 3. Backend health and OpenAPI docs directly from the FastAPI app
 
 ## API Versioning
 
-All production routes are mounted exclusively under the `/api/v1` prefix via
+Most production routes are mounted under the `/api/v1` prefix via
 `mount_versioned_primary_routes()` in `apps/api/src/api/route_mounting.py`.
 A small set of internal/experimental routes (`semantic_chat`, debug, metrics)
-remain at root with no versioned alias — these are not called by the frontend.
+remain at root with no versioned alias. A few compatibility aliases also stay
+mounted without `/api/v1` so older callers do not break during migration.
 
 Frontend clients use `V1_API_PREFIX = '/api/v1'` and `V1_CHAT_PREFIX`
 constants from `apps/web/src/lib/api/shared.ts` rather than hardcoding paths.

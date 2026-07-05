@@ -33,8 +33,8 @@ help:
 	@echo "  make type-check-api-pyright - run strict pyright for API"
 	@echo "  make test-e2e             - run Playwright suite"
 	@echo "  make test-e2e-budget      - enforce critical E2E journey cap"
-	@echo "  make sdk-generate         - export OpenAPI and generate SDK types"
-	@echo "  make sdk-check            - fail if SDK generated artifacts are stale"
+	@echo "  make sdk-generate         - export OpenAPI, route manifest, and SDK types"
+	@echo "  make sdk-check            - fail if generated SDK and route artifacts are stale"
 	@echo "  make generate-providers-json — validate providers.toml & regenerate providers.json"
 	@echo "  make check-providers-json  - fail if providers.json is stale"
 

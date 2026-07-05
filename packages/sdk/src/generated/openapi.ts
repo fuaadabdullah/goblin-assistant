@@ -4,6 +4,23 @@
  */
 
 export interface paths {
+    "/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Root */
+        get: operations["root__get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/account/preferences": {
         parameters: {
             query?: never;
@@ -38,6 +55,84 @@ export interface paths {
          */
         put: operations["save_profile_api_v1_account_profile_put"];
         post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/agent/task": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Submit Agent Task
+         * @description Create a new agent task and queue it for the Sprite/Aider worker.
+         */
+        post: operations["submit_agent_task_api_v1_agent_task_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/agent/task/github-webhook": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Submit Github Issue Webhook
+         * @description Normalize a GitHub issue webhook into the same agent task contract.
+         */
+        post: operations["submit_github_issue_webhook_api_v1_agent_task_github_webhook_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/agent/task/{task_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get Agent Task */
+        get: operations["get_agent_task_api_v1_agent_task__task_id__get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/agent/task/{task_id}/events": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get Agent Task Events */
+        get: operations["get_agent_task_events_api_v1_agent_task__task_id__events_get"];
+        put?: never;
+        /**
+         * Append Agent Task Event
+         * @description Worker callback for progress events and final task state.
+         */
+        post: operations["append_agent_task_event_api_v1_agent_task__task_id__events_post"];
         delete?: never;
         options?: never;
         head?: never;
@@ -514,6 +609,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/auth/csrf/token": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get Csrf Token Legacy
+         * @description Legacy alias for older clients and contract tests.
+         */
+        get: operations["get_csrf_token_legacy_api_v1_auth_csrf_token_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/auth/google": {
         parameters: {
             query?: never;
@@ -723,7 +838,11 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        get?: never;
+        /**
+         * Validate Token Legacy
+         * @description Legacy GET alias used by contract tests and older clients.
+         */
+        get: operations["validate_token_legacy_api_v1_auth_validate_get"];
         put?: never;
         /**
          * Validate Token
@@ -1190,6 +1309,26 @@ export interface paths {
          * @description Get long-term memory items for a user with full metadata
          */
         get: operations["get_user_memory_api_v1_debug_memory_user__user_id__get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/debug/model-usage": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get Model Usage
+         * @description Get model/provider usage rollups for dashboarding.
+         */
+        get: operations["get_model_usage_api_v1_debug_model_usage_get"];
         put?: never;
         post?: never;
         delete?: never;
@@ -1919,6 +2058,43 @@ export interface paths {
          * @description Check streaming capability health (alias for /health/stream)
          */
         get: operations["health_streaming_api_v1_health_streaming_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/health/{component}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Health Component
+         * @description Return a specific subsystem probe for compatibility with older clients.
+         */
+        get: operations["health_component_api_v1_health__component__get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/metrics": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Metrics */
+        get: operations["metrics_metrics_get"];
         put?: never;
         post?: never;
         delete?: never;
@@ -2687,6 +2863,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/sandbox/health": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Sandbox Health Legacy
+         * @description Legacy alias for `/health/status` used by contract tests and clients.
+         */
+        get: operations["sandbox_health_legacy_api_v1_sandbox_health_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/sandbox/health/status": {
         parameters: {
             query?: never;
@@ -2719,6 +2915,26 @@ export interface paths {
          * @description Get list of sandbox jobs from Redis.
          */
         get: operations["list_sandbox_jobs_api_v1_sandbox_jobs_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/sandbox/jobs/{job_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get Job Status Alias
+         * @description Legacy alias for `/status/{job_id}` used by public contract tests.
+         */
+        get: operations["get_job_status_alias_api_v1_sandbox_jobs__job_id__get"];
         put?: never;
         post?: never;
         delete?: never;
@@ -3316,6 +3532,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/test": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Test */
+        get: operations["test_test_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/write-time/cache/cleanup": {
         parameters: {
             query?: never;
@@ -3483,6 +3716,177 @@ export interface paths {
 export type webhooks = Record<string, never>;
 export interface components {
     schemas: {
+        /** AgentTaskEvent */
+        AgentTaskEvent: {
+            /** Event Id */
+            event_id: string;
+            /** Message */
+            message: string;
+            /** Metadata */
+            metadata?: {
+                [key: string]: unknown;
+            };
+            /** Timestamp */
+            timestamp: string;
+            /** Type */
+            type: string;
+        };
+        /** AgentTaskEventInput */
+        AgentTaskEventInput: {
+            /** Message */
+            message: string;
+            /** Metadata */
+            metadata?: {
+                [key: string]: unknown;
+            };
+            /** Phase */
+            phase?: string | null;
+            /** Result */
+            result?: {
+                [key: string]: unknown;
+            };
+            /** Status */
+            status?: string | null;
+            /** Type */
+            type: string;
+        };
+        /** AgentTaskEventsResponse */
+        AgentTaskEventsResponse: {
+            /** Events */
+            events?: components["schemas"]["AgentTaskEvent"][];
+            /** Phase */
+            phase: string;
+            /** Status */
+            status: string;
+            /** Task Id */
+            task_id: string;
+            /**
+             * Total
+             * @default 0
+             */
+            total: number;
+        };
+        /** AgentTaskRecord */
+        AgentTaskRecord: {
+            /** Aider Mode */
+            aider_mode?: string | null;
+            /** Architect Model */
+            architect_model?: string | null;
+            /** Auto Commit Each Change */
+            auto_commit_each_change?: boolean | null;
+            /** Base Branch */
+            base_branch: string;
+            /** Branch Name */
+            branch_name: string;
+            /** Callback Url */
+            callback_url?: string | null;
+            /** Checkout Ref */
+            checkout_ref?: string | null;
+            /** Created At */
+            created_at: string;
+            /** Editor Model */
+            editor_model?: string | null;
+            /** Events */
+            events?: components["schemas"]["AgentTaskEvent"][];
+            /** Issue Body */
+            issue_body?: string | null;
+            /** Issue Number */
+            issue_number?: number | null;
+            /** Issue Title */
+            issue_title?: string | null;
+            /** Issue Url */
+            issue_url?: string | null;
+            /** Metadata */
+            metadata?: {
+                [key: string]: unknown;
+            };
+            /** Payload */
+            payload?: {
+                [key: string]: unknown;
+            };
+            /** Phase */
+            phase: string;
+            /** Phase0 Ci Commands */
+            phase0_ci_commands?: {
+                [key: string]: unknown;
+            }[];
+            /** Pr Url */
+            pr_url?: string | null;
+            /** Repair Attempts */
+            repair_attempts?: number | null;
+            /** Repo Url */
+            repo_url: string;
+            /** Result */
+            result?: {
+                [key: string]: unknown;
+            };
+            /** Source */
+            source: string;
+            /** Sprite Name */
+            sprite_name?: string | null;
+            /** Status */
+            status: string;
+            /** Task */
+            task: string;
+            /** Task Id */
+            task_id: string;
+            /** Tests Command */
+            tests_command: string;
+            /** Updated At */
+            updated_at: string;
+            /** Worker Error */
+            worker_error?: string | null;
+            /** Worker Profile */
+            worker_profile?: {
+                [key: string]: unknown;
+            };
+            /** Worker Status */
+            worker_status?: string | null;
+            /** Workspace */
+            workspace?: {
+                [key: string]: unknown;
+            };
+            /** Workspace Family */
+            workspace_family?: string | null;
+            /** Workspace Id */
+            workspace_id?: string | null;
+            /** Workspace Provider */
+            workspace_provider?: string | null;
+        };
+        /** AgentTaskSubmitRequest */
+        AgentTaskSubmitRequest: {
+            /** Base Branch */
+            base_branch?: string | null;
+            /** Branch Name */
+            branch_name?: string | null;
+            /** Issue Body */
+            issue_body?: string | null;
+            /** Issue Number */
+            issue_number?: number | null;
+            /** Issue Title */
+            issue_title?: string | null;
+            /** Issue Url */
+            issue_url?: string | null;
+            /** Metadata */
+            metadata?: {
+                [key: string]: unknown;
+            };
+            /** Repo Url */
+            repo_url?: string | null;
+            /**
+             * Source
+             * @default ui
+             */
+            source: string;
+            /** Task */
+            task: string;
+            /** Tests Command */
+            tests_command?: string | null;
+        };
+        /** AgentTaskSubmitResponse */
+        AgentTaskSubmitResponse: {
+            task: components["schemas"]["AgentTaskRecord"];
+        };
         /** ApiKeyRequest */
         ApiKeyRequest: {
             /** Key */
@@ -3903,6 +4307,19 @@ export interface components {
             content?: string | null;
             /** Error */
             error?: string | null;
+        };
+        /** GitHubWebhookResponse */
+        GitHubWebhookResponse: {
+            /** Accepted */
+            accepted: boolean;
+            /**
+             * Ignored
+             * @default false
+             */
+            ignored: boolean;
+            /** Reason */
+            reason?: string | null;
+            task?: components["schemas"]["AgentTaskRecord"] | null;
         };
         /** GoogleAuthCallback */
         GoogleAuthCallback: {
@@ -4569,6 +4986,33 @@ export interface components {
             /** Job Id */
             job_id: string;
         };
+        /** SuccessEnvelope[AgentTaskEventsResponse] */
+        SuccessEnvelope_AgentTaskEventsResponse_: {
+            data: components["schemas"]["AgentTaskEventsResponse"];
+            /**
+             * Success
+             * @default true
+             */
+            success: boolean;
+        };
+        /** SuccessEnvelope[AgentTaskRecord] */
+        SuccessEnvelope_AgentTaskRecord_: {
+            data: components["schemas"]["AgentTaskRecord"];
+            /**
+             * Success
+             * @default true
+             */
+            success: boolean;
+        };
+        /** SuccessEnvelope[AgentTaskSubmitResponse] */
+        SuccessEnvelope_AgentTaskSubmitResponse_: {
+            data: components["schemas"]["AgentTaskSubmitResponse"];
+            /**
+             * Success
+             * @default true
+             */
+            success: boolean;
+        };
         /** SuccessEnvelope[ArtifactListResponse] */
         SuccessEnvelope_ArtifactListResponse_: {
             data: components["schemas"]["ArtifactListResponse"];
@@ -4656,6 +5100,15 @@ export interface components {
         /** SuccessEnvelope[FileUploadResponse] */
         SuccessEnvelope_FileUploadResponse_: {
             data: components["schemas"]["FileUploadResponse"];
+            /**
+             * Success
+             * @default true
+             */
+            success: boolean;
+        };
+        /** SuccessEnvelope[GitHubWebhookResponse] */
+        SuccessEnvelope_GitHubWebhookResponse_: {
+            data: components["schemas"]["GitHubWebhookResponse"];
             /**
              * Success
              * @default true
@@ -4993,7 +5446,7 @@ export interface components {
          */
         UserCreate: {
             /** Csrf Token */
-            csrf_token: string;
+            csrf_token?: string | null;
             /**
              * Email
              * Format: email
@@ -5010,7 +5463,7 @@ export interface components {
          */
         UserLogin: {
             /** Csrf Token */
-            csrf_token: string;
+            csrf_token?: string | null;
             /**
              * Email
              * Format: email
@@ -5070,6 +5523,28 @@ export interface components {
 }
 export type $defs = Record<string, never>;
 export interface operations {
+    root__get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: string;
+                    };
+                };
+            };
+        };
+    };
     save_preferences_api_v1_account_preferences_put: {
         parameters: {
             query?: never;
@@ -5123,6 +5598,173 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["SuccessEnvelope_ProfileResponse_"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    submit_agent_task_api_v1_agent_task_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["AgentTaskSubmitRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SuccessEnvelope_AgentTaskSubmitResponse_"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    submit_github_issue_webhook_api_v1_agent_task_github_webhook_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    [key: string]: unknown;
+                };
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SuccessEnvelope_GitHubWebhookResponse_"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_agent_task_api_v1_agent_task__task_id__get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                task_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SuccessEnvelope_AgentTaskRecord_"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_agent_task_events_api_v1_agent_task__task_id__events_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                task_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SuccessEnvelope_AgentTaskEventsResponse_"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    append_agent_task_event_api_v1_agent_task__task_id__events_post: {
+        parameters: {
+            query?: never;
+            header?: {
+                "x-agent-worker-token"?: string;
+            };
+            path: {
+                task_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["AgentTaskEventInput"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SuccessEnvelope_AgentTaskRecord_"];
                 };
             };
             /** @description Validation Error */
@@ -5813,6 +6455,26 @@ export interface operations {
             };
         };
     };
+    get_csrf_token_legacy_api_v1_auth_csrf_token_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CsrfTokenResponse"];
+                };
+            };
+        };
+    };
     google_auth_api_v1_auth_google_post: {
         parameters: {
             query?: never;
@@ -6111,6 +6773,39 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["SuccessEnvelope_TokenWithRefresh_"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    validate_token_legacy_api_v1_auth_validate_get: {
+        parameters: {
+            query?: {
+                token?: string | null;
+            };
+            header?: {
+                authorization?: string | null;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SuccessEnvelope_TokenValidationResponse_"];
                 };
             };
             /** @description Validation Error */
@@ -6957,6 +7652,44 @@ export interface operations {
             };
         };
     };
+    get_model_usage_api_v1_debug_model_usage_get: {
+        parameters: {
+            query?: {
+                /** @description Filter by provider */
+                provider?: string | null;
+                /** @description Filter by model */
+                model?: string | null;
+                /** @description Results per page */
+                limit?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: unknown;
+                    };
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     get_cache_hit_rate_api_v1_debug_retrieval_metrics_cache_hit_rate_get: {
         parameters: {
             query?: never;
@@ -7651,7 +8384,7 @@ export interface operations {
                 content: {
                     "application/json": {
                         [key: string]: unknown;
-                    } | components["schemas"]["SuccessEnvelope_Dict_str__Any__"];
+                    };
                 };
             };
         };
@@ -7954,7 +8687,7 @@ export interface operations {
                 content: {
                     "application/json": {
                         [key: string]: unknown;
-                    } | components["schemas"]["SuccessEnvelope_Dict_str__Any__"];
+                    };
                 };
             };
         };
@@ -7977,6 +8710,59 @@ export interface operations {
                     "application/json": {
                         [key: string]: unknown;
                     };
+                };
+            };
+        };
+    };
+    health_component_api_v1_health__component__get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                component: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: unknown;
+                    };
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    metrics_metrics_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
                 };
             };
         };
@@ -8961,8 +9747,8 @@ export interface operations {
     list_job_artifacts_api_v1_sandbox_artifacts__job_id__get: {
         parameters: {
             query?: never;
-            header: {
-                "x-api-key": string;
+            header?: {
+                "x-api-key"?: string;
             };
             path: {
                 job_id: string;
@@ -9028,8 +9814,8 @@ export interface operations {
     cancel_job_api_v1_sandbox_cancel__job_id__post: {
         parameters: {
             query?: never;
-            header: {
-                "x-api-key": string;
+            header?: {
+                "x-api-key"?: string;
             };
             path: {
                 job_id: string;
@@ -9054,6 +9840,26 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    sandbox_health_legacy_api_v1_sandbox_health_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SuccessEnvelope_SandboxHealthResponse_"];
                 };
             };
         };
@@ -9112,6 +9918,39 @@ export interface operations {
             };
         };
     };
+    get_job_status_alias_api_v1_sandbox_jobs__job_id__get: {
+        parameters: {
+            query?: never;
+            header?: {
+                "x-api-key"?: string;
+            };
+            path: {
+                job_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SuccessEnvelope_JobStatus_"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     get_job_logs_alias_api_v1_sandbox_jobs__job_id__logs_get: {
         parameters: {
             query?: never;
@@ -9148,8 +9987,8 @@ export interface operations {
     get_job_logs_api_v1_sandbox_logs__job_id__get: {
         parameters: {
             query?: never;
-            header: {
-                "x-api-key": string;
+            header?: {
+                "x-api-key"?: string;
             };
             path: {
                 job_id: string;
@@ -9201,8 +10040,8 @@ export interface operations {
     run_sandbox_code_api_v1_sandbox_run_post: {
         parameters: {
             query?: never;
-            header: {
-                "x-api-key": string;
+            header?: {
+                "x-api-key"?: string;
             };
             path?: never;
             cookie?: never;
@@ -9236,8 +10075,8 @@ export interface operations {
     get_job_status_api_v1_sandbox_status__job_id__get: {
         parameters: {
             query?: never;
-            header: {
-                "x-api-key": string;
+            header?: {
+                "x-api-key"?: string;
             };
             path: {
                 job_id: string;
@@ -9271,8 +10110,8 @@ export interface operations {
             query?: {
                 request?: unknown;
             };
-            header: {
-                "x-api-key": string;
+            header?: {
+                "x-api-key"?: string;
             };
             path?: never;
             cookie?: never;
@@ -9481,7 +10320,7 @@ export interface operations {
                 };
                 content: {
                     "application/json": {
-                        [key: string]: string;
+                        [key: string]: unknown;
                     };
                 };
             };
@@ -10045,6 +10884,28 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    test_test_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: string;
+                    };
                 };
             };
         };

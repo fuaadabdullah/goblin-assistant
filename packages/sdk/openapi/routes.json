@@ -1,0 +1,2390 @@
+{
+  "alias_route_count": 8,
+  "api_v1_prefix": "/api/v1",
+  "public_route_count": 195,
+  "route_count": 196,
+  "routes": [
+    {
+      "compatibility_aliases": [],
+      "include_in_schema": true,
+      "logical_path": "/",
+      "method": "GET",
+      "operation_id": "root__get",
+      "path": "/",
+      "summary": "Root",
+      "tags": []
+    },
+    {
+      "compatibility_aliases": [],
+      "include_in_schema": true,
+      "logical_path": "/account/preferences",
+      "method": "PUT",
+      "operation_id": "save_preferences_api_v1_account_preferences_put",
+      "path": "/api/v1/account/preferences",
+      "summary": "Save Preferences",
+      "tags": [
+        "account"
+      ]
+    },
+    {
+      "compatibility_aliases": [],
+      "include_in_schema": true,
+      "logical_path": "/account/profile",
+      "method": "PUT",
+      "operation_id": "save_profile_api_v1_account_profile_put",
+      "path": "/api/v1/account/profile",
+      "summary": "Save Profile",
+      "tags": [
+        "account"
+      ]
+    },
+    {
+      "compatibility_aliases": [],
+      "include_in_schema": false,
+      "logical_path": "/admin/providers/state",
+      "method": "GET",
+      "operation_id": "get_provider_state",
+      "path": "/api/v1/admin/providers/state",
+      "summary": "get_provider_state",
+      "tags": [
+        "admin"
+      ]
+    },
+    {
+      "compatibility_aliases": [],
+      "include_in_schema": true,
+      "logical_path": "/agent/task",
+      "method": "POST",
+      "operation_id": "submit_agent_task_api_v1_agent_task_post",
+      "path": "/api/v1/agent/task",
+      "summary": "Submit Agent Task",
+      "tags": [
+        "agent"
+      ]
+    },
+    {
+      "compatibility_aliases": [],
+      "include_in_schema": true,
+      "logical_path": "/agent/task/github-webhook",
+      "method": "POST",
+      "operation_id": "submit_github_issue_webhook_api_v1_agent_task_github_webhook_post",
+      "path": "/api/v1/agent/task/github-webhook",
+      "summary": "Submit Github Issue Webhook",
+      "tags": [
+        "agent"
+      ]
+    },
+    {
+      "compatibility_aliases": [],
+      "include_in_schema": true,
+      "logical_path": "/agent/task/{task_id}",
+      "method": "GET",
+      "operation_id": "get_agent_task_api_v1_agent_task__task_id__get",
+      "path": "/api/v1/agent/task/{task_id}",
+      "summary": "Get Agent Task",
+      "tags": [
+        "agent"
+      ]
+    },
+    {
+      "compatibility_aliases": [],
+      "include_in_schema": true,
+      "logical_path": "/agent/task/{task_id}/events",
+      "method": "GET",
+      "operation_id": "get_agent_task_events_api_v1_agent_task__task_id__events_get",
+      "path": "/api/v1/agent/task/{task_id}/events",
+      "summary": "Get Agent Task Events",
+      "tags": [
+        "agent"
+      ]
+    },
+    {
+      "compatibility_aliases": [],
+      "include_in_schema": true,
+      "logical_path": "/agent/task/{task_id}/events",
+      "method": "POST",
+      "operation_id": "append_agent_task_event_api_v1_agent_task__task_id__events_post",
+      "path": "/api/v1/agent/task/{task_id}/events",
+      "summary": "Append Agent Task Event",
+      "tags": [
+        "agent"
+      ]
+    },
+    {
+      "compatibility_aliases": [],
+      "include_in_schema": true,
+      "logical_path": "/api-keys/{provider}",
+      "method": "DELETE",
+      "operation_id": "delete_api_key_api_v1_api_keys__provider__delete",
+      "path": "/api/v1/api-keys/{provider}",
+      "summary": "Delete Api Key",
+      "tags": [
+        "api-keys"
+      ]
+    },
+    {
+      "compatibility_aliases": [],
+      "include_in_schema": true,
+      "logical_path": "/api-keys/{provider}",
+      "method": "GET",
+      "operation_id": "get_api_key_api_v1_api_keys__provider__get",
+      "path": "/api/v1/api-keys/{provider}",
+      "summary": "Get Api Key",
+      "tags": [
+        "api-keys"
+      ]
+    },
+    {
+      "compatibility_aliases": [],
+      "include_in_schema": true,
+      "logical_path": "/api-keys/{provider}",
+      "method": "POST",
+      "operation_id": "store_api_key_api_v1_api_keys__provider__post",
+      "path": "/api/v1/api-keys/{provider}",
+      "summary": "Store Api Key",
+      "tags": [
+        "api-keys"
+      ]
+    },
+    {
+      "compatibility_aliases": [],
+      "include_in_schema": true,
+      "logical_path": "/api/chat",
+      "method": "POST",
+      "operation_id": "simple_chat_api_v1_api_chat_post",
+      "path": "/api/v1/api/chat",
+      "summary": "Simple Chat",
+      "tags": [
+        "api"
+      ]
+    },
+    {
+      "compatibility_aliases": [],
+      "include_in_schema": true,
+      "logical_path": "/api/feedback/stats",
+      "method": "GET",
+      "operation_id": "get_feedback_stats_api_v1_api_feedback_stats_get",
+      "path": "/api/v1/api/feedback/stats",
+      "summary": "Get Feedback Stats",
+      "tags": [
+        "api",
+        "routing"
+      ]
+    },
+    {
+      "compatibility_aliases": [],
+      "include_in_schema": true,
+      "logical_path": "/api/generate",
+      "method": "POST",
+      "operation_id": "generate_api_v1_api_generate_post",
+      "path": "/api/v1/api/generate",
+      "summary": "Generate",
+      "tags": [
+        "api"
+      ]
+    },
+    {
+      "compatibility_aliases": [],
+      "include_in_schema": true,
+      "logical_path": "/api/goblins",
+      "method": "GET",
+      "operation_id": "get_goblins_api_v1_api_goblins_get",
+      "path": "/api/v1/api/goblins",
+      "summary": "Get Goblins",
+      "tags": [
+        "api"
+      ]
+    },
+    {
+      "compatibility_aliases": [],
+      "include_in_schema": true,
+      "logical_path": "/api/history/{goblin_id}",
+      "method": "GET",
+      "operation_id": "get_goblin_history_api_v1_api_history__goblin_id__get",
+      "path": "/api/v1/api/history/{goblin_id}",
+      "summary": "Get Goblin History",
+      "tags": [
+        "api"
+      ]
+    },
+    {
+      "compatibility_aliases": [],
+      "include_in_schema": true,
+      "logical_path": "/api/orchestrate/execute",
+      "method": "POST",
+      "operation_id": "execute_orchestration_api_v1_api_orchestrate_execute_post",
+      "path": "/api/v1/api/orchestrate/execute",
+      "summary": "Execute Orchestration",
+      "tags": [
+        "api"
+      ]
+    },
+    {
+      "compatibility_aliases": [],
+      "include_in_schema": true,
+      "logical_path": "/api/orchestrate/parse",
+      "method": "POST",
+      "operation_id": "parse_orchestration_api_v1_api_orchestrate_parse_post",
+      "path": "/api/v1/api/orchestrate/parse",
+      "summary": "Parse Orchestration",
+      "tags": [
+        "api"
+      ]
+    },
+    {
+      "compatibility_aliases": [],
+      "include_in_schema": true,
+      "logical_path": "/api/orchestrate/plans/{plan_id}",
+      "method": "GET",
+      "operation_id": "get_orchestration_plan_api_v1_api_orchestrate_plans__plan_id__get",
+      "path": "/api/v1/api/orchestrate/plans/{plan_id}",
+      "summary": "Get Orchestration Plan",
+      "tags": [
+        "api"
+      ]
+    },
+    {
+      "compatibility_aliases": [],
+      "include_in_schema": true,
+      "logical_path": "/api/privacy/consent/rag",
+      "method": "POST",
+      "operation_id": "update_rag_consent_api_v1_api_privacy_consent_rag_post",
+      "path": "/api/v1/api/privacy/consent/rag",
+      "summary": "Update Rag Consent",
+      "tags": [
+        "privacy",
+        "gdpr",
+        "ccpa"
+      ]
+    },
+    {
+      "compatibility_aliases": [],
+      "include_in_schema": true,
+      "logical_path": "/api/privacy/data-summary",
+      "method": "GET",
+      "operation_id": "get_data_summary_api_v1_api_privacy_data_summary_get",
+      "path": "/api/v1/api/privacy/data-summary",
+      "summary": "Get Data Summary",
+      "tags": [
+        "privacy",
+        "gdpr",
+        "ccpa"
+      ]
+    },
+    {
+      "compatibility_aliases": [],
+      "include_in_schema": true,
+      "logical_path": "/api/privacy/delete",
+      "method": "DELETE",
+      "operation_id": "delete_user_data_api_v1_api_privacy_delete_delete",
+      "path": "/api/v1/api/privacy/delete",
+      "summary": "Delete User Data",
+      "tags": [
+        "privacy",
+        "gdpr",
+        "ccpa"
+      ]
+    },
+    {
+      "compatibility_aliases": [],
+      "include_in_schema": true,
+      "logical_path": "/api/privacy/export",
+      "method": "POST",
+      "operation_id": "export_user_data_api_v1_api_privacy_export_post",
+      "path": "/api/v1/api/privacy/export",
+      "summary": "Export User Data",
+      "tags": [
+        "privacy",
+        "gdpr",
+        "ccpa"
+      ]
+    },
+    {
+      "compatibility_aliases": [],
+      "include_in_schema": true,
+      "logical_path": "/api/route_task",
+      "method": "POST",
+      "operation_id": "route_task_api_v1_api_route_task_post",
+      "path": "/api/v1/api/route_task",
+      "summary": "Route Task",
+      "tags": [
+        "api"
+      ]
+    },
+    {
+      "compatibility_aliases": [],
+      "include_in_schema": true,
+      "logical_path": "/api/route_task_stream_cancel/{stream_id}",
+      "method": "POST",
+      "operation_id": "cancel_stream_task_api_v1_api_route_task_stream_cancel__stream_id__post",
+      "path": "/api/v1/api/route_task_stream_cancel/{stream_id}",
+      "summary": "Cancel Stream Task",
+      "tags": [
+        "api"
+      ]
+    },
+    {
+      "compatibility_aliases": [],
+      "include_in_schema": true,
+      "logical_path": "/api/route_task_stream_poll/{stream_id}",
+      "method": "GET",
+      "operation_id": "poll_stream_task_api_v1_api_route_task_stream_poll__stream_id__get",
+      "path": "/api/v1/api/route_task_stream_poll/{stream_id}",
+      "summary": "Poll Stream Task",
+      "tags": [
+        "api"
+      ]
+    },
+    {
+      "compatibility_aliases": [],
+      "include_in_schema": true,
+      "logical_path": "/api/route_task_stream_start",
+      "method": "POST",
+      "operation_id": "start_stream_task_api_v1_api_route_task_stream_start_post",
+      "path": "/api/v1/api/route_task_stream_start",
+      "summary": "Start Stream Task",
+      "tags": [
+        "api"
+      ]
+    },
+    {
+      "compatibility_aliases": [],
+      "include_in_schema": true,
+      "logical_path": "/api/routing/feedback",
+      "method": "POST",
+      "operation_id": "submit_routing_feedback_api_v1_api_routing_feedback_post",
+      "path": "/api/v1/api/routing/feedback",
+      "summary": "Submit Routing Feedback",
+      "tags": [
+        "api",
+        "routing"
+      ]
+    },
+    {
+      "compatibility_aliases": [],
+      "include_in_schema": true,
+      "logical_path": "/api/stats/{goblin_id}",
+      "method": "GET",
+      "operation_id": "get_goblin_stats_api_v1_api_stats__goblin_id__get",
+      "path": "/api/v1/api/stats/{goblin_id}",
+      "summary": "Get Goblin Stats",
+      "tags": [
+        "api"
+      ]
+    },
+    {
+      "compatibility_aliases": [],
+      "include_in_schema": true,
+      "logical_path": "/auth/csrf-token",
+      "method": "GET",
+      "operation_id": "get_csrf_token_api_v1_auth_csrf_token_get",
+      "path": "/api/v1/auth/csrf-token",
+      "summary": "Get Csrf Token",
+      "tags": [
+        "auth"
+      ]
+    },
+    {
+      "compatibility_aliases": [],
+      "include_in_schema": true,
+      "logical_path": "/auth/csrf/token",
+      "method": "GET",
+      "operation_id": "get_csrf_token_legacy_api_v1_auth_csrf_token_get",
+      "path": "/api/v1/auth/csrf/token",
+      "summary": "Get Csrf Token Legacy",
+      "tags": [
+        "auth"
+      ]
+    },
+    {
+      "compatibility_aliases": [],
+      "include_in_schema": true,
+      "logical_path": "/auth/google",
+      "method": "POST",
+      "operation_id": "google_auth_api_v1_auth_google_post",
+      "path": "/api/v1/auth/google",
+      "summary": "Google Auth",
+      "tags": [
+        "auth"
+      ]
+    },
+    {
+      "compatibility_aliases": [],
+      "include_in_schema": true,
+      "logical_path": "/auth/google/callback",
+      "method": "POST",
+      "operation_id": "google_auth_callback_api_v1_auth_google_callback_post",
+      "path": "/api/v1/auth/google/callback",
+      "summary": "Google Auth Callback",
+      "tags": [
+        "auth"
+      ]
+    },
+    {
+      "compatibility_aliases": [],
+      "include_in_schema": true,
+      "logical_path": "/auth/google/url",
+      "method": "GET",
+      "operation_id": "get_google_auth_url_api_v1_auth_google_url_get",
+      "path": "/api/v1/auth/google/url",
+      "summary": "Get Google Auth Url",
+      "tags": [
+        "auth"
+      ]
+    },
+    {
+      "compatibility_aliases": [],
+      "include_in_schema": true,
+      "logical_path": "/auth/login",
+      "method": "POST",
+      "operation_id": "login_api_v1_auth_login_post",
+      "path": "/api/v1/auth/login",
+      "summary": "Login",
+      "tags": [
+        "auth"
+      ]
+    },
+    {
+      "compatibility_aliases": [],
+      "include_in_schema": true,
+      "logical_path": "/auth/logout",
+      "method": "POST",
+      "operation_id": "logout_api_v1_auth_logout_post",
+      "path": "/api/v1/auth/logout",
+      "summary": "Logout",
+      "tags": [
+        "auth"
+      ]
+    },
+    {
+      "compatibility_aliases": [],
+      "include_in_schema": true,
+      "logical_path": "/auth/me",
+      "method": "GET",
+      "operation_id": "get_current_user_info_api_v1_auth_me_get",
+      "path": "/api/v1/auth/me",
+      "summary": "Get Current User Info",
+      "tags": [
+        "auth"
+      ]
+    },
+    {
+      "compatibility_aliases": [],
+      "include_in_schema": true,
+      "logical_path": "/auth/passkey/auth",
+      "method": "POST",
+      "operation_id": "authenticate_passkey_api_v1_auth_passkey_auth_post",
+      "path": "/api/v1/auth/passkey/auth",
+      "summary": "Authenticate Passkey",
+      "tags": [
+        "auth"
+      ]
+    },
+    {
+      "compatibility_aliases": [],
+      "include_in_schema": true,
+      "logical_path": "/auth/passkey/challenge",
+      "method": "POST",
+      "operation_id": "get_passkey_challenge_api_v1_auth_passkey_challenge_post",
+      "path": "/api/v1/auth/passkey/challenge",
+      "summary": "Get Passkey Challenge",
+      "tags": [
+        "auth"
+      ]
+    },
+    {
+      "compatibility_aliases": [],
+      "include_in_schema": true,
+      "logical_path": "/auth/passkey/register",
+      "method": "POST",
+      "operation_id": "register_passkey_api_v1_auth_passkey_register_post",
+      "path": "/api/v1/auth/passkey/register",
+      "summary": "Register Passkey",
+      "tags": [
+        "auth"
+      ]
+    },
+    {
+      "compatibility_aliases": [],
+      "include_in_schema": true,
+      "logical_path": "/auth/refresh",
+      "method": "POST",
+      "operation_id": "refresh_token_endpoint_api_v1_auth_refresh_post",
+      "path": "/api/v1/auth/refresh",
+      "summary": "Refresh Token Endpoint",
+      "tags": [
+        "auth"
+      ]
+    },
+    {
+      "compatibility_aliases": [],
+      "include_in_schema": true,
+      "logical_path": "/auth/register",
+      "method": "POST",
+      "operation_id": "register_api_v1_auth_register_post",
+      "path": "/api/v1/auth/register",
+      "summary": "Register",
+      "tags": [
+        "auth"
+      ]
+    },
+    {
+      "compatibility_aliases": [],
+      "include_in_schema": true,
+      "logical_path": "/auth/validate",
+      "method": "GET",
+      "operation_id": "validate_token_legacy_api_v1_auth_validate_get",
+      "path": "/api/v1/auth/validate",
+      "summary": "Validate Token Legacy",
+      "tags": [
+        "auth"
+      ]
+    },
+    {
+      "compatibility_aliases": [],
+      "include_in_schema": true,
+      "logical_path": "/auth/validate",
+      "method": "POST",
+      "operation_id": "validate_token_api_v1_auth_validate_post",
+      "path": "/api/v1/auth/validate",
+      "summary": "Validate Token",
+      "tags": [
+        "auth"
+      ]
+    },
+    {
+      "compatibility_aliases": [],
+      "include_in_schema": true,
+      "logical_path": "/chat/contextual-chat",
+      "method": "POST",
+      "operation_id": "contextual_chat_api_v1_chat_contextual_chat_post",
+      "path": "/api/v1/chat/contextual-chat",
+      "summary": "Contextual Chat",
+      "tags": [
+        "chat"
+      ]
+    },
+    {
+      "compatibility_aliases": [],
+      "include_in_schema": true,
+      "logical_path": "/chat/conversations",
+      "method": "GET",
+      "operation_id": "list_conversations_api_v1_chat_conversations_get",
+      "path": "/api/v1/chat/conversations",
+      "summary": "List Conversations",
+      "tags": [
+        "chat"
+      ]
+    },
+    {
+      "compatibility_aliases": [],
+      "include_in_schema": true,
+      "logical_path": "/chat/conversations",
+      "method": "POST",
+      "operation_id": "create_conversation_api_v1_chat_conversations_post",
+      "path": "/api/v1/chat/conversations",
+      "summary": "Create Conversation",
+      "tags": [
+        "chat"
+      ]
+    },
+    {
+      "compatibility_aliases": [],
+      "include_in_schema": true,
+      "logical_path": "/chat/conversations/{conversation_id}",
+      "method": "DELETE",
+      "operation_id": "delete_conversation_api_v1_chat_conversations__conversation_id__delete",
+      "path": "/api/v1/chat/conversations/{conversation_id}",
+      "summary": "Delete Conversation",
+      "tags": [
+        "chat"
+      ]
+    },
+    {
+      "compatibility_aliases": [],
+      "include_in_schema": true,
+      "logical_path": "/chat/conversations/{conversation_id}",
+      "method": "GET",
+      "operation_id": "get_conversation_api_v1_chat_conversations__conversation_id__get",
+      "path": "/api/v1/chat/conversations/{conversation_id}",
+      "summary": "Get Conversation",
+      "tags": [
+        "chat"
+      ]
+    },
+    {
+      "compatibility_aliases": [],
+      "include_in_schema": true,
+      "logical_path": "/chat/conversations/{conversation_id}/import",
+      "method": "POST",
+      "operation_id": "import_conversation_messages_api_v1_chat_conversations__conversation_id__import_post",
+      "path": "/api/v1/chat/conversations/{conversation_id}/import",
+      "summary": "Import Conversation Messages",
+      "tags": [
+        "chat"
+      ]
+    },
+    {
+      "compatibility_aliases": [],
+      "include_in_schema": true,
+      "logical_path": "/chat/conversations/{conversation_id}/messages",
+      "method": "POST",
+      "operation_id": "send_message_api_v1_chat_conversations__conversation_id__messages_post",
+      "path": "/api/v1/chat/conversations/{conversation_id}/messages",
+      "summary": "Send Message",
+      "tags": [
+        "chat"
+      ]
+    },
+    {
+      "compatibility_aliases": [],
+      "include_in_schema": true,
+      "logical_path": "/chat/conversations/{conversation_id}/title",
+      "method": "PUT",
+      "operation_id": "update_conversation_title_api_v1_chat_conversations__conversation_id__title_put",
+      "path": "/api/v1/chat/conversations/{conversation_id}/title",
+      "summary": "Update Conversation Title",
+      "tags": [
+        "chat"
+      ]
+    },
+    {
+      "compatibility_aliases": [],
+      "include_in_schema": true,
+      "logical_path": "/chat/debug/context-assembly",
+      "method": "GET",
+      "operation_id": "debug_context_assembly_api_v1_chat_debug_context_assembly_get",
+      "path": "/api/v1/chat/debug/context-assembly",
+      "summary": "Debug Context Assembly",
+      "tags": [
+        "chat"
+      ]
+    },
+    {
+      "compatibility_aliases": [],
+      "include_in_schema": true,
+      "logical_path": "/chat/estimate-tokens",
+      "method": "POST",
+      "operation_id": "estimate_tokens_api_v1_chat_estimate_tokens_post",
+      "path": "/api/v1/chat/estimate-tokens",
+      "summary": "Estimate Tokens",
+      "tags": [
+        "chat"
+      ]
+    },
+    {
+      "compatibility_aliases": [],
+      "include_in_schema": true,
+      "logical_path": "/chat/files/{file_id}",
+      "method": "GET",
+      "operation_id": "download_file_api_v1_chat_files__file_id__get",
+      "path": "/api/v1/chat/files/{file_id}",
+      "summary": "Download File",
+      "tags": [
+        "chat"
+      ]
+    },
+    {
+      "compatibility_aliases": [],
+      "include_in_schema": true,
+      "logical_path": "/chat/stream",
+      "method": "POST",
+      "operation_id": "stream_chat_api_v1_chat_stream_post",
+      "path": "/api/v1/chat/stream",
+      "summary": "Stream Chat",
+      "tags": [
+        "chat"
+      ]
+    },
+    {
+      "compatibility_aliases": [],
+      "include_in_schema": true,
+      "logical_path": "/chat/upload-file",
+      "method": "POST",
+      "operation_id": "upload_file_api_v1_chat_upload_file_post",
+      "path": "/api/v1/chat/upload-file",
+      "summary": "Upload File",
+      "tags": [
+        "chat"
+      ]
+    },
+    {
+      "compatibility_aliases": [],
+      "include_in_schema": true,
+      "logical_path": "/debug/api/migration-metrics",
+      "method": "GET",
+      "operation_id": "get_api_migration_metrics_api_v1_debug_api_migration_metrics_get",
+      "path": "/api/v1/debug/api/migration-metrics",
+      "summary": "Get Api Migration Metrics",
+      "tags": [
+        "debug"
+      ]
+    },
+    {
+      "compatibility_aliases": [],
+      "include_in_schema": true,
+      "logical_path": "/debug/context/health/{user_id}",
+      "method": "GET",
+      "operation_id": "get_context_health_api_v1_debug_context_health__user_id__get",
+      "path": "/api/v1/debug/context/health/{user_id}",
+      "summary": "Get Context Health",
+      "tags": [
+        "debug"
+      ]
+    },
+    {
+      "compatibility_aliases": [],
+      "include_in_schema": true,
+      "logical_path": "/debug/context/history",
+      "method": "GET",
+      "operation_id": "get_context_history_api_v1_debug_context_history_get",
+      "path": "/api/v1/debug/context/history",
+      "summary": "Get Context History",
+      "tags": [
+        "debug"
+      ]
+    },
+    {
+      "compatibility_aliases": [],
+      "include_in_schema": true,
+      "logical_path": "/debug/context/replay/{request_id}",
+      "method": "GET",
+      "operation_id": "replay_context_api_v1_debug_context_replay__request_id__get",
+      "path": "/api/v1/debug/context/replay/{request_id}",
+      "summary": "Replay Context",
+      "tags": [
+        "debug"
+      ]
+    },
+    {
+      "compatibility_aliases": [],
+      "include_in_schema": true,
+      "logical_path": "/debug/context/snapshot/{request_id}",
+      "method": "GET",
+      "operation_id": "get_context_snapshot_api_v1_debug_context_snapshot__request_id__get",
+      "path": "/api/v1/debug/context/snapshot/{request_id}",
+      "summary": "Get Context Snapshot",
+      "tags": [
+        "debug"
+      ]
+    },
+    {
+      "compatibility_aliases": [],
+      "include_in_schema": true,
+      "logical_path": "/debug/events",
+      "method": "GET",
+      "operation_id": "list_domain_events_api_v1_debug_events_get",
+      "path": "/api/v1/debug/events",
+      "summary": "List Domain Events",
+      "tags": [
+        "debug"
+      ]
+    },
+    {
+      "compatibility_aliases": [],
+      "include_in_schema": true,
+      "logical_path": "/debug/events/{event_id}",
+      "method": "GET",
+      "operation_id": "get_domain_event_api_v1_debug_events__event_id__get",
+      "path": "/api/v1/debug/events/{event_id}",
+      "summary": "Get Domain Event",
+      "tags": [
+        "debug"
+      ]
+    },
+    {
+      "compatibility_aliases": [],
+      "include_in_schema": true,
+      "logical_path": "/debug/memory/health/{user_id}",
+      "method": "GET",
+      "operation_id": "get_memory_health_api_v1_debug_memory_health__user_id__get",
+      "path": "/api/v1/debug/memory/health/{user_id}",
+      "summary": "Get Memory Health",
+      "tags": [
+        "debug"
+      ]
+    },
+    {
+      "compatibility_aliases": [],
+      "include_in_schema": true,
+      "logical_path": "/debug/memory/promotions/search",
+      "method": "GET",
+      "operation_id": "search_memory_promotions_api_v1_debug_memory_promotions_search_get",
+      "path": "/api/v1/debug/memory/promotions/search",
+      "summary": "Search Memory Promotions",
+      "tags": [
+        "debug"
+      ]
+    },
+    {
+      "compatibility_aliases": [],
+      "include_in_schema": true,
+      "logical_path": "/debug/memory/promotions/stats",
+      "method": "GET",
+      "operation_id": "get_memory_promotion_stats_api_v1_debug_memory_promotions_stats_get",
+      "path": "/api/v1/debug/memory/promotions/stats",
+      "summary": "Get Memory Promotion Stats",
+      "tags": [
+        "debug"
+      ]
+    },
+    {
+      "compatibility_aliases": [],
+      "include_in_schema": true,
+      "logical_path": "/debug/memory/user/{user_id}",
+      "method": "GET",
+      "operation_id": "get_user_memory_api_v1_debug_memory_user__user_id__get",
+      "path": "/api/v1/debug/memory/user/{user_id}",
+      "summary": "Get User Memory",
+      "tags": [
+        "debug"
+      ]
+    },
+    {
+      "compatibility_aliases": [],
+      "include_in_schema": true,
+      "logical_path": "/debug/model-usage",
+      "method": "GET",
+      "operation_id": "get_model_usage_api_v1_debug_model_usage_get",
+      "path": "/api/v1/debug/model-usage",
+      "summary": "Get Model Usage",
+      "tags": [
+        "debug"
+      ]
+    },
+    {
+      "compatibility_aliases": [],
+      "include_in_schema": true,
+      "logical_path": "/debug/retrieval-metrics/cache-hit-rate",
+      "method": "GET",
+      "operation_id": "get_cache_hit_rate_api_v1_debug_retrieval_metrics_cache_hit_rate_get",
+      "path": "/api/v1/debug/retrieval-metrics/cache-hit-rate",
+      "summary": "Get Cache Hit Rate",
+      "tags": [
+        "observability",
+        "retrieval-metrics"
+      ]
+    },
+    {
+      "compatibility_aliases": [],
+      "include_in_schema": true,
+      "logical_path": "/debug/retrieval-metrics/embedding-dedup",
+      "method": "GET",
+      "operation_id": "get_embedding_dedup_api_v1_debug_retrieval_metrics_embedding_dedup_get",
+      "path": "/api/v1/debug/retrieval-metrics/embedding-dedup",
+      "summary": "Get Embedding Dedup",
+      "tags": [
+        "observability",
+        "retrieval-metrics"
+      ]
+    },
+    {
+      "compatibility_aliases": [],
+      "include_in_schema": true,
+      "logical_path": "/debug/retrieval-metrics/failures",
+      "method": "GET",
+      "operation_id": "get_failure_summary_api_v1_debug_retrieval_metrics_failures_get",
+      "path": "/api/v1/debug/retrieval-metrics/failures",
+      "summary": "Get Failure Summary",
+      "tags": [
+        "observability",
+        "retrieval-metrics"
+      ]
+    },
+    {
+      "compatibility_aliases": [],
+      "include_in_schema": true,
+      "logical_path": "/debug/retrieval-metrics/report",
+      "method": "GET",
+      "operation_id": "get_full_report_api_v1_debug_retrieval_metrics_report_get",
+      "path": "/api/v1/debug/retrieval-metrics/report",
+      "summary": "Get Full Report",
+      "tags": [
+        "observability",
+        "retrieval-metrics"
+      ]
+    },
+    {
+      "compatibility_aliases": [],
+      "include_in_schema": true,
+      "logical_path": "/debug/retrieval-metrics/tier-latency",
+      "method": "GET",
+      "operation_id": "get_tier_latency_breakdown_api_v1_debug_retrieval_metrics_tier_latency_get",
+      "path": "/api/v1/debug/retrieval-metrics/tier-latency",
+      "summary": "Get Tier Latency Breakdown",
+      "tags": [
+        "observability",
+        "retrieval-metrics"
+      ]
+    },
+    {
+      "compatibility_aliases": [],
+      "include_in_schema": true,
+      "logical_path": "/debug/retrieval-metrics/token-accuracy",
+      "method": "GET",
+      "operation_id": "get_token_budget_accuracy_api_v1_debug_retrieval_metrics_token_accuracy_get",
+      "path": "/api/v1/debug/retrieval-metrics/token-accuracy",
+      "summary": "Get Token Budget Accuracy",
+      "tags": [
+        "observability",
+        "retrieval-metrics"
+      ]
+    },
+    {
+      "compatibility_aliases": [],
+      "include_in_schema": true,
+      "logical_path": "/debug/retrieval/history",
+      "method": "GET",
+      "operation_id": "get_retrieval_history_api_v1_debug_retrieval_history_get",
+      "path": "/api/v1/debug/retrieval/history",
+      "summary": "Get Retrieval History",
+      "tags": [
+        "debug"
+      ]
+    },
+    {
+      "compatibility_aliases": [],
+      "include_in_schema": true,
+      "logical_path": "/debug/retrieval/quality/{user_id}",
+      "method": "GET",
+      "operation_id": "get_retrieval_quality_api_v1_debug_retrieval_quality__user_id__get",
+      "path": "/api/v1/debug/retrieval/quality/{user_id}",
+      "summary": "Get Retrieval Quality",
+      "tags": [
+        "debug"
+      ]
+    },
+    {
+      "compatibility_aliases": [],
+      "include_in_schema": true,
+      "logical_path": "/debug/retrieval/stats",
+      "method": "GET",
+      "operation_id": "get_retrieval_stats_api_v1_debug_retrieval_stats_get",
+      "path": "/api/v1/debug/retrieval/stats",
+      "summary": "Get Retrieval Stats",
+      "tags": [
+        "debug"
+      ]
+    },
+    {
+      "compatibility_aliases": [],
+      "include_in_schema": true,
+      "logical_path": "/debug/retrieval/trace/{request_id}",
+      "method": "GET",
+      "operation_id": "get_retrieval_trace_api_v1_debug_retrieval_trace__request_id__get",
+      "path": "/api/v1/debug/retrieval/trace/{request_id}",
+      "summary": "Get Retrieval Trace",
+      "tags": [
+        "debug"
+      ]
+    },
+    {
+      "compatibility_aliases": [],
+      "include_in_schema": true,
+      "logical_path": "/debug/suggest",
+      "method": "POST",
+      "operation_id": "get_debug_suggestion_api_v1_debug_suggest_post",
+      "path": "/api/v1/debug/suggest",
+      "summary": "Get Debug Suggestion",
+      "tags": [
+        "debug-suggestions"
+      ]
+    },
+    {
+      "compatibility_aliases": [],
+      "include_in_schema": true,
+      "logical_path": "/debug/system/observability/clear-cache",
+      "method": "POST",
+      "operation_id": "clear_observability_cache_api_v1_debug_system_observability_clear_cache_post",
+      "path": "/api/v1/debug/system/observability/clear-cache",
+      "summary": "Clear Observability Cache",
+      "tags": [
+        "debug"
+      ]
+    },
+    {
+      "compatibility_aliases": [],
+      "include_in_schema": true,
+      "logical_path": "/debug/system/observability/health",
+      "method": "GET",
+      "operation_id": "get_system_health_api_v1_debug_system_observability_health_get",
+      "path": "/api/v1/debug/system/observability/health",
+      "summary": "Get System Health",
+      "tags": [
+        "debug"
+      ]
+    },
+    {
+      "compatibility_aliases": [],
+      "include_in_schema": true,
+      "logical_path": "/debug/system/observability/reset-counters",
+      "method": "POST",
+      "operation_id": "reset_observability_counters_api_v1_debug_system_observability_reset_counters_post",
+      "path": "/api/v1/debug/system/observability/reset-counters",
+      "summary": "Reset Observability Counters",
+      "tags": [
+        "debug"
+      ]
+    },
+    {
+      "compatibility_aliases": [],
+      "include_in_schema": true,
+      "logical_path": "/debug/system/observability/summary",
+      "method": "GET",
+      "operation_id": "get_observability_summary_api_v1_debug_system_observability_summary_get",
+      "path": "/api/v1/debug/system/observability/summary",
+      "summary": "Get Observability Summary",
+      "tags": [
+        "debug"
+      ]
+    },
+    {
+      "compatibility_aliases": [],
+      "include_in_schema": true,
+      "logical_path": "/debug/tool-trace/conversation/{conversation_id}",
+      "method": "GET",
+      "operation_id": "get_conversation_tool_traces_api_v1_debug_tool_trace_conversation__conversation_id__get",
+      "path": "/api/v1/debug/tool-trace/conversation/{conversation_id}",
+      "summary": "Get Conversation Tool Traces",
+      "tags": [
+        "debug"
+      ]
+    },
+    {
+      "compatibility_aliases": [],
+      "include_in_schema": true,
+      "logical_path": "/debug/tool-trace/stats",
+      "method": "GET",
+      "operation_id": "get_tool_trace_stats_api_v1_debug_tool_trace_stats_get",
+      "path": "/api/v1/debug/tool-trace/stats",
+      "summary": "Get Tool Trace Stats",
+      "tags": [
+        "debug"
+      ]
+    },
+    {
+      "compatibility_aliases": [],
+      "include_in_schema": true,
+      "logical_path": "/debug/tool-trace/{request_id}",
+      "method": "GET",
+      "operation_id": "get_tool_trace_api_v1_debug_tool_trace__request_id__get",
+      "path": "/api/v1/debug/tool-trace/{request_id}",
+      "summary": "Get Tool Trace",
+      "tags": [
+        "debug"
+      ]
+    },
+    {
+      "compatibility_aliases": [],
+      "include_in_schema": true,
+      "logical_path": "/debug/write/decisions/search",
+      "method": "GET",
+      "operation_id": "search_write_decisions_api_v1_debug_write_decisions_search_get",
+      "path": "/api/v1/debug/write/decisions/search",
+      "summary": "Search Write Decisions",
+      "tags": [
+        "debug"
+      ]
+    },
+    {
+      "compatibility_aliases": [],
+      "include_in_schema": true,
+      "logical_path": "/debug/write/decisions/stats",
+      "method": "GET",
+      "operation_id": "get_write_decision_stats_api_v1_debug_write_decisions_stats_get",
+      "path": "/api/v1/debug/write/decisions/stats",
+      "summary": "Get Write Decision Stats",
+      "tags": [
+        "debug"
+      ]
+    },
+    {
+      "compatibility_aliases": [],
+      "include_in_schema": true,
+      "logical_path": "/debug/write/decisions/{conversation_id}",
+      "method": "GET",
+      "operation_id": "get_write_decisions_api_v1_debug_write_decisions__conversation_id__get",
+      "path": "/api/v1/debug/write/decisions/{conversation_id}",
+      "summary": "Get Write Decisions",
+      "tags": [
+        "debug"
+      ]
+    },
+    {
+      "compatibility_aliases": [],
+      "include_in_schema": true,
+      "logical_path": "/health",
+      "method": "GET",
+      "operation_id": "health_check_api_v1_health_get",
+      "path": "/api/v1/health",
+      "summary": "Health Check",
+      "tags": [
+        "health"
+      ]
+    },
+    {
+      "compatibility_aliases": [],
+      "include_in_schema": true,
+      "logical_path": "/health/all",
+      "method": "GET",
+      "operation_id": "health_all_api_v1_health_all_get",
+      "path": "/api/v1/health/all",
+      "summary": "Health All",
+      "tags": [
+        "health"
+      ]
+    },
+    {
+      "compatibility_aliases": [],
+      "include_in_schema": true,
+      "logical_path": "/health/chroma/status",
+      "method": "GET",
+      "operation_id": "health_chroma_api_v1_health_chroma_status_get",
+      "path": "/api/v1/health/chroma/status",
+      "summary": "Health Chroma",
+      "tags": [
+        "health"
+      ]
+    },
+    {
+      "compatibility_aliases": [],
+      "include_in_schema": true,
+      "logical_path": "/health/cost-tracking",
+      "method": "GET",
+      "operation_id": "health_cost_tracking_api_v1_health_cost_tracking_get",
+      "path": "/api/v1/health/cost-tracking",
+      "summary": "Health Cost Tracking",
+      "tags": [
+        "health"
+      ]
+    },
+    {
+      "compatibility_aliases": [],
+      "include_in_schema": true,
+      "logical_path": "/health/latency-history/{service}",
+      "method": "GET",
+      "operation_id": "health_latency_history_api_v1_health_latency_history__service__get",
+      "path": "/api/v1/health/latency-history/{service}",
+      "summary": "Health Latency History",
+      "tags": [
+        "health"
+      ]
+    },
+    {
+      "compatibility_aliases": [],
+      "include_in_schema": true,
+      "logical_path": "/health/live",
+      "method": "GET",
+      "operation_id": "liveness_check_api_v1_health_live_get",
+      "path": "/api/v1/health/live",
+      "summary": "Liveness Check",
+      "tags": [
+        "health"
+      ]
+    },
+    {
+      "compatibility_aliases": [],
+      "include_in_schema": true,
+      "logical_path": "/health/mcp/status",
+      "method": "GET",
+      "operation_id": "health_mcp_api_v1_health_mcp_status_get",
+      "path": "/api/v1/health/mcp/status",
+      "summary": "Health Mcp",
+      "tags": [
+        "health"
+      ]
+    },
+    {
+      "compatibility_aliases": [],
+      "include_in_schema": true,
+      "logical_path": "/health/raptor/status",
+      "method": "GET",
+      "operation_id": "health_raptor_api_v1_health_raptor_status_get",
+      "path": "/api/v1/health/raptor/status",
+      "summary": "Health Raptor",
+      "tags": [
+        "health"
+      ]
+    },
+    {
+      "compatibility_aliases": [],
+      "include_in_schema": true,
+      "logical_path": "/health/ready",
+      "method": "GET",
+      "operation_id": "readiness_check_api_v1_health_ready_get",
+      "path": "/api/v1/health/ready",
+      "summary": "Readiness Check",
+      "tags": [
+        "health"
+      ]
+    },
+    {
+      "compatibility_aliases": [],
+      "include_in_schema": true,
+      "logical_path": "/health/retest/{service}",
+      "method": "POST",
+      "operation_id": "health_retest_api_v1_health_retest__service__post",
+      "path": "/api/v1/health/retest/{service}",
+      "summary": "Health Retest",
+      "tags": [
+        "health"
+      ]
+    },
+    {
+      "compatibility_aliases": [],
+      "include_in_schema": true,
+      "logical_path": "/health/routing",
+      "method": "GET",
+      "operation_id": "health_routing_api_v1_health_routing_get",
+      "path": "/api/v1/health/routing",
+      "summary": "Health Routing",
+      "tags": [
+        "health"
+      ]
+    },
+    {
+      "compatibility_aliases": [],
+      "include_in_schema": true,
+      "logical_path": "/health/sandbox/status",
+      "method": "GET",
+      "operation_id": "health_sandbox_api_v1_health_sandbox_status_get",
+      "path": "/api/v1/health/sandbox/status",
+      "summary": "Health Sandbox",
+      "tags": [
+        "health"
+      ]
+    },
+    {
+      "compatibility_aliases": [],
+      "include_in_schema": true,
+      "logical_path": "/health/service-errors/{service}",
+      "method": "GET",
+      "operation_id": "health_service_errors_api_v1_health_service_errors__service__get",
+      "path": "/api/v1/health/service-errors/{service}",
+      "summary": "Health Service Errors",
+      "tags": [
+        "health"
+      ]
+    },
+    {
+      "compatibility_aliases": [],
+      "include_in_schema": true,
+      "logical_path": "/health/stream",
+      "method": "GET",
+      "operation_id": "health_stream_api_v1_health_stream_get",
+      "path": "/api/v1/health/stream",
+      "summary": "Health Stream",
+      "tags": [
+        "health"
+      ]
+    },
+    {
+      "compatibility_aliases": [],
+      "include_in_schema": true,
+      "logical_path": "/health/streaming",
+      "method": "GET",
+      "operation_id": "health_streaming_api_v1_health_streaming_get",
+      "path": "/api/v1/health/streaming",
+      "summary": "Health Streaming",
+      "tags": [
+        "health"
+      ]
+    },
+    {
+      "compatibility_aliases": [],
+      "include_in_schema": true,
+      "logical_path": "/health/{component}",
+      "method": "GET",
+      "operation_id": "health_component_api_v1_health__component__get",
+      "path": "/api/v1/health/{component}",
+      "summary": "Health Component",
+      "tags": [
+        "health"
+      ]
+    },
+    {
+      "compatibility_aliases": [],
+      "include_in_schema": true,
+      "logical_path": "/ops/aggregated",
+      "method": "GET",
+      "operation_id": "get_aggregated_metrics_api_v1_ops_aggregated_get",
+      "path": "/api/v1/ops/aggregated",
+      "summary": "Get Aggregated Metrics",
+      "tags": [
+        "operations"
+      ]
+    },
+    {
+      "compatibility_aliases": [],
+      "include_in_schema": true,
+      "logical_path": "/ops/audit/log",
+      "method": "GET",
+      "operation_id": "get_audit_log_api_v1_ops_audit_log_get",
+      "path": "/api/v1/ops/audit/log",
+      "summary": "Get Audit Log",
+      "tags": [
+        "operations"
+      ]
+    },
+    {
+      "compatibility_aliases": [],
+      "include_in_schema": true,
+      "logical_path": "/ops/circuit-breakers",
+      "method": "GET",
+      "operation_id": "circuit_breakers_status_api_v1_ops_circuit_breakers_get",
+      "path": "/api/v1/ops/circuit-breakers",
+      "summary": "Circuit Breakers Status",
+      "tags": [
+        "operations"
+      ]
+    },
+    {
+      "compatibility_aliases": [],
+      "include_in_schema": true,
+      "logical_path": "/ops/circuit-breakers/{provider_name}/reset",
+      "method": "POST",
+      "operation_id": "reset_circuit_breaker_api_v1_ops_circuit_breakers__provider_name__reset_post",
+      "path": "/api/v1/ops/circuit-breakers/{provider_name}/reset",
+      "summary": "Reset Circuit Breaker",
+      "tags": [
+        "operations"
+      ]
+    },
+    {
+      "compatibility_aliases": [],
+      "include_in_schema": true,
+      "logical_path": "/ops/gcs/colab/register",
+      "method": "POST",
+      "operation_id": "register_colab_backend_api_v1_ops_gcs_colab_register_post",
+      "path": "/api/v1/ops/gcs/colab/register",
+      "summary": "Register Colab Backend",
+      "tags": [
+        "operations"
+      ]
+    },
+    {
+      "compatibility_aliases": [],
+      "include_in_schema": true,
+      "logical_path": "/ops/gcs/colab/status",
+      "method": "GET",
+      "operation_id": "gcs_colab_status_api_v1_ops_gcs_colab_status_get",
+      "path": "/api/v1/ops/gcs/colab/status",
+      "summary": "Gcs Colab Status",
+      "tags": [
+        "operations"
+      ]
+    },
+    {
+      "compatibility_aliases": [],
+      "include_in_schema": true,
+      "logical_path": "/ops/health/summary",
+      "method": "GET",
+      "operation_id": "ops_health_summary_api_v1_ops_health_summary_get",
+      "path": "/api/v1/ops/health/summary",
+      "summary": "Ops Health Summary",
+      "tags": [
+        "operations"
+      ]
+    },
+    {
+      "compatibility_aliases": [],
+      "include_in_schema": true,
+      "logical_path": "/ops/health/trends",
+      "method": "GET",
+      "operation_id": "get_health_trends_api_v1_ops_health_trends_get",
+      "path": "/api/v1/ops/health/trends",
+      "summary": "Get Health Trends",
+      "tags": [
+        "operations"
+      ]
+    },
+    {
+      "compatibility_aliases": [],
+      "include_in_schema": true,
+      "logical_path": "/ops/metrics/history",
+      "method": "GET",
+      "operation_id": "metrics_history_api_v1_ops_metrics_history_get",
+      "path": "/api/v1/ops/metrics/history",
+      "summary": "Metrics History",
+      "tags": [
+        "operations"
+      ]
+    },
+    {
+      "compatibility_aliases": [],
+      "include_in_schema": true,
+      "logical_path": "/ops/performance/snapshot",
+      "method": "GET",
+      "operation_id": "performance_snapshot_api_v1_ops_performance_snapshot_get",
+      "path": "/api/v1/ops/performance/snapshot",
+      "summary": "Performance Snapshot",
+      "tags": [
+        "operations"
+      ]
+    },
+    {
+      "compatibility_aliases": [],
+      "include_in_schema": true,
+      "logical_path": "/ops/providers/status",
+      "method": "GET",
+      "operation_id": "ops_providers_status_api_v1_ops_providers_status_get",
+      "path": "/api/v1/ops/providers/status",
+      "summary": "Ops Providers Status",
+      "tags": [
+        "operations"
+      ]
+    },
+    {
+      "compatibility_aliases": [],
+      "include_in_schema": true,
+      "logical_path": "/ops/queues/snapshot",
+      "method": "GET",
+      "operation_id": "queues_snapshot_api_v1_ops_queues_snapshot_get",
+      "path": "/api/v1/ops/queues/snapshot",
+      "summary": "Queues Snapshot",
+      "tags": [
+        "operations"
+      ]
+    },
+    {
+      "compatibility_aliases": [],
+      "include_in_schema": true,
+      "logical_path": "/ops/recommendations",
+      "method": "GET",
+      "operation_id": "get_system_recommendations_api_v1_ops_recommendations_get",
+      "path": "/api/v1/ops/recommendations",
+      "summary": "Get System Recommendations",
+      "tags": [
+        "operations"
+      ]
+    },
+    {
+      "compatibility_aliases": [],
+      "include_in_schema": true,
+      "logical_path": "/ops/rovo-dev/health",
+      "method": "POST",
+      "operation_id": "rovo_dev_health_probe_api_v1_ops_rovo_dev_health_post",
+      "path": "/api/v1/ops/rovo-dev/health",
+      "summary": "Rovo Dev Health Probe",
+      "tags": [
+        "operations"
+      ]
+    },
+    {
+      "compatibility_aliases": [],
+      "include_in_schema": true,
+      "logical_path": "/ops/rovo-dev/status",
+      "method": "GET",
+      "operation_id": "rovo_dev_status_api_v1_ops_rovo_dev_status_get",
+      "path": "/api/v1/ops/rovo-dev/status",
+      "summary": "Rovo Dev Status",
+      "tags": [
+        "operations"
+      ]
+    },
+    {
+      "compatibility_aliases": [],
+      "include_in_schema": true,
+      "logical_path": "/ops/security/status",
+      "method": "GET",
+      "operation_id": "get_security_status_api_v1_ops_security_status_get",
+      "path": "/api/v1/ops/security/status",
+      "summary": "Get Security Status",
+      "tags": [
+        "operations"
+      ]
+    },
+    {
+      "compatibility_aliases": [],
+      "include_in_schema": true,
+      "logical_path": "/ops/sentry-webhook",
+      "method": "POST",
+      "operation_id": "sentry_webhook_api_v1_ops_sentry_webhook_post",
+      "path": "/api/v1/ops/sentry-webhook",
+      "summary": "Sentry Webhook",
+      "tags": [
+        "operations"
+      ]
+    },
+    {
+      "compatibility_aliases": [],
+      "include_in_schema": true,
+      "logical_path": "/ops/streaming/analysis",
+      "method": "GET",
+      "operation_id": "get_streaming_analysis_api_v1_ops_streaming_analysis_get",
+      "path": "/api/v1/ops/streaming/analysis",
+      "summary": "Get Streaming Analysis",
+      "tags": [
+        "operations"
+      ]
+    },
+    {
+      "compatibility_aliases": [],
+      "include_in_schema": true,
+      "logical_path": "/parse/",
+      "method": "POST",
+      "operation_id": "parse_orchestration_api_v1_parse__post",
+      "path": "/api/v1/parse/",
+      "summary": "Parse Orchestration",
+      "tags": [
+        "parse"
+      ]
+    },
+    {
+      "compatibility_aliases": [],
+      "include_in_schema": true,
+      "logical_path": "/providers/models",
+      "method": "GET",
+      "operation_id": "get_provider_models_api_v1_providers_models_get",
+      "path": "/api/v1/providers/models",
+      "summary": "Get Provider Models",
+      "tags": [
+        "providers"
+      ]
+    },
+    {
+      "compatibility_aliases": [],
+      "include_in_schema": true,
+      "logical_path": "/raptor/demo/{value}",
+      "method": "GET",
+      "operation_id": "raptor_demo_api_v1_raptor_demo__value__get",
+      "path": "/api/v1/raptor/demo/{value}",
+      "summary": "Raptor Demo",
+      "tags": [
+        "raptor"
+      ]
+    },
+    {
+      "compatibility_aliases": [],
+      "include_in_schema": true,
+      "logical_path": "/raptor/logs",
+      "method": "POST",
+      "operation_id": "raptor_logs_api_v1_raptor_logs_post",
+      "path": "/api/v1/raptor/logs",
+      "summary": "Raptor Logs",
+      "tags": [
+        "raptor"
+      ]
+    },
+    {
+      "compatibility_aliases": [],
+      "include_in_schema": true,
+      "logical_path": "/raptor/start",
+      "method": "POST",
+      "operation_id": "raptor_start_api_v1_raptor_start_post",
+      "path": "/api/v1/raptor/start",
+      "summary": "Raptor Start",
+      "tags": [
+        "raptor"
+      ]
+    },
+    {
+      "compatibility_aliases": [],
+      "include_in_schema": true,
+      "logical_path": "/raptor/status",
+      "method": "GET",
+      "operation_id": "raptor_status_api_v1_raptor_status_get",
+      "path": "/api/v1/raptor/status",
+      "summary": "Raptor Status",
+      "tags": [
+        "raptor"
+      ]
+    },
+    {
+      "compatibility_aliases": [],
+      "include_in_schema": true,
+      "logical_path": "/raptor/stop",
+      "method": "POST",
+      "operation_id": "raptor_stop_api_v1_raptor_stop_post",
+      "path": "/api/v1/raptor/stop",
+      "summary": "Raptor Stop",
+      "tags": [
+        "raptor"
+      ]
+    },
+    {
+      "compatibility_aliases": [],
+      "include_in_schema": true,
+      "logical_path": "/routing/audit",
+      "method": "GET",
+      "operation_id": "get_routing_audit_api_v1_routing_audit_get",
+      "path": "/api/v1/routing/audit",
+      "summary": "Get Routing Audit",
+      "tags": [
+        "routing-analytics"
+      ]
+    },
+    {
+      "compatibility_aliases": [],
+      "include_in_schema": true,
+      "logical_path": "/routing/costs",
+      "method": "GET",
+      "operation_id": "get_cost_tracking_api_v1_routing_costs_get",
+      "path": "/api/v1/routing/costs",
+      "summary": "Get Cost Tracking",
+      "tags": [
+        "routing-analytics"
+      ]
+    },
+    {
+      "compatibility_aliases": [],
+      "include_in_schema": true,
+      "logical_path": "/routing/departments",
+      "method": "GET",
+      "operation_id": "list_departments_api_v1_routing_departments_get",
+      "path": "/api/v1/routing/departments",
+      "summary": "List Departments",
+      "tags": [
+        "routing"
+      ]
+    },
+    {
+      "compatibility_aliases": [],
+      "include_in_schema": true,
+      "logical_path": "/routing/departments/{department_id}",
+      "method": "GET",
+      "operation_id": "get_department_api_v1_routing_departments__department_id__get",
+      "path": "/api/v1/routing/departments/{department_id}",
+      "summary": "Get Department",
+      "tags": [
+        "routing"
+      ]
+    },
+    {
+      "compatibility_aliases": [],
+      "include_in_schema": true,
+      "logical_path": "/routing/health",
+      "method": "GET",
+      "operation_id": "get_provider_health_api_v1_routing_health_get",
+      "path": "/api/v1/routing/health",
+      "summary": "Get Provider Health",
+      "tags": [
+        "routing-analytics"
+      ]
+    },
+    {
+      "compatibility_aliases": [],
+      "include_in_schema": true,
+      "logical_path": "/routing/health/{provider_id}",
+      "method": "GET",
+      "operation_id": "get_provider_health_detail_api_v1_routing_health__provider_id__get",
+      "path": "/api/v1/routing/health/{provider_id}",
+      "summary": "Get Provider Health Detail",
+      "tags": [
+        "routing-analytics"
+      ]
+    },
+    {
+      "compatibility_aliases": [],
+      "include_in_schema": true,
+      "logical_path": "/routing/providers",
+      "method": "GET",
+      "operation_id": "list_available_providers_api_v1_routing_providers_get",
+      "path": "/api/v1/routing/providers",
+      "summary": "List Available Providers",
+      "tags": [
+        "routing-analytics"
+      ]
+    },
+    {
+      "compatibility_aliases": [],
+      "include_in_schema": true,
+      "logical_path": "/routing/providers",
+      "method": "GET",
+      "operation_id": "list_available_providers_api_v1_routing_providers_get",
+      "path": "/api/v1/routing/providers",
+      "summary": "List Available Providers",
+      "tags": [
+        "routing-analytics"
+      ]
+    },
+    {
+      "compatibility_aliases": [],
+      "include_in_schema": true,
+      "logical_path": "/routing/providers/{capability}",
+      "method": "GET",
+      "operation_id": "get_providers_for_capability_api_v1_routing_providers__capability__get",
+      "path": "/api/v1/routing/providers/{capability}",
+      "summary": "Get Providers For Capability",
+      "tags": [
+        "routing"
+      ]
+    },
+    {
+      "compatibility_aliases": [],
+      "include_in_schema": true,
+      "logical_path": "/routing/route",
+      "method": "POST",
+      "operation_id": "route_through_department_api_v1_routing_route_post",
+      "path": "/api/v1/routing/route",
+      "summary": "Route Through Department",
+      "tags": [
+        "routing"
+      ]
+    },
+    {
+      "compatibility_aliases": [],
+      "include_in_schema": true,
+      "logical_path": "/routing/status",
+      "method": "GET",
+      "operation_id": "get_routing_status_api_v1_routing_status_get",
+      "path": "/api/v1/routing/status",
+      "summary": "Get Routing Status",
+      "tags": [
+        "routing-analytics"
+      ]
+    },
+    {
+      "compatibility_aliases": [],
+      "include_in_schema": true,
+      "logical_path": "/routing/strategies",
+      "method": "GET",
+      "operation_id": "list_routing_strategies_api_v1_routing_strategies_get",
+      "path": "/api/v1/routing/strategies",
+      "summary": "List Routing Strategies",
+      "tags": [
+        "routing-analytics"
+      ]
+    },
+    {
+      "compatibility_aliases": [],
+      "include_in_schema": true,
+      "logical_path": "/routing/test/{provider_id}",
+      "method": "POST",
+      "operation_id": "test_provider_api_v1_routing_test__provider_id__post",
+      "path": "/api/v1/routing/test/{provider_id}",
+      "summary": "Test Provider",
+      "tags": [
+        "routing-analytics"
+      ]
+    },
+    {
+      "compatibility_aliases": [],
+      "include_in_schema": true,
+      "logical_path": "/routing/weight",
+      "method": "GET",
+      "operation_id": "get_routing_weight_api_v1_routing_weight_get",
+      "path": "/api/v1/routing/weight",
+      "summary": "Get Routing Weight",
+      "tags": [
+        "routing-analytics"
+      ]
+    },
+    {
+      "compatibility_aliases": [],
+      "include_in_schema": true,
+      "logical_path": "/sandbox/artifacts/{job_id}",
+      "method": "GET",
+      "operation_id": "list_job_artifacts_api_v1_sandbox_artifacts__job_id__get",
+      "path": "/api/v1/sandbox/artifacts/{job_id}",
+      "summary": "List Job Artifacts",
+      "tags": [
+        "sandbox"
+      ]
+    },
+    {
+      "compatibility_aliases": [],
+      "include_in_schema": true,
+      "logical_path": "/sandbox/artifacts/{job_id}/download/{filename}",
+      "method": "GET",
+      "operation_id": "download_artifact_api_v1_sandbox_artifacts__job_id__download__filename__get",
+      "path": "/api/v1/sandbox/artifacts/{job_id}/download/{filename}",
+      "summary": "Download Artifact",
+      "tags": [
+        "sandbox"
+      ]
+    },
+    {
+      "compatibility_aliases": [],
+      "include_in_schema": true,
+      "logical_path": "/sandbox/cancel/{job_id}",
+      "method": "POST",
+      "operation_id": "cancel_job_api_v1_sandbox_cancel__job_id__post",
+      "path": "/api/v1/sandbox/cancel/{job_id}",
+      "summary": "Cancel Job",
+      "tags": [
+        "sandbox"
+      ]
+    },
+    {
+      "compatibility_aliases": [],
+      "include_in_schema": true,
+      "logical_path": "/sandbox/health",
+      "method": "GET",
+      "operation_id": "sandbox_health_legacy_api_v1_sandbox_health_get",
+      "path": "/api/v1/sandbox/health",
+      "summary": "Sandbox Health Legacy",
+      "tags": [
+        "sandbox"
+      ]
+    },
+    {
+      "compatibility_aliases": [],
+      "include_in_schema": true,
+      "logical_path": "/sandbox/health/status",
+      "method": "GET",
+      "operation_id": "sandbox_health_api_v1_sandbox_health_status_get",
+      "path": "/api/v1/sandbox/health/status",
+      "summary": "Sandbox Health",
+      "tags": [
+        "sandbox"
+      ]
+    },
+    {
+      "compatibility_aliases": [],
+      "include_in_schema": true,
+      "logical_path": "/sandbox/jobs",
+      "method": "GET",
+      "operation_id": "list_sandbox_jobs_api_v1_sandbox_jobs_get",
+      "path": "/api/v1/sandbox/jobs",
+      "summary": "List Sandbox Jobs",
+      "tags": [
+        "sandbox"
+      ]
+    },
+    {
+      "compatibility_aliases": [],
+      "include_in_schema": true,
+      "logical_path": "/sandbox/jobs/{job_id}",
+      "method": "GET",
+      "operation_id": "get_job_status_alias_api_v1_sandbox_jobs__job_id__get",
+      "path": "/api/v1/sandbox/jobs/{job_id}",
+      "summary": "Get Job Status Alias",
+      "tags": [
+        "sandbox"
+      ]
+    },
+    {
+      "compatibility_aliases": [],
+      "include_in_schema": true,
+      "logical_path": "/sandbox/jobs/{job_id}/logs",
+      "method": "GET",
+      "operation_id": "get_job_logs_alias_api_v1_sandbox_jobs__job_id__logs_get",
+      "path": "/api/v1/sandbox/jobs/{job_id}/logs",
+      "summary": "Get Job Logs Alias",
+      "tags": [
+        "sandbox"
+      ]
+    },
+    {
+      "compatibility_aliases": [],
+      "include_in_schema": true,
+      "logical_path": "/sandbox/logs/{job_id}",
+      "method": "GET",
+      "operation_id": "get_job_logs_api_v1_sandbox_logs__job_id__get",
+      "path": "/api/v1/sandbox/logs/{job_id}",
+      "summary": "Get Job Logs",
+      "tags": [
+        "sandbox"
+      ]
+    },
+    {
+      "compatibility_aliases": [],
+      "include_in_schema": true,
+      "logical_path": "/sandbox/metrics",
+      "method": "GET",
+      "operation_id": "sandbox_metrics_api_v1_sandbox_metrics_get",
+      "path": "/api/v1/sandbox/metrics",
+      "summary": "Sandbox Metrics",
+      "tags": [
+        "sandbox"
+      ]
+    },
+    {
+      "compatibility_aliases": [],
+      "include_in_schema": true,
+      "logical_path": "/sandbox/run",
+      "method": "POST",
+      "operation_id": "run_sandbox_code_api_v1_sandbox_run_post",
+      "path": "/api/v1/sandbox/run",
+      "summary": "Run Sandbox Code",
+      "tags": [
+        "sandbox"
+      ]
+    },
+    {
+      "compatibility_aliases": [],
+      "include_in_schema": true,
+      "logical_path": "/sandbox/status/{job_id}",
+      "method": "GET",
+      "operation_id": "get_job_status_api_v1_sandbox_status__job_id__get",
+      "path": "/api/v1/sandbox/status/{job_id}",
+      "summary": "Get Job Status",
+      "tags": [
+        "sandbox"
+      ]
+    },
+    {
+      "compatibility_aliases": [],
+      "include_in_schema": true,
+      "logical_path": "/sandbox/submit",
+      "method": "POST",
+      "operation_id": "submit_job_api_v1_sandbox_submit_post",
+      "path": "/api/v1/sandbox/submit",
+      "summary": "Submit Job",
+      "tags": [
+        "sandbox"
+      ]
+    },
+    {
+      "compatibility_aliases": [],
+      "include_in_schema": true,
+      "logical_path": "/search/collections",
+      "method": "GET",
+      "operation_id": "list_collections_api_v1_search_collections_get",
+      "path": "/api/v1/search/collections",
+      "summary": "List Collections",
+      "tags": [
+        "search"
+      ]
+    },
+    {
+      "compatibility_aliases": [],
+      "include_in_schema": true,
+      "logical_path": "/search/collections/{collection_name}/add",
+      "method": "POST",
+      "operation_id": "add_document_compat_api_v1_search_collections__collection_name__add_post",
+      "path": "/api/v1/search/collections/{collection_name}/add",
+      "summary": "Add Document Compat",
+      "tags": [
+        "search"
+      ]
+    },
+    {
+      "compatibility_aliases": [],
+      "include_in_schema": true,
+      "logical_path": "/search/collections/{collection_name}/documents",
+      "method": "GET",
+      "operation_id": "get_collection_documents_api_v1_search_collections__collection_name__documents_get",
+      "path": "/api/v1/search/collections/{collection_name}/documents",
+      "summary": "Get Collection Documents",
+      "tags": [
+        "search"
+      ]
+    },
+    {
+      "compatibility_aliases": [],
+      "include_in_schema": true,
+      "logical_path": "/search/index",
+      "method": "POST",
+      "operation_id": "index_content_api_v1_search_index_post",
+      "path": "/api/v1/search/index",
+      "summary": "Index Content",
+      "tags": [
+        "search"
+      ]
+    },
+    {
+      "compatibility_aliases": [],
+      "include_in_schema": true,
+      "logical_path": "/search/query",
+      "method": "POST",
+      "operation_id": "search_query_api_v1_search_query_post",
+      "path": "/api/v1/search/query",
+      "summary": "Search Query",
+      "tags": [
+        "search"
+      ]
+    },
+    {
+      "compatibility_aliases": [],
+      "include_in_schema": true,
+      "logical_path": "/secrets/",
+      "method": "GET",
+      "operation_id": "list_secrets_api_v1_secrets__get",
+      "path": "/api/v1/secrets/",
+      "summary": "List Secrets",
+      "tags": [
+        "secrets"
+      ]
+    },
+    {
+      "compatibility_aliases": [],
+      "include_in_schema": true,
+      "logical_path": "/secrets/health",
+      "method": "GET",
+      "operation_id": "secrets_health_api_v1_secrets_health_get",
+      "path": "/api/v1/secrets/health",
+      "summary": "Secrets Health",
+      "tags": [
+        "secrets"
+      ]
+    },
+    {
+      "compatibility_aliases": [],
+      "include_in_schema": true,
+      "logical_path": "/secrets/{path:path}",
+      "method": "DELETE",
+      "operation_id": "delete_secret",
+      "path": "/api/v1/secrets/{path:path}",
+      "summary": "Delete a secret. Args: path: Secret path version: Optional specific version to delete adapter: The secrets adapter instance",
+      "tags": [
+        "secrets"
+      ]
+    },
+    {
+      "compatibility_aliases": [],
+      "include_in_schema": true,
+      "logical_path": "/secrets/{path:path}",
+      "method": "GET",
+      "operation_id": "get_secret",
+      "path": "/api/v1/secrets/{path:path}",
+      "summary": "Retrieve a secret by path. Args: path: Secret path version: Optional specific version adapter: The secrets adapter instance Returns: Secret data and metadata",
+      "tags": [
+        "secrets"
+      ]
+    },
+    {
+      "compatibility_aliases": [],
+      "include_in_schema": true,
+      "logical_path": "/secrets/{path:path}",
+      "method": "PUT",
+      "operation_id": "put_secret",
+      "path": "/api/v1/secrets/{path:path}",
+      "summary": "Create or update a secret. Args: path: Secret path request: Secret data and metadata adapter: The secrets adapter instance Returns: Stored secret information",
+      "tags": [
+        "secrets"
+      ]
+    },
+    {
+      "compatibility_aliases": [],
+      "include_in_schema": true,
+      "logical_path": "/secrets/{path:path}/rotate",
+      "method": "POST",
+      "operation_id": "rotate_secret",
+      "path": "/api/v1/secrets/{path:path}/rotate",
+      "summary": "Rotate a secret value. Args: path: Secret path adapter: The secrets adapter instance Returns: New secret value",
+      "tags": [
+        "secrets"
+      ]
+    },
+    {
+      "compatibility_aliases": [],
+      "include_in_schema": true,
+      "logical_path": "/semantic-chat/conversations/{conversation_id}/context",
+      "method": "GET",
+      "operation_id": "get_context_bundle_api_v1_semantic_chat_conversations__conversation_id__context_get",
+      "path": "/api/v1/semantic-chat/conversations/{conversation_id}/context",
+      "summary": "Get Context Bundle",
+      "tags": [
+        "semantic-chat"
+      ]
+    },
+    {
+      "compatibility_aliases": [],
+      "include_in_schema": true,
+      "logical_path": "/semantic-chat/conversations/{conversation_id}/messages",
+      "method": "POST",
+      "operation_id": "semantic_send_message_api_v1_semantic_chat_conversations__conversation_id__messages_post",
+      "path": "/api/v1/semantic-chat/conversations/{conversation_id}/messages",
+      "summary": "Semantic Send Message",
+      "tags": [
+        "semantic-chat"
+      ]
+    },
+    {
+      "compatibility_aliases": [],
+      "include_in_schema": true,
+      "logical_path": "/semantic-chat/conversations/{conversation_id}/summarize",
+      "method": "POST",
+      "operation_id": "summarize_conversation_api_v1_semantic_chat_conversations__conversation_id__summarize_post",
+      "path": "/api/v1/semantic-chat/conversations/{conversation_id}/summarize",
+      "summary": "Summarize Conversation",
+      "tags": [
+        "semantic-chat"
+      ]
+    },
+    {
+      "compatibility_aliases": [],
+      "include_in_schema": true,
+      "logical_path": "/semantic-chat/users/{user_id}/memory",
+      "method": "POST",
+      "operation_id": "add_memory_fact_api_v1_semantic_chat_users__user_id__memory_post",
+      "path": "/api/v1/semantic-chat/users/{user_id}/memory",
+      "summary": "Add Memory Fact",
+      "tags": [
+        "semantic-chat"
+      ]
+    },
+    {
+      "compatibility_aliases": [],
+      "include_in_schema": true,
+      "logical_path": "/semantic-chat/users/{user_id}/memory/search",
+      "method": "GET",
+      "operation_id": "search_memory_facts_api_v1_semantic_chat_users__user_id__memory_search_get",
+      "path": "/api/v1/semantic-chat/users/{user_id}/memory/search",
+      "summary": "Search Memory Facts",
+      "tags": [
+        "semantic-chat"
+      ]
+    },
+    {
+      "compatibility_aliases": [
+        "/settings/"
+      ],
+      "include_in_schema": true,
+      "logical_path": "/settings/",
+      "method": "GET",
+      "operation_id": "get_settings_settings__get",
+      "path": "/api/v1/settings/",
+      "summary": "Get Settings",
+      "tags": [
+        "settings"
+      ]
+    },
+    {
+      "compatibility_aliases": [
+        "/settings/models/{model_name}"
+      ],
+      "include_in_schema": true,
+      "logical_path": "/settings/models/{model_name}",
+      "method": "PUT",
+      "operation_id": "update_model_settings_settings_models__model_name__put",
+      "path": "/api/v1/settings/models/{model_name}",
+      "summary": "Update Model Settings",
+      "tags": [
+        "settings"
+      ]
+    },
+    {
+      "compatibility_aliases": [
+        "/settings/providers/{provider_name}"
+      ],
+      "include_in_schema": true,
+      "logical_path": "/settings/providers/{provider_name}",
+      "method": "PUT",
+      "operation_id": "update_provider_settings_settings_providers__provider_name__put",
+      "path": "/api/v1/settings/providers/{provider_name}",
+      "summary": "Update Provider Settings",
+      "tags": [
+        "settings"
+      ]
+    },
+    {
+      "compatibility_aliases": [
+        "/settings/test-connection"
+      ],
+      "include_in_schema": true,
+      "logical_path": "/settings/test-connection",
+      "method": "POST",
+      "operation_id": "test_provider_connection_settings_test_connection_post",
+      "path": "/api/v1/settings/test-connection",
+      "summary": "Test Provider Connection",
+      "tags": [
+        "settings"
+      ]
+    },
+    {
+      "compatibility_aliases": [],
+      "include_in_schema": true,
+      "logical_path": "/stream",
+      "method": "POST",
+      "operation_id": "stream_task_api_v1_stream_post",
+      "path": "/api/v1/stream",
+      "summary": "Stream Task",
+      "tags": [
+        "stream"
+      ]
+    },
+    {
+      "compatibility_aliases": [],
+      "include_in_schema": true,
+      "logical_path": "/support/message",
+      "method": "POST",
+      "operation_id": "send_support_message_api_v1_support_message_post",
+      "path": "/api/v1/support/message",
+      "summary": "Send Support Message",
+      "tags": [
+        "support"
+      ]
+    },
+    {
+      "compatibility_aliases": [],
+      "include_in_schema": true,
+      "logical_path": "/support/triage",
+      "method": "POST",
+      "operation_id": "triage_issue_api_v1_support_triage_post",
+      "path": "/api/v1/support/triage",
+      "summary": "Triage Issue",
+      "tags": [
+        "support"
+      ]
+    },
+    {
+      "compatibility_aliases": [],
+      "include_in_schema": true,
+      "logical_path": "/write-time/cache/cleanup",
+      "method": "POST",
+      "operation_id": "cleanup_cache_api_v1_write_time_cache_cleanup_post",
+      "path": "/api/v1/write-time/cache/cleanup",
+      "summary": "Cleanup Cache",
+      "tags": [
+        "write-time"
+      ]
+    },
+    {
+      "compatibility_aliases": [],
+      "include_in_schema": true,
+      "logical_path": "/write-time/cache/clear",
+      "method": "POST",
+      "operation_id": "clear_cache_api_v1_write_time_cache_clear_post",
+      "path": "/api/v1/write-time/cache/clear",
+      "summary": "Clear Cache",
+      "tags": [
+        "write-time"
+      ]
+    },
+    {
+      "compatibility_aliases": [],
+      "include_in_schema": true,
+      "logical_path": "/write-time/cache/stats",
+      "method": "GET",
+      "operation_id": "get_cache_stats_api_v1_write_time_cache_stats_get",
+      "path": "/api/v1/write-time/cache/stats",
+      "summary": "Get Cache Stats",
+      "tags": [
+        "write-time"
+      ]
+    },
+    {
+      "compatibility_aliases": [],
+      "include_in_schema": true,
+      "logical_path": "/write-time/matrix/config",
+      "method": "GET",
+      "operation_id": "get_decision_matrix_config_api_v1_write_time_matrix_config_get",
+      "path": "/api/v1/write-time/matrix/config",
+      "summary": "Get Decision Matrix Config",
+      "tags": [
+        "write-time"
+      ]
+    },
+    {
+      "compatibility_aliases": [],
+      "include_in_schema": true,
+      "logical_path": "/write-time/metrics",
+      "method": "GET",
+      "operation_id": "get_write_time_metrics_api_v1_write_time_metrics_get",
+      "path": "/api/v1/write-time/metrics",
+      "summary": "Get Write Time Metrics",
+      "tags": [
+        "write-time"
+      ]
+    },
+    {
+      "compatibility_aliases": [],
+      "include_in_schema": true,
+      "logical_path": "/write-time/test",
+      "method": "POST",
+      "operation_id": "test_message_processing_api_v1_write_time_test_post",
+      "path": "/api/v1/write-time/test",
+      "summary": "Test Message Processing",
+      "tags": [
+        "write-time"
+      ]
+    },
+    {
+      "compatibility_aliases": [],
+      "include_in_schema": true,
+      "logical_path": "/write-time/test/batch",
+      "method": "POST",
+      "operation_id": "test_batch_messages_api_v1_write_time_test_batch_post",
+      "path": "/api/v1/write-time/test/batch",
+      "summary": "Test Batch Messages",
+      "tags": [
+        "write-time"
+      ]
+    },
+    {
+      "compatibility_aliases": [],
+      "include_in_schema": true,
+      "logical_path": "/write-time/test/examples",
+      "method": "GET",
+      "operation_id": "get_test_examples_api_v1_write_time_test_examples_get",
+      "path": "/api/v1/write-time/test/examples",
+      "summary": "Get Test Examples",
+      "tags": [
+        "write-time"
+      ]
+    },
+    {
+      "compatibility_aliases": [],
+      "include_in_schema": true,
+      "logical_path": "/metrics",
+      "method": "GET",
+      "operation_id": "metrics_metrics_get",
+      "path": "/metrics",
+      "summary": "Metrics",
+      "tags": [
+        "observability"
+      ]
+    },
+    {
+      "compatibility_aliases": [
+        "/api/v1/settings/"
+      ],
+      "include_in_schema": true,
+      "logical_path": "/settings/",
+      "method": "GET",
+      "operation_id": "get_settings_settings__get",
+      "path": "/settings/",
+      "summary": "Get Settings",
+      "tags": [
+        "settings"
+      ]
+    },
+    {
+      "compatibility_aliases": [
+        "/api/v1/settings/models/{model_name}"
+      ],
+      "include_in_schema": true,
+      "logical_path": "/settings/models/{model_name}",
+      "method": "PUT",
+      "operation_id": "update_model_settings_settings_models__model_name__put",
+      "path": "/settings/models/{model_name}",
+      "summary": "Update Model Settings",
+      "tags": [
+        "settings"
+      ]
+    },
+    {
+      "compatibility_aliases": [
+        "/api/v1/settings/providers/{provider_name}"
+      ],
+      "include_in_schema": true,
+      "logical_path": "/settings/providers/{provider_name}",
+      "method": "PUT",
+      "operation_id": "update_provider_settings_settings_providers__provider_name__put",
+      "path": "/settings/providers/{provider_name}",
+      "summary": "Update Provider Settings",
+      "tags": [
+        "settings"
+      ]
+    },
+    {
+      "compatibility_aliases": [
+        "/api/v1/settings/test-connection"
+      ],
+      "include_in_schema": true,
+      "logical_path": "/settings/test-connection",
+      "method": "POST",
+      "operation_id": "test_provider_connection_settings_test_connection_post",
+      "path": "/settings/test-connection",
+      "summary": "Test Provider Connection",
+      "tags": [
+        "settings"
+      ]
+    },
+    {
+      "compatibility_aliases": [],
+      "include_in_schema": true,
+      "logical_path": "/test",
+      "method": "GET",
+      "operation_id": "test_test_get",
+      "path": "/test",
+      "summary": "Test",
+      "tags": []
+    }
+  ],
+  "schema_version": 1,
+  "versioned_route_count": 188
+}

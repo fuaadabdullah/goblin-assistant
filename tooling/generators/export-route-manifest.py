@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Compatibility wrapper for generating the API route inventory markdown."""
+"""Compatibility wrapper for exporting the checked-in route manifest."""
 
 from __future__ import annotations
 
@@ -10,7 +10,7 @@ ROOT = Path(__file__).resolve().parents[2]
 if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
-from tooling.generators.api_route_inventory import main
+from tooling.generators.route_manifest import main
 
 
 if __name__ == "__main__":
