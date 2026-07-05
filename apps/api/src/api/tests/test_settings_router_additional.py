@@ -1,7 +1,14 @@
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
+from fastapi import FastAPI
+from fastapi.responses import JSONResponse
 from fastapi.testclient import TestClient
+
+from api.core.contracts import ErrorEnvelope
+from api.core.error_types import ErrorType
+from api.core.errors import DomainError
+from api.settings_router import router
 
 
 @pytest.fixture(autouse=True)
@@ -11,9 +18,25 @@ def _jwt_secret_for_app(monkeypatch):
 
 
 def _make_client():
-    from api import main
+    app = FastAPI()
 
-    return TestClient(main.app)
+    @app.exception_handler(DomainError)
+    async def _domain_error_handler(_, exc: DomainError):
+        return JSONResponse(
+            status_code=exc.status_code,
+            content=ErrorEnvelope(
+                error={
+                    "code": exc.code,
+                    "type": ErrorType.BUSINESS_LOGIC,
+                    "message": exc.message,
+                    "details": exc.details,
+                }
+            ).model_dump(exclude_none=True),
+        )
+
+    app.include_router(router, prefix="/api/v1")
+    app.include_router(router)
+    return TestClient(app)
 
 
 def test_provider_models_deduplicates_and_sorts():
@@ -112,25 +135,23 @@ def test_get_settings_failure():
 def test_update_provider_and_model_settings():
     with (
         _make_client() as client,
-        (
-            patch(
-                "api.settings_router.SaaSSettingsService.upsert_provider_settings",
-                new_callable=AsyncMock,
-                return_value=MagicMock(
-                    provider_name="openai",
-                    endpoint="https://api.openai.com",
-                    base_url="https://api.openai.com",
-                    enabled=True,
-                    priority=None,
-                    weight=None,
-                    models=["gpt-4o-mini"],
-                ),
+        patch(
+            "api.settings_router.SaaSSettingsService.upsert_provider_settings",
+            new_callable=AsyncMock,
+            return_value=MagicMock(
+                provider_name="openai",
+                endpoint="https://api.openai.com",
+                base_url="https://api.openai.com",
+                enabled=True,
+                priority=None,
+                weight=None,
+                models=["gpt-4o-mini"],
             ),
-            patch(
-                "api.settings_router.SaaSSettingsService.set_global_setting",
-                new_callable=AsyncMock,
-                return_value={"key": "model:gpt-4o-mini", "value": {"name": "gpt-4o-mini"}},
-            ),
+        ),
+        patch(
+            "api.settings_router.SaaSSettingsService.set_global_setting",
+            new_callable=AsyncMock,
+            return_value={"key": "model:gpt-4o-mini", "value": {"name": "gpt-4o-mini"}},
         ),
     ):
         provider_resp = client.put(
