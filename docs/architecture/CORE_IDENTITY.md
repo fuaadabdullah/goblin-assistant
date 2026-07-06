@@ -121,7 +121,7 @@ Short pitch:
 
 - See `ARCHITECTURE_OVERVIEW.md` for an end-to-end diagram and routing sequence.
 
-- See `backend/docs/` for the canonical backend design, provider adapters, and CI/Deployment guidance.
+- See `docs/backend/` for the canonical backend design, provider adapters, and CI/deployment guidance.
 
 - If you plan to extend GoblinOS, review `backend/providers/` and `backend/services/routing.py` for implementing new adapters and routing logic.
 

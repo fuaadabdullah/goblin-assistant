@@ -408,9 +408,9 @@ setThemeVars({
 
 - **[THEME_SYSTEM.md](./THEME_SYSTEM.md)** - Complete implementation guide (300+ lines)
 - **[THEME_IMPLEMENTATION_SUMMARY.md](./THEME_IMPLEMENTATION_SUMMARY.md)** - Session summary
-- **[ACCESSIBILITY_CERTIFICATION.md](./ACCESSIBILITY_CERTIFICATION.md)** - WCAG 2.1 audit results
-- **[LIGHTHOUSE_AUDIT_GUIDE.md](../../docs/LIGHTHOUSE_AUDIT_GUIDE.md)** - Perfect accessibility score
-- **[AXE_AUDIT_RESULTS.md](./AXE_AUDIT_RESULTS.md)** - Zero violations report
+- **[ACCESSIBILITY.md](../ux/ACCESSIBILITY.md)** - WCAG 2.1 audit results
+- **[ACCESSIBILITY.md](../ux/ACCESSIBILITY.md)** - Lighthouse audit guide
+- **[ACCESSIBILITY_SUMMARY.md](../ux/ACCESSIBILITY_SUMMARY.md)** - Zero violations report
 
 ---
 

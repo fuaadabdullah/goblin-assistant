@@ -1,8 +1,8 @@
-This document has moved into the canonical backend documentation folder:
+This audit is retained here as a historical operations reference.
 
-- ./backend/docs/ENDPOINT_AUDIT.md
-
-Please update any references or links to point to the new location.
+The canonical backend documentation index is `docs/backend/README.md`. If this
+audit becomes a live backend contract artifact again, move it there instead of
+pointing to a separate legacy backend docs tree.
 
 ---
 

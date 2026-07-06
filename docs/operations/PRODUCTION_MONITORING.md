@@ -3,11 +3,11 @@ title: "PRODUCTION MONITORING"
 description: "Production Configuration Guide"
 ---
 
-This document has moved into the canonical backend documentation folder:
+This document is retained as an operations reference.
 
-- ./backend/docs/PRODUCTION_MONITORING.md
-
-Please update any references or links to point to the new location.
+The canonical backend and operations indexes are `docs/backend/README.md` and
+`docs/operations/README.md`. Do not reference a separate legacy backend docs tree
+from this checkout.
 
 # Production Configuration Guide
 

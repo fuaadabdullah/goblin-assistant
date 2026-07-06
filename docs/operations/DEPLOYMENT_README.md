@@ -5,4 +5,5 @@ description: "Moved"
 
 # Moved
 
-This file has moved to [../../docs/deployment/DEPLOYMENT_README.md](../../docs/deployment/DEPLOYMENT_README.md)
+This deployment guide is retained here as the operations-side deployment README.
+See `docs/operations/DEPLOYMENT_AND_TESTING.md` for the broader validation flow.

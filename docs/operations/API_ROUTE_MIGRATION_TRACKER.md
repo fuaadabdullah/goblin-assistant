@@ -5,6 +5,8 @@ surface. It is the burn-down list for removing legacy mounts from
 `apps/api/src/api/route_mounting.py` once callers no longer need them.
 It follows the repository compatibility lifecycle policy in
 [`docs/architecture/API_COMPATIBILITY_LIFECYCLE.md`](../architecture/API_COMPATIBILITY_LIFECYCLE.md).
+It is transitional by design and should eventually be generated from route
+inventory plus runtime usage.
 
 ## Policy
 
@@ -14,6 +16,8 @@ It follows the repository compatibility lifecycle policy in
   not yet locked.
 - When a row reaches zero consumers, remove the duplicate mount, regenerate the
   checked-in route artifacts, and delete the row.
+- Preserve the compatibility dashboard as generated output rather than a
+  manually curated matrix once usage telemetry is available.
 
 ## Compatibility Matrix
 

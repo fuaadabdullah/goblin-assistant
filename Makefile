@@ -1,4 +1,4 @@
-.PHONY: help install dev web-dev api-dev build build-packages lint lint-web lint-api lint-policy type-check type-check-packages test test-unit test-web test-api test-api-context-coverage test-e2e test-e2e-budget test-integration test-contract test-performance generate-providers-json check-providers-json check-api-boundaries check-api-cycles check-capability-boundaries check-route-lifecycle type-check-api-mypy type-check-api-pyright format format-check test-critical sdk-generate sdk-check generate-route-manifest check-api-calls contract-checks secret-scan check-unused-deps check-dead-code phase-gates
+.PHONY: help install dev web-dev api-dev build build-packages lint lint-web lint-api lint-policy type-check type-check-packages test test-unit test-web test-api test-api-context-coverage test-e2e test-e2e-budget test-integration test-contract test-performance generate-providers-json check-providers-json check-api-boundaries check-api-cycles check-capability-boundaries check-route-lifecycle check-docs-canonical-refs check-docs-inventory check-docs-links generate-docs-coverage type-check-api-mypy type-check-api-pyright format format-check test-critical sdk-generate sdk-check generate-route-manifest check-api-calls contract-checks secret-scan check-unused-deps check-dead-code phase-gates
 PNPM_TMP := TMPDIR="$(PWD)/.tmp"
 PYTHON ?= python3
 
@@ -29,6 +29,10 @@ help:
 	@echo "  make check-api-cycles     - enforce no API circular dependencies"
 	@echo "  make check-capability-boundaries - enforce capability ownership rules"
 	@echo "  make check-route-lifecycle - validate route lifecycle metadata policy"
+	@echo "  make check-docs-canonical-refs - fail on stale docs canonical-location references"
+	@echo "  make check-docs-inventory - validate docs inventory coverage and compatibility stubs"
+	@echo "  make check-docs-links - validate local markdown links in docs"
+	@echo "  make generate-docs-coverage - write the checked-in docs coverage report"
 	@echo "  make type-check-api-mypy  - run strict mypy for API"
 	@echo "  make type-check-api-pyright - run strict pyright for API"
 	@echo "  make test-e2e             - run Playwright suite"
@@ -57,6 +61,18 @@ check-capability-boundaries:
 
 check-route-lifecycle:
 	$(PYTHON) scripts/architecture/check_route_lifecycle.py
+
+check-docs-canonical-refs:
+	$(PYTHON) scripts/architecture/check_docs_canonical_refs.py
+
+check-docs-inventory:
+	$(PYTHON) scripts/architecture/check_docs_inventory.py
+
+check-docs-links:
+	$(PYTHON) scripts/architecture/check_docs_links.py
+
+generate-docs-coverage:
+	$(PYTHON) scripts/architecture/generate_docs_coverage.py
 
 type-check-api-mypy:
 	cd apps/api && PYTHONPATH=src $(PYTHON) -m mypy \
@@ -106,6 +122,9 @@ lint-api:
 
 lint-policy:
 	$(PYTHON) scripts/policy_guard.py --strict
+	$(PYTHON) scripts/architecture/check_docs_canonical_refs.py
+	$(PYTHON) scripts/architecture/check_docs_inventory.py
+	$(PYTHON) scripts/architecture/check_docs_links.py
 
 type-check:
 	mkdir -p .tmp

@@ -5,4 +5,5 @@ description: "Moved"
 
 # Moved
 
-This file has moved to [../../docs/security/SECURITY_SETUP.md](../../docs/security/SECURITY_SETUP.md)
+This setup guide is retained here as the operations-side security setup page.
+See `docs/security/README.md` and `docs/security/SECURITY.md` for canonical security policy guidance.

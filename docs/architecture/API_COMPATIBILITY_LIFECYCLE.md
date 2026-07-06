@@ -9,6 +9,8 @@ The versioned-mount policy that makes this work is documented in [ADR-0002](../d
 - `stable`: current supported public contract.
 - `legacy`: supported for compatibility; includes deprecation + sunset headers.
 - `experimental`: subject to change and not guaranteed stable.
+- `sunset`: deprecated and scheduled for removal at a defined boundary.
+- `removed`: no longer served; references should point to the replacement or archive.
 - `internal`: operational/debug surfaces not intended as product contracts.
 
 ## Compatibility Rules
@@ -39,3 +41,8 @@ The versioned-mount policy that makes this work is documented in [ADR-0002](../d
   - `/api/v1` vs legacy usage totals
   - error-code distribution by status
   - provider probe failure rates
+- The compatibility dashboard should be generated from route inventory plus
+  runtime usage, not maintained as a handwritten alias list.
+- Legacy routes are removable only when usage is zero for the agreed period,
+  consumers have migrated, docs are updated, and CI confirms no references
+  remain.

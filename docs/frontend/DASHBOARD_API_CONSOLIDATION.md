@@ -402,7 +402,7 @@ async def startup():
 ## 📚 Related Documentation
 
 - [Loading & Error States](./LOADING_ERROR_STATES.md) - Skeleton UI and ARIA patterns
-- [UX Improvements](./UX_IMPROVEMENTS.md) - Tooltip and timestamp enhancements
+- [UX Improvements](../ux/UX_IMPROVEMENTS.md) - Tooltip and timestamp enhancements
 - [Component Migration](./COMPONENT_MIGRATION_COMPLETE.md) - UI component library
 
 ---

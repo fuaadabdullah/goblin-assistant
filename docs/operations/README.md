@@ -33,6 +33,8 @@ This directory is the canonical home for operational documentation previously un
 
 - `API_ROUTE_MIGRATION_TRACKER.md`: settings-route compatibility matrix and
   sprint burn-down checklist.
+- `../architecture/DOCUMENTATION_ARCHITECTURE_RFC.md`: docs IA and API lifecycle
+  governance baseline.
 
 ## Notes
 

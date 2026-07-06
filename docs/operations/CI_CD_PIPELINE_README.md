@@ -520,8 +520,8 @@ curl https://api.render.com/v1/services/$SERVICE_ID \
 ## 📚 Documentation & References
 
 ### Internal Documentation
-- [Terraform Configuration](terraform/README.md) - Infrastructure-as-Code details
-- [docs/operations/GOBLINOS_STORAGE_README.md](docs/operations/GOBLINOS_STORAGE_README.md) - External storage setup
+- [Terraform/CI-CD setup](../infra/CI_CD_SETUP.md) - Infrastructure-as-Code details
+- [External storage setup](../operations/GOBLINOS_STORAGE_README.md)
 - [render.yaml](render.yaml) - Render deployment backup
 
 ### External Resources

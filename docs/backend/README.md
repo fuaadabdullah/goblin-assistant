@@ -5,6 +5,7 @@ Backend routing, provider, and API-oriented references.
 Key docs:
 
 - `PIPELINE_ARCHITECTURE.md` ← **new** — multi-stage request pipeline
+- `../architecture/DOCUMENTATION_ARCHITECTURE_RFC.md`
 - `API_ROUTE_INVENTORY.md`
 - [`API_ROUTE_MIGRATION_TRACKER.md`](../operations/API_ROUTE_MIGRATION_TRACKER.md)
 - `API_QUICK_REF.md`

@@ -5,4 +5,5 @@ description: "Moved"
 
 # Moved
 
-This file has moved to [../../docs/deployment/checklists/DEPLOYMENT_CHECKLIST.md](../../docs/deployment/checklists/DEPLOYMENT_CHECKLIST.md)
+This checklist is retained here as the operations-side deployment checklist.
+See `docs/operations/DEPLOYMENT_AND_TESTING.md` for the broader validation flow.

@@ -415,7 +415,7 @@ NET IMPACT: -$2,095/month savings 🎉
 - `docs/security/PRIVACY_IMPLEMENTATION.md` - Full implementation details
 - `docs/security/PRIVACY_INTEGRATION_GUIDE.md` - Integration walkthrough
 - `docs/operations/PRIVACY_QUICK_REFERENCE.md` - Quick command reference
-- `./backend/docs/MONITORING_IMPLEMENTATION.md` - Datadog setup
+- `docs/backend/README.md` - backend monitoring and observability index
 - `goblin-infra/projects/goblin-assistant/infra/cloudflare/README.md` - Cloudflare ops
 
 ---

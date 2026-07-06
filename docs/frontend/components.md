@@ -6,7 +6,7 @@ GoblinOS Assistant is composed of several key components that work together to p
 
 - **Framework**: FastAPI (Python)
 - **Purpose**: Main API service handling AI processing and development assistance
-  Note: Most backend-specific documentation has been consolidated under the canonical backend repository folder at `./backend/docs` (e.g. endpoint audits, monitoring, production quick-starts). See that folder for the canonical docs.
+  Note: Backend-specific documentation is indexed under `docs/backend/` and operational runbooks live under `docs/operations/`. The old backend docs tree is not part of this checkout.
 
 - **Features**: Intelligent model routing, debugging tools, error analysis, code suggestions
 
@@ -32,4 +32,4 @@ GoblinOS Assistant is composed of several key components that work together to p
 - **Tools**: Sentry error tracking, Fly.io metrics, Vercel Analytics
 - **Purpose**: Application monitoring, performance tracking, and alerting
 - **Features**: Real-time error monitoring, performance insights, and health tracking
-- **Setup**: See [Monitoring Setup Guide](./MONITORING_SETUP.md) for complete configuration
+- **Setup**: See [Observability README](../operations/OBSERVABILITY_README.md) for complete configuration

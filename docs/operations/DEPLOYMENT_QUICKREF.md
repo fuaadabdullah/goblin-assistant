@@ -5,4 +5,5 @@ description: "Moved"
 
 # Moved
 
-This file has moved to [../../docs/deployment/DEPLOYMENT_QUICKREF.md](../../docs/deployment/DEPLOYMENT_QUICKREF.md)
+This quick reference is retained here as the operations-side deployment quickref.
+See `docs/operations/DEPLOYMENT_AND_TESTING.md` for the broader validation flow.

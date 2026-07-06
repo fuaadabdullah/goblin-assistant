@@ -48,6 +48,8 @@ The frontend uses a hybrid request model:
 - `apps/web/app/api/*` handles a few browser-safe proxy endpoints such as `/api/generate`, `/api/models`, `/api/auth/validate`, and `/api/health`
 - most frontend data access calls the FastAPI backend directly under `/api/v1/...`
 - the backend also keeps a small set of legacy aliases such as `/settings` for compatibility
+- documentation and API lifecycle policy live in `docs/architecture/DOCUMENTATION_ARCHITECTURE_RFC.md`,
+  `docs/architecture/API_COMPATIBILITY_LIFECYCLE.md`, and `docs/decisions/`
 
 ## Test Commands
 
