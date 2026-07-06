@@ -2,6 +2,8 @@
 
 Goblin Assistant uses an incremental compatibility model for API evolution.
 
+The versioned-mount policy that makes this work is documented in [ADR-0002](../decisions/2026-07-06-api-versioning-v1-contract.md).
+
 ## Lifecycle Classes
 
 - `stable`: current supported public contract.

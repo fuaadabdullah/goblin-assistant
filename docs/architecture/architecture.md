@@ -11,6 +11,8 @@ The repository currently contains:
 - a thin set of Next API proxy routes in `apps/web/app/api/`
 - a FastAPI backend
 
+The App Router and proxy-layer decisions are documented in [ADR-0001](../decisions/2026-07-06-nextjs-app-router-over-pages-router.md) and [ADR-0003](../decisions/2026-07-06-nextjs-proxies-vs-direct.md).
+
 It does not match the older `backend/`-based architecture described in some historical docs.
 
 ## Frontend
@@ -84,3 +86,5 @@ These areas now exist in code and should be treated as contract surfaces rather 
 - support form submission
 
 For those areas, the architecture concern is keeping the proxy routes, backend versioned routes, and generated contract artifacts synchronized.
+
+The versioning rationale lives in [ADR-0002](../decisions/2026-07-06-api-versioning-v1-contract.md).

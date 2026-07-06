@@ -37,6 +37,17 @@ This directory is the canonical ADR location (moved from `docs/adr/`).
 - `2026-06-20-documentation-ownership.md`
 - `2026-06-20-deprecation-lifecycle.md`
 
+## Indexed ADRs
+
+Stable ADR IDs are the canonical reference key. Filenames are convenience labels.
+
+| ADR ID | Title | File | Status |
+| --- | --- | --- | --- |
+| `ADR-0001` | Next.js App Router Over Pages Router | `2026-07-06-nextjs-app-router-over-pages-router.md` | accepted |
+| `ADR-0002` | API Versioning and the `/api/v1` Contract | `2026-07-06-api-versioning-v1-contract.md` | accepted |
+| `ADR-0003` | Thin Next.js Proxies vs Direct Backend Calls | `2026-07-06-nextjs-proxies-vs-direct.md` | accepted |
+| `ADR-0004` | Sandbox Architecture and Job Execution Model | `2026-07-06-sandbox-architecture.md` | accepted |
+
 ## Status
 
 - Canonical ADR directory exists and is active.

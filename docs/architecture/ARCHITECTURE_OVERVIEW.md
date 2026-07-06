@@ -11,6 +11,8 @@ Goblin Assistant is currently a hybrid App Router + FastAPI application:
 - thin same-origin proxy routes in `apps/web/app/api/`
 - FastAPI backend in `apps/api/src/api/`
 
+The routing and proxy split are documented in [ADR-0001](../decisions/2026-07-06-nextjs-app-router-over-pages-router.md) and [ADR-0003](../decisions/2026-07-06-nextjs-proxies-vs-direct.md).
+
 The browser usually talks to the frontend shell first and then either uses a Next proxy route or calls the FastAPI app directly under `/api/v1/...`.
 
 ## Topology
@@ -97,6 +99,8 @@ The canonical contract snapshots are `packages/sdk/openapi/openapi.json` and
 `packages/sdk/openapi/routes.json`. CI regenerates them, diffs them against the
 checked-in copies, and also validates frontend API path usage against the
 manifest.
+
+The versioning rationale lives in [ADR-0002](../decisions/2026-07-06-api-versioning-v1-contract.md).
 
 Frontend clients use `V1_API_PREFIX = '/api/v1'` and `V1_CHAT_PREFIX`
 constants from `apps/web/src/lib/api/shared.ts` rather than hardcoding paths.

@@ -1,5 +1,7 @@
 # Sandbox — Engine Pillar
 
+The execution model behind this document is captured in [ADR-0004](../decisions/2026-07-06-sandbox-architecture.md).
+
 ## Purpose
 
 The Sandbox pillar provides secure, isolated code execution for untrusted user code. It uses Docker containerisation with resource limits, an RQ/Redis job queue for async processing, S3 artifact storage, and comprehensive security hardening to prevent host system compromise.
