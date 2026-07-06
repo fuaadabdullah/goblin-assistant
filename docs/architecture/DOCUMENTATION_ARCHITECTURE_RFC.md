@@ -159,3 +159,18 @@ part of the sprint scope.
 - Require route metadata, deprecation headers, usage telemetry, and CI checks
   before any compatibility alias is eligible for removal.
 - Prefer generated inventories and dashboards over handwritten alias lists.
+
+### References
+
+- [FastAPI Testing](https://fastapi.tiangolo.com/tutorial/testing/) and
+  [TestClient reference](https://fastapi.tiangolo.com/reference/testclient/).
+- [Next.js Layouts and Pages](https://nextjs.org/docs/app/getting-started/layouts-and-pages)
+  and the [root layout file convention](https://nextjs.org/docs/app/api-reference/file-conventions/layout).
+- [Prometheus client libraries](https://prometheus.io/docs/instrumenting/clientlibs/)
+  for exposing application metrics.
+- [Architectural Decision Records](https://adr.github.io/) and the
+  [ADR templates](https://adr.github.io/adr-templates/) guidance for structure
+  and status fields.
+- OpenAPI snapshot generation and diffing are implemented in this repository as
+  a local contract-checking practice and are documented in the API tooling
+  rather than a single upstream spec.
