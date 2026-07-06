@@ -127,3 +127,35 @@ how compatibility debt is described and retired.
   active reference.
 - Future docs work should prefer generated indexes and inventory outputs over
   parallel hand-maintained summaries.
+
+## Risks, Trade-offs, Effort Estimates
+
+The goal of this RFC is to reduce ambiguity before cleanup and deprecation
+work begins. The estimates below assume the team chooses the lowest-risk path
+for compatibility debt first, then expands into real persistence or deeper
+observability only if the inventory and lifecycle gates justify it.
+
+| Area | Risk | Trade-off | Effort |
+| --- | --- | --- | --- |
+| Docs and ADR reconciliation | Low | Front-loads time into alignment, but lowers confusion across the cleanup sprint | 6-8 hours |
+| CI contract checks | Moderate | Requires scripting and debugging time, but prevents doc and route drift from reappearing | 12-16 hours |
+| Placeholder endpoints via `501` | Low | Fastest way to make stubs explicit, but defers implementation work to a later sprint | 2-4 hours per endpoint |
+| Placeholder endpoints via persistence | Higher | Produces the real feature, but introduces schema design, migration, and test risk | 1.5-2 days per endpoint |
+| Observability | Moderate | Adds Prometheus / OpenTelemetry setup and maintenance overhead, but improves debuggability and removal safety | 2 days |
+| Testing | Moderate | Takes time to build contract and smoke coverage, but is the main guard against regressions | 1.5-2.5 days |
+| Cleanup | Low | Removes mental overhead and dead paths, but should only happen after tests and lifecycle gates pass | 1 day |
+
+The practical program estimate is 60-80 hours over two weeks if the team uses
+`501` stubs for two temporary endpoints and keeps persistence work out of the
+critical path. If persistence is chosen for one or more endpoints, the effort
+will increase materially because schema design and migration testing become
+part of the sprint scope.
+
+### Execution Notes
+
+- Front-load docs, ADRs, and lifecycle policy so the rest of the sprint has a
+  stable reference point.
+- Treat alias removal as lifecycle debt retirement, not cleanup-only deletion.
+- Require route metadata, deprecation headers, usage telemetry, and CI checks
+  before any compatibility alias is eligible for removal.
+- Prefer generated inventories and dashboards over handwritten alias lists.
