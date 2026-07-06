@@ -18,6 +18,7 @@ from api.core.contracts import SuccessEnvelope
 from api.core.errors import DomainError
 from api.storage.database import get_db
 from api.storage.saas_service import SaaSSettingsService
+from api.storage.user_service import UserService
 
 logger = logging.getLogger(__name__)
 
@@ -37,6 +38,48 @@ class SupportResponse(BaseModel):
     timestamp: str
 
 
+async def _lookup_support_user_id(db: AsyncSession, email: Optional[str]) -> Optional[str]:
+    if not email:
+        return None
+
+    user = await UserService(db).get_user_by_email(email)
+    return None if user is None else user.id
+
+
+async def _attach_support_recipient(
+    db: AsyncSession,
+    ticket_id: str,
+    user_id: Optional[str],
+    category: Optional[str],
+) -> None:
+    """Queue a confirmation notification for a known support recipient."""
+    try:
+        if not user_id:
+            return
+
+        settings = SaaSSettingsService(db)
+        await settings.create_notification(
+            {
+                "user_id": user_id,
+                "title": "Support request received",
+                "body": "We received your support request and will review it shortly.",
+                "category": "support",
+                "metadata": {
+                    "source": "support_form",
+                    "support_ticket_id": ticket_id,
+                    "support_category": category,
+                },
+            }
+        )
+    except Exception as exc:  # pragma: no cover - best-effort notification path
+        logger.warning(
+            "support notification side effect failed for ticket %s user %s: %s",
+            ticket_id,
+            user_id,
+            exc,
+        )
+
+
 @router.post("/message", response_model=SuccessEnvelope[SupportResponse])
 async def send_support_message(
     request: SupportMessage,
@@ -52,8 +95,10 @@ async def send_support_message(
             )
 
         service = SaaSSettingsService(db)
+        support_user_id = await _lookup_support_user_id(db, request.email)
         ticket = await service.create_support_ticket(
             {
+                "user_id": support_user_id,
                 "email": request.email,
                 "category": request.category,
                 "subject": (request.category or "support").replace("_", " ").title(),
@@ -63,6 +108,7 @@ async def send_support_message(
                 "metadata": {"source": "support_form"},
             }
         )
+        await _attach_support_recipient(db, ticket.ticket_id, support_user_id, request.category)
 
         return SuccessEnvelope(
             data=SupportResponse(

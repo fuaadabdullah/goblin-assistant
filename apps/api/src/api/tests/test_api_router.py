@@ -447,222 +447,32 @@ def test_poll_stream_task_404_for_missing_stream():
     assert response.json()["detail"] == "Stream not found"
 
 
-def test_get_goblins_and_history_limits():
+def test_get_goblins_and_history_return_not_implemented():
     client = _client()
-    fake_store = MagicMock()
-    fake_store.list_tasks = AsyncMock(
-        return_value=[
-            {
-                "task_id": "t1",
-                "task_type": "chat",
-                "payload": {"task": "Write docs"},
-                "status": "completed",
-                "result": {"selected_provider": "docs-writer", "result": {"text": "done"}},
-                "created_at": "2026-01-01T00:00:00",
-                "updated_at": "2026-01-01T00:00:10",
-            },
-            {
-                "task_id": "t2",
-                "task_type": "chat",
-                "payload": {"task": "Skip me"},
-                "status": "completed",
-                "result": {"selected_provider": "other-writer", "result": {"text": "ignore"}},
-                "created_at": "2026-01-01T00:01:00",
-                "updated_at": "2026-01-01T00:01:10",
-            },
-        ]
+
+    response = client.get("/api/v1/api/goblins")
+    history = client.get("/api/v1/api/history/docs-writer?limit=25")
+
+    assert response.status_code == 501
+    assert response.json()["detail"] == (
+        "/api/goblins is temporarily unavailable and returns 501 Not Implemented."
     )
 
-    def _drop_task(coro):
-        coro.close()
-        return MagicMock()
-
-    with (
-        patch(
-            "api.api_router.dispatcher.get_provider_inventory",
-            new_callable=AsyncMock,
-            return_value=[
-                {
-                    "id": "docs-writer",
-                    "name": "Docs Writer",
-                    "configured": True,
-                    "healthy": True,
-                    "tier": "cloud",
-                }
-            ],
-        ),
-        patch("api.api_router.get_task_store", new_callable=AsyncMock, return_value=fake_store),
-        patch(
-            "api.api_router.conversation_store.list_conversations",
-            new_callable=AsyncMock,
-            return_value=[],
-        ),
-        patch("api.api_router.asyncio.create_task", side_effect=_drop_task),
-    ):
-        goblins = client.get("/api/v1/api/goblins")
-        history = client.get("/api/v1/api/history/docs-writer?limit=25")
-
-    assert goblins.status_code == 200
-    assert goblins.json()[0]["id"] == "docs-writer"
-    assert goblins.json()[0]["status"] == "available"
-
-    assert history.status_code == 200
-    assert len(history.json()) == 1
-    assert history.json()[0]["goblin"] == "docs-writer"
-
-
-def test_get_goblin_stats_and_empty_history_defaults():
-    client = _client()
-    fake_store = MagicMock()
-    fake_store.list_tasks = AsyncMock(return_value=[])
-
-    with (
-        patch("api.api_router.get_task_store", new_callable=AsyncMock, return_value=fake_store),
-        patch(
-            "api.api_router.conversation_store.list_conversations",
-            new_callable=AsyncMock,
-            return_value=[],
-        ),
-        patch(
-            "api.api_router.routing_registry.snapshot",
-            return_value={
-                "docs-writer": {
-                    "success_rate": 0.75,
-                    "total_cost_usd": 1.25,
-                    "ewma_latency_ms": 321.0,
-                    "last_used": 123.0,
-                }
-            },
-        ),
-    ):
-        stats = client.get("/api/v1/api/stats/docs-writer")
-        history = client.get("/api/v1/api/history/docs-writer?limit=999")
-
-    assert stats.status_code == 200
-    assert stats.json()["goblin_id"] == "docs-writer"
-    assert stats.json()["total_tasks"] == 75
-    assert history.status_code == 200
-    assert history.json() == []
-
-
-def test_get_goblins_degrades_when_health_flag_is_missing():
-    client = _client()
-
-    with patch(
-        "api.api_router.dispatcher.get_provider_inventory",
-        new_callable=AsyncMock,
-        return_value=[
-            {
-                "id": "docs-writer",
-                "name": "Docs Writer",
-                "configured": True,
-                "tier": "cloud",
-            }
-        ],
-    ):
-        response = client.get("/api/v1/api/goblins")
-
-    assert response.status_code == 200
-    body = response.json()
-    assert len(body) == 1
-    assert body[0]["id"] == "docs-writer"
-    assert body[0]["status"] == "degraded"
-
-
-def test_get_goblin_history_includes_chat_completions_from_conversations():
-    client = _client()
-    fake_store = MagicMock()
-    fake_store.list_tasks = AsyncMock(return_value=[])
-
-    fake_conversation = MagicMock(
-        conversation_id="conv-1",
-        messages=[
-            MagicMock(
-                role="user",
-                content="Draft release notes",
-                message_id="u1",
-                timestamp="2026-01-01T00:00:00",
-                metadata={},
-            ),
-            MagicMock(
-                role="assistant",
-                content="Release notes drafted.",
-                message_id="a1",
-                timestamp="2026-01-01T00:00:02",
-                metadata={"provider": "docs-writer", "model": "gpt-4o-mini"},
-            ),
-        ],
+    assert history.status_code == 501
+    assert history.json()["detail"] == (
+        "/api/history/{goblin_id} is temporarily unavailable and returns 501 Not Implemented."
     )
 
-    with (
-        patch("api.api_router.get_task_store", new_callable=AsyncMock, return_value=fake_store),
-        patch(
-            "api.api_router.conversation_store.list_conversations",
-            new_callable=AsyncMock,
-            return_value=[fake_conversation],
-        ),
-    ):
-        history = client.get("/api/v1/api/history/docs-writer?limit=10")
 
-    assert history.status_code == 200
-    body = history.json()
-    assert len(body) == 1
-    assert body[0]["task"] == "Draft release notes"
-    assert body[0]["response"] == "Release notes drafted."
-    assert body[0]["goblin"] == "docs-writer"
-
-
-def test_get_goblin_history_filters_other_provider_chat_and_task_entries():
+def test_get_goblin_stats_returns_not_implemented():
     client = _client()
-    fake_store = MagicMock()
-    fake_store.list_tasks = AsyncMock(
-        return_value=[
-            {
-                "task_id": "t1",
-                "task_type": "chat",
-                "payload": {"task": "Write docs"},
-                "status": "completed",
-                "result": {"selected_provider": "docs-writer", "result": {"text": "done"}},
-                "created_at": "2026-01-01T00:00:00",
-                "updated_at": "2026-01-01T00:00:10",
-            }
-        ]
+
+    response = client.get("/api/v1/api/stats/docs-writer")
+
+    assert response.status_code == 501
+    assert response.json()["detail"] == (
+        "/api/stats/{goblin_id} is temporarily unavailable and returns 501 Not Implemented."
     )
-
-    fake_conversation = MagicMock(
-        conversation_id="conv-2",
-        messages=[
-            MagicMock(
-                role="user",
-                content="Draft release notes",
-                message_id="u2",
-                timestamp="2026-01-01T00:00:00",
-                metadata={},
-            ),
-            MagicMock(
-                role="assistant",
-                content="Other provider response.",
-                message_id="a2",
-                timestamp="2026-01-01T00:00:02",
-                metadata={"provider": "other-writer", "model": "gpt-4o-mini"},
-            ),
-        ],
-    )
-
-    with (
-        patch("api.api_router.get_task_store", new_callable=AsyncMock, return_value=fake_store),
-        patch(
-            "api.api_router.conversation_store.list_conversations",
-            new_callable=AsyncMock,
-            return_value=[fake_conversation],
-        ),
-    ):
-        history = client.get("/api/v1/api/history/docs-writer?limit=10")
-
-    assert history.status_code == 200
-    body = history.json()
-    assert len(body) == 1
-    assert body[0]["response"] == "done"
 
 
 def test_orchestration_parse_stores_plan_and_execute_runs_background_task():

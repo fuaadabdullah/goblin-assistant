@@ -18,7 +18,13 @@ from api.core.errors import DomainError
 from api.routes import account_router as account_module
 from api.routes import support_router as support_module
 from api.storage.database import get_db
-from api.storage.models import Base, SupportTicketModel, UserPreferencesModel
+from api.storage.models import (
+    Base,
+    NotificationModel,
+    SupportTicketModel,
+    UserModel,
+    UserPreferencesModel,
+)
 
 
 @pytest_asyncio.fixture
@@ -143,6 +149,43 @@ async def test_support_message_persists_ticket_metadata(db_session):
     assert ticket.category == "bug"
     assert ticket.subject == "Bug"
     assert ticket.metadata_ == {"source": "support_form"}
+
+
+@pytest.mark.asyncio
+async def test_support_message_links_known_user_and_creates_notification(db_session):
+    current_user = UserModel(id="u-support", email="member@example.com", is_active=True)
+    db_session.add(current_user)
+    await db_session.commit()
+
+    app = _build_app(db_session)
+    client = TestClient(app)
+
+    payload = {
+        "message": "Please help with billing",
+        "email": "member@example.com",
+        "category": "account",
+    }
+
+    response = client.post("/api/v1/support/message", json=payload)
+    assert response.status_code == 200
+
+    ticket_result = await db_session.execute(
+        select(SupportTicketModel).where(SupportTicketModel.message == payload["message"])
+    )
+    ticket = ticket_result.scalar_one()
+    assert ticket.user_id == current_user.id
+
+    notification_result = await db_session.execute(
+        select(NotificationModel).where(NotificationModel.user_id == current_user.id)
+    )
+    notification = notification_result.scalar_one()
+    assert notification.title == "Support request received"
+    assert notification.category == "support"
+    assert notification.metadata_ == {
+        "source": "support_form",
+        "support_ticket_id": ticket.ticket_id,
+        "support_category": "account",
+    }
 
 
 @pytest.mark.asyncio

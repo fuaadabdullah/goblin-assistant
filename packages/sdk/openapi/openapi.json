@@ -5950,13 +5950,13 @@
       "get": {
         "operationId": "get_goblins_api_v1_api_goblins_get",
         "responses": {
-          "200": {
+          "501": {
             "content": {
               "application/json": {
                 "schema": {}
               }
             },
-            "description": "Successful Response"
+            "description": "Not Implemented"
           }
         },
         "summary": "Get Goblins",
@@ -5990,14 +5990,6 @@
           }
         ],
         "responses": {
-          "200": {
-            "content": {
-              "application/json": {
-                "schema": {}
-              }
-            },
-            "description": "Successful Response"
-          },
           "422": {
             "content": {
               "application/json": {
@@ -6007,6 +5999,14 @@
               }
             },
             "description": "Validation Error"
+          },
+          "501": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Not Implemented"
           }
         },
         "summary": "Get Goblin History",
@@ -6559,14 +6559,6 @@
           }
         ],
         "responses": {
-          "200": {
-            "content": {
-              "application/json": {
-                "schema": {}
-              }
-            },
-            "description": "Successful Response"
-          },
           "422": {
             "content": {
               "application/json": {
@@ -6576,6 +6568,14 @@
               }
             },
             "description": "Validation Error"
+          },
+          "501": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Not Implemented"
           }
         },
         "summary": "Get Goblin Stats",

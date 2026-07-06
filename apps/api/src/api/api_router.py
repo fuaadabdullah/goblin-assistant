@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import asyncio
-import time
 import uuid
 from datetime import datetime  # noqa: F401 - compatibility alias for tests
 from typing import Any, Dict, List
@@ -21,18 +20,20 @@ from .api_router_pkg import (
     build_stream_messages as _build_stream_messages_helper,
 )
 from .api_router_pkg import (
-    collect_chat_history_entries as _collect_chat_history_entries_helper,
+    extract_result_text as _extract_result_text_helper,
 )
-from .api_router_pkg import extract_result_text as _extract_result_text_helper
-from .api_router_pkg import run_stream_task_background as _run_stream_task_background_helper
-from .api_router_pkg import timestamp_sort_key as _timestamp_sort_key_helper
+from .api_router_pkg import (
+    run_stream_task_background as _run_stream_task_background_helper,
+)
+from .api_router_pkg import (
+    timestamp_sort_key as _timestamp_sort_key_helper,
+)
 from .core.orchestration import parse_natural_language
 from .input_validation import InputSanitizer
 from .orchestration_router import router as orchestration_router
-from .providers.dispatcher import dispatcher, invoke_provider
+from .providers.dispatcher import invoke_provider
 from .providers.dispatcher_pkg.execution import mock_fallback_enabled
 from .routing.feedback_router import router as _feedback_router
-from .routing.router import registry as routing_registry
 from .routing.router import route_task as route_task_runtime
 from .services.stream_state_store import get_stream_state_store
 from .services.task_streaming import run_task_stream_to_state
@@ -46,6 +47,13 @@ create_simple_orchestration_plan = parse_natural_language
 router = APIRouter(prefix="/api", tags=["api"])
 router.include_router(orchestration_router)
 router.include_router(_feedback_router)
+
+
+def _raise_not_implemented(endpoint: str) -> None:
+    raise HTTPException(
+        status_code=501,
+        detail=f"{endpoint} is temporarily unavailable and returns 501 Not Implemented.",
+    )
 
 
 def _build_stream_messages(request: StreamTaskRequest) -> List[Dict[str, str]]:
@@ -86,10 +94,6 @@ async def _run_stream_task_background(stream_id: str, request: StreamTaskRequest
         run_stream_fn=run_task_stream_to_state,
         store_getter=get_stream_state_store,
     )
-
-
-async def _collect_chat_history_entries(goblin_id: str, limit: int = 500) -> List[Dict[str, Any]]:
-    return await _collect_chat_history_entries_helper(goblin_id, limit=limit)
 
 
 @router.post("/chat", response_model=SimpleChatResponse)
@@ -274,73 +278,22 @@ async def cancel_stream_task(stream_id: str):
     return {"stream_id": stream_id, "status": "cancelled"}
 
 
-@router.get("/goblins")
+@router.get("/goblins", status_code=501, responses={501: {"description": "Not Implemented"}})
 async def get_goblins():
-    inventory = await dispatcher.get_provider_inventory(include_hidden=False)
-    goblins = []
-    for provider in inventory:
-        provider_id = str(provider.get("id", "unknown"))
-        name = str(provider.get("name", provider_id))
-        configured = bool(provider.get("configured"))
-        healthy_value = provider.get("healthy")
-        healthy = bool(healthy_value) if isinstance(healthy_value, bool) else False
-        status = "available" if configured and healthy else "degraded"
-        goblins.append(
-            {
-                "id": provider_id,
-                "name": provider_id,
-                "title": name,
-                "status": status,
-                "guild": str(provider.get("tier", "cloud")),
-            }
-        )
-    return goblins
+    _raise_not_implemented("/api/goblins")
 
 
-@router.get("/history/{goblin_id}")
+@router.get(
+    "/history/{goblin_id}",
+    status_code=501,
+    responses={501: {"description": "Not Implemented"}},
+)
 async def get_goblin_history(goblin_id: str, limit: int = 10):
-    capped_limit = max(1, min(int(limit), 100))
-    store = await get_task_store()
-    tasks = await store.list_tasks(limit=500)
-    entries: List[Dict[str, Any]] = []
-    for task in tasks:
-        provider_id = (
-            task.get("result", {}).get("selected_provider")
-            if isinstance(task.get("result"), dict)
-            else None
-        )
-        if provider_id and provider_id != goblin_id:
-            continue
-        payload = task.get("payload", {})
-        entries.append(
-            {
-                "id": task.get("task_id", ""),
-                "goblin": goblin_id,
-                "task": payload.get("task", payload.get("prompt", task.get("task_type", "task"))),
-                "response": (
-                    task.get("result", {}).get("result", {}).get("text", "")
-                    if isinstance(task.get("result"), dict)
-                    else ""
-                ),
-                "timestamp": task.get("updated_at", task.get("created_at", time.time())),
-                "kpis": f"status:{task.get('status', 'unknown')}",
-            }
-        )
-
-    entries.extend(await _collect_chat_history_entries(goblin_id, limit=500))
-    entries.sort(key=lambda item: _timestamp_sort_key(item.get("timestamp")))
-    return entries[-capped_limit:]
+    _raise_not_implemented("/api/history/{goblin_id}")
 
 
-@router.get("/stats/{goblin_id}")
+@router.get(
+    "/stats/{goblin_id}", status_code=501, responses={501: {"description": "Not Implemented"}}
+)
 async def get_goblin_stats(goblin_id: str):
-    snapshot = routing_registry.snapshot()
-    stats = snapshot.get(goblin_id, {})
-    return {
-        "goblin_id": goblin_id,
-        "total_tasks": int(stats.get("success_rate", 0) * 100),
-        "total_cost": stats.get("total_cost_usd", 0.0),
-        "avg_duration_ms": stats.get("ewma_latency_ms", 0.0),
-        "success_rate": stats.get("success_rate", 0.0),
-        "last_active": stats.get("last_used", time.time()),
-    }
+    _raise_not_implemented("/api/stats/{goblin_id}")
