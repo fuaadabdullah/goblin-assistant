@@ -31,7 +31,7 @@ print_error() {
 # Configuration
 BACKEND_URL="${BACKEND_URL:-https://goblin-backend-dt30.onrender.com}"
 FRONTEND_URL="${FRONTEND_URL:-https://goblin-assistant.vercel.app}"
-HEALTH_ENDPOINT="${BACKEND_URL}/health"
+HEALTH_ENDPOINT="${BACKEND_URL}/api/v1/health"
 API_ENDPOINT="${BACKEND_URL}/api/v1/sandbox/metrics"
 AUTH_ENDPOINT="${BACKEND_URL}/api/v1/auth/login"
 CHAT_ENDPOINT="${BACKEND_URL}/api/v1/chat/conversations"
