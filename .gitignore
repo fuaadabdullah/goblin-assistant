@@ -20,6 +20,8 @@
 *.orig
 *.swp
 *.log
+.continue/
+.continue
 BROKEN_ITEMS.md
 
 # Supabase migration backups
