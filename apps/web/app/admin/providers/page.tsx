@@ -1,8 +1,11 @@
 'use client';
 
+import { Suspense } from 'react';
 import ProvidersPage from '@/screens/EnhancedProvidersPage';
 import AdminLayout from '@/layout/AdminLayout';
 import { withRouteErrorBoundary } from '@/components/RouteBoundary';
+
+export const dynamic = 'force-dynamic';
 
 const AdminProvidersContent = withRouteErrorBoundary(function AdminProvidersContent() {
   return <ProvidersPage />;
@@ -10,8 +13,10 @@ const AdminProvidersContent = withRouteErrorBoundary(function AdminProvidersCont
 
 export default function AdminProviders() {
   return (
-    <AdminLayout fullWidth>
-      <AdminProvidersContent />
-    </AdminLayout>
+    <Suspense fallback={<div className="min-h-screen bg-bg" />}>
+      <AdminLayout fullWidth>
+        <AdminProvidersContent />
+      </AdminLayout>
+    </Suspense>
   );
 }

@@ -1,11 +1,14 @@
 'use client';
 
-import dynamic from 'next/dynamic';
+import { Suspense } from 'react';
+import nextDynamic from 'next/dynamic';
 import AdminLayout from '@/layout/AdminLayout';
 import { withRouteErrorBoundary } from '@/components/RouteBoundary';
 import { DashboardSkeleton } from '@/components/LoadingSkeleton';
 
-const EnhancedDashboard = dynamic(() => import('@/components/EnhancedDashboard'), {
+export const dynamic = 'force-dynamic';
+
+const EnhancedDashboard = nextDynamic(() => import('@/components/EnhancedDashboard'), {
   ssr: false,
   loading: () => <DashboardSkeleton />,
 });
@@ -16,8 +19,10 @@ const AdminDashboardContent = withRouteErrorBoundary(function AdminDashboardCont
 
 export default function Admin() {
   return (
-    <AdminLayout mainId="main-content" mainLabel="Admin Dashboard">
-      <AdminDashboardContent />
-    </AdminLayout>
+    <Suspense fallback={<DashboardSkeleton />}>
+      <AdminLayout mainId="main-content" mainLabel="Admin Dashboard">
+        <AdminDashboardContent />
+      </AdminLayout>
+    </Suspense>
   );
 }

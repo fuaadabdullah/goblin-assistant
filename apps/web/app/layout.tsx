@@ -7,12 +7,6 @@ import Providers from './providers';
 import '@/index.css';
 import 'highlight.js/styles/github-dark.css';
 
-// Every route was previously rendered with a no-op getServerSideProps (always
-// dynamic, never statically generated). Forcing dynamic here preserves that
-// behaviour for the whole app and avoids the static-prerender requirement for
-// `useSearchParams()` in the client screens.
-export const dynamic = 'force-dynamic';
-
 export const metadata: Metadata = {
   icons: {
     icon: '/favicon.ico',

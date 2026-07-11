@@ -53,6 +53,19 @@ function logProxyEvent(payload: {
   console.warn('[api/models] proxy_event', payload);
 }
 
+function buildEmptyRegistryFallback(reason: string): Record<string, unknown> {
+  return {
+    models: [],
+    providers: [],
+    router_models: [],
+    source: 'frontend_registry_fallback',
+    total_models: 0,
+    total_providers: 0,
+    total_router_models: 0,
+    fallback_reason: reason,
+  };
+}
+
 async function forwardToBackendModels(): Promise<ForwardModelsResult> {
   const buildHeaders = (): Record<string, string> => {
     const headers: Record<string, string> = {};
@@ -105,16 +118,27 @@ async function forwardToBackendModels(): Promise<ForwardModelsResult> {
 
   try {
     const primary = await requestBackend('/api/v1/providers/models');
-    if (primary.status !== 404) {
+    if (primary.status >= 200 && primary.status < 300) {
       return primary;
     }
 
-    const routingProviders = await requestBackend('/api/v1/routing/providers');
-    if (routingProviders.status >= 200 && routingProviders.status < 300) {
+    if (primary.status === 404) {
+      const routingProviders = await requestBackend('/api/v1/routing/providers');
+      if (routingProviders.status >= 200 && routingProviders.status < 300) {
+        return {
+          status: 200,
+          body: mapRoutingProvidersFallback(routingProviders.body),
+          correlationId: routingProviders.correlationId,
+          fallbackUsed: true,
+        };
+      }
+    }
+
+    if ([401, 403, 404, 500, 502, 503].includes(primary.status)) {
       return {
         status: 200,
-        body: mapRoutingProvidersFallback(routingProviders.body),
-        correlationId: routingProviders.correlationId,
+        body: buildEmptyRegistryFallback(`backend_status_${primary.status}`),
+        correlationId: primary.correlationId,
         fallbackUsed: true,
       };
     }
@@ -125,9 +149,10 @@ async function forwardToBackendModels(): Promise<ForwardModelsResult> {
     };
   } catch {
     return {
-      status: 502,
-      body: { error: 'Backend unreachable' },
+      status: 200,
+      body: buildEmptyRegistryFallback('backend_unreachable'),
       transportError: true,
+      fallbackUsed: true,
     };
   }
 }

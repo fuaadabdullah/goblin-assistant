@@ -2,10 +2,11 @@ import {
   ProviderUpdatePayload,
   V1_API_PREFIX,
   getBackend,
-  getFrontend,
+  frontendHttp,
   patchBackend,
   postBackend,
   putBackend,
+  unwrapEnvelope,
 } from './shared';
 import { normalizeProviderId } from '../providers/normalizeProvider';
 import type { CostSummary, ProviderModelOption } from '../../types/api';
@@ -36,7 +37,8 @@ const isSelectableFlag = (value: unknown): boolean => value !== false;
 
 async function loadModelRegistry(): Promise<ModelRegistryResponse> {
   try {
-    const registryResponse = await getFrontend<ModelRegistryResponse>('/api/models');
+    const response = await frontendHttp.get<ModelRegistryResponse>('/api/models');
+    const registryResponse = unwrapEnvelope(response.data);
     return {
       models: Array.isArray(registryResponse?.models) ? registryResponse.models : [],
       providers: Array.isArray(registryResponse?.providers) ? registryResponse.providers : [],
@@ -128,7 +130,8 @@ export const providersMethods = {
   },
 
   async getModelConfigs() {
-    return getFrontend('/api/models');
+    const response = await frontendHttp.get<ModelRegistryResponse>('/api/models');
+    return unwrapEnvelope(response.data);
   },
 
   async getGlobalSettings() {

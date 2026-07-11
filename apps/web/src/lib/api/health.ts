@@ -1,10 +1,10 @@
-import { V1_API_PREFIX, getBackend, devWarn } from './shared';
+import { V1_API_PREFIX, getBackend, getFrontend, devWarn } from './shared';
 import type { HealthStatus } from '../../types/api';
 
 export const healthMethods = {
   async getAllHealth(): Promise<HealthStatus> {
     try {
-      return await getBackend<HealthStatus>(`${V1_API_PREFIX}/health`);
+      return await getFrontend<HealthStatus>('/api/v1/health');
     } catch (error) {
       devWarn('Health check failed:', error);
       return {
