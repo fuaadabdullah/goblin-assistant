@@ -1,8 +1,15 @@
 """Shared fixtures for provider dispatcher authority tests."""
 
 import asyncio
+import sys
+from pathlib import Path
 
 import pytest
+
+# Ensure the src root is on sys.path so `api.*` imports work from the split test package.
+_pkg_root = str(Path(__file__).resolve().parents[3])
+if _pkg_root not in sys.path:
+    sys.path.insert(0, _pkg_root)
 
 from api.providers.base import BaseProvider, ProviderHealth, ProviderResult
 

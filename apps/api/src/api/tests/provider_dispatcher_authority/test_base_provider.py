@@ -1,6 +1,8 @@
 """Tests for BaseProvider circuit breaker behavior."""
 
-import api.providers.base as base_module
+import importlib
+
+base_module = importlib.import_module("api.providers.base")
 from api.providers.base import ProviderResult
 
 from .conftest import StubProvider
