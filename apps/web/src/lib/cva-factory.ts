@@ -40,7 +40,7 @@ const TRANSITION = 'transition-all duration-150';
  *   {
  *     variants: {
  *       variant: {
- *         primary: 'bg-primary text-text hover:bg-primary-600',
+ *         primary: 'bg-primary text-bg hover:bg-primary-600',
  *         secondary: 'bg-surface text-text border border-border hover:bg-surface-hover',
  *       },
  *       size: {
@@ -75,13 +75,13 @@ export const buttonBase = cva(
     variants: {
       variant: {
         primary:
-          'bg-primary text-text hover:bg-primary-600 active:bg-primary-600/90 shadow-md hover:shadow-lg',
+          'bg-primary text-bg hover:bg-primary-600 active:bg-primary-600/90 shadow-md hover:shadow-lg',
         secondary:
           'bg-surface text-text border border-border hover:bg-surface-hover hover:border-primary/50 active:bg-surface-active shadow-sm hover:shadow-md',
         accent:
-          'bg-accent text-text hover:bg-accent-600 active:bg-accent-600/90 shadow-md hover:shadow-lg',
+          'bg-accent text-bg hover:bg-accent-600 active:bg-accent-600/90 shadow-md hover:shadow-lg',
         danger:
-          'bg-danger text-text hover:bg-danger/90 active:bg-danger/80 shadow-md hover:shadow-lg',
+          'bg-danger text-bg hover:bg-danger/90 active:bg-danger/80 shadow-md hover:shadow-lg',
         ghost: 'text-text hover:bg-surface/50 active:bg-surface/70',
       },
       size: {
@@ -110,13 +110,13 @@ export const iconButtonBase = cva(
     variants: {
       variant: {
         primary:
-          'bg-primary text-text hover:bg-primary-600 active:bg-primary-600/90 shadow-sm hover:shadow-md',
+          'bg-primary text-bg hover:bg-primary-600 active:bg-primary-600/90 shadow-sm hover:shadow-md',
         secondary:
           'bg-surface text-text border border-border hover:bg-surface-hover active:bg-surface-active shadow-sm hover:shadow-md',
         accent:
-          'bg-accent text-text hover:bg-accent-600 active:bg-accent-600/90 shadow-sm hover:shadow-md',
+          'bg-accent text-bg hover:bg-accent-600 active:bg-accent-600/90 shadow-sm hover:shadow-md',
         danger:
-          'bg-danger text-text hover:bg-danger/90 active:bg-danger/80 shadow-sm hover:shadow-md',
+          'bg-danger text-bg hover:bg-danger/90 active:bg-danger/80 shadow-sm hover:shadow-md',
         ghost: 'text-text hover:bg-surface/50 active:bg-surface/70',
       },
       size: {

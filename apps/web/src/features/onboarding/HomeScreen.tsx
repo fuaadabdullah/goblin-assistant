@@ -111,7 +111,7 @@ const CustomerHome = ({ isAuthenticated }: { isAuthenticated: boolean }) => {
                   <div className="mt-4 flex flex-wrap gap-2">
                     <Link
                       href="/chat?guest=1"
-                      className="px-4 py-2 rounded-lg bg-primary text-text-inverse text-sm font-medium shadow-glow-primary hover:brightness-110"
+                      className="px-4 py-2 rounded-lg bg-primary text-bg text-sm font-medium shadow-glow-primary hover:brightness-110"
                     >
                       Open this demo
                     </Link>

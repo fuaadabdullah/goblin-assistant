@@ -66,7 +66,7 @@ export default function ControlPanelHero() {
               type="button"
               onClick={handleRefresh}
               className="px-3 py-1 rounded-md bg-surface-hover border border-border text-sm text-text hover:bg-surface-active"
-              aria-label="Refresh system status"
+              aria-label="Refresh status"
             >
               Refresh status
             </button>
@@ -87,7 +87,7 @@ export default function ControlPanelHero() {
             <Link
               href="/chat?guest=1"
               onClick={() => trackAction('try_guest_chat')}
-              className="px-4 py-2 rounded-lg bg-primary text-text-inverse font-medium shadow-glow-primary hover:brightness-110"
+              className="px-4 py-2 rounded-lg bg-primary text-bg font-medium shadow-glow-primary hover:brightness-110"
             >
               Try for free
             </Link>
