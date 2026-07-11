@@ -13,7 +13,15 @@ import boto3
 import redis.asyncio as redis
 import structlog
 
+from .config.redis_url import DEFAULT_REDIS_URL, resolve_redis_url
+
 logger = structlog.get_logger()
+
+
+def _resolve_redis_url(redis_url: str | None) -> str:
+    """Compatibility wrapper around the canonical Redis URL resolver."""
+
+    return resolve_redis_url(redis_url, component="artifact_service")
 
 
 class ArtifactService:
@@ -30,7 +38,7 @@ class ArtifactService:
 
         # Redis for metadata storage
         self.redis_client = redis.from_url(
-            os.getenv("REDIS_URL", "redis://redis:6379/0"),
+            _resolve_redis_url(os.getenv("REDIS_URL", DEFAULT_REDIS_URL)),
             decode_responses=True,
         )
 

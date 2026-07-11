@@ -29,6 +29,7 @@ from .health_core import (  # noqa: F401 — re-exported for backward compat
 from .ops_health import ops_health_router  # noqa: F401 — re-exported for ops_routes
 
 router = APIRouter(tags=["health"])
+check_chroma_health = _check_chroma
 
 
 class HealthPayload(dict):
@@ -52,6 +53,7 @@ async def health_check(
     # Pass the module-level check functions so patches on `api.health.check_*`
     # (used by tests) are honored.
     payload = await build_health_payload(
+        chroma_check=check_chroma_health,
         routing_check=check_routing_health,
         db_check=check_db_health,
         redis_check=check_redis_health,

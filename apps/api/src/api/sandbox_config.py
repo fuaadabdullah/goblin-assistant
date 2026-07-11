@@ -8,16 +8,16 @@ import redis
 import rq
 import structlog
 
+from .config.redis_url import DEFAULT_REDIS_URL, resolve_redis_url
 from .middleware.rate_limiter import RateLimiter
 
 logger = structlog.get_logger()
-_DEFAULT_REDIS_URL = "redis://localhost:6379/0"
 
 # ---------------------------------------------------------------------------
 # Configuration from environment
 # ---------------------------------------------------------------------------
 
-REDIS_URL = os.getenv("REDIS_URL", "redis://localhost:6379/0")
+REDIS_URL = os.getenv("REDIS_URL", DEFAULT_REDIS_URL)
 SANDBOX_IMAGE = os.getenv("SANDBOX_IMAGE", "goblin-assistant-sandbox:latest")
 API_KEY = os.getenv("API_AUTH_KEY")
 SANDBOX_ENABLED = os.getenv("SANDBOX_ENABLED", "false").lower() == "true"
@@ -31,14 +31,9 @@ JOBS_DIR = os.getenv("JOBS_DIR", "/tmp/goblin_sandbox")
 
 
 def _resolve_redis_url(redis_url: str) -> str:
-    if redis_url.startswith(("redis://", "rediss://", "unix://")):
-        return redis_url
-    logger.warning(
-        "sandbox_redis_url_invalid",
-        configured_redis_url=redis_url,
-        fallback_redis_url=_DEFAULT_REDIS_URL,
-    )
-    return _DEFAULT_REDIS_URL
+    """Compatibility wrapper around the canonical Redis URL resolver."""
+
+    return resolve_redis_url(redis_url, component="sandbox")
 
 
 r = redis.from_url(_resolve_redis_url(REDIS_URL))

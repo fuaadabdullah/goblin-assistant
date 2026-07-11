@@ -127,6 +127,7 @@ def overall_status_from(component_statuses: list) -> str:
 
 
 async def build_health_payload(
+    chroma_check=None,
     routing_check=None,
     db_check=None,
     redis_check=None,
@@ -137,7 +138,12 @@ async def build_health_payload(
     The check functions can be overridden so callers (and tests patching
     `api.health.check_*`) control the individual probes.
     """
-    routing_health, db_health, redis_health, api_health = await asyncio.gather(
+
+    async def _default_chroma_check() -> Dict[str, Any]:
+        return {"status": "unknown"}
+
+    chroma_health, routing_health, db_health, redis_health, api_health = await asyncio.gather(
+        (chroma_check or _default_chroma_check)(),
         (routing_check or check_routing_health)(),
         (db_check or check_db_health)(),
         (redis_check or check_redis_health)(),
@@ -174,6 +180,7 @@ async def build_health_payload(
     overall_status = overall_status_from(
         [
             routing_health["status"],
+            chroma_health["status"],
             db_health["status"],
             redis_health["status"],
             api_health["status"],
@@ -188,6 +195,7 @@ async def build_health_payload(
         "version": get_version(),
         "components": {
             "api": api_health,
+            "chroma": chroma_health,
             "routing": routing_health,
             "database": db_health,
             "redis": redis_health,

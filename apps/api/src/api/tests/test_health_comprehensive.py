@@ -50,6 +50,11 @@ async def test_health_returns_healthy_when_everything_passes() -> None:
     with (
         patch.object(
             health,
+            "check_chroma_health",
+            new=AsyncMock(return_value={"status": "healthy"}),
+        ),
+        patch.object(
+            health,
             "check_routing_health",
             new=AsyncMock(return_value={"status": "healthy"}),
         ),
@@ -81,6 +86,7 @@ async def test_health_returns_healthy_when_everything_passes() -> None:
         response = await health.health_check()
 
     assert response.data["status"] == "healthy"
+    assert response.data["components"]["chroma"]["status"] == "healthy"
     assert response.data["components"]["providers"]["status"] == "healthy"
     provider_monitor.get_all_status.assert_called_once_with(include_hidden=False)
 
@@ -96,6 +102,13 @@ async def test_health_returns_degraded_when_db_fails() -> None:
                 "health_monitor",
                 provider_monitor,
                 create=True,
+            )
+        )
+        stack.enter_context(
+            patch.object(
+                health,
+                "check_chroma_health",
+                new=AsyncMock(return_value={"status": "healthy"}),
             )
         )
         stack.enter_context(
@@ -155,6 +168,13 @@ async def test_health_returns_unhealthy_when_any_component_is_unhealthy() -> Non
         stack.enter_context(
             patch.object(
                 health,
+                "check_chroma_health",
+                new=AsyncMock(return_value={"status": "healthy"}),
+            )
+        )
+        stack.enter_context(
+            patch.object(
+                health,
                 "check_routing_health",
                 new=AsyncMock(return_value={"status": "healthy"}),
             )
@@ -204,6 +224,13 @@ async def test_health_returns_warnings_on_security_issues() -> None:
                 "health_monitor",
                 provider_monitor,
                 create=True,
+            )
+        )
+        stack.enter_context(
+            patch.object(
+                health,
+                "check_chroma_health",
+                new=AsyncMock(return_value={"status": "healthy"}),
             )
         )
         stack.enter_context(
