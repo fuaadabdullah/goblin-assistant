@@ -337,7 +337,34 @@ async def _execute_dispatch_attempt(
                     None,
                 )
             await quota_service.release(reservation)
-            return None, result.error or "stream failed", result.error_category
+            error_msg = result.error or "stream failed"
+            error_cat = dispatcher._provider_error_category(result.error_category, error_msg)
+            await _record_provider_failure(
+                provider_id,
+                current_provider,
+                error_msg,
+                category=error_cat,
+            )
+            registry.record_failure(provider_id)
+            dispatcher.note_provider_result(provider_id, ok=False, error=error_msg)
+            record_dispatch(
+                provider_id=provider_id,
+                model=model_name,
+                latency_ms=float(result.latency_ms or 0.0),
+                ok=False,
+                error_category=error_cat.value if error_cat else None,
+            )
+            if error_cat == ProviderErrorCategory.RATE_LIMIT:
+                await quota_service.mark_rate_limited(provider_id, model_name)
+            _tag(aspan, "dispatch.outcome", "soft_failure")
+            if error_cat is not None:
+                _tag(aspan, "error.category", error_cat.value)
+            log.warning(
+                "dispatch_stream_soft_failure",
+                error=error_msg,
+                error_category=error_cat.value if error_cat else None,
+            )
+            return None, error_msg, error_cat
 
         result = await asyncio.wait_for(
             dispatcher._invoke_with_test_mode(
@@ -408,7 +435,34 @@ async def _execute_dispatch_attempt(
             return result.to_dict(), None, None
 
         await quota_service.release(reservation)
-        return None, result.error, result.error_category
+        error_msg = result.error or "provider failed"
+        error_cat = dispatcher._provider_error_category(result.error_category, error_msg)
+        await _record_provider_failure(
+            provider_id,
+            current_provider,
+            error_msg,
+            category=error_cat,
+        )
+        registry.record_failure(provider_id)
+        dispatcher.note_provider_result(provider_id, ok=False, error=error_msg)
+        record_dispatch(
+            provider_id=provider_id,
+            model=model_name,
+            latency_ms=float(result.latency_ms or 0.0),
+            ok=False,
+            error_category=error_cat.value if error_cat else None,
+        )
+        if error_cat == ProviderErrorCategory.RATE_LIMIT:
+            await quota_service.mark_rate_limited(provider_id, model_name)
+        _tag(aspan, "dispatch.outcome", "soft_failure")
+        if error_cat is not None:
+            _tag(aspan, "error.category", error_cat.value)
+        log.warning(
+            "dispatch_soft_failure",
+            error=error_msg,
+            error_category=error_cat.value if error_cat else None,
+        )
+        return None, error_msg, error_cat
 
     except asyncio.TimeoutError:
         await quota_service.release(reservation)
