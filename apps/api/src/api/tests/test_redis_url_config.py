@@ -31,7 +31,10 @@ def test_resolve_redis_url_does_not_log_credentials(monkeypatch) -> None:
         def warning(self, event: str, **fields: str) -> None:
             events.append((event, fields))
 
-    monkeypatch.setattr("api.config.redis_url.structlog.get_logger", lambda: CapturingLogger())
+    def _get_logger() -> CapturingLogger:
+        return CapturingLogger()
+
+    monkeypatch.setattr("api.config.redis_url.structlog.get_logger", _get_logger)
     secret_url = "https://admin:do-not-log@example.test/redis"
 
     assert resolve_redis_url(secret_url, component="test") == DEFAULT_REDIS_URL

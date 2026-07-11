@@ -7,7 +7,7 @@ import asyncio
 import hashlib
 import os
 from datetime import datetime, timedelta
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List, Optional, cast
 
 import boto3
 import redis.asyncio as redis
@@ -29,7 +29,7 @@ class ArtifactService:
 
     def __init__(self):
         # S3/MinIO configuration
-        self.s3_client = None
+        self.s3_client: Any | None = None
         self.bucket_name = os.getenv("S3_BUCKET", "goblin-sandbox")
         self.endpoint_url = os.getenv("ARTIFACT_S3_ENDPOINT")
         self.access_key = os.getenv("S3_ACCESS_KEY")
@@ -37,9 +37,12 @@ class ArtifactService:
         self.region = os.getenv("S3_REGION", "us-east-1")
 
         # Redis for metadata storage
-        self.redis_client = redis.from_url(
-            _resolve_redis_url(os.getenv("REDIS_URL", DEFAULT_REDIS_URL)),
-            decode_responses=True,
+        self.redis_client: Any = cast(
+            Any,
+            redis.from_url(
+                _resolve_redis_url(os.getenv("REDIS_URL", DEFAULT_REDIS_URL)),
+                decode_responses=True,
+            ),
         )
 
         # Configuration
@@ -109,6 +112,10 @@ class ArtifactService:
             return None
 
         try:
+            s3_client = self.s3_client
+            if s3_client is None:
+                return None
+
             # Validate file exists and size
             if not os.path.exists(file_path):  # noqa: ASYNC240
                 logger.warning("artifact_file_not_found", file_path=file_path, job_id=job_id)
@@ -150,7 +157,7 @@ class ArtifactService:
             }
 
             await asyncio.to_thread(
-                self.s3_client.upload_file,
+                s3_client.upload_file,
                 file_path,
                 self.bucket_name,
                 s3_key,
@@ -217,7 +224,11 @@ class ArtifactService:
             return None
 
         try:
-            url = self.s3_client.generate_presigned_url(
+            s3_client = self.s3_client
+            if s3_client is None:
+                return None
+
+            url = s3_client.generate_presigned_url(
                 "get_object",
                 Params={"Bucket": self.bucket_name, "Key": s3_key},
                 ExpiresIn=expiration_seconds,
@@ -263,6 +274,10 @@ class ArtifactService:
             return 0
 
         try:
+            s3_client = self.s3_client
+            if s3_client is None:
+                return 0
+
             deleted_count = 0
             current_time = datetime.utcnow()
 
@@ -275,7 +290,7 @@ class ArtifactService:
                     if expires_at_str and current_time > datetime.fromisoformat(expires_at_str):
                         s3_key = data.get("s3_key")
                         if s3_key:
-                            self.s3_client.delete_object(Bucket=self.bucket_name, Key=s3_key)
+                            s3_client.delete_object(Bucket=self.bucket_name, Key=s3_key)
                         await self.redis_client.delete(key)
                         deleted_count += 1
                 except Exception as e:

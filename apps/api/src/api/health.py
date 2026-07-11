@@ -253,9 +253,13 @@ async def health_component(component: str) -> Dict[str, Any]:
 async def health_streaming() -> Dict[str, Any]:
     """Check streaming capability health (alias for /health/stream)"""
     try:
-        from .config.providers import DEFAULT_PROVIDERS
+        from .config.providers import get_provider_settings
 
-        streaming_providers = [p for p in DEFAULT_PROVIDERS if p.get("enabled") and p.get("models")]
+        streaming_providers = [
+            provider
+            for provider in get_provider_settings()
+            if provider.get("enabled") and provider.get("models")
+        ]
         return {
             "status": "healthy" if len(streaming_providers) > 0 else "degraded",
             "streaming_providers": len(streaming_providers),

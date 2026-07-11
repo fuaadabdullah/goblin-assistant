@@ -19,7 +19,7 @@ from ..router_service import get_router_model_names
 from ..supabase_events import check_provider_access, insert_routing_audit
 
 try:
-    from ddtrace import tracer as _dd_tracer
+    from ddtrace.trace import tracer as _dd_tracer
 except ImportError:
     _dd_tracer = None  # type: ignore[assignment]
 
@@ -227,8 +227,7 @@ def _build_dry_run_response(
         candidate_detail.append(
             {
                 "provider": provider_id,
-                "model": resolved_model
-                or (current_provider.default_model if current_provider else ""),
+                "model": resolved_model or getattr(current_provider, "default_model", ""),
                 "configured": dispatcher.is_configured(provider_id),
             }
         )
@@ -574,8 +573,9 @@ async def dispatch_request(
         if not ordered:
             return {"ok": False, "error": "no-configured-providers", "latency_ms": 0.0}
 
-    if payload.get("user_id"):
-        allowed = [p for p in ordered if await check_provider_access(payload.get("user_id"), p)]
+    user_id = payload.get("user_id")
+    if isinstance(user_id, str) and user_id:
+        allowed = [p for p in ordered if await check_provider_access(user_id, p)]
         if not allowed:
             return {"ok": False, "error": "provider-access-denied", "latency_ms": 0.0}
         ordered = allowed

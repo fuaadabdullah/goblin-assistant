@@ -36,7 +36,7 @@ logger = structlog.get_logger()
 
 # Late-bound package handle so tests can patch package attributes
 # (e.g. api.chat_router.messages._get_write_time_intelligence).
-_messages_pkg = import_module(__package__)
+_messages_pkg = import_module(__package__ or "api.chat_router.messages")
 
 
 async def resolve_provider_call(result: Any) -> Any:
