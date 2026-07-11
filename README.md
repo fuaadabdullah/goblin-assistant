@@ -23,7 +23,7 @@ Goblin Assistant is organized as a monorepo for clearer ownership and faster dev
 
 ```bash
 pnpm install
-cd apps/api && python3 -m pip install -r requirements.txt
+cd apps/api && python3.11 -m pip install -r requirements.txt -r requirements-vector.txt
 ```
 
 Run services:
