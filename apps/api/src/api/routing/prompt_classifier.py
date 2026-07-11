@@ -10,6 +10,8 @@ from __future__ import annotations
 import re
 from typing import TYPE_CHECKING, Any, Dict, List
 
+from .keyword_matcher import contains_any_keywords
+
 if TYPE_CHECKING:
     from api.services.smart_router import TaskType
 
@@ -76,7 +78,7 @@ _CODE_GENERATION_KEYWORDS = (
     "in golang",
     "in rust",
     "in java",
-    "in c++",
+    "in cpp",
 )
 
 # Code block indicator: at least 3 lines that look like code syntax
@@ -136,7 +138,7 @@ _SUMMARIZATION_KEYWORDS = (
 
 
 def _contains_any(text: str, keywords: tuple) -> bool:
-    return any(kw in text for kw in keywords)
+    return contains_any_keywords(text, keywords)
 
 
 def _looks_like_code(prompt: str) -> bool:

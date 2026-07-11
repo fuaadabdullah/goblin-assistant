@@ -28,6 +28,7 @@ from ...config.archetypes import (
 from ...config.archetypes import (
     missing_general_assistant_tools as _missing_general_assistant_tools,
 )
+from ...config.mode_addendums import CATEGORY_ADDENDUMS
 from ...config.mode_addendums import get_addendum as _get_mode_addendum
 from ...config.system_prompt import EDUCATION_SYSTEM_ADDENDUM
 
@@ -150,15 +151,18 @@ async def resolve_addendum(
         EDUCATION_SYSTEM_ADDENDUM if classification.message_type == MessageType.LEARNING else ""
     )
 
-    if new_category:
-        try:
-            from api.config.mode_addendums import CATEGORY_ADDENDUMS  # noqa: PLC0415
+    addendum_parts = [part for part in [addendum] if part]
 
-            cat_addendum = CATEGORY_ADDENDUMS.get(new_category, "")
-            if cat_addendum:
-                addendum = (addendum + "\n\n" + cat_addendum).strip()
-        except Exception:
-            pass
+    if new_category:
+        cat_addendum = CATEGORY_ADDENDUMS.get(new_category, "")
+        if cat_addendum:
+            addendum_parts.append(cat_addendum.strip())
+
+    intent_label = str(intent_meta.get("label", "")).strip().lower()
+    if intent_label in CATEGORY_ADDENDUMS and intent_label != new_category:
+        intent_addendum = CATEGORY_ADDENDUMS.get(intent_label, "").strip()
+        if intent_addendum:
+            addendum_parts.append(intent_addendum)
 
     try:
         from api.config.mode_addendums import response_length_addendum as _rla  # noqa: PLC0415
@@ -167,11 +171,11 @@ async def resolve_addendum(
         length_pref = await _pl.get_length_pref(str(user_id), intent_meta.get("label", "default"))
         len_addendum = _rla(length_pref)
         if len_addendum:
-            addendum = (addendum + "\n\n" + len_addendum).strip()
+            addendum_parts.append(len_addendum.strip())
     except Exception:
         pass
 
-    return addendum
+    return "\n\n".join(part for part in addendum_parts if part)
 
 
 def ensure_mode_required_tools(

@@ -551,3 +551,39 @@ class TestToolPipelineRouteIntegration:
             "query": "latest battery breakthroughs",
             "max_sources": 4,
         }
+
+    def test_live_web_prompt_keeps_research_guidance_in_coding_threads(self, client, mock_user):
+        seen_system_prompt = {"content": None}
+
+        async def fake_require_owned(*_args, **_kwargs):
+            return SimpleNamespace(
+                conversation_id="conv_1",
+                user_id=mock_user.id,
+                messages=[SimpleNamespace(role="user", content="hello")],
+                metadata={"category": "coding"},
+            )
+
+        async def invoke(*, pid, model, payload, timeout_ms, stream=False):
+            del pid, model, timeout_ms, stream
+            if seen_system_prompt["content"] is None:
+                seen_system_prompt["content"] = payload["messages"][0]["content"]
+            return _text_result("openai", "ok")
+
+        with _stacked_patches(
+            mock_user,
+            patch("api.chat_router._require_owned_conversation", side_effect=fake_require_owned),
+            patch("api.chat_router.invoke_provider", side_effect=invoke),
+        ):
+            response = client.post(
+                "/api/v1/chat/conversations/conv_1/messages",
+                json={
+                    "message": "What is the latest on AI policy?",
+                    "provider": "openai",
+                    "model": "gpt-4o-mini",
+                },
+            )
+
+        assert response.status_code == 200
+        assert seen_system_prompt["content"] is not None
+        assert "You are helping with research or analysis." in seen_system_prompt["content"]
+        assert "web_search or lightweight_research" in seen_system_prompt["content"]

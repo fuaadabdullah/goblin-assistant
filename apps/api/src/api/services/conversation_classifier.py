@@ -5,6 +5,8 @@ from __future__ import annotations
 from enum import Enum
 from typing import Optional
 
+from api.routing.keyword_matcher import keyword_matches_text
+
 
 class ConversationCategory(str, Enum):
     CODING = "coding"
@@ -175,6 +177,18 @@ class ConversationClassifier:
             "conclusion",
             "data",
             "review",
+            "current information",
+            "current events",
+            "current",
+            "latest",
+            "recent",
+            "real time",
+            "real-time",
+            "up to date",
+            "up-to-date",
+            "what's new",
+            "what is new",
+            "breaking",
         ],
     }
 
@@ -189,7 +203,7 @@ class ConversationClassifier:
         lower = text.lower()
         scores: dict[ConversationCategory, int] = {}
         for cat, keywords in self._KEYWORDS.items():
-            hits = sum(1 for kw in keywords if kw in lower)
+            hits = sum(1 for kw in keywords if keyword_matches_text(lower, kw))
             if hits:
                 scores[cat] = hits
 

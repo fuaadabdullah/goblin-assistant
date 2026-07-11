@@ -44,7 +44,7 @@ class TestKeywordClassification:
         assert result.label == IntentLabel.RESEARCH
 
     def test_research_from_summarize_article(self, classifier):
-        result = classifier.classify("Summarize this article about climate change")
+        result = classifier.classify("Summrize this arcticle about climate change")
         assert result.label == IntentLabel.RESEARCH
 
     def test_creative_from_story(self, classifier):
@@ -74,8 +74,14 @@ class TestKeywordClassification:
         assert result.label == IntentLabel.FINANCE
 
     def test_finance_from_market_news(self, classifier):
-        result = classifier.classify("Give me the latest market news on AAPL and NVDA")
+        result = classifier.classify("Give me the latets market news on AAPL and NVDA")
         assert result.label == IntentLabel.FINANCE
+
+    def test_research_from_typo_current_web_request(self, classifier):
+        result = classifier.classify(
+            "Can you reseach the latets findings on transformer models for me?"
+        )
+        assert result.label == IntentLabel.RESEARCH
 
     def test_reasoning_from_pros_cons(self, classifier):
         result = classifier.classify("What are the pros and cons of microservices vs monolith?")
