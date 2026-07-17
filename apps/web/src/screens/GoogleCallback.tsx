@@ -5,7 +5,6 @@ import { useQueryClient } from '@tanstack/react-query';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { queryKeys } from '../lib/query-keys';
 import { persistAuthSession } from '../utils/auth-session';
-import { resolvePublicBackendOrigin } from '../config/backendOrigin';
 import { authExchangeCodeForSession } from '../lib/supabase';
 import { snapshotFromSupabaseSession } from '../lib/auth-state';
 import { devError } from '@/utils/dev-log';
@@ -52,10 +51,8 @@ const GoogleCallback: React.FC = () => {
       }
 
       try {
-        const backendOrigin = resolvePublicBackendOrigin();
-
         // Exchange code for token
-        const response = await fetch(`${backendOrigin}/api/v1/auth/google/callback`, {
+        const response = await fetch('/api/auth/google/callback', {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
@@ -115,11 +112,6 @@ const GoogleCallback: React.FC = () => {
       </div>
     </div>
   );
-};
-
-// Prevent static generation - requires server-side data
-export const getServerSideProps = async () => {
-  return { props: {} };
 };
 
 export default GoogleCallback;

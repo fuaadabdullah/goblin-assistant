@@ -1,24 +1,27 @@
 import {
-  V1_API_PREFIX,
-  V1_CHAT_PREFIX,
   ConversationCreateResponse,
   ConversationInfoResponse,
   ConversationDetailResponse,
   ConversationSendResponse,
   postBackend,
-  getBackend,
+  getFrontend,
+  postFrontend,
   withAuth,
   withTransientRetry,
-  backendHttp,
+  frontendHttp,
 } from './shared';
 import type { ChatMessage as DomainChatMessage } from '../../domain/chat';
+
+const INTERNAL_CHAT_PREFIX = '/api/chat';
+const INTERNAL_ROUTING_PREFIX = '/api/routing';
+const INTERNAL_FEEDBACK_PREFIX = '/api/feedback';
 
 export const chatMethods = {
   async createConversation(title?: string) {
     const response = await withTransientRetry(
       () =>
-        postBackend<ConversationCreateResponse, { title?: string | undefined }>(
-          `${V1_CHAT_PREFIX}/conversations`,
+        postFrontend<ConversationCreateResponse, { title?: string | undefined }>(
+          `${INTERNAL_CHAT_PREFIX}/conversations`,
           { title },
           withAuth()
         ),
@@ -34,8 +37,8 @@ export const chatMethods = {
   },
 
   async listConversations() {
-    const conversations = await getBackend<ConversationInfoResponse[]>(
-      `${V1_CHAT_PREFIX}/conversations`,
+    const conversations = await getFrontend<ConversationInfoResponse[]>(
+      `${INTERNAL_CHAT_PREFIX}/conversations`,
       withAuth()
     );
 
@@ -55,11 +58,11 @@ export const chatMethods = {
     if (typeof offset === 'number') params.append('offset', offset.toString());
     if (typeof limit === 'number') params.append('limit', limit.toString());
 
-    const url = `${V1_CHAT_PREFIX}/conversations/${encodeURIComponent(conversationId)}${
+    const url = `${INTERNAL_CHAT_PREFIX}/conversations/${encodeURIComponent(conversationId)}${
       params.toString() ? `?${params.toString()}` : ''
     }`;
 
-    const conversation = await getBackend<ConversationDetailResponse>(url, withAuth());
+    const conversation = await getFrontend<ConversationDetailResponse>(url, withAuth());
 
     return {
       conversationId: conversation.conversation_id,
@@ -87,7 +90,7 @@ export const chatMethods = {
     metadata?: Record<string, unknown> | undefined;
     attachment_ids?: string[] | undefined;
   }) {
-    const response = await postBackend<
+    const response = await postFrontend<
       ConversationSendResponse,
       {
         message: string;
@@ -98,7 +101,7 @@ export const chatMethods = {
         attachment_ids?: string[] | undefined;
       }
     >(
-      `${V1_CHAT_PREFIX}/conversations/${encodeURIComponent(payload.conversationId)}/messages`,
+      `${INTERNAL_CHAT_PREFIX}/conversations/${encodeURIComponent(payload.conversationId)}/messages`,
       {
         message: payload.message,
         department: payload.department,
@@ -146,8 +149,8 @@ export const chatMethods = {
     const qs = payload.conversationId
       ? `?conversation_id=${encodeURIComponent(payload.conversationId)}`
       : '';
-    return postBackend(
-      `${V1_CHAT_PREFIX}/estimate-tokens${qs}`,
+    return postFrontend(
+      `${INTERNAL_CHAT_PREFIX}/estimate-tokens${qs}`,
       {
         message: payload.message,
         provider: payload.provider,
@@ -158,8 +161,8 @@ export const chatMethods = {
   },
 
   async importConversationMessages(conversationId: string, messages: DomainChatMessage[]) {
-    return postBackend<{ success: boolean; imported_count: number }>(
-      `${V1_CHAT_PREFIX}/conversations/${encodeURIComponent(conversationId)}/import`,
+    return postFrontend<{ success: boolean; imported_count: number }>(
+      `${INTERNAL_CHAT_PREFIX}/conversations/${encodeURIComponent(conversationId)}/import`,
       {
         messages: messages.map((message) => ({
           role: message.role,
@@ -180,7 +183,7 @@ export const chatMethods = {
   }> {
     const formData = new FormData();
     formData.append('file', file);
-    const response = await backendHttp.post(`${V1_CHAT_PREFIX}/upload-file`, formData, {
+    const response = await frontendHttp.post(`${INTERNAL_CHAT_PREFIX}/upload-file`, formData, {
       ...withAuth(),
       headers: {
         ...withAuth().headers,
@@ -201,8 +204,8 @@ export const chatMethods = {
     model?: string;
     department?: string;
   }): Promise<{ ok: boolean }> {
-    return postBackend<{ ok: boolean }, object>(
-      `${V1_API_PREFIX}/routing/feedback`,
+    return postFrontend<{ ok: boolean }, object>(
+      `${INTERNAL_ROUTING_PREFIX}/feedback`,
       {
         request_id: payload.requestId,
         rating: payload.rating,
@@ -243,6 +246,6 @@ export const chatMethods = {
       created_at: string | null;
     }>;
   }> {
-    return getBackend(`${V1_API_PREFIX}/feedback/stats?days=${days}`, withAuth());
+    return getFrontend(`${INTERNAL_FEEDBACK_PREFIX}/stats?days=${days}`, withAuth());
   },
 };

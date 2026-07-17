@@ -4,7 +4,7 @@ import { createSupabaseMiddlewareClient } from './src/lib/supabase-server';
 import { isAdminUser } from './src/utils/access';
 
 /**
- * Auth middleware for route protection.
+ * Auth proxy for route protection.
  *
  * Uses @supabase/ssr to read the Supabase session from cookies directly —
  * no goblin_auth flag cookie needed. Calling getUser() also transparently
@@ -53,11 +53,11 @@ export const resolveRouteDecision = (input: {
   return { allow: true };
 };
 
-export async function middleware(request: NextRequest) {
+export async function proxy(request: NextRequest) {
   const { supabase, getResponse } = createSupabaseMiddlewareClient(request);
 
   // getUser() validates the session server-side and refreshes the token if
-  // needed. We intentionally call this (not getSession()) so the middleware
+  // needed. We intentionally call this (not getSession()) so the proxy
   // never trusts a stale cached value.
   const {
     data: { user },

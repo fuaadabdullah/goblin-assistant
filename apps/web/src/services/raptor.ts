@@ -1,4 +1,4 @@
-import { V1_API_PREFIX, getBackend, postBackend } from '@/lib/api';
+import { getFrontend, postFrontend } from '@/lib/api';
 
 export interface RaptorStatus {
   running: boolean;
@@ -10,21 +10,21 @@ export interface RaptorLogsResponse {
 }
 
 export async function raptorStart(): Promise<void> {
-  await postBackend(`${V1_API_PREFIX}/raptor/start`);
+  await postFrontend('/api/raptor/start');
 }
 
 export async function raptorStop(): Promise<void> {
-  await postBackend(`${V1_API_PREFIX}/raptor/stop`);
+  await postFrontend('/api/raptor/stop');
 }
 
 export async function raptorStatus(): Promise<RaptorStatus> {
-  return getBackend<RaptorStatus>(`${V1_API_PREFIX}/raptor/status`);
+  return getFrontend<RaptorStatus>('/api/raptor/status');
 }
 
 export async function raptorLogs(): Promise<RaptorLogsResponse> {
-  return getBackend<RaptorLogsResponse>(`${V1_API_PREFIX}/raptor/logs`);
+  return getFrontend<RaptorLogsResponse>('/api/raptor/logs');
 }
 
 export async function raptorDemo(mode: string): Promise<void> {
-  await postBackend(`${V1_API_PREFIX}/raptor/demo/${mode}`);
+  await postFrontend(`/api/raptor/demo/${mode}`);
 }

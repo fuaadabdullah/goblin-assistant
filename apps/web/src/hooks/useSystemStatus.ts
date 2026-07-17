@@ -45,7 +45,7 @@ type StatusOptions = Readonly<{
  * @example
  * // Use real backend endpoints
  * const { status, refresh } = useSystemStatus({
- *   endpoints: { models: '/api/models', routing: '/api/v1/routing/status', sandbox: '/api/v1/sandbox/health/status' }
+ *   endpoints: { models: '/api/models', routing: '/api/system-status', sandbox: '/api/system-status' }
  * });
  *
  * @example

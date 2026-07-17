@@ -1,12 +1,14 @@
-import { V1_API_PREFIX, getBackend, postBackend } from './shared';
+import { getFrontend, postFrontend } from './shared';
+
+const INTERNAL_SANDBOX_PREFIX = '/api/sandbox';
 
 export const sandboxMethods = {
   async getSandboxJobs() {
-    return getBackend(`${V1_API_PREFIX}/sandbox/jobs`);
+    return getFrontend(`${INTERNAL_SANDBOX_PREFIX}/jobs`);
   },
 
   async getJobLogs(jobId: string) {
-    return getBackend(`${V1_API_PREFIX}/sandbox/jobs/${jobId}/logs`);
+    return getFrontend(`${INTERNAL_SANDBOX_PREFIX}/jobs/${jobId}/logs`);
   },
 
   async runSandboxCode(payload: {
@@ -15,7 +17,7 @@ export const sandboxMethods = {
     language?: string;
     timeout?: number;
   }) {
-    return postBackend(`${V1_API_PREFIX}/sandbox/run`, {
+    return postFrontend(`${INTERNAL_SANDBOX_PREFIX}/run`, {
       source: payload.source ?? payload.code,
       language: payload.language,
       timeout: payload.timeout,

@@ -43,7 +43,7 @@ const ConnectivityDebug: FC = () => {
         <h2>Chat Endpoint Test (Authenticated)</h2>
         <EndpointTester
           name="Fetch Conversations"
-          endpoint="/api/v1/chat/conversations"
+          endpoint="/api/chat/conversations"
           requiresAuth
           onTest={handleFetchConversations}
         />
@@ -62,7 +62,7 @@ const ConnectivityDebug: FC = () => {
           />
           <EndpointTester
             name="Logout"
-            endpoint="/api/v1/auth/logout"
+            endpoint="/api/auth/logout"
             requiresAuth
             onTest={handleAuthLogout}
           />

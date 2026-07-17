@@ -1,4 +1,4 @@
-import { backendHttp, V1_API_PREFIX, getBackend } from './shared';
+import { frontendHttp, getFrontend } from './shared';
 import type {
   ModelUsageRollupResponse,
   ModelUsageRollup,
@@ -10,14 +10,12 @@ export const observabilityMethods = {
     if (provider) params.set('provider', provider);
     if (model) params.set('model', model);
     const query = params.toString();
-    const url = query
-      ? `${V1_API_PREFIX}/debug/model-usage?${query}`
-      : `${V1_API_PREFIX}/debug/model-usage`;
-    return getBackend<ModelUsageRollupResponse>(url);
+    const url = query ? `/api/debug/model-usage?${query}` : '/api/debug/model-usage';
+    return getFrontend<ModelUsageRollupResponse>(url);
   },
 
   async getPrometheusMetrics(): Promise<string> {
-    const response = await backendHttp.get<string>('/metrics', {
+    const response = await frontendHttp.get<string>('/api/metrics', {
       responseType: 'text',
       transformResponse: [(data) => data],
     });

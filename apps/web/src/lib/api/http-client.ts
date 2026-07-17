@@ -6,6 +6,7 @@
  */
 
 import axios, { AxiosError, type AxiosRequestConfig, type InternalAxiosRequestConfig } from 'axios';
+export { V1_API_PREFIX } from '@goblin/shared';
 import { env } from '../../config/env';
 import {
   clearAuthSession,
@@ -19,8 +20,7 @@ import {
 // ============================================================================
 
 export const AUTH_REQUEST_TIMEOUT_MS = 60000;
-export const V1_API_PREFIX = '/api/v1';
-export const V1_CHAT_PREFIX = `${V1_API_PREFIX}/chat`;
+const INTERNAL_AUTH_PREFIX = '/api/auth';
 
 // ============================================================================
 // Axios Instances
@@ -52,12 +52,12 @@ const loadSupabaseAuthHelpers = async () => {
 
 const refreshAccessTokenViaBackend = async (refreshToken: string | null): Promise<string | null> => {
   try {
-    const response = await backendHttp.post<{
+    const response = await frontendHttp.post<{
       access_token: string;
       refresh_token?: string;
       expires_in?: number;
       user?: Record<string, unknown>;
-    }>(`${V1_API_PREFIX}/auth/refresh`, {
+    }>(`${INTERNAL_AUTH_PREFIX}/refresh`, {
       refresh_token: refreshToken ?? undefined,
     });
 

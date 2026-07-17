@@ -15,7 +15,7 @@ import type {
   User,
 } from '@/types/api';
 
-import { apiClient, V1_CHAT_PREFIX } from '@/lib/api';
+import { apiClient } from '@/lib/api';
 
 let runtimeConversationId: string | null = null;
 

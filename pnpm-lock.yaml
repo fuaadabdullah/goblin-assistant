@@ -44,6 +44,9 @@ importers:
       '@datadog/browser-rum':
         specifier: ^7.2.0
         version: 7.2.0(@datadog/browser-logs@7.2.0)
+      '@goblin/shared':
+        specifier: workspace:*
+        version: link:../../packages/shared
       '@goblin/ui':
         specifier: workspace:*
         version: link:../../packages/ui

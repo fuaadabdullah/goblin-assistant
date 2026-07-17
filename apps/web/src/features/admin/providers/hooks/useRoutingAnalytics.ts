@@ -1,5 +1,5 @@
 import { useQuery } from '@tanstack/react-query';
-import { getBackend, V1_API_PREFIX } from '@/lib/api/shared';
+import { getFrontend } from '@/lib/api/shared';
 import { queryKeys } from '@/lib/query-keys';
 
 interface RoutingStatsEntry {
@@ -51,7 +51,7 @@ export function useRoutingProviders() {
   return useQuery({
     queryKey: queryKeys.routingAnalytics,
     queryFn: async (): Promise<RoutingProvidersResponse> => {
-      return getBackend<RoutingProvidersResponse>(`${V1_API_PREFIX}/routing/providers`);
+      return getFrontend<RoutingProvidersResponse>('/api/routing/providers/analytics');
     },
     refetchInterval: 30000,
     staleTime: 25000,
@@ -62,7 +62,7 @@ export function useRoutingAudit(limit = 50) {
   return useQuery({
     queryKey: queryKeys.routingAudit(limit),
     queryFn: async (): Promise<RoutingAuditResponse> => {
-      return getBackend<RoutingAuditResponse>(`${V1_API_PREFIX}/routing/audit?limit=${limit}`);
+      return getFrontend<RoutingAuditResponse>(`/api/routing/audit?limit=${limit}`);
     },
     refetchInterval: 10000,
     staleTime: 8000,

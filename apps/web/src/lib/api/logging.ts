@@ -1,5 +1,4 @@
-import { getBackend, postFrontend } from './shared';
-import { V1_API_PREFIX } from './http-client';
+import { getFrontend, postFrontend } from './shared';
 
 export interface ErrorReportPayload {
   message: string;
@@ -14,7 +13,7 @@ export interface ErrorReportPayload {
 
 export const loggingMethods = {
   async getRaptorLogs(limit = 100) {
-    return getBackend(`${V1_API_PREFIX}/raptor/logs?limit=${limit}`);
+    return getFrontend(`/api/raptor/logs?limit=${limit}`);
   },
   async submitErrorReport(payload: ErrorReportPayload) {
     return postFrontend('/api/errors', payload);

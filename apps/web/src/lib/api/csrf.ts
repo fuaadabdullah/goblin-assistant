@@ -5,15 +5,15 @@
  * Extracted from the former shared.ts modularization.
  */
 
-import { AUTH_REQUEST_TIMEOUT_MS, V1_API_PREFIX } from './http-client';
-import { extractApiErrorMessage, getBackend } from './http-helpers';
+import { AUTH_REQUEST_TIMEOUT_MS } from './http-client';
+import { extractApiErrorMessage, getFrontend } from './http-helpers';
 
 // Single in-flight promise so concurrent callers share one request.
 // Token is consumed on first use so it cannot be replayed.
 let _csrfPrefetch: Promise<string> | null = null;
 
 const fetchCsrfTokenFromBackend = async (): Promise<string> => {
-  const response = await getBackend<{ csrf_token?: string }>(`${V1_API_PREFIX}/auth/csrf-token`, {
+  const response = await getFrontend<{ csrf_token?: string }>('/api/auth/csrf-token', {
     timeout: AUTH_REQUEST_TIMEOUT_MS,
   });
   const token = response?.csrf_token;

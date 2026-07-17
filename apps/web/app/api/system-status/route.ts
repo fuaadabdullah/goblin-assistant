@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server';
+import { buildVersionedPath } from '@goblin/shared';
 import { resolveBackendOrigin } from '@/config/backendOrigin';
 
 const BACKEND_URL = resolveBackendOrigin();
@@ -49,8 +50,8 @@ export async function GET() {
 
   try {
     const [healthRes, sandboxRes] = await Promise.allSettled([
-      fetchWithTimeout(`${BACKEND_URL}/api/v1/health`, 5000),
-      fetchWithTimeout(`${BACKEND_URL}/api/v1/health/sandbox/status`, 5000),
+      fetchWithTimeout(`${BACKEND_URL}${buildVersionedPath('health')}`, 5000),
+      fetchWithTimeout(`${BACKEND_URL}${buildVersionedPath('health', 'sandbox', 'status')}`, 5000),
     ]);
 
     // Parse main health response

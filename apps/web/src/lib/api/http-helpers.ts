@@ -181,4 +181,32 @@ export const postFrontend = async <T, B = unknown>(
   }
 };
 
+export const putFrontend = async <T, B = unknown>(
+  url: string,
+  body?: B,
+  config?: AxiosRequestConfig
+): Promise<T> => {
+  try {
+    assertNoVersionedClientPath(url);
+    const response = await frontendHttp.put<T>(url, body, config);
+    return unwrapEnvelope<T>(response.data as T | StandardApiEnvelope<T>);
+  } catch (error) {
+    return normalizeAxiosError(error);
+  }
+};
+
+export const patchFrontend = async <T, B = unknown>(
+  url: string,
+  body?: B,
+  config?: AxiosRequestConfig
+): Promise<T> => {
+  try {
+    assertNoVersionedClientPath(url);
+    const response = await frontendHttp.patch<T>(url, body, config);
+    return unwrapEnvelope<T>(response.data as T | StandardApiEnvelope<T>);
+  } catch (error) {
+    return normalizeAxiosError(error);
+  }
+};
+
 export { devWarn };

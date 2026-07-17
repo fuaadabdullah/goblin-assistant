@@ -1,11 +1,13 @@
-import { V1_API_PREFIX, getBackend, postBackend } from './shared';
+import { getFrontend, postFrontend } from './shared';
+
+const INTERNAL_SEARCH_PREFIX = '/api/search';
 
 export const searchMethods = {
   async getSearchCollections() {
-    return getBackend(`${V1_API_PREFIX}/search/collections`);
+    return getFrontend(`${INTERNAL_SEARCH_PREFIX}/collections`);
   },
 
   async searchQuery(collection: string, query: string, limit = 8) {
-    return postBackend(`${V1_API_PREFIX}/search/query`, { collection, query, limit });
+    return postFrontend(`${INTERNAL_SEARCH_PREFIX}/query`, { collection, query, limit });
   },
 };

@@ -1,6 +1,4 @@
-import { env } from '@/config/env';
 import { getAuthToken } from '@/utils/auth-session';
-import { V1_CHAT_PREFIX } from '@/lib/api';
 import { hasMockFallbackSignal } from '@/lib/api/fallback';
 import type { StreamChunk, TaskResponse } from '@/types/api';
 
@@ -49,6 +47,8 @@ const buildMockStreamResponse = (prompt: string): TaskResponse => ({
   model: 'mock-gpt',
   done: true,
 });
+
+const INTERNAL_CHAT_STREAM_PATH = '/api/chat/stream';
 
 const readResponseText = async (response: Response): Promise<string> => {
   try {
@@ -198,7 +198,7 @@ export const streamRuntimeTask = async (
 ): Promise<void> => {
   const token = getAuthToken();
 
-  const response = await fetch(`${env.apiBaseUrl}${V1_CHAT_PREFIX}/stream`, {
+  const response = await fetch(INTERNAL_CHAT_STREAM_PATH, {
     method: 'POST',
     headers: createStreamHeaders(token),
     body: createStreamBody(request),

@@ -46,7 +46,6 @@ export type {
 export {
   AUTH_REQUEST_TIMEOUT_MS,
   V1_API_PREFIX,
-  V1_CHAT_PREFIX,
   backendHttp,
   frontendHttp,
   refreshAccessToken,
@@ -66,6 +65,8 @@ export {
   deleteBackend,
   getFrontend,
   postFrontend,
+  putFrontend,
+  patchFrontend,
   devWarn,
 } from './http-helpers';
 

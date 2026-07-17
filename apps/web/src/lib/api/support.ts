@@ -1,4 +1,4 @@
-import { V1_API_PREFIX, postBackend } from './shared';
+import { postFrontend } from './shared';
 
 export interface TriageResult {
   title: string;
@@ -18,10 +18,10 @@ export interface TriageResponse {
 
 export const supportMethods = {
   async sendSupportMessage(message: string) {
-    return postBackend(`${V1_API_PREFIX}/support/message`, { message });
+    return postFrontend('/api/support/message', { message });
   },
 
   async triageIssue(description: string, context?: string): Promise<{ data: TriageResponse }> {
-    return postBackend(`${V1_API_PREFIX}/support/triage`, { description, context });
+    return postFrontend('/api/support/triage', { description, context });
   },
 };

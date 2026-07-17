@@ -1,10 +1,10 @@
-import { V1_API_PREFIX, getBackend, getFrontend, devWarn } from './shared';
+import { getFrontend, devWarn } from './shared';
 import type { HealthStatus } from '../../types/api';
 
 export const healthMethods = {
   async getAllHealth(): Promise<HealthStatus> {
     try {
-      return await getFrontend<HealthStatus>('/api/v1/health');
+      return await getFrontend<HealthStatus>('/api/health');
     } catch (error) {
       devWarn('Health check failed:', error);
       return {
@@ -17,7 +17,7 @@ export const healthMethods = {
 
   async getStreamingHealth() {
     try {
-      return await getBackend(`${V1_API_PREFIX}/health/streaming`);
+      return await getFrontend('/api/health/streaming');
     } catch (error) {
       devWarn('Streaming health check failed:', error);
       return { status: 'unknown' };
@@ -26,7 +26,7 @@ export const healthMethods = {
 
   async getRoutingHealth() {
     try {
-      return await getBackend(`${V1_API_PREFIX}/health/routing`);
+      return await getFrontend('/api/health/routing');
     } catch (error) {
       devWarn('Routing health check failed:', error);
       return { status: 'unknown' };
@@ -34,6 +34,6 @@ export const healthMethods = {
   },
 
   async getRoutingInfo() {
-    return getBackend(`${V1_API_PREFIX}/routing/route`);
+    return getFrontend('/api/models');
   },
 };

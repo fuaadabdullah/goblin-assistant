@@ -11,12 +11,6 @@ const INTERNAL_PROXY_API_KEY = (
   ''
 ).trim();
 
-interface ForwardResponse {
-  status: number;
-  body: unknown;
-  correlationId?: string | undefined;
-}
-
 async function safeJson<T = unknown>(res: Request | Response): Promise<T | null> {
   try {
     return (await res.json()) as T;
@@ -42,55 +36,43 @@ async function fetchWithTimeout(
   }
 }
 
-async function forwardValidate(req: Request): Promise<ForwardResponse> {
+export async function POST(req: Request) {
+  const headers: Record<string, string> = {
+    'Content-Type': 'application/json',
+  };
+
+  if (INTERNAL_PROXY_API_KEY) {
+    headers['X-Internal-API-Key'] = INTERNAL_PROXY_API_KEY;
+  }
+
+  const incoming = (await safeJson(req)) ?? {};
+
   try {
-    const headers: Record<string, string> = {
-      'Content-Type': 'application/json',
-    };
-
-    const authorization = req.headers.get('authorization');
-    if (authorization) {
-      headers['Authorization'] = authorization;
-    }
-
-    if (INTERNAL_PROXY_API_KEY) {
-      headers['X-Internal-API-Key'] = INTERNAL_PROXY_API_KEY;
-    }
-
-    const incoming = (await safeJson(req)) ?? {};
-
     const response = await fetchWithTimeout(
-      `${BACKEND_URL}${buildVersionedPath('auth', 'validate')}`,
+      `${BACKEND_URL}${buildVersionedPath('auth', 'google', 'callback')}`,
       {
         method: 'POST',
         headers,
         body: JSON.stringify(incoming),
       },
-      8000
+      10000
     );
 
     const body = (await safeJson(response)) ?? {
       detail: 'Backend returned a non-JSON response',
     };
 
-    return {
-      status: response.status,
-      body,
-      correlationId: response.headers.get('x-correlation-id') || undefined,
-    };
-  } catch {
-    return {
-      status: 502,
-      body: { error: 'Backend unreachable' },
-    };
-  }
-}
+    const nextHeaders = new Headers();
+    const correlationId = response.headers.get('x-correlation-id');
+    if (correlationId) {
+      nextHeaders.set('X-Correlation-ID', correlationId);
+    }
 
-export async function POST(req: Request) {
-  const result = await forwardValidate(req);
-  const headers = new Headers();
-  if (result.correlationId) {
-    headers.set('X-Correlation-ID', result.correlationId);
+    return NextResponse.json(body, {
+      status: response.status,
+      headers: nextHeaders,
+    });
+  } catch {
+    return NextResponse.json({ detail: 'Backend unreachable' }, { status: 502 });
   }
-  return NextResponse.json(result.body ?? {}, { status: result.status, headers });
 }

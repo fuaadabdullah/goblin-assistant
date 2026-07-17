@@ -1,25 +1,26 @@
 import {
   AccountProfile,
   AccountPreferences,
-  V1_API_PREFIX,
-  getBackend,
-  putBackend,
+  getFrontend,
+  putFrontend,
 } from './shared';
+
+const INTERNAL_ACCOUNT_PREFIX = '/api/account';
 
 export const accountMethods = {
   async getAccountProfile() {
-    return getBackend<AccountProfile>(`${V1_API_PREFIX}/account/profile`);
+    return getFrontend<AccountProfile>(`${INTERNAL_ACCOUNT_PREFIX}/profile`);
   },
 
   async saveAccountProfile(payload: AccountProfile) {
-    return putBackend(`${V1_API_PREFIX}/account/profile`, payload);
+    return putFrontend(`${INTERNAL_ACCOUNT_PREFIX}/profile`, payload);
   },
 
   async getAccountPreferences() {
-    return getBackend<Record<string, unknown>>(`${V1_API_PREFIX}/account/preferences`);
+    return getFrontend<Record<string, unknown>>(`${INTERNAL_ACCOUNT_PREFIX}/preferences`);
   },
 
   async saveAccountPreferences(payload: AccountPreferences) {
-    return putBackend(`${V1_API_PREFIX}/account/preferences`, payload);
+    return putFrontend(`${INTERNAL_ACCOUNT_PREFIX}/preferences`, payload);
   },
 };

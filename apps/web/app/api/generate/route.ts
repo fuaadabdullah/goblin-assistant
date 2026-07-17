@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server';
+import { buildVersionedPath } from '@goblin/shared';
 import { resolveBackendOrigin } from '@/config/backendOrigin';
 
 const BACKEND_URL = resolveBackendOrigin();
@@ -55,7 +56,7 @@ function logProxyEvent(payload: {
 }
 
 /**
- * Build the request body for the backend /api/v1/api/chat endpoint.
+ * Build the request body for the canonical backend chat endpoint.
  * The frontend may send {prompt, messages, model, provider} but the
  * backend expects {messages: [{role, content}], model?, provider?}.
  */
@@ -147,7 +148,7 @@ async function forwardToBackendGenerate(req: Request): Promise<ForwardResponse> 
     const chatBody = buildChatRequestBody(incoming);
 
     const response = await fetchWithTimeout(
-      `${BACKEND_URL}/api/v1/api/chat`,
+      `${BACKEND_URL}${buildVersionedPath('api', 'chat')}`,
       {
         method: 'POST',
         headers,

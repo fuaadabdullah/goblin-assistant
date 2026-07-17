@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server';
+import { buildVersionedPath } from '@goblin/shared';
 import { resolveBackendOrigin } from '@/config/backendOrigin';
 
 const BACKEND_URL = resolveBackendOrigin();
@@ -117,13 +118,13 @@ async function forwardToBackendModels(): Promise<ForwardModelsResult> {
   };
 
   try {
-    const primary = await requestBackend('/api/v1/providers/models');
+    const primary = await requestBackend(buildVersionedPath('providers', 'models'));
     if (primary.status >= 200 && primary.status < 300) {
       return primary;
     }
 
     if (primary.status === 404) {
-      const routingProviders = await requestBackend('/api/v1/routing/providers');
+      const routingProviders = await requestBackend(buildVersionedPath('routing', 'providers'));
       if (routingProviders.status >= 200 && routingProviders.status < 300) {
         return {
           status: 200,

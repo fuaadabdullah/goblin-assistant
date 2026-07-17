@@ -1,4 +1,4 @@
-import { apiClient, V1_CHAT_PREFIX } from '@/lib/api';
+import { apiClient } from '@/lib/api';
 import { UiError } from '../../../lib/ui-error';
 import { getUserMessage } from '../../../lib/error/toast';
 import { getAuthToken } from '../../../utils/auth-session';
@@ -306,7 +306,6 @@ export const chatClient = {
         throw new Error('Conversation message is required.');
       }
 
-      const apiBaseUrl = process.env['NEXT_PUBLIC_API_BASE_URL'] || '';
       const token = getAuthToken();
       const headers: Record<string, string> = {
         'Content-Type': 'application/json',
@@ -315,7 +314,7 @@ export const chatClient = {
         headers['Authorization'] = `Bearer ${token}`;
       }
 
-      const streamUrl = `${apiBaseUrl}${V1_CHAT_PREFIX}/stream`;
+      const streamUrl = '/api/chat/stream';
       let buffer = '';
       let accumulatedContent = '';
       let totalTokens = 0;

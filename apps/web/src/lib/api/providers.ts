@@ -1,12 +1,9 @@
 import {
   ProviderUpdatePayload,
-  V1_API_PREFIX,
-  getBackend,
-  frontendHttp,
-  patchBackend,
-  postBackend,
-  putBackend,
-  unwrapEnvelope,
+  getFrontend,
+  patchFrontend,
+  postFrontend,
+  putFrontend,
 } from './shared';
 import { normalizeProviderId } from '../providers/normalizeProvider';
 import type { CostSummary, ProviderModelOption } from '../../types/api';
@@ -37,8 +34,7 @@ const isSelectableFlag = (value: unknown): boolean => value !== false;
 
 async function loadModelRegistry(): Promise<ModelRegistryResponse> {
   try {
-    const response = await frontendHttp.get<ModelRegistryResponse>('/api/models');
-    const registryResponse = unwrapEnvelope(response.data);
+    const registryResponse = await getFrontend<ModelRegistryResponse>('/api/models');
     return {
       models: Array.isArray(registryResponse?.models) ? registryResponse.models : [],
       providers: Array.isArray(registryResponse?.providers) ? registryResponse.providers : [],
@@ -126,40 +122,39 @@ const emptyCostSummary: CostSummary = {
 
 export const providersMethods = {
   async getProviderSettings() {
-    return getBackend(`${V1_API_PREFIX}/settings/`);
+    return getFrontend('/api/settings/');
   },
 
   async getModelConfigs() {
-    const response = await frontendHttp.get<ModelRegistryResponse>('/api/models');
-    return unwrapEnvelope(response.data);
+    return getFrontend<ModelRegistryResponse>('/api/models');
   },
 
   async getGlobalSettings() {
-    return getBackend(`${V1_API_PREFIX}/settings/`);
+    return getFrontend('/api/settings/');
   },
 
   async updateProvider(providerId: string | number, provider: ProviderUpdatePayload) {
-    return putBackend(`${V1_API_PREFIX}/settings/providers/${providerId}`, provider);
+    return putFrontend(`/api/settings/providers/${providerId}`, provider);
   },
 
   async updateGlobalSetting(key: string, value: unknown) {
-    return patchBackend(`${V1_API_PREFIX}/settings/${encodeURIComponent(key)}`, { value });
+    return patchFrontend(`/api/settings/${encodeURIComponent(key)}`, { value });
   },
 
   async setProviderPriority(providerId: number, priority: number, role?: string) {
-    return postBackend(`${V1_API_PREFIX}/providers/${providerId}/priority`, { priority, role });
+    return postFrontend(`/api/providers/${providerId}/priority`, { priority, role });
   },
 
   async reorderProviders(providerIds: number[]) {
-    return postBackend(`${V1_API_PREFIX}/providers/reorder`, { providerIds });
+    return postFrontend('/api/providers/reorder', { providerIds });
   },
 
   async testProviderConnection(providerId: number | string) {
-    return postBackend(`${V1_API_PREFIX}/providers/${providerId}/test`);
+    return postFrontend(`/api/providers/${providerId}/test`);
   },
 
   async testProviderWithPrompt(providerId: number | string, prompt: string) {
-    return postBackend(`${V1_API_PREFIX}/providers/${providerId}/test-prompt`, { prompt });
+    return postFrontend(`/api/providers/${providerId}/test-prompt`, { prompt });
   },
 
   async getProviders(): Promise<string[]> {
@@ -185,7 +180,7 @@ export const providersMethods = {
 
   async getCostSummary(): Promise<CostSummary> {
     try {
-      return await getBackend<CostSummary>(`${V1_API_PREFIX}/costs/summary`);
+      return await getFrontend<CostSummary>('/api/costs/summary');
     } catch {
       return emptyCostSummary;
     }
