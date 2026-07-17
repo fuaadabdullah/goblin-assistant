@@ -13158,6 +13158,11 @@
             "description": "Successful Response"
           }
         },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
         "summary": "Get Settings",
         "tags": [
           "settings"
@@ -13210,6 +13215,11 @@
             "description": "Validation Error"
           }
         },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
         "summary": "Update Model Settings",
         "tags": [
           "settings"
@@ -13262,6 +13272,11 @@
             "description": "Validation Error"
           }
         },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
         "summary": "Update Provider Settings",
         "tags": [
           "settings"
@@ -13304,6 +13319,11 @@
             "description": "Validation Error"
           }
         },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
         "summary": "Test Provider Connection",
         "tags": [
           "settings"
@@ -13358,6 +13378,11 @@
             "description": "Validation Error"
           }
         },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
         "summary": "Update Global Setting",
         "tags": [
           "settings"

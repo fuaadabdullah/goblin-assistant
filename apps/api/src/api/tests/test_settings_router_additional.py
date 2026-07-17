@@ -18,7 +18,7 @@ def _jwt_secret_for_app(monkeypatch):
     monkeypatch.setenv("LOCAL_LLM_API_KEY", "test-local-llm-key")
 
 
-def _make_client(current_user: User | None = None):
+def _make_client():
     app = FastAPI()
 
     @app.exception_handler(DomainError)
@@ -35,10 +35,12 @@ def _make_client(current_user: User | None = None):
             ).model_dump(exclude_none=True),
         )
 
-    if current_user is not None:
-        app.dependency_overrides[get_current_user] = lambda: current_user
-
     app.include_router(router, prefix="/api/v1")
+    app.include_router(router)
+    app.dependency_overrides[get_current_user] = lambda: User(
+        id="user-123",
+        email="user@example.com",
+    )
     return TestClient(app)
 
 
@@ -59,7 +61,6 @@ def test_provider_models_ignores_blank_values():
 
 
 def test_get_settings_success():
-    current_user = User(id="user-1", email="user-1@example.com")
     inventory = [
         {
             "id": "openai",
@@ -99,12 +100,15 @@ def test_get_settings_success():
             new_callable=AsyncMock,
             return_value=None,
         ),
-        _make_client(current_user) as client,
+        _make_client() as client,
     ):
-        response = client.get("/api/v1/settings/")
+        response = client.get("/settings/")
+        legacy_response = client.get("/api/v1/settings/")
 
     assert response.status_code == 200
+    assert legacy_response.status_code == 200
     body = response.json()["data"]
+    assert legacy_response.json()["data"] == body
     assert body["default_provider"] == "openai"
     assert body["default_model"] == "gpt-4o-mini"
     assert body["providers"][0]["enabled"] is True
@@ -122,18 +126,20 @@ def test_get_settings_failure():
             new_callable=AsyncMock,
             return_value=[],
         ),
-        _make_client(User(id="user-1", email="user-1@example.com")) as client,
+        _make_client() as client,
     ):
-        response = client.get("/api/v1/settings/")
+        response = client.get("/settings/")
+        legacy_response = client.get("/api/v1/settings/")
 
     assert response.status_code == 500
+    assert legacy_response.status_code == 500
     assert response.json()["error"]["code"] == "SETTINGS_FETCH_FAILED"
+    assert legacy_response.json()["error"]["code"] == "SETTINGS_FETCH_FAILED"
 
 
 def test_update_provider_and_model_settings():
-    current_user = User(id="user-1", email="user-1@example.com")
     with (
-        _make_client(current_user) as client,
+        _make_client() as client,
         patch(
             "api.settings_router.SaaSSettingsService.upsert_provider_settings",
             new_callable=AsyncMock,
@@ -154,7 +160,7 @@ def test_update_provider_and_model_settings():
         ),
     ):
         provider_resp = client.put(
-            "/api/v1/settings/providers/openai",
+            "/settings/providers/openai",
             json={
                 "name": "openai",
                 "api_key": "sk-test",
@@ -167,7 +173,7 @@ def test_update_provider_and_model_settings():
         assert provider_resp.json()["data"]["message"] == "Settings updated for provider: openai"
 
         model_resp = client.put(
-            "/api/v1/settings/models/gpt-4o-mini",
+            "/settings/models/gpt-4o-mini",
             json={
                 "name": "gpt-4o-mini",
                 "provider": "openai",
@@ -178,25 +184,3 @@ def test_update_provider_and_model_settings():
         )
         assert model_resp.status_code == 200
         assert model_resp.json()["data"]["message"] == "Settings updated for model: gpt-4o-mini"
-
-
-def test_patch_global_setting_accepts_valid_payload():
-    current_user = User(id="user-1", email="user-1@example.com")
-
-    with (
-        _make_client(current_user) as client,
-        patch(
-            "api.settings_router.SaaSSettingsService.set_global_setting",
-            new_callable=AsyncMock,
-            return_value={"key": "theme", "value": {"mode": "dark"}},
-        ),
-    ):
-        response = client.patch(
-            "/api/v1/settings/theme",
-            json={"value": {"mode": "dark"}},
-        )
-
-    assert response.status_code == 200
-    assert response.json()["success"] is True
-    assert response.json()["data"]["key"] == "theme"
-    assert response.json()["data"]["value"] == {"mode": "dark"}

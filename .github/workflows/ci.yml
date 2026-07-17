@@ -178,6 +178,59 @@ jobs:
           fi
           echo "All required pre-merge gates passed."
 
+  live-auth-smoke-gate:
+    name: live-auth-smoke-gate
+    runs-on: ubuntu-latest
+    outputs:
+      enabled: ${{ steps.check.outputs.enabled }}
+    steps:
+      - id: check
+        env:
+          LIVE_AUTH_BASE_URL: ${{ secrets.LIVE_AUTH_BASE_URL }}
+          LIVE_AUTH_BACKEND_URL: ${{ secrets.LIVE_AUTH_BACKEND_URL }}
+          LIVE_AUTH_EMAIL: ${{ secrets.LIVE_AUTH_EMAIL }}
+          LIVE_AUTH_PASSWORD: ${{ secrets.LIVE_AUTH_PASSWORD }}
+        run: |
+          if [ -n "$LIVE_AUTH_BASE_URL" ] && \
+             [ -n "$LIVE_AUTH_BACKEND_URL" ] && \
+             [ -n "$LIVE_AUTH_EMAIL" ] && \
+             [ -n "$LIVE_AUTH_PASSWORD" ]; then
+            echo "enabled=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "enabled=false" >> "$GITHUB_OUTPUT"
+          fi
+
+  live-auth-smoke:
+    name: live-auth-smoke
+    runs-on: ubuntu-latest
+    needs: [contract, live-auth-smoke-gate]
+    if: needs.live-auth-smoke-gate.outputs.enabled == 'true'
+    timeout-minutes: 20
+    env:
+      PLAYWRIGHT_TEST_BASE_URL: ${{ secrets.LIVE_AUTH_BASE_URL }}
+      LIVE_AUTH_BACKEND_URL: ${{ secrets.LIVE_AUTH_BACKEND_URL }}
+      LIVE_AUTH_EMAIL: ${{ secrets.LIVE_AUTH_EMAIL }}
+      LIVE_AUTH_PASSWORD: ${{ secrets.LIVE_AUTH_PASSWORD }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: "pnpm"
+
+      - name: Set up pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 9
+
+      - name: Install frontend dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Run live auth smoke
+        run: pnpm --filter @goblin/web test:e2e:live
+
   build:
     name: build
     runs-on: ubuntu-latest

@@ -9,6 +9,7 @@ const shouldStartWebServer = !process.env['PLAYWRIGHT_TEST_BASE_URL'];
 
 export default defineConfig({
   testDir: './e2e',
+  testIgnore: ['**/auth-live-smoke.spec.ts'],
   outputDir: path.join(workspaceRoot, '.playwright', 'test-results'),
   timeout: process.env['CI'] ? 90_000 : 60_000,
   expect: {

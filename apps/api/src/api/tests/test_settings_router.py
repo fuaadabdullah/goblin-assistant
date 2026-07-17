@@ -15,7 +15,7 @@ from api.core.errors import DomainError
 from api.settings_router import router
 
 
-def _client(current_user: User | None = None) -> TestClient:
+def _client(*, authenticated: bool = True) -> TestClient:
     app = FastAPI()
 
     @app.exception_handler(DomainError)
@@ -32,23 +32,18 @@ def _client(current_user: User | None = None) -> TestClient:
             ).model_dump(exclude_none=True),
         )
 
-    if current_user is not None:
-        app.dependency_overrides[get_current_user] = lambda: current_user
-
     app.include_router(router, prefix="/api/v1")
+    app.include_router(router)
+    if authenticated:
+        app.dependency_overrides[get_current_user] = lambda: User(
+            id="user-123",
+            email="user@example.com",
+        )
     return TestClient(app)
 
 
-def test_settings_rejects_anonymous_requests():
-    client = _client()
-
-    response = client.get("/api/v1/settings/")
-
-    assert response.status_code == 401
-
-
 def test_get_settings_maps_inventory_to_response():
-    client = _client(User(id="user-1", email="user-1@example.com"))
+    client = _client()
 
     fake_provider = MagicMock()
     fake_provider.default_model = "gpt-4o-mini"
@@ -102,7 +97,7 @@ def test_get_settings_maps_inventory_to_response():
 
 
 def test_get_settings_returns_500_on_inventory_failure():
-    client = _client(User(id="user-1", email="user-1@example.com"))
+    client = _client()
 
     with (
         patch(
@@ -124,7 +119,7 @@ def test_get_settings_returns_500_on_inventory_failure():
 
 
 def test_update_provider_settings_rejects_blank_name():
-    client = _client(User(id="user-1", email="user-1@example.com"))
+    client = _client()
 
     response = client.put(
         "/api/v1/settings/providers/openai",
@@ -136,7 +131,7 @@ def test_update_provider_settings_rejects_blank_name():
 
 
 def test_update_model_settings_accepts_valid_payload():
-    client = _client(User(id="user-1", email="user-1@example.com"))
+    client = _client()
 
     with patch(
         "api.settings_router.SaaSSettingsService.set_global_setting",
@@ -158,7 +153,7 @@ def test_update_model_settings_accepts_valid_payload():
 
 
 def test_test_provider_connection_reports_health_states():
-    client = _client(User(id="user-1", email="user-1@example.com"))
+    client = _client()
 
     with patch(
         "api.settings_router.dispatcher.check_provider",
@@ -188,9 +183,49 @@ def test_test_provider_connection_reports_health_states():
     assert unhealthy.json()["data"]["message"] == "timeout"
 
 
-def test_legacy_settings_route_returns_404():
+def test_settings_legacy_route_is_kept_for_compatibility():
     client = _client()
 
-    response = client.get("/settings/")
+    fake_provider = MagicMock()
+    fake_provider.default_model = "gpt-4o-mini"
 
-    assert response.status_code == 404
+    with (
+        patch(
+            "api.settings_router.dispatcher.get_provider_inventory",
+            new_callable=AsyncMock,
+            return_value=[{"id": "openai", "configured": True, "models": ["gpt-4o-mini"]}],
+        ),
+        patch("api.settings_router.top_providers_for", return_value=["openai"]),
+        patch(
+            "api.settings_router.dispatcher.get_provider_config",
+            return_value={"default_model": "gpt-4o-mini"},
+        ),
+        patch("api.settings_router.dispatcher.get_provider", return_value=fake_provider),
+        patch(
+            "api.settings_router.SaaSSettingsService.list_provider_settings",
+            new_callable=AsyncMock,
+            return_value=[],
+        ),
+        patch(
+            "api.settings_router.SaaSSettingsService.get_global_setting",
+            new_callable=AsyncMock,
+            return_value=None,
+        ),
+    ):
+        v1 = client.get("/api/v1/settings/")
+        legacy = client.get("/settings/")
+
+    assert v1.status_code == 200
+    assert legacy.status_code == 200
+    assert legacy.json() == v1.json()
+
+
+def test_settings_rejects_garbage_bearer_token():
+    client = _client(authenticated=False)
+
+    response = client.get(
+        "/api/v1/settings/",
+        headers={"Authorization": "Bearer definitely-not-a-real-token"},
+    )
+
+    assert response.status_code == 401
