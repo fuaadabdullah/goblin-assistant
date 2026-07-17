@@ -22,7 +22,7 @@ from ..storage.tasks import get_task_store
 from ..storage.usage_events import get_usage_event_store
 from . import _runtime as _cr
 from .archiving import schedule_conversation_archive
-from .helpers import _format_sse_event
+from .chat_router_support import _format_sse_event
 from .schemas import StreamChatRequest
 
 logger = structlog.get_logger()

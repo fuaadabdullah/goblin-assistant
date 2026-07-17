@@ -120,3 +120,12 @@ async def collect_chat_history_entries(goblin_id: str, limit: int = 500) -> List
             )
 
     return entries
+
+
+__all__ = [
+    "build_stream_messages",
+    "collect_chat_history_entries",
+    "extract_result_text",
+    "run_stream_task_background",
+    "timestamp_sort_key",
+]

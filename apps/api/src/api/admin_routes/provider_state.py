@@ -162,9 +162,14 @@ async def _build_provider_state() -> Dict[str, Any]:
     }
 
 
-@router.get("/providers/state", include_in_schema=False)
+@router.get(
+    "/providers/state",
+    include_in_schema=False,
+    openapi_extra={"x-goblin-route-contract": "canonical-provider-state"},
+)
 @require_ops_access("read")
 async def get_provider_state(request: Request) -> Dict[str, Any]:
+    """Canonical ops snapshot for provider routing state."""
     _ = request
     try:
         return await _build_provider_state()

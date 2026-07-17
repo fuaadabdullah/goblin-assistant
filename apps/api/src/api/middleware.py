@@ -59,10 +59,10 @@ class AuthenticationMiddleware(BaseHTTPMiddleware):
             "/docs",
             "/openapi.json",
             "/redoc",
+            "/test",
             "/health",
             "/api/v1/health",
             "/api/v1/auth",
-            "/settings",
             "/api/v1/settings",
             "/sandbox",
             "/api/v1/agent",
@@ -90,7 +90,9 @@ class AuthenticationMiddleware(BaseHTTPMiddleware):
 
     async def dispatch(self, request: Request, call_next):
         # Skip authentication for excluded paths
-        if any(request.url.path.startswith(path) for path in self.exclude_paths):
+        if request.url.path == "/" or any(
+            request.url.path.startswith(path) for path in self.exclude_paths
+        ):
             return await call_next(request)
 
         if self.allow_unauthenticated_requests:

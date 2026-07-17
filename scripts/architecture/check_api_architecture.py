@@ -21,7 +21,6 @@ REPO_ROOT = Path(__file__).resolve().parents[2]
 API_ROOT = REPO_ROOT / "apps" / "api" / "src" / "api"
 BOUNDARY_CONFIG_PATH = REPO_ROOT / "apps" / "api" / "architecture-boundaries.toml"
 
-DEFAULT_ALLOWED_UTILS_IMPORTERS: Set[str] = {"api.utils", "api.tests"}
 DEFAULT_SERVICE_FORBIDDEN_IMPORT_PREFIXES: Tuple[str, ...] = ("fastapi", "starlette")
 
 
@@ -35,7 +34,6 @@ class Violation:
 
 @dataclass(frozen=True)
 class BoundaryConfig:
-    allowed_utils_importers: Set[str]
     service_forbidden_framework_prefixes: Tuple[str, ...]
     route_storage_allowlist: Set[str]
     parse_error_allowlist: Set[str]
@@ -43,13 +41,11 @@ class BoundaryConfig:
     route_no_direct_storage: bool
     service_no_route_dependency: bool
     service_no_framework_coupling: bool
-    no_utils_graveyard_growth: bool
 
 
 def load_boundary_config() -> BoundaryConfig:
     if not BOUNDARY_CONFIG_PATH.exists():
         return BoundaryConfig(
-            allowed_utils_importers=DEFAULT_ALLOWED_UTILS_IMPORTERS,
             service_forbidden_framework_prefixes=DEFAULT_SERVICE_FORBIDDEN_IMPORT_PREFIXES,
             route_storage_allowlist=set(),
             parse_error_allowlist=set(),
@@ -57,11 +53,9 @@ def load_boundary_config() -> BoundaryConfig:
             route_no_direct_storage=True,
             service_no_route_dependency=True,
             service_no_framework_coupling=True,
-            no_utils_graveyard_growth=True,
         )
 
     data = tomllib.loads(BOUNDARY_CONFIG_PATH.read_text(encoding="utf-8"))
-    utils_cfg = data.get("utils", {})
     services_cfg = data.get("services", {})
     routes_cfg = data.get("routes", {})
     parser_cfg = data.get("parser", {})
@@ -69,7 +63,6 @@ def load_boundary_config() -> BoundaryConfig:
     rules_cfg = data.get("rules", {})
 
     return BoundaryConfig(
-        allowed_utils_importers=set(utils_cfg.get("allow_importers", list(DEFAULT_ALLOWED_UTILS_IMPORTERS))),
         service_forbidden_framework_prefixes=tuple(
             services_cfg.get(
                 "forbidden_framework_prefixes",
@@ -82,7 +75,6 @@ def load_boundary_config() -> BoundaryConfig:
         route_no_direct_storage=bool(rules_cfg.get("route_no_direct_storage", True)),
         service_no_route_dependency=bool(rules_cfg.get("service_no_route_dependency", True)),
         service_no_framework_coupling=bool(rules_cfg.get("service_no_framework_coupling", True)),
-        no_utils_graveyard_growth=bool(rules_cfg.get("no_utils_graveyard_growth", True)),
     )
 
 
@@ -202,20 +194,6 @@ def check_boundaries(files: Iterable[Path], config: BoundaryConfig) -> List[Viol
         violations.extend(parse_violations)
 
         for lineno, imported in imports:
-            if config.no_utils_graveyard_growth and imported.startswith("api.utils") and not any(
-                module.startswith(prefix) for prefix in config.allowed_utils_importers
-            ):
-                violations.append(
-                    Violation(
-                        file=str(path.relative_to(REPO_ROOT)),
-                        line=lineno,
-                        rule="no-utils-graveyard-growth",
-                        detail=(
-                            f"{module} imports {imported}; use a domain/core/shared module instead of api.utils"
-                        ),
-                    )
-                )
-
             if config.route_no_direct_storage and is_route_module(module) and is_storage_module(imported):
                 route_storage_key = f"{module} -> {imported}"
                 if route_storage_key in config.route_storage_allowlist:

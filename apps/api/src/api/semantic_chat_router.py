@@ -13,7 +13,7 @@ from pydantic import BaseModel
 
 from .assistant_tools.executor import extract_tool_calls, run_tool_loop
 from .assistant_tools.registry import export_openai_tools
-from .chat_router.helpers import _raise_structured_provider_error
+from .chat_router.chat_router_support import _raise_structured_provider_error
 from .input_validation import InputSanitizer
 from .providers.dispatcher import invoke_provider
 from .services.memory_core import memory_core_service

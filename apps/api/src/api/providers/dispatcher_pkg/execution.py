@@ -219,11 +219,9 @@ def _build_dry_run_response(
     explicit_mode: bool,
 ) -> Dict[str, Any]:
     """Build dry-run response without executing dispatch."""
-    from ...routing.router import registry
-
     candidate_detail = []
     for provider_id in ordered:
-        current_provider = registry.get(provider_id)
+        current_provider = dispatcher._ensure_provider(provider_id)
         candidate_detail.append(
             {
                 "provider": provider_id,

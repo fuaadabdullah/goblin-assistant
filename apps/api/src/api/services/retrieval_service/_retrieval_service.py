@@ -222,7 +222,7 @@ class RetrievalService:
             )
         except Exception:
             pass
-        timings["memory_entries"] = (time.perf_counter() - t0) * 1000
+        _memory_entries_elapsed_ms = (time.perf_counter() - t0) * 1000
 
         # Stage 4: Graph expansion — find memory facts connected via entity relations
         t0 = time.perf_counter()
@@ -237,7 +237,7 @@ class RetrievalService:
             )
             existing_ids = {r["id"] for r in all_results}
             all_results.extend(gr for gr in graph_results if gr.get("id") not in existing_ids)
-        timings["graph"] = (time.perf_counter() - t0) * 1000
+        _graph_elapsed_ms = (time.perf_counter() - t0) * 1000
 
         t0 = time.perf_counter()
         all_results.extend(

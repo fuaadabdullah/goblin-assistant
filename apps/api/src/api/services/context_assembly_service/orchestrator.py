@@ -14,13 +14,13 @@ from typing import Any, Dict, List, Optional
 import structlog
 
 from ...config.system_prompt import system_prompt_manager
-from ...observability.context_snapshotter import context_snapshotter
-from ...utils.tokenizer import (
+from ...core.tokenization import (
     count_tokens as _count_tokens,
 )
-from ...utils.tokenizer import (
+from ...core.tokenization import (
     trim_to_tokens as _trim_to_tokens_util,
 )
+from ...observability.context_snapshotter import context_snapshotter
 from . import budget_manager as bm
 from .ephemeral_layer import assemble_ephemeral_memory
 from .long_term_layer import assemble_long_term_memory
@@ -260,7 +260,7 @@ class ContextAssemblyService:
             # Record token accuracy delta and total assembly latency
             predicted_tokens = budget.total_tokens - remaining_tokens
             actual_tokens = _count_tokens(final_context)
-            assembly_log["token_delta"] = actual_tokens - predicted_tokens
+            assembly_log["token_delta"] = max(0, actual_tokens - predicted_tokens)
             assembly_log["actual_final_tokens"] = actual_tokens
             assembly_latency_ms = (time.perf_counter() - t_start) * 1000
             self._push_token_accuracy(user_id, predicted_tokens, actual_tokens)

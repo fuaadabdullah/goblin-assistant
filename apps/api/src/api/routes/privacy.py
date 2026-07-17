@@ -446,6 +446,28 @@ async def get_data_summary(
             has_preferences = False
 
         try:
+            chat_settings_exists = (
+                await SaaSSettingsService(db).get_chat_settings(user_id)
+            ) is not None
+        except Exception as chat_error:
+            logger.error("Chat settings fetch error: %s", chat_error)
+            chat_settings_exists = False
+
+        try:
+            support_ticket_count = len(
+                (
+                    await db.execute(
+                        select(SupportTicketModel).where(SupportTicketModel.user_id == user_id)
+                    )
+                )
+                .scalars()
+                .all()
+            )
+        except Exception as support_error:
+            logger.error("Support ticket count error: %s", support_error)
+            support_ticket_count = 0
+
+        try:
             from ..services.memory_core import memory_core_service
 
             memory_records = await memory_core_service.export_user_memory(user_id)
@@ -471,19 +493,11 @@ async def get_data_summary(
                     "description": "User settings and preferences",
                 },
                 "chat_settings": {
-                    "exists": (await SaaSSettingsService(db).get_chat_settings(user_id))
-                    is not None,
+                    "exists": chat_settings_exists,
                     "description": "Chat defaults and generation controls",
                 },
                 "support_tickets": {
-                    "count": (
-                        await db.execute(
-                            select(SupportTicketModel).where(SupportTicketModel.user_id == user_id)
-                        )
-                    )
-                    .scalars()
-                    .all()
-                    .__len__(),
+                    "count": support_ticket_count,
                     "description": "Submitted support requests",
                 },
                 "memory": {

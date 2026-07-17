@@ -36,7 +36,7 @@ This file describes what the current `goblin-assistant` codebase implements, not
 
 - The frontend uses both direct backend calls and thin Next API proxies.
 - Most frontend infrastructure outside chat expects versioned `/api/v1/...` endpoints.
-- The checked-in FastAPI app mounts most routers under `/api/v1` and keeps a few unversioned compatibility aliases such as `/settings`.
+- The checked-in FastAPI app mounts public backend routers under `/api/v1`.
 - `/api/models` and `/api/auth/validate` are intentional proxy endpoints, not backend mounts.
 
 The practical result is that chat is the cleanest end-to-end path in this checkout, while several other screens are present but need contract alignment before they are reliable locally.

@@ -12,7 +12,7 @@ from typing import Any, Dict, Optional
 import structlog
 
 from api.config.mode_addendums import get_addendum as _get_addendum
-from api.utils.tokenizer import count_tokens
+from api.core.tokenization import count_tokens
 
 logger = structlog.get_logger()
 

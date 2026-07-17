@@ -10,7 +10,7 @@ from typing import Optional
 import structlog
 
 from ...config.system_prompt import get_configured_system_prompt
-from ...utils.tokenizer import count_tokens, trim_to_tokens
+from ...core.tokenization import count_tokens, trim_to_tokens
 from .models import ContextBudget, ContextLayer
 
 logger = structlog.get_logger()

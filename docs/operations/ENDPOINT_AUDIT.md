@@ -130,12 +130,15 @@ npx serve -s dist -l 3000
 
 #### Settings
 
-- `GET /settings/` - Get all settings
-- `PUT /settings/providers/{name}` - Update provider
-- `POST /settings/test-connection?provider_name=X` - Test connection
-- `POST /settings/providers/{id}/test-prompt` - Test with prompt
-- `POST /settings/providers/reorder` - Reorder providers
-- `POST /settings/providers/{id}/priority` - Set priority
+- `GET /api/v1/settings/` - Get all settings
+- `PUT /api/v1/settings/providers/{name}` - Update provider
+- `POST /api/v1/settings/test-connection?provider_name=X` - Test connection
+- `POST /api/v1/settings/providers/{id}/test-prompt` - Test with prompt
+- `POST /api/v1/settings/providers/reorder` - Reorder providers
+- `POST /api/v1/settings/providers/{id}/priority` - Set priority
+
+The bare `/settings/` backend mount has been retired; only the versioned
+`/api/v1/settings/*` surface should appear in current contract docs.
 
 #### Task Execution
 
@@ -146,9 +149,11 @@ npx serve -s dist -l 3000
 
 #### Routing
 
-- `GET /routing/providers` - List all providers
-- `GET /routing/providers/{capability}` - Providers for capability
-- `POST /routing/route` - Route request to best provider
+- `GET /api/v1/providers/models` - Canonical provider and logical-router inventory
+- `POST /api/v1/api/route_task` - Canonical task-routing entrypoint
+- `GET /api/v1/routing/providers` - Deprecated compatibility provider list
+- `GET /api/v1/routing/providers/{capability}` - Deprecated compatibility capability lookup
+- `POST /api/v1/routing/route` - Deprecated compatibility department route
 - `GET /routing/health` - Routing system health
 
 ---

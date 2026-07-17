@@ -4,7 +4,7 @@ from dataclasses import dataclass
 from enum import Enum
 from typing import Optional
 
-API_V1_PREFIX = "/api/v1"
+from ..shared_api_routes_runtime import API_V1_PREFIX
 
 
 class RouteLifecycle(str, Enum):
@@ -21,7 +21,6 @@ class LifecycleDecision:
 
 
 _LEGACY_PREFIXES: dict[str, str] = {
-    "/api": "2026-09-15",
     "/auth": "2026-09-15",
     "/chat": "2026-09-15",
     "/health": "2026-09-15",

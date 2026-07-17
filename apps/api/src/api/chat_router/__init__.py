@@ -29,16 +29,8 @@ from . import messages as _messages
 from . import streaming as _streaming
 from . import uploads as _uploads
 
-# --- Constants ---
-from .constants import (  # noqa: F401
-    ALLOWED_MIME_TYPES,
-    MAX_UPLOAD_SIZE_BYTES,
-    UPLOAD_DIR,
-)
-from .contextual import chat_completion  # noqa: F401 — preserved import path
-
 # --- Helpers (re-exported; some are monkeypatched by tests) ---
-from .helpers import (  # noqa: F401
+from .chat_router_support import (  # noqa: F401
     _assert_conversation_owned,
     _extract_usage_and_cost,
     _format_sse_event,
@@ -46,6 +38,14 @@ from .helpers import (  # noqa: F401
     _raise_structured_provider_error,
     _require_owned_conversation,
 )
+
+# --- Constants ---
+from .constants import (  # noqa: F401
+    ALLOWED_MIME_TYPES,
+    MAX_UPLOAD_SIZE_BYTES,
+    UPLOAD_DIR,
+)
+from .contextual import chat_completion  # noqa: F401 — preserved import path
 
 # --- Public schemas (re-exported for backward compatibility) ---
 from .schemas import (  # noqa: F401

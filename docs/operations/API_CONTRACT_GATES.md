@@ -14,21 +14,30 @@ can detect drift.
 ## Local Commands
 
 - `make sdk-generate` regenerates OpenAPI, the route manifest, the SDK types,
-  and the generated route inventory.
+  the generated route inventory, and the shared API proxy spec.
 - `make sdk-check` fails if any generated contract artifact is stale.
 - `make check-api-calls` fails if frontend API path literals do not match the
-  checked-in manifest or the Next proxy routes.
+  checked-in manifest-derived proxy spec or the explicit browser-only
+  exceptions.
 - `make contract-checks` runs both contract gates together.
+- `make test-api-coverage` and `make test-web-coverage` run the merge-blocking
+  backend and frontend coverage gates.
 
 ## CI Behavior
 
-The GitHub Actions contract job runs `make contract-checks`, so CI and local
-developer checks use the same entrypoint.
+GitHub Actions now treats `lint`, `contract`, `test-backend`, and
+`test-frontend` as the required pre-merge gate set. The `merge-gates` job fails
+if any of those checks fail or are skipped.
+
+`test-backend` runs `make test-api-coverage`; `test-frontend` runs
+`make test-web-coverage`. The contract job runs `make contract-checks`, so CI
+and local developer checks use the same entrypoint.
 If the regenerated OpenAPI schema or route manifest differs from the checked-in
 files, CI fails immediately.
 
-If the frontend introduces an API path that is not represented by the manifest
-or a proxy route, CI also fails.
+If the frontend introduces an API path that is not represented by the
+manifest-derived proxy spec or one of the explicit browser-only handlers, CI
+also fails.
 
 ## Notes
 

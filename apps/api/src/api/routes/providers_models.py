@@ -42,8 +42,13 @@ def _router_model_entry(entry: Dict[str, Any]) -> Dict[str, Any]:
     }
 
 
-@router.get("/providers/models", response_model=SuccessEnvelope[Dict[str, Any]])
+@router.get(
+    "/providers/models",
+    response_model=SuccessEnvelope[Dict[str, Any]],
+    openapi_extra={"x-goblin-route-contract": "canonical-routing-inventory"},
+)
 async def get_provider_models() -> SuccessEnvelope[Dict[str, Any]]:
+    """Canonical provider and logical-router inventory surface."""
     try:
         inventory = await dispatcher.get_provider_inventory(include_hidden=False)
         providers: List[Dict[str, Any]] = []

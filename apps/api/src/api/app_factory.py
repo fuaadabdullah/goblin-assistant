@@ -67,7 +67,12 @@ def create_app() -> FastAPI:
 
     @app.get("/")
     async def root() -> dict[str, str]:
-        return {"message": "Goblin Assistant API"}
+        return {
+            "message": "Goblin Assistant API",
+            "version": get_version(),
+            "docs": "/docs",
+            "health": "/health",
+        }
 
     @app.get("/test")
     async def test() -> dict[str, str]:

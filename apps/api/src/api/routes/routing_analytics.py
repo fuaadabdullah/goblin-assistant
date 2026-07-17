@@ -83,7 +83,7 @@ async def list_routing_strategies() -> Dict[str, Any]:
     }
 
 
-@router.get("/providers")
+@router.get("/providers/analytics")
 async def list_available_providers() -> Dict[str, Any]:
     await health_monitor.refresh(include_hidden=False)
     inventory = await dispatcher.get_provider_inventory(include_hidden=False)

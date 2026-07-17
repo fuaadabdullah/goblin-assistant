@@ -8,7 +8,8 @@ The repository currently contains:
 
 - a Next.js App Router frontend
 - shared feature modules and SDK consumers in `apps/web/src/`
-- a thin set of Next API proxy routes in `apps/web/app/api/`
+- one shared Next API catch-all proxy route in `apps/web/app/api/[...path]/route.ts`
+- a small set of explicit browser-only Next API handlers in `apps/web/app/api/`
 - a FastAPI backend
 
 The App Router and proxy-layer decisions are documented in [ADR-0001](../decisions/2026-07-06-nextjs-app-router-over-pages-router.md) and [ADR-0003](../decisions/2026-07-06-nextjs-proxies-vs-direct.md).
@@ -51,18 +52,21 @@ The FastAPI app in `apps/api/src/api/main.py` wires together:
 - routers for chat, auth, routing, health, search, privacy, secrets, ops, observability, and sandbox
 - startup/shutdown tasks for Redis, database init, provider monitoring, and artifact cleanup
 
-## Thin Proxy Routes
+## Shared Proxy Route
 
-The frontend also ships a few Next API routes:
+The frontend ships one generated catch-all proxy route plus a small set of explicit browser-only Next API handlers:
 
+- `apps/web/app/api/[...path]/route.ts`
 - `apps/web/app/api/generate/route.ts`
 - `apps/web/app/api/models/route.ts`
 - `apps/web/app/api/auth/validate/route.ts`
 - `apps/web/app/api/health/route.ts`
+- `apps/web/app/api/auth/google/callback/route.ts`
+- `apps/web/app/api/debug/model-usage/route.ts`
+- `apps/web/app/api/system-status/route.ts`
+- `apps/web/app/api/errors/route.ts`
 
-These are same-origin browser-safe proxies. Most frontend code skips them and
-calls the FastAPI app directly under `/api/v1/...` through the configured
-backend origin.
+The shared catch-all resolves manifest-derived backend prefixes through the generated proxy spec, while `apps/web/proxy.ts` stays the auth and redirect seam. Most frontend code skips these handlers and calls the FastAPI app directly under `/api/v1/...` through the configured backend origin.
 
 ## Best-Supported Flow
 
@@ -85,6 +89,6 @@ These areas now exist in code and should be treated as contract surfaces rather 
 - account save endpoints
 - support form submission
 
-For those areas, the architecture concern is keeping the proxy routes, backend versioned routes, and generated contract artifacts synchronized.
+For those areas, the architecture concern is keeping the generated proxy spec, explicit browser-only handlers, backend versioned routes, and generated contract artifacts synchronized.
 
 The versioning rationale lives in [ADR-0002](../decisions/2026-07-06-api-versioning-v1-contract.md).

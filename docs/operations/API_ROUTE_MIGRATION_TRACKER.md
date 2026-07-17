@@ -23,19 +23,17 @@ inventory plus runtime usage.
 
 | Legacy Route | Replacement | Consumers | Removal Date | Status | Notes |
 | --- | --- | --- | --- | --- | --- |
-| `/settings/` | `/api/v1/settings/` | `apps/web/src/lib/api/providers.ts`, `apps/web/src/test/handlers.ts`, `apps/web/e2e/settings.spec.ts`, `apps/web/e2e/auth.spec.ts`, `apps/api/src/api/tests/test_settings_router.py`, `apps/api/src/api/tests/test_settings_router_additional.py` | TBD | Active | Primary dual mount for the settings index route. |
 | `/settings/models/{model_name}` | `/api/v1/settings/models/{model_name}` | `apps/web/src/lib/api/providers.ts`, `apps/api/src/api/tests/test_settings_router.py`, `apps/api/src/api/tests/test_settings_router_additional.py` | TBD | Active | Model settings write path still needs the compatibility alias. |
 | `/settings/providers/{provider_name}` | `/api/v1/settings/providers/{provider_name}` | `apps/web/src/lib/api/providers.ts`, `apps/api/src/api/tests/test_settings_router.py`, `apps/api/src/api/tests/test_settings_router_additional.py` | TBD | Active | Provider settings write path still needs the compatibility alias. |
 | `/settings/test-connection` | `/api/v1/settings/test-connection` | `apps/web/src/lib/api/providers.ts`, `apps/api/src/api/tests/test_settings_router.py` | TBD | Active | Keep until connection-test callers no longer hit the legacy mount. |
 
 ## Follow-Up Plan
 
-When the last `/settings` consumer is removed, the next cleanup pass should:
-
-- Remove the legacy `/settings` mount from `apps/api/src/api/route_mounting.py`.
-- Update the route inventory and SDK artifacts to drop the legacy alias.
+The legacy `/settings/` backend mount was retired on 2026-07-17. Keep callers on
+`/api/v1/settings/*` and treat any new unversioned backend route mount as contract drift.
+- Update the route inventory and SDK artifacts to keep the legacy alias out of the checked-in contract.
 - Re-run the settings and route-alias smoke tests to confirm only `/api/v1/settings/*` remains.
-- Mark the corresponding rows above as removed and archive the follow-up in the same sprint.
+- Leave the remaining sub-route rows above in place until their own callers are retired.
 
 ## Burn-Down Rules
 

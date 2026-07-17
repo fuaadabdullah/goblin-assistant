@@ -23,7 +23,7 @@ Each module should own:
 - Routes/controllers must not import `api.storage` directly.
 - Services must not import route/controller modules.
 - Services must not import `fastapi` or `starlette`.
-- New usage of `api.utils` is blocked outside allowlisted modules.
+- Shared helpers should live in domain or core modules such as `api.core.tokenization`.
 - Circular dependencies across API modules are forbidden.
 
 ## Good vs Bad
@@ -71,5 +71,5 @@ Before opening a PR that changes API Python code:
 - Request/response/config data models use Pydantic where applicable.
 - Route files only orchestrate and call service-layer interfaces.
 - DB access lives in `api.storage` and is consumed through services.
-- No new imports from `api.utils` unless explicitly allowlisted.
+- Shared helper code should not be added to compatibility shims; move it into the owning domain module instead.
 - Boundary, cycle, mypy, and pyright checks pass locally.

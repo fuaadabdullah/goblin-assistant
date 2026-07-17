@@ -8,12 +8,13 @@ Goblin Assistant is currently a hybrid App Router + FastAPI application:
 
 - Next.js App Router frontend in `apps/web/app/`
 - shared frontend modules, hooks, state, and SDK consumers in `apps/web/src/`
-- thin same-origin proxy routes in `apps/web/app/api/`
+- one shared same-origin proxy catch-all in `apps/web/app/api/[...path]/route.ts`
+- a few explicit browser-only API handlers in `apps/web/app/api/`
 - FastAPI backend in `apps/api/src/api/`
 
 The routing and proxy split are documented in [ADR-0001](../decisions/2026-07-06-nextjs-app-router-over-pages-router.md) and [ADR-0003](../decisions/2026-07-06-nextjs-proxies-vs-direct.md).
 
-The browser usually talks to the frontend shell first and then either uses a Next proxy route or calls the FastAPI app directly under `/api/v1/...`.
+The browser usually talks to the frontend shell first and then either uses the shared proxy catch-all for manifest-derived backend paths, hits an explicit browser-only API handler, or calls the FastAPI app directly under `/api/v1/...`.
 
 ## Topology
 
@@ -22,13 +23,15 @@ graph LR
   U["User"] --> FE["Next.js App Router frontend<br/>(apps/web/app + apps/web/src)"]
 
   FE --> MW["Next middleware route guard"]
-  FE --> NAPI["Next API proxy routes<br/>(apps/web/app/api)"]
+  FE --> NAPI["Next API catch-all proxy<br/>(apps/web/app/api/[...path])"]
+  FE --> EAPI["Explicit browser-only API handlers<br/>(apps/web/app/api)"]
   FE --> API["FastAPI app<br/>(apps/api/src/api)"]
 
-  NAPI -->|"POST /api/generate"| API
-  NAPI -->|"GET /api/models"| API
-  NAPI -->|"POST /api/auth/validate"| API
-  NAPI -->|"GET /api/health"| API
+  NAPI -->|"manifest-derived backend prefixes"| API
+  EAPI -->|"POST /api/generate"| API
+  EAPI -->|"GET /api/models"| API
+  EAPI -->|"POST /api/auth/validate"| API
+  EAPI -->|"GET /api/health"| API
 
   API --> CHAT["Chat / semantic-chat routers"]
   API --> AUTH["Auth routers + aliases"]
@@ -83,8 +86,8 @@ Startup also initializes Redis cache, database setup, provider monitoring, secre
 These flows line up in the checked-in code:
 
 1. Chat thread management from the frontend to backend `/api/v1/chat/conversations*`
-2. Prompt submission through Next `/api/generate` to backend `/api/v1/api/chat`
-3. Provider/model inventory through `/api/models` to backend `/api/v1/providers/models`
+2. Shared catch-all proxy paths such as `/api/auth`, `/api/chat`, `/api/providers`, `/api/search`, `/api/settings`, `/api/sandbox`, `/api/runtime`, `/api/metrics`, and `/api/feedback` are resolved from the generated proxy spec
+3. Browser-only endpoints remain explicit at `/api/generate`, `/api/models`, `/api/health`, `/api/auth/validate`, `/api/auth/google/callback`, `/api/debug/model-usage`, `/api/system-status`, and `/api/errors`
 4. Backend health and OpenAPI docs directly from the FastAPI app
 
 ## API Versioning
@@ -98,7 +101,8 @@ checked in so contract drift can be detected in CI.
 The canonical contract snapshots are `packages/sdk/openapi/openapi.json` and
 `packages/sdk/openapi/routes.json`. CI regenerates them, diffs them against the
 checked-in copies, and also validates frontend API path usage against the
-manifest.
+manifest-derived proxy spec in `packages/shared/src/generated/api-proxy-routes.ts`
+plus the explicit browser-only exception list.
 
 The versioning rationale lives in [ADR-0002](../decisions/2026-07-06-api-versioning-v1-contract.md).
 

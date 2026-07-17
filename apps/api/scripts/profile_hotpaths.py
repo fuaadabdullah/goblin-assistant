@@ -26,6 +26,7 @@ _here = os.path.dirname(os.path.abspath(__file__))
 _src = os.path.join(_here, "..", "src")
 sys.path.insert(0, _src)
 
+from api.core.tokenization import count_tokens, trim_to_tokens
 from api.services.message_classifier import MessageClassifier
 from api.services.retrieval_service._context_bundle import build_context_bundle
 from api.services.retrieval_service._token_budget import (
@@ -33,7 +34,6 @@ from api.services.retrieval_service._token_budget import (
     estimate_tokens,
     trim_item_to_token_budget,
 )
-from api.utils.tokenizer import count_tokens, trim_to_tokens
 
 N_ITER = 500
 

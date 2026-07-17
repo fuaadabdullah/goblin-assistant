@@ -9,9 +9,9 @@ from typing import Any, Dict, List, Optional
 
 import structlog
 
+from ...core.tokenization import count_tokens, trim_to_tokens
 from ...storage.database import get_readonly_db_context
 from ...storage.vector_models import MemoryFactModel
-from ...utils.tokenizer import count_tokens, trim_to_tokens
 from .models import ContextBudget, ContextLayer
 
 logger = structlog.get_logger()

@@ -10,7 +10,7 @@ from typing import Any, AsyncGenerator, Dict, List, Optional
 import httpx
 import structlog
 
-from ..utils.tokenizer import count_tokens, trim_to_tokens
+from ..core.tokenization import count_tokens, trim_to_tokens
 from .base import BaseProvider, ProviderHealth, ProviderResult
 
 logger = structlog.get_logger(__name__)

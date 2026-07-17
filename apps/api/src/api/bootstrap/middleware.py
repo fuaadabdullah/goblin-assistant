@@ -7,7 +7,7 @@ import structlog
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 
-from ..core.route_lifecycle import classify_route_lifecycle
+from ..core.route_lifecycle import LifecycleDecision, RouteLifecycle, classify_route_lifecycle
 from ..middleware import (
     AuthenticationMiddleware,
     ErrorHandlingMiddleware,
@@ -25,6 +25,14 @@ async def add_contract_lifecycle_headers(request: Request, call_next: Callable):
     response = await call_next(request)
     lifecycle_path = str(request.scope.get("goblin.original_path", request.url.path))
     decision = classify_route_lifecycle(lifecycle_path)
+    route = request.scope.get("route")
+    route_deprecated = bool(getattr(route, "deprecated", False))
+    route_extra = getattr(route, "openapi_extra", None) or {}
+    if route_deprecated and decision.lifecycle == RouteLifecycle.STABLE:
+        decision = LifecycleDecision(
+            lifecycle=RouteLifecycle.LEGACY,
+            sunset_at=str(route_extra.get("x-goblin-sunset-at", "")).strip() or None,
+        )
     response.headers["X-API-Lifecycle"] = decision.lifecycle.value
     if decision.sunset_at:
         response.headers["Deprecation"] = "true"
@@ -87,6 +95,7 @@ def install_runtime_middlewares(app: FastAPI, *, environment: str) -> None:
             "/docs",
             "/openapi.json",
             "/redoc",
+            "/test",
             "/health",
             "/api/v1/health",
             "/auth/register",

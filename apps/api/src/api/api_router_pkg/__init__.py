@@ -1,6 +1,6 @@
 """Internal helpers for the legacy API router facade."""
 
-from .helpers import (
+from .legacy_api_router_support import (
     build_stream_messages,
     collect_chat_history_entries,
     extract_result_text,

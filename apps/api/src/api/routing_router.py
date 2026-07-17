@@ -9,6 +9,15 @@ from .departments import DEPARTMENT_REGISTRY, department_dispatcher
 from .providers.dispatcher import dispatcher
 
 router = APIRouter(prefix="/routing", tags=["routing"])
+_ROUTING_DEPRECATION_SUNSET = "2026-09-15"
+
+
+def _legacy_route_extra(replaced_by: str) -> Dict[str, str]:
+    return {
+        "x-goblin-replaced-by": replaced_by,
+        "x-goblin-sunset-at": _ROUTING_DEPRECATION_SUNSET,
+        "x-goblin-route-contract": "compatibility",
+    }
 
 
 class DepartmentRouteRequest(BaseModel):
@@ -44,12 +53,18 @@ async def get_department(department_id: str):
         raise HTTPException(status_code=404, detail=f"Department '{department_id}' not found")
 
 
-@router.post("/route", response_model=Dict[str, Any])
+@router.post(
+    "/route",
+    response_model=Dict[str, Any],
+    deprecated=True,
+    openapi_extra=_legacy_route_extra("/api/v1/api/route_task"),
+)
 async def route_through_department(request: DepartmentRouteRequest):
-    """Route a request through a brain department.
+    """Deprecated compatibility route for department-dispatched tasks.
 
-    The department dispatcher selects the best internal provider
-    based on the department's policy chain.
+    Prefer `/api/v1/api/route_task` for canonical task routing. This route is
+    retained so existing department callers continue to resolve through the
+    shared dispatcher/provider-routing stack.
     """
     try:
         from .departments import DepartmentId, DepartmentSelection  # noqa: PLC0415
@@ -83,9 +98,17 @@ async def route_through_department(request: DepartmentRouteRequest):
 # ── Legacy provider endpoints (deprecated) ────────────────────────────
 
 
-@router.get("/providers", response_model=List[str])
+@router.get(
+    "/providers",
+    response_model=List[str],
+    deprecated=True,
+    openapi_extra=_legacy_route_extra("/api/v1/providers/models"),
+)
 async def get_available_providers():
-    """[Deprecated] Use /routing/departments instead."""
+    """Deprecated compatibility route for provider discovery.
+
+    Prefer `/api/v1/providers/models` for canonical provider/router inventory.
+    """
     try:
         inventory = await dispatcher.get_provider_inventory(include_hidden=False)
         if inventory:
@@ -97,9 +120,17 @@ async def get_available_providers():
         return DEPARTMENT_REGISTRY.list_ids()
 
 
-@router.get("/providers/{capability}", response_model=List[str])
+@router.get(
+    "/providers/{capability}",
+    response_model=List[str],
+    deprecated=True,
+    openapi_extra=_legacy_route_extra("/api/v1/providers/models"),
+)
 async def get_providers_for_capability(capability: str):
-    """[Deprecated] Use /routing/departments instead — returns departments."""
+    """Deprecated compatibility route for capability lookup.
+
+    Prefer `/api/v1/providers/models` for canonical provider/router inventory.
+    """
     try:
         # Map capability to matching departments
         dept_map = {

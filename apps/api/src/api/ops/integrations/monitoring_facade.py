@@ -1,4 +1,4 @@
-"""High-level helper functions for monitoring integrations."""
+"""High-level orchestration helpers for monitoring integrations."""
 
 import logging
 from typing import Any, Dict
@@ -89,3 +89,15 @@ async def send_circuit_breaker_alert(provider_name: str, state: str):
         }
         return await send_system_alert(alert)
     return {}
+
+
+__all__ = [
+    "get_monitoring_status",
+    "initialize_monitoring",
+    "monitoring_manager",
+    "send_circuit_breaker_alert",
+    "send_health_alert",
+    "send_provider_alert",
+    "send_system_alert",
+    "send_system_metrics",
+]

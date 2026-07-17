@@ -274,24 +274,18 @@ async def send_message(conversation_id: str, request: SendMessageRequest):
 
 #### Routing Router (`routing_router.py`)
 
-Manages intelligent AI provider routing:
+Provides the compatibility routing surface. Canonical provider inventory and
+task routing now live at `/api/v1/providers/models` and `/api/v1/api/route_task`:
 
 ```python
 @router.get("/routing/providers")
 async def get_available_providers():
-    """Get list of configured providers"""
-    return top_providers_for("chat")
+    """Deprecated compatibility provider view"""
+    return await dispatcher.get_provider_inventory(include_hidden=False)
 
 @router.post("/routing/route")
 async def route_request(request: RouteRequest):
-    """Route request to best provider"""
-    result = await route_task(
-        task_type=request.task_type,
-        payload=request.payload,
-        prefer_local=request.prefer_local,
-        prefer_cost=request.prefer_cost
-    )
-    return result
+    """Deprecated compatibility route over shared dispatcher/provider routing"""
 ```
 
 ### Integration Layer

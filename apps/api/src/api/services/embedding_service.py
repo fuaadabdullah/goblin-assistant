@@ -11,13 +11,13 @@ from typing import Any, Dict, List, Optional
 
 from sqlalchemy import text
 
+from ..core.tokenization import count_tokens, trim_to_tokens
 from ..providers.base import BaseProvider
 from ..storage.database import get_db_context
 from ..storage.vector_models import (
     ConversationSummaryModel,
     EmbeddingModel,
 )
-from ..utils.tokenizer import count_tokens, trim_to_tokens
 
 logger = logging.getLogger(__name__)
 

@@ -141,7 +141,7 @@ with patch('api.providers.openai.AIClient') as MockClient:
 
 ### Coverage Requirements
 
-- **Minimum**: 70% overall coverage
+- **Minimum**: 80% overall coverage
 - **Target**: 80% on critical paths (auth, chat, privacy)
 - **Excluded**: migrations, __init__.py, test files themselves
 
@@ -469,7 +469,7 @@ Tests run automatically on:
 
 CI will fail if:
 - Frontend coverage drops below 80%
-- Critical paths (auth, chat) below 70%
+- Critical paths (auth, chat) below 80%
 - Existing tests broken
 
 View in CI: Check "Coverage" status on PR

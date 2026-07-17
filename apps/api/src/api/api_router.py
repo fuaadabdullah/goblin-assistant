@@ -192,8 +192,12 @@ async def generate(request: GenerateRequest):
         return GenerateResponse(error=str(exc))
 
 
-@router.post("/route_task")
+@router.post(
+    "/route_task",
+    openapi_extra={"x-goblin-route-contract": "canonical-task-routing"},
+)
 async def route_task(request: RouteTaskRequest):
+    """Canonical task-routing entrypoint backed by the shared routing stack."""
     try:
         task_id = str(uuid.uuid4())
         store = await get_task_store()

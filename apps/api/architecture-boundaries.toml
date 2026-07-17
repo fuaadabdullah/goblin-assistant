@@ -1,12 +1,3 @@
-[utils]
-allow_importers = [
-  "api.utils",
-  "api.tests",
-  "api.config.system_prompt",
-  "api.services.embedding_service",
-  "api.services.context_assembly_service",
-]
-
 [services]
 forbidden_framework_prefixes = ["fastapi", "starlette"]
 
@@ -40,4 +31,3 @@ ignore_cycles = [
 route_no_direct_storage = true
 service_no_route_dependency = true
 service_no_framework_coupling = true
-no_utils_graveyard_growth = true

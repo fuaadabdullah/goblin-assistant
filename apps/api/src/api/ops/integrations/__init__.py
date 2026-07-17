@@ -7,16 +7,6 @@ legacy import compatibility at `api.ops.integrations`.
 import os
 
 from .base import MonitoringIntegration
-from .helpers import (
-    get_monitoring_status,
-    initialize_monitoring,
-    monitoring_manager,
-    send_circuit_breaker_alert,
-    send_health_alert,
-    send_provider_alert,
-    send_system_alert,
-    send_system_metrics,
-)
 from .jira import (
     build_circuit_breaker_incident_payload,
     build_provider_health_incident_payload,
@@ -27,6 +17,16 @@ from .jira import (
     publish_provider_health_incident,
 )
 from .manager import MonitoringManager
+from .monitoring_facade import (
+    get_monitoring_status,
+    initialize_monitoring,
+    monitoring_manager,
+    send_circuit_breaker_alert,
+    send_health_alert,
+    send_provider_alert,
+    send_system_alert,
+    send_system_metrics,
+)
 from .providers import (
     AlertManagerIntegration,
     DataDogIntegration,

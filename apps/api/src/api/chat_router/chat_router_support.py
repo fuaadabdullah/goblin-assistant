@@ -1,9 +1,4 @@
-"""Pure utility helpers for the chat router.
-
-These functions perform no I/O of their own (other than reading from the
-conversation store, in the ownership helpers). They're imported by the
-route submodules and re-exported from `api.chat_router` for tests.
-"""
+"""Chat router support helpers used across the router package."""
 
 import json
 from typing import Any, Dict, Optional
@@ -144,3 +139,13 @@ def _raise_structured_provider_error(provider_response: Dict[str, Any]) -> None:
             "message": "An unexpected processing error occurred.",
         },
     )
+
+
+__all__ = [
+    "_assert_conversation_owned",
+    "_extract_usage_and_cost",
+    "_format_sse_event",
+    "_latest_snippet",
+    "_raise_structured_provider_error",
+    "_require_owned_conversation",
+]

@@ -9,8 +9,8 @@ from typing import Any, Dict, List, Optional
 
 import structlog
 
+from ...core.tokenization import count_tokens, trim_to_tokens
 from ...observability.retrieval_tracer import retrieval_tracer
-from ...utils.tokenizer import count_tokens, trim_to_tokens
 from .models import ContextBudget, ContextLayer
 
 logger = structlog.get_logger()
