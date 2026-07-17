@@ -112,4 +112,39 @@ describe('UI Store (Zustand)', () => {
     });
     expect(result.current.toasts).toHaveLength(0);
   });
+
+  it('should manage mobile navigation and chat preview state', () => {
+    const { result } = renderHook(() => useUIStore());
+
+    act(() => {
+      result.current.toggleMobileNav();
+      result.current.setMobileNavOpen(true);
+      result.current.toggleChatPreview();
+      result.current.setChatPreviewOpen(true);
+      result.current.setChatSidebarOpen(true);
+    });
+
+    expect(result.current.mobileNavOpen).toBe(true);
+    expect(result.current.chatPreviewOpen).toBe(true);
+    expect(result.current.chatSidebarOpen).toBe(true);
+  });
+
+  it('should expose toast helper actions', () => {
+    const { result } = renderHook(() => useUIStore());
+
+    act(() => {
+      result.current.showSuccess('Success', 'saved');
+      result.current.showError('Error', 'failed');
+      result.current.showWarning('Warning', 'careful');
+      result.current.showInfo('Info', 'heads up');
+    });
+
+    expect(result.current.toasts).toHaveLength(4);
+    expect(result.current.toasts.map((toast) => toast.type)).toEqual([
+      'success',
+      'error',
+      'warning',
+      'info',
+    ]);
+  });
 });

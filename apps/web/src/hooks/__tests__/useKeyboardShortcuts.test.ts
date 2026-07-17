@@ -1,4 +1,4 @@
-import { renderHook } from '@testing-library/react';
+import { act, renderHook } from '@testing-library/react';
 import { useKeyboardShortcuts, formatShortcut, SHORTCUTS } from '../useKeyboardShortcuts';
 
 describe('useKeyboardShortcuts', () => {
@@ -27,8 +27,36 @@ describe('useKeyboardShortcuts', () => {
       },
     ];
 
-    renderHook(() => useKeyboardShortcuts(shortcuts));
-    // Hook should register without errors
+    const { unmount } = renderHook(() => useKeyboardShortcuts(shortcuts));
+
+    const event = new KeyboardEvent('keydown', {
+      key: 'Enter',
+      ctrlKey: true,
+      bubbles: true,
+      cancelable: true,
+    });
+
+    act(() => {
+      window.dispatchEvent(event);
+    });
+
+    expect(callback).toHaveBeenCalledTimes(1);
+    expect(event.defaultPrevented).toBe(true);
+
+    unmount();
+
+    act(() => {
+      window.dispatchEvent(
+        new KeyboardEvent('keydown', {
+          key: 'Enter',
+          ctrlKey: true,
+          bubbles: true,
+          cancelable: true,
+        })
+      );
+    });
+
+    expect(callback).toHaveBeenCalledTimes(1);
   });
 
   it('should handle multiple shortcuts', () => {

@@ -42,13 +42,13 @@ describe('apiClient.getRoutingInfo', () => {
     vi.restoreAllMocks();
   });
 
-  it('calls /routing/route on the configured backend base URL', async () => {
-    backendGetMock.mockResolvedValue({ data: { status: 'ok' } });
+  it('calls internal model inventory on the frontend client', async () => {
+    frontendGetMock.mockResolvedValue({ data: { data: { providers: [], models: [] } } });
 
     const { apiClient } = await import('@/api');
     await apiClient.getRoutingInfo();
 
-    expect(backendGetMock).toHaveBeenCalledTimes(1);
-    expect(backendGetMock.mock.calls[0][0]).toBe('/api/v1/routing/route');
+    expect(frontendGetMock).toHaveBeenCalledTimes(1);
+    expect(frontendGetMock.mock.calls[0][0]).toBe('/api/models');
   });
 });

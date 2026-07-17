@@ -193,17 +193,17 @@ describe('apiClient.getCostSummary', () => {
       cost_by_model: {},
       requests_by_provider: { openai: 10 },
     };
-    mockGetBackend.mockResolvedValue(summary);
+    mockGetFrontend.mockResolvedValue(summary);
 
     const result = await apiClient.getCostSummary();
 
     expect(result.total_cost).toBe(1.23);
     expect(result.cost_by_provider.openai).toBe(1.0);
-    expect(mockGetBackend).toHaveBeenCalledWith('/api/v1/costs/summary');
+    expect(mockGetFrontend).toHaveBeenCalledWith('/api/costs/summary');
   });
 
   it('returns empty cost summary when backend call fails', async () => {
-    mockGetBackend.mockRejectedValue(new Error('503'));
+    mockGetFrontend.mockRejectedValue(new Error('503'));
 
     const result = await apiClient.getCostSummary();
 

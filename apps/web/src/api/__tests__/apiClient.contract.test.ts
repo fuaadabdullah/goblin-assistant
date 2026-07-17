@@ -45,11 +45,12 @@ describe('api client consumer contracts', () => {
   });
 
   it('pins routing contract shape for startup dependency', async () => {
-    backendGetMock.mockResolvedValue({
+    frontendGetMock.mockResolvedValue({
       data: {
-        status: 'ok',
-        default_provider: 'openai',
-        available_providers: ['openai', 'anthropic'],
+        data: {
+          providers: [{ id: 'openai' }, { id: 'anthropic' }],
+          models: [{ name: 'gpt-4o-mini', provider: 'openai' }],
+        },
       },
     });
 
@@ -58,8 +59,10 @@ describe('api client consumer contracts', () => {
 
     expect(payload).toEqual(
       expect.objectContaining({
-        status: 'ok',
-        default_provider: 'openai',
+        data: expect.objectContaining({
+          providers: expect.any(Array),
+          models: expect.any(Array),
+        }),
       })
     );
   });

@@ -1,8 +1,8 @@
 import { prefetchCsrfToken, getCsrfToken } from '../csrf';
-import { getBackend } from '../http-helpers';
+import { getFrontend } from '../http-helpers';
 
 vi.mock('../http-helpers', () => ({
-  getBackend: vi.fn(),
+  getFrontend: vi.fn(),
   extractApiErrorMessage: (payload: unknown, fallback = 'Request failed') => {
     if (!payload || typeof payload !== 'object') return fallback;
     const data = payload as Record<string, unknown>;
@@ -19,13 +19,13 @@ describe('CSRF Token Management', () => {
 
   it('prefetch fetches CSRF token from backend', async () => {
     const mockToken = 'test-csrf-token-123';
-    vi.mocked(getBackend).mockResolvedValue({ csrf_token: mockToken });
+    vi.mocked(getFrontend).mockResolvedValue({ csrf_token: mockToken });
 
     prefetchCsrfToken();
     const token = await getCsrfToken();
 
     expect(token).toBe(mockToken);
-    expect(vi.mocked(getBackend)).toHaveBeenCalledWith(
+    expect(vi.mocked(getFrontend)).toHaveBeenCalledWith(
       expect.stringContaining('/auth/csrf-token'),
       expect.any(Object)
     );
@@ -33,7 +33,7 @@ describe('CSRF Token Management', () => {
 
   it('deduplicates concurrent prefetch calls', async () => {
     const mockToken = 'dedup-token-456';
-    vi.mocked(getBackend).mockResolvedValue({ csrf_token: mockToken });
+    vi.mocked(getFrontend).mockResolvedValue({ csrf_token: mockToken });
 
     // Start multiple prefetches
     prefetchCsrfToken();
@@ -45,52 +45,52 @@ describe('CSRF Token Management', () => {
     expect(token1).toBe(mockToken);
 
     // Backend should only be called once
-    expect(vi.mocked(getBackend)).toHaveBeenCalledTimes(1);
+    expect(vi.mocked(getFrontend)).toHaveBeenCalledTimes(1);
   });
 
   it('consumes token after first use', async () => {
     const mockToken = 'single-use-token-789';
-    vi.mocked(getBackend).mockResolvedValue({ csrf_token: mockToken });
+    vi.mocked(getFrontend).mockResolvedValue({ csrf_token: mockToken });
 
     prefetchCsrfToken();
     const token1 = await getCsrfToken();
     expect(token1).toBe(mockToken);
 
     // Second call should fetch again since token was consumed
-    vi.mocked(getBackend).mockResolvedValue({ csrf_token: 'new-token' });
+    vi.mocked(getFrontend).mockResolvedValue({ csrf_token: 'new-token' });
     const token2 = await getCsrfToken();
     expect(token2).toBe('new-token');
-    expect(vi.mocked(getBackend)).toHaveBeenCalledTimes(2);
+    expect(vi.mocked(getFrontend)).toHaveBeenCalledTimes(2);
   });
 
   it('handles backend errors gracefully', async () => {
-    vi.mocked(getBackend).mockRejectedValue(new Error('Network error'));
+    vi.mocked(getFrontend).mockRejectedValue(new Error('Network error'));
 
     prefetchCsrfToken();
 
     await expect(getCsrfToken()).rejects.toThrow('Network error');
-    expect(vi.mocked(getBackend)).toHaveBeenCalled();
+    expect(vi.mocked(getFrontend)).toHaveBeenCalled();
   });
 
   it('preserves backend details when csrf token payload is missing', async () => {
-    vi.mocked(getBackend).mockResolvedValueOnce({ detail: 'Auth service warming up' });
+    vi.mocked(getFrontend).mockResolvedValueOnce({ detail: 'Auth service warming up' });
 
     await expect(getCsrfToken()).rejects.toThrow('Auth service warming up');
   });
 
   it('retries after prefetch failure', async () => {
     // First prefetch fails
-    vi.mocked(getBackend).mockRejectedValueOnce(new Error('Network error'));
+    vi.mocked(getFrontend).mockRejectedValueOnce(new Error('Network error'));
 
     prefetchCsrfToken();
     await expect(getCsrfToken()).rejects.toThrow();
 
     // Second attempt should retry the fetch
     const mockToken = 'retry-token';
-    vi.mocked(getBackend).mockResolvedValueOnce({ csrf_token: mockToken });
+    vi.mocked(getFrontend).mockResolvedValueOnce({ csrf_token: mockToken });
 
     const token = await getCsrfToken();
     expect(token).toBe(mockToken);
-    expect(vi.mocked(getBackend)).toHaveBeenCalledTimes(2);
+    expect(vi.mocked(getFrontend)).toHaveBeenCalledTimes(2);
   });
 });

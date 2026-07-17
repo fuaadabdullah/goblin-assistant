@@ -6,7 +6,7 @@ vi.mock('next/server', () => ({
   },
 }));
 
-import { resolveRouteDecision } from '../../middleware';
+import { resolveRouteDecision } from '../../proxy';
 
 describe('proxy route decisions', () => {
   it('redirects unauthenticated users from /chat', () => {

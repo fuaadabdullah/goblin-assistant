@@ -32,7 +32,7 @@ const session = {
     worker_status: 'accepted',
     worker_error: null,
     pr_url: 'https://github.com/acme/goblin-assistant/pull/123',
-    callback_url: 'http://127.0.0.1:8001/api/v1/agent/task/task-1/events',
+    callback_url: 'http://127.0.0.1:8001/api/agent/task/task-1/events',
     workspace_id: 'workspace-github-com-acme-goblin-assistant-main',
     workspace_family: 'github.com/acme/goblin-assistant@main',
     sprite_name: 'sprite-github-com-acme-goblin-assistant-main',

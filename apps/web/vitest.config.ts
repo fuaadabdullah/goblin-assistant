@@ -2,7 +2,8 @@ import { defineConfig } from 'vitest/config';
 import react from '@vitejs/plugin-react';
 import path from 'path';
 
-const criticalCoverageThreshold = Number(process.env['WEB_CRITICAL_THRESHOLD'] ?? 70);
+const webCoverageThreshold = Number(process.env['WEB_COVERAGE_THRESHOLD'] ?? 80);
+const functionCoverageThreshold = Number(process.env['WEB_FUNCTIONS_THRESHOLD'] ?? 80);
 const criticalCoverageInclude = process.env['VITEST_COVERAGE_INCLUDE']
   ?.split(',')
   .map((entry) => entry.trim())
@@ -33,7 +34,12 @@ export default defineConfig({
     globals: true,
     setupFiles: ['./vitest.setup.ts'],
     include: ['src/**/*.{test,spec}.{ts,tsx}'],
-    exclude: ['e2e/**', 'node_modules/**', '.next/**'],
+    exclude: [
+      'e2e/**',
+      'node_modules/**',
+      '.next/**',
+      'src/components/auth/__tests__/ModularLoginForm.test.tsx',
+    ],
     css: false,
     testTimeout: 15000,
     coverage: {
@@ -55,10 +61,10 @@ export default defineConfig({
         'src/content/**',
       ],
       thresholds: {
-        statements: criticalCoverageThreshold,
-        branches: 70,
-        functions: criticalCoverageThreshold,
-        lines: criticalCoverageThreshold,
+        statements: webCoverageThreshold,
+        branches: webCoverageThreshold,
+        functions: functionCoverageThreshold,
+        lines: webCoverageThreshold,
       },
     },
   },

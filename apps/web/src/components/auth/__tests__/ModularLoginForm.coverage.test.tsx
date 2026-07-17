@@ -6,6 +6,7 @@ const {
   mockSignIn,
   mockSignUp,
   mockGetGoogleAuthUrl,
+  mockSnapshotFromSupabaseSession,
   turnstileState,
   featureFlagsState,
 } = vi.hoisted(() => ({
@@ -13,6 +14,12 @@ const {
   mockSignIn: vi.fn(),
   mockSignUp: vi.fn(),
   mockGetGoogleAuthUrl: vi.fn(),
+  mockSnapshotFromSupabaseSession: vi.fn(() => ({
+    token: 'test-token',
+    user: null,
+    isAuthenticated: true,
+    isHydrated: true,
+  })),
   turnstileState: {
     enabled: false,
     token: '',
@@ -30,6 +37,10 @@ vi.mock('@tanstack/react-query', () => ({
 vi.mock('@/lib/supabase', () => ({
   authSignUp: mockSignUp,
   authSignIn: mockSignIn,
+}));
+
+vi.mock('@/lib/auth-state', () => ({
+  snapshotFromSupabaseSession: mockSnapshotFromSupabaseSession,
 }));
 
 vi.mock('@/lib/api/auth', () => ({
@@ -131,7 +142,7 @@ const authSession = {
   },
 };
 
-describe('ModularLoginForm', () => {
+describe('ModularLoginForm coverage', () => {
   const onSuccess = vi.fn();
   const onError = vi.fn();
 
@@ -140,36 +151,44 @@ describe('ModularLoginForm', () => {
     turnstileState.enabled = false;
     turnstileState.token = '';
     featureFlagsState.googleAuth = false;
+    window.history.replaceState({}, '', '/');
     mockSignIn.mockResolvedValue({ session: authSession, error: null });
     mockSignUp.mockResolvedValue({ session: authSession, error: null });
     mockGetGoogleAuthUrl.mockResolvedValue({
-      url: 'https://accounts.google.com/o/oauth2/v2/auth?state=test',
+      url: 'http://localhost:3000/#google-auth',
     });
   });
 
-  it('submits login credentials and stores the auth snapshot', async () => {
+  it('submits email/password login successfully', async () => {
     render(<ModularLoginForm onSuccess={onSuccess} onError={onError} />);
 
-    fireEvent.click(screen.getByRole('button', { name: 'Submit' }));
+    fireEvent.submit(screen.getByTestId('email-form'));
 
     await waitFor(() => expect(mockSignIn).toHaveBeenCalledTimes(1));
     expect(mockSignIn).toHaveBeenCalledWith('test@test.com', 'pass', undefined);
-    expect(onSuccess).toHaveBeenCalledTimes(1);
+    await waitFor(() => expect(onSuccess).toHaveBeenCalledTimes(1));
+    expect(mockSnapshotFromSupabaseSession).toHaveBeenCalledWith(authSession);
+    expect(mockSetQueryData).toHaveBeenCalledWith(['auth'], {
+      token: 'test-token',
+      user: null,
+      isAuthenticated: true,
+      isHydrated: true,
+    });
   });
 
-  it('blocks submit until turnstile is solved', async () => {
+  it('requires turnstile when enabled', async () => {
     turnstileState.enabled = true;
 
     render(<ModularLoginForm onSuccess={onSuccess} onError={onError} />);
 
-    fireEvent.click(screen.getByRole('button', { name: 'Submit' }));
+    fireEvent.submit(screen.getByTestId('email-form'));
 
     expect(onError).toHaveBeenCalledWith('Please complete the security verification');
     expect(mockSignIn).not.toHaveBeenCalled();
     expect(mockSignUp).not.toHaveBeenCalled();
   });
 
-  it('submits register flow and surfaces confirmation when the session is pending', async () => {
+  it('shows the pending-confirmation message for register flows without a session', async () => {
     turnstileState.enabled = true;
     turnstileState.token = 'turnstile-token';
     mockSignUp.mockResolvedValueOnce({ session: null, error: null });
@@ -179,8 +198,7 @@ describe('ModularLoginForm', () => {
     );
 
     await waitFor(() => expect(screen.getByTestId('turnstile')).toBeInTheDocument());
-
-    fireEvent.click(screen.getByRole('button', { name: 'Submit' }));
+    fireEvent.submit(screen.getByTestId('email-form'));
 
     await waitFor(() => expect(mockSignUp).toHaveBeenCalledTimes(1));
     expect(mockSignUp).toHaveBeenCalledWith('test@test.com', 'pass', 'turnstile-token');
@@ -189,17 +207,15 @@ describe('ModularLoginForm', () => {
     );
   });
 
-  it('starts Google sign-in when the provider is enabled', async () => {
+  it('redirects to the Google consent screen when the provider is enabled', async () => {
     featureFlagsState.googleAuth = true;
-    const assignSpy = vi.fn();
-    vi.spyOn(window.location, 'assign').mockImplementation(assignSpy as never);
 
     render(<ModularLoginForm onSuccess={onSuccess} onError={onError} />);
 
     fireEvent.click(screen.getByRole('button', { name: 'Google login' }));
 
     await waitFor(() => expect(mockGetGoogleAuthUrl).toHaveBeenCalledTimes(1));
-    expect(assignSpy).toHaveBeenCalledWith('https://accounts.google.com/o/oauth2/v2/auth?state=test');
+    expect(window.location.href).toBe('http://localhost:3000/#google-auth');
   });
 
   it('preserves non-Error login failures through the shared formatter', () => {

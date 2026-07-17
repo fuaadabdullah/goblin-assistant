@@ -23,7 +23,7 @@ describe('HTTP Client 401 Interceptor', () => {
     const error: Partial<AxiosError> = {
       response: { status: 401 },
       config: {
-        url: '/api/v1/chat/messages',
+        url: '/api/chat/messages',
         method: 'GET',
         headers: {},
       },
@@ -40,7 +40,7 @@ describe('HTTP Client 401 Interceptor', () => {
     const error: Partial<AxiosError> = {
       response: { status: 401 },
       config: {
-        url: '/api/v1/auth/login',
+        url: '/api/auth/login',
         method: 'POST',
         headers: {},
       },
@@ -63,7 +63,7 @@ describe('HTTP Client 401 Interceptor', () => {
   it('does not retry same request twice', async () => {
     // Set _retry flag to prevent infinite loops
     const config = {
-      url: '/api/v1/chat/messages',
+      url: '/api/chat/messages',
       _retry: true, // Already retried once
       headers: {},
     };

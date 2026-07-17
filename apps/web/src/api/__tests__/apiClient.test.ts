@@ -64,7 +64,7 @@ describe('apiClient chat conversations', () => {
   });
 
   it('maps backend createConversation responses and sends bearer auth', async () => {
-    backendPostMock.mockResolvedValue({
+    frontendPostMock.mockResolvedValue({
       data: {
         conversation_id: 'conv-backend-1',
         title: 'Persisted',
@@ -80,8 +80,8 @@ describe('apiClient chat conversations', () => {
       title: 'Persisted',
       createdAt: '2026-03-07T12:00:00.000Z',
     });
-    expect(backendPostMock).toHaveBeenCalledWith(
-      '/api/v1/chat/conversations',
+    expect(frontendPostMock).toHaveBeenCalledWith(
+      '/api/chat/conversations',
       { title: 'Persisted' },
       expect.objectContaining({
         headers: expect.objectContaining({

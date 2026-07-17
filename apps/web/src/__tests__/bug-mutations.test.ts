@@ -3,6 +3,12 @@
  * Tests boundary conditions, edge cases, and potential regressions
  */
 
+import { vi } from 'vitest';
+
+vi.mock('../utils/monitoring', () => ({
+  logErrorToService: vi.fn(),
+}));
+
 describe('SSR Safety - Browser API Access', () => {
   const originalWindow = globalThis.window;
   const originalNavigator = globalThis.navigator;
@@ -78,10 +84,11 @@ describe('Storage Quota Handling', () => {
         setItem: (key: string, value: string) => {
           // Simulate quota exceeded for large data
           if (value.length > 1000) {
-            const error: DOMException & { name: string } = Object.assign(
-              new DOMException('QuotaExceededError', 'QuotaExceededError'),
-              { name: 'QuotaExceededError' }
-            );
+            const error = new DOMException('QuotaExceededError', 'QuotaExceededError');
+            Object.defineProperty(error, 'name', {
+              value: 'QuotaExceededError',
+              configurable: true,
+            });
             throw error;
           }
           mockLocalStorage[key] = value;

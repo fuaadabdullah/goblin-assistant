@@ -129,7 +129,7 @@ describe('apiClient', () => {
   });
 
   describe('getProviderSettings', () => {
-    it('calls backend GET /api/v1/settings/', async () => {
+    it('calls frontend GET /api/settings/', async () => {
       mockHttp.get.mockResolvedValueOnce({ data: [{ id: 1, name: 'openai' }] });
       const result = await apiClient.getProviderSettings();
       expect(result).toEqual([{ id: 1, name: 'openai' }]);
@@ -149,7 +149,7 @@ describe('apiClient', () => {
       mockHttp.put.mockResolvedValueOnce({ data: { ok: true } });
       await apiClient.updateProvider(1, { enabled: true });
       expect(mockHttp.put).toHaveBeenCalledWith(
-        '/api/v1/settings/providers/1',
+        '/api/settings/providers/1',
         { enabled: true },
         undefined
       );
@@ -161,7 +161,7 @@ describe('apiClient', () => {
       mockHttp.post.mockResolvedValueOnce({ data: { ok: true } });
       await apiClient.setProviderPriority(1, 5, 'default');
       expect(mockHttp.post).toHaveBeenCalledWith(
-        '/api/v1/providers/1/priority',
+        '/api/providers/1/priority',
         { priority: 5, role: 'default' },
         undefined
       );
@@ -172,7 +172,7 @@ describe('apiClient', () => {
     it('calls backend POST', async () => {
       mockHttp.post.mockResolvedValueOnce({ data: { connected: true } });
       await apiClient.testProviderConnection(1);
-      expect(mockHttp.post).toHaveBeenCalledWith('/api/v1/providers/1/test', undefined, undefined);
+      expect(mockHttp.post).toHaveBeenCalledWith('/api/providers/1/test', undefined, undefined);
     });
   });
 
@@ -180,7 +180,7 @@ describe('apiClient', () => {
     it('calls backend GET with limit', async () => {
       mockHttp.get.mockResolvedValueOnce({ data: [] });
       await apiClient.getRaptorLogs(50);
-      expect(mockHttp.get).toHaveBeenCalledWith('/api/v1/raptor/logs?limit=50', undefined);
+      expect(mockHttp.get).toHaveBeenCalledWith('/api/raptor/logs?limit=50', undefined);
     });
   });
 
@@ -192,9 +192,9 @@ describe('apiClient', () => {
       mockHttp.post.mockResolvedValueOnce({ data: { access_token: 'tok' } });
       const result = await apiClient.login('test@example.com', 'password');
       expect(result).toEqual({ access_token: 'tok' });
-      expect(mockHttp.get).toHaveBeenCalledWith('/api/v1/auth/csrf-token', expect.anything());
+      expect(mockHttp.get).toHaveBeenCalledWith('/api/auth/csrf-token', expect.anything());
       expect(mockHttp.post).toHaveBeenCalledWith(
-        '/api/v1/auth/login',
+        '/api/auth/login',
         expect.objectContaining({ csrf_token: 'csrf123' }),
         expect.anything()
       );
@@ -207,9 +207,9 @@ describe('apiClient', () => {
       mockHttp.post.mockResolvedValueOnce({ data: { access_token: 'tok' } });
       const result = await apiClient.register('test@example.com', 'password', 'turnstile-tok');
       expect(result).toEqual({ access_token: 'tok' });
-      expect(mockHttp.get).toHaveBeenCalledWith('/api/v1/auth/csrf-token', expect.anything());
+      expect(mockHttp.get).toHaveBeenCalledWith('/api/auth/csrf-token', expect.anything());
       expect(mockHttp.post).toHaveBeenCalledWith(
-        '/api/v1/auth/register',
+        '/api/auth/register',
         expect.objectContaining({ csrf_token: 'csrf123' }),
         expect.anything()
       );
@@ -421,11 +421,11 @@ describe('apiClient', () => {
   });
 
   describe('searchQuery', () => {
-    it('calls backend POST /api/v1/search/query', async () => {
+    it('calls frontend POST /api/search/query', async () => {
       mockHttp.post.mockResolvedValueOnce({ data: [{ id: '1' }] });
       await apiClient.searchQuery('docs', 'test');
       expect(mockHttp.post).toHaveBeenCalledWith(
-        '/api/v1/search/query',
+        '/api/search/query',
         { collection: 'docs', query: 'test', limit: 8 },
         undefined
       );
@@ -433,11 +433,11 @@ describe('apiClient', () => {
   });
 
   describe('runSandboxCode', () => {
-    it('calls backend POST /api/v1/sandbox/run', async () => {
+    it('calls frontend POST /api/sandbox/run', async () => {
       mockHttp.post.mockResolvedValueOnce({ data: { output: 'hello' } });
       await apiClient.runSandboxCode({ code: 'print("hello")', language: 'python' });
       expect(mockHttp.post).toHaveBeenCalledWith(
-        '/api/v1/sandbox/run',
+        '/api/sandbox/run',
         { source: 'print("hello")', language: 'python' },
         undefined
       );
@@ -445,11 +445,11 @@ describe('apiClient', () => {
   });
 
   describe('saveAccountProfile', () => {
-    it('calls backend PUT /api/v1/account/profile', async () => {
+    it('calls frontend PUT /api/account/profile', async () => {
       mockHttp.put.mockResolvedValueOnce({ data: { ok: true } });
       await apiClient.saveAccountProfile({ name: 'Test' });
       expect(mockHttp.put).toHaveBeenCalledWith(
-        '/api/v1/account/profile',
+        '/api/account/profile',
         { name: 'Test' },
         undefined
       );
@@ -457,11 +457,11 @@ describe('apiClient', () => {
   });
 
   describe('saveAccountPreferences', () => {
-    it('calls backend PUT /api/v1/account/preferences', async () => {
+    it('calls frontend PUT /api/account/preferences', async () => {
       mockHttp.put.mockResolvedValueOnce({ data: { ok: true } });
       await apiClient.saveAccountPreferences({ theme: 'dark' });
       expect(mockHttp.put).toHaveBeenCalledWith(
-        '/api/v1/account/preferences',
+        '/api/account/preferences',
         { theme: 'dark' },
         undefined
       );
@@ -469,7 +469,7 @@ describe('apiClient', () => {
   });
 
   describe('uploadFile', () => {
-    it('posts FormData to /api/v1/chat/upload-file', async () => {
+    it('posts FormData to /api/chat/upload-file', async () => {
       mockHttp.post.mockResolvedValueOnce({
         data: { file_id: 'f1', filename: 'test.txt', mime_type: 'text/plain', size_bytes: 100 },
       });
@@ -477,7 +477,7 @@ describe('apiClient', () => {
       const result = await apiClient.uploadFile(file);
       expect(result.file_id).toBe('f1');
       expect(mockHttp.post).toHaveBeenCalledWith(
-        '/api/v1/chat/upload-file',
+        '/api/chat/upload-file',
         expect.any(FormData),
         expect.anything()
       );
@@ -485,7 +485,7 @@ describe('apiClient', () => {
   });
 
   describe('importConversationMessages', () => {
-    it('posts to /api/v1/chat/conversations/:id/import', async () => {
+    it('posts to /api/chat/conversations/:id/import', async () => {
       mockHttp.post.mockResolvedValueOnce({ data: { success: true, imported_count: 2 } });
       const messages = [
         { id: 'm1', role: 'user' as const, content: 'hi', createdAt: '2024-01-01' },
@@ -500,7 +500,7 @@ describe('apiClient', () => {
       mockHttp.post.mockResolvedValueOnce({ data: { challenge: 'abc' } });
       await apiClient.passkeyChallenge('test@example.com');
       expect(mockHttp.post).toHaveBeenCalledWith(
-        '/api/v1/auth/passkey/challenge',
+        '/api/auth/passkey/challenge',
         { email: 'test@example.com' },
         undefined
       );
@@ -508,11 +508,11 @@ describe('apiClient', () => {
   });
 
   describe('logout', () => {
-    it('calls POST /api/v1/auth/logout', async () => {
+    it('calls POST /api/auth/logout', async () => {
       mockHttp.post.mockResolvedValueOnce({ data: { ok: true } });
       await apiClient.logout();
       expect(mockHttp.post).toHaveBeenCalledWith(
-        '/api/v1/auth/logout',
+        '/api/auth/logout',
         undefined,
         expect.anything()
       );
@@ -524,7 +524,7 @@ describe('apiClient', () => {
       mockHttp.post.mockResolvedValueOnce({ data: { ok: true } });
       await apiClient.reorderProviders([1, 2, 3]);
       expect(mockHttp.post).toHaveBeenCalledWith(
-        '/api/v1/providers/reorder',
+        '/api/providers/reorder',
         { providerIds: [1, 2, 3] },
         undefined
       );
@@ -532,7 +532,7 @@ describe('apiClient', () => {
   });
 
   describe('getGlobalSettings', () => {
-    it('calls GET /api/v1/settings/', async () => {
+    it('calls GET /api/settings/', async () => {
       mockHttp.get.mockResolvedValueOnce({ data: { setting: 'value' } });
       const result = await apiClient.getGlobalSettings();
       expect(result).toEqual({ setting: 'value' });
@@ -540,11 +540,11 @@ describe('apiClient', () => {
   });
 
   describe('updateGlobalSetting', () => {
-    it('calls PATCH /api/v1/settings/:key', async () => {
+    it('calls PATCH /api/settings/:key', async () => {
       mockHttp.patch.mockResolvedValueOnce({ data: { ok: true } });
       await apiClient.updateGlobalSetting('theme', 'dark');
       expect(mockHttp.patch).toHaveBeenCalledWith(
-        '/api/v1/settings/theme',
+        '/api/settings/theme',
         { value: 'dark' },
         undefined
       );

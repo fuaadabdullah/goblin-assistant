@@ -8,13 +8,13 @@ vi.mock('../../utils/auth-session', () => ({
   clearAuthSession: vi.fn(),
 }));
 
-import { backendHttp, V1_API_PREFIX } from '../../lib/api/shared';
+import { frontendHttp } from '../../lib/api/shared';
 import * as raptorService from '../raptor';
 
 let mock: MockAdapter;
 
 beforeEach(() => {
-  mock = new MockAdapter(backendHttp);
+  mock = new MockAdapter(frontendHttp);
 });
 
 afterEach(() => {
@@ -24,15 +24,14 @@ afterEach(() => {
 describe('raptor service', () => {
   describe('raptorStart', () => {
     it('should call POST /raptor/start', async () => {
-      mock.onPost(`${V1_API_PREFIX}/raptor/start`).reply(200);
-
+      const route = '/api/raptor/start';
+      mock.onPost(route).reply(200);
       await raptorService.raptorStart();
-
-      expect(mock.history.post.some((r) => r.url === `${V1_API_PREFIX}/raptor/start`)).toBe(true);
+      expect(mock.history.post.some((r) => r.url === route)).toBe(true);
     });
 
     it('should propagate errors from the API', async () => {
-      mock.onPost(`${V1_API_PREFIX}/raptor/start`).reply(500, { detail: 'Start failed' });
+      mock.onPost('/api/raptor/start').reply(500, { detail: 'Start failed' });
 
       await expect(raptorService.raptorStart()).rejects.toThrow();
     });
@@ -40,11 +39,11 @@ describe('raptor service', () => {
 
   describe('raptorStop', () => {
     it('should call POST /raptor/stop', async () => {
-      mock.onPost(`${V1_API_PREFIX}/raptor/stop`).reply(200);
+      mock.onPost('/api/raptor/stop').reply(200);
 
       await raptorService.raptorStop();
 
-      expect(mock.history.post.some((r) => r.url === `${V1_API_PREFIX}/raptor/stop`)).toBe(true);
+      expect(mock.history.post.some((r) => r.url === '/api/raptor/stop')).toBe(true);
     });
   });
 
@@ -54,7 +53,7 @@ describe('raptor service', () => {
         running: true,
         config_file: '/path/to/config.yaml',
       };
-      mock.onGet(`${V1_API_PREFIX}/raptor/status`).reply(200, mockStatus);
+      mock.onGet('/api/raptor/status').reply(200, mockStatus);
 
       const status = await raptorService.raptorStatus();
 
@@ -62,7 +61,7 @@ describe('raptor service', () => {
     });
 
     it('should propagate API errors', async () => {
-      mock.onGet(`${V1_API_PREFIX}/raptor/status`).reply(503, { detail: 'Service unavailable' });
+      mock.onGet('/api/raptor/status').reply(503, { detail: 'Service unavailable' });
 
       await expect(raptorService.raptorStatus()).rejects.toThrow();
     });
@@ -73,7 +72,7 @@ describe('raptor service', () => {
       const mockLogs: raptorService.RaptorLogsResponse = {
         log_tail: '2026-02-18 10:00:00 INFO Raptor started\n2026-02-18 10:00:01 INFO Ready',
       };
-      mock.onGet(`${V1_API_PREFIX}/raptor/logs`).reply(200, mockLogs);
+      mock.onGet('/api/raptor/logs').reply(200, mockLogs);
 
       const logs = await raptorService.raptorLogs();
 
@@ -83,23 +82,19 @@ describe('raptor service', () => {
 
   describe('raptorDemo', () => {
     it('should run a Raptor demo with specified mode', async () => {
-      mock.onPost(`${V1_API_PREFIX}/raptor/demo/embeddings`).reply(200);
+      mock.onPost('/api/raptor/demo/embeddings').reply(200);
 
       await raptorService.raptorDemo('embeddings');
 
-      expect(
-        mock.history.post.some((r) => r.url === `${V1_API_PREFIX}/raptor/demo/embeddings`)
-      ).toBe(true);
+      expect(mock.history.post.some((r) => r.url === '/api/raptor/demo/embeddings')).toBe(true);
     });
 
     it('should support different demo modes', async () => {
-      mock.onPost(`${V1_API_PREFIX}/raptor/demo/chat`).reply(200);
+      mock.onPost('/api/raptor/demo/chat').reply(200);
 
       await raptorService.raptorDemo('chat');
 
-      expect(mock.history.post.some((r) => r.url === `${V1_API_PREFIX}/raptor/demo/chat`)).toBe(
-        true
-      );
+      expect(mock.history.post.some((r) => r.url === '/api/raptor/demo/chat')).toBe(true);
     });
   });
 });

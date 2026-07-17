@@ -75,4 +75,48 @@ describe('feature flags config', () => {
       expect.objectContaining({ debugMode: true })
     );
   });
+
+  it('supports runtime overrides, clearing, and experiment bucketing', async () => {
+    const {
+      getRuntimeFlag,
+      setRuntimeFlag,
+      clearRuntimeFlag,
+      clearAllRuntimeFlags,
+      getExperimentVariant,
+      setExperimentOverride,
+      clearExperimentOverride,
+      getEnabledModules,
+    } = await loadFeaturesModule();
+
+    expect(getEnabledModules()).toEqual({
+      sandbox: false,
+      search: true,
+      admin: false,
+    });
+
+    expect(getRuntimeFlag('search')).toBe(true);
+    setRuntimeFlag('search', false);
+    expect(getRuntimeFlag('search')).toBe(false);
+    setRuntimeFlag('admin', true);
+    expect(getRuntimeFlag('admin')).toBe(true);
+    clearRuntimeFlag('search');
+    expect(getRuntimeFlag('search')).toBe(true);
+    clearAllRuntimeFlags();
+    expect(getRuntimeFlag('admin')).toBe(false);
+
+    const experiment = {
+      name: 'chat-composer',
+      variants: ['control', 'treatment'] as const,
+      weights: [0.25, 0.75] as const,
+    };
+
+    const defaultVariant = getExperimentVariant(experiment, 'user-1');
+    expect(defaultVariant).toMatch(/control|treatment/);
+
+    setExperimentOverride('chat-composer', 'treatment');
+    expect(getExperimentVariant(experiment, 'user-1')).toBe('treatment');
+
+    clearExperimentOverride('chat-composer');
+    expect(getExperimentVariant(experiment, 'user-1')).toBe(defaultVariant);
+  });
 });

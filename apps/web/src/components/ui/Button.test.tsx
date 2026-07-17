@@ -50,6 +50,20 @@ describe('Button', () => {
     expect(button).toHaveTextContent('Launch');
   });
 
+  test('renders loading state without the icon', () => {
+    const { getByRole, queryByText } = render(
+      <Button loading icon="🚀">
+        Launch
+      </Button>
+    );
+
+    const button = getByRole('button', { name: /launch/i });
+    expect(button).toBeDisabled();
+    expect(button).toHaveAttribute('aria-busy', 'true');
+    expect(queryByText('🚀')).not.toBeInTheDocument();
+    expect(button).toHaveTextContent('Launch');
+  });
+
   test('can be disabled', () => {
     const handleClick = vi.fn();
     const { getByRole } = render(

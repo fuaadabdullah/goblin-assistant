@@ -31,11 +31,6 @@ vi.mock('@/lib/api', () => ({
     logout: vi.fn(),
     validateToken: vi.fn(),
   },
-  getBackend: vi.fn(),
-  postBackend: vi.fn(),
-  putBackend: vi.fn(),
-  patchBackend: vi.fn(),
-  V1_CHAT_PREFIX: '/api/v1/chat',
 }));
 
 vi.mock('@/lib/provider-keys', () => ({
@@ -245,7 +240,7 @@ describe('runtimeClient runtime delegation', () => {
     await runtimeClient.executeTaskStreaming('goblin', 'task', onChunk, onComplete);
 
     expect(globalThis.fetch).toHaveBeenCalledWith(
-      'https://goblin-backend-dt30.onrender.com/api/v1/chat/stream',
+      '/api/chat/stream',
       expect.anything()
     );
     expect(onChunk).toHaveBeenCalledWith(expect.objectContaining({ content: 'hello ' }));

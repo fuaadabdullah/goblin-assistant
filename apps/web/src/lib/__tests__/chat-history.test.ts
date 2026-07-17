@@ -1,14 +1,24 @@
 import {
-  markChatMigrationCompleted,
+  buildThreadKey,
+  clearPreloadedChat,
+  preloadRecentChat,
+  readPreloadedChat,
   readChatMessages,
   readChatMigrationMeta,
+  readChatThreads,
+  removeChatMessages,
+  removeChatThread,
+  markChatMigrationCompleted,
   resetChatMigrationMeta,
+  sortChatThreads,
   writeChatMessages,
+  writeChatThreads,
 } from '../chat-history';
 
 describe('chat-history', () => {
   beforeEach(() => {
     window.localStorage.clear();
+    window.sessionStorage.clear();
   });
 
   test('round-trips messages with meta', () => {
@@ -77,5 +87,111 @@ describe('chat-history', () => {
 
     resetChatMigrationMeta();
     expect(readChatMigrationMeta()).toEqual({ migrationCompleted: false });
+  });
+
+  test('reads, sorts, writes, and removes legacy chat threads', () => {
+    const threads = [
+      {
+        id: 'thread-old',
+        source: 'legacy-local' as const,
+        threadKey: buildThreadKey('legacy-local', 'thread-old'),
+        title: 'Old thread',
+        snippet: 'old',
+        createdAt: '2026-01-01T00:00:00.000Z',
+        updatedAt: '2026-01-01T00:00:00.000Z',
+      },
+      {
+        id: 'thread-new',
+        source: 'legacy-local' as const,
+        threadKey: buildThreadKey('legacy-local', 'thread-new'),
+        title: 'New thread',
+        snippet: 'new',
+        createdAt: '2026-01-02T00:00:00.000Z',
+        updatedAt: '2026-01-02T00:00:00.000Z',
+      },
+      {
+        id: 'backend-thread',
+        source: 'backend' as const,
+        threadKey: buildThreadKey('backend', 'backend-thread'),
+        title: 'Ignored backend thread',
+        snippet: '',
+        createdAt: '2026-01-03T00:00:00.000Z',
+        updatedAt: '2026-01-03T00:00:00.000Z',
+      },
+    ];
+
+    expect(sortChatThreads([threads[0]!, threads[1]!]).map((thread) => thread.id)).toEqual([
+      'thread-new',
+      'thread-old',
+    ]);
+
+    writeChatThreads(threads as any);
+    expect(readChatThreads().map((thread) => thread.id)).toEqual(['thread-new', 'thread-old']);
+
+    removeChatThread('thread-new');
+    expect(readChatThreads().map((thread) => thread.id)).toEqual(['thread-old']);
+  });
+
+  test('preloads and clears the most recent chat payload', () => {
+    writeChatThreads([
+      {
+        id: 'thread-1',
+        source: 'legacy-local',
+        threadKey: buildThreadKey('legacy-local', 'thread-1'),
+        title: 'Thread 1',
+        snippet: 'Hello',
+        createdAt: '2026-01-01T00:00:00.000Z',
+        updatedAt: '2026-01-03T00:00:00.000Z',
+      } as any,
+    ]);
+
+    writeChatMessages('thread-1', [
+      {
+        id: 'm1',
+        createdAt: '2026-01-03T00:00:00.000Z',
+        role: 'user',
+        content: 'one',
+      },
+      {
+        id: 'm2',
+        createdAt: '2026-01-03T00:01:00.000Z',
+        role: 'assistant',
+        content: 'two',
+      },
+    ] as any);
+
+    const preloaded = preloadRecentChat(1);
+    expect(preloaded).toEqual({
+      threadId: 'thread-1',
+      messages: [
+        {
+          id: 'm2',
+          createdAt: '2026-01-03T00:01:00.000Z',
+          role: 'assistant',
+          content: 'two',
+        },
+      ],
+    });
+
+    const stored = readPreloadedChat();
+    expect(stored).toEqual(preloaded);
+
+    clearPreloadedChat();
+    expect(readPreloadedChat()).toBeNull();
+  });
+
+  test('removes stored messages', () => {
+    writeChatMessages('thread-2', [
+      {
+        id: 'm1',
+        createdAt: '2026-01-03T00:00:00.000Z',
+        role: 'user',
+        content: 'hello',
+      },
+    ] as any);
+
+    expect(readChatMessages('thread-2')).toHaveLength(1);
+    removeChatMessages('thread-2');
+    expect(readChatMessages('thread-2')).toHaveLength(0);
   });
 });

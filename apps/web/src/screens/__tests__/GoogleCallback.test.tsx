@@ -27,8 +27,10 @@ vi.mock('@/config/backendOrigin', () => ({
 
 vi.mock('@/utils/dev-log', () => ({ devError: vi.fn(), devWarn: vi.fn(), devLog: vi.fn() }));
 
-import GoogleCallback from '../GoogleCallback';
+import * as GoogleCallbackModule from '../GoogleCallback';
 import { persistAuthSession } from '@/utils/auth-session';
+
+const GoogleCallback = GoogleCallbackModule.default;
 
 function renderWithClient(ui: React.ReactElement) {
   const qc = new QueryClient({ defaultOptions: { queries: { retry: false } } });
@@ -49,6 +51,10 @@ describe('GoogleCallback', () => {
   it('renders loading state', () => {
     renderWithClient(<GoogleCallback />);
     expect(screen.getByText('Completing sign in...')).toBeInTheDocument();
+  });
+
+  it('does not expose legacy Pages Router data hooks', () => {
+    expect('getServerSideProps' in GoogleCallbackModule).toBe(false);
   });
 
   it('redirects on OAuth error param', async () => {
@@ -80,7 +86,7 @@ describe('GoogleCallback', () => {
     renderWithClient(<GoogleCallback />);
     await waitFor(() => {
       expect(mockFetch).toHaveBeenCalledWith(
-        'http://api.example.test:8000/api/v1/auth/google/callback',
+        '/api/auth/google/callback',
         expect.objectContaining({
           method: 'POST',
           body: JSON.stringify({ code: 'abc123', state: 'xyz' }),
