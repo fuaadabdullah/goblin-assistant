@@ -14,6 +14,7 @@ from api.main import add_contract_lifecycle_headers
 from api.observability.migration_metrics import migration_metrics
 from api.routes import account_router as account_module
 from api.routes import support_router as support_module
+from api.routing_router import router as routing_router
 from api.search_router import router as search_router
 
 
@@ -140,3 +141,20 @@ def test_versioned_aliases_preserve_semantic_lifecycle_classes():
     assert ops.headers["X-API-Lifecycle"] == "stable"
     assert secrets.headers["X-API-Lifecycle"] == "stable"
     assert stable.headers["X-API-Lifecycle"] == "stable"
+
+
+def test_explicitly_deprecated_v1_routing_routes_emit_legacy_headers():
+    migration_metrics.reset_for_tests()
+    app = FastAPI()
+    app.middleware("http")(add_contract_lifecycle_headers)
+    app.include_router(routing_router, prefix="/api/v1")
+
+    client = TestClient(app)
+
+    providers = client.get("/api/v1/routing/providers")
+    departments = client.get("/api/v1/routing/departments")
+
+    assert providers.headers["X-API-Lifecycle"] == "legacy"
+    assert providers.headers["Deprecation"] == "true"
+    assert providers.headers["Sunset"] == "2026-09-15"
+    assert departments.headers["X-API-Lifecycle"] == "stable"

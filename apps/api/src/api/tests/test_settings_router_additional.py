@@ -35,7 +35,6 @@ def _make_client():
         )
 
     app.include_router(router, prefix="/api/v1")
-    app.include_router(router)
     return TestClient(app)
 
 
@@ -97,13 +96,10 @@ def test_get_settings_success():
         ),
         _make_client() as client,
     ):
-        response = client.get("/settings/")
-        legacy_response = client.get("/api/v1/settings/")
+        response = client.get("/api/v1/settings/")
 
     assert response.status_code == 200
-    assert legacy_response.status_code == 200
     body = response.json()["data"]
-    assert legacy_response.json()["data"] == body
     assert body["default_provider"] == "openai"
     assert body["default_model"] == "gpt-4o-mini"
     assert body["providers"][0]["enabled"] is True
@@ -123,13 +119,10 @@ def test_get_settings_failure():
         ),
         _make_client() as client,
     ):
-        response = client.get("/settings/")
-        legacy_response = client.get("/api/v1/settings/")
+        response = client.get("/api/v1/settings/")
 
     assert response.status_code == 500
-    assert legacy_response.status_code == 500
     assert response.json()["error"]["code"] == "SETTINGS_FETCH_FAILED"
-    assert legacy_response.json()["error"]["code"] == "SETTINGS_FETCH_FAILED"
 
 
 def test_update_provider_and_model_settings():
@@ -155,7 +148,7 @@ def test_update_provider_and_model_settings():
         ),
     ):
         provider_resp = client.put(
-            "/settings/providers/openai",
+            "/api/v1/settings/providers/openai",
             json={
                 "name": "openai",
                 "api_key": "sk-test",
@@ -168,7 +161,7 @@ def test_update_provider_and_model_settings():
         assert provider_resp.json()["data"]["message"] == "Settings updated for provider: openai"
 
         model_resp = client.put(
-            "/settings/models/gpt-4o-mini",
+            "/api/v1/settings/models/gpt-4o-mini",
             json={
                 "name": "gpt-4o-mini",
                 "provider": "openai",

@@ -349,7 +349,10 @@ class TestSecretsHealth:
             async def health(self):
                 raise RuntimeError("boom")
 
-        app.dependency_overrides[get_secrets_adapter] = lambda: BrokenAdapter()
+        def override_secrets_adapter() -> BrokenAdapter:
+            return BrokenAdapter()
+
+        app.dependency_overrides[get_secrets_adapter] = override_secrets_adapter
         client = TestClient(app, raise_server_exceptions=False)
 
         response = client.get("/api/v1/secrets/health")

@@ -216,13 +216,15 @@ def test_send_message_uses_latest_user_message_and_honors_provider(
     assert data["correlation_id"] == "cid-123"
 
 
-def test_routing_providers_endpoint(client):
-    """Test the routing providers endpoint."""
-    response = client.get("/routing/providers")
+def test_canonical_provider_inventory_endpoint(client):
+    """Test the canonical provider inventory endpoint."""
+    response = client.get("/api/v1/providers/models")
     assert response.status_code == 200
     data = _unwrap(response)
-    assert isinstance(data, list)
-    assert len(data) > 0
+    assert isinstance(data, dict)
+    assert "providers" in data
+    assert "models" in data
+    assert "router_models" in data
 
 
 def test_api_keys_status_endpoint(client):

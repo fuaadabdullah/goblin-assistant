@@ -14,6 +14,7 @@ from typing import Any
 
 import pytest
 
+from api.core.tokenization import count_tokens, trim_to_tokens
 from api.services.message_classifier import MessageClassifier
 from api.services.retrieval_service._context_bundle import build_context_bundle
 from api.services.retrieval_service._token_budget import (
@@ -21,7 +22,6 @@ from api.services.retrieval_service._token_budget import (
     estimate_tokens,
     trim_item_to_token_budget,
 )
-from api.utils.tokenizer import count_tokens, trim_to_tokens
 
 # ---------------------------------------------------------------------------
 # Helpers
@@ -228,7 +228,7 @@ def test_bench_classify_message(benchmark, label, args):
 
 
 # ---------------------------------------------------------------------------
-# utils.tokenizer
+# core.tokenization
 # ---------------------------------------------------------------------------
 
 

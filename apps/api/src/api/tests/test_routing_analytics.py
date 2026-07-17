@@ -12,7 +12,7 @@ from api.routes.routing_analytics import router
 
 def _client() -> TestClient:
     app = FastAPI()
-    app.include_router(router)
+    app.include_router(router, prefix="/api/v1")
     return TestClient(app)
 
 
@@ -37,7 +37,7 @@ def test_get_provider_health_returns_summary():
             return_value=["openai"],
         ),
     ):
-        response = client.get("/routing/health")
+        response = client.get("/api/v1/routing/health")
 
     assert response.status_code == 200
     assert response.json()["available"] is True
@@ -58,7 +58,7 @@ def test_get_provider_health_detail_success():
             return_value={"status": "healthy"},
         ),
     ):
-        response = client.get("/routing/health/openai")
+        response = client.get("/api/v1/routing/health/openai")
 
     assert response.status_code == 200
     assert response.json()["status"] == "healthy"
@@ -78,7 +78,7 @@ def test_get_provider_health_detail_not_found():
             return_value={"error": "not found"},
         ),
     ):
-        response = client.get("/routing/health/missing")
+        response = client.get("/api/v1/routing/health/missing")
 
     assert response.status_code == 404
     assert response.json()["detail"] == "not found"
@@ -94,7 +94,7 @@ def test_get_cost_tracking_returns_router_status():
         "api.routes.routing_analytics.smart_router.cost_tracker",
         fake_tracker,
     ):
-        response = client.get("/routing/costs")
+        response = client.get("/api/v1/routing/costs")
 
     assert response.status_code == 200
     assert response.json()["requests"] == 10
@@ -122,7 +122,7 @@ def test_get_routing_status_includes_inventory_and_router_status():
             return_value=fake_inventory,
         ),
     ):
-        response = client.get("/routing/status")
+        response = client.get("/api/v1/routing/status")
 
     assert response.status_code == 200
     data = response.json()
@@ -134,7 +134,7 @@ def test_get_routing_status_includes_inventory_and_router_status():
 def test_list_routing_strategies_returns_all_strategies():
     client = _client()
 
-    response = client.get("/routing/strategies")
+    response = client.get("/api/v1/routing/strategies")
 
     assert response.status_code == 200
     data = response.json()
@@ -176,7 +176,7 @@ def test_list_available_providers_maps_provider_data():
             return_value={"status": "healthy"},
         ),
     ):
-        response = client.get("/routing/providers")
+        response = client.get("/api/v1/routing/providers/analytics")
 
     assert response.status_code == 200
     providers = response.json()["providers"]
@@ -192,7 +192,7 @@ def test_test_provider_success():
         new_callable=AsyncMock,
         return_value={"status": "healthy"},
     ):
-        response = client.post("/routing/test/openai")
+        response = client.post("/api/v1/routing/test/openai")
 
     assert response.status_code == 200
     assert response.json()["status"] == "healthy"
@@ -206,7 +206,7 @@ def test_test_provider_not_found():
         new_callable=AsyncMock,
         return_value={"error": "missing"},
     ):
-        response = client.post("/routing/test/missing")
+        response = client.post("/api/v1/routing/test/missing")
 
     assert response.status_code == 404
     assert response.json()["detail"] == "missing"
@@ -230,7 +230,7 @@ def test_get_routing_audit_clamps_limit_and_returns_count():
             fake_hybrid,
         ),
     ):
-        response = client.get("/routing/audit?limit=5000")
+        response = client.get("/api/v1/routing/audit?limit=5000")
 
     assert response.status_code == 200
     data = response.json()
@@ -248,7 +248,7 @@ def test_get_routing_weight_returns_cost_and_latency_split():
         "api.routes.routing_analytics.hybrid_router",
         fake_hybrid,
     ):
-        response = client.get("/routing/weight")
+        response = client.get("/api/v1/routing/weight")
 
     assert response.status_code == 200
     data = response.json()

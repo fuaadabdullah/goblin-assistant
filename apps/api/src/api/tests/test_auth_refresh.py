@@ -33,7 +33,7 @@ from api.storage.models import UserSessionModel
 def auth_app():
     """Create test FastAPI app with auth routes."""
     app = FastAPI()
-    app.include_router(router)
+    app.include_router(router, prefix="/api/v1")
     return app
 
 

@@ -68,6 +68,15 @@ class TestGetProviders:
             assert response.status_code == 200
             assert response.json() == ["general", "reasoning"]
 
+    def test_legacy_provider_routes_are_marked_deprecated_in_openapi(self, client):
+        operation = client.app.openapi()["paths"]["/api/v1/routing/providers"]["get"]
+        assert operation["deprecated"] is True
+        assert operation["x-goblin-replaced-by"] == "/api/v1/providers/models"
+
+    def test_department_routes_remain_canonical_in_openapi(self, client):
+        operation = client.app.openapi()["paths"]["/api/v1/routing/departments"]["get"]
+        assert operation.get("deprecated") is not True
+
 
 # ---------------------------------------------------------------------------
 # GET /api/v1/routing/departments  +  GET /api/v1/routing/departments/{id}
@@ -250,3 +259,8 @@ class TestRouteRequest:
                 json={"department": "general", "payload": {}},
             )
         assert captured.get("stream") is False
+
+    def test_route_endpoint_is_marked_deprecated_in_openapi(self, client):
+        operation = client.app.openapi()["paths"]["/api/v1/routing/route"]["post"]
+        assert operation["deprecated"] is True
+        assert operation["x-goblin-replaced-by"] == "/api/v1/api/route_task"

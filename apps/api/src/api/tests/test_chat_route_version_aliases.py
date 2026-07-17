@@ -106,7 +106,6 @@ def test_mount_versioned_primary_routes_includes_public_v1_routes() -> None:
     paths = {route.path for route in app.routes}
     assert "/api/v1/health" in paths
     assert "/api/v1/settings/" in paths
-    assert "/settings/" in paths
     assert "/api/v1/providers/models" in paths
     assert "/api/v1/chat/conversations" in paths
     assert "/api/v1/api/chat" in paths

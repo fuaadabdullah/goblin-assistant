@@ -170,3 +170,13 @@ def test_provider_models_legacy_route_is_not_mounted():
 
     assert v1.status_code == 200
     assert client.get("/providers/models").status_code == 404
+
+
+def test_provider_models_openapi_marks_route_as_canonical():
+    app = FastAPI()
+    app.include_router(router, prefix="/api/v1")
+
+    operation = app.openapi()["paths"]["/api/v1/providers/models"]["get"]
+
+    assert operation["x-goblin-route-contract"] == "canonical-routing-inventory"
+    assert operation.get("deprecated") is not True

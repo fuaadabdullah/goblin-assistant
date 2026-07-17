@@ -6,7 +6,7 @@ from api.ops_health import ops_health_router
 
 def _client() -> TestClient:
     app = FastAPI()
-    app.include_router(ops_health_router, prefix="/ops")
+    app.include_router(ops_health_router, prefix="/api/v1/ops")
     return TestClient(app)
 
 
@@ -17,7 +17,7 @@ def test_ops_health_summary_preserves_exception_message(monkeypatch):
 
     monkeypatch.setattr("api.ops_health.build_ops_health_summary", fake_summary)
 
-    response = _client().get("/ops/health/summary")
+    response = _client().get("/api/v1/ops/health/summary")
 
     assert response.status_code == 500
     assert response.json()["detail"] == "Health summary failed: summary unavailable"
@@ -30,7 +30,7 @@ def test_ops_provider_status_preserves_exception_message(monkeypatch):
 
     monkeypatch.setattr("api.ops_health.build_provider_status_payload", fake_status)
 
-    response = _client().get("/ops/providers/status")
+    response = _client().get("/api/v1/ops/providers/status")
 
     assert response.status_code == 500
     assert response.json()["detail"] == "Provider status failed: provider status unavailable"

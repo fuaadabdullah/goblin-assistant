@@ -32,7 +32,6 @@ def _client() -> TestClient:
         )
 
     app.include_router(router, prefix="/api/v1")
-    app.include_router(router)
     return TestClient(app)
 
 
@@ -177,38 +176,9 @@ def test_test_provider_connection_reports_health_states():
     assert unhealthy.json()["data"]["message"] == "timeout"
 
 
-def test_settings_legacy_route_is_kept_for_compatibility():
+def test_legacy_settings_route_returns_404():
     client = _client()
 
-    fake_provider = MagicMock()
-    fake_provider.default_model = "gpt-4o-mini"
+    response = client.get("/settings/")
 
-    with (
-        patch(
-            "api.settings_router.dispatcher.get_provider_inventory",
-            new_callable=AsyncMock,
-            return_value=[{"id": "openai", "configured": True, "models": ["gpt-4o-mini"]}],
-        ),
-        patch("api.settings_router.top_providers_for", return_value=["openai"]),
-        patch(
-            "api.settings_router.dispatcher.get_provider_config",
-            return_value={"default_model": "gpt-4o-mini"},
-        ),
-        patch("api.settings_router.dispatcher.get_provider", return_value=fake_provider),
-        patch(
-            "api.settings_router.SaaSSettingsService.list_provider_settings",
-            new_callable=AsyncMock,
-            return_value=[],
-        ),
-        patch(
-            "api.settings_router.SaaSSettingsService.get_global_setting",
-            new_callable=AsyncMock,
-            return_value=None,
-        ),
-    ):
-        v1 = client.get("/api/v1/settings/")
-        legacy = client.get("/settings/")
-
-    assert v1.status_code == 200
-    assert legacy.status_code == 200
-    assert legacy.json() == v1.json()
+    assert response.status_code == 404

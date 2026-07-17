@@ -15,7 +15,7 @@ from api import api_router
 
 def _client() -> TestClient:
     app = FastAPI()
-    app.include_router(api_router.router)
+    app.include_router(api_router.router, prefix="/api/v1")
     return TestClient(app)
 
 
@@ -39,7 +39,7 @@ def test_contract_chat_success_shape():
         },
     ):
         response = client.post(
-            "/api/chat",
+            "/api/v1/api/chat",
             json={"messages": [{"role": "user", "content": "ping"}]},
         )
 
@@ -53,7 +53,7 @@ def test_contract_chat_success_shape():
 
 def test_contract_generate_validation_shape():
     client = _client()
-    response = client.post("/api/generate", json={"model": "gpt-4o-mini"})
+    response = client.post("/api/v1/api/generate", json={"model": "gpt-4o-mini"})
 
     assert response.status_code == CRITICAL_STATUS_TABLE["generate_missing_prompt"]
     payload = response.json()
@@ -64,7 +64,7 @@ def test_contract_generate_validation_shape():
 
 def test_contract_stream_poll_missing_shape():
     client = _client()
-    response = client.get("/api/route_task_stream_poll/non-existent")
+    response = client.get("/api/v1/api/route_task_stream_poll/non-existent")
 
     assert response.status_code == CRITICAL_STATUS_TABLE["stream_missing"]
     payload = response.json()

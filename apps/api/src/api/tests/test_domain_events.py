@@ -99,7 +99,7 @@ def test_debug_events_endpoints_return_success_envelopes(monkeypatch) -> None:
     app = FastAPI()
     debug_router = importlib.import_module("api.observability.debug_router")
 
-    app.include_router(debug_router.router)
+    app.include_router(debug_router.router, prefix="/api/v1")
     client = TestClient(app)
 
     event = EventEnvelope(
@@ -115,17 +115,19 @@ def test_debug_events_endpoints_return_success_envelopes(monkeypatch) -> None:
     monkeypatch.setattr(debug_router.event_emitter, "get_event", AsyncMock(return_value=event))
     assert event is not None
 
-    list_response = client.get("/debug/events", params={"event_type": "chat.message.created"})
+    list_response = client.get(
+        "/api/v1/debug/events", params={"event_type": "chat.message.created"}
+    )
     assert list_response.status_code == 200
     list_body = list_response.json()
     assert list_body["success"] is True
     assert list_body["data"]["total"] == 1
     assert list_body["data"]["events"][0]["event_id"] == event.event_id
 
-    detail_response = client.get(f"/debug/events/{event.event_id}")
+    detail_response = client.get(f"/api/v1/debug/events/{event.event_id}")
     assert detail_response.status_code == 200
     assert detail_response.json()["data"]["payload"]["message_id"] == "m-1"
 
     monkeypatch.setattr(debug_router.event_emitter, "get_event", AsyncMock(return_value=None))
-    missing_response = client.get("/debug/events/missing")
+    missing_response = client.get("/api/v1/debug/events/missing")
     assert missing_response.status_code == 404

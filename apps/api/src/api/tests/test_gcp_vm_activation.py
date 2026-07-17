@@ -10,6 +10,8 @@ from api.providers.dispatcher import ProviderDispatcher
 from api.providers.provider_config_runtime import ProviderToml
 from api.providers.vertex_provider import VertexAIProvider
 
+REPO_ROOT = Path(__file__).resolve().parents[5]
+
 
 @pytest.mark.asyncio
 async def test_gcp_vm_vertex_default_model_routes_real_provider(monkeypatch) -> None:
@@ -26,8 +28,7 @@ async def test_gcp_vm_vertex_default_model_routes_real_provider(monkeypatch) -> 
         ).decode("ascii"),
     )
 
-    repo_root = Path(__file__).resolve().parents[5]
-    provider_toml = ProviderToml.load(repo_root / "config" / "providers.toml")
+    provider_toml = ProviderToml.load(REPO_ROOT / "config" / "providers.toml")
     gcp_vm_cfg = provider_toml.providers["gcp_vm"].model_dump()
 
     dispatcher = ProviderDispatcher(configs={"gcp_vm": gcp_vm_cfg})

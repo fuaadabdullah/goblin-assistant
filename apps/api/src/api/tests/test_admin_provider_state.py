@@ -223,3 +223,11 @@ def test_provider_state_route_is_mounted_in_v1(monkeypatch, provider_state_env):
     assert response.status_code == 200
     assert response.json()["summary"]["total_providers"] == 2
     assert response.json()["providers"]["local_stub"]["skip_reason"] is None
+
+
+def test_provider_state_route_remains_hidden_from_openapi(provider_state_env):
+    _ = provider_state_env
+    app = FastAPI()
+    app.include_router(admin_router, prefix="/api/v1")
+
+    assert "/api/v1/admin/providers/state" not in app.openapi()["paths"]
