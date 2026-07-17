@@ -122,6 +122,7 @@ class TestGoogleOAuthHelpers:
 
         assert "client_id=client-id" in url
         assert "redirect_uri=https%3A%2F%2Fapp%2Fcallback" in url
+        assert "scope=openid+email" in url
         assert "state=fixed-state" in url
 
     def test_get_authorization_url_requires_client_id(self, monkeypatch):

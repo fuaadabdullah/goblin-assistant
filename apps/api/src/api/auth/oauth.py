@@ -33,7 +33,9 @@ class GoogleOAuth:
         params = {
             "client_id": GOOGLE_CLIENT_ID,
             "redirect_uri": GOOGLE_REDIRECT_URI,
-            "scope": "openid email profile",
+            # Keep the request to the minimal OIDC scope set that the
+            # configured Google client allows.
+            "scope": "openid email",
             "response_type": "code",
             "access_type": "offline",
             "prompt": "consent",
