@@ -37,6 +37,7 @@ This directory is the canonical ADR location (moved from `docs/adr/`).
 - `2026-06-20-documentation-ownership.md`
 - `2026-06-20-deprecation-lifecycle.md`
 - `2026-07-17-settings-root-alias-retirement.md`
+- `2026-07-17-supabase-only-auth.md`
 
 ## Indexed ADRs
 
@@ -49,6 +50,7 @@ Stable ADR IDs are the canonical reference key. Filenames are convenience labels
 | `ADR-0003` | Thin Next.js Proxies vs Direct Backend Calls | `2026-07-06-nextjs-proxies-vs-direct.md` | accepted |
 | `ADR-0004` | Sandbox Architecture and Job Execution Model | `2026-07-06-sandbox-architecture.md` | accepted |
 | `ADR-0005` | Settings Root Alias Retirement | `2026-07-17-settings-root-alias-retirement.md` | accepted |
+| `ADR-0006` | Supabase-Only Authentication | `2026-07-17-supabase-only-auth.md` | accepted |
 
 ## Status
 

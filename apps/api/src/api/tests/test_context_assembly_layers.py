@@ -579,6 +579,12 @@ async def test_assemble_working_memory_paths(monkeypatch):
 # -----------------------------
 
 
+class _FixedDatetime(datetime):
+    @classmethod
+    def now(cls, _tz=None):
+        return datetime(2026, 7, 17, 12, 34, 56, tzinfo=timezone.utc)
+
+
 @pytest.mark.asyncio
 async def test_assemble_system_layer_budget_gate():
     layer = await sys_layer.assemble_system_layer(
@@ -610,3 +616,30 @@ async def test_assemble_system_layer_normal_and_trim(monkeypatch):
     assert trimmed is not None
     assert trimmed.content == "trimmed-system"
     assert trimmed.tokens == 100
+
+
+@pytest.mark.asyncio
+async def test_assemble_system_layer_trims_after_runtime_context(monkeypatch):
+    captured = {}
+
+    def _trim(text: str, limit: int) -> str:
+        captured["text"] = text
+        captured["limit"] = limit
+        return "trimmed-system"
+
+    monkeypatch.setattr(sys_layer, "datetime", _FixedDatetime)
+    monkeypatch.setattr(sys_layer, "count_tokens", lambda _text: 120)
+    monkeypatch.setattr(sys_layer, "trim_to_tokens", _trim)
+
+    trimmed = await sys_layer.assemble_system_layer(
+        remaining_tokens=200,
+        budget=ContextBudget(system_tokens=100),
+    )
+
+    assert trimmed is not None
+    assert trimmed.content == "trimmed-system"
+    assert trimmed.tokens == 100
+    assert captured["limit"] == 100
+    assert captured["text"].startswith(
+        "Runtime context:\nCurrent UTC date/time: 2026-07-17T12:34:56+00:00"
+    )

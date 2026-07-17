@@ -5,6 +5,7 @@ from fastapi import FastAPI
 from fastapi.responses import JSONResponse
 from fastapi.testclient import TestClient
 
+from api.auth.router import User, get_current_user
 from api.core.contracts import ErrorEnvelope
 from api.core.error_types import ErrorType
 from api.core.errors import DomainError
@@ -17,7 +18,7 @@ def _jwt_secret_for_app(monkeypatch):
     monkeypatch.setenv("LOCAL_LLM_API_KEY", "test-local-llm-key")
 
 
-def _make_client():
+def _make_client(current_user: User | None = None):
     app = FastAPI()
 
     @app.exception_handler(DomainError)
@@ -33,6 +34,9 @@ def _make_client():
                 }
             ).model_dump(exclude_none=True),
         )
+
+    if current_user is not None:
+        app.dependency_overrides[get_current_user] = lambda: current_user
 
     app.include_router(router, prefix="/api/v1")
     return TestClient(app)
@@ -55,6 +59,7 @@ def test_provider_models_ignores_blank_values():
 
 
 def test_get_settings_success():
+    current_user = User(id="user-1", email="user-1@example.com")
     inventory = [
         {
             "id": "openai",
@@ -94,7 +99,7 @@ def test_get_settings_success():
             new_callable=AsyncMock,
             return_value=None,
         ),
-        _make_client() as client,
+        _make_client(current_user) as client,
     ):
         response = client.get("/api/v1/settings/")
 
@@ -117,7 +122,7 @@ def test_get_settings_failure():
             new_callable=AsyncMock,
             return_value=[],
         ),
-        _make_client() as client,
+        _make_client(User(id="user-1", email="user-1@example.com")) as client,
     ):
         response = client.get("/api/v1/settings/")
 
@@ -126,8 +131,9 @@ def test_get_settings_failure():
 
 
 def test_update_provider_and_model_settings():
+    current_user = User(id="user-1", email="user-1@example.com")
     with (
-        _make_client() as client,
+        _make_client(current_user) as client,
         patch(
             "api.settings_router.SaaSSettingsService.upsert_provider_settings",
             new_callable=AsyncMock,
@@ -172,3 +178,25 @@ def test_update_provider_and_model_settings():
         )
         assert model_resp.status_code == 200
         assert model_resp.json()["data"]["message"] == "Settings updated for model: gpt-4o-mini"
+
+
+def test_patch_global_setting_accepts_valid_payload():
+    current_user = User(id="user-1", email="user-1@example.com")
+
+    with (
+        _make_client(current_user) as client,
+        patch(
+            "api.settings_router.SaaSSettingsService.set_global_setting",
+            new_callable=AsyncMock,
+            return_value={"key": "theme", "value": {"mode": "dark"}},
+        ),
+    ):
+        response = client.patch(
+            "/api/v1/settings/theme",
+            json={"value": {"mode": "dark"}},
+        )
+
+    assert response.status_code == 200
+    assert response.json()["success"] is True
+    assert response.json()["data"]["key"] == "theme"
+    assert response.json()["data"]["value"] == {"mode": "dark"}

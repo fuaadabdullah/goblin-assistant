@@ -5,6 +5,7 @@ Fixed‑cost layer: the system prompt is always included and never trimmed
 below its budget allocation.
 """
 
+from datetime import datetime, timezone
 from typing import Optional
 
 import structlog
@@ -16,6 +17,12 @@ from .models import ContextBudget, ContextLayer
 logger = structlog.get_logger()
 
 
+def _runtime_context_block() -> str:
+    """Build the runtime context prefix that stays in front of the system prompt."""
+    current_utc = datetime.now(timezone.utc).isoformat(timespec="seconds")
+    return f"Runtime context:\nCurrent UTC date/time: {current_utc}"
+
+
 async def assemble_system_layer(
     remaining_tokens: int,
     budget: ContextBudget,
@@ -25,15 +32,17 @@ async def assemble_system_layer(
         return None
 
     system_prompt = get_configured_system_prompt()
-    tokens = count_tokens(system_prompt)
+    runtime_context = _runtime_context_block()
+    enriched_prompt = f"{runtime_context}\n\n{system_prompt}"
+    tokens = count_tokens(enriched_prompt)
 
     if tokens > budget.system_tokens:
-        system_prompt = trim_to_tokens(system_prompt, budget.system_tokens)
+        enriched_prompt = trim_to_tokens(enriched_prompt, budget.system_tokens)
         tokens = budget.system_tokens
 
     return ContextLayer(
         name="system",
-        content=system_prompt,
+        content=enriched_prompt,
         tokens=tokens,
         metadata={
             "type": "system",

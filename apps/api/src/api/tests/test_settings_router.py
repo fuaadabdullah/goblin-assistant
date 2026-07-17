@@ -8,13 +8,14 @@ from fastapi import FastAPI
 from fastapi.responses import JSONResponse
 from fastapi.testclient import TestClient
 
+from api.auth.router import User, get_current_user
 from api.core.contracts import ErrorEnvelope
 from api.core.error_types import ErrorType
 from api.core.errors import DomainError
 from api.settings_router import router
 
 
-def _client() -> TestClient:
+def _client(current_user: User | None = None) -> TestClient:
     app = FastAPI()
 
     @app.exception_handler(DomainError)
@@ -31,12 +32,23 @@ def _client() -> TestClient:
             ).model_dump(exclude_none=True),
         )
 
+    if current_user is not None:
+        app.dependency_overrides[get_current_user] = lambda: current_user
+
     app.include_router(router, prefix="/api/v1")
     return TestClient(app)
 
 
-def test_get_settings_maps_inventory_to_response():
+def test_settings_rejects_anonymous_requests():
     client = _client()
+
+    response = client.get("/api/v1/settings/")
+
+    assert response.status_code == 401
+
+
+def test_get_settings_maps_inventory_to_response():
+    client = _client(User(id="user-1", email="user-1@example.com"))
 
     fake_provider = MagicMock()
     fake_provider.default_model = "gpt-4o-mini"
@@ -90,7 +102,7 @@ def test_get_settings_maps_inventory_to_response():
 
 
 def test_get_settings_returns_500_on_inventory_failure():
-    client = _client()
+    client = _client(User(id="user-1", email="user-1@example.com"))
 
     with (
         patch(
@@ -112,7 +124,7 @@ def test_get_settings_returns_500_on_inventory_failure():
 
 
 def test_update_provider_settings_rejects_blank_name():
-    client = _client()
+    client = _client(User(id="user-1", email="user-1@example.com"))
 
     response = client.put(
         "/api/v1/settings/providers/openai",
@@ -124,7 +136,7 @@ def test_update_provider_settings_rejects_blank_name():
 
 
 def test_update_model_settings_accepts_valid_payload():
-    client = _client()
+    client = _client(User(id="user-1", email="user-1@example.com"))
 
     with patch(
         "api.settings_router.SaaSSettingsService.set_global_setting",
@@ -146,7 +158,7 @@ def test_update_model_settings_accepts_valid_payload():
 
 
 def test_test_provider_connection_reports_health_states():
-    client = _client()
+    client = _client(User(id="user-1", email="user-1@example.com"))
 
     with patch(
         "api.settings_router.dispatcher.check_provider",

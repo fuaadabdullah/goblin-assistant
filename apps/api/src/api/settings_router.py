@@ -6,6 +6,7 @@ from fastapi import APIRouter, Depends
 from pydantic import BaseModel
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from api.auth.router import get_current_user
 from api.core.contracts import SuccessEnvelope
 from api.core.errors import DomainError
 from api.providers.dispatcher import dispatcher
@@ -13,7 +14,11 @@ from api.routing.router import top_providers_for
 from api.storage.database import get_db
 from api.storage.saas_service import SaaSSettingsService
 
-router = APIRouter(prefix="/settings", tags=["settings"])
+router = APIRouter(
+    prefix="/settings",
+    tags=["settings"],
+    dependencies=[Depends(get_current_user)],
+)
 
 
 class ProviderSettings(BaseModel):
