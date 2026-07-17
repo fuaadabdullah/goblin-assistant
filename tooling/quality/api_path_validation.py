@@ -2,8 +2,10 @@
 
 from __future__ import annotations
 
+import importlib.util
 import json
 import re
+import sys
 from dataclasses import dataclass
 from pathlib import Path
 from urllib.parse import urlparse
@@ -11,6 +13,7 @@ from urllib.parse import urlparse
 REPO_ROOT = Path(__file__).resolve().parents[2]
 FRONTEND_ROOTS = (REPO_ROOT / "apps" / "web" / "app", REPO_ROOT / "apps" / "web" / "src")
 MANIFEST_PATH = REPO_ROOT / "packages" / "sdk" / "openapi" / "routes.json"
+PROXY_CONTRACT_PATH = REPO_ROOT / "packages" / "shared" / "src" / "api_proxy_routes.py"
 VALID_EXTENSIONS = {".ts", ".tsx", ".js", ".jsx"}
 IGNORED_DIRS = {".git", ".next", "coverage", "dist", "node_modules"}
 IGNORED_PATH_PARTS = {"__tests__", "__mocks__", "test", "tests"}
@@ -66,27 +69,32 @@ def _compile_route_pattern(route_path: str) -> re.Pattern[str]:
     return re.compile(r"^/" + "/".join(parts) + r"/?$")
 
 
-def _discover_proxy_routes(frontend_api_dir: Path | None = None) -> set[str]:
-    api_dir = frontend_api_dir or (REPO_ROOT / "apps" / "web" / "app" / "api")
-    if not api_dir.exists():
-        return set()
+def _compile_proxy_prefix_pattern(frontend_prefix: str) -> re.Pattern[str]:
+    normalized = frontend_prefix.rstrip("/") if frontend_prefix != "/" else "/"
+    return re.compile(rf"^{re.escape(normalized)}(?:/.*)?/?$")
 
-    routes: set[str] = set()
-    for route_file in api_dir.rglob("route.ts"):
-        if any(part in IGNORED_DIRS for part in route_file.parts):
-            continue
-        relative = route_file.relative_to(api_dir)
-        route_path = "/api/" + "/".join(relative.parts[:-1])
-        route_path = route_path.rstrip("/") if route_path != "/api" else route_path
-        routes.add(route_path)
-    for route_file in api_dir.rglob("route.js"):
-        if any(part in IGNORED_DIRS for part in route_file.parts):
-            continue
-        relative = route_file.relative_to(api_dir)
-        route_path = "/api/" + "/".join(relative.parts[:-1])
-        route_path = route_path.rstrip("/") if route_path != "/api" else route_path
-        routes.add(route_path)
-    return routes
+
+def _load_proxy_contract(contract_path: Path = PROXY_CONTRACT_PATH) -> tuple[list[re.Pattern[str]], list[re.Pattern[str]]]:
+    spec = importlib.util.spec_from_file_location("api_proxy_routes_contract", contract_path)
+    if spec is None or spec.loader is None:
+        raise ImportError(f"Unable to load API proxy route contract: {contract_path}")
+
+    module = importlib.util.module_from_spec(spec)
+    sys.modules[spec.name] = module
+    spec.loader.exec_module(module)
+
+    proxy_patterns = []
+    for route in getattr(module, "PROXY_ROUTES", ()):
+        frontend_prefix = getattr(route, "frontend_prefix", None)
+        if isinstance(frontend_prefix, str) and frontend_prefix:
+            proxy_patterns.append(_compile_proxy_prefix_pattern(frontend_prefix))
+
+    explicit_patterns = []
+    for path in getattr(module, "EXPLICIT_FRONTEND_PATHS", ()):
+        if isinstance(path, str) and path:
+            explicit_patterns.append(_compile_route_pattern(path))
+
+    return proxy_patterns, explicit_patterns
 
 
 def _normalize_literal(value: str) -> str:
@@ -134,6 +142,8 @@ def _scan_frontend_paths(root: Path) -> list[PathFinding]:
             continue
         if any(part in IGNORED_DIRS for part in path.parts):
             continue
+        if path.parts[-3:-1] == ("app", "api") or "app/api" in path.as_posix():
+            continue
         if any(part in IGNORED_PATH_PARTS for part in path.parts):
             continue
 
@@ -162,10 +172,11 @@ def _scan_frontend_paths(root: Path) -> list[PathFinding]:
 def validate_frontend_api_paths(
     frontend_roots: tuple[Path, ...] = FRONTEND_ROOTS,
     manifest_path: Path = MANIFEST_PATH,
-    frontend_api_dir: Path | None = None,
+    proxy_contract_path: Path = PROXY_CONTRACT_PATH,
 ) -> list[PathFinding]:
     route_patterns = [_compile_route_pattern(path) for path in _load_manifest_paths(manifest_path)]
-    proxy_routes = _discover_proxy_routes(frontend_api_dir)
+    proxy_patterns, explicit_patterns = _load_proxy_contract(proxy_contract_path)
+    allowed_patterns = [*route_patterns, *proxy_patterns, *explicit_patterns]
 
     findings: list[PathFinding] = []
     for root in frontend_roots:
@@ -173,9 +184,7 @@ def validate_frontend_api_paths(
 
     violations: list[PathFinding] = []
     for finding in findings:
-        if finding.normalized in proxy_routes:
-            continue
-        if any(pattern.match(finding.normalized) for pattern in route_patterns):
+        if any(pattern.match(finding.normalized) for pattern in allowed_patterns):
             continue
         violations.append(finding)
     return violations
@@ -190,7 +199,7 @@ def main() -> int:
         for finding in violations:
             print(f"  - {finding.file.relative_to(REPO_ROOT)}:{finding.line} -> {finding.literal}")
         print(
-            "Use packages/sdk/openapi/routes.json and apps/web/app/api/ as the source of truth."
+            "Use packages/sdk/openapi/routes.json and packages/shared/src/api_proxy_routes.py as the source of truth."
         )
         return 1
 

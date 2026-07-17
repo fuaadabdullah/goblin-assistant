@@ -2,6 +2,9 @@
 
 from __future__ import annotations
 
+import sys
+from pathlib import Path
+
 METHOD_ORDER: dict[str, int] = {
     "DELETE": 0,
     "GET": 1,
@@ -12,7 +15,10 @@ METHOD_ORDER: dict[str, int] = {
     "PUT": 6,
 }
 
-API_V1_PREFIX = "/api/v1"
+REPO_ROOT = Path(__file__).resolve().parents[2]
+sys.path.insert(0, str(REPO_ROOT / "packages" / "shared" / "src"))
+
+from api_routes import API_V1_PREFIX  # noqa: E402
 
 
 def normalize_text(value: object, fallback: str = "-") -> str:

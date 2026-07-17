@@ -124,10 +124,8 @@ jobs:
           python -m pip install --upgrade pip
           python -m pip install -r apps/api/requirements.txt -r apps/api/requirements-vector.txt
 
-      - name: Run API tests (pytest)
-        run: |
-          cd apps/api
-          PYTHONPATH=src python -m pytest -o "addopts=" -v
+      - name: Run API tests with coverage
+        run: make test-api-coverage
 
   test-frontend:
     name: test-frontend
@@ -151,13 +149,39 @@ jobs:
       - name: Install frontend dependencies
         run: pnpm install --frozen-lockfile
 
-      - name: Run web tests (Vitest)
-        run: pnpm --filter @goblin/web test
+      - name: Run web tests with coverage
+        run: make test-web-coverage
+
+  merge-gates:
+    name: merge-gates
+    runs-on: ubuntu-latest
+    needs: [lint, contract, test-backend, test-frontend]
+    if: always()
+    steps:
+      - name: Require lint, contract, backend coverage, and frontend coverage
+        run: |
+          if [ "${{ needs.lint.result }}" != "success" ]; then
+            echo "lint gate failed: ${{ needs.lint.result }}"
+            exit 1
+          fi
+          if [ "${{ needs.contract.result }}" != "success" ]; then
+            echo "contract gate failed: ${{ needs.contract.result }}"
+            exit 1
+          fi
+          if [ "${{ needs.test-backend.result }}" != "success" ]; then
+            echo "backend coverage gate failed: ${{ needs.test-backend.result }}"
+            exit 1
+          fi
+          if [ "${{ needs.test-frontend.result }}" != "success" ]; then
+            echo "frontend coverage gate failed: ${{ needs.test-frontend.result }}"
+            exit 1
+          fi
+          echo "All required pre-merge gates passed."
 
   build:
     name: build
     runs-on: ubuntu-latest
-    needs: [test-backend, test-frontend]
+    needs: [merge-gates]
     timeout-minutes: 10
     steps:
       - uses: actions/checkout@v4

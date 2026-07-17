@@ -40,6 +40,9 @@ class RouteRecord:
     operation_id: str
     include_in_schema: bool
     compatibility_aliases: tuple[str, ...]
+    canonical_path: str
+    deprecated: bool
+    replacement_path: str | None
 
 
 def _build_operation_index(schema: dict[str, object]) -> dict[tuple[str, str], dict[str, Any]]:
@@ -113,6 +116,14 @@ def _route_records_from_app(api_app, schema: dict[str, object] | None = None) ->
                 or getattr(route, "name", None),
                 fallback="-",
             )
+            openapi_extra = getattr(route, "openapi_extra", None)
+            if not isinstance(openapi_extra, dict):
+                openapi_extra = {}
+            replacement_path = normalize_text(
+                (operation or {}).get("x-goblin-replaced-by")
+                or openapi_extra.get("x-goblin-replaced-by"),
+                fallback="",
+            ) or None
 
             records.append(
                 RouteRecord(
@@ -124,6 +135,11 @@ def _route_records_from_app(api_app, schema: dict[str, object] | None = None) ->
                     operation_id=operation_id,
                     include_in_schema=include_in_schema,
                     compatibility_aliases=(),
+                    canonical_path=path,
+                    deprecated=bool(
+                        (operation or {}).get("deprecated", getattr(route, "deprecated", False))
+                    ),
+                    replacement_path=replacement_path,
                 )
             )
 
@@ -131,8 +147,16 @@ def _route_records_from_app(api_app, schema: dict[str, object] | None = None) ->
     for record in records:
         alias_map[(record.method, record.logical_path)].append(record.path)
 
+    canonical_map: dict[tuple[str, str], str] = {}
+    for key, paths in alias_map.items():
+        canonical_map[key] = sorted(
+            set(paths),
+            key=lambda candidate: (not candidate.startswith(API_V1_PREFIX), candidate),
+        )[0]
+
     finalized: list[RouteRecord] = []
     for record in records:
+        canonical_path = canonical_map[(record.method, record.logical_path)]
         aliases = tuple(
             alias
             for alias in sorted(set(alias_map[(record.method, record.logical_path)]))
@@ -148,6 +172,10 @@ def _route_records_from_app(api_app, schema: dict[str, object] | None = None) ->
                 operation_id=record.operation_id,
                 include_in_schema=record.include_in_schema,
                 compatibility_aliases=aliases,
+                canonical_path=canonical_path,
+                deprecated=record.deprecated or record.path != canonical_path,
+                replacement_path=record.replacement_path
+                or (canonical_path if canonical_path != record.path else None),
             )
         )
 

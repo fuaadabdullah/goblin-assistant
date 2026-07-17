@@ -36,6 +36,9 @@ class RouteOperation:
     operation_id: str
     group: str
     compatibility_aliases: tuple[str, ...]
+    canonical_path: str
+    deprecated: bool
+    replacement_path: str | None
 
 
 def _load_json(path: Path) -> dict[str, object]:
@@ -130,6 +133,13 @@ def collect_operations(
             for alias in route.get("compatibility_aliases", [])
             if isinstance(alias, str) and alias.strip()
         )
+        canonical_path = str(route.get("canonical_path") or path)
+        replacement_path_raw = route.get("replacement_path")
+        replacement_path = (
+            str(replacement_path_raw).strip()
+            if isinstance(replacement_path_raw, str) and str(replacement_path_raw).strip()
+            else None
+        )
 
         operations.append(
             RouteOperation(
@@ -141,6 +151,9 @@ def collect_operations(
                 operation_id=operation_id,
                 group=group_for_path(path),
                 compatibility_aliases=compatibility_aliases,
+                canonical_path=canonical_path,
+                deprecated=bool(route.get("deprecated", False)),
+                replacement_path=replacement_path,
             )
         )
 
@@ -171,12 +184,13 @@ def build_markdown(routes_manifest: dict[str, object], schema: dict[str, object]
     for operation in operations:
         path_groups[operation.group].append(operation)
 
-    versioned_alias_operations = [op for op in operations if op.path.startswith(API_V1_PREFIX)]
+    versioned_operations = [op for op in operations if op.path.startswith(API_V1_PREFIX)]
     legacy_alias_operations = [
         op
         for op in operations
         if op.compatibility_aliases and not op.path.startswith(API_V1_PREFIX)
     ]
+    deprecated_operations = [op for op in operations if op.deprecated]
     hidden_route_count = int(routes_manifest.get("route_count", len(routes_manifest.get("routes", [])))) - int(
         routes_manifest.get("public_route_count", len(operations))
     )
@@ -201,11 +215,9 @@ def build_markdown(routes_manifest: dict[str, object], schema: dict[str, object]
         f"- **Mounted paths**: {len({op.path for op in operations})}",
         f"- **Operations**: {len(operations)}",
         f"- **OpenAPI paths**: {schema_path_count}",
-        (
-            "- **Versioned compatibility alias operations (`/api/v1`)**: "
-            f"{len(versioned_alias_operations)}"
-        ),
+        f"- **Versioned operations (`/api/v1`)**: {len(versioned_operations)}",
         f"- **Legacy dual-mount operations**: {len(legacy_alias_operations)}",
+        f"- **Deprecated operations**: {len(deprecated_operations)}",
         f"- **Hidden manifest operations**: {max(hidden_route_count, 0)}",
         "",
         "## Route groups",
@@ -218,27 +230,26 @@ def build_markdown(routes_manifest: dict[str, object], schema: dict[str, object]
     for group in sorted(group_counts, key=lambda key: (-group_counts[key], key)):
         lines.append(f"| `{_escape_cell(group)}` | {group_counts[group]} |")
 
-    if versioned_alias_operations:
+    if versioned_operations:
         lines.extend(
             [
                 "",
-                "## Versioned compatibility aliases",
+                "## Versioned public routes",
                 "",
-                (
-                    "The `/api/v1` routes are the compatibility layer for callers "
-                    "that still expect versioned paths."
-                ),
+                "The `/api/v1` routes are the canonical public API surface.",
                 "",
-                "| Method | Path | Logical Path | Summary | Tags | Operation ID |",
-                "| --- | --- | --- | --- | --- | --- |",
+                "| Method | Path | Logical Path | Status | Replaced By | Summary | Tags | Operation ID |",
+                "| --- | --- | --- | --- | --- | --- | --- | --- |",
             ]
         )
-        for operation in versioned_alias_operations:
+        for operation in versioned_operations:
             lines.append(
                 "| "
                 f"{_escape_cell(operation.method)} | "
                 f"{_escape_cell(operation.path)} | "
                 f"{_escape_cell(operation.logical_path)} | "
+                f"{_escape_cell('deprecated' if operation.deprecated else 'stable')} | "
+                f"{_escape_cell(operation.replacement_path or '-')} | "
                 f"{_escape_cell(operation.summary)} | "
                 f"{_escape_cell(_format_tags(operation.tags))} | "
                 f"{_escape_cell(operation.operation_id or '-')} |"
@@ -255,8 +266,8 @@ def build_markdown(routes_manifest: dict[str, object], schema: dict[str, object]
                     "at one or more compatibility aliases."
                 ),
                 "",
-                "| Method | Path | Logical Path | Aliases | Summary | Tags | Operation ID |",
-                "| --- | --- | --- | --- | --- | --- | --- |",
+                "| Method | Path | Logical Path | Aliases | Status | Replaced By | Summary | Tags | Operation ID |",
+                "| --- | --- | --- | --- | --- | --- | --- | --- | --- |",
             ]
         )
         for operation in legacy_alias_operations:
@@ -267,6 +278,8 @@ def build_markdown(routes_manifest: dict[str, object], schema: dict[str, object]
                 f"{_escape_cell(operation.path)} | "
                 f"{_escape_cell(operation.logical_path)} | "
                 f"{_escape_cell(aliases)} | "
+                f"{_escape_cell('deprecated' if operation.deprecated else 'stable')} | "
+                f"{_escape_cell(operation.replacement_path or '-')} | "
                 f"{_escape_cell(operation.summary)} | "
                 f"{_escape_cell(_format_tags(operation.tags))} | "
                 f"{_escape_cell(operation.operation_id or '-')} |"

@@ -140,6 +140,19 @@ jobs:
           command: make lint 2>&1 | tee /tmp/ci_failure_output.txt; exit ${PIPESTATUS[0]}
       - trigger-autofix
 
+  # ── Contract gates ───────────────────────────────────────────────────────
+  contract:
+    executor: node-python
+    steps:
+      - checkout
+      - setup-tmpdir
+      - install-pnpm
+      - install-python
+      - run:
+          name: Contract checks
+          command: make contract-checks 2>&1 | tee /tmp/ci_failure_output.txt; exit ${PIPESTATUS[0]}
+      - trigger-autofix
+
   # ── Type check ───────────────────────────────────────────────────────────
   typecheck:
     executor: node-python
@@ -185,10 +198,10 @@ jobs:
             cd apps/api
             PYTHONPATH=src python -m pytest \
               -o "addopts=" \
-              --cov=src/api \
+              --cov=api \
               --cov-report=xml:coverage.xml \
               --cov-report=html:htmlcov \
-              --cov-fail-under=60 \
+              --cov-fail-under=70 \
               --junitxml=test-results.xml \
               --tb=short -v 2>&1 | tee /tmp/ci_failure_output.txt; exit ${PIPESTATUS[0]}
       - run:
@@ -226,7 +239,7 @@ jobs:
       - install-pnpm
       - run:
           name: Web tests
-          command: TMPDIR=~/repo/.tmp pnpm --filter @goblin/web test:ci 2>&1 | tee /tmp/ci_failure_output.txt; exit ${PIPESTATUS[0]}
+          command: TMPDIR=~/repo/.tmp pnpm --filter @goblin/web test:coverage 2>&1 | tee /tmp/ci_failure_output.txt; exit ${PIPESTATUS[0]}
       - trigger-autofix
       - store_artifacts:
           path: apps/web/coverage
@@ -461,10 +474,12 @@ workflows:
           requires: [format-check, security-scan]
       - typecheck:
           requires: [format-check, security-scan]
+      - contract:
+          requires: [lint, typecheck]
       - test-backend:
-          requires: [lint, typecheck]
+          requires: [contract]
       - test-frontend:
-          requires: [lint, typecheck]
+          requires: [contract]
       - build:
           requires: [test-backend, test-frontend]
       - chromatic:

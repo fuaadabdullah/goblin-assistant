@@ -16,8 +16,8 @@ def test_group_for_path_collapses_alias_and_top_level_routes():
 
 def test_build_markdown_summarizes_groups_and_aliases():
     routes_manifest = {
-        "route_count": 4,
-        "public_route_count": 4,
+        "route_count": 3,
+        "public_route_count": 3,
         "routes": [
             {
                 "method": "POST",
@@ -28,16 +28,9 @@ def test_build_markdown_summarizes_groups_and_aliases():
                 "operation_id": "auth_login",
                 "include_in_schema": True,
                 "compatibility_aliases": [],
-            },
-            {
-                "method": "GET",
-                "path": "/settings",
-                "logical_path": "/settings",
-                "summary": "Read settings",
-                "tags": ["settings"],
-                "operation_id": "read_settings",
-                "include_in_schema": True,
-                "compatibility_aliases": ["/api/v1/settings"],
+                "canonical_path": "/auth/login",
+                "deprecated": False,
+                "replacement_path": None,
             },
             {
                 "method": "GET",
@@ -47,7 +40,10 @@ def test_build_markdown_summarizes_groups_and_aliases():
                 "tags": ["settings"],
                 "operation_id": "read_settings_v1",
                 "include_in_schema": True,
-                "compatibility_aliases": ["/settings"],
+                "compatibility_aliases": [],
+                "canonical_path": "/api/v1/settings",
+                "deprecated": False,
+                "replacement_path": None,
             },
             {
                 "method": "POST",
@@ -58,6 +54,9 @@ def test_build_markdown_summarizes_groups_and_aliases():
                 "operation_id": "chat_create_v1",
                 "include_in_schema": True,
                 "compatibility_aliases": [],
+                "canonical_path": "/api/v1/api/chat",
+                "deprecated": False,
+                "replacement_path": None,
             },
         ],
     }
@@ -71,14 +70,14 @@ def test_build_markdown_summarizes_groups_and_aliases():
                     "operationId": "auth_login",
                 }
             },
-            "/settings": {
+            "/api/v1/settings": {
                 "get": {
                     "summary": "Read settings",
                     "tags": ["settings"],
-                    "operationId": "read_settings",
+                    "operationId": "read_settings_v1",
                 }
             },
-            "/api/chat": {
+            "/api/v1/api/chat": {
                 "post": {
                     "description": "Send a prompt to chat.",
                     "tags": ["chat"],
@@ -91,18 +90,17 @@ def test_build_markdown_summarizes_groups_and_aliases():
     markdown = build_markdown(routes_manifest, schema)
 
     assert "# API Route Inventory" in markdown
-    assert "- **Mounted paths**: 4" in markdown
-    assert "- **Operations**: 4" in markdown
+    assert "- **Mounted paths**: 3" in markdown
+    assert "- **Operations**: 3" in markdown
     assert "- **OpenAPI paths**: 3" in markdown
-    assert "- **Versioned compatibility alias operations (`/api/v1`)**: 2" in markdown
-    assert "- **Legacy dual-mount operations**: 1" in markdown
+    assert "- **Versioned operations (`/api/v1`)**: 2" in markdown
+    assert "- **Legacy dual-mount operations**: 0" in markdown
+    assert "- **Deprecated operations**: 0" in markdown
     assert "| `/auth` | 1 |" in markdown
-    assert "| `/settings` | 1 |" in markdown
     assert "| `/api/v1` | 2 |" in markdown
-    assert "## Versioned compatibility aliases" in markdown
-    assert "## Legacy dual mounts" in markdown
+    assert "## Versioned public routes" in markdown
     assert (
-        "| POST | /api/v1/api/chat | /api/chat | Send a prompt to chat. | api | "
+        "| POST | /api/v1/api/chat | /api/chat | stable | - | Send a prompt to chat. | api | "
         "chat_create_v1 |"
     ) in markdown
 
@@ -119,6 +117,9 @@ def test_collect_operations_extracts_operation_metadata():
                 "operation_id": "export_privacy_data",
                 "include_in_schema": True,
                 "compatibility_aliases": [],
+                "canonical_path": "/api/privacy/export",
+                "deprecated": False,
+                "replacement_path": None,
             }
         ]
     }
@@ -145,3 +146,6 @@ def test_collect_operations_extracts_operation_metadata():
     assert operation.operation_id == "export_privacy_data"
     assert operation.logical_path == "/api/privacy/export"
     assert operation.compatibility_aliases == ()
+    assert operation.canonical_path == "/api/privacy/export"
+    assert operation.deprecated is False
+    assert operation.replacement_path is None

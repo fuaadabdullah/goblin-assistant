@@ -1,4 +1,4 @@
-.PHONY: help install dev web-dev api-dev build build-packages lint lint-web lint-api lint-policy type-check type-check-packages test test-unit test-web test-api test-api-context-coverage test-e2e test-e2e-budget test-integration test-contract test-performance generate-providers-json check-providers-json check-api-boundaries check-api-cycles check-capability-boundaries check-route-lifecycle check-docs-canonical-refs check-docs-inventory check-docs-links generate-docs-coverage type-check-api-mypy type-check-api-pyright format format-check test-critical sdk-generate sdk-check generate-route-manifest check-api-calls contract-checks secret-scan check-unused-deps check-dead-code phase-gates
+.PHONY: help install dev web-dev api-dev build build-packages lint lint-web lint-api lint-policy type-check type-check-packages test test-unit test-web test-web-coverage test-api test-api-coverage test-api-context-coverage test-e2e test-e2e-budget test-integration test-contract test-performance generate-providers-json check-providers-json check-api-boundaries check-api-cycles check-capability-boundaries check-route-lifecycle check-docs-canonical-refs check-docs-inventory check-docs-links generate-docs-coverage type-check-api-mypy type-check-api-pyright format format-check test-critical sdk-generate sdk-check generate-route-manifest check-api-calls contract-checks secret-scan check-unused-deps check-dead-code phase-gates
 PNPM_TMP := TMPDIR="$(PWD)/.tmp"
 PYTHON ?= python3.11
 
@@ -14,7 +14,9 @@ help:
 	@echo "  make type-check           - run web typecheck"
 	@echo "  make test-unit            - run all unit tests (web + api)"
 	@echo "  make test-web             - run web test suite (subset of test-unit)"
+	@echo "  make test-web-coverage    - run web test suite with coverage gates"
 	@echo "  make test-api             - run api pytest suite (subset of test-unit)"
+	@echo "  make test-api-coverage    - run api pytest suite with coverage gates"
 	@echo "  make test-integration     - run integration + contract buckets from tests/manifests"
 	@echo "  make test-contract        - run contract bucket only"
 	@echo "  make test-performance     - run performance bucket from tests/manifests"
@@ -162,8 +164,18 @@ test-web:
 	mkdir -p .tmp
 	$(PNPM_TMP) pnpm --filter @goblin/web test
 
+test-web-coverage:
+	mkdir -p .tmp
+	$(PNPM_TMP) pnpm --filter @goblin/web test:coverage
+
 test-api:
 	cd apps/api && PYTHONPATH=src $(PYTHON) -m pytest -o "addopts=" -v
+
+test-api-coverage:
+	cd apps/api && PYTHONPATH=src $(PYTHON) -m pytest -o "addopts=" -v \
+		--cov=api \
+		--cov-report=term-missing \
+		--cov-fail-under=80
 
 test-critical:
 	bash tooling/quality/run-critical-coverage.sh

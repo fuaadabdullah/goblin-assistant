@@ -7,6 +7,9 @@ cd "$ROOT_DIR"
 bash tooling/generators/generate-sdk-client.sh
 
 GENERATED_FILES=(
+  packages/shared/src/generated/api-proxy-routes.ts
+  packages/shared/src/constants/routes.ts
+  packages/shared/src/generated/api-route-paths.ts
   packages/sdk/openapi/openapi.json
   packages/sdk/openapi/routes.json
   packages/sdk/src/generated/openapi.ts

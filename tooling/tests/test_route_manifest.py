@@ -7,16 +7,8 @@ from fastapi import APIRouter, FastAPI
 from tooling.generators.route_manifest import build_manifest
 
 
-def test_build_manifest_tracks_versioned_and_legacy_aliases() -> None:
+def test_build_manifest_tracks_canonical_versioned_routes() -> None:
     app = FastAPI()
-
-    settings_router = APIRouter()
-
-    @settings_router.get("/settings", operation_id="read_settings")
-    async def read_settings() -> dict[str, str]:
-        return {"ok": "yes"}
-
-    app.include_router(settings_router)
 
     versioned_settings_router = APIRouter(prefix="/api/v1")
 
@@ -37,14 +29,15 @@ def test_build_manifest_tracks_versioned_and_legacy_aliases() -> None:
     manifest = build_manifest(app)
     routes = {route["path"]: route for route in manifest["routes"]}
 
-    assert manifest["route_count"] == 3
-    assert manifest["public_route_count"] == 2
+    assert manifest["route_count"] == 2
+    assert manifest["public_route_count"] == 1
     assert manifest["versioned_route_count"] == 1
-    assert manifest["alias_route_count"] == 2
-    assert routes["/settings"]["logical_path"] == "/settings"
-    assert routes["/settings"]["compatibility_aliases"] == ["/api/v1/settings"]
+    assert manifest["alias_route_count"] == 0
     assert routes["/api/v1/settings"]["logical_path"] == "/settings"
-    assert routes["/api/v1/settings"]["compatibility_aliases"] == ["/settings"]
+    assert routes["/api/v1/settings"]["compatibility_aliases"] == []
+    assert routes["/api/v1/settings"]["deprecated"] is False
+    assert routes["/api/v1/settings"]["canonical_path"] == "/api/v1/settings"
+    assert routes["/api/v1/settings"]["replacement_path"] is None
     assert routes["/internal"]["include_in_schema"] is False
 
 
