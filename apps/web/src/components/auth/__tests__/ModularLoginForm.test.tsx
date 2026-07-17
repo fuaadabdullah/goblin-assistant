@@ -5,14 +5,14 @@ const {
   mockSetQueryData,
   mockSignIn,
   mockSignUp,
-  mockGetGoogleAuthUrl,
+  mockSignInWithOAuth,
   turnstileState,
   featureFlagsState,
 } = vi.hoisted(() => ({
   mockSetQueryData: vi.fn(),
   mockSignIn: vi.fn(),
   mockSignUp: vi.fn(),
-  mockGetGoogleAuthUrl: vi.fn(),
+  mockSignInWithOAuth: vi.fn(),
   turnstileState: {
     enabled: false,
     token: '',
@@ -30,12 +30,7 @@ vi.mock('@tanstack/react-query', () => ({
 vi.mock('@/lib/supabase', () => ({
   authSignUp: mockSignUp,
   authSignIn: mockSignIn,
-}));
-
-vi.mock('@/lib/api/auth', () => ({
-  authMethods: {
-    getGoogleAuthUrl: mockGetGoogleAuthUrl,
-  },
+  authSignInWithOAuth: mockSignInWithOAuth,
 }));
 
 vi.mock('../../../config/features', () => ({
@@ -142,9 +137,7 @@ describe('ModularLoginForm', () => {
     featureFlagsState.googleAuth = false;
     mockSignIn.mockResolvedValue({ session: authSession, error: null });
     mockSignUp.mockResolvedValue({ session: authSession, error: null });
-    mockGetGoogleAuthUrl.mockResolvedValue({
-      url: 'https://accounts.google.com/o/oauth2/v2/auth?state=test',
-    });
+    mockSignInWithOAuth.mockResolvedValue({ data: { url: 'https://accounts.google.com/o/oauth2/v2/auth?state=test' }, error: null });
   });
 
   it('submits login credentials and stores the auth snapshot', async () => {
@@ -191,15 +184,16 @@ describe('ModularLoginForm', () => {
 
   it('starts Google sign-in when the provider is enabled', async () => {
     featureFlagsState.googleAuth = true;
-    const assignSpy = vi.fn();
-    vi.spyOn(window.location, 'assign').mockImplementation(assignSpy as never);
 
     render(<ModularLoginForm onSuccess={onSuccess} onError={onError} />);
 
     fireEvent.click(screen.getByRole('button', { name: 'Google login' }));
 
-    await waitFor(() => expect(mockGetGoogleAuthUrl).toHaveBeenCalledTimes(1));
-    expect(assignSpy).toHaveBeenCalledWith('https://accounts.google.com/o/oauth2/v2/auth?state=test');
+    await waitFor(() => expect(mockSignInWithOAuth).toHaveBeenCalledTimes(1));
+    expect(mockSignInWithOAuth).toHaveBeenCalledWith(
+      'google',
+      'http://localhost:3000/google-callback'
+    );
   });
 
   it('preserves non-Error login failures through the shared formatter', () => {
