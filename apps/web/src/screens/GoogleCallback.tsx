@@ -35,18 +35,19 @@ const GoogleCallback: React.FC = () => {
         return;
       }
 
-      // Supabase OAuth (signInWithOAuth) redirects back with a PKCE `code` and
-      // no `state` param — that code must be exchanged with Supabase, not the
-      // legacy backend endpoint. The legacy Google flow always carries `state`.
-      if (!stateValue) {
-        const { session, error } = await authExchangeCodeForSession(codeValue);
-        if (error || !session) {
-          devError('Supabase code exchange failed:', error);
-          router.push('/login?error=callback_failed');
-          return;
-        }
+      // Prefer the Supabase exchange first. Supabase's Google flow can carry
+      // its own `state` param, so `state` alone is not a reliable signal that
+      // the legacy backend callback should handle the code.
+      const { session, error } = await authExchangeCodeForSession(codeValue);
+      if (!error && session) {
         queryClient.setQueryData(queryKeys.authValidate, snapshotFromSupabaseSession(session));
         router.push('/chat');
+        return;
+      }
+
+      if (!stateValue) {
+        devError('Supabase code exchange failed:', error);
+        router.push('/login?error=callback_failed');
         return;
       }
 

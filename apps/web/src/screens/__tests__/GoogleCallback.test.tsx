@@ -4,6 +4,9 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 
 const mockPush = vi.fn();
 let mockQuery: Record<string, string> = {};
+const { mockAuthExchangeCodeForSession } = vi.hoisted(() => ({
+  mockAuthExchangeCodeForSession: vi.fn(),
+}));
 
 vi.mock('next/navigation', () => ({
   useRouter: () => ({
@@ -30,6 +33,14 @@ vi.mock('@/utils/dev-log', () => ({ devError: vi.fn(), devWarn: vi.fn(), devLog:
 import * as GoogleCallbackModule from '../GoogleCallback';
 import { persistAuthSession } from '@/utils/auth-session';
 
+vi.mock('@/lib/supabase', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/lib/supabase')>();
+  return {
+    ...actual,
+    authExchangeCodeForSession: mockAuthExchangeCodeForSession,
+  };
+});
+
 const GoogleCallback = GoogleCallbackModule.default;
 
 function renderWithClient(ui: React.ReactElement) {
@@ -42,6 +53,7 @@ describe('GoogleCallback', () => {
     vi.clearAllMocks();
     mockQuery = {};
     global.fetch = vi.fn();
+    mockAuthExchangeCodeForSession.mockResolvedValue({ session: null, error: new Error('no session') });
   });
 
   afterEach(() => {
@@ -69,7 +81,25 @@ describe('GoogleCallback', () => {
     await waitFor(() => expect(mockPush).toHaveBeenCalledWith('/login?error=no_code'));
   });
 
-  it('exchanges code for token on success', async () => {
+  it('completes the Supabase code exchange even when state is present', async () => {
+    mockQuery = { code: 'abc123', state: 'xyz' };
+    mockAuthExchangeCodeForSession.mockResolvedValueOnce({
+      session: {
+        access_token: 'supabase-token',
+        user: { id: 'user-1' },
+      },
+      error: null,
+    });
+    const mockFetch = global.fetch as vi.Mock;
+
+    renderWithClient(<GoogleCallback />);
+
+    await waitFor(() => expect(mockAuthExchangeCodeForSession).toHaveBeenCalledWith('abc123'));
+    await waitFor(() => expect(mockPush).toHaveBeenCalledWith('/chat'));
+    expect(mockFetch).not.toHaveBeenCalled();
+  });
+
+  it('falls back to the legacy backend callback when the Supabase exchange fails', async () => {
     mockQuery = { code: 'abc123', state: 'xyz' };
     const mockFetch = global.fetch as vi.Mock;
     mockFetch.mockResolvedValue({
@@ -84,6 +114,7 @@ describe('GoogleCallback', () => {
     });
 
     renderWithClient(<GoogleCallback />);
+    await waitFor(() => expect(mockAuthExchangeCodeForSession).toHaveBeenCalledWith('abc123'));
     await waitFor(() => {
       expect(mockFetch).toHaveBeenCalledWith(
         '/api/auth/google/callback',
@@ -104,8 +135,8 @@ describe('GoogleCallback', () => {
     await waitFor(() => expect(mockPush).toHaveBeenCalledWith('/chat'));
   });
 
-  it('redirects to login on fetch error', async () => {
-    mockQuery = { code: 'abc123' };
+  it('redirects to login when the Supabase exchange fails and the backend callback errors', async () => {
+    mockQuery = { code: 'abc123', state: 'xyz' };
     const mockFetch = global.fetch as vi.Mock;
     mockFetch.mockResolvedValue({
       ok: false,
@@ -117,8 +148,15 @@ describe('GoogleCallback', () => {
     await waitFor(() => expect(mockPush).toHaveBeenCalledWith('/login?error=callback_failed'));
   });
 
-  it('redirects on invalid response (no token)', async () => {
+  it('redirects to login when the Supabase exchange fails without legacy state', async () => {
     mockQuery = { code: 'abc123' };
+
+    renderWithClient(<GoogleCallback />);
+    await waitFor(() => expect(mockPush).toHaveBeenCalledWith('/login?error=callback_failed'));
+  });
+
+  it('redirects on invalid legacy backend response (no token)', async () => {
+    mockQuery = { code: 'abc123', state: 'xyz' };
     const mockFetch = global.fetch as vi.Mock;
     mockFetch.mockResolvedValue({
       ok: true,
@@ -129,8 +167,8 @@ describe('GoogleCallback', () => {
     await waitFor(() => expect(mockPush).toHaveBeenCalledWith('/login?error=callback_failed'));
   });
 
-  it('redirects on network error', async () => {
-    mockQuery = { code: 'abc123' };
+  it('redirects on legacy backend network error', async () => {
+    mockQuery = { code: 'abc123', state: 'xyz' };
     const mockFetch = global.fetch as vi.Mock;
     mockFetch.mockRejectedValue(new Error('network down'));
 
