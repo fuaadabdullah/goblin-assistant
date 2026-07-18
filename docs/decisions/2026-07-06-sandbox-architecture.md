@@ -26,3 +26,11 @@ Implement the sandbox as an async job system backed by Redis/RQ and hardened Doc
 - Related ADRs: ADR-0002, ADR-0003.
 - Sandbox route contracts, worker behavior, and artifact retention should be tested together because they form one operational system.
 - Any future change to the execution model should preserve the queue/job/status contract or document a breaking migration separately.
+- As of 2026-07-18, "hardened Docker execution" is implemented via
+  `docker-socket-proxy` (tecnativa/docker-socket-proxy): the sandbox worker
+  no longer mounts `/var/run/docker.sock` directly, instead reaching a
+  bounded proxy scoped to `CONTAINERS`/`IMAGES`/`INFO`/`PING`/`POST` with
+  `NETWORKS`/`VOLUMES`/`EXEC`/`AUTH`/`SECRETS`/`SERVICES`/`SWARM`/`SYSTEM`
+  all disabled. Backend and worker containers also run read-only root
+  filesystems with tmpfs/named-volume writable mounts. See
+  `docker-compose.yml` and `scripts/architecture/check_operational_policy.py`.

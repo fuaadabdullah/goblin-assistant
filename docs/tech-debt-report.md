@@ -105,7 +105,7 @@ Concrete provider imports in non-owner modules:
 
 | File | Lines | Assessment | Recommendation |
 |------|-------|------------|----------------|
-| `packages/sdk/src/generated/openapi.ts` | 13,125 | Auto-generated artifact - high complexity | Audit OpenAPI spec size, consider splitting by domain |
+| `packages/sdk/src/generated/openapi.ts` | 11,655 (was 13,125) | Auto-generated artifact - high complexity | Would require changing the SDK codegen pipeline, not the generated output — needs its own scoped investigation, not attempted here |
 | `apps/api/src/api/routing/router.py` | 48 (was 778) | RESOLVED | Now a re-export façade over `registry_store.py`, `policy_engine.py`, `router_registry.py`, `selection.py` |
 | `apps/api/src/api/health.py` | 277 (was 777) | RESOLVED | Split into `health_core.py`, `health_checks.py`, `ops_health.py` |
 | `apps/api/src/api/observability/debug_router.py` | 744 | ACCEPTABLE | Single `/debug` prefix with cohesive endpoints - monitor only |
@@ -343,16 +343,39 @@ local orchestration surface.
    - [x] Read-only root filesystem with selective write mounts
 
 7. **Documentation**
-   - [ ] Run `make generate-docs-coverage` and address gaps
-   - [ ] Update stale ADRs in `docs/decisions/`
-   - [ ] Add operational runbooks in `docs/operations/`
+   - [x] Run `make generate-docs-coverage` and address gaps (report is a
+     config summary, not a real-vs-declared diff — already fresh, no gaps;
+     real inventory validation is `make check-docs-inventory`, passing)
+   - [x] Update stale ADRs in `docs/decisions/` — marked
+     `TECH_DEBT_REDUCTION_PLAN.md` (dated 2026-06-05, predates this report)
+     as superseded after verifying most of its findings are resolved or
+     were mischaracterized (e.g. the "docker-compose fragmentation" it
+     flagged turned out to be two legitimately separate-purpose files, not
+     duplication). Added a note to ADR-0004 (sandbox architecture)
+     documenting the docker-socket-proxy hardening from this pass. Spot-
+     checked router-decomposition and dispatcher-decomposition ADRs against
+     current code — both still accurate. `TS_STRICT_VIOLATIONS.md` was
+     already correctly marked resolved.
+   - [ ] Add operational runbooks in `docs/operations/` — genuine gap found:
+     only `SECRET_EXPOSURE_INCIDENT_RESPONSE.md` is a real incident-response
+     runbook among 73 files in `docs/operations/`; the rest are setup/
+     deployment/reference docs. Writing new runbooks is content creation
+     (not verification), scoped separately.
 
 ### Priority 3 (Low - Backlog)
 
 8. **Code Quality**
    - [x] Run `make check-dead-code` and remove dead code (see 5.3)
-   - [ ] Audit OpenAPI spec size (13K lines is excessive)
-   - [ ] Consolidate theme CSS files (`dark-theme.css` vs `index.css`)
+   - [x] Audit OpenAPI spec size — confirmed 11,655 lines (was 13,125),
+     auto-generated from the backend's OpenAPI schema. "Splitting by
+     domain" would mean changing the SDK codegen pipeline itself, not the
+     generated output — not attempted here; would need its own scoped
+     investigation into the generator and all its consumers.
+   - [x] Consolidate theme CSS files — turned out to be a non-issue:
+     `dark-theme.css` doesn't exist anywhere in the repo, and
+     `apps/web/src/index.css` (global styles, imported by `app/layout.tsx`)
+     already cleanly `@import`s `apps/web/src/theme/index.css` (design
+     tokens) — a normal two-layer stylesheet structure, not duplication.
 
 ---
 
