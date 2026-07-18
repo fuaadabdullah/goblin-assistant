@@ -106,8 +106,8 @@ Concrete provider imports in non-owner modules:
 | File | Lines | Assessment | Recommendation |
 |------|-------|------------|----------------|
 | `packages/sdk/src/generated/openapi.ts` | 13,125 | Auto-generated artifact - high complexity | Audit OpenAPI spec size, consider splitting by domain |
-| `apps/api/src/api/routing/router.py` | 778 | CANDIDATE | Extract `RoutingRegistryStore` to `routing/registry_store.py` (~150 lines) |
-| `apps/api/src/api/health.py` | 777 | CANDIDATE | Extract ops endpoints to `health_ops.py` after resolving circular import root cause |
+| `apps/api/src/api/routing/router.py` | 48 (was 778) | RESOLVED | Now a re-export façade over `registry_store.py`, `policy_engine.py`, `router_registry.py`, `selection.py` |
+| `apps/api/src/api/health.py` | 277 (was 777) | RESOLVED | Split into `health_core.py`, `health_checks.py`, `ops_health.py` |
 | `apps/api/src/api/observability/debug_router.py` | 744 | ACCEPTABLE | Single `/debug` prefix with cohesive endpoints - monitor only |
 | `apps/api/src/api/providers/quota_service.py` | 788 | ACCEPTABLE | Cohesive Redis-backed quota logic - acceptable |
 
@@ -137,14 +137,12 @@ api.storage.models -> api.storage.vector_models -> api.storage.models
 
 **Impact:** These create maintenance complexity and hinder module hot-swapping capability.
 
-### 3.3 Frontend Proxy Separation
+### 3.3 Frontend Proxy Separation — RESOLVED
 
-`apps/web/src/server/backendProxyRoute.ts` mixes:
-- Route resolution logic (`resolveProxyRoute`)
-- HTTP forwarding logic (`forwardRequest`, `forwardPrefixedRequest`)
-- Helper functions (`buildHeaders`, `buildBackendUrl`, etc.)
-
-**Recommendation:** Split into `proxy/routeResolver.ts` and `proxy/httpForwarder.ts`.
+`apps/web/src/server/backendProxyRoute.ts` (238 lines, was mixing route
+resolution, HTTP forwarding, and helper functions) is now a thin
+composition layer over `proxy/routeResolver.ts` (route resolution) and
+`proxy/httpForwarder.ts` (HTTP forwarding).
 
 ---
 
@@ -174,19 +172,21 @@ api.storage.models -> api.storage.vector_models -> api.storage.models
 
 ## 5. Testing Debt
 
-### 5.1 Large Test Files
+### 5.1 Large Test Files — RESOLVED
 
-Based on `reports/largest_files_by_loc.txt`, test files exceeding 1000 lines:
+All test files originally exceeding 700+ lines have been split into
+per-concern packages (one file per test class/area, shared fixtures in
+`conftest.py`/`helpers.py`):
 
-| Test File | Lines | Issue |
+| Original Test File | Lines | Split Into |
 |-----------|-------|-------|
-| `test_context_assembly_coverage.py` | 1,159 | Multiple test classes, no separation of concerns |
-| `test_provider_dispatcher_authority.py` | 1,208 | Likely mixing authority and routing tests |
-| `test_chat_router_core.py` | 1,117 | Core logic tests - should use shared fixtures |
-| `test_provider_dispatcher_routing.py` | 1,111 | Dispatcher tests - high cyclomatic complexity |
-| `test_sse_errors.py` | 793 | SSE error handling tests |
-| `test_sandbox_api_runtime.py` | 708 | Runtime integration tests |
-| `test_auth_additional_coverage.py` | 699 | Auth tests - should be in auth module |
+| `test_context_assembly_coverage.py` | 1,159 | `context_assembly_coverage/` |
+| `test_provider_dispatcher_authority.py` | 1,208 | `provider_dispatcher_authority/` |
+| `test_chat_router_core.py` | 1,117 | `chat_router_core/` |
+| `test_provider_dispatcher_routing.py` | 1,111 | `provider_dispatcher_routing/` |
+| `test_sse_errors.py` | 793 | `sse_errors/` |
+| `test_sandbox_api_runtime.py` | 708 | `sandbox_api_runtime/` |
+| `test_auth_additional_coverage.py` | 699 | `auth_additional_coverage/` |
 
 ### 5.2 Already Addressed (Positive Note)
 
@@ -235,9 +235,9 @@ local orchestration surface.
    - [x] Restrict Docker socket access in sandbox worker
 
 2. **Architecture Boundary Violations**
-   - [ ] Create service abstractions for storage modules (database, tasks, saas_service, etc.)
-   - [ ] Refactor routes to use service layer instead of direct storage imports
-   - [ ] Extract route functions from services (learning_applicator, smart_router)
+   - [x] Create service abstractions for storage modules (database, tasks, saas_service, etc.)
+   - [x] Refactor routes to use service layer instead of direct storage imports
+   - [x] Extract route functions from services (learning_applicator, smart_router)
 
 3. **Capability Boundary Violations**
    - [ ] Fix provider leakage in `provider_registry.py` - use dispatcher pattern
@@ -247,14 +247,14 @@ local orchestration surface.
 ### Priority 1 (High - Next Sprint)
 
 4. **Architecture Refactoring**
-   - [ ] Extract `RoutingRegistryStore` from `routing/router.py`
+   - [x] Extract `RoutingRegistryStore` from `routing/router.py`
    - [ ] Plan circular dependency resolution (start with secrets subsystem)
-   - [ ] Split frontend proxy into resolver/forwarder modules
+   - [x] Split frontend proxy into resolver/forwarder modules
 
 5. **Test Organization**
-   - [ ] Split `test_context_assembly*.py` into domain-focused modules
-   - [ ] Create shared test fixtures for common setups
-   - [ ] Move large test files to `tests/` subdirectories by domain
+   - [x] Split `test_context_assembly*.py` into domain-focused modules
+   - [x] Create shared test fixtures for common setups
+   - [x] Move large test files to `tests/` subdirectories by domain
 
 ### Priority 2 (Medium - Following Sprint)
 
