@@ -100,7 +100,10 @@ export async function attachSupabaseInterceptor() {
   const attachAuthInterceptor = (client: typeof backendHttp) => {
     client.interceptors.request.use(async (config: InternalAxiosRequestConfig) => {
       const { session } = await authGetSession();
-      if (session?.access_token) {
+      // A response interceptor may have just refreshed the token after a 401.
+      // Preserve that explicit retry token instead of replacing it with the
+      // stale value returned by the initial session lookup.
+      if (session?.access_token && !(config as RetryableRequestConfig)._retry) {
         setAuthorizationHeader(config.headers, session.access_token);
       }
       return config;
@@ -138,43 +141,51 @@ export const refreshAccessToken = async (): Promise<string | null> => {
   return refreshAccessTokenViaBackend(getRefreshToken());
 };
 
-backendHttp.interceptors.response.use(
-  (response) => response,
-  async (error: AxiosError) => {
-    const originalRequest = (error.config ?? {}) as RetryableRequestConfig;
-    const status = error.response?.status;
-    const requestUrl = String(originalRequest.url ?? '');
+const attachAccessTokenRefreshInterceptor = (client: typeof backendHttp): void => {
+  client.interceptors.response.use(
+    (response) => response,
+    async (error: AxiosError) => {
+      const originalRequest = (error.config ?? {}) as RetryableRequestConfig;
+      const status = error.response?.status;
+      const requestUrl = String(originalRequest.url ?? '');
 
-    // Never retry auth endpoints — a 401 on login/register/passkey is a real credential failure,
-    // not an expired session. Retrying with a refreshed token would silently swallow the error.
-    const isAuthEndpoint = requestUrl.includes('/auth/');
-    const canRetry = status === 401 && !originalRequest._retry && !isAuthEndpoint;
+      // Never retry auth endpoints — a 401 on login/register/passkey is a real credential failure,
+      // not an expired session. Retrying with a refreshed token would silently swallow the error.
+      const isAuthEndpoint = requestUrl.includes('/auth/');
+      const canRetry = status === 401 && !originalRequest._retry && !isAuthEndpoint;
 
-    if (!canRetry) {
-      return Promise.reject(error);
+      if (!canRetry) {
+        return Promise.reject(error);
+      }
+
+      originalRequest._retry = true;
+
+      if (!refreshPromise) {
+        refreshPromise = refreshAccessToken().finally(() => {
+          refreshPromise = null;
+        });
+      }
+
+      const nextToken = await refreshPromise;
+      if (!nextToken) {
+        return Promise.reject(error);
+      }
+
+      originalRequest.headers = {
+        ...(originalRequest.headers ?? {}),
+        Authorization: `Bearer ${nextToken}`,
+      };
+
+      return client(originalRequest);
     }
+  );
+};
 
-    originalRequest._retry = true;
-
-    if (!refreshPromise) {
-      refreshPromise = refreshAccessToken().finally(() => {
-        refreshPromise = null;
-      });
-    }
-
-    const nextToken = await refreshPromise;
-    if (!nextToken) {
-      return Promise.reject(error);
-    }
-
-    originalRequest.headers = {
-      ...(originalRequest.headers ?? {}),
-      Authorization: `Bearer ${nextToken}`,
-    };
-
-    return backendHttp(originalRequest);
-  }
-);
+// Both clients ultimately call the same authenticated backend. Requests made
+// through the Next.js proxy used to bypass this recovery path, leaving an
+// expired Supabase access token as a permanent 401 for chat creation.
+attachAccessTokenRefreshInterceptor(backendHttp);
+attachAccessTokenRefreshInterceptor(frontendHttp);
 
 export const withAuth = (config?: AxiosRequestConfig): AxiosRequestConfig => {
   const token = getAuthToken();

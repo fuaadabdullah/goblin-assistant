@@ -4,8 +4,13 @@ vi.mock('../../supabase', () => ({
   authGetSession: vi.fn(async () => ({
     session: { access_token: 'supabase-jwt' },
   })),
+  authRefreshSession: vi.fn(async () => ({
+    session: { access_token: 'refreshed-supabase-jwt' },
+  })),
+  supabaseConfigured: true,
 }));
 
+import { authGetSession, authRefreshSession } from '../../supabase';
 import { attachSupabaseInterceptor, frontendHttp } from '../http-client';
 import { getFrontend, postFrontend } from '../http-helpers';
 
@@ -14,6 +19,12 @@ describe('Supabase auth transport', () => {
 
   beforeEach(() => {
     mock = new MockAdapter(frontendHttp);
+    vi.mocked(authGetSession).mockResolvedValue({
+      session: { access_token: 'supabase-jwt' },
+    } as Awaited<ReturnType<typeof authGetSession>>);
+    vi.mocked(authRefreshSession).mockResolvedValue({
+      session: { access_token: 'refreshed-supabase-jwt' },
+    } as Awaited<ReturnType<typeof authRefreshSession>>);
   });
 
   afterEach(() => {
@@ -48,5 +59,18 @@ describe('Supabase auth transport', () => {
     await frontendHttp.get('/api/chat/conversations');
 
     expect(mock.history.get[0]?.headers?.Authorization).toBe('Bearer supabase-jwt');
+  });
+
+  it('refreshes and retries a 401 from the Next proxy', async () => {
+    mock.onPost('/api/chat/conversations').replyOnce(401, { detail: 'Not authenticated' });
+    mock.onPost('/api/chat/conversations').reply((config) => {
+      expect(config.headers?.Authorization).toBe('Bearer refreshed-supabase-jwt');
+      return [200, { success: true, data: { conversation_id: 'conversation-1' } }];
+    });
+
+    await postFrontend('/api/chat/conversations', { title: 'New conversation' });
+
+    expect(authRefreshSession).toHaveBeenCalledTimes(1);
+    expect(mock.history.post).toHaveLength(2);
   });
 });
