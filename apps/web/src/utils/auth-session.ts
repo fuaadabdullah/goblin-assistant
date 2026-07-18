@@ -36,7 +36,23 @@ export const getAuthToken = (): string | null => {
   if (typeof document === 'undefined') return null;
   const match = document.cookie.match(new RegExp(`(?:^|;\\s*)${SESSION_TOKEN_COOKIE}=([^;]*)`));
   if (match?.[1]) return decodeURIComponent(match[1]);
-  return localStorage.getItem('auth_token');
+  return typeof localStorage === 'undefined' ? null : localStorage.getItem('auth_token');
+};
+
+/** Resolve the current token for direct browser requests. */
+export const getAuthTokenForRequest = async (): Promise<string | null> => {
+  const legacyToken = getAuthToken();
+  if (legacyToken) return legacyToken;
+
+  if (typeof window === 'undefined') return null;
+
+  try {
+    const { authGetSession } = await import('../lib/supabase');
+    const { session } = await authGetSession();
+    return session?.access_token ?? null;
+  } catch {
+    return null;
+  }
 };
 
 export const getRefreshToken = (): string | null => {

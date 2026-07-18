@@ -97,15 +97,20 @@ export async function attachSupabaseInterceptor() {
   // Dynamic import to keep supabase out of public route bundles.
   const { authGetSession } = await import('../supabase');
 
-  // Attach Supabase access token as Bearer before every backend request.
-  // Supabase auto-refreshes tokens; getSession() is a fast local read.
-  backendHttp.interceptors.request.use(async (config: InternalAxiosRequestConfig) => {
-    const { session } = await authGetSession();
-    if (session?.access_token) {
-      setAuthorizationHeader(config.headers, session.access_token);
-    }
-    return config;
-  });
+  const attachAuthInterceptor = (client: typeof backendHttp) => {
+    client.interceptors.request.use(async (config: InternalAxiosRequestConfig) => {
+      const { session } = await authGetSession();
+      if (session?.access_token) {
+        setAuthorizationHeader(config.headers, session.access_token);
+      }
+      return config;
+    });
+  };
+
+  // The frontend client talks to the same backend through the Next.js proxy,
+  // so it must carry the Supabase Bearer token just like direct backend calls.
+  attachAuthInterceptor(backendHttp);
+  attachAuthInterceptor(frontendHttp);
 }
 
 export const frontendHttp = axios.create({

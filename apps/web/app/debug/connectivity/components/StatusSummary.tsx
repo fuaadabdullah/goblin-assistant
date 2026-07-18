@@ -26,11 +26,13 @@ const StatusSummary: FC<StatusSummaryProps> = ({ chatTestResult, chatError, heal
         <span className={styles['grayText']}>… Loading</span>
       ) : health.isError ? (
         <span className={styles['errorText']}>✗ Failed</span>
-      ) : health.data?.overall === 'healthy' ? (
+      ) : (health.data?.overall ?? health.data?.status) === 'healthy' ? (
         <span className={styles['successText']}>✓ Connected</span>
-      ) : health.data?.overall === 'degraded' ? (
+      ) : (health.data?.overall ?? health.data?.status) === 'warnings' ? (
+        <span className={styles['warningText']}>⚠ Warnings</span>
+      ) : (health.data?.overall ?? health.data?.status) === 'degraded' ? (
         <span className={styles['warningText']}>⚠ Degraded</span>
-      ) : health.data?.overall === 'unhealthy' ? (
+      ) : (health.data?.overall ?? health.data?.status) === 'unhealthy' ? (
         <span className={styles['errorText']}>✗ Failed</span>
       ) : (
         <span className={styles['grayText']}>⚠ Unknown</span>

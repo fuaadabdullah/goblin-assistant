@@ -1,7 +1,7 @@
 import { apiClient } from '@/lib/api';
 import { UiError } from '../../../lib/ui-error';
 import { getUserMessage } from '../../../lib/error/toast';
-import { getAuthToken } from '../../../utils/auth-session';
+import { getAuthTokenForRequest } from '../../../utils/auth-session';
 import type { ChatMessage } from '../types';
 
 export interface ChatResponse {
@@ -306,7 +306,7 @@ export const chatClient = {
         throw new Error('Conversation message is required.');
       }
 
-      const token = getAuthToken();
+      const token = await getAuthTokenForRequest();
       const headers: Record<string, string> = {
         'Content-Type': 'application/json',
       };

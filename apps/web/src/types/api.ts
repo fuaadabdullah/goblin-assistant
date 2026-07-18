@@ -134,15 +134,22 @@ export interface ServiceHealth {
   message?: string;
 }
 
+export interface HealthComponent {
+  status: string;
+  [key: string]: unknown;
+}
+
 export interface HealthStatus {
-  overall: 'healthy' | 'degraded' | 'unhealthy';
-  timestamp: string;
-  services: {
-    database?: ServiceHealth;
-    cache?: ServiceHealth;
-    api?: ServiceHealth;
-    [key: string]: ServiceHealth | undefined;
-  };
+  /** Legacy health contract retained for older consumers. */
+  overall?: 'healthy' | 'degraded' | 'unhealthy' | 'warnings' | 'unknown';
+  /** Canonical backend field. */
+  status?: 'healthy' | 'degraded' | 'unhealthy' | 'warnings' | 'unknown';
+  timestamp?: string;
+  /** Legacy component container. */
+  services?: Record<string, ServiceHealth | undefined>;
+  /** Canonical backend component container. */
+  components?: Record<string, HealthComponent | undefined>;
+  version?: string;
   uptime?: number;
 }
 
@@ -272,7 +279,11 @@ export function isApiSuccess<T>(response: unknown): response is ApiSuccessRespon
 }
 
 export function isHealthStatus(data: unknown): data is HealthStatus {
-  return typeof data === 'object' && data !== null && 'overall' in data && 'services' in data;
+  if (typeof data !== 'object' || data === null) return false;
+  const value = data as Record<string, unknown>;
+  const hasLegacyShape = typeof value['overall'] === 'string' && 'services' in value;
+  const hasCanonicalShape = typeof value['status'] === 'string' && 'components' in value;
+  return hasLegacyShape || hasCanonicalShape;
 }
 
 export function isOrchestrationPlan(data: unknown): data is OrchestrationPlan {
