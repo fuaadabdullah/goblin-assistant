@@ -4,8 +4,7 @@ import React, { useEffect } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { queryKeys } from '../lib/query-keys';
-import { persistAuthSession } from '../utils/auth-session';
-import { authExchangeCodeForSession } from '../lib/supabase';
+import { authGetSession } from '../lib/supabase';
 import { snapshotFromSupabaseSession } from '../lib/auth-state';
 import { devError } from '@/utils/dev-log';
 
@@ -14,13 +13,11 @@ const GoogleCallback: React.FC = () => {
   const queryClient = useQueryClient();
   const searchParams = useSearchParams();
   const code = searchParams.get('code');
-  const state = searchParams.get('state');
   const oauthError = searchParams.get('error');
 
   useEffect(() => {
     const handleCallback = async () => {
       const codeValue = code ?? undefined;
-      const stateValue = state ?? undefined;
       const errorValue = oauthError ?? undefined;
 
       if (errorValue) {
@@ -29,80 +26,28 @@ const GoogleCallback: React.FC = () => {
         return;
       }
 
-      if (!codeValue) {
-        devError('No authorization code received');
-        router.push('/login?error=no_code');
-        return;
-      }
-
-      // Prefer the Supabase exchange first. Supabase's Google flow can carry
-      // its own `state` param, so `state` alone is not a reliable signal that
-      // the legacy backend callback should handle the code.
-      const { session, error } = await authExchangeCodeForSession(codeValue);
+      // createBrowserClient owns the PKCE exchange and waits for it during
+      // authGetSession(). Do not exchange the code a second time or proxy it
+      // through the deprecated backend OAuth flow.
+      const { session, error } = await authGetSession();
       if (!error && session) {
         queryClient.setQueryData(queryKeys.authValidate, snapshotFromSupabaseSession(session));
         router.push('/chat');
         return;
       }
 
-      if (!stateValue) {
-        devError('Supabase code exchange failed:', error);
-        router.push('/login?error=callback_failed');
+      if (!codeValue) {
+        devError('No authorization code or Supabase session received:', error);
+        router.push('/login?error=no_code');
         return;
       }
 
-      try {
-        // Exchange code for token
-        const response = await fetch('/api/auth/google/callback', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({
-            code: codeValue,
-            state: stateValue,
-          }),
-        });
-
-        if (!response.ok) {
-          const errorData = await response.json();
-          throw new Error(
-            `Failed to exchange code for token: ${errorData.detail || response.statusText}`
-          );
-        }
-
-        const authData = await response.json();
-        const tokenValue = (authData && (authData.token || authData.access_token)) || null;
-        const userInfo = (authData && (authData.user || authData.userInfo)) || null;
-
-        // Store token and user data
-        if (!tokenValue || !userInfo) {
-          throw new Error('Invalid OAuth response');
-        }
-
-        persistAuthSession({
-          token: tokenValue,
-          refreshToken: authData?.refresh_token,
-          user: userInfo,
-          expiresIn: authData?.expires_in,
-        });
-        queryClient.setQueryData(queryKeys.authValidate, {
-          token: tokenValue,
-          user: userInfo,
-          isAuthenticated: true,
-          isHydrated: true,
-        });
-
-        // Navigate to chat
-        router.push('/chat');
-      } catch (err) {
-        devError('OAuth callback error:', err);
-        router.push('/login?error=callback_failed');
-      }
+      devError('Supabase callback session unavailable:', error);
+      router.push('/login?error=callback_failed');
     };
 
     handleCallback();
-  }, [code, state, oauthError, router, queryClient]);
+  }, [code, oauthError, router, queryClient]);
 
   return (
     <div className="callback-container">

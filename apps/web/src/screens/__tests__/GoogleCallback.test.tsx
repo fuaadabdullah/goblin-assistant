@@ -4,8 +4,8 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 
 const mockPush = vi.fn();
 let mockQuery: Record<string, string> = {};
-const { mockAuthExchangeCodeForSession } = vi.hoisted(() => ({
-  mockAuthExchangeCodeForSession: vi.fn(),
+const { mockAuthGetSession } = vi.hoisted(() => ({
+  mockAuthGetSession: vi.fn(),
 }));
 
 vi.mock('next/navigation', () => ({
@@ -18,26 +18,14 @@ vi.mock('next/navigation', () => ({
   usePathname: () => '/google-callback',
 }));
 
-vi.mock('@/utils/auth-session', () => ({
-  persistAuthSession: vi.fn(),
-}));
-
-vi.mock('@/config/backendOrigin', () => ({
-  DEFAULT_BACKEND_ORIGIN: 'http://api.example.test:8000',
-  resolvePublicBackendOrigin: () => 'http://api.example.test:8000',
-  resolveBackendOrigin: () => 'http://api.example.test:8000',
-}));
-
 vi.mock('@/utils/dev-log', () => ({ devError: vi.fn(), devWarn: vi.fn(), devLog: vi.fn() }));
 
 import * as GoogleCallbackModule from '../GoogleCallback';
-import { persistAuthSession } from '@/utils/auth-session';
-
 vi.mock('@/lib/supabase', async (importOriginal) => {
   const actual = await importOriginal<typeof import('@/lib/supabase')>();
   return {
     ...actual,
-    authExchangeCodeForSession: mockAuthExchangeCodeForSession,
+    authGetSession: mockAuthGetSession,
   };
 });
 
@@ -53,7 +41,7 @@ describe('GoogleCallback', () => {
     vi.clearAllMocks();
     mockQuery = {};
     global.fetch = vi.fn();
-    mockAuthExchangeCodeForSession.mockResolvedValue({ session: null, error: new Error('no session') });
+    mockAuthGetSession.mockResolvedValue({ session: null, error: null });
   });
 
   afterEach(() => {
@@ -81,9 +69,9 @@ describe('GoogleCallback', () => {
     await waitFor(() => expect(mockPush).toHaveBeenCalledWith('/login?error=no_code'));
   });
 
-  it('completes the Supabase code exchange even when state is present', async () => {
+  it('uses the Supabase-managed session even when state is present', async () => {
     mockQuery = { code: 'abc123', state: 'xyz' };
-    mockAuthExchangeCodeForSession.mockResolvedValueOnce({
+    mockAuthGetSession.mockResolvedValueOnce({
       session: {
         access_token: 'supabase-token',
         user: { id: 'user-1' },
@@ -94,86 +82,18 @@ describe('GoogleCallback', () => {
 
     renderWithClient(<GoogleCallback />);
 
-    await waitFor(() => expect(mockAuthExchangeCodeForSession).toHaveBeenCalledWith('abc123'));
+    await waitFor(() => expect(mockAuthGetSession).toHaveBeenCalledTimes(1));
     await waitFor(() => expect(mockPush).toHaveBeenCalledWith('/chat'));
     expect(mockFetch).not.toHaveBeenCalled();
   });
 
-  it('falls back to the legacy backend callback when the Supabase exchange fails', async () => {
+  it('redirects to login when the Supabase callback has no session', async () => {
     mockQuery = { code: 'abc123', state: 'xyz' };
     const mockFetch = global.fetch as vi.Mock;
-    mockFetch.mockResolvedValue({
-      ok: true,
-      json: () =>
-        Promise.resolve({
-          token: 'jwt-token',
-          user: { id: 1, name: 'Test' },
-          refresh_token: 'refresh-123',
-          expires_in: 3600,
-        }),
-    });
-
-    renderWithClient(<GoogleCallback />);
-    await waitFor(() => expect(mockAuthExchangeCodeForSession).toHaveBeenCalledWith('abc123'));
-    await waitFor(() => {
-      expect(mockFetch).toHaveBeenCalledWith(
-        '/api/auth/google/callback',
-        expect.objectContaining({
-          method: 'POST',
-          body: JSON.stringify({ code: 'abc123', state: 'xyz' }),
-        })
-      );
-    });
-    await waitFor(() => {
-      expect(persistAuthSession).toHaveBeenCalledWith(
-        expect.objectContaining({
-          token: 'jwt-token',
-          user: { id: 1, name: 'Test' },
-        })
-      );
-    });
-    await waitFor(() => expect(mockPush).toHaveBeenCalledWith('/chat'));
-  });
-
-  it('redirects to login when the Supabase exchange fails and the backend callback errors', async () => {
-    mockQuery = { code: 'abc123', state: 'xyz' };
-    const mockFetch = global.fetch as vi.Mock;
-    mockFetch.mockResolvedValue({
-      ok: false,
-      statusText: 'Bad Request',
-      json: () => Promise.resolve({ detail: 'Invalid code' }),
-    });
 
     renderWithClient(<GoogleCallback />);
     await waitFor(() => expect(mockPush).toHaveBeenCalledWith('/login?error=callback_failed'));
-  });
-
-  it('redirects to login when the Supabase exchange fails without legacy state', async () => {
-    mockQuery = { code: 'abc123' };
-
-    renderWithClient(<GoogleCallback />);
-    await waitFor(() => expect(mockPush).toHaveBeenCalledWith('/login?error=callback_failed'));
-  });
-
-  it('redirects on invalid legacy backend response (no token)', async () => {
-    mockQuery = { code: 'abc123', state: 'xyz' };
-    const mockFetch = global.fetch as vi.Mock;
-    mockFetch.mockResolvedValue({
-      ok: true,
-      json: () => Promise.resolve({ token: null, user: null }),
-    });
-
-    renderWithClient(<GoogleCallback />);
-    await waitFor(() => expect(mockPush).toHaveBeenCalledWith('/login?error=callback_failed'));
-  });
-
-  it('redirects on legacy backend network error', async () => {
-    mockQuery = { code: 'abc123', state: 'xyz' };
-    const mockFetch = global.fetch as vi.Mock;
-    mockFetch.mockRejectedValue(new Error('network down'));
-
-    renderWithClient(<GoogleCallback />);
-    await waitFor(() => expect(mockPush).toHaveBeenCalledWith('/login?error=callback_failed'));
+    expect(mockFetch).not.toHaveBeenCalled();
   });
 
   it('renders spinne  placeholder text', () => {
