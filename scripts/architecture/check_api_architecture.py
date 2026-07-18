@@ -10,6 +10,7 @@ from __future__ import annotations
 
 import argparse
 import ast
+import json
 import subprocess
 import sys
 from dataclasses import dataclass
@@ -234,7 +235,7 @@ def check_boundaries(files: Iterable[Path], config: BoundaryConfig) -> List[Viol
     return violations
 
 
-def _build_api_graph(files: Iterable[Path], config: BoundaryConfig) -> Dict[str, Set[str]]:
+def build_api_graph(files: Iterable[Path], config: BoundaryConfig) -> Dict[str, Set[str]]:
     graph: Dict[str, Set[str]] = {}
     module_by_path: Dict[Path, str] = {}
 
@@ -268,7 +269,7 @@ def find_cycles(graph: Dict[str, Set[str]]) -> List[List[str]]:
         stack.add(node)
         path.append(node)
 
-        for nxt in graph.get(node, set()):
+        for nxt in sorted(graph.get(node, set())):
             if nxt not in visited:
                 dfs(nxt)
             elif nxt in stack:
@@ -280,7 +281,7 @@ def find_cycles(graph: Dict[str, Set[str]]) -> List[List[str]]:
         path.pop()
         stack.remove(node)
 
-    for n in graph:
+    for n in sorted(graph):
         if n not in visited:
             dfs(n)
 
@@ -295,8 +296,10 @@ def normalize_cycle(cycle: List[str]) -> Tuple[str, ...]:
     return min(rotations)
 
 
-def check_cycles(files: Iterable[Path], config: BoundaryConfig) -> List[Violation]:
-    graph = _build_api_graph(files, config)
+def check_cycles(
+    files: Iterable[Path], config: BoundaryConfig, apply_ignore: bool = True
+) -> List[Violation]:
+    graph = build_api_graph(files, config)
     cycles = find_cycles(graph)
     violations: List[Violation] = []
 
@@ -304,7 +307,7 @@ def check_cycles(files: Iterable[Path], config: BoundaryConfig) -> List[Violatio
         if len(cycle) < 2:
             continue
         display = " -> ".join(cycle)
-        if display in config.ignored_cycles:
+        if apply_ignore and display in config.ignored_cycles:
             continue
         violations.append(
             Violation(
@@ -323,6 +326,26 @@ def print_violations(violations: List[Violation]) -> None:
         print(f"{v.file}:{v.line}: {v.rule}: {v.detail}")
 
 
+def write_cycle_report(violations: List[Violation], output_json: Path) -> None:
+    """Write a JSON cycle report plus a Graphviz DOT graph of the cyclic edges."""
+    cycles = [v.detail.split(" -> ") for v in violations if v.rule == "no-circular-dependencies"]
+
+    output_json.parent.mkdir(parents=True, exist_ok=True)
+    report = {"cycle_count": len(cycles), "cycles": cycles}
+    output_json.write_text(json.dumps(report, indent=2) + "\n", encoding="utf-8")
+
+    edges: Set[Tuple[str, str]] = set()
+    for cycle in cycles:
+        for a, b in zip(cycle, cycle[1:]):
+            edges.add((a, b))
+
+    dot_lines = ["digraph api_cycles {", "  rankdir=LR;", "  node [fontsize=10];"]
+    for a, b in sorted(edges):
+        dot_lines.append(f'  "{a}" -> "{b}" [color=red];')
+    dot_lines.append("}")
+    output_json.with_suffix(".dot").write_text("\n".join(dot_lines) + "\n", encoding="utf-8")
+
+
 def main() -> int:
     parser = argparse.ArgumentParser(description="Check API modular architecture rules")
     parser.add_argument("mode", choices=["boundaries", "cycles"])
@@ -335,6 +358,16 @@ def main() -> int:
         "--base-ref",
         default="origin/main",
         help="Base ref for --changed-only (default: origin/main)",
+    )
+    parser.add_argument(
+        "--output",
+        type=Path,
+        help="Write a JSON report to this path (cycles mode also writes a .dot graph alongside it)",
+    )
+    parser.add_argument(
+        "--report-only",
+        action="store_true",
+        help="Always exit 0 regardless of violations found; used while a check is not yet a blocking gate",
     )
     args = parser.parse_args()
 
@@ -356,11 +389,18 @@ def main() -> int:
     if args.mode == "boundaries":
         violations = check_boundaries(files, config)
     else:
-        violations = check_cycles(files, config)
+        # In report-only mode we always show the true, unfiltered cycle count
+        # (ignoring the baseline allowlist) so the dashboard/summary reflects
+        # actual debt rather than what the gate currently lets through.
+        violations = check_cycles(files, config, apply_ignore=not args.report_only)
+        if args.output:
+            write_cycle_report(violations, args.output)
 
     if violations:
         print_violations(violations)
         print(f"\nFound {len(violations)} violation(s).")
+        if args.report_only:
+            return 0
         return 1
 
     print("All checks passed.")

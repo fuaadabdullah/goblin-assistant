@@ -96,3 +96,6 @@ reports/*.md
 
 # Mutation testing output
 apps/api/mutants/
+
+# CI-generated report artifacts
+/artifacts/
