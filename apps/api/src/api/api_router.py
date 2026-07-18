@@ -36,9 +36,11 @@ from .routes.orchestration_router import router as orchestration_router
 from .routing.feedback_router import router as _feedback_router
 from .routing.router import route_task as route_task_runtime
 from .services.stream_state_store import get_stream_state_store
+from .services.task_store_service import (
+    conversation_store,  # noqa: F401 - compatibility alias
+    get_task_store,
+)
 from .services.task_streaming import run_task_stream_to_state
-from .storage import conversation_store  # noqa: F401 - compatibility alias for tests
-from .storage.tasks import get_task_store
 
 # Backward-compatible alias preserved for tests/integrations still patching
 # `api.api_router.create_simple_orchestration_plan`.

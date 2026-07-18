@@ -13,9 +13,15 @@ from api.auth.router import User as AuthenticatedUser
 from api.auth.router import get_current_user
 from api.core.contracts import JsonObject, SuccessEnvelope
 from api.core.errors import DomainError
-from api.storage.database import get_db
-from api.storage.saas_service import SaaSSettingsService
-from api.storage.user_service import UserService
+from api.services.platform_settings_service import (
+    SaaSSettingsService,
+)
+from api.services.platform_settings_service import (
+    get_platform_db as get_db,
+)
+from api.services.platform_settings_service import (
+    save_account_profile as save_account_profile_record,
+)
 
 router = APIRouter(prefix="/account", tags=["account"])
 
@@ -85,38 +91,19 @@ async def save_profile(
 ) -> SuccessEnvelope[ProfileResponse]:
     """Save user profile information"""
     try:
-        user_service = UserService(db)
-        user = await user_service.get_user_by_id(current_user.id)
-
-        if not user:
-            raise DomainError(
-                code="ACCOUNT_USER_NOT_FOUND", message="User not found", status_code=404
-            )
-
-        # Update profile fields
-        if profile.name is not None:
-            user.name = profile.name
-        if profile.email is not None and profile.email != user.email:
-            # Check email uniqueness
-            existing = await user_service.get_user_by_email(profile.email)
-            if existing:
-                raise DomainError(
-                    code="ACCOUNT_EMAIL_IN_USE",
-                    message="Email already in use",
-                    status_code=400,
-                )
-            user.email = profile.email
-
-        db.add(user)
-        await db.commit()
-        await db.refresh(user)
-
+        saved = await save_account_profile_record(
+            db=db,
+            user_id=current_user.id,
+            name=profile.name,
+            email=profile.email,
+            avatar_url=profile.avatar_url,
+        )
         return SuccessEnvelope(
             data=ProfileResponse(
-                id=user.id,
-                email=user.email,
-                name=user.name,
-                avatar_url=profile.avatar_url,
+                id=saved["id"],
+                email=saved["email"],
+                name=saved["name"],
+                avatar_url=saved["avatar_url"],
             )
         )
     except DomainError:

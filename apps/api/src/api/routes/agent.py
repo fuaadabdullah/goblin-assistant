@@ -30,7 +30,7 @@ from api.services.agent_workflow import (
     extract_contract_fields,
     resolve_default_repair_attempts,
 )
-from api.storage.tasks import get_task_store
+from api.services.task_store_service import get_task_store
 
 router = APIRouter(prefix="/agent", tags=["agent"])
 

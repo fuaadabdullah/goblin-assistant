@@ -8,7 +8,7 @@ import structlog
 from fastapi import APIRouter, HTTPException, Query
 
 from ..ops.security import require_ops_access, require_ops_write_access
-from ..storage.usage_events import usage_event_store
+from ..services.usage_rollup_service import get_model_usage_rollup
 from .context_snapshotter import context_snapshotter
 from .decision_logger import decision_logger
 from .memory_logger import memory_promotion_logger
@@ -281,7 +281,7 @@ async def get_model_usage(
 ) -> Dict[str, Any]:
     """Get model/provider usage rollups for dashboarding."""
     try:
-        rows = await usage_event_store.get_model_rollup(provider=provider, model=model, limit=limit)
+        rows = await get_model_usage_rollup(provider=provider, model=model, limit=limit)
         return {
             "provider": provider,
             "model": model,

@@ -6,7 +6,7 @@ from typing import Optional
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel
 
-from api.storage.api_keys import create_api_key_store
+from api.services.api_key_service import create_api_key_store
 
 router = APIRouter(prefix="/api-keys", tags=["api-keys"])
 

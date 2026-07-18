@@ -108,7 +108,7 @@ class SmartRouter:
 
         if strategy == RoutingStrategy.ML_BANDIT:
             try:
-                from api.routing.ml_router import bandit_router  # noqa: PLC0415
+                from api.routing.learning_adapters import rank_with_bandit_router  # noqa: PLC0415
 
                 routing_request = None
                 try:
@@ -128,7 +128,7 @@ class SmartRouter:
                 except Exception:
                     pass
 
-                return bandit_router.rank(
+                return rank_with_bandit_router(
                     candidates,
                     provider_costs,
                     task_type=capability,
@@ -240,9 +240,9 @@ class SmartRouter:
         # Note: registry.record_success is NOT called here — the dispatcher's
         # execution layer already calls it. We only add the bandit update.
         try:
-            from api.routing.ml_router import bandit_router as _br  # noqa: PLC0415
+            from api.routing.learning_adapters import record_bandit_outcome  # noqa: PLC0415
 
-            _br.record_outcome(
+            record_bandit_outcome(
                 request_id=req_id,
                 task_type=task_type,
                 provider_id=provider_id,
