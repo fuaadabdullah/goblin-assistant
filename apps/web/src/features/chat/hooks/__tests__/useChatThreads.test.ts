@@ -43,6 +43,7 @@ import { useChatThreads } from '../useChatThreads';
 describe('useChatThreads', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    window.history.replaceState({}, '', '/');
   });
 
   it('prefers backend conversations and marks migration complete after hydration', async () => {
@@ -140,6 +141,15 @@ describe('useChatThreads', () => {
 
   it('does not query protected conversations when disabled', () => {
     renderHook(() => useChatThreads({ enabled: false }));
+
+    expect(useQuery).toHaveBeenCalledWith(expect.objectContaining({ enabled: false }));
+    expect(chatClient.listConversations).not.toHaveBeenCalled();
+  });
+
+  it('does not query protected conversations on the guest route', () => {
+    window.history.replaceState({}, '', '/chat?guest=1');
+
+    renderHook(() => useChatThreads());
 
     expect(useQuery).toHaveBeenCalledWith(expect.objectContaining({ enabled: false }));
     expect(chatClient.listConversations).not.toHaveBeenCalled();
