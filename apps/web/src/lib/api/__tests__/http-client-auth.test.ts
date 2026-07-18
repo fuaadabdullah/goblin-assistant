@@ -7,7 +7,7 @@ vi.mock('../../supabase', () => ({
 }));
 
 import { attachSupabaseInterceptor, frontendHttp } from '../http-client';
-import { getFrontend } from '../http-helpers';
+import { getFrontend, postFrontend } from '../http-helpers';
 
 describe('Supabase auth transport', () => {
   let mock: MockAdapter;
@@ -27,6 +27,18 @@ describe('Supabase auth transport', () => {
     });
 
     await getFrontend('/api/settings/');
+  });
+
+  it('replaces a stale legacy token on conversation creation requests', async () => {
+    document.cookie = 'session_token=legacy-stale; Path=/';
+    mock.onPost('/api/chat/conversations').reply((config) => {
+      expect(config.headers?.Authorization).toBe('Bearer supabase-jwt');
+      return [200, { success: true, data: { conversation_id: 'conversation-1' } }];
+    });
+
+    await postFrontend('/api/chat/conversations', { title: 'New conversation' }, {
+      headers: { Authorization: 'Bearer legacy-stale' },
+    });
   });
 
   it('adds the Supabase Bearer token to requests sent through the Next proxy', async () => {

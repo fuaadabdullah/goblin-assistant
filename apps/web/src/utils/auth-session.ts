@@ -41,18 +41,17 @@ export const getAuthToken = (): string | null => {
 
 /** Resolve the current token for direct browser requests. */
 export const getAuthTokenForRequest = async (): Promise<string | null> => {
-  const legacyToken = getAuthToken();
-  if (legacyToken) return legacyToken;
-
-  if (typeof window === 'undefined') return null;
-
-  try {
-    const { authGetSession } = await import('../lib/supabase');
-    const { session } = await authGetSession();
-    return session?.access_token ?? null;
-  } catch {
-    return null;
+  if (typeof window !== 'undefined') {
+    try {
+      const { authGetSession } = await import('../lib/supabase');
+      const { session } = await authGetSession();
+      if (session?.access_token) return session.access_token;
+    } catch {
+      // Fall back to the legacy session below while older accounts migrate.
+    }
   }
+
+  return getAuthToken();
 };
 
 export const getRefreshToken = (): string | null => {
