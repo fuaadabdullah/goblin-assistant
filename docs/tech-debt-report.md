@@ -356,11 +356,14 @@ local orchestration surface.
      checked router-decomposition and dispatcher-decomposition ADRs against
      current code — both still accurate. `TS_STRICT_VIOLATIONS.md` was
      already correctly marked resolved.
-   - [ ] Add operational runbooks in `docs/operations/` — genuine gap found:
-     only `SECRET_EXPOSURE_INCIDENT_RESPONSE.md` is a real incident-response
-     runbook among 73 files in `docs/operations/`; the rest are setup/
-     deployment/reference docs. Writing new runbooks is content creation
-     (not verification), scoped separately.
+   - [x] Add operational runbooks in `docs/operations/` — added
+     `PROVIDER_DISPATCH_INCIDENT_RESPONSE.md` (circuit breaker states,
+     routing decisions, provider-leakage import errors) and
+     `DEPLOYMENT_ROLLBACK.md` (Render/Vercel rollback, migration edge
+     case); updated the existing `SANDBOX_README.md` troubleshooting
+     section, which predated the docker-socket-proxy hardening from this
+     pass and still told operators to check `/var/run/docker.sock`
+     directly.
 
 ### Priority 3 (Low - Backlog)
 
