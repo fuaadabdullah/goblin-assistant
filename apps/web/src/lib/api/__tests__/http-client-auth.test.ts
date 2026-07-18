@@ -9,7 +9,7 @@ vi.mock('../../supabase', () => ({
 
 import { authGetSession, authRefreshSession } from '../../supabase';
 import { frontendHttp } from '../http-client';
-import { postFrontend } from '../http-helpers';
+import { getFrontend, postFrontend } from '../http-helpers';
 
 describe('frontend HTTP authentication', () => {
   let mock: MockAdapter;
@@ -36,6 +36,15 @@ describe('frontend HTTP authentication', () => {
     await expect(postFrontend('/api/chat/conversations', {})).resolves.toEqual({
       conversation_id: 'conversation-1',
     });
+  });
+
+  it('resolves the Supabase token before the first settings request', async () => {
+    mock.onGet('/api/settings/').reply((config) => {
+      expect(config.headers?.Authorization).toBe('Bearer supabase-jwt');
+      return [200, { success: true, data: { providers: [] } }];
+    });
+
+    await getFrontend('/api/settings/');
   });
 
   it('refreshes and retries an expired proxy request once', async () => {

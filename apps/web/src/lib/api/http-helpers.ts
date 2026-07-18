@@ -8,6 +8,7 @@
 
 import axios, { AxiosError, type AxiosRequestConfig } from 'axios';
 import { devWarn } from '../../utils/dev-log';
+import { getAuthTokenForRequest } from '../../utils/auth-session';
 import { backendHttp, frontendHttp } from './http-client';
 import type { StandardApiEnvelope } from './api-types';
 
@@ -87,6 +88,36 @@ export const assertNoVersionedClientPath = (path: string): void => {
   }
 };
 
+const hasAuthorizationHeader = (config?: AxiosRequestConfig): boolean =>
+  Object.keys((config?.headers ?? {}) as Record<string, unknown>).some(
+    (key) => key.toLowerCase() === 'authorization'
+  );
+
+const isAuthRoute = (url: string): boolean => url.split('?', 1)[0]?.startsWith('/api/auth/') ?? false;
+
+/**
+ * Resolve the current browser session at request time.
+ *
+ * Supabase owns the active session, while several older callers still pass
+ * synchronous `withAuth()` config built from legacy storage. Resolving here
+ * keeps chat, account, and settings requests authenticated even when the
+ * lazy interceptor has not attached yet or the legacy token is absent.
+ */
+const withResolvedAuth = async (url: string, config?: AxiosRequestConfig) => {
+  if (isAuthRoute(url) || hasAuthorizationHeader(config)) return config;
+
+  const token = await getAuthTokenForRequest();
+  if (!token) return config;
+
+  return {
+    ...config,
+    headers: {
+      ...(config?.headers ?? {}),
+      Authorization: `Bearer ${token}`,
+    },
+  };
+};
+
 // ============================================================================
 // HTTP Verb Wrappers — Backend
 // ============================================================================
@@ -94,7 +125,7 @@ export const assertNoVersionedClientPath = (path: string): void => {
 export const getBackend = async <T>(url: string, config?: AxiosRequestConfig): Promise<T> => {
   try {
     assertNoVersionedClientPath(url);
-    const response = await backendHttp.get<T>(url, config);
+    const response = await backendHttp.get<T>(url, await withResolvedAuth(url, config));
     return unwrapEnvelope<T>(response.data as T | StandardApiEnvelope<T>);
   } catch (error) {
     return normalizeAxiosError(error);
@@ -108,7 +139,7 @@ export const postBackend = async <T, B = unknown>(
 ): Promise<T> => {
   try {
     assertNoVersionedClientPath(url);
-    const response = await backendHttp.post<T>(url, body, config);
+    const response = await backendHttp.post<T>(url, body, await withResolvedAuth(url, config));
     return unwrapEnvelope<T>(response.data as T | StandardApiEnvelope<T>);
   } catch (error) {
     return normalizeAxiosError(error);
@@ -122,7 +153,7 @@ export const putBackend = async <T, B = unknown>(
 ): Promise<T> => {
   try {
     assertNoVersionedClientPath(url);
-    const response = await backendHttp.put<T>(url, body, config);
+    const response = await backendHttp.put<T>(url, body, await withResolvedAuth(url, config));
     return unwrapEnvelope<T>(response.data as T | StandardApiEnvelope<T>);
   } catch (error) {
     return normalizeAxiosError(error);
@@ -136,7 +167,7 @@ export const patchBackend = async <T, B = unknown>(
 ): Promise<T> => {
   try {
     assertNoVersionedClientPath(url);
-    const response = await backendHttp.patch<T>(url, body, config);
+    const response = await backendHttp.patch<T>(url, body, await withResolvedAuth(url, config));
     return unwrapEnvelope<T>(response.data as T | StandardApiEnvelope<T>);
   } catch (error) {
     return normalizeAxiosError(error);
@@ -146,7 +177,7 @@ export const patchBackend = async <T, B = unknown>(
 export const deleteBackend = async <T>(url: string, config?: AxiosRequestConfig): Promise<T> => {
   try {
     assertNoVersionedClientPath(url);
-    const response = await backendHttp.delete<T>(url, config);
+    const response = await backendHttp.delete<T>(url, await withResolvedAuth(url, config));
     return unwrapEnvelope<T>(response.data as T | StandardApiEnvelope<T>);
   } catch (error) {
     return normalizeAxiosError(error);
@@ -160,7 +191,7 @@ export const deleteBackend = async <T>(url: string, config?: AxiosRequestConfig)
 export const getFrontend = async <T>(url: string, config?: AxiosRequestConfig): Promise<T> => {
   try {
     assertNoVersionedClientPath(url);
-    const response = await frontendHttp.get<T>(url, config);
+    const response = await frontendHttp.get<T>(url, await withResolvedAuth(url, config));
     return unwrapEnvelope<T>(response.data as T | StandardApiEnvelope<T>);
   } catch (error) {
     return normalizeAxiosError(error);
@@ -174,7 +205,7 @@ export const postFrontend = async <T, B = unknown>(
 ): Promise<T> => {
   try {
     assertNoVersionedClientPath(url);
-    const response = await frontendHttp.post<T>(url, body, config);
+    const response = await frontendHttp.post<T>(url, body, await withResolvedAuth(url, config));
     return unwrapEnvelope<T>(response.data as T | StandardApiEnvelope<T>);
   } catch (error) {
     return normalizeAxiosError(error);
@@ -188,7 +219,7 @@ export const putFrontend = async <T, B = unknown>(
 ): Promise<T> => {
   try {
     assertNoVersionedClientPath(url);
-    const response = await frontendHttp.put<T>(url, body, config);
+    const response = await frontendHttp.put<T>(url, body, await withResolvedAuth(url, config));
     return unwrapEnvelope<T>(response.data as T | StandardApiEnvelope<T>);
   } catch (error) {
     return normalizeAxiosError(error);
@@ -202,7 +233,7 @@ export const patchFrontend = async <T, B = unknown>(
 ): Promise<T> => {
   try {
     assertNoVersionedClientPath(url);
-    const response = await frontendHttp.patch<T>(url, body, config);
+    const response = await frontendHttp.patch<T>(url, body, await withResolvedAuth(url, config));
     return unwrapEnvelope<T>(response.data as T | StandardApiEnvelope<T>);
   } catch (error) {
     return normalizeAxiosError(error);
