@@ -21,7 +21,9 @@
         "api.assistant_tools",
         "api.config",
         "api.observability",
-        "api.integrations"
+        "api.integrations",
+        "api.departments",
+        "api.pipeline"
       ]
     },
     {
@@ -33,10 +35,13 @@
       "allowed_dependency_prefixes": [
         "api.providers",
         "api.services.provider_health",
+        "api.services.task_routing_audit",
         "api.core",
         "api.config",
         "api.routing",
-        "api.observability"
+        "api.observability",
+        "api.storage.usage_events",
+        "api.ops.integrations.jira"
       ]
     },
     {
@@ -62,11 +67,18 @@
       "name": "sandbox",
       "owned_modules": [
         "api.sandbox_api",
+        "api.sandbox_config",
+        "api.sandbox_job_helpers",
+        "api.sandbox_models",
         "api.assistant_tools"
       ],
       "allowed_dependency_prefixes": [
         "api.sandbox_api",
+        "api.sandbox_config",
+        "api.sandbox_job_helpers",
+        "api.sandbox_models",
         "api.assistant_tools",
+        "api.capabilities",
         "api.services",
         "api.middleware",
         "api.artifact_service",
@@ -109,6 +121,8 @@
         "api.providers.dispatcher",
         "api.providers.base",
         "api.providers.contracts",
+        "api.providers.supabase_events",
+        "api.providers.pricing",
         "api.config",
         "api.observability"
       ]
@@ -134,6 +148,9 @@
       "api.providers.gemini",
       "api.providers.groq",
       "api.providers.siliconeflow",
+      "api.providers.provider_registry",
+      "api.providers.google_cloud_provider",
+      "api.providers.google_cloud_selfhosted_provider",
       "api.services.provider_health",
       "api.tests"
     ],

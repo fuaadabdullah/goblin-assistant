@@ -111,7 +111,7 @@ Concrete provider imports in non-owner modules:
 | `apps/api/src/api/observability/debug_router.py` | 744 | ACCEPTABLE | Single `/debug` prefix with cohesive endpoints - monitor only |
 | `apps/api/src/api/providers/quota_service.py` | 788 | ACCEPTABLE | Cohesive Redis-backed quota logic - acceptable |
 
-### 3.2 Circular Dependencies (7 documented)
+### 3.2 Circular Dependencies (STALE — see below)
 
 From `apps/api/architecture-boundaries.toml`, the following cycles are explicitly ignored:
 
@@ -134,6 +134,36 @@ api.services.retrieval_service -> api.services.tool_result_memory_service -> api
 # Storage models
 api.storage.models -> api.storage.vector_models -> api.storage.models
 ```
+
+**`make check-api-cycles` is not wired into any CI pipeline** (not in
+`.github/workflows/ci.yml` or `.circleci/config.yml` — it only exists as a
+manual `make` target), so this list has drifted from reality undetected.
+Running it against the current tree surfaces **9 different, undocumented
+cycles** — none of which match the 7 above:
+
+```text
+api.observability.alert_handlers -> api.observability.alerting_system -> api.observability.alert_handlers
+api.providers.dispatcher -> api.providers.dispatcher_pkg.debug -> api.routing.router -> api.routing.selection -> api.providers.dispatcher
+api.providers.dispatcher -> api.providers.model_registry -> api.providers.dispatcher
+api.routing.feature_extractor -> api.services.provider_health -> api.routing.router -> api.routing.router_registry -> api.routing.ml_router -> api.routing.feature_router -> api.routing.feature_extractor
+api.routing.feature_router -> api.routing.ml_router -> api.routing.feature_router
+api.routing.feature_router -> api.routing.router_registry -> api.routing.ml_router -> api.routing.feature_router
+api.routing.ml_router -> api.routing.router_strategies -> api.routing.policy_engine -> api.routing.router_registry -> api.routing.ml_router
+api.routing.prompt_classifier -> api.services.smart_router -> api.routing.prompt_classifier
+api.services.embedding_service -> api.services.embedding_worker -> api.services.embedding_service
+```
+
+These predate this remediation pass (confirmed unchanged against the
+pre-session commit) and mostly cluster around the `routing/router.py` split
+into `policy_engine.py`/`router_registry.py`/`selection.py`/etc. — the
+extraction likely introduced cross-module back-references among the split
+pieces. **Not fixed here**: breaking these safely requires case-by-case
+analysis of import order and likely dependency-inversion/lazy-import work in
+live routing/provider-dispatch code, which is real behavioral risk to take on
+without dedicated review per cycle. Wiring `check-api-cycles` into CI is a
+prerequisite for catching further drift, but doing so today would fail the
+build on 9 pre-existing violations — do that only alongside a resolution
+plan, not before one.
 
 **Impact:** These create maintenance complexity and hinder module hot-swapping capability.
 
