@@ -2,8 +2,24 @@ import React from 'react';
 import { render, screen, waitFor } from '@testing-library/react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 
-const mockPush = vi.fn();
-let mockQuery: Record<string, string> = {};
+const {
+  mockPush,
+  mockExchangeCodeForSession,
+  mockSnapshotFromSupabaseSession,
+  mockSetQueryData,
+  queryState,
+} = vi.hoisted(() => ({
+  mockPush: vi.fn(),
+  mockExchangeCodeForSession: vi.fn(),
+  mockSnapshotFromSupabaseSession: vi.fn(() => ({
+    token: 'test-token',
+    user: null,
+    isAuthenticated: true,
+    isHydrated: true,
+  })),
+  mockSetQueryData: vi.fn(),
+  queryState: { value: {} as Record<string, string> },
+}));
 
 vi.mock('next/navigation', () => ({
   useRouter: () => ({
@@ -11,24 +27,29 @@ vi.mock('next/navigation', () => ({
     replace: vi.fn(),
     prefetch: vi.fn(),
   }),
-  useSearchParams: () => new URLSearchParams(mockQuery),
+  useSearchParams: () => new URLSearchParams(queryState.value),
   usePathname: () => '/google-callback',
 }));
 
-vi.mock('@/utils/auth-session', () => ({
-  persistAuthSession: vi.fn(),
+vi.mock('@tanstack/react-query', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@tanstack/react-query')>();
+  return {
+    ...actual,
+    useQueryClient: () => ({ setQueryData: mockSetQueryData }),
+  };
+});
+
+vi.mock('@/lib/supabase', () => ({
+  authExchangeCodeForSession: mockExchangeCodeForSession,
 }));
 
-vi.mock('@/config/backendOrigin', () => ({
-  DEFAULT_BACKEND_ORIGIN: 'http://api.example.test:8000',
-  resolvePublicBackendOrigin: () => 'http://api.example.test:8000',
-  resolveBackendOrigin: () => 'http://api.example.test:8000',
+vi.mock('@/lib/auth-state', () => ({
+  snapshotFromSupabaseSession: mockSnapshotFromSupabaseSession,
 }));
 
 vi.mock('@/utils/dev-log', () => ({ devError: vi.fn(), devWarn: vi.fn(), devLog: vi.fn() }));
 
 import * as GoogleCallbackModule from '../GoogleCallback';
-import { persistAuthSession } from '@/utils/auth-session';
 
 const GoogleCallback = GoogleCallbackModule.default;
 
@@ -40,12 +61,20 @@ function renderWithClient(ui: React.ReactElement) {
 describe('GoogleCallback', () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    mockQuery = {};
-    global.fetch = vi.fn();
-  });
-
-  afterEach(() => {
-    delete (global as unknown as Record<string, unknown>).fetch;
+    queryState.value = {};
+    mockExchangeCodeForSession.mockResolvedValue({
+      session: {
+        access_token: 'supabase-token',
+        user: {
+          id: 'u1',
+          email: 'user@example.com',
+          role: 'authenticated',
+          user_metadata: { name: 'User One' },
+          created_at: '2026-07-17T00:00:00Z',
+        },
+      },
+      error: null,
+    });
   });
 
   it('renders loading state', () => {
@@ -58,81 +87,53 @@ describe('GoogleCallback', () => {
   });
 
   it('redirects on OAuth error param', async () => {
-    mockQuery = { error: 'access_denied' };
+    queryState.value = { error: 'access_denied' };
     renderWithClient(<GoogleCallback />);
     await waitFor(() => expect(mockPush).toHaveBeenCalledWith('/login?error=oauth_failed'));
   });
 
   it('redirects when no code received', async () => {
-    mockQuery = {};
+    queryState.value = {};
     renderWithClient(<GoogleCallback />);
     await waitFor(() => expect(mockPush).toHaveBeenCalledWith('/login?error=no_code'));
   });
 
-  it('exchanges code for token on success', async () => {
-    mockQuery = { code: 'abc123', state: 'xyz' };
-    const mockFetch = global.fetch as vi.Mock;
-    mockFetch.mockResolvedValue({
-      ok: true,
-      json: () =>
-        Promise.resolve({
-          token: 'jwt-token',
-          user: { id: 1, name: 'Test' },
-          refresh_token: 'refresh-123',
-          expires_in: 3600,
-        }),
-    });
+  it('exchanges code for session on success', async () => {
+    queryState.value = { code: 'abc123', state: 'xyz' };
 
     renderWithClient(<GoogleCallback />);
     await waitFor(() => {
-      expect(mockFetch).toHaveBeenCalledWith(
-        '/api/auth/google/callback',
-        expect.objectContaining({
-          method: 'POST',
-          body: JSON.stringify({ code: 'abc123', state: 'xyz' }),
-        })
-      );
+      expect(mockExchangeCodeForSession).toHaveBeenCalledWith('abc123');
     });
     await waitFor(() => {
-      expect(persistAuthSession).toHaveBeenCalledWith(
+      expect(mockSnapshotFromSupabaseSession).toHaveBeenCalledWith(
         expect.objectContaining({
-          token: 'jwt-token',
-          user: { id: 1, name: 'Test' },
+          access_token: 'supabase-token',
         })
       );
     });
     await waitFor(() => expect(mockPush).toHaveBeenCalledWith('/chat'));
   });
 
-  it('redirects to login on fetch error', async () => {
-    mockQuery = { code: 'abc123' };
-    const mockFetch = global.fetch as vi.Mock;
-    mockFetch.mockResolvedValue({
-      ok: false,
-      statusText: 'Bad Request',
-      json: () => Promise.resolve({ detail: 'Invalid code' }),
-    });
+  it('redirects to login on exchange error', async () => {
+    queryState.value = { code: 'abc123' };
+    mockExchangeCodeForSession.mockResolvedValueOnce({ session: null, error: new Error('Bad Request') });
 
     renderWithClient(<GoogleCallback />);
     await waitFor(() => expect(mockPush).toHaveBeenCalledWith('/login?error=callback_failed'));
   });
 
   it('redirects on invalid response (no token)', async () => {
-    mockQuery = { code: 'abc123' };
-    const mockFetch = global.fetch as vi.Mock;
-    mockFetch.mockResolvedValue({
-      ok: true,
-      json: () => Promise.resolve({ token: null, user: null }),
-    });
+    queryState.value = { code: 'abc123' };
+    mockExchangeCodeForSession.mockResolvedValueOnce({ session: null, error: null });
 
     renderWithClient(<GoogleCallback />);
     await waitFor(() => expect(mockPush).toHaveBeenCalledWith('/login?error=callback_failed'));
   });
 
   it('redirects on network error', async () => {
-    mockQuery = { code: 'abc123' };
-    const mockFetch = global.fetch as vi.Mock;
-    mockFetch.mockRejectedValue(new Error('network down'));
+    queryState.value = { code: 'abc123' };
+    mockExchangeCodeForSession.mockRejectedValueOnce(new Error('network down'));
 
     renderWithClient(<GoogleCallback />);
     await waitFor(() => expect(mockPush).toHaveBeenCalledWith('/login?error=callback_failed'));

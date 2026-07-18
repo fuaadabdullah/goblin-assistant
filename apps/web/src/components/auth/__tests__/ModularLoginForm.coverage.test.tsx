@@ -5,7 +5,7 @@ const {
   mockSetQueryData,
   mockSignIn,
   mockSignUp,
-  mockGetGoogleAuthUrl,
+  mockSignInWithOAuth,
   mockSnapshotFromSupabaseSession,
   turnstileState,
   featureFlagsState,
@@ -13,7 +13,7 @@ const {
   mockSetQueryData: vi.fn(),
   mockSignIn: vi.fn(),
   mockSignUp: vi.fn(),
-  mockGetGoogleAuthUrl: vi.fn(),
+  mockSignInWithOAuth: vi.fn(),
   mockSnapshotFromSupabaseSession: vi.fn(() => ({
     token: 'test-token',
     user: null,
@@ -37,16 +37,11 @@ vi.mock('@tanstack/react-query', () => ({
 vi.mock('@/lib/supabase', () => ({
   authSignUp: mockSignUp,
   authSignIn: mockSignIn,
+  authSignInWithOAuth: mockSignInWithOAuth,
 }));
 
 vi.mock('@/lib/auth-state', () => ({
   snapshotFromSupabaseSession: mockSnapshotFromSupabaseSession,
-}));
-
-vi.mock('@/lib/api/auth', () => ({
-  authMethods: {
-    getGoogleAuthUrl: mockGetGoogleAuthUrl,
-  },
 }));
 
 vi.mock('../../../config/features', () => ({
@@ -154,8 +149,9 @@ describe('ModularLoginForm coverage', () => {
     window.history.replaceState({}, '', '/');
     mockSignIn.mockResolvedValue({ session: authSession, error: null });
     mockSignUp.mockResolvedValue({ session: authSession, error: null });
-    mockGetGoogleAuthUrl.mockResolvedValue({
-      url: 'http://localhost:3000/#google-auth',
+    mockSignInWithOAuth.mockResolvedValue({
+      data: { url: 'http://localhost:3000/#google-auth' },
+      error: null,
     });
   });
 
@@ -214,8 +210,11 @@ describe('ModularLoginForm coverage', () => {
 
     fireEvent.click(screen.getByRole('button', { name: 'Google login' }));
 
-    await waitFor(() => expect(mockGetGoogleAuthUrl).toHaveBeenCalledTimes(1));
-    expect(window.location.href).toBe('http://localhost:3000/#google-auth');
+    await waitFor(() => expect(mockSignInWithOAuth).toHaveBeenCalledTimes(1));
+    expect(mockSignInWithOAuth).toHaveBeenCalledWith(
+      'google',
+      expect.stringContaining('/google-callback')
+    );
   });
 
   it('preserves non-Error login failures through the shared formatter', () => {

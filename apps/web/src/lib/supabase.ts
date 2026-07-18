@@ -68,7 +68,10 @@ export async function authSignIn(email: string, password: string, captchaToken?:
 export async function authSignInWithOAuth(provider: string, redirectTo: string) {
   const { data, error } = await supabase.auth.signInWithOAuth({
     provider: provider as Parameters<typeof supabase.auth.signInWithOAuth>[0]['provider'],
-    options: { redirectTo },
+    // Keep Google on the minimal OIDC scope set that the configured client
+    // allows. Requesting profile here has been a source of production auth
+    // failures when the Google client only permits email/openid.
+    options: { redirectTo, scopes: 'openid email' },
   });
   return { data, error };
 }

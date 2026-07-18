@@ -1,7 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
-import { authSignUp, authSignIn } from '@/lib/supabase';
-import { authMethods } from '@/lib/api/auth';
+import { authSignUp, authSignIn, authSignInWithOAuth } from '@/lib/supabase';
 import { snapshotFromSupabaseSession } from '@/lib/auth-state';
 import { queryKeys } from '../../lib/query-keys';
 import LoginHeader from './LoginHeader';
@@ -83,10 +82,11 @@ export default function ModularLoginForm({
 
     setIsLoading(true);
     try {
-      const { url } = await authMethods.getGoogleAuthUrl();
-      // Full-page redirect to Google's consent screen; the backend-returned URL
-      // already encodes the correct redirect_uri and state parameter.
-      window.location.assign(url);
+      const { error } = await authSignInWithOAuth(
+        'google',
+        `${window.location.origin}/google-callback`
+      );
+      if (error) throw error;
     } catch (error) {
       devError('Google OAuth error:', error);
       onError(formatLoginError(error, 'Google sign-in failed'));

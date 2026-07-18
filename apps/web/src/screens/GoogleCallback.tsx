@@ -4,7 +4,6 @@ import React, { useEffect } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { queryKeys } from '../lib/query-keys';
-import { persistAuthSession } from '../utils/auth-session';
 import { authExchangeCodeForSession } from '../lib/supabase';
 import { snapshotFromSupabaseSession } from '../lib/auth-state';
 import { devError } from '@/utils/dev-log';
@@ -14,13 +13,11 @@ const GoogleCallback: React.FC = () => {
   const queryClient = useQueryClient();
   const searchParams = useSearchParams();
   const code = searchParams.get('code');
-  const state = searchParams.get('state');
   const oauthError = searchParams.get('error');
 
   useEffect(() => {
     const handleCallback = async () => {
       const codeValue = code ?? undefined;
-      const stateValue = state ?? undefined;
       const errorValue = oauthError ?? undefined;
 
       if (errorValue) {
@@ -35,10 +32,7 @@ const GoogleCallback: React.FC = () => {
         return;
       }
 
-      // Supabase OAuth (signInWithOAuth) redirects back with a PKCE `code` and
-      // no `state` param — that code must be exchanged with Supabase, not the
-      // legacy backend endpoint. The legacy Google flow always carries `state`.
-      if (!stateValue) {
+      try {
         const { session, error } = await authExchangeCodeForSession(codeValue);
         if (error || !session) {
           devError('Supabase code exchange failed:', error);
@@ -47,53 +41,6 @@ const GoogleCallback: React.FC = () => {
         }
         queryClient.setQueryData(queryKeys.authValidate, snapshotFromSupabaseSession(session));
         router.push('/chat');
-        return;
-      }
-
-      try {
-        // Exchange code for token
-        const response = await fetch('/api/auth/google/callback', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({
-            code: codeValue,
-            state: stateValue,
-          }),
-        });
-
-        if (!response.ok) {
-          const errorData = await response.json();
-          throw new Error(
-            `Failed to exchange code for token: ${errorData.detail || response.statusText}`
-          );
-        }
-
-        const authData = await response.json();
-        const tokenValue = (authData && (authData.token || authData.access_token)) || null;
-        const userInfo = (authData && (authData.user || authData.userInfo)) || null;
-
-        // Store token and user data
-        if (!tokenValue || !userInfo) {
-          throw new Error('Invalid OAuth response');
-        }
-
-        persistAuthSession({
-          token: tokenValue,
-          refreshToken: authData?.refresh_token,
-          user: userInfo,
-          expiresIn: authData?.expires_in,
-        });
-        queryClient.setQueryData(queryKeys.authValidate, {
-          token: tokenValue,
-          user: userInfo,
-          isAuthenticated: true,
-          isHydrated: true,
-        });
-
-        // Navigate to chat
-        router.push('/chat');
       } catch (err) {
         devError('OAuth callback error:', err);
         router.push('/login?error=callback_failed');
@@ -101,7 +48,7 @@ const GoogleCallback: React.FC = () => {
     };
 
     handleCallback();
-  }, [code, state, oauthError, router, queryClient]);
+  }, [code, oauthError, router, queryClient]);
 
   return (
     <div className="callback-container">

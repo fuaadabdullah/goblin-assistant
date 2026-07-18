@@ -151,7 +151,7 @@ describe('supabase helpers', () => {
     );
     expect(authMocks.signInWithOAuth).toHaveBeenCalledWith({
       provider: 'google',
-      options: { redirectTo: 'https://app.example/callback' },
+      options: { redirectTo: 'https://app.example/callback', scopes: 'openid email' },
     });
 
     await expect(mod.authGetSession()).resolves.toEqual({
