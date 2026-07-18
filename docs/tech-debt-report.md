@@ -178,25 +178,27 @@ composition layer over `proxy/routeResolver.ts` (route resolution) and
 
 ## 4. Security Vulnerabilities
 
-### 4.1 Node.js Dependencies (9 vulnerabilities)
+### 4.1 Node.js Dependencies — RESOLVED
 
-| Package | Severity | CVE/Source | Fix Available |
+`pnpm audit` (all severity levels) now reports **no known vulnerabilities**.
+Verified each of the 9 originally-flagged advisories individually against
+the lockfile:
+
+| Package | Severity | CVE/Source | Resolved To |
 |---------|----------|------------|---------------|
-| `next` | High | GHSA-9g9p-9gw9-jx7f (DoS Image Optimizer) | Yes (≥15.5.10) |
-| `next` | High | GHSA-h25m-26qc-wcjf (HTTP deserialization DoS) | Yes (≥15.5.10) |
-| `minimatch` | High | GHSA-3ppc-4f35-3m26, GHSA-7r86-cg39-jmmj, GHSA-23c5-xmqv-rm74 (multiple ReDoS) | Yes |
-| `dompurify` | Moderate | GHSA-v2wj-7wpq-c8vv (XSS) | Yes (≥3.3.1) |
-| `ajv` | Moderate | GHSA-2g4f-4pwh-qvx6 (ReDoS) | Yes (≥6.14.0) |
-| `@tootallnate/once` | Low | GHSA-vpq2-c234-7xj6 (control flow) | Yes (≥3.0.1) |
-| `diff` | Low | GHSA-73rr-hh4g-fpgx (DoS) | Yes (≥4.0.4) |
+| `next` | High | GHSA-9g9p-9gw9-jx7f (DoS Image Optimizer) | 16.2.6 (required ≥15.5.10) |
+| `next` | High | GHSA-h25m-26qc-wcjf (HTTP deserialization DoS) | 16.2.6 (required ≥15.5.10) |
+| `minimatch` | High | GHSA-3ppc-4f35-3m26, GHSA-7r86-cg39-jmmj, GHSA-23c5-xmqv-rm74 (multiple ReDoS) | 10.2.5 |
+| `dompurify` | Moderate | GHSA-v2wj-7wpq-c8vv (XSS) | pnpm override pinned to ^3.3.2 (required ≥3.3.1); no longer resolved as an active transitive dependency |
+| `ajv` | Moderate | GHSA-2g4f-4pwh-qvx6 (ReDoS) | 6.15.0 (required ≥6.14.0) |
+| `@tootallnate/once` | Low | GHSA-vpq2-c234-7xj6 (control flow) | pnpm override pinned to ^3.0.1; no longer resolved as an active transitive dependency |
+| `diff` | Low | GHSA-73rr-hh4g-fpgx (DoS) | 8.0.3 (required ≥4.0.4) |
 
-**Status:** Overrides are configured in `package.json` but transitive dependencies may remain vulnerable.
-
-### 4.2 Python Dependencies (1 vulnerability)
+### 4.2 Python Dependencies — RESOLVED
 
 | Package | Severity | CVE | Status |
 |---------|----------|-----|--------|
-| `ecdsa` | Moderate | CVE-2024-23342 | **No fix planned** - package maintainers consider side-channel attacks out of scope |
+| `ecdsa` | Moderate | CVE-2024-23342 | **Removed entirely** — was a transitive dependency of `python-jose`, which this remediation pass replaced with `pyjwt` (`apps/api/requirements.txt`). `ecdsa` is absent from `uv.lock` and not installed in the venv. |
 
 ---
 
@@ -260,8 +262,8 @@ local orchestration surface.
 ### Priority 0 (Critical - Immediate Action)
 
 1. **Security Upgrades**
-   - [ ] Verify `pnpm audit` shows clean results
-   - [ ] Consider alternative to `ecdsa` or accept risk documentation
+   - [x] Verify `pnpm audit` shows clean results
+   - [x] Consider alternative to `ecdsa` or accept risk documentation
    - [x] Restrict Docker socket access in sandbox worker
 
 2. **Architecture Boundary Violations**
