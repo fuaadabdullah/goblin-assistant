@@ -28,7 +28,11 @@ describe('apiClient.getRoutingInfo', () => {
         put: backendPutMock,
         patch: backendPatchMock,
       }))
-      .mockImplementationOnce(() => ({ get: frontendGetMock, post: frontendPostMock }));
+      .mockImplementationOnce(() => ({
+        interceptors: { request: { use: vi.fn() }, response: { use: vi.fn() } },
+        get: frontendGetMock,
+        post: frontendPostMock,
+      }));
     process.env = {
       ...originalEnv,
       NEXT_PUBLIC_API_BASE_URL: 'https://backend.example',
