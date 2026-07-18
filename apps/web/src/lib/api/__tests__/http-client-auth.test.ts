@@ -8,19 +8,18 @@ vi.mock('../../supabase', () => ({
 }));
 
 import { authGetSession, authRefreshSession } from '../../supabase';
-import { attachSupabaseInterceptor, frontendHttp } from '../http-client';
+import { frontendHttp } from '../http-client';
 import { postFrontend } from '../http-helpers';
 
 describe('frontend HTTP authentication', () => {
   let mock: MockAdapter;
 
-  beforeEach(async () => {
+  beforeEach(() => {
     mock = new MockAdapter(frontendHttp);
     vi.mocked(authGetSession).mockResolvedValue({ session: { access_token: 'supabase-jwt' } } as never);
     vi.mocked(authRefreshSession).mockResolvedValue({
       session: { access_token: 'refreshed-supabase-jwt' },
     } as never);
-    await attachSupabaseInterceptor();
   });
 
   afterEach(() => {
@@ -28,7 +27,7 @@ describe('frontend HTTP authentication', () => {
     vi.clearAllMocks();
   });
 
-  it('sends the Supabase bearer token through the Next.js proxy', async () => {
+  it('sends the Supabase bearer token through the Next.js proxy before React auth bootstrap', async () => {
     mock.onPost('/api/chat/conversations').reply((config) => {
       expect(config.headers?.Authorization).toBe('Bearer supabase-jwt');
       return [200, { conversation_id: 'conversation-1' }];

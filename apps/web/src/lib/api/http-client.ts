@@ -35,8 +35,9 @@ export const backendHttp = axios.create({
   },
 });
 
-// Lazy-load Supabase to avoid bloating public routes. Attached only on first request.
-let supabaseInterceptorAttached = false;
+// The backend client is used by protected pages only, so attach its Supabase
+// interceptor lazily from the auth bootstrapper.
+let backendSupabaseInterceptorAttached = false;
 
 const setAuthorizationHeader = (
   headers: InternalAxiosRequestConfig['headers'],
@@ -90,29 +91,25 @@ const refreshAccessTokenViaSupabase = async (): Promise<string | null> => {
   return session?.access_token ?? null;
 };
 
+const attachSupabaseRequestInterceptor = (client: typeof backendHttp): void => {
+  client.interceptors.request.use(async (config: InternalAxiosRequestConfig) => {
+    // Dynamic import keeps Supabase out of public-route bundles until an API
+    // request actually needs it.
+    const { authGetSession } = await import('../supabase');
+    const { session } = await authGetSession();
+
+    // Keep the freshly refreshed token when a 401 request is retried.
+    if (session?.access_token && !(config as RetryableRequestConfig)._retry) {
+      setAuthorizationHeader(config.headers, session.access_token);
+    }
+    return config;
+  });
+};
+
 export async function attachSupabaseInterceptor() {
-  if (supabaseInterceptorAttached) return;
-  supabaseInterceptorAttached = true;
-
-  // Dynamic import to keep supabase out of public route bundles.
-  const { authGetSession } = await import('../supabase');
-
-  const attachAuthInterceptor = (client: typeof backendHttp) => {
-    // Supabase auto-refreshes tokens; getSession() is a fast local read.
-    client.interceptors.request.use(async (config: InternalAxiosRequestConfig) => {
-      const { session } = await authGetSession();
-      // Keep the freshly refreshed token when a 401 request is retried.
-      if (session?.access_token && !(config as RetryableRequestConfig)._retry) {
-        setAuthorizationHeader(config.headers, session.access_token);
-      }
-      return config;
-    });
-  };
-
-  // Conversation requests use the Next.js proxy, while other API requests can
-  // call the backend client directly. Both must carry the Supabase bearer token.
-  attachAuthInterceptor(backendHttp);
-  attachAuthInterceptor(frontendHttp);
+  if (backendSupabaseInterceptorAttached) return;
+  backendSupabaseInterceptorAttached = true;
+  attachSupabaseRequestInterceptor(backendHttp);
 }
 
 export const frontendHttp = axios.create({
@@ -121,6 +118,11 @@ export const frontendHttp = axios.create({
     'Content-Type': 'application/json',
   },
 });
+
+// Chat uses this client before React effects necessarily run. Attach its lazy
+// token lookup at module initialization so the first conversation request is
+// authenticated as well.
+attachSupabaseRequestInterceptor(frontendHttp);
 
 // ============================================================================
 // Auth & Token Refresh
