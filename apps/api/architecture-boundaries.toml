@@ -5,10 +5,6 @@ forbidden_framework_prefixes = ["fastapi", "starlette"]
 allow_route_storage_imports = [
   "api.routes.ops_router -> api.storage.cache",
   "api.routes.ops_router -> api.storage.tasks",
-  "api.routes.account_router -> api.storage.database",
-  "api.routes.account_router -> api.storage.user_service",
-  "api.routes.privacy -> api.storage.conversations",
-  "api.routes.privacy -> api.storage.preferences_service",
   "api.sandbox_api -> api.storage.cache",
   "api.routes.semantic_chat_router -> api.storage.conversations",
 ]

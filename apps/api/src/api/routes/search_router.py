@@ -12,20 +12,23 @@ from typing import Any, Dict, List, Optional
 import structlog
 from fastapi import APIRouter, Depends
 from pydantic import BaseModel
-from sqlalchemy import text
 
 from api.core.contracts import SuccessEnvelope
 from api.core.errors import DomainError
+from api.services.search_collection_service import (
+    get_readonly_search_db,
+    list_collection_documents,
+    list_collection_names,
+)
 
 from ..auth.router import User as AuthenticatedUser
 from ..auth.router import get_current_user
 from ..services.embedding_service import EmbeddingProviderUnavailableError
 from ..services.embedding_worker import embedding_worker
 from ..services.retrieval_service import retrieve_by_source_type
-from ..storage.database import get_readonly_db_context
 
 # Compatibility seam for older tests and call sites that still patch `get_db`.
-get_db = get_readonly_db_context
+get_db = get_readonly_search_db
 
 logger = structlog.get_logger()
 
@@ -214,21 +217,10 @@ async def list_collections(
 ):
     """List all source_types (indexes) that have content for the current user."""
     try:
-        async with get_readonly_db_context() as session:
-            result = await session.execute(
-                text(
-                    """
-                    SELECT DISTINCT source_type
-                    FROM embeddings
-                    WHERE user_id = :user_id
-                    ORDER BY source_type
-                    """
-                ),
-                {"user_id": current_user.id},
-            )
-            rows = result.fetchall()
-            source_types = [row.source_type for row in rows]
-
+        source_types = await list_collection_names(
+            current_user.id,
+            db_context_factory=get_db,
+        )
         return SuccessEnvelope(data=CollectionsResponse(collections=source_types))
 
     except Exception as exc:
@@ -274,35 +266,21 @@ async def get_collection_documents(
 ):
     """List the most recently indexed items in a collection (non-semantic, recency order)."""
     try:
-        async with get_readonly_db_context() as session:
-            result = await session.execute(
-                text(
-                    """
-                    SELECT id, content, source_type, source_id, metadata
-                    FROM embeddings
-                    WHERE user_id = :user_id AND source_type = :source_type
-                    ORDER BY created_at DESC
-                    LIMIT :limit
-                    """
-                ),
-                {
-                    "user_id": current_user.id,
-                    "source_type": collection_name,
-                    "limit": limit,
-                },
-            )
-            rows = result.fetchall()
-
         results = [
             SearchResult(
-                id=row.id,
-                document=row.content,
-                source_type=row.source_type,
-                source_id=row.source_id,
-                metadata=row.metadata,
-                score=None,
+                id=item["id"],
+                document=item["content"],
+                source_type=item["source_type"],
+                source_id=item.get("source_id"),
+                metadata=item.get("metadata"),
+                score=item.get("score"),
             )
-            for row in rows
+            for item in await list_collection_documents(
+                user_id=current_user.id,
+                source_type=collection_name,
+                limit=limit,
+                db_context_factory=get_db,
+            )
         ]
         return SuccessEnvelope(data=SearchResponse(results=results, total_results=len(results)))
 

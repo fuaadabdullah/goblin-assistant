@@ -10,8 +10,8 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from api.core.contracts import SuccessEnvelope
 from api.core.errors import DomainError
-from api.storage.database import get_db
-from api.storage.saas_service import SaaSSettingsService
+from api.services.platform_settings_service import SaaSSettingsService
+from api.services.platform_settings_service import get_platform_db as get_db
 
 router = APIRouter(prefix="/feature-flags", tags=["feature-flags"])
 
