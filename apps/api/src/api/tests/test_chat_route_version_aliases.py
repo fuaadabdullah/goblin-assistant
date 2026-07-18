@@ -4,7 +4,7 @@ from fastapi.testclient import TestClient
 
 from api.api_router import router as api_router
 from api.chat_router import router as chat_router
-from api.route_mounting import mount_versioned_primary_routes
+from api.routes.route_mounting import mount_versioned_primary_routes
 
 
 def test_public_routes_are_registered_once_under_v1_prefix() -> None:

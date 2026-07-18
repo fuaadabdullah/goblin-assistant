@@ -99,12 +99,21 @@ class VaultAdapter(SecretAdapter):
     async def _get_client(self) -> hvac.Client:
         """Get or create Vault client."""
         if self._client is None:
+            session = await self._get_session()
             self._client = hvac.Client(
                 url=self.vault_url,
                 verify=self.verify_ssl,
-                session=self._get_session(),
+                session=session,
             )
         return self._client
+
+    async def close(self) -> None:
+        """Close the cache, HTTP session, and Vault client."""
+        await self.cache.stop()
+        if self._session is not None and not self._session.closed:
+            await self._session.close()
+        self._session = None
+        self._client = None
 
     async def authenticate_with_token(self, token: str) -> bool:
         """

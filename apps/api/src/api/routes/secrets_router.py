@@ -11,7 +11,7 @@ from typing import Any, Dict, Optional
 from fastapi import APIRouter, Depends, HTTPException, status
 from pydantic import BaseModel, Field
 
-from .integrations.secrets import (
+from ..integrations.secrets import (
     SecretAdapter,
     SecretBackendError,
     SecretNotFoundError,
@@ -112,7 +112,7 @@ async def init_secrets_adapter() -> None:
 
             elif vault_role_id and vault_secret_id:
                 # AppRole authentication
-                from .integrations.secrets.auth import AppRoleCredentials
+                from ..integrations.secrets.auth import AppRoleCredentials
 
                 credentials = AppRoleCredentials(vault_role_id, vault_secret_id)
                 _secrets_adapter = create_adapter(

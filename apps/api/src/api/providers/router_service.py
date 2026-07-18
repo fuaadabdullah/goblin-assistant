@@ -21,7 +21,7 @@ from urllib.parse import urlparse
 
 import structlog
 
-from ..observability import record_router_cost_guard_event
+from ..observability.telemetry import record_router_cost_guard_event
 from ..storage.usage_events import usage_event_store
 from .provider_config_runtime import (
     ProviderToml,

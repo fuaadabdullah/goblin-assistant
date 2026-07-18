@@ -14,8 +14,8 @@ from api.main import add_contract_lifecycle_headers
 from api.observability.migration_metrics import migration_metrics
 from api.routes import account_router as account_module
 from api.routes import support_router as support_module
-from api.routing_router import router as routing_router
-from api.search_router import router as search_router
+from api.routes.routing_router import router as routing_router
+from api.routes.search_router import router as search_router
 
 
 def _client() -> TestClient:
@@ -55,9 +55,15 @@ def test_legacy_search_route_is_not_mounted():
 
 def test_search_v1_alias_is_stable():
     client = _client()
-    response = client.post(
-        "/api/v1/search/query", json={"query": "hello", "collection_name": "docs"}
-    )
+    # Mock the embedding call so this contract test never depends on a live
+    # provider; an empty embedding short-circuits the handler to an empty 200.
+    with patch(
+        "api.services.embedding_service.EmbeddingService.embed_text",
+        new=AsyncMock(return_value=[]),
+    ):
+        response = client.post(
+            "/api/v1/search/query", json={"query": "hello", "collection_name": "docs"}
+        )
     assert response.status_code == 200
     assert response.headers["X-API-Lifecycle"] == "stable"
 

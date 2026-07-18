@@ -7,7 +7,7 @@ from fastapi import FastAPI
 
 from .artifact_cleanup import artifact_cleanup_service
 from .monitoring import monitor
-from .secrets_router import cleanup_secrets_adapter, init_secrets_adapter
+from .routes.secrets_router import cleanup_secrets_adapter, init_secrets_adapter
 from .services.provider_health import health_monitor
 from .storage.cache import cache
 from .storage.database import engine, init_db, is_postgres, warmup_pool

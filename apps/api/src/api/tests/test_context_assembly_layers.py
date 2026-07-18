@@ -274,6 +274,48 @@ async def test_assemble_semantic_retrieval_success(monkeypatch):
 
 
 @pytest.mark.asyncio
+async def test_assemble_semantic_retrieval_uses_prompt_cap(monkeypatch):
+    captured = {}
+
+    async def _start_trace(**_kwargs):
+        return "trace-cap"
+
+    async def _end_trace(**_kwargs):
+        return None
+
+    async def _record_tier_breakdown(**_kwargs):
+        return None
+
+    class _RetrievalService:
+        async def retrieve_context(self, **kwargs):
+            captured["k"] = kwargs.get("k")
+            return [{"score": 0.8, "content": "retrieved"}]
+
+    monkeypatch.setattr(sem.retrieval_tracer, "start_trace", _start_trace)
+    monkeypatch.setattr(sem.retrieval_tracer, "end_trace", _end_trace)
+    monkeypatch.setattr(
+        sem.retrieval_tracer,
+        "record_tier_breakdown",
+        _record_tier_breakdown,
+        raising=False,
+    )
+    monkeypatch.setattr(sem, "_get_retrieval_service", _RetrievalService)
+    monkeypatch.setattr(sem, "count_tokens", lambda _text: 40)
+
+    layer = await sem.assemble_semantic_retrieval(
+        query="q",
+        user_id="u",
+        conversation_id="c",
+        remaining_tokens=500,
+        correlation_id="corr",
+        budget=ContextBudget(),
+    )
+
+    assert layer is not None
+    assert captured["k"] == 20
+
+
+@pytest.mark.asyncio
 async def test_assemble_semantic_retrieval_hard_stop(monkeypatch):
     end_calls = []
 

@@ -184,3 +184,42 @@ def test_update_provider_and_model_settings():
         )
         assert model_resp.status_code == 200
         assert model_resp.json()["data"]["message"] == "Settings updated for model: gpt-4o-mini"
+
+
+def test_patch_global_setting_accepts_valid_payload():
+    current_user = User(id="user-1", email="user-1@example.com")
+
+    app = FastAPI()
+
+    @app.exception_handler(DomainError)
+    async def _domain_error_handler(_, exc: DomainError):
+        return JSONResponse(
+            status_code=exc.status_code,
+            content=ErrorEnvelope(
+                error={
+                    "code": exc.code,
+                    "type": ErrorType.BUSINESS_LOGIC,
+                    "message": exc.message,
+                    "details": exc.details,
+                }
+            ).model_dump(exclude_none=True),
+        )
+
+    app.include_router(router, prefix="/api/v1")
+    app.dependency_overrides[get_current_user] = lambda: current_user
+    client = TestClient(app)
+
+    with patch(
+        "api.routes.settings_router.SaaSSettingsService.set_global_setting",
+        new_callable=AsyncMock,
+        return_value={"key": "theme", "value": {"mode": "dark"}},
+    ):
+        response = client.patch(
+            "/api/v1/settings/theme",
+            json={"value": {"mode": "dark"}},
+        )
+
+    assert response.status_code == 200
+    assert response.json()["success"] is True
+    assert response.json()["data"]["key"] == "theme"
+    assert response.json()["data"]["value"] == {"mode": "dark"}

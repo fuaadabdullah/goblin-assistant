@@ -2,7 +2,7 @@
 
 from fastapi import FastAPI
 
-from .shared_api_routes_runtime import API_V1_PREFIX
+from ..shared_api_routes_runtime import API_V1_PREFIX
 
 
 def mount_versioned_primary_routes(

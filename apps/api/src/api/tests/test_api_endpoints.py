@@ -1,5 +1,14 @@
 """API tests for Goblin Assistant using pytest and TestClient."""
 
+import os
+
+API_V1 = "/api/v1"
+
+
+def _auth_headers():
+    """Headers satisfying AuthenticationMiddleware for non-excluded routes."""
+    return {"x-api-key": os.environ.get("LOCAL_LLM_API_KEY", "test-local-llm-key")}
+
 
 def _unwrap(response):
     """Return inner data payload if wrapped, otherwise raw JSON."""
@@ -25,7 +34,7 @@ def test_root_endpoint(client):
 
 def test_health_endpoint(client):
     """Test the health endpoint."""
-    response = client.get("/health")
+    response = client.get(f"{API_V1}/health")
     assert response.status_code == 200
     data = _unwrap(response)
     assert "status" in data
@@ -34,7 +43,7 @@ def test_health_endpoint(client):
 def test_chat_conversations_endpoint(authenticated_client):
     """Test creating a conversation."""
     response = authenticated_client.post(
-        "/chat/conversations",
+        f"{API_V1}/chat/conversations",
         json={"title": "Test Conversation", "user_id": "ignored-user"},
     )
     assert response.status_code == 200
@@ -45,7 +54,7 @@ def test_chat_conversations_endpoint(authenticated_client):
 
     conversation_id = data["conversation_id"]
 
-    response = authenticated_client.get(f"/chat/conversations/{conversation_id}")
+    response = authenticated_client.get(f"{API_V1}/chat/conversations/{conversation_id}")
     assert response.status_code == 200
     data = _unwrap(response)
     assert data["conversation_id"] == conversation_id
@@ -58,13 +67,13 @@ def test_chat_conversations_endpoint(authenticated_client):
 
 def test_chat_conversations_list_returns_snippet(authenticated_client):
     response = authenticated_client.post(
-        "/chat/conversations", json={"title": "Snippet Conversation"}
+        f"{API_V1}/chat/conversations", json={"title": "Snippet Conversation"}
     )
     assert response.status_code == 200
     conversation_id = _unwrap(response)["conversation_id"]
 
     import_response = authenticated_client.post(
-        f"/chat/conversations/{conversation_id}/import",
+        f"{API_V1}/chat/conversations/{conversation_id}/import",
         json={
             "messages": [
                 {
@@ -77,7 +86,7 @@ def test_chat_conversations_list_returns_snippet(authenticated_client):
     )
     assert import_response.status_code == 200
 
-    response = authenticated_client.get("/chat/conversations")
+    response = authenticated_client.get(f"{API_V1}/chat/conversations")
     assert response.status_code == 200
 
     data = _unwrap(response)
@@ -102,7 +111,7 @@ def test_chat_conversation_routes_are_user_scoped():
         "test@example.com",
     ) as authenticated_client:
         response = authenticated_client.post(
-            "/chat/conversations", json={"title": "Private Conversation"}
+            f"{API_V1}/chat/conversations", json={"title": "Private Conversation"}
         )
         assert response.status_code == 200
         conversation_id = _unwrap(response)["conversation_id"]
@@ -111,19 +120,19 @@ def test_chat_conversation_routes_are_user_scoped():
         "other-user",
         "other@example.com",
     ) as other_client:
-        response = other_client.get(f"/chat/conversations/{conversation_id}")
+        response = other_client.get(f"{API_V1}/chat/conversations/{conversation_id}")
         assert response.status_code == 404
 
 
 def test_chat_import_preserves_message_order(authenticated_client):
     response = authenticated_client.post(
-        "/chat/conversations", json={"title": "Imported Conversation"}
+        f"{API_V1}/chat/conversations", json={"title": "Imported Conversation"}
     )
     assert response.status_code == 200
     conversation_id = _unwrap(response)["conversation_id"]
 
     import_response = authenticated_client.post(
-        f"/chat/conversations/{conversation_id}/import",
+        f"{API_V1}/chat/conversations/{conversation_id}/import",
         json={
             "messages": [
                 {
@@ -141,7 +150,7 @@ def test_chat_import_preserves_message_order(authenticated_client):
     )
     assert import_response.status_code == 200
 
-    response = authenticated_client.get(f"/chat/conversations/{conversation_id}")
+    response = authenticated_client.get(f"{API_V1}/chat/conversations/{conversation_id}")
     assert response.status_code == 200
     messages = _unwrap(response)["messages"]
     assert [message["content"] for message in messages] == ["First", "Second"]
@@ -151,7 +160,7 @@ def test_send_message_uses_latest_user_message_and_honors_provider(
     authenticated_client, monkeypatch
 ):
     response = authenticated_client.post(
-        "/chat/conversations", json={"title": "Message Conversation"}
+        f"{API_V1}/chat/conversations", json={"title": "Message Conversation"}
     )
     assert response.status_code == 200
     conversation_id = _unwrap(response)["conversation_id"]
@@ -201,7 +210,7 @@ def test_send_message_uses_latest_user_message_and_honors_provider(
     )
 
     response = authenticated_client.post(
-        f"/chat/conversations/{conversation_id}/messages",
+        f"{API_V1}/chat/conversations/{conversation_id}/messages",
         json={
             "message": "Latest user prompt",
             "provider": "openai",
@@ -218,7 +227,7 @@ def test_send_message_uses_latest_user_message_and_honors_provider(
 
 def test_canonical_provider_inventory_endpoint(client):
     """Test the canonical provider inventory endpoint."""
-    response = client.get("/api/v1/providers/models")
+    response = client.get(f"{API_V1}/providers/models", headers=_auth_headers())
     assert response.status_code == 200
     data = _unwrap(response)
     assert isinstance(data, dict)
@@ -227,12 +236,15 @@ def test_canonical_provider_inventory_endpoint(client):
     assert "router_models" in data
 
 
-def test_api_keys_status_endpoint(client):
-    """Test the API keys status endpoint."""
-    response = client.get("/settings/api-keys/status")
+def test_settings_reports_provider_key_status(authenticated_client):
+    """Settings index is the canonical surface for provider/API-key status."""
+    response = authenticated_client.get(f"{API_V1}/settings/", headers=_auth_headers())
     assert response.status_code == 200, (
-        f"Expected 200 for api-keys status, got {response.status_code}: {response.text}"
+        f"Expected 200 for settings index, got {response.status_code}: {response.text}"
     )
+    data = _unwrap(response)
+    assert "providers" in data
+    assert isinstance(data["providers"], list)
 
 
 def test_execute_router_removed(client):
@@ -243,6 +255,7 @@ def test_execute_router_removed(client):
     response = client.post(
         "/execute/",
         json={"goblin": "test", "task": "test"},
+        headers=_auth_headers(),
     )
     assert response.status_code == 404, (
         f"Expected 404 Not Found for retired /execute endpoint, "
@@ -251,7 +264,10 @@ def test_execute_router_removed(client):
     body = response.json()
     assert "detail" in body
 
-    response = client.get("/execute/status/00000000-0000-0000-0000-000000000000")
+    response = client.get(
+        "/execute/status/00000000-0000-0000-0000-000000000000",
+        headers=_auth_headers(),
+    )
     assert response.status_code == 404, (
         f"Expected 404 Not Found for retired /execute/status endpoint, "
         f"got {response.status_code}: {response.json()}"

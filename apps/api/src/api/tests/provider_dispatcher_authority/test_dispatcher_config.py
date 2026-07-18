@@ -42,11 +42,40 @@ def test_dispatcher_visible_order_siliconeflow_before_together():
 def test_dispatcher_reload_and_endpoint_update_paths(monkeypatch):
     dispatcher = ProviderDispatcher()
     original_provider_toml = dispatcher_module._provider_toml
-    original_provider_configs = dispatcher_module._PROVIDER_CONFIGS
+    # Shallow copy, not a bare reference: dispatcher._configs IS
+    # dispatcher_module._PROVIDER_CONFIGS (ProviderDispatcher() with no custom
+    # configs aliases the module-level singleton). The mutations below
+    # (dispatcher._configs["openai"] = ..., ["broken"] = ...) are top-level
+    # key REASSIGNMENTS on that same shared dict — a bare reference backup
+    # would point at the same object and "restore" would be a no-op,
+    # permanently corrupting the real "openai" provider config (dropping its
+    # capabilities/models) for the rest of the test session. A shallow copy
+    # is sufficient because these are top-level reassignments, not nested
+    # in-place mutations of the original per-provider dicts.
+    original_provider_configs = dict(dispatcher_module._PROVIDER_CONFIGS)
     original_provider_aliases = dispatcher_module._PROVIDER_ALIASES
     original_model_aliases = dispatcher_module._MODEL_ALIASES
     original_model_alias_patterns = dispatcher_module._MODEL_ALIAS_PATTERNS
     original_visible_provider_ids = dispatcher_module._VISIBLE_PROVIDER_IDS
+    # dispatcher_module.reload_provider_catalog() (called below) hardcodes
+    # dispatcher=dispatcher_module.dispatcher — the REAL global singleton
+    # used by the live app and every other test that hits it through
+    # api.chat_router — not this test's local `dispatcher` variable.
+    # apply_reloaded_catalog() (dispatcher_pkg/catalog.py) sets
+    # real_dispatcher._configs = <the fake single-provider catalog> directly
+    # and clears _providers/_provider_list_cache/_warmup_states. None of
+    # that is undone by restoring the _PROVIDER_CONFIGS module attribute
+    # above — once _configs is reassigned it's a separate object, so the
+    # real singleton was left with only "openai" configured (losing
+    # huggingface, anthropic, everything else) for the rest of the test
+    # session. Snapshot and restore its instance state too.
+    real_dispatcher = dispatcher_module.dispatcher
+    original_real_configs = dict(real_dispatcher._configs)
+    original_real_providers = dict(real_dispatcher._providers)
+    original_real_provider_list_cache = dict(real_dispatcher._provider_list_cache)
+    original_real_warmup_states = dict(real_dispatcher._warmup_states)
+    original_real_background_started = real_dispatcher._background_started
+    original_real_circuit_canary_percent = real_dispatcher._circuit_canary_percent
     dispatcher._configs["openai"] = {
         "endpoint": "https://old.example.com",
         "endpoint_env": "OPENAI_ENDPOINT",
@@ -125,6 +154,12 @@ def test_dispatcher_reload_and_endpoint_update_paths(monkeypatch):
     dispatcher_module._MODEL_ALIASES = original_model_aliases
     dispatcher_module._MODEL_ALIAS_PATTERNS = original_model_alias_patterns
     dispatcher_module._VISIBLE_PROVIDER_IDS = original_visible_provider_ids
+    real_dispatcher._configs = original_real_configs
+    real_dispatcher._providers = original_real_providers
+    real_dispatcher._provider_list_cache = original_real_provider_list_cache
+    real_dispatcher._warmup_states = original_real_warmup_states
+    real_dispatcher._background_started = original_real_background_started
+    real_dispatcher._circuit_canary_percent = original_real_circuit_canary_percent
 
 
 @pytest.mark.asyncio

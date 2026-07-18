@@ -34,8 +34,11 @@ class UsageEventStore:
     async def get_daily_usage(
         self, user_id: str, usage_date: Optional[date] = None
     ) -> Dict[str, Any]:
-        """Return aggregated usage for a user/day."""
-        usage_date = usage_date or date.today()
+        """Return aggregated usage for a user/day.
+
+        Days are bounded in UTC to match how events are aggregated at save time.
+        """
+        usage_date = usage_date or datetime.utcnow().date()
 
         if self.use_db:
             return await self._get_daily_usage_from_db(user_id, usage_date)
@@ -360,8 +363,11 @@ class UsageEventStore:
             return []
 
     async def get_total_spend_for_date(self, usage_date: Optional[date] = None) -> float:
-        """Return total model spend for a date across all users and providers."""
-        usage_date = usage_date or date.today()
+        """Return total model spend for a date across all users and providers.
+
+        Days are bounded in UTC to match how events are aggregated at save time.
+        """
+        usage_date = usage_date or datetime.utcnow().date()
 
         if self.use_db:
             return await self._get_total_spend_for_date_from_db(usage_date)

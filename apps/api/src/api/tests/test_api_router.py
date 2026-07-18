@@ -531,13 +531,13 @@ def test_orchestration_parse_stores_plan_and_execute_runs_background_task():
     )
 
     with (
-        patch("api.orchestration_router.parse_natural_language", return_value=fake_plan),
+        patch("api.routes.orchestration_router.parse_natural_language", return_value=fake_plan),
         patch(
-            "api.orchestration_router.get_task_store",
+            "api.routes.orchestration_router.get_task_store",
             new_callable=AsyncMock,
             return_value=fake_store,
         ),
-        patch("api.orchestration_router.asyncio.create_task", new=MagicMock()),
+        patch("api.routes.orchestration_router.asyncio.create_task", new=MagicMock()),
     ):
         parsed = client.post(
             "/api/v1/api/orchestrate/parse",

@@ -16,6 +16,15 @@ describe('chatClient conversation API', () => {
     mockGetAuthTokenForRequest.mockResolvedValue('supabase-jwt');
   });
 
+  it('surfaces an authentication-required error when conversation creation is unauthorized', async () => {
+    vi.spyOn(apiClient, 'createConversation').mockRejectedValue({ status: 401 });
+
+    await expect(chatClient.createConversation({ title: 'New chat' })).rejects.toMatchObject({
+      code: 'AUTHENTICATION_REQUIRED',
+      userMessage: 'You need to sign in to start a conversation.',
+    });
+  });
+
   it('passes prompt through to the persistent send endpoint', async () => {
     const spy = vi.spyOn(apiClient, 'sendConversationMessage').mockResolvedValue({
       content: 'ok',

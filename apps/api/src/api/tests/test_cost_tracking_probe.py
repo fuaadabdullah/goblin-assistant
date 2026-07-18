@@ -8,7 +8,7 @@ def test_cost_tracking_unknown(client, monkeypatch):
     monkeypatch.delenv("COST_TRACKING_ENABLED", raising=False)
     monkeypatch.delenv("COST_DB_URL", raising=False)
 
-    resp = client.get("/health/cost-tracking")
+    resp = client.get("/api/v1/health/cost-tracking")
     assert resp.status_code == 200
     data = resp.json()
     assert data["status"] == "unknown"
@@ -26,7 +26,7 @@ def test_cost_tracking_sqlite(client, tmp_path, monkeypatch):
     # Format COST_DB_URL so our probe resolves to absolute path
     monkeypatch.setenv("COST_DB_URL", f"sqlite://{str(db_file)}")
 
-    resp = client.get("/health/cost-tracking")
+    resp = client.get("/api/v1/health/cost-tracking")
     assert resp.status_code == 200
     data = resp.json()
     assert data["status"] == "healthy"
@@ -54,13 +54,14 @@ def test_cost_tracking_postgres_success(client, monkeypatch):
 
     class FakePsycopgModule(SimpleNamespace):
         @staticmethod
-        def connect(_dsn: str, _connect_timeout: int = 2) -> "FakeConn":  # type: ignore[name-defined]
+        def connect(_dsn: str, connect_timeout: int = 2) -> "FakeConn":  # type: ignore[name-defined]
+            _ = connect_timeout
             return FakeConn()
 
     monkeypatch.setitem(sys.modules, "psycopg", FakePsycopgModule())
     monkeypatch.setenv("COST_DB_URL", "postgresql://user:pass@localhost:5432/db")
 
-    resp = client.get("/health/cost-tracking")
+    resp = client.get("/api/v1/health/cost-tracking")
     assert resp.status_code == 200
     data = resp.json()
     assert data["status"] == "healthy"

@@ -15,6 +15,7 @@ from api.services.memory_contract import (
     get_deprecated_memory_contract_field_counts,
     reset_deprecated_memory_contract_field_counts,
 )
+from api.services.memory_contract_input import MemoryFactInput
 
 
 def _build_payload(**overrides):
@@ -318,6 +319,7 @@ def test_canonicalize_memory_item_returns_the_same_versioned_shape():
         "id": "mem-3",
         "content": "Memory row",
         "fact_text": "Memory row",
+        "fact_embedding": [0.4, 0.5, 0.6],
         "metadata": {"summary": "Row summary", "conversation_id": "conv-9"},
     }
 
@@ -327,3 +329,37 @@ def test_canonicalize_memory_item_returns_the_same_versioned_shape():
     assert "contract_version" not in payload
     assert payload["summary"] == "Row summary"
     assert payload["source_ref"] == {"conversation_id": "conv-9"}
+    assert payload["text"] == "Memory row"
+    assert payload["createdAt"] is None
+    assert payload["embedding"] == [0.4, 0.5, 0.6]
+
+
+def test_memory_fact_input_round_trips_camel_case_contract_fields():
+    normalized = MemoryFactInput.from_item(
+        {
+            "id": "mem-4",
+            "text": "Round-trip fact",
+            "createdAt": "2026-06-11T18:00:00Z",
+            "updatedAt": "2026-06-11T18:01:00Z",
+            "lastAccessed": "2026-06-11T18:02:00Z",
+            "expiresAt": "2026-06-12T18:00:00Z",
+            "embedding": [0.1, 0.2, 0.3],
+            "metadata": {"summary": "Round trip"},
+        },
+        user_id="user-9",
+        source_type="memory",
+    )
+
+    payload = normalized.to_payload_dict()
+
+    assert normalized.content == "Round-trip fact"
+    assert normalized.created_at == datetime(2026, 6, 11, 18, 0, tzinfo=timezone.utc)
+    assert normalized.updated_at == datetime(2026, 6, 11, 18, 1, tzinfo=timezone.utc)
+    assert normalized.last_accessed_at == datetime(2026, 6, 11, 18, 2, tzinfo=timezone.utc)
+    assert normalized.expires_at == datetime(2026, 6, 12, 18, 0, tzinfo=timezone.utc)
+    assert normalized.embedding == (0.1, 0.2, 0.3)
+    assert payload["createdAt"] == "2026-06-11T18:00:00+00:00"
+    assert payload["updatedAt"] == "2026-06-11T18:01:00+00:00"
+    assert payload["lastAccessed"] == "2026-06-11T18:02:00+00:00"
+    assert payload["expiresAt"] == "2026-06-12T18:00:00+00:00"
+    assert payload["embedding"] == [0.1, 0.2, 0.3]

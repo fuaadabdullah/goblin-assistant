@@ -8,7 +8,7 @@ from .artifact_cleanup import artifact_cleanup_service
 from .bootstrap.middleware import add_contract_lifecycle_headers  # noqa: F401 — re-exported
 from .lifespan import lifespan as _lifespan_impl
 from .monitoring import monitor
-from .secrets_router import cleanup_secrets_adapter, init_secrets_adapter
+from .routes.secrets_router import cleanup_secrets_adapter, init_secrets_adapter
 from .storage.cache import cache
 from .storage.database import init_db
 

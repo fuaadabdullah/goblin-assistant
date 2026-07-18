@@ -20,7 +20,7 @@ _CORE_MODULES = [
     "api.storage.cache",
     "api.monitoring",
     "api.health",
-    "api.secrets_router",
+    "api.routes.secrets_router",
 ]
 
 

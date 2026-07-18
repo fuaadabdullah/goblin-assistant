@@ -100,6 +100,13 @@ describe('apiClient chat conversations', () => {
     const result = await api.delete<{ deleted: boolean }>('/api/notifications/123');
 
     expect(result).toEqual({ data: { deleted: true } });
-    expect(backendDeleteMock).toHaveBeenCalledWith('/api/notifications/123', undefined);
+    expect(backendDeleteMock).toHaveBeenCalledWith(
+      '/api/notifications/123',
+      expect.objectContaining({
+        headers: expect.objectContaining({
+          Authorization: 'Bearer session-token-123',
+        }),
+      })
+    );
   });
 });

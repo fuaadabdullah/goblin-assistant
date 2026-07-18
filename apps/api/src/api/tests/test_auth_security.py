@@ -11,6 +11,8 @@ This test suite validates:
 
 import os
 
+import pytest
+
 SANDBOX_TEST_API_KEY = os.getenv("API_AUTH_KEY", "test-api-key")
 
 
@@ -19,7 +21,7 @@ class TestCSRFProtection:
 
     def test_csrf_token_endpoint_returns_valid_token(self, client):
         """GET /auth/csrf-token should return a valid CSRF token"""
-        response = client.get("/auth/csrf-token")
+        response = client.get("/api/v1/auth/csrf-token")
         assert response.status_code == 200
         data = response.json()
         assert "csrf_token" in data
@@ -29,7 +31,7 @@ class TestCSRFProtection:
     def test_register_requires_csrf_token(self, client):
         """POST /auth/register without csrf_token should fail (field is required)"""
         response = client.post(
-            "/auth/register",
+            "/api/v1/auth/register",
             json={
                 "email": "test@example.com",
                 "password": "TestPassword123!",
@@ -37,30 +39,30 @@ class TestCSRFProtection:
                 # Missing csrf_token field
             },
         )
-        # Should fail validation because csrf_token is now required
-        assert response.status_code == 422  # Unprocessable Entity (validation error)
+        # Missing csrf_token is rejected by CSRF enforcement with 403
+        assert response.status_code == 403
         data = response.json()
-        assert "detail" in data  # Validation error details
+        assert "CSRF" in data["detail"]
 
     def test_login_requires_csrf_token(self, client):
         """POST /auth/login without csrf_token should fail (field is required)"""
         response = client.post(
-            "/auth/login",
+            "/api/v1/auth/login",
             json={
                 "email": "test@example.com",
                 "password": "TestPassword123!",
                 # Missing csrf_token field
             },
         )
-        # Should fail validation because csrf_token is now required
-        assert response.status_code == 422  # Unprocessable Entity (validation error)
+        # Missing csrf_token is rejected by CSRF enforcement with 403
+        assert response.status_code == 403
         data = response.json()
-        assert "detail" in data  # Validation error details
+        assert "CSRF" in data["detail"]
 
     def test_register_invalid_csrf_token_rejected(self, client):
         """POST /auth/register with invalid csrf_token should fail with 403"""
         response = client.post(
-            "/auth/register",
+            "/api/v1/auth/register",
             json={
                 "email": "test@example.com",
                 "password": "TestPassword123!",
@@ -75,7 +77,7 @@ class TestCSRFProtection:
     def test_login_invalid_csrf_token_rejected(self, client):
         """POST /auth/login with invalid csrf_token should fail with 403"""
         response = client.post(
-            "/auth/login",
+            "/api/v1/auth/login",
             json={
                 "email": "test@example.com",
                 "password": "TestPassword123!",
@@ -92,12 +94,12 @@ class TestCSRFProtection:
         After using a valid token (even if login fails), reusing it should fail with 403.
         """
         # Get a valid CSRF token
-        csrf_response = client.get("/auth/csrf-token")
+        csrf_response = client.get("/api/v1/auth/csrf-token")
         csrf_token = csrf_response.json()["csrf_token"]
 
         # First use: CSRF token is valid, but user doesn't exist -> returns 401
         response1 = client.post(
-            "/auth/login",
+            "/api/v1/auth/login",
             json={
                 "email": "nonexistent@example.com",
                 "password": "WrongPassword123!",
@@ -113,7 +115,7 @@ class TestCSRFProtection:
 
         # Second use: Try to reuse the same token - should fail with 403 (token already used)
         response2 = client.post(
-            "/auth/login",
+            "/api/v1/auth/login",
             json={
                 "email": "nonexistent@example.com",
                 "password": "WrongPassword123!",
@@ -148,13 +150,13 @@ class TestRateLimiting:
         # Get 5 CSRF tokens for 5 attempts
         tokens = []
         for _ in range(5):
-            csrf_response = client.get("/auth/csrf-token")
+            csrf_response = client.get("/api/v1/auth/csrf-token")
             tokens.append(csrf_response.json()["csrf_token"])
 
         # Make 5 failed login attempts
         for token in tokens:
             response = client.post(
-                "/auth/login",
+                "/api/v1/auth/login",
                 json={
                     "email": "nonexistent@example.com",
                     "password": "WrongPassword123!",
@@ -165,11 +167,11 @@ class TestRateLimiting:
             assert response.status_code == 401
 
         # 6th attempt should be rate limited (429)
-        csrf_response = client.get("/auth/csrf-token")
+        csrf_response = client.get("/api/v1/auth/csrf-token")
         sixth_token = csrf_response.json()["csrf_token"]
 
         response = client.post(
-            "/auth/login",
+            "/api/v1/auth/login",
             json={
                 "email": "nonexistent@example.com",
                 "password": "WrongPassword123!",
@@ -188,13 +190,13 @@ class TestRateLimiting:
         # Get 5 CSRF tokens for 5 attempts
         tokens = []
         for _ in range(5):
-            csrf_response = client.get("/auth/csrf-token")
+            csrf_response = client.get("/api/v1/auth/csrf-token")
             tokens.append(csrf_response.json()["csrf_token"])
 
         # Make 5 failed registration attempts with invalid data
         for i, token in enumerate(tokens):
             response = client.post(
-                "/auth/register",
+                "/api/v1/auth/register",
                 json={
                     "email": f"test{i}@example.com",
                     "password": "TestPassword123!",
@@ -206,11 +208,11 @@ class TestRateLimiting:
             assert response.status_code != 429
 
         # 6th attempt should be rate limited (429)
-        csrf_response = client.get("/auth/csrf-token")
+        csrf_response = client.get("/api/v1/auth/csrf-token")
         sixth_token = csrf_response.json()["csrf_token"]
 
         response = client.post(
-            "/auth/register",
+            "/api/v1/auth/register",
             json={
                 "email": "test6@example.com",
                 "password": "TestPassword123!",
@@ -226,10 +228,26 @@ class TestRateLimiting:
 class TestSandboxSecurity:
     """Test sandbox endpoint restrictions and security"""
 
+    @pytest.fixture(autouse=True)
+    def _enable_sandbox(self, monkeypatch, client):
+        # SANDBOX_ENABLED is read from env at import time; language validation
+        # only runs when the service is enabled. Patch the globals of the
+        # route function actually mounted on `client.app` rather than the
+        # module path: test_sandbox_api_runtime.py replaces sys.modules
+        # ["api.sandbox_api"] with a fresh module object at collection time,
+        # which would silently orphan a module-attribute patch here from the
+        # module the live route function actually reads from.
+        from fastapi.routing import APIRoute
+
+        for route in client.app.routes:
+            if isinstance(route, APIRoute) and route.path.endswith("/sandbox/submit"):
+                monkeypatch.setitem(route.endpoint.__globals__, "SANDBOX_ENABLED", True)
+                break
+
     def test_sandbox_bash_not_supported(self, client):
         """POST /sandbox/submit with language='bash' should return 400"""
         response = client.post(
-            "/sandbox/submit",
+            "/api/v1/sandbox/submit",
             json={
                 "language": "bash",
                 "source": "echo 'hello'",
@@ -248,7 +266,7 @@ class TestSandboxSecurity:
         # Note: Might fail for other reasons (sandbox disabled, auth, etc.)
         # But should NOT fail with "unsupported language"
         response = client.post(
-            "/sandbox/submit",
+            "/api/v1/sandbox/submit",
             json={
                 "language": "python",
                 "source": "print('hello')",
@@ -265,7 +283,7 @@ class TestSandboxSecurity:
     def test_sandbox_javascript_still_supported(self, client):
         """POST /sandbox/submit with language='javascript' should not reject based on language"""
         response = client.post(
-            "/sandbox/submit",
+            "/api/v1/sandbox/submit",
             json={
                 "language": "javascript",
                 "source": "console.log('hello')",
@@ -282,7 +300,7 @@ class TestSandboxSecurity:
     def test_sandbox_invalid_language_rejected(self, client):
         """POST /sandbox/submit with invalid language should return 400"""
         response = client.post(
-            "/sandbox/submit",
+            "/api/v1/sandbox/submit",
             json={
                 "language": "ruby",
                 "source": "puts 'hello'",

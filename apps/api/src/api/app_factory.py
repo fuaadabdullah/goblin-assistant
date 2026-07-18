@@ -4,7 +4,6 @@ from fastapi import FastAPI
 
 from ._version import get_version
 from .admin_routes import router as admin_router
-from .api_keys_router import router as api_keys_router
 from .api_router import router as api_router
 from .auth.router import router as auth_router
 from .bootstrap.middleware import (
@@ -27,25 +26,26 @@ from .observability.debug_router import router as observability_debug_router
 from .observability.metrics_router import router as retrieval_metrics_router
 from .observability.prometheus_router import router as prometheus_router
 from .observability.telemetry import instrument_fastapi_app
-from .ops_router import router as ops_router
-from .parse_router import router as parse_router
-from .raptor_router import router as raptor_router
 from .routes.account_router import router as account_router
 from .routes.agent import router as agent_router
+from .routes.api_keys_router import router as api_keys_router
 from .routes.debug import router as model_suggestion_debug_router
 from .routes.feature_flags_router import router as feature_flags_router
 from .routes.notifications_router import router as notifications_router
+from .routes.ops_router import router as ops_router
+from .routes.parse_router import router as parse_router
 from .routes.privacy import router as privacy_router
 from .routes.providers_models import router as providers_models_router
+from .routes.raptor_router import router as raptor_router
+from .routes.routing_router import router as routing_router
+from .routes.search_router import router as search_router
+from .routes.secrets_router import router as secrets_router
+from .routes.semantic_chat_router import router as semantic_chat_router
+from .routes.settings_router import router as settings_router
+from .routes.stream_router import router as stream_router
 from .routes.support_router import router as support_router
-from .routing_router import router as routing_router
+from .routes.write_time_router import router as write_time_router
 from .sandbox_api import router as sandbox_router
-from .search_router import router as search_router
-from .secrets_router import router as secrets_router
-from .semantic_chat_router import router as semantic_chat_router
-from .settings_router import router as settings_router
-from .stream_router import router as stream_router
-from .write_time_router import router as write_time_router
 
 
 def create_app() -> FastAPI:

@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from fastapi import FastAPI
 
-from ..route_mounting import mount_versioned_primary_routes
+from ..routes.route_mounting import mount_versioned_primary_routes
 
 
 def register_routes(

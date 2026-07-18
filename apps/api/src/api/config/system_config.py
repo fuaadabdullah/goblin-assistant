@@ -23,7 +23,7 @@ def get_system_config() -> Dict[str, Any]:
             "memory_retention_days": int(os.getenv("MEMORY_RETENTION_DAYS", "30")),
         },
         "retrieval": {
-            "max_retrieval_results": int(os.getenv("MAX_RETRIEVAL_RESULTS", "10")),
+            "max_retrieval_results": int(os.getenv("MAX_RETRIEVAL_RESULTS", "20")),
             "retrieval_timeout_seconds": int(os.getenv("RETRIEVAL_TIMEOUT_SECONDS", "30")),
             "semantic_similarity_threshold": float(
                 os.getenv("SEMANTIC_SIMILARITY_THRESHOLD", "0.7")

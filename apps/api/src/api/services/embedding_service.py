@@ -425,3 +425,4 @@ embedding_service = EmbeddingService()
 
 # AsyncEmbeddingWorker and its singleton live in embedding_worker.py.
 # Re-exported here so all existing importers continue to work without changes.
+from .embedding_worker import AsyncEmbeddingWorker, embedding_worker  # noqa: E402, F401

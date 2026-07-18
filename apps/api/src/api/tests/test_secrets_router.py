@@ -18,7 +18,7 @@ from api.integrations.secrets import (
     SecretValidationError,
 )
 from api.integrations.secrets.models import Secret, SecretMetadata
-from api.secrets_router import (
+from api.routes.secrets_router import (
     SecretRequest,
     get_secrets_adapter,
     router,

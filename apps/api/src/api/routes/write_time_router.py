@@ -9,7 +9,7 @@ from typing import Any, Dict, List, Optional
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel
 
-from .services.cache_service import cache_service
+from ..services.cache_service import cache_service
 
 router = APIRouter(prefix="/write-time", tags=["write-time"])
 
@@ -22,13 +22,13 @@ def _detail_message(prefix: str, error: Exception) -> str:
 
 
 def _get_write_time_decision_matrix():
-    from .services.write_time_matrix import WriteTimeDecisionMatrix
+    from ..services.write_time_matrix import WriteTimeDecisionMatrix
 
     return WriteTimeDecisionMatrix
 
 
 def _get_write_time_intelligence():
-    from .services.write_time_matrix import write_time_intelligence
+    from ..services.write_time_matrix import write_time_intelligence
 
     return write_time_intelligence
 

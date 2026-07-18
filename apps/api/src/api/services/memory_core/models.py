@@ -13,10 +13,12 @@ from ..memory_contract import build_memory_contract_payload
 class MemoryKind(str, Enum):
     FACT = "fact"
     PREFERENCE = "preference"
+    GOAL = "goal"
     DECISION = "decision"
     PROJECT_STATE = "project_state"
     RELATIONSHIP = "relationship"
     TASK_SIGNAL = "task_signal"
+    CORRECTION = "correction"
 
 
 class MemorySensitivity(str, Enum):
@@ -91,6 +93,7 @@ class MemoryRecord:
     confirmation_count: int = 0
     is_archived: bool = False
     embedding_id: Optional[str] = None
+    embedding: List[float] = field(default_factory=list)
     score: Optional[float] = None
     rerank_score: Optional[float] = None
     related_memory_ids: List[str] = field(default_factory=list)
@@ -115,6 +118,7 @@ class MemoryRecord:
             id=self.id,
             user_id=self.user_id,
             content=self.content,
+            text=self.content,
             scope=self.scope,
             memory_type=self.memory_type.value,
             category=self.category,
@@ -146,6 +150,7 @@ class MemoryRecord:
             metadata=self.metadata,
             created_at=self.created_at,
             updated_at=self.updated_at,
+            embedding=self.embedding,
             embedding_id=self.embedding_id,
             source_type="memory",
             score=self.score,
@@ -157,10 +162,12 @@ def _default_retention_days(memory_type: MemoryKind) -> int:
     return {
         MemoryKind.FACT: 365,
         MemoryKind.PREFERENCE: 540,
+        MemoryKind.GOAL: 365,
         MemoryKind.DECISION: 730,
         MemoryKind.PROJECT_STATE: 90,
         MemoryKind.RELATIONSHIP: 180,
         MemoryKind.TASK_SIGNAL: 30,
+        MemoryKind.CORRECTION: 540,
     }[memory_type]
 
 

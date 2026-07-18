@@ -22,7 +22,7 @@ def test_provider_health_status_transitions():
 async def test_smart_router_fallback_continues_after_runtime_error():
     router = SmartRouter(strategy=RoutingStrategy.COST_OPTIMIZED)
 
-    def fake_select_provider(*_args, **_kwargs):
+    async def fake_select_provider(*_args, **_kwargs):
         return ProviderSelection(
             provider_id="openai",
             model="gpt-4o-mini",

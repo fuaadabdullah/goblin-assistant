@@ -47,6 +47,7 @@ async def retrieve_memory_facts_stratified(
                 SELECT
                     mf.id,
                     mf.fact_text as content,
+                    mf.fact_embedding,
                     mf.category,
                     mf.memory_type,
                     mf.source_kind,
@@ -116,6 +117,8 @@ async def retrieve_memory_facts_stratified(
                     {
                         "id": row.id,
                         "content": row.content,
+                        "text": row.content,
+                        "embedding": row.fact_embedding,
                         "source_type": "memory",
                         "source_id": row.id,
                         "metadata": {
