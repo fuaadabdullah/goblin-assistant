@@ -262,6 +262,33 @@ docker-compose logs sandbox-worker
 docker run --rm goblin-assistant-sandbox:latest python -c "print('test')"
 ```
 
+**sandbox-worker can't reach Docker (docker-socket-proxy)**
+
+As of the current compose config, `sandbox-worker` never mounts
+`/var/run/docker.sock` directly — it talks to `docker-socket-proxy`
+(tecnativa/docker-socket-proxy) over `DOCKER_HOST=tcp://docker-socket-proxy:2375`.
+If job submission hangs or fails with connection errors:
+
+```bash
+# Confirm the proxy container is up and healthy
+docker-compose ps docker-socket-proxy
+
+# Check the proxy's own logs for rejected/malformed requests
+docker-compose logs docker-socket-proxy
+
+# Confirm sandbox-worker resolved DOCKER_HOST correctly
+docker-compose exec sandbox-worker env | grep DOCKER_HOST
+
+# Restart just the proxy (and let the worker reconnect) without a full stack restart
+docker-compose restart docker-socket-proxy
+```
+
+The proxy only allows `CONTAINERS`/`IMAGES`/`INFO`/`PING`/`POST` — if a job
+needs an operation outside that set (e.g. volume or network manipulation),
+it will fail at the proxy, not the worker. That's a signal to reconsider the
+job's requirements or the proxy's allowed operations in `docker-compose.yml`,
+not to route around the proxy.
+
 **API authentication errors**
 ```bash
 # Check API key
