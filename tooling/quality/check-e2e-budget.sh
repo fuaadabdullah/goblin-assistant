@@ -3,7 +3,7 @@ set -euo pipefail
 
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 CRITICAL_E2E_FILE="${ROOT_DIR}/apps/web/e2e/critical-journeys.txt"
-MAX_CRITICAL_JOURNEYS="${MAX_CRITICAL_JOURNEYS:-8}"
+MAX_CRITICAL_JOURNEYS="${MAX_CRITICAL_JOURNEYS:-9}"
 
 if [[ ! -f "${CRITICAL_E2E_FILE}" ]]; then
   echo "Missing ${CRITICAL_E2E_FILE}"

@@ -57,14 +57,22 @@ async function forwardValidate(req: Request): Promise<ForwardResponse> {
       headers['X-Internal-API-Key'] = INTERNAL_PROXY_API_KEY;
     }
 
-    const incoming = (await safeJson(req)) ?? {};
+    const incoming = ((await safeJson(req)) ?? {}) as Record<string, unknown>;
+    const bearerToken =
+      typeof authorization === 'string' && authorization.startsWith('Bearer ')
+        ? authorization.slice('Bearer '.length).trim()
+        : '';
+    const backendBody = {
+      ...incoming,
+      token: typeof incoming['token'] === 'string' ? incoming['token'] : bearerToken,
+    };
 
     const response = await fetchWithTimeout(
       `${BACKEND_URL}${buildVersionedPath('auth', 'validate')}`,
       {
         method: 'POST',
         headers,
-        body: JSON.stringify(incoming),
+        body: JSON.stringify(backendBody),
       },
       8000
     );

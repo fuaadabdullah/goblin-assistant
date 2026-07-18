@@ -18,6 +18,20 @@ describe('StatusSummary', () => {
     expect(screen.getByText('⚠ Not authenticated')).toBeInTheDocument();
   });
 
+  it('does not label expected chat auth failures as API outages', () => {
+    render(
+      <StatusSummary
+        chatTestResult={null}
+        chatError="Not authenticated"
+        health={{ isLoading: false, isError: false }}
+        isAuthenticated={false}
+      />
+    );
+
+    expect(screen.getByText('⚠ Authentication required')).toBeInTheDocument();
+    expect(screen.queryByText('✗ Failed')).not.toBeInTheDocument();
+  });
+
   it('shows healthy status when backend health is healthy', () => {
     render(
       <StatusSummary

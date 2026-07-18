@@ -48,6 +48,7 @@ describe('apiClient chat conversations', () => {
         delete: backendDeleteMock,
       }))
       .mockImplementationOnce(() => ({
+        interceptors: { request: { use: vi.fn() }, response: { use: vi.fn() } },
         get: frontendGetMock,
         post: frontendPostMock,
       }));

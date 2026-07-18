@@ -11,6 +11,7 @@ from typing import Any, Dict, List, Optional
 
 import structlog
 
+from .outcome_events import emit_routing_outcome
 from .registry_store import ProviderStats, RoutingRegistryStore
 from .router_supabase import restore_from_supabase, schedule_mirror
 
@@ -110,7 +111,7 @@ class RoutingRegistry:
             )
         self._mark_dirty()
         self._flush_if_due()
-        _notify_bandit(provider_id=provider_id, task_type=task_type, success=True)
+        emit_routing_outcome(provider_id=provider_id, task_type=task_type, success=True)
 
     def record_failure(
         self,
@@ -123,7 +124,7 @@ class RoutingRegistry:
         stats.last_used = time.time()
         self._mark_dirty()
         self._flush_if_due()
-        _notify_bandit(provider_id=provider_id, task_type=task_type, success=False)
+        emit_routing_outcome(provider_id=provider_id, task_type=task_type, success=False)
 
     def log_decision(
         self,
@@ -158,6 +159,8 @@ class RoutingRegistry:
             pid: {
                 "ewma_latency_ms": round(s.ewma_latency_ms, 1),
                 "p95_latency_ms": round(s.p95_latency_ms, 1),
+                "latency_percentiles_ms": s.latency_percentiles_ms,
+                "latency_sample_count": len(s._latency_window),
                 "success_rate": round(s.success_rate, 3),
                 "total_cost_usd": round(s.total_cost_usd, 6),
                 "last_used": s.last_used,
@@ -236,21 +239,3 @@ class RoutingRegistry:
 
 
 registry = RoutingRegistry()
-
-
-def _notify_bandit(
-    *,
-    provider_id: str,
-    task_type: Optional[str],
-    success: bool,
-) -> None:
-    """Lazy-import bandit_cache and forward outcome. Best-effort — never raises."""
-    if not task_type:
-        return
-    try:
-        from api.routing.ml_router import _fire_bandit_state_upsert, bandit_cache  # noqa: PLC0415
-
-        updated = bandit_cache.update(task_type, provider_id, success=success)
-        _fire_bandit_state_upsert(updated)
-    except Exception:
-        pass

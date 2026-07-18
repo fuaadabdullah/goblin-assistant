@@ -6,6 +6,7 @@ from __future__ import annotations
 
 import asyncio
 import importlib
+import time
 from collections import deque
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
@@ -16,6 +17,7 @@ from api.core.contracts import ProviderHealthUpdatedPayload
 from api.observability.events import event_emitter
 from api.observability.migration_metrics import migration_metrics
 from api.ops.integrations.jira import publish_provider_health_incident
+from api.providers.domain import ProviderHealthSnapshot, ProviderHealthStatus
 from api.providers.supabase_events import upsert_provider_status
 from api.routing.router import registry
 
@@ -76,6 +78,28 @@ def _average_latency(samples: deque) -> float:
     return sum(samples) / len(samples)
 
 
+def _percentile_latency(samples: deque, percentile: float) -> float:
+    if not samples:
+        return 0.0
+    ordered = sorted(float(sample) for sample in samples)
+    if len(ordered) == 1:
+        return ordered[0]
+    rank = (len(ordered) - 1) * percentile
+    lower = int(rank)
+    upper = min(lower + 1, len(ordered) - 1)
+    weight = rank - lower
+    return ordered[lower] * (1.0 - weight) + ordered[upper] * weight
+
+
+def _latency_percentiles(samples: deque) -> Dict[str, float]:
+    return {
+        "p50": round(_percentile_latency(samples, 0.50), 1),
+        "p90": round(_percentile_latency(samples, 0.90), 1),
+        "p95": round(_percentile_latency(samples, 0.95), 1),
+        "p99": round(_percentile_latency(samples, 0.99), 1),
+    }
+
+
 def _push_status(provider_id: str, state: "ProviderHealth") -> None:
     """Fire-and-forget upsert of provider health to Supabase."""
     import importlib  # noqa: PLC0415
@@ -104,8 +128,28 @@ class HealthStatus(Enum):
     BILLING = "billing_issue"
 
 
+_TO_DOMAIN_STATUS = {
+    HealthStatus.HEALTHY: ProviderHealthStatus.HEALTHY,
+    HealthStatus.DEGRADED: ProviderHealthStatus.DEGRADED,
+    HealthStatus.UNHEALTHY: ProviderHealthStatus.UNHEALTHY,
+    HealthStatus.UNKNOWN: ProviderHealthStatus.UNKNOWN,
+    HealthStatus.BILLING: ProviderHealthStatus.BILLING_ISSUE,
+}
+
+
 @dataclass
-class ProviderHealth:
+class ProviderHealthState:
+    """Rolling-window health/monitor state for one provider.
+
+    Named distinctly from providers.base.ProviderHealth /
+    providers.domain.ProviderHealthSnapshot (point-in-time probe results) —
+    this is stateful, accumulated-over-time monitor data (rolling latency
+    samples, consecutive-failure counts), a different lifetime and owner.
+    `ProviderHealth` below is a backward-compatible alias so existing
+    `from api.services.provider_health import ProviderHealth` call sites
+    keep working unchanged.
+    """
+
     provider_id: str
     status: HealthStatus = HealthStatus.UNKNOWN
     last_check: Optional[datetime] = None
@@ -116,6 +160,23 @@ class ProviderHealth:
     consecutive_failures: int = 0
     latency_samples: deque = field(default_factory=lambda: deque(maxlen=100))
     configured: bool = False
+
+    def to_snapshot(self) -> ProviderHealthSnapshot:
+        """Typed, point-in-time bridge into the shared providers.domain vocabulary.
+
+        Purely additive — does not change any stored state or existing dict-
+        based read paths (get_status()/get_all_status()); it's a read-only
+        conversion for new code that wants a ProviderHealthSnapshot view."""
+        checked_at = self.last_check.timestamp() if self.last_check else time.time()
+        return ProviderHealthSnapshot(
+            provider_id=self.provider_id,
+            healthy=self.status == HealthStatus.HEALTHY,
+            status=_TO_DOMAIN_STATUS.get(self.status, ProviderHealthStatus.UNKNOWN),
+            latency_ms=self.avg_latency_ms,
+            error=self.last_error,
+            billing_issue=self.status == HealthStatus.BILLING,
+            checked_at=checked_at,
+        )
 
     def record_success(self, latency_ms: float) -> None:
         self.latency_samples.append(latency_ms)
@@ -135,6 +196,13 @@ class ProviderHealth:
         else:
             self.status = HealthStatus.DEGRADED
         self.avg_latency_ms = _average_latency(self.latency_samples)
+
+    @property
+    def latency_percentiles_ms(self) -> Dict[str, float]:
+        return _latency_percentiles(self.latency_samples)
+
+
+ProviderHealth = ProviderHealthState
 
 
 class ProviderHealthMonitor:
@@ -368,6 +436,8 @@ class ProviderHealthMonitor:
                     "avg_latency_ms": 0.0,
                     "success_rate": 1.0,
                     "consecutive_failures": 0,
+                    "latency_percentiles_ms": {"p50": 0.0, "p90": 0.0, "p95": 0.0, "p99": 0.0},
+                    "latency_sample_count": 0,
                     "cache_stale": True,
                 }
             return {"error": f"Unknown provider: {provider_id}"}
@@ -382,6 +452,8 @@ class ProviderHealthMonitor:
             "last_success": last_success,
             "last_error": state.last_error,
             "avg_latency_ms": round(state.avg_latency_ms, 1),
+            "latency_percentiles_ms": state.latency_percentiles_ms,
+            "latency_sample_count": len(state.latency_samples),
             "success_rate": round(state.success_rate, 3),
             "consecutive_failures": state.consecutive_failures,
             "billing_issue": state.status == HealthStatus.BILLING,
@@ -396,6 +468,36 @@ class ProviderHealthMonitor:
         if include_hidden:
             provider_ids.update(self.health_data.keys())
         return {provider_id: self.get_status(provider_id) for provider_id in sorted(provider_ids)}
+
+    def get_status_typed(self, provider_id: str) -> Optional[ProviderHealthSnapshot]:
+        """Typed sibling of get_status() — returns None where get_status()
+        would return an {"error": ...} dict (unknown provider); the
+        "still-configured but never checked" case (cache_stale=True in
+        get_status()) is representable and returns a snapshot."""
+        canonical_id = canonical_provider_id(provider_id) or provider_id
+        state = self.health_data.get(canonical_id)
+        if state is None:
+            if _dispatcher().get_provider_config(canonical_id):
+                return ProviderHealthSnapshot(
+                    provider_id=canonical_id,
+                    healthy=False,
+                    status=ProviderHealthStatus.UNKNOWN,
+                )
+            return None
+        return state.to_snapshot()
+
+    def get_all_status_typed(
+        self, include_hidden: bool = False
+    ) -> Dict[str, ProviderHealthSnapshot]:
+        provider_ids = set(_dispatcher().provider_ids(include_hidden=include_hidden))
+        if include_hidden:
+            provider_ids.update(self.health_data.keys())
+        result: Dict[str, ProviderHealthSnapshot] = {}
+        for provider_id in sorted(provider_ids):
+            snapshot = self.get_status_typed(provider_id)
+            if snapshot is not None:
+                result[provider_id] = snapshot
+        return result
 
     def get_healthy_providers(self) -> List[str]:
         return [

@@ -354,7 +354,7 @@ export interface RuntimeClient {
   login(email: string, password: string): Promise<LoginResponse>;
   register(email: string, password: string, name?: string): Promise<LoginResponse>;
   logout(): Promise<void>;
-  validateToken(token: string): Promise<{ valid: boolean; user?: User | undefined }>;
+  validateToken(token?: string): Promise<{ valid: boolean; user?: User | undefined }>;
 }
 
 export interface GoblinStatus {

@@ -13,6 +13,7 @@ from api.routing.evaluation import (
     production_reliability_snapshot,
     run_routing_benchmark,
 )
+from api.routing.routing_pipeline import ROUTING_STAGE_ORDER
 
 
 class TestRoutingBenchmarkSuite:
@@ -47,6 +48,12 @@ class TestRoutingBenchmarkSuite:
         report = run_routing_benchmark()
         case = next(c for c in report.cases if c.case_id == "normal_chat_baseline")
         assert case.matched_policies == []
+
+    def test_cases_include_pipeline_stage_timings(self):
+        report = run_routing_benchmark()
+        for case in report.cases:
+            assert list(case.stage_durations_ms) == list(ROUTING_STAGE_ORDER)
+            assert all(duration >= 0 for duration in case.stage_durations_ms.values())
 
 
 class TestCostQualityFrontier:

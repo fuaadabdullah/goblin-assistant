@@ -1,23 +1,29 @@
 """
-Heuristic prompt-to-TaskType classifier.
+Heuristic prompt-to-task-label classifier.
 
 Runs in microseconds with no ML dependencies. Used by BanditRouter and
-SmartRouter to auto-detect task type when the caller doesn't specify one.
+SmartRouter to auto-detect task labels when the caller doesn't specify one.
 """
 
 from __future__ import annotations
 
 import re
-from typing import TYPE_CHECKING, Any, Dict, List
+from typing import Any, Dict, List
 
 from .keyword_matcher import contains_any_keywords
 
-if TYPE_CHECKING:
-    from api.services.smart_router import TaskType
-
-
 # Keyword sets per task type, checked in priority order (first match wins).
 # Tuples of (pattern_strings, ...) matched against lowercase prompt text.
+TASK_CHAT = "chat"
+TASK_CODE_GENERATION = "code"
+TASK_CODE_REVIEW = "code_review"
+TASK_REASONING = "reasoning"
+TASK_SUMMARIZATION = "summary"
+TASK_EMBEDDING = "embedding"
+TASK_IMAGE_GENERATION = "image"
+TASK_VISION = "vision"
+TASK_TRANSLATION = "translation"
+
 _IMAGE_KEYWORDS = (
     "generate image",
     "generate an image",
@@ -148,35 +154,31 @@ def _looks_like_code(prompt: str) -> bool:
 
 
 class PromptClassifier:
-    """Classify a prompt string into a TaskType using keyword heuristics."""
+    """Classify prompt text into stable task-label strings."""
 
-    def classify(self, prompt: str) -> "TaskType":
-        from api.services.smart_router import TaskType  # lazy to avoid circular
-
+    def classify(self, prompt: str) -> str:
         text = prompt.lower()
 
         if _contains_any(text, _IMAGE_KEYWORDS):
-            return TaskType.IMAGE_GENERATION
+            return TASK_IMAGE_GENERATION
         if _contains_any(text, _VISION_KEYWORDS):
-            return TaskType.VISION
+            return TASK_VISION
         if _contains_any(text, _EMBEDDING_KEYWORDS):
-            return TaskType.EMBEDDING
+            return TASK_EMBEDDING
         if _contains_any(text, _TRANSLATION_KEYWORDS):
-            return TaskType.TRANSLATION
+            return TASK_TRANSLATION
         if _contains_any(text, _CODE_GENERATION_KEYWORDS) or _looks_like_code(prompt):
-            return TaskType.CODE_GENERATION
+            return TASK_CODE_GENERATION
         if _contains_any(text, _CODE_REVIEW_KEYWORDS):
-            return TaskType.CODE_REVIEW
+            return TASK_CODE_REVIEW
         if _contains_any(text, _REASONING_KEYWORDS):
-            return TaskType.REASONING
+            return TASK_REASONING
         if _contains_any(text, _SUMMARIZATION_KEYWORDS):
-            return TaskType.SUMMARIZATION
-        return TaskType.CHAT
+            return TASK_SUMMARIZATION
+        return TASK_CHAT
 
-    def classify_messages(self, messages: List[Dict[str, Any]]) -> "TaskType":
+    def classify_messages(self, messages: List[Dict[str, Any]]) -> str:
         """Classify from a messages list, using the last user message."""
-        from api.services.smart_router import TaskType  # lazy to avoid circular
-
         last_user_content = ""
         for msg in reversed(messages):
             if isinstance(msg, dict) and msg.get("role") == "user":
@@ -191,7 +193,7 @@ class PromptClassifier:
                 break
 
         if not last_user_content:
-            return TaskType.CHAT
+            return TASK_CHAT
 
         return self.classify(last_user_content)
 

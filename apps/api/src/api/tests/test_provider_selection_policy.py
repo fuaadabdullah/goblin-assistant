@@ -6,6 +6,7 @@ from unittest.mock import MagicMock, patch
 
 from api.routing.policy_rules import PolicyDecision
 from api.routing.provider_selection import ProviderSelectionModel, get_explanation
+from api.routing.routing_pipeline import ROUTING_STAGE_ORDER
 
 
 def _mock_routing_features(**overrides):
@@ -149,3 +150,23 @@ class TestExplainability:
         explanation = get_explanation("explain-test-2")
         assert explanation["matched_policies"] == ["coding_boost"]
         assert explanation["policy_boosts"] == {"anthropic": 0.1}
+
+    def test_stage_trace_recorded_in_explanation(self):
+        model = ProviderSelectionModel()
+
+        with patch.dict("sys.modules", _mock_ml_modules()):
+            with patch("api.routing.provider_selection.feature_extractor") as mock_fe:
+                mock_fe.extract_providers.return_value = {}
+                model.score(
+                    ["openai", "anthropic"],
+                    _mock_routing_features(),
+                    task_type="chat",
+                    routing_id="explain-stage-trace",
+                )
+
+        explanation = get_explanation("explain-stage-trace")
+        assert explanation is not None
+        assert [entry["stage"] for entry in explanation["routing_trace"]] == list(
+            ROUTING_STAGE_ORDER
+        )
+        assert all(entry["duration_ms"] >= 0 for entry in explanation["routing_trace"])

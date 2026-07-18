@@ -15,7 +15,24 @@ interface StatusSummaryProps {
   isAuthenticated: boolean;
 }
 
-const StatusSummary: FC<StatusSummaryProps> = ({ chatTestResult, chatError, health, isAuthenticated }) => (
+const isAuthenticationError = (error: string | null): boolean => {
+  if (!error) return false;
+  const normalized = error.toLowerCase();
+  return (
+    normalized.includes('not authenticated') ||
+    normalized.includes('missing token') ||
+    normalized.includes('invalid authentication') ||
+    normalized.includes('authentication required') ||
+    normalized.includes('401')
+  );
+};
+
+const StatusSummary: FC<StatusSummaryProps> = ({
+  chatTestResult,
+  chatError,
+  health,
+  isAuthenticated,
+}) => (
   <ul>
     <li>
       Frontend Health: <span className={styles['successText']}>✓ OK</span> (page loads and renders)
@@ -40,11 +57,17 @@ const StatusSummary: FC<StatusSummaryProps> = ({ chatTestResult, chatError, heal
     </li>
     <li>
       Auth Status:{' '}
-      {isAuthenticated ? <span className={styles['successText']}>✓ Authenticated</span> : <span className={styles['warningText']}>⚠ Not authenticated</span>}
+      {isAuthenticated ? (
+        <span className={styles['successText']}>✓ Authenticated</span>
+      ) : (
+        <span className={styles['warningText']}>⚠ Not authenticated</span>
+      )}
     </li>
     <li>
       Chat API:{' '}
-      {chatError ? (
+      {chatError && isAuthenticationError(chatError) ? (
+        <span className={styles['warningText']}>⚠ Authentication required</span>
+      ) : chatError ? (
         <span className={styles['errorText']}>✗ Failed</span>
       ) : chatTestResult ? (
         <span className={styles['successText']}>✓ Connected</span>

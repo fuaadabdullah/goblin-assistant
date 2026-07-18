@@ -41,7 +41,7 @@ _BENCHMARK_SEED = 20260717  # fixed seed so CI runs are reproducible
 from .feature_extractor import ProviderFeatures, RoutingFeatures
 from .policy_engine import tier_router
 from .policy_rules import policy_engine
-from .provider_selection import provider_selection_model
+from .provider_selection import get_explanation, provider_selection_model
 
 _PROVIDERS_TOML_PATH = Path(__file__).resolve().parents[5] / "config" / "providers.toml"
 
@@ -165,6 +165,7 @@ class CaseResult:
     tier_win_rate: Optional[float]
     passed: bool
     reason: str
+    stage_durations_ms: Dict[str, float] = field(default_factory=dict)
 
 
 @dataclass
@@ -223,9 +224,10 @@ def _neutral_provider_features(
     candidates: List[str],
     provider_costs: Dict[str, Any],
     registry_snapshot: Dict[str, Any],
+    health_availability: Optional[Dict[str, bool]] = None,
 ) -> Dict[str, ProviderFeatures]:
     """Every candidate starts from the same neutral, healthy prior."""
-    del provider_costs, registry_snapshot
+    del provider_costs, registry_snapshot, health_availability
     return {
         pid: ProviderFeatures(
             provider_id=pid, success_rate=0.5, norm_latency=0.5, norm_cost=0.5, is_healthy=True
@@ -241,21 +243,14 @@ def _isolated_benchmark_environment() -> Iterator[None]:
     Two things would otherwise leak into the benchmark and make it depend on
     this machine/process's history rather than the routing logic itself:
 
-    1. Provider health + registry stats (success_rate, latency, cost) — both
-       flow through feature_extractor.extract_providers(). Health depends on
-       which API keys happen to be set (an unconfigured "best"-tier provider
-       gets hard-zeroed regardless of policy boosts — see
-       feature_router.score_provider); registry stats come from the on-disk
+    1. Provider health + registry stats (success_rate, latency, cost) both
+       flow through feature_extractor.extract_providers(). Health is injected
+       as a routing snapshot, while registry stats come from the on-disk
        routing_registry.db, which accumulates cross-process noise, including
        from test fixtures (provider ids like "primary", "alpha",
        "fast_cheap" leak in from unit tests pointed at the same default
-       path). Patching extract_providers itself — rather than health_monitor
-       or router_registry individually — sidesteps a real, pre-existing
-       circular import between api.services.provider_health and
-       api.providers.dispatcher that only resolves safely once something
-       else has already primed that import graph (e.g. pytest's app-boot
-       fixtures); a bare script importing only api.routing.evaluation hits
-       it directly.
+       path). Patching extract_providers itself keeps benchmark inputs
+       deterministic without reaching into health or registry internals.
 
     2. feature_router's learned weights — FeatureWeights.observation_count is
        a module-level singleton mutated by ANY code path that calls
@@ -315,14 +310,18 @@ def _run_cases(
 
     for case in suite:
         candidates = case.candidates or list(_ALL_TIER_PROVIDERS)
+        routing_id = f"benchmark:{case.id}"
         scored = provider_selection_model.score(
             candidates,
             case.features,
             task_type=case.features.task_type,
             metadata=case.metadata,
+            routing_id=routing_id,
         )
         decision = policy_engine.evaluate(case.features, candidates, metadata=case.metadata)
         win_rate = _tier_win_rate(case, candidates)
+        explanation = get_explanation(routing_id) or {}
+        stage_durations = _stage_durations_from_explanation(explanation)
 
         chosen = scored[0] if scored else None
         for s in scored:
@@ -340,10 +339,30 @@ def _run_cases(
                 tier_win_rate=win_rate,
                 passed=passed,
                 reason=reason,
+                stage_durations_ms=stage_durations,
             )
         )
 
     return results, all_scores
+
+
+def _stage_durations_from_explanation(explanation: Dict[str, Any]) -> Dict[str, float]:
+    trace = explanation.get("routing_trace")
+    if not isinstance(trace, list):
+        return {}
+
+    durations: Dict[str, float] = {}
+    for entry in trace:
+        if not isinstance(entry, dict):
+            continue
+        stage = entry.get("stage")
+        if not isinstance(stage, str) or not stage:
+            continue
+        try:
+            durations[stage] = float(entry.get("duration_ms", 0.0))
+        except (TypeError, ValueError):
+            durations[stage] = 0.0
+    return durations
 
 
 # ---------------------------------------------------------------------------

@@ -7,6 +7,7 @@ import {
   getFrontend,
 } from './shared';
 import type { ValidateTokenResponse } from '../../types/api';
+import { getAuthTokenForRequest } from '../../utils/auth-session';
 
 export const authMethods = {
   async passkeyChallenge(email: string) {
@@ -39,15 +40,20 @@ export const authMethods = {
     );
   },
 
-  async validateToken(token: string): Promise<ValidateTokenResponse> {
+  async validateToken(token?: string): Promise<ValidateTokenResponse> {
+    const resolvedToken = token?.trim() || (await getAuthTokenForRequest());
     return postFrontend<ValidateTokenResponse>(
       '/api/auth/validate',
-      {},
+      { token: resolvedToken ?? '' },
       {
-        headers: {
-          Authorization: `Bearer ${token}`,
-          'Content-Type': 'application/json',
-        },
+        headers: resolvedToken
+          ? {
+              Authorization: `Bearer ${resolvedToken}`,
+              'Content-Type': 'application/json',
+            }
+          : {
+              'Content-Type': 'application/json',
+            },
       }
     );
   },

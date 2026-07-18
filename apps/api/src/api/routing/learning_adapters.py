@@ -6,7 +6,7 @@ Services use this module instead of importing route/controller modules such as
 
 from __future__ import annotations
 
-from typing import Dict, List, Optional
+from typing import Any, Dict, List, Optional
 
 
 def rank_with_bandit_router(
@@ -26,6 +26,34 @@ def rank_with_bandit_router(
         request_id=request_id,
         request=request,
     )
+
+
+def rank_prompt_with_bandit_router(
+    candidates: List[str],
+    provider_costs: Dict[str, tuple],
+    *,
+    task_type: str,
+    prompt: str,
+    conversation_history: Optional[List[Dict[str, Any]]] = None,
+    intent_label: str = "unknown",
+    intent_confidence: float = 0.0,
+    request_id: Optional[str] = None,
+) -> List[str]:
+    from api.routing.ml_router import bandit_cache
+    from api.routing.routing_pipeline import build_routing_pipeline
+
+    result = build_routing_pipeline(bandit_cache=bandit_cache).route_prompt(
+        candidates,
+        prompt,
+        conversation_history=conversation_history or [],
+        task_type=task_type,
+        intent_label=intent_label,
+        intent_confidence=intent_confidence,
+        provider_costs=provider_costs,
+        routing_id=request_id or "",
+        prefer_supplied_task_type=True,
+    )
+    return [score.provider_id for score in result.scores]
 
 
 def record_bandit_outcome(

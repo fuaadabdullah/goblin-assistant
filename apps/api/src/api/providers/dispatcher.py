@@ -9,9 +9,12 @@ from __future__ import annotations
 import asyncio
 import random
 from contextlib import asynccontextmanager
-from typing import Any, Dict, List, Optional
+from typing import TYPE_CHECKING, Any, Dict, List, Optional
 
 import structlog
+
+if TYPE_CHECKING:
+    from .domain import ProviderExecutionRequest, ProviderExecutionResult
 
 from .base import (
     BaseProvider,
@@ -61,11 +64,9 @@ from .dispatcher_pkg.discovery import (
 from .dispatcher_pkg.discovery import (
     list_providers as _list_providers_fn,
 )
+from .dispatcher_pkg.execution import ExecutionEngine, ProviderExecutor
 from .dispatcher_pkg.execution import (
     build_invoke_kwargs as _build_invoke_kwargs,
-)
-from .dispatcher_pkg.execution import (
-    dispatch_request as _dispatch_request,
 )
 from .dispatcher_pkg.execution import (
     provider_error_category as _provider_error_category,
@@ -122,6 +123,7 @@ from .dispatcher_pkg.sanitization import (
 from .dispatcher_pkg.sanitization import (
     sanitize_error_message as _sanitize_error_message,
 )
+from .dispatcher_pkg.selection import SelectionEngine
 from .dispatcher_pkg.selection import (
     invoke_with_fallback as _invoke_with_fallback_helper,
 )
@@ -159,13 +161,13 @@ from .dispatcher_utils import (  # noqa: F401 — re-exported for backward compa
     LoadBalancer,
     MetricsCollector,
 )
-from .model_registry import validate_model_alias_targets
 from .provider_config_runtime import invalidate_cache as _invalidate_provider_config_cache
 from .provider_registry import (
     DEFAULT_PROVIDER_CLASS_MAP,
     ProviderRegistry,
     ProviderRuntimeConfig,
     build_factories_from_class_map,
+    set_provider_metadata_source,
 )
 
 _bootstrap_logger = structlog.get_logger(__name__)
@@ -194,7 +196,23 @@ _PROVIDER_CONFIGS: Dict[str, Dict[str, Any]] = _load_toml_providers(
 _PROVIDER_ALIASES: Dict[str, str] = _load_aliases(_provider_toml)
 _MODEL_ALIASES, _MODEL_ALIAS_PATTERNS = _load_model_aliases(_provider_toml)
 _VISIBLE_PROVIDER_IDS: List[str] = _load_visible_providers(_provider_toml)
+set_provider_metadata_source(lambda: _PROVIDER_CONFIGS)
 logger = _get_provider_logger(__name__, lambda: _known_secrets_from_configs(_PROVIDER_CONFIGS))
+
+
+def validate_model_alias_targets(
+    *,
+    provider_toml: Any,
+    provider_configs: Dict[str, Dict[str, Any]],
+    logger: Any,
+) -> None:
+    ProviderRegistry.default().validate_model_alias_targets(
+        provider_toml=provider_toml,
+        provider_configs=provider_configs,
+        logger=logger,
+    )
+
+
 validate_model_alias_targets(
     provider_toml=_provider_toml,
     provider_configs=_PROVIDER_CONFIGS,
@@ -271,6 +289,14 @@ class ProviderDispatcher:
         self._background_started = False
         self._test_mode_stack: List[Dict[str, Any]] = []
         self._random = random.Random(0)
+        self._selection_engine = SelectionEngine(self)
+        self._provider_executor = ProviderExecutor(self)
+        self._execution_engine = ExecutionEngine(
+            self,
+            logger=logger,
+            selection_engine=self._selection_engine,
+            provider_executor=self._provider_executor,
+        )
         self._startup_preflight()
 
     def _known_secrets(self) -> List[str]:
@@ -462,23 +488,27 @@ class ProviderDispatcher:
         return priority_order(self.list_providers)
 
     def _cheapest_order(self) -> List[str]:
+        from ..routing.policy_engine import cost_router
         from .dispatcher_pkg.routing import cheapest_order
 
         return cheapest_order(
             self._ensure_provider,
             self._configs,
             self.list_providers,
+            rank_fn=cost_router.rank,
             provider_toml=_provider_toml,
             logger=logger,
         )
 
     def _hybrid_order(self) -> List[str]:
+        from ..routing.policy_engine import hybrid_router
         from .dispatcher_pkg.routing import hybrid_order
 
         return hybrid_order(
             self._ensure_provider,
             self._configs,
             self.list_providers,
+            rank_fn=hybrid_router.rank,
             provider_toml=_provider_toml,
             logger=logger,
         )
@@ -534,6 +564,8 @@ class ProviderDispatcher:
         return re_ranked
 
     def _candidate_order(self, provider_id: Optional[str]) -> List[str]:
+        from ..routing.policy_engine import cost_router, hybrid_router
+
         def _provider_list_fn(include_hidden: bool = False) -> List[Dict[str, Any]]:
             return self.list_providers(include_hidden=include_hidden)
 
@@ -543,6 +575,8 @@ class ProviderDispatcher:
             self._configs,
             self._ensure_provider,
             _provider_list_fn,
+            cheapest_rank_fn=cost_router.rank,
+            hybrid_rank_fn=hybrid_router.rank,
             provider_toml=_provider_toml,
             logger=logger,
         )
@@ -732,15 +766,13 @@ class ProviderDispatcher:
         stream: bool = False,
         dry_run: bool = False,
     ) -> Dict[str, Any]:
-        return await _dispatch_request(
-            self,
+        return await self._execution_engine.dispatch(
             pid=pid,
             model=model,
             payload=payload,
             timeout_ms=timeout_ms,
             stream=stream,
             dry_run=dry_run,
-            logger=logger,
         )
 
     def debug_info(self) -> Dict[str, Any]:
@@ -768,6 +800,50 @@ class ProviderDispatcher:
             timeout_ms=timeout_ms,
             stream=stream,
         )
+
+    async def invoke_provider_typed(
+        self, request: "ProviderExecutionRequest"
+    ) -> "ProviderExecutionResult":
+        """Typed sibling of invoke_provider(). Bridges through the existing
+        dict-based dispatch path unchanged — added alongside, not replacing it,
+        so callers can migrate to typed request/result without a flag day."""
+        from .domain import from_execution_dict, to_payload_dict
+
+        result_dict = await self.invoke_provider(
+            provider_id=request.provider_id,
+            model=request.model,
+            payload=to_payload_dict(request),
+            timeout_ms=request.timeout_ms,
+            stream=request.stream,
+        )
+        return from_execution_dict(
+            result_dict, provider_id=request.provider_id, model=request.model
+        )
+
+    def record_routing_outcome(
+        self,
+        provider_id: str,
+        *,
+        ok: bool,
+        latency_ms: float = 0.0,
+        cost_usd: float = 0.0,
+    ) -> None:
+        """Record a dispatch outcome into routing's stats registry.
+
+        This is the sole point where providers/dispatcher_pkg/execution.py
+        reaches into routing — it calls this method (which it already has a
+        `dispatcher` reference to, on every execution path) instead of
+        importing api.routing.router_registry directly. Behavior/timing is
+        unchanged from before; only the import boundary moved, so every
+        existing caller of dispatch()/invoke_provider() keeps recording
+        outcomes exactly as it did previously.
+        """
+        from ..routing.router_registry import registry
+
+        if ok:
+            registry.record_success(provider_id, latency_ms=latency_ms, cost_usd=cost_usd)
+        else:
+            registry.record_failure(provider_id)
 
 
 dispatcher = ProviderDispatcher()

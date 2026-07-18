@@ -4,6 +4,9 @@ const { mockGetCsrfToken, mockGetFrontend, mockPostFrontend, mockWithAuth } = vi
   mockPostFrontend: vi.fn(),
   mockWithAuth: vi.fn(),
 }));
+const { mockGetAuthTokenForRequest } = vi.hoisted(() => ({
+  mockGetAuthTokenForRequest: vi.fn(),
+}));
 
 vi.mock('../shared', () => ({
   AUTH_REQUEST_TIMEOUT_MS: 60_000,
@@ -11,6 +14,9 @@ vi.mock('../shared', () => ({
   getFrontend: mockGetFrontend,
   postFrontend: mockPostFrontend,
   withAuth: mockWithAuth,
+}));
+vi.mock('../../../utils/auth-session', () => ({
+  getAuthTokenForRequest: mockGetAuthTokenForRequest,
 }));
 
 import { agentMethods } from '../agent';
@@ -27,6 +33,7 @@ describe('API endpoint method shims', () => {
     mockGetFrontend.mockResolvedValue({ url: 'https://google.example/login' });
     mockPostFrontend.mockResolvedValue({ ok: true });
     mockWithAuth.mockReturnValue({ headers: { Authorization: 'Bearer token' } });
+    mockGetAuthTokenForRequest.mockResolvedValue('resolved-session-token');
   });
 
   it('forwards auth requests through the shared HTTP helpers', async () => {
@@ -75,10 +82,23 @@ describe('API endpoint method shims', () => {
     await authMethods.validateToken('jwt-token');
     expect(mockPostFrontend).toHaveBeenCalledWith(
       '/api/auth/validate',
-      {},
+      { token: 'jwt-token' },
       {
         headers: {
           Authorization: 'Bearer jwt-token',
+          'Content-Type': 'application/json',
+        },
+      }
+    );
+
+    await authMethods.validateToken();
+    expect(mockGetAuthTokenForRequest).toHaveBeenCalledTimes(1);
+    expect(mockPostFrontend).toHaveBeenCalledWith(
+      '/api/auth/validate',
+      { token: 'resolved-session-token' },
+      {
+        headers: {
+          Authorization: 'Bearer resolved-session-token',
           'Content-Type': 'application/json',
         },
       }
