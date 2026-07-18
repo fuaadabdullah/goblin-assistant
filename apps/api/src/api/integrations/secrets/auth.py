@@ -250,7 +250,6 @@ async def refresh_vault_token(credentials_name: str, credentials: AppRoleCredent
 def setup_vault_approle_renewal(
     name: str,
     credentials: AppRoleCredentials,
-    vault_client,
     interval_seconds: int = 300,
 ) -> None:
     """
@@ -259,7 +258,6 @@ def setup_vault_approle_renewal(
     Args:
         name: Identifier for the credentials
         credentials: AppRole credentials
-        vault_client: Vault client instance
         interval_seconds: Renewal interval in seconds
     """
     auth_manager = get_auth_manager()
@@ -275,7 +273,6 @@ def setup_vault_approle_renewal(
 def setup_vault_token_renewal(
     name: str,
     credentials: TokenCredentials,
-    vault_client,
     interval_seconds: int = 300,
 ) -> None:
     """
@@ -284,7 +281,6 @@ def setup_vault_token_renewal(
     Args:
         name: Identifier for the credentials
         credentials: Token credentials
-        vault_client: Vault client instance
         interval_seconds: Renewal interval in seconds
     """
     auth_manager = get_auth_manager()

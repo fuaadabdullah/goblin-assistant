@@ -18,7 +18,9 @@
     "lint-staged",
     "cross-fetch",
     "web-streams-polyfill",
-    "msw"
+    "msw",
+    "@goblin/shared",
+    "@goblin/ui"
   ],
   "paths": {
     "@/*": ["src/*"]

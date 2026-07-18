@@ -224,6 +224,53 @@ per-concern packages (one file per test class/area, shared fixtures in
 
 The `REFACTOR_SUMMARY.md` documents successful elimination of **20 loose status code assertions** across 6 test files, replacing them with exact expectations and response body validation.
 
+### 5.3 Dead Code — RESOLVED (with known residual)
+
+`make check-dead-code` (vulture + knip) went from 46 Python findings + 5 unused
+files + 3 unused dependencies down to 4 known false positives:
+
+- Investigated every finding individually rather than blindly deleting: most
+  were `__exit__`-style dunder parameters, side-effect-only pytest fixtures,
+  and mock-signature-matching parameters — all legitimate, added to
+  `ignore_names` in `apps/api/pyproject.toml`.
+- Two genuinely dead function parameters removed:
+  `setup_vault_approle_renewal`/`setup_vault_token_renewal` in
+  `integrations/secrets/auth.py` took an unused `vault_client` (the functions
+  have zero callers anywhere in the codebase); `delete_user_data` in
+  `routes/privacy.py` took an unused `BackgroundTasks` FastAPI dependency.
+  Two genuinely dead test parameters removed: `metrics_svc` fixture (created
+  a `RetrievalMetricsService` never wired to anything) and `scores_override`
+  (never passed by any caller, never read in the body).
+  One vestigial always-same-branch ternary simplified in
+  `test_failover.py` (`None if False else X` → `X`).
+- `results_count` (`retrieval_tracer.RetrievalTracer.end_trace`) and
+  `use_cache` (mirrors `load_provider_config`'s real signature) are called
+  with these exact keyword arguments by live production code — added to a
+  new `apps/api/vulture_whitelist.py` (vulture's own documented
+  false-positive mechanism) rather than touched.
+- Frontend (`knip`): deleted 5 confirmed-orphaned files (`features/analyst/*`
+  — a whole unreferenced feature, `services/runtime-streaming.ts` — a dead
+  re-export shim, `theme/theme.d.ts` — stale ambient types superseded by the
+  real `theme.ts` implementation) and removed the genuinely-unused
+  `framer-motion` dependency. `@goblin/shared`/`@goblin/ui` were also
+  flagged but are demonstrably used in real (non-test) source — a knip
+  monorepo-resolution false positive, added to `knip.json`'s
+  `ignoreDependencies` instead of removed.
+
+**Residual (not fixed):** 4 vulture findings — `unreachable code after
+return/raise` and `unsatisfiable if/ternary condition` — in test provider
+stubs (`provider_dispatcher_routing/conftest.py`,
+`test_candidate_ordering.py`, `test_jira_provider_ops.py`,
+`test_stream_router.py`). All 4 are the same intentional idiom: a
+`return`/`raise` followed by an unreachable `yield` to make a stub method an
+async generator without ever actually yielding. Vulture has no whitelist
+mechanism for these two finding categories (only named-variable findings can
+be whitelisted), and rewriting the idiom to dodge the heuristic would add
+fake complexity purely to satisfy the linter. `make check-dead-code` will
+therefore keep exiting non-zero on these 4 until vulture adds a suppression
+mechanism for control-flow findings, or the idiom is replaced repo-wide with
+something else.
+
 ---
 
 ## 6. Operational & Build Debt
@@ -303,7 +350,7 @@ local orchestration surface.
 ### Priority 3 (Low - Backlog)
 
 8. **Code Quality**
-   - [ ] Run `make check-dead-code` and remove dead code
+   - [x] Run `make check-dead-code` and remove dead code (see 5.3)
    - [ ] Audit OpenAPI spec size (13K lines is excessive)
    - [ ] Consolidate theme CSS files (`dark-theme.css` vs `index.css`)
 

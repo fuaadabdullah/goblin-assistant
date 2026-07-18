@@ -18,7 +18,7 @@ import os
 from datetime import datetime
 from typing import Any, Dict
 
-from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.ext.asyncio import AsyncSession
 
 # Import auth dependencies
@@ -237,7 +237,6 @@ async def export_user_data(
 
 @router.delete("/delete", response_model=Dict[str, Any])
 async def delete_user_data(
-    background_tasks: BackgroundTasks,
     user_id: str = Depends(get_current_user),
     confirm: bool = False,
     db: AsyncSession = Depends(get_db),
