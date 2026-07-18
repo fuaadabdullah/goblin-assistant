@@ -38,7 +38,7 @@ COVERAGE_FILE="$ROOT_DIR/apps/api/.coverage.execution_engine" \
   --cov=api.assistant_tools.sandbox_templates \
   --cov-report=term-missing \
   --cov-fail-under="${CRIT_EXECUTION_THRESHOLD:-85}"
-run_gate "sandboxing" "api.sandbox_api" "src/api/tests/test_sandbox*.py src/api/tests/test_sandbox_api_runtime.py" "${CRIT_SANDBOX_THRESHOLD:-85}"
+run_gate "sandboxing" "api.sandbox_api" "src/api/tests/test_sandbox*.py src/api/tests/sandbox_api_runtime/" "${CRIT_SANDBOX_THRESHOLD:-85}"
 run_gate "risk-logic" "api.services.financial_guardrails" "src/api/tests/test_financial_guardrails.py src/api/tests/test_finance_memory_and_router.py" "${CRIT_RISK_THRESHOLD:-85}"
 echo "Running critical coverage gate: persistence (threshold ${CRIT_PERSISTENCE_THRESHOLD:-85}%)"
 COVERAGE_FILE="$ROOT_DIR/apps/api/.coverage.persistence" \
@@ -59,7 +59,7 @@ COVERAGE_FILE="$ROOT_DIR/apps/api/.coverage.persistence" \
   --cov=api.storage.models \
   --cov-report=term-missing \
   --cov-fail-under="${CRIT_PERSISTENCE_THRESHOLD:-85}"
-run_gate "websocket-state" "api.stream_router" "src/api/tests/test_stream_router.py src/api/tests/test_sse*.py src/api/tests/chat_router_core/" "${CRIT_WEBSOCKET_THRESHOLD:-85}"
+run_gate "websocket-state" "api.stream_router" "src/api/tests/test_stream_router.py src/api/tests/test_sse*.py src/api/tests/sse_errors/ src/api/tests/chat_router_core/" "${CRIT_WEBSOCKET_THRESHOLD:-85}"
 run_gate "orchestration" "api.core.orchestration" "src/api/tests/test_context_assembly*.py src/api/tests/context_assembly_coverage/ src/api/tests/test_smart_router_service.py src/api/tests/test_routing_router.py src/api/tests/test_orchestration_core.py" "${CRIT_ORCHESTRATION_THRESHOLD:-85}"
 run_gate "api-contracts" "api.api_router" "src/api/tests/test_contract_boundaries.py src/api/tests/test_api_router.py" "${CRIT_CONTRACT_THRESHOLD:-85}"
 
