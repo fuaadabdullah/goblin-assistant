@@ -241,7 +241,7 @@ secret-scan:
 	$(PYTHON) scripts/security/scan_secrets.py
 
 check-dead-code:
-	cd apps/api && $(PYTHON) -m vulture src/api --min-confidence 80
+	cd apps/api && $(PYTHON) -m vulture src/api vulture_whitelist.py --min-confidence 80
 	$(PNPM_TMP) pnpm --filter @goblin/web dead-code
 
 check-unused-deps:

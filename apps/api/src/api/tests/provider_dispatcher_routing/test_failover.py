@@ -99,8 +99,8 @@ class TestProviderFailover:
         secondary = self.d.get_provider("secondary")
         primary._fake_fail = True
 
-        secondary._invoke_hook = lambda *a, **kw: (
-            None if False else (_ for _ in ()).throw(AssertionError("should not be called"))
+        secondary._invoke_hook = lambda *a, **kw: (_ for _ in ()).throw(
+            AssertionError("should not be called")
         )
 
         result = await self.d.dispatch(

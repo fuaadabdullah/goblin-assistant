@@ -6,7 +6,6 @@ import pytest
 
 from api.services.context_assembly_service.models import ContextBudget, ContextLayer
 from api.services.context_assembly_service.orchestrator import ContextAssemblyService
-from api.services.retrieval_metrics_service import RetrievalMetricsService
 
 # ---------------------------------------------------------------------------
 # Fixtures
@@ -14,12 +13,7 @@ from api.services.retrieval_metrics_service import RetrievalMetricsService
 
 
 @pytest.fixture
-def metrics_svc() -> RetrievalMetricsService:
-    return RetrievalMetricsService()
-
-
-@pytest.fixture
-def svc(metrics_svc) -> ContextAssemblyService:
+def svc() -> ContextAssemblyService:
     s = ContextAssemblyService.__new__(ContextAssemblyService)
     s._retrieval_service = None
     s._embedding_service = None

@@ -93,7 +93,7 @@ def _mock_routing_features():
     )
 
 
-def _mock_ml_modules(scores_override=None):
+def _mock_ml_modules():
     """Build sys.modules mock for feature_router, ml_router, router_registry."""
     bandit_state = MagicMock()
     bandit_state.alpha = 1.0

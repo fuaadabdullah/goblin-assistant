@@ -27,7 +27,7 @@ exclude = [ "^src/api/docs/.*", "^src/api/tests/.*", "^src/api/test_.*\\.py$",]
 [tool.vulture]
 min_confidence = 80
 paths = [ "src/api",]
-ignore_names = [ "test_*", "*_test", "conftest",]
+ignore_names = [ "test_*", "*_test", "conftest", "exc_type", "exc_val", "exc_tb", "tb", "csrf_always_valid", "rate_limit_open", "event_db",]
 ignore_decorators = [ "@app.route", "@router.*", "@pytest.*",]
 
 [tool.ruff]
