@@ -31,7 +31,7 @@ def run_job(job_id: str, language: str, timeout: int, runtime_args: str, job_pat
     MAX_JOB_CPUS = float(os.getenv("MAX_JOB_CPUS", "0.25"))
 
     # Initialize clients
-    docker_client = DockerClient(base_url="unix://var/run/docker.sock")
+    docker_client = DockerClient(base_url=os.environ.get("DOCKER_HOST", "unix://var/run/docker.sock"))
     redis_client = redis.from_url(REDIS_URL)
 
     job_key = f"sandbox:job:{job_id}"

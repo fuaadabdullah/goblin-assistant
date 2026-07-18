@@ -39,9 +39,18 @@ services:
       - SANDBOX_ENABLED=true
       - SANDBOX_IMAGE=goblin-assistant-sandbox:latest
       - JOBS_DIR=/app/sandbox_jobs
+      - PORT=8001
+      - ROUTING_REGISTRY_DB_PATH=/app/state/routing_registry.db
     volumes:
-      - ./apps/api/src/api:/app
+      - ./apps/api/src/api:/app/apps/api/src/api:ro
       - sandbox_jobs:/app/sandbox_jobs
+      - api_uploads:/app/apps/api/src/uploads
+      - api_logs:/app/logs
+      - api_chroma:/app/chroma_db
+      - api_state:/app/state
+    read_only: true
+    tmpfs:
+      - /tmp
     depends_on:
       redis:
         condition: service_healthy
@@ -100,6 +109,30 @@ services:
       "
     restart: "no"
 
+  docker-socket-proxy:
+    image: tecnativa/docker-socket-proxy:0.3
+    profiles: [sandbox]
+    environment:
+      CONTAINERS: 1
+      IMAGES: 1
+      INFO: 1
+      PING: 1
+      POST: 1
+      NETWORKS: 0
+      VOLUMES: 0
+      EXEC: 0
+      AUTH: 0
+      SECRETS: 0
+      SERVICES: 0
+      SWARM: 0
+      SYSTEM: 0
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+    read_only: true
+    tmpfs:
+      - /run
+    restart: unless-stopped
+
   sandbox-worker:
     build:
       context: .
@@ -108,6 +141,7 @@ services:
     command: ["python", "/home/runner/start_worker.py"]
     environment:
       - REDIS_URL=redis://redis:6379/0
+      - DOCKER_HOST=tcp://docker-socket-proxy:2375
       - SANDBOX_IMAGE=goblin-assistant-sandbox:latest
       - MAX_JOB_MEMORY=256m
       - MAX_JOB_CPUS=0.25
@@ -121,12 +155,16 @@ services:
       - ARTIFACT_TTL_DAYS=7
     volumes:
       - sandbox_jobs:/work
-      - /var/run/docker.sock:/var/run/docker.sock:ro
+    read_only: true
+    tmpfs:
+      - /tmp
     depends_on:
       redis:
         condition: service_healthy
       minio:
         condition: service_healthy
+      docker-socket-proxy:
+        condition: service_started
     deploy:
       resources:
         limits:
@@ -138,13 +176,18 @@ services:
   celery-worker-high:
     build: .
     profiles: [workers]
+    working_dir: /app/apps/api/src/api
     command: celery -A celery_app:app worker --loglevel=info --concurrency=2 --pool=prefork -Q high_priority
     environment:
       - ENV=production
       - CELERY_BROKER_URL=redis://redis:6379/0
       - CELERY_RESULT_BACKEND=redis://redis:6379/0
     volumes:
-      - ./apps/api/src/api:/app
+      - ./apps/api/src/api:/app/apps/api/src/api:ro
+      - api_logs:/app/logs
+    read_only: true
+    tmpfs:
+      - /tmp
     depends_on:
       redis:
         condition: service_healthy
@@ -164,13 +207,18 @@ services:
   celery-worker-default:
     build: .
     profiles: [workers]
+    working_dir: /app/apps/api/src/api
     command: celery -A celery_app:app worker --loglevel=info --concurrency=4 --pool=prefork -Q default
     environment:
       - ENV=production
       - CELERY_BROKER_URL=redis://redis:6379/0
       - CELERY_RESULT_BACKEND=redis://redis:6379/0
     volumes:
-      - ./apps/api/src/api:/app
+      - ./apps/api/src/api:/app/apps/api/src/api:ro
+      - api_logs:/app/logs
+    read_only: true
+    tmpfs:
+      - /tmp
     depends_on:
       redis:
         condition: service_healthy
@@ -190,13 +238,18 @@ services:
   celery-worker-low:
     build: .
     profiles: [workers]
+    working_dir: /app/apps/api/src/api
     command: celery -A celery_app:app worker --loglevel=info --concurrency=2 --pool=prefork -Q low_priority
     environment:
       - ENV=production
       - CELERY_BROKER_URL=redis://redis:6379/0
       - CELERY_RESULT_BACKEND=redis://redis:6379/0
     volumes:
-      - ./apps/api/src/api:/app
+      - ./apps/api/src/api:/app/apps/api/src/api:ro
+      - api_logs:/app/logs
+    read_only: true
+    tmpfs:
+      - /tmp
     depends_on:
       redis:
         condition: service_healthy
@@ -216,13 +269,18 @@ services:
   celery-beat:
     build: .
     profiles: [workers]
-    command: celery -A celery_app:app beat --loglevel=info
+    working_dir: /app/apps/api/src/api
+    command: celery -A celery_app:app beat --loglevel=info --schedule=/tmp/celerybeat-schedule
     environment:
       - ENV=production
       - CELERY_BROKER_URL=redis://redis:6379/0
       - CELERY_RESULT_BACKEND=redis://redis:6379/0
     volumes:
-      - ./apps/api/src/api:/app
+      - ./apps/api/src/api:/app/apps/api/src/api:ro
+      - api_logs:/app/logs
+    read_only: true
+    tmpfs:
+      - /tmp
     depends_on:
       redis:
         condition: service_healthy
@@ -242,6 +300,7 @@ services:
   flower:
     build: .
     profiles: [workers]
+    working_dir: /app/apps/api/src/api
     command: celery -A celery_app:app flower --address=0.0.0.0 --port=5555 --basic_auth=${FLOWER_BASIC_AUTH:?Set FLOWER_BASIC_AUTH=user:password in .env}
     ports:
       - '5555:5555'
@@ -250,7 +309,10 @@ services:
       - CELERY_BROKER_URL=redis://redis:6379/0
       - CELERY_RESULT_BACKEND=redis://redis:6379/0
     volumes:
-      - ./apps/api/src/api:/app
+      - ./apps/api/src/api:/app/apps/api/src/api:ro
+    read_only: true
+    tmpfs:
+      - /tmp
     depends_on:
       redis:
         condition: service_healthy
@@ -270,6 +332,7 @@ services:
   celery-monitor:
     build: .
     profiles: [workers]
+    working_dir: /app/apps/api/src/api
     command: python celery_monitoring.py
     ports:
       - '5556:5555'
@@ -278,7 +341,11 @@ services:
       - CELERY_BROKER_URL=redis://redis:6379/0
       - CELERY_RESULT_BACKEND=redis://redis:6379/0
     volumes:
-      - ./apps/api/src/api:/app
+      - ./apps/api/src/api:/app/apps/api/src/api:ro
+      - api_logs:/app/logs
+    read_only: true
+    tmpfs:
+      - /tmp
     depends_on:
       redis:
         condition: service_healthy
@@ -307,3 +374,7 @@ volumes:
   redis_data:
   sandbox_jobs:
   minio_data:
+  api_uploads:
+  api_logs:
+  api_chroma:
+  api_state:

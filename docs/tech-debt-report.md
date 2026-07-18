@@ -202,22 +202,26 @@ From `docker-compose.yml`:
 
 | Line | Issue | Risk | Recommendation |
 |------|-------|------|----------------|
-| 124 | `/var/run/docker.sock:ro` mounted to sandbox-worker | Privilege escalation | Use rootless Docker or bounded capabilities |
-| 43 | `COPY . /app` copies entire repo | Information leakage | Use `.dockerignore` or selective copy |
-| - | No non-root user in Dockerfile | Container escape | Add `USER` directive |
-| - | No read-only root filesystem | Tampering | Add `:ro` mounts |
+| 124 | Direct `/var/run/docker.sock:ro` mount removed from sandbox-worker; access now goes through `docker-socket-proxy` | Residual Docker API exposure is bounded to the proxy service | Continue evaluating rootless Docker/gVisor/Firecracker before production sandbox expansion |
+| Dockerfile | `COPY . /app` replaced with selective runtime copies | Lower information leakage risk | Keep `.dockerignore` and `check-operational-policy` current |
+| Dockerfile | Runtime now uses non-root `appuser` | Lower container escape blast radius | Preserve explicit `USER` directive |
+| Compose | Runtime services now use read-only roots plus selective writable mounts/tmpfs | Lower tampering risk | Add new writable mounts only for owned runtime data |
 
 ### 6.2 CI/CD Split Complexity
 
-- GitHub Actions: lint, policy, contract checks
-- CircleCI: Heavy lint/test/build/deploy work
-- No automated dependency update bot configured
+- GitHub Actions: repository guardrails and contract checks
+- CircleCI: heavier lint/test/build/deploy work
+- Dependabot is configured in `.github/dependabot.yml` for pip, npm, Terraform, and GitHub Actions
 
-**Impact:** Potential for drift between guardrails and enforcement.
+**Impact:** Potential for drift between guardrails and enforcement is now
+covered by `make check-operational-policy`, which is included in
+`make lint-policy`.
 
 ### 6.3 Build Process
 
-`render.yaml` and `fly.toml` exist alongside Docker Compose - deployment target fragmentation.
+`render.yaml` is the canonical backend deployment blueprint. `fly.toml` remains
+checked in as an explicitly archived reference, and Docker Compose remains the
+local orchestration surface.
 
 ---
 
@@ -228,7 +232,7 @@ From `docker-compose.yml`:
 1. **Security Upgrades**
    - [ ] Verify `pnpm audit` shows clean results
    - [ ] Consider alternative to `ecdsa` or accept risk documentation
-   - [ ] Restrict Docker socket access in sandbox worker
+   - [x] Restrict Docker socket access in sandbox worker
 
 2. **Architecture Boundary Violations**
    - [ ] Create service abstractions for storage modules (database, tasks, saas_service, etc.)
@@ -255,9 +259,9 @@ From `docker-compose.yml`:
 ### Priority 2 (Medium - Following Sprint)
 
 6. **Docker Hardening**
-   - [ ] Multi-stage build with `.dockerignore` optimization
-   - [ ] Add non-root user (UID 1000)
-   - [ ] Read-only root filesystem with selective write mounts
+   - [x] Multi-stage build with `.dockerignore` optimization
+   - [x] Add non-root user (UID 1000)
+   - [x] Read-only root filesystem with selective write mounts
 
 7. **Documentation**
    - [ ] Run `make generate-docs-coverage` and address gaps
