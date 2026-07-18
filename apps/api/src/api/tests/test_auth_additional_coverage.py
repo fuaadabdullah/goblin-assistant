@@ -83,6 +83,36 @@ def _user_model(**overrides):
     return SimpleNamespace(**data)
 
 
+@pytest.mark.asyncio
+async def test_validate_token_accepts_supabase_jwt_payload(monkeypatch):
+    db = MagicMock()
+    user_service = MagicMock()
+    user_service.get_user_by_id = AsyncMock(return_value=None)
+    user_service.get_user_by_email = AsyncMock(return_value=None)
+    monkeypatch.setattr(routes_email._ar, "UserService", lambda _db: user_service)
+    monkeypatch.setattr(routes_email, "verify_token", lambda _token: None)
+    monkeypatch.setattr(
+        routes_email,
+        "verify_supabase_token",
+        lambda _token: {
+            "sub": "supabase-user-1",
+            "email": "supabase@example.com",
+            "user_metadata": {"name": "Supabase User"},
+        },
+    )
+
+    result = await routes_email.validate_token(
+        TokenValidationRequest(token="supabase-jwt"),
+        db,
+    )
+
+    assert result.data.valid is True
+    assert result.data.user.id == "supabase-user-1"
+    assert result.data.user.email == "supabase@example.com"
+    assert result.data.user.name == "Supabase User"
+    user_service.get_user_by_email.assert_awaited_once_with("supabase@example.com")
+
+
 def _async_client_factory(*responses_or_exceptions):
     shared_items = list(responses_or_exceptions)
 

@@ -30,7 +30,7 @@ export const useEndpointTests = () => {
     setTestResult(null);
     try {
       // Token will be validated through the API client
-      const response = await apiClient.validateToken('');
+      const response = await apiClient.validateToken();
       setTestResult(response as unknown as HealthCheckResult);
     } catch (error) {
       setError(error instanceof Error ? error.message : String(error));

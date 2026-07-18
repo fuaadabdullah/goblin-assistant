@@ -24,6 +24,7 @@ vi.mock('axios', () => {
 
 vi.mock('../../utils/auth-session', () => ({
   getAuthToken: vi.fn(() => 'session-token-123'),
+  getAuthTokenForRequest: vi.fn(async () => 'session-token-123'),
   getRefreshToken: vi.fn(() => null),
   persistAuthSession: vi.fn(),
   clearAuthSession: vi.fn(),
@@ -47,6 +48,7 @@ describe('apiClient chat conversations', () => {
         delete: backendDeleteMock,
       }))
       .mockImplementationOnce(() => ({
+        interceptors: { request: { use: vi.fn() }, response: { use: vi.fn() } },
         get: frontendGetMock,
         post: frontendPostMock,
       }));

@@ -1,7 +1,22 @@
-import { persistAuthSession, clearAuthSession, getAuthToken } from '../auth-session';
+const { mockAuthGetSession } = vi.hoisted(() => ({
+  mockAuthGetSession: vi.fn(),
+}));
+
+vi.mock('../../lib/supabase', () => ({
+  authGetSession: mockAuthGetSession,
+}));
+
+import {
+  persistAuthSession,
+  clearAuthSession,
+  getAuthToken,
+  getAuthTokenForRequest,
+} from '../auth-session';
 
 describe('Auth Session Utilities', () => {
   beforeEach(() => {
+    mockAuthGetSession.mockReset();
+    mockAuthGetSession.mockResolvedValue({ session: null, error: null });
     localStorage.clear();
     document.cookie.split(';').forEach((c) => {
       const name = c.trim().split('=')[0];
@@ -57,6 +72,24 @@ describe('Auth Session Utilities', () => {
 
     it('should return null when no token exists', () => {
       expect(getAuthToken()).toBeNull();
+    });
+  });
+
+  describe('getAuthTokenForRequest', () => {
+    it('prefers the active Supabase access token', async () => {
+      document.cookie = 'session_token=legacy-token; Path=/';
+      mockAuthGetSession.mockResolvedValue({
+        session: { access_token: 'supabase-token' },
+        error: null,
+      });
+
+      await expect(getAuthTokenForRequest()).resolves.toBe('supabase-token');
+    });
+
+    it('falls back to the legacy token when no Supabase session exists', async () => {
+      localStorage.setItem('auth_token', 'legacy-token');
+
+      await expect(getAuthTokenForRequest()).resolves.toBe('legacy-token');
     });
   });
 

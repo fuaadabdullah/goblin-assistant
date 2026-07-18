@@ -4,6 +4,7 @@ import MockAdapter from 'axios-mock-adapter';
 vi.mock('../../utils/auth-session', () => ({
   getRefreshToken: vi.fn(() => null),
   getAuthToken: vi.fn(() => null),
+  getAuthTokenForRequest: vi.fn(() => Promise.resolve(null)),
   persistAuthSession: vi.fn(),
   clearAuthSession: vi.fn(),
 }));

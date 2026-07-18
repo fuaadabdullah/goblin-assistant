@@ -36,7 +36,22 @@ export const getAuthToken = (): string | null => {
   if (typeof document === 'undefined') return null;
   const match = document.cookie.match(new RegExp(`(?:^|;\\s*)${SESSION_TOKEN_COOKIE}=([^;]*)`));
   if (match?.[1]) return decodeURIComponent(match[1]);
-  return localStorage.getItem('auth_token');
+  return typeof localStorage === 'undefined' ? null : localStorage.getItem('auth_token');
+};
+
+/** Resolve the active Supabase or legacy token for browser API requests. */
+export const getAuthTokenForRequest = async (): Promise<string | null> => {
+  if (typeof window !== 'undefined') {
+    try {
+      const { authGetSession } = await import('../lib/supabase');
+      const { session } = await authGetSession();
+      if (session?.access_token) return session.access_token;
+    } catch {
+      // Fall back to the legacy session while older accounts migrate.
+    }
+  }
+
+  return getAuthToken();
 };
 
 export const getRefreshToken = (): string | null => {

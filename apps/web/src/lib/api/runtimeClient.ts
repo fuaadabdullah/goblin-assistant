@@ -165,7 +165,7 @@ const runtimeClientImpl: RuntimeClient = {
     await apiClient.logout().catch(() => {});
   },
 
-  async validateToken(token: string): Promise<{ valid: boolean; user?: User | undefined }> {
+  async validateToken(token?: string): Promise<{ valid: boolean; user?: User | undefined }> {
     const result = await apiClient.validateToken(token);
     return { valid: result?.valid ?? false, user: result?.user };
   },

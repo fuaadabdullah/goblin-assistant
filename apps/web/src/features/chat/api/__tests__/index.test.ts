@@ -2,9 +2,18 @@ import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { chatClient } from '../index';
 import { apiClient } from '@/lib/api';
 
+const { mockGetAuthTokenForRequest } = vi.hoisted(() => ({
+  mockGetAuthTokenForRequest: vi.fn(),
+}));
+
+vi.mock('../../../../utils/auth-session', () => ({
+  getAuthTokenForRequest: mockGetAuthTokenForRequest,
+}));
+
 describe('chatClient conversation API', () => {
   beforeEach(() => {
     vi.restoreAllMocks();
+    mockGetAuthTokenForRequest.mockResolvedValue('supabase-jwt');
   });
 
   it('passes prompt through to the persistent send endpoint', async () => {
@@ -128,8 +137,8 @@ describe('chatClient conversation API', () => {
       })
     ).rejects.toMatchObject({
       code: 'CHAT_PROVIDER_ACCESS_DENIED',
-        userMessage: 'Your account does not have access to any providers right now.',
-      });
+      userMessage: 'Your account does not have access to any providers right now.',
+    });
   });
 
   it('surfaces streaming provider errors instead of falling back to mock completion', async () => {
@@ -160,6 +169,12 @@ describe('chatClient conversation API', () => {
     });
 
     expect(fetchMock).toHaveBeenCalled();
+    expect(fetchMock).toHaveBeenCalledWith(
+      '/api/chat/stream',
+      expect.objectContaining({
+        headers: expect.objectContaining({ Authorization: 'Bearer supabase-jwt' }),
+      })
+    );
     expect(apiClient.chatCompletion).not.toHaveBeenCalled();
     expect(onChunk).not.toHaveBeenCalled();
     expect(onComplete).not.toHaveBeenCalled();

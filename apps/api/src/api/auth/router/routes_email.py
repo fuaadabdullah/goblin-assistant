@@ -33,7 +33,7 @@ from .schemas import (
     UserLogin,
 )
 from .sessions import _db_create_session, _db_revoke_session, create_session_id
-from .tokens import create_access_token, create_refresh_token, verify_token
+from .tokens import create_access_token, create_refresh_token, verify_supabase_token, verify_token
 
 router = APIRouter()
 
@@ -46,6 +46,11 @@ async def _validate_token_payload(
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Missing token")
 
     payload = verify_token(token)
+    is_supabase_token = False
+    if not payload:
+        payload = verify_supabase_token(token)
+        is_supabase_token = bool(payload)
+
     if not payload:
         return SuccessEnvelope(data=TokenValidationResponse(valid=False))
 
@@ -55,6 +60,19 @@ async def _validate_token_payload(
 
     user_service = _ar.UserService(db)
     user_model = await user_service.get_user_by_id(user_id)
+    if user_model is None and is_supabase_token and payload.get("email"):
+        user_model = await user_service.get_user_by_email(payload["email"])
+
+    # A valid Supabase identity may not have a local row until its first
+    # authenticated API request provisions one.
+    if user_model is None and is_supabase_token:
+        user = User(
+            id=user_id,
+            email=payload.get("email") or "",
+            name=payload.get("user_metadata", {}).get("name"),
+        )
+        return SuccessEnvelope(data=TokenValidationResponse(valid=True, user=user))
+
     if not user_model:
         return SuccessEnvelope(data=TokenValidationResponse(valid=False))
 
