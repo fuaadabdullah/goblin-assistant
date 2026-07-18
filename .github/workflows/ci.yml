@@ -61,7 +61,7 @@ jobs:
         run: pnpm --filter @goblin/web lint
 
       - name: Run lint policy
-        run: python scripts/policy_guard.py --strict
+        run: make lint-policy
 
   contract:
     name: contract

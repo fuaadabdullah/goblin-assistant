@@ -20,6 +20,15 @@
       "review_cadence": "On inventory change"
     },
     {
+      "path": "docs/tech-debt-report.md",
+      "classification": "canonical",
+      "purpose": "Technical debt inventory and remediation status",
+      "owner": "Architecture + platform maintainers",
+      "audience": ["Engineers", "reviewers", "agents"],
+      "generation": "handwritten",
+      "review_cadence": "On debt remediation or architecture review"
+    },
+    {
       "path_prefix": "docs/architecture/",
       "classification": "canonical",
       "purpose": "System boundaries, standards, and architecture governance",

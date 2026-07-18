@@ -5,7 +5,7 @@ description: "Canonical deployment architecture and targets"
 
 ## Deployment Architecture
 
-### Canonical targets (March 2026)
+### Canonical targets (July 2026)
 
 Goblin Assistant uses a two-platform deployment model:
 
@@ -26,6 +26,13 @@ Canonical backend runtime entrypoint:
   - `deploy-vercel.sh`
   - `deploy.sh` (`vercel|render|test`)
 
+### Governance
+
+- `make check-operational-policy` verifies that Render remains the canonical
+  backend blueprint, Fly.io stays explicitly archived, Docker runtime images do
+  not fall back to broad repository copies or root users, and dependency update
+  automation remains configured.
+
 ### Archived/deprecated targets
 
 The following are no longer canonical for production in this repository:
@@ -38,7 +45,7 @@ The following are no longer canonical for production in this repository:
 ### Operational checklist
 
 1. Configure Render environment secrets for backend.
-2. Deploy backend from `render.yaml` and verify `/health`.
+2. Deploy backend from `render.yaml` and verify `/api/v1/health`.
 3. Configure Vercel environment variables pointing to Render backend URL.
 4. Deploy frontend on Vercel.
 5. Validate end-to-end auth/chat/routing flows.
