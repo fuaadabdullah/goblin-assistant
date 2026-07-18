@@ -18,12 +18,13 @@ from api.health_core import check_redis_health
 
 class TestCheckChroma:
     @pytest.mark.asyncio
-    async def test_no_config_returns_degraded(self, monkeypatch):
+    async def test_no_config_returns_unknown_optional_status(self, monkeypatch):
         monkeypatch.delenv("CHROMA_DB_PATH", raising=False)
         monkeypatch.delenv("CHROMA_URL", raising=False)
         monkeypatch.delenv("CHROMA_API_URL", raising=False)
         result = await _check_chroma()
-        assert result["status"] == "degraded"
+        assert result["status"] == "unknown"
+        assert result["configured"] is False
 
     @pytest.mark.asyncio
     async def test_nonexistent_path_falls_to_url_check(self, monkeypatch, tmp_path):

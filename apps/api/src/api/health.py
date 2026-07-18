@@ -25,6 +25,7 @@ from .health_core import (  # noqa: F401 — re-exported for backward compat
     check_db_health,
     check_redis_health,
     check_routing_health,
+    overall_status_from,
 )
 from .ops_health import ops_health_router  # noqa: F401 — re-exported for ops_routes
 
@@ -80,11 +81,9 @@ async def health_all() -> Dict[str, Any]:
         _check_cost_tracking(),
     )
 
-    overall = "healthy"
-    for comp in (chroma, mcp, raptor, sandbox):
-        if comp.get("status") != "healthy":
-            overall = "degraded"
-            break
+    overall = overall_status_from(
+        [chroma.get("status"), mcp.get("status"), raptor.get("status"), sandbox.get("status")]
+    )
 
     return {
         "status": overall,
