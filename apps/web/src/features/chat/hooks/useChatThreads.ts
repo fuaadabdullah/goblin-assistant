@@ -60,6 +60,8 @@ const writeLegacyThreads = (threads: ChatThread[], migrationCompleted: boolean):
 
 export const useChatThreads = ({ enabled = true }: { enabled?: boolean } = {}) => {
   const queryClient = useQueryClient();
+  const isGuestRoute =
+    typeof window !== 'undefined' && new URLSearchParams(window.location.search).get('guest') === '1';
   const query = useQuery<ChatThread[]>({
     queryKey: queryKeys.chatThreads,
     queryFn: async () => {
@@ -77,7 +79,7 @@ export const useChatThreads = ({ enabled = true }: { enabled?: boolean } = {}) =
         return sortChatThreads(legacyThreads);
       }
     },
-    enabled,
+    enabled: enabled && !isGuestRoute,
     refetchOnWindowFocus: true,
   });
 
