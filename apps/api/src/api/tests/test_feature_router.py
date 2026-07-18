@@ -6,7 +6,7 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
-from api.routing.feature_extractor import ProviderFeatures, RoutingFeatures
+from api.routing.feature_extractor import FeatureExtractor, ProviderFeatures, RoutingFeatures
 from api.routing.feature_router import (
     FeatureRouter,
     FeatureWeights,
@@ -105,6 +105,26 @@ class TestComputeBaseScore:
         pf_slow = _pf(norm_latency=0.9)
         w = _weights()
         assert _compute_base_score(req, pf_fast, w) > _compute_base_score(req, pf_slow, w)
+
+
+class TestFeatureExtractorProviderFeatures:
+    def test_extract_providers_uses_injected_health_availability(self):
+        extractor = FeatureExtractor()
+
+        features = extractor.extract_providers(
+            ["openai", "anthropic", "gemini"],
+            {},
+            {
+                "openai": {"success_rate": 0.9, "ewma_latency_ms": 100.0},
+                "anthropic": {"success_rate": 0.8, "ewma_latency_ms": 200.0},
+                "gemini": {"success_rate": 0.7, "ewma_latency_ms": 300.0},
+            },
+            health_availability={"anthropic": False},
+        )
+
+        assert features["openai"].is_healthy is True
+        assert features["anthropic"].is_healthy is False
+        assert features["gemini"].is_healthy is True
 
 
 # ── WeightsCache ──────────────────────────────────────────────────────────────

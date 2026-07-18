@@ -10,7 +10,7 @@ from __future__ import annotations
 
 import re
 from dataclasses import dataclass
-from typing import Dict, List, Optional, Tuple
+from typing import Dict, List, Mapping, Optional, Tuple
 
 
 @dataclass
@@ -158,6 +158,7 @@ class FeatureExtractor:
         candidates: List[str],
         provider_costs: Dict[str, Tuple[float, float]],
         registry_snapshot: Dict,
+        health_availability: Optional[Mapping[str, bool]] = None,
     ) -> Dict[str, ProviderFeatures]:
         """Build ProviderFeatures for each candidate, normalised against the set."""
         if not candidates:
@@ -175,32 +176,21 @@ class FeatureExtractor:
         max_latency = max(raw_latencies.values()) or 1.0
         max_cost = max(raw_costs.values()) or 1.0
 
-        health_monitor: Optional[object] = None
-        try:
-            from api.services.provider_health import health_monitor as _hm  # noqa: PLC0415
-
-            health_monitor = _hm
-        except Exception:
-            pass
-
         result: Dict[str, ProviderFeatures] = {}
         for pid in candidates:
             stats = registry_snapshot.get(pid) or {}
             success_rate = float(stats.get("success_rate", 0.5))
-
-            is_healthy = True
-            if health_monitor is not None:
-                try:
-                    is_healthy = health_monitor.is_available(pid)  # type: ignore[union-attr]
-                except Exception:
-                    pass
 
             result[pid] = ProviderFeatures(
                 provider_id=pid,
                 success_rate=max(0.0, min(1.0, success_rate)),
                 norm_latency=raw_latencies[pid] / max_latency,
                 norm_cost=raw_costs[pid] / max_cost,
-                is_healthy=is_healthy,
+                is_healthy=(
+                    bool(health_availability.get(pid, True))
+                    if health_availability is not None
+                    else True
+                ),
             )
 
         return result

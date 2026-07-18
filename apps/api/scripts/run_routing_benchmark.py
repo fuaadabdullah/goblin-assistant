@@ -37,6 +37,11 @@ def _print_human(report) -> None:
         print(f"[{status}] {case.case_id}: {case.description}")
         print(f"       matched_policies={case.matched_policies}")
         print(f"       chosen_provider={case.chosen_provider} (score={case.chosen_score:.4f})")
+        if case.stage_durations_ms:
+            timings = ", ".join(
+                f"{stage}={duration:.4f}ms" for stage, duration in case.stage_durations_ms.items()
+            )
+            print(f"       stage_durations_ms={timings}")
         if not case.passed:
             print(f"       reason: {case.reason}")
         print()
@@ -86,6 +91,7 @@ def main() -> int:
                 "chosen_provider": c.chosen_provider,
                 "chosen_score": c.chosen_score,
                 "candidate_scores": c.candidate_scores,
+                "stage_durations_ms": c.stage_durations_ms,
                 "passed": c.passed,
                 "reason": c.reason,
             }

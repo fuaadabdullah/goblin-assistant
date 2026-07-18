@@ -19,7 +19,7 @@ def build_debug_info(
     Includes routing table, registry stats, budget status, warmup states,
     and all alias mappings.
     """
-    from ...routing.router import registry
+    from ...routing.router_registry import registry
 
     routing_table = [
         {

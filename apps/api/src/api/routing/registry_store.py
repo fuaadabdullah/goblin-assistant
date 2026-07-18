@@ -39,11 +39,31 @@ class ProviderStats:
 
     @property
     def p95_latency_ms(self) -> float:
+        return self.latency_percentiles_ms["p95"]
+
+    @property
+    def latency_percentiles_ms(self) -> Dict[str, float]:
         if not self._latency_window:
-            return self.ewma_latency_ms
-        s = sorted(self._latency_window)
-        idx = int(len(s) * 0.95)
-        return s[min(idx, len(s) - 1)]
+            fallback = round(self.ewma_latency_ms, 1)
+            return {"p50": fallback, "p90": fallback, "p95": fallback, "p99": fallback}
+
+        samples = sorted(float(sample) for sample in self._latency_window)
+
+        def percentile(value: float) -> float:
+            if len(samples) == 1:
+                return samples[0]
+            rank = (len(samples) - 1) * value
+            lower = int(rank)
+            upper = min(lower + 1, len(samples) - 1)
+            weight = rank - lower
+            return samples[lower] * (1.0 - weight) + samples[upper] * weight
+
+        return {
+            "p50": round(percentile(0.50), 1),
+            "p90": round(percentile(0.90), 1),
+            "p95": round(percentile(0.95), 1),
+            "p99": round(percentile(0.99), 1),
+        }
 
 
 class RoutingRegistryStore:

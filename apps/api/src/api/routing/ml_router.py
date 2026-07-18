@@ -15,6 +15,7 @@ from Supabase via restore_bandit_state().
 
 from __future__ import annotations
 
+import importlib
 import logging
 import os
 import random
@@ -136,9 +137,9 @@ class BanditRouter:
         # Feature-based path: use full ML scoring when request features are present
         if request is not None:
             try:
-                from api.routing.feature_router import feature_router  # noqa: PLC0415
+                from api.routing.routing_pipeline import build_routing_pipeline  # noqa: PLC0415
 
-                return feature_router.rank(
+                return build_routing_pipeline(bandit_cache=self._cache).rank(
                     candidates,
                     provider_costs,
                     task_type=task_type,
@@ -217,9 +218,9 @@ class BanditRouter:
 
         # Also update the feature router's learned weights if features were cached
         try:
-            from api.routing.feature_router import feature_router  # noqa: PLC0415
+            from api.routing.routing_pipeline import build_routing_pipeline  # noqa: PLC0415
 
-            feature_router.record_outcome_by_request_id(
+            build_routing_pipeline(bandit_cache=self._cache).record_outcome_by_request_id(
                 request_id=request_id,
                 task_type=task_type,
                 provider_id=provider_id,
@@ -369,6 +370,16 @@ def _sample_beta(state: BanditState) -> float:
         return 0.5
 
 
+class _LazyHybridFallback:
+    def rank(
+        self,
+        candidates: List[str],
+        provider_costs: Dict[str, tuple],
+    ) -> List[str]:
+        hybrid_router = importlib.import_module("api.routing.policy_engine").hybrid_router
+        return hybrid_router.rank(candidates, provider_costs)
+
+
 # ---------------------------------------------------------------------------
 # Module-level singletons
 # ---------------------------------------------------------------------------
@@ -376,16 +387,29 @@ def _sample_beta(state: BanditState) -> float:
 bandit_cache = BanditCache()
 
 
-# Import HybridRouter lazily at instantiation time so this module can be
-# imported before router_strategies is fully initialised.
 def _make_bandit_router() -> BanditRouter:
-    from api.routing.router_strategies import hybrid_router  # noqa: PLC0415
-
     return BanditRouter(
         cache=bandit_cache,
-        fallback=hybrid_router,
+        fallback=_LazyHybridFallback(),
         min_observations=_MIN_OBSERVATIONS,
     )
 
 
 bandit_router: BanditRouter = _make_bandit_router()
+
+
+def _record_registry_outcome(event: "RoutingOutcomeEvent") -> None:
+    updated = bandit_cache.update(
+        event.task_type,
+        event.provider_id,
+        success=event.success,
+    )
+    _fire_bandit_state_upsert(updated)
+
+
+from api.routing.outcome_events import (  # noqa: E402
+    RoutingOutcomeEvent,
+    register_routing_outcome_handler,
+)
+
+register_routing_outcome_handler(_record_registry_outcome)

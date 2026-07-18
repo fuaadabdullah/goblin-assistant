@@ -21,6 +21,27 @@ const unauthenticatedSnapshot = (): AuthSessionSnapshot => ({
   isHydrated: true,
 });
 
+const readE2eAuthSnapshot = (): AuthSessionSnapshot | null => {
+  if (typeof window === 'undefined') return null;
+
+  try {
+    const hostname = window.location.hostname;
+    const isLocalhost = hostname === 'localhost' || hostname === '127.0.0.1' || hostname === '::1';
+    if (!isLocalhost) return null;
+    if (window.localStorage.getItem('goblin_e2e_auth') !== '1') return null;
+    const rawUser = window.localStorage.getItem('user_data');
+    const user = rawUser ? (JSON.parse(rawUser) as User) : null;
+    return {
+      token: window.localStorage.getItem('auth_token') || 'mock-access-token-e2e',
+      user,
+      isAuthenticated: Boolean(user),
+      isHydrated: true,
+    };
+  } catch {
+    return null;
+  }
+};
+
 export const hasRole = (user: User | null | undefined, role: string): boolean => {
   if (!user) return false;
   return user.role === role || Boolean(user.roles?.includes(role));
@@ -37,6 +58,9 @@ export const hasAnyRole = (user: User | null | undefined, roles: string[]): bool
  */
 export const bootstrapAuthSession = async (): Promise<AuthSessionSnapshot> => {
   if (typeof window === 'undefined') return unauthenticatedSnapshot();
+
+  const e2eSnapshot = readE2eAuthSnapshot();
+  if (e2eSnapshot) return e2eSnapshot;
 
   const { session } = await authGetSession();
 

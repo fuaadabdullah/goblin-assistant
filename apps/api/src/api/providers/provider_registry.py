@@ -13,17 +13,19 @@ from .anthropic_provider import AnthropicProvider
 from .azure_provider import AzureOpenAIProvider
 from .base import BaseProvider
 from .contracts import ProviderAdapter
+from .domain import ProviderMetadata, capabilities_from_config_list
 from .google_cloud_provider import GoogleCloudProvider
 from .google_cloud_selfhosted_provider import GoogleCloudSelfhostedProvider
 from .mock_provider import MockProvider
 from .ollama_provider import OllamaProvider
 from .openai_compatible import OpenAICompatibleProvider
 from .openai_provider import OpenAIProvider
-from .provider_config_runtime import ProviderConfig, ProviderToml
+from .provider_config_runtime import ProviderConfig, ProviderToml, load_provider_config
 from .rovo_dev_provider import RovoDevProvider
 from .siliconeflow import SiliconeFlowProvider
 
 ProviderFactory = Callable[[str, Dict[str, Any]], ProviderAdapter]
+ProviderMetadataSource = Callable[[], Dict[str, Dict[str, Any]]]
 
 DEFAULT_PROVIDER_CLASS_MAP: Dict[str, type[BaseProvider]] = {
     "openai": OpenAIProvider,
@@ -185,6 +187,28 @@ class ProviderRuntimeConfig(BaseModel):
         return bool(self.resolved_endpoint)
 
 
+def provider_metadata_from_runtime_config(
+    provider_id: str, config: "ProviderRuntimeConfig"
+) -> ProviderMetadata:
+    """Build the typed ProviderMetadata domain object from a resolved runtime config."""
+    limits: Dict[str, int] = {}
+    for key in ("max_input_tokens", "max_output_tokens", "max_batch_size"):
+        value = config.raw.get(key)
+        if isinstance(value, int) and value > 0:
+            limits[key] = value
+
+    return ProviderMetadata(
+        provider_id=provider_id,
+        display_name=config.name or provider_id,
+        capabilities=capabilities_from_config_list(config.capabilities),
+        default_model=config.default_model or None,
+        models=tuple(config.models),
+        limits=limits,  # type: ignore[arg-type]
+        configured=config.is_configured(),
+        extra={},
+    )
+
+
 def _factory(provider_cls: type[BaseProvider]) -> ProviderFactory:
     def create(provider_id: str, config: Dict[str, Any]) -> ProviderAdapter:
         return provider_cls(provider_id, config)
@@ -201,6 +225,108 @@ def build_factories_from_class_map(
 _DEFAULT_FACTORIES: Dict[str, ProviderFactory] = build_factories_from_class_map(
     DEFAULT_PROVIDER_CLASS_MAP
 )
+
+
+def _load_provider_metadata_source() -> Dict[str, Dict[str, Any]]:
+    try:
+        provider_toml = load_provider_config(use_cache=True)
+    except Exception:
+        return {}
+
+    configs: Dict[str, Dict[str, Any]] = {}
+    for provider_id, provider_config in provider_toml.providers.items():
+        if not getattr(provider_config, "is_active", True):
+            continue
+        if isinstance(provider_config, ProviderConfig):
+            configs[provider_id] = provider_config.model_dump()
+        else:
+            configs[provider_id] = dict(provider_config or {})
+    return configs
+
+
+_provider_metadata_source: ProviderMetadataSource = _load_provider_metadata_source
+
+
+def set_provider_metadata_source(source: ProviderMetadataSource) -> None:
+    """Register the canonical provider metadata source for model catalogs."""
+    global _provider_metadata_source
+    _provider_metadata_source = source
+
+
+def current_provider_metadata_configs() -> Dict[str, Dict[str, Any]]:
+    """Return provider metadata without importing the dispatcher facade."""
+    return _provider_metadata_source()
+
+
+def _normalize_provider_token(value: str) -> str:
+    return value.strip().lower().replace("-", "_").replace(" ", "_")
+
+
+def _supported_models_for_provider(cfg: Dict[str, Any]) -> set[str]:
+    supported: set[str] = set()
+
+    default_model = str(cfg.get("default_model", "")).strip()
+    if default_model:
+        supported.add(default_model)
+
+    for model_name in cfg.get("models", []):
+        model = str(model_name).strip()
+        if model:
+            supported.add(model)
+
+    for backend in cfg.get("backends", []):
+        if not isinstance(backend, dict):
+            continue
+        for model_name in backend.get("models", []):
+            model = str(model_name).strip()
+            if model:
+                supported.add(model)
+
+    return supported
+
+
+def validate_model_alias_targets(
+    *,
+    provider_toml: Any,
+    provider_configs: Dict[str, Dict[str, Any]],
+    logger: Any,
+) -> None:
+    """Warn about model aliases that point to unknown providers or models."""
+    if provider_toml is None:
+        return
+
+    provider_aliases = {
+        _normalize_provider_token(alias): _normalize_provider_token(target)
+        for alias, target in getattr(provider_toml, "provider_aliases", {}).items()
+        if str(alias).strip() and str(target).strip()
+    }
+
+    for alias, alias_config in getattr(provider_toml, "model_aliases", {}).items():
+        provider = _normalize_provider_token(str(getattr(alias_config, "provider", "") or ""))
+        model = str(getattr(alias_config, "model", "") or "").strip()
+        if not provider or not model:
+            continue
+
+        canonical_provider = provider_aliases.get(provider, provider)
+        provider_cfg = provider_configs.get(canonical_provider)
+        if provider_cfg is None:
+            logger.warning(
+                "model_alias_target_provider_missing",
+                alias=alias,
+                provider=canonical_provider,
+                model=model,
+            )
+            continue
+
+        supported_models = _supported_models_for_provider(provider_cfg)
+        if model not in supported_models:
+            logger.warning(
+                "model_alias_target_model_missing",
+                alias=alias,
+                provider=canonical_provider,
+                model=model,
+                supported_models=sorted(supported_models),
+            )
 
 
 class ProviderRegistry:
@@ -237,6 +363,19 @@ class ProviderRegistry:
     ) -> ProviderRuntimeConfig:
         return ProviderRuntimeConfig.from_source(provider_id, self._source_to_dict(source))
 
+    def validate_model_alias_targets(
+        self,
+        *,
+        provider_toml: Any,
+        provider_configs: Dict[str, Dict[str, Any]],
+        logger: Any,
+    ) -> None:
+        validate_model_alias_targets(
+            provider_toml=provider_toml,
+            provider_configs=provider_configs,
+            logger=logger,
+        )
+
     def create_from_source(
         self,
         provider_id: str,
@@ -264,7 +403,12 @@ class ProviderRegistry:
 __all__ = [
     "DEFAULT_PROVIDER_CLASS_MAP",
     "ProviderFactory",
+    "ProviderMetadataSource",
     "ProviderRegistry",
     "ProviderRuntimeConfig",
     "build_factories_from_class_map",
+    "current_provider_metadata_configs",
+    "provider_metadata_from_runtime_config",
+    "set_provider_metadata_source",
+    "validate_model_alias_targets",
 ]

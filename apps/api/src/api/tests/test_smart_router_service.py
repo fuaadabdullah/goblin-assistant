@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from types import SimpleNamespace
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
@@ -11,6 +12,7 @@ from api.services.smart_router import (
     ProviderCost,
     RoutingStrategy,
     SmartRouter,
+    TaskType,
 )
 
 
@@ -35,6 +37,55 @@ def test_cost_tracker_get_status_contains_expected_fields():
     assert status["hourly_budget"] == 10.0
     assert "current_spend" in status
     assert "remaining" in status
+
+
+def test_resolve_task_type_consumes_prompt_classifier_label():
+    router = SmartRouter(strategy=RoutingStrategy.BALANCED)
+
+    assert (
+        router._resolve_task_type(
+            None,
+            [{"role": "user", "content": "Summarize this release note"}],
+        )
+        == TaskType.SUMMARIZATION.value
+    )
+
+
+def test_ml_bandit_strategy_enters_routing_prompt_adapter():
+    router = SmartRouter(strategy=RoutingStrategy.ML_BANDIT)
+    intent = SimpleNamespace(label=SimpleNamespace(value="coding"), confidence=0.82)
+
+    with (
+        patch(
+            "api.services.smart_router.top_providers_for",
+            return_value=["openai", "anthropic"],
+        ),
+        patch(
+            "api.services.smart_router.dispatcher.get_provider",
+            return_value=MagicMock(config={}),
+        ),
+        patch(
+            "api.routing.learning_adapters.rank_prompt_with_bandit_router",
+            return_value=["anthropic", "openai"],
+        ) as rank_prompt,
+    ):
+        result = router._ordered_candidates(
+            RoutingStrategy.ML_BANDIT,
+            "coding",
+            messages=[{"role": "user", "content": "Please refactor this class"}],
+            intent=intent,
+            request_id="smart-route-1",
+        )
+
+    assert result == ["anthropic", "openai"]
+    rank_prompt.assert_called_once()
+    args, kwargs = rank_prompt.call_args
+    assert args[0] == ["openai", "anthropic"]
+    assert kwargs["task_type"] == "coding"
+    assert kwargs["prompt"] == "Please refactor this class"
+    assert kwargs["intent_label"] == "coding"
+    assert kwargs["intent_confidence"] == 0.82
+    assert kwargs["request_id"] == "smart-route-1"
 
 
 @pytest.mark.asyncio

@@ -194,31 +194,22 @@ class FeatureRouter:
         task_type: str,
         request: RoutingFeatures,
         request_id: Optional[str] = None,
+        bandit_states: Optional[Dict[str, Tuple[float, float]]] = None,
+        registry_snapshot: Optional[Dict] = None,
+        health_availability: Optional[Dict[str, bool]] = None,
     ) -> List[str]:
         if not candidates:
             return candidates
 
-        try:
-            from api.routing.router_registry import registry  # noqa: PLC0415
-
-            snapshot = registry.snapshot()
-        except Exception:
-            snapshot = {}
-
+        snapshot = registry_snapshot or {}
         provider_features = feature_extractor.extract_providers(
-            candidates, provider_costs, snapshot
+            candidates,
+            provider_costs,
+            snapshot,
+            health_availability=health_availability,
         )
         weights = self._cache.get(task_type)
-
-        bandit_states: Dict[str, Tuple[float, float]] = {}
-        try:
-            from api.routing.ml_router import bandit_cache  # noqa: PLC0415
-
-            for pid in candidates:
-                state = bandit_cache.get(task_type, pid)
-                bandit_states[pid] = (state.alpha, state.beta)
-        except Exception:
-            pass
+        bandit_states = bandit_states or {}
 
         scored: List[Tuple[str, float]] = []
         for pid in candidates:
@@ -232,10 +223,14 @@ class FeatureRouter:
 
         ranked = [p for p, _ in sorted(scored, key=lambda x: x[1], reverse=True)]
 
-        if request_id and len(self._pending) < _MAX_PENDING:
-            self._pending[request_id] = request
+        if request_id:
+            self.remember_request_features(request_id, request)
 
         return ranked
+
+    def remember_request_features(self, request_id: str, request: RoutingFeatures) -> None:
+        if request_id and len(self._pending) < _MAX_PENDING:
+            self._pending[request_id] = request
 
     def record_outcome(
         self,
@@ -273,18 +268,7 @@ class FeatureRouter:
         if request_features is None:
             return False
 
-        # Re-derive provider features from current registry state (no costs available here)
-        snapshot: Dict = {}
-        try:
-            from api.routing.router_registry import registry  # noqa: PLC0415
-
-            snapshot = registry.snapshot()
-        except Exception:
-            pass
-
-        pf_map = feature_extractor.extract_providers(
-            [provider_id], {provider_id: (0.0, 0.0)}, snapshot
-        )
+        pf_map = feature_extractor.extract_providers([provider_id], {provider_id: (0.0, 0.0)}, {})
         provider_features = pf_map.get(
             provider_id,
             ProviderFeatures(

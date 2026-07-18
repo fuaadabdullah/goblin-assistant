@@ -3,28 +3,33 @@ Async background worker for embedding generation.
 
 Extracted from embedding_service.py to keep EmbeddingService focused on
 synchronous embed/store operations. AsyncEmbeddingWorker queues tasks and
-dispatches them to EmbeddingService without blocking the request path.
+dispatches them to a configured embedding service without blocking the request path.
 """
 
 import asyncio
-from typing import Any, Dict, Optional
+from typing import Any, Callable, Dict, Optional
+
+EmbeddingServiceFactory = Callable[[], Any]
 
 
 class AsyncEmbeddingWorker:
     """Background worker for async embedding generation"""
 
-    def __init__(self):
+    def __init__(self, service_factory: Optional[EmbeddingServiceFactory] = None):
         self.service = None
+        self._service_factory = service_factory
         self.queue = asyncio.Queue()
         self.running = False
         self._loop = None
 
+    def configure_service_factory(self, service_factory: EmbeddingServiceFactory) -> None:
+        self._service_factory = service_factory
+
     def _get_service(self):
         if self.service is None:
-            # Lazy import to avoid circular dependency with embedding_service
-            from .embedding_service import EmbeddingService
-
-            self.service = EmbeddingService()
+            if self._service_factory is None:
+                raise RuntimeError("embedding worker service factory is not configured")
+            self.service = self._service_factory()
         return self.service
 
     async def start(self):

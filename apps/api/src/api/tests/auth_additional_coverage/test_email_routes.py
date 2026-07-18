@@ -104,6 +104,31 @@ class TestEmailRoutes:
         assert valid.data.user.email == active_user.email
 
     @pytest.mark.asyncio
+    async def test_validate_token_accepts_supabase_jwt_payload(self, monkeypatch):
+        db = MagicMock()
+        user_service = MagicMock()
+        user_service.get_user_by_id = AsyncMock(return_value=None)
+        user_service.get_user_by_email = AsyncMock(return_value=None)
+        monkeypatch.setattr(routes_email._ar, "UserService", lambda _db: user_service)
+        monkeypatch.setattr(routes_email, "verify_token", lambda _token: None)
+        monkeypatch.setattr(
+            routes_email,
+            "verify_supabase_token",
+            lambda _token: {
+                "sub": "supabase-user",
+                "email": "supabase@example.com",
+                "user_metadata": {"name": "Supabase User"},
+            },
+        )
+
+        valid = await routes_email.validate_token(TokenValidationRequest(token="supabase-jwt"), db)
+
+        assert valid.data.valid is True
+        assert valid.data.user.id == "supabase-user"
+        assert valid.data.user.email == "supabase@example.com"
+        assert valid.data.user.name == "Supabase User"
+
+    @pytest.mark.asyncio
     async def test_register_login_refresh_and_validate_error_branches(self, monkeypatch):
         request = SimpleNamespace(client=SimpleNamespace(host="127.0.0.1"))
         response = Response()
