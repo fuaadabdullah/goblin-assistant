@@ -22,14 +22,14 @@ async def _check_chroma() -> Dict[str, Any]:
     - If CHROMA_DB_PATH (or default chroma_db/chroma.sqlite3) exists, open sqlite and
       report number of tables (approx collections) and file size.
     - Else, if CHROMA_URL is set, call CHROMA_URL/health or CHROMA_URL and inspect response.
-    - Otherwise return degraded/unconfigured status.
+    - Otherwise return unknown/unconfigured status. Chroma is an optional
+      enhancement; its absence must not make the API health probe degraded.
     """
     from urllib.parse import urlparse
 
     # Prefer explicit config path
-    path = os.environ.get("CHROMA_DB_PATH") or os.path.join(
-        os.getcwd(), "chroma_db", "chroma.sqlite3"
-    )
+    configured_path = os.environ.get("CHROMA_DB_PATH")
+    path = configured_path or os.path.join(os.getcwd(), "chroma_db", "chroma.sqlite3")
     if os.path.exists(path):  # noqa: ASYNC240
         try:
             size = os.path.getsize(path)  # noqa: ASYNC240
@@ -67,7 +67,10 @@ async def _check_chroma() -> Dict[str, Any]:
         except Exception as e:
             return {"status": "degraded", "error": str(e), "url": chroma_url}
 
-    return {"status": "degraded", "error": "Chroma not configured or unreachable"}
+    if configured_path or chroma_url:
+        return {"status": "degraded", "error": "Chroma configured but unreachable"}
+
+    return {"status": "unknown", "configured": False, "error": "Chroma not configured"}
 
 
 async def _check_mcp() -> Dict[str, Any]:
@@ -123,7 +126,7 @@ async def _check_raptor() -> Dict[str, Any]:
         try:
             mod = importlib.import_module("raptor_router")
         except Exception:
-            mod = importlib.import_module("api.raptor_router")
+            mod = importlib.import_module("api.routes.raptor_router")
 
         raptor_status = getattr(mod, "raptor_status")
         status = await raptor_status()
