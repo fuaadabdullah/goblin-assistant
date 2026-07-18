@@ -2,12 +2,18 @@
 """
 Post-generation splitter for the OpenAPI TypeScript SDK.
 
-Reads the monolithic openapi.ts produced by openapi-typescript and splits it
-into three domain-scoped modules so TypeScript can cache each independently:
+Reads the monolithic openapi.ts produced by openapi-typescript (written to
+.tmp/openapi-typescript-output.ts, not committed) and splits it into three
+domain-scoped modules so TypeScript can cache each independently:
 
   components.ts  — schema/model types (~1,400 lines, no imports)
   operations.ts  — per-endpoint request/response types (~7,000 lines)
   paths.ts       — route definitions + webhooks (~4,700 lines)
+
+The monolithic source is intentionally *not* written into src/generated/:
+tsconfig's `include: ["src/**/*.ts"]` would pick it up and tsc would end up
+type-checking the same ~11K lines twice (once whole, once split), roughly
+doubling compile time for zero benefit since nothing imports it directly.
 
 Usage (called automatically by generate-sdk-client.sh):
   python3 tooling/generators/split-sdk.py
@@ -106,6 +112,6 @@ def split(src: Path, out_dir: Path) -> None:
 
 if __name__ == "__main__":
     repo_root = Path(__file__).resolve().parents[2]
-    src = repo_root / "packages/sdk/src/generated/openapi.ts"
+    src = repo_root / ".tmp/openapi-typescript-output.ts"
     out = repo_root / "packages/sdk/src/generated"
     split(src, out)

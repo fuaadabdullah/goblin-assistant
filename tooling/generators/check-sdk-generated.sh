@@ -12,7 +12,6 @@ GENERATED_FILES=(
   packages/shared/src/generated/api-route-paths.ts
   packages/sdk/openapi/openapi.json
   packages/sdk/openapi/routes.json
-  packages/sdk/src/generated/openapi.ts
   packages/sdk/src/generated/components.ts
   packages/sdk/src/generated/operations.ts
   packages/sdk/src/generated/paths.ts

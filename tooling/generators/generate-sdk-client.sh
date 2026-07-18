@@ -13,7 +13,7 @@ mkdir -p packages/sdk/src/generated
 mkdir -p .tmp
 TMPDIR="$ROOT_DIR/.tmp" pnpm --filter @goblin/web exec openapi-typescript \
   ../../packages/sdk/openapi/openapi.json \
-  -o ../../packages/sdk/src/generated/openapi.ts
+  -o ../../.tmp/openapi-typescript-output.ts
 
 python3 tooling/generators/split-sdk.py
 python3.11 tooling/generators/generate-api-route-inventory.py
