@@ -31,12 +31,14 @@ vi.mock('../../utils/dev-log', () => ({
 }));
 
 const mockGetAuthToken = vi.fn().mockReturnValue('test-token');
+const mockGetAuthTokenForRequest = vi.fn().mockResolvedValue(null);
 const mockGetRefreshToken = vi.fn().mockReturnValue('refresh-token');
 const mockPersistAuthSession = vi.fn();
 const mockClearAuthSession = vi.fn();
 
 vi.mock('../../utils/auth-session', () => ({
   getAuthToken: () => mockGetAuthToken(),
+  getAuthTokenForRequest: () => mockGetAuthTokenForRequest(),
   getRefreshToken: () => mockGetRefreshToken(),
   persistAuthSession: (...args: unknown[]) => mockPersistAuthSession(...args),
   clearAuthSession: () => mockClearAuthSession(),
@@ -57,6 +59,7 @@ describe('apiClient', () => {
     mockHttp.put.mockClear();
     mockHttp.patch.mockClear();
     mockGetAuthToken.mockClear();
+    mockGetAuthTokenForRequest.mockClear();
     mockGetRefreshToken.mockClear();
     mockPersistAuthSession.mockClear();
     mockClearAuthSession.mockClear();
