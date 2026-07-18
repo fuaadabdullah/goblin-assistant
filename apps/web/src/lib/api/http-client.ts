@@ -35,10 +35,6 @@ export const backendHttp = axios.create({
   },
 });
 
-// The backend client is used by protected pages only, so attach its Supabase
-// interceptor lazily from the auth bootstrapper.
-let backendSupabaseInterceptorAttached = false;
-
 const setAuthorizationHeader = (
   headers: InternalAxiosRequestConfig['headers'],
   token: string
@@ -106,10 +102,13 @@ const attachSupabaseRequestInterceptor = (client: typeof backendHttp): void => {
   });
 };
 
+let backendSupabaseInterceptorAttached = false;
+
 export async function attachSupabaseInterceptor() {
   if (backendSupabaseInterceptorAttached) return;
   backendSupabaseInterceptorAttached = true;
   attachSupabaseRequestInterceptor(backendHttp);
+  attachSupabaseRequestInterceptor(frontendHttp);
 }
 
 export const frontendHttp = axios.create({

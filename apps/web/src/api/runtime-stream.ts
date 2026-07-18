@@ -1,4 +1,4 @@
-import { getAuthToken } from '@/utils/auth-session';
+import { getAuthTokenForRequest } from '@/utils/auth-session';
 import { hasMockFallbackSignal } from '@/lib/api/fallback';
 import type { StreamChunk, TaskResponse } from '@/types/api';
 
@@ -196,7 +196,7 @@ export const streamRuntimeTask = async (
   request: RuntimeStreamRequest,
   callbacks: RuntimeStreamCallbacks
 ): Promise<void> => {
-  const token = getAuthToken();
+  const token = await getAuthTokenForRequest();
 
   const response = await fetch(INTERNAL_CHAT_STREAM_PATH, {
     method: 'POST',

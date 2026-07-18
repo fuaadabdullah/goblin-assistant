@@ -13,7 +13,7 @@ import { isAdminUser } from './src/utils/access';
  */
 
 const AUTH_ROUTE_PREFIXES = ['/chat', '/account', '/settings', '/search'] as const;
-const ADMIN_ROUTE_PREFIXES = ['/admin'] as const;
+const ADMIN_ROUTE_PREFIXES = ['/admin', '/debug/connectivity'] as const;
 
 const matchesPrefix = (pathname: string, prefixes: readonly string[]): boolean =>
   prefixes.some((prefix) => pathname === prefix || pathname.startsWith(`${prefix}/`));
@@ -90,5 +90,6 @@ export const config = {
     '/settings/:path*',
     '/search/:path*',
     '/admin/:path*',
+    '/debug/connectivity/:path*',
   ],
 };
