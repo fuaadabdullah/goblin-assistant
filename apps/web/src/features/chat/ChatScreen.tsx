@@ -10,8 +10,8 @@ import ChatView from './components/ChatView';
 const ChatScreen: FC = () => {
   const { user, isAuthenticated } = useAuthSession();
   const searchParams = useSearchParams();
-  const session = useChatSession();
   const isGuest = !isAuthenticated && searchParams.get('guest') === '1';
+  const session = useChatSession({ loadThreads: !isGuest });
 
   return <ChatView session={session} isAdmin={isAdminUser(user)} isGuest={isGuest} />;
 };

@@ -67,7 +67,7 @@ export interface ChatSessionState {
  * - useQuickActions: quick prompts and provider selection
  * - useChatThreads: thread list management
  */
-export const useChatSession = (): ChatSessionState => {
+export const useChatSession = ({ loadThreads = true }: { loadThreads?: boolean } = {}): ChatSessionState => {
   const searchParams = useSearchParams();
   const promptParam = searchParams.get('prompt');
   const hasHydratedRef = useRef(false);
@@ -80,7 +80,7 @@ export const useChatSession = (): ChatSessionState => {
     upsertThread,
     removeThread,
     invalidateThreads,
-  } = useChatThreads();
+  } = useChatThreads({ enabled: loadThreads });
 
   // Thread selection state
   const [activeThreadKey, setActiveThreadKey] = useState<string | null>(null);
