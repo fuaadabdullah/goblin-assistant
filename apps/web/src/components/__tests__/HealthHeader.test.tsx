@@ -30,7 +30,7 @@ describe('HealthHeader', () => {
     expect(document.body).toBeTruthy();
   });
 
-  it('maps warning backend health to degraded instead of down', async () => {
+  it('preserves warning backend health as warnings instead of degraded', async () => {
     mockGetAllHealth.mockResolvedValueOnce({
       status: 'warnings',
       components: {
@@ -43,7 +43,7 @@ describe('HealthHeader', () => {
     render(<HealthHeader compact />, { wrapper });
 
     await waitFor(() => {
-      expect(screen.getByText('Degraded')).toBeInTheDocument();
+      expect(screen.getByText('Warnings')).toBeInTheDocument();
     });
   });
 
