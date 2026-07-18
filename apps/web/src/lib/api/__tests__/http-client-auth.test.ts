@@ -47,6 +47,18 @@ describe('frontend HTTP authentication', () => {
     await getFrontend('/api/settings/');
   });
 
+  it('replaces a stale legacy token on conversation creation requests', async () => {
+    document.cookie = 'session_token=legacy-stale; Path=/';
+    mock.onPost('/api/chat/conversations').reply((config) => {
+      expect(config.headers?.Authorization).toBe('Bearer supabase-jwt');
+      return [200, { success: true, data: { conversation_id: 'conversation-1' } }];
+    });
+
+    await postFrontend('/api/chat/conversations', { title: 'New conversation' }, {
+      headers: { Authorization: 'Bearer legacy-stale' },
+    });
+  });
+
   it('refreshes and retries an expired proxy request once', async () => {
     let attempts = 0;
     mock.onPost('/api/chat/conversations').reply((config) => {

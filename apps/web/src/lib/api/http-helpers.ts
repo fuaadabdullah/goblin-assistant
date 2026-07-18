@@ -88,11 +88,6 @@ export const assertNoVersionedClientPath = (path: string): void => {
   }
 };
 
-const hasAuthorizationHeader = (config?: AxiosRequestConfig): boolean =>
-  Object.keys((config?.headers ?? {}) as Record<string, unknown>).some(
-    (key) => key.toLowerCase() === 'authorization'
-  );
-
 const isAuthRoute = (url: string): boolean => url.split('?', 1)[0]?.startsWith('/api/auth/') ?? false;
 
 /**
@@ -101,10 +96,11 @@ const isAuthRoute = (url: string): boolean => url.split('?', 1)[0]?.startsWith('
  * Supabase owns the active session, while several older callers still pass
  * synchronous `withAuth()` config built from legacy storage. Resolving here
  * keeps chat, account, and settings requests authenticated even when the
- * lazy interceptor has not attached yet or the legacy token is absent.
+ * lazy interceptor has not attached yet, and replaces stale legacy headers
+ * when a current Supabase session is available.
  */
 const withResolvedAuth = async (url: string, config?: AxiosRequestConfig) => {
-  if (isAuthRoute(url) || hasAuthorizationHeader(config)) return config;
+  if (isAuthRoute(url)) return config;
 
   const token = await getAuthTokenForRequest();
   if (!token) return config;
