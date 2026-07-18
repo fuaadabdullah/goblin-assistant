@@ -53,6 +53,13 @@ services:
         fromDatabase:
           name: goblin-postgres
           property: connectionString
+
+      # Required for validating Supabase sessions forwarded by the web app.
+      # Values are managed in Render and intentionally not committed.
+      - key: SUPABASE_URL
+        sync: false
+      - key: SUPABASE_ANON_KEY
+        sync: false
     
     # Secrets (set manually in Render dashboard)
     # These should be set as Environment Variables with "sync: false"
