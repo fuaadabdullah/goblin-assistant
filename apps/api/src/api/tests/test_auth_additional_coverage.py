@@ -632,6 +632,13 @@ class TestAuthDependencies:
 
 
 class TestTokenHelpers:
+    def test_clean_env_strips_deployment_whitespace(self, monkeypatch):
+        monkeypatch.setenv("SUPABASE_TEST_VALUE", "  https://supabase.example\n")
+        assert tokens_module._clean_env("SUPABASE_TEST_VALUE") == "https://supabase.example"
+
+        monkeypatch.setenv("SUPABASE_TEST_VALUE", " \n\t")
+        assert tokens_module._clean_env("SUPABASE_TEST_VALUE") is None
+
     def test_get_jwks_client_is_created_and_cached(self, monkeypatch):
         created = {}
 

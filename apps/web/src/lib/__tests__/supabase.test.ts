@@ -34,8 +34,8 @@ describe('supabase helpers', () => {
     vi.resetModules();
     process.env = {
       ...originalEnv,
-      NEXT_PUBLIC_SUPABASE_URL: 'https://supabase.test',
-      NEXT_PUBLIC_SUPABASE_ANON_KEY: 'anon-key',
+      NEXT_PUBLIC_SUPABASE_URL: '  https://supabase.test\n',
+      NEXT_PUBLIC_SUPABASE_ANON_KEY: 'anon-key\n',
     };
     return import('../supabase') as Promise<typeof import('../supabase')>;
   };
@@ -53,13 +53,9 @@ describe('supabase helpers', () => {
     const mod = await loadModule();
 
     expect(mod.supabaseConfigured).toBe(true);
-    expect(createBrowserClientMock).toHaveBeenCalledWith(
-      'https://supabase.test',
-      'anon-key',
-      {
-        realtime: { params: { eventsPerSecond: 10 } },
-      }
-    );
+    expect(createBrowserClientMock).toHaveBeenCalledWith('https://supabase.test', 'anon-key', {
+      realtime: { params: { eventsPerSecond: 10 } },
+    });
 
     expect(
       mod.supabaseUserToAppUser({
@@ -143,12 +139,12 @@ describe('supabase helpers', () => {
       password: 'pw',
     });
 
-    await expect(mod.authSignInWithOAuth('google', 'https://app.example/callback')).resolves.toEqual(
-      {
-        data: { url: 'https://oauth.example/login' },
-        error: null,
-      }
-    );
+    await expect(
+      mod.authSignInWithOAuth('google', 'https://app.example/callback')
+    ).resolves.toEqual({
+      data: { url: 'https://oauth.example/login' },
+      error: null,
+    });
     expect(authMocks.signInWithOAuth).toHaveBeenCalledWith({
       provider: 'google',
       options: { redirectTo: 'https://app.example/callback', scopes: 'openid email' },

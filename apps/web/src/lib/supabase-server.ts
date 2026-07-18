@@ -16,8 +16,8 @@ export function createSupabaseMiddlewareClient(request: NextRequest): {
   let response = NextResponse.next({ request });
 
   const supabase = createServerClient(
-    process.env['NEXT_PUBLIC_SUPABASE_URL'] ?? 'https://placeholder.supabase.co',
-    process.env['NEXT_PUBLIC_SUPABASE_ANON_KEY'] ?? 'placeholder',
+    process.env['NEXT_PUBLIC_SUPABASE_URL']?.trim() ?? 'https://placeholder.supabase.co',
+    process.env['NEXT_PUBLIC_SUPABASE_ANON_KEY']?.trim() ?? 'placeholder',
     {
       cookies: {
         getAll() {

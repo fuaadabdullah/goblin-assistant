@@ -14,8 +14,14 @@ from .config import (
     SECRET_KEY,
 )
 
-SUPABASE_JWT_SECRET = os.getenv("SUPABASE_JWT_SECRET")
-SUPABASE_URL = (os.getenv("SUPABASE_URL") or "").rstrip("/")
+
+def _clean_env(name: str) -> Optional[str]:
+    value = (os.getenv(name) or "").strip()
+    return value or None
+
+
+SUPABASE_JWT_SECRET = _clean_env("SUPABASE_JWT_SECRET")
+SUPABASE_URL = (_clean_env("SUPABASE_URL") or "").rstrip("/")
 
 _jwks_client: Optional[PyJWKClient] = None
 
@@ -85,7 +91,7 @@ def verify_token(token: str) -> Optional[dict]:
 _auth_api_cache: dict = {}
 _AUTH_API_CACHE_MAX = 1024
 
-SUPABASE_ANON_KEY = os.getenv("SUPABASE_ANON_KEY") or os.getenv("NEXT_PUBLIC_SUPABASE_ANON_KEY")
+SUPABASE_ANON_KEY = _clean_env("SUPABASE_ANON_KEY") or _clean_env("NEXT_PUBLIC_SUPABASE_ANON_KEY")
 
 
 def _verify_via_auth_api(token: str) -> Optional[dict]:
