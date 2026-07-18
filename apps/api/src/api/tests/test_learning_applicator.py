@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import asyncio
 from types import SimpleNamespace
 from unittest.mock import AsyncMock, MagicMock, patch
 
@@ -153,6 +154,31 @@ class TestApplyBatch:
 
         bandit_spy.assert_not_called()
         assert result == 1
+
+    @pytest.mark.asyncio
+    async def test_memory_core_branch_uses_fact_ingest(self):
+        applicator = LearningApplicator()
+        row = _row(signal="copy")
+
+        with patch(
+            "api.services.memory_core.memory_core_service.ingest_memory_fact",
+            new=AsyncMock(return_value={"id": "mem-1"}),
+        ) as ingest:
+            applicator._apply_to_memory_core(
+                row[0],
+                success=True,
+                rating=1,
+                quality_score=0.9,
+            )
+            await asyncio.sleep(0)
+
+        ingest.assert_awaited_once()
+        kwargs = ingest.await_args.kwargs
+        assert kwargs["fact_text"].startswith("Workflow signal copy")
+        assert kwargs["category"] == "project_state"
+        assert kwargs["explicit_kind"] == "project_state"
+        assert kwargs["source_kind"] == "workflow"
+        assert kwargs["metadata"]["signal"] == "copy"
 
     @pytest.mark.asyncio
     async def test_known_signal_calls_all_three_learners(self):

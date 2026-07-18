@@ -3,7 +3,7 @@ from typing import Optional
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel
 
-from .core.orchestration import OrchestrationPlan, parse_natural_language
+from ..core.orchestration import OrchestrationPlan, parse_natural_language
 
 router = APIRouter(prefix="/parse", tags=["parse"])
 

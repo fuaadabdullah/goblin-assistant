@@ -1,4 +1,4 @@
-"""Tests for api.settings_router."""
+"""Tests for api.routes.settings_router."""
 
 from __future__ import annotations
 
@@ -12,7 +12,7 @@ from api.auth.router import User, get_current_user
 from api.core.contracts import ErrorEnvelope
 from api.core.error_types import ErrorType
 from api.core.errors import DomainError
-from api.settings_router import router
+from api.routes.settings_router import router
 
 
 def _client(current_user: User | None = None) -> TestClient:
@@ -55,7 +55,7 @@ def test_get_settings_maps_inventory_to_response():
 
     with (
         patch(
-            "api.settings_router.dispatcher.get_provider_inventory",
+            "api.routes.settings_router.dispatcher.get_provider_inventory",
             new_callable=AsyncMock,
             return_value=[
                 {
@@ -69,24 +69,24 @@ def test_get_settings_maps_inventory_to_response():
             ],
         ),
         patch(
-            "api.settings_router.top_providers_for",
+            "api.routes.settings_router.top_providers_for",
             return_value=["openai"],
         ),
         patch(
-            "api.settings_router.dispatcher.get_provider_config",
+            "api.routes.settings_router.dispatcher.get_provider_config",
             return_value={"default_model": "gpt-4o-mini"},
         ),
         patch(
-            "api.settings_router.dispatcher.get_provider",
+            "api.routes.settings_router.dispatcher.get_provider",
             return_value=fake_provider,
         ),
         patch(
-            "api.settings_router.SaaSSettingsService.list_provider_settings",
+            "api.routes.settings_router.SaaSSettingsService.list_provider_settings",
             new_callable=AsyncMock,
             return_value=[],
         ),
         patch(
-            "api.settings_router.SaaSSettingsService.get_global_setting",
+            "api.routes.settings_router.SaaSSettingsService.get_global_setting",
             new_callable=AsyncMock,
             return_value=None,
         ),
@@ -106,12 +106,12 @@ def test_get_settings_returns_500_on_inventory_failure():
 
     with (
         patch(
-            "api.settings_router.dispatcher.get_provider_inventory",
+            "api.routes.settings_router.dispatcher.get_provider_inventory",
             new_callable=AsyncMock,
             side_effect=RuntimeError("boom"),
         ),
         patch(
-            "api.settings_router.SaaSSettingsService.list_provider_settings",
+            "api.routes.settings_router.SaaSSettingsService.list_provider_settings",
             new_callable=AsyncMock,
             return_value=[],
         ),
@@ -139,7 +139,7 @@ def test_update_model_settings_accepts_valid_payload():
     client = _client(User(id="user-1", email="user-1@example.com"))
 
     with patch(
-        "api.settings_router.SaaSSettingsService.set_global_setting",
+        "api.routes.settings_router.SaaSSettingsService.set_global_setting",
         new_callable=AsyncMock,
         return_value={"key": "model:gpt-4o-mini", "value": {"name": "gpt-4o-mini"}},
     ):
@@ -161,7 +161,7 @@ def test_test_provider_connection_reports_health_states():
     client = _client(User(id="user-1", email="user-1@example.com"))
 
     with patch(
-        "api.settings_router.dispatcher.check_provider",
+        "api.routes.settings_router.dispatcher.check_provider",
         new_callable=AsyncMock,
         return_value={"healthy": True},
     ):
@@ -171,7 +171,7 @@ def test_test_provider_connection_reports_health_states():
         )
 
     with patch(
-        "api.settings_router.dispatcher.check_provider",
+        "api.routes.settings_router.dispatcher.check_provider",
         new_callable=AsyncMock,
         return_value={"healthy": False, "health_reason": "timeout"},
     ):

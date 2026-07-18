@@ -1,7 +1,7 @@
 from fastapi import FastAPI
 from fastapi.routing import APIRoute
 
-from api.ops_router import router as ops_router
+from api.routes.ops_router import router as ops_router
 
 
 def _ops_app() -> FastAPI:

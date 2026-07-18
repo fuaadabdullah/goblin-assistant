@@ -280,6 +280,7 @@ class TestLegacyAliases:
             source_type="memory",
         )
         assert payload["fact_text"] == payload["content"]
+        assert payload["text"] == payload["content"]
         assert payload["fact_text"] == "test content"
 
     def test_legacy_memory_type_mirrors_type(self) -> None:
@@ -472,6 +473,7 @@ class TestEmptyAndOversized:
         # Payload exists and has required fields
         assert "id" in payload
         assert "content" in payload
+        assert "text" in payload
         assert len(payload) > 0
 
     def test_payload_empty_metadata(self) -> None:
@@ -501,10 +503,12 @@ class TestEmptyAndOversized:
         """_default_retention_days returns correct values per kind."""
         assert _default_retention_days(MemoryKind.FACT) == 365
         assert _default_retention_days(MemoryKind.PREFERENCE) == 540
+        assert _default_retention_days(MemoryKind.GOAL) == 365
         assert _default_retention_days(MemoryKind.DECISION) == 730
         assert _default_retention_days(MemoryKind.PROJECT_STATE) == 90
         assert _default_retention_days(MemoryKind.RELATIONSHIP) == 180
         assert _default_retention_days(MemoryKind.TASK_SIGNAL) == 30
+        assert _default_retention_days(MemoryKind.CORRECTION) == 540
 
 
 # ── Section 7: Reason Strings ───────────────────────────────────────────────

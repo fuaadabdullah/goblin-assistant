@@ -7,10 +7,11 @@ used by memory ingestion, retrieval, and debug surfaces.
 
 from __future__ import annotations
 
+import json
 import math
 from datetime import datetime, timezone
 from enum import Enum
-from typing import Any, Dict, Iterable, List, Optional
+from typing import Any, Dict, Iterable, List, Optional, Sequence
 
 DEFAULT_SCOPE = "global"
 
@@ -111,6 +112,28 @@ def _as_datetime(value: Any) -> Optional[datetime]:
 
 def _collapse_whitespace(text: str) -> str:
     return " ".join((text or "").split()).strip()
+
+
+def _normalize_embedding(value: Any) -> List[float]:
+    if value is None:
+        return []
+    if isinstance(value, str):
+        raw = value.strip()
+        if not raw:
+            return []
+        try:
+            value = json.loads(raw)
+        except Exception:
+            return []
+    if isinstance(value, Sequence):
+        embedding: List[float] = []
+        for item in value:
+            try:
+                embedding.append(float(item))
+            except (TypeError, ValueError):
+                continue
+        return embedding
+    return []
 
 
 def _dedupe(values: Iterable[Any]) -> List[str]:
@@ -298,6 +321,7 @@ def build_memory_contract_payload(
     *,
     id: str,
     content: str,
+    text: Optional[Any] = None,
     user_id: Optional[str] = None,
     scope: Optional[str] = None,
     memory_type: Optional[Any] = None,
@@ -329,6 +353,7 @@ def build_memory_contract_payload(
     explicitness_score: Optional[Any] = None,
     related_memory_ids: Optional[Iterable[Any]] = None,
     entity_refs: Optional[Iterable[Any]] = None,
+    embedding: Optional[Any] = None,
     metadata: Optional[Dict[str, Any]] = None,
     created_at: Optional[Any] = None,
     updated_at: Optional[Any] = None,
@@ -338,7 +363,7 @@ def build_memory_contract_payload(
     rerank_score: Optional[Any] = None,
 ) -> Dict[str, Any]:
     metadata = dict(metadata or {})
-    resolved_content = _collapse_whitespace(_as_str(content) or "")
+    resolved_content = _collapse_whitespace(_as_str(content or text) or "")
     resolved_created_at = _as_datetime(created_at)
     resolved_updated_at = _as_datetime(updated_at) or resolved_created_at
     resolved_last_accessed_at = _as_datetime(last_accessed_at)
@@ -401,6 +426,12 @@ def build_memory_contract_payload(
     )
     resolved_entity_refs = list(entity_refs or metadata.get("entity_refs") or [])
     resolved_embedding_id = _as_str(embedding_id or metadata.get("embedding_id"))
+    resolved_embedding = _normalize_embedding(
+        embedding
+        or metadata.get("embedding")
+        or metadata.get("fact_embedding")
+        or metadata.get("chunk_embedding")
+    )
     resolved_summary = _derive_summary(resolved_content, metadata)
     resolved_tags = _extract_tags(
         metadata, _as_str(category), resolved_memory_type, resolved_source_kind
@@ -447,6 +478,7 @@ def build_memory_contract_payload(
         "scope": resolved_scope,
         "type": resolved_memory_type,
         "content": resolved_content,
+        "text": resolved_content,
         "summary": resolved_summary,
         "source": resolved_source_kind,
         "source_ref": resolved_source_ref,
@@ -471,11 +503,18 @@ def build_memory_contract_payload(
         "repetition_count": resolved_repetition_count,
         "explicitness_score": resolved_explicitness_score,
         "created_at": resolved_created_at.isoformat() if resolved_created_at else None,
+        "createdAt": resolved_created_at.isoformat() if resolved_created_at else None,
         "updated_at": resolved_updated_at.isoformat() if resolved_updated_at else None,
+        "updatedAt": resolved_updated_at.isoformat() if resolved_updated_at else None,
         "last_accessed_at": (
             resolved_last_accessed_at.isoformat() if resolved_last_accessed_at else None
         ),
+        "lastAccessed": (
+            resolved_last_accessed_at.isoformat() if resolved_last_accessed_at else None
+        ),
         "expires_at": resolved_expires_at.isoformat() if resolved_expires_at else None,
+        "expiresAt": resolved_expires_at.isoformat() if resolved_expires_at else None,
+        "embedding": resolved_embedding,
         # Backward-compatible aliases and legacy fields.
         "fact_text": resolved_content,
         "category": _as_str(category) or metadata.get("category"),
@@ -517,7 +556,11 @@ def canonicalize_memory_item(
         id=_as_str(item.get("id")) or "",
         user_id=user_id or _as_str(item.get("user_id")),
         content=_as_str(
-            item.get("content") or item.get("fact_text") or item.get("summary_text") or ""
+            item.get("content")
+            or item.get("text")
+            or item.get("fact_text")
+            or item.get("summary_text")
+            or ""
         ),
         scope=item.get("scope") or metadata.get("scope"),
         memory_type=item.get("memory_type") or metadata.get("memory_type") or item.get("category"),
@@ -570,6 +613,10 @@ def canonicalize_memory_item(
         ),
         related_memory_ids=item.get("related_memory_ids") or metadata.get("related_memory_ids"),
         entity_refs=item.get("entity_refs") or metadata.get("entity_refs"),
+        embedding=item.get("embedding")
+        or item.get("fact_embedding")
+        or metadata.get("embedding")
+        or metadata.get("fact_embedding"),
         metadata=metadata,
         created_at=item.get("created_at"),
         updated_at=item.get("updated_at"),

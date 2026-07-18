@@ -247,11 +247,10 @@ class LearningApplicator:
             )
 
             task = asyncio.create_task(
-                memory_core_service.ingest_text(
+                memory_core_service.ingest_memory_fact(
                     user_id=str(row.user_id),
-                    text=content,
-                    source_kind="workflow",
-                    source_id=row.event_id,
+                    fact_text=content,
+                    category=memory_type,
                     metadata={
                         "task_type": row.task_type,
                         "provider": row.provider,
@@ -265,8 +264,10 @@ class LearningApplicator:
                         "active_workflow": True,
                         "repetition_count": 1,
                     },
-                    confidence=0.65 if success else 0.55,
+                    source_kind="workflow",
+                    source_id=row.event_id,
                     explicit_kind=memory_type,
+                    confidence=0.65 if success else 0.55,
                 )
             )
             task.add_done_callback(lambda _t: None)

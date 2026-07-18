@@ -1,4 +1,4 @@
-"""Contract tests for the current api.search_router behavior."""
+"""Contract tests for the current api.routes.search_router behavior."""
 
 from __future__ import annotations
 
@@ -9,7 +9,7 @@ from fastapi import FastAPI
 from fastapi.testclient import TestClient
 
 from api.auth.router import User, get_current_user
-from api.search_router import router
+from api.routes.search_router import router
 
 
 @asynccontextmanager
@@ -54,7 +54,7 @@ def test_query_merges_and_limits_ranked_results() -> None:
 
     with (
         patch("api.services.embedding_service.EmbeddingService") as svc_cls,
-        patch("api.search_router.retrieve_by_source_type", new=AsyncMock()) as retrieve,
+        patch("api.routes.search_router.retrieve_by_source_type", new=AsyncMock()) as retrieve,
     ):
         svc = svc_cls.return_value
         svc.embed_text = AsyncMock(return_value=[0.1, 0.2])
@@ -95,8 +95,36 @@ def test_query_merges_and_limits_ranked_results() -> None:
 def test_list_collections_returns_success_envelope() -> None:
     client = _client()
 
-    with patch("api.search_router.get_db", _empty_db):
+    with patch("api.routes.search_router.get_db", _empty_db):
         response = client.get("/api/v1/search/collections")
 
     assert response.status_code == 200
     assert response.json()["data"]["collections"] == []
+
+
+def test_index_memory_branch_uses_fact_ingest() -> None:
+    client = _client()
+
+    with patch("api.services.memory_core.memory_core_service") as mock_service:
+        mock_service.ingest_memory_fact = AsyncMock(return_value={"id": "mem-1"})
+        response = client.post(
+            "/api/v1/search/index",
+            json={
+                "source_type": "memory",
+                "content": "User prefers TypeScript.",
+                "metadata": {
+                    "category": "preference",
+                    "memory_type": "preference",
+                    "confidence": 0.91,
+                },
+            },
+        )
+
+    assert response.status_code == 200
+    assert response.json()["data"]["status"] == "stored"
+    mock_service.ingest_memory_fact.assert_awaited_once()
+    kwargs = mock_service.ingest_memory_fact.await_args.kwargs
+    assert kwargs["fact_text"] == "User prefers TypeScript."
+    assert kwargs["category"] == "preference"
+    assert kwargs["explicit_kind"] == "preference"
+    assert kwargs["source_kind"] == "search_index"

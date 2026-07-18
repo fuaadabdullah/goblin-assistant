@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from contextlib import asynccontextmanager
-from datetime import date
+from datetime import datetime
 from unittest.mock import patch
 
 import pytest
@@ -130,7 +130,7 @@ class TestUsageEventStoreDB:
             }
         )
 
-        usage = await db_store.get_daily_usage("db-user", usage_date=date.today())
+        usage = await db_store.get_daily_usage("db-user", usage_date=datetime.utcnow().date())
         assert usage["event_count"] == 1
         assert usage["total_tokens"] == 70
         assert usage["prompt_tokens"] == 50

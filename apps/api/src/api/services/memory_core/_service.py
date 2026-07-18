@@ -8,6 +8,7 @@ import structlog
 
 from ..embedding_service import EmbeddingService
 from ..memory_contract import confidence_band_from_score, importance_band_from_score
+from ..retrieval_service._limits import clamp_memory_search_limit
 from ..sanitization import sanitize_input_for_model
 from .classification import (
     _derive_memory_state,
@@ -280,13 +281,14 @@ class MemoryCoreService:
         *,
         user_id: str,
         query: str,
-        limit: int = 5,
+        limit: int = 10,
         categories: Optional[Sequence[str]] = None,
     ) -> List[Dict[str, Any]]:
         from ..memory_contract import canonicalize_memory_item  # noqa: PLC0415
         from ..memory_reranker import memory_reranker  # noqa: PLC0415
         from ..retrieval_service import retrieval_service  # noqa: PLC0415
 
+        limit = clamp_memory_search_limit(limit)
         results = await retrieval_service.retrieve_memory_facts(
             user_id=user_id,
             query=query,

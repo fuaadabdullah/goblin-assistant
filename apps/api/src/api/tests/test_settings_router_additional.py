@@ -9,7 +9,7 @@ from api.auth.router import User, get_current_user
 from api.core.contracts import ErrorEnvelope
 from api.core.error_types import ErrorType
 from api.core.errors import DomainError
-from api.settings_router import router
+from api.routes.settings_router import router
 
 
 @pytest.fixture(autouse=True)
@@ -43,7 +43,7 @@ def _make_client(current_user: User | None = None):
 
 
 def test_provider_models_deduplicates_and_sorts():
-    from api.settings_router import _provider_models
+    from api.routes.settings_router import _provider_models
 
     assert _provider_models({"models": ["b", "a", "a"], "default_model": "c"}) == [
         "a",
@@ -53,7 +53,7 @@ def test_provider_models_deduplicates_and_sorts():
 
 
 def test_provider_models_ignores_blank_values():
-    from api.settings_router import _provider_models
+    from api.routes.settings_router import _provider_models
 
     assert _provider_models({"models": ["", "alpha"], "default_model": " "}) == ["alpha"]
 
@@ -73,29 +73,29 @@ def test_get_settings_success():
 
     with (
         patch(
-            "api.settings_router.dispatcher.get_provider_inventory",
+            "api.routes.settings_router.dispatcher.get_provider_inventory",
             new_callable=AsyncMock,
             return_value=inventory,
         ),
         patch(
-            "api.settings_router.top_providers_for",
+            "api.routes.settings_router.top_providers_for",
             return_value=["openai"],
         ),
         patch(
-            "api.settings_router.dispatcher.get_provider_config",
+            "api.routes.settings_router.dispatcher.get_provider_config",
             return_value={"default_model": "gpt-4o-mini"},
         ),
         patch(
-            "api.settings_router.dispatcher.get_provider",
+            "api.routes.settings_router.dispatcher.get_provider",
             return_value=MagicMock(default_model="gpt-4o-mini"),
         ),
         patch(
-            "api.settings_router.SaaSSettingsService.list_provider_settings",
+            "api.routes.settings_router.SaaSSettingsService.list_provider_settings",
             new_callable=AsyncMock,
             return_value=[],
         ),
         patch(
-            "api.settings_router.SaaSSettingsService.get_global_setting",
+            "api.routes.settings_router.SaaSSettingsService.get_global_setting",
             new_callable=AsyncMock,
             return_value=None,
         ),
@@ -113,12 +113,12 @@ def test_get_settings_success():
 def test_get_settings_failure():
     with (
         patch(
-            "api.settings_router.dispatcher.get_provider_inventory",
+            "api.routes.settings_router.dispatcher.get_provider_inventory",
             new_callable=AsyncMock,
             side_effect=RuntimeError("boom"),
         ),
         patch(
-            "api.settings_router.SaaSSettingsService.list_provider_settings",
+            "api.routes.settings_router.SaaSSettingsService.list_provider_settings",
             new_callable=AsyncMock,
             return_value=[],
         ),
@@ -135,7 +135,7 @@ def test_update_provider_and_model_settings():
     with (
         _make_client(current_user) as client,
         patch(
-            "api.settings_router.SaaSSettingsService.upsert_provider_settings",
+            "api.routes.settings_router.SaaSSettingsService.upsert_provider_settings",
             new_callable=AsyncMock,
             return_value=MagicMock(
                 provider_name="openai",
@@ -148,7 +148,7 @@ def test_update_provider_and_model_settings():
             ),
         ),
         patch(
-            "api.settings_router.SaaSSettingsService.set_global_setting",
+            "api.routes.settings_router.SaaSSettingsService.set_global_setting",
             new_callable=AsyncMock,
             return_value={"key": "model:gpt-4o-mini", "value": {"name": "gpt-4o-mini"}},
         ),
@@ -186,7 +186,7 @@ def test_patch_global_setting_accepts_valid_payload():
     with (
         _make_client(current_user) as client,
         patch(
-            "api.settings_router.SaaSSettingsService.set_global_setting",
+            "api.routes.settings_router.SaaSSettingsService.set_global_setting",
             new_callable=AsyncMock,
             return_value={"key": "theme", "value": {"mode": "dark"}},
         ),

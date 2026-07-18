@@ -34,7 +34,11 @@ async def test_gcp_vm_vertex_default_model_routes_real_provider(monkeypatch) -> 
     dispatcher = ProviderDispatcher(configs={"gcp_vm": gcp_vm_cfg})
 
     assert dispatcher.is_configured("gcp_vm")
-    assert dispatcher.provider_ids(include_hidden=False) == ["gcp_vm"]
+    # gcp_vm is intentionally hidden + inactive in config/providers.toml since
+    # its preemptible VM backends were terminated (2026-01-11) — it's kept
+    # configured for direct/explicit dispatch (this test), just excluded from
+    # default visible listings. include_hidden=True reflects that.
+    assert dispatcher.provider_ids(include_hidden=True) == ["gcp_vm"]
     assert gcp_vm_cfg["default_model"] == "gemini-2.5-flash"
 
     provider = dispatcher.get_provider("gcp_vm")

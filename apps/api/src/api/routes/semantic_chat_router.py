@@ -11,14 +11,18 @@ import structlog
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel
 
-from .assistant_tools.executor import extract_tool_calls, run_tool_loop
-from .assistant_tools.registry import export_openai_tools
-from .chat_router.chat_router_support import _raise_structured_provider_error
-from .input_validation import InputSanitizer
-from .providers.dispatcher import invoke_provider
-from .services.memory_core import memory_core_service
-from .services.retrieval_service import retrieval_service as _retrieval_service
-from .storage.conversations import conversation_store
+from ..assistant_tools.executor import extract_tool_calls, run_tool_loop
+from ..assistant_tools.registry import export_openai_tools
+from ..chat_router.chat_router_support import _raise_structured_provider_error
+from ..input_validation import InputSanitizer
+from ..providers.dispatcher import invoke_provider
+from ..services.memory_core import memory_core_service
+from ..services.retrieval_service import retrieval_service as _retrieval_service
+from ..services.retrieval_service._limits import (
+    clamp_memory_search_limit,
+    clamp_prompt_retrieval_k,
+)
+from ..storage.conversations import conversation_store
 
 logger = structlog.get_logger()
 
@@ -28,13 +32,13 @@ DEFAULT_MODEL = "gpt-3.5-turbo"
 
 
 def _get_context_builder():
-    from .services.context_builder import ContextBuilder
+    from ..services.context_builder import ContextBuilder
 
     return ContextBuilder()
 
 
 def _get_embedding_worker():
-    from .services.embedding_worker import embedding_worker
+    from ..services.embedding_worker import embedding_worker
 
     return embedding_worker
 
@@ -52,7 +56,7 @@ class SemanticSendMessageRequest(BaseModel):
     metadata: Optional[Dict[str, Any]] = None
     # Semantic retrieval options
     use_semantic_retrieval: bool = True
-    retrieval_k: int = 5
+    retrieval_k: int = 10
     max_context_tokens: int = 1500
     max_age_hours: int = 168  # 7 days
 
@@ -214,6 +218,7 @@ async def semantic_send_message(conversation_id: str, request: SemanticSendMessa
                     user_id=user_id,
                     conversation_id=conversation_id,
                     max_tokens=request.max_context_tokens,
+                    k=clamp_prompt_retrieval_k(request.retrieval_k),
                 )
                 context_used = _context_has_content(context_bundle)
             except Exception as e:
@@ -325,7 +330,7 @@ async def semantic_send_message(conversation_id: str, request: SemanticSendMessa
 
 @router.get("/conversations/{conversation_id}/context")
 async def get_context_bundle(
-    conversation_id: str, query: str, k: int = 5, max_age_hours: int = 168
+    conversation_id: str, query: str, k: int = 10, max_age_hours: int = 168
 ):
     """Retrieve semantic context for a conversation and query"""
     try:
@@ -339,6 +344,7 @@ async def get_context_bundle(
             user_id=user_id,
             conversation_id=conversation_id,
             max_tokens=2000,
+            k=clamp_prompt_retrieval_k(k),
         )
 
         return context_bundle
@@ -459,7 +465,7 @@ async def add_memory_fact(
 
 @router.get("/users/{user_id}/memory/search")
 async def search_memory_facts(
-    user_id: str, query: str, categories: Optional[List[str]] = None, k: int = 5
+    user_id: str, query: str, categories: Optional[List[str]] = None, k: int = 10
 ):
     """Search user's memory facts using semantic similarity"""
     try:
@@ -468,6 +474,7 @@ async def search_memory_facts(
         if not query or not query.strip():
             raise HTTPException(status_code=400, detail="Query cannot be empty")
 
+        k = clamp_memory_search_limit(k)
         facts = await retrieval_singleton.retrieve_memory_facts(
             user_id=user_id, query=query, categories=categories, k=k
         )

@@ -24,6 +24,7 @@ vi.mock('axios', () => {
 
 vi.mock('../../utils/auth-session', () => ({
   getAuthToken: vi.fn(() => 'session-token-123'),
+  getAuthTokenForRequest: vi.fn(async () => 'session-token-123'),
   getRefreshToken: vi.fn(() => null),
   persistAuthSession: vi.fn(),
   clearAuthSession: vi.fn(),
@@ -98,6 +99,13 @@ describe('apiClient chat conversations', () => {
     const result = await api.delete<{ deleted: boolean }>('/api/notifications/123');
 
     expect(result).toEqual({ data: { deleted: true } });
-    expect(backendDeleteMock).toHaveBeenCalledWith('/api/notifications/123', undefined);
+    expect(backendDeleteMock).toHaveBeenCalledWith(
+      '/api/notifications/123',
+      expect.objectContaining({
+        headers: expect.objectContaining({
+          Authorization: 'Bearer session-token-123',
+        }),
+      })
+    );
   });
 });

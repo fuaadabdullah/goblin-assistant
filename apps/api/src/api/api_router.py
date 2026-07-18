@@ -30,9 +30,9 @@ from .api_router_pkg import (
 )
 from .core.orchestration import parse_natural_language
 from .input_validation import InputSanitizer
-from .orchestration_router import router as orchestration_router
 from .providers.dispatcher import invoke_provider
 from .providers.dispatcher_pkg.execution import mock_fallback_enabled
+from .routes.orchestration_router import router as orchestration_router
 from .routing.feedback_router import router as _feedback_router
 from .routing.router import route_task as route_task_runtime
 from .services.stream_state_store import get_stream_state_store

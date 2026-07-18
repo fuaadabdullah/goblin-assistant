@@ -14,11 +14,16 @@ async def test_memory_recall_success_normalizes_payload():
         {
             "id": "mf_1",
             "content": "User prefers concise answers",
+            "text": "User prefers concise answers",
             "category": "preference",
             "memory_type": "preference",
             "score": 0.91,
             "rerank_score": 0.97,
             "created_at": datetime(2026, 5, 30, tzinfo=timezone.utc),
+            "updated_at": datetime(2026, 5, 30, tzinfo=timezone.utc),
+            "last_accessed_at": datetime(2026, 5, 31, tzinfo=timezone.utc),
+            "expires_at": None,
+            "embedding": [0.1, 0.2, 0.3],
             "metadata": {"memory_type": "preference"},
         }
     ]
@@ -38,7 +43,11 @@ async def test_memory_recall_success_normalizes_payload():
     assert result["user_id"] == "user_123"
     assert result["conversation_id"] == "conv_1"
     assert result["memory_facts"][0]["content"] == "User prefers concise answers"
+    assert result["memory_facts"][0]["text"] == "User prefers concise answers"
     assert result["memory_facts"][0]["created_at"] == "2026-05-30T00:00:00+00:00"
+    assert result["memory_facts"][0]["createdAt"] == "2026-05-30T00:00:00+00:00"
+    assert result["memory_facts"][0]["lastAccessed"] == "2026-05-31T00:00:00+00:00"
+    assert result["memory_facts"][0]["embedding"] == [0.1, 0.2, 0.3]
     assert result["memory_facts"][0]["memory_type"] == "preference"
 
 

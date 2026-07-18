@@ -1,6 +1,6 @@
 import pytest
 
-import api.raptor_router as raptor
+import api.routes.raptor_router as raptor
 
 
 @pytest.mark.asyncio

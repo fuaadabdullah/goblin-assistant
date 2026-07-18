@@ -17,12 +17,12 @@ from sqlalchemy import text
 from api.core.contracts import SuccessEnvelope
 from api.core.errors import DomainError
 
-from .auth.router import User as AuthenticatedUser
-from .auth.router import get_current_user
-from .services.embedding_service import EmbeddingProviderUnavailableError
-from .services.embedding_worker import embedding_worker
-from .services.retrieval_service import retrieve_by_source_type
-from .storage.database import get_readonly_db_context
+from ..auth.router import User as AuthenticatedUser
+from ..auth.router import get_current_user
+from ..services.embedding_service import EmbeddingProviderUnavailableError
+from ..services.embedding_worker import embedding_worker
+from ..services.retrieval_service import retrieve_by_source_type
+from ..storage.database import get_readonly_db_context
 
 # Compatibility seam for older tests and call sites that still patch `get_db`.
 get_db = get_readonly_db_context
@@ -89,7 +89,7 @@ async def search_query(
 ):
     """Semantic search across one or more indexes using pgvector cosine similarity."""
     try:
-        from .services.embedding_service import EmbeddingService  # noqa: PLC0415
+        from ..services.embedding_service import EmbeddingService  # noqa: PLC0415
 
         embedding_svc = EmbeddingService()
 
@@ -168,16 +168,18 @@ async def index_content(
         source_id = request.source_id or str(uuid.uuid4())
 
         if request.source_type == "memory":
-            from .services.memory_core import memory_core_service  # noqa: PLC0415
+            from ..services.memory_core import memory_core_service  # noqa: PLC0415
 
-            await memory_core_service.ingest_text(
+            metadata = request.metadata or {}
+            await memory_core_service.ingest_memory_fact(
                 user_id=current_user.id,
-                text=request.content,
+                fact_text=request.content,
+                category=metadata.get("category") or metadata.get("memory_type"),
+                metadata=metadata,
                 source_kind="search_index",
                 source_id=source_id,
-                metadata=request.metadata or {},
-                explicit_kind=(request.metadata or {}).get("memory_type"),
-                confidence=float((request.metadata or {}).get("confidence", 0.8)),
+                explicit_kind=metadata.get("memory_type") or metadata.get("category"),
+                confidence=float(metadata.get("confidence", 0.8)),
             )
             return SuccessEnvelope(data=IndexResponse(status="stored", source_id=source_id))
 

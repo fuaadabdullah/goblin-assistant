@@ -33,14 +33,15 @@ from typing import Any, Dict, List, Optional, Tuple
 PII_PATTERNS = {
     "email": r"\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Z|a-z]{2,}\b",
     "phone": (
-        r"\b(?:\+?1[-.]?)?\(?([0-9]{3})\)?[-.]?"
-        r"([0-9]{3})[-.]?([0-9]{4})\b"
+        r"(?<!\w)(?:\+?1[-.\s]?)?\(?[0-9]{3}\)?[-.\s]?"
+        r"[0-9]{3}[-.\s]?[0-9]{4}(?!\w)"
     ),
     "ssn": r"\b\d{3}-\d{2}-\d{4}\b",
     "credit_card": r"\b\d{4}[-\s]?\d{4}[-\s]?\d{4}[-\s]?\d{4}\b",
     "api_key": (
         r"(?i)(api[_-]?key|apikey|secret[_-]?key|"
-        r"access[_-]?token|bearer)[\s:=]+[A-Za-z0-9_\-]{20,}"
+        r"access[_-]?token|bearer)[\s:=\"']+"
+        r"(?=[A-Za-z0-9_\-]*\d)[A-Za-z0-9_\-]{8,}"
     ),
     "sk_key": r"\bsk-[A-Za-z0-9]{20,}\b",  # OpenAI-style keys
     "jwt": r"eyJ[A-Za-z0-9_-]*\.eyJ[A-Za-z0-9_-]*\.[A-Za-z0-9_-]*",

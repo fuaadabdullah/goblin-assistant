@@ -54,6 +54,8 @@ htmlcov/
 coverage.xml
 .coverage
 .playwright/
+.playwright-cli/
+.codex/
 *.tsbuildinfo
 
 # Python

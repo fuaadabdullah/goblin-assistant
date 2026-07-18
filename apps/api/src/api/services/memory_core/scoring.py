@@ -32,11 +32,13 @@ def _compute_salience(
     repetition = min(1.0, 0.25 * max(repetition_count, 1))
     kind_boost = {
         MemoryKind.PREFERENCE: 0.12,
+        MemoryKind.GOAL: 0.12,
         MemoryKind.DECISION: 0.15,
         MemoryKind.PROJECT_STATE: 0.10,
         MemoryKind.RELATIONSHIP: 0.08,
         MemoryKind.TASK_SIGNAL: 0.06,
         MemoryKind.FACT: 0.10,
+        MemoryKind.CORRECTION: 0.14,
     }[memory_type]
     active_boost = 0.12 if active_context else 0.0
     score = (
@@ -144,7 +146,13 @@ def _compute_memory_importance(
         else (
             0.9
             if memory_type
-            in {MemoryKind.PROJECT_STATE, MemoryKind.DECISION, MemoryKind.TASK_SIGNAL}
+            in {
+                MemoryKind.PROJECT_STATE,
+                MemoryKind.DECISION,
+                MemoryKind.TASK_SIGNAL,
+                MemoryKind.GOAL,
+                MemoryKind.CORRECTION,
+            }
             else 0.6
         ),
         0.0,
@@ -162,7 +170,17 @@ def _compute_memory_importance(
     impact_score = _clamp_score(
         future_behavior_impact
         if future_behavior_impact is not None
-        else (0.85 if memory_type in {MemoryKind.PREFERENCE, MemoryKind.PROJECT_STATE} else 0.45),
+        else (
+            0.85
+            if memory_type
+            in {
+                MemoryKind.PREFERENCE,
+                MemoryKind.PROJECT_STATE,
+                MemoryKind.GOAL,
+                MemoryKind.CORRECTION,
+            }
+            else 0.45
+        ),
         0.0,
     )
     score = (

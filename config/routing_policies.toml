@@ -1,0 +1,53 @@
+# Declarative routing policies — evaluated before provider scoring.
+#
+# Administrators edit this file to change routing behavior without touching
+# router code. See apps/api/src/api/routing/policy_rules.py for the engine
+# that evaluates these rules and the full condition/action vocabulary.
+#
+# Each [[rules]] entry:
+#   when.*    — all listed conditions must match (AND) for the rule to fire
+#   action.*  — effect applied to candidate scoring when the rule fires
+#
+# Conditions (when):
+#   intent                    str | list[str] — RoutingFeatures.intent_label
+#   task_type                 str | list[str] — RoutingFeatures.task_type
+#   complexity_min/_max       float 0-1       — RoutingFeatures.complexity_score
+#   prompt_length_bucket_min/_max  int 0-3    — 0=short,1=medium,2=long,3=very_long
+#   latency_sensitive_min      float 0-1      — RoutingFeatures.latency_sensitivity
+#   metadata                  table           — matched against request metadata dict
+#
+# Actions:
+#   restrict_tier             str             — only providers in this tier are candidates
+#   restrict_providers        list[str]       — only these provider ids are candidates
+#   prefer_tier + boost       str + float     — additive score boost for providers in tier
+#   boost_providers           table           — additive score boost per provider id
+
+[[rules]]
+id = "confidential"
+description = "Confidential requests are restricted to locally-hosted models."
+when = { metadata = { confidential = true } }
+action = { restrict_tier = "local" }
+
+[[rules]]
+id = "trivial_request"
+description = "Very short, low-complexity prompts are demoted to the fast/cheap tier so trivial questions don't burn a premium model."
+when = { complexity_max = 0.15, prompt_length_bucket_max = 0 }
+action = { prefer_tier = "fast", boost = 0.2 }
+
+[[rules]]
+id = "expert_request"
+description = "High-complexity prompts are boosted toward the best-quality tier."
+when = { complexity_min = 0.75 }
+action = { prefer_tier = "best", boost = 0.12 }
+
+[[rules]]
+id = "coding_boost"
+description = "Coding-intent requests get a modest boost toward Anthropic models."
+when = { intent = "coding" }
+action = { boost_providers = { anthropic = 0.1 } }
+
+[[rules]]
+id = "huge_context"
+description = "Very long prompts get boosted toward large-context-window providers."
+when = { prompt_length_bucket_min = 3 }
+action = { boost_providers = { gemini = 0.15 } }

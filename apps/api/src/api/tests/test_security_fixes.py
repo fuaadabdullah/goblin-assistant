@@ -5,20 +5,13 @@ Tests XSS protection, error handling, and input sanitization
 """
 
 import os
+import sys
 
 # Set test environment
 os.environ["ENVIRONMENT"] = "development"
 os.environ["DEBUG"] = "false"
 
-try:
-    from .input_validation import InputSanitizer
-except ImportError:
-    # Allow running as standalone script
-    import os
-    import sys
-
-    sys.path.insert(0, os.path.dirname(__file__))
-    from input_validation import InputSanitizer
+from api.input_validation import InputSanitizer
 
 
 def test_xss_protection():

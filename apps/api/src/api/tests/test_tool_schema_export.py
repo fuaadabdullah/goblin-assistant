@@ -111,7 +111,7 @@ def test_exported_tools_include_memory_recall_contract():
     assert "memory_recall" in tools
     memory_tool = tools["memory_recall"]
     assert "Read-only" in memory_tool["description"]
-    assert memory_tool["parameters"]["properties"]["limit"]["default"] == 5
+    assert memory_tool["parameters"]["properties"]["limit"]["default"] == 10
 
 
 def test_exported_tools_include_project_tool_contracts():

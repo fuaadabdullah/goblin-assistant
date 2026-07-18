@@ -5,8 +5,8 @@ from typing import Any, Dict, List, Optional
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel
 
-from .departments import DEPARTMENT_REGISTRY, department_dispatcher
-from .providers.dispatcher import dispatcher
+from ..departments import DEPARTMENT_REGISTRY, department_dispatcher
+from ..providers.dispatcher import dispatcher
 
 router = APIRouter(prefix="/routing", tags=["routing"])
 _ROUTING_DEPRECATION_SUNSET = "2026-09-15"
@@ -35,6 +35,22 @@ class DepartmentRouteRequest(BaseModel):
 async def list_departments():
     """List all available brain departments (no provider details)."""
     return DEPARTMENT_REGISTRY.list_public()
+
+
+@router.get("/explain/{routing_id}", response_model=Dict[str, Any])
+async def explain_routing_decision(routing_id: str):
+    """Return why a given routing decision picked its provider.
+
+    Backed by the in-memory explanation cache populated on every
+    ProviderSelectionModel.score() call — see routing/provider_selection.py.
+    Explanations are bounded and evicted FIFO, so old routing_ids 404.
+    """
+    from ..routing.provider_selection import get_explanation  # noqa: PLC0415
+
+    explanation = get_explanation(routing_id)
+    if explanation is None:
+        raise HTTPException(status_code=404, detail=f"No routing explanation for '{routing_id}'")
+    return explanation
 
 
 @router.get("/departments/{department_id}", response_model=Dict[str, str])
@@ -67,7 +83,7 @@ async def route_through_department(request: DepartmentRouteRequest):
     shared dispatcher/provider-routing stack.
     """
     try:
-        from .departments import DepartmentId, DepartmentSelection  # noqa: PLC0415
+        from ..departments import DepartmentId, DepartmentSelection  # noqa: PLC0415
 
         selection = DepartmentSelection(
             department_id=DepartmentId(request.department.strip().lower()),
