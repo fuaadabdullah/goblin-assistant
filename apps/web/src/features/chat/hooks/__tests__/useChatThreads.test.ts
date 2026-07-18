@@ -138,6 +138,13 @@ describe('useChatThreads', () => {
     expect(markChatMigrationCompleted).not.toHaveBeenCalled();
   });
 
+  it('does not query protected conversations when disabled', () => {
+    renderHook(() => useChatThreads({ enabled: false }));
+
+    expect(useQuery).toHaveBeenCalledWith(expect.objectContaining({ enabled: false }));
+    expect(chatClient.listConversations).not.toHaveBeenCalled();
+  });
+
   it('keeps migration incomplete when backend hydration fails', async () => {
     vi.mocked(readChatMigrationMeta).mockReturnValue({
       migrationCompleted: false,

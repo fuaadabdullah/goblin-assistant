@@ -58,7 +58,7 @@ const writeLegacyThreads = (threads: ChatThread[], migrationCompleted: boolean):
   writeChatThreads(threads.filter((thread) => thread.source === 'legacy-local'));
 };
 
-export const useChatThreads = () => {
+export const useChatThreads = ({ enabled = true }: { enabled?: boolean } = {}) => {
   const queryClient = useQueryClient();
   const query = useQuery<ChatThread[]>({
     queryKey: queryKeys.chatThreads,
@@ -77,6 +77,7 @@ export const useChatThreads = () => {
         return sortChatThreads(legacyThreads);
       }
     },
+    enabled,
     refetchOnWindowFocus: true,
   });
 
