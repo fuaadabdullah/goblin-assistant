@@ -105,7 +105,7 @@ Concrete provider imports in non-owner modules:
 
 | File | Lines | Assessment | Recommendation |
 |------|-------|------------|----------------|
-| `packages/sdk/src/generated/openapi.ts` | 11,655 (was 13,125) | Auto-generated artifact - high complexity | Would require changing the SDK codegen pipeline, not the generated output — needs its own scoped investigation, not attempted here |
+| `packages/sdk/src/generated/openapi.ts` | 0 (was 11,655) | RESOLVED | The file was a dead intermediate: `split-sdk.py` already copied its full contents into `components.ts`/`operations.ts`/`paths.ts`, but tsconfig's `include: ["src/**/*.ts"]` still picked it up, so tsc type-checked the same ~11K lines twice. The codegen pipeline now writes openapi-typescript's raw output to `.tmp/` (untracked) instead of `src/generated/`; `split-sdk.py` reads from there. Cuts `tsc --noEmit -p packages/sdk/tsconfig.json` from ~2.6s to ~0.9s locally |
 | `apps/api/src/api/routing/router.py` | 48 (was 778) | RESOLVED | Now a re-export façade over `registry_store.py`, `policy_engine.py`, `router_registry.py`, `selection.py` |
 | `apps/api/src/api/health.py` | 277 (was 777) | RESOLVED | Split into `health_core.py`, `health_checks.py`, `ops_health.py` |
 | `apps/api/src/api/observability/debug_router.py` | 744 | ACCEPTABLE | Single `/debug` prefix with cohesive endpoints - monitor only |
