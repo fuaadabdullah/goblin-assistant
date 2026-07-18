@@ -151,7 +151,7 @@ def _routing() -> int:
             'cd apps/api && PYTHONPATH=src python3.11 -m pytest -o "addopts=" -v '
             "../../tests/contract/test_engine_routing_contract.py "
             "src/api/tests/test_router_service.py "
-            "src/api/tests/test_provider_dispatcher_routing.py",
+            "src/api/tests/provider_dispatcher_routing/",
         ]
     )
 

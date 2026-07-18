@@ -25,7 +25,7 @@ run_gate() {
     --cov-fail-under="$threshold"
 }
 
-run_gate "auth" "src/api/auth" "src/api/tests/test_auth*.py src/api/tests/test_security_config*.py" "${CRIT_AUTH_THRESHOLD:-85}"
+run_gate "auth" "src/api/auth" "src/api/tests/test_auth*.py src/api/tests/auth_additional_coverage/ src/api/tests/test_security_config*.py" "${CRIT_AUTH_THRESHOLD:-85}"
 echo "Running critical coverage gate: execution-engine (threshold ${CRIT_EXECUTION_THRESHOLD:-85}%)"
 COVERAGE_FILE="$ROOT_DIR/apps/api/.coverage.execution_engine" \
 "$PYTHON_BIN" -m pytest -o "addopts=" -v \
@@ -59,19 +59,19 @@ COVERAGE_FILE="$ROOT_DIR/apps/api/.coverage.persistence" \
   --cov=api.storage.models \
   --cov-report=term-missing \
   --cov-fail-under="${CRIT_PERSISTENCE_THRESHOLD:-85}"
-run_gate "websocket-state" "api.stream_router" "src/api/tests/test_stream_router.py src/api/tests/test_sse*.py src/api/tests/test_chat_router_core.py" "${CRIT_WEBSOCKET_THRESHOLD:-85}"
-run_gate "orchestration" "api.core.orchestration" "src/api/tests/test_context_assembly*.py src/api/tests/test_smart_router_service.py src/api/tests/test_routing_router.py src/api/tests/test_orchestration_core.py" "${CRIT_ORCHESTRATION_THRESHOLD:-85}"
+run_gate "websocket-state" "api.stream_router" "src/api/tests/test_stream_router.py src/api/tests/test_sse*.py src/api/tests/chat_router_core/" "${CRIT_WEBSOCKET_THRESHOLD:-85}"
+run_gate "orchestration" "api.core.orchestration" "src/api/tests/test_context_assembly*.py src/api/tests/context_assembly_coverage/ src/api/tests/test_smart_router_service.py src/api/tests/test_routing_router.py src/api/tests/test_orchestration_core.py" "${CRIT_ORCHESTRATION_THRESHOLD:-85}"
 run_gate "api-contracts" "api.api_router" "src/api/tests/test_contract_boundaries.py src/api/tests/test_api_router.py" "${CRIT_CONTRACT_THRESHOLD:-85}"
 
 echo "Running critical coverage gate: provider-routing-rag (threshold ${CRIT_PROVIDER_RAG_THRESHOLD:-75}%)"
 COVERAGE_FILE="$ROOT_DIR/apps/api/.coverage.provider_routing_rag" \
 "$PYTHON_BIN" -m pytest -o "addopts=" -v \
-  src/api/tests/test_provider_dispatcher_authority.py \
+  src/api/tests/provider_dispatcher_authority/ \
   src/api/tests/test_smart_router_service.py \
   src/api/tests/test_context_assembly.py \
   src/api/tests/test_rag_context_bundle_and_builder.py \
   src/api/tests/test_retrieval_by_source.py \
-  src/api/tests/test_chat_router_core.py \
+  src/api/tests/chat_router_core/ \
   --cov=api.providers.dispatcher \
   --cov=api.services.context_assembly_service.orchestrator \
   --cov=api.services.retrieval_service._context_bundle \
