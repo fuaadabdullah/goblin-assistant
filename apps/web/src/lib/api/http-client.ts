@@ -97,15 +97,22 @@ export async function attachSupabaseInterceptor() {
   // Dynamic import to keep supabase out of public route bundles.
   const { authGetSession } = await import('../supabase');
 
-  // Attach Supabase access token as Bearer before every backend request.
-  // Supabase auto-refreshes tokens; getSession() is a fast local read.
-  backendHttp.interceptors.request.use(async (config: InternalAxiosRequestConfig) => {
-    const { session } = await authGetSession();
-    if (session?.access_token) {
-      setAuthorizationHeader(config.headers, session.access_token);
-    }
-    return config;
-  });
+  const attachAuthInterceptor = (client: typeof backendHttp) => {
+    // Supabase auto-refreshes tokens; getSession() is a fast local read.
+    client.interceptors.request.use(async (config: InternalAxiosRequestConfig) => {
+      const { session } = await authGetSession();
+      // Keep the freshly refreshed token when a 401 request is retried.
+      if (session?.access_token && !(config as RetryableRequestConfig)._retry) {
+        setAuthorizationHeader(config.headers, session.access_token);
+      }
+      return config;
+    });
+  };
+
+  // Conversation requests use the Next.js proxy, while other API requests can
+  // call the backend client directly. Both must carry the Supabase bearer token.
+  attachAuthInterceptor(backendHttp);
+  attachAuthInterceptor(frontendHttp);
 }
 
 export const frontendHttp = axios.create({
@@ -133,43 +140,48 @@ export const refreshAccessToken = async (): Promise<string | null> => {
   return refreshAccessTokenViaBackend(getRefreshToken());
 };
 
-backendHttp.interceptors.response.use(
-  (response) => response,
-  async (error: AxiosError) => {
-    const originalRequest = (error.config ?? {}) as RetryableRequestConfig;
-    const status = error.response?.status;
-    const requestUrl = String(originalRequest.url ?? '');
+const attachAccessTokenRefreshInterceptor = (client: typeof backendHttp): void => {
+  client.interceptors.response.use(
+    (response) => response,
+    async (error: AxiosError) => {
+      const originalRequest = (error.config ?? {}) as RetryableRequestConfig;
+      const status = error.response?.status;
+      const requestUrl = String(originalRequest.url ?? '');
 
-    // Never retry auth endpoints — a 401 on login/register/passkey is a real credential failure,
-    // not an expired session. Retrying with a refreshed token would silently swallow the error.
-    const isAuthEndpoint = requestUrl.includes('/auth/');
-    const canRetry = status === 401 && !originalRequest._retry && !isAuthEndpoint;
+      // Never retry auth endpoints — a 401 on login/register/passkey is a real credential failure,
+      // not an expired session. Retrying with a refreshed token would silently swallow the error.
+      const isAuthEndpoint = requestUrl.includes('/auth/');
+      const canRetry = status === 401 && !originalRequest._retry && !isAuthEndpoint;
 
-    if (!canRetry) {
-      return Promise.reject(error);
+      if (!canRetry) {
+        return Promise.reject(error);
+      }
+
+      originalRequest._retry = true;
+
+      if (!refreshPromise) {
+        refreshPromise = refreshAccessToken().finally(() => {
+          refreshPromise = null;
+        });
+      }
+
+      const nextToken = await refreshPromise;
+      if (!nextToken) {
+        return Promise.reject(error);
+      }
+
+      originalRequest.headers = {
+        ...(originalRequest.headers ?? {}),
+        Authorization: `Bearer ${nextToken}`,
+      };
+
+      return client(originalRequest);
     }
+  );
+};
 
-    originalRequest._retry = true;
-
-    if (!refreshPromise) {
-      refreshPromise = refreshAccessToken().finally(() => {
-        refreshPromise = null;
-      });
-    }
-
-    const nextToken = await refreshPromise;
-    if (!nextToken) {
-      return Promise.reject(error);
-    }
-
-    originalRequest.headers = {
-      ...(originalRequest.headers ?? {}),
-      Authorization: `Bearer ${nextToken}`,
-    };
-
-    return backendHttp(originalRequest);
-  }
-);
+attachAccessTokenRefreshInterceptor(backendHttp);
+attachAccessTokenRefreshInterceptor(frontendHttp);
 
 export const withAuth = (config?: AxiosRequestConfig): AxiosRequestConfig => {
   const token = getAuthToken();

@@ -27,6 +27,15 @@ describe('chatClient conversation API', () => {
     });
   });
 
+  it('tells the user to sign in when a conversation request is unauthorized', async () => {
+    vi.spyOn(apiClient, 'createConversation').mockRejectedValue({ status: 401 });
+
+    await expect(chatClient.createConversation()).rejects.toMatchObject({
+      code: 'AUTHENTICATION_REQUIRED',
+      userMessage: 'You need to sign in to start a conversation.',
+    });
+  });
+
   it('falls back to the last user message when prompt is omitted', async () => {
     const spy = vi.spyOn(apiClient, 'sendConversationMessage').mockResolvedValue({
       content: 'ok',

@@ -105,6 +105,14 @@ const readResponseText = async (response: Response): Promise<string> => {
   }
 };
 
+const getErrorStatus = (error: unknown): number | undefined => {
+  if (!error || typeof error !== 'object') return undefined;
+
+  const candidate = error as { status?: unknown; response?: { status?: unknown } };
+  const status = candidate.status ?? candidate.response?.status;
+  return typeof status === 'number' ? status : undefined;
+};
+
 export const chatClient = {
   async createConversation(
     params: CreateConversationParams = {}
@@ -112,6 +120,17 @@ export const chatClient = {
     try {
       return await apiClient.createConversation(params.title);
     } catch (error) {
+      const status = getErrorStatus(error);
+      if (status === 401 || status === 403) {
+        throw new UiError(
+          {
+            code: 'AUTHENTICATION_REQUIRED',
+            userMessage: 'You need to sign in to start a conversation.',
+          },
+          error
+        );
+      }
+
       throw new UiError(
         {
           code: 'CHAT_CONVERSATION_CREATE_FAILED',
