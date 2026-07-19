@@ -20,7 +20,8 @@ interface ModularLoginFormProps {
   initialMode?: 'login' | 'register';
 }
 
-export const formatLoginError = (error: unknown, fallback: string): string => getUserMessage(error) || fallback;
+export const formatLoginError = (error: unknown, fallback: string): string =>
+  getUserMessage(error) || fallback;
 
 export default function ModularLoginForm({
   onSuccess,
@@ -82,7 +83,10 @@ export default function ModularLoginForm({
 
     setIsLoading(true);
     try {
-      const { error } = await authSignInWithOAuth('google', `${window.location.origin}/google-callback`);
+      const { error } = await authSignInWithOAuth(
+        'google',
+        `${window.location.origin}/google-callback`
+      );
       if (error) throw error;
     } catch (error) {
       devError('Google OAuth error:', error);

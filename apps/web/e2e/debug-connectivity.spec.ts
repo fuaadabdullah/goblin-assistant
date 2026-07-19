@@ -252,7 +252,10 @@ test.describe('Connection Status Indicator', () => {
     await page.goto('/chat');
 
     const debugLink = page.getByRole('link', { name: /Debug/i });
-    const iconLink = page.locator('a').filter({ has: page.locator('svg') }).first();
+    const iconLink = page
+      .locator('a')
+      .filter({ has: page.locator('svg') })
+      .first();
 
     // Debug link should be present (via icon)
     const count = await iconLink.count();

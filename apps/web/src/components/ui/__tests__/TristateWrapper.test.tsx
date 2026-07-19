@@ -114,10 +114,7 @@ describe('TristateWrapper', () => {
 
     expect(screen.getByText('Nothing here')).toBeInTheDocument();
     expect(screen.getByText('Add your first item.')).toBeInTheDocument();
-    expect(screen.getByRole('link', { name: 'Create item' })).toHaveAttribute(
-      'href',
-      '/items/new'
-    );
+    expect(screen.getByRole('link', { name: 'Create item' })).toHaveAttribute('href', '/items/new');
     expect(screen.getByRole('button', { name: 'Help' })).toBeInTheDocument();
   });
 

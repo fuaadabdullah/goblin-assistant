@@ -88,7 +88,8 @@ const ChatHeader = ({
             ) : null}
           </div>
           <p className="text-sm text-muted">
-            Route requests, optimize costs, monitor reliability. Control the LLM ecosystem end-to-end.
+            Route requests, optimize costs, monitor reliability. Control the LLM ecosystem
+            end-to-end.
           </p>
         </div>
         <div className="flex flex-wrap items-center gap-2">

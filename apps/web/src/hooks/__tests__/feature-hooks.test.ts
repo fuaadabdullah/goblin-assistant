@@ -5,8 +5,8 @@ const { runtimeFlagState, getRuntimeFlagMock, getExperimentVariantMock } = vi.ho
   return {
     runtimeFlagState,
     getRuntimeFlagMock: vi.fn(() => runtimeFlagState.current),
-    getExperimentVariantMock: vi.fn((experiment: { name: string }, userId: string) =>
-      `${experiment.name}:${userId}`
+    getExperimentVariantMock: vi.fn(
+      (experiment: { name: string }, userId: string) => `${experiment.name}:${userId}`
     ),
   };
 });
@@ -55,12 +55,9 @@ describe('feature hooks', () => {
       variants: ['control', 'treatment'] as const,
     };
 
-    const { result, rerender } = renderHook(
-      ({ userId }) => useExperiment(experiment, userId),
-      {
-        initialProps: { userId: 'user-1' },
-      }
-    );
+    const { result, rerender } = renderHook(({ userId }) => useExperiment(experiment, userId), {
+      initialProps: { userId: 'user-1' },
+    });
 
     expect(result.current).toBe('chat-composer-v2:user-1');
     expect(getExperimentVariantMock).toHaveBeenCalledWith(experiment, 'user-1');

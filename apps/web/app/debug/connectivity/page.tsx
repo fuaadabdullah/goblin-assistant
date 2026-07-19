@@ -13,7 +13,14 @@ import type { User } from '@/types/api';
 
 const ConnectivityDebug: FC = () => {
   const { user, isAuthenticated, isLoading: authLoading } = useAuthSession();
-  const { health, chatTestResult, chatError, handleFetchConversations, handleValidateToken, handleAuthLogout } = useEndpointTests();
+  const {
+    health,
+    chatTestResult,
+    chatError,
+    handleFetchConversations,
+    handleValidateToken,
+    handleAuthLogout,
+  } = useEndpointTests();
 
   // User is already the correct type from useAuthSession
   const userDisplay = user as User | null;

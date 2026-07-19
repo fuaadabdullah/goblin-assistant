@@ -25,7 +25,15 @@ const AdminSettingsContent = withRouteErrorBoundary(function AdminSettingsConten
 
 export default function AdminSettings() {
   return (
-    <Suspense fallback={<PageState variant="loading" title="Loading settings" description="Preparing provider and account controls." />}>
+    <Suspense
+      fallback={
+        <PageState
+          variant="loading"
+          title="Loading settings"
+          description="Preparing provider and account controls."
+        />
+      }
+    >
       <AdminLayout mainId="main-content" mainLabel="Admin Settings">
         <AdminSettingsContent />
       </AdminLayout>

@@ -222,17 +222,23 @@ const AgentTaskView = ({ session }: AgentTaskViewProps) => {
                     </div>
                     <div className="flex items-center justify-between gap-4">
                       <span className="text-text-secondary">Repo</span>
-                      <span className="truncate text-right text-text">{session.activeTask.repo_url}</span>
+                      <span className="truncate text-right text-text">
+                        {session.activeTask.repo_url}
+                      </span>
                     </div>
                     <div className="flex items-center justify-between gap-4">
                       <span className="text-text-secondary">Tests</span>
-                      <span className="truncate text-right text-text">{session.activeTask.tests_command}</span>
+                      <span className="truncate text-right text-text">
+                        {session.activeTask.tests_command}
+                      </span>
                     </div>
                     <div className="flex items-center justify-between gap-4">
                       <span className="text-text-secondary">Worker</span>
                       <span className="text-text">
                         {session.activeTask.worker_status || 'pending'}
-                        {session.activeTask.worker_error ? ` · ${session.activeTask.worker_error}` : ''}
+                        {session.activeTask.worker_error
+                          ? ` · ${session.activeTask.worker_error}`
+                          : ''}
                       </span>
                     </div>
                     {session.activeTask.pr_url ? (
@@ -275,7 +281,9 @@ const AgentTaskView = ({ session }: AgentTaskViewProps) => {
                     <div className="flex items-center justify-between gap-4">
                       <span className="text-text-secondary">Commit policy</span>
                       <span className="text-text">
-                        {session.activeTask.auto_commit_each_change ? 'Auto-commit on' : 'Auto-commit off'}
+                        {session.activeTask.auto_commit_each_change
+                          ? 'Auto-commit on'
+                          : 'Auto-commit off'}
                       </span>
                     </div>
                     <div className="flex items-center justify-between gap-4">
@@ -321,8 +329,8 @@ const AgentTaskView = ({ session }: AgentTaskViewProps) => {
                         ))
                       ) : (
                         <div className="rounded-lg border border-dashed border-border bg-surface/60 px-4 py-6 text-sm text-text-secondary">
-                          No worker events yet. Once the task dispatches, progress updates will appear
-                          here.
+                          No worker events yet. Once the task dispatches, progress updates will
+                          appear here.
                         </div>
                       )}
                     </div>

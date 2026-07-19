@@ -38,9 +38,7 @@ const recordSuccessfulMessageSend = (): number => {
   if (typeof window === 'undefined') return 0;
 
   try {
-    const rawCount = window.sessionStorage.getItem(
-      ANALYTICS_STORAGE_KEYS.successful_message_count
-    );
+    const rawCount = window.sessionStorage.getItem(ANALYTICS_STORAGE_KEYS.successful_message_count);
     const currentCount = Number(rawCount) || 0;
     const nextCount = currentCount + 1;
     window.sessionStorage.setItem(

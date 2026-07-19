@@ -25,7 +25,9 @@ describe('/api/system-status route', () => {
             { status: 200 }
           )
         )
-        .mockResolvedValueOnce(new Response(JSON.stringify({ status: 'degraded' }), { status: 200 }))
+        .mockResolvedValueOnce(
+          new Response(JSON.stringify({ status: 'degraded' }), { status: 200 })
+        )
     );
 
     const response = await GET();

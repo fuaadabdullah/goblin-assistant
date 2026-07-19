@@ -88,7 +88,9 @@ describe('useChatStreaming', () => {
   });
 
   it('preserves non-Error chat failures', () => {
-    expect(formatChatStreamingError('stream backend unavailable')).toBe('stream backend unavailable');
+    expect(formatChatStreamingError('stream backend unavailable')).toBe(
+      'stream backend unavailable'
+    );
   });
 
   it('should set loading state during request', async () => {

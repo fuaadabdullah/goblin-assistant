@@ -39,10 +39,7 @@ export const backendHttp = axios.create({
 // interceptor lazily from the auth bootstrapper.
 let backendSupabaseInterceptorAttached = false;
 
-const setAuthorizationHeader = (
-  headers: InternalAxiosRequestConfig['headers'],
-  token: string
-) => {
+const setAuthorizationHeader = (headers: InternalAxiosRequestConfig['headers'], token: string) => {
   headers['Authorization'] = `Bearer ${token}`;
 };
 
@@ -51,7 +48,9 @@ const loadSupabaseAuthHelpers = async () => {
   return { authGetSession, authRefreshSession, supabaseConfigured };
 };
 
-const refreshAccessTokenViaBackend = async (refreshToken: string | null): Promise<string | null> => {
+const refreshAccessTokenViaBackend = async (
+  refreshToken: string | null
+): Promise<string | null> => {
   try {
     const response = await frontendHttp.post<{
       access_token: string;
@@ -80,7 +79,8 @@ const refreshAccessTokenViaBackend = async (refreshToken: string | null): Promis
 };
 
 const refreshAccessTokenViaSupabase = async (): Promise<string | null> => {
-  const { authGetSession, authRefreshSession, supabaseConfigured } = await loadSupabaseAuthHelpers();
+  const { authGetSession, authRefreshSession, supabaseConfigured } =
+    await loadSupabaseAuthHelpers();
 
   if (!supabaseConfigured) return null;
 

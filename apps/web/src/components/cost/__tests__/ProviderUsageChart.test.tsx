@@ -44,11 +44,9 @@ vi.mock('recharts', () => ({
   ),
   CartesianGrid: () => <div data-testid="grid" />,
   XAxis: () => <div data-testid="x-axis" />,
-  YAxis: ({
-    tickFormatter,
-  }: {
-    tickFormatter?: (value: number | string) => React.ReactNode;
-  }) => <div data-testid="y-axis" data-tick={String(tickFormatter?.(12.34))} />,
+  YAxis: ({ tickFormatter }: { tickFormatter?: (value: number | string) => React.ReactNode }) => (
+    <div data-testid="y-axis" data-tick={String(tickFormatter?.(12.34))} />
+  ),
 }));
 
 vi.mock('@/utils/format-cost', () => ({

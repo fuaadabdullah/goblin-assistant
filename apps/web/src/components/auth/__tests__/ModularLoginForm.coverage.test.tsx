@@ -189,9 +189,7 @@ describe('ModularLoginForm coverage', () => {
     turnstileState.token = 'turnstile-token';
     mockSignUp.mockResolvedValueOnce({ session: null, error: null });
 
-    render(
-      <ModularLoginForm initialMode="register" onSuccess={onSuccess} onError={onError} />
-    );
+    render(<ModularLoginForm initialMode="register" onSuccess={onSuccess} onError={onError} />);
 
     await waitFor(() => expect(screen.getByTestId('turnstile')).toBeInTheDocument());
     fireEvent.submit(screen.getByTestId('email-form'));

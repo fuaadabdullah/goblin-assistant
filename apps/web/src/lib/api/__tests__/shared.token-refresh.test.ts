@@ -121,7 +121,9 @@ describe('backendHttp 401 interceptor', () => {
   });
 
   it('does NOT retry a request a second time (_retry flag)', async () => {
-    frontendMock.onPost('/api/auth/refresh').reply(200, { access_token: 'new-jwt', expires_in: 3600 });
+    frontendMock
+      .onPost('/api/auth/refresh')
+      .reply(200, { access_token: 'new-jwt', expires_in: 3600 });
     mock.onGet('/api/protected').reply(401, { detail: 'Unauthorized' });
 
     await expect(backendHttp.get('/api/protected')).rejects.toMatchObject({

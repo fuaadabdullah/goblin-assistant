@@ -10,7 +10,12 @@ interface EndpointTesterProps {
   onTest: () => Promise<void>;
 }
 
-const EndpointTester: FC<EndpointTesterProps> = ({ name, endpoint, requiresAuth = false, onTest }) => {
+const EndpointTester: FC<EndpointTesterProps> = ({
+  name,
+  endpoint,
+  requiresAuth = false,
+  onTest,
+}) => {
   const [response, setResponse] = useState<Record<string, unknown> | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
@@ -31,17 +36,10 @@ const EndpointTester: FC<EndpointTesterProps> = ({ name, endpoint, requiresAuth 
 
   return (
     <div className={styles['endpointTester']}>
-      <button
-        className={styles['button']}
-        onClick={handleTest}
-        disabled={loading}
-        type="button"
-      >
+      <button className={styles['button']} onClick={handleTest} disabled={loading} type="button">
         {loading ? 'Testing...' : `Test ${name}`}
       </button>
-      {requiresAuth && (
-        <span className={styles['authBadge']}>Auth Required</span>
-      )}
+      {requiresAuth && <span className={styles['authBadge']}>Auth Required</span>}
 
       {error && (
         <p className={`${styles['responseContainer']} ${styles['errorText']}`}>

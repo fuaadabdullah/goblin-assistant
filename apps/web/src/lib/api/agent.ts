@@ -18,7 +18,9 @@ export const agentMethods = {
   },
 
   async getAgentTask(taskId: string): Promise<AgentTaskRecord> {
-    return getFrontend<AgentTaskRecord>(`${INTERNAL_AGENT_PREFIX}/task/${encodeURIComponent(taskId)}`);
+    return getFrontend<AgentTaskRecord>(
+      `${INTERNAL_AGENT_PREFIX}/task/${encodeURIComponent(taskId)}`
+    );
   },
 
   async getAgentTaskEvents(taskId: string): Promise<AgentTaskEventsResponse> {
@@ -27,7 +29,9 @@ export const agentMethods = {
     );
   },
 
-  async submitGithubIssueWebhook(payload: Record<string, unknown>): Promise<AgentTaskWebhookResponse> {
+  async submitGithubIssueWebhook(
+    payload: Record<string, unknown>
+  ): Promise<AgentTaskWebhookResponse> {
     return postFrontend<AgentTaskWebhookResponse, Record<string, unknown>>(
       `${INTERNAL_AGENT_PREFIX}/task/github-webhook`,
       payload

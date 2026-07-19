@@ -30,7 +30,11 @@ const HealthStatusDisplay: FC<HealthStatusDisplayProps> = ({ health }) => {
     <div>
       <p>
         <strong>Status:</strong>{' '}
-        <span className={health.data.overall === 'healthy' ? styles['statusHealthy'] : styles['statusUnhealthy']}>
+        <span
+          className={
+            health.data.overall === 'healthy' ? styles['statusHealthy'] : styles['statusUnhealthy']
+          }
+        >
           {health.data.overall || 'unknown'}
         </span>
       </p>

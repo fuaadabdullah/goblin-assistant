@@ -113,9 +113,7 @@ const makeAuthChallenge = (
   },
 });
 
-const makeCredential = (
-  options: { includeRawId?: boolean; includeResponse?: boolean } = {}
-) => {
+const makeCredential = (options: { includeRawId?: boolean; includeResponse?: boolean } = {}) => {
   const credential: Record<string, unknown> = {
     id: 'credential-id',
     type: 'public-key',
@@ -163,12 +161,7 @@ describe('PasskeyPanel', () => {
     }> = {}
   ) =>
     render(
-      <PasskeyPanel
-        email="test@example.com"
-        onSuccess={onSuccess}
-        onError={onError}
-        {...props}
-      />
+      <PasskeyPanel email="test@example.com" onSuccess={onSuccess} onError={onError} {...props} />
     );
 
   beforeEach(() => {
