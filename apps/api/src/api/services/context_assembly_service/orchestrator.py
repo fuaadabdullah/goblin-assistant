@@ -1,7 +1,7 @@
 """
 Context Assembly Orchestrator.
 
-Slim coordinator that wires together the five retrieval layers in fixed order,
+Slim coordinator that wires together the six retrieval layers in fixed order,
 tracks token budgets, and produces the final context payload. All heavy
 logic lives in the individual layer modules.
 """
@@ -25,6 +25,7 @@ from . import budget_manager as bm
 from .ephemeral_layer import assemble_ephemeral_memory
 from .long_term_layer import assemble_long_term_memory
 from .models import ContextBudget, ContextLayer
+from .profile_layer import assemble_profile_layer
 from .semantic_layer import _get_retrieval_service, assemble_semantic_retrieval
 from .system_layer import assemble_system_layer
 from .working_memory_layer import assemble_working_memory
@@ -63,13 +64,15 @@ class ContextAssemblyService:
 
     Retrieval Stack (Fixed Order):
     1. System + Guardrails (Fixed Cost)
-    2. Long-Term Memory (Always, but tiny)
-    3. Working Memory (Summaries)
-    4. Semantic Retrieval (Vector Results)
-    5. Ephemeral Memory (Recent Messages)
+    2. User Profile (Goals, Projects, Preferences)
+    3. Long-Term Memory (Always, but tiny)
+    4. Working Memory (Summaries)
+    5. Semantic Retrieval (Vector Results)
+    6. Ephemeral Memory (Recent Messages)
 
     Hard Stops: If you run out of tokens, vector results get cut first, then
     working memory. Long-term memory is last to go. System instructions never go.
+    Profile layer is dropped early when budget is tight.
     """
 
     def __init__(self) -> None:
@@ -141,7 +144,9 @@ class ContextAssemblyService:
             try:
                 assembly_log["intent"] = {
                     "label": getattr(
-                        getattr(intent, "label", None), "value", str(getattr(intent, "label", ""))
+                        getattr(intent, "label", None),
+                        "value",
+                        str(getattr(intent, "label", "")),
                     ),
                     "confidence": getattr(intent, "confidence", 0.0),
                 }
@@ -159,7 +164,20 @@ class ContextAssemblyService:
                 assembly_log["layers"].append("system")
                 assembly_log["token_usage"]["system"] = system_layer.tokens
 
-            # 2. Long-Term Memory
+            # 2. User Profile
+            if remaining_tokens > 0:
+                profile_layer = await assemble_profile_layer(user_id, remaining_tokens, budget)
+                if profile_layer:
+                    layers.append(profile_layer)
+                    remaining_tokens -= profile_layer.tokens
+                    assembly_log["layers"].append("user_profile")
+                    assembly_log["token_usage"]["user_profile"] = profile_layer.tokens
+                else:
+                    self._record_layer_skip(
+                        user_id, "user_profile", remaining_tokens, budget.profile_tokens
+                    )
+
+            # 3. Long-Term Memory
             if remaining_tokens > 0:
                 long_term_layer = await assemble_long_term_memory(user_id, remaining_tokens, budget)
                 if long_term_layer:
@@ -169,10 +187,13 @@ class ContextAssemblyService:
                     assembly_log["token_usage"]["long_term"] = long_term_layer.tokens
                 else:
                     self._record_layer_skip(
-                        user_id, "long_term_memory", remaining_tokens, budget.long_term_tokens
+                        user_id,
+                        "long_term_memory",
+                        remaining_tokens,
+                        budget.long_term_tokens,
                     )
 
-            # 3. Working Memory
+            # 4. Working Memory
             if remaining_tokens > 0 and conversation_id:
                 working_memory_layer = await assemble_working_memory(
                     user_id, conversation_id, remaining_tokens, budget
@@ -184,10 +205,13 @@ class ContextAssemblyService:
                     assembly_log["token_usage"]["working_memory"] = working_memory_layer.tokens
                 else:
                     self._record_layer_skip(
-                        user_id, "working_memory", remaining_tokens, budget.working_memory_tokens
+                        user_id,
+                        "working_memory",
+                        remaining_tokens,
+                        budget.working_memory_tokens,
                     )
 
-            # 4. Semantic Retrieval
+            # 5. Semantic Retrieval
             if remaining_tokens > 0:
                 semantic_layer = await assemble_semantic_retrieval(
                     retrieval_query,
@@ -225,7 +249,7 @@ class ContextAssemblyService:
                             degraded_status.get("reason", ""),
                         )
 
-            # 5. Ephemeral Memory
+            # 6. Ephemeral Memory
             if remaining_tokens > 0 and conversation_history:
                 ephemeral_layer = await assemble_ephemeral_memory(
                     conversation_history, remaining_tokens, budget
