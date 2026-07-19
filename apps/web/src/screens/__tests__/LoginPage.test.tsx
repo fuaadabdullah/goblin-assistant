@@ -87,7 +87,9 @@ describe('LoginPage redirects', () => {
 
 describe('resolveOauthErrorMessage', () => {
   it('maps known oauth errors to user-friendly copy', () => {
-    expect(resolveOauthErrorMessage('oauth_failed')).toBe('Google sign-in failed. Please try again.');
+    expect(resolveOauthErrorMessage('oauth_failed')).toBe(
+      'Google sign-in failed. Please try again.'
+    );
     expect(resolveOauthErrorMessage('no_code')).toBe(
       'Google sign-in did not return an authorization code.'
     );

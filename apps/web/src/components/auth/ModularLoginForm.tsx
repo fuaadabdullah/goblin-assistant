@@ -20,7 +20,8 @@ interface ModularLoginFormProps {
   initialMode?: 'login' | 'register';
 }
 
-export const formatLoginError = (error: unknown, fallback: string): string => getUserMessage(error) || fallback;
+export const formatLoginError = (error: unknown, fallback: string): string =>
+  getUserMessage(error) || fallback;
 
 export default function ModularLoginForm({
   onSuccess,

@@ -16,7 +16,8 @@ const pageStyle: CSSProperties = {
   alignItems: 'center',
   justifyContent: 'center',
   padding: '16px',
-  fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif',
+  fontFamily:
+    '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif',
 };
 const cardStyle: CSSProperties = {
   maxWidth: '480px',
@@ -177,17 +178,19 @@ export default function GlobalError({
 
   useEffect(() => {
     // Send to monitoring endpoint via the API client boundary.
-    void apiClient.submitErrorReport({
-      message: error.message,
-      stack: error.stack,
-      digest: error.digest,
-      errorId,
-      timestamp: new Date().toISOString(),
-      userAgent: navigator.userAgent,
-      url: window.location.href,
-    }).catch(() => {
-      // Silent fail — don't crash further
-    });
+    void apiClient
+      .submitErrorReport({
+        message: error.message,
+        stack: error.stack,
+        digest: error.digest,
+        errorId,
+        timestamp: new Date().toISOString(),
+        userAgent: navigator.userAgent,
+        url: window.location.href,
+      })
+      .catch(() => {
+        // Silent fail — don't crash further
+      });
   }, [error, errorId]);
 
   return (

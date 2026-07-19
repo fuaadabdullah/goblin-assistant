@@ -514,11 +514,7 @@ describe('apiClient', () => {
     it('calls POST /api/auth/logout', async () => {
       mockHttp.post.mockResolvedValueOnce({ data: { ok: true } });
       await apiClient.logout();
-      expect(mockHttp.post).toHaveBeenCalledWith(
-        '/api/auth/logout',
-        undefined,
-        expect.anything()
-      );
+      expect(mockHttp.post).toHaveBeenCalledWith('/api/auth/logout', undefined, expect.anything());
     });
   });
 

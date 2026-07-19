@@ -456,8 +456,7 @@ export const chatClient = {
           errorObj?.response?.data?.message ||
           errorObj?.message;
 
-        const uiError =
-          error instanceof Error ? error : new Error(getUserMessage(error));
+        const uiError = error instanceof Error ? error : new Error(getUserMessage(error));
         onError(uiError);
         throw new UiError(
           {

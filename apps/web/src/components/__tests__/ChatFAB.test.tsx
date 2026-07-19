@@ -14,8 +14,9 @@ vi.mock('next/navigation', () => ({
 }));
 
 vi.mock('../../store/uiStore', () => ({
-  useUIStore: (selector: (state: { setChatSidebarOpen: typeof setChatSidebarOpenMock }) => unknown) =>
-    selector({ setChatSidebarOpen: setChatSidebarOpenMock }),
+  useUIStore: (
+    selector: (state: { setChatSidebarOpen: typeof setChatSidebarOpenMock }) => unknown
+  ) => selector({ setChatSidebarOpen: setChatSidebarOpenMock }),
 }));
 
 vi.mock('../../utils/analytics', () => ({

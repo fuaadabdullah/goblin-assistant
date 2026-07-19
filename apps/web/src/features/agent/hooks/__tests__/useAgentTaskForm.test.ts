@@ -1,9 +1,6 @@
 import { renderHook, act } from '@testing-library/react';
 
-import type {
-  AgentTaskEventsResponse,
-  AgentTaskRecord,
-} from '../../../../lib/api/api-types';
+import type { AgentTaskEventsResponse, AgentTaskRecord } from '../../../../lib/api/api-types';
 import { useAgentTaskForm } from '../useAgentTaskForm';
 
 const {
@@ -129,7 +126,15 @@ describe('useAgentTaskForm', () => {
     const initialTask = makeTaskRecord({ status: 'running' });
     const refreshedTask = makeTaskRecord({
       status: 'running',
-      events: [{ event_id: 'event-2', type: 'worker.running', message: 'Still running', timestamp: '2026-07-17T00:03:00Z', metadata: {} }],
+      events: [
+        {
+          event_id: 'event-2',
+          type: 'worker.running',
+          message: 'Still running',
+          timestamp: '2026-07-17T00:03:00Z',
+          metadata: {},
+        },
+      ],
     });
     const eventsResponse: AgentTaskEventsResponse = {
       task_id: 'task-1',

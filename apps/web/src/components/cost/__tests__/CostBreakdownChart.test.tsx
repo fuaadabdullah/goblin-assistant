@@ -6,19 +6,13 @@ vi.mock('recharts', () => ({
   BarChart: ({ children }: { children: React.ReactNode }) => (
     <div data-testid="bar-chart">{children}</div>
   ),
-  Bar: ({
-    name,
-    fill,
-  }: {
-    name?: string;
-    fill?: string;
-  }) => <div data-testid="bar" data-name={name} data-fill={fill} />,
+  Bar: ({ name, fill }: { name?: string; fill?: string }) => (
+    <div data-testid="bar" data-name={name} data-fill={fill} />
+  ),
   XAxis: () => <div data-testid="x-axis" />,
-  YAxis: ({
-    tickFormatter,
-  }: {
-    tickFormatter?: (value: number | string) => React.ReactNode;
-  }) => <div data-testid="y-axis" data-tick={String(tickFormatter?.(3.21))} />,
+  YAxis: ({ tickFormatter }: { tickFormatter?: (value: number | string) => React.ReactNode }) => (
+    <div data-testid="y-axis" data-tick={String(tickFormatter?.(3.21))} />
+  ),
   CartesianGrid: () => <div data-testid="grid" />,
   Tooltip: ({ content }: { content?: React.ReactElement }) => (
     <div data-testid="tooltip">

@@ -1,6 +1,10 @@
 import { NextResponse } from 'next/server';
 import { forwardRequest } from './proxy/httpForwarder';
-import { pathSegmentsToPathname, resolveProxyRoute, suffixFromSegments } from './proxy/routeResolver';
+import {
+  pathSegmentsToPathname,
+  resolveProxyRoute,
+  suffixFromSegments,
+} from './proxy/routeResolver';
 
 export { resolveProxyRoute } from './proxy/routeResolver';
 

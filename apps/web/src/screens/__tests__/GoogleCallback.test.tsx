@@ -117,7 +117,10 @@ describe('GoogleCallback', () => {
 
   it('redirects to login on exchange error', async () => {
     queryState.value = { code: 'abc123' };
-    mockExchangeCodeForSession.mockResolvedValueOnce({ session: null, error: new Error('Bad Request') });
+    mockExchangeCodeForSession.mockResolvedValueOnce({
+      session: null,
+      error: new Error('Bad Request'),
+    });
 
     renderWithClient(<GoogleCallback />);
     await waitFor(() => expect(mockPush).toHaveBeenCalledWith('/login?error=callback_failed'));

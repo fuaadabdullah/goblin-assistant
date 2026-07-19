@@ -31,9 +31,7 @@ describe('TurnstileWidget Component', () => {
     document.head
       .querySelectorAll('script[src*="challenges.cloudflare.com/turnstile"]')
       .forEach((node) => node.remove());
-    document.body
-      .querySelectorAll('div[style*="display: none"]')
-      .forEach((node) => node.remove());
+    document.body.querySelectorAll('div[style*="display: none"]').forEach((node) => node.remove());
     vi.clearAllMocks();
     installTurnstile();
   });

@@ -374,9 +374,7 @@ const LogsPageContent = () => {
           title="Failed to Load Logs"
           message={
             <>
-              <p className="mb-3">
-                {getUserMessage(error)}
-              </p>
+              <p className="mb-3">{getUserMessage(error)}</p>
               <Button
                 variant="danger"
                 size="sm"

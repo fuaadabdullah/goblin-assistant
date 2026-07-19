@@ -1,12 +1,16 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
-const { mockSubmitAgentTask, mockGetAgentTask, mockGetAgentTaskEvents, mockSubmitGithubIssueWebhook } =
-  vi.hoisted(() => ({
-    mockSubmitAgentTask: vi.fn(),
-    mockGetAgentTask: vi.fn(),
-    mockGetAgentTaskEvents: vi.fn(),
-    mockSubmitGithubIssueWebhook: vi.fn(),
-  }));
+const {
+  mockSubmitAgentTask,
+  mockGetAgentTask,
+  mockGetAgentTaskEvents,
+  mockSubmitGithubIssueWebhook,
+} = vi.hoisted(() => ({
+  mockSubmitAgentTask: vi.fn(),
+  mockGetAgentTask: vi.fn(),
+  mockGetAgentTaskEvents: vi.fn(),
+  mockSubmitGithubIssueWebhook: vi.fn(),
+}));
 
 vi.mock('@/lib/api', () => ({
   apiClient: {
@@ -42,7 +46,13 @@ describe('agent api', () => {
 
   it('returns task records and event payloads', async () => {
     mockGetAgentTask.mockResolvedValueOnce({ task_id: 'task-1' });
-    mockGetAgentTaskEvents.mockResolvedValueOnce({ task_id: 'task-1', status: 'queued', phase: 'queued', events: [], total: 0 });
+    mockGetAgentTaskEvents.mockResolvedValueOnce({
+      task_id: 'task-1',
+      status: 'queued',
+      phase: 'queued',
+      events: [],
+      total: 0,
+    });
     mockSubmitGithubIssueWebhook.mockResolvedValueOnce({ accepted: true, ignored: false });
 
     await expect(getAgentTask('task-1')).resolves.toEqual({ task_id: 'task-1' });
@@ -55,4 +65,3 @@ describe('agent api', () => {
     });
   });
 });
-

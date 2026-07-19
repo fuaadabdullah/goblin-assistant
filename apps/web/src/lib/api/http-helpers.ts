@@ -88,7 +88,8 @@ export const assertNoVersionedClientPath = (path: string): void => {
   }
 };
 
-const isAuthRoute = (url: string): boolean => url.split('?', 1)[0]?.startsWith('/api/auth/') ?? false;
+const isAuthRoute = (url: string): boolean =>
+  url.split('?', 1)[0]?.startsWith('/api/auth/') ?? false;
 
 /**
  * Resolve the current browser session at request time.

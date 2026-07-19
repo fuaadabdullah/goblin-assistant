@@ -47,9 +47,13 @@ describe('Supabase auth transport', () => {
       return [200, { success: true, data: { conversation_id: 'conversation-1' } }];
     });
 
-    await postFrontend('/api/chat/conversations', { title: 'New conversation' }, {
-      headers: { Authorization: 'Bearer legacy-stale' },
-    });
+    await postFrontend(
+      '/api/chat/conversations',
+      { title: 'New conversation' },
+      {
+        headers: { Authorization: 'Bearer legacy-stale' },
+      }
+    );
   });
 
   it('adds the Supabase Bearer token to requests sent through the Next proxy', async () => {

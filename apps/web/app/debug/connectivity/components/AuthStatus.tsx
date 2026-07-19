@@ -4,13 +4,15 @@ import { type FC } from 'react';
 import styles from '../page.module.css';
 import type { User } from '@/types/api';
 
-const AuthStatus: FC<{ token: string | null; user: User | null; isAuthenticated: boolean; isLoading: boolean }> = ({
-  token,
-  user,
-  isAuthenticated,
-  isLoading,
-}) => {
-  const maskedToken = token ? `${token.substring(0, 8)}...${token.substring(token.length - 4)}` : null;
+const AuthStatus: FC<{
+  token: string | null;
+  user: User | null;
+  isAuthenticated: boolean;
+  isLoading: boolean;
+}> = ({ token, user, isAuthenticated, isLoading }) => {
+  const maskedToken = token
+    ? `${token.substring(0, 8)}...${token.substring(token.length - 4)}`
+    : null;
 
   if (isLoading) {
     return (
@@ -41,8 +43,7 @@ const AuthStatus: FC<{ token: string | null; user: User | null; isAuthenticated:
           </p>
           {maskedToken && (
             <p>
-              <strong>Token:</strong>{' '}
-              <code className={styles['tokenDisplay']}>{maskedToken}</code>
+              <strong>Token:</strong> <code className={styles['tokenDisplay']}>{maskedToken}</code>
             </p>
           )}
         </div>

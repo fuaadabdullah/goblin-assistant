@@ -5,7 +5,11 @@
  * Extracted from the former shared.ts modularization.
  */
 
-import axios, { type AxiosError, type AxiosRequestConfig, type InternalAxiosRequestConfig } from 'axios';
+import axios, {
+  type AxiosError,
+  type AxiosRequestConfig,
+  type InternalAxiosRequestConfig,
+} from 'axios';
 export { V1_API_PREFIX } from '@goblin/shared';
 import { env } from '../../config/env';
 import { getAuthToken } from '../../utils/auth-session';
@@ -33,10 +37,7 @@ export const backendHttp = axios.create({
 // Lazy-load Supabase to avoid bloating public routes. Attached only on first request.
 let supabaseInterceptorAttached = false;
 
-const setAuthorizationHeader = (
-  headers: InternalAxiosRequestConfig['headers'],
-  token: string
-) => {
+const setAuthorizationHeader = (headers: InternalAxiosRequestConfig['headers'], token: string) => {
   headers['Authorization'] = `Bearer ${token}`;
 };
 
@@ -46,7 +47,8 @@ const loadSupabaseAuthHelpers = async () => {
 };
 
 export const refreshAccessTokenViaSupabase = async (): Promise<string | null> => {
-  const { authGetSession, authRefreshSession, supabaseConfigured } = await loadSupabaseAuthHelpers();
+  const { authGetSession, authRefreshSession, supabaseConfigured } =
+    await loadSupabaseAuthHelpers();
 
   if (!supabaseConfigured) return null;
 

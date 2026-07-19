@@ -128,8 +128,8 @@ describe('chatClient conversation API', () => {
       })
     ).rejects.toMatchObject({
       code: 'CHAT_PROVIDER_ACCESS_DENIED',
-        userMessage: 'Your account does not have access to any providers right now.',
-      });
+      userMessage: 'Your account does not have access to any providers right now.',
+    });
   });
 
   it('surfaces streaming provider errors instead of falling back to mock completion', async () => {
