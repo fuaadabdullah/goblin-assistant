@@ -48,7 +48,7 @@ addopts = [ "--strict-markers", "--strict-config", "--disable-warnings", "--tb=s
 asyncio_mode = "auto"
 asyncio_default_fixture_loop_scope = "function"
 filterwarnings = [
-  "ignore:Using `httpx` with `starlette.testclient` is deprecated:starlette.exceptions.StarletteDeprecationWarning:ddtrace.internal.module",
+  "ignore:Using `httpx` with `starlette.testclient` is deprecated",
 ]
 
 [tool.coverage.run]
