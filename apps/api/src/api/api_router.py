@@ -89,6 +89,26 @@ def _is_disallowed_mock_response(response: Any) -> bool:
     )
 
 
+async def _prepend_default_system_message(messages: List[Dict[str, str]]) -> List[Dict[str, str]]:
+    """Prepend the fixed-cost system+guardrails+date layer unless the caller
+    already supplied a system message. These bare /chat and /generate routes
+    skip conversation storage and context assembly entirely, so without this
+    they send the provider zero identity, zero guardrails, and zero date
+    grounding for "current" questions.
+    """
+    if any(m.get("role") == "system" for m in messages):
+        return messages
+    try:
+        from .services.context_assembly_service.system_layer import (
+            build_default_system_message,
+        )
+
+        system_message = await build_default_system_message()
+    except Exception:
+        system_message = None
+    return [system_message, *messages] if system_message else messages
+
+
 async def _run_stream_task_background(stream_id: str, request: StreamTaskRequest) -> None:
     await _run_stream_task_background_helper(
         stream_id,
@@ -112,6 +132,7 @@ async def simple_chat(request: SimpleChatRequest):
                 )
 
         messages = [{"role": m.role, "content": m.content} for m in request.messages]
+        messages = await _prepend_default_system_message(messages)
         provider = request.provider or "auto"
         model = request.model
 
@@ -171,6 +192,8 @@ async def generate(request: GenerateRequest):
                     ),
                 )
             messages = [{"role": "user", "content": prompt}]
+
+        messages = await _prepend_default_system_message(messages)
 
         response = await invoke_provider(
             pid=request.provider or "auto",

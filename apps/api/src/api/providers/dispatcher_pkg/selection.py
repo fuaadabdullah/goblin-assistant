@@ -66,9 +66,16 @@ class SelectionEngine:
                 registry.get(provider_id).success_rate >= dispatcher._routing_min_success_rate
             ):
                 available.append(provider_id)
+
+        # `available` is gated by canary/health/success-rate and can be a
+        # strict subset of `configured_candidates` (e.g. only one or two
+        # providers pass the gate on a cold start). If every gated candidate
+        # fails, still fall through to the rest of the configured list
+        # instead of giving up while known-configured providers sit untried.
+        rest = [p for p in configured_candidates if p not in available]
         return ProviderSelectionPlan(
             explicit_mode=explicit_mode,
-            ordered=available or configured_candidates,
+            ordered=[*available, *rest] if available else configured_candidates,
             routing_mode=routing_mode,
         )
 

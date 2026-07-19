@@ -31,6 +31,10 @@ export const generationMethods = {
 
     if (typeof response?.content === 'string') return response.content;
     const choice = response?.choices?.[0];
-    return choice?.message?.content || response;
+    if (choice?.message?.content) return choice.message.content;
+    if (response?.error) {
+      throw new Error(response.detail || response.error);
+    }
+    return response;
   },
 };
