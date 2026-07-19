@@ -27,7 +27,13 @@ const createStreamHeaders = (token: string | null): Record<string, string> => {
   return headers;
 };
 
-const createStreamBody = ({ conversationId, prompt, provider, model, goblin }: RuntimeStreamRequest) =>
+const createStreamBody = ({
+  conversationId,
+  prompt,
+  provider,
+  model,
+  goblin,
+}: RuntimeStreamRequest) =>
   JSON.stringify({
     conversation_id: conversationId,
     message: prompt,
@@ -39,9 +45,7 @@ const createStreamBody = ({ conversationId, prompt, provider, model, goblin }: R
 const buildMockStreamResponse = (prompt: string): TaskResponse => ({
   result: {
     message:
-      prompt.trim().length > 0
-        ? `Mock response to: ${prompt.slice(0, 120)}`
-        : 'Mock response.',
+      prompt.trim().length > 0 ? `Mock response to: ${prompt.slice(0, 120)}` : 'Mock response.',
   },
   provider: 'mock',
   model: 'mock-gpt',
@@ -91,7 +95,10 @@ const buildTaskResponse = (payload: Record<string, unknown>): TaskResponse => ({
   done: true,
 });
 
-const emitStreamChunk = (payload: Record<string, unknown>, onChunk: (chunk: StreamChunk) => void) => {
+const emitStreamChunk = (
+  payload: Record<string, unknown>,
+  onChunk: (chunk: StreamChunk) => void
+) => {
   const chunkContent =
     typeof payload['content'] === 'string'
       ? payload['content']
@@ -213,7 +220,9 @@ export const streamRuntimeTask = async (
       callbacks.onChunk({
         content:
           typeof mockResponse.result === 'object' && mockResponse.result !== null
-            ? String((mockResponse.result as Record<string, unknown>)['message'] ?? 'Mock response.')
+            ? String(
+                (mockResponse.result as Record<string, unknown>)['message'] ?? 'Mock response.'
+              )
             : 'Mock response.',
         done: true,
         result: mockResponse.result,

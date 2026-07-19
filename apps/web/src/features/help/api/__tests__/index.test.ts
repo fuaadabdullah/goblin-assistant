@@ -16,7 +16,9 @@ describe('help api', () => {
   });
 
   it('preserves backend support errors when available', async () => {
-    vi.mocked(apiClient.sendSupportMessage).mockRejectedValueOnce(new Error('Support inbox unavailable'));
+    vi.mocked(apiClient.sendSupportMessage).mockRejectedValueOnce(
+      new Error('Support inbox unavailable')
+    );
 
     await expect(sendSupportMessage('hello')).rejects.toMatchObject({
       code: 'SUPPORT_MESSAGE_FAILED',

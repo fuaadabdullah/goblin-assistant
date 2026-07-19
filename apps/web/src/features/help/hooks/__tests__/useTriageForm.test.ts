@@ -39,4 +39,3 @@ describe('useTriageForm', () => {
     expect(mockShowError).toHaveBeenCalledWith('Triage failed', 'Triage service unavailable');
   });
 });
-

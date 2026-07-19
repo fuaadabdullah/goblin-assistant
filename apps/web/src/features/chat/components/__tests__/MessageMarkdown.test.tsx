@@ -82,10 +82,7 @@ describe('MessageMarkdown', () => {
     expect(screen.getByText('inline sample')).toHaveClass('bg-surface-hover');
     expect(screen.getByText('TypeScript')).toBeInTheDocument();
     expect(screen.getByRole('link', { name: 'hash link' })).not.toHaveAttribute('target');
-    expect(screen.getByRole('link', { name: 'external link' })).toHaveAttribute(
-      'target',
-      '_blank'
-    );
+    expect(screen.getByRole('link', { name: 'external link' })).toHaveAttribute('target', '_blank');
     expect(screen.getByText('Name')).toBeInTheDocument();
     expect(screen.getByText('Value')).toBeInTheDocument();
   });

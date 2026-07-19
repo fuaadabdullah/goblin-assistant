@@ -40,11 +40,9 @@ const estimateTokenCount = ({
   charCount: number;
   emojiCount: number;
   unicodeCount: number;
-}): number =>
-  Math.max(8, Math.round(charCount / 4 + unicodeCount / 2 + emojiCount * 2));
+}): number => Math.max(8, Math.round(charCount / 4 + unicodeCount / 2 + emojiCount * 2));
 
-const normalizeNumber = (value: number): number =>
-  !isNaN(value) && isFinite(value) ? value : 0;
+const normalizeNumber = (value: number): number => (!isNaN(value) && isFinite(value) ? value : 0);
 
 export function estimateFromText(text: string): TextCostEstimate {
   const cleaned = (text || '').trim();

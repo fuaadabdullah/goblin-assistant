@@ -387,9 +387,7 @@ const DashboardContent: React.FC = () => {
           <div className="mb-4 flex items-center justify-between gap-4">
             <div>
               <h2 className="text-lg font-semibold text-text">Metrics Snapshot</h2>
-              <p className="mt-1 text-sm text-muted">
-                Prometheus exposition from the live API.
-              </p>
+              <p className="mt-1 text-sm text-muted">Prometheus exposition from the live API.</p>
             </div>
             <a
               href="/metrics"

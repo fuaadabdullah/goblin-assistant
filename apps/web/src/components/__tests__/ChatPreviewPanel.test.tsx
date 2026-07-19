@@ -12,8 +12,14 @@ describe('ChatPreviewPanel', () => {
         "Hey Goblin, can you summarize last quarter's revenue and flag anything surprising?"
       )
     ).toBeInTheDocument();
-    expect(screen.getByText('Sure — here\'s a quick summary: revenue up 12% YoY, gross margin improved by 3 pts.')).toBeInTheDocument();
-    expect(screen.getByText('This preview is static — sign in to continue the conversation.')).toBeInTheDocument();
+    expect(
+      screen.getByText(
+        "Sure — here's a quick summary: revenue up 12% YoY, gross margin improved by 3 pts."
+      )
+    ).toBeInTheDocument();
+    expect(
+      screen.getByText('This preview is static — sign in to continue the conversation.')
+    ).toBeInTheDocument();
 
     const signInLinks = screen.getAllByRole('link', {
       name: 'Sign in to continue this conversation',

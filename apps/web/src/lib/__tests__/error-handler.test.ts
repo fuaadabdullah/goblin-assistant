@@ -43,8 +43,6 @@ describe('error handler', () => {
     const handled = handleError(error);
 
     expect(handled.code).toBe('HTTP_503');
-    expect(handled.userMessage).toBe(
-      'Real model runtime is unavailable. Please try again later.'
-    );
+    expect(handled.userMessage).toBe('Real model runtime is unavailable. Please try again later.');
   });
 });

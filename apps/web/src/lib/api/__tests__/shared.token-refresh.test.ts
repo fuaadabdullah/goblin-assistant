@@ -23,7 +23,12 @@ vi.mock('../../supabase', () => ({
 }));
 
 import MockAdapter from 'axios-mock-adapter';
-import { backendHttp, frontendHttp, refreshAccessToken, refreshAccessTokenViaSupabase } from '../http-client';
+import {
+  backendHttp,
+  frontendHttp,
+  refreshAccessToken,
+  refreshAccessTokenViaSupabase,
+} from '../http-client';
 import { authGetSession, authRefreshSession } from '../../supabase';
 
 const mockAuthGetSession = authGetSession as vi.MockedFunction<typeof authGetSession>;

@@ -79,7 +79,9 @@ test.describe('Help: Support submission', () => {
     });
 
     await page.goto('/help');
-    await page.getByPlaceholder('Tell us what you need help with...').fill('The help form is broken');
+    await page
+      .getByPlaceholder('Tell us what you need help with...')
+      .fill('The help form is broken');
     await page.getByRole('button', { name: /send to support/i }).click();
 
     await expect(page.getByRole('heading', { name: 'Support request failed' })).toBeVisible({

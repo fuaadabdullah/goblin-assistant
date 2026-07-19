@@ -26,7 +26,9 @@ describe('apiClient observability methods', () => {
 
     await apiClient.getModelUsage('openai', 'gpt-4o');
 
-    expect(mockGetFrontend).toHaveBeenCalledWith('/api/debug/model-usage?provider=openai&model=gpt-4o');
+    expect(mockGetFrontend).toHaveBeenCalledWith(
+      '/api/debug/model-usage?provider=openai&model=gpt-4o'
+    );
   });
 
   it('getPrometheusMetrics calls the internal metrics route as plaintext', async () => {

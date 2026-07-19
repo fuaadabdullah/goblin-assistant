@@ -9,9 +9,11 @@ describe('/api/[...path] route', () => {
   });
 
   it('forwards auth prefix requests to the backend auth namespace', async () => {
-    const fetchMock = vi.fn().mockResolvedValue(
-      new Response(JSON.stringify({ access_token: 'jwt-token' }), { status: 200 })
-    );
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValue(
+        new Response(JSON.stringify({ access_token: 'jwt-token' }), { status: 200 })
+      );
     vi.stubGlobal('fetch', fetchMock);
 
     const response = await POST(
@@ -34,17 +36,14 @@ describe('/api/[...path] route', () => {
   });
 
   it('forwards costs prefix requests to the routing costs backend namespace', async () => {
-    const fetchMock = vi.fn().mockResolvedValue(
-      new Response(JSON.stringify({ total_cost: 123.45 }), { status: 200 })
-    );
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValue(new Response(JSON.stringify({ total_cost: 123.45 }), { status: 200 }));
     vi.stubGlobal('fetch', fetchMock);
 
-    const response = await GET(
-      new Request('http://localhost/api/costs/summary'),
-      {
-        params: Promise.resolve({ path: ['costs', 'summary'] }),
-      }
-    );
+    const response = await GET(new Request('http://localhost/api/costs/summary'), {
+      params: Promise.resolve({ path: ['costs', 'summary'] }),
+    });
 
     expect(fetchMock).toHaveBeenCalledWith(
       expect.stringContaining('/api/v1/routing/costs/summary'),

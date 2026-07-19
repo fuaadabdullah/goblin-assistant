@@ -20,7 +20,11 @@ import StatusBar from '@/components/StatusBar';
 import PageTransition from '@/components/PageTransition';
 
 function sanitizeDatadogTagValue(value: string | undefined, fallback?: string): string | undefined {
-  const normalized = value?.trim().replace(/[^a-zA-Z0-9_-]+/g, '-').replace(/-+/g, '-').replace(/^[-_]+|[-_]+$/g, '');
+  const normalized = value
+    ?.trim()
+    .replace(/[^a-zA-Z0-9_-]+/g, '-')
+    .replace(/-+/g, '-')
+    .replace(/^[-_]+|[-_]+$/g, '');
   if (normalized) return normalized;
   return fallback;
 }
@@ -42,7 +46,10 @@ function initDatadog() {
   if (!appId || !clientToken) return;
 
   const site = process.env['NEXT_PUBLIC_DD_SITE'] ?? 'datadoghq.com';
-  const env = sanitizeDatadogTagValue(process.env['NEXT_PUBLIC_DD_ENV'] ?? process.env['NODE_ENV'], 'development');
+  const env = sanitizeDatadogTagValue(
+    process.env['NEXT_PUBLIC_DD_ENV'] ?? process.env['NODE_ENV'],
+    'development'
+  );
   const version = sanitizeDatadogTagValue(process.env['NEXT_PUBLIC_DD_VERSION'], '0');
 
   datadogRum.init({

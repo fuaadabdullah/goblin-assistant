@@ -65,7 +65,9 @@ export async function GET() {
     });
   } catch (error) {
     const reason =
-      error instanceof Error && error.name === 'AbortError' ? 'backend_timeout' : 'backend_unreachable';
+      error instanceof Error && error.name === 'AbortError'
+        ? 'backend_timeout'
+        : 'backend_unreachable';
     return NextResponse.json(fallbackHealth(reason), {
       status: 503,
       headers: DEGRADED_HEADERS,

@@ -37,8 +37,7 @@ const HealthStatusDisplay: FC<HealthStatusDisplayProps> = ({ health }) => {
   return (
     <div>
       <p>
-        <strong>Status:</strong>{' '}
-        <span className={statusClass}>{status}</span>
+        <strong>Status:</strong> <span className={statusClass}>{status}</span>
       </p>
       {health.data.timestamp ? (
         <p>

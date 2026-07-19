@@ -67,7 +67,9 @@ export interface ChatSessionState {
  * - useQuickActions: quick prompts and provider selection
  * - useChatThreads: thread list management
  */
-export const useChatSession = ({ loadThreads = true }: { loadThreads?: boolean } = {}): ChatSessionState => {
+export const useChatSession = ({
+  loadThreads = true,
+}: { loadThreads?: boolean } = {}): ChatSessionState => {
   const searchParams = useSearchParams();
   const promptParam = searchParams.get('prompt');
   const hasHydratedRef = useRef(false);

@@ -16,7 +16,9 @@ export const runtimeMethods = {
   },
 
   async getStats(goblin: string): Promise<GoblinStats> {
-    return getFrontend<GoblinStats>(`${INTERNAL_RUNTIME_PREFIX}/stats/${encodeURIComponent(goblin)}`);
+    return getFrontend<GoblinStats>(
+      `${INTERNAL_RUNTIME_PREFIX}/stats/${encodeURIComponent(goblin)}`
+    );
   },
 
   async parseOrchestration(text: string, defaultGoblin?: string): Promise<OrchestrationPlan> {

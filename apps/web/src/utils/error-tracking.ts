@@ -49,7 +49,8 @@ const buildErrorPayload = (error: unknown) => ({
   stack: error instanceof Error ? error.stack : undefined,
 });
 
-const normalizeError = (error: unknown) => (error instanceof Error ? error : new Error(String(error)));
+const normalizeError = (error: unknown) =>
+  error instanceof Error ? error : new Error(String(error));
 
 const rethrowOperationError = (error: unknown, operation: string): never => {
   if (error instanceof Error) {
@@ -60,8 +61,7 @@ const rethrowOperationError = (error: unknown, operation: string): never => {
 };
 
 const createGlobalErrorListener =
-  (type: 'unhandledrejection' | 'uncaughterror') =>
-  (event: PromiseRejectionEvent | ErrorEvent) => {
+  (type: 'unhandledrejection' | 'uncaughterror') => (event: PromiseRejectionEvent | ErrorEvent) => {
     if (type === 'unhandledrejection') {
       const rejectionEvent = event as PromiseRejectionEvent;
       const error = new Error(`Unhandled promise rejection: ${rejectionEvent.reason}`);
@@ -158,7 +158,10 @@ export const withErrorTracking = async <T>(
     const result = await operation();
     const duration = Date.now() - startTime;
 
-    logEvent(`API call completed: ${context.operation}`, buildOperationLogContext(context, duration, true));
+    logEvent(
+      `API call completed: ${context.operation}`,
+      buildOperationLogContext(context, duration, true)
+    );
 
     return result;
   } catch (error) {

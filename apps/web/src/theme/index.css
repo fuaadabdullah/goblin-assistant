@@ -4,11 +4,10 @@
  */
 
 :root {
-  --font-sans:
-    'Avenir Next', Avenir, 'Segoe UI', 'Helvetica Neue', Helvetica, Arial, sans-serif;
+  --font-sans: 'Avenir Next', Avenir, 'Segoe UI', 'Helvetica Neue', Helvetica, Arial, sans-serif;
   --font-display: 'Iowan Old Style', 'Palatino Linotype', 'Book Antiqua', Georgia, serif;
-  --font-mono: 'SFMono-Regular', 'SF Mono', 'Cascadia Mono', Consolas, 'Liberation Mono',
-    Menlo, monospace;
+  --font-mono:
+    'SFMono-Regular', 'SF Mono', 'Cascadia Mono', Consolas, 'Liberation Mono', Menlo, monospace;
 
   /* Neutrals - Warm palette preferred by premium products (Perplexity, Arc) */
   --background: #161008;

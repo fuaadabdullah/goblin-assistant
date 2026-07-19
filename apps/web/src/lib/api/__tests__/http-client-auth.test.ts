@@ -54,9 +54,13 @@ describe('frontend HTTP authentication', () => {
       return [200, { success: true, data: { conversation_id: 'conversation-1' } }];
     });
 
-    await postFrontend('/api/chat/conversations', { title: 'New conversation' }, {
-      headers: { Authorization: 'Bearer legacy-stale' },
-    });
+    await postFrontend(
+      '/api/chat/conversations',
+      { title: 'New conversation' },
+      {
+        headers: { Authorization: 'Bearer legacy-stale' },
+      }
+    );
   });
 
   it('refreshes and retries an expired proxy request once', async () => {

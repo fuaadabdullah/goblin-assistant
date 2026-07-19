@@ -70,9 +70,7 @@ describe('SandboxScreen', () => {
 
   it('passes sandbox state to the view', () => {
     render(<SandboxScreen />);
-    expect(screen.getByTestId('sandbox-view').getAttribute('data-sandbox-state')).toBe(
-      'disabled'
-    );
+    expect(screen.getByTestId('sandbox-view').getAttribute('data-sandbox-state')).toBe('disabled');
   });
 
   it('does not show auth prompt initially', () => {
