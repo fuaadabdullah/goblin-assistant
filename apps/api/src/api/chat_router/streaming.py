@@ -132,6 +132,23 @@ async def generate_chat_stream(
         try:
             conversation = await _cr._require_owned_conversation(conversation_id, current_user)
             messages = [{"role": msg.role, "content": msg.content} for msg in conversation.messages]
+
+            # System + Guardrails (Fixed Cost) layer — same building block the
+            # non-streaming send path uses, so streamed responses get the
+            # GoblinOS identity/guardrails and current date/time grounding
+            # too instead of answering from raw model training data alone.
+            try:
+                from ..services.context_assembly_service.system_layer import (  # noqa: PLC0415
+                    build_default_system_message,
+                )
+
+                _system_message = await build_default_system_message()
+            except Exception:
+                _system_message = None
+
+            if _system_message:
+                messages.insert(0, _system_message)
+
             payload = {
                 "messages": messages,
                 "model": model,

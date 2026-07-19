@@ -22,6 +22,7 @@ export const useMessages = ({
   onThreadUpdated,
   onThreadRemoved,
   onThreadsInvalidated,
+  onThreadSelected,
   backendConversationQuery,
 }: MessagesProps): MessagesState => {
   const { showError, showInfo, showSuccess } = useToast();
@@ -60,6 +61,7 @@ export const useMessages = ({
     onThreadUpdated,
     onThreadRemoved,
     onThreadsInvalidated,
+    onThreadSelected,
     setIsSending,
     showError,
     showInfo,

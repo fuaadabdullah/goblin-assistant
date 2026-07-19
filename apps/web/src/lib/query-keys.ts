@@ -14,6 +14,7 @@ export const queryKeys = {
   routingInfo: ['chat', 'routing-info'] as const,
   chatThreads: ['chat', 'threads'] as const,
   chatConversation: (conversationId: string) => ['chat', 'conversation', conversationId] as const,
+  chatConversationInactive: ['chat', 'conversation', 'inactive'] as const,
 
   // Search
   collections: ['search', 'collections'] as const,

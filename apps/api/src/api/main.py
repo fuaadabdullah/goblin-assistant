@@ -3,6 +3,16 @@
 
 from contextlib import asynccontextmanager
 
+# Load repo-root .env/.env.local before anything else is imported. Modules
+# like providers.dispatcher run their own env-dependent preflight checks at
+# import time (triggered transitively by importing app_factory below), so
+# loading env files any later leaves those checks looking at an incomplete
+# environment — e.g. reporting a provider "unconfigured" only for its
+# root-level credentials to become visible moments after startup.
+from .bootstrap.startup import load_env_files
+
+load_env_files()
+
 from .app_factory import create_app
 from .artifact_cleanup import artifact_cleanup_service
 from .bootstrap.middleware import add_contract_lifecycle_headers  # noqa: F401 — re-exported

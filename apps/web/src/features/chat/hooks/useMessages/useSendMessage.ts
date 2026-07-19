@@ -29,6 +29,7 @@ interface SendMessageDeps {
   onThreadUpdated?: ((thread: ChatThread) => void) | undefined;
   onThreadRemoved?: ((thread: ChatThread) => void) | undefined;
   onThreadsInvalidated?: (() => void) | undefined;
+  onThreadSelected?: ((threadKey: string) => void) | undefined;
   setIsSending: (v: boolean) => void;
   showError: ReturnType<typeof useToast>['showError'];
   showInfo: ReturnType<typeof useToast>['showInfo'];
@@ -76,6 +77,7 @@ export const useSendMessage = ({
   onThreadUpdated,
   onThreadRemoved,
   onThreadsInvalidated,
+  onThreadSelected,
   setIsSending,
   showError,
   showInfo,
@@ -210,6 +212,11 @@ export const useSendMessage = ({
           } as ChatThread);
         }
 
+        // Point the session at the (possibly just-created) backend thread so
+        // the next send in this session reuses it instead of creating a new
+        // conversation every time.
+        onThreadSelected?.(backendThreadKey);
+
         if (shouldPromoteLegacy && activeThread && onThreadRemoved) {
           onThreadRemoved(activeThread);
         }
@@ -259,6 +266,7 @@ export const useSendMessage = ({
       onThreadUpdated,
       onThreadRemoved,
       onThreadsInvalidated,
+      onThreadSelected,
       setIsSending,
       showError,
       showInfo,

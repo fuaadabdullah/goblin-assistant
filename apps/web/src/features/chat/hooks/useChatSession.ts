@@ -93,7 +93,7 @@ export const useChatSession = ({ loadThreads = true }: { loadThreads?: boolean }
   const backendConversationQuery = useQuery({
     queryKey: threadSelection.activeBackendThreadId
       ? queryKeys.chatConversation(threadSelection.activeBackendThreadId)
-      : ['chat', 'conversation', 'inactive'],
+      : queryKeys.chatConversationInactive,
     queryFn: async () => {
       if (!threadSelection.activeBackendThreadId) {
         throw new Error('No active backend thread id');
@@ -129,6 +129,7 @@ export const useChatSession = ({ loadThreads = true }: { loadThreads?: boolean }
     onThreadUpdated: upsertThread,
     onThreadRemoved: removeThread,
     onThreadsInvalidated: invalidateThreads,
+    onThreadSelected: threadSelection.setActiveThreadKey,
     backendConversationQuery,
   });
 

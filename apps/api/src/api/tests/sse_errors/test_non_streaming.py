@@ -7,6 +7,58 @@ from api.chat_router import generate_chat_stream
 from .conftest import _content_events, _error_events, parse_sse_event
 
 
+async def test_streamed_response_includes_system_prompt_and_current_date(
+    authenticated_user,
+    test_conversation,
+):
+    """Regression test: generate_chat_stream() used to send the provider raw
+    conversation turns with no system message at all, so streamed responses
+    had no identity/guardrails and no current-date grounding — the model
+    would answer date-sensitive questions from stale training data alone.
+    """
+    provider_response = {
+        "ok": True,
+        "result": {"text": "Direct response"},
+        "provider": "test-provider",
+        "model": "test-model",
+    }
+    invoke_provider_mock = AsyncMock(return_value=provider_response)
+
+    with (
+        patch(
+            "api.chat_router._require_owned_conversation",
+            return_value=test_conversation,
+        ),
+        patch(
+            "api.chat_router.InputSanitizer.sanitize_chat_message",
+            return_value=("test", None),
+        ),
+        patch(
+            "api.chat_router.conversation_store.add_message_to_conversation",
+            new_callable=AsyncMock,
+        ),
+        patch(
+            "api.chat_router.conversation_store.get_conversation",
+            return_value=test_conversation,
+        ),
+        patch("api.chat_router.invoke_provider", invoke_provider_mock),
+    ):
+        async for _event in generate_chat_stream(
+            message="test",
+            conversation_id="test-conv-id",
+            current_user=authenticated_user,
+        ):
+            pass
+
+    assert invoke_provider_mock.await_count >= 1
+    payload = invoke_provider_mock.await_args.kwargs["payload"]
+    messages = payload["messages"]
+
+    assert messages[0]["role"] == "system"
+    assert "GoblinOS Assistant" in messages[0]["content"]
+    assert "Current UTC date/time:" in messages[0]["content"]
+
+
 async def test_non_streaming_ok_response_emits_content_and_completion(
     authenticated_user,
     test_conversation,

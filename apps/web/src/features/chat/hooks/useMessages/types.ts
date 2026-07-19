@@ -29,6 +29,7 @@ export interface MessagesProps {
   onThreadUpdated?: ((thread: ChatThread) => void) | undefined;
   onThreadRemoved?: ((thread: ChatThread) => void) | undefined;
   onThreadsInvalidated?: (() => void) | undefined;
+  onThreadSelected?: ((threadKey: string) => void) | undefined;
   backendConversationQuery?:
     | {
         isLoading: boolean;
