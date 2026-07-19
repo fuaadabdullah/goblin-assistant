@@ -7,29 +7,22 @@ simple character-based estimate when it is not.
 
 from __future__ import annotations
 
+import functools
+
 import structlog
 
 logger = structlog.get_logger()
 
-_encoding = None
-_fallback_mode = False
 
-
+@functools.lru_cache(maxsize=1)
 def _get_encoding():
     """Lazily load the tiktoken encoding (cached after first call)."""
-    global _encoding, _fallback_mode
-    if _encoding is not None:
-        return _encoding
-    if _fallback_mode:
-        return None
     try:
         import tiktoken
 
-        _encoding = tiktoken.get_encoding("cl100k_base")
-        return _encoding
+        return tiktoken.get_encoding("cl100k_base")
     except Exception as e:  # noqa: BLE001
         logger.warning("tiktoken_unavailable", error=str(e), fallback="len//4")
-        _fallback_mode = True
         return None
 
 
