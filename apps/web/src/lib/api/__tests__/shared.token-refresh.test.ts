@@ -3,32 +3,31 @@
  *
  * The backendHttp axios instance has a response interceptor that:
  * 1. Catches 401 responses
- * 2. Calls the internal auth refresh route once (deduped with a lock)
+ * 2. Calls refreshAccessToken() once (deduped with a lock)
  * 3. Retries the original request with the new token
- * 4. Falls through on internal auth refresh 401 (no infinite loop)
+ * 4. Falls through on failed/absent refresh (no infinite loop)
+ *
+ * Per ADR-0006, refreshAccessToken() is Supabase-only — see
+ * `docs/decisions/2026-07-17-supabase-only-auth.md`. The basic "attach
+ * token" / "retry after successful refresh" paths are covered by
+ * http-client-auth.test.ts; this file covers the remaining interceptor
+ * edge cases (auth-endpoint exclusion, no-double-retry, dedup, error
+ * propagation) plus refreshAccessToken()/refreshAccessTokenViaSupabase()
+ * directly.
  */
 
-// Must be hoisted before any imports so shared.ts picks up the mocks
-vi.mock('../../../utils/auth-session', () => ({
-  getRefreshToken: vi.fn(() => 'refresh-token-abc'),
-  getAuthToken: vi.fn(() => null),
-  persistAuthSession: vi.fn(),
-  clearAuthSession: vi.fn(),
+vi.mock('../../supabase', () => ({
+  authGetSession: vi.fn(),
+  authRefreshSession: vi.fn(),
+  supabaseConfigured: true,
 }));
 
 import MockAdapter from 'axios-mock-adapter';
-import { backendHttp, frontendHttp, refreshAccessToken } from '../shared';
-import * as authSession from '../../../utils/auth-session';
+import { backendHttp, frontendHttp, refreshAccessToken, refreshAccessTokenViaSupabase } from '../http-client';
+import { authGetSession, authRefreshSession } from '../../supabase';
 
-const mockGetRefreshToken = authSession.getRefreshToken as vi.MockedFunction<
-  typeof authSession.getRefreshToken
->;
-const mockPersistAuthSession = authSession.persistAuthSession as vi.MockedFunction<
-  typeof authSession.persistAuthSession
->;
-const mockClearAuthSession = authSession.clearAuthSession as vi.MockedFunction<
-  typeof authSession.clearAuthSession
->;
+const mockAuthGetSession = authGetSession as vi.MockedFunction<typeof authGetSession>;
+const mockAuthRefreshSession = authRefreshSession as vi.MockedFunction<typeof authRefreshSession>;
 
 let mock: MockAdapter;
 let frontendMock: MockAdapter;
@@ -37,7 +36,12 @@ beforeEach(() => {
   mock = new MockAdapter(backendHttp);
   frontendMock = new MockAdapter(frontendHttp);
   vi.clearAllMocks();
-  mockGetRefreshToken.mockReturnValue('refresh-token-abc');
+  mockAuthGetSession.mockResolvedValue({
+    session: { access_token: 'existing-jwt' },
+  } as Awaited<ReturnType<typeof authGetSession>>);
+  mockAuthRefreshSession.mockResolvedValue({
+    session: { access_token: 'refreshed-jwt' },
+  } as Awaited<ReturnType<typeof authRefreshSession>>);
 });
 
 afterEach(() => {
@@ -45,49 +49,43 @@ afterEach(() => {
   frontendMock.restore();
 });
 
-// ---- refreshAccessToken ----------------------------------------------------
+// ---- refreshAccessToken / refreshAccessTokenViaSupabase --------------------
+
+describe('refreshAccessTokenViaSupabase', () => {
+  it('returns the refreshed access token when a session already exists', async () => {
+    const token = await refreshAccessTokenViaSupabase();
+
+    expect(token).toBe('refreshed-jwt');
+    expect(mockAuthRefreshSession).toHaveBeenCalledOnce();
+  });
+
+  it('returns null without attempting a refresh when there is no existing session', async () => {
+    mockAuthGetSession.mockResolvedValue({ session: null } as Awaited<
+      ReturnType<typeof authGetSession>
+    >);
+
+    const token = await refreshAccessTokenViaSupabase();
+
+    expect(token).toBeNull();
+    expect(mockAuthRefreshSession).not.toHaveBeenCalled();
+  });
+
+  it('returns null when the refreshed session has no access token', async () => {
+    mockAuthRefreshSession.mockResolvedValue({ session: null } as Awaited<
+      ReturnType<typeof authRefreshSession>
+    >);
+
+    const token = await refreshAccessTokenViaSupabase();
+
+    expect(token).toBeNull();
+  });
+});
 
 describe('refreshAccessToken', () => {
-  it('returns new access token and persists session on success', async () => {
-    frontendMock.onPost('/api/auth/refresh').reply(200, {
-      access_token: 'new-jwt',
-      refresh_token: 'new-refresh',
-      expires_in: 3600,
-      user: { id: 'u1', email: 'test@example.com' },
-    });
-
+  it('delegates to refreshAccessTokenViaSupabase', async () => {
     const token = await refreshAccessToken();
 
-    expect(token).toBe('new-jwt');
-    expect(mockPersistAuthSession).toHaveBeenCalledWith(
-      expect.objectContaining({ token: 'new-jwt' })
-    );
-  });
-
-  it('returns null and clears session when refresh endpoint returns 401', async () => {
-    frontendMock.onPost('/api/auth/refresh').reply(401, { detail: 'refresh token expired' });
-
-    const token = await refreshAccessToken();
-
-    expect(token).toBeNull();
-    expect(mockClearAuthSession).toHaveBeenCalled();
-  });
-
-  it('returns null when response body has no access_token', async () => {
-    frontendMock.onPost('/api/auth/refresh').reply(200, { access_token: null });
-
-    const token = await refreshAccessToken();
-
-    expect(token).toBeNull();
-  });
-
-  it('returns null and clears session on network error', async () => {
-    frontendMock.onPost('/api/auth/refresh').networkError();
-
-    const token = await refreshAccessToken();
-
-    expect(token).toBeNull();
-    expect(mockClearAuthSession).toHaveBeenCalled();
+    expect(token).toBe('refreshed-jwt');
   });
 });
 
@@ -95,10 +93,6 @@ describe('refreshAccessToken', () => {
 
 describe('backendHttp 401 interceptor', () => {
   it('retries original request after successful token refresh', async () => {
-    frontendMock.onPost('/api/auth/refresh').reply(200, {
-      access_token: 'refreshed-jwt',
-      expires_in: 3600,
-    });
     mock
       .onGet('/api/protected')
       .replyOnce(401, { detail: 'Unauthorized' })
@@ -111,30 +105,31 @@ describe('backendHttp 401 interceptor', () => {
     expect(response.data).toEqual({ data: 'secret' });
   });
 
-  it('does NOT retry /api/auth/refresh on 401 (prevents infinite loop)', async () => {
-    frontendMock.onPost('/api/auth/refresh').reply(401, { detail: 'Refresh token expired' });
+  it('does NOT retry auth endpoints on 401 (prevents infinite loop)', async () => {
+    mock.onPost('/api/auth/login').reply(401, { detail: 'Invalid credentials' });
 
-    await expect(frontendHttp.post('/api/auth/refresh', {})).rejects.toMatchObject({
+    await expect(backendHttp.post('/api/auth/login', {})).rejects.toMatchObject({
       response: { status: 401 },
     });
-    expect(frontendMock.history.post.filter((r) => r.url === '/api/auth/refresh')).toHaveLength(1);
+    expect(mockAuthRefreshSession).not.toHaveBeenCalled();
   });
 
   it('does NOT retry a request a second time (_retry flag)', async () => {
-    frontendMock.onPost('/api/auth/refresh').reply(200, { access_token: 'new-jwt', expires_in: 3600 });
     mock.onGet('/api/protected').reply(401, { detail: 'Unauthorized' });
 
     await expect(backendHttp.get('/api/protected')).rejects.toMatchObject({
       response: { status: 401 },
     });
     // Refresh attempted once
-    expect(frontendMock.history.post.filter((r) => r.url === '/api/auth/refresh')).toHaveLength(1);
+    expect(mockAuthRefreshSession).toHaveBeenCalledOnce();
     // Endpoint hit twice: original + one retry
     expect(mock.history.get.filter((r) => r.url === '/api/protected')).toHaveLength(2);
   });
 
   it('propagates error when refresh returns no token', async () => {
-    frontendMock.onPost('/api/auth/refresh').reply(200, { access_token: null });
+    mockAuthRefreshSession.mockResolvedValue({ session: null } as Awaited<
+      ReturnType<typeof authRefreshSession>
+    >);
     mock.onGet('/api/protected').reply(401, { detail: 'Unauthorized' });
 
     await expect(backendHttp.get('/api/protected')).rejects.toMatchObject({
@@ -148,15 +143,10 @@ describe('backendHttp 401 interceptor', () => {
     await expect(backendHttp.get('/api/data')).rejects.toMatchObject({
       response: { status: 500 },
     });
-    expect(frontendMock.history.post.filter((r) => r.url === '/api/auth/refresh')).toHaveLength(0);
+    expect(mockAuthRefreshSession).not.toHaveBeenCalled();
   });
 
-  it('deduplicates concurrent refresh calls (only one /api/auth/refresh request)', async () => {
-    let refreshCount = 0;
-    frontendMock.onPost('/api/auth/refresh').reply(() => {
-      refreshCount++;
-      return [200, { access_token: `token-${refreshCount}`, expires_in: 3600 }];
-    });
+  it('deduplicates concurrent refresh calls (only one Supabase refresh call)', async () => {
     mock
       .onGet('/api/a')
       .replyOnce(401, { detail: 'Unauthorized' })
@@ -170,6 +160,6 @@ describe('backendHttp 401 interceptor', () => {
 
     await Promise.all([backendHttp.get('/api/a'), backendHttp.get('/api/b')]);
 
-    expect(refreshCount).toBe(1);
+    expect(mockAuthRefreshSession).toHaveBeenCalledOnce();
   });
 });

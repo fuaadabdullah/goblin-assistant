@@ -5,15 +5,10 @@
  * Extracted from the former shared.ts modularization.
  */
 
-import axios, { AxiosError, type AxiosRequestConfig, type InternalAxiosRequestConfig } from 'axios';
+import axios, { type AxiosError, type AxiosRequestConfig, type InternalAxiosRequestConfig } from 'axios';
 export { V1_API_PREFIX } from '@goblin/shared';
 import { env } from '../../config/env';
-import {
-  clearAuthSession,
-  getAuthToken,
-  getRefreshToken,
-  persistAuthSession,
-} from '../../utils/auth-session';
+import { getAuthToken } from '../../utils/auth-session';
 
 // ============================================================================
 // Constants
@@ -50,35 +45,7 @@ const loadSupabaseAuthHelpers = async () => {
   return { authGetSession, authRefreshSession, supabaseConfigured };
 };
 
-const refreshAccessTokenViaBackend = async (refreshToken: string | null): Promise<string | null> => {
-  try {
-    const response = await frontendHttp.post<{
-      access_token: string;
-      refresh_token?: string;
-      expires_in?: number;
-      user?: Record<string, unknown>;
-    }>(`${INTERNAL_AUTH_PREFIX}/refresh`, {
-      refresh_token: refreshToken ?? undefined,
-    });
-
-    const accessToken = response.data?.access_token ?? null;
-    if (!accessToken) return null;
-
-    persistAuthSession({
-      token: accessToken,
-      refreshToken: response.data?.refresh_token ?? refreshToken,
-      user: response.data?.user,
-      expiresIn: response.data?.expires_in,
-    });
-
-    return accessToken;
-  } catch {
-    clearAuthSession();
-    return null;
-  }
-};
-
-const refreshAccessTokenViaSupabase = async (): Promise<string | null> => {
+export const refreshAccessTokenViaSupabase = async (): Promise<string | null> => {
   const { authGetSession, authRefreshSession, supabaseConfigured } = await loadSupabaseAuthHelpers();
 
   if (!supabaseConfigured) return null;
@@ -131,14 +98,14 @@ type RetryableRequestConfig = AxiosRequestConfig & { _retry?: boolean };
 
 let refreshPromise: Promise<string | null> | null = null;
 
+/**
+ * Refresh the access token using Supabase.
+ *
+ * Per ADR-0006, authentication is Supabase-only. The legacy backend refresh
+ * endpoint has been removed to consolidate on a single auth source of truth.
+ */
 export const refreshAccessToken = async (): Promise<string | null> => {
-  // Supabase sessions refresh through the Supabase client, not the legacy
-  // backend endpoint — hitting /auth/refresh with no legacy session would
-  // fail and wipe the auth cookies mid-session.
-  const supabaseToken = await refreshAccessTokenViaSupabase();
-  if (supabaseToken) return supabaseToken;
-
-  return refreshAccessTokenViaBackend(getRefreshToken());
+  return refreshAccessTokenViaSupabase();
 };
 
 const attachAccessTokenRefreshInterceptor = (client: typeof backendHttp): void => {
