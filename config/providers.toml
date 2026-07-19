@@ -721,7 +721,7 @@ content_policy_fallbacks = ["gemini-2.5-flash"]
 [[router_models."router-code".backends]]
 provider_id       = "dashscope"
 litellm_provider   = "dashscope"
-model             = "qwen3-coder"
+model             = "qwen3-coder-flash"
 api_key_env       = "DASHSCOPE_API_KEY"
 endpoint_env      = "DASHSCOPE_ENDPOINT"
 order             = 1

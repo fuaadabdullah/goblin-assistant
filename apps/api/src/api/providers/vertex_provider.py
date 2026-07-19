@@ -79,8 +79,17 @@ def _configure_google_credentials() -> None:
     """
 
     existing = os.getenv("GOOGLE_APPLICATION_CREDENTIALS", "").strip()
-    if existing and Path(existing).exists():
-        return
+    if existing:
+        try:
+            if Path(existing).exists():
+                return
+        except OSError:
+            # Inline JSON/base64 credential content can exceed the
+            # filesystem's NAME_MAX for a single path component (e.g.
+            # Linux's 255-byte limit) — Path.exists() raises instead of
+            # returning False in that case. Fall through and treat
+            # `existing` as inline credential content below.
+            pass
 
     for payload in _collect_credential_payloads():
         decoded = _parse_google_credentials_payload(payload)

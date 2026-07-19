@@ -134,8 +134,16 @@ def _resolve_vertex_location(backend: RouterBackend) -> str:
 def _normalize_vertex_credentials(raw_value: str) -> str:
     if not raw_value:
         return ""
-    if Path(raw_value).exists():
-        return raw_value
+    try:
+        if Path(raw_value).exists():
+            return raw_value
+    except OSError:
+        # Inline JSON/base64 credential content can exceed the filesystem's
+        # NAME_MAX for a single path component (e.g. Linux's 255-byte
+        # limit) — Path.exists() raises instead of returning False in that
+        # case. Treat that as "not a path" and keep evaluating raw_value as
+        # inline credential content below.
+        pass
     if raw_value.startswith("{"):
         try:
             parsed = json.loads(raw_value)
