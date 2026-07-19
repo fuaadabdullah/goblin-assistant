@@ -173,6 +173,18 @@ def test_build_model_list_uses_cost_based_weights(tmp_path, monkeypatch):
         tmp_path / "vertex-sa.json"
     )
 
+    # Regression: VERTEX_AI_LOCATION/VERTEX_AI_PROJECT/GOOGLE_APPLICATION_CREDENTIALS
+    # are process-global env vars, not scoped to the vertex_ai backend. Before this
+    # fix, _resolve_vertex_location()/_resolve_vertex_credentials() fell back to
+    # them unconditionally for every backend, so the dashscope deployment's
+    # litellm_params ended up polluted with irrelevant vertex_location/
+    # vertex_credentials keys — which broke LiteLLM's dashscope request
+    # construction (reproduced live: it 404'd instead of hitting the configured
+    # api_base's /chat/completions path).
+    assert "vertex_project" not in cheap_entries[0]["litellm_params"]
+    assert "vertex_location" not in cheap_entries[0]["litellm_params"]
+    assert "vertex_credentials" not in cheap_entries[0]["litellm_params"]
+
 
 @pytest.mark.asyncio
 async def test_route_logical_model_uses_group_specific_router_kwargs(tmp_path, monkeypatch):

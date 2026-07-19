@@ -637,17 +637,18 @@ def build_model_list(provider_toml: Optional[ProviderToml] = None) -> List[Dict[
             if api_base:
                 litellm_params["api_base"] = api_base
 
-            vertex_project = _resolve_env_value(backend.project_env)
-            if vertex_project:
-                litellm_params["vertex_project"] = vertex_project
+            if backend.litellm_provider == "vertex_ai":
+                vertex_project = _resolve_env_value(backend.project_env)
+                if vertex_project:
+                    litellm_params["vertex_project"] = vertex_project
 
-            vertex_location = _resolve_vertex_location(backend)
-            if vertex_location:
-                litellm_params["vertex_location"] = vertex_location
+                vertex_location = _resolve_vertex_location(backend)
+                if vertex_location:
+                    litellm_params["vertex_location"] = vertex_location
 
-            vertex_credentials = _resolve_vertex_credentials(backend)
-            if vertex_credentials:
-                litellm_params["vertex_credentials"] = vertex_credentials
+                vertex_credentials = _resolve_vertex_credentials(backend)
+                if vertex_credentials:
+                    litellm_params["vertex_credentials"] = vertex_credentials
 
             if backend.order > 0:
                 litellm_params["order"] = backend.order
