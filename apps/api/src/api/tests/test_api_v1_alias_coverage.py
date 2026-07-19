@@ -41,27 +41,24 @@ def test_checked_in_route_manifest_stays_aligned_with_key_contracts():
                 if method not in {"HEAD", "OPTIONS"}:
                     live_routes.add((method, route.path))
 
+    # Routing is a hard cutover to /api/v1 (see commit 0ed53d09) — routes.json
+    # confirms compatibility_aliases: [] for all of these, so there is no bare
+    # (unprefixed) path to check for in the checked-in OpenAPI schema either.
     critical_routes = {
-        ("GET", "/api/v1/health", "/health"),
-        ("GET", "/api/v1/providers/models", "/providers/models"),
-        ("PUT", "/api/v1/account/preferences", "/account/preferences"),
-        ("POST", "/api/v1/support/message", "/support/message"),
-        ("GET", "/api/v1/settings/", "/api/v1/settings/"),
+        ("GET", "/api/v1/health"),
+        ("GET", "/api/v1/providers/models"),
+        ("PUT", "/api/v1/account/preferences"),
+        ("POST", "/api/v1/support/message"),
+        ("GET", "/api/v1/settings/"),
     }
 
     missing_manifest = sorted(
-        (method, path)
-        for method, path, _ in critical_routes
-        if (method, path) not in manifest_routes
+        (method, path) for method, path in critical_routes if (method, path) not in manifest_routes
     )
     missing_live = sorted(
-        (method, path) for method, path, _ in critical_routes if (method, path) not in live_routes
+        (method, path) for method, path in critical_routes if (method, path) not in live_routes
     )
-    missing_openapi = sorted(
-        logical_path
-        for _, _, logical_path in critical_routes
-        if logical_path not in openapi["paths"]
-    )
+    missing_openapi = sorted(path for _, path in critical_routes if path not in openapi["paths"])
 
     assert not missing_manifest, (
         f"Missing critical routes from checked-in manifest: {missing_manifest}"
@@ -82,4 +79,4 @@ def test_checked_in_route_manifest_stays_aligned_with_key_contracts():
     assert providers_v1["canonical_path"] == "/api/v1/providers/models"
     assert routing_legacy["deprecated"] is True
     assert routing_legacy["replacement_path"] == "/api/v1/providers/models"
-    assert openapi["paths"]["/routing/providers"]["get"]["deprecated"] is True
+    assert openapi["paths"]["/api/v1/routing/providers"]["get"]["deprecated"] is True
