@@ -636,13 +636,6 @@ def build_model_list(provider_toml: Optional[ProviderToml] = None) -> List[Dict[
             api_base = _resolve_env_value(backend.endpoint_env)
             if api_base:
                 litellm_params["api_base"] = api_base
-            if backend.provider_id == "dashscope":
-                logger.warning(
-                    "DEBUG_TRACE_dashscope_api_base",
-                    endpoint_env=backend.endpoint_env,
-                    api_base=api_base,
-                    api_base_repr=repr(api_base),
-                )
 
             if backend.litellm_provider == "vertex_ai":
                 vertex_project = _resolve_env_value(backend.project_env)
