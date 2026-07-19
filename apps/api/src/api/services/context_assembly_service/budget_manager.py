@@ -33,6 +33,7 @@ def load_budget_config() -> ContextBudget:
     try:
         total_tokens = int(os.getenv("CONTEXT_WINDOW_SIZE", "8000"))
         system_tokens = int(os.getenv("SYSTEM_TOKENS", "300"))
+        profile_tokens = int(os.getenv("PROFILE_TOKENS", "200"))
         long_term_tokens = int(os.getenv("LONG_TERM_TOKENS", "300"))
         working_memory_tokens = int(os.getenv("WORKING_MEMORY_TOKENS", "700"))
         semantic_retrieval_tokens = int(os.getenv("SEMANTIC_RETRIEVAL_TOKENS", "1200"))
@@ -40,6 +41,7 @@ def load_budget_config() -> ContextBudget:
         return ContextBudget(
             total_tokens=total_tokens,
             system_tokens=system_tokens,
+            profile_tokens=profile_tokens,
             long_term_tokens=long_term_tokens,
             working_memory_tokens=working_memory_tokens,
             semantic_retrieval_tokens=semantic_retrieval_tokens,
@@ -111,27 +113,62 @@ def derive_budget(
     scale = usable_tokens / base_total
 
     system_tokens = max(80, int(default_budget.system_tokens * scale))
+    profile_tokens = max(80, int(default_budget.profile_tokens * scale))
     long_term_tokens = max(80, int(default_budget.long_term_tokens * scale))
     working_memory_tokens = max(120, int(default_budget.working_memory_tokens * scale))
     semantic_retrieval_tokens = max(240, int(default_budget.semantic_retrieval_tokens * scale))
 
-    fixed = system_tokens + long_term_tokens + working_memory_tokens + semantic_retrieval_tokens
+    fixed = (
+        system_tokens
+        + profile_tokens
+        + long_term_tokens
+        + working_memory_tokens
+        + semantic_retrieval_tokens
+    )
     if fixed >= usable_tokens:
         shrink = max(0.3, usable_tokens / max(1, fixed))
         system_tokens = max(64, int(system_tokens * shrink))
+        profile_tokens = max(64, int(profile_tokens * shrink))
         long_term_tokens = max(64, int(long_term_tokens * shrink))
         working_memory_tokens = max(96, int(working_memory_tokens * shrink))
         semantic_retrieval_tokens = max(128, int(semantic_retrieval_tokens * shrink))
 
+        # Per-layer floors above can each win independently, so the shrunk
+        # total can still exceed usable_tokens (e.g. many layers all
+        # clamped to their minimum at once). Rescale proportionally,
+        # without floors this time, so the fixed-cost layers never exceed
+        # the budget — ephemeral memory is the only layer allowed to hit 0.
+        floored_total = (
+            system_tokens
+            + profile_tokens
+            + long_term_tokens
+            + working_memory_tokens
+            + semantic_retrieval_tokens
+        )
+        if floored_total > usable_tokens:
+            rescale = usable_tokens / floored_total
+            system_tokens = int(system_tokens * rescale)
+            profile_tokens = int(profile_tokens * rescale)
+            long_term_tokens = int(long_term_tokens * rescale)
+            working_memory_tokens = int(working_memory_tokens * rescale)
+            semantic_retrieval_tokens = int(semantic_retrieval_tokens * rescale)
+
     ephemeral_tokens = max(
         0,
         usable_tokens
-        - (system_tokens + long_term_tokens + working_memory_tokens + semantic_retrieval_tokens),
+        - (
+            system_tokens
+            + profile_tokens
+            + long_term_tokens
+            + working_memory_tokens
+            + semantic_retrieval_tokens
+        ),
     )
 
     return ContextBudget(
         total_tokens=usable_tokens,
         system_tokens=system_tokens,
+        profile_tokens=profile_tokens,
         long_term_tokens=long_term_tokens,
         working_memory_tokens=working_memory_tokens,
         semantic_retrieval_tokens=semantic_retrieval_tokens,
