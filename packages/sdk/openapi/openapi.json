@@ -3366,7 +3366,7 @@
             "title": "Provider"
           },
           "retrieval_k": {
-            "default": 10,
+            "default": 5,
             "title": "Retrieval K",
             "type": "integer"
           },
@@ -5139,7 +5139,7 @@
         "title": "StreamTaskRequest",
         "type": "object"
       },
-      "api__routes__stream_router__StreamTaskRequest": {
+      "api__stream_router__StreamTaskRequest": {
         "description": "Request model for streaming task execution",
         "properties": {
           "messages": {
@@ -11280,51 +11280,6 @@
         ]
       }
     },
-    "/api/v1/routing/explain/{routing_id}": {
-      "get": {
-        "description": "Return why a given routing decision picked its provider.\n\nBacked by the in-memory explanation cache populated on every\nProviderSelectionModel.score() call \u2014 see routing/provider_selection.py.\nExplanations are bounded and evicted FIFO, so old routing_ids 404.",
-        "operationId": "explain_routing_decision_api_v1_routing_explain__routing_id__get",
-        "parameters": [
-          {
-            "in": "path",
-            "name": "routing_id",
-            "required": true,
-            "schema": {
-              "title": "Routing Id",
-              "type": "string"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "additionalProperties": true,
-                  "title": "Response Explain Routing Decision Api V1 Routing Explain  Routing Id  Get",
-                  "type": "object"
-                }
-              }
-            },
-            "description": "Successful Response"
-          },
-          "422": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
-                }
-              }
-            },
-            "description": "Validation Error"
-          }
-        },
-        "summary": "Explain Routing Decision",
-        "tags": [
-          "routing"
-        ]
-      }
-    },
     "/api/v1/routing/health": {
       "get": {
         "operationId": "get_provider_health_api_v1_routing_health_get",
@@ -11387,52 +11342,6 @@
           }
         },
         "summary": "Get Provider Health Detail",
-        "tags": [
-          "routing-analytics"
-        ]
-      }
-    },
-    "/api/v1/routing/observability": {
-      "get": {
-        "description": "Dashboard-ready routing observability snapshot.",
-        "operationId": "get_routing_observability_api_v1_routing_observability_get",
-        "parameters": [
-          {
-            "in": "query",
-            "name": "limit",
-            "required": false,
-            "schema": {
-              "default": 100,
-              "title": "Limit",
-              "type": "integer"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "additionalProperties": true,
-                  "title": "Response Get Routing Observability Api V1 Routing Observability Get",
-                  "type": "object"
-                }
-              }
-            },
-            "description": "Successful Response"
-          },
-          "422": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
-                }
-              }
-            },
-            "description": "Validation Error"
-          }
-        },
-        "summary": "Get Routing Observability",
         "tags": [
           "routing-analytics"
         ]
@@ -12917,7 +12826,7 @@
             "name": "k",
             "required": false,
             "schema": {
-              "default": 10,
+              "default": 5,
               "title": "K",
               "type": "integer"
             }
@@ -13175,7 +13084,7 @@
             "name": "k",
             "required": false,
             "schema": {
-              "default": 10,
+              "default": 5,
               "title": "K",
               "type": "integer"
             }
@@ -13481,7 +13390,7 @@
           "content": {
             "application/json": {
               "schema": {
-                "$ref": "#/components/schemas/api__routes__stream_router__StreamTaskRequest"
+                "$ref": "#/components/schemas/api__stream_router__StreamTaskRequest"
               }
             }
           },
