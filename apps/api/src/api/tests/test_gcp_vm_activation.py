@@ -5,6 +5,7 @@ from pathlib import Path
 
 import pytest
 
+from api.providers import vertex_provider
 from api.providers.base import ProviderResult
 from api.providers.dispatcher import ProviderDispatcher
 from api.providers.provider_config_runtime import ProviderToml
@@ -60,3 +61,30 @@ async def test_gcp_vm_vertex_default_model_routes_real_provider(monkeypatch) -> 
     assert result.ok is True
     assert result.provider == "gcp_vm"
     assert result.model == "gemini-2.5-flash"
+
+
+def test_configure_google_credentials_survives_name_too_long(monkeypatch, tmp_path):
+    """Regression test: inline JSON credential content set directly as
+    GOOGLE_APPLICATION_CREDENTIALS is long enough to exceed a single path
+    component's NAME_MAX on Linux (e.g. ext4's 255-byte limit), so
+    Path.exists() raises OSError[ENAMETOOLONG] instead of returning False.
+    Reproduced on Render; not reproducible on macOS for the same string."""
+    credentials_json = (
+        '{"type": "authorized_user", "client_id": "test", '
+        '"client_secret": "test", "refresh_token": "test"}'
+    )
+    monkeypatch.setenv("GOOGLE_APPLICATION_CREDENTIALS", credentials_json)
+    monkeypatch.delenv("VERTEX_AI_SERVICE_ACCOUNT_JSON", raising=False)
+    monkeypatch.delenv("GCP_SERVICE_ACCOUNT_KEY", raising=False)
+
+    service_account_file = tmp_path / "vertex_service_account.json"
+    monkeypatch.setattr(vertex_provider, "_VERTEX_SERVICE_ACCOUNT_FILE", service_account_file)
+
+    def _raise_name_too_long(self):
+        raise OSError(36, "File name too long")
+
+    monkeypatch.setattr(vertex_provider.Path, "exists", _raise_name_too_long)
+
+    vertex_provider._configure_google_credentials()
+
+    assert service_account_file.read_text(encoding="utf-8") == credentials_json

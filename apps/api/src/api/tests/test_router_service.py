@@ -173,6 +173,18 @@ def test_build_model_list_uses_cost_based_weights(tmp_path, monkeypatch):
         tmp_path / "vertex-sa.json"
     )
 
+    # Regression: VERTEX_AI_LOCATION/VERTEX_AI_PROJECT/GOOGLE_APPLICATION_CREDENTIALS
+    # are process-global env vars, not scoped to the vertex_ai backend. Before this
+    # fix, _resolve_vertex_location()/_resolve_vertex_credentials() fell back to
+    # them unconditionally for every backend, so the dashscope deployment's
+    # litellm_params ended up polluted with irrelevant vertex_location/
+    # vertex_credentials keys — which broke LiteLLM's dashscope request
+    # construction (reproduced live: it 404'd instead of hitting the configured
+    # api_base's /chat/completions path).
+    assert "vertex_project" not in cheap_entries[0]["litellm_params"]
+    assert "vertex_location" not in cheap_entries[0]["litellm_params"]
+    assert "vertex_credentials" not in cheap_entries[0]["litellm_params"]
+
 
 @pytest.mark.asyncio
 async def test_route_logical_model_uses_group_specific_router_kwargs(tmp_path, monkeypatch):
@@ -425,3 +437,26 @@ async def test_route_logical_model_kill_switch_falls_back_from_router_reason(tmp
     assert response["routing"]["logical_model"] == "router-code"
     assert response["routing"]["cost_control"]["disabled"] is True
     guard_event.assert_called_once()
+
+
+def test_normalize_vertex_credentials_survives_name_too_long(monkeypatch):
+    """Regression test: inline JSON/base64 credential content is long enough
+    to exceed a single path component's NAME_MAX on Linux (e.g. ext4's
+    255-byte limit), so Path.exists() raises OSError[ENAMETOOLONG] instead
+    of returning False. This previously propagated uncaught, breaking
+    Vertex AI credential resolution in any Linux deployment even when the
+    credential JSON itself was valid (reproduced on Render; not reproducible
+    on macOS, where the same-length string doesn't trip the OS check)."""
+    credentials_json = (
+        '{"type": "authorized_user", "client_id": "test", '
+        '"client_secret": "test", "refresh_token": "test"}'
+    )
+
+    def _raise_name_too_long(self):
+        raise OSError(36, "File name too long")
+
+    monkeypatch.setattr(router_service.Path, "exists", _raise_name_too_long)
+
+    result = router_service._normalize_vertex_credentials(credentials_json)
+
+    assert result == credentials_json

@@ -134,8 +134,16 @@ def _resolve_vertex_location(backend: RouterBackend) -> str:
 def _normalize_vertex_credentials(raw_value: str) -> str:
     if not raw_value:
         return ""
-    if Path(raw_value).exists():
-        return raw_value
+    try:
+        if Path(raw_value).exists():
+            return raw_value
+    except OSError:
+        # Inline JSON/base64 credential content can exceed the filesystem's
+        # NAME_MAX for a single path component (e.g. Linux's 255-byte
+        # limit) — Path.exists() raises instead of returning False in that
+        # case. Treat that as "not a path" and keep evaluating raw_value as
+        # inline credential content below.
+        pass
     if raw_value.startswith("{"):
         try:
             parsed = json.loads(raw_value)
@@ -629,17 +637,18 @@ def build_model_list(provider_toml: Optional[ProviderToml] = None) -> List[Dict[
             if api_base:
                 litellm_params["api_base"] = api_base
 
-            vertex_project = _resolve_env_value(backend.project_env)
-            if vertex_project:
-                litellm_params["vertex_project"] = vertex_project
+            if backend.litellm_provider == "vertex_ai":
+                vertex_project = _resolve_env_value(backend.project_env)
+                if vertex_project:
+                    litellm_params["vertex_project"] = vertex_project
 
-            vertex_location = _resolve_vertex_location(backend)
-            if vertex_location:
-                litellm_params["vertex_location"] = vertex_location
+                vertex_location = _resolve_vertex_location(backend)
+                if vertex_location:
+                    litellm_params["vertex_location"] = vertex_location
 
-            vertex_credentials = _resolve_vertex_credentials(backend)
-            if vertex_credentials:
-                litellm_params["vertex_credentials"] = vertex_credentials
+                vertex_credentials = _resolve_vertex_credentials(backend)
+                if vertex_credentials:
+                    litellm_params["vertex_credentials"] = vertex_credentials
 
             if backend.order > 0:
                 litellm_params["order"] = backend.order
