@@ -1,6 +1,9 @@
+import importlib
 import ssl
+import sys
+from contextlib import contextmanager
 from types import SimpleNamespace
-from unittest.mock import AsyncMock
+from unittest.mock import AsyncMock, patch
 from urllib.parse import parse_qs, urlencode
 
 import pytest
@@ -10,6 +13,27 @@ from sqlalchemy.schema import CreateTable
 
 from api.storage import database
 from api.storage.models import UserModel, UserSessionModel
+
+# ---------------------------------------------------------------------------
+# Helper: reload api.storage.database with a specific DATABASE_URL
+# ---------------------------------------------------------------------------
+
+
+@contextmanager
+def _reload_db_with_url(url: str):
+    """Reload api.storage.database with *url* as DATABASE_URL, restore afterwards."""
+    mod_name = "api.storage.database"
+    old_module = sys.modules.get(mod_name)
+    with patch.dict("os.environ", {"DATABASE_URL": url}, clear=False):
+        fresh = importlib.import_module(mod_name)
+        importlib.reload(fresh)
+        try:
+            yield fresh
+        finally:
+            if old_module is not None:
+                sys.modules[mod_name] = old_module
+            else:
+                sys.modules.pop(mod_name, None)
 
 
 @pytest.mark.asyncio
@@ -414,3 +438,67 @@ def test_build_connect_args_preserves_other_query_params():
     assert connect_args == {}
     assert "foo=bar" in cleaned_url
     assert "baz=qux" in cleaned_url
+
+
+# ---------------------------------------------------------------------------
+# Reload-based tests — exercise module-level branches (lines 29, 39, 87-98,
+# 102, 115) that only fire when DATABASE_URL is set to a specific value
+# before import.
+# ---------------------------------------------------------------------------
+
+
+def test_heroku_postgres_url_normalized_at_module_level():
+    """Line 29: postgres:// → postgresql+asyncpg:// rewrite fires at import."""
+    with _reload_db_with_url("postgres://user:pass@db.example.com/mydb") as m:
+        assert m.DATABASE_URL.startswith("postgresql+asyncpg://")
+        assert "postgres://" not in m.DATABASE_URL
+
+
+def test_supabase_postgresql_url_normalized_at_module_level():
+    """Line 39: postgresql:// (non-asyncpg) → postgresql+asyncpg:// fires at import."""
+    with _reload_db_with_url("postgresql://user:pass@db.example.com/mydb") as m:
+        assert m.DATABASE_URL.startswith("postgresql+asyncpg://")
+
+
+def test_sslmode_stripped_from_url_and_ssl_context_built():
+    """Lines 87-98 (True path): sslmode is extracted, ssl context wired into connect_args."""
+    url = "postgresql+asyncpg://user:pass@db.example.com/mydb?sslmode=disable"
+    with _reload_db_with_url(url) as m:
+        assert "sslmode" not in m.DATABASE_URL
+        assert m.connect_args.get("ssl") is False
+
+
+def test_sslmode_stripped_non_empty_remaining_params():
+    """Lines 93-94 (True branch): extra query params kept after sslmode is popped."""
+    url = "postgresql+asyncpg://user:pass@db.example.com/mydb?sslmode=disable&connect_timeout=10"
+    with _reload_db_with_url(url) as m:
+        assert "sslmode" not in m.DATABASE_URL
+        assert "connect_timeout=10" in m.DATABASE_URL
+
+
+def test_no_sslmode_no_question_mark_url_unchanged():
+    """Lines 87-96 (False ssl branch): plain postgresql URL has no sslmode to strip."""
+    url = "postgresql+asyncpg://user:pass@db.example.com/mydb"
+    with _reload_db_with_url(url) as m:
+        assert url == m.DATABASE_URL
+        assert "ssl" not in m.connect_args
+
+
+def test_password_in_url_triggers_warning_branch(capsys):
+    """Line 102: URL containing 'password' causes structlog warning (written to stdout)."""
+    url = "postgresql+asyncpg://admin:password@db.example.com/mydb"
+    with _reload_db_with_url(url) as m:
+        # Verify the warning branch was reached — structlog writes JSON to stdout.
+        out = capsys.readouterr().out
+        assert "password" in out
+        assert m.is_postgres is True
+
+
+def test_postgres_engine_uses_pool_kwargs():
+    """Line 115: is_postgres=True → AsyncAdaptedQueuePool kwargs applied to engine."""
+    from sqlalchemy.pool import AsyncAdaptedQueuePool
+
+    url = "postgresql+asyncpg://user:pass@db.example.com/mydb"
+    with _reload_db_with_url(url) as m:
+        assert m.is_postgres is True
+        assert isinstance(m.engine.pool, AsyncAdaptedQueuePool)
