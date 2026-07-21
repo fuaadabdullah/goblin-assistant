@@ -51,16 +51,18 @@ jobs:
         with:
           version: 9
 
+      - name: Install uv
+        uses: astral-sh/setup-uv@v4
+
       - name: Setup Python
         uses: actions/setup-python@v5
         with:
           python-version: '3.11'
-          cache: 'pip'
 
       - name: Install dependencies
         run: |
           pnpm install --frozen-lockfile=false
-          pip install -r apps/api/requirements.txt
+          cd apps/api && uv sync --frozen --extra dev
 
       - name: Run linting
         run: pnpm run lint

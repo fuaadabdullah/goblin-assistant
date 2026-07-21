@@ -7,24 +7,21 @@ ENV PYTHONUNBUFFERED=1 \
 
 WORKDIR /app
 
-FROM base AS deps
+# ---- Install uv for fast, reproducible installs ----
+FROM base AS uv
+COPY --from=ghcr.io/astral-sh/uv:latest /uv /usr/local/bin/uv
 
-COPY apps/api/requirements.txt /app/apps/api/requirements.txt
-COPY apps/api/requirements-vector.txt /app/apps/api/requirements-vector.txt
+FROM uv AS deps
 
-# Install build-time dependencies and Python packages with BuildKit caches for faster rebuilds.
-RUN --mount=type=cache,target=/var/cache/apt,sharing=locked \
-    --mount=type=cache,target=/var/lib/apt/lists,sharing=locked \
-    --mount=type=cache,target=/root/.cache/pip,sharing=locked \
-    apt-get update \
-    && apt-get install -y --no-install-recommends \
-      build-essential \
-      gcc \
-      git \
-    && python -m pip install --upgrade pip \
-    && python -m pip install -r /app/apps/api/requirements.txt -r /app/apps/api/requirements-vector.txt
+COPY apps/api/pyproject.toml /app/apps/api/pyproject.toml
+COPY apps/api/uv.lock /app/apps/api/uv.lock
 
-FROM base AS runtime
+# Install only runtime dependencies from the lockfile (no dev extras).
+# uv sync creates a project .venv with exact locked versions + hashes.
+RUN --mount=type=cache,target=/root/.cache/uv,sharing=locked \
+    cd /app/apps/api && uv sync --frozen --no-dev --no-install-project
+
+FROM uv AS runtime
 
 # Keep runtime image lean: only install minimal shared libs needed by compiled wheels.
 RUN --mount=type=cache,target=/var/cache/apt,sharing=locked \
@@ -35,7 +32,8 @@ RUN --mount=type=cache,target=/var/cache/apt,sharing=locked \
       libgomp1 \
     && rm -rf /var/lib/apt/lists/*
 
-COPY --from=deps /usr/local /usr/local
+# Copy the synced venv from the deps stage
+COPY --from=deps /app/apps/api/.venv /app/apps/api/.venv
 RUN groupadd --system --gid 1000 appuser \
     && useradd --system --uid 1000 --gid appuser --home-dir /app --shell /usr/sbin/nologin appuser \
     && mkdir -p /app/apps/api /app/config /app/packages /app/logs /app/chroma_db /app/state \
@@ -49,7 +47,8 @@ COPY --chown=appuser:appuser config /app/config
 COPY --chown=appuser:appuser packages/shared /app/packages/shared
 
 ENV PYTHONPATH=/app/apps/api/src \
-    PYTHONDONTWRITEBYTECODE=1
+    PYTHONDONTWRITEBYTECODE=1 \
+    PATH="/app/apps/api/.venv/bin:$PATH"
 ENV PORT=8080
 EXPOSE 8080
 

@@ -1,4 +1,4 @@
-.PHONY: help install dev web-dev api-dev build build-packages lint lint-web lint-api lint-policy type-check type-check-packages test test-unit test-web test-web-coverage test-api test-api-coverage test-api-context-coverage test-e2e test-e2e-budget test-integration test-contract test-performance generate-providers-json check-providers-json check-api-boundaries check-api-cycles check-api-cycles-report check-capability-boundaries check-route-lifecycle check-operational-policy check-docs-canonical-refs check-docs-inventory check-docs-links generate-docs-coverage type-check-api-mypy type-check-api-pyright format format-check test-critical sdk-generate sdk-check generate-route-manifest check-api-calls contract-checks secret-scan check-unused-deps check-dead-code phase-gates
+.PHONY: help install dev web-dev api-dev build build-packages lint lint-web lint-api lint-policy type-check type-check-packages test test-unit test-web test-web-coverage test-api test-api-coverage test-api-context-coverage test-e2e test-e2e-budget test-integration test-contract test-performance generate-providers-json check-providers-json check-api-boundaries check-api-cycles check-api-cycles-report check-capability-boundaries check-route-lifecycle check-operational-policy check-docs-canonical-refs check-docs-inventory check-docs-links generate-docs-coverage type-check-api-mypy type-check-api-pyright format format-check test-critical sdk-generate sdk-check generate-route-manifest check-api-calls contract-checks secret-scan check-unused-deps check-dead-code phase-gates pip-audit pip-audit-json pnpm-audit pnpm-audit-json
 PNPM_TMP := TMPDIR="$(PWD)/.tmp"
 PYTHON ?= python3.11
 
@@ -48,11 +48,15 @@ help:
 	@echo "  make contract-checks      - run SDK drift and frontend API path validation"
 	@echo "  make generate-providers-json — validate providers.toml & regenerate providers.json"
 	@echo "  make check-providers-json  - fail if providers.json is stale"
+	@echo "  make pip-audit             - run pip-audit against locked Python deps"
+	@echo "  make pip-audit-json        - run pip-audit and write JSON report to reports/"
+	@echo "  make pnpm-audit            - run pnpm audit against locked JS deps"
+	@echo "  make pnpm-audit-json       - run pnpm audit and write JSON report to reports/"
 
 install:
 	mkdir -p .tmp
 	$(PNPM_TMP) pnpm install
-	cd apps/api && $(PYTHON) -m pip install -r requirements.txt -r requirements-vector.txt
+	cd apps/api && uv sync --frozen --extra dev --extra vector
 
 check-api-boundaries:
 	$(PYTHON) scripts/architecture/check_api_architecture.py boundaries
@@ -255,3 +259,15 @@ check-unused-deps:
 	cd apps/api && pip install --quiet pipdeptree && pipdeptree --warn fail
 	@echo "==> Node.js unused deps"
 	$(PNPM_TMP) pnpm --filter @goblin/web exec npx depcheck
+
+pip-audit:
+	bash scripts/security/pip-audit.sh
+
+pip-audit-json:
+	bash scripts/security/pip-audit.sh --json
+
+pnpm-audit:
+	bash scripts/security/pnpm-audit.sh
+
+pnpm-audit-json:
+	bash scripts/security/pnpm-audit.sh --json

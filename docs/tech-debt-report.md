@@ -178,7 +178,15 @@ composition layer over `proxy/routeResolver.ts` (route resolution) and
 
 ## 4. Security Vulnerabilities
 
-### 4.1 Node.js Dependencies — RESOLVED
+### 4.1 Node.js Dependencies — RESOLVED (as of 2026-07-17; do not treat as current)
+
+> **2026-07-21 correction:** this "RESOLVED" status was true on 2026-07-17
+> and rotted silently — by 2026-07-21 `pnpm audit` had 13 new vulnerabilities
+> (see `reports/code-analysis-2026-07-21.md` §2.1). A static point-in-time
+> report is not a valid source of truth for a security claim. The `pnpm-audit`
+> and `pip-audit` CI jobs (`.github/workflows/ci.yml`, required in
+> `merge-gates`) are now the live source of truth — check their latest run,
+> not this paragraph or `reports/security-audit-latest.json`'s commit date.
 
 `pnpm audit` (all severity levels) now reports **no known vulnerabilities**.
 Verified each of the 9 originally-flagged advisories individually against

@@ -18,20 +18,20 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
 
+      - name: Install uv
+        uses: astral-sh/setup-uv@v4
+
       - name: Set up Python
         uses: actions/setup-python@v5
         with:
           python-version: '3.11'
-          cache: pip
 
       - name: Install dependencies
-        run: |
-          pip install --upgrade pip
-          pip install -r apps/api/requirements.txt
+        run: cd apps/api && uv sync --frozen --extra dev
 
       - name: Run integration tests
         run: |
-          pytest apps/api/src/api/tests/ \
+          cd apps/api && PYTHONPATH=src uv run pytest src/api/tests/ \
             -m integration \
             --tb=short \
             -q \
