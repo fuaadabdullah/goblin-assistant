@@ -9,8 +9,11 @@ Tests:
 - RLS verification
 """
 
+from datetime import datetime, timedelta
+
 import pytest
 
+from api.services import safe_vector_store as safe_vector_store_module
 from api.services.safe_vector_store import SafeVectorStore
 
 # Import modules
@@ -108,9 +111,43 @@ class TestVectorStore:
     """Test SafeVectorStore with privacy features."""
 
     @pytest.fixture
-    def vector_store(self):
+    def vector_store(self, monkeypatch, request):
         """Create a test vector store."""
-        return SafeVectorStore(collection_name="test_collection")
+
+        class _DeterministicEmbeddingFunction:
+            @staticmethod
+            def name():
+                return "default"
+
+            @staticmethod
+            def is_legacy():
+                return False
+
+            @staticmethod
+            def supported_spaces():
+                return ["cosine"]
+
+            @staticmethod
+            def get_config():
+                return {}
+
+            @staticmethod
+            def build_from_config(_config):
+                return _DeterministicEmbeddingFunction()
+
+            def __call__(self, input):
+                return [[float(len(text) % 7), 0.1, 0.2] for text in input]
+
+        class _EmbeddingFunctions:
+            @staticmethod
+            def SentenceTransformerEmbeddingFunction(*_args, **_kwargs):  # noqa: N802
+                return _DeterministicEmbeddingFunction()
+
+        monkeypatch.setattr(safe_vector_store_module, "EMBEDDINGS_AVAILABLE", True)
+        monkeypatch.setattr(safe_vector_store_module, "embedding_functions", _EmbeddingFunctions)
+
+        collection_name = f"test_collection_{request.node.name}".replace("[", "_").replace("]", "_")
+        return SafeVectorStore(collection_name=collection_name)
 
     @pytest.mark.asyncio
     async def test_reject_without_consent(self, vector_store):
@@ -188,6 +225,176 @@ class TestVectorStore:
 
         # Should have deleted at least 1
         assert deleted_count >= 0  # May be 0 if timing is tight
+
+    @pytest.mark.asyncio
+    async def test_query_documents_filters_expired_results(self):
+        """Query results are scoped to the user and filtered for TTL."""
+
+        future = (datetime.utcnow() + timedelta(hours=1)).isoformat()
+        past = (datetime.utcnow() - timedelta(hours=1)).isoformat()
+
+        class _Collection:
+            def query(self, **kwargs):
+                assert kwargs["where"] == {"user_id": "user_123"}
+                assert kwargs["n_results"] == 4
+                return {
+                    "documents": [["fresh", "expired"]],
+                    "metadatas": [[{"expires_at": future}, {"expires_at": past}]],
+                    "distances": [[0.1, 0.9]],
+                }
+
+        store = SafeVectorStore.__new__(SafeVectorStore)
+        store.collection = _Collection()
+
+        result = await store.query_documents("find docs", "user_123", n_results=2)
+
+        assert result["success"] is True
+        assert result["count"] == 1
+        assert result["results"]["documents"] == [["fresh"]]
+
+    @pytest.mark.asyncio
+    async def test_query_documents_include_expired_and_error_paths(self):
+        """include_expired bypasses TTL filtering; query exceptions are contained."""
+
+        class _Collection:
+            def __init__(self):
+                self.calls = 0
+
+            def query(self, **_kwargs):
+                self.calls += 1
+                if self.calls == 1:
+                    return {
+                        "documents": [["fresh", "expired"]],
+                        "metadatas": [[{}, {}]],
+                        "distances": [[0.1, 0.9]],
+                    }
+                raise RuntimeError("query boom")
+
+        collection = _Collection()
+        store = SafeVectorStore.__new__(SafeVectorStore)
+        store.collection = collection
+
+        success = await store.query_documents(
+            "find docs",
+            "user_123",
+            n_results=2,
+            include_expired=True,
+        )
+        failure = await store.query_documents("find docs", "user_123")
+
+        assert success["success"] is True
+        assert success["count"] == 2
+        assert failure == {"success": False, "error": "query boom", "count": 0}
+
+    @pytest.mark.asyncio
+    async def test_delete_user_data_deletes_matching_ids_and_handles_errors(self):
+        """Deletion reports matching document IDs and contains collection failures."""
+
+        class _Collection:
+            def __init__(self):
+                self.deleted = []
+
+            def get(self, **kwargs):
+                assert kwargs["where"] == {"user_id": "user_123"}
+                return {"ids": ["doc1", "doc2"]}
+
+            def delete(self, ids):
+                self.deleted.extend(ids)
+
+        collection = _Collection()
+        store = SafeVectorStore.__new__(SafeVectorStore)
+        store.collection = collection
+
+        result = await store.delete_user_data("user_123")
+
+        assert result["success"] is True
+        assert result["deleted_count"] == 2
+        assert collection.deleted == ["doc1", "doc2"]
+
+        class _BrokenCollection:
+            def get(self, **_kwargs):
+                raise RuntimeError("delete boom")
+
+        store.collection = _BrokenCollection()
+
+        failure = await store.delete_user_data("user_123")
+
+        assert failure["success"] is False
+        assert failure["error"] == "delete boom"
+
+    @pytest.mark.asyncio
+    async def test_cleanup_expired_deletes_only_expired_documents(self):
+        """Expired TTL metadata is deleted; invalid metadata is ignored."""
+
+        future = (datetime.utcnow() + timedelta(hours=1)).isoformat()
+        past = (datetime.utcnow() - timedelta(hours=1)).isoformat()
+
+        class _Collection:
+            def __init__(self):
+                self.deleted = []
+
+            def get(self, **kwargs):
+                assert kwargs["include"] == ["metadatas"]
+                return {
+                    "ids": ["fresh", "expired", "invalid"],
+                    "metadatas": [
+                        {"expires_at": future},
+                        {"expires_at": past},
+                        {"expires_at": "not-a-date"},
+                    ],
+                }
+
+            def delete(self, ids):
+                self.deleted.extend(ids)
+
+        collection = _Collection()
+        store = SafeVectorStore.__new__(SafeVectorStore)
+        store.collection = collection
+
+        result = await store.cleanup_expired()
+
+        assert result["success"] is True
+        assert result["deleted_count"] == 1
+        assert collection.deleted == ["expired"]
+
+    @pytest.mark.asyncio
+    async def test_count_and_export_user_data_paths(self):
+        """Count and export expose user-scoped document metadata."""
+
+        class _Collection:
+            def __init__(self):
+                self.broken = False
+
+            def get(self, **kwargs):
+                if self.broken:
+                    raise RuntimeError("export boom")
+                assert kwargs["where"] == {"user_id": "user_123"}
+                if kwargs["include"] == []:
+                    return {"ids": ["doc1", "doc2"]}
+                return {
+                    "ids": ["doc1"],
+                    "documents": ["hello"],
+                    "metadatas": [{"source": "test"}],
+                }
+
+        collection = _Collection()
+        store = SafeVectorStore.__new__(SafeVectorStore)
+        store.collection = collection
+
+        count = await store.get_user_document_count("user_123")
+        exported = await store.export_user_data("user_123")
+
+        assert count == 2
+        assert exported["success"] is True
+        assert exported["document_count"] == 1
+        assert exported["documents"][0]["doc_id"] == "doc1"
+
+        collection.broken = True
+
+        assert await store.get_user_document_count("user_123") == 0
+        failure = await store.export_user_data("user_123")
+        assert failure["success"] is False
+        assert failure["error"] == "export boom"
 
 
 class TestTelemetry:
