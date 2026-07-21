@@ -193,7 +193,8 @@ test-critical:
 test-api-context-coverage:
 	cd apps/api && PYTHONPATH=src $(PYTHON) -m pytest -o "addopts=" -v \
 		src/api/tests/test_context_assembly*.py \
-		--cov=src/api/services/context_assembly_service \
+		src/api/tests/context_assembly_coverage \
+		--cov=api.services.context_assembly_service \
 		--cov-report=term-missing \
 		--cov-fail-under=90
 
