@@ -20,7 +20,7 @@ help:
 	@echo "  make test-integration     - run integration + contract buckets from tests/manifests"
 	@echo "  make test-contract        - run contract bucket only"
 	@echo "  make test-performance     - run performance bucket from tests/manifests"
-	@echo "  make test-critical        - run critical-path coverage gates"
+	@echo "  make test-critical        - run critical-path journey gates"
 	@echo "  make phase-gates          - run rollout phase-gate checks"
 	@echo "  make check-dead-code      - find unused Python functions and TS exports"
 	@echo "  make secret-scan          - scan config/env/docs for embedded secrets"

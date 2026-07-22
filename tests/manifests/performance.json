@@ -2,13 +2,20 @@
   "bucket": "performance",
   "description": "Performance and concurrency stability checks for critical runtime behavior.",
   "paths": [
+    "apps/api/src/api/tests/test_benchmarks.py",
     "apps/api/src/api/tests/test_concurrency.py",
     "scripts/load-test.py"
   ],
   "commands": [
     {
+      "name": "benchmark-pure-functions",
+      "run": "PYTHONPATH=apps/api/src python3.11 -m pytest apps/api/src/api/tests/test_benchmarks.py --benchmark-disable -q",
+      "description": "Run hot-path benchmarks as plain correctness tests (no timing calibration). Use --benchmark-sort=mean locally for timing output."
+    },
+    {
       "name": "performance-harness-syntax-check",
-      "run": "python3.11 -m py_compile scripts/load-test.py apps/api/src/api/tests/test_concurrency.py"
+      "run": "python3.11 -m py_compile scripts/load-test.py apps/api/src/api/tests/test_concurrency.py",
+      "description": "Syntax-check load scripts that require a live server. Run scripts/load-test.py and test_concurrency.py manually against a running instance."
     }
   ]
 }

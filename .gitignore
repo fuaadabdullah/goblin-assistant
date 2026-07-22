@@ -44,6 +44,8 @@ api/[0-9a-f][0-9a-f]*
 
 # Dependencies
 node_modules/
+.pnpm-store/
+.pnpm-store-fresh/
 
 # Build outputs
 .next/
