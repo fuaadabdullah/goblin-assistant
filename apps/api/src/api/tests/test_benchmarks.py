@@ -254,3 +254,82 @@ def test_bench_trim_to_tokens_no_trim(benchmark):
 def test_bench_trim_to_tokens_heavy_trim(benchmark):
     text = _random_text(2000)
     benchmark(trim_to_tokens, text, 200)
+
+
+# ---------------------------------------------------------------------------
+# routing.feature_extractor — hot path for every provider selection decision
+# ---------------------------------------------------------------------------
+
+from api.routing.feature_extractor import FeatureExtractor  # noqa: E402
+
+_FEATURE_EXTRACTOR = FeatureExtractor()
+
+_SHORT_PROMPT = "What is the capital of France?"
+_MEDIUM_PROMPT = _random_text(120)  # ~600 chars, bucket 1
+_LONG_PROMPT = _random_text(500)  # ~2500 chars, bucket 2
+
+_HISTORY_10 = [{"role": "user", "content": "msg"}] * 10
+
+_SNAPSHOT_6 = {
+    pid: {"ewma_latency_ms": float(200 + i * 300), "success_rate": 0.9 - i * 0.05}
+    for i, pid in enumerate(["openai", "anthropic", "gemini", "deepseek", "groq", "ollama"])
+}
+_COSTS_6 = {
+    "openai": (0.005, 0.015),
+    "anthropic": (0.008, 0.024),
+    "gemini": (0.002, 0.006),
+    "deepseek": (0.001, 0.002),
+    "groq": (0.0005, 0.001),
+    "ollama": (0.0, 0.0),
+}
+_CANDIDATES_6 = list(_COSTS_6)
+
+
+def test_bench_feature_extract_short_no_history(benchmark):
+    benchmark(
+        _FEATURE_EXTRACTOR.extract_request,
+        _SHORT_PROMPT,
+        "chat",
+        [],
+    )
+
+
+def test_bench_feature_extract_medium_with_history(benchmark):
+    benchmark(
+        _FEATURE_EXTRACTOR.extract_request,
+        _MEDIUM_PROMPT,
+        "research",
+        _HISTORY_10,
+    )
+
+
+def test_bench_feature_extract_long_all_signals(benchmark):
+    prompt = "Please find, search, schedule and explain step by step: " + _LONG_PROMPT
+    benchmark(
+        _FEATURE_EXTRACTOR.extract_request,
+        prompt,
+        "code",
+        _HISTORY_10,
+        "coding",
+        0.85,
+    )
+
+
+def test_bench_extract_providers_6_candidates(benchmark):
+    benchmark(
+        _FEATURE_EXTRACTOR.extract_providers,
+        _CANDIDATES_6,
+        _COSTS_6,
+        _SNAPSHOT_6,
+    )
+
+
+def test_bench_extract_providers_6_with_health(benchmark):
+    health = {pid: (i % 2 == 0) for i, pid in enumerate(_CANDIDATES_6)}
+    benchmark(
+        _FEATURE_EXTRACTOR.extract_providers,
+        _CANDIDATES_6,
+        _COSTS_6,
+        _SNAPSHOT_6,
+        health,
+    )

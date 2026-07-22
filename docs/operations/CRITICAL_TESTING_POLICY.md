@@ -25,6 +25,6 @@
 
 ## CI Enforcement
 
-- `make test-critical` enforces API + web Tier 0 coverage gates.
+- `make test-critical` enforces named Tier 0 journey suites without coverage percentage gates.
 - `make test-e2e-budget` enforces critical E2E journey cap.
 - Critical-path test updates are required when touching Tier 0 surfaces.

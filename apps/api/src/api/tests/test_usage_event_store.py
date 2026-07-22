@@ -113,6 +113,76 @@ class TestUsageEventStoreInMemory:
         assert blocked["reason"] == "daily_token_limit_exceeded"
 
 
+class TestUsageEventStoreInMemoryCostLimit:
+    async def test_check_limits_blocks_on_daily_cost_cap(self, monkeypatch):
+        store = _make_in_memory_store()
+        monkeypatch.setenv("GOBLIN_DAILY_COST_LIMIT_USD", "0.01")
+
+        await store.save_event({"user_id": "u2", "total_tokens": 0, "cost_usd": 0.008})
+
+        allowed = await store.check_limits("u2", additional_cost_usd=0.001)
+        blocked = await store.check_limits("u2", additional_cost_usd=0.003)
+
+        assert allowed["allowed"] is True
+        assert blocked["allowed"] is False
+        assert blocked["reason"] == "daily_cost_limit_exceeded"
+
+    async def test_check_limits_allows_when_no_limits_configured(self, monkeypatch):
+        store = _make_in_memory_store()
+        monkeypatch.delenv("GOBLIN_DAILY_TOKEN_LIMIT", raising=False)
+        monkeypatch.delenv("GOBLIN_DAILY_COST_LIMIT_USD", raising=False)
+
+        await store.save_event({"user_id": "u3", "total_tokens": 999_999, "cost_usd": 999.0})
+
+        result = await store.check_limits("u3", additional_tokens=50_000, additional_cost_usd=50.0)
+
+        assert result["allowed"] is True
+        assert result["reason"] is None
+
+    async def test_get_total_spend_for_date_sums_all_users(self):
+        store = _make_in_memory_store()
+        today = datetime.utcnow().date()
+
+        await store.save_event({"user_id": "a", "cost_usd": 0.05})
+        await store.save_event({"user_id": "b", "cost_usd": 0.03})
+        await store.save_event({"user_id": "a", "cost_usd": 0.02})
+
+        total = await store.get_total_spend_for_date(today)
+
+        assert total == pytest.approx(0.10)
+
+    async def test_get_total_spend_for_date_excludes_other_dates(self):
+        from datetime import timedelta
+
+        store = _make_in_memory_store()
+        yesterday = datetime.utcnow().date() - timedelta(days=1)
+
+        await store.save_event({"user_id": "u", "cost_usd": 0.99})
+
+        total = await store.get_total_spend_for_date(yesterday)
+
+        assert total == pytest.approx(0.0)
+
+    async def test_daily_usage_accumulates_multiple_events(self):
+        store = _make_in_memory_store()
+
+        for i in range(5):
+            await store.save_event(
+                {
+                    "user_id": "u4",
+                    "prompt_tokens": 10,
+                    "completion_tokens": 5,
+                    "total_tokens": 15,
+                    "cost_usd": 0.001,
+                }
+            )
+
+        usage = await store.get_daily_usage("u4")
+        assert usage["event_count"] == 5
+        assert usage["total_tokens"] == 75
+        assert usage["total_cost_usd"] == pytest.approx(0.005)
+
+
 class TestUsageEventStoreDB:
     async def test_save_event_persists_daily_aggregate(self, db_store):
         await db_store.save_event(

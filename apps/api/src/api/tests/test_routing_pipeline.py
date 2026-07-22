@@ -189,3 +189,78 @@ def test_score_with_precomputed_features_keeps_full_stage_trace():
     assert result.trace[0].attributes["source"] == "precomputed_features"
     assert result.classification is not None
     assert result.classification.intent_label == "chat"
+
+
+def test_rank_delegates_to_score_and_returns_ordered_provider_ids():
+    pipeline = _pipeline()
+    features = RoutingFeatures(
+        prompt_length_bucket=0,
+        task_type="chat",
+        complexity_score=0.3,
+        conversation_turn=1,
+        intent_label="chat",
+        intent_confidence=0.6,
+    )
+
+    ranked = pipeline.rank(
+        ["openai", "anthropic"],
+        {"openai": (0.01, 0.02), "anthropic": (0.02, 0.04)},
+        task_type="chat",
+        request=features,
+        request_id="rank-1",
+    )
+
+    assert ranked == ["anthropic", "openai"]
+
+
+def test_remember_request_features_stores_in_pending_dict():
+    pipeline = _pipeline()
+    features = RoutingFeatures(
+        prompt_length_bucket=0,
+        task_type="chat",
+        complexity_score=0.2,
+        conversation_turn=0,
+        intent_label="chat",
+        intent_confidence=0.5,
+    )
+
+    pipeline.remember_request_features("req-remember", features)
+
+    assert pipeline._feature_router._pending.get("req-remember") is features
+
+
+def test_observer_error_does_not_propagate():
+    def bad_observer(_trace):
+        raise RuntimeError("observer failure")
+
+    pipeline = _pipeline(observer=bad_observer)
+
+    result = pipeline.route_prompt(["openai"], "hello", routing_id="obs-err")
+
+    assert result.selected_provider_id == "openai"
+    assert len(result.trace) == len(ROUTING_STAGE_ORDER)
+
+
+def test_softmax_pct_empty_input_returns_empty():
+    from api.routing.routing_pipeline import _softmax_pct
+
+    assert _softmax_pct({}) == {}
+
+
+def test_softmax_pct_single_provider_gets_full_allocation():
+    from api.routing.routing_pipeline import _softmax_pct
+
+    result = _softmax_pct({"only": 1.5})
+
+    assert result == {"only": 100}
+
+
+def test_select_scores_orders_by_descending_score():
+    from api.routing.routing_pipeline import _select_scores, _softmax_pct
+
+    raw = {"a": 0.9, "b": 0.3, "c": 0.6}
+    pcts = _softmax_pct(raw)
+    scores = _select_scores(["a", "b", "c"], raw, pcts)
+
+    assert [s.provider_id for s in scores] == ["a", "c", "b"]
+    assert scores[0].score > scores[1].score > scores[2].score

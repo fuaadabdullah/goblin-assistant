@@ -232,6 +232,24 @@ class TestProviderSelectionModelScore:
                 )
         assert len(result) == 1
 
+    def test_pipeline_cache_reuses_unchanged_dependencies(self):
+        model = ProviderSelectionModel()
+        pipeline = object()
+        mods = _mock_ml_modules()
+        bandit_cache = mods["api.routing.ml_router"].bandit_cache
+        registry = mods["api.routing.router_registry"].registry
+
+        with patch.dict("sys.modules", mods):
+            with patch("api.routing.provider_selection.build_routing_pipeline") as build:
+                build.return_value = pipeline
+
+                first = model._pipeline_for(bandit_cache=bandit_cache, registry=registry)
+                second = model._pipeline_for(bandit_cache=bandit_cache, registry=registry)
+
+        assert first is pipeline
+        assert second is pipeline
+        build.assert_called_once()
+
     def test_singleton_instance_exists(self):
         assert provider_selection_model is not None
         assert isinstance(provider_selection_model, ProviderSelectionModel)

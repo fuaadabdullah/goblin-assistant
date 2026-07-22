@@ -20,6 +20,7 @@ outcomes can be recorded later via record_outcome_by_request_id().
 
 from __future__ import annotations
 
+import importlib
 import math
 import time
 import uuid
@@ -54,6 +55,10 @@ class ProviderSelectionModel:
     into a routing decision. Every call is attributable (via routing_id) so
     outcomes can be fed back to improve future selections.
     """
+
+    def __init__(self) -> None:
+        self._pipeline_cache_key: Optional[tuple[int, ...]] = None
+        self._pipeline_cache: Any = None
 
     def score(
         self,
@@ -154,10 +159,8 @@ class ProviderSelectionModel:
         from api.routing.ml_router import bandit_cache  # noqa: PLC0415
         from api.routing.router_registry import registry  # noqa: PLC0415
 
-        pipeline_result = build_routing_pipeline(
+        pipeline_result = self._pipeline_for(
             bandit_cache=bandit_cache,
-            feature_extractor_service=feature_extractor,
-            policy_engine_service=policy_engine,
             registry=registry,
         ).score(
             candidates,
@@ -211,10 +214,8 @@ class ProviderSelectionModel:
         from api.routing.ml_router import bandit_cache  # noqa: PLC0415
         from api.routing.router_registry import registry  # noqa: PLC0415
 
-        pipeline_result = build_routing_pipeline(
+        pipeline_result = self._pipeline_for(
             bandit_cache=bandit_cache,
-            feature_extractor_service=feature_extractor,
-            policy_engine_service=policy_engine,
             registry=registry,
         ).route_prompt(
             candidates,
@@ -254,6 +255,34 @@ class ProviderSelectionModel:
             matched_policies=pipeline_result.policy_decision.matched_rules,
         )
         return results
+
+    def _pipeline_for(self, *, bandit_cache: Any, registry: Any) -> Any:
+        feature_router = importlib.import_module("api.routing.feature_router").feature_router
+        classifier = importlib.import_module("api.routing.prompt_classifier").prompt_classifier
+        health_provider = importlib.import_module("api.routing.health_provider").health_provider
+        cache_key = (
+            id(feature_router),
+            id(bandit_cache),
+            id(feature_extractor),
+            id(classifier),
+            id(policy_engine),
+            id(registry),
+            id(health_provider),
+        )
+        if self._pipeline_cache is not None and self._pipeline_cache_key == cache_key:
+            return self._pipeline_cache
+
+        self._pipeline_cache = build_routing_pipeline(
+            bandit_cache=bandit_cache,
+            feature_router=feature_router,
+            feature_extractor_service=feature_extractor,
+            classifier_service=classifier,
+            policy_engine_service=policy_engine,
+            registry=registry,
+            health_provider_service=health_provider,
+        )
+        self._pipeline_cache_key = cache_key
+        return self._pipeline_cache
 
 
 # ---------------------------------------------------------------------------

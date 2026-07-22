@@ -27,16 +27,28 @@ jobs:
       - name: Setup pnpm
         uses: pnpm/action-setup@v2
         with:
-          version: latest
+          version: 9.15.9
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
 
       - name: Install dependencies
-        run: pnpm install --frozen-lockfile
+        run: make install
 
-      - name: Run tests
-        run: pnpm test:ci
+      - name: Run release gates
+        run: |
+          make test-critical
+          make check-api-boundaries
+          make check-api-cycles
+          make check-capability-boundaries
+          make check-operational-policy
+          make check-docs-links
+          pnpm --filter @goblin/web type-check
 
       - name: Build application
-        run: pnpm build
+        run: make build
 
       - name: Create Release
         uses: actions/create-release@v1

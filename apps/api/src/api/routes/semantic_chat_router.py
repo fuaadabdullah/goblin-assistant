@@ -16,13 +16,18 @@ from ..assistant_tools.registry import export_openai_tools
 from ..chat_router.chat_router_support import _raise_structured_provider_error
 from ..input_validation import InputSanitizer
 from ..providers.dispatcher import invoke_provider
+from ..services.conversation_accessor import (
+    add_message_to_conversation as _add_message,
+)
+from ..services.conversation_accessor import (
+    get_conversation as _get_conversation,
+)
 from ..services.memory_core import memory_core_service
 from ..services.retrieval_service import retrieval_service as _retrieval_service
 from ..services.retrieval_service._limits import (
     clamp_memory_search_limit,
     clamp_prompt_retrieval_k,
 )
-from ..storage.conversations import conversation_store
 
 logger = structlog.get_logger()
 
@@ -85,7 +90,7 @@ class ContextBundleResponse(BaseModel):
 
 
 async def _get_conversation_or_404(conversation_id: str):
-    conversation = await conversation_store.get_conversation(conversation_id)
+    conversation = await _get_conversation(conversation_id)
     if not conversation:
         raise HTTPException(status_code=404, detail="Conversation not found")
     if not conversation.user_id:
@@ -200,7 +205,7 @@ async def semantic_send_message(conversation_id: str, request: SemanticSendMessa
         message_metadata = request.metadata or {}
         message_metadata["input_validation"] = message_validation
 
-        await conversation_store.add_message_to_conversation(
+        await _add_message(
             conversation_id=conversation_id,
             role="user",
             content=sanitized_message,  # Store sanitized content
@@ -261,7 +266,7 @@ async def semantic_send_message(conversation_id: str, request: SemanticSendMessa
         output_tokens = usage.get("completion_tokens") or usage.get("output_tokens") or 0
 
         response_message_id = str(uuid.uuid4())
-        await conversation_store.add_message_to_conversation(
+        await _add_message(
             conversation_id=conversation_id,
             role="assistant",
             content=response_content,
