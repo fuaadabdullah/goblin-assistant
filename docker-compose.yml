@@ -36,7 +36,7 @@ services:
     ports:
       - '8001:8001'
     environment:
-      - ENV=production
+      - ENV=development
       - ENVIRONMENT=development
       - ENABLE_VECTOR_STORE=false
       - CELERY_BROKER_URL=redis://redis:6379/0
@@ -184,7 +184,7 @@ services:
     working_dir: /app/apps/api/src/api
     command: celery -A celery_app:app worker --loglevel=info --concurrency=2 --pool=prefork -Q high_priority
     environment:
-      - ENV=production
+      - ENV=development
       - CELERY_BROKER_URL=redis://redis:6379/0
       - CELERY_RESULT_BACKEND=redis://redis:6379/0
     volumes:
@@ -219,7 +219,7 @@ services:
     working_dir: /app/apps/api/src/api
     command: celery -A celery_app:app worker --loglevel=info --concurrency=4 --pool=prefork -Q default
     environment:
-      - ENV=production
+      - ENV=development
       - CELERY_BROKER_URL=redis://redis:6379/0
       - CELERY_RESULT_BACKEND=redis://redis:6379/0
     volumes:
@@ -254,7 +254,7 @@ services:
     working_dir: /app/apps/api/src/api
     command: celery -A celery_app:app worker --loglevel=info --concurrency=2 --pool=prefork -Q low_priority
     environment:
-      - ENV=production
+      - ENV=development
       - CELERY_BROKER_URL=redis://redis:6379/0
       - CELERY_RESULT_BACKEND=redis://redis:6379/0
     volumes:
@@ -289,7 +289,7 @@ services:
     working_dir: /app/apps/api/src/api
     command: celery -A celery_app:app beat --loglevel=info --schedule=/tmp/celerybeat-schedule
     environment:
-      - ENV=production
+      - ENV=development
       - CELERY_BROKER_URL=redis://redis:6379/0
       - CELERY_RESULT_BACKEND=redis://redis:6379/0
     volumes:
@@ -326,7 +326,7 @@ services:
     ports:
       - '5555:5555'
     environment:
-      - ENV=production
+      - ENV=development
       - CELERY_BROKER_URL=redis://redis:6379/0
       - CELERY_RESULT_BACKEND=redis://redis:6379/0
     volumes:
@@ -358,7 +358,7 @@ services:
     ports:
       - '5556:5555'
     environment:
-      - ENV=production
+      - ENV=development
       - CELERY_BROKER_URL=redis://redis:6379/0
       - CELERY_RESULT_BACKEND=redis://redis:6379/0
     volumes:
