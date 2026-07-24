@@ -75,7 +75,12 @@ else
   fi
 fi
 
-COMMITS=$(git log --no-merges --format=%s $RANGE)
+git_log_args=(--format=%s)
+if [[ "$EVENT_NAME" == "pull_request" ]]; then
+  git_log_args+=(--no-merges)
+fi
+
+COMMITS=$(git log "${git_log_args[@]}" $RANGE)
 if [[ -z "$COMMITS" ]]; then
   echo "No commit subjects found in range $RANGE"
   exit 1
