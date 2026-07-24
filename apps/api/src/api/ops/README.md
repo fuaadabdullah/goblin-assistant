@@ -287,9 +287,9 @@ await send_circuit_breaker_alert("anthropic", "OPEN")
 ### DataDog Dashboard
 ```python
 # Initialize DataDog integration
-await initialize_monitoring({
-    "datadog": {"enabled": True, "api_key": "your-api-key", "app_key": "your-app-key"}
-})
+await initialize_monitoring(
+    {"datadog": {"enabled": True, "api_key": "your-api-key", "app_key": "your-app-key"}}
+)
 
 # Send metrics automatically
 await send_system_metrics()

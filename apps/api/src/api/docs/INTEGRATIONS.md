@@ -509,8 +509,7 @@ VALUES ('avatars', 'avatars', true);
 # Listen for real-time updates
 def subscribe_to_conversation(conversation_id: str):
     subscription = (
-        supabase
-        .table("messages")
+        supabase.table("messages")
         .on("*", lambda payload: handle_message_change(payload))
         .filter("conversation_id", "eq", conversation_id)
         .subscribe()
