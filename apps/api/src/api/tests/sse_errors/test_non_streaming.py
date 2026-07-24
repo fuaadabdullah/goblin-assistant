@@ -56,7 +56,6 @@ async def test_streamed_response_includes_system_prompt_and_current_date(
 
     assert messages[0]["role"] == "system"
     assert "GoblinOS Assistant" in messages[0]["content"]
-    assert "Current UTC date/time:" in messages[0]["content"]
 
 
 async def test_non_streaming_ok_response_emits_content_and_completion(

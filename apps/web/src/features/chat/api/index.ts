@@ -98,17 +98,6 @@ const resolvePrompt = (params: SendMessageParams): string => {
   return lastUser?.content?.trim() || '';
 };
 
-const getErrorStatus = (error: unknown): number | undefined => {
-  if (!error || typeof error !== 'object') return undefined;
-
-  const errorRecord = error as {
-    status?: unknown;
-    response?: { status?: unknown };
-  };
-  const status = errorRecord.status ?? errorRecord.response?.status;
-  return typeof status === 'number' ? status : undefined;
-};
-
 const readResponseText = async (response: Response): Promise<string> => {
   try {
     return await response.text();

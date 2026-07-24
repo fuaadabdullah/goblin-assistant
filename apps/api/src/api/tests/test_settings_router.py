@@ -191,23 +191,23 @@ def test_settings_legacy_route_is_kept_for_compatibility():
 
     with (
         patch(
-            "api.settings_router.dispatcher.get_provider_inventory",
+            "api.routes.settings_router.dispatcher.get_provider_inventory",
             new_callable=AsyncMock,
             return_value=[{"id": "openai", "configured": True, "models": ["gpt-4o-mini"]}],
         ),
-        patch("api.settings_router.top_providers_for", return_value=["openai"]),
+        patch("api.routes.settings_router.top_providers_for", return_value=["openai"]),
         patch(
-            "api.settings_router.dispatcher.get_provider_config",
+            "api.routes.settings_router.dispatcher.get_provider_config",
             return_value={"default_model": "gpt-4o-mini"},
         ),
-        patch("api.settings_router.dispatcher.get_provider", return_value=fake_provider),
+        patch("api.routes.settings_router.dispatcher.get_provider", return_value=fake_provider),
         patch(
-            "api.settings_router.SaaSSettingsService.list_provider_settings",
+            "api.routes.settings_router.SaaSSettingsService.list_provider_settings",
             new_callable=AsyncMock,
             return_value=[],
         ),
         patch(
-            "api.settings_router.SaaSSettingsService.get_global_setting",
+            "api.routes.settings_router.SaaSSettingsService.get_global_setting",
             new_callable=AsyncMock,
             return_value=None,
         ),
