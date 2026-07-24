@@ -33,6 +33,11 @@ def _set_supabase_constants(monkeypatch: pytest.MonkeyPatch) -> None:
         "SUPABASE_ANON_KEY",
         "anon-key",
     )
+    monkeypatch.setattr(
+        supabase_integration,
+        "DATABASE_URL",
+        "postgresql+asyncpg://postgres:service-key@test.supabase.co:5432/postgres",
+    )
 
 
 class TestSupabaseAuth:
@@ -421,18 +426,9 @@ class TestSupabaseStorage:
 
 def test_get_supabase_config_all_present(monkeypatch):
     """get_supabase_config returns all True when all env vars are present."""
-    monkeypatch.setenv("SUPABASE_URL", "https://test.supabase.co")
-    monkeypatch.setenv("SUPABASE_SERVICE_ROLE_KEY", "service-key")
-    monkeypatch.setenv("SUPABASE_ANON_KEY", "anon-key")
+    _set_supabase_constants(monkeypatch)
 
-    # Need to reimport the module to pick up the new env vars
-    import importlib
-
-    import api.supabase_integration as supa_module
-
-    importlib.reload(supa_module)
-
-    config = supa_module.get_supabase_config()
+    config = supabase_integration.get_supabase_config()
 
     assert config["url"] is True
     assert config["service_role_key"] is True
@@ -443,17 +439,12 @@ def test_get_supabase_config_all_present(monkeypatch):
 
 def test_get_supabase_config_partial(monkeypatch):
     """get_supabase_config returns False for missing env vars."""
-    monkeypatch.delenv("SUPABASE_URL", raising=False)
-    monkeypatch.delenv("SUPABASE_SERVICE_ROLE_KEY", raising=False)
-    monkeypatch.delenv("SUPABASE_ANON_KEY", raising=False)
+    monkeypatch.setattr(supabase_integration, "SUPABASE_URL", None)
+    monkeypatch.setattr(supabase_integration, "SUPABASE_SERVICE_ROLE_KEY", None)
+    monkeypatch.setattr(supabase_integration, "SUPABASE_ANON_KEY", None)
+    monkeypatch.setattr(supabase_integration, "DATABASE_URL", "")
 
-    import importlib
-
-    import api.supabase_integration as supa_module
-
-    importlib.reload(supa_module)
-
-    config = supa_module.get_supabase_config()
+    config = supabase_integration.get_supabase_config()
 
     assert config["url"] is False
     assert config["service_role_key"] is False
