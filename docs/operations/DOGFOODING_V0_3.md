@@ -56,7 +56,7 @@ faster than support, privacy review, and rollback can handle.
 
 - Record each report with user, timestamp, route or feature, expected behavior,
   actual behavior, severity, and whether sensitive data was involved.
-- During the run, log in [FRICTION.md](../../FRICTION.md). Do not fix while
+- During the run, log in the repo-root `FRICTION.md` working log. Do not fix while
   logging. The point of the week is to observe, not to silently repair the
   experience mid-stream.
 - Do not promote guesses, predictions, or prior opinions into findings. If the
