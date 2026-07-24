@@ -16,6 +16,8 @@ from fastapi.responses import StreamingResponse
 
 from ..auth.router import User as AuthenticatedUser
 from ..auth.router import get_current_user
+from ..config.prompt_composer import compose_system_prompt
+from ..config.tone_addendums import ToneMode
 from ..core.contracts import ChatMessageCreatedPayload
 from ..observability.events import event_emitter
 from ..storage.tasks import get_task_store
@@ -43,8 +45,15 @@ async def generate_chat_stream(
     current_user: AuthenticatedUser,
     provider: Optional[str] = None,
     model: Optional[str] = None,
+    tone: Optional[ToneMode] = None,
+    mode: Optional[str] = None,
+    glossary: Optional[dict] = None,
 ):
     """Generate server-sent events for chat streaming via real provider.
+
+    Tone, mode, and glossary are passed through to the canonical
+    `compose_system_prompt` so the streamed path applies the same
+    composition order as the non-streamed /contextual-chat path.
 
     Error handling:
     - Auth errors (401): sent immediately, is_recoverable=false
@@ -53,6 +62,7 @@ async def generate_chat_stream(
     - DB write failures (user msg): error event, is_recoverable=true
     - Stream interruptions: error event with partial-response preview
     """
+
     yield _format_sse_event(
         "status",
         {"status": "started", "message": "Processing your request..."},
@@ -133,18 +143,29 @@ async def generate_chat_stream(
             conversation = await _cr._require_owned_conversation(conversation_id, current_user)
             messages = [{"role": msg.role, "content": msg.content} for msg in conversation.messages]
 
-            # System + Guardrails (Fixed Cost) layer — same building block the
-            # non-streaming send path uses, so streamed responses get the
-            # GoblinOS identity/guardrails and current date/time grounding
-            # too instead of answering from raw model training data alone.
+            # Steps 1–4 of the canonical composition order: base + glossary +
+            # mode + tone. The streaming path skips the full retrieval stack
+            # (steps 5) for latency but still ships the same identity,
+            # guardrails, glossary, mode, and tone as the non-streamed path.
             try:
-                from ..services.context_assembly_service.system_layer import (  # noqa: PLC0415
-                    build_default_system_message,
+                _composed = compose_system_prompt(
+                    tone=tone,
+                    mode=mode,
+                    request_glossary=glossary,
+                    unknown_mode="skip",
                 )
-
-                _system_message = await build_default_system_message()
+                _system_message = {"role": "system", "content": _composed}
             except Exception:
-                _system_message = None
+                # Fallback to the fixed-cost system layer (base + guardrails
+                # + date) if the composer itself blows up.
+                try:
+                    from ..services.context_assembly_service.system_layer import (  # noqa: PLC0415
+                        build_default_system_message,
+                    )
+
+                    _system_message = await build_default_system_message()
+                except Exception:
+                    _system_message = None
 
             if _system_message:
                 messages.insert(0, _system_message)
@@ -531,6 +552,9 @@ async def stream_chat(
                 current_user=current_user,
                 provider=request.provider,
                 model=request.model,
+                tone=request.tone,
+                mode=request.mode,
+                glossary=request.glossary,
             ),
             media_type="text/event-stream",
             headers={

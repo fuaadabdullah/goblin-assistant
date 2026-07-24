@@ -85,6 +85,7 @@ export const chatMethods = {
     conversationId: string;
     message: string;
     department?: string | undefined;
+    mode?: string | undefined;
     model?: string | undefined;
     provider?: string | undefined;
     metadata?: Record<string, unknown> | undefined;
@@ -95,6 +96,7 @@ export const chatMethods = {
       {
         message: string;
         department?: string | undefined;
+        mode?: string | undefined;
         model?: string | undefined;
         provider?: string | undefined;
         metadata?: Record<string, unknown> | undefined;
@@ -105,6 +107,7 @@ export const chatMethods = {
       {
         message: payload.message,
         department: payload.department,
+        mode: payload.mode,
         model: payload.model,
         provider: payload.provider,
         metadata: payload.metadata,

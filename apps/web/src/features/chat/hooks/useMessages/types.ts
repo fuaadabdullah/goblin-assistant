@@ -1,4 +1,4 @@
-import type { ChatMessage, ChatThread } from '../../types';
+import type { ChatMessage, ChatThread, Mode } from '../../types';
 import type { PendingAttachment } from '../useChatSession';
 
 export interface MessagesState {
@@ -23,6 +23,7 @@ export interface MessagesProps {
   activeBackendThreadId: string | null;
   selectedProvider?: string | undefined;
   selectedModel?: string | undefined;
+  selectedMode?: Mode | undefined;
   pendingAttachments: PendingAttachment[];
   onMessagesLoading?: ((loading: boolean) => void) | undefined;
   onSendSuccess?: (() => void) | undefined;

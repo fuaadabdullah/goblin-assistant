@@ -9,10 +9,10 @@ Generated from `packages/sdk/openapi/routes.json` and `packages/sdk/openapi/open
 
 ## Snapshot
 
-- **Mounted paths**: 188
-- **Operations**: 201
-- **OpenAPI paths**: 188
-- **Versioned operations (`/api/v1`)**: 198
+- **Mounted paths**: 190
+- **Operations**: 203
+- **OpenAPI paths**: 190
+- **Versioned operations (`/api/v1`)**: 200
 - **Legacy dual-mount operations**: 0
 - **Deprecated operations**: 3
 - **Hidden manifest operations**: 1
@@ -21,7 +21,7 @@ Generated from `packages/sdk/openapi/routes.json` and `packages/sdk/openapi/open
 
 | Group | Operations |
 | --- | ---: |
-| `/api/v1` | 198 |
+| `/api/v1` | 200 |
 | `/` | 1 |
 | `/metrics` | 1 |
 | `/test` | 1 |
@@ -175,8 +175,10 @@ The `/api/v1` routes are the canonical public API surface.
 | GET | /api/v1/routing/costs | /routing/costs | stable | - | Get Cost Tracking | routing-analytics | get_cost_tracking_api_v1_routing_costs_get |
 | GET | /api/v1/routing/departments | /routing/departments | stable | - | List Departments | routing | list_departments_api_v1_routing_departments_get |
 | GET | /api/v1/routing/departments/{department_id} | /routing/departments/{department_id} | stable | - | Get Department | routing | get_department_api_v1_routing_departments__department_id__get |
+| GET | /api/v1/routing/explain/{routing_id} | /routing/explain/{routing_id} | stable | - | Explain Routing Decision | routing | explain_routing_decision_api_v1_routing_explain__routing_id__get |
 | GET | /api/v1/routing/health | /routing/health | stable | - | Get Provider Health | routing-analytics | get_provider_health_api_v1_routing_health_get |
 | GET | /api/v1/routing/health/{provider_id} | /routing/health/{provider_id} | stable | - | Get Provider Health Detail | routing-analytics | get_provider_health_detail_api_v1_routing_health__provider_id__get |
+| GET | /api/v1/routing/observability | /routing/observability | stable | - | Get Routing Observability | routing-analytics | get_routing_observability_api_v1_routing_observability_get |
 | GET | /api/v1/routing/providers | /routing/providers | deprecated | /api/v1/providers/models | Get Available Providers | routing | get_available_providers_api_v1_routing_providers_get |
 | GET | /api/v1/routing/providers/analytics | /routing/providers/analytics | stable | - | List Available Providers | routing-analytics | list_available_providers_api_v1_routing_providers_analytics_get |
 | GET | /api/v1/routing/providers/{capability} | /routing/providers/{capability} | deprecated | /api/v1/providers/models | Get Providers For Capability | routing | get_providers_for_capability_api_v1_routing_providers__capability__get |

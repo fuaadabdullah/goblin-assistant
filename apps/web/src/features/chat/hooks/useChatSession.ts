@@ -3,7 +3,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { useQuery } from '@tanstack/react-query';
 import { chatClient } from '../api';
-import type { ChatMessage, ChatThread, QuickPrompt } from '../types';
+import type { ChatMessage, ChatThread, Mode, QuickPrompt } from '../types';
 import { useChatThreads } from './useChatThreads';
 import { readChatMessages, buildThreadKey } from '../../../lib/chat-history';
 import { queryKeys } from '../../../lib/query-keys';
@@ -38,6 +38,8 @@ export interface ChatSessionState {
   bottomRef: RefObject<HTMLDivElement | null>;
   selectedProvider?: string | undefined;
   selectedModel?: string | undefined;
+  selectedMode: Mode;
+  setSelectedMode: (mode: Mode) => void;
   inputEstimate: TextCostEstimate | null;
   authError: boolean;
   pendingAttachments: PendingAttachment[];
@@ -126,6 +128,7 @@ export const useChatSession = ({
     activeBackendThreadId: threadSelection.activeBackendThreadId,
     selectedProvider: quickActionsState.selectedProvider,
     selectedModel: quickActionsState.selectedModel,
+    selectedMode: quickActionsState.selectedMode,
     pendingAttachments: uiState.pendingAttachments,
     onSendSuccess: () => uiState.setInput(''),
     onThreadUpdated: upsertThread,
@@ -267,6 +270,8 @@ export const useChatSession = ({
     quickPrompts: quickActionsState.quickPrompts,
     selectedProvider: quickActionsState.selectedProvider,
     selectedModel: quickActionsState.selectedModel,
+    selectedMode: quickActionsState.selectedMode,
+    setSelectedMode: quickActionsState.setSelectedMode,
 
     // Message handlers
     sendMessage: sendMessageWithCleanup,

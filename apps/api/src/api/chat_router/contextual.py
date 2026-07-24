@@ -27,7 +27,8 @@ from api.config.archetypes import (
     missing_general_assistant_tools as _missing_general_assistant_tools,
 )
 from api.config.mode_addendums import get_addendum as _get_mode_addendum
-from api.config.system_prompt import EDUCATION_SYSTEM_ADDENDUM, system_prompt_manager
+from api.config.prompt_composer import compose_system_prompt
+from api.config.system_prompt import system_prompt_manager
 
 from ..assistant_tools.executor import extract_tool_calls_contract, run_tool_loop
 from ..assistant_tools.registry import export_tools_for_provider
@@ -74,19 +75,31 @@ async def contextual_chat(
         if conversation_id:
             await _cr._assert_conversation_owned(conversation_id, current_user, db)
 
+        # Resolve mode + learning boost together so the composer can build
+        # the mode block with the existing addendum / education rules in
+        # the correct slot. The composer owns step 3 of the order; we
+        # just hand it the right inputs.
+        learning_boost = False
         if request.mode:
             try:
-                addendum = _get_mode_addendum(request.mode)
+                _get_mode_addendum(request.mode)  # validate; KeyError handled below
             except KeyError as exc:
                 raise HTTPException(status_code=400, detail=str(exc))
         else:
             message_classifier, MessageType = _get_message_classifier()
             msg_classification = message_classifier.classify_message(request.message, "user")
-            addendum = (
-                EDUCATION_SYSTEM_ADDENDUM
-                if msg_classification.message_type == MessageType.LEARNING
-                else ""
-            )
+            learning_boost = msg_classification.message_type == MessageType.LEARNING
+
+        # Build steps 1–4 of the canonical composition order. The assembled
+        # context (step 5) is appended separately below so the system budget
+        # in `system_layer.py` continues to own context placement.
+        prefix_prompt = compose_system_prompt(
+            tone=request.tone,
+            mode=request.mode,
+            learning_boost=learning_boost,
+            request_glossary=request.glossary,
+            unknown_mode="raise",
+        )
 
         context_assembly = None
         if request.enable_context_assembly and user_id:
@@ -111,11 +124,8 @@ async def contextual_chat(
             context_assembly = assembly_result
             context_text = assembly_result.get("context", "")
 
-            system_prompt = system_prompt_manager.get_complete_prompt_with_addendum(
-                context=context_text,
-                user_query=request.message,
-                addendum=addendum,
-            )
+            # Step 5: dynamic memory / context appended to the composed prefix.
+            system_prompt = f"{prefix_prompt}\n\n{context_text}" if context_text else prefix_prompt
 
             messages = [
                 {"role": "system", "content": system_prompt},
@@ -134,9 +144,7 @@ async def contextual_chat(
             }
 
         else:
-            system_prompt = system_prompt_manager.get_complete_prompt_with_addendum(
-                user_query=request.message, addendum=addendum
-            )
+            system_prompt = prefix_prompt
             messages = [
                 {"role": "system", "content": system_prompt},
                 {"role": "user", "content": request.message},

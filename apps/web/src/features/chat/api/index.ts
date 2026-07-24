@@ -81,6 +81,7 @@ export interface SendMessageParams {
   prompt?: string | undefined;
   messages?: ChatMessage[] | undefined;
   department?: string | undefined; // e.g. "reasoning", "coding", "creative", "research"
+  mode?: string | undefined; // e.g. "GENERAL_ASSISTANT", "DEEP_RESEARCH", "DEBUG"
   model?: string | undefined; // Deprecated: use department instead
   provider?: string | undefined; // Deprecated: use department instead
   attachment_ids?: string[] | undefined;
@@ -219,6 +220,7 @@ export const chatClient = {
     prompt,
     messages,
     department,
+    mode,
     model,
     provider,
     attachment_ids,
@@ -240,6 +242,7 @@ export const chatClient = {
           conversationId,
           message: resolvedPrompt,
           department,
+          mode,
           model,
           provider,
           attachment_ids,

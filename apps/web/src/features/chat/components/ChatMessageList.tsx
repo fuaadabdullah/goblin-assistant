@@ -3,7 +3,7 @@
 import type { RefObject } from 'react';
 import { useMemo, useState } from 'react';
 import dynamic from 'next/dynamic';
-import type { ChatMessage, QuickPrompt } from '../types';
+import type { ChatMessage, Mode, QuickPrompt } from '../types';
 import StreamingMessage from './StreamingMessage';
 import MessageTimestamp from './MessageTimestamp';
 import MessageActions from './MessageActions';
@@ -24,6 +24,10 @@ interface ChatMessageListProps {
   quickPrompts: QuickPrompt[];
   /** Callback for clicking a quick prompt. */
   onPromptClick: (prompt: string) => void;
+  /** Currently selected chat mode. */
+  selectedMode: Mode;
+  /** Callback when the user changes mode. */
+  onModeChange: (mode: Mode) => void;
   /** Scroll anchor for auto-scrolling. */
   bottomRef: RefObject<HTMLDivElement | null>;
   /** Whether the assistant is currently responding. */
@@ -46,6 +50,8 @@ const ChatMessageList = ({
   messages,
   quickPrompts,
   onPromptClick,
+  selectedMode,
+  onModeChange,
   bottomRef,
   isSending,
   isLoading = false,
@@ -94,6 +100,8 @@ const ChatMessageList = ({
       <ChatEmptyState
         quickPrompts={quickPrompts}
         onPromptClick={onPromptClick}
+        selectedMode={selectedMode}
+        onModeChange={onModeChange}
         prefersReducedMotion={prefersReducedMotion}
       />
     );

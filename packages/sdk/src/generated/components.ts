@@ -324,6 +324,10 @@ export interface components {
              * @default true
              */
             enable_context_assembly: boolean;
+            /** Glossary */
+            glossary?: {
+                [key: string]: string;
+            } | null;
             /** Message */
             message: string;
             /** Metadata */
@@ -341,6 +345,7 @@ export interface components {
              * @default false
              */
             stream: boolean | null;
+            tone?: components["schemas"]["ToneMode"] | null;
             /** User Id */
             user_id?: string | null;
         };
@@ -1195,7 +1200,7 @@ export interface components {
             provider?: string | null;
             /**
              * Retrieval K
-             * @default 5
+             * @default 10
              */
             retrieval_k: number;
             /**
@@ -1240,6 +1245,10 @@ export interface components {
              * @default true
              */
             enable_context_assembly: boolean | null;
+            /** Glossary */
+            glossary?: {
+                [key: string]: string;
+            } | null;
             /** Message */
             message: string;
             /** Metadata */
@@ -1257,6 +1266,7 @@ export interface components {
              * @default false
              */
             stream: boolean | null;
+            tone?: components["schemas"]["ToneMode"] | null;
         };
         /** SendMessageResponse */
         SendMessageResponse: {
@@ -1350,16 +1360,23 @@ export interface components {
             conversation_id: string;
             /** Department */
             department?: string | null;
+            /** Glossary */
+            glossary?: {
+                [key: string]: string;
+            } | null;
             /** Message */
             message: string;
             /** Metadata */
             metadata?: {
                 [key: string]: unknown;
             } | null;
+            /** Mode */
+            mode?: string | null;
             /** Model */
             model?: string | null;
             /** Provider */
             provider?: string | null;
+            tone?: components["schemas"]["ToneMode"] | null;
         };
         /** SubmitJobRequest */
         SubmitJobRequest: {
@@ -1806,6 +1823,16 @@ export interface components {
             token_type: string;
             user: components["schemas"]["User"];
         };
+        /**
+         * ToneMode
+         * @description Voice / register the assistant should answer in.
+         *
+         *     Values are intentionally broad and additive — never rename a value
+         *     without a deprecation cycle because it is part of the public API
+         *     contract (exported via OpenAPI and consumed by the SDK).
+         * @enum {string}
+         */
+        ToneMode: "DEFAULT" | "FORMAL" | "CASUAL" | "TECHNICAL" | "EDUCATIONAL" | "EXECUTIVE";
         /** TriageRequest */
         TriageRequest: {
             /** Context */
@@ -1920,7 +1947,7 @@ export interface components {
          * StreamTaskRequest
          * @description Request model for streaming task execution
          */
-        api__stream_router__StreamTaskRequest: {
+        api__routes__stream_router__StreamTaskRequest: {
             /** Messages */
             messages: {
                 [key: string]: string;

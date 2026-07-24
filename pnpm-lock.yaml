@@ -11,6 +11,7 @@ overrides:
   esbuild: 0.28.1
   form-data: 4.0.6
   js-yaml: '>=4.3.0'
+  '@redocly/openapi-core>js-yaml': 4.1.1
   micromatch: 4.0.8
   cookie: 0.7.0
   tmp: 0.2.7
@@ -3928,6 +3929,10 @@ packages:
   js-tokens@9.0.1:
     resolution: {integrity: sha512-mxa9E9ITFOt0ban3j6L5MpjwegGz6lBQmM1IJkWeBZGcMxto50+eWdjC/52xDbS2vy0k7vIMK0Fe2wfL9OQSpQ==}
 
+  js-yaml@4.1.1:
+    resolution: {integrity: sha512-qQKT4zQxXl8lLwBtHMWwaTcGfFOZviOJet3Oy/xmGk2gZH677CJM9EvtfdSkgWcATZhj/55JZ0rmy3myCT5lsA==}
+    hasBin: true
+
   js-yaml@5.2.1:
     resolution: {integrity: sha512-zfLtNfQqxVqq3uaTqSkh4x4hZw3KHobGUA0fJUj4wawW8bsQLTVqpHdXSIzidh7o+4lEW36tANuAGdaFx6Zgnw==}
     hasBin: true
@@ -7333,7 +7338,7 @@ snapshots:
       colorette: 1.4.0
       https-proxy-agent: 7.0.6(supports-color@10.2.2)
       js-levenshtein: 1.1.6
-      js-yaml: 5.2.1
+      js-yaml: 4.1.1
       minimatch: 10.2.5
       pluralize: 8.0.0
       yaml-ast-parser: 0.0.43
@@ -9539,6 +9544,10 @@ snapshots:
   js-tokens@4.0.0: {}
 
   js-tokens@9.0.1: {}
+
+  js-yaml@4.1.1:
+    dependencies:
+      argparse: 2.0.1
 
   js-yaml@5.2.1:
     dependencies:

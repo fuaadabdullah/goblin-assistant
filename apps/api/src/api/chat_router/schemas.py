@@ -5,6 +5,8 @@ from typing import Any, Dict, List, Optional
 
 from pydantic import BaseModel
 
+from api.config.tone_addendums import ToneMode
+
 
 class StreamEventType(str, Enum):
     TOKEN = "TOKEN"
@@ -43,6 +45,8 @@ class SendMessageRequest(BaseModel):
     enable_context_assembly: Optional[bool] = True  # Inject RAG context like contextual-chat
     attachment_ids: Optional[List[str]] = None  # IDs from /chat/upload-file
     mode: Optional[str] = None  # e.g. "GENERAL_ASSISTANT", "DEEP_RESEARCH", "DEBUG"
+    tone: Optional[ToneMode] = None  # Voice/register override. None → DEFAULT.
+    glossary: Optional[Dict[str, str]] = None  # Session-scoped term overrides
 
 
 class SendMessageResponse(BaseModel):
@@ -152,6 +156,8 @@ class ContextualChatRequest(BaseModel):
     metadata: Optional[Dict[str, Any]] = None
     enable_context_assembly: bool = True
     mode: Optional[str] = None  # e.g. "GENERAL_ASSISTANT", "DEEP_RESEARCH", "DEBUG"
+    tone: Optional[ToneMode] = None  # Voice/register override. None → DEFAULT.
+    glossary: Optional[Dict[str, str]] = None  # Session-scoped term overrides
 
 
 class ContextualChatResponse(BaseModel):
@@ -174,3 +180,6 @@ class StreamChatRequest(BaseModel):
     model: Optional[str] = None  # Deprecated: auto-selected
     department: Optional[str] = None  # e.g. "reasoning", "coding", "creative", "research"
     metadata: Optional[Dict[str, Any]] = None
+    mode: Optional[str] = None  # e.g. "GENERAL_ASSISTANT", "DEEP_RESEARCH", "DEBUG"
+    tone: Optional[ToneMode] = None  # Voice/register override. None → DEFAULT.
+    glossary: Optional[Dict[str, str]] = None  # Session-scoped term overrides

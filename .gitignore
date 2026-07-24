@@ -72,6 +72,8 @@ venv/
 # IDE
 .idea/
 .vscode/
+.clineignore
+.cursorignore
 
 # Storybook
 *storybook.log

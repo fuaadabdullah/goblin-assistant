@@ -10,8 +10,13 @@ import { ANALYTICS_EVENTS, ANALYTICS_STORAGE_KEYS } from '../../../../lib/analyt
 import { useToast } from '../../../../hooks/useToast';
 import { useAuthSession } from '../../../../hooks/api/useAuthSession';
 import { trackEvent } from '../../../../utils/analytics';
+import type { Mode } from '../../types';
 import type { PendingAttachment } from '../useChatSession';
 import { createMessageId, createAssistantMessage, mapAttachments } from './factories';
+
+const MODE_BACKEND: Partial<Record<Mode, { department: string; mode?: string }>> = {
+  general: { department: 'general', mode: 'GENERAL_ASSISTANT' },
+};
 
 export const formatSendMessageError = (error: unknown): string => getUserMessage(error);
 
@@ -23,6 +28,7 @@ interface SendMessageDeps {
   activeThread: ChatThread | null;
   selectedModel?: string | undefined;
   selectedProvider?: string | undefined;
+  selectedMode?: Mode | undefined;
   pendingAttachments: PendingAttachment[];
   applyMessages: (msgs: ChatMessage[]) => void;
   onSendSuccess?: (() => void) | undefined;
@@ -69,6 +75,7 @@ export const useSendMessage = ({
   activeThread,
   selectedModel,
   selectedProvider,
+  selectedMode,
   pendingAttachments,
   applyMessages,
   onSendSuccess,
@@ -156,11 +163,13 @@ export const useSendMessage = ({
           throw new Error('Conversation ID unavailable.');
         }
 
+        const modeParams = (selectedMode && MODE_BACKEND[selectedMode]) ?? {};
         const result = await chatClient.sendMessage({
           conversationId,
           prompt: content,
           model: selectedModel || undefined,
           provider: selectedProvider || undefined,
+          ...modeParams,
           attachment_ids:
             pendingAttachments.length > 0 ? pendingAttachments.map((a) => a.file_id) : undefined,
         });
@@ -257,6 +266,7 @@ export const useSendMessage = ({
       activeThread,
       selectedModel,
       selectedProvider,
+      selectedMode,
       pendingAttachments,
       applyMessages,
       onSendSuccess,

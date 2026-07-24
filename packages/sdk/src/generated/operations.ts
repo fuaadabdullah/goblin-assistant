@@ -4210,6 +4210,39 @@ export interface operations {
             };
         };
     };
+    explain_routing_decision_api_v1_routing_explain__routing_id__get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                routing_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: unknown;
+                    };
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     get_provider_health_api_v1_routing_health_get: {
         parameters: {
             query?: never;
@@ -4239,6 +4272,39 @@ export interface operations {
             path: {
                 provider_id: string;
             };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: unknown;
+                    };
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_routing_observability_api_v1_routing_observability_get: {
+        parameters: {
+            query?: {
+                limit?: number;
+            };
+            header?: never;
+            path?: never;
             cookie?: never;
         };
         requestBody?: never;
@@ -5563,7 +5629,7 @@ export interface operations {
         };
         requestBody: {
             content: {
-                "application/json": components["schemas"]["api__stream_router__StreamTaskRequest"];
+                "application/json": components["schemas"]["api__routes__stream_router__StreamTaskRequest"];
             };
         };
         responses: {

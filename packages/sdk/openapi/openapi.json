@@ -654,7 +654,7 @@
       "Body_upload_file_api_v1_chat_upload_file_post": {
         "properties": {
           "file": {
-            "format": "binary",
+            "contentMediaType": "application/octet-stream",
             "title": "File",
             "type": "string"
           }
@@ -988,6 +988,20 @@
             "title": "Enable Context Assembly",
             "type": "boolean"
           },
+          "glossary": {
+            "anyOf": [
+              {
+                "additionalProperties": {
+                  "type": "string"
+                },
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Glossary"
+          },
           "message": {
             "title": "Message",
             "type": "string"
@@ -1048,6 +1062,16 @@
             ],
             "default": false,
             "title": "Stream"
+          },
+          "tone": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ToneMode"
+              },
+              {
+                "type": "null"
+              }
+            ]
           },
           "user_id": {
             "anyOf": [
@@ -3478,6 +3502,20 @@
             "default": true,
             "title": "Enable Context Assembly"
           },
+          "glossary": {
+            "anyOf": [
+              {
+                "additionalProperties": {
+                  "type": "string"
+                },
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Glossary"
+          },
           "message": {
             "title": "Message",
             "type": "string"
@@ -3538,6 +3576,16 @@
             ],
             "default": false,
             "title": "Stream"
+          },
+          "tone": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ToneMode"
+              },
+              {
+                "type": "null"
+              }
+            ]
           }
         },
         "required": [
@@ -3847,6 +3895,20 @@
             ],
             "title": "Department"
           },
+          "glossary": {
+            "anyOf": [
+              {
+                "additionalProperties": {
+                  "type": "string"
+                },
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Glossary"
+          },
           "message": {
             "title": "Message",
             "type": "string"
@@ -3862,6 +3924,17 @@
               }
             ],
             "title": "Metadata"
+          },
+          "mode": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Mode"
           },
           "model": {
             "anyOf": [
@@ -3884,6 +3957,16 @@
               }
             ],
             "title": "Provider"
+          },
+          "tone": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ToneMode"
+              },
+              {
+                "type": "null"
+              }
+            ]
           }
         },
         "required": [
@@ -4800,6 +4883,19 @@
         "title": "TokenWithRefresh",
         "type": "object"
       },
+      "ToneMode": {
+        "description": "Voice / register the assistant should answer in.\n\nValues are intentionally broad and additive \u2014 never rename a value\nwithout a deprecation cycle because it is part of the public API\ncontract (exported via OpenAPI and consumed by the SDK).",
+        "enum": [
+          "DEFAULT",
+          "FORMAL",
+          "CASUAL",
+          "TECHNICAL",
+          "EDUCATIONAL",
+          "EXECUTIVE"
+        ],
+        "title": "ToneMode",
+        "type": "string"
+      },
       "TriageRequest": {
         "properties": {
           "context": {
@@ -5057,6 +5153,13 @@
       },
       "ValidationError": {
         "properties": {
+          "ctx": {
+            "title": "Context",
+            "type": "object"
+          },
+          "input": {
+            "title": "Input"
+          },
           "loc": {
             "items": {
               "anyOf": [
@@ -5197,7 +5300,7 @@
   "info": {
     "description": "AI-powered development assistant with multi-provider routing",
     "title": "Goblin Assistant API",
-    "version": "0.2.0"
+    "version": "0.3.0"
   },
   "openapi": "3.1.0",
   "paths": {

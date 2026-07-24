@@ -4,6 +4,8 @@ set -euo pipefail
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 cd "$ROOT_DIR"
 
+bash tooling/generators/require-supported-node.sh
+
 python3.11 tooling/generators/generate-shared-api-routes.py
 python3.11 tooling/generators/export-openapi.py
 python3.11 tooling/generators/export-route-manifest.py
