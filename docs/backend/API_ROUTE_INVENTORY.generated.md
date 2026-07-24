@@ -9,12 +9,12 @@ Generated from `packages/sdk/openapi/routes.json` and `packages/sdk/openapi/open
 
 ## Snapshot
 
-- **Mounted paths**: 191
-- **Operations**: 204
-- **OpenAPI paths**: 191
+- **Mounted paths**: 190
+- **Operations**: 203
+- **OpenAPI paths**: 190
 - **Versioned operations (`/api/v1`)**: 200
-- **Legacy dual-mount operations**: 1
-- **Deprecated operations**: 4
+- **Legacy dual-mount operations**: 0
+- **Deprecated operations**: 3
 - **Hidden manifest operations**: 1
 
 ## Route groups
@@ -23,7 +23,6 @@ Generated from `packages/sdk/openapi/routes.json` and `packages/sdk/openapi/open
 | --- | ---: |
 | `/api/v1` | 200 |
 | `/` | 1 |
-| `/health` | 1 |
 | `/metrics` | 1 |
 | `/test` | 1 |
 
@@ -128,7 +127,7 @@ The `/api/v1` routes are the canonical public API surface.
 | GET | /api/v1/debug/write/decisions/{conversation_id} | /debug/write/decisions/{conversation_id} | stable | - | Get Write Decisions | debug | get_write_decisions_api_v1_debug_write_decisions__conversation_id__get |
 | GET | /api/v1/feature-flags/{flag_key} | /feature-flags/{flag_key} | stable | - | Get Feature Flag | feature-flags | get_feature_flag_api_v1_feature_flags__flag_key__get |
 | PUT | /api/v1/feature-flags/{flag_key} | /feature-flags/{flag_key} | stable | - | Upsert Feature Flag | feature-flags | upsert_feature_flag_api_v1_feature_flags__flag_key__put |
-| GET | /api/v1/health | /health | stable | - | Health | health | health_check_api_v1_health_get |
+| GET | /api/v1/health | /health | stable | - | Health Check | health | health_check_api_v1_health_get |
 | GET | /api/v1/health/all | /health/all | stable | - | Health All | health | health_all_api_v1_health_all_get |
 | GET | /api/v1/health/chroma/status | /health/chroma/status | stable | - | Health Chroma | health | health_chroma_api_v1_health_chroma_status_get |
 | GET | /api/v1/health/cost-tracking | /health/cost-tracking | stable | - | Health Cost Tracking | health | health_cost_tracking_api_v1_health_cost_tracking_get |
@@ -233,14 +232,6 @@ The `/api/v1` routes are the canonical public API surface.
 | POST | /api/v1/write-time/test | /write-time/test | stable | - | Test Message Processing | write-time | test_message_processing_api_v1_write_time_test_post |
 | POST | /api/v1/write-time/test/batch | /write-time/test/batch | stable | - | Test Batch Messages | write-time | test_batch_messages_api_v1_write_time_test_batch_post |
 | GET | /api/v1/write-time/test/examples | /write-time/test/examples | stable | - | Get Test Examples | write-time | get_test_examples_api_v1_write_time_test_examples_get |
-
-## Legacy dual mounts
-
-These routes are mounted both at their canonical path and at one or more compatibility aliases.
-
-| Method | Path | Logical Path | Aliases | Status | Replaced By | Summary | Tags | Operation ID |
-| --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| GET | /health | /health | /api/v1/health | deprecated | /api/v1/health | Health | health | health_check_api_v1_health_get |
 
 ## Notes
 
