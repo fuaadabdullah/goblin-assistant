@@ -93,6 +93,49 @@ def _build_findings(query: str, sources: List[Dict[str, str]]) -> List[str]:
     return findings[:5]
 
 
+def _build_brief_template(
+    query: str,
+    sources: List[Dict[str, str]],
+    coverage: Dict[str, Any],
+    findings: List[str],
+) -> str:
+    if not sources:
+        snapshot = "No sources found."
+        why_it_matters = "- No evidence was collected."
+        risks = "- The answer is currently ungrounded."
+        data_used = "- None"
+    else:
+        snapshot = (
+            f"{len(sources)} source(s) reviewed across "
+            f"{len(coverage['providers'])} provider path(s)."
+        )
+        why_lines = [f"- {finding}" for finding in findings[1:4]] or [
+            "- Source coverage was limited."
+        ]
+        why_it_matters = "\n".join(why_lines)
+        if coverage["partial_failures"]:
+            risks = "\n".join(
+                f"- Partial provider failure: {item['provider']} -> {item['error']}"
+                for item in coverage["partial_failures"]
+            )
+        else:
+            risks = (
+                "- No provider failures were reported; verify freshness for time-sensitive facts."
+            )
+        data_used = "\n".join(
+            f"- [{idx + 1}] {source.get('title') or 'Untitled source'}"
+            for idx, source in enumerate(sources[:4])
+        )
+
+    return (
+        f"Research brief for '{query}'\n"
+        f"Snapshot: {snapshot}\n"
+        f"Why It Matters:\n{why_it_matters}\n"
+        f"Risks / Unknowns:\n{risks}\n"
+        f"Sources / Data Used:\n{data_used}"
+    )
+
+
 def _parse_domain(url: str) -> Optional[str]:
     try:
         parsed = urlsplit(url.strip())
@@ -359,9 +402,11 @@ async def _handle_lightweight_research(
 
     sources = sources[:max_sources]
     findings = _build_findings(query=query, sources=sources)
-    brief = (
-        f"Lightweight research brief for '{query}': "
-        f"{len(sources)} sources reviewed across {len(coverage['providers'])} provider paths."
+    brief = _build_brief_template(
+        query=query,
+        sources=sources,
+        coverage=coverage,
+        findings=findings,
     )
 
     return {

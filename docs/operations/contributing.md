@@ -28,8 +28,12 @@ This project follows a code of conduct to ensure a welcoming environment for all
 2. **Install Dependencies**:
 
    ```bash
-   make install
+   make install-web
    ```
+
+   This is the preferred contributor path when you are running the backend in
+   Docker. Use `make install` only when you need full native backend
+   development.
 
 3. **Environment Configuration**:
 
@@ -45,10 +49,16 @@ This project follows a code of conduct to ensure a welcoming environment for all
 
    ```bash
    # Backend (Terminal 1)
-   make api-dev
+   make api-docker-up
 
    # Frontend (Terminal 2)
    make web-dev
+   ```
+
+   Verify the backend is healthy before using the web app:
+
+   ```bash
+   curl http://127.0.0.1:8001/health
    ```
 
 ### Development Workflow

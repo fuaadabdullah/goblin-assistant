@@ -8,24 +8,50 @@ This setup guide reflects the current repository layout:
 ## Prerequisites
 
 - Node.js 18+
-- npm
-- Python 3.11+
+- pnpm
+- Docker Desktop or Docker Engine
 
-Optional for broader backend coverage:
+Optional for full native backend development:
 
 - Redis
-- Docker
+- Python 3.11+
 
 ## Install Dependencies
+
+### Daily Driver Path
+
+Use this path for the dogfood ritual and routine frontend work. It keeps the
+backend in Docker so local Python package compilation does not gate the day.
 
 From the repo root:
 
 ```bash
-pnpm install
-cd apps/api && python3.11 -m pip install -r requirements.txt -r requirements-vector.txt
+make install-web
+docker compose build --no-cache goblin-assistant-backend
+make api-docker-up
+make web-dev
 ```
 
-`apps/api/requirements.txt` is the backend dependency set. The vector requirements file is needed for the current backend surface.
+Verify the backend before opening the frontend:
+
+```bash
+curl http://127.0.0.1:8001/health
+```
+
+Use `make api-docker-down` to stop the backend stack when you are done.
+
+### Full Native Development
+
+From the repo root:
+
+```bash
+make install
+```
+
+`make install` remains the full native development path. It installs the backend
+Python dependency set from `apps/api/requirements.txt` and
+`apps/api/requirements-vector.txt`, which may require local build tooling that is
+not needed for the Docker-first workflow.
 
 ## Environment
 
@@ -92,7 +118,13 @@ Used across `apps/api/src/api/main.py`, auth, sandbox, and provider/config modul
 
 ## Run Locally
 
-Backend:
+Backend, Docker-first:
+
+```bash
+make api-docker-up
+```
+
+Backend, native:
 
 ```bash
 cd apps/api && PYTHONPATH=src uvicorn api.main:app --reload --port 8001
@@ -109,6 +141,10 @@ Open:
 - frontend: `http://127.0.0.1:3000`
 - backend docs: `http://127.0.0.1:8001/docs`
 - backend health: `http://127.0.0.1:8001/health`
+
+If `curl /health` fails in the Docker-first path, treat that as an environment
+block for the dogfood run. Log the bailout, stop there, and do not use the day
+to fix unrelated product behavior.
 
 ## What Works Best Locally
 

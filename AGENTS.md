@@ -41,6 +41,7 @@ This file is the canonical task map for coding agents and developers.
 - Follow `docs/architecture/PURE_FUNCTIONS_AND_NAMING_POLICY.md` for pure-by-default side-effect boundaries and intent naming.
 - Follow `docs/architecture/API_AND_FRONTEND_STANDARDS.md` for orchestration-ready interfaces/events/contracts/observability.
 - Document architecture and operational assumptions in `docs/decisions/` and `docs/operations/` rather than trivial code commentary.
+- Coverage floors ratchet up only: any PR that raises measured coverage must bump the floor in the same diff, and the floor never lies about where `main` actually is.
 - **Refactor opportunistically, not by initiative.** Known tech-debt hotspots (e.g. fat `ProviderDispatcher`, fat `SettingsPage.tsx`, the 52 `as any` casts across the web app) are real but non-blocking. Clean them up when you are already in that file for an unrelated change. Do **not** open a dedicated "type-hardening pass" or "settings refactor" PR — that is procrastination in a nice suit. Each opportunistic fix should land in the same diff as the feature/bug that surfaced it.
 - **No more docs automation.** The drift gate works. We are past the point of diminishing returns on tooling that generates/validates/lints prose. Don't add more.
 - **Don't add Celery workers or priority queues.** Three worker pools at solo-dev scale is infrastructure cosplay. It won't hurt you today; just don't add to it.

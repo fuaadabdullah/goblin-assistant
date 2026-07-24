@@ -20,8 +20,10 @@ from api.assistant_tools.executor import run_tool_loop
 
 # ── Import units under test ──────────────────────────────────────
 from api.services.tool_result_memory_service import (
+    _extract_candidate_tickers,
     _extract_dcf_facts,
     _extract_earnings_facts,
+    _extract_market_data_facts,
     _extract_portfolio_facts,
     _extract_screener_facts,
     _parse_dcf_assumptions,
@@ -120,6 +122,15 @@ class TestExtractPortfolioFacts:
         result = {"holdings": [], "portfolio_metrics": {}}
         facts = _extract_portfolio_facts(result, {})
         assert len(facts) == 0
+
+
+class TestExtractMarketDataFacts:
+    def test_quote_extraction_sets_watchlist_and_price(self):
+        result = {"ticker": "AAPL", "price": 189.12, "currency": "USD"}
+        facts = _extract_market_data_facts(result, {"ticker": "AAPL"})
+        assert facts[0] == {"content": "Watchlist focus: AAPL", "category": "financial_profile"}
+        assert facts[1]["category"] == "instrument"
+        assert "189.12" in facts[1]["content"]
 
 
 # ===================================================================
@@ -290,6 +301,10 @@ class TestGetFinancialProfile:
                     "fact_text": "DCF valuation for TSLA: intrinsic value $300.00/share",
                     "category": "instrument",
                 },
+                {
+                    "fact_text": "Watchlist focus: NVDA",
+                    "category": "financial_profile",
+                },
             ]
         )
 
@@ -300,7 +315,8 @@ class TestGetFinancialProfile:
         assert "AAPL" in profile["portfolio_snapshot"]
         assert "return=12.0%" in profile["risk_snapshot"]
         assert "TSLA" in profile["watched_tickers"]
-        assert "DCF" in profile["watched_tickers"]  # regex picks up caps
+        assert "NVDA" in profile["watched_tickers"]
+        assert "DCF" not in profile["watched_tickers"]
 
     @pytest.mark.asyncio
     async def test_empty_facts_returns_empty_profile(self):
@@ -393,6 +409,14 @@ class TestContextBuilderFinancialProfile:
             conversation_history=[],
         )
         assert "[FINANCIAL PROFILE]" not in result[0]["content"]
+
+
+class TestTickerExtraction:
+    def test_filters_finance_acronyms(self):
+        tickers = _extract_candidate_tickers(
+            "DCF valuation for TSLA: WACC=10.0%, EPS beat, holdings analyzed: AAPL, MSFT"
+        )
+        assert tickers == ["TSLA", "AAPL", "MSFT"]
 
 
 # ===================================================================

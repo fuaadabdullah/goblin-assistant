@@ -98,6 +98,36 @@ DEEP_RESEARCH_CONTRACT = AssistantArchetypeContract(
 )
 
 
+FINANCE_ANALYST_CONTRACT = AssistantArchetypeContract(
+    archetype_id="finance_analyst",
+    required_capabilities=(
+        "financial_memory",
+        "market_data",
+        "portfolio_analysis",
+        "earnings_analysis",
+        "financial_news",
+        "lightweight_research",
+    ),
+    required_tool_names=frozenset(
+        {
+            "memory_recall",
+            "get_stock_quote",
+            "get_price_history",
+            "get_financials",
+            "get_earnings",
+            "get_key_ratios",
+            "get_market_news",
+            "news_summarizer",
+            "earnings_summarizer",
+            "portfolio_analyzer",
+            "stock_screener",
+            "lightweight_research",
+            "web_search",
+        }
+    ),
+)
+
+
 def is_general_assistant_mode(mode: Optional[str]) -> bool:
     """True when request should satisfy General Assistant minimum contract."""
     if mode is None:
@@ -110,6 +140,13 @@ def is_deep_research_mode(mode: Optional[str]) -> bool:
     if mode is None:
         return False
     return mode.strip().upper() in {"RESEARCH", "DEEP_RESEARCH"}
+
+
+def is_finance_analyst_mode(mode: Optional[str]) -> bool:
+    """True when request should satisfy Finance Analyst minimum contract."""
+    if mode is None:
+        return False
+    return mode.strip().upper() in {"FINANCE_ANALYST", "TRADING_FORGE"}
 
 
 def _tool_names_from_payload(tool_payload: Iterable[Dict[str, Any]]) -> Set[str]:
@@ -137,4 +174,11 @@ def missing_deep_research_tools(tool_payload: List[Dict[str, Any]]) -> List[str]
     """Return sorted missing required tool names for Deep Research."""
     present = _tool_names_from_payload(tool_payload)
     missing = DEEP_RESEARCH_CONTRACT.required_tool_names - present
+    return sorted(missing)
+
+
+def missing_finance_analyst_tools(tool_payload: List[Dict[str, Any]]) -> List[str]:
+    """Return sorted missing required tool names for Finance Analyst."""
+    present = _tool_names_from_payload(tool_payload)
+    missing = FINANCE_ANALYST_CONTRACT.required_tool_names - present
     return sorted(missing)

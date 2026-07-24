@@ -6,7 +6,11 @@ from api.assistant_tools.registry import (
     ToolParameter,
     export_openai_tools,
 )
-from api.config.archetypes import DEEP_RESEARCH_CONTRACT, GENERAL_ASSISTANT_CONTRACT
+from api.config.archetypes import (
+    DEEP_RESEARCH_CONTRACT,
+    FINANCE_ANALYST_CONTRACT,
+    GENERAL_ASSISTANT_CONTRACT,
+)
 
 
 def test_omits_empty_required_from_openai_schema():
@@ -167,4 +171,10 @@ def test_exported_tools_satisfy_general_assistant_required_set():
 def test_exported_tools_satisfy_deep_research_required_set():
     tool_names = {tool["function"]["name"] for tool in export_openai_tools()}
     missing = sorted(DEEP_RESEARCH_CONTRACT.required_tool_names - tool_names)
+    assert missing == []
+
+
+def test_exported_tools_satisfy_finance_analyst_required_set():
+    tool_names = {tool["function"]["name"] for tool in export_openai_tools()}
+    missing = sorted(FINANCE_ANALYST_CONTRACT.required_tool_names - tool_names)
     assert missing == []

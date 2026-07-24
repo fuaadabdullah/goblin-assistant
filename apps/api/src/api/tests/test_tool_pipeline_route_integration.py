@@ -12,7 +12,11 @@ from fastapi.testclient import TestClient
 
 from api.auth.router import get_current_user
 from api.chat_router import router
-from api.config.archetypes import DEEP_RESEARCH_CONTRACT, GENERAL_ASSISTANT_CONTRACT
+from api.config.archetypes import (
+    DEEP_RESEARCH_CONTRACT,
+    FINANCE_ANALYST_CONTRACT,
+    GENERAL_ASSISTANT_CONTRACT,
+)
 
 
 @pytest.fixture
@@ -237,6 +241,36 @@ class TestToolPipelineRouteIntegration:
 
         assert response.status_code == 200
         required = DEEP_RESEARCH_CONTRACT.required_tool_names
+        assert required.issubset(set(seen_tools["names"]))
+
+    def test_finance_analyst_mode_payload_includes_required_tools(self, client, mock_user):
+        seen_tools = {"names": []}
+
+        async def invoke(*, pid, model, payload, timeout_ms, stream=False):
+            del pid, model, timeout_ms, stream
+            seen_tools["names"] = [
+                item.get("function", {}).get("name")
+                for item in payload.get("tools", [])
+                if isinstance(item, dict)
+            ]
+            return _text_result("openai", "ok")
+
+        with _stacked_patches(
+            mock_user,
+            patch("api.chat_router.invoke_provider", side_effect=invoke),
+        ):
+            response = client.post(
+                "/api/v1/chat/conversations/conv_1/messages",
+                json={
+                    "message": "Give me a quick market brief on NVDA and AAPL",
+                    "provider": "openai",
+                    "model": "gpt-4o-mini",
+                    "mode": "FINANCE_ANALYST",
+                },
+            )
+
+        assert response.status_code == 200
+        required = FINANCE_ANALYST_CONTRACT.required_tool_names
         assert required.issubset(set(seen_tools["names"]))
 
     def test_openai_tool_success_promotes_memory(self, client, mock_user):

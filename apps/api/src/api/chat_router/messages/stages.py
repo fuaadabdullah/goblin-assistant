@@ -14,16 +14,23 @@ from fastapi import HTTPException
 
 from ...config.archetypes import (
     DEEP_RESEARCH_CONTRACT,
+    FINANCE_ANALYST_CONTRACT,
     GENERAL_ASSISTANT_CONTRACT,
 )
 from ...config.archetypes import (
     is_deep_research_mode as _is_deep_research_mode,
 )
 from ...config.archetypes import (
+    is_finance_analyst_mode as _is_finance_analyst_mode,
+)
+from ...config.archetypes import (
     is_general_assistant_mode as _is_general_assistant_mode,
 )
 from ...config.archetypes import (
     missing_deep_research_tools as _missing_deep_research_tools,
+)
+from ...config.archetypes import (
+    missing_finance_analyst_tools as _missing_finance_analyst_tools,
 )
 from ...config.archetypes import (
     missing_general_assistant_tools as _missing_general_assistant_tools,
@@ -195,6 +202,8 @@ def ensure_mode_required_tools(
         contracts.append(GENERAL_ASSISTANT_CONTRACT)
     if _is_deep_research_mode(mode):
         contracts.append(DEEP_RESEARCH_CONTRACT)
+    if _is_finance_analyst_mode(mode):
+        contracts.append(FINANCE_ANALYST_CONTRACT)
     if not contracts:
         return registered_tools
 
@@ -249,6 +258,16 @@ def log_missing_mode_tools(
         if missing:
             logger.warning(
                 "deep_research_required_tools_missing",
+                provider=provider,
+                mode=mode,
+                missing_tools=missing,
+                registered_tool_count=len(registered_tools),
+            )
+    if _is_finance_analyst_mode(mode):
+        missing = _missing_finance_analyst_tools(registered_tools)
+        if missing:
+            logger.warning(
+                "finance_analyst_required_tools_missing",
                 provider=provider,
                 mode=mode,
                 missing_tools=missing,
