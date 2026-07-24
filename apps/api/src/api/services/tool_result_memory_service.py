@@ -122,7 +122,12 @@ def _extract_market_data_facts(
         }
     )
 
-    price = result.get("price") or result.get("current_price") or result.get("regular_market_price")
+    price = None
+    for key in ("price", "current_price", "regular_market_price"):
+        candidate = result.get(key)
+        if candidate is not None:
+            price = candidate
+            break
     currency = result.get("currency") or "USD"
     if isinstance(price, (int, float)):
         facts.append(

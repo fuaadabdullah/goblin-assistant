@@ -47,7 +47,6 @@ _MODE_MAP = {
     "RESEARCH": DepartmentId.RESEARCH,
     "DEEP_RESEARCH": DepartmentId.RESEARCH,
     "FINANCE_ANALYST": DepartmentId.REASONING,
-    "TRADING_FORGE": DepartmentId.REASONING,
     "DEBUG": DepartmentId.REASONING,
     "GENERAL_ASSISTANT": DepartmentId.GENERAL,
 }

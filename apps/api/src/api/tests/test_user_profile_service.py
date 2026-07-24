@@ -71,9 +71,15 @@ class TestUserProfileService:
         service = UserProfileService(session_factory=None)
 
         with patch.object(
-            service.graph_service, "build_profile_snapshot", return_value=mock_snapshot
+            service.graph_service,
+            "build_profile_snapshot",
+            new=AsyncMock(return_value=mock_snapshot),
         ):
-            with patch.object(service, "refresh_profile", return_value=mock_new_profile):
+            with patch.object(
+                service,
+                "refresh_profile",
+                new=AsyncMock(return_value=mock_new_profile),
+            ):
                 result = await service.get_profile("user-1", session=mock_session)
 
         assert result == mock_new_profile
@@ -117,7 +123,9 @@ class TestUserProfileService:
         service = UserProfileService(session_factory=None)
 
         with patch.object(
-            service.graph_service, "build_profile_snapshot", return_value=mock_snapshot
+            service.graph_service,
+            "build_profile_snapshot",
+            new=AsyncMock(return_value=mock_snapshot),
         ):
             await service.refresh_profile("user-1", session=mock_session)
 
@@ -152,7 +160,9 @@ class TestUserProfileService:
         service = UserProfileService(session_factory=None)
 
         with patch.object(
-            service.graph_service, "build_profile_snapshot", return_value=mock_snapshot
+            service.graph_service,
+            "build_profile_snapshot",
+            new=AsyncMock(return_value=mock_snapshot),
         ):
             await service.refresh_profile("user-1", session=mock_session)
 
@@ -184,7 +194,9 @@ class TestUserProfileService:
         service = UserProfileService(session_factory=mock_factory)
 
         with patch.object(
-            service.graph_service, "build_profile_snapshot", return_value=mock_snapshot
+            service.graph_service,
+            "build_profile_snapshot",
+            new=AsyncMock(return_value=mock_snapshot),
         ):
             await service.refresh_profile("user-1", session=None)
 

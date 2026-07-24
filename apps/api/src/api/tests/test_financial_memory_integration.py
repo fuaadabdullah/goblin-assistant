@@ -132,6 +132,12 @@ class TestExtractMarketDataFacts:
         assert facts[1]["category"] == "instrument"
         assert "189.12" in facts[1]["content"]
 
+    def test_zero_price_is_not_dropped_when_primary_price_key_is_zero(self):
+        result = {"ticker": "AAPL", "price": 0.0, "current_price": 189.12, "currency": "USD"}
+        facts = _extract_market_data_facts(result, {"ticker": "AAPL"})
+        assert facts[1]["category"] == "instrument"
+        assert "0.00" in facts[1]["content"]
+
 
 # ===================================================================
 # Earnings fact extraction

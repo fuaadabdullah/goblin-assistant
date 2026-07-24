@@ -146,7 +146,7 @@ def is_finance_analyst_mode(mode: Optional[str]) -> bool:
     """True when request should satisfy Finance Analyst minimum contract."""
     if mode is None:
         return False
-    return mode.strip().upper() in {"FINANCE_ANALYST", "TRADING_FORGE"}
+    return mode.strip().upper() == "FINANCE_ANALYST"
 
 
 def _tool_names_from_payload(tool_payload: Iterable[Dict[str, Any]]) -> Set[str]:

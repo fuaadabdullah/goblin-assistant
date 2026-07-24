@@ -5,6 +5,7 @@ from api.config.archetypes import (
     DEEP_RESEARCH_CONTRACT,
     FINANCE_ANALYST_CONTRACT,
     GENERAL_ASSISTANT_CONTRACT,
+    is_finance_analyst_mode,
     missing_deep_research_tools,
     missing_finance_analyst_tools,
     missing_general_assistant_tools,
@@ -91,3 +92,8 @@ def test_finance_analyst_contract_satisfied_by_exported_tool_payload():
     exported = export_openai_tools()
     missing = missing_finance_analyst_tools(exported)
     assert missing == []
+
+
+def test_finance_analyst_mode_predicate_does_not_expand_to_trading_forge():
+    assert is_finance_analyst_mode("FINANCE_ANALYST") is True
+    assert is_finance_analyst_mode("TRADING_FORGE") is False

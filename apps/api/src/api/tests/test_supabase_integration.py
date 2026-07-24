@@ -5,7 +5,7 @@ from unittest.mock import AsyncMock, MagicMock, patch
 import httpx
 import pytest
 
-import api.supabase_integration as supabase_integration
+from api import supabase_integration
 from api.supabase_integration import (
     SupabaseAuth,
     SupabaseDatabase,
