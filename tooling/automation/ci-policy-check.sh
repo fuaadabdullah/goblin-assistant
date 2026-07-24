@@ -7,6 +7,7 @@ COMMIT_REGEX='^(feat|fix|refactor|infra|chore|docs|test|build|ci|perf|revert|sty
 ensure_pr_range() {
   local base_ref="$1"
   local base_rev=""
+  local merge_base=""
 
   git fetch origin "$base_ref" --depth=200
   base_rev="$(git rev-parse FETCH_HEAD)"
@@ -31,7 +32,8 @@ ensure_pr_range() {
     exit 1
   fi
 
-  RANGE="${base_rev}...HEAD"
+  merge_base="$(git merge-base "$base_rev" HEAD)"
+  RANGE="${merge_base}..HEAD"
 }
 
 # Support both GitHub Actions and CircleCI environments
