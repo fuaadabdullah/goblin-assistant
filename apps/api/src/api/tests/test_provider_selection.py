@@ -6,12 +6,16 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
+from api.routing.feature_extractor import RoutingFeatures
 from api.routing.provider_selection import (
     ProviderScore,
     ProviderSelectionModel,
     _softmax_pct,
+    get_explanation,
+    get_recent_explanations,
     provider_selection_model,
 )
+from api.routing.routing_pipeline import ROUTING_STAGE_ORDER
 
 # ── ProviderScore dataclass ───────────────────────────────────────────────────
 
@@ -93,7 +97,7 @@ def _mock_routing_features():
     )
 
 
-def _mock_ml_modules(scores_override=None):
+def _mock_ml_modules():
     """Build sys.modules mock for feature_router, ml_router, router_registry."""
     bandit_state = MagicMock()
     bandit_state.alpha = 1.0
@@ -228,6 +232,69 @@ class TestProviderSelectionModelScore:
                 )
         assert len(result) == 1
 
+    def test_pipeline_cache_reuses_unchanged_dependencies(self):
+        model = ProviderSelectionModel()
+        pipeline = object()
+        mods = _mock_ml_modules()
+        bandit_cache = mods["api.routing.ml_router"].bandit_cache
+        registry = mods["api.routing.router_registry"].registry
+
+        with patch.dict("sys.modules", mods):
+            with patch("api.routing.provider_selection.build_routing_pipeline") as build:
+                build.return_value = pipeline
+
+                first = model._pipeline_for(bandit_cache=bandit_cache, registry=registry)
+                second = model._pipeline_for(bandit_cache=bandit_cache, registry=registry)
+
+        assert first is pipeline
+        assert second is pipeline
+        build.assert_called_once()
+
     def test_singleton_instance_exists(self):
         assert provider_selection_model is not None
         assert isinstance(provider_selection_model, ProviderSelectionModel)
+
+
+class TestProviderSelectionModelScorePrompt:
+    def test_score_prompt_runs_from_prompt_stage_and_preserves_task_type(self):
+        model = ProviderSelectionModel()
+        features = RoutingFeatures(
+            prompt_length_bucket=0,
+            task_type="coding",
+            complexity_score=0.7,
+            conversation_turn=1,
+            intent_label="coding",
+            intent_confidence=0.9,
+        )
+
+        with patch.dict("sys.modules", _mock_ml_modules()):
+            with patch("api.routing.provider_selection.feature_extractor") as mock_fe:
+                mock_fe.extract_request.return_value = features
+                mock_fe.extract_providers.return_value = {}
+                result = model.score_prompt(
+                    ["openai", "anthropic"],
+                    "Please refactor this class",
+                    task_type="coding",
+                    conversation_history=[{"role": "user", "content": "previous"}],
+                    intent_label="coding",
+                    intent_confidence=0.9,
+                    routing_id="prompt-route-1",
+                )
+
+        assert {score.provider_id for score in result} == {"openai", "anthropic"}
+        explanation = get_explanation("prompt-route-1")
+        assert explanation is not None
+        assert explanation["task_type"] == "coding"
+        assert [entry["stage"] for entry in explanation["routing_trace"]] == list(
+            ROUTING_STAGE_ORDER
+        )
+        assert explanation["routing_trace"][0]["attributes"]["source"] == "prompt"
+        assert explanation["routing_trace"][2]["attributes"]["task_type"] == "coding"
+        assert explanation["routing_waterfall"] == explanation["routing_trace"]
+        assert explanation["prompt_classification"]["task_type"] == "coding"
+        assert explanation["ml_confidence"]["selected_confidence"] > 0
+        assert explanation["selection_reason"].startswith(result[0].provider_id)
+        assert explanation["fallback_reasons"][0]["reason"] == "ranked_below_selected_provider"
+        assert explanation["latency_percentiles_ms"]["p95"] >= 0
+        recent = get_recent_explanations(limit=5)
+        assert recent[0]["routing_id"] == "prompt-route-1"

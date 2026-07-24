@@ -9,7 +9,11 @@ from sqlalchemy import select
 
 from ...storage.database import get_db_context
 from ...storage.vector_models import EmbeddingModel, MemoryFactModel
-from ..memory_contract import confidence_band_from_score, importance_band_from_score
+from ..memory_contract import (
+    _normalize_embedding,
+    confidence_band_from_score,
+    importance_band_from_score,
+)
 from .classification import _merge_memory_state, _normalize_scope
 from .entity_graph import _persist_entity_graph
 from .models import (
@@ -109,6 +113,11 @@ def _record_from_model(row: MemoryFactModel) -> MemoryRecord:
     explicitness_score = float(metadata.get("explicitness_score") or 0.0)
     confidence_reason = str(metadata.get("confidence_reason") or "")
     importance_reason = str(metadata.get("importance_reason") or "")
+    embedding = _normalize_embedding(
+        getattr(row, "fact_embedding", None)
+        or metadata.get("embedding")
+        or metadata.get("fact_embedding")
+    )
 
     return MemoryRecord(
         id=row.id,
@@ -137,6 +146,7 @@ def _record_from_model(row: MemoryFactModel) -> MemoryRecord:
             }
         ),
         embedding_id=metadata.get("embedding_id"),
+        embedding=embedding,
         related_memory_ids=list(row.related_memory_ids or []),
         entity_refs=list(row.entity_refs or []),
         metadata=metadata,

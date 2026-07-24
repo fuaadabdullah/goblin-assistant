@@ -1,4 +1,4 @@
-.PHONY: help install dev web-dev api-dev build build-packages lint lint-web lint-api lint-policy type-check type-check-packages test test-unit test-web test-web-coverage test-api test-api-coverage test-api-context-coverage test-e2e test-e2e-budget test-integration test-contract test-performance generate-providers-json check-providers-json check-api-boundaries check-api-cycles check-capability-boundaries check-route-lifecycle check-docs-canonical-refs check-docs-inventory check-docs-links generate-docs-coverage type-check-api-mypy type-check-api-pyright format format-check test-critical sdk-generate sdk-check generate-route-manifest check-api-calls contract-checks secret-scan check-unused-deps check-dead-code phase-gates
+.PHONY: help install dev web-dev api-dev build build-packages lint lint-web lint-api lint-policy type-check type-check-packages test test-unit test-web test-web-coverage test-api test-api-coverage test-api-context-coverage test-e2e test-e2e-budget test-integration test-contract test-performance generate-providers-json check-providers-json check-api-boundaries check-api-cycles check-api-cycles-report check-capability-boundaries check-route-lifecycle check-operational-policy check-docs-canonical-refs check-docs-inventory check-docs-links generate-docs-coverage type-check-api-mypy type-check-api-pyright format format-check test-critical sdk-generate sdk-check generate-route-manifest check-api-calls contract-checks secret-scan check-unused-deps check-dead-code phase-gates
 PNPM_TMP := TMPDIR="$(PWD)/.tmp"
 PYTHON ?= python3.11
 
@@ -20,7 +20,7 @@ help:
 	@echo "  make test-integration     - run integration + contract buckets from tests/manifests"
 	@echo "  make test-contract        - run contract bucket only"
 	@echo "  make test-performance     - run performance bucket from tests/manifests"
-	@echo "  make test-critical        - run critical-path coverage gates"
+	@echo "  make test-critical        - run critical-path journey gates"
 	@echo "  make phase-gates          - run rollout phase-gate checks"
 	@echo "  make check-dead-code      - find unused Python functions and TS exports"
 	@echo "  make secret-scan          - scan config/env/docs for embedded secrets"
@@ -29,8 +29,10 @@ help:
 	@echo "  make test-api-context-coverage - run context assembly service coverage gate (>=90%)"
 	@echo "  make check-api-boundaries - enforce API module import boundaries"
 	@echo "  make check-api-cycles     - enforce no API circular dependencies"
+	@echo "  make check-api-cycles-report - report API circular dependencies (non-blocking, writes artifacts/api-cycles.json + .dot)"
 	@echo "  make check-capability-boundaries - enforce capability ownership rules"
 	@echo "  make check-route-lifecycle - validate route lifecycle metadata policy"
+	@echo "  make check-operational-policy - validate Docker, deploy target, and dependency-update policy"
 	@echo "  make check-docs-canonical-refs - fail on stale docs canonical-location references"
 	@echo "  make check-docs-inventory - validate docs inventory coverage and compatibility stubs"
 	@echo "  make check-docs-links - validate local markdown links in docs"
@@ -58,11 +60,18 @@ check-api-boundaries:
 check-api-cycles:
 	$(PYTHON) scripts/architecture/check_api_architecture.py cycles
 
+check-api-cycles-report:
+	mkdir -p artifacts
+	$(PYTHON) scripts/architecture/check_api_architecture.py cycles --report-only --output artifacts/api-cycles.json
+
 check-capability-boundaries:
 	$(PYTHON) scripts/architecture/check_capability_boundaries.py
 
 check-route-lifecycle:
 	$(PYTHON) scripts/architecture/check_route_lifecycle.py
+
+check-operational-policy:
+	$(PYTHON) scripts/architecture/check_operational_policy.py
 
 check-docs-canonical-refs:
 	$(PYTHON) scripts/architecture/check_docs_canonical_refs.py
@@ -123,6 +132,7 @@ lint-api:
 	cd apps/api && PYTHONPATH=src $(PYTHON) -m ruff check --config pyproject.toml src/api
 
 lint-policy:
+	$(PYTHON) scripts/architecture/check_operational_policy.py
 	$(PYTHON) scripts/policy_guard.py --strict
 	$(PYTHON) scripts/architecture/check_docs_canonical_refs.py
 	$(PYTHON) scripts/architecture/check_docs_inventory.py
@@ -183,7 +193,8 @@ test-critical:
 test-api-context-coverage:
 	cd apps/api && PYTHONPATH=src $(PYTHON) -m pytest -o "addopts=" -v \
 		src/api/tests/test_context_assembly*.py \
-		--cov=src/api/services/context_assembly_service \
+		src/api/tests/context_assembly_coverage \
+		--cov=api.services.context_assembly_service \
 		--cov-report=term-missing \
 		--cov-fail-under=90
 
@@ -236,7 +247,7 @@ secret-scan:
 	$(PYTHON) scripts/security/scan_secrets.py
 
 check-dead-code:
-	cd apps/api && $(PYTHON) -m vulture src/api --min-confidence 80
+	cd apps/api && $(PYTHON) -m vulture src/api vulture_whitelist.py --min-confidence 80
 	$(PNPM_TMP) pnpm --filter @goblin/web dead-code
 
 check-unused-deps:

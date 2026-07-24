@@ -12,10 +12,15 @@ describe('/api/auth/google/url route', () => {
     vi.stubGlobal(
       'fetch',
       vi.fn().mockResolvedValue(
-        new Response(JSON.stringify({ authorization_url: 'https://accounts.google.com/o/oauth2/v2/auth?state=xyz' }), {
-          status: 200,
-          headers: { 'x-correlation-id': 'cid-456' },
-        })
+        new Response(
+          JSON.stringify({
+            authorization_url: 'https://accounts.google.com/o/oauth2/v2/auth?state=xyz',
+          }),
+          {
+            status: 200,
+            headers: { 'x-correlation-id': 'cid-456' },
+          }
+        )
       )
     );
 
@@ -28,10 +33,7 @@ describe('/api/auth/google/url route', () => {
   });
 
   it('returns 502 when the backend is unreachable', async () => {
-    vi.stubGlobal(
-      'fetch',
-      vi.fn().mockRejectedValue(new Error('Connection refused'))
-    );
+    vi.stubGlobal('fetch', vi.fn().mockRejectedValue(new Error('Connection refused')));
 
     const response = await GET();
 

@@ -22,6 +22,10 @@ Goblin Assistant is organized as a monorepo for clearer ownership and faster dev
 ## Quick Start
 
 ```bash
+# Use Node 20.x (CI baseline) or 22.x before installing dependencies.
+# Example with nvm:
+# nvm use 20
+
 pnpm install
 cd apps/api && python3.11 -m pip install -r requirements.txt -r requirements-vector.txt
 ```

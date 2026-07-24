@@ -1,9 +1,4 @@
-import {
-  AccountProfile,
-  AccountPreferences,
-  getFrontend,
-  putFrontend,
-} from './shared';
+import { AccountProfile, AccountPreferences, getFrontend, putFrontend } from './shared';
 
 const INTERNAL_ACCOUNT_PREFIX = '/api/account';
 

@@ -63,8 +63,10 @@ def _derive_memory_state(
         or explicit_kind
         in {
             MemoryKind.PREFERENCE.value,
+            MemoryKind.GOAL.value,
             MemoryKind.PROJECT_STATE.value,
             MemoryKind.DECISION.value,
+            MemoryKind.CORRECTION.value,
         }
     ):
         return MemoryLifecycleState.ACTIVE
@@ -88,8 +90,15 @@ def _normalize_kind(
         or metadata.get("kind")
     )
     if hinted:
+        normalized = str(hinted)
+        if normalized == "project":
+            return MemoryKind.PROJECT_STATE
+        if normalized == "goal":
+            return MemoryKind.GOAL
+        if normalized == "correction":
+            return MemoryKind.CORRECTION
         try:
-            return MemoryKind(str(hinted))
+            return MemoryKind(normalized)
         except ValueError:
             pass
 
@@ -103,6 +112,10 @@ def _normalize_kind(
         return MemoryKind.TASK_SIGNAL
     if source_kind in {"decision", "routing_decision"} or metadata.get("decision_id"):
         return MemoryKind.DECISION
+    if source_kind in {"goal", "objective"} or metadata.get("goal_id"):
+        return MemoryKind.GOAL
+    if source_kind in {"correction", "corrections"} or metadata.get("correction_id"):
+        return MemoryKind.CORRECTION
     if metadata.get("project_id") or metadata.get("workflow_id"):
         return MemoryKind.PROJECT_STATE
     if metadata.get("relationship") or metadata.get("related_memory_ids"):

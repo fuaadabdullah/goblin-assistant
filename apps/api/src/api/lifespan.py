@@ -7,7 +7,7 @@ from fastapi import FastAPI
 
 from .artifact_cleanup import artifact_cleanup_service
 from .monitoring import monitor
-from .secrets_router import cleanup_secrets_adapter, init_secrets_adapter
+from .routes.secrets_router import cleanup_secrets_adapter, init_secrets_adapter
 from .services.provider_health import health_monitor
 from .storage.cache import cache
 from .storage.database import engine, init_db, is_postgres, warmup_pool
@@ -138,7 +138,7 @@ async def _start_artifact_cleanup():
 
 async def _start_embedding_worker():
     try:
-        from .services.embedding_worker import embedding_worker  # noqa: PLC0415
+        from .services.embedding_service import embedding_worker  # noqa: PLC0415
 
         await embedding_worker.start()
         logger.info("Embedding worker started")
@@ -372,7 +372,7 @@ async def lifespan(_app: FastAPI):
             )
 
         try:
-            from .services.embedding_worker import (  # noqa: PLC0415
+            from .services.embedding_service import (  # noqa: PLC0415
                 embedding_worker,
             )
 

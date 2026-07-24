@@ -19,19 +19,20 @@ from typing import Any, AsyncGenerator, Dict, List, Optional, Union
 import httpx
 
 from .contracts import ProviderCapabilityMatrix
+
+# Re-exported for every existing `from .base import ProviderErrorCategory` import
+# site — the class is now owned by domain.py so that module has zero runtime
+# dependency on this one (see domain.py's docstring for why).
+from .domain import (
+    ProviderCapability,
+    ProviderErrorCategory,
+    ProviderExecutionRequest,
+    ProviderExecutionResult,
+    ProviderHealthSnapshot,
+    capabilities_from_matrix,
+    from_provider_result,
+)
 from .pricing import resolve_model_pricing
-
-
-class ProviderErrorCategory(str, Enum):
-    """Structured error categories for provider failures."""
-
-    AUTH = "auth"  # 401/403, invalid API key
-    RATE_LIMIT = "rate-limit"  # 429, quota exceeded
-    TIMEOUT = "timeout"  # Connection/read timeout
-    MODEL_ERROR = "model-error"  # Invalid model, context too long
-    SERVER_ERROR = "server-error"  # 5xx from provider
-    CONNECTION = "connection"  # DNS, network, connection refused
-    UNKNOWN = "unknown"
 
 
 class ProviderCircuitState(str, Enum):
@@ -181,16 +182,11 @@ def is_billing_error(status_code: int, body: str) -> bool:
     return any(phrase in body_lower for phrase in _BILLING_PHRASES)
 
 
-@dataclass
-class ProviderHealth:
-    """Point-in-time health snapshot for a provider."""
-
-    provider_id: str
-    healthy: bool
-    latency_ms: float = 0.0
-    error: Optional[str] = None
-    billing_issue: bool = False
-    checked_at: float = field(default_factory=time.time)
+# Alias, not a subclass: every provider's health_check() constructs this with
+# `provider_id`/`healthy` positional and the rest by keyword, never passing
+# `status` — ProviderHealthSnapshot derives `status` automatically in that
+# case (see providers/domain.py), so this is a lossless, zero-diff alias.
+ProviderHealth = ProviderHealthSnapshot
 
 
 class BaseProvider(ABC):
@@ -296,6 +292,21 @@ class BaseProvider(ABC):
     ) -> ProviderResult:
         """Non-streaming completion."""
 
+    async def invoke_typed(self, request: ProviderExecutionRequest) -> ProviderExecutionResult:
+        """Typed sibling of invoke(). Concrete (not abstract) — every provider
+        gets an identical typed execution entrypoint for free via inheritance;
+        no subclass needs to change. Bridges through the existing invoke()."""
+        result = await self.invoke(
+            messages=request.messages,
+            model=request.model,
+            stream=request.stream,
+            max_tokens=request.max_tokens if request.max_tokens is not None else 4096,
+            temperature=request.temperature if request.temperature is not None else 0.7,
+            prompt=request.prompt or "",
+            **request.extra,
+        )
+        return from_provider_result(result, provider_id=request.provider_id, model=request.model)
+
     @abstractmethod
     def stream(
         self,
@@ -394,6 +405,12 @@ class BaseProvider(ABC):
             "embeddings": bool(supports_embed),
             "limits": limits,
         }
+
+    def capabilities_typed(self) -> frozenset[ProviderCapability]:
+        """Typed sibling of capabilities(). Concrete (not abstract) — every
+        provider gets this for free via inheritance, no subclass changes
+        needed. Bridges through the existing capabilities() matrix."""
+        return capabilities_from_matrix(self.capabilities())
 
     def is_available(self) -> bool:
         if self._circuit_state == ProviderCircuitState.HARD_OPEN:

@@ -1,0 +1,120 @@
+name: Architecture Dashboard
+
+on:
+  workflow_dispatch:
+# Auto-schedule disabled: GitHub Actions billing locked.
+# Uncomment when billing is resolved:
+#  schedule:
+#    - cron: '0 4 * * *'  # 4 AM UTC daily
+
+permissions:
+  contents: read
+  actions: read
+
+jobs:
+  dashboard:
+    name: dashboard
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+          cache-dependency-path: |
+            apps/api/requirements.txt
+            apps/api/requirements-vector.txt
+
+      - name: Install Python dependencies
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install -r apps/api/requirements.txt -r apps/api/requirements-vector.txt
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: "pnpm"
+
+      - name: Set up pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 9
+
+      - name: Install frontend dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Fetch previous dashboard run (for import graph diff)
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          mkdir -p previous
+          run_id=$(gh run list --workflow=architecture-dashboard.yml --status=success \
+            --branch="${{ github.ref_name }}" --limit=1 --json databaseId -q '.[0].databaseId' || true)
+          if [ -n "$run_id" ]; then
+            echo "Found previous successful run: $run_id"
+            gh run download "$run_id" -n architecture-dashboard -D previous || echo "No artifact on previous run; skipping diff."
+          else
+            echo "No previous successful run found; this is the first dashboard run."
+          fi
+
+      - name: Generate dashboard
+        id: dashboard
+        run: |
+          mkdir -p artifacts
+          PREV_ARG=""
+          if [ -f previous/dashboard.json ]; then
+            PREV_ARG="--previous-graph previous/dashboard.json"
+          fi
+          python scripts/architecture/generate_dashboard.py --output artifacts/dashboard.json $PREV_ARG | tee dashboard-metrics.txt
+
+      - name: Add dashboard to CI summary
+        run: |
+          python - << 'PYEOF'
+          import json
+          import os
+
+          with open("artifacts/dashboard.json") as f:
+              d = json.load(f)
+
+          lines = ["## Architecture Dashboard", ""]
+          lines.append(f"- **Cycle count**: {d['cycles']['count']}")
+          lines.append(f"- **Boundary violations**: {d['boundary_violations']}")
+          lines.append(f"- **Capability violations**: {d['capability_violations']}")
+          dc = d["dead_code"]
+          lines.append(
+              f"- **Dead code**: {dc.get('python_unused')} Python (vulture), "
+              f"{dc.get('typescript_unused_files')} unused TS files / "
+              f"{dc.get('typescript_issue_count')} unused TS exports (knip)"
+          )
+
+          changes = d.get("import_graph_changes")
+          if changes:
+              lines.append(
+                  f"- **Import graph changes vs. last run**: "
+                  f"+{changes['added_count']} / -{changes['removed_count']} edges"
+              )
+          else:
+              lines.append("- **Import graph changes vs. last run**: n/a (no previous run found)")
+
+          lines.append("")
+          lines.append("### Largest files")
+          lines.append("")
+          lines.append("| Lines | File |")
+          lines.append("|---|---|")
+          for entry in d["largest_files"][:10]:
+              lines.append(f"| {entry['lines']} | `{entry['path']}` |")
+
+          with open(os.environ["GITHUB_STEP_SUMMARY"], "a") as out:
+              out.write("\n".join(lines) + "\n")
+          PYEOF
+
+      - name: Upload dashboard artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: architecture-dashboard
+          path: artifacts/dashboard.json
+          retention-days: 90

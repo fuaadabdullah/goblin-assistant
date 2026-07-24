@@ -20,6 +20,7 @@ import pytest
 
 from api.storage.api_keys import (
     APIKeyStore,
+    DatabaseAPIKeyStore,
     FileAPIKeyStore,
     SecretManagerAPIKeyStore,
     create_api_key_store,
@@ -208,12 +209,12 @@ class TestCreateAPIKeyStore:
             store = create_api_key_store()
             assert isinstance(store, SecretManagerAPIKeyStore)
 
-    def test_creates_file_store_in_development(self):
+    def test_creates_database_store_in_development(self):
         with patch.dict(os.environ, {"ENVIRONMENT": "development"}, clear=True):
             store = create_api_key_store()
-            assert isinstance(store, FileAPIKeyStore)
+            assert isinstance(store, DatabaseAPIKeyStore)
 
-    def test_creates_file_store_by_default(self):
+    def test_creates_database_store_by_default(self):
         with patch.dict(os.environ, {}, clear=True):
             store = create_api_key_store()
-            assert isinstance(store, FileAPIKeyStore)
+            assert isinstance(store, DatabaseAPIKeyStore)

@@ -1,30 +1,18 @@
 [services]
 forbidden_framework_prefixes = ["fastapi", "starlette"]
 
-[routes]
-allow_route_storage_imports = [
-  "api.ops_router -> api.storage.cache",
-  "api.ops_router -> api.storage.tasks",
-  "api.routes.account_router -> api.storage.database",
-  "api.routes.account_router -> api.storage.user_service",
-  "api.routes.privacy -> api.storage.conversations",
-  "api.routes.privacy -> api.storage.preferences_service",
-  "api.sandbox_api -> api.storage.cache",
-  "api.semantic_chat_router -> api.storage.conversations",
-]
 
 [parser]
 allow_parse_errors = []
 
 [cycles]
+# Baseline of pre-existing circular imports, recorded 2026-07-18 (see "Prevent New Circular
+# Dependencies"). `make check-api-cycles` allows exactly these; anything not listed here fails
+# the gate. Existing debt stays allowed temporarily — do not add new entries for new code without
+# a specific exception; fix the cycle instead. Regenerate this list with:
+#   python3 scripts/architecture/check_api_architecture.py cycles --report-only
 ignore_cycles = [
   "api.integrations.secrets.auth -> api.integrations.secrets.vault_adapter -> api.integrations.secrets.auth",
-  "api.providers.dispatcher -> api.services.provider_health -> api.providers.dispatcher",
-  "api.providers.dispatcher -> api.services.provider_health -> api.routing.router -> api.providers.dispatcher",
-  "api.services.memory_promotion_service -> api.services.observability_service -> api.services.retrieval_service -> api.services.tool_result_memory_service -> api.services.memory_promotion_service",
-  "api.services.memory_promotion_service -> api.services.retrieval_service -> api.services.tool_result_memory_service -> api.services.memory_promotion_service",
-  "api.services.retrieval_service -> api.services.tool_result_memory_service -> api.services.retrieval_service",
-  "api.storage.models -> api.storage.vector_models -> api.storage.models",
 ]
 
 [rules]

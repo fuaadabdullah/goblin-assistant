@@ -9,6 +9,7 @@ This module provides:
 from typing import Any, Dict, List, Optional
 
 from ..config.system_prompt import system_prompt_manager
+from .retrieval_service._limits import select_top_memory_facts
 
 
 def _build_financial_profile_block(context_bundle: Dict[str, Any]) -> Optional[str]:
@@ -47,7 +48,7 @@ def _build_context_text(
     for summary in context_bundle.get("summaries", []):
         context_parts.append(f"[SUMMARY] {summary['content']}")
 
-    for fact in context_bundle.get("memory_facts", []):
+    for fact in select_top_memory_facts(context_bundle.get("memory_facts", [])):
         memory_type = fact.get("memory_type") or fact.get("metadata", {}).get("memory_type")
         label = f"[MEMORY:{memory_type}]" if memory_type else "[MEMORY]"
         context_parts.append(f"{label} {fact['content']}")

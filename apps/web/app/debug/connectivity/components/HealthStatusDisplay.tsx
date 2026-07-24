@@ -26,17 +26,24 @@ const HealthStatusDisplay: FC<HealthStatusDisplayProps> = ({ health }) => {
 
   if (!health.data) return null;
 
+  const status = health.data.overall ?? health.data.status ?? 'unknown';
+  const statusClass =
+    status === 'healthy'
+      ? styles['statusHealthy']
+      : status === 'warnings' || status === 'degraded'
+        ? styles['warningText']
+        : styles['statusUnhealthy'];
+
   return (
     <div>
       <p>
-        <strong>Status:</strong>{' '}
-        <span className={health.data.overall === 'healthy' ? styles['statusHealthy'] : styles['statusUnhealthy']}>
-          {health.data.overall || 'unknown'}
-        </span>
+        <strong>Status:</strong> <span className={statusClass}>{status}</span>
       </p>
-      <p>
-        <strong>Timestamp:</strong> {health.data.timestamp}
-      </p>
+      {health.data.timestamp ? (
+        <p>
+          <strong>Timestamp:</strong> {health.data.timestamp}
+        </p>
+      ) : null}
       <details>
         <summary>Full Response</summary>
         <pre>{JSON.stringify(health.data, null, 2)}</pre>

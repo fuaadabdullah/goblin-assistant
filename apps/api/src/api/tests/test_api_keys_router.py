@@ -1,4 +1,4 @@
-"""Tests for api.api_keys_router."""
+"""Tests for api.routes.api_keys_router."""
 
 from __future__ import annotations
 
@@ -8,7 +8,7 @@ from unittest.mock import AsyncMock, MagicMock
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
 
-from api import api_keys_router
+from api.routes import api_keys_router
 
 
 def _client() -> TestClient:

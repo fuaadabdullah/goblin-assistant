@@ -4,7 +4,7 @@ import pytest
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
 
-import api.stream_router as stream
+import api.routes.stream_router as stream
 
 
 def _parse_sse(event: str) -> dict:

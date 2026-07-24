@@ -10,8 +10,13 @@ import { ANALYTICS_EVENTS, ANALYTICS_STORAGE_KEYS } from '../../../../lib/analyt
 import { useToast } from '../../../../hooks/useToast';
 import { useAuthSession } from '../../../../hooks/api/useAuthSession';
 import { trackEvent } from '../../../../utils/analytics';
+import type { Mode } from '../../types';
 import type { PendingAttachment } from '../useChatSession';
 import { createMessageId, createAssistantMessage, mapAttachments } from './factories';
+
+const MODE_BACKEND: Partial<Record<Mode, { department: string; mode?: string }>> = {
+  general: { department: 'general', mode: 'GENERAL_ASSISTANT' },
+};
 
 export const formatSendMessageError = (error: unknown): string => getUserMessage(error);
 
@@ -23,12 +28,14 @@ interface SendMessageDeps {
   activeThread: ChatThread | null;
   selectedModel?: string | undefined;
   selectedProvider?: string | undefined;
+  selectedMode?: Mode | undefined;
   pendingAttachments: PendingAttachment[];
   applyMessages: (msgs: ChatMessage[]) => void;
   onSendSuccess?: (() => void) | undefined;
   onThreadUpdated?: ((thread: ChatThread) => void) | undefined;
   onThreadRemoved?: ((thread: ChatThread) => void) | undefined;
   onThreadsInvalidated?: (() => void) | undefined;
+  onThreadSelected?: ((threadKey: string) => void) | undefined;
   setIsSending: (v: boolean) => void;
   showError: ReturnType<typeof useToast>['showError'];
   showInfo: ReturnType<typeof useToast>['showInfo'];
@@ -38,9 +45,7 @@ const recordSuccessfulMessageSend = (): number => {
   if (typeof window === 'undefined') return 0;
 
   try {
-    const rawCount = window.sessionStorage.getItem(
-      ANALYTICS_STORAGE_KEYS.successful_message_count
-    );
+    const rawCount = window.sessionStorage.getItem(ANALYTICS_STORAGE_KEYS.successful_message_count);
     const currentCount = Number(rawCount) || 0;
     const nextCount = currentCount + 1;
     window.sessionStorage.setItem(
@@ -70,12 +75,14 @@ export const useSendMessage = ({
   activeThread,
   selectedModel,
   selectedProvider,
+  selectedMode,
   pendingAttachments,
   applyMessages,
   onSendSuccess,
   onThreadUpdated,
   onThreadRemoved,
   onThreadsInvalidated,
+  onThreadSelected,
   setIsSending,
   showError,
   showInfo,
@@ -156,11 +163,13 @@ export const useSendMessage = ({
           throw new Error('Conversation ID unavailable.');
         }
 
+        const modeParams = (selectedMode && MODE_BACKEND[selectedMode]) ?? {};
         const result = await chatClient.sendMessage({
           conversationId,
           prompt: content,
           model: selectedModel || undefined,
           provider: selectedProvider || undefined,
+          ...modeParams,
           attachment_ids:
             pendingAttachments.length > 0 ? pendingAttachments.map((a) => a.file_id) : undefined,
         });
@@ -210,6 +219,11 @@ export const useSendMessage = ({
           } as ChatThread);
         }
 
+        // Point the session at the (possibly just-created) backend thread so
+        // the next send in this session reuses it instead of creating a new
+        // conversation every time.
+        onThreadSelected?.(backendThreadKey);
+
         if (shouldPromoteLegacy && activeThread && onThreadRemoved) {
           onThreadRemoved(activeThread);
         }
@@ -252,6 +266,7 @@ export const useSendMessage = ({
       activeThread,
       selectedModel,
       selectedProvider,
+      selectedMode,
       pendingAttachments,
       applyMessages,
       onSendSuccess,
@@ -259,6 +274,7 @@ export const useSendMessage = ({
       onThreadUpdated,
       onThreadRemoved,
       onThreadsInvalidated,
+      onThreadSelected,
       setIsSending,
       showError,
       showInfo,

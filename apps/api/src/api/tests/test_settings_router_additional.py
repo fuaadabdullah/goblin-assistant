@@ -9,7 +9,7 @@ from api.auth.router import User, get_current_user
 from api.core.contracts import ErrorEnvelope
 from api.core.error_types import ErrorType
 from api.core.errors import DomainError
-from api.settings_router import router
+from api.routes.settings_router import router
 
 
 @pytest.fixture(autouse=True)
@@ -45,7 +45,7 @@ def _make_client():
 
 
 def test_provider_models_deduplicates_and_sorts():
-    from api.settings_router import _provider_models
+    from api.routes.settings_router import _provider_models
 
     assert _provider_models({"models": ["b", "a", "a"], "default_model": "c"}) == [
         "a",
@@ -55,7 +55,7 @@ def test_provider_models_deduplicates_and_sorts():
 
 
 def test_provider_models_ignores_blank_values():
-    from api.settings_router import _provider_models
+    from api.routes.settings_router import _provider_models
 
     assert _provider_models({"models": ["", "alpha"], "default_model": " "}) == ["alpha"]
 
@@ -74,29 +74,29 @@ def test_get_settings_success():
 
     with (
         patch(
-            "api.settings_router.dispatcher.get_provider_inventory",
+            "api.routes.settings_router.dispatcher.get_provider_inventory",
             new_callable=AsyncMock,
             return_value=inventory,
         ),
         patch(
-            "api.settings_router.top_providers_for",
+            "api.routes.settings_router.top_providers_for",
             return_value=["openai"],
         ),
         patch(
-            "api.settings_router.dispatcher.get_provider_config",
+            "api.routes.settings_router.dispatcher.get_provider_config",
             return_value={"default_model": "gpt-4o-mini"},
         ),
         patch(
-            "api.settings_router.dispatcher.get_provider",
+            "api.routes.settings_router.dispatcher.get_provider",
             return_value=MagicMock(default_model="gpt-4o-mini"),
         ),
         patch(
-            "api.settings_router.SaaSSettingsService.list_provider_settings",
+            "api.routes.settings_router.SaaSSettingsService.list_provider_settings",
             new_callable=AsyncMock,
             return_value=[],
         ),
         patch(
-            "api.settings_router.SaaSSettingsService.get_global_setting",
+            "api.routes.settings_router.SaaSSettingsService.get_global_setting",
             new_callable=AsyncMock,
             return_value=None,
         ),
@@ -117,12 +117,12 @@ def test_get_settings_success():
 def test_get_settings_failure():
     with (
         patch(
-            "api.settings_router.dispatcher.get_provider_inventory",
+            "api.routes.settings_router.dispatcher.get_provider_inventory",
             new_callable=AsyncMock,
             side_effect=RuntimeError("boom"),
         ),
         patch(
-            "api.settings_router.SaaSSettingsService.list_provider_settings",
+            "api.routes.settings_router.SaaSSettingsService.list_provider_settings",
             new_callable=AsyncMock,
             return_value=[],
         ),
@@ -141,7 +141,7 @@ def test_update_provider_and_model_settings():
     with (
         _make_client() as client,
         patch(
-            "api.settings_router.SaaSSettingsService.upsert_provider_settings",
+            "api.routes.settings_router.SaaSSettingsService.upsert_provider_settings",
             new_callable=AsyncMock,
             return_value=MagicMock(
                 provider_name="openai",
@@ -154,7 +154,7 @@ def test_update_provider_and_model_settings():
             ),
         ),
         patch(
-            "api.settings_router.SaaSSettingsService.set_global_setting",
+            "api.routes.settings_router.SaaSSettingsService.set_global_setting",
             new_callable=AsyncMock,
             return_value={"key": "model:gpt-4o-mini", "value": {"name": "gpt-4o-mini"}},
         ),
@@ -184,3 +184,42 @@ def test_update_provider_and_model_settings():
         )
         assert model_resp.status_code == 200
         assert model_resp.json()["data"]["message"] == "Settings updated for model: gpt-4o-mini"
+
+
+def test_patch_global_setting_accepts_valid_payload():
+    current_user = User(id="user-1", email="user-1@example.com")
+
+    app = FastAPI()
+
+    @app.exception_handler(DomainError)
+    async def _domain_error_handler(_, exc: DomainError):
+        return JSONResponse(
+            status_code=exc.status_code,
+            content=ErrorEnvelope(
+                error={
+                    "code": exc.code,
+                    "type": ErrorType.BUSINESS_LOGIC,
+                    "message": exc.message,
+                    "details": exc.details,
+                }
+            ).model_dump(exclude_none=True),
+        )
+
+    app.include_router(router, prefix="/api/v1")
+    app.dependency_overrides[get_current_user] = lambda: current_user
+    client = TestClient(app)
+
+    with patch(
+        "api.routes.settings_router.SaaSSettingsService.set_global_setting",
+        new_callable=AsyncMock,
+        return_value={"key": "theme", "value": {"mode": "dark"}},
+    ):
+        response = client.patch(
+            "/api/v1/settings/theme",
+            json={"value": {"mode": "dark"}},
+        )
+
+    assert response.status_code == 200
+    assert response.json()["success"] is True
+    assert response.json()["data"]["key"] == "theme"
+    assert response.json()["data"]["value"] == {"mode": "dark"}

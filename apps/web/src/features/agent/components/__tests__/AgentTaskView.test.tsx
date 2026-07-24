@@ -44,7 +44,10 @@ const session = {
     auto_commit_each_change: true,
     repair_attempts: 2,
     phase0_ci_commands: [
-      { name: 'pytest', command: 'cd apps/api && PYTHONPATH=src python3.11 -m pytest -o "addopts=" -v' },
+      {
+        name: 'pytest',
+        command: 'cd apps/api && PYTHONPATH=src python3.11 -m pytest -o "addopts=" -v',
+      },
       { name: 'lint', command: 'make lint' },
       { name: 'build', command: 'make build' },
     ],

@@ -16,7 +16,8 @@ from ..base import (
 from ..metrics import record_dispatch
 from ..quota_service import quota_service
 from ..router_service import get_router_model_names
-from ..supabase_events import check_provider_access, insert_routing_audit
+from ..supabase_events import insert_routing_audit
+from .selection import SelectionEngine
 
 try:
     from ddtrace.trace import tracer as _dd_tracer
@@ -92,8 +93,6 @@ async def stream_wrap(
     logger: Any,
     **kwargs: Any,
 ) -> ProviderResult:
-    from ...routing.router import registry
-
     started_at = asyncio.get_running_loop().time()
     try:
         await dispatcher._apply_test_mode_delay(provider_id)
@@ -114,7 +113,7 @@ async def stream_wrap(
 
         latency = (asyncio.get_running_loop().time() - started_at) * 1000
         provider.record_success()
-        registry.record_success(provider_id, latency_ms=latency, cost_usd=0.0)
+        dispatcher.record_routing_outcome(provider_id, ok=True, latency_ms=latency, cost_usd=0.0)
         dispatcher.note_provider_result(provider_id, ok=True, latency_ms=latency)
         record_dispatch(
             provider_id=provider_id,
@@ -143,7 +142,7 @@ async def stream_wrap(
             safe_error,
             category=error_category,
         )
-        registry.record_failure(provider_id)
+        dispatcher.record_routing_outcome(provider_id, ok=False)
         dispatcher.note_provider_result(provider_id, ok=False, error=safe_error)
         record_dispatch(
             provider_id=provider_id,
@@ -176,35 +175,9 @@ def _resolve_and_order_candidates(
     resolved_pid: Optional[str],
     candidates: List[str],
 ) -> tuple[bool, List[str]]:
-    """Resolve candidate ordering and mode based on dispatch mode.
-
-    Returns (explicit_mode, ordered_candidates).
-    """
-    from ...routing.router import registry
-
-    explicit_mode = resolved_pid not in (None, "auto", "cheapest", "local")
-    if explicit_mode:
-        first_config = dispatcher._configs.get(candidates[0], {}) if candidates else {}
-        if first_config.get("force_fallback"):
-            fallback_order = [p for p in dispatcher._hybrid_order() if p not in candidates]
-            return explicit_mode, [*candidates, *fallback_order]
-        return explicit_mode, candidates
-
-    configured_candidates = dispatcher._auto_configured_candidates(candidates)
-    if not configured_candidates:
-        configured_candidates = [p for p in candidates if dispatcher.is_configured(p)]
-
-    available: List[str] = []
-    for provider_id in configured_candidates:
-        current_provider = dispatcher._ensure_provider(provider_id)
-        if current_provider is None:
-            continue
-        canary = dispatcher._is_canary_attempt(provider_id, resolved_pid)
-        if current_provider.should_attempt(canary=canary) and (
-            registry.get(provider_id).success_rate >= dispatcher._routing_min_success_rate
-        ):
-            available.append(provider_id)
-    return explicit_mode, available or configured_candidates
+    """Compatibility wrapper for callers that still import this helper."""
+    plan = SelectionEngine(dispatcher).resolve_and_order_candidates(resolved_pid, candidates)
+    return plan.explicit_mode, plan.ordered
 
 
 # ============================================================================
@@ -218,26 +191,12 @@ def _build_dry_run_response(
     resolved_model: Optional[str],
     explicit_mode: bool,
 ) -> Dict[str, Any]:
-    """Build dry-run response without executing dispatch."""
-    candidate_detail = []
-    for provider_id in ordered:
-        current_provider = dispatcher._ensure_provider(provider_id)
-        candidate_detail.append(
-            {
-                "provider": provider_id,
-                "model": resolved_model or getattr(current_provider, "default_model", ""),
-                "configured": dispatcher.is_configured(provider_id),
-            }
-        )
-    first = candidate_detail[0]
-    return {
-        "ok": True,
-        "dry_run": True,
-        "resolved_provider": first["provider"],
-        "resolved_model": first["model"],
-        "routing_mode": "explicit" if explicit_mode else "auto",
-        "candidate_order": candidate_detail,
-    }
+    """Compatibility wrapper for callers that still import this helper."""
+    return SelectionEngine(dispatcher).build_dry_run_response(
+        ordered,
+        resolved_model,
+        explicit_mode,
+    )
 
 
 # ============================================================================
@@ -245,7 +204,70 @@ def _build_dry_run_response(
 # ============================================================================
 
 
+class ProviderExecutor:
+    """Executes exactly one provider attempt for an already-selected candidate."""
+
+    def __init__(self, dispatcher: Any) -> None:
+        self._dispatcher = dispatcher
+
+    async def execute_attempt(
+        self,
+        *,
+        provider_id: str,
+        model_name: str,
+        payload: Dict[str, Any],
+        timeout_ms: int,
+        stream: bool,
+        routing_mode: str,
+        rspan: Any,
+        aspan: Any,
+        log: Any,
+        attempted: List[str],
+    ) -> tuple[Optional[Dict[str, Any]], Optional[str], Optional[ProviderErrorCategory]]:
+        return await _execute_dispatch_attempt_impl(
+            dispatcher=self._dispatcher,
+            provider_id=provider_id,
+            model_name=model_name,
+            payload=payload,
+            timeout_ms=timeout_ms,
+            stream=stream,
+            routing_mode=routing_mode,
+            rspan=rspan,
+            aspan=aspan,
+            log=log,
+            attempted=attempted,
+        )
+
+
 async def _execute_dispatch_attempt(
+    dispatcher: Any,
+    provider_id: str,
+    model_name: str,
+    payload: Dict[str, Any],
+    timeout_ms: int,
+    stream: bool,
+    routing_mode: str,
+    rspan: Any,
+    aspan: Any,
+    log: Any,
+    attempted: List[str],
+) -> tuple[Optional[Dict[str, Any]], Optional[str], Optional[ProviderErrorCategory]]:
+    """Compatibility wrapper for callers that still import this helper."""
+    return await ProviderExecutor(dispatcher).execute_attempt(
+        provider_id=provider_id,
+        model_name=model_name,
+        payload=payload,
+        timeout_ms=timeout_ms,
+        stream=stream,
+        routing_mode=routing_mode,
+        rspan=rspan,
+        aspan=aspan,
+        log=log,
+        attempted=attempted,
+    )
+
+
+async def _execute_dispatch_attempt_impl(
     dispatcher: Any,
     provider_id: str,
     model_name: str,
@@ -262,8 +284,6 @@ async def _execute_dispatch_attempt(
 
     Returns (response, error, error_category) - response is set on success.
     """
-    from ...routing.router import registry
-
     _tag(aspan, "provider.id", provider_id)
     _tag(aspan, "provider.model", model_name)
 
@@ -342,7 +362,7 @@ async def _execute_dispatch_attempt(
                 error_msg,
                 category=error_cat,
             )
-            registry.record_failure(provider_id)
+            dispatcher.record_routing_outcome(provider_id, ok=False)
             dispatcher.note_provider_result(provider_id, ok=False, error=error_msg)
             record_dispatch(
                 provider_id=provider_id,
@@ -386,8 +406,9 @@ async def _execute_dispatch_attempt(
                 ),
             )
             current_provider.record_success()
-            registry.record_success(
+            dispatcher.record_routing_outcome(
                 provider_id,
+                ok=True,
                 latency_ms=float(result.latency_ms),
                 cost_usd=float(result.cost_usd or 0.0),
             )
@@ -440,7 +461,7 @@ async def _execute_dispatch_attempt(
             error_msg,
             category=error_cat,
         )
-        registry.record_failure(provider_id)
+        dispatcher.record_routing_outcome(provider_id, ok=False)
         dispatcher.note_provider_result(provider_id, ok=False, error=error_msg)
         record_dispatch(
             provider_id=provider_id,
@@ -467,7 +488,7 @@ async def _execute_dispatch_attempt(
         await _record_provider_failure(
             provider_id, current_provider, timeout_error, category=ProviderErrorCategory.TIMEOUT
         )
-        registry.record_failure(provider_id)
+        dispatcher.record_routing_outcome(provider_id, ok=False)
         dispatcher.note_provider_result(provider_id, ok=False, error=timeout_error)
         record_dispatch(
             provider_id=provider_id,
@@ -488,7 +509,7 @@ async def _execute_dispatch_attempt(
         error_msg = dispatcher._sanitize_error(exc)
         error_cat = classify_provider_error(exc)
         await _record_provider_failure(provider_id, current_provider, error_msg, category=error_cat)
-        registry.record_failure(provider_id)
+        dispatcher.record_routing_outcome(provider_id, ok=False)
         dispatcher.note_provider_result(provider_id, ok=False, error=error_msg)
         record_dispatch(
             provider_id=provider_id,
@@ -505,7 +526,7 @@ async def _execute_dispatch_attempt(
         return None, error_msg, error_cat
 
 
-async def dispatch_request(
+async def _dispatch_request_impl(
     dispatcher: Any,
     *,
     pid: Optional[str],
@@ -515,8 +536,12 @@ async def dispatch_request(
     stream: bool = False,
     dry_run: bool = False,
     logger: Any,
+    selection_engine: Optional[SelectionEngine] = None,
+    provider_executor: Optional[ProviderExecutor] = None,
 ) -> Dict[str, Any]:
     """Dispatch a request to a provider with fallback support."""
+    selection_engine = selection_engine or SelectionEngine(dispatcher)
+    provider_executor = provider_executor or ProviderExecutor(dispatcher)
     logical_model_names = set(get_router_model_names())
     should_route_logical = bool(model) and str(model).strip() in (
         logical_model_names | {"auto", "cheapest", "local"}
@@ -555,7 +580,9 @@ async def dispatch_request(
         if not candidates:
             return {"ok": False, "error": f"unknown-provider:{pid}", "latency_ms": 0.0}
 
-    explicit_mode, ordered = _resolve_and_order_candidates(dispatcher, resolved_pid, candidates)
+    selection_plan = selection_engine.resolve_and_order_candidates(resolved_pid, candidates)
+    explicit_mode = selection_plan.explicit_mode
+    ordered = selection_plan.ordered
 
     # Apply filters: explicit mode fallback, mock fallback, access control
     if explicit_mode and not ordered:
@@ -571,20 +598,18 @@ async def dispatch_request(
         if not ordered:
             return {"ok": False, "error": "no-configured-providers", "latency_ms": 0.0}
 
-    user_id = payload.get("user_id")
-    if isinstance(user_id, str) and user_id:
-        allowed = [p for p in ordered if await check_provider_access(user_id, p)]
-        if not allowed:
-            return {"ok": False, "error": "provider-access-denied", "latency_ms": 0.0}
-        ordered = allowed
+    allowed = await selection_engine.apply_user_access(ordered, user_id=payload.get("user_id"))
+    if not allowed and ordered:
+        return {"ok": False, "error": "provider-access-denied", "latency_ms": 0.0}
+    ordered = allowed
 
     if dry_run:
-        return _build_dry_run_response(dispatcher, ordered, resolved_model, explicit_mode)
+        return selection_engine.build_dry_run_response(ordered, resolved_model, explicit_mode)
 
     last_error = "all providers failed"
     last_category: Optional[ProviderErrorCategory] = None
     attempted: List[str] = []
-    routing_mode = "explicit" if explicit_mode else resolved_pid or "auto"
+    routing_mode = selection_plan.routing_mode
 
     req_ctx = (
         _dd_tracer.trace(
@@ -617,8 +642,7 @@ async def dispatch_request(
                 else nullcontext()
             )
             with att_ctx as aspan:
-                response, err, cat = await _execute_dispatch_attempt(
-                    dispatcher=dispatcher,
+                response, err, cat = await provider_executor.execute_attempt(
                     provider_id=provider_id,
                     model_name=resolved_model or current_provider.default_model,
                     payload=payload,
@@ -655,3 +679,65 @@ async def dispatch_request(
             "provider": "none",
             "latency_ms": 0.0,
         }
+
+
+class ExecutionEngine:
+    """Coordinates request execution after selection ownership is delegated."""
+
+    def __init__(
+        self,
+        dispatcher: Any,
+        *,
+        logger: Any,
+        selection_engine: Optional[SelectionEngine] = None,
+        provider_executor: Optional[ProviderExecutor] = None,
+    ) -> None:
+        self._dispatcher = dispatcher
+        self._logger = logger
+        self._selection_engine = selection_engine or SelectionEngine(dispatcher)
+        self._provider_executor = provider_executor or ProviderExecutor(dispatcher)
+
+    async def dispatch(
+        self,
+        *,
+        pid: Optional[str],
+        model: Optional[str],
+        payload: Dict[str, Any],
+        timeout_ms: int = 30_000,
+        stream: bool = False,
+        dry_run: bool = False,
+    ) -> Dict[str, Any]:
+        return await _dispatch_request_impl(
+            self._dispatcher,
+            pid=pid,
+            model=model,
+            payload=payload,
+            timeout_ms=timeout_ms,
+            stream=stream,
+            dry_run=dry_run,
+            logger=self._logger,
+            selection_engine=self._selection_engine,
+            provider_executor=self._provider_executor,
+        )
+
+
+async def dispatch_request(
+    dispatcher: Any,
+    *,
+    pid: Optional[str],
+    model: Optional[str],
+    payload: Dict[str, Any],
+    timeout_ms: int = 30_000,
+    stream: bool = False,
+    dry_run: bool = False,
+    logger: Any,
+) -> Dict[str, Any]:
+    """Compatibility wrapper for callers that still import this helper."""
+    return await ExecutionEngine(dispatcher, logger=logger).dispatch(
+        pid=pid,
+        model=model,
+        payload=payload,
+        timeout_ms=timeout_ms,
+        stream=stream,
+        dry_run=dry_run,
+    )

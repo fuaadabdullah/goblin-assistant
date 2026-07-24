@@ -30,15 +30,17 @@ from .api_router_pkg import (
 )
 from .core.orchestration import parse_natural_language
 from .input_validation import InputSanitizer
-from .orchestration_router import router as orchestration_router
 from .providers.dispatcher import invoke_provider
 from .providers.dispatcher_pkg.execution import mock_fallback_enabled
+from .routes.orchestration_router import router as orchestration_router
 from .routing.feedback_router import router as _feedback_router
 from .routing.router import route_task as route_task_runtime
 from .services.stream_state_store import get_stream_state_store
+from .services.task_store_service import (
+    conversation_store,  # noqa: F401 - compatibility alias
+    get_task_store,
+)
 from .services.task_streaming import run_task_stream_to_state
-from .storage import conversation_store  # noqa: F401 - compatibility alias for tests
-from .storage.tasks import get_task_store
 
 # Backward-compatible alias preserved for tests/integrations still patching
 # `api.api_router.create_simple_orchestration_plan`.
@@ -87,6 +89,26 @@ def _is_disallowed_mock_response(response: Any) -> bool:
     )
 
 
+async def _prepend_default_system_message(messages: List[Dict[str, str]]) -> List[Dict[str, str]]:
+    """Prepend the fixed-cost system+guardrails+date layer unless the caller
+    already supplied a system message. These bare /chat and /generate routes
+    skip conversation storage and context assembly entirely, so without this
+    they send the provider zero identity, zero guardrails, and zero date
+    grounding for "current" questions.
+    """
+    if any(m.get("role") == "system" for m in messages):
+        return messages
+    try:
+        from .services.context_assembly_service.system_layer import (
+            build_default_system_message,
+        )
+
+        system_message = await build_default_system_message()
+    except Exception:
+        system_message = None
+    return [system_message, *messages] if system_message else messages
+
+
 async def _run_stream_task_background(stream_id: str, request: StreamTaskRequest) -> None:
     await _run_stream_task_background_helper(
         stream_id,
@@ -110,6 +132,7 @@ async def simple_chat(request: SimpleChatRequest):
                 )
 
         messages = [{"role": m.role, "content": m.content} for m in request.messages]
+        messages = await _prepend_default_system_message(messages)
         provider = request.provider or "auto"
         model = request.model
 
@@ -169,6 +192,8 @@ async def generate(request: GenerateRequest):
                     ),
                 )
             messages = [{"role": "user", "content": prompt}]
+
+        messages = await _prepend_default_system_message(messages)
 
         response = await invoke_provider(
             pid=request.provider or "auto",

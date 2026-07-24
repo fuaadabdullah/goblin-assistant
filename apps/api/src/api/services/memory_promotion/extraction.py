@@ -27,6 +27,13 @@ _PREFERENCE_PATTERNS = [
     r"\b(communication|style|tooling|model|privacy|security)\b",
     r"\b(concise|detailed|technical|simple|clear)\b",
 ]
+_GOAL_PATTERNS = [
+    r"\b(my goal is|our goal is|goal:|objective:|aim to|plan to|working toward|working to)\b",
+]
+_CORRECTION_PATTERNS = [
+    r"\b(correction|actually|to clarify|to be clear|i meant)\b",
+    r"\b(don't use|do not use|avoid)\b.*\b(always use|use .* instead|instead)\b",
+]
 _FACT_PATTERNS = [
     r"\b(project|system|role|constraint|objective|goal|requirement)\b",
     r"\b(building|developing|working on|maintaining)\b",
@@ -96,6 +103,12 @@ def classify_memory_category(content: str) -> Optional[str]:
     for pattern in _PREFERENCE_PATTERNS:
         if re.search(pattern, content_lower):
             return "preference"
+    for pattern in _GOAL_PATTERNS:
+        if re.search(pattern, content_lower):
+            return "goal"
+    for pattern in _CORRECTION_PATTERNS:
+        if re.search(pattern, content_lower):
+            return "correction"
     for pattern in _FACT_PATTERNS:
         if re.search(pattern, content_lower):
             return "fact"

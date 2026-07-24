@@ -61,7 +61,56 @@ jobs:
         run: pnpm --filter @goblin/web lint
 
       - name: Run lint policy
-        run: python scripts/policy_guard.py --strict
+        run: make lint-policy
+
+  api-cycles:
+    name: api-cycles (report)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Report API dependency cycles (true count, ignores baseline allowlist)
+        run: make check-api-cycles-report
+
+      - name: Add cycle count to CI summary
+        run: |
+          COUNT=$(python -c "import json; print(json.load(open('artifacts/api-cycles.json'))['cycle_count'])")
+          {
+            echo "### API dependency cycles"
+            echo ""
+            echo "Total cycle count: **${COUNT}**"
+            echo ""
+            echo "This is the true count, independent of the baseline allowlist in"
+            echo "\`apps/api/architecture-boundaries.toml\`. The \`api-cycles-gate\` job below"
+            echo "fails only on cycles that are not already in that baseline."
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Upload cycle graph artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: api-cycle-graph
+          path: |
+            artifacts/api-cycles.json
+            artifacts/api-cycles.dot
+
+  api-cycles-gate:
+    name: api-cycles-gate
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Fail on new API dependency cycles (existing baseline debt is allowed)
+        run: make check-api-cycles
 
   contract:
     name: contract
@@ -155,10 +204,10 @@ jobs:
   merge-gates:
     name: merge-gates
     runs-on: ubuntu-latest
-    needs: [lint, contract, test-backend, test-frontend]
+    needs: [lint, contract, test-backend, test-frontend, api-cycles-gate]
     if: always()
     steps:
-      - name: Require lint, contract, backend coverage, and frontend coverage
+      - name: Require lint, contract, backend coverage, frontend coverage, and no new API cycles
         run: |
           if [ "${{ needs.lint.result }}" != "success" ]; then
             echo "lint gate failed: ${{ needs.lint.result }}"
@@ -174,6 +223,10 @@ jobs:
           fi
           if [ "${{ needs.test-frontend.result }}" != "success" ]; then
             echo "frontend coverage gate failed: ${{ needs.test-frontend.result }}"
+            exit 1
+          fi
+          if [ "${{ needs.api-cycles-gate.result }}" != "success" ]; then
+            echo "api-cycles-gate failed: ${{ needs.api-cycles-gate.result }}"
             exit 1
           fi
           echo "All required pre-merge gates passed."

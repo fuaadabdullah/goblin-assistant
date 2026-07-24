@@ -1,7 +1,7 @@
 import pytest
 from fastapi import HTTPException
 
-from api.parse_router import ParseRequest, parse_orchestration
+from api.routes.parse_router import ParseRequest, parse_orchestration
 
 
 @pytest.mark.asyncio
@@ -16,7 +16,7 @@ async def test_parse_orchestration_success(monkeypatch):
     def fake_parse(text, default):
         return DummyPlan()
 
-    monkeypatch.setattr("api.parse_router.parse_natural_language", fake_parse)
+    monkeypatch.setattr("api.routes.parse_router.parse_natural_language", fake_parse)
 
     # Act
     req = ParseRequest(text="do something")
@@ -33,7 +33,7 @@ async def test_parse_orchestration_failure(monkeypatch):
     def bad_parse(text, default):
         raise RuntimeError("boom")
 
-    monkeypatch.setattr("api.parse_router.parse_natural_language", bad_parse)
+    monkeypatch.setattr("api.routes.parse_router.parse_natural_language", bad_parse)
 
     # Act / Assert
     req = ParseRequest(text="do something")

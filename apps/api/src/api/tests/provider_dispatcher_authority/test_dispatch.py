@@ -208,6 +208,12 @@ async def test_auto_dispatch_returns_provider_none_when_all_candidates_fail(monk
     monkeypatch.setattr(dispatcher, "is_configured", lambda _pid: True)
     monkeypatch.setattr(openai, "is_available", lambda: True)
     monkeypatch.setattr(groq, "is_available", lambda: True)
+    # Force both candidates through the canary/success-rate gate so attempt
+    # order deterministically follows _candidate_order regardless of
+    # circuit-breaker state accumulated by other tests in this session.
+    monkeypatch.setattr(openai, "should_attempt", lambda **_kwargs: True)
+    monkeypatch.setattr(groq, "should_attempt", lambda **_kwargs: True)
+    monkeypatch.setattr(dispatcher, "_routing_min_success_rate", 0.0)
 
     async def fail_openai(messages=None, model=None, **kwargs):
         _ = messages, kwargs

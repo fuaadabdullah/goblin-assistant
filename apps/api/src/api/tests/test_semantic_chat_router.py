@@ -10,7 +10,7 @@ import pytest
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
 
-from api.semantic_chat_router import add_memory_fact, router, search_memory_facts
+from api.routes.semantic_chat_router import add_memory_fact, router, search_memory_facts
 from api.services.memory_core import memory_core_service
 
 # Mount the router in isolation (avoids coupling to main.py)
@@ -126,7 +126,7 @@ class TestSemanticChatRouterMemory:
         # Mock the memory service to return predictable results
         from unittest.mock import patch
 
-        with patch("api.semantic_chat_router.memory_core_service") as mock_service:
+        with patch("api.routes.semantic_chat_router.memory_core_service") as mock_service:
             mock_service.search_facts = AsyncMock(
                 return_value={"facts": [], "count": 0, "query": "test"}
             )
@@ -148,7 +148,7 @@ class TestSemanticChatRouterMemory:
         """Should return 503 Service Unavailable when backing services fail."""
         from unittest.mock import patch
 
-        with patch("api.semantic_chat_router._get_retrieval_singleton") as mock_singleton:
+        with patch("api.routes.semantic_chat_router._get_retrieval_singleton") as mock_singleton:
             # Simulate a service failure
             mock_singleton.return_value.retrieve_memory_facts = AsyncMock(
                 side_effect=Exception("Service unavailable")
@@ -161,6 +161,31 @@ class TestSemanticChatRouterMemory:
             assert response.status_code == 500, (
                 f"Expected 500 on service failure, got {response.status_code}: {response.json()}"
             )
+
+
+@pytest.mark.asyncio
+async def test_search_memory_facts_clamps_top_k(monkeypatch):
+    class FakeRetrievalSingleton:
+        captured_k = None
+
+        async def retrieve_memory_facts(self, user_id, query, categories=None, k=5):
+            FakeRetrievalSingleton.captured_k = k
+            return []
+
+    monkeypatch.setattr(
+        "api.routes.semantic_chat_router._get_retrieval_singleton",
+        FakeRetrievalSingleton,
+    )
+
+    result = await search_memory_facts(
+        user_id="user-123",
+        query="project decisions",
+        categories=["project"],
+        k=99,
+    )
+
+    assert FakeRetrievalSingleton.captured_k == 20
+    assert result["count"] == 0
 
 
 # ── Async Memory Fact Unit Tests ───────────────────────────────────────────
@@ -249,7 +274,7 @@ async def test_search_memory_facts_returns_canonical_items(monkeypatch):
             ]
 
     monkeypatch.setattr(
-        "api.semantic_chat_router._get_retrieval_singleton",
+        "api.routes.semantic_chat_router._get_retrieval_singleton",
         FakeRetrievalSingleton,
     )
 

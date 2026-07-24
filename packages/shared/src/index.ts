@@ -1,6 +1,7 @@
 export * from './constants/providers';
 export * from './constants/routes';
 export * from './constants/products';
+export * from './memory';
 export * from './generated/api-proxy-routes';
 export * from './generated/api-route-paths';
 

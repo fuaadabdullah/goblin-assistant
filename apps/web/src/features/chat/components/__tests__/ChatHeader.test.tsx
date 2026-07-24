@@ -56,10 +56,20 @@ describe('ChatHeader', () => {
     expect(screen.queryByText('Admin Dashboard')).not.toBeInTheDocument();
   });
 
+  it('does not expose connectivity debug to non-admins', () => {
+    const { container } = render(<ChatHeader {...defaultProps} />);
+    expect(container.querySelector('a[href="/debug/connectivity"]')).not.toBeInTheDocument();
+  });
+
   it('shows Admin Dashboard for admin', () => {
     render(<ChatHeader {...defaultProps} isAdmin />);
     const link = screen.getByText('Admin Dashboard');
     expect(link.closest('a')).toHaveAttribute('href', '/admin');
+  });
+
+  it('exposes connectivity debug only to admins', () => {
+    const { container } = render(<ChatHeader {...defaultProps} isAdmin />);
+    expect(container.querySelector('a[href="/debug/connectivity"]')).toBeInTheDocument();
   });
 
   it('does not show sidebar toggle by default', () => {

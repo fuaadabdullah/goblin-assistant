@@ -1,8 +1,5 @@
 import { frontendHttp, getFrontend } from './shared';
-import type {
-  ModelUsageRollupResponse,
-  ModelUsageRollup,
-} from '@/types/api';
+import type { ModelUsageRollupResponse, ModelUsageRollup } from '@/types/api';
 
 export const observabilityMethods = {
   async getModelUsage(provider?: string, model?: string): Promise<ModelUsageRollupResponse> {

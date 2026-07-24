@@ -1,16 +1,16 @@
 """Default alert handlers (log/email/webhook/slack).
 
-Split out of alerting_system.py; registration happens there.
+Handlers are plugins: alerting_system emits alert events, and this module
+subscribes handlers through register_default_alert_handlers().
 """
 
 import asyncio
 import os
+from typing import Any
 
 import structlog
 
-# Imported at the bottom of alerting_system.py, after Alert/AlertSeverity are
-# defined there — so this circular import is safe at runtime.
-from .alerting_system import Alert, AlertSeverity
+from .alerting_types import Alert, AlertSeverity
 
 logger = structlog.get_logger()
 
@@ -150,3 +150,16 @@ async def slack_alert_handler(alert: Alert):
         logger.info("Slack alert sent", alert_id=alert.alert_id)
     except Exception as exc:
         logger.error("Failed to send Slack alert", alert_id=alert.alert_id, error=str(exc))
+
+
+DEFAULT_ALERT_HANDLERS = (
+    log_alert_handler,
+    email_alert_handler,
+    webhook_alert_handler,
+    slack_alert_handler,
+)
+
+
+def register_default_alert_handlers(alert_system: Any) -> None:
+    for handler in DEFAULT_ALERT_HANDLERS:
+        alert_system.register_alert_callback(handler)

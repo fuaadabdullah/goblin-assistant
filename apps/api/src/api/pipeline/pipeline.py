@@ -328,7 +328,6 @@ class RequestPipeline:
         """Score all department candidates via ProviderSelectionModel. Never raises."""
         try:
             from api.departments.registry import DEPARTMENT_REGISTRY  # noqa: I001
-            from api.routing.feature_extractor import feature_extractor  # noqa: I001
             from api.routing.provider_selection import provider_selection_model  # noqa: I001
 
             policy = DEPARTMENT_REGISTRY.get(dept_selection.department_id)
@@ -337,20 +336,17 @@ class RequestPipeline:
 
             label = dec.intent.label.value if dec.intent else "unknown"
             confidence = dec.intent.confidence if dec.intent else 0.0
+            task_type = dec.task_type or dept_selection.department_id.value
 
-            features = feature_extractor.extract_request(
-                prompt=req.sanitized_message,
-                task_type=dec.task_type or "chat",
+            scored = provider_selection_model.score_prompt(
+                candidates,
+                req.sanitized_message,
+                task_type=task_type,
                 conversation_history=history_messages,
                 intent_label=label,
                 intent_confidence=confidence,
-            )
-
-            scored = provider_selection_model.score(
-                candidates,
-                features,
-                task_type=dec.task_type or dept_selection.department_id.value,
                 routing_id=routing_id,
+                prefer_supplied_task_type=True,
             )
 
             # Attach model names from the department policy

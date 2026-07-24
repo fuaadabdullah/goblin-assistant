@@ -3,7 +3,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { useQuery } from '@tanstack/react-query';
 import { chatClient } from '../api';
-import type { ChatMessage, ChatThread, QuickPrompt } from '../types';
+import type { ChatMessage, ChatThread, Mode, QuickPrompt } from '../types';
 import { useChatThreads } from './useChatThreads';
 import { readChatMessages, buildThreadKey } from '../../../lib/chat-history';
 import { queryKeys } from '../../../lib/query-keys';
@@ -38,6 +38,8 @@ export interface ChatSessionState {
   bottomRef: RefObject<HTMLDivElement | null>;
   selectedProvider?: string | undefined;
   selectedModel?: string | undefined;
+  selectedMode: Mode;
+  setSelectedMode: (mode: Mode) => void;
   inputEstimate: TextCostEstimate | null;
   authError: boolean;
   pendingAttachments: PendingAttachment[];
@@ -67,7 +69,9 @@ export interface ChatSessionState {
  * - useQuickActions: quick prompts and provider selection
  * - useChatThreads: thread list management
  */
-export const useChatSession = (): ChatSessionState => {
+export const useChatSession = ({
+  loadThreads = true,
+}: { loadThreads?: boolean } = {}): ChatSessionState => {
   const searchParams = useSearchParams();
   const promptParam = searchParams.get('prompt');
   const hasHydratedRef = useRef(false);
@@ -80,7 +84,7 @@ export const useChatSession = (): ChatSessionState => {
     upsertThread,
     removeThread,
     invalidateThreads,
-  } = useChatThreads();
+  } = useChatThreads({ enabled: loadThreads });
 
   // Thread selection state
   const [activeThreadKey, setActiveThreadKey] = useState<string | null>(null);
@@ -93,7 +97,7 @@ export const useChatSession = (): ChatSessionState => {
   const backendConversationQuery = useQuery({
     queryKey: threadSelection.activeBackendThreadId
       ? queryKeys.chatConversation(threadSelection.activeBackendThreadId)
-      : ['chat', 'conversation', 'inactive'],
+      : queryKeys.chatConversationInactive,
     queryFn: async () => {
       if (!threadSelection.activeBackendThreadId) {
         throw new Error('No active backend thread id');
@@ -124,11 +128,13 @@ export const useChatSession = (): ChatSessionState => {
     activeBackendThreadId: threadSelection.activeBackendThreadId,
     selectedProvider: quickActionsState.selectedProvider,
     selectedModel: quickActionsState.selectedModel,
+    selectedMode: quickActionsState.selectedMode,
     pendingAttachments: uiState.pendingAttachments,
     onSendSuccess: () => uiState.setInput(''),
     onThreadUpdated: upsertThread,
     onThreadRemoved: removeThread,
     onThreadsInvalidated: invalidateThreads,
+    onThreadSelected: threadSelection.setActiveThreadKey,
     backendConversationQuery,
   });
 
@@ -264,6 +270,8 @@ export const useChatSession = (): ChatSessionState => {
     quickPrompts: quickActionsState.quickPrompts,
     selectedProvider: quickActionsState.selectedProvider,
     selectedModel: quickActionsState.selectedModel,
+    selectedMode: quickActionsState.selectedMode,
+    setSelectedMode: quickActionsState.setSelectedMode,
 
     // Message handlers
     sendMessage: sendMessageWithCleanup,

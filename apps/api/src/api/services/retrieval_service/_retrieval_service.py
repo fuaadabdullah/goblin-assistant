@@ -21,6 +21,7 @@ from ..context_builder import LegacyContextBuilder
 from ..embedding_service import EmbeddingProviderUnavailableError, EmbeddingService
 from ..memory_contract import canonicalize_memory_item
 from ._context_bundle import build_context_bundle
+from ._limits import clamp_prompt_retrieval_k
 from ._sql_retrieval import (
     retrieve_by_source_type,
     retrieve_graph_expanded_memories,
@@ -356,6 +357,7 @@ class RetrievalService:
                     SELECT
                         mf.id,
                         mf.fact_text,
+                        mf.fact_embedding,
                         mf.category,
                         mf.memory_type,
                         mf.source_kind,
@@ -407,6 +409,7 @@ class RetrievalService:
                         {
                             "id": row.id,
                             "fact_text": row.fact_text,
+                            "embedding": row.fact_embedding,
                             "category": row.category,
                             "memory_type": row.memory_type or row.category,
                             "source_kind": row.source_kind,
@@ -483,18 +486,21 @@ class RetrievalService:
         user_id: str,
         conversation_id: Optional[str] = None,
         max_tokens: int = 2000,
+        k: int = 10,
     ) -> Dict[str, Any]:
         """
         Get a complete context bundle for a query
 
         Returns a structured bundle with different types of context
         """
+        k = clamp_prompt_retrieval_k(k)
+
         # Retrieve all context
         all_context = await self.retrieve_context(
             query=query,
             user_id=user_id,
             conversation_id=conversation_id,
-            k=10,
+            k=k,
         )
 
         # Build the structured bundle (pure assembly + budget enforcement)

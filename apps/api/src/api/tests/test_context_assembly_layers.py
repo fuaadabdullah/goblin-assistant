@@ -4,7 +4,10 @@ from datetime import datetime, timezone
 
 import pytest
 
-from api.services.context_assembly_service import ContextBudget
+from api.services.context_assembly_service import (
+    ContextBudget,
+    orchestrator,  # noqa: E402
+)
 from api.services.context_assembly_service import ephemeral_layer as eph
 from api.services.context_assembly_service import long_term_layer as ltm
 from api.services.context_assembly_service import semantic_layer as sem
@@ -274,6 +277,48 @@ async def test_assemble_semantic_retrieval_success(monkeypatch):
 
 
 @pytest.mark.asyncio
+async def test_assemble_semantic_retrieval_uses_prompt_cap(monkeypatch):
+    captured = {}
+
+    async def _start_trace(**_kwargs):
+        return "trace-cap"
+
+    async def _end_trace(**_kwargs):
+        return None
+
+    async def _record_tier_breakdown(**_kwargs):
+        return None
+
+    class _RetrievalService:
+        async def retrieve_context(self, **kwargs):
+            captured["k"] = kwargs.get("k")
+            return [{"score": 0.8, "content": "retrieved"}]
+
+    monkeypatch.setattr(sem.retrieval_tracer, "start_trace", _start_trace)
+    monkeypatch.setattr(sem.retrieval_tracer, "end_trace", _end_trace)
+    monkeypatch.setattr(
+        sem.retrieval_tracer,
+        "record_tier_breakdown",
+        _record_tier_breakdown,
+        raising=False,
+    )
+    monkeypatch.setattr(sem, "_get_retrieval_service", _RetrievalService)
+    monkeypatch.setattr(sem, "count_tokens", lambda _text: 40)
+
+    layer = await sem.assemble_semantic_retrieval(
+        query="q",
+        user_id="u",
+        conversation_id="c",
+        remaining_tokens=500,
+        correlation_id="corr",
+        budget=ContextBudget(),
+    )
+
+    assert layer is not None
+    assert captured["k"] == 20
+
+
+@pytest.mark.asyncio
 async def test_assemble_semantic_retrieval_hard_stop(monkeypatch):
     end_calls = []
 
@@ -456,6 +501,98 @@ def test_format_long_term_memory_empty_and_non_empty():
     assert "likes tea" in formatted
 
 
+# -----------------------------
+# _cluster_sentence and build_session_memory_pack tests
+# -----------------------------
+
+
+def test_cluster_sentence_project():
+    """Test clustering for project entity type."""
+    result = ltm._cluster_sentence("project", "my-project", ["task1", "task2"])
+    assert "my-project" in result
+    assert "task1" in result
+
+
+def test_cluster_sentence_preference():
+    """Test clustering for preference entity type."""
+    result = ltm._cluster_sentence("preference", "dark-mode", ["enabled"])
+    assert "Prefers dark-mode" in result
+
+
+def test_cluster_sentence_decision():
+    """Test clustering for decision entity type."""
+    result = ltm._cluster_sentence("decision", "general", ["decided on x"])
+    assert "Decided:" in result
+
+
+def test_cluster_sentence_other_with_entity():
+    """Test clustering for other entity types with entity value."""
+    result = ltm._cluster_sentence("tool", "vscode", ["used for editing"])
+    assert "vscode" in result
+
+
+def test_cluster_sentence_other_without_entity():
+    """Test clustering for other entity types without entity value."""
+    result = ltm._cluster_sentence("tool", "general", ["used for editing"])
+    assert result.endswith(".")
+
+
+def test_build_session_memory_pack_empty():
+    """Test session pack with empty facts returns empty string."""
+    assert ltm.build_session_memory_pack([]) == ""
+
+
+def test_build_session_memory_pack_single_cluster():
+    """Test session pack with single cluster of facts."""
+    facts = [{"content": "like coffee", "memory_type": "preference", "entity_refs": None}]
+    result = ltm.build_session_memory_pack(facts)
+    assert "User context:" in result
+    assert "like coffee" in result
+
+
+def test_build_session_memory_pack_multiple_clusters():
+    """Test session pack with multiple clusters grouped by entity."""
+    facts = [
+        {
+            "content": "task1",
+            "memory_type": "project",
+            "entity_refs": [{"type": "project", "value": "goblin"}],
+        },
+        {
+            "content": "task2",
+            "memory_type": "project",
+            "entity_refs": [{"type": "project", "value": "goblin"}],
+        },
+        {
+            "content": "task3",
+            "memory_type": "preference",
+            "entity_refs": [{"type": "preference", "value": "theme"}],
+        },
+    ]
+    result = ltm.build_session_memory_pack(facts)
+    assert "User context:" in result
+    assert "goblin" in result
+    assert "theme" in result
+
+
+def test_build_session_memory_pack_entity_refs_missing():
+    """Test session pack falls back when entity_refs missing."""
+    facts = [{"content": "some fact", "memory_type": "general"}]
+    result = ltm.build_session_memory_pack(facts)
+    assert "User context:" in result
+    # Falls back to using memory_type as entity type
+    assert "some fact" in result
+
+
+def test_build_session_memory_pack_entity_refs_not_list():
+    """Test session pack handles entity_refs not being a list."""
+    facts = [{"content": "some fact", "memory_type": "general", "entity_refs": "not-a-list"}]
+    result = ltm.build_session_memory_pack(facts)
+    assert "User context:" in result
+    # Falls back to using memory_type as entity type
+    assert "some fact" in result
+
+
 @pytest.mark.asyncio
 async def test_assemble_long_term_memory_paths(monkeypatch):
     budget = ContextBudget(long_term_tokens=100)
@@ -488,6 +625,45 @@ async def test_assemble_long_term_memory_paths(monkeypatch):
     monkeypatch.setattr(ltm, "get_long_term_memory_facts", _boom)
     layer = await ltm.assemble_long_term_memory("u", remaining_tokens=200, budget=budget)
     assert layer is None
+
+
+@pytest.mark.asyncio
+async def test_assemble_long_term_memory_compression_level(monkeypatch):
+    """Test compression level 3 triggers session pack."""
+    budget = ContextBudget(long_term_tokens=100)
+
+    async def _facts(_user_id):
+        return [{"content": "fact", "category": "pref", "entity_refs": None}]
+
+    monkeypatch.setattr(ltm, "get_long_term_memory_facts", _facts)
+    monkeypatch.setattr(ltm, "count_tokens", lambda _text: 50)
+    monkeypatch.setattr(ltm, "trim_to_tokens", lambda _text, _limit: "trimmed")
+
+    # Use compression_level=3 to trigger session pack
+    layer = await ltm.assemble_long_term_memory(
+        "u", remaining_tokens=500, budget=budget, compression_level=3
+    )
+    assert layer is not None
+    assert layer.metadata["compression_level"] == 3
+
+
+@pytest.mark.asyncio
+async def test_assemble_long_term_memory_tight_budget_triggers_level3(monkeypatch):
+    """Test tight budget triggers level 3 automatically."""
+    budget = ContextBudget(long_term_tokens=400)
+
+    async def _many_facts(_user_id):
+        return [{"content": "x" * 100, "category": "c"} for _ in range(10)]
+
+    monkeypatch.setattr(ltm, "get_long_term_memory_facts", _many_facts)
+    monkeypatch.setattr(ltm, "count_tokens", lambda _text: 500)
+    monkeypatch.setattr(ltm, "trim_to_tokens", lambda _text, _limit: "trimmed")
+
+    # Need remaining_tokens >= budget.long_term_tokens for layer to be assembled
+    layer = await ltm.assemble_long_term_memory("u", remaining_tokens=500, budget=budget)
+    assert layer is not None
+    # level 3 is triggered when remaining_tokens < budget.long_term_tokens * 2
+    assert layer.metadata["compression_level"] == 3
 
 
 @pytest.mark.asyncio
@@ -643,3 +819,111 @@ async def test_assemble_system_layer_trims_after_runtime_context(monkeypatch):
     assert captured["text"].startswith(
         "Runtime context:\nCurrent UTC date/time: 2026-07-17T12:34:56+00:00"
     )
+
+
+# -----------------------------
+# build_default_system_message test
+# -----------------------------
+
+
+@pytest.mark.asyncio
+async def test_build_default_system_message_success(monkeypatch):
+    """Test build_default_system_message returns system message dict."""
+    monkeypatch.setattr(sys_layer, "count_tokens", lambda _text: 50)
+
+    result = await sys_layer.build_default_system_message()
+
+    assert result is not None
+    assert result["role"] == "system"
+    assert len(result["content"]) > 0
+
+
+@pytest.mark.asyncio
+async def test_build_default_system_message_returns_none_on_failure(monkeypatch):
+    """Test build_default_system_message returns None when assembly fails."""
+
+    async def _raise_on_layer(*args, **kwargs):
+        return None
+
+    monkeypatch.setattr(sys_layer, "assemble_system_layer", _raise_on_layer)
+
+    result = await sys_layer.build_default_system_message()
+
+    assert result is None
+
+
+# -----------------------------
+# _expand_query_for_intent tests
+# -----------------------------
+
+
+def test_expand_query_for_intent_none_confidence():
+    """Test intent with None confidence returns original query."""
+
+    class MockIntent:
+        confidence = 0.0
+        label = None
+
+    result = orchestrator._expand_query_for_intent("test query", MockIntent())
+    assert result == "test query"
+
+
+def test_expand_query_for_intent_low_confidence():
+    """Test intent with low confidence returns original query."""
+
+    class MockIntent:
+        confidence = 0.5
+        label = None
+
+    result = orchestrator._expand_query_for_intent("test query", MockIntent())
+    assert result == "test query"
+
+
+def test_expand_query_for_intent_high_confidence():
+    """Test intent with high confidence appends suffix."""
+
+    class MockLabel:
+        value = "coding"
+
+    class MockIntent:
+        confidence = 0.8
+        label = MockLabel()
+
+    result = orchestrator._expand_query_for_intent("fix bug", MockIntent())
+    assert "code implementation technical" in result
+
+
+def test_expand_query_for_intent_missing_label():
+    """Test intent with missing label attribute returns original query."""
+
+    class MockIntent:
+        confidence = 0.8
+        label = None
+
+    result = orchestrator._expand_query_for_intent("test query", MockIntent())
+    assert result == "test query"
+
+
+def test_expand_query_for_intent_unknown_label():
+    """Test intent with unknown label type returns original query."""
+
+    class MockLabel:
+        value = "unknown_type"
+
+    class MockIntent:
+        confidence = 0.8
+        label = MockLabel()
+
+    result = orchestrator._expand_query_for_intent("test query", MockIntent())
+    assert result == "test query"
+
+
+def test_expand_query_for_intent_exception_handling():
+    """Test intent that raises exception during processing returns original query."""
+
+    class BadIntent:
+        def __getattr__(self, name):
+            raise RuntimeError("bad intent")
+
+    result = orchestrator._expand_query_for_intent("test query", BadIntent())
+    assert result == "test query"

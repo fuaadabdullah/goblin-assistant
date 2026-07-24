@@ -230,4 +230,46 @@ describe('useSendMessage', () => {
   it('preserves non-Error send failures in the formatter', () => {
     expect(formatSendMessageError('chat backend unavailable')).toBe('chat backend unavailable');
   });
+
+  it('selects the backend thread after send so the next message reuses the same conversation', async () => {
+    // Regression test: a prior refactor dropped the setActiveThreadKey call
+    // that ran after a conversation was created, so every send from a fresh
+    // session (activeThread === null) created a brand-new backend
+    // conversation instead of continuing the one just created.
+    vi.mocked(chatClient.createConversation).mockResolvedValue({
+      conversationId: 'conv-42',
+      title: 'New chat',
+      createdAt: '2026-01-01T00:00:00.000Z',
+    });
+    vi.mocked(chatClient.sendMessage).mockResolvedValue({
+      messageId: 'assistant-1',
+      content: 'Hi there',
+      provider: 'openai',
+      model: 'gpt-4o-mini',
+      createdAt: '2026-01-01T00:00:00.500Z',
+    });
+
+    const onThreadSelected = vi.fn();
+    const { result } = renderHook(() =>
+      useSendMessage({
+        input: 'Hello',
+        isSending: false,
+        isMessagesLoading: false,
+        messages: [],
+        activeThread: null,
+        pendingAttachments: [],
+        applyMessages: vi.fn(),
+        onThreadSelected,
+        setIsSending: vi.fn(),
+        showError,
+        showInfo,
+      })
+    );
+
+    await act(async () => {
+      await result.current();
+    });
+
+    expect(onThreadSelected).toHaveBeenCalledWith('backend:conv-42');
+  });
 });

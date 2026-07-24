@@ -76,6 +76,11 @@ class TestGitHubToolRegistration:
 
 class TestGitHubClient:
     def test_headers_include_token(self, monkeypatch):
+        # client.headers() checks GH_TOKEN before GITHUB_TOKEN (see
+        # _TOKEN_ENV_VARS in client.py) — a real GH_TOKEN in the host
+        # environment (e.g. from `gh auth login`) would otherwise leak
+        # into this test and take precedence over the mock below.
+        monkeypatch.delenv("GH_TOKEN", raising=False)
         monkeypatch.setenv("GITHUB_TOKEN", "ghp_test")
 
         headers = client.headers()

@@ -24,10 +24,12 @@ _METADATA_KEY_TO_ENTITY_TYPE: Dict[str, str] = {
 _MEMORY_KIND_TO_ENTITY_TYPE: Dict[MemoryKind, str] = {
     MemoryKind.FACT: EntityType.DOCUMENT.value,
     MemoryKind.PREFERENCE: EntityType.PREFERENCE.value,
+    MemoryKind.GOAL: EntityType.TASK.value,
     MemoryKind.DECISION: EntityType.DECISION.value,
     MemoryKind.PROJECT_STATE: EntityType.PROJECT.value,
     MemoryKind.RELATIONSHIP: EntityType.PERSON.value,
     MemoryKind.TASK_SIGNAL: EntityType.TASK.value,
+    MemoryKind.CORRECTION: EntityType.DOCUMENT.value,
 }
 
 

@@ -114,10 +114,7 @@ class LearningApplicator:
         if not row.task_type or not row.provider:
             return
         try:
-            from api.routing.ml_router import (  # noqa: PLC0415
-                _fire_bandit_state_upsert,
-                bandit_cache,
-            )
+            from api.routing.learning_adapters import apply_bandit_feedback  # noqa: PLC0415
 
             from .outcome_scorer import outcome_scorer  # noqa: PLC0415
 
@@ -127,13 +124,12 @@ class LearningApplicator:
             if quality_score is not None:
                 rating = round(outcome_scorer.normalize(quality_score) * 2)
 
-            updated = bandit_cache.update(
-                row.task_type,
-                row.provider,
+            apply_bandit_feedback(
+                task_type=row.task_type,
+                provider_id=row.provider,
                 success=success,
                 rating=rating,
             )
-            _fire_bandit_state_upsert(updated)
         except Exception as exc:
             logger.debug("learning_bandit_failed signal=%s error=%s", row.signal, exc)
 
@@ -149,47 +145,17 @@ class LearningApplicator:
         if success is None or not row.task_type or not row.provider:
             return
         try:
-            from api.routing.feature_extractor import (  # noqa: PLC0415
-                ProviderFeatures,
-                RoutingFeatures,
-                feature_extractor,
-            )
-            from api.routing.feature_router import feature_router  # noqa: PLC0415
-            from api.routing.router_registry import registry  # noqa: PLC0415
-
-            # Reconstruct a minimal RoutingFeatures from the stored context fields.
-            # The original prompt is gone so we use stored metadata for the key signals.
-            request_features = RoutingFeatures(
-                prompt_length_bucket=1,  # medium — original not stored
-                task_type=row.task_type or "chat",
-                complexity_score=float(row.complexity_score or 0.5),
-                conversation_turn=0,
-                intent_label=row.intent_label or row.task_type or "unknown",
-                intent_confidence=0.7,  # assume reasonable — it was used for routing
+            from api.routing.learning_adapters import (  # noqa: PLC0415
+                apply_feature_router_feedback,
             )
 
-            snapshot = registry.snapshot()
-            pf_map = feature_extractor.extract_providers(
-                [row.provider], {row.provider: (0.0, 0.0)}, snapshot
-            )
-            provider_features = pf_map.get(
-                row.provider,
-                ProviderFeatures(
-                    provider_id=row.provider,
-                    success_rate=0.5,
-                    norm_latency=0.5,
-                    norm_cost=0.5,
-                    is_healthy=True,
-                ),
-            )
-
-            feature_router.record_outcome(
+            apply_feature_router_feedback(
                 task_type=row.task_type,
-                request=request_features,
                 provider_id=row.provider,
-                provider_features=provider_features,
                 success=success,
                 rating=rating,
+                complexity_score=row.complexity_score,
+                intent_label=row.intent_label or row.task_type or "unknown",
             )
         except Exception as exc:
             logger.debug("learning_feature_router_failed signal=%s error=%s", row.signal, exc)
@@ -247,11 +213,10 @@ class LearningApplicator:
             )
 
             task = asyncio.create_task(
-                memory_core_service.ingest_text(
+                memory_core_service.ingest_memory_fact(
                     user_id=str(row.user_id),
-                    text=content,
-                    source_kind="workflow",
-                    source_id=row.event_id,
+                    fact_text=content,
+                    category=memory_type,
                     metadata={
                         "task_type": row.task_type,
                         "provider": row.provider,
@@ -265,8 +230,10 @@ class LearningApplicator:
                         "active_workflow": True,
                         "repetition_count": 1,
                     },
-                    confidence=0.65 if success else 0.55,
+                    source_kind="workflow",
+                    source_id=row.event_id,
                     explicit_kind=memory_type,
+                    confidence=0.65 if success else 0.55,
                 )
             )
             task.add_done_callback(lambda _t: None)

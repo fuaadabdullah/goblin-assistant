@@ -144,7 +144,7 @@ promotion_result = await memory_promotion_service.promote_from_conversation(
 context = await retrieval_service.retrieve_context(
     query="What does the user prefer?",
     user_id="user_123",
-    k=5  # Return top 5 results
+    k=10  # Return the top 10-20 results, capped at 20
 )
 # Results prioritized by memory tier
 ```

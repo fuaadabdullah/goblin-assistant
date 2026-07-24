@@ -1,8 +1,8 @@
 {
   "alias_route_count": 0,
   "api_v1_prefix": "/api/v1",
-  "public_route_count": 201,
-  "route_count": 202,
+  "public_route_count": 203,
+  "route_count": 204,
   "routes": [
     {
       "canonical_path": "/",
@@ -2194,6 +2194,21 @@
       ]
     },
     {
+      "canonical_path": "/api/v1/routing/explain/{routing_id}",
+      "compatibility_aliases": [],
+      "deprecated": false,
+      "include_in_schema": true,
+      "logical_path": "/routing/explain/{routing_id}",
+      "method": "GET",
+      "operation_id": "explain_routing_decision_api_v1_routing_explain__routing_id__get",
+      "path": "/api/v1/routing/explain/{routing_id}",
+      "replacement_path": null,
+      "summary": "Explain Routing Decision",
+      "tags": [
+        "routing"
+      ]
+    },
+    {
       "canonical_path": "/api/v1/routing/health",
       "compatibility_aliases": [],
       "deprecated": false,
@@ -2219,6 +2234,21 @@
       "path": "/api/v1/routing/health/{provider_id}",
       "replacement_path": null,
       "summary": "Get Provider Health Detail",
+      "tags": [
+        "routing-analytics"
+      ]
+    },
+    {
+      "canonical_path": "/api/v1/routing/observability",
+      "compatibility_aliases": [],
+      "deprecated": false,
+      "include_in_schema": true,
+      "logical_path": "/routing/observability",
+      "method": "GET",
+      "operation_id": "get_routing_observability_api_v1_routing_observability_get",
+      "path": "/api/v1/routing/observability",
+      "replacement_path": null,
+      "summary": "Get Routing Observability",
       "tags": [
         "routing-analytics"
       ]
@@ -3048,5 +3078,5 @@
     }
   ],
   "schema_version": 1,
-  "versioned_route_count": 198
+  "versioned_route_count": 200
 }

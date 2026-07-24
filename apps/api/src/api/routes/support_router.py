@@ -16,9 +16,13 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from api.core.contracts import SuccessEnvelope
 from api.core.errors import DomainError
-from api.storage.database import get_db
-from api.storage.saas_service import SaaSSettingsService
-from api.storage.user_service import UserService
+from api.services.platform_settings_service import (
+    SaaSSettingsService,
+    lookup_user_id_by_email,
+)
+from api.services.platform_settings_service import (
+    get_platform_db as get_db,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -39,11 +43,7 @@ class SupportResponse(BaseModel):
 
 
 async def _lookup_support_user_id(db: AsyncSession, email: Optional[str]) -> Optional[str]:
-    if not email:
-        return None
-
-    user = await UserService(db).get_user_by_email(email)
-    return None if user is None else user.id
+    return await lookup_user_id_by_email(db, email)
 
 
 async def _attach_support_recipient(

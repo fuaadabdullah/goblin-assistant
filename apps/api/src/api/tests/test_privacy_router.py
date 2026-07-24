@@ -37,6 +37,8 @@ sys.modules.pop("api.routes.privacy", None)
 
 _privacy_mod = importlib.import_module("api.routes.privacy")
 _real_router = _privacy_mod.router
+_privacy_mod.VECTOR_STORE_AVAILABLE = False
+_privacy_mod._vector_store = None
 
 # These imports happen AFTER the env-var is set.
 from api.auth.router import (
@@ -242,8 +244,7 @@ def test_data_summary_requires_auth(anon_client: TestClient) -> None:
 
 def test_rag_consent_grant_returns_200(auth_client: TestClient) -> None:
     """POST /api/v1/api/privacy/consent/rag?consent_given=true must return 200."""
-    with patch("api.storage.preferences_service.preferences_service") as mock_prefs:
-        mock_prefs.update_rag_consent = AsyncMock()
+    with patch("api.routes.privacy.update_stored_rag_consent", new=AsyncMock()):
         response = auth_client.post(
             "/api/v1/api/privacy/consent/rag",
             params={"consent_given": "true"},
@@ -255,8 +256,7 @@ def test_rag_consent_grant_returns_200(auth_client: TestClient) -> None:
 
 def test_rag_consent_revoke_returns_200(auth_client: TestClient) -> None:
     """POST /api/v1/api/privacy/consent/rag?consent_given=false must return 200."""
-    with patch("api.storage.preferences_service.preferences_service") as mock_prefs:
-        mock_prefs.update_rag_consent = AsyncMock()
+    with patch("api.routes.privacy.update_stored_rag_consent", new=AsyncMock()):
         response = auth_client.post(
             "/api/v1/api/privacy/consent/rag",
             params={"consent_given": "false"},
@@ -268,8 +268,10 @@ def test_rag_consent_revoke_returns_200(auth_client: TestClient) -> None:
 
 def test_rag_consent_failure_detail(auth_client: TestClient) -> None:
     """Consent failures should preserve the underlying error detail."""
-    with patch("api.storage.preferences_service.preferences_service") as mock_prefs:
-        mock_prefs.update_rag_consent = AsyncMock(side_effect=Exception("boom"))
+    with patch(
+        "api.routes.privacy.update_stored_rag_consent",
+        new=AsyncMock(side_effect=Exception("boom")),
+    ):
         response = auth_client.post(
             "/api/v1/api/privacy/consent/rag",
             params={"consent_given": "true"},

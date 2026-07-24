@@ -79,6 +79,7 @@ def _build_authenticated_client(user_id: str, email: str):
 
     original_service_worker = embedding_service.embedding_worker
     fresh_worker = AsyncEmbeddingWorker()
+    fresh_worker.configure_service_factory(lambda: embedding_service.embedding_service)
 
     app.dependency_overrides[get_current_user] = override_current_user
     embedding_service.embedding_worker = fresh_worker

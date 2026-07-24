@@ -16,6 +16,22 @@ updates:
       - dependencies
       - python
 
+  # Node.js (workspace root)
+  - package-ecosystem: npm
+    directory: /
+    schedule:
+      interval: weekly
+      day: monday
+    groups:
+      dev-dependencies:
+        dependency-type: development
+      prod-dependencies:
+        dependency-type: production
+    target-branch: main
+    labels:
+      - dependencies
+      - javascript
+
   # Node.js (Web)
   - package-ecosystem: npm
     directory: /apps/web

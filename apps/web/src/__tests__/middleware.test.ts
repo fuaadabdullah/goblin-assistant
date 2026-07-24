@@ -61,6 +61,31 @@ describe('proxy route decisions', () => {
     });
   });
 
+  it('redirects authenticated non-admins from connectivity debug', () => {
+    const decision = resolveRouteDecision({
+      pathname: '/debug/connectivity',
+      isAuthenticated: true,
+      isAdmin: false,
+    });
+
+    expect(decision).toEqual({
+      allow: false,
+      redirectTarget: '/debug/connectivity',
+    });
+  });
+
+  it('allows admins on connectivity debug', () => {
+    const decision = resolveRouteDecision({
+      pathname: '/debug/connectivity',
+      isAuthenticated: true,
+      isAdmin: true,
+    });
+
+    expect(decision).toEqual({
+      allow: true,
+    });
+  });
+
   it('does not protect /sandbox', () => {
     const decision = resolveRouteDecision({
       pathname: '/sandbox',

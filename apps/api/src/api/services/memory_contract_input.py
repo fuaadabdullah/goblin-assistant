@@ -9,6 +9,7 @@ from typing import Any, Dict, Iterable, List, Optional, Tuple
 
 import structlog
 
+from .memory_contract import _normalize_embedding
 from .memory_derivations import (
     _TERMINAL_MEMORY_STATES,
     DEFAULT_SENSITIVITY,
@@ -223,6 +224,7 @@ class MemoryFactInput:
     score: Optional[float]
     rerank_score: Optional[float]
     recency_score: float
+    embedding: Tuple[float, ...]
     deprecated_fields: Tuple[str, ...] = ()
 
     def __post_init__(self) -> None:
@@ -234,6 +236,7 @@ class MemoryFactInput:
         *,
         id: Any,
         content: Any,
+        text: Optional[Any] = None,
         user_id: Optional[Any] = None,
         scope: Optional[Any] = None,
         memory_type: Optional[Any] = None,
@@ -264,6 +267,7 @@ class MemoryFactInput:
         explicitness_score: Optional[Any] = None,
         related_memory_ids: Optional[Iterable[Any]] = None,
         entity_refs: Optional[Iterable[Any]] = None,
+        embedding: Optional[Any] = None,
         metadata: Optional[Dict[str, Any]] = None,
         created_at: Optional[Any] = None,
         updated_at: Optional[Any] = None,
@@ -285,7 +289,7 @@ class MemoryFactInput:
             context="legacy_kwargs",
             item_id=_as_str(id),
         )
-        resolved_content = _collapse_whitespace(_as_str(content) or "")
+        resolved_content = _collapse_whitespace(_as_str(content or text) or "")
         resolved_created_at = _as_datetime(created_at)
         resolved_updated_at = _as_datetime(updated_at) or resolved_created_at
         resolved_last_accessed_at = _as_datetime(last_accessed_at)
@@ -357,6 +361,14 @@ class MemoryFactInput:
         )
         resolved_entity_refs = tuple(entity_refs or metadata.get("entity_refs") or [])
         resolved_embedding_id = _as_str(embedding_id or metadata.get("embedding_id"))
+        resolved_embedding = tuple(
+            _normalize_embedding(
+                embedding
+                or metadata.get("embedding")
+                or metadata.get("fact_embedding")
+                or metadata.get("chunk_embedding")
+            )
+        )
         resolved_summary = derive_summary(resolved_content, metadata)
         resolved_tags = _extract_tags(
             metadata, _as_str(category), resolved_memory_type, resolved_source_kind
@@ -433,6 +445,7 @@ class MemoryFactInput:
             score=resolved_score,
             rerank_score=resolved_rerank_score,
             recency_score=resolved_recency_score,
+            embedding=resolved_embedding,
             deprecated_fields=deprecated_field_names,
         )
 
@@ -461,8 +474,13 @@ class MemoryFactInput:
             id=_as_str(item.get("id")) or "",
             user_id=user_id or _as_str(item.get("user_id")),
             content=_as_str(
-                item.get("content") or item.get("fact_text") or item.get("summary_text") or ""
+                item.get("content")
+                or item.get("text")
+                or item.get("fact_text")
+                or item.get("summary_text")
+                or ""
             ),
+            text=item.get("text") or item.get("content") or item.get("fact_text"),
             scope=item.get("scope") or metadata.get("scope"),
             memory_type=item.get("memory_type")
             or metadata.get("memory_type")
@@ -493,8 +511,18 @@ class MemoryFactInput:
             retention_days=_first_defined(
                 item.get("retention_days"), metadata.get("retention_days")
             ),
-            expires_at=item.get("expires_at") or metadata.get("expires_at"),
-            last_accessed_at=item.get("last_accessed_at") or metadata.get("last_accessed_at"),
+            expires_at=(
+                item.get("expires_at")
+                or item.get("expiresAt")
+                or metadata.get("expires_at")
+                or metadata.get("expiresAt")
+            ),
+            last_accessed_at=(
+                item.get("last_accessed_at")
+                or item.get("lastAccessed")
+                or metadata.get("last_accessed_at")
+                or metadata.get("lastAccessed")
+            ),
             confirmation_count=_first_defined(
                 item.get("confirmation_count"), metadata.get("confirmation_count")
             ),
@@ -518,9 +546,13 @@ class MemoryFactInput:
             ),
             related_memory_ids=item.get("related_memory_ids") or metadata.get("related_memory_ids"),
             entity_refs=item.get("entity_refs") or metadata.get("entity_refs"),
+            embedding=item.get("embedding")
+            or item.get("fact_embedding")
+            or metadata.get("embedding")
+            or metadata.get("fact_embedding"),
             metadata=metadata,
-            created_at=item.get("created_at"),
-            updated_at=item.get("updated_at"),
+            created_at=item.get("created_at") or item.get("createdAt"),
+            updated_at=item.get("updated_at") or item.get("updatedAt"),
             embedding_id=item.get("embedding_id") or metadata.get("embedding_id"),
             source_type=source_type or item.get("source_type"),
             score=item.get("score"),
@@ -536,6 +568,7 @@ class MemoryFactInput:
             "scope": self.scope,
             "type": self.memory_type,
             "content": self.content,
+            "text": self.content,
             "summary": self.summary,
             "source": self.source_kind,
             "source_ref": dict(self.source_ref),
@@ -560,11 +593,16 @@ class MemoryFactInput:
             "repetition_count": self.repetition_count,
             "explicitness_score": self.explicitness_score,
             "created_at": self.created_at.isoformat() if self.created_at else None,
+            "createdAt": self.created_at.isoformat() if self.created_at else None,
             "updated_at": self.updated_at.isoformat() if self.updated_at else None,
+            "updatedAt": self.updated_at.isoformat() if self.updated_at else None,
             "last_accessed_at": self.last_accessed_at.isoformat()
             if self.last_accessed_at
             else None,
+            "lastAccessed": self.last_accessed_at.isoformat() if self.last_accessed_at else None,
             "expires_at": self.expires_at.isoformat() if self.expires_at else None,
+            "expiresAt": self.expires_at.isoformat() if self.expires_at else None,
+            "embedding": list(self.embedding),
             "fact_text": self.content,
             "category": self.category,
             "memory_type": self.memory_type,

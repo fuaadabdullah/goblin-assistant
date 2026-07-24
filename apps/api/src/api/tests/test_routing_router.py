@@ -8,7 +8,7 @@ import pytest
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
 
-from api import routing_router as _routing_router_module
+from api.routes import routing_router as _routing_router_module
 
 
 @pytest.fixture
@@ -39,12 +39,12 @@ class TestGetProviders:
     def test_inventory_error_falls_back_to_department_ids(self, client):
         with (
             patch(
-                "api.routing_router.dispatcher.get_provider_inventory",
+                "api.routes.routing_router.dispatcher.get_provider_inventory",
                 new_callable=AsyncMock,
                 side_effect=RuntimeError("boom"),
             ),
             patch(
-                "api.routing_router.DEPARTMENT_REGISTRY.list_ids",
+                "api.routes.routing_router.DEPARTMENT_REGISTRY.list_ids",
                 return_value=["general", "coding"],
             ),
         ):
@@ -55,12 +55,12 @@ class TestGetProviders:
     def test_empty_inventory_falls_back_to_department_ids(self, client):
         with (
             patch(
-                "api.routing_router.dispatcher.get_provider_inventory",
+                "api.routes.routing_router.dispatcher.get_provider_inventory",
                 new_callable=AsyncMock,
                 return_value=[],
             ),
             patch(
-                "api.routing_router.DEPARTMENT_REGISTRY.list_ids",
+                "api.routes.routing_router.DEPARTMENT_REGISTRY.list_ids",
                 return_value=["general", "reasoning"],
             ),
         ):
@@ -93,7 +93,7 @@ class TestGetDepartments:
     def test_list_departments_has_department_key(self, client):
         fake = [{"department": "general", "name": "General", "description": "d"}]
         with patch(
-            "api.routing_router.DEPARTMENT_REGISTRY.list_public",
+            "api.routes.routing_router.DEPARTMENT_REGISTRY.list_public",
             return_value=fake,
         ):
             response = client.get("/api/v1/routing/departments")
@@ -109,7 +109,7 @@ class TestGetDepartments:
         policy.supports_streaming = True
         policy.supports_tools = True
         with patch(
-            "api.routing_router.DEPARTMENT_REGISTRY.get_by_id_str",
+            "api.routes.routing_router.DEPARTMENT_REGISTRY.get_by_id_str",
             return_value=policy,
         ):
             response = client.get("/api/v1/routing/departments/reasoning")
@@ -121,7 +121,7 @@ class TestGetDepartments:
 
     def test_get_unknown_department_returns_404(self, client):
         with patch(
-            "api.routing_router.DEPARTMENT_REGISTRY.get_by_id_str",
+            "api.routes.routing_router.DEPARTMENT_REGISTRY.get_by_id_str",
             side_effect=KeyError("nope"),
         ):
             response = client.get("/api/v1/routing/departments/nonexistent")
@@ -150,7 +150,7 @@ class TestGetProvidersByCapability:
 
     def test_unknown_capability_falls_back_to_all_departments(self, client):
         with patch(
-            "api.routing_router.DEPARTMENT_REGISTRY.list_ids",
+            "api.routes.routing_router.DEPARTMENT_REGISTRY.list_ids",
             return_value=["general", "coding", "reasoning"],
         ):
             response = client.get("/api/v1/routing/providers/telekinesis")
@@ -180,7 +180,7 @@ class TestRouteRequest:
             "model": "claude-sonnet-4-6",
         }
         with patch(
-            "api.routing_router.department_dispatcher.dispatch",
+            "api.routes.routing_router.department_dispatcher.dispatch",
             new_callable=AsyncMock,
             return_value=fake_result,
         ):
@@ -204,7 +204,7 @@ class TestRouteRequest:
             "text": "hello",
         }
         with patch(
-            "api.routing_router.department_dispatcher.dispatch",
+            "api.routes.routing_router.department_dispatcher.dispatch",
             new_callable=AsyncMock,
             return_value=fake_result,
         ):
@@ -218,7 +218,7 @@ class TestRouteRequest:
 
     def test_unknown_department_returns_404(self, client):
         with patch(
-            "api.routing_router.DEPARTMENT_REGISTRY.get",
+            "api.routes.routing_router.DEPARTMENT_REGISTRY.get",
             side_effect=KeyError("nope"),
         ):
             response = client.post(
@@ -229,7 +229,7 @@ class TestRouteRequest:
 
     def test_dispatch_failure_returns_500(self, client):
         with patch(
-            "api.routing_router.department_dispatcher.dispatch",
+            "api.routes.routing_router.department_dispatcher.dispatch",
             new_callable=AsyncMock,
             side_effect=RuntimeError("provider unavailable"),
         ):
@@ -250,7 +250,7 @@ class TestRouteRequest:
             return {"ok": True}
 
         with patch(
-            "api.routing_router.department_dispatcher.dispatch",
+            "api.routes.routing_router.department_dispatcher.dispatch",
             new_callable=AsyncMock,
             side_effect=capture_dispatch,
         ):

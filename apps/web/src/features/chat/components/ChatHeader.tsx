@@ -35,9 +35,11 @@ const ConnectionStatus = ({ health }: { health: HealthStatus | null }) => {
   const statusConfig = {
     healthy: { color: 'bg-success', text: 'Live gateway' },
     degraded: { color: 'bg-warning', text: 'Degraded' },
+    warnings: { color: 'bg-warning', text: 'Warnings' },
   } as const;
 
-  const config = statusConfig[health.overall as keyof typeof statusConfig] || {
+  const overall = health.overall ?? health.status;
+  const config = statusConfig[overall as keyof typeof statusConfig] || {
     color: 'bg-error',
     text: 'Offline',
   };
@@ -88,7 +90,8 @@ const ChatHeader = ({
             ) : null}
           </div>
           <p className="text-sm text-muted">
-            Route requests, optimize costs, monitor reliability. Control the LLM ecosystem end-to-end.
+            Route requests, optimize costs, monitor reliability. Control the LLM ecosystem
+            end-to-end.
           </p>
         </div>
         <div className="flex flex-wrap items-center gap-2">
@@ -105,13 +108,15 @@ const ChatHeader = ({
           >
             Global Search
           </Link>
-          <Link
-            href="/debug/connectivity"
-            className="px-3 py-2 rounded-lg bg-surface-hover text-text hover:bg-surface-active"
-            title="Debug connectivity"
-          >
-            <AlertCircle className="h-4 w-4" />
-          </Link>
+          {isAdmin && (
+            <Link
+              href="/debug/connectivity"
+              className="px-3 py-2 rounded-lg bg-surface-hover text-text hover:bg-surface-active"
+              title="Debug connectivity"
+            >
+              <AlertCircle className="h-4 w-4" />
+            </Link>
+          )}
           {isAdmin && (
             <Link
               href="/admin"

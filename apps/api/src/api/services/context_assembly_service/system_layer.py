@@ -6,12 +6,13 @@ below its budget allocation.
 """
 
 from datetime import datetime, timezone
-from typing import Optional
+from typing import Dict, Optional
 
 import structlog
 
 from ...config.system_prompt import get_configured_system_prompt
 from ...core.tokenization import count_tokens, trim_to_tokens
+from . import budget_manager as _bm
 from .models import ContextBudget, ContextLayer
 
 logger = structlog.get_logger()
@@ -50,3 +51,19 @@ async def assemble_system_layer(
             "description": "System prompt and guardrails",
         },
     )
+
+
+async def build_default_system_message() -> Optional[Dict[str, str]]:
+    """Fixed-cost system+guardrails+date layer as a ready-to-send chat message.
+
+    Convenience wrapper around assemble_system_layer() for call sites that
+    skip full context assembly (streaming, guest/no-conversation endpoints)
+    but must still send *something* grounding the model in its identity,
+    guardrails, and the current date — instead of sending raw messages with
+    no system role at all.
+    """
+    budget = _bm.load_budget_config()
+    layer = await assemble_system_layer(budget.total_tokens, budget)
+    if not layer:
+        return None
+    return {"role": "system", "content": layer.content}

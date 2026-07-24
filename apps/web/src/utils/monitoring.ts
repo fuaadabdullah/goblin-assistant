@@ -86,16 +86,18 @@ export function logErrorToService(error: unknown, context?: ErrorContext): strin
     }
 
     // Fallback: Send to the app API boundary, not a raw fetch from the utility module.
-    void apiClient.submitErrorReport({
-      message: normalizedError.message,
-      stack: normalizedError.stack,
-      timestamp: new Date().toISOString(),
-      userAgent: navigator.userAgent,
-      url: window.location.href,
-      context,
-    }).catch(() => {
-      // Silent fail - don't break app if logging fails
-    });
+    void apiClient
+      .submitErrorReport({
+        message: normalizedError.message,
+        stack: normalizedError.stack,
+        timestamp: new Date().toISOString(),
+        userAgent: navigator.userAgent,
+        url: window.location.href,
+        context,
+      })
+      .catch(() => {
+        // Silent fail - don't break app if logging fails
+      });
 
     return errorId;
   } else {

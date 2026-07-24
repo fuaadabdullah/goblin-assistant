@@ -118,6 +118,19 @@ _INTENT_CATEGORY_WEIGHTS: Dict[str, Dict[str, float]] = {
         "tasks": 0.00,
         "projects": 0.00,
     },
+    "general": {
+        "web": 0.70,
+        "memory": 0.70,
+        "research": 0.60,
+        "files": 0.55,
+        "tasks": 0.55,
+        "projects": 0.55,
+        "academic": 0.40,
+        "git": 0.30,
+        "github": 0.30,
+        "terminal": 0.20,
+        "finance": 0.20,
+    },
     # "chat" intentionally absent → select() returns []
 }
 

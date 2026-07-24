@@ -3,6 +3,31 @@
 > Generated: 2026-06-05
 > Based on comprehensive codebase analysis across architecture, code quality, and infrastructure dimensions.
 
+## Status: SUPERSEDED
+
+Verified 2026-07-18 against current state — the large majority of this plan
+is resolved and it predates `docs/tech-debt-report.md`, which is now the
+canonical, actively-maintained debt inventory. Spot-checked items below;
+treat everything else in this document as historical context, not an
+active task list:
+
+- **Resolved**: Pages Router → App Router migration (§3) — `apps/web/pages/`
+  and `apps/web/src/pages/` no longer exist. CI pipeline (§4.1) is not
+  commented out. Pre-commit hooks (§4.2) are configured via husky +
+  lint-staged. `apps/web/package-lock.json` (§5.4 / quick win #1) is gone.
+- **Not actually fragmented** (§6.1): `docker-compose.goblinos-override.yml`
+  is an intentional local-machine storage override (documented in its own
+  header comment) and `infra/docker-compose.yml` is a separate Ollama
+  service stack, not a duplicate of the root compose file.
+  `docker-compose.redis.yml` no longer exists.
+- **Already addressed by this pass**: §6.2 deployment platform choice
+  (Render is canonical, Fly.io explicitly archived), §5.3 security audit
+  automation (`pnpm audit`/`ecdsa` now verified clean), §8.3 dead code
+  identification (vulture/knip run — see `docs/tech-debt-report.md` §5.3).
+- Not independently re-verified: §2 (`as any` casts), §7 (test coverage
+  thresholds), §10 (SLOs) — these may still be genuinely open; re-audit
+  before acting on them rather than trusting this snapshot.
+
 ---
 
 ## Priority Matrix

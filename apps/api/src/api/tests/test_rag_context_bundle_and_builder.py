@@ -3,7 +3,7 @@ from unittest.mock import AsyncMock
 
 import pytest
 
-from api.semantic_chat_router import _context_has_content
+from api.routes.semantic_chat_router import _context_has_content
 from api.services.context_builder import ContextBuilder as AsyncContextBuilder
 from api.services.retrieval_service import ContextBuilder as LegacyContextBuilder
 from api.services.retrieval_service import RetrievalService
@@ -27,8 +27,10 @@ def _mk_item(
 @pytest.mark.asyncio
 async def test_get_context_bundle_enforces_max_tokens(monkeypatch):
     service = RetrievalService()
+    captured = {}
 
     async def _fake_retrieve_context(**_kwargs) -> List[Dict[str, Any]]:
+        captured["k"] = _kwargs.get("k")
         return [
             _mk_item("memory", "M" * 20),  # ~5 tokens
             _mk_item("summary", "S" * 20),  # ~5 tokens
@@ -60,6 +62,7 @@ async def test_get_context_bundle_enforces_max_tokens(monkeypatch):
     assert context_bundle["tasks"] == []
     assert context_bundle["metadata"]["max_tokens_applied"] is True
     assert context_bundle["metadata"]["max_tokens"] == TOKEN_LIMIT
+    assert captured["k"] == 10
 
 
 @pytest.mark.asyncio
@@ -125,6 +128,39 @@ async def test_async_context_builder_uses_system_prompt_override(monkeypatch):
     assert prompt[0]["content"].startswith("OVERRIDE SYSTEM")
     assert "[EPHEMERAL] recent message 1" in prompt[0]["content"]
     assert "user: latest question" in prompt[0]["content"]
+
+
+@pytest.mark.asyncio
+async def test_async_context_builder_limits_memory_facts_to_top_twenty(monkeypatch):
+    builder = AsyncContextBuilder()
+
+    monkeypatch.setattr(
+        "api.services.context_builder.system_prompt_manager.config.get_prompt_with_context",
+        lambda context: f"OVERRIDE\n{context}",
+    )
+
+    context_bundle = {
+        "summaries": [],
+        "memory_facts": [
+            {"content": f"memory {index}", "score": 100 - index} for index in range(25)
+        ],
+        "messages": [],
+        "ephemeral_messages": [],
+        "tasks": [],
+    }
+
+    prompt = await builder.build_contextual_prompt(
+        user_id="user_1",
+        context_bundle=context_bundle,
+        user_message="latest question",
+        conversation_history=[],
+        system_prompt_override="OVERRIDE",
+    )
+
+    prompt_text = prompt[0]["content"]
+    assert prompt_text.count("[MEMORY]") == 20
+    assert "[MEMORY] memory 19" in prompt_text
+    assert "[MEMORY] memory 20" not in prompt_text
 
 
 def test_legacy_context_builder_sync_compatibility():

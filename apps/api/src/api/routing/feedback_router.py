@@ -197,26 +197,24 @@ async def get_feedback_stats(days: int = 7) -> FeedbackStatsResponse:
     departments, providers, and signal types.
     """
     try:
-        from api.services.feedback_service import feedback_service  # noqa: PLC0415
-        from api.storage.database import get_db  # noqa: PLC0415
+        from api.services.feedback_stats_service import get_feedback_stats  # noqa: PLC0415
 
-        async with get_db() as db:
-            stats = await feedback_service.get_feedback_stats(db, days=days)
-            return FeedbackStatsResponse(
-                total_events=stats.total_events,
-                thumbs_up_count=stats.thumbs_up_count,
-                thumbs_down_count=stats.thumbs_down_count,
-                regenerate_count=stats.regenerate_count,
-                delete_count=stats.delete_count,
-                continue_count=stats.continue_count,
-                copy_count=stats.copy_count,
-                provider_switch_count=stats.provider_switch_count,
-                model_switch_count=stats.model_switch_count,
-                thumbs_up_rate=stats.thumbs_up_rate,
-                by_department=stats.by_department,
-                by_provider=stats.by_provider,
-                recent_events=stats.recent_events,
-            )
+        stats = await get_feedback_stats(days=days)
+        return FeedbackStatsResponse(
+            total_events=stats.total_events,
+            thumbs_up_count=stats.thumbs_up_count,
+            thumbs_down_count=stats.thumbs_down_count,
+            regenerate_count=stats.regenerate_count,
+            delete_count=stats.delete_count,
+            continue_count=stats.continue_count,
+            copy_count=stats.copy_count,
+            provider_switch_count=stats.provider_switch_count,
+            model_switch_count=stats.model_switch_count,
+            thumbs_up_rate=stats.thumbs_up_rate,
+            by_department=stats.by_department,
+            by_provider=stats.by_provider,
+            recent_events=stats.recent_events,
+        )
     except Exception as exc:
         logger.warning("feedback_stats_failed error=%s", exc)
         return FeedbackStatsResponse()

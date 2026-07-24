@@ -11,6 +11,7 @@ import structlog
 
 from ...core.tokenization import count_tokens, trim_to_tokens
 from ...observability.retrieval_tracer import retrieval_tracer
+from ..retrieval_service._limits import PROMPT_RETRIEVAL_MAX
 from .models import ContextBudget, ContextLayer
 
 logger = structlog.get_logger()
@@ -62,7 +63,7 @@ async def assemble_semantic_retrieval(
             query=query,
             user_id=user_id,
             conversation_id=conversation_id,
-            k=10,
+            k=PROMPT_RETRIEVAL_MAX,
             max_age_hours=168,
         )
 

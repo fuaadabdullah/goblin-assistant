@@ -63,7 +63,7 @@ class SmartRouter:
             try:
                 from api.routing.prompt_classifier import prompt_classifier  # noqa: PLC0415
 
-                return prompt_classifier.classify_messages(messages).value
+                return _coerce_task_type_value(prompt_classifier.classify_messages(messages))
             except Exception:
                 pass
         return TaskType.CHAT.value
@@ -108,32 +108,23 @@ class SmartRouter:
 
         if strategy == RoutingStrategy.ML_BANDIT:
             try:
-                from api.routing.ml_router import bandit_router  # noqa: PLC0415
+                from api.routing.learning_adapters import (  # noqa: PLC0415
+                    rank_prompt_with_bandit_router,
+                )
 
-                routing_request = None
-                try:
-                    from api.routing.feature_extractor import feature_extractor  # noqa: PLC0415
-
-                    intent_label = getattr(intent, "label", "unknown")
-                    intent_conf = getattr(intent, "confidence", 0.0)
-                    routing_request = feature_extractor.extract_request(
-                        prompt=_last_user_message(messages),
-                        task_type=capability,
-                        conversation_history=messages or [],
-                        intent_label=intent_label.value
-                        if hasattr(intent_label, "value")
-                        else str(intent_label),
-                        intent_confidence=float(intent_conf),
-                    )
-                except Exception:
-                    pass
-
-                return bandit_router.rank(
+                intent_label = getattr(intent, "label", "unknown")
+                intent_conf = getattr(intent, "confidence", 0.0)
+                return rank_prompt_with_bandit_router(
                     candidates,
                     provider_costs,
                     task_type=capability,
+                    prompt=_last_user_message(messages),
+                    conversation_history=messages or [],
+                    intent_label=intent_label.value
+                    if hasattr(intent_label, "value")
+                    else str(intent_label),
+                    intent_confidence=float(intent_conf),
                     request_id=request_id,
-                    request=routing_request,
                 )
             except Exception:
                 pass  # fall through to BALANCED on import/runtime error
@@ -240,9 +231,9 @@ class SmartRouter:
         # Note: registry.record_success is NOT called here — the dispatcher's
         # execution layer already calls it. We only add the bandit update.
         try:
-            from api.routing.ml_router import bandit_router as _br  # noqa: PLC0415
+            from api.routing.learning_adapters import record_bandit_outcome  # noqa: PLC0415
 
-            _br.record_outcome(
+            record_bandit_outcome(
                 request_id=req_id,
                 task_type=task_type,
                 provider_id=provider_id,
@@ -328,6 +319,14 @@ smart_router = SmartRouter(strategy=RoutingStrategy.ML_BANDIT)
 
 def get_smart_router() -> SmartRouter:
     return smart_router
+
+
+def _coerce_task_type_value(label: Any) -> str:
+    value = getattr(label, "value", label)
+    try:
+        return TaskType(str(value)).value
+    except ValueError:
+        return TaskType.CHAT.value
 
 
 __all__ = [

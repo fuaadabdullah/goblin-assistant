@@ -3,9 +3,6 @@
 from __future__ import annotations
 
 import asyncio
-from dataclasses import dataclass
-from datetime import datetime
-from enum import Enum
 from typing import Any, Callable, Dict, List, Optional
 
 import structlog
@@ -32,45 +29,10 @@ from .alerting_system_pkg import (
 from .alerting_system_pkg import (
     start_monitoring as _start_monitoring,
 )
+from .alerting_types import Alert, AlertSeverity, AlertStatus
 from .metrics_collector import SystemMetrics
 
 logger = structlog.get_logger()
-
-
-class AlertSeverity(Enum):
-    """Alert severity levels"""
-
-    LOW = "low"
-    MEDIUM = "medium"
-    HIGH = "high"
-    CRITICAL = "critical"
-
-
-class AlertStatus(Enum):
-    """Alert status"""
-
-    ACTIVE = "active"
-    RESOLVED = "resolved"
-    SUPPRESSED = "suppressed"
-
-
-@dataclass
-class Alert:
-    """Alert definition"""
-
-    alert_id: str
-    timestamp: datetime
-    severity: AlertSeverity
-    status: AlertStatus
-    title: str
-    description: str
-    metric_name: str
-    current_value: float
-    threshold_value: float
-    operator: str
-    user_id: Optional[str]
-    metadata: Dict[str, Any]
-    resolved_at: Optional[datetime] = None
 
 
 class AlertingSystem:
@@ -214,14 +176,6 @@ class AlertingSystem:
 
 alerting_system = AlertingSystem()
 
-from .alert_handlers import (  # noqa: E402 - handlers need the singleton-free types above
-    email_alert_handler,
-    log_alert_handler,
-    slack_alert_handler,
-    webhook_alert_handler,
-)
+from .alert_handlers import register_default_alert_handlers  # noqa: E402
 
-alerting_system.register_alert_callback(log_alert_handler)
-alerting_system.register_alert_callback(email_alert_handler)
-alerting_system.register_alert_callback(webhook_alert_handler)
-alerting_system.register_alert_callback(slack_alert_handler)
+register_default_alert_handlers(alerting_system)

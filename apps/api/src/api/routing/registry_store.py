@@ -39,11 +39,31 @@ class ProviderStats:
 
     @property
     def p95_latency_ms(self) -> float:
+        return self.latency_percentiles_ms["p95"]
+
+    @property
+    def latency_percentiles_ms(self) -> Dict[str, float]:
         if not self._latency_window:
-            return self.ewma_latency_ms
-        s = sorted(self._latency_window)
-        idx = int(len(s) * 0.95)
-        return s[min(idx, len(s) - 1)]
+            fallback = round(self.ewma_latency_ms, 1)
+            return {"p50": fallback, "p90": fallback, "p95": fallback, "p99": fallback}
+
+        samples = sorted(float(sample) for sample in self._latency_window)
+
+        def percentile(value: float) -> float:
+            if len(samples) == 1:
+                return samples[0]
+            rank = (len(samples) - 1) * value
+            lower = int(rank)
+            upper = min(lower + 1, len(samples) - 1)
+            weight = rank - lower
+            return samples[lower] * (1.0 - weight) + samples[upper] * weight
+
+        return {
+            "p50": round(percentile(0.50), 1),
+            "p90": round(percentile(0.90), 1),
+            "p95": round(percentile(0.95), 1),
+            "p99": round(percentile(0.99), 1),
+        }
 
 
 class RoutingRegistryStore:
@@ -51,7 +71,17 @@ class RoutingRegistryStore:
         configured = path if path is not None else os.getenv("ROUTING_REGISTRY_DB_PATH", "")
         default_path = Path(os.getcwd()) / "routing_registry.db"
         self.path = Path(configured).expanduser() if configured else default_path
-        self.enabled = bool(path or configured or not os.getenv("PYTEST_CURRENT_TEST"))
+        # PYTEST_CURRENT_TEST is only set while a specific test is executing —
+        # it is NOT set yet during collection, which is when module-level
+        # singletons (e.g. router_registry.registry) get constructed. That
+        # gap let the default-path singleton run "enabled" for its whole
+        # lifetime under pytest, persisting test-fixture provider ids
+        # ("primary", "alpha", "A", "B", ...) into the real on-disk store.
+        # PYTEST_VERSION is set for the entire session (pytest_configure
+        # through pytest_unconfigure), so it also covers collection-time
+        # construction. An explicit path/env override still always wins.
+        in_pytest = bool(os.getenv("PYTEST_CURRENT_TEST") or os.getenv("PYTEST_VERSION"))
+        self.enabled = bool(path or configured or not in_pytest)
         self.last_loaded_at = 0.0
         self.last_flushed_at = 0.0
         self.last_error = ""

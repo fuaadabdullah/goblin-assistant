@@ -8,6 +8,7 @@ Updated to query observability sub-modules directly instead of relying on
 removed internal storage lists in the ObservabilityService facade.
 """
 
+import asyncio
 from datetime import datetime
 from unittest.mock import AsyncMock, patch
 
@@ -39,15 +40,45 @@ async def setup_observability_test():
     _ml._promotion_cache.clear()
     _rt._trace_cache.clear()
     _cs._snapshot_cache.clear()
+    # Reset the decision matrix's per-user rate counters so earlier tests in
+    # the suite can't exhaust this user's daily embed/summarize budget.
+    write_time_intelligence.decision_matrix._embedding_counts.clear()
+    write_time_intelligence.decision_matrix._summary_counts.clear()
+
+    async def _fake_classification(message_id, content, role, conversation_id=None, user_id=None):
+        # Deterministic stand-in for classification_pipeline.process_message so
+        # these tests never depend on live LLM providers (which get initialized
+        # by any earlier lifespan startup in the suite).
+        return {
+            "message_id": message_id,
+            "classification": {
+                "type": "task_result",
+                "confidence": 0.95,
+                "keywords": ["task", "result"],
+                "reasoning": "deterministic classification for observability tests",
+            },
+            "metadata": {
+                "conversation_id": conversation_id,
+                "user_id": user_id,
+                "role": role,
+                "timestamp": datetime.utcnow().isoformat(),
+                "classification_source": "rule_based",
+            },
+            "content_preview": content[:100],
+        }
 
     with patch("api.services.observability_service.get_db") as mock_db:
         with patch("api.services.write_time_matrix.embedding_worker") as mock_worker:
             with patch("api.services.write_time_matrix.cache_service") as mock_cache:
-                yield {
-                    "mock_db": mock_db,
-                    "mock_worker": mock_worker,
-                    "mock_cache": mock_cache,
-                }
+                with patch(
+                    "api.services.message_classifier.classification_pipeline.process_message",
+                    new=_fake_classification,
+                ):
+                    yield {
+                        "mock_db": mock_db,
+                        "mock_worker": mock_worker,
+                        "mock_cache": mock_cache,
+                    }
 
 
 class TestObservabilityIntegration:
@@ -71,6 +102,8 @@ class TestObservabilityIntegration:
             user_id=test_message["user_id"],
             conversation_id=test_message["conversation_id"],
         )
+        # Decision logging is scheduled fire-and-forget; yield so it runs.
+        await asyncio.sleep(0)
 
         # Verify write-time decision was logged via decision_logger
         decisions = await _dl.get_decision_history(
@@ -359,6 +392,8 @@ class TestObservabilityIntegration:
                 user_id=test_message["user_id"],
                 conversation_id=test_message["conversation_id"],
             )
+            # Decision logging is scheduled fire-and-forget; yield so it runs.
+            await asyncio.sleep(0)
 
         end_time = time.time()
         total_time = end_time - start_time

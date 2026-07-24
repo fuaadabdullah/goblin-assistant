@@ -18,16 +18,28 @@ import os
 from datetime import datetime
 from typing import Any, Dict
 
-from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException
-from sqlalchemy import select
+from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.ext.asyncio import AsyncSession
 
 # Import auth dependencies
 from ..auth.router import get_current_user
+from ..services.platform_settings_service import (
+    SaaSSettingsService,
+    count_api_keys,
+    count_feature_flags,
+    count_notifications,
+    count_support_tickets,
+    delete_platform_user_data,
+    delete_user_conversations,
+    list_user_conversations,
+)
+from ..services.platform_settings_service import (
+    get_platform_db as get_db,
+)
+from ..services.platform_settings_service import (
+    update_rag_consent as update_stored_rag_consent,
+)
 from ..services.telemetry import EventType, log_conversation_event
-from ..storage.database import get_db
-from ..storage.models import ApiKeyModel, FeatureFlagModel, SupportTicketModel
-from ..storage.saas_service import SaaSSettingsService
 
 logger = logging.getLogger(__name__)
 
@@ -140,12 +152,7 @@ async def export_user_data(
         # Export conversations from database
         if include_conversations:
             try:
-                from ..storage.conversations import DatabaseConversationStore
-
-                conversation_store = DatabaseConversationStore()
-                conversations = await conversation_store.list_conversations(
-                    user_id=user_id, limit=1000
-                )
+                conversations = await list_user_conversations(user_id, limit=1000)
                 export_data["data"]["conversations"] = {
                     "count": len(conversations),
                     "conversations": [
@@ -194,31 +201,12 @@ async def export_user_data(
                 }
 
         try:
-            service = SaaSSettingsService(db)
             export_data["data"]["support_tickets"] = {
-                "count": (
-                    await db.execute(
-                        select(SupportTicketModel).where(SupportTicketModel.user_id == user_id)
-                    )
-                )
-                .scalars()
-                .all()
-                .__len__()
+                "count": await count_support_tickets(db, user_id)
             }
-            export_data["data"]["notifications"] = {
-                "count": len(await service.list_notifications(user_id))
-            }
-            export_data["data"]["api_keys"] = {
-                "count": (
-                    await db.execute(select(ApiKeyModel).where(ApiKeyModel.user_id == user_id))
-                )
-                .scalars()
-                .all()
-                .__len__()
-            }
-            export_data["data"]["feature_flags"] = {
-                "count": (await db.execute(select(FeatureFlagModel))).scalars().all().__len__()
-            }
+            export_data["data"]["notifications"] = {"count": await count_notifications(db, user_id)}
+            export_data["data"]["api_keys"] = {"count": await count_api_keys(db, user_id)}
+            export_data["data"]["feature_flags"] = {"count": await count_feature_flags(db)}
         except Exception as extra_error:
             logger.error("Extra settings export error: %s", extra_error)
 
@@ -249,7 +237,6 @@ async def export_user_data(
 
 @router.delete("/delete", response_model=Dict[str, Any])
 async def delete_user_data(
-    background_tasks: BackgroundTasks,
     user_id: str = Depends(get_current_user),
     confirm: bool = False,
     db: AsyncSession = Depends(get_db),
@@ -320,23 +307,18 @@ async def delete_user_data(
 
         # Delete conversations from database
         try:
-            from ..storage.conversations import DatabaseConversationStore
-
-            conversation_store = DatabaseConversationStore()
-            conversations = await conversation_store.list_conversations(
-                user_id=user_id, limit=10000
+            deleted_counts["conversations"] = await delete_user_conversations(user_id)
+            logger.info(
+                "Deleted %s conversations for user %s",
+                deleted_counts["conversations"],
+                user_id,
             )
-            for conv in conversations:
-                await conversation_store.delete_conversation(conv.conversation_id)
-            deleted_counts["conversations"] = len(conversations)
-            logger.info("Deleted %s conversations for user %s", len(conversations), user_id)
         except Exception as conv_error:
             logger.error("Conversation deletion error: %s", conv_error)
 
         # Delete user preferences from database
         try:
-            service = SaaSSettingsService(db)
-            deleted = await service.delete_user_data(user_id)
+            deleted = await delete_platform_user_data(db, user_id)
             deleted_counts.update(deleted)
             deleted_counts["preferences"] = deleted.get("preferences", 0)
             logger.info("Deleted preferences for user %s", user_id)
@@ -426,13 +408,7 @@ async def get_data_summary(
 
         # Get conversation count from database
         try:
-            from ..storage.conversations import DatabaseConversationStore
-
-            conversation_store = DatabaseConversationStore()
-            conversations = await conversation_store.list_conversations(
-                user_id=user_id, limit=10000
-            )
-            conversation_count = len(conversations)
+            conversation_count = len(await list_user_conversations(user_id, limit=10000))
         except Exception as conv_error:
             logger.error("Conversation count error: %s", conv_error)
             conversation_count = 0
@@ -454,15 +430,7 @@ async def get_data_summary(
             chat_settings_exists = False
 
         try:
-            support_ticket_count = len(
-                (
-                    await db.execute(
-                        select(SupportTicketModel).where(SupportTicketModel.user_id == user_id)
-                    )
-                )
-                .scalars()
-                .all()
-            )
+            support_ticket_count = await count_support_tickets(db, user_id)
         except Exception as support_error:
             logger.error("Support ticket count error: %s", support_error)
             support_ticket_count = 0
@@ -542,9 +510,7 @@ async def update_rag_consent(
 
         # Store consent in database user_preferences table
         try:
-            from ..storage.preferences_service import preferences_service
-
-            await preferences_service.update_rag_consent(user_id, consent_given)
+            await update_stored_rag_consent(user_id, consent_given)
             logger.info("Stored RAG consent for user %s: %s", user_id, consent_given)
         except Exception as consent_error:
             logger.error("Failed to store RAG consent: %s", consent_error)

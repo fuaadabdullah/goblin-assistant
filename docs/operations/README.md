@@ -24,10 +24,17 @@ This directory is the canonical home for operational documentation previously un
 - `PROVIDERS.md`: canonical provider matrix and env requirements.
 - `JIRA_PROVIDER_OPS.md`: Jira provider incident automation, backlog conventions, and release workflow.
 - `CONFLUENCE_PROVIDER_ARCHITECTURE.md`: repo-first Confluence workflow, source mapping, and provider-doc maintenance rules.
+- `PROVIDER_DISPATCH_INCIDENT_RESPONSE.md`: triage for failing/degraded/
+  misrouted provider dispatch — circuit breaker state, routing decisions,
+  provider-leakage import errors.
 
 ## Release operations
 
 - `RELEASE_PROCESS.md`: release cut checklist, tag policy, and verification flow.
+- `DOGFOODING_V0_3.md`: v0.3 real-user dogfooding entry gates, feedback loop,
+  support routing, and rollback rules.
+- `DEPLOYMENT_ROLLBACK.md`: rolling back a bad deploy on Render and/or
+  Vercel, including the database-migration edge case.
 
 ## API compatibility tracking
 

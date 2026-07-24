@@ -75,6 +75,8 @@ async def test_ingest_text_redacts_sensitive_input(monkeypatch):
 def test_memory_sensitivity_enum_values_are_stable():
     assert MemorySensitivity.HIGH.value == "high"
     assert MemoryKind.PREFERENCE.value == "preference"
+    assert MemoryKind.GOAL.value == "goal"
+    assert MemoryKind.CORRECTION.value == "correction"
 
 
 def test_memory_fact_model_has_lifecycle_column():
@@ -107,6 +109,7 @@ def test_memory_record_to_dict_exposes_canonical_contract():
         confirmation_count=2,
         is_archived=False,
         embedding_id="emb-123",
+        embedding=[0.11, 0.22, 0.33],
         related_memory_ids=["mem-0"],
         entity_refs=[{"type": "user", "value": "user"}],
         metadata={
@@ -122,6 +125,7 @@ def test_memory_record_to_dict_exposes_canonical_contract():
     assert payload["type"] == "preference"
     assert payload["scope"] == "global"
     assert payload["content"] == "User prefers concise technical explanations."
+    assert payload["text"] == payload["content"]
     assert payload["summary"] == "Prefers concise technical explanations"
     assert payload["source"] == "conversation"
     assert payload["source_ref"] == {"conversation_id": "conv-456", "message_id": "msg-789"}
@@ -139,6 +143,9 @@ def test_memory_record_to_dict_exposes_canonical_contract():
     assert payload["tags"] == ["preference", "style", "conversation"]
     assert payload["entities"] == ["user"]
     assert payload["embedding_id"] == "emb-123"
+    assert payload["embedding"] == [0.11, 0.22, 0.33]
+    assert payload["createdAt"] == "2026-06-11T18:00:00+00:00"
+    assert payload["lastAccessed"] == "2026-06-11T18:03:00+00:00"
     assert payload["memory_type"] == "preference"
     assert payload["source_kind"] == "conversation"
     assert payload["salience_score"] == 0.82
@@ -335,6 +342,33 @@ async def test_memory_core_service_skips_empty_sensitive_input(monkeypatch):
         )
         is None
     )
+
+
+@pytest.mark.asyncio
+async def test_retrieve_memory_context_clamps_limit(monkeypatch):
+    captured = {}
+
+    async def fake_retrieve_memory_facts(*_args, **kwargs):
+        captured["k"] = kwargs.get("k")
+        return []
+
+    monkeypatch.setattr(
+        "api.services.retrieval_service.retrieval_service.retrieve_memory_facts",
+        fake_retrieve_memory_facts,
+    )
+    monkeypatch.setattr(
+        "api.services.memory_reranker.memory_reranker.rerank",
+        lambda results, query, top_k: results,
+    )
+
+    results = await memory_core_service.retrieve_memory_context(
+        user_id="user-1",
+        query="what happened?",
+        limit=99,
+    )
+
+    assert captured["k"] == 20
+    assert results == []
 
 
 @pytest.mark.asyncio

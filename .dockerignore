@@ -61,8 +61,8 @@ Thumbs.db
 # CI/docs/tests and local reports (not needed for runtime image)
 .github/
 .circleci/
-docs/
-tests/
+**/docs/
+**/tests/
 reports/
 screenshots/
 

@@ -18,7 +18,10 @@ const fetchCsrfTokenFromBackend = async (): Promise<string> => {
   });
   const token = response?.csrf_token;
   if (!token || typeof token !== 'string') {
-    const message = extractApiErrorMessage(response, 'Unable to initialize authentication. Please try again.');
+    const message = extractApiErrorMessage(
+      response,
+      'Unable to initialize authentication. Please try again.'
+    );
     throw new Error(message);
   }
   return token;

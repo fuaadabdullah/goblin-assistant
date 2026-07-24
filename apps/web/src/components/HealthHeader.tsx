@@ -4,7 +4,7 @@ import { queryKeys } from '../lib/query-keys';
 import type { HealthStatus } from '../types/api';
 
 interface HealthData {
-  status: 'healthy' | 'degraded' | 'down';
+  status: 'healthy' | 'warnings' | 'degraded' | 'down';
   latency_ms?: number | undefined;
   last_check?: string | undefined;
   services?: Record<string, string> | undefined;
@@ -12,7 +12,8 @@ interface HealthData {
 
 const mapOverallStatus = (overall: string | undefined): HealthData['status'] => {
   if (overall === 'healthy' || overall === 'ok') return 'healthy';
-  if (overall === 'degraded' || overall === 'warnings' || overall === 'warning') return 'degraded';
+  if (overall === 'warnings' || overall === 'warning') return 'warnings';
+  if (overall === 'degraded') return 'degraded';
   return 'down';
 };
 
@@ -57,8 +58,10 @@ const createHealthData = async (): Promise<HealthData> => {
 
     if (serviceStatuses.some((s) => s === 'unhealthy' || s === 'down' || s === 'error')) {
       status = 'down';
-    } else if (serviceStatuses.some((s) => s === 'degraded' || s === 'unknown')) {
+    } else if (serviceStatuses.some((s) => s === 'degraded')) {
       status = 'degraded';
+    } else if (status === 'healthy' && serviceStatuses.some((s) => s === 'unknown')) {
+      status = 'warnings';
     }
 
     return {
@@ -113,6 +116,13 @@ const HealthHeader = ({ className = '', compact = false }: HealthHeaderProps) =>
       dot: 'bg-success',
       label: 'OK',
       icon: '✓',
+    },
+    warnings: {
+      bg: 'bg-warning/20',
+      text: 'text-warning',
+      dot: 'bg-warning',
+      label: 'Warnings',
+      icon: '⚠',
     },
     degraded: {
       bg: 'bg-warning/20',

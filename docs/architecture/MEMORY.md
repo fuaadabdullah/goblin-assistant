@@ -141,6 +141,10 @@ The context bundle is the output of a retrieval query, containing:
 | `total_tokens` | Calculated | Sum of all layer tokens |
 | `retrieved_at` | Timestamp | When the retrieval happened |
 
+The semantic chat prompt builder only injects the strongest memory facts from
+this bundle. Memory context is capped at the top 20 ranked facts so the model
+never sees an unbounded dump of stored memory.
+
 ### 4. pgvector Indexes
 
 All vector indexes live in the `embeddings` table, keyed by `source_type`:
@@ -233,6 +237,7 @@ config = {
         "long_term_tokens": 300,          # Token budget for long-term memory
         "working_memory_tokens": 700,     # Token budget for working memory
         "semantic_retrieval_tokens": 1200,# Token budget for semantic search
+        "max_retrieval_results": 20,      # Max prompt-facing retrieval slice
         "ephemeral_tokens": 500,          # Token budget for ephemeral context
         "retrieval_timeout_seconds": 30,  # Timeout for retrieval operations
         "semantic_similarity_threshold": 0.7,  # Minimum similarity for inclusion

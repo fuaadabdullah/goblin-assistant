@@ -44,6 +44,8 @@ api/[0-9a-f][0-9a-f]*
 
 # Dependencies
 node_modules/
+.pnpm-store/
+.pnpm-store-fresh/
 
 # Build outputs
 .next/
@@ -54,6 +56,8 @@ htmlcov/
 coverage.xml
 .coverage
 .playwright/
+.playwright-cli/
+.codex/
 *.tsbuildinfo
 
 # Python
@@ -68,6 +72,8 @@ venv/
 # IDE
 .idea/
 .vscode/
+.clineignore
+.cursorignore
 
 # Storybook
 *storybook.log
@@ -94,3 +100,6 @@ reports/*.md
 
 # Mutation testing output
 apps/api/mutants/
+
+# CI-generated report artifacts
+/artifacts/

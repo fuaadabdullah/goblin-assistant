@@ -1,6 +1,6 @@
 'use client';
 
-type Mode = 'all' | 'finance' | 'learn' | 'general';
+import type { Mode } from '../types';
 
 interface ModeSelectorProps {
   activeMode: Mode;

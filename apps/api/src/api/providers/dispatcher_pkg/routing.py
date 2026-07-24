@@ -3,10 +3,11 @@
 from __future__ import annotations
 
 import os
-from typing import Any, Dict, List, Optional
+from typing import Any, Callable, Dict, List, Optional
 
 from ..pricing import resolve_model_pricing
-from ..routing_strategies import rank_cheapest, rank_hybrid, rank_local
+
+RankFn = Callable[[List[str], Dict[str, tuple[float, float]]], List[str]]
 
 
 def _load_hourly_budget_cap(provider_toml: Any) -> float:
@@ -99,7 +100,7 @@ def _budget_status(
     cap = load_hourly_budget_cap_fn(provider_toml)
 
     # Deferred import to avoid circular dependency at module level
-    from ...routing.router import registry
+    from ...routing.router_registry import registry
 
     spend_by_provider = registry.current_hour_spend()
     total_spend = round(sum(spend_by_provider.values()), 6)
@@ -154,6 +155,7 @@ def cheapest_order(
     configs: Dict[str, Dict[str, Any]],
     list_providers_fn,
     *,
+    rank_fn: RankFn,
     provider_toml: Any,
     logger: Any,
 ) -> List[str]:
@@ -162,7 +164,7 @@ def cheapest_order(
     return _apply_budget_rerank(
         ensure_provider_fn,
         configs,
-        rank_cheapest(candidates, provider_costs),
+        rank_fn(candidates, provider_costs),
         routing_mode="cheapest",
         provider_toml=provider_toml,
         logger=logger,
@@ -174,6 +176,7 @@ def hybrid_order(
     configs: Dict[str, Dict[str, Any]],
     list_providers_fn,
     *,
+    rank_fn: RankFn,
     provider_toml: Any,
     logger: Any,
 ) -> List[str]:
@@ -182,7 +185,7 @@ def hybrid_order(
     return _apply_budget_rerank(
         ensure_provider_fn,
         configs,
-        rank_hybrid(candidates, provider_costs),
+        rank_fn(candidates, provider_costs),
         routing_mode="auto",
         provider_toml=provider_toml,
         logger=logger,
@@ -203,10 +206,12 @@ def local_order(
         for item in providers
         if bool(item.get("local_routing", False)) or item.get("tier") == "self_hosted"
     ]
+    # LocalRouter historically just returned candidates unchanged (no cost/latency
+    # ranking makes sense for "stay local"), so no rank_fn injection needed here.
     return _apply_budget_rerank(
         ensure_provider_fn,
         configs,
-        rank_local(local_candidates),
+        list(local_candidates),
         routing_mode="local",
         provider_toml=provider_toml,
         logger=logger,
@@ -251,6 +256,8 @@ def candidate_order(
     ensure_provider_fn,
     list_providers_fn,
     *,
+    cheapest_rank_fn: RankFn,
+    hybrid_rank_fn: RankFn,
     provider_toml: Any,
     logger: Any,
 ) -> List[str]:
@@ -259,6 +266,7 @@ def candidate_order(
             ensure_provider_fn,
             configs,
             list_providers_fn,
+            rank_fn=hybrid_rank_fn,
             provider_toml=provider_toml,
             logger=logger,
         )
@@ -267,6 +275,7 @@ def candidate_order(
             ensure_provider_fn,
             configs,
             list_providers_fn,
+            rank_fn=cheapest_rank_fn,
             provider_toml=provider_toml,
             logger=logger,
         )

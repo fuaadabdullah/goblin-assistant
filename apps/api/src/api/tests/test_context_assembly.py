@@ -14,6 +14,7 @@ def _build_service(monkeypatch, budget=None):
         budget = ContextBudget(
             total_tokens=1000,
             system_tokens=100,
+            profile_tokens=100,
             long_term_tokens=100,
             working_memory_tokens=200,
             semantic_retrieval_tokens=300,
@@ -32,10 +33,11 @@ def test_package_exports_and_models_property():
     budget = ContextBudget(
         total_tokens=1000,
         system_tokens=100,
+        profile_tokens=200,
         long_term_tokens=100,
         working_memory_tokens=200,
     )
-    assert budget.available_for_retrieval == 600
+    assert budget.available_for_retrieval == 400
 
 
 @pytest.mark.asyncio
@@ -45,6 +47,9 @@ async def test_orchestrator_happy_path(monkeypatch):
 
     async def _system(_remaining, _budget):
         return ContextLayer(name="system", content="sys", tokens=50)
+
+    async def _profile(_user_id, _remaining, _budget):
+        return ContextLayer(name="user_profile", content="prof", tokens=30)
 
     async def _long_term(_user_id, _remaining, _budget):
         return ContextLayer(name="long_term_memory", content="ltm", tokens=40)
@@ -72,6 +77,7 @@ async def test_orchestrator_happy_path(monkeypatch):
         return "snap-123"
 
     monkeypatch.setattr(orch, "assemble_system_layer", _system)
+    monkeypatch.setattr(orch, "assemble_profile_layer", _profile)
     monkeypatch.setattr(orch, "assemble_long_term_memory", _long_term)
     monkeypatch.setattr(orch, "assemble_working_memory", _working)
     monkeypatch.setattr(orch, "assemble_semantic_retrieval", _semantic)
@@ -90,10 +96,11 @@ async def test_orchestrator_happy_path(monkeypatch):
     )
 
     assert result["context_snapshot_id"] == "snap-123"
-    assert result["total_tokens_used"] == 220
-    assert result["remaining_tokens"] == 780
+    assert result["total_tokens_used"] == 250
+    assert result["remaining_tokens"] == 750
     assert [layer.name for layer in result["layers"]] == [
         "system",
+        "user_profile",
         "long_term_memory",
         "working_memory",
         "semantic_retrieval",
@@ -101,6 +108,7 @@ async def test_orchestrator_happy_path(monkeypatch):
     ]
     assert result["assembly_log"]["layers"] == [
         "system",
+        "user_profile",
         "long_term",
         "working_memory",
         "semantic_retrieval",

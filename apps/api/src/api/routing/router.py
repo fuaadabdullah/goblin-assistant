@@ -22,6 +22,17 @@ from .policy_engine import (
 )
 from .registry_store import ProviderStats, RoutingRegistryStore
 from .router_registry import RoutingRegistry, registry
+from .routing_pipeline import (
+    ROUTING_STAGE_ORDER,
+    RoutingClassification,
+    RoutingExecutionPlan,
+    RoutingPipeline,
+    RoutingPipelineResult,
+    RoutingPipelineScore,
+    RoutingPipelineStageTrace,
+    RoutingPrompt,
+    build_routing_pipeline,
+)
 from .selection import route_task, route_task_sync, top_providers_for
 
 __all__ = [
@@ -41,6 +52,16 @@ __all__ = [
     "cost_router",
     "hybrid_router",
     "tier_router",
+    # modern pipeline
+    "ROUTING_STAGE_ORDER",
+    "RoutingPrompt",
+    "RoutingClassification",
+    "RoutingExecutionPlan",
+    "RoutingPipelineStageTrace",
+    "RoutingPipelineScore",
+    "RoutingPipelineResult",
+    "RoutingPipeline",
+    "build_routing_pipeline",
     # routing functions
     "top_providers_for",
     "route_task",

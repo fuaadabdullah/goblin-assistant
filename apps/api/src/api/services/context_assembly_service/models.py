@@ -26,6 +26,7 @@ class ContextBudget:
 
     total_tokens: int = 8000
     system_tokens: int = 300
+    profile_tokens: int = 200
     long_term_tokens: int = 300
     working_memory_tokens: int = 700
     semantic_retrieval_tokens: int = 1200
@@ -35,5 +36,8 @@ class ContextBudget:
     def available_for_retrieval(self) -> int:
         """Tokens available for semantic retrieval after fixed layers."""
         return self.total_tokens - (
-            self.system_tokens + self.long_term_tokens + self.working_memory_tokens
+            self.system_tokens
+            + self.profile_tokens
+            + self.long_term_tokens
+            + self.working_memory_tokens
         )

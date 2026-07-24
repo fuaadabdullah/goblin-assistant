@@ -7,7 +7,7 @@ The ModelRegistry knows: which models are available and on which providers.
 
 Usage
 -----
->>> registry = ModelRegistry.from_dispatcher_configs(dispatcher._configs)
+>>> registry = ModelRegistry.from_provider_configs(provider_configs)
 >>> backends = registry.backends_for("qwen3-32b")
 [ModelBackend(provider_id="google_cloud",  model="qwen3-32b", priority=1),
  ModelBackend(provider_id="ollama_local",  model="qwen3:32b", priority=2)]
@@ -20,7 +20,12 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import Any, Dict, List, Optional
 
-from .dispatcher_pkg.config import normalize_token
+from .provider_registry import (
+    current_provider_metadata_configs,
+)
+from .provider_registry import (
+    validate_model_alias_targets as _validate_model_alias_targets,
+)
 
 
 @dataclass(frozen=True)
@@ -55,7 +60,7 @@ class ModelRegistry:
     # ── Construction ─────────────────────────────────────────────────────────
 
     @classmethod
-    def from_dispatcher_configs(
+    def from_provider_configs(
         cls,
         configs: Dict[str, Dict[str, Any]],
     ) -> "ModelRegistry":
@@ -102,6 +107,14 @@ class ModelRegistry:
                     registry._add(bm, backend)
 
         return registry
+
+    @classmethod
+    def from_dispatcher_configs(
+        cls,
+        configs: Dict[str, Dict[str, Any]],
+    ) -> "ModelRegistry":
+        """Compatibility alias for older callers."""
+        return cls.from_provider_configs(configs)
 
     def _add(self, model_name: str, backend: ModelBackend) -> None:
         key = _normalize(model_name)
@@ -185,71 +198,18 @@ class ModelRegistry:
         )
 
 
-def _supported_models_for_provider(cfg: Dict[str, Any]) -> set[str]:
-    supported: set[str] = set()
-
-    default_model = str(cfg.get("default_model", "")).strip()
-    if default_model:
-        supported.add(default_model)
-
-    for model_name in cfg.get("models", []):
-        model = str(model_name).strip()
-        if model:
-            supported.add(model)
-
-    for backend in cfg.get("backends", []):
-        if not isinstance(backend, dict):
-            continue
-        for model_name in backend.get("models", []):
-            model = str(model_name).strip()
-            if model:
-                supported.add(model)
-
-    return supported
-
-
 def validate_model_alias_targets(
     *,
     provider_toml: Any,
     provider_configs: Dict[str, Dict[str, Any]],
     logger: Any,
 ) -> None:
-    """Warn about model aliases that point to unknown providers or models."""
-    if provider_toml is None:
-        return
-
-    provider_aliases = {
-        normalize_token(alias): normalize_token(target)
-        for alias, target in getattr(provider_toml, "provider_aliases", {}).items()
-        if str(alias).strip() and str(target).strip()
-    }
-
-    for alias, alias_config in getattr(provider_toml, "model_aliases", {}).items():
-        provider = normalize_token(str(getattr(alias_config, "provider", "") or ""))
-        model = str(getattr(alias_config, "model", "") or "").strip()
-        if not provider or not model:
-            continue
-
-        canonical_provider = provider_aliases.get(provider, provider)
-        provider_cfg = provider_configs.get(canonical_provider)
-        if provider_cfg is None:
-            logger.warning(
-                "model_alias_target_provider_missing",
-                alias=alias,
-                provider=canonical_provider,
-                model=model,
-            )
-            continue
-
-        supported_models = _supported_models_for_provider(provider_cfg)
-        if model not in supported_models:
-            logger.warning(
-                "model_alias_target_model_missing",
-                alias=alias,
-                provider=canonical_provider,
-                model=model,
-                supported_models=sorted(supported_models),
-            )
+    """Compatibility wrapper for the ProviderRegistry metadata interface."""
+    _validate_model_alias_targets(
+        provider_toml=provider_toml,
+        provider_configs=provider_configs,
+        logger=logger,
+    )
 
 
 def _normalize(name: str) -> str:
@@ -265,7 +225,7 @@ def get_model_registry() -> ModelRegistry:
     """Return the module-level ModelRegistry, building it if needed."""
     global _registry
     if _registry is None:
-        _registry = _build_from_dispatcher()
+        _registry = _build_from_provider_registry()
     return _registry
 
 
@@ -275,7 +235,5 @@ def invalidate_model_registry() -> None:
     _registry = None
 
 
-def _build_from_dispatcher() -> ModelRegistry:
-    from .dispatcher import dispatcher  # deferred — avoids circular import
-
-    return ModelRegistry.from_dispatcher_configs(dispatcher._configs)
+def _build_from_provider_registry() -> ModelRegistry:
+    return ModelRegistry.from_provider_configs(current_provider_metadata_configs())

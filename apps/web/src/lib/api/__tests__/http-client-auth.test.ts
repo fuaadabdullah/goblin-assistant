@@ -9,7 +9,7 @@ vi.mock('../../supabase', () => ({
 
 import { authGetSession, authRefreshSession } from '../../supabase';
 import { frontendHttp } from '../http-client';
-import { postFrontend } from '../http-helpers';
+import { getFrontend, postFrontend } from '../http-helpers';
 
 describe('frontend HTTP authentication', () => {
   let mock: MockAdapter;
@@ -36,6 +36,31 @@ describe('frontend HTTP authentication', () => {
     await expect(postFrontend('/api/chat/conversations', {})).resolves.toEqual({
       conversation_id: 'conversation-1',
     });
+  });
+
+  it('resolves the Supabase token before the first settings request', async () => {
+    mock.onGet('/api/settings/').reply((config) => {
+      expect(config.headers?.Authorization).toBe('Bearer supabase-jwt');
+      return [200, { success: true, data: { providers: [] } }];
+    });
+
+    await getFrontend('/api/settings/');
+  });
+
+  it('replaces a stale legacy token on conversation creation requests', async () => {
+    document.cookie = 'session_token=legacy-stale; Path=/';
+    mock.onPost('/api/chat/conversations').reply((config) => {
+      expect(config.headers?.Authorization).toBe('Bearer supabase-jwt');
+      return [200, { success: true, data: { conversation_id: 'conversation-1' } }];
+    });
+
+    await postFrontend(
+      '/api/chat/conversations',
+      { title: 'New conversation' },
+      {
+        headers: { Authorization: 'Bearer legacy-stale' },
+      }
+    );
   });
 
   it('refreshes and retries an expired proxy request once', async () => {

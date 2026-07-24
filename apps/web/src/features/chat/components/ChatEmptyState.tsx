@@ -1,9 +1,8 @@
 'use client';
 
-import { useState } from 'react';
 import { Brain } from 'lucide-react';
 import dynamic from 'next/dynamic';
-import type { QuickPrompt } from '../types';
+import type { Mode, QuickPrompt } from '../types';
 import useGoblinLoaderAnimation from '../hooks/useGoblinLoaderAnimation';
 import ModeSelector from './ModeSelector';
 import {
@@ -16,10 +15,10 @@ import {
 interface ChatEmptyStateProps {
   quickPrompts: QuickPrompt[];
   onPromptClick: (prompt: string) => void;
+  selectedMode: Mode;
+  onModeChange: (mode: Mode) => void;
   prefersReducedMotion?: boolean;
 }
-
-type Mode = 'all' | 'finance' | 'learn' | 'general';
 
 const PROMPTS_BY_MODE: Record<Mode, readonly { label: string; prompt: string }[]> = {
   all: CHAT_QUICK_PROMPTS,
@@ -36,11 +35,12 @@ const Lottie = dynamic(() => import('lottie-react'), {
 const ChatEmptyState = ({
   quickPrompts: _quickPrompts,
   onPromptClick,
+  selectedMode,
+  onModeChange,
   prefersReducedMotion = false,
 }: ChatEmptyStateProps) => {
   const animationData = useGoblinLoaderAnimation();
-  const [activeMode, setActiveMode] = useState<Mode>('all');
-  const displayedPrompts = PROMPTS_BY_MODE[activeMode];
+  const displayedPrompts = PROMPTS_BY_MODE[selectedMode];
 
   return (
     <section className="flex flex-col items-center justify-center h-full w-full px-4 py-8">
@@ -67,7 +67,7 @@ const ChatEmptyState = ({
         </div>
 
         {/* Mode selector tabs */}
-        <ModeSelector activeMode={activeMode} onModeChange={setActiveMode} />
+        <ModeSelector activeMode={selectedMode} onModeChange={onModeChange} />
 
         {/* Suggested Prompts Grid */}
         <div className="w-full grid grid-cols-1 sm:grid-cols-2 gap-3">

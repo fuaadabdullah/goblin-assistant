@@ -2701,6 +2701,30 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/routing/explain/{routing_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Explain Routing Decision
+         * @description Return why a given routing decision picked its provider.
+         *
+         *     Backed by the in-memory explanation cache populated on every
+         *     ProviderSelectionModel.score() call — see routing/provider_selection.py.
+         *     Explanations are bounded and evicted FIFO, so old routing_ids 404.
+         */
+        get: operations["explain_routing_decision_api_v1_routing_explain__routing_id__get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/routing/health": {
         parameters: {
             query?: never;
@@ -2727,6 +2751,26 @@ export interface paths {
         };
         /** Get Provider Health Detail */
         get: operations["get_provider_health_detail_api_v1_routing_health__provider_id__get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/routing/observability": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get Routing Observability
+         * @description Dashboard-ready routing observability snapshot.
+         */
+        get: operations["get_routing_observability_api_v1_routing_observability_get"];
         put?: never;
         post?: never;
         delete?: never;

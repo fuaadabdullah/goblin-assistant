@@ -32,6 +32,12 @@ if any of those checks fail or are skipped.
 `test-backend` runs `make test-api-coverage`; `test-frontend` runs
 `make test-web-coverage`. The contract job runs `make contract-checks`, so CI
 and local developer checks use the same entrypoint.
+
+Operational policy checks are part of `make lint-policy`, which runs in both
+GitHub Actions and CircleCI. The check keeps the hybrid CI/deploy model honest:
+GitHub owns repository guardrails, CircleCI owns the heavy build/test/deploy
+workflow, Render remains the canonical backend target, Fly.io remains archived,
+and dependency update automation must stay configured.
 If the regenerated OpenAPI schema or route manifest differs from the checked-in
 files, CI fails immediately.
 
