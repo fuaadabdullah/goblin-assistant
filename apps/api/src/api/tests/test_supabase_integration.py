@@ -125,11 +125,15 @@ class TestSupabaseAuth:
         auth = SupabaseAuth()
         auth.api_url = "https://test.supabase.co/auth/v1"
         auth.service_role_key = "service-key"
+        request = httpx.Request("POST", f"{auth.api_url}/admin/users")
 
         mock_client = AsyncMock()
         mock_client.__aenter__.return_value = mock_client
         mock_client.__aexit__.return_value = None
-        mock_client.post.side_effect = httpx.RequestError("Network error")
+        mock_client.post.side_effect = httpx.RequestError(
+            "Network error",
+            request=request,
+        )
 
         with patch("api.supabase_integration.httpx.AsyncClient", return_value=mock_client):
             result = await auth.create_user("test@example.com", "password")

@@ -136,7 +136,7 @@ class TestUserProfileService:
         # Verify that session.add was called (for new profile)
         mock_session.add.assert_called_once()
         # Verify that session.flush was called
-        mock_session.flush.assert_called_once()
+        mock_session.flush.assert_awaited_once()
 
     @pytest.mark.asyncio
     async def test_refresh_profile_updates_existing_profile(self):
@@ -172,7 +172,7 @@ class TestUserProfileService:
 
         # Verify update happened on existing profile
         assert mock_existing_profile.goals == ["new_goal"]
-        mock_session.flush.assert_called_once()
+        mock_session.flush.assert_awaited_once()
 
     @pytest.mark.asyncio
     async def test_refresh_profile_uses_session_factory_when_needed(self):
@@ -206,7 +206,7 @@ class TestUserProfileService:
 
         # Verify session was created and closed
         mock_factory.assert_called_once()
-        mock_session.close.assert_called_once()
+        mock_session.close.assert_awaited_once()
 
     def test_is_stale_fresh_profile(self):
         """_is_stale returns False for fresh profile."""
@@ -255,7 +255,7 @@ class TestUserProfileService:
 
         # Verify the timestamp was set to far past
         assert mock_profile.updated_at < datetime.utcnow() - timedelta(hours=2)
-        mock_session.flush.assert_called_once()
+        mock_session.flush.assert_awaited_once()
 
     @pytest.mark.asyncio
     async def test_invalidate_profile_no_profile(self):
@@ -293,4 +293,4 @@ class TestUserProfileService:
 
         # Verify factory was called and session was closed
         mock_factory.assert_called_once()
-        mock_session.close.assert_called_once()
+        mock_session.close.assert_awaited_once()
