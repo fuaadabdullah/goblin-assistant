@@ -418,6 +418,12 @@ class TestTickerExtraction:
         )
         assert tickers == ["TSLA", "AAPL", "MSFT"]
 
+    def test_filters_common_currency_codes(self):
+        tickers = _extract_candidate_tickers(
+            "AAPL latest quoted price: 201.25 USD and SAP latest quoted price: 178.10 EUR"
+        )
+        assert tickers == ["AAPL", "SAP"]
+
 
 # ===================================================================
 # Executor memory wiring

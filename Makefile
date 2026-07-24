@@ -1,4 +1,4 @@
-.PHONY: help install install-web dev web-dev api-dev api-docker-up api-docker-down build build-packages lint lint-web lint-api lint-policy type-check type-check-packages test test-unit test-web test-web-coverage test-api test-api-coverage test-api-context-coverage test-e2e test-e2e-budget test-integration test-contract test-performance generate-providers-json check-providers-json check-api-boundaries check-api-cycles check-api-cycles-report check-capability-boundaries check-route-lifecycle check-operational-policy check-docs-canonical-refs check-docs-inventory check-docs-links generate-docs-coverage type-check-api-mypy type-check-api-pyright format format-check test-critical sdk-generate sdk-check generate-route-manifest check-api-calls contract-checks secret-scan check-unused-deps check-dead-code phase-gates
+.PHONY: help install install-web dev web-dev api-dev api-docker-up api-docker-up-legacy api-docker-down build build-packages lint lint-web lint-api lint-policy type-check type-check-packages test test-unit test-web test-web-coverage test-api test-api-coverage test-api-context-coverage test-e2e test-e2e-budget test-integration test-contract test-performance generate-providers-json check-providers-json check-api-boundaries check-api-cycles check-api-cycles-report check-capability-boundaries check-route-lifecycle check-operational-policy check-docs-canonical-refs check-docs-inventory check-docs-links generate-docs-coverage type-check-api-mypy type-check-api-pyright format format-check test-critical sdk-generate sdk-check generate-route-manifest check-api-calls contract-checks secret-scan check-unused-deps check-dead-code phase-gates
 PNPM_TMP := TMPDIR="$(PWD)/.tmp"
 PYTHON ?= python3.11
 
@@ -9,7 +9,8 @@ help:
 	@echo "  make dev                  - run web + api in parallel (requires two terminals)"
 	@echo "  make web-dev              - start Next.js web app"
 	@echo "  make api-dev              - start FastAPI backend"
-	@echo "  make api-docker-up        - start Redis + FastAPI backend via Docker Compose"
+	@echo "  make api-docker-up        - start Redis + FastAPI backend via Docker Compose (lean default)"
+	@echo "  make api-docker-up-legacy - fallback startup when BuildKit is unstable"
 	@echo "  make api-docker-down      - stop Redis + FastAPI backend Docker services"
 	@echo "  make lint                 - run web + api lint"
 	@echo "  make lint-web             - run web lint"
@@ -125,6 +126,9 @@ api-dev:
 api-docker-up:
 	docker compose up -d redis goblin-assistant-backend
 
+api-docker-up-legacy:
+	DOCKER_BUILDKIT=0 COMPOSE_DOCKER_CLI_BUILD=0 docker compose up -d redis goblin-assistant-backend
+
 api-docker-down:
 	docker compose stop goblin-assistant-backend redis
 
@@ -198,7 +202,7 @@ test-api-coverage:
 	cd apps/api && PYTHONPATH=src $(PYTHON) -m pytest -o "addopts=" -v \
 		--cov=api \
 		--cov-report=term-missing \
-		--cov-fail-under=68
+		--cov-fail-under=80
 
 test-critical:
 	bash tooling/quality/run-critical-coverage.sh
