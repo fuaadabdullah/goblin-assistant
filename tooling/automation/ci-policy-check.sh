@@ -6,28 +6,32 @@ COMMIT_REGEX='^(feat|fix|refactor|infra|chore|docs|test|build|ci|perf|revert|sty
 
 ensure_pr_range() {
   local base_ref="$1"
-  local base_remote_ref="refs/remotes/origin/${base_ref}"
+  local base_rev=""
 
-  git fetch origin "${base_ref}:${base_remote_ref}" --depth=200
+  git fetch origin "$base_ref" --depth=200
+  base_rev="$(git rev-parse FETCH_HEAD)"
 
-  if ! git merge-base "$base_remote_ref" HEAD >/dev/null 2>&1; then
+  if ! git merge-base "$base_rev" HEAD >/dev/null 2>&1; then
     if [[ "$(git rev-parse --is-shallow-repository 2>/dev/null || echo false)" == "true" ]]; then
       git fetch origin --deepen=200 "${HEAD_BRANCH}" "${base_ref}" || true
-      git fetch origin "${base_ref}:${base_remote_ref}" --depth=400 || true
+      git fetch origin "$base_ref" --depth=400 || true
+      base_rev="$(git rev-parse FETCH_HEAD)"
     fi
   fi
 
-  if ! git merge-base "$base_remote_ref" HEAD >/dev/null 2>&1; then
+  if ! git merge-base "$base_rev" HEAD >/dev/null 2>&1; then
     git fetch --unshallow origin || true
-    git fetch origin "${base_ref}:${base_remote_ref}" || true
+    git fetch origin "${HEAD_BRANCH}" "${base_ref}" || true
+    git fetch origin "$base_ref" || true
+    base_rev="$(git rev-parse FETCH_HEAD)"
   fi
 
-  if ! git merge-base "$base_remote_ref" HEAD >/dev/null 2>&1; then
-    echo "Could not determine merge base for origin/${base_ref}...HEAD"
+  if ! git merge-base "$base_rev" HEAD >/dev/null 2>&1; then
+    echo "Could not determine merge base for ${base_ref}...HEAD"
     exit 1
   fi
 
-  RANGE="${base_remote_ref}...HEAD"
+  RANGE="${base_rev}...HEAD"
 }
 
 # Support both GitHub Actions and CircleCI environments
