@@ -11,6 +11,7 @@ from pathlib import Path
 REPO_ROOT = Path(__file__).resolve().parents[2]
 CONTRACT_PATH = REPO_ROOT / "packages" / "shared" / "src" / "api_proxy_routes.py"
 MANIFEST_PATH = REPO_ROOT / "packages" / "sdk" / "openapi" / "routes.json"
+OPENAPI_PATH = REPO_ROOT / "packages" / "sdk" / "openapi" / "openapi.json"
 OUTPUT_PATH = REPO_ROOT / "packages" / "shared" / "src" / "generated" / "api-proxy-routes.ts"
 
 
@@ -25,6 +26,18 @@ def _load_contract():
     return module
 
 
+def _normalize_path(path: str) -> str:
+    return path.rstrip("/") if path != "/" else "/"
+
+
+def _collect_paths(value: object) -> list[str]:
+    if isinstance(value, str) and value:
+        return [_normalize_path(value)]
+    if isinstance(value, list):
+        return [_normalize_path(item) for item in value if isinstance(item, str) and item]
+    return []
+
+
 def _load_manifest_paths() -> list[str]:
     manifest = json.loads(MANIFEST_PATH.read_text(encoding="utf-8"))
     routes = manifest.get("routes", [])
@@ -35,15 +48,38 @@ def _load_manifest_paths() -> list[str]:
     for route in routes:
         if not isinstance(route, dict):
             continue
-        path = route.get("path")
-        if isinstance(path, str) and path:
-            paths.append(path.rstrip("/") if path != "/" else "/")
+        for field in (
+            "path",
+            "canonical_path",
+            "replacement_path",
+            "compatibility_aliases",
+        ):
+            paths.extend(_collect_paths(route.get(field)))
     return paths
 
 
+def _load_openapi_paths() -> list[str]:
+    schema = json.loads(OPENAPI_PATH.read_text(encoding="utf-8"))
+    paths = schema.get("paths", {})
+    if not isinstance(paths, dict):
+        return []
+    return [_normalize_path(path) for path in paths if isinstance(path, str) and path]
+
+
+def _load_available_paths() -> list[str]:
+    seen: set[str] = set()
+    ordered_paths: list[str] = []
+    for path in [*_load_manifest_paths(), *_load_openapi_paths()]:
+        if path in seen:
+            continue
+        seen.add(path)
+        ordered_paths.append(path)
+    return ordered_paths
+
+
 def _matches_prefix(path: str, prefix: str) -> bool:
-    normalized_path = path.rstrip("/") if path != "/" else "/"
-    normalized_prefix = prefix.rstrip("/") if prefix != "/" else "/"
+    normalized_path = _normalize_path(path)
+    normalized_prefix = _normalize_path(prefix)
     return normalized_path == normalized_prefix or normalized_path.startswith(f"{normalized_prefix}/")
 
 
@@ -102,8 +138,12 @@ def _render(module) -> str:
 
 def main() -> int:
     module = _load_contract()
-    manifest_paths = _load_manifest_paths()
-    _validate_backend_targets(module, manifest_paths)
+    available_paths = _load_available_paths()
+    if not available_paths:
+        raise ValueError(
+            f"No backend paths were loaded from {MANIFEST_PATH} or {OPENAPI_PATH}"
+        )
+    _validate_backend_targets(module, available_paths)
 
     OUTPUT_PATH.parent.mkdir(parents=True, exist_ok=True)
     OUTPUT_PATH.write_text(_render(module), encoding="utf-8")
