@@ -4,6 +4,32 @@ set -euo pipefail
 BRANCH_REGEX='^(feature|fix|refactor|infra)/'
 COMMIT_REGEX='^(feat|fix|refactor|infra|chore|docs|test|build|ci|perf|revert|style|deps|release|security)(\([a-z0-9._/ -]+\))?: .+'
 
+ensure_pr_range() {
+  local base_ref="$1"
+  local base_remote_ref="refs/remotes/origin/${base_ref}"
+
+  git fetch origin "${base_ref}:${base_remote_ref}" --depth=200
+
+  if ! git merge-base "$base_remote_ref" HEAD >/dev/null 2>&1; then
+    if [[ "$(git rev-parse --is-shallow-repository 2>/dev/null || echo false)" == "true" ]]; then
+      git fetch origin --deepen=200 "${HEAD_BRANCH}" "${base_ref}" || true
+      git fetch origin "${base_ref}:${base_remote_ref}" --depth=400 || true
+    fi
+  fi
+
+  if ! git merge-base "$base_remote_ref" HEAD >/dev/null 2>&1; then
+    git fetch --unshallow origin || true
+    git fetch origin "${base_ref}:${base_remote_ref}" || true
+  fi
+
+  if ! git merge-base "$base_remote_ref" HEAD >/dev/null 2>&1; then
+    echo "Could not determine merge base for origin/${base_ref}...HEAD"
+    exit 1
+  fi
+
+  RANGE="${base_remote_ref}...HEAD"
+}
+
 # Support both GitHub Actions and CircleCI environments
 if [[ -n "${GITHUB_EVENT_NAME:-}" ]]; then
   EVENT_NAME="${GITHUB_EVENT_NAME}"
@@ -34,8 +60,7 @@ fi
 
 if [[ "$EVENT_NAME" == "pull_request" && ! "$HEAD_BRANCH" =~ $TRUNK_REGEX ]]; then
   BASE_REF="${GITHUB_BASE_REF:-${CIRCLE_TARGET_BRANCH:-main}}"
-  git fetch origin "$BASE_REF" --depth=1
-  RANGE="origin/$BASE_REF...HEAD"
+  ensure_pr_range "$BASE_REF"
 else
   if git rev-parse HEAD~1 >/dev/null 2>&1; then
     RANGE="HEAD~1..HEAD"
