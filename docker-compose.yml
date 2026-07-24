@@ -37,7 +37,7 @@ services:
       - '8001:8001'
     environment:
       - ENV=production
-      - ENVIRONMENT=production
+      - ENVIRONMENT=development
       - ENABLE_VECTOR_STORE=false
       - CELERY_BROKER_URL=redis://redis:6379/0
       - CELERY_RESULT_BACKEND=redis://redis:6379/0
