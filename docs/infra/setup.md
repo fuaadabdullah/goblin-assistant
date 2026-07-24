@@ -35,7 +35,7 @@ make web-dev
 Verify the backend before opening the frontend:
 
 ```bash
-curl http://127.0.0.1:8001/health
+curl http://127.0.0.1:8001/api/v1/health
 ```
 
 Use `make api-docker-down` to stop the backend stack when you are done.
@@ -140,18 +140,18 @@ Open:
 
 - frontend: `http://127.0.0.1:3000`
 - backend docs: `http://127.0.0.1:8001/docs`
-- backend health: `http://127.0.0.1:8001/health`
+- backend health: `http://127.0.0.1:8001/api/v1/health`
 
-If `curl /health` fails in the Docker-first path, treat that as an environment
-block for the dogfood run. Log the bailout, stop there, and do not use the day
-to fix unrelated product behavior.
+If `curl http://127.0.0.1:8001/api/v1/health` fails in the Docker-first path,
+treat that as an environment block for the dogfood run. Log the bailout, stop
+there, and do not use the day to fix unrelated product behavior.
 
 ## What Works Best Locally
 
 Most reliable in the current checkout:
 
 - `/api/generate` prompt proxy
-- backend `/health`
+- backend `/api/v1/health`
 - backend `/chat/conversations*`
 
 Currently requires additional contract alignment before it is reliable against the checked-in `api/` app:

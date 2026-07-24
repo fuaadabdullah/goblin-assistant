@@ -29,7 +29,7 @@ faster than support, privacy review, and rollback can handle.
 - Before the first run of a new stretch, build once from a clean backend cache:
   `docker compose build --no-cache goblin-assistant-backend`.
 - Start the backend stack with `make api-docker-up` and verify
-  `curl http://127.0.0.1:8001/health` before opening the frontend.
+  `curl http://127.0.0.1:8001/api/v1/health` before opening the frontend.
 - Run the frontend with `make web-dev` after the backend health check passes.
 - If the backend does not reach healthy state, treat that as an environment
   bailout. Log it, stop the ritual for that session, and do not convert the day

@@ -5,6 +5,7 @@ from unittest.mock import AsyncMock, MagicMock, patch
 import httpx
 import pytest
 
+import api.supabase_integration as supabase_integration
 from api.supabase_integration import (
     SupabaseAuth,
     SupabaseDatabase,
@@ -16,26 +17,48 @@ from api.supabase_integration import (
 # ──────────────────────────────────────────────────────────────────────────────
 
 
+def _set_supabase_constants(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setattr(
+        supabase_integration,
+        "SUPABASE_URL",
+        "https://test.supabase.co",
+    )
+    monkeypatch.setattr(
+        supabase_integration,
+        "SUPABASE_SERVICE_ROLE_KEY",
+        "service-key",
+    )
+    monkeypatch.setattr(
+        supabase_integration,
+        "SUPABASE_ANON_KEY",
+        "anon-key",
+    )
+
+
 class TestSupabaseAuth:
     """Test SupabaseAuth class methods."""
 
-    def test_init_with_env_vars(self):
-        """SupabaseAuth initializes with environment variables from env."""
-        # Simply instantiate and check that url is set (from actual env)
-        auth = SupabaseAuth()
-        # The constructor reads from os.getenv, so if SUPABASE_URL is set, url should be set
-        if auth.url:  # If env vars are present
-            assert "supabase.co" in auth.url
-        else:  # If not set, that's OK too (testing env)
-            assert auth.url is None or "supabase.co" in auth.url
+    def test_init_with_env_vars(self, monkeypatch):
+        """SupabaseAuth initializes with patched module configuration."""
+        _set_supabase_constants(monkeypatch)
 
-    def test_init_without_env_vars(self):
-        """SupabaseAuth handles missing environment variables gracefully."""
         auth = SupabaseAuth()
-        # url could be None or set depending on test environment
-        # The key is that instantiation succeeds
-        assert auth is not None
-        assert hasattr(auth, "url")
+        assert auth.url == "https://test.supabase.co"
+        assert auth.anon_key == "anon-key"
+        assert auth.service_role_key == "service-key"
+        assert auth.api_url == "https://test.supabase.co/auth/v1"
+
+    def test_init_without_env_vars(self, monkeypatch):
+        """SupabaseAuth handles missing environment variables gracefully."""
+        monkeypatch.setattr(supabase_integration, "SUPABASE_URL", None)
+        monkeypatch.setattr(supabase_integration, "SUPABASE_SERVICE_ROLE_KEY", None)
+        monkeypatch.setattr(supabase_integration, "SUPABASE_ANON_KEY", None)
+
+        auth = SupabaseAuth()
+        assert auth.url is None
+        assert auth.anon_key is None
+        assert auth.service_role_key is None
+        assert auth.api_url is None
 
     @pytest.mark.asyncio
     async def test_create_user_missing_config(self):
@@ -182,15 +205,15 @@ class TestSupabaseAuth:
 class TestSupabaseDatabase:
     """Test SupabaseDatabase class methods."""
 
-    def test_init_with_env_vars(self):
-        """SupabaseDatabase initializes with environment variables."""
+    def test_init_with_env_vars(self, monkeypatch):
+        """SupabaseDatabase initializes with patched module configuration."""
+        _set_supabase_constants(monkeypatch)
+
         db = SupabaseDatabase()
-        # If env vars are set, url should be set; otherwise it's None
-        if db.url:
-            assert "supabase.co" in db.url
-            assert db.rest_url is not None
-        assert hasattr(db, "url")
-        assert hasattr(db, "service_role_key")
+        assert db.url == "https://test.supabase.co"
+        assert db.service_role_key == "service-key"
+        assert db.anon_key == "anon-key"
+        assert db.rest_url == "https://test.supabase.co/rest/v1"
 
     @pytest.mark.asyncio
     async def test_execute_query_missing_config(self):
@@ -315,15 +338,14 @@ class TestSupabaseDatabase:
 class TestSupabaseStorage:
     """Test SupabaseStorage class methods."""
 
-    def test_init_with_env_vars(self):
-        """SupabaseStorage initializes with environment variables."""
+    def test_init_with_env_vars(self, monkeypatch):
+        """SupabaseStorage initializes with patched module configuration."""
+        _set_supabase_constants(monkeypatch)
+
         storage = SupabaseStorage()
-        # If env vars are set, url should be set
-        if storage.url:
-            assert "supabase.co" in storage.url
-            assert storage.storage_url is not None
-        assert hasattr(storage, "url")
-        assert hasattr(storage, "service_role_key")
+        assert storage.url == "https://test.supabase.co"
+        assert storage.service_role_key == "service-key"
+        assert storage.storage_url == "https://test.supabase.co/storage/v1"
 
     @pytest.mark.asyncio
     async def test_upload_file_missing_config(self):

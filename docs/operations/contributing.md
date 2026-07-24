@@ -58,7 +58,7 @@ This project follows a code of conduct to ensure a welcoming environment for all
    Verify the backend is healthy before using the web app:
 
    ```bash
-   curl http://127.0.0.1:8001/health
+   curl http://127.0.0.1:8001/api/v1/health
    ```
 
 ### Development Workflow
