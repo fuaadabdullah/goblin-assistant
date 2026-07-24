@@ -192,6 +192,7 @@ export const API_ROUTE_PATHS = [
   '/api/v1/write-time/test',
   '/api/v1/write-time/test/batch',
   '/api/v1/write-time/test/examples',
+  '/health',
   '/metrics',
   '/test',
 ] as const;

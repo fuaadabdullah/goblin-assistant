@@ -1,8 +1,8 @@
 {
-  "alias_route_count": 0,
+  "alias_route_count": 2,
   "api_v1_prefix": "/api/v1",
-  "public_route_count": 203,
-  "route_count": 204,
+  "public_route_count": 204,
+  "route_count": 205,
   "routes": [
     {
       "canonical_path": "/",
@@ -1475,7 +1475,9 @@
     },
     {
       "canonical_path": "/api/v1/health",
-      "compatibility_aliases": [],
+      "compatibility_aliases": [
+        "/health"
+      ],
       "deprecated": false,
       "include_in_schema": true,
       "logical_path": "/health",
@@ -3046,6 +3048,23 @@
       "summary": "Get Test Examples",
       "tags": [
         "write-time"
+      ]
+    },
+    {
+      "canonical_path": "/api/v1/health",
+      "compatibility_aliases": [
+        "/api/v1/health"
+      ],
+      "deprecated": true,
+      "include_in_schema": true,
+      "logical_path": "/health",
+      "method": "GET",
+      "operation_id": "health_check_api_v1_health_get",
+      "path": "/health",
+      "replacement_path": "/api/v1/health",
+      "summary": "Health Check",
+      "tags": [
+        "health"
       ]
     },
     {
