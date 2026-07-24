@@ -97,7 +97,11 @@ class TestUserProfileService:
 
         service = UserProfileService(session_factory=None)
 
-        with patch.object(service, "refresh_profile", return_value=mock_new_profile):
+        with patch.object(
+            service,
+            "refresh_profile",
+            new=AsyncMock(return_value=mock_new_profile),
+        ):
             result = await service.get_profile("user-1", session=mock_session)
 
         assert result == mock_new_profile
