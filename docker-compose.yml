@@ -78,7 +78,7 @@ services:
       - minio_data:/data
     environment:
       MINIO_ROOT_USER: ${MINIO_ROOT_USER:-dev_minio_user}
-      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD:-dev_minio_password}
+      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD:?MINIO_ROOT_PASSWORD must be set}
       MINIO_REGION_NAME: us-east-1
     command: server /data --console-address ":9001"
     healthcheck:
@@ -148,7 +148,7 @@ services:
       - JOB_TIMEOUT_SECONDS=10
       - ARTIFACT_S3_ENDPOINT=http://minio:9000
       - S3_ACCESS_KEY=${S3_ACCESS_KEY:-dev_minio_user}
-      - S3_SECRET_KEY=${S3_SECRET_KEY:-dev_minio_password}
+      - S3_SECRET_KEY=${S3_SECRET_KEY:?S3_SECRET_KEY must be set}
       - S3_BUCKET=goblin-sandbox
       - S3_REGION=us-east-1
       - MAX_ARTIFACT_SIZE_MB=10
