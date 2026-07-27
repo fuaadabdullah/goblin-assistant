@@ -118,6 +118,7 @@ if is_postgres:
             "pool_size": _parse_int_env("DATABASE_POOL_SIZE", 5),
             "max_overflow": _parse_int_env("DATABASE_MAX_OVERFLOW", 10),
             "pool_timeout": _parse_float_env("DATABASE_POOL_TIMEOUT", 30.0),
+            "pool_recycle": _parse_int_env("DATABASE_POOL_RECYCLE", 3600),
         }
     )
 

@@ -13,6 +13,7 @@ from api.providers.dispatcher import dispatcher
 from api.routing.router import top_providers_for
 from api.services.platform_settings_service import SaaSSettingsService
 from api.services.platform_settings_service import get_platform_db as get_db
+from api.services.platform_settings_service import get_readonly_platform_db as get_readonly_db
 
 router = APIRouter(
     prefix="/settings",
@@ -69,7 +70,7 @@ def _provider_models(entry: dict) -> List[str]:
 
 
 @router.get("/", response_model=SuccessEnvelope[SettingsResponse])
-async def get_settings(db: AsyncSession = Depends(get_db)):
+async def get_settings(db: AsyncSession = Depends(get_readonly_db)):
     try:
         inventory = await dispatcher.get_provider_inventory(include_hidden=False)
         service = SaaSSettingsService(db)

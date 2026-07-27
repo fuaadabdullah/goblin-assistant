@@ -1,5 +1,3 @@
-# syntax=docker/dockerfile:1.7-labs
-
 FROM python:3.11-slim AS base
 
 ENV PYTHONUNBUFFERED=1 \
@@ -12,30 +10,38 @@ FROM base AS deps
 COPY apps/api/requirements.txt /app/apps/api/requirements.txt
 COPY apps/api/requirements-vector.txt /app/apps/api/requirements-vector.txt
 
-# Install build-time dependencies and Python packages with BuildKit caches for faster rebuilds.
-RUN --mount=type=cache,target=/var/cache/apt,sharing=locked \
-    --mount=type=cache,target=/var/lib/apt/lists,sharing=locked \
-    --mount=type=cache,target=/root/.cache/pip,sharing=locked \
-    apt-get update \
-    && apt-get install -y --no-install-recommends \
-      build-essential \
-      gcc \
-      git \
-    && python -m pip install --upgrade pip \
-    && python -m pip install -r /app/apps/api/requirements.txt -r /app/apps/api/requirements-vector.txt
+ARG INSTALL_VECTOR_DEPS=1
 
-FROM base AS runtime
+# Install build-time dependencies and Python packages with BuildKit caches for faster rebuilds.
+RUN if [ "$INSTALL_VECTOR_DEPS" = "1" ]; then \
+         apt-get update \
+         && apt-get install -y --no-install-recommends build-essential gcc git; \
+     fi \
+    && python -m pip install --upgrade pip \
+        && python -m pip install -r /app/apps/api/requirements.txt \
+        && if [ "$INSTALL_VECTOR_DEPS" = "1" ]; then \
+                 python -m pip install -r /app/apps/api/requirements-vector.txt; \
+             else \
+                 echo "Skipping requirements-vector.txt and heavy build toolchain for lean local runtime"; \
+             fi \
+        && if [ "$INSTALL_VECTOR_DEPS" = "1" ]; then \
+                 apt-get purge -y --auto-remove build-essential gcc git \
+                 && rm -rf /var/lib/apt/lists/*; \
+             fi
+
+FROM deps AS runtime
+
+ARG INSTALL_VECTOR_DEPS=1
 
 # Keep runtime image lean: only install minimal shared libs needed by compiled wheels.
-RUN --mount=type=cache,target=/var/cache/apt,sharing=locked \
-    --mount=type=cache,target=/var/lib/apt/lists,sharing=locked \
-    apt-get update \
-    && apt-get install -y --no-install-recommends \
-      libstdc++6 \
-      libgomp1 \
-    && rm -rf /var/lib/apt/lists/*
+RUN if [ "$INSTALL_VECTOR_DEPS" = "1" ]; then \
+        apt-get update \
+        && apt-get install -y --no-install-recommends libstdc++6 libgomp1 \
+        && rm -rf /var/lib/apt/lists/*; \
+    else \
+        echo "Skipping runtime apt dependencies for lean local runtime"; \
+    fi
 
-COPY --from=deps /usr/local /usr/local
 RUN groupadd --system --gid 1000 appuser \
     && useradd --system --uid 1000 --gid appuser --home-dir /app --shell /usr/sbin/nologin appuser \
     && mkdir -p /app/apps/api /app/config /app/packages /app/logs /app/chroma_db /app/state \

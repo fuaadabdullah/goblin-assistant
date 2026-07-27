@@ -1,5 +1,5 @@
 from fastapi import FastAPI
-from fastapi.routing import APIRouter
+from fastapi.routing import APIRoute, APIRouter
 from fastapi.testclient import TestClient
 
 from api.api_router import router as api_router
@@ -104,6 +104,13 @@ def test_mount_versioned_primary_routes_includes_public_v1_routes() -> None:
     )
 
     paths = {route.path for route in app.routes}
+    route_keys = [
+        (method, route.path)
+        for route in app.routes
+        if isinstance(route, APIRoute)
+        for method in route.methods or set()
+        if method not in {"HEAD", "OPTIONS"}
+    ]
     assert "/api/v1/health" in paths
     assert "/api/v1/settings/" in paths
     assert "/api/v1/providers/models" in paths
@@ -129,3 +136,4 @@ def test_mount_versioned_primary_routes_includes_public_v1_routes() -> None:
     assert "/api/v1/notifications/" in paths
     assert "/chat/conversations" not in paths
     assert "/api/chat" not in paths
+    assert len(route_keys) == len(set(route_keys))

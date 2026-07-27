@@ -70,18 +70,21 @@ export const useErrorTesting = (onSuccess?: (title: string, message?: string) =>
 
   const testNetworkError = () =>
     wrapTest('Network Error', async () => {
-      await fetch('/__invalid__endpoint__');
+      const response = await fetch('/__invalid__endpoint__');
+      if (!response.ok) {
+        throw new Error(`Network request failed with status ${response.status}`);
+      }
     });
 
   const testUnhandledPromiseRejection = () =>
     wrapTest('Unhandled Promise Rejection', () => {
-      void Promise.reject(new Error('Unhandled rejection'));
+      return Promise.reject(new Error('Unhandled rejection'));
     });
 
   const testTypeError = () =>
     wrapTest('Type Error', () => {
-      const value: any = null;
-      value.trim();
+      const value: string | null = null;
+      value!.trim();
     });
 
   const testCustomError = () =>
@@ -111,16 +114,19 @@ export const useErrorTesting = (onSuccess?: (title: string, message?: string) =>
 
   const runAllTests = async () => {
     setIsLoading(true);
-    await testJavaScriptError();
-    await testTypeError();
-    await testCustomError();
-    await testAsyncError();
-    await testNetworkError();
-    await testUnhandledPromiseRejection();
-    await testSentryError();
-    await testSentryMessage();
-    await testSentryBreadcrumb();
-    setIsLoading(false);
+    try {
+      await testJavaScriptError();
+      await testTypeError();
+      await testCustomError();
+      await testAsyncError();
+      await testNetworkError();
+      await testUnhandledPromiseRejection();
+      await testSentryError();
+      await testSentryMessage();
+      await testSentryBreadcrumb();
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   const clearResults = () => setResults([]);

@@ -20,6 +20,9 @@ from api.services.platform_settings_service import (
     get_platform_db as get_db,
 )
 from api.services.platform_settings_service import (
+    get_readonly_platform_db as get_readonly_db,
+)
+from api.services.platform_settings_service import (
     save_account_profile as save_account_profile_record,
 )
 
@@ -121,7 +124,7 @@ async def save_profile(
 @router.get("/profile", response_model=SuccessEnvelope[ProfileResponse])
 async def get_profile(
     current_user: AuthenticatedUser = Depends(get_current_user),
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(get_readonly_db),
 ) -> SuccessEnvelope[ProfileResponse]:
     service = SaaSSettingsService(db)
     profile = await service.get_account_profile(current_user.id)
@@ -182,7 +185,7 @@ async def save_preferences(
 @router.get("/preferences", response_model=SuccessEnvelope[PreferencesResponse])
 async def get_preferences(
     current_user: AuthenticatedUser = Depends(get_current_user),
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(get_readonly_db),
 ) -> SuccessEnvelope[PreferencesResponse]:
     service = SaaSSettingsService(db)
     preferences = await service.get_account_preferences(current_user.id)
@@ -203,7 +206,7 @@ async def get_preferences(
 @router.get("/chat-settings", response_model=SuccessEnvelope[ChatSettingsResponse])
 async def get_chat_settings(
     current_user: AuthenticatedUser = Depends(get_current_user),
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(get_readonly_db),
 ) -> SuccessEnvelope[ChatSettingsResponse]:
     service = SaaSSettingsService(db)
     settings = await service.get_chat_settings(current_user.id)

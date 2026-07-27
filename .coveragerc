@@ -30,7 +30,8 @@ show_missing = True
 skip_covered = False
 
 # Fail if coverage falls below this percentage
-fail_under = 70
+# (matches make test-api-coverage --cov-fail-under=68)
+fail_under = 68
 
 [html]
 directory = htmlcov

@@ -12,6 +12,7 @@ from api.core.contracts import SuccessEnvelope
 from api.core.errors import DomainError
 from api.services.platform_settings_service import SaaSSettingsService
 from api.services.platform_settings_service import get_platform_db as get_db
+from api.services.platform_settings_service import get_readonly_platform_db as get_readonly_db
 
 router = APIRouter(prefix="/feature-flags", tags=["feature-flags"])
 
@@ -31,7 +32,7 @@ async def get_feature_flag(
     flag_key: str,
     user_id: Optional[str] = None,
     role: Optional[str] = None,
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(get_readonly_db),
 ):
     service = SaaSSettingsService(db)
     resolved = await service.resolve_feature_flag(flag_key, user_id=user_id, role=role)

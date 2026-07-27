@@ -37,6 +37,9 @@ from ..services.platform_settings_service import (
     get_platform_db as get_db,
 )
 from ..services.platform_settings_service import (
+    get_readonly_platform_db as get_readonly_db,
+)
+from ..services.platform_settings_service import (
     update_rag_consent as update_stored_rag_consent,
 )
 from ..services.telemetry import EventType, log_conversation_event
@@ -83,7 +86,7 @@ async def export_user_data(
     include_vectors: bool = True,
     include_conversations: bool = True,
     include_preferences: bool = True,
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(get_readonly_db),
 ) -> Dict[str, Any]:
     """
     Export all user data (GDPR Article 20 - Right to Data Portability).
@@ -368,7 +371,7 @@ async def delete_user_data(
 @router.get("/data-summary", response_model=Dict[str, Any])
 async def get_data_summary(
     user_id: str = Depends(get_current_user),
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(get_readonly_db),
 ) -> Dict[str, Any]:
     """
     Get summary of stored user data (GDPR Article 15 - Right of Access).

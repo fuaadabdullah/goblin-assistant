@@ -20,6 +20,7 @@ from .bootstrap.startup import (
 )
 from .chat_router import router as chat_router
 from .exception_handlers import register_exception_handlers
+from .health import health_check as versionless_health_check
 from .health import router as health_router
 from .lifespan import lifespan
 from .observability.debug_router import router as observability_debug_router
@@ -71,12 +72,16 @@ def create_app() -> FastAPI:
             "message": "Goblin Assistant API",
             "version": get_version(),
             "docs": "/docs",
-            "health": "/health",
+            "health": "/api/v1/health",
         }
 
     @app.get("/test")
     async def test() -> dict[str, str]:
         return {"status": "ok"}
+
+    @app.get("/health", include_in_schema=False)
+    async def health() -> dict[str, object]:
+        return await versionless_health_check()
 
     app.middleware("http")(add_contract_lifecycle_headers)
     register_exception_handlers(app)

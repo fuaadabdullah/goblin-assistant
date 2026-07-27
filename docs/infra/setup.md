@@ -32,10 +32,26 @@ make api-docker-up
 make web-dev
 ```
 
+The Docker backend defaults to a lean local build that skips
+`requirements-vector.txt` to keep startup reliable on developer laptops.
+If you need vector-store features locally, opt in explicitly:
+
+```bash
+BACKEND_INSTALL_VECTOR_DEPS=1 docker compose build --no-cache goblin-assistant-backend
+BACKEND_INSTALL_VECTOR_DEPS=1 make api-docker-up
+```
+
 Verify the backend before opening the frontend:
 
 ```bash
 curl http://127.0.0.1:8001/api/v1/health
+```
+
+If Docker BuildKit crashes with errors like `frontend grpc server closed
+unexpectedly`, use the fallback startup path:
+
+```bash
+make api-docker-up-legacy
 ```
 
 Use `make api-docker-down` to stop the backend stack when you are done.

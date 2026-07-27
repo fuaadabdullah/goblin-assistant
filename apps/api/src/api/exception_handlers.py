@@ -6,9 +6,9 @@ from fastapi import FastAPI, HTTPException, Request
 from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse
 
-from .core.contracts import ErrorEnvelope
 from .core.errors import (
     DomainError,
+    error_envelope_content,
     map_domain_error,
     map_http_exception,
     map_unhandled_exception,
@@ -64,7 +64,7 @@ def register_exception_handlers(app: FastAPI) -> None:
         return JSONResponse(
             status_code=exc.status_code,
             headers={"X-Request-ID": request_id},
-            content=ErrorEnvelope(error=payload).model_dump(exclude_none=True),
+            content=error_envelope_content(payload),
         )
 
     @app.exception_handler(RequestValidationError)
@@ -82,12 +82,10 @@ def register_exception_handlers(app: FastAPI) -> None:
             error_code=payload.code,
             status_code=422,
         )
-        content = ErrorEnvelope(error=payload).model_dump(exclude_none=True)
-        content["detail"] = exc.errors()
         return JSONResponse(
             status_code=422,
             headers={"X-Request-ID": request_id},
-            content=content,
+            content=error_envelope_content(payload),
         )
 
     @app.exception_handler(HTTPException)
@@ -106,13 +104,10 @@ def register_exception_handlers(app: FastAPI) -> None:
             error_code=payload.code,
             status_code=exc.status_code,
         )
-        content = ErrorEnvelope(error=payload).model_dump(exclude_none=True)
-        if isinstance(exc.detail, str) or exc.detail is not None:
-            content["detail"] = exc.detail
         return JSONResponse(
             status_code=exc.status_code,
             headers={"X-Request-ID": request_id},
-            content=content,
+            content=error_envelope_content(payload),
         )
 
     @app.exception_handler(Exception)
@@ -134,5 +129,5 @@ def register_exception_handlers(app: FastAPI) -> None:
         return JSONResponse(
             status_code=500,
             headers={"X-Request-ID": request_id},
-            content=ErrorEnvelope(error=payload).model_dump(exclude_none=True),
+            content=error_envelope_content(payload),
         )

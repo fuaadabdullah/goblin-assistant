@@ -16,7 +16,6 @@ from fastapi.routing import APIRoute
 from tooling.generators.route_inventory_shared import (
     API_V1_PREFIX,
     METHOD_ORDER,
-    group_for_path,
     method_sort_key,
     normalize_tags,
     normalize_text,
@@ -147,20 +146,31 @@ def _route_records_from_app(api_app, schema: dict[str, object] | None = None) ->
     for record in records:
         alias_map[(record.method, record.logical_path)].append(record.path)
 
+    public_paths_by_key: dict[tuple[str, str], set[str]] = defaultdict(set)
+    for record in records:
+        if record.include_in_schema:
+            public_paths_by_key[(record.method, record.logical_path)].add(record.path)
+
     canonical_map: dict[tuple[str, str], str] = {}
     for key, paths in alias_map.items():
+        public_paths = public_paths_by_key.get(key, set())
+        canonical_candidates = public_paths or paths
         canonical_map[key] = sorted(
-            set(paths),
+            set(canonical_candidates),
             key=lambda candidate: (not candidate.startswith(API_V1_PREFIX), candidate),
         )[0]
 
     finalized: list[RouteRecord] = []
     for record in records:
+        key = (record.method, record.logical_path)
+        public_paths = public_paths_by_key.get(key, set())
+        if not record.include_in_schema and public_paths:
+            continue
         canonical_path = canonical_map[(record.method, record.logical_path)]
         aliases = tuple(
             alias
-            for alias in sorted(set(alias_map[(record.method, record.logical_path)]))
-            if alias != record.path
+            for alias in sorted(set(alias_map[key]))
+            if alias != record.path and (not public_paths or alias in public_paths)
         )
         finalized.append(
             RouteRecord(

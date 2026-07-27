@@ -15,19 +15,22 @@ from __future__ import annotations
 from datetime import datetime
 
 import pytest
-from fastapi import HTTPException
+from fastapi import Body, FastAPI, HTTPException
 from fastapi.exceptions import RequestValidationError
+from fastapi.testclient import TestClient
 from pydantic import BaseModel, ValidationError
 
 from api.core.error_types import ErrorType
 from api.core.errors import (
     DomainError,
     _group_validation_errors_by_field,
+    error_envelope_content,
     map_domain_error,
     map_http_exception,
     map_unhandled_exception,
     map_validation_exception,
 )
+from api.exception_handlers import register_exception_handlers
 
 MULTI_FIELD_MESSAGE_ERRORS = 2
 PROVIDER_RETRY_AFTER_SECONDS = 5
@@ -180,6 +183,21 @@ class TestMapHttpException:
         assert payload.request_id is None
         assert payload.timestamp is None
 
+    def test_error_envelope_content_is_the_single_response_shape(self):
+        exc = HTTPException(status_code=404, detail="missing")
+        content = error_envelope_content(map_http_exception(exc, "req-1", "ts"))
+
+        assert content == {
+            "success": False,
+            "error": {
+                "code": "HTTP_ERROR",
+                "type": "internal",
+                "message": "missing",
+                "request_id": "req-1",
+                "timestamp": "ts",
+            },
+        }
+
 
 class TestMapDomainError:
     def test_map_domain_error_basic(self):
@@ -259,6 +277,42 @@ class TestMapUnhandledException:
 
         assert payload.request_id == "req-111"
         assert payload.timestamp == "2026-05-31T12:00:00Z"
+
+
+class TestExceptionHandlerEnvelope:
+    def test_http_exception_does_not_emit_top_level_detail(self):
+        app = FastAPI()
+        register_exception_handlers(app)
+
+        @app.get("/missing")
+        async def missing():
+            raise HTTPException(status_code=404, detail="not found")
+
+        response = TestClient(app, raise_server_exceptions=False).get("/missing")
+
+        assert response.status_code == 404
+        data = response.json()
+        assert set(data) == {"success", "error"}
+        assert data["error"]["message"] == "not found"
+
+    def test_validation_exception_keeps_details_inside_error_payload(self):
+        app = FastAPI()
+        register_exception_handlers(app)
+
+        @app.post("/items")
+        async def create_item(name: str = Body(..., embed=True)):
+            return {"name": name}
+
+        response = TestClient(app, raise_server_exceptions=False).post(
+            "/items",
+            json={"name": 123},
+        )
+
+        assert response.status_code == VALIDATION_STATUS_CODE
+        data = response.json()
+        assert set(data) == {"success", "error"}
+        assert "detail" not in data
+        assert data["error"]["details"]["errors"]
 
 
 # ───────────────────────────────────────────────────────────────────────

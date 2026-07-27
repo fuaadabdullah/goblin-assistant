@@ -41,6 +41,28 @@ def test_build_manifest_tracks_canonical_versioned_routes() -> None:
     assert routes["/internal"]["include_in_schema"] is False
 
 
+def test_build_manifest_ignores_hidden_operational_aliases() -> None:
+    app = FastAPI()
+
+    @app.get("/api/v1/health", operation_id="health_check")
+    async def health_check() -> dict[str, str]:
+        return {"ok": "yes"}
+
+    @app.get("/health", include_in_schema=False, operation_id="versionless_health_check")
+    async def versionless_health_check() -> dict[str, str]:
+        return {"ok": "yes"}
+
+    manifest = build_manifest(app)
+    routes = {route["path"]: route for route in manifest["routes"]}
+
+    assert manifest["route_count"] == 1
+    assert manifest["public_route_count"] == 1
+    assert manifest["alias_route_count"] == 0
+    assert "/health" not in routes
+    assert routes["/api/v1/health"]["compatibility_aliases"] == []
+    assert routes["/api/v1/health"]["canonical_path"] == "/api/v1/health"
+
+
 def test_build_manifest_orders_methods_and_paths_deterministically() -> None:
     app = FastAPI()
 

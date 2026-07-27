@@ -8,6 +8,7 @@ from fastapi.testclient import TestClient
 
 from api.middleware import (
     AuthenticationMiddleware,
+    RateLimiter,
     SecurityHeadersMiddleware,
 )
 
@@ -102,6 +103,7 @@ class TestAuthenticationMiddleware:
         response = client.get("/protected", headers={"x-api-key": "wrong-key"})
 
         assert response.status_code == 401
+        assert set(response.json()) == {"success", "error"}
 
     @patch.dict(os.environ, {"LOCAL_LLM_API_KEY": ""})
     def test_auth_middleware_unconfigured_in_production(self):
@@ -336,3 +338,31 @@ class TestSecurityHeadersMiddleware:
 
         # At minimum we should have the core security headers
         assert len(response.headers) >= 5
+
+
+class TestRateLimiterMiddleware:
+    def test_rate_limiter_fallback_returns_standard_error_envelope(self, monkeypatch):
+        async def _redis_unavailable():
+            raise RuntimeError("redis unavailable")
+
+        monkeypatch.setattr("api.middleware.rate_limiter.get_redis_client", _redis_unavailable)
+
+        app = FastAPI()
+        limiter = RateLimiter(requests_per_minute=1, requests_per_hour=10)
+        app.middleware("http")(limiter)
+
+        @app.get("/limited")
+        async def limited_route():
+            return {"message": "ok"}
+
+        client = TestClient(app)
+
+        assert client.get("/limited").status_code == 200
+        response = client.get("/limited")
+
+        assert response.status_code == 429
+        data = response.json()
+        assert set(data) == {"success", "error"}
+        assert data["error"]["code"] == "RATE_LIMIT_EXCEEDED"
+        assert data["error"]["type"] == "rate_limit"
+        assert data["error"]["details"]["limit_type"] == "minute"

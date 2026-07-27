@@ -157,7 +157,7 @@ def log_inference_metrics(
     if metadata:
         log_data["metadata"] = mask_sensitive(metadata)
 
-    logger.info(f"Inference: {log_data}")
+    logger.info("inference_event", data=log_data)
 
 
 def log_conversation_event(
@@ -221,7 +221,7 @@ def log_conversation_event(
     if metadata:
         log_data["metadata"] = mask_sensitive(metadata)
 
-    logger.info(f"Conversation: {log_data}")
+    logger.info("conversation_event", data=log_data)
     return log_data
 
 
@@ -267,7 +267,7 @@ def log_rag_event(
             logger.error("Failed to send RAG event to Datadog: %s", e)
 
     # Local logging
-    logger.info(f"RAG: event={event_type.value}, docs={document_count}, success={success}")
+    logger.info("rag_event", event=event_type.value, docs=document_count, success=success)
 
 
 def log_privacy_event(
@@ -311,7 +311,7 @@ def log_privacy_event(
         "timestamp": datetime.utcnow().isoformat(),
     }
 
-    logger.info(f"Privacy: {log_data}")
+    logger.info("privacy_event", data=log_data)
 
 
 def log_error_event(
@@ -352,11 +352,11 @@ def log_error_event(
     }
 
     if severity == "critical":
-        logger.critical(f"Error: {log_data}")
+        logger.critical("error_event", data=log_data)
     elif severity == "warning":
-        logger.warning(f"Error: {log_data}")
+        logger.warning("error_event", data=log_data)
     else:
-        logger.error(f"Error: {log_data}")
+        logger.error("error_event", data=log_data)
 
 
 def log_message_safely(
