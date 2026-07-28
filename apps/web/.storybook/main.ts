@@ -28,6 +28,10 @@ const config: StorybookConfig = {
   viteFinal: async (config) =>
     mergeConfig(config, {
       build: {
+        // Storybook bundles docs/a11y tooling that is intentionally not part of
+        // the production app. Keep this budget scoped to Storybook so Vite's
+        // runtime app warnings stay meaningful.
+        chunkSizeWarningLimit: 1500,
         target: 'esnext',
       },
       resolve: {
