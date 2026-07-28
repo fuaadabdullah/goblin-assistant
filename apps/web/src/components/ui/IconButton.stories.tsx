@@ -112,11 +112,11 @@ export const AllSizes: Story = {
 
 export const Toolbar: Story = {
   render: () => (
-    <div className="flex gap-2 bg-gray-900 p-2 rounded-lg">
+    <div className="flex gap-2 rounded-lg border border-border bg-surface p-2">
       <IconButton variant="ghost" icon={<Home />} aria-label="Home" />
       <IconButton variant="ghost" icon={<Settings />} aria-label="Settings" />
       <IconButton variant="ghost" icon={<Search />} aria-label="Search" />
-      <div className="border-l border-gray-700 mx-2" />
+      <div className="mx-2 border-l border-divider" />
       <IconButton variant="danger" icon={<Trash2 />} aria-label="Delete" />
     </div>
   ),

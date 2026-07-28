@@ -109,7 +109,7 @@ export const StatusBadges: Story = {
   render: () => (
     <div className="flex flex-col gap-3">
       <div className="flex gap-2 items-center">
-        <span className="text-sm text-gray-300 w-20">Small:</span>
+        <span className="w-20 text-sm text-text-muted">Small:</span>
         <Badge size="sm" variant="success" icon={<CheckCircle size={12} />}>
           Healthy
         </Badge>
@@ -121,7 +121,7 @@ export const StatusBadges: Story = {
         </Badge>
       </div>
       <div className="flex gap-2 items-center">
-        <span className="text-sm text-gray-300 w-20">Medium:</span>
+        <span className="w-20 text-sm text-text-muted">Medium:</span>
         <Badge size="md" variant="success" icon={<CheckCircle size={14} />}>
           Healthy
         </Badge>

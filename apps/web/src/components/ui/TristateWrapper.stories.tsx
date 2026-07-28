@@ -1,4 +1,5 @@
 import type { Meta, StoryObj } from '@storybook/react';
+import { AlertTriangle, CheckCircle, MessageCircle } from 'lucide-react';
 import TristateWrapper from './TristateWrapper';
 import { Button } from './index';
 
@@ -53,9 +54,10 @@ export const ErrorWithCustomChild: Story = {
   args: {
     error: 'Something broke',
     errorChild: (
-      <div className="rounded-md border border-red-400 bg-red-50 p-6 text-center">
-        <p className="font-semibold text-red-800">⚠️ Custom error UI</p>
-        <p className="mt-1 text-sm text-red-600">
+      <div className="rounded-md border border-danger bg-danger/10 p-6 text-center">
+        <AlertTriangle className="mx-auto mb-2 h-5 w-5 text-danger" aria-hidden="true" />
+        <p className="font-semibold text-danger">Custom error UI</p>
+        <p className="mt-1 text-sm text-text-secondary">
           This uses errorChild instead of the built-in error state.
         </p>
       </div>
@@ -71,7 +73,7 @@ export const EmptyPage: Story = {
     emptyDescription: 'Start a new chat to begin tracking your AI interactions.',
     emptyActionLabel: 'Start chat',
     onEmptyAction: () => undefined,
-    emptyIcon: '💬',
+    emptyIcon: <MessageCircle className="h-8 w-8" />,
     children: <div className="p-4 text-text">Chat list</div>,
   },
 };
@@ -142,7 +144,8 @@ export const AllStates: Story = {
         <h3 className="mb-2 text-sm font-semibold text-muted">CONTENT</h3>
         <TristateWrapper>
           <div className="rounded-lg bg-primary/10 p-4 text-center text-primary">
-            ✅ Content loaded successfully
+            <CheckCircle className="mx-auto mb-2 h-5 w-5" aria-hidden="true" />
+            Content loaded successfully
           </div>
         </TristateWrapper>
       </section>

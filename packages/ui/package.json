@@ -9,6 +9,17 @@
     ".": {
       "types": "./src/index.ts",
       "default": "./src/index.ts"
+    },
+    "./tokens": {
+      "types": "./src/tokens/tokens.ts",
+      "default": "./src/tokens/index.css"
+    },
+    "./tokens/themes/dark": "./src/tokens/themes/dark.css",
+    "./tokens/themes/light": "./src/tokens/themes/light.css",
+    "./tokens/themes/high-contrast": "./src/tokens/themes/high-contrast.css",
+    "./theme": {
+      "types": "./src/theme/index.ts",
+      "default": "./src/theme/index.ts"
     }
   },
   "scripts": {
@@ -29,5 +40,8 @@
     "lucide-react": "^1.17.0",
     "tailwind-merge": "^3.6.0",
     "typescript": "^5.9.3"
+  },
+  "dependencies": {
+    "@radix-ui/react-tooltip": "1.2.16"
   }
 }

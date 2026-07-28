@@ -1,0 +1,40 @@
+# GoblinOS Design System
+
+The single source of truth for visual design. Every component in `@goblin/ui` and
+every styled surface in `apps/web` references these tokens.
+
+## Foundations
+
+The design system is organized into six token categories:
+
+- **Color** — primitive palette (amber / coral / gold / neutral / semantic scales)
+- **Typography** — font families, type scale, weights, line heights
+- **Spacing** — strict 8px grid
+- **Elevation** — shadow scale, z-index, focus rings, glows
+- **Radius** — border radius scale
+- **Motion** — purpose-based durations and easings, with reduced-motion safety
+
+## Themes
+
+Three built-in themes:
+
+- **Dark** (default) — warm amber on near-black
+- **Light** — warm beige, darker accents for AA contrast
+- **High-Contrast** — pure black/white, brighter accents for AAA
+
+Switch via `<ThemeProvider>` from `@goblin/ui` or by adding the
+`goblinos-light` / `goblinos-high-contrast` class to `<html>`.
+
+## Components
+
+Browse the sidebar to inspect every primitive. Each story has a11y, themes,
+and viewport addons enabled.
+
+## Adding a New Token
+
+1. Add to the appropriate file in `packages/ui/src/tokens/`.
+2. If it's primitive (e.g. new color), add to `colors.css`.
+3. If it's semantic (e.g. `--surface-warning`), add to all three theme files.
+4. Document it in `packages/ui/DESIGN_SYSTEM.md`.
+5. Map it into `apps/web/tailwind.config.js`.
+6. Add a Storybook story.

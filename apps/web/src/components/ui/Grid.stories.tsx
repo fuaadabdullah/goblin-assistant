@@ -1,4 +1,5 @@
 import type { Meta, StoryObj } from '@storybook/react';
+import { Card, CardContent } from '@goblin/ui';
 import Grid from './Grid';
 
 const meta = {
@@ -19,12 +20,18 @@ const meta = {
 export default meta;
 type Story = StoryObj<typeof meta>;
 
-const ExampleCard = ({ num }: { num: number }) => (
-  <div className="bg-gray-800 border border-gray-700 rounded-lg p-4 text-center">
-    <div className="text-2xl font-bold text-blue-400">Card {num}</div>
-    <p className="text-sm text-gray-400 mt-2">Example content</p>
-  </div>
-);
+const ExampleCard = (props: { num: number }) => {
+  const num = props.num;
+
+  return (
+    <Card>
+      <CardContent className="p-4 text-center">
+        <div className="text-2xl font-bold text-primary">Card {num}</div>
+        <p className="mt-2 text-sm text-text-muted">Example content</p>
+      </CardContent>
+    </Card>
+  );
+};
 
 export const Default: Story = {
   args: {
@@ -93,7 +100,7 @@ export const ResponsiveLayout: Story = {
   render: () => (
     <div className="space-y-8">
       <div>
-        <h3 className="text-lg font-semibold text-gray-200 mb-4">Auto-fit (default)</h3>
+        <h3 className="mb-4 text-lg font-semibold text-text-primary">Auto-fit (default)</h3>
         <Grid>
           {Array.from({ length: 6 }, (_, i) => (
             <ExampleCard key={i} num={i + 1} />
@@ -101,7 +108,7 @@ export const ResponsiveLayout: Story = {
         </Grid>
       </div>
       <div>
-        <h3 className="text-lg font-semibold text-gray-200 mb-4">Fixed columns</h3>
+        <h3 className="mb-4 text-lg font-semibold text-text-primary">Fixed columns</h3>
         <Grid autoFit={false}>
           {Array.from({ length: 6 }, (_, i) => (
             <ExampleCard key={i} num={i + 1} />

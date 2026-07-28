@@ -2,12 +2,17 @@
  * GoblinOS Hub — Global Styles
  *
  * Entry point CSS. Tailwind preflight handles normalization/reset.
- * Theme tokens are loaded from ./theme/index.css.
+ * Design tokens are loaded from @goblin/ui/tokens.
+ *
+ * The token system is owned by the @goblin/ui package. This file only
+ * contains app-level styles, syntax highlighting, and terminal/brand
+ * utilities that are specific to the web app.
  */
 
+/* Design tokens (single source of truth) */
+@import '@goblin/ui/tokens';
 @import 'tailwindcss';
 @config "../tailwind.config.js";
-@import './theme/index.css';
 
 /* ============================================================================
    BASE STYLES
@@ -15,8 +20,8 @@
 
 :root {
   font-family: var(--font-sans, system-ui, -apple-system, 'Segoe UI', sans-serif);
-  line-height: 1.5;
-  font-weight: 400;
+  line-height: var(--leading-normal, 1.5);
+  font-weight: var(--font-weight-normal, 400);
 
   color-scheme: dark;
 
@@ -33,53 +38,54 @@ body {
   background: var(--bg-gradient);
   background-attachment: fixed;
   color: var(--text);
-  font-size: var(--font-size-base);
-  line-height: var(--line-height-base);
+  font-size: var(--text-base);
+  line-height: var(--leading-normal);
 }
 
-/* ==========================================================================
+/* ============================================================================
    TYPOGRAPHY SCALE
    Consistent heading sizes and line-height
-   ========================================================================= */
+   ============================================================================ */
 h1,
 h2,
 h3 {
-  font-family: var(
-    --font-display,
-    var(--font-sans, system-ui, -apple-system, 'Segoe UI', sans-serif)
-  );
-  line-height: var(--heading-line-height);
-  letter-spacing: -0.015em;
-  margin: 0 0 0.5rem; /* Minimal vertical rhythm */
-}
-
-::selection {
-  background: rgba(6, 208, 106, 0.22);
-  color: var(--text);
+  font-family: var(--font-display, var(--font-sans, system-ui, -apple-system, 'Segoe UI', sans-serif));
+  line-height: var(--leading-tight);
+  letter-spacing: var(--tracking-tight);
+  margin: 0 0 var(--space-2);
 }
 
 h1 {
-  font-size: var(--h1-size);
+  font-size: var(--text-4xl);
 }
 h2 {
-  font-size: var(--h2-size);
+  font-size: var(--text-3xl);
 }
 h3 {
-  font-size: var(--h3-size);
+  font-size: var(--text-xl);
+}
+h4 {
+  font-size: var(--text-lg);
+  line-height: var(--leading-snug);
+  margin: 0 0 var(--space-2);
 }
 
-/* ==========================================================================
+::selection {
+  background: rgba(212, 165, 116, 0.22);
+  color: var(--text);
+}
+
+/* ============================================================================
    PARAGRAPHS & LISTS — small typographic scale
-   Harmonize spacing with Tailwind defaults (roughly 1rem rhythm)
-   ========================================================================= */
+   ============================================================================ */
 p {
-  margin: 0 0 1rem; /* space after paragraphs */
+  margin: 0 0 var(--space-4);
 }
 
 ul,
 ol {
-  margin: 0 0 1rem; /* space below lists */
-  padding-left: 1.25rem; /* indent consistent with Tailwind prose */
+  margin: 0 0 var(--space-4);
+  padding-left: var(--space-6);
 }
 
 ul {
@@ -91,19 +97,18 @@ ol {
 }
 
 li {
-  margin: 0.25rem 0; /* gentle item spacing */
+  margin: var(--space-1) 0;
 }
 
-/* Nested lists get slightly less spacing to avoid excessive gaps */
 li > ul,
 li > ol {
-  margin-top: 0.5rem;
-  margin-bottom: 0.5rem;
+  margin-top: var(--space-2);
+  margin-bottom: var(--space-2);
 }
 
 /* Optional: tighten spacing for small text blocks inside containers */
 .typography-tight p {
-  margin-bottom: 0.75rem;
+  margin-bottom: var(--space-3);
 }
 .typography-tight li {
   margin: 0.2rem 0;
@@ -111,7 +116,7 @@ li > ol {
 
 /* Chat markdown message rendering */
 .chat-markdown {
-  line-height: 1.6;
+  line-height: var(--leading-relaxed);
 }
 
 .chat-markdown > :first-child {
@@ -128,15 +133,15 @@ li > ol {
 .chat-markdown h4,
 .chat-markdown h5,
 .chat-markdown h6 {
-  margin: 0.75rem 0 0.5rem;
+  margin: var(--space-3) 0 var(--space-2);
   font-size: 1em;
-  line-height: 1.4;
+  line-height: var(--leading-snug);
 }
 
 .chat-markdown blockquote {
-  margin: 0.75rem 0;
+  margin: var(--space-3) 0;
   border-left: 3px solid var(--border);
-  padding-left: 0.75rem;
+  padding-left: var(--space-3);
   color: var(--text-muted);
 }
 
@@ -148,7 +153,7 @@ li > ol {
 .chat-markdown hr {
   border: 0;
   border-top: 1px solid var(--border);
-  margin: 0.75rem 0;
+  margin: var(--space-3) 0;
 }
 
 /* Syntax highlighting: light mode overrides for highlight.js (github-dark is default) */
@@ -212,12 +217,10 @@ li > ol {
    ============================================================================ */
 
 @layer utilities {
-  /* Responsive auto-fit grid using minmax() for cards
-   * Breakpoints tested: 375px (mobile), 768px (tablet), 1024px (small desktop), 1280px (desktop), 1440px (wide)
-   */
+  /* Responsive auto-fit grid using minmax() for cards */
   .grid-auto-fit {
     display: grid;
-    gap: 1rem;
+    gap: var(--space-4);
     grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
   }
 
@@ -273,7 +276,8 @@ li > ol {
 }
 
 /* ============================================================================
-   ACCESSIBILITY: REDUCED MOTION
+   ACCESSIBILITY: REDUCED MOTION (token system handles most of this; this
+   is a safety net for any non-tokenized animation that may slip through)
    ============================================================================ */
 @media (prefers-reduced-motion: reduce) {
   *,
@@ -286,16 +290,16 @@ li > ol {
   }
 }
 
-/* ==========================================================================
+/* ============================================================================
    TERMINAL + LOGO UTILITIES
-   ========================================================================= */
+   ============================================================================ */
 
 .terminal-panel {
   background: linear-gradient(180deg, var(--surface), rgba(0, 0, 0, 0.2));
   color: var(--primary);
-  padding: 1rem;
-  border-radius: 12px;
-  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, 'Liberation Mono', monospace;
+  padding: var(--space-4);
+  border-radius: var(--radius-md);
+  font-family: var(--font-mono);
   box-shadow:
     0 8px 32px rgba(0, 0, 0, 0.6),
     0 1px 0 rgba(255, 255, 255, 0.02) inset;
@@ -303,7 +307,7 @@ li > ol {
 
 .terminal-panel .prompt {
   color: var(--accent);
-  font-weight: 600;
+  font-weight: var(--font-weight-semibold);
 }
 
 .terminal-panel .output {
@@ -317,8 +321,8 @@ li > ol {
 /* Logo component animations and styles */
 .logo-transition {
   transition:
-    filter 0.3s ease,
-    transform 0.3s ease;
+    filter var(--duration-slow) var(--ease-out),
+    transform var(--duration-slow) var(--ease-out);
 }
 
 .logo-transition:hover {
@@ -334,7 +338,7 @@ li > ol {
 .logo-animated:hover {
   filter: drop-shadow(0 0 12px var(--color-brand-primary))
     drop-shadow(0 0 20px var(--color-brand-primary));
-  animation: pulse-glow 2s ease-in-out infinite;
+  animation: pulse-glow 2s var(--ease-in-out) infinite;
 }
 
 @keyframes pulse-glow {
@@ -384,11 +388,11 @@ li > ol {
 .typing-dots .dot {
   width: 6px;
   height: 6px;
-  border-radius: 9999px;
+  border-radius: var(--radius-full);
   background: var(--text-muted, rgba(255, 255, 255, 0.4));
   opacity: 0.3;
   transform: translateY(0);
-  animation: goblin-typing 900ms ease-in-out infinite;
+  animation: goblin-typing 900ms var(--ease-in-out) infinite;
 }
 .typing-dots .dot:nth-child(1) {
   animation-delay: 0ms;
@@ -412,7 +416,7 @@ li > ol {
 }
 
 .page-enter {
-  animation: page-enter 0.16s ease-out;
+  animation: page-enter var(--duration-normal) var(--ease-out);
 }
 
 @media (prefers-reduced-motion: reduce) {
