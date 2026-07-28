@@ -9,8 +9,8 @@ export interface ChatUsage {
 export interface ChatMessageMeta {
   department?: string | undefined; // Which brain department handled this
   department_reason?: string | undefined; // Why this department was chosen
-  provider?: string | undefined; // Internal: deprecated, use department
-  model?: string | undefined; // Internal: deprecated, use department
+  provider?: string | undefined;
+  model?: string | undefined;
   usage?: ChatUsage | undefined;
   cost_usd?: number | undefined;
   // UI-side estimates (pre-send).
@@ -38,6 +38,10 @@ export interface ChatMessageMeta {
         config: Record<string, unknown>;
       }>
     | undefined;
+  // Extended thinking / reasoning trace (e.g. Claude extended thinking).
+  reasoning_content?: string | undefined;
+  // Token count used for reasoning, if sent separately by the backend.
+  reasoning_tokens?: number | undefined;
 }
 
 export interface ChatMessage {

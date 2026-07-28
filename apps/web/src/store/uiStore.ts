@@ -28,6 +28,7 @@ interface UIState {
   mobileNavOpen: boolean;
   chatSidebarOpen: boolean;
   chatPreviewOpen: boolean;
+  chatInspectorOpen: boolean;
   activeModal: string | null;
   toasts: Toast[];
 
@@ -42,6 +43,8 @@ interface UIState {
   toggleChatPreview: () => void;
   setChatPreviewOpen: (open: boolean) => void;
   setChatSidebarOpen: (open: boolean) => void;
+  toggleChatInspector: () => void;
+  setChatInspectorOpen: (open: boolean) => void;
   openModal: (modalId: string) => void;
   closeModal: () => void;
   addToast: (toast: Omit<Toast, 'id'>) => void;
@@ -75,8 +78,8 @@ export const useUIStore = create<UIState>((set, get) => ({
   sidebarOpen: true,
   mobileNavOpen: false,
   chatSidebarOpen: false,
-  // Preview drawer open (mobile)
   chatPreviewOpen: false,
+  chatInspectorOpen: false,
   activeModal: null,
   toasts: [],
 
@@ -89,15 +92,12 @@ export const useUIStore = create<UIState>((set, get) => ({
   setTheme: (theme: 'default' | 'nocturne' | 'ember') => {
     applyThemePreset(theme);
     set({ currentTheme: theme });
-    // Apply theme to document root
     const root = document.documentElement;
     root.setAttribute('data-theme', theme);
-    // Also update via CSS class for broader compatibility
     root.classList.remove('theme-default', 'theme-nocturne', 'theme-ember');
     root.classList.add(`theme-${theme}`);
   },
 
-  // Sidebar actions
   toggleSidebar: () => {
     set((state) => ({ sidebarOpen: !state.sidebarOpen }));
   },
@@ -106,7 +106,6 @@ export const useUIStore = create<UIState>((set, get) => ({
     set({ sidebarOpen: open });
   },
 
-  // Mobile navigation actions
   toggleMobileNav: () => {
     set((state) => ({ mobileNavOpen: !state.mobileNavOpen }));
   },
@@ -116,9 +115,7 @@ export const useUIStore = create<UIState>((set, get) => ({
   },
 
   toggleChatSidebar: () => {
-    set((state) => ({
-      chatSidebarOpen: !state.chatSidebarOpen,
-    }));
+    set((state) => ({ chatSidebarOpen: !state.chatSidebarOpen }));
   },
 
   toggleChatPreview: () => {
@@ -133,7 +130,14 @@ export const useUIStore = create<UIState>((set, get) => ({
     set({ chatSidebarOpen: open });
   },
 
-  // Modal actions
+  toggleChatInspector: () => {
+    set((state) => ({ chatInspectorOpen: !state.chatInspectorOpen }));
+  },
+
+  setChatInspectorOpen: (open: boolean) => {
+    set({ chatInspectorOpen: open });
+  },
+
   openModal: (modalId: string) => {
     set({ activeModal: modalId });
   },
