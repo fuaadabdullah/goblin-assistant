@@ -4,7 +4,7 @@ Provider health monitoring and metrics collection
 
 import asyncio
 import time
-from typing import Dict, List, Any
+from typing import Dict, Any
 import httpx
 from .config.providers import get_provider_settings
 from .storage.cache import cache
@@ -88,17 +88,17 @@ class ProviderMonitor:
         # This is a heuristic check. For production, we might need provider-specific health endpoints.
 
         try:
-            start_time = time.time()
+            start_time = time.perf_counter()
             async with httpx.AsyncClient(timeout=10.0) as client:
                 # We expect 401/403 (auth error) or 404/405 (method not allowed) which means service is UP
                 # Connection error or Timeout means service is DOWN
                 try:
                     resp = await client.get(url)
-                    latency = (time.time() - start_time) * 1000
+                    latency = (time.perf_counter() - start_time) * 1000
                     return {"ok": True, "latency_ms": latency, "code": resp.status_code}
                 except httpx.HTTPStatusError as e:
                     # Status codes are actually fine, it means server responded
-                    latency = (time.time() - start_time) * 1000
+                    latency = (time.perf_counter() - start_time) * 1000
                     return {
                         "ok": True,
                         "latency_ms": latency,

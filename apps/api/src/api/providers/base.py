@@ -19,9 +19,10 @@ from typing import Any, AsyncGenerator, Dict, List, Optional, Union
 
 class ProviderErrorCategory(str, Enum):
     """Structured error categories for provider failures."""
-    AUTH = "auth"              # 401/403, invalid API key
+
+    AUTH = "auth"  # 401/403, invalid API key
     RATE_LIMIT = "rate-limit"  # 429, quota exceeded
-    TIMEOUT = "timeout"        # Connection/read timeout
+    TIMEOUT = "timeout"  # Connection/read timeout
     MODEL_ERROR = "model-error"  # Invalid model, context too long
     SERVER_ERROR = "server-error"  # 5xx from provider
     CONNECTION = "connection"  # DNS, network, connection refused
@@ -32,22 +33,58 @@ def classify_provider_error(error: Union[str, Exception]) -> ProviderErrorCatego
     """Classify a provider error into a structured category."""
     msg = str(error).lower()
 
-    if any(kw in msg for kw in ("401", "403", "unauthorized", "forbidden", "invalid api key", "invalid_api_key", "authentication")):
+    if any(
+        kw in msg
+        for kw in (
+            "401",
+            "403",
+            "unauthorized",
+            "forbidden",
+            "invalid api key",
+            "invalid_api_key",
+            "authentication",
+        )
+    ):
         return ProviderErrorCategory.AUTH
 
-    if any(kw in msg for kw in ("429", "rate limit", "rate_limit", "quota", "too many requests")):
+    if any(
+        kw in msg
+        for kw in ("429", "rate limit", "rate_limit", "quota", "too many requests")
+    ):
         return ProviderErrorCategory.RATE_LIMIT
 
     if any(kw in msg for kw in ("timeout", "timed out", "deadline exceeded")):
         return ProviderErrorCategory.TIMEOUT
 
-    if any(kw in msg for kw in ("model not found", "invalid model", "context_length_exceeded", "context length", "max_tokens")):
+    if any(
+        kw in msg
+        for kw in (
+            "model not found",
+            "invalid model",
+            "context_length_exceeded",
+            "context length",
+            "max_tokens",
+        )
+    ):
         return ProviderErrorCategory.MODEL_ERROR
 
-    if re.search(r"\b5\d{2}\b", msg) or any(kw in msg for kw in ("internal server error", "bad gateway", "service unavailable")):
+    if re.search(r"\b5\d{2}\b", msg) or any(
+        kw in msg
+        for kw in ("internal server error", "bad gateway", "service unavailable")
+    ):
         return ProviderErrorCategory.SERVER_ERROR
 
-    if any(kw in msg for kw in ("connection refused", "dns", "name resolution", "unreachable", "connection error", "connect error")):
+    if any(
+        kw in msg
+        for kw in (
+            "connection refused",
+            "dns",
+            "name resolution",
+            "unreachable",
+            "connection error",
+            "connect error",
+        )
+    ):
         return ProviderErrorCategory.CONNECTION
 
     return ProviderErrorCategory.UNKNOWN
@@ -257,7 +294,7 @@ class BaseProvider(ABC):
         """Probe the provider."""
 
     def is_available(self) -> bool:
-        if time.time() < self._circuit_open_until:
+        if time.perf_counter() < self._circuit_open_until:
             return False
         return self._healthy or self._failure_count < 3
 
@@ -266,7 +303,7 @@ class BaseProvider(ABC):
         self._last_error = error
         if self._failure_count >= 3:
             self._healthy = False
-            self._circuit_open_until = time.time() + backoff_seconds
+            self._circuit_open_until = time.perf_counter() + backoff_seconds
 
     def record_success(self) -> None:
         self._healthy = True

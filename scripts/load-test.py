@@ -8,8 +8,7 @@ import asyncio
 import aiohttp
 import time
 import statistics
-from typing import List, Dict, Tuple
-import json
+from typing import Dict, Tuple
 
 
 class LoadTester:
@@ -29,24 +28,24 @@ class LoadTester:
         self, method: str, endpoint: str, data: dict = None, headers: dict = None
     ) -> Tuple[float, int, str]:
         """Make a single HTTP request and return (response_time, status_code, response_text)"""
-        start_time = time.time()
+        start_time = time.perf_counter()
 
         try:
             url = f"{self.base_url}{endpoint}"
             if method.upper() == "GET":
                 async with self.session.get(url, headers=headers) as response:
                     response_text = await response.text()
-                    response_time = time.time() - start_time
+                    response_time = time.perf_counter() - start_time
                     return response_time, response.status, response_text
             elif method.upper() == "POST":
                 async with self.session.post(
                     url, json=data, headers=headers
                 ) as response:
                     response_text = await response.text()
-                    response_time = time.time() - start_time
+                    response_time = time.perf_counter() - start_time
                     return response_time, response.status, response_text
         except Exception as e:
-            response_time = time.time() - start_time
+            response_time = time.perf_counter() - start_time
             return response_time, 0, str(e)
 
     async def test_health_endpoint(self, concurrent_users: int = 10) -> Dict:
@@ -187,10 +186,10 @@ def print_results(results: Dict):
         print(f"Total Requests: {data['total_requests']}")
         print(f"Successful: {data['successful_requests']}")
         print(f"Failed: {data['failed_requests']}")
-        print(".3f")
-        print(".3f")
-        print(".3f")
-        print(".3f")
+        print(f"Avg Response Time: {data['avg_response_time']:.3f}s")
+        print(f"Min Response Time: {data['min_response_time']:.3f}s")
+        print(f"Max Response Time: {data['max_response_time']:.3f}s")
+        print(f"P95 Response Time: {data['p95_response_time']:.3f}s")
 
         if data.get("errors"):
             print(f"Sample Errors: {data['errors'][:3]}")  # Show first 3 errors
@@ -207,7 +206,7 @@ def print_results(results: Dict):
     print("-" * 30)
     print(f"Total Requests: {total_requests}")
     print(f"Success Rate: {(total_successful / total_requests) * 100:.1f}%")
-    print(".3f")
+    print(f"Avg Response Time: {avg_response_time:.3f}s")
 
     if total_failed == 0 and avg_response_time < 1.0:
         print("✅ EXCELLENT: System handles concurrent load well!")
@@ -217,11 +216,46 @@ def print_results(results: Dict):
         print("❌ POOR: Significant performance issues detected")
 
 
+def plot_results(results: Dict, output_path: str = "load_test_results.png"):
+    """Save a bar chart of response times per endpoint."""
+    try:
+        import matplotlib.pyplot as plt
+    except ImportError:
+        print("\nChart skipped: install matplotlib to save response-time plots.")
+        return
+
+    labels = [data["endpoint"] for data in results.values()]
+    avgs = [data["avg_response_time"] for data in results.values()]
+    p95s = [data["p95_response_time"] for data in results.values()]
+    maxs = [data["max_response_time"] for data in results.values()]
+
+    x = range(len(labels))
+    width = 0.25
+
+    fig, ax = plt.subplots()
+    ax.bar([i - width for i in x], avgs, width, label="avg")
+    ax.bar(list(x), p95s, width, label="p95")
+    ax.bar([i + width for i in x], maxs, width, label="max")
+
+    ax.set_xlabel("Endpoint")
+    ax.set_ylabel("Response time (s)")
+    ax.set_xscale("linear")
+    ax.set_xticks(list(x))
+    ax.set_xticklabels(labels, rotation=15, ha="right")
+    ax.legend(loc="upper right")
+
+    fig.tight_layout()
+    fig.savefig(output_path)
+    print(f"\n📈 Chart saved to {output_path}")
+    plt.close(fig)
+
+
 async def main():
     """Main load testing function"""
     async with LoadTester() as tester:
         results = await tester.run_load_test()
         print_results(results)
+        plot_results(results)
 
 
 if __name__ == "__main__":

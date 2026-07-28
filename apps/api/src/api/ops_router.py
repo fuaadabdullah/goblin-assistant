@@ -5,9 +5,8 @@ Enhanced with advanced aggregation, security controls, and trend analysis
 """
 
 from typing import Dict, Any, List
-from fastapi import APIRouter, HTTPException, Depends, Query, Request
-from datetime import datetime, timedelta
-import asyncio
+from fastapi import APIRouter, HTTPException, Query, Request
+from datetime import datetime
 import time
 import statistics
 import os
@@ -24,21 +23,12 @@ from .health import (
 from .monitoring import monitor
 from .storage.cache import cache
 from .storage.tasks import task_store
-from .config.redis_config import redis_config
 from .ops.aggregator import aggregator
 from .ops.security import (
     require_ops_access,
-    require_ops_write_access,
     require_ops_reset_access,
     get_ops_audit_log,
     get_security_summary,
-)
-from .ops.audit import (
-    audit_logger,
-    AuditEventType,
-    AuditSeverity,
-    log_ops_event,
-    get_audit_summary,
 )
 
 router = APIRouter(prefix="/ops", tags=["operations"])
@@ -51,6 +41,7 @@ class CircuitBreaker:
         self.recovery_timeout = recovery_timeout
         self.failure_count = 0
         self.last_failure_time = 0
+        self.last_failure_perf_counter = 0.0
         self.state = "CLOSED"  # CLOSED, OPEN, HALF_OPEN
 
     def record_success(self):
@@ -60,6 +51,7 @@ class CircuitBreaker:
     def record_failure(self):
         self.failure_count += 1
         self.last_failure_time = time.time()
+        self.last_failure_perf_counter = time.perf_counter()
         if self.failure_count >= self.failure_threshold:
             self.state = "OPEN"
 
@@ -67,7 +59,8 @@ class CircuitBreaker:
         if self.state == "CLOSED":
             return True
         elif self.state == "OPEN":
-            if time.time() - self.last_failure_time > self.recovery_timeout:
+            elapsed_since_failure = time.perf_counter() - self.last_failure_perf_counter
+            if elapsed_since_failure > self.recovery_timeout:
                 self.state = "HALF_OPEN"
                 return True
             return False
@@ -82,7 +75,9 @@ class CircuitBreaker:
             "failure_threshold": self.failure_threshold,
             "last_failure_time": self.last_failure_time,
             "time_until_recovery": max(
-                0, self.recovery_timeout - (time.time() - self.last_failure_time)
+                0,
+                self.recovery_timeout
+                - (time.perf_counter() - self.last_failure_perf_counter),
             )
             if self.state == "OPEN"
             else 0,
@@ -99,6 +94,7 @@ class PerformanceMetrics:
         self.error_counts: Dict[str, int] = defaultdict(int)
         self.total_requests: Dict[str, int] = defaultdict(int)
         self.start_time = time.time()
+        self.start_perf_counter = time.perf_counter()
 
     def record_request(self, provider: str, response_time: float, success: bool):
         self.total_requests[provider] += 1
@@ -175,7 +171,7 @@ async def health_summary() -> Dict[str, Any]:
         )
 
         # Calculate uptime
-        uptime_seconds = time.time() - performance_metrics.start_time
+        uptime_seconds = time.perf_counter() - performance_metrics.start_perf_counter
         uptime_days = int(uptime_seconds // 86400)
         uptime_hours = int((uptime_seconds % 86400) // 3600)
         uptime_minutes = int((uptime_seconds % 3600) // 60)
@@ -542,6 +538,7 @@ async def reset_circuit_breaker(provider_name: str) -> Dict[str, Any]:
         cb.failure_count = 0
         cb.state = "CLOSED"
         cb.last_failure_time = 0
+        cb.last_failure_perf_counter = 0.0
 
         return {
             "provider": provider_name,
@@ -749,6 +746,7 @@ async def reset_circuit_breaker_enhanced(
         cb.failure_count = 0
         cb.state = "CLOSED"
         cb.last_failure_time = 0
+        cb.last_failure_perf_counter = 0.0
 
         return {
             "success": True,

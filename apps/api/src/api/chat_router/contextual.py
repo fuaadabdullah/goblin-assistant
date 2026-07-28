@@ -5,7 +5,6 @@ and the legacy OpenAI-compatible `chat_completion` (currently defined but
 intentionally not routed — preserves original behavior).
 """
 
-import time
 import uuid
 from datetime import datetime
 from typing import Any, Dict
@@ -59,7 +58,9 @@ async def contextual_chat(
                 raise HTTPException(status_code=400, detail=str(exc))
         else:
             message_classifier, MessageType = _get_message_classifier()
-            msg_classification = message_classifier.classify_message(request.message, "user")
+            msg_classification = message_classifier.classify_message(
+                request.message, "user"
+            )
             addendum = (
                 EDUCATION_SYSTEM_ADDENDUM
                 if msg_classification.message_type == MessageType.LEARNING
@@ -112,7 +113,9 @@ async def contextual_chat(
                 "degraded_mode": assembly_result.get("degraded_mode", False),
                 "degraded_reason": assembly_result.get("degraded_reason"),
                 "truncation_warnings": assembly_result.get("truncation_warnings", []),
-                "summary_fallback_applied": assembly_result.get("summary_fallback_applied", False),
+                "summary_fallback_applied": assembly_result.get(
+                    "summary_fallback_applied", False
+                ),
             }
 
         else:
@@ -125,7 +128,6 @@ async def contextual_chat(
             ]
             token_usage = {"method": "fallback"}
 
-        start_time = time.time()
         payload = {
             "messages": messages,
             "model": request.model,
@@ -185,13 +187,7 @@ async def contextual_chat(
                     conversation_id=conversation_id,
                 )
 
-            duration = time.time() - start_time
-            success = isinstance(provider_response, dict) and provider_response.get(
-                "ok", True
-            )
-            error = None if success else str(provider_response.get("error", "unknown"))
         except Exception:
-            duration = time.time() - start_time
             raise
 
         if isinstance(provider_response, dict) and provider_response.get("ok"):
@@ -218,7 +214,6 @@ async def contextual_chat(
             used_provider = request.provider or "unknown"
             used_model = request.model or "unknown"
 
-        message_id = str(uuid.uuid4())
         response_message_id = str(uuid.uuid4())
 
         if conversation_id:
@@ -250,7 +245,9 @@ async def contextual_chat(
             )
 
         visualizations = None
-        if isinstance(provider_response, dict) and provider_response.get("visualizations"):
+        if isinstance(provider_response, dict) and provider_response.get(
+            "visualizations"
+        ):
             visualizations = provider_response["visualizations"]
 
         return ContextualChatResponse(

@@ -1,10 +1,10 @@
-import LogsPage from '@/screens/LogsPage';
+import MonitoringScreen from '@/screens/MonitoringScreen';
 import AdminLayout from '@/layout/AdminLayout';
 import { withRouteErrorBoundary } from '@/components/RouteBoundary';
 
-const AdminLogsContent = withRouteErrorBoundary(
-  function AdminLogsContent() {
-    return <LogsPage />;
+const AdminMonitoringContent = withRouteErrorBoundary(
+  function AdminMonitoringContent() {
+    return <MonitoringScreen />;
   },
   'adminLogs'
 );
@@ -12,7 +12,7 @@ const AdminLogsContent = withRouteErrorBoundary(
 export default function AdminLogs() {
   return (
     <AdminLayout fullWidth>
-      <AdminLogsContent />
+      <AdminMonitoringContent />
     </AdminLayout>
   );
 }

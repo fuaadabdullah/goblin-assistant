@@ -177,7 +177,7 @@ class ErrorHandlingMiddleware(BaseHTTPMiddleware):
     """Middleware to handle exceptions and return structured error responses."""
 
     async def dispatch(self, request: Request, call_next):
-        start_time = time.time()
+        start_time = time.perf_counter()
         request_id = str(uuid.uuid4())
 
         # Add request context
@@ -192,7 +192,7 @@ class ErrorHandlingMiddleware(BaseHTTPMiddleware):
             response = await call_next(request)
 
             # Log successful requests
-            process_time = time.time() - start_time
+            process_time = time.perf_counter() - start_time
             response.headers["X-Process-Time"] = str(process_time)
             response.headers["X-Request-ID"] = request_id
 
@@ -205,7 +205,7 @@ class ErrorHandlingMiddleware(BaseHTTPMiddleware):
             return response
 
         except Exception as e:
-            process_time = time.time() - start_time
+            process_time = time.perf_counter() - start_time
             logger.error(
                 "request_failed",
                 error=str(e),

@@ -5,14 +5,12 @@ Enhanced chat endpoints with semantic retrieval and context-aware responses
 
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel
-from typing import List, Optional, Dict, Any, Union
+from typing import List, Optional, Dict, Any
 import uuid
 from datetime import datetime
-import asyncio
 
 from .storage.conversations import conversation_store
 from .providers.dispatcher import invoke_provider
-from .storage.models import MessageModel
 from .input_validation import InputSanitizer
 from .assistant_tools.registry import export_openai_tools
 from .assistant_tools.executor import run_tool_loop, extract_tool_calls
@@ -167,9 +165,6 @@ async def semantic_send_message(
             enhanced_messages = recent_messages
 
         # Step 5: Invoke AI provider via dispatcher
-        import time
-
-        start_time = time.time()
 
         payload = {
             "messages": enhanced_messages,
@@ -191,9 +186,11 @@ async def semantic_send_message(
             )
 
             # Tool-calling loop for semantic chat
-            if (isinstance(provider_response, dict)
-                    and provider_response.get("ok")
-                    and extract_tool_calls(provider_response)):
+            if (
+                isinstance(provider_response, dict)
+                and provider_response.get("ok")
+                and extract_tool_calls(provider_response)
+            ):
                 provider_response = await run_tool_loop(
                     messages=list(enhanced_messages),
                     invoke_fn=invoke_provider,
@@ -203,13 +200,7 @@ async def semantic_send_message(
                     timeout_ms=60000,
                 )
 
-            duration = time.time() - start_time
-            success = isinstance(provider_response, dict) and provider_response.get(
-                "ok", True
-            )
-            error = None if success else str(provider_response.get("error", "unknown"))
-        except Exception as e:
-            duration = time.time() - start_time
+        except Exception:
             raise
 
         # Step 6: Normalize provider response format
@@ -303,7 +294,7 @@ async def semantic_send_message(
         raise
     except HTTPException:
         raise
-    except Exception as e:
+    except Exception:
         # Error details are now handled by ErrorHandlingMiddleware
         raise HTTPException(status_code=500, detail="Failed to send semantic message")
 
@@ -339,7 +330,7 @@ async def get_context_bundle(
         raise
     except HTTPException:
         raise
-    except Exception as e:
+    except Exception:
         # Error details are now handled by ErrorHandlingMiddleware
         raise HTTPException(status_code=500, detail="Failed to retrieve context")
 
@@ -398,8 +389,10 @@ Summary:"""
             raise Exception("Failed to generate summary")
 
         # Store summary and its embedding
-        success = await retrieval_singleton.embedding_service.store_conversation_summary(
-            conversation_id=conversation_id, summary_text=summary_text
+        success = (
+            await retrieval_singleton.embedding_service.store_conversation_summary(
+                conversation_id=conversation_id, summary_text=summary_text
+            )
         )
 
         if not success:
@@ -416,7 +409,7 @@ Summary:"""
         raise
     except HTTPException:
         raise
-    except Exception as e:
+    except Exception:
         # Error details are now handled by ErrorHandlingMiddleware
         raise HTTPException(status_code=500, detail="Failed to summarize conversation")
 
@@ -455,7 +448,7 @@ async def add_memory_fact(
         raise
     except HTTPException:
         raise
-    except Exception as e:
+    except Exception:
         # Error details are now handled by ErrorHandlingMiddleware
         raise HTTPException(status_code=500, detail="Failed to add memory fact")
 
@@ -488,7 +481,7 @@ async def search_memory_facts(
         raise
     except HTTPException:
         raise
-    except Exception as e:
+    except Exception:
         # Error details are now handled by ErrorHandlingMiddleware
         raise HTTPException(status_code=500, detail="Failed to search memory facts")
 
