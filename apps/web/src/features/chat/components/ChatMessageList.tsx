@@ -2,7 +2,7 @@
 
 import type { RefObject } from 'react';
 import { useMemo } from 'react';
-import type { ChatMessage, Mode, QuickPrompt } from '../types';
+import type { ChatMessage, QuickPrompt } from '../types';
 import MessageCard from './MessageCard';
 import ChatEmptyState from './ChatEmptyState';
 
@@ -10,8 +10,6 @@ interface ChatMessageListProps {
   messages: ChatMessage[];
   quickPrompts: QuickPrompt[];
   onPromptClick: (prompt: string) => void;
-  selectedMode: Mode;
-  onModeChange: (mode: Mode) => void;
   bottomRef: RefObject<HTMLDivElement | null>;
   isSending: boolean;
   isLoading?: boolean;
@@ -28,8 +26,6 @@ const ChatMessageList = ({
   messages,
   quickPrompts,
   onPromptClick,
-  selectedMode,
-  onModeChange,
   bottomRef,
   isSending,
   isLoading = false,
@@ -72,8 +68,6 @@ const ChatMessageList = ({
       <ChatEmptyState
         quickPrompts={quickPrompts}
         onPromptClick={onPromptClick}
-        selectedMode={selectedMode}
-        onModeChange={onModeChange}
         prefersReducedMotion={prefersReducedMotion}
       />
     );

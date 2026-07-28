@@ -51,8 +51,6 @@ const ChatView = ({ session, isAdmin, isGuest = false }: ChatViewProps) => {
     handleKeyDown,
     selectedProvider,
     selectedModel,
-    selectedMode,
-    setSelectedMode,
     inputEstimate,
     isMessagesLoading,
     deleteMessage,
@@ -295,8 +293,6 @@ const ChatView = ({ session, isAdmin, isGuest = false }: ChatViewProps) => {
             messages={messages}
             quickPrompts={quickPrompts}
             onPromptClick={handlePromptClick}
-            selectedMode={selectedMode}
-            onModeChange={setSelectedMode}
             bottomRef={bottomRef}
             isSending={isSending}
             isLoading={isMessagesLoading}
