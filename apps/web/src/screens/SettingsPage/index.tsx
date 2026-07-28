@@ -6,7 +6,7 @@ import KeyboardShortcutsHelp from '../../components/KeyboardShortcutsHelp';
 import ContrastModeToggle from '../../components/ContrastModeToggle';
 import Seo from '../../components/Seo';
 import { useProvider } from '../../contexts/ProviderContext';
-import { useToast } from '../../hooks/useToast';
+import { useToast } from '../../contexts/ToastContext';
 import { apiClient } from '@/lib/api';
 import { getUserMessage } from '@/lib/error/toast';
 import { InlineErrorState, PageState } from '../../components/ui';
