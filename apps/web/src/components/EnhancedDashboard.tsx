@@ -47,9 +47,10 @@ export default function EnhancedDashboard() {
     );
   }
 
-  const modelUsage = dashboard?.observability.modelUsage;
-  const rows = modelUsage?.rows ?? [];
-  const summary = modelUsage?.summary ?? null;
+  // Model usage rollup will be wired once the API endpoint is available.
+  // Components render their "no data yet" empty states gracefully.
+  const rows: never[] = [];
+  const summary = null;
   const services = dashboard
     ? { api: dashboard.backend, chroma: dashboard.chroma, mcp: dashboard.mcp, rag: dashboard.rag, sandbox: dashboard.sandbox }
     : {};
