@@ -1,4 +1,4 @@
-.PHONY: help install dev web-dev api-dev build build-packages lint lint-web lint-api lint-policy type-check type-check-packages test test-unit test-web test-web-coverage test-api test-api-coverage test-api-context-coverage test-e2e test-e2e-budget test-integration test-contract test-performance generate-providers-json check-providers-json check-api-boundaries check-api-cycles check-api-cycles-report check-capability-boundaries check-route-lifecycle check-operational-policy check-docs-canonical-refs check-docs-inventory check-docs-links generate-docs-coverage type-check-api-mypy type-check-api-pyright format format-check test-critical sdk-generate sdk-check generate-route-manifest check-api-calls contract-checks secret-scan check-unused-deps check-dead-code phase-gates
+.PHONY: help install dev web-dev api-dev build build-packages lint lint-web lint-api lint-policy type-check type-check-packages test test-unit test-web test-web-coverage test-api test-api-coverage test-api-context-coverage test-e2e test-e2e-budget test-integration test-contract test-performance benchmark-intelligence benchmark-memory benchmark-suite benchmark-gates generate-providers-json check-providers-json check-api-boundaries check-api-cycles check-api-cycles-report check-capability-boundaries check-route-lifecycle check-operational-policy check-docs-canonical-refs check-docs-inventory check-docs-links generate-docs-coverage type-check-api-mypy type-check-api-pyright format format-check test-critical sdk-generate sdk-check generate-route-manifest check-api-calls contract-checks secret-scan check-unused-deps check-dead-code phase-gates
 PNPM_TMP := TMPDIR="$(PWD)/.tmp"
 PYTHON ?= python3.11
 
@@ -20,6 +20,10 @@ help:
 	@echo "  make test-integration     - run integration + contract buckets from tests/manifests"
 	@echo "  make test-contract        - run contract bucket only"
 	@echo "  make test-performance     - run performance bucket from tests/manifests"
+	@echo "  make benchmark-intelligence - run the intelligence layer benchmark"
+	@echo "  make benchmark-memory     - run the memory benchmark"
+	@echo "  make benchmark-suite      - run both benchmark families"
+	@echo "  make benchmark-gates      - run the benchmark release gate"
 	@echo "  make test-critical        - run critical-path journey gates"
 	@echo "  make phase-gates          - run rollout phase-gate checks"
 	@echo "  make check-dead-code      - find unused Python functions and TS exports"
@@ -225,6 +229,17 @@ test-engine:
 
 test-performance:
 	$(PYTHON) tooling/quality/run-test-bucket.py performance
+
+benchmark-intelligence:
+	cd apps/api && PYTHONPATH=src $(PYTHON) -m benchmarks.runner --report
+
+benchmark-memory:
+	cd apps/api && PYTHONPATH=src $(PYTHON) -m benchmarks.memory.runner
+
+benchmark-suite: benchmark-intelligence benchmark-memory
+
+benchmark-gates:
+	$(PYTHON) scripts/phase_gates.py benchmarks
 
 phase-gates:
 	$(PYTHON) scripts/phase_gates.py all

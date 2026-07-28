@@ -31,6 +31,25 @@ export interface DashboardData {
 
 const defaultService: ServiceStatus = { status: 'healthy', latency: 120 };
 
+const toServiceStatus = (
+  service:
+    | {
+        status?: string;
+        latency?: number;
+        message?: string;
+      }
+    | undefined
+): ServiceStatus => {
+  if (!service) return defaultService;
+  if (service.status === 'healthy' || service.status === 'unhealthy') {
+    return service as ServiceStatus;
+  }
+  if (service.status === 'degraded' || service.status === 'warnings') {
+    return { ...service, status: 'degraded' };
+  }
+  return { ...service, status: 'degraded', message: service.message ?? 'Status unknown' };
+};
+
 const defaultCostData = {
   total: 0.24,
   today: 0.02,
@@ -75,6 +94,8 @@ export const useDashboardData = () => {
       };
     }
 
+    const services = health.components || health.services || {};
+
     const metricsPreview = (metricsQuery.data || '')
       .split('\n')
       .map((line) => line.trim())
@@ -84,11 +105,11 @@ export const useDashboardData = () => {
 
     return {
       cost: defaultCostData,
-      backend: health.services?.['api'] || defaultService,
-      chroma: health.services?.['chroma'] || defaultService,
-      mcp: health.services?.['mcp'] || defaultService,
-      rag: health.services?.['rag'] || defaultService,
-      sandbox: health.services?.['sandbox'] || defaultService,
+      backend: toServiceStatus(services.api),
+      chroma: toServiceStatus(services.chroma),
+      mcp: toServiceStatus(services.mcp),
+      rag: toServiceStatus(services.rag),
+      sandbox: toServiceStatus(services.sandbox),
       observability: {
         modelUsage: modelUsageQuery.data ?? null,
         metricsPreview,

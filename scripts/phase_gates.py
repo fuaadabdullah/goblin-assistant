@@ -167,11 +167,24 @@ def _agent() -> int:
     )
 
 
+def _benchmarks() -> int:
+    return _run_many(
+        [
+            'cd apps/api && PYTHONPATH=src python3.11 -m pytest -o "addopts=" -v '
+            "src/api/tests/test_benchmark_catalog.py",
+            'cd apps/api && PYTHONPATH=src python3.11 -m benchmarks.runner '
+            "--dry-run --limit 3 --report",
+            'cd apps/api && PYTHONPATH=src python3.11 -m benchmarks.memory.runner '
+            "--dry-run --scenarios hardware-inventory contradiction-handling",
+        ]
+    )
+
+
 def main(argv: Sequence[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description="Run phase-gate checks.")
     parser.add_argument(
         "gate",
-        choices=("baseline", "routing", "agent", "all"),
+        choices=("baseline", "routing", "agent", "benchmarks", "all"),
         help="Which gate to evaluate",
     )
     parser.add_argument(
@@ -193,10 +206,16 @@ def main(argv: Sequence[str] | None = None) -> int:
     if args.gate == "agent":
         return _agent()
 
+    if args.gate == "benchmarks":
+        return _benchmarks()
+
     for gate_runner in (_baseline, _routing, _agent):
         code = gate_runner()
         if code != 0:
             return code
+    code = _benchmarks()
+    if code != 0:
+        return code
     if args.live:
         return _live_baseline_checks()
     return 0
