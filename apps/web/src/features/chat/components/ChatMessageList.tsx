@@ -1,6 +1,6 @@
 'use client';
 
-import type { RefObject } from 'react';
+import type { Ref } from 'react';
 import { useMemo } from 'react';
 import type { ChatMessage, QuickPrompt } from '../types';
 import MessageCard from './MessageCard';
@@ -10,7 +10,7 @@ interface ChatMessageListProps {
   messages: ChatMessage[];
   quickPrompts: QuickPrompt[];
   onPromptClick: (prompt: string) => void;
-  bottomRef: RefObject<HTMLDivElement | null>;
+  bottomRef: Ref<HTMLDivElement>;
   isSending: boolean;
   isLoading?: boolean;
   onDeleteMessage?: (messageId: string) => void;
@@ -58,7 +58,7 @@ const ChatMessageList = ({
             <div className="h-4 w-3/4 rounded bg-surface-hover" />
           </div>
         ))}
-        <div ref={bottomRef as React.RefObject<HTMLDivElement>} aria-hidden="true" />
+        <div ref={bottomRef} aria-hidden="true" />
       </section>
     );
   }
