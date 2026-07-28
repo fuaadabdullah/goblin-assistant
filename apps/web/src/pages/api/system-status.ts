@@ -14,7 +14,7 @@ interface SystemStatusResponse {
 
 export default async function handler(
   req: NextApiRequest,
-  res: NextApiResponse<SystemStatusResponse>,
+  res: NextApiResponse<SystemStatusResponse>
 ) {
   if (req.method !== 'GET') {
     res.status(405).end();

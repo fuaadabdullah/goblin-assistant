@@ -308,7 +308,8 @@ export function isTaskExecutionResponse(data: unknown): data is TaskExecutionRes
 export function isChatCompletionResponse(data: unknown): data is ChatCompletionResponse {
   if (typeof data !== 'object' || data === null) return false;
   if ('choices' in data && Array.isArray((data as ChatCompletionResponse).choices)) return true;
-  if ('content' in data && typeof (data as ChatCompletionResponse).content === 'string') return true;
+  if ('content' in data && typeof (data as ChatCompletionResponse).content === 'string')
+    return true;
   return false;
 }
 

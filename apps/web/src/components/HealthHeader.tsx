@@ -39,9 +39,9 @@ const createHealthData = async (): Promise<HealthData> => {
       .map(([, service]) => service?.status);
     let status: HealthData['status'] = mapOverallStatus(data.overall ?? data.status);
 
-    if (serviceStatuses.some(s => s === 'unhealthy')) {
+    if (serviceStatuses.some((s) => s === 'unhealthy')) {
       status = 'down';
-    } else if (serviceStatuses.some(s => s === 'degraded')) {
+    } else if (serviceStatuses.some((s) => s === 'degraded')) {
       status = 'degraded';
     }
 
@@ -49,12 +49,15 @@ const createHealthData = async (): Promise<HealthData> => {
       status,
       latency_ms: latency,
       last_check: new Date().toISOString(),
-      services: Object.entries(services).reduce<NonNullable<HealthData['services']>>((acc, [key, value]) => {
-        if (typeof value?.status === 'string') {
-          acc[key as keyof HealthData['services']] = value.status;
-        }
-        return acc;
-      }, {}),
+      services: Object.entries(services).reduce<NonNullable<HealthData['services']>>(
+        (acc, [key, value]) => {
+          if (typeof value?.status === 'string') {
+            acc[key as keyof HealthData['services']] = value.status;
+          }
+          return acc;
+        },
+        {}
+      ),
     };
   } catch {
     return {
