@@ -58,7 +58,7 @@ const ChatMessageList = ({
             <div className="h-4 w-3/4 rounded bg-surface-hover" />
           </div>
         ))}
-        <div ref={bottomRef} aria-hidden="true" />
+        <div ref={bottomRef as React.RefObject<HTMLDivElement>} aria-hidden="true" />
       </section>
     );
   }
