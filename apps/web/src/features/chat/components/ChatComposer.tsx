@@ -137,7 +137,7 @@ const ChatComposer = ({
           </label>
           <textarea
             id="chat-input"
-            ref={inputRef}
+            ref={inputRef as React.RefObject<HTMLTextAreaElement>}
             value={input}
             onChange={(e) => onInputChange(e.target.value)}
             onKeyDown={onKeyDown}
