@@ -2,11 +2,8 @@
 
 import dynamic from 'next/dynamic';
 import type { ChatMessage } from '../types';
-
-const MessageMarkdown = dynamic(() => import('./MessageMarkdown'), {
-  loading: () => <span className="text-muted text-sm animate-pulse">…</span>,
-  ssr: false,
-});
+import MessageMarkdown from './MessageMarkdown';
+import useGoblinLoaderAnimation from '../hooks/useGoblinLoaderAnimation';
 
 interface StreamingMessageProps {
   message: ChatMessage;
@@ -14,47 +11,40 @@ interface StreamingMessageProps {
   prefersReducedMotion?: boolean;
 }
 
-function ThinkingIndicator({ prefersReducedMotion }: { prefersReducedMotion: boolean }) {
-  if (prefersReducedMotion) {
-    return <span className="text-xs text-muted">Generating…</span>;
-  }
-  return (
-    <div className="flex items-center gap-2 py-1">
-      <span className="inline-flex items-center gap-1">
-        <span className="w-2 h-2 rounded-full bg-primary/60 animate-bounce" />
-        <span className="w-2 h-2 rounded-full bg-primary/60 animate-bounce [animation-delay:150ms]" />
-        <span className="w-2 h-2 rounded-full bg-primary/60 animate-bounce [animation-delay:300ms]" />
-      </span>
-      <span className="text-xs text-muted">Generating…</span>
-    </div>
-  );
-}
-
-function StreamingCursor({ prefersReducedMotion }: { prefersReducedMotion: boolean }) {
-  if (prefersReducedMotion) return null;
-  return (
-    <span
-      className="inline-block w-0.5 h-[1em] bg-text/60 align-middle ml-0.5 animate-pulse"
-      aria-hidden="true"
-    />
-  );
-}
+const Lottie = dynamic(() => import('lottie-react'), {
+  ssr: false,
+  loading: () => <div className="w-6 h-6 rounded-full bg-primary/20 animate-pulse" />,
+});
 
 const StreamingMessage = ({
   message,
   isStreaming,
   prefersReducedMotion = false,
 }: StreamingMessageProps) => {
-  const hasContent = message.content.trim().length > 0;
-
-  if (!hasContent && isStreaming) {
-    return <ThinkingIndicator prefersReducedMotion={prefersReducedMotion} />;
-  }
+  const animationData = useGoblinLoaderAnimation();
 
   return (
-    <div className="space-y-1">
+    <div className="space-y-2">
       <MessageMarkdown content={message.content} className="text-sm md:text-base leading-relaxed" />
-      {isStreaming && <StreamingCursor prefersReducedMotion={prefersReducedMotion} />}
+
+      {isStreaming && (
+        <div className="mt-3 flex items-center gap-2">
+          <div className="w-6 h-6">
+            {!prefersReducedMotion && animationData ? (
+              <Lottie animationData={animationData} loop autoplay className="h-full w-full" />
+            ) : (
+              <div className="text-sm text-muted">Generating...</div>
+            )}
+          </div>
+          {!prefersReducedMotion && (
+            <span className="inline-flex items-center gap-0.5 text-xs text-muted">
+              <span className="w-1.5 h-1.5 rounded-full bg-current animate-bounce" />
+              <span className="w-1.5 h-1.5 rounded-full bg-current animate-bounce [animation-delay:150ms]" />
+              <span className="w-1.5 h-1.5 rounded-full bg-current animate-bounce [animation-delay:300ms]" />
+            </span>
+          )}
+        </div>
+      )}
     </div>
   );
 };

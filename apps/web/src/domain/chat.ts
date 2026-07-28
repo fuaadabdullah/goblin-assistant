@@ -38,10 +38,6 @@ export interface ChatMessageMeta {
         config: Record<string, unknown>;
       }>
     | undefined;
-  // Extended thinking / reasoning trace (e.g. Claude extended thinking).
-  reasoning_content?: string | undefined;
-  // Token count used for reasoning, if sent separately by the backend.
-  reasoning_tokens?: number | undefined;
 }
 
 export interface ChatMessage {
