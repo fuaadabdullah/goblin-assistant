@@ -5,7 +5,17 @@ import {
   getCurrentThemePreset,
   getHighContrastPreference,
 } from '../theme/theme';
-import { devWarn, devError } from '../utils/dev-log';
+import { devWarn } from '../utils/dev-log';
+
+export type ToastType = 'success' | 'error' | 'warning' | 'info';
+
+export interface Toast {
+  id: string;
+  type: ToastType;
+  title: string;
+  message?: string | undefined;
+  duration?: number | undefined;
+}
 
 interface UIState {
   // Theme state
@@ -18,8 +28,9 @@ interface UIState {
   mobileNavOpen: boolean;
   chatSidebarOpen: boolean;
   chatPreviewOpen: boolean;
+  chatInspectorOpen: boolean;
   activeModal: string | null;
-  notifications: NotificationItem[];
+  toasts: Toast[];
 
   // Actions
   setHighContrast: (enabled: boolean) => void;
@@ -32,47 +43,30 @@ interface UIState {
   toggleChatPreview: () => void;
   setChatPreviewOpen: (open: boolean) => void;
   setChatSidebarOpen: (open: boolean) => void;
+  toggleChatInspector: () => void;
+  setChatInspectorOpen: (open: boolean) => void;
   openModal: (modalId: string) => void;
   closeModal: () => void;
-  addNotification: (notification: Omit<NotificationItem, 'id'>) => void;
-  removeNotification: (id: string) => void;
+  addToast: (toast: Omit<Toast, 'id'>) => void;
+  removeToast: (id: string) => void;
+  showSuccess: (title: string, message?: string) => void;
+  showError: (title: string, message?: string) => void;
+  showWarning: (title: string, message?: string) => void;
+  showInfo: (title: string, message?: string) => void;
 }
 
-interface NotificationItem {
-  id: string;
-  type: 'success' | 'error' | 'warning' | 'info';
-  title: string;
-  message?: string;
-  duration?: number;
-}
-
-/**
- * Zustand store for UI state management
- * Handles theme preferences, modals, notifications, and other UI concerns
- */
-// Counter for generating unique notification IDs (prevents collisions)
-let notificationIdCounter = 0;
-const generateNotificationId = (): string => {
-  notificationIdCounter += 1;
-  return `notification-${notificationIdCounter}-${Date.now()}`;
+let toastCounter = 0;
+const generateToastId = (): string => {
+  toastCounter += 1;
+  return `toast-${toastCounter}-${Date.now()}`;
 };
 
-// Track active notification timeouts so we can clear them if needed
-const notificationTimeouts = new Map<string, NodeJS.Timeout>();
-
-// Track notification metrics for debugging
-const notificationMetrics = {
-  totalCreated: 0,
-  totalRemoved: 0,
-  activeCount: 0,
-};
+const toastTimeouts = new Map<string, ReturnType<typeof setTimeout>>();
 
 // Helper to load persisted theme preference
 const _getPersistedTheme = (): 'default' | 'nocturne' | 'ember' => {
   const persisted = getCurrentThemePreset();
-  return persisted === 'nocturne' ||
-    persisted === 'ember' ||
-    persisted === 'default'
+  return persisted === 'nocturne' || persisted === 'ember' || persisted === 'default'
     ? persisted
     : 'default';
 };
@@ -84,10 +78,10 @@ export const useUIStore = create<UIState>((set, get) => ({
   sidebarOpen: true,
   mobileNavOpen: false,
   chatSidebarOpen: false,
-  // Preview drawer open (mobile)
   chatPreviewOpen: false,
+  chatInspectorOpen: false,
   activeModal: null,
-  notifications: [],
+  toasts: [],
 
   // Theme actions
   setHighContrast: (enabled: boolean) => {
@@ -98,19 +92,12 @@ export const useUIStore = create<UIState>((set, get) => ({
   setTheme: (theme: 'default' | 'nocturne' | 'ember') => {
     applyThemePreset(theme);
     set({ currentTheme: theme });
-    // Apply theme to document root
     const root = document.documentElement;
     root.setAttribute('data-theme', theme);
-    // Also update via CSS class for broader compatibility
-    root.classList.remove(
-      'theme-default',
-      'theme-nocturne',
-      'theme-ember',
-    );
+    root.classList.remove('theme-default', 'theme-nocturne', 'theme-ember');
     root.classList.add(`theme-${theme}`);
   },
 
-  // Sidebar actions
   toggleSidebar: () => {
     set((state) => ({ sidebarOpen: !state.sidebarOpen }));
   },
@@ -119,7 +106,6 @@ export const useUIStore = create<UIState>((set, get) => ({
     set({ sidebarOpen: open });
   },
 
-  // Mobile navigation actions
   toggleMobileNav: () => {
     set((state) => ({ mobileNavOpen: !state.mobileNavOpen }));
   },
@@ -129,9 +115,7 @@ export const useUIStore = create<UIState>((set, get) => ({
   },
 
   toggleChatSidebar: () => {
-    set((state) => ({
-      chatSidebarOpen: !state.chatSidebarOpen,
-    }));
+    set((state) => ({ chatSidebarOpen: !state.chatSidebarOpen }));
   },
 
   toggleChatPreview: () => {
@@ -146,7 +130,14 @@ export const useUIStore = create<UIState>((set, get) => ({
     set({ chatSidebarOpen: open });
   },
 
-  // Modal actions
+  toggleChatInspector: () => {
+    set((state) => ({ chatInspectorOpen: !state.chatInspectorOpen }));
+  },
+
+  setChatInspectorOpen: (open: boolean) => {
+    set({ chatInspectorOpen: open });
+  },
+
   openModal: (modalId: string) => {
     set({ activeModal: modalId });
   },
@@ -155,79 +146,38 @@ export const useUIStore = create<UIState>((set, get) => ({
     set({ activeModal: null });
   },
 
-  // Notification actions
-  addNotification: (notification) => {
-    const id = generateNotificationId();
-    const newNotification: NotificationItem = {
-      id,
-      duration: 5000, // Default 5 seconds
-      ...notification,
-    };
+  addToast: (toast) => {
+    const id = generateToastId();
+    const duration = toast.duration ?? 5000;
+    const newToast: Toast = { ...toast, id, duration };
 
-    notificationMetrics.totalCreated++;
-    notificationMetrics.activeCount++;
+    set((state) => ({ toasts: [...state.toasts, newToast] }));
 
-    set((state) => ({
-      notifications: [...state.notifications, newNotification],
-    }));
-
-    // Log long-running notifications
-    if (newNotification.type === 'error') {
-      devError(
-        'Error notification added',
-        {
-          id,
-          title: newNotification.title,
-          message: newNotification.message,
-          duration: newNotification.duration,
-        },
-      );
+    if (duration > 0) {
+      const timeout = setTimeout(() => {
+        get().removeToast(id);
+        toastTimeouts.delete(id);
+      }, duration);
+      toastTimeouts.set(id, timeout);
     }
 
-    // Auto-remove after duration
-    if (
-      newNotification.duration &&
-      newNotification.duration > 0
-    ) {
-      const timeout = setTimeout(() => {
-        get().removeNotification(id);
-        notificationTimeouts.delete(id);
-      }, newNotification.duration);
-
-      notificationTimeouts.set(id, timeout);
+    const state = get();
+    if (state.toasts.length > 10) {
+      devWarn('High toast queue', { count: state.toasts.length });
     }
   },
 
-  removeNotification: (id: string) => {
-    // Cancel any pending timeout for this notification
-    const timeout = notificationTimeouts.get(id);
+  removeToast: (id: string) => {
+    const timeout = toastTimeouts.get(id);
     if (timeout) {
       clearTimeout(timeout);
-      notificationTimeouts.delete(id);
+      toastTimeouts.delete(id);
     }
-
-    notificationMetrics.totalRemoved++;
-    notificationMetrics.activeCount = Math.max(
-      0,
-      notificationMetrics.activeCount - 1,
-    );
-
-    set((state) => ({
-      notifications: state.notifications.filter(
-        (n) => n.id !== id,
-      ),
-    }));
-
-    // Warn if too many notifications are queued
-    const state = get();
-    if (state.notifications.length > 10) {
-      devWarn(
-        'High notification queue',
-        {
-          count: state.notifications.length,
-          metrics: notificationMetrics,
-        },
-      );
-    }
+    set((state) => ({ toasts: state.toasts.filter((t) => t.id !== id) }));
   },
+
+  showSuccess: (title, message) => get().addToast({ type: 'success', title, message }),
+  showError: (title, message) => get().addToast({ type: 'error', title, message }),
+  showWarning: (title, message) => get().addToast({ type: 'warning', title, message }),
+  showInfo: (title, message) => get().addToast({ type: 'info', title, message }),
 }));

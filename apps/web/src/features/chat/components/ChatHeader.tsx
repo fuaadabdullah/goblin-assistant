@@ -1,98 +1,126 @@
+'use client';
+
 import Link from 'next/link';
-import { Menu, X } from 'lucide-react';
+import { PanelRight, X, SlidersHorizontal } from 'lucide-react';
+import { useHealthCheck } from '../../../hooks/useHealthCheck';
+import type { HealthStatus } from '../../../types/api';
+import { useUIStore } from '../../../store/uiStore';
+
+type MobileChatPanelTab = 'conversations' | 'preview';
 
 interface ChatHeaderProps {
-  /** Show admin-only shortcuts when true. */
   isAdmin: boolean;
-  /** Handler for clearing the current chat. */
   onClear: () => void;
-  /** Toggle mobile conversation drawer. */
-  onToggleSidebar?: () => void;
-  /** Toggle mobile preview drawer. */
-  onTogglePreview?: () => void;
-  /** Whether mobile conversation drawer is open. */
-  isSidebarOpen?: boolean;
-  /** Whether mobile preview drawer is open. */
-  isPreviewOpen?: boolean;
-  /** Show mobile sidebar toggle button. */
-  showSidebarToggle?: boolean;
-  /** Show mobile preview toggle button. */
-  showPreviewToggle?: boolean;
+  onToggleMobilePanel?: () => void;
+  isMobilePanelOpen?: boolean;
+  activeMobilePanelTab?: MobileChatPanelTab;
+  showMobilePanelToggle?: boolean;
+}
+
+function StatusDot({ health }: { health: HealthStatus | null }) {
+  if (!health) {
+    return <span className="h-1.5 w-1.5 rounded-full bg-muted/50 animate-pulse" />;
+  }
+  const overall = health.overall ?? health.status;
+  const color =
+    overall === 'healthy'
+      ? 'bg-success'
+      : overall === 'degraded' || overall === 'warnings'
+        ? 'bg-warning'
+        : 'bg-error';
+  const label =
+    overall === 'healthy' ? 'Live' : overall === 'degraded' ? 'Degraded' : 'Offline';
+
+  return (
+    <span className="inline-flex items-center gap-1.5 text-xs text-muted">
+      <span className={`h-1.5 w-1.5 rounded-full ${color}`} />
+      {label}
+    </span>
+  );
 }
 
 const ChatHeader = ({
   isAdmin,
   onClear,
-  onToggleSidebar,
-  onTogglePreview,
-  isSidebarOpen = false,
-  isPreviewOpen = false,
-  showSidebarToggle = false,
-  showPreviewToggle = false,
-}: ChatHeaderProps) => (
-  <header className="sticky top-0 z-20 border-b border-border/70 bg-surface/85 backdrop-blur px-6 py-4">
-    <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
-      <div className="space-y-2 flex-1">
-        <div className="flex items-start justify-between gap-3">
-          <div className="flex flex-wrap items-center gap-3">
-            <h1 className="text-2xl font-semibold text-text">AI Orchestration Console</h1>
-            <span className="inline-flex items-center gap-2 rounded-full border border-border bg-surface-hover px-3 py-1 text-xs text-muted">
-              <span className="h-2 w-2 rounded-full bg-success" />
-              Live gateway
-            </span>
-          </div>
-          {showSidebarToggle && onToggleSidebar ? (
+  onToggleMobilePanel,
+  isMobilePanelOpen = false,
+  activeMobilePanelTab = 'conversations',
+  showMobilePanelToggle = false,
+}: ChatHeaderProps) => {
+  const healthQuery = useHealthCheck();
+  const health = healthQuery.data ?? null;
+  const toggleInspector = useUIStore((s) => s.toggleChatInspector);
+  const inspectorOpen = useUIStore((s) => s.chatInspectorOpen);
+
+  return (
+    <header className="sticky top-0 z-20 border-b border-border/60 bg-surface/80 backdrop-blur">
+      <div className="flex items-center justify-between gap-3 px-4 py-2.5">
+        <div className="flex items-center gap-2">
+          {showMobilePanelToggle && onToggleMobilePanel && (
             <button
               type="button"
-              onClick={onToggleSidebar}
-              className="lg:hidden inline-flex items-center gap-2 rounded-lg border border-border bg-surface px-3 py-2 text-sm text-text hover:bg-surface-hover"
-              aria-label={isSidebarOpen ? 'Close conversations' : 'Open conversations'}
-              
+              onClick={onToggleMobilePanel}
+              className="lg:hidden p-2 rounded-lg text-muted hover:text-text hover:bg-surface-hover transition-colors"
+              aria-label={isMobilePanelOpen ? 'Close sidebar' : 'Open sidebar'}
+              aria-expanded={isMobilePanelOpen}
             >
-              {isSidebarOpen ? <X className="h-4 w-4" /> : <Menu className="h-4 w-4" />}
-              <span>Conversations</span>
+              {isMobilePanelOpen ? (
+                <X className="w-4 h-4" />
+              ) : (
+                <PanelRight className="w-4 h-4 rotate-180" />
+              )}
+              <span className="sr-only">
+                {activeMobilePanelTab === 'preview' ? 'Preview' : 'Conversations'}
+              </span>
             </button>
-          ) : null}
-          {showPreviewToggle && onTogglePreview ? (
-            <button
-              type="button"
-              onClick={onTogglePreview}
-              className="lg:hidden inline-flex items-center gap-2 rounded-lg border border-border bg-surface px-3 py-2 text-sm text-text hover:bg-surface-hover"
-              aria-label={isPreviewOpen ? 'Close preview' : 'Open preview'}
-            >
-              <span>Preview</span>
-            </button>
-          ) : null}
+          )}
+          <StatusDot health={health} />
         </div>
-        <p className="text-sm text-muted">
-          Route requests, optimize costs, monitor reliability. Control the LLM ecosystem end-to-end.
-        </p>
-      </div>
-      <div className="flex flex-wrap items-center gap-2">
-        <button
-          onClick={onClear}
-          className="px-3 py-2 rounded-lg border border-border text-text hover:bg-surface-hover"
-          type="button"
-        >
-          Clear Chat
-        </button>
-        <Link
-          href="/search"
-          className="px-3 py-2 rounded-lg bg-primary/15 text-primary hover:bg-primary/25"
-        >
-          Global Search
-        </Link>
-        {isAdmin && (
-          <Link
-            href="/admin"
-            className="px-3 py-2 rounded-lg bg-surface-hover text-text hover:bg-surface-active"
+
+        <div className="flex items-center gap-1">
+          <button
+            type="button"
+            onClick={onClear}
+            className="px-3 py-1.5 rounded-lg text-xs text-muted hover:text-text hover:bg-surface-hover border border-transparent hover:border-border/60 transition-colors"
           >
-            Admin Dashboard
-          </Link>
-        )}
+            New chat
+          </button>
+
+          {isAdmin && (
+            <>
+              <Link
+                href="/search"
+                className="px-3 py-1.5 rounded-lg text-xs text-muted hover:text-text hover:bg-surface-hover transition-colors"
+              >
+                Search
+              </Link>
+              <Link
+                href="/admin"
+                className="px-3 py-1.5 rounded-lg text-xs text-muted hover:text-text hover:bg-surface-hover transition-colors"
+              >
+                Admin
+              </Link>
+            </>
+          )}
+
+          <button
+            type="button"
+            onClick={toggleInspector}
+            className={`p-2 rounded-lg transition-colors ${
+              inspectorOpen
+                ? 'text-primary bg-primary/10'
+                : 'text-muted hover:text-text hover:bg-surface-hover'
+            }`}
+            aria-label="Toggle inspector"
+            aria-pressed={inspectorOpen}
+            title="Inspector"
+          >
+            <SlidersHorizontal className="w-4 h-4" />
+          </button>
+        </div>
       </div>
-    </div>
-  </header>
-);
+    </header>
+  );
+};
 
 export default ChatHeader;
