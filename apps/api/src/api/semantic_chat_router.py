@@ -446,8 +446,6 @@ async def add_memory_fact(
 
     except HTTPException:
         raise
-    except HTTPException:
-        raise
     except Exception:
         # Error details are now handled by ErrorHandlingMiddleware
         raise HTTPException(status_code=500, detail="Failed to add memory fact")
@@ -479,23 +477,18 @@ async def search_memory_facts(
 
     except HTTPException:
         raise
-    except HTTPException:
-        raise
     except Exception:
         # Error details are now handled by ErrorHandlingMiddleware
         raise HTTPException(status_code=500, detail="Failed to search memory facts")
 
 
-# Start the embedding worker on startup
-@router.on_event("startup")
-async def startup_event():
-    """Start the async embedding worker"""
+async def start_embedding_worker():
+    """Start the async embedding worker."""
     embedding_worker = _get_embedding_worker()
     await embedding_worker.start()
 
 
-@router.on_event("shutdown")
-async def shutdown_event():
-    """Stop the async embedding worker"""
+async def stop_embedding_worker():
+    """Stop the async embedding worker."""
     embedding_worker = _get_embedding_worker()
     await embedding_worker.stop()

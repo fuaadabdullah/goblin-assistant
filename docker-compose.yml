@@ -164,14 +164,18 @@ services:
       - '8001:8001'
     environment:
       - ENV=production
+      - ENVIRONMENT=development
       - CELERY_BROKER_URL=redis://redis:6379/0
       - CELERY_RESULT_BACKEND=redis://redis:6379/0
+      - REDIS_URL=redis://redis:6379/0
+      - PORT=8001
+      - ALLOW_UNAUTHENTICATED_REQUESTS=true
       # Sandbox configuration
       - SANDBOX_ENABLED=true
       - SANDBOX_IMAGE=goblin-assistant-sandbox:latest
       - JOBS_DIR=/app/sandbox_jobs
     volumes:
-      - ./apps/api/src/api:/app
+      - .:/app
       - sandbox_jobs:/app/sandbox_jobs
     depends_on:
       redis:

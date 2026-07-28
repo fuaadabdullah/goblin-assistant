@@ -19,6 +19,29 @@ from .monitoring import monitor
 router = APIRouter(tags=["health"])
 
 
+def _health_status(
+    *,
+    critical_components: List[Dict[str, Any]],
+    advisory_components: List[Dict[str, Any]],
+) -> str:
+    """Aggregate component status without turning advisory issues into outages."""
+    critical_statuses = {
+        str(component.get("status", "unknown")).lower()
+        for component in critical_components
+    }
+    if critical_statuses - {"healthy", "ok"}:
+        return "degraded"
+
+    advisory_statuses = {
+        str(component.get("status", "unknown")).lower()
+        for component in advisory_components
+    }
+    if advisory_statuses - {"healthy", "ok"}:
+        return "warnings"
+
+    return "healthy"
+
+
 async def check_routing_health() -> Dict[str, Any]:
     """Check routing system health"""
     try:
@@ -137,21 +160,17 @@ async def health_check() -> Dict[str, Any]:
     except Exception as e:
         security_status = {"status": "unknown", "error": str(e)}
 
-    # Determine overall status
-    component_statuses = [
-        routing_health["status"],
-        db_health["status"],
-        redis_health["status"],
-        api_health["status"],
-        provider_health["status"],
-        security_status["status"],
-    ]
-    overall_status = (
-        "healthy"
-        if all(status == "healthy" for status in component_statuses)
-        else "degraded"
-        if "degraded" in component_statuses
-        else "warnings"
+    overall_status = _health_status(
+        critical_components=[
+            routing_health,
+            db_health,
+            redis_health,
+            api_health,
+        ],
+        advisory_components=[
+            provider_health,
+            security_status,
+        ],
     )
 
     return {

@@ -25,6 +25,7 @@ def test_build_allowed_origins_keeps_public_frontend_in_development():
     assert "https://goblin-assistant.vercel.app" in origins
     assert "https://goblin-assistant-backend.onrender.com" in origins
     assert "http://localhost:3000" in origins
+    assert "http://127.0.0.1:3001" in origins
 
 
 def test_build_allowed_origins_appends_canonical_public_origins():

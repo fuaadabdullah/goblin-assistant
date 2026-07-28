@@ -128,18 +128,28 @@ export interface AuthError {
 // ============================================================================
 
 export interface ServiceHealth {
-  status: 'healthy' | 'degraded' | 'unhealthy';
+  status: 'healthy' | 'degraded' | 'unhealthy' | 'warnings' | 'unknown';
   latency?: number;
   message?: string;
 }
 
 export interface HealthStatus {
-  overall: 'healthy' | 'degraded' | 'unhealthy';
+  overall?: 'healthy' | 'degraded' | 'unhealthy' | 'warnings';
+  status?: 'healthy' | 'degraded' | 'unhealthy' | 'warnings';
   timestamp: string;
-  services: {
+  services?: {
     database?: ServiceHealth;
     cache?: ServiceHealth;
     api?: ServiceHealth;
+    [key: string]: ServiceHealth | undefined;
+  };
+  components?: {
+    database?: ServiceHealth;
+    redis?: ServiceHealth;
+    api?: ServiceHealth;
+    routing?: ServiceHealth;
+    providers?: ServiceHealth;
+    security?: ServiceHealth;
     [key: string]: ServiceHealth | undefined;
   };
   uptime?: number;

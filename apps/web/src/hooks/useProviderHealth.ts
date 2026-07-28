@@ -173,9 +173,12 @@ export function useProviderHealth() {
       ? registryQuery.error.message
       : 'Unknown error loading providers'
     : null;
+  const selectableProviders = providerNames.filter(
+    provider => configMap.get(provider)?.is_selectable !== false,
+  );
 
   return {
-    providers: providerNames,
+    providers: selectableProviders,
     models: Array.from(modelSet),
     providerConfigs: configMap,
     loadingProviders: registryQuery.isLoading || registryQuery.isFetching,

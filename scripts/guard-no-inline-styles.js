@@ -1,6 +1,9 @@
 #!/usr/bin/env node
 
 const { execFileSync } = require('node:child_process');
+const path = require('node:path');
+
+const repoRoot = path.resolve(__dirname, '..');
 
 const allowlist = [
   'apps/web/src/components/Sparkline.tsx',
@@ -17,7 +20,8 @@ try {
     'rg',
     ['-n', 'style=\\{\\{', 'apps/web/src', '-g', '*.ts', '-g', '*.tsx', '-g', '*.js', '-g', '*.jsx'],
     {
-    encoding: 'utf8',
+      cwd: repoRoot,
+      encoding: 'utf8',
     },
   ).trim();
 } catch (error) {

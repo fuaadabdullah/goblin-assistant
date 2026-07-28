@@ -52,6 +52,8 @@ def test_app_auth_middleware_excludes_public_auth_bootstrap_routes() -> None:
     assert "/auth/csrf-token" in excluded_paths
     assert "/auth/google/url" in excluded_paths
     assert "/auth/passkey/challenge" in excluded_paths
+    assert "/test" in excluded_paths
+    assert "/providers/models" in excluded_paths
 
 
 @pytest.mark.asyncio
@@ -67,24 +69,18 @@ async def test_lifespan_startup_and_shutdown_calls_integrations() -> None:
     fake_cleanup_secrets = AsyncMock(return_value=None)
     fake_cleanup_start = AsyncMock(return_value=None)
     fake_cleanup_stop = AsyncMock(return_value=None)
+    fake_semantic_start = AsyncMock(return_value=None)
+    fake_semantic_stop = AsyncMock(return_value=None)
 
     with ExitStack() as stack:
         stack.enter_context(
             patch.object(provider_health, "health_monitor", health_monitor)
         )
-        stack.enter_context(
-            patch.object(main.cache, "init_redis", fake_redis_init)
-        )
+        stack.enter_context(patch.object(main.cache, "init_redis", fake_redis_init))
         stack.enter_context(patch.object(main, "init_db", fake_db_init))
-        stack.enter_context(
-            patch.object(main.monitor, "start", fake_monitor_start)
-        )
-        stack.enter_context(
-            patch.object(main.monitor, "stop", fake_monitor_stop)
-        )
-        stack.enter_context(
-            patch.object(main.cache, "close", fake_cache_close)
-        )
+        stack.enter_context(patch.object(main.monitor, "start", fake_monitor_start))
+        stack.enter_context(patch.object(main.monitor, "stop", fake_monitor_stop))
+        stack.enter_context(patch.object(main.cache, "close", fake_cache_close))
         stack.enter_context(
             patch.object(main, "init_secrets_adapter", fake_init_secrets)
         )
@@ -109,6 +105,12 @@ async def test_lifespan_startup_and_shutdown_calls_integrations() -> None:
                 fake_cleanup_stop,
             )
         )
+        stack.enter_context(
+            patch.object(main, "start_semantic_embedding_worker", fake_semantic_start)
+        )
+        stack.enter_context(
+            patch.object(main, "stop_semantic_embedding_worker", fake_semantic_stop)
+        )
         async with main.lifespan(main.app):
             await asyncio.sleep(0)
 
@@ -119,7 +121,9 @@ async def test_lifespan_startup_and_shutdown_calls_integrations() -> None:
     health_monitor.validate_configured_credentials.assert_awaited_once()
     fake_init_secrets.assert_awaited_once()
     fake_cleanup_start.assert_awaited_once()
+    fake_semantic_start.assert_awaited_once()
     fake_monitor_stop.assert_awaited_once()
+    fake_semantic_stop.assert_awaited_once()
     fake_cache_close.assert_awaited_once()
     fake_cleanup_secrets.assert_awaited_once()
     fake_cleanup_stop.assert_awaited_once()
@@ -136,6 +140,7 @@ async def test_lifespan_logs_bad_provider_creds_but_continues() -> None:
     fake_monitor_start = AsyncMock(return_value=None)
     fake_cleanup_start = AsyncMock(return_value=None)
     fake_init_secrets = AsyncMock(return_value=None)
+    fake_semantic_start = AsyncMock(return_value=None)
 
     with patch.dict(
         os.environ,
@@ -146,15 +151,9 @@ async def test_lifespan_logs_bad_provider_creds_but_continues() -> None:
             stack.enter_context(
                 patch.object(provider_health, "health_monitor", health_monitor)
             )
-            stack.enter_context(
-                patch.object(main.cache, "init_redis", fake_redis_init)
-            )
-            stack.enter_context(
-                patch.object(main, "init_db", fake_db_init)
-            )
-            stack.enter_context(
-                patch.object(main.monitor, "start", fake_monitor_start)
-            )
+            stack.enter_context(patch.object(main.cache, "init_redis", fake_redis_init))
+            stack.enter_context(patch.object(main, "init_db", fake_db_init))
+            stack.enter_context(patch.object(main.monitor, "start", fake_monitor_start))
             stack.enter_context(
                 patch.object(
                     main.artifact_cleanup_service,
@@ -169,6 +168,13 @@ async def test_lifespan_logs_bad_provider_creds_but_continues() -> None:
                     fake_init_secrets,
                 )
             )
+            stack.enter_context(
+                patch.object(
+                    main,
+                    "start_semantic_embedding_worker",
+                    fake_semantic_start,
+                )
+            )
             async with main.lifespan(main.app):
                 await asyncio.sleep(0)
 
@@ -179,3 +185,4 @@ async def test_lifespan_logs_bad_provider_creds_but_continues() -> None:
     health_monitor.validate_configured_credentials.assert_awaited_once()
     fake_init_secrets.assert_awaited_once()
     fake_cleanup_start.assert_awaited_once()
+    fake_semantic_start.assert_awaited_once()

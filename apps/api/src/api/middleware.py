@@ -40,6 +40,8 @@ class AuthenticationMiddleware(BaseHTTPMiddleware):
         # Base excluded paths
         default_exclude = [
             "/health",
+            "/test",
+            "/providers/models",
             "/docs",
             "/openapi.json",
             "/redoc",

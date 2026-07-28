@@ -32,7 +32,7 @@ export function useProviderSelection({ providers, models }: UseProviderSelection
     if (storedProvider && providers.includes(storedProvider)) {
       setSelectedProviderState(storedProvider);
     } else {
-      setSelectedProviderState(providers[0]);
+      setSelectedProviderState('');
     }
 
     if (storedModel && models.includes(storedModel)) {

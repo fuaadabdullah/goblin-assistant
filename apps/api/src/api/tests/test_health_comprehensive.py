@@ -219,6 +219,136 @@ async def test_health_returns_warnings_on_security_issues() -> None:
 
 
 @pytest.mark.asyncio
+async def test_health_returns_warnings_when_only_providers_are_degraded() -> None:
+    provider_monitor = _provider_health_monitor(
+        {"openai": {"status": "unhealthy"}}
+    )
+
+    with ExitStack() as stack:
+        stack.enter_context(
+            patch.object(
+                provider_health,
+                "health_monitor",
+                provider_monitor,
+                create=True,
+            )
+        )
+        stack.enter_context(
+            patch.object(
+                health,
+                "check_routing_health",
+                new=AsyncMock(return_value={"status": "healthy"}),
+            )
+        )
+        stack.enter_context(
+            patch.object(
+                health,
+                "check_db_health",
+                new=AsyncMock(return_value={"status": "healthy"}),
+            )
+        )
+        stack.enter_context(
+            patch.object(
+                health,
+                "check_redis_health",
+                new=AsyncMock(return_value={"status": "healthy"}),
+            )
+        )
+        stack.enter_context(
+            patch.object(
+                health,
+                "check_api_health",
+                new=AsyncMock(return_value={"status": "healthy"}),
+            )
+        )
+        stack.enter_context(
+            patch.object(
+                SecurityConfig,
+                "validate_config",
+                return_value=[],
+            )
+        )
+        stack.enter_context(patch.object(SecurityConfig, "DEBUG", False))
+        stack.enter_context(
+            patch.object(
+                SecurityConfig,
+                "ALLOWED_ORIGINS",
+                ["https://example.com"],
+                create=True,
+            )
+        )
+        response = await health.health_check()
+
+    assert response["status"] == "warnings"
+    assert response["components"]["providers"]["status"] == "degraded"
+
+
+@pytest.mark.asyncio
+async def test_health_returns_degraded_when_critical_component_is_unhealthy() -> None:
+    provider_monitor = _provider_health_monitor(
+        {"openai": {"status": "healthy"}}
+    )
+
+    with ExitStack() as stack:
+        stack.enter_context(
+            patch.object(
+                provider_health,
+                "health_monitor",
+                provider_monitor,
+                create=True,
+            )
+        )
+        stack.enter_context(
+            patch.object(
+                health,
+                "check_routing_health",
+                new=AsyncMock(return_value={"status": "healthy"}),
+            )
+        )
+        stack.enter_context(
+            patch.object(
+                health,
+                "check_db_health",
+                new=AsyncMock(return_value={"status": "unhealthy"}),
+            )
+        )
+        stack.enter_context(
+            patch.object(
+                health,
+                "check_redis_health",
+                new=AsyncMock(return_value={"status": "healthy"}),
+            )
+        )
+        stack.enter_context(
+            patch.object(
+                health,
+                "check_api_health",
+                new=AsyncMock(return_value={"status": "healthy"}),
+            )
+        )
+        stack.enter_context(
+            patch.object(
+                SecurityConfig,
+                "validate_config",
+                return_value=[],
+            )
+        )
+        stack.enter_context(patch.object(SecurityConfig, "DEBUG", False))
+        stack.enter_context(
+            patch.object(
+                SecurityConfig,
+                "ALLOWED_ORIGINS",
+                ["https://example.com"],
+                create=True,
+            )
+        )
+        response = await health.health_check()
+
+    assert response["status"] == "degraded"
+    assert response["components"]["database"]["status"] == "unhealthy"
+
+
+@pytest.mark.asyncio
 async def test_check_db_health_success_and_failure() -> None:
     with patch("api.storage.database.engine", new=_DummyEngine()):
         healthy = await health.check_db_health()

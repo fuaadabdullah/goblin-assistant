@@ -49,8 +49,8 @@ interface EnvConfig {
   isProduction: boolean;
 }
 
-function getOptionalEnv(key: string, defaultValue: string = ''): string {
-  return process.env[key] || defaultValue;
+function getOptionalEnv(value: string | undefined, defaultValue: string = ''): string {
+  return value || defaultValue;
 }
 
 function validateEnvConfig(config: EnvConfig): void {
@@ -83,33 +83,33 @@ function validateEnvConfig(config: EnvConfig): void {
 
 // Export typed configuration
 export const env: EnvConfig = {
-  apiBaseUrl: getOptionalEnv('NEXT_PUBLIC_API_BASE_URL', DEFAULT_BACKEND_ORIGIN),
-  backendUrl: getOptionalEnv('NEXT_PUBLIC_BACKEND_URL', DEFAULT_BACKEND_ORIGIN),
-  fastApiUrl: getOptionalEnv('NEXT_PUBLIC_FASTAPI_URL', DEFAULT_BACKEND_ORIGIN),
+  apiBaseUrl: getOptionalEnv(process.env.NEXT_PUBLIC_API_BASE_URL, DEFAULT_BACKEND_ORIGIN),
+  backendUrl: getOptionalEnv(process.env.NEXT_PUBLIC_BACKEND_URL, DEFAULT_BACKEND_ORIGIN),
+  fastApiUrl: getOptionalEnv(process.env.NEXT_PUBLIC_FASTAPI_URL, DEFAULT_BACKEND_ORIGIN),
 
-  enableDebug: getOptionalEnv('NEXT_PUBLIC_ENABLE_DEBUG') === 'true',
+  enableDebug: getOptionalEnv(process.env.NEXT_PUBLIC_ENABLE_DEBUG) === 'true',
 
   features: {
-    ragEnabled: getOptionalEnv('NEXT_PUBLIC_FEATURE_RAG_ENABLED') === 'true',
-    multiProvider: getOptionalEnv('NEXT_PUBLIC_FEATURE_MULTI_PROVIDER') === 'true',
-    passkeyAuth: getOptionalEnv('NEXT_PUBLIC_FEATURE_PASSKEY_AUTH') === 'true',
-    googleAuth: getOptionalEnv('NEXT_PUBLIC_FEATURE_GOOGLE_AUTH') === 'true',
-    orchestration: getOptionalEnv('NEXT_PUBLIC_FEATURE_ORCHESTRATION') === 'true',
-    sandbox: getOptionalEnv('NEXT_PUBLIC_FEATURE_SANDBOX') === 'true',
-    search: getOptionalEnv('NEXT_PUBLIC_FEATURE_SEARCH', 'true') === 'true',
-    admin: getOptionalEnv('NEXT_PUBLIC_FEATURE_ADMIN', 'false') === 'true',
-    analytics: getOptionalEnv('NEXT_PUBLIC_ENABLE_ANALYTICS') === 'true',
-    debugMode: getOptionalEnv('NEXT_PUBLIC_DEBUG_MODE') === 'true',
+    ragEnabled: getOptionalEnv(process.env.NEXT_PUBLIC_FEATURE_RAG_ENABLED) === 'true',
+    multiProvider: getOptionalEnv(process.env.NEXT_PUBLIC_FEATURE_MULTI_PROVIDER) === 'true',
+    passkeyAuth: getOptionalEnv(process.env.NEXT_PUBLIC_FEATURE_PASSKEY_AUTH) === 'true',
+    googleAuth: getOptionalEnv(process.env.NEXT_PUBLIC_FEATURE_GOOGLE_AUTH) === 'true',
+    orchestration: getOptionalEnv(process.env.NEXT_PUBLIC_FEATURE_ORCHESTRATION) === 'true',
+    sandbox: getOptionalEnv(process.env.NEXT_PUBLIC_FEATURE_SANDBOX) === 'true',
+    search: getOptionalEnv(process.env.NEXT_PUBLIC_FEATURE_SEARCH, 'true') === 'true',
+    admin: getOptionalEnv(process.env.NEXT_PUBLIC_FEATURE_ADMIN, 'false') === 'true',
+    analytics: getOptionalEnv(process.env.NEXT_PUBLIC_ENABLE_ANALYTICS) === 'true',
+    debugMode: getOptionalEnv(process.env.NEXT_PUBLIC_DEBUG_MODE) === 'true',
   },
 
   turnstile: {
-    chat: getOptionalEnv('NEXT_PUBLIC_TURNSTILE_SITE_KEY_CHAT'),
-    login: getOptionalEnv('NEXT_PUBLIC_TURNSTILE_SITE_KEY_LOGIN'),
-    search: getOptionalEnv('NEXT_PUBLIC_TURNSTILE_SITE_KEY_SEARCH'),
+    chat: getOptionalEnv(process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY_CHAT),
+    login: getOptionalEnv(process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY_LOGIN),
+    search: getOptionalEnv(process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY_SEARCH),
   },
 
-  sentryDsn: getOptionalEnv('NEXT_PUBLIC_SENTRY_DSN'),
-  gaMeasurementId: getOptionalEnv('NEXT_PUBLIC_GA_MEASUREMENT_ID'),
+  sentryDsn: getOptionalEnv(process.env.NEXT_PUBLIC_SENTRY_DSN),
+  gaMeasurementId: getOptionalEnv(process.env.NEXT_PUBLIC_GA_MEASUREMENT_ID),
 
   mode: (process.env.NODE_ENV as EnvConfig['mode']) || 'development',
   isDevelopment: process.env.NODE_ENV === 'development',

@@ -5,9 +5,9 @@ Updated to use production-ready Redis configuration.
 """
 
 import json
-from typing import Any, Optional, Union, Callable
+from typing import Any, Optional, Callable
 from functools import wraps
-from fastapi import Request, Response
+from fastapi import Request
 
 # Import our production Redis configuration
 from ..config.redis_config import (
@@ -121,7 +121,10 @@ class RedisCache:
         """Close Redis connection gracefully"""
         if self._redis:
             try:
-                await self._redis.close()
+                close = getattr(self._redis, "aclose", self._redis.close)
+                await close()
+                self._redis = None
+                self._initialized = False
                 print("✅ Redis cache closed successfully")
             except Exception as e:
                 print(f"Redis close error: {e}")

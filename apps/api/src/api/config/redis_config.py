@@ -6,7 +6,6 @@ for caching, session storage, and rate limiting in production.
 """
 
 import os
-from typing import Optional
 from redis.asyncio import Redis
 from redis.exceptions import ConnectionError, TimeoutError
 
@@ -100,7 +99,8 @@ async def test_redis_connection() -> bool:
     try:
         return await redis_config.test_connection(redis_client)
     finally:
-        await redis_client.close()
+        close = getattr(redis_client, "aclose", redis_client.close)
+        await close()
 
 
 # Cache key constants

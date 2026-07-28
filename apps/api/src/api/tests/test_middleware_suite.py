@@ -23,6 +23,14 @@ def _build_test_app():
     async def health():
         return {"status": "ok"}
 
+    @app.get("/test")
+    async def smoke_test():
+        return {"status": "ok"}
+
+    @app.get("/providers/models")
+    async def provider_models():
+        return {"models": []}
+
     return app
 
 
@@ -42,6 +50,32 @@ class TestAuthenticationMiddleware:
 
         assert response.status_code == 200
 
+    def test_auth_middleware_excludes_smoke_test_endpoint(self):
+        """Test that smoke test endpoint is excluded from auth."""
+        app = _build_test_app()
+        app.add_middleware(
+            AuthenticationMiddleware,
+            exclude_paths=[],
+        )
+        client = TestClient(app)
+
+        response = client.get("/test")
+
+        assert response.status_code == 200
+
+    def test_auth_middleware_excludes_provider_model_registry(self):
+        """Test that provider model registry is available for UI bootstrap."""
+        app = _build_test_app()
+        app.add_middleware(
+            AuthenticationMiddleware,
+            exclude_paths=[],
+        )
+        client = TestClient(app)
+
+        response = client.get("/providers/models")
+
+        assert response.status_code == 200
+
     @patch.dict(
         os.environ,
         {
@@ -49,9 +83,7 @@ class TestAuthenticationMiddleware:
             "ALLOW_UNAUTHENTICATED_REQUESTS": "true",
         },
     )
-    def test_auth_middleware_dev_mode_allows_unauthenticated(
-        self
-    ):
+    def test_auth_middleware_dev_mode_allows_unauthenticated(self):
         """Test that dev mode allows unauthenticated requests"""
         app = _build_test_app()
         app.add_middleware(AuthenticationMiddleware)
@@ -62,17 +94,13 @@ class TestAuthenticationMiddleware:
         assert response.status_code == 200
 
     @patch.dict(os.environ, {"LOCAL_LLM_API_KEY": "test-key"})
-    def test_auth_middleware_accepts_valid_api_key_header(
-        self
-    ):
+    def test_auth_middleware_accepts_valid_api_key_header(self):
         """Test that valid API key in header is accepted"""
         app = _build_test_app()
         app.add_middleware(AuthenticationMiddleware)
         client = TestClient(app)
 
-        response = client.get(
-            "/protected", headers={"x-api-key": "test-key"}
-        )
+        response = client.get("/protected", headers={"x-api-key": "test-key"})
 
         assert response.status_code == 200
 
@@ -97,16 +125,12 @@ class TestAuthenticationMiddleware:
         app.add_middleware(AuthenticationMiddleware)
         client = TestClient(app)
 
-        response = client.get(
-            "/protected", headers={"x-api-key": "wrong-key"}
-        )
+        response = client.get("/protected", headers={"x-api-key": "wrong-key"})
 
         assert response.status_code == 401
 
     @patch.dict(os.environ, {"LOCAL_LLM_API_KEY": ""})
-    def test_auth_middleware_unconfigured_in_production(
-        self
-    ):
+    def test_auth_middleware_unconfigured_in_production(self):
         """Test unconfigured API key in production mode"""
         with patch.dict(os.environ, {"ENVIRONMENT": "production"}):
             app = _build_test_app()
@@ -135,9 +159,7 @@ class TestAuthenticationMiddleware:
 
         assert response.status_code == 200
 
-    def test_auth_middleware_excludes_docs_endpoints(
-        self
-    ):
+    def test_auth_middleware_excludes_docs_endpoints(self):
         """Test that documentation endpoints are excluded"""
         app = _build_test_app()
         app.add_middleware(AuthenticationMiddleware)

@@ -10,6 +10,7 @@ DEFAULT_LOCAL_ORIGINS = [
     "http://localhost:3000",
     "http://127.0.0.1:3000",
     "http://localhost:3001",
+    "http://127.0.0.1:3001",
 ]
 
 CANONICAL_PUBLIC_ORIGINS = [
@@ -34,7 +35,9 @@ def build_allowed_origins(
     environment: str | None = None,
     raw_origins: str | None = None,
 ) -> List[str]:
-    resolved_environment = (environment or os.getenv("ENVIRONMENT", "development")).lower()
+    resolved_environment = (
+        environment or os.getenv("ENVIRONMENT", "development")
+    ).lower()
     raw_value = os.getenv("ALLOWED_ORIGINS", "") if raw_origins is None else raw_origins
     parsed = [origin.strip() for origin in raw_value.split(",") if origin.strip()]
 
@@ -48,9 +51,7 @@ def build_allowed_origins(
         os.getenv("GOBLIN_BACKEND_URL", ""),
     ]
 
-    return _dedupe_origins(
-        parsed + CANONICAL_PUBLIC_ORIGINS + dynamic_public_origins
-    )
+    return _dedupe_origins(parsed + CANONICAL_PUBLIC_ORIGINS + dynamic_public_origins)
 
 
 class SecurityConfig:
@@ -77,9 +78,7 @@ class SecurityConfig:
     ALLOW_CREDENTIALS = True
     ALLOWED_METHODS = ["GET", "POST", "PUT", "DELETE", "OPTIONS"]
     ALLOWED_HEADERS = (
-        PRODUCTION_ALLOWED_HEADERS.copy()
-        if ENVIRONMENT == "production"
-        else ["*"]
+        PRODUCTION_ALLOWED_HEADERS.copy() if ENVIRONMENT == "production" else ["*"]
     )
 
     # Rate Limiting

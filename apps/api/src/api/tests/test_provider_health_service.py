@@ -58,13 +58,16 @@ async def test_refresh_updates_health_data():
     fake_stats = MagicMock()
     fake_stats.success_rate = 0.97
 
-    with patch(
-        "api.services.provider_health.dispatcher.get_provider_inventory",
-        new_callable=AsyncMock,
-        return_value=inventory,
-    ), patch(
-        "api.services.provider_health.registry.get",
-        return_value=fake_stats,
+    with (
+        patch(
+            "api.services.provider_health.dispatcher.get_provider_inventory",
+            new_callable=AsyncMock,
+            return_value=inventory,
+        ),
+        patch(
+            "api.services.provider_health.registry.get",
+            return_value=fake_stats,
+        ),
     ):
         result = await monitor.refresh(include_hidden=False)
 
@@ -91,6 +94,37 @@ async def test_validate_configured_credentials_groups_ids():
     assert result["configured"] == ["openai"]
     assert result["selectable"] == ["openai"]
     assert result["unconfigured"] == ["mock"]
+    assert result["invalid_credentials"] == []
+    assert result["unreachable"] == []
+
+
+@pytest.mark.asyncio
+async def test_validate_configured_credentials_keeps_startup_contract_keys():
+    monitor = ProviderHealthMonitor()
+    inventory = [
+        {
+            "id": "openai",
+            "configured": True,
+            "is_selectable": False,
+            "health_reason": "HTTP 401",
+        },
+        {
+            "id": "ollama_local",
+            "configured": True,
+            "is_selectable": False,
+            "health_reason": "All connection attempts failed",
+        },
+    ]
+
+    with patch(
+        "api.services.provider_health.dispatcher.get_provider_inventory",
+        new_callable=AsyncMock,
+        return_value=inventory,
+    ):
+        result = await monitor.validate_configured_credentials()
+
+    assert result["invalid_credentials"] == ["openai"]
+    assert result["unreachable"] == ["ollama_local"]
 
 
 @pytest.mark.asyncio
@@ -99,21 +133,25 @@ async def test_probe_provider_updates_state():
     fake_stats = MagicMock()
     fake_stats.success_rate = 0.91
 
-    with patch(
-        "api.services.provider_health.dispatcher.check_provider",
-        new_callable=AsyncMock,
-        return_value={
-            "configured": True,
-            "healthy": True,
-            "latency_ms": 18,
-            "health_reason": None,
-        },
-    ), patch(
-        "api.services.provider_health.registry.get",
-        return_value=fake_stats,
-    ), patch(
-        "api.services.provider_health.canonical_provider_id",
-        return_value="openai",
+    with (
+        patch(
+            "api.services.provider_health.dispatcher.check_provider",
+            new_callable=AsyncMock,
+            return_value={
+                "configured": True,
+                "healthy": True,
+                "latency_ms": 18,
+                "health_reason": None,
+            },
+        ),
+        patch(
+            "api.services.provider_health.registry.get",
+            return_value=fake_stats,
+        ),
+        patch(
+            "api.services.provider_health.canonical_provider_id",
+            return_value="openai",
+        ),
     ):
         status = await monitor.probe_provider("openai")
 

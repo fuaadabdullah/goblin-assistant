@@ -4,16 +4,17 @@ import { queryKeys } from '../lib/query-keys';
 import type { HealthStatus } from '../types/api';
 
 interface HealthData {
-  status: 'healthy' | 'degraded' | 'down';
+  status: 'healthy' | 'warnings' | 'degraded' | 'down';
   latency_ms?: number;
   last_check?: string;
   services?: Record<string, string>;
 }
 
 const mapOverallStatus = (
-  overall: HealthStatus['overall'] | undefined
+  overall: HealthStatus['overall'] | HealthStatus['status'] | undefined
 ): HealthData['status'] => {
   if (overall === 'healthy') return 'healthy';
+  if (overall === 'warnings') return 'warnings';
   if (overall === 'degraded') return 'degraded';
   return 'down';
 };
@@ -31,9 +32,12 @@ const createHealthData = async (): Promise<HealthData> => {
     const data = await apiClient.getAllHealth();
     const latency = Date.now() - startTime;
 
-    const services = data.services || {};
-    const serviceStatuses = Object.values(services).map(service => service?.status);
-    let status: HealthData['status'] = mapOverallStatus(data.overall);
+    const services = data.components || data.services || {};
+    const criticalServices = ['api', 'routing', 'database', 'redis', 'cache'];
+    const serviceStatuses = Object.entries(services)
+      .filter(([service]) => criticalServices.includes(service))
+      .map(([, service]) => service?.status);
+    let status: HealthData['status'] = mapOverallStatus(data.overall ?? data.status);
 
     if (serviceStatuses.some(s => s === 'unhealthy')) {
       status = 'down';
@@ -96,6 +100,13 @@ const HealthHeader = ({ className = '', compact = false }: HealthHeaderProps) =>
       text: 'text-warning',
       dot: 'bg-warning',
       label: 'Degraded',
+      icon: '⚠',
+    },
+    warnings: {
+      bg: 'bg-warning/20',
+      text: 'text-warning',
+      dot: 'bg-warning',
+      label: 'Warnings',
       icon: '⚠',
     },
     down: {

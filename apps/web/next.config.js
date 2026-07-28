@@ -1,5 +1,8 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
+    // Allow overriding the output dir via env var so dev on ExFAT drives (which
+    // don't support atomic renames) can point distDir at /tmp instead.
+    distDir: process.env.NEXT_DIST_DIR || '.next',
     reactStrictMode: true,
     typescript: {
         ignoreBuildErrors: false,

@@ -8,6 +8,7 @@ from contextlib import asynccontextmanager
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+import importlib
 import os
 import structlog
 
@@ -26,7 +27,11 @@ from .middleware import (
 )
 
 from .chat_router import router as chat_router
-from .semantic_chat_router import router as semantic_chat_router
+from .semantic_chat_router import (
+    router as semantic_chat_router,
+    start_embedding_worker as start_semantic_embedding_worker,
+    stop_embedding_worker as stop_semantic_embedding_worker,
+)
 from .write_time_router import router as write_time_router
 from .health import router as health_router
 from .ops_router import router as ops_router
@@ -35,13 +40,17 @@ from .settings_router import router as settings_router
 from .search_router import router as search_router
 from .stream_router import router as stream_router
 from .routes.privacy import router as privacy_router  # Updated to new location
-from .routes.debug import router as model_suggestion_debug_router  # Model suggestion endpoint
+from .routes.debug import (
+    router as model_suggestion_debug_router,
+)  # Model suggestion endpoint
 from .secrets_router import (
     router as secrets_router,
     init_secrets_adapter,
     cleanup_secrets_adapter,
 )
-from .observability.debug_router import router as observability_debug_router  # Renamed for clarity
+from .observability.debug_router import (
+    router as observability_debug_router,
+)  # Renamed for clarity
 from .sandbox_api import router as sandbox_router
 from .routes.providers_models import router as providers_models_router
 from .routes.account_router import router as account_router
@@ -69,6 +78,7 @@ def _parse_sample_rate(raw_value: str, fallback: float) -> float:
     if value > 1.0:
         return 1.0
     return value
+
 
 # Load environment variables from .env.local if it exists
 try:
@@ -149,7 +159,11 @@ try:
         send_default_pii=False,
     )
 except ImportError:
-    logger.warning("Sentry SDK not available", reason="package not installed", suggestion="pip install sentry-sdk")
+    logger.warning(
+        "Sentry SDK not available",
+        reason="package not installed",
+        suggestion="pip install sentry-sdk",
+    )
 except RuntimeError:
     logger.warning("Sentry error monitoring disabled", reason="SENTRY_DSN not set")
 except Exception as e:
@@ -164,6 +178,7 @@ except ImportError:
     ROUTING_ANALYTICS_AVAILABLE = False
     routing_analytics_router = None
 
+
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     """Application lifespan: startup and shutdown logic."""
@@ -177,7 +192,11 @@ async def lifespan(app: FastAPI):
             await cache.init_redis()
             logger.info("Redis cache initialized")
         except Exception as e:
-            logger.warning("Redis initialization failed", error=str(e), impact="performance may be reduced")
+            logger.warning(
+                "Redis initialization failed",
+                error=str(e),
+                impact="performance may be reduced",
+            )
 
         # Initialize database tables (optional for now)
         logger.info("Checking database availability")
@@ -188,7 +207,11 @@ async def lifespan(app: FastAPI):
             else:
                 logger.warning("Database initialization skipped", mode="limited")
         except Exception as e:
-            logger.warning("Database initialization failed", error=str(e), impact="some features may be limited")
+            logger.warning(
+                "Database initialization failed",
+                error=str(e),
+                impact="some features may be limited",
+            )
 
         # Start provider monitoring
         logger.info("Starting provider monitoring")
@@ -236,7 +259,11 @@ async def lifespan(app: FastAPI):
                     "Invalid provider credentials found during startup validation"
                 )
         except Exception as e:
-            logger.warning("AI provider health monitoring failed", error=str(e), impact="routing may be degraded")
+            logger.warning(
+                "AI provider health monitoring failed",
+                error=str(e),
+                impact="routing may be degraded",
+            )
 
         # Initialize secrets adapter
         logger.info("Initializing secrets adapter")
@@ -244,13 +271,17 @@ async def lifespan(app: FastAPI):
             await init_secrets_adapter()
             logger.info("Secrets adapter initialized")
         except Exception as e:
-            logger.warning("Failed to initialize secrets adapter", error=str(e), impact="continuing without secrets management")
+            logger.warning(
+                "Failed to initialize secrets adapter",
+                error=str(e),
+                impact="continuing without secrets management",
+            )
 
         # Check privacy features
         logger.info("Checking privacy and security features")
         try:
-            from .services.sanitization import sanitize_input_for_model
-            from .services.telemetry import log_inference_metrics
+            importlib.import_module(".services.sanitization", package=__package__)
+            importlib.import_module(".services.telemetry", package=__package__)
 
             logger.info("PII sanitization available")
             logger.info("Telemetry with redaction available")
@@ -263,7 +294,10 @@ async def lifespan(app: FastAPI):
             if VECTOR_STORE_AVAILABLE:
                 logger.info("Safe vector store available")
             else:
-                logger.warning("Safe vector store unavailable", reason="sentence-transformers not installed")
+                logger.warning(
+                    "Safe vector store unavailable",
+                    reason="sentence-transformers not installed",
+                )
         except Exception:
             pass
 
@@ -273,12 +307,30 @@ async def lifespan(app: FastAPI):
             await artifact_cleanup_service.start()
             logger.info("Artifact cleanup service started")
         except Exception as e:
-            logger.warning("Artifact cleanup service failed to start", error=str(e), impact="continuing without automatic cleanup")
+            logger.warning(
+                "Artifact cleanup service failed to start",
+                error=str(e),
+                impact="continuing without automatic cleanup",
+            )
+
+        # Start semantic embedding background worker
+        logger.info("Starting semantic embedding worker")
+        try:
+            await start_semantic_embedding_worker()
+            logger.info("Semantic embedding worker started")
+        except Exception as e:
+            logger.warning(
+                "Semantic embedding worker failed to start",
+                error=str(e),
+                impact="semantic embedding may be degraded",
+            )
 
         logger.info("Backend startup complete", status="ready")
 
     except Exception as e:
-        logger.error("Critical startup error", error=str(e), action="application will restart")
+        logger.error(
+            "Critical startup error", error=str(e), action="application will restart"
+        )
         raise
 
     yield  # Application runs here
@@ -300,6 +352,13 @@ async def lifespan(app: FastAPI):
         logger.info("Stopping provider monitoring")
         await monitor.stop()
         logger.info("Provider monitoring stopped")
+
+        logger.info("Stopping semantic embedding worker")
+        try:
+            await stop_semantic_embedding_worker()
+            logger.info("Semantic embedding worker stopped")
+        except Exception as e:
+            logger.warning("Failed to stop semantic embedding worker", error=str(e))
 
         logger.info("Closing Redis cache")
         await cache.close()
@@ -391,6 +450,8 @@ app.add_middleware(
     AuthenticationMiddleware,
     exclude_paths=[
         "/health",
+        "/test",
+        "/providers/models",
         "/docs",
         "/openapi.json",
         "/redoc",
@@ -423,14 +484,21 @@ if environment == "production" and not os.getenv("ALLOWED_ORIGINS"):
     )
 
 if "*" in allowed_origins:
-    logger.warning("CORS configured to allow all origins", environment="*", severity="security_risk", note="acceptable only for development")
+    logger.warning(
+        "CORS configured to allow all origins",
+        environment="*",
+        severity="security_risk",
+        note="acceptable only for development",
+    )
 
 app.add_middleware(
     CORSMiddleware,
     allow_origins=allowed_origins,
     allow_credentials=True,
     allow_methods=["GET", "POST", "PUT", "DELETE", "OPTIONS"],
-    allow_headers=["*"] if environment != "production" else SecurityConfig.ALLOWED_HEADERS,
+    allow_headers=["*"]
+    if environment != "production"
+    else SecurityConfig.ALLOWED_HEADERS,
 )
 
 # Include all routers
