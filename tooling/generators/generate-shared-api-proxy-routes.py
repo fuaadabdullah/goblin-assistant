@@ -11,6 +11,7 @@ from pathlib import Path
 REPO_ROOT = Path(__file__).resolve().parents[2]
 CONTRACT_PATH = REPO_ROOT / "packages" / "shared" / "src" / "api_proxy_routes.py"
 MANIFEST_PATH = REPO_ROOT / "packages" / "sdk" / "openapi" / "routes.json"
+OPENAPI_PATH = REPO_ROOT / "packages" / "sdk" / "openapi" / "openapi.json"
 OUTPUT_PATH = REPO_ROOT / "packages" / "shared" / "src" / "generated" / "api-proxy-routes.ts"
 
 
@@ -39,6 +40,15 @@ def _load_manifest_paths() -> list[str]:
         if isinstance(path, str) and path:
             paths.append(path.rstrip("/") if path != "/" else "/")
     return paths
+
+
+def _load_openapi_paths() -> list[str]:
+    schema = json.loads(OPENAPI_PATH.read_text(encoding="utf-8"))
+    paths = schema.get("paths", {})
+    if not isinstance(paths, dict):
+        return []
+
+    return [path.rstrip("/") if path != "/" else "/" for path in paths if isinstance(path, str)]
 
 
 def _matches_prefix(path: str, prefix: str) -> bool:
@@ -102,8 +112,8 @@ def _render(module) -> str:
 
 def main() -> int:
     module = _load_contract()
-    manifest_paths = _load_manifest_paths()
-    _validate_backend_targets(module, manifest_paths)
+    backend_paths = sorted(set(_load_manifest_paths()) | set(_load_openapi_paths()))
+    _validate_backend_targets(module, backend_paths)
 
     OUTPUT_PATH.parent.mkdir(parents=True, exist_ok=True)
     OUTPUT_PATH.write_text(_render(module), encoding="utf-8")
