@@ -23,7 +23,7 @@ async def send_random_message(session, base_url, user_id, conversation_id):
     ]
 
     prompt = random.choice(prompts)
-    start_time = time.time()
+    start_time = time.perf_counter()
 
     try:
         async with session.post(
@@ -31,7 +31,7 @@ async def send_random_message(session, base_url, user_id, conversation_id):
             json={"message": prompt, "provider": None, "model": None},
             timeout=30,
         ) as response:
-            duration = time.time() - start_time
+            duration = time.perf_counter() - start_time
             if response.status == 200:
                 data = await response.json()
                 provider = data.get("provider", "unknown")
@@ -41,7 +41,7 @@ async def send_random_message(session, base_url, user_id, conversation_id):
                 print(f"❌ User {user_id} failed with status {response.status}")
                 return False, duration
     except Exception as e:
-        duration = time.time() - start_time
+        duration = time.perf_counter() - start_time
         print(f"💥 User {user_id} encountered error after {duration:.2f}s: {e}")
         return False, duration
 

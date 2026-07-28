@@ -6,21 +6,11 @@ Includes error handling, logging, and other cross-cutting concerns.
 import os
 import time
 import uuid
-from datetime import datetime, timezone
-
 import structlog
 from fastapi import Request
 from fastapi.responses import JSONResponse
 from starlette.middleware.base import BaseHTTPMiddleware
 from starlette.types import ASGIApp
-
-from api.core.contracts import ApiErrorPayload, ErrorEnvelope
-from api.core.error_types import ErrorType
-from api.observability.telemetry import (
-    record_request_end,
-    record_request_observation,
-    record_request_start,
-)
 
 # Configure structlog
 structlog.configure(
@@ -33,40 +23,26 @@ structlog.configure(
 
 logger = structlog.get_logger()
 
-JWT_AUTH_ROUTE_PREFIXES = [
-    "/api/v1/chat/contextual-chat",
-    "/api/v1/chat/conversations",
-    "/api/v1/chat/estimate-tokens",
-    "/api/v1/chat/files",
-    "/api/v1/chat/stream",
-    "/api/v1/chat/upload-file",
-]
-
 
 class AuthenticationMiddleware(BaseHTTPMiddleware):
     """Middleware to authenticate API requests using API key."""
 
-    def __init__(self, app: ASGIApp, exclude_paths: list | None = None):
+    def __init__(self, app: ASGIApp, exclude_paths: list = None):
         super().__init__(app)
 
         # Check development mode upfront
         environment = os.getenv("ENVIRONMENT", "development").lower()
         is_development = environment in ["development", "dev", "local"]
-        allow_unauth = os.getenv("ALLOW_UNAUTHENTICATED_REQUESTS", "false").lower() == "true"
+        allow_unauth = (
+            os.getenv("ALLOW_UNAUTHENTICATED_REQUESTS", "false").lower() == "true"
+        )
 
         # Base excluded paths
         default_exclude = [
+            "/health",
             "/docs",
             "/openapi.json",
             "/redoc",
-            "/test",
-            "/health",
-            "/api/v1/health",
-            "/api/v1/auth",
-            "/api/v1/settings",
-            "/sandbox",
-            "/api/v1/agent",
-            *JWT_AUTH_ROUTE_PREFIXES,
         ]
 
         # Merge provided paths with defaults
@@ -78,32 +54,25 @@ class AuthenticationMiddleware(BaseHTTPMiddleware):
         # In development mode with ALLOW_UNAUTHENTICATED_REQUESTS, also exclude chat endpoints
         if is_development and allow_unauth:
             self.exclude_paths = base_paths + [
-                "/api/v1/api/chat",
-                "/api/v1/chat",
+                "/api/chat",
+                "/chat",
+                "/api/test",
             ]
             self.exclude_paths = list(set(self.exclude_paths))  # Remove duplicates
         else:
             self.exclude_paths = base_paths
 
         self.api_key = os.getenv("LOCAL_LLM_API_KEY", "")
-        self.allow_unauthenticated_requests = is_development and allow_unauth
 
     async def dispatch(self, request: Request, call_next):
         # Skip authentication for excluded paths
-        if request.url.path == "/" or any(
-            request.url.path.startswith(path) for path in self.exclude_paths
-        ):
-            return await call_next(request)
-
-        if self.allow_unauthenticated_requests:
-            logger.warning(
-                "SECURITY RISK: Allowing unauthenticated requests in development mode. "
-                "Set ALLOW_UNAUTHENTICATED_REQUESTS=false to require authentication."
-            )
+        if any(request.url.path.startswith(path) for path in self.exclude_paths):
             return await call_next(request)
 
         # Check for API key in headers
-        api_key_header = request.headers.get("x-api-key") or request.headers.get("authorization")
+        api_key_header = request.headers.get("x-api-key") or request.headers.get(
+            "authorization"
+        )
 
         if api_key_header:
             # Handle Bearer token format
@@ -112,48 +81,50 @@ class AuthenticationMiddleware(BaseHTTPMiddleware):
 
         if not self.api_key:
             # SECURITY: Check if we're in development mode
-            request_id = str(uuid.uuid4())
-            timestamp = datetime.now(timezone.utc).isoformat()
+            environment = os.getenv("ENVIRONMENT", "development").lower()
+            is_development = environment in ["development", "dev", "local"]
 
-            logger.error(
-                "SECURITY: No LOCAL_LLM_API_KEY configured and not in development bypass mode"
-            )
-            return JSONResponse(
-                status_code=500,
-                headers={"X-Request-ID": request_id},
-                content=ErrorEnvelope(
-                    error=ApiErrorPayload(
-                        code="CONFIGURATION_ERROR",
-                        type=ErrorType.AUTHENTICATION,
-                        message="API authentication not configured",
-                        request_id=request_id,
-                        timestamp=timestamp,
-                        details={"reason": "missing_api_key"},
-                    )
-                ).model_dump(exclude_none=True),
-            )
+            if (
+                is_development
+                and os.getenv("ALLOW_UNAUTHENTICATED_REQUESTS", "false").lower()
+                == "true"
+            ):
+                # SECURITY WARNING: Only allow unauthenticated requests in development
+                # with explicit opt-in via environment variable
+                logger.warning(
+                    "SECURITY RISK: Allowing unauthenticated requests in development mode. "
+                    "Set ALLOW_UNAUTHENTICATED_REQUESTS=false to require authentication."
+                )
+                return await call_next(request)
+            else:
+                # PRODUCTION BEHAVIOR: Require authentication
+                logger.error(
+                    "SECURITY: No LOCAL_LLM_API_KEY configured and not in development bypass mode"
+                )
+                return JSONResponse(
+                    status_code=500,
+                    content={
+                        "error": {
+                            "code": "configuration_error",
+                            "message": "API authentication not configured",
+                            "details": "LOCAL_LLM_API_KEY environment variable must be set",
+                        }
+                    },
+                )
 
-        if not api_key_header or api_key_header != self.api_key:
-            request_id = str(uuid.uuid4())
-            timestamp = datetime.now(timezone.utc).isoformat()
+        if api_key_header and api_key_header != self.api_key:
             logger.warning(
-                "Invalid or missing API key",
-                client=request.client.host if request.client else "unknown",
-                header_present=bool(api_key_header),
+                f"Invalid API key attempt from {request.client.host if request.client else 'unknown'}"
             )
             return JSONResponse(
                 status_code=401,
-                headers={"X-Request-ID": request_id},
-                content=ErrorEnvelope(
-                    error=ApiErrorPayload(
-                        code="AUTHENTICATION_REQUIRED",
-                        type=ErrorType.AUTHENTICATION,
-                        message="Valid API key required",
-                        request_id=request_id,
-                        timestamp=timestamp,
-                        details={"reason": "invalid_api_key"},
-                    )
-                ).model_dump(exclude_none=True),
+                content={
+                    "error": {
+                        "code": "authentication_required",
+                        "message": "Valid API key required",
+                        "details": "Provide API key in x-api-key header or Authorization: Bearer <key> header",
+                    }
+                },
             )
 
         # Authentication successful
@@ -206,9 +177,8 @@ class ErrorHandlingMiddleware(BaseHTTPMiddleware):
     """Middleware to handle exceptions and return structured error responses."""
 
     async def dispatch(self, request: Request, call_next):
-        start_time = time.time()
+        start_time = time.perf_counter()
         request_id = str(uuid.uuid4())
-        route = request.url.path
 
         # Add request context
         structlog.contextvars.clear_contextvars()
@@ -217,25 +187,14 @@ class ErrorHandlingMiddleware(BaseHTTPMiddleware):
             path=request.url.path,
             method=request.method,
         )
-        record_request_start(request.method, route)
 
         try:
             response = await call_next(request)
 
             # Log successful requests
-            process_time = time.time() - start_time
+            process_time = time.perf_counter() - start_time
             response.headers["X-Process-Time"] = str(process_time)
             response.headers["X-Request-ID"] = request_id
-
-            route = getattr(request.scope.get("route"), "path", request.url.path)
-            record_request_observation(
-                method=request.method,
-                route=route,
-                status_code=response.status_code,
-                latency_s=process_time,
-                request_id=request_id,
-                user_id=getattr(request.state, "auth_user_id", None),
-            )
 
             logger.info(
                 "request_completed",
@@ -246,17 +205,7 @@ class ErrorHandlingMiddleware(BaseHTTPMiddleware):
             return response
 
         except Exception as e:
-            process_time = time.time() - start_time
-            route = getattr(request.scope.get("route"), "path", request.url.path)
-            record_request_observation(
-                method=request.method,
-                route=route,
-                status_code=500,
-                latency_s=process_time,
-                request_id=request_id,
-                user_id=getattr(request.state, "auth_user_id", None),
-                metadata={"error_type": type(e).__name__},
-            )
+            process_time = time.perf_counter() - start_time
             logger.error(
                 "request_failed",
                 error=str(e),
@@ -266,26 +215,17 @@ class ErrorHandlingMiddleware(BaseHTTPMiddleware):
 
             # In production, don't expose detailed error messages
             error_message = "An internal server error occurred"
-            details = {}
             if os.getenv("DEBUG", "false").lower() == "true":
                 error_message = str(e)
-                details["error_class"] = type(e).__name__
-
-            timestamp = datetime.now(timezone.utc).isoformat()
 
             return JSONResponse(
                 status_code=500,
-                headers={"X-Request-ID": request_id},
-                content=ErrorEnvelope(
-                    error=ApiErrorPayload(
-                        code="INTERNAL_ERROR",
-                        type=ErrorType.INTERNAL,
-                        message=error_message,
-                        request_id=request_id,
-                        timestamp=timestamp,
-                        details=details if details else None,
-                    )
-                ).model_dump(exclude_none=True),
+                content={
+                    "error": {
+                        "code": "internal_server_error",
+                        "message": error_message,
+                        "request_id": request_id,
+                        "type": type(e).__name__,
+                    }
+                },
             )
-        finally:
-            record_request_end(request.method, route)

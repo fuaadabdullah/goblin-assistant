@@ -5,31 +5,30 @@ Tests: Authentication, Concurrency, Caching, and Error Handling.
 """
 
 import asyncio
-import os
-import time
-
 import aiohttp
+import time
+import os
 
 # Load API key from environment to avoid committing secrets
 API_KEY = os.getenv("API_AUTH_KEY", "")
 
 
-async def _test_endpoint(session, method, path, json_data=None, use_auth=True):
+async def test_endpoint(session, method, path, json_data=None, use_auth=True):
     base_url = "http://localhost:8004"
     headers = {}
     if use_auth:
         headers["x-api-key"] = API_KEY
 
-    start_time = time.time()
+    start_time = time.perf_counter()
     try:
         async with session.request(
             method, f"{base_url}{path}", json=json_data, headers=headers
         ) as resp:
-            duration = time.time() - start_time
+            duration = time.perf_counter() - start_time
             data = await resp.json() if resp.status != 204 else {}
             return resp.status, data, duration
     except Exception as e:
-        return 500, {"error": str(e)}, time.time() - start_time
+        return 500, {"error": str(e)}, time.perf_counter() - start_time
 
 
 async def run_production_tests():
@@ -38,11 +37,11 @@ async def run_production_tests():
 
     async with aiohttp.ClientSession() as session:
         # 1. Test Unauthenticated Access (Should Fail)
-        print("🔐 Test 1: Unauthenticated access to /api/v1/chat/conversations")
-        status, data, _ = await _test_endpoint(
+        print("🔐 Test 1: Unauthenticated access to /chat/conversations")
+        status, data, _ = await test_endpoint(
             session,
             "POST",
-            "/api/v1/chat/conversations",
+            "/chat/conversations",
             {"title": "Auth Test"},
             use_auth=False,
         )
@@ -53,8 +52,8 @@ async def run_production_tests():
 
         # 2. Test Authenticated Access (Should Succeed)
         print("\n🔑 Test 2: Authenticated access")
-        status, data, _ = await _test_endpoint(
-            session, "POST", "/api/v1/chat/conversations", {"title": "Production Test"}
+        status, data, _ = await test_endpoint(
+            session, "POST", "/chat/conversations", {"title": "Production Test"}
         )
         if status == 200:
             conv_id = data["conversation_id"]
@@ -65,14 +64,16 @@ async def run_production_tests():
 
         # 3. Test Provider Execution (Kamatera)
         print("\n⚡ Test 3: Provider execution (Kamatera via Dispatcher)")
-        status, data, duration = await _test_endpoint(
+        status, data, duration = await test_endpoint(
             session,
             "POST",
-            f"/api/v1/chat/conversations/{conv_id}/messages",
+            f"/chat/conversations/{conv_id}/messages",
             {"message": "What is the best way to deploy a FastAPI app?"},
         )
         if status == 200:
-            print(f"✅ Response received in {duration:.2f}s from {data.get('provider')}")
+            print(
+                f"✅ Response received in {duration:.2f}s from {data.get('provider')}"
+            )
             print(f"   Model: {data.get('model')}")
         else:
             print(f"❌ Provider execution failed: {data}")
@@ -80,10 +81,10 @@ async def run_production_tests():
         # 4. Test Caching (Second identical request)
         # Note: Backend would need caching logic enabled for this to show difference
         print("\n💾 Test 4: Caching behavior (Repeating identical message)")
-        status, data, duration2 = await _test_endpoint(
+        status, data, duration2 = await test_endpoint(
             session,
             "POST",
-            f"/api/v1/chat/conversations/{conv_id}/messages",
+            f"/chat/conversations/{conv_id}/messages",
             {"message": "What is the best way to deploy a FastAPI app?"},
         )
         if status == 200:
@@ -98,10 +99,10 @@ async def run_production_tests():
         # 5. Test Concurrency
         print("\n🔥 Test 5: Concurrency (3 simultaneous requests)")
         tasks = [
-            _test_endpoint(
+            test_endpoint(
                 session,
                 "POST",
-                f"/api/v1/chat/conversations/{conv_id}/messages",
+                f"/chat/conversations/{conv_id}/messages",
                 {"message": f"Question {i}"},
             )
             for i in range(3)

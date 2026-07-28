@@ -3,21 +3,14 @@ Provider health monitoring and metrics collection
 """
 
 import asyncio
-import logging
 import time
-from typing import Any, Dict
-
+from typing import Dict, Any
 import httpx
-
 from .config.providers import get_provider_settings
 from .storage.cache import cache
 
-logger = logging.getLogger(__name__)
-
-# Health check configuration — sourced from providers.toml [default.health]
-from .config.providers import get_provider_config as _get_provider_config
-
-HEALTH_CHECK_INTERVAL: int = _get_provider_config().get("health_check_interval", 30)
+# Health check configuration
+HEALTH_CHECK_INTERVAL = 60  # seconds
 PROVIDER_HEALTH_KEY = "provider_health_status"
 
 
@@ -34,7 +27,7 @@ class ProviderMonitor:
 
         self._running = True
         self._task = asyncio.create_task(self._monitor_loop())
-        logger.info("Provider monitor started")
+        print("Provider monitor started")
 
     async def stop(self):
         """Stop the monitoring task"""
@@ -45,7 +38,7 @@ class ProviderMonitor:
                 await self._task
             except asyncio.CancelledError:
                 pass
-        logger.info("Provider monitor stopped")
+        print("Provider monitor stopped")
 
     async def _monitor_loop(self):
         """Main monitoring loop"""
@@ -53,7 +46,9 @@ class ProviderMonitor:
             try:
                 await self._check_providers()
             except Exception as e:
-                logger.exception("Error in provider monitor: %s", e)
+                print(f"Error in provider monitor: {e}")
+                # Re-raise to see the full traceback for debugging
+                raise
 
             await asyncio.sleep(HEALTH_CHECK_INTERVAL)
 
@@ -93,17 +88,17 @@ class ProviderMonitor:
         # This is a heuristic check. For production, we might need provider-specific health endpoints.
 
         try:
-            start_time = time.time()
+            start_time = time.perf_counter()
             async with httpx.AsyncClient(timeout=10.0) as client:
                 # We expect 401/403 (auth error) or 404/405 (method not allowed) which means service is UP
                 # Connection error or Timeout means service is DOWN
                 try:
                     resp = await client.get(url)
-                    latency = (time.time() - start_time) * 1000
+                    latency = (time.perf_counter() - start_time) * 1000
                     return {"ok": True, "latency_ms": latency, "code": resp.status_code}
                 except httpx.HTTPStatusError as e:
                     # Status codes are actually fine, it means server responded
-                    latency = (time.time() - start_time) * 1000
+                    latency = (time.perf_counter() - start_time) * 1000
                     return {
                         "ok": True,
                         "latency_ms": latency,

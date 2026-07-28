@@ -3,16 +3,16 @@ Prometheus metrics for sandbox operations
 Provides comprehensive monitoring and alerting capabilities
 """
 
-import logging
 import time
-from typing import Any, Dict
-
+from typing import Dict, Any
+from prometheus_client import (
+    Counter,
+    Gauge,
+    Histogram,
+    generate_latest,
+    CONTENT_TYPE_LATEST,
+)
 from fastapi import Response
-from prometheus_client import Counter, Gauge, Histogram
-
-from .observability.telemetry import get_prometheus_content_type, get_prometheus_metrics_text
-
-logger = logging.getLogger(__name__)
 
 # Sandbox job metrics
 SANDBOX_JOBS_SUBMITTED = Counter(
@@ -21,7 +21,9 @@ SANDBOX_JOBS_SUBMITTED = Counter(
     ["language", "status"],
 )
 
-SANDBOX_JOBS_RUNNING = Gauge("sandbox_jobs_running", "Number of currently running sandbox jobs")
+SANDBOX_JOBS_RUNNING = Gauge(
+    "sandbox_jobs_running", "Number of currently running sandbox jobs"
+)
 
 SANDBOX_JOB_DURATION = Histogram(
     "sandbox_job_duration_seconds",
@@ -42,7 +44,9 @@ SANDBOX_CONTAINER_KILLS = Counter(
     ["reason"],
 )
 
-SANDBOX_QUEUE_DEPTH = Gauge("sandbox_queue_depth", "Current depth of the sandbox job queue")
+SANDBOX_QUEUE_DEPTH = Gauge(
+    "sandbox_queue_depth", "Current depth of the sandbox job queue"
+)
 
 # Additional useful metrics
 SANDBOX_ARTIFACTS_UPLOADED = Counter(
@@ -88,6 +92,7 @@ def record_job_started(job_id: str):
     """Record when a job starts execution"""
     if job_id in _active_jobs:
         _active_jobs[job_id]["started_at"] = time.time()
+        _active_jobs[job_id]["started_perf_counter"] = time.perf_counter()
         _active_jobs[job_id]["status"] = "running"
 
         # Update counters
@@ -102,9 +107,9 @@ def record_job_completed(job_id: str, exit_code: int, execution_time: float = No
 
         # Calculate duration if not provided
         if execution_time is None:
-            started_at = job_info.get("started_at")
+            started_at = job_info.get("started_perf_counter")
             if started_at:
-                execution_time = time.time() - started_at
+                execution_time = time.perf_counter() - started_at
 
         # Record metrics
         if execution_time:
@@ -113,7 +118,9 @@ def record_job_completed(job_id: str, exit_code: int, execution_time: float = No
             ).observe(execution_time)
 
         # Update status counters
-        SANDBOX_JOBS_SUBMITTED.labels(language=job_info["language"], status="completed").inc()
+        SANDBOX_JOBS_SUBMITTED.labels(
+            language=job_info["language"], status="completed"
+        ).inc()
 
         SANDBOX_JOBS_RUNNING.dec()
 
@@ -128,9 +135,9 @@ def record_job_failed(job_id: str, failure_type: str, execution_time: float = No
 
         # Calculate duration if not provided
         if execution_time is None:
-            started_at = job_info.get("started_at")
+            started_at = job_info.get("started_perf_counter")
             if started_at:
-                execution_time = time.time() - started_at
+                execution_time = time.perf_counter() - started_at
 
         # Record metrics
         if execution_time:
@@ -140,9 +147,13 @@ def record_job_failed(job_id: str, failure_type: str, execution_time: float = No
             ).observe(execution_time)
 
         # Update failure counters
-        SANDBOX_JOB_FAILURES.labels(failure_type=failure_type, language=job_info["language"]).inc()
+        SANDBOX_JOB_FAILURES.labels(
+            failure_type=failure_type, language=job_info["language"]
+        ).inc()
 
-        SANDBOX_JOBS_SUBMITTED.labels(language=job_info["language"], status="failed").inc()
+        SANDBOX_JOBS_SUBMITTED.labels(
+            language=job_info["language"], status="failed"
+        ).inc()
 
         SANDBOX_JOBS_RUNNING.dec()
 
@@ -155,7 +166,9 @@ def record_job_cancelled(job_id: str):
     if job_id in _active_jobs:
         job_info = _active_jobs[job_id]
 
-        SANDBOX_JOBS_SUBMITTED.labels(language=job_info["language"], status="cancelled").inc()
+        SANDBOX_JOBS_SUBMITTED.labels(
+            language=job_info["language"], status="cancelled"
+        ).inc()
 
         # If it was running, decrement running counter
         if job_info["status"] == "running":
@@ -198,12 +211,12 @@ def update_queue_depth(current_depth: int):
 
 def get_metrics_text() -> str:
     """Get metrics in Prometheus text format"""
-    return get_prometheus_metrics_text()
+    return generate_latest().decode("utf-8")
 
 
 def get_metrics_endpoint():
     """FastAPI endpoint for Prometheus metrics"""
-    return Response(content=get_metrics_text(), media_type=get_prometheus_content_type())
+    return Response(content=get_metrics_text(), media_type=CONTENT_TYPE_LATEST)
 
 
 # Utility functions for integration
@@ -240,7 +253,7 @@ def update_rq_metrics(queue):
         # For now, we rely on the job lifecycle tracking
 
     except Exception as e:
-        logger.exception("Failed to update RQ metrics: %s", e)
+        print(f"⚠️  Failed to update RQ metrics: {e}")
 
 
 # Alerting helpers - these thresholds should match your alerting rules
@@ -277,6 +290,6 @@ def check_alerts() -> Dict[str, Any]:
             )
 
     except Exception as e:
-        logger.exception("Error checking alerts: %s", e)
+        print(f"⚠️  Error checking alerts: {e}")
 
     return alerts
