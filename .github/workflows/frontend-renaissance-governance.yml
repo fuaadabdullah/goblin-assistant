@@ -1,0 +1,129 @@
+name: Frontend Renaissance Governance
+
+on:
+  pull_request:
+    types:
+      [opened, edited, reopened, synchronize, labeled, unlabeled, milestoned, demilestoned]
+    branches: [main]
+
+permissions:
+  contents: read
+  pull-requests: read
+  issues: read
+
+jobs:
+  governance:
+    name: frontend-renaissance-governance
+    runs-on: ubuntu-latest
+    steps:
+      - name: Validate slice governance
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const pr = context.payload.pull_request;
+            if (!pr) {
+              core.setFailed("This workflow only supports pull_request events.");
+              return;
+            }
+
+            const allowedMilestones = new Set([
+              "M1 Design System",
+              "M2 Workspace",
+              "M3 Chat",
+              "M4 Dashboard",
+              "M5 Polish",
+              "M6 Launch",
+            ]);
+
+            const allowedBranches = new Set([
+              "feature/design-system-v2",
+              "feature/workspace-shell",
+              "feature/chat-redesign",
+              "feature/operations-dashboard",
+            ]);
+
+            const areaLabels = [
+              "area:design-system",
+              "area:workspace-shell",
+              "area:chat-ux",
+              "area:operations",
+            ];
+
+            const errors = [];
+            const warnings = [];
+            const labels = (pr.labels || []).map((l) => l.name);
+            const areaHits = labels.filter((label) => areaLabels.includes(label));
+
+            if (pr.base.ref !== "main") {
+              errors.push(`PR base branch must be main (found ${pr.base.ref}).`);
+            }
+
+            if (!allowedBranches.has(pr.head.ref)) {
+              errors.push(
+                `PR head branch must be one of: ${Array.from(allowedBranches).join(", ")} (found ${pr.head.ref}).`
+              );
+            }
+
+            if (!pr.milestone || !allowedMilestones.has(pr.milestone.title)) {
+              errors.push(
+                `PR milestone must be one of: ${Array.from(allowedMilestones).join(", ")}.`
+              );
+            }
+
+            if (areaHits.length !== 1) {
+              errors.push(
+                `PR must have exactly one area label from: ${areaLabels.join(", ")} (found ${areaHits.length}).`
+              );
+            }
+
+            const body = pr.body || "";
+            const closesIssue = /(closes|fixes|resolves)\s+#\d+/i.test(body);
+            if (!closesIssue) {
+              errors.push("PR description must include linked issue text like 'Closes #123'.");
+            }
+
+            const sliceMatch = /slice\s*id\s*:\s*([A-Za-z0-9._-]+)/i.exec(body);
+            if (!sliceMatch) {
+              errors.push("PR description must include 'Slice ID: <value>'.");
+            }
+
+            if (sliceMatch) {
+              const sliceId = sliceMatch[1].toLowerCase();
+              const { data: openPulls } = await github.rest.pulls.list({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                state: "open",
+                per_page: 100,
+                base: "main",
+              });
+
+              const duplicate = openPulls.find((openPr) => {
+                if (openPr.number === pr.number) {
+                  return false;
+                }
+                const candidate = (openPr.body || "").match(/slice\s*id\s*:\s*([A-Za-z0-9._-]+)/i);
+                return candidate && candidate[1].toLowerCase() === sliceId;
+              });
+
+              if (duplicate) {
+                errors.push(
+                  `Another open PR already uses Slice ID '${sliceId}' (#${duplicate.number}). Use one PR per feature slice.`
+                );
+              }
+            }
+
+            if (!/project\s*column\s*:/i.test(body)) {
+              warnings.push(
+                "PR template includes Project Column; ensure the linked issue card is moved in the Frontend Renaissance project board."
+              );
+            }
+
+            if (warnings.length > 0) {
+              core.warning(warnings.join("\n"));
+            }
+
+            if (errors.length > 0) {
+              core.setFailed(errors.join("\n"));
+            } else {
+              core.info("Frontend Renaissance governance checks passed.");
+            }

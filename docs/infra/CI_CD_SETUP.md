@@ -98,11 +98,16 @@ npm run test:e2e
 
 All of these must pass before merging to `main`:
 
-- `Goblin Assistant CI/CD (lint-and-type-check)`
-- `Goblin Assistant CI/CD (test)`
-- `Goblin Assistant CI/CD (build)`
-- `Goblin Assistant CI/CD (security-scan)`
-- `Goblin Assistant CI/CD (quality-gate)`
+- `policy`
+- `lint`
+- `contract`
+- `test-backend`
+- `test-frontend`
+- `api-cycles-gate`
+- `merge-gates`
+- `frontend-renaissance-governance`
+- `visual-regression`
+- `build`
 
 ### Pull Request Requirements
 
@@ -118,6 +123,12 @@ Run the setup script to configure branch protection:
 ```bash
 # Requires GitHub CLI authentication
 ./scripts/setup-branch-protection.sh
+```
+
+For Frontend Renaissance project governance (labels + milestones + branch protection):
+
+```bash
+./scripts/ops/setup-frontend-renaissance-github.sh
 ```
 
 ## 📊 Monitoring & Reporting

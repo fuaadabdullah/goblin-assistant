@@ -38,6 +38,10 @@ export interface ChatMessageMeta {
         config: Record<string, unknown>;
       }>
     | undefined;
+  // Extended thinking / reasoning trace from the model (e.g. Claude extended thinking).
+  reasoning_content?: string | undefined;
+  // Number of tokens used for reasoning (if the backend sends it separately).
+  reasoning_tokens?: number | undefined;
 }
 
 export interface ChatMessage {

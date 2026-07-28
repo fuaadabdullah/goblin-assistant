@@ -18,7 +18,7 @@ fi
 
 REPO="fuaadabdullah/goblin-assistant"
 
-for BRANCH in main develop; do
+for BRANCH in main; do
   echo "Configuring branch protection for $BRANCH..."
 
   cat > /tmp/branch_protection.json << EOF_JSON
@@ -27,11 +27,14 @@ for BRANCH in main develop; do
     "strict": true,
     "contexts": [
       "policy",
-      "format-check",
-      "security-scan",
       "lint",
-      "typecheck",
-      "tests-critical-coverage",
+      "contract",
+      "test-backend",
+      "test-frontend",
+      "api-cycles-gate",
+      "merge-gates",
+      "frontend-renaissance-governance",
+      "visual-regression",
       "build"
     ]
   },
@@ -44,7 +47,7 @@ for BRANCH in main develop; do
   "restrictions": null,
   "allow_force_pushes": false,
   "allow_deletions": false,
-  "block_creations": false
+  "block_creations": true
 }
 EOF_JSON
 
@@ -56,5 +59,5 @@ done
 
 rm -f /tmp/branch_protection.json
 
-echo "Branch protection configured for main and develop."
-echo "Required checks: policy, format-check, security-scan, lint, typecheck, tests-critical-coverage, build"
+echo "Branch protection configured for main."
+echo "Required checks: policy, lint, contract, test-backend, test-frontend, api-cycles-gate, merge-gates, frontend-renaissance-governance, visual-regression, build"

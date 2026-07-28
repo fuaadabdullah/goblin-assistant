@@ -1,88 +1,41 @@
----
-name: Pull Request
-about: Propose changes to the codebase
-title: '[PR] '
-labels: ''
-assignees: ''
----
+## Frontend Renaissance PR
 
-## Description
+### Feature Slice
 
-Please include a summary of the changes and the related issue. Please also include relevant motivation and context.
+- Slice ID: <!-- required, example: ds-token-scale -->
+- Area: <!-- required: design-system | workspace-shell | chat-ux | operations -->
+- Milestone: <!-- required: M1 Design System | M2 Workspace | M3 Chat | M4 Dashboard | M5 Polish | M6 Launch -->
+- Branch: <!-- required: feature/design-system-v2 | feature/workspace-shell | feature/chat-redesign | feature/operations-dashboard -->
 
-## Type of Change
+### Linked Work
 
-- [ ] 🐛 Bug fix (non-breaking change which fixes an issue)
-- [ ] ✨ New feature (non-breaking change which adds functionality)
-- [ ] 💥 Breaking change (fix or feature that would cause existing functionality to not work as expected)
-- [ ] 📚 Documentation update
-- [ ] 🎨 Style/UX improvements
-- [ ] 🔧 Refactoring (no functional changes)
-- [ ] 🧪 Tests (adding or updating tests)
-- [ ] 🛠️ Build/CI changes
-- [ ] 🔒 Security improvements
+- Issue: Closes #
+- Project Column: <!-- required: Backlog | Design System | Workspace Shell | Chat UX | Operations | QA | Done -->
 
-## Changes Made
+### Summary
 
-### Frontend Changes
+Describe what changed and why this slice exists.
 
-- [ ] UI components
-- [ ] Pages/screens
-- [ ] State management
-- [ ] API integration
-- [ ] Styling
+### Scope Guard
 
-### Backend Changes
+- [ ] This PR contains one feature slice only
+- [ ] I did not include unrelated refactors
+- [ ] If follow-up work is needed, I created/linked separate issue(s)
 
-- [ ] API endpoints
-- [ ] Business logic
-- [ ] Database schema
-- [ ] Authentication
-- [ ] External integrations
+### Validation
 
-### Other Changes
+- [ ] `make lint`
+- [ ] `make type-check`
+- [ ] `make test-web` (for frontend changes)
+- [ ] `make test-api` (for backend changes)
+- [ ] Visual regression checks ran for affected UI
 
-- [ ] Documentation
-- [ ] Configuration
-- [ ] Dependencies
-- [ ] Tests
+### Visual Evidence
 
-## Testing
+- Visual regression run URL:
+- Screenshots (before/after):
 
-### Manual Testing
+### Risk & Rollback
 
-- [ ] Tested on macOS
-- [ ] Tested on Windows
-- [ ] Tested on Linux
-- [ ] Tested in browser (web version)
-- [ ] Tested with different AI providers
-
-### Automated Testing
-
-- [ ] Unit tests pass
-- [ ] Integration tests pass
-- [ ] E2E tests pass
-- [ ] Critical-path tests updated for Tier 0 risk surfaces touched by this PR
-- [ ] Contract tests added/updated when API boundary behavior changed
-- [ ] Linting passes
-- [ ] Type checking passes
-
-## Screenshots (if applicable)
-
-Please add screenshots to show visual changes.
-
-## Checklist
-
-- [ ] My code follows the project's style guidelines
-- [ ] I have performed a self-review of my own code
-- [ ] I have commented my code, particularly in hard-to-understand areas
-- [ ] My changes generate no new warnings or errors
-- [ ] I have added tests that prove my fix is effective or that my feature works
-- [ ] I classified new/updated tests by pyramid layer (unit/integration/e2e) and kept E2E minimal
-- [ ] If touching auth/contracts/execution/sandbox/persistence/trading/money-data paths, I updated Tier 0 tests
-- [ ] New and existing unit tests pass locally with my changes
-- [ ] Any dependent changes have been merged and published in downstream modules
-
-## Additional Notes
-
-Add any additional notes or context about the PR here.
+- Risk level: <!-- low | medium | high -->
+- Rollback plan:
