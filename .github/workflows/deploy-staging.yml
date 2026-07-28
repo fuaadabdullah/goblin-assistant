@@ -1,15 +1,23 @@
 name: Deploy to Staging
 
 on:
-  push:
-    branches: [main]
-    paths:
-      - 'apps/api/**'
-      - 'apps/web/src/**'
-      - 'Dockerfile'
-      - 'terraform/**'
-      - 'terraform.tfvars.example'
-      - '.github/workflows/deploy-staging.yml'
+  workflow_dispatch:
+    inputs:
+      reason:
+        description: 'Reason for manual staging deploy'
+        required: false
+        default: 'manual trigger'
+# Auto-push disabled: CircleCI handles CI/CD. GitHub Actions billing locked.
+# Re-enable push trigger when billing is resolved:
+#  push:
+#    branches: [main]
+#    paths:
+#      - 'apps/api/**'
+#      - 'apps/web/src/**'
+#      - 'Dockerfile'
+#      - 'terraform/**'
+#      - 'terraform.tfvars.example'
+#      - '.github/workflows/deploy-staging.yml'
 
 concurrency:
   group: deploy-staging

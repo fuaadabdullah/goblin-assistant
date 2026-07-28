@@ -1,5 +1,5 @@
 import { useEffect } from 'react';
-import { useRouter } from 'next/router';
+import { useRouter } from 'next/navigation';
 import GoblinBootScreen from '../features/startup/components/GoblinBootScreen';
 import { useStartupFlow } from '../features/startup/hooks/useStartupFlow';
 

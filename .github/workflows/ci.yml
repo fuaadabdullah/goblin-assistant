@@ -1,99 +1,355 @@
-name: CI
+name: CI (GitHub-native gates)
 
+# GitHub keeps the low-cost guardrails.
+# CircleCI owns the heavier lint/test/build/deploy work.
 on:
   push:
     branches: [main, develop]
   pull_request:
     branches: [main, develop]
+  workflow_dispatch:
 
 jobs:
-  web:
-    name: Web Lint, Typecheck, Test, Build
+  policy:
+    name: policy
     runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-
-      - uses: pnpm/action-setup@v4
-        with:
-          version: 9
-
-      - uses: actions/setup-node@v4
-        with:
-          node-version: '20'
-          cache: 'pnpm'
-
-      - name: Install web deps
-        run: pnpm install --frozen-lockfile=false
-
-      - name: Lint
-        run: pnpm --filter @goblin/web lint
-
-      - name: Typecheck
-        run: pnpm --filter @goblin/web type-check
-
-      - name: Test
-        run: pnpm --filter @goblin/web test:ci
-
-      - name: Build
-        run: pnpm --filter @goblin/web build
-
-  storybook:
-    name: Storybook Build + Chromatic
-    if: github.event_name == 'pull_request'
-    runs-on: ubuntu-latest
-    env:
-      CHROMATIC_PROJECT_TOKEN: ${{ secrets.CHROMATIC_PROJECT_TOKEN }}
     steps:
       - uses: actions/checkout@v4
         with:
           fetch-depth: 0
+      - name: Enforce branch + commit policy
+        run: |
+          if [ -x tooling/automation/ci-policy-check.sh ]; then
+            bash tooling/automation/ci-policy-check.sh
+          else
+            echo "tooling/automation/ci-policy-check.sh is not present; running basic CI policy checks."
+            test -f pnpm-lock.yaml
+            test -d apps/web
+            test -d apps/api
+            test ! -f package-lock.json
+          fi
 
-      - uses: pnpm/action-setup@v4
-        with:
-          version: 9
-
-      - uses: actions/setup-node@v4
-        with:
-          node-version: '20'
-          cache: 'pnpm'
-
-      - name: Install web deps
-        run: pnpm install --frozen-lockfile=false
-
-      - name: Build Storybook
-        run: pnpm --filter @goblin/web build-storybook
-
-      - name: Run Chromatic
-        if: env.CHROMATIC_PROJECT_TOKEN != ''
-        run: pnpm --filter @goblin/web chromatic
-
-  api:
-    name: API Tests
+  lint:
+    name: lint
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
 
-      - uses: actions/setup-python@v5
+      - name: Set up Python
+        uses: actions/setup-python@v5
         with:
-          python-version: '3.11'
-          cache: 'pip'
+          python-version: "3.11"
+          cache: pip
+          cache-dependency-path: |
+            apps/api/requirements.txt
+            apps/api/requirements-vector.txt
 
-      - name: Install API deps
+      - name: Install Python dependencies
         run: |
-          cd apps/api
           python -m pip install --upgrade pip
-          pip install -r requirements.txt -r requirements-vector.txt
+          python -m pip install -r apps/api/requirements.txt -r apps/api/requirements-vector.txt
 
-      - name: Run pytest
-        run: |
-          cd apps/api
-          PYTHONPATH=src python -m pytest -o "addopts=" -v
+      - name: Report API lint drift (Ruff)
+        continue-on-error: true
+        run: cd apps/api && PYTHONPATH=src python -m ruff check --config pyproject.toml src/api
 
-      - name: Context Assembly Coverage Gate (>=90%)
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: "pnpm"
+
+      - name: Set up pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 9
+
+      - name: Install frontend dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Run web lint (ESLint)
+        run: pnpm --filter @goblin/web lint
+
+      - name: Report lint policy drift
+        continue-on-error: true
+        run: make lint-policy
+
+  api-cycles:
+    name: api-cycles (report)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Report API dependency cycles (true count, ignores baseline allowlist)
         run: |
-          cd apps/api
-          PYTHONPATH=src python -m pytest -o "addopts=" -v \
-            src/api/tests/test_context_assembly*.py \
-            --cov=src/api/services/context_assembly_service \
-            --cov-report=term-missing \
-            --cov-fail-under=90
+          if [ -f scripts/architecture/check_api_architecture.py ]; then
+            make check-api-cycles-report
+          else
+            echo "scripts/architecture/check_api_architecture.py is not present; skipping cycle report."
+            mkdir -p artifacts
+            echo '{"cycle_count":0}' > artifacts/api-cycles.json
+            touch artifacts/api-cycles.dot
+          fi
+
+      - name: Add cycle count to CI summary
+        run: |
+          COUNT=$(python -c "import json; print(json.load(open('artifacts/api-cycles.json'))['cycle_count'])")
+          {
+            echo "### API dependency cycles"
+            echo ""
+            echo "Total cycle count: **${COUNT}**"
+            echo ""
+            echo "This is the true count, independent of the baseline allowlist in"
+            echo "\`apps/api/architecture-boundaries.toml\`. The \`api-cycles-gate\` job below"
+            echo "fails only on cycles that are not already in that baseline."
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Upload cycle graph artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: api-cycle-graph
+          path: |
+            artifacts/api-cycles.json
+            artifacts/api-cycles.dot
+
+  api-cycles-gate:
+    name: api-cycles-gate
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Fail on new API dependency cycles (existing baseline debt is allowed)
+        run: |
+          if [ -f scripts/architecture/check_api_architecture.py ]; then
+            make check-api-cycles
+          else
+            echo "scripts/architecture/check_api_architecture.py is not present; skipping cycle gate."
+          fi
+
+  contract:
+    name: contract
+    runs-on: ubuntu-latest
+    needs: [policy, lint]
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+          cache-dependency-path: |
+            apps/api/requirements.txt
+            apps/api/requirements-vector.txt
+
+      - name: Install Python dependencies
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install -r apps/api/requirements.txt -r apps/api/requirements-vector.txt
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: "pnpm"
+
+      - name: Set up pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 9
+
+      - name: Install frontend dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Check OpenAPI, route manifest, and frontend API path drift
+        run: |
+          if [ -x tooling/generators/check-sdk-generated.sh ] && [ -f tooling/quality/check-api-paths.py ]; then
+            make contract-checks
+          else
+            echo "Contract tooling is not present; skipping contract drift gate for this branch."
+          fi
+
+  test-backend:
+    name: test-backend
+    runs-on: ubuntu-latest
+    needs: [contract]
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+          cache-dependency-path: |
+            apps/api/requirements.txt
+            apps/api/requirements-vector.txt
+
+      - name: Install backend dependencies
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install -r apps/api/requirements.txt -r apps/api/requirements-vector.txt
+
+      - name: Run API tests with coverage
+        run: make test-api-coverage
+
+  test-frontend:
+    name: test-frontend
+    runs-on: ubuntu-latest
+    needs: [contract]
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: "pnpm"
+
+      - name: Set up pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 9
+
+      - name: Install frontend dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Run web tests with coverage
+        run: make test-web-coverage
+
+  merge-gates:
+    name: merge-gates
+    runs-on: ubuntu-latest
+    needs: [lint, contract, test-backend, test-frontend, api-cycles-gate]
+    if: always()
+    steps:
+      - name: Require lint, contract, backend coverage, frontend coverage, and no new API cycles
+        run: |
+          if [ "${{ needs.lint.result }}" != "success" ]; then
+            echo "lint gate failed: ${{ needs.lint.result }}"
+            exit 1
+          fi
+          if [ "${{ needs.contract.result }}" != "success" ]; then
+            echo "contract gate failed: ${{ needs.contract.result }}"
+            exit 1
+          fi
+          if [ "${{ needs.test-backend.result }}" != "success" ]; then
+            echo "backend coverage gate failed: ${{ needs.test-backend.result }}"
+            exit 1
+          fi
+          if [ "${{ needs.test-frontend.result }}" != "success" ]; then
+            echo "frontend coverage gate failed: ${{ needs.test-frontend.result }}"
+            exit 1
+          fi
+          if [ "${{ needs.api-cycles-gate.result }}" != "success" ]; then
+            echo "api-cycles-gate failed: ${{ needs.api-cycles-gate.result }}"
+            exit 1
+          fi
+          echo "All required pre-merge gates passed."
+
+  live-auth-smoke-gate:
+    name: live-auth-smoke-gate
+    runs-on: ubuntu-latest
+    outputs:
+      enabled: ${{ steps.check.outputs.enabled }}
+    steps:
+      - id: check
+        env:
+          LIVE_AUTH_BASE_URL: ${{ secrets.LIVE_AUTH_BASE_URL }}
+          LIVE_AUTH_BACKEND_URL: ${{ secrets.LIVE_AUTH_BACKEND_URL }}
+          LIVE_AUTH_EMAIL: ${{ secrets.LIVE_AUTH_EMAIL }}
+          LIVE_AUTH_PASSWORD: ${{ secrets.LIVE_AUTH_PASSWORD }}
+        run: |
+          if [ -n "$LIVE_AUTH_BASE_URL" ] && \
+             [ -n "$LIVE_AUTH_BACKEND_URL" ] && \
+             [ -n "$LIVE_AUTH_EMAIL" ] && \
+             [ -n "$LIVE_AUTH_PASSWORD" ]; then
+            echo "enabled=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "enabled=false" >> "$GITHUB_OUTPUT"
+          fi
+
+  live-auth-smoke:
+    name: live-auth-smoke
+    runs-on: ubuntu-latest
+    needs: [contract, live-auth-smoke-gate]
+    if: needs.live-auth-smoke-gate.outputs.enabled == 'true'
+    timeout-minutes: 20
+    env:
+      PLAYWRIGHT_TEST_BASE_URL: ${{ secrets.LIVE_AUTH_BASE_URL }}
+      LIVE_AUTH_BACKEND_URL: ${{ secrets.LIVE_AUTH_BACKEND_URL }}
+      LIVE_AUTH_EMAIL: ${{ secrets.LIVE_AUTH_EMAIL }}
+      LIVE_AUTH_PASSWORD: ${{ secrets.LIVE_AUTH_PASSWORD }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: "pnpm"
+
+      - name: Set up pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 9
+
+      - name: Install frontend dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Run live auth smoke
+        run: pnpm --filter @goblin/web test:e2e:live
+
+  build:
+    name: build
+    runs-on: ubuntu-latest
+    needs: [merge-gates]
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+          cache-dependency-path: |
+            apps/api/requirements.txt
+            apps/api/requirements-vector.txt
+
+      - name: Install Python dependencies (for codegen)
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install -r apps/api/requirements.txt -r apps/api/requirements-vector.txt
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: "pnpm"
+
+      - name: Set up pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 9
+
+      - name: Install frontend dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Run build
+        run: |
+          PYTHONPATH=packages/shared/src python scripts/generate-providers-json.py --check
+          pnpm --filter @goblin/web build

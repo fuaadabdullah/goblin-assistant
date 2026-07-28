@@ -1,6 +1,6 @@
 import type { FC } from 'react';
 import { useEffect, useMemo, useState } from 'react';
-import { useRouter } from 'next/router';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { useSupportForm } from './hooks/useSupportForm';
 import HelpView from './components/HelpView';
 import type { StartupDiagnostics } from '../../utils/startup-diagnostics';
@@ -9,13 +9,13 @@ import { readStartupDiagnostics, clearStartupDiagnostics } from '../../utils/sta
 const HelpScreen: FC = () => {
   const form = useSupportForm();
   const router = useRouter();
+  const searchParams = useSearchParams();
   const [startupDiagnostics, setStartupDiagnostics] = useState<StartupDiagnostics | null>(null);
 
   const isStartupFailed = useMemo(() => {
-    if (!router.isReady) return false;
-    const reason = router.query.reason;
-    return reason === 'startup_failed' || (Array.isArray(reason) && reason.includes('startup_failed'));
-  }, [router.isReady, router.query.reason]);
+    const reason = searchParams.get('reason');
+    return reason === 'startup_failed';
+  }, [searchParams]);
 
   useEffect(() => {
     if (!isStartupFailed) return;
@@ -23,15 +23,12 @@ const HelpScreen: FC = () => {
   }, [isStartupFailed]);
 
   const logId = useMemo(() => {
-    if (!router.isReady) return null;
-    const value = router.query.logId;
-    if (Array.isArray(value)) return value[0] ?? null;
-    return typeof value === 'string' ? value : null;
-  }, [router.isReady, router.query.logId]);
+    return searchParams.get('logId');
+  }, [searchParams]);
 
   const handleRetry = () => {
     clearStartupDiagnostics();
-    router.push('/startup').catch(() => undefined);
+    router.push('/startup');
   };
 
   const startupFailure = isStartupFailed

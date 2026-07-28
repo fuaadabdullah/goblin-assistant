@@ -1,5 +1,5 @@
 import Head from 'next/head';
-import { useRouter } from 'next/router';
+import { usePathname } from 'next/navigation';
 
 interface SeoProps {
   title: string;
@@ -31,13 +31,13 @@ export default function Seo({
   robots = 'index,follow',
   ogImagePath = '/goblin-logo.png',
 }: SeoProps) {
-  const router = useRouter();
+  const pathname = usePathname();
   const siteUrl = cleanSiteUrl(process.env.NEXT_PUBLIC_SITE_URL);
   const desc = description || DEFAULT_DESCRIPTION;
 
   const canonicalUrl =
     canonical ||
-    toAbsoluteUrl(siteUrl, (router.asPath || '/').split('#')[0].split('?')[0] || '/');
+    toAbsoluteUrl(siteUrl, pathname || '/');
 
   const ogImageUrl = toAbsoluteUrl(siteUrl, ogImagePath);
 

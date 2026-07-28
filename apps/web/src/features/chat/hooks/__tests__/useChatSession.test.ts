@@ -101,14 +101,8 @@ jest.mock('../../../../utils/auth-session', () => ({
   isAuthenticated: jest.fn(() => true),
 }));
 
-jest.mock('next/router', () => ({
-  useRouter: jest.fn(() => ({
-    push: jest.fn(),
-    replace: jest.fn(),
-    prefetch: jest.fn(),
-    query: {},
-    pathname: '/chat',
-  })),
+jest.mock('next/navigation', () => ({
+  useSearchParams: jest.fn(() => new URLSearchParams()),
 }));
 
 const { useChatSession } = require('../useChatSession') as typeof import('../useChatSession');

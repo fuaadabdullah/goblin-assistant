@@ -1,0 +1,39 @@
+# Performance/cost tiers for provider selection — evaluated by ModelTierRouter
+# in apps/api/src/api/routing/policy_engine.py.
+#
+# This is a distinct axis from each provider's *deployment* tier
+# (cloud vs self_hosted) declared in config/providers.toml. "fast"/"smart"/
+# "best"/"local" here describe a performance/cost tradeoff, not where the
+# provider runs. config/routing_policies.toml references these tier names
+# via restrict_tier/prefer_tier.
+#
+# Each [tiers.<name>] table maps provider_id -> model name to use for that
+# provider when serving that tier. providers_for_tier(tier) returns the
+# table's keys; model_for_provider(tier, provider_id) returns the value.
+#
+# Administrators edit this file to change tier composition without touching
+# router code. If this file is missing or fails to parse, ModelTierRouter
+# falls back to its built-in defaults (see policy_engine.py) rather than
+# breaking routing entirely.
+
+[tiers.fast]
+groq = "llama-3.3-70b-versatile"
+siliconeflow = "Qwen/Qwen2.5-7B-Instruct"
+gemini = "gemini-2.0-flash"
+
+[tiers.smart]
+openai = "gpt-4o-mini"
+anthropic = "claude-3-5-haiku-latest"
+deepseek = "deepseek-chat"
+aliyun = "qwen-plus"
+
+[tiers.best]
+openai = "gpt-4o"
+anthropic = "claude-sonnet-4-20250514"
+gcp_vllm = "qwen3-32b"
+azure_openai = "gpt-4o"
+
+[tiers.local]
+gcp_vm = "gemini-2.5-flash"
+ollama_local = "qwen2.5:3b"
+aliyun = "qwen-plus"

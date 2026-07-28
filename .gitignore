@@ -28,6 +28,9 @@ supabase/migrations.bak*/
 # Runtime artifacts
 sandbox_jobs/
 instance/
+apps/web/tmp/
+data-gym-cache/
+output/
 
 # Hash artifacts
 api/[0-9a-f][0-9a-f]*

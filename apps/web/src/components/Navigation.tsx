@@ -1,5 +1,5 @@
 import Link from 'next/link';
-import { useRouter } from 'next/router';
+import { useRouter, usePathname } from 'next/navigation';
 import { useEffect, useState } from 'react';
 import { Home, MessageSquare, Search, FlaskConical, User, HelpCircle, LayoutDashboard, Puzzle, ScrollText, Settings, Users, LogOut, Menu, X } from 'lucide-react';
 import HealthHeader from './HealthHeader';
@@ -17,6 +17,7 @@ interface NavigationProps {
 
 const Navigation = ({ onLogout, showLogout = false, variant = 'customer' }: NavigationProps) => {
   const router = useRouter();
+  const pathname = usePathname();
   const { logout } = useAuthSession();
   const isMobileMenuOpen = useUIStore((s) => s.mobileNavOpen);
   const setIsMobileMenuOpen = useUIStore((s) => s.setMobileNavOpen);
@@ -51,7 +52,7 @@ const Navigation = ({ onLogout, showLogout = false, variant = 'customer' }: Navi
   useEffect(() => {
     // close mobile nav on route changes
     setIsMobileMenuOpen(false);
-  }, [router.asPath, setIsMobileMenuOpen]);
+  }, [pathname, setIsMobileMenuOpen]);
 
   return (
     <nav
@@ -76,7 +77,7 @@ const Navigation = ({ onLogout, showLogout = false, variant = 'customer' }: Navi
           {/* Desktop Navigation */}
           <div className="hidden lg:flex items-center space-x-3">
             {navItems.map(item => {
-              const isActive = router.pathname === item.path || (item.path !== '/' && router.pathname.startsWith(item.path));
+              const isActive = pathname === item.path || (item.path !== '/' && (pathname ?? '').startsWith(item.path));
               return (
                 <Link
                   key={item.path}
@@ -138,7 +139,7 @@ const Navigation = ({ onLogout, showLogout = false, variant = 'customer' }: Navi
           ) : null}
 
           {navItems.map(item => {
-            const isActive = router.pathname === item.path || (item.path !== '/' && router.pathname.startsWith(item.path));
+            const isActive = pathname === item.path || (item.path !== '/' && (pathname ?? '').startsWith(item.path));
             return (
               <Link
                 key={item.path}

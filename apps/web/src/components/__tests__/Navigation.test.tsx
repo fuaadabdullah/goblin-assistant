@@ -5,8 +5,9 @@ jest.mock('next/link', () => function MockLink({ children, href }: { children: R
   return <a href={href}>{children}</a>;
 });
 const mockPush = jest.fn();
-jest.mock('next/router', () => ({
-  useRouter: () => ({ pathname: '/', push: mockPush, events: { on: jest.fn(), off: jest.fn() } }),
+jest.mock('next/navigation', () => ({
+  useRouter: () => ({ push: mockPush }),
+  usePathname: () => '/',
 }));
 jest.mock('lucide-react', () => new Proxy({}, {
   get: (_, name) => {

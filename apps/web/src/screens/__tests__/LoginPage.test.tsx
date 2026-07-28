@@ -3,13 +3,11 @@ import type { ReactNode } from 'react';
 import LoginPage from '../LoginPage';
 
 const pushMock = jest.fn();
-let query: Record<string, unknown> = {};
+let mockSearchParams = new URLSearchParams();
 
-jest.mock('next/router', () => ({
-  useRouter: () => ({
-    query,
-    push: pushMock,
-  }),
+jest.mock('next/navigation', () => ({
+  useRouter: () => ({ push: pushMock }),
+  useSearchParams: () => mockSearchParams,
 }));
 
 jest.mock('../../components/auth/ModularLoginForm', () => ({
@@ -33,12 +31,12 @@ jest.mock('next/link', () => ({
 
 describe('LoginPage redirects', () => {
   beforeEach(() => {
-    query = {};
+    mockSearchParams = new URLSearchParams();
     pushMock.mockClear();
   });
 
   it('prefers redirect over from', () => {
-    query = { redirect: '/chat?tab=history', from: '/account' };
+    mockSearchParams = new URLSearchParams({ redirect: '/chat?tab=history', from: '/account' });
 
     render(<LoginPage />);
     fireEvent.click(screen.getByRole('button', { name: 'complete-login' }));
@@ -47,7 +45,7 @@ describe('LoginPage redirects', () => {
   });
 
   it('falls back to from when redirect is absent', () => {
-    query = { from: '/account' };
+    mockSearchParams = new URLSearchParams({ from: '/account' });
 
     render(<LoginPage />);
     fireEvent.click(screen.getByRole('button', { name: 'complete-login' }));
@@ -56,7 +54,7 @@ describe('LoginPage redirects', () => {
   });
 
   it('rejects unsafe redirect values', () => {
-    query = { redirect: 'https://evil.example/path', from: '/chat' };
+    mockSearchParams = new URLSearchParams({ redirect: 'https://evil.example/path', from: '/chat' });
 
     render(<LoginPage />);
     fireEvent.click(screen.getByRole('button', { name: 'complete-login' }));
@@ -65,7 +63,7 @@ describe('LoginPage redirects', () => {
   });
 
   it('falls back to root when redirect inputs are unsafe', () => {
-    query = { redirect: '//evil.example', from: 'https://evil.example' };
+    mockSearchParams = new URLSearchParams({ redirect: '//evil.example', from: 'https://evil.example' });
 
     render(<LoginPage />);
     fireEvent.click(screen.getByRole('button', { name: 'complete-login' }));

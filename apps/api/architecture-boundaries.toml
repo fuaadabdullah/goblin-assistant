@@ -1,0 +1,21 @@
+[services]
+forbidden_framework_prefixes = ["fastapi", "starlette"]
+
+
+[parser]
+allow_parse_errors = []
+
+[cycles]
+# Baseline of pre-existing circular imports, recorded 2026-07-18 (see "Prevent New Circular
+# Dependencies"). `make check-api-cycles` allows exactly these; anything not listed here fails
+# the gate. Existing debt stays allowed temporarily — do not add new entries for new code without
+# a specific exception; fix the cycle instead. Regenerate this list with:
+#   python3 scripts/architecture/check_api_architecture.py cycles --report-only
+ignore_cycles = [
+  "api.integrations.secrets.auth -> api.integrations.secrets.vault_adapter -> api.integrations.secrets.auth",
+]
+
+[rules]
+route_no_direct_storage = true
+service_no_route_dependency = true
+service_no_framework_coupling = true

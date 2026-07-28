@@ -3,15 +3,11 @@ import { render, screen, waitFor } from '@testing-library/react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 
 const mockPush = jest.fn();
-let mockQuery: Record<string, string | undefined> = {};
-let mockIsReady = true;
+let mockSearchParams = new URLSearchParams();
 
-jest.mock('next/router', () => ({
-  useRouter: () => ({
-    isReady: mockIsReady,
-    query: mockQuery,
-    push: mockPush,
-  }),
+jest.mock('next/navigation', () => ({
+  useRouter: () => ({ push: mockPush }),
+  useSearchParams: () => mockSearchParams,
 }));
 
 jest.mock('@/utils/auth-session', () => ({
@@ -35,8 +31,7 @@ function renderWithClient(ui: React.ReactElement) {
 describe('GoogleCallback', () => {
   beforeEach(() => {
     jest.clearAllMocks();
-    mockQuery = {};
-    mockIsReady = true;
+    mockSearchParams = new URLSearchParams();
     global.fetch = jest.fn();
   });
 
@@ -45,25 +40,24 @@ describe('GoogleCallback', () => {
   });
 
   it('renders loading state', () => {
-    mockIsReady = false;
     renderWithClient(<GoogleCallback />);
     expect(screen.getByText('Completing sign in...')).toBeInTheDocument();
   });
 
   it('redirects on OAuth error param', async () => {
-    mockQuery = { error: 'access_denied' };
+    mockSearchParams = new URLSearchParams({ error: 'access_denied' });
     renderWithClient(<GoogleCallback />);
     await waitFor(() => expect(mockPush).toHaveBeenCalledWith('/login?error=oauth_failed'));
   });
 
   it('redirects when no code received', async () => {
-    mockQuery = {};
+    mockSearchParams = new URLSearchParams();
     renderWithClient(<GoogleCallback />);
     await waitFor(() => expect(mockPush).toHaveBeenCalledWith('/login?error=no_code'));
   });
 
   it('exchanges code for token on success', async () => {
-    mockQuery = { code: 'abc123', state: 'xyz' };
+    mockSearchParams = new URLSearchParams({ code: 'abc123', state: 'xyz' });
     const mockFetch = global.fetch as jest.Mock;
     mockFetch.mockResolvedValue({
       ok: true,
@@ -95,7 +89,7 @@ describe('GoogleCallback', () => {
   });
 
   it('redirects to login on fetch error', async () => {
-    mockQuery = { code: 'abc123' };
+    mockSearchParams = new URLSearchParams({ code: 'abc123' });
     const mockFetch = global.fetch as jest.Mock;
     mockFetch.mockResolvedValue({
       ok: false,
@@ -108,7 +102,7 @@ describe('GoogleCallback', () => {
   });
 
   it('redirects on invalid response (no token)', async () => {
-    mockQuery = { code: 'abc123' };
+    mockSearchParams = new URLSearchParams({ code: 'abc123' });
     const mockFetch = global.fetch as jest.Mock;
     mockFetch.mockResolvedValue({
       ok: true,
@@ -120,7 +114,7 @@ describe('GoogleCallback', () => {
   });
 
   it('redirects on network error', async () => {
-    mockQuery = { code: 'abc123' };
+    mockSearchParams = new URLSearchParams({ code: 'abc123' });
     const mockFetch = global.fetch as jest.Mock;
     mockFetch.mockRejectedValue(new Error('network down'));
 
@@ -128,14 +122,7 @@ describe('GoogleCallback', () => {
     await waitFor(() => expect(mockPush).toHaveBeenCalledWith('/login?error=callback_failed'));
   });
 
-  it('does nothing when router not ready', () => {
-    mockIsReady = false;
-    mockQuery = { code: 'abc123' };
-    renderWithClient(<GoogleCallback />);
-    expect(global.fetch).not.toHaveBeenCalled();
-  });
-
-  it('renders spinne  placeholder text', () => {
+  it('renders spinner placeholder text', () => {
     renderWithClient(<GoogleCallback />);
     expect(screen.getByText(/Please wait/)).toBeInTheDocument();
   });

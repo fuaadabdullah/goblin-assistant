@@ -1,0 +1,10 @@
+# Tier 0 E2E journeys (hard cap enforced by tooling/quality/check-e2e-budget.sh)
+auth-login-and-session-gate
+new-chat-create-and-send
+streaming-response-state
+tool-execution-through-chat
+memory-creation-through-chat
+conversation-history-load
+provider-switching-request-selection
+sandbox-submit-run-status
+settings-save-preferences

@@ -1,0 +1,57 @@
+.root :global(.hljs) {
+  display: block;
+  overflow-x: auto;
+  background: transparent;
+  color: #d1d5db;
+}
+
+.root :global(.hljs-comment),
+.root :global(.hljs-quote) {
+  color: #8b949e;
+  font-style: italic;
+}
+
+.root :global(.hljs-keyword),
+.root :global(.hljs-selector-tag),
+.root :global(.hljs-literal),
+.root :global(.hljs-section),
+.root :global(.hljs-link) {
+  color: #ff7b72;
+}
+
+.root :global(.hljs-string),
+.root :global(.hljs-title),
+.root :global(.hljs-name),
+.root :global(.hljs-type),
+.root :global(.hljs-attribute),
+.root :global(.hljs-symbol),
+.root :global(.hljs-bullet),
+.root :global(.hljs-addition) {
+  color: #a5d6ff;
+}
+
+.root :global(.hljs-number),
+.root :global(.hljs-meta),
+.root :global(.hljs-variable),
+.root :global(.hljs-template-variable) {
+  color: #79c0ff;
+}
+
+.root :global(.hljs-built_in),
+.root :global(.hljs-function),
+.root :global(.hljs-title.function_) {
+  color: #d2a8ff;
+}
+
+.root :global(.hljs-regexp),
+.root :global(.hljs-subst) {
+  color: #ffa657;
+}
+
+.root :global(.hljs-emphasis) {
+  font-style: italic;
+}
+
+.root :global(.hljs-strong) {
+  font-weight: 700;
+}

@@ -1,0 +1,14 @@
+{
+  "bucket": "e2e",
+  "description": "End-to-end journeys from web user flows and browser automation.",
+  "paths": [
+    "apps/web/e2e",
+    "apps/web/e2e/critical-journeys.txt"
+  ],
+  "commands": [
+    {
+      "name": "web-playwright-suite",
+      "run": "mkdir -p .tmp && TMPDIR=\"$PWD/.tmp\" pnpm --filter @goblin/web test:e2e"
+    }
+  ]
+}

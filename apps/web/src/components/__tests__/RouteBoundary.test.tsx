@@ -5,12 +5,13 @@ import {
   withRouteErrorBoundary,
 } from '../RouteBoundary';
 
-jest.mock('next/router', () => ({
+jest.mock('next/navigation', () => ({
   useRouter: () => ({
-    asPath: '/admin',
     replace: jest.fn().mockResolvedValue(true),
     prefetch: jest.fn().mockResolvedValue(undefined),
   }),
+  usePathname: () => '/admin',
+  useSearchParams: () => new URLSearchParams(),
 }));
 
 jest.mock('../../hooks/api/useAuthSession', () => ({

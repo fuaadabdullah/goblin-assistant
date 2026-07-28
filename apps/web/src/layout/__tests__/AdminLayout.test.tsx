@@ -3,13 +3,14 @@ import { render, screen, waitFor } from '@testing-library/react';
 import '@testing-library/jest-dom';
 
 const mockReplace = jest.fn();
-const mockUseRouter = jest.fn();
 const mockUseAuthSession = jest.fn();
 const mockNavigation = jest.fn();
 const mockSeo = jest.fn();
 
-jest.mock('next/router', () => ({
-  useRouter: () => mockUseRouter(),
+jest.mock('next/navigation', () => ({
+  useRouter: () => ({ replace: mockReplace }),
+  usePathname: () => '/admin/logs',
+  useSearchParams: () => new URLSearchParams({ tab: 'stream' }),
 }));
 
 jest.mock('../../hooks/api/useAuthSession', () => ({
@@ -43,10 +44,6 @@ import AdminLayout from '../AdminLayout';
 describe('AdminLayout', () => {
   beforeEach(() => {
     jest.clearAllMocks();
-    mockUseRouter.mockReturnValue({
-      asPath: '/admin/logs?tab=stream',
-      replace: mockReplace,
-    });
     mockUseAuthSession.mockReturnValue({
       isAuthenticated: true,
       isHydrated: true,

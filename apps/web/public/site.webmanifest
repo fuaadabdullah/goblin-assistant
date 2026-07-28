@@ -1,0 +1,22 @@
+{
+  "name": "Goblin Assistant",
+  "short_name": "Goblin",
+  "description": "Goblin Assistant - AI Gateway & Orchestration Platform.",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "background_color": "#161008",
+  "theme_color": "#161008",
+  "icons": [
+    {
+      "src": "/favicon.ico",
+      "sizes": "16x16 32x32 48x48 64x64",
+      "type": "image/x-icon"
+    },
+    {
+      "src": "/GoblinOSIcon.png",
+      "sizes": "256x256",
+      "type": "image/png"
+    }
+  ]
+}

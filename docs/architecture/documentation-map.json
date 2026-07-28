@@ -1,0 +1,142 @@
+{
+  "version": 1,
+  "entries": [
+    {
+      "path": "docs/README.md",
+      "classification": "canonical",
+      "purpose": "Monorepo documentation index",
+      "owner": "Documentation governance",
+      "audience": ["All contributors"],
+      "generation": "handwritten",
+      "review_cadence": "On docs IA change"
+    },
+    {
+      "path": "docs/architecture/DOCUMENTATION_COVERAGE.md",
+      "classification": "generated",
+      "purpose": "Generated docs coverage report",
+      "owner": "Documentation governance",
+      "audience": ["Engineers", "reviewers"],
+      "generation": "generated from documentation-map.json",
+      "review_cadence": "On inventory change"
+    },
+    {
+      "path": "docs/tech-debt-report.md",
+      "classification": "canonical",
+      "purpose": "Technical debt inventory and remediation status",
+      "owner": "Architecture + platform maintainers",
+      "audience": ["Engineers", "reviewers", "agents"],
+      "generation": "handwritten",
+      "review_cadence": "On debt remediation or architecture review"
+    },
+    {
+      "path_prefix": "docs/architecture/",
+      "classification": "canonical",
+      "purpose": "System boundaries, standards, and architecture governance",
+      "owner": "Architecture + platform maintainers",
+      "audience": ["Engineers", "reviewers", "agents"],
+      "generation": "mostly handwritten",
+      "review_cadence": "Monthly and on architectural change"
+    },
+    {
+      "path_prefix": "docs/backend/",
+      "classification": "canonical",
+      "purpose": "Backend API, routing, and contract references",
+      "owner": "Backend maintainers",
+      "audience": ["Backend engineers", "frontend engineers"],
+      "generation": "mixed",
+      "review_cadence": "Monthly and on contract change"
+    },
+    {
+      "path_prefix": "docs/frontend/",
+      "classification": "canonical",
+      "purpose": "UI architecture, migration notes, and component guidance",
+      "owner": "Frontend maintainers",
+      "audience": ["Frontend engineers", "QA"],
+      "generation": "mixed",
+      "review_cadence": "Per release or major UI change"
+    },
+    {
+      "path_prefix": "docs/infra/",
+      "classification": "canonical",
+      "purpose": "Environment, deployment, and CI/CD setup",
+      "owner": "Infra/release maintainers",
+      "audience": ["Developers", "release engineers"],
+      "generation": "mostly handwritten",
+      "review_cadence": "Quarterly and on infra change"
+    },
+    {
+      "path_prefix": "docs/security/",
+      "classification": "canonical",
+      "purpose": "Security and privacy policy",
+      "owner": "Security owner + subsystem owner",
+      "audience": ["Engineers", "reviewers"],
+      "generation": "handwritten",
+      "review_cadence": "Quarterly and on security change"
+    },
+    {
+      "path_prefix": "docs/ux/",
+      "classification": "canonical",
+      "purpose": "Accessibility and visual verification",
+      "owner": "Frontend + design owner",
+      "audience": ["Frontend engineers", "QA", "design"],
+      "generation": "mostly handwritten",
+      "review_cadence": "Per release"
+    },
+    {
+      "path_prefix": "docs/operations/",
+      "classification": "canonical",
+      "purpose": "Runbooks, procedures, and migration trackers",
+      "owner": "Runtime/ops maintainers",
+      "audience": ["Developers", "operators", "release owners"],
+      "generation": "handwritten plus generated trackers",
+      "review_cadence": "Monthly and during active migrations"
+    },
+    {
+      "path_prefix": "docs/archive/",
+      "classification": "historical",
+      "purpose": "Historical non-canonical material",
+      "owner": "Documentation governance",
+      "audience": ["Reference only"],
+      "generation": "archived copies and summaries",
+      "review_cadence": "Only on archive moves"
+    },
+    {
+      "path_prefix": "docs/memory/",
+      "classification": "canonical",
+      "purpose": "Memory-system behavior and lifecycle reference",
+      "owner": "Memory subsystem owner",
+      "audience": ["Engineers working on memory stack"],
+      "generation": "handwritten",
+      "review_cadence": "On memory-policy changes"
+    },
+    {
+      "path_prefix": "docs/decisions/",
+      "classification": "canonical",
+      "purpose": "Canonical ADRs",
+      "owner": "Architecture + release governance",
+      "audience": ["Engineers", "reviewers", "agents"],
+      "generation": "handwritten",
+      "review_cadence": "On every architecture-impacting change"
+    },
+    {
+      "path_prefix": "docs/adr/",
+      "classification": "compatibility-stub",
+      "allow": ["README.md"],
+      "purpose": "Legacy ADR entrypoint",
+      "owner": "Documentation governance",
+      "audience": ["Legacy links only"],
+      "generation": "thin compatibility stub",
+      "review_cadence": "Never expand"
+    },
+    {
+      "path_prefix": "docs/runbooks/",
+      "classification": "compatibility-stub",
+      "allow": ["README.md"],
+      "purpose": "Legacy runbooks entrypoint",
+      "owner": "Documentation governance",
+      "audience": ["Legacy links only"],
+      "generation": "thin compatibility stub",
+      "review_cadence": "Never expand"
+    }
+  ]
+}

@@ -1,0 +1,3082 @@
+{
+  "alias_route_count": 0,
+  "api_v1_prefix": "/api/v1",
+  "public_route_count": 203,
+  "route_count": 204,
+  "routes": [
+    {
+      "canonical_path": "/",
+      "compatibility_aliases": [],
+      "deprecated": false,
+      "include_in_schema": true,
+      "logical_path": "/",
+      "method": "GET",
+      "operation_id": "root__get",
+      "path": "/",
+      "replacement_path": null,
+      "summary": "Root",
+      "tags": []
+    },
+    {
+      "canonical_path": "/api/v1/account/chat-settings",
+      "compatibility_aliases": [],
+      "deprecated": false,
+      "include_in_schema": true,
+      "logical_path": "/account/chat-settings",
+      "method": "GET",
+      "operation_id": "get_chat_settings_api_v1_account_chat_settings_get",
+      "path": "/api/v1/account/chat-settings",
+      "replacement_path": null,
+      "summary": "Get Chat Settings",
+      "tags": [
+        "account"
+      ]
+    },
+    {
+      "canonical_path": "/api/v1/account/chat-settings",
+      "compatibility_aliases": [],
+      "deprecated": false,
+      "include_in_schema": true,
+      "logical_path": "/account/chat-settings",
+      "method": "PUT",
+      "operation_id": "save_chat_settings_api_v1_account_chat_settings_put",
+      "path": "/api/v1/account/chat-settings",
+      "replacement_path": null,
+      "summary": "Save Chat Settings",
+      "tags": [
+        "account"
+      ]
+    },
+    {
+      "canonical_path": "/api/v1/account/preferences",
+      "compatibility_aliases": [],
+      "deprecated": false,
+      "include_in_schema": true,
+      "logical_path": "/account/preferences",
+      "method": "GET",
+      "operation_id": "get_preferences_api_v1_account_preferences_get",
+      "path": "/api/v1/account/preferences",
+      "replacement_path": null,
+      "summary": "Get Preferences",
+      "tags": [
+        "account"
+      ]
+    },
+    {
+      "canonical_path": "/api/v1/account/preferences",
+      "compatibility_aliases": [],
+      "deprecated": false,
+      "include_in_schema": true,
+      "logical_path": "/account/preferences",
+      "method": "PUT",
+      "operation_id": "save_preferences_api_v1_account_preferences_put",
+      "path": "/api/v1/account/preferences",
+      "replacement_path": null,
+      "summary": "Save Preferences",
+      "tags": [
+        "account"
+      ]
+    },
+    {
+      "canonical_path": "/api/v1/account/profile",
+      "compatibility_aliases": [],
+      "deprecated": false,
+      "include_in_schema": true,
+      "logical_path": "/account/profile",
+      "method": "GET",
+      "operation_id": "get_profile_api_v1_account_profile_get",
+      "path": "/api/v1/account/profile",
+      "replacement_path": null,
+      "summary": "Get Profile",
+      "tags": [
+        "account"
+      ]
+    },
+    {
+      "canonical_path": "/api/v1/account/profile",
+      "compatibility_aliases": [],
+      "deprecated": false,
+      "include_in_schema": true,
+      "logical_path": "/account/profile",
+      "method": "PUT",
+      "operation_id": "save_profile_api_v1_account_profile_put",
+      "path": "/api/v1/account/profile",
+      "replacement_path": null,
+      "summary": "Save Profile",
+      "tags": [
+        "account"
+      ]
+    },
+    {
+      "canonical_path": "/api/v1/admin/providers/state",
+      "compatibility_aliases": [],
+      "deprecated": false,
+      "include_in_schema": false,
+      "logical_path": "/admin/providers/state",
+      "method": "GET",
+      "operation_id": "get_provider_state",
+      "path": "/api/v1/admin/providers/state",
+      "replacement_path": null,
+      "summary": "Canonical ops snapshot for provider routing state.",
+      "tags": [
+        "admin"
+      ]
+    },
+    {
+      "canonical_path": "/api/v1/agent/task",
+      "compatibility_aliases": [],
+      "deprecated": false,
+      "include_in_schema": true,
+      "logical_path": "/agent/task",
+      "method": "POST",
+      "operation_id": "submit_agent_task_api_v1_agent_task_post",
+      "path": "/api/v1/agent/task",
+      "replacement_path": null,
+      "summary": "Submit Agent Task",
+      "tags": [
+        "agent"
+      ]
+    },
+    {
+      "canonical_path": "/api/v1/agent/task/github-webhook",
+      "compatibility_aliases": [],
+      "deprecated": false,
+      "include_in_schema": true,
+      "logical_path": "/agent/task/github-webhook",
+      "method": "POST",
+      "operation_id": "submit_github_issue_webhook_api_v1_agent_task_github_webhook_post",
+      "path": "/api/v1/agent/task/github-webhook",
+      "replacement_path": null,
+      "summary": "Submit Github Issue Webhook",
+      "tags": [
+        "agent"
+      ]
+    },
+    {
+      "canonical_path": "/api/v1/agent/task/{task_id}",
+      "compatibility_aliases": [],
+      "deprecated": false,
+      "include_in_schema": true,
+      "logical_path": "/agent/task/{task_id}",
+      "method": "GET",
+      "operation_id": "get_agent_task_api_v1_agent_task__task_id__get",
+      "path": "/api/v1/agent/task/{task_id}",
+      "replacement_path": null,
+      "summary": "Get Agent Task",
+      "tags": [
+        "agent"
+      ]
+    },
+    {
+      "canonical_path": "/api/v1/agent/task/{task_id}/events",
+      "compatibility_aliases": [],
+      "deprecated": false,
+      "include_in_schema": true,
+      "logical_path": "/agent/task/{task_id}/events",
+      "method": "GET",
+      "operation_id": "get_agent_task_events_api_v1_agent_task__task_id__events_get",
+      "path": "/api/v1/agent/task/{task_id}/events",
+      "replacement_path": null,
+      "summary": "Get Agent Task Events",
+      "tags": [
+        "agent"
+      ]
+    },
+    {
+      "canonical_path": "/api/v1/agent/task/{task_id}/events",
+      "compatibility_aliases": [],
+      "deprecated": false,
+      "include_in_schema": true,
+      "logical_path": "/agent/task/{task_id}/events",
+      "method": "POST",
+      "operation_id": "append_agent_task_event_api_v1_agent_task__task_id__events_post",
+      "path": "/api/v1/agent/task/{task_id}/events",
+      "replacement_path": null,
+      "summary": "Append Agent Task Event",
+      "tags": [
+        "agent"
+      ]
+    },
+    {
+      "canonical_path": "/api/v1/api-keys/{provider}",
+      "compatibility_aliases": [],
+      "deprecated": false,
+      "include_in_schema": true,
+      "logical_path": "/api-keys/{provider}",
+      "method": "DELETE",
+      "operation_id": "delete_api_key_api_v1_api_keys__provider__delete",
+      "path": "/api/v1/api-keys/{provider}",
+      "replacement_path": null,
+      "summary": "Delete Api Key",
+      "tags": [
+        "api-keys"
+      ]
+    },
+    {
+      "canonical_path": "/api/v1/api-keys/{provider}",
+      "compatibility_aliases": [],
+      "deprecated": false,
+      "include_in_schema": true,
+      "logical_path": "/api-keys/{provider}",
+      "method": "GET",
+      "operation_id": "get_api_key_api_v1_api_keys__provider__get",
+      "path": "/api/v1/api-keys/{provider}",
+      "replacement_path": null,
+      "summary": "Get Api Key",
+      "tags": [
+        "api-keys"
+      ]
+    },
+    {
+      "canonical_path": "/api/v1/api-keys/{provider}",
+      "compatibility_aliases": [],
+      "deprecated": false,
+      "include_in_schema": true,
+      "logical_path": "/api-keys/{provider}",
+      "method": "POST",
+      "operation_id": "store_api_key_api_v1_api_keys__provider__post",
+      "path": "/api/v1/api-keys/{provider}",
+      "replacement_path": null,
+      "summary": "Store Api Key",
+      "tags": [
+        "api-keys"
+      ]
+    },
+    {
+      "canonical_path": "/api/v1/api/chat",
+      "compatibility_aliases": [],
+      "deprecated": false,
+      "include_in_schema": true,
+      "logical_path": "/api/chat",
+      "method": "POST",
+      "operation_id": "simple_chat_api_v1_api_chat_post",
+      "path": "/api/v1/api/chat",
+      "replacement_path": null,
+      "summary": "Simple Chat",
+      "tags": [
+        "api"
+      ]
+    },
+    {
+      "canonical_path": "/api/v1/api/feedback/stats",
+      "compatibility_aliases": [],
+      "deprecated": false,
+      "include_in_schema": true,
+      "logical_path": "/api/feedback/stats",
+      "method": "GET",
+      "operation_id": "get_feedback_stats_api_v1_api_feedback_stats_get",
+      "path": "/api/v1/api/feedback/stats",
+      "replacement_path": null,
+      "summary": "Get Feedback Stats",
+      "tags": [
+        "api",
+        "routing"
+      ]
+    },
+    {
+      "canonical_path": "/api/v1/api/generate",
+      "compatibility_aliases": [],
+      "deprecated": false,
+      "include_in_schema": true,
+      "logical_path": "/api/generate",
+      "method": "POST",
+      "operation_id": "generate_api_v1_api_generate_post",
+      "path": "/api/v1/api/generate",
+      "replacement_path": null,
+      "summary": "Generate",
+      "tags": [
+        "api"
+      ]
+    },
+    {
+      "canonical_path": "/api/v1/api/goblins",
+      "compatibility_aliases": [],
+      "deprecated": false,
+      "include_in_schema": true,
+      "logical_path": "/api/goblins",
+      "method": "GET",
+      "operation_id": "get_goblins_api_v1_api_goblins_get",
+      "path": "/api/v1/api/goblins",
+      "replacement_path": null,
+      "summary": "Get Goblins",
+      "tags": [
+        "api"
+      ]
+    },
+    {
+      "canonical_path": "/api/v1/api/history/{goblin_id}",
+      "compatibility_aliases": [],
+      "deprecated": false,
+      "include_in_schema": true,
+      "logical_path": "/api/history/{goblin_id}",
+      "method": "GET",
+      "operation_id": "get_goblin_history_api_v1_api_history__goblin_id__get",
+      "path": "/api/v1/api/history/{goblin_id}",
+      "replacement_path": null,
+      "summary": "Get Goblin History",
+      "tags": [
+        "api"
+      ]
+    },
+    {
+      "canonical_path": "/api/v1/api/orchestrate/execute",
+      "compatibility_aliases": [],
+      "deprecated": false,
+      "include_in_schema": true,
+      "logical_path": "/api/orchestrate/execute",
+      "method": "POST",
+      "operation_id": "execute_orchestration_api_v1_api_orchestrate_execute_post",
+      "path": "/api/v1/api/orchestrate/execute",
+      "replacement_path": null,
+      "summary": "Execute Orchestration",
+      "tags": [
+        "api"
+      ]
+    },
+    {
+      "canonical_path": "/api/v1/api/orchestrate/parse",
+      "compatibility_aliases": [],
+      "deprecated": false,
+      "include_in_schema": true,
+      "logical_path": "/api/orchestrate/parse",
+      "method": "POST",
+      "operation_id": "parse_orchestration_api_v1_api_orchestrate_parse_post",
+      "path": "/api/v1/api/orchestrate/parse",
+      "replacement_path": null,
+      "summary": "Parse Orchestration",
+      "tags": [
+        "api"
+      ]
+    },
+    {
+      "canonical_path": "/api/v1/api/orchestrate/plans/{plan_id}",
+      "compatibility_aliases": [],
+      "deprecated": false,
+      "include_in_schema": true,
+      "logical_path": "/api/orchestrate/plans/{plan_id}",
+      "method": "GET",
+      "operation_id": "get_orchestration_plan_api_v1_api_orchestrate_plans__plan_id__get",
+      "path": "/api/v1/api/orchestrate/plans/{plan_id}",
+      "replacement_path": null,
+      "summary": "Get Orchestration Plan",
+      "tags": [
+        "api"
+      ]
+    },
+    {
+      "canonical_path": "/api/v1/api/privacy/consent/rag",
+      "compatibility_aliases": [],
+      "deprecated": false,
+      "include_in_schema": true,
+      "logical_path": "/api/privacy/consent/rag",
+      "method": "POST",
+      "operation_id": "update_rag_consent_api_v1_api_privacy_consent_rag_post",
+      "path": "/api/v1/api/privacy/consent/rag",
+      "replacement_path": null,
+      "summary": "Update Rag Consent",
+      "tags": [
+        "privacy",
+        "gdpr",
+        "ccpa"
+      ]
+    },
+    {
+      "canonical_path": "/api/v1/api/privacy/data-summary",
+      "compatibility_aliases": [],
+      "deprecated": false,
+      "include_in_schema": true,
+      "logical_path": "/api/privacy/data-summary",
+      "method": "GET",
+      "operation_id": "get_data_summary_api_v1_api_privacy_data_summary_get",
+      "path": "/api/v1/api/privacy/data-summary",
+      "replacement_path": null,
+      "summary": "Get Data Summary",
+      "tags": [
+        "privacy",
+        "gdpr",
+        "ccpa"
+      ]
+    },
+    {
+      "canonical_path": "/api/v1/api/privacy/delete",
+      "compatibility_aliases": [],
+      "deprecated": false,
+      "include_in_schema": true,
+      "logical_path": "/api/privacy/delete",
+      "method": "DELETE",
+      "operation_id": "delete_user_data_api_v1_api_privacy_delete_delete",
+      "path": "/api/v1/api/privacy/delete",
+      "replacement_path": null,
+      "summary": "Delete User Data",
+      "tags": [
+        "privacy",
+        "gdpr",
+        "ccpa"
+      ]
+    },
+    {
+      "canonical_path": "/api/v1/api/privacy/export",
+      "compatibility_aliases": [],
+      "deprecated": false,
+      "include_in_schema": true,
+      "logical_path": "/api/privacy/export",
+      "method": "POST",
+      "operation_id": "export_user_data_api_v1_api_privacy_export_post",
+      "path": "/api/v1/api/privacy/export",
+      "replacement_path": null,
+      "summary": "Export User Data",
+      "tags": [
+        "privacy",
+        "gdpr",
+        "ccpa"
+      ]
+    },
+    {
+      "canonical_path": "/api/v1/api/route_task",
+      "compatibility_aliases": [],
+      "deprecated": false,
+      "include_in_schema": true,
+      "logical_path": "/api/route_task",
+      "method": "POST",
+      "operation_id": "route_task_api_v1_api_route_task_post",
+      "path": "/api/v1/api/route_task",
+      "replacement_path": null,
+      "summary": "Route Task",
+      "tags": [
+        "api"
+      ]
+    },
+    {
+      "canonical_path": "/api/v1/api/route_task_stream_cancel/{stream_id}",
+      "compatibility_aliases": [],
+      "deprecated": false,
+      "include_in_schema": true,
+      "logical_path": "/api/route_task_stream_cancel/{stream_id}",
+      "method": "POST",
+      "operation_id": "cancel_stream_task_api_v1_api_route_task_stream_cancel__stream_id__post",
+      "path": "/api/v1/api/route_task_stream_cancel/{stream_id}",
+      "replacement_path": null,
+      "summary": "Cancel Stream Task",
+      "tags": [
+        "api"
+      ]
+    },
+    {
+      "canonical_path": "/api/v1/api/route_task_stream_poll/{stream_id}",
+      "compatibility_aliases": [],
+      "deprecated": false,
+      "include_in_schema": true,
+      "logical_path": "/api/route_task_stream_poll/{stream_id}",
+      "method": "GET",
+      "operation_id": "poll_stream_task_api_v1_api_route_task_stream_poll__stream_id__get",
+      "path": "/api/v1/api/route_task_stream_poll/{stream_id}",
+      "replacement_path": null,
+      "summary": "Poll Stream Task",
+      "tags": [
+        "api"
+      ]
+    },
+    {
+      "canonical_path": "/api/v1/api/route_task_stream_start",
+      "compatibility_aliases": [],
+      "deprecated": false,
+      "include_in_schema": true,
+      "logical_path": "/api/route_task_stream_start",
+      "method": "POST",
+      "operation_id": "start_stream_task_api_v1_api_route_task_stream_start_post",
+      "path": "/api/v1/api/route_task_stream_start",
+      "replacement_path": null,
+      "summary": "Start Stream Task",
+      "tags": [
+        "api"
+      ]
+    },
+    {
+      "canonical_path": "/api/v1/api/routing/feedback",
+      "compatibility_aliases": [],
+      "deprecated": false,
+      "include_in_schema": true,
+      "logical_path": "/api/routing/feedback",
+      "method": "POST",
+      "operation_id": "submit_routing_feedback_api_v1_api_routing_feedback_post",
+      "path": "/api/v1/api/routing/feedback",
+      "replacement_path": null,
+      "summary": "Submit Routing Feedback",
+      "tags": [
+        "api",
+        "routing"
+      ]
+    },
+    {
+      "canonical_path": "/api/v1/api/stats/{goblin_id}",
+      "compatibility_aliases": [],
+      "deprecated": false,
+      "include_in_schema": true,
+      "logical_path": "/api/stats/{goblin_id}",
+      "method": "GET",
+      "operation_id": "get_goblin_stats_api_v1_api_stats__goblin_id__get",
+      "path": "/api/v1/api/stats/{goblin_id}",
+      "replacement_path": null,
+      "summary": "Get Goblin Stats",
+      "tags": [
+        "api"
+      ]
+    },
+    {
+      "canonical_path": "/api/v1/auth/csrf-token",
+      "compatibility_aliases": [],
+      "deprecated": false,
+      "include_in_schema": true,
+      "logical_path": "/auth/csrf-token",
+      "method": "GET",
+      "operation_id": "get_csrf_token_api_v1_auth_csrf_token_get",
+      "path": "/api/v1/auth/csrf-token",
+      "replacement_path": null,
+      "summary": "Get Csrf Token",
+      "tags": [
+        "auth"
+      ]
+    },
+    {
+      "canonical_path": "/api/v1/auth/csrf/token",
+      "compatibility_aliases": [],
+      "deprecated": false,
+      "include_in_schema": true,
+      "logical_path": "/auth/csrf/token",
+      "method": "GET",
+      "operation_id": "get_csrf_token_legacy_api_v1_auth_csrf_token_get",
+      "path": "/api/v1/auth/csrf/token",
+      "replacement_path": null,
+      "summary": "Get Csrf Token Legacy",
+      "tags": [
+        "auth"
+      ]
+    },
+    {
+      "canonical_path": "/api/v1/auth/google",
+      "compatibility_aliases": [],
+      "deprecated": false,
+      "include_in_schema": true,
+      "logical_path": "/auth/google",
+      "method": "POST",
+      "operation_id": "google_auth_api_v1_auth_google_post",
+      "path": "/api/v1/auth/google",
+      "replacement_path": null,
+      "summary": "Google Auth",
+      "tags": [
+        "auth"
+      ]
+    },
+    {
+      "canonical_path": "/api/v1/auth/google/callback",
+      "compatibility_aliases": [],
+      "deprecated": false,
+      "include_in_schema": true,
+      "logical_path": "/auth/google/callback",
+      "method": "POST",
+      "operation_id": "google_auth_callback_api_v1_auth_google_callback_post",
+      "path": "/api/v1/auth/google/callback",
+      "replacement_path": null,
+      "summary": "Google Auth Callback",
+      "tags": [
+        "auth"
+      ]
+    },
+    {
+      "canonical_path": "/api/v1/auth/google/url",
+      "compatibility_aliases": [],
+      "deprecated": false,
+      "include_in_schema": true,
+      "logical_path": "/auth/google/url",
+      "method": "GET",
+      "operation_id": "get_google_auth_url_api_v1_auth_google_url_get",
+      "path": "/api/v1/auth/google/url",
+      "replacement_path": null,
+      "summary": "Get Google Auth Url",
+      "tags": [
+        "auth"
+      ]
+    },
+    {
+      "canonical_path": "/api/v1/auth/login",
+      "compatibility_aliases": [],
+      "deprecated": false,
+      "include_in_schema": true,
+      "logical_path": "/auth/login",
+      "method": "POST",
+      "operation_id": "login_api_v1_auth_login_post",
+      "path": "/api/v1/auth/login",
+      "replacement_path": null,
+      "summary": "Login",
+      "tags": [
+        "auth"
+      ]
+    },
+    {
+      "canonical_path": "/api/v1/auth/logout",
+      "compatibility_aliases": [],
+      "deprecated": false,
+      "include_in_schema": true,
+      "logical_path": "/auth/logout",
+      "method": "POST",
+      "operation_id": "logout_api_v1_auth_logout_post",
+      "path": "/api/v1/auth/logout",
+      "replacement_path": null,
+      "summary": "Logout",
+      "tags": [
+        "auth"
+      ]
+    },
+    {
+      "canonical_path": "/api/v1/auth/me",
+      "compatibility_aliases": [],
+      "deprecated": false,
+      "include_in_schema": true,
+      "logical_path": "/auth/me",
+      "method": "GET",
+      "operation_id": "get_current_user_info_api_v1_auth_me_get",
+      "path": "/api/v1/auth/me",
+      "replacement_path": null,
+      "summary": "Get Current User Info",
+      "tags": [
+        "auth"
+      ]
+    },
+    {
+      "canonical_path": "/api/v1/auth/passkey/auth",
+      "compatibility_aliases": [],
+      "deprecated": false,
+      "include_in_schema": true,
+      "logical_path": "/auth/passkey/auth",
+      "method": "POST",
+      "operation_id": "authenticate_passkey_api_v1_auth_passkey_auth_post",
+      "path": "/api/v1/auth/passkey/auth",
+      "replacement_path": null,
+      "summary": "Authenticate Passkey",
+      "tags": [
+        "auth"
+      ]
+    },
+    {
+      "canonical_path": "/api/v1/auth/passkey/challenge",
+      "compatibility_aliases": [],
+      "deprecated": false,
+      "include_in_schema": true,
+      "logical_path": "/auth/passkey/challenge",
+      "method": "POST",
+      "operation_id": "get_passkey_challenge_api_v1_auth_passkey_challenge_post",
+      "path": "/api/v1/auth/passkey/challenge",
+      "replacement_path": null,
+      "summary": "Get Passkey Challenge",
+      "tags": [
+        "auth"
+      ]
+    },
+    {
+      "canonical_path": "/api/v1/auth/passkey/register",
+      "compatibility_aliases": [],
+      "deprecated": false,
+      "include_in_schema": true,
+      "logical_path": "/auth/passkey/register",
+      "method": "POST",
+      "operation_id": "register_passkey_api_v1_auth_passkey_register_post",
+      "path": "/api/v1/auth/passkey/register",
+      "replacement_path": null,
+      "summary": "Register Passkey",
+      "tags": [
+        "auth"
+      ]
+    },
+    {
+      "canonical_path": "/api/v1/auth/refresh",
+      "compatibility_aliases": [],
+      "deprecated": false,
+      "include_in_schema": true,
+      "logical_path": "/auth/refresh",
+      "method": "POST",
+      "operation_id": "refresh_token_endpoint_api_v1_auth_refresh_post",
+      "path": "/api/v1/auth/refresh",
+      "replacement_path": null,
+      "summary": "Refresh Token Endpoint",
+      "tags": [
+        "auth"
+      ]
+    },
+    {
+      "canonical_path": "/api/v1/auth/register",
+      "compatibility_aliases": [],
+      "deprecated": false,
+      "include_in_schema": true,
+      "logical_path": "/auth/register",
+      "method": "POST",
+      "operation_id": "register_api_v1_auth_register_post",
+      "path": "/api/v1/auth/register",
+      "replacement_path": null,
+      "summary": "Register",
+      "tags": [
+        "auth"
+      ]
+    },
+    {
+      "canonical_path": "/api/v1/auth/validate",
+      "compatibility_aliases": [],
+      "deprecated": false,
+      "include_in_schema": true,
+      "logical_path": "/auth/validate",
+      "method": "GET",
+      "operation_id": "validate_token_legacy_api_v1_auth_validate_get",
+      "path": "/api/v1/auth/validate",
+      "replacement_path": null,
+      "summary": "Validate Token Legacy",
+      "tags": [
+        "auth"
+      ]
+    },
+    {
+      "canonical_path": "/api/v1/auth/validate",
+      "compatibility_aliases": [],
+      "deprecated": false,
+      "include_in_schema": true,
+      "logical_path": "/auth/validate",
+      "method": "POST",
+      "operation_id": "validate_token_api_v1_auth_validate_post",
+      "path": "/api/v1/auth/validate",
+      "replacement_path": null,
+      "summary": "Validate Token",
+      "tags": [
+        "auth"
+      ]
+    },
+    {
+      "canonical_path": "/api/v1/chat/contextual-chat",
+      "compatibility_aliases": [],
+      "deprecated": false,
+      "include_in_schema": true,
+      "logical_path": "/chat/contextual-chat",
+      "method": "POST",
+      "operation_id": "contextual_chat_api_v1_chat_contextual_chat_post",
+      "path": "/api/v1/chat/contextual-chat",
+      "replacement_path": null,
+      "summary": "Contextual Chat",
+      "tags": [
+        "chat"
+      ]
+    },
+    {
+      "canonical_path": "/api/v1/chat/conversations",
+      "compatibility_aliases": [],
+      "deprecated": false,
+      "include_in_schema": true,
+      "logical_path": "/chat/conversations",
+      "method": "GET",
+      "operation_id": "list_conversations_api_v1_chat_conversations_get",
+      "path": "/api/v1/chat/conversations",
+      "replacement_path": null,
+      "summary": "List Conversations",
+      "tags": [
+        "chat"
+      ]
+    },
+    {
+      "canonical_path": "/api/v1/chat/conversations",
+      "compatibility_aliases": [],
+      "deprecated": false,
+      "include_in_schema": true,
+      "logical_path": "/chat/conversations",
+      "method": "POST",
+      "operation_id": "create_conversation_api_v1_chat_conversations_post",
+      "path": "/api/v1/chat/conversations",
+      "replacement_path": null,
+      "summary": "Create Conversation",
+      "tags": [
+        "chat"
+      ]
+    },
+    {
+      "canonical_path": "/api/v1/chat/conversations/{conversation_id}",
+      "compatibility_aliases": [],
+      "deprecated": false,
+      "include_in_schema": true,
+      "logical_path": "/chat/conversations/{conversation_id}",
+      "method": "DELETE",
+      "operation_id": "delete_conversation_api_v1_chat_conversations__conversation_id__delete",
+      "path": "/api/v1/chat/conversations/{conversation_id}",
+      "replacement_path": null,
+      "summary": "Delete Conversation",
+      "tags": [
+        "chat"
+      ]
+    },
+    {
+      "canonical_path": "/api/v1/chat/conversations/{conversation_id}",
+      "compatibility_aliases": [],
+      "deprecated": false,
+      "include_in_schema": true,
+      "logical_path": "/chat/conversations/{conversation_id}",
+      "method": "GET",
+      "operation_id": "get_conversation_api_v1_chat_conversations__conversation_id__get",
+      "path": "/api/v1/chat/conversations/{conversation_id}",
+      "replacement_path": null,
+      "summary": "Get Conversation",
+      "tags": [
+        "chat"
+      ]
+    },
+    {
+      "canonical_path": "/api/v1/chat/conversations/{conversation_id}/import",
+      "compatibility_aliases": [],
+      "deprecated": false,
+      "include_in_schema": true,
+      "logical_path": "/chat/conversations/{conversation_id}/import",
+      "method": "POST",
+      "operation_id": "import_conversation_messages_api_v1_chat_conversations__conversation_id__import_post",
+      "path": "/api/v1/chat/conversations/{conversation_id}/import",
+      "replacement_path": null,
+      "summary": "Import Conversation Messages",
+      "tags": [
+        "chat"
+      ]
+    },
+    {
+      "canonical_path": "/api/v1/chat/conversations/{conversation_id}/messages",
+      "compatibility_aliases": [],
+      "deprecated": false,
+      "include_in_schema": true,
+      "logical_path": "/chat/conversations/{conversation_id}/messages",
+      "method": "POST",
+      "operation_id": "send_message_api_v1_chat_conversations__conversation_id__messages_post",
+      "path": "/api/v1/chat/conversations/{conversation_id}/messages",
+      "replacement_path": null,
+      "summary": "Send Message",
+      "tags": [
+        "chat"
+      ]
+    },
+    {
+      "canonical_path": "/api/v1/chat/conversations/{conversation_id}/title",
+      "compatibility_aliases": [],
+      "deprecated": false,
+      "include_in_schema": true,
+      "logical_path": "/chat/conversations/{conversation_id}/title",
+      "method": "PUT",
+      "operation_id": "update_conversation_title_api_v1_chat_conversations__conversation_id__title_put",
+      "path": "/api/v1/chat/conversations/{conversation_id}/title",
+      "replacement_path": null,
+      "summary": "Update Conversation Title",
+      "tags": [
+        "chat"
+      ]
+    },
+    {
+      "canonical_path": "/api/v1/chat/debug/context-assembly",
+      "compatibility_aliases": [],
+      "deprecated": false,
+      "include_in_schema": true,
+      "logical_path": "/chat/debug/context-assembly",
+      "method": "GET",
+      "operation_id": "debug_context_assembly_api_v1_chat_debug_context_assembly_get",
+      "path": "/api/v1/chat/debug/context-assembly",
+      "replacement_path": null,
+      "summary": "Debug Context Assembly",
+      "tags": [
+        "chat"
+      ]
+    },
+    {
+      "canonical_path": "/api/v1/chat/estimate-tokens",
+      "compatibility_aliases": [],
+      "deprecated": false,
+      "include_in_schema": true,
+      "logical_path": "/chat/estimate-tokens",
+      "method": "POST",
+      "operation_id": "estimate_tokens_api_v1_chat_estimate_tokens_post",
+      "path": "/api/v1/chat/estimate-tokens",
+      "replacement_path": null,
+      "summary": "Estimate Tokens",
+      "tags": [
+        "chat"
+      ]
+    },
+    {
+      "canonical_path": "/api/v1/chat/files/{file_id}",
+      "compatibility_aliases": [],
+      "deprecated": false,
+      "include_in_schema": true,
+      "logical_path": "/chat/files/{file_id}",
+      "method": "GET",
+      "operation_id": "download_file_api_v1_chat_files__file_id__get",
+      "path": "/api/v1/chat/files/{file_id}",
+      "replacement_path": null,
+      "summary": "Download File",
+      "tags": [
+        "chat"
+      ]
+    },
+    {
+      "canonical_path": "/api/v1/chat/stream",
+      "compatibility_aliases": [],
+      "deprecated": false,
+      "include_in_schema": true,
+      "logical_path": "/chat/stream",
+      "method": "POST",
+      "operation_id": "stream_chat_api_v1_chat_stream_post",
+      "path": "/api/v1/chat/stream",
+      "replacement_path": null,
+      "summary": "Stream Chat",
+      "tags": [
+        "chat"
+      ]
+    },
+    {
+      "canonical_path": "/api/v1/chat/upload-file",
+      "compatibility_aliases": [],
+      "deprecated": false,
+      "include_in_schema": true,
+      "logical_path": "/chat/upload-file",
+      "method": "POST",
+      "operation_id": "upload_file_api_v1_chat_upload_file_post",
+      "path": "/api/v1/chat/upload-file",
+      "replacement_path": null,
+      "summary": "Upload File",
+      "tags": [
+        "chat"
+      ]
+    },
+    {
+      "canonical_path": "/api/v1/debug/api/migration-metrics",
+      "compatibility_aliases": [],
+      "deprecated": false,
+      "include_in_schema": true,
+      "logical_path": "/debug/api/migration-metrics",
+      "method": "GET",
+      "operation_id": "get_api_migration_metrics_api_v1_debug_api_migration_metrics_get",
+      "path": "/api/v1/debug/api/migration-metrics",
+      "replacement_path": null,
+      "summary": "Get Api Migration Metrics",
+      "tags": [
+        "debug"
+      ]
+    },
+    {
+      "canonical_path": "/api/v1/debug/context/health/{user_id}",
+      "compatibility_aliases": [],
+      "deprecated": false,
+      "include_in_schema": true,
+      "logical_path": "/debug/context/health/{user_id}",
+      "method": "GET",
+      "operation_id": "get_context_health_api_v1_debug_context_health__user_id__get",
+      "path": "/api/v1/debug/context/health/{user_id}",
+      "replacement_path": null,
+      "summary": "Get Context Health",
+      "tags": [
+        "debug"
+      ]
+    },
+    {
+      "canonical_path": "/api/v1/debug/context/history",
+      "compatibility_aliases": [],
+      "deprecated": false,
+      "include_in_schema": true,
+      "logical_path": "/debug/context/history",
+      "method": "GET",
+      "operation_id": "get_context_history_api_v1_debug_context_history_get",
+      "path": "/api/v1/debug/context/history",
+      "replacement_path": null,
+      "summary": "Get Context History",
+      "tags": [
+        "debug"
+      ]
+    },
+    {
+      "canonical_path": "/api/v1/debug/context/replay/{request_id}",
+      "compatibility_aliases": [],
+      "deprecated": false,
+      "include_in_schema": true,
+      "logical_path": "/debug/context/replay/{request_id}",
+      "method": "GET",
+      "operation_id": "replay_context_api_v1_debug_context_replay__request_id__get",
+      "path": "/api/v1/debug/context/replay/{request_id}",
+      "replacement_path": null,
+      "summary": "Replay Context",
+      "tags": [
+        "debug"
+      ]
+    },
+    {
+      "canonical_path": "/api/v1/debug/context/snapshot/{request_id}",
+      "compatibility_aliases": [],
+      "deprecated": false,
+      "include_in_schema": true,
+      "logical_path": "/debug/context/snapshot/{request_id}",
+      "method": "GET",
+      "operation_id": "get_context_snapshot_api_v1_debug_context_snapshot__request_id__get",
+      "path": "/api/v1/debug/context/snapshot/{request_id}",
+      "replacement_path": null,
+      "summary": "Get Context Snapshot",
+      "tags": [
+        "debug"
+      ]
+    },
+    {
+      "canonical_path": "/api/v1/debug/events",
+      "compatibility_aliases": [],
+      "deprecated": false,
+      "include_in_schema": true,
+      "logical_path": "/debug/events",
+      "method": "GET",
+      "operation_id": "list_domain_events_api_v1_debug_events_get",
+      "path": "/api/v1/debug/events",
+      "replacement_path": null,
+      "summary": "List Domain Events",
+      "tags": [
+        "debug"
+      ]
+    },
+    {
+      "canonical_path": "/api/v1/debug/events/{event_id}",
+      "compatibility_aliases": [],
+      "deprecated": false,
+      "include_in_schema": true,
+      "logical_path": "/debug/events/{event_id}",
+      "method": "GET",
+      "operation_id": "get_domain_event_api_v1_debug_events__event_id__get",
+      "path": "/api/v1/debug/events/{event_id}",
+      "replacement_path": null,
+      "summary": "Get Domain Event",
+      "tags": [
+        "debug"
+      ]
+    },
+    {
+      "canonical_path": "/api/v1/debug/memory/health/{user_id}",
+      "compatibility_aliases": [],
+      "deprecated": false,
+      "include_in_schema": true,
+      "logical_path": "/debug/memory/health/{user_id}",
+      "method": "GET",
+      "operation_id": "get_memory_health_api_v1_debug_memory_health__user_id__get",
+      "path": "/api/v1/debug/memory/health/{user_id}",
+      "replacement_path": null,
+      "summary": "Get Memory Health",
+      "tags": [
+        "debug"
+      ]
+    },
+    {
+      "canonical_path": "/api/v1/debug/memory/promotions/search",
+      "compatibility_aliases": [],
+      "deprecated": false,
+      "include_in_schema": true,
+      "logical_path": "/debug/memory/promotions/search",
+      "method": "GET",
+      "operation_id": "search_memory_promotions_api_v1_debug_memory_promotions_search_get",
+      "path": "/api/v1/debug/memory/promotions/search",
+      "replacement_path": null,
+      "summary": "Search Memory Promotions",
+      "tags": [
+        "debug"
+      ]
+    },
+    {
+      "canonical_path": "/api/v1/debug/memory/promotions/stats",
+      "compatibility_aliases": [],
+      "deprecated": false,
+      "include_in_schema": true,
+      "logical_path": "/debug/memory/promotions/stats",
+      "method": "GET",
+      "operation_id": "get_memory_promotion_stats_api_v1_debug_memory_promotions_stats_get",
+      "path": "/api/v1/debug/memory/promotions/stats",
+      "replacement_path": null,
+      "summary": "Get Memory Promotion Stats",
+      "tags": [
+        "debug"
+      ]
+    },
+    {
+      "canonical_path": "/api/v1/debug/memory/user/{user_id}",
+      "compatibility_aliases": [],
+      "deprecated": false,
+      "include_in_schema": true,
+      "logical_path": "/debug/memory/user/{user_id}",
+      "method": "GET",
+      "operation_id": "get_user_memory_api_v1_debug_memory_user__user_id__get",
+      "path": "/api/v1/debug/memory/user/{user_id}",
+      "replacement_path": null,
+      "summary": "Get User Memory",
+      "tags": [
+        "debug"
+      ]
+    },
+    {
+      "canonical_path": "/api/v1/debug/model-usage",
+      "compatibility_aliases": [],
+      "deprecated": false,
+      "include_in_schema": true,
+      "logical_path": "/debug/model-usage",
+      "method": "GET",
+      "operation_id": "get_model_usage_api_v1_debug_model_usage_get",
+      "path": "/api/v1/debug/model-usage",
+      "replacement_path": null,
+      "summary": "Get Model Usage",
+      "tags": [
+        "debug"
+      ]
+    },
+    {
+      "canonical_path": "/api/v1/debug/retrieval-metrics/cache-hit-rate",
+      "compatibility_aliases": [],
+      "deprecated": false,
+      "include_in_schema": true,
+      "logical_path": "/debug/retrieval-metrics/cache-hit-rate",
+      "method": "GET",
+      "operation_id": "get_cache_hit_rate_api_v1_debug_retrieval_metrics_cache_hit_rate_get",
+      "path": "/api/v1/debug/retrieval-metrics/cache-hit-rate",
+      "replacement_path": null,
+      "summary": "Get Cache Hit Rate",
+      "tags": [
+        "observability",
+        "retrieval-metrics"
+      ]
+    },
+    {
+      "canonical_path": "/api/v1/debug/retrieval-metrics/embedding-dedup",
+      "compatibility_aliases": [],
+      "deprecated": false,
+      "include_in_schema": true,
+      "logical_path": "/debug/retrieval-metrics/embedding-dedup",
+      "method": "GET",
+      "operation_id": "get_embedding_dedup_api_v1_debug_retrieval_metrics_embedding_dedup_get",
+      "path": "/api/v1/debug/retrieval-metrics/embedding-dedup",
+      "replacement_path": null,
+      "summary": "Get Embedding Dedup",
+      "tags": [
+        "observability",
+        "retrieval-metrics"
+      ]
+    },
+    {
+      "canonical_path": "/api/v1/debug/retrieval-metrics/failures",
+      "compatibility_aliases": [],
+      "deprecated": false,
+      "include_in_schema": true,
+      "logical_path": "/debug/retrieval-metrics/failures",
+      "method": "GET",
+      "operation_id": "get_failure_summary_api_v1_debug_retrieval_metrics_failures_get",
+      "path": "/api/v1/debug/retrieval-metrics/failures",
+      "replacement_path": null,
+      "summary": "Get Failure Summary",
+      "tags": [
+        "observability",
+        "retrieval-metrics"
+      ]
+    },
+    {
+      "canonical_path": "/api/v1/debug/retrieval-metrics/report",
+      "compatibility_aliases": [],
+      "deprecated": false,
+      "include_in_schema": true,
+      "logical_path": "/debug/retrieval-metrics/report",
+      "method": "GET",
+      "operation_id": "get_full_report_api_v1_debug_retrieval_metrics_report_get",
+      "path": "/api/v1/debug/retrieval-metrics/report",
+      "replacement_path": null,
+      "summary": "Get Full Report",
+      "tags": [
+        "observability",
+        "retrieval-metrics"
+      ]
+    },
+    {
+      "canonical_path": "/api/v1/debug/retrieval-metrics/tier-latency",
+      "compatibility_aliases": [],
+      "deprecated": false,
+      "include_in_schema": true,
+      "logical_path": "/debug/retrieval-metrics/tier-latency",
+      "method": "GET",
+      "operation_id": "get_tier_latency_breakdown_api_v1_debug_retrieval_metrics_tier_latency_get",
+      "path": "/api/v1/debug/retrieval-metrics/tier-latency",
+      "replacement_path": null,
+      "summary": "Get Tier Latency Breakdown",
+      "tags": [
+        "observability",
+        "retrieval-metrics"
+      ]
+    },
+    {
+      "canonical_path": "/api/v1/debug/retrieval-metrics/token-accuracy",
+      "compatibility_aliases": [],
+      "deprecated": false,
+      "include_in_schema": true,
+      "logical_path": "/debug/retrieval-metrics/token-accuracy",
+      "method": "GET",
+      "operation_id": "get_token_budget_accuracy_api_v1_debug_retrieval_metrics_token_accuracy_get",
+      "path": "/api/v1/debug/retrieval-metrics/token-accuracy",
+      "replacement_path": null,
+      "summary": "Get Token Budget Accuracy",
+      "tags": [
+        "observability",
+        "retrieval-metrics"
+      ]
+    },
+    {
+      "canonical_path": "/api/v1/debug/retrieval/history",
+      "compatibility_aliases": [],
+      "deprecated": false,
+      "include_in_schema": true,
+      "logical_path": "/debug/retrieval/history",
+      "method": "GET",
+      "operation_id": "get_retrieval_history_api_v1_debug_retrieval_history_get",
+      "path": "/api/v1/debug/retrieval/history",
+      "replacement_path": null,
+      "summary": "Get Retrieval History",
+      "tags": [
+        "debug"
+      ]
+    },
+    {
+      "canonical_path": "/api/v1/debug/retrieval/quality/{user_id}",
+      "compatibility_aliases": [],
+      "deprecated": false,
+      "include_in_schema": true,
+      "logical_path": "/debug/retrieval/quality/{user_id}",
+      "method": "GET",
+      "operation_id": "get_retrieval_quality_api_v1_debug_retrieval_quality__user_id__get",
+      "path": "/api/v1/debug/retrieval/quality/{user_id}",
+      "replacement_path": null,
+      "summary": "Get Retrieval Quality",
+      "tags": [
+        "debug"
+      ]
+    },
+    {
+      "canonical_path": "/api/v1/debug/retrieval/stats",
+      "compatibility_aliases": [],
+      "deprecated": false,
+      "include_in_schema": true,
+      "logical_path": "/debug/retrieval/stats",
+      "method": "GET",
+      "operation_id": "get_retrieval_stats_api_v1_debug_retrieval_stats_get",
+      "path": "/api/v1/debug/retrieval/stats",
+      "replacement_path": null,
+      "summary": "Get Retrieval Stats",
+      "tags": [
+        "debug"
+      ]
+    },
+    {
+      "canonical_path": "/api/v1/debug/retrieval/trace/{request_id}",
+      "compatibility_aliases": [],
+      "deprecated": false,
+      "include_in_schema": true,
+      "logical_path": "/debug/retrieval/trace/{request_id}",
+      "method": "GET",
+      "operation_id": "get_retrieval_trace_api_v1_debug_retrieval_trace__request_id__get",
+      "path": "/api/v1/debug/retrieval/trace/{request_id}",
+      "replacement_path": null,
+      "summary": "Get Retrieval Trace",
+      "tags": [
+        "debug"
+      ]
+    },
+    {
+      "canonical_path": "/api/v1/debug/suggest",
+      "compatibility_aliases": [],
+      "deprecated": false,
+      "include_in_schema": true,
+      "logical_path": "/debug/suggest",
+      "method": "POST",
+      "operation_id": "get_debug_suggestion_api_v1_debug_suggest_post",
+      "path": "/api/v1/debug/suggest",
+      "replacement_path": null,
+      "summary": "Get Debug Suggestion",
+      "tags": [
+        "debug-suggestions"
+      ]
+    },
+    {
+      "canonical_path": "/api/v1/debug/system/observability/clear-cache",
+      "compatibility_aliases": [],
+      "deprecated": false,
+      "include_in_schema": true,
+      "logical_path": "/debug/system/observability/clear-cache",
+      "method": "POST",
+      "operation_id": "clear_observability_cache_api_v1_debug_system_observability_clear_cache_post",
+      "path": "/api/v1/debug/system/observability/clear-cache",
+      "replacement_path": null,
+      "summary": "Clear Observability Cache",
+      "tags": [
+        "debug"
+      ]
+    },
+    {
+      "canonical_path": "/api/v1/debug/system/observability/health",
+      "compatibility_aliases": [],
+      "deprecated": false,
+      "include_in_schema": true,
+      "logical_path": "/debug/system/observability/health",
+      "method": "GET",
+      "operation_id": "get_system_health_api_v1_debug_system_observability_health_get",
+      "path": "/api/v1/debug/system/observability/health",
+      "replacement_path": null,
+      "summary": "Get System Health",
+      "tags": [
+        "debug"
+      ]
+    },
+    {
+      "canonical_path": "/api/v1/debug/system/observability/reset-counters",
+      "compatibility_aliases": [],
+      "deprecated": false,
+      "include_in_schema": true,
+      "logical_path": "/debug/system/observability/reset-counters",
+      "method": "POST",
+      "operation_id": "reset_observability_counters_api_v1_debug_system_observability_reset_counters_post",
+      "path": "/api/v1/debug/system/observability/reset-counters",
+      "replacement_path": null,
+      "summary": "Reset Observability Counters",
+      "tags": [
+        "debug"
+      ]
+    },
+    {
+      "canonical_path": "/api/v1/debug/system/observability/summary",
+      "compatibility_aliases": [],
+      "deprecated": false,
+      "include_in_schema": true,
+      "logical_path": "/debug/system/observability/summary",
+      "method": "GET",
+      "operation_id": "get_observability_summary_api_v1_debug_system_observability_summary_get",
+      "path": "/api/v1/debug/system/observability/summary",
+      "replacement_path": null,
+      "summary": "Get Observability Summary",
+      "tags": [
+        "debug"
+      ]
+    },
+    {
+      "canonical_path": "/api/v1/debug/tool-trace/conversation/{conversation_id}",
+      "compatibility_aliases": [],
+      "deprecated": false,
+      "include_in_schema": true,
+      "logical_path": "/debug/tool-trace/conversation/{conversation_id}",
+      "method": "GET",
+      "operation_id": "get_conversation_tool_traces_api_v1_debug_tool_trace_conversation__conversation_id__get",
+      "path": "/api/v1/debug/tool-trace/conversation/{conversation_id}",
+      "replacement_path": null,
+      "summary": "Get Conversation Tool Traces",
+      "tags": [
+        "debug"
+      ]
+    },
+    {
+      "canonical_path": "/api/v1/debug/tool-trace/stats",
+      "compatibility_aliases": [],
+      "deprecated": false,
+      "include_in_schema": true,
+      "logical_path": "/debug/tool-trace/stats",
+      "method": "GET",
+      "operation_id": "get_tool_trace_stats_api_v1_debug_tool_trace_stats_get",
+      "path": "/api/v1/debug/tool-trace/stats",
+      "replacement_path": null,
+      "summary": "Get Tool Trace Stats",
+      "tags": [
+        "debug"
+      ]
+    },
+    {
+      "canonical_path": "/api/v1/debug/tool-trace/{request_id}",
+      "compatibility_aliases": [],
+      "deprecated": false,
+      "include_in_schema": true,
+      "logical_path": "/debug/tool-trace/{request_id}",
+      "method": "GET",
+      "operation_id": "get_tool_trace_api_v1_debug_tool_trace__request_id__get",
+      "path": "/api/v1/debug/tool-trace/{request_id}",
+      "replacement_path": null,
+      "summary": "Get Tool Trace",
+      "tags": [
+        "debug"
+      ]
+    },
+    {
+      "canonical_path": "/api/v1/debug/write/decisions/search",
+      "compatibility_aliases": [],
+      "deprecated": false,
+      "include_in_schema": true,
+      "logical_path": "/debug/write/decisions/search",
+      "method": "GET",
+      "operation_id": "search_write_decisions_api_v1_debug_write_decisions_search_get",
+      "path": "/api/v1/debug/write/decisions/search",
+      "replacement_path": null,
+      "summary": "Search Write Decisions",
+      "tags": [
+        "debug"
+      ]
+    },
+    {
+      "canonical_path": "/api/v1/debug/write/decisions/stats",
+      "compatibility_aliases": [],
+      "deprecated": false,
+      "include_in_schema": true,
+      "logical_path": "/debug/write/decisions/stats",
+      "method": "GET",
+      "operation_id": "get_write_decision_stats_api_v1_debug_write_decisions_stats_get",
+      "path": "/api/v1/debug/write/decisions/stats",
+      "replacement_path": null,
+      "summary": "Get Write Decision Stats",
+      "tags": [
+        "debug"
+      ]
+    },
+    {
+      "canonical_path": "/api/v1/debug/write/decisions/{conversation_id}",
+      "compatibility_aliases": [],
+      "deprecated": false,
+      "include_in_schema": true,
+      "logical_path": "/debug/write/decisions/{conversation_id}",
+      "method": "GET",
+      "operation_id": "get_write_decisions_api_v1_debug_write_decisions__conversation_id__get",
+      "path": "/api/v1/debug/write/decisions/{conversation_id}",
+      "replacement_path": null,
+      "summary": "Get Write Decisions",
+      "tags": [
+        "debug"
+      ]
+    },
+    {
+      "canonical_path": "/api/v1/feature-flags/{flag_key}",
+      "compatibility_aliases": [],
+      "deprecated": false,
+      "include_in_schema": true,
+      "logical_path": "/feature-flags/{flag_key}",
+      "method": "GET",
+      "operation_id": "get_feature_flag_api_v1_feature_flags__flag_key__get",
+      "path": "/api/v1/feature-flags/{flag_key}",
+      "replacement_path": null,
+      "summary": "Get Feature Flag",
+      "tags": [
+        "feature-flags"
+      ]
+    },
+    {
+      "canonical_path": "/api/v1/feature-flags/{flag_key}",
+      "compatibility_aliases": [],
+      "deprecated": false,
+      "include_in_schema": true,
+      "logical_path": "/feature-flags/{flag_key}",
+      "method": "PUT",
+      "operation_id": "upsert_feature_flag_api_v1_feature_flags__flag_key__put",
+      "path": "/api/v1/feature-flags/{flag_key}",
+      "replacement_path": null,
+      "summary": "Upsert Feature Flag",
+      "tags": [
+        "feature-flags"
+      ]
+    },
+    {
+      "canonical_path": "/api/v1/health",
+      "compatibility_aliases": [],
+      "deprecated": false,
+      "include_in_schema": true,
+      "logical_path": "/health",
+      "method": "GET",
+      "operation_id": "health_check_api_v1_health_get",
+      "path": "/api/v1/health",
+      "replacement_path": null,
+      "summary": "Health Check",
+      "tags": [
+        "health"
+      ]
+    },
+    {
+      "canonical_path": "/api/v1/health/all",
+      "compatibility_aliases": [],
+      "deprecated": false,
+      "include_in_schema": true,
+      "logical_path": "/health/all",
+      "method": "GET",
+      "operation_id": "health_all_api_v1_health_all_get",
+      "path": "/api/v1/health/all",
+      "replacement_path": null,
+      "summary": "Health All",
+      "tags": [
+        "health"
+      ]
+    },
+    {
+      "canonical_path": "/api/v1/health/chroma/status",
+      "compatibility_aliases": [],
+      "deprecated": false,
+      "include_in_schema": true,
+      "logical_path": "/health/chroma/status",
+      "method": "GET",
+      "operation_id": "health_chroma_api_v1_health_chroma_status_get",
+      "path": "/api/v1/health/chroma/status",
+      "replacement_path": null,
+      "summary": "Health Chroma",
+      "tags": [
+        "health"
+      ]
+    },
+    {
+      "canonical_path": "/api/v1/health/cost-tracking",
+      "compatibility_aliases": [],
+      "deprecated": false,
+      "include_in_schema": true,
+      "logical_path": "/health/cost-tracking",
+      "method": "GET",
+      "operation_id": "health_cost_tracking_api_v1_health_cost_tracking_get",
+      "path": "/api/v1/health/cost-tracking",
+      "replacement_path": null,
+      "summary": "Health Cost Tracking",
+      "tags": [
+        "health"
+      ]
+    },
+    {
+      "canonical_path": "/api/v1/health/latency-history/{service}",
+      "compatibility_aliases": [],
+      "deprecated": false,
+      "include_in_schema": true,
+      "logical_path": "/health/latency-history/{service}",
+      "method": "GET",
+      "operation_id": "health_latency_history_api_v1_health_latency_history__service__get",
+      "path": "/api/v1/health/latency-history/{service}",
+      "replacement_path": null,
+      "summary": "Health Latency History",
+      "tags": [
+        "health"
+      ]
+    },
+    {
+      "canonical_path": "/api/v1/health/live",
+      "compatibility_aliases": [],
+      "deprecated": false,
+      "include_in_schema": true,
+      "logical_path": "/health/live",
+      "method": "GET",
+      "operation_id": "liveness_check_api_v1_health_live_get",
+      "path": "/api/v1/health/live",
+      "replacement_path": null,
+      "summary": "Liveness Check",
+      "tags": [
+        "health"
+      ]
+    },
+    {
+      "canonical_path": "/api/v1/health/mcp/status",
+      "compatibility_aliases": [],
+      "deprecated": false,
+      "include_in_schema": true,
+      "logical_path": "/health/mcp/status",
+      "method": "GET",
+      "operation_id": "health_mcp_api_v1_health_mcp_status_get",
+      "path": "/api/v1/health/mcp/status",
+      "replacement_path": null,
+      "summary": "Health Mcp",
+      "tags": [
+        "health"
+      ]
+    },
+    {
+      "canonical_path": "/api/v1/health/raptor/status",
+      "compatibility_aliases": [],
+      "deprecated": false,
+      "include_in_schema": true,
+      "logical_path": "/health/raptor/status",
+      "method": "GET",
+      "operation_id": "health_raptor_api_v1_health_raptor_status_get",
+      "path": "/api/v1/health/raptor/status",
+      "replacement_path": null,
+      "summary": "Health Raptor",
+      "tags": [
+        "health"
+      ]
+    },
+    {
+      "canonical_path": "/api/v1/health/ready",
+      "compatibility_aliases": [],
+      "deprecated": false,
+      "include_in_schema": true,
+      "logical_path": "/health/ready",
+      "method": "GET",
+      "operation_id": "readiness_check_api_v1_health_ready_get",
+      "path": "/api/v1/health/ready",
+      "replacement_path": null,
+      "summary": "Readiness Check",
+      "tags": [
+        "health"
+      ]
+    },
+    {
+      "canonical_path": "/api/v1/health/retest/{service}",
+      "compatibility_aliases": [],
+      "deprecated": false,
+      "include_in_schema": true,
+      "logical_path": "/health/retest/{service}",
+      "method": "POST",
+      "operation_id": "health_retest_api_v1_health_retest__service__post",
+      "path": "/api/v1/health/retest/{service}",
+      "replacement_path": null,
+      "summary": "Health Retest",
+      "tags": [
+        "health"
+      ]
+    },
+    {
+      "canonical_path": "/api/v1/health/routing",
+      "compatibility_aliases": [],
+      "deprecated": false,
+      "include_in_schema": true,
+      "logical_path": "/health/routing",
+      "method": "GET",
+      "operation_id": "health_routing_api_v1_health_routing_get",
+      "path": "/api/v1/health/routing",
+      "replacement_path": null,
+      "summary": "Health Routing",
+      "tags": [
+        "health"
+      ]
+    },
+    {
+      "canonical_path": "/api/v1/health/sandbox/status",
+      "compatibility_aliases": [],
+      "deprecated": false,
+      "include_in_schema": true,
+      "logical_path": "/health/sandbox/status",
+      "method": "GET",
+      "operation_id": "health_sandbox_api_v1_health_sandbox_status_get",
+      "path": "/api/v1/health/sandbox/status",
+      "replacement_path": null,
+      "summary": "Health Sandbox",
+      "tags": [
+        "health"
+      ]
+    },
+    {
+      "canonical_path": "/api/v1/health/service-errors/{service}",
+      "compatibility_aliases": [],
+      "deprecated": false,
+      "include_in_schema": true,
+      "logical_path": "/health/service-errors/{service}",
+      "method": "GET",
+      "operation_id": "health_service_errors_api_v1_health_service_errors__service__get",
+      "path": "/api/v1/health/service-errors/{service}",
+      "replacement_path": null,
+      "summary": "Health Service Errors",
+      "tags": [
+        "health"
+      ]
+    },
+    {
+      "canonical_path": "/api/v1/health/stream",
+      "compatibility_aliases": [],
+      "deprecated": false,
+      "include_in_schema": true,
+      "logical_path": "/health/stream",
+      "method": "GET",
+      "operation_id": "health_stream_api_v1_health_stream_get",
+      "path": "/api/v1/health/stream",
+      "replacement_path": null,
+      "summary": "Health Stream",
+      "tags": [
+        "health"
+      ]
+    },
+    {
+      "canonical_path": "/api/v1/health/streaming",
+      "compatibility_aliases": [],
+      "deprecated": false,
+      "include_in_schema": true,
+      "logical_path": "/health/streaming",
+      "method": "GET",
+      "operation_id": "health_streaming_api_v1_health_streaming_get",
+      "path": "/api/v1/health/streaming",
+      "replacement_path": null,
+      "summary": "Health Streaming",
+      "tags": [
+        "health"
+      ]
+    },
+    {
+      "canonical_path": "/api/v1/health/{component}",
+      "compatibility_aliases": [],
+      "deprecated": false,
+      "include_in_schema": true,
+      "logical_path": "/health/{component}",
+      "method": "GET",
+      "operation_id": "health_component_api_v1_health__component__get",
+      "path": "/api/v1/health/{component}",
+      "replacement_path": null,
+      "summary": "Health Component",
+      "tags": [
+        "health"
+      ]
+    },
+    {
+      "canonical_path": "/api/v1/notifications/",
+      "compatibility_aliases": [],
+      "deprecated": false,
+      "include_in_schema": true,
+      "logical_path": "/notifications/",
+      "method": "GET",
+      "operation_id": "list_notifications_api_v1_notifications__get",
+      "path": "/api/v1/notifications/",
+      "replacement_path": null,
+      "summary": "List Notifications",
+      "tags": [
+        "notifications"
+      ]
+    },
+    {
+      "canonical_path": "/api/v1/notifications/",
+      "compatibility_aliases": [],
+      "deprecated": false,
+      "include_in_schema": true,
+      "logical_path": "/notifications/",
+      "method": "POST",
+      "operation_id": "create_notification_api_v1_notifications__post",
+      "path": "/api/v1/notifications/",
+      "replacement_path": null,
+      "summary": "Create Notification",
+      "tags": [
+        "notifications"
+      ]
+    },
+    {
+      "canonical_path": "/api/v1/notifications/{notification_id}/read",
+      "compatibility_aliases": [],
+      "deprecated": false,
+      "include_in_schema": true,
+      "logical_path": "/notifications/{notification_id}/read",
+      "method": "PATCH",
+      "operation_id": "mark_notification_read_api_v1_notifications__notification_id__read_patch",
+      "path": "/api/v1/notifications/{notification_id}/read",
+      "replacement_path": null,
+      "summary": "Mark Notification Read",
+      "tags": [
+        "notifications"
+      ]
+    },
+    {
+      "canonical_path": "/api/v1/ops/aggregated",
+      "compatibility_aliases": [],
+      "deprecated": false,
+      "include_in_schema": true,
+      "logical_path": "/ops/aggregated",
+      "method": "GET",
+      "operation_id": "get_aggregated_metrics_api_v1_ops_aggregated_get",
+      "path": "/api/v1/ops/aggregated",
+      "replacement_path": null,
+      "summary": "Get Aggregated Metrics",
+      "tags": [
+        "operations"
+      ]
+    },
+    {
+      "canonical_path": "/api/v1/ops/audit/log",
+      "compatibility_aliases": [],
+      "deprecated": false,
+      "include_in_schema": true,
+      "logical_path": "/ops/audit/log",
+      "method": "GET",
+      "operation_id": "get_audit_log_api_v1_ops_audit_log_get",
+      "path": "/api/v1/ops/audit/log",
+      "replacement_path": null,
+      "summary": "Get Audit Log",
+      "tags": [
+        "operations"
+      ]
+    },
+    {
+      "canonical_path": "/api/v1/ops/circuit-breakers",
+      "compatibility_aliases": [],
+      "deprecated": false,
+      "include_in_schema": true,
+      "logical_path": "/ops/circuit-breakers",
+      "method": "GET",
+      "operation_id": "circuit_breakers_status_api_v1_ops_circuit_breakers_get",
+      "path": "/api/v1/ops/circuit-breakers",
+      "replacement_path": null,
+      "summary": "Circuit Breakers Status",
+      "tags": [
+        "operations"
+      ]
+    },
+    {
+      "canonical_path": "/api/v1/ops/circuit-breakers/{provider_name}/reset",
+      "compatibility_aliases": [],
+      "deprecated": false,
+      "include_in_schema": true,
+      "logical_path": "/ops/circuit-breakers/{provider_name}/reset",
+      "method": "POST",
+      "operation_id": "reset_circuit_breaker_api_v1_ops_circuit_breakers__provider_name__reset_post",
+      "path": "/api/v1/ops/circuit-breakers/{provider_name}/reset",
+      "replacement_path": null,
+      "summary": "Reset Circuit Breaker",
+      "tags": [
+        "operations"
+      ]
+    },
+    {
+      "canonical_path": "/api/v1/ops/gcs/colab/register",
+      "compatibility_aliases": [],
+      "deprecated": false,
+      "include_in_schema": true,
+      "logical_path": "/ops/gcs/colab/register",
+      "method": "POST",
+      "operation_id": "register_colab_backend_api_v1_ops_gcs_colab_register_post",
+      "path": "/api/v1/ops/gcs/colab/register",
+      "replacement_path": null,
+      "summary": "Register Colab Backend",
+      "tags": [
+        "operations"
+      ]
+    },
+    {
+      "canonical_path": "/api/v1/ops/gcs/colab/status",
+      "compatibility_aliases": [],
+      "deprecated": false,
+      "include_in_schema": true,
+      "logical_path": "/ops/gcs/colab/status",
+      "method": "GET",
+      "operation_id": "gcs_colab_status_api_v1_ops_gcs_colab_status_get",
+      "path": "/api/v1/ops/gcs/colab/status",
+      "replacement_path": null,
+      "summary": "Gcs Colab Status",
+      "tags": [
+        "operations"
+      ]
+    },
+    {
+      "canonical_path": "/api/v1/ops/health/summary",
+      "compatibility_aliases": [],
+      "deprecated": false,
+      "include_in_schema": true,
+      "logical_path": "/ops/health/summary",
+      "method": "GET",
+      "operation_id": "ops_health_summary_api_v1_ops_health_summary_get",
+      "path": "/api/v1/ops/health/summary",
+      "replacement_path": null,
+      "summary": "Ops Health Summary",
+      "tags": [
+        "operations"
+      ]
+    },
+    {
+      "canonical_path": "/api/v1/ops/health/trends",
+      "compatibility_aliases": [],
+      "deprecated": false,
+      "include_in_schema": true,
+      "logical_path": "/ops/health/trends",
+      "method": "GET",
+      "operation_id": "get_health_trends_api_v1_ops_health_trends_get",
+      "path": "/api/v1/ops/health/trends",
+      "replacement_path": null,
+      "summary": "Get Health Trends",
+      "tags": [
+        "operations"
+      ]
+    },
+    {
+      "canonical_path": "/api/v1/ops/metrics/history",
+      "compatibility_aliases": [],
+      "deprecated": false,
+      "include_in_schema": true,
+      "logical_path": "/ops/metrics/history",
+      "method": "GET",
+      "operation_id": "metrics_history_api_v1_ops_metrics_history_get",
+      "path": "/api/v1/ops/metrics/history",
+      "replacement_path": null,
+      "summary": "Metrics History",
+      "tags": [
+        "operations"
+      ]
+    },
+    {
+      "canonical_path": "/api/v1/ops/performance/snapshot",
+      "compatibility_aliases": [],
+      "deprecated": false,
+      "include_in_schema": true,
+      "logical_path": "/ops/performance/snapshot",
+      "method": "GET",
+      "operation_id": "performance_snapshot_api_v1_ops_performance_snapshot_get",
+      "path": "/api/v1/ops/performance/snapshot",
+      "replacement_path": null,
+      "summary": "Performance Snapshot",
+      "tags": [
+        "operations"
+      ]
+    },
+    {
+      "canonical_path": "/api/v1/ops/providers/status",
+      "compatibility_aliases": [],
+      "deprecated": false,
+      "include_in_schema": true,
+      "logical_path": "/ops/providers/status",
+      "method": "GET",
+      "operation_id": "ops_providers_status_api_v1_ops_providers_status_get",
+      "path": "/api/v1/ops/providers/status",
+      "replacement_path": null,
+      "summary": "Ops Providers Status",
+      "tags": [
+        "operations"
+      ]
+    },
+    {
+      "canonical_path": "/api/v1/ops/queues/snapshot",
+      "compatibility_aliases": [],
+      "deprecated": false,
+      "include_in_schema": true,
+      "logical_path": "/ops/queues/snapshot",
+      "method": "GET",
+      "operation_id": "queues_snapshot_api_v1_ops_queues_snapshot_get",
+      "path": "/api/v1/ops/queues/snapshot",
+      "replacement_path": null,
+      "summary": "Queues Snapshot",
+      "tags": [
+        "operations"
+      ]
+    },
+    {
+      "canonical_path": "/api/v1/ops/recommendations",
+      "compatibility_aliases": [],
+      "deprecated": false,
+      "include_in_schema": true,
+      "logical_path": "/ops/recommendations",
+      "method": "GET",
+      "operation_id": "get_system_recommendations_api_v1_ops_recommendations_get",
+      "path": "/api/v1/ops/recommendations",
+      "replacement_path": null,
+      "summary": "Get System Recommendations",
+      "tags": [
+        "operations"
+      ]
+    },
+    {
+      "canonical_path": "/api/v1/ops/rovo-dev/health",
+      "compatibility_aliases": [],
+      "deprecated": false,
+      "include_in_schema": true,
+      "logical_path": "/ops/rovo-dev/health",
+      "method": "POST",
+      "operation_id": "rovo_dev_health_probe_api_v1_ops_rovo_dev_health_post",
+      "path": "/api/v1/ops/rovo-dev/health",
+      "replacement_path": null,
+      "summary": "Rovo Dev Health Probe",
+      "tags": [
+        "operations"
+      ]
+    },
+    {
+      "canonical_path": "/api/v1/ops/rovo-dev/status",
+      "compatibility_aliases": [],
+      "deprecated": false,
+      "include_in_schema": true,
+      "logical_path": "/ops/rovo-dev/status",
+      "method": "GET",
+      "operation_id": "rovo_dev_status_api_v1_ops_rovo_dev_status_get",
+      "path": "/api/v1/ops/rovo-dev/status",
+      "replacement_path": null,
+      "summary": "Rovo Dev Status",
+      "tags": [
+        "operations"
+      ]
+    },
+    {
+      "canonical_path": "/api/v1/ops/security/status",
+      "compatibility_aliases": [],
+      "deprecated": false,
+      "include_in_schema": true,
+      "logical_path": "/ops/security/status",
+      "method": "GET",
+      "operation_id": "get_security_status_api_v1_ops_security_status_get",
+      "path": "/api/v1/ops/security/status",
+      "replacement_path": null,
+      "summary": "Get Security Status",
+      "tags": [
+        "operations"
+      ]
+    },
+    {
+      "canonical_path": "/api/v1/ops/sentry-webhook",
+      "compatibility_aliases": [],
+      "deprecated": false,
+      "include_in_schema": true,
+      "logical_path": "/ops/sentry-webhook",
+      "method": "POST",
+      "operation_id": "sentry_webhook_api_v1_ops_sentry_webhook_post",
+      "path": "/api/v1/ops/sentry-webhook",
+      "replacement_path": null,
+      "summary": "Sentry Webhook",
+      "tags": [
+        "operations"
+      ]
+    },
+    {
+      "canonical_path": "/api/v1/ops/streaming/analysis",
+      "compatibility_aliases": [],
+      "deprecated": false,
+      "include_in_schema": true,
+      "logical_path": "/ops/streaming/analysis",
+      "method": "GET",
+      "operation_id": "get_streaming_analysis_api_v1_ops_streaming_analysis_get",
+      "path": "/api/v1/ops/streaming/analysis",
+      "replacement_path": null,
+      "summary": "Get Streaming Analysis",
+      "tags": [
+        "operations"
+      ]
+    },
+    {
+      "canonical_path": "/api/v1/parse/",
+      "compatibility_aliases": [],
+      "deprecated": false,
+      "include_in_schema": true,
+      "logical_path": "/parse/",
+      "method": "POST",
+      "operation_id": "parse_orchestration_api_v1_parse__post",
+      "path": "/api/v1/parse/",
+      "replacement_path": null,
+      "summary": "Parse Orchestration",
+      "tags": [
+        "parse"
+      ]
+    },
+    {
+      "canonical_path": "/api/v1/providers/models",
+      "compatibility_aliases": [],
+      "deprecated": false,
+      "include_in_schema": true,
+      "logical_path": "/providers/models",
+      "method": "GET",
+      "operation_id": "get_provider_models_api_v1_providers_models_get",
+      "path": "/api/v1/providers/models",
+      "replacement_path": null,
+      "summary": "Get Provider Models",
+      "tags": [
+        "providers"
+      ]
+    },
+    {
+      "canonical_path": "/api/v1/raptor/demo/{value}",
+      "compatibility_aliases": [],
+      "deprecated": false,
+      "include_in_schema": true,
+      "logical_path": "/raptor/demo/{value}",
+      "method": "GET",
+      "operation_id": "raptor_demo_api_v1_raptor_demo__value__get",
+      "path": "/api/v1/raptor/demo/{value}",
+      "replacement_path": null,
+      "summary": "Raptor Demo",
+      "tags": [
+        "raptor"
+      ]
+    },
+    {
+      "canonical_path": "/api/v1/raptor/logs",
+      "compatibility_aliases": [],
+      "deprecated": false,
+      "include_in_schema": true,
+      "logical_path": "/raptor/logs",
+      "method": "POST",
+      "operation_id": "raptor_logs_api_v1_raptor_logs_post",
+      "path": "/api/v1/raptor/logs",
+      "replacement_path": null,
+      "summary": "Raptor Logs",
+      "tags": [
+        "raptor"
+      ]
+    },
+    {
+      "canonical_path": "/api/v1/raptor/start",
+      "compatibility_aliases": [],
+      "deprecated": false,
+      "include_in_schema": true,
+      "logical_path": "/raptor/start",
+      "method": "POST",
+      "operation_id": "raptor_start_api_v1_raptor_start_post",
+      "path": "/api/v1/raptor/start",
+      "replacement_path": null,
+      "summary": "Raptor Start",
+      "tags": [
+        "raptor"
+      ]
+    },
+    {
+      "canonical_path": "/api/v1/raptor/status",
+      "compatibility_aliases": [],
+      "deprecated": false,
+      "include_in_schema": true,
+      "logical_path": "/raptor/status",
+      "method": "GET",
+      "operation_id": "raptor_status_api_v1_raptor_status_get",
+      "path": "/api/v1/raptor/status",
+      "replacement_path": null,
+      "summary": "Raptor Status",
+      "tags": [
+        "raptor"
+      ]
+    },
+    {
+      "canonical_path": "/api/v1/raptor/stop",
+      "compatibility_aliases": [],
+      "deprecated": false,
+      "include_in_schema": true,
+      "logical_path": "/raptor/stop",
+      "method": "POST",
+      "operation_id": "raptor_stop_api_v1_raptor_stop_post",
+      "path": "/api/v1/raptor/stop",
+      "replacement_path": null,
+      "summary": "Raptor Stop",
+      "tags": [
+        "raptor"
+      ]
+    },
+    {
+      "canonical_path": "/api/v1/routing/audit",
+      "compatibility_aliases": [],
+      "deprecated": false,
+      "include_in_schema": true,
+      "logical_path": "/routing/audit",
+      "method": "GET",
+      "operation_id": "get_routing_audit_api_v1_routing_audit_get",
+      "path": "/api/v1/routing/audit",
+      "replacement_path": null,
+      "summary": "Get Routing Audit",
+      "tags": [
+        "routing-analytics"
+      ]
+    },
+    {
+      "canonical_path": "/api/v1/routing/costs",
+      "compatibility_aliases": [],
+      "deprecated": false,
+      "include_in_schema": true,
+      "logical_path": "/routing/costs",
+      "method": "GET",
+      "operation_id": "get_cost_tracking_api_v1_routing_costs_get",
+      "path": "/api/v1/routing/costs",
+      "replacement_path": null,
+      "summary": "Get Cost Tracking",
+      "tags": [
+        "routing-analytics"
+      ]
+    },
+    {
+      "canonical_path": "/api/v1/routing/departments",
+      "compatibility_aliases": [],
+      "deprecated": false,
+      "include_in_schema": true,
+      "logical_path": "/routing/departments",
+      "method": "GET",
+      "operation_id": "list_departments_api_v1_routing_departments_get",
+      "path": "/api/v1/routing/departments",
+      "replacement_path": null,
+      "summary": "List Departments",
+      "tags": [
+        "routing"
+      ]
+    },
+    {
+      "canonical_path": "/api/v1/routing/departments/{department_id}",
+      "compatibility_aliases": [],
+      "deprecated": false,
+      "include_in_schema": true,
+      "logical_path": "/routing/departments/{department_id}",
+      "method": "GET",
+      "operation_id": "get_department_api_v1_routing_departments__department_id__get",
+      "path": "/api/v1/routing/departments/{department_id}",
+      "replacement_path": null,
+      "summary": "Get Department",
+      "tags": [
+        "routing"
+      ]
+    },
+    {
+      "canonical_path": "/api/v1/routing/explain/{routing_id}",
+      "compatibility_aliases": [],
+      "deprecated": false,
+      "include_in_schema": true,
+      "logical_path": "/routing/explain/{routing_id}",
+      "method": "GET",
+      "operation_id": "explain_routing_decision_api_v1_routing_explain__routing_id__get",
+      "path": "/api/v1/routing/explain/{routing_id}",
+      "replacement_path": null,
+      "summary": "Explain Routing Decision",
+      "tags": [
+        "routing"
+      ]
+    },
+    {
+      "canonical_path": "/api/v1/routing/health",
+      "compatibility_aliases": [],
+      "deprecated": false,
+      "include_in_schema": true,
+      "logical_path": "/routing/health",
+      "method": "GET",
+      "operation_id": "get_provider_health_api_v1_routing_health_get",
+      "path": "/api/v1/routing/health",
+      "replacement_path": null,
+      "summary": "Get Provider Health",
+      "tags": [
+        "routing-analytics"
+      ]
+    },
+    {
+      "canonical_path": "/api/v1/routing/health/{provider_id}",
+      "compatibility_aliases": [],
+      "deprecated": false,
+      "include_in_schema": true,
+      "logical_path": "/routing/health/{provider_id}",
+      "method": "GET",
+      "operation_id": "get_provider_health_detail_api_v1_routing_health__provider_id__get",
+      "path": "/api/v1/routing/health/{provider_id}",
+      "replacement_path": null,
+      "summary": "Get Provider Health Detail",
+      "tags": [
+        "routing-analytics"
+      ]
+    },
+    {
+      "canonical_path": "/api/v1/routing/observability",
+      "compatibility_aliases": [],
+      "deprecated": false,
+      "include_in_schema": true,
+      "logical_path": "/routing/observability",
+      "method": "GET",
+      "operation_id": "get_routing_observability_api_v1_routing_observability_get",
+      "path": "/api/v1/routing/observability",
+      "replacement_path": null,
+      "summary": "Get Routing Observability",
+      "tags": [
+        "routing-analytics"
+      ]
+    },
+    {
+      "canonical_path": "/api/v1/routing/providers",
+      "compatibility_aliases": [],
+      "deprecated": true,
+      "include_in_schema": true,
+      "logical_path": "/routing/providers",
+      "method": "GET",
+      "operation_id": "get_available_providers_api_v1_routing_providers_get",
+      "path": "/api/v1/routing/providers",
+      "replacement_path": "/api/v1/providers/models",
+      "summary": "Get Available Providers",
+      "tags": [
+        "routing"
+      ]
+    },
+    {
+      "canonical_path": "/api/v1/routing/providers/analytics",
+      "compatibility_aliases": [],
+      "deprecated": false,
+      "include_in_schema": true,
+      "logical_path": "/routing/providers/analytics",
+      "method": "GET",
+      "operation_id": "list_available_providers_api_v1_routing_providers_analytics_get",
+      "path": "/api/v1/routing/providers/analytics",
+      "replacement_path": null,
+      "summary": "List Available Providers",
+      "tags": [
+        "routing-analytics"
+      ]
+    },
+    {
+      "canonical_path": "/api/v1/routing/providers/{capability}",
+      "compatibility_aliases": [],
+      "deprecated": true,
+      "include_in_schema": true,
+      "logical_path": "/routing/providers/{capability}",
+      "method": "GET",
+      "operation_id": "get_providers_for_capability_api_v1_routing_providers__capability__get",
+      "path": "/api/v1/routing/providers/{capability}",
+      "replacement_path": "/api/v1/providers/models",
+      "summary": "Get Providers For Capability",
+      "tags": [
+        "routing"
+      ]
+    },
+    {
+      "canonical_path": "/api/v1/routing/route",
+      "compatibility_aliases": [],
+      "deprecated": true,
+      "include_in_schema": true,
+      "logical_path": "/routing/route",
+      "method": "POST",
+      "operation_id": "route_through_department_api_v1_routing_route_post",
+      "path": "/api/v1/routing/route",
+      "replacement_path": "/api/v1/api/route_task",
+      "summary": "Route Through Department",
+      "tags": [
+        "routing"
+      ]
+    },
+    {
+      "canonical_path": "/api/v1/routing/status",
+      "compatibility_aliases": [],
+      "deprecated": false,
+      "include_in_schema": true,
+      "logical_path": "/routing/status",
+      "method": "GET",
+      "operation_id": "get_routing_status_api_v1_routing_status_get",
+      "path": "/api/v1/routing/status",
+      "replacement_path": null,
+      "summary": "Get Routing Status",
+      "tags": [
+        "routing-analytics"
+      ]
+    },
+    {
+      "canonical_path": "/api/v1/routing/strategies",
+      "compatibility_aliases": [],
+      "deprecated": false,
+      "include_in_schema": true,
+      "logical_path": "/routing/strategies",
+      "method": "GET",
+      "operation_id": "list_routing_strategies_api_v1_routing_strategies_get",
+      "path": "/api/v1/routing/strategies",
+      "replacement_path": null,
+      "summary": "List Routing Strategies",
+      "tags": [
+        "routing-analytics"
+      ]
+    },
+    {
+      "canonical_path": "/api/v1/routing/test/{provider_id}",
+      "compatibility_aliases": [],
+      "deprecated": false,
+      "include_in_schema": true,
+      "logical_path": "/routing/test/{provider_id}",
+      "method": "POST",
+      "operation_id": "test_provider_api_v1_routing_test__provider_id__post",
+      "path": "/api/v1/routing/test/{provider_id}",
+      "replacement_path": null,
+      "summary": "Test Provider",
+      "tags": [
+        "routing-analytics"
+      ]
+    },
+    {
+      "canonical_path": "/api/v1/routing/weight",
+      "compatibility_aliases": [],
+      "deprecated": false,
+      "include_in_schema": true,
+      "logical_path": "/routing/weight",
+      "method": "GET",
+      "operation_id": "get_routing_weight_api_v1_routing_weight_get",
+      "path": "/api/v1/routing/weight",
+      "replacement_path": null,
+      "summary": "Get Routing Weight",
+      "tags": [
+        "routing-analytics"
+      ]
+    },
+    {
+      "canonical_path": "/api/v1/sandbox/artifacts/{job_id}",
+      "compatibility_aliases": [],
+      "deprecated": false,
+      "include_in_schema": true,
+      "logical_path": "/sandbox/artifacts/{job_id}",
+      "method": "GET",
+      "operation_id": "list_job_artifacts_api_v1_sandbox_artifacts__job_id__get",
+      "path": "/api/v1/sandbox/artifacts/{job_id}",
+      "replacement_path": null,
+      "summary": "List Job Artifacts",
+      "tags": [
+        "sandbox"
+      ]
+    },
+    {
+      "canonical_path": "/api/v1/sandbox/artifacts/{job_id}/download/{filename}",
+      "compatibility_aliases": [],
+      "deprecated": false,
+      "include_in_schema": true,
+      "logical_path": "/sandbox/artifacts/{job_id}/download/{filename}",
+      "method": "GET",
+      "operation_id": "download_artifact_api_v1_sandbox_artifacts__job_id__download__filename__get",
+      "path": "/api/v1/sandbox/artifacts/{job_id}/download/{filename}",
+      "replacement_path": null,
+      "summary": "Download Artifact",
+      "tags": [
+        "sandbox"
+      ]
+    },
+    {
+      "canonical_path": "/api/v1/sandbox/cancel/{job_id}",
+      "compatibility_aliases": [],
+      "deprecated": false,
+      "include_in_schema": true,
+      "logical_path": "/sandbox/cancel/{job_id}",
+      "method": "POST",
+      "operation_id": "cancel_job_api_v1_sandbox_cancel__job_id__post",
+      "path": "/api/v1/sandbox/cancel/{job_id}",
+      "replacement_path": null,
+      "summary": "Cancel Job",
+      "tags": [
+        "sandbox"
+      ]
+    },
+    {
+      "canonical_path": "/api/v1/sandbox/health",
+      "compatibility_aliases": [],
+      "deprecated": false,
+      "include_in_schema": true,
+      "logical_path": "/sandbox/health",
+      "method": "GET",
+      "operation_id": "sandbox_health_legacy_api_v1_sandbox_health_get",
+      "path": "/api/v1/sandbox/health",
+      "replacement_path": null,
+      "summary": "Sandbox Health Legacy",
+      "tags": [
+        "sandbox"
+      ]
+    },
+    {
+      "canonical_path": "/api/v1/sandbox/health/status",
+      "compatibility_aliases": [],
+      "deprecated": false,
+      "include_in_schema": true,
+      "logical_path": "/sandbox/health/status",
+      "method": "GET",
+      "operation_id": "sandbox_health_api_v1_sandbox_health_status_get",
+      "path": "/api/v1/sandbox/health/status",
+      "replacement_path": null,
+      "summary": "Sandbox Health",
+      "tags": [
+        "sandbox"
+      ]
+    },
+    {
+      "canonical_path": "/api/v1/sandbox/jobs",
+      "compatibility_aliases": [],
+      "deprecated": false,
+      "include_in_schema": true,
+      "logical_path": "/sandbox/jobs",
+      "method": "GET",
+      "operation_id": "list_sandbox_jobs_api_v1_sandbox_jobs_get",
+      "path": "/api/v1/sandbox/jobs",
+      "replacement_path": null,
+      "summary": "List Sandbox Jobs",
+      "tags": [
+        "sandbox"
+      ]
+    },
+    {
+      "canonical_path": "/api/v1/sandbox/jobs/{job_id}",
+      "compatibility_aliases": [],
+      "deprecated": false,
+      "include_in_schema": true,
+      "logical_path": "/sandbox/jobs/{job_id}",
+      "method": "GET",
+      "operation_id": "get_job_status_alias_api_v1_sandbox_jobs__job_id__get",
+      "path": "/api/v1/sandbox/jobs/{job_id}",
+      "replacement_path": null,
+      "summary": "Get Job Status Alias",
+      "tags": [
+        "sandbox"
+      ]
+    },
+    {
+      "canonical_path": "/api/v1/sandbox/jobs/{job_id}/logs",
+      "compatibility_aliases": [],
+      "deprecated": false,
+      "include_in_schema": true,
+      "logical_path": "/sandbox/jobs/{job_id}/logs",
+      "method": "GET",
+      "operation_id": "get_job_logs_alias_api_v1_sandbox_jobs__job_id__logs_get",
+      "path": "/api/v1/sandbox/jobs/{job_id}/logs",
+      "replacement_path": null,
+      "summary": "Get Job Logs Alias",
+      "tags": [
+        "sandbox"
+      ]
+    },
+    {
+      "canonical_path": "/api/v1/sandbox/logs/{job_id}",
+      "compatibility_aliases": [],
+      "deprecated": false,
+      "include_in_schema": true,
+      "logical_path": "/sandbox/logs/{job_id}",
+      "method": "GET",
+      "operation_id": "get_job_logs_api_v1_sandbox_logs__job_id__get",
+      "path": "/api/v1/sandbox/logs/{job_id}",
+      "replacement_path": null,
+      "summary": "Get Job Logs",
+      "tags": [
+        "sandbox"
+      ]
+    },
+    {
+      "canonical_path": "/api/v1/sandbox/metrics",
+      "compatibility_aliases": [],
+      "deprecated": false,
+      "include_in_schema": true,
+      "logical_path": "/sandbox/metrics",
+      "method": "GET",
+      "operation_id": "sandbox_metrics_api_v1_sandbox_metrics_get",
+      "path": "/api/v1/sandbox/metrics",
+      "replacement_path": null,
+      "summary": "Sandbox Metrics",
+      "tags": [
+        "sandbox"
+      ]
+    },
+    {
+      "canonical_path": "/api/v1/sandbox/run",
+      "compatibility_aliases": [],
+      "deprecated": false,
+      "include_in_schema": true,
+      "logical_path": "/sandbox/run",
+      "method": "POST",
+      "operation_id": "run_sandbox_code_api_v1_sandbox_run_post",
+      "path": "/api/v1/sandbox/run",
+      "replacement_path": null,
+      "summary": "Run Sandbox Code",
+      "tags": [
+        "sandbox"
+      ]
+    },
+    {
+      "canonical_path": "/api/v1/sandbox/status/{job_id}",
+      "compatibility_aliases": [],
+      "deprecated": false,
+      "include_in_schema": true,
+      "logical_path": "/sandbox/status/{job_id}",
+      "method": "GET",
+      "operation_id": "get_job_status_api_v1_sandbox_status__job_id__get",
+      "path": "/api/v1/sandbox/status/{job_id}",
+      "replacement_path": null,
+      "summary": "Get Job Status",
+      "tags": [
+        "sandbox"
+      ]
+    },
+    {
+      "canonical_path": "/api/v1/sandbox/submit",
+      "compatibility_aliases": [],
+      "deprecated": false,
+      "include_in_schema": true,
+      "logical_path": "/sandbox/submit",
+      "method": "POST",
+      "operation_id": "submit_job_api_v1_sandbox_submit_post",
+      "path": "/api/v1/sandbox/submit",
+      "replacement_path": null,
+      "summary": "Submit Job",
+      "tags": [
+        "sandbox"
+      ]
+    },
+    {
+      "canonical_path": "/api/v1/search/collections",
+      "compatibility_aliases": [],
+      "deprecated": false,
+      "include_in_schema": true,
+      "logical_path": "/search/collections",
+      "method": "GET",
+      "operation_id": "list_collections_api_v1_search_collections_get",
+      "path": "/api/v1/search/collections",
+      "replacement_path": null,
+      "summary": "List Collections",
+      "tags": [
+        "search"
+      ]
+    },
+    {
+      "canonical_path": "/api/v1/search/collections/{collection_name}/add",
+      "compatibility_aliases": [],
+      "deprecated": false,
+      "include_in_schema": true,
+      "logical_path": "/search/collections/{collection_name}/add",
+      "method": "POST",
+      "operation_id": "add_document_compat_api_v1_search_collections__collection_name__add_post",
+      "path": "/api/v1/search/collections/{collection_name}/add",
+      "replacement_path": null,
+      "summary": "Add Document Compat",
+      "tags": [
+        "search"
+      ]
+    },
+    {
+      "canonical_path": "/api/v1/search/collections/{collection_name}/documents",
+      "compatibility_aliases": [],
+      "deprecated": false,
+      "include_in_schema": true,
+      "logical_path": "/search/collections/{collection_name}/documents",
+      "method": "GET",
+      "operation_id": "get_collection_documents_api_v1_search_collections__collection_name__documents_get",
+      "path": "/api/v1/search/collections/{collection_name}/documents",
+      "replacement_path": null,
+      "summary": "Get Collection Documents",
+      "tags": [
+        "search"
+      ]
+    },
+    {
+      "canonical_path": "/api/v1/search/index",
+      "compatibility_aliases": [],
+      "deprecated": false,
+      "include_in_schema": true,
+      "logical_path": "/search/index",
+      "method": "POST",
+      "operation_id": "index_content_api_v1_search_index_post",
+      "path": "/api/v1/search/index",
+      "replacement_path": null,
+      "summary": "Index Content",
+      "tags": [
+        "search"
+      ]
+    },
+    {
+      "canonical_path": "/api/v1/search/query",
+      "compatibility_aliases": [],
+      "deprecated": false,
+      "include_in_schema": true,
+      "logical_path": "/search/query",
+      "method": "POST",
+      "operation_id": "search_query_api_v1_search_query_post",
+      "path": "/api/v1/search/query",
+      "replacement_path": null,
+      "summary": "Search Query",
+      "tags": [
+        "search"
+      ]
+    },
+    {
+      "canonical_path": "/api/v1/secrets/",
+      "compatibility_aliases": [],
+      "deprecated": false,
+      "include_in_schema": true,
+      "logical_path": "/secrets/",
+      "method": "GET",
+      "operation_id": "list_secrets_api_v1_secrets__get",
+      "path": "/api/v1/secrets/",
+      "replacement_path": null,
+      "summary": "List Secrets",
+      "tags": [
+        "secrets"
+      ]
+    },
+    {
+      "canonical_path": "/api/v1/secrets/health",
+      "compatibility_aliases": [],
+      "deprecated": false,
+      "include_in_schema": true,
+      "logical_path": "/secrets/health",
+      "method": "GET",
+      "operation_id": "secrets_health_api_v1_secrets_health_get",
+      "path": "/api/v1/secrets/health",
+      "replacement_path": null,
+      "summary": "Secrets Health",
+      "tags": [
+        "secrets"
+      ]
+    },
+    {
+      "canonical_path": "/api/v1/secrets/{path:path}",
+      "compatibility_aliases": [],
+      "deprecated": false,
+      "include_in_schema": true,
+      "logical_path": "/secrets/{path:path}",
+      "method": "DELETE",
+      "operation_id": "delete_secret",
+      "path": "/api/v1/secrets/{path:path}",
+      "replacement_path": null,
+      "summary": "Delete a secret. Args: path: Secret path version: Optional specific version to delete adapter: The secrets adapter instance",
+      "tags": [
+        "secrets"
+      ]
+    },
+    {
+      "canonical_path": "/api/v1/secrets/{path:path}",
+      "compatibility_aliases": [],
+      "deprecated": false,
+      "include_in_schema": true,
+      "logical_path": "/secrets/{path:path}",
+      "method": "GET",
+      "operation_id": "get_secret",
+      "path": "/api/v1/secrets/{path:path}",
+      "replacement_path": null,
+      "summary": "Retrieve a secret by path. Args: path: Secret path version: Optional specific version adapter: The secrets adapter instance Returns: Secret data and metadata",
+      "tags": [
+        "secrets"
+      ]
+    },
+    {
+      "canonical_path": "/api/v1/secrets/{path:path}",
+      "compatibility_aliases": [],
+      "deprecated": false,
+      "include_in_schema": true,
+      "logical_path": "/secrets/{path:path}",
+      "method": "PUT",
+      "operation_id": "put_secret",
+      "path": "/api/v1/secrets/{path:path}",
+      "replacement_path": null,
+      "summary": "Create or update a secret. Args: path: Secret path request: Secret data and metadata adapter: The secrets adapter instance Returns: Stored secret information",
+      "tags": [
+        "secrets"
+      ]
+    },
+    {
+      "canonical_path": "/api/v1/secrets/{path:path}/rotate",
+      "compatibility_aliases": [],
+      "deprecated": false,
+      "include_in_schema": true,
+      "logical_path": "/secrets/{path:path}/rotate",
+      "method": "POST",
+      "operation_id": "rotate_secret",
+      "path": "/api/v1/secrets/{path:path}/rotate",
+      "replacement_path": null,
+      "summary": "Rotate a secret value. Args: path: Secret path adapter: The secrets adapter instance Returns: New secret value",
+      "tags": [
+        "secrets"
+      ]
+    },
+    {
+      "canonical_path": "/api/v1/semantic-chat/conversations/{conversation_id}/context",
+      "compatibility_aliases": [],
+      "deprecated": false,
+      "include_in_schema": true,
+      "logical_path": "/semantic-chat/conversations/{conversation_id}/context",
+      "method": "GET",
+      "operation_id": "get_context_bundle_api_v1_semantic_chat_conversations__conversation_id__context_get",
+      "path": "/api/v1/semantic-chat/conversations/{conversation_id}/context",
+      "replacement_path": null,
+      "summary": "Get Context Bundle",
+      "tags": [
+        "semantic-chat"
+      ]
+    },
+    {
+      "canonical_path": "/api/v1/semantic-chat/conversations/{conversation_id}/messages",
+      "compatibility_aliases": [],
+      "deprecated": false,
+      "include_in_schema": true,
+      "logical_path": "/semantic-chat/conversations/{conversation_id}/messages",
+      "method": "POST",
+      "operation_id": "semantic_send_message_api_v1_semantic_chat_conversations__conversation_id__messages_post",
+      "path": "/api/v1/semantic-chat/conversations/{conversation_id}/messages",
+      "replacement_path": null,
+      "summary": "Semantic Send Message",
+      "tags": [
+        "semantic-chat"
+      ]
+    },
+    {
+      "canonical_path": "/api/v1/semantic-chat/conversations/{conversation_id}/summarize",
+      "compatibility_aliases": [],
+      "deprecated": false,
+      "include_in_schema": true,
+      "logical_path": "/semantic-chat/conversations/{conversation_id}/summarize",
+      "method": "POST",
+      "operation_id": "summarize_conversation_api_v1_semantic_chat_conversations__conversation_id__summarize_post",
+      "path": "/api/v1/semantic-chat/conversations/{conversation_id}/summarize",
+      "replacement_path": null,
+      "summary": "Summarize Conversation",
+      "tags": [
+        "semantic-chat"
+      ]
+    },
+    {
+      "canonical_path": "/api/v1/semantic-chat/users/{user_id}/memory",
+      "compatibility_aliases": [],
+      "deprecated": false,
+      "include_in_schema": true,
+      "logical_path": "/semantic-chat/users/{user_id}/memory",
+      "method": "POST",
+      "operation_id": "add_memory_fact_api_v1_semantic_chat_users__user_id__memory_post",
+      "path": "/api/v1/semantic-chat/users/{user_id}/memory",
+      "replacement_path": null,
+      "summary": "Add Memory Fact",
+      "tags": [
+        "semantic-chat"
+      ]
+    },
+    {
+      "canonical_path": "/api/v1/semantic-chat/users/{user_id}/memory/search",
+      "compatibility_aliases": [],
+      "deprecated": false,
+      "include_in_schema": true,
+      "logical_path": "/semantic-chat/users/{user_id}/memory/search",
+      "method": "GET",
+      "operation_id": "search_memory_facts_api_v1_semantic_chat_users__user_id__memory_search_get",
+      "path": "/api/v1/semantic-chat/users/{user_id}/memory/search",
+      "replacement_path": null,
+      "summary": "Search Memory Facts",
+      "tags": [
+        "semantic-chat"
+      ]
+    },
+    {
+      "canonical_path": "/api/v1/settings/",
+      "compatibility_aliases": [],
+      "deprecated": false,
+      "include_in_schema": true,
+      "logical_path": "/settings/",
+      "method": "GET",
+      "operation_id": "get_settings_api_v1_settings__get",
+      "path": "/api/v1/settings/",
+      "replacement_path": null,
+      "summary": "Get Settings",
+      "tags": [
+        "settings"
+      ]
+    },
+    {
+      "canonical_path": "/api/v1/settings/models/{model_name}",
+      "compatibility_aliases": [],
+      "deprecated": false,
+      "include_in_schema": true,
+      "logical_path": "/settings/models/{model_name}",
+      "method": "PUT",
+      "operation_id": "update_model_settings_api_v1_settings_models__model_name__put",
+      "path": "/api/v1/settings/models/{model_name}",
+      "replacement_path": null,
+      "summary": "Update Model Settings",
+      "tags": [
+        "settings"
+      ]
+    },
+    {
+      "canonical_path": "/api/v1/settings/providers/{provider_name}",
+      "compatibility_aliases": [],
+      "deprecated": false,
+      "include_in_schema": true,
+      "logical_path": "/settings/providers/{provider_name}",
+      "method": "PUT",
+      "operation_id": "update_provider_settings_api_v1_settings_providers__provider_name__put",
+      "path": "/api/v1/settings/providers/{provider_name}",
+      "replacement_path": null,
+      "summary": "Update Provider Settings",
+      "tags": [
+        "settings"
+      ]
+    },
+    {
+      "canonical_path": "/api/v1/settings/test-connection",
+      "compatibility_aliases": [],
+      "deprecated": false,
+      "include_in_schema": true,
+      "logical_path": "/settings/test-connection",
+      "method": "POST",
+      "operation_id": "test_provider_connection_api_v1_settings_test_connection_post",
+      "path": "/api/v1/settings/test-connection",
+      "replacement_path": null,
+      "summary": "Test Provider Connection",
+      "tags": [
+        "settings"
+      ]
+    },
+    {
+      "canonical_path": "/api/v1/settings/{key}",
+      "compatibility_aliases": [],
+      "deprecated": false,
+      "include_in_schema": true,
+      "logical_path": "/settings/{key}",
+      "method": "PATCH",
+      "operation_id": "update_global_setting_api_v1_settings__key__patch",
+      "path": "/api/v1/settings/{key}",
+      "replacement_path": null,
+      "summary": "Update Global Setting",
+      "tags": [
+        "settings"
+      ]
+    },
+    {
+      "canonical_path": "/api/v1/stream",
+      "compatibility_aliases": [],
+      "deprecated": false,
+      "include_in_schema": true,
+      "logical_path": "/stream",
+      "method": "POST",
+      "operation_id": "stream_task_api_v1_stream_post",
+      "path": "/api/v1/stream",
+      "replacement_path": null,
+      "summary": "Stream Task",
+      "tags": [
+        "stream"
+      ]
+    },
+    {
+      "canonical_path": "/api/v1/support/message",
+      "compatibility_aliases": [],
+      "deprecated": false,
+      "include_in_schema": true,
+      "logical_path": "/support/message",
+      "method": "POST",
+      "operation_id": "send_support_message_api_v1_support_message_post",
+      "path": "/api/v1/support/message",
+      "replacement_path": null,
+      "summary": "Send Support Message",
+      "tags": [
+        "support"
+      ]
+    },
+    {
+      "canonical_path": "/api/v1/support/triage",
+      "compatibility_aliases": [],
+      "deprecated": false,
+      "include_in_schema": true,
+      "logical_path": "/support/triage",
+      "method": "POST",
+      "operation_id": "triage_issue_api_v1_support_triage_post",
+      "path": "/api/v1/support/triage",
+      "replacement_path": null,
+      "summary": "Triage Issue",
+      "tags": [
+        "support"
+      ]
+    },
+    {
+      "canonical_path": "/api/v1/write-time/cache/cleanup",
+      "compatibility_aliases": [],
+      "deprecated": false,
+      "include_in_schema": true,
+      "logical_path": "/write-time/cache/cleanup",
+      "method": "POST",
+      "operation_id": "cleanup_cache_api_v1_write_time_cache_cleanup_post",
+      "path": "/api/v1/write-time/cache/cleanup",
+      "replacement_path": null,
+      "summary": "Cleanup Cache",
+      "tags": [
+        "write-time"
+      ]
+    },
+    {
+      "canonical_path": "/api/v1/write-time/cache/clear",
+      "compatibility_aliases": [],
+      "deprecated": false,
+      "include_in_schema": true,
+      "logical_path": "/write-time/cache/clear",
+      "method": "POST",
+      "operation_id": "clear_cache_api_v1_write_time_cache_clear_post",
+      "path": "/api/v1/write-time/cache/clear",
+      "replacement_path": null,
+      "summary": "Clear Cache",
+      "tags": [
+        "write-time"
+      ]
+    },
+    {
+      "canonical_path": "/api/v1/write-time/cache/stats",
+      "compatibility_aliases": [],
+      "deprecated": false,
+      "include_in_schema": true,
+      "logical_path": "/write-time/cache/stats",
+      "method": "GET",
+      "operation_id": "get_cache_stats_api_v1_write_time_cache_stats_get",
+      "path": "/api/v1/write-time/cache/stats",
+      "replacement_path": null,
+      "summary": "Get Cache Stats",
+      "tags": [
+        "write-time"
+      ]
+    },
+    {
+      "canonical_path": "/api/v1/write-time/matrix/config",
+      "compatibility_aliases": [],
+      "deprecated": false,
+      "include_in_schema": true,
+      "logical_path": "/write-time/matrix/config",
+      "method": "GET",
+      "operation_id": "get_decision_matrix_config_api_v1_write_time_matrix_config_get",
+      "path": "/api/v1/write-time/matrix/config",
+      "replacement_path": null,
+      "summary": "Get Decision Matrix Config",
+      "tags": [
+        "write-time"
+      ]
+    },
+    {
+      "canonical_path": "/api/v1/write-time/metrics",
+      "compatibility_aliases": [],
+      "deprecated": false,
+      "include_in_schema": true,
+      "logical_path": "/write-time/metrics",
+      "method": "GET",
+      "operation_id": "get_write_time_metrics_api_v1_write_time_metrics_get",
+      "path": "/api/v1/write-time/metrics",
+      "replacement_path": null,
+      "summary": "Get Write Time Metrics",
+      "tags": [
+        "write-time"
+      ]
+    },
+    {
+      "canonical_path": "/api/v1/write-time/test",
+      "compatibility_aliases": [],
+      "deprecated": false,
+      "include_in_schema": true,
+      "logical_path": "/write-time/test",
+      "method": "POST",
+      "operation_id": "test_message_processing_api_v1_write_time_test_post",
+      "path": "/api/v1/write-time/test",
+      "replacement_path": null,
+      "summary": "Test Message Processing",
+      "tags": [
+        "write-time"
+      ]
+    },
+    {
+      "canonical_path": "/api/v1/write-time/test/batch",
+      "compatibility_aliases": [],
+      "deprecated": false,
+      "include_in_schema": true,
+      "logical_path": "/write-time/test/batch",
+      "method": "POST",
+      "operation_id": "test_batch_messages_api_v1_write_time_test_batch_post",
+      "path": "/api/v1/write-time/test/batch",
+      "replacement_path": null,
+      "summary": "Test Batch Messages",
+      "tags": [
+        "write-time"
+      ]
+    },
+    {
+      "canonical_path": "/api/v1/write-time/test/examples",
+      "compatibility_aliases": [],
+      "deprecated": false,
+      "include_in_schema": true,
+      "logical_path": "/write-time/test/examples",
+      "method": "GET",
+      "operation_id": "get_test_examples_api_v1_write_time_test_examples_get",
+      "path": "/api/v1/write-time/test/examples",
+      "replacement_path": null,
+      "summary": "Get Test Examples",
+      "tags": [
+        "write-time"
+      ]
+    },
+    {
+      "canonical_path": "/metrics",
+      "compatibility_aliases": [],
+      "deprecated": false,
+      "include_in_schema": true,
+      "logical_path": "/metrics",
+      "method": "GET",
+      "operation_id": "metrics_metrics_get",
+      "path": "/metrics",
+      "replacement_path": null,
+      "summary": "Metrics",
+      "tags": [
+        "observability"
+      ]
+    },
+    {
+      "canonical_path": "/test",
+      "compatibility_aliases": [],
+      "deprecated": false,
+      "include_in_schema": true,
+      "logical_path": "/test",
+      "method": "GET",
+      "operation_id": "test_test_get",
+      "path": "/test",
+      "replacement_path": null,
+      "summary": "Test",
+      "tags": []
+    }
+  ],
+  "schema_version": 1,
+  "versioned_route_count": 200
+}

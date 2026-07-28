@@ -2,15 +2,8 @@ import React from 'react';
 import { render, screen } from '@testing-library/react';
 import '@testing-library/jest-dom';
 
-jest.mock('next/router', () => ({
-  useRouter: () => ({
-    asPath: '/unknown-page',
-    push: jest.fn(),
-    pathname: '/404',
-    isReady: true,
-    query: {},
-    events: { on: jest.fn(), off: jest.fn() },
-  }),
+jest.mock('next/navigation', () => ({
+  usePathname: () => '/unknown-page',
 }));
 
 jest.mock('next/link', () => {

@@ -2,16 +2,9 @@ import React from 'react';
 import { render, screen, fireEvent } from '@testing-library/react';
 import '@testing-library/jest-dom';
 
-const mockPush = jest.fn();
-jest.mock('next/router', () => ({
-  useRouter: () => ({
-    isReady: true,
-    query: {},
-    push: mockPush,
-    asPath: '/sandbox',
-    pathname: '/sandbox',
-    events: { on: jest.fn(), off: jest.fn() },
-  }),
+let mockSearchParams = new URLSearchParams();
+jest.mock('next/navigation', () => ({
+  useSearchParams: () => mockSearchParams,
 }));
 
 jest.mock('../../../hooks/api/useAuthSession', () => ({

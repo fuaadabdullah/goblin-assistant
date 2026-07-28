@@ -1,0 +1,80 @@
+name: Nightly Tests
+
+on:
+  workflow_dispatch:
+# Auto-schedule disabled: GitHub Actions billing locked.
+# Uncomment when billing is resolved:
+#  schedule:
+#    - cron: '0 3 * * *'  # 3 AM UTC daily
+
+jobs:
+  # ==============================================================================
+  # Integration Tests
+  # ==============================================================================
+  integration-tests:
+    name: Integration Tests (API)
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+          cache: pip
+
+      - name: Install dependencies
+        run: |
+          pip install --upgrade pip
+          pip install -r apps/api/requirements.txt
+
+      - name: Run integration tests
+        run: |
+          pytest apps/api/src/api/tests/ \
+            -m integration \
+            --tb=short \
+            -q \
+            --no-header
+        env:
+          DATABASE_URL: sqlite+aiosqlite:///./test.db
+          ENVIRONMENT: test
+          API_AUTH_KEY: test-key
+
+  # ==============================================================================
+  # Smoke Tests (staging)
+  # ==============================================================================
+  smoke-tests:
+    name: Smoke Tests (Staging)
+    runs-on: ubuntu-latest
+    steps:
+      - name: Health check
+        run: |
+          max_attempts=5
+          attempt=0
+          url="https://goblin-assistant-backend.onrender.com/health"
+
+          while [ $attempt -lt $max_attempts ]; do
+            status=$(curl -s -o /dev/null -w "%{http_code}" "$url")
+            if [ "$status" = "200" ]; then
+              echo "✅ Health check passed ($url)"
+              exit 0
+            fi
+            attempt=$((attempt + 1))
+            echo "Attempt $attempt/$max_attempts: status $status — retrying in 10s..."
+            sleep 10
+          done
+
+          echo "❌ Health check failed after $max_attempts attempts"
+          exit 1
+
+      - name: Readiness check
+        run: |
+          status=$(curl -s -o /dev/null -w "%{http_code}" \
+            "https://goblin-assistant-backend.onrender.com/health/ready")
+          if [ "$status" = "200" ]; then
+            echo "✅ Readiness check passed"
+          else
+            echo "❌ Readiness check returned $status"
+            exit 1
+          fi

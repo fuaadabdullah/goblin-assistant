@@ -4,16 +4,11 @@ import '@testing-library/jest-dom';
 
 const mockReplace = jest.fn().mockResolvedValue(true);
 const mockPrefetch = jest.fn().mockResolvedValue(undefined);
-jest.mock('next/router', () => ({
+jest.mock('next/navigation', () => ({
   useRouter: () => ({
     replace: mockReplace,
     prefetch: mockPrefetch,
     push: jest.fn(),
-    pathname: '/startup',
-    asPath: '/startup',
-    isReady: true,
-    query: {},
-    events: { on: jest.fn(), off: jest.fn() },
   }),
 }));
 

@@ -6,8 +6,8 @@ jest.mock('next/head', () =>
     return <>{children}</>;
   }
 );
-jest.mock('next/router', () => ({
-  useRouter: () => ({ asPath: '/test-page' }),
+jest.mock('next/navigation', () => ({
+  usePathname: () => '/test-page',
 }));
 
 import Seo from '../Seo';

@@ -1,0 +1,14 @@
+{
+  "$schema": "https://raw.githubusercontent.com/microsoft/pyright/main/packages/pyright/schema/pyrightconfig.schema.json",
+  "include": ["src/api"],
+  "exclude": [
+    "src/api/tests",
+    "src/api/test_*.py",
+    "src/api/docs"
+  ],
+  "venvPath": ".",
+  "pythonVersion": "3.11",
+  "typeCheckingMode": "standard",
+  "reportMissingTypeStubs": "none",
+  "reportMissingModuleSource": "none"
+}

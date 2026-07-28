@@ -1,5 +1,5 @@
 import Link from 'next/link';
-import { useRouter } from 'next/router';
+import { usePathname } from 'next/navigation';
 import type { KeyboardEvent } from 'react';
 import { useEffect, useId, useRef } from 'react';
 
@@ -20,8 +20,8 @@ const AuthPrompt = ({
   allowGuest = false,
   guestHref = '/sandbox?guest=1',
 }: AuthPromptProps) => {
-  const router = useRouter();
-  const from = typeof router.asPath === 'string' ? router.asPath : '/';
+  const pathname = usePathname();
+  const from = pathname ?? '/';
   const loginHref = { pathname: '/login', query: { from } };
   const registerHref = { pathname: '/login', query: { mode: 'register', from } };
   const titleId = useId();

@@ -7,8 +7,9 @@ jest.mock('next/link', () => function MockLink({ children, href, onClick }: { ch
 });
 
 const mockPush = jest.fn();
-jest.mock('next/router', () => ({
-  useRouter: () => ({ pathname: '/', push: mockPush, events: { on: jest.fn(), off: jest.fn() } }),
+jest.mock('next/navigation', () => ({
+  useRouter: () => ({ push: mockPush }),
+  usePathname: () => '/',
 }));
 
 jest.mock('lucide-react', () => new Proxy({}, {
@@ -20,12 +21,23 @@ jest.mock('lucide-react', () => new Proxy({}, {
 
 jest.mock('@/components/Logo', () => function MockLogo() { return <div data-testid="logo" />; });
 
+jest.mock('../MobileDrawer', () => {
+  // eslint-disable-next-line @typescript-eslint/no-require-imports
+  const { useUIStore } = require('../../store/uiStore');
+  return function MockMobileDrawer({ children }: { children: React.ReactNode }) {
+    const isOpen = useUIStore((s: { mobileNavOpen: boolean }) => s.mobileNavOpen);
+    return isOpen ? <div data-testid="mobile-nav-content">{children}</div> : null;
+  };
+});
+
 import Layout from '../Layout';
+import { useUIStore } from '../../store/uiStore';
 
 describe('Layout', () => {
   beforeEach(() => {
     jest.clearAllMocks();
     Storage.prototype.removeItem = jest.fn();
+    useUIStore.setState({ mobileNavOpen: false });
   });
 
   it('renders header with logo and navigation', () => {
@@ -62,25 +74,20 @@ describe('Layout', () => {
 
   it('toggles mobile menu', () => {
     const { container } = render(<Layout><div>Test</div></Layout>);
-    // Mobile menu button is inside the md:hidden div
     const mobileBtn = container.querySelector('.md\\:hidden button') as HTMLButtonElement;
     expect(mobileBtn).toBeInTheDocument();
     fireEvent.click(mobileBtn);
-    // After click, mobile nav should be visible
-    const mobileNav = container.querySelector('.md\\:hidden.border-t');
-    expect(mobileNav).toBeInTheDocument();
+    expect(screen.getByTestId('mobile-nav-content')).toBeInTheDocument();
   });
 
   it('closes mobile menu on nav click', () => {
     const { container } = render(<Layout><div>Test</div></Layout>);
     const mobileBtn = container.querySelector('.md\\:hidden button') as HTMLButtonElement;
     fireEvent.click(mobileBtn);
-    // Click a mobile nav item
+    expect(screen.getByTestId('mobile-nav-content')).toBeInTheDocument();
     const mobileLinks = screen.getAllByText('Chat');
     fireEvent.click(mobileLinks[mobileLinks.length - 1]);
-    // Mobile nav should be hidden
-    const mobileNav = container.querySelector('.md\\:hidden.border-t');
-    expect(mobileNav).not.toBeInTheDocument();
+    expect(screen.queryByTestId('mobile-nav-content')).not.toBeInTheDocument();
   });
 
   it('renders children in main content area', () => {

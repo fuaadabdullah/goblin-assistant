@@ -4,9 +4,8 @@ import '@testing-library/jest-dom';
 jest.mock('next/link', () => function MockLink({ children, href }: { children: React.ReactNode; href: string }) {
   return <a href={href}>{children}</a>;
 });
-const mockPush = jest.fn();
-jest.mock('next/router', () => ({
-  useRouter: () => ({ pathname: '/chat', push: mockPush, query: {} }),
+jest.mock('next/navigation', () => ({
+  usePathname: () => '/chat',
 }));
 
 import AuthPrompt from '../AuthPrompt';

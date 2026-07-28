@@ -1,11 +1,8 @@
-import { useEffect, useState } from 'react';
 import Link from 'next/link';
-import { useRouter } from 'next/router';
+import { usePathname } from 'next/navigation';
 
 export default function NotFoundPage() {
-  const router = useRouter();
-  const [path, setPath] = useState('');
-  useEffect(() => { setPath(router.asPath); }, [router.asPath]);
+  const path = usePathname() ?? '';
 
   return (
     <div className="min-h-[70vh] flex items-center justify-center px-6 py-16">
@@ -35,7 +32,3 @@ export default function NotFoundPage() {
   );
 }
 
-// Prevent static generation
-export const getServerSideProps = async () => {
-  return { props: {} };
-};

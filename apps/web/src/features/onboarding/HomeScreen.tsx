@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import Link from 'next/link';
-import { useRouter } from 'next/router';
+import { useRouter } from 'next/navigation';
 import Navigation from '../../components/Navigation';
 import { useAuthSession } from '../../hooks/api/useAuthSession';
 import { BRAND_NAME, BRAND_TAGLINE, HOME_EXAMPLE_CARDS, HOME_VALUE_PROPS } from '../../content/brand';

@@ -1,6 +1,6 @@
 import React from 'react';
 import Link from 'next/link';
-import { useRouter } from 'next/router';
+import { useRouter, usePathname } from 'next/navigation';
 import { MessageSquare, Search, Settings, LogOut, Home, X, Menu } from 'lucide-react';
 import Logo from './Logo';
 import MobileDrawer from './MobileDrawer';
@@ -12,22 +12,20 @@ interface LayoutProps {
 
 const Layout: React.FC<LayoutProps> = ({ children }) => {
   const router = useRouter();
+  const pathname = usePathname();
   const setMobileNavOpen = useUIStore((s) => s.setMobileNavOpen);
   const isMobileMenuOpen = useUIStore((s) => s.mobileNavOpen);
 
   const handleLogout = () => {
-    // Clear any stored tokens
     localStorage.removeItem('token');
-    // Navigate to login page
     router.push('/login');
   };
 
   React.useEffect(() => {
-    // Close mobile nav on route changes
     setMobileNavOpen(false);
-  }, [router.asPath, setMobileNavOpen]);
+  }, [pathname, setMobileNavOpen]);
 
-  const isActive = (path: string) => router.pathname === path;
+  const isActive = (path: string) => pathname === path;
 
   const navItems = [
     { path: '/', icon: Home, label: 'Home' },
