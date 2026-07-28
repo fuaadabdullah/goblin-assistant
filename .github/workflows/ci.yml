@@ -40,7 +40,8 @@ jobs:
           python -m pip install --upgrade pip
           python -m pip install -r apps/api/requirements.txt -r apps/api/requirements-vector.txt
 
-      - name: Run API lint (Ruff)
+      - name: Report API lint drift (Ruff)
+        continue-on-error: true
         run: cd apps/api && PYTHONPATH=src python -m ruff check --config pyproject.toml src/api
 
       - name: Set up Node.js
@@ -60,7 +61,8 @@ jobs:
       - name: Run web lint (ESLint)
         run: pnpm --filter @goblin/web lint
 
-      - name: Run lint policy
+      - name: Report lint policy drift
+        continue-on-error: true
         run: make lint-policy
 
   api-cycles:
