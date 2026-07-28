@@ -3,6 +3,7 @@ import Link from 'next/link';
 import { RefreshCw } from 'lucide-react';
 import { DashboardSkeleton } from './LoadingSkeleton';
 import { useDashboardData } from '../hooks/useDashboardData';
+import type { ServiceStatus } from '../hooks/useDashboardData';
 import { DashboardError } from './dashboard/DashboardError';
 import { MetricTiles } from './dashboard/MetricTiles';
 import { StatusCardsGrid } from './dashboard/StatusCardsGrid';
@@ -51,7 +52,7 @@ export default function EnhancedDashboard() {
   // Components render their "no data yet" empty states gracefully.
   const rows: never[] = [];
   const summary = null;
-  const services = dashboard
+  const services: Record<string, ServiceStatus> = dashboard
     ? { api: dashboard.backend, chroma: dashboard.chroma, mcp: dashboard.mcp, rag: dashboard.rag, sandbox: dashboard.sandbox }
     : {};
 
