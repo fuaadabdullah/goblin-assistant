@@ -137,7 +137,10 @@ describe('ModularLoginForm', () => {
     featureFlagsState.googleAuth = false;
     mockSignIn.mockResolvedValue({ session: authSession, error: null });
     mockSignUp.mockResolvedValue({ session: authSession, error: null });
-    mockSignInWithOAuth.mockResolvedValue({ data: { url: 'https://accounts.google.com/o/oauth2/v2/auth?state=test' }, error: null });
+    mockSignInWithOAuth.mockResolvedValue({
+      data: { url: 'https://accounts.google.com/o/oauth2/v2/auth?state=test' },
+      error: null,
+    });
   });
 
   it('submits login credentials and stores the auth snapshot', async () => {
