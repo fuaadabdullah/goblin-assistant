@@ -13,6 +13,7 @@
     "test:web": "mkdir -p .tmp && TMPDIR=\"$PWD/.tmp\" pnpm --filter @goblin/web test",
     "test:api": "cd apps/api && PYTHONPATH=src python3 -m pytest -o \"addopts=\" -v",
     "test:e2e": "mkdir -p .tmp && TMPDIR=\"$PWD/.tmp\" pnpm --filter @goblin/web test:e2e",
+    "storybook:build": "mkdir -p .tmp && TMPDIR=\"$PWD/.tmp\" pnpm --filter @goblin/web run build-storybook",
     "test:critical": "bash tooling/quality/run-critical-coverage.sh",
     "test:integration": "python3 tooling/quality/run-test-bucket.py integration",
     "test:contract": "python3 tooling/quality/run-test-bucket.py contract",

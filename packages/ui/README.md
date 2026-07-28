@@ -86,3 +86,7 @@ pnpm --filter @goblin/ui run type-check
 pnpm --filter @goblin/web run type-check
 pnpm --filter @goblin/web run build-storybook
 ```
+
+Storybook uses the repo Node guard. Use the major in `.nvmrc` (`nvm use 20`)
+before building; unsupported Node majors fail fast instead of hanging during
+Storybook preset loading.

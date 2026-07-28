@@ -25,7 +25,11 @@ const sideMap = {
  */
 const Tooltip = React.forwardRef<HTMLButtonElement, TooltipProps>(
   ({ content, children, position = 'top', delay = 300 }, _ref) => (
-    <TooltipPrimitive.Provider delayDuration={delay} skipDelayDuration={300}>
+    <TooltipPrimitive.Provider
+      delayDuration={delay}
+      disableHoverableContent
+      skipDelayDuration={300}
+    >
       <TooltipPrimitive.Root>
         <TooltipPrimitive.Trigger asChild>{children}</TooltipPrimitive.Trigger>
         <TooltipPrimitive.Portal>

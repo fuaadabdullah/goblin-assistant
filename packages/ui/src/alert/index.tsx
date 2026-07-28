@@ -1,5 +1,5 @@
 import { cva, type VariantProps } from 'class-variance-authority';
-import { AlertTriangle, CheckCircle2, CircleAlert, Info } from 'lucide-react';
+import { AlertCircle, AlertTriangle, CheckCircle2, Info } from 'lucide-react';
 import type { ReactNode } from 'react';
 import { cn } from '../utils';
 import IconButton from '../icon-button';
@@ -32,7 +32,7 @@ export interface AlertProps extends AlertVariantProps {
 const defaultIcons: Record<string, ReactNode> = {
   info: <Info className="h-5 w-5" />,
   warning: <AlertTriangle className="h-5 w-5" />,
-  danger: <CircleAlert className="h-5 w-5" />,
+  danger: <AlertCircle className="h-5 w-5" />,
   success: <CheckCircle2 className="h-5 w-5" />,
 };
 
