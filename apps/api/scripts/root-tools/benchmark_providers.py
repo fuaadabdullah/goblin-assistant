@@ -115,6 +115,11 @@ class ProviderBenchmark:
 
             return {
                 "provider": provider_id,
+                "measurement": {
+                    "clock": "time.perf_counter",
+                    "iterations": iterations,
+                    "reported_latency": "min_latency_ms",
+                },
                 "success_rate": successful_runs / iterations,
                 "avg_latency_ms": round(avg_latency, 2),
                 "min_latency_ms": round(min_latency, 2),
@@ -162,13 +167,13 @@ class ProviderBenchmark:
             f"\n⚡ Throughput test for {provider_id} ({concurrent_requests} concurrent, {duration_seconds}s)..."
         )
 
-        start_time = time.time()
+        start_time = time.perf_counter()
         completed = 0
         errors = 0
 
         async def worker():
             nonlocal completed, errors
-            while time.time() - start_time < duration_seconds:
+            while time.perf_counter() - start_time < duration_seconds:
                 try:
                     provider = self.dispatcher.get_provider(provider_id)
                     config = self.dispatcher.get_provider_config(provider_id)
@@ -193,7 +198,7 @@ class ProviderBenchmark:
         tasks = [worker() for _ in range(concurrent_requests)]
         await asyncio.gather(*tasks, return_exceptions=True)
 
-        elapsed = time.time() - start_time
+        elapsed = time.perf_counter() - start_time
         throughput = completed / elapsed if elapsed > 0 else 0
 
         print(f"   Completed: {completed}, Errors: {errors}")
@@ -286,6 +291,10 @@ class ProviderBenchmark:
         print("\n" + "=" * 80)
         print("📊 BENCHMARK COMPARISON REPORT")
         print("=" * 80)
+        print(
+            "Latency values are wall-clock measurements from time.perf_counter(); "
+            "the recommended reported latency is the minimum successful repeated run."
+        )
 
         # Available providers
         available = [p for p, r in results.items() if r.get("available")]
@@ -298,7 +307,7 @@ class ProviderBenchmark:
                 "\n┌─────────────────────┬──────────────┬──────────────┬──────────────┬────────────┐"
             )
             print(
-                "│ Provider            │ Avg Latency  │ P95 Latency  │ Throughput   │ Quality    │"
+                "│ Provider            │ Min Latency  │ Avg Latency  │ Throughput   │ Quality    │"
             )
             print(
                 "├─────────────────────┼──────────────┼──────────────┼──────────────┼────────────┤"
@@ -309,12 +318,12 @@ class ProviderBenchmark:
                 throughput = results[provider_id].get("throughput", {})
 
                 avg_lat = simple.get("avg_latency_ms", 0)
-                p95_lat = simple.get("p95_latency_ms", 0)
+                min_lat = simple.get("min_latency_ms", 0)
                 tp = throughput.get("throughput_req_per_sec", 0)
                 quality = simple.get("quality_score", 0)
 
                 print(
-                    f"│ {provider_id:<19} │ {avg_lat:>10.2f}ms │ {p95_lat:>10.2f}ms │ {tp:>10.2f}rps │ {quality:>8.2f}   │"
+                    f"│ {provider_id:<19} │ {min_lat:>10.2f}ms │ {avg_lat:>10.2f}ms │ {tp:>10.2f}rps │ {quality:>8.2f}   │"
                 )
 
             print(
@@ -334,20 +343,20 @@ class ProviderBenchmark:
             # Find fastest provider
             fastest = min(
                 available,
-                key=lambda p: results[p]
-                .get("simple", {})
-                .get("avg_latency_ms", float("inf")),
+                key=lambda p: (
+                    results[p].get("simple", {}).get("min_latency_ms", float("inf"))
+                ),
             )
             fastest_latency = (
-                results[fastest].get("simple", {}).get("avg_latency_ms", 0)
+                results[fastest].get("simple", {}).get("min_latency_ms", 0)
             )
 
             # Find highest throughput
             highest_tp_provider = max(
                 available,
-                key=lambda p: results[p]
-                .get("throughput", {})
-                .get("throughput_req_per_sec", 0),
+                key=lambda p: (
+                    results[p].get("throughput", {}).get("throughput_req_per_sec", 0)
+                ),
             )
             highest_tp = (
                 results[highest_tp_provider]
@@ -355,7 +364,7 @@ class ProviderBenchmark:
                 .get("throughput_req_per_sec", 0)
             )
 
-            print(f"   🏎️  Fastest: {fastest} ({fastest_latency:.2f}ms avg latency)")
+            print(f"   🏎️  Fastest: {fastest} ({fastest_latency:.2f}ms min latency)")
             print(
                 f"   ⚡ Highest Throughput: {highest_tp_provider} ({highest_tp:.2f} req/s)"
             )

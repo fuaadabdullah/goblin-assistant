@@ -50,13 +50,14 @@ async def generate_chat_stream(
     total_cost = 0.0
     used_provider = provider or "unknown"
     used_model = model or "unknown"
-    start_time = time.time()
-    user_message_stored = False
+    start_time = time.perf_counter()
     response_message_id = str(uuid.uuid4())
 
     try:
         try:
-            conversation = await _cr._require_owned_conversation(conversation_id, current_user)
+            conversation = await _cr._require_owned_conversation(
+                conversation_id, current_user
+            )
         except HTTPException:
             error_event = {
                 "type": "error",
@@ -78,7 +79,6 @@ async def generate_chat_stream(
                 role="user",
                 content=sanitized_message,
             )
-            user_message_stored = True
         except Exception as db_exc:
             logger.error("db_write_error", exc=db_exc, stage="user_message_store")
             error_event = {
@@ -93,9 +93,12 @@ async def generate_chat_stream(
             return
 
         try:
-            conversation = await _cr._require_owned_conversation(conversation_id, current_user)
+            conversation = await _cr._require_owned_conversation(
+                conversation_id, current_user
+            )
             messages = [
-                {"role": msg.role, "content": msg.content} for msg in conversation.messages
+                {"role": msg.role, "content": msg.content}
+                for msg in conversation.messages
             ]
             payload = {"messages": messages, "model": model}
         except Exception as build_exc:
@@ -131,7 +134,9 @@ async def generate_chat_stream(
             yield _format_sse_event("error", error_event)
             return
         except Exception as provider_connect_exc:
-            logger.error("provider_connection_error", exc=provider_connect_exc, provider=provider)
+            logger.error(
+                "provider_connection_error", exc=provider_connect_exc, provider=provider
+            )
             error_event = {
                 "type": "error",
                 "code": "provider-connection-error",
@@ -218,7 +223,11 @@ async def generate_chat_stream(
                 stream_gen = provider_response["stream"]
                 async for chunk in stream_gen:
                     try:
-                        chunk_text = chunk.get("text", "") if isinstance(chunk, dict) else str(chunk)
+                        chunk_text = (
+                            chunk.get("text", "")
+                            if isinstance(chunk, dict)
+                            else str(chunk)
+                        )
                         if not chunk_text:
                             continue
                         accumulated_text += chunk_text
@@ -238,7 +247,9 @@ async def generate_chat_stream(
                         logger.error("chunk_processing_error", exc=chunk_exc)
                         continue
             except asyncio.TimeoutError:
-                logger.warning("stream_timeout", partial_response_len=len(accumulated_text))
+                logger.warning(
+                    "stream_timeout", partial_response_len=len(accumulated_text)
+                )
                 error_event = {
                     "type": "error",
                     "code": "stream-timeout",
@@ -250,7 +261,11 @@ async def generate_chat_stream(
                 yield _format_sse_event("error", error_event)
                 return
             except Exception as stream_exc:
-                logger.error("streaming_error", exc=stream_exc, partial_response_len=len(accumulated_text))
+                logger.error(
+                    "streaming_error",
+                    exc=stream_exc,
+                    partial_response_len=len(accumulated_text),
+                )
                 if accumulated_text:
                     error_event = {
                         "type": "error",
@@ -297,7 +312,9 @@ async def generate_chat_stream(
                 message_id=response_message_id,
             )
         except Exception as db_response_exc:
-            logger.error("db_write_error", exc=db_response_exc, stage="assistant_message_store")
+            logger.error(
+                "db_write_error", exc=db_response_exc, stage="assistant_message_store"
+            )
             # Response was already streamed — warn rather than error.
             error_event = {
                 "type": "warning",
@@ -309,7 +326,7 @@ async def generate_chat_stream(
             yield _format_sse_event("warning", error_event)
             return
 
-        duration_ms = int((time.time() - start_time) * 1000)
+        duration_ms = int((time.perf_counter() - start_time) * 1000)
 
         yield _format_sse_event(
             "complete",
@@ -326,7 +343,9 @@ async def generate_chat_stream(
         )
 
     except HTTPException as http_exc:
-        logger.warning("http_exception", status=http_exc.status_code, detail=http_exc.detail)
+        logger.warning(
+            "http_exception", status=http_exc.status_code, detail=http_exc.detail
+        )
         error_event = {
             "type": "error",
             "code": f"http-{http_exc.status_code}",

@@ -1,7 +1,7 @@
 from fastapi import APIRouter, HTTPException
 from fastapi.responses import StreamingResponse
 from pydantic import BaseModel
-from typing import Optional, Dict, Any, List
+from typing import Optional, Dict, List
 import json
 import time
 import logging
@@ -14,6 +14,7 @@ logger = logging.getLogger(__name__)
 
 class StreamTaskRequest(BaseModel):
     """Request model for streaming task execution"""
+
     task_id: str
     messages: List[Dict[str, str]]
     provider: Optional[str] = None
@@ -35,7 +36,7 @@ async def generate_stream_events(
     total_cost = 0.0
     used_provider = provider or "unknown"
     used_model = model or "unknown"
-    start_time = time.time()
+    start_time = time.perf_counter()
 
     try:
         # Build payload
@@ -66,7 +67,11 @@ async def generate_stream_events(
                 used_model = provider_response.get("model", used_model)
                 yield f"data: {json.dumps({'content': accumulated_text, 'token_count': 0, 'cost_delta': 0, 'done': False})}\n\n"
             else:
-                error_msg = provider_response.get("error", "unknown-error") if isinstance(provider_response, dict) else "provider-error"
+                error_msg = (
+                    provider_response.get("error", "unknown-error")
+                    if isinstance(provider_response, dict)
+                    else "provider-error"
+                )
                 yield f"data: {json.dumps({'error': error_msg, 'done': True})}\n\n"
                 return
 
@@ -74,7 +79,9 @@ async def generate_stream_events(
             # Real streaming path — consume async generator from provider
             stream_gen = provider_response["stream"]
             async for chunk in stream_gen:
-                chunk_text = chunk.get("text", "") if isinstance(chunk, dict) else str(chunk)
+                chunk_text = (
+                    chunk.get("text", "") if isinstance(chunk, dict) else str(chunk)
+                )
                 if not chunk_text:
                     continue
                 accumulated_text += chunk_text
@@ -90,7 +97,7 @@ async def generate_stream_events(
             if accumulated_text:
                 yield f"data: {json.dumps({'content': accumulated_text, 'token_count': 0, 'cost_delta': 0, 'done': False})}\n\n"
 
-        duration_ms = int((time.time() - start_time) * 1000)
+        duration_ms = int((time.perf_counter() - start_time) * 1000)
 
         # Send completion event
         yield f"data: {json.dumps({'result': accumulated_text, 'cost': total_cost, 'tokens': total_tokens, 'model': used_model, 'provider': used_provider, 'duration_ms': duration_ms, 'task_id': task_id, 'done': True})}\n\n"

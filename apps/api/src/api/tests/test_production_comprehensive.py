@@ -8,7 +8,6 @@ import asyncio
 import aiohttp
 import time
 import os
-from typing import Dict, Any
 
 # Load API key from environment to avoid committing secrets
 API_KEY = os.getenv("API_AUTH_KEY", "")
@@ -20,16 +19,16 @@ async def test_endpoint(session, method, path, json_data=None, use_auth=True):
     if use_auth:
         headers["x-api-key"] = API_KEY
 
-    start_time = time.time()
+    start_time = time.perf_counter()
     try:
         async with session.request(
             method, f"{base_url}{path}", json=json_data, headers=headers
         ) as resp:
-            duration = time.time() - start_time
+            duration = time.perf_counter() - start_time
             data = await resp.json() if resp.status != 204 else {}
             return resp.status, data, duration
     except Exception as e:
-        return 500, {"error": str(e)}, time.time() - start_time
+        return 500, {"error": str(e)}, time.perf_counter() - start_time
 
 
 async def run_production_tests():
