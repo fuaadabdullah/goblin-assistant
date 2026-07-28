@@ -1,5 +1,12 @@
 import React from 'react';
-import { Bot, Brain, Zap, Search, MessageSquare, Handshake, Wrench, Loader2, Check } from 'lucide-react';
+import { Bot, Brain, Zap, Search, MessageSquare, Handshake, Wrench, Loader2, Check, Palette, Cpu, Sliders } from 'lucide-react';
+
+type SettingsTab = 'appearance' | 'providers' | 'models';
+const SETTINGS_TABS: { id: SettingsTab; label: string; icon: React.ComponentType<{ className?: string }> }[] = [
+  { id: 'appearance', label: 'Appearance', icon: Palette },
+  { id: 'providers', label: 'Providers', icon: Cpu },
+  { id: 'models', label: 'Models', icon: Sliders },
+];
 import { useProviderSettings } from '../hooks/api/useSettings';
 import ThemePreview from '../components/ThemePreview';
 import KeyboardShortcutsHelp from '../components/KeyboardShortcutsHelp';
@@ -37,6 +44,7 @@ interface ProviderDisplay {
 }
 
 const SettingsPageContent: React.FC = () => {
+  const [activeTab, setActiveTab] = React.useState<SettingsTab>('appearance');
   const { data: providerData, isLoading: providersLoading, error: providersError, refetch } = useProviderSettings();
   const providerCtx = useProvider();
   const { showSuccess, showError } = useToast();
@@ -128,190 +136,147 @@ const SettingsPageContent: React.FC = () => {
   }
 
   return (
-    <div className="min-h-screen bg-bg py-12 px-4">
+    <div className="min-h-screen bg-bg">
       <Seo title="Settings" description="Provider and model settings." robots="noindex,nofollow" />
-      <div className="max-w-6xl mx-auto">
-        {/* Header */}
-        <div className="mb-12">
-          <h1 className="text-4xl font-bold text-primary mb-3">Provider & Model Settings</h1>
-          <p className="text-muted">Configure your AI provider API keys and model preferences</p>
-        </div>
 
-        {/* Theme Preview + Palette Switcher */}
-        <div className="mb-10">
-          <ThemePreview />
+      {/* Sticky tab header */}
+      <div className="border-b border-border/60 bg-surface/80 backdrop-blur sticky top-0 z-10">
+        <div className="max-w-4xl mx-auto px-4">
+          <div className="py-3"><h1 className="text-lg font-semibold text-text">Settings</h1></div>
+          <div className="flex gap-1">
+            {SETTINGS_TABS.map(({ id, label, icon: Icon }) => (
+              <button key={id} type="button" onClick={() => setActiveTab(id)}
+                className={`flex items-center gap-1.5 px-4 py-2 text-sm font-medium border-b-2 transition-colors ${
+                  activeTab === id ? 'border-primary text-primary' : 'border-transparent text-muted hover:text-text'
+                }`}>
+                <Icon className="w-3.5 h-3.5" />
+                {label}
+              </button>
+            ))}
+          </div>
         </div>
+      </div>
 
-        {/* Keyboard Shortcuts */}
-        <div className="mb-10">
-          <KeyboardShortcutsHelp />
-        </div>
+      <div className="max-w-4xl mx-auto px-4 py-8 space-y-6">
 
-        {providers.length === 0 && (
-          <InlineErrorState
-            title="No providers configured"
-            message="Add a provider key on the backend before saving model preferences."
-            className="mb-8"
-          />
+        {/* Appearance tab */}
+        {activeTab === 'appearance' && (
+          <>
+            <div>
+              <h2 className="text-sm font-semibold uppercase tracking-widest text-muted/70 mb-4">Theme</h2>
+              <ThemePreview />
+            </div>
+            <div>
+              <h2 className="text-sm font-semibold uppercase tracking-widest text-muted/70 mb-4">Keyboard shortcuts</h2>
+              <KeyboardShortcutsHelp />
+            </div>
+          </>
         )}
 
-        {/* Environment Variables Instructions */}
-        <Card variant="default" padding="md" className="mb-8 shadow-sm">
-          <h2 className="text-xl font-semibold text-text mb-4">How to Configure API Keys</h2>
-          <div className="space-y-3 text-text">
-            <p>API keys should be set as environment variables on the backend server.</p>
-            <div className="bg-bg rounded-lg p-4 font-mono text-sm text-primary">
-              <div>export OPENAI_API_KEY="your-key-here"</div>
-              <div>export ANTHROPIC_API_KEY="your-key-here"</div>
-              <div>export GROQ_API_KEY="your-key-here"</div>
-              <div>export GOOGLE_API_KEY="your-key-here"</div>
+        {/* Providers tab */}
+        {activeTab === 'providers' && (
+          <>
+            {providers.length === 0 && (
+              <InlineErrorState
+                title="No providers configured"
+                message="Add a provider API key on the backend before saving model preferences."
+                className="mb-4"
+              />
+            )}
+            <div className="rounded-xl border border-border bg-surface px-5 py-4">
+              <h2 className="text-sm font-medium text-text mb-1">API key setup</h2>
+              <p className="text-xs text-muted mb-3">Set provider keys as environment variables on the backend server.</p>
+              <div className="bg-bg rounded-lg px-4 py-3 font-mono text-xs text-primary space-y-1">
+                <div>OPENAI_API_KEY="sk-…"</div>
+                <div>ANTHROPIC_API_KEY="sk-ant-…"</div>
+                <div>GROQ_API_KEY="gsk_…"</div>
+              </div>
             </div>
-            <p className="text-sm text-muted">
-              For persistent configuration, add these to your{' '}
-              <code className="bg-surface-hover px-2 py-1 rounded text-primary">.env</code> file or
-              shell profile.
-            </p>
-          </div>
-        </Card>
-
-        {/* Provider Status Cards */}
-        <div>
-          <h2 className="text-2xl font-semibold text-text mb-6">Provider Status</h2>
-          <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
-            {providers.map(
-              (provider: {
-                name: string;
-                configured: boolean;
-                env_var?: string;
-                models?: string[];
-              }) => (
+            <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+              {providers.map((provider) => (
                 <Card key={provider.name} variant="default" padding="md" className="hover:shadow-md transition-shadow">
-                  {/* Provider Header */}
-                  <div className="flex items-center justify-between mb-4">
-                    <h3 className="text-lg font-semibold text-text">{provider.name}</h3>
+                  <div className="flex items-center justify-between mb-3">
+                    <h3 className="text-sm font-semibold text-text">{provider.name}</h3>
                     <Badge variant={provider.configured ? 'success' : 'danger'}>
-                      {provider.configured ? 'Configured' : 'Missing'}
+                      {provider.configured ? 'Ready' : 'Missing'}
                     </Badge>
                   </div>
-
-                  {/* Provider Icon */}
-                  <div className="flex items-center justify-center w-16 h-16 bg-surface-hover rounded-lg mb-4 mx-auto">
-                    {provider.name === 'OpenAI' && <Bot className="w-8 h-8 text-primary" />}
-                    {provider.name === 'Anthropic' && <Brain className="w-8 h-8 text-primary" />}
-                    {provider.name === 'Groq' && <Zap className="w-8 h-8 text-primary" />}
-                    {provider.name === 'Google' && <Search className="w-8 h-8 text-primary" />}
-                    {provider.name === 'Cohere' && <MessageSquare className="w-8 h-8 text-primary" />}
-                    {provider.name === 'Together' && <Handshake className="w-8 h-8 text-primary" />}
-                    {!['OpenAI', 'Anthropic', 'Groq', 'Google', 'Cohere', 'Together'].includes(
-                      provider.name
-                    ) && <Wrench className="w-8 h-8 text-primary" />}
+                  <div className="flex items-center justify-center w-12 h-12 bg-surface-hover rounded-lg mb-3 mx-auto">
+                    {provider.name === 'OpenAI' && <Bot className="w-6 h-6 text-primary" />}
+                    {provider.name === 'Anthropic' && <Brain className="w-6 h-6 text-primary" />}
+                    {provider.name === 'Groq' && <Zap className="w-6 h-6 text-primary" />}
+                    {provider.name === 'Google' && <Search className="w-6 h-6 text-primary" />}
+                    {provider.name === 'Cohere' && <MessageSquare className="w-6 h-6 text-primary" />}
+                    {provider.name === 'Together' && <Handshake className="w-6 h-6 text-primary" />}
+                    {!['OpenAI', 'Anthropic', 'Groq', 'Google', 'Cohere', 'Together'].includes(provider.name) && (
+                      <Wrench className="w-6 h-6 text-primary" />
+                    )}
                   </div>
-
-                  {/* Environment Variable */}
                   {provider.env_var && (
-                    <div className="mb-4">
-                      <p className="text-xs text-muted mb-1">Environment Variable:</p>
-                      <code className="block bg-bg px-3 py-2 rounded text-xs font-mono text-primary break-all">
-                        {provider.env_var}
-                      </code>
-                    </div>
+                    <code className="block bg-bg px-2 py-1.5 rounded text-xs font-mono text-primary break-all mb-2">
+                      {provider.env_var}
+                    </code>
                   )}
-
-                  {/* Models */}
                   {provider.models && provider.models.length > 0 && (
-                    <div>
-                      <p className="text-xs text-muted mb-2">Available Models:</p>
-                      <div className="flex flex-wrap gap-1">
-                        {provider.models.map((model: string) => (
-                          <Badge key={model} variant="primary" size="sm">
-                            {model}
-                          </Badge>
-                        ))}
-                      </div>
+                    <div className="flex flex-wrap gap-1 mt-2">
+                      {provider.models.slice(0, 3).map((model: string) => (
+                        <Badge key={model} variant="primary" size="sm">{model}</Badge>
+                      ))}
                     </div>
                   )}
-
-                  {/* Status Message */}
-                  <div className="mt-4 pt-4 border-t border-border">
-                    <p className={`text-xs ${provider.configured ? 'text-success' : 'text-danger'}`}>
-                      {provider.configured
-                        ? '✓ API key detected and ready to use'
-                        : '✗ API key not found. Configure on backend.'}
-                    </p>
-                  </div>
+                  <p className={`text-xs mt-3 pt-3 border-t border-border ${provider.configured ? 'text-success' : 'text-danger'}`}>
+                    {provider.configured ? '✓ Ready to use' : '✗ Key not found'}
+                  </p>
                 </Card>
-              )
-            )}
-          </div>
-        </div>
+              ))}
+            </div>
+          </>
+        )}
 
-        {/* Model Preferences */}
-        <Card variant="default" padding="md" className="mt-12 shadow-sm">
-          <h2 className="text-xl font-semibold text-text mb-4">Model Preferences</h2>
-          <p className="text-muted mb-4">
-            Configure default model settings and routing preferences.
-          </p>
-          <div className="grid gap-4 md:grid-cols-2">
-            <div>
-              <label
-                htmlFor="default-provider"
-                className="block text-sm font-medium text-text mb-2"
-              >
-                Default Provider
-              </label>
-              <Select
-                value={selectedProvider}
-                onValueChange={providerCtx.setSelectedProvider}
-              >
-                <SelectTrigger id="default-provider" className="w-full">
-                  <SelectValue placeholder={providers.length === 0 ? 'auto' : undefined} />
-                </SelectTrigger>
-                <SelectContent>
-                  {providers.length === 0 && (
+        {/* Models tab */}
+        {activeTab === 'models' && (
+          <Card variant="default" padding="md" className="shadow-sm">
+            <h2 className="text-lg font-semibold text-text mb-1">Model Preferences</h2>
+            <p className="text-sm text-muted mb-5">Configure default model settings and routing preferences.</p>
+            <div className="grid gap-4 md:grid-cols-2">
+              <div>
+                <label htmlFor="default-provider" className="block text-sm font-medium text-text mb-2">Default Provider</label>
+                <Select value={selectedProvider} onValueChange={providerCtx.setSelectedProvider}>
+                  <SelectTrigger id="default-provider" className="w-full">
+                    <SelectValue placeholder={providers.length === 0 ? 'auto' : undefined} />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {providers.length === 0 && <SelectItem value="auto">auto</SelectItem>}
+                    {providers.map(p => <SelectItem key={p.name} value={p.name}>{p.name}</SelectItem>)}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div>
+                <label htmlFor="default-model" className="block text-sm font-medium text-text mb-2">Default Model</label>
+                <Select value={selectedModel} onValueChange={providerCtx.setSelectedModel}>
+                  <SelectTrigger id="default-model" className="w-full">
+                    <SelectValue placeholder="auto" />
+                  </SelectTrigger>
+                  <SelectContent>
                     <SelectItem value="auto">auto</SelectItem>
-                  )}
-                  {providers.map(p => (
-                    <SelectItem key={p.name} value={p.name}>
-                      {p.name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+                    {selectedProviderModels.map(model => <SelectItem key={model} value={model}>{model}</SelectItem>)}
+                  </SelectContent>
+                </Select>
+              </div>
             </div>
-            <div>
-              <label htmlFor="default-model" className="block text-sm font-medium text-text mb-2">
-                Default Model
-              </label>
-              <Select
-                value={selectedModel}
-                onValueChange={providerCtx.setSelectedModel}
+            <div className="mt-6">
+              <Button
+                type="button"
+                onClick={handleSavePreferences}
+                disabled={providers.length === 0}
+                loading={isSaving}
+                icon={!isSaving ? <Check className="w-4 h-4" /> : undefined}
               >
-                <SelectTrigger id="default-model" className="w-full">
-                  <SelectValue placeholder="auto" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="auto">auto</SelectItem>
-                  {selectedProviderModels.map(model => (
-                    <SelectItem key={model} value={model}>
-                      {model}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+                {isSaving ? 'Saving…' : 'Save preferences'}
+              </Button>
             </div>
-          </div>
-          <div className="mt-6 flex items-center gap-3">
-            <Button
-              type="button"
-              onClick={handleSavePreferences}
-              disabled={providers.length === 0}
-              loading={isSaving}
-              icon={!isSaving ? <Check className="w-4 h-4" /> : undefined}
-            >
-              {isSaving ? 'Saving...' : 'Save preferences'}
-            </Button>
-          </div>
-        </Card>
+          </Card>
+        )}
       </div>
     </div>
   );
