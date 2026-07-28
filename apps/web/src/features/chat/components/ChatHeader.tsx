@@ -2,8 +2,7 @@
 
 import Link from 'next/link';
 import { PanelRight, X, SlidersHorizontal } from 'lucide-react';
-import { useHealthCheck } from '../../../hooks/useHealthCheck';
-import type { HealthStatus } from '../../../types/api';
+import { useHealth } from '../../../hooks/api/useHealth';
 import { useUIStore } from '../../../store/uiStore';
 
 type MobileChatPanelTab = 'conversations' | 'preview';
@@ -17,11 +16,11 @@ interface ChatHeaderProps {
   showMobilePanelToggle?: boolean;
 }
 
-function StatusDot({ health }: { health: HealthStatus | null }) {
+function StatusDot({ health }: { health: { overall: string } | null }) {
   if (!health) {
     return <span className="h-1.5 w-1.5 rounded-full bg-muted/50 animate-pulse" />;
   }
-  const overall = health.overall ?? health.status;
+  const overall = health.overall;
   const color =
     overall === 'healthy'
       ? 'bg-success'
@@ -47,7 +46,7 @@ const ChatHeader = ({
   activeMobilePanelTab = 'conversations',
   showMobilePanelToggle = false,
 }: ChatHeaderProps) => {
-  const healthQuery = useHealthCheck();
+  const healthQuery = useHealth();
   const health = healthQuery.data ?? null;
   const toggleInspector = useUIStore((s) => s.toggleChatInspector);
   const inspectorOpen = useUIStore((s) => s.chatInspectorOpen);
