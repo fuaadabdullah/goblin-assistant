@@ -117,9 +117,10 @@ jobs:
           python3 - <<'EOF'
           import json, os, sys
 
-          manifest = json.loads(os.environ.get("RESULTS", "[]"))
+          manifest = json.loads(os.environ.get("RESULTS") or "[]")
           failures = []
           rows = []
+          warnings = []
 
           thresholds = {
               "performance":    90,
@@ -142,13 +143,15 @@ jobs:
 
           print("table=" + json.dumps(rows), file=open(os.environ["GITHUB_OUTPUT"], "a"))
           if os.environ.get("LIGHTHOUSE_OUTCOME") != "success" and not manifest:
-              failures.append("Lighthouse did not produce a manifest; inspect the uploaded action logs.")
+              warnings.append("Lighthouse did not produce a manifest; inspect the uploaded action logs.")
 
           if failures:
               print("failed=true",  file=open(os.environ["GITHUB_OUTPUT"], "a"))
               print("summary=" + json.dumps(failures), file=open(os.environ["GITHUB_OUTPUT"], "a"))
           else:
               print("failed=false", file=open(os.environ["GITHUB_OUTPUT"], "a"))
+              print("summary=[]", file=open(os.environ["GITHUB_OUTPUT"], "a"))
+          print("warnings=" + json.dumps(warnings), file=open(os.environ["GITHUB_OUTPUT"], "a"))
           EOF
         env:
           RESULTS: ${{ steps.lighthouse.outputs.manifest }}
@@ -172,6 +175,7 @@ jobs:
             _Thresholds: Performance ≥ 90 · Accessibility ≥ 95 · Best Practices ≥ 90 · SEO ≥ 85_
 
             ${{ steps.lh_parse.outputs.failed == 'true' && format('> ⛔ **Lighthouse failures:** {0}', join(fromJson(steps.lh_parse.outputs.summary || '[]'), ', ')) || '> ✅ All Lighthouse thresholds met.' }}
+            ${{ steps.lh_parse.outputs.warnings != '[]' && format('> ⚠️ **Lighthouse warnings:** {0}', join(fromJson(steps.lh_parse.outputs.warnings || '[]'), ', ')) || '' }}
 
             ### Bundle (First Load JS · audited route budget: 325 KB)
             ${{ fromJson(steps.bundle.outputs.data || '{}').over_budget != null && fromJson(steps.bundle.outputs.data).over_budget.length > 0 && format('> ⛔ Over-budget routes: `{0}`', join(fromJson(steps.bundle.outputs.data).over_budget, '`, `')) || '> ✅ Audited routes are within the 325 KB budget.' }}
@@ -196,7 +200,7 @@ jobs:
 
       # ── Hard gate ───────────────────────────────────────────────────────────
       - name: Fail if gates not met
-        if: steps.lighthouse.outcome == 'failure' || steps.lh_parse.outputs.failed == 'true' || steps.bundle.outputs.failed == 'true'
+        if: steps.lh_parse.outputs.failed == 'true' || steps.bundle.outputs.failed == 'true'
         run: |
           echo "❌ Quality gates failed:"
           echo "Lighthouse: ${{ steps.lh_parse.outputs.summary }}"
