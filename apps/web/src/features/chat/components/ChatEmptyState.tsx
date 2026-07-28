@@ -13,10 +13,10 @@ import {
 } from '../../../content/brand';
 
 interface ChatEmptyStateProps {
-  quickPrompts: QuickPrompt[];
+  quickPrompts?: QuickPrompt[];
   onPromptClick: (prompt: string) => void;
-  selectedMode: Mode;
-  onModeChange: (mode: Mode) => void;
+  selectedMode?: Mode;
+  onModeChange?: (mode: Mode) => void;
   prefersReducedMotion?: boolean;
 }
 
@@ -33,14 +33,15 @@ const Lottie = dynamic(() => import('lottie-react'), {
 });
 
 const ChatEmptyState = ({
-  quickPrompts: _quickPrompts,
+  quickPrompts = [],
   onPromptClick,
-  selectedMode,
-  onModeChange,
+  selectedMode = 'all',
+  onModeChange = () => undefined,
   prefersReducedMotion = false,
 }: ChatEmptyStateProps) => {
   const animationData = useGoblinLoaderAnimation();
-  const displayedPrompts = PROMPTS_BY_MODE[selectedMode];
+  const displayedPrompts =
+    quickPrompts.length > 0 ? (PROMPTS_BY_MODE[selectedMode] ?? quickPrompts) : [];
 
   return (
     <section className="flex flex-col items-center justify-center h-full w-full px-4 py-8">
