@@ -1,5 +1,6 @@
 import { forwardRef, type ButtonHTMLAttributes, type ReactNode } from 'react';
 import { cva, type VariantProps } from 'class-variance-authority';
+import Spinner from '../spinner';
 import { cn } from '../utils';
 
 const buttonVariants = cva(
@@ -8,13 +9,13 @@ const buttonVariants = cva(
     variants: {
       variant: {
         primary:
-          'bg-primary text-text hover:bg-primary-600 active:bg-primary-600/90 shadow-md hover:shadow-lg',
+          'bg-primary text-bg hover:bg-primary-600 active:bg-primary-600/90 shadow-md hover:shadow-lg',
         secondary:
           'bg-surface text-text border border-border hover:bg-surface-hover hover:border-primary/50 active:bg-surface-active shadow-sm hover:shadow-md',
         danger:
-          'bg-danger text-text hover:bg-danger/90 active:bg-danger/80 shadow-md hover:shadow-lg',
+          'bg-danger text-bg hover:bg-danger/90 active:bg-danger/80 shadow-md hover:shadow-lg',
         success:
-          'bg-success text-text hover:bg-success/90 active:bg-success/80 shadow-md hover:shadow-lg',
+          'bg-success text-bg hover:bg-success/90 active:bg-success/80 shadow-md hover:shadow-lg',
         ghost:
           'bg-transparent text-text border border-border hover:bg-surface/50 active:bg-surface/70',
       },
@@ -70,11 +71,7 @@ const Button = forwardRef<HTMLButtonElement, ButtonProps>(
         aria-busy={loading ? 'true' : undefined}
         {...props}
       >
-        {loading && (
-          <span className="animate-spin" aria-hidden="true">
-            ⟳
-          </span>
-        )}
+        {loading && <Spinner aria-hidden="true" className="h-4 w-4" />}
         {!loading && icon && <span aria-hidden="true">{icon}</span>}
         {children}
       </button>

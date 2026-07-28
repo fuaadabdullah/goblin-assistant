@@ -1,0 +1,43 @@
+:root.goblinos-light {
+  color-scheme: light;
+  --background: #faf6f1;
+  --foreground: #1a140f;
+  --bg: #faf6f1;
+  --bg-subtle: #f5efe8;
+  --bg-gradient:
+    radial-gradient(900px at 18% 12%, rgba(212, 165, 116, 0.06), transparent 55%),
+    radial-gradient(850px at 86% 8%, rgba(244, 150, 122, 0.06), transparent 55%), var(--bg);
+  --surface: #ffffff;
+  --surface-hover: #f0e9e0;
+  --surface-active: #e5ddd4;
+  --text: #1a140f;
+  --text-inverse: #faf6f1;
+  --text-primary: #1a140f;
+  --text-secondary: #4a3f36;
+  --text-muted: #7a6e62;
+  --muted: #7a6e62;
+  --primary: #9e6f3a;
+  --primary-300: #c49a60;
+  --primary-600: #7d5628;
+  --primary-hover: #8a6232;
+  --accent: #c95a42;
+  --accent-300: #e0826c;
+  --accent-600: #a84a36;
+  --accent-hover: #b5503a;
+  --cta: #c07d0e;
+  --cta-300: #e0a030;
+  --cta-600: #a86c0c;
+  --cta-hover: #aa7010;
+  --success: #3a8c22;
+  --warning: #b87d12;
+  --danger: #c93828;
+  --info: #3070b8;
+  --border: rgba(26, 20, 15, 0.12);
+  --border-strong: rgba(26, 20, 15, 0.22);
+  --divider: rgba(26, 20, 15, 0.08);
+  --glow-primary: rgba(158, 111, 58, 0.1);
+  --glow-accent: rgba(201, 90, 66, 0.1);
+  --glow-cta: rgba(192, 125, 14, 0.1);
+  --scanline: transparent;
+  --scanline-pattern: none;
+}

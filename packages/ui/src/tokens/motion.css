@@ -1,0 +1,31 @@
+:root {
+  --duration-instant: 0ms;
+  --duration-fast: 120ms;
+  --duration-normal: 180ms;
+  --duration-slow: 240ms;
+  --duration-enter: 180ms;
+  --duration-exit: 120ms;
+  --motion-duration-fast: var(--duration-fast);
+  --motion-duration-base: var(--duration-normal);
+  --motion-duration-slow: var(--duration-slow);
+
+  --ease-linear: linear;
+  --ease-in: cubic-bezier(0.4, 0, 1, 1);
+  --ease-out: cubic-bezier(0, 0, 0.2, 1);
+  --ease-in-out: cubic-bezier(0.4, 0, 0.2, 1);
+  --ease-default: cubic-bezier(0.2, 0, 0, 1);
+  --ease-spring: cubic-bezier(0.2, 0, 0, 1.2);
+  --ease-bounce: cubic-bezier(0.34, 1.56, 0.64, 1);
+  --motion-ease-standard: var(--ease-default);
+  --motion-ease-emphasized: var(--ease-spring);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  :root {
+    --duration-fast: 0.01ms;
+    --duration-normal: 0.01ms;
+    --duration-slow: 0.01ms;
+    --duration-enter: 0.01ms;
+    --duration-exit: 0.01ms;
+  }
+}

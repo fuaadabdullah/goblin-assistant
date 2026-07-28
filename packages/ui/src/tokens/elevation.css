@@ -1,0 +1,27 @@
+:root {
+  --shadow-xs: 0 1px 1px rgba(0, 0, 0, 0.04);
+  --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.08);
+  --shadow-md: 0 4px 8px rgba(0, 0, 0, 0.12);
+  --shadow-lg: 0 10px 20px rgba(0, 0, 0, 0.15);
+  --shadow-xl: 0 20px 40px rgba(0, 0, 0, 0.2);
+  --shadow-2xl: 0 32px 64px rgba(0, 0, 0, 0.25);
+  --shadow-inner: inset 0 2px 4px rgba(0, 0, 0, 0.06);
+  --shadow-focus: 0 0 0 2px var(--bg), 0 0 0 4px var(--primary);
+  --shadow-focus-danger: 0 0 0 2px var(--bg), 0 0 0 4px var(--danger);
+  --shadow-card: var(--shadow-md);
+  --shadow-glow-primary: 0 6px 24px var(--glow-primary);
+  --shadow-glow-accent: 0 6px 24px var(--glow-accent);
+  --shadow-glow-cta: 0 6px 24px var(--glow-cta);
+
+  --z-hide: -1;
+  --z-base: 0;
+  --z-raised: 10;
+  --z-dropdown: 30;
+  --z-sticky: 40;
+  --z-overlay: 50;
+  --z-modal: 60;
+  --z-popover: 70;
+  --z-toast: 80;
+  --z-tooltip: 90;
+  --z-skip-link: 100;
+}
