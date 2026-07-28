@@ -34,6 +34,8 @@ export const queryKeys = {
   routingProviders: (capability?: string) =>
     capability ? ['routing', 'providers', capability] as const : ['routing', 'providers'] as const,
   routingHealth: ['routing', 'health'] as const,
+  routingAudit: (limit: number) => ['routing', 'audit', limit] as const,
+  routingProviderStatus: ['routing', 'provider-status'] as const,
 
   // Goblins
   goblins: ['goblins'] as const,
