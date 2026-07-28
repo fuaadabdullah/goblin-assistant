@@ -1,5 +1,5 @@
 import React from 'react';
-import { Loader2 } from 'lucide-react';
+import { Loader2, Palette, Cpu, Sliders } from 'lucide-react';
 import { useProviderSettings } from '../../hooks/api/useSettings';
 import ThemePreview from '../../components/ThemePreview';
 import KeyboardShortcutsHelp from '../../components/KeyboardShortcutsHelp';
@@ -9,7 +9,7 @@ import { useProvider } from '../../contexts/ProviderContext';
 import { useToast } from '../../hooks/useToast';
 import { apiClient } from '@/lib/api';
 import { getUserMessage } from '@/lib/error/toast';
-import { Card, InlineErrorState, PageState } from '../../components/ui';
+import { InlineErrorState, PageState } from '../../components/ui';
 import { ProviderStatusSection } from './ProviderStatusSection';
 import { ModelPreferencesSection } from './ModelPreferencesSection';
 import type { ProviderSource, ProviderDisplay, ProviderGroup, ProviderGroupId } from './types';
@@ -21,7 +21,16 @@ import {
   isCloudProvider,
 } from './providerUtils';
 
+type SettingsTab = 'appearance' | 'providers' | 'models';
+
+const SETTINGS_TABS: { id: SettingsTab; label: string; icon: React.ComponentType<{ className?: string }> }[] = [
+  { id: 'appearance', label: 'Appearance', icon: Palette },
+  { id: 'providers', label: 'Providers', icon: Cpu },
+  { id: 'models', label: 'Models', icon: Sliders },
+];
+
 const SettingsPageContent: React.FC = () => {
+  const [activeTab, setActiveTab] = React.useState<SettingsTab>('appearance');
   const {
     data: providerData,
     isLoading: providersLoading,
@@ -172,80 +181,88 @@ const SettingsPageContent: React.FC = () => {
   }
 
   return (
-    <div className="min-h-screen bg-bg py-12 px-4">
+    <div className="min-h-screen bg-bg">
       <Seo title="Settings" description="Provider and model settings." robots="noindex,nofollow" />
-      <div className="max-w-6xl mx-auto">
-        <div className="mb-12">
-          <h1 className="text-4xl font-bold text-primary mb-3">Provider & Model Settings</h1>
-          <p className="text-muted">Configure your AI provider API keys and model preferences</p>
-        </div>
 
-        <div className="mb-10">
-          <Card variant="default" padding="md" className="mb-4 shadow-sm">
-            <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+      <div className="border-b border-border/60 bg-surface/80 backdrop-blur sticky top-0 z-10">
+        <div className="max-w-4xl mx-auto px-4">
+          <div className="py-3"><h1 className="text-lg font-semibold text-text">Settings</h1></div>
+          <div className="flex gap-1">
+            {SETTINGS_TABS.map(({ id, label, icon: Icon }) => (
+              <button key={id} type="button" onClick={() => setActiveTab(id)}
+                className={`flex items-center gap-1.5 px-4 py-2 text-sm font-medium border-b-2 transition-colors ${activeTab === id ? 'border-primary text-primary' : 'border-transparent text-muted hover:text-text'}`}>
+                <Icon className="w-3.5 h-3.5" />
+                {label}
+              </button>
+            ))}
+          </div>
+        </div>
+      </div>
+
+      <div className="max-w-4xl mx-auto px-4 py-8 space-y-6">
+        {activeTab === 'appearance' && (
+          <>
+            <div>
+              <h2 className="text-sm font-semibold uppercase tracking-widest text-muted/70 mb-4">Theme</h2>
+              <ThemePreview />
+            </div>
+            <div className="rounded-xl border border-border bg-surface px-5 py-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
               <div>
-                <h2 className="text-xl font-semibold text-text">Theme Mode</h2>
-                <p className="text-sm text-muted">
-                  Switch between dark, light, and high-contrast modes.
-                </p>
+                <p className="text-sm font-medium text-text">High-contrast mode</p>
+                <p className="text-xs text-muted mt-0.5">Increases contrast for better readability.</p>
               </div>
               <ContrastModeToggle />
             </div>
-          </Card>
-          <ThemePreview />
-        </div>
-
-        <div className="mb-10">
-          <KeyboardShortcutsHelp />
-        </div>
-
-        {providers.length === 0 && (
-          <InlineErrorState
-            title="No providers configured"
-            message="Add a provider key on the backend before saving model preferences."
-            className="mb-8"
-          />
+            <div>
+              <h2 className="text-sm font-semibold uppercase tracking-widest text-muted/70 mb-4">Keyboard shortcuts</h2>
+              <KeyboardShortcutsHelp />
+            </div>
+          </>
         )}
 
-        <Card variant="default" padding="md" className="mb-8 shadow-sm">
-          <h2 className="text-xl font-semibold text-text mb-4">How to Configure API Keys</h2>
-          <div className="space-y-3 text-text">
-            <p>API keys should be set as environment variables on the backend server.</p>
-            <div className="bg-bg rounded-lg p-4 font-mono text-sm text-primary">
-              <div>export OPENAI_API_KEY=&quot;your-key-here&quot;</div>
-              <div>export ANTHROPIC_API_KEY=&quot;your-key-here&quot;</div>
-              <div>export GROQ_API_KEY=&quot;your-key-here&quot;</div>
-              <div>export GOOGLE_API_KEY=&quot;your-key-here&quot;</div>
+        {activeTab === 'providers' && (
+          <>
+            {providers.length === 0 && (
+              <InlineErrorState
+                title="No providers configured"
+                message="Add a provider API key on the backend before saving model preferences."
+                className="mb-4"
+              />
+            )}
+            <div className="rounded-xl border border-border bg-surface px-5 py-4">
+              <h2 className="text-sm font-medium text-text mb-1">API key setup</h2>
+              <p className="text-xs text-muted mb-3">Set provider keys as environment variables on the backend server.</p>
+              <div className="bg-bg rounded-lg px-4 py-3 font-mono text-xs text-primary space-y-1">
+                <div>OPENAI_API_KEY=&quot;sk-…&quot;</div>
+                <div>ANTHROPIC_API_KEY=&quot;sk-ant-…&quot;</div>
+                <div>GROQ_API_KEY=&quot;gsk_…&quot;</div>
+              </div>
             </div>
-            <p className="text-sm text-muted">
-              For persistent configuration, add these to your{' '}
-              <code className="bg-surface-hover px-2 py-1 rounded text-primary">.env</code> file or
-              shell profile.
-            </p>
-          </div>
-        </Card>
+            <ProviderStatusSection
+              filteredProviders={filteredProviders}
+              providerGroups={providerGroups}
+              providerSearch={providerSearch}
+              setProviderSearch={setProviderSearch}
+              openProviderGroups={openProviderGroups}
+              toggleProviderGroup={toggleProviderGroup}
+              expandedProviderKey={expandedProviderKey}
+              toggleProviderDetails={toggleProviderDetails}
+            />
+          </>
+        )}
 
-        <ProviderStatusSection
-          filteredProviders={filteredProviders}
-          providerGroups={providerGroups}
-          providerSearch={providerSearch}
-          setProviderSearch={setProviderSearch}
-          openProviderGroups={openProviderGroups}
-          toggleProviderGroup={toggleProviderGroup}
-          expandedProviderKey={expandedProviderKey}
-          toggleProviderDetails={toggleProviderDetails}
-        />
-
-        <ModelPreferencesSection
-          providers={providers}
-          selectedProvider={selectedProvider}
-          selectedModel={selectedModel}
-          selectedProviderModels={selectedProviderModels}
-          isSaving={isSaving}
-          onProviderChange={providerCtx.setSelectedProvider}
-          onModelChange={providerCtx.setSelectedModel}
-          onSave={handleSavePreferences}
-        />
+        {activeTab === 'models' && (
+          <ModelPreferencesSection
+            providers={providers}
+            selectedProvider={selectedProvider}
+            selectedModel={selectedModel}
+            selectedProviderModels={selectedProviderModels}
+            isSaving={isSaving}
+            onProviderChange={providerCtx.setSelectedProvider}
+            onModelChange={providerCtx.setSelectedModel}
+            onSave={handleSavePreferences}
+          />
+        )}
       </div>
     </div>
   );
