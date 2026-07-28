@@ -118,7 +118,7 @@ export const TabsTrigger = React.forwardRef<HTMLButtonElement, TabsTriggerProps>
         aria-controls={`${context.baseId}-panel-${value}`}
         aria-selected={selected}
         className={cn(
-          'inline-flex min-h-10 items-center justify-center rounded-sm px-3 py-2 text-sm font-medium text-muted transition-colors duration-150 focus-visible:outline focus-visible:outline-2 focus-visible:outline-primary focus-visible:outline-offset-2 disabled:pointer-events-none disabled:opacity-50',
+          'goblin-focus-ring goblin-motion-colors inline-flex min-h-10 items-center justify-center rounded-sm px-3 py-2 text-sm font-medium text-muted disabled:pointer-events-none disabled:opacity-50',
           selected ? 'bg-primary text-bg shadow-sm' : 'hover:bg-surface-hover hover:text-text',
           className
         )}
@@ -160,10 +160,7 @@ export const TabsContent = React.forwardRef<HTMLDivElement, TabsContentProps>(
         hidden={!selected}
         role="tabpanel"
         tabIndex={0}
-        className={cn(
-          'focus-visible:outline focus-visible:outline-2 focus-visible:outline-primary',
-          className
-        )}
+        className={cn('goblin-focus-ring', className)}
         {...props}
       />
     );

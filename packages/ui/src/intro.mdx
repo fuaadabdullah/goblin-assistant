@@ -30,11 +30,17 @@ Switch via `<ThemeProvider>` from `@goblin/ui` or by adding the
 Browse the sidebar to inspect every primitive. Each story has a11y, themes,
 and viewport addons enabled.
 
+## Motion and Focus
+
+Use the shared `goblin-motion-*`, `goblin-focus-ring*`, and `goblin-pressable`
+utilities from `@goblin/ui/tokens` instead of hard-coding duration or outline
+classes. They are token-backed and honor reduced-motion preferences.
+
 ## Adding a New Token
 
 1. Add to the appropriate file in `packages/ui/src/tokens/`.
 2. If it's primitive (e.g. new color), add to `colors.css`.
 3. If it's semantic (e.g. `--surface-warning`), add to all three theme files.
-4. Document it in `packages/ui/DESIGN_SYSTEM.md`.
+4. Document it in `packages/ui/README.md`.
 5. Map it into `apps/web/tailwind.config.js`.
 6. Add a Storybook story.

@@ -29,6 +29,17 @@ Token groups:
 Components should consume semantic values such as `--surface`, `--text`,
 `--primary`, `--border`, and `--space-4`, not raw primitive colors.
 
+`tokens/index.css` also exposes the shared utility classes used by primitives:
+
+- `goblin-focus-ring`, plus inset/danger/success variants.
+- `goblin-motion-colors`, `goblin-motion-opacity`, `goblin-motion-transform`,
+  `goblin-motion-width`, `goblin-motion-interactive`, and
+  `goblin-motion-presence`.
+- `goblin-pressable` for reduced-motion-safe pressed states.
+
+These utilities keep keyboard focus, overlay animation, hover transitions, and
+reduced-motion behavior centralized in `@goblin/ui`.
+
 ## Themes
 
 Dark is the default theme. Light and high-contrast are activated by applying a

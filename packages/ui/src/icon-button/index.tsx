@@ -3,7 +3,7 @@ import { cva, type VariantProps } from 'class-variance-authority';
 import { cn } from '../utils';
 
 const iconButtonVariants = cva(
-  'inline-flex items-center justify-center rounded-md transition-all duration-150 focus-visible:outline focus-visible:outline-2 focus-visible:outline-primary focus-visible:outline-offset-2 disabled:opacity-50 disabled:cursor-not-allowed active:translate-y-[1px] min-h-[44px] min-w-[44px]',
+  'goblin-focus-ring goblin-motion-interactive goblin-pressable inline-flex min-h-[44px] min-w-[44px] items-center justify-center rounded-md disabled:cursor-not-allowed disabled:opacity-50',
   {
     variants: {
       variant: {
@@ -46,7 +46,7 @@ const IconButton = forwardRef<HTMLButtonElement, IconButtonProps>(
         disabled={disabled}
         {...props}
       >
-        {icon}
+        <span aria-hidden="true">{icon}</span>
       </button>
     );
   }

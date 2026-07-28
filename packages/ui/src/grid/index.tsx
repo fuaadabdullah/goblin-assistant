@@ -2,7 +2,7 @@ import { cva, type VariantProps } from 'class-variance-authority';
 import type { HTMLAttributes, ReactNode } from 'react';
 import { cn } from '../utils';
 
-const gridVariants = cva('grid transition-all duration-150', {
+const gridVariants = cva('goblin-motion-interactive grid', {
   variants: {
     gap: {
       none: 'gap-0',

@@ -4,7 +4,7 @@ import Spinner from '../spinner';
 import { cn } from '../utils';
 
 const buttonVariants = cva(
-  'inline-flex items-center justify-center gap-2 font-semibold rounded-md transition-all duration-150 focus-visible:outline focus-visible:outline-2 focus-visible:outline-primary focus-visible:outline-offset-2 disabled:opacity-50 disabled:cursor-not-allowed active:translate-y-[1px]',
+  'goblin-focus-ring goblin-motion-interactive goblin-pressable inline-flex items-center justify-center gap-2 rounded-md font-semibold disabled:cursor-not-allowed disabled:opacity-50',
   {
     variants: {
       variant: {

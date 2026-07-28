@@ -3,7 +3,7 @@ import { cva, type VariantProps } from 'class-variance-authority';
 import { cn } from '../utils';
 
 const inputVariants = cva(
-  'flex w-full rounded-md border border-border bg-surface text-text placeholder:text-muted transition-all duration-150 focus:outline-none focus-visible:outline-2 focus-visible:outline-primary focus-visible:outline-offset-0 focus:border-primary disabled:cursor-not-allowed disabled:opacity-50',
+  'goblin-focus-ring goblin-focus-ring-inset goblin-motion-interactive flex w-full rounded-md border border-border bg-surface text-text placeholder:text-muted focus:border-primary focus:outline-none disabled:cursor-not-allowed disabled:opacity-50',
   {
     variants: {
       size: {
@@ -13,8 +13,8 @@ const inputVariants = cva(
       },
       state: {
         default: 'shadow-sm focus:shadow-md',
-        error: 'border-danger focus-visible:outline-danger',
-        success: 'border-success focus-visible:outline-success',
+        error: 'goblin-focus-ring-danger border-danger',
+        success: 'goblin-focus-ring-success border-success',
       },
     },
     defaultVariants: {

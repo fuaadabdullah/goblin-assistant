@@ -27,7 +27,7 @@ export default function EmptyState({
     actionHref ? (
       <a
         href={actionHref}
-        className="inline-flex h-10 items-center justify-center rounded-md bg-primary px-4 text-sm font-semibold text-text transition-all hover:bg-primary-600"
+        className="goblin-focus-ring goblin-motion-interactive inline-flex h-10 items-center justify-center rounded-md bg-primary px-4 text-sm font-semibold text-text hover:bg-primary-600"
       >
         {actionLabel}
       </a>

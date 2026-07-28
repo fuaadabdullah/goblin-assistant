@@ -12,3 +12,87 @@
   outline: 2px solid var(--primary);
   outline-offset: 2px;
 }
+
+.goblin-focus-ring {
+  outline: 2px solid transparent;
+  outline-offset: 2px;
+}
+
+.goblin-focus-ring:focus-visible {
+  outline-color: var(--primary);
+}
+
+.goblin-focus-ring-inset {
+  outline-offset: 0;
+}
+
+.goblin-focus-ring-danger:focus-visible {
+  outline-color: var(--danger);
+}
+
+.goblin-focus-ring-success:focus-visible {
+  outline-color: var(--success);
+}
+
+.goblin-motion-colors {
+  transition-duration: var(--duration-fast);
+  transition-property: color, background-color, border-color, text-decoration-color, fill, stroke;
+  transition-timing-function: var(--ease-default);
+}
+
+.goblin-motion-opacity {
+  transition-duration: var(--duration-fast);
+  transition-property: opacity;
+  transition-timing-function: var(--ease-default);
+}
+
+.goblin-motion-transform {
+  transition-duration: var(--duration-normal);
+  transition-property: transform;
+  transition-timing-function: var(--ease-out);
+}
+
+.goblin-motion-width {
+  transition-duration: var(--duration-slow);
+  transition-property: width;
+  transition-timing-function: var(--ease-out);
+}
+
+.goblin-motion-interactive {
+  transition-duration: var(--duration-fast);
+  transition-property: color, background-color, border-color, opacity, box-shadow, transform;
+  transition-timing-function: var(--ease-default);
+}
+
+.goblin-motion-presence {
+  animation-duration: var(--duration-enter);
+  animation-timing-function: var(--ease-out);
+}
+
+.goblin-motion-presence[data-state='closed'] {
+  animation-duration: var(--duration-exit);
+  animation-timing-function: var(--ease-in);
+}
+
+.goblin-pressable:active {
+  transform: translateY(1px);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .goblin-motion-colors,
+  .goblin-motion-opacity,
+  .goblin-motion-transform,
+  .goblin-motion-width,
+  .goblin-motion-interactive {
+    transition-duration: 0.01ms;
+    transition-property: none;
+  }
+
+  .goblin-motion-presence {
+    animation-duration: 0.01ms;
+  }
+
+  .goblin-pressable:active {
+    transform: none;
+  }
+}

@@ -3,13 +3,13 @@ import { cva, type VariantProps } from 'class-variance-authority';
 import { cn } from '../utils';
 
 const cardVariants = cva(
-  'rounded-md border border-border bg-surface text-text transition-all duration-150',
+  'goblin-motion-interactive rounded-md border border-border bg-surface text-text',
   {
     variants: {
       variant: {
         default: 'hover:border-primary/50 hover:shadow-md',
         interactive:
-          'cursor-pointer hover:bg-surface-hover hover:border-primary/50 hover:shadow-md focus-visible:outline focus-visible:outline-2 focus-visible:outline-primary focus-visible:outline-offset-2',
+          'goblin-focus-ring cursor-pointer hover:bg-surface-hover hover:border-primary/50 hover:shadow-md',
         elevated: 'shadow-lg hover:shadow-xl',
       },
       padding: {

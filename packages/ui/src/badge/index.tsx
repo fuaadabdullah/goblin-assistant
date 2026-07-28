@@ -3,7 +3,7 @@ import type { ReactNode } from 'react';
 import { cn } from '../utils';
 
 const badgeVariants = cva(
-  'inline-flex items-center gap-1 rounded-sm font-medium transition-all duration-150',
+  'goblin-motion-colors inline-flex items-center gap-1 rounded-sm font-medium',
   {
     variants: {
       variant: {

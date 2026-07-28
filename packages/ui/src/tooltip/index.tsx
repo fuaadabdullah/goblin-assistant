@@ -27,9 +27,7 @@ const Tooltip = React.forwardRef<HTMLButtonElement, TooltipProps>(
   ({ content, children, position = 'top', delay = 300 }, _ref) => (
     <TooltipPrimitive.Provider delayDuration={delay} skipDelayDuration={300}>
       <TooltipPrimitive.Root>
-        <TooltipPrimitive.Trigger asChild>
-          {children}
-        </TooltipPrimitive.Trigger>
+        <TooltipPrimitive.Trigger asChild>{children}</TooltipPrimitive.Trigger>
         <TooltipPrimitive.Portal>
           <TooltipPrimitive.Content
             side={sideMap[position]}
@@ -37,7 +35,7 @@ const Tooltip = React.forwardRef<HTMLButtonElement, TooltipProps>(
             align="center"
             collisionPadding={8}
             className={cn(
-              'z-50 max-w-xs px-3 py-2 text-xs font-medium text-text bg-surface border border-border rounded-md shadow-lg',
+              'goblin-motion-presence z-50 max-w-xs rounded-md border border-border bg-surface px-3 py-2 text-xs font-medium text-text shadow-lg',
               'whitespace-normal break-words pointer-events-none',
               'data-[state=delayed-open]:animate-in data-[state=delayed-open]:fade-in-0',
               'data-[state=instant-open]:animate-in data-[state=instant-open]:fade-in-0',

@@ -29,6 +29,7 @@ The package owns:
 - Core primitives: `Button`, `Card`, `Input`, `Select`, `Dialog`, `Tabs`,
   `Sidebar`, `Sheet`, `Tooltip`, `Badge`, `Avatar`, `Skeleton`, and `Spinner`.
 - Composed loading, empty, and error state helpers.
+- Token-backed focus and motion utility classes consumed by primitives.
 
 `apps/web` imports `@goblin/ui/tokens` from `src/index.css`, scans
 `../../packages/ui/src` in Tailwind content, and maps semantic token names into
@@ -40,6 +41,8 @@ Tailwind utilities.
   `@goblin/ui`; either path resolves to the same implementation.
 - Theme values now live next to the components that rely on them.
 - Dark, light, and high-contrast themes share one semantic token contract.
+- Shared focus, presence-motion, hover-motion, and press-state utilities prevent
+  primitives from duplicating outline and duration strings.
 - The web app keeps app-specific effects such as scanlines, glow utility
   classes, and skip links in `apps/web/src/theme/index.css`.
 - Visual and a11y regression coverage should build on the Storybook foundation

@@ -139,7 +139,7 @@ to honor the user's OS-level preference.
 - Updated `packages/ui/src/index.ts` (full barrel)
 - Updated `apps/web/src/index.css` (consumes `@goblin/ui/tokens`)
 - Updated `apps/web/tailwind.config.js` (token → utility mapping)
-- `packages/ui/DESIGN_SYSTEM.md` (token reference)
+- `packages/ui/README.md` (token reference)
 - This ADR
 
 ## What does NOT ship yet

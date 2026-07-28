@@ -11,7 +11,7 @@ export const Sidebar = React.forwardRef<HTMLElement, SidebarProps>(
       ref={ref}
       data-collapsed={collapsed ? 'true' : 'false'}
       className={cn(
-        'flex h-full min-h-0 flex-col border-r border-border bg-surface text-text transition-[width] duration-200 ease-out motion-reduce:transition-none',
+        'goblin-motion-width flex h-full min-h-0 flex-col border-r border-border bg-surface text-text',
         collapsed ? 'w-16' : 'w-72',
         className
       )}
@@ -58,7 +58,7 @@ export const SidebarItem = React.forwardRef<HTMLButtonElement, SidebarItemProps>
       ref={ref}
       aria-current={active ? 'page' : undefined}
       className={cn(
-        'flex min-h-10 w-full items-center gap-3 rounded-md px-3 py-2 text-left text-sm font-medium text-muted transition-colors duration-150 hover:bg-surface-hover hover:text-text focus-visible:outline focus-visible:outline-2 focus-visible:outline-primary focus-visible:outline-offset-2',
+        'goblin-focus-ring goblin-motion-colors flex min-h-10 w-full items-center gap-3 rounded-md px-3 py-2 text-left text-sm font-medium text-muted hover:bg-surface-hover hover:text-text',
         active && 'bg-primary/15 text-primary',
         className
       )}
