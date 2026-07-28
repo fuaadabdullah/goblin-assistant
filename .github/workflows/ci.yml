@@ -44,16 +44,16 @@ jobs:
         continue-on-error: true
         run: cd apps/api && PYTHONPATH=src python -m ruff check --config pyproject.toml src/api
 
+      - name: Set up pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 9
+
       - name: Set up Node.js
         uses: actions/setup-node@v4
         with:
           node-version: "20"
           cache: "pnpm"
-
-      - name: Set up pnpm
-        uses: pnpm/action-setup@v4
-        with:
-          version: 9
 
       - name: Install frontend dependencies
         run: pnpm install --frozen-lockfile
@@ -136,16 +136,16 @@ jobs:
           python -m pip install --upgrade pip
           python -m pip install -r apps/api/requirements.txt -r apps/api/requirements-vector.txt
 
+      - name: Set up pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 9
+
       - name: Set up Node.js
         uses: actions/setup-node@v4
         with:
           node-version: "20"
           cache: "pnpm"
-
-      - name: Set up pnpm
-        uses: pnpm/action-setup@v4
-        with:
-          version: 9
 
       - name: Install frontend dependencies
         run: pnpm install --frozen-lockfile
@@ -186,16 +186,16 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      - name: Set up pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 9
+
       - name: Set up Node.js
         uses: actions/setup-node@v4
         with:
           node-version: "20"
           cache: "pnpm"
-
-      - name: Set up pnpm
-        uses: pnpm/action-setup@v4
-        with:
-          version: 9
 
       - name: Install frontend dependencies
         run: pnpm install --frozen-lockfile
@@ -269,16 +269,16 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      - name: Set up pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 9
+
       - name: Set up Node.js
         uses: actions/setup-node@v4
         with:
           node-version: "20"
           cache: "pnpm"
-
-      - name: Set up pnpm
-        uses: pnpm/action-setup@v4
-        with:
-          version: 9
 
       - name: Install frontend dependencies
         run: pnpm install --frozen-lockfile
@@ -308,16 +308,16 @@ jobs:
           python -m pip install --upgrade pip
           python -m pip install -r apps/api/requirements.txt -r apps/api/requirements-vector.txt
 
+      - name: Set up pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 9
+
       - name: Set up Node.js
         uses: actions/setup-node@v4
         with:
           node-version: "20"
           cache: "pnpm"
-
-      - name: Set up pnpm
-        uses: pnpm/action-setup@v4
-        with:
-          version: 9
 
       - name: Install frontend dependencies
         run: pnpm install --frozen-lockfile

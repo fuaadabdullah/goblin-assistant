@@ -155,13 +155,13 @@ format:
 	mkdir -p .tmp
 	$(PNPM_TMP) pnpm --filter @goblin/web exec prettier --write .
 	$(PNPM_TMP) pnpm --filter @goblin/web exec eslint . --fix
-	cd apps/api && PYTHONPATH=src $(PYTHON) -m ruff format src/api
+	cd apps/api && find src/api -name '*.py' -print0 | xargs -0 env PYTHONPATH=src $(PYTHON) -m ruff format
 
 format-check:
 	mkdir -p .tmp
 	$(PNPM_TMP) pnpm --filter @goblin/web exec prettier --check .
 	$(PNPM_TMP) pnpm --filter @goblin/web exec eslint .
-	cd apps/api && PYTHONPATH=src $(PYTHON) -m ruff format --check src/api
+	cd apps/api && find src/api -name '*.py' -print0 | xargs -0 env PYTHONPATH=src $(PYTHON) -m ruff format --check
 
 test: test-unit
 

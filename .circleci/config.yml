@@ -102,7 +102,7 @@ jobs:
       - install-python
       - run:
           name: Ruff format check
-          command: cd apps/api && PYTHONPATH=src python -m ruff format --check src/api
+          command: cd apps/api && find src/api -name '*.py' -print0 | xargs -0 env PYTHONPATH=src python -m ruff format --check
       - run:
           name: Prettier check
           command: cd apps/web && TMPDIR=~/repo/.tmp pnpm exec prettier --check .
