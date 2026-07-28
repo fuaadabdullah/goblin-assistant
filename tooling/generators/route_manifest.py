@@ -155,6 +155,8 @@ def _route_records_from_app(
 
         raw_logical_path = strip_version_prefix(path)
         include_in_schema = bool(getattr(route, "include_in_schema", True))
+        if not include_in_schema:
+            continue
 
         methods = sorted(
             (

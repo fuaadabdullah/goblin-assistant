@@ -31,7 +31,7 @@ def test_build_manifest_tracks_canonical_versioned_routes() -> None:
     manifest = build_manifest(app)
     routes = {route["path"]: route for route in manifest["routes"]}
 
-    assert manifest["route_count"] == 2
+    assert manifest["route_count"] == 1
     assert manifest["public_route_count"] == 1
     assert manifest["versioned_route_count"] == 1
     assert manifest["alias_route_count"] == 0
@@ -40,7 +40,7 @@ def test_build_manifest_tracks_canonical_versioned_routes() -> None:
     assert routes["/api/v1/settings"]["deprecated"] is False
     assert routes["/api/v1/settings"]["canonical_path"] == "/api/v1/settings"
     assert routes["/api/v1/settings"]["replacement_path"] is None
-    assert routes["/internal"]["include_in_schema"] is False
+    assert "/internal" not in routes
 
 
 def test_build_manifest_preserves_openapi_routes_missing_from_live_snapshot() -> None:

@@ -15,7 +15,7 @@ Generated from `packages/sdk/openapi/routes.json` and `packages/sdk/openapi/open
 - **Versioned operations (`/api/v1`)**: 200
 - **Legacy dual-mount operations**: 0
 - **Deprecated operations**: 3
-- **Hidden manifest operations**: 1
+- **Hidden manifest operations**: 0
 
 ## Route groups
 
