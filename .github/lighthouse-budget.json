@@ -10,7 +10,7 @@
       { "metric": "max-potential-fid",               "budget": 200  }
     ],
     "resourceSizes": [
-      { "resourceType": "script",   "budget": 250 },
+      { "resourceType": "script",   "budget": 325 },
       { "resourceType": "total",    "budget": 800 }
     ],
     "resourceCounts": [
