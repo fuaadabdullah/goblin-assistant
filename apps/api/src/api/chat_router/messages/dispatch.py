@@ -107,6 +107,10 @@ async def dispatch_with_fallback(
             timeout_ms=PROVIDER_TIMEOUT_MS,
             user_id=user_id,
             conversation_id=conversation_id,
+            runtime_context={
+                "user_id": user_id,
+                "conversation_id": conversation_id,
+            },
         )
 
     return provider_response, resolved_provider

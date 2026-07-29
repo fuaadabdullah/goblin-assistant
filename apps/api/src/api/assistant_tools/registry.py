@@ -99,3 +99,31 @@ def export_tools_for_provider(provider_id: str) -> List[Dict[str, Any]]:
     accept the OpenAI tools format, so this is a single code path.
     """
     return export_openai_tools()
+
+
+# ---------------------------------------------------------------------------
+# Pipeline-facing API
+# Used by pipeline.py._stage_tools and stages.py.ensure_mode_required_tools.
+# ---------------------------------------------------------------------------
+
+
+def export_tool_specs() -> List[ToolDefinition]:
+    """Return all registered ToolDefinition objects.
+
+    The pipeline's tool-selection stage calls this to build a name→spec map,
+    then filters it by intent before formatting for the provider.
+    """
+    return list(TOOL_REGISTRY.values())
+
+
+def format_tool_specs_for_provider(
+    specs: List[ToolDefinition],
+    provider_id: Optional[str] = None,
+) -> List[Dict[str, Any]]:
+    """Format a filtered list of ToolDefinitions for a provider.
+
+    All current providers (Anthropic, OpenAI, Gemini, Groq) accept the
+    OpenAI function-calling schema. `provider_id` is accepted for
+    forward-compat when per-provider formatting is needed.
+    """
+    return [spec.to_openai_schema() for spec in specs]

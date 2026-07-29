@@ -98,6 +98,45 @@ DEEP_RESEARCH_CONTRACT = AssistantArchetypeContract(
 )
 
 
+CODE_REVIEW_CONTRACT = AssistantArchetypeContract(
+    archetype_id="code_review",
+    required_capabilities=(
+        "code_analysis",
+        "code_execution",
+        "files",
+        "git",
+        "github",
+        "search",
+    ),
+    required_tool_names=frozenset(
+        {
+            # Code execution
+            "execute_code",
+            "run_shell_command",
+            # Files
+            "read_file",
+            "write_file",
+            "search_files",
+            "list_directory",
+            # Git
+            "git_diff",
+            "git_log",
+            "git_status",
+            "git_branch",
+            "git_checkout",
+            "git_commit",
+            # GitHub
+            "github_create_pr",
+            "github_add_comment",
+            "github_get_file",
+            "github_list_issues",
+            "github_list_prs",
+            "github_search_code",
+        }
+    ),
+)
+
+
 def is_general_assistant_mode(mode: Optional[str]) -> bool:
     """True when request should satisfy General Assistant minimum contract."""
     if mode is None:
@@ -110,6 +149,13 @@ def is_deep_research_mode(mode: Optional[str]) -> bool:
     if mode is None:
         return False
     return mode.strip().upper() in {"RESEARCH", "DEEP_RESEARCH"}
+
+
+def is_code_review_mode(mode: Optional[str]) -> bool:
+    """True when request should satisfy Code Review minimum contract."""
+    if mode is None:
+        return False
+    return mode.strip().upper() == "CODE_REVIEW"
 
 
 def _tool_names_from_payload(tool_payload: Iterable[Dict[str, Any]]) -> Set[str]:
@@ -137,4 +183,11 @@ def missing_deep_research_tools(tool_payload: List[Dict[str, Any]]) -> List[str]
     """Return sorted missing required tool names for Deep Research."""
     present = _tool_names_from_payload(tool_payload)
     missing = DEEP_RESEARCH_CONTRACT.required_tool_names - present
+    return sorted(missing)
+
+
+def missing_code_review_tools(tool_payload: List[Dict[str, Any]]) -> List[str]:
+    """Return sorted missing required tool names for Code Review."""
+    present = _tool_names_from_payload(tool_payload)
+    missing = CODE_REVIEW_CONTRACT.required_tool_names - present
     return sorted(missing)

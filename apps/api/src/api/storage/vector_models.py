@@ -2,7 +2,7 @@
 Vector storage models for semantic retrieval using pgvector
 """
 
-from sqlalchemy import Column, String, DateTime, ForeignKey, JSON, Text, Index
+from sqlalchemy import Column, DateTime, Float, ForeignKey, Index, JSON, String, Text
 from sqlalchemy.orm import declarative_base, relationship
 import os
 import uuid
@@ -109,6 +109,46 @@ class MemoryFactModel(Base):
         Index("idx_memory_facts_user_id", "user_id"),
         Index("idx_memory_facts_category", "category"),
     )
+
+
+class MemoryEntityModel(Base):
+    """Normalized entity nodes for the memory/knowledge graph."""
+
+    __tablename__ = "memory_entities"
+
+    id = Column(String, primary_key=True, default=lambda: str(uuid.uuid4()))
+    user_id = Column(String, ForeignKey("users.id"), nullable=False, index=True)
+    entity_type = Column(String, nullable=False, index=True)
+    entity_value = Column(String, nullable=False, index=True)
+    display_name = Column(String, nullable=True)
+    scope = Column(String, nullable=True, index=True)
+    confidence = Column(Float, nullable=False, default=1.0)
+    metadata_ = Column("metadata", JSON, default=dict)
+    created_at = Column(DateTime, default=datetime.utcnow)
+
+    __table_args__ = (
+        Index("idx_memory_entities_user_type_value", "user_id", "entity_type", "entity_value"),
+        Index("idx_memory_entities_scope", "scope"),
+    )
+
+
+class MemoryEntityRelationModel(Base):
+    """Directed edges between memory entities."""
+
+    __tablename__ = "memory_entity_relations"
+
+    id = Column(String, primary_key=True, default=lambda: str(uuid.uuid4()))
+    user_id = Column(String, ForeignKey("users.id"), nullable=False, index=True)
+    source_entity_id = Column(
+        String, ForeignKey("memory_entities.id", ondelete="CASCADE"), nullable=False, index=True
+    )
+    target_entity_id = Column(
+        String, ForeignKey("memory_entities.id", ondelete="CASCADE"), nullable=False, index=True
+    )
+    relation_type = Column(String, nullable=False, index=True)
+    memory_fact_id = Column(String, ForeignKey("memory_facts.id", ondelete="CASCADE"), nullable=False, index=True)
+    confidence = Column(Float, nullable=False, default=1.0)
+    created_at = Column(DateTime, default=datetime.utcnow)
 
 
 # Add relationships to existing models

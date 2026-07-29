@@ -6,7 +6,25 @@ and run pre-built financial analysis templates in a controlled environment.
 
 Execution strategy:
   SANDBOX_ENABLED=true  → Docker container (network-isolated, read-only mount)
-  SANDBOX_ENABLED=false → direct subprocess (development mode, no Docker required)
+  SANDBOX_ENABLED=false → process-level POSIX resource limits (dev/no-Docker path)
+
+Hardening (when Docker is enabled):
+  - Network: none
+  - Memory: 256 MB
+  - CPU: 0.5 cores
+  - PIDs: max 32
+  - Filesystem: read-only root, noexec/nosuid/nodev tmpfs
+  - Capabilities: all dropped
+  - no-new-privileges enforced
+  - User: non-root runner
+  - ulimits: nproc=32:64, fsize=1MB, nofile=64
+
+Hardening (SANDBOX_ENABLED=false, via sandbox_executor):
+  - RLIMIT_CPU, RLIMIT_AS, RLIMIT_NPROC, RLIMIT_FSIZE applied via preexec_fn
+  - setsid + killpg ensures whole process tree is killed on wall-clock timeout
+  - python3 -I -S strips site-packages and env-variable injection
+  - Stripped PATH env; no HOME/USER/PYTHONPATH
+  Gap: no filesystem or network namespace — suitable for dev/trusted deployments only.
 """
 
 from __future__ import annotations
@@ -25,67 +43,54 @@ from ..sandbox_templates import get_template, list_templates
 _STDOUT_CAP: int = 10 * 1024  # 10 KB
 
 
-def _run_code(code: str, language: str, timeout: int) -> Dict[str, Any]:
-    """Write code to a tempfile and execute it synchronously.
+def _run_docker_code(code: str, language: str, timeout: int) -> Dict[str, Any]:
+    """Execute code inside a Docker container with full hardening.
 
-    Called from inside asyncio.to_thread, so this may block freely.
+    Blocking — intended to be called via asyncio.to_thread.
+    Only called when SANDBOX_ENABLED=true.
     """
     _LANG_FILE = {"python": "main.py", "javascript": "main.js"}
     filename = _LANG_FILE.get(language)
     if filename is None:
         return {"error": f"Unsupported language '{language}'. Use 'python' or 'javascript'."}
 
-    sandbox_enabled = os.getenv("SANDBOX_ENABLED", "false").lower() == "true"
     sandbox_image = os.getenv("SANDBOX_IMAGE", "goblin-assistant-sandbox:latest")
+    sandbox_user = os.getenv("SANDBOX_USER", "runner")
 
     with tempfile.TemporaryDirectory() as tmpdir:
         code_path = Path(tmpdir) / filename
         code_path.write_text(code, encoding="utf-8")
 
-        if sandbox_enabled:
-            sandbox_user = os.getenv("SANDBOX_USER", "runner")
-            cmd = [
-                "docker",
-                "run",
-                "--rm",
-                "--network",
-                "none",
-                "--memory",
-                "256m",
-                "--cpus",
-                "0.5",
-                "--read-only",
-                "--cap-drop",
-                "all",
-                "--security-opt",
-                "no-new-privileges",
-                "--user",
-                sandbox_user,
-                "--tmpfs",
-                "/tmp:size=64m,mode=1777",
-                "-v",
-                f"{tmpdir}:/code:ro",
-                sandbox_image,
-                "python" if language == "python" else "node",
-                f"/code/{filename}",
-            ]
-        else:
-            interpreter = "python" if language == "python" else "node"
-            cmd = [interpreter, str(code_path)]
+        cmd = [
+            "docker", "run", "--rm",
+            "--network", "none",
+            "--memory", "256m",
+            "--memory-swap", "256m",
+            "--cpus", "0.5",
+            "--pids-limit", "32",
+            "--read-only",
+            "--cap-drop", "all",
+            "--security-opt", "no-new-privileges",
+            "--user", sandbox_user,
+            "--tmpfs", "/tmp:size=64m,noexec,nosuid,nodev,mode=1777",
+            "--tmpfs", f"/home/{sandbox_user}:size=32m,noexec,nosuid,nodev,mode=1777",
+            "--ulimit", "nproc=32:64",
+            "--ulimit", "fsize=1048576",
+            "--ulimit", "nofile=64",
+            "-v", f"{tmpdir}:/code:ro",
+            sandbox_image,
+            "python" if language == "python" else "node",
+            f"/code/{filename}",
+        ]
 
         try:
             result = subprocess.run(
-                cmd,
-                capture_output=True,
-                text=True,
-                timeout=timeout,
-                check=False,
+                cmd, capture_output=True, text=True, timeout=timeout, check=False,
             )
         except subprocess.TimeoutExpired:
             return {"error": f"Execution timed out after {timeout}s", "exit_code": -1}
         except FileNotFoundError:
-            interp = "docker" if sandbox_enabled else ("python" if language == "python" else "node")
-            return {"error": f"Interpreter not found: '{interp}'", "exit_code": -1}
+            return {"error": "Docker not found — set SANDBOX_ENABLED=false for dev mode", "exit_code": -1}
 
     truncated = len(result.stdout) > _STDOUT_CAP
     return {
@@ -93,7 +98,7 @@ def _run_code(code: str, language: str, timeout: int) -> Dict[str, Any]:
         "stderr": result.stderr[:_STDOUT_CAP],
         "exit_code": result.returncode,
         "truncated": truncated,
-        "sandbox_enabled": sandbox_enabled,
+        "sandbox_enabled": True,
     }
 
 
@@ -107,15 +112,32 @@ async def _handle_execute_code(
     language: str = "python",
     timeout: int = 30,
 ) -> Dict[str, Any]:
-    def _run() -> Dict[str, Any]:
-        if not code or not code.strip():
-            return {"error": "code cannot be empty"}
-        if language not in ("python", "javascript"):
-            return {"error": f"Unsupported language '{language}'. Use 'python' or 'javascript'."}
-        clamped = max(1, min(timeout, 120))
-        return _run_code(code, language, clamped)
+    if not code or not code.strip():
+        return {"error": "code cannot be empty"}
+    if language not in ("python", "javascript"):
+        return {"error": f"Unsupported language '{language}'. Use 'python' or 'javascript'."}
+    clamped = max(1, min(timeout, 120))
 
-    return await asyncio.to_thread(_run)
+    if os.getenv("SANDBOX_ENABLED", "false").lower() == "true":
+        return await asyncio.to_thread(_run_docker_code, code, language, clamped)
+
+    # Dev / no-Docker path: process-level POSIX resource limits.
+    from ...services.sandbox_executor import ExecutionStatus  # noqa: PLC0415
+    from ...services.sandbox_executor import execute_code as _exec  # noqa: PLC0415
+
+    result = await _exec(code, language, timeout=clamped)
+    return {
+        "stdout": result.stdout,
+        "stderr": result.stderr,
+        "exit_code": result.exit_code,
+        "truncated": result.truncated,
+        "duration_ms": result.duration_ms,
+        "sandbox_enabled": False,
+        "status": result.status.value,
+        # Surface resource-limit kills clearly so the LLM can explain them.
+        **({"error": "process killed by resource limit (OOM or fork)"} if result.status == ExecutionStatus.RESOURCE_LIMIT else {}),
+        **({"error": f"execution timed out after {clamped}s"} if result.status == ExecutionStatus.TIMEOUT else {}),
+    }
 
 
 register_tool(
@@ -164,28 +186,39 @@ async def _handle_run_sandbox_template(
     template_name: str,
     parameters: str,
 ) -> Dict[str, Any]:
-    def _run() -> Dict[str, Any]:
-        template = get_template(template_name)
-        if template is None:
-            available = ", ".join(t["name"] for t in list_templates())
-            return {"error": (f"Unknown template '{template_name}'. Available: {available}")}
+    template = get_template(template_name)
+    if template is None:
+        available = ", ".join(t["name"] for t in list_templates())
+        return {"error": f"Unknown template '{template_name}'. Available: {available}"}
 
-        try:
-            params = json.loads(parameters)
-        except json.JSONDecodeError as exc:
-            return {"error": f"parameters must be valid JSON: {exc}"}
+    try:
+        params = json.loads(parameters)
+    except json.JSONDecodeError as exc:
+        return {"error": f"parameters must be valid JSON: {exc}"}
 
-        if not isinstance(params, dict):
-            return {"error": "parameters must be a JSON object (dict), not an array or scalar"}
+    if not isinstance(params, dict):
+        return {"error": "parameters must be a JSON object (dict), not an array or scalar"}
 
-        try:
-            code = template.render(**params)
-        except KeyError as exc:
-            return {"error": f"Missing template parameter: {exc}"}
+    try:
+        code = template.render(**params)
+    except KeyError as exc:
+        return {"error": f"Missing template parameter: {exc}"}
 
-        return _run_code(code, "python", timeout=60)
+    if os.getenv("SANDBOX_ENABLED", "false").lower() == "true":
+        return await asyncio.to_thread(_run_docker_code, code, "python", 60)
 
-    return await asyncio.to_thread(_run)
+    from ...services.sandbox_executor import execute_code as _exec  # noqa: PLC0415
+
+    result = await _exec(code, "python", timeout=60)
+    return {
+        "stdout": result.stdout,
+        "stderr": result.stderr,
+        "exit_code": result.exit_code,
+        "truncated": result.truncated,
+        "duration_ms": result.duration_ms,
+        "sandbox_enabled": False,
+        "status": result.status.value,
+    }
 
 
 register_tool(

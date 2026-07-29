@@ -46,10 +46,10 @@ export const HOME_VALUE_PROPS = [
 
 export const HOME_EXAMPLE_CARDS = [
   {
-    title: 'Analyze NVDA earnings',
-    body: 'Pull financials, summarize the latest call, and flag analyst concerns.',
-    icon: '📊',
-    mode: 'finance',
+    title: 'Run Python live',
+    body: 'Write and execute code directly in the chat. No setup needed.',
+    icon: '⚡',
+    mode: 'general',
   },
   {
     title: 'Explain this concept',
@@ -58,10 +58,10 @@ export const HOME_EXAMPLE_CARDS = [
     mode: 'education',
   },
   {
-    title: 'Run Python live',
-    body: 'Write and execute code directly in the chat. No setup needed.',
-    icon: '⚡',
-    mode: 'general',
+    title: 'Analyze NVDA earnings',
+    body: 'Pull financials, summarize the latest call, and flag analyst concerns.',
+    icon: '📊',
+    mode: 'finance',
   },
 ] as const;
 
@@ -69,7 +69,7 @@ export const CHAT_COMPOSER_PLACEHOLDER =
   'Ask anything — finance, code, research, or learning...';
 
 export const CHAT_COMPOSER_TIP =
-  'Try: "Analyze AAPL", "Explain recursion with examples", "Debug this Python code"';
+  'Try: "Debug this Python code", "Explain recursion with examples", "Analyze AAPL"';
 
 // Mode-specific quick prompts
 export const CHAT_QUICK_PROMPTS_FINANCE = [
@@ -134,17 +134,17 @@ export const CHAT_QUICK_PROMPTS_EDUCATION = [
   },
 ] as const;
 
-// Default shown on load — one from each mode
+// Default shown on load — basics → coding → education → finance last
 export const CHAT_QUICK_PROMPTS = [
-  CHAT_QUICK_PROMPTS_FINANCE[0],
-  CHAT_QUICK_PROMPTS_EDUCATION[0],
   CHAT_QUICK_PROMPTS_GENERAL[0],
-  CHAT_QUICK_PROMPTS_FINANCE[1],
+  CHAT_QUICK_PROMPTS_EDUCATION[0],
+  CHAT_QUICK_PROMPTS_GENERAL[1],
+  CHAT_QUICK_PROMPTS_FINANCE[0],
 ] as const;
 
 export const SEARCH_QUICK_QUERIES = [
-  'AAPL valuation analysis',
-  'Explain Black-Scholes model',
   'Python pandas tutorial',
+  'Explain recursion with examples',
   'Portfolio risk metrics',
+  'AAPL valuation analysis',
 ] as const;

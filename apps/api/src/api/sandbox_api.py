@@ -6,24 +6,22 @@ Provides endpoints for submitting, monitoring, and managing sandbox jobs
 import os
 import uuid
 import json
-import time
 from typing import Optional, Dict, Any
 from datetime import datetime
 
-from fastapi import APIRouter, HTTPException, Header, Depends, Query
+from fastapi import APIRouter, HTTPException, Header
 from pydantic import BaseModel
 import redis
 import rq
-from rq import Queue, Worker
 
 # Import from existing infrastructure
-from .storage.cache import cache
 from .middleware.rate_limiter import RateLimiter
 from .artifact_service import artifact_service
 from .sandbox_metrics import (
     record_job_submitted, record_job_cancelled,
-    get_metrics_endpoint, update_rq_metrics
+    get_metrics_endpoint
 )
+from .input_validation import InputSanitizer
 
 # Configuration from environment
 REDIS_URL = os.getenv("REDIS_URL", "redis://localhost:6379/0")
@@ -32,6 +30,8 @@ API_KEY = os.getenv("API_AUTH_KEY", "devkey")
 # Use local writable directory, default to /tmp/goblin_sandbox if not specified
 JOBS_DIR = os.getenv("JOBS_DIR", "/tmp/goblin_sandbox")
 SANDBOX_ENABLED = os.getenv("SANDBOX_ENABLED", "false").lower() == "true"
+MAX_OUTPUT_SIZE = int(os.getenv("SANDBOX_MAX_OUTPUT_SIZE", str(1024 * 1024)))  # 1 MB default
+MAX_CONCURRENT_PER_USER = int(os.getenv("SANDBOX_MAX_PER_USER", "5"))
 
 # Initialize Redis and RQ
 r = redis.from_url(REDIS_URL)
@@ -109,6 +109,19 @@ async def submit_job(
     if req.timeout and (req.timeout < 1 or req.timeout > 300):
         raise HTTPException(status_code=400, detail="timeout must be between 1-300 seconds")
 
+    # Validate source code for dangerous patterns
+    req.source, code_validation = InputSanitizer.validate_code_source(req.source, req.language)
+
+    # Per-user concurrency limit
+    if x_api_key:
+        user_key = f"sandbox:user:{x_api_key}:active_jobs"
+        active_jobs = int(r.get(user_key) or 0)
+        if active_jobs >= MAX_CONCURRENT_PER_USER:
+            raise HTTPException(
+                status_code=429,
+                detail=f"Too many active sandbox jobs ({active_jobs}). Maximum {MAX_CONCURRENT_PER_USER} concurrent jobs per user."
+            )
+
     # Generate job ID and paths
     job_id = str(uuid.uuid4())
     job_path = os.path.join(JOBS_DIR, job_id)
@@ -134,8 +147,15 @@ async def submit_job(
         "runtime_args": req.runtime_args or "",
         "created_at": datetime.utcnow().isoformat(),
         "path": job_path,
-        "source_file": mainfile
+        "source_file": mainfile,
+        "code_validation": json.dumps(code_validation) if code_validation else "{}",
     }
+
+    # Track per-user active job count
+    if x_api_key:
+        user_key = f"sandbox:user:{x_api_key}:active_jobs"
+        r.incr(user_key)
+        r.expire(user_key, 3600)  # Auto-expire after 1 hour
 
     # Store job metadata in Redis
     r.hset(f"sandbox:job:{job_id}", mapping=job_meta)
@@ -159,6 +179,10 @@ async def submit_job(
         import shutil
         shutil.rmtree(job_path, ignore_errors=True)
         r.delete(f"sandbox:job:{job_id}")
+        # Decrement active job counter
+        if x_api_key:
+            user_key = f"sandbox:user:{x_api_key}:active_jobs"
+            r.decr(user_key)
         raise HTTPException(status_code=500, detail=f"failed to queue job: {str(e)}")
 
     return {"job_id": job_id}
@@ -219,6 +243,18 @@ async def get_job_logs(job_id: str, x_api_key: str = Header(...)):
         return {"logs": ""}
 
     try:
+        # Enforce output size cap when reading logs
+        file_size = os.path.getsize(log_file)
+        if file_size > MAX_OUTPUT_SIZE:
+            with open(log_file, "r") as f:
+                logs = f.read(MAX_OUTPUT_SIZE)
+            return {
+                "logs": logs,
+                "truncated": True,
+                "original_size": file_size,
+                "truncated_size": MAX_OUTPUT_SIZE,
+            }
+
         with open(log_file, "r") as f:
             logs = f.read()
         return {"logs": logs}
@@ -320,6 +356,18 @@ async def cancel_job(job_id: str, x_api_key: str = Header(...)):
     # Record cancellation metrics
     record_job_cancelled(job_id)
 
+    # Decrement per-user active job counter if we can find the API key
+    # (The key isn't available on cancel, so we use a best-effort scan)
+    try:
+        api_key_from_meta = job_info.get("api_key")
+        if api_key_from_meta:
+            user_key = f"sandbox:user:{api_key_from_meta}:active_jobs"
+            current = int(r.get(user_key) or 0)
+            if current > 0:
+                r.decr(user_key)
+    except Exception:
+        pass
+
     # TODO: If running in container, kill the container
 
     return {"message": "job cancelled successfully"}
@@ -372,13 +420,15 @@ async def sandbox_health():
         "redis_connected": redis_ok,
         "image_configured": image_configured,
         "queue_depth": queue_size,
-        "enabled": SANDBOX_ENABLED
+        "enabled": SANDBOX_ENABLED,
+        "max_concurrent_per_user": MAX_CONCURRENT_PER_USER,
+        "max_output_size": MAX_OUTPUT_SIZE,
     }
-    
+
     # Include error detail if Redis is down
     if not redis_ok and redis_error_detail:
         response["redis_error"] = redis_error_detail
-    
+
     return response
 
 @router.post("/run", response_model=Dict[str, str])
@@ -440,12 +490,12 @@ async def get_job_logs_alias(
     """Alias for /logs/{job_id} - Get job execution logs"""
     if not SANDBOX_ENABLED:
         raise HTTPException(status_code=503, detail="sandbox service is disabled")
-    
+
     # Basic auth check if API key provided
     if x_api_key and x_api_key != API_KEY:
         if os.getenv("ENVIRONMENT", "development") != "development":
             raise HTTPException(status_code=401, detail="Unauthorized")
-    
+
     # Call the existing logs implementation with proper auth
     return await get_job_logs(job_id, x_api_key)
 

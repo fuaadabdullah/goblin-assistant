@@ -280,6 +280,100 @@ class InputSanitizer:
 
         return query.strip()
 
+    @classmethod
+    def validate_code_source(cls, source: str, language: str) -> Tuple[str, Dict[str, Any]]:
+        """Validate source code for dangerous patterns before sandbox execution.
+
+        Returns (sanitized_source, validation_report) where validation_report
+        includes severity, blocked patterns, and warnings. Blocked sources
+        raise HTTPException(400).
+        """
+        if not source or not isinstance(source, str):
+            raise HTTPException(status_code=400, detail="Source code is required")
+
+        report: Dict[str, Any] = {
+            "language": language,
+            "length": len(source),
+            "blocked_patterns": [],
+            "warnings": [],
+            "severity": "ok",
+        }
+
+        # Python dangerous patterns
+        if language == "python":
+            _PY_CRITICAL_PATTERNS = [
+                (r"\bimport\s+os\b", "os module import — potential filesystem escape"),
+                (r"\bimport\s+subprocess\b", "subprocess module — process spawning"),
+                (r"\bimport\s+socket\b", "socket module — network access"),
+                (r"\bimport\s+ctypes\b", "ctypes module — native code execution"),
+                (r"\bimport\s+multiprocessing\b", "multiprocessing — process spawning"),
+                (r"\bimport\s+http\.server\b|\bimport\s+flask\b|\bimport\s+fastapi\b|\bimport\s+django\b", "web server import"),
+                (r"\b__import__\s*\(", "__import__ — dynamic module loading"),
+                (r"\bcompile\s*\(.*,\s*.*,\s*[\"']exec[\"']", "compile with exec mode"),
+                (r"\bexec\s*\(", "exec function — arbitrary code execution"),
+                (r"\beval\s*\(", "eval function — arbitrary code execution"),
+                (r"\bopen\s*\(.*[\"'](?:/etc|/proc|/sys|/dev)", "open() with system path"),
+                (r"\bos\.(?:system|popen|exec|spawn)", "os.system/popen/exec/spawn"),
+                (r"\bsubprocess\.(?:call|run|Popen|check_output)", "subprocess invocation"),
+                (r"\bsocket\.(?:socket|connect|bind|listen)", "socket operations"),
+                (r"\burllib\.|\brequests\.", "network request"),
+            ]
+            _PY_WARNING_PATTERNS = [
+                (r"\bimport\s+sys\b", "sys module import"),
+                (r"\bsys\.(?:stdin|stdout|stderr)", "sys stdio access"),
+                (r"\bwhile\s+True\s*:", "unbounded while loop"),
+                (r"\b__del__\b", "__del__ destructor — side effects at GC"),
+            ]
+            for pattern, desc in _PY_CRITICAL_PATTERNS:
+                if re.search(pattern, source):
+                    report["blocked_patterns"].append(desc)
+            for pattern, desc in _PY_WARNING_PATTERNS:
+                if re.search(pattern, source):
+                    report["warnings"].append(desc)
+
+        # JavaScript dangerous patterns
+        elif language == "javascript":
+            _JS_CRITICAL_PATTERNS = [
+                (r"\brequire\s*\(\s*[\"']child_process[\"']", "child_process require"),
+                (r"\brequire\s*\(\s*[\"']net[\"']", "net module — network access"),
+                (r"\brequire\s*\(\s*[\"']http[\"']|\brequire\s*\(\s*[\"']https[\"']", "http/https module"),
+                (r"\brequire\s*\(\s*[\"']express[\"']", "express — web server"),
+                (r"\brequire\s*\(\s*[\"']vm[\"']", "vm module — code execution"),
+                (r"\beval\s*\(", "eval — arbitrary code execution"),
+                (r"\bnew\s+Function\s*\(", "new Function — arbitrary code execution"),
+                (r"\bprocess\.(?:exit|kill|abort|cwd|chdir)", "process control"),
+                (r"\bfetch\s*\(", "fetch — network request"),
+                (r"\bXMLHttpRequest\b", "XMLHttpRequest — network request"),
+                (r"\bWebSocket\b", "WebSocket — persistent network connection"),
+                (r"\brequire\s*\(\s*[\"']os[\"']", "os module require"),
+            ]
+            _JS_WARNING_PATTERNS = [
+                (r"\bwhile\s*\(\s*true\s*\)", "unbounded while loop"),
+                (r"\bsetTimeout\s*\(.*,\s*\d{5,}", "long-running setTimeout"),
+                (r"\bsetInterval\b", "setInterval — may cause infinite loops"),
+            ]
+            for pattern, desc in _JS_CRITICAL_PATTERNS:
+                if re.search(pattern, source, re.IGNORECASE):
+                    report["blocked_patterns"].append(desc)
+            for pattern, desc in _JS_WARNING_PATTERNS:
+                if re.search(pattern, source, re.IGNORECASE):
+                    report["warnings"].append(desc)
+
+        if report["blocked_patterns"]:
+            report["severity"] = "blocked"
+            raise HTTPException(
+                status_code=400,
+                detail={
+                    "message": "Source code contains blocked patterns",
+                    "blocked": report["blocked_patterns"],
+                    "severity": "blocked",
+                },
+            )
+        elif report["warnings"]:
+            report["severity"] = "warning"
+
+        return source, report
+
 
 # Convenience functions for common use cases
 def sanitize_message(content: str) -> str:

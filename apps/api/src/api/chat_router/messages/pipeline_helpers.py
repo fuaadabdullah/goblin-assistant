@@ -20,9 +20,13 @@ def provider_supports_tools(provider_id: Optional[str]) -> bool:
     resolved = canonical_provider_id(provider_id)
     if not resolved:
         return True
+    if resolved in {"huggingface"}:
+        return False
     config = dispatcher._configs.get(resolved, {})
     value = config.get("supports_openai_tools")
-    return value is not False
+    if value is None:
+        return True
+    return bool(value)
 
 
 def merge_attachment_metadata(

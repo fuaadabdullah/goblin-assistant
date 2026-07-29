@@ -19,7 +19,11 @@ from ..assistant_tools.registry import export_openai_tools
 from ..auth.router import User as AuthenticatedUser, get_current_user
 from ..storage import conversation_store
 from ..storage.database import get_db
-from api.config.mode_addendums import get_addendum as _get_mode_addendum
+from api.config.mode_addendums import (
+    Mode,
+    get_addendum as _get_legacy_mode_addendum,
+    get_mode_addendum as _get_mode_addendum,
+)
 from api.config.system_prompt import EDUCATION_SYSTEM_ADDENDUM, system_prompt_manager
 from . import _runtime as _cr
 from .schemas import ContextualChatRequest, ContextualChatResponse
@@ -51,10 +55,17 @@ async def contextual_chat(
         if conversation_id:
             await _cr._assert_conversation_owned(conversation_id, current_user, db)
 
-        if request.mode:
+        # Resolve mode addendum: new Mode takes priority, then legacy_mode, then auto-detect.
+        if request.legacy_mode:
             try:
-                addendum = _get_mode_addendum(request.mode)
+                addendum = _get_legacy_mode_addendum(request.legacy_mode)
             except KeyError as exc:
+                raise HTTPException(status_code=400, detail=str(exc))
+        elif request.mode != Mode.CHAT:
+            try:
+                mode_addendum = _get_mode_addendum(request.mode)
+                addendum = mode_addendum.directive
+            except ValueError as exc:
                 raise HTTPException(status_code=400, detail=str(exc))
         else:
             message_classifier, MessageType = _get_message_classifier()

@@ -1,5 +1,4 @@
 import { NextResponse } from 'next/server';
-import { buildVersionedPath } from '@goblin/shared';
 import { resolveBackendOrigin } from '@/config/backendOrigin';
 
 const BACKEND_URL = resolveBackendOrigin();
@@ -148,7 +147,7 @@ async function forwardToBackendGenerate(req: Request): Promise<ForwardResponse> 
     const chatBody = buildChatRequestBody(incoming);
 
     const response = await fetchWithTimeout(
-      `${BACKEND_URL}${buildVersionedPath('api', 'chat')}`,
+      `${BACKEND_URL}/api/chat`,
       {
         method: 'POST',
         headers,

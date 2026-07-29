@@ -24,6 +24,7 @@ MAX_TOOL_ROUNDS = 5
 async def execute_tool_call(
     tool_name: str,
     arguments: Dict[str, Any],
+    runtime_context: Optional[Dict[str, Any]] = None,
 ) -> Dict[str, Any]:
     """Execute a single tool call and return the result dict."""
     tool = get_tool(tool_name)
@@ -34,6 +35,29 @@ async def execute_tool_call(
         return {"error": f"Tool {tool_name} has no handler registered"}
 
     try:
+        runtime_context = runtime_context or {}
+        user_id = str(runtime_context.get("user_id", "")).strip()
+        conversation_id = runtime_context.get("conversation_id")
+        if user_id:
+            try:
+                from api.capabilities.permissions import CapabilityPermissionStore
+                from api.capabilities.registry import capability_registry
+
+                capability = capability_registry.get_for_tool(tool_name)
+                if capability is not None:
+                    permission_store = CapabilityPermissionStore()
+                    allowed = await permission_store.check_permission(
+                        user_id=user_id,
+                        capability_id=capability.id,
+                        conversation_id=conversation_id,
+                    )
+                    if not allowed:
+                        return {
+                            "error": f"Permission denied for tool {tool_name}",
+                            "tool_name": tool_name,
+                        }
+            except Exception:
+                logger.debug("tool_permission_gate_skipped", tool=tool_name)
         result = await tool.handler(**arguments)
         return result
     except TypeError as e:
@@ -57,12 +81,13 @@ def extract_tool_calls(provider_response: Dict[str, Any]) -> Optional[List[Dict[
 
     Supports OpenAI-format responses where tool calls live at:
     - response["result"]["raw"]["choices"][0]["message"]["tool_calls"]
+    - response["result"]["raw"]["content"][...]["type"] == "tool_use"
     """
     try:
         raw = provider_response.get("result", {}).get("raw", {})
         choices = raw.get("choices", [])
         if not choices:
-            return None
+            return _parse_anthropic_tool_calls(raw.get("content", [])) or None
 
         message = choices[0].get("message", {})
         finish_reason = choices[0].get("finish_reason")
@@ -76,6 +101,30 @@ def extract_tool_calls(provider_response: Dict[str, Any]) -> Optional[List[Dict[
         return None
     except (KeyError, IndexError, TypeError):
         return None
+
+
+def _parse_anthropic_tool_calls(raw_content: Any) -> List[Dict[str, Any]]:
+    """Normalize Anthropic tool-use blocks into the shared tool-call shape."""
+    if not isinstance(raw_content, list):
+        return []
+
+    parsed: List[Dict[str, Any]] = []
+    for block in raw_content:
+        if not isinstance(block, dict) or block.get("type") != "tool_use":
+            continue
+        parsed.append(
+            {
+                "id": str(block.get("id", "")),
+                "name": str(block.get("name", "")),
+                "arguments": block.get("input", {}) or {},
+            }
+        )
+    return parsed
+
+
+def extract_tool_calls_contract(provider_response: Dict[str, Any]) -> Optional[List[Dict[str, Any]]]:
+    """Backward-compatible alias for the OpenAI tool-call extractor."""
+    return extract_tool_calls(provider_response)
 
 
 def _parse_tool_calls(raw_calls: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
@@ -107,6 +156,7 @@ async def run_tool_loop(
     timeout_ms: int = 30_000,
     user_id: Optional[str] = None,
     conversation_id: Optional[str] = None,
+    runtime_context: Optional[Dict[str, Any]] = None,
 ) -> Dict[str, Any]:
     """Run the tool-calling loop until we get a text response.
 
@@ -156,6 +206,11 @@ async def run_tool_loop(
         # Append assistant message with tool_calls
         raw = response.get("result", {}).get("raw", {})
         assistant_message = raw.get("choices", [{}])[0].get("message", {})
+        if not assistant_message and isinstance(raw.get("content"), list):
+            assistant_message = {
+                "role": "assistant",
+                "content": raw.get("content", []),
+            }
         messages.append(assistant_message)
 
         # Execute each tool and append results
@@ -165,7 +220,11 @@ async def run_tool_loop(
                 tool=tc["name"],
                 round=round_num + 1,
             )
-            result = await execute_tool_call(tc["name"], tc["arguments"])
+            result = await execute_tool_call(
+                tc["name"],
+                tc["arguments"],
+                runtime_context=runtime_context,
+            )
             messages.append({
                 "role": "tool",
                 "tool_call_id": tc["id"],

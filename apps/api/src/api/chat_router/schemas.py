@@ -2,7 +2,10 @@
 
 from typing import Any, Dict, List, Optional
 
-from pydantic import BaseModel
+from pydantic import BaseModel, field_validator, model_validator
+
+from ..config.mode_addendums import Mode, ModeKey, MODE_REGISTRY
+from ..config.tone_addendums import ToneMode
 
 
 class ChatMessage(BaseModel):
@@ -27,11 +30,52 @@ class SendMessageRequest(BaseModel):
     message: str
     provider: Optional[str] = None  # None = let dispatcher choose
     model: Optional[str] = None  # None = use provider default
+    department: Optional[str] = None  # legacy routing hint; preserved for compatibility
     stream: Optional[bool] = False
     metadata: Optional[Dict[str, Any]] = None
     enable_context_assembly: Optional[bool] = True  # Inject RAG context like contextual-chat
     attachment_ids: Optional[List[str]] = None  # IDs from /chat/upload-file
-    mode: Optional[str] = None  # e.g. "DEBUG", "ARCHITECT" — overrides auto-detection
+    mode: Mode = Mode.CHAT  # canonical v2 mode; active-gated at validation time
+    legacy_mode: Optional[ModeKey] = None  # overrides auto-detection; exported via OpenAPI → SDK codegen
+    tone: Optional[ToneMode] = None  # voice register; DEFAULT/None = no addendum
+    language: Optional[str] = None  # e.g. "python", "javascript" — hints code language for glossary injection
+
+    @model_validator(mode="before")
+    @classmethod
+    def normalize_legacy_mode_payload(cls, data: Any) -> Any:
+        if not isinstance(data, dict):
+            return data
+
+        raw_mode = data.get("mode")
+        if not isinstance(raw_mode, str):
+            return data
+
+        legacy_map = {
+            "GENERAL_ASSISTANT": ModeKey.GENERAL_ASSISTANT,
+            "ARCHITECT": ModeKey.ARCHITECT,
+            "TRADING_FORGE": ModeKey.TRADING_FORGE,
+            "OPERATOR": ModeKey.OPERATOR,
+            "RESEARCH": ModeKey.RESEARCH,
+            "DEEP_RESEARCH": ModeKey.DEEP_RESEARCH,
+            "DEBUG": ModeKey.DEBUG,
+            "CODE_REVIEW": ModeKey.CODE_REVIEW,
+            "EDUCATION": ModeKey.EDUCATION,
+        }
+        legacy_mode = legacy_map.get(raw_mode.strip().upper())
+        if legacy_mode is None:
+            return data
+
+        updated = dict(data)
+        updated["legacy_mode"] = updated.get("legacy_mode") or legacy_mode
+        updated["mode"] = Mode.CHAT
+        return updated
+
+    @field_validator("mode")
+    @classmethod
+    def mode_must_be_active(cls, v: Mode) -> Mode:
+        if not MODE_REGISTRY[v].active:
+            raise ValueError(f"mode '{v.value}' is not yet active")
+        return v
 
 
 class SendMessageResponse(BaseModel):
@@ -40,6 +84,8 @@ class SendMessageResponse(BaseModel):
     provider: str
     model: str
     timestamp: str
+    department: Optional[str] = None
+    department_reason: Optional[str] = None
     usage: Optional[Dict[str, Any]] = None
     cost_usd: Optional[float] = None
     correlation_id: Optional[str] = None
@@ -119,7 +165,45 @@ class ContextualChatRequest(BaseModel):
     stream: Optional[bool] = False
     metadata: Optional[Dict[str, Any]] = None
     enable_context_assembly: bool = True
-    mode: Optional[str] = None  # e.g. "DEBUG", "ARCHITECT" — overrides auto-detection
+    mode: Mode = Mode.CHAT  # canonical v2 mode; active-gated at validation time
+    legacy_mode: Optional[ModeKey] = None  # overrides auto-detection; exported via OpenAPI → SDK codegen
+
+    @model_validator(mode="before")
+    @classmethod
+    def normalize_legacy_mode_payload(cls, data: Any) -> Any:
+        if not isinstance(data, dict):
+            return data
+
+        raw_mode = data.get("mode")
+        if not isinstance(raw_mode, str):
+            return data
+
+        legacy_map = {
+            "GENERAL_ASSISTANT": ModeKey.GENERAL_ASSISTANT,
+            "ARCHITECT": ModeKey.ARCHITECT,
+            "TRADING_FORGE": ModeKey.TRADING_FORGE,
+            "OPERATOR": ModeKey.OPERATOR,
+            "RESEARCH": ModeKey.RESEARCH,
+            "DEEP_RESEARCH": ModeKey.DEEP_RESEARCH,
+            "DEBUG": ModeKey.DEBUG,
+            "CODE_REVIEW": ModeKey.CODE_REVIEW,
+            "EDUCATION": ModeKey.EDUCATION,
+        }
+        legacy_mode = legacy_map.get(raw_mode.strip().upper())
+        if legacy_mode is None:
+            return data
+
+        updated = dict(data)
+        updated["legacy_mode"] = updated.get("legacy_mode") or legacy_mode
+        updated["mode"] = Mode.CHAT
+        return updated
+
+    @field_validator("mode")
+    @classmethod
+    def mode_must_be_active(cls, v: Mode) -> Mode:
+        if not MODE_REGISTRY[v].active:
+            raise ValueError(f"mode '{v.value}' is not yet active")
+        return v
 
 
 class ContextualChatResponse(BaseModel):
@@ -133,6 +217,25 @@ class ContextualChatResponse(BaseModel):
     context_assembly: Optional[Dict[str, Any]] = None
     token_usage: Optional[Dict[str, Any]] = None
     visualizations: Optional[List[Dict[str, Any]]] = None
+
+
+class LayerEstimate(BaseModel):
+    """Token estimate for a single context-assembly layer."""
+
+    name: str
+    tokens: int
+
+
+class EstimateTokensResponse(BaseModel):
+    """Estimated token/cost breakdown for a chat request."""
+
+    input_tokens: int
+    estimated_output_tokens: int
+    estimated_cost_usd: float
+    department: str
+    layers: List[LayerEstimate]
+    degraded_mode: bool = False
+    degraded_reason: Optional[str] = None
 
 
 class StreamChatRequest(BaseModel):

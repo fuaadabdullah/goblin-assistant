@@ -11,3 +11,9 @@ ALLOWED_MIME_TYPES = frozenset({
     "image/png", "image/jpeg", "image/gif", "image/webp",
 })
 UPLOAD_DIR = os.path.join(os.path.dirname(__file__), "..", "..", "uploads")
+
+# Archiving defaults preserved for backward-compatible imports.
+CHAT_ARCHIVE_THRESHOLD = 8
+CHAT_ARCHIVE_RETAIN_LAST = 2
+CHAT_ARCHIVE_SUMMARY_MODEL = "gpt-4o-mini"
+CHAT_ARCHIVE_MAX_SOURCE_CHARS = 12_000

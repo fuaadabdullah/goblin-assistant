@@ -34,8 +34,9 @@ async function safeJson<T = unknown>(res: Response): Promise<T | null> {
 function mapStatus(raw: string | undefined): ServiceState {
   if (!raw) return 'unknown';
   const s = raw.toLowerCase();
-  if (s === 'healthy' || s === 'ok') return 'ok';
-  if (s === 'degraded' || s === 'warning') return 'degraded';
+  if (s === 'healthy' || s === 'ok' || s === 'active' || s === 'running') return 'ok';
+  // backend emits both "warning" and "warnings" — treat both as degraded
+  if (s === 'degraded' || s === 'warning' || s === 'warnings') return 'degraded';
   if (s === 'unhealthy' || s === 'down' || s === 'error') return 'down';
   return 'unknown';
 }

@@ -147,6 +147,19 @@ class ConversationStore(ABC):
         """Update conversation title"""
         pass
 
+    @abstractmethod
+    async def archive_messages(
+        self,
+        conversation_id: str,
+        message_ids: List[str],
+        summary_content: str,
+        summary_metadata: Optional[Dict[str, Any]] = None,
+        summary_message_id: Optional[str] = None,
+        summary_timestamp: Optional[datetime] = None,
+    ) -> bool:
+        """Archive older messages into a summary message."""
+        pass
+
     async def check_conversation_owner(
         self,
         conversation_id: str,
@@ -248,6 +261,43 @@ class InMemoryConversationStore(ConversationStore):
             self._evict_expired()
             return True
         return False
+
+    async def archive_messages(
+        self,
+        conversation_id: str,
+        message_ids: List[str],
+        summary_content: str,
+        summary_metadata: Optional[Dict[str, Any]] = None,
+        summary_message_id: Optional[str] = None,
+        summary_timestamp: Optional[datetime] = None,
+    ) -> bool:
+        conversation = self._conversations.get(conversation_id)
+        if not conversation or not message_ids:
+            return False
+
+        archive_set = set(message_ids)
+        archived = [msg for msg in conversation.messages if msg.message_id in archive_set]
+        if not archived:
+            return False
+
+        retained = [msg for msg in conversation.messages if msg.message_id not in archive_set]
+        summary_ts = summary_timestamp or max(msg.timestamp for msg in archived)
+        summary_message = ConversationMessage(
+            role="system",
+            content=summary_content,
+            metadata=summary_metadata or {},
+            message_id=summary_message_id,
+            timestamp=summary_ts,
+        )
+        retained.append(summary_message)
+        retained.sort(key=lambda item: item.timestamp)
+
+        conversation.messages = retained
+        conversation.updated_at = max(conversation.updated_at, summary_ts)
+        conversation.last_accessed = datetime.utcnow()
+        self._conversations[conversation_id] = conversation
+        self._evict_expired()
+        return True
 
     async def check_conversation_owner(
         self,
@@ -433,6 +483,70 @@ class DatabaseConversationStore(ConversationStore):
                 return True
             return False
 
+    async def archive_messages(
+        self,
+        conversation_id: str,
+        message_ids: List[str],
+        summary_content: str,
+        summary_metadata: Optional[Dict[str, Any]] = None,
+        summary_message_id: Optional[str] = None,
+        summary_timestamp: Optional[datetime] = None,
+    ) -> bool:
+        """Replace archived rows with a summary row."""
+        if not message_ids:
+            return False
+
+        from .models import MessageAttachmentModel
+
+        async with get_db_context() as session:
+            conv_result = await session.execute(
+                select(ConversationModel).where(
+                    ConversationModel.conversation_id == conversation_id
+                )
+            )
+            db_conversation = conv_result.scalar_one_or_none()
+            if not db_conversation:
+                return False
+
+            archived_result = await session.execute(
+                select(MessageModel).where(
+                    MessageModel.conversation_id == conversation_id,
+                    MessageModel.message_id.in_(message_ids),
+                )
+            )
+            archived_messages = archived_result.scalars().all()
+            if not archived_messages:
+                return False
+
+            summary_ts = summary_timestamp or max(msg.timestamp for msg in archived_messages)
+            archive_ids = [msg.message_id for msg in archived_messages]
+
+            await session.execute(
+                delete(MessageAttachmentModel).where(
+                    MessageAttachmentModel.message_id.in_(archive_ids)
+                )
+            )
+            await session.execute(
+                delete(MessageModel).where(
+                    MessageModel.conversation_id == conversation_id,
+                    MessageModel.message_id.in_(archive_ids),
+                )
+            )
+
+            session.add(
+                MessageModel(
+                    message_id=summary_message_id or str(uuid.uuid4()),
+                    conversation_id=conversation_id,
+                    role="system",
+                    content=summary_content,
+                    timestamp=summary_ts,
+                    metadata_=summary_metadata or {},
+                )
+            )
+
+            db_conversation.updated_at = max(db_conversation.updated_at or summary_ts, summary_ts)
+            return True
+
     async def check_conversation_owner(
         self,
         conversation_id: str,
@@ -498,6 +612,25 @@ class ConversationStoreManager:
     async def update_conversation_title(self, conversation_id: str, title: str) -> bool:
         """Update conversation title"""
         return await self._store.update_conversation_title(conversation_id, title)
+
+    async def archive_messages(
+        self,
+        conversation_id: str,
+        message_ids: List[str],
+        summary_content: str,
+        summary_metadata: Optional[Dict[str, Any]] = None,
+        summary_message_id: Optional[str] = None,
+        summary_timestamp: Optional[datetime] = None,
+    ) -> bool:
+        """Archive older messages through the selected backend."""
+        return await self._store.archive_messages(
+            conversation_id=conversation_id,
+            message_ids=message_ids,
+            summary_content=summary_content,
+            summary_metadata=summary_metadata,
+            summary_message_id=summary_message_id,
+            summary_timestamp=summary_timestamp,
+        )
 
     async def check_conversation_owner(
         self,

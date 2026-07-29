@@ -10,7 +10,7 @@ import os
 from typing import Dict, Any, Optional
 import structlog
 
-from api.config.mode_addendums import get_addendum as _get_addendum
+from api.config.mode_addendums import Mode, get_mode_addendum, get_addendum as _get_addendum
 from api.utils.tokenizer import count_tokens
 
 logger = structlog.get_logger()
@@ -156,10 +156,57 @@ class SystemPromptConfig:
 
 
 class SystemPromptManager:
-    """Manager for system prompt operations"""
+    """Manager for system prompt operations.
+
+    Canonical composition order (per architecture spec):
+        base prompt → glossary → mode addendum → tone addendum → dynamic context
+    """
 
     def __init__(self):
         self.config = SystemPromptConfig()
+
+    # ── v2 composition (canonical) ───────────────────────────────────────
+
+    def compose(
+        self,
+        *,
+        mode: Mode = Mode.CHAT,
+        tone: str = "default",
+        dynamic_context: str = "",
+    ) -> str:
+        """Build the system prompt in the canonical composition order.
+
+        Uses the new ``Mode`` enum and ``ModeAddendum`` registry.  The
+        ``get_mode_addendum`` call gates on ``active`` — requesting an
+        inactive mode (e.g. FINANCE) raises before any prompt is composed.
+
+        Args:
+            mode: One of ``Mode`` values.  Defaults to CHAT.
+            tone: Tone name forwarded to ``get_tone_addendum``.
+            dynamic_context: Optional context block (RAG, memory, etc.)
+                appended at the end of the prompt.
+
+        Returns:
+            A single concatenated string ready to be sent as the system
+            message content.
+        """
+        from .tone_addendums import get_tone_addendum
+        from .glossary import format_glossary_addendum
+
+        base = self.config.get_prompt()
+        glossary = format_glossary_addendum()
+        mode_block = get_mode_addendum(mode).directive
+        tone_block = get_tone_addendum(tone)
+
+        return "\n\n".join(filter(None, [
+            base,
+            glossary,
+            mode_block,
+            tone_block,
+            dynamic_context,
+        ]))
+
+    # ── Legacy composition (backward compat) ─────────────────────────────
 
     def get_complete_prompt(
         self, context: Optional[str] = None, user_query: Optional[str] = None
@@ -180,12 +227,23 @@ class SystemPromptManager:
         context: Optional[str] = None,
         user_query: Optional[str] = None,
         addendum: str = "",
+        glossary_addendum: str = "",
+        tone_addendum: str = "",
     ) -> str:
-        """Get complete system prompt with an optional mode-specific addendum appended"""
+        """Compose the full system prompt in canonical layer order.
+
+        Layers: base (dynamic context embedded) → glossary → mode addendum → tone addendum.
+        Empty strings are skipped so callers can pass all params unconditionally.
+        """
         prompt = self.get_complete_prompt(context=context, user_query=user_query)
+        parts = [prompt]
+        if glossary_addendum:
+            parts.append(glossary_addendum.strip())
         if addendum:
-            prompt += f"\n\n{addendum.strip()}"
-        return prompt
+            parts.append(addendum.strip())
+        if tone_addendum:
+            parts.append(tone_addendum.strip())
+        return "\n\n".join(parts)
 
     def get_debug_info(self) -> Dict[str, Any]:
         """Get debug information about system prompt configuration"""

@@ -40,6 +40,14 @@ services:
       - key: RATE_LIMIT_WINDOW
         value: "60"
 
+      # Sandbox feature flag — enables the sandbox health probe and API
+      # Note: Docker-based code execution requires an RQ worker with Docker access;
+      # the free Render tier supports the API and Redis queue but not execution workers.
+      - key: VITE_FEATURE_SANDBOX
+        value: "true"
+      - key: SANDBOX_ENABLED
+        value: "true"
+
       # GCP LLM Endpoints (removed - VMs terminated since 2026-01-11)
       # Re-add OLLAMA_GCP_URL / LLAMACPP_GCP_URL here after redeploying GCP infra
 

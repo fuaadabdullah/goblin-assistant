@@ -20,7 +20,16 @@ from fastapi.responses import StreamingResponse
 
 from ...auth.router import User as AuthenticatedUser
 from ...auth.router import get_current_user
+from ...config.archetypes import (
+    CODE_REVIEW_CONTRACT,
+    DEEP_RESEARCH_CONTRACT,
+    GENERAL_ASSISTANT_CONTRACT,
+)
+from ...config.glossary import format_glossary_addendum
+from ...config.mode_addendums import Mode, get_addendum as _get_legacy_mode_addendum
+from ...config.mode_addendums import get_mode_addendum as _get_mode_addendum
 from ...config.system_prompt import system_prompt_manager
+from ...config.tone_addendums import get_tone_addendum
 from ...core.contracts import SuccessEnvelope
 from ...providers.base import ProviderErrorCategory
 from ...services.pdf_extraction_service import build_attachment_context
@@ -51,7 +60,9 @@ from .sentry_context import set_sentry_chat_context
 from .stages import (
     check_usage_quota,
     classify_intent,
+    detect_code_language,
     ensure_mode_required_tools,
+    infer_mode_from_archetype,
     log_missing_mode_tools,
     resolve_addendum,
     run_wti_stage,
@@ -67,6 +78,20 @@ logger = structlog.get_logger()
 
 router = APIRouter()
 _messages_pkg = import_module(__package__)
+
+
+def _legacy_mode_from_canonical(mode: Mode | None) -> Optional[str]:
+    if mode is None or mode == Mode.CHAT:
+        return None
+    if mode == Mode.CODE:
+        return "CODE_REVIEW"
+    if mode == Mode.RESEARCH:
+        return "DEEP_RESEARCH"
+    if mode == Mode.EDUCATION:
+        return "EDUCATION"
+    if mode == Mode.FINANCE:
+        return "TRADING_FORGE"
+    return None
 
 
 @router.post(
@@ -103,8 +128,55 @@ async def send_message(
         )
         message_id = str(uuid.uuid4())
 
-        # Stage 1: Intent classification + Write-Time Intelligence
+        # Stage 1: Intent classification + archetype dispatch
         intent_result, intent_meta = await classify_intent(sanitized_message)
+
+        # Stage 2: Conversation classification — must run before addendum resolution
+        # because resolve_addendum uses _new_category for context-specific addenda.
+        _new_category: Optional[str] = None
+        try:
+            from api.services.conversation_classifier import conversation_classifier as _cc  # noqa: PLC0415, I001
+
+            _existing_category = conversation.metadata.get("category")
+            _new_category = _cc.classify(sanitized_message, existing=_existing_category)
+            if _new_category and _new_category != _existing_category:
+                await _cr.conversation_store.update_metadata(
+                    conversation_id, {"category": _new_category}
+                )
+        except Exception:
+            pass
+
+        # Resolve prompt addenda and the tool-floor mode:
+        # - canonical Mode / legacy_mode drives the visible prompt addendum
+        # - archetype inference drives the minimum tool contract when mode=CHAT
+        resolved_mode: Optional[str] = None
+        if request.legacy_mode:
+            try:
+                resolved_mode = request.legacy_mode.value
+                mode_addendum = _get_legacy_mode_addendum(request.legacy_mode)
+                contextual_addendum = await resolve_addendum(
+                    None, _new_category, intent_meta, current_user.id, sanitized_message
+                )
+                addendum = "\n\n".join(p for p in [mode_addendum, contextual_addendum] if p)
+            except KeyError as exc:
+                raise HTTPException(status_code=400, detail=str(exc))
+        elif request.mode != Mode.CHAT:
+            try:
+                resolved_mode = _legacy_mode_from_canonical(request.mode)
+                mode_addendum = _get_mode_addendum(request.mode).directive
+                contextual_addendum = await resolve_addendum(
+                    None, _new_category, intent_meta, current_user.id, sanitized_message
+                )
+                addendum = "\n\n".join(p for p in [mode_addendum, contextual_addendum] if p)
+            except ValueError as exc:
+                raise HTTPException(status_code=400, detail=str(exc))
+        else:
+            resolved_mode = infer_mode_from_archetype(intent_meta)
+            addendum = await resolve_addendum(
+                None, _new_category, intent_meta, current_user.id, sanitized_message
+            )
+
+        # Stage 3: Write-Time Intelligence
         message_metadata = await run_wti_stage(
             message_id,
             sanitized_message,
@@ -115,12 +187,13 @@ async def send_message(
             intent_result,
         )
         message_metadata["input_validation"] = message_validation
+        message_metadata["conversation_category"] = _new_category
         if intent_meta:
             message_metadata["intent"] = intent_meta
         if request.metadata:
             message_metadata.update(request.metadata)
 
-        # Stage 2: Attachments
+        # Stage 4: Attachments
         attachments_meta, attachment_context_sources = merge_attachment_metadata(
             current_user_id=current_user.id,
             attachment_ids=request.attachment_ids,
@@ -139,21 +212,6 @@ async def send_message(
             message_metadata["attachment_context_included"] = bool(attachment_context)
             if attachment_context:
                 message_metadata["attachment_context_chars"] = len(attachment_context)
-
-        # Stage 3: Conversation classification
-        _new_category: Optional[str] = None
-        try:
-            from api.services.conversation_classifier import conversation_classifier as _cc  # noqa: PLC0415, I001
-
-            _existing_category = conversation.metadata.get("category")
-            _new_category = _cc.classify(sanitized_message, existing=_existing_category)
-            if _new_category and _new_category != _existing_category:
-                await _cr.conversation_store.update_metadata(
-                    conversation_id, {"category": _new_category}
-                )
-            message_metadata["conversation_category"] = _new_category
-        except Exception:
-            pass
 
         # Persist user message
         user_msg_saved = await _cr.conversation_store.add_message_to_conversation(
@@ -181,7 +239,7 @@ async def send_message(
         # Quota check
         await check_usage_quota(current_user.id, conversation_id)
 
-        # Stage 4: Context assembly + system prompt
+        # Stage 5: Context assembly + system prompt
         conversation = await _cr._require_owned_conversation(conversation_id, current_user)
         history_messages = [
             {"role": msg.role, "content": msg.content} for msg in conversation.messages
@@ -213,13 +271,23 @@ async def send_message(
         )
         context_metadata: Dict[str, Any] = pipeline_result.decision.context_metadata
 
-        addendum = await resolve_addendum(
-            request.mode, _new_category, intent_meta, current_user.id, sanitized_message
-        )
+        glossary_addendum = format_glossary_addendum()
+
+        # Language-aware context injection: detect code language and inject glossary.
+        # request.language is a client-supplied hint that bypasses heuristics.
+        lang_info = detect_code_language(sanitized_message, language_hint=request.language)
+        language_glossary = lang_info.get("glossary", "")
+        if lang_info:
+            message_metadata["language_detected"] = lang_info.get("language")
+            message_metadata["language_confidence"] = lang_info.get("confidence")
+
+        tone_addendum = get_tone_addendum(request.tone)
         system_prompt = system_prompt_manager.get_complete_prompt_with_addendum(
             context=pipeline_result.decision.assembled_context,
             user_query=sanitized_message,
             addendum=addendum,
+            glossary_addendum=glossary_addendum + language_glossary,
+            tone_addendum=tone_addendum,
         )
         messages = [{"role": "system", "content": system_prompt}] + history_messages
         inject_attachment_context(messages, attachment_context)
@@ -230,14 +298,32 @@ async def send_message(
             request.department or pipeline_result.execution.selected_department or "general"
         )
         department_reason = pipeline_result.execution.department_selection_reason or ""
+        explicit_mode_requested = bool(request.legacy_mode or request.mode != Mode.CHAT)
+        _archetype_tools: list[str] | None = None
+        if explicit_mode_requested:
+            resolved_mode_upper = (resolved_mode or "").strip().upper()
+            if resolved_mode_upper in {"RESEARCH", "DEEP_RESEARCH"}:
+                _archetype_tools = list(DEEP_RESEARCH_CONTRACT.required_tool_names)
+            elif resolved_mode_upper == "CODE_REVIEW":
+                _archetype_tools = list(CODE_REVIEW_CONTRACT.required_tool_names)
+            elif resolved_mode_upper == "GENERAL_ASSISTANT":
+                _archetype_tools = list(GENERAL_ASSISTANT_CONTRACT.required_tool_names)
+        elif intent_meta:
+            _archetype_tools = intent_meta.get("archetype", {}).get("tools_enabled")
         registered_tools = (
             ensure_mode_required_tools(
-                resolved_provider, request.mode, pipeline_result.response.tool_schemas
+                resolved_provider, resolved_mode, pipeline_result.response.tool_schemas
             )
             if provider_supports_tools(resolved_provider)
             else []
         )
-        log_missing_mode_tools(request.provider, request.mode, registered_tools)
+        if _archetype_tools is not None:
+            _allowed = set(_archetype_tools)
+            registered_tools = [
+                t for t in registered_tools
+                if isinstance(t, dict) and t.get("function", {}).get("name") in _allowed
+            ]
+        log_missing_mode_tools(request.provider, resolved_mode, registered_tools)
 
         payload: Dict[str, Any] = {
             "messages": messages,
@@ -367,6 +453,8 @@ async def send_message(
             data=SendMessageResponse(
                 message_id=response_message_id,
                 response=response_content,
+                provider=used_provider,
+                model=used_model,
                 department=resolved_department,
                 department_reason=department_reason,
                 timestamp=datetime.utcnow().isoformat(),

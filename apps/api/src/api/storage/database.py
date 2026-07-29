@@ -112,6 +112,21 @@ async def get_db_context() -> AsyncGenerator[AsyncSession, None]:
         await session.close()
 
 
+@asynccontextmanager
+async def get_readonly_db_context() -> AsyncGenerator[AsyncSession, None]:
+    """Context manager for read-only database access.
+
+    Historically some retrieval and memory callers imported this helper.
+    It behaves like a normal session context but skips the commit step on
+    success so read paths do not accidentally persist writes.
+    """
+    session = AsyncSessionLocal()
+    try:
+        yield session
+    finally:
+        await session.close()
+
+
 async def init_db():
     """Initialize database tables"""
     try:

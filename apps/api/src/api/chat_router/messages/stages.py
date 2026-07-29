@@ -13,8 +13,12 @@ import structlog
 from fastapi import HTTPException
 
 from ...config.archetypes import (
+    CODE_REVIEW_CONTRACT,
     DEEP_RESEARCH_CONTRACT,
     GENERAL_ASSISTANT_CONTRACT,
+)
+from ...config.archetypes import (
+    is_code_review_mode as _is_code_review_mode,
 )
 from ...config.archetypes import (
     is_deep_research_mode as _is_deep_research_mode,
@@ -23,13 +27,21 @@ from ...config.archetypes import (
     is_general_assistant_mode as _is_general_assistant_mode,
 )
 from ...config.archetypes import (
+    missing_code_review_tools as _missing_code_review_tools,
+)
+from ...config.archetypes import (
     missing_deep_research_tools as _missing_deep_research_tools,
 )
 from ...config.archetypes import (
     missing_general_assistant_tools as _missing_general_assistant_tools,
 )
-from ...config.mode_addendums import CATEGORY_ADDENDUMS
-from ...config.mode_addendums import get_addendum as _get_mode_addendum
+from ...config.language_glossary import detect_language, format_language_glossary
+from ...config.mode_addendums import (
+    CATEGORY_ADDENDUMS,
+    Mode,
+    get_addendum as _get_mode_addendum,
+    get_mode_addendum as _get_new_mode_addendum,
+)
 from ...config.system_prompt import EDUCATION_SYSTEM_ADDENDUM
 
 logger = structlog.get_logger()
@@ -46,15 +58,84 @@ async def resolve_provider_call(result: Any) -> Any:
 
 
 async def classify_intent(message: str) -> tuple[Any, dict]:
-    """Run intent classification; return (result, meta_dict) or (None, {}) on failure."""
+    """Run intent classification and archetype dispatch.
+
+    Returns (intent_result, meta_dict) where meta_dict includes an "archetype"
+    key with the resolved ArchetypeSelection so callers can infer effective mode.
+    Falls back to (None, {}) on any failure.
+    """
     try:
         from api.routing.intent_classifier import intent_classifier as _ic  # noqa: PLC0415
+        from api.agents.dispatcher import intent_dispatcher as _ad  # noqa: PLC0415
 
         result = _ic.classify(message)
-        return result, result.to_dict()
+        meta = result.to_dict()
+
+        try:
+            selection = _ad.dispatch(result)
+            meta["archetype"] = selection.to_dict()
+        except Exception as arch_exc:
+            logger.warning("archetype_dispatch_failed", error=str(arch_exc))
+
+        return result, meta
     except Exception as exc:
         logger.warning("intent_classification_failed", error=str(exc))
         return None, {}
+
+
+# Archetype_id → explicit mode string.
+# Only archetypes that carry a distinct tool contract get a non-None mode;
+# general_assistant is already the implicit default (mode=None).
+_ARCHETYPE_TO_MODE: dict[str, str | None] = {
+    "general_assistant": None,
+    "deep_research": "DEEP_RESEARCH",
+    "code_review": "CODE_REVIEW",
+    "forge_tm": None,  # stub — no contract enforced until available
+}
+
+
+def infer_mode_from_archetype(intent_meta: dict) -> str | None:
+    """Return the effective mode string implied by the auto-dispatched archetype.
+
+    Only used when the caller did not set an explicit mode. Returns None when
+    the archetype fell back to general_assistant or when dispatch info is absent.
+    """
+    archetype_meta = intent_meta.get("archetype", {})
+    if not isinstance(archetype_meta, dict):
+        return None
+    if archetype_meta.get("fell_back"):
+        return None
+    archetype_id = archetype_meta.get("archetype_id", "")
+    return _ARCHETYPE_TO_MODE.get(archetype_id)
+
+
+def detect_code_language(message: str, language_hint: Optional[str] = None) -> dict:
+    """Detect programming language from message content.
+
+    When `language_hint` is supplied (from request.language), detection is skipped
+    and the glossary for that language is injected with confidence=1.0.
+    Returns a dict with language, confidence, and glossary text.
+    Safe to call on any message — returns empty dict when no language detected.
+    """
+    try:
+        if language_hint:
+            lang = language_hint.strip().lower()
+            glossary_text = format_language_glossary(message, language_override=lang)
+            if glossary_text:
+                return {"language": lang, "confidence": 1.0, "glossary": glossary_text}
+
+        language, confidence = detect_language(message)
+        if language is None or confidence < 0.3:
+            return {}
+        glossary_text = format_language_glossary(message)
+        return {
+            "language": language,
+            "confidence": confidence,
+            "glossary": glossary_text,
+        }
+    except Exception as exc:
+        logger.warning("language_detection_failed", error=str(exc))
+        return {}
 
 
 async def run_wti_stage(
@@ -138,8 +219,18 @@ async def resolve_addendum(
     user_id: str,
     sanitized_message: str,
 ) -> str:
-    """Return the system-prompt addendum for the request."""
+    """Return the system-prompt addendum for the request.
+
+    Supports both the legacy ModeKey string and the new canonical Mode enum.
+    """
     if mode:
+        # Try new canonical Mode first.
+        try:
+            canonical = Mode(mode.strip().lower())
+            return _get_new_mode_addendum(canonical).directive
+        except (ValueError, KeyError):
+            pass
+        # Fall back to legacy ModeKey.
         try:
             return _get_mode_addendum(mode)
         except KeyError as exc:
@@ -187,7 +278,8 @@ def ensure_mode_required_tools(
 
     The pipeline's tool selector picks a relevance-ranked subset by intent;
     the archetype contracts define the floor a mode must always ship with
-    (mode=None ⇒ General Assistant, RESEARCH/DEEP_RESEARCH ⇒ Deep Research).
+    (mode=None ⇒ General Assistant, RESEARCH/DEEP_RESEARCH ⇒ Deep Research,
+    CODE_REVIEW ⇒ Code Review).
     Caller is responsible for only invoking this for tool-capable providers.
     """
     contracts = []
@@ -195,6 +287,8 @@ def ensure_mode_required_tools(
         contracts.append(GENERAL_ASSISTANT_CONTRACT)
     if _is_deep_research_mode(mode):
         contracts.append(DEEP_RESEARCH_CONTRACT)
+    if _is_code_review_mode(mode):
+        contracts.append(CODE_REVIEW_CONTRACT)
     if not contracts:
         return registered_tools
 
@@ -249,6 +343,16 @@ def log_missing_mode_tools(
         if missing:
             logger.warning(
                 "deep_research_required_tools_missing",
+                provider=provider,
+                mode=mode,
+                missing_tools=missing,
+                registered_tool_count=len(registered_tools),
+            )
+    if _is_code_review_mode(mode):
+        missing = _missing_code_review_tools(registered_tools)
+        if missing:
+            logger.warning(
+                "code_review_required_tools_missing",
                 provider=provider,
                 mode=mode,
                 missing_tools=missing,
