@@ -3,6 +3,7 @@ set -euo pipefail
 
 BRANCH_REGEX='^(feature|fix|refactor|infra)/'
 COMMIT_REGEX='^(feat|fix|refactor|infra|chore|docs|test|build|ci|perf|revert|style|deps|release|security)(\([a-z0-9._/ -]+\))?: .+'
+GIT_REVERT_REGEX='^Revert ".+"$'
 
 ensure_pr_range() {
   local base_ref="$1"
@@ -87,7 +88,7 @@ if [[ -z "$COMMITS" ]]; then
 fi
 
 while IFS= read -r subject; do
-  if [[ ! "$subject" =~ $COMMIT_REGEX ]]; then
+  if [[ ! "$subject" =~ $COMMIT_REGEX && ! "$subject" =~ $GIT_REVERT_REGEX ]]; then
     echo "Invalid commit subject: '$subject'"
     echo "Expected conventional format, e.g. feat(sandbox): add timeout enforcement"
     exit 1
