@@ -4,8 +4,6 @@
 import os
 import sys
 
-import anthropic
-
 MAX_DIFF_CHARS = 80_000  # ~20k tokens; keeps cost predictable on large PRs
 
 SYSTEM_PROMPT = """\
@@ -55,14 +53,33 @@ def build_user_message(diff: str) -> str:
 
 
 def review(diff: str) -> str:
+    api_key = os.environ.get("ANTHROPIC_API_KEY", "").strip()
+    if not api_key:
+        return (
+            "<!-- ai-review-comment -->\n"
+            "AI review skipped because `ANTHROPIC_API_KEY` is not configured.\n"
+            "\n"
+            "Configure the repository secret to enable automated review comments."
+        )
+
+    import anthropic
+
     client = anthropic.Anthropic()
 
-    message = client.messages.create(
-        model="claude-haiku-4-5",
-        max_tokens=2048,
-        system=SYSTEM_PROMPT,
-        messages=[{"role": "user", "content": build_user_message(diff)}],
-    )
+    try:
+        message = client.messages.create(
+            model="claude-haiku-4-5",
+            max_tokens=2048,
+            system=SYSTEM_PROMPT,
+            messages=[{"role": "user", "content": build_user_message(diff)}],
+        )
+    except anthropic.AnthropicError as exc:
+        return (
+            "<!-- ai-review-comment -->\n"
+            "AI review was unavailable for this run.\n"
+            "\n"
+            f"`{type(exc).__name__}`: {exc}"
+        )
 
     return message.content[0].text
 
