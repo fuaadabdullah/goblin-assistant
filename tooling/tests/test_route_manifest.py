@@ -63,6 +63,39 @@ def test_build_manifest_ignores_hidden_operational_aliases() -> None:
     assert routes["/api/v1/health"]["canonical_path"] == "/api/v1/health"
 
 
+def test_build_manifest_preserves_included_router_context() -> None:
+    app = FastAPI()
+    versioned_router = APIRouter(prefix="/api/v1")
+    admin_router = APIRouter(prefix="/admin", tags=["admin"])
+    secrets_router = APIRouter(prefix="/secrets", tags=["secrets"])
+
+    @admin_router.get(
+        "/providers/state",
+        include_in_schema=False,
+        operation_id="read_provider_state",
+    )
+    async def read_provider_state() -> dict[str, str]:
+        return {"ok": "yes"}
+
+    @secrets_router.get("/{path:path}", operation_id="read_secret")
+    async def read_secret(path: str) -> dict[str, str]:
+        return {"path": path}
+
+    versioned_router.include_router(admin_router)
+    versioned_router.include_router(secrets_router)
+    app.include_router(versioned_router)
+
+    manifest = build_manifest(app, schema={"paths": {}})
+    routes = {route["path"]: route for route in manifest["routes"]}
+
+    assert manifest["route_count"] == 2
+    assert manifest["public_route_count"] == 1
+    assert manifest["versioned_route_count"] == 1
+    assert routes["/api/v1/admin/providers/state"]["include_in_schema"] is False
+    assert routes["/api/v1/admin/providers/state"]["tags"] == ["admin"]
+    assert routes["/api/v1/secrets/{path:path}"]["tags"] == ["secrets"]
+
+
 def test_build_manifest_orders_methods_and_paths_deterministically() -> None:
     app = FastAPI()
 
