@@ -372,6 +372,7 @@ jobs:
       - run:
           name: Publish to Chromatic
           command: |
+            pnpm --filter @goblin/shared build
             cd apps/web
             if [ -z "$CHROMATIC_PROJECT_TOKEN" ]; then
               echo "CHROMATIC_PROJECT_TOKEN not set — skipping visual regression."
