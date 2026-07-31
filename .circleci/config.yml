@@ -23,7 +23,7 @@ executors:
 
   node-python:
     docker:
-      - image: cimg/python:3.11-node
+      - image: cimg/python:3.11-node22.15
     working_directory: ~/repo
     resource_class: medium
 
