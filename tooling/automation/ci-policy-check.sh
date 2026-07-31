@@ -3,6 +3,39 @@ set -euo pipefail
 
 BRANCH_REGEX='^(feature|fix|refactor|infra|test-coverage)/'
 COMMIT_REGEX='^(feat|fix|refactor|infra|chore|docs|test|build|ci|perf|revert|style|deps|release|security)(\([a-z0-9._/ -]+\))?: .+'
+GIT_REVERT_REGEX='^Revert ".+"$'
+
+ensure_pr_range() {
+  local base_ref="$1"
+  local base_rev=""
+  local merge_base=""
+
+  git fetch origin "$base_ref" --depth=200
+  base_rev="$(git rev-parse FETCH_HEAD)"
+
+  if ! git merge-base "$base_rev" HEAD >/dev/null 2>&1; then
+    if [[ "$(git rev-parse --is-shallow-repository 2>/dev/null || echo false)" == "true" ]]; then
+      git fetch origin --deepen=200 "${HEAD_BRANCH}" "${base_ref}" || true
+      git fetch origin "$base_ref" --depth=400 || true
+      base_rev="$(git rev-parse FETCH_HEAD)"
+    fi
+  fi
+
+  if ! git merge-base "$base_rev" HEAD >/dev/null 2>&1; then
+    git fetch --unshallow origin || true
+    git fetch origin "${HEAD_BRANCH}" "${base_ref}" || true
+    git fetch origin "$base_ref" || true
+    base_rev="$(git rev-parse FETCH_HEAD)"
+  fi
+
+  if ! git merge-base "$base_rev" HEAD >/dev/null 2>&1; then
+    echo "Could not determine merge base for ${base_ref}...HEAD"
+    exit 1
+  fi
+
+  merge_base="$(git merge-base "$base_rev" HEAD)"
+  RANGE="${merge_base}..HEAD"
+}
 
 # Support both GitHub Actions and CircleCI environments
 if [[ -n "${GITHUB_EVENT_NAME:-}" ]]; then
@@ -34,8 +67,7 @@ fi
 
 if [[ "$EVENT_NAME" == "pull_request" && ! "$HEAD_BRANCH" =~ $TRUNK_REGEX ]]; then
   BASE_REF="${GITHUB_BASE_REF:-${CIRCLE_TARGET_BRANCH:-main}}"
-  git fetch origin "$BASE_REF" --depth=1
-  RANGE="origin/$BASE_REF...HEAD"
+  ensure_pr_range "$BASE_REF"
 else
   if git rev-parse HEAD~1 >/dev/null 2>&1; then
     RANGE="HEAD~1..HEAD"
@@ -44,14 +76,19 @@ else
   fi
 fi
 
-COMMITS=$(git log --format=%s $RANGE)
+git_log_args=(--format=%s)
+if [[ "$EVENT_NAME" == "pull_request" ]]; then
+  git_log_args+=(--no-merges)
+fi
+
+COMMITS=$(git log "${git_log_args[@]}" $RANGE)
 if [[ -z "$COMMITS" ]]; then
   echo "No commit subjects found in range $RANGE"
   exit 1
 fi
 
 while IFS= read -r subject; do
-  if [[ ! "$subject" =~ $COMMIT_REGEX ]]; then
+  if [[ ! "$subject" =~ $COMMIT_REGEX && ! "$subject" =~ $GIT_REVERT_REGEX ]]; then
     echo "Invalid commit subject: '$subject'"
     echo "Expected conventional format, e.g. feat(sandbox): add timeout enforcement"
     exit 1
