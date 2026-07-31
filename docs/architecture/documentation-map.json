@@ -130,13 +130,12 @@
     },
     {
       "path_prefix": "docs/runbooks/",
-      "classification": "compatibility-stub",
-      "allow": ["README.md"],
-      "purpose": "Legacy runbooks entrypoint",
-      "owner": "Documentation governance",
-      "audience": ["Legacy links only"],
-      "generation": "thin compatibility stub",
-      "review_cadence": "Never expand"
+      "classification": "canonical",
+      "purpose": "Operational runbooks and viewport testing checklist",
+      "owner": "Runtime/ops maintainers",
+      "audience": ["Developers", "operators", "QA"],
+      "generation": "handwritten",
+      "review_cadence": "Per release or major UI change"
     }
   ]
 }
