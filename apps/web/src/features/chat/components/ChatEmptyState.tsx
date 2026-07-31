@@ -15,8 +15,8 @@ import {
 interface ChatEmptyStateProps {
   quickPrompts: QuickPrompt[];
   onPromptClick: (prompt: string) => void;
-  selectedMode: Mode;
-  onModeChange: (mode: Mode) => void;
+  selectedMode?: Mode;
+  onModeChange?: (mode: Mode) => void;
   prefersReducedMotion?: boolean;
 }
 
@@ -35,12 +35,12 @@ const Lottie = dynamic(() => import('lottie-react'), {
 const ChatEmptyState = ({
   quickPrompts: _quickPrompts,
   onPromptClick,
-  selectedMode,
-  onModeChange,
+  selectedMode = 'all',
+  onModeChange = () => {},
   prefersReducedMotion = false,
 }: ChatEmptyStateProps) => {
   const animationData = useGoblinLoaderAnimation();
-  const displayedPrompts = PROMPTS_BY_MODE[selectedMode];
+  const displayedPrompts = PROMPTS_BY_MODE[selectedMode] ?? _quickPrompts;
 
   return (
     <section className="flex flex-col items-center justify-center h-full w-full px-4 py-8">
