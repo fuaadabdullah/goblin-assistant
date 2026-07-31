@@ -1,6 +1,12 @@
 # FastAPI backend dependencies
-fastapi>=0.111.0
-starlette>=0.49.1
+# Upper bounds pin below the release that wraps included sub-routers in an
+# internal _IncludedRouter object (breaks every app.routes consumer that
+# assumes a flat list of APIRoute: manifest/alias/lifecycle/ops/secrets
+# tests, plus sandbox test monkeypatching that walks app.routes to find a
+# route's endpoint globals). Bump only alongside a matching adaptation of
+# every app.routes walker.
+fastapi>=0.111.0,<0.137.0
+starlette>=0.49.1,<1.2.0
 uvicorn[standard]>=0.27.0
 gunicorn>=21.2.0
 sentry-sdk>=2.0.0
