@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-BRANCH_REGEX='^(feature|fix|refactor|infra)/'
+BRANCH_REGEX='^(feature|fix|refactor|infra|test-coverage)/'
 COMMIT_REGEX='^(feat|fix|refactor|infra|chore|docs|test|build|ci|perf|revert|style|deps|release|security)(\([a-z0-9._/ -]+\))?: .+'
 
 # Support both GitHub Actions and CircleCI environments
