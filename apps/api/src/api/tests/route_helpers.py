@@ -50,9 +50,7 @@ def iter_route_views(routes: Iterable[object], *, prefix: str = "") -> Iterator[
         else:
             # Layout C: Mount (.path + .routes) or older .router + .prefix
             sub_router = getattr(route, "router", None)
-            route_prefix = (
-                getattr(route, "prefix", None) or getattr(route, "path", None) or ""
-            )
+            route_prefix = getattr(route, "prefix", None) or getattr(route, "path", None) or ""
             if sub_router is None:
                 sub_router = route  # Mount: .routes lives on route itself
 
