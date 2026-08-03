@@ -364,10 +364,13 @@ except ImportError:
 def _collect_routes(router_or_app, prefix=""):
     """Recursively yield (full_path, method_set) for every APIRoute.
 
-    Handles both pre- and post-0.111 FastAPI layouts:
-    - Old: include_router flattens into APIRoute objects with full paths.
-    - New: include_router stores _IncludedRouter wrappers (have .router + .prefix
-      or .path) and Starlette Mount objects (have .routes + .path).
+    Handles three FastAPI/Starlette layouts:
+    A) Flat (pre-0.141 or latest): include_router flattens APIRoute objects
+       directly into app.routes with full prefixed paths.
+    B) _IncludedRouter (FastAPI 0.141+/Starlette 0.49): include_router stores
+       a _IncludedRouter wrapper with .original_router (sub-router) and
+       .include_context.prefix (the path prefix).
+    C) Starlette Mount: sub-app mounted at .path with sub-routes in .routes.
     """
     from fastapi.routing import APIRoute
 
@@ -375,14 +378,23 @@ def _collect_routes(router_or_app, prefix=""):
         if isinstance(item, APIRoute):
             yield (prefix + item.path, item.methods or set())
         else:
-            # Prefer .prefix (set by include_router); fall back to .path (Mount).
-            item_prefix = (
-                getattr(item, "prefix", None) or getattr(item, "path", None) or ""
-            )
-            # _IncludedRouter exposes the wrapped router via .router; for Mount
-            # the object itself has .routes, so fall back to item.
-            sub_router = getattr(item, "router", item)
-            if getattr(sub_router, "routes", None) is not None:
+            # Layout B: _IncludedRouter (FastAPI 0.141+/Starlette 0.49)
+            include_context = getattr(item, "include_context", None)
+            if include_context is not None:
+                item_prefix = getattr(include_context, "prefix", "") or ""
+                sub_router = getattr(item, "original_router", None) or getattr(
+                    include_context, "included_router", None
+                )
+            else:
+                # Layout C: Mount (.path + .routes) or older .router + .prefix
+                sub_router = getattr(item, "router", None)
+                item_prefix = (
+                    getattr(item, "prefix", None) or getattr(item, "path", None) or ""
+                )
+                if sub_router is None:
+                    sub_router = item  # Mount: .routes lives on item itself
+
+            if sub_router is not None and getattr(sub_router, "routes", None) is not None:
                 yield from _collect_routes(sub_router, prefix + item_prefix)
 
 
@@ -400,11 +412,21 @@ def find_api_route(router_or_app, path_suffix, prefix=""):
             if (prefix + item.path).endswith(path_suffix):
                 return item
         else:
-            item_prefix = (
-                getattr(item, "prefix", None) or getattr(item, "path", None) or ""
-            )
-            sub_router = getattr(item, "router", item)
-            if getattr(sub_router, "routes", None) is not None:
+            include_context = getattr(item, "include_context", None)
+            if include_context is not None:
+                item_prefix = getattr(include_context, "prefix", "") or ""
+                sub_router = getattr(item, "original_router", None) or getattr(
+                    include_context, "included_router", None
+                )
+            else:
+                sub_router = getattr(item, "router", None)
+                item_prefix = (
+                    getattr(item, "prefix", None) or getattr(item, "path", None) or ""
+                )
+                if sub_router is None:
+                    sub_router = item
+
+            if sub_router is not None and getattr(sub_router, "routes", None) is not None:
                 found = find_api_route(sub_router, path_suffix, prefix + item_prefix)
                 if found:
                     return found
