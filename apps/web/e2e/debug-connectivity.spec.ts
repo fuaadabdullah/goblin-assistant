@@ -1,12 +1,13 @@
 import { test, expect } from '@playwright/test';
-import { mockCommonApiRoutes } from './support/common-mocks';
+import { authenticateE2EUser, mockCommonApiRoutes } from './support/common-mocks';
 
 test.describe('Debug Connectivity Page', () => {
   test.beforeEach(async ({ page, context }) => {
     await mockCommonApiRoutes(page);
+    await authenticateE2EUser(context);
 
     // Mock health endpoint
-    await page.route('**/api/v1/health', async (route) => {
+    await page.route('**/api/health', async (route) => {
       await route.fulfill({
         status: 200,
         contentType: 'application/json',
@@ -56,35 +57,16 @@ test.describe('Debug Connectivity Page', () => {
       });
     });
 
-    // Set up authenticated state
     await context.addCookies([
-      {
-        name: 'goblin_auth',
-        value: '1',
-        domain: 'localhost',
-        path: '/',
-      },
-      {
-        name: 'session_token',
-        value: 'mock-session-token-debug',
-        domain: 'localhost',
-        path: '/',
-      },
+      { name: 'goblin_e2e_admin', value: '1', domain: 'localhost', path: '/' },
     ]);
-
-    await context.addInitScript(() => {
-      window.localStorage.setItem(
-        'user_data',
-        JSON.stringify({ id: 'debug_user', email: 'debug@example.com', role: 'user' })
-      );
-    });
   });
 
   test('should display page title and health status section', async ({ page }) => {
     await page.goto('/debug/connectivity');
 
     await expect(page.getByRole('heading', { name: /Connectivity Debug/i })).toBeVisible();
-    await expect(page.getByText(/Health Status/i)).toBeVisible();
+    await expect(page.getByRole('heading', { name: 'Health Status' })).toBeVisible();
   });
 
   test('should display auth status section', async ({ page }) => {
@@ -93,22 +75,21 @@ test.describe('Debug Connectivity Page', () => {
     await expect(page.getByRole('heading', { name: /Auth Status/i })).toBeVisible();
 
     // Should show authenticated state
-    await expect(page.getByText(/Authenticated/i)).toBeVisible();
+    await expect(page.getByText(/Authenticated/i).first()).toBeVisible();
   });
 
   test('should show user details when authenticated', async ({ page }) => {
     await page.goto('/debug/connectivity');
 
-    await expect(page.getByText(/debug@example\.com/)).toBeVisible();
+    await expect(page.getByText(/test@example\.com/)).toBeVisible();
     await expect(page.getByText(/Role:/)).toBeVisible();
     await expect(page.getByText(/User ID:/)).toBeVisible();
   });
 
-  test('should display token in masked format', async ({ page }) => {
+  test('should not expose the session token', async ({ page }) => {
     await page.goto('/debug/connectivity');
 
-    // Token should be masked (showing first 8 and last 4 chars)
-    await expect(page.locator('code').filter({ hasText: /.../ }).first()).toBeVisible();
+    await expect(page.locator('code')).toHaveCount(0);
   });
 
   test('should have chat endpoint test button', async ({ page }) => {
@@ -125,7 +106,7 @@ test.describe('Debug Connectivity Page', () => {
     await testButton.click();
 
     // Should show success message
-    await expect(page.getByText(/✓ Success!/i)).toBeVisible();
+    await expect(page.getByText(/✓ Success!/i).first()).toBeVisible();
   });
 
   test('should display auth endpoint test buttons', async ({ page }) => {
@@ -139,7 +120,7 @@ test.describe('Debug Connectivity Page', () => {
   test('should show auth required badge on authenticated endpoints', async ({ page }) => {
     await page.goto('/debug/connectivity');
 
-    const authBadges = page.locator(`.${'authBadge'}`);
+    const authBadges = page.getByText('Auth Required', { exact: true });
     const count = await authBadges.count();
 
     // Should have auth badges on chat and auth endpoint tests
@@ -149,11 +130,11 @@ test.describe('Debug Connectivity Page', () => {
   test('should display status summary section', async ({ page }) => {
     await page.goto('/debug/connectivity');
 
-    await expect(page.getByRole('heading', { name: /Summary/i })).toBeVisible();
-    await expect(page.getByText(/Frontend Health/)).toBeVisible();
-    await expect(page.getByText(/Backend Health/)).toBeVisible();
-    await expect(page.getByText(/Auth Status/)).toBeVisible();
-    await expect(page.getByText(/Chat API/)).toBeVisible();
+    const summary = page.getByRole('heading', { name: /Summary/i }).locator('..');
+    await expect(summary.getByText(/Frontend Health/)).toBeVisible();
+    await expect(summary.getByText(/Backend Health/)).toBeVisible();
+    await expect(summary.getByText(/Auth Status/)).toBeVisible();
+    await expect(summary.getByText(/Chat API/)).toBeVisible();
   });
 
   test('should show not authenticated when no auth', async ({ page, context }) => {
@@ -169,12 +150,12 @@ test.describe('Debug Connectivity Page', () => {
 
     await page.goto('/debug/connectivity');
 
-    await expect(page.getByText(/Not authenticated/i)).toBeVisible();
+    await expect(page).toHaveURL(/\/login/);
   });
 
   test('should handle health endpoint error gracefully', async ({ page }) => {
     // Mock failed health endpoint
-    await page.route('**/api/v1/health', async (route) => {
+    await page.route('**/api/health', async (route) => {
       await route.fulfill({
         status: 500,
         contentType: 'application/json',
@@ -193,7 +174,7 @@ test.describe('Connection Status Indicator', () => {
   test.beforeEach(async ({ page }) => {
     await mockCommonApiRoutes(page);
 
-    await page.route('**/api/v1/health', async (route) => {
+    await page.route('**/api/health', async (route) => {
       await route.fulfill({
         status: 200,
         contentType: 'application/json',
@@ -209,28 +190,7 @@ test.describe('Connection Status Indicator', () => {
   });
 
   test('should display healthy status in chat header', async ({ page, context }) => {
-    // Set up authenticated state
-    await context.addCookies([
-      {
-        name: 'goblin_auth',
-        value: '1',
-        domain: 'localhost',
-        path: '/',
-      },
-      {
-        name: 'session_token',
-        value: 'mock-session-token-chat',
-        domain: 'localhost',
-        path: '/',
-      },
-    ]);
-
-    await context.addInitScript(() => {
-      window.localStorage.setItem(
-        'user_data',
-        JSON.stringify({ id: 'chat_user', email: 'chat@example.com', role: 'user' })
-      );
-    });
+    await authenticateE2EUser(context);
 
     await page.goto('/chat');
 
@@ -239,26 +199,16 @@ test.describe('Connection Status Indicator', () => {
   });
 
   test('should display debug link in chat header', async ({ page, context }) => {
-    // Set up authenticated state
-    await context.addCookies([
-      {
-        name: 'goblin_auth',
-        value: '1',
-        domain: 'localhost',
-        path: '/',
-      },
-    ]);
+    await authenticateE2EUser(context, {
+      id: 'admin_user',
+      email: 'admin@example.com',
+      role: 'admin',
+      created_at: '2026-01-01T00:00:00.000Z',
+      user_metadata: { name: 'E2E Admin' },
+    });
 
     await page.goto('/chat');
 
-    const debugLink = page.getByRole('link', { name: /Debug/i });
-    const iconLink = page
-      .locator('a')
-      .filter({ has: page.locator('svg') })
-      .first();
-
-    // Debug link should be present (via icon)
-    const count = await iconLink.count();
-    expect(count).toBeGreaterThanOrEqual(0);
+    await expect(page.getByTitle('Debug connectivity')).toBeVisible();
   });
 });

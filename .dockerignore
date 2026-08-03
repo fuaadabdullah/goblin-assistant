@@ -81,3 +81,27 @@ models/
 vector_db/
 chroma_db/
 data-gym-cache/
+
+# Build/test caches that may live at repo root
+.cache/
+.parcel-cache/
+.next/
+out/
+dist/
+build/
+
+# Local SSL certs
+*.pem
+*.key
+*.crt
+
+# OS / editor artifacts deeper in tree
+**/.DS_Store
+**/Thumbs.db
+**/*.swp
+**/*.swo
+
+# Keep docker-compose override files out of the build context
+docker-compose.*.yml
+.env.docker-tuning
+scripts/ops/optimize-windows.ps1

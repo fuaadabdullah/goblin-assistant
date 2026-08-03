@@ -1,10 +1,11 @@
 import { test, expect } from '@playwright/test';
-import { mockCommonApiRoutes } from './support/common-mocks';
+import { authenticateE2EUser, mockCommonApiRoutes } from './support/common-mocks';
 
 test.use({ viewport: { width: 390, height: 844 } });
 
 test.beforeEach(async ({ page, context }) => {
   await mockCommonApiRoutes(page);
+  await authenticateE2EUser(context);
 
   await page.route('**/api/auth/validate', async (route) => {
     await route.fulfill({
@@ -18,28 +19,6 @@ test.beforeEach(async ({ page, context }) => {
     });
   });
 
-  await context.addCookies([
-    {
-      name: 'goblin_auth',
-      value: '1',
-      domain: 'localhost',
-      path: '/',
-    },
-    {
-      name: 'session_token',
-      value: 'mock-session-token-e2e',
-      domain: 'localhost',
-      path: '/',
-    },
-  ]);
-
-  await context.addInitScript(() => {
-    document.cookie = 'goblin_auth=1; Path=/';
-    window.localStorage.setItem(
-      'user_data',
-      JSON.stringify({ id: 'test_user', email: 'test@example.com', role: 'user' })
-    );
-  });
 });
 
 test('mobile drawer opens and closes; Chat FAB navigates to chat', async ({ page }) => {

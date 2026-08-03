@@ -1,22 +1,10 @@
 import { test, expect } from '@playwright/test';
-import { mockCommonApiRoutes } from './support/common-mocks';
-
-const AUTH_COOKIES = [
-  { name: 'goblin_auth', value: '1', domain: 'localhost', path: '/' },
-  { name: 'session_token', value: 'mock-session-token-e2e', domain: 'localhost', path: '/' },
-];
-
-const AUTH_INIT_SCRIPT = () => {
-  document.cookie = 'goblin_auth=1; Path=/';
-  window.localStorage.setItem(
-    'user_data',
-    JSON.stringify({ id: 'test_user', email: 'test@example.com', role: 'user' })
-  );
-};
+import { authenticateE2EUser, mockCommonApiRoutes } from './support/common-mocks';
 
 test.describe('Settings: Preferences', () => {
   test.beforeEach(async ({ page, context }) => {
     await mockCommonApiRoutes(page);
+    await authenticateE2EUser(context);
 
     await page.route('**/api/auth/validate', async (route) => {
       await route.fulfill({
@@ -50,13 +38,13 @@ test.describe('Settings: Preferences', () => {
       });
     });
 
-    await context.addCookies(AUTH_COOKIES);
-    await context.addInitScript(AUTH_INIT_SCRIPT);
   });
 
   test('should load the settings page', async ({ page }) => {
     await page.goto('/settings');
-    await expect(page.getByRole('main')).toBeVisible({ timeout: 5000 });
+    await expect(page.getByRole('heading', { name: /provider & model settings/i })).toBeVisible({
+      timeout: 5000,
+    });
   });
 
   test('should display preferences form elements', async ({ page }) => {
@@ -126,6 +114,16 @@ test.describe('Settings: Preferences', () => {
 test.describe('Settings: Provider Management', () => {
   test.beforeEach(async ({ page, context }) => {
     await mockCommonApiRoutes(page);
+    await authenticateE2EUser(context, {
+      id: 'admin_user',
+      email: 'admin@example.com',
+      role: 'admin',
+      created_at: '2026-01-01T00:00:00.000Z',
+      user_metadata: { name: 'E2E Admin' },
+    });
+    await context.addCookies([
+      { name: 'goblin_e2e_admin', value: '1', domain: 'localhost', path: '/' },
+    ]);
 
     await page.route('**/api/auth/validate', async (route) => {
       await route.fulfill({
@@ -139,7 +137,7 @@ test.describe('Settings: Provider Management', () => {
       });
     });
 
-    await page.route('**/providers**', async (route) => {
+    await page.route('**/api/providers**', async (route) => {
       if (route.request().method() === 'GET') {
         await route.fulfill({
           status: 200,
@@ -172,13 +170,13 @@ test.describe('Settings: Provider Management', () => {
       });
     });
 
-    await context.addCookies(AUTH_COOKIES);
-    await context.addInitScript(AUTH_INIT_SCRIPT);
   });
 
   test('should load the providers admin page', async ({ page }) => {
     await page.goto('/admin/providers');
-    await expect(page.getByRole('main')).toBeVisible({ timeout: 5000 });
+    await expect(page.getByRole('heading', { name: /provider manager & tester/i })).toBeVisible({
+      timeout: 5000,
+    });
   });
 
   test('should list available providers', async ({ page }) => {

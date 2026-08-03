@@ -1,0 +1,27 @@
+# Docker Compose override for gaming sessions.
+# Usage:
+#   docker compose -f docker-compose.yml -f docker-compose.gaming.yml up -d
+#
+# This keeps the backend alive for quick alt-tab coding but clamps resources
+# so games can use CPU/RAM/GPU freely. Do NOT use with --profile workers or
+# --profile sandbox unless you want to run a stress test.
+
+services:
+  redis:
+    deploy:
+      resources:
+        limits:
+          cpus: "0.50"
+          memory: 256m
+
+  goblin-assistant-backend:
+    deploy:
+      resources:
+        limits:
+          cpus: "1.00"
+          memory: 1g
+        reservations:
+          cpus: "0.25"
+          memory: 256m
+    tmpfs:
+      - /tmp:size=256m,mode=1777

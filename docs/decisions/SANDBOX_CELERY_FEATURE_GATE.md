@@ -32,9 +32,13 @@ workers or priority queues to the default local or Render deployment.
 ### Sandbox
 
 - `SANDBOX_ENABLED=false` is the default in `.env.example`
+- The default Docker backend passes that disabled value through instead of
+  force-enabling the feature
 - `sandbox_config.py` reads `SANDBOX_ENABLED` and gates execution
 - `sandbox_api.py` checks `SANDBOX_ENABLED` at every endpoint and returns
   an error when disabled (lines 97, 353, 421, 455)
+- Assistant execution tools reject requests while disabled; they never fall
+  back to running untrusted code directly on the API host
 - Docker Compose: sandbox worker behind `--profile sandbox` profile
 - Docker Compose: MinIO (sandbox storage) behind `--profile sandbox` profile
 

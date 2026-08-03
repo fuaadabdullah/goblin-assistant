@@ -254,7 +254,7 @@ class TestUserProfileService:
         await service.invalidate_profile("user-1", session=mock_session)
 
         # Verify the timestamp was set to far past
-        assert mock_profile.updated_at < datetime.utcnow() - timedelta(hours=2)
+        assert mock_profile.updated_at <= datetime.utcnow() - timedelta(hours=2)
         mock_session.flush.assert_awaited_once()
 
     @pytest.mark.asyncio

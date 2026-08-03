@@ -1,22 +1,10 @@
 import { expect, test } from '@playwright/test';
-import { mockCommonApiRoutes } from './support/common-mocks';
-
-const AUTH_COOKIES = [
-  { name: 'goblin_auth', value: '1', domain: 'localhost', path: '/' },
-  { name: 'session_token', value: 'mock-session-token-e2e', domain: 'localhost', path: '/' },
-];
-
-const AUTH_INIT_SCRIPT = () => {
-  document.cookie = 'goblin_auth=1; Path=/';
-  window.localStorage.setItem(
-    'user_data',
-    JSON.stringify({ id: 'test_user', email: 'test@example.com', role: 'user' })
-  );
-};
+import { authenticateE2EUser, mockCommonApiRoutes } from './support/common-mocks';
 
 test.describe('Help: Support submission', () => {
   test.beforeEach(async ({ page, context }) => {
     await mockCommonApiRoutes(page);
+    await authenticateE2EUser(context);
 
     await page.route('**/api/auth/validate', async (route) => {
       await route.fulfill({
@@ -30,14 +18,12 @@ test.describe('Help: Support submission', () => {
       });
     });
 
-    await context.addCookies(AUTH_COOKIES);
-    await context.addInitScript(AUTH_INIT_SCRIPT);
   });
 
   test('submits a support message and shows confirmation', async ({ page }) => {
     let submittedMessage = '';
 
-    await page.route('**/api/v1/support/message*', async (route) => {
+    await page.route('**/api/support/message*', async (route) => {
       const payload = route.request().postDataJSON() as { message?: string };
       submittedMessage = payload.message ?? '';
 
@@ -64,7 +50,7 @@ test.describe('Help: Support submission', () => {
   });
 
   test('surfaces an error when support submission fails', async ({ page }) => {
-    await page.route('**/api/v1/support/message*', async (route) => {
+    await page.route('**/api/support/message*', async (route) => {
       await route.fulfill({
         status: 500,
         contentType: 'application/json',

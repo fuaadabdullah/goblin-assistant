@@ -384,87 +384,67 @@ export const chatClient = {
             if (!line || line.startsWith(':')) continue;
 
             if (line.startsWith('data: ')) {
+              let data: Record<string, unknown>;
               try {
-                const data = JSON.parse(line.slice(6)) as Record<string, unknown>;
+                data = JSON.parse(line.slice(6)) as Record<string, unknown>;
+              } catch {
+                continue;
+              }
 
-                if (typeof data['content'] === 'string' && data['content'].length > 0) {
-                  accumulatedContent += data['content'];
-                  const tokenCount = Number(data['token_count']) || 0;
-                  const costDelta = Number(data['cost_delta']) || 0;
-                  totalTokens += tokenCount;
-                  totalCost += costDelta;
-                  onChunk(data['content'], tokenCount, costDelta);
-                }
+              if (typeof data['content'] === 'string' && data['content'].length > 0) {
+                accumulatedContent += data['content'];
+                const tokenCount = Number(data['token_count']) || 0;
+                const costDelta = Number(data['cost_delta']) || 0;
+                totalTokens += tokenCount;
+                totalCost += costDelta;
+                onChunk(data['content'], tokenCount, costDelta);
+              }
 
-                if (data['type'] === 'error' || typeof data['error'] === 'string') {
-                  throw new Error(
-                    (typeof data['message'] === 'string' && data['message']) ||
-                      (typeof data['error'] === 'string' && data['error']) ||
-                      'Streaming failed'
-                  );
-                }
+              if (data['type'] === 'error' || typeof data['error'] === 'string') {
+                throw new Error(
+                  (typeof data['message'] === 'string' && data['message']) ||
+                    (typeof data['error'] === 'string' && data['error']) ||
+                    'Streaming failed'
+                );
+              }
 
-                if (data['done'] === true) {
-                  const finalResponse: ChatResponse = {
-                    messageId: data['message_id'] as string | undefined,
-                    content:
-                      (typeof data['result'] === 'string' && data['result']) || accumulatedContent,
-                    department: data['department'] as string | undefined,
-                    department_reason: data['department_reason'] as string | undefined,
-                    provider: data['provider'] as string | undefined,
-                    model: data['model'] as string | undefined,
-                    usage: {
-                      total_tokens: (data['tokens'] as number) ?? totalTokens,
-                      input_tokens: (data['usage'] as Record<string, number>)?.['input_tokens'],
-                      output_tokens: (data['usage'] as Record<string, number>)?.['output_tokens'],
-                    },
-                    cost_usd: (data['cost'] as number) ?? totalCost,
-                    correlation_id: data['correlation_id'] as string | undefined,
-                    createdAt: data['timestamp'] as string | undefined,
-                    visualizations:
-                      (data['visualizations'] as Array<{
-                        type: string;
-                        title: string;
-                        data: Record<string, unknown>[];
-                        config: Record<string, unknown>;
-                      }>) || undefined,
-                  };
-                  onComplete(finalResponse);
-                  reader.cancel();
-                  return;
-                }
-              } catch (err) {
-                // Continue on parse error
+              if (data['done'] === true) {
+                const finalResponse: ChatResponse = {
+                  messageId: data['message_id'] as string | undefined,
+                  content:
+                    (typeof data['result'] === 'string' && data['result']) || accumulatedContent,
+                  department: data['department'] as string | undefined,
+                  department_reason: data['department_reason'] as string | undefined,
+                  provider: data['provider'] as string | undefined,
+                  model: data['model'] as string | undefined,
+                  usage: {
+                    total_tokens: (data['tokens'] as number) ?? totalTokens,
+                    input_tokens: (data['usage'] as Record<string, number>)?.['input_tokens'],
+                    output_tokens: (data['usage'] as Record<string, number>)?.['output_tokens'],
+                  },
+                  cost_usd: (data['cost'] as number) ?? totalCost,
+                  correlation_id: data['correlation_id'] as string | undefined,
+                  createdAt: data['timestamp'] as string | undefined,
+                  visualizations:
+                    (data['visualizations'] as Array<{
+                      type: string;
+                      title: string;
+                      data: Record<string, unknown>[];
+                      config: Record<string, unknown>;
+                    }>) || undefined,
+                };
+                onComplete(finalResponse);
+                void reader.cancel();
+                return;
               }
             }
           }
         }
 
-        // If streaming completed without explicit done flag, send accumulated response
-        const finalResponse: ChatResponse = {
-          content: accumulatedContent,
-          cost_usd: totalCost,
-        };
-        onComplete(finalResponse);
+        throw new Error('Chat stream ended before a completion event was received.');
       } catch (error) {
-        reader.cancel();
-        const errorObj = error as any;
-        const backendError =
-          errorObj?.responseData?.error ||
-          errorObj?.response?.data?.error ||
-          errorObj?.response?.data?.detail ||
-          errorObj?.response?.data?.message ||
-          errorObj?.message;
-
-        const uiError = error instanceof Error ? error : new Error(getUserMessage(error));
-        onError(uiError);
-        throw new UiError(
-          {
-            code: 'CHAT_STREAM_FAILED',
-            userMessage: 'The connection was interrupted. Please try again.',
-          },
-          error
-        );
+        await reader.cancel().catch(() => undefined);
+        throw error;
       }
     } catch (error) {
       const uiError = error instanceof Error ? error : new Error(getUserMessage(error));

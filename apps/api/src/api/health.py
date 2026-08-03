@@ -233,19 +233,40 @@ async def health_routing() -> Dict[str, Any]:
         }
 
 
-@router.get("/health/{component}")
-async def health_component(component: str) -> Dict[str, Any]:
-    """Return a specific subsystem probe for compatibility with older clients."""
-    normalized = component.strip().lower()
-    if normalized == "api":
-        return await check_api_health()
-    if normalized == "database":
-        return await check_db_health()
-    if normalized == "redis":
-        return await check_redis_health()
-    if normalized == "routing":
-        return await check_routing_health()
-    raise HTTPException(status_code=404, detail="Unknown health component")
+@router.get("/health/providers")
+async def health_providers() -> Dict[str, Any]:
+    """Live LLM provider connectivity probe.
+
+    Unlike /health (which reports the provider health monitor's cached state),
+    this endpoint actively re-probes every visible provider, so ops can tell
+    "the app is up" apart from "upstream LLM providers are reachable with the
+    keys currently configured". Registered before /health/{component} so the
+    literal path is not shadowed by the path-parameter route.
+    """
+    try:
+        from .services.provider_health import health_monitor
+
+        await health_monitor.refresh(include_hidden=False)
+        provider_status = health_monitor.get_all_status(include_hidden=False)
+        configured_count = sum(
+            1 for provider in provider_status.values() if provider.get("configured")
+        )
+        return {
+            "status": _summarize_provider_health(provider_status),
+            "timestamp": datetime.utcnow().isoformat(),
+            "providers_checked": len(provider_status),
+            "providers_configured": configured_count,
+            "providers": provider_status,
+        }
+    except Exception as e:
+        return {
+            "status": "degraded",
+            "timestamp": datetime.utcnow().isoformat(),
+            "error": str(e),
+            "providers_checked": 0,
+            "providers_configured": 0,
+            "providers": {},
+        }
 
 
 @router.get("/health/streaming")
@@ -272,6 +293,26 @@ async def health_streaming() -> Dict[str, Any]:
             "service": "streaming",
             "timestamp": datetime.utcnow().isoformat(),
         }
+
+
+@router.get("/health/{component}")
+async def health_component(component: str) -> Dict[str, Any]:
+    """Return a specific subsystem probe for compatibility with older clients.
+
+    Must stay registered AFTER all literal /health/* routes (stream, all,
+    providers, streaming, ...) — Starlette matches routes in registration
+    order, so this path-parameter route shadows any literal registered later.
+    """
+    normalized = component.strip().lower()
+    if normalized == "api":
+        return await check_api_health()
+    if normalized == "database":
+        return await check_db_health()
+    if normalized == "redis":
+        return await check_redis_health()
+    if normalized == "routing":
+        return await check_routing_health()
+    raise HTTPException(status_code=404, detail="Unknown health component")
 
 
 __all__ = ["router", "ops_health_router"]

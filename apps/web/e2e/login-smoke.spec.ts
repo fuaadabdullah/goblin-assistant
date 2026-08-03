@@ -6,7 +6,7 @@
  */
 
 import { test, expect } from '@playwright/test';
-import { mockCommonApiRoutes, E2E_USER } from './support/common-mocks';
+import { authenticateE2EUser, mockCommonApiRoutes, E2E_USER } from './support/common-mocks';
 
 // Test user data for smoke test
 const SMOKE_TEST_EMAIL = `smoke-test-${Date.now()}@example.com`;
@@ -25,7 +25,7 @@ test.describe('Login Smoke Test - Full Auth Flow', () => {
     // ========================================================================
     await page.goto('/login');
     await expect(page.getByLabel(/email/i)).toBeVisible();
-    await expect(page.locator('body')).not.toHaveText(/chat/i);
+    await expect(page).toHaveURL(/\/login/);
 
     // ========================================================================
     // Step 2: Signup with email/password (will require confirmation)
@@ -40,7 +40,7 @@ test.describe('Login Smoke Test - Full Auth Flow', () => {
     });
 
     // Mock signup - returns null session (email confirmation required)
-    await page.route('**/auth/signup', async (route) => {
+    await page.route('**/auth/v1/signup', async (route) => {
       const request = route.request();
       const body = request.postDataJSON();
 
@@ -62,13 +62,15 @@ test.describe('Login Smoke Test - Full Auth Flow', () => {
       });
     });
 
+    await page.getByRole('button', { name: /don't have an account\? sign up/i }).click();
+
     // Fill signup form
     await page.getByLabel(/email/i).fill(SMOKE_TEST_EMAIL);
     await page.getByLabel(/^password$/i).fill('smoke-test-password-123');
 
     // Click signup - we can't actually verify email in E2E, so this simulates
     // the "check your email" state
-    await page.getByRole('button', { name: /sign up|create account/i }).click();
+    await page.getByRole('button', { name: /create account/i }).click();
 
     // Should show confirmation message (session is null)
     await expect(page.getByText(/check your email/i)).toBeVisible({ timeout: 5000 });
@@ -79,32 +81,7 @@ test.describe('Login Smoke Test - Full Auth Flow', () => {
     // In real flow, user clicks email link → Supabase confirms → session created
     // For E2E, we simulate this by setting up a valid session in storage
 
-    // Mock Supabase session endpoint for authenticated user
-    await context.addInitScript(
-      ({ user }) => {
-        // Simulate a confirmed session
-        const session = {
-          access_token: 'smoke-test-access-token',
-          refresh_token: 'smoke-test-refresh-token',
-          token_type: 'bearer',
-          expires_in: 3600,
-          expires_at: Math.floor(Date.now() / 1000) + 3600,
-          user,
-          role: 'authenticated',
-        };
-
-        // Set Supabase auth storage keys
-        const storageKey = 'sb-placeholder-auth-token';
-        window.localStorage.setItem(storageKey, JSON.stringify(session));
-        window.localStorage.setItem(
-          'user_data',
-          JSON.stringify({ id: user.id, email: user.email, role: 'user' })
-        );
-
-        // Mock the Supabase client's getSession method via fetch interception
-      },
-      { user: { ...E2E_USER, email: SMOKE_TEST_EMAIL } }
-    );
+    await authenticateE2EUser(context, { ...E2E_USER, email: SMOKE_TEST_EMAIL });
 
     // Mock /auth/validate to return valid for authenticated requests
     await page.route('**/api/auth/validate', async (route) => {
@@ -179,7 +156,7 @@ test.describe('Login Smoke Test - Full Auth Flow', () => {
     await expect(page).toHaveURL(/\/login/, { timeout: 10_000 });
 
     // Verify we cannot access protected content
-    await expect(page.locator('body')).not.toHaveText(/welcome|chat input/i);
+    await expect(page.getByLabel(/chat message input/i)).toHaveCount(0);
   });
 
   test('protected route redirects unauthenticated users to login', async ({ page, context }) => {
@@ -209,30 +186,21 @@ test.describe('Login Smoke Test - Full Auth Flow', () => {
     });
 
     // Mock login success
-    await page.route('**/auth/signin', async (route) => {
+    await page.route('**/auth/v1/token**', async (route) => {
+      await context.addCookies([
+        { name: 'goblin_e2e_auth', value: '1', domain: 'localhost', path: '/' },
+      ]);
       await route.fulfill({
         status: 200,
         contentType: 'application/json',
         body: JSON.stringify({
-          session: {
-            access_token: 'authenticated-session-token',
-            refresh_token: 'authenticated-refresh-token',
-            user: { ...E2E_USER },
-            expires_in: 3600,
-          },
+          access_token: 'authenticated-session-token',
+          refresh_token: 'authenticated-refresh-token',
+          token_type: 'bearer',
+          expires_in: 3600,
+          user: { ...E2E_USER },
         }),
       });
-    });
-
-    // Set up session storage after "login" to simulate auth
-    await context.addInitScript(() => {
-      const session = {
-        access_token: 'authenticated-session-token',
-        expires_at: Math.floor(Date.now() / 1000) + 3600,
-        user: { ...E2E_USER },
-      };
-      window.localStorage.setItem('sb-placeholder-auth-token', JSON.stringify(session));
-      window.localStorage.setItem('user_data', JSON.stringify(E2E_USER));
     });
 
     await page.goto('/login');
@@ -244,7 +212,8 @@ test.describe('Login Smoke Test - Full Auth Flow', () => {
     // Submit login
     await page.getByRole('button', { name: /sign in/i }).click();
 
-    // After login, user should be able to access protected route
+    // The default post-login destination is home; the protected route must then be accessible.
+    await expect(page).toHaveURL(/\/$/, { timeout: 10_000 });
     await page.goto('/chat');
     await expect(page).toHaveURL(/\/chat/, { timeout: 10_000 });
   });

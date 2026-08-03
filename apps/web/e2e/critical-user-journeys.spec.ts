@@ -62,6 +62,7 @@ const historyConversation = {
 
 async function mockCriticalJourneyApi(page: Page) {
   const captured: CapturedRequest[] = [];
+  let hasCreatedConversation = false;
 
   await mockCommonApiRoutes(page);
 
@@ -178,12 +179,26 @@ async function mockCriticalJourneyApi(page: Page) {
       await route.fulfill({
         status: 200,
         contentType: 'application/json',
-        body: JSON.stringify([historyThread]),
+        body: JSON.stringify(
+          hasCreatedConversation
+            ? [
+                {
+                  ...historyThread,
+                  conversation_id: 'conv-new-critical',
+                  title: 'New critical journey chat',
+                  snippet: 'A newly created critical journey conversation.',
+                  message_count: 0,
+                },
+                historyThread,
+              ]
+            : [historyThread]
+        ),
       });
       return;
     }
 
     const body = route.request().postDataJSON();
+    hasCreatedConversation = true;
     captured.push({
       url: route.request().url(),
       method: route.request().method(),
@@ -261,6 +276,14 @@ function chatTranscript(page: Page) {
   return page.getByLabel(/chat transcript/i);
 }
 
+async function startNewConversation(page: Page) {
+  await expect(
+    chatTranscript(page).getByText('We decided to store durable facts instead of raw transcripts.')
+  ).toBeVisible();
+  await page.getByRole('button', { name: /new conversation/i }).click();
+  await expect(chatTranscript(page).getByText('What did we decide about memory?')).toHaveCount(0);
+}
+
 test.describe('Critical user journeys', () => {
   let api: Awaited<ReturnType<typeof mockCriticalJourneyApi>>;
 
@@ -294,7 +317,7 @@ test.describe('Critical user journeys', () => {
     page,
   }) => {
     await openAuthenticatedPage(page, '/chat');
-    await page.getByRole('button', { name: /new conversation/i }).click();
+    await startNewConversation(page);
     await page.getByLabel(/chat message input/i).fill('Start a fresh planning chat.');
     await page.getByRole('button', { name: /send message/i }).click();
 
@@ -311,7 +334,7 @@ test.describe('Critical user journeys', () => {
     page,
   }) => {
     await openAuthenticatedPage(page, '/chat');
-    await page.getByRole('button', { name: /new conversation/i }).click();
+    await startNewConversation(page);
     await page.getByLabel(/chat message input/i).fill('Please stream a short response.');
     await page.getByRole('button', { name: /send message/i }).click();
 
@@ -321,7 +344,7 @@ test.describe('Critical user journeys', () => {
 
   test('Journey 4: tool execution request reaches the chat message endpoint', async ({ page }) => {
     await openAuthenticatedPage(page, '/chat');
-    await page.getByRole('button', { name: /new conversation/i }).click();
+    await startNewConversation(page);
     await page
       .getByLabel(/chat message input/i)
       .fill('Use the web search tool for current AI policy news.');
@@ -337,7 +360,7 @@ test.describe('Critical user journeys', () => {
     page,
   }) => {
     await openAuthenticatedPage(page, '/chat');
-    await page.getByRole('button', { name: /new conversation/i }).click();
+    await startNewConversation(page);
     await page
       .getByLabel(/chat message input/i)
       .fill('Remember that my preferred deploy order is backend first.');
@@ -370,7 +393,7 @@ test.describe('Critical user journeys', () => {
     await page.getByRole('button', { name: /save preferences/i }).click();
 
     await openAuthenticatedPage(page, '/chat');
-    await page.getByRole('button', { name: /new conversation/i }).click();
+    await startNewConversation(page);
     await page.getByLabel(/chat message input/i).fill('Send this with the switched provider.');
     await page.getByRole('button', { name: /send message/i }).click();
     await expect(chatTranscript(page).getByText('Streaming response complete.')).toBeVisible();
@@ -384,8 +407,13 @@ test.describe('Critical user journeys', () => {
 
   test('Journey 8: sandbox execution posts code and renders output logs', async ({ page }) => {
     await openAuthenticatedPage(page, '/sandbox');
-    await page.getByPlaceholder(/enter your python code here/i).fill('print(40 + 2)');
-    await page.getByRole('button', { name: /run code/i }).click();
+    await expect(page.getByRole('button', { name: /refresh jobs/i })).toBeEnabled();
+    const editor = page.getByPlaceholder(/enter your python code here/i);
+    await editor.fill('print(40 + 2)');
+    await expect(editor).toHaveValue('print(40 + 2)');
+    const runButton = page.getByRole('button', { name: /run code/i });
+    await expect(runButton).toBeEnabled();
+    await runButton.click();
 
     await expect(page.getByText('sandbox-result: 42')).toBeVisible();
     expect(api.findRequest(/\/api\/sandbox\/run$/)?.body).toMatchObject({

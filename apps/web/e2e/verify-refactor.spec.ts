@@ -3,7 +3,7 @@
  */
 import { test, expect } from '@playwright/test';
 
-const AUTH_COOKIE = { name: 'goblin_auth', value: '1', domain: 'localhost', path: '/' };
+const AUTH_COOKIE = { name: 'goblin_e2e_auth', value: '1', domain: 'localhost', path: '/' };
 
 const MODELS_MOCK = {
   providers: [{ id: 'openai' }],
@@ -105,7 +105,7 @@ test('middleware blocks unauthenticated /chat and redirects to /login', async ({
   await expect(page).toHaveURL(/\/login/);
 });
 
-test('HttpOnly cookie path — goblin_auth=1 allows /chat without localStorage token', async ({
+test('E2E auth cookie allows /chat without a localStorage token', async ({
   page,
   context,
 }) => {

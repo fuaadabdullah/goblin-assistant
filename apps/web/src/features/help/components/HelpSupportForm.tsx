@@ -44,7 +44,7 @@ const HelpSupportForm = ({
     </form>
     <div className="text-xs text-muted">
       Prefer to self-serve?{' '}
-      <Link href="/chat" className="text-primary hover:underline">
+      <Link href="/chat" className="text-primary underline underline-offset-2">
         Start a guided chat
       </Link>
       .

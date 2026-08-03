@@ -133,7 +133,12 @@ def test_data_export_without_vectors_or_conversations(auth_client: TestClient) -
         },
     )
     assert response.status_code == 200
-    assert response.json()["data"] == {}
+    assert response.json()["data"] == {
+        "support_tickets": {"count": 0},
+        "notifications": {"count": 0},
+        "api_keys": {"count": 0},
+        "feature_flags": {"count": 0},
+    }
 
 
 def test_data_export_failure_detail(auth_client: TestClient) -> None:

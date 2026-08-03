@@ -1,8 +1,8 @@
 {
   "alias_route_count": 0,
   "api_v1_prefix": "/api/v1",
-  "public_route_count": 203,
-  "route_count": 204,
+  "public_route_count": 204,
+  "route_count": 205,
   "routes": [
     {
       "canonical_path": "/",
@@ -1579,6 +1579,21 @@
       ]
     },
     {
+      "canonical_path": "/api/v1/health/providers",
+      "compatibility_aliases": [],
+      "deprecated": false,
+      "include_in_schema": true,
+      "logical_path": "/health/providers",
+      "method": "GET",
+      "operation_id": "health_providers_api_v1_health_providers_get",
+      "path": "/api/v1/health/providers",
+      "replacement_path": null,
+      "summary": "Health Providers",
+      "tags": [
+        "health"
+      ]
+    },
+    {
       "canonical_path": "/api/v1/health/raptor/status",
       "compatibility_aliases": [],
       "deprecated": false,
@@ -3078,5 +3093,5 @@
     }
   ],
   "schema_version": 1,
-  "versioned_route_count": 200
+  "versioned_route_count": 201
 }

@@ -3168,6 +3168,28 @@ export interface operations {
             };
         };
     };
+    health_providers_api_v1_health_providers_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: unknown;
+                    };
+                };
+            };
+        };
+    };
     health_raptor_api_v1_health_raptor_status_get: {
         parameters: {
             query?: never;

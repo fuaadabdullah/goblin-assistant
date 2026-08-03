@@ -49,7 +49,13 @@ export default defineConfig({
   ],
   webServer: shouldStartWebServer
     ? {
-        command: `TMPDIR="${tmpDir}" PLAYWRIGHT_BROWSERS_PATH="${browsersPath}" npm run dev -- --webpack`,
+        command: 'npm run dev',
+        cwd: __dirname,
+        env: {
+          ...process.env,
+          TMPDIR: tmpDir,
+          PLAYWRIGHT_BROWSERS_PATH: browsersPath,
+        },
         url: 'http://localhost:3000',
         timeout: 180 * 1000,
         reuseExistingServer: !process.env['CI'],

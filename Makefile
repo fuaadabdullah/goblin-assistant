@@ -1,6 +1,6 @@
-.PHONY: help install install-web dev web-dev api-dev api-docker-up api-docker-up-legacy api-docker-down build build-packages lint lint-web lint-api lint-policy type-check type-check-packages test test-unit test-web test-web-coverage test-api test-api-coverage test-api-context-coverage test-e2e test-e2e-budget test-integration test-contract test-performance generate-providers-json check-providers-json check-api-boundaries check-api-cycles check-api-cycles-report check-capability-boundaries check-route-lifecycle check-operational-policy check-docs-canonical-refs check-docs-inventory check-docs-links generate-docs-coverage type-check-api-mypy type-check-api-pyright format format-check test-critical sdk-generate sdk-check generate-route-manifest check-api-calls contract-checks secret-scan check-unused-deps check-dead-code phase-gates
+.PHONY: help install install-web dev web-dev api-dev api-docker-up api-docker-up-legacy api-docker-down build build-packages lint lint-web lint-api lint-policy type-check type-check-packages test test-unit test-web test-web-coverage test-api test-api-coverage test-api-context-coverage test-e2e test-e2e-budget test-integration test-contract test-performance generate-providers-json check-providers-json check-api-boundaries check-api-cycles check-api-cycles-report check-capability-boundaries check-route-lifecycle check-operational-policy check-docs-canonical-refs check-docs-inventory check-docs-links generate-docs-coverage type-check-api-mypy type-check-api-pyright format format-check test-critical sdk-generate sdk-check generate-route-manifest check-api-calls contract-checks secret-scan check-unused-deps check-dead-code phase-gates bootstrap-env smoke-auth smoke-chat
 PNPM_TMP := TMPDIR="$(PWD)/.tmp"
-PYTHON ?= python3.11
+PYTHON ?= python
 
 help:
 	@echo "Workspace commands"
@@ -52,6 +52,9 @@ help:
 	@echo "  make contract-checks      - run SDK drift and frontend API path validation"
 	@echo "  make generate-providers-json — validate providers.toml & regenerate providers.json"
 	@echo "  make check-providers-json  - fail if providers.json is stale"
+	@echo "  make bootstrap-env        - prompt once for dogfooding keys and secrets"
+	@echo "  make smoke-auth           - 5-step auth smoke test (register/login/refresh/logout/login)"
+	@echo "  make smoke-chat           - chat E2E smoke test (proxy -> backend -> LLM)"
 
 install:
 	mkdir -p .tmp
@@ -116,6 +119,9 @@ generate-providers-json:
 check-providers-json:
 	PYTHONPATH=packages/shared/src $(PYTHON) tooling/generators/generate-providers-json.py --check
 
+bootstrap-env:
+	$(PYTHON) scripts/bootstrap-env.py
+
 web-dev:
 	mkdir -p .tmp
 	$(PNPM_TMP) pnpm --filter @goblin/web dev
@@ -124,10 +130,10 @@ api-dev:
 	cd apps/api && PYTHONPATH=src $(PYTHON) -m uvicorn api.main:app --reload --port 8001
 
 api-docker-up:
-	docker compose up -d redis goblin-assistant-backend
+	$(PYTHON) scripts/ops/docker-compose-up.py
 
 api-docker-up-legacy:
-	DOCKER_BUILDKIT=0 COMPOSE_DOCKER_CLI_BUILD=0 docker compose up -d redis goblin-assistant-backend
+	$(PYTHON) scripts/ops/docker-compose-up.py --legacy
 
 api-docker-down:
 	docker compose stop goblin-assistant-backend redis
@@ -222,6 +228,12 @@ test-e2e:
 test-e2e-budget:
 	bash tooling/quality/check-e2e-budget.sh
 
+smoke-auth:
+	$(PYTHON) scripts/smoke-auth.py
+
+smoke-chat:
+	$(PYTHON) scripts/smoke-chat.py
+
 test-integration:
 	$(PYTHON) tooling/quality/run-test-bucket.py integration
 	$(PYTHON) tooling/quality/run-test-bucket.py contract
@@ -247,16 +259,16 @@ phase-gates:
 	$(PYTHON) scripts/phase_gates.py all
 
 sdk-generate:
-	bash tooling/generators/generate-sdk-client.sh
+	PYTHON=$(PYTHON) bash tooling/generators/generate-sdk-client.sh
 
 sdk-check:
-	bash tooling/generators/check-sdk-generated.sh
+	PYTHON=$(PYTHON) bash tooling/generators/check-sdk-generated.sh
 
 generate-route-manifest:
-	python3.11 tooling/generators/export-route-manifest.py
+	$(PYTHON) tooling/generators/export-route-manifest.py
 
 check-api-calls:
-	python3.11 tooling/quality/check-api-paths.py
+	$(PYTHON) tooling/quality/check-api-paths.py
 
 contract-checks: sdk-check check-api-calls
 

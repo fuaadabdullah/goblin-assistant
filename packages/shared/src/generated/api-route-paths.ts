@@ -97,6 +97,7 @@ export const API_ROUTE_PATHS = [
   '/api/v1/health/latency-history/{service}',
   '/api/v1/health/live',
   '/api/v1/health/mcp/status',
+  '/api/v1/health/providers',
   '/api/v1/health/raptor/status',
   '/api/v1/health/ready',
   '/api/v1/health/retest/{service}',

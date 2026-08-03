@@ -45,7 +45,7 @@ class TestAPIKeyStoreABC:
 class TestFileAPIKeyStore:
     def test_initializes_with_custom_path(self):
         store = FileAPIKeyStore(path="/tmp/test_keys.json")
-        assert str(store.path) == "/tmp/test_keys.json"
+        assert store.path == Path("/tmp/test_keys.json")
 
     def test_warns_in_production(self):
         with patch.dict(os.environ, {"ENVIRONMENT": "production"}, clear=True):

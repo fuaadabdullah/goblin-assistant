@@ -1,10 +1,11 @@
 import { test, expect } from '@playwright/test';
-import { mockCommonApiRoutes } from './support/common-mocks';
+import { authenticateE2EUser, mockCommonApiRoutes } from './support/common-mocks';
 
 test.describe('Chat Interface', () => {
   test.beforeEach(async ({ page, context }) => {
     const nowIso = new Date().toISOString();
     await mockCommonApiRoutes(page);
+    await authenticateE2EUser(context);
 
     await page.route('**/chat/conversations', async (route) => {
       if (route.request().method() === 'GET') {
@@ -56,29 +57,6 @@ test.describe('Chat Interface', () => {
       });
     });
 
-    await context.addCookies([
-      {
-        name: 'goblin_auth',
-        value: '1',
-        domain: 'localhost',
-        path: '/',
-      },
-      {
-        name: 'session_token',
-        value: 'mock-session-token-e2e',
-        domain: 'localhost',
-        path: '/',
-      },
-    ]);
-
-    // Mock localStorage and auth flag cookie to simulate an authenticated session.
-    await context.addInitScript(() => {
-      document.cookie = 'goblin_auth=1; Path=/';
-      window.localStorage.setItem(
-        'user_data',
-        JSON.stringify({ id: 'test_user', email: 'test@example.com', role: 'user' })
-      );
-    });
   });
 
   test('should display chat interface after authentication', async ({ page }) => {
@@ -272,6 +250,7 @@ test.describe('Provider Selection', () => {
         domain: 'localhost',
         path: '/',
       },
+      { name: 'goblin_e2e_auth', value: '1', domain: 'localhost', path: '/' },
     ]);
 
     await context.addInitScript(() => {

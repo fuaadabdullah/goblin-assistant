@@ -8,6 +8,10 @@ import '@/index.css';
 import 'highlight.js/styles/github-dark.css';
 
 export const metadata: Metadata = {
+  title: {
+    default: 'Goblin Assistant',
+    template: '%s | Goblin Assistant',
+  },
   icons: {
     icon: '/favicon.ico',
     apple: '/GoblinOSIcon.png',

@@ -189,6 +189,86 @@ describe('chatClient conversation API', () => {
     expect(onComplete).not.toHaveBeenCalled();
   });
 
+  it('completes only after an explicit SSE completion event', async () => {
+    const onChunk = vi.fn();
+    const onComplete = vi.fn();
+    const onError = vi.fn();
+    vi.stubGlobal(
+      'fetch',
+      vi
+        .fn()
+        .mockResolvedValue(
+          new Response(
+            [
+              'event: chunk',
+              'data: {"content":"Hello ","token_count":1,"cost_delta":0}',
+              '',
+              'event: chunk',
+              'data: {"content":"world","token_count":1,"cost_delta":0}',
+              '',
+              'event: complete',
+              'data: {"done":true,"result":"Hello world","provider":"openai","model":"gpt-4o-mini","tokens":2}',
+              '',
+            ].join('\n'),
+            { status: 200, headers: { 'Content-Type': 'text/event-stream' } }
+          )
+        )
+    );
+
+    await chatClient.sendMessageStreaming({
+      conversationId: 'conv-sse-success',
+      prompt: 'Hello',
+      onChunk,
+      onComplete,
+      onError,
+    });
+
+    expect(onChunk).toHaveBeenCalledTimes(2);
+    expect(onComplete).toHaveBeenCalledWith(
+      expect.objectContaining({
+        content: 'Hello world',
+        provider: 'openai',
+        model: 'gpt-4o-mini',
+      })
+    );
+    expect(onError).not.toHaveBeenCalled();
+  });
+
+  it('surfaces an SSE error event exactly once', async () => {
+    const onChunk = vi.fn();
+    const onComplete = vi.fn();
+    const onError = vi.fn();
+    vi.stubGlobal(
+      'fetch',
+      vi.fn().mockResolvedValue(
+        new Response(
+          'event: error\ndata: {"type":"error","message":"Provider unavailable","done":true}\n\n',
+          {
+            status: 200,
+            headers: { 'Content-Type': 'text/event-stream' },
+          }
+        )
+      )
+    );
+
+    await expect(
+      chatClient.sendMessageStreaming({
+        conversationId: 'conv-sse-error',
+        prompt: 'Hello',
+        onChunk,
+        onComplete,
+        onError,
+      })
+    ).rejects.toMatchObject({ code: 'CHAT_STREAM_FAILED' });
+
+    expect(onChunk).not.toHaveBeenCalled();
+    expect(onComplete).not.toHaveBeenCalled();
+    expect(onError).toHaveBeenCalledTimes(1);
+    expect(onError).toHaveBeenCalledWith(
+      expect.objectContaining({ message: 'Provider unavailable' })
+    );
+  });
+
   it('preserves non-Error streaming failures in the error callback', async () => {
     const onChunk = vi.fn();
     const onComplete = vi.fn();

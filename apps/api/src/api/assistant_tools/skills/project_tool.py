@@ -160,7 +160,7 @@ async def _handle_list_projects(
             if depth > max_depth:
                 continue
 
-            rel_path = str(project_dir.relative_to(base))
+            rel_path = project_dir.relative_to(base).as_posix()
             try:
                 marker = _load_marker(marker_path)
                 projects.append(

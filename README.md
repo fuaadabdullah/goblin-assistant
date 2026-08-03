@@ -30,6 +30,54 @@ pnpm install
 cd apps/api && python3.11 -m pip install -r requirements.txt -r requirements-vector.txt
 ```
 
+### Provider Keys (first-time setup)
+
+Run the interactive bootstrap to set all provider API keys at once:
+
+```bash
+python scripts/bootstrap-env.py          # prompts for each key, writes .env
+python scripts/bootstrap-env.py --bw     # pull keys from Bitwarden vault
+python scripts/bootstrap-env.py --check  # fail if a required value is missing
+```
+
+For dogfooding, configure at least one primary provider: `OPENAI_API_KEY` or
+`ANTHROPIC_API_KEY`. The chat smoke automatically selects a healthy configured
+one. GCP LLM endpoints were removed (VMs terminated 2026-01-11).
+
+### Smoke Tests
+
+```bash
+# Auth flow: register → login → refresh → logout → login
+make smoke-auth
+
+# Chat E2E: proxy → backend → LLM → response
+make smoke-chat
+```
+
+For viewport testing (mobile/tablet), see
+[`docs/runbooks/VIEWPORT_TESTING.md`](docs/runbooks/VIEWPORT_TESTING.md).
+
+For the sandbox/celery feature gate decision, see
+[`docs/decisions/SANDBOX_CELERY_FEATURE_GATE.md`](docs/decisions/SANDBOX_CELERY_FEATURE_GATE.md).
+
+### External USB Drive I/O Workaround
+
+If the repository lives on an external USB drive, Next.js `.next` cache
+compaction can take **20+ minutes** due to slow USB I/O.  Redirect the cache
+to the faster internal disk with a symlink:
+
+```bash
+# One-time setup — symlink .next to the internal /tmp
+ln -s /tmp/nextcache apps/web/.next
+```
+
+After symlinking, `next dev` compiles in ~43s on first request and ~107ms on
+subsequent requests (acceptable for local dev).
+
+> **Note:** `make web-dev` runs `next dev --webpack -p 3000` by
+> default because the Turbopack RocksDB cache corrupts after restarts,
+> causing the dev server to lock up (TCP connects but HTTP never responds).
+
 Run services:
 
 ```bash

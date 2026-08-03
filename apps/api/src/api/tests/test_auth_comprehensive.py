@@ -320,7 +320,7 @@ class TestRegisterEndpoint:
             )
 
         assert response.status_code == 400
-        assert "already registered" in response.json()["error"]["message"]
+        assert "already registered" in response.json()["detail"].lower()
 
     def test_register_rate_limited(self, client, csrf_always_valid):
         # Force the rate-limiter to deny — verifies the route returns 429.
@@ -399,7 +399,7 @@ class TestLoginEndpoint:
             )
 
         assert response.status_code == 401
-        assert "Invalid email or password" in response.json()["error"]["message"]
+        assert "Invalid email or password" in response.json()["detail"]
 
     def test_login_invalid_password(self, client, csrf_always_valid, rate_limit_open):
         password = "correct_password"
@@ -427,7 +427,7 @@ class TestLoginEndpoint:
             )
 
         assert response.status_code == 401
-        assert "Invalid email or password" in response.json()["error"]["message"]
+        assert "Invalid email or password" in response.json()["detail"]
 
     def test_login_rate_limited(self, client, csrf_always_valid):
         with patch(

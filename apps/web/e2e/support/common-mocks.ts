@@ -49,6 +49,18 @@ const mockSystemStatusResponse = () => ({
 });
 
 export const mockCommonApiRoutes = async (page: Page): Promise<void> => {
+  await page.route('**/api/health**', async (route) => {
+    await route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify({
+        overall: 'healthy',
+        timestamp: new Date().toISOString(),
+        services: { api: { status: 'healthy' } },
+      }),
+    });
+  });
+
   await page.route('**/api/models*', async (route) => {
     await route.fulfill({
       status: 200,
@@ -64,6 +76,27 @@ export const mockCommonApiRoutes = async (page: Page): Promise<void> => {
       body: JSON.stringify(mockSystemStatusResponse()),
     });
   });
+
+  await page.route('**/api/settings/**', async (route) => {
+    if (route.request().method() !== 'GET') {
+      await route.fallback();
+      return;
+    }
+
+    await route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify([
+        {
+          id: 'openai',
+          name: 'OpenAI',
+          enabled: true,
+          configured: true,
+          models: ['gpt-4o-mini'],
+        },
+      ]),
+    });
+  });
 };
 
 export const E2E_USER = {
@@ -74,7 +107,10 @@ export const E2E_USER = {
   user_metadata: { name: 'E2E User' },
 };
 
-export const authenticateE2EUser = async (context: BrowserContext): Promise<void> => {
+export const authenticateE2EUser = async (
+  context: BrowserContext,
+  user: typeof E2E_USER = E2E_USER
+): Promise<void> => {
   await context.addCookies([
     { name: 'goblin_auth', value: '1', domain: 'localhost', path: '/' },
     { name: 'goblin_e2e_auth', value: '1', domain: 'localhost', path: '/' },
@@ -99,7 +135,12 @@ export const authenticateE2EUser = async (context: BrowserContext): Promise<void
       }
       window.localStorage.setItem(
         'user_data',
-        JSON.stringify({ id: user.id, email: user.email, role: 'user', name: 'E2E User' })
+        JSON.stringify({
+          id: user.id,
+          email: user.email,
+          role: user.role,
+          name: user.user_metadata.name,
+        })
       );
       window.localStorage.setItem('auth_token', session.access_token);
       window.localStorage.setItem('goblin_e2e_auth', '1');
@@ -112,6 +153,6 @@ export const authenticateE2EUser = async (context: BrowserContext): Promise<void
         return originalGetItem.call(this, key);
       };
     },
-    { user: E2E_USER }
+    { user }
   );
 };

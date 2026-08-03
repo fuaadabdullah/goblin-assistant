@@ -1960,6 +1960,32 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/health/providers": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Health Providers
+         * @description Live LLM provider connectivity probe.
+         *
+         *     Unlike /health (which reports the provider health monitor's cached state),
+         *     this endpoint actively re-probes every visible provider, so ops can tell
+         *     "the app is up" apart from "upstream LLM providers are reachable with the
+         *     keys currently configured". Registered before /health/{component} so the
+         *     literal path is not shadowed by the path-parameter route.
+         */
+        get: operations["health_providers_api_v1_health_providers_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/health/raptor/status": {
         parameters: {
             query?: never;
@@ -2118,6 +2144,10 @@ export interface paths {
         /**
          * Health Component
          * @description Return a specific subsystem probe for compatibility with older clients.
+         *
+         *     Must stay registered AFTER all literal /health/* routes (stream, all,
+         *     providers, streaming, ...) — Starlette matches routes in registration
+         *     order, so this path-parameter route shadows any literal registered later.
          */
         get: operations["health_component_api_v1_health__component__get"];
         put?: never;

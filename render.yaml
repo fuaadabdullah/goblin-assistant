@@ -4,9 +4,12 @@ services:
     runtime: docker
     region: virginia
     plan: free
-    startCommand: PYTHONPATH=apps/api/src uvicorn api.main:app --host 0.0.0.0 --port $PORT
+    # Auto-deploy main after its linked CI checks pass. This requires the
+    # GitHub repository to be connected in the Render dashboard.
+    branch: main
+    autoDeployTrigger: checksPass
     healthCheckPath: /api/v1/health
-    
+
     # Environment Variables
     envVars:
       - key: ENVIRONMENT
@@ -22,13 +25,7 @@ services:
       - key: FRONTEND_URL
         value: https://goblin-assistant.vercel.app
 
-      # Error Tracking with Sentry
-      - key: SENTRY_DSN
-        sync: false  # Keep sync: false, will be set manually in Render dashboard
-      - key: LOCAL_LLM_API_KEY
-        sync: false
-      
-      # Allowed Origins  
+      # Allowed Origins
       - key: ALLOWED_ORIGINS
         value: https://goblin-assistant.vercel.app,https://goblin-backend-dt30.onrender.com
 
@@ -39,6 +36,12 @@ services:
         value: "100"
       - key: RATE_LIMIT_WINDOW
         value: "60"
+
+      # Manually-managed secrets (Sentry, Supabase, JWT signing key, all
+      # provider API keys) live in the shared env group below so they are
+      # declared once and never overwritten by blueprint syncs.
+      # See docs/operations/RENDER_SECRETS.md for the exact key list.
+      - fromGroup: goblin-shared-secrets
 
       # GCP LLM Endpoints (removed - VMs terminated since 2026-01-11)
       # Re-add OLLAMA_GCP_URL / LLAMACPP_GCP_URL here after redeploying GCP infra
@@ -54,38 +57,19 @@ services:
           name: goblin-postgres
           property: connectionString
 
-      # Required for validating Supabase sessions forwarded by the web app.
-      # Values are managed in Render and intentionally not committed.
-      - key: SUPABASE_URL
-        sync: false
-      - key: SUPABASE_ANON_KEY
-        sync: false
-    
-    # Secrets (set manually in Render dashboard)
-    # These should be set as Environment Variables with "sync: false"
-    # - SENTRY_DSN (already listed above)
-    # - OPENAI_API_KEY
-    # - ANTHROPIC_API_KEY
-    # - GOOGLE_AI_API_KEY
-    # - JWT_SECRET_KEY
-    # - SUPABASE_SERVICE_ROLE_KEY
-    # - AZURE_API_KEY
-    # - AZURE_OPENAI_ENDPOINT
-    # - AWS_ACCESS_KEY_ID
-    # - AWS_SECRET_ACCESS_KEY
-    
-    # Automatic deployment on git push
-    # (requires connecting GitHub repo in Render dashboard)
+    # Secrets are managed via the goblin-shared-secrets environment group.
+    # Render does not permit sync:false entries inside Blueprint-managed
+    # groups, so values and exact key names are managed in the dashboard and
+    # audited with docs/operations/RENDER_SECRETS.md.
+    #
+    # Stale / no longer needed for Render (GCP VMs terminated 2026-01-11):
+    # - AWS_ACCESS_KEY_ID / AWS_SECRET_ACCESS_KEY (was for self-hosted MinIO)
+    # - OLLAMA_GCP_URL / LLAMACPP_GCP_URL (VMs removed)
     
     # Custom domain
     # customDomains:
     # No custom domain configured
     
-    # Build settings
-    buildCommand: |
-      pip install --upgrade pip
-      pip install -r apps/api/requirements.txt -r apps/api/requirements-vector.txt
-
   - type: keyvalue
     name: goblin-redis
     region: virginia
@@ -101,3 +85,20 @@ databases:
     plan: free
     postgresMajorVersion: "18"
     ipAllowList: []
+
+# =============================================================================
+# Shared secrets environment group
+# -----------------------------------------------------------------------------
+# Single source of truth for every manually-managed secret used by the
+# goblin-backend service (referenced above via `fromGroup`).
+#
+# Render does not allow `sync: false` inside an environment group. The
+# Blueprint owns the group and service link; operators add the documented
+# secret keys and values in the Render dashboard. Omitted dashboard variables
+# are preserved by later Blueprint syncs.
+# =============================================================================
+envVarGroups:
+  - name: goblin-shared-secrets
+    # Secret key names and values are managed in the Render dashboard. Render
+    # does not allow sync:false variables inside Blueprint environment groups.
+    envVars: []

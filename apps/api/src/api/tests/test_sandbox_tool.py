@@ -71,7 +71,7 @@ class TestExecuteCode:
 
     @pytest.mark.asyncio
     async def test_successful_python_execution(self, monkeypatch, tmp_path):
-        monkeypatch.setenv("SANDBOX_ENABLED", "false")
+        monkeypatch.setenv("SANDBOX_ENABLED", "true")
         with patch("subprocess.run", return_value=_mock_proc(stdout="hello\n")):
             result = await TOOL_REGISTRY["execute_code"].handler(
                 code='print("hello")', language="python"
@@ -83,7 +83,7 @@ class TestExecuteCode:
 
     @pytest.mark.asyncio
     async def test_stdout_capped_at_10kb(self, monkeypatch):
-        monkeypatch.setenv("SANDBOX_ENABLED", "false")
+        monkeypatch.setenv("SANDBOX_ENABLED", "true")
         big_output = "x" * 20_000
         with patch("subprocess.run", return_value=_mock_proc(stdout=big_output)):
             result = await TOOL_REGISTRY["execute_code"].handler(code='print("x"*20000)')
@@ -92,7 +92,7 @@ class TestExecuteCode:
 
     @pytest.mark.asyncio
     async def test_timeout_returns_error(self, monkeypatch):
-        monkeypatch.setenv("SANDBOX_ENABLED", "false")
+        monkeypatch.setenv("SANDBOX_ENABLED", "true")
         with patch(
             "subprocess.run",
             side_effect=subprocess.TimeoutExpired(cmd=[], timeout=1),
@@ -106,7 +106,7 @@ class TestExecuteCode:
 
     @pytest.mark.asyncio
     async def test_nonzero_exit_code_in_result(self, monkeypatch):
-        monkeypatch.setenv("SANDBOX_ENABLED", "false")
+        monkeypatch.setenv("SANDBOX_ENABLED", "true")
         with patch(
             "subprocess.run",
             return_value=_mock_proc(stderr="NameError", returncode=1),
@@ -144,23 +144,19 @@ class TestExecuteCode:
         assert "/tmp" in cmd[cmd.index("--tmpfs") + 1]
 
     @pytest.mark.asyncio
-    async def test_sandbox_disabled_uses_direct_interpreter(self, monkeypatch):
+    async def test_sandbox_disabled_rejects_execution(self, monkeypatch):
         monkeypatch.setenv("SANDBOX_ENABLED", "false")
-        captured = {}
+        with patch("subprocess.run") as run:
+            result = await TOOL_REGISTRY["execute_code"].handler(code='print("hi")')
 
-        def capture_run(cmd, **kwargs):
-            captured["cmd"] = cmd
-            return _mock_proc(stdout="hi\n")
-
-        with patch("subprocess.run", side_effect=capture_run):
-            await TOOL_REGISTRY["execute_code"].handler(code='print("hi")')
-
-        assert "docker" not in captured["cmd"][0]
-        assert "python" in captured["cmd"][0]
+        run.assert_not_called()
+        assert result["exit_code"] == -1
+        assert result["sandbox_enabled"] is False
+        assert "disabled" in result["error"].lower()
 
     @pytest.mark.asyncio
     async def test_timeout_clamped_to_120(self, monkeypatch):
-        monkeypatch.setenv("SANDBOX_ENABLED", "false")
+        monkeypatch.setenv("SANDBOX_ENABLED", "true")
         captured = {}
 
         def capture_run(cmd, **kwargs):
@@ -174,7 +170,7 @@ class TestExecuteCode:
 
     @pytest.mark.asyncio
     async def test_javascript_language_uses_node(self, monkeypatch):
-        monkeypatch.setenv("SANDBOX_ENABLED", "false")
+        monkeypatch.setenv("SANDBOX_ENABLED", "true")
         captured = {}
 
         def capture_run(cmd, **kwargs):
@@ -186,7 +182,7 @@ class TestExecuteCode:
                 code="console.log(1)", language="javascript"
             )
 
-        assert "node" in captured["cmd"][0]
+        assert captured["cmd"][-2] == "node"
 
 
 # ---------------------------------------------------------------------------
@@ -225,7 +221,7 @@ class TestRunSandboxTemplate:
 
     @pytest.mark.asyncio
     async def test_known_template_renders_and_runs(self, monkeypatch):
-        monkeypatch.setenv("SANDBOX_ENABLED", "false")
+        monkeypatch.setenv("SANDBOX_ENABLED", "true")
         output = json.dumps({"final_balance": 1126.83, "yearly_breakdown": []})
         with patch("subprocess.run", return_value=_mock_proc(stdout=output)):
             result = await TOOL_REGISTRY["run_sandbox_template"].handler(
@@ -245,7 +241,7 @@ class TestRunSandboxTemplate:
 
     @pytest.mark.asyncio
     async def test_template_timeout_is_60s(self, monkeypatch):
-        monkeypatch.setenv("SANDBOX_ENABLED", "false")
+        monkeypatch.setenv("SANDBOX_ENABLED", "true")
         captured = {}
 
         def capture_run(cmd, **kwargs):
