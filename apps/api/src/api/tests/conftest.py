@@ -362,16 +362,28 @@ except ImportError:
 
 
 def _collect_routes(router_or_app, prefix=""):
-    """Recursively yield (full_path, method_set) for every APIRoute."""
+    """Recursively yield (full_path, method_set) for every APIRoute.
+
+    Handles both pre- and post-0.111 FastAPI layouts:
+    - Old: include_router flattens into APIRoute objects with full paths.
+    - New: include_router stores _IncludedRouter wrappers (have .router + .prefix
+      or .path) and Starlette Mount objects (have .routes + .path).
+    """
     from fastapi.routing import APIRoute
 
     for item in getattr(router_or_app, "routes", []):
         if isinstance(item, APIRoute):
             yield (prefix + item.path, item.methods or set())
         else:
-            sub_prefix = prefix + (getattr(item, "prefix", "") or "")
+            # Prefer .prefix (set by include_router); fall back to .path (Mount).
+            item_prefix = (
+                getattr(item, "prefix", None) or getattr(item, "path", None) or ""
+            )
+            # _IncludedRouter exposes the wrapped router via .router; for Mount
+            # the object itself has .routes, so fall back to item.
             sub_router = getattr(item, "router", item)
-            yield from _collect_routes(sub_router, sub_prefix)
+            if getattr(sub_router, "routes", None) is not None:
+                yield from _collect_routes(sub_router, prefix + item_prefix)
 
 
 def route_paths(router_or_app):
@@ -388,9 +400,12 @@ def find_api_route(router_or_app, path_suffix, prefix=""):
             if (prefix + item.path).endswith(path_suffix):
                 return item
         else:
-            sub_prefix = prefix + (getattr(item, "prefix", "") or "")
+            item_prefix = (
+                getattr(item, "prefix", None) or getattr(item, "path", None) or ""
+            )
             sub_router = getattr(item, "router", item)
-            found = find_api_route(sub_router, path_suffix, sub_prefix)
-            if found:
-                return found
+            if getattr(sub_router, "routes", None) is not None:
+                found = find_api_route(sub_router, path_suffix, prefix + item_prefix)
+                if found:
+                    return found
     return None
