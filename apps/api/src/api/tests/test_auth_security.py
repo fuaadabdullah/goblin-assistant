@@ -237,12 +237,14 @@ class TestSandboxSecurity:
         # ["api.sandbox_api"] with a fresh module object at collection time,
         # which would silently orphan a module-attribute patch here from the
         # module the live route function actually reads from.
-        from fastapi.routing import APIRoute
+        #
+        # FastAPI 0.111+ uses _IncludedRouter wrappers; walk the tree
+        # recursively instead of checking app.routes directly.
+        from api.tests.conftest import find_api_route
 
-        for route in client.app.routes:
-            if isinstance(route, APIRoute) and route.path.endswith("/sandbox/submit"):
-                monkeypatch.setitem(route.endpoint.__globals__, "SANDBOX_ENABLED", True)
-                break
+        route = find_api_route(client.app, "/sandbox/submit")
+        if route is not None:
+            monkeypatch.setitem(route.endpoint.__globals__, "SANDBOX_ENABLED", True)
 
     def test_sandbox_bash_not_supported(self, client):
         """POST /sandbox/submit with language='bash' should return 400"""

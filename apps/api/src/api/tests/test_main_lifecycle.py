@@ -32,9 +32,11 @@ def _provider_health_stub(
 
 
 def test_app_registers_runtime_middlewares_and_core_routes() -> None:
+    from api.tests.conftest import route_paths
+
     assert len(main.app.user_middleware) >= 4
 
-    paths = {route.path for route in main.app.routes if hasattr(route, "path")}
+    paths = route_paths(main.app)
     assert "/" in paths
     assert "/test" in paths
     assert "/api/v1/health" in paths

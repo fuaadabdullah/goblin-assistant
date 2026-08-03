@@ -353,3 +353,44 @@ except ImportError:
             return func(*args, **kwargs)
 
         return _run
+
+
+# ── Route inspection utilities ────────────────────────────────────────────────
+# FastAPI 0.111+ / Starlette 0.40+ uses _IncludedRouter wrappers instead of
+# flattening routes into app.routes. These helpers recursively walk the tree so
+# tests don't break when include_router no longer mutates route paths.
+
+
+def _collect_routes(router_or_app, prefix=""):
+    """Recursively yield (full_path, method_set) for every APIRoute."""
+    from fastapi.routing import APIRoute
+
+    for item in getattr(router_or_app, "routes", []):
+        if isinstance(item, APIRoute):
+            yield (prefix + item.path, item.methods or set())
+        else:
+            sub_prefix = prefix + (getattr(item, "prefix", "") or "")
+            sub_router = getattr(item, "router", item)
+            yield from _collect_routes(sub_router, sub_prefix)
+
+
+def route_paths(router_or_app):
+    """Return the set of all route paths in a FastAPI app/router."""
+    return {path for path, _ in _collect_routes(router_or_app)}
+
+
+def find_api_route(router_or_app, path_suffix, prefix=""):
+    """Find the first APIRoute whose full path ends with *path_suffix*."""
+    from fastapi.routing import APIRoute
+
+    for item in getattr(router_or_app, "routes", []):
+        if isinstance(item, APIRoute):
+            if (prefix + item.path).endswith(path_suffix):
+                return item
+        else:
+            sub_prefix = prefix + (getattr(item, "prefix", "") or "")
+            sub_router = getattr(item, "router", item)
+            found = find_api_route(sub_router, path_suffix, sub_prefix)
+            if found:
+                return found
+    return None

@@ -1,7 +1,7 @@
 from fastapi import FastAPI
-from fastapi.routing import APIRoute
 
 from api.routes.ops_router import router as ops_router
+from api.tests.conftest import _collect_routes, route_paths
 
 
 def _ops_app() -> FastAPI:
@@ -12,12 +12,11 @@ def _ops_app() -> FastAPI:
 
 def test_reset_route_registered_once() -> None:
     app = _ops_app()
+    target = "/api/v1/ops/circuit-breakers/{provider_name}/reset"
     matches = [
-        route
-        for route in app.routes
-        if isinstance(route, APIRoute)
-        and route.path == "/api/v1/ops/circuit-breakers/{provider_name}/reset"
-        and "POST" in route.methods
+        (path, methods)
+        for path, methods in _collect_routes(app)
+        if path == target and "POST" in methods
     ]
     assert len(matches) == 1
 
@@ -25,9 +24,9 @@ def test_reset_route_registered_once() -> None:
 def test_expected_ops_routes_present() -> None:
     app = _ops_app()
     paths = {
-        route.path
-        for route in app.routes
-        if isinstance(route, APIRoute) and route.path.startswith("/api/v1/ops/")
+        path
+        for path, _ in _collect_routes(app)
+        if path.startswith("/api/v1/ops/")
     }
 
     assert "/api/v1/ops/health/summary" in paths
