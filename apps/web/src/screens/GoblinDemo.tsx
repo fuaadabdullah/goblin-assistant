@@ -1,4 +1,4 @@
-import React, { useReducer, useEffect } from 'react';
+import React, { useReducer, useEffect, useRef } from 'react';
 // CSS is imported globally in _app.tsx
 import StreamingView from '@/components/streaming/StreamingView';
 import { runtimeClient } from '@/lib/api/runtimeClient';
@@ -61,8 +61,12 @@ export default function GoblinDemo({ provider, model, demoMode = false }: Props)
     model,
   });
 
+  const isMounted = useRef(true);
+
   useEffect(() => {
+    isMounted.current = true;
     return () => {
+      isMounted.current = false;
       if (streamingTimeoutRef.current) {
         clearTimeout(streamingTimeoutRef.current);
         streamingTimeoutRef.current = null;
@@ -88,6 +92,7 @@ export default function GoblinDemo({ provider, model, demoMode = false }: Props)
     const client = getRuntimeClient();
     try {
       const plan = await client.parseOrchestration(state.orchestration, 'demo');
+      if (!isMounted.current) return;
       debugLog('✅ [DEBUG] Preview plan received:', {
         steps: plan.steps.length,
         totalBatches: plan.total_batches,
@@ -97,6 +102,7 @@ export default function GoblinDemo({ provider, model, demoMode = false }: Props)
       const estimated = plan.steps.length * 0.02; // $0.02 per step average
       dispatch({ type: 'SET_ESTIMATED_COST', payload: estimated });
     } catch (error) {
+      if (!isMounted.current) return;
       devError('❌ [DEBUG] Failed to preview orchestration:', error);
       dispatch({ type: 'SET_PREVIEW_PLAN', payload: null });
       dispatch({ type: 'SET_ESTIMATED_COST', payload: 0 });
