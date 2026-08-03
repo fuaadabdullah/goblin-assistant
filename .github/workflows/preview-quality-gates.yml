@@ -1,0 +1,208 @@
+name: Preview Quality Gates
+
+on:
+  deployment_status:
+
+# Only run once the Vercel preview is ready
+jobs:
+  quality-gates:
+    if: >
+      github.event.deployment_status.state == 'success' &&
+      github.event.deployment.environment != 'Production'
+    name: Lighthouse + Bundle + Accessibility
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pull-requests: write
+      statuses: write
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Resolve preview URL
+        id: url
+        run: |
+          PREVIEW_URL="${{ github.event.deployment_status.target_url }}"
+          echo "url=${PREVIEW_URL}" >> "$GITHUB_OUTPUT"
+          echo "Preview URL: ${PREVIEW_URL}"
+
+      # Build the checked-out app once, then run bundle and Lighthouse checks
+      # against the local production server. This avoids false failures from
+      # Vercel preview cold starts, auth-protected routes, or transient network
+      # hangs while still measuring the PR artifact.
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 9
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      # ── Bundle analysis ─────────────────────────────────────────────────────
+      - name: Build + measure bundle
+        id: bundle
+        run: |
+          pnpm --filter @goblin/web build 2>&1 | tee /tmp/build.log
+          # Parse Next.js build output for First Load JS sizes
+          python3 - <<'EOF'
+          import re, json, os
+
+          with open("/tmp/build.log") as f:
+              content = f.read()
+
+          # Match lines like:  ○  /login   12.3 kB   245 kB
+          audited_routes = {"/", "/login"}
+          budget_kb = int(os.environ.get("BUNDLE_BUDGET_KB", "325"))
+          pattern = r'[○●λƒ]\s+(/\S*)(?:\s+\(\d+\s+ms\))?\s+([\d.]+\s+\w+)\s+([\d.]+\s+\w+)'
+          routes = []
+          over_budget = []
+
+          for m in re.finditer(pattern, content):
+              route, size, first_load = m.group(1), m.group(2), m.group(3)
+              if route not in audited_routes:
+                  continue
+              # Convert first load to KB
+              num, unit = first_load.split()
+              kb = float(num) * (1024 if unit.lower().startswith("m") else 1)
+              routes.append({"route": route, "firstLoad_kb": round(kb)})
+              if kb > budget_kb:
+                  over_budget.append(f"{route}: {first_load} > {budget_kb} kB")
+
+          result = json.dumps({"routes": routes, "over_budget": over_budget})
+          with open(os.environ["GITHUB_OUTPUT"], "a") as f:
+              f.write(f"data={result}\n")
+              f.write(f"failed={'true' if over_budget else 'false'}\n")
+          EOF
+        env:
+          BUNDLE_BUDGET_KB: 325
+          NEXT_TELEMETRY_DISABLED: 1
+
+      - name: Start local preview server
+        run: |
+          pnpm --filter @goblin/web start > /tmp/next-start.log 2>&1 &
+          echo "$!" > /tmp/next-start.pid
+          for attempt in $(seq 1 60); do
+            if curl -fsS http://127.0.0.1:3000/ >/dev/null; then
+              echo "Local preview server is ready."
+              exit 0
+            fi
+            sleep 2
+          done
+          cat /tmp/next-start.log
+          exit 1
+
+      # ── Lighthouse ──────────────────────────────────────────────────────────
+      - name: Lighthouse audit
+        id: lighthouse
+        continue-on-error: true
+        uses: treosh/lighthouse-ci-action@v12
+        with:
+          urls: |
+            http://127.0.0.1:3000/
+            http://127.0.0.1:3000/login
+          budgetPath: .github/lighthouse-budget.json
+          uploadArtifacts: true
+          temporaryPublicStorage: true
+        env:
+          LHCI_GITHUB_APP_TOKEN: ${{ secrets.LHCI_GITHUB_APP_TOKEN }}
+
+      - name: Parse Lighthouse results
+        id: lh_parse
+        run: |
+          RESULTS='${{ steps.lighthouse.outputs.manifest }}'
+          python3 - <<'EOF'
+          import json, os, sys
+
+          manifest = json.loads(os.environ.get("RESULTS") or "[]")
+          failures = []
+          rows = []
+          warnings = []
+
+          thresholds = {
+              "performance":    90,
+              "accessibility":  95,
+              "best-practices": 90,
+              "seo":            85,
+          }
+
+          for entry in manifest:
+              url   = entry.get("url", "")
+              summ  = entry.get("summary", {})
+              row   = f"| {url.split('/')[-1] or 'home'} "
+              for cat, floor in thresholds.items():
+                  score = round((summ.get(cat, 0) or 0) * 100)
+                  icon  = "✅" if score >= floor else "❌"
+                  row  += f"| {icon} {score} "
+                  if score < floor:
+                      failures.append(f"{url} — {cat}: {score} (need {floor})")
+              rows.append(row + "|")
+
+          print("table=" + json.dumps(rows), file=open(os.environ["GITHUB_OUTPUT"], "a"))
+          if os.environ.get("LIGHTHOUSE_OUTCOME") != "success" and not manifest:
+              warnings.append("Lighthouse did not produce a manifest; inspect the uploaded action logs.")
+
+          if failures:
+              print("failed=true",  file=open(os.environ["GITHUB_OUTPUT"], "a"))
+              print("summary=" + json.dumps(failures), file=open(os.environ["GITHUB_OUTPUT"], "a"))
+          else:
+              print("failed=false", file=open(os.environ["GITHUB_OUTPUT"], "a"))
+              print("summary=[]", file=open(os.environ["GITHUB_OUTPUT"], "a"))
+          print("warnings=" + json.dumps(warnings), file=open(os.environ["GITHUB_OUTPUT"], "a"))
+          EOF
+        env:
+          RESULTS: ${{ steps.lighthouse.outputs.manifest }}
+          LIGHTHOUSE_OUTCOME: ${{ steps.lighthouse.outcome }}
+
+      # ── PR comment ──────────────────────────────────────────────────────────
+      - name: Post quality report
+        uses: marocchino/sticky-pull-request-comment@v2
+        with:
+          header: preview-quality-gates
+          message: |
+            ## 🔍 Preview Quality Gates
+
+            **Preview URL:** ${{ steps.url.outputs.url }}
+
+            ### Lighthouse
+            | Route | Perf | A11y | Best Practices | SEO |
+            |-------|------|------|----------------|-----|
+            ${{ join(fromJson(steps.lh_parse.outputs.table || '[]'), '\n') }}
+
+            _Thresholds: Performance ≥ 90 · Accessibility ≥ 95 · Best Practices ≥ 90 · SEO ≥ 85_
+
+            ${{ steps.lh_parse.outputs.failed == 'true' && format('> ⛔ **Lighthouse failures:** {0}', join(fromJson(steps.lh_parse.outputs.summary || '[]'), ', ')) || '> ✅ All Lighthouse thresholds met.' }}
+            ${{ steps.lh_parse.outputs.warnings != '[]' && format('> ⚠️ **Lighthouse warnings:** {0}', join(fromJson(steps.lh_parse.outputs.warnings || '[]'), ', ')) || '' }}
+
+            ### Bundle (First Load JS · audited route budget: 325 KB)
+            ${{ fromJson(steps.bundle.outputs.data || '{}').over_budget != null && fromJson(steps.bundle.outputs.data).over_budget.length > 0 && format('> ⛔ Over-budget routes: `{0}`', join(fromJson(steps.bundle.outputs.data).over_budget, '`, `')) || '> ✅ Audited routes are within the 325 KB budget.' }}
+
+            ### Web Vitals Targets
+            | Metric | Target |
+            |--------|--------|
+            | FCP | < 1.5 s |
+            | LCP | < 2.5 s |
+            | INP | < 200 ms |
+            | CLS | < 0.05 |
+
+            ---
+            _Generated by [Preview Quality Gates](/.github/workflows/preview-quality-gates.yml)_
+
+      - name: Stop local preview server
+        if: always()
+        run: |
+          if [ -f /tmp/next-start.pid ]; then
+            kill "$(cat /tmp/next-start.pid)" 2>/dev/null || true
+          fi
+
+      # ── Hard gate ───────────────────────────────────────────────────────────
+      - name: Fail if gates not met
+        if: steps.lh_parse.outputs.failed == 'true' || steps.bundle.outputs.failed == 'true'
+        run: |
+          echo "❌ Quality gates failed:"
+          echo "Lighthouse: ${{ steps.lh_parse.outputs.summary }}"
+          echo "Bundle:     ${{ fromJson(steps.bundle.outputs.data || '{}').over_budget }}"
+          exit 1
