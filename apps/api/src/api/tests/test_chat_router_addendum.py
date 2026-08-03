@@ -62,5 +62,5 @@ async def test_resolve_addendum_layers_finance_guidance_for_live_market_question
         )
 
     assert "You are helping with personal finance." in addendum
-    assert "current market prices" in addendum
-    assert "web_search or lightweight_research" in addendum
+    assert "prices, history, financials" in addendum
+    assert "web_search, lightweight_research, or news tools" in addendum

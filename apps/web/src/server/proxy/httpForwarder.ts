@@ -48,6 +48,16 @@ function buildHeaders(req: Request): Record<string, string> {
     headers['Content-Type'] = contentType;
   }
 
+  const accept = req.headers.get('accept');
+  if (accept) {
+    headers['Accept'] = accept;
+  }
+
+  const cookie = req.headers.get('cookie');
+  if (cookie) {
+    headers['Cookie'] = cookie;
+  }
+
   const correlationId = req.headers.get('x-correlation-id');
   if (correlationId) {
     headers['X-Correlation-ID'] = correlationId;
@@ -99,7 +109,28 @@ export async function forwardRequest(
       nextHeaders.set('X-Correlation-ID', correlationId);
     }
 
+    const responseHeaders = response.headers as Headers & {
+      getSetCookie?: () => string[];
+    };
+    const setCookies = responseHeaders.getSetCookie?.() ?? [];
+    if (setCookies.length > 0) {
+      for (const cookie of setCookies) nextHeaders.append('Set-Cookie', cookie);
+    } else {
+      const setCookie = response.headers.get('set-cookie');
+      if (setCookie) nextHeaders.append('Set-Cookie', setCookie);
+    }
+
     const contentType = response.headers.get('content-type') || '';
+    if (contentType.toLowerCase().includes('text/event-stream')) {
+      nextHeaders.set('Content-Type', contentType);
+      nextHeaders.set('Cache-Control', response.headers.get('cache-control') || 'no-cache');
+      nextHeaders.set('X-Accel-Buffering', 'no');
+      return new NextResponse(response.body, {
+        status: response.status,
+        headers: nextHeaders,
+      });
+    }
+
     if (contentType.toLowerCase().includes('application/json')) {
       const payload = (await safeJson(response)) ?? {
         detail: 'Backend returned a non-JSON response',

@@ -33,6 +33,93 @@ def _make_in_memory_store():
     return store
 
 
+class _FakePipeline:
+    def __init__(self, redis):
+        self._redis = redis
+        self._commands = []
+
+    def set(self, key, value):
+        self._commands.append(("set", key, value))
+        return self
+
+    def zadd(self, key, mapping):
+        self._commands.append(("zadd", key, mapping))
+        return self
+
+    def delete(self, key):
+        self._commands.append(("delete", key))
+        return self
+
+    def zrem(self, key, *members):
+        self._commands.append(("zrem", key, members))
+        return self
+
+    async def execute(self):
+        results = []
+        for command in self._commands:
+            name = command[0]
+            if name == "set":
+                _, key, value = command
+                results.append(await self._redis.set(key, value))
+            elif name == "zadd":
+                _, key, mapping = command
+                results.append(await self._redis.zadd(key, mapping))
+            elif name == "delete":
+                _, key = command
+                results.append(await self._redis.delete(key))
+            elif name == "zrem":
+                _, key, members = command
+                results.append(await self._redis.zrem(key, *members))
+        return results
+
+
+class _FakeRedis:
+    def __init__(self):
+        self.values = {}
+        self.zsets = {}
+
+    def pipeline(self):
+        return _FakePipeline(self)
+
+    async def get(self, key):
+        return self.values.get(key)
+
+    async def set(self, key, value):
+        self.values[key] = value
+        return True
+
+    async def delete(self, key):
+        existed = key in self.values
+        self.values.pop(key, None)
+        return 1 if existed else 0
+
+    async def zadd(self, key, mapping):
+        zset = self.zsets.setdefault(key, {})
+        zset.update(mapping)
+        return len(mapping)
+
+    async def zrem(self, key, *members):
+        zset = self.zsets.setdefault(key, {})
+        removed = 0
+        for member in members:
+            if member in zset:
+                removed += 1
+                zset.pop(member, None)
+        return removed
+
+    async def zrevrange(self, key, start, end):
+        items = sorted(
+            self.zsets.get(key, {}).items(),
+            key=lambda item: item[1],
+            reverse=True,
+        )
+        if end == -1:
+            selected = items[start:]
+        else:
+            selected = items[start : end + 1]
+        return [member for member, _ in selected]
+
+
 # ---------------------------------------------------------------------------
 # Fixtures for the DB backend
 # ---------------------------------------------------------------------------
@@ -170,6 +257,60 @@ class TestTaskStoreInMemory:
         await store.save_task("t7", {"task_id": "t7", "status": "completed"})
         task = await store.get_task("t7")
         assert task["status"] == "completed"
+
+
+class TestTaskStoreRedis:
+    @pytest.fixture
+    def redis_store(self, monkeypatch):
+        from api.storage.tasks import TaskStore
+
+        fake_redis = _FakeRedis()
+
+        async def _fake_get_redis(self):
+            return fake_redis
+
+        monkeypatch.setattr(TaskStore, "_get_redis", _fake_get_redis)
+        return TaskStore(backend="redis", allow_memory_fallback=False)
+
+    async def test_save_get_list_and_delete_use_redis_backend(self, redis_store):
+        await redis_store.save_task(
+            "redis-1",
+            {"task_id": "redis-1", "status": "running", "created_at": "2026-01-01T00:00:00Z"},
+        )
+        await redis_store.save_task(
+            "redis-2",
+            {
+                "task_id": "redis-2",
+                "status": "completed",
+                "created_at": "2026-01-02T00:00:00Z",
+            },
+        )
+
+        task = await redis_store.get_task("redis-1")
+        assert task["status"] == "running"
+
+        tasks = await redis_store.list_tasks(limit=2)
+        assert [item["task_id"] for item in tasks] == ["redis-2", "redis-1"]
+
+        running = await redis_store.list_tasks(status="running")
+        assert [item["task_id"] for item in running] == ["redis-1"]
+
+        assert await redis_store.delete_task("redis-1") is True
+        assert await redis_store.get_task("redis-1") is None
+
+    async def test_redis_backend_can_fall_back_to_memory_when_allowed(self, monkeypatch):
+        from api.storage.tasks import TaskStore
+
+        async def _redis_unavailable(self):
+            raise RuntimeError("redis unavailable")
+
+        monkeypatch.setattr(TaskStore, "_get_redis", _redis_unavailable)
+        store = TaskStore(backend="redis", allow_memory_fallback=True)
+
+        await store.save_task("fallback-1", {"task_id": "fallback-1", "status": "pending"})
+
+        task = await store.get_task("fallback-1")
+        assert task["status"] == "pending"
 
 
 # ===========================================================================

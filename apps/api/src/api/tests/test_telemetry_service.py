@@ -21,8 +21,8 @@ def test_log_message_safely_redacts_pii():
 def test_log_inference_metrics_masks_metadata(monkeypatch):
     captured = {}
 
-    def fake_info(message):
-        captured["message"] = message
+    def fake_info(message, **kwargs):
+        captured.update(message=message, **kwargs)
 
     monkeypatch.setattr(telemetry.logger, "info", fake_info)
     telemetry.log_inference_metrics(
@@ -35,18 +35,17 @@ def test_log_inference_metrics_masks_metadata(monkeypatch):
         metadata={"api_key": "secret"},
     )
 
-    assert "Inference:" in captured["message"]
-    assert "[REDACTED]" in captured["message"]
+    assert captured["message"] == "inference_event"
+    assert captured["extra"]["data"]["metadata"]["api_key"] == "[REDACTED]"
 
 
 def test_log_conversation_event_uses_hashed_ids(monkeypatch):
     captured = {}
 
-    monkeypatch.setattr(
-        telemetry.logger,
-        "info",
-        lambda message: captured.setdefault("message", message),
-    )
+    def fake_info(message, **kwargs):
+        captured.update(message=message, **kwargs)
+
+    monkeypatch.setattr(telemetry.logger, "info", fake_info)
     telemetry.log_conversation_event(
         EventType.CONVERSATION_START,
         user_id="user-123",
@@ -55,18 +54,20 @@ def test_log_conversation_event_uses_hashed_ids(monkeypatch):
         metadata={"token": "abc"},
     )
 
-    assert "Conversation:" in captured["message"]
-    assert "user-123" not in captured["message"]
-    assert "session-456" not in captured["message"]
+    data = captured["extra"]["data"]
+    assert captured["message"] == "conversation_event"
+    assert data["user_hash"] and data["session_hash"]
+    assert "user-123" not in str(data)
+    assert "session-456" not in str(data)
 
 
 def test_log_rag_event_logs_without_raw_content(monkeypatch):
     captured = {}
-    monkeypatch.setattr(
-        telemetry.logger,
-        "info",
-        lambda message: captured.setdefault("message", message),
-    )
+
+    def fake_info(message, **kwargs):
+        captured.update(message=message, **kwargs)
+
+    monkeypatch.setattr(telemetry.logger, "info", fake_info)
 
     telemetry.log_rag_event(
         EventType.RAG_QUERY,
@@ -76,17 +77,19 @@ def test_log_rag_event_logs_without_raw_content(monkeypatch):
         success=True,
     )
 
-    assert "RAG:" in captured["message"]
-    assert "user-123" not in captured["message"]
+    data = captured["extra"]["data"]
+    assert captured["message"] == "rag_event"
+    assert data["document_count"] == 4
+    assert "user-123" not in str(data)
 
 
 def test_log_privacy_event_logs_audit_fields(monkeypatch):
     captured = {}
-    monkeypatch.setattr(
-        telemetry.logger,
-        "info",
-        lambda message: captured.setdefault("message", message),
-    )
+
+    def fake_info(message, **kwargs):
+        captured.update(message=message, **kwargs)
+
+    monkeypatch.setattr(telemetry.logger, "info", fake_info)
 
     telemetry.log_privacy_event(
         EventType.DATA_DELETE,
@@ -96,8 +99,9 @@ def test_log_privacy_event_logs_audit_fields(monkeypatch):
         success=True,
     )
 
-    assert "Privacy:" in captured["message"]
-    assert "delete_conversation" in captured["message"]
+    data = captured["extra"]["data"]
+    assert captured["message"] == "privacy_event"
+    assert data["action"] == "delete_conversation"
 
 
 def test_log_error_event_routes_by_severity(monkeypatch):
@@ -105,17 +109,17 @@ def test_log_error_event_routes_by_severity(monkeypatch):
     monkeypatch.setattr(
         telemetry.logger,
         "critical",
-        lambda message: calls.append(("critical", message)),
+        lambda message, **kwargs: calls.append(("critical", message, kwargs)),
     )
     monkeypatch.setattr(
         telemetry.logger,
         "warning",
-        lambda message: calls.append(("warning", message)),
+        lambda message, **kwargs: calls.append(("warning", message, kwargs)),
     )
     monkeypatch.setattr(
         telemetry.logger,
         "error",
-        lambda message: calls.append(("error", message)),
+        lambda message, **kwargs: calls.append(("error", message, kwargs)),
     )
 
     telemetry.log_error_event(
@@ -139,8 +143,13 @@ def test_log_error_event_routes_by_severity(monkeypatch):
         severity="error",
     )
 
-    severities = [level for level, _ in calls]
+    severities = [level for level, _, _ in calls]
     assert severities == ["critical", "warning", "error"]
+    assert all(message == "error_event" for _, message, _ in calls)
+    assert all(
+        call_kwargs["extra"]["data"]["context"]["secret"] == "[REDACTED]"
+        for _, _, call_kwargs in calls
+    )
 
 
 def test_hash_message_id_is_deterministic():

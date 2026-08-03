@@ -9,8 +9,9 @@ from typing import Any
 from fastapi import Request
 from fastapi.responses import JSONResponse
 
-from ..core.contracts import ApiErrorPayload, ErrorEnvelope
+from ..core.contracts import ApiErrorPayload
 from ..core.error_types import ErrorType
+from ..core.errors import error_envelope_content
 from ..core.redis_client import get_redis_client
 
 
@@ -152,8 +153,8 @@ class RateLimiter:
             timestamp = datetime.now(timezone.utc).isoformat()
             return JSONResponse(
                 status_code=429,
-                content=ErrorEnvelope(
-                    error=ApiErrorPayload(
+                content=error_envelope_content(
+                    ApiErrorPayload(
                         code="RATE_LIMIT_EXCEEDED",
                         type=ErrorType.RATE_LIMIT,
                         message="Rate limit exceeded",
@@ -163,8 +164,8 @@ class RateLimiter:
                             "limit_type": result["limit_type"],
                             "reset_at": result["reset_at"],
                         },
-                    )
-                ).model_dump(exclude_none=True),
+                    ),
+                ),
                 headers={
                     "Retry-After": "60",
                     "X-RateLimit-Remaining": "0",

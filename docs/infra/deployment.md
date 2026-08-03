@@ -6,7 +6,36 @@ GoblinOS Assistant supports multiple deployment strategies optimized for differe
 
 ## Production Deployment
 
+### Auto-Deploy (Render + Vercel)
+
+The active production path is push-to-deploy on `main` — no manual trigger
+scripts are needed once the GitHub integrations are connected:
+
+- **Backend (Render)**: `render.yaml` is the canonical blueprint. It sets
+  `branch: main` and `autoDeployTrigger: checksPass` on the `goblin-backend` service, so
+  every push to `main` rebuilds and redeploys the Docker service. One-time
+  prerequisite: connect the GitHub repo in the Render dashboard and apply the
+  blueprint.
+- **Frontend (Vercel)**: the `goblin-assistant` project auto-deploys `main` by
+  default. `apps/web/vercel.json` pins this with
+  `git.deploymentEnabled.main = true`.
+- **Secrets**: manually-managed keys live in the Render
+  `goblin-shared-secrets` env group (`sync: false`, set once in the
+  dashboard). The exact required/optional key list is documented in
+  [`docs/operations/RENDER_SECRETS.md`](../operations/RENDER_SECRETS.md).
+- **Verification after deploy**:
+  ```bash
+  curl https://goblin-backend-dt30.onrender.com/api/v1/health
+  curl https://goblin-backend-dt30.onrender.com/api/v1/health/providers
+  ```
+  The second endpoint live-probes every configured LLM provider, so it catches
+  "app is up but all provider keys are wrong/expired" failures that
+  `/api/v1/health` alone does not.
+
 ### Fly.io Backend Deployment
+
+> **Note**: Fly.io deployment is archived. `render.yaml` is the canonical
+> backend deployment blueprint; this section is kept for reference.
 
 The backend API is deployed to Fly.io for global distribution and automatic scaling.
 

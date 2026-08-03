@@ -8,6 +8,13 @@ const config: StorybookConfig = {
     options: {},
   },
   staticDirs: ['../public'],
+  viteFinal: async (config) => ({
+    ...config,
+    build: {
+      ...config.build,
+      target: 'esnext',
+    },
+  }),
 };
 
 export default config;

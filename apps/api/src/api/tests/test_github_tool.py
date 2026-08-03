@@ -117,6 +117,10 @@ class TestGitHubClient:
 
     @pytest.mark.asyncio
     async def test_get_success_returns_json(self, monkeypatch):
+        # CI sets GITHUB_REPOSITORY which activates the repo-scope guard;
+        # clear it so tests using a fixture repo ("octo/repo") are not blocked.
+        monkeypatch.delenv("GITHUB_REPOSITORY", raising=False)
+        monkeypatch.delenv("AGENT_GITHUB_ALLOWED_REPOSITORY", raising=False)
         response = _FakeResponse(200, {"full_name": "octo/repo"})
         monkeypatch.setattr(
             client.httpx,
@@ -143,6 +147,8 @@ class TestGitHubClient:
 
     @pytest.mark.asyncio
     async def test_post_auth_failure_returns_status(self, monkeypatch):
+        monkeypatch.delenv("GITHUB_REPOSITORY", raising=False)
+        monkeypatch.delenv("AGENT_GITHUB_ALLOWED_REPOSITORY", raising=False)
         response = _FakeResponse(401, {"message": "Bad credentials"}, text="Unauthorized")
         monkeypatch.setattr(
             client.httpx,

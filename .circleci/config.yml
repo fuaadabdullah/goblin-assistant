@@ -52,6 +52,11 @@ commands:
   install-pnpm:
     steps:
       - run:
+          name: Use supported Node.js version
+          command: |
+            sudo npm install --global n
+            sudo n 22
+      - run:
           name: Install pnpm
           command: sudo npm install -g pnpm@9
       - restore_cache:
@@ -367,6 +372,7 @@ jobs:
       - run:
           name: Publish to Chromatic
           command: |
+            pnpm --filter @goblin/shared build
             cd apps/web
             if [ -z "$CHROMATIC_PROJECT_TOKEN" ]; then
               echo "CHROMATIC_PROJECT_TOKEN not set — skipping visual regression."

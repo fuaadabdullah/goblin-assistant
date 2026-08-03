@@ -6,7 +6,7 @@ from typing import Any, Dict, Optional
 from fastapi import HTTPException, status
 from fastapi.exceptions import RequestValidationError
 
-from .contracts import ApiErrorPayload
+from .contracts import ApiErrorPayload, ErrorEnvelope
 from .error_types import ErrorType
 
 
@@ -16,6 +16,11 @@ class DomainError(Exception):
     message: str
     status_code: int = status.HTTP_400_BAD_REQUEST
     details: Optional[Dict[str, Any]] = None
+
+
+def error_envelope_content(payload: ApiErrorPayload) -> Dict[str, Any]:
+    """Render the canonical API error response body."""
+    return ErrorEnvelope(error=payload).model_dump(exclude_none=True)
 
 
 def _group_validation_errors_by_field(

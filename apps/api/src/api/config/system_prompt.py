@@ -91,7 +91,9 @@ class SystemPromptConfig:
     def __init__(self):
         self.base_prompt = self._load_base_prompt()
         self.guardrails = self._load_guardrails()
-        self.tokens = self._calculate_tokens()
+        # Token counting is comparatively expensive and does not affect
+        # startup behavior, so defer it until a caller explicitly asks for it.
+        self.tokens: Optional[int] = None
 
     def _load_base_prompt(self) -> str:
         """Load base system prompt from environment or use default"""
@@ -123,6 +125,8 @@ class SystemPromptConfig:
 
     def get_tokens(self) -> int:
         """Get token count for system prompt"""
+        if self.tokens is None:
+            self.tokens = self._calculate_tokens()
         return self.tokens
 
     def validate_prompt(self, prompt: str) -> bool:

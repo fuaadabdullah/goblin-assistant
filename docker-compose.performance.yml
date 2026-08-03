@@ -1,0 +1,132 @@
+# Docker Compose performance override for high-end workstations.
+# Usage:
+#   docker compose -f docker-compose.yml -f docker-compose.performance.yml up -d
+#
+# Tuned for: AMD Ryzen 7 5700X (16 threads), 64 GB RAM, Docker Desktop WSL2.
+# Increases CPU/memory ceilings and adds reservations so builds/tests run fast
+# while leaving headroom for games/IDEs on the Windows host.
+#
+# For gaming sessions, switch to docker-compose.gaming.yml (lower limits) or
+# run `docker compose stop`.
+
+services:
+  redis:
+    deploy:
+      resources:
+        limits:
+          cpus: ${REDIS_CPU_LIMIT:-1.00}
+          memory: ${REDIS_MEM_LIMIT:-1g}
+        reservations:
+          cpus: "0.25"
+          memory: 256m
+
+  goblin-assistant-backend:
+    deploy:
+      resources:
+        limits:
+          cpus: ${BACKEND_CPU_LIMIT:-4.00}
+          memory: ${BACKEND_MEM_LIMIT:-4g}
+        reservations:
+          cpus: "1.00"
+          memory: 1g
+    # Explicit tmpfs sizes prevent unbounded growth and keep /tmp fast.
+    tmpfs:
+      - /tmp:size=512m,mode=1777
+
+  minio:
+    profiles: [sandbox]
+    deploy:
+      resources:
+        limits:
+          cpus: ${MINIO_CPU_LIMIT:-1.50}
+          memory: ${MINIO_MEM_LIMIT:-1g}
+        reservations:
+          cpus: "0.25"
+          memory: 256m
+
+  docker-socket-proxy:
+    profiles: [sandbox]
+    deploy:
+      resources:
+        limits:
+          cpus: "0.25"
+          memory: 128m
+
+  sandbox-worker:
+    profiles: [sandbox]
+    deploy:
+      resources:
+        limits:
+          cpus: ${SANDBOX_WORKER_CPU_LIMIT:-2.00}
+          memory: ${SANDBOX_WORKER_MEM_LIMIT:-2g}
+        reservations:
+          cpus: "0.50"
+          memory: 512m
+    tmpfs:
+      - /tmp:size=256m,mode=1777
+
+  celery-worker-high:
+    profiles: [workers]
+    deploy:
+      resources:
+        limits:
+          cpus: ${CELERY_WORKER_HIGH_CPU_LIMIT:-2.00}
+          memory: ${CELERY_WORKER_HIGH_MEM_LIMIT:-2g}
+        reservations:
+          cpus: "0.50"
+          memory: 512m
+
+  celery-worker-default:
+    profiles: [workers]
+    deploy:
+      resources:
+        limits:
+          cpus: ${CELERY_WORKER_DEFAULT_CPU_LIMIT:-3.00}
+          memory: ${CELERY_WORKER_DEFAULT_MEM_LIMIT:-3g}
+        reservations:
+          cpus: "0.50"
+          memory: 512m
+
+  celery-worker-low:
+    profiles: [workers]
+    deploy:
+      resources:
+        limits:
+          cpus: ${CELERY_WORKER_LOW_CPU_LIMIT:-1.50}
+          memory: ${CELERY_WORKER_LOW_MEM_LIMIT:-1g}
+        reservations:
+          cpus: "0.25"
+          memory: 256m
+
+  celery-beat:
+    profiles: [workers]
+    deploy:
+      resources:
+        limits:
+          cpus: ${CELERY_BEAT_CPU_LIMIT:-0.50}
+          memory: ${CELERY_BEAT_MEM_LIMIT:-512m}
+        reservations:
+          cpus: "0.10"
+          memory: 64m
+
+  flower:
+    profiles: [workers]
+    deploy:
+      resources:
+        limits:
+          cpus: ${FLOWER_CPU_LIMIT:-0.50}
+          memory: ${FLOWER_MEM_LIMIT:-512m}
+        reservations:
+          cpus: "0.10"
+          memory: 64m
+
+  celery-monitor:
+    profiles: [workers]
+    deploy:
+      resources:
+        limits:
+          cpus: ${CELERY_MONITOR_CPU_LIMIT:-0.50}
+          memory: ${CELERY_MONITOR_MEM_LIMIT:-512m}
+        reservations:
+          cpus: "0.10"
+          memory: 64m

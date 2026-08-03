@@ -138,3 +138,91 @@ def test_retest(client):
     data = resp.json()
     assert data["service"] == "raptor"
     assert data["retest"] == "scheduled"
+
+
+def test_health_providers(client):
+    """Live provider probe returns per-provider status and an aggregate."""
+    with (
+        patch(
+            "api.services.provider_health.health_monitor.refresh",
+            new_callable=AsyncMock,
+        ) as refresh,
+        patch(
+            "api.services.provider_health.health_monitor.get_all_status",
+            return_value={
+                "openai": {"status": "healthy", "configured": True},
+                "anthropic": {"status": "billing_issue", "configured": True},
+            },
+        ),
+    ):
+        resp = client.get("/api/v1/health/providers")
+
+    assert resp.status_code == 200
+    data = resp.json()
+    assert data["status"] == "warnings"
+    assert data["providers_checked"] == 2
+    assert data["providers_configured"] == 2
+    assert data["providers"]["openai"]["status"] == "healthy"
+    refresh.assert_awaited_once()
+
+
+def test_health_providers_degraded_when_none_healthy(client):
+    with (
+        patch(
+            "api.services.provider_health.health_monitor.refresh",
+            new_callable=AsyncMock,
+        ),
+        patch(
+            "api.services.provider_health.health_monitor.get_all_status",
+            return_value={"openai": {"status": "unhealthy", "configured": True}},
+        ),
+    ):
+        resp = client.get("/api/v1/health/providers")
+
+    assert resp.status_code == 200
+    data = resp.json()
+    assert data["status"] == "degraded"
+    assert data["providers_checked"] == 1
+
+
+def test_health_providers_graceful_on_monitor_failure(client):
+    """A failing monitor must degrade the payload, not the endpoint."""
+    with patch(
+        "api.services.provider_health.health_monitor.refresh",
+        new=AsyncMock(side_effect=RuntimeError("monitor exploded")),
+    ):
+        resp = client.get("/api/v1/health/providers")
+
+    assert resp.status_code == 200
+    data = resp.json()
+    assert data["status"] == "degraded"
+    assert "monitor exploded" in data["error"]
+    assert data["providers"] == {}
+
+
+def test_health_providers_not_shadowed_by_component_route(client):
+    """/health/providers must resolve to the provider probe, not /health/{component}."""
+    with (
+        patch(
+            "api.services.provider_health.health_monitor.refresh",
+            new_callable=AsyncMock,
+        ),
+        patch(
+            "api.services.provider_health.health_monitor.get_all_status",
+            return_value={},
+        ),
+    ):
+        resp = client.get("/api/v1/health/providers")
+
+    # The {component} route would 404 on "providers"; the real endpoint answers 200.
+    assert resp.status_code == 200
+    assert "providers_checked" in resp.json()
+
+
+def test_health_streaming_not_shadowed_by_component_route(client):
+    """/health/streaming is registered before /health/{component} and reachable."""
+    resp = client.get("/api/v1/health/streaming")
+    assert resp.status_code == 200
+    data = resp.json()
+    assert data["service"] == "streaming"
+    assert "status" in data

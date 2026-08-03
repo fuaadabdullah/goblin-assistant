@@ -23,6 +23,7 @@ from api.routes.secrets_router import (
     get_secrets_adapter,
     router,
 )
+from api.tests.route_helpers import iter_route_views
 
 # ── App Builders ────────────────────────────────────────────────────────────
 
@@ -369,7 +370,7 @@ def test_router_registered_endpoints() -> None:
     """Verify the router registers all expected endpoints."""
     app = FastAPI()
     app.include_router(router, prefix="/api/v1")
-    routes = {(r.path, frozenset(r.methods or [])) for r in app.routes}
+    routes = {(r.path, r.methods) for r in iter_route_views(app.routes)}
 
     # Check list endpoint (GET /)
     assert any(r[0] in {"/api/v1/secrets", "/api/v1/secrets/"} and "GET" in r[1] for r in routes), (

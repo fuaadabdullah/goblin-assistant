@@ -13,6 +13,8 @@ import os
 
 import pytest
 
+from api.tests.route_helpers import iter_route_views
+
 SANDBOX_TEST_API_KEY = os.getenv("API_AUTH_KEY", "test-api-key")
 
 
@@ -42,7 +44,8 @@ class TestCSRFProtection:
         # Missing csrf_token is rejected by CSRF enforcement with 403
         assert response.status_code == 403
         data = response.json()
-        assert "CSRF" in data["detail"]
+        assert data["success"] is False
+        assert "CSRF" in data["error"]["message"]
 
     def test_login_requires_csrf_token(self, client):
         """POST /auth/login without csrf_token should fail (field is required)"""
@@ -57,7 +60,8 @@ class TestCSRFProtection:
         # Missing csrf_token is rejected by CSRF enforcement with 403
         assert response.status_code == 403
         data = response.json()
-        assert "CSRF" in data["detail"]
+        assert data["success"] is False
+        assert "CSRF" in data["error"]["message"]
 
     def test_register_invalid_csrf_token_rejected(self, client):
         """POST /auth/register with invalid csrf_token should fail with 403"""
@@ -72,7 +76,8 @@ class TestCSRFProtection:
         )
         assert response.status_code == 403
         data = response.json()
-        assert "CSRF" in data["detail"]
+        assert data["success"] is False
+        assert "CSRF" in data["error"]["message"]
 
     def test_login_invalid_csrf_token_rejected(self, client):
         """POST /auth/login with invalid csrf_token should fail with 403"""
@@ -86,7 +91,8 @@ class TestCSRFProtection:
         )
         assert response.status_code == 403
         data = response.json()
-        assert "CSRF" in data["detail"]
+        assert data["success"] is False
+        assert "CSRF" in data["error"]["message"]
 
     def test_csrf_token_one_time_use(self, client):
         """
@@ -111,7 +117,7 @@ class TestCSRFProtection:
             f"Expected 401 Unauthorized for nonexistent user, "
             f"got {response1.status_code}: {response1.json()}"
         )
-        assert "Invalid email or password" in response1.json()["detail"]
+        assert "Invalid email or password" in response1.json()["error"]["message"]
 
         # Second use: Try to reuse the same token - should fail with 403 (token already used)
         response2 = client.post(
@@ -127,9 +133,9 @@ class TestCSRFProtection:
             f"Expected 403 Forbidden for reused CSRF token, "
             f"got {response2.status_code}: {response2.json()}"
         )
-        assert "CSRF" in response2.json()["detail"]
+        assert "CSRF" in response2.json()["error"]["message"]
         data = response2.json()
-        assert "CSRF" in data["detail"]
+        assert "CSRF" in data["error"]["message"]
 
     def test_csrf_token_expiration(self, client):
         """CSRF tokens should expire after 1 hour (this tests the TTL behavior)"""
@@ -180,7 +186,8 @@ class TestRateLimiting:
         )
         assert response.status_code == 429
         data = response.json()
-        assert "rate" in data["detail"].lower() or "too many" in data["detail"].lower()
+        message = data["error"]["message"].lower()
+        assert "rate" in message or "too many" in message
 
     def test_rate_limit_on_registration_attempts(self, client):
         """
@@ -222,7 +229,8 @@ class TestRateLimiting:
         )
         assert response.status_code == 429
         data = response.json()
-        assert "rate" in data["detail"].lower() or "too many" in data["detail"].lower()
+        message = data["error"]["message"].lower()
+        assert "rate" in message or "too many" in message
 
 
 class TestSandboxSecurity:
@@ -237,10 +245,8 @@ class TestSandboxSecurity:
         # ["api.sandbox_api"] with a fresh module object at collection time,
         # which would silently orphan a module-attribute patch here from the
         # module the live route function actually reads from.
-        from fastapi.routing import APIRoute
-
-        for route in client.app.routes:
-            if isinstance(route, APIRoute) and route.path.endswith("/sandbox/submit"):
+        for route in iter_route_views(client.app.routes):
+            if route.path.endswith("/sandbox/submit"):
                 monkeypatch.setitem(route.endpoint.__globals__, "SANDBOX_ENABLED", True)
                 break
 
@@ -258,8 +264,9 @@ class TestSandboxSecurity:
         # Should fail because bash is not in supported languages
         assert response.status_code == 400
         data = response.json()
-        assert "unsupported" in data["detail"].lower() or "bash" in data["detail"].lower()
-        assert "python" in data["detail"].lower() or "javascript" in data["detail"].lower()
+        message = data["error"]["message"].lower()
+        assert "unsupported" in message or "bash" in message
+        assert "python" in message or "javascript" in message
 
     def test_sandbox_python_still_supported(self, client):
         """POST /sandbox/submit with language='python' should not reject based on language"""
@@ -277,8 +284,8 @@ class TestSandboxSecurity:
         # Should not fail because of unsupported language
         data = response.json()
         if response.status_code == 400:
-            detail = data.get("detail", "").lower()
-            assert "unsupported language" not in detail, "Python should still be supported"
+            message = data.get("error", {}).get("message", "").lower()
+            assert "unsupported language" not in message, "Python should still be supported"
 
     def test_sandbox_javascript_still_supported(self, client):
         """POST /sandbox/submit with language='javascript' should not reject based on language"""
@@ -294,8 +301,8 @@ class TestSandboxSecurity:
         # Should not fail because of unsupported language
         data = response.json()
         if response.status_code == 400:
-            detail = data.get("detail", "").lower()
-            assert "unsupported language" not in detail, "JavaScript should still be supported"
+            message = data.get("error", {}).get("message", "").lower()
+            assert "unsupported language" not in message, "JavaScript should still be supported"
 
     def test_sandbox_invalid_language_rejected(self, client):
         """POST /sandbox/submit with invalid language should return 400"""
@@ -310,4 +317,5 @@ class TestSandboxSecurity:
         )
         assert response.status_code == 400
         data = response.json()
-        assert "unsupported" in data["detail"].lower()
+        message = data["error"]["message"].lower()
+        assert "unsupported" in message

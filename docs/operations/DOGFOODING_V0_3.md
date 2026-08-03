@@ -22,6 +22,25 @@ faster than support, privacy review, and rollback can handle.
 - A release owner has confirmed the deployment target, rollback path, and support
   channel before inviting users.
 
+## Daily Driver Runtime
+
+- Default local runtime for the dogfood loop is Docker-first backend plus native
+  frontend.
+- Before the first run of a new stretch, build once from a clean backend cache:
+  `docker compose build --no-cache goblin-assistant-backend`.
+- The default local backend image uses a lean dependency set to reduce startup
+  failures. Only opt into vector dependencies when a session explicitly needs
+  vector-store behavior.
+- Start the backend stack with `make api-docker-up` and verify
+  `curl http://127.0.0.1:8001/api/v1/health` before opening the frontend.
+- If Docker BuildKit fails with a local daemon/runtime error, use
+  `make api-docker-up-legacy` as the environment bailout path and log the
+  bailout separately from product friction.
+- Run the frontend with `make web-dev` after the backend health check passes.
+- If the backend does not reach healthy state, treat that as an environment
+  bailout. Log it, stop the ritual for that session, and do not convert the day
+  into opportunistic product work.
+
 ## Cohort
 
 - Start with 3 to 5 trusted users who understand the product is in dogfood.
@@ -43,10 +62,29 @@ faster than support, privacy review, and rollback can handle.
 
 - Record each report with user, timestamp, route or feature, expected behavior,
   actual behavior, severity, and whether sensitive data was involved.
+- During the run, log in the repo-root `FRICTION.md` working log. Do not fix while
+  logging. The point of the week is to observe, not to silently repair the
+  experience mid-stream.
+- Do not promote guesses, predictions, or prior opinions into findings. If the
+  log is empty, the finding is that the log is empty.
+- Keep environment bailouts separate from product friction. Note the blocked
+  ritual and the failing command or health check, but do not rewrite that into a
+  product brief.
 - Classify issues as Tier 0 blocker, dogfood blocker, follow-up, or product
   feedback.
 - Tier 0 blockers stop new invites until fixed and verified with the named
   critical suite.
+
+## Hypotheses Under Test
+
+- The ticker sanitization fix stays as an observed bug fix.
+- Additional workflow and finance behavior changes remain shipped, but they are
+  treated as hypotheses under test until real dogfood usage validates them.
+- `FINANCE_ANALYST` and related prompt/archetype shaping should not be expanded
+  further during the observation window unless repeated real usage clearly
+  demands it.
+- Track the current set in [DAILY_DRIVER_HYPOTHESES.md](./DAILY_DRIVER_HYPOTHESES.md)
+  and update statuses only after real usage evidence exists.
 
 ## Rollback
 

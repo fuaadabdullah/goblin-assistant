@@ -10117,6 +10117,30 @@
         ]
       }
     },
+    "/api/v1/health/providers": {
+      "get": {
+        "description": "Live LLM provider connectivity probe.\n\nUnlike /health (which reports the provider health monitor's cached state),\nthis endpoint actively re-probes every visible provider, so ops can tell\n\"the app is up\" apart from \"upstream LLM providers are reachable with the\nkeys currently configured\". Registered before /health/{component} so the\nliteral path is not shadowed by the path-parameter route.",
+        "operationId": "health_providers_api_v1_health_providers_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Health Providers Api V1 Health Providers Get",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Health Providers",
+        "tags": [
+          "health"
+        ]
+      }
+    },
     "/api/v1/health/raptor/status": {
       "get": {
         "operationId": "health_raptor_api_v1_health_raptor_status_get",
@@ -10333,7 +10357,7 @@
     },
     "/api/v1/health/{component}": {
       "get": {
-        "description": "Return a specific subsystem probe for compatibility with older clients.",
+        "description": "Return a specific subsystem probe for compatibility with older clients.\n\nMust stay registered AFTER all literal /health/* routes (stream, all,\nproviders, streaming, ...) \u2014 Starlette matches routes in registration\norder, so this path-parameter route shadows any literal registered later.",
         "operationId": "health_component_api_v1_health__component__get",
         "parameters": [
           {

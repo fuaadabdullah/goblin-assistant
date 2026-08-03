@@ -4,9 +4,9 @@ Sandbox execution tools for Goblin Assistant.
 Registers tools that let the LLM execute arbitrary Python or JavaScript code
 and run pre-built financial analysis templates in a controlled environment.
 
-Execution strategy:
-  SANDBOX_ENABLED=true  → Docker container (network-isolated, read-only mount)
-  SANDBOX_ENABLED=false → direct subprocess (development mode, no Docker required)
+Execution is rejected unless ``SANDBOX_ENABLED=true``. When enabled, code runs
+inside the configured network-isolated, read-only Docker image; it never falls
+back to a direct subprocess on the API host.
 """
 
 from __future__ import annotations
@@ -36,42 +36,45 @@ def _run_code(code: str, language: str, timeout: int) -> Dict[str, Any]:
         return {"error": f"Unsupported language '{language}'. Use 'python' or 'javascript'."}
 
     sandbox_enabled = os.getenv("SANDBOX_ENABLED", "false").lower() == "true"
+    if not sandbox_enabled:
+        return {
+            "error": "Sandbox execution is disabled. Set SANDBOX_ENABLED=true and start the sandbox runtime.",
+            "exit_code": -1,
+            "sandbox_enabled": False,
+        }
+
     sandbox_image = os.getenv("SANDBOX_IMAGE", "goblin-assistant-sandbox:latest")
 
     with tempfile.TemporaryDirectory() as tmpdir:
         code_path = Path(tmpdir) / filename
         code_path.write_text(code, encoding="utf-8")
 
-        if sandbox_enabled:
-            sandbox_user = os.getenv("SANDBOX_USER", "runner")
-            cmd = [
-                "docker",
-                "run",
-                "--rm",
-                "--network",
-                "none",
-                "--memory",
-                "256m",
-                "--cpus",
-                "0.5",
-                "--read-only",
-                "--cap-drop",
-                "all",
-                "--security-opt",
-                "no-new-privileges",
-                "--user",
-                sandbox_user,
-                "--tmpfs",
-                "/tmp:size=64m,mode=1777",
-                "-v",
-                f"{tmpdir}:/code:ro",
-                sandbox_image,
-                "python" if language == "python" else "node",
-                f"/code/{filename}",
-            ]
-        else:
-            interpreter = "python" if language == "python" else "node"
-            cmd = [interpreter, str(code_path)]
+        sandbox_user = os.getenv("SANDBOX_USER", "runner")
+        cmd = [
+            "docker",
+            "run",
+            "--rm",
+            "--network",
+            "none",
+            "--memory",
+            "256m",
+            "--cpus",
+            "0.5",
+            "--read-only",
+            "--cap-drop",
+            "all",
+            "--security-opt",
+            "no-new-privileges",
+            "--user",
+            sandbox_user,
+            "--tmpfs",
+            "/tmp:size=64m,mode=1777",
+            "-v",
+            f"{tmpdir}:/code:ro",
+            sandbox_image,
+            "python" if language == "python" else "node",
+            f"/code/{filename}",
+        ]
 
         try:
             result = subprocess.run(
@@ -84,8 +87,7 @@ def _run_code(code: str, language: str, timeout: int) -> Dict[str, Any]:
         except subprocess.TimeoutExpired:
             return {"error": f"Execution timed out after {timeout}s", "exit_code": -1}
         except FileNotFoundError:
-            interp = "docker" if sandbox_enabled else ("python" if language == "python" else "node")
-            return {"error": f"Interpreter not found: '{interp}'", "exit_code": -1}
+            return {"error": "Sandbox runtime not found: 'docker'", "exit_code": -1}
 
     truncated = len(result.stdout) > _STDOUT_CAP
     return {
@@ -123,7 +125,8 @@ register_tool(
         name="execute_code",
         description=(
             "Use when the user wants to run a snippet of Python or JavaScript code "
-            "and see the output. Executes in an isolated environment with no network "
+            "and see the output. Requires the sandbox feature to be enabled and "
+            "executes in an isolated environment with no network "
             "access. Returns stdout, stderr, and the exit code. Stdout is capped at "
             "10 KB. Prefer this over shell commands for computation or data analysis."
         ),
@@ -196,7 +199,8 @@ register_tool(
             "such as Monte Carlo portfolio simulation, portfolio backtesting, or "
             "compound interest calculation. Pass the template name and its parameters "
             "as a JSON object string. Returns the JSON output printed by the template. "
-            "Call this instead of execute_code for known financial analyses. "
+            "Requires the sandbox feature to be enabled. Call this instead of "
+            "execute_code for known financial analyses. "
             "Available templates: 'monte_carlo_portfolio', 'backtest_allocation', "
             "'compound_interest'."
         ),

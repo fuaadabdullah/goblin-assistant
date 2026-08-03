@@ -1,5 +1,5 @@
 import { test, expect } from '@playwright/test';
-import { mockCommonApiRoutes } from './support/common-mocks';
+import { authenticateE2EUser, mockCommonApiRoutes } from './support/common-mocks';
 
 test.describe('Authentication Flow', () => {
   test.beforeEach(async ({ page }) => {
@@ -137,6 +137,7 @@ test.describe('Authentication Flow', () => {
 test.describe('Logout', () => {
   test.beforeEach(async ({ page, context }) => {
     await mockCommonApiRoutes(page);
+    await authenticateE2EUser(context);
 
     await page.route('**/auth/logout', async (route) => {
       await route.fulfill({
@@ -158,15 +159,6 @@ test.describe('Logout', () => {
       });
     });
 
-    await context.addCookies([
-      { name: 'session_token', value: 'mock-session-token-e2e', domain: 'localhost', path: '/' },
-    ]);
-    await context.addInitScript(() => {
-      window.localStorage.setItem(
-        'user_data',
-        JSON.stringify({ id: 'test_user', email: 'test@example.com', role: 'user' })
-      );
-    });
   });
 
   test('should show a logout button when authenticated', async ({ page }) => {
@@ -197,7 +189,7 @@ test.describe('Logout', () => {
     }
   });
 
-  test('should redirect to login after logout', async ({ page }) => {
+  test('should redirect to login after logout', async ({ page, context }) => {
     await page.goto('/chat');
 
     // Attempt logout via button or direct API call + navigation
@@ -210,9 +202,10 @@ test.describe('Logout', () => {
       await expect(page).toHaveURL(/\/login/, { timeout: 5000 });
     } else {
       // Simulate logout by clearing auth state and navigating
+      await context.clearCookies();
       await page.evaluate(() => {
         window.localStorage.removeItem('user_data');
-        document.cookie = 'goblin_auth=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;';
+        window.localStorage.removeItem('auth_token');
       });
       await page.goto('/chat');
       // Without auth, should redirect to login
@@ -241,6 +234,7 @@ test.describe('Logout', () => {
 test.describe('Session Persistence', () => {
   test.beforeEach(async ({ page, context }) => {
     await mockCommonApiRoutes(page);
+    await authenticateE2EUser(context);
 
     await page.route('**/api/auth/validate', async (route) => {
       await route.fulfill({
@@ -254,15 +248,6 @@ test.describe('Session Persistence', () => {
       });
     });
 
-    await context.addCookies([
-      { name: 'session_token', value: 'mock-session-token-e2e', domain: 'localhost', path: '/' },
-    ]);
-    await context.addInitScript(() => {
-      window.localStorage.setItem(
-        'user_data',
-        JSON.stringify({ id: 'test_user', email: 'test@example.com', role: 'user' })
-      );
-    });
   });
 
   test('should stay authenticated after page reload', async ({ page }) => {

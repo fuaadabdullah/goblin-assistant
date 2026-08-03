@@ -39,7 +39,7 @@ def _provider_health_monitor(
 
 
 @pytest.mark.asyncio
-async def test_health_returns_healthy_when_everything_passes() -> None:
+async def test_health_returns_warnings_when_one_configured_provider_fails() -> None:
     provider_monitor = _provider_health_monitor(
         {
             "openai": {"status": "healthy"},
@@ -85,9 +85,9 @@ async def test_health_returns_healthy_when_everything_passes() -> None:
     ):
         response = await health.health_check()
 
-    assert response.data["status"] == "healthy"
+    assert response.data["status"] == "warnings"
     assert response.data["components"]["chroma"]["status"] == "healthy"
-    assert response.data["components"]["providers"]["status"] == "healthy"
+    assert response.data["components"]["providers"]["status"] == "warnings"
     provider_monitor.get_all_status.assert_called_once_with(include_hidden=False)
 
 

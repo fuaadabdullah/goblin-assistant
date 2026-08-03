@@ -98,15 +98,16 @@ async def check_api_health() -> Dict[str, Any]:
 
 
 def _summarize_provider_health(provider_status: Dict[str, Dict[str, Any]]) -> str:
-    if not provider_status:
+    configured_providers = [
+        provider for provider in provider_status.values() if provider.get("configured", True)
+    ]
+    if not configured_providers:
         return "degraded"
 
-    statuses = {provider.get("status") for provider in provider_status.values()}
-    if statuses <= {"healthy", "unknown", "billing_issue"}:
+    statuses = {provider.get("status") for provider in configured_providers}
+    if statuses == {"healthy"}:
         return "healthy"
     if "healthy" in statuses:
-        return "warnings"
-    if "unhealthy" in statuses and "unknown" in statuses and "degraded" not in statuses:
         return "warnings"
     return "degraded"
 

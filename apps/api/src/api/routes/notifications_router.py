@@ -13,6 +13,7 @@ from api.auth.router import get_current_user
 from api.core.contracts import SuccessEnvelope
 from api.services.platform_settings_service import SaaSSettingsService
 from api.services.platform_settings_service import get_platform_db as get_db
+from api.services.platform_settings_service import get_readonly_platform_db as get_readonly_db
 
 router = APIRouter(prefix="/notifications", tags=["notifications"])
 
@@ -28,7 +29,7 @@ class NotificationCreate(BaseModel):
 @router.get("/", response_model=SuccessEnvelope[List[Dict[str, Any]]])
 async def list_notifications(
     current_user: AuthenticatedUser = Depends(get_current_user),
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(get_readonly_db),
 ):
     service = SaaSSettingsService(db)
     rows = await service.list_notifications(current_user.id)

@@ -73,6 +73,9 @@ class TestLightweightResearch:
         assert result["coverage"]["providers"]["web_search"]["count"] == 1
         assert result["coverage"]["providers"]["academic_search"]["count"] == 1
         assert isinstance(result["brief"], str)
+        assert "Snapshot:" in result["brief"]
+        assert "Why It Matters:" in result["brief"]
+        assert "Sources / Data Used:" in result["brief"]
         assert result["findings"]
 
     @pytest.mark.asyncio

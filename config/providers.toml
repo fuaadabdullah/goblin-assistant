@@ -589,8 +589,8 @@ is_active               = true
 name                    = "Ollama Local"
 endpoint                = "http://localhost:11434"
 endpoint_env            = "OLLAMA_LOCAL_ENDPOINT"
-default_model           = "qwen2.5:3b"
-models                  = ["qwen2.5:3b"]
+default_model           = "qwen2.5-coder:14b"
+models                  = ["qwen2.5-coder:14b", "qwen2.5-coder:3b-base"]
 capabilities            = ["chat", "reasoning", "code"]
 priority_tier           = 999
 cost_score              = 0.0
@@ -609,6 +609,9 @@ selectable_requires_env = true
 # GCP vLLM  (large model cluster — Qwen3 32B, Gemma3 27B, DeepSeek R1 32B)
 # Configure: GOOGLE_CLOUD_VLLM_ENDPOINT=http://<your-vm-ip>:8000
 # ---------------------------------------------------------------------------
+# GCP vLLM VMs were terminated on 2026-01-11.  This provider is kept in the
+# config for reference but marked inactive until GCP infra is redeployed.
+# For dogfooding, use OpenAI or Anthropic instead.
 [providers.gcp_vllm]
 name                    = "GCP vLLM"
 endpoint_env            = "GOOGLE_CLOUD_VLLM_ENDPOINT"
@@ -637,7 +640,7 @@ cot_suppression_prompt  = "Be concise."
 supports_embeddings     = true
 tier                    = "private"
 display_name            = "GCP vLLM"
-is_active               = true
+is_active               = false
 selectable_requires_env = true
 
 # ---------------------------------------------------------------------------

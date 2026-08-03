@@ -46,6 +46,7 @@ def _get_learned_router():
 _MODE_MAP = {
     "RESEARCH": DepartmentId.RESEARCH,
     "DEEP_RESEARCH": DepartmentId.RESEARCH,
+    "FINANCE_ANALYST": DepartmentId.REASONING,
     "DEBUG": DepartmentId.REASONING,
     "GENERAL_ASSISTANT": DepartmentId.GENERAL,
 }

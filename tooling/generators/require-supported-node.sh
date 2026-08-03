@@ -13,7 +13,7 @@ get_node_major() {
   fi
 
   local version
-  version="$(node -v 2>/dev/null || true)"
+  version="$("${NODE:-node}" -v 2>/dev/null || true)"
   if [[ -z "${version}" ]]; then
     echo ""
     return 0

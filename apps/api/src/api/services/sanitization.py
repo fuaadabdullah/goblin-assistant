@@ -16,7 +16,7 @@ Usage:
     # Before sending to LLM
     clean_text, pii_found = sanitize_input_for_model(user_input)
     if pii_found:
-        logger.warning(f"PII detected: {pii_found}")
+        logger.warning("pii_detected", pii_types=pii_found)
 
     # Before logging
     safe_data = mask_sensitive({"message": msg, "api_key": key})

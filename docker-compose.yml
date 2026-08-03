@@ -29,14 +29,43 @@ services:
     restart: unless-stopped
 
   goblin-assistant-backend:
-    build: .
+    build:
+      context: .
+      args:
+        INSTALL_VECTOR_DEPS: ${BACKEND_INSTALL_VECTOR_DEPS:-0}
     ports:
       - '8001:8001'
     environment:
-      - ENV=production
+      - ENV=development
+      - ENVIRONMENT=development
+      - ENABLE_VECTOR_STORE=false
+      - DATABASE_URL=sqlite+aiosqlite:////app/state/goblin_assistant.db
+      - REDIS_URL=redis://redis:6379/0
+      - ALLOWED_ORIGINS=http://127.0.0.1:3000,http://localhost:3000
+      - LOCAL_LLM_API_KEY=local-dev-auth-key
+      - JWT_SECRET_KEY=${JWT_SECRET_KEY:?Run scripts/tests/bootstrap-env.sh and set JWT_SECRET_KEY}
+      - SUPABASE_URL=${SUPABASE_URL:-}
+      - SUPABASE_ANON_KEY=${SUPABASE_ANON_KEY:-}
+      - SUPABASE_SERVICE_ROLE_KEY=${SUPABASE_SERVICE_ROLE_KEY:-}
+      - OPENAI_API_KEY=${OPENAI_API_KEY:-}
+      - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY:-}
+      - GOOGLE_AI_API_KEY=${GOOGLE_AI_API_KEY:-}
+      - DEEPSEEK_API_KEY=${DEEPSEEK_API_KEY:-}
+      - GROQ_API_KEY=${GROQ_API_KEY:-}
+      - SILICONEFLOW_API_KEY=${SILICONEFLOW_API_KEY:-}
+      - TOGETHER_API_KEY=${TOGETHER_API_KEY:-}
+      - REPLICATE_API_KEY=${REPLICATE_API_KEY:-}
+      - HUGGINGFACE_API_KEY=${HUGGINGFACE_API_KEY:-}
+      - COHERE_API_KEY=${COHERE_API_KEY:-}
+      - DASHSCOPE_API_KEY=${DASHSCOPE_API_KEY:-}
+      - AZURE_API_KEY=${AZURE_API_KEY:-}
+      - AZURE_OPENAI_ENDPOINT=${AZURE_OPENAI_ENDPOINT:-}
+      - AZURE_REGION=${AZURE_REGION:-}
+      - AZURE_DEPLOYMENT_ID=${AZURE_DEPLOYMENT_ID:-}
+      - ATLASSIAN_API_TOKEN=${ATLASSIAN_API_TOKEN:-}
       - CELERY_BROKER_URL=redis://redis:6379/0
       - CELERY_RESULT_BACKEND=redis://redis:6379/0
-      - SANDBOX_ENABLED=true
+      - SANDBOX_ENABLED=${SANDBOX_ENABLED:-false}
       - SANDBOX_IMAGE=goblin-assistant-sandbox:latest
       - JOBS_DIR=/app/sandbox_jobs
       - PORT=8001
@@ -50,12 +79,12 @@ services:
       - api_state:/app/state
     read_only: true
     tmpfs:
-      - /tmp
+      - /tmp:size=256m,mode=1777
     depends_on:
       redis:
         condition: service_healthy
     healthcheck:
-      test: ['CMD', 'curl', '-f', 'http://localhost:8001/health']
+      test: ['CMD', 'curl', '-f', 'http://localhost:8001/api/v1/health']
       interval: 30s
       timeout: 10s
       retries: 3
@@ -78,7 +107,7 @@ services:
       - minio_data:/data
     environment:
       MINIO_ROOT_USER: ${MINIO_ROOT_USER:-dev_minio_user}
-      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD:?Set MINIO_ROOT_PASSWORD in .env}
+      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD:-dev_minio_password}
       MINIO_REGION_NAME: us-east-1
     command: server /data --console-address ":9001"
     healthcheck:
@@ -102,12 +131,12 @@ services:
         condition: service_healthy
     entrypoint: >
       /bin/sh -c "
-      mc alias set local http://minio:9000 ${MINIO_ROOT_USER:-minio} ${MINIO_ROOT_PASSWORD:?Set MINIO_ROOT_PASSWORD in .env};
+      mc alias set local http://minio:9000 ${MINIO_ROOT_USER:-dev_minio_user} ${MINIO_ROOT_PASSWORD:-dev_minio_password};
       mc mb local/goblin-sandbox || true;
       mc anonymous set public local/goblin-sandbox || true;
       echo 'MinIO bucket goblin-sandbox ready';
       "
-    restart: "no"
+    restart: 'no'
 
   docker-socket-proxy:
     image: tecnativa/docker-socket-proxy:0.3
@@ -130,7 +159,7 @@ services:
       - /var/run/docker.sock:/var/run/docker.sock:ro
     read_only: true
     tmpfs:
-      - /run
+      - /run:size=64m,mode=1777
     restart: unless-stopped
 
   sandbox-worker:
@@ -138,7 +167,7 @@ services:
       context: .
       dockerfile: Dockerfile.sandbox
     profiles: [sandbox]
-    command: ["python", "/home/runner/start_worker.py"]
+    command: ['python', '/home/runner/start_worker.py']
     environment:
       - REDIS_URL=redis://redis:6379/0
       - DOCKER_HOST=tcp://docker-socket-proxy:2375
@@ -148,7 +177,7 @@ services:
       - JOB_TIMEOUT_SECONDS=10
       - ARTIFACT_S3_ENDPOINT=http://minio:9000
       - S3_ACCESS_KEY=${S3_ACCESS_KEY:-dev_minio_user}
-      - S3_SECRET_KEY=${S3_SECRET_KEY:?Set S3_SECRET_KEY in .env}
+      - S3_SECRET_KEY=${S3_SECRET_KEY:-dev_minio_secret}
       - S3_BUCKET=goblin-sandbox
       - S3_REGION=us-east-1
       - MAX_ARTIFACT_SIZE_MB=10
@@ -157,7 +186,7 @@ services:
       - sandbox_jobs:/work
     read_only: true
     tmpfs:
-      - /tmp
+      - /tmp:size=256m,mode=1777
     depends_on:
       redis:
         condition: service_healthy
@@ -179,7 +208,7 @@ services:
     working_dir: /app/apps/api/src/api
     command: celery -A celery_app:app worker --loglevel=info --concurrency=2 --pool=prefork -Q high_priority
     environment:
-      - ENV=production
+      - ENV=development
       - CELERY_BROKER_URL=redis://redis:6379/0
       - CELERY_RESULT_BACKEND=redis://redis:6379/0
     volumes:
@@ -187,12 +216,16 @@ services:
       - api_logs:/app/logs
     read_only: true
     tmpfs:
-      - /tmp
+      - /tmp:size=256m,mode=1777
     depends_on:
       redis:
         condition: service_healthy
     healthcheck:
-      test: ['CMD-SHELL', 'celery -A celery_app:app inspect ping -d celery@$$HOSTNAME --timeout=5 | grep -q pong']
+      test:
+        [
+          'CMD-SHELL',
+          'celery -A celery_app:app inspect ping -d celery@$$HOSTNAME --timeout=5 | grep -q pong',
+        ]
       interval: 30s
       timeout: 10s
       retries: 3
@@ -210,7 +243,7 @@ services:
     working_dir: /app/apps/api/src/api
     command: celery -A celery_app:app worker --loglevel=info --concurrency=4 --pool=prefork -Q default
     environment:
-      - ENV=production
+      - ENV=development
       - CELERY_BROKER_URL=redis://redis:6379/0
       - CELERY_RESULT_BACKEND=redis://redis:6379/0
     volumes:
@@ -218,12 +251,16 @@ services:
       - api_logs:/app/logs
     read_only: true
     tmpfs:
-      - /tmp
+      - /tmp:size=256m,mode=1777
     depends_on:
       redis:
         condition: service_healthy
     healthcheck:
-      test: ['CMD-SHELL', 'celery -A celery_app:app inspect ping -d celery@$$HOSTNAME --timeout=5 | grep -q pong']
+      test:
+        [
+          'CMD-SHELL',
+          'celery -A celery_app:app inspect ping -d celery@$$HOSTNAME --timeout=5 | grep -q pong',
+        ]
       interval: 30s
       timeout: 10s
       retries: 3
@@ -241,7 +278,7 @@ services:
     working_dir: /app/apps/api/src/api
     command: celery -A celery_app:app worker --loglevel=info --concurrency=2 --pool=prefork -Q low_priority
     environment:
-      - ENV=production
+      - ENV=development
       - CELERY_BROKER_URL=redis://redis:6379/0
       - CELERY_RESULT_BACKEND=redis://redis:6379/0
     volumes:
@@ -249,12 +286,16 @@ services:
       - api_logs:/app/logs
     read_only: true
     tmpfs:
-      - /tmp
+      - /tmp:size=256m,mode=1777
     depends_on:
       redis:
         condition: service_healthy
     healthcheck:
-      test: ['CMD-SHELL', 'celery -A celery_app:app inspect ping -d celery@$$HOSTNAME --timeout=5 | grep -q pong']
+      test:
+        [
+          'CMD-SHELL',
+          'celery -A celery_app:app inspect ping -d celery@$$HOSTNAME --timeout=5 | grep -q pong',
+        ]
       interval: 30s
       timeout: 10s
       retries: 3
@@ -272,7 +313,7 @@ services:
     working_dir: /app/apps/api/src/api
     command: celery -A celery_app:app beat --loglevel=info --schedule=/tmp/celerybeat-schedule
     environment:
-      - ENV=production
+      - ENV=development
       - CELERY_BROKER_URL=redis://redis:6379/0
       - CELERY_RESULT_BACKEND=redis://redis:6379/0
     volumes:
@@ -280,12 +321,13 @@ services:
       - api_logs:/app/logs
     read_only: true
     tmpfs:
-      - /tmp
+      - /tmp:size=256m,mode=1777
     depends_on:
       redis:
         condition: service_healthy
     healthcheck:
-      test: ['CMD-SHELL', 'tr "\\0" " " < /proc/1/cmdline | grep -q "celery -A celery_app:app beat"']
+      test:
+        ['CMD-SHELL', 'tr "\\0" " " < /proc/1/cmdline | grep -q "celery -A celery_app:app beat"']
       interval: 30s
       timeout: 10s
       retries: 3
@@ -301,18 +343,21 @@ services:
     build: .
     profiles: [workers]
     working_dir: /app/apps/api/src/api
-    command: celery -A celery_app:app flower --address=0.0.0.0 --port=5555 --basic_auth=${FLOWER_BASIC_AUTH:?Set FLOWER_BASIC_AUTH=user:password in .env}
+    command:
+      - /bin/sh
+      - -c
+      - celery -A celery_app:app flower --address=0.0.0.0 --port=5555 --basic_auth="$${FLOWER_BASIC_AUTH:?Set FLOWER_BASIC_AUTH=user:password in .env}"
     ports:
       - '5555:5555'
     environment:
-      - ENV=production
+      - ENV=development
       - CELERY_BROKER_URL=redis://redis:6379/0
       - CELERY_RESULT_BACKEND=redis://redis:6379/0
     volumes:
       - ./apps/api/src/api:/app/apps/api/src/api:ro
     read_only: true
     tmpfs:
-      - /tmp
+      - /tmp:size=256m,mode=1777
     depends_on:
       redis:
         condition: service_healthy
@@ -337,7 +382,7 @@ services:
     ports:
       - '5556:5555'
     environment:
-      - ENV=production
+      - ENV=development
       - CELERY_BROKER_URL=redis://redis:6379/0
       - CELERY_RESULT_BACKEND=redis://redis:6379/0
     volumes:
@@ -345,7 +390,7 @@ services:
       - api_logs:/app/logs
     read_only: true
     tmpfs:
-      - /tmp
+      - /tmp:size=256m,mode=1777
     depends_on:
       redis:
         condition: service_healthy

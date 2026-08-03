@@ -19,20 +19,8 @@ afterAll(() => {
 });
 
 describe('useErrorTesting', () => {
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  let unhandledRejectionHandler: (...args: any[]) => void;
-
   beforeEach(() => {
     vi.clearAllMocks();
-    // Suppress unhandled promise rejections from the testUnhandledPromiseRejection test
-    unhandledRejectionHandler = () => {
-      /* swallow */
-    };
-    process.on('unhandledRejection', unhandledRejectionHandler);
-  });
-
-  afterEach(() => {
-    process.removeListener('unhandledRejection', unhandledRejectionHandler);
   });
 
   it('returns initial state', () => {
@@ -47,8 +35,8 @@ describe('useErrorTesting', () => {
       await result.current.testJavaScriptError();
     });
     expect(result.current.results).toHaveLength(1);
-    // It should fail because it throws an error inside wrapTest
     expect(result.current.results[0].label).toBe('JavaScript Error');
+    expect(result.current.results[0].status).toBe('failed');
   });
 
   it('testAsyncError adds a result', async () => {
@@ -58,6 +46,7 @@ describe('useErrorTesting', () => {
     });
     expect(result.current.results).toHaveLength(1);
     expect(result.current.results[0].label).toBe('Async Error');
+    expect(result.current.results[0].status).toBe('failed');
   });
 
   it('testNetworkError adds a result', async () => {
@@ -67,7 +56,7 @@ describe('useErrorTesting', () => {
     });
     expect(result.current.results).toHaveLength(1);
     expect(result.current.results[0].label).toBe('Network Error');
-    expect(result.current.results[0].status).toBe('success');
+    expect(result.current.results[0].status).toBe('failed');
   });
 
   it('testTypeError adds a failed result', async () => {
@@ -122,20 +111,24 @@ describe('useErrorTesting', () => {
     });
   });
 
-  it('runAllTests runs most tests and sets loading states', async () => {
-    // Note: We test individual methods separately; runAllTests calls all of them
-    // including testUnhandledPromiseRejection which creates an actual unhandled rejection.
-    // We test the core behavior via individual test method calls above.
+  it('runAllTests runs all tests and restores loading state', async () => {
     const { result } = renderHook(() => useErrorTesting());
-    // Test multiple individual methods
     await act(async () => {
-      await result.current.testSentryError();
-    });
-    await act(async () => {
-      await result.current.testSentryMessage();
+      await result.current.runAllTests();
     });
     expect(result.current.isLoading).toBe(false);
-    expect(result.current.results.length).toBe(2);
+    expect(result.current.results).toHaveLength(9);
+    expect(result.current.results.map((item) => item.label)).toEqual([
+      'JavaScript Error',
+      'Type Error',
+      'Custom Error',
+      'Async Error',
+      'Network Error',
+      'Unhandled Promise Rejection',
+      'Sentry Error',
+      'Sentry Message',
+      'Sentry Breadcrumb',
+    ]);
   });
 
   it('clearResults empties the results array', async () => {
@@ -159,10 +152,13 @@ describe('useErrorTesting', () => {
     expect(onSuccess).toHaveBeenCalledWith('Test completed', 'Sentry Error');
   });
 
-  // testUnhandledPromiseRejection intentionally creates a real unhandled rejection
-  // that Jest catches regardless of handlers. Verified the method exists instead.
-  it('exposes testUnhandledPromiseRejection method', () => {
+  it('testUnhandledPromiseRejection adds a failed result', async () => {
     const { result } = renderHook(() => useErrorTesting());
-    expect(typeof result.current.testUnhandledPromiseRejection).toBe('function');
+    await act(async () => {
+      await result.current.testUnhandledPromiseRejection();
+    });
+    expect(result.current.results).toHaveLength(1);
+    expect(result.current.results[0].label).toBe('Unhandled Promise Rejection');
+    expect(result.current.results[0].status).toBe('failed');
   });
 });

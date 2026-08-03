@@ -510,6 +510,8 @@ async def generate_chat_stream(
                 "tokens": total_tokens,
                 "department": used_department,
                 "department_reason": used_department_reason,
+                "provider": used_provider,
+                "model": used_model,
                 "duration_ms": duration_ms,
                 "message_id": response_message_id,
                 "done": True,

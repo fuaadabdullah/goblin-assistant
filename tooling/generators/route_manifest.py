@@ -16,7 +16,6 @@ from fastapi.routing import APIRoute
 from tooling.generators.route_inventory_shared import (
     API_V1_PREFIX,
     METHOD_ORDER,
-    group_for_path,
     method_sort_key,
     normalize_tags,
     normalize_text,
@@ -43,6 +42,95 @@ class RouteRecord:
     canonical_path: str
     deprecated: bool
     replacement_path: str | None
+
+
+@dataclass(frozen=True)
+class RouteEntry:
+    route: APIRoute
+    path: str
+    include_in_schema: bool
+    deprecated: bool
+    tags: tuple[str, ...]
+
+
+def _join_route_path(prefix: str, path: str) -> str:
+    if not prefix:
+        return path or "/"
+    if not path:
+        return prefix
+    return f"{prefix.rstrip('/')}/{path.lstrip('/')}"
+
+
+def _manifest_tags(*candidates: object) -> tuple[str, ...]:
+    for candidate in candidates:
+        normalized = normalize_tags(
+            list(candidate) if isinstance(candidate, tuple) else candidate
+        )
+        if not normalized:
+            continue
+
+        seen: set[str] = set()
+        unique_tags: list[str] = []
+        for tag in normalized:
+            if tag in seen:
+                continue
+
+            seen.add(tag)
+            unique_tags.append(tag)
+        return tuple(unique_tags)
+
+    return ()
+
+
+def _iter_route_entries(
+    routes,
+    *,
+    prefix: str = "",
+    include_in_schema: bool = True,
+    deprecated: bool = False,
+    tags: tuple[str, ...] = (),
+):
+    for route in routes:
+        if isinstance(route, APIRoute):
+            yield RouteEntry(
+                route=route,
+                path=_join_route_path(prefix, getattr(route, "path", "")),
+                include_in_schema=include_in_schema
+                and bool(getattr(route, "include_in_schema", True)),
+                deprecated=deprecated or bool(getattr(route, "deprecated", False)),
+                tags=(
+                    *tags,
+                    *tuple(tag for tag in getattr(route, "tags", ()) if isinstance(tag, str)),
+                ),
+            )
+            continue
+
+        include_context = getattr(route, "include_context", None)
+        included_router = getattr(route, "original_router", None) or getattr(
+            include_context, "included_router", None
+        )
+        included_routes = getattr(included_router, "routes", None)
+        if included_routes is None:
+            continue
+
+        context_prefix = getattr(include_context, "prefix", "")
+        router_tags = tuple(
+            tag for tag in getattr(included_router, "tags", ()) if isinstance(tag, str)
+        )
+        context_tags = (
+            *tuple(tag for tag in getattr(include_context, "tags", ()) if isinstance(tag, str)),
+            *router_tags,
+        )
+        context_include = bool(getattr(include_context, "include_in_schema", True))
+        context_deprecated = bool(getattr(include_context, "deprecated", False))
+
+        yield from _iter_route_entries(
+            included_routes,
+            prefix=_join_route_path(prefix, context_prefix),
+            include_in_schema=include_in_schema and context_include,
+            deprecated=deprecated or context_deprecated,
+            tags=(*tags, *context_tags),
+        )
 
 
 def _build_operation_index(schema: dict[str, object]) -> dict[tuple[str, str], dict[str, Any]]:
@@ -74,16 +162,14 @@ def _route_records_from_app(api_app, schema: dict[str, object] | None = None) ->
     operation_index = _build_operation_index(schema or {})
     records: list[RouteRecord] = []
 
-    for route in api_app.routes:
-        if not isinstance(route, APIRoute):
-            continue
-
-        path = getattr(route, "path", "")
-        if not isinstance(path, str) or not path:
+    for entry in _iter_route_entries(api_app.routes):
+        route = entry.route
+        path = entry.path
+        if not path:
             continue
 
         logical_path = strip_version_prefix(path)
-        include_in_schema = bool(getattr(route, "include_in_schema", True))
+        include_in_schema = entry.include_in_schema
 
         methods = sorted(
             (
@@ -107,8 +193,8 @@ def _route_records_from_app(api_app, schema: dict[str, object] | None = None) ->
                 or getattr(route, "name", None),
                 fallback="-",
             )
-            tags = normalize_tags(
-                (operation or {}).get("tags") or getattr(route, "tags", None)
+            tags = _manifest_tags(
+                (operation or {}).get("tags"), entry.tags, getattr(route, "tags", None)
             )
             operation_id = normalize_text(
                 (operation or {}).get("operationId")
@@ -136,12 +222,19 @@ def _route_records_from_app(api_app, schema: dict[str, object] | None = None) ->
                     include_in_schema=include_in_schema,
                     compatibility_aliases=(),
                     canonical_path=path,
-                    deprecated=bool(
-                        (operation or {}).get("deprecated", getattr(route, "deprecated", False))
-                    ),
+                    deprecated=bool((operation or {}).get("deprecated", entry.deprecated)),
                     replacement_path=replacement_path,
                 )
             )
+
+    public_keys = {
+        (record.method, record.logical_path) for record in records if record.include_in_schema
+    }
+    records = [
+        record
+        for record in records
+        if record.include_in_schema or (record.method, record.logical_path) not in public_keys
+    ]
 
     alias_map: dict[tuple[str, str], list[str]] = defaultdict(list)
     for record in records:

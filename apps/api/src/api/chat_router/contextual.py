@@ -18,10 +18,16 @@ from api.config.archetypes import (
     is_deep_research_mode as _is_deep_research_mode,
 )
 from api.config.archetypes import (
+    is_finance_analyst_mode as _is_finance_analyst_mode,
+)
+from api.config.archetypes import (
     is_general_assistant_mode as _is_general_assistant_mode,
 )
 from api.config.archetypes import (
     missing_deep_research_tools as _missing_deep_research_tools,
+)
+from api.config.archetypes import (
+    missing_finance_analyst_tools as _missing_finance_analyst_tools,
 )
 from api.config.archetypes import (
     missing_general_assistant_tools as _missing_general_assistant_tools,
@@ -173,6 +179,16 @@ async def contextual_chat(
             if missing_tools:
                 logger.warning(
                     "deep_research_required_tools_missing",
+                    provider=request.provider,
+                    mode=request.mode,
+                    missing_tools=missing_tools,
+                    registered_tool_count=len(ctx_tools),
+                )
+        if _is_finance_analyst_mode(request.mode) and ctx_tools:
+            missing_tools = _missing_finance_analyst_tools(ctx_tools)
+            if missing_tools:
+                logger.warning(
+                    "finance_analyst_required_tools_missing",
                     provider=request.provider,
                     mode=request.mode,
                     missing_tools=missing_tools,

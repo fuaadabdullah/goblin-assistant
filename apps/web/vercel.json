@@ -1,6 +1,11 @@
 {
   "framework": "nextjs",
   "installCommand": "pnpm install --no-frozen-lockfile",
+  "git": {
+    "deploymentEnabled": {
+      "main": true
+    }
+  },
   "env": {
     "GOBLIN_BACKEND_URL": "https://goblin-backend-dt30.onrender.com",
     "BACKEND_URL": "https://goblin-backend-dt30.onrender.com",

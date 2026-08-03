@@ -10,6 +10,7 @@ def test_general_assistant_mode_addendum_resolves():
     assert "[GENERAL ASSISTANT MODE]" in addendum
     assert "lightweight research" in addendum.lower()
     assert "web_search or lightweight_research" in addendum.lower()
+    assert "dedicated market-data tools" in addendum.lower()
 
 
 def test_unknown_mode_still_raises_key_error():
@@ -35,6 +36,16 @@ def test_deep_research_mode_listed():
     assert "DEEP_RESEARCH" in list_modes()
 
 
+def test_finance_analyst_mode_addendum_resolves():
+    addendum = get_addendum("FINANCE_ANALYST")
+    assert "[FINANCE ANALYST MODE]" in addendum
+    assert "fixed brief template" in addendum.lower()
+
+
+def test_finance_analyst_mode_listed():
+    assert "FINANCE_ANALYST" in list_modes()
+
+
 def test_research_category_addendum_mentions_live_sources():
     addendum = CATEGORY_ADDENDUMS["research"]
     assert "web_search or lightweight_research" in addendum
@@ -42,4 +53,5 @@ def test_research_category_addendum_mentions_live_sources():
 
 def test_finance_category_addendum_mentions_live_sources():
     addendum = CATEGORY_ADDENDUMS["finance"]
-    assert "web_search or lightweight_research" in addendum
+    assert "prefer dedicated finance tools" in addendum
+    assert "Snapshot; Why It Matters; Risks / Unknowns; Sources / Data Used" in addendum

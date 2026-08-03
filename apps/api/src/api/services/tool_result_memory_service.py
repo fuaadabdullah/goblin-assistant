@@ -17,7 +17,7 @@ from __future__ import annotations
 import json
 import re
 from datetime import datetime
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List, Optional, Set
 
 import structlog
 
@@ -29,17 +29,38 @@ from .memory_promotion import (
 
 logger = structlog.get_logger(__name__)
 
-# Tool names that produce extractable financial facts
-_FINANCIAL_TOOLS = {
-    "dcf_calculator",
-    "portfolio_analyzer",
-    "earnings_summarizer",
-    "stock_screener",
-    "get_current_quote",
-    "get_price_history",
-    "get_financials",
-    "get_earnings",
-    "get_key_ratios",
+_NON_TICKER_UPPERCASE_TOKENS = {
+    "AUD",
+    "CAD",
+    "CHF",
+    "CNY",
+    "DCF",
+    "DKK",
+    "EBITDA",
+    "EUR",
+    "EPS",
+    "EV",
+    "FCF",
+    "GAAP",
+    "GBP",
+    "HKD",
+    "INR",
+    "IPO",
+    "JPY",
+    "KRW",
+    "MXN",
+    "NOK",
+    "NZD",
+    "PB",
+    "PE",
+    "PEG",
+    "ROA",
+    "ROE",
+    "SEK",
+    "SGD",
+    "USD",
+    "WACC",
+    "YTD",
 }
 
 # ── Extraction helpers ────────────────────────────────────────────
@@ -79,6 +100,49 @@ def _extract_dcf_facts(result: Dict[str, Any], args: Dict[str, Any]) -> List[Dic
                     f"terminal_growth={assumptions.get('terminal_growth_rate', 0.025) * 100:.1f}%"
                 ),
                 "category": "financial_profile",
+            }
+        )
+
+    return facts
+
+
+def _extract_market_data_facts(
+    result: Dict[str, Any], args: Dict[str, Any]
+) -> List[Dict[str, str]]:
+    """Extract promotable facts from direct market-data tool results."""
+    facts: List[Dict[str, str]] = []
+    ticker = str(args.get("ticker") or result.get("ticker") or "").strip().upper()
+    if not ticker:
+        return facts
+
+    facts.append(
+        {
+            "content": f"Watchlist focus: {ticker}",
+            "category": "financial_profile",
+        }
+    )
+
+    price = None
+    for key in ("price", "current_price", "regular_market_price"):
+        candidate = result.get(key)
+        if candidate is not None:
+            price = candidate
+            break
+    currency = result.get("currency") or "USD"
+    if isinstance(price, (int, float)):
+        facts.append(
+            {
+                "content": f"{ticker} latest quoted price: {price:.2f} {currency}",
+                "category": "instrument",
+            }
+        )
+
+    next_earnings = result.get("next_earnings_date")
+    if next_earnings:
+        facts.append(
+            {
+                "content": f"{ticker} next earnings date: {next_earnings}",
+                "category": "instrument",
             }
         )
 
@@ -201,6 +265,11 @@ _EXTRACTORS = {
     "portfolio_analyzer": _extract_portfolio_facts,
     "earnings_summarizer": _extract_earnings_facts,
     "stock_screener": _extract_screener_facts,
+    "get_stock_quote": _extract_market_data_facts,
+    "get_price_history": _extract_market_data_facts,
+    "get_financials": _extract_market_data_facts,
+    "get_earnings": _extract_market_data_facts,
+    "get_key_ratios": _extract_market_data_facts,
 }
 
 
@@ -295,7 +364,7 @@ async def get_financial_profile(
     try:
         facts = await retrieval_svc.retrieve_memory_facts(
             user_id=user_id,
-            query="financial profile portfolio DCF assumptions",
+            query="financial profile watchlist portfolio DCF assumptions",
             categories=[
                 "financial_profile",
                 "instrument",
@@ -320,21 +389,52 @@ async def get_financial_profile(
         if cat == "financial_profile":
             if "DCF assumptions" in text:
                 profile["last_dcf_assumptions"] = _parse_dcf_assumptions(text)
+            elif text.startswith("Watchlist focus: "):
+                _append_unique_tickers(
+                    profile["watched_tickers"],
+                    _extract_candidate_tickers(text),
+                )
             elif "Screen '" in text and "returned" in text:
                 profile["recent_screens"].append(text)
         elif cat == "instrument":
-            tickers = re.findall(r"\b[A-Z]{1,5}\b", text)
-            for t in tickers:
-                if t not in profile["watched_tickers"]:
-                    profile["watched_tickers"].append(t)
+            _append_unique_tickers(
+                profile["watched_tickers"],
+                _extract_candidate_tickers(text),
+            )
         elif cat == "portfolio_action":
             if "holdings analyzed" in text.lower():
                 profile["portfolio_snapshot"] = text
+                _append_unique_tickers(
+                    profile["watched_tickers"],
+                    _extract_candidate_tickers(text),
+                )
         elif cat == "risk_signal":
             if "risk snapshot" in text.lower():
                 profile["risk_snapshot"] = text
 
     return profile
+
+
+def _extract_candidate_tickers(text: str) -> List[str]:
+    """Return plausible tickers while filtering common finance acronyms."""
+    seen: Set[str] = set()
+    tickers: List[str] = []
+    for token in re.findall(r"\b[A-Z][A-Z.\-]{0,5}\b", text):
+        clean = token.strip(".,:;()[]{}")
+        if not clean or clean in _NON_TICKER_UPPERCASE_TOKENS:
+            continue
+        if not any(ch.isalpha() for ch in clean):
+            continue
+        if clean not in seen:
+            seen.add(clean)
+            tickers.append(clean)
+    return tickers
+
+
+def _append_unique_tickers(target: List[str], tickers: List[str]) -> None:
+    for ticker in tickers:
+        if ticker not in target:
+            target.append(ticker)
 
 
 def _parse_dcf_assumptions(text: str) -> Dict[str, Any]:

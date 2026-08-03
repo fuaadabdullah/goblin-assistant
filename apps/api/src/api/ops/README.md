@@ -225,7 +225,7 @@ import datetime
 payload = {
     "user_id": "admin-user",
     "permissions": ["ops", "admin"],
-    "exp": datetime.datetime.utcnow() + datetime.timedelta(hours=24)
+    "exp": datetime.datetime.utcnow() + datetime.timedelta(hours=24),
 }
 
 token = jwt.encode(payload, "your-secret-key", algorithm="HS256")
@@ -287,13 +287,9 @@ await send_circuit_breaker_alert("anthropic", "OPEN")
 ### DataDog Dashboard
 ```python
 # Initialize DataDog integration
-await initialize_monitoring({
-    "datadog": {
-        "enabled": True,
-        "api_key": "your-api-key",
-        "app_key": "your-app-key"
-    }
-})
+await initialize_monitoring(
+    {"datadog": {"enabled": True, "api_key": "your-api-key", "app_key": "your-app-key"}}
+)
 
 # Send metrics automatically
 await send_system_metrics()

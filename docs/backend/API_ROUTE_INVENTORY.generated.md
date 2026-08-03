@@ -9,10 +9,10 @@ Generated from `packages/sdk/openapi/routes.json` and `packages/sdk/openapi/open
 
 ## Snapshot
 
-- **Mounted paths**: 190
-- **Operations**: 203
-- **OpenAPI paths**: 190
-- **Versioned operations (`/api/v1`)**: 200
+- **Mounted paths**: 191
+- **Operations**: 204
+- **OpenAPI paths**: 191
+- **Versioned operations (`/api/v1`)**: 201
 - **Legacy dual-mount operations**: 0
 - **Deprecated operations**: 3
 - **Hidden manifest operations**: 1
@@ -21,7 +21,7 @@ Generated from `packages/sdk/openapi/routes.json` and `packages/sdk/openapi/open
 
 | Group | Operations |
 | --- | ---: |
-| `/api/v1` | 200 |
+| `/api/v1` | 201 |
 | `/` | 1 |
 | `/metrics` | 1 |
 | `/test` | 1 |
@@ -134,6 +134,7 @@ The `/api/v1` routes are the canonical public API surface.
 | GET | /api/v1/health/latency-history/{service} | /health/latency-history/{service} | stable | - | Health Latency History | health | health_latency_history_api_v1_health_latency_history__service__get |
 | GET | /api/v1/health/live | /health/live | stable | - | Liveness Check | health | liveness_check_api_v1_health_live_get |
 | GET | /api/v1/health/mcp/status | /health/mcp/status | stable | - | Health Mcp | health | health_mcp_api_v1_health_mcp_status_get |
+| GET | /api/v1/health/providers | /health/providers | stable | - | Health Providers | health | health_providers_api_v1_health_providers_get |
 | GET | /api/v1/health/raptor/status | /health/raptor/status | stable | - | Health Raptor | health | health_raptor_api_v1_health_raptor_status_get |
 | GET | /api/v1/health/ready | /health/ready | stable | - | Readiness Check | health | readiness_check_api_v1_health_ready_get |
 | POST | /api/v1/health/retest/{service} | /health/retest/{service} | stable | - | Health Retest | health | health_retest_api_v1_health_retest__service__post |

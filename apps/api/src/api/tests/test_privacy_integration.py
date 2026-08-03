@@ -114,6 +114,9 @@ class TestVectorStore:
     def vector_store(self, monkeypatch, request):
         """Create a test vector store."""
 
+        if not safe_vector_store_module.CHROMADB_AVAILABLE:
+            pytest.skip("chromadb is an optional vector dependency")
+
         class _DeterministicEmbeddingFunction:
             @staticmethod
             def name():

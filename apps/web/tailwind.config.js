@@ -25,20 +25,27 @@ module.exports = {
         bg: 'var(--bg)',
         surface: 'var(--surface)',
         text: 'var(--text)',
+        'text-primary': 'var(--text-primary)',
+        'text-secondary': 'var(--text-secondary)',
+        'text-muted': 'var(--text-muted)',
+        'text-inverse': 'var(--text-inverse)',
         muted: 'var(--muted)',
 
         // Brand colors with variants
         primary: 'var(--primary)',
         'primary-300': 'var(--primary-300)',
         'primary-600': 'var(--primary-600)',
+        'primary-hover': 'var(--primary-hover)',
 
         accent: 'var(--accent)',
         'accent-300': 'var(--accent-300)',
         'accent-600': 'var(--accent-600)',
+        'accent-hover': 'var(--accent-hover)',
 
         cta: 'var(--cta)',
         'cta-300': 'var(--cta-300)',
         'cta-600': 'var(--cta-600)',
+        'cta-hover': 'var(--cta-hover)',
 
         // Semantic colors
         success: 'var(--success)',

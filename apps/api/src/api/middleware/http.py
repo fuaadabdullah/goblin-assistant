@@ -14,8 +14,9 @@ from fastapi.responses import JSONResponse
 from starlette.middleware.base import BaseHTTPMiddleware
 from starlette.types import ASGIApp
 
-from api.core.contracts import ApiErrorPayload, ErrorEnvelope
+from api.core.contracts import ApiErrorPayload
 from api.core.error_types import ErrorType
+from api.core.errors import error_envelope_content
 from api.observability.telemetry import (
     record_request_end,
     record_request_observation,
@@ -121,16 +122,16 @@ class AuthenticationMiddleware(BaseHTTPMiddleware):
             return JSONResponse(
                 status_code=500,
                 headers={"X-Request-ID": request_id},
-                content=ErrorEnvelope(
-                    error=ApiErrorPayload(
+                content=error_envelope_content(
+                    ApiErrorPayload(
                         code="CONFIGURATION_ERROR",
                         type=ErrorType.AUTHENTICATION,
                         message="API authentication not configured",
                         request_id=request_id,
                         timestamp=timestamp,
                         details={"reason": "missing_api_key"},
-                    )
-                ).model_dump(exclude_none=True),
+                    ),
+                ),
             )
 
         if not api_key_header or api_key_header != self.api_key:
@@ -144,16 +145,16 @@ class AuthenticationMiddleware(BaseHTTPMiddleware):
             return JSONResponse(
                 status_code=401,
                 headers={"X-Request-ID": request_id},
-                content=ErrorEnvelope(
-                    error=ApiErrorPayload(
+                content=error_envelope_content(
+                    ApiErrorPayload(
                         code="AUTHENTICATION_REQUIRED",
                         type=ErrorType.AUTHENTICATION,
                         message="Valid API key required",
                         request_id=request_id,
                         timestamp=timestamp,
                         details={"reason": "invalid_api_key"},
-                    )
-                ).model_dump(exclude_none=True),
+                    ),
+                ),
             )
 
         # Authentication successful
@@ -276,16 +277,16 @@ class ErrorHandlingMiddleware(BaseHTTPMiddleware):
             return JSONResponse(
                 status_code=500,
                 headers={"X-Request-ID": request_id},
-                content=ErrorEnvelope(
-                    error=ApiErrorPayload(
+                content=error_envelope_content(
+                    ApiErrorPayload(
                         code="INTERNAL_ERROR",
                         type=ErrorType.INTERNAL,
                         message=error_message,
                         request_id=request_id,
                         timestamp=timestamp,
                         details=details if details else None,
-                    )
-                ).model_dump(exclude_none=True),
+                    ),
+                ),
             )
         finally:
             record_request_end(request.method, route)

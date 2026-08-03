@@ -3,8 +3,11 @@ from __future__ import annotations
 from api.assistant_tools.registry import export_openai_tools
 from api.config.archetypes import (
     DEEP_RESEARCH_CONTRACT,
+    FINANCE_ANALYST_CONTRACT,
     GENERAL_ASSISTANT_CONTRACT,
+    is_finance_analyst_mode,
     missing_deep_research_tools,
+    missing_finance_analyst_tools,
     missing_general_assistant_tools,
 )
 
@@ -63,3 +66,34 @@ def test_deep_research_contract_satisfied_by_exported_tool_payload():
     exported = export_openai_tools()
     missing = missing_deep_research_tools(exported)
     assert missing == []
+
+
+def test_finance_analyst_capability_labels_are_stable():
+    assert tuple(FINANCE_ANALYST_CONTRACT.required_capabilities) == (
+        "financial_memory",
+        "market_data",
+        "portfolio_analysis",
+        "earnings_analysis",
+        "financial_news",
+        "lightweight_research",
+    )
+
+
+def test_finance_analyst_required_tool_set_includes_core_domains():
+    tools = FINANCE_ANALYST_CONTRACT.required_tool_names
+    assert "memory_recall" in tools
+    assert "get_stock_quote" in tools
+    assert "news_summarizer" in tools
+    assert "portfolio_analyzer" in tools
+    assert "lightweight_research" in tools
+
+
+def test_finance_analyst_contract_satisfied_by_exported_tool_payload():
+    exported = export_openai_tools()
+    missing = missing_finance_analyst_tools(exported)
+    assert missing == []
+
+
+def test_finance_analyst_mode_predicate_does_not_expand_to_trading_forge():
+    assert is_finance_analyst_mode("FINANCE_ANALYST") is True
+    assert is_finance_analyst_mode("TRADING_FORGE") is False

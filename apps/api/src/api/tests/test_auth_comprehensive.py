@@ -320,7 +320,7 @@ class TestRegisterEndpoint:
             )
 
         assert response.status_code == 400
-        assert "already registered" in response.json()["detail"]
+        assert "already registered" in response.json()["detail"].lower()
 
     def test_register_rate_limited(self, client, csrf_always_valid):
         # Force the rate-limiter to deny — verifies the route returns 429.

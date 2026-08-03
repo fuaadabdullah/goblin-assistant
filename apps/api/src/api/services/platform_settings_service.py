@@ -9,12 +9,13 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from api.core.errors import DomainError
 from api.storage.conversations import DatabaseConversationStore
-from api.storage.database import get_db
+from api.storage.database import get_db, get_readonly_db
 from api.storage.models import ApiKeyModel, FeatureFlagModel, SupportTicketModel
 from api.storage.saas_service import SaaSSettingsService
 from api.storage.user_service import UserService
 
 get_platform_db = get_db
+get_readonly_platform_db = get_readonly_db
 
 
 async def save_account_profile(

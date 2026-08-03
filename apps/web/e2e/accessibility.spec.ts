@@ -1,10 +1,12 @@
 import { expect, test } from '@playwright/test';
-import { checkA11y, injectAxe } from '@axe-core/playwright';
+import AxeBuilder from '@axe-core/playwright';
 import { mockCommonApiRoutes } from './support/common-mocks';
 
 const AUTH_COOKIES = [
   { name: 'goblin_auth', value: '1', domain: 'localhost', path: '/' },
   { name: 'goblin_admin', value: '1', domain: 'localhost', path: '/' },
+  { name: 'goblin_e2e_auth', value: '1', domain: 'localhost', path: '/' },
+  { name: 'goblin_e2e_admin', value: '1', domain: 'localhost', path: '/' },
   { name: 'session_token', value: 'mock-session-token-e2e', domain: 'localhost', path: '/' },
 ];
 
@@ -37,7 +39,7 @@ async function mockAuditApi(page: import('@playwright/test').Page) {
     await route.fulfill({ status: 200, contentType: 'application/json', body: envelope([]) });
   });
 
-  await page.route('**/api/v1/search/**', async (route) => {
+  await page.route('**/api/search/**', async (route) => {
     await route.fulfill({
       status: 200,
       contentType: 'application/json',
@@ -45,11 +47,19 @@ async function mockAuditApi(page: import('@playwright/test').Page) {
     });
   });
 
-  await page.route('**/api/v1/settings/**', async (route) => {
+  await page.route('**/api/settings/**', async (route) => {
     await route.fulfill({
       status: 200,
       contentType: 'application/json',
-      body: envelope({ providers: [], models: [], default_provider: null, default_model: null }),
+      body: JSON.stringify([
+        {
+          id: 'openai',
+          name: 'OpenAI',
+          enabled: true,
+          configured: true,
+          models: ['gpt-4o-mini'],
+        },
+      ]),
     });
   });
 
@@ -91,11 +101,15 @@ test.describe('core accessibility audit', () => {
     test(`${route} has no automated accessibility violations`, async ({ page }) => {
       await page.goto(route, { waitUntil: 'networkidle' });
       await expect(page.locator('body')).toBeVisible();
-      await injectAxe(page);
-      await checkA11y(page, undefined, {
-        detailedReport: true,
-        detailedReportOptions: { html: true },
-      });
+      const results = await new AxeBuilder({ page })
+        .withTags(['wcag2a', 'wcag2aa', 'wcag21a', 'wcag21aa'])
+        .analyze();
+      expect(
+        results.violations,
+        results.violations
+          .map((violation) => `${violation.id}: ${violation.help} (${violation.nodes.length})`)
+          .join('\n')
+      ).toEqual([]);
     });
   }
 });

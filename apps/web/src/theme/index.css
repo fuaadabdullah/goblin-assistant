@@ -53,7 +53,7 @@
   /* Semantic colors */
   --success: #6cc24a; /* Green (keep for validation, slightly warmed) */
   --warning: #e8a426; /* Warm gold warning */
-  --danger: #e74c3c; /* Warm red for errors */
+  --danger: #ff7566; /* Accessible warm red for errors on dark surfaces */
   --info: #8bb3e8; /* Slightly warmed blue info */
 
   /* Text hierarchy - explicit semantic roles */
