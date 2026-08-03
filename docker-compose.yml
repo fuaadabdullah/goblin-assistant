@@ -43,7 +43,7 @@ services:
       - REDIS_URL=redis://redis:6379/0
       - ALLOWED_ORIGINS=http://127.0.0.1:3000,http://localhost:3000
       - LOCAL_LLM_API_KEY=local-dev-auth-key
-      - JWT_SECRET_KEY=${JWT_SECRET_KEY:?Run scripts/bootstrap-env.sh and set JWT_SECRET_KEY}
+      - JWT_SECRET_KEY=${JWT_SECRET_KEY:?Run scripts/tests/bootstrap-env.sh and set JWT_SECRET_KEY}
       - SUPABASE_URL=${SUPABASE_URL:-}
       - SUPABASE_ANON_KEY=${SUPABASE_ANON_KEY:-}
       - SUPABASE_SERVICE_ROLE_KEY=${SUPABASE_SERVICE_ROLE_KEY:-}

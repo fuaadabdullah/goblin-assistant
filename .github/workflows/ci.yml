@@ -312,7 +312,7 @@ jobs:
           python-version: '3.11'
 
       - name: Run live login and real-provider chat smoke
-        run: python scripts/smoke-chat.py
+        run: python scripts/tests/smoke-chat.py
 
   build:
     name: build

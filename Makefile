@@ -120,7 +120,7 @@ check-providers-json:
 	PYTHONPATH=packages/shared/src $(PYTHON) tooling/generators/generate-providers-json.py --check
 
 bootstrap-env:
-	$(PYTHON) scripts/bootstrap-env.py
+	$(PYTHON) scripts/tests/bootstrap-env.py
 
 web-dev:
 	mkdir -p .tmp
@@ -229,10 +229,10 @@ test-e2e-budget:
 	bash tooling/quality/check-e2e-budget.sh
 
 smoke-auth:
-	$(PYTHON) scripts/smoke-auth.py
+	$(PYTHON) scripts/tests/smoke-auth.py
 
 smoke-chat:
-	$(PYTHON) scripts/smoke-chat.py
+	$(PYTHON) scripts/tests/smoke-chat.py
 
 test-integration:
 	$(PYTHON) tooling/quality/run-test-bucket.py integration
