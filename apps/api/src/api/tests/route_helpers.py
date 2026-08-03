@@ -23,6 +23,14 @@ def _join_route_path(prefix: str, path: str) -> str:
 
 
 def iter_route_views(routes: Iterable[object], *, prefix: str = "") -> Iterator[RouteView]:
+    """Yield a RouteView for every APIRoute reachable from *routes*.
+
+    Handles three FastAPI/Starlette layouts:
+    A) Flat: include_router stores APIRoute objects directly with full paths.
+    B) _IncludedRouter (FastAPI 0.141+/Starlette 0.49): wrapper with
+       .original_router (sub-router) and .include_context.prefix (prefix).
+    C) Starlette Mount: .path carries the prefix, .routes the sub-routes.
+    """
     for route in routes:
         if isinstance(route, APIRoute):
             yield RouteView(
@@ -32,13 +40,24 @@ def iter_route_views(routes: Iterable[object], *, prefix: str = "") -> Iterator[
             )
             continue
 
-        # Handle _IncludedRouter (FastAPI 0.111+/Starlette 0.49+) and Starlette Mount.
-        # _IncludedRouter stores the sub-router via .router and the prefix via .prefix
-        # or .path depending on the version. Mount stores sub-routes in .routes with
-        # the prefix in .path. Prefer .prefix (set by include_router); fall back to
-        # .path (Mount) then empty string.
-        route_prefix = getattr(route, "prefix", None) or getattr(route, "path", None) or ""
-        sub_router = getattr(route, "router", route)
+        # Layout B: _IncludedRouter (FastAPI 0.141+/Starlette 0.49)
+        include_context = getattr(route, "include_context", None)
+        if include_context is not None:
+            route_prefix = getattr(include_context, "prefix", "") or ""
+            sub_router = getattr(route, "original_router", None) or getattr(
+                include_context, "included_router", None
+            )
+        else:
+            # Layout C: Mount (.path + .routes) or older .router + .prefix
+            sub_router = getattr(route, "router", None)
+            route_prefix = (
+                getattr(route, "prefix", None) or getattr(route, "path", None) or ""
+            )
+            if sub_router is None:
+                sub_router = route  # Mount: .routes lives on route itself
+
+        if sub_router is None:
+            continue
         included_routes = getattr(sub_router, "routes", None)
         if included_routes is None:
             continue
