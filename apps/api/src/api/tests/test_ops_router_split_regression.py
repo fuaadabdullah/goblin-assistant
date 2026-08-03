@@ -23,11 +23,7 @@ def test_reset_route_registered_once() -> None:
 
 def test_expected_ops_routes_present() -> None:
     app = _ops_app()
-    paths = {
-        path
-        for path, _ in _collect_routes(app)
-        if path.startswith("/api/v1/ops/")
-    }
+    paths = {path for path, _ in _collect_routes(app) if path.startswith("/api/v1/ops/")}
 
     assert "/api/v1/ops/health/summary" in paths
     assert "/api/v1/ops/providers/status" in paths

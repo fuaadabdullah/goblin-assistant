@@ -388,9 +388,7 @@ def _collect_routes(router_or_app, prefix=""):
             else:
                 # Layout C: Mount (.path + .routes) or older .router + .prefix
                 sub_router = getattr(item, "router", None)
-                item_prefix = (
-                    getattr(item, "prefix", None) or getattr(item, "path", None) or ""
-                )
+                item_prefix = getattr(item, "prefix", None) or getattr(item, "path", None) or ""
                 if sub_router is None:
                     sub_router = item  # Mount: .routes lives on item itself
 
@@ -420,9 +418,7 @@ def find_api_route(router_or_app, path_suffix, prefix=""):
                 )
             else:
                 sub_router = getattr(item, "router", None)
-                item_prefix = (
-                    getattr(item, "prefix", None) or getattr(item, "path", None) or ""
-                )
+                item_prefix = getattr(item, "prefix", None) or getattr(item, "path", None) or ""
                 if sub_router is None:
                     sub_router = item
 
