@@ -32,17 +32,23 @@ def iter_route_views(routes: Iterable[object], *, prefix: str = "") -> Iterator[
             )
             continue
 
-        include_context = getattr(route, "include_context", None)
-        included_router = getattr(route, "original_router", None) or getattr(
-            include_context,
-            "included_router",
-            None,
-        )
-        included_routes = getattr(included_router, "routes", None)
+        # FastAPI 0.111+/Starlette 0.49+ wraps included routers as _IncludedRouter
+        # which exposes the sub-router via .router and the prefix via .prefix.
+        # Older patterns used include_context/original_router; try both.
+        sub_router = getattr(route, "router", None)
+        route_prefix = getattr(route, "prefix", "")
+        if sub_router is None:
+            include_context = getattr(route, "include_context", None)
+            sub_router = getattr(route, "original_router", None) or getattr(
+                include_context, "included_router", None
+            )
+            route_prefix = getattr(include_context, "prefix", "") if include_context else ""
+
+        included_routes = getattr(sub_router, "routes", None)
         if included_routes is None:
             continue
 
         yield from iter_route_views(
             included_routes,
-            prefix=_join_route_path(prefix, getattr(include_context, "prefix", "")),
+            prefix=_join_route_path(prefix, route_prefix),
         )
