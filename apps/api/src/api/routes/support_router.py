@@ -108,12 +108,12 @@ async def send_support_message(
                 "metadata": {"source": "support_form"},
             }
         )
-        await _attach_support_recipient(db, ticket.ticket_id, support_user_id, request.category)
+        await _attach_support_recipient(db, str(ticket.ticket_id), support_user_id, request.category)
 
         return SuccessEnvelope(
             data=SupportResponse(
-                id=ticket.ticket_id,
-                status=ticket.status,
+                id=str(ticket.ticket_id),
+                status=str(ticket.status),
                 timestamp=ticket.created_at.isoformat(),
             )
         )

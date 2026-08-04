@@ -1,7 +1,7 @@
 from fastapi import FastAPI
 
 from api.routes.ops_router import router as ops_router
-from api.tests.conftest import _collect_routes, route_paths
+from api.tests.conftest import _collect_routes
 
 
 def _ops_app() -> FastAPI:

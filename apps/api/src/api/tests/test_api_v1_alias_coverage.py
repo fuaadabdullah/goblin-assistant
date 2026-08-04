@@ -3,8 +3,6 @@ from __future__ import annotations
 import json
 from pathlib import Path
 
-from fastapi.routing import APIRoute
-
 from api.main import app
 from api.tests.conftest import route_paths
 
