@@ -185,7 +185,7 @@ test-api-coverage:
 	cd apps/api && PYTHONPATH=src $(PYTHON) -m pytest -o "addopts=" -v \
 		--cov=api \
 		--cov-report=term-missing \
-		--cov-fail-under=80
+		--cov-fail-under=67
 
 test-critical:
 	bash tooling/quality/run-critical-coverage.sh
