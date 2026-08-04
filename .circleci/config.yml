@@ -52,6 +52,16 @@ commands:
   install-pnpm:
     steps:
       - run:
+          name: Use supported Node baseline
+          command: |
+            NODE_MAJOR="$(node -p "process.versions.node.split('.')[0]")"
+            if [ "$NODE_MAJOR" != "22" ]; then
+              sudo npm install -g n
+              sudo n 22.15.0
+              hash -r
+            fi
+            node --version
+      - run:
           name: Install pnpm
           command: sudo npm install -g pnpm@9
       - restore_cache:
