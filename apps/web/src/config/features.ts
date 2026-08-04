@@ -75,9 +75,11 @@ export const clearRuntimeFlag = (feature: keyof FeatureFlags): void => {
 /** Remove all runtime flag overrides. */
 export const clearAllRuntimeFlags = (): void => {
   if (typeof window === 'undefined') return;
-  Object.keys(window.localStorage)
-    .filter((k) => k.startsWith(FLAG_STORAGE_PREFIX))
-    .forEach((k) => window.localStorage.removeItem(k));
+  const keys = Array.from({ length: window.localStorage.length }, (_, index) =>
+    window.localStorage.key(index)
+  ).filter((key): key is string => key !== null && key.startsWith(FLAG_STORAGE_PREFIX));
+
+  keys.forEach((key) => window.localStorage.removeItem(key));
 };
 
 // ── Experiment support ──────────────────────────────────────────────────────
