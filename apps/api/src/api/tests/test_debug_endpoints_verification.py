@@ -18,7 +18,9 @@ client = TestClient(app)
 
 def test_debug_endpoints_are_registered():
     """Verify debug endpoints are registered"""
-    routes = [route.path for route in app.routes]
+    from api.tests.conftest import route_paths
+
+    routes = route_paths(app)
 
     # Check that tool trace endpoints exist
     assert any("/api/v1/debug/tool-trace/" in r for r in routes), (

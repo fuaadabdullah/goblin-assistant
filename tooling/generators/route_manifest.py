@@ -5,6 +5,7 @@ from __future__ import annotations
 
 import json
 import os
+import re
 import sys
 from collections import defaultdict
 from dataclasses import asdict, dataclass
@@ -16,7 +17,6 @@ from fastapi.routing import APIRoute
 from tooling.generators.route_inventory_shared import (
     API_V1_PREFIX,
     METHOD_ORDER,
-    group_for_path,
     method_sort_key,
     normalize_tags,
     normalize_text,
@@ -28,6 +28,8 @@ API_SRC = REPO_ROOT / "apps" / "api" / "src"
 OUTPUT_PATH = REPO_ROOT / "packages" / "sdk" / "openapi" / "routes.json"
 
 os.environ.setdefault("JWT_SECRET_KEY", "dev-route-manifest-export-secret")
+
+_PATH_CONVERTER_RE = re.compile(r"{([^}:]+):[^}]+}")
 
 
 @dataclass(frozen=True)
@@ -45,7 +47,9 @@ class RouteRecord:
     replacement_path: str | None
 
 
-def _build_operation_index(schema: dict[str, object]) -> dict[tuple[str, str], dict[str, Any]]:
+def _build_operation_index(
+    schema: dict[str, object],
+) -> dict[tuple[str, str], dict[str, Any]]:
     index: dict[tuple[str, str], dict[str, Any]] = {}
     paths = schema.get("paths", {})
     if not isinstance(paths, dict):
@@ -64,13 +68,80 @@ def _build_operation_index(schema: dict[str, object]) -> dict[tuple[str, str], d
             if upper_method not in METHOD_ORDER:
                 continue
 
-            index[(logical_path, upper_method)] = operation
-            index[(path, upper_method)] = operation
+            operation_record = {**operation, "x-goblin-openapi-path": path}
+            index[(logical_path, upper_method)] = operation_record
+            index[(path, upper_method)] = operation_record
+            index[(_strip_path_converters(logical_path), upper_method)] = (
+                operation_record
+            )
+            index[(_strip_path_converters(path), upper_method)] = operation_record
 
     return index
 
 
-def _route_records_from_app(api_app, schema: dict[str, object] | None = None) -> list[RouteRecord]:
+def _strip_path_converters(path: str) -> str:
+    return _PATH_CONVERTER_RE.sub(r"{\1}", path)
+
+
+def _route_key(method: str, path: str) -> tuple[str, str]:
+    return (method, _strip_path_converters(path))
+
+
+def _operation_records_from_schema(schema: dict[str, object]) -> list[RouteRecord]:
+    records: list[RouteRecord] = []
+    paths = schema.get("paths", {})
+    if not isinstance(paths, dict):
+        return records
+
+    for path, methods in paths.items():
+        if not isinstance(path, str) or not isinstance(methods, dict):
+            continue
+
+        logical_path = strip_version_prefix(path)
+        for method, operation in methods.items():
+            if not isinstance(method, str) or not isinstance(operation, dict):
+                continue
+
+            upper_method = method.upper()
+            if upper_method not in METHOD_ORDER:
+                continue
+
+            replacement_path = (
+                normalize_text(
+                    operation.get("x-goblin-replaced-by"),
+                    fallback="",
+                )
+                or None
+            )
+
+            records.append(
+                RouteRecord(
+                    method=upper_method,
+                    path=path,
+                    logical_path=logical_path,
+                    summary=normalize_text(
+                        operation.get("summary") or operation.get("description"),
+                        fallback="-",
+                    ),
+                    tags=normalize_tags(operation.get("tags")),
+                    operation_id=normalize_text(
+                        operation.get("operationId"),
+                        fallback="-",
+                    ),
+                    include_in_schema=True,
+                    compatibility_aliases=(),
+                    canonical_path=path,
+                    deprecated=bool(operation.get("deprecated", False)),
+                    replacement_path=replacement_path,
+                )
+            )
+
+    return records
+
+
+def _route_records_from_app(
+    api_app, schema: dict[str, object] | None = None
+) -> list[RouteRecord]:
     operation_index = _build_operation_index(schema or {})
     records: list[RouteRecord] = []
 
@@ -82,8 +153,10 @@ def _route_records_from_app(api_app, schema: dict[str, object] | None = None) ->
         if not isinstance(path, str) or not path:
             continue
 
-        logical_path = strip_version_prefix(path)
+        raw_logical_path = strip_version_prefix(path)
         include_in_schema = bool(getattr(route, "include_in_schema", True))
+        if not include_in_schema:
+            continue
 
         methods = sorted(
             (
@@ -95,9 +168,21 @@ def _route_records_from_app(api_app, schema: dict[str, object] | None = None) ->
         )
 
         for method in methods:
-            operation = operation_index.get((logical_path, method)) or operation_index.get(
-                (path, method)
+            operation = (
+                operation_index.get((raw_logical_path, method))
+                or operation_index.get((path, method))
+                or operation_index.get(
+                    (_strip_path_converters(raw_logical_path), method)
+                )
+                or operation_index.get((_strip_path_converters(path), method))
             )
+            schema_path = (operation or {}).get("x-goblin-openapi-path")
+            record_path = (
+                schema_path
+                if include_in_schema and isinstance(schema_path, str)
+                else path
+            )
+            logical_path = strip_version_prefix(record_path)
 
             summary = normalize_text(
                 (operation or {}).get("summary")
@@ -119,29 +204,49 @@ def _route_records_from_app(api_app, schema: dict[str, object] | None = None) ->
             openapi_extra = getattr(route, "openapi_extra", None)
             if not isinstance(openapi_extra, dict):
                 openapi_extra = {}
-            replacement_path = normalize_text(
-                (operation or {}).get("x-goblin-replaced-by")
-                or openapi_extra.get("x-goblin-replaced-by"),
-                fallback="",
-            ) or None
+            replacement_path = (
+                normalize_text(
+                    (operation or {}).get("x-goblin-replaced-by")
+                    or openapi_extra.get("x-goblin-replaced-by"),
+                    fallback="",
+                )
+                or None
+            )
 
             records.append(
                 RouteRecord(
                     method=method,
-                    path=path,
+                    path=record_path,
                     logical_path=logical_path,
                     summary=summary,
                     tags=tags,
                     operation_id=operation_id,
                     include_in_schema=include_in_schema,
                     compatibility_aliases=(),
-                    canonical_path=path,
+                    canonical_path=record_path,
                     deprecated=bool(
-                        (operation or {}).get("deprecated", getattr(route, "deprecated", False))
+                        (operation or {}).get(
+                            "deprecated", getattr(route, "deprecated", False)
+                        )
                     ),
                     replacement_path=replacement_path,
                 )
             )
+
+    existing_operations = {(record.method, record.path) for record in records}
+    equivalent_operations = {
+        _route_key(record.method, record.path) for record in records
+    }
+    for schema_record in _operation_records_from_schema(schema or {}):
+        schema_key = (schema_record.method, schema_record.path)
+        equivalent_schema_key = _route_key(schema_record.method, schema_record.path)
+        if (
+            schema_key not in existing_operations
+            and equivalent_schema_key not in equivalent_operations
+        ):
+            records.append(schema_record)
+            existing_operations.add(schema_key)
+            equivalent_operations.add(equivalent_schema_key)
 
     alias_map: dict[tuple[str, str], list[str]] = defaultdict(list)
     for record in records:
@@ -190,12 +295,16 @@ def _route_records_from_app(api_app, schema: dict[str, object] | None = None) ->
     return finalized
 
 
-def build_manifest(api_app, schema: dict[str, object] | None = None) -> dict[str, object]:
+def build_manifest(
+    api_app, schema: dict[str, object] | None = None
+) -> dict[str, object]:
     schema = schema or api_app.openapi()
     routes = _route_records_from_app(api_app, schema)
 
     public_routes = [route for route in routes if route.include_in_schema]
-    versioned_routes = [route for route in public_routes if route.path.startswith(API_V1_PREFIX)]
+    versioned_routes = [
+        route for route in public_routes if route.path.startswith(API_V1_PREFIX)
+    ]
     alias_routes = [route for route in public_routes if route.compatibility_aliases]
 
     return {

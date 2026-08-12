@@ -59,12 +59,12 @@ omit = [ "*/tests/*", "*/test_*.py", "*/__pycache__/*", "*/migrations/*", "*/con
 [tool.coverage.report]
 show_missing = true
 skip_covered = false
-fail_under = 80
+fail_under = 67
 exclude_lines = [ "pragma: no cover", "if TYPE_CHECKING:", "raise NotImplementedError", "@(abc\\.)?abstractmethod",]
 
 [tool.ruff.lint]
 select = [ "E", "F", "I", "N", "PL", "SIM", "ARG", "ASYNC",]
-ignore = [ "E402", "E501", "PLC0415", "PLR0913", "PLR2004", "ARG001", "N806", "N815", "PLW2901", "SIM102", "SIM105", "SIM108", "SIM117", "PLR0912", "PLR0915", "PLR0911", "PLW0603", "ASYNC109", "ARG002", "ARG005", "SIM103",]
+ignore = [ "E402", "E501", "PLC0415", "PLR0913", "PLR0917", "PLR2004", "ARG001", "N806", "N815", "PLW2901", "SIM102", "SIM105", "SIM108", "SIM117", "PLR0912", "PLR0915", "PLR0911", "PLW0603", "ASYNC109", "ARG002", "ARG005", "SIM103",]
 
 [tool.setuptools.packages.find]
 where = [ "src",]

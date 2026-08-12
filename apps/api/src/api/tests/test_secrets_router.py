@@ -367,9 +367,11 @@ class TestSecretsHealth:
 
 def test_router_registered_endpoints() -> None:
     """Verify the router registers all expected endpoints."""
+    from api.tests.conftest import _collect_routes
+
     app = FastAPI()
     app.include_router(router, prefix="/api/v1")
-    routes = {(r.path, frozenset(r.methods or [])) for r in app.routes}
+    routes = {(path, frozenset(methods)) for path, methods in _collect_routes(app)}
 
     # Check list endpoint (GET /)
     assert any(r[0] in {"/api/v1/secrets", "/api/v1/secrets/"} and "GET" in r[1] for r in routes), (

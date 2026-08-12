@@ -2,7 +2,7 @@
   "alias_route_count": 0,
   "api_v1_prefix": "/api/v1",
   "public_route_count": 203,
-  "route_count": 204,
+  "route_count": 203,
   "routes": [
     {
       "canonical_path": "/",
@@ -105,21 +105,6 @@
       "summary": "Save Profile",
       "tags": [
         "account"
-      ]
-    },
-    {
-      "canonical_path": "/api/v1/admin/providers/state",
-      "compatibility_aliases": [],
-      "deprecated": false,
-      "include_in_schema": false,
-      "logical_path": "/admin/providers/state",
-      "method": "GET",
-      "operation_id": "get_provider_state",
-      "path": "/api/v1/admin/providers/state",
-      "replacement_path": null,
-      "summary": "Canonical ops snapshot for provider routing state.",
-      "tags": [
-        "admin"
       ]
     },
     {
@@ -2674,61 +2659,61 @@
       ]
     },
     {
-      "canonical_path": "/api/v1/secrets/{path:path}",
+      "canonical_path": "/api/v1/secrets/{path}",
       "compatibility_aliases": [],
       "deprecated": false,
       "include_in_schema": true,
-      "logical_path": "/secrets/{path:path}",
+      "logical_path": "/secrets/{path}",
       "method": "DELETE",
-      "operation_id": "delete_secret",
-      "path": "/api/v1/secrets/{path:path}",
+      "operation_id": "delete_secret_api_v1_secrets__path__delete",
+      "path": "/api/v1/secrets/{path}",
       "replacement_path": null,
-      "summary": "Delete a secret. Args: path: Secret path version: Optional specific version to delete adapter: The secrets adapter instance",
+      "summary": "Delete Secret",
       "tags": [
         "secrets"
       ]
     },
     {
-      "canonical_path": "/api/v1/secrets/{path:path}",
+      "canonical_path": "/api/v1/secrets/{path}",
       "compatibility_aliases": [],
       "deprecated": false,
       "include_in_schema": true,
-      "logical_path": "/secrets/{path:path}",
+      "logical_path": "/secrets/{path}",
       "method": "GET",
-      "operation_id": "get_secret",
-      "path": "/api/v1/secrets/{path:path}",
+      "operation_id": "get_secret_api_v1_secrets__path__get",
+      "path": "/api/v1/secrets/{path}",
       "replacement_path": null,
-      "summary": "Retrieve a secret by path. Args: path: Secret path version: Optional specific version adapter: The secrets adapter instance Returns: Secret data and metadata",
+      "summary": "Get Secret",
       "tags": [
         "secrets"
       ]
     },
     {
-      "canonical_path": "/api/v1/secrets/{path:path}",
+      "canonical_path": "/api/v1/secrets/{path}",
       "compatibility_aliases": [],
       "deprecated": false,
       "include_in_schema": true,
-      "logical_path": "/secrets/{path:path}",
+      "logical_path": "/secrets/{path}",
       "method": "PUT",
-      "operation_id": "put_secret",
-      "path": "/api/v1/secrets/{path:path}",
+      "operation_id": "put_secret_api_v1_secrets__path__put",
+      "path": "/api/v1/secrets/{path}",
       "replacement_path": null,
-      "summary": "Create or update a secret. Args: path: Secret path request: Secret data and metadata adapter: The secrets adapter instance Returns: Stored secret information",
+      "summary": "Put Secret",
       "tags": [
         "secrets"
       ]
     },
     {
-      "canonical_path": "/api/v1/secrets/{path:path}/rotate",
+      "canonical_path": "/api/v1/secrets/{path}/rotate",
       "compatibility_aliases": [],
       "deprecated": false,
       "include_in_schema": true,
-      "logical_path": "/secrets/{path:path}/rotate",
+      "logical_path": "/secrets/{path}/rotate",
       "method": "POST",
-      "operation_id": "rotate_secret",
-      "path": "/api/v1/secrets/{path:path}/rotate",
+      "operation_id": "rotate_secret_api_v1_secrets__path__rotate_post",
+      "path": "/api/v1/secrets/{path}/rotate",
       "replacement_path": null,
-      "summary": "Rotate a secret value. Args: path: Secret path adapter: The secrets adapter instance Returns: New secret value",
+      "summary": "Rotate Secret",
       "tags": [
         "secrets"
       ]

@@ -15,7 +15,7 @@ Generated from `packages/sdk/openapi/routes.json` and `packages/sdk/openapi/open
 - **Versioned operations (`/api/v1`)**: 200
 - **Legacy dual-mount operations**: 0
 - **Deprecated operations**: 3
-- **Hidden manifest operations**: 1
+- **Hidden manifest operations**: 0
 
 ## Route groups
 
@@ -207,10 +207,10 @@ The `/api/v1` routes are the canonical public API surface.
 | POST | /api/v1/search/query | /search/query | stable | - | Search Query | search | search_query_api_v1_search_query_post |
 | GET | /api/v1/secrets/ | /secrets/ | stable | - | List Secrets | secrets | list_secrets_api_v1_secrets__get |
 | GET | /api/v1/secrets/health | /secrets/health | stable | - | Secrets Health | secrets | secrets_health_api_v1_secrets_health_get |
-| DELETE | /api/v1/secrets/{path:path} | /secrets/{path:path} | stable | - | Delete a secret. Args: path: Secret path version: Optional specific version to delete adapter: The secrets adapter instance | secrets | delete_secret |
-| GET | /api/v1/secrets/{path:path} | /secrets/{path:path} | stable | - | Retrieve a secret by path. Args: path: Secret path version: Optional specific version adapter: The secrets adapter instance Returns: Secret data and metadata | secrets | get_secret |
-| PUT | /api/v1/secrets/{path:path} | /secrets/{path:path} | stable | - | Create or update a secret. Args: path: Secret path request: Secret data and metadata adapter: The secrets adapter instance Returns: Stored secret information | secrets | put_secret |
-| POST | /api/v1/secrets/{path:path}/rotate | /secrets/{path:path}/rotate | stable | - | Rotate a secret value. Args: path: Secret path adapter: The secrets adapter instance Returns: New secret value | secrets | rotate_secret |
+| DELETE | /api/v1/secrets/{path} | /secrets/{path} | stable | - | Delete Secret | secrets | delete_secret_api_v1_secrets__path__delete |
+| GET | /api/v1/secrets/{path} | /secrets/{path} | stable | - | Get Secret | secrets | get_secret_api_v1_secrets__path__get |
+| PUT | /api/v1/secrets/{path} | /secrets/{path} | stable | - | Put Secret | secrets | put_secret_api_v1_secrets__path__put |
+| POST | /api/v1/secrets/{path}/rotate | /secrets/{path}/rotate | stable | - | Rotate Secret | secrets | rotate_secret_api_v1_secrets__path__rotate_post |
 | GET | /api/v1/semantic-chat/conversations/{conversation_id}/context | /semantic-chat/conversations/{conversation_id}/context | stable | - | Get Context Bundle | semantic-chat | get_context_bundle_api_v1_semantic_chat_conversations__conversation_id__context_get |
 | POST | /api/v1/semantic-chat/conversations/{conversation_id}/messages | /semantic-chat/conversations/{conversation_id}/messages | stable | - | Semantic Send Message | semantic-chat | semantic_send_message_api_v1_semantic_chat_conversations__conversation_id__messages_post |
 | POST | /api/v1/semantic-chat/conversations/{conversation_id}/summarize | /semantic-chat/conversations/{conversation_id}/summarize | stable | - | Summarize Conversation | semantic-chat | summarize_conversation_api_v1_semantic_chat_conversations__conversation_id__summarize_post |
