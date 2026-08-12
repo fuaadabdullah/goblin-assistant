@@ -33,7 +33,6 @@ const Lottie = dynamic(() => import('lottie-react'), {
 });
 
 const ChatEmptyState = ({
-  quickPrompts = [],
   onPromptClick,
   selectedMode = 'all',
   onModeChange = () => undefined,
@@ -41,7 +40,9 @@ const ChatEmptyState = ({
 }: ChatEmptyStateProps) => {
   const animationData = useGoblinLoaderAnimation();
   const displayedPrompts =
-    quickPrompts.length > 0 ? (PROMPTS_BY_MODE[selectedMode] ?? quickPrompts) : [];
+    quickPrompts && quickPrompts.length > 0
+      ? quickPrompts
+      : (PROMPTS_BY_MODE[selectedMode] ?? PROMPTS_BY_MODE.all);
 
   return (
     <section className="flex flex-col items-center justify-center h-full w-full px-4 py-8">
