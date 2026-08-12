@@ -43,6 +43,9 @@ def _load_manifest_paths() -> list[str]:
 
 
 def _load_openapi_paths() -> list[str]:
+    if not OPENAPI_PATH.exists():
+        return []
+
     schema = json.loads(OPENAPI_PATH.read_text(encoding="utf-8"))
     paths = schema.get("paths", {})
     if not isinstance(paths, dict):
