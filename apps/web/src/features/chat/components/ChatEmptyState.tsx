@@ -33,6 +33,7 @@ const Lottie = dynamic(() => import('lottie-react'), {
 });
 
 const ChatEmptyState = ({
+  quickPrompts,
   onPromptClick,
   selectedMode = 'all',
   onModeChange = () => undefined,
