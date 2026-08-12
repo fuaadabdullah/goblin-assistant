@@ -37,30 +37,30 @@ describe('ChatEmptyState', () => {
 
   it('renders all quick prompts', () => {
     render(<ChatEmptyState quickPrompts={prompts} onPromptClick={onPromptClick} />);
-    expect(screen.getByText('Analyze a stock')).toBeInTheDocument();
-    expect(screen.getByText('Explain a concept')).toBeInTheDocument();
-    expect(screen.getByText('Run some code')).toBeInTheDocument();
+    expect(screen.getByText('Summarize')).toBeInTheDocument();
+    expect(screen.getByText('Code review')).toBeInTheDocument();
+    expect(screen.getByText('Debug')).toBeInTheDocument();
   });
 
   it('shows prompt text for each card', () => {
     render(<ChatEmptyState quickPrompts={prompts} onPromptClick={onPromptClick} />);
-    expect(screen.getByText(/Pull the latest data for AAPL/)).toBeInTheDocument();
-    expect(screen.getByText(/Explain present value/)).toBeInTheDocument();
+    expect(screen.getByText('Summarize the latest news')).toBeInTheDocument();
+    expect(screen.getByText('Review my pull request')).toBeInTheDocument();
   });
 
   it('calls onPromptClick with prompt text', () => {
     render(<ChatEmptyState quickPrompts={prompts} onPromptClick={onPromptClick} />);
-    fireEvent.click(screen.getByText('Analyze a stock'));
+    fireEvent.click(screen.getByText('Summarize'));
     expect(onPromptClick).toHaveBeenCalledWith(
-      'Pull the latest data for AAPL \u2014 price, P/E, recent earnings summary, and analyst consensus.'
+      'Summarize the latest news'
     );
   });
 
   it('calls onPromptClick for different prompts', () => {
     render(<ChatEmptyState quickPrompts={prompts} onPromptClick={onPromptClick} />);
-    fireEvent.click(screen.getByText('Run some code'));
+    fireEvent.click(screen.getByText('Debug'));
     expect(onPromptClick).toHaveBeenCalledWith(
-      'Open the Python sandbox and show me how to fetch stock data with yfinance.'
+      'Help me debug this error'
     );
   });
 
@@ -82,8 +82,13 @@ describe('ChatEmptyState', () => {
     expect(screen.getByText(/paste links or attach files/)).toBeInTheDocument();
   });
 
-  it('renders empty state with no prompts', () => {
+  it('falls back to built-in prompts when quickPrompts is omitted', () => {
+    render(<ChatEmptyState onPromptClick={onPromptClick} />);
+    expect(screen.getByText('Analyze a stock')).toBeInTheDocument();
+  });
+
+  it('falls back to built-in prompts when quickPrompts is empty', () => {
     render(<ChatEmptyState quickPrompts={[]} onPromptClick={onPromptClick} />);
-    expect(screen.getByText('What can I help you with?')).toBeInTheDocument();
+    expect(screen.getByText('Analyze a stock')).toBeInTheDocument();
   });
 });
