@@ -1,5 +1,13 @@
 # Goblin Assistant — Engineering Guidelines
 
+## rc/v1 Freeze
+
+**The `rc/v1` branch is scope-frozen.** Only bugs, performance fixes, security
+fixes, UX blockers, missing tests, and docs required to operate the system are
+allowed. No new providers. No new features. No refactors.
+
+Full rules: [docs/rc-v1-scope.md](docs/rc-v1-scope.md)
+
 ## State Management
 
 | State type | Tool | Rule |
