@@ -11,4 +11,4 @@ if [ -n "$STAGED_PY" ]; then
   echo "$STAGED_PY" | xargs python3 -m ruff format --check --config apps/api/pyproject.toml
 fi
 
-cd apps/web && npx lint-staged
+cd apps/web && npx lint-staged --allow-empty
