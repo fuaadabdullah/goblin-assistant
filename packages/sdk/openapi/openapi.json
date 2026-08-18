@@ -1002,6 +1002,16 @@
             ],
             "title": "Glossary"
           },
+          "legacy_mode": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ModeKey"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
           "message": {
             "title": "Message",
             "type": "string"
@@ -1019,15 +1029,8 @@
             "title": "Metadata"
           },
           "mode": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Mode"
+            "$ref": "#/components/schemas/Mode",
+            "default": "chat"
           },
           "model": {
             "anyOf": [
@@ -1355,6 +1358,7 @@
         "type": "object"
       },
       "EstimateTokensResponse": {
+        "description": "Estimated token/cost breakdown for a chat request.",
         "properties": {
           "degraded_mode": {
             "default": false,
@@ -1930,6 +1934,339 @@
         "title": "GitHubWebhookResponse",
         "type": "object"
       },
+      "GoblinHistoryEntry": {
+        "properties": {
+          "goblin_id": {
+            "title": "Goblin Id",
+            "type": "string"
+          },
+          "id": {
+            "title": "Id",
+            "type": "string"
+          },
+          "kpis": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Kpis"
+          },
+          "response": {
+            "title": "Response",
+            "type": "string"
+          },
+          "status": {
+            "anyOf": [
+              {
+                "enum": [
+                  "completed",
+                  "failed"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Status"
+          },
+          "task": {
+            "title": "Task",
+            "type": "string"
+          },
+          "timestamp": {
+            "format": "date-time",
+            "title": "Timestamp",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "goblin_id",
+          "task",
+          "response",
+          "timestamp"
+        ],
+        "title": "GoblinHistoryEntry",
+        "type": "object"
+      },
+      "GoblinHistoryResponse": {
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/GoblinHistoryEntry"
+            },
+            "title": "Items",
+            "type": "array"
+          },
+          "limit": {
+            "maximum": 100.0,
+            "minimum": 1.0,
+            "title": "Limit",
+            "type": "integer"
+          },
+          "next_cursor": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Next Cursor"
+          },
+          "order": {
+            "const": "newest_first",
+            "default": "newest_first",
+            "title": "Order",
+            "type": "string"
+          },
+          "total": {
+            "title": "Total",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "items",
+          "total",
+          "limit"
+        ],
+        "title": "GoblinHistoryResponse",
+        "type": "object"
+      },
+      "GoblinListResponse": {
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/GoblinStatus"
+            },
+            "title": "Items",
+            "type": "array"
+          },
+          "limit": {
+            "title": "Limit",
+            "type": "integer"
+          },
+          "order": {
+            "const": "catalog_order",
+            "default": "catalog_order",
+            "title": "Order",
+            "type": "string"
+          },
+          "total": {
+            "title": "Total",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "items",
+          "total",
+          "limit"
+        ],
+        "title": "GoblinListResponse",
+        "type": "object"
+      },
+      "GoblinStatsCounters": {
+        "properties": {
+          "completed_tasks": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Completed Tasks"
+          },
+          "failed_tasks": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Failed Tasks"
+          },
+          "total_tasks": {
+            "title": "Total Tasks",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "total_tasks"
+        ],
+        "title": "GoblinStatsCounters",
+        "type": "object"
+      },
+      "GoblinStatsLatency": {
+        "properties": {
+          "average_duration_ms": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Average Duration Ms"
+          },
+          "p95_duration_ms": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "P95 Duration Ms"
+          }
+        },
+        "title": "GoblinStatsLatency",
+        "type": "object"
+      },
+      "GoblinStatsResponse": {
+        "properties": {
+          "counters": {
+            "$ref": "#/components/schemas/GoblinStatsCounters"
+          },
+          "goblin_id": {
+            "title": "Goblin Id",
+            "type": "string"
+          },
+          "latency": {
+            "$ref": "#/components/schemas/GoblinStatsLatency"
+          },
+          "success_rate": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Success Rate"
+          },
+          "total_cost": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Total Cost"
+          },
+          "window": {
+            "$ref": "#/components/schemas/GoblinStatsWindow"
+          }
+        },
+        "required": [
+          "goblin_id",
+          "window",
+          "counters",
+          "latency"
+        ],
+        "title": "GoblinStatsResponse",
+        "type": "object"
+      },
+      "GoblinStatsWindow": {
+        "properties": {
+          "ended_at": {
+            "format": "date-time",
+            "title": "Ended At",
+            "type": "string"
+          },
+          "hours": {
+            "maximum": 8760.0,
+            "minimum": 1.0,
+            "title": "Hours",
+            "type": "integer"
+          },
+          "started_at": {
+            "format": "date-time",
+            "title": "Started At",
+            "type": "string"
+          }
+        },
+        "required": [
+          "hours",
+          "started_at",
+          "ended_at"
+        ],
+        "title": "GoblinStatsWindow",
+        "type": "object"
+      },
+      "GoblinStatus": {
+        "properties": {
+          "active": {
+            "default": true,
+            "title": "Active",
+            "type": "boolean"
+          },
+          "description": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Description"
+          },
+          "guild": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Guild"
+          },
+          "id": {
+            "title": "Id",
+            "type": "string"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "status": {
+            "default": "active",
+            "enum": [
+              "active",
+              "inactive"
+            ],
+            "title": "Status",
+            "type": "string"
+          },
+          "title": {
+            "title": "Title",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "name",
+          "title"
+        ],
+        "title": "GoblinStatus",
+        "type": "object"
+      },
       "GoogleAuthCallback": {
         "properties": {
           "code": {
@@ -2185,6 +2522,7 @@
       },
       "JsonValue": {},
       "LayerEstimate": {
+        "description": "Token estimate for a single context-assembly layer.",
         "properties": {
           "name": {
             "title": "Name",
@@ -2226,6 +2564,35 @@
         },
         "title": "LogsRequest",
         "type": "object"
+      },
+      "Mode": {
+        "description": "Canonical user-facing assistant mode.\n\nSits between glossary and tone in the prompt composition stack.\nExported via OpenAPI \u2192 SDK codegen. Never rename a value without\na deprecation cycle.",
+        "enum": [
+          "chat",
+          "code",
+          "research",
+          "education",
+          "finance",
+          "agent"
+        ],
+        "title": "Mode",
+        "type": "string"
+      },
+      "ModeKey": {
+        "description": "Legacy explicit task mode, set by the caller.\n\nExported via OpenAPI \u2192 SDK codegen so the contract reaches the frontend.\nNever rename a value without a deprecation cycle.\n\nDeprecated in favor of ``Mode`` (canonical v2 registry).  This enum and\n``get_addendum()`` are preserved for backward compatibility while the\nchat schemas transition to the new ``Mode`` field.",
+        "enum": [
+          "GENERAL_ASSISTANT",
+          "ARCHITECT",
+          "TRADING_FORGE",
+          "OPERATOR",
+          "RESEARCH",
+          "DEEP_RESEARCH",
+          "DEBUG",
+          "CODE_REVIEW",
+          "EDUCATION"
+        ],
+        "title": "ModeKey",
+        "type": "string"
       },
       "ModelSettings": {
         "properties": {
@@ -3516,6 +3883,27 @@
             ],
             "title": "Glossary"
           },
+          "language": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Language"
+          },
+          "legacy_mode": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ModeKey"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
           "message": {
             "title": "Message",
             "type": "string"
@@ -3533,15 +3921,8 @@
             "title": "Metadata"
           },
           "mode": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Mode"
+            "$ref": "#/components/schemas/Mode",
+            "default": "chat"
           },
           "model": {
             "anyOf": [
@@ -3619,17 +4000,52 @@
             "title": "Cost Usd"
           },
           "department": {
-            "title": "Department",
-            "type": "string"
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Department"
           },
           "department_reason": {
-            "default": "",
-            "title": "Department Reason",
-            "type": "string"
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Department Reason"
           },
           "message_id": {
             "title": "Message Id",
             "type": "string"
+          },
+          "model": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Model"
+          },
+          "provider": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Provider"
           },
           "response": {
             "title": "Response",
@@ -3670,7 +4086,6 @@
         "required": [
           "message_id",
           "response",
-          "department",
           "timestamp"
         ],
         "title": "SendMessageResponse",
@@ -3926,15 +4341,8 @@
             "title": "Metadata"
           },
           "mode": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Mode"
+            "$ref": "#/components/schemas/Mode",
+            "default": "chat"
           },
           "model": {
             "anyOf": [
@@ -6046,15 +6454,22 @@
       "get": {
         "operationId": "get_goblins_api_v1_api_goblins_get",
         "responses": {
-          "501": {
+          "200": {
             "content": {
               "application/json": {
-                "schema": {}
+                "schema": {
+                  "$ref": "#/components/schemas/GoblinListResponse"
+                }
               }
             },
-            "description": "Not Implemented"
+            "description": "Successful Response"
           }
         },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
         "summary": "Get Goblins",
         "tags": [
           "api"
@@ -6080,12 +6495,40 @@
             "required": false,
             "schema": {
               "default": 10,
+              "maximum": 100,
+              "minimum": 1,
               "title": "Limit",
               "type": "integer"
+            }
+          },
+          {
+            "in": "query",
+            "name": "cursor",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Cursor"
             }
           }
         ],
         "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/GoblinHistoryResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
           "422": {
             "content": {
               "application/json": {
@@ -6095,16 +6538,13 @@
               }
             },
             "description": "Validation Error"
-          },
-          "501": {
-            "content": {
-              "application/json": {
-                "schema": {}
-              }
-            },
-            "description": "Not Implemented"
           }
         },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
         "summary": "Get Goblin History",
         "tags": [
           "api"
@@ -6654,9 +7094,31 @@
               "title": "Goblin Id",
               "type": "string"
             }
+          },
+          {
+            "in": "query",
+            "name": "window_hours",
+            "required": false,
+            "schema": {
+              "default": 24,
+              "maximum": 8760,
+              "minimum": 1,
+              "title": "Window Hours",
+              "type": "integer"
+            }
           }
         ],
         "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/GoblinStatsResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
           "422": {
             "content": {
               "application/json": {
@@ -6666,16 +7128,13 @@
               }
             },
             "description": "Validation Error"
-          },
-          "501": {
-            "content": {
-              "application/json": {
-                "schema": {}
-              }
-            },
-            "description": "Not Implemented"
           }
         },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
         "summary": "Get Goblin Stats",
         "tags": [
           "api"

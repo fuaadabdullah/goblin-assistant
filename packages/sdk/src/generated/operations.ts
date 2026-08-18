@@ -556,13 +556,13 @@ export interface operations {
         };
         requestBody?: never;
         responses: {
-            /** @description Not Implemented */
-            501: {
+            /** @description Successful Response */
+            200: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": unknown;
+                    "application/json": components["schemas"]["GoblinListResponse"];
                 };
             };
         };
@@ -571,6 +571,7 @@ export interface operations {
         parameters: {
             query?: {
                 limit?: number;
+                cursor?: string | null;
             };
             header?: never;
             path: {
@@ -580,6 +581,15 @@ export interface operations {
         };
         requestBody?: never;
         responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["GoblinHistoryResponse"];
+                };
+            };
             /** @description Validation Error */
             422: {
                 headers: {
@@ -587,15 +597,6 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["HTTPValidationError"];
-                };
-            };
-            /** @description Not Implemented */
-            501: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": unknown;
                 };
             };
         };
@@ -981,7 +982,9 @@ export interface operations {
     };
     get_goblin_stats_api_v1_api_stats__goblin_id__get: {
         parameters: {
-            query?: never;
+            query?: {
+                window_hours?: number;
+            };
             header?: never;
             path: {
                 goblin_id: string;
@@ -990,6 +993,15 @@ export interface operations {
         };
         requestBody?: never;
         responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["GoblinStatsResponse"];
+                };
+            };
             /** @description Validation Error */
             422: {
                 headers: {
@@ -997,15 +1009,6 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["HTTPValidationError"];
-                };
-            };
-            /** @description Not Implemented */
-            501: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": unknown;
                 };
             };
         };

@@ -118,9 +118,7 @@
       "path": "/api/v1/admin/providers/state",
       "replacement_path": null,
       "summary": "Canonical ops snapshot for provider routing state.",
-      "tags": [
-        "admin"
-      ]
+      "tags": []
     },
     {
       "canonical_path": "/api/v1/agent/task",
@@ -2684,9 +2682,7 @@
       "path": "/api/v1/secrets/{path:path}",
       "replacement_path": null,
       "summary": "Delete a secret. Args: path: Secret path version: Optional specific version to delete adapter: The secrets adapter instance",
-      "tags": [
-        "secrets"
-      ]
+      "tags": []
     },
     {
       "canonical_path": "/api/v1/secrets/{path:path}",
@@ -2699,9 +2695,7 @@
       "path": "/api/v1/secrets/{path:path}",
       "replacement_path": null,
       "summary": "Retrieve a secret by path. Args: path: Secret path version: Optional specific version adapter: The secrets adapter instance Returns: Secret data and metadata",
-      "tags": [
-        "secrets"
-      ]
+      "tags": []
     },
     {
       "canonical_path": "/api/v1/secrets/{path:path}",
@@ -2714,9 +2708,7 @@
       "path": "/api/v1/secrets/{path:path}",
       "replacement_path": null,
       "summary": "Create or update a secret. Args: path: Secret path request: Secret data and metadata adapter: The secrets adapter instance Returns: Stored secret information",
-      "tags": [
-        "secrets"
-      ]
+      "tags": []
     },
     {
       "canonical_path": "/api/v1/secrets/{path:path}/rotate",
@@ -2729,9 +2721,7 @@
       "path": "/api/v1/secrets/{path:path}/rotate",
       "replacement_path": null,
       "summary": "Rotate a secret value. Args: path: Secret path adapter: The secrets adapter instance Returns: New secret value",
-      "tags": [
-        "secrets"
-      ]
+      "tags": []
     },
     {
       "canonical_path": "/api/v1/semantic-chat/conversations/{conversation_id}/context",
