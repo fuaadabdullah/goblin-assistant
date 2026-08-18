@@ -45,7 +45,7 @@ router.include_router(system_router)
 
 async def get_memory_debug_info(user_id: str) -> Dict[str, Any]:
     """Memory debug info for a user — promotions + health summary."""
-    from .debug_write_router import (  # noqa: PLC0415  # lazy import avoids debug router cycle
+    from .debug_write_router import (  # lazy import avoids debug router cycle
         get_memory_health,
         get_user_memory,
     )
