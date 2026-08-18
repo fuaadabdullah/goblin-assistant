@@ -37,7 +37,7 @@ class ContextSnapshotFacet:
                 "model_target": "unknown",
             }
 
-            import asyncio  # noqa: PLC0415
+            import asyncio
 
             try:
                 loop = asyncio.get_running_loop()
