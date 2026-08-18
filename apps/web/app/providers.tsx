@@ -21,6 +21,7 @@ import { useUIStore } from '@/store/uiStore';
 import ChatFAB from '@/components/ChatFAB';
 import StatusBar from '@/components/StatusBar';
 import PageTransition from '@/components/PageTransition';
+import BetaSignal from '@/components/BetaSignal';
 
 function NotificationBridge() {
   const { addToast } = useToast();
@@ -158,6 +159,7 @@ export default function Providers({ children }: { children: ReactNode }) {
               <ToastContainer />
               <ChatFAB />
               <StatusBar />
+              <BetaSignal />
               {enableAnalytics ? <Analytics /> : null}
             </ContrastModeProvider>
           </ProviderProvider>

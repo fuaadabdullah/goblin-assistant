@@ -291,6 +291,19 @@ const normalizeAxiosError = (error: unknown): never => {
   throw error instanceof Error ? error : new Error('Request failed');
 };
 
+const normalizeConversationContent = (content: unknown): string => {
+  if (typeof content === 'string') return content;
+  if (content === null || content === undefined) return '';
+  if (typeof content === 'object') {
+    try {
+      return JSON.stringify(content);
+    } catch {
+      return String(content);
+    }
+  }
+  return String(content);
+};
+
 const getCsrfToken = async (): Promise<string> => {
   const response = await getBackend<{ csrf_token?: string }>('/auth/csrf-token', {
     timeout: AUTH_REQUEST_TIMEOUT_MS,
@@ -544,7 +557,7 @@ export const apiClient = {
 
     return {
       messageId: response.message_id,
-      content: response.response,
+      content: normalizeConversationContent(response.response),
       provider: response.provider,
       model: response.model,
       createdAt: response.timestamp,
@@ -786,5 +799,13 @@ export const apiClient = {
 
   async getKpi(days = 7) {
     return getBackend<KpiSnapshot>(`/admin/kpi?days=${days}`, withAuth());
+  },
+
+  async submitBetaSignal(payload: { page: string; note?: string; tag?: string }) {
+    return postBackend<{ id: string; status: string }, typeof payload>(
+      '/support/beta-signal',
+      payload,
+      withAuth(),
+    );
   },
 };
