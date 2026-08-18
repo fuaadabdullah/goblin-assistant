@@ -69,10 +69,10 @@ Current working-tree scale:
 
 | Git status class | Count |
 |---|---:|
-| Modified files | 679 |
+| Modified files | 678 |
 | Deleted files | 123 |
 | Untracked files/directories | 4 |
-| Total status entries | 806 |
+| Total status entries | 805 |
 
 Current status concentration:
 
@@ -80,7 +80,7 @@ Current status concentration:
 |---|---:|---|
 | `apps/` | 764 | Dominates unresolved risk; should not be reviewed as one blob. |
 | `packages/` | 18 | Shared-contract/package drift can affect both API and web. |
-| Root and infra files | 24 | Contains policy, runtime, Docker, compose, lockfile, hook, and docs changes that need separate ownership. |
+| Root and infra files | 23 | Contains runtime, Docker, compose, lockfile, hook, and docs changes that need separate ownership. |
 
 Triage labels used below:
 
@@ -140,7 +140,7 @@ as regressions.
 
 ### 3. Dirty Tree Is Too Broad for Confident Release Review
 
-There are 806 status entries after the already-created commits. This is larger
+There are 805 status entries after the already-created commits. This is larger
 than a normal focused feature branch and mixes backend, frontend, infra, docs,
 generated contracts, scripts, tests, package locks, and deleted legacy trees.
 
@@ -377,19 +377,18 @@ Quality caveats:
 ### 12. Package and Lockfile Drift Is a Separate Migration, Not Hygiene
 
 The remaining package-management files are not one small reproducibility change.
-`.npmrc` only adds exact package saves, but `pnpm-lock.yaml`,
-`apps/web/package.json`, and `packages/shared/package.json` show broad package
-surface movement.
+`.npmrc` was split out into `45b473a5` as repository package policy, but
+`pnpm-lock.yaml`, `apps/web/package.json`, and `packages/shared/package.json`
+still show broad package surface movement.
 
 | Gap | Evidence | Why It Matters |
 |---|---|---|
 | Lockfile churn is huge | `pnpm-lock.yaml` has thousands of changed lines. | A lockfile-only-looking commit could hide major dependency and runtime changes. |
 | Web package versions appear to move across major framework/runtime boundaries | Package drift includes large frontend dependency changes. | React/Next/Vite/Storybook changes can create behavioral regressions unrelated to source edits. |
 | Shared package manifest changed too | `packages/shared/package.json` is dirty. | Shared contracts affect both API and web consumers. |
-| `.npmrc` is small and policy-oriented | It adds `save-exact=true`. | This can be committed independently if verified, but should not drag the lockfile with it. |
+| `.npmrc` is resolved | It now adds `save-exact=true` in a standalone commit. | Keep future package policy separate from dependency migrations. |
 
-Recommended slice: commit `.npmrc` alone as repository package policy if it is
-still desired, then keep package manifests and `pnpm-lock.yaml` together in a
+Recommended slice: keep package manifests and `pnpm-lock.yaml` together in a
 dedicated dependency migration commit with frozen-install proof.
 
 ### 13. Runtime Configuration Drift Needs a Product/Infra Boundary
@@ -614,7 +613,7 @@ Do not claim release readiness until all of the following are true:
 
 | Required Before Release Claim | Current State |
 |---|---|
-| Working tree reduced to intentional, reviewable changes | Not true; 806 status entries remain. |
+| Working tree reduced to intentional, reviewable changes | Not true; 805 status entries remain. |
 | Commit history matches the requested story or the mismatch is explicitly accepted | Not true; one commit subject is misleading. |
 | Deprecated infra deletion has no active executable references | Mostly true after this pass; final search and policy checks still required. |
 | Contract artifacts regenerated after final API changes | Partially true; must rerun at end. |
@@ -628,8 +627,7 @@ Do not claim release readiness until all of the following are true:
 2. Keep CI ownership explicit. GitHub/CircleCI governance gates are now split
    into reviewable commits; future autofix or deploy wiring should be a
    separate explicit decision.
-3. Split package policy from dependency migration. `.npmrc` can be a small
-   policy commit; package manifests and `pnpm-lock.yaml` need their own
+3. Keep package manifests and `pnpm-lock.yaml` together in their own
    dependency-migration proof.
 4. Commit the contract test-manifest update separately if the Goblin query API
    test belongs in the contract bucket, then run the bucket or focused
