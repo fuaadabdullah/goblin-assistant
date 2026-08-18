@@ -1,0 +1,2 @@
+# Ignore actual event logs — personal/local data
+events_*.jsonl
