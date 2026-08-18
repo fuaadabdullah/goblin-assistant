@@ -67,7 +67,7 @@ def ensure_provider(
 
 def apply_circuit_state(provider: Any, state: Dict[str, Any]) -> None:
     """Restore a previously-persisted circuit breaker state onto a provider."""
-    from ..base import ProviderCircuitState  # noqa: PLC0415
+    from ..base import ProviderCircuitState
 
     circuit_state = state.get("circuit_state") or "closed"
     failure_count = int(state.get("failure_count") or 0)

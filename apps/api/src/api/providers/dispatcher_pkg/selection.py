@@ -156,6 +156,6 @@ async def invoke_with_fallback(prompt: str, *, providers: list) -> Any:
     for provider in providers:
         try:
             return await provider.invoke(prompt)
-        except Exception as exc:  # noqa: BLE001
+        except Exception as exc:
             last_exc = exc
     raise last_exc or RuntimeError("No providers available")
