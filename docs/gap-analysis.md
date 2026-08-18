@@ -22,13 +22,13 @@ for goblin catalog, history, and stats, and
 200 response schemas instead of 501 responses.
 
 The current risk profile has shifted from "missing endpoint implementation" to
-"integration and release hygiene." Architecture boundary checks now pass, but
-the working tree is still very broad and several commits are not yet the clean
-sequence originally requested. Deprecated Terraform/Kubernetes/Fly-style
+"integration and release hygiene." Architecture boundary checks now pass, and
+the working tree is clean, but several commits are not yet the clean sequence
+originally requested. Deprecated Terraform/Kubernetes/Fly-style
 deployment assets have been removed or archived in dedicated commits, and the
 root script/tooling cleanup has also landed. The remaining risk is now
 concentrated in broad app/API churn, CI gate changes, generated-contract drift,
-and release proof that has not yet been rerun after the latest dirty-tree state.
+and release proof that has not yet been rerun after the latest committed state.
 
 ## Current Evidence Snapshot
 
@@ -56,6 +56,10 @@ Latest verified checks on 2026-08-18:
 | `docker compose -f docker-compose.yml --profile workers config --quiet` | Pass | Static validation only; worker topology still needs architecture review. |
 | `docker compose -f docker-compose.yml --profile sandbox config --quiet` | Pass | Static validation only; sandbox Docker socket proxying still needs runtime/security review. |
 | `docker compose -f docker-compose.yml -f docker-compose.goblinos-override.yml config --quiet` | Pass | Static validation only; a literal external-drive path bug was fixed separately in `097013b3`. |
+| Full Compose static matrix: base, workers, sandbox, workers+sandbox+build, and GOBLINOS override | Pass | Re-run after `a4fb7258`; still static config rendering only, not container startup proof. |
+| `pnpm install --frozen-lockfile --ignore-scripts --prefer-offline` | Pass | Proves committed package manifests and `pnpm-lock.yaml` are internally consistent; scripts were intentionally skipped. |
+| `shellcheck infra/gcp-llm-setup.sh` / `bash -n infra/gcp-llm-setup.sh` / `./infra/gcp-llm-setup.sh help` | Pass | Re-run after `b3035d07`; no cloud mutation. |
+| `env -u GCP_PROJECT_ID ./infra/gcp-llm-setup.sh status` | Expected fail-fast | Exits `1` with `Set GCP_PROJECT_ID before running status`, proving the helper no longer silently targets a personal project. |
 
 Current quality baseline metrics:
 
@@ -76,17 +80,16 @@ Current working-tree scale:
 
 | Git status class | Count |
 |---|---:|
-| Modified files | 4 |
+| Modified files | 0 |
 | Deleted files | 0 |
-| Untracked files/directories | 1 |
-| Total status entries | 5 |
+| Untracked files/directories | 0 |
+| Total status entries | 0 |
 
 Current status concentration:
 
 | Area | Status Entries | Primary Caveat |
 |---|---:|---|
-| Root/config/infra files | 4 | Compose topology, GCP setup, and lockfile changes need separate ownership. |
-| Untracked reviewer aid | 1 | `MERGE_ORDER.md` remains untracked and stale. |
+| Working tree | 0 | The tree is clean, but `a4fb7258` absorbed the remaining compose, lockfile, GCP setup, and merge-order changes into one broad commit. |
 
 Triage labels used below:
 
@@ -110,6 +113,7 @@ misleading subject:
 | `c5e09df2` | `chore(repo): delete legacy routers, dead services, and abandoned stubs` | Broad deletion commit spanning API routers/services/tests, web Pages Router/test artifacts, shared legacy files, and `apps/web/package.json`; needs dedicated review and validation evidence. |
 | `aa97917c` | `chore(api): apply monorepo-reorg path updates across API surface` | Broad API-wide path/config/test-prefix commit touching API runtime, tests, requirements, and tooling; needs focused import, collection, and contract proof. |
 | `5a284808` | `chore(web): prettier format pass, color token alignment, and root config` | Broad web formatting/theme/root-runtime commit spanning web app, root Docker/env/README, and new web env tests; needs web type/test proof plus runtime-config review. |
+| `a4fb7258` | `chore(infra): update docker-compose, GCP setup, lockfile, and merge order` | Broad CI-autofix-authored commit spanning Compose topology, GCP LLM setup, `pnpm-lock.yaml`, and `MERGE_ORDER.md`; structurally validated but not runtime- or release-proven. |
 
 This is a release-hygiene problem because reviewers will reason from the commit
 subject before reading the diff. It should be fixed only with an explicit
@@ -123,7 +127,8 @@ Additional caveats:
 | A misleading commit subject makes later archaeology harder | Future maintainers may search for infra deletion and miss that the commit actually changed architecture/quality artifacts. | Explicitly accept the mismatch or perform a coordinated history rewrite. |
 | A broad deletion commit landed mid-cleanup | Reviewers need to distinguish intentional dead-code removal from accidental staging cleanup. | Audit `c5e09df2` with import/type/test/route-manifest proof before treating it as safe. |
 | Broad API/web commits landed mid-cleanup | The working tree is nearly decomposed, but some committed slices remain too large for easy review. | Audit `aa97917c` and `5a284808` with focused API/web gates before release-readiness claims. |
-| The branch mixes already-committed slices with a very dirty working tree | Reviewers cannot tell whether a committed decision depends on still-uncommitted files. | Final commit map showing which remaining dirty clusters are intentionally deferred. |
+| A broad infra/autofix commit landed after the tree had been decomposed to five files | Reviewers get a clean worktree but still need to reason through unrelated infra/package/merge-order decisions at once. | Either accept `a4fb7258` as an explicitly broad review commit or perform a coordinated history split. |
+| The branch now has a clean working tree but not a clean review sequence | Local status no longer exposes the remaining risk. | Final commit map showing which broad commits are accepted versus rewritten/split. |
 | Some generated artifacts were committed before later source churn settled | A clean commit can become stale relative to the eventual branch tip. | Re-run generated-contract checks after the final API/web slices, not just after the earlier commit. |
 
 ### 2. Deprecated Infra Deletion Is Committed, but Stale References Remain
@@ -151,10 +156,10 @@ as regressions.
 
 ### 3. Dirty Tree Is Too Broad for Confident Release Review
 
-There are 5 status entries after the already-created commits. The working tree
-is now close to decomposed, but the committed history still contains several
-broad API/web/deletion commits that need validation before the branch is a clean
-review story.
+There are currently 0 status entries after the already-created commits. The
+working tree is decomposed in the literal Git sense, but the committed history
+still contains several broad API/web/deletion/infra commits that need validation
+before the branch is a clean review story.
 
 Note: an earlier inventory included 122 deleted-file entries that were stale
 index state, not remaining unstaged working-tree deletions. The index has since
@@ -185,40 +190,42 @@ Minimum safe closeout inventory should include:
 
 ## Deep Dive Remaining Gaps
 
-### 4. Frontend Churn Is the Largest Review-Risk Cluster
+### 4. Frontend Churn Remains a Major Review-Risk Cluster
 
-The dirty tree is dominated by `apps/`, with `apps/web` making up a large share
-of the remaining modifications/deletions/untracked paths.
+The working tree is now clean, but earlier broad commits still contain a large
+web migration surface. Reviewers should not infer safety from clean status
+alone.
 
 | Gap | Evidence | Why It Matters |
 |---|---|---|
-| App Router migration is only partially reviewable from status | `apps/web/src/app/` is still untracked while legacy page/test paths are deleted or modified. | Missing tracked files can make local tests pass while CI or reviewers cannot reproduce the app shape. |
+| App Router migration is only partially reviewable from history | App Router/env-test files are now tracked, but they landed amid broader web/package churn. | Review route inventory and public URL compatibility instead of trusting status alone. |
 | Web-local provider config was deleted | `apps/web/config/providers.toml` and `apps/web/src/config/providers.json` are deleted. | This is probably correct if root/shared provider config is canonical, but all imports must be proven migrated. |
 | Barrel exports and feature indexes were deleted broadly | Multiple `apps/web/src/features/*/index.ts`, `hooks/index.ts`, and `components/index.ts` entries are deleted. | TypeScript path imports can fail outside the focused tests already run. |
 | Auth/state surfaces changed heavily | Auth bootstrap, login, passkey, API key, session, and store files are modified/deleted. | These are high-value runtime paths; unit tests do not replace an authenticated browser journey. |
 | Generated web types were removed | `apps/web/src/types/generated.ts` is deleted. | Safe only if SDK/shared generated types fully replace it and imports are clean. |
-| Web env example is untracked | `apps/web/.env.example` is untracked. | Environment docs can drift from runtime validation if not intentionally committed. |
+| Web env example is tracked but still needs runtime alignment | `apps/web/.env.example` and its env-example test are now tracked. | Environment docs can still drift if runtime validation or deploy docs disagree. |
 
 Recommended handling: make the App Router/web migration its own slice with
 explicit typecheck, focused route tests, and one authenticated flow proof.
 
-Specific frontend caveats to list before committing the web slice:
+Specific frontend caveats to review in the committed web slice:
 
 | Caveat | Failure Mode | Proof Needed |
 |---|---|---|
 | Next major upgrade appears in lockfile/package drift | React/Next behavior can change independently of app code. | `pnpm --filter @goblin/web run type-check` plus targeted route/render tests after install state is reproducible. |
-| App Router files are untracked | CI will not see routes/components that local dev may be using. | Stage all required `apps/web/src/app/` files together or explicitly remove the local experiment. |
+| App Router files landed amid broader churn | CI sees tracked files, but review can still miss compatibility behavior. | Route inventory or Playwright smoke for expected public pages. |
 | Legacy Pages Router deletions can remove compatibility URLs | Existing bookmarks/API proxy assumptions may break. | Route inventory or Playwright smoke covering expected public pages. |
 | Auth bootstrap and session files changed | Users can pass unit tests but fail login/session restore in browser. | One authenticated browser journey or a documented blocker if credentials are unavailable. |
 | Web config/provider files deleted | Runtime may still import deleted local provider artifacts. | `rg` for deleted import paths plus typecheck. |
-| `apps/web/.env.example` is untracked | New developers may miss required env shape. | Commit with env validation tests or keep intentionally local. |
+| `apps/web/.env.example` is tracked but may drift from docs | New developers can still get wrong setup guidance if deploy docs keep older variable names. | Compare env example, runtime validation, and operations docs. |
 | Storybook/testing dependencies changed | Component test environment may diverge from app runtime. | Storybook/test command proof if the package slice claims to own this. |
 | Generated/client type source changed | Frontend may silently consume stale API shapes. | SDK check and web typecheck from the same final tree. |
 
 ### 5. Backend Compatibility Churn Needs Import and Route Proof
 
-The backend still has broad modifications and deletions under `apps/api/src/api`.
-Several deleted files look like legacy module facades or old router locations.
+The backend has broad committed modifications and deletions under
+`apps/api/src/api`. Several deleted files look like legacy module facades or
+old router locations.
 
 | Gap | Evidence | Why It Matters |
 |---|---|---|
@@ -347,21 +354,19 @@ where an executable production check uses an obsolete base URL or root path.
 Historical notes, compatibility aliases, and generated logical route names
 should be reviewed rather than mechanically rewritten.
 
-### 10. Untracked Files Need Ownership Decisions
+### 10. Merge-Order Aid Needs Ownership Review
 
-Current untracked entries:
+Current untracked entries: none.
 
-| Path | Likely Decision |
-|---|---|
-| `MERGE_ORDER.md` | Commit only if it is an intentional reviewer/merge aid; otherwise keep local or remove later. |
+`MERGE_ORDER.md` is now tracked via `a4fb7258`. Treat it as a committed
+reviewer aid that still needs stale-PR/status review before depending on it.
 
-Untracked-file caveats:
+Reviewer-aid caveats:
 
 | Caveat | Consequence |
 |---|---|
-| Untracked files are invisible to normal diffs unless explicitly included | Reviewers can approve a branch that does not contain locally tested code. |
-| Untracked directories can contain many files under one status line | `apps/web/src/app/` may hide a large migration surface. |
-| Untracked env docs can be real release artifacts | Treat env examples as product-facing setup docs, not scratch files. |
+| `MERGE_ORDER.md` landed inside a broad infra/autofix commit | Reviewers may assume the merge sequence is current even if PR state has drifted. |
+| Reviewer aids can become process promises | Treat stale PR numbers, branch names, and status claims as needing verification before use. |
 
 ### 11. Quality Debt Counts Need Recalculation After Final Slices
 
@@ -389,27 +394,28 @@ Quality caveats:
 
 ### 12. Package and Lockfile Drift Is a Separate Migration, Not Hygiene
 
-The remaining package-management files are not one small reproducibility change.
+The package-management changes are not one small reproducibility change.
 `.npmrc` was split out into `45b473a5` as repository package policy, but
-`pnpm-lock.yaml` still shows package surface movement after the provider
-config/schema and shared package API files were split out in `19e80656` and
-`10158e0b`.
+`pnpm-lock.yaml` landed later in broad commit `a4fb7258` with package surface
+movement after the provider config/schema and shared package API files were
+split out in `19e80656` and `10158e0b`.
 
 | Gap | Evidence | Why It Matters |
 |---|---|---|
-| Lockfile churn is huge | `pnpm-lock.yaml` has thousands of changed lines. | A lockfile-only-looking commit could hide major dependency and runtime changes. |
+| Lockfile churn is huge | `pnpm-lock.yaml` changed by thousands of lines in `a4fb7258`. | A lockfile-looking review can hide major dependency and runtime changes. |
 | Web package versions appear to move across major framework/runtime boundaries | Package drift includes large frontend dependency changes. | React/Next/Vite/Storybook changes can create behavioral regressions unrelated to source edits. |
-| Package lockfile remains broad | `pnpm-lock.yaml` is still dirty and mostly tied to the web dependency migration. | Keep it with the dependency migration proof, not a package-hygiene commit. |
+| Package lockfile landed in a broad infra/autofix commit | `pnpm install --frozen-lockfile --ignore-scripts --prefer-offline` passes, but package risk is mixed with Compose and GCP setup changes. | Review dependency migration separately even if history is not rewritten. |
 | `.npmrc` is resolved | It now adds `save-exact=true` in a standalone commit. | Keep future package policy separate from dependency migrations. |
 
-Recommended slice: keep package manifests and `pnpm-lock.yaml` together in a
-dedicated dependency migration commit with frozen-install proof.
+Recommended slice if history is rewritten: keep package manifests and
+`pnpm-lock.yaml` together in a dedicated dependency migration commit with
+frozen-install proof.
 
 ### 13. Runtime Configuration Drift Needs a Product/Infra Boundary
 
 `.env.example`, Dockerfiles, compose files, Redis config, Prometheus rules, and
-provider setup scripts are still dirty. These files define how people run the
-system, not just how code compiles.
+provider setup scripts define how people run the system, not just how code
+compiles. They are now committed, but still need ownership and runtime proof.
 
 | Gap | Failure Mode | Proof Needed |
 |---|---|---|
@@ -418,12 +424,12 @@ system, not just how code compiles.
 | `Dockerfile` production runtime changed | Image may build but fail startup due to paths, user permissions, or missing packages. | `docker build` plus container `/api/v1/health` smoke if Docker is available. |
 | `Dockerfile.sandbox` changed separately | Sandbox tooling can drift from API runtime assumptions. | Syntax/build check for the sandbox target or defer as a separate slice. |
 | `docker-compose.yml` has broad changes | Static Compose validation passes for base, worker, sandbox, build, and override profiles, but local dev services may no longer match docs or Make targets. | Container startup smoke before claiming local runtime readiness. |
-| Worker Compose profile remains broad | The diff reshapes existing high/default/low worker pools and Flower/monitor services. | Explicitly accept the worker-profile maintenance cost or reduce the local topology before commit. |
+| Worker Compose profile remains broad | The diff reshapes existing high/default/low worker pools and Flower/monitor services. | Explicitly accept the worker-profile maintenance cost or reduce the local topology in a follow-up/history split. |
 | Sandbox Compose profile exposes Docker through a proxy | Better than a direct socket mount, but still grants container/image API access. | Security review and runtime smoke before promoting beyond local development. |
-| GOBLINOS override still has broader uncommitted edits | Only the escaped external-drive path was committed in `097013b3`; removal of postgres volume wiring and comment/runtime changes remain dirty. | Review with the main Compose topology slice, not as a standalone path fix. |
+| GOBLINOS override changed alongside root Compose | The escaped external-drive path was fixed in `097013b3`, then the broader override landed in `a4fb7258`. | Review with the main Compose topology slice, not as a standalone path fix. |
 | Redis config foregrounding changed | Committed in `65ebcdfd`; Redis loaded the config and exited only because validation overrode the port to `0`. | Keep Compose health/runtime smoke in the final proof bundle. |
 | Prometheus config changed | Committed in `119264d1`; YAML parsed and API SLO expressions were aligned to current telemetry metric names. | Validate with `promtool` or hosted Prometheus before claiming alert readiness. |
-| `infra/gcp-llm-setup.sh` is dirty | The current diff hard-codes a personal GCP account/project and opens public firewall rules for model endpoints. | Do not commit without explicit provider-infra ownership, secret/account policy, and network exposure review. |
+| `infra/gcp-llm-setup.sh` was committed broadly then hardened | `a4fb7258` introduced the helper shape; `b3035d07` removed hard-coded personal identity and requires explicit `GCP_LLM_SOURCE_RANGES` for firewall creation. | Still needs real GCP dry-run/ops ownership before treating it as production-ready. |
 
 Recommended slice: separate "container runtime" from "provider/env docs" from
 "observability config." They are adjacent, but not the same decision.
@@ -536,7 +542,7 @@ Remaining caveats:
 | Surface | Open Question |
 |---|---|
 | `fly.toml` | Kept intentionally as an archived reference because `check_operational_policy.py` requires that state. |
-| `.circleci/config.yml` | Still modified elsewhere in the dirty tree; needs final review before release. |
+| `.circleci/config.yml` | Was modified in committed history; needs final review before release. |
 | Root Docker Compose files | Need final docs/readme language to keep local-only versus production ownership clear. |
 | Self-development Fly token note | May be a separate worker architecture rather than product deploy; not removed in this infra slice. |
 
@@ -575,7 +581,7 @@ unit/OpenAPI behavior. Missing or not recently rerun in the current final state:
 
 | Test/Gate | Caveat |
 |---|---|
-| Full `make test-api` | Not shown passing after the latest broad dirty-tree state. |
+| Full `make test-api` | Not shown passing after the latest broad committed state. |
 | Full `make test-web` | Not shown passing after frontend churn. |
 | Full `make type-check` | Not shown passing after generated SDK and web changes. |
 | Running backend smoke via `/api/v1/health` and Goblin endpoints | Needed before release claim. |
@@ -583,9 +589,9 @@ unit/OpenAPI behavior. Missing or not recently rerun in the current final state:
 
 ### 24. Generated Contract Artifacts Are Committed, but Need Drift Guard
 
-The SDK/OpenAPI artifacts were regenerated and committed, but the remaining
-dirty tree includes additional API and route-related changes. That means the
-generated artifacts may become stale again before final closeout unless
+The SDK/OpenAPI artifacts were regenerated and committed, but later broad
+commits include additional API, package, and route-adjacent changes. That means
+the generated artifacts may become stale again before final closeout unless
 `make contract-checks` is rerun at the end.
 
 ### 25. Provider Configuration Authority Is Improved but Still Affects Web
@@ -606,10 +612,10 @@ artifact itself.
 
 ### 26. Script Sprawl Is Smaller, but Ownership Still Needs a Final Pass
 
-The latest script commit reduced root script sprawl by turning common entrypoints
-into wrappers over `tooling/*` and deleting obsolete backend start helpers. Some
-root/ops scripts and CI references still remain in the dirty tree. The risk is
-mostly maintainability and contributor confusion.
+The latest script commits reduced root script sprawl by turning common
+entrypoints into wrappers over `tooling/*` and deleting obsolete backend start
+helpers. Some root/ops scripts and CI references still remain in committed
+history. The risk is mostly maintainability and contributor confusion.
 
 Recommendation: do not create another docs checklist. Instead, converge scripts
 behind Makefile targets and delete scripts only when no docs/workflows call
@@ -638,7 +644,7 @@ Do not claim release readiness until all of the following are true:
 
 | Required Before Release Claim | Current State |
 |---|---|
-| Working tree reduced to intentional, reviewable changes | Mostly true for the working tree; 5 status entries remain, but broad committed slices still need review validation. |
+| Working tree reduced to intentional, reviewable changes | True for `git status`; not true for review history because `a4fb7258` is broad. |
 | Commit history matches the requested story or the mismatch is explicitly accepted | Not true; one commit subject is misleading. |
 | Deprecated infra deletion has no active executable references | Mostly true after this pass; final search and policy checks still required. |
 | Contract artifacts regenerated after final API changes | Partially true; must rerun at end. |
@@ -673,7 +679,7 @@ Do not claim release readiness until all of the following are true:
 | Three Goblin query endpoints return 501 | Resolved in current source; no `status_code=501` or `HTTP_501` hits found across API/web/packages. |
 | 64 architecture/capability violations | Stale; current root checks pass and quality baseline reports zero. |
 | Undocumented API cycles | Stale; `make check-api-cycles` passes. |
-| Missing `apps/web/.env.example` | Currently present as an untracked file; still needs intentional commit or ignore decision. |
+| Missing `apps/web/.env.example` | No longer part of the current untracked inventory; verify web env docs through the committed app/package migration instead. |
 | Xfail test debt | Current quality baseline reports zero xfail tests. |
 | Missing `storybook-static/` Prettier ignore | Resolved by `ecfe50b3`; Git, ESLint, and Prettier now consistently treat Storybook static output as generated. |
 | Root contributing stub points at old docs path | Resolved by `c1b2791e`; `CONTRIBUTING.md` now points at the tracked operations guide. |
@@ -690,3 +696,4 @@ Do not claim release readiness until all of the following are true:
 | Radix select wrapper used broad ElementType aliases | Resolved by `741f8386`; package UI typecheck passed after simplifying wrapper prop types. |
 | `lint-staged` allow-empty behavior was placed in package config | Resolved by `c61cce98`; the option now lives on the Husky command line and the web package config validates. |
 | GOBLINOS override escaped the external-drive space literally | Resolved by `097013b3`; the committed path now uses `/Volumes/GOBLINOS 1/...` rather than `/Volumes/GOBLINOS\\ 1/...`. |
+| GCP LLM setup hard-coded personal identity and public firewall defaults | Resolved by `b3035d07`; project/account are env-driven, help is non-mutating, ShellCheck passes, and firewall creation requires explicit `GCP_LLM_SOURCE_RANGES`. |
