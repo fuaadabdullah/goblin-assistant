@@ -8,6 +8,7 @@ from fastapi.testclient import TestClient
 
 from api.observability.debug_router import get_memory_debug_info, router
 from api.observability.tool_tracer import ToolExecutionStatus, tool_tracer
+from api.routes.route_inspection import effective_route_paths
 
 app = FastAPI()
 app.include_router(router, prefix="/api/v1")
@@ -18,7 +19,7 @@ client = TestClient(app)
 
 def test_debug_endpoints_are_registered():
     """Verify debug endpoints are registered"""
-    routes = [route.path for route in app.routes]
+    routes = effective_route_paths(app.routes)
 
     # Check that tool trace endpoints exist
     assert any("/api/v1/debug/tool-trace/" in r for r in routes), (

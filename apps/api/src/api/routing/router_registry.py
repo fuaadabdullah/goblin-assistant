@@ -85,6 +85,7 @@ class RoutingRegistry:
         stats = self.get(provider_id)
         stats.success_count += 1
         stats.update_latency(latency_ms)
+        stats.update_cost(cost_usd)
         stats.total_cost_usd += cost_usd
         now = time.time()
         stats.last_used = now
@@ -163,6 +164,9 @@ class RoutingRegistry:
                 "latency_sample_count": len(s._latency_window),
                 "success_rate": round(s.success_rate, 3),
                 "total_cost_usd": round(s.total_cost_usd, 6),
+                "last_cost_per_request": round(s.last_cost_per_request, 8),
+                "ewma_cost_per_request": round(s.ewma_cost_per_request, 8),
+                "is_cost_favorable": s.is_cost_favorable,
                 "last_used": s.last_used,
                 "ewma_tokens_per_sec": round(s.ewma_tokens_per_sec, 1),
                 "total_output_tokens": s.total_output_tokens,
@@ -189,6 +193,9 @@ class RoutingRegistry:
                     "ewma_latency_ms": round(s.ewma_latency_ms, 1),
                     "success_rate": round(s.success_rate, 3),
                     "total_cost_usd": round(s.total_cost_usd, 6),
+                    "last_cost_per_request": round(s.last_cost_per_request, 8),
+                    "ewma_cost_per_request": round(s.ewma_cost_per_request, 8),
+                    "is_cost_favorable": s.is_cost_favorable,
                     "last_used": s.last_used,
                 }
                 for pid, s in self._store.load().items()

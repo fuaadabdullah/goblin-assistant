@@ -22,6 +22,8 @@ class ProviderStats:
     success_count: int = 0
     failure_count: int = 0
     total_cost_usd: float = 0.0
+    last_cost_per_request: float = 0.0
+    ewma_cost_per_request: float = 0.0
     last_used: float = field(default_factory=time.time)
     ewma_tokens_per_sec: float = 0.0
     total_output_tokens: int = 0
@@ -30,6 +32,24 @@ class ProviderStats:
     def update_latency(self, latency_ms: float) -> None:
         self.ewma_latency_ms = (
             self.ewma_alpha * latency_ms + (1 - self.ewma_alpha) * self.ewma_latency_ms
+        )
+
+    def update_cost(self, cost_usd: float) -> None:
+        self.last_cost_per_request = float(cost_usd)
+        if self.ewma_cost_per_request <= 0:
+            self.ewma_cost_per_request = self.last_cost_per_request
+            return
+
+        self.ewma_cost_per_request = (
+            self.ewma_alpha * self.last_cost_per_request
+            + (1 - self.ewma_alpha) * self.ewma_cost_per_request
+        )
+
+    @property
+    def is_cost_favorable(self) -> bool:
+        return (
+            self.last_cost_per_request > 0
+            and self.ewma_cost_per_request > self.last_cost_per_request + 1e-12
         )
 
     @property
@@ -97,7 +117,10 @@ class RoutingRegistryStore:
                 rows = conn.execute(
                     """
                     SELECT provider_id, ewma_latency_ms, ewma_alpha, success_count,
-                           failure_count, total_cost_usd, last_used,
+                           failure_count, total_cost_usd,
+                           COALESCE(last_cost_per_request, 0.0),
+                           COALESCE(ewma_cost_per_request, 0.0),
+                           last_used,
                            COALESCE(ewma_tokens_per_sec, 0.0),
                            COALESCE(total_output_tokens, 0)
                     FROM provider_routing_stats
@@ -113,9 +136,11 @@ class RoutingRegistryStore:
                     success_count=int(row[3]),
                     failure_count=int(row[4]),
                     total_cost_usd=float(row[5]),
-                    last_used=float(row[6]),
-                    ewma_tokens_per_sec=float(row[7]),
-                    total_output_tokens=int(row[8]),
+                    last_cost_per_request=float(row[6]),
+                    ewma_cost_per_request=float(row[7]),
+                    last_used=float(row[8]),
+                    ewma_tokens_per_sec=float(row[9]),
+                    total_output_tokens=int(row[10]),
                 )
                 for row in rows
             }
@@ -162,15 +187,18 @@ class RoutingRegistryStore:
                     """
                     INSERT INTO provider_routing_stats (
                         provider_id, ewma_latency_ms, ewma_alpha, success_count,
-                        failure_count, total_cost_usd, last_used, updated_at,
+                        failure_count, total_cost_usd, last_cost_per_request,
+                        ewma_cost_per_request, last_used, updated_at,
                         ewma_tokens_per_sec, total_output_tokens
-                    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                     ON CONFLICT(provider_id) DO UPDATE SET
                         ewma_latency_ms = excluded.ewma_latency_ms,
                         ewma_alpha = excluded.ewma_alpha,
                         success_count = excluded.success_count,
                         failure_count = excluded.failure_count,
                         total_cost_usd = excluded.total_cost_usd,
+                        last_cost_per_request = excluded.last_cost_per_request,
+                        ewma_cost_per_request = excluded.ewma_cost_per_request,
                         last_used = excluded.last_used,
                         updated_at = excluded.updated_at,
                         ewma_tokens_per_sec = excluded.ewma_tokens_per_sec,
@@ -184,6 +212,8 @@ class RoutingRegistryStore:
                             item.success_count,
                             item.failure_count,
                             item.total_cost_usd,
+                            item.last_cost_per_request,
+                            item.ewma_cost_per_request,
                             item.last_used,
                             now,
                             item.ewma_tokens_per_sec,
@@ -225,6 +255,8 @@ class RoutingRegistryStore:
                 success_count INTEGER NOT NULL,
                 failure_count INTEGER NOT NULL,
                 total_cost_usd REAL NOT NULL,
+                last_cost_per_request REAL DEFAULT 0.0,
+                ewma_cost_per_request REAL DEFAULT 0.0,
                 last_used REAL NOT NULL,
                 updated_at REAL NOT NULL,
                 ewma_tokens_per_sec REAL DEFAULT 0.0,
@@ -232,6 +264,18 @@ class RoutingRegistryStore:
             )
             """
         )
+        try:
+            conn.execute(
+                "ALTER TABLE provider_routing_stats ADD COLUMN last_cost_per_request REAL DEFAULT 0.0"
+            )
+        except sqlite3.OperationalError:
+            pass
+        try:
+            conn.execute(
+                "ALTER TABLE provider_routing_stats ADD COLUMN ewma_cost_per_request REAL DEFAULT 0.0"
+            )
+        except sqlite3.OperationalError:
+            pass
         try:
             conn.execute(
                 "ALTER TABLE provider_routing_stats ADD COLUMN ewma_tokens_per_sec REAL DEFAULT 0.0"

@@ -11,6 +11,7 @@ import pytest
 
 from api import lifespan as lifespan_module
 from api import main
+from api.routes.route_inspection import effective_route_paths
 
 
 def _provider_health_stub(
@@ -34,7 +35,7 @@ def _provider_health_stub(
 def test_app_registers_runtime_middlewares_and_core_routes() -> None:
     assert len(main.app.user_middleware) >= 4
 
-    paths = {route.path for route in main.app.routes if hasattr(route, "path")}
+    paths = effective_route_paths(main.app.routes)
     assert "/" in paths
     assert "/test" in paths
     assert "/api/v1/health" in paths

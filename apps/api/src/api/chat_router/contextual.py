@@ -26,6 +26,7 @@ from api.config.archetypes import (
 from api.config.archetypes import (
     missing_general_assistant_tools as _missing_general_assistant_tools,
 )
+from api.config.mode_addendums import Mode
 from api.config.mode_addendums import get_addendum as _get_mode_addendum
 from api.config.prompt_composer import compose_system_prompt
 from api.config.system_prompt import system_prompt_manager
@@ -57,6 +58,20 @@ logger = structlog.get_logger()
 router = APIRouter()
 
 
+def _legacy_mode_from_canonical(mode: Mode | None) -> str | None:
+    if mode is None or mode == Mode.CHAT:
+        return None
+    if mode == Mode.CODE:
+        return "CODE_REVIEW"
+    if mode == Mode.RESEARCH:
+        return "DEEP_RESEARCH"
+    if mode == Mode.EDUCATION:
+        return "EDUCATION"
+    if mode == Mode.FINANCE:
+        return "TRADING_FORGE"
+    return None
+
+
 @router.post("/contextual-chat", response_model=SuccessEnvelope[ContextualChatResponse])
 async def contextual_chat(
     request: ContextualChatRequest,
@@ -80,9 +95,14 @@ async def contextual_chat(
         # the correct slot. The composer owns step 3 of the order; we
         # just hand it the right inputs.
         learning_boost = False
-        if request.mode:
+        prompt_mode = (
+            request.legacy_mode.value
+            if request.legacy_mode
+            else _legacy_mode_from_canonical(request.mode)
+        )
+        if prompt_mode:
             try:
-                _get_mode_addendum(request.mode)  # validate; KeyError handled below
+                _get_mode_addendum(prompt_mode)  # validate; KeyError handled below
             except KeyError as exc:
                 raise HTTPException(status_code=400, detail=str(exc))
         else:
@@ -95,7 +115,7 @@ async def contextual_chat(
         # in `system_layer.py` continues to own context placement.
         prefix_prompt = compose_system_prompt(
             tone=request.tone,
-            mode=request.mode,
+            mode=prompt_mode,
             learning_boost=learning_boost,
             request_glossary=request.glossary,
             unknown_mode="raise",
@@ -158,23 +178,23 @@ async def contextual_chat(
         }
 
         ctx_tools = export_tools_for_provider(request.provider)
-        if _is_general_assistant_mode(request.mode) and ctx_tools:
+        if _is_general_assistant_mode(prompt_mode) and ctx_tools:
             missing_tools = _missing_general_assistant_tools(ctx_tools)
             if missing_tools:
                 logger.warning(
                     "general_assistant_required_tools_missing",
                     provider=request.provider,
-                    mode=request.mode,
+                    mode=prompt_mode,
                     missing_tools=missing_tools,
                     registered_tool_count=len(ctx_tools),
                 )
-        if _is_deep_research_mode(request.mode) and ctx_tools:
+        if _is_deep_research_mode(prompt_mode) and ctx_tools:
             missing_tools = _missing_deep_research_tools(ctx_tools)
             if missing_tools:
                 logger.warning(
                     "deep_research_required_tools_missing",
                     provider=request.provider,
-                    mode=request.mode,
+                    mode=prompt_mode,
                     missing_tools=missing_tools,
                     registered_tool_count=len(ctx_tools),
                 )

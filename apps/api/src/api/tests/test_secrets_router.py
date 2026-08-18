@@ -18,6 +18,7 @@ from api.integrations.secrets import (
     SecretValidationError,
 )
 from api.integrations.secrets.models import Secret, SecretMetadata
+from api.routes.route_inspection import iter_effective_routes
 from api.routes.secrets_router import (
     SecretRequest,
     get_secrets_adapter,
@@ -369,7 +370,9 @@ def test_router_registered_endpoints() -> None:
     """Verify the router registers all expected endpoints."""
     app = FastAPI()
     app.include_router(router, prefix="/api/v1")
-    routes = {(r.path, frozenset(r.methods or [])) for r in app.routes}
+    routes = {
+        (route.path, frozenset(route.methods or [])) for route in iter_effective_routes(app.routes)
+    }
 
     # Check list endpoint (GET /)
     assert any(r[0] in {"/api/v1/secrets", "/api/v1/secrets/"} and "GET" in r[1] for r in routes), (
