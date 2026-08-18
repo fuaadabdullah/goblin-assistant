@@ -21,7 +21,7 @@ def _merge_memory_state(
         return incoming
     if current_state in {MemoryLifecycleState.DELETED, MemoryLifecycleState.ARCHIVED}:
         return current_state
-    from .models import _state_rank  # noqa: PLC0415
+    from .models import _state_rank
 
     if _state_rank(incoming) >= _state_rank(current_state):
         return incoming
@@ -80,7 +80,7 @@ def _normalize_kind(
     source_kind: Optional[str] = None,
     metadata: Optional[Dict[str, Any]] = None,
 ) -> MemoryKind:
-    from ..message_classifier import MessageType  # noqa: PLC0415
+    from ..message_classifier import MessageType
 
     metadata = metadata or {}
     hinted = (
