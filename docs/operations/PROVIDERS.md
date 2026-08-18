@@ -10,11 +10,17 @@ This document is the canonical operations reference for provider configuration m
 
 ## Sources of truth
 
-- Provider config: `config/providers.toml`
+- Canonical editable provider config: `config/providers.toml`
+- Generated provider artifact: `config/providers.json`
+- Generator/validator: `tooling/generators/generate-providers-json.py`
 - Runtime listing and selectability logic: `apps/api/src/api/providers/dispatcher.py`
 - Environment examples:
   - `.env.example`
   - `apps/api/.env.example`
+
+`config/providers.json` is generated from `config/providers.toml`; do not edit
+both files by hand. After changing TOML, run `make generate-providers-json`.
+CI runs `make check-providers-json` and fails when JSON is stale.
 
 ## Status semantics
 

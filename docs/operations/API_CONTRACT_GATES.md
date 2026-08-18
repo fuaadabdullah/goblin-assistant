@@ -1,7 +1,28 @@
 # API Contract Gates
 
-This repository treats the checked-in OpenAPI schema and route manifest as the
-canonical API contract snapshots.
+This repository treats the live FastAPI schema as the source API contract and
+the checked-in OpenAPI, route, and SDK files as generated snapshots.
+
+## Ownership Chain
+
+```text
+FastAPI app schema
+    |
+    v
+tooling/generators/export-openapi.py
+    |
+    v
+packages/sdk/openapi/openapi.json
+    |
+    v
+tooling/generators/generate-sdk-client.sh
+    |
+    v
+packages/sdk/src/generated/*
+```
+
+Route snapshots and frontend proxy route contracts are generated in the same
+`make sdk-generate` pass from the live FastAPI app.
 
 ## Canonical Artifacts
 
@@ -40,6 +61,10 @@ workflow, Render remains the canonical backend target, Fly.io remains archived,
 and dependency update automation must stay configured.
 If the regenerated OpenAPI schema or route manifest differs from the checked-in
 files, CI fails immediately.
+
+CI must never hand-edit generated SDK/OpenAPI output to quiet a diff. Regenerate
+from the live FastAPI app, review the source route/schema change, and commit the
+resulting generated artifacts together.
 
 If the frontend introduces an API path that is not represented by the
 manifest-derived proxy spec or one of the explicit browser-only handlers, CI

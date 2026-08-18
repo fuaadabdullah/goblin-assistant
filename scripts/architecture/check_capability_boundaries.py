@@ -95,6 +95,20 @@ def parse_imports(path: Path, module: str) -> List[Tuple[int, str]]:
     return imports
 
 
+def safe_parse_imports(path: Path, module: str) -> tuple[List[Tuple[int, str]], List[Violation]]:
+    try:
+        return parse_imports(path, module), []
+    except SyntaxError as exc:
+        return [], [
+            Violation(
+                file=str(path.relative_to(REPO_ROOT)),
+                line=getattr(exc, "lineno", 1) or 1,
+                rule="parse-error",
+                detail=f"{module} has invalid syntax: {exc.msg}",
+            )
+        ]
+
+
 def starts_with_any(value: str, prefixes: Sequence[str]) -> bool:
     return any(value.startswith(prefix) for prefix in prefixes)
 
@@ -132,7 +146,8 @@ def check_capability_boundaries(
     for file_path in files:
         module = module_name(file_path)
         capability = capability_for_module(module, manifest)
-        imports = parse_imports(file_path, module)
+        imports, parse_violations = safe_parse_imports(file_path, module)
+        violations.extend(parse_violations)
         allowed_prefixes: List[str] = []
         capability_name = ""
         if capability is not None:

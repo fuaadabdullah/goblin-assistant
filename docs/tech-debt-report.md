@@ -1,5 +1,11 @@
 # Technical Debt Report: Goblin Assistant
 
+> Historical snapshot only. Do not use this document as current release
+> evidence. Generate the canonical architecture evidence report with
+> `make architecture-evidence`; it writes `artifacts/architecture-evidence.json`
+> with commit SHA, timestamp, tool version, parser failures, scanned files,
+> violations, skipped files, and unresolved parsing failures.
+
 **Generated:** 2026-07-17
 **Scope:** Full repository analysis
 
