@@ -51,6 +51,64 @@ export interface AccountPreferences {
   [key: string]: string | boolean | number | undefined;
 }
 
+export interface KpiProviderBreakdown {
+  provider: string;
+  model: string;
+  requests: number;
+  cost_usd: number;
+  tokens: number;
+}
+
+export interface KpiSnapshot {
+  generated_at: string;
+  window_days: number;
+  since: string;
+  system: {
+    request_count: number;
+    success_count: number;
+    failure_count: number;
+    success_pct: number | null;
+    failure_pct: number | null;
+    p50_latency_ms: number | null;
+    p95_latency_ms: number | null;
+    ttft_ms: number | null;
+    tool_success_pct: number | null;
+    retrieval_latency_ms: number | null;
+  };
+  economics: {
+    total_requests: number;
+    total_cost_usd: number;
+    cost_per_request_usd: number | null;
+    tokens_per_request: number | null;
+    total_tokens: number;
+    provider_breakdown: KpiProviderBreakdown[];
+    model_rollup: Record<string, unknown>[];
+    savings_from_routing_usd: number | null;
+  };
+  product: {
+    total_users: number | null;
+    new_users_in_window: number | null;
+    returning_users_in_window: number | null;
+    total_conversations: number | null;
+    conversations_in_window: number | null;
+    total_messages: number | null;
+    avg_session_turns: number | null;
+    total_memory_facts: number | null;
+    goblins_created: number | null;
+  };
+  ai: {
+    providers: {
+      total: number;
+      configured: number;
+      routing: number;
+      open_circuits: number;
+    };
+    intelligence_benchmark: Record<string, unknown> | null;
+    memory_benchmark: Record<string, unknown> | null;
+    tool_selection_accuracy: number | null;
+  };
+}
+
 interface ConversationCreateResponse {
   conversation_id: string;
   title: string;
@@ -724,5 +782,9 @@ export const apiClient = {
       },
     });
     return response.data;
+  },
+
+  async getKpi(days = 7) {
+    return getBackend<KpiSnapshot>(`/admin/kpi?days=${days}`, withAuth());
   },
 };

@@ -51,4 +51,7 @@ export const queryKeys = {
   sandboxJobs: ['sandbox', 'jobs'] as const,
   jobLogs: (jobId: string) => ['sandbox', 'jobs', jobId, 'logs'] as const,
   jobArtifacts: (jobId: string) => ['sandbox', 'jobs', jobId, 'artifacts'] as const,
+
+  // KPI dashboard
+  kpi: (days: number) => ['admin', 'kpi', days] as const,
 };
