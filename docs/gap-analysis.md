@@ -69,10 +69,10 @@ Current working-tree scale:
 
 | Git status class | Count |
 |---|---:|
-| Modified files | 671 |
+| Modified files | 670 |
 | Deleted files | 122 |
 | Untracked files/directories | 4 |
-| Total status entries | 797 |
+| Total status entries | 796 |
 
 Current status concentration:
 
@@ -80,7 +80,7 @@ Current status concentration:
 |---|---:|---|
 | `apps/` | 764 | Dominates unresolved risk; should not be reviewed as one blob. |
 | `packages/` | 18 | Shared-contract/package drift can affect both API and web. |
-| Root and infra files | 15 | Contains runtime, Docker, compose, lockfile, and docs changes that need separate ownership. |
+| Root and infra files | 14 | Contains runtime, Docker, compose, lockfile, and docs changes that need separate ownership. |
 
 Triage labels used below:
 
@@ -140,7 +140,7 @@ as regressions.
 
 ### 3. Dirty Tree Is Too Broad for Confident Release Review
 
-There are 797 status entries after the already-created commits. This is larger
+There are 796 status entries after the already-created commits. This is larger
 than a normal focused feature branch and mixes backend, frontend, infra, docs,
 generated contracts, scripts, tests, package locks, and deleted legacy trees.
 
@@ -403,7 +403,8 @@ system, not just how code compiles.
 | `Dockerfile` production runtime changed | Image may build but fail startup due to paths, user permissions, or missing packages. | `docker build` plus container `/api/v1/health` smoke if Docker is available. |
 | `Dockerfile.sandbox` changed separately | Sandbox tooling can drift from API runtime assumptions. | Syntax/build check for the sandbox target or defer as a separate slice. |
 | `docker-compose.yml` has broad changes | Local dev services may no longer match docs or Make targets. | `docker compose config` and local service smoke before claiming local runtime readiness. |
-| Redis/Prometheus config changed | Operational tuning can affect reliability/noise. | Config validation or explicit ops rationale. |
+| Redis config foregrounding changed | Committed in `65ebcdfd`; Redis loaded the config and exited only because validation overrode the port to `0`. | Keep Compose health/runtime smoke in the final proof bundle. |
+| Prometheus config changed | New SLO alerts need rule syntax and metric-availability proof. | Validate with `promtool` or hosted Prometheus before claiming alert readiness. |
 | `infra/gcp-llm-setup.sh` is dirty | Provider setup may introduce a new operational path. | Confirm it is still aligned with current provider strategy before committing. |
 
 Recommended slice: separate "container runtime" from "provider/env docs" from
@@ -613,7 +614,7 @@ Do not claim release readiness until all of the following are true:
 
 | Required Before Release Claim | Current State |
 |---|---|
-| Working tree reduced to intentional, reviewable changes | Not true; 797 status entries remain. |
+| Working tree reduced to intentional, reviewable changes | Not true; 796 status entries remain. |
 | Commit history matches the requested story or the mismatch is explicitly accepted | Not true; one commit subject is misleading. |
 | Deprecated infra deletion has no active executable references | Mostly true after this pass; final search and policy checks still required. |
 | Contract artifacts regenerated after final API changes | Partially true; must rerun at end. |
@@ -656,3 +657,4 @@ Do not claim release readiness until all of the following are true:
 | Supabase CLI temp metadata was tracked | Resolved by `578e092b`; 16 `.temp` files were removed from tracking and recursive Supabase temp ignores now retain local CLI state. |
 | Local hooks skipped useful checks | Resolved by `06ebf527`; pre-commit and SQLite hook smokes passed, and web typecheck passed before committing pre-push hardening. |
 | Stale screenshot artifacts remained tracked | Resolved by `8a735067`; unreferenced screenshot assets and their stale directory README were removed. |
+| Redis daemonized inside Compose-managed runtime | Resolved by `65ebcdfd`; `redis-server redis.conf --daemonize no --port 0 --save "" --appendonly no` loaded the config before intentionally exiting without a listener. |
