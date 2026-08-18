@@ -137,7 +137,7 @@ class BanditRouter:
         # Feature-based path: use full ML scoring when request features are present
         if request is not None:
             try:
-                from api.routing.routing_pipeline import build_routing_pipeline  # noqa: PLC0415
+                from api.routing.routing_pipeline import build_routing_pipeline
 
                 return build_routing_pipeline(bandit_cache=self._cache).rank(
                     candidates,
@@ -218,7 +218,7 @@ class BanditRouter:
 
         # Also update the feature router's learned weights if features were cached
         try:
-            from api.routing.routing_pipeline import build_routing_pipeline  # noqa: PLC0415
+            from api.routing.routing_pipeline import build_routing_pipeline
 
             build_routing_pipeline(bandit_cache=self._cache).record_outcome_by_request_id(
                 request_id=request_id,
@@ -248,7 +248,7 @@ def _fire_routing_event(
     user_id: Optional[str],
 ) -> None:
     try:
-        from api.providers.supabase_events import _fire, _post  # noqa: PLC0415
+        from api.providers.supabase_events import _fire, _post
 
         payload = {
             "request_id": request_id,
@@ -273,7 +273,7 @@ def _fire_routing_event(
 
 def _fire_bandit_state_upsert(state: BanditState) -> None:
     try:
-        from api.providers.supabase_events import (  # noqa: PLC0415
+        from api.providers.supabase_events import (
             _HEADERS,
             _REST,
             _fire,
@@ -319,7 +319,7 @@ async def restore_bandit_state(cache: BanditCache) -> None:
     Called once at process startup. No-op when Supabase is not configured.
     """
     try:
-        from api.providers.supabase_events import (  # noqa: PLC0415
+        from api.providers.supabase_events import (
             _ENABLED,
             _HEADERS,
             _REST,
@@ -407,7 +407,7 @@ def _record_registry_outcome(event: "RoutingOutcomeEvent") -> None:
     _fire_bandit_state_upsert(updated)
 
 
-from api.routing.outcome_events import (  # noqa: E402
+from api.routing.outcome_events import (
     RoutingOutcomeEvent,
     register_routing_outcome_handler,
 )

@@ -282,7 +282,7 @@ class LearnedDepartmentRouter:
     async def load_weights(self) -> None:
         """Restore weights from Supabase department_routing_weights table."""
         try:
-            from api.providers.supabase_events import (  # noqa: PLC0415
+            from api.providers.supabase_events import (
                 _ENABLED,
                 _HEADERS,
                 _REST,
@@ -357,7 +357,7 @@ def _fire_dept_weights_upsert(
     department_id: str, weights: Dict[str, float], observation_count: int
 ) -> None:
     try:
-        from api.providers.supabase_events import (  # noqa: PLC0415
+        from api.providers.supabase_events import (
             _HEADERS,
             _REST,
             _fire,

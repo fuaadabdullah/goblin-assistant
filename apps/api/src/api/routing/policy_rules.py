@@ -186,7 +186,7 @@ class PolicyEngine:
     def _apply_action(
         self, rule: PolicyRule, decision: PolicyDecision, candidates: List[str]
     ) -> None:
-        from .policy_engine import tier_router  # noqa: PLC0415
+        from .policy_engine import tier_router
 
         action = rule.action
 

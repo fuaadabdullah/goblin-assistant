@@ -156,8 +156,8 @@ class ProviderSelectionModel:
         routing_id: str,
         metadata: Dict[str, Any],
     ) -> List[ProviderScore]:
-        from api.routing.ml_router import bandit_cache  # noqa: PLC0415
-        from api.routing.router_registry import registry  # noqa: PLC0415
+        from api.routing.ml_router import bandit_cache
+        from api.routing.router_registry import registry
 
         pipeline_result = self._pipeline_for(
             bandit_cache=bandit_cache,
@@ -211,8 +211,8 @@ class ProviderSelectionModel:
         metadata: Dict[str, Any],
         prefer_supplied_task_type: bool,
     ) -> List[ProviderScore]:
-        from api.routing.ml_router import bandit_cache  # noqa: PLC0415
-        from api.routing.router_registry import registry  # noqa: PLC0415
+        from api.routing.ml_router import bandit_cache
+        from api.routing.router_registry import registry
 
         pipeline_result = self._pipeline_for(
             bandit_cache=bandit_cache,
