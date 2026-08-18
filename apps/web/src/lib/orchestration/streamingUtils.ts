@@ -24,8 +24,8 @@ export function createStreamingHandlers(
       debugLog('📦 [DEBUG] Received chunk:', {
         stepId,
         chunkPreview: (chunk.content || JSON.stringify(chunk)).substring(0, 50) + '...',
-        tokenCount: chunk.token_count,
-        costDelta: chunk.cost_delta,
+        tokenCount: chunk['token_count'],
+        costDelta: chunk['cost_delta'],
       });
 
       // Clear timeout on first chunk received
@@ -39,8 +39,8 @@ export function createStreamingHandlers(
         payload: (s: string) => s + chunkText + '\n',
       });
 
-      const tokenCount = (chunk.token_count as number) || (chunk.tokenCount as number) || 0;
-      const costDelta = (chunk.cost_delta as number) || (chunk.costDelta as number) || 0;
+      const tokenCount = (chunk['token_count'] as number) || (chunk['tokenCount'] as number) || 0;
+      const costDelta = (chunk['cost_delta'] as number) || (chunk['costDelta'] as number) || 0;
 
       if (tokenCount) {
         dispatch({
@@ -63,9 +63,9 @@ export function createStreamingHandlers(
     onComplete: (final: TaskResponse) => {
       debugLog('🏁 [DEBUG] Step completed:', {
         stepId,
-        cost: (final as Record<string, unknown>)?.cost,
+        cost: (final as Record<string, unknown>)?.['cost'],
         reasoning:
-          String((final as Record<string, unknown>)?.reasoning || '').substring(0, 50) + '...',
+          String((final as Record<string, unknown>)?.['reasoning'] || '').substring(0, 50) + '...',
       });
 
       dispatch({
@@ -74,7 +74,7 @@ export function createStreamingHandlers(
           s + `--- Step ${stepId} COMPLETE ---\n` + JSON.stringify(final) + '\n',
       });
 
-      const cost = Number((final as Record<string, unknown>)?.cost) || 0;
+      const cost = Number((final as Record<string, unknown>)?.['cost']) || 0;
       dispatch({
         type: 'SET_STEP_COST',
         payload: { stepId, cost },
@@ -87,8 +87,8 @@ export function createStreamingHandlers(
  * Extract token count and cost delta from a StreamChunk
  */
 export function extractChunkMetrics(chunk: StreamChunk): { tokens: number; cost: number } {
-  const tokens = (chunk.token_count as number) || (chunk.tokenCount as number) || 0;
-  const cost = (chunk.cost_delta as number) || (chunk.costDelta as number) || 0;
+  const tokens = (chunk['token_count'] as number) || (chunk['tokenCount'] as number) || 0;
+  const cost = (chunk['cost_delta'] as number) || (chunk['costDelta'] as number) || 0;
   return { tokens, cost };
 }
 

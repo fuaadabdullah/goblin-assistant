@@ -1,12 +1,21 @@
 import React from 'react';
 import { render, screen } from '@testing-library/react';
-import '@testing-library/jest-dom';
 
-jest.mock('../Card', () => {
-  return function MockCard({ children, ...props }: { children: React.ReactNode; [k: string]: unknown }) {
-    return <div data-testid="card" {...props}>{children}</div>;
-  };
-});
+vi.mock('../Card', () => ({
+  default: function MockCard({
+    children,
+    ...props
+  }: {
+    children: React.ReactNode;
+    [k: string]: unknown;
+  }) {
+    return (
+      <div data-testid="card" {...props}>
+        {children}
+      </div>
+    );
+  },
+}));
 
 import StatCard from '../StatCard';
 

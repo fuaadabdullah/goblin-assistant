@@ -1,5 +1,6 @@
-import { apiClient } from '@/api';
+import { apiClient } from '@/lib/api';
 import { UiError } from '../../../lib/ui-error';
+import { getUserMessage } from '../../../lib/error/toast';
 import type { SearchResult } from '../types';
 
 interface SearchResponse {
@@ -14,7 +15,7 @@ export const fetchCollections = async (): Promise<string[]> => {
     throw new UiError(
       {
         code: 'SEARCH_COLLECTIONS_FAILED',
-        userMessage: 'We could not load collections. Please refresh and try again.',
+        userMessage: getUserMessage(error),
       },
       error
     );
@@ -33,7 +34,7 @@ export const searchCollectionByName = async (
     throw new UiError(
       {
         code: 'SEARCH_QUERY_FAILED',
-        userMessage: 'Search could not complete. Please try again in a moment.',
+        userMessage: getUserMessage(error),
       },
       error
     );

@@ -13,8 +13,8 @@ export const queryKeys = {
   models: ['chat', 'models'] as const,
   routingInfo: ['chat', 'routing-info'] as const,
   chatThreads: ['chat', 'threads'] as const,
-  chatConversation: (conversationId: string) =>
-    ['chat', 'conversation', conversationId] as const,
+  chatConversation: (conversationId: string) => ['chat', 'conversation', conversationId] as const,
+  chatConversationInactive: ['chat', 'conversation', 'inactive'] as const,
 
   // Search
   collections: ['search', 'collections'] as const,
@@ -30,11 +30,19 @@ export const queryKeys = {
   // Auth
   authValidate: ['auth', 'validate'] as const,
 
+  // Dashboard
+  costSummary: ['dashboard', 'cost-summary'] as const,
+  observabilityModelUsage: ['dashboard', 'observability', 'model-usage'] as const,
+  observabilityMetrics: ['dashboard', 'observability', 'metrics'] as const,
+
   // Routing
   routingProviders: (capability?: string) =>
-    capability ? ['routing', 'providers', capability] as const : ['routing', 'providers'] as const,
-  routingHealth: ['routing', 'health'] as const,
+    capability
+      ? (['routing', 'providers', capability] as const)
+      : (['routing', 'providers'] as const),
+  routingAnalytics: ['routing', 'analytics'] as const,
   routingAudit: (limit: number) => ['routing', 'audit', limit] as const,
+  routingHealth: ['routing', 'health'] as const,
   routingProviderStatus: ['routing', 'provider-status'] as const,
 
   // Goblins

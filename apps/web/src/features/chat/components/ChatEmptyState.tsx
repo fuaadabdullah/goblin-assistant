@@ -1,8 +1,8 @@
 'use client';
 
-import { useState } from 'react';
+import { Brain } from 'lucide-react';
 import dynamic from 'next/dynamic';
-import type { QuickPrompt } from '../types';
+import type { Mode, QuickPrompt } from '../types';
 import useGoblinLoaderAnimation from '../hooks/useGoblinLoaderAnimation';
 import ModeSelector from './ModeSelector';
 import {
@@ -15,10 +15,10 @@ import {
 interface ChatEmptyStateProps {
   quickPrompts: QuickPrompt[];
   onPromptClick: (prompt: string) => void;
+  selectedMode?: Mode;
+  onModeChange?: (mode: Mode) => void;
   prefersReducedMotion?: boolean;
 }
-
-type Mode = 'all' | 'finance' | 'learn' | 'general';
 
 const PROMPTS_BY_MODE: Record<Mode, readonly { label: string; prompt: string }[]> = {
   all: CHAT_QUICK_PROMPTS,
@@ -27,16 +27,20 @@ const PROMPTS_BY_MODE: Record<Mode, readonly { label: string; prompt: string }[]
   general: CHAT_QUICK_PROMPTS_GENERAL,
 };
 
-const Lottie = dynamic(() => import('lottie-react'), { ssr: false });
+const Lottie = dynamic(() => import('lottie-react'), {
+  ssr: false,
+  loading: () => <div className="w-full h-full rounded-full bg-primary/20 animate-pulse" />,
+});
 
 const ChatEmptyState = ({
   quickPrompts: _quickPrompts,
   onPromptClick,
+  selectedMode = 'all',
+  onModeChange = () => {},
   prefersReducedMotion = false,
 }: ChatEmptyStateProps) => {
   const animationData = useGoblinLoaderAnimation();
-  const [activeMode, setActiveMode] = useState<Mode>('all');
-  const displayedPrompts = PROMPTS_BY_MODE[activeMode];
+  const displayedPrompts = PROMPTS_BY_MODE[selectedMode] ?? CHAT_QUICK_PROMPTS;
 
   return (
     <section className="flex flex-col items-center justify-center h-full w-full px-4 py-8">
@@ -44,15 +48,10 @@ const ChatEmptyState = ({
         {/* Lottie Animation or Icon */}
         <div className="w-24 h-24 mb-2">
           {!prefersReducedMotion && animationData ? (
-            <Lottie
-              animationData={animationData}
-              loop
-              autoplay
-              className="h-full w-full"
-            />
+            <Lottie animationData={animationData} loop autoplay className="h-full w-full" />
           ) : (
             <div className="w-full h-full bg-primary/20 rounded-full flex items-center justify-center">
-              <span className="text-5xl">🧠</span>
+              <Brain className="w-12 h-12 text-primary" aria-hidden="true" />
             </div>
           )}
         </div>
@@ -68,7 +67,7 @@ const ChatEmptyState = ({
         </div>
 
         {/* Mode selector tabs */}
-        <ModeSelector activeMode={activeMode} onModeChange={setActiveMode} />
+        <ModeSelector activeMode={selectedMode} onModeChange={onModeChange} />
 
         {/* Suggested Prompts Grid */}
         <div className="w-full grid grid-cols-1 sm:grid-cols-2 gap-3">

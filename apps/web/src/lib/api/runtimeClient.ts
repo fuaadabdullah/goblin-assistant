@@ -30,8 +30,32 @@ const buildRuntimePrompt = (goblin: string, task: string, code?: string): string
 const ensureRuntimeConversation = async (): Promise<string> => {
   if (runtimeConversationId) return runtimeConversationId;
   const conversation = await apiClient.createConversation('Runtime Task Execution');
-  runtimeConversationId = conversation.conversationId;
-  return runtimeConversationId;
+  const conversationId = conversation.conversationId;
+  runtimeConversationId = conversationId;
+  return conversationId;
+};
+
+const recordFromUnknown = (value: unknown): Record<string, unknown> | null =>
+  typeof value === 'object' && value !== null ? (value as Record<string, unknown>) : null;
+
+const stringField = (record: Record<string, unknown> | null, field: string): string | undefined => {
+  const value = record?.[field];
+  return typeof value === 'string' ? value : undefined;
+};
+
+const extractRuntimeErrorMessage = (error: unknown): string | undefined => {
+  const errorRecord = recordFromUnknown(error);
+  const responseData = recordFromUnknown(errorRecord?.['responseData']);
+  const response = recordFromUnknown(errorRecord?.['response']);
+  const responseBody = recordFromUnknown(response?.['data']);
+
+  return (
+    stringField(responseData, 'error') ||
+    stringField(responseBody, 'error') ||
+    stringField(responseBody, 'detail') ||
+    stringField(responseBody, 'message') ||
+    stringField(errorRecord, 'message')
+  );
 };
 
 const runtimeClientImpl: RuntimeClient = {
@@ -71,13 +95,7 @@ const runtimeClientImpl: RuntimeClient = {
       });
       return response.content || '';
     } catch (error) {
-      const errorObj = error as any;
-      const backendError =
-        errorObj?.responseData?.error ||
-        errorObj?.response?.data?.error ||
-        errorObj?.response?.data?.detail ||
-        errorObj?.response?.data?.message ||
-        errorObj?.message;
+      const backendError = extractRuntimeErrorMessage(error);
 
       if (hasMockFallbackSignal(backendError)) {
         const fallbackResponse = await apiClient.chatCompletion(

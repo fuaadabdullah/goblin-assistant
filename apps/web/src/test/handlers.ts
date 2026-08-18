@@ -39,7 +39,7 @@ export const handlers = [
   }),
 
   // Settings endpoints
-  http.get('http://127.0.0.1:8000/settings/', () => {
+  http.get('http://127.0.0.1:8000/api/v1/settings/', () => {
     return HttpResponse.json({
       providers: [
         {
@@ -172,7 +172,7 @@ export const handlers = [
   }),
 
   // Routing endpoints
-  http.get('http://127.0.0.1:8000/routing/providers', () => {
+  http.get('http://127.0.0.1:8000/routing/providers/analytics', () => {
     return HttpResponse.json({
       providers: [
         {

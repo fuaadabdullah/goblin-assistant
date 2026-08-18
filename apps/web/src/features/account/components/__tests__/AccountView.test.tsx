@@ -1,30 +1,33 @@
 import React from 'react';
 import { render, screen } from '@testing-library/react';
-import '@testing-library/jest-dom';
 
-jest.mock('../AccountProfileForm', () => {
-  return function MockProfileForm(props: { name: string; email: string }) {
-    return <div data-testid="profile-form">{props.name} – {props.email}</div>;
-  };
-});
+vi.mock('../AccountProfileForm', () => ({
+  default: function MockProfileForm(props: { name: string; email: string }) {
+    return (
+      <div data-testid="profile-form">
+        {props.name} – {props.email}
+      </div>
+    );
+  },
+}));
 
-jest.mock('../AccountPreferences', () => {
-  return function MockPreferences() {
+vi.mock('../AccountPreferences', () => ({
+  default: function MockPreferences() {
     return <div data-testid="preferences">Preferences</div>;
-  };
-});
+  },
+}));
 
-jest.mock('../AccountBillingCard', () => {
-  return function MockBilling() {
+vi.mock('../AccountBillingCard', () => ({
+  default: function MockBilling() {
     return <div data-testid="billing">Billing</div>;
-  };
-});
+  },
+}));
 
-jest.mock('@/components/Seo', () => {
-  return function MockSeo(props: { title: string }) {
+vi.mock('@/components/Seo', () => ({
+  default: function MockSeo(props: { title: string }) {
     return <div data-testid="seo">{props.title}</div>;
-  };
-});
+  },
+}));
 
 import AccountView from '../AccountView';
 
@@ -34,10 +37,10 @@ const makeState = (overrides = {}) => ({
   saved: false,
   error: null,
   saving: false,
-  setName: jest.fn(),
-  handleSave: jest.fn(),
+  setName: vi.fn(),
+  handleSave: vi.fn(),
   preferences: {},
-  togglePreference: jest.fn(),
+  togglePreference: vi.fn(),
   ...overrides,
 });
 

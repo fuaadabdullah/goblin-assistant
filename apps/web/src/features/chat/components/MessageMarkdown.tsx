@@ -14,16 +14,41 @@ interface MessageMarkdownProps {
 }
 
 const LANGUAGE_NAMES: Record<string, string> = {
-  js: 'JavaScript', jsx: 'JSX', ts: 'TypeScript', tsx: 'TSX',
-  py: 'Python', python: 'Python', rb: 'Ruby', go: 'Go', rs: 'Rust',
-  java: 'Java', cpp: 'C++', c: 'C', cs: 'C#', php: 'PHP',
-  swift: 'Swift', kotlin: 'Kotlin', sql: 'SQL',
-  html: 'HTML', css: 'CSS', scss: 'SCSS',
-  json: 'JSON', yaml: 'YAML', yml: 'YAML', xml: 'XML',
-  md: 'Markdown', markdown: 'Markdown',
-  bash: 'Bash', sh: 'Shell', shell: 'Shell', zsh: 'Zsh',
-  powershell: 'PowerShell', dockerfile: 'Dockerfile',
-  graphql: 'GraphQL', toml: 'TOML', ini: 'INI',
+  js: 'JavaScript',
+  jsx: 'JSX',
+  ts: 'TypeScript',
+  tsx: 'TSX',
+  py: 'Python',
+  python: 'Python',
+  rb: 'Ruby',
+  go: 'Go',
+  rs: 'Rust',
+  java: 'Java',
+  cpp: 'C++',
+  c: 'C',
+  cs: 'C#',
+  php: 'PHP',
+  swift: 'Swift',
+  kotlin: 'Kotlin',
+  sql: 'SQL',
+  html: 'HTML',
+  css: 'CSS',
+  scss: 'SCSS',
+  json: 'JSON',
+  yaml: 'YAML',
+  yml: 'YAML',
+  xml: 'XML',
+  md: 'Markdown',
+  markdown: 'Markdown',
+  bash: 'Bash',
+  sh: 'Shell',
+  shell: 'Shell',
+  zsh: 'Zsh',
+  powershell: 'PowerShell',
+  dockerfile: 'Dockerfile',
+  graphql: 'GraphQL',
+  toml: 'TOML',
+  ini: 'INI',
 };
 
 function extractLanguage(children: React.ReactNode): string | null {
@@ -31,7 +56,7 @@ function extractLanguage(children: React.ReactNode): string | null {
   if (!isValidElement(child)) return null;
   const className = (child.props as { className?: string }).className ?? '';
   const match = className.match(/language-(\w+)/);
-  return match ? match[1] : null;
+  return match ? (match[1] ?? null) : null;
 }
 
 function extractText(node: React.ReactNode): string {
@@ -62,7 +87,9 @@ function CodeBlock({ children, inverse }: { children: React.ReactNode; inverse: 
 
   return (
     <div className={`relative group/code ${wrapperClassName}`}>
-      <div className={`flex items-center justify-between px-3 py-1.5 border-b ${inverse ? 'border-white/10' : 'border-border/50'} text-xs text-muted`}>
+      <div
+        className={`flex items-center justify-between px-3 py-1.5 border-b ${inverse ? 'border-white/10' : 'border-border/50'} text-xs text-muted`}
+      >
         <span className="font-mono select-none">{displayLang ?? 'Code'}</span>
         <button
           type="button"

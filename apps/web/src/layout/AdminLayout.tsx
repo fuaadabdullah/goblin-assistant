@@ -1,3 +1,5 @@
+'use client';
+
 import type { ReactNode } from 'react';
 import { useEffect } from 'react';
 import { useRouter, usePathname, useSearchParams } from 'next/navigation';
@@ -28,10 +30,10 @@ export default function AdminLayout({
   useEffect(() => {
     if (!isHydrated) return; // wait for Zustand store to rehydrate from session
     if (!isAuthenticated || !hasRole('admin')) {
-      const search = searchParams.toString();
-      const fullPath = search ? `${pathname}?${search}` : pathname;
-      const redirect = encodeURIComponent(fullPath ?? '/admin');
-      void router.replace(`/login?redirect=${redirect}`);
+      const query = searchParams.toString();
+      const asPath = query ? `${pathname}?${query}` : pathname;
+      const redirect = encodeURIComponent(asPath ?? '/');
+      router.replace(`/login?redirect=${redirect}`);
     }
   }, [isHydrated, isAuthenticated, hasRole, router, pathname, searchParams]);
 
@@ -54,4 +56,3 @@ export default function AdminLayout({
     </div>
   );
 }
-

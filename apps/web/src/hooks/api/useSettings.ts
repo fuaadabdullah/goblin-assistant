@@ -1,5 +1,5 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { apiClient } from '@/api';
+import { apiClient } from '@/lib/api';
 import { queryKeys } from '../../lib/query-keys';
 
 /**
@@ -51,8 +51,13 @@ export const useUpdateProvider = () => {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: ({ providerId, provider }: { providerId: number; provider: Partial<ProviderConfig> }) =>
-      apiClient.updateProvider(providerId, provider),
+    mutationFn: ({
+      providerId,
+      provider,
+    }: {
+      providerId: number;
+      provider: Partial<ProviderConfig>;
+    }) => apiClient.updateProvider(providerId, provider),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: queryKeys.providers });
     },

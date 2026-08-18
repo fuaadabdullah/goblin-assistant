@@ -27,7 +27,9 @@ export const CostOverviewBanner = ({ totalCost, todayCost, thisMonthCost, byProv
         </div>
         <div>
           <div className="text-sm text-muted">This month</div>
-          <div className="text-xl font-semibold">{formatCost(thisMonthCost, { mode: 'summary' })}</div>
+          <div className="text-xl font-semibold">
+            {formatCost(thisMonthCost, { mode: 'summary' })}
+          </div>
         </div>
       </div>
 

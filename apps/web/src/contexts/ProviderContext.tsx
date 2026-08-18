@@ -36,11 +36,15 @@ const ProviderContext = createContext<ProviderContextType | undefined>(undefined
 
 interface ProviderProviderProps {
   children: ReactNode;
+  enableRegistry?: boolean;
 }
 
-export const ProviderProvider: React.FC<ProviderProviderProps> = ({ children }) => {
+export const ProviderProvider: React.FC<ProviderProviderProps> = ({
+  children,
+  enableRegistry = true,
+}) => {
   // Registry data: providers, models, configs, health
-  const health = useProviderHealth();
+  const health = useProviderHealth(enableRegistry);
 
   // Selection + localStorage persistence
   const selection = useProviderSelection({

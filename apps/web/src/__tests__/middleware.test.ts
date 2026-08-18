@@ -1,14 +1,14 @@
-/* Mock next/server so importing middleware.ts doesn't trigger Request polyfill */
-jest.mock('next/server', () => ({
+/* Mock next/server so importing proxy.ts doesn't trigger Request polyfill */
+vi.mock('next/server', () => ({
   NextResponse: {
-    redirect: jest.fn(),
-    next: jest.fn(),
+    redirect: vi.fn(),
+    next: vi.fn(),
   },
 }));
 
-import { resolveRouteDecision } from '../../middleware';
+import { resolveRouteDecision } from '../../proxy';
 
-describe('middleware route decisions', () => {
+describe('proxy route decisions', () => {
   it('redirects unauthenticated users from /chat', () => {
     const decision = resolveRouteDecision({
       pathname: '/chat',
@@ -52,6 +52,31 @@ describe('middleware route decisions', () => {
   it('allows admins on /admin', () => {
     const decision = resolveRouteDecision({
       pathname: '/admin/providers',
+      isAuthenticated: true,
+      isAdmin: true,
+    });
+
+    expect(decision).toEqual({
+      allow: true,
+    });
+  });
+
+  it('redirects authenticated non-admins from connectivity debug', () => {
+    const decision = resolveRouteDecision({
+      pathname: '/debug/connectivity',
+      isAuthenticated: true,
+      isAdmin: false,
+    });
+
+    expect(decision).toEqual({
+      allow: false,
+      redirectTarget: '/debug/connectivity',
+    });
+  });
+
+  it('allows admins on connectivity debug', () => {
+    const decision = resolveRouteDecision({
+      pathname: '/debug/connectivity',
       isAuthenticated: true,
       isAdmin: true,
     });

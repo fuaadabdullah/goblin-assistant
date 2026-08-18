@@ -1,23 +1,41 @@
-import { apiClient } from '@/api';
+import { apiClient } from '@/lib/api';
 import { UiError } from '../../../lib/ui-error';
-import { getAuthToken } from '../../../utils/auth-session';
+import { getUserMessage } from '../../../lib/error/toast';
+import { getAuthTokenForRequest } from '../../../utils/auth-session';
 import type { ChatMessage } from '../types';
 
 export interface ChatResponse {
-  messageId?: string;
-  content?: string;
-  model?: string;
-  provider?: string;
-  usage?: { input_tokens?: number; output_tokens?: number; total_tokens?: number };
-  cost_usd?: number;
-  correlation_id?: string;
-  createdAt?: string;
-  visualizations?: Array<{
-    type: string;
-    title: string;
-    data: Record<string, unknown>[];
-    config: Record<string, unknown>;
-  }>;
+  messageId?: string | undefined;
+  content?: string | undefined;
+  department?: string | undefined; // Which brain department handled this
+  department_reason?: string | undefined; // Why this department was chosen
+  model?: string | undefined; // Deprecated: internal
+  provider?: string | undefined; // Deprecated: internal
+  usage?:
+    | {
+        input_tokens?: number | undefined;
+        output_tokens?: number | undefined;
+        total_tokens?: number | undefined;
+      }
+    | undefined;
+  cost_usd?: number | undefined;
+  correlation_id?: string | undefined;
+  createdAt?: string | undefined;
+  visualizations?:
+    | Array<{
+        type: string;
+        title: string;
+        data: Record<string, unknown>[];
+        config: Record<string, unknown>;
+      }>
+    | undefined;
+}
+
+export interface FileUploadResult {
+  file_id: string;
+  filename: string;
+  mime_type: string;
+  size_bytes: number;
 }
 
 export interface CreateConversationParams {
@@ -37,6 +55,7 @@ export interface ChatConversationSummary {
   createdAt: string;
   updatedAt: string;
   messageCount: number;
+  category?: string;
 }
 
 export interface ChatConversation {
@@ -45,22 +64,27 @@ export interface ChatConversation {
   createdAt: string;
   updatedAt: string;
   messages: ChatMessage[];
-  pagination?: {
-    offset: number;
-    limit: number;
-    total: number;
-    returned: number;
-    has_more: boolean;
-  };
+  // Mirrors the backend ConversationDetailResponse pagination, whose fields are all optional.
+  pagination?:
+    | {
+        offset?: number | undefined;
+        limit?: number | undefined;
+        total?: number | undefined;
+        returned?: number | undefined;
+        has_more?: boolean | undefined;
+      }
+    | undefined;
 }
 
 export interface SendMessageParams {
   conversationId: string;
-  prompt?: string;
-  messages?: ChatMessage[];
-  model?: string;
-  provider?: string;
-  attachment_ids?: string[];
+  prompt?: string | undefined;
+  messages?: ChatMessage[] | undefined;
+  department?: string | undefined; // e.g. "reasoning", "coding", "creative", "research"
+  mode?: string | undefined; // e.g. "GENERAL_ASSISTANT", "DEEP_RESEARCH", "DEBUG"
+  model?: string | undefined; // Deprecated: use department instead
+  provider?: string | undefined; // Deprecated: use department instead
+  attachment_ids?: string[] | undefined;
 }
 
 const resolvePrompt = (params: SendMessageParams): string => {
@@ -68,8 +92,45 @@ const resolvePrompt = (params: SendMessageParams): string => {
     return params.prompt.trim();
   }
 
-  const lastUser = [...(params.messages || [])].reverse().find(message => message.role === 'user');
+  const lastUser = [...(params.messages || [])]
+    .reverse()
+    .find((message) => message.role === 'user');
   return lastUser?.content?.trim() || '';
+};
+
+const readResponseText = async (response: Response): Promise<string> => {
+  try {
+    return await response.text();
+  } catch {
+    return '';
+  }
+};
+
+const asRecord = (value: unknown): Record<string, unknown> | undefined =>
+  value && typeof value === 'object' ? (value as Record<string, unknown>) : undefined;
+
+const readStringField = (value: unknown, key: string): string | undefined => {
+  const record = asRecord(value);
+  const field = record?.[key];
+  return typeof field === 'string' && field ? field : undefined;
+};
+
+const getErrorStatus = (error: unknown): number | undefined => {
+  const candidate = asRecord(error);
+  const response = asRecord(candidate?.['response']);
+  const status = candidate?.['status'] ?? response?.['status'];
+  return typeof status === 'number' ? status : undefined;
+};
+
+const getBackendError = (error: unknown): string | undefined => {
+  const candidate = asRecord(error);
+  const payload = candidate?.['responseData'] ?? asRecord(candidate?.['response'])?.['data'];
+
+  return (
+    readStringField(payload, 'error') ||
+    readStringField(payload, 'detail') ||
+    readStringField(payload, 'message')
+  );
 };
 
 export const chatClient = {
@@ -79,6 +140,17 @@ export const chatClient = {
     try {
       return await apiClient.createConversation(params.title);
     } catch (error) {
+      const status = getErrorStatus(error);
+      if (status === 401 || status === 403) {
+        throw new UiError(
+          {
+            code: 'AUTHENTICATION_REQUIRED',
+            userMessage: 'You need to sign in to start a conversation.',
+          },
+          error
+        );
+      }
+
       throw new UiError(
         {
           code: 'CHAT_CONVERSATION_CREATE_FAILED',
@@ -134,29 +206,51 @@ export const chatClient = {
     }
   },
 
+  async estimateTokens(payload: {
+    message: string;
+    conversationId?: string | undefined;
+    provider?: string | undefined;
+    model?: string | undefined;
+  }) {
+    return apiClient.estimateMessageTokens(payload);
+  },
+
+  async chatCompletion(messages: ChatMessage[], model?: string) {
+    return apiClient.chatCompletion(messages, model);
+  },
+
+  async uploadFile(file: File): Promise<FileUploadResult> {
+    return apiClient.uploadFile(file);
+  },
+
   async sendMessage({
     conversationId,
     prompt,
     messages,
+    department,
+    mode,
     model,
     provider,
     attachment_ids,
   }: SendMessageParams): Promise<ChatResponse> {
+    const resolvedPrompt = resolvePrompt({ conversationId, prompt, messages, model, provider });
     try {
-      const resolvedPrompt = resolvePrompt({ conversationId, prompt, messages, model, provider });
       if (!resolvedPrompt) {
         throw new Error('Conversation message is required.');
       }
 
       const hasExplicitSelection = Boolean(
         (typeof model === 'string' && model.trim()) ||
-          (typeof provider === 'string' && provider.trim())
+        (typeof provider === 'string' && provider.trim()) ||
+        (typeof department === 'string' && department.trim())
       );
 
       try {
         return await apiClient.sendConversationMessage({
           conversationId,
           message: resolvedPrompt,
+          department,
+          mode,
           model,
           provider,
           attachment_ids,
@@ -174,9 +268,29 @@ export const chatClient = {
       }
     } catch (error) {
       // Check for specific error statuses
-      const errorObj = error as any;
-      const status = errorObj?.response?.status || errorObj?.status;
-      
+      const status = getErrorStatus(error);
+      const backendError = getBackendError(error);
+
+      if (backendError === 'provider-access-denied') {
+        throw new UiError(
+          {
+            code: 'CHAT_PROVIDER_ACCESS_DENIED',
+            userMessage: 'Your account does not have access to any providers right now.',
+          },
+          error
+        );
+      }
+
+      if (backendError === 'no-configured-providers') {
+        throw new UiError(
+          {
+            code: 'CHAT_PROVIDER_UNAVAILABLE',
+            userMessage: 'No providers are configured right now. Please try again later.',
+          },
+          error
+        );
+      }
+
       if (status === 413) {
         throw new UiError(
           {
@@ -186,7 +300,7 @@ export const chatClient = {
           error
         );
       }
-      
+
       if (status === 401 || status === 403) {
         throw new UiError(
           {
@@ -196,7 +310,7 @@ export const chatClient = {
           error
         );
       }
-      
+
       throw new UiError(
         {
           code: 'CHAT_SEND_FAILED',
@@ -211,6 +325,7 @@ export const chatClient = {
     conversationId,
     prompt,
     messages,
+    department,
     model,
     provider,
     onChunk,
@@ -221,15 +336,13 @@ export const chatClient = {
     onComplete: (response: ChatResponse) => void;
     onError: (error: Error) => void;
   }): Promise<void> {
+    const resolvedPrompt = resolvePrompt({ conversationId, prompt, messages, model, provider });
     try {
-      const resolvedPrompt = resolvePrompt({ conversationId, prompt, messages, model, provider });
       if (!resolvedPrompt) {
         throw new Error('Conversation message is required.');
       }
 
-      const apiBaseUrl = process.env.NEXT_PUBLIC_API_BASE_URL || 
-        (typeof window !== 'undefined' ? '' : 'http://localhost:8000');
-      const token = getAuthToken();
+      const token = await getAuthTokenForRequest();
       const headers: Record<string, string> = {
         'Content-Type': 'application/json',
       };
@@ -237,7 +350,7 @@ export const chatClient = {
         headers['Authorization'] = `Bearer ${token}`;
       }
 
-      const streamUrl = `${apiBaseUrl}/chat/stream`;
+      const streamUrl = '/api/chat/stream';
       let buffer = '';
       let accumulatedContent = '';
       let totalTokens = 0;
@@ -249,13 +362,19 @@ export const chatClient = {
         body: JSON.stringify({
           conversation_id: conversationId,
           message: resolvedPrompt,
+          department,
           model,
           provider,
         }),
       });
 
       if (!response.ok) {
-        throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+        const responseText = await readResponseText(response);
+        throw new Error(
+          `HTTP ${response.status}: ${response.statusText}${
+            responseText ? ` - ${responseText}` : ''
+          }`
+        );
       }
 
       if (!response.body) {
@@ -272,48 +391,57 @@ export const chatClient = {
 
           buffer += decoder.decode(value, { stream: true });
           const lines = buffer.split('\n');
-          buffer = lines[lines.length - 1];
+          buffer = lines[lines.length - 1]!;
 
           for (let i = 0; i < lines.length - 1; i++) {
-            const line = lines[i].trim();
+            const line = lines[i]!.trim();
             if (!line || line.startsWith(':')) continue;
 
             if (line.startsWith('data: ')) {
               try {
                 const data = JSON.parse(line.slice(6)) as Record<string, unknown>;
 
-                if (typeof data.content === 'string' && data.content.length > 0) {
-                  accumulatedContent += data.content;
-                  const tokenCount = Number(data.token_count) || 0;
-                  const costDelta = Number(data.cost_delta) || 0;
+                if (typeof data['content'] === 'string' && data['content'].length > 0) {
+                  accumulatedContent += data['content'];
+                  const tokenCount = Number(data['token_count']) || 0;
+                  const costDelta = Number(data['cost_delta']) || 0;
                   totalTokens += tokenCount;
                   totalCost += costDelta;
-                  onChunk(data.content, tokenCount, costDelta);
+                  onChunk(data['content'], tokenCount, costDelta);
                 }
 
-                if (data.type === 'error' || typeof (data.error) === 'string') {
+                if (data['type'] === 'error' || typeof data['error'] === 'string') {
                   throw new Error(
-                    (typeof data.message === 'string' && data.message) ||
-                      (typeof data.error === 'string' && data.error) ||
+                    (typeof data['message'] === 'string' && data['message']) ||
+                      (typeof data['error'] === 'string' && data['error']) ||
                       'Streaming failed'
                   );
                 }
 
-                if (data.done === true) {
+                if (data['done'] === true) {
                   const finalResponse: ChatResponse = {
-                    messageId: data.message_id as string | undefined,
-                    content: (typeof data.result === 'string' && data.result) || accumulatedContent,
-                    provider: data.provider as string | undefined,
-                    model: data.model as string | undefined,
+                    messageId: data['message_id'] as string | undefined,
+                    content:
+                      (typeof data['result'] === 'string' && data['result']) || accumulatedContent,
+                    department: data['department'] as string | undefined,
+                    department_reason: data['department_reason'] as string | undefined,
+                    provider: data['provider'] as string | undefined,
+                    model: data['model'] as string | undefined,
                     usage: {
-                      total_tokens: (data.tokens as number) ?? totalTokens,
-                      input_tokens: (data.usage as Record<string, number>)?.input_tokens,
-                      output_tokens: (data.usage as Record<string, number>)?.output_tokens,
+                      total_tokens: (data['tokens'] as number) ?? totalTokens,
+                      input_tokens: (data['usage'] as Record<string, number>)?.['input_tokens'],
+                      output_tokens: (data['usage'] as Record<string, number>)?.['output_tokens'],
                     },
-                    cost_usd: (data.cost as number) ?? totalCost,
-                    correlation_id: data.correlation_id as string | undefined,
-                    createdAt: data.timestamp as string | undefined,
-                    visualizations: (data.visualizations as Array<{ type: string; title: string; data: Record<string, unknown>[]; config: Record<string, unknown> }>) || undefined,
+                    cost_usd: (data['cost'] as number) ?? totalCost,
+                    correlation_id: data['correlation_id'] as string | undefined,
+                    createdAt: data['timestamp'] as string | undefined,
+                    visualizations:
+                      (data['visualizations'] as Array<{
+                        type: string;
+                        title: string;
+                        data: Record<string, unknown>[];
+                        config: Record<string, unknown>;
+                      }>) || undefined,
                   };
                   onComplete(finalResponse);
                   reader.cancel();
@@ -334,9 +462,7 @@ export const chatClient = {
         onComplete(finalResponse);
       } catch (error) {
         reader.cancel();
-        const uiError = error instanceof Error 
-          ? error 
-          : new Error('Unknown error during streaming');
+        const uiError = error instanceof Error ? error : new Error(getUserMessage(error));
         onError(uiError);
         throw new UiError(
           {
@@ -347,9 +473,7 @@ export const chatClient = {
         );
       }
     } catch (error) {
-      const uiError = error instanceof Error 
-        ? error 
-        : new Error('Unknown error during streaming');
+      const uiError = error instanceof Error ? error : new Error(getUserMessage(error));
       onError(uiError);
       throw new UiError(
         {

@@ -1,4 +1,5 @@
-import { QueryClient } from '@tanstack/query-core';
+import { QueryClient, QueryCache, MutationCache } from '@tanstack/query-core';
+import { logError, isRetryable } from './error';
 export { queryKeys } from './query-keys';
 
 /**
@@ -6,19 +7,31 @@ export { queryKeys } from './query-keys';
  */
 export const createQueryClient = () =>
   new QueryClient({
+    queryCache: new QueryCache({
+      onError: (error, query) =>
+        logError(error, { action: 'query', queryKey: JSON.stringify(query.queryKey) }),
+    }),
+    mutationCache: new MutationCache({
+      onError: (error, _variables, _context, mutation) =>
+        logError(error, {
+          action: 'mutation',
+          mutationKey: JSON.stringify(mutation.options.mutationKey),
+        }),
+    }),
     defaultOptions: {
       queries: {
-        retry: 3, // Retry failed requests 3 times
-        retryDelay: (attemptIndex: number) => Math.min(1000 * 2 ** attemptIndex, 30000), // Exponential backoff
-        staleTime: 5 * 60 * 1000, // Data is fresh for 5 minutes
-        gcTime: 10 * 60 * 1000, // Cache for 10 minutes (formerly cacheTime)
-        refetchOnWindowFocus: false, // Don't refetch on window focus
-        refetchOnReconnect: true, // Refetch on reconnect
+        // Only auto-retry server errors (5xx, rate limits, timeouts).
+        // Auth failures, 404s, and validation errors are not retried.
+        retry: (failureCount, error) => failureCount < 3 && isRetryable(error),
+        retryDelay: (attemptIndex: number) => Math.min(500 * 2 ** attemptIndex, 30000),
+        staleTime: 5 * 60 * 1000,
+        gcTime: 10 * 60 * 1000,
+        refetchOnWindowFocus: false,
+        refetchOnReconnect: true,
       },
       mutations: {
-        retry: 1, // Retry mutations once
+        retry: (failureCount, error) => failureCount < 1 && isRetryable(error),
         retryDelay: 1000,
       },
     },
   });
-

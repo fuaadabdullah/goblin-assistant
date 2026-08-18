@@ -8,7 +8,8 @@ const cardVariants = cva(
     variants: {
       variant: {
         default: 'hover:border-primary/50 hover:shadow-md',
-        interactive: 'cursor-pointer hover:bg-surface-hover hover:border-primary/50 hover:shadow-md focus-visible:outline focus-visible:outline-2 focus-visible:outline-primary focus-visible:outline-offset-2',
+        interactive:
+          'cursor-pointer hover:bg-surface-hover hover:border-primary/50 hover:shadow-md focus-visible:outline focus-visible:outline-2 focus-visible:outline-primary focus-visible:outline-offset-2',
         elevated: 'shadow-lg hover:shadow-xl',
       },
       padding: {
@@ -27,15 +28,12 @@ const cardVariants = cva(
 
 export type CardVariantProps = VariantProps<typeof cardVariants>;
 
-const Card = React.forwardRef<HTMLDivElement, React.HTMLAttributes<HTMLDivElement> & CardVariantProps>(
-  ({ className, variant = 'default', padding = 'md', ...props }, ref) => (
-    <div
-      ref={ref}
-      className={cn(cardVariants({ variant, padding }), className)}
-      {...props}
-    />
-  )
-);
+const Card = React.forwardRef<
+  HTMLDivElement,
+  React.HTMLAttributes<HTMLDivElement> & CardVariantProps
+>(({ className, variant = 'default', padding = 'md', ...props }, ref) => (
+  <div ref={ref} className={cn(cardVariants({ variant, padding }), className)} {...props} />
+));
 Card.displayName = 'Card';
 
 const CardHeader = React.forwardRef<HTMLDivElement, React.HTMLAttributes<HTMLDivElement>>(
@@ -49,7 +47,10 @@ const CardTitle = React.forwardRef<HTMLDivElement, React.HTMLAttributes<HTMLDivE
   ({ className, ...props }, ref) => (
     <div
       ref={ref}
-      className={cn('text-xl font-semibold leading-tight tracking-tight text-text-primary', className)}
+      className={cn(
+        'text-xl font-semibold leading-tight tracking-tight text-text-primary',
+        className
+      )}
       {...props}
     />
   )
@@ -72,7 +73,11 @@ CardContent.displayName = 'CardContent';
 
 const CardFooter = React.forwardRef<HTMLDivElement, React.HTMLAttributes<HTMLDivElement>>(
   ({ className, ...props }, ref) => (
-    <div ref={ref} className={cn('flex items-center gap-3 px-6 py-4 border-t border-divider', className)} {...props} />
+    <div
+      ref={ref}
+      className={cn('flex items-center gap-3 px-6 py-4 border-t border-divider', className)}
+      {...props}
+    />
   )
 );
 CardFooter.displayName = 'CardFooter';

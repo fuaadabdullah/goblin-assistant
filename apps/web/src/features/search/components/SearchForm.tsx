@@ -1,4 +1,5 @@
 import type { FormEvent, RefObject } from 'react';
+import { Search, RotateCw, X } from 'lucide-react';
 import type { SearchScope } from '../types';
 
 interface SearchFormProps {
@@ -15,7 +16,7 @@ interface SearchFormProps {
   /** Whether a search is in progress. */
   searching: boolean;
   /** Input ref for focus. */
-  queryRef: RefObject<HTMLInputElement>;
+  queryRef: RefObject<HTMLInputElement | null>;
   /** Update query string. */
   onQueryChange: (value: string) => void;
   /** Update scope selection. */
@@ -52,7 +53,7 @@ const SearchForm = ({
             { value: 'documents', label: 'Documents' },
             { value: 'messages', label: 'Messages' },
             { value: 'tasks', label: 'Tasks' },
-          ].map(item => (
+          ].map((item) => (
             <button
               key={item.value}
               type="button"
@@ -80,7 +81,7 @@ const SearchForm = ({
           id="query"
           type="text"
           value={query}
-          onChange={e => onQueryChange(e.target.value)}
+          onChange={(e) => onQueryChange(e.target.value)}
           placeholder="Search by question or keyword..."
           ref={queryRef}
           className="w-full px-4 py-3 border border-border bg-surface-hover rounded-lg focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent text-text placeholder-muted"
@@ -98,11 +99,11 @@ const SearchForm = ({
         <select
           id="collection"
           value={selectedCollection}
-          onChange={e => onCollectionChange(e.target.value)}
+          onChange={(e) => onCollectionChange(e.target.value)}
           className="w-full px-4 py-3 border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent bg-surface-hover text-text"
           disabled={collectionsLoading || searching}
         >
-          {(collectionsData || []).map(name => {
+          {(collectionsData || []).map((name) => {
             return (
               <option key={name} value={name}>
                 {name}
@@ -119,12 +120,12 @@ const SearchForm = ({
       >
         {searching ? (
           <>
-            <span className="animate-spin">🔄</span>
+            <RotateCw className="w-4 h-4 animate-spin" aria-hidden="true" />
             Searching...
           </>
         ) : (
           <>
-            <span>🔍</span>
+            <Search className="w-4 h-4" aria-hidden="true" />
             Search Everything
           </>
         )}
@@ -132,8 +133,9 @@ const SearchForm = ({
       <button
         type="button"
         onClick={onClear}
-        className="w-full bg-surface-hover text-text py-3 px-6 rounded-lg border border-border hover:bg-surface-active transition-all font-medium"
+        className="w-full bg-surface-hover text-text py-3 px-6 rounded-lg border border-border hover:bg-surface-active transition-all font-medium flex items-center justify-center gap-2"
       >
+        <X className="w-4 h-4" aria-hidden="true" />
         Clear Search
       </button>
     </form>

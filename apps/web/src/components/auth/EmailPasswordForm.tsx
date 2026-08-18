@@ -1,7 +1,6 @@
 import { useState, FormEvent } from 'react';
 
 interface EmailPasswordFormProps {
-  // eslint-disable-next-line no-unused-vars
   onSubmit: (email: string, password: string) => Promise<void>;
   isRegister: boolean;
   isLoading: boolean;
@@ -14,7 +13,10 @@ export default function EmailPasswordForm({
 }: EmailPasswordFormProps) {
   const [emailValue, setEmailValue] = useState('');
   const [passwordValue, setPasswordValue] = useState('');
-  const [errors, setErrors] = useState<{ email?: string; password?: string }>({});
+  const [errors, setErrors] = useState<{
+    email?: string | undefined;
+    password?: string | undefined;
+  }>({});
   const emailErrorId = 'email-error';
   const passwordErrorId = 'password-error';
   const passwordHintId = 'password-hint';
@@ -34,7 +36,7 @@ export default function EmailPasswordForm({
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
 
-    const newErrors: { email?: string; password?: string } = {};
+    const newErrors: { email?: string | undefined; password?: string | undefined } = {};
 
     if (!validateEmail(emailValue)) {
       newErrors.email = 'Please enter a valid email address';
@@ -65,7 +67,7 @@ export default function EmailPasswordForm({
           id="email"
           type="email"
           value={emailValue}
-          onChange={e => {
+          onChange={(e) => {
             setEmailValue(e.target.value);
             if (errors.email) setErrors({ ...errors, email: undefined });
           }}
@@ -92,7 +94,7 @@ export default function EmailPasswordForm({
           id="password"
           type="password"
           value={passwordValue}
-          onChange={e => {
+          onChange={(e) => {
             setPasswordValue(e.target.value);
             if (errors.password) setErrors({ ...errors, password: undefined });
           }}

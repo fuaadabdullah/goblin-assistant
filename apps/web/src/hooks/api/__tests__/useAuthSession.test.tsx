@@ -2,25 +2,25 @@ import React from 'react';
 import { renderHook, act, waitFor } from '@testing-library/react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 
-jest.mock('../../../lib/auth-state', () => ({
-  bootstrapAuthSession: jest.fn().mockResolvedValue({
+vi.mock('../../../lib/auth-state', () => ({
+  bootstrapAuthSession: vi.fn().mockResolvedValue({
     token: 'test-token',
     user: { id: '1', name: 'Test', email: 'test@example.com', roles: ['admin'] },
     isAuthenticated: true,
     isHydrated: true,
   }),
-  clearAuthSessionState: jest.fn().mockResolvedValue(undefined),
-  hasAnyRole: jest.fn((user: { roles?: string[] } | null, roles: string[]) => {
+  clearAuthSessionState: vi.fn().mockResolvedValue(undefined),
+  hasAnyRole: vi.fn((user: { roles?: string[] } | null, roles: string[]) => {
     if (!user) return false;
     return roles.some((r) => user.roles?.includes(r));
   }),
-  hasRole: jest.fn((user: { roles?: string[] } | null, role: string) => {
+  hasRole: vi.fn((user: { roles?: string[] } | null, role: string) => {
     if (!user) return false;
     return user.roles?.includes(role) ?? false;
   }),
 }));
 
-jest.mock('../../../lib/query-keys', () => ({
+vi.mock('../../../lib/query-keys', () => ({
   queryKeys: {
     authValidate: ['auth', 'validate'],
   },
@@ -39,7 +39,7 @@ function createWrapper() {
 }
 
 describe('useAuthSession', () => {
-  beforeEach(() => jest.clearAllMocks());
+  beforeEach(() => vi.clearAllMocks());
 
   it('returns session data after loading', async () => {
     const { result } = renderHook(() => useAuthSession(), { wrapper: createWrapper() });
@@ -90,7 +90,7 @@ describe('useAuthSession', () => {
   });
 
   it('returns empty session when bootstrap fails', async () => {
-    (bootstrapAuthSession as jest.Mock).mockRejectedValueOnce(new Error('fail'));
+    (bootstrapAuthSession as vi.Mock).mockRejectedValueOnce(new Error('fail'));
     const { result } = renderHook(() => useAuthSession(), { wrapper: createWrapper() });
     await waitFor(() => expect(result.current.isLoading).toBe(false));
     expect(result.current.isAuthenticated).toBe(false);

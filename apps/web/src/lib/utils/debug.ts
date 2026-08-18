@@ -2,14 +2,14 @@
  * Debug utility for conditional logging based on environment
  */
 
-import { devDebug, devError, devWarn } from '@/utils/dev-log';
+import { devError, devWarn } from '@/utils/dev-log';
 
 const isDebugEnabled = (): boolean =>
-  process.env.NEXT_PUBLIC_DEBUG_MODE === 'true' || process.env.NODE_ENV === 'development';
+  process.env['NEXT_PUBLIC_DEBUG_MODE'] === 'true' || process.env['NODE_ENV'] === 'development';
 
 export const debugLog = (...args: unknown[]): void => {
   if (isDebugEnabled()) {
-    devDebug(...args);
+    devWarn(...args);
   }
 };
 

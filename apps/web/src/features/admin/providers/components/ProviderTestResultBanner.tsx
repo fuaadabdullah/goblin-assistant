@@ -42,7 +42,9 @@ export default function ProviderTestResultBanner({
         <button
           onClick={onDismiss}
           className={
-            result.success ? 'text-success hover:text-success/80' : 'text-danger hover:text-danger/80'
+            result.success
+              ? 'text-success hover:text-success/80'
+              : 'text-danger hover:text-danger/80'
           }
           aria-label="Dismiss"
           type="button"
@@ -53,4 +55,3 @@ export default function ProviderTestResultBanner({
     </div>
   );
 }
-

@@ -29,7 +29,7 @@ export interface OrchestrationState {
 }
 
 export type OrchestrationAction =
-  | { type:  'SET_CODE_INPUT'; payload: string }
+  | { type: 'SET_CODE_INPUT'; payload: string }
   | { type: 'SET_ORCHESTRATION'; payload: string }
   | { type: 'SET_STREAMING_TEXT'; payload: string | ((prev: string) => string) }
   | { type: 'SET_RUNNING'; payload: boolean }
@@ -79,7 +79,9 @@ export function orchestrationReducer(
       return {
         ...state,
         streamingText:
-          typeof action.payload === 'function' ? action.payload(state.streamingText) : action.payload,
+          typeof action.payload === 'function'
+            ? action.payload(state.streamingText)
+            : action.payload,
       };
     case 'SET_RUNNING':
       return { ...state, running: action.payload };
@@ -126,7 +128,10 @@ export function orchestrationReducer(
     case 'TOGGLE_EXPANDED_STEP':
       return {
         ...state,
-        expandedSteps: { ...state.expandedSteps, [action.payload]: !state.expandedSteps[action.payload] },
+        expandedSteps: {
+          ...state.expandedSteps,
+          [action.payload]: !state.expandedSteps[action.payload],
+        },
       };
     case 'SET_IS_STREAMING':
       return { ...state, isStreaming: action.payload };

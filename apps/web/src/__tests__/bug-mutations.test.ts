@@ -3,6 +3,12 @@
  * Tests boundary conditions, edge cases, and potential regressions
  */
 
+import { vi } from 'vitest';
+
+vi.mock('../utils/monitoring', () => ({
+  logErrorToService: vi.fn(),
+}));
+
 describe('SSR Safety - Browser API Access', () => {
   const originalWindow = globalThis.window;
   const originalNavigator = globalThis.navigator;
@@ -15,15 +21,16 @@ describe('SSR Safety - Browser API Access', () => {
   });
 
   test('error tracking handles missing window object', async () => {
+    // Pre-import before deleting window to avoid module-init hangs in jsdom
+    const { withErrorTracking } = await import('../utils/error-tracking');
+
     // Simulate SSR environment
     // @ts-expect-error - intentionally testing undefined
     delete globalThis.window;
 
-    const { withErrorTracking } = await import('../utils/error-tracking');
-
     // Should not crash when window is undefined
     await expect(
-      withErrorTracking(async () => 'success', { operation: 'test-operation' }),
+      withErrorTracking(async () => 'success', { operation: 'test-operation' })
     ).resolves.toBe('success');
   });
 
@@ -43,8 +50,7 @@ describe('SSR Safety - Browser API Access', () => {
     // @ts-expect-error - intentionally testing undefined
     delete globalThis.window;
 
-    const { setupGlobalErrorTracking } =
-      await import('../utils/error-tracking');
+    const { setupGlobalErrorTracking } = await import('../utils/error-tracking');
 
     // Should exit early without attempting to add event listeners
     expect(() => {
@@ -78,10 +84,11 @@ describe('Storage Quota Handling', () => {
         setItem: (key: string, value: string) => {
           // Simulate quota exceeded for large data
           if (value.length > 1000) {
-            const error: DOMException & { name: string } = Object.assign(
-              new DOMException('QuotaExceededError', 'QuotaExceededError'),
-              { name: 'QuotaExceededError' },
-            );
+            const error = new DOMException('QuotaExceededError', 'QuotaExceededError');
+            Object.defineProperty(error, 'name', {
+              value: 'QuotaExceededError',
+              configurable: true,
+            });
             throw error;
           }
           mockLocalStorage[key] = value;
@@ -322,10 +329,7 @@ describe('Chat History Type Safety', () => {
   test('readChatThreads handles non-array data', async () => {
     const { readChatThreads } = await import('../lib/chat-history');
 
-    localStorage.setItem(
-      'goblin_chat_threads_v1',
-      JSON.stringify({ not: 'array' }),
-    );
+    localStorage.setItem('goblin_chat_threads_v1', JSON.stringify({ not: 'array' }));
 
     const threads = readChatThreads();
     expect(Array.isArray(threads)).toBe(true);
@@ -342,7 +346,7 @@ describe('Chat History Type Safety', () => {
         { role: null, content: null }, // Invalid
         { not: 'valid' }, // Invalid
         null, // Invalid
-      ]),
+      ])
     );
 
     const messages = readChatMessages('test');
@@ -372,11 +376,7 @@ describe('Error Type Instantiation', () => {
     const { NetworkError } = await import('../utils/error-tracking');
 
     const originalError = new Error('Connection failed');
-    const error = new NetworkError(
-      'Network timeout',
-      '/api/endpoint',
-      originalError,
-    );
+    const error = new NetworkError('Network timeout', '/api/endpoint', originalError);
 
     expect(error.name).toBe('NetworkError');
     expect(error.endpoint).toBe('/api/endpoint');

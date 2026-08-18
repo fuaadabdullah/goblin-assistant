@@ -39,13 +39,7 @@ export interface BadgeProps extends BadgeVariantProps {
  * Badge — status indicator component with CVA-based variants.
  * Enforces design system colors and sizing consistency.
  */
-export function Badge({
-  variant = 'neutral',
-  size = 'sm',
-  icon,
-  className,
-  children,
-}: BadgeProps) {
+export function Badge({ variant = 'neutral', size = 'sm', icon, className, children }: BadgeProps) {
   return (
     <span
       className={cn(badgeVariants({ variant, size }), className)}

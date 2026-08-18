@@ -32,18 +32,37 @@ describe('SearchResultsList', () => {
     expect(screen.getByText('Result 2')).toBeInTheDocument();
   });
 
-  it('renders score when present', () => {
+  it('renders relevance label when score is present', () => {
     render(<SearchResultsList results={[makeResult({ score: 0.9543 })]} />);
-    expect(screen.getByText('Score: 0.9543')).toBeInTheDocument();
+    expect(screen.getByText('High relevance')).toBeInTheDocument();
   });
 
-  it('renders distance when present', () => {
+  it('derives relevance label from distance when present', () => {
     render(<SearchResultsList results={[makeResult({ distance: 0.1234 })]} />);
-    expect(screen.getByText('Distance: 0.1234')).toBeInTheDocument();
+    expect(screen.getByText('High relevance')).toBeInTheDocument();
+  });
+
+  it('renders source type icons and labels', () => {
+    render(<SearchResultsList results={[makeResult({ metadata: { source_type: 'code' } })]} />);
+    expect(screen.getByText('Code')).toBeInTheDocument();
+  });
+
+  it('highlights query terms in result content', () => {
+    render(
+      <SearchResultsList
+        results={[makeResult({ document: 'Find provider routing decisions' })]}
+        query="routing"
+      />
+    );
+    expect(screen.getByText('routing').tagName).toBe('MARK');
   });
 
   it('renders metadata tags', () => {
-    render(<SearchResultsList results={[makeResult({ metadata: { source: 'wiki', type: 'article' } })]} />);
+    render(
+      <SearchResultsList
+        results={[makeResult({ metadata: { source: 'wiki', type: 'article' } })]}
+      />
+    );
     expect(screen.getByText('source: wiki')).toBeInTheDocument();
     expect(screen.getByText('type: article')).toBeInTheDocument();
   });

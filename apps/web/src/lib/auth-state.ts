@@ -1,6 +1,7 @@
-import type { User, ValidateTokenResponse } from '../types/api';
-import { apiClient } from './api';
-import { clearAuthSession, getAuthToken, isAuthenticated as checkAuth, persistAuthSession } from '../utils/auth-session';
+import type { User } from '../types/api';
+import { supabaseUserToAppUser, authGetSession, authSignOut } from './supabase';
+import { clearAuthSession } from '../utils/auth-session';
+import { authMethods } from './api/auth';
 
 export interface AuthSessionSnapshot {
   token: string | null;
@@ -9,29 +10,8 @@ export interface AuthSessionSnapshot {
   isHydrated: boolean;
 }
 
-// Token validation cache with TTL (1 hour)
-const TOKEN_CACHE_TTL_MS = 60 * 60 * 1000; // 1 hour
-interface CachedValidation {
-  payload: ValidateTokenResponse;
-  timestamp: number;
-}
-const validationCache = new Map<string, CachedValidation>();
-
-const getCachedValidation = (token: string): ValidateTokenResponse | null => {
-  const cached = validationCache.get(token);
-  if (!cached) return null;
-  
-  const age = Date.now() - cached.timestamp;
-  if (age > TOKEN_CACHE_TTL_MS) {
-    validationCache.delete(token);
-    return null;
-  }
-  
-  return cached.payload;
-};
-
-const setCachedValidation = (token: string, payload: ValidateTokenResponse): void => {
-  validationCache.set(token, { payload, timestamp: Date.now() });
+export const clearValidationCache = (): void => {
+  // No-op: validation cache is no longer used (Supabase manages its own token state).
 };
 
 const unauthenticatedSnapshot = (): AuthSessionSnapshot => ({
@@ -41,10 +21,22 @@ const unauthenticatedSnapshot = (): AuthSessionSnapshot => ({
   isHydrated: true,
 });
 
-const safeJsonParse = (value: string | null): unknown => {
-  if (!value) return null;
+const readE2eAuthSnapshot = (): AuthSessionSnapshot | null => {
+  if (typeof window === 'undefined') return null;
+
   try {
-    return JSON.parse(value);
+    const hostname = window.location.hostname;
+    const isLocalhost = hostname === 'localhost' || hostname === '127.0.0.1' || hostname === '::1';
+    if (!isLocalhost) return null;
+    if (window.localStorage.getItem('goblin_e2e_auth') !== '1') return null;
+    const rawUser = window.localStorage.getItem('user_data');
+    const user = rawUser ? (JSON.parse(rawUser) as User) : null;
+    return {
+      token: window.localStorage.getItem('auth_token') || 'mock-access-token-e2e',
+      user,
+      isAuthenticated: Boolean(user),
+      isHydrated: true,
+    };
   } catch {
     return null;
   }
@@ -57,104 +49,57 @@ export const hasRole = (user: User | null | undefined, role: string): boolean =>
 
 export const hasAnyRole = (user: User | null | undefined, roles: string[]): boolean => {
   if (!user) return false;
-  return roles.some(role => hasRole(user, role));
+  return roles.some((role) => hasRole(user, role));
 };
 
-const provisionalSnapshot = (token: string, user: User | null): AuthSessionSnapshot => ({
-  token,
-  user,
-  isAuthenticated: Boolean(token && user && typeof user === 'object' && 'id' in user),
-  isHydrated: true,
-});
-
-const readStoredSession = (): { token: string | null; user: User | null } => {
-  const token = getAuthToken();
-  const user = safeJsonParse(window.localStorage.getItem('user_data')) as User | null;
-  return { token, user };
-};
-
-const resolveValidatedUser = (
-  payload: ValidateTokenResponse,
-  fallbackUser: User | null,
-): User | null => {
-  const candidateUser = payload?.user ?? null;
-  return candidateUser && typeof candidateUser === 'object' && 'id' in candidateUser
-    ? candidateUser
-    : fallbackUser;
-};
-
-const getErrorStatus = (error: unknown): number | undefined => {
-  if (typeof error !== 'object' || error === null || !('status' in error)) {
-    return undefined;
-  }
-  return Number((error as { status?: unknown }).status);
-};
-
-const isHardAuthFailure = (status: number | undefined): boolean =>
-  status === 401 || status === 403;
-
+/**
+ * Bootstrap the auth session from the Supabase client's local session storage.
+ * This is synchronous in practice — Supabase reads from localStorage, no network call.
+ */
 export const bootstrapAuthSession = async (): Promise<AuthSessionSnapshot> => {
-  if (typeof window === 'undefined') {
-    return unauthenticatedSnapshot();
-  }
+  if (typeof window === 'undefined') return unauthenticatedSnapshot();
 
-  const { token: storedToken, user: storedUser } = readStoredSession();
+  const e2eSnapshot = readE2eAuthSnapshot();
+  if (e2eSnapshot) return e2eSnapshot;
 
-  // HttpOnly cookie path: no JS-readable token but auth flag is set.
-  if (!storedToken && checkAuth()) {
-    return provisionalSnapshot('httponly', storedUser);
-  }
+  const { session } = await authGetSession();
 
-  if (!storedToken) {
-    return unauthenticatedSnapshot();
-  }
-
-  try {
-    // Check cache first to avoid unnecessary DB queries on app revisits
-    let payload = getCachedValidation(storedToken);
-    if (!payload) {
-      // Cache miss: validate token with backend
-      payload = (await apiClient.validateToken(storedToken)) as ValidateTokenResponse;
-      setCachedValidation(storedToken, payload);
-    }
-
-    if (payload?.valid === false) {
-      clearAuthSession();
-      return unauthenticatedSnapshot();
-    }
-
-    const validatedUser = resolveValidatedUser(payload, storedUser);
-    if (!validatedUser) {
-      return provisionalSnapshot(storedToken, storedUser);
-    }
-
-    persistAuthSession({
-      token: storedToken,
-      user: validatedUser,
-      expiresIn: payload?.expires_in,
-    });
-
-    return provisionalSnapshot(storedToken, validatedUser);
-  } catch (error) {
-    const status = getErrorStatus(error);
-    if (isHardAuthFailure(status)) {
-      clearAuthSession();
-      return unauthenticatedSnapshot();
-    }
-
-    // Fail closed on validation/network errors to avoid route/login bypass UX.
-    // Users can sign in again and refresh the session deterministically.
+  if (!session) {
     clearAuthSession();
     return unauthenticatedSnapshot();
   }
+
+  const user = supabaseUserToAppUser(session.user);
+
+  return {
+    token: session.access_token,
+    user,
+    isAuthenticated: true,
+    isHydrated: true,
+  };
+};
+
+/** Convert a Supabase session into an AuthSessionSnapshot. */
+export const snapshotFromSupabaseSession = (session: {
+  access_token: string;
+  user: Parameters<typeof supabaseUserToAppUser>[0];
+}): AuthSessionSnapshot => {
+  const user = supabaseUserToAppUser(session.user);
+  return {
+    token: session.access_token,
+    user,
+    isAuthenticated: true,
+    isHydrated: true,
+  };
 };
 
 export const clearAuthSessionState = async (): Promise<void> => {
   try {
-    await apiClient.logout();
-  } catch {
-    // Best-effort remote logout; local clear still proceeds.
+    await authSignOut();
+  } finally {
+    authMethods.logout().catch(() => {
+      // Backend logout failure should not prevent clearing local state.
+    });
+    clearAuthSession();
   }
-
-  clearAuthSession();
 };

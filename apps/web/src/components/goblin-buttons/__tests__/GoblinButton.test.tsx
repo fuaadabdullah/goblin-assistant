@@ -1,8 +1,7 @@
 import React from 'react';
 import { render, screen, fireEvent } from '@testing-library/react';
-import '@testing-library/jest-dom';
 
-jest.mock('../buttonStyles', () => ({
+vi.mock('../buttonStyles', () => ({
   getButtonClasses: (variant: string, className: string) => `btn-${variant} ${className}`,
 }));
 
@@ -25,7 +24,7 @@ describe('GoblinButton', () => {
   });
 
   it('calls onClick', () => {
-    const fn = jest.fn();
+    const fn = vi.fn();
     render(<GoblinButton onClick={fn}>Go</GoblinButton>);
     fireEvent.click(screen.getByRole('button'));
     expect(fn).toHaveBeenCalledTimes(1);

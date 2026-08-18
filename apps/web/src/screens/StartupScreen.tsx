@@ -1,3 +1,5 @@
+'use client';
+
 import { useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import GoblinBootScreen from '../features/startup/components/GoblinBootScreen';
@@ -9,17 +11,17 @@ const StartupScreen = () => {
 
   useEffect(() => {
     if (!destinationRoute) return;
-    router.prefetch(destinationRoute).catch(() => undefined);
+    router.prefetch(destinationRoute);
   }, [destinationRoute, router]);
 
   useEffect(() => {
     if (status !== 'ready' || !destinationRoute) return;
-    router.replace(destinationRoute).catch(() => undefined);
+    router.replace(destinationRoute);
   }, [destinationRoute, router, status]);
 
   useEffect(() => {
     if (status !== 'error' || !destinationRoute) return;
-    router.replace(destinationRoute).catch(() => undefined);
+    router.replace(destinationRoute);
   }, [destinationRoute, router, status]);
 
   return <GoblinBootScreen status={status} message={message} />;

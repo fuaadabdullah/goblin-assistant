@@ -1,9 +1,5 @@
-import { renderHook } from '@testing-library/react';
-import {
-  useKeyboardShortcuts,
-  formatShortcut,
-  SHORTCUTS,
-} from '../useKeyboardShortcuts';
+import { act, renderHook } from '@testing-library/react';
+import { useKeyboardShortcuts, formatShortcut, SHORTCUTS } from '../useKeyboardShortcuts';
 
 describe('useKeyboardShortcuts', () => {
   it('should format keyboard shortcuts correctly', () => {
@@ -21,7 +17,7 @@ describe('useKeyboardShortcuts', () => {
   });
 
   it('should register keyboard shortcuts', () => {
-    const callback = jest.fn();
+    const callback = vi.fn();
     const shortcuts = [
       {
         key: 'Enter',
@@ -31,15 +27,43 @@ describe('useKeyboardShortcuts', () => {
       },
     ];
 
-    renderHook(() => useKeyboardShortcuts(shortcuts));
-    // Hook should register without errors
+    const { unmount } = renderHook(() => useKeyboardShortcuts(shortcuts));
+
+    const event = new KeyboardEvent('keydown', {
+      key: 'Enter',
+      ctrlKey: true,
+      bubbles: true,
+      cancelable: true,
+    });
+
+    act(() => {
+      window.dispatchEvent(event);
+    });
+
+    expect(callback).toHaveBeenCalledTimes(1);
+    expect(event.defaultPrevented).toBe(true);
+
+    unmount();
+
+    act(() => {
+      window.dispatchEvent(
+        new KeyboardEvent('keydown', {
+          key: 'Enter',
+          ctrlKey: true,
+          bubbles: true,
+          cancelable: true,
+        })
+      );
+    });
+
+    expect(callback).toHaveBeenCalledTimes(1);
   });
 
   it('should handle multiple shortcuts', () => {
     const callbacks = {
-      save: jest.fn(),
-      search: jest.fn(),
-      help: jest.fn(),
+      save: vi.fn(),
+      search: vi.fn(),
+      help: vi.fn(),
     };
 
     const shortcuts = [

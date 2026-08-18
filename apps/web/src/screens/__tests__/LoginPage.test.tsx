@@ -1,16 +1,18 @@
 import { fireEvent, render, screen } from '@testing-library/react';
 import type { ReactNode } from 'react';
-import LoginPage from '../LoginPage';
+import LoginPage, { resolveOauthErrorMessage } from '../LoginPage';
 
-const pushMock = jest.fn();
-let mockSearchParams = new URLSearchParams();
+const pushMock = vi.fn();
+const seoMock = vi.fn();
+let query: Record<string, string> = {};
 
-jest.mock('next/navigation', () => ({
-  useRouter: () => ({ push: pushMock }),
-  useSearchParams: () => mockSearchParams,
+vi.mock('next/navigation', () => ({
+  useRouter: () => ({ push: pushMock, replace: vi.fn() }),
+  useSearchParams: () => new URLSearchParams(query),
+  usePathname: () => '/login',
 }));
 
-jest.mock('../../components/auth/ModularLoginForm', () => ({
+vi.mock('../../components/auth/ModularLoginForm', () => ({
   __esModule: true,
   default: ({ onSuccess }: { onSuccess: () => void }) => (
     <button type="button" onClick={onSuccess}>
@@ -19,24 +21,28 @@ jest.mock('../../components/auth/ModularLoginForm', () => ({
   ),
 }));
 
-jest.mock('../../components/Seo', () => ({
+vi.mock('../../components/Seo', () => ({
   __esModule: true,
-  default: () => null,
+  default: (props: Record<string, unknown>) => {
+    seoMock(props);
+    return null;
+  },
 }));
 
-jest.mock('next/link', () => ({
+vi.mock('next/link', () => ({
   __esModule: true,
   default: ({ children }: { children: ReactNode }) => <>{children}</>,
 }));
 
 describe('LoginPage redirects', () => {
   beforeEach(() => {
-    mockSearchParams = new URLSearchParams();
+    query = {};
     pushMock.mockClear();
+    seoMock.mockClear();
   });
 
   it('prefers redirect over from', () => {
-    mockSearchParams = new URLSearchParams({ redirect: '/chat?tab=history', from: '/account' });
+    query = { redirect: '/chat?tab=history', from: '/account' };
 
     render(<LoginPage />);
     fireEvent.click(screen.getByRole('button', { name: 'complete-login' }));
@@ -45,7 +51,7 @@ describe('LoginPage redirects', () => {
   });
 
   it('falls back to from when redirect is absent', () => {
-    mockSearchParams = new URLSearchParams({ from: '/account' });
+    query = { from: '/account' };
 
     render(<LoginPage />);
     fireEvent.click(screen.getByRole('button', { name: 'complete-login' }));
@@ -54,7 +60,7 @@ describe('LoginPage redirects', () => {
   });
 
   it('rejects unsafe redirect values', () => {
-    mockSearchParams = new URLSearchParams({ redirect: 'https://evil.example/path', from: '/chat' });
+    query = { redirect: 'https://evil.example/path', from: '/chat' };
 
     render(<LoginPage />);
     fireEvent.click(screen.getByRole('button', { name: 'complete-login' }));
@@ -63,11 +69,36 @@ describe('LoginPage redirects', () => {
   });
 
   it('falls back to root when redirect inputs are unsafe', () => {
-    mockSearchParams = new URLSearchParams({ redirect: '//evil.example', from: 'https://evil.example' });
+    query = { redirect: '//evil.example', from: 'https://evil.example' };
 
     render(<LoginPage />);
     fireEvent.click(screen.getByRole('button', { name: 'complete-login' }));
 
     expect(pushMock).toHaveBeenCalledWith('/');
+  });
+
+  it('is crawlable for lighthouse', () => {
+    render(<LoginPage />);
+    expect(seoMock).toHaveBeenCalledWith(
+      expect.objectContaining({ robots: 'index,follow', title: 'Sign In' })
+    );
+  });
+});
+
+describe('resolveOauthErrorMessage', () => {
+  it('maps known oauth errors to user-friendly copy', () => {
+    expect(resolveOauthErrorMessage('oauth_failed')).toBe(
+      'Google sign-in failed. Please try again.'
+    );
+    expect(resolveOauthErrorMessage('no_code')).toBe(
+      'Google sign-in did not return an authorization code.'
+    );
+    expect(resolveOauthErrorMessage('callback_failed')).toBe(
+      'Google sign-in could not be completed. Try again.'
+    );
+  });
+
+  it('keeps unknown oauth error codes visible', () => {
+    expect(resolveOauthErrorMessage('invalid_scope')).toBe('Authentication error: invalid_scope');
   });
 });

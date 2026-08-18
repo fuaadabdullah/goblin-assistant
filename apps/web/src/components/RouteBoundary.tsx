@@ -1,10 +1,7 @@
 import type { ComponentType } from 'react';
 import { useState } from 'react';
 import { env } from '../config/env';
-import {
-  ErrorBoundary,
-  type ErrorBoundaryRenderProps,
-} from './ErrorBoundary';
+import { ErrorBoundary, type ErrorBoundaryRenderProps } from './ErrorBoundary';
 
 export type RouteBoundaryAction =
   | { type: 'link'; label: string; href: string; variant?: 'primary' | 'secondary' }
@@ -15,17 +12,20 @@ export interface RouteBoundaryFallbackProps {
   title: string;
   description: string;
   actions: RouteBoundaryAction[];
-  errorId?: string;
-  technicalDetail?: string;
+  errorId?: string | undefined;
+  technicalDetail?: string | undefined;
+  onReset?: () => void;
 }
 
 export type RouteBoundaryKey =
   | 'home'
   | 'account'
   | 'chat'
+  | 'agent'
   | 'googleCallback'
   | 'help'
   | 'login'
+  | 'onboarding'
   | 'register'
   | 'sandbox'
   | 'search'
@@ -101,6 +101,10 @@ const routeBoundaryConfig: Record<RouteBoundaryKey, RouteBoundaryConfig> = {
       { type: 'copyErrorId', label: 'Copy Error ID', variant: 'secondary' },
     ],
   },
+  agent: workspaceConfig(
+    'Agent loop is temporarily unavailable',
+    'The self-development task screen failed before it could load.'
+  ),
   googleCallback: authConfig(
     'Sign-in callback failed',
     'We could not finish the Google sign-in handoff screen.'
@@ -112,6 +116,10 @@ const routeBoundaryConfig: Record<RouteBoundaryKey, RouteBoundaryConfig> = {
   login: authConfig(
     'Sign-in is temporarily unavailable',
     'The authentication screen failed before you could continue.'
+  ),
+  onboarding: workspaceConfig(
+    'Onboarding is temporarily unavailable',
+    'The first-run setup wizard failed before it could finish rendering.'
   ),
   register: authConfig(
     'Registration is temporarily unavailable',
@@ -172,10 +180,13 @@ export function RouteBoundaryFallback({
   actions,
   errorId,
   technicalDetail,
+  onReset,
 }: RouteBoundaryFallbackProps) {
   const [copiedErrorId, setCopiedErrorId] = useState(false);
 
-  const visibleActions = actions.filter(action => action.type !== 'copyErrorId' || Boolean(errorId));
+  const visibleActions = actions.filter(
+    (action) => action.type !== 'copyErrorId' || Boolean(errorId)
+  );
 
   const handleCopyErrorId = async () => {
     if (!errorId || !navigator.clipboard?.writeText) {
@@ -191,7 +202,13 @@ export function RouteBoundaryFallback({
   };
 
   const handleReload = () => {
-    window.location.reload();
+    // If an onReset callback is provided (from ErrorBoundary.reset() or error.tsx reset()),
+    // use it first — it recovers without a full page reload.
+    if (onReset) {
+      onReset();
+    } else {
+      window.location.reload();
+    }
   };
 
   return (
@@ -242,7 +259,7 @@ export function RouteBoundaryFallback({
           )}
 
           <div className="mt-6 flex flex-wrap gap-3">
-            {visibleActions.map(action => {
+            {visibleActions.map((action) => {
               if (action.type === 'link') {
                 return (
                   <a
@@ -295,13 +312,14 @@ export function withRouteErrorBoundary<P extends object>(
   const ComponentWithRouteBoundary = (props: P) => (
     <ErrorBoundary
       boundaryName={`route:${routeKey}`}
-      fallbackRender={({ error, errorId }: ErrorBoundaryRenderProps) => (
+      fallbackRender={({ error, errorId, reset }: ErrorBoundaryRenderProps) => (
         <RouteBoundaryFallback
           title={config.title}
           description={config.description}
           actions={config.actions}
           errorId={errorId}
           technicalDetail={formatBoundaryTechnicalDetail(error)}
+          onReset={reset}
         />
       )}
     >

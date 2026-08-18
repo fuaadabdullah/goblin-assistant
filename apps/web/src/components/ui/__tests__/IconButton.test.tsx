@@ -1,6 +1,5 @@
 import React from 'react';
 import { render, screen, fireEvent } from '@testing-library/react';
-import '@testing-library/jest-dom';
 import IconButton from '../IconButton';
 
 describe('IconButton', () => {
@@ -57,7 +56,7 @@ describe('IconButton', () => {
   });
 
   it('calls onClick', () => {
-    const fn = jest.fn();
+    const fn = vi.fn();
     render(<IconButton icon={icon} aria-label="x" onClick={fn} />);
     fireEvent.click(screen.getByRole('button'));
     expect(fn).toHaveBeenCalledTimes(1);

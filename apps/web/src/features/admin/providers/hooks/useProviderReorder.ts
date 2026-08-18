@@ -23,8 +23,8 @@ export const useProviderReorder = ({
       if (!draggedProvider || draggedProvider.id === targetProvider.id) return;
 
       const newOrder = [...providers];
-      const draggedIndex = newOrder.findIndex(p => p.id === draggedProvider.id);
-      const targetIndex = newOrder.findIndex(p => p.id === targetProvider.id);
+      const draggedIndex = newOrder.findIndex((p) => p.id === draggedProvider.id);
+      const targetIndex = newOrder.findIndex((p) => p.id === targetProvider.id);
 
       if (draggedIndex === -1 || targetIndex === -1) return;
 

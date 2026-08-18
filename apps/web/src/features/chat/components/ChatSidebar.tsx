@@ -22,6 +22,15 @@ interface ChatSidebarProps {
   className?: string;
 }
 
+const CATEGORY_COLORS: Record<string, string> = {
+  coding: 'bg-blue-500/15 text-blue-600',
+  trading: 'bg-emerald-500/15 text-emerald-700',
+  finance: 'bg-yellow-500/15 text-yellow-700',
+  health: 'bg-rose-500/15 text-rose-600',
+  relationships: 'bg-purple-500/15 text-purple-600',
+  research: 'bg-slate-500/15 text-slate-600',
+};
+
 const ChatSidebar = ({
   threads,
   isThreadsLoading,
@@ -33,7 +42,9 @@ const ChatSidebar = ({
   messageCount,
   className = '',
 }: ChatSidebarProps) => (
-  <aside className={`flex w-72 border-r border-border bg-surface px-4 py-6 flex-col gap-6 ${className}`}>
+  <aside
+    className={`flex w-72 border-r border-border bg-surface px-4 py-6 flex-col gap-6 ${className}`}
+  >
     <div>
       <h2 className="text-sm font-semibold text-text mb-2">Conversations</h2>
       <button
@@ -54,7 +65,7 @@ const ChatSidebar = ({
         </div>
       ) : threads.length > 0 ? (
         <ul className="space-y-2">
-          {threads.map(thread => {
+          {threads.map((thread) => {
             const isActive = thread.threadKey === activeThreadKey;
             return (
               <li key={thread.threadKey}>
@@ -72,6 +83,13 @@ const ChatSidebar = ({
                   <div className="text-xs text-muted line-clamp-2 mt-1">
                     {thread.snippet || 'No messages yet.'}
                   </div>
+                  {thread.category && (
+                    <span
+                      className={`inline-block mt-1 px-1.5 py-0.5 rounded text-[10px] font-semibold uppercase tracking-wide ${CATEGORY_COLORS[thread.category] ?? 'bg-surface-hover text-muted'}`}
+                    >
+                      {thread.category}
+                    </span>
+                  )}
                   {isActive && (
                     <div className="flex items-center gap-2 mt-1">
                       <span className="text-[10px] uppercase tracking-wide text-primary font-semibold">

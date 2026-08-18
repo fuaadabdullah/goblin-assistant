@@ -1,18 +1,15 @@
-import { describe, it, expect, beforeEach, afterEach, afterAll, jest } from '@jest/globals';
+import { describe, it, expect, beforeEach, afterEach, afterAll } from 'vitest';
 import { render, screen, waitFor } from '@testing-library/react';
 import type { ErrorBoundaryRenderProps } from '../ErrorBoundary';
 
-jest.mock('../../utils/monitoring', () => ({
-  logErrorToService: jest.fn(),
-  reactErrorInfoToContext: jest.fn(() => ({ componentStack: 'at Thrower' })),
+vi.mock('../../utils/monitoring', () => ({
+  logErrorToService: vi.fn(),
+  reactErrorInfoToContext: vi.fn(() => ({ componentStack: 'at Thrower' })),
 }));
 
-const { ErrorBoundary } = require('../ErrorBoundary') as typeof import('../ErrorBoundary');
-const { env } = require('../../config/env') as typeof import('../../config/env');
-const monitoring = require('../../utils/monitoring') as {
-  logErrorToService: jest.Mock;
-  reactErrorInfoToContext: jest.Mock;
-};
+import { ErrorBoundary } from '../ErrorBoundary';
+import { env } from '../../config/env';
+import * as monitoring from '../../utils/monitoring';
 
 const Thrower = ({
   message = 'Render exploded',
@@ -28,10 +25,10 @@ const Thrower = ({
 
 describe('ErrorBoundary', () => {
   const originalEnv = { ...env };
-  const consoleErrorSpy = jest.spyOn(console, 'error').mockImplementation(() => {});
+  const consoleErrorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
 
   beforeEach(() => {
-    jest.clearAllMocks();
+    vi.clearAllMocks();
     env.isDevelopment = false;
     env.isProduction = true;
     env.mode = 'production';
@@ -46,9 +43,9 @@ describe('ErrorBoundary', () => {
   });
 
   it('captures render errors and passes the error and event ID to fallbackRender', async () => {
-    monitoring.logErrorToService.mockReturnValue('evt-123');
+    vi.mocked(monitoring.logErrorToService).mockReturnValue('evt-123');
 
-    const fallbackRender = jest.fn(({ error, errorId }: ErrorBoundaryRenderProps) => (
+    const fallbackRender = vi.fn(({ error, errorId }: ErrorBoundaryRenderProps) => (
       <div>{`${error.message}:${errorId ?? 'missing'}`}</div>
     ));
 
@@ -77,9 +74,9 @@ describe('ErrorBoundary', () => {
   });
 
   it('passes no error ID when Sentry does not return one', async () => {
-    monitoring.logErrorToService.mockReturnValue(undefined);
+    vi.mocked(monitoring.logErrorToService).mockReturnValue(undefined);
 
-    const fallbackRender = jest.fn(({ error, errorId }: ErrorBoundaryRenderProps) => (
+    const fallbackRender = vi.fn(({ error, errorId }: ErrorBoundaryRenderProps) => (
       <div>{`${error.message}:${errorId ?? 'missing'}`}</div>
     ));
 
@@ -101,7 +98,7 @@ describe('ErrorBoundary', () => {
   });
 
   it('hides stack traces in production while still showing a support reference', async () => {
-    monitoring.logErrorToService.mockReturnValue('evt-prod');
+    vi.mocked(monitoring.logErrorToService).mockReturnValue('evt-prod');
 
     render(
       <ErrorBoundary>

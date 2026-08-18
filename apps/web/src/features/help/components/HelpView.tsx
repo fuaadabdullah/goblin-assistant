@@ -1,6 +1,8 @@
 import HelpTopics from './HelpTopics';
 import HelpSupportForm from './HelpSupportForm';
+import BugReportForm from './BugReportForm';
 import type { SupportFormState } from '../hooks/useSupportForm';
+import type { TriageFormState } from '../hooks/useTriageForm';
 import type { StartupDiagnostics } from '../../../utils/startup-diagnostics';
 import Seo from '../../../components/Seo';
 import { Button, InlineErrorState } from '../../../components/ui';
@@ -8,17 +10,25 @@ import { Button, InlineErrorState } from '../../../components/ui';
 interface HelpViewProps {
   /** Support form state + handlers. */
   form: SupportFormState;
+  /** Bug triage form state + handlers. */
+  triage: TriageFormState;
   /** Optional startup failure context. */
-  startupFailure?: {
-    logId?: string | null;
-    diagnostics?: StartupDiagnostics | null;
-    onRetry: () => void;
-  };
+  startupFailure?:
+    | {
+        logId?: string | null | undefined;
+        diagnostics?: StartupDiagnostics | null | undefined;
+        onRetry: () => void;
+      }
+    | undefined;
 }
 
-const HelpView = ({ form, startupFailure }: HelpViewProps) => (
+const HelpView = ({ form, triage, startupFailure }: HelpViewProps) => (
   <div className="min-h-screen bg-bg">
-    <Seo title="Help" description="Support & documentation for the Goblin AI Gateway." robots="index,follow" />
+    <Seo
+      title="Help"
+      description="Support & documentation for the Goblin AI Gateway."
+      robots="index,follow"
+    />
     <main className="max-w-5xl mx-auto p-6 space-y-6" id="main-content" tabIndex={-1}>
       <header>
         <h1 className="text-3xl font-semibold text-text">Support & Docs</h1>
@@ -45,18 +55,10 @@ const HelpView = ({ form, startupFailure }: HelpViewProps) => (
                 Message: {startupFailure.diagnostics?.message ?? 'No details captured.'}
               </p>
               <div className="mt-3 grid grid-cols-2 gap-2 text-xs text-muted">
-                <div>
-                  Auth: {startupFailure.diagnostics?.authMs ?? '—'} ms
-                </div>
-                <div>
-                  Config: {startupFailure.diagnostics?.configMs ?? '—'} ms
-                </div>
-                <div>
-                  Runtime: {startupFailure.diagnostics?.runtimeMs ?? '—'} ms
-                </div>
-                <div>
-                  Total: {startupFailure.diagnostics?.totalMs ?? '—'} ms
-                </div>
+                <div>Auth: {startupFailure.diagnostics?.authMs ?? '—'} ms</div>
+                <div>Config: {startupFailure.diagnostics?.configMs ?? '—'} ms</div>
+                <div>Runtime: {startupFailure.diagnostics?.runtimeMs ?? '—'} ms</div>
+                <div>Total: {startupFailure.diagnostics?.totalMs ?? '—'} ms</div>
               </div>
               <p className="text-xs text-muted mt-2">
                 Timestamp: {startupFailure.diagnostics?.timestamp ?? 'unknown'}
@@ -93,14 +95,26 @@ const HelpView = ({ form, startupFailure }: HelpViewProps) => (
           ]}
         />
 
-        <HelpSupportForm
-          message={form.message}
-          sent={form.sent}
-          error={form.error}
-          sending={form.sending}
-          onMessageChange={form.setMessage}
-          onSubmit={form.handleSubmit}
-        />
+        <div className="space-y-4">
+          <BugReportForm
+            description={triage.description}
+            submitting={triage.submitting}
+            result={triage.result}
+            error={triage.error}
+            onDescriptionChange={triage.setDescription}
+            onSubmit={triage.handleSubmit}
+            onReset={triage.reset}
+          />
+
+          <HelpSupportForm
+            message={form.message}
+            sent={form.sent}
+            error={form.error}
+            sending={form.sending}
+            onMessageChange={form.setMessage}
+            onSubmit={form.handleSubmit}
+          />
+        </div>
       </div>
     </main>
   </div>

@@ -1,6 +1,5 @@
 import React from 'react';
 import { render, screen, fireEvent } from '@testing-library/react';
-import '@testing-library/jest-dom';
 import { IconButton } from '../goblin-buttons/IconButton';
 
 describe('IconButton (goblin-buttons)', () => {
@@ -18,7 +17,7 @@ describe('IconButton (goblin-buttons)', () => {
   });
 
   it('calls onClick when clicked', () => {
-    const onClick = jest.fn();
+    const onClick = vi.fn();
     render(
       <IconButton aria-label={testLabel} onClick={onClick}>
         {child}

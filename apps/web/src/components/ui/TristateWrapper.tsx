@@ -23,43 +23,43 @@ export interface TristateWrapperProps {
   children: ReactNode;
 
   /** Loading state – hides content when truthy. */
-  loading?: boolean;
+  loading?: boolean | undefined;
   /** Error value – when truthy shows the error state. */
   error?: unknown;
   /** Empty state – when truthy shows the empty state. */
-  empty?: boolean;
+  empty?: boolean | undefined;
 
   /* --- loading overrides --- */
-  loadingTitle?: string;
-  loadingDescription?: string;
+  loadingTitle?: string | undefined;
+  loadingDescription?: string | undefined;
 
   /* --- error overrides --- */
-  errorTitle?: string;
-  errorMessage?: string;
-  onRetry?: () => void;
-  retryLabel?: string;
+  errorTitle?: string | undefined;
+  errorMessage?: string | undefined;
+  onRetry?: (() => void) | undefined;
+  retryLabel?: string | undefined;
 
   /* --- empty overrides --- */
-  emptyTitle?: string;
-  emptyDescription?: string;
-  emptyIcon?: ReactNode;
-  emptyActionLabel?: string;
-  onEmptyAction?: () => void;
-  emptyActionHref?: string;
-  emptySecondaryAction?: ReactNode;
+  emptyTitle?: string | undefined;
+  emptyDescription?: string | undefined;
+  emptyIcon?: ReactNode | undefined;
+  emptyActionLabel?: string | undefined;
+  onEmptyAction?: (() => void) | undefined;
+  emptyActionHref?: string | undefined;
+  emptySecondaryAction?: ReactNode | undefined;
 
   /** Render in "section" (plain, non-full-page) mode instead of full-page. */
-  plain?: boolean;
+  plain?: boolean | undefined;
 
   /** Custom loading element – overrides all loading props when provided. */
-  loadingChild?: ReactNode;
+  loadingChild?: ReactNode | undefined;
   /** Custom empty element – overrides all empty props when provided. */
-  emptyChild?: ReactNode;
+  emptyChild?: ReactNode | undefined;
   /** Custom error element – overrides all error props when provided. */
-  errorChild?: ReactNode;
+  errorChild?: ReactNode | undefined;
 
   /** Additional className forwarded to the outermost wrapper. */
-  className?: string;
+  className?: string | undefined;
 }
 
 /* ---------- helpers ---------- */

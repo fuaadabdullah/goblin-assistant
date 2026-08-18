@@ -8,11 +8,11 @@ describe('AccountProfileForm', () => {
     name: 'Test User',
     email: 'test@example.com',
     saved: false,
-    onNameChange: jest.fn(),
-    onSave: jest.fn(),
+    onNameChange: vi.fn(),
+    onSave: vi.fn(),
   };
 
-  beforeEach(() => jest.clearAllMocks());
+  beforeEach(() => vi.clearAllMocks());
 
   it('renders profile heading', () => {
     render(<AccountProfileForm {...defaultProps} />);

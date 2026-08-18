@@ -1,15 +1,6 @@
 import React from 'react';
 import { render, screen, fireEvent } from '@testing-library/react';
 
-jest.mock('lucide-react', () =>
-  new Proxy({}, {
-    get: (_, name) => {
-      if (name === '__esModule') return true;
-      return (props: Record<string, unknown>) => <span data-testid={`icon-${String(name)}`} {...props} />;
-    },
-  })
-);
-
 import ChatErrorBubble from '../ChatErrorBubble';
 import type { UiError } from '../../../../lib/ui-error';
 
@@ -21,9 +12,9 @@ describe('ChatErrorBubble', () => {
     message: 'Something went wrong',
   };
 
-  const defaultProps = { error: baseError, onDismiss: jest.fn() };
+  const defaultProps = { error: baseError, onDismiss: vi.fn() };
 
-  beforeEach(() => jest.clearAllMocks());
+  beforeEach(() => vi.clearAllMocks());
 
   it('renders user message', () => {
     render(<ChatErrorBubble {...defaultProps} />);
@@ -53,12 +44,12 @@ describe('ChatErrorBubble', () => {
   });
 
   it('shows retry button when onRetry provided', () => {
-    render(<ChatErrorBubble {...defaultProps} onRetry={jest.fn()} />);
+    render(<ChatErrorBubble {...defaultProps} onRetry={vi.fn()} />);
     expect(screen.getByText('Retry')).toBeInTheDocument();
   });
 
   it('calls onRetry when retry clicked', () => {
-    const onRetry = jest.fn();
+    const onRetry = vi.fn();
     render(<ChatErrorBubble {...defaultProps} onRetry={onRetry} />);
     fireEvent.click(screen.getByText('Retry'));
     expect(onRetry).toHaveBeenCalled();

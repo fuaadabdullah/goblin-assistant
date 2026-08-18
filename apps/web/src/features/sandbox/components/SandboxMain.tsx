@@ -9,6 +9,8 @@ interface SandboxMainProps {
   logs: string;
   /** Selected job for output display. */
   selectedJob: SandboxJob | null;
+  /** Sandbox availability state. */
+  sandboxState?: 'loading' | 'enabled' | 'disabled';
   /** Code change handler. */
   onCodeChange: (value: string) => void;
   /** Whether the viewer is in guest mode. */
@@ -20,6 +22,7 @@ const SandboxMain = ({
   language,
   logs,
   selectedJob,
+  sandboxState = 'enabled',
   onCodeChange,
   isGuest = false,
 }: SandboxMainProps) => (
@@ -40,11 +43,26 @@ const SandboxMain = ({
       </div>
     )}
 
+    {sandboxState !== 'enabled' && !isGuest && (
+      <div className="bg-surface border border-border rounded-xl p-4 text-sm text-text">
+        <p className="font-semibold text-warning">
+          {sandboxState === 'loading'
+            ? 'Checking sandbox availability'
+            : 'Sandbox service unavailable'}
+        </p>
+        <p className="text-muted mt-1">
+          {sandboxState === 'loading'
+            ? 'We are checking whether code execution is available.'
+            : 'The sandbox is currently disabled in this environment, so runs and job history are unavailable.'}
+        </p>
+      </div>
+    )}
+
     <div className="bg-surface rounded-xl shadow-sm border border-border p-6">
       <h2 className="text-lg font-semibold text-text mb-4">Code Editor</h2>
       <textarea
         value={code}
-        onChange={e => onCodeChange(e.target.value)}
+        onChange={(e) => onCodeChange(e.target.value)}
         placeholder={`Enter your ${language} code here...`}
         className="w-full h-64 px-4 py-3 font-mono text-sm border border-border rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent resize-none bg-bg"
       />

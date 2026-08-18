@@ -1,6 +1,5 @@
 import React from 'react';
 import { fireEvent, render, screen } from '@testing-library/react';
-import '@testing-library/jest-dom';
 import {
   Select,
   SelectGroup,
@@ -95,11 +94,13 @@ describe('Select components', () => {
 
     expect(document.querySelector('.content-extra')).toBeInTheDocument();
     expect(screen.getByText('Label').className).toContain('label-extra');
-    expect(screen.getByText('Item A').closest('[role="option"]')?.className).toContain('item-extra');
+    expect(screen.getByText('Item A').closest('[role="option"]')?.className).toContain(
+      'item-extra'
+    );
   });
 
   it('calls onValueChange when selecting an item', () => {
-    const onValueChange = jest.fn();
+    const onValueChange = vi.fn();
     render(
       <Select open onValueChange={onValueChange}>
         <SelectTrigger aria-label="choose-value">

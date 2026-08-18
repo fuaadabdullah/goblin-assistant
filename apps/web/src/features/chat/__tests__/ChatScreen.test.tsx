@@ -1,25 +1,30 @@
 import React from 'react';
 import { render, screen } from '@testing-library/react';
-import '@testing-library/jest-dom';
 
-const mockUseAuthSession = jest.fn();
-const mockUseChatSession = jest.fn();
-const mockIsAdminUser = jest.fn();
-const mockChatView = jest.fn();
+const mockUseAuthSession = vi.fn();
+const mockUseChatSession = vi.fn();
+const mockIsAdminUser = vi.fn();
+const mockChatView = vi.fn();
 
-jest.mock('../../../hooks/api/useAuthSession', () => ({
+vi.mock('next/navigation', () => ({
+  useRouter: () => ({ push: vi.fn(), replace: vi.fn(), prefetch: vi.fn() }),
+  useSearchParams: () => new URLSearchParams(),
+  usePathname: () => '/chat',
+}));
+
+vi.mock('../../../hooks/api/useAuthSession', () => ({
   useAuthSession: () => mockUseAuthSession(),
 }));
 
-jest.mock('../hooks/useChatSession', () => ({
+vi.mock('../hooks/useChatSession', () => ({
   useChatSession: () => mockUseChatSession(),
 }));
 
-jest.mock('../../../utils/access', () => ({
+vi.mock('../../../utils/access', () => ({
   isAdminUser: (...args: unknown[]) => mockIsAdminUser(...args),
 }));
 
-jest.mock('../components/ChatView', () => ({
+vi.mock('../components/ChatView', () => ({
   __esModule: true,
   default: (props: Record<string, unknown>) => {
     mockChatView(props);
@@ -31,7 +36,7 @@ import ChatScreen from '../ChatScreen';
 
 describe('ChatScreen', () => {
   beforeEach(() => {
-    jest.clearAllMocks();
+    vi.clearAllMocks();
     mockUseAuthSession.mockReturnValue({ user: { email: 'admin@goblin.dev' } });
     mockUseChatSession.mockReturnValue({ messages: [], input: '' });
     mockIsAdminUser.mockReturnValue(true);

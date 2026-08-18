@@ -1,6 +1,10 @@
 /** @type {import('tailwindcss').Config} */
 module.exports = {
-  content: ['./src/**/*.{js,ts,jsx,tsx}'],
+  content: [
+    './src/**/*.{js,ts,jsx,tsx}',
+    './app/**/*.{js,ts,jsx,tsx}',
+    '../../packages/ui/src/**/*.{ts,tsx}',
+  ],
   safelist: [
     'grid-cols-1',
     'md:grid-cols-12',
@@ -47,10 +51,10 @@ module.exports = {
         divider: 'var(--divider)',
       },
       boxShadow: {
-        'sm': 'var(--shadow-sm)',
-        'md': 'var(--shadow-md)',
-        'lg': 'var(--shadow-lg)',
-        'xl': 'var(--shadow-xl)',
+        sm: 'var(--shadow-sm)',
+        md: 'var(--shadow-md)',
+        lg: 'var(--shadow-lg)',
+        xl: 'var(--shadow-xl)',
         'goblin-glow': '0 6px 24px var(--glow-primary)',
         'glow-primary': '0 6px 24px var(--glow-primary)',
         'glow-accent': '0 6px 24px var(--glow-accent)',
@@ -60,10 +64,10 @@ module.exports = {
         logo: '0 8px 28px var(--glow-primary)',
       },
       borderRadius: {
-        'xs': 'var(--radius-xs)',
-        'sm': 'var(--radius-sm)',
-        'md': 'var(--radius-md)',
-        'lg': 'var(--radius-lg)',
+        xs: 'var(--radius-xs)',
+        sm: 'var(--radius-sm)',
+        md: 'var(--radius-md)',
+        lg: 'var(--radius-lg)',
       },
     },
   },

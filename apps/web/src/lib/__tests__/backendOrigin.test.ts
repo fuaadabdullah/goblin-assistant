@@ -35,6 +35,7 @@ describe('backend origin resolution', () => {
   it('returns shared default when no backend env var is set', () => {
     const env = {} as NodeJS.ProcessEnv;
 
+    expect(DEFAULT_BACKEND_ORIGIN).toBe('https://goblin-backend-dt30.onrender.com');
     expect(resolveBackendOrigin(env)).toBe(DEFAULT_BACKEND_ORIGIN);
     expect(resolvePublicBackendOrigin(env)).toBe(DEFAULT_BACKEND_ORIGIN);
   });
