@@ -189,6 +189,42 @@ async def test_support_message_links_known_user_and_creates_notification(db_sess
 
 
 @pytest.mark.asyncio
+async def test_beta_signal_persists_support_ticket_metadata(db_session):
+    app = _build_app(db_session)
+    client = TestClient(app)
+
+    payload = {
+        "page": "/chat",
+        "name": "Ava",
+        "email": "ava@example.com",
+        "note": "Which model am I using?",
+        "tag": "which-model",
+    }
+
+    response = client.post("/api/v1/support/beta-signal", json=payload)
+    assert response.status_code == 200
+    body = response.json()
+    assert body["status"] == "logged"
+    assert body["id"]
+
+    result = await db_session.execute(
+        select(SupportTicketModel).where(SupportTicketModel.category == "beta_signal")
+    )
+    ticket = result.scalar_one()
+    assert ticket.message == "Which model am I using?"
+    assert ticket.subject == "Pilot signal: which-model"
+    assert ticket.email == "ava@example.com"
+    assert ticket.metadata_ == {
+        "source": "beta_signal",
+        "page": "/chat",
+        "tag": "which-model",
+        "name": "Ava",
+        "email": "ava@example.com",
+        "user_agent": "testclient",
+    }
+
+
+@pytest.mark.asyncio
 async def test_support_message_surfaces_5xx_on_persistence_failure(db_session):
     app = _build_app(db_session)
     client = TestClient(app)

@@ -15,10 +15,11 @@ from fastapi.responses import StreamingResponse
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from ..assistant_tools.executor import extract_tool_calls, run_tool_loop
-from ..assistant_tools.registry import export_openai_tools
+from ..assistant_tools.registry import export_openai_tools, export_tools_for_provider
 from ..auth.router import User as AuthenticatedUser, get_current_user
 from ..storage import conversation_store
 from ..storage.database import get_db
+from .archiving import schedule_conversation_archive
 from api.config.mode_addendums import (
     Mode,
     get_addendum as _get_legacy_mode_addendum,
@@ -35,6 +36,11 @@ from .service_accessors import (
 logger = structlog.get_logger()
 
 router = APIRouter()
+
+
+def _get_embedding_worker():
+    from ..services.embedding_service import embedding_worker
+    return embedding_worker
 
 
 @router.post("/contextual-chat", response_model=ContextualChatResponse)
@@ -254,6 +260,23 @@ async def contextual_chat(
                     "token_usage": token_usage,
                 },
             )
+
+            if request.enable_context_assembly and user_id:
+                embedding_worker = _get_embedding_worker()
+                await embedding_worker.queue_message_embedding(
+                    user_id=user_id,
+                    conversation_id=conversation_id,
+                    message_id=str(uuid.uuid4()),
+                    content=request.message,
+                    metadata=request.metadata,
+                )
+                await embedding_worker.queue_message_embedding(
+                    user_id=user_id,
+                    conversation_id=conversation_id,
+                    message_id=response_message_id,
+                    content=response_content,
+                    metadata={"provider": used_provider, "model": used_model},
+                )
 
         visualizations = None
         if isinstance(provider_response, dict) and provider_response.get(

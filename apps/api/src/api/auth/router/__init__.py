@@ -17,7 +17,7 @@ from fastapi.security import HTTPBearer
 
 # --- Patchable runtime dependencies ---
 # Tests monkeypatch these via `api.auth.router.<name>`.
-from ...storage.database import get_db  # noqa: F401
+from ...storage.database import get_db, get_readonly_db  # noqa: F401
 from ...storage.user_service import UserCreateData, UserService  # noqa: F401
 
 # --- Public re-exports for callers + tests ---

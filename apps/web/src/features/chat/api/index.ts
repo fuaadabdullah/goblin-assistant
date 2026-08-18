@@ -1,4 +1,5 @@
-import { apiClient } from '@/api';
+import { apiClient as runtimeApiClient } from '@/api';
+import { apiClient as sharedApiClient } from '@/lib/api';
 import { UiError } from '../../../lib/ui-error';
 import { getAuthToken } from '../../../utils/auth-session';
 import type { ChatMessage } from '../types';
@@ -63,6 +64,13 @@ export interface SendMessageParams {
   attachment_ids?: string[];
 }
 
+export interface EstimateTokensParams {
+  message: string;
+  conversationId?: string;
+  provider?: string;
+  model?: string;
+}
+
 const resolvePrompt = (params: SendMessageParams): string => {
   if (typeof params.prompt === 'string' && params.prompt.trim()) {
     return params.prompt.trim();
@@ -77,7 +85,7 @@ export const chatClient = {
     params: CreateConversationParams = {}
   ): Promise<CreateConversationResult> {
     try {
-      return await apiClient.createConversation(params.title);
+      return await runtimeApiClient.createConversation(params.title);
     } catch (error) {
       throw new UiError(
         {
@@ -91,7 +99,7 @@ export const chatClient = {
 
   async listConversations(): Promise<ChatConversationSummary[]> {
     try {
-      return await apiClient.listConversations();
+      return await runtimeApiClient.listConversations();
     } catch (error) {
       throw new UiError(
         {
@@ -108,7 +116,7 @@ export const chatClient = {
     params?: { offset?: number; limit?: number }
   ): Promise<ChatConversation> {
     try {
-      return await apiClient.getConversation(conversationId, params?.offset, params?.limit);
+      return await runtimeApiClient.getConversation(conversationId, params?.offset, params?.limit);
     } catch (error) {
       throw new UiError(
         {
@@ -122,12 +130,64 @@ export const chatClient = {
 
   async importConversationMessages(conversationId: string, messages: ChatMessage[]): Promise<void> {
     try {
-      await apiClient.importConversationMessages(conversationId, messages);
+      await runtimeApiClient.importConversationMessages(conversationId, messages);
     } catch (error) {
       throw new UiError(
         {
           code: 'CHAT_CONVERSATION_IMPORT_FAILED',
           userMessage: 'We could not continue that older conversation right now.',
+        },
+        error
+      );
+    }
+  },
+
+  async uploadFile(file: File) {
+    try {
+      return await sharedApiClient.uploadFile(file);
+    } catch (error) {
+      throw new UiError(
+        {
+          code: 'CHAT_FILE_UPLOAD_FAILED',
+          userMessage: 'We could not upload that file right now.',
+        },
+        error
+      );
+    }
+  },
+
+  async estimateTokens({
+    message,
+    conversationId,
+    provider,
+    model,
+  }: EstimateTokensParams) {
+    try {
+      return await sharedApiClient.estimateMessageTokens({
+        message,
+        conversationId,
+        provider,
+        model,
+      });
+    } catch (error) {
+      throw new UiError(
+        {
+          code: 'CHAT_TOKEN_ESTIMATE_FAILED',
+          userMessage: 'We could not estimate that message right now.',
+        },
+        error
+      );
+    }
+  },
+
+  async chatCompletion(messages: ChatMessage[], model?: string) {
+    try {
+      return await sharedApiClient.chatCompletion(messages, model);
+    } catch (error) {
+      throw new UiError(
+        {
+          code: 'CHAT_COMPLETION_FAILED',
+          userMessage: 'We could not generate that response right now.',
         },
         error
       );
@@ -154,7 +214,7 @@ export const chatClient = {
       );
 
       try {
-        return await apiClient.sendConversationMessage({
+        return await runtimeApiClient.sendConversationMessage({
           conversationId,
           message: resolvedPrompt,
           model,
@@ -166,7 +226,7 @@ export const chatClient = {
           throw error;
         }
 
-        return await apiClient.sendConversationMessage({
+        return await runtimeApiClient.sendConversationMessage({
           conversationId,
           message: resolvedPrompt,
           attachment_ids,

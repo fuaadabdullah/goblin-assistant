@@ -4,7 +4,7 @@ import ChatComposer from '../ChatComposer';
 
 // Mock dependencies
 jest.mock('next/link', () => {
-  return function MockLink({ children, href }: { children: React.ReactNode; href: string }) {
+  return function MockLink({ children, href }) {
     return <a href={href}>{children}</a>;
   };
 });
@@ -39,6 +39,7 @@ const defaultProps = {
   ],
   onInputChange: jest.fn(),
   onClear: jest.fn(),
+  onDogfoodLog: jest.fn(),
   onSend: jest.fn(),
   onKeyDown: jest.fn(),
   onPromptClick: jest.fn(),
@@ -99,6 +100,12 @@ describe('ChatComposer', () => {
     render(<ChatComposer {...defaultProps} />);
     fireEvent.click(screen.getByText('Clear'));
     expect(defaultProps.onClear).toHaveBeenCalled();
+  });
+
+  it('shows the dogfood logger button when provided', () => {
+    render(<ChatComposer {...defaultProps} onDogfoodLog={defaultProps.onDogfoodLog} />);
+    fireEvent.click(screen.getByRole('button', { name: /log another ai/i }));
+    expect(defaultProps.onDogfoodLog).toHaveBeenCalled();
   });
 
   it('renders max 3 quick prompts', () => {

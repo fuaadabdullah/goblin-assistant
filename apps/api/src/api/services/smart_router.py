@@ -298,3 +298,18 @@ smart_router = SmartRouter(strategy=RoutingStrategy.COST_OPTIMIZED)
 
 def get_smart_router() -> SmartRouter:
     return smart_router
+
+
+def _last_user_message(messages: Optional[list]) -> str:
+    """Return the content of the last user-role message, or '' if none found."""
+    if not messages:
+        return ""
+    last = ""
+    for msg in messages:
+        if not isinstance(msg, dict):
+            continue
+        if msg.get("role") == "user":
+            content = msg.get("content", "")
+            if isinstance(content, str):
+                last = content
+    return last

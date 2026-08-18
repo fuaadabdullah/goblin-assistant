@@ -1,11 +1,12 @@
 import { providerKeys } from '@/lib/provider-keys';
 import { streamRuntimeTask } from '@/api/runtime-stream';
 import { hasMockFallbackSignal } from './fallback';
+import { providersMethods } from './providers';
+import { runtimeMethods } from './runtime';
 import type {
   CostSummary,
   GoblinStats,
   GoblinStatus,
-  LoginResponse,
   MemoryEntry,
   OrchestrationPlan,
   ProviderModelOption,
@@ -36,19 +37,19 @@ const ensureRuntimeConversation = async (): Promise<string> => {
 
 const runtimeClientImpl: RuntimeClient = {
   async getGoblins(): Promise<GoblinStatus[]> {
-    return apiClient.getGoblins();
+    return runtimeMethods.getGoblins();
   },
 
   async getProviders(): Promise<string[]> {
-    return apiClient.getProviders();
+    return providersMethods.getProviders();
   },
 
   async getProviderModelOptions(provider: string): Promise<ProviderModelOption[]> {
-    return apiClient.getProviderModelOptions(provider);
+    return providersMethods.getProviderModelOptions(provider);
   },
 
   async getProviderModels(provider: string): Promise<string[]> {
-    return apiClient.getProviderModels(provider);
+    return providersMethods.getProviderModels(provider);
   },
 
   async executeTask(
@@ -136,36 +137,44 @@ const runtimeClientImpl: RuntimeClient = {
   },
 
   async getHistory(goblin: string, limit?: number): Promise<MemoryEntry[]> {
-    return apiClient.getHistory(goblin, limit);
+    return runtimeMethods.getHistory(goblin, limit);
   },
 
   async getStats(goblin: string): Promise<GoblinStats> {
-    return apiClient.getStats(goblin);
+    return runtimeMethods.getStats(goblin);
   },
 
   async getCostSummary(): Promise<CostSummary> {
-    return apiClient.getCostSummary();
+    return providersMethods.getCostSummary();
   },
 
   async parseOrchestration(text: string, defaultGoblin?: string): Promise<OrchestrationPlan> {
-    return apiClient.parseOrchestration(text, defaultGoblin);
+    return runtimeMethods.parseOrchestration(text, defaultGoblin);
   },
 
   async onTaskStream(): Promise<void> {},
 
-  async login(email: string, password: string): Promise<LoginResponse> {
-    return apiClient.login(email, password) as Promise<LoginResponse>;
+  async login(email: string, password: string): Promise<{ token: string; user: User }> {
+    const result = await apiClient.login(email, password);
+    return {
+      token: String((result as { token?: string; access_token?: string }).token ?? (result as { token?: string; access_token?: string }).access_token ?? ''),
+      user: (result as { user?: User }).user as User,
+    };
   },
 
-  async register(email: string, password: string): Promise<LoginResponse> {
-    return apiClient.register(email, password) as Promise<LoginResponse>;
+  async register(email: string, password: string): Promise<{ token: string; user: User }> {
+    const result = await apiClient.register(email, password);
+    return {
+      token: String((result as { token?: string; access_token?: string }).token ?? (result as { token?: string; access_token?: string }).access_token ?? ''),
+      user: (result as { user?: User }).user as User,
+    };
   },
 
   async logout(): Promise<void> {
     await apiClient.logout().catch(() => {});
   },
 
-  async validateToken(token?: string): Promise<{ valid: boolean; user?: User | undefined }> {
+  async validateToken(token: string): Promise<{ valid: boolean; user?: User | undefined }> {
     const result = await apiClient.validateToken(token);
     return { valid: result?.valid ?? false, user: result?.user };
   },

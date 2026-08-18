@@ -23,16 +23,21 @@ export type RouteBoundaryKey =
   | 'home'
   | 'account'
   | 'chat'
+  | 'agent'
   | 'googleCallback'
   | 'help'
   | 'login'
   | 'register'
+  | 'onboarding'
   | 'sandbox'
   | 'search'
   | 'settings'
   | 'startup'
   | 'notFound'
   | 'adminIndex'
+  | 'adminKpi'
+  | 'adminDogfood'
+  | 'adminPilot'
   | 'adminLogs'
   | 'adminProviders'
   | 'adminSettings';
@@ -101,6 +106,10 @@ const routeBoundaryConfig: Record<RouteBoundaryKey, RouteBoundaryConfig> = {
       { type: 'copyErrorId', label: 'Copy Error ID', variant: 'secondary' },
     ],
   },
+  agent: workspaceConfig(
+    'Agent is temporarily unavailable',
+    'The agent experience crashed before your workspace could load.'
+  ),
   googleCallback: authConfig(
     'Sign-in callback failed',
     'We could not finish the Google sign-in handoff screen.'
@@ -116,6 +125,10 @@ const routeBoundaryConfig: Record<RouteBoundaryKey, RouteBoundaryConfig> = {
   register: authConfig(
     'Registration is temporarily unavailable',
     'The account creation screen failed before you could continue.'
+  ),
+  onboarding: workspaceConfig(
+    'Onboarding is temporarily unavailable',
+    'The onboarding flow crashed before the setup experience loaded.'
   ),
   sandbox: workspaceConfig(
     'Sandbox is temporarily unavailable',
@@ -140,6 +153,18 @@ const routeBoundaryConfig: Record<RouteBoundaryKey, RouteBoundaryConfig> = {
   adminIndex: adminConfig(
     'Admin dashboard is unavailable',
     'The dashboard view crashed before admin telemetry could load.'
+  ),
+  adminKpi: adminConfig(
+    'Admin KPI dashboard is unavailable',
+    'The KPI dashboard crashed before product metrics could load.'
+  ),
+  adminDogfood: adminConfig(
+    'Dogfood journal is unavailable',
+    'The dogfood journal crashed before pilot notes could load.'
+  ),
+  adminPilot: adminConfig(
+    'Pilot kit is unavailable',
+    'The pilot kit crashed before the cohort packet could load.'
   ),
   adminLogs: adminConfig(
     'Admin logs are unavailable',

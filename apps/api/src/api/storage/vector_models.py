@@ -2,7 +2,7 @@
 Vector storage models for semantic retrieval using pgvector
 """
 
-from sqlalchemy import Column, DateTime, Float, ForeignKey, Index, JSON, String, Text
+from sqlalchemy import Column, DateTime, Float, ForeignKey, Index, Integer, JSON, String, Text
 from sqlalchemy.orm import declarative_base, relationship
 import os
 import uuid
@@ -149,6 +149,33 @@ class MemoryEntityRelationModel(Base):
     memory_fact_id = Column(String, ForeignKey("memory_facts.id", ondelete="CASCADE"), nullable=False, index=True)
     confidence = Column(Float, nullable=False, default=1.0)
     created_at = Column(DateTime, default=datetime.utcnow)
+
+
+class MemoryEntryModel(Base):
+    """Chunked text corpus for semantic retrieval (repo docs, conversations, agent runs)."""
+
+    __tablename__ = "memory_entries"
+
+    id = Column(String, primary_key=True, default=lambda: str(uuid.uuid4()))
+    user_id = Column(String, ForeignKey("users.id"), nullable=False, index=True)
+    source_kind = Column(String, nullable=False, index=True)  # "repo_doc", "conversation", etc.
+    source_id = Column(String, nullable=False, index=True)
+    chunk_index = Column(Integer, nullable=False, default=0)
+    chunk_text = Column(Text, nullable=False)
+    chunk_embedding = Column(VECTOR(1536), nullable=True)
+    chunk_hash = Column(String, nullable=True, index=True)
+    repository = Column(String, nullable=True, index=True)
+    commit_sha = Column(String, nullable=True)
+    run_id = Column(String, nullable=True, index=True)
+    session_id = Column(String, nullable=True, index=True)
+    conversation_id = Column(String, nullable=True, index=True)
+    metadata_ = Column("metadata", JSON, default=dict)
+    created_at = Column(DateTime, default=datetime.utcnow)
+
+    __table_args__ = (
+        Index("idx_memory_entries_user_source", "user_id", "source_kind", "source_id"),
+        Index("idx_memory_entries_chunk_hash", "user_id", "chunk_hash"),
+    )
 
 
 # Add relationships to existing models

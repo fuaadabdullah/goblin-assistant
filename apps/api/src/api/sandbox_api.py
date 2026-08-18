@@ -3,16 +3,21 @@ Sandbox API router for secure code execution
 Provides endpoints for submitting, monitoring, and managing sandbox jobs
 """
 
+import asyncio
 import os
+import shutil
 import uuid
 import json
 from typing import Optional, Dict, Any
 from datetime import datetime
 
 from fastapi import APIRouter, HTTPException, Header
-from pydantic import BaseModel
+from pydantic import BaseModel, model_validator
 import redis
 import rq
+
+from .core.contracts import SuccessEnvelope
+from .config.redis_url import DEFAULT_REDIS_URL, resolve_redis_url
 
 # Import from existing infrastructure
 from .middleware.rate_limiter import RateLimiter
@@ -22,45 +27,58 @@ from .sandbox_metrics import (
     get_metrics_endpoint
 )
 from .input_validation import InputSanitizer
+from .observability.events import event_emitter
 
 # Configuration from environment
-REDIS_URL = os.getenv("REDIS_URL", "redis://localhost:6379/0")
-SANDBOX_IMAGE = os.getenv("SANDBOX_IMAGE", "ghcr.io/yourorg/sandbox:latest")
-API_KEY = os.getenv("API_AUTH_KEY", "devkey")
-# Use local writable directory, default to /tmp/goblin_sandbox if not specified
+REDIS_URL = os.getenv("REDIS_URL", DEFAULT_REDIS_URL)
+SANDBOX_IMAGE = os.getenv("SANDBOX_IMAGE", "goblin-assistant-sandbox:latest")
+API_KEY = os.getenv("API_AUTH_KEY")
 JOBS_DIR = os.getenv("JOBS_DIR", "/tmp/goblin_sandbox")
 SANDBOX_ENABLED = os.getenv("SANDBOX_ENABLED", "false").lower() == "true"
-MAX_OUTPUT_SIZE = int(os.getenv("SANDBOX_MAX_OUTPUT_SIZE", str(1024 * 1024)))  # 1 MB default
+MAX_OUTPUT_SIZE = int(os.getenv("SANDBOX_MAX_OUTPUT_SIZE", str(1024 * 1024)))
 MAX_CONCURRENT_PER_USER = int(os.getenv("SANDBOX_MAX_PER_USER", "5"))
 
 # Initialize Redis and RQ
-r = redis.from_url(REDIS_URL)
+r = redis.from_url(resolve_redis_url(REDIS_URL, component="sandbox_api"))
 queue = rq.Queue("sandbox-jobs", connection=r)
 
 # Rate limiter for sandbox operations
 sandbox_rate_limiter = RateLimiter(
-    redis_url=REDIS_URL,
+    redis_url=resolve_redis_url(REDIS_URL, component="sandbox_api"),
     requests_per_minute=int(os.getenv("SANDBOX_RATE_LIMIT_PER_MINUTE", "10")),
     requests_per_hour=int(os.getenv("SANDBOX_RATE_LIMIT_PER_HOUR", "100")),
 )
 
-# Ensure jobs directory exists
-os.makedirs(JOBS_DIR, exist_ok=True)
+# Ensure jobs directory exists (fall back to /tmp if the configured path is unwritable)
+try:
+    os.makedirs(JOBS_DIR, exist_ok=True)
+except PermissionError:
+    JOBS_DIR = "/tmp/goblin_sandbox"
+    os.makedirs(JOBS_DIR, exist_ok=True)
 
 # Authentication dependency
 def require_api_key(x_api_key: str = Header(...)):
-    # Skip authentication in development mode
     if SANDBOX_ENABLED and os.getenv("ENVIRONMENT", "development") == "development":
         return
+    if not API_KEY:
+        raise HTTPException(status_code=500, detail="API_AUTH_KEY is not configured")
     if x_api_key != API_KEY:
         raise HTTPException(status_code=401, detail="unauthorized")
 
 # Pydantic models for API
 class SubmitJobRequest(BaseModel):
     language: str
-    source: str
+    source: str = ""
+    code: Optional[str] = None
     timeout: Optional[int] = 10
     runtime_args: Optional[str] = ""
+
+    @model_validator(mode="before")
+    @classmethod
+    def _alias_code_to_source(cls, values):
+        if isinstance(values, dict) and not values.get("source") and values.get("code"):
+            values["source"] = values["code"]
+        return values
 
 class JobStatus(BaseModel):
     job_id: str
@@ -71,11 +89,78 @@ class JobStatus(BaseModel):
     exit_code: Optional[int] = None
     error: Optional[str] = None
 
+class SubmitJobResponse(BaseModel):
+    job_id: str
+
 class ArtifactInfo(BaseModel):
     name: str
     size: int
     url: str
     created_at: str
+
+class JobLogsResponse(BaseModel):
+    logs: str
+    truncated: bool = False
+    original_size: Optional[int] = None
+    truncated_size: Optional[int] = None
+
+class CancelJobResponse(BaseModel):
+    message: str
+
+class SandboxHealthResponse(BaseModel):
+    status: str
+    redis_connected: bool = True
+    redis_error: Optional[str] = None
+    image_configured: bool = True
+    queue_depth: int = 0
+    enabled: bool = True
+    max_concurrent_per_user: int = 0
+    max_output_size: int = 0
+    message: Optional[str] = None
+
+class JobListResponse(BaseModel):
+    jobs: list
+    total: int
+
+class ArtifactListResponse(BaseModel):
+    artifacts: list
+
+
+def _read_text_file(path: str, max_bytes: Optional[int] = None) -> str:
+    with open(path, "r") as f:
+        if max_bytes is not None:
+            return f.read(max_bytes)
+        return f.read()
+
+
+def _decode_job_data(raw: Dict[bytes, bytes]) -> Dict[str, str]:
+    return {k.decode("utf-8"): v.decode("utf-8") for k, v in raw.items()}
+
+
+def _parse_exit_code(job_info: Dict[str, str]) -> Optional[int]:
+    value = job_info.get("exit_code")
+    if value is None:
+        return None
+    try:
+        return int(value)
+    except (ValueError, TypeError):
+        return None
+
+
+def _job_status(job_id: str, job_info: Dict[str, str]) -> JobStatus:
+    return JobStatus(
+        job_id=job_id,
+        status=job_info.get("status", "unknown"),
+        created_at=job_info.get("created_at", ""),
+        started_at=job_info.get("started_at"),
+        finished_at=job_info.get("finished_at"),
+        exit_code=_parse_exit_code(job_info),
+        error=job_info.get("error"),
+    )
+
+
+def _job_summary(job_info: Dict[str, str]) -> JobStatus:
+    return _job_status(job_info.get("job_id", ""), job_info)
 
 # Create router
 router = APIRouter(prefix="/sandbox", tags=["sandbox"])
@@ -175,17 +260,14 @@ async def submit_job(
         record_job_submitted(job_id, req.language)
 
     except Exception as e:
-        # Cleanup on failure
-        import shutil
         shutil.rmtree(job_path, ignore_errors=True)
         r.delete(f"sandbox:job:{job_id}")
-        # Decrement active job counter
         if x_api_key:
             user_key = f"sandbox:user:{x_api_key}:active_jobs"
             r.decr(user_key)
-        raise HTTPException(status_code=500, detail=f"failed to queue job: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Sandbox execution failed: {str(e)}")
 
-    return {"job_id": job_id}
+    return SuccessEnvelope(data=SubmitJobResponse(job_id=job_id))
 
 @router.get("/status/{job_id}", response_model=JobStatus)
 async def get_job_status(job_id: str, x_api_key: str = Header(...)):
@@ -204,15 +286,15 @@ async def get_job_status(job_id: str, x_api_key: str = Header(...)):
     # Convert bytes to strings and parse
     job_info = {k.decode('utf-8'): v.decode('utf-8') for k, v in job_data.items()}
 
-    return JobStatus(
+    return SuccessEnvelope(data=JobStatus(
         job_id=job_id,
         status=job_info.get("status", "unknown"),
         created_at=job_info.get("created_at", ""),
         started_at=job_info.get("started_at"),
         finished_at=job_info.get("finished_at"),
         exit_code=int(job_info.get("exit_code")) if job_info.get("exit_code") else None,
-        error=job_info.get("error")
-    )
+        error=job_info.get("error"),
+    ))
 
 @router.get("/logs/{job_id}")
 async def get_job_logs(job_id: str, x_api_key: str = Header(...)):
@@ -240,26 +322,22 @@ async def get_job_logs(job_id: str, x_api_key: str = Header(...)):
 
     log_file = os.path.join(job_path, "stdout.log")
     if not os.path.exists(log_file):
-        return {"logs": ""}
+        return SuccessEnvelope(data=JobLogsResponse(logs=""))
 
     try:
-        # Enforce output size cap when reading logs
         file_size = os.path.getsize(log_file)
         if file_size > MAX_OUTPUT_SIZE:
-            with open(log_file, "r") as f:
-                logs = f.read(MAX_OUTPUT_SIZE)
-            return {
-                "logs": logs,
-                "truncated": True,
-                "original_size": file_size,
-                "truncated_size": MAX_OUTPUT_SIZE,
-            }
-
-        with open(log_file, "r") as f:
-            logs = f.read()
-        return {"logs": logs}
+            logs = _read_text_file(log_file, MAX_OUTPUT_SIZE)
+            return SuccessEnvelope(data=JobLogsResponse(
+                logs=logs,
+                truncated=True,
+                original_size=file_size,
+                truncated_size=MAX_OUTPUT_SIZE,
+            ))
+        logs = _read_text_file(log_file)
+        return SuccessEnvelope(data=JobLogsResponse(logs=logs))
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"failed to read logs: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Failed to read logs: {str(e)}")
 
 @router.get("/artifacts/{job_id}")
 async def list_job_artifacts(job_id: str, x_api_key: str = Header(...)):
@@ -281,19 +359,19 @@ async def list_job_artifacts(job_id: str, x_api_key: str = Header(...)):
         raise HTTPException(status_code=400, detail="job is not completed yet")
 
     # Use artifact service to list artifacts with presigned URLs
-    artifacts = artifact_service.list_job_artifacts(job_id)
+    artifacts = await artifact_service.list_job_artifacts(job_id)
 
-    # Convert to API format
-    api_artifacts = []
-    for artifact in artifacts:
-        api_artifacts.append(ArtifactInfo(
+    api_artifacts = [
+        ArtifactInfo(
             name=artifact.get("filename", ""),
             size=int(artifact.get("size_bytes", 0)),
             url=artifact.get("url", ""),
-            created_at=artifact.get("uploaded_at", "")
-        ))
+            created_at=artifact.get("uploaded_at", ""),
+        )
+        for artifact in artifacts
+    ]
 
-    return {"artifacts": api_artifacts}
+    return SuccessEnvelope(data=ArtifactListResponse(artifacts=api_artifacts))
 
 @router.get("/artifacts/{job_id}/download/{filename}")
 async def download_artifact(
@@ -312,7 +390,7 @@ async def download_artifact(
         raise HTTPException(status_code=400, detail="invalid filename")
 
     # Get artifact metadata
-    artifact_meta = artifact_service.get_artifact_metadata(job_id, safe_filename)
+    artifact_meta = await artifact_service.get_artifact_metadata(job_id, safe_filename)
     if not artifact_meta:
         raise HTTPException(status_code=404, detail="artifact not found")
 
@@ -368,19 +446,30 @@ async def cancel_job(job_id: str, x_api_key: str = Header(...)):
     except Exception:
         pass
 
-    # TODO: If running in container, kill the container
+    # If job has a container, attempt to kill it (best-effort)
+    container_id = job_info.get("container_id")
+    if container_id and shutil.which("docker"):
+        try:
+            proc = await asyncio.create_subprocess_exec(
+                "docker", "kill", container_id,
+                stdout=asyncio.subprocess.DEVNULL,
+                stderr=asyncio.subprocess.DEVNULL,
+            )
+            await asyncio.wait_for(proc.communicate(), timeout=5)
+        except Exception:
+            pass
 
-    return {"message": "job cancelled successfully"}
+    return SuccessEnvelope(data=CancelJobResponse(message="job cancelled successfully"))
 
 @router.get("/health/status")
 async def sandbox_health():
     """Get sandbox service health status"""
 
     if not SANDBOX_ENABLED:
-        return {
-            "status": "disabled",
-            "message": "sandbox service is disabled"
-        }
+        return SuccessEnvelope(data=SandboxHealthResponse(
+            status="disabled",
+            message="sandbox service is disabled",
+        ))
 
     # Check Redis connectivity
     redis_ok = False
@@ -389,17 +478,11 @@ async def sandbox_health():
         r.ping()
         redis_ok = True
     except ConnectionError as e:
-        # Redis connection refused - service likely not running
         redis_error_detail = f"Connection error: {e}"
-        redis_ok = False
     except TimeoutError as e:
-        # Redis connection timeout
         redis_error_detail = f"Timeout: {e}"
-        redis_ok = False
     except Exception as e:
-        # Other unexpected errors
         redis_error_detail = f"Health check failed: {type(e).__name__}: {e}"
-        redis_ok = False
 
     # Check queue status
     queue_size = len(queue) if redis_ok else 0
@@ -415,21 +498,16 @@ async def sandbox_health():
     else:
         status = "unhealthy"
 
-    response = {
-        "status": status,
-        "redis_connected": redis_ok,
-        "image_configured": image_configured,
-        "queue_depth": queue_size,
-        "enabled": SANDBOX_ENABLED,
-        "max_concurrent_per_user": MAX_CONCURRENT_PER_USER,
-        "max_output_size": MAX_OUTPUT_SIZE,
-    }
-
-    # Include error detail if Redis is down
-    if not redis_ok and redis_error_detail:
-        response["redis_error"] = redis_error_detail
-
-    return response
+    return SuccessEnvelope(data=SandboxHealthResponse(
+        status=status,
+        redis_connected=redis_ok,
+        redis_error=redis_error_detail if not redis_ok else None,
+        image_configured=image_configured,
+        queue_depth=queue_size,
+        enabled=SANDBOX_ENABLED,
+        max_concurrent_per_user=MAX_CONCURRENT_PER_USER,
+        max_output_size=MAX_OUTPUT_SIZE,
+    ))
 
 @router.post("/run", response_model=Dict[str, str])
 async def run_sandbox_code(
@@ -457,30 +535,21 @@ async def list_sandbox_jobs(
     jobs = []
     try:
         for key in r.scan_iter("sandbox:job:*"):
-            raw = r.hgetall(key)
+            str_key = key.decode("utf-8") if isinstance(key, bytes) else key
+            raw = r.hgetall(str_key)
             if not raw:
                 continue
-            job_info = {k.decode("utf-8"): v.decode("utf-8") for k, v in raw.items()}
+            job_info = _decode_job_data(raw)
             if status and job_info.get("status") != status:
                 continue
-            jobs.append({
-                "job_id": job_info.get("job_id", ""),
-                "status": job_info.get("status", "unknown"),
-                "language": job_info.get("language", ""),
-                "created_at": job_info.get("created_at", ""),
-                "started_at": job_info.get("started_at"),
-                "finished_at": job_info.get("finished_at"),
-                "exit_code": int(job_info["exit_code"]) if job_info.get("exit_code") else None,
-                "error": job_info.get("error"),
-            })
+            jobs.append(_job_summary(job_info))
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"failed to list jobs: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Failed to list jobs: {str(e)}")
 
-    # Sort by created_at descending, apply limit
-    jobs.sort(key=lambda j: j["created_at"], reverse=True)
+    jobs.sort(key=lambda j: j.created_at, reverse=True)
     jobs = jobs[:limit]
 
-    return {"jobs": jobs, "total": len(jobs)}
+    return SuccessEnvelope(data=JobListResponse(jobs=jobs, total=len(jobs)))
 
 @router.get("/jobs/{job_id}/logs")
 async def get_job_logs_alias(

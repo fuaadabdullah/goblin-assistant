@@ -212,6 +212,9 @@ class BaseProvider(ABC):
         self._last_error: Optional[str] = None
         self._failure_count = 0
         self._circuit_open_until = 0.0
+        self._circuit_state = "closed"
+        self._soft_open_until = 0.0
+        self._probe_claimed = False
 
     @staticmethod
     def _resolve_init_args(
@@ -293,23 +296,73 @@ class BaseProvider(ABC):
     async def health_check(self) -> ProviderHealth:
         """Probe the provider."""
 
-    def is_available(self) -> bool:
-        if time.perf_counter() < self._circuit_open_until:
-            return False
-        return self._healthy or self._failure_count < 3
+    @property
+    def circuit_state(self) -> str:
+        return self._circuit_state
 
-    def record_failure(self, error: str, backoff_seconds: float = 30.0) -> None:
+    def is_available(self) -> bool:
+        if self._circuit_state == "hard_open":
+            return False
+        return True
+
+    def should_attempt(self, canary: bool = False) -> bool:
+        return self._circuit_state == "closed"
+
+    def soft_open_probe_available(self) -> bool:
+        return (
+            self._circuit_state == "soft_open"
+            and time.time() >= self._soft_open_until
+            and not self._probe_claimed
+        )
+
+    def claim_soft_open_probe(self) -> bool:
+        if not self.soft_open_probe_available():
+            return False
+        self._probe_claimed = True
+        return True
+
+    def circuit_status(self) -> Dict[str, Any]:
+        remaining = max(0.0, self._soft_open_until - time.time()) if self._circuit_state == "soft_open" else 0.0
+        return {
+            "state": self._circuit_state,
+            "cooldown_remaining_seconds": remaining,
+        }
+
+    def record_failure(self, error: str, category: Optional[str] = None, backoff_seconds: float = 30.0) -> None:
         self._failure_count += 1
         self._last_error = error
-        if self._failure_count >= 3:
+        if category in ("rate-limit", "auth"):
+            self._circuit_state = "hard_open"
             self._healthy = False
-            self._circuit_open_until = time.perf_counter() + backoff_seconds
+            self._circuit_open_until = time.time() + backoff_seconds
+            return
+        if self._circuit_state == "soft_open":
+            # Probe failed: re-arm cooldown and stay in soft_open
+            self._soft_open_until = time.time() + backoff_seconds
+            self._circuit_open_until = time.time() + backoff_seconds
+            self._probe_claimed = False
+            return
+        if self._failure_count >= 2 and self._circuit_state == "closed":
+            self._circuit_state = "soft_open"
+            self._soft_open_until = time.time() + backoff_seconds
+            self._circuit_open_until = time.time() + backoff_seconds
+            self._probe_claimed = False
 
     def record_success(self) -> None:
         self._healthy = True
         self._failure_count = 0
         self._last_error = None
         self._circuit_open_until = 0.0
+        self._circuit_state = "closed"
+        self._probe_claimed = False
+
+    def reset_circuit(self) -> None:
+        self.record_success()
+
+    def warmup_targets(self):
+        if callable(getattr(self, "warmup", None)):
+            return [(self.provider_id, self)]
+        return []
 
     def estimate_cost(self, input_tokens: int, output_tokens: int) -> float:
         return (

@@ -10,7 +10,7 @@ import time
 BASE_URL = "http://localhost:8003"
 
 
-def test_endpoint(endpoint, description):
+def _check_endpoint(endpoint, description):
     """Test a single endpoint"""
     print(f"\n🧪 Testing {description}")
     print(f"   Endpoint: {endpoint}")
@@ -56,7 +56,7 @@ def main():
 
     results = []
     for endpoint, description in endpoints:
-        success = test_endpoint(endpoint, description)
+        success = _check_endpoint(endpoint, description)
         results.append((endpoint, success))
 
     print("\n" + "=" * 50)

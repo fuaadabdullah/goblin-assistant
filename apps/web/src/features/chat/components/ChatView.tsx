@@ -1,8 +1,9 @@
 import ChatHeader from './ChatHeader';
 import ChatMessageList from './ChatMessageList';
 import ChatComposer from './ChatComposer';
+import DogfoodCaptureDialog from './DogfoodCaptureDialog';
 import ChatSidebar from './ChatSidebar';
-import { useCallback } from 'react';
+import { useCallback, useState } from 'react';
 import type { ChatSessionState } from '../hooks/useChatSession';
 import Seo from '../../../components/Seo';
 import { useAuthSession } from '../../../hooks/api/useAuthSession';
@@ -64,6 +65,7 @@ const ChatView = ({ session, isAdmin }: ChatViewProps) => {
   const setChatPreviewOpen = useUIStore((state) => state.setChatPreviewOpen);
   const closePreview = useCallback(() => setChatPreviewOpen(false), [setChatPreviewOpen]);
   const previewDrawerRef = useFocusTrap(chatPreviewOpen, closePreview);
+  const [dogfoodLogOpen, setDogfoodLogOpen] = useState(false);
 
   const handleThreadSelect = (threadKey: string) => {
     selectThread(threadKey);
@@ -239,19 +241,20 @@ const ChatView = ({ session, isAdmin }: ChatViewProps) => {
             />
           </section>
           <footer>
-            <ChatComposer
-              input={input}
-              inputRef={inputRef}
-              authError={authError}
-              isSending={isSending}
-              quickPrompts={quickPrompts}
-              onInputChange={setInput}
-              onClear={handleClearChat}
-              onSend={() => sendMessage()}
-              onKeyDown={handleKeyDown}
-              onPromptClick={handlePromptClick}
-              onFileSelected={handleFileSelected}
-              selectedProvider={selectedProvider}
+          <ChatComposer
+            input={input}
+            inputRef={inputRef}
+            authError={authError}
+            isSending={isSending}
+            quickPrompts={quickPrompts}
+            onInputChange={setInput}
+            onClear={handleClearChat}
+            onDogfoodLog={isAdmin ? () => setDogfoodLogOpen(true) : undefined}
+            onSend={() => sendMessage()}
+            onKeyDown={handleKeyDown}
+            onPromptClick={handlePromptClick}
+            onFileSelected={handleFileSelected}
+            selectedProvider={selectedProvider}
               selectedModel={selectedModel}
               estimatedTokens={inputEstimate?.estimated_tokens}
               estimatedCostUsd={inputEstimate?.estimated_cost_usd}
@@ -262,6 +265,7 @@ const ChatView = ({ session, isAdmin }: ChatViewProps) => {
               onRemoveAttachment={removePendingAttachment}
             />
           </footer>
+          <DogfoodCaptureDialog open={dogfoodLogOpen} onOpenChange={setDogfoodLogOpen} />
         </main>
       </div>
     </div>
@@ -269,4 +273,3 @@ const ChatView = ({ session, isAdmin }: ChatViewProps) => {
 };
 
 export default ChatView;
-

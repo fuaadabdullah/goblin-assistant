@@ -7,6 +7,8 @@ from fastapi import APIRouter, Depends, HTTPException, Request, Response, status
 from fastapi.security import HTTPAuthorizationCredentials
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from pydantic import BaseModel
+
 from . import _runtime as _ar
 from .config import ACCESS_TOKEN_EXPIRE_MINUTES
 from .cookies import _clear_auth_cookies, _set_auth_cookies
@@ -15,6 +17,7 @@ from .dependencies import (
     _is_user_active,
     get_current_user,
     security,
+    verify_supabase_token,
 )
 from .passwords import hash_password, verify_password
 from .schemas import (
@@ -28,6 +31,22 @@ from .schemas import (
 )
 from .sessions import _db_create_session, _db_revoke_session, create_session_id
 from .tokens import create_access_token, create_refresh_token, verify_token
+from ...core.contracts import SuccessEnvelope
+
+
+class _LogoutData(BaseModel):
+    message: str
+
+
+class _ValidationUserData(BaseModel):
+    id: str
+    email: str
+    name: Optional[str] = None
+
+
+class _ValidationData(BaseModel):
+    valid: bool
+    user: Optional[_ValidationUserData] = None
 
 router = APIRouter()
 
@@ -97,13 +116,13 @@ async def register(
 
     _set_auth_cookies(response, access_token, refresh_token)
 
-    return TokenWithRefresh(
+    return SuccessEnvelope(data=TokenWithRefresh(
         access_token=access_token,
         refresh_token=refresh_token,
         token_type="bearer",
         user=user,
         expires_in=ACCESS_TOKEN_EXPIRE_MINUTES * 60,
-    )
+    ))
 
 
 @router.post("/login", response_model=TokenWithRefresh)
@@ -170,13 +189,13 @@ async def login(
 
     _set_auth_cookies(response, access_token, refresh_token)
 
-    return TokenWithRefresh(
+    return SuccessEnvelope(data=TokenWithRefresh(
         access_token=access_token,
         refresh_token=refresh_token,
         token_type="bearer",
         user=user,
         expires_in=ACCESS_TOKEN_EXPIRE_MINUTES * 60,
-    )
+    ))
 
 
 @router.post("/refresh", response_model=TokenWithRefresh)
@@ -248,13 +267,13 @@ async def refresh_token_endpoint(
 
     _set_auth_cookies(response, access_token, new_refresh_token)
 
-    return TokenWithRefresh(
+    return SuccessEnvelope(data=TokenWithRefresh(
         access_token=access_token,
         refresh_token=new_refresh_token,
         token_type="bearer",
         user=user,
         expires_in=ACCESS_TOKEN_EXPIRE_MINUTES * 60,
-    )
+    ))
 
 
 @router.get("/me", response_model=User)
@@ -285,7 +304,7 @@ async def logout(
                 await _db_revoke_session(session_id, db)
 
     _clear_auth_cookies(response)
-    return {"message": "Logged out successfully"}
+    return SuccessEnvelope(data=_LogoutData(message="Logged out successfully"))
 
 
 @router.post("/validate")
@@ -296,22 +315,31 @@ async def validate_token(
     """Validate JWT token."""
     payload = verify_token(request.token)
     if not payload:
-        return {"valid": False}
+        # Try supabase fallback
+        supabase_payload = verify_supabase_token(request.token)
+        if supabase_payload:
+            user_data = _ValidationUserData(
+                id=str(supabase_payload.get("sub", "")),
+                email=str(supabase_payload.get("email", "")),
+                name=(supabase_payload.get("user_metadata") or {}).get("name"),
+            )
+            return SuccessEnvelope(data=_ValidationData(valid=True, user=user_data))
+        return SuccessEnvelope(data=_ValidationData(valid=False))
 
     user_id = payload.get("sub")
     if not user_id:
-        return {"valid": False}
+        return SuccessEnvelope(data=_ValidationData(valid=False))
 
     user_service = _ar.UserService(db)
     user_model = await user_service.get_user_by_id(user_id)
     if not user_model:
-        return {"valid": False}
+        return SuccessEnvelope(data=_ValidationData(valid=False))
 
-    return {
-        "valid": True,
-        "user": {
-            "id": user_model.id,
-            "email": user_model.email,
-            "name": user_model.name,
-        },
-    }
+    return SuccessEnvelope(data=_ValidationData(
+        valid=True,
+        user=_ValidationUserData(
+            id=user_model.id,
+            email=user_model.email,
+            name=user_model.name,
+        ),
+    ))

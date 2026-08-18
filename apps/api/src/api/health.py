@@ -16,6 +16,20 @@ import httpx
 router = APIRouter(tags=["health"])
 
 
+_PROVIDER_FAILING_STATES = {"unhealthy", "degraded"}
+_PROVIDER_HEALTHY_ENOUGH = {"healthy", "unknown", "billing_issue"}
+
+
+def _summarize_provider_health(providers: Dict[str, Any]) -> str:
+    """Aggregate per-provider statuses into a single pool health signal."""
+    statuses = {str(v.get("status", "unknown")).lower() for v in providers.values()}
+    has_failing = bool(statuses & _PROVIDER_FAILING_STATES)
+    has_healthy = bool(statuses & _PROVIDER_HEALTHY_ENOUGH)
+    if not has_failing:
+        return "healthy"
+    return "warnings" if has_healthy else "degraded"
+
+
 def _health_status(
     *,
     critical_components: List[Dict[str, Any]],
@@ -579,3 +593,7 @@ async def health_streaming() -> Dict[str, Any]:
             "service": "streaming",
             "timestamp": datetime.utcnow().isoformat(),
         }
+
+
+# Alias used by ops_routes/__init__.py to mount health endpoints under /ops
+ops_health_router = router

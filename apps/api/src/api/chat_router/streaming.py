@@ -15,9 +15,20 @@ from fastapi import APIRouter, Depends, HTTPException
 from fastapi.responses import StreamingResponse
 
 from ..auth.router import User as AuthenticatedUser, get_current_user
+from ..config.system_prompt import system_prompt_manager
+from ..core.contracts import ChatMessageCreatedPayload
+from ..observability.events import event_emitter
 from . import _runtime as _cr
+from .archiving import schedule_conversation_archive
 from .helpers import _format_sse_event
+from .messages.post_response import record_completion_artifacts
 from .schemas import StreamChatRequest
+
+_UNHANDLED_FALLBACK = "An unexpected error occurred. Your message was saved if it got this far."
+
+
+def _format_unhandled_stream_error(exc: Exception) -> str:
+    return str(exc) if str(exc) else _UNHANDLED_FALLBACK
 
 logger = structlog.get_logger()
 
@@ -50,6 +61,8 @@ async def generate_chat_stream(
     total_cost = 0.0
     used_provider = provider or "unknown"
     used_model = model or "unknown"
+    used_fallback = False
+    ttft_ms: Optional[float] = None
     start_time = time.perf_counter()
     response_message_id = str(uuid.uuid4())
 
@@ -96,10 +109,12 @@ async def generate_chat_stream(
             conversation = await _cr._require_owned_conversation(
                 conversation_id, current_user
             )
-            messages = [
+            history = [
                 {"role": msg.role, "content": msg.content}
                 for msg in conversation.messages
             ]
+            system_content = system_prompt_manager.compose()
+            messages = [{"role": "system", "content": system_content}] + history
             payload = {"messages": messages, "model": model}
         except Exception as build_exc:
             logger.error("message_build_error", exc=build_exc)
@@ -121,6 +136,10 @@ async def generate_chat_stream(
                 timeout_ms=30000,
                 stream=True,
             )
+            if isinstance(provider_response, dict):
+                ttft_value = provider_response.get("latency_ms")
+                if isinstance(ttft_value, (int, float)):
+                    ttft_ms = float(ttft_value)
         except asyncio.TimeoutError:
             logger.warning("provider_timeout", provider=provider, model=model)
             error_event = {
@@ -169,6 +188,10 @@ async def generate_chat_stream(
                     accumulated_text = result_data.get("text", str(fallback_response))
                     used_provider = fallback_response.get("provider", used_provider)
                     used_model = fallback_response.get("model", used_model)
+                    used_fallback = True
+                    fallback_ttft = fallback_response.get("latency_ms")
+                    if isinstance(fallback_ttft, (int, float)):
+                        ttft_ms = float(fallback_ttft)
                     yield _format_sse_event(
                         "chunk",
                         {
@@ -219,6 +242,8 @@ async def generate_chat_stream(
                 return
 
         elif provider_response.get("stream"):
+            used_provider = provider_response.get("provider", used_provider)
+            used_model = provider_response.get("model", used_model)
             try:
                 stream_gen = provider_response["stream"]
                 async for chunk in stream_gen:
@@ -311,6 +336,18 @@ async def generate_chat_stream(
                 metadata={"provider": used_provider, "model": used_model},
                 message_id=response_message_id,
             )
+            await event_emitter.emit(
+                "chat.message.created",
+                "chat_router.streaming",
+                payload=ChatMessageCreatedPayload(
+                    conversation_id=conversation_id,
+                    message_id=response_message_id,
+                    role="assistant",
+                    provider=used_provider,
+                    model=used_model,
+                ),
+            )
+            await schedule_conversation_archive(conversation_id)
         except Exception as db_response_exc:
             logger.error(
                 "db_write_error", exc=db_response_exc, stage="assistant_message_store"
@@ -325,6 +362,27 @@ async def generate_chat_stream(
             }
             yield _format_sse_event("warning", error_event)
             return
+
+        try:
+            await record_completion_artifacts(
+                current_user=current_user,
+                conversation_id=conversation_id,
+                user_message_id=None,
+                response_message_id=response_message_id,
+                sanitized_message=sanitized_message,
+                response_content=accumulated_text,
+                used_provider=used_provider,
+                used_model=used_model,
+                usage={"total_tokens": total_tokens} if total_tokens else None,
+                cost_usd=None,
+                correlation_id=None,
+                latency_ms=(time.perf_counter() - start_time) * 1000.0,
+                used_fallback=used_fallback,
+                ttft_ms=ttft_ms,
+                retrieval_latency_ms=None,
+            )
+        except Exception as record_exc:
+            logger.warning("stream_completion_artifacts_failed", error=str(record_exc))
 
         duration_ms = int((time.perf_counter() - start_time) * 1000)
 
@@ -359,7 +417,7 @@ async def generate_chat_stream(
         error_event = {
             "type": "error",
             "code": "internal-error",
-            "message": "An unexpected error occurred. Your message was saved if it got this far.",
+            "message": _format_unhandled_stream_error(exc),
             "is_recoverable": False,
             "done": True,
         }

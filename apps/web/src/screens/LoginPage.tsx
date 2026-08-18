@@ -50,8 +50,8 @@ export default function LoginPage({ initialMode = 'login' }: LoginPageProps) {
   const handleSuccess = () => {
     setError(null);
     const redirectTo =
-      resolveSafeRedirect(searchParams.get('redirect')) ??
-      resolveSafeRedirect(searchParams.get('from')) ??
+      resolveSafeRedirect(searchParams.get('redirect') ?? undefined) ??
+      resolveSafeRedirect(searchParams.get('from') ?? undefined) ??
       '/';
     router.push(redirectTo);
   };
@@ -96,4 +96,3 @@ export default function LoginPage({ initialMode = 'login' }: LoginPageProps) {
     </div>
   );
 }
-

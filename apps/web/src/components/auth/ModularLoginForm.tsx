@@ -76,14 +76,15 @@ export default function ModularLoginForm({
         ? await apiClient.register(email, password, turnstileToken)
         : await apiClient.login(email, password);
 
-      const authResponse = response as LoginResponse;
-      
-      if (!authResponse.access_token) {
+      const authResponse = response as LoginResponse & { token?: string };
+      const accessToken = authResponse.access_token || authResponse.token;
+
+      if (!accessToken) {
         throw new Error('Authentication failed - invalid server response');
       }
       
       persistAuthSession({
-        token: authResponse.access_token,
+        token: accessToken,
         refreshToken: authResponse.refresh_token,
         user: authResponse.user,
         expiresIn: authResponse.expires_in,

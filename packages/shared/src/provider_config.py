@@ -139,6 +139,31 @@ class ModelDefaults(BaseModel):
     supports_streaming: bool = True
 
 
+class RouterBackend(BaseModel):
+    """A single backend entry within a router model group."""
+
+    provider_id: str
+    litellm_provider: str
+    model: str
+    order: int = 0
+    weight: float = 0.0
+    cost_input_per1k: float = 0.0
+    cost_output_per1k: float = 0.0
+    enabled: bool = True
+    api_key_env: Optional[str] = None
+    endpoint_env: Optional[str] = None
+    project_env: Optional[str] = None
+    vertex_location_env: Optional[str] = None
+    vertex_credentials_env: Optional[str] = None
+
+
+class RouterModelGroup(BaseModel):
+    """A logical model mapped to one or more router backends with fallbacks."""
+
+    backends: List[RouterBackend] = []
+    fallbacks: List[str] = []
+
+
 # ── Root ──────────────────────────────────────────────────────────────────────
 
 
@@ -153,6 +178,7 @@ class ProviderToml(BaseModel):
     model_context_windows: Dict[str, int] = {}
     providers: Dict[str, ProviderConfig] = {}
     model_defaults: Dict[str, ModelDefaults] = {}
+    router_models: Dict[str, RouterModelGroup] = {}
 
     @classmethod
     def load(cls, path: str | Path) -> "ProviderToml":
@@ -193,6 +219,10 @@ class ProviderToml(BaseModel):
         if not isinstance(model_defaults_raw, dict):
             model_defaults_raw = {}
 
+        router_models_raw = raw.get("router_models", {})
+        if not isinstance(router_models_raw, dict):
+            router_models_raw = {}
+
         return cls(
             default=defaults_raw,
             load_balancing=raw.get("load_balancing", {}),
@@ -208,6 +238,7 @@ class ProviderToml(BaseModel):
             },
             providers=providers_raw,
             model_defaults=model_defaults_raw,
+            router_models=router_models_raw,
         )
 
     def get_provider(self, provider_id: str) -> Optional[ProviderConfig]:

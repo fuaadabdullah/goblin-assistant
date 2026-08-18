@@ -3,6 +3,7 @@
 import { useState, useCallback } from 'react';
 import { useHealthCheck } from '@/hooks/useHealthCheck';
 import { apiClient } from '@/lib/api';
+import { getAuthToken } from '@/utils/auth-session';
 
 interface HealthCheckResult {
   status: string;
@@ -30,7 +31,11 @@ export const useEndpointTests = () => {
     setTestResult(null);
     try {
       // Token will be validated through the API client
-      const response = await apiClient.validateToken();
+      const token = getAuthToken();
+      if (!token) {
+        throw new Error('No session token available for validation.');
+      }
+      const response = await apiClient.validateToken(token);
       setTestResult(response as unknown as HealthCheckResult);
     } catch (error) {
       setError(error instanceof Error ? error.message : String(error));

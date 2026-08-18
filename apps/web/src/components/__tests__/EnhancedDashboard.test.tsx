@@ -4,6 +4,12 @@ import '@testing-library/jest-dom';
 jest.mock('next/link', () => function MockLink({ children, href }: { children: React.ReactNode; href: string }) {
   return <a href={href}>{children}</a>;
 });
+jest.mock('lucide-react', () => new Proxy({}, {
+  get: (_, name) => {
+    if (name === '__esModule') return true;
+    return (props: Record<string, unknown>) => <span data-testid={`icon-${String(name)}`} {...props} />;
+  },
+}));
 jest.mock('@/components/LoadingSkeleton', () => ({
   DashboardSkeleton: () => <div data-testid="dashboard-skeleton" />,
 }));
@@ -47,7 +53,8 @@ describe('EnhancedDashboard', () => {
 
   it('renders dashboard when data is loaded', () => {
     render(<EnhancedDashboard />);
-    expect(screen.getByTestId('dashboard-header')).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: 'Operations' })).toBeInTheDocument();
+    expect(screen.getByTestId('status-grid')).toBeInTheDocument();
   });
 
   it('shows skeleton when loading', () => {
@@ -70,10 +77,13 @@ describe('EnhancedDashboard', () => {
   it('renders action links', () => {
     render(<EnhancedDashboard />);
     expect(screen.getByText(/chat/i)).toBeInTheDocument();
+    expect(screen.getByRole('link', { name: /kpi dashboard/i })).toHaveAttribute('href', '/admin/kpi');
+    expect(screen.getByRole('link', { name: /pilot kit/i })).toHaveAttribute('href', '/admin/pilot');
+    expect(screen.getByRole('link', { name: /dogfood journal/i })).toHaveAttribute('href', '/admin/dogfood');
   });
 
   it('renders cost banner', () => {
     render(<EnhancedDashboard />);
-    expect(screen.getByTestId('cost-banner')).toBeInTheDocument();
+    expect(screen.getByText(/cost by provider/i)).toBeInTheDocument();
   });
 });

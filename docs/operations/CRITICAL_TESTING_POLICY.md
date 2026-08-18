@@ -22,9 +22,12 @@
 - Critical journey list lives in `apps/web/e2e/critical-journeys.txt`.
 - Hard cap: 8 journeys (`tooling/quality/check-e2e-budget.sh`, compatibility wrapper remains at `scripts/check-e2e-budget.sh`).
 - Exceeding cap requires explicit exception and rationale in PR.
+- The release gate now also runs the brutal browser suite in `apps/web/e2e/brutal-release-gate.spec.ts`.
+- The release gate also runs the intelligence and memory benchmark suites through `make benchmark-gates`.
 
 ## CI Enforcement
 
-- `make test-critical` enforces named Tier 0 journey suites without coverage percentage gates.
+- `make test-critical` enforces the API critical-path suites and the brutal browser release gate without coverage percentage gates.
+- `make test-brutal` runs the browser gate directly when you want the frontend validation alone.
 - `make test-e2e-budget` enforces critical E2E journey cap.
 - Critical-path test updates are required when touching Tier 0 surfaces.

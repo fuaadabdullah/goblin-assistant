@@ -12,6 +12,7 @@ sandbox_api = importlib.import_module("api.sandbox_api")
 class _FakeRedis:
     def __init__(self) -> None:
         self.store: dict[str, dict[str, str]] = {}
+        self._scalars: dict[str, int] = {}
         self.deleted: list[str] = []
         self.should_fail_ping = False
 
@@ -29,9 +30,25 @@ class _FakeRedis:
         payload = self.store.get(key, {})
         return {k.encode("utf-8"): v.encode("utf-8") for k, v in payload.items()}
 
+    def get(self, key: str):
+        val = self._scalars.get(key)
+        return str(val).encode("utf-8") if val is not None else None
+
+    def incr(self, key: str) -> int:
+        self._scalars[key] = self._scalars.get(key, 0) + 1
+        return self._scalars[key]
+
+    def decr(self, key: str) -> int:
+        self._scalars[key] = self._scalars.get(key, 0) - 1
+        return self._scalars[key]
+
+    def expire(self, key: str, seconds: int) -> bool:
+        return True
+
     def delete(self, key: str):
         self.deleted.append(key)
         self.store.pop(key, None)
+        self._scalars.pop(key, None)
 
     def scan_iter(self, _pattern: str):
         for key in self.store:

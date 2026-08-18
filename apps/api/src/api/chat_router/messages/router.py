@@ -293,7 +293,8 @@ async def send_message(
         inject_attachment_context(messages, attachment_context)
 
         # Stage 5: Provider dispatch — use department routing
-        resolved_provider = request.provider or pipeline_result.execution.selected_provider
+        requested_provider = request.provider or pipeline_result.execution.selected_provider
+        resolved_provider = requested_provider
         resolved_department = (
             request.department or pipeline_result.execution.selected_department or "general"
         )
@@ -419,6 +420,16 @@ async def send_message(
             cost_usd=cost_usd,
             correlation_id=correlation_id,
             latency_ms=(time.time() - request_start) * 1000.0,
+            used_fallback=bool(
+                pipeline_result.health.used_fallback
+                or (requested_provider and used_provider != requested_provider)
+            ),
+            ttft_ms=None,
+            retrieval_latency_ms=(
+                pipeline_result.decision.context_metadata.get("retrieval_latency_ms")
+                if isinstance(pipeline_result.decision.context_metadata, dict)
+                else None
+            ),
         )
 
         # Fire-and-forget learning tasks

@@ -17,6 +17,8 @@ const QUICK_TAGS = [
 
 export default function BetaSignal() {
   const [state, setState] = useState<State>('idle');
+  const [name, setName] = useState('');
+  const [email, setEmail] = useState('');
   const [note, setNote] = useState('');
   const [tag, setTag] = useState('');
   const pathname = usePathname();
@@ -29,6 +31,8 @@ export default function BetaSignal() {
     function handleClick(e: MouseEvent) {
       if (panelRef.current && !panelRef.current.contains(e.target as Node)) {
         setState('idle');
+        setName('');
+        setEmail('');
         setNote('');
         setTag('');
       }
@@ -49,6 +53,8 @@ export default function BetaSignal() {
     if (state !== 'done') return;
     const t = setTimeout(() => {
       setState('idle');
+      setName('');
+      setEmail('');
       setNote('');
       setTag('');
     }, 2200);
@@ -61,6 +67,8 @@ export default function BetaSignal() {
     try {
       await apiClient.submitBetaSignal({
         page: pathname ?? '/',
+        name: name.trim() || undefined,
+        email: email.trim() || undefined,
         note: note.trim() || undefined,
         tag: tag || undefined,
       });
@@ -73,6 +81,8 @@ export default function BetaSignal() {
   function handleKeyDown(e: React.KeyboardEvent) {
     if (e.key === 'Escape') {
       setState('idle');
+      setName('');
+      setEmail('');
       setNote('');
       setTag('');
     }
@@ -113,6 +123,21 @@ export default function BetaSignal() {
             <p className="mt-0.5 text-xs text-muted-foreground">
               Tap what hit you — no judgment, no form.
             </p>
+          </div>
+
+          <div className="grid gap-2 px-4 pt-3 sm:grid-cols-2">
+            <input
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+              placeholder="Name (optional)"
+              className="rounded-lg border border-border bg-background px-3 py-2 text-xs text-foreground placeholder:text-muted-foreground focus:border-primary focus:outline-none"
+            />
+            <input
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              placeholder="Email (optional)"
+              className="rounded-lg border border-border bg-background px-3 py-2 text-xs text-foreground placeholder:text-muted-foreground focus:border-primary focus:outline-none"
+            />
           </div>
 
           {/* Quick tags */}

@@ -1,13 +1,14 @@
 import Link from 'next/link';
 import { useRouter, usePathname } from 'next/navigation';
 import { useEffect, useState } from 'react';
-import { Home, MessageSquare, Search, FlaskConical, User, HelpCircle, LayoutDashboard, Puzzle, ScrollText, Settings, Users, LogOut, Menu, X } from 'lucide-react';
+import { Home, MessageSquare, Search, FlaskConical, User, HelpCircle, LayoutDashboard, Puzzle, ScrollText, Settings, Users, LogOut, Menu, X, BarChart3, NotebookPen } from 'lucide-react';
 import HealthHeader from './HealthHeader';
 import ContrastModeToggle from './ContrastModeToggle';
 import Logo from './Logo';
 import { useAuthSession } from '../hooks/api/useAuthSession';
 import MobileDrawer from './MobileDrawer';
 import { useUIStore } from '../store/uiStore';
+import DogfoodCaptureDialog from '../features/chat/components/DogfoodCaptureDialog';
 
 interface NavigationProps {
   onLogout?: () => void | Promise<void>;
@@ -21,6 +22,7 @@ const Navigation = ({ onLogout, showLogout = false, variant = 'customer' }: Navi
   const { logout } = useAuthSession();
   const isMobileMenuOpen = useUIStore((s) => s.mobileNavOpen);
   const setIsMobileMenuOpen = useUIStore((s) => s.setMobileNavOpen);
+  const [dogfoodLogOpen, setDogfoodLogOpen] = useState(false);
 
   const handleLogout = async () => {
     await logout();
@@ -41,6 +43,9 @@ const Navigation = ({ onLogout, showLogout = false, variant = 'customer' }: Navi
 
   const adminItems = [
     { path: '/admin', label: 'Dashboard', Icon: LayoutDashboard },
+    { path: '/admin/kpi', label: 'KPI Dashboard', Icon: BarChart3 },
+    { path: '/admin/pilot', label: 'Pilot Kit', Icon: FlaskConical },
+    { path: '/admin/dogfood', label: 'Dogfood Journal', Icon: NotebookPen },
     { path: '/admin/providers', label: 'Providers', Icon: Puzzle },
     { path: '/admin/logs', label: 'Logs', Icon: ScrollText },
     { path: '/admin/settings', label: 'Settings', Icon: Settings },
@@ -98,6 +103,17 @@ const Navigation = ({ onLogout, showLogout = false, variant = 'customer' }: Navi
               <div className="hidden sm:flex">
                 <ContrastModeToggle />
               </div>
+              {variant === 'admin' && (
+                <button
+                  onClick={() => setDogfoodLogOpen(true)}
+                  className="flex items-center space-x-2 px-4 py-3 min-h-[44px] text-sm font-medium text-primary hover:bg-surface-hover rounded-lg transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-primary"
+                  title="Record why you reached for another assistant"
+                  aria-label="Log another AI"
+                  type="button"
+                >
+                  <span className="leading-none">Log AI</span>
+                </button>
+              )}
               {showLogout && (
                 <button
                   onClick={() => {
@@ -156,6 +172,17 @@ const Navigation = ({ onLogout, showLogout = false, variant = 'customer' }: Navi
             );
           })}
 
+          {variant === 'admin' ? (
+            <button
+              type="button"
+              onClick={() => setDogfoodLogOpen(true)}
+              className="w-full flex items-center space-x-3 px-3 py-2 rounded-lg text-sm font-medium min-h-[44px] text-primary hover:bg-surface-hover"
+              aria-label="Log another AI"
+            >
+              <span>Log AI</span>
+            </button>
+          ) : null}
+
           {showLogout ? (
             <button
               type="button"
@@ -171,6 +198,7 @@ const Navigation = ({ onLogout, showLogout = false, variant = 'customer' }: Navi
           ) : null}
         </div>
       </MobileDrawer>
+      <DogfoodCaptureDialog open={dogfoodLogOpen} onOpenChange={setDogfoodLogOpen} />
     </nav>
   );
 };

@@ -35,6 +35,9 @@ async def record_chat_completion_task(
     model: str,
     usage: Optional[Dict[str, Any]],
     cost_usd: Optional[float],
+    used_fallback: Optional[bool] = None,
+    ttft_ms: Optional[float] = None,
+    retrieval_latency_ms: Optional[float] = None,
 ) -> None:
     """Persist a chat completion result as a task record.
 
@@ -59,6 +62,9 @@ async def record_chat_completion_task(
             "result": {
                 "selected_provider": provider,
                 "model": model,
+                "used_fallback": used_fallback,
+                "ttft_ms": ttft_ms,
+                "retrieval_latency_ms": retrieval_latency_ms,
                 "usage": {
                     "prompt_tokens": prompt_tokens,
                     "completion_tokens": completion_tokens,
@@ -71,6 +77,9 @@ async def record_chat_completion_task(
                 "source": "chat.send_message",
                 "conversation_id": conversation_id,
                 "assistant_message_id": assistant_message_id,
+                "used_fallback": used_fallback,
+                "ttft_ms": ttft_ms,
+                "retrieval_latency_ms": retrieval_latency_ms,
             },
         },
     )
@@ -87,6 +96,8 @@ async def record_usage_event(
     cost_usd: Optional[float],
     correlation_id: Optional[str],
     latency_ms: Optional[float] = None,
+    used_fallback: Optional[bool] = None,
+    ttft_ms: Optional[float] = None,
 ) -> None:
     """Persist a usage event for billing/quota tracking.
 
@@ -110,6 +121,8 @@ async def record_usage_event(
             "metadata": {
                 "source": "chat.send_message",
                 "correlation_id": correlation_id,
+                "used_fallback": used_fallback,
+                "ttft_ms": ttft_ms,
             },
         }
     )

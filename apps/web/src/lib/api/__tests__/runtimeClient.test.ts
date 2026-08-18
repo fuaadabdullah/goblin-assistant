@@ -6,6 +6,14 @@ const {
   mockSendConversationMessage,
   mockChatCompletion,
   mockStreamRuntimeTask,
+  mockRuntimeGetGoblins,
+  mockRuntimeGetHistory,
+  mockRuntimeGetStats,
+  mockRuntimeParseOrchestration,
+  mockProvidersGetProviders,
+  mockProvidersGetProviderModelOptions,
+  mockProvidersGetProviderModels,
+  mockProvidersGetCostSummary,
   mockPKGet,
   mockPKSet,
   mockPKRemove,
@@ -14,6 +22,14 @@ const {
   const mockSendConversationMessage = vi.fn();
   const mockChatCompletion = vi.fn();
   const mockStreamRuntimeTask = vi.fn();
+  const mockRuntimeGetGoblins = vi.fn();
+  const mockRuntimeGetHistory = vi.fn();
+  const mockRuntimeGetStats = vi.fn();
+  const mockRuntimeParseOrchestration = vi.fn();
+  const mockProvidersGetProviders = vi.fn();
+  const mockProvidersGetProviderModelOptions = vi.fn();
+  const mockProvidersGetProviderModels = vi.fn();
+  const mockProvidersGetCostSummary = vi.fn();
   const mockPKGet = vi.fn();
   const mockPKSet = vi.fn();
   const mockPKRemove = vi.fn();
@@ -42,6 +58,14 @@ const {
     mockSendConversationMessage,
     mockChatCompletion,
     mockStreamRuntimeTask,
+    mockRuntimeGetGoblins,
+    mockRuntimeGetHistory,
+    mockRuntimeGetStats,
+    mockRuntimeParseOrchestration,
+    mockProvidersGetProviders,
+    mockProvidersGetProviderModelOptions,
+    mockProvidersGetProviderModels,
+    mockProvidersGetCostSummary,
     mockPKGet,
     mockPKSet,
     mockPKRemove,
@@ -54,6 +78,24 @@ vi.mock('@/lib/api', () => ({
 
 vi.mock('@/api/runtime-stream', () => ({
   streamRuntimeTask: mockStreamRuntimeTask,
+}));
+
+vi.mock('../runtime', () => ({
+  runtimeMethods: {
+    getGoblins: mockRuntimeGetGoblins,
+    getHistory: mockRuntimeGetHistory,
+    getStats: mockRuntimeGetStats,
+    parseOrchestration: mockRuntimeParseOrchestration,
+  },
+}));
+
+vi.mock('../providers', () => ({
+  providersMethods: {
+    getProviders: mockProvidersGetProviders,
+    getProviderModelOptions: mockProvidersGetProviderModelOptions,
+    getProviderModels: mockProvidersGetProviderModels,
+    getCostSummary: mockProvidersGetCostSummary,
+  },
 }));
 
 vi.mock('@/lib/provider-keys', () => ({
@@ -113,16 +155,12 @@ describe('runtimeClient', () => {
 
   it('delegates the remaining runtime methods to the shared client helpers', async () => {
     mockSendConversationMessage.mockResolvedValueOnce({ content: 'runtime reply' });
-    mockApiClient.getGoblins.mockResolvedValue([{ id: 'g1' }]);
-    mockApiClient.getProviders.mockResolvedValue(['openai']);
-    mockApiClient.getProviderModelOptions.mockResolvedValue([{ id: 'm1' }]);
-    mockApiClient.getProviderModels.mockResolvedValue(['gpt-4o-mini']);
     mockApiClient.getHistory.mockResolvedValue([{ id: 'memory-1' }]);
     mockApiClient.getStats.mockResolvedValue({ total: 1 });
     mockApiClient.getCostSummary.mockResolvedValue({ total_cost_usd: 1.23 });
     mockApiClient.parseOrchestration.mockResolvedValue({ plan: [] });
-    mockApiClient.login.mockResolvedValue({ access_token: 'tok' });
-    mockApiClient.register.mockResolvedValue({ access_token: 'tok' });
+    mockApiClient.login.mockResolvedValue({ access_token: 'tok', user: { id: 'user-1' } });
+    mockApiClient.register.mockResolvedValue({ access_token: 'tok', user: { id: 'user-1' } });
     mockApiClient.logout.mockResolvedValue(undefined);
     mockApiClient.validateToken.mockResolvedValue({ valid: true, user: { id: 'user-1' } });
 
@@ -136,6 +174,15 @@ describe('runtimeClient', () => {
         'gpt-4o-mini'
       )
     ).resolves.toBe('runtime reply');
+
+    mockRuntimeGetGoblins.mockResolvedValue([{ id: 'g1' }]);
+    mockProvidersGetProviders.mockResolvedValue(['openai']);
+    mockProvidersGetProviderModelOptions.mockResolvedValue([{ id: 'm1' }]);
+    mockProvidersGetProviderModels.mockResolvedValue(['gpt-4o-mini']);
+    mockRuntimeGetHistory.mockResolvedValue([{ id: 'memory-1' }]);
+    mockRuntimeGetStats.mockResolvedValue({ total: 1 });
+    mockProvidersGetCostSummary.mockResolvedValue({ total_cost_usd: 1.23 });
+    mockRuntimeParseOrchestration.mockResolvedValue({ plan: [] });
 
     await expect(runtimeClient.getGoblins()).resolves.toEqual([{ id: 'g1' }]);
     await expect(runtimeClient.getProviders()).resolves.toEqual(['openai']);
@@ -177,10 +224,12 @@ describe('runtimeClient', () => {
     expect(mockPKGet).toHaveBeenCalledWith('openai');
 
     await expect(runtimeClient.login('user@example.com', 'secret')).resolves.toEqual({
-      access_token: 'tok',
+      token: 'tok',
+      user: { id: 'user-1' },
     });
     await expect(runtimeClient.register('user@example.com', 'secret')).resolves.toEqual({
-      access_token: 'tok',
+      token: 'tok',
+      user: { id: 'user-1' },
     });
     await expect(runtimeClient.logout()).resolves.toBeUndefined();
     await expect(runtimeClient.validateToken('jwt-token')).resolves.toEqual({

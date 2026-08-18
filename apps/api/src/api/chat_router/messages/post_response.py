@@ -90,6 +90,9 @@ async def record_completion_artifacts(
     cost_usd: Optional[float],
     correlation_id: Optional[str],
     latency_ms: Optional[float] = None,
+    used_fallback: Optional[bool] = None,
+    ttft_ms: Optional[float] = None,
+    retrieval_latency_ms: Optional[float] = None,
 ) -> None:
     """Record task history + usage event (both best-effort)."""
     try:
@@ -104,6 +107,9 @@ async def record_completion_artifacts(
             model=used_model,
             usage=usage,
             cost_usd=cost_usd,
+            used_fallback=used_fallback,
+            ttft_ms=ttft_ms,
+            retrieval_latency_ms=retrieval_latency_ms,
         )
     except Exception as task_err:
         logger.warning(
@@ -124,6 +130,8 @@ async def record_completion_artifacts(
             cost_usd=cost_usd,
             correlation_id=correlation_id,
             latency_ms=latency_ms,
+            used_fallback=used_fallback,
+            ttft_ms=ttft_ms,
         )
     except Exception as usage_err:
         logger.warning(

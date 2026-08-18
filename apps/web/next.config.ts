@@ -15,7 +15,7 @@ const nextConfig: NextConfig = {
     },
   },
   reactStrictMode: true,
-  transpilePackages: ['@goblin/ui'],
+  transpilePackages: ['@goblin/ui', '@goblin/shared'],
   images: {
     // Serve AVIF first (best compression), fall back to WebP, then original.
     formats: ['image/avif', 'image/webp'],

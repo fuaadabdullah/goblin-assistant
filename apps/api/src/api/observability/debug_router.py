@@ -595,9 +595,9 @@ async def reset_observability_counters() -> Dict[str, Any]:
     """Reset observability counters for debugging"""
     try:
         retrieval_tracer._trace_count = 0
-        
+
         logger.info("Observability counters reset")
-        
+
         return {
             "success": True,
             "message": "Observability counters reset successfully",
@@ -606,3 +606,9 @@ async def reset_observability_counters() -> Dict[str, Any]:
     except Exception as e:
         logger.error(f"Failed to reset observability counters: {e}")
         raise HTTPException(status_code=500, detail=f"Failed to reset counters: {str(e)}")
+
+
+async def get_memory_debug_info(user_id: str) -> Dict[str, Any]:
+    """Return combined memory state for a user — items + health."""
+    from . import debug_write_router as _dwr  # noqa: PLC0415
+    return await _dwr.get_user_memory(user_id)

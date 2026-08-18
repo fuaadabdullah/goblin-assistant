@@ -78,7 +78,7 @@ backup_router = "45.61.51.220:8000"
 azure                    = "azure_openai"
 azure_openai             = "azure_openai"
 azure-openai             = "azure_openai"
-vertex                   = "vertex_ai"
+vertex                   = "gcp_vm"
 vertex-ai                = "vertex_ai"
 google                   = "gemini"
 siliconflow              = "siliconeflow"
@@ -290,7 +290,7 @@ api_key_env             = "SILICONEFLOW_API_KEY"
 default_model           = "Qwen/Qwen2.5-7B-Instruct"
 models                  = ["Qwen/Qwen2.5-7B-Instruct", "Qwen/Qwen2.5-Coder-7B-Instruct", "deepseek-ai/DeepSeek-V2.5"]
 capabilities            = ["chat", "reasoning", "code"]
-priority_tier           = 35
+priority_tier           = 25
 cost_score              = 0.3
 cost_input_per1k        = 0.00014
 cost_output_per1k       = 0.00014
@@ -390,7 +390,7 @@ endpoint_env            = "TOGETHER_ENDPOINT"
 api_key_env             = "TOGETHER_API_KEY"
 models                  = ["llama-2-70b", "codellama-34b"]
 capabilities            = ["chat", "reasoning", "code", "image"]
-priority_tier           = 3
+priority_tier           = 45
 cost_score              = 0.5
 default_timeout_ms      = 10000
 bandwidth_score         = 0.8
@@ -526,6 +526,26 @@ supports_cot            = true
 cot_suppression_prompt  = "Be concise."
 tier                    = "self_hosted"
 display_name            = "Ollama Local"
+is_active               = true
+selectable_requires_env = true
+
+# ---------------------------------------------------------------------------
+# GCP VM Self-hosted (Google Cloud Selfhosted)
+# ---------------------------------------------------------------------------
+[providers.gcp_vm]
+name                    = "GCP VM"
+endpoint                = ""
+endpoint_env            = "GCP_VM_ENDPOINT"
+default_model           = "qwen2.5:3b"
+models                  = ["qwen2.5:3b"]
+capabilities            = ["chat", "reasoning", "code"]
+priority_tier           = 72
+cost_score              = 0.0
+default_timeout_ms      = 60000
+bandwidth_score         = 0.5
+rate_limit_per_min      = 120
+tier                    = "self_hosted"
+display_name            = "GCP VM"
 is_active               = true
 selectable_requires_env = true
 

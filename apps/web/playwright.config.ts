@@ -28,9 +28,9 @@ export default defineConfig({
     },
   ],
   webServer: {
-    command: 'mkdir -p .tmp && TMPDIR="$PWD/.tmp" npm run dev',
+    command: 'mkdir -p .tmp && TMPDIR="$PWD/.tmp" pnpm exec next dev',
     url: 'http://localhost:3000',
-    timeout: 180 * 1000,
+    timeout: 600 * 1000,
     reuseExistingServer: !process.env.CI,
   },
 });

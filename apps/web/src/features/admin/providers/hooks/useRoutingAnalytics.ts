@@ -8,6 +8,7 @@ export interface RoutingAuditRecord {
   timestamp: number;
   selected_provider?: string;
   provider_id?: string;
+  attempted_providers?: string[];
   model?: string;
   latency_ms?: number;
   cost_usd?: number;

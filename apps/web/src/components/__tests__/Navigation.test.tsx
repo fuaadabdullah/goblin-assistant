@@ -18,6 +18,9 @@ jest.mock('lucide-react', () => new Proxy({}, {
 jest.mock('../HealthHeader', () => function MockHealthHeader() { return <div data-testid="health-header" />; });
 jest.mock('../ContrastModeToggle', () => function MockToggle() { return <div data-testid="contrast-toggle" />; });
 jest.mock('../Logo', () => function MockLogo() { return <div data-testid="logo" />; });
+jest.mock('../../features/chat/components/DogfoodCaptureDialog', () => function MockDogfoodCaptureDialog({ open }: { open: boolean }) {
+  return open ? <div data-testid="dogfood-dialog" /> : null;
+});
 const mockLogout = jest.fn();
 jest.mock('../../hooks/api/useAuthSession', () => ({
   useAuthSession: () => ({ logout: mockLogout, isAuthenticated: true }),
@@ -49,6 +52,27 @@ describe('Navigation', () => {
     render(<Navigation variant="admin" />);
     const headers = screen.getAllByTestId('health-header');
     expect(headers.length).toBeGreaterThanOrEqual(1);
+  });
+
+  it('links to the KPI dashboard for admins', () => {
+    render(<Navigation variant="admin" />);
+    expect(screen.getByRole('link', { name: /kpi dashboard/i })).toHaveAttribute('href', '/admin/kpi');
+  });
+
+  it('links to the pilot kit for admins', () => {
+    render(<Navigation variant="admin" />);
+    expect(screen.getByRole('link', { name: /pilot kit/i })).toHaveAttribute('href', '/admin/pilot');
+  });
+
+  it('links to the dogfood journal for admins', () => {
+    render(<Navigation variant="admin" />);
+    expect(screen.getByRole('link', { name: /dogfood journal/i })).toHaveAttribute('href', '/admin/dogfood');
+  });
+
+  it('renders admin dogfood logger button', () => {
+    render(<Navigation variant="admin" />);
+    fireEvent.click(screen.getByRole('button', { name: /log another ai/i }));
+    expect(screen.getByTestId('dogfood-dialog')).toBeInTheDocument();
   });
 
   it('renders contrast mode toggle', () => {

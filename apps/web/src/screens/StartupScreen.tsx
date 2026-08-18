@@ -9,17 +9,17 @@ const StartupScreen = () => {
 
   useEffect(() => {
     if (!destinationRoute) return;
-    router.prefetch(destinationRoute).catch(() => undefined);
+    void router.prefetch(destinationRoute);
   }, [destinationRoute, router]);
 
   useEffect(() => {
     if (status !== 'ready' || !destinationRoute) return;
-    router.replace(destinationRoute).catch(() => undefined);
+    void router.replace(destinationRoute);
   }, [destinationRoute, router, status]);
 
   useEffect(() => {
     if (status !== 'error' || !destinationRoute) return;
-    router.replace(destinationRoute).catch(() => undefined);
+    void router.replace(destinationRoute);
   }, [destinationRoute, router, status]);
 
   return <GoblinBootScreen status={status} message={message} />;

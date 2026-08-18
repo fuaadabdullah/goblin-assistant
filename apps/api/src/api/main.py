@@ -55,15 +55,53 @@ from .sandbox_api import router as sandbox_router
 from .routes.providers_models import router as providers_models_router
 from .routes.account_router import router as account_router
 from .routes.support_router import router as support_router
+from .routes.feature_flags_router import router as feature_flags_router
+from .routes.notifications_router import router as notifications_router
+from .routes.agent import router as agent_router
+from .routes.route_mounting import mount_versioned_primary_routes
 from .storage.cache import cache
 from .storage.database import init_db
 
 from .monitoring import monitor
 from .artifact_cleanup import artifact_cleanup_service
 from .security_config import SecurityConfig
+from .observability.migration_metrics import migration_metrics
 
 # Initialize structured logger (early, for use in module-level initialization)
 logger = structlog.get_logger()
+
+_COMPAT_CONTRACT = "compatibility"
+_ROUTING_SUNSET = "2026-09-15"
+
+
+async def add_contract_lifecycle_headers(request, call_next):
+    """Middleware that stamps X-API-Lifecycle on every response.
+
+    Routes decorated with openapi_extra ``x-goblin-route-contract: compatibility``
+    are treated as legacy; all others are stable.
+    """
+    response = await call_next(request)
+    route = request.scope.get("route")
+    extra = getattr(route, "openapi_extra", None) or {}
+    is_compat = extra.get("x-goblin-route-contract") == _COMPAT_CONTRACT
+
+    if is_compat:
+        lifecycle = "legacy"
+        response.headers["X-API-Lifecycle"] = "legacy"
+        response.headers["Deprecation"] = "true"
+        sunset = extra.get("x-goblin-sunset-at", _ROUTING_SUNSET)
+        response.headers["Sunset"] = sunset
+    else:
+        lifecycle = "stable"
+        response.headers["X-API-Lifecycle"] = "stable"
+
+    migration_metrics.record_request(
+        path=request.url.path,
+        lifecycle=lifecycle,
+        is_v1=request.url.path.startswith("/api/v1"),
+        status_code=response.status_code,
+    )
+    return response
 
 
 def _parse_sample_rate(raw_value: str, fallback: float) -> float:
@@ -449,6 +487,7 @@ else:
 app.add_middleware(
     AuthenticationMiddleware,
     exclude_paths=[
+        "/",
         "/health",
         "/test",
         "/providers/models",

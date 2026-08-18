@@ -6,7 +6,7 @@ across different environments (development, production).
 """
 
 from abc import ABC, abstractmethod
-from typing import Optional
+from typing import Any, Callable, Dict, Optional
 import os
 import json
 import warnings
@@ -125,12 +125,49 @@ class SecretManagerAPIKeyStore(APIKeyStore):
         await asyncio.get_event_loop().run_in_executor(None, _write)
 
 
+class DatabaseAPIKeyStore(APIKeyStore):
+    """Database-backed API key store using encrypted provider settings.
+
+    Falls back to an in-memory cache when no session factory is provided
+    (e.g. in tests or when the DB is unavailable at init time).
+    """
+
+    def __init__(self, session_factory: Optional[Callable[[], Any]] = None) -> None:
+        self._session_factory = session_factory
+        self._cache: Dict[str, str] = {}
+
+    async def get(self, provider: str) -> Optional[str]:
+        if self._session_factory is None:
+            return self._cache.get(provider)
+        try:
+            async with self._session_factory() as session:
+                from .saas_service import SaaSSettingsService  # noqa: PLC0415
+                return await SaaSSettingsService(session).get_provider_api_key(provider)
+        except Exception:
+            return self._cache.get(provider)
+
+    async def set(self, provider: str, key: str) -> None:
+        self._cache[provider] = key
+        if self._session_factory is None:
+            return
+        try:
+            async with self._session_factory() as session:
+                from .saas_service import SaaSSettingsService  # noqa: PLC0415
+                await SaaSSettingsService(session).upsert_provider_settings(
+                    provider, {"api_key": key}
+                )
+        except Exception:
+            pass
+
+
 # Factory function to create appropriate store based on environment
 def create_api_key_store() -> APIKeyStore:
     """Factory function that returns the appropriate API key store for the current environment."""
     environment = os.getenv("ENVIRONMENT", "development")
 
     if environment == "production":
-        return SecretManagerAPIKeyStore()
-    else:
-        return FileAPIKeyStore()
+        vault_url = os.getenv("VAULT_URL")
+        vault_token = os.getenv("VAULT_TOKEN")
+        if vault_url and vault_token:
+            return SecretManagerAPIKeyStore()
+    return DatabaseAPIKeyStore()

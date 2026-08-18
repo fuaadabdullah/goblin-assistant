@@ -96,6 +96,10 @@ export const getAuthToken = (): string | null => {
   return localStorage.getItem('auth_token');
 };
 
+export const getAuthTokenForRequest = async (): Promise<string | null> => {
+  return getAuthToken();
+};
+
 export const getRefreshToken = (): string | null => {
   if (typeof document === 'undefined') return null;
   const match = document.cookie.match(new RegExp(`(?:^|;\\s*)${REFRESH_TOKEN_COOKIE}=([^;]*)`));

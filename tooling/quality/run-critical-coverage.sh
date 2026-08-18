@@ -58,4 +58,10 @@ run_api_suite "orchestration" \
   src/api/tests/test_context_assembly.py \
   src/api/tests/test_context_assembly_layers.py
 
+echo "==> Critical path: brutal browser validation"
+(
+  cd "$ROOT_DIR"
+  pnpm --filter @goblin/web test:brutal
+)
+
 echo "==> Critical path suites complete"

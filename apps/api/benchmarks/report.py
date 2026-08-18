@@ -48,7 +48,8 @@ def aggregate(rows: List[Dict[str, Any]]) -> Dict[str, Dict[str, Any]]:
     """
     Returns per-strategy aggregate metrics:
       n, success_rate, fallback_rate, avg_cost_usd, avg_latency_ms,
-      avg_quality, total_cost_usd, provider_counts, category_quality
+      avg_ttft_ms, avg_quality, total_cost_usd, provider_counts,
+      category_quality
     """
     buckets: Dict[str, List[Dict]] = defaultdict(list)
     for row in rows:
@@ -63,6 +64,7 @@ def aggregate(rows: List[Dict[str, Any]]) -> Dict[str, Dict[str, Any]]:
         latencies = [
             r["latency_ms"] for r in successes if r.get("latency_ms") is not None
         ]
+        ttfts = [r["ttft_ms"] for r in successes if r.get("ttft_ms") is not None]
         qualities = [
             r["quality_score"] for r in records if r.get("quality_score") is not None
         ]
@@ -85,6 +87,7 @@ def aggregate(rows: List[Dict[str, Any]]) -> Dict[str, Dict[str, Any]]:
             "fallback_count": len(fallbacks),
             "avg_cost_usd": _mean(costs),
             "avg_latency_ms": _mean(latencies),
+            "avg_ttft_ms": _mean(ttfts),
             "avg_quality": _mean(qualities),
             "total_cost_usd": sum(costs),
             "provider_counts": dict(provider_counts),
@@ -107,7 +110,10 @@ def print_summary(agg: Dict[str, Dict[str, Any]]) -> str:
     lines.append("=" * 72)
 
     # Main comparison table
-    header = f"{'Strategy':<12} {'N':>4} {'Success':>8} {'Fallback':>9} {'Avg Cost':>10} {'Avg Lat(ms)':>12} {'Quality':>9}"
+    header = (
+        f"{'Strategy':<12} {'N':>4} {'Success':>8} {'Fallback':>9} "
+        f"{'Avg Cost':>10} {'Avg Lat(ms)':>12} {'TTFT(ms)':>10} {'Quality':>9}"
+    )
     lines.append("\n" + header)
     lines.append("-" * 72)
 
@@ -119,6 +125,7 @@ def print_summary(agg: Dict[str, Dict[str, Any]]) -> str:
             f"{_pct(d['fallback_count'], d['n']):>9} "
             f"${d['avg_cost_usd']:>8.5f} "
             f"{d['avg_latency_ms']:>11.0f} "
+            f"{d['avg_ttft_ms']:>9.0f} "
             f"{d['avg_quality']:>8.3f}"
         )
 
@@ -131,7 +138,9 @@ def print_summary(agg: Dict[str, Dict[str, Any]]) -> str:
         d = agg[s]
         cost_bar = _bar(d["avg_cost_usd"], max_cost, width=16)
         q = d["avg_quality"]
-        lines.append(f"  {s:<12} cost [{cost_bar}]  quality {q:.3f}")
+        lines.append(
+            f"  {s:<12} cost [{cost_bar}]  ttft {d['avg_ttft_ms']:.0f} ms  quality {q:.3f}"
+        )
 
     # Per-category quality breakdown
     categories = sorted(
@@ -174,6 +183,7 @@ def print_summary(agg: Dict[str, Dict[str, Any]]) -> str:
         g = agg["goblin"]
         s = agg["strongest"]
         c = agg["cheapest"]
+        r = agg.get("random")
 
         quality_gap_vs_strongest = g["avg_quality"] - s["avg_quality"]
         cost_savings_vs_strongest = (
@@ -181,14 +191,29 @@ def print_summary(agg: Dict[str, Dict[str, Any]]) -> str:
             if s["avg_cost_usd"] > 0
             else 0
         )
+        ttft_delta_vs_strongest = g["avg_ttft_ms"] - s["avg_ttft_ms"]
+        ttft_speedup_vs_strongest = (
+            (1 - g["avg_ttft_ms"] / s["avg_ttft_ms"]) * 100
+            if s["avg_ttft_ms"] > 0
+            else 0
+        )
         quality_vs_cheapest = g["avg_quality"] - c["avg_quality"]
 
         lines.append(
             f"  Goblin vs strongest:  quality delta {quality_gap_vs_strongest:+.3f},"
-            f"  cost savings {cost_savings_vs_strongest:.1f}%"
+            f"  cost savings {cost_savings_vs_strongest:.1f}%,"
+            f"  TTFT delta {ttft_delta_vs_strongest:+.0f} ms"
         )
         lines.append(
             f"  Goblin vs cheapest:   quality delta {quality_vs_cheapest:+.3f}"
+        )
+        if r:
+            lines.append(
+                f"  Goblin vs random:     quality delta {g['avg_quality'] - r['avg_quality']:+.3f}, "
+                f"  cost delta {g['avg_cost_usd'] - r['avg_cost_usd']:+.5f}"
+            )
+        lines.append(
+            f"  Goblin TTFT vs strongest: {ttft_speedup_vs_strongest:.1f}% faster"
         )
 
         if quality_gap_vs_strongest >= -0.05 and cost_savings_vs_strongest >= 15:
@@ -224,9 +249,9 @@ def write_markdown(agg: Dict[str, Dict[str, Any]], out_path: Path) -> None:
     lines.append("# Goblin Intelligence Layer Benchmark\n")
     lines.append("## Summary\n")
     lines.append(
-        "| Strategy | N | Success | Fallback | Avg Cost ($) | Avg Latency (ms) | Quality |"
+        "| Strategy | N | Success | Fallback | Avg Cost ($) | Avg Latency (ms) | Avg TTFT (ms) | Quality |"
     )
-    lines.append("|---|---|---|---|---|---|---|")
+    lines.append("|---|---|---|---|---|---|---|---|")
     for s in strategies:
         d = agg[s]
         lines.append(
@@ -235,6 +260,7 @@ def write_markdown(agg: Dict[str, Dict[str, Any]], out_path: Path) -> None:
             f"| {_pct(d['fallback_count'], d['n'])} "
             f"| {d['avg_cost_usd']:.5f} "
             f"| {d['avg_latency_ms']:.0f} "
+            f"| {d['avg_ttft_ms']:.0f} "
             f"| {d['avg_quality']:.3f} |"
         )
 

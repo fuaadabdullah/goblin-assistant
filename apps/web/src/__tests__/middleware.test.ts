@@ -1,4 +1,4 @@
-/* Mock next/server so importing middleware.ts doesn't trigger Request polyfill */
+/* Mock next/server so importing route-protection logic doesn't trigger Request polyfill */
 jest.mock('next/server', () => ({
   NextResponse: {
     redirect: jest.fn(),
@@ -6,7 +6,7 @@ jest.mock('next/server', () => ({
   },
 }));
 
-import { resolveRouteDecision } from '../../middleware';
+import { resolveRouteDecision } from '../server/route-protection';
 
 describe('middleware route decisions', () => {
   it('redirects unauthenticated users from /chat', () => {

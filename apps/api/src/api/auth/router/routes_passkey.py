@@ -13,6 +13,7 @@ from .dependencies import _is_user_active
 from .schemas import PasskeyAuthRequest, PasskeyRegistrationRequest, TokenWithRefresh, User
 from .sessions import _db_create_session, create_session_id
 from .tokens import create_access_token, create_refresh_token
+from ...core.contracts import SuccessEnvelope
 
 router = APIRouter()
 
@@ -112,13 +113,13 @@ async def authenticate_passkey(
 
         _set_auth_cookies(response, access_token, refresh_token)
 
-        return TokenWithRefresh(
+        return SuccessEnvelope(data=TokenWithRefresh(
             access_token=access_token,
             refresh_token=refresh_token,
             token_type="bearer",
             user=user,
             expires_in=ACCESS_TOKEN_EXPIRE_MINUTES * 60,
-        )
+        ))
 
     except HTTPException:
         raise

@@ -43,6 +43,7 @@ from __future__ import annotations
 import argparse
 import asyncio
 import json
+import time
 import sys
 import uuid
 from datetime import datetime, timezone
@@ -114,14 +115,16 @@ async def _invoke_with_ttft(
     """
     Invoke using the streaming path and measure time-to-first-token.
 
-    Falls back to non-streaming if the provider doesn't support streaming.
+    The dispatcher already handles provider fallback. We stream the actual
+    response so TTFT is measured from the first emitted chunk instead of being
+    inferred from wall-clock latency.
+
     Returns a dict with keys: ok, text, provider, model, latency_ms,
     ttft_ms, input_tokens, output_tokens, cost_usd, error.
     """
     payload = {"messages": messages}
-    t0 = asyncio.get_running_loop().time()
+    t0 = time.perf_counter()
     ttft_ms: Optional[float] = None
-
     try:
         result = await asyncio.wait_for(
             dispatcher.dispatch(
@@ -129,7 +132,7 @@ async def _invoke_with_ttft(
                 model=model,
                 payload=payload,
                 timeout_ms=timeout_ms,
-                stream=False,
+                stream=True,
             ),
             timeout=timeout_ms / 1000 + 5,
         )
@@ -152,7 +155,7 @@ async def _invoke_with_ttft(
             "text": "",
             "provider": None,
             "model": None,
-            "latency_ms": (asyncio.get_running_loop().time() - t0) * 1000,
+            "latency_ms": (time.perf_counter() - t0) * 1000,
             "ttft_ms": None,
             "input_tokens": None,
             "output_tokens": None,
@@ -160,20 +163,102 @@ async def _invoke_with_ttft(
             "error": str(exc),
         }
 
-    latency_ms = (
-        result.get("latency_ms") or (asyncio.get_running_loop().time() - t0) * 1000
-    )
+    if not result.get("ok"):
+        return {
+            "ok": False,
+            "text": "",
+            "provider": result.get("provider"),
+            "model": result.get("model"),
+            "latency_ms": (time.perf_counter() - t0) * 1000,
+            "ttft_ms": None,
+            "input_tokens": None,
+            "output_tokens": None,
+            "cost_usd": None,
+            "error": result.get("error") or "stream_failed",
+        }
+
+    stream = result.get("stream")
+    if stream is None:
+        return {
+            "ok": False,
+            "text": "",
+            "provider": result.get("provider"),
+            "model": result.get("model"),
+            "latency_ms": (time.perf_counter() - t0) * 1000,
+            "ttft_ms": None,
+            "input_tokens": None,
+            "output_tokens": None,
+            "cost_usd": None,
+            "error": "stream_missing",
+        }
+
+    chunks: List[str] = []
+    try:
+        async for chunk in stream:
+            text = str(chunk.get("text") or chunk.get("content") or "")
+            if not text:
+                continue
+            if ttft_ms is None:
+                ttft_ms = (time.perf_counter() - t0) * 1000
+            chunks.append(text)
+    except Exception as exc:
+        return {
+            "ok": False,
+            "text": "".join(chunks),
+            "provider": result.get("provider"),
+            "model": result.get("model"),
+            "latency_ms": (time.perf_counter() - t0) * 1000,
+            "ttft_ms": ttft_ms,
+            "input_tokens": None,
+            "output_tokens": None,
+            "cost_usd": None,
+            "error": str(exc),
+        }
+
+    latency_ms = (time.perf_counter() - t0) * 1000
+    text = "".join(chunks)
     usage = result.get("usage") or {}
+    input_tokens = usage.get("prompt_tokens") or usage.get("input_tokens")
+    output_tokens = usage.get("completion_tokens") or usage.get("output_tokens")
+    cost_usd = result.get("cost_usd")
+    try:
+        from api.core.tokenization import count_tokens  # noqa: PLC0415
+
+        if input_tokens is None and messages:
+            input_tokens = count_tokens(messages[-1].get("content", ""))
+        if output_tokens is None:
+            output_tokens = count_tokens(text)
+    except Exception:
+        pass
+    if (
+        cost_usd is None
+        and result.get("provider")
+        and result.get("model")
+    ):
+        try:
+            from api.providers.pricing import estimate_cost  # noqa: PLC0415
+
+            if input_tokens is not None and output_tokens is not None:
+                cost_usd = estimate_cost(
+                    result["provider"],
+                    int(input_tokens),
+                    int(output_tokens),
+                    model=result.get("model"),
+                )
+        except Exception:
+            pass
+    if cost_usd is None and text.strip():
+        cost_usd = 0.0
     return {
-        "ok": result.get("ok", False),
-        "text": result.get("text", ""),
+        "ok": bool(text.strip()) or result.get("ok", False),
+        "text": text,
         "provider": result.get("provider"),
         "model": result.get("model"),
         "latency_ms": latency_ms,
         "ttft_ms": ttft_ms,
-        "input_tokens": (usage.get("prompt_tokens") or usage.get("input_tokens")),
-        "output_tokens": (usage.get("completion_tokens") or usage.get("output_tokens")),
-        "cost_usd": result.get("cost_usd"),
+        "input_tokens": input_tokens,
+        "output_tokens": output_tokens,
+        "cost_usd": cost_usd,
         "error": result.get("error") if not result.get("ok") else None,
     }
 
@@ -211,11 +296,25 @@ async def run_one(
 
     succeeded = result["ok"] and bool(result.get("text", "").strip())
 
-    # Determine if fallback was used: the selected provider differs from the
-    # originally requested one (for explicit strategies) or the first candidate.
-    used_fallback = False
-    if strategy != "goblin" and pid is not None:
-        used_fallback = result.get("provider") not in (None, pid)
+    # Determine if fallback was used: compare the provider that actually
+    # answered with the first provider the dispatcher would have tried.
+    baseline_provider = pid
+    baseline_model = model
+    if strategy == "goblin":
+        candidate_order = dispatcher._candidate_order(pid)  # noqa: SLF001
+        configured_candidates = dispatcher._auto_configured_candidates(candidate_order)  # noqa: SLF001
+        if not configured_candidates:
+            configured_candidates = [
+                p for p in candidate_order if dispatcher.is_configured(p)
+            ]
+        baseline_provider = configured_candidates[0] if configured_candidates else None
+        if baseline_provider is not None:
+            baseline_model = dispatcher.get_provider_config(baseline_provider).get("default_model")
+    used_fallback = bool(
+        baseline_provider
+        and result.get("provider")
+        and result.get("provider") != baseline_provider
+    )
 
     # Score quality
     if asyncio.iscoroutinefunction(judge.score):
@@ -246,9 +345,14 @@ async def run_one(
     record = {
         "run_id": run_id,
         "prompt_id": prompt["id"],
+        "prompt": prompt.get("prompt"),
         "category": prompt.get("category"),
         "difficulty": prompt.get("difficulty"),
         "strategy": strategy,
+        "requested_provider": pid,
+        "requested_model": model,
+        "baseline_provider": baseline_provider,
+        "baseline_model": baseline_model,
         "selected_provider": result.get("provider"),
         "selected_model": result.get("model"),
         "success": succeeded,
@@ -268,11 +372,12 @@ async def run_one(
         status = "✓" if succeeded else "✗"
         q = f"q={quality:.2f}"
         lat = f"{result.get('latency_ms', 0):.0f}ms"
+        ttft = f"ttft={result.get('ttft_ms', 0):.0f}ms" if result.get("ttft_ms") is not None else "ttft=n/a"
         cost_str = f"${cost:.5f}" if cost else "  free"
         prov = result.get("provider") or "?"
         print(
             f"  {status} [{strategy:<10}] {prompt['id']:<10} "
-            f"{prov:<16} {lat:>8} {cost_str:>10} {q}"
+            f"{prov:<16} {lat:>8} {ttft:>12} {cost_str:>10} {q}"
         )
 
     return record
@@ -329,8 +434,8 @@ async def run_benchmark(
         for prompt in prompts:
             if verbose:
                 print(
-                    f"\n  {prompt['id']} [{prompt['category']}] difficulty={prompt['difficulty']}"
-                )
+                f"\n  {prompt['id']} [{prompt['category']}] difficulty={prompt['difficulty']}"
+            )
                 print(
                     f"  {prompt['prompt'][:80]}{'...' if len(prompt['prompt']) > 80 else ''}"
                 )

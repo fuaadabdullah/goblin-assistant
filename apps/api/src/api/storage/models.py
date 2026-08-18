@@ -177,12 +177,138 @@ class UserPreferencesModel(Base):
     default_provider = Column(String, nullable=True)
     default_model = Column(String, nullable=True)
     rag_consent = Column(String, default="false")  # Using string for SQLite compatibility
+    ui_preferences = Column(JSON, default=dict)
     privacy_settings = Column(JSON, default=dict)
+    version = Column(Integer, default=1)
     created_at = Column(DateTime, default=datetime.utcnow)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
 
     # Relationship
     user = relationship("UserModel", foreign_keys=[user_id])
+
+
+class SupportTicketModel(Base):
+    """Database model for support tickets."""
+
+    __tablename__ = "support_tickets"
+
+    ticket_id = Column(String, primary_key=True, default=lambda: str(uuid.uuid4()))
+    user_id = Column(String, ForeignKey("users.id"), nullable=True, index=True)
+    email = Column(String, nullable=True)
+    category = Column(String, nullable=True)
+    priority = Column(String, nullable=True)
+    status = Column(String, nullable=False, default="received")
+    subject = Column(String, nullable=True)
+    message = Column(Text, nullable=False)
+    attachment_url = Column(String, nullable=True)
+    triage = Column(JSON, default=dict)
+    metadata_ = Column("metadata", JSON, default=dict)
+    created_at = Column(DateTime, default=datetime.utcnow)
+
+    user = relationship("UserModel", foreign_keys=[user_id])
+
+
+class NotificationModel(Base):
+    """Database model for in-app notifications."""
+
+    __tablename__ = "notifications"
+
+    notification_id = Column(String, primary_key=True, default=lambda: str(uuid.uuid4()))
+    user_id = Column(String, ForeignKey("users.id"), nullable=False, index=True)
+    channel = Column(String, nullable=False, default="in_app")
+    title = Column(String, nullable=False)
+    body = Column(Text, nullable=True)
+    category = Column(String, nullable=True)
+    metadata_ = Column("metadata", JSON, default=dict)
+    is_read = Column(Boolean, nullable=False, default=False)
+    read_at = Column(DateTime, nullable=True)
+    created_at = Column(DateTime, default=datetime.utcnow)
+    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+
+    user = relationship("UserModel", foreign_keys=[user_id])
+
+
+class ChatSettingsModel(Base):
+    """Database model for per-user chat settings."""
+
+    __tablename__ = "chat_settings"
+
+    id = Column(String, primary_key=True, default=lambda: str(uuid.uuid4()))
+    user_id = Column(String, ForeignKey("users.id"), nullable=False, unique=True, index=True)
+    default_provider = Column(String, nullable=True)
+    default_model = Column(String, nullable=True)
+    system_prompt = Column(Text, nullable=True)
+    temperature = Column(String, nullable=True)  # stored as string for SQLite compatibility
+    max_tokens = Column(Integer, nullable=True)
+    summary_enabled = Column(Boolean, default=True)
+    metadata_ = Column("metadata", JSON, default=dict)
+    version = Column(Integer, default=1)
+    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+
+    user = relationship("UserModel", foreign_keys=[user_id])
+
+
+class ApiKeyModel(Base):
+    """Database model for user API keys."""
+
+    __tablename__ = "api_keys"
+
+    id = Column(String, primary_key=True, default=lambda: str(uuid.uuid4()))
+    user_id = Column(String, ForeignKey("users.id"), nullable=True, index=True)
+    name = Column(String, nullable=True)
+    key_hash = Column(String, nullable=True)
+    key_prefix = Column(String, nullable=True)
+    created_at = Column(DateTime, default=datetime.utcnow)
+
+    user = relationship("UserModel", foreign_keys=[user_id])
+
+
+class FeatureFlagModel(Base):
+    """Database model for feature flags."""
+
+    __tablename__ = "feature_flags"
+
+    id = Column(String, primary_key=True, default=lambda: str(uuid.uuid4()))
+    flag_key = Column(String, nullable=False, unique=True, index=True)
+    enabled = Column(Boolean, default=True)
+    default_value = Column(JSON, nullable=True)
+    user_overrides = Column(JSON, default=dict)
+    rollout_percent = Column(String, nullable=True)  # stored as string for SQLite compatibility
+    target_users = Column(JSON, default=list)
+    target_roles = Column(JSON, default=list)
+    metadata_ = Column("metadata", JSON, default=dict)
+    version = Column(Integer, default=1)
+    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+
+
+class GlobalSettingModel(Base):
+    """Database model for global platform settings."""
+
+    __tablename__ = "global_settings"
+
+    id = Column(String, primary_key=True, default=lambda: str(uuid.uuid4()))
+    key = Column(String, nullable=False, unique=True, index=True)
+    value = Column(JSON, nullable=True)
+    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+
+
+class ProviderSettingsModel(Base):
+    """Database model for provider runtime settings."""
+
+    __tablename__ = "provider_settings"
+
+    id = Column(String, primary_key=True, default=lambda: str(uuid.uuid4()))
+    provider_name = Column(String, nullable=False, unique=True, index=True)
+    endpoint = Column(String, nullable=True)
+    enabled = Column(Boolean, default=True)
+    priority = Column(Integer, default=0)
+    weight = Column(String, nullable=True)  # stored as string for SQLite compatibility
+    base_url = Column(String, nullable=True)
+    models = Column(JSON, default=list)
+    api_key_encrypted = Column(Text, nullable=True)
+    metadata_ = Column("metadata", JSON, default=dict)
+    version = Column(Integer, default=1)
+    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
 
 
 # Add vector relationships to existing models

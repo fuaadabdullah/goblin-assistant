@@ -107,7 +107,8 @@ export async function authExchangeCodeForSession(code: string) {
 export function authOnStateChange(
   callback: (event: string, session: { access_token: string; user: SupabaseUser } | null) => void
 ) {
-  const { data } = supabase.auth.onAuthStateChange((event, session) =>
+  const { data } = supabase.auth.onAuthStateChange(
+    (event: string, session: { access_token: string; user: SupabaseUser } | null) =>
     callback(event, session as { access_token: string; user: SupabaseUser } | null)
   );
   return () => data.subscription.unsubscribe();

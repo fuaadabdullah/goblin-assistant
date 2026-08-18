@@ -51,6 +51,7 @@ export interface PasskeyVerificationChallenge {
 export interface User {
   id: string;
   email: string;
+  name?: string;
   role?: string;
   roles?: string[];
   token_version?: number;
@@ -447,6 +448,13 @@ export interface ModelUsageRollupSummary {
   total_tokens: number;
   total_cost_usd: number;
   total_latency_ms: number;
+}
+
+export interface ModelUsageRollupResponse {
+  provider?: string | null;
+  model?: string | null;
+  rows: ModelUsageRollup[];
+  summary: ModelUsageRollupSummary;
 }
 
 export interface OrchestrationStep {

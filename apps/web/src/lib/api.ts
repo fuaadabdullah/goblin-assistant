@@ -4,6 +4,13 @@ import { devWarn } from '../utils/dev-log';
 import { clearAuthSession, getAuthToken, getRefreshToken, persistAuthSession } from '../utils/auth-session';
 import type { ChatMessage as DomainChatMessage, ChatUsage } from '../domain/chat';
 import type {
+  AgentTaskEventsResponse,
+  AgentTaskRecord,
+  AgentTaskStatusResponse,
+  AgentTaskSubmitPayload,
+  AgentTaskWebhookResponse,
+} from './api/api-types';
+import type {
   ChatMessage,
   ChatCompletionResponse,
   HealthStatus,
@@ -59,6 +66,62 @@ export interface KpiProviderBreakdown {
   tokens: number;
 }
 
+export interface KpiDogfoodEntry {
+  entry_id: string;
+  primary_assistant: string;
+  external_ai: string;
+  reason: string;
+  context: string | null;
+  recorded_at: string;
+  source: string;
+}
+
+export interface KpiDogfoodSummary {
+  total_entries: number;
+  recent_entries: KpiDogfoodEntry[];
+  reason_counts: Record<string, number>;
+}
+
+export interface KpiFeatureUsage {
+  counts: Record<string, number>;
+  conversation_categories: Record<string, number>;
+}
+
+export interface KpiPilotSignal {
+  ticket_id: string;
+  page: string | null;
+  tag: string | null;
+  name: string | null;
+  email: string | null;
+  note: string;
+  created_at: string | null;
+}
+
+export interface KpiPilotSignals {
+  total_signals: number;
+  unique_participants: number;
+  top_tags: Array<{ tag: string; count: number }>;
+  recent_signals: KpiPilotSignal[];
+}
+
+export interface KpiModelEval {
+  provider: string;
+  model: string;
+  sample_count: number;
+  success_rate: number | null;
+  fallback_rate: number | null;
+  avg_quality_score: number | null;
+  avg_cost_usd: number | null;
+  avg_ttft_ms: number | null;
+}
+
+export interface DogfoodLogInput {
+  primary_assistant: string;
+  external_ai: string;
+  reason: string;
+  context?: string | null;
+}
+
 export interface KpiSnapshot {
   generated_at: string;
   window_days: number;
@@ -69,16 +132,20 @@ export interface KpiSnapshot {
     failure_count: number;
     success_pct: number | null;
     failure_pct: number | null;
+    provider_failure_pct: number | null;
+    fallback_pct: number | null;
     p50_latency_ms: number | null;
     p95_latency_ms: number | null;
     ttft_ms: number | null;
     tool_success_pct: number | null;
     retrieval_latency_ms: number | null;
+    dogfood: KpiDogfoodSummary;
   };
   economics: {
     total_requests: number;
     total_cost_usd: number;
     cost_per_request_usd: number | null;
+    cost_per_user_day_usd: number | null;
     tokens_per_request: number | null;
     total_tokens: number;
     provider_breakdown: KpiProviderBreakdown[];
@@ -91,10 +158,13 @@ export interface KpiSnapshot {
     returning_users_in_window: number | null;
     total_conversations: number | null;
     conversations_in_window: number | null;
+    chats_per_user: number | null;
     total_messages: number | null;
     avg_session_turns: number | null;
     total_memory_facts: number | null;
     goblins_created: number | null;
+    feature_usage: KpiFeatureUsage | null;
+    pilot_signals: KpiPilotSignals | null;
   };
   ai: {
     providers: {
@@ -105,6 +175,7 @@ export interface KpiSnapshot {
     };
     intelligence_benchmark: Record<string, unknown> | null;
     memory_benchmark: Record<string, unknown> | null;
+    provider_model_evals: KpiModelEval[];
     tool_selection_accuracy: number | null;
   };
 }
@@ -266,6 +337,10 @@ const normalizeAxiosError = (error: unknown): never => {
   if (axios.isAxiosError(error)) {
     const axiosError = error as AxiosError<Record<string, unknown>>;
     const payload = axiosError.response?.data;
+    const nestedError =
+      payload && typeof payload.error === 'object' && payload.error !== null
+        ? (payload.error as Record<string, unknown>)
+        : null;
 
     const isTimeout = axiosError.code === 'ECONNABORTED';
 
@@ -274,6 +349,8 @@ const normalizeAxiosError = (error: unknown): never => {
         'Authentication service timed out. The server may be waking up—please try again in a few seconds.') ||
       (typeof payload?.detail === 'string' && payload.detail) ||
       (typeof payload?.error === 'string' && payload.error) ||
+      (nestedError && typeof nestedError.detail === 'string' && nestedError.detail) ||
+      (nestedError && typeof nestedError.message === 'string' && nestedError.message) ||
       (typeof payload?.message === 'string' && payload.message) ||
       axiosError.message ||
       'Request failed';
@@ -605,6 +682,35 @@ export const apiClient = {
     return choice?.message?.content || response;
   },
 
+  async estimateMessageTokens(payload: {
+    message: string;
+    conversationId?: string | undefined;
+    provider?: string | undefined;
+    model?: string | undefined;
+  }): Promise<{
+    input_tokens: number;
+    estimated_output_tokens: number;
+    estimated_cost_usd: number;
+    provider: string;
+    model?: string;
+    layers: Array<{ name: string; tokens: number }>;
+    degraded_mode: boolean;
+    degraded_reason?: string;
+  }> {
+    const qs = payload.conversationId
+      ? `?conversation_id=${encodeURIComponent(payload.conversationId)}`
+      : '';
+    return postFrontend(
+      `/api/chat/estimate-tokens${qs}`,
+      {
+        message: payload.message,
+        provider: payload.provider,
+        model: payload.model,
+      },
+      withAuth(),
+    );
+  },
+
   async getAllHealth(): Promise<HealthStatus> {
     try {
       return await getBackend<HealthStatus>('/health');
@@ -797,14 +903,85 @@ export const apiClient = {
     return response.data;
   },
 
+  async submitAgentTask(
+    payload: AgentTaskSubmitPayload,
+  ): Promise<AgentTaskStatusResponse> {
+    return postFrontend<AgentTaskStatusResponse, AgentTaskSubmitPayload>(
+      '/api/agent/task',
+      payload,
+    );
+  },
+
+  async getAgentTask(taskId: string): Promise<AgentTaskRecord> {
+    return getFrontend<AgentTaskRecord>(`/api/agent/task/${encodeURIComponent(taskId)}`);
+  },
+
+  async getAgentTaskEvents(taskId: string): Promise<AgentTaskEventsResponse> {
+    return getFrontend<AgentTaskEventsResponse>(
+      `/api/agent/task/${encodeURIComponent(taskId)}/events`,
+    );
+  },
+
+  async submitGithubIssueWebhook(
+    payload: Record<string, unknown>,
+  ): Promise<AgentTaskWebhookResponse> {
+    return postFrontend<AgentTaskWebhookResponse, Record<string, unknown>>(
+      '/api/agent/task/github-webhook',
+      payload,
+    );
+  },
+
   async getKpi(days = 7) {
     return getBackend<KpiSnapshot>(`/admin/kpi?days=${days}`, withAuth());
   },
 
-  async submitBetaSignal(payload: { page: string; note?: string; tag?: string }) {
+  async getDogfoodLog(limit = 25) {
+    return getBackend<{ success: boolean; data: KpiDogfoodSummary }>(
+      `/admin/kpi/dogfood?limit=${limit}`,
+      withAuth(),
+    );
+  },
+
+  async submitDogfoodLog(payload: DogfoodLogInput) {
+    return postBackend<{ success: boolean; data: KpiDogfoodEntry }, DogfoodLogInput>(
+      '/admin/kpi/dogfood',
+      payload,
+      withAuth(),
+    );
+  },
+
+  async submitBetaSignal(payload: { page: string; name?: string; email?: string; note?: string; tag?: string }) {
     return postBackend<{ id: string; status: string }, typeof payload>(
       '/support/beta-signal',
       payload,
+      withAuth(),
+    );
+  },
+
+  async submitRoutingFeedback(payload: {
+    requestId: string;
+    rating?: 1 | -1;
+    signal?: string;
+    providerId?: string;
+    taskType?: string;
+    messageId?: string;
+    conversationId?: string;
+    model?: string;
+    department?: string;
+  }): Promise<{ ok: boolean }> {
+    return postFrontend<{ ok: boolean }, object>(
+      '/api/routing/feedback',
+      {
+        request_id: payload.requestId,
+        rating: payload.rating,
+        signal: payload.signal,
+        provider_id: payload.providerId,
+        task_type: payload.taskType,
+        message_id: payload.messageId,
+        conversation_id: payload.conversationId,
+        model: payload.model,
+        department: payload.department,
+      },
       withAuth(),
     );
   },

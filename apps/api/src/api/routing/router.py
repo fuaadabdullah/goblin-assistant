@@ -5,6 +5,7 @@ from __future__ import annotations
 import asyncio
 import collections
 import os
+import sqlite3
 import time
 import uuid
 from dataclasses import dataclass, field
@@ -60,11 +61,91 @@ class ProviderStats:
         return self.success_count / total if total > 0 else 1.0
 
 
+_CREATE_STATS_TABLE = """
+CREATE TABLE IF NOT EXISTS provider_stats (
+    provider_id TEXT PRIMARY KEY,
+    ewma_latency_ms REAL NOT NULL,
+    ewma_cost_per_request REAL NOT NULL,
+    last_cost_per_request REAL NOT NULL,
+    success_count INTEGER NOT NULL,
+    failure_count INTEGER NOT NULL,
+    total_cost_usd REAL NOT NULL,
+    last_used REAL NOT NULL
+)
+"""
+
+
+class RoutingRegistryStore:
+    """SQLite-backed persistence for RoutingRegistry stats."""
+
+    def __init__(self, path: str) -> None:
+        self._path = path
+        self.last_error: Optional[str] = None
+
+    def load(self) -> Dict[str, ProviderStats]:
+        try:
+            con = sqlite3.connect(self._path)
+            try:
+                con.execute(_CREATE_STATS_TABLE)
+                rows = con.execute(
+                    "SELECT provider_id, ewma_latency_ms, ewma_cost_per_request, "
+                    "last_cost_per_request, success_count, failure_count, "
+                    "total_cost_usd, last_used FROM provider_stats"
+                ).fetchall()
+            finally:
+                con.close()
+        except Exception as exc:
+            self.last_error = str(exc)
+            return {}
+
+        out: Dict[str, ProviderStats] = {}
+        for row in rows:
+            pid = row[0]
+            ps = ProviderStats(provider_id=pid)
+            ps.ewma_latency_ms = row[1]
+            ps.ewma_cost_per_request = row[2]
+            ps.last_cost_per_request = row[3]
+            ps.success_count = row[4]
+            ps.failure_count = row[5]
+            ps.total_cost_usd = row[6]
+            ps.last_used = row[7]
+            out[pid] = ps
+        return out
+
+    def save(self, stats: Dict[str, ProviderStats]) -> None:
+        try:
+            con = sqlite3.connect(self._path)
+            try:
+                con.execute(_CREATE_STATS_TABLE)
+                con.executemany(
+                    "INSERT OR REPLACE INTO provider_stats VALUES (?,?,?,?,?,?,?,?)",
+                    [
+                        (
+                            ps.provider_id,
+                            ps.ewma_latency_ms,
+                            ps.ewma_cost_per_request,
+                            ps.last_cost_per_request,
+                            ps.success_count,
+                            ps.failure_count,
+                            ps.total_cost_usd,
+                            ps.last_used,
+                        )
+                        for ps in stats.values()
+                    ],
+                )
+                con.commit()
+            finally:
+                con.close()
+        except Exception as exc:
+            self.last_error = str(exc)
+
+
 class RoutingRegistry:
     _AUDIT_MAX = 1000  # ring buffer capacity for decision audit trail
 
-    def __init__(self) -> None:
-        self._stats: Dict[str, ProviderStats] = {}
+    def __init__(self, store: Optional[RoutingRegistryStore] = None) -> None:
+        self._store = store
+        self._stats: Dict[str, ProviderStats] = store.load() if store is not None else {}
         self._decision_log: collections.deque = collections.deque(
             maxlen=self._AUDIT_MAX
         )
@@ -131,6 +212,11 @@ class RoutingRegistry:
             }
         )
 
+    def flush(self) -> None:
+        """Persist current stats to the backing store, if one was configured."""
+        if self._store is not None:
+            self._store.save(self._stats)
+
     def get_audit_trail(self, limit: int = 200) -> List[Dict[str, Any]]:
         """Return the most recent decision+outcome records."""
         return list(self._decision_log)[-limit:]
@@ -148,6 +234,17 @@ class RoutingRegistry:
             }
             for provider_id, stats in self._stats.items()
         }
+
+    def metrics_snapshot(self) -> Dict[str, Any]:
+        return self.snapshot()
+
+    def persisted_snapshot(self) -> Dict[str, Any]:
+        if self._store is not None:
+            return self._store.load_raw() if hasattr(self._store, "load_raw") else {}
+        return {}
+
+    def persistence_status(self) -> Dict[str, Any]:
+        return {"enabled": self._store is not None}
 
 
 registry = RoutingRegistry()

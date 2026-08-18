@@ -1,7 +1,7 @@
 'use client';
 
-import { useState } from 'react';
-import { useQuery } from '@tanstack/react-query';
+import { useState, type FormEvent, type ReactNode } from 'react';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import {
   Bar,
   BarChart,
@@ -12,7 +12,13 @@ import {
   XAxis,
   YAxis,
 } from 'recharts';
-import { apiClient, type KpiProviderBreakdown, type KpiSnapshot } from '@/lib/api';
+import {
+  apiClient,
+  type DogfoodLogInput,
+  type KpiModelEval,
+  type KpiProviderBreakdown,
+  type KpiSnapshot,
+} from '@/lib/api';
 import { queryKeys } from '@/lib/query-keys';
 
 // ---------------------------------------------------------------------------
@@ -44,7 +50,7 @@ function Stat({
   );
 }
 
-function Section({ title, children }: { title: string; children: React.ReactNode }) {
+function Section({ title, children }: { title: string; children: ReactNode }) {
   return (
     <section className="flex flex-col gap-4">
       <h2 className="text-sm font-semibold uppercase tracking-wider text-muted-foreground">
@@ -55,7 +61,7 @@ function Section({ title, children }: { title: string; children: React.ReactNode
   );
 }
 
-function Grid({ children }: { children: React.ReactNode }) {
+function Grid({ children }: { children: ReactNode }) {
   return <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4">{children}</div>;
 }
 
@@ -87,9 +93,19 @@ function SystemSection({ data }: { data: KpiSnapshot['system'] }) {
           warn={successWarn}
         />
         <Stat
-          label="Failures"
+          label="Request Failures"
           value={data.failure_pct != null ? `${data.failure_pct}%` : null}
           warn={(data.failure_pct ?? 0) > 5}
+        />
+        <Stat
+          label="Provider Failures"
+          value={data.provider_failure_pct != null ? `${data.provider_failure_pct}%` : null}
+          warn={(data.provider_failure_pct ?? 0) > 5}
+        />
+        <Stat
+          label="Fallbacks"
+          value={data.fallback_pct != null ? `${data.fallback_pct}%` : null}
+          warn={(data.fallback_pct ?? 0) > 5}
         />
         <Stat
           label="p50 Latency"
@@ -100,9 +116,9 @@ function SystemSection({ data }: { data: KpiSnapshot['system'] }) {
           value={data.p95_latency_ms != null ? `${data.p95_latency_ms} ms` : null}
           warn={(data.p95_latency_ms ?? 0) > 5000}
         />
-        <Stat label="TTFT" value={data.ttft_ms != null ? `${data.ttft_ms} ms` : null} sub="not yet instrumented" />
-        <Stat label="Tool Success" value={data.tool_success_pct != null ? `${data.tool_success_pct}%` : null} sub="not yet instrumented" />
-        <Stat label="Retrieval Lat." value={data.retrieval_latency_ms != null ? `${data.retrieval_latency_ms} ms` : null} sub="not yet instrumented" />
+        <Stat label="TTFT" value={data.ttft_ms != null ? `${data.ttft_ms} ms` : null} sub="from chat completions" />
+        <Stat label="Tool Success" value={data.tool_success_pct != null ? `${data.tool_success_pct}%` : null} sub="from tool traces" />
+        <Stat label="Retrieval Lat." value={data.retrieval_latency_ms != null ? `${data.retrieval_latency_ms} ms` : null} sub="from retrieval traces" />
       </Grid>
     </Section>
   );
@@ -122,6 +138,10 @@ function EconomicsSection({ data }: { data: KpiSnapshot['economics'] }) {
         <Stat
           label="Cost / Request"
           value={data.cost_per_request_usd != null ? `$${data.cost_per_request_usd.toFixed(5)}` : null}
+        />
+        <Stat
+          label="Cost / User / Day"
+          value={data.cost_per_user_day_usd != null ? `$${data.cost_per_user_day_usd.toFixed(5)}` : null}
         />
         <Stat
           label="Tokens / Req"
@@ -203,10 +223,284 @@ function ProductSection({ data }: { data: KpiSnapshot['product'] }) {
         <Stat label="Returning Users" value={data.returning_users_in_window} sub="in window" />
         <Stat label="Total Convos" value={data.total_conversations} />
         <Stat label="Convos (window)" value={data.conversations_in_window} />
+        <Stat
+          label="Chats / User"
+          value={data.chats_per_user != null ? data.chats_per_user.toFixed(2) : null}
+        />
         <Stat label="Avg Session" value={data.avg_session_turns != null ? `${data.avg_session_turns} turns` : null} />
         <Stat label="Memory Facts" value={data.total_memory_facts?.toLocaleString()} />
-        <Stat label="Goblins" value={data.goblins_created} sub="entity count pending" />
+        <Stat label="Goblins" value={data.goblins_created} sub="from goblin catalog" />
       </Grid>
+      {data.feature_usage && <FeatureUsagePanel data={data.feature_usage} />}
+      {data.pilot_signals && <PilotSignalsPanel data={data.pilot_signals} />}
+    </Section>
+  );
+}
+
+function FeatureUsagePanel({
+  data,
+}: {
+  data: NonNullable<KpiSnapshot['product']['feature_usage']>;
+}) {
+  const featureEntries = Object.entries(data.counts).sort((a, b) => b[1] - a[1]);
+  const categoryEntries = Object.entries(data.conversation_categories);
+
+  return (
+    <div className="rounded-lg border border-border bg-card p-4">
+      <p className="mb-3 text-xs font-medium uppercase tracking-wide text-muted-foreground">
+        Feature Usage
+      </p>
+      <div className="flex flex-wrap gap-2">
+        {featureEntries.length ? (
+          featureEntries.map(([label, count]) => (
+            <span
+              key={label}
+              className="rounded-full border border-border bg-background px-2.5 py-1 text-xs text-foreground"
+            >
+              {label.replace(/_/g, ' ')}: {count}
+            </span>
+          ))
+        ) : (
+          <span className="text-xs text-muted-foreground">No feature usage recorded.</span>
+        )}
+      </div>
+      {categoryEntries.length > 0 && (
+        <div className="mt-4">
+          <p className="mb-2 text-xs font-medium uppercase tracking-wide text-muted-foreground">
+            Conversation Categories
+          </p>
+          <div className="flex flex-wrap gap-2">
+            {categoryEntries.map(([label, count]) => (
+              <span
+                key={label}
+                className="rounded-full border border-border bg-background px-2.5 py-1 text-xs text-foreground"
+              >
+                {label}: {count}
+              </span>
+            ))}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+function PilotSignalsPanel({
+  data,
+}: {
+  data: NonNullable<KpiSnapshot['product']['pilot_signals']>;
+}) {
+  return (
+    <div className="rounded-lg border border-border bg-card p-4">
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
+          Pilot Signals
+        </p>
+        <span className="text-xs text-muted-foreground">
+          {data.total_signals} logged · {data.unique_participants} participants
+        </span>
+      </div>
+      <div className="mt-3 flex flex-wrap gap-2">
+        {data.top_tags.length ? (
+          data.top_tags.map((tag) => (
+            <span
+              key={tag.tag}
+              className="rounded-full border border-border bg-background px-2.5 py-1 text-xs text-foreground"
+            >
+              {tag.tag}: {tag.count}
+            </span>
+          ))
+        ) : (
+          <span className="text-xs text-muted-foreground">No pilot signals yet.</span>
+        )}
+      </div>
+      <div className="mt-4 space-y-2">
+        {data.recent_signals.length ? (
+          data.recent_signals.slice(0, 4).map((signal) => (
+            <div key={signal.ticket_id} className="rounded border border-border/80 bg-background p-3 text-xs">
+              <div className="flex flex-wrap items-center gap-2">
+                <span className="font-semibold text-foreground">{signal.tag || signal.page || 'Pilot signal'}</span>
+                {signal.page && (
+                  <span className="rounded-full bg-muted px-2 py-0.5 text-[10px] uppercase tracking-wide text-muted-foreground">
+                    {signal.page}
+                  </span>
+                )}
+              </div>
+              <p className="mt-1 text-foreground">{signal.note}</p>
+              {signal.created_at && (
+                <p className="mt-1 text-muted-foreground">
+                  {new Date(signal.created_at).toLocaleString()}
+                </p>
+              )}
+            </div>
+          ))
+        ) : (
+          <p className="text-xs text-muted-foreground">No recent pilot notes.</p>
+        )}
+      </div>
+    </div>
+  );
+}
+
+export function DogfoodSection({
+  data,
+  onSubmit,
+}: {
+  data: KpiSnapshot['system']['dogfood'];
+  onSubmit: (payload: DogfoodLogInput) => Promise<void>;
+}) {
+  const [primaryAssistant, setPrimaryAssistant] = useState('Goblin');
+  const [externalAi, setExternalAi] = useState('');
+  const [reason, setReason] = useState('');
+  const [context, setContext] = useState('');
+  const [status, setStatus] = useState<'idle' | 'submitting' | 'saved' | 'error'>('idle');
+  const [error, setError] = useState<string | null>(null);
+
+  const reasonEntries = Object.entries(data.reason_counts).slice(0, 6);
+
+  const handleSubmit = async (event: FormEvent) => {
+    event.preventDefault();
+    const payload: DogfoodLogInput = {
+      primary_assistant: primaryAssistant.trim() || 'Goblin',
+      external_ai: externalAi.trim(),
+      reason: reason.trim(),
+      context: context.trim() || undefined,
+    };
+    if (!payload.external_ai || !payload.reason) {
+      setError('External AI and reason are required.');
+      setStatus('error');
+      return;
+    }
+
+    setStatus('submitting');
+    setError(null);
+    try {
+      await onSubmit(payload);
+      setStatus('saved');
+      setExternalAi('');
+      setReason('');
+      setContext('');
+    } catch (err) {
+      setStatus('error');
+      setError(err instanceof Error ? err.message : 'Failed to save note.');
+    }
+  };
+
+  return (
+    <Section title="Dogfood Log">
+      <div className="grid gap-4 lg:grid-cols-[1.2fr_0.8fr]">
+        <form className="flex flex-col gap-3 rounded-lg border border-border bg-card p-4" onSubmit={handleSubmit}>
+          <div className="grid gap-3 sm:grid-cols-2">
+            <label className="flex flex-col gap-1 text-xs font-medium uppercase tracking-wide text-muted-foreground">
+              Primary assistant
+              <input
+                value={primaryAssistant}
+                onChange={(event) => setPrimaryAssistant(event.target.value)}
+                className="rounded border border-border bg-background px-3 py-2 text-sm text-foreground outline-none focus:border-primary"
+                placeholder="Goblin"
+              />
+            </label>
+            <label className="flex flex-col gap-1 text-xs font-medium uppercase tracking-wide text-muted-foreground">
+              External AI
+              <input
+                value={externalAi}
+                onChange={(event) => setExternalAi(event.target.value)}
+                className="rounded border border-border bg-background px-3 py-2 text-sm text-foreground outline-none focus:border-primary"
+                placeholder="Claude"
+              />
+            </label>
+          </div>
+          <label className="flex flex-col gap-1 text-xs font-medium uppercase tracking-wide text-muted-foreground">
+            Why I switched
+            <input
+              value={reason}
+              onChange={(event) => setReason(event.target.value)}
+              className="rounded border border-border bg-background px-3 py-2 text-sm text-foreground outline-none focus:border-primary"
+              placeholder="Needed a quicker answer for a deadline"
+            />
+          </label>
+          <label className="flex flex-col gap-1 text-xs font-medium uppercase tracking-wide text-muted-foreground">
+            Context
+            <textarea
+              value={context}
+              onChange={(event) => setContext(event.target.value)}
+              className="min-h-24 rounded border border-border bg-background px-3 py-2 text-sm text-foreground outline-none focus:border-primary"
+              placeholder="Optional context about the fallback"
+            />
+          </label>
+          <div className="flex items-center justify-between gap-3">
+            <span className="text-xs text-muted-foreground">
+              {status === 'saved'
+                ? 'Saved'
+                : status === 'submitting'
+                  ? 'Saving...'
+                  : 'Record every time you reach for another AI.'}
+            </span>
+            <button
+              type="submit"
+              className="rounded bg-primary px-3 py-2 text-xs font-semibold text-primary-foreground transition-colors hover:bg-primary/90 disabled:cursor-not-allowed disabled:opacity-60"
+              disabled={status === 'submitting'}
+            >
+              Save Note
+            </button>
+          </div>
+          {error && <p className="text-xs text-destructive">{error}</p>}
+        </form>
+
+        <div className="flex flex-col gap-4 rounded-lg border border-border bg-card p-4">
+          <div className="grid grid-cols-2 gap-3">
+            <Stat label="Entries" value={data.total_entries} />
+            <Stat label="Recent" value={data.recent_entries.length} sub="loaded in KPI snapshot" />
+          </div>
+          <div>
+            <p className="mb-2 text-xs font-medium uppercase tracking-wide text-muted-foreground">
+              Top switch reasons
+            </p>
+            <div className="flex flex-wrap gap-2">
+              {reasonEntries.length ? (
+                reasonEntries.map(([label, count]) => (
+                  <span
+                    key={label}
+                    className="rounded-full border border-border bg-background px-2.5 py-1 text-xs text-foreground"
+                  >
+                    {label}: {count}
+                  </span>
+                ))
+              ) : (
+                <span className="text-xs text-muted-foreground">No dogfood notes yet.</span>
+              )}
+            </div>
+          </div>
+          <div className="space-y-2">
+            <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
+              Recent Entries
+            </p>
+            <div className="space-y-2">
+              {data.recent_entries.length ? (
+                data.recent_entries.map((entry) => (
+                  <div key={entry.entry_id} className="rounded border border-border/80 bg-background p-3 text-xs">
+                    <div className="flex flex-wrap items-center gap-2">
+                      <span className="font-semibold text-foreground">{entry.primary_assistant}</span>
+                      <span className="text-muted-foreground">→</span>
+                      <span className="font-mono text-foreground">{entry.external_ai}</span>
+                      <span className="rounded-full bg-muted px-2 py-0.5 text-[10px] uppercase tracking-wide text-muted-foreground">
+                        {entry.source}
+                      </span>
+                    </div>
+                    <p className="mt-1 text-foreground">{entry.reason}</p>
+                    {entry.context && <p className="mt-1 text-muted-foreground">{entry.context}</p>}
+                    <p className="mt-1 text-muted-foreground">
+                      {new Date(entry.recorded_at).toLocaleString()}
+                    </p>
+                  </div>
+                ))
+              ) : (
+                <p className="text-xs text-muted-foreground">Nothing logged yet.</p>
+              )}
+            </div>
+          </div>
+        </div>
+      </div>
     </Section>
   );
 }
@@ -215,6 +509,7 @@ function AiSection({ data }: { data: KpiSnapshot['ai'] }) {
   const p = data.providers;
   const intel = data.intelligence_benchmark as Record<string, unknown> | null;
   const mem = data.memory_benchmark as Record<string, unknown> | null;
+  const modelEvals = data.provider_model_evals;
 
   return (
     <Section title="AI">
@@ -241,12 +536,65 @@ function AiSection({ data }: { data: KpiSnapshot['ai'] }) {
           sub={mem ? `recall ${mem.avg_recall}` : 'run memory benchmark'}
         />
         <Stat
-          label="Mem Recall"
+          label="Memory Recall"
           value={mem?.avg_recall != null ? `${(Number(mem.avg_recall) * 100).toFixed(0)}%` : null}
         />
-        <Stat label="Tool Accuracy" value={data.tool_selection_accuracy != null ? `${(data.tool_selection_accuracy * 100).toFixed(0)}%` : null} sub="not yet instrumented" />
+        <Stat
+          label="Tool Accuracy"
+          value={data.tool_selection_accuracy != null ? `${data.tool_selection_accuracy.toFixed(0)}%` : null}
+          sub="from tool traces"
+        />
       </Grid>
+      {modelEvals.length > 0 && <ProviderEvalTable rows={modelEvals} />}
     </Section>
+  );
+}
+
+function ProviderEvalTable({ rows }: { rows: KpiModelEval[] }) {
+  return (
+    <div className="rounded-lg border border-border bg-card p-4">
+      <p className="mb-3 text-xs font-medium uppercase tracking-wide text-muted-foreground">
+        Eval by Provider / Model
+      </p>
+      <table className="w-full text-xs">
+        <thead>
+          <tr className="border-b border-border text-left text-muted-foreground">
+            <th className="pb-1 pr-3 font-medium">Provider</th>
+            <th className="pb-1 pr-3 font-medium">Model</th>
+            <th className="pb-1 pr-3 text-right font-medium">Samples</th>
+            <th className="pb-1 pr-3 text-right font-medium">Quality</th>
+            <th className="pb-1 pr-3 text-right font-medium">Success</th>
+            <th className="pb-1 pr-3 text-right font-medium">Fallback</th>
+            <th className="pb-1 pr-3 text-right font-medium">TTFT</th>
+            <th className="pb-1 text-right font-medium">Cost</th>
+          </tr>
+        </thead>
+        <tbody>
+          {rows.map((row) => (
+            <tr key={`${row.provider}/${row.model}`} className="border-b border-border/50 last:border-0">
+              <td className="py-1 pr-3 font-mono">{row.provider}</td>
+              <td className="py-1 pr-3 font-mono text-muted-foreground">{row.model}</td>
+              <td className="py-1 pr-3 text-right tabular-nums">{row.sample_count}</td>
+              <td className="py-1 pr-3 text-right tabular-nums">
+                {row.avg_quality_score != null ? row.avg_quality_score.toFixed(3) : '—'}
+              </td>
+              <td className="py-1 pr-3 text-right tabular-nums">
+                {row.success_rate != null ? `${(row.success_rate * 100).toFixed(0)}%` : '—'}
+              </td>
+              <td className="py-1 pr-3 text-right tabular-nums">
+                {row.fallback_rate != null ? `${(row.fallback_rate * 100).toFixed(0)}%` : '—'}
+              </td>
+              <td className="py-1 pr-3 text-right tabular-nums">
+                {row.avg_ttft_ms != null ? `${row.avg_ttft_ms.toFixed(0)} ms` : '—'}
+              </td>
+              <td className="py-1 text-right tabular-nums">
+                {row.avg_cost_usd != null ? `$${row.avg_cost_usd.toFixed(5)}` : '—'}
+              </td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
   );
 }
 
@@ -256,6 +604,7 @@ function AiSection({ data }: { data: KpiSnapshot['ai'] }) {
 
 export default function KpiDashboard() {
   const [days, setDays] = useState(7);
+  const queryClient = useQueryClient();
 
   const { data, isLoading, isError, error, dataUpdatedAt } = useQuery({
     queryKey: queryKeys.kpi(days),
@@ -265,6 +614,11 @@ export default function KpiDashboard() {
   });
 
   const updatedAt = dataUpdatedAt ? new Date(dataUpdatedAt).toLocaleTimeString() : null;
+
+  const handleDogfoodSubmit = async (payload: DogfoodLogInput) => {
+    await apiClient.submitDogfoodLog(payload);
+    await queryClient.invalidateQueries({ queryKey: queryKeys.kpi(days) });
+  };
 
   return (
     <div className="flex flex-col gap-8 p-6">
@@ -314,10 +668,11 @@ export default function KpiDashboard() {
           <EconomicsSection data={data.economics} />
           <ProductSection data={data.product} />
           <AiSection data={data.ai} />
+          <DogfoodSection data={data.system.dogfood} onSubmit={handleDogfoodSubmit} />
 
           <p className="text-xs text-muted-foreground">
             Generated {new Date(data.generated_at).toLocaleString()} · {data.window_days}d window
-            · Cells showing "—" are not yet instrumented; see{' '}
+            · Cells showing "—" mean no data was available in the selected window; see{' '}
             <code className="font-mono">apps/api/benchmarks/</code> for AI scores.
           </p>
         </>

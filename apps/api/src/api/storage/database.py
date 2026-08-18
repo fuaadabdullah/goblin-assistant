@@ -112,6 +112,15 @@ async def get_db_context() -> AsyncGenerator[AsyncSession, None]:
         await session.close()
 
 
+async def get_readonly_db() -> AsyncGenerator[AsyncSession, None]:
+    """Async generator for FastAPI Depends() injection (read-only — no commit)."""
+    session = AsyncSessionLocal()
+    try:
+        yield session
+    finally:
+        await session.close()
+
+
 @asynccontextmanager
 async def get_readonly_db_context() -> AsyncGenerator[AsyncSession, None]:
     """Context manager for read-only database access.

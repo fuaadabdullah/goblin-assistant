@@ -23,6 +23,8 @@ interface ChatComposerProps {
   onInputChange: (value: string) => void;
   /** Clear the current chat. */
   onClear: () => void;
+  /** Open the dogfood logger. */
+  onDogfoodLog?: () => void;
   /** Send the message. */
   onSend: () => void;
   /** Keyboard handler for Enter/Shift+Enter. */
@@ -59,6 +61,7 @@ const ChatComposer = ({
     authError,
   onInputChange,
   onClear,
+  onDogfoodLog,
   onSend,
   onKeyDown,
   onPromptClick,
@@ -205,6 +208,17 @@ const ChatComposer = ({
             >
               Clear
             </button>
+            {onDogfoodLog && (
+              <button
+                onClick={onDogfoodLog}
+                className="px-3 py-2 rounded-lg text-sm font-medium border border-dashed border-border text-text hover:bg-surface-active"
+                type="button"
+                aria-label="Log another AI"
+                title="Record why you reached for another assistant"
+              >
+                Log AI
+              </button>
+            )}
             <button
               onClick={onSend}
               disabled={isSending || !input.trim() || isOverLimit}
