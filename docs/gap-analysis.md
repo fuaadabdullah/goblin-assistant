@@ -101,6 +101,7 @@ misleading subject:
 | Commit | Subject | Issue |
 |---|---|---|
 | `18ef9d25` | `chore(infra): remove orphaned k8s/ manifests` | Contents are architecture/quality/debt reporting files, not k8s removals. |
+| `c5e09df2` | `chore(repo): delete legacy routers, dead services, and abandoned stubs` | Broad deletion commit spanning API routers/services/tests, web Pages Router/test artifacts, shared legacy files, and `apps/web/package.json`; needs dedicated review and validation evidence. |
 
 This is a release-hygiene problem because reviewers will reason from the commit
 subject before reading the diff. It should be fixed only with an explicit
@@ -112,6 +113,7 @@ Additional caveats:
 | Caveat | Consequence | Proof or Decision Needed |
 |---|---|---|
 | A misleading commit subject makes later archaeology harder | Future maintainers may search for infra deletion and miss that the commit actually changed architecture/quality artifacts. | Explicitly accept the mismatch or perform a coordinated history rewrite. |
+| A broad deletion commit landed mid-cleanup | Reviewers need to distinguish intentional dead-code removal from accidental staging cleanup. | Audit `c5e09df2` with import/type/test/route-manifest proof before treating it as safe. |
 | The branch mixes already-committed slices with a very dirty working tree | Reviewers cannot tell whether a committed decision depends on still-uncommitted files. | Final commit map showing which remaining dirty clusters are intentionally deferred. |
 | Some generated artifacts were committed before later source churn settled | A clean commit can become stale relative to the eventual branch tip. | Re-run generated-contract checks after the final API/web slices, not just after the earlier commit. |
 
