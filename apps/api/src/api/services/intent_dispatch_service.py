@@ -15,7 +15,7 @@ def dispatch_intent_archetype(intent: Any) -> Any:
     The underlying dispatcher may raise; callers decide whether to degrade
     gracefully or fail closed.
     """
-    from api.agents.dispatcher import intent_dispatcher  # noqa: PLC0415
+    from api.agents.dispatcher import intent_dispatcher
 
     return intent_dispatcher.dispatch(intent)
 

@@ -75,7 +75,7 @@ class IntentDispatcher:
         """Dispatch a classified intent to an archetype. Never raises."""
         try:
             return self._dispatch(intent)
-        except Exception as exc:  # noqa: BLE001 — dispatch must never propagate; fallback is load-bearing
+        except Exception as exc:  # dispatch must never propagate; fallback is load-bearing
             logger.warning(
                 "archetype_dispatch_failed",
                 intent=intent.label.value,
