@@ -20,6 +20,8 @@ import structlog
 from fastapi import APIRouter, Depends, HTTPException
 from fastapi.responses import StreamingResponse
 
+from api.services.goblin_identity import resolve_goblin_id
+
 from ...auth.router import User as AuthenticatedUser
 from ...auth.router import get_current_user
 from ...config.archetypes import (
@@ -302,6 +304,11 @@ async def send_message(
             request.department or pipeline_result.execution.selected_department or "general"
         )
         department_reason = pipeline_result.execution.department_selection_reason or ""
+        assistant_goblin_id = resolve_goblin_id(
+            metadata=request.metadata,
+            department=resolved_department,
+            fallback="general",
+        )
 
         explicit_mode_requested = bool(request.legacy_mode or request.mode != Mode.CHAT)
         _archetype_tools: list[str] | None = None
@@ -351,6 +358,7 @@ async def send_message(
                     current_user=current_user,
                     provider=request.provider,
                     model=request.model,
+                    goblin_id=assistant_goblin_id,
                 ),
                 media_type="text/event-stream",
                 headers={"Cache-Control": "no-cache", "Connection": "keep-alive"},
@@ -406,6 +414,7 @@ async def send_message(
             conversation_id=conversation_id,
             current_user=current_user,
             response_content=response_content,
+            goblin_id=assistant_goblin_id,
             used_provider=used_provider,
             used_model=used_model,
             context_metadata=context_metadata,
@@ -418,6 +427,7 @@ async def send_message(
             conversation_id=conversation_id,
             user_message_id=message_id,
             response_message_id=response_message_id,
+            goblin_id=assistant_goblin_id,
             sanitized_message=sanitized_message,
             response_content=response_content,
             used_provider=used_provider,

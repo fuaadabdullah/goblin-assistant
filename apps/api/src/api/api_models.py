@@ -11,6 +11,8 @@ from typing import Any, Dict, List, Literal, Optional
 
 from pydantic import BaseModel, Field
 
+from .core.contracts import SuccessEnvelope
+
 
 class SimpleChatMessage(BaseModel):
     role: str
@@ -131,3 +133,16 @@ class GoblinStatsResponse(BaseModel):
     latency: GoblinStatsLatency
     success_rate: Optional[float] = None
     total_cost: Optional[float] = None
+
+
+# Named success envelopes — keep schema names stable in OpenAPI docs.
+class GoblinListSuccessResponse(SuccessEnvelope[GoblinListResponse]):
+    pass
+
+
+class GoblinHistorySuccessResponse(SuccessEnvelope[GoblinHistoryResponse]):
+    pass
+
+
+class GoblinStatsSuccessResponse(SuccessEnvelope[GoblinStatsResponse]):
+    pass

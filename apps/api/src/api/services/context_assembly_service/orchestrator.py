@@ -125,6 +125,7 @@ class ContextAssemblyService:
         )
         layers: List[ContextLayer] = []
         remaining_tokens = budget.total_tokens
+        seen_fact_ids: set = set()
 
         correlation_id = f"ctx_assembly_{datetime.utcnow().strftime('%Y%m%d_%H%M%S')}"
 
@@ -185,6 +186,7 @@ class ContextAssemblyService:
                     remaining_tokens -= long_term_layer.tokens
                     assembly_log["layers"].append("long_term")
                     assembly_log["token_usage"]["long_term"] = long_term_layer.tokens
+                    seen_fact_ids.update(long_term_layer.metadata.get("fact_ids") or [])
                 else:
                     self._record_layer_skip(
                         user_id,
@@ -220,12 +222,14 @@ class ContextAssemblyService:
                     remaining_tokens,
                     correlation_id,
                     budget,
+                    exclude_fact_ids=seen_fact_ids or None,
                 )
                 if semantic_layer:
                     layers.append(semantic_layer)
                     remaining_tokens -= semantic_layer.tokens
                     assembly_log["layers"].append("semantic_retrieval")
                     assembly_log["token_usage"]["semantic_retrieval"] = semantic_layer.tokens
+                    seen_fact_ids.update(semantic_layer.metadata.get("fact_ids") or [])
                     if semantic_layer.metadata and semantic_layer.metadata.get("hard_stop_applied"):
                         truncation_events.append("semantic_retrieval_truncated")
                         self._push_failure(user_id, "truncation_triggered", "semantic_retrieval")

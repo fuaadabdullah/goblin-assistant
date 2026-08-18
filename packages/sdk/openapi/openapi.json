@@ -2039,6 +2039,23 @@
         "title": "GoblinHistoryResponse",
         "type": "object"
       },
+      "GoblinHistorySuccessResponse": {
+        "properties": {
+          "data": {
+            "$ref": "#/components/schemas/GoblinHistoryResponse"
+          },
+          "success": {
+            "default": true,
+            "title": "Success",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "data"
+        ],
+        "title": "GoblinHistorySuccessResponse",
+        "type": "object"
+      },
       "GoblinListResponse": {
         "properties": {
           "items": {
@@ -2069,6 +2086,23 @@
           "limit"
         ],
         "title": "GoblinListResponse",
+        "type": "object"
+      },
+      "GoblinListSuccessResponse": {
+        "properties": {
+          "data": {
+            "$ref": "#/components/schemas/GoblinListResponse"
+          },
+          "success": {
+            "default": true,
+            "title": "Success",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "data"
+        ],
+        "title": "GoblinListSuccessResponse",
         "type": "object"
       },
       "GoblinStatsCounters": {
@@ -2179,6 +2213,23 @@
           "latency"
         ],
         "title": "GoblinStatsResponse",
+        "type": "object"
+      },
+      "GoblinStatsSuccessResponse": {
+        "properties": {
+          "data": {
+            "$ref": "#/components/schemas/GoblinStatsResponse"
+          },
+          "success": {
+            "default": true,
+            "title": "Success",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "data"
+        ],
+        "title": "GoblinStatsSuccessResponse",
         "type": "object"
       },
       "GoblinStatsWindow": {
@@ -6458,7 +6509,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/GoblinListResponse"
+                  "$ref": "#/components/schemas/GoblinListSuccessResponse"
                 }
               }
             },
@@ -6523,7 +6574,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/GoblinHistoryResponse"
+                  "$ref": "#/components/schemas/GoblinHistorySuccessResponse"
                 }
               }
             },
@@ -7113,7 +7164,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/GoblinStatsResponse"
+                  "$ref": "#/components/schemas/GoblinStatsSuccessResponse"
                 }
               }
             },

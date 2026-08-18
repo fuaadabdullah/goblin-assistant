@@ -5,7 +5,7 @@ Runs vector search via the retrieval service, traces it, and trims to
 the remaining token budget (hard stop: vector results get cut first).
 """
 
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List, Optional, Set
 
 import structlog
 
@@ -44,6 +44,7 @@ async def assemble_semantic_retrieval(
     remaining_tokens: int,
     correlation_id: str,
     budget: ContextBudget,
+    exclude_fact_ids: Optional[Set[str]] = None,
 ) -> Optional[ContextLayer]:
     """Assemble Semantic Retrieval layer (Vector Results)."""
     if remaining_tokens < 100:
@@ -73,6 +74,17 @@ async def assemble_semantic_retrieval(
             )
 
             context_results = memory_reranker.rerank(context_results, query=query)
+
+        if context_results and exclude_fact_ids:
+            before = len(context_results)
+            context_results = [r for r in context_results if r.get("id") not in exclude_fact_ids]
+            skipped = before - len(context_results)
+            if skipped:
+                logger.debug(
+                    "semantic_retrieval_dedup",
+                    skipped_count=skipped,
+                    remaining_count=len(context_results),
+                )
 
         if not context_results:
             await retrieval_tracer.end_trace(
@@ -104,6 +116,7 @@ async def assemble_semantic_retrieval(
             hard_stop_applied=hard_stop_applied,
         )
 
+        fact_ids = [r["id"] for r in context_results if r.get("id")]
         return ContextLayer(
             name="semantic_retrieval",
             content=semantic_content,
@@ -115,6 +128,7 @@ async def assemble_semantic_retrieval(
                 "description": "Vector search results",
                 "hard_stop_applied": hard_stop_applied,
                 "trace_id": trace_id,
+                "fact_ids": fact_ids,
             },
         )
 

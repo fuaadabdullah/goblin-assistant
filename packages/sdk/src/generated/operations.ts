@@ -562,7 +562,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["GoblinListResponse"];
+                    "application/json": components["schemas"]["GoblinListSuccessResponse"];
                 };
             };
         };
@@ -587,7 +587,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["GoblinHistoryResponse"];
+                    "application/json": components["schemas"]["GoblinHistorySuccessResponse"];
                 };
             };
             /** @description Validation Error */
@@ -999,7 +999,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["GoblinStatsResponse"];
+                    "application/json": components["schemas"]["GoblinStatsSuccessResponse"];
                 };
             };
             /** @description Validation Error */

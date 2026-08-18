@@ -9,6 +9,7 @@ from fastapi import FastAPI
 from fastapi.testclient import TestClient
 
 from api import api_router
+from api.api_router_pkg import collect_chat_history_entries
 
 
 @pytest.fixture(autouse=True)
@@ -400,6 +401,8 @@ def test_start_poll_and_cancel_stream_task_flow():
         assert start.status_code == 200
         stream_id = start.json()["stream_id"]
         mock_task.assert_called_once()
+        assert store_data[stream_id]["metadata"]["goblin_id"] == "docs-writer"
+        assert store_data[stream_id]["metadata"]["goblin"] == "docs-writer"
 
         poll = client.get(f"/api/v1/api/route_task_stream_poll/{stream_id}")
         assert poll.status_code == 200
@@ -438,6 +441,41 @@ def test_start_stream_task_failure_and_cancel_404():
     assert missing.status_code == 404
 
 
+@pytest.mark.asyncio
+async def test_collect_chat_history_entries_emits_canonical_goblin_id(monkeypatch):
+    from datetime import datetime, timezone
+    from types import SimpleNamespace
+
+    assistant = SimpleNamespace(
+        role="assistant",
+        content="legacy response",
+        metadata={"provider": "openai", "status": "completed"},
+        message_id="msg-1",
+        timestamp=datetime(2026, 8, 18, 12, 0, tzinfo=timezone.utc),
+    )
+    user = SimpleNamespace(
+        role="user",
+        content="legacy prompt",
+        metadata={},
+        message_id="msg-0",
+        timestamp=datetime(2026, 8, 18, 11, 59, tzinfo=timezone.utc),
+    )
+    conversation = SimpleNamespace(
+        conversation_id="conv-1",
+        user_id="user-1",
+        messages=[user, assistant],
+    )
+    fake_store = SimpleNamespace(list_conversations=AsyncMock(return_value=[conversation]))
+    monkeypatch.setattr("api.storage.conversation_store", fake_store)
+
+    entries = await collect_chat_history_entries("finance")
+
+    assert len(entries) == 1
+    assert entries[0]["goblin_id"] == "finance"
+    assert entries[0]["goblin"] == "finance"
+    assert entries[0]["task"] == "legacy prompt"
+
+
 def test_poll_stream_task_404_for_missing_stream():
     client = _client()
 
@@ -468,10 +506,12 @@ def test_get_goblins_and_history_delegate_to_query_service():
     history = client.get("/api/v1/api/history/docs-writer?limit=25")
 
     assert response.status_code == 200
-    assert response.json()["items"] == []
+    assert response.json()["success"] is True
+    assert response.json()["data"]["items"] == []
     service.list_goblins.assert_awaited_once_with()
 
     assert history.status_code == 200
+    assert history.json()["success"] is True
     service.get_history.assert_awaited_once_with("docs-writer", limit=25, cursor=None)
 
 
@@ -504,7 +544,8 @@ def test_get_goblin_stats_delegates_to_query_service():
     response = client.get("/api/v1/api/stats/docs-writer")
 
     assert response.status_code == 200
-    assert response.json()["goblin_id"] == "docs-writer"
+    assert response.json()["success"] is True
+    assert response.json()["data"]["goblin_id"] == "docs-writer"
     service.get_stats.assert_awaited_once_with("docs-writer", window_hours=24)
 
 

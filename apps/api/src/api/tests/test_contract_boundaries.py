@@ -28,6 +28,18 @@ def _goblin_client() -> TestClient:
         async def list_history(self, *, user_id, goblin_id, scan_limit):
             return []
 
+        async def get_stats(self, *, user_id, goblin_id, started_at, ended_at):
+            del user_id, goblin_id, started_at, ended_at
+            return {
+                "total_tasks": 0,
+                "completed_tasks": 0,
+                "failed_tasks": 0,
+                "success_rate": None,
+                "average_duration_ms": None,
+                "p95_duration_ms": None,
+                "total_cost": None,
+            }
+
     service = build_goblin_query_service(user_id="u1", history_repository=_EmptyRepo())
     app.dependency_overrides[api_router.get_goblin_query_service] = lambda: service
     return TestClient(app)
@@ -91,12 +103,14 @@ def test_contract_goblins_list_shape():
 
     assert response.status_code == 200
     payload = response.json()
-    assert {"items", "total", "limit", "order"}.issubset(payload.keys())
-    assert isinstance(payload["items"], list)
-    assert isinstance(payload["total"], int)
-    assert payload["limit"] == 100
+    assert payload["success"] is True
+    data = payload["data"]
+    assert {"items", "total", "limit", "order"}.issubset(data.keys())
+    assert isinstance(data["items"], list)
+    assert isinstance(data["total"], int)
+    assert data["limit"] == 100
     assert "501" not in str(response.status_code)
-    for item in payload["items"]:
+    for item in data["items"]:
         assert {"id", "name", "status", "active"}.issubset(item.keys())
         assert "provider" not in item
 
@@ -107,9 +121,11 @@ def test_contract_goblin_history_shape():
 
     assert response.status_code == 200
     payload = response.json()
-    assert {"items", "total", "limit", "order"}.issubset(payload.keys())
-    assert isinstance(payload["items"], list)
-    assert payload["order"] == "newest_first"
+    assert payload["success"] is True
+    data = payload["data"]
+    assert {"items", "total", "limit", "order"}.issubset(data.keys())
+    assert isinstance(data["items"], list)
+    assert data["order"] == "newest_first"
 
 
 def test_contract_goblin_stats_shape():
@@ -118,7 +134,9 @@ def test_contract_goblin_stats_shape():
 
     assert response.status_code == 200
     payload = response.json()
-    assert {"goblin_id", "window", "counters"}.issubset(payload.keys())
-    assert payload["goblin_id"] == "coding"
-    assert {"hours", "started_at", "ended_at"}.issubset(payload["window"].keys())
-    assert {"total_tasks", "completed_tasks", "failed_tasks"}.issubset(payload["counters"].keys())
+    assert payload["success"] is True
+    data = payload["data"]
+    assert {"goblin_id", "window", "counters"}.issubset(data.keys())
+    assert data["goblin_id"] == "coding"
+    assert {"hours", "started_at", "ended_at"}.issubset(data["window"].keys())
+    assert {"total_tasks", "completed_tasks", "failed_tasks"}.issubset(data["counters"].keys())

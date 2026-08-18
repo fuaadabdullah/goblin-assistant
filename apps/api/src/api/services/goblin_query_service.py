@@ -20,7 +20,11 @@ from api.api_models import (
     GoblinStatus,
 )
 from api.core.errors import DomainError
-from api.departments.products import ProductExperience, get_product_info, list_products
+from api.departments.products import ProductExperience, list_products
+from api.services.goblin_identity import (
+    is_known_goblin_identifier,
+    message_matches_goblin,
+)
 
 MAX_GOBLINS = 100
 MAX_HISTORY_SCAN = 500
@@ -37,13 +41,25 @@ class GoblinHistoryRepository(Protocol):
 
 
 class GoblinStatsRepository(Protocol):
-    async def list_history(
+    async def get_stats(
         self,
         *,
         user_id: str,
         goblin_id: str,
-        scan_limit: int,
-    ) -> list[GoblinHistoryEntry]: ...
+        started_at: datetime,
+        ended_at: datetime,
+    ) -> dict[str, Optional[float] | int | None]: ...
+
+
+@dataclass(frozen=True)
+class GoblinStatsSnapshot:
+    total_tasks: int
+    completed_tasks: int
+    failed_tasks: int
+    success_rate: Optional[float]
+    average_duration_ms: Optional[float]
+    p95_duration_ms: Optional[float]
+    total_cost: Optional[float]
 
 
 class GoblinCatalogRepository(Protocol):
@@ -91,6 +107,21 @@ def _product_to_status(product: ProductExperience) -> GoblinStatus:
     )
 
 
+def _stats_snapshot_from_entries(entries: list[GoblinHistoryEntry]) -> GoblinStatsSnapshot:
+    total = len(entries)
+    completed = sum(1 for entry in entries if entry.status != "failed")
+    failed = sum(1 for entry in entries if entry.status == "failed")
+    return GoblinStatsSnapshot(
+        total_tasks=total,
+        completed_tasks=completed,
+        failed_tasks=failed,
+        success_rate=(completed / total) if total else None,
+        average_duration_ms=None,
+        p95_duration_ms=None,
+        total_cost=None,
+    )
+
+
 class ConversationGoblinHistoryRepository:
     async def list_history(
         self,
@@ -117,8 +148,7 @@ class ConversationGoblinHistoryRepository:
                     continue
 
                 metadata = message.metadata if isinstance(message.metadata, dict) else {}
-                message_goblin = metadata.get("goblin") or metadata.get("provider")
-                if message_goblin != goblin_id:
+                if not message_matches_goblin(metadata, goblin_id):
                     continue
 
                 status = metadata.get("status")
@@ -153,6 +183,25 @@ class ConversationGoblinHistoryRepository:
                     ) from exc
 
         return sorted(entries, key=_timestamp_sort_key, reverse=True)
+
+
+class ConversationGoblinStatsRepository:
+    async def get_stats(
+        self,
+        *,
+        user_id: str,
+        goblin_id: str,
+        started_at: datetime,
+        ended_at: datetime,
+    ) -> dict[str, Optional[float] | int | None]:
+        from api.storage import conversation_store
+
+        return await conversation_store.get_goblin_stats(
+            user_id=user_id,
+            goblin_id=goblin_id,
+            started_at=started_at,
+            ended_at=ended_at,
+        )
 
 
 class ProductCatalogRepository:
@@ -213,11 +262,47 @@ class GoblinStatsService:
         started_at = ended_at - timedelta(hours=window_hours)
 
         try:
-            entries = await self.repository.list_history(
-                user_id=self.user_id,
-                goblin_id=goblin_id,
-                scan_limit=MAX_HISTORY_SCAN,
-            )
+            stats_getter = getattr(self.repository, "get_stats", None)
+            if callable(stats_getter):
+                snapshot_raw = await stats_getter(
+                    user_id=self.user_id,
+                    goblin_id=goblin_id,
+                    started_at=started_at,
+                    ended_at=ended_at,
+                )
+                snapshot = GoblinStatsSnapshot(
+                    total_tasks=int(snapshot_raw.get("total_tasks") or 0),
+                    completed_tasks=int(snapshot_raw.get("completed_tasks") or 0),
+                    failed_tasks=int(snapshot_raw.get("failed_tasks") or 0),
+                    success_rate=(
+                        float(snapshot_raw["success_rate"])
+                        if snapshot_raw.get("success_rate") is not None
+                        else None
+                    ),
+                    average_duration_ms=(
+                        float(snapshot_raw["average_duration_ms"])
+                        if snapshot_raw.get("average_duration_ms") is not None
+                        else None
+                    ),
+                    p95_duration_ms=(
+                        float(snapshot_raw["p95_duration_ms"])
+                        if snapshot_raw.get("p95_duration_ms") is not None
+                        else None
+                    ),
+                    total_cost=(
+                        float(snapshot_raw["total_cost"])
+                        if snapshot_raw.get("total_cost") is not None
+                        else None
+                    ),
+                )
+            else:
+                entries = await self.repository.list_history(
+                    user_id=self.user_id,
+                    goblin_id=goblin_id,
+                    scan_limit=MAX_HISTORY_SCAN,
+                )
+                windowed = [entry for entry in entries if _utc(entry.timestamp) >= started_at]
+                snapshot = _stats_snapshot_from_entries(windowed)
         except DomainError:
             raise
         except Exception as exc:
@@ -227,13 +312,6 @@ class GoblinStatsService:
                 status_code=500,
             ) from exc
 
-        entries = sorted(entries, key=_timestamp_sort_key, reverse=True)
-        windowed = [entry for entry in entries if _utc(entry.timestamp) >= started_at]
-        completed = sum(1 for entry in windowed if entry.status == "completed")
-        failed = sum(1 for entry in windowed if entry.status == "failed")
-        total = len(windowed)
-        success_rate = completed / total if total else None
-
         return GoblinStatsResponse(
             goblin_id=goblin_id,
             window=GoblinStatsWindow(
@@ -242,13 +320,16 @@ class GoblinStatsService:
                 ended_at=ended_at,
             ),
             counters=GoblinStatsCounters(
-                total_tasks=total,
-                completed_tasks=completed,
-                failed_tasks=failed,
+                total_tasks=snapshot.total_tasks,
+                completed_tasks=snapshot.completed_tasks,
+                failed_tasks=snapshot.failed_tasks,
             ),
-            latency=GoblinStatsLatency(),
-            success_rate=success_rate,
-            total_cost=None,
+            latency=GoblinStatsLatency(
+                average_duration_ms=snapshot.average_duration_ms,
+                p95_duration_ms=snapshot.p95_duration_ms,
+            ),
+            success_rate=snapshot.success_rate,
+            total_cost=snapshot.total_cost,
         )
 
 
@@ -277,7 +358,7 @@ class GoblinQueryService:
         return await self.stats_service.get_stats(goblin_id, window_hours=window_hours)
 
     def _require_known_goblin(self, goblin_id: str) -> None:
-        if get_product_info(goblin_id) is None:
+        if not is_known_goblin_identifier(goblin_id):
             raise DomainError(
                 code="GOBLIN_NOT_FOUND",
                 message="Goblin not found",
@@ -294,7 +375,7 @@ def build_goblin_query_service(
     catalog_repository: Optional[GoblinCatalogRepository] = None,
 ) -> GoblinQueryService:
     history_repo = history_repository or ConversationGoblinHistoryRepository()
-    stats_repo = stats_repository or history_repo
+    stats_repo = stats_repository or ConversationGoblinStatsRepository()
     catalog_repo = catalog_repository or ProductCatalogRepository()
     return GoblinQueryService(
         catalog_repository=catalog_repo,
@@ -305,11 +386,13 @@ def build_goblin_query_service(
 
 __all__ = [
     "ConversationGoblinHistoryRepository",
+    "ConversationGoblinStatsRepository",
     "GoblinCatalogRepository",
     "GoblinHistoryRepository",
     "GoblinHistoryService",
     "GoblinQueryService",
     "GoblinStatsRepository",
+    "GoblinStatsSnapshot",
     "GoblinStatsService",
     "ProductCatalogRepository",
     "build_goblin_query_service",

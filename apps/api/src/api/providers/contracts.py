@@ -18,6 +18,7 @@ class ProviderCapabilityLimits(TypedDict, total=False):
     max_input_tokens: int
     max_output_tokens: int
     max_batch_size: int
+    max_context_tokens: int
 
 
 class ProviderCapabilityMatrix(TypedDict):

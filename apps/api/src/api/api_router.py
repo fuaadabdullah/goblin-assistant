@@ -10,9 +10,9 @@ from fastapi import APIRouter, Depends, HTTPException, Query
 from .api_models import (
     GenerateRequest,
     GenerateResponse,
-    GoblinHistoryResponse,
-    GoblinListResponse,
-    GoblinStatsResponse,
+    GoblinHistorySuccessResponse,
+    GoblinListSuccessResponse,
+    GoblinStatsSuccessResponse,
     RouteTaskRequest,
     SimpleChatRequest,
     SimpleChatResponse,
@@ -39,6 +39,7 @@ from .providers.dispatcher_pkg.execution import mock_fallback_enabled
 from .routes.orchestration_router import router as orchestration_router
 from .routing.feedback_router import router as _feedback_router
 from .routing.router import route_task as route_task_runtime
+from .services.goblin_identity import resolve_goblin_id
 from .services.goblin_query_service import GoblinQueryService, build_goblin_query_service
 from .services.stream_state_store import get_stream_state_store
 from .services.task_store_service import (
@@ -277,10 +278,12 @@ async def start_stream_task(request: StreamTaskRequest):
     try:
         stream_id = str(uuid.uuid4())
         store = get_stream_state_store()
+        goblin_id = resolve_goblin_id(metadata={"goblin_id": request.goblin})
         await store.create_stream(
             stream_id,
             metadata={
-                "goblin": request.goblin,
+                "goblin_id": goblin_id,
+                "goblin": goblin_id,
                 "task": request.task,
                 "provider": request.provider or "auto",
                 "model": request.model or "",
@@ -311,27 +314,31 @@ async def cancel_stream_task(stream_id: str):
     return {"stream_id": stream_id, "status": "cancelled"}
 
 
-@router.get("/goblins", response_model=GoblinListResponse)
+@router.get("/goblins", response_model=GoblinListSuccessResponse)
 async def get_goblins(
     service: GoblinQueryService = Depends(get_goblin_query_service),
-) -> GoblinListResponse:
-    return await service.list_goblins()
+) -> GoblinListSuccessResponse:
+    return GoblinListSuccessResponse(data=await service.list_goblins())
 
 
-@router.get("/history/{goblin_id}", response_model=GoblinHistoryResponse)
+@router.get("/history/{goblin_id}", response_model=GoblinHistorySuccessResponse)
 async def get_goblin_history(
     goblin_id: str,
     limit: int = Query(default=10, ge=1, le=100),
     cursor: Optional[str] = Query(default=None),
     service: GoblinQueryService = Depends(get_goblin_query_service),
-) -> GoblinHistoryResponse:
-    return await service.get_history(goblin_id, limit=limit, cursor=cursor)
+) -> GoblinHistorySuccessResponse:
+    return GoblinHistorySuccessResponse(
+        data=await service.get_history(goblin_id, limit=limit, cursor=cursor)
+    )
 
 
-@router.get("/stats/{goblin_id}", response_model=GoblinStatsResponse)
+@router.get("/stats/{goblin_id}", response_model=GoblinStatsSuccessResponse)
 async def get_goblin_stats(
     goblin_id: str,
     window_hours: int = Query(default=24, ge=1, le=8760),
     service: GoblinQueryService = Depends(get_goblin_query_service),
-) -> GoblinStatsResponse:
-    return await service.get_stats(goblin_id, window_hours=window_hours)
+) -> GoblinStatsSuccessResponse:
+    return GoblinStatsSuccessResponse(
+        data=await service.get_stats(goblin_id, window_hours=window_hours)
+    )

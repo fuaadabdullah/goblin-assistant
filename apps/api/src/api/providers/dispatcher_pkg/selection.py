@@ -3,7 +3,50 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import Any, List, Optional
+from typing import Any, Dict, List, Optional
+
+import structlog
+
+_log = structlog.get_logger(__name__)
+
+
+def filter_candidates_for_context_size(
+    ordered: List[str],
+    estimated_tokens: int,
+    context_windows: Dict[str, int],
+) -> List[str]:
+    """Drop providers whose maximum context window is smaller than the request.
+
+    A provider with no entry in *context_windows* is assumed capable (no data
+    is better than a false disqualification). The filter only acts when at least
+    one entry exists AND the request estimate exceeds a provider's ceiling.
+
+    Providers are excluded only in auto/fallback routing; explicit-provider
+    requests skip this guard (handled by the caller before invoking this).
+    """
+    if not context_windows or estimated_tokens <= 0:
+        return ordered
+
+    filtered: List[str] = []
+    skipped: List[str] = []
+    for pid in ordered:
+        window = context_windows.get(pid)
+        if window is not None and estimated_tokens > window:
+            skipped.append(pid)
+        else:
+            filtered.append(pid)
+
+    if skipped:
+        _log.info(
+            "context_window_filter_applied",
+            estimated_tokens=estimated_tokens,
+            skipped_providers=skipped,
+            remaining_providers=filtered,
+        )
+
+    # If the filter would drop everyone, return the original list so the
+    # dispatcher can still attempt something and surface a real error.
+    return filtered if filtered else ordered
 
 
 @dataclass(frozen=True)

@@ -14,6 +14,8 @@ import structlog
 from fastapi import APIRouter, Depends, HTTPException
 from fastapi.responses import StreamingResponse
 
+from api.services.goblin_identity import resolve_goblin_id
+
 from ..auth.router import User as AuthenticatedUser
 from ..auth.router import get_current_user
 from ..config.prompt_composer import compose_system_prompt
@@ -48,6 +50,7 @@ async def generate_chat_stream(
     tone: Optional[ToneMode] = None,
     mode: Optional[str] = None,
     glossary: Optional[dict] = None,
+    goblin_id: Optional[str] = None,
 ):
     """Generate server-sent events for chat streaming via real provider.
 
@@ -407,11 +410,21 @@ async def generate_chat_stream(
                 )
 
         try:
+            resolved_goblin_id = resolve_goblin_id(
+                metadata={"goblin_id": goblin_id} if goblin_id else None,
+                department=used_department,
+                fallback="general",
+            )
             await _cr.conversation_store.add_message_to_conversation(
                 conversation_id=conversation_id,
                 role="assistant",
                 content=accumulated_text,
-                metadata={"provider": used_provider, "model": used_model},
+                metadata={
+                    "goblin_id": resolved_goblin_id,
+                    "goblin": resolved_goblin_id,
+                    "provider": used_provider,
+                    "model": used_model,
+                },
                 message_id=response_message_id,
             )
             await event_emitter.emit(
@@ -467,6 +480,7 @@ async def generate_chat_stream(
                         "source": "chat.generate_chat_stream",
                         "conversation_id": conversation_id,
                         "assistant_message_id": response_message_id,
+                        "goblin_id": resolved_goblin_id,
                     },
                 },
             )
@@ -491,7 +505,10 @@ async def generate_chat_stream(
                     "total_tokens": int(total_tokens),
                     "cost_usd": float(total_cost),
                     "latency_ms": (time.time() - start_time) * 1000.0,
-                    "metadata": {"source": "chat.generate_chat_stream"},
+                    "metadata": {
+                        "source": "chat.generate_chat_stream",
+                        "goblin_id": resolved_goblin_id,
+                    },
                 }
             )
         except Exception as usage_err:  # usage extraction should not fail the completed stream

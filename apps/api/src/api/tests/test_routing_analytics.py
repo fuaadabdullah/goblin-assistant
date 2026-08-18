@@ -263,8 +263,16 @@ def test_get_routing_observability_composes_dashboard_payload():
             "request_id": "route-1",
             "provider_id": "openai",
             "timestamp": 10.0,
+            "selected_model": "gpt-4o-mini",
             "actual_latency_ms": 123.0,
             "actual_cost_usd": 0.01,
+            "latency_ms": 123,
+            "cost_usd": 0.01,
+            "visible_outcome": "success",
+            "fallback_reason": "provider_fallback",
+            "alternatives_considered": ["openai", "anthropic"],
+            "context_sources": ["context_assembly", "tools"],
+            "tool_usage": {"count": 2, "tool_names": ["search_web", "summarize"]},
         }
     ]
     fake_decisions = [
@@ -330,6 +338,12 @@ def test_get_routing_observability_composes_dashboard_payload():
     data = response.json()
     assert data["routing_waterfall"]["stage_summary"]["prompt"]["avg_ms"] == 1.0
     assert data["provider_timelines"]["openai"][0]["event"] == "outcome"
+    assert data["provider_timelines"]["openai"][0]["selected_model"] == "gpt-4o-mini"
+    assert data["provider_timelines"]["openai"][0]["visible_outcome"] == "success"
+    assert data["provider_timelines"]["openai"][0]["context_sources"] == [
+        "context_assembly",
+        "tools",
+    ]
     assert data["cost_dashboard"]["current_hour_spend_total"] == 0.12
     assert data["selection_reasons"][0]["chosen_provider"] == "openai"
     assert data["fallback_reasons"][0]["reasons"][0]["provider_id"] == "anthropic"

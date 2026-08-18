@@ -17,7 +17,7 @@ from ..metrics import record_dispatch
 from ..quota_service import quota_service
 from ..router_service import get_router_model_names
 from ..supabase_events import insert_routing_audit
-from .selection import SelectionEngine
+from .selection import SelectionEngine, filter_candidates_for_context_size
 
 try:
     from ddtrace.trace import tracer as _dd_tracer
@@ -60,6 +60,40 @@ def build_invoke_kwargs(payload: Dict[str, Any]) -> Dict[str, Any]:
     return kwargs
 
 
+def _estimate_message_tokens(messages: List[Dict[str, Any]]) -> int:
+    """Rough token estimate: 1 token ≈ 4 characters (BPE average)."""
+    total = 0
+    for msg in messages:
+        content = msg.get("content") or ""
+        if isinstance(content, str):
+            total += len(content)
+        elif isinstance(content, list):
+            for part in content:
+                if isinstance(part, dict):
+                    total += len(str(part.get("text", "") or ""))
+    return total // 4
+
+
+def _build_provider_context_windows(dispatcher: Any) -> Dict[str, int]:
+    """Map provider_id → max context tokens using provider toml config and _configs."""
+    toml = getattr(dispatcher, "_provider_toml", None)
+    model_windows: Dict[str, int] = getattr(toml, "model_context_windows", {}) or {}
+    if not model_windows:
+        return {}
+    configs: Dict[str, Any] = getattr(dispatcher, "_configs", {}) or {}
+    result: Dict[str, int] = {}
+    for provider_id, cfg in configs.items():
+        raw = cfg if isinstance(cfg, dict) else {}
+        models: List[str] = list(raw.get("models", []) or [])
+        dm = str(raw.get("default_model", "") or "").strip()
+        if dm and dm not in models:
+            models = [dm, *models]
+        windows = [model_windows[m] for m in models if m in model_windows]
+        if windows:
+            result[provider_id] = max(windows)
+    return result
+
+
 async def _record_provider_failure(
     provider_id: str,
     provider: BaseProvider,
@@ -80,6 +114,88 @@ async def _record_provider_failure(
         circuit_state=current_state,
         error=error,
         occurred_at=datetime.now(timezone.utc).isoformat(),
+    )
+
+
+def _payload_metadata(payload: Dict[str, Any]) -> Dict[str, Any]:
+    metadata = payload.get("metadata")
+    return metadata if isinstance(metadata, dict) else {}
+
+
+def _tool_names_from_payload(payload: Dict[str, Any]) -> List[str]:
+    tools = payload.get("tools")
+    if not isinstance(tools, list):
+        return []
+
+    tool_names: List[str] = []
+    for tool in tools:
+        if not isinstance(tool, dict):
+            continue
+        function = tool.get("function")
+        if isinstance(function, dict) and isinstance(function.get("name"), str):
+            tool_names.append(function["name"])
+            continue
+        name = tool.get("name")
+        if isinstance(name, str) and name.strip():
+            tool_names.append(name.strip())
+    return tool_names
+
+
+def _emit_routing_audit(
+    *,
+    payload: Dict[str, Any],
+    routing_mode: str,
+    model_name: str,
+    selected_provider: Optional[str],
+    attempted: List[str],
+    success: bool,
+    latency_ms: Optional[float] = None,
+    input_tokens: Optional[int] = None,
+    output_tokens: Optional[int] = None,
+    cost_usd: Optional[float] = None,
+    error_message: Optional[str] = None,
+    error_category: Optional[str] = None,
+) -> None:
+    metadata = _payload_metadata(payload)
+    context_sources = metadata.get("context_sources")
+    if not isinstance(context_sources, list):
+        context_sources = None
+
+    tool_usage = metadata.get("tool_usage")
+    if not isinstance(tool_usage, dict):
+        tool_names = _tool_names_from_payload(payload)
+        tool_usage = (
+            {"count": len(tool_names), "tool_names": tool_names[:16]} if tool_names else None
+        )
+
+    fallback_reason = metadata.get("fallback_reason")
+    if fallback_reason is None and selected_provider and attempted:
+        if attempted[0] != selected_provider or len(attempted) > 1:
+            fallback_reason = "provider_fallback"
+
+    alternatives_considered = list(dict.fromkeys(attempted)) or None
+
+    insert_routing_audit(
+        payload.get("request_id", ""),
+        model_name,
+        user_id=payload.get("user_id"),
+        routing_mode=routing_mode,
+        selected_provider=selected_provider,
+        selected_model=model_name,
+        attempted_providers=attempted or None,
+        alternatives_considered=alternatives_considered,
+        latency_ms=int(round(latency_ms)) if latency_ms is not None else None,
+        input_tokens=input_tokens,
+        output_tokens=output_tokens,
+        cost_usd=cost_usd,
+        success=success,
+        visible_outcome="success" if success else "failure",
+        fallback_reason=fallback_reason,
+        error_message=error_message,
+        error_category=error_category,
+        failure_class=error_category,
+        context_sources=context_sources,
+        tool_usage=tool_usage,
     )
 
 
@@ -113,7 +229,15 @@ async def stream_wrap(
 
         latency = (asyncio.get_running_loop().time() - started_at) * 1000
         provider.record_success()
-        dispatcher.record_routing_outcome(provider_id, ok=True, latency_ms=latency, cost_usd=0.0)
+        dispatcher.record_routing_outcome(
+            provider_id,
+            ok=True,
+            latency_ms=latency,
+            cost_usd=0.0,
+            request_id=None,
+            selected_model=model,
+            visible_outcome="success",
+        )
         dispatcher.note_provider_result(provider_id, ok=True, latency_ms=latency)
         record_dispatch(
             provider_id=provider_id,
@@ -142,7 +266,12 @@ async def stream_wrap(
             safe_error,
             category=error_category,
         )
-        dispatcher.record_routing_outcome(provider_id, ok=False)
+        dispatcher.record_routing_outcome(
+            provider_id,
+            ok=False,
+            selected_model=model,
+            visible_outcome="failure",
+        )
         dispatcher.note_provider_result(provider_id, ok=False, error=safe_error)
         record_dispatch(
             provider_id=provider_id,
@@ -343,6 +472,18 @@ async def _execute_dispatch_attempt_impl(
                     actual_input_tokens=reservation.estimated_input_tokens,
                     actual_output_tokens=reservation.estimated_output_tokens,
                 )
+                _emit_routing_audit(
+                    payload=payload,
+                    routing_mode=routing_mode,
+                    model_name=model_name,
+                    selected_provider=provider_id,
+                    attempted=attempted,
+                    success=True,
+                    latency_ms=float(result.latency_ms or 0.0),
+                    input_tokens=reservation.estimated_input_tokens,
+                    output_tokens=reservation.estimated_output_tokens,
+                    cost_usd=0.0,
+                )
                 return (
                     {
                         "ok": True,
@@ -362,7 +503,15 @@ async def _execute_dispatch_attempt_impl(
                 error_msg,
                 category=error_cat,
             )
-            dispatcher.record_routing_outcome(provider_id, ok=False)
+            dispatcher.record_routing_outcome(
+                provider_id,
+                ok=False,
+                request_id=payload.get("request_id"),
+                task_type=payload.get("task_type"),
+                failure_class=error_cat.value if error_cat else None,
+                selected_model=model_name,
+                visible_outcome="failure",
+            )
             dispatcher.note_provider_result(provider_id, ok=False, error=error_msg)
             record_dispatch(
                 provider_id=provider_id,
@@ -376,6 +525,17 @@ async def _execute_dispatch_attempt_impl(
             _tag(aspan, "dispatch.outcome", "soft_failure")
             if error_cat is not None:
                 _tag(aspan, "error.category", error_cat.value)
+            _emit_routing_audit(
+                payload=payload,
+                routing_mode=routing_mode,
+                model_name=model_name,
+                selected_provider=provider_id,
+                attempted=attempted,
+                success=False,
+                latency_ms=float(result.latency_ms or 0.0),
+                error_message=error_msg,
+                error_category=error_cat.value if error_cat else None,
+            )
             log.warning(
                 "dispatch_stream_soft_failure",
                 error=error_msg,
@@ -411,6 +571,22 @@ async def _execute_dispatch_attempt_impl(
                 ok=True,
                 latency_ms=float(result.latency_ms),
                 cost_usd=float(result.cost_usd or 0.0),
+                request_id=payload.get("request_id"),
+                input_tokens=int(
+                    (result.usage or {}).get("prompt_tokens")
+                    or (result.usage or {}).get("input_tokens")
+                    or 0
+                )
+                or None,
+                output_tokens=int(
+                    (result.usage or {}).get("completion_tokens")
+                    or (result.usage or {}).get("output_tokens")
+                    or 0
+                )
+                or None,
+                task_type=payload.get("task_type"),
+                selected_model=model_name,
+                visible_outcome="success",
             )
             dispatcher.note_provider_result(
                 provider_id,
@@ -427,14 +603,14 @@ async def _execute_dispatch_attempt_impl(
             _tag(aspan, "dispatch.latency_ms", round(float(result.latency_ms), 1))
             _tag(rspan, "dispatch.final_provider", provider_id)
             log.info("dispatch_success", latency_ms=round(float(result.latency_ms), 1))
-            insert_routing_audit(
-                payload.get("request_id", ""),
-                model_name,
-                user_id=payload.get("user_id"),
+            _emit_routing_audit(
+                payload=payload,
                 routing_mode=routing_mode,
+                model_name=model_name,
                 selected_provider=provider_id,
-                attempted_providers=attempted,
-                latency_ms=int(result.latency_ms),
+                attempted=attempted,
+                success=True,
+                latency_ms=float(result.latency_ms),
                 input_tokens=int(
                     (result.usage or {}).get("prompt_tokens")
                     or (result.usage or {}).get("input_tokens")
@@ -447,8 +623,7 @@ async def _execute_dispatch_attempt_impl(
                     or 0
                 )
                 or None,
-                cost_usd=float(result.cost_usd or 0) or None,
-                success=True,
+                cost_usd=float(result.cost_usd or 0.0) or None,
             )
             return result.to_dict(), None, None
 
@@ -461,7 +636,15 @@ async def _execute_dispatch_attempt_impl(
             error_msg,
             category=error_cat,
         )
-        dispatcher.record_routing_outcome(provider_id, ok=False)
+        dispatcher.record_routing_outcome(
+            provider_id,
+            ok=False,
+            request_id=payload.get("request_id"),
+            task_type=payload.get("task_type"),
+            failure_class=error_cat.value if error_cat else None,
+            selected_model=model_name,
+            visible_outcome="failure",
+        )
         dispatcher.note_provider_result(provider_id, ok=False, error=error_msg)
         record_dispatch(
             provider_id=provider_id,
@@ -475,6 +658,17 @@ async def _execute_dispatch_attempt_impl(
         _tag(aspan, "dispatch.outcome", "soft_failure")
         if error_cat is not None:
             _tag(aspan, "error.category", error_cat.value)
+        _emit_routing_audit(
+            payload=payload,
+            routing_mode=routing_mode,
+            model_name=model_name,
+            selected_provider=provider_id,
+            attempted=attempted,
+            success=False,
+            latency_ms=float(result.latency_ms or 0.0),
+            error_message=error_msg,
+            error_category=error_cat.value if error_cat else None,
+        )
         log.warning(
             "dispatch_soft_failure",
             error=error_msg,
@@ -488,7 +682,15 @@ async def _execute_dispatch_attempt_impl(
         await _record_provider_failure(
             provider_id, current_provider, timeout_error, category=ProviderErrorCategory.TIMEOUT
         )
-        dispatcher.record_routing_outcome(provider_id, ok=False)
+        dispatcher.record_routing_outcome(
+            provider_id,
+            ok=False,
+            request_id=payload.get("request_id"),
+            task_type=payload.get("task_type"),
+            failure_class=ProviderErrorCategory.TIMEOUT.value,
+            selected_model=model_name,
+            visible_outcome="failure",
+        )
         dispatcher.note_provider_result(provider_id, ok=False, error=timeout_error)
         record_dispatch(
             provider_id=provider_id,
@@ -499,6 +701,17 @@ async def _execute_dispatch_attempt_impl(
         )
         _tag(aspan, "dispatch.outcome", "timeout")
         _tag(aspan, "error.category", "timeout")
+        _emit_routing_audit(
+            payload=payload,
+            routing_mode=routing_mode,
+            model_name=model_name,
+            selected_provider=provider_id,
+            attempted=attempted,
+            success=False,
+            latency_ms=float(timeout_ms),
+            error_message=timeout_error,
+            error_category=ProviderErrorCategory.TIMEOUT.value,
+        )
         log.warning(
             "dispatch_timeout", error=timeout_error, error_category="timeout", latency_ms=timeout_ms
         )
@@ -509,7 +722,15 @@ async def _execute_dispatch_attempt_impl(
         error_msg = dispatcher._sanitize_error(exc)
         error_cat = classify_provider_error(exc)
         await _record_provider_failure(provider_id, current_provider, error_msg, category=error_cat)
-        dispatcher.record_routing_outcome(provider_id, ok=False)
+        dispatcher.record_routing_outcome(
+            provider_id,
+            ok=False,
+            request_id=payload.get("request_id"),
+            task_type=payload.get("task_type"),
+            failure_class=error_cat.value,
+            selected_model=model_name,
+            visible_outcome="failure",
+        )
         dispatcher.note_provider_result(provider_id, ok=False, error=error_msg)
         record_dispatch(
             provider_id=provider_id,
@@ -522,6 +743,16 @@ async def _execute_dispatch_attempt_impl(
             await quota_service.mark_rate_limited(provider_id, model_name)
         _tag(aspan, "dispatch.outcome", "exception")
         _tag(aspan, "error.category", error_cat.value)
+        _emit_routing_audit(
+            payload=payload,
+            routing_mode=routing_mode,
+            model_name=model_name,
+            selected_provider=provider_id,
+            attempted=attempted,
+            success=False,
+            error_message=error_msg,
+            error_category=error_cat.value,
+        )
         log.warning("dispatch_exception", error=error_msg, error_category=error_cat.value)
         return None, error_msg, error_cat
 
@@ -578,6 +809,18 @@ async def _dispatch_request_impl(
         except Exception:
             candidates = []
         if not candidates:
+            _emit_routing_audit(
+                payload=payload,
+                routing_mode="auto"
+                if resolved_pid in (None, "auto", "cheapest", "local")
+                else "explicit",
+                model_name=resolved_model or "",
+                selected_provider=None,
+                attempted=[],
+                success=False,
+                error_message=f"unknown-provider:{pid}",
+                error_category="unknown",
+            )
             return {"ok": False, "error": f"unknown-provider:{pid}", "latency_ms": 0.0}
 
     selection_plan = selection_engine.resolve_and_order_candidates(resolved_pid, candidates)
@@ -596,12 +839,40 @@ async def _dispatch_request_impl(
         except Exception:
             pass
         if not ordered:
+            _emit_routing_audit(
+                payload=payload,
+                routing_mode=selection_plan.routing_mode,
+                model_name=resolved_model or "",
+                selected_provider=None,
+                attempted=[],
+                success=False,
+                error_message="no-configured-providers",
+                error_category="unknown",
+            )
             return {"ok": False, "error": "no-configured-providers", "latency_ms": 0.0}
 
     allowed = await selection_engine.apply_user_access(ordered, user_id=payload.get("user_id"))
     if not allowed and ordered:
+        _emit_routing_audit(
+            payload=payload,
+            routing_mode=selection_plan.routing_mode,
+            model_name=resolved_model or "",
+            selected_provider=None,
+            attempted=ordered,
+            success=False,
+            error_message="provider-access-denied",
+            error_category="authorization",
+        )
         return {"ok": False, "error": "provider-access-denied", "latency_ms": 0.0}
     ordered = allowed
+
+    # Context-window filter: drop providers that can't fit the estimated request
+    # size. Only applied in auto/fallback routing — explicit mode trusts the
+    # caller to have picked a capable provider intentionally.
+    if not explicit_mode:
+        estimated_tokens = _estimate_message_tokens(payload.get("messages") or [])
+        provider_windows = _build_provider_context_windows(dispatcher)
+        ordered = filter_candidates_for_context_size(ordered, estimated_tokens, provider_windows)
 
     if dry_run:
         return selection_engine.build_dry_run_response(ordered, resolved_model, explicit_mode)
@@ -662,12 +933,12 @@ async def _dispatch_request_impl(
         _tag(rspan, "dispatch.all_failed", True)
         _tag(rspan, "dispatch.error", last_error)
 
-        insert_routing_audit(
-            payload.get("request_id", ""),
-            resolved_model or "",
-            user_id=payload.get("user_id"),
+        _emit_routing_audit(
+            payload=payload,
             routing_mode=routing_mode,
-            attempted_providers=attempted,
+            model_name=resolved_model or "",
+            selected_provider=None,
+            attempted=attempted,
             success=False,
             error_message=last_error,
             error_category=last_category.value if last_category else None,

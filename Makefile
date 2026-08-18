@@ -187,11 +187,11 @@ test-unit:
 	cd apps/api && PYTHONPATH=src $(PYTHON) -m pytest -o "addopts=" -v
 
 test-web:
-	mkdir -p .tmp
+	mkdir -p .tmp apps/web/coverage/.tmp
 	$(PNPM_TMP) pnpm --filter @goblin/web test
 
 test-web-coverage:
-	mkdir -p .tmp
+	mkdir -p .tmp apps/web/coverage/.tmp
 	$(PNPM_TMP) pnpm --filter @goblin/web test:coverage
 
 test-api:

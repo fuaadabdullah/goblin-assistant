@@ -151,3 +151,53 @@ async def test_database_archive_messages_replaces_rows_transactionally():
     assert updated.messages[1].content == "new-u"
 
     await store.delete_conversation(conv_id)
+
+
+@pytest.mark.asyncio
+async def test_database_goblin_stats_matches_mixed_legacy_metadata_rows():
+    from api.storage.conversations import DatabaseConversationStore
+    from api.storage.database import init_db
+
+    await init_db()
+    store = DatabaseConversationStore()
+    conv_id = f"db-stats-{uuid.uuid4()}"
+    base = datetime.utcnow()
+
+    conv = Conversation(
+        conversation_id=conv_id,
+        user_id="user-db",
+        title="DB Stats",
+        messages=[
+            ConversationMessage(
+                role="user", content="prompt", timestamp=base - timedelta(minutes=2)
+            ),
+            ConversationMessage(
+                role="assistant",
+                content="response",
+                timestamp=base - timedelta(minutes=1),
+                metadata={
+                    "goblin_id": "general",
+                    "goblin": "openai",
+                    "provider": "openai",
+                    "status": "completed",
+                    "cost_usd": 0.25,
+                },
+            ),
+        ],
+    )
+    await store.save_conversation(conv)
+
+    stats = await store.get_goblin_stats(
+        user_id="user-db",
+        goblin_id="finance",
+        started_at=base - timedelta(hours=1),
+        ended_at=base,
+    )
+
+    assert stats["total_tasks"] == 1
+    assert stats["completed_tasks"] == 1
+    assert stats["failed_tasks"] == 0
+    assert stats["success_rate"] == 1.0
+    assert stats["total_cost"] == 0.25
+
+    await store.delete_conversation(conv_id)

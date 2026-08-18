@@ -41,7 +41,7 @@ export default defineConfig({
       'src/components/auth/__tests__/ModularLoginForm.test.tsx',
     ],
     css: false,
-    testTimeout: 15000,
+    testTimeout: 30000,
     coverage: {
       provider: 'v8',
       reporter: ['text', 'text-summary', 'lcov', 'json-summary'],

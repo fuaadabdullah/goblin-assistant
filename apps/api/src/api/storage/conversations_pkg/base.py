@@ -23,6 +23,16 @@ class ConversationStore(ABC):
     ) -> List[Conversation]: ...
 
     @abstractmethod
+    async def get_goblin_stats(
+        self,
+        *,
+        user_id: str,
+        goblin_id: str,
+        started_at: datetime,
+        ended_at: datetime,
+    ) -> Dict[str, Any]: ...
+
+    @abstractmethod
     async def update_conversation_title(self, conversation_id: str, title: str) -> bool: ...
 
     @abstractmethod

@@ -76,9 +76,11 @@ def test_get_goblins_returns_bounded_stable_catalog():
 
     assert response.status_code == 200
     body = response.json()
-    assert body["limit"] == 100
-    assert body["order"] == "catalog_order"
-    assert [item["id"] for item in body["items"]] == [
+    assert body["success"] is True
+    data = body["data"]
+    assert data["limit"] == 100
+    assert data["order"] == "catalog_order"
+    assert [item["id"] for item in data["items"]] == [
         "research",
         "coding",
         "finance",
@@ -86,8 +88,8 @@ def test_get_goblins_returns_bounded_stable_catalog():
         "operations",
         "general",
     ]
-    assert body["items"][0]["status"] == "active"
-    assert "provider" not in body["items"][0]
+    assert data["items"][0]["status"] == "active"
+    assert "provider" not in data["items"][0]
 
 
 def test_get_history_returns_newest_first_page():
@@ -98,10 +100,12 @@ def test_get_history_returns_newest_first_page():
 
     assert response.status_code == 200
     body = response.json()
-    assert body["limit"] == 1
-    assert body["order"] == "newest_first"
-    assert body["items"][0]["id"] == "new"
-    assert body["next_cursor"]
+    assert body["success"] is True
+    data = body["data"]
+    assert data["limit"] == 1
+    assert data["order"] == "newest_first"
+    assert data["items"][0]["id"] == "new"
+    assert data["next_cursor"]
 
 
 def test_empty_repository_history_returns_empty_collection():
@@ -110,8 +114,10 @@ def test_empty_repository_history_returns_empty_collection():
     response = client.get("/api/v1/api/history/coding")
 
     assert response.status_code == 200
-    assert response.json()["items"] == []
-    assert response.json()["total"] == 0
+    body = response.json()
+    assert body["success"] is True
+    assert body["data"]["items"] == []
+    assert body["data"]["total"] == 0
 
 
 def test_unknown_goblin_uses_canonical_404_envelope():
@@ -161,15 +167,17 @@ def test_stats_have_explicit_window_and_null_unavailable_metrics():
 
     assert response.status_code == 200
     body = response.json()
-    assert body["goblin_id"] == "coding"
-    assert body["window"]["hours"] == 1
-    assert body["counters"] == {
+    assert body["success"] is True
+    data = body["data"]
+    assert data["goblin_id"] == "coding"
+    assert data["window"]["hours"] == 1
+    assert data["counters"] == {
         "total_tasks": 2,
         "completed_tasks": 1,
         "failed_tasks": 1,
     }
-    assert body["latency"]["average_duration_ms"] is None
-    assert body["total_cost"] is None
+    assert data["latency"]["average_duration_ms"] is None
+    assert data["total_cost"] is None
 
 
 def test_goblin_query_routes_require_authorization_without_override():
@@ -207,16 +215,19 @@ def test_openapi_schema_has_typed_200_responses_and_no_501():
     assert "501" not in stats_get["responses"]
     assert (
         goblins_get["responses"]["200"]["content"]["application/json"]["schema"]["$ref"]
-        == "#/components/schemas/GoblinListResponse"
+        == "#/components/schemas/GoblinListSuccessResponse"
     )
     assert (
         history_get["responses"]["200"]["content"]["application/json"]["schema"]["$ref"]
-        == "#/components/schemas/GoblinHistoryResponse"
+        == "#/components/schemas/GoblinHistorySuccessResponse"
     )
     assert (
         stats_get["responses"]["200"]["content"]["application/json"]["schema"]["$ref"]
-        == "#/components/schemas/GoblinStatsResponse"
+        == "#/components/schemas/GoblinStatsSuccessResponse"
     )
+    # Verify the envelope shape is present in the schema components
+    assert "success" in schema["components"]["schemas"]["GoblinListSuccessResponse"]["properties"]
+    assert "data" in schema["components"]["schemas"]["GoblinListSuccessResponse"]["properties"]
 
 
 def test_api_router_does_not_import_storage_for_goblin_reads():
@@ -231,11 +242,13 @@ def test_cursor_following_returns_next_page():
     entries = [_entry(f"e{i}", minutes_ago=i) for i in range(5)]
     client = _client(_service(FakeGoblinHistoryRepository(entries)))
 
-    first = client.get("/api/v1/api/history/coding?limit=3").json()
+    first = client.get("/api/v1/api/history/coding?limit=3").json()["data"]
     assert len(first["items"]) == 3
     assert first["next_cursor"]
 
-    second = client.get(f"/api/v1/api/history/coding?limit=3&cursor={first['next_cursor']}").json()
+    second = client.get(f"/api/v1/api/history/coding?limit=3&cursor={first['next_cursor']}").json()[
+        "data"
+    ]
     assert len(second["items"]) == 2
     assert second["next_cursor"] is None
     assert second["items"][0]["id"] not in {item["id"] for item in first["items"]}

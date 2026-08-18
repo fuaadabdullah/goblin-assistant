@@ -25,6 +25,7 @@ from api.config.mode_addendums import (
     get_mode_addendum as _get_mode_addendum,
 )
 from api.config.system_prompt import EDUCATION_SYSTEM_ADDENDUM, system_prompt_manager
+from api.services.goblin_identity import resolve_goblin_id
 
 from ..assistant_tools.executor import extract_tool_calls, run_tool_loop
 from ..assistant_tools.registry import export_openai_tools
@@ -210,6 +211,12 @@ async def send_message(
         else:
             messages = history_messages
 
+        goblin_id = resolve_goblin_id(
+            metadata=request.metadata,
+            department=request.department,
+            fallback="general",
+        )
+
         payload = {
             "messages": messages,
             "model": request.model,
@@ -229,6 +236,7 @@ async def send_message(
                     current_user=current_user,
                     provider=request.provider,
                     model=request.model,
+                    goblin_id=goblin_id,
                 ),
                 media_type="text/event-stream",
                 headers={
@@ -285,6 +293,8 @@ async def send_message(
 
         response_message_id = str(uuid.uuid4())
         assistant_metadata: Dict[str, Any] = {
+            "goblin_id": goblin_id,
+            "goblin": goblin_id,
             "provider": used_provider,
             "model": used_model,
             "message_id": response_message_id,

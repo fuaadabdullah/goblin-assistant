@@ -722,6 +722,15 @@ export interface components {
             /** Total */
             total: number;
         };
+        /** GoblinHistorySuccessResponse */
+        GoblinHistorySuccessResponse: {
+            data: components["schemas"]["GoblinHistoryResponse"];
+            /**
+             * Success
+             * @default true
+             */
+            success: boolean;
+        };
         /** GoblinListResponse */
         GoblinListResponse: {
             /** Items */
@@ -736,6 +745,15 @@ export interface components {
             order: "catalog_order";
             /** Total */
             total: number;
+        };
+        /** GoblinListSuccessResponse */
+        GoblinListSuccessResponse: {
+            data: components["schemas"]["GoblinListResponse"];
+            /**
+             * Success
+             * @default true
+             */
+            success: boolean;
         };
         /** GoblinStatsCounters */
         GoblinStatsCounters: {
@@ -764,6 +782,15 @@ export interface components {
             /** Total Cost */
             total_cost?: number | null;
             window: components["schemas"]["GoblinStatsWindow"];
+        };
+        /** GoblinStatsSuccessResponse */
+        GoblinStatsSuccessResponse: {
+            data: components["schemas"]["GoblinStatsResponse"];
+            /**
+             * Success
+             * @default true
+             */
+            success: boolean;
         };
         /** GoblinStatsWindow */
         GoblinStatsWindow: {

@@ -57,7 +57,15 @@ async def test_orchestrator_happy_path(monkeypatch):
     async def _working(_user_id, _conversation_id, _remaining, _budget):
         return ContextLayer(name="working_memory", content="wm", tokens=30)
 
-    async def _semantic(_query, _user_id, _conversation_id, _remaining, _correlation_id, _budget):
+    async def _semantic(
+        _query,
+        _user_id,
+        _conversation_id,
+        _remaining,
+        _correlation_id,
+        _budget,
+        exclude_fact_ids=None,
+    ):
         return ContextLayer(
             name="semantic_retrieval",
             content="sem",

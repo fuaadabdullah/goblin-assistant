@@ -453,7 +453,9 @@ class _FakeSessionContext:
 @pytest.mark.asyncio
 async def test_get_long_term_memory_facts_success(monkeypatch):
     now = datetime.now(timezone.utc)
-    rows = [types.SimpleNamespace(fact_text="fact", category="pref", created_at=now)]
+    rows = [
+        types.SimpleNamespace(id="fact-uuid-1", fact_text="fact", category="pref", created_at=now)
+    ]
 
     monkeypatch.setitem(
         sys.modules,
@@ -470,6 +472,7 @@ async def test_get_long_term_memory_facts_success(monkeypatch):
 
     assert facts == [
         {
+            "id": "fact-uuid-1",
             "content": "fact",
             "category": "pref",
             "memory_type": "pref",

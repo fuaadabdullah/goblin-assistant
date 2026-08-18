@@ -44,10 +44,36 @@ function wrapper({ children }: { children: React.ReactNode }) {
   return <QueryClientProvider client={qc}>{children}</QueryClientProvider>;
 }
 
+const createLocalStorage = (): Storage => {
+  const entries = new Map<string, string>();
+  return {
+    clear: () => entries.clear(),
+    getItem: (key: string) => entries.get(key) ?? null,
+    key: (index: number) => Array.from(entries.keys())[index] ?? null,
+    removeItem: (key: string) => {
+      entries.delete(key);
+    },
+    setItem: (key: string, value: string) => {
+      entries.set(key, value);
+    },
+    get length() {
+      return entries.size;
+    },
+  } as Storage;
+};
+
 describe('OnboardingWizard', () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    localStorage.clear();
+    const localStorage = createLocalStorage();
+    Object.defineProperty(globalThis, 'localStorage', {
+      configurable: true,
+      value: localStorage,
+    });
+    Object.defineProperty(window, 'localStorage', {
+      configurable: true,
+      value: localStorage,
+    });
     mockProviderSettings.mockReturnValue({
       data: [
         { name: 'openai', enabled: true, models: ['gpt-4'] },
@@ -64,6 +90,20 @@ describe('OnboardingWizard', () => {
       'href',
       '/settings'
     );
+  });
+
+  it('shows provider settings loading state before the query resolves', () => {
+    mockProviderSettings.mockReturnValueOnce({
+      data: undefined,
+      isLoading: true,
+      isFetching: false,
+    });
+
+    render(<OnboardingWizard />, { wrapper });
+
+    expect(screen.getByText('Checking provider configuration...')).toBeInTheDocument();
+    expect(screen.getByText('Loading providers')).toBeInTheDocument();
+    expect(screen.getByText('Loading...')).toBeInTheDocument();
   });
 
   it('navigates through wizard steps', () => {
@@ -93,14 +133,18 @@ describe('OnboardingWizard', () => {
     render(<OnboardingWizard />, { wrapper });
     fireEvent.click(screen.getByText('Search demo'));
     fireEvent.click(screen.getByText('Complete'));
-    await waitFor(() => expect(localStorage.getItem('goblinos-onboarding-complete')).toBe('true'));
+    await waitFor(() =>
+      expect(window.localStorage.getItem('goblinos-onboarding-complete')).toBe('true')
+    );
     expect(mockPush).toHaveBeenCalledWith('/');
   });
 
   it('persists completion on skip', async () => {
     render(<OnboardingWizard />, { wrapper });
     fireEvent.click(screen.getByText('Skip'));
-    await waitFor(() => expect(localStorage.getItem('goblinos-onboarding-complete')).toBe('true'));
+    await waitFor(() =>
+      expect(window.localStorage.getItem('goblinos-onboarding-complete')).toBe('true')
+    );
     expect(mockPush).toHaveBeenCalledWith('/');
   });
 });

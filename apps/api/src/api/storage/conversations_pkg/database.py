@@ -4,9 +4,11 @@ from datetime import datetime
 from typing import Any, Dict, List, Optional
 
 import structlog
-from sqlalchemy import delete, desc, select
+from sqlalchemy import Float, case, cast, delete, desc, func, or_, select
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import selectinload
+
+from api.services.goblin_identity import goblin_aliases
 
 from .base import ConversationStore
 from .models import Conversation, ConversationMessage
@@ -171,6 +173,77 @@ class DatabaseConversationStore(ConversationStore):
                 )
 
             return conversations
+
+    async def get_goblin_stats(
+        self,
+        *,
+        user_id: str,
+        goblin_id: str,
+        started_at: datetime,
+        ended_at: datetime,
+    ) -> Dict[str, Any]:
+        async with get_db_context() as session:
+            goblin_candidates = sorted(goblin_aliases(goblin_id))
+            goblin_fields = (
+                MessageModel.metadata_["goblin_id"].as_string(),
+                MessageModel.metadata_["goblin"].as_string(),
+                MessageModel.metadata_["department"].as_string(),
+                MessageModel.metadata_["provider"].as_string(),
+            )
+            status_key = func.coalesce(MessageModel.metadata_["status"].as_string(), "completed")
+            duration_key = func.coalesce(
+                cast(MessageModel.metadata_["latency_ms"].as_string(), Float),
+                cast(MessageModel.metadata_["duration_ms"].as_string(), Float),
+            )
+            cost_key = cast(MessageModel.metadata_["cost_usd"].as_string(), Float)
+
+            statement = (
+                select(
+                    func.count(MessageModel.message_id).label("total_tasks"),
+                    func.coalesce(
+                        func.sum(case((status_key == "completed", 1), else_=0)),
+                        0,
+                    ).label("completed_tasks"),
+                    func.coalesce(
+                        func.sum(case((status_key == "failed", 1), else_=0)),
+                        0,
+                    ).label("failed_tasks"),
+                    func.avg(duration_key).label("average_duration_ms"),
+                    func.sum(cost_key).label("total_cost"),
+                )
+                .select_from(MessageModel)
+                .join(
+                    ConversationModel,
+                    ConversationModel.conversation_id == MessageModel.conversation_id,
+                )
+                .where(
+                    ConversationModel.user_id == user_id,
+                    MessageModel.role == "assistant",
+                    MessageModel.timestamp >= started_at,
+                    MessageModel.timestamp <= ended_at,
+                    or_(*(field.in_(goblin_candidates) for field in goblin_fields)),
+                )
+            )
+
+            result = await session.execute(statement)
+            row = result.one()
+            total_tasks = int(row.total_tasks or 0)
+            completed_tasks = int(row.completed_tasks or 0)
+            failed_tasks = int(row.failed_tasks or 0)
+            average_duration_ms = (
+                float(row.average_duration_ms) if row.average_duration_ms is not None else None
+            )
+            total_cost = float(row.total_cost) if row.total_cost is not None else None
+
+            return {
+                "total_tasks": total_tasks,
+                "completed_tasks": completed_tasks,
+                "failed_tasks": failed_tasks,
+                "success_rate": (completed_tasks / total_tasks) if total_tasks else None,
+                "average_duration_ms": average_duration_ms,
+                "p95_duration_ms": None,
+                "total_cost": total_cost,
+            }
 
     async def update_conversation_title(self, conversation_id: str, title: str) -> bool:
         async with get_db_context() as session:

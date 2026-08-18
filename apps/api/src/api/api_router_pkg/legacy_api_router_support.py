@@ -5,6 +5,8 @@ from __future__ import annotations
 from datetime import datetime
 from typing import Any, Dict, List
 
+from api.services.goblin_identity import message_matches_goblin, resolve_goblin_id
+
 
 def extract_result_text(response: Dict[str, Any]) -> str:
     result_data = response.get("result", {})
@@ -47,6 +49,7 @@ async def run_stream_task_background(
     store_getter,
 ) -> None:
     try:
+        resolved_goblin_id = resolve_goblin_id(metadata={"goblin_id": request.goblin})
         await run_stream_fn(
             stream_id=stream_id,
             task_id=stream_id,
@@ -54,7 +57,8 @@ async def run_stream_task_background(
             provider=request.provider,
             model=request.model,
             metadata={
-                "goblin": request.goblin,
+                "goblin_id": resolved_goblin_id,
+                "goblin": resolved_goblin_id,
                 "task": request.task,
                 "source": "legacy_api_router",
             },
@@ -101,14 +105,14 @@ async def collect_chat_history_entries(goblin_id: str, limit: int = 500) -> List
                 continue
 
             metadata = message.metadata if isinstance(message.metadata, dict) else {}
-            provider = metadata.get("provider")
-            if provider and provider != goblin_id:
+            if not message_matches_goblin(metadata, goblin_id):
                 continue
 
             timestamp = message.timestamp
             entries.append(
                 {
                     "id": message.message_id,
+                    "goblin_id": goblin_id,
                     "goblin": goblin_id,
                     "task": last_user_prompt or "chat",
                     "response": message.content,

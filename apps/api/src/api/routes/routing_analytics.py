@@ -266,8 +266,17 @@ def _provider_timelines(
                 "event": record.get("event", "audit"),
                 "request_id": record.get("request_id"),
                 "timestamp": record.get("timestamp"),
+                "selected_model": record.get("selected_model"),
                 "actual_latency_ms": record.get("actual_latency_ms"),
                 "actual_cost_usd": record.get("actual_cost_usd"),
+                "latency_ms": record.get("latency_ms"),
+                "cost_usd": record.get("cost_usd"),
+                "visible_outcome": record.get("visible_outcome"),
+                "failure_class": record.get("failure_class") or record.get("error_category"),
+                "fallback_reason": record.get("fallback_reason"),
+                "alternatives_considered": record.get("alternatives_considered"),
+                "context_sources": record.get("context_sources"),
+                "tool_usage": record.get("tool_usage"),
             }
         )
 

@@ -1,8 +1,16 @@
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Any, Dict, List, Optional
+
+from api.services.goblin_identity import message_matches_goblin
 
 from .base import ConversationStore
 from .models import Conversation, ConversationMessage
+
+
+def _utc(value: datetime) -> datetime:
+    if value.tzinfo is None:
+        return value.replace(tzinfo=timezone.utc)
+    return value.astimezone(timezone.utc)
 
 
 class InMemoryConversationStore(ConversationStore):
@@ -61,6 +69,64 @@ class InMemoryConversationStore(ConversationStore):
             conversations = [c for c in conversations if c.user_id == user_id]
         conversations.sort(key=lambda c: c.updated_at, reverse=True)
         return conversations[:limit]
+
+    async def get_goblin_stats(
+        self,
+        *,
+        user_id: str,
+        goblin_id: str,
+        started_at: datetime,
+        ended_at: datetime,
+    ) -> Dict[str, Any]:
+        self._evict_expired()
+
+        total = 0
+        completed = 0
+        failed = 0
+        total_cost = 0.0
+        cost_seen = False
+        latencies: list[float] = []
+
+        for conversation in self._conversations.values():
+            if conversation.user_id != user_id:
+                continue
+            for message in conversation.messages:
+                if message.role != "assistant":
+                    continue
+                message_timestamp = _utc(message.timestamp)
+                if message_timestamp < _utc(started_at) or message_timestamp > _utc(ended_at):
+                    continue
+
+                metadata = message.metadata if isinstance(message.metadata, dict) else {}
+                if not message_matches_goblin(metadata, goblin_id):
+                    continue
+                status = str(metadata.get("status") or "completed").lower()
+                total += 1
+                if status == "failed":
+                    failed += 1
+                else:
+                    completed += 1
+
+                cost_value = metadata.get("cost_usd")
+                if isinstance(cost_value, (int, float)):
+                    total_cost += float(cost_value)
+                    cost_seen = True
+
+                latency_value = metadata.get("latency_ms") or metadata.get("duration_ms")
+                if isinstance(latency_value, (int, float)):
+                    latencies.append(float(latency_value))
+
+        average_duration_ms = sum(latencies) / len(latencies) if latencies else None
+
+        return {
+            "total_tasks": total,
+            "completed_tasks": completed,
+            "failed_tasks": failed,
+            "success_rate": (completed / total) if total else None,
+            "total_cost": total_cost if cost_seen else None,
+            "average_duration_ms": average_duration_ms,
+            "p95_duration_ms": None,
+        }
 
     async def update_conversation_title(self, conversation_id: str, title: str) -> bool:
         if conversation_id in self._conversations:

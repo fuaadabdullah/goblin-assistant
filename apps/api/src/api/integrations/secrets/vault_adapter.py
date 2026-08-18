@@ -13,7 +13,7 @@ import aiohttp
 import hvac
 from hvac.exceptions import Forbidden, InvalidPath, VaultError
 
-from .auth import TokenCredentials, get_auth_manager
+from .auth import AppRoleCredentials, TokenCredentials, get_auth_manager
 from .base import (
     Secret,
     SecretAdapter,
@@ -661,3 +661,45 @@ class VaultAdapter(SecretAdapter):
                 "error": str(e),
                 "timestamp": datetime.utcnow().isoformat(),
             }
+
+
+async def refresh_vault_token(credentials_name: str, credentials: AppRoleCredentials) -> None:
+    """Refresh Vault AppRole token and store the new session credentials."""
+    adapter = VaultAdapter()
+    token_credentials = await adapter.authenticate_with_approle(
+        role_id=credentials.role_id,
+        secret_id=credentials.secret_id,
+    )
+    credentials.set_session_token(token_credentials)
+    get_auth_manager().store_credentials(credentials_name, credentials)
+    logger.info("Refreshed Vault AppRole token for: %s", credentials_name)
+
+
+def setup_vault_approle_renewal(
+    name: str,
+    credentials: AppRoleCredentials,
+    interval_seconds: int = 300,
+) -> None:
+    """Start automatic renewal for Vault AppRole tokens."""
+    auth_manager = get_auth_manager()
+    auth_manager.store_credentials(name, credentials)
+
+    async def _renew(creds_name: str, creds: AppRoleCredentials) -> None:
+        await refresh_vault_token(creds_name, creds)
+
+    auth_manager.start_token_renewal(name, _renew, interval_seconds)
+
+
+def setup_vault_token_renewal(
+    name: str,
+    credentials: TokenCredentials,
+    interval_seconds: int = 300,
+) -> None:
+    """Start automatic renewal for a Vault static token."""
+    auth_manager = get_auth_manager()
+    auth_manager.store_credentials(name, credentials)
+
+    async def _renew(creds_name: str, creds: TokenCredentials) -> None:
+        logger.info("Would renew Vault token for %s", creds_name)
+
+    auth_manager.start_token_renewal(name, _renew, interval_seconds)

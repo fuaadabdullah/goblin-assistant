@@ -1,6 +1,7 @@
 """Database connection management for Goblin Assistant."""
 
 import os
+import pathlib
 import ssl
 from contextlib import asynccontextmanager
 from typing import AsyncGenerator
@@ -18,7 +19,10 @@ from sqlalchemy.pool import AsyncAdaptedQueuePool
 
 logger = structlog.get_logger()
 
-SQLITE_DATABASE_URL = "sqlite+aiosqlite:///./goblin_assistant.db"
+# Anchor the SQLite path to apps/api/ so it resolves consistently regardless
+# of CWD (e.g. when pytest is run from the repo root vs. from apps/api/).
+_APPS_API_DIR = pathlib.Path(__file__).resolve().parents[3]
+SQLITE_DATABASE_URL = f"sqlite+aiosqlite:///{_APPS_API_DIR}/goblin_assistant.db"
 POSTGRES_ASYNC_URL_PREFIX = "postgresql+asyncpg://"
 
 # Get database URL from environment or use local sqlite fallback.

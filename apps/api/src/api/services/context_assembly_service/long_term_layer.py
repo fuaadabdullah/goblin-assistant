@@ -35,6 +35,7 @@ async def get_long_term_memory_facts(user_id: str) -> List[Dict[str, Any]]:
             for fact in result.scalars():
                 facts.append(
                     {
+                        "id": str(fact.id),
                         "content": fact.fact_text,
                         "category": fact.category,
                         "memory_type": getattr(fact, "memory_type", None) or fact.category,
@@ -128,6 +129,7 @@ async def assemble_long_term_memory(
             memory_content = trim_to_tokens(memory_content, budget.long_term_tokens)
             tokens = budget.long_term_tokens
 
+        fact_ids = [f["id"] for f in memory_facts if f.get("id")]
         return ContextLayer(
             name="long_term_memory",
             content=memory_content,
@@ -138,6 +140,7 @@ async def assemble_long_term_memory(
                 "source_count": len(memory_facts),
                 "description": "User preferences and stable facts",
                 "compression_level": used_compression,
+                "fact_ids": fact_ids,
             },
         )
     except Exception as e:

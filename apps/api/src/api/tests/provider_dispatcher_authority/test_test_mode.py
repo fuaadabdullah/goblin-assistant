@@ -227,9 +227,11 @@ async def test_dispatcher_test_mode_latency_reaches_metrics(monkeypatch):
     captured: dict[str, float] = {}
     original_record_success = registry.record_success
 
-    def capture_record_success(provider_id, *, latency_ms, cost_usd):
+    def capture_record_success(provider_id, *, latency_ms, cost_usd, **kwargs):
         captured["latency_ms"] = float(latency_ms)
-        return original_record_success(provider_id, latency_ms=latency_ms, cost_usd=cost_usd)
+        return original_record_success(
+            provider_id, latency_ms=latency_ms, cost_usd=cost_usd, **kwargs
+        )
 
     monkeypatch.setattr(registry, "record_success", capture_record_success)
 

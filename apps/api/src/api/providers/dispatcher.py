@@ -827,6 +827,13 @@ class ProviderDispatcher:
         ok: bool,
         latency_ms: float = 0.0,
         cost_usd: float = 0.0,
+        request_id: Optional[str] = None,
+        input_tokens: Optional[int] = None,
+        output_tokens: Optional[int] = None,
+        task_type: Optional[str] = None,
+        failure_class: Optional[str] = None,
+        selected_model: Optional[str] = None,
+        visible_outcome: Optional[str] = None,
     ) -> None:
         """Record a dispatch outcome into routing's stats registry.
 
@@ -841,9 +848,26 @@ class ProviderDispatcher:
         from ..routing.router_registry import registry
 
         if ok:
-            registry.record_success(provider_id, latency_ms=latency_ms, cost_usd=cost_usd)
+            registry.record_success(
+                provider_id,
+                latency_ms=latency_ms,
+                cost_usd=cost_usd,
+                request_id=request_id,
+                input_tokens=input_tokens,
+                output_tokens=output_tokens,
+                task_type=task_type,
+                selected_model=selected_model,
+                visible_outcome=visible_outcome,
+            )
         else:
-            registry.record_failure(provider_id)
+            registry.record_failure(
+                provider_id,
+                request_id=request_id,
+                task_type=task_type,
+                failure_class=failure_class,
+                selected_model=selected_model,
+                visible_outcome=visible_outcome,
+            )
 
 
 dispatcher = ProviderDispatcher()

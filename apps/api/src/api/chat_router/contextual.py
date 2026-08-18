@@ -30,6 +30,7 @@ from api.config.mode_addendums import Mode
 from api.config.mode_addendums import get_addendum as _get_mode_addendum
 from api.config.prompt_composer import compose_system_prompt
 from api.config.system_prompt import system_prompt_manager
+from api.services.goblin_identity import resolve_goblin_id
 
 from ..assistant_tools.executor import extract_tool_calls_contract, run_tool_loop
 from ..assistant_tools.registry import export_tools_for_provider
@@ -216,6 +217,11 @@ async def contextual_chat(
                     _ctx_dept_provider = _ctx_dept_id
             except Exception:
                 pass
+        goblin_id = resolve_goblin_id(
+            metadata=request.metadata,
+            department=_ctx_dept,
+            fallback="general",
+        )
 
         if request.stream:
             # Streaming requires a conversation; create one on the fly if missing.
@@ -234,6 +240,7 @@ async def contextual_chat(
                     current_user=current_user,
                     provider=_ctx_dept_provider,
                     model=_ctx_dept_model,
+                    goblin_id=goblin_id,
                 ),
                 media_type="text/event-stream",
                 headers={
@@ -310,6 +317,8 @@ async def contextual_chat(
                 role="assistant",
                 content=response_content,
                 metadata={
+                    "goblin_id": goblin_id,
+                    "goblin": goblin_id,
                     "provider": used_provider,
                     "model": used_model,
                     "context_assembly_used": request.enable_context_assembly,
@@ -334,7 +343,12 @@ async def contextual_chat(
                     conversation_id=conversation_id,
                     message_id=response_message_id,
                     content=response_content,
-                    metadata={"provider": used_provider, "model": used_model},
+                    metadata={
+                        "goblin_id": goblin_id,
+                        "goblin": goblin_id,
+                        "provider": used_provider,
+                        "model": used_model,
+                    },
                 )
             except Exception as _emb_exc:
                 logger.debug("embedding_queue_skipped", error=str(_emb_exc))

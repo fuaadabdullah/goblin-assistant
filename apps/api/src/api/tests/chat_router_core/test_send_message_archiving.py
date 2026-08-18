@@ -169,9 +169,14 @@ class TestSendMessageArchiving:
                     "message": "hello",
                     "provider": "openai",
                     "model": "gpt-4o-mini",
+                    "metadata": {"goblin_id": "docs-writer"},
                 },
             )
 
         assert response.status_code == 200
         fake_task_store.save_task.assert_awaited_once()
         fake_usage_store.save_event.assert_awaited_once()
+        task_payload = fake_task_store.save_task.await_args.args[1]
+        usage_payload = fake_usage_store.save_event.await_args.args[0]
+        assert task_payload["metadata"]["goblin_id"] == "docs-writer"
+        assert usage_payload["metadata"]["goblin_id"] == "docs-writer"

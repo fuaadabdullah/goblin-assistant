@@ -27,7 +27,11 @@ vi.mock('../../../lib/query-keys', () => ({
 }));
 
 import { useAuthSession } from '../useAuthSession';
-import { bootstrapAuthSession, clearAuthSessionState } from '../../../lib/auth-state';
+import {
+  bootstrapAuthSession,
+  clearAuthSessionState,
+  type AuthSessionSnapshot,
+} from '../../../lib/auth-state';
 
 function createWrapper() {
   const queryClient = new QueryClient({
@@ -39,7 +43,16 @@ function createWrapper() {
 }
 
 describe('useAuthSession', () => {
-  beforeEach(() => vi.clearAllMocks());
+  beforeEach(() => {
+    vi.clearAllMocks();
+    (bootstrapAuthSession as vi.Mock).mockResolvedValue({
+      token: 'test-token',
+      user: { id: '1', name: 'Test', email: 'test@example.com', roles: ['admin'] },
+      isAuthenticated: true,
+      isHydrated: true,
+    });
+    (clearAuthSessionState as vi.Mock).mockResolvedValue(undefined);
+  });
 
   it('returns session data after loading', async () => {
     const { result } = renderHook(() => useAuthSession(), { wrapper: createWrapper() });
@@ -53,6 +66,31 @@ describe('useAuthSession', () => {
     const { result } = renderHook(() => useAuthSession(), { wrapper: createWrapper() });
     // Initially loading or already resolved depending on timing
     expect(typeof result.current.isLoading).toBe('boolean');
+  });
+
+  it('starts as pending before bootstrap resolves', async () => {
+    let resolveBootstrap: ((value: AuthSessionSnapshot) => void) | undefined;
+    const bootstrapPromise = new Promise<AuthSessionSnapshot>((resolve) => {
+      resolveBootstrap = resolve;
+    });
+
+    (bootstrapAuthSession as vi.Mock).mockImplementation(() => bootstrapPromise);
+
+    const { result } = renderHook(() => useAuthSession(), { wrapper: createWrapper() });
+
+    expect(result.current.isHydrated).toBe(false);
+    expect(result.current.isLoading).toBe(true);
+
+    await act(async () => {
+      resolveBootstrap?.({
+        token: null,
+        user: null,
+        isAuthenticated: false,
+        isHydrated: true,
+      });
+    });
+
+    await waitFor(() => expect(result.current.isHydrated).toBe(true));
   });
 
   it('provides hasRole function', async () => {
