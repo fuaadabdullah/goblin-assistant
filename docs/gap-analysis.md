@@ -69,10 +69,10 @@ Current working-tree scale:
 
 | Git status class | Count |
 |---|---:|
-| Modified files | 678 |
+| Modified files | 677 |
 | Deleted files | 123 |
 | Untracked files/directories | 4 |
-| Total status entries | 805 |
+| Total status entries | 804 |
 
 Current status concentration:
 
@@ -80,7 +80,7 @@ Current status concentration:
 |---|---:|---|
 | `apps/` | 764 | Dominates unresolved risk; should not be reviewed as one blob. |
 | `packages/` | 18 | Shared-contract/package drift can affect both API and web. |
-| Root and infra files | 23 | Contains runtime, Docker, compose, lockfile, hook, and docs changes that need separate ownership. |
+| Root and infra files | 22 | Contains runtime, Docker, compose, lockfile, hook, and docs changes that need separate ownership. |
 
 Triage labels used below:
 
@@ -140,7 +140,7 @@ as regressions.
 
 ### 3. Dirty Tree Is Too Broad for Confident Release Review
 
-There are 805 status entries after the already-created commits. This is larger
+There are 804 status entries after the already-created commits. This is larger
 than a normal focused feature branch and mixes backend, frontend, infra, docs,
 generated contracts, scripts, tests, package locks, and deleted legacy trees.
 
@@ -433,17 +433,17 @@ frontend signal.
 | Added TS/React scope may be noisy initially | Findings can become ignored if too broad. | Run or inspect one representative static-analysis result before tightening. |
 | Ignore paths can hide real issues | Generated/vendor ignores are healthy; broad app ignores are risky. | Review ignore paths line by line before commit. |
 
-### 16. Test Manifest Ownership Is Slightly Behind Source Changes
+### 16. Test Manifest Ownership Was Brought Forward
 
-`tests/manifests/contract.json` is dirty and appears to add Goblin query API
-tests to the contract bucket. That is likely the right direction, but it should
-be committed with a test-manifest proof rather than buried in unrelated changes.
+`tests/manifests/contract.json` now includes Goblin query API tests in the
+contract bucket via `a552fc86`. The same commit also makes route-alias tests
+robust to FastAPI included-router wrappers before adding the query tests to the
+bucket command.
 
-| Gap | Why It Matters | Proof Needed |
-|---|---|---|
-| New API tests may not be included in the intended bucket | CI can miss contract coverage even if tests exist. | Run the contract bucket or focused equivalent after staging the manifest. |
-| Manifest changes are easy to overlook | A one-line JSON change controls CI scope. | Commit as a tiny governance/test-manifest slice. |
-| Bucket commands can grow stale | File moves/deletions break runner commands. | `python3.11 tooling/quality/run-test-bucket.py contract` or targeted dry-run proof. |
+| Resolved Item | Proof |
+|---|---|
+| Goblin query tests are in the API contract bucket | `cd apps/api && PYTHONPATH=src python3.11 -m pytest -o "addopts=" -v src/api/tests/test_contract_boundaries.py src/api/tests/test_goblin_query_api.py src/api/tests/test_chat_route_version_aliases.py` passed with 25 tests. |
+| Route-alias path assertions handle current FastAPI route wrappers | The same focused command passed after collecting effective route-context paths. |
 
 ## High-Severity Issues
 
@@ -613,7 +613,7 @@ Do not claim release readiness until all of the following are true:
 
 | Required Before Release Claim | Current State |
 |---|---|
-| Working tree reduced to intentional, reviewable changes | Not true; 805 status entries remain. |
+| Working tree reduced to intentional, reviewable changes | Not true; 804 status entries remain. |
 | Commit history matches the requested story or the mismatch is explicitly accepted | Not true; one commit subject is misleading. |
 | Deprecated infra deletion has no active executable references | Mostly true after this pass; final search and policy checks still required. |
 | Contract artifacts regenerated after final API changes | Partially true; must rerun at end. |
@@ -629,19 +629,16 @@ Do not claim release readiness until all of the following are true:
    separate explicit decision.
 3. Keep package manifests and `pnpm-lock.yaml` together in their own
    dependency-migration proof.
-4. Commit the contract test-manifest update separately if the Goblin query API
-   test belongs in the contract bucket, then run the bucket or focused
-   equivalent.
-5. Split runtime configuration into container, compose/local-runtime,
+4. Split runtime configuration into container, compose/local-runtime,
    provider/env, and observability slices instead of one infrastructure blob.
-6. Re-run docs gates after any remaining docs/reference cleanup:
+5. Re-run docs gates after any remaining docs/reference cleanup:
    `check_docs_inventory`, `check_docs_links`, and
    `check_runbook_migration_map`.
-7. Re-run contract gates after all API/router changes:
+6. Re-run contract gates after all API/router changes:
    `make contract-checks`, `make sdk-check`, and route manifest generation.
-8. Run focused runtime smoke for `/api/v1/health`, `/api/v1/api/goblins`,
+7. Run focused runtime smoke for `/api/v1/health`, `/api/v1/api/goblins`,
    `/api/v1/api/history/{goblin_id}`, and `/api/v1/api/stats/{goblin_id}`.
-9. Only then run broader test/type gates or explicitly document why they are
+8. Only then run broader test/type gates or explicitly document why they are
    deferred.
 
 ## Resolved or Downgraded from Older Snapshots
