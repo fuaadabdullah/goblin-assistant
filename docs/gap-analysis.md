@@ -69,10 +69,10 @@ Current working-tree scale:
 
 | Git status class | Count |
 |---|---:|
-| Modified files | 680 |
+| Modified files | 679 |
 | Deleted files | 123 |
 | Untracked files/directories | 4 |
-| Total status entries | 807 |
+| Total status entries | 806 |
 
 ## Critical Gaps
 
@@ -115,7 +115,7 @@ as regressions.
 
 ### 3. Dirty Tree Is Too Broad for Confident Release Review
 
-There are 807 status entries after the already-created commits. This is larger
+There are 806 status entries after the already-created commits. This is larger
 than a normal focused feature branch and mixes backend, frontend, infra, docs,
 generated contracts, scripts, tests, package locks, and deleted legacy trees.
 
@@ -184,7 +184,7 @@ accepts a `security` bucket.
 | Bandit is high-severity-only for the first gate | This avoids blocking on 15 known medium findings, but those findings still need scheduled cleanup. |
 | `bandit`, `pip-audit`, and `audit-ci` availability is assumed | CI installs must keep these tools available before invoking `make test-security`. |
 | Dependency audit output includes cache warnings | The gate passed, but noisy pip cache warnings may obscure real failures in CI logs. |
-| `audit-ci` uses existing pnpm allowlists | It passed with moderate/high advisories allowlisted; those allowlists should be revisited separately. |
+| `audit-ci` uses committed pnpm allowlists | It passed with moderate/high advisories allowlisted; those allowlists should be revisited separately. |
 
 Current proof: `make test-security` passed after changing Bandit to high
 severity only. Follow-up should burn down or baseline medium findings rather
@@ -409,7 +409,7 @@ Do not claim release readiness until all of the following are true:
 
 | Required Before Release Claim | Current State |
 |---|---|
-| Working tree reduced to intentional, reviewable changes | Not true; 807 status entries remain. |
+| Working tree reduced to intentional, reviewable changes | Not true; 806 status entries remain. |
 | Commit history matches the requested story or the mismatch is explicitly accepted | Not true; one commit subject is misleading. |
 | Deprecated infra deletion has no active executable references | Mostly true after this pass; final search and policy checks still required. |
 | Contract artifacts regenerated after final API changes | Partially true; must rerun at end. |
