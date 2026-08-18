@@ -83,19 +83,19 @@ def _extract_with_pypdf(path: str) -> Tuple[List[str], List[str]]:
     warnings: List[str] = []
     try:
         from pypdf import PdfReader
-    except Exception as exc:  # noqa: BLE001
+    except Exception as exc:
         return [], [f"pypdf_unavailable: {exc}"]
 
     try:
         reader = PdfReader(path)
-    except Exception as exc:  # noqa: BLE001
+    except Exception as exc:
         return [], [f"pypdf_read_failed: {exc}"]
 
     page_texts: List[str] = []
     for idx, page in enumerate(reader.pages):
         try:
             page_texts.append(page.extract_text() or "")
-        except Exception as exc:  # noqa: BLE001
+        except Exception as exc:
             warnings.append(f"pypdf_page_extract_failed(page={idx + 1}): {exc}")
             page_texts.append("")
     return page_texts, warnings
@@ -114,12 +114,12 @@ def _extract_with_ocr(path: str) -> Tuple[List[str], List[str]]:
     try:
         import pytesseract
         from pdf2image import convert_from_path
-    except Exception as exc:  # noqa: BLE001
+    except Exception as exc:
         return [], [f"ocr_deps_unavailable: {exc}"]
 
     try:
         images = convert_from_path(path)
-    except Exception as exc:  # noqa: BLE001
+    except Exception as exc:
         return [], [f"ocr_render_failed: {exc}"]
 
     page_texts: List[str] = []
@@ -127,7 +127,7 @@ def _extract_with_ocr(path: str) -> Tuple[List[str], List[str]]:
     for idx, image in enumerate(images):
         try:
             page_texts.append(pytesseract.image_to_string(image) or "")
-        except Exception as exc:  # noqa: BLE001
+        except Exception as exc:
             warnings.append(f"ocr_page_extract_failed(page={idx + 1}): {exc}")
             page_texts.append("")
     return page_texts, warnings
