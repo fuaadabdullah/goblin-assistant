@@ -15,8 +15,6 @@ on:
 #      - 'apps/api/**'
 #      - 'apps/web/src/**'
 #      - 'Dockerfile'
-#      - 'terraform/**'
-#      - 'terraform.tfvars.example'
 #      - '.github/workflows/deploy-staging.yml'
 
 concurrency:
@@ -123,43 +121,11 @@ jobs:
           cache-to: type=gha,mode=max
 
   # ==============================================================================
-  # Terraform Plan for Staging
-  # ==============================================================================
-  terraform-plan:
-    name: Terraform Plan (Staging)
-    needs: [build]
-    runs-on: ubuntu-latest
-    permissions:
-      contents: read
-      pull-requests: write
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-
-      - name: Setup Terraform
-        uses: hashicorp/setup-terraform@v3
-        with:
-          terraform_version: '1.6.0'
-
-      - name: Initialize Terraform
-        run: |
-          cd terraform
-          terraform init -backend=false
-        env:
-          TF_INPUT: false
-
-      - name: Generate plan
-        id: plan
-        run: |
-          cd terraform
-          terraform plan -no-color || true
-
-  # ==============================================================================
   # Deploy to Staging (Render)
   # ==============================================================================
   deploy-staging:
     name: Deploy to Staging
-    needs: [build, terraform-plan]
+    needs: [build]
     runs-on: ubuntu-latest
     environment:
       name: staging
@@ -191,7 +157,7 @@ jobs:
         id: health
         run: |
           for i in {1..30}; do
-            response=$(curl -s -o /dev/null -w "%{http_code}" https://goblin-assistant-staging.onrender.com/health)
+            response=$(curl -s -o /dev/null -w "%{http_code}" https://goblin-assistant-staging.onrender.com/api/v1/health)
             if [ "$response" = "200" ]; then
               echo "✅ Health check passed"
               exit 0
@@ -236,6 +202,5 @@ jobs:
       - name: Run smoke tests
         run: |
           # Example smoke tests against staging
-          curl -f https://goblin-assistant-staging.onrender.com/health || exit 1
-          curl -f https://goblin-assistant-staging.onrender.com/api/status || exit 1
+          curl -f https://goblin-assistant-staging.onrender.com/api/v1/health || exit 1
           echo "✅ Smoke tests passed"

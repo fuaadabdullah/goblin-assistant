@@ -307,25 +307,27 @@ cd backend && python -c "import os; print(os.getenv('DATABASE_URL'))"
    docker build -t goblin-assistant . 2>&1 | tee build.log
    ```
 
-### Fly.io Deployment Issues
+### Render Deployment Issues
 
-**Problem**: Fly.io deployment fails.
+**Problem**: Render deployment fails or the service remains unhealthy.
 
 **Solutions**:
 
-1. **Check Fly.io configuration**:
+1. **Check Render blueprint and service logs**:
    ```bash
-   fly config validate
+   ./scripts/verify-cicd-setup.sh
    ```
 
-2. **Monitor deployment logs**:
+2. **Verify the production health endpoint**:
    ```bash
-   fly logs --instance <instance-id>
+   curl -f https://goblin-backend-dt30.onrender.com/api/v1/health
    ```
 
-3. **Check resource limits**:
+3. **Confirm Render secrets and service IDs**:
    ```bash
-   fly scale show
+   RENDER_API_KEY
+   RENDER_SERVICE_ID_PROD
+   RENDER_SERVICE_ID_STAGING
    ```
 
 ## Monitoring and Debugging

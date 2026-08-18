@@ -189,7 +189,7 @@ kill -9 $(lsof -t -i:3000)
 
 For production deployment, see:
 - `docs/operations/DEPLOYMENT_README.md` - Complete deployment guide
-- `FLY_DEPLOYMENT.md` - Fly.io backend deployment
+- `docs/operations/DEPLOYMENT_ARCHITECTURE.md` - canonical Render/Vercel deployment model
 - `vercel.json` - Vercel frontend configuration
 
 ### Production URLs

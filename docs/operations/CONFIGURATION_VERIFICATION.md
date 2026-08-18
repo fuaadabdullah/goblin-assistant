@@ -11,7 +11,7 @@
 1. ✅ **Removed duplicate environment variables** in `.env.local`
 2. ✅ **Verified all LlamaCPP endpoints** use correct IP `34.132.226.143:8000`
 3. ✅ **Confirmed Fly.io deployment** is using `goblin-backend` app (not `goblin-assistant-backend`)
-4. ✅ **Validated fly.toml configuration** has correct URLs
+4. ✅ **Confirmed fly.toml is archived** while Render remains canonical
 
 ---
 
@@ -24,7 +24,7 @@ LLAMACPP_GCP_URL=http://34.132.226.143:8000
 NEXT_PUBLIC_API_BASE_URL=http://localhost:8004
 ```
 
-### Production (Fly.io - `fly.toml`)
+### Production (Render - `render.yaml`)
 ```toml
 app = "goblin-backend"
 [env]
@@ -158,24 +158,16 @@ pkill -f "next dev"
 
 ### Production Deployment
 ```bash
-# Deploy to Fly.io
-cd /path/to/goblin-assistant
-fly deploy -a goblin-backend
+# Verify active Render/Vercel CI/CD wiring
+./scripts/verify-cicd-setup.sh
 
-# Check status
-fly status -a goblin-backend
-
-# View logs
-fly logs -a goblin-backend
-
-# List secrets
-fly secrets list -a goblin-backend
+# Verify production health
+curl https://goblin-backend-dt30.onrender.com/api/v1/health
 ```
 
 ### Update Production Secrets (if needed)
 ```bash
-# Note: Secrets are already set via fly.toml [env] section
-# Only use fly secrets for sensitive data like API keys
+# Set secrets in Render, Vercel, GitHub Actions, or the approved secret backend.
 
 fly secrets set \
   ANTHROPIC_API_KEY=your_key \
@@ -222,7 +214,7 @@ curl -X POST https://goblin-backend-dt30.onrender.com/api/chat \
 ### Configuration Files ✅
 - [x] `/./.env.local` - Cleaned duplicates
 - [x] `/./.env.example` - Updated IP
-- [x] `/./fly.toml` - Verified correct
+- [x] `/./fly.toml` - Archived reference only; Render is canonical
 
 ### Scripts ✅
 - [x] `/./deploy-gcp-chat.sh` - Updated IPs
@@ -236,7 +228,7 @@ curl -X POST https://goblin-backend-dt30.onrender.com/api/chat \
 
 ### Documentation ✅
 - [x] `/./AI_PROVIDER_INTEGRATION_REPORT.md` - Updated
-- [x] `/./GCP_CHAT_DEPLOYMENT.md` - Updated
+- [x] Archived GCP chat deployment notes - historical reference only
 - [x] `/./PROVIDER_STATUS_REPORT.md` - Updated
 
 ---

@@ -158,10 +158,7 @@ export CLOUDFLARE_API=$(bw get password goblin-prod-cloudflare-api)
 
 # Deploy to your platform
 vercel deploy --prod
-# or
-fly deploy
-# or
-render-cli deploy
+# or trigger the Render workflow/API
 ```
 
 ### Platform-Specific Examples
@@ -343,7 +340,7 @@ COPY scripts/load_env.sh /app/
 RUN source /app/load_env.sh && echo "Secrets loaded"
 ```
 
-### With Kubernetes
+### With Container Orchestrators
 
 ```yaml
 # Use Bitwarden CLI in init container

@@ -263,22 +263,16 @@ python3 scripts/validate_privacy_integration.py
 
 ### Production Deployment
 
-- [ ] Deploy backend to Fly.io
+- [ ] Deploy backend through the canonical Render workflow.
   ```bash
-  cd apps/goblin-assistant
-  fly deploy
-  
+  ./scripts/verify-cicd-setup.sh
+
   # Verify deployment
-  curl https://goblin-assistant-backend.onrender.com/health
+  curl https://goblin-backend-dt30.onrender.com/api/v1/health
   ```
 
-- [ ] Set production secrets
-  ```bash
-  fly secrets set REDIS_URL="redis://..." \
-    DATADOG_API_KEY="..." \
-    SUPABASE_URL="..." \
-    SUPABASE_ANON_KEY="..."
-  ```
+- [ ] Set production secrets in Render, Vercel, GitHub Actions, or the
+  approved secret backend.
 
 - [ ] Monitor Datadog for metrics
   - Check `goblin.inference.latency`
