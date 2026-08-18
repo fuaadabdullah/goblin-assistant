@@ -345,10 +345,25 @@ class ProviderHealthMonitor:
         configured = [item["id"] for item in inventory if item.get("configured")]
         selectable = [item["id"] for item in inventory if item.get("is_selectable")]
         unconfigured = [item["id"] for item in inventory if not item.get("configured")]
+        invalid_markers = ("401", "403", "unauthorized", "forbidden", "invalid", "credential")
+        unreachable_markers = ("connection", "connect", "timeout", "unreachable", "refused")
+        invalid_credentials: List[str] = []
+        unreachable: List[str] = []
+        for item in inventory:
+            if not item.get("configured") or item.get("is_selectable"):
+                continue
+            reason = str(item.get("health_reason") or "").lower()
+            provider_id = item["id"]
+            if any(marker in reason for marker in invalid_markers):
+                invalid_credentials.append(provider_id)
+            elif any(marker in reason for marker in unreachable_markers):
+                unreachable.append(provider_id)
         return {
             "configured": configured,
             "selectable": selectable,
             "unconfigured": unconfigured,
+            "invalid_credentials": invalid_credentials,
+            "unreachable": unreachable,
         }
 
     async def _check_provider(
