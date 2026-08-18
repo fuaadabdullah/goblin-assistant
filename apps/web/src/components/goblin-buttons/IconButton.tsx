@@ -5,7 +5,15 @@ type BaseButtonProps = React.ButtonHTMLAttributes<HTMLButtonElement> & { classNa
 
 type IconVariant = 'ghost' | 'primary' | 'danger';
 
-export function IconButton({ children, onClick, disabled = false, variant = 'ghost', className = '', 'aria-label': ariaLabel, ...props }: BaseButtonProps & { variant?: IconVariant; 'aria-label': string }) {
+export function IconButton({
+  children,
+  onClick,
+  disabled = false,
+  variant = 'ghost',
+  className = '',
+  'aria-label': ariaLabel,
+  ...props
+}: BaseButtonProps & { variant?: IconVariant; 'aria-label': string }) {
   const variantClasses: Record<IconVariant, string> = {
     ghost: getButtonClasses('icon-ghost', className),
     primary: getButtonClasses('icon-primary', className),
@@ -13,7 +21,13 @@ export function IconButton({ children, onClick, disabled = false, variant = 'gho
   };
 
   return (
-    <button onClick={onClick} disabled={disabled} aria-label={ariaLabel} className={variantClasses[variant]} {...props}>
+    <button
+      onClick={onClick}
+      disabled={disabled}
+      aria-label={ariaLabel}
+      className={variantClasses[variant]}
+      {...props}
+    >
       {children}
     </button>
   );

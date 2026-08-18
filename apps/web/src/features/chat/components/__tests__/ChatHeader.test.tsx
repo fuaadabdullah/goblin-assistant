@@ -1,25 +1,28 @@
-import React from 'react';
+import type { ReactNode } from 'react';
 import { render, screen, fireEvent } from '@testing-library/react';
 
-jest.mock('lucide-react', () => new Proxy({}, {
-  get: (_, name) => {
-    if (name === '__esModule') return true;
-    return (props: Record<string, unknown>) => <span data-testid={`icon-${String(name)}`} {...props} />;
+vi.mock('next/link', () => ({
+  default: function MockLink({ children, href }: { children: ReactNode; href: string }) {
+    return <a href={href}>{children}</a>;
   },
 }));
-jest.mock('next/link', () => function MockLink({ children, href }: { children: React.ReactNode; href: string }) {
-  return <a href={href}>{children}</a>;
-});
+vi.mock('../../../../hooks/useHealthCheck', () => ({
+  useHealthCheck: () => ({
+    data: { overall: 'healthy' },
+    isLoading: false,
+    isError: false,
+  }),
+}));
 
 import ChatHeader from '../ChatHeader';
 
 describe('ChatHeader', () => {
   const defaultProps = {
     isAdmin: false,
-    onClear: jest.fn(),
+    onClear: vi.fn(),
   };
 
-  beforeEach(() => jest.clearAllMocks());
+  beforeEach(() => vi.clearAllMocks());
 
   it('renders the title', () => {
     render(<ChatHeader {...defaultProps} />);
@@ -53,40 +56,84 @@ describe('ChatHeader', () => {
     expect(screen.queryByText('Admin Dashboard')).not.toBeInTheDocument();
   });
 
+  it('does not expose connectivity debug to non-admins', () => {
+    const { container } = render(<ChatHeader {...defaultProps} />);
+    expect(container.querySelector('a[href="/debug/connectivity"]')).not.toBeInTheDocument();
+  });
+
   it('shows Admin Dashboard for admin', () => {
     render(<ChatHeader {...defaultProps} isAdmin />);
     const link = screen.getByText('Admin Dashboard');
     expect(link.closest('a')).toHaveAttribute('href', '/admin');
   });
 
+  it('exposes connectivity debug only to admins', () => {
+    const { container } = render(<ChatHeader {...defaultProps} isAdmin />);
+    expect(container.querySelector('a[href="/debug/connectivity"]')).toBeInTheDocument();
+  });
+
   it('does not show sidebar toggle by default', () => {
     render(<ChatHeader {...defaultProps} />);
-    expect(screen.queryByLabelText(/conversations/i)).not.toBeInTheDocument();
+    expect(screen.queryByLabelText(/chat panel/i)).not.toBeInTheDocument();
   });
 
-  it('shows sidebar toggle when enabled', () => {
-    const onToggle = jest.fn();
-    render(<ChatHeader {...defaultProps} showSidebarToggle onToggleSidebar={onToggle} />);
-    const btn = screen.getByLabelText('Open conversations');
+  it('shows unified mobile panel toggle when enabled', () => {
+    const onToggle = vi.fn();
+    render(<ChatHeader {...defaultProps} showMobilePanelToggle onToggleMobilePanel={onToggle} />);
+    const btn = screen.getByLabelText('Open chat panel');
     expect(btn).toBeInTheDocument();
+    expect(btn).toHaveTextContent('Conversations');
   });
 
-  it('toggles sidebar on click', () => {
-    const onToggle = jest.fn();
-    render(<ChatHeader {...defaultProps} showSidebarToggle onToggleSidebar={onToggle} />);
-    fireEvent.click(screen.getByLabelText('Open conversations'));
+  it('toggles unified mobile panel on click', () => {
+    const onToggle = vi.fn();
+    render(<ChatHeader {...defaultProps} showMobilePanelToggle onToggleMobilePanel={onToggle} />);
+    fireEvent.click(screen.getByLabelText('Open chat panel'));
     expect(onToggle).toHaveBeenCalled();
   });
 
-  it('shows close label when sidebar is open', () => {
-    render(<ChatHeader {...defaultProps} showSidebarToggle onToggleSidebar={jest.fn()} isSidebarOpen />);
-    expect(screen.getByLabelText('Close conversations')).toBeInTheDocument();
+  it('shows close label when mobile panel is open', () => {
+    render(
+      <ChatHeader
+        {...defaultProps}
+        showMobilePanelToggle
+        onToggleMobilePanel={vi.fn()}
+        isMobilePanelOpen
+      />
+    );
+    expect(screen.getByLabelText('Close chat panel')).toBeInTheDocument();
   });
 
   it('sets aria-expanded correctly', () => {
-    const { rerender } = render(<ChatHeader {...defaultProps} showSidebarToggle onToggleSidebar={jest.fn()} isSidebarOpen={false} />);
-    expect(screen.getByLabelText('Open conversations')).toHaveAttribute('aria-expanded', 'false');
-    rerender(<ChatHeader {...defaultProps} showSidebarToggle onToggleSidebar={jest.fn()} isSidebarOpen />);
-    expect(screen.getByLabelText('Close conversations')).toHaveAttribute('aria-expanded', 'true');
+    const { rerender } = render(
+      <ChatHeader
+        {...defaultProps}
+        showMobilePanelToggle
+        onToggleMobilePanel={vi.fn()}
+        isMobilePanelOpen={false}
+      />
+    );
+    expect(screen.getByLabelText('Open chat panel')).toHaveAttribute('aria-expanded', 'false');
+    rerender(
+      <ChatHeader
+        {...defaultProps}
+        showMobilePanelToggle
+        onToggleMobilePanel={vi.fn()}
+        isMobilePanelOpen
+      />
+    );
+    expect(screen.getByLabelText('Close chat panel')).toHaveAttribute('aria-expanded', 'true');
+  });
+
+  it('shows active preview tab label in the toggle', () => {
+    render(
+      <ChatHeader
+        {...defaultProps}
+        showMobilePanelToggle
+        onToggleMobilePanel={vi.fn()}
+        activeMobilePanelTab="preview"
+      />
+    );
+    expect(screen.getByLabelText('Open chat panel')).toHaveTextContent('Preview');
   });
 });

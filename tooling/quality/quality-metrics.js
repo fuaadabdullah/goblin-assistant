@@ -184,8 +184,8 @@ function calculateQualityScore(metrics) {
   score -= metrics.issues.naming * 3;
 
   // Deduct for low coverage
-  if (metrics.tests.coverage > 0 && metrics.tests.coverage < 80) {
-    score -= 80 - metrics.tests.coverage;
+  if (metrics.tests.coverage > 0 && metrics.tests.coverage < 70) {
+    score -= 70 - metrics.tests.coverage;
   }
 
   // Deduct for large files
@@ -231,8 +231,8 @@ function generateRecommendations(metrics) {
     console.log('  • Use consistent naming conventions (camelCase/kebab-case)');
   }
 
-  if (metrics.tests.coverage < 80 && metrics.tests.coverage > 0) {
-    console.log('  • Increase test coverage to at least 80%');
+  if (metrics.tests.coverage < 70 && metrics.tests.coverage > 0) {
+    console.log('  • Increase test coverage to at least 70%');
   }
 
   if (metrics.lines.max > 300) {

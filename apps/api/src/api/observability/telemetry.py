@@ -217,6 +217,12 @@ def record_request_observation(
     prompt_tokens: Optional[int] = None,
     completion_tokens: Optional[int] = None,
     cost_usd: Optional[float] = None,
+    fallback_reason: Optional[str] = None,
+    failure_class: Optional[str] = None,
+    visible_outcome: Optional[str] = None,
+    context_sources: Optional[list[str]] = None,
+    tool_usage: Optional[Dict[str, Any]] = None,
+    alternatives_considered: Optional[list[str]] = None,
     metadata: Optional[Dict[str, Any]] = None,
 ) -> None:
     route_name = _normalize_route(route)
@@ -239,6 +245,12 @@ def record_request_observation(
         "prompt_tokens": prompt_tokens,
         "completion_tokens": completion_tokens,
         "cost_usd": cost_usd,
+        "fallback_reason": fallback_reason,
+        "failure_class": failure_class,
+        "visible_outcome": visible_outcome,
+        "context_sources": context_sources,
+        "tool_usage": tool_usage,
+        "alternatives_considered": alternatives_considered,
         "timestamp": _iso_now(),
     }
     if metadata:

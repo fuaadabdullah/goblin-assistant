@@ -34,7 +34,7 @@ describe('Button', () => {
   });
 
   test('handles click events', () => {
-  const handleClick = jest.fn();
+    const handleClick = vi.fn();
     const { getByRole } = render(<Button onClick={handleClick}>Click me</Button>);
 
     const button = getByRole('button');
@@ -50,8 +50,22 @@ describe('Button', () => {
     expect(button).toHaveTextContent('Launch');
   });
 
+  test('renders loading state without the icon', () => {
+    const { getByRole, queryByText } = render(
+      <Button loading icon="🚀">
+        Launch
+      </Button>
+    );
+
+    const button = getByRole('button', { name: /launch/i });
+    expect(button).toBeDisabled();
+    expect(button).toHaveAttribute('aria-busy', 'true');
+    expect(queryByText('🚀')).not.toBeInTheDocument();
+    expect(button).toHaveTextContent('Launch');
+  });
+
   test('can be disabled', () => {
-  const handleClick = jest.fn();
+    const handleClick = vi.fn();
     const { getByRole } = render(
       <Button onClick={handleClick} disabled>
         Disabled

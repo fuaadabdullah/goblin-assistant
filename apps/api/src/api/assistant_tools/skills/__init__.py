@@ -8,7 +8,6 @@ from __future__ import annotations
 
 import importlib
 
-
 _SKILL_MODULES = (
     # Core assistant contract surface
     "memory_recall",
@@ -21,19 +20,28 @@ _SKILL_MODULES = (
     "academic_search",
     "citation_graph",
     "research_tool",
-    # Financial skill surface preserved from the previous package init
+    # Sandbox / terminal
+    "sandbox_tool",
+    "terminal_tool",
+    # Financial skill surface
     "market_data",
     "dcf_calculator",
     "portfolio_analyzer",
     "earnings_summarizer",
     "stock_screener",
+    # Additional skills from main
+    "news_summarizer",
+    "sec_filings",
 )
 
 
 def _import_selected_skills() -> None:
     package_name = __name__
     for module_name in _SKILL_MODULES:
-        importlib.import_module(f"{package_name}.{module_name}")
+        try:
+            importlib.import_module(f"{package_name}.{module_name}")
+        except ModuleNotFoundError:
+            pass
 
 
 _import_selected_skills()

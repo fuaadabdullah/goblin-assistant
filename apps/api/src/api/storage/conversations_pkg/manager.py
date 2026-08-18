@@ -37,6 +37,21 @@ class ConversationStoreManager:
     ) -> List[Conversation]:
         return await self._store.list_conversations(user_id, limit)
 
+    async def get_goblin_stats(
+        self,
+        *,
+        user_id: str,
+        goblin_id: str,
+        started_at: datetime,
+        ended_at: datetime,
+    ) -> Dict[str, Any]:
+        return await self._store.get_goblin_stats(
+            user_id=user_id,
+            goblin_id=goblin_id,
+            started_at=started_at,
+            ended_at=ended_at,
+        )
+
     async def update_conversation_title(self, conversation_id: str, title: str) -> bool:
         return await self._store.update_conversation_title(conversation_id, title)
 

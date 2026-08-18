@@ -28,6 +28,20 @@ print_error() {
     echo -e "${RED}❌ $1${NC}"
 }
 
+get_secret_any() {
+    local candidate value
+
+    for candidate in "$@"; do
+        value="$(bw get password "$candidate" 2>/dev/null || true)"
+        if [ -n "$value" ]; then
+            echo "$value"
+            return 0
+        fi
+    done
+
+    echo "REDACTED"
+}
+
 # Parse command line arguments
 TEST_MODE=false
 
@@ -88,6 +102,9 @@ else
         export SUPABASE_ANON_KEY="$(bw get password "goblin-prod-supabase-anon-key" 2>/dev/null || echo "REDACTED")"
         export ANTHROPIC_API_KEY="$(bw get password "goblin-prod-anthropic" 2>/dev/null || echo "REDACTED")"
         export OPENAI_API_KEY="$(bw get password "goblin-prod-openai" 2>/dev/null || echo "REDACTED")"
+        export GROQ_API_KEY="$(get_secret_any "goblin-prod-groq-key" "Groq API Key")"
+        export SILICONEFLOW_API_KEY="$(get_secret_any "goblin-prod-siliconeflow-key" "SiliconeFlow API Key" "SiliconFlow API Key")"
+        export GOOGLE_AI_API_KEY="$(get_secret_any "goblin-prod-google-ai-key" "Google AI API Key" "Google Gemini API Key")"
         export SENTRY_DSN="$(bw get password "goblin-prod-sentry-dsn" 2>/dev/null || echo "REDACTED")"
         export DD_API_KEY="$(bw get password "goblin-prod-datadog-api" 2>/dev/null || echo "REDACTED")"
         export REDIS_URL="$(bw get password "goblin-prod-redis-url" 2>/dev/null || echo "redis://localhost:6379/0")"
@@ -129,6 +146,18 @@ fi
 
 if [ -n "${OPENAI_API_KEY:-}" ]; then
     sed -i.bak "s|OPENAI_API_KEY=REDACTED|OPENAI_API_KEY=$OPENAI_API_KEY|g" "$ENV_FILE"
+fi
+
+if [ -n "${GROQ_API_KEY:-}" ]; then
+    sed -i.bak "s|GROQ_API_KEY=REDACTED|GROQ_API_KEY=$GROQ_API_KEY|g" "$ENV_FILE"
+fi
+
+if [ -n "${SILICONEFLOW_API_KEY:-}" ]; then
+    sed -i.bak "s|SILICONEFLOW_API_KEY=REDACTED|SILICONEFLOW_API_KEY=$SILICONEFLOW_API_KEY|g" "$ENV_FILE"
+fi
+
+if [ -n "${GOOGLE_AI_API_KEY:-}" ]; then
+    sed -i.bak "s|GOOGLE_AI_API_KEY=REDACTED|GOOGLE_AI_API_KEY=$GOOGLE_AI_API_KEY|g" "$ENV_FILE"
 fi
 
 if [ -n "${SENTRY_DSN:-}" ]; then

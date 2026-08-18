@@ -4,9 +4,9 @@ import { render, screen, fireEvent } from '@testing-library/react';
 import SocialLoginButtons from '../SocialLoginButtons';
 
 describe('SocialLoginButtons', () => {
-  const onGoogleLogin = jest.fn();
+  const onGoogleLogin = vi.fn();
 
-  beforeEach(() => jest.clearAllMocks());
+  beforeEach(() => vi.clearAllMocks());
 
   it('renders Google login button', () => {
     render(<SocialLoginButtons onGoogleLogin={onGoogleLogin} />);

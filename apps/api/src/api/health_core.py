@@ -89,10 +89,19 @@ async def check_redis_health() -> Dict[str, Any]:
 
 
 async def check_api_health() -> Dict[str, Any]:
-    """Check API system health"""
+    """Check API system health by probing route registration and process state."""
     try:
-        # Basic API health check - could be expanded
-        return {"status": "healthy", "endpoints": "responsive"}
+        import os
+
+        from . import api_router
+
+        route_count = len(api_router.router.routes)
+        pid = os.getpid()
+        return {
+            "status": "healthy",
+            "routes_registered": route_count,
+            "pid": pid,
+        }
     except Exception as e:
         return {"status": "unhealthy", "error": str(e)}
 

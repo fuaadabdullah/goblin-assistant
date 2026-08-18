@@ -1,13 +1,18 @@
 import { useCallback, useState } from 'react';
+import * as Sentry from '@sentry/react';
+import { getUserMessage } from '@/lib/error/toast';
 
-// Sentry v8 re-exports core functions from @sentry/browser.
-// When @sentry/browser types aren't resolved (e.g. missing transitive dep),
-// import the namespace and cast to access the runtime-available core APIs.
-const Sentry: {
+// @sentry/react re-exports these from @sentry/browser at runtime but the type declarations
+// don't resolve them without @sentry/browser installed as a direct dep.
+const {
+  captureException: sentryCaptureException,
+  captureMessage: sentryCaptureMessage,
+  addBreadcrumb: sentryAddBreadcrumb,
+} = Sentry as typeof Sentry & {
   captureException: (error: unknown) => string;
-  captureMessage: (message: string, level?: string) => string;
-  addBreadcrumb: (breadcrumb: { message?: string; category?: string; level?: string }) => void;
-} = require('@sentry/react');
+  captureMessage: (message: string, level: string) => string;
+  addBreadcrumb: (breadcrumb: { message: string; category: string; level: string }) => void;
+};
 
 export type ErrorTestStatus = 'success' | 'failed';
 
@@ -15,18 +20,20 @@ export interface ErrorTestResult {
   id: string;
   label: string;
   status: ErrorTestStatus;
-  message?: string;
+  message?: string | undefined;
   timestamp: string;
 }
 
 const createId = () => `${Date.now()}-${Math.random().toString(16).slice(2)}`;
+
+export const formatErrorTestMessage = (error: unknown): string => getUserMessage(error);
 
 export const useErrorTesting = (onSuccess?: (title: string, message?: string) => void) => {
   const [results, setResults] = useState<ErrorTestResult[]>([]);
   const [isLoading, setIsLoading] = useState(false);
 
   const addResult = useCallback((label: string, status: ErrorTestStatus, message?: string) => {
-    setResults(prev => [
+    setResults((prev) => [
       ...prev,
       {
         id: createId(),
@@ -45,7 +52,7 @@ export const useErrorTesting = (onSuccess?: (title: string, message?: string) =>
         addResult(label, 'success');
         onSuccess?.('Test completed', label);
       } catch (error) {
-        addResult(label, 'failed', error instanceof Error ? error.message : String(error));
+        addResult(label, 'failed', formatErrorTestMessage(error));
       }
     },
     [addResult, onSuccess]
@@ -84,22 +91,22 @@ export const useErrorTesting = (onSuccess?: (title: string, message?: string) =>
 
   const testSentryError = () =>
     wrapTest('Sentry Error', () => {
-      Sentry.captureException(new Error('Sentry test error'));
+      sentryCaptureException(new Error('Sentry test error'));
     });
 
   const testSentryMessage = () =>
     wrapTest('Sentry Message', () => {
-      Sentry.captureMessage('Sentry test message', 'info');
+      sentryCaptureMessage('Sentry test message', 'info');
     });
 
   const testSentryBreadcrumb = () =>
     wrapTest('Sentry Breadcrumb', () => {
-      Sentry.addBreadcrumb({
+      sentryAddBreadcrumb({
         message: 'Sentry breadcrumb',
         category: 'test',
         level: 'info',
       });
-      Sentry.captureMessage('Sentry breadcrumb test message', 'info');
+      sentryCaptureMessage('Sentry breadcrumb test message', 'info');
     });
 
   const runAllTests = async () => {

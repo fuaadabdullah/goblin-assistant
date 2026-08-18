@@ -1,20 +1,37 @@
 import React from 'react';
 import { render, screen } from '@testing-library/react';
-import '@testing-library/jest-dom';
 
-jest.mock('@/components/ui/Select', () => ({
-  Select: ({ children, value, onValueChange }: { children: React.ReactNode; value: string; onValueChange: (v: string) => void }) => (
+vi.mock('@goblin/ui', () => ({
+  Select: ({
+    children,
+    value,
+    onValueChange,
+  }: {
+    children: React.ReactNode;
+    value: string;
+    onValueChange: (v: string) => void;
+  }) => (
     <div data-testid="select" data-value={value}>
       {children}
-      <input data-testid="select-input" aria-label="select" value={value} onChange={(e) => onValueChange(e.target.value)} readOnly />
+      <input
+        data-testid="select-input"
+        aria-label="select"
+        value={value}
+        onChange={(e) => onValueChange(e.target.value)}
+        readOnly
+      />
     </div>
   ),
-  SelectContent: ({ children }: { children: React.ReactNode }) => <div data-testid="select-content">{children}</div>,
+  SelectContent: ({ children }: { children: React.ReactNode }) => (
+    <div data-testid="select-content">{children}</div>
+  ),
   SelectItem: ({ children, value }: { children: React.ReactNode; value: string }) => (
     <div data-testid={`select-item-${value}`}>{children}</div>
   ),
   SelectTrigger: ({ children, ...props }: { children: React.ReactNode; id?: string }) => (
-    <button {...props} data-testid="select-trigger">{children}</button>
+    <button {...props} data-testid="select-trigger">
+      {children}
+    </button>
   ),
   SelectValue: ({ placeholder }: { placeholder: string }) => <span>{placeholder}</span>,
 }));

@@ -10,6 +10,10 @@ This directory is the canonical home for operational documentation previously un
 - `DEPLOYMENT_AND_TESTING.md`: deployment validation flow.
 - `PRODUCTION_DEPLOYMENT_CHECKLIST.md`: production readiness checks.
 - `TESTING.md`: test execution strategy and commands.
+- `RUNBOOK_MIGRATION_MAP.md`: required old-path to canonical-location map for
+  documents removed from `docs/runbooks/`.
+- `QUALITY_BASELINE.md`: suppression classification, ratchet behavior, partial
+  output, and quality-gate exit codes.
 
 ## Security operations
 

@@ -8,6 +8,8 @@ from api.services.context_assembly_service import budget_manager as bm
 def _set_fake_budget_manager_file(monkeypatch, tmp_path: Path, create_providers: bool) -> Path:
     fake_file = (
         tmp_path
+        / "apps"
+        / "api"
         / "src"
         / "api"
         / "services"
@@ -17,7 +19,7 @@ def _set_fake_budget_manager_file(monkeypatch, tmp_path: Path, create_providers:
     fake_file.parent.mkdir(parents=True, exist_ok=True)
     fake_file.write_text("# fake", encoding="utf-8")
 
-    providers_path = tmp_path / "src" / "config" / "providers.toml"
+    providers_path = tmp_path / "config" / "providers.toml"
     if create_providers:
         providers_path.parent.mkdir(parents=True, exist_ok=True)
         providers_path.write_text("[providers]\n", encoding="utf-8")
@@ -29,6 +31,7 @@ def _set_fake_budget_manager_file(monkeypatch, tmp_path: Path, create_providers:
 def test_load_budget_config_reads_env(monkeypatch):
     monkeypatch.setenv("CONTEXT_WINDOW_SIZE", "9000")
     monkeypatch.setenv("SYSTEM_TOKENS", "400")
+    monkeypatch.setenv("PROFILE_TOKENS", "200")
     monkeypatch.setenv("LONG_TERM_TOKENS", "500")
     monkeypatch.setenv("WORKING_MEMORY_TOKENS", "600")
     monkeypatch.setenv("SEMANTIC_RETRIEVAL_TOKENS", "700")
@@ -37,6 +40,7 @@ def test_load_budget_config_reads_env(monkeypatch):
 
     assert budget.total_tokens == 9000
     assert budget.system_tokens == 400
+    assert budget.profile_tokens == 200
     assert budget.long_term_tokens == 500
     assert budget.working_memory_tokens == 600
     assert budget.semantic_retrieval_tokens == 700
@@ -148,6 +152,7 @@ def test_derive_budget_scales_up_and_respects_reserve():
     default = ContextBudget(
         total_tokens=8000,
         system_tokens=300,
+        profile_tokens=200,
         long_term_tokens=300,
         working_memory_tokens=700,
         semantic_retrieval_tokens=1200,
@@ -163,12 +168,14 @@ def test_derive_budget_scales_up_and_respects_reserve():
 
     assert derived.total_tokens == 15000
     assert derived.system_tokens >= 80
+    assert derived.profile_tokens >= 80
     assert derived.long_term_tokens >= 80
     assert derived.working_memory_tokens >= 120
     assert derived.semantic_retrieval_tokens >= 240
     assert derived.ephemeral_tokens >= 0
     assert (
         derived.system_tokens
+        + derived.profile_tokens
         + derived.long_term_tokens
         + derived.working_memory_tokens
         + derived.semantic_retrieval_tokens
@@ -192,6 +199,7 @@ def test_derive_budget_shrink_branch_and_minimums():
     default = ContextBudget(
         total_tokens=1000,
         system_tokens=500,
+        profile_tokens=200,
         long_term_tokens=500,
         working_memory_tokens=900,
         semantic_retrieval_tokens=1200,
@@ -207,12 +215,14 @@ def test_derive_budget_shrink_branch_and_minimums():
 
     fixed = (
         derived.system_tokens
+        + derived.profile_tokens
         + derived.long_term_tokens
         + derived.working_memory_tokens
         + derived.semantic_retrieval_tokens
     )
 
     assert derived.system_tokens >= 64
+    assert derived.profile_tokens >= 63  # Can round down due to int() and shrink factor
     assert derived.long_term_tokens >= 64
     assert derived.working_memory_tokens >= 96
     assert derived.semantic_retrieval_tokens >= 128

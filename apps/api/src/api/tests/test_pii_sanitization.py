@@ -26,9 +26,7 @@ class TestPIIPatternDetection:
 
         pii_items = sanitizer.detect_pii(text)
 
-        assert any(
-            item.pattern_type == "email" for item in pii_items
-        )
+        assert any(item.pattern_type == "email" for item in pii_items)
 
     def test_detect_phone_number(self, sanitizer):
         """Test detecting phone numbers"""
@@ -36,9 +34,7 @@ class TestPIIPatternDetection:
 
         pii_items = sanitizer.detect_pii(text)
 
-        assert any(
-            item.pattern_type == "phone" for item in pii_items
-        )
+        assert any(item.pattern_type == "phone" for item in pii_items)
 
     def test_detect_credit_card(self, sanitizer):
         """Test detecting credit card numbers"""
@@ -46,10 +42,7 @@ class TestPIIPatternDetection:
 
         pii_items = sanitizer.detect_pii(text)
 
-        assert any(
-            item.pattern_type == "credit_card"
-            for item in pii_items
-        )
+        assert any(item.pattern_type == "credit_card" for item in pii_items)
 
     def test_detect_ssn(self, sanitizer):
         """Test detecting social security numbers"""
@@ -57,9 +50,7 @@ class TestPIIPatternDetection:
 
         pii_items = sanitizer.detect_pii(text)
 
-        assert any(
-            item.pattern_type == "ssn" for item in pii_items
-        )
+        assert any(item.pattern_type == "ssn" for item in pii_items)
 
     def test_detect_ip_address(self, sanitizer):
         """Test detecting IP addresses"""
@@ -67,10 +58,7 @@ class TestPIIPatternDetection:
 
         pii_items = sanitizer.detect_pii(text)
 
-        assert any(
-            item.pattern_type == "ip_address"
-            for item in pii_items
-        )
+        assert any(item.pattern_type == "ip_address" for item in pii_items)
 
     def test_detect_api_key(self, sanitizer):
         """Test detecting API keys"""
@@ -149,10 +137,7 @@ class TestPIISanitization:
             sanitized = sanitizer.sanitize(text, level=level)
 
             # Original should not be in sanitized version
-            assert (
-                "john@example.com" not in sanitized or
-                level == SanitizationLevel.NONE
-            )
+            assert "john@example.com" not in sanitized or level == SanitizationLevel.NONE
 
 
 class TestPIISanitizationEdgeCases:
@@ -169,10 +154,7 @@ class TestPIISanitizationEdgeCases:
 
     def test_multiple_pii_items(self, sanitizer):
         """Test handling multiple PII items"""
-        text = (
-            "Contact john@example.com or 555-1234 "
-            "at 123 Main St"
-        )
+        text = "Contact john@example.com or 555-1234 at 123 Main St"
 
         sanitized = sanitizer.sanitize(text)
 
@@ -181,15 +163,11 @@ class TestPIISanitizationEdgeCases:
 
     def test_nested_pii(self, sanitizer):
         """Test nested PII detection"""
-        text = (
-            'Email in JSON: {"email": "test@example.com"}'
-        )
+        text = 'Email in JSON: {"email": "test@example.com"}'
 
         pii_items = sanitizer.detect_pii(text)
 
-        assert any(
-            item.pattern_type == "email" for item in pii_items
-        )
+        assert any(item.pattern_type == "email" for item in pii_items)
 
     def test_encoded_pii(self, sanitizer):
         """Test detecting encoded PII"""
@@ -218,9 +196,7 @@ class TestPIIContextAwareness:
 
     def test_preserve_necessary_identifiers(self, sanitizer):
         """Test preserving necessary context"""
-        text = (
-            "User ID 12345 reported issue from 192.168.1.1"
-        )
+        text = "User ID 12345 reported issue from 192.168.1.1"
 
         sanitized = sanitizer.sanitize(
             text,
@@ -233,10 +209,7 @@ class TestPIIContextAwareness:
 
     def test_sanitize_in_code(self, sanitizer):
         """Test sanitizing within code blocks"""
-        code = (
-            'password = "MyPassword123!"\n'
-            'email = "john@example.com"'
-        )
+        code = 'password = "MyPassword123!"\nemail = "john@example.com"'
 
         sanitized = sanitizer.sanitize(code)
 
@@ -246,18 +219,13 @@ class TestPIIContextAwareness:
 
     def test_sanitize_in_logs(self, sanitizer):
         """Test sanitizing in log output"""
-        log = (
-            "2024-01-01 ERROR: Failed to connect "
-            "to 192.168.1.100:5432 with user admin"
-        )
+        log = "2024-01-01 ERROR: Failed to connect to 192.168.1.100:5432 with user admin"
 
         sanitized = sanitizer.sanitize(log)
 
         # Timestamp and log level preserved, IP sanitized
         assert "ERROR:" in sanitized
-        assert "192.168.1.100" not in sanitized or (
-            "[IP]" in sanitized
-        )
+        assert "192.168.1.100" not in sanitized or ("[IP]" in sanitized)
 
 
 class TestPIIComplianceFeatures:
@@ -277,19 +245,14 @@ class TestPIIComplianceFeatures:
 
     def test_retention_policy(self, sanitizer):
         """Test PII retention policies"""
-        policy = sanitizer.get_retention_policy(
-            data_type="pii"
-        )
+        policy = sanitizer.get_retention_policy(data_type="pii")
 
         # Should have a defined policy
         assert policy is not None
 
     def test_data_minimization(self, sanitizer):
         """Test data minimization"""
-        text = (
-            "User: john@example.com, "
-            "Age: 30, Location: NYC"
-        )
+        text = "User: john@example.com, Age: 30, Location: NYC"
 
         minimized = sanitizer.minimize_data(text)
 
@@ -298,9 +261,7 @@ class TestPIIComplianceFeatures:
 
     def test_consent_check(self, sanitizer):
         """Test consent checking before sanitization"""
-        has_consent = sanitizer.check_consent(
-            data_subject="user123"
-        )
+        has_consent = sanitizer.check_consent(data_subject="user123")
 
         assert isinstance(has_consent, bool)
 
@@ -310,9 +271,7 @@ class TestPIISanitizationPerformance:
 
     def test_large_text_sanitization(self, sanitizer):
         """Test sanitizing large texts"""
-        large_text = (
-            "Normal text email@example.com " * 10000
-        )
+        large_text = "Normal text email@example.com " * 10000
 
         sanitized = sanitizer.sanitize(large_text)
 

@@ -12,7 +12,6 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import Any
 
-
 Percept = dict[str, Any]
 Action = dict[str, Any]
 

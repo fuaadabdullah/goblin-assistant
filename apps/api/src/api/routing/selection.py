@@ -9,13 +9,13 @@ from .policy_engine import cost_router, tier_router
 
 
 def _dispatcher():
-    from ..providers.dispatcher import dispatcher  # noqa: PLC0415
+    from ..providers.dispatcher import dispatcher
 
     return dispatcher
 
 
 def _provider_costs(provider_ids: List[str]) -> Dict[str, tuple[float, float]]:
-    from ..providers.pricing import resolve_model_pricing  # noqa: PLC0415
+    from ..providers.pricing import resolve_model_pricing
 
     dispatch = _dispatcher()
     costs: Dict[str, tuple[float, float]] = {}

@@ -1,7 +1,9 @@
 import asyncio
 import os
-from api.storage.database import init_db
+
 from dotenv import load_dotenv
+
+from api.storage.database import init_db
 
 
 async def test_db():

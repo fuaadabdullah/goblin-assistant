@@ -26,7 +26,7 @@ const AccountPreferences = ({ preferences, onToggle }: AccountPreferencesProps) 
         label: 'Plain-language mode',
         description: 'Less jargon. More direct steps.',
       },
-    ].map(item => (
+    ].map((item) => (
       <label
         key={item.key}
         className="flex items-start justify-between gap-4 border border-border rounded-xl p-4 bg-surface-hover"

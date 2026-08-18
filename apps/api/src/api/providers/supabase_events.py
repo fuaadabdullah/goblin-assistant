@@ -111,14 +111,21 @@ def insert_routing_audit(
     user_id: Optional[str] = None,
     routing_mode: Optional[str] = None,
     selected_provider: Optional[str] = None,
+    selected_model: Optional[str] = None,
     attempted_providers: Optional[List[str]] = None,
+    alternatives_considered: Optional[List[str]] = None,
     latency_ms: Optional[int] = None,
     input_tokens: Optional[int] = None,
     output_tokens: Optional[int] = None,
     cost_usd: Optional[float] = None,
     success: bool,
+    visible_outcome: Optional[str] = None,
+    fallback_reason: Optional[str] = None,
     error_message: Optional[str] = None,
     error_category: Optional[str] = None,
+    failure_class: Optional[str] = None,
+    context_sources: Optional[List[str]] = None,
+    tool_usage: Optional[Dict[str, Any]] = None,
     dept_routing: Optional[Dict[str, Any]] = None,
 ) -> None:
     """Non-blocking insert of one routing decision into the audit log.
@@ -137,8 +144,12 @@ def insert_routing_audit(
         payload["routing_mode"] = routing_mode
     if selected_provider:
         payload["selected_provider"] = selected_provider
+    if selected_model:
+        payload["selected_model"] = selected_model
     if attempted_providers:
         payload["attempted_providers"] = attempted_providers
+    if alternatives_considered:
+        payload["alternatives_considered"] = alternatives_considered
     if latency_ms is not None:
         payload["latency_ms"] = latency_ms
     if input_tokens is not None:
@@ -147,10 +158,20 @@ def insert_routing_audit(
         payload["output_tokens"] = output_tokens
     if cost_usd is not None:
         payload["cost_usd"] = round(cost_usd, 8)
+    if visible_outcome:
+        payload["visible_outcome"] = visible_outcome
+    if fallback_reason:
+        payload["fallback_reason"] = fallback_reason[:500]
     if error_message:
         payload["error_message"] = error_message[:500]
     if error_category:
         payload["error_category"] = error_category
+    if failure_class:
+        payload["failure_class"] = failure_class
+    if context_sources:
+        payload["context_sources"] = context_sources
+    if tool_usage:
+        payload["tool_usage"] = tool_usage
     if dept_routing:
         if (conf := dept_routing.get("confidence")) is not None:
             payload["department_confidence"] = round(float(conf), 4)

@@ -35,7 +35,7 @@ def _check_redis(url: str) -> tuple[bool, str]:
 
 
 class _Handler(BaseHTTPRequestHandler):
-    def do_GET(self) -> None:  # noqa: N802
+    def do_GET(self) -> None:
         if self.path not in {"/health", "/healthz"}:
             self.send_response(404)
             self.end_headers()

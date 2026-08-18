@@ -33,6 +33,7 @@ async def record_chat_completion_task(
     assistant_message: str,
     provider: str,
     model: str,
+    goblin_id: Optional[str] = None,
     usage: Optional[Dict[str, Any]],
     cost_usd: Optional[float],
 ) -> None:
@@ -71,6 +72,7 @@ async def record_chat_completion_task(
                 "source": "chat.send_message",
                 "conversation_id": conversation_id,
                 "assistant_message_id": assistant_message_id,
+                **({"goblin_id": goblin_id} if goblin_id else {}),
             },
         },
     )
@@ -83,6 +85,7 @@ async def record_usage_event(
     message_id: str,
     provider: str,
     model: str,
+    goblin_id: Optional[str] = None,
     usage: Optional[Dict[str, Any]],
     cost_usd: Optional[float],
     correlation_id: Optional[str],
@@ -110,6 +113,7 @@ async def record_usage_event(
             "metadata": {
                 "source": "chat.send_message",
                 "correlation_id": correlation_id,
+                **({"goblin_id": goblin_id} if goblin_id else {}),
             },
         }
     )

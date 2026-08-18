@@ -292,7 +292,7 @@ class FeatureRouter:
 
     async def restore_weights(self) -> None:
         try:
-            from api.providers.supabase_events import (  # noqa: PLC0415
+            from api.providers.supabase_events import (
                 _ENABLED,
                 _HEADERS,
                 _REST,
@@ -332,7 +332,7 @@ class FeatureRouter:
 
 def _fire_weights_upsert(task_type: str, weights: dict, observation_count: int) -> None:
     try:
-        from api.providers.supabase_events import (  # noqa: PLC0415
+        from api.providers.supabase_events import (
             _HEADERS,
             _REST,
             _fire,

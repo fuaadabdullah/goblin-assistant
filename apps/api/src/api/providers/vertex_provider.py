@@ -2,10 +2,11 @@
 
 from __future__ import annotations
 
+import asyncio
+import base64
 import json
 import os
 import time
-import base64
 from pathlib import Path
 from typing import Any, AsyncGenerator, Dict, List, Optional
 
@@ -18,6 +19,13 @@ logger = structlog.get_logger(__name__)
 
 _VERTEX_SERVICE_ACCOUNT_FILE = Path("/tmp/goblin_vertex_service_account.json")
 _JSON_CONTENT_TYPE = "application/json"
+_VERTEX_BATCH_MODE_ENV = "VERTEX_AGENT_BATCH_MODE"
+_VERTEX_CONTEXT_CACHING_ENV = "VERTEX_CONTEXT_CACHING_ENABLED"
+_VERTEX_CONTEXT_CACHE_ENV = "VERTEX_CONTEXT_CACHE_NAME"
+
+
+def _env_flag(name: str) -> bool:
+    return os.getenv(name, "").strip().lower() in {"1", "true", "yes", "on"}
 
 
 def _parse_google_credentials_payload(payload: str) -> Optional[str]:
@@ -71,8 +79,17 @@ def _configure_google_credentials() -> None:
     """
 
     existing = os.getenv("GOOGLE_APPLICATION_CREDENTIALS", "").strip()
-    if existing and Path(existing).exists():
-        return
+    if existing:
+        try:
+            if Path(existing).exists():
+                return
+        except OSError:
+            # Inline JSON/base64 credential content can exceed the
+            # filesystem's NAME_MAX for a single path component (e.g.
+            # Linux's 255-byte limit) — Path.exists() raises instead of
+            # returning False in that case. Fall through and treat
+            # `existing` as inline credential content below.
+            pass
 
     for payload in _collect_credential_payloads():
         decoded = _parse_google_credentials_payload(payload)
@@ -84,12 +101,6 @@ def _configure_google_credentials() -> None:
         os.environ["GOOGLE_APPLICATION_CREDENTIALS"] = str(_VERTEX_SERVICE_ACCOUNT_FILE)
         return
 
-_COST_TABLE: Dict[str, Dict[str, float]] = {
-    "gemini-1.5-pro": {"input": 0.00125, "output": 0.005},
-    "gemini-1.5-flash": {"input": 0.000075, "output": 0.0003},
-    "gemini-2.0-flash": {"input": 0.0001, "output": 0.0004},
-}
-
 
 def _get_access_token() -> Optional[str]:
     try:
@@ -98,9 +109,7 @@ def _get_access_token() -> Optional[str]:
         import google.auth
         import google.auth.transport.requests
 
-        creds, _ = google.auth.default(
-            scopes=["https://www.googleapis.com/auth/cloud-platform"]
-        )
+        creds, _ = google.auth.default(scopes=["https://www.googleapis.com/auth/cloud-platform"])
         request = google.auth.transport.requests.Request()
         creds.refresh(request)
         return creds.token
@@ -110,9 +119,6 @@ def _get_access_token() -> Optional[str]:
 
 
 class VertexAIProvider(BaseProvider):
-    COST_INPUT_PER_1K = 0.000075
-    COST_OUTPUT_PER_1K = 0.0003
-
     def __init__(
         self,
         provider_id: str | Dict[str, Any],
@@ -142,12 +148,6 @@ class VertexAIProvider(BaseProvider):
             f"/projects/{self._project}/locations/{self._location}"
             f"/publishers/google/models/{model}:generateContent"
         )
-
-    def _model_cost(self, model: str) -> Dict[str, float]:
-        for key, costs in _COST_TABLE.items():
-            if key in model:
-                return costs
-        return {"input": self.COST_INPUT_PER_1K, "output": self.COST_OUTPUT_PER_1K}
 
     @staticmethod
     def _to_vertex_messages(
@@ -189,7 +189,7 @@ class VertexAIProvider(BaseProvider):
                 error="VERTEX_AI_PROJECT not set",
             )
 
-        token = _get_access_token()
+        token = await asyncio.to_thread(_get_access_token)
         if not token:
             return ProviderResult(
                 ok=False,
@@ -208,6 +208,12 @@ class VertexAIProvider(BaseProvider):
         }
         if system_instruction:
             body["systemInstruction"] = {"parts": [{"text": system_instruction}]}
+        if _env_flag(_VERTEX_BATCH_MODE_ENV):
+            body["batchMode"] = True
+        if _env_flag(_VERTEX_CONTEXT_CACHING_ENV):
+            cache_name = os.getenv(_VERTEX_CONTEXT_CACHE_ENV, "").strip()
+            if cache_name:
+                body["cachedContent"] = cache_name
 
         headers = {
             "Authorization": f"Bearer {token}",
@@ -228,7 +234,11 @@ class VertexAIProvider(BaseProvider):
                     error_detail = resp.text
                 except Exception:
                     error_detail = f"HTTP {resp.status_code}"
-                logger.warning("vertex_http_error", status=resp.status_code, response_body=error_detail)
+                logger.warning(
+                    "vertex_http_error",
+                    status=resp.status_code,
+                    response_body=error_detail,
+                )
             resp.raise_for_status()
             data = resp.json()
 
@@ -238,10 +248,10 @@ class VertexAIProvider(BaseProvider):
             except (KeyError, IndexError, TypeError):
                 pass
             usage = data.get("usageMetadata", {})
-            costs = self._model_cost(model_name)
-            cost = (
-                int(usage.get("promptTokenCount", 0)) * costs["input"] / 1000
-                + int(usage.get("candidatesTokenCount", 0)) * costs["output"] / 1000
+            cost = self.estimate_cost(
+                int(usage.get("promptTokenCount", 0)),
+                int(usage.get("candidatesTokenCount", 0)),
+                model=model_name,
             )
             self.record_success()
             return ProviderResult(
@@ -278,7 +288,7 @@ class VertexAIProvider(BaseProvider):
     ) -> AsyncGenerator[Dict[str, Any], None]:
         normalized_messages = self.normalize_messages(messages, prompt=prompt, **kwargs)
         model_name = model or self._model
-        token = _get_access_token()
+        token = await asyncio.to_thread(_get_access_token)
         if not token:
             return
 
@@ -292,10 +302,14 @@ class VertexAIProvider(BaseProvider):
         }
         if system_instruction:
             body["systemInstruction"] = {"parts": [{"text": system_instruction}]}
+        if _env_flag(_VERTEX_BATCH_MODE_ENV):
+            body["batchMode"] = True
+        if _env_flag(_VERTEX_CONTEXT_CACHING_ENV):
+            cache_name = os.getenv(_VERTEX_CONTEXT_CACHE_ENV, "").strip()
+            if cache_name:
+                body["cachedContent"] = cache_name
 
-        url = self._endpoint(model_name).replace(
-            ":generateContent", ":streamGenerateContent"
-        )
+        url = self._endpoint(model_name).replace(":generateContent", ":streamGenerateContent")
         headers = {
             "Authorization": f"Bearer {token}",
             "Content-Type": _JSON_CONTENT_TYPE,
@@ -308,7 +322,11 @@ class VertexAIProvider(BaseProvider):
                         error_detail = await resp.aread()
                     except Exception:
                         error_detail = f"HTTP {resp.status_code}"
-                    logger.warning("vertex_stream_http_error", status=resp.status_code, response_body=str(error_detail))
+                    logger.warning(
+                        "vertex_stream_http_error",
+                        status=resp.status_code,
+                        response_body=str(error_detail),
+                    )
                 resp.raise_for_status()
                 buffer = ""
                 async for chunk in resp.aiter_bytes():
@@ -336,7 +354,7 @@ class VertexAIProvider(BaseProvider):
     async def health_check(self) -> ProviderHealth:
         if not self._project:
             return ProviderHealth(self.provider_id, False, error="No project")
-        token = _get_access_token()
+        token = await asyncio.to_thread(_get_access_token)
         if not token:
             return ProviderHealth(self.provider_id, False, error="Auth failed")
 
@@ -350,17 +368,13 @@ class VertexAIProvider(BaseProvider):
                         "Authorization": f"Bearer {token}",
                         "x-goog-user-project": self._project,
                     },
-            )
+                )
             latency = (time.perf_counter() - t0) * 1000
             return ProviderHealth(
                 self.provider_id,
                 resp.status_code < 400,
                 latency_ms=latency,
-                error=(
-                    None
-                    if resp.status_code < 400
-                    else f"HTTP {resp.status_code}"
-                ),
+                error=(None if resp.status_code < 400 else f"HTTP {resp.status_code}"),
             )
         except Exception as exc:
             latency = (time.perf_counter() - t0) * 1000

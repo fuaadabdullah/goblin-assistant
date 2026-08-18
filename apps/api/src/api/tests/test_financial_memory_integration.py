@@ -12,14 +12,13 @@ All IO (DB, embeddings, retrieval) is mocked — no network or database.
 from __future__ import annotations
 
 import json
-from datetime import datetime
-from typing import Any, Dict, List, Optional
-from unittest.mock import AsyncMock, MagicMock, patch
+from unittest.mock import AsyncMock, patch
 
 import pytest
 
-# ── Import units under test ──────────────────────────────────────
+from api.assistant_tools.executor import run_tool_loop
 
+# ── Import units under test ──────────────────────────────────────
 from api.services.tool_result_memory_service import (
     _extract_dcf_facts,
     _extract_earnings_facts,
@@ -29,9 +28,6 @@ from api.services.tool_result_memory_service import (
     extract_and_promote,
     get_financial_profile,
 )
-
-from api.tools.executor import execute_tool_call, run_tool_loop
-
 
 # ===================================================================
 # DCF fact extraction
@@ -67,7 +63,12 @@ class TestExtractDCFFacts:
         result = {
             "ticker": "MSFT",
             "valuation": {"intrinsic_value_per_share": 200.0, "upside_percent": -15.0},
-            "assumptions": {"wacc": 0.12, "growth_rate": 0.05, "projection_years": 5, "terminal_growth_rate": 0.025},
+            "assumptions": {
+                "wacc": 0.12,
+                "growth_rate": 0.05,
+                "projection_years": 5,
+                "terminal_growth_rate": 0.025,
+            },
         }
         facts = _extract_dcf_facts(result, {"ticker": "MSFT"})
         assert "-15.0%" in facts[0]["content"]
@@ -76,7 +77,12 @@ class TestExtractDCFFacts:
         result = {
             "ticker": "XYZ",
             "valuation": {},
-            "assumptions": {"wacc": 0.09, "growth_rate": 0.06, "projection_years": 7, "terminal_growth_rate": 0.03},
+            "assumptions": {
+                "wacc": 0.09,
+                "growth_rate": 0.06,
+                "projection_years": 7,
+                "terminal_growth_rate": 0.03,
+            },
         }
         facts = _extract_dcf_facts(result, {"ticker": "XYZ"})
         assert len(facts) == 1
@@ -207,12 +213,17 @@ class TestExtractAndPromote:
         result = {
             "ticker": "AAPL",
             "valuation": {"intrinsic_value_per_share": 180.0, "upside_percent": 20.0},
-            "assumptions": {"wacc": 0.10, "growth_rate": 0.08, "projection_years": 5, "terminal_growth_rate": 0.025},
+            "assumptions": {
+                "wacc": 0.10,
+                "growth_rate": 0.08,
+                "projection_years": 5,
+                "terminal_growth_rate": 0.025,
+            },
         }
         with patch(
             "api.services.tool_result_memory_service.memory_promotion_service"
         ) as mock_promo:
-            from api.services.memory_promotion_service import PromotionResult, PromotionGate
+            from api.services.memory_promotion import PromotionGate, PromotionResult
 
             mock_promo.evaluate_promotion_candidate = AsyncMock(
                 return_value=PromotionResult(
@@ -261,24 +272,26 @@ class TestGetFinancialProfile:
     @pytest.mark.asyncio
     async def test_assembles_profile(self):
         mock_retrieval = AsyncMock()
-        mock_retrieval.retrieve_memory_facts = AsyncMock(return_value=[
-            {
-                "fact_text": "DCF assumptions for AAPL: WACC=10.0%, growth=8.0%, projection_years=5, terminal_growth=2.5%",
-                "category": "financial_profile",
-            },
-            {
-                "fact_text": "Portfolio holdings analyzed: AAPL, MSFT, GOOG",
-                "category": "portfolio_action",
-            },
-            {
-                "fact_text": "Portfolio risk snapshot: return=12.0%, volatility=18.0%, Sharpe=0.67, max drawdown=-10.0%",
-                "category": "risk_signal",
-            },
-            {
-                "fact_text": "DCF valuation for TSLA: intrinsic value $300.00/share",
-                "category": "instrument",
-            },
-        ])
+        mock_retrieval.retrieve_memory_facts = AsyncMock(
+            return_value=[
+                {
+                    "fact_text": "DCF assumptions for AAPL: WACC=10.0%, growth=8.0%, projection_years=5, terminal_growth=2.5%",
+                    "category": "financial_profile",
+                },
+                {
+                    "fact_text": "Portfolio holdings analyzed: AAPL, MSFT, GOOG",
+                    "category": "portfolio_action",
+                },
+                {
+                    "fact_text": "Portfolio risk snapshot: return=12.0%, volatility=18.0%, Sharpe=0.67, max drawdown=-10.0%",
+                    "category": "risk_signal",
+                },
+                {
+                    "fact_text": "DCF valuation for TSLA: intrinsic value $300.00/share",
+                    "category": "instrument",
+                },
+            ]
+        )
 
         profile = await get_financial_profile("u1", retrieval_svc=mock_retrieval)
 
@@ -322,7 +335,11 @@ class TestContextBuilderFinancialProfile:
             "messages": [],
             "financial_profile": {
                 "watched_tickers": ["AAPL", "MSFT"],
-                "last_dcf_assumptions": {"ticker": "AAPL", "wacc": 0.10, "growth_rate": 0.08},
+                "last_dcf_assumptions": {
+                    "ticker": "AAPL",
+                    "wacc": 0.10,
+                    "growth_rate": 0.08,
+                },
                 "portfolio_snapshot": "Holdings: AAPL, MSFT",
                 "risk_snapshot": "return=12%",
                 "recent_screens": [],
@@ -399,19 +416,23 @@ class TestExecutorMemoryWiring:
                     "result": {
                         "text": "",
                         "raw": {
-                            "choices": [{
-                                "finish_reason": "tool_calls",
-                                "message": {
-                                    "role": "assistant",
-                                    "tool_calls": [{
-                                        "id": "tc1",
-                                        "function": {
-                                            "name": "get_current_quote",
-                                            "arguments": json.dumps({"ticker": "AAPL"}),
-                                        },
-                                    }],
-                                },
-                            }],
+                            "choices": [
+                                {
+                                    "finish_reason": "tool_calls",
+                                    "message": {
+                                        "role": "assistant",
+                                        "tool_calls": [
+                                            {
+                                                "id": "tc1",
+                                                "function": {
+                                                    "name": "get_current_quote",
+                                                    "arguments": json.dumps({"ticker": "AAPL"}),
+                                                },
+                                            }
+                                        ],
+                                    },
+                                }
+                            ],
                         },
                     },
                 }
@@ -419,15 +440,30 @@ class TestExecutorMemoryWiring:
                 "ok": True,
                 "result": {
                     "text": "AAPL is $150",
-                    "raw": {"choices": [{"finish_reason": "stop", "message": {"role": "assistant", "content": "AAPL is $150"}}]},
+                    "raw": {
+                        "choices": [
+                            {
+                                "finish_reason": "stop",
+                                "message": {
+                                    "role": "assistant",
+                                    "content": "AAPL is $150",
+                                },
+                            }
+                        ]
+                    },
                 },
             }
 
         # Mock execute_tool_call to return a non-financial result (no promotion)
-        with patch("api.tools.executor.execute_tool_call", new_callable=AsyncMock) as mock_exec:
+        with patch(
+            "api.assistant_tools.executor.execute_tool_call", new_callable=AsyncMock
+        ) as mock_exec:
             mock_exec.return_value = {"ticker": "AAPL", "price": 150.0}
 
-            with patch("api.services.tool_result_memory_service.extract_and_promote", new_callable=AsyncMock) as mock_promote:
+            with patch(
+                "api.services.tool_result_memory_service.extract_and_promote",
+                new_callable=AsyncMock,
+            ) as mock_promote:
                 mock_promote.return_value = []
 
                 result = await run_tool_loop(
@@ -461,19 +497,23 @@ class TestExecutorMemoryWiring:
                     "result": {
                         "text": "",
                         "raw": {
-                            "choices": [{
-                                "finish_reason": "tool_calls",
-                                "message": {
-                                    "role": "assistant",
-                                    "tool_calls": [{
-                                        "id": "tc1",
-                                        "function": {
-                                            "name": "get_current_quote",
-                                            "arguments": json.dumps({"ticker": "AAPL"}),
-                                        },
-                                    }],
-                                },
-                            }],
+                            "choices": [
+                                {
+                                    "finish_reason": "tool_calls",
+                                    "message": {
+                                        "role": "assistant",
+                                        "tool_calls": [
+                                            {
+                                                "id": "tc1",
+                                                "function": {
+                                                    "name": "get_current_quote",
+                                                    "arguments": json.dumps({"ticker": "AAPL"}),
+                                                },
+                                            }
+                                        ],
+                                    },
+                                }
+                            ],
                         },
                     },
                 }
@@ -481,14 +521,26 @@ class TestExecutorMemoryWiring:
                 "ok": True,
                 "result": {
                     "text": "Done",
-                    "raw": {"choices": [{"finish_reason": "stop", "message": {"role": "assistant", "content": "Done"}}]},
+                    "raw": {
+                        "choices": [
+                            {
+                                "finish_reason": "stop",
+                                "message": {"role": "assistant", "content": "Done"},
+                            }
+                        ]
+                    },
                 },
             }
 
-        with patch("api.tools.executor.execute_tool_call", new_callable=AsyncMock) as mock_exec:
+        with patch(
+            "api.assistant_tools.executor.execute_tool_call", new_callable=AsyncMock
+        ) as mock_exec:
             mock_exec.return_value = {"ticker": "AAPL", "price": 150.0}
 
-            with patch("api.services.tool_result_memory_service.extract_and_promote", new_callable=AsyncMock) as mock_promote:
+            with patch(
+                "api.services.tool_result_memory_service.extract_and_promote",
+                new_callable=AsyncMock,
+            ) as mock_promote:
                 await run_tool_loop(
                     messages=[{"role": "user", "content": "Quote AAPL"}],
                     invoke_fn=mock_invoke,
@@ -510,19 +562,23 @@ class TestExecutorMemoryWiring:
                     "result": {
                         "text": "",
                         "raw": {
-                            "choices": [{
-                                "finish_reason": "tool_calls",
-                                "message": {
-                                    "role": "assistant",
-                                    "tool_calls": [{
-                                        "id": "tc1",
-                                        "function": {
-                                            "name": "dcf_calculator",
-                                            "arguments": json.dumps({"ticker": "AAPL"}),
-                                        },
-                                    }],
-                                },
-                            }],
+                            "choices": [
+                                {
+                                    "finish_reason": "tool_calls",
+                                    "message": {
+                                        "role": "assistant",
+                                        "tool_calls": [
+                                            {
+                                                "id": "tc1",
+                                                "function": {
+                                                    "name": "dcf_calculator",
+                                                    "arguments": json.dumps({"ticker": "AAPL"}),
+                                                },
+                                            }
+                                        ],
+                                    },
+                                }
+                            ],
                         },
                     },
                 }
@@ -530,14 +586,29 @@ class TestExecutorMemoryWiring:
                 "ok": True,
                 "result": {
                     "text": "Error occurred",
-                    "raw": {"choices": [{"finish_reason": "stop", "message": {"role": "assistant", "content": "Error occurred"}}]},
+                    "raw": {
+                        "choices": [
+                            {
+                                "finish_reason": "stop",
+                                "message": {
+                                    "role": "assistant",
+                                    "content": "Error occurred",
+                                },
+                            }
+                        ]
+                    },
                 },
             }
 
-        with patch("api.tools.executor.execute_tool_call", new_callable=AsyncMock) as mock_exec:
+        with patch(
+            "api.assistant_tools.executor.execute_tool_call", new_callable=AsyncMock
+        ) as mock_exec:
             mock_exec.return_value = {"error": "No FCF data available"}
 
-            with patch("api.services.tool_result_memory_service.extract_and_promote", new_callable=AsyncMock) as mock_promote:
+            with patch(
+                "api.services.tool_result_memory_service.extract_and_promote",
+                new_callable=AsyncMock,
+            ) as mock_promote:
                 await run_tool_loop(
                     messages=[{"role": "user", "content": "DCF for AAPL"}],
                     invoke_fn=mock_invoke,

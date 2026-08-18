@@ -1,491 +1,344 @@
-from fastapi import APIRouter, HTTPException
-from pydantic import BaseModel
-from typing import Optional, Dict, Any, List
-import uuid
+from __future__ import annotations
+
 import asyncio
-import time
-from .core.orchestration import create_simple_orchestration_plan
-from .write_time_router import router as write_time_router
-from .providers.dispatcher import invoke_provider
+import uuid
+from datetime import datetime  # noqa: F401 - compatibility alias for tests
+from typing import Any, Dict, List, Optional
+
+from fastapi import APIRouter, Depends, HTTPException, Query
+
+from .api_models import (
+    GenerateRequest,
+    GenerateResponse,
+    GoblinHistorySuccessResponse,
+    GoblinListSuccessResponse,
+    GoblinStatsSuccessResponse,
+    RouteTaskRequest,
+    SimpleChatRequest,
+    SimpleChatResponse,
+    StreamResponse,
+    StreamTaskRequest,
+)
+from .api_router_pkg import (
+    build_stream_messages as _build_stream_messages_helper,
+)
+from .api_router_pkg import (
+    extract_result_text as _extract_result_text_helper,
+)
+from .api_router_pkg import (
+    run_stream_task_background as _run_stream_task_background_helper,
+)
+from .api_router_pkg import (
+    timestamp_sort_key as _timestamp_sort_key_helper,
+)
+from .auth.router import get_current_user
+from .core.orchestration import parse_natural_language
 from .input_validation import InputSanitizer
+from .providers.dispatcher import invoke_provider
+from .providers.dispatcher_pkg.execution import mock_fallback_enabled
+from .routes.orchestration_router import router as orchestration_router
+from .routing.feedback_router import router as _feedback_router
+from .routing.router import route_task as route_task_runtime
+from .services.goblin_identity import resolve_goblin_id
+from .services.goblin_query_service import GoblinQueryService, build_goblin_query_service
+from .services.stream_state_store import get_stream_state_store
+from .services.task_store_service import (
+    conversation_store,  # noqa: F401 - compatibility alias
+    get_task_store,
+)
+from .services.task_streaming import run_task_stream_to_state
+
+# Backward-compatible alias preserved for tests/integrations still patching
+# `api.api_router.create_simple_orchestration_plan`.
+create_simple_orchestration_plan = parse_natural_language
 
 router = APIRouter(prefix="/api", tags=["api"])
+router.include_router(orchestration_router)
+router.include_router(_feedback_router)
 
 
-# ============================================================================
-# Simple Chat Endpoint - Routes to Kamatera LLM
-# ============================================================================
+async def get_goblin_query_service(
+    current_user: Any = Depends(get_current_user),
+) -> GoblinQueryService:
+    return build_goblin_query_service(user_id=str(current_user.id))
 
 
-class SimpleChatMessage(BaseModel):
-    role: str
-    content: str
+def _build_stream_messages(request: StreamTaskRequest) -> List[Dict[str, str]]:
+    return _build_stream_messages_helper(request)
 
 
-class SimpleChatRequest(BaseModel):
-    messages: List[SimpleChatMessage]
-    model: Optional[str] = None
-    provider: Optional[str] = (
-        None  # Allow specifying provider (e.g., "ollama_gcp", "llamacpp_gcp")
+def _extract_result_text(response: Dict[str, Any]) -> str:
+    return _extract_result_text_helper(response)
+
+
+def _timestamp_sort_key(value: Any) -> float:
+    return _timestamp_sort_key_helper(value)
+
+
+def _response_error_message(response: Any) -> str:
+    if isinstance(response, dict):
+        return str(
+            response.get("error")
+            or response.get("detail")
+            or response.get("message")
+            or "Request failed"
+        )
+    return str(response)
+
+
+def _is_disallowed_mock_response(response: Any) -> bool:
+    return (
+        isinstance(response, dict)
+        and str(response.get("provider", "")).strip().lower() == "mock"
+        and not mock_fallback_enabled()
     )
-    stream: Optional[bool] = False
 
 
-class SimpleChatResponse(BaseModel):
-    ok: bool
-    result: Optional[Dict[str, Any]] = None
-    error: Optional[str] = None
-    provider: Optional[str] = None
-    model: Optional[str] = None
+async def _prepend_default_system_message(messages: List[Dict[str, str]]) -> List[Dict[str, str]]:
+    """Prepend the fixed-cost system+guardrails+date layer unless the caller
+    already supplied a system message. These bare /chat and /generate routes
+    skip conversation storage and context assembly entirely, so without this
+    they send the provider zero identity, zero guardrails, and zero date
+    grounding for "current" questions.
+    """
+    if any(m.get("role") == "system" for m in messages):
+        return messages
+    try:
+        from .services.context_assembly_service.system_layer import (
+            build_default_system_message,
+        )
+
+        system_message = await build_default_system_message()
+    except Exception:
+        system_message = None
+    return [system_message, *messages] if system_message else messages
+
+
+async def _run_stream_task_background(stream_id: str, request: StreamTaskRequest) -> None:
+    await _run_stream_task_background_helper(
+        stream_id,
+        request,
+        run_stream_fn=run_task_stream_to_state,
+        store_getter=get_stream_state_store,
+    )
 
 
 @router.post("/chat", response_model=SimpleChatResponse)
 async def simple_chat(request: SimpleChatRequest):
-    """
-    Simple chat endpoint that routes to GCP LLM providers.
-
-    This is the main endpoint for the frontend to use for chat functionality.
-    It defaults to the GCP Ollama server with qwen2.5:3b model.
-
-    Example:
-        POST /api/chat
-        {
-            "messages": [{"role": "user", "content": "Hello!"}]
-        }
-    """
     try:
-        # Validate message lengths before processing
         for msg in request.messages:
             if len(msg.content) > InputSanitizer.MAX_MESSAGE_LENGTH:
                 raise HTTPException(
                     status_code=413,
-                    detail=f"Message content exceeds maximum length of {InputSanitizer.MAX_MESSAGE_LENGTH} characters"
+                    detail=(
+                        "Message content exceeds maximum length of "
+                        f"{InputSanitizer.MAX_MESSAGE_LENGTH} characters"
+                    ),
                 )
-        
-        # Convert messages to dict format
+
         messages = [{"role": m.role, "content": m.content} for m in request.messages]
-
-        # Use auto-selection when provider not specified (smart routing with fallback)
-        # When explicitly specified, use that provider directly
+        messages = await _prepend_default_system_message(messages)
         provider = request.provider or "auto"
-        model = request.model  # Let dispatcher pick default model if None
+        model = request.model
 
-        # Create payload for provider
-        payload = {
-            "messages": messages,
-            "model": model,
-        }
-
-        # Invoke provider
         response = await invoke_provider(
             pid=provider,
             model=model,
-            payload=payload,
+            payload={"messages": messages, "model": model},
             timeout_ms=30000,
-            stream=request.stream,
+            stream=bool(request.stream),
         )
-
+        if _is_disallowed_mock_response(response):
+            return SimpleChatResponse(ok=False, error="no-configured-providers")
         if isinstance(response, dict) and response.get("ok"):
-            # Extract text from provider response
-            # Standard format: {"ok": True, "result": {"text": ..., "raw": ...}}
+            text = _extract_result_text(response)
             result_data = response.get("result", {})
-            if isinstance(result_data, dict) and result_data.get("text"):
-                text = result_data["text"]
-            else:
-                # Fallback: some providers put text at top level
-                text = response.get("text", "")
             return SimpleChatResponse(
                 ok=True,
                 result={"text": text} if text else result_data,
-                provider=response.get("provider", "unknown"),
-                model=response.get("model", "unknown"),
+                provider=str(response.get("provider", "unknown")),
+                model=str(response.get("model", "unknown")),
             )
-        else:
-            error_msg = (
-                response.get("error", "Unknown error")
-                if isinstance(response, dict)
-                else str(response)
-            )
-            return SimpleChatResponse(
-                ok=False,
-                error=error_msg,
-            )
-
-    except Exception as e:
-        return SimpleChatResponse(
-            ok=False,
-            error=str(e),
-        )
-
-
-# ============================================================================
-# Generate Endpoint - For Guest Mode / Unauthenticated Requests
-# ============================================================================
-
-
-class GenerateRequest(BaseModel):
-    messages: Optional[List[SimpleChatMessage]] = None
-    prompt: Optional[str] = None
-    model: Optional[str] = None
-    provider: Optional[str] = None
-
-
-class GenerateResponse(BaseModel):
-    content: Optional[str] = None
-    choices: Optional[List[Dict[str, Any]]] = None
-    error: Optional[str] = None
+        return SimpleChatResponse(ok=False, error=_response_error_message(response))
+    except HTTPException as exc:
+        return SimpleChatResponse(ok=False, error=str(exc.detail))
+    except Exception as exc:
+        return SimpleChatResponse(ok=False, error=str(exc))
 
 
 @router.post("/generate", response_model=GenerateResponse)
 async def generate(request: GenerateRequest):
-    """
-    Generate endpoint for guest mode / unauthenticated users.
-    Compatible with OpenAI-style completion responses.
-    
-    Accepts either:
-    - messages: List of chat messages (new format)
-    - prompt: Simple text prompt (legacy format)
-    
-    Returns OpenAI-compatible response format.
-    """
     try:
-        # Validate input
         if not request.messages and not request.prompt:
             raise HTTPException(
                 status_code=400,
-                detail="Either 'messages' or 'prompt' must be provided"
+                detail="Either 'messages' or 'prompt' must be provided",
             )
-        
-        # Convert to messages format
+
         if request.messages:
-            # Validate message lengths
             for msg in request.messages:
                 if len(msg.content) > InputSanitizer.MAX_MESSAGE_LENGTH:
                     raise HTTPException(
                         status_code=413,
-                        detail=f"Message content exceeds maximum length of {InputSanitizer.MAX_MESSAGE_LENGTH} characters"
+                        detail=(
+                            "Message content exceeds maximum length of "
+                            f"{InputSanitizer.MAX_MESSAGE_LENGTH} characters"
+                        ),
                     )
             messages = [{"role": m.role, "content": m.content} for m in request.messages]
-        elif request.prompt:
-            # Validate prompt length
-            if len(request.prompt) > InputSanitizer.MAX_MESSAGE_LENGTH:
+        else:
+            prompt = request.prompt or ""
+            if len(prompt) > InputSanitizer.MAX_MESSAGE_LENGTH:
                 raise HTTPException(
                     status_code=413,
-                    detail=f"Prompt exceeds maximum length of {InputSanitizer.MAX_MESSAGE_LENGTH} characters"
+                    detail=(
+                        f"Prompt exceeds maximum length of "
+                        f"{InputSanitizer.MAX_MESSAGE_LENGTH} characters"
+                    ),
                 )
-            messages = [{"role": "user", "content": request.prompt}]
-        
-        # Use auto-selection when provider not specified
-        provider = request.provider or "auto"
-        model = request.model
-        
-        # Create payload for provider
-        payload = {
-            "messages": messages,
-            "model": model,
-        }
-        
-        # Invoke provider
+            messages = [{"role": "user", "content": prompt}]
+
+        messages = await _prepend_default_system_message(messages)
+
         response = await invoke_provider(
-            pid=provider,
-            model=model,
-            payload=payload,
+            pid=request.provider or "auto",
+            model=request.model,
+            payload={"messages": messages, "model": request.model},
             timeout_ms=30000,
             stream=False,
         )
-        
+        if _is_disallowed_mock_response(response):
+            return GenerateResponse(error="no-configured-providers")
         if isinstance(response, dict) and response.get("ok"):
-            # Extract text from provider response
-            result_data = response.get("result", {})
-            if isinstance(result_data, dict) and result_data.get("text"):
-                text = result_data["text"]
-            else:
-                text = response.get("text", "")
-            
-            # Return OpenAI-compatible format
+            text = _extract_result_text(response)
             return GenerateResponse(
                 content=text,
-                choices=[{
-                    "message": {
-                        "role": "assistant",
-                        "content": text
-                    }
-                }]
+                choices=[{"message": {"role": "assistant", "content": text}}],
             )
-        else:
-            error_msg = (
-                response.get("error", "Unknown error")
-                if isinstance(response, dict)
-                else str(response)
-            )
-            return GenerateResponse(error=error_msg)
-    
+        return GenerateResponse(error=_response_error_message(response))
     except HTTPException:
         raise
-    except Exception as e:
-        return GenerateResponse(error=str(e))
+    except Exception as exc:
+        return GenerateResponse(error=str(exc))
 
 
-# ============================================================================
-# Original API Router Endpoints
-# ============================================================================
-
-
-class RouteTaskRequest(BaseModel):
-    task_type: str
-    payload: Dict[str, Any]
-    prefer_local: Optional[bool] = False
-    prefer_cost: Optional[bool] = False
-    max_retries: Optional[int] = 2
-    stream: Optional[bool] = False
-
-
-class StreamTaskRequest(BaseModel):
-    goblin: str
-    task: str
-    code: Optional[str] = None
-    provider: Optional[str] = None
-    model: Optional[str] = None
-
-
-class StreamResponse(BaseModel):
-    stream_id: str
-    status: str = "started"
-
-
-# In-memory storage for streams (in production, use Redis or database)
-# Production implementation would use Redis for distributed stream management
-# or a message queue system (RabbitMQ, Apache Kafka) for scalability
-ACTIVE_STREAMS = {}
-
-
-@router.post("/route_task")
+@router.post(
+    "/route_task",
+    openapi_extra={"x-goblin-route-contract": "canonical-task-routing"},
+)
 async def route_task(request: RouteTaskRequest):
-    """Route a task to the best available provider"""
+    """Canonical task-routing entrypoint backed by the shared routing stack."""
     try:
-        # For now, return a simple success response
-        # In production, this would delegate to the routing system
+        task_id = str(uuid.uuid4())
+        store = await get_task_store()
+        await store.save_task(
+            task_id,
+            {
+                "status": "started",
+                "task_type": request.task_type,
+                "payload": request.payload,
+                "metadata": {"source": "legacy_api_router"},
+            },
+        )
+        result = await route_task_runtime(
+            task_type=request.task_type,
+            payload=request.payload,
+            prefer_local=bool(request.prefer_local),
+            prefer_cost=bool(request.prefer_cost),
+            max_retries=int(request.max_retries or 2),
+            stream=bool(request.stream),
+        )
+        if isinstance(result, dict) and result.get("ok"):
+            await store.update_task_status(task_id, "completed", result=result)
+            return {
+                "ok": True,
+                "message": "Task routed successfully",
+                "task_id": task_id,
+                "result": result,
+            }
+        await store.update_task_status(
+            task_id, "failed", result=result if isinstance(result, dict) else {}
+        )
         return {
-            "ok": True,
-            "message": "Task routed successfully",
-            "task_id": str(uuid.uuid4()),
+            "ok": False,
+            "task_id": task_id,
+            "error": (
+                result.get("error", "Routing failed") if isinstance(result, dict) else str(result)
+            ),
+            "providers_tried": (
+                result.get("providers_tried", []) if isinstance(result, dict) else []
+            ),
         }
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Routing failed: {str(e)}")
+    except Exception as exc:
+        raise HTTPException(status_code=500, detail=f"Routing failed: {exc}") from exc
 
 
 @router.post("/route_task_stream_start")
 async def start_stream_task(request: StreamTaskRequest):
-    """Start a streaming task"""
     try:
         stream_id = str(uuid.uuid4())
-
-        # Store stream information
-        ACTIVE_STREAMS[stream_id] = {
-            "goblin": request.goblin,
-            "task": request.task,
-            "code": request.code,
-            "provider": request.provider,
-            "model": request.model,
-            "status": "running",
-            "chunks": [],
-            "created_at": time.time(),
-        }
-
-        # Simulate task execution (in production, this would queue the task)
-        asyncio.create_task(simulate_stream_task(stream_id))
-
-        return StreamResponse(stream_id=stream_id, status="started")
-
-    except Exception as e:
-        raise HTTPException(
-            status_code=500, detail=f"Failed to start stream task: {str(e)}"
+        store = get_stream_state_store()
+        goblin_id = resolve_goblin_id(metadata={"goblin_id": request.goblin})
+        await store.create_stream(
+            stream_id,
+            metadata={
+                "goblin_id": goblin_id,
+                "goblin": goblin_id,
+                "task": request.task,
+                "provider": request.provider or "auto",
+                "model": request.model or "",
+                "source": "legacy_api_router",
+            },
         )
+        asyncio.create_task(_run_stream_task_background(stream_id, request))
+        return StreamResponse(stream_id=stream_id, status="started")
+    except Exception as exc:
+        raise HTTPException(status_code=500, detail=f"Failed to start stream task: {exc}") from exc
 
 
 @router.get("/route_task_stream_poll/{stream_id}")
 async def poll_stream_task(stream_id: str):
-    """Poll for streaming task updates"""
-    if stream_id not in ACTIVE_STREAMS:
+    store = get_stream_state_store()
+    stream = await store.poll_stream(stream_id)
+    if stream is None:
         raise HTTPException(status_code=404, detail="Stream not found")
-
-    stream = ACTIVE_STREAMS[stream_id]
-
-    # Return available chunks
-    chunks = stream.get("chunks", [])
-    stream["chunks"] = []  # Clear processed chunks
-
-    return {
-        "stream_id": stream_id,
-        "status": stream["status"],
-        "chunks": chunks,
-        "done": stream["status"] == "completed",
-    }
+    return stream
 
 
 @router.post("/route_task_stream_cancel/{stream_id}")
 async def cancel_stream_task(stream_id: str):
-    """Cancel a streaming task"""
-    if stream_id not in ACTIVE_STREAMS:
+    store = get_stream_state_store()
+    cancelled = await store.cancel_stream(stream_id)
+    if not cancelled:
         raise HTTPException(status_code=404, detail="Stream not found")
-
-    ACTIVE_STREAMS[stream_id]["status"] = "cancelled"
-
     return {"stream_id": stream_id, "status": "cancelled"}
 
 
-async def simulate_stream_task(stream_id: str):
-    """Simulate streaming task execution"""
-    await asyncio.sleep(1)  # Initial delay
+@router.get("/goblins", response_model=GoblinListSuccessResponse)
+async def get_goblins(
+    service: GoblinQueryService = Depends(get_goblin_query_service),
+) -> GoblinListSuccessResponse:
+    return GoblinListSuccessResponse(data=await service.list_goblins())
 
-    if stream_id not in ACTIVE_STREAMS:
-        return
 
-    stream = ACTIVE_STREAMS[stream_id]
-    response_text = (
-        f"Executed task '{stream['task']}' using goblin '{stream['goblin']}'"
+@router.get("/history/{goblin_id}", response_model=GoblinHistorySuccessResponse)
+async def get_goblin_history(
+    goblin_id: str,
+    limit: int = Query(default=10, ge=1, le=100),
+    cursor: Optional[str] = Query(default=None),
+    service: GoblinQueryService = Depends(get_goblin_query_service),
+) -> GoblinHistorySuccessResponse:
+    return GoblinHistorySuccessResponse(
+        data=await service.get_history(goblin_id, limit=limit, cursor=cursor)
     )
 
-    # Simulate streaming chunks
-    words = response_text.split()
-    for i, word in enumerate(words):
-        await asyncio.sleep(0.1)  # Simulate processing delay
 
-        if stream["status"] == "cancelled":
-            break
-
-        chunk = {
-            "content": word + (" " if i < len(words) - 1 else ""),
-            "token_count": len(word) // 4 + 1,
-            "cost_delta": 0.001,
-            "done": False,
-        }
-
-        stream["chunks"].append(chunk)
-
-    # Mark as completed
-    if stream["status"] != "cancelled":
-        stream["status"] = "completed"
-        stream["chunks"].append(
-            {
-                "result": response_text,
-                "cost": len(words) * 0.001,
-                "tokens": sum(len(word) for word in words) // 4,
-                "done": True,
-            }
-        )
-
-
-@router.get("/goblins")
-async def get_goblins():
-    """Get list of available goblins"""
-    # Mock goblin data - in production, this would come from a database
-    goblins = [
-        {
-            "id": "docs-writer",
-            "name": "docs-writer",
-            "title": "Documentation Writer",
-            "status": "available",
-            "guild": "Crafters",
-        },
-        {
-            "id": "code-writer",
-            "name": "code-writer",
-            "title": "Code Writer",
-            "status": "available",
-            "guild": "Crafters",
-        },
-        {
-            "id": "search-goblin",
-            "name": "search-goblin",
-            "title": "Search Specialist",
-            "status": "available",
-            "guild": "Huntress",
-        },
-        {
-            "id": "analyze-goblin",
-            "name": "analyze-goblin",
-            "title": "Data Analyst",
-            "status": "available",
-            "guild": "Mages",
-        },
-    ]
-    return goblins
-
-
-@router.get("/history/{goblin_id}")
-async def get_goblin_history(goblin_id: str, limit: int = 10):
-    """Get task history for a specific goblin"""
-    # Mock history data - in production, this would come from a database
-    mock_history = [
-        {
-            "id": f"task_{i}",
-            "goblin": goblin_id,
-            "task": f"Sample task {i}",
-            "response": f"Completed task {i} successfully",
-            "timestamp": time.time() - (i * 3600),  # Hours ago
-            "kpis": f"duration_ms:{1000 + i * 100},cost:{0.01 * (i + 1)}",
-        }
-        for i in range(min(limit, 20))
-    ]
-    return mock_history
-
-
-@router.get("/stats/{goblin_id}")
-async def get_goblin_stats(goblin_id: str):
-    """Get statistics for a specific goblin"""
-    # Mock stats - in production, this would be calculated from actual data
-    return {
-        "goblin_id": goblin_id,
-        "total_tasks": 42,
-        "total_cost": 1.23,
-        "avg_duration_ms": 2500,
-        "success_rate": 0.95,
-        "last_active": time.time() - 3600,  # 1 hour ago
-    }
-
-
-class ParseOrchestrationRequest(BaseModel):
-    text: str
-    default_goblin: Optional[str] = None
-
-
-@router.post("/orchestrate/parse")
-async def parse_orchestration(request: ParseOrchestrationRequest):
-    """Parse natural language into orchestration plan"""
-    return create_simple_orchestration_plan(request.text, request.default_goblin)
-
-
-@router.post("/orchestrate/execute")
-async def execute_orchestration(plan_id: str):
-    """Execute an orchestration plan"""
-    # Mock execution - in production, this would trigger actual orchestration
-    return {
-        "execution_id": str(uuid.uuid4()),
-        "plan_id": plan_id,
-        "status": "started",
-        "estimated_completion": time.time() + 300,  # 5 minutes from now
-    }
-
-
-@router.get("/orchestrate/plans/{plan_id}")
-async def get_orchestration_plan(plan_id: str):
-    """Get details of an orchestration plan"""
-    # Mock plan data
-    return {
-        "plan_id": plan_id,
-        "status": "completed",
-        "steps": [
-            {
-                "id": "step1",
-                "goblin": "docs-writer",
-                "task": "Document the code",
-                "status": "completed",
-                "duration_ms": 1500,
-                "cost": 0.02,
-            }
-        ],
-        "total_cost": 0.02,
-        "total_duration_ms": 1500,
-        "created_at": time.time() - 3600,
-    }
+@router.get("/stats/{goblin_id}", response_model=GoblinStatsSuccessResponse)
+async def get_goblin_stats(
+    goblin_id: str,
+    window_hours: int = Query(default=24, ge=1, le=8760),
+    service: GoblinQueryService = Depends(get_goblin_query_service),
+) -> GoblinStatsSuccessResponse:
+    return GoblinStatsSuccessResponse(
+        data=await service.get_stats(goblin_id, window_hours=window_hours)
+    )

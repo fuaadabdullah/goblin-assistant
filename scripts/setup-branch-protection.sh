@@ -4,37 +4,35 @@
 
 set -e
 
-echo "🛡️ Setting up branch protection for Goblin Assistant..."
+echo "Setting up branch protection for Goblin Assistant..."
 
-# Check if GitHub CLI is installed
 if ! command -v gh &> /dev/null; then
-    echo "❌ GitHub CLI (gh) is not installed. Please install it first:"
-    echo "   https://cli.github.com/"
+    echo "GitHub CLI (gh) is not installed. Install it first: https://cli.github.com/"
     exit 1
 fi
 
-# Check if authenticated
 if ! gh auth status &> /dev/null; then
-    echo "❌ Not authenticated with GitHub CLI. Please run 'gh auth login' first."
+    echo "Not authenticated with GitHub CLI. Run 'gh auth login' first."
     exit 1
 fi
 
 REPO="fuaadabdullah/goblin-assistant"
-BRANCH="main"
 
-echo "🔧 Configuring branch protection for $BRANCH branch..."
+for BRANCH in main develop; do
+  echo "Configuring branch protection for $BRANCH..."
 
-# Create JSON payload for branch protection
-cat > /tmp/branch_protection.json << EOF
+  cat > /tmp/branch_protection.json << EOF_JSON
 {
   "required_status_checks": {
     "strict": true,
     "contexts": [
-      "Goblin Assistant CI/CD (lint-and-type-check)",
-      "Goblin Assistant CI/CD (test)",
-      "Goblin Assistant CI/CD (build)",
-      "Goblin Assistant CI/CD (security-scan)",
-      "Goblin Assistant CI/CD (quality-gate)"
+      "policy",
+      "format-check",
+      "security-scan",
+      "lint",
+      "typecheck",
+      "tests-critical-coverage",
+      "build"
     ]
   },
   "enforce_admins": true,
@@ -48,34 +46,15 @@ cat > /tmp/branch_protection.json << EOF
   "allow_deletions": false,
   "block_creations": false
 }
-EOF
+EOF_JSON
 
-# Set up branch protection with required status checks
-gh api repos/$REPO/branches/$BRANCH/protection \
-  --method PUT \
-  --input /tmp/branch_protection.json
+  gh api repos/$REPO/branches/$BRANCH/protection \
+    --method PUT \
+    --input /tmp/branch_protection.json
 
-# Clean up temporary file
-rm /tmp/branch_protection.json
+done
 
-if [ $? -eq 0 ]; then
-    echo "✅ Branch protection configured successfully!"
-    echo ""
-    echo "📋 Branch Protection Rules Applied:"
-    echo "  - Required status checks: lint-and-type-check, test, build, security-scan, quality-gate"
-    echo "  - Require pull request reviews (1 reviewer required)"
-    echo "  - Require code owner reviews"
-    echo "  - Dismiss stale reviews"
-    echo "  - Enforce for admins"
-    echo "  - No force pushes allowed"
-    echo "  - No branch deletions allowed"
-else
-    echo "❌ Failed to configure branch protection"
-    exit 1
-fi
+rm -f /tmp/branch_protection.json
 
-echo ""
-echo "🎯 Next Steps:"
-echo "1. Verify the branch protection rules in GitHub Settings > Branches"
-echo "2. Consider adding CODEOWNERS file for automatic reviewer assignment"
-echo "3. Set up repository secrets for deployment if needed"
+echo "Branch protection configured for main and develop."
+echo "Required checks: policy, format-check, security-scan, lint, typecheck, tests-critical-coverage, build"

@@ -50,7 +50,7 @@ class RetrievalTraceFacet:
             context_text = retrieval_result.get("context", "")
             context_hash = compute_hash(context_text)
 
-            import asyncio  # noqa: PLC0415
+            import asyncio
 
             try:
                 loop = asyncio.get_running_loop()

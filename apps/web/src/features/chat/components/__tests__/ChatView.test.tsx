@@ -1,62 +1,87 @@
 import { render, screen, fireEvent } from '@testing-library/react';
-import '@testing-library/jest-dom';
 
 // Mock all child components
-jest.mock('../ChatHeader', () => {
-  return function MockChatHeader(props: Record<string, unknown>) {
-    return <div data-testid="chat-header"><button onClick={props.onToggleSidebar as () => void}>Toggle</button></div>;
-  };
-});
-jest.mock('../ChatMessageList', () => {
-  return function MockChatMessageList() {
+vi.mock('../ChatHeader', () => ({
+  default: function MockChatHeader(props: Record<string, unknown>) {
+    return (
+      <div data-testid="chat-header">
+        <button onClick={props.onToggleMobilePanel as () => void}>Toggle Panel</button>
+        <span data-testid="active-mobile-tab">{props.activeMobilePanelTab as string}</span>
+      </div>
+    );
+  },
+}));
+vi.mock('../ChatMessageList', () => ({
+  default: function MockChatMessageList() {
     return <div data-testid="chat-message-list" />;
-  };
-});
-jest.mock('../ChatComposer', () => {
-  return function MockChatComposer() {
+  },
+}));
+vi.mock('../ChatComposer', () => ({
+  default: function MockChatComposer() {
     return <div data-testid="chat-composer" />;
-  };
-});
-jest.mock('../ChatSidebar', () => {
-  return function MockChatSidebar(props: Record<string, unknown>) {
+  },
+}));
+vi.mock('../ChatSidebar', () => ({
+  default: function MockChatSidebar(props: Record<string, unknown>) {
     return (
       <div data-testid="chat-sidebar" className={props.className as string}>
-        <button onClick={() => (props.onSelectThread as (k: string) => void)('thread-1')}>Select Thread</button>
+        <button onClick={() => (props.onSelectThread as (k: string) => void)('thread-1')}>
+          Select Thread
+        </button>
         <button onClick={props.onNewConversation as () => void}>New Conv</button>
       </div>
     );
-  };
-});
-jest.mock('../../../../components/Seo', () => {
-  return function MockSeo(props: Record<string, unknown>) {
+  },
+}));
+vi.mock('../../../../components/Seo', () => ({
+  default: function MockSeo(props: Record<string, unknown>) {
     return <div data-testid="seo" data-title={props.title} />;
-  };
-});
-jest.mock('../../../../components/auth/AuthPrompt', () => {
-  return function MockAuthPrompt() {
-    return <div data-testid="auth-prompt" />;
-  };
-});
+  },
+}));
+// AuthPrompt is no longer used by ChatView - it shows an inline login UI instead
+// vi.mock('../../../../components/auth/AuthPrompt', ...)
 
-const mockIsAuthenticated = jest.fn().mockReturnValue(true);
-jest.mock('../../../../hooks/api/useAuthSession', () => ({
+vi.mock('../ChatPreviewPanel', () => ({
+  default: function MockChatPreviewPanel() {
+    return <div data-testid="chat-preview-panel" />;
+  },
+}));
+vi.mock('next/link', () => ({
+  default: function MockLink(props: Record<string, unknown>) {
+    const href =
+      typeof props.href === 'object' && props.href !== null
+        ? (props.href as { pathname: string }).pathname
+        : String(props.href);
+    return (
+      <a href={href} className={props.className as string}>
+        {props.children as React.ReactNode}
+      </a>
+    );
+  },
+}));
+vi.mock('../../../../components/ui/input', () => ({
+  Input: function MockInput(props: Record<string, unknown>) {
+    return <input {...(props as object)} />;
+  },
+}));
+
+const mockIsAuthenticated = vi.fn().mockReturnValue(true);
+vi.mock('../../../../hooks/api/useAuthSession', () => ({
   useAuthSession: () => ({ isAuthenticated: mockIsAuthenticated() }),
 }));
 
-const mockChatSidebarOpen = jest.fn().mockReturnValue(false);
-const mockToggleChatSidebar = jest.fn();
-const mockSetChatSidebarOpen = jest.fn();
-jest.mock('../../../../store/uiStore', () => ({
+const mockChatSidebarOpen = vi.fn().mockReturnValue(false);
+const mockSetChatSidebarOpen = vi.fn();
+vi.mock('../../../../store/uiStore', () => ({
   useUIStore: (selector: (state: Record<string, unknown>) => unknown) => {
     const state = {
       chatSidebarOpen: mockChatSidebarOpen(),
-      toggleChatSidebar: mockToggleChatSidebar,
       setChatSidebarOpen: mockSetChatSidebarOpen,
     };
     return selector(state);
   },
 }));
-jest.mock('../../../../hooks/useFocusTrap', () => ({
+vi.mock('../../../../hooks/useFocusTrap', () => ({
   useFocusTrap: () => ({ current: null }),
 }));
 
@@ -76,28 +101,28 @@ const mockSession = {
   inputRef: createRef<HTMLTextAreaElement>(),
   bottomRef: createRef<HTMLDivElement>(),
   authError: false,
-  setInput: jest.fn(),
-  sendMessage: jest.fn(),
-  selectThread: jest.fn(),
-  handleClearChat: jest.fn(),
-  handlePromptClick: jest.fn(),
-  handleKeyDown: jest.fn(),
+  setInput: vi.fn(),
+  sendMessage: vi.fn(),
+  selectThread: vi.fn(),
+  handleClearChat: vi.fn(),
+  handlePromptClick: vi.fn(),
+  handleKeyDown: vi.fn(),
   selectedProvider: 'openai',
   selectedModel: 'gpt-4',
   inputEstimate: null,
   isMessagesLoading: false,
-  deleteMessage: jest.fn(),
-  copyMessage: jest.fn(),
-  regenerateMessage: jest.fn(),
+  deleteMessage: vi.fn(),
+  copyMessage: vi.fn(),
+  regenerateMessage: vi.fn(),
   pendingAttachments: [],
   isUploading: false,
-  handleFileSelected: jest.fn(),
-  removePendingAttachment: jest.fn(),
+  handleFileSelected: vi.fn(),
+  removePendingAttachment: vi.fn(),
 };
 
 describe('ChatView', () => {
   beforeEach(() => {
-    jest.clearAllMocks();
+    vi.clearAllMocks();
     mockIsAuthenticated.mockReturnValue(true);
     mockChatSidebarOpen.mockReturnValue(false);
   });
@@ -109,10 +134,11 @@ describe('ChatView', () => {
     expect(screen.getByTestId('chat-composer')).toBeInTheDocument();
   });
 
-  it('shows AuthPrompt when not authenticated', () => {
+  it('shows inline login UI when not authenticated', () => {
     mockIsAuthenticated.mockReturnValue(false);
     render(<ChatView session={mockSession as never} isAdmin={false} />);
-    expect(screen.getByTestId('auth-prompt')).toBeInTheDocument();
+    // Component now renders inline login/preview UI instead of AuthPrompt
+    expect(screen.getByText('Sign in to Goblin →')).toBeInTheDocument();
     expect(screen.queryByTestId('chat-composer')).not.toBeInTheDocument();
   });
 
@@ -121,10 +147,30 @@ describe('ChatView', () => {
     expect(screen.getByTestId('seo')).toHaveAttribute('data-title', 'Chat');
   });
 
-  it('renders sidebars (mobile + desktop)', () => {
+  it('renders sidebars (unified mobile panel + desktop)', () => {
     render(<ChatView session={mockSession as never} isAdmin={false} />);
     const sidebars = screen.getAllByTestId('chat-sidebar');
-    expect(sidebars.length).toBe(2); // mobile + desktop
+    expect(sidebars.length).toBe(2);
+    expect(screen.getByRole('dialog', { name: 'Chat mobile panel' })).toBeInTheDocument();
+    expect(screen.getByRole('tab', { name: 'Conversations' })).toHaveAttribute(
+      'aria-selected',
+      'true'
+    );
+    expect(screen.getAllByLabelText('Close chat panel')).toHaveLength(1);
+  });
+
+  it('switches unified mobile panel tabs', () => {
+    render(<ChatView session={mockSession as never} isAdmin={false} />);
+    fireEvent.click(screen.getByRole('tab', { name: 'Preview' }));
+    expect(screen.getByRole('tab', { name: 'Preview' })).toHaveAttribute('aria-selected', 'true');
+    expect(screen.getByTestId('chat-preview-panel')).toBeInTheDocument();
+    expect(screen.getByTestId('active-mobile-tab')).toHaveTextContent('preview');
+  });
+
+  it('opens unified mobile panel through header toggle', () => {
+    render(<ChatView session={mockSession as never} isAdmin={false} />);
+    fireEvent.click(screen.getByText('Toggle Panel'));
+    expect(mockSetChatSidebarOpen).toHaveBeenCalledWith(true);
   });
 
   it('closes sidebar on thread select', () => {

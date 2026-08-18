@@ -20,6 +20,7 @@ logger = structlog.get_logger(__name__)
 # Rate limiter (token-bucket)
 # ---------------------------------------------------------------------------
 
+
 class _TokenBucket:
     """Simple token-bucket rate limiter.
 
@@ -63,6 +64,7 @@ def check_rate_limit() -> None:
 # ---------------------------------------------------------------------------
 # Custom exceptions
 # ---------------------------------------------------------------------------
+
 
 class FinancialDataError(Exception):
     """Base class for user-facing financial tool errors."""
@@ -123,6 +125,7 @@ async def with_timeout(
 # ---------------------------------------------------------------------------
 # Skill-level error wrapper
 # ---------------------------------------------------------------------------
+
 
 def safe_skill(fn: Callable) -> Callable:
     """Decorator that wraps a skill handler so FinancialDataError subclasses

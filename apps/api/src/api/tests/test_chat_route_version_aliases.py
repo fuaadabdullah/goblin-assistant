@@ -7,12 +7,28 @@ from api.chat_router import router as chat_router
 from api.routes.route_mounting import mount_versioned_primary_routes
 
 
+def _registered_paths(app: FastAPI) -> set[str]:
+    paths: set[str] = set()
+    for route in app.routes:
+        route_path = getattr(route, "path", None)
+        if isinstance(route_path, str):
+            paths.add(route_path)
+        effective_contexts = getattr(route, "effective_route_contexts", None)
+        if effective_contexts is None:
+            continue
+        for context in effective_contexts():
+            context_path = getattr(context, "path", None)
+            if isinstance(context_path, str):
+                paths.add(context_path)
+    return paths
+
+
 def test_public_routes_are_registered_once_under_v1_prefix() -> None:
     app = FastAPI()
     app.include_router(chat_router, prefix="/api/v1")
     app.include_router(api_router, prefix="/api/v1")
 
-    paths = {route.path for route in app.routes}
+    paths = _registered_paths(app)
 
     assert "/api/v1/chat/conversations" in paths
     assert "/api/v1/api/chat" in paths
@@ -103,7 +119,7 @@ def test_mount_versioned_primary_routes_includes_public_v1_routes() -> None:
         notifications_router=notifications,
     )
 
-    paths = {route.path for route in app.routes}
+    paths = _registered_paths(app)
     assert "/api/v1/health" in paths
     assert "/api/v1/settings/" in paths
     assert "/api/v1/providers/models" in paths

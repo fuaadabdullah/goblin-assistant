@@ -57,7 +57,7 @@ class ObservabilityDashboardFacet:
             else:
                 events = []
 
-            import asyncio  # noqa: PLC0415
+            import asyncio
 
             if not events:
                 try:
@@ -132,7 +132,7 @@ class ObservabilityDashboardFacet:
                         },
                     }
 
-            import asyncio  # noqa: PLC0415
+            import asyncio
 
             try:
                 loop = asyncio.get_running_loop()
@@ -187,7 +187,7 @@ class ObservabilityDashboardFacet:
             else:
                 decisions = []
 
-            import asyncio  # noqa: PLC0415
+            import asyncio
 
             if not decisions:
                 try:
@@ -268,7 +268,7 @@ class ObservabilityDashboardFacet:
                         "timestamp": snapshot.timestamp,
                     }
 
-            import asyncio  # noqa: PLC0415
+            import asyncio
 
             try:
                 loop = asyncio.get_running_loop()
@@ -303,7 +303,7 @@ class ObservabilityDashboardFacet:
         self, provider: str | None = None, model: str | None = None
     ) -> Dict[str, Any]:
         try:
-            import asyncio  # noqa: PLC0415
+            import asyncio
 
             async def _load() -> List[Dict[str, Any]]:
                 return await usage_event_store.get_model_rollup(provider=provider, model=model)
@@ -333,7 +333,7 @@ class ObservabilityDashboardFacet:
 
     def get_critical_metrics(self) -> Dict[str, Any]:
         try:
-            import asyncio  # noqa: PLC0415
+            import asyncio
 
             try:
                 loop = asyncio.get_running_loop()
@@ -410,7 +410,7 @@ class ObservabilityDashboardFacet:
 
     def check_alerts(self) -> List[Dict[str, Any]]:
         try:
-            import asyncio  # noqa: PLC0415
+            import asyncio
 
             try:
                 loop = asyncio.get_running_loop()
@@ -514,7 +514,7 @@ class ObservabilityDashboardFacet:
 
     def export_observability_data(self) -> Dict[str, Any]:
         try:
-            import asyncio  # noqa: PLC0415
+            import asyncio
 
             decisions: List[Dict[str, Any]] = []
             promotions: List[Dict[str, Any]] = []

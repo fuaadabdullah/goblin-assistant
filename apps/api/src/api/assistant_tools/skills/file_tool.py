@@ -38,7 +38,7 @@ def _read_text_content(file_path: Path) -> Optional[str]:
         return None
     try:
         return raw.decode("utf-8", errors="replace")
-    except Exception:  # noqa: BLE001
+    except Exception:
         return None
 
 

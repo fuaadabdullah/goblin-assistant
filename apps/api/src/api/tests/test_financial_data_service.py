@@ -6,22 +6,14 @@ Uses the shared yfinance stub from conftest.py to avoid network calls.
 
 from __future__ import annotations
 
-import asyncio
-import math
-import sys
-import types
-from unittest.mock import MagicMock, patch
-
 import pytest
 
 # yfinance stub is provided by conftest.py (mock_yfinance fixture)
-
 # Now safe to import the service
 from api.services.financial_data_service import (
     FinancialDataService,
     _validate_ticker,
 )
-
 
 # ---------------------------------------------------------------------------
 # Helpers
@@ -38,18 +30,15 @@ def _no_cache_get(key):
 
 
 def _no_cache_set(key, value, ttl):
-    pass
+    return None
 
 
 # Patch cache globally so tests don't depend on Redis
 @pytest.fixture(autouse=True)
 def disable_cache(monkeypatch):
-    monkeypatch.setattr(
-        "api.services.financial_data_service._cache_get", _no_cache_get
-    )
-    monkeypatch.setattr(
-        "api.services.financial_data_service._cache_set", _no_cache_set
-    )
+    monkeypatch.setattr("api.services.financial_data_service._cache_get", _no_cache_get)
+    monkeypatch.setattr("api.services.financial_data_service._cache_set", _no_cache_set)
+    monkeypatch.setattr("api.services.financial_guardrails.check_rate_limit", lambda: None)
 
 
 # ---------------------------------------------------------------------------
@@ -169,3 +158,84 @@ class TestGetKeyRatios:
         assert result["debt_to_equity"] == 170.0
         assert result["dividend_yield"] == 0.005
         assert result["beta"] == 1.25
+
+
+# ---------------------------------------------------------------------------
+# Market news
+# ---------------------------------------------------------------------------
+
+
+class TestGetMarketNews:
+    @pytest.mark.asyncio
+    async def test_returns_market_news(self, service, monkeypatch):
+        class _Resp:
+            def raise_for_status(self):
+                return None
+
+            @property
+            def text(self):
+                return """
+                <rss><channel>
+                  <item>
+                    <title>Apple earnings beat estimates</title>
+                    <link>https://example.com/apple</link>
+                    <source>Reuters</source>
+                    <pubDate>Mon, 01 Jun 2026 10:00:00 GMT</pubDate>
+                    <description><![CDATA[<p>Apple reports stronger than expected results.</p>]]></description>
+                  </item>
+                </channel></rss>
+                """
+
+        class _Client:
+            def __init__(self, *args, **kwargs):
+                pass
+
+            def __enter__(self):
+                return self
+
+            def __exit__(self, exc_type, exc, tb):
+                return False
+
+            def get(self, *args, **kwargs):
+                return _Resp()
+
+        monkeypatch.setattr("api.services.financial_data_service.httpx.Client", _Client)
+
+        result = await service.get_market_news("aapl news", limit=5)
+        assert result["query"] == "aapl news"
+        assert result["normalized_query"] == "AAPL"
+        assert result["ticker"] == "AAPL"
+        assert result["provider"] == "google_news_rss"
+        assert result["count"] == 1
+        news = result["results"][0]
+        assert news["title"] == "Apple earnings beat estimates"
+        assert news["publisher"] == "Reuters"
+        assert "Apple reports stronger than expected results." in news["snippet"]
+        assert news["ticker"] == "AAPL"
+        assert news["tickers"] == ["AAPL"]
+
+    @pytest.mark.asyncio
+    async def test_rejects_empty_query(self, service):
+        with pytest.raises(ValueError):
+            await service.get_market_news(" ")
+
+    @pytest.mark.asyncio
+    async def test_normalizes_source_publisher_from_domain(self):
+        from api.services.financial_data_service import normalize_market_news_sources
+
+        normalized = normalize_market_news_sources(
+            "AAPL",
+            [
+                {
+                    "title": "Example headline",
+                    "url": "https://www.reuters.com/markets/apple-123",
+                    "snippet": "Example snippet",
+                    "publisher": "",
+                }
+            ],
+        )
+
+        assert normalized["ticker"] == "AAPL"
+        assert normalized["normalized_query"] == "AAPL"
+        assert normalized["results"][0]["publisher"] == "Reuters"
+        assert normalized["results"][0]["source_domain"] == "reuters.com"

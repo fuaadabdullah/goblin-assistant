@@ -113,12 +113,40 @@ describe('runtimeClient', () => {
 
   it('delegates the remaining runtime methods to the shared client helpers', async () => {
     mockSendConversationMessage.mockResolvedValueOnce({ content: 'runtime reply' });
-    mockApiClient.getGoblins.mockResolvedValue([{ id: 'g1' }]);
+    mockApiClient.getGoblins.mockResolvedValue([
+      { id: 'g1', name: 'g1', title: 'G1', status: 'active', active: true },
+    ]);
     mockApiClient.getProviders.mockResolvedValue(['openai']);
     mockApiClient.getProviderModelOptions.mockResolvedValue([{ id: 'm1' }]);
     mockApiClient.getProviderModels.mockResolvedValue(['gpt-4o-mini']);
-    mockApiClient.getHistory.mockResolvedValue([{ id: 'memory-1' }]);
-    mockApiClient.getStats.mockResolvedValue({ total: 1 });
+    mockApiClient.getHistory.mockResolvedValue([
+      {
+        id: 'memory-1',
+        goblin_id: 'docs',
+        task: 'task',
+        response: 'response',
+        timestamp: '2026-08-03T00:00:00Z',
+      },
+    ]);
+    mockApiClient.getStats.mockResolvedValue({
+      goblin_id: 'docs',
+      window: {
+        hours: 24,
+        started_at: '2026-08-02T00:00:00Z',
+        ended_at: '2026-08-03T00:00:00Z',
+      },
+      counters: {
+        total_tasks: 1,
+        completed_tasks: 1,
+        failed_tasks: 0,
+      },
+      latency: {
+        average_duration_ms: null,
+        p95_duration_ms: null,
+      },
+      success_rate: 1,
+      total_cost: null,
+    });
     mockApiClient.getCostSummary.mockResolvedValue({ total_cost_usd: 1.23 });
     mockApiClient.parseOrchestration.mockResolvedValue({ plan: [] });
     mockApiClient.login.mockResolvedValue({ access_token: 'tok' });
@@ -137,7 +165,9 @@ describe('runtimeClient', () => {
       )
     ).resolves.toBe('runtime reply');
 
-    await expect(runtimeClient.getGoblins()).resolves.toEqual([{ id: 'g1' }]);
+    await expect(runtimeClient.getGoblins()).resolves.toEqual([
+      { id: 'g1', name: 'g1', title: 'G1', status: 'active', active: true },
+    ]);
     await expect(runtimeClient.getProviders()).resolves.toEqual(['openai']);
     await expect(runtimeClient.getProviderModelOptions('openai')).resolves.toEqual([{ id: 'm1' }]);
     await expect(runtimeClient.getProviderModels('openai')).resolves.toEqual(['gpt-4o-mini']);
@@ -166,8 +196,18 @@ describe('runtimeClient', () => {
     expect(mockPKSet).toHaveBeenCalledWith('openai', 'key-2');
     expect(mockPKRemove).toHaveBeenCalledWith('openai');
 
-    await expect(runtimeClient.getHistory('docs', 5)).resolves.toEqual([{ id: 'memory-1' }]);
-    await expect(runtimeClient.getStats('docs')).resolves.toEqual({ total: 1 });
+    await expect(runtimeClient.getHistory('docs', 5)).resolves.toEqual([
+      {
+        id: 'memory-1',
+        goblin_id: 'docs',
+        task: 'task',
+        response: 'response',
+        timestamp: '2026-08-03T00:00:00Z',
+      },
+    ]);
+    await expect(runtimeClient.getStats('docs')).resolves.toMatchObject({
+      counters: { total_tasks: 1 },
+    });
     await expect(runtimeClient.getCostSummary()).resolves.toEqual({ total_cost_usd: 1.23 });
     await expect(runtimeClient.parseOrchestration('plan this', 'docs')).resolves.toEqual({
       plan: [],

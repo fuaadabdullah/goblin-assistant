@@ -3,5 +3,3 @@ import ProvidersManagerScreen from '../features/admin/providers/ProvidersManager
 export default function EnhancedProvidersPage() {
   return <ProvidersManagerScreen />;
 }
-
-

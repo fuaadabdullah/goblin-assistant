@@ -188,7 +188,10 @@ class ProviderRuntimeConfig(BaseModel):
 
 
 def provider_metadata_from_runtime_config(
-    provider_id: str, config: "ProviderRuntimeConfig"
+    provider_id: str,
+    config: "ProviderRuntimeConfig",
+    *,
+    model_context_windows: Dict[str, int] | None = None,
 ) -> ProviderMetadata:
     """Build the typed ProviderMetadata domain object from a resolved runtime config."""
     limits: Dict[str, int] = {}
@@ -196,6 +199,11 @@ def provider_metadata_from_runtime_config(
         value = config.raw.get(key)
         if isinstance(value, int) and value > 0:
             limits[key] = value
+
+    if model_context_windows:
+        windows = [model_context_windows[m] for m in config.models if m in model_context_windows]
+        if windows:
+            limits["max_context_tokens"] = max(windows)
 
     return ProviderMetadata(
         provider_id=provider_id,

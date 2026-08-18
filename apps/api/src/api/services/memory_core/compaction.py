@@ -21,7 +21,7 @@ async def compact_user_memory(
     min_salience: float = 0.25,
 ) -> Dict[str, int]:
     """Archive or delete stale low-salience records."""
-    import structlog  # noqa: PLC0415
+    import structlog
 
     logger = structlog.get_logger(__name__)
     archived = 0

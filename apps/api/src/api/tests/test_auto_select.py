@@ -1,6 +1,6 @@
 import asyncio
-import sys
 import os
+import sys
 
 # Add the API directory to Python path for imports
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "api"))

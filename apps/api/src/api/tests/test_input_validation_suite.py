@@ -102,10 +102,7 @@ class TestInputSanitizerChatMessage:
 
         sanitized, metadata = InputSanitizer.sanitize_chat_message(content)
 
-        assert (
-            "\n" in sanitized
-            or ("Line1" in sanitized and "Line2" in sanitized)
-        )
+        assert "\n" in sanitized or ("Line1" in sanitized and "Line2" in sanitized)
 
     def test_sanitize_chat_message_with_iframe(self):
         """Test that iframe tags are removed"""

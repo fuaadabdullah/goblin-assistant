@@ -1,6 +1,5 @@
 import React from 'react';
 import { render, screen } from '@testing-library/react';
-import '@testing-library/jest-dom';
 import { Input } from '../input';
 
 describe('Input', () => {
@@ -52,10 +51,14 @@ describe('Input', () => {
 
   it('applies state variants', () => {
     const { rerender } = render(<Input state="error" aria-label="error input" />);
-    expect(screen.getByRole('textbox', { name: 'error input' }).className).toContain('border-danger');
+    expect(screen.getByRole('textbox', { name: 'error input' }).className).toContain(
+      'border-danger'
+    );
 
     rerender(<Input state="success" aria-label="success input" />);
-    expect(screen.getByRole('textbox', { name: 'success input' }).className).toContain('border-success');
+    expect(screen.getByRole('textbox', { name: 'success input' }).className).toContain(
+      'border-success'
+    );
   });
 
   it('forwards refs to the input element', () => {

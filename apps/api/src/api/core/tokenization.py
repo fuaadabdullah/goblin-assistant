@@ -21,7 +21,7 @@ def _get_encoding():
         import tiktoken
 
         return tiktoken.get_encoding("cl100k_base")
-    except Exception as e:  # noqa: BLE001
+    except Exception as e:
         logger.warning("tiktoken_unavailable", error=str(e), fallback="len//4")
         return None
 

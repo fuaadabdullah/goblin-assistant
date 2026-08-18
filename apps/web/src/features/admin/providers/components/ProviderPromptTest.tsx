@@ -24,18 +24,13 @@ export default function ProviderPromptTest({
           <textarea
             id="test-prompt"
             value={prompt}
-            onChange={e => onPromptChange(e.target.value)}
+            onChange={(e) => onPromptChange(e.target.value)}
             rows={4}
             className="w-full px-3 py-2 border border-border rounded-lg focus:ring-2 focus:ring-primary focus:border-primary bg-bg text-text"
             placeholder="e.g., Write a hello world program in Python"
           />
         </div>
-        <Button
-          onClick={onTest}
-          disabled={disabled || !prompt.trim()}
-          variant="success"
-          fullWidth
-        >
+        <Button onClick={onTest} disabled={disabled || !prompt.trim()} variant="success" fullWidth>
           {isTesting ? (
             <span className="flex items-center justify-center gap-2">
               <span className="animate-spin" aria-hidden="true">
@@ -54,4 +49,3 @@ export default function ProviderPromptTest({
     </div>
   );
 }
-

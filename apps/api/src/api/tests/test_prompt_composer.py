@@ -144,8 +144,10 @@ def test_compose_no_learning_boost_omits_education():
 
 def test_compose_global_glossary_can_be_excluded():
     out = compose_system_prompt(include_global_glossary=False)
-    # No glossary block, but the base prompt still carries the identity text.
+    # No glossary block and no global terms.
     assert "[GLOSSARY]" not in out
+    assert "GoblinOS:" not in out
+    # But the base prompt is still there.
     assert "GoblinOS Assistant" in out
 
 

@@ -1,21 +1,27 @@
+'use client';
+
 import type { FC } from 'react';
 import { useEffect, useMemo, useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useSupportForm } from './hooks/useSupportForm';
+import { useTriageForm } from './hooks/useTriageForm';
 import HelpView from './components/HelpView';
 import type { StartupDiagnostics } from '../../utils/startup-diagnostics';
 import { readStartupDiagnostics, clearStartupDiagnostics } from '../../utils/startup-diagnostics';
 
 const HelpScreen: FC = () => {
   const form = useSupportForm();
+  const triage = useTriageForm();
   const router = useRouter();
   const searchParams = useSearchParams();
   const [startupDiagnostics, setStartupDiagnostics] = useState<StartupDiagnostics | null>(null);
 
+  const reasonParam = searchParams.get('reason');
+  const logIdParam = searchParams.get('logId');
+
   const isStartupFailed = useMemo(() => {
-    const reason = searchParams.get('reason');
-    return reason === 'startup_failed';
-  }, [searchParams]);
+    return reasonParam === 'startup_failed';
+  }, [reasonParam]);
 
   useEffect(() => {
     if (!isStartupFailed) return;
@@ -23,8 +29,8 @@ const HelpScreen: FC = () => {
   }, [isStartupFailed]);
 
   const logId = useMemo(() => {
-    return searchParams.get('logId');
-  }, [searchParams]);
+    return logIdParam ?? null;
+  }, [logIdParam]);
 
   const handleRetry = () => {
     clearStartupDiagnostics();
@@ -39,7 +45,7 @@ const HelpScreen: FC = () => {
       }
     : undefined;
 
-  return <HelpView form={form} startupFailure={startupFailure} />;
+  return <HelpView form={form} triage={triage} startupFailure={startupFailure} />;
 };
 
 export default HelpScreen;

@@ -2,6 +2,7 @@
 
 import os
 from unittest.mock import patch
+
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
 
@@ -23,22 +24,21 @@ def _build_test_app():
     async def health():
         return {"status": "ok"}
 
-    @app.get("/test")
-    async def smoke_test():
-        return {"status": "ok"}
-
-    @app.get("/providers/models")
-    async def provider_models():
-        return {"models": []}
-
     return app
 
 
 class TestAuthenticationMiddleware:
     """Tests for AuthenticationMiddleware"""
 
+    @patch.dict(
+        os.environ,
+        {
+            "ENVIRONMENT": "production",
+            "LOCAL_LLM_API_KEY": "",
+        },
+    )
     def test_auth_middleware_excludes_health_endpoint(self):
-        """Test that health endpoint is excluded from auth"""
+        """Health probes remain public when production auth is unconfigured."""
         app = _build_test_app()
         app.add_middleware(
             AuthenticationMiddleware,
@@ -47,32 +47,6 @@ class TestAuthenticationMiddleware:
         client = TestClient(app)
 
         response = client.get("/health")
-
-        assert response.status_code == 200
-
-    def test_auth_middleware_excludes_smoke_test_endpoint(self):
-        """Test that smoke test endpoint is excluded from auth."""
-        app = _build_test_app()
-        app.add_middleware(
-            AuthenticationMiddleware,
-            exclude_paths=[],
-        )
-        client = TestClient(app)
-
-        response = client.get("/test")
-
-        assert response.status_code == 200
-
-    def test_auth_middleware_excludes_provider_model_registry(self):
-        """Test that provider model registry is available for UI bootstrap."""
-        app = _build_test_app()
-        app.add_middleware(
-            AuthenticationMiddleware,
-            exclude_paths=[],
-        )
-        client = TestClient(app)
-
-        response = client.get("/providers/models")
 
         assert response.status_code == 200
 
@@ -140,7 +114,7 @@ class TestAuthenticationMiddleware:
             response = client.get("/protected")
 
             assert response.status_code == 500
-            assert "configuration_error" in response.json()["error"]["code"]
+            assert response.json()["error"]["code"] == "CONFIGURATION_ERROR"
 
     def test_auth_middleware_custom_exclude_paths(self):
         """Test custom excluded paths"""
@@ -156,6 +130,64 @@ class TestAuthenticationMiddleware:
 
         client = TestClient(app)
         response = client.get("/custom")
+
+        assert response.status_code == 200
+
+    @patch.dict(
+        os.environ,
+        {
+            "ENVIRONMENT": "production",
+            "LOCAL_LLM_API_KEY": "machine-key",
+        },
+    )
+    def test_auth_middleware_defers_chat_routes_to_jwt_dependencies(self):
+        """User-authenticated chat routes are not treated as machine API-key routes."""
+        app = FastAPI()
+
+        @app.get("/api/v1/chat/conversations")
+        async def conversations():
+            return {"message": "JWT dependency owns authentication"}
+
+        app.add_middleware(AuthenticationMiddleware)
+        client = TestClient(app)
+
+        response = client.get(
+            "/api/v1/chat/conversations",
+            headers={"Authorization": "Bearer user-jwt"},
+        )
+
+        assert response.status_code == 200
+
+    @patch.dict(os.environ, {"LOCAL_LLM_API_KEY": "machine-key"})
+    def test_auth_middleware_keeps_chat_debug_route_machine_key_protected(self):
+        app = FastAPI()
+
+        @app.get("/api/v1/chat/debug/context-assembly")
+        async def debug_context():
+            return {"message": "protected"}
+
+        app.add_middleware(AuthenticationMiddleware)
+        client = TestClient(app)
+
+        response = client.get(
+            "/api/v1/chat/debug/context-assembly",
+            headers={"Authorization": "Bearer user-jwt"},
+        )
+
+        assert response.status_code == 401
+
+    @patch.dict(os.environ, {"LOCAL_LLM_API_KEY": "machine-key"})
+    def test_auth_middleware_excludes_agent_routes_for_jwt_auth(self):
+        app = FastAPI()
+
+        @app.get("/api/v1/agent/task")
+        async def agent_task():
+            return {"message": "jwt protected"}
+
+        app.add_middleware(AuthenticationMiddleware)
+        client = TestClient(app)
+
+        response = client.get("/api/v1/agent/task", headers={"Authorization": "Bearer user-jwt"})
 
         assert response.status_code == 200
 

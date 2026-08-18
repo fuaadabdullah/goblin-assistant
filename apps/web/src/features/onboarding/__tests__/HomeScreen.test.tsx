@@ -1,19 +1,25 @@
 import React from 'react';
 import { render, screen } from '@testing-library/react';
 
-jest.mock('next/link', () => function MockLink({ children, href }: { children: React.ReactNode; href: string }) {
-  return <a href={href}>{children}</a>;
-});
-jest.mock('../../../components/Navigation', () => function MockNav() {
-  return <nav data-testid="nav" />;
-});
-jest.mock('../../../components/Seo', () => function MockSeo() {
-  return null;
-});
-jest.mock('../../../hooks/api/useAuthSession', () => ({
+vi.mock('next/link', () => ({
+  default: function MockLink({ children, href }: { children: React.ReactNode; href: string }) {
+    return <a href={href}>{children}</a>;
+  },
+}));
+vi.mock('../../../components/Navigation', () => ({
+  default: function MockNav() {
+    return <nav data-testid="nav" />;
+  },
+}));
+vi.mock('../../../components/Seo', () => ({
+  default: function MockSeo() {
+    return null;
+  },
+}));
+vi.mock('../../../hooks/api/useAuthSession', () => ({
   useAuthSession: () => ({ isAuthenticated: true }),
 }));
-jest.mock('../../../content/brand', () => ({
+vi.mock('../../../content/brand', () => ({
   BRAND_NAME: 'Goblin AI',
   BRAND_TAGLINE: 'Your AI Gateway',
   HOME_EXAMPLE_CARDS: [
@@ -25,15 +31,20 @@ jest.mock('../../../content/brand', () => ({
     { icon: '🔒', title: 'Secure', body: 'Enterprise grade' },
   ],
 }));
-jest.mock('../../../hooks/useSystemStatus', () => ({
+vi.mock('../../../hooks/useSystemStatus', () => ({
   useSystemStatus: () => ({
     status: { models: 'ok', routing: 'ok', sandbox: 'ok', updatedAt: '2026-05-07T00:00:00Z' },
     loading: false,
-    refresh: jest.fn(),
+    refresh: vi.fn(),
   }),
 }));
-jest.mock('../../../utils/analytics', () => ({
-  trackEvent: jest.fn(),
+vi.mock('../../../utils/analytics', () => ({
+  trackEvent: vi.fn(),
+}));
+vi.mock('next/navigation', () => ({
+  useRouter: () => ({ push: vi.fn(), replace: vi.fn(), prefetch: vi.fn() }),
+  useSearchParams: () => new URLSearchParams(),
+  usePathname: () => '/',
 }));
 
 import HomeScreen from '../HomeScreen';
@@ -46,7 +57,9 @@ describe('HomeScreen', () => {
 
   it('renders tagline', () => {
     render(<HomeScreen />);
-    expect(screen.getByText('Live status and quick actions — this system is running.')).toBeInTheDocument();
+    expect(
+      screen.getByText('Live status and quick actions — this system is running.')
+    ).toBeInTheDocument();
   });
 
   it('renders navigation', () => {
@@ -54,10 +67,10 @@ describe('HomeScreen', () => {
     expect(screen.getByTestId('nav')).toBeInTheDocument();
   });
 
-  it('renders gateway console link', () => {
+  it('renders continue as guest link', () => {
     render(<HomeScreen />);
-    const link = screen.getByText('Try the live sandbox');
-    expect(link.closest('a')).toHaveAttribute('href', '/sandbox?guest=1');
+    const link = screen.getAllByText('Continue as guest')[0];
+    expect(link.closest('a')).toHaveAttribute('href', '/chat?guest=1');
   });
 
   it('renders audit logs link', () => {
@@ -85,25 +98,31 @@ describe('HomeScreen', () => {
     expect(screen.getByText('Example 2')).toBeInTheDocument();
   });
 
-  it('renders live sandbox chat section', () => {
+  it('renders live chat demo section', () => {
     render(<HomeScreen />);
-    expect(screen.getByText('Live sandbox chat')).toBeInTheDocument();
+    expect(screen.getByText('Live chat demo')).toBeInTheDocument();
     expect(screen.getByText('No login. Rate limited. Instantly interactive.')).toBeInTheDocument();
-    expect(screen.getByText('Open guest sandbox')).toBeInTheDocument();
+    expect(screen.getByText('Open this demo')).toBeInTheDocument();
   });
 
   it('renders interactive demo prompt preview', () => {
     render(<HomeScreen />);
     expect(screen.getByText('Analyze a stock')).toBeInTheDocument();
     expect(
-      screen.getAllByText('Pull the latest data for AAPL — price, P/E, recent earnings summary, and analyst consensus.')
+      screen.getAllByText(
+        'Pull the latest data for AAPL — price, P/E, recent earnings summary, and analyst consensus.'
+      )
     ).toHaveLength(2);
-    expect(screen.getByText('Goblin would fetch the latest market data, summarize the earnings trend, and highlight valuation risks before you even sign in.')).toBeInTheDocument();
+    expect(
+      screen.getByText(
+        'Goblin would fetch the latest market data, summarize the earnings trend, and highlight valuation risks before you even sign in.'
+      )
+    ).toBeInTheDocument();
     expect(screen.getByText('Open this demo')).toBeInTheDocument();
   });
 
-  it('renders enterprise use cases heading', () => {
+  it('renders platform capabilities heading', () => {
     render(<HomeScreen />);
-    expect(screen.getByText('Enterprise Use Cases')).toBeInTheDocument();
+    expect(screen.getByText('Platform Capabilities')).toBeInTheDocument();
   });
 });

@@ -26,7 +26,7 @@ describe('useCostStreaming Hook', () => {
     expect(result.current.streaming).toBe(true);
     expect(result.current.streamLines.length).toBeGreaterThan(0);
     expect(result.current.streamLines).toEqual(
-      expect.arrayContaining([expect.stringContaining('openai')]),
+      expect.arrayContaining([expect.stringContaining('openai')])
     );
   });
 

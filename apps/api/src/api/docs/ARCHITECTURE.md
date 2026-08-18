@@ -274,25 +274,47 @@ async def send_message(conversation_id: str, request: SendMessageRequest):
 
 #### Routing Router (`routing_router.py`)
 
-Manages intelligent AI provider routing:
+Provides the compatibility routing surface. Canonical provider inventory and
+task routing now live at `/api/v1/providers/models` and `/api/v1/api/route_task`:
 
 ```python
 @router.get("/routing/providers")
 async def get_available_providers():
-    """Get list of configured providers"""
-    return top_providers_for("chat")
+    """Deprecated compatibility provider view"""
+    return await dispatcher.get_provider_inventory(include_hidden=False)
 
 @router.post("/routing/route")
 async def route_request(request: RouteRequest):
-    """Route request to best provider"""
-    result = await route_task(
-        task_type=request.task_type,
-        payload=request.payload,
-        prefer_local=request.prefer_local,
-        prefer_cost=request.prefer_cost
-    )
-    return result
+    """Deprecated compatibility route over shared dispatcher/provider routing"""
 ```
+
+#### Goblin Query API (`services/goblin_query_service.py`, `api_router.py`)
+
+Read-side catalog, history, and stats surface wired directly to the product
+catalog and conversation store. All three endpoints are backed by concrete
+service implementations — no 501 stubs remain.
+
+```python
+@router.get("/goblins", response_model=GoblinListResponse)
+async def get_goblins(service: GoblinQueryService = Depends(get_goblin_query_service)):
+    """List all active goblins from the product catalog."""
+    return await service.list_goblins()
+
+@router.get("/history/{goblin_id}", response_model=GoblinHistoryResponse)
+async def get_goblin_history(goblin_id: str, limit: int = Query(ge=1, le=100),
+                             cursor: Optional[str] = None, ...):
+    """Paginated conversation history for a goblin, newest-first."""
+    return await service.get_history(goblin_id, limit=limit, cursor=cursor)
+
+@router.get("/stats/{goblin_id}", response_model=GoblinStatsResponse)
+async def get_goblin_stats(goblin_id: str, window_hours: int = Query(ge=1, le=8760), ...):
+    """Aggregated task counters and success rate for a rolling time window."""
+    return await service.get_stats(goblin_id, window_hours=window_hours)
+```
+
+Authorization is enforced via `get_current_user` on all three routes.
+Pagination uses opaque base64 cursors (`timestamp|id`). Unknown goblin IDs
+raise `DomainError(GOBLIN_NOT_FOUND, 404)`.
 
 ### Integration Layer
 

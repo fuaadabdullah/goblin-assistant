@@ -1,25 +1,24 @@
 import { render, screen, fireEvent } from '@testing-library/react';
-import '@testing-library/jest-dom';
 import ChatComposer from '../ChatComposer';
 
 // Mock dependencies
-jest.mock('next/link', () => {
-  return function MockLink({ children, href }: { children: React.ReactNode; href: string }) {
+vi.mock('next/link', () => ({
+  default: function MockLink({ children, href }: { children: React.ReactNode; href: string }) {
     return <a href={href}>{children}</a>;
-  };
-});
-jest.mock('lucide-react', () => ({
+  },
+}));
+vi.mock('lucide-react', () => ({
   Loader2: (props: Record<string, unknown>) => <span data-testid="loader" {...props} />,
   Paperclip: (props: Record<string, unknown>) => <span data-testid="paperclip" {...props} />,
   X: (props: Record<string, unknown>) => <span data-testid="x-icon" {...props} />,
 }));
-jest.mock('../AuthRequired', () => ({
+vi.mock('../AuthRequired', () => ({
   AuthRequired: () => <div data-testid="auth-required">Auth Required</div>,
 }));
-jest.mock('@/utils/format-cost', () => ({
+vi.mock('@/utils/format-cost', () => ({
   formatCost: (val: number) => `$${val.toFixed(4)}`,
 }));
-jest.mock('../../../../content/brand', () => ({
+vi.mock('../../../../content/brand', () => ({
   CHAT_COMPOSER_PLACEHOLDER: 'Type a message...',
   CHAT_COMPOSER_TIP: 'Press Enter to send',
 }));
@@ -37,15 +36,15 @@ const defaultProps = {
     { label: 'Prompt 3', prompt: 'Test' },
     { label: 'Prompt 4', prompt: 'Extra' },
   ],
-  onInputChange: jest.fn(),
-  onClear: jest.fn(),
-  onSend: jest.fn(),
-  onKeyDown: jest.fn(),
-  onPromptClick: jest.fn(),
+  onInputChange: vi.fn(),
+  onClear: vi.fn(),
+  onSend: vi.fn(),
+  onKeyDown: vi.fn(),
+  onPromptClick: vi.fn(),
 };
 
 describe('ChatComposer', () => {
-  beforeEach(() => jest.clearAllMocks());
+  beforeEach(() => vi.clearAllMocks());
 
   it('renders textarea with placeholder', () => {
     render(<ChatComposer {...defaultProps} />);
@@ -150,11 +149,17 @@ describe('ChatComposer', () => {
   });
 
   it('calls onRemoveAttachment when remove button clicked', () => {
-    const onRemove = jest.fn();
+    const onRemove = vi.fn();
     const attachments = [
       { file_id: 'f1', filename: 'doc.pdf', mime_type: 'application/pdf', size_bytes: 1024 },
     ];
-    render(<ChatComposer {...defaultProps} pendingAttachments={attachments} onRemoveAttachment={onRemove} />);
+    render(
+      <ChatComposer
+        {...defaultProps}
+        pendingAttachments={attachments}
+        onRemoveAttachment={onRemove}
+      />
+    );
     fireEvent.click(screen.getByLabelText('Remove doc.pdf'));
     expect(onRemove).toHaveBeenCalledWith('f1');
   });
@@ -165,7 +170,15 @@ describe('ChatComposer', () => {
   });
 
   it('displays cost estimates', () => {
-    render(<ChatComposer {...defaultProps} estimatedTokens={500} estimatedCostUsd={0.01} totalTokens={1000} totalCostUsd={0.05} />);
+    render(
+      <ChatComposer
+        {...defaultProps}
+        estimatedTokens={500}
+        estimatedCostUsd={0.01}
+        totalTokens={1000}
+        totalCostUsd={0.05}
+      />
+    );
     expect(screen.getByText('~500')).toBeInTheDocument();
     expect(screen.getByText('1000')).toBeInTheDocument();
   });

@@ -3,16 +3,13 @@ Supabase integration for PostgreSQL database and authentication
 """
 
 import os
-import json
-from typing import Dict, Any, Optional, List
-import asyncio
-import httpx
-from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession
-from sqlalchemy.orm import sessionmaker
-from sqlalchemy.pool import NullPool
 from contextlib import asynccontextmanager
-from typing import AsyncGenerator
+from typing import Any, AsyncGenerator, Dict
 
+import httpx
+from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine
+from sqlalchemy.orm import sessionmaker
+from sqlalchemy.pool import StaticPool
 
 # Supabase configuration
 SUPABASE_URL = os.getenv("SUPABASE_URL")
@@ -24,9 +21,7 @@ if SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY:
     # Use Supabase connection string with service role key
     DATABASE_URL = f"postgresql+asyncpg://postgres:{SUPABASE_SERVICE_ROLE_KEY}@{SUPABASE_URL.replace('https://', '').replace('http://', '')}:5432/postgres"
 else:
-    DATABASE_URL = os.getenv(
-        "DATABASE_URL", "sqlite+aiosqlite:///./goblin_assistant.db"
-    )
+    DATABASE_URL = os.getenv("DATABASE_URL", "sqlite+aiosqlite:///./goblin_assistant.db")
 
 
 class SupabaseAuth:
@@ -221,9 +216,7 @@ class SupabaseDatabase:
             except Exception as e:
                 return {"error": f"Update failed: {str(e)}"}
 
-    async def delete_data(
-        self, table: str, filter_field: str, filter_value: str
-    ) -> Dict[str, Any]:
+    async def delete_data(self, table: str, filter_field: str, filter_value: str) -> Dict[str, Any]:
         """Delete data from a table"""
         if not self.rest_url or not self.service_role_key:
             return {"error": "Supabase configuration missing"}
@@ -317,11 +310,12 @@ if SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY:
         pool_timeout=30,
     )
 else:
-    # Fallback to local SQLite
+    # Fallback to local SQLite — StaticPool reuses a single connection (correct for aiosqlite)
     engine = create_async_engine(
         DATABASE_URL,
         echo=False,
-        poolclass=NullPool,
+        poolclass=StaticPool,
+        connect_args={"check_same_thread": False},
     )
 
 

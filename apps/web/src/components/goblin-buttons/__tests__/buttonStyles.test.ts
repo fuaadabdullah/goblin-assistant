@@ -13,7 +13,15 @@ describe('buttonStyles', () => {
     expect(baseButtonStyles).toContain('disabled:opacity-50');
   });
 
-  const variants: ButtonStyleVariant[] = ['primary', 'cta', 'danger', 'ghost', 'icon-ghost', 'icon-primary', 'icon-danger'];
+  const variants: ButtonStyleVariant[] = [
+    'primary',
+    'cta',
+    'danger',
+    'ghost',
+    'icon-ghost',
+    'icon-primary',
+    'icon-danger',
+  ];
 
   it.each(variants)('getButtonClasses returns a string for variant "%s"', (variant) => {
     const classes = getButtonClasses(variant);

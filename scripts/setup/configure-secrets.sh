@@ -133,6 +133,9 @@ main() {
     # AI Providers
     configure_secret "goblin-prod-anthropic" "Anthropic API key"
     configure_secret "goblin-prod-openai" "OpenAI API key"
+    configure_secret "goblin-prod-groq-key" "Groq API key"
+    configure_secret "goblin-prod-google-ai-key" "Google AI / Gemini API key"
+    configure_secret "goblin-prod-siliconeflow-key" "SiliconeFlow API key"
 
     # Monitoring & Error Tracking
     configure_secret "goblin-prod-sentry-dsn" "Sentry DSN for error tracking"

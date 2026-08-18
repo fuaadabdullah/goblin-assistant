@@ -69,8 +69,11 @@ def normalize_provider_response(
 
     # OpenAI-compatible format
     if isinstance(provider_response, dict) and "choices" in provider_response:
+        choices = provider_response["choices"]
+        first = choices[0] if choices else {}
+        content = (first.get("message") or {}).get("content") or ""
         return (
-            provider_response["choices"][0]["message"]["content"],
+            content,
             provider_response.get("provider", provider),
             provider_response.get("model", model),
         )

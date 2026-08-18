@@ -104,7 +104,7 @@ async def _start_ai_health_monitoring():
 
 async def _start_colab_heartbeat():
     try:
-        from .services.colab_heartbeat import colab_heartbeat  # noqa: PLC0415
+        from .services.colab_heartbeat import colab_heartbeat
 
         await colab_heartbeat.start()
         logger.info("Colab worker heartbeat monitor started")
@@ -138,7 +138,7 @@ async def _start_artifact_cleanup():
 
 async def _start_embedding_worker():
     try:
-        from .services.embedding_service import embedding_worker  # noqa: PLC0415
+        from .services.embedding_service import embedding_worker
 
         await embedding_worker.start()
         logger.info("Embedding worker started")
@@ -152,10 +152,10 @@ async def _start_embedding_worker():
 
 async def _restore_colab_endpoint():
     try:
-        from .ops_routes._colab_store import (  # noqa: PLC0415
+        from .ops_routes._colab_store import (
             load_endpoint_from_db as load_colab_endpoint_from_db,
         )
-        from .providers.dispatcher import dispatcher  # noqa: PLC0415
+        from .providers.dispatcher import dispatcher
 
         saved_endpoint = await load_colab_endpoint_from_db()
         if saved_endpoint:
@@ -175,7 +175,7 @@ async def _restore_colab_endpoint():
 
 async def _restore_routing_registry() -> None:
     try:
-        from .routing.router import registry  # noqa: PLC0415
+        from .routing.router import registry
 
         await registry.async_restore_from_supabase()
     except Exception as exc:
@@ -184,7 +184,7 @@ async def _restore_routing_registry() -> None:
 
 async def _restore_bandit_state() -> None:
     try:
-        from .routing.ml_router import bandit_cache, restore_bandit_state  # noqa: PLC0415
+        from .routing.ml_router import bandit_cache, restore_bandit_state
 
         await restore_bandit_state(bandit_cache)
     except Exception as exc:
@@ -193,7 +193,7 @@ async def _restore_bandit_state() -> None:
 
 async def _restore_feature_weights() -> None:
     try:
-        from .routing.feature_router import feature_router  # noqa: PLC0415
+        from .routing.feature_router import feature_router
 
         await feature_router.restore_weights()
     except Exception as exc:
@@ -202,8 +202,8 @@ async def _restore_feature_weights() -> None:
 
 async def _restore_circuit_states() -> None:
     try:
-        from .providers.dispatcher import dispatcher  # noqa: PLC0415
-        from .providers.supabase_events import (  # noqa: PLC0415
+        from .providers.dispatcher import dispatcher
+        from .providers.supabase_events import (
             _ENABLED,
             _HEADERS,
             _REST,
@@ -234,7 +234,7 @@ async def _restore_circuit_states() -> None:
 
 async def _start_dispatcher_background_tasks():
     try:
-        from .providers.dispatcher import dispatcher  # noqa: PLC0415
+        from .providers.dispatcher import dispatcher
 
         dispatcher.start_background_tasks()
         logger.info("Dispatcher background tasks started")
@@ -252,7 +252,7 @@ async def _stop_ai_health_monitoring():
 
 async def _stop_colab_heartbeat():
     try:
-        from .services.colab_heartbeat import colab_heartbeat  # noqa: PLC0415
+        from .services.colab_heartbeat import colab_heartbeat
 
         await colab_heartbeat.stop()
         logger.info("Colab worker heartbeat monitor stopped")
@@ -300,7 +300,7 @@ async def lifespan(_app: FastAPI):
                 _start_embedding_worker(),
             )
             try:
-                from .services import VECTOR_STORE_AVAILABLE  # noqa: PLC0415
+                from .services import VECTOR_STORE_AVAILABLE
 
                 if VECTOR_STORE_AVAILABLE:
                     logger.info("Safe vector store available")
@@ -349,7 +349,7 @@ async def lifespan(_app: FastAPI):
         logger.info("Redis cache closed")
 
         try:
-            from .routing.router import registry  # noqa: PLC0415
+            from .routing.router import registry
 
             registry.close()
             logger.info("Routing registry flushed")
@@ -372,7 +372,7 @@ async def lifespan(_app: FastAPI):
             )
 
         try:
-            from .services.embedding_service import (  # noqa: PLC0415
+            from .services.embedding_service import (
                 embedding_worker,
             )
 

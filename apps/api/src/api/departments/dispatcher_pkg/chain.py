@@ -47,7 +47,7 @@ def reorder_chain_by_bandit(
     if len(chain) <= 1:
         return chain
     try:
-        from api.routing.ml_router import _MIN_OBSERVATIONS, bandit_cache  # noqa: PLC0415
+        from api.routing.ml_router import _MIN_OBSERVATIONS, bandit_cache
 
         scored: List[Tuple[float, int, str, str]] = []
         for idx, (pid, model_name) in enumerate(chain):
@@ -60,6 +60,6 @@ def reorder_chain_by_bandit(
 
         scored.sort(key=lambda x: x[0], reverse=True)
         return [(pid, model_name) for _, _, pid, model_name in scored]
-    except Exception as exc:  # noqa: BLE001
+    except Exception as exc:
         logger.debug("department_bandit_reorder_failed", task_type=task_type, error=str(exc))
         return chain

@@ -91,9 +91,7 @@ def sentry_before_send(
         if key in sanitized_event:
             sanitized_event[key] = mask_sensitive(sanitized_event[key])
 
-    if "breadcrumbs" in sanitized_event and isinstance(
-        sanitized_event["breadcrumbs"], dict
-    ):
+    if "breadcrumbs" in sanitized_event and isinstance(sanitized_event["breadcrumbs"], dict):
         values = sanitized_event["breadcrumbs"].get("values")
         sanitized_event["breadcrumbs"]["values"] = _sanitize_breadcrumb_values(values)
 

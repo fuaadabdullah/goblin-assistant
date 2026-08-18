@@ -1,7 +1,7 @@
 import React, { useReducer, useEffect } from 'react';
 // CSS is imported globally in _app.tsx
 import StreamingView from '@/components/streaming/StreamingView';
-import { runtimeClient } from '@/api';
+import { runtimeClient } from '@/lib/api/runtimeClient';
 import type { OrchestrationStep } from '@/types/api';
 import {
   initialOrchestrationState,
@@ -107,7 +107,7 @@ export default function GoblinDemo({ provider, model, demoMode = false }: Props)
     debugLog('🎯 [DEBUG] Template changed:', { from: state.selectedTemplate, to: templateName });
 
     dispatch({ type: 'SET_SELECTED_TEMPLATE', payload: templateName });
-    const template = ORCHESTRATION_TEMPLATES.find(t => t.name === templateName);
+    const template = ORCHESTRATION_TEMPLATES.find((t) => t.name === templateName);
     if (template) {
       debugLog('📝 [DEBUG] Setting orchestration to:', template.value);
       dispatch({ type: 'SET_ORCHESTRATION', payload: template.value });
@@ -145,12 +145,12 @@ export default function GoblinDemo({ provider, model, demoMode = false }: Props)
         <select
           id="template-select"
           value={state.selectedTemplate}
-          onChange={e => handleTemplateChange(e.target.value)}
+          onChange={(e) => handleTemplateChange(e.target.value)}
           className="template-select"
           data-testid="template-select"
           aria-describedby="template-select-help"
         >
-          {ORCHESTRATION_TEMPLATES.map(template => (
+          {ORCHESTRATION_TEMPLATES.map((template) => (
             <option
               key={template.name}
               value={template.name}
@@ -232,17 +232,17 @@ export default function GoblinDemo({ provider, model, demoMode = false }: Props)
           </div>
         </div>
       </div>
-      <div
-        className="goblin-results"
-        data-testid="goblin-results"
-      >
+      <div className="goblin-results" data-testid="goblin-results">
         {/* Plan preview */}
         {Object.keys(state.stepCosts).length > 0 && (
           <div className="plan-total" data-testid="plan-total">
             <strong>Total Plan Cost: </strong>
-            {formatCost((Object.values(state.stepCosts) as number[]).reduce((a, b) => a + b, 0), {
-              mode: 'per-token',
-            })}
+            {formatCost(
+              (Object.values(state.stepCosts) as number[]).reduce((a, b) => a + b, 0),
+              {
+                mode: 'per-token',
+              }
+            )}
           </div>
         )}
         {state.plan && (
@@ -269,47 +269,58 @@ export default function GoblinDemo({ provider, model, demoMode = false }: Props)
                   {state.expandedSteps[s.id] && (
                     <div className="step-details" data-testid={`step-details-${s.id}`}>
                       <div data-testid={`step-id-${s.id}`}>Step ID: {s.id}</div>
-                      <div data-testid={`step-status-${s.id}`}>Status: {state.stepStatuses[s.id]}</div>
+                      <div data-testid={`step-status-${s.id}`}>
+                        Status: {state.stepStatuses[s.id]}
+                      </div>
                       <div data-testid={`step-cost-${s.id}`}>
                         Cost: {formatCost(state.stepCosts[s.id] || 0, { mode: 'per-token' })}
                       </div>
-                      <div data-testid={`step-tokens-${s.id}`}>Tokens: {state.stepTokens[s.id] || 0}</div>
-                      {state.stepChunks[s.id] && state.stepChunks[s.id].length > 0 && (
-                        <div className="chunk-list" data-testid={`chunk-list-${s.id}`}>
-                          <strong>Chunks:</strong>
-                          <ul data-testid={`chunks-${s.id}`}>
-                            {state.stepChunks[s.id].map((c, idx) => (
-                              <li key={`chunk-${s.id}-${idx}`} data-testid={`chunk-${s.id}-${idx}`}>
-                                <span
-                                  className="chunk-text"
-                                  data-testid={`chunk-text-${s.id}-${idx}`}
+                      <div data-testid={`step-tokens-${s.id}`}>
+                        Tokens: {state.stepTokens[s.id] || 0}
+                      </div>
+                      {(() => {
+                        const chunks = state.stepChunks[s.id];
+                        if (!chunks || chunks.length === 0) return null;
+                        return (
+                          <div className="chunk-list" data-testid={`chunk-list-${s.id}`}>
+                            <strong>Chunks:</strong>
+                            <ul data-testid={`chunks-${s.id}`}>
+                              {chunks.map((c, idx) => (
+                                <li
+                                  key={`chunk-${s.id}-${idx}`}
+                                  data-testid={`chunk-${s.id}-${idx}`}
                                 >
-                                  {c.chunk}
-                                </span>
-                                <span
-                                  className="chunk-meta"
-                                  data-testid={`chunk-tokens-${s.id}-${idx}`}
-                                >
-                                  Tokens: {c.token}
-                                </span>
-                                <span
-                                  className="chunk-meta"
-                                  data-testid={`chunk-cost-${s.id}-${idx}`}
-                                >
-                                  Cost: {formatCost(c.cost, { mode: 'per-token' })}
-                                </span>
-                                <progress
-                                  className="chunk-graph"
-                                  max={100}
-                                  value={Math.min(100, c.cost * 1000)}
-                                  data-testid={`chunk-graph-${s.id}-${idx}`}
-                                  aria-label={`Cost visualization for chunk ${idx + 1}`}
-                                />
-                              </li>
-                            ))}
-                          </ul>
-                        </div>
-                      )}
+                                  <span
+                                    className="chunk-text"
+                                    data-testid={`chunk-text-${s.id}-${idx}`}
+                                  >
+                                    {c.chunk}
+                                  </span>
+                                  <span
+                                    className="chunk-meta"
+                                    data-testid={`chunk-tokens-${s.id}-${idx}`}
+                                  >
+                                    Tokens: {c.token}
+                                  </span>
+                                  <span
+                                    className="chunk-meta"
+                                    data-testid={`chunk-cost-${s.id}-${idx}`}
+                                  >
+                                    Cost: {formatCost(c.cost, { mode: 'per-token' })}
+                                  </span>
+                                  <progress
+                                    className="chunk-graph"
+                                    max={100}
+                                    value={Math.min(100, c.cost * 1000)}
+                                    data-testid={`chunk-graph-${s.id}-${idx}`}
+                                    aria-label={`Cost visualization for chunk ${idx + 1}`}
+                                  />
+                                </li>
+                              ))}
+                            </ul>
+                          </div>
+                        );
+                      })()}
                     </div>
                   )}
                 </li>

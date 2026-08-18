@@ -184,3 +184,84 @@ async def test_streaming_records_provider_and_model_from_response(
     payload = emit_mock.call_args.kwargs["payload"]
     assert payload.provider == "siliconeflow"
     assert payload.model == "Qwen/Qwen2.5-7B-Instruct"
+
+
+async def test_streaming_persists_canonical_goblin_id_from_caller(
+    authenticated_user,
+    test_conversation,
+):
+    provider_response = {
+        "ok": True,
+        "result": {"text": "Hello from docs"},
+        "provider": "test-provider",
+        "model": "test-model",
+    }
+
+    add_msg_mock = AsyncMock(return_value=None)
+    emit_mock = AsyncMock(return_value=None)
+    task_store = AsyncMock()
+    task_store.save_task = AsyncMock(return_value=None)
+    usage_store = AsyncMock()
+    usage_store.save_event = AsyncMock(return_value=None)
+
+    with (
+        patch(
+            "api.chat_router._require_owned_conversation",
+            return_value=test_conversation,
+        ),
+        patch(
+            "api.chat_router.InputSanitizer.sanitize_chat_message",
+            return_value=("hello", None),
+        ),
+        patch(
+            "api.chat_router.conversation_store.add_message_to_conversation",
+            add_msg_mock,
+        ),
+        patch(
+            "api.chat_router.invoke_provider",
+            return_value=provider_response,
+        ),
+        patch(
+            "api.chat_router.streaming.event_emitter.emit",
+            emit_mock,
+        ),
+        patch(
+            "api.chat_router.streaming.schedule_conversation_archive",
+            new_callable=AsyncMock,
+        ),
+        patch(
+            "api.chat_router.streaming.get_task_store",
+            new_callable=AsyncMock,
+            return_value=task_store,
+        ),
+        patch(
+            "api.chat_router.streaming.get_usage_event_store",
+            new_callable=AsyncMock,
+            return_value=usage_store,
+        ),
+    ):
+        events = []
+        async for event in generate_chat_stream(
+            message="hello",
+            conversation_id="test-conv-id",
+            current_user=authenticated_user,
+            goblin_id="docs-writer",
+        ):
+            events.append(event)
+
+    asst_call = next(
+        (c for c in add_msg_mock.call_args_list if c.kwargs.get("role") == "assistant"),
+        None,
+    )
+    assert asst_call is not None, "assistant message was never persisted"
+    metadata = asst_call.kwargs.get("metadata", {})
+    assert metadata.get("goblin_id") == "docs-writer"
+    assert metadata.get("goblin") == "docs-writer"
+
+    task_store.save_task.assert_awaited_once()
+    task_payload = task_store.save_task.await_args.args[1]
+    assert task_payload["metadata"]["goblin_id"] == "docs-writer"
+
+    usage_store.save_event.assert_awaited_once()
+    usage_payload = usage_store.save_event.await_args.args[0]
+    assert usage_payload["metadata"]["goblin_id"] == "docs-writer"

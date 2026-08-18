@@ -89,7 +89,7 @@ async def submit_routing_feedback(body: FeedbackRequest) -> FeedbackResponse:
     # Record persistent feedback event for analytics
     if user_id and (body.message_id or body.conversation_id):
         try:
-            from api.services.feedback_service import (  # noqa: PLC0415
+            from api.services.feedback_service import (
                 FeedbackContext,
                 FeedbackSignal,
                 feedback_service,
@@ -130,7 +130,7 @@ async def submit_routing_feedback(body: FeedbackRequest) -> FeedbackResponse:
     # Apply rating to in-memory bandit state (only for rating signals, not copy/delete)
     if provider_id and task_type and body.rating is not None:
         try:
-            from api.routing.ml_router import (  # noqa: PLC0415
+            from api.routing.ml_router import (
                 _fire_bandit_state_upsert,
                 bandit_cache,
             )
@@ -142,7 +142,7 @@ async def submit_routing_feedback(body: FeedbackRequest) -> FeedbackResponse:
 
         # Propagate rating to feature router weight learning
         try:
-            from api.routing.feature_router import feature_router  # noqa: PLC0415
+            from api.routing.feature_router import feature_router
 
             found = feature_router.record_outcome_by_request_id(
                 request_id=body.request_id,
@@ -165,10 +165,10 @@ async def submit_routing_feedback(body: FeedbackRequest) -> FeedbackResponse:
         # Update learned user preference profile with the explicit rating
         if user_id:
             try:
-                import asyncio as _asyncio  # noqa: PLC0415
+                import asyncio as _asyncio
 
                 from api.services.preference_learner import (
-                    preference_learner as _pl,  # noqa: PLC0415
+                    preference_learner as _pl,
                 )
 
                 _pref_task = _asyncio.create_task(
@@ -197,7 +197,7 @@ async def get_feedback_stats(days: int = 7) -> FeedbackStatsResponse:
     departments, providers, and signal types.
     """
     try:
-        from api.services.feedback_stats_service import get_feedback_stats  # noqa: PLC0415
+        from api.services.feedback_stats_service import get_feedback_stats
 
         stats = await get_feedback_stats(days=days)
         return FeedbackStatsResponse(
@@ -223,7 +223,7 @@ async def get_feedback_stats(days: int = 7) -> FeedbackStatsResponse:
 async def _lookup_routing_event(request_id: str):
     """Fetch provider_id, task_type, and user_id for a request_id from Supabase."""
     try:
-        from api.providers.supabase_events import (  # noqa: PLC0415
+        from api.providers.supabase_events import (
             _ENABLED,
             _HEADERS,
             _REST,
@@ -256,7 +256,7 @@ async def _lookup_routing_event(request_id: str):
 def _update_learned_dept_router(request_id: str, department: str, rating: Optional[int]) -> None:
     """Apply a user rating to the learned department router's weight model."""
     try:
-        from api.routing.learned_department_router import (  # noqa: PLC0415
+        from api.routing.learned_department_router import (
             learned_department_router as _ldr,
         )
 
@@ -274,7 +274,7 @@ def _update_learned_dept_router(request_id: str, department: str, rating: Option
 
 def _fire_rating_update(request_id: str, rating: int) -> None:
     try:
-        from api.providers.supabase_events import (  # noqa: PLC0415
+        from api.providers.supabase_events import (
             _HEADERS,
             _REST,
             _fire,

@@ -267,7 +267,7 @@ def _isolated_benchmark_environment() -> Iterator[None]:
     policy rules + bandit exploration under the fixed seed — from ambient
     machine/process/test state.
     """
-    from .feature_router import WeightsCache  # noqa: PLC0415
+    from .feature_router import WeightsCache
 
     with (
         patch(
@@ -434,7 +434,7 @@ def production_reliability_snapshot() -> Dict[str, Dict[str, float]]:
     — deliberately not duplicated here since it already persists to Supabase
     and has its own /feedback/stats endpoint.
     """
-    from .router_registry import registry  # noqa: PLC0415
+    from .router_registry import registry
 
     snapshot = registry.snapshot()
     return {

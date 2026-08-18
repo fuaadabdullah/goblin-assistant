@@ -8,6 +8,8 @@ in sibling modules:
 - `post_response.py` — persistence, usage recording, learning tasks
 """
 
+from __future__ import annotations
+
 import time
 import uuid
 from datetime import datetime
@@ -18,6 +20,8 @@ import structlog
 from fastapi import APIRouter, Depends, HTTPException
 from fastapi.responses import StreamingResponse
 
+from api.services.goblin_identity import resolve_goblin_id
+
 from ...auth.router import User as AuthenticatedUser
 from ...auth.router import get_current_user
 from ...config.archetypes import (
@@ -26,7 +30,8 @@ from ...config.archetypes import (
     GENERAL_ASSISTANT_CONTRACT,
 )
 from ...config.glossary import format_glossary_addendum
-from ...config.mode_addendums import Mode, get_addendum as _get_legacy_mode_addendum
+from ...config.mode_addendums import Mode
+from ...config.mode_addendums import get_addendum as _get_legacy_mode_addendum
 from ...config.mode_addendums import get_mode_addendum as _get_mode_addendum
 from ...config.system_prompt import system_prompt_manager
 from ...config.tone_addendums import get_tone_addendum
@@ -135,7 +140,7 @@ async def send_message(
         # because resolve_addendum uses _new_category for context-specific addenda.
         _new_category: Optional[str] = None
         try:
-            from api.services.conversation_classifier import conversation_classifier as _cc  # noqa: PLC0415, I001
+            from api.services.conversation_classifier import conversation_classifier as _cc
 
             _existing_category = conversation.metadata.get("category")
             _new_category = _cc.classify(sanitized_message, existing=_existing_category)
@@ -250,7 +255,7 @@ async def send_message(
         _resolved_dept_model: Optional[str] = None
         if request.department and not request.provider:
             try:
-                from api.departments import department_dispatcher  # noqa: PLC0415
+                from api.departments import department_dispatcher
 
                 _resolved_dept_id = department_dispatcher.resolve_provider_id(request.department)
                 _resolved_dept_provider = _resolved_dept_id
@@ -282,6 +287,7 @@ async def send_message(
             message_metadata["language_confidence"] = lang_info.get("confidence")
 
         tone_addendum = get_tone_addendum(request.tone)
+
         system_prompt = system_prompt_manager.get_complete_prompt_with_addendum(
             context=pipeline_result.decision.assembled_context,
             user_query=sanitized_message,
@@ -298,6 +304,12 @@ async def send_message(
             request.department or pipeline_result.execution.selected_department or "general"
         )
         department_reason = pipeline_result.execution.department_selection_reason or ""
+        assistant_goblin_id = resolve_goblin_id(
+            metadata=request.metadata,
+            department=resolved_department,
+            fallback="general",
+        )
+
         explicit_mode_requested = bool(request.legacy_mode or request.mode != Mode.CHAT)
         _archetype_tools: list[str] | None = None
         if explicit_mode_requested:
@@ -310,6 +322,7 @@ async def send_message(
                 _archetype_tools = list(GENERAL_ASSISTANT_CONTRACT.required_tool_names)
         elif intent_meta:
             _archetype_tools = intent_meta.get("archetype", {}).get("tools_enabled")
+
         registered_tools = (
             ensure_mode_required_tools(
                 resolved_provider, resolved_mode, pipeline_result.response.tool_schemas
@@ -320,7 +333,8 @@ async def send_message(
         if _archetype_tools is not None:
             _allowed = set(_archetype_tools)
             registered_tools = [
-                t for t in registered_tools
+                t
+                for t in registered_tools
                 if isinstance(t, dict) and t.get("function", {}).get("name") in _allowed
             ]
         log_missing_mode_tools(request.provider, resolved_mode, registered_tools)
@@ -344,6 +358,7 @@ async def send_message(
                     current_user=current_user,
                     provider=request.provider,
                     model=request.model,
+                    goblin_id=assistant_goblin_id,
                 ),
                 media_type="text/event-stream",
                 headers={"Cache-Control": "no-cache", "Connection": "keep-alive"},
@@ -399,6 +414,7 @@ async def send_message(
             conversation_id=conversation_id,
             current_user=current_user,
             response_content=response_content,
+            goblin_id=assistant_goblin_id,
             used_provider=used_provider,
             used_model=used_model,
             context_metadata=context_metadata,
@@ -411,6 +427,7 @@ async def send_message(
             conversation_id=conversation_id,
             user_message_id=message_id,
             response_message_id=response_message_id,
+            goblin_id=assistant_goblin_id,
             sanitized_message=sanitized_message,
             response_content=response_content,
             used_provider=used_provider,

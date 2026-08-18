@@ -8,13 +8,7 @@ parameters:
 executors:
   node:
     docker:
-      - image: cimg/node:20.11.1
-    working_directory: ~/repo
-    resource_class: medium
-
-  node-browsers:
-    docker:
-      - image: cimg/node:20.11.1-browsers
+      - image: cimg/node:22.15
     working_directory: ~/repo
     resource_class: medium
 
@@ -37,29 +31,26 @@ executors:
     resource_class: medium
 
 commands:
-  setup-workspace:
+  setup-tmpdir:
     steps:
-      - checkout
       - run:
-          name: Create temp directory
+          name: Create .tmp directory
           command: mkdir -p ~/repo/.tmp
 
   install-pnpm:
     steps:
       - run:
-          name: Activate pnpm
-          command: |
-            corepack enable
-            corepack prepare pnpm@9.15.9 --activate
+          name: Install pnpm
+          command: sudo npm install -g pnpm@9.15.9
       - restore_cache:
           keys:
-            - pnpm-v2-{{ checksum "pnpm-lock.yaml" }}
-            - pnpm-v2-
+            - pnpm-v1-{{ checksum "pnpm-lock.yaml" }}
+            - pnpm-v1-
       - run:
-          name: Install workspace dependencies
+          name: Install Node dependencies
           command: TMPDIR=~/repo/.tmp pnpm install --frozen-lockfile
       - save_cache:
-          key: pnpm-v2-{{ checksum "pnpm-lock.yaml" }}
+          key: pnpm-v1-{{ checksum "pnpm-lock.yaml" }}
           paths:
             - ~/.local/share/pnpm/store
 
@@ -67,15 +58,15 @@ commands:
     steps:
       - restore_cache:
           keys:
-            - pip-v2-{{ checksum "apps/api/requirements.txt" }}-{{ checksum "apps/api/requirements-vector.txt" }}
-            - pip-v2-
+            - pip-v1-{{ checksum "apps/api/requirements.txt" }}-{{ checksum "apps/api/requirements-vector.txt" }}
+            - pip-v1-
       - run:
-          name: Install API dependencies
+          name: Install Python dependencies
           command: |
             python -m pip install --upgrade pip
             python -m pip install -r apps/api/requirements.txt -r apps/api/requirements-vector.txt
       - save_cache:
-          key: pip-v2-{{ checksum "apps/api/requirements.txt" }}-{{ checksum "apps/api/requirements-vector.txt" }}
+          key: pip-v1-{{ checksum "apps/api/requirements.txt" }}-{{ checksum "apps/api/requirements-vector.txt" }}
           paths:
             - ~/.cache/pip
 
@@ -83,75 +74,102 @@ jobs:
   policy:
     executor: base
     steps:
-      - setup-workspace
+      - checkout
       - run:
-          name: Monorepo CI contract
-          command: |
-            test -f pnpm-lock.yaml
-            test -f Makefile
-            test -d apps/web
-            test -d apps/api
-            test -f apps/api/requirements.txt
-            test -f apps/api/requirements-vector.txt
-            test ! -f package-lock.json
+          name: Branch and commit policy
+          command: bash tooling/automation/ci-policy-check.sh
 
   security-scan:
     executor: node-python
     steps:
-      - setup-workspace
+      - checkout
+      - setup-tmpdir
       - install-pnpm
       - run:
-          name: Audit web dependencies
-          command: TMPDIR=~/repo/.tmp pnpm --filter @goblin/web exec audit-ci --moderate
+          name: Install security tools
+          command: python -m pip install pip-audit bandit
       - run:
-          name: Audit API dependencies
-          command: |
-            python -m pip install pip-audit
-            python -m pip_audit -r apps/api/requirements.txt
+          name: Security bucket
+          command: make test-security
+
+  format-check:
+    executor: node-python
+    steps:
+      - checkout
+      - setup-tmpdir
+      - install-pnpm
+      - install-python
+      - run:
+          name: Format check
+          command: make format-check
 
   lint:
     executor: node-python
     steps:
-      - setup-workspace
+      - checkout
+      - setup-tmpdir
       - install-pnpm
       - install-python
       - run:
-          name: Web lint
-          command: TMPDIR=~/repo/.tmp make lint-web
-      - run:
-          name: Report API lint drift
-          command: make lint-api || echo "API lint drift reported; keeping this CI lane focused on web lint regressions."
-      - run:
-          name: Report governance drift
-          command: make lint-policy || echo "Governance drift reported; keeping this CI lane focused on lint regressions."
+          name: Lint
+          command: make lint
 
   typecheck:
     executor: node-python
     steps:
-      - setup-workspace
+      - checkout
+      - setup-tmpdir
       - install-pnpm
       - install-python
       - run:
-          name: Web typecheck
-          command: TMPDIR=~/repo/.tmp make type-check
+          name: Install API type-checkers
+          command: python -m pip install mypy pyright
+      - run:
+          name: Type check
+          command: make type-check
+      - run:
+          name: API mypy subset
+          command: make type-check-api-mypy
+      - run:
+          name: API pyright subset
+          command: make type-check-api-pyright
+
+  contract:
+    executor: node-python
+    steps:
+      - checkout
+      - setup-tmpdir
+      - install-pnpm
+      - install-python
+      - run:
+          name: Contract checks
+          command: make contract-checks
 
   test-backend:
     executor: python
     steps:
-      - setup-workspace
+      - checkout
+      - setup-tmpdir
       - install-python
       - run:
-          name: API tests
-          command: make test-api
+          name: API tests with coverage
+          command: make test-api-coverage
+      - store_artifacts:
+          path: apps/api/htmlcov
+          destination: api-coverage-html
 
   test-frontend:
     executor: node
     steps:
-      - setup-workspace
+      - checkout
+      - setup-tmpdir
       - install-pnpm
       - run:
-          name: Web tests
-          command: TMPDIR=~/repo/.tmp pnpm --filter @goblin/web test:ci
+          name: Web tests with coverage
+          command: TMPDIR=~/repo/.tmp pnpm --filter @goblin/web test:coverage
+      - run:
+          name: E2E budget check
+          command: make test-e2e-budget
       - store_artifacts:
           path: apps/web/coverage
           destination: web-coverage
@@ -159,26 +177,61 @@ jobs:
   build:
     executor: node-python
     steps:
-      - setup-workspace
+      - checkout
+      - setup-tmpdir
       - install-pnpm
       - install-python
       - run:
-          name: Production build
+          name: Build
           command: TMPDIR=~/repo/.tmp make build
       - store_artifacts:
           path: apps/web/.next
           destination: next-build
 
+  docker-build:
+    executor: base
+    steps:
+      - checkout
+      - setup_remote_docker:
+          docker_layer_caching: true
+      - run:
+          name: Build Docker image
+          command: |
+            SHORT="${CIRCLE_SHA1:0:7}"
+            docker build -t "goblin-assistant:${SHORT}" -f Dockerfile .
+
+  lighthouse-ci:
+    docker:
+      - image: cimg/node:22.15-browsers
+    working_directory: ~/repo
+    resource_class: medium
+    steps:
+      - checkout
+      - setup-tmpdir
+      - install-pnpm
+      - run:
+          name: Build for Lighthouse
+          command: TMPDIR=~/repo/.tmp make build
+      - run:
+          name: Lighthouse CI
+          command: |
+            cd apps/web
+            TMPDIR=~/repo/.tmp pnpm lhci autorun
+      - store_artifacts:
+          path: apps/web/.lighthouseci
+          destination: lighthouse-reports
+
   chromatic:
     executor: node
     steps:
-      - setup-workspace
+      - checkout
+      - setup-tmpdir
       - install-pnpm
       - run:
           name: Publish Storybook to Chromatic
           command: |
             if [ -z "$CHROMATIC_PROJECT_TOKEN" ]; then
-              echo "CHROMATIC_PROJECT_TOKEN is not set; skipping Chromatic upload."
+              echo "CHROMATIC_PROJECT_TOKEN not set; skipping Chromatic upload."
               exit 0
             fi
             cd apps/web
@@ -188,55 +241,6 @@ jobs:
               TMPDIR=~/repo/.tmp pnpm chromatic --exit-zero-on-changes
             fi
 
-  lighthouse-ci:
-    executor: node-browsers
-    steps:
-      - setup-workspace
-      - install-pnpm
-      - run:
-          name: Lighthouse availability gate
-          command: |
-            if ! TMPDIR=~/repo/.tmp pnpm --filter @goblin/web exec lhci --version >/dev/null 2>&1; then
-              echo "Lighthouse CI is not configured on this branch; skipping."
-              exit 0
-            fi
-            TMPDIR=~/repo/.tmp make build
-            cd apps/web
-            TMPDIR=~/repo/.tmp pnpm exec lhci autorun
-      - store_artifacts:
-          path: apps/web/.lighthouseci
-          destination: lighthouse-reports
-
-  docker-build:
-    executor: base
-    steps:
-      - setup-workspace
-      - setup_remote_docker:
-          docker_layer_caching: true
-      - run:
-          name: Build API image
-          command: |
-            SHORT="${CIRCLE_SHA1:0:7}"
-            docker build -t "goblin-assistant-api:${SHORT}" -f Dockerfile .
-      - run:
-          name: Push API image
-          command: |
-            if [ "$CIRCLE_BRANCH" != "main" ]; then
-              echo "Skipping image push outside main."
-              exit 0
-            fi
-            if [ -z "$GITHUB_USER" ] || [ -z "$GITHUB_TOKEN" ]; then
-              echo "GITHUB_USER or GITHUB_TOKEN is not set; skipping image push."
-              exit 0
-            fi
-            SHORT="${CIRCLE_SHA1:0:7}"
-            TAG="ghcr.io/${GITHUB_USER}/goblin-assistant:${SHORT}"
-            docker tag "goblin-assistant-api:${SHORT}" "$TAG"
-            docker tag "goblin-assistant-api:${SHORT}" "ghcr.io/${GITHUB_USER}/goblin-assistant:latest"
-            echo "$GITHUB_TOKEN" | docker login ghcr.io -u "$GITHUB_USER" --password-stdin
-            docker push "$TAG"
-            docker push "ghcr.io/${GITHUB_USER}/goblin-assistant:latest"
-
   smoke-test:
     executor: base
     steps:
@@ -244,7 +248,7 @@ jobs:
           name: Production health smoke
           command: |
             BACKEND_URL="${BACKEND_URL:-https://goblin-backend-dt30.onrender.com}"
-            for path in /health /health/ready; do
+            for path in /api/v1/health /api/v1/health/ready; do
               STATUS=$(curl -sf -o /dev/null -w "%{http_code}" "${BACKEND_URL}${path}" || echo "000")
               if [ "$STATUS" != "200" ]; then
                 echo "${BACKEND_URL}${path} returned ${STATUS}"
@@ -259,21 +263,28 @@ workflows:
       - policy
       - security-scan:
           requires: [policy]
+      - format-check:
+          requires: [policy]
       - lint:
-          requires: [policy]
+          requires: [format-check, security-scan]
       - typecheck:
-          requires: [policy]
+          requires: [format-check, security-scan]
+      - contract:
+          requires: [lint, typecheck]
       - test-backend:
-          requires: [lint, typecheck]
+          requires: [contract]
       - test-frontend:
-          requires: [lint, typecheck]
+          requires: [contract]
       - build:
           requires: [test-backend, test-frontend]
+      - docker-build:
+          requires: [build]
+          filters:
+            branches:
+              only: [main, develop]
       - chromatic:
           requires: [build]
       - lighthouse-ci:
-          requires: [build]
-      - docker-build:
           requires: [build]
           filters:
             branches:
@@ -291,15 +302,10 @@ workflows:
             branches:
               only: main
     jobs:
-      - policy
-      - security-scan:
-          requires: [policy]
-      - test-backend:
-          requires: [policy]
-      - test-frontend:
-          requires: [policy]
-      - build:
-          requires: [test-backend, test-frontend]
+      - security-scan
+      - test-backend
+      - test-frontend
+      - build
       - chromatic:
           requires: [build]
       - lighthouse-ci:

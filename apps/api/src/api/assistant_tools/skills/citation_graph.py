@@ -70,7 +70,7 @@ async def _resolve_paper_id(raw: str, client: httpx.AsyncClient) -> Optional[str
         )
         resp.raise_for_status()
         data = resp.json()
-    except Exception:  # noqa: BLE001
+    except Exception:
         return None
 
     papers = data.get("data", [])
@@ -109,7 +109,7 @@ async def _fetch_paper(paper_id: str, client: httpx.AsyncClient) -> Optional[Dic
         )
         resp.raise_for_status()
         return _normalize_node(resp.json())
-    except Exception:  # noqa: BLE001
+    except Exception:
         return None
 
 
@@ -135,7 +135,7 @@ async def _fetch_neighbors(
         )
         resp.raise_for_status()
         data = resp.json()
-    except Exception:  # noqa: BLE001
+    except Exception:
         return []
 
     results = []

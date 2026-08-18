@@ -211,7 +211,7 @@ class RetrievalService:
 
         t0 = time.perf_counter()
         try:
-            from ..memory_entries_service import memory_entries_service  # noqa: PLC0415
+            from ..memory_entries_service import memory_entries_service
 
             all_results.extend(
                 await memory_entries_service.search(

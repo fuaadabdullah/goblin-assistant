@@ -11,8 +11,7 @@ from __future__ import annotations
 from pathlib import Path
 from typing import Any, Dict, List, Optional
 
-from pydantic import BaseModel, Field, field_validator
-
+from pydantic import BaseModel, Field
 
 # ── Leaf helpers ──────────────────────────────────────────────────────────────
 
@@ -25,21 +24,32 @@ class ScoringWeights(BaseModel):
 
 
 class ChainOfThoughtSuppression(BaseModel):
-    suppress_for: List[str] = ["summary", "code"]
-    force_for: List[str] = ["reasoning"]
+    suppress_for: List[str] = Field(default_factory=lambda: ["summary", "code"])
+    force_for: List[str] = Field(default_factory=lambda: ["reasoning"])
 
 
 class CostOptimization(BaseModel):
     max_budget_per_hour: float = 10.0
-    preferred_providers_under_budget: List[str] = [
-        "groq", "siliconeflow", "azure", "deepseek", "openai"
-    ]
+    preferred_providers_under_budget: List[str] = Field(
+        default_factory=lambda: ["groq", "siliconeflow", "azure", "deepseek", "openai"]
+    )
 
 
 class Health(BaseModel):
     health_check_interval: int = 60
     timeout_seconds: int = 10
     retry_attempts: int = 3
+
+
+class CostEntry(BaseModel):
+    input_per1k: float = 0.0
+    output_per1k: float = 0.0
+
+
+class RateLimitEntry(BaseModel):
+    requests_per_minute: int = 0
+    tokens_per_minute: int = 0
+    concurrency: int = 0
 
 
 class Raptor(BaseModel):
@@ -54,13 +64,13 @@ class Raptor(BaseModel):
 
 class Default(BaseModel):
     timeout_ms: int = 12000
-    scoring_weights: ScoringWeights = ScoringWeights()
-    chain_of_thought_suppression: ChainOfThoughtSuppression = (
-        ChainOfThoughtSuppression()
+    scoring_weights: ScoringWeights = Field(default_factory=ScoringWeights)
+    chain_of_thought_suppression: ChainOfThoughtSuppression = Field(
+        default_factory=ChainOfThoughtSuppression
     )
-    cost_optimization: CostOptimization = CostOptimization()
-    health: Health = Health()
-    raptor: Raptor = Raptor()
+    cost_optimization: CostOptimization = Field(default_factory=CostOptimization)
+    health: Health = Field(default_factory=Health)
+    raptor: Raptor = Field(default_factory=Raptor)
 
 
 class LoadBalancingHealthChecks(BaseModel):
@@ -83,16 +93,23 @@ class LoadBalancing(BaseModel):
     failover_to_backup: bool = True
     max_failover_time: int = 60
     circuit_breaker_enabled: bool = True
-    health_checks: LoadBalancingHealthChecks = LoadBalancingHealthChecks()
-    server_priorities: LoadBalancingServerPriorities = (
-        LoadBalancingServerPriorities()
+    circuit_breaker_failure_threshold: int = 3
+    circuit_breaker_soft_threshold: int = 2
+    circuit_breaker_recovery_timeout: int = 30
+    circuit_breaker_canary_percent: float = 0.1
+    circuit_breaker_hard_categories: List[str] = ["auth", "billing"]
+    health_checks: LoadBalancingHealthChecks = Field(default_factory=LoadBalancingHealthChecks)
+    server_priorities: LoadBalancingServerPriorities = Field(
+        default_factory=LoadBalancingServerPriorities
     )
 
 
 class ProviderConfig(BaseModel):
     """Schema for a single [providers.*] entry."""
 
-    name: str
+    model_config = {"extra": "allow"}
+
+    name: str = ""
     endpoint: str = ""
     endpoint_env: Optional[str] = None
     endpoint_fallback: Optional[str] = None
@@ -100,12 +117,14 @@ class ProviderConfig(BaseModel):
     api_key_env: Optional[str] = None
     default_model: str = ""
     default_deployment: Optional[str] = None
-    models: List[str] = []
-    capabilities: List[str] = ["chat"]
+    models: List[str] = Field(default_factory=list)
+    capabilities: List[str] = Field(default_factory=lambda: ["chat"])
     priority_tier: int = 50
     cost_score: float = 0.5
     cost_input_per1k: float = 0.0
     cost_output_per1k: float = 0.0
+    costs: Dict[str, CostEntry] = Field(default_factory=dict)
+    rate_limits: Dict[str, RateLimitEntry] = Field(default_factory=dict)
     default_timeout_ms: int = 12000
     bandwidth_score: float = 0.5
     rate_limit_per_min: int = 60
@@ -121,6 +140,7 @@ class ProviderConfig(BaseModel):
     selectable_requires_env: bool = False
     force_fallback: bool = False
     hidden: bool = False
+    backends: List[Dict[str, Any]] = Field(default_factory=list)
 
     @property
     def resolved_display_name(self) -> str:
@@ -139,20 +159,51 @@ class ModelDefaults(BaseModel):
     supports_streaming: bool = True
 
 
+class RouterBackend(BaseModel):
+    provider_id: str
+    litellm_provider: str
+    model: str
+    api_key_env: Optional[str] = None
+    endpoint_env: Optional[str] = None
+    project_env: Optional[str] = None
+    vertex_location_env: Optional[str] = None
+    vertex_credentials_env: Optional[str] = None
+    order: int = 1
+    weight: float = 0.0
+    cost_input_per1k: float = 0.0
+    cost_output_per1k: float = 0.0
+    enabled: bool = True
+
+
+class RouterModelGroup(BaseModel):
+    model_config = {"extra": "allow"}
+
+    description: str = ""
+    backends: List[RouterBackend] = Field(default_factory=list)
+    routing_strategy: str = "cost-based-routing"
+    num_retries: int = 2
+    enable_pre_call_checks: bool = True
+    fallbacks: List[str] = Field(default_factory=list)
+    context_window_fallbacks: List[str] = Field(default_factory=list)
+    content_policy_fallbacks: List[str] = Field(default_factory=list)
+
+
 # ── Root ──────────────────────────────────────────────────────────────────────
 
 
 class ProviderToml(BaseModel):
     """Validated representation of the entire config/providers.toml file."""
 
-    default: Default = Default()
-    load_balancing: LoadBalancing = LoadBalancing()
-    provider_aliases: Dict[str, str] = {}
-    model_aliases: Dict[str, ModelAlias] = {}
-    visible_providers: List[str] = []
-    model_context_windows: Dict[str, int] = {}
-    providers: Dict[str, ProviderConfig] = {}
-    model_defaults: Dict[str, ModelDefaults] = {}
+    default: Default = Field(default_factory=Default)
+    load_balancing: LoadBalancing = Field(default_factory=LoadBalancing)
+    provider_aliases: Dict[str, str] = Field(default_factory=dict)
+    model_aliases: Dict[str, ModelAlias] = Field(default_factory=dict)
+    visible_providers: List[str] = Field(default_factory=list)
+    model_context_windows: Dict[str, int] = Field(default_factory=dict)
+    router_models: Dict[str, RouterModelGroup] = Field(default_factory=dict)
+    providers: Dict[str, ProviderConfig] = Field(default_factory=dict)
+    model_defaults: Dict[str, ModelDefaults] = Field(default_factory=dict)
+    model_budgets: Dict[str, RateLimitEntry] = Field(default_factory=dict)
 
     @classmethod
     def load(cls, path: str | Path) -> "ProviderToml":
@@ -193,6 +244,14 @@ class ProviderToml(BaseModel):
         if not isinstance(model_defaults_raw, dict):
             model_defaults_raw = {}
 
+        model_budgets_raw = raw.get("model_budgets", {})
+        if not isinstance(model_budgets_raw, dict):
+            model_budgets_raw = {}
+
+        router_models_raw = raw.get("router_models", {})
+        if not isinstance(router_models_raw, dict):
+            router_models_raw = {}
+
         return cls(
             default=defaults_raw,
             load_balancing=raw.get("load_balancing", {}),
@@ -206,8 +265,10 @@ class ProviderToml(BaseModel):
                 k: int(v) for k, v in raw.get("model_context_windows", {}).items()
                 if isinstance(v, (int, float))
             },
+            router_models=router_models_raw,
             providers=providers_raw,
             model_defaults=model_defaults_raw,
+            model_budgets=model_budgets_raw,
         )
 
     def get_provider(self, provider_id: str) -> Optional[ProviderConfig]:
@@ -227,6 +288,17 @@ class ProviderToml(BaseModel):
     def get_model_defaults(self, model: str) -> ModelDefaults:
         return self.model_defaults.get(model, ModelDefaults())
 
+    def get_model_budget(self, model: str) -> RateLimitEntry:
+        return self.model_budgets.get(model, RateLimitEntry())
+
+    def get_provider_costs(self, provider_id: str) -> Dict[str, CostEntry]:
+        provider = self.get_provider(provider_id)
+        return provider.costs if provider is not None else {}
+
+    def get_provider_rate_limits(self, provider_id: str) -> Dict[str, RateLimitEntry]:
+        provider = self.get_provider(provider_id)
+        return provider.rate_limits if provider is not None else {}
+
     def get_context_window(self, model: str, fallback: int = 8000) -> int:
         return self.model_context_windows.get(model, fallback)
 
@@ -243,6 +315,13 @@ class ProviderToml(BaseModel):
                 "capabilities": cfg.capabilities,
                 "models": cfg.models,
                 "cost_score": cfg.cost_score,
+                "cost_input_per1k": cfg.cost_input_per1k,
+                "cost_output_per1k": cfg.cost_output_per1k,
+                "costs": {name: cost.model_dump() for name, cost in cfg.costs.items()},
+                "rate_limits": {
+                    name: rate_limit.model_dump()
+                    for name, rate_limit in cfg.rate_limits.items()
+                },
                 "default_timeout_ms": cfg.default_timeout_ms,
                 "rate_limit_per_min": cfg.rate_limit_per_min,
                 "display_name": cfg.resolved_display_name,
@@ -254,8 +333,12 @@ class ProviderToml(BaseModel):
             providers_out[pid] = entry
 
         return {
+            "schema_version": 1,
             "version": 2,
             "default_timeout_ms": self.default.timeout_ms,
+            "model_budgets": {
+                model: budget.model_dump() for model, budget in self.model_budgets.items()
+            },
             "providers": providers_out,
         }
 

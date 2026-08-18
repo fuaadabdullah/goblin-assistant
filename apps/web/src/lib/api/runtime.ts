@@ -1,18 +1,27 @@
 import { getFrontend, postFrontend } from './shared';
-import type { GoblinStats, GoblinStatus, MemoryEntry, OrchestrationPlan } from '../../types/api';
+import type {
+  GoblinHistoryResponse,
+  GoblinListResponse,
+  GoblinStats,
+  GoblinStatus,
+  MemoryEntry,
+  OrchestrationPlan,
+} from '../../types/api';
 
 const INTERNAL_RUNTIME_PREFIX = '/api/runtime';
 
 export const runtimeMethods = {
   async getGoblins(): Promise<GoblinStatus[]> {
-    return getFrontend<GoblinStatus[]>(`${INTERNAL_RUNTIME_PREFIX}/goblins`);
+    const response = await getFrontend<GoblinListResponse>(`${INTERNAL_RUNTIME_PREFIX}/goblins`);
+    return response.items;
   },
 
   async getHistory(goblin: string, limit = 10): Promise<MemoryEntry[]> {
     const cappedLimit = Math.max(1, Math.min(Number(limit) || 10, 100));
-    return getFrontend<MemoryEntry[]>(
+    const response = await getFrontend<GoblinHistoryResponse>(
       `${INTERNAL_RUNTIME_PREFIX}/history/${encodeURIComponent(goblin)}?limit=${cappedLimit}`
     );
+    return response.items;
   },
 
   async getStats(goblin: string): Promise<GoblinStats> {

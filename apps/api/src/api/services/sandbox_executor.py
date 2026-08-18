@@ -20,7 +20,6 @@ import signal
 import tempfile
 from dataclasses import dataclass, field
 from enum import Enum
-from pathlib import Path
 from typing import Optional
 
 
@@ -119,9 +118,7 @@ async def execute_code(
             duration_ms=0,
         )
 
-    with tempfile.NamedTemporaryFile(
-        mode="w", suffix=suffix, delete=False, encoding="utf-8"
-    ) as f:
+    with tempfile.NamedTemporaryFile(mode="w", suffix=suffix, delete=False, encoding="utf-8") as f:
         f.write(code)
         script_path = f.name
 
@@ -141,9 +138,7 @@ async def execute_code(
         )
 
         try:
-            raw_out, raw_err = await asyncio.wait_for(
-                proc.communicate(), timeout=float(wall_limit)
-            )
+            raw_out, raw_err = await asyncio.wait_for(proc.communicate(), timeout=float(wall_limit))
         except asyncio.TimeoutError:
             if proc is not None:
                 try:
@@ -161,7 +156,10 @@ async def execute_code(
             )
 
     finally:
-        Path(script_path).unlink(missing_ok=True)
+        try:
+            await asyncio.to_thread(os.unlink, script_path)
+        except FileNotFoundError:
+            pass
 
     duration_ms = int((loop.time() - start) * 1000)
     cap = SandboxLimits.MAX_OUTPUT_BYTES

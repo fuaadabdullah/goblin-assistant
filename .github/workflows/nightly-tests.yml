@@ -52,7 +52,7 @@ jobs:
         run: |
           max_attempts=5
           attempt=0
-          url="https://goblin-assistant-backend.onrender.com/health"
+          url="https://goblin-backend-dt30.onrender.com/api/v1/health"
 
           while [ $attempt -lt $max_attempts ]; do
             status=$(curl -s -o /dev/null -w "%{http_code}" "$url")
@@ -71,7 +71,7 @@ jobs:
       - name: Readiness check
         run: |
           status=$(curl -s -o /dev/null -w "%{http_code}" \
-            "https://goblin-assistant-backend.onrender.com/health/ready")
+            "https://goblin-backend-dt30.onrender.com/api/v1/health/ready")
           if [ "$status" = "200" ]; then
             echo "✅ Readiness check passed"
           else

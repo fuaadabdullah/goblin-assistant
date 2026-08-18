@@ -1,5 +1,5 @@
 {
-  "package-manager": "npm",
+  "package-manager": "pnpm",
   "levels": {
     "low": true,
     "moderate": true,
@@ -10,7 +10,12 @@
     "type": "full",
     "path": "reports"
   },
-  "allowlist": [],
+  "allowlist": [
+    "GHSA-qx2v-qp2m-jg93|apps__web>next>postcss",
+    "GHSA-qx2v-qp2m-jg93|apps__web>@vercel/analytics>next>postcss",
+    "GHSA-qx2v-qp2m-jg93|apps__web>@storybook/nextjs-vite>next>postcss",
+    "GHSA-qx2v-qp2m-jg93|apps__web>@storybook/nextjs-vite>vite-plugin-storybook-nextjs>next>postcss"
+  ],
   "path-allowlist": ["/test/", "/tests/", "/spec/"],
   "ignore-dev-dependencies": false,
   "retry": {

@@ -1,82 +1,66 @@
 import React from 'react';
 import { render, screen } from '@testing-library/react';
+import CostBreakdownChart from '../CostBreakdownChart';
 
-// Mock recharts
-jest.mock('recharts', () => ({
-  BarChart: ({ children }: { children: React.ReactNode }) => <div data-testid="bar-chart">{children}</div>,
-  Bar: ({ name }: { name?: string }) => <div data-testid="bar" data-name={name} />,
+vi.mock('recharts', () => ({
+  BarChart: ({ children }: { children: React.ReactNode }) => (
+    <div data-testid="bar-chart">{children}</div>
+  ),
+  Bar: ({ name, fill }: { name?: string; fill?: string }) => (
+    <div data-testid="bar" data-name={name} data-fill={fill} />
+  ),
   XAxis: () => <div data-testid="x-axis" />,
-  YAxis: () => <div data-testid="y-axis" />,
+  YAxis: ({ tickFormatter }: { tickFormatter?: (value: number | string) => React.ReactNode }) => (
+    <div data-testid="y-axis" data-tick={String(tickFormatter?.(3.21))} />
+  ),
   CartesianGrid: () => <div data-testid="grid" />,
-  Tooltip: () => <div data-testid="tooltip" />,
+  Tooltip: ({ content }: { content?: React.ReactElement }) => (
+    <div data-testid="tooltip">
+      {React.isValidElement(content)
+        ? React.cloneElement(content, {
+            active: true,
+            label: 'OpenAI',
+            payload: [{ value: 3.21 }],
+          })
+        : null}
+    </div>
+  ),
   Legend: () => <div data-testid="legend" />,
-  ResponsiveContainer: ({ children }: { children: React.ReactNode }) => <div data-testid="responsive-container">{children}</div>,
+  ResponsiveContainer: ({ children }: { children: React.ReactNode }) => (
+    <div data-testid="responsive-container">{children}</div>
+  ),
 }));
 
-jest.mock('@/utils/format-cost', () => ({
+vi.mock('@/utils/format-cost', () => ({
   formatCost: (value: number) => `$${value.toFixed(2)}`,
 }));
 
-// Mock getComputedStyle
-const origGetComputedStyle = window.getComputedStyle;
+const originalGetComputedStyle = window.getComputedStyle;
+
 beforeAll(() => {
-  window.getComputedStyle = jest.fn().mockReturnValue({
+  window.getComputedStyle = vi.fn().mockReturnValue({
     getPropertyValue: () => '#ffffff',
-  });
+  }) as typeof window.getComputedStyle;
 });
+
 afterAll(() => {
-  window.getComputedStyle = origGetComputedStyle;
+  window.getComputedStyle = originalGetComputedStyle;
 });
-
-import CostBreakdownChart from '../CostBreakdownChart';
-
-const sampleData = [
-  { name: 'OpenAI', value: 15.5, color: '#4285f4' },
-  { name: 'Anthropic', value: 8.3, color: '#34a853' },
-  { name: 'Google', value: 3.2, color: '#fbbc04' },
-];
 
 describe('CostBreakdownChart', () => {
-  it('renders heading', () => {
-    render(<CostBreakdownChart data={sampleData} />);
-    expect(screen.getByText('Cost Breakdown by Provider')).toBeInTheDocument();
-  });
+  const sampleData = [
+    { name: 'OpenAI', value: 15.5, color: '#4285f4' },
+    { name: 'Anthropic', value: 8.3, color: '#34a853' },
+    { name: 'Google', value: 3.2, color: '#fbbc04' },
+  ];
 
-  it('renders responsive container', () => {
+  it('renders the chart shell and invokes the tooltip formatter', () => {
     render(<CostBreakdownChart data={sampleData} />);
+
+    expect(screen.getByText('Cost Breakdown by Provider')).toBeInTheDocument();
     expect(screen.getByTestId('responsive-container')).toBeInTheDocument();
-  });
-
-  it('renders bar chart', () => {
-    render(<CostBreakdownChart data={sampleData} />);
-    expect(screen.getByTestId('bar-chart')).toBeInTheDocument();
-  });
-
-  it('renders a bar for each data entry', () => {
-    render(<CostBreakdownChart data={sampleData} />);
-    const bars = screen.getAllByTestId('bar');
-    expect(bars).toHaveLength(3);
-  });
-
-  it('renders grid, axes, tooltip, and legend', () => {
-    render(<CostBreakdownChart data={sampleData} />);
-    expect(screen.getByTestId('grid')).toBeInTheDocument();
-    expect(screen.getByTestId('x-axis')).toBeInTheDocument();
-    expect(screen.getByTestId('y-axis')).toBeInTheDocument();
-    expect(screen.getByTestId('tooltip')).toBeInTheDocument();
-    expect(screen.getByTestId('legend')).toBeInTheDocument();
-  });
-
-  it('passes data entry names to bars', () => {
-    render(<CostBreakdownChart data={sampleData} />);
-    const bars = screen.getAllByTestId('bar');
-    expect(bars[0]).toHaveAttribute('data-name', 'OpenAI');
-    expect(bars[1]).toHaveAttribute('data-name', 'Anthropic');
-  });
-
-  it('renders with empty data', () => {
-    render(<CostBreakdownChart data={[]} />);
-    expect(screen.getByText('Cost Breakdown by Provider')).toBeInTheDocument();
-    expect(screen.queryAllByTestId('bar')).toHaveLength(0);
+    expect(screen.getByText('Cost: $3.21')).toBeInTheDocument();
+    expect(screen.getByTestId('y-axis')).toHaveAttribute('data-tick', '$3.21');
+    expect(screen.getAllByTestId('bar')).toHaveLength(3);
   });
 });

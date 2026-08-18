@@ -26,9 +26,8 @@ const inputVariants = cva(
 
 export type InputVariantProps = VariantProps<typeof inputVariants>;
 
-export interface InputProps 
-  extends Omit<React.ComponentProps<'input'>, 'size'>,
-          InputVariantProps {}
+export interface InputProps
+  extends Omit<React.ComponentProps<'input'>, 'size'>, InputVariantProps {}
 
 /**
  * Input — form input component with CVA-based variants.

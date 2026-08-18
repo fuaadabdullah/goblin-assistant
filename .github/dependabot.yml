@@ -48,17 +48,6 @@ updates:
       - dependencies
       - javascript
 
-  # Terraform
-  - package-ecosystem: terraform
-    directory: /terraform
-    schedule:
-      interval: weekly
-      day: monday
-    target-branch: main
-    labels:
-      - dependencies
-      - terraform
-
   # GitHub Actions
   - package-ecosystem: github-actions
     directory: /

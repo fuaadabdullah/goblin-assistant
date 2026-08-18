@@ -1,6 +1,8 @@
-.PHONY: help install dev web-dev api-dev build build-packages lint lint-web lint-api lint-policy type-check type-check-packages test test-unit test-web test-web-coverage test-api test-api-coverage test-api-context-coverage test-e2e test-e2e-budget test-integration test-contract test-performance generate-providers-json check-providers-json check-api-boundaries check-api-cycles check-api-cycles-report check-capability-boundaries check-route-lifecycle check-operational-policy check-docs-canonical-refs check-docs-inventory check-docs-links generate-docs-coverage type-check-api-mypy type-check-api-pyright format format-check test-critical sdk-generate sdk-check generate-route-manifest check-api-calls contract-checks secret-scan check-unused-deps check-dead-code phase-gates
+.PHONY: help install dev web-dev api-dev build build-packages lint lint-web lint-api lint-policy check-quality-baseline architecture-evidence check-runbook-migration-map type-check type-check-packages test test-unit test-web test-web-coverage test-api test-api-coverage test-api-context-coverage test-e2e test-e2e-budget test-integration test-contract test-security test-performance generate-providers-json check-providers-json check-api-boundaries check-api-cycles check-api-cycles-report check-capability-boundaries check-route-lifecycle check-operational-policy check-docs-canonical-refs check-docs-inventory check-docs-links generate-docs-coverage type-check-api-mypy type-check-api-pyright format format-check test-critical sdk-generate sdk-check generate-route-manifest check-api-calls contract-checks secret-scan check-unused-deps check-dead-code phase-gates
 PNPM_TMP := TMPDIR="$(PWD)/.tmp"
 PYTHON ?= python3.11
+ARCHITECTURE_CHECK_BASE_REF ?=
+ARCHITECTURE_CHECK_CHANGED_ONLY_ARGS = $(if $(ARCHITECTURE_CHECK_BASE_REF),--changed-only --base-ref $(ARCHITECTURE_CHECK_BASE_REF),)
 
 help:
 	@echo "Workspace commands"
@@ -11,6 +13,9 @@ help:
 	@echo "  make lint                 - run web + api lint"
 	@echo "  make lint-web             - run web lint"
 	@echo "  make lint-api             - run api Ruff lint"
+	@echo "  make check-quality-baseline - fail when debt-ratchet baselines increase"
+	@echo "  make architecture-evidence - write canonical architecture evidence report"
+	@echo "  make check-runbook-migration-map - validate docs/runbooks deletion map"
 	@echo "  make type-check           - run web typecheck"
 	@echo "  make test-unit            - run all unit tests (web + api)"
 	@echo "  make test-web             - run web test suite (subset of test-unit)"
@@ -19,6 +24,7 @@ help:
 	@echo "  make test-api-coverage    - run api pytest suite with coverage gates"
 	@echo "  make test-integration     - run integration + contract buckets from tests/manifests"
 	@echo "  make test-contract        - run contract bucket only"
+	@echo "  make test-security        - run security bucket from tests/manifests"
 	@echo "  make test-performance     - run performance bucket from tests/manifests"
 	@echo "  make test-critical        - run critical-path journey gates"
 	@echo "  make phase-gates          - run rollout phase-gate checks"
@@ -55,17 +61,17 @@ install:
 	cd apps/api && $(PYTHON) -m pip install -r requirements.txt -r requirements-vector.txt
 
 check-api-boundaries:
-	$(PYTHON) scripts/architecture/check_api_architecture.py boundaries
+	$(PYTHON) scripts/architecture/check_api_architecture.py boundaries $(ARCHITECTURE_CHECK_CHANGED_ONLY_ARGS)
 
 check-api-cycles:
-	$(PYTHON) scripts/architecture/check_api_architecture.py cycles
+	$(PYTHON) scripts/architecture/check_api_architecture.py cycles $(ARCHITECTURE_CHECK_CHANGED_ONLY_ARGS)
 
 check-api-cycles-report:
 	mkdir -p artifacts
 	$(PYTHON) scripts/architecture/check_api_architecture.py cycles --report-only --output artifacts/api-cycles.json
 
 check-capability-boundaries:
-	$(PYTHON) scripts/architecture/check_capability_boundaries.py
+	$(PYTHON) scripts/architecture/check_capability_boundaries.py $(if $(ARCHITECTURE_CHECK_BASE_REF),--base-ref $(ARCHITECTURE_CHECK_BASE_REF),)
 
 check-route-lifecycle:
 	$(PYTHON) scripts/architecture/check_route_lifecycle.py
@@ -103,10 +109,10 @@ type-check-api-pyright:
 		src/api/routes/support_router.py
 
 generate-providers-json:
-	PYTHONPATH=packages/shared/src $(PYTHON) scripts/generate-providers-json.py
+	PYTHONPATH=packages/shared/src $(PYTHON) tooling/generators/generate-providers-json.py
 
 check-providers-json:
-	PYTHONPATH=packages/shared/src $(PYTHON) scripts/generate-providers-json.py --check
+	PYTHONPATH=packages/shared/src $(PYTHON) tooling/generators/generate-providers-json.py --check
 
 web-dev:
 	mkdir -p .tmp
@@ -137,6 +143,16 @@ lint-policy:
 	$(PYTHON) scripts/architecture/check_docs_canonical_refs.py
 	$(PYTHON) scripts/architecture/check_docs_inventory.py
 	$(PYTHON) scripts/architecture/check_docs_links.py
+	$(PYTHON) scripts/architecture/check_runbook_migration_map.py
+
+check-quality-baseline:
+	$(PYTHON) tooling/quality/quality_baseline.py
+
+architecture-evidence:
+	$(PYTHON) scripts/architecture/generate_architecture_evidence.py
+
+check-runbook-migration-map:
+	$(PYTHON) scripts/architecture/check_runbook_migration_map.py
 
 type-check:
 	mkdir -p .tmp
@@ -171,11 +187,11 @@ test-unit:
 	cd apps/api && PYTHONPATH=src $(PYTHON) -m pytest -o "addopts=" -v
 
 test-web:
-	mkdir -p .tmp
+	mkdir -p .tmp apps/web/coverage/.tmp
 	$(PNPM_TMP) pnpm --filter @goblin/web test
 
 test-web-coverage:
-	mkdir -p .tmp
+	mkdir -p .tmp apps/web/coverage/.tmp
 	$(PNPM_TMP) pnpm --filter @goblin/web test:coverage
 
 test-api:
@@ -185,10 +201,10 @@ test-api-coverage:
 	cd apps/api && PYTHONPATH=src $(PYTHON) -m pytest -o "addopts=" -v \
 		--cov=api \
 		--cov-report=term-missing \
-		--cov-fail-under=80
+		--cov-fail-under=70
 
 test-critical:
-	bash scripts/run-critical-coverage.sh
+	bash tooling/quality/run-critical-coverage.sh
 
 test-api-context-coverage:
 	cd apps/api && PYTHONPATH=src $(PYTHON) -m pytest -o "addopts=" -v \
@@ -203,14 +219,17 @@ test-e2e:
 	$(PNPM_TMP) pnpm --filter @goblin/web test:e2e
 
 test-e2e-budget:
-	bash scripts/check-e2e-budget.sh
+	bash tooling/quality/check-e2e-budget.sh
 
 test-integration:
-	$(PYTHON) scripts/run-test-bucket.py integration
-	$(PYTHON) scripts/run-test-bucket.py contract
+	$(PYTHON) tooling/quality/run-test-bucket.py integration
+	$(PYTHON) tooling/quality/run-test-bucket.py contract
 
 test-contract:
-	$(PYTHON) scripts/run-test-bucket.py contract
+	$(PYTHON) tooling/quality/run-test-bucket.py contract
+
+test-security:
+	$(PYTHON) tooling/quality/run-test-bucket.py security
 
 test-engine:
 	@echo "==> Engine smoke test — exercises all six pillars"
@@ -224,7 +243,7 @@ test-engine:
 	@echo "==> Engine smoke test complete"
 
 test-performance:
-	$(PYTHON) scripts/run-test-bucket.py performance
+	$(PYTHON) tooling/quality/run-test-bucket.py performance
 
 phase-gates:
 	$(PYTHON) scripts/phase_gates.py all

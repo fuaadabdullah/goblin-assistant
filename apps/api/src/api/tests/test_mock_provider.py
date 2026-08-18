@@ -4,8 +4,8 @@ from __future__ import annotations
 
 import pytest
 
+from api.providers.base import ProviderHealth, ProviderResult
 from api.providers.mock_provider import MockProvider
-from api.providers.base import ProviderResult, ProviderHealth
 
 
 def _provider() -> MockProvider:
@@ -15,6 +15,7 @@ def _provider() -> MockProvider:
 # ---------------------------------------------------------------------------
 # invoke
 # ---------------------------------------------------------------------------
+
 
 class TestInvoke:
     @pytest.mark.asyncio
@@ -73,6 +74,7 @@ class TestInvoke:
 # stream
 # ---------------------------------------------------------------------------
 
+
 class TestStream:
     @pytest.mark.asyncio
     async def test_yields_word_chunks(self):
@@ -102,6 +104,7 @@ class TestStream:
 # embed
 # ---------------------------------------------------------------------------
 
+
 class TestEmbed:
     @pytest.mark.asyncio
     async def test_single_text_returns_flat_list(self):
@@ -129,6 +132,7 @@ class TestEmbed:
 # ---------------------------------------------------------------------------
 # health_check
 # ---------------------------------------------------------------------------
+
 
 class TestHealthCheck:
     @pytest.mark.asyncio

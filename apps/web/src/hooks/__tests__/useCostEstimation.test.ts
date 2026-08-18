@@ -4,7 +4,7 @@ import { useCostEstimation } from '../useCostEstimation';
 describe('useCostEstimation Hook', () => {
   it('should return null estimate for empty text', () => {
     const { result } = renderHook(() =>
-      useCostEstimation({ orchestrationText: '', codeInput: '' }),
+      useCostEstimation({ orchestrationText: '', codeInput: '' })
     );
     expect(result.current.estimate).toBeNull();
     expect(result.current.loading).toBe(false);
@@ -15,7 +15,7 @@ describe('useCostEstimation Hook', () => {
       useCostEstimation({
         orchestrationText: 'Hello world, this is a test message',
         codeInput: 'const x = 1;',
-      }),
+      })
     );
 
     expect(result.current.estimate).not.toBeNull();
@@ -28,7 +28,7 @@ describe('useCostEstimation Hook', () => {
       useCostEstimation({
         orchestrationText: 'Some text',
         codeInput: 'code',
-      }),
+      })
     );
 
     expect(result.current.rateLimitInfo).toBeDefined();
@@ -41,7 +41,7 @@ describe('useCostEstimation Hook', () => {
         codeInput: 'code',
         provider: 'openai',
         model: 'gpt-4',
-      }),
+      })
     );
 
     expect(result.current.estimate).not.toBeNull();
@@ -51,7 +51,7 @@ describe('useCostEstimation Hook', () => {
 
   it('should have no error by default', () => {
     const { result } = renderHook(() =>
-      useCostEstimation({ orchestrationText: 'text', codeInput: '' }),
+      useCostEstimation({ orchestrationText: 'text', codeInput: '' })
     );
     expect(result.current.error).toBeNull();
   });

@@ -1,28 +1,27 @@
 import { renderHook, act } from '@testing-library/react';
-import '@testing-library/jest-dom';
 
 // Mock dependencies
-const mockParseOrchestration = jest.fn();
-const mockExecuteTaskStreaming = jest.fn();
-const mockExecuteTask = jest.fn();
+const mockParseOrchestration = vi.fn();
+const mockExecuteTaskStreaming = vi.fn();
+const mockExecuteTask = vi.fn();
 
-jest.mock('../streamingUtils', () => ({
-  createStreamingHandlers: jest.fn(() => ({
-    onChunk: jest.fn(),
-    onComplete: jest.fn(),
-    onError: jest.fn(),
+vi.mock('../streamingUtils', () => ({
+  createStreamingHandlers: vi.fn(() => ({
+    onChunk: vi.fn(),
+    onComplete: vi.fn(),
+    onError: vi.fn(),
   })),
-  formatStepError: jest.fn((err) => String(err)),
+  formatStepError: vi.fn((err) => String(err)),
 }));
-jest.mock('../../utils/debug', () => ({
-  debugLog: jest.fn(),
-  debugError: jest.fn(),
-  debugWarn: jest.fn(),
+vi.mock('../../utils/debug', () => ({
+  debugLog: vi.fn(),
+  debugError: vi.fn(),
+  debugWarn: vi.fn(),
 }));
 
 import { useOrchestrationExecution } from '../useOrchestrationExecution';
 
-const mockDispatch = jest.fn();
+const mockDispatch = vi.fn();
 const mockRuntimeClient = {
   parseOrchestration: mockParseOrchestration,
   executeTaskStreaming: mockExecuteTaskStreaming,
@@ -31,12 +30,12 @@ const mockRuntimeClient = {
 
 describe('useOrchestrationExecution', () => {
   beforeEach(() => {
-    jest.clearAllMocks();
-    jest.useFakeTimers();
+    vi.clearAllMocks();
+    vi.useFakeTimers();
   });
 
   afterEach(() => {
-    jest.useRealTimers();
+    vi.useRealTimers();
   });
 
   it('returns executeOrchestration function and streamingTimeoutRef', () => {
@@ -52,7 +51,9 @@ describe('useOrchestrationExecution', () => {
   });
 
   it('dispatches RUNNING status on execute', async () => {
-    mockParseOrchestration.mockResolvedValue({ steps: [{ task: 'test', description: 'Test step' }] });
+    mockParseOrchestration.mockResolvedValue({
+      steps: [{ task: 'test', description: 'Test step' }],
+    });
     mockExecuteTaskStreaming.mockResolvedValue({ result: 'ok' });
 
     const { result } = renderHook(() =>
@@ -66,7 +67,9 @@ describe('useOrchestrationExecution', () => {
       await result.current.executeOrchestration('test orchestration', 'code');
     });
 
-    expect(mockDispatch).toHaveBeenCalledWith(expect.objectContaining({ type: expect.stringContaining('RUNNING') }));
+    expect(mockDispatch).toHaveBeenCalledWith(
+      expect.objectContaining({ type: expect.stringContaining('RUNNING') })
+    );
   });
 
   it('calls parseOrchestration with orchestration text', async () => {

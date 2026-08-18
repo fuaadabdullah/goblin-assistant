@@ -60,11 +60,10 @@ curl -X POST http://localhost:8000/api/chat \
 ### Step 5: Deploy to Production (1 minute)
 
 ```bash
-cd apps/goblin-assistant
-fly deploy
+./scripts/verify-cicd-setup.sh
 
 # Verify
-curl https://goblin-assistant-backend.onrender.com/health
+curl https://goblin-backend-dt30.onrender.com/api/v1/health
 ```
 
 ---

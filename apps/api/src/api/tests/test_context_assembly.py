@@ -1,7 +1,11 @@
 import pytest
 
 from api.services import context_assembly_service as cas
-from api.services.context_assembly_service import ContextAssemblyService, ContextBudget, ContextLayer
+from api.services.context_assembly_service import (
+    ContextAssemblyService,
+    ContextBudget,
+    ContextLayer,
+)
 from api.services.context_assembly_service import orchestrator as orch
 
 
@@ -10,6 +14,7 @@ def _build_service(monkeypatch, budget=None):
         budget = ContextBudget(
             total_tokens=1000,
             system_tokens=100,
+            profile_tokens=100,
             long_term_tokens=100,
             working_memory_tokens=200,
             semantic_retrieval_tokens=300,
@@ -28,10 +33,11 @@ def test_package_exports_and_models_property():
     budget = ContextBudget(
         total_tokens=1000,
         system_tokens=100,
+        profile_tokens=200,
         long_term_tokens=100,
         working_memory_tokens=200,
     )
-    assert budget.available_for_retrieval == 600
+    assert budget.available_for_retrieval == 400
 
 
 @pytest.mark.asyncio
@@ -42,13 +48,24 @@ async def test_orchestrator_happy_path(monkeypatch):
     async def _system(_remaining, _budget):
         return ContextLayer(name="system", content="sys", tokens=50)
 
+    async def _profile(_user_id, _remaining, _budget):
+        return ContextLayer(name="user_profile", content="prof", tokens=30)
+
     async def _long_term(_user_id, _remaining, _budget):
         return ContextLayer(name="long_term_memory", content="ltm", tokens=40)
 
     async def _working(_user_id, _conversation_id, _remaining, _budget):
         return ContextLayer(name="working_memory", content="wm", tokens=30)
 
-    async def _semantic(_query, _user_id, _conversation_id, _remaining, _correlation_id, _budget):
+    async def _semantic(
+        _query,
+        _user_id,
+        _conversation_id,
+        _remaining,
+        _correlation_id,
+        _budget,
+        exclude_fact_ids=None,
+    ):
         return ContextLayer(
             name="semantic_retrieval",
             content="sem",
@@ -68,13 +85,16 @@ async def test_orchestrator_happy_path(monkeypatch):
         return "snap-123"
 
     monkeypatch.setattr(orch, "assemble_system_layer", _system)
+    monkeypatch.setattr(orch, "assemble_profile_layer", _profile)
     monkeypatch.setattr(orch, "assemble_long_term_memory", _long_term)
     monkeypatch.setattr(orch, "assemble_working_memory", _working)
     monkeypatch.setattr(orch, "assemble_semantic_retrieval", _semantic)
     monkeypatch.setattr(orch, "assemble_ephemeral_memory", _ephemeral)
     monkeypatch.setattr(orch.context_snapshotter, "create_snapshot", _snapshot)
 
-    service._retrieval_service = type("RS", (), {"get_degraded_status": lambda self: {"degraded_mode": False}})()
+    service._retrieval_service = type(
+        "RS", (), {"get_degraded_status": lambda self: {"degraded_mode": False}}
+    )()
 
     result = await service.assemble_context(
         query="hello",
@@ -84,10 +104,11 @@ async def test_orchestrator_happy_path(monkeypatch):
     )
 
     assert result["context_snapshot_id"] == "snap-123"
-    assert result["total_tokens_used"] == 220
-    assert result["remaining_tokens"] == 780
+    assert result["total_tokens_used"] == 250
+    assert result["remaining_tokens"] == 750
     assert [layer.name for layer in result["layers"]] == [
         "system",
+        "user_profile",
         "long_term_memory",
         "working_memory",
         "semantic_retrieval",
@@ -95,6 +116,7 @@ async def test_orchestrator_happy_path(monkeypatch):
     ]
     assert result["assembly_log"]["layers"] == [
         "system",
+        "user_profile",
         "long_term",
         "working_memory",
         "semantic_retrieval",
@@ -118,14 +140,12 @@ async def test_orchestrator_skips_working_and_ephemeral_without_inputs(monkeypat
 
     async def _working(*_args, **_kwargs):
         calls["working"] += 1
-        return None
 
     async def _semantic(*_args, **_kwargs):
         return None
 
     async def _ephemeral(*_args, **_kwargs):
         calls["ephemeral"] += 1
-        return None
 
     async def _snapshot(**_kwargs):
         return "snap-124"
@@ -137,7 +157,9 @@ async def test_orchestrator_skips_working_and_ephemeral_without_inputs(monkeypat
     monkeypatch.setattr(orch, "assemble_ephemeral_memory", _ephemeral)
     monkeypatch.setattr(orch.context_snapshotter, "create_snapshot", _snapshot)
 
-    service._retrieval_service = type("RS", (), {"get_degraded_status": lambda self: {"degraded_mode": False}})()
+    service._retrieval_service = type(
+        "RS", (), {"get_degraded_status": lambda self: {"degraded_mode": False}}
+    )()
 
     result = await service.assemble_context(
         query="hello",
@@ -152,7 +174,9 @@ async def test_orchestrator_skips_working_and_ephemeral_without_inputs(monkeypat
 
 
 @pytest.mark.asyncio
-async def test_orchestrator_degraded_reason_merges_retrieval_and_truncation(monkeypatch):
+async def test_orchestrator_degraded_reason_merges_retrieval_and_truncation(
+    monkeypatch,
+):
     service = _build_service(monkeypatch)
     monkeypatch.setattr(orch.bm, "derive_budget", lambda **_kwargs: service.default_budget)
 
@@ -191,7 +215,12 @@ async def test_orchestrator_degraded_reason_merges_retrieval_and_truncation(monk
     service._retrieval_service = type(
         "RS",
         (),
-        {"get_degraded_status": lambda self: {"degraded_mode": True, "reason": "embedding unavailable"}},
+        {
+            "get_degraded_status": lambda self: {
+                "degraded_mode": True,
+                "reason": "embedding unavailable",
+            }
+        },
     )()
 
     result = await service.assemble_context(

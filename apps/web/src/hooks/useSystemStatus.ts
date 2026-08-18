@@ -16,6 +16,12 @@ const DEFAULT: SystemStatus = {
   sandbox: 'unknown',
 };
 
+const EMPTY_ENDPOINTS = Object.freeze({}) as Readonly<{
+  models?: string;
+  routing?: string;
+  sandbox?: string;
+}>;
+
 interface ModelHealth {
   health?: string;
   health_reason?: string;
@@ -39,7 +45,7 @@ type StatusOptions = Readonly<{
  * @example
  * // Use real backend endpoints
  * const { status, refresh } = useSystemStatus({
- *   endpoints: { models: '/api/models', routing: '/api/routing' }
+ *   endpoints: { models: '/api/models', routing: '/api/system-status', sandbox: '/api/system-status' }
  * });
  *
  * @example
@@ -47,11 +53,9 @@ type StatusOptions = Readonly<{
  * const { status } = useSystemStatus({ useWebSocket: true });
  */
 export function useSystemStatus(opts?: StatusOptions) {
-  const {
-    pollIntervalMs = 15000,
-    useWebSocket = false,
-    endpoints = {},
-  } = opts ?? {};
+  const pollIntervalMs = opts?.pollIntervalMs ?? 15000;
+  const useWebSocket = opts?.useWebSocket ?? false;
+  const endpoints = opts?.endpoints ?? EMPTY_ENDPOINTS;
 
   const [status, setStatus] = useState<SystemStatus>(DEFAULT);
   const [loading, setLoading] = useState(true);
@@ -65,22 +69,24 @@ export function useSystemStatus(opts?: StatusOptions) {
     if (lower.includes('unhealthy') || lower.includes('error') || lower.includes('down'))
       return 'down';
     if (lower.includes('degraded') || lower.includes('warning')) return 'degraded';
-    if (lower.includes('healthy') || lower.includes('ok') || lower.includes('running'))
-      return 'ok';
+    if (lower.includes('healthy') || lower.includes('ok') || lower.includes('running')) return 'ok';
     return 'unknown';
   };
 
   const extractServiceHealth = useCallback(
-    async (response: PromiseSettledResult<Response | null>, field: string): Promise<ServiceState> => {
+    async (
+      response: PromiseSettledResult<Response | null>,
+      field: string
+    ): Promise<ServiceState> => {
       if (response.status === 'fulfilled' && response.value?.ok) {
         try {
           const data = (await response.value.json()) as Record<string, unknown>;
-          if (field === 'models' && Array.isArray(data.models)) {
-            const firstModel = data.models[0] as ModelHealth | undefined;
+          if (field === 'models' && Array.isArray(data['models'])) {
+            const firstModel = data['models'][0] as ModelHealth | undefined;
             return mapHealth(firstModel?.health);
           }
           if (field === 'routing' || field === 'sandbox') {
-            return mapHealth(data.status as string | undefined);
+            return mapHealth(data['status'] as string | undefined);
           }
         } catch {
           // Continue on parse error
@@ -88,7 +94,7 @@ export function useSystemStatus(opts?: StatusOptions) {
       }
       return 'unknown';
     },
-    [],
+    []
   );
 
   const fetchStatus = useCallback(async () => {
@@ -131,9 +137,13 @@ export function useSystemStatus(opts?: StatusOptions) {
     try {
       // Example: connect to wss://your-backend/health-stream
       // Configure your real websocket endpoint here
-      const proto =
-        globalThis.location?.protocol === 'https:' ? 'wss:' : 'ws:';
-      const hostPart = endpoints.models?.split('://')[1]?.split('/')[0] ?? 'localhost:3000';
+      const proto = globalThis.location?.protocol === 'https:' ? 'wss:' : 'ws:';
+      const hostPart =
+        endpoints.models?.split('://')[1]?.split('/')[0] ?? globalThis.location?.host;
+      if (!hostPart) {
+        fetchStatus();
+        return;
+      }
       const wsUrl = `${proto}//${hostPart}/health-stream`;
       wsRef.current = new WebSocket(wsUrl);
 
@@ -160,17 +170,19 @@ export function useSystemStatus(opts?: StatusOptions) {
     mounted.current = true;
     if (useWebSocket) {
       connectWebSocket();
-    } else {
-      fetchStatus();
-      const id = setInterval(fetchStatus, pollIntervalMs);
-      return () => clearInterval(id);
+      return () => {
+        if (wsRef.current) {
+          wsRef.current.close();
+          wsRef.current = null;
+        }
+        mounted.current = false;
+      };
     }
 
+    fetchStatus();
+    const id = setInterval(fetchStatus, pollIntervalMs);
     return () => {
-      if (wsRef.current) {
-        wsRef.current.close();
-        wsRef.current = null;
-      }
+      clearInterval(id);
       mounted.current = false;
     };
   }, [fetchStatus, pollIntervalMs, useWebSocket, connectWebSocket]);

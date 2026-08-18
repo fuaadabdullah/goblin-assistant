@@ -61,19 +61,11 @@ app.use((req, res, next) => {
 });
 ```
 
-#### Fly.io Deployment
+#### Render Backend Deployment
 
-For Fly.io deployments, add security headers in `fly.toml`:
-
-```toml
-[http_service]
-  [http_service.headers]
-    Content-Security-Policy = "default-src 'self'; script-src 'self' https://challenges.cloudflare.com; style-src 'self' 'unsafe-inline'; connect-src 'self' https://goblin-backend-dt30.onrender.com https://goblin-assistant-backend.onrender.com;"
-    X-Content-Type-Options = "nosniff"
-    X-Frame-Options = "DENY"
-    Strict-Transport-Security = "max-age=31536000; includeSubDomains"
-    Referrer-Policy = "strict-origin-when-cross-origin"
-```
+For Render deployments, prefer application-level security headers and verify
+them after deploy. `fly.toml` is archived and must not be used as the active
+security-header source.
 
 #### Vercel Deployment
 

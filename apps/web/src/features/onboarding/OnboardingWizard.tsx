@@ -46,9 +46,12 @@ const OnboardingWizard = () => {
   const router = useRouter();
   const [activeStep, setActiveStep] = React.useState<OnboardingStepId>('provider-setup');
   const [selectedPrompt, setSelectedPrompt] = React.useState(STARTER_PROMPTS[0]);
-  const { data: providers } = useProviderSettings();
+  const providerSettingsQuery = useProviderSettings();
 
-  const providerRows = Array.isArray(providers) ? providers : [];
+  const providerRows = Array.isArray(providerSettingsQuery.data) ? providerSettingsQuery.data : [];
+  const isProviderSettingsLoading =
+    providerSettingsQuery.isLoading ||
+    (providerSettingsQuery.isFetching && providerSettingsQuery.data === undefined);
   const configuredCount = providerRows.filter((provider) =>
     Boolean(provider.enabled ?? provider.api_key)
   ).length;
@@ -114,17 +117,29 @@ const OnboardingWizard = () => {
                 <div>
                   <h2 className="text-xl font-semibold text-text">Provider setup</h2>
                   <p className="mt-1 text-sm text-muted">
-                    {configuredCount > 0
+                    {isProviderSettingsLoading
+                      ? 'Checking provider configuration...'
+                      : configuredCount > 0
                       ? `${configuredCount} provider${configuredCount === 1 ? '' : 's'} ready for use.`
                       : 'No configured providers detected yet.'}
                   </p>
                 </div>
               </div>
               <div className="flex flex-wrap gap-2">
-                <Badge variant={configuredCount > 0 ? 'success' : 'warning'}>
-                  {configuredCount > 0 ? 'Provider ready' : 'Setup needed'}
+                <Badge
+                  variant={
+                    isProviderSettingsLoading ? 'neutral' : configuredCount > 0 ? 'success' : 'warning'
+                  }
+                >
+                  {isProviderSettingsLoading
+                    ? 'Loading providers'
+                    : configuredCount > 0
+                      ? 'Provider ready'
+                      : 'Setup needed'}
                 </Badge>
-                <Badge variant="neutral">{providerRows.length} providers found</Badge>
+                <Badge variant="neutral">
+                  {isProviderSettingsLoading ? 'Loading...' : `${providerRows.length} providers found`}
+                </Badge>
               </div>
               <div className="mt-6 flex flex-wrap gap-3">
                 <Link

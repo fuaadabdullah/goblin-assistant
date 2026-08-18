@@ -92,7 +92,7 @@ async def search_query(
 ):
     """Semantic search across one or more indexes using pgvector cosine similarity."""
     try:
-        from ..services.embedding_service import EmbeddingService  # noqa: PLC0415
+        from ..services.embedding_service import EmbeddingService
 
         embedding_svc = EmbeddingService()
 
@@ -171,7 +171,7 @@ async def index_content(
         source_id = request.source_id or str(uuid.uuid4())
 
         if request.source_type == "memory":
-            from ..services.memory_core import memory_core_service  # noqa: PLC0415
+            from ..services.memory_core import memory_core_service
 
             metadata = request.metadata or {}
             await memory_core_service.ingest_memory_fact(

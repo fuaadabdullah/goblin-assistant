@@ -23,3 +23,13 @@ Adopt and enforce:
 - Lifecycle logic is centralized in `api.core.route_lifecycle`.
 - CI validates lifecycle policy with `scripts/architecture/check_route_lifecycle.py`.
 
+## Compliance Status
+- `GET /api/v1/api/goblins` — compliant as of 2026-08-18 (returns `GoblinListSuccessResponse`)
+- `GET /api/v1/api/history/{goblin_id}` — compliant as of 2026-08-18 (returns `GoblinHistorySuccessResponse`)
+- `GET /api/v1/api/stats/{goblin_id}` — compliant as of 2026-08-18 (returns `GoblinStatsSuccessResponse`)
+
+Named success envelope subclasses (`Goblin*SuccessResponse`) are defined in `api.api_models`
+and subclass `SuccessEnvelope[T]` from `api.core.contracts`. The frontend `unwrapEnvelope`
+helper in `apps/web/src/lib/api/http-helpers.ts` transparently handles the envelope on all
+`getBackend`/`getFrontend` calls, so SDK consumers receive the unwrapped payload.
+

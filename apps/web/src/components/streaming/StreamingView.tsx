@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 // CSS is imported globally in _app.tsx
-import Button from '@/components/ui/Button';
+import { Button } from '@/components/ui';
 import { TokenChunk, getNewChunk, toTokenChunk } from './streamingUtils';
 import { devError } from '@/utils/dev-log';
 
@@ -30,7 +30,7 @@ export default function StreamingView({ streamingText, isStreaming = false }: Pr
     const newChunk = getNewChunk(lastChunkRef.current, streamingText);
     if (newChunk) {
       const newToken = toTokenChunk(newChunk, streamingText);
-      setTokens(prev => [...prev, newToken]);
+      setTokens((prev) => [...prev, newToken]);
       lastChunkRef.current = streamingText;
     }
   }, [streamingText, isStreaming]);

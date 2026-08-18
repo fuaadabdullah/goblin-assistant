@@ -6,6 +6,8 @@ Operational runbooks now live in `docs/operations/`.
 
 - Use `docs/operations/README.md` as the primary index.
 - Add new runbooks directly under `docs/operations/`.
+- Use `docs/operations/RUNBOOK_MIGRATION_MAP.md` to audit removed historical
+  runbook paths.
 
 ## Why this folder still exists
 

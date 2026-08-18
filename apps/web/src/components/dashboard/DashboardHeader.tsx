@@ -7,7 +7,12 @@ interface Props {
   loading: boolean;
 }
 
-export const DashboardHeader = ({ onRefresh, autoRefresh, onToggleAutoRefresh, loading }: Props) => {
+export const DashboardHeader = ({
+  onRefresh,
+  autoRefresh,
+  onToggleAutoRefresh,
+  loading,
+}: Props) => {
   return (
     <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
       <div>

@@ -2,28 +2,33 @@ import React from 'react';
 import { render, screen, waitFor } from '@testing-library/react';
 
 import ModelSelector from '../ModelSelector';
-import { runtimeClient } from '@/api';
+import { runtimeClient } from '@/lib/api/runtimeClient';
 
-jest.mock('@/api', () => ({
+vi.mock('@/lib/api/runtimeClient', () => ({
   runtimeClient: {
-    getProviderModelOptions: jest.fn(),
-    getProviderModels: jest.fn(),
+    getProviderModelOptions: vi.fn(),
+    getProviderModels: vi.fn(),
   },
 }));
 
-jest.mock('@/components/ui/Select', () => {
-  const React = require('react');
+vi.mock('@goblin/ui', () => {
+  type MockSelectProps = {
+    children?: React.ReactNode;
+    disabled?: boolean;
+    placeholder?: string;
+    [key: string]: unknown;
+  };
 
   return {
-    Select: ({ children, disabled }: any) => (
+    Select: ({ children, disabled }: MockSelectProps) => (
       <div data-testid="mock-select-root" data-disabled={disabled ? 'true' : 'false'}>
         {children}
       </div>
     ),
-    SelectTrigger: ({ children, ...props }: any) => <div {...props}>{children}</div>,
-    SelectValue: ({ placeholder }: any) => <span>{placeholder}</span>,
-    SelectContent: ({ children }: any) => <div>{children}</div>,
-    SelectItem: ({ children, disabled, ...props }: any) => (
+    SelectTrigger: ({ children, ...props }: MockSelectProps) => <div {...props}>{children}</div>,
+    SelectValue: ({ placeholder }: MockSelectProps) => <span>{placeholder}</span>,
+    SelectContent: ({ children }: MockSelectProps) => <div>{children}</div>,
+    SelectItem: ({ children, disabled, ...props }: MockSelectProps) => (
       <div {...props} data-disabled={disabled ? 'true' : 'false'}>
         {children}
       </div>
@@ -33,18 +38,18 @@ jest.mock('@/components/ui/Select', () => {
 
 describe('ModelSelector', () => {
   const mockedRuntimeClient = runtimeClient as unknown as {
-    getProviderModelOptions: jest.Mock;
+    getProviderModelOptions: vi.Mock;
   };
 
   beforeEach(() => {
-    jest.clearAllMocks();
+    vi.clearAllMocks();
   });
 
   it('shows placeholder when provider is not selected', () => {
-    render(<ModelSelector onChange={jest.fn()} />);
+    render(<ModelSelector onChange={vi.fn()} />);
 
     expect(screen.getByTestId('model-selector-placeholder')).toHaveTextContent(
-      'Select a provider first',
+      'Select a provider first'
     );
   });
 
@@ -66,13 +71,7 @@ describe('ModelSelector', () => {
       },
     ]);
 
-    render(
-      <ModelSelector
-        provider="openai"
-        selected=""
-        onChange={jest.fn()}
-      />,
-    );
+    render(<ModelSelector provider="openai" selected="" onChange={vi.fn()} />);
 
     await waitFor(() => {
       expect(mockedRuntimeClient.getProviderModelOptions).toHaveBeenCalledWith('openai');
@@ -80,14 +79,11 @@ describe('ModelSelector', () => {
 
     expect(screen.getByTestId('model-option-gpt-4o-mini')).toHaveAttribute(
       'data-disabled',
-      'false',
+      'false'
     );
-    expect(screen.getByTestId('model-option-gpt-4o')).toHaveAttribute(
-      'data-disabled',
-      'true',
-    );
+    expect(screen.getByTestId('model-option-gpt-4o')).toHaveAttribute('data-disabled', 'true');
     expect(screen.getByTestId('model-option-gpt-4o')).toHaveTextContent(
-      'Unavailable: Provider health check failed.',
+      'Unavailable: Provider health check failed.'
     );
   });
 });

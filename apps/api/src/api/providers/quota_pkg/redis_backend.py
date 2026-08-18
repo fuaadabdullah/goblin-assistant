@@ -68,7 +68,7 @@ class RedisQuotaBackend(QuotaBackend):
             )
             await self._client.ping()
             return self._client
-        except Exception as exc:  # noqa: BLE001
+        except Exception as exc:
             self._failed = True
             logger.debug("quota_redis_unavailable", error=str(exc))
             return None

@@ -26,8 +26,8 @@ describe('streamingUtils', () => {
   });
 
   test('createStreamingHandlers dispatches expected actions for chunk + completion', () => {
-    const dispatch = jest.fn<void, [OrchestrationAction]>();
-    const clearTimeoutFn = jest.fn();
+    const dispatch = vi.fn<void, [OrchestrationAction]>();
+    const clearTimeoutFn = vi.fn();
     const handlers = createStreamingHandlers('s1', dispatch, clearTimeoutFn);
 
     const chunk = {
@@ -74,7 +74,9 @@ describe('streamingUtils', () => {
   });
 
   test('format helpers produce stable output', () => {
-    const completion = formatStepCompletion('s2', { result: { ok: true } } as unknown as TaskResponse);
+    const completion = formatStepCompletion('s2', {
+      result: { ok: true },
+    } as unknown as TaskResponse);
     expect(completion).toContain('--- Step s2 COMPLETE ---');
 
     const error = formatStepError('s3', new Error('boom'));

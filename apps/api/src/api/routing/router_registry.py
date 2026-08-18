@@ -81,10 +81,13 @@ class RoutingRegistry:
         input_tokens: Optional[int] = None,
         output_tokens: Optional[int] = None,
         task_type: Optional[str] = None,
+        selected_model: Optional[str] = None,
+        visible_outcome: Optional[str] = None,
     ) -> None:
         stats = self.get(provider_id)
         stats.success_count += 1
         stats.update_latency(latency_ms)
+        stats.update_cost(cost_usd)
         stats.total_cost_usd += cost_usd
         now = time.time()
         stats.last_used = now
@@ -106,6 +109,8 @@ class RoutingRegistry:
                     "actual_cost_usd": round(cost_usd, 8),
                     "input_tokens": input_tokens,
                     "output_tokens": output_tokens,
+                    "selected_model": selected_model,
+                    "visible_outcome": visible_outcome or "success",
                     "timestamp": now,
                 }
             )
@@ -117,11 +122,27 @@ class RoutingRegistry:
         self,
         provider_id: str,
         *,
+        request_id: Optional[str] = None,
         task_type: Optional[str] = None,
+        failure_class: Optional[str] = None,
+        selected_model: Optional[str] = None,
+        visible_outcome: Optional[str] = None,
     ) -> None:
         stats = self.get(provider_id)
         stats.failure_count += 1
         stats.last_used = time.time()
+        if request_id is not None:
+            self._decision_log.append(
+                {
+                    "event": "outcome",
+                    "request_id": request_id,
+                    "provider_id": provider_id,
+                    "failure_class": failure_class,
+                    "selected_model": selected_model,
+                    "visible_outcome": visible_outcome or "failure",
+                    "timestamp": time.time(),
+                }
+            )
         self._mark_dirty()
         self._flush_if_due()
         emit_routing_outcome(provider_id=provider_id, task_type=task_type, success=False)
@@ -163,6 +184,9 @@ class RoutingRegistry:
                 "latency_sample_count": len(s._latency_window),
                 "success_rate": round(s.success_rate, 3),
                 "total_cost_usd": round(s.total_cost_usd, 6),
+                "last_cost_per_request": round(s.last_cost_per_request, 8),
+                "ewma_cost_per_request": round(s.ewma_cost_per_request, 8),
+                "is_cost_favorable": s.is_cost_favorable,
                 "last_used": s.last_used,
                 "ewma_tokens_per_sec": round(s.ewma_tokens_per_sec, 1),
                 "total_output_tokens": s.total_output_tokens,
@@ -189,6 +213,9 @@ class RoutingRegistry:
                     "ewma_latency_ms": round(s.ewma_latency_ms, 1),
                     "success_rate": round(s.success_rate, 3),
                     "total_cost_usd": round(s.total_cost_usd, 6),
+                    "last_cost_per_request": round(s.last_cost_per_request, 8),
+                    "ewma_cost_per_request": round(s.ewma_cost_per_request, 8),
+                    "is_cost_favorable": s.is_cost_favorable,
                     "last_used": s.last_used,
                 }
                 for pid, s in self._store.load().items()

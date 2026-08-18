@@ -1,10 +1,27 @@
 // src/utils/monitoring.ts - Error monitoring with Sentry integration
 import * as Sentry from '@sentry/react';
+import { apiClient } from '@/lib/api';
 import { env } from '../config/env';
 import { devError } from './dev-log';
 
+// `@sentry/core`/`@sentry/browser` are transitive (non-direct) deps under pnpm, so their
+// types aren't directly importable here and `@sentry/react` doesn't re-surface them. Declare
+// the minimal shapes we use (browserTracingIntegration/replayIntegration/setMeasurement/
+// captureException) rather than reaching for `as any`.
+type SentryIntegration = { name: string; [key: string]: unknown };
+type SentryWithExtras = typeof Sentry & {
+  browserTracingIntegration?(): SentryIntegration;
+  replayIntegration?(options?: {
+    maskAllText?: boolean;
+    blockAllMedia?: boolean;
+  }): SentryIntegration;
+  setMeasurement?(name: string, value: number, unit: string): void;
+  captureException(error: unknown, hint?: Record<string, unknown>): string;
+};
+const sentry = Sentry as SentryWithExtras;
+
 interface ErrorContext {
-  componentStack?: string;
+  componentStack?: string | undefined;
   [key: string]: unknown;
 }
 
@@ -33,7 +50,6 @@ const normalizeError = (error: unknown): Error => {
 
 // Initialize Sentry if DSN is provided
 if (typeof window !== 'undefined' && env.isProduction && env.sentryDsn) {
-  const sentry = Sentry as any;
   Sentry.init({
     dsn: env.sentryDsn,
     environment: env.mode,
@@ -60,7 +76,7 @@ export function logErrorToService(error: unknown, context?: ErrorContext): strin
 
     // Send to Sentry if configured
     if (env.sentryDsn) {
-      errorId = (Sentry as any).captureException?.(normalizedError, {
+      errorId = sentry.captureException(normalizedError, {
         contexts: context ? { react: context } : undefined,
         tags: {
           component: 'frontend',
@@ -69,21 +85,19 @@ export function logErrorToService(error: unknown, context?: ErrorContext): strin
       });
     }
 
-    // Fallback: Send to custom endpoint
-    fetch('/api/errors', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
+    // Fallback: Send to the app API boundary, not a raw fetch from the utility module.
+    void apiClient
+      .submitErrorReport({
         message: normalizedError.message,
         stack: normalizedError.stack,
-        context,
         timestamp: new Date().toISOString(),
         userAgent: navigator.userAgent,
         url: window.location.href,
-      }),
-    }).catch(() => {
-      // Silent fail - don't break app if logging fails
-    });
+        context,
+      })
+      .catch(() => {
+        // Silent fail - don't break app if logging fails
+      });
 
     return errorId;
   } else {
@@ -104,6 +118,6 @@ export function reactErrorInfoToContext(errorInfo: React.ErrorInfo): ErrorContex
 export function logPerformanceMetric(name: string, value: number) {
   if (env.isProduction && env.sentryDsn && typeof window !== 'undefined') {
     // Log performance metrics to Sentry using setMeasurement
-    (Sentry as any).setMeasurement?.(name, value, 'none');
+    sentry.setMeasurement?.(name, value, 'none');
   }
 }

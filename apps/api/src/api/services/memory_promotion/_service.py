@@ -338,7 +338,7 @@ class MemoryPromotionService:
                 )
                 return None
 
-            from ..memory_core import memory_core_service  # noqa: PLC0415
+            from ..memory_core import memory_core_service
 
             record = await memory_core_service.ingest_memory_fact(
                 user_id=candidate.metadata.get("user_id"),

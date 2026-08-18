@@ -155,9 +155,12 @@ def _normalize_provider_response(
         )
 
     if isinstance(provider_response, dict) and "choices" in provider_response:
+        choices = provider_response["choices"]
+        first = choices[0] if choices else {}
+        content = (first.get("message") or {}).get("content") or ""
         return (
             {},
-            provider_response["choices"][0]["message"]["content"],
+            content,
             provider_response.get("provider", request.provider or "unknown"),
             provider_response.get("model", request.model or "unknown"),
         )
@@ -266,11 +269,14 @@ async def semantic_send_message(conversation_id: str, request: SemanticSendMessa
         output_tokens = usage.get("completion_tokens") or usage.get("output_tokens") or 0
 
         response_message_id = str(uuid.uuid4())
+        goblin_id = request.department or "general"
         await _add_message(
             conversation_id=conversation_id,
             role="assistant",
             content=response_content,
             metadata={
+                "goblin_id": goblin_id,
+                "goblin": goblin_id,
                 "provider": used_provider,
                 "model": used_model,
                 "message_id": response_message_id,
@@ -300,7 +306,12 @@ async def semantic_send_message(conversation_id: str, request: SemanticSendMessa
                 conversation_id=conversation_id,
                 message_id=response_message_id,
                 content=response_content,
-                metadata={"provider": used_provider, "model": used_model},
+                metadata={
+                    "goblin_id": goblin_id,
+                    "goblin": goblin_id,
+                    "provider": used_provider,
+                    "model": used_model,
+                },
             )
 
         # Step 9: Return enhanced response

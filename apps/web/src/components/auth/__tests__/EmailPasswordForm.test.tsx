@@ -1,14 +1,13 @@
 import React from 'react';
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import '@testing-library/jest-dom';
 import EmailPasswordForm from '../EmailPasswordForm';
 
 describe('EmailPasswordForm', () => {
-  const mockOnSubmit = jest.fn().mockResolvedValue(undefined);
+  const mockOnSubmit = vi.fn().mockResolvedValue(undefined);
 
   beforeEach(() => {
-    jest.clearAllMocks();
+    vi.clearAllMocks();
   });
 
   it('renders login form fields', () => {

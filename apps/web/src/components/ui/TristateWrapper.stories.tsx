@@ -55,7 +55,9 @@ export const ErrorWithCustomChild: Story = {
     errorChild: (
       <div className="rounded-md border border-red-400 bg-red-50 p-6 text-center">
         <p className="font-semibold text-red-800">⚠️ Custom error UI</p>
-        <p className="mt-1 text-sm text-red-600">This uses errorChild instead of the built-in error state.</p>
+        <p className="mt-1 text-sm text-red-600">
+          This uses errorChild instead of the built-in error state.
+        </p>
       </div>
     ),
     children: <div className="p-4 text-text">Content</div>,

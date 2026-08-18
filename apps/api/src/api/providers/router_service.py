@@ -364,7 +364,7 @@ def _decision_from_classification_response(
         if backend_provider_id:
             try:
                 backend_model = str(classifier_backend_litellm_model or "").split("/", 1)[-1]
-                from ..providers.pricing import estimate_cost  # noqa: PLC0415
+                from ..providers.pricing import estimate_cost
 
                 classifier_cost_usd = estimate_cost(
                     str(backend_provider_id),
@@ -838,7 +838,7 @@ async def _persist_routing_audit(payload: Dict[str, Any], response: Dict[str, An
     backend_model = str(response.get("model") or "") if isinstance(response, dict) else ""
     if backend_provider_id:
         try:
-            from ..providers.pricing import estimate_cost  # noqa: PLC0415
+            from ..providers.pricing import estimate_cost
 
             cost_usd = estimate_cost(
                 str(backend_provider_id),
@@ -882,7 +882,7 @@ async def _persist_routing_audit(payload: Dict[str, Any], response: Dict[str, An
         metadata["classifier_backend_litellm_model"] = classifier_backend_litellm_model
 
     try:
-        from ..services.task_routing_audit import record_task_routing_decision  # noqa: PLC0415
+        from ..services.task_routing_audit import record_task_routing_decision
 
         request_id = str(payload.get("request_id") or "")
         await record_task_routing_decision(
@@ -906,7 +906,7 @@ async def _persist_routing_audit(payload: Dict[str, Any], response: Dict[str, An
             error_message=str(response.get("error") or "") or None,
             metadata=metadata,
         )
-    except Exception as exc:  # noqa: BLE001
+    except Exception as exc:
         # Persistence is best-effort; routing must never depend on it.
         logger.debug("task_routing_audit_persistence_failed", error=str(exc))
 

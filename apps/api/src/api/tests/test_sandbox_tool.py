@@ -5,8 +5,7 @@ Tests for the sandbox_tool skill.
 from __future__ import annotations
 
 import json
-import subprocess
-from unittest.mock import MagicMock, patch
+from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
@@ -72,7 +71,21 @@ class TestExecuteCode:
     @pytest.mark.asyncio
     async def test_successful_python_execution(self, monkeypatch, tmp_path):
         monkeypatch.setenv("SANDBOX_ENABLED", "false")
-        with patch("subprocess.run", return_value=_mock_proc(stdout="hello\n")):
+        from api.services.sandbox_executor import ExecutionResult, ExecutionStatus
+
+        mock_result = ExecutionResult(
+            status=ExecutionStatus.SUCCESS,
+            stdout="hello\n",
+            stderr="",
+            exit_code=0,
+            duration_ms=20,
+            truncated=False,
+        )
+        with patch(
+            "api.services.sandbox_executor.execute_code",
+            new_callable=AsyncMock,
+            return_value=mock_result,
+        ):
             result = await TOOL_REGISTRY["execute_code"].handler(
                 code='print("hello")', language="python"
             )
@@ -84,8 +97,22 @@ class TestExecuteCode:
     @pytest.mark.asyncio
     async def test_stdout_capped_at_10kb(self, monkeypatch):
         monkeypatch.setenv("SANDBOX_ENABLED", "false")
-        big_output = "x" * 20_000
-        with patch("subprocess.run", return_value=_mock_proc(stdout=big_output)):
+        from api.services.sandbox_executor import ExecutionResult, ExecutionStatus
+
+        # Executor truncates internally and sets truncated=True
+        mock_result = ExecutionResult(
+            status=ExecutionStatus.SUCCESS,
+            stdout="x" * (10 * 1024),
+            stderr="",
+            exit_code=0,
+            duration_ms=20,
+            truncated=True,
+        )
+        with patch(
+            "api.services.sandbox_executor.execute_code",
+            new_callable=AsyncMock,
+            return_value=mock_result,
+        ):
             result = await TOOL_REGISTRY["execute_code"].handler(code='print("x"*20000)')
         assert len(result["stdout"]) <= 10 * 1024
         assert result["truncated"] is True
@@ -93,9 +120,20 @@ class TestExecuteCode:
     @pytest.mark.asyncio
     async def test_timeout_returns_error(self, monkeypatch):
         monkeypatch.setenv("SANDBOX_ENABLED", "false")
+        from api.services.sandbox_executor import ExecutionResult, ExecutionStatus
+
+        mock_result = ExecutionResult(
+            status=ExecutionStatus.TIMEOUT,
+            stdout="",
+            stderr="execution exceeded 1s wall-clock limit",
+            exit_code=-1,
+            duration_ms=1000,
+            truncated=False,
+        )
         with patch(
-            "subprocess.run",
-            side_effect=subprocess.TimeoutExpired(cmd=[], timeout=1),
+            "api.services.sandbox_executor.execute_code",
+            new_callable=AsyncMock,
+            return_value=mock_result,
         ):
             result = await TOOL_REGISTRY["execute_code"].handler(
                 code="import time; time.sleep(999)", timeout=1
@@ -107,9 +145,20 @@ class TestExecuteCode:
     @pytest.mark.asyncio
     async def test_nonzero_exit_code_in_result(self, monkeypatch):
         monkeypatch.setenv("SANDBOX_ENABLED", "false")
+        from api.services.sandbox_executor import ExecutionResult, ExecutionStatus
+
+        mock_result = ExecutionResult(
+            status=ExecutionStatus.ERROR,
+            stdout="",
+            stderr="NameError",
+            exit_code=1,
+            duration_ms=10,
+            truncated=False,
+        )
         with patch(
-            "subprocess.run",
-            return_value=_mock_proc(stderr="NameError", returncode=1),
+            "api.services.sandbox_executor.execute_code",
+            new_callable=AsyncMock,
+            return_value=mock_result,
         ):
             result = await TOOL_REGISTRY["execute_code"].handler(
                 code="undefined_var", language="python"
@@ -146,47 +195,61 @@ class TestExecuteCode:
     @pytest.mark.asyncio
     async def test_sandbox_disabled_uses_direct_interpreter(self, monkeypatch):
         monkeypatch.setenv("SANDBOX_ENABLED", "false")
+        from api.services.sandbox_executor import ExecutionResult, ExecutionStatus
+
         captured = {}
+        mock_result = ExecutionResult(
+            status=ExecutionStatus.SUCCESS, stdout="hi\n", stderr="", exit_code=0, duration_ms=10
+        )
 
-        def capture_run(cmd, **kwargs):
-            captured["cmd"] = cmd
-            return _mock_proc(stdout="hi\n")
+        async def capture_exec(code, language, timeout=None):
+            captured["language"] = language
+            return mock_result
 
-        with patch("subprocess.run", side_effect=capture_run):
+        with patch("api.services.sandbox_executor.execute_code", side_effect=capture_exec):
             await TOOL_REGISTRY["execute_code"].handler(code='print("hi")')
 
-        assert "docker" not in captured["cmd"][0]
-        assert "python" in captured["cmd"][0]
+        assert captured["language"] == "python"
 
     @pytest.mark.asyncio
     async def test_timeout_clamped_to_120(self, monkeypatch):
         monkeypatch.setenv("SANDBOX_ENABLED", "false")
+        from api.services.sandbox_executor import ExecutionResult, ExecutionStatus
+
         captured = {}
+        mock_result = ExecutionResult(
+            status=ExecutionStatus.SUCCESS, stdout="", stderr="", exit_code=0, duration_ms=10
+        )
 
-        def capture_run(cmd, **kwargs):
-            captured["kwargs"] = kwargs
-            return _mock_proc()
+        async def capture_exec(code, language, timeout=None):
+            captured["timeout"] = timeout
+            return mock_result
 
-        with patch("subprocess.run", side_effect=capture_run):
+        with patch("api.services.sandbox_executor.execute_code", side_effect=capture_exec):
             await TOOL_REGISTRY["execute_code"].handler(code="pass", timeout=9999)
 
-        assert captured["kwargs"]["timeout"] <= 120
+        assert captured["timeout"] <= 120
 
     @pytest.mark.asyncio
     async def test_javascript_language_uses_node(self, monkeypatch):
         monkeypatch.setenv("SANDBOX_ENABLED", "false")
+        from api.services.sandbox_executor import ExecutionResult, ExecutionStatus
+
         captured = {}
+        mock_result = ExecutionResult(
+            status=ExecutionStatus.SUCCESS, stdout="1\n", stderr="", exit_code=0, duration_ms=10
+        )
 
-        def capture_run(cmd, **kwargs):
-            captured["cmd"] = cmd
-            return _mock_proc(stdout="1\n")
+        async def capture_exec(code, language, timeout=None):
+            captured["language"] = language
+            return mock_result
 
-        with patch("subprocess.run", side_effect=capture_run):
+        with patch("api.services.sandbox_executor.execute_code", side_effect=capture_exec):
             await TOOL_REGISTRY["execute_code"].handler(
                 code="console.log(1)", language="javascript"
             )
 
-        assert "node" in captured["cmd"][0]
+        assert captured["language"] == "javascript"
 
 
 # ---------------------------------------------------------------------------
@@ -226,8 +289,22 @@ class TestRunSandboxTemplate:
     @pytest.mark.asyncio
     async def test_known_template_renders_and_runs(self, monkeypatch):
         monkeypatch.setenv("SANDBOX_ENABLED", "false")
+        from api.services.sandbox_executor import ExecutionResult, ExecutionStatus
+
         output = json.dumps({"final_balance": 1126.83, "yearly_breakdown": []})
-        with patch("subprocess.run", return_value=_mock_proc(stdout=output)):
+        mock_result = ExecutionResult(
+            status=ExecutionStatus.SUCCESS,
+            stdout=output,
+            stderr="",
+            exit_code=0,
+            duration_ms=50,
+            truncated=False,
+        )
+        with patch(
+            "api.services.sandbox_executor.execute_code",
+            new_callable=AsyncMock,
+            return_value=mock_result,
+        ):
             result = await TOOL_REGISTRY["run_sandbox_template"].handler(
                 template_name="compound_interest",
                 parameters=json.dumps(
@@ -246,13 +323,23 @@ class TestRunSandboxTemplate:
     @pytest.mark.asyncio
     async def test_template_timeout_is_60s(self, monkeypatch):
         monkeypatch.setenv("SANDBOX_ENABLED", "false")
+        from api.services.sandbox_executor import ExecutionResult, ExecutionStatus
+
         captured = {}
+        mock_result = ExecutionResult(
+            status=ExecutionStatus.SUCCESS,
+            stdout="{}",
+            stderr="",
+            exit_code=0,
+            duration_ms=10,
+            truncated=False,
+        )
 
-        def capture_run(cmd, **kwargs):
-            captured["timeout"] = kwargs.get("timeout")
-            return _mock_proc(stdout="{}")
+        async def capture_exec(code, language, timeout=None):
+            captured["timeout"] = timeout
+            return mock_result
 
-        with patch("subprocess.run", side_effect=capture_run):
+        with patch("api.services.sandbox_executor.execute_code", side_effect=capture_exec):
             await TOOL_REGISTRY["run_sandbox_template"].handler(
                 template_name="compound_interest",
                 parameters=json.dumps(

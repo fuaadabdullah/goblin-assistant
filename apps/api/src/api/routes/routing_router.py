@@ -45,7 +45,7 @@ async def explain_routing_decision(routing_id: str):
     ProviderSelectionModel.score() call — see routing/provider_selection.py.
     Explanations are bounded and evicted FIFO, so old routing_ids 404.
     """
-    from ..routing.provider_selection import get_explanation  # noqa: PLC0415
+    from ..routing.provider_selection import get_explanation
 
     explanation = get_explanation(routing_id)
     if explanation is None:
@@ -83,7 +83,7 @@ async def route_through_department(request: DepartmentRouteRequest):
     shared dispatcher/provider-routing stack.
     """
     try:
-        from ..departments import DepartmentId, DepartmentSelection  # noqa: PLC0415
+        from ..departments import DepartmentId, DepartmentSelection
 
         selection = DepartmentSelection(
             department_id=DepartmentId(request.department.strip().lower()),

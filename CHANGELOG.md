@@ -7,6 +7,49 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Removed
+
+- Removed `k8s/` directory (16 Kubernetes manifests). Deployment runs on
+  Render/Docker; k8s configs were an unused architecture spike.
+- Removed `terraform/` directory (10 files). Render Terraform provider replaced
+  by direct dashboard management; no pipeline invokes `terraform` today.
+- Removed `docs/runbooks/` (52 files migrated to `docs/operations/`). See
+  `docs/operations/RUNBOOK_MIGRATION_MAP.md` for the canonical location of each
+  document.
+
+## [0.3.0] - 2026-07-22
+
+### Added
+
+- Added named Tier 0 critical-path journey gates for provider routing, memory,
+  auth, sandbox, billing, and orchestration through `make test-critical`.
+- Added billing critical-path coverage for quota blocking, degraded-open usage
+  store behavior, and billable chat usage event recording.
+- Added v0.3 dogfooding operations guidance for cohort entry, support,
+  feedback capture, rollback, and latency review.
+
+### Changed
+
+- Cached the provider-selection routing pipeline across unchanged dependency
+  singletons to reduce hot-path routing decision overhead while preserving the
+  staged `Prompt -> Feature Extraction -> Classification -> Policy -> Scoring
+  -> Selection -> Execution` trace.
+- Converted the critical gate from broad percentage coverage thresholds to
+  named release-blocking journey suites.
+- Updated web dependency pins for the v0.3 workspace lockfile refresh.
+
+### Fixed
+
+- Fixed usage-event tests to use the store's UTC aggregation day, avoiding
+  false spend-total failures around local/UTC midnight boundaries.
+
+## [0.2.0] - 2026-06-06
+
+### Changed
+
+- Jira versions/releases are now the issue-level source of truth for release notes, while `CHANGELOG.md` remains the curated public summary.
+- Jira provider incident automation is now wired to the live `PROVOPS` project workflow with incoming-webhook incident creation.
+
 ### Added
 
 - **Mobile Drawer + Chat FAB (mobile)**: Mobile drawer navigation with accessible focus trapping, reduced-motion support, and a prominent Chat floating action button (FAB).
@@ -84,7 +127,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Enhanced README with screenshots section and improved navigation
 - Updated wiki documentation with visual references
 
-## [1.0.0] - 2024-01-XX
+## [1.0.0] - 2026-03-05
 
 - Initial release of Goblin Assistant
 - Multi-provider AI chat interface (31+ providers supported)
@@ -125,4 +168,4 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## Versioning
 
-This project uses [Semantic Versioning](https://semver.org/). For the versions available, see the [tags on this repository](https://github.com/yourusername/goblin-assistant/tags).
+This project uses [Semantic Versioning](https://semver.org/). For the versions available, see the [tags on this repository](https://github.com/fuaadabdullah/goblin-assistant/tags).

@@ -2,32 +2,36 @@ import React from 'react';
 import { renderHook, act, waitFor } from '@testing-library/react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 
-jest.mock('../../../lib/auth-state', () => ({
-  bootstrapAuthSession: jest.fn().mockResolvedValue({
+vi.mock('../../../lib/auth-state', () => ({
+  bootstrapAuthSession: vi.fn().mockResolvedValue({
     token: 'test-token',
     user: { id: '1', name: 'Test', email: 'test@example.com', roles: ['admin'] },
     isAuthenticated: true,
     isHydrated: true,
   }),
-  clearAuthSessionState: jest.fn().mockResolvedValue(undefined),
-  hasAnyRole: jest.fn((user: { roles?: string[] } | null, roles: string[]) => {
+  clearAuthSessionState: vi.fn().mockResolvedValue(undefined),
+  hasAnyRole: vi.fn((user: { roles?: string[] } | null, roles: string[]) => {
     if (!user) return false;
     return roles.some((r) => user.roles?.includes(r));
   }),
-  hasRole: jest.fn((user: { roles?: string[] } | null, role: string) => {
+  hasRole: vi.fn((user: { roles?: string[] } | null, role: string) => {
     if (!user) return false;
     return user.roles?.includes(role) ?? false;
   }),
 }));
 
-jest.mock('../../../lib/query-keys', () => ({
+vi.mock('../../../lib/query-keys', () => ({
   queryKeys: {
     authValidate: ['auth', 'validate'],
   },
 }));
 
 import { useAuthSession } from '../useAuthSession';
-import { bootstrapAuthSession, clearAuthSessionState } from '../../../lib/auth-state';
+import {
+  bootstrapAuthSession,
+  clearAuthSessionState,
+  type AuthSessionSnapshot,
+} from '../../../lib/auth-state';
 
 function createWrapper() {
   const queryClient = new QueryClient({
@@ -39,7 +43,16 @@ function createWrapper() {
 }
 
 describe('useAuthSession', () => {
-  beforeEach(() => jest.clearAllMocks());
+  beforeEach(() => {
+    vi.clearAllMocks();
+    (bootstrapAuthSession as vi.Mock).mockResolvedValue({
+      token: 'test-token',
+      user: { id: '1', name: 'Test', email: 'test@example.com', roles: ['admin'] },
+      isAuthenticated: true,
+      isHydrated: true,
+    });
+    (clearAuthSessionState as vi.Mock).mockResolvedValue(undefined);
+  });
 
   it('returns session data after loading', async () => {
     const { result } = renderHook(() => useAuthSession(), { wrapper: createWrapper() });
@@ -53,6 +66,31 @@ describe('useAuthSession', () => {
     const { result } = renderHook(() => useAuthSession(), { wrapper: createWrapper() });
     // Initially loading or already resolved depending on timing
     expect(typeof result.current.isLoading).toBe('boolean');
+  });
+
+  it('starts as pending before bootstrap resolves', async () => {
+    let resolveBootstrap: ((value: AuthSessionSnapshot) => void) | undefined;
+    const bootstrapPromise = new Promise<AuthSessionSnapshot>((resolve) => {
+      resolveBootstrap = resolve;
+    });
+
+    (bootstrapAuthSession as vi.Mock).mockImplementation(() => bootstrapPromise);
+
+    const { result } = renderHook(() => useAuthSession(), { wrapper: createWrapper() });
+
+    expect(result.current.isHydrated).toBe(false);
+    expect(result.current.isLoading).toBe(true);
+
+    await act(async () => {
+      resolveBootstrap?.({
+        token: null,
+        user: null,
+        isAuthenticated: false,
+        isHydrated: true,
+      });
+    });
+
+    await waitFor(() => expect(result.current.isHydrated).toBe(true));
   });
 
   it('provides hasRole function', async () => {
@@ -90,7 +128,7 @@ describe('useAuthSession', () => {
   });
 
   it('returns empty session when bootstrap fails', async () => {
-    (bootstrapAuthSession as jest.Mock).mockRejectedValueOnce(new Error('fail'));
+    (bootstrapAuthSession as vi.Mock).mockRejectedValueOnce(new Error('fail'));
     const { result } = renderHook(() => useAuthSession(), { wrapper: createWrapper() });
     await waitFor(() => expect(result.current.isLoading).toBe(false));
     expect(result.current.isAuthenticated).toBe(false);

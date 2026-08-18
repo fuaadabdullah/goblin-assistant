@@ -1,14 +1,13 @@
 import { renderHook, waitFor } from '@testing-library/react';
-import '@testing-library/jest-dom';
 import useGoblinLoaderAnimation from '../useGoblinLoaderAnimation';
 
 describe('useGoblinLoaderAnimation', () => {
   const animData = { v: '5.5.7', layers: [] };
-  let fetchMock: jest.Mock;
+  let fetchMock: vi.Mock;
   const originalFetch = globalThis.fetch;
 
   beforeEach(() => {
-    fetchMock = jest.fn().mockResolvedValue({
+    fetchMock = vi.fn().mockResolvedValue({
       ok: true,
       json: async () => animData,
     } as Response);
@@ -27,7 +26,10 @@ describe('useGoblinLoaderAnimation', () => {
   it('fetches and returns animation data', async () => {
     const { result } = renderHook(() => useGoblinLoaderAnimation());
     await waitFor(() => expect(result.current).toEqual(animData));
-    expect(fetchMock).toHaveBeenCalledWith('/goblin_loader.json', expect.objectContaining({ signal: expect.any(AbortSignal) }));
+    expect(fetchMock).toHaveBeenCalledWith(
+      '/goblin_loader.json',
+      expect.objectContaining({ signal: expect.any(AbortSignal) })
+    );
   });
 
   it('stays null when fetch fails', async () => {

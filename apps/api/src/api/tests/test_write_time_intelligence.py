@@ -7,9 +7,10 @@ Tests the anti-rot layer functionality end-to-end
 import asyncio
 import json
 import time
-from typing import Dict, Any
-import httpx
 from datetime import datetime
+from typing import Any, Dict
+
+import httpx
 
 
 class WriteTimeIntelligenceTester:
@@ -131,16 +132,12 @@ class WriteTimeIntelligenceTester:
         print("\n⚙️  Testing decision matrix configuration...")
 
         try:
-            response = await self.client.get(
-                f"{self.base_url}/write-time/matrix/config"
-            )
+            response = await self.client.get(f"{self.base_url}/write-time/matrix/config")
 
             if response.status_code == 200:
                 config = response.json()
                 print("✅ Decision matrix config retrieved successfully")
-                print(
-                    f"   Decision table has {len(config['decision_table'])} message types"
-                )
+                print(f"   Decision table has {len(config['decision_table'])} message types")
                 print(f"   Rate limits: {config['rate_limits']}")
                 return config
             else:
@@ -196,9 +193,7 @@ class WriteTimeIntelligenceTester:
 
             if response.status_code == 200:
                 result = response.json()
-                print(
-                    f"✅ Batch processing completed: {result['total_messages']} messages"
-                )
+                print(f"✅ Batch processing completed: {result['total_messages']} messages")
 
                 # Analyze results
                 correct_classifications = 0
@@ -213,9 +208,7 @@ class WriteTimeIntelligenceTester:
                         ):
                             correct_classifications += 1
 
-                print(
-                    f"   Correct classifications: {correct_classifications}/{total_processed}"
-                )
+                print(f"   Correct classifications: {correct_classifications}/{total_processed}")
                 return result
             else:
                 print(f"❌ Batch processing failed: {response.status_code}")
@@ -259,9 +252,7 @@ class WriteTimeIntelligenceTester:
                     )
 
             except Exception as e:
-                rate_limit_test_results.append(
-                    {"message_id": i, "success": False, "error": str(e)}
-                )
+                rate_limit_test_results.append({"message_id": i, "success": False, "error": str(e)})
 
         # Analyze rate limiting results
         successful_requests = sum(1 for r in rate_limit_test_results if r["success"])
@@ -301,9 +292,7 @@ class WriteTimeIntelligenceTester:
                     actions = result["execution"]["actions_executed"]
                     discarded = "discard" in actions
 
-                    print(
-                        f"   '{message}' -> Discarded: {discarded} (actions: {actions})"
-                    )
+                    print(f"   '{message}' -> Discarded: {discarded} (actions: {actions})")
 
                     discard_results.append(
                         {
@@ -314,9 +303,7 @@ class WriteTimeIntelligenceTester:
                         }
                     )
                 else:
-                    print(
-                        f"   ❌ Failed to process '{message}': {response.status_code}"
-                    )
+                    print(f"   ❌ Failed to process '{message}': {response.status_code}")
                     discard_results.append(
                         {"message": message, "error": f"HTTP {response.status_code}"}
                     )
@@ -332,9 +319,7 @@ class WriteTimeIntelligenceTester:
         return {
             "total_noise_messages": len(noise_messages),
             "discarded_messages": discarded_count,
-            "discard_accuracy": discarded_count / len(noise_messages)
-            if noise_messages
-            else 0,
+            "discard_accuracy": (discarded_count / len(noise_messages) if noise_messages else 0),
             "results": discard_results,
         }
 
@@ -346,24 +331,18 @@ class WriteTimeIntelligenceTester:
 
         # Test cache stats
         try:
-            stats_response = await self.client.get(
-                f"{self.base_url}/write-time/cache/stats"
-            )
+            stats_response = await self.client.get(f"{self.base_url}/write-time/cache/stats")
             if stats_response.status_code == 200:
                 cache_test_results["initial_stats"] = stats_response.json()
                 print("   ✅ Initial cache stats retrieved")
             else:
-                print(
-                    f"   ❌ Failed to get initial cache stats: {stats_response.status_code}"
-                )
+                print(f"   ❌ Failed to get initial cache stats: {stats_response.status_code}")
         except Exception as e:
             print(f"   ❌ Exception getting initial cache stats: {e}")
 
         # Test cache cleanup
         try:
-            cleanup_response = await self.client.post(
-                f"{self.base_url}/write-time/cache/cleanup"
-            )
+            cleanup_response = await self.client.post(f"{self.base_url}/write-time/cache/cleanup")
             if cleanup_response.status_code == 200:
                 cache_test_results["cleanup_result"] = cleanup_response.json()
                 print("   ✅ Cache cleanup completed")
@@ -374,9 +353,7 @@ class WriteTimeIntelligenceTester:
 
         # Test cache clear (use with caution)
         try:
-            clear_response = await self.client.post(
-                f"{self.base_url}/write-time/cache/clear"
-            )
+            clear_response = await self.client.post(f"{self.base_url}/write-time/cache/clear")
             if clear_response.status_code == 200:
                 cache_test_results["clear_result"] = clear_response.json()
                 print("   ✅ Cache clear completed")
@@ -392,7 +369,7 @@ class WriteTimeIntelligenceTester:
         print("🚀 Starting Write-Time Intelligence Test Suite")
         print("=" * 60)
 
-        start_time = time.perf_counter()
+        start_time = time.time()
 
         # Run all tests
         test_results = {
@@ -405,7 +382,7 @@ class WriteTimeIntelligenceTester:
             "rate_limiting": await self.test_rate_limiting(),
             "discard_functionality": await self.test_discard_functionality(),
             "cache_operations": await self.test_cache_operations(),
-            "total_duration": time.perf_counter() - start_time,
+            "total_duration": time.time() - start_time,
         }
 
         # Print summary
@@ -425,9 +402,7 @@ class WriteTimeIntelligenceTester:
 
             if type_total > 0:
                 accuracy = (type_correct / type_total) * 100
-                print(
-                    f"  {message_type.upper()}: {type_correct}/{type_total} ({accuracy:.1f}%)"
-                )
+                print(f"  {message_type.upper()}: {type_correct}/{type_total} ({accuracy:.1f}%)")
 
         if total_classified > 0:
             overall_accuracy = (total_correct / total_classified) * 100
@@ -453,7 +428,7 @@ class WriteTimeIntelligenceTester:
         print("=" * 60)
 
         # Save results to file
-        with open("write_time_test_results.json", "w") as f:
+        with open("write_time_test_results.json", "w") as f:  # noqa: ASYNC230  # test writes a local report artifact
             json.dump(test_results, f, indent=2, default=str)
 
         print("📄 Test results saved to write_time_test_results.json")
@@ -481,8 +456,7 @@ async def main():
 
         # Check if classification is working
         classification_working = any(
-            results["classification"][msg_type]
-            for msg_type in results["classification"]
+            results["classification"][msg_type] for msg_type in results["classification"]
         )
 
         if classification_working:

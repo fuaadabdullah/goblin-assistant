@@ -1,4 +1,4 @@
-from .archetypes import AgentArchetype, AgentArchetypeId, ARCHETYPE_REGISTRY
+from .archetypes import ARCHETYPE_REGISTRY, AgentArchetype, AgentArchetypeId
 from .dispatcher import IntentDispatcher, intent_dispatcher
 
 __all__ = [

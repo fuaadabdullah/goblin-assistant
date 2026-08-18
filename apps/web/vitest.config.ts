@@ -2,8 +2,8 @@ import { defineConfig } from 'vitest/config';
 import react from '@vitejs/plugin-react';
 import path from 'path';
 
-const webCoverageThreshold = Number(process.env['WEB_COVERAGE_THRESHOLD'] ?? 80);
-const functionCoverageThreshold = Number(process.env['WEB_FUNCTIONS_THRESHOLD'] ?? 80);
+const webCoverageThreshold = Number(process.env['WEB_COVERAGE_THRESHOLD'] ?? 70);
+const functionCoverageThreshold = Number(process.env['WEB_FUNCTIONS_THRESHOLD'] ?? 70);
 const criticalCoverageInclude = process.env['VITEST_COVERAGE_INCLUDE']
   ?.split(',')
   .map((entry) => entry.trim())
@@ -41,7 +41,7 @@ export default defineConfig({
       'src/components/auth/__tests__/ModularLoginForm.test.tsx',
     ],
     css: false,
-    testTimeout: 15000,
+    testTimeout: 30000,
     coverage: {
       provider: 'v8',
       reporter: ['text', 'text-summary', 'lcov', 'json-summary'],

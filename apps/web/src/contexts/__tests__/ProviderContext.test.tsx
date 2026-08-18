@@ -1,51 +1,117 @@
-import React from 'react';
-import { render, screen, waitFor } from '@testing-library/react';
+import React, { act } from 'react';
+import { createRoot, Root } from 'react-dom/client';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { ProviderProvider, useProvider } from '../ProviderContext';
 
 /* Mock the API client used by useProviderHealth */
-const mockGetModelConfigs = jest.fn();
-jest.mock('@/api', () => ({
+const mockGetModelConfigs = vi.fn();
+vi.mock('@/lib/api', () => ({
   apiClient: {
     getModelConfigs: (...args: unknown[]) => mockGetModelConfigs(...args),
   },
 }));
 
 const Probe = () => {
-  const { providers, selectedProvider, models, providerConfigs, providerError } = useProvider();
+  const {
+    providers,
+    selectedProvider,
+    selectedModel,
+    models,
+    loadingProviders,
+    loadingModels,
+    providerError,
+    setLoadingProviders,
+    setLoadingModels,
+    setSelectedProvider,
+    setSelectedModel,
+    updateProviders,
+    updateModels,
+  } = useProvider();
   return (
     <div>
       <div data-testid="providers">{providers.join(',')}</div>
       <div data-testid="selected-provider">{selectedProvider}</div>
+      <div data-testid="selected-model">{selectedModel}</div>
       <div data-testid="models">{models.join(',')}</div>
-      <div data-testid="config-keys">{Array.from(providerConfigs.keys()).join(',')}</div>
+      <div data-testid="loading-providers">{String(loadingProviders)}</div>
+      <div data-testid="loading-models">{String(loadingModels)}</div>
       <div data-testid="provider-error">{providerError || ''}</div>
+      <button data-testid="set-loading-providers" onClick={() => setLoadingProviders(true)}>
+        set loading providers
+      </button>
+      <button data-testid="set-loading-models" onClick={() => setLoadingModels(true)}>
+        set loading models
+      </button>
+      <button data-testid="set-selected-provider" onClick={() => setSelectedProvider('anthropic')}>
+        set provider
+      </button>
+      <button
+        data-testid="set-selected-model"
+        onClick={() => setSelectedModel('claude-3.5-sonnet')}
+      >
+        set model
+      </button>
+      <button
+        data-testid="update-providers"
+        onClick={() => updateProviders(['openai', 'azure-openai'])}
+      >
+        update providers
+      </button>
+      <button data-testid="update-models" onClick={() => updateModels(['gpt-4o'])}>
+        update models
+      </button>
     </div>
   );
 };
 
 describe('ProviderContext', () => {
+  let container: HTMLDivElement;
+  let root: Root;
   let queryClient: QueryClient;
 
-  const renderProbe = () => {
-    render(
-      <QueryClientProvider client={queryClient}>
-        <ProviderProvider>
-          <Probe />
-        </ProviderProvider>
-      </QueryClientProvider>,
-    );
+  const getByTestId = (testId: string): HTMLElement => {
+    const node = container.querySelector(`[data-testid="${testId}"]`);
+    if (!node) {
+      throw new Error(`Missing test node: ${testId}`);
+    }
+    return node as HTMLElement;
+  };
+
+  const waitForAssertion = async (assertion: () => void): Promise<void> => {
+    const timeoutMs = 2000;
+    const startedAt = Date.now();
+    let lastError: unknown;
+
+    while (Date.now() - startedAt < timeoutMs) {
+      try {
+        assertion();
+        return;
+      } catch (error) {
+        lastError = error;
+      }
+
+      await new Promise((resolve) => setTimeout(resolve, 20));
+    }
+
+    throw lastError ?? new Error('Timed out waiting for assertion');
   };
 
   beforeEach(() => {
-    jest.resetAllMocks();
+    vi.resetAllMocks();
     localStorage.clear();
     queryClient = new QueryClient({
       defaultOptions: { queries: { retry: false } },
     });
+    container = document.createElement('div');
+    document.body.appendChild(container);
+    root = createRoot(container);
   });
 
   afterEach(() => {
+    act(() => {
+      root.unmount();
+    });
+    container.remove();
     queryClient.clear();
   });
 
@@ -63,15 +129,23 @@ describe('ProviderContext', () => {
       source: 'configured_with_health',
     });
 
-    renderProbe();
-
-    await waitFor(() => {
-      expect(screen.getByTestId('providers').textContent).toBe('openai,ollama_gcp');
-      expect(screen.getByTestId('selected-provider').textContent).toBe('');
+    act(() => {
+      root.render(
+        <QueryClientProvider client={queryClient}>
+          <ProviderProvider>
+            <Probe />
+          </ProviderProvider>
+        </QueryClientProvider>
+      );
     });
-    expect(screen.getByTestId('models').textContent).toContain('gpt-4o-mini');
-    expect(screen.getByTestId('models').textContent).toContain('qwen2.5:3b');
-    expect(screen.getByTestId('provider-error').textContent).toBe('');
+
+    await waitForAssertion(() => {
+      expect(getByTestId('providers').textContent).toBe('openai,ollama_gcp');
+      expect(getByTestId('selected-provider').textContent).toBe('openai');
+    });
+    expect(getByTestId('models').textContent).toContain('gpt-4o-mini');
+    expect(getByTestId('models').textContent).toContain('qwen2.5:3b');
+    expect(getByTestId('provider-error').textContent).toBe('');
     expect(mockGetModelConfigs).toHaveBeenCalledTimes(1);
   });
 
@@ -81,28 +155,44 @@ describe('ProviderContext', () => {
       source: 'empty',
     });
 
-    renderProbe();
+    act(() => {
+      root.render(
+        <QueryClientProvider client={queryClient}>
+          <ProviderProvider>
+            <Probe />
+          </ProviderProvider>
+        </QueryClientProvider>
+      );
+    });
 
-    await waitFor(() => {
+    await waitForAssertion(() => {
       expect(mockGetModelConfigs).toHaveBeenCalledTimes(1);
     });
-    expect(screen.getByTestId('providers').textContent).toBe('');
-    expect(screen.getByTestId('selected-provider').textContent).toBe('');
-    expect(screen.getByTestId('models').textContent).toBe('');
-    expect(screen.getByTestId('provider-error').textContent).toBe('');
+    expect(getByTestId('providers').textContent).toBe('');
+    expect(getByTestId('selected-provider').textContent).toBe('');
+    expect(getByTestId('models').textContent).toBe('');
+    expect(getByTestId('provider-error').textContent).toBe('');
   });
 
   test('shows error when /api/models fails', async () => {
     mockGetModelConfigs.mockRejectedValue(new Error('Service Unavailable'));
 
-    renderProbe();
+    act(() => {
+      root.render(
+        <QueryClientProvider client={queryClient}>
+          <ProviderProvider>
+            <Probe />
+          </ProviderProvider>
+        </QueryClientProvider>
+      );
+    });
 
-    await waitFor(() => {
+    await waitForAssertion(() => {
       // When the query fails, providers/models should be empty
       expect(mockGetModelConfigs).toHaveBeenCalled();
     });
-    expect(screen.getByTestId('providers').textContent).toBe('');
-    expect(screen.getByTestId('models').textContent).toBe('');
+    expect(getByTestId('providers').textContent).toBe('');
+    expect(getByTestId('models').textContent).toBe('');
   });
 
   test('normalizes provider ids to backend canonical format', async () => {
@@ -117,30 +207,39 @@ describe('ProviderContext', () => {
       ],
     });
 
-    renderProbe();
-
-    await waitFor(() => {
-      expect(screen.getByTestId('providers').textContent).toBe('azure_openai');
+    act(() => {
+      root.render(
+        <QueryClientProvider client={queryClient}>
+          <ProviderProvider>
+            <Probe />
+          </ProviderProvider>
+        </QueryClientProvider>
+      );
     });
-    expect(screen.getByTestId('config-keys').textContent).toBe('azure_openai,aliyun');
-    expect(screen.getByTestId('selected-provider').textContent).toBe('');
-    expect(screen.getByTestId('provider-error').textContent).toBe('');
+
+    await waitForAssertion(() => {
+      expect(getByTestId('providers').textContent).toBe('azure_openai,aliyun');
+    });
+    expect(getByTestId('selected-provider').textContent).toBe('azure_openai');
+    expect(getByTestId('provider-error').textContent).toBe('');
   });
 
-  test('restores a stored selectable provider preference', async () => {
-    localStorage.setItem('selectedProvider', 'ollama-gcp');
-    mockGetModelConfigs.mockResolvedValue({
-      providers: [
-        { id: 'openai', health: 'healthy', is_selectable: true },
-        { id: 'ollama_gcp', health: 'healthy', is_selectable: true },
-      ],
-      models: [],
+  test('can skip loading the registry on auth-only routes', async () => {
+    act(() => {
+      root.render(
+        <QueryClientProvider client={queryClient}>
+          <ProviderProvider enableRegistry={false}>
+            <Probe />
+          </ProviderProvider>
+        </QueryClientProvider>
+      );
     });
 
-    renderProbe();
-
-    await waitFor(() => {
-      expect(screen.getByTestId('selected-provider').textContent).toBe('ollama_gcp');
+    await waitForAssertion(() => {
+      expect(getByTestId('providers').textContent).toBe('');
+      expect(getByTestId('models').textContent).toBe('');
     });
+    expect(mockGetModelConfigs).not.toHaveBeenCalled();
+    expect(getByTestId('provider-error').textContent).toBe('');
   });
 });

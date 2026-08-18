@@ -9,6 +9,13 @@ import {
   type AuthSessionSnapshot,
 } from '../../lib/auth-state';
 
+const pendingSession: AuthSessionSnapshot = {
+  token: null,
+  user: null,
+  isAuthenticated: false,
+  isHydrated: false,
+};
+
 const emptySession: AuthSessionSnapshot = {
   token: null,
   user: null,
@@ -26,7 +33,7 @@ export const useAuthSession = () => {
     staleTime: 60_000,
   });
 
-  const session = authQuery.data ?? emptySession;
+  const session = authQuery.data ?? pendingSession;
 
   const logout = useCallback(async () => {
     await clearAuthSessionState();

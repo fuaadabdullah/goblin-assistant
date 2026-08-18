@@ -9,9 +9,9 @@ in the goblin-assistant backend.
 from .base import (
     SecretAdapter,
     SecretAdapterError,
+    SecretBackendError,
     SecretNotFoundError,
     SecretUnauthorizedError,
-    SecretBackendError,
     SecretValidationError,
 )
 from .env_adapter import EnvAdapter

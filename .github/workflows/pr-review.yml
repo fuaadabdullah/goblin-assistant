@@ -5,6 +5,11 @@ on:
     types: [opened, synchronize, reopened]
     branches: [main, develop]
 
+# Cancel any in-progress review when a new push arrives — only pay for the final state.
+concurrency:
+  group: ai-review-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
 permissions:
   contents: read
   pull-requests: write
@@ -13,6 +18,7 @@ jobs:
   ai-review:
     name: AI Code Review
     runs-on: ubuntu-latest
+    if: github.event.pull_request.draft == false
     steps:
       - uses: actions/checkout@v4
         with:

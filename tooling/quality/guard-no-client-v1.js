@@ -7,6 +7,8 @@ const repoRoot = path.resolve(__dirname, '..', '..');
 const targetDirs = ['apps/web/src'];
 const validExtensions = new Set(['.ts', '.tsx', '.js', '.jsx']);
 const ignoredDirs = new Set(['node_modules', '.next', 'dist', 'coverage', '.git']);
+const ignoredPathSegments = new Set(['__tests__', 'test']);
+const ignoredFilePatterns = [/\.test\.[jt]sx?$/, /\.spec\.[jt]sx?$/];
 
 const findings = [];
 
@@ -15,12 +17,17 @@ const walk = (dirPath) => {
 
   for (const entry of entries) {
     const fullPath = path.join(dirPath, entry.name);
+    const relativePath = path.relative(repoRoot, fullPath);
 
     if (entry.isDirectory()) {
-      if (ignoredDirs.has(entry.name)) {
+      if (ignoredDirs.has(entry.name) || ignoredPathSegments.has(entry.name)) {
         continue;
       }
       walk(fullPath);
+      continue;
+    }
+
+    if (ignoredFilePatterns.some((pattern) => pattern.test(entry.name))) {
       continue;
     }
 
@@ -41,7 +48,7 @@ const walk = (dirPath) => {
 
       if (line.includes('/v1/')) {
         findings.push({
-          file: path.relative(repoRoot, fullPath),
+          file: relativePath,
           line: index + 1,
           value: line.trim(),
         });

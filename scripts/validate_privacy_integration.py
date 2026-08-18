@@ -186,9 +186,9 @@ def main():
     # Check documentation
     print("6️⃣  Checking Documentation...")
     docs_to_check = [
-        ("docs/PRIVACY_IMPLEMENTATION.md", "Implementation guide"),
-        ("docs/PRIVACY_INTEGRATION_GUIDE.md", "Integration guide"),
-        ("docs/runbooks/PRIVACY_QUICK_REFERENCE.md", "Quick reference"),
+        ("docs/security/PRIVACY_IMPLEMENTATION.md", "Implementation guide"),
+        ("docs/security/PRIVACY_INTEGRATION_GUIDE.md", "Integration guide"),
+        ("docs/operations/PRIVACY_QUICK_REFERENCE.md", "Quick reference"),
     ]
 
     for filepath, desc in docs_to_check:

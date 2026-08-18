@@ -1,22 +1,42 @@
 import { useQuery } from '@tanstack/react-query';
-import { apiClient } from '@/api';
+import { apiClient } from '@/lib/api';
 import { queryKeys } from '../lib/query-keys';
-import type { HealthStatus } from '../types/api';
+import type { HealthComponent, HealthStatus, ServiceHealth } from '../types/api';
 
 interface HealthData {
   status: 'healthy' | 'warnings' | 'degraded' | 'down';
-  latency_ms?: number;
-  last_check?: string;
-  services?: Record<string, string>;
+  latency_ms?: number | undefined;
+  last_check?: string | undefined;
+  services?: Record<string, string> | undefined;
 }
 
-const mapOverallStatus = (
-  overall: HealthStatus['overall'] | HealthStatus['status'] | undefined
-): HealthData['status'] => {
-  if (overall === 'healthy') return 'healthy';
-  if (overall === 'warnings') return 'warnings';
+const mapOverallStatus = (overall: string | undefined): HealthData['status'] => {
+  if (overall === 'healthy' || overall === 'ok') return 'healthy';
+  if (overall === 'warnings' || overall === 'warning') return 'warnings';
   if (overall === 'degraded') return 'degraded';
   return 'down';
+};
+
+const getOverallHealth = (data: HealthStatus): string | undefined => {
+  return data.overall ?? data.status;
+};
+
+type HealthStatusEntry = { status?: string | undefined };
+
+const normalizeHealthServices = (
+  source?: Record<string, HealthComponent | ServiceHealth | undefined>
+): Record<string, HealthStatusEntry> => {
+  if (!source) return {};
+  return Object.entries(source).reduce<Record<string, HealthStatusEntry>>((acc, [key, value]) => {
+    acc[key] = { status: value?.status };
+    return acc;
+  }, {});
+};
+
+const getHealthServices = (data: HealthStatus): Record<string, HealthStatusEntry> => {
+  const services = normalizeHealthServices(data.services);
+  if (Object.keys(services).length > 0) return services;
+  return normalizeHealthServices(data.components);
 };
 
 interface HealthHeaderProps {
@@ -32,17 +52,16 @@ const createHealthData = async (): Promise<HealthData> => {
     const data = await apiClient.getAllHealth();
     const latency = Date.now() - startTime;
 
-    const services = data.components || data.services || {};
-    const criticalServices = ['api', 'routing', 'database', 'redis', 'cache'];
-    const serviceStatuses = Object.entries(services)
-      .filter(([service]) => criticalServices.includes(service))
-      .map(([, service]) => service?.status);
-    let status: HealthData['status'] = mapOverallStatus(data.overall ?? data.status);
+    const services = getHealthServices(data);
+    const serviceStatuses = Object.values(services).map((service) => service?.status);
+    let status: HealthData['status'] = mapOverallStatus(getOverallHealth(data));
 
-    if (serviceStatuses.some((s) => s === 'unhealthy')) {
+    if (serviceStatuses.some((s) => s === 'unhealthy' || s === 'down' || s === 'error')) {
       status = 'down';
     } else if (serviceStatuses.some((s) => s === 'degraded')) {
       status = 'degraded';
+    } else if (status === 'healthy' && serviceStatuses.some((s) => s === 'unknown')) {
+      status = 'warnings';
     }
 
     return {
@@ -52,7 +71,7 @@ const createHealthData = async (): Promise<HealthData> => {
       services: Object.entries(services).reduce<NonNullable<HealthData['services']>>(
         (acc, [key, value]) => {
           if (typeof value?.status === 'string') {
-            acc[key as keyof HealthData['services']] = value.status;
+            acc[key] = value.status;
           }
           return acc;
         },
@@ -98,18 +117,18 @@ const HealthHeader = ({ className = '', compact = false }: HealthHeaderProps) =>
       label: 'OK',
       icon: '✓',
     },
-    degraded: {
-      bg: 'bg-warning/20',
-      text: 'text-warning',
-      dot: 'bg-warning',
-      label: 'Degraded',
-      icon: '⚠',
-    },
     warnings: {
       bg: 'bg-warning/20',
       text: 'text-warning',
       dot: 'bg-warning',
       label: 'Warnings',
+      icon: '⚠',
+    },
+    degraded: {
+      bg: 'bg-warning/20',
+      text: 'text-warning',
+      dot: 'bg-warning',
+      label: 'Degraded',
       icon: '⚠',
     },
     down: {

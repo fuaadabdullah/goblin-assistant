@@ -29,6 +29,15 @@
       "review_cadence": "On debt remediation or architecture review"
     },
     {
+      "path": "docs/gap-analysis.md",
+      "classification": "canonical",
+      "purpose": "Comprehensive gap and incompletion analysis across backend, frontend, tests, CI, and architecture",
+      "owner": "Architecture + platform maintainers",
+      "audience": ["Engineers", "reviewers", "agents"],
+      "generation": "handwritten",
+      "review_cadence": "On architecture review or when critical gaps are closed"
+    },
+    {
       "path_prefix": "docs/architecture/",
       "classification": "canonical",
       "purpose": "System boundaries, standards, and architecture governance",

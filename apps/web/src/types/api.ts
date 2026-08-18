@@ -51,11 +51,12 @@ export interface PasskeyVerificationChallenge {
 export interface User {
   id: string;
   email: string;
-  role?: string;
-  roles?: string[];
-  token_version?: number;
-  created_at?: string;
-  updated_at?: string;
+  name?: string | undefined;
+  role?: string | undefined;
+  roles?: string[] | undefined;
+  token_version?: number | undefined;
+  created_at?: string | undefined;
+  updated_at?: string | undefined;
 }
 
 export interface LoginRequest {
@@ -113,8 +114,8 @@ export interface EmergencyLogoutResponse {
 
 export interface ValidateTokenResponse {
   valid: boolean;
-  user?: User;
-  expires_in?: number;
+  user?: User | undefined;
+  expires_in?: number | undefined;
 }
 
 export interface AuthError {
@@ -128,30 +129,27 @@ export interface AuthError {
 // ============================================================================
 
 export interface ServiceHealth {
-  status: 'healthy' | 'degraded' | 'unhealthy' | 'warnings' | 'unknown';
+  status: 'healthy' | 'degraded' | 'unhealthy';
   latency?: number;
   message?: string;
 }
 
+export interface HealthComponent {
+  status: string;
+  [key: string]: unknown;
+}
+
 export interface HealthStatus {
-  overall?: 'healthy' | 'degraded' | 'unhealthy' | 'warnings';
-  status?: 'healthy' | 'degraded' | 'unhealthy' | 'warnings';
-  timestamp: string;
-  services?: {
-    database?: ServiceHealth;
-    cache?: ServiceHealth;
-    api?: ServiceHealth;
-    [key: string]: ServiceHealth | undefined;
-  };
-  components?: {
-    database?: ServiceHealth;
-    redis?: ServiceHealth;
-    api?: ServiceHealth;
-    routing?: ServiceHealth;
-    providers?: ServiceHealth;
-    security?: ServiceHealth;
-    [key: string]: ServiceHealth | undefined;
-  };
+  /** Legacy health contract retained for older consumers. */
+  overall?: 'healthy' | 'degraded' | 'unhealthy' | 'warnings' | 'unknown';
+  /** Canonical backend field. */
+  status?: 'healthy' | 'degraded' | 'unhealthy' | 'warnings' | 'unknown';
+  timestamp?: string;
+  /** Legacy component container. */
+  services?: Record<string, ServiceHealth | undefined>;
+  /** Canonical backend component container. */
+  components?: Record<string, HealthComponent | undefined>;
+  version?: string;
   uptime?: number;
 }
 
@@ -281,7 +279,11 @@ export function isApiSuccess<T>(response: unknown): response is ApiSuccessRespon
 }
 
 export function isHealthStatus(data: unknown): data is HealthStatus {
-  return typeof data === 'object' && data !== null && 'overall' in data && 'services' in data;
+  if (typeof data !== 'object' || data === null) return false;
+  const value = data as Record<string, unknown>;
+  const hasLegacyShape = typeof value['overall'] === 'string' && 'services' in value;
+  const hasCanonicalShape = typeof value['status'] === 'string' && 'components' in value;
+  return hasLegacyShape || hasCanonicalShape;
 }
 
 export function isOrchestrationPlan(data: unknown): data is OrchestrationPlan {
@@ -349,18 +351,27 @@ export interface RuntimeClient {
   parseOrchestration(text: string, defaultGoblin?: string): Promise<OrchestrationPlan>;
   onTaskStream(callback: (payload: StreamChunk) => void): Promise<void>;
   // Authentication methods
-  login(email: string, password: string): Promise<{ token: string; user: User }>;
-  register(email: string, password: string, name?: string): Promise<{ token: string; user: User }>;
+  login(email: string, password: string): Promise<LoginResponse>;
+  register(email: string, password: string, name?: string): Promise<LoginResponse>;
   logout(): Promise<void>;
-  validateToken(token: string): Promise<{ valid: boolean; user?: User }>;
+  validateToken(token?: string): Promise<{ valid: boolean; user?: User | undefined }>;
 }
 
 export interface GoblinStatus {
   id: string;
   name: string;
   title: string;
-  status: string;
-  guild?: string;
+  status: 'active' | 'inactive';
+  active: boolean;
+  guild?: string | undefined;
+  description?: string | undefined;
+}
+
+export interface GoblinListResponse {
+  items: GoblinStatus[];
+  total: number;
+  limit: number;
+  order: 'catalog_order';
 }
 
 export interface ProviderSettings {
@@ -374,17 +385,17 @@ export interface ProviderSettings {
 export interface ProviderModelOption {
   name: string;
   provider: string;
-  health?: string;
+  health?: string | undefined;
   isSelectable: boolean;
-  healthReason?: string | null;
+  healthReason?: string | null | undefined;
 }
 
 export interface ProviderTestResponse {
   success: boolean;
   message: string;
   latency: number;
-  response?: string;
-  model_used?: string;
+  response?: string | undefined;
+  model_used?: string | undefined;
 }
 
 export interface ModelSettings {
@@ -418,11 +429,21 @@ export interface GoblinResponse {
 
 export interface MemoryEntry {
   id: string;
-  goblin: string;
+  goblin?: string | undefined;
+  goblin_id?: string | undefined;
   task: string;
   response: string;
-  timestamp: number;
-  kpis?: string;
+  timestamp: number | string;
+  status?: 'completed' | 'failed' | null | undefined;
+  kpis?: string | null | undefined;
+}
+
+export interface GoblinHistoryResponse {
+  items: MemoryEntry[];
+  total: number;
+  limit: number;
+  next_cursor?: string | null | undefined;
+  order: 'newest_first';
 }
 
 export interface CostSummary {
@@ -433,10 +454,12 @@ export interface CostSummary {
 }
 
 export interface ModelUsageRollup {
-  usage_date: string;
   provider: string;
   model: string;
+  usage_date: string;
   request_count: number;
+  prompt_tokens: number;
+  completion_tokens: number;
   total_tokens: number;
   total_cost_usd: number;
   total_latency_ms: number;
@@ -444,9 +467,13 @@ export interface ModelUsageRollup {
 
 export interface ModelUsageRollupSummary {
   request_count: number;
-  total_tokens: number;
   total_cost_usd: number;
   total_latency_ms: number;
+}
+
+export interface ModelUsageRollupResponse {
+  rows: ModelUsageRollup[];
+  summary: ModelUsageRollupSummary;
 }
 
 export interface OrchestrationStep {
@@ -470,22 +497,34 @@ export interface StreamEvent {
 }
 
 export interface GoblinStats {
-  total_tasks?: number;
-  total_cost?: number;
-  avg_duration_ms?: number;
-  success_rate?: number;
-  [key: string]: unknown; // Allow additional dynamic properties
+  goblin_id: string;
+  window: {
+    hours: number;
+    started_at: string;
+    ended_at: string;
+  };
+  counters: {
+    total_tasks: number;
+    completed_tasks?: number | null | undefined;
+    failed_tasks?: number | null | undefined;
+  };
+  latency: {
+    average_duration_ms?: number | null | undefined;
+    p95_duration_ms?: number | null | undefined;
+  };
+  success_rate?: number | null | undefined;
+  total_cost?: number | null | undefined;
 }
 
 export interface StreamChunk {
-  content?: string;
+  content?: string | undefined;
   result?: unknown;
-  done?: boolean;
+  done?: boolean | undefined;
   [key: string]: unknown; // Allow additional dynamic properties
 }
 
 export interface TaskResponse {
-  taskId?: string;
+  taskId?: string | undefined;
   result?: unknown;
   [key: string]: unknown; // Allow additional dynamic properties
 }

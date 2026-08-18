@@ -1,6 +1,5 @@
 import React from 'react';
 import { render, screen, fireEvent } from '@testing-library/react';
-import '@testing-library/jest-dom';
 import { GhostButton } from '../goblin-buttons/GhostButton';
 
 describe('GhostButton', () => {
@@ -15,7 +14,7 @@ describe('GhostButton', () => {
   });
 
   it('calls onClick when clicked', () => {
-    const onClick = jest.fn();
+    const onClick = vi.fn();
     render(<GhostButton onClick={onClick}>Click</GhostButton>);
     fireEvent.click(screen.getByRole('button'));
     expect(onClick).toHaveBeenCalledTimes(1);

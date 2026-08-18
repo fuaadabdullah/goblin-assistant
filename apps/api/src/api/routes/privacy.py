@@ -12,28 +12,41 @@ Usage:
     GET /api/privacy/data-summary - Get summary of stored data
 """
 
-from fastapi import APIRouter, Depends, HTTPException, BackgroundTasks
-from typing import Optional, Dict, Any
-from datetime import datetime
 import importlib.util
 import logging
 import os
+from datetime import datetime
+from typing import Any, Dict
 
-from ..services.sanitization import mask_sensitive
-from ..services.telemetry import log_conversation_event, EventType
+from fastapi import APIRouter, Depends, HTTPException
+from sqlalchemy.ext.asyncio import AsyncSession
 
 # Import auth dependencies
 from ..auth.router import get_current_user
-
+from ..services.platform_settings_service import (
+    SaaSSettingsService,
+    count_api_keys,
+    count_feature_flags,
+    count_notifications,
+    count_support_tickets,
+    delete_platform_user_data,
+    delete_user_conversations,
+    list_user_conversations,
+)
+from ..services.platform_settings_service import (
+    get_platform_db as get_db,
+)
+from ..services.platform_settings_service import (
+    update_rag_consent as update_stored_rag_consent,
+)
+from ..services.telemetry import EventType, log_conversation_event
 
 logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/api/privacy", tags=["privacy", "gdpr", "ccpa"])
 
 _VECTOR_STORE_DEFAULT = (
-    "false"
-    if os.getenv("ENVIRONMENT", "development").lower() == "production"
-    else "true"
+    "false" if os.getenv("ENVIRONMENT", "development").lower() == "production" else "true"
 )
 VECTOR_STORE_AVAILABLE = (
     os.getenv("ENABLE_VECTOR_STORE", _VECTOR_STORE_DEFAULT).strip().lower()
@@ -41,6 +54,13 @@ VECTOR_STORE_AVAILABLE = (
     and importlib.util.find_spec("chromadb") is not None
 )
 _vector_store = None
+
+
+def _detail_message(prefix: str, error: Exception) -> str:
+    message = str(error).strip()
+    if message:
+        return f"{prefix}: {message}"
+    return f"{prefix}: Request failed"
 
 
 def _get_vector_store():
@@ -63,6 +83,7 @@ async def export_user_data(
     include_vectors: bool = True,
     include_conversations: bool = True,
     include_preferences: bool = True,
+    db: AsyncSession = Depends(get_db),
 ) -> Dict[str, Any]:
     """
     Export all user data (GDPR Article 20 - Right to Data Portability).
@@ -97,7 +118,7 @@ async def export_user_data(
             }
         }
     """
-    logger.info(f"Data export requested by user: {user_id}")
+    logger.info("Data export requested by user: %s", user_id)
 
     export_data = {
         "user_id": user_id,
@@ -118,21 +139,20 @@ async def export_user_data(
                     "documents": vector_export["documents"],
                 }
                 logger.info(
-                    f"Exported {vector_export['document_count']} vectors for user {user_id}"
+                    "Exported %s vectors for user %s", vector_export["document_count"], user_id
                 )
             else:
                 export_data["data"]["vectors"] = {
-                    "error": vector_export.get("error", "Unknown error")
+                    "error": vector_export.get("error")
+                    or vector_export.get("detail")
+                    or vector_export.get("message")
+                    or "Export unavailable",
                 }
 
         # Export conversations from database
         if include_conversations:
             try:
-                from ..storage.conversations import DatabaseConversationStore
-                conversation_store = DatabaseConversationStore()
-                conversations = await conversation_store.list_conversations(
-                    user_id=user_id, limit=1000
-                )
+                conversations = await list_user_conversations(user_id, limit=1000)
                 export_data["data"]["conversations"] = {
                     "count": len(conversations),
                     "conversations": [
@@ -155,43 +175,71 @@ async def export_user_data(
                         for conv in conversations
                     ],
                 }
-                logger.info(f"Exported {len(conversations)} conversations for user {user_id}")
+                logger.info("Exported %s conversations for user %s", len(conversations), user_id)
             except Exception as conv_error:
-                logger.error(f"Conversation export error: {conv_error}")
+                logger.error("Conversation export error: %s", conv_error)
                 export_data["data"]["conversations"] = {
-                    "error": str(conv_error),
+                    "error": _detail_message("Conversation export failed", conv_error),
                     "count": 0,
                 }
 
         # Export user preferences from database
         if include_preferences:
             try:
-                from ..storage.preferences_service import preferences_service
-                prefs = await preferences_service.get_preferences(user_id)
-                export_data["data"]["preferences"] = prefs if prefs else {}
-                logger.info(f"Exported preferences for user {user_id}")
+                service = SaaSSettingsService(db)
+                export_data["data"]["preferences"] = (
+                    await service.get_account_preferences(user_id) or {}
+                )
+                export_data["data"]["chat_settings"] = (
+                    await service.get_chat_settings(user_id) or {}
+                )
+                logger.info("Exported preferences for user %s", user_id)
             except Exception as pref_error:
-                logger.error(f"Preferences export error: {pref_error}")
+                logger.error("Preferences export error: %s", pref_error)
                 export_data["data"]["preferences"] = {
-                    "error": str(pref_error),
+                    "error": _detail_message("Preferences export failed", pref_error),
                 }
+
+        try:
+            export_data["data"]["support_tickets"] = {
+                "count": await count_support_tickets(db, user_id)
+            }
+            export_data["data"]["notifications"] = {"count": await count_notifications(db, user_id)}
+            export_data["data"]["api_keys"] = {"count": await count_api_keys(db, user_id)}
+            export_data["data"]["feature_flags"] = {"count": await count_feature_flags(db)}
+        except Exception as extra_error:
+            logger.error("Extra settings export error: %s", extra_error)
+
+        # Export memory records
+        try:
+            from ..services.memory_core import memory_core_service
+
+            memory_export = await memory_core_service.export_user_memory(user_id)
+            if memory_export:
+                export_data["data"]["memory"] = {
+                    "count": len(memory_export),
+                    "records": memory_export,
+                }
+                logger.info("Exported %s memory records for user %s", len(memory_export), user_id)
+        except Exception as memory_error:
+            logger.error("Memory export error: %s", memory_error)
 
         # Log privacy export
         total_items = export_data["data"].get("vectors", {}).get("document_count", 0)
-        logger.info(f"Privacy export completed: {total_items} items for user {user_id}")
+        logger.info("Privacy export completed: %s items for user %s", total_items, user_id)
 
         return export_data
 
     except Exception as e:
-        logger.error(f"Export failed for user {user_id}: {e}")
-        raise HTTPException(status_code=500, detail=f"Export failed: {str(e)}")
+        logger.error("Export failed for user %s: %s", user_id, e)
+        raise HTTPException(status_code=500, detail=_detail_message("Export failed", e))
 
 
 @router.delete("/delete", response_model=Dict[str, Any])
 async def delete_user_data(
-    background_tasks: BackgroundTasks,
     user_id: str = Depends(get_current_user),
     confirm: bool = False,
+    db: AsyncSession = Depends(get_db),
 ) -> Dict[str, Any]:
     """
     Delete all user data (GDPR Article 17 - Right to Erasure).
@@ -230,9 +278,18 @@ async def delete_user_data(
             detail="Deletion requires confirmation. Set confirm=true to proceed.",
         )
 
-    logger.warning(f"Data deletion requested by user: {user_id}")
+    logger.warning("Data deletion requested by user: %s", user_id)
 
-    deleted_counts = {"vectors": 0, "conversations": 0, "preferences": 0}
+    deleted_counts = {
+        "vectors": 0,
+        "conversations": 0,
+        "preferences": 0,
+        "chat_settings": 0,
+        "api_keys": 0,
+        "notifications": 0,
+        "support_tickets": 0,
+        "memory": 0,
+    }
 
     try:
         vector_store = _get_vector_store()
@@ -242,43 +299,52 @@ async def delete_user_data(
             vector_delete = await vector_store.delete_user_data(user_id)
             if vector_delete["success"]:
                 deleted_counts["vectors"] = vector_delete["deleted_count"]
-                logger.info(
-                    f"Deleted {deleted_counts['vectors']} vectors for user {user_id}"
-                )
+                logger.info("Deleted %s vectors for user %s", deleted_counts["vectors"], user_id)
             else:
-                logger.error(f"Vector deletion failed: {vector_delete.get('error')}")
+                logger.error("Vector deletion failed: %s", vector_delete.get("error"))
         else:
             logger.info("Vector store not available, skipping vector deletion")
 
         # Delete conversations from database
         try:
-            from ..storage.conversations import DatabaseConversationStore
-            conversation_store = DatabaseConversationStore()
-            conversations = await conversation_store.list_conversations(
-                user_id=user_id, limit=10000
+            deleted_counts["conversations"] = await delete_user_conversations(user_id)
+            logger.info(
+                "Deleted %s conversations for user %s",
+                deleted_counts["conversations"],
+                user_id,
             )
-            for conv in conversations:
-                await conversation_store.delete_conversation(conv.conversation_id)
-            deleted_counts["conversations"] = len(conversations)
-            logger.info(f"Deleted {len(conversations)} conversations for user {user_id}")
         except Exception as conv_error:
-            logger.error(f"Conversation deletion error: {conv_error}")
+            logger.error("Conversation deletion error: %s", conv_error)
 
         # Delete user preferences from database
         try:
-            from ..storage.preferences_service import preferences_service
-            prefs_deleted = await preferences_service.delete_preferences(user_id)
-            deleted_counts["preferences"] = 1 if prefs_deleted else 0
-            logger.info(f"Deleted preferences for user {user_id}")
+            deleted = await delete_platform_user_data(db, user_id)
+            deleted_counts.update(deleted)
+            deleted_counts["preferences"] = deleted.get("preferences", 0)
+            logger.info("Deleted preferences for user %s", user_id)
         except Exception as pref_error:
-            logger.error(f"Preferences deletion error: {pref_error}")
+            logger.error("Preferences deletion error: %s", pref_error)
+
+        # Delete memory records from the unified memory core
+        try:
+            from ..services.memory_core import memory_core_service
+
+            memory_deleted = await memory_core_service.delete_user_memory(user_id)
+            deleted_counts["memory"] = memory_deleted.get("memory_records", 0)
+            logger.info("Deleted memory records for user %s", user_id)
+        except Exception as memory_error:
+            logger.error("Memory deletion error: %s", memory_error)
 
         # Log privacy event
         total_deleted = sum(deleted_counts.values())
         log_conversation_event(
             event_type=EventType.DATA_DELETE,
             user_id=user_id,
-            metadata={"action": "full_deletion", "item_count": total_deleted, "success": True},
+            metadata={
+                "action": "full_deletion",
+                "item_count": total_deleted,
+                "success": True,
+            },
         )
 
         return {
@@ -290,17 +356,20 @@ async def delete_user_data(
         }
 
     except Exception as e:
-        logger.error(f"Deletion failed for user {user_id}: {e}")
+        logger.error("Deletion failed for user %s: %s", user_id, e)
         log_conversation_event(
             event_type=EventType.DATA_DELETE,
             user_id=user_id,
             metadata={"action": "full_deletion", "success": False},
         )
-        raise HTTPException(status_code=500, detail=f"Deletion failed: {str(e)}")
+        raise HTTPException(status_code=500, detail=_detail_message("Deletion failed", e))
 
 
 @router.get("/data-summary", response_model=Dict[str, Any])
-async def get_data_summary(user_id: str = Depends(get_current_user)) -> Dict[str, Any]:
+async def get_data_summary(
+    user_id: str = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+) -> Dict[str, Any]:
     """
     Get summary of stored user data (GDPR Article 15 - Right of Access).
 
@@ -327,7 +396,7 @@ async def get_data_summary(user_id: str = Depends(get_current_user)) -> Dict[str
             }
         }
     """
-    logger.info(f"Data summary requested by user: {user_id}")
+    logger.info("Data summary requested by user: %s", user_id)
 
     try:
         vector_store = _get_vector_store()
@@ -339,24 +408,41 @@ async def get_data_summary(user_id: str = Depends(get_current_user)) -> Dict[str
 
         # Get conversation count from database
         try:
-            from ..storage.conversations import DatabaseConversationStore
-            conversation_store = DatabaseConversationStore()
-            conversations = await conversation_store.list_conversations(
-                user_id=user_id, limit=10000
-            )
-            conversation_count = len(conversations)
+            conversation_count = len(await list_user_conversations(user_id, limit=10000))
         except Exception as conv_error:
-            logger.error(f"Conversation count error: {conv_error}")
+            logger.error("Conversation count error: %s", conv_error)
             conversation_count = 0
 
         # Get preferences from database
         try:
-            from ..storage.preferences_service import preferences_service
-            prefs = await preferences_service.get_preferences(user_id)
-            has_preferences = prefs is not None
+            service = SaaSSettingsService(db)
+            has_preferences = (await service.get_account_preferences(user_id)) is not None
         except Exception as pref_error:
-            logger.error(f"Preferences fetch error: {pref_error}")
+            logger.error("Preferences fetch error: %s", pref_error)
             has_preferences = False
+
+        try:
+            chat_settings_exists = (
+                await SaaSSettingsService(db).get_chat_settings(user_id)
+            ) is not None
+        except Exception as chat_error:
+            logger.error("Chat settings fetch error: %s", chat_error)
+            chat_settings_exists = False
+
+        try:
+            support_ticket_count = await count_support_tickets(db, user_id)
+        except Exception as support_error:
+            logger.error("Support ticket count error: %s", support_error)
+            support_ticket_count = 0
+
+        try:
+            from ..services.memory_core import memory_core_service
+
+            memory_records = await memory_core_service.export_user_memory(user_id)
+            memory_count = len(memory_records)
+        except Exception as memory_error:
+            logger.error("Memory count error: %s", memory_error)
+            memory_count = 0
 
         summary = {
             "user_id": user_id,
@@ -374,6 +460,18 @@ async def get_data_summary(user_id: str = Depends(get_current_user)) -> Dict[str
                     "exists": has_preferences,
                     "description": "User settings and preferences",
                 },
+                "chat_settings": {
+                    "exists": chat_settings_exists,
+                    "description": "Chat defaults and generation controls",
+                },
+                "support_tickets": {
+                    "count": support_ticket_count,
+                    "description": "Submitted support requests",
+                },
+                "memory": {
+                    "count": memory_count,
+                    "description": "Typed long-term memory records",
+                },
             },
             "privacy_notice": "You have the right to export or delete all your data at any time.",
         }
@@ -381,9 +479,10 @@ async def get_data_summary(user_id: str = Depends(get_current_user)) -> Dict[str
         return summary
 
     except Exception as e:
-        logger.error(f"Summary failed for user {user_id}: {e}")
+        logger.error("Summary failed for user %s: %s", user_id, e)
         raise HTTPException(
-            status_code=500, detail=f"Failed to generate summary: {str(e)}"
+            status_code=500,
+            detail=_detail_message("Failed to generate summary", e),
         )
 
 
@@ -404,48 +503,54 @@ async def update_rag_consent(
     Returns:
         Dictionary with consent status
     """
-    logger.info(f"RAG consent update by user {user_id}: {consent_given}")
+    logger.info("RAG consent update by user %s: %s", user_id, consent_given)
 
     try:
         vector_store = _get_vector_store()
 
         # Store consent in database user_preferences table
         try:
-            from ..storage.preferences_service import preferences_service
-            await preferences_service.update_rag_consent(user_id, consent_given)
-            logger.info(f"Stored RAG consent for user {user_id}: {consent_given}")
+            await update_stored_rag_consent(user_id, consent_given)
+            logger.info("Stored RAG consent for user %s: %s", user_id, consent_given)
         except Exception as consent_error:
-            logger.error(f"Failed to store RAG consent: {consent_error}")
+            logger.error("Failed to store RAG consent: %s", consent_error)
             raise HTTPException(
                 status_code=500,
-                detail=f"Failed to store consent: {str(consent_error)}",
+                detail=_detail_message("Failed to store consent", consent_error),
             )
 
         if not consent_given:
             # If consent revoked, delete existing data
             if vector_store is not None:
                 delete_result = await vector_store.delete_user_data(user_id)
-                logger.info(
-                    f"Consent revoked - deleted {delete_result['deleted_count']} docs"
-                )
+                logger.info("Consent revoked - deleted %s docs", delete_result["deleted_count"])
             else:
+                logger.info("Vector store not available, skipping deletion on consent revoke")
+
+            try:
+                from ..services.memory_core import memory_core_service
+
+                memory_delete = await memory_core_service.delete_user_memory(user_id)
                 logger.info(
-                    "Vector store not available, skipping deletion on consent revoke"
+                    "Consent revoked - deleted %s memory records",
+                    memory_delete.get("memory_records", 0),
                 )
+            except Exception as memory_error:
+                logger.error("Memory deletion on consent revoke failed: %s", memory_error)
 
         return {
             "success": True,
             "user_id": user_id,
             "consent_given": consent_given,
             "updated_at": datetime.utcnow().isoformat(),
-            "message": "Consent updated"
-            if consent_given
-            else "Consent revoked and data deleted",
+            "message": ("Consent updated" if consent_given else "Consent revoked and data deleted"),
         }
 
+    except HTTPException:
+        raise
     except Exception as e:
-        logger.error(f"Consent update failed for user {user_id}: {e}")
-        raise HTTPException(status_code=500, detail=f"Consent update failed: {str(e)}")
+        logger.error("Consent update failed for user %s: %s", user_id, e)
+        raise HTTPException(status_code=500, detail=_detail_message("Consent update failed", e))
 
 
 # Export router

@@ -1,21 +1,31 @@
 import React from 'react';
 import { render, screen } from '@testing-library/react';
 
-jest.mock('../SearchHeader', () => function MockSearchHeader({ title }: { title: string }) {
-  return <div data-testid="search-header">{title}</div>;
-});
-jest.mock('../SearchQuickQueries', () => function MockQuickQueries() {
-  return <div data-testid="search-quick-queries" />;
-});
-jest.mock('../SearchForm', () => function MockSearchForm() {
-  return <div data-testid="search-form" />;
-});
-jest.mock('../SearchResultsList', () => function MockResults() {
-  return <div data-testid="search-results-list" />;
-});
-jest.mock('../../../../components/Seo', () => function MockSeo() {
-  return null;
-});
+vi.mock('../SearchHeader', () => ({
+  default: function MockSearchHeader({ title }: { title: string }) {
+    return <div data-testid="search-header">{title}</div>;
+  },
+}));
+vi.mock('../SearchQuickQueries', () => ({
+  default: function MockQuickQueries() {
+    return <div data-testid="search-quick-queries" />;
+  },
+}));
+vi.mock('../SearchForm', () => ({
+  default: function MockSearchForm() {
+    return <div data-testid="search-form" />;
+  },
+}));
+vi.mock('../SearchResultsList', () => ({
+  default: function MockResults({ query }: { query?: string }) {
+    return <div data-testid="search-results-list">{query}</div>;
+  },
+}));
+vi.mock('../../../../components/Seo', () => ({
+  default: function MockSeo() {
+    return null;
+  },
+}));
 
 import SearchView from '../SearchView';
 import type { SearchState } from '../../../search/hooks/useSearchResults';
@@ -33,12 +43,12 @@ function makeState(overrides: Partial<SearchState> = {}): SearchState {
     collectionsLoading: false,
     collectionsData: [],
     queryRef: { current: null } as RefObject<HTMLInputElement>,
-    setQuery: jest.fn(),
-    setScope: jest.fn(),
-    setSelectedCollection: jest.fn(),
-    handleSearch: jest.fn(),
-    handleQuickQuery: jest.fn(),
-    handleClear: jest.fn(),
+    setQuery: vi.fn(),
+    setScope: vi.fn(),
+    setSelectedCollection: vi.fn(),
+    handleSearch: vi.fn(),
+    handleQuickQuery: vi.fn(),
+    handleClear: vi.fn(),
     ...overrides,
   };
 }
@@ -75,9 +85,12 @@ describe('SearchView', () => {
   });
 
   it('shows results list when results are present', () => {
-    const results = [{ id: '1', content: 'test', score: 0.9, metadata: {} }] as SearchState['results'];
+    const results = [
+      { id: '1', content: 'test', score: 0.9, metadata: {} },
+    ] as SearchState['results'];
     render(<SearchView state={makeState({ query: 'test', results })} />);
     expect(screen.getByTestId('search-results-list')).toBeInTheDocument();
+    expect(screen.getByTestId('search-results-list')).toHaveTextContent('test');
   });
 
   it('does not show empty state when searching', () => {

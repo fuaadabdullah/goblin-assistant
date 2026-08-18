@@ -171,7 +171,7 @@ CONVERSATION_TTL_HOURS=1
 - [ ] RLS audit: `bash scripts/ops/supabase_rls_check.sh`
 - [ ] Deploy migrations: `supabase db push`
 - [ ] Deploy worker: `wrangler deploy`
-- [ ] Deploy backend: `fly deploy`
+- [ ] Deploy backend through the Render production workflow.
 - [ ] Test endpoints
 - [ ] Monitor Datadog
 

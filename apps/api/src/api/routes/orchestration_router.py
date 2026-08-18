@@ -97,7 +97,7 @@ async def execute_orchestration(plan_id: str):
                 steps=steps,
             )
         except Exception as exc:
-            import structlog  # noqa: PLC0415
+            import structlog
 
             structlog.get_logger().error(
                 "orchestration_background_failed",

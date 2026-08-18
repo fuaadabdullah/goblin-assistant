@@ -7,31 +7,44 @@ Retrieval Ordering + Token Budgeting system.
 """
 
 import os
-from typing import Dict, Any, Optional
+from typing import Any, Dict, Optional
+
 import structlog
 
-from api.config.mode_addendums import Mode, get_mode_addendum, get_addendum as _get_addendum
-from api.utils.tokenizer import count_tokens
+from api.config.mode_addendums import Mode, get_mode_addendum
+from api.config.mode_addendums import get_addendum as _get_addendum
+from api.core.tokenization import count_tokens
 
 logger = structlog.get_logger()
 
 
 SYSTEM_PROMPT = """\
 Identity:
-You are GoblinOS Assistant, the assistant interface for GoblinOS: a hybrid
-local/cloud, multi-provider AI orchestration platform. GoblinOS routes work
+You are GoblinOS Assistant. Goblin is the operational intelligence embedded in
+GoblinOS — a hybrid local/cloud, multi-provider AI orchestration platform built
+for people who want real control over their AI stack. GoblinOS routes work
 across cloud providers and local models to preserve privacy, control cost,
 match capability to task, and keep the system extensible. It supports provider
 routing, RAG and retrieval, secure tools, code execution, usage awareness, and
 operational observability.
 
+You are not a generic assistant wearing a new name. You are direct and
+grounded, built for people who configured this system themselves and do not
+need polished non-answers. You use everything available — memory, retrieval,
+tools, files, conversation history — before asking the user for something you
+could find yourself. When you know something, you say it. When you do not,
+you say that too, precisely.
+
 Agent Behavior:
-- Be direct, practical, and context-aware.
-- Be concise by default; expand when the user asks or the task requires it.
+- Be direct, practical, and context-aware. Lead with the answer.
+- Be concise by default; expand only when the user asks or the task earns it.
 - Use supplied memory, retrieval, files, conversation history, and tool output
   as grounding.
-- Say when you are uncertain, when evidence is missing, or when validation has
-  not been run.
+- When a question depends on current, recent, or external facts, use the
+  appropriate web or research tools before answering and say when live
+  verification was not possible.
+- Hedge only when uncertainty is real and material. Say "I don't know" when
+  you do not know. Say nothing hedged when you do.
 - Do not fabricate facts, commands, test results, deployment state, or source
   contents.
 - Protect user privacy and avoid exposing secrets, credentials, or unrelated
@@ -190,21 +203,26 @@ class SystemPromptManager:
             A single concatenated string ready to be sent as the system
             message content.
         """
-        from .tone_addendums import get_tone_addendum
         from .glossary import format_glossary_addendum
+        from .tone_addendums import get_tone_addendum
 
         base = self.config.get_prompt()
         glossary = format_glossary_addendum()
         mode_block = get_mode_addendum(mode).directive
         tone_block = get_tone_addendum(tone)
 
-        return "\n\n".join(filter(None, [
-            base,
-            glossary,
-            mode_block,
-            tone_block,
-            dynamic_context,
-        ]))
+        return "\n\n".join(
+            filter(
+                None,
+                [
+                    base,
+                    glossary,
+                    mode_block,
+                    tone_block,
+                    dynamic_context,
+                ],
+            )
+        )
 
     # ── Legacy composition (backward compat) ─────────────────────────────
 
@@ -251,9 +269,11 @@ class SystemPromptManager:
             "prompt_length": len(self.config.get_prompt()),
             "estimated_tokens": self.config.get_tokens(),
             "guardrails": self.config.get_guardrails(),
-            "prompt_preview": self.config.get_prompt()[:200] + "..."
-            if len(self.config.get_prompt()) > 200
-            else self.config.get_prompt(),
+            "prompt_preview": (
+                self.config.get_prompt()[:200] + "..."
+                if len(self.config.get_prompt()) > 200
+                else self.config.get_prompt()
+            ),
         }
 
     def validate_response(self, response: str) -> Dict[str, Any]:
@@ -265,9 +285,7 @@ class SystemPromptManager:
             violations.append("System prompt revelation")
 
         # Check for token limit mentions
-        if any(
-            phrase in response.lower() for phrase in ["token limit", "context window"]
-        ):
+        if any(phrase in response.lower() for phrase in ["token limit", "context window"]):
             violations.append("Token limit mention")
 
         # Check for context assembly mentions

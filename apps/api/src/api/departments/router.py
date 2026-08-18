@@ -33,7 +33,7 @@ def _get_learned_router():
     global _learned_router
     if _learned_router is None:
         try:
-            from api.routing.learned_department_router import (  # noqa: PLC0415
+            from api.routing.learned_department_router import (
                 learned_department_router,
             )
 

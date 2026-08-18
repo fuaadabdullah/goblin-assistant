@@ -224,7 +224,7 @@ class MemoryEntriesService:
             query_embedding = await self.embedding_service.embed_text(query)
         except EmbeddingProviderUnavailableError:
             query_embedding = []
-        except Exception as exc:  # noqa: BLE001
+        except Exception as exc:
             logger.warning("memory_entry_query_embedding_failed", error=str(exc))
             query_embedding = []
 
@@ -325,7 +325,7 @@ class MemoryEntriesService:
             async with get_readonly_db_context() as session:
                 result = await session.execute(query_sql, params)
                 rows = result.fetchall()
-        except Exception as exc:  # noqa: BLE001
+        except Exception as exc:
             logger.warning("memory_entry_vector_search_failed", error=str(exc))
             return []
 
@@ -400,7 +400,7 @@ class MemoryEntriesService:
             async with get_readonly_db_context() as session:
                 result = await session.execute(query_sql, params)
                 rows = result.fetchall()
-        except Exception as exc:  # noqa: BLE001
+        except Exception as exc:
             logger.warning("memory_entry_sql_search_failed", error=str(exc))
             return []
 

@@ -1,1 +1,0 @@
-export { useSupportForm } from './useSupportForm';

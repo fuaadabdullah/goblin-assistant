@@ -5,12 +5,13 @@ Executes user code in a secure, isolated environment inside Docker containers
 """
 
 import os
-import sys
-import subprocess
-import signal
-import time
 import resource
-from typing import List, Optional
+import shlex
+import signal
+import subprocess
+import sys
+from typing import List
+
 
 def setup_resource_limits():
     """Set resource limits to prevent abuse"""
@@ -31,13 +32,14 @@ def setup_resource_limits():
     # Limit number of open files
     resource.setrlimit(resource.RLIMIT_NOFILE, (64, 64))
 
+
 def get_command_for_language(language: str, runtime_args: List[str]) -> List[str]:
     """Get the appropriate command for executing code in the given language"""
 
     base_commands = {
         "python": ["python", "/work/main.py"],
         "javascript": ["node", "/work/main.js"],
-        "bash": ["bash", "/work/script.sh"]
+        "bash": ["bash", "/work/script.sh"],
     }
 
     if language not in base_commands:
@@ -49,6 +51,7 @@ def get_command_for_language(language: str, runtime_args: List[str]) -> List[str
         command.extend(runtime_args)
 
     return command
+
 
 def execute_with_timeout(cmd: List[str], timeout: int) -> int:
     """Execute command with timeout and return exit code"""
@@ -68,7 +71,8 @@ def execute_with_timeout(cmd: List[str], timeout: int) -> int:
             stdout=sys.stdout,
             stderr=sys.stderr,
             timeout=timeout + 1,  # Add 1 second buffer
-            cwd="/work"
+            cwd="/work",
+            check=False,
         )
         return result.returncode
 
@@ -87,6 +91,7 @@ def execute_with_timeout(cmd: List[str], timeout: int) -> int:
     finally:
         # Cancel the alarm
         signal.alarm(0)
+
 
 def validate_environment():
     """Validate that the execution environment is secure"""
@@ -110,12 +115,13 @@ def validate_environment():
     # Verify we're in a container (check for .dockerenv or container-specific files)
     container_indicators = [
         "/.dockerenv",
-        "/proc/1/cgroup"  # Should contain 'docker' or 'containerd'
+        "/proc/1/cgroup",  # Should contain 'docker' or 'containerd'
     ]
 
     is_container = any(os.path.exists(indicator) for indicator in container_indicators)
     if not is_container:
         print("Warning: Not running in a container environment", file=sys.stderr)
+
 
 def main():
     """Main execution function"""
@@ -136,7 +142,7 @@ def main():
         sys.exit(1)
 
     # Parse runtime arguments
-    args_list = runtime_args.split() if runtime_args else []
+    args_list = shlex.split(runtime_args) if runtime_args else []
 
     # Get the command to execute
     command = get_command_for_language(language, args_list)
@@ -153,6 +159,7 @@ def main():
 
     # Exit with the same code as the executed command
     sys.exit(exit_code)
+
 
 if __name__ == "__main__":
     main()

@@ -1,12 +1,7 @@
 import React from 'react';
 import { render, screen } from '@testing-library/react';
 
-jest.mock('next/head', () =>
-  function MockHead({ children }: { children: React.ReactNode }) {
-    return <>{children}</>;
-  }
-);
-jest.mock('next/navigation', () => ({
+vi.mock('next/navigation', () => ({
   usePathname: () => '/test-page',
 }));
 

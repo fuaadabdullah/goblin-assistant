@@ -1,4 +1,4 @@
-import { describe, it, expect } from '@jest/globals';
+import { describe, it, expect } from 'vitest';
 import {
   isApiError,
   isApiSuccess,
@@ -81,6 +81,16 @@ describe('API type guards', () => {
         overall: 'degraded',
         timestamp: '2026-02-18T10:00:00Z',
         services: {},
+      };
+
+      expect(isHealthStatus(health)).toBe(true);
+    });
+
+    it('accepts the canonical backend status/components shape', () => {
+      const health = {
+        status: 'healthy',
+        timestamp: '2026-07-18T02:00:00Z',
+        components: { api: { status: 'healthy' } },
       };
 
       expect(isHealthStatus(health)).toBe(true);

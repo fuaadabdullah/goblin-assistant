@@ -22,7 +22,7 @@ async def create_rovo_task(
     if resolved_provider != "rovo_dev":
         return None
     try:
-        from ...storage.tasks import task_store  # noqa: PLC0415
+        from ...storage.tasks import task_store
 
         task_id = str(uuid.uuid4())
         await task_store.save_task(
@@ -54,7 +54,7 @@ async def update_rovo_task(task_id: Optional[str], provider_response: Any) -> No
     if task_id is None:
         return
     try:
-        from ...storage.tasks import task_store  # noqa: PLC0415
+        from ...storage.tasks import task_store
 
         is_ok = isinstance(provider_response, dict) and provider_response.get("ok")
         await task_store.update_task_status(

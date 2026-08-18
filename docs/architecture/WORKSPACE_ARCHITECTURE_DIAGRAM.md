@@ -24,7 +24,7 @@ graph TB
         subgraph "infra/"
             DOCKER["docker-compose.yml<br/>Docker Compose orchestration"]
             INFRA_DOCKER["infra/docker-compose.yml<br/>Infrastructure compose overlay"]
-            K8S["Kubernetes manifests (via /infra)"]
+            RENDER["render.yaml<br/>Canonical backend deployment"]
         end
 
         subgraph "scripts/"
@@ -234,8 +234,8 @@ graph TB
 ```mermaid
 graph TB
     subgraph "Deployment Targets"
-        CLOUD["Cloud Deployment<br/>Traditional (Kamatera / Render / Fly.io)"]
-        K8S_DEPLOY["Kubernetes Deployment<br/>GKE / EKS / AKS"]
+        RENDER_DEPLOY["Render Backend<br/>render.yaml"]
+        VERCEL_DEPLOY["Vercel Frontend<br/>apps/web/vercel.json"]
         LOCAL_DEPLOY["Local Development<br/>Docker Compose"]
     end
 
@@ -482,7 +482,6 @@ goblin-assistant/
 ├── supabase/                             # Supabase migrations
 ├── config/                               # Provider configs
 ├── docker-compose.yml                    # Docker orchestration
-├── docker-compose.redis.yml              # Redis-only compose
 ├── render.yaml                           # Render deployment
 ├── Makefile                              # Canonical entrypoints
 ├── pnpm-workspace.yaml                   # Workspace definition

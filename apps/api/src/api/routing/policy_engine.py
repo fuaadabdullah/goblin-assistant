@@ -7,7 +7,7 @@ import os
 import sys
 import uuid
 from pathlib import Path
-from typing import Dict, List, Optional
+from typing import Any, Dict, List, Optional
 
 import structlog
 
@@ -90,19 +90,23 @@ class HybridRouter:
         max_latency = max(latencies.values()) or 1.0
         max_cost = max(costs.values()) or 1.0
 
-        breakdown: Dict[str, Dict[str, float]] = {}
+        breakdown: Dict[str, Dict[str, Any]] = {}
 
         def score(provider_id: str) -> float:
             stats = routing_registry.get(provider_id)
             normalized_latency = latencies[provider_id] / max_latency
             normalized_cost = costs[provider_id] / max_cost if max_cost else 0.0
+            cost_favorable = bool(getattr(stats, "is_cost_favorable", False))
+            effective_cost = normalized_cost * 0.75 if cost_favorable else normalized_cost
             reliability = max(stats.success_rate, 0.1)
             final = (
-                (1 - self.cost_weight) * normalized_latency + self.cost_weight * normalized_cost
+                (1 - self.cost_weight) * normalized_latency + self.cost_weight * effective_cost
             ) / reliability
             breakdown[provider_id] = {
                 "normalized_latency": round(normalized_latency, 4),
                 "normalized_cost": round(normalized_cost, 4),
+                "cost_favorable": cost_favorable,
+                "effective_cost": round(effective_cost, 4),
                 "reliability": round(reliability, 4),
                 "final_score": round(final, 6),
             }

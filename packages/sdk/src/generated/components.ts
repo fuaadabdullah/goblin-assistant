@@ -328,14 +328,15 @@ export interface components {
             glossary?: {
                 [key: string]: string;
             } | null;
+            legacy_mode?: components["schemas"]["ModeKey"] | null;
             /** Message */
             message: string;
             /** Metadata */
             metadata?: {
                 [key: string]: unknown;
             } | null;
-            /** Mode */
-            mode?: string | null;
+            /** @default chat */
+            mode: components["schemas"]["Mode"];
             /** Model */
             model?: string | null;
             /** Provider */
@@ -459,7 +460,10 @@ export interface components {
              */
             stream: boolean | null;
         };
-        /** EstimateTokensResponse */
+        /**
+         * EstimateTokensResponse
+         * @description Estimated token/cost breakdown for a chat request.
+         */
         EstimateTokensResponse: {
             /**
              * Degraded Mode
@@ -681,6 +685,152 @@ export interface components {
             reason?: string | null;
             task?: components["schemas"]["AgentTaskRecord"] | null;
         };
+        /** GoblinHistoryEntry */
+        GoblinHistoryEntry: {
+            /** Goblin Id */
+            goblin_id: string;
+            /** Id */
+            id: string;
+            /** Kpis */
+            kpis?: string | null;
+            /** Response */
+            response: string;
+            /** Status */
+            status?: ("completed" | "failed") | null;
+            /** Task */
+            task: string;
+            /**
+             * Timestamp
+             * Format: date-time
+             */
+            timestamp: string;
+        };
+        /** GoblinHistoryResponse */
+        GoblinHistoryResponse: {
+            /** Items */
+            items: components["schemas"]["GoblinHistoryEntry"][];
+            /** Limit */
+            limit: number;
+            /** Next Cursor */
+            next_cursor?: string | null;
+            /**
+             * Order
+             * @default newest_first
+             * @constant
+             */
+            order: "newest_first";
+            /** Total */
+            total: number;
+        };
+        /** GoblinHistorySuccessResponse */
+        GoblinHistorySuccessResponse: {
+            data: components["schemas"]["GoblinHistoryResponse"];
+            /**
+             * Success
+             * @default true
+             */
+            success: boolean;
+        };
+        /** GoblinListResponse */
+        GoblinListResponse: {
+            /** Items */
+            items: components["schemas"]["GoblinStatus"][];
+            /** Limit */
+            limit: number;
+            /**
+             * Order
+             * @default catalog_order
+             * @constant
+             */
+            order: "catalog_order";
+            /** Total */
+            total: number;
+        };
+        /** GoblinListSuccessResponse */
+        GoblinListSuccessResponse: {
+            data: components["schemas"]["GoblinListResponse"];
+            /**
+             * Success
+             * @default true
+             */
+            success: boolean;
+        };
+        /** GoblinStatsCounters */
+        GoblinStatsCounters: {
+            /** Completed Tasks */
+            completed_tasks?: number | null;
+            /** Failed Tasks */
+            failed_tasks?: number | null;
+            /** Total Tasks */
+            total_tasks: number;
+        };
+        /** GoblinStatsLatency */
+        GoblinStatsLatency: {
+            /** Average Duration Ms */
+            average_duration_ms?: number | null;
+            /** P95 Duration Ms */
+            p95_duration_ms?: number | null;
+        };
+        /** GoblinStatsResponse */
+        GoblinStatsResponse: {
+            counters: components["schemas"]["GoblinStatsCounters"];
+            /** Goblin Id */
+            goblin_id: string;
+            latency: components["schemas"]["GoblinStatsLatency"];
+            /** Success Rate */
+            success_rate?: number | null;
+            /** Total Cost */
+            total_cost?: number | null;
+            window: components["schemas"]["GoblinStatsWindow"];
+        };
+        /** GoblinStatsSuccessResponse */
+        GoblinStatsSuccessResponse: {
+            data: components["schemas"]["GoblinStatsResponse"];
+            /**
+             * Success
+             * @default true
+             */
+            success: boolean;
+        };
+        /** GoblinStatsWindow */
+        GoblinStatsWindow: {
+            /**
+             * Ended At
+             * Format: date-time
+             */
+            ended_at: string;
+            /** Hours */
+            hours: number;
+            /**
+             * Started At
+             * Format: date-time
+             */
+            started_at: string;
+        };
+        /** GoblinStatus */
+        GoblinStatus: {
+            /**
+             * Active
+             * @default true
+             */
+            active: boolean;
+            /** Description */
+            description?: string | null;
+            /** Guild */
+            guild?: string | null;
+            /** Id */
+            id: string;
+            /** Name */
+            name: string;
+            /**
+             * Status
+             * @default active
+             * @enum {string}
+             */
+            status: "active" | "inactive";
+            /** Title */
+            title: string;
+        };
         /** GoogleAuthCallback */
         GoogleAuthCallback: {
             /** Code */
@@ -769,7 +919,10 @@ export interface components {
             status: string;
         };
         JsonValue: unknown;
-        /** LayerEstimate */
+        /**
+         * LayerEstimate
+         * @description Token estimate for a single context-assembly layer.
+         */
         LayerEstimate: {
             /** Name */
             name: string;
@@ -792,6 +945,29 @@ export interface components {
              */
             max_chars: number;
         };
+        /**
+         * Mode
+         * @description Canonical user-facing assistant mode.
+         *
+         *     Sits between glossary and tone in the prompt composition stack.
+         *     Exported via OpenAPI → SDK codegen. Never rename a value without
+         *     a deprecation cycle.
+         * @enum {string}
+         */
+        Mode: "chat" | "code" | "research" | "education" | "finance" | "agent";
+        /**
+         * ModeKey
+         * @description Legacy explicit task mode, set by the caller.
+         *
+         *     Exported via OpenAPI → SDK codegen so the contract reaches the frontend.
+         *     Never rename a value without a deprecation cycle.
+         *
+         *     Deprecated in favor of ``Mode`` (canonical v2 registry).  This enum and
+         *     ``get_addendum()`` are preserved for backward compatibility while the
+         *     chat schemas transition to the new ``Mode`` field.
+         * @enum {string}
+         */
+        ModeKey: "GENERAL_ASSISTANT" | "ARCHITECT" | "TRADING_FORGE" | "OPERATOR" | "RESEARCH" | "DEEP_RESEARCH" | "DEBUG" | "CODE_REVIEW" | "EDUCATION";
         /** ModelSettings */
         ModelSettings: {
             /**
@@ -1249,14 +1425,17 @@ export interface components {
             glossary?: {
                 [key: string]: string;
             } | null;
+            /** Language */
+            language?: string | null;
+            legacy_mode?: components["schemas"]["ModeKey"] | null;
             /** Message */
             message: string;
             /** Metadata */
             metadata?: {
                 [key: string]: unknown;
             } | null;
-            /** Mode */
-            mode?: string | null;
+            /** @default chat */
+            mode: components["schemas"]["Mode"];
             /** Model */
             model?: string | null;
             /** Provider */
@@ -1275,14 +1454,15 @@ export interface components {
             /** Cost Usd */
             cost_usd?: number | null;
             /** Department */
-            department: string;
-            /**
-             * Department Reason
-             * @default
-             */
-            department_reason: string;
+            department?: string | null;
+            /** Department Reason */
+            department_reason?: string | null;
             /** Message Id */
             message_id: string;
+            /** Model */
+            model?: string | null;
+            /** Provider */
+            provider?: string | null;
             /** Response */
             response: string;
             /** Timestamp */
@@ -1370,8 +1550,8 @@ export interface components {
             metadata?: {
                 [key: string]: unknown;
             } | null;
-            /** Mode */
-            mode?: string | null;
+            /** @default chat */
+            mode: components["schemas"]["Mode"];
             /** Model */
             model?: string | null;
             /** Provider */

@@ -1,86 +1,73 @@
-jest.mock('../env', () => ({
-  env: {
-    turnstile: {
-      chat: '0x_test_chat_key',
-      login: '0x_test_login_key',
-      search: '',
-    },
-  },
-}));
-jest.mock('../../utils/dev-log', () => ({
-  devError: jest.fn(),
-  devWarn: jest.fn(),
-}));
-
-import { TURNSTILE_CONFIG, useTurnstile } from '../turnstile';
-import { devWarn } from '../../utils/dev-log';
-
 describe('turnstile config', () => {
-  it('has chat config enabled with correct key', () => {
-    expect(TURNSTILE_CONFIG.chat.enabled).toBe(true);
-    expect(TURNSTILE_CONFIG.chat.siteKey).toBe('0x_test_chat_key');
-  });
+  const originalEnv = process.env;
+  const devWarnMock = vi.fn();
+  const devErrorMock = vi.fn();
 
-  it('has login config enabled', () => {
-    expect(TURNSTILE_CONFIG.login.enabled).toBe(true);
-    expect(TURNSTILE_CONFIG.login.siteKey).toBe('0x_test_login_key');
-  });
-
-  it('has search config disabled when key is empty', () => {
-    expect(TURNSTILE_CONFIG.search.enabled).toBe(false);
-  });
-
-  it('useTurnstile returns config for chat', () => {
-    const config = useTurnstile('chat');
-    expect(config.siteKey).toBe('0x_test_chat_key');
-    expect(config.enabled).toBe(true);
-  });
-
-  it('useTurnstile warns when not configured', () => {
-    useTurnstile('search');
-    expect(devWarn).toHaveBeenCalledWith(expect.stringContaining('search'));
-  });
-});
-
-describe('turnstile key validation', () => {
-  it('rejects keys not starting with 0x', () => {
-    // Re-import with bad key - done by inline mock override
-    jest.resetModules();
-    jest.mock('../env', () => ({
+  const loadTurnstileModule = async (
+    overrides: Partial<{
+      chat: string;
+      login: string;
+      search: string;
+    }> = {}
+  ) => {
+    vi.doMock('../env', () => ({
       env: {
         turnstile: {
-          chat: 'invalid_key',
-          login: '',
-          search: '',
+          chat: '0xchat-key',
+          login: '0xlogin-key',
+          search: '0xsearch-key',
+          ...overrides,
         },
       },
     }));
-    jest.mock('../../utils/dev-log', () => ({
-      devError: jest.fn(),
-      devWarn: jest.fn(),
+
+    vi.doMock('../../utils/dev-log', () => ({
+      devWarn: devWarnMock,
+      devError: devErrorMock,
     }));
-    expect(() => {
-      require('../turnstile');
-    }).toThrow('Invalid Turnstile configuration');
+
+    return import('../turnstile') as Promise<typeof import('../turnstile')>;
+  };
+
+  beforeEach(() => {
+    vi.resetModules();
+    vi.clearAllMocks();
+    process.env = { ...originalEnv };
   });
 
-  it('rejects keys containing secret', () => {
-    jest.resetModules();
-    jest.mock('../env', () => ({
-      env: {
-        turnstile: {
-          chat: '0x_secret_key',
-          login: '',
-          search: '',
-        },
-      },
-    }));
-    jest.mock('../../utils/dev-log', () => ({
-      devError: jest.fn(),
-      devWarn: jest.fn(),
-    }));
-    expect(() => {
-      require('../turnstile');
-    }).toThrow('Security violation: Secret key in client');
+  afterEach(() => {
+    process.env = originalEnv;
+    vi.unmock('../env');
+    vi.unmock('../../utils/dev-log');
+  });
+
+  it('builds config for enabled contexts', async () => {
+    const { TURNSTILE_CONFIG, useTurnstile } = await loadTurnstileModule();
+
+    expect(TURNSTILE_CONFIG.chat).toEqual({ siteKey: '0xchat-key', enabled: true });
+    expect(TURNSTILE_CONFIG.login).toEqual({ siteKey: '0xlogin-key', enabled: true });
+    expect(TURNSTILE_CONFIG.search).toEqual({ siteKey: '0xsearch-key', enabled: true });
+    expect(useTurnstile('login')).toEqual({ siteKey: '0xlogin-key', enabled: true });
+    expect(devWarnMock).not.toHaveBeenCalled();
+  });
+
+  it('warns when a context is disabled', async () => {
+    const { useTurnstile } = await loadTurnstileModule({ login: '' });
+    expect(useTurnstile('login')).toEqual({ siteKey: '', enabled: false });
+    expect(devWarnMock).toHaveBeenCalledWith('Turnstile not configured for login');
+  });
+
+  it('throws when a key has an invalid format', async () => {
+    await expect(loadTurnstileModule({ chat: 'bad-key' })).rejects.toThrow(
+      'Invalid Turnstile configuration'
+    );
+    expect(devErrorMock).toHaveBeenCalled();
+  });
+
+  it('throws when a secret key leaks into client config', async () => {
+    await expect(loadTurnstileModule({ search: '0xsecret-value' })).rejects.toThrow(
+      'Security violation: Secret key in client'
+    );
+    expect(devErrorMock).toHaveBeenCalled();
   });
 });

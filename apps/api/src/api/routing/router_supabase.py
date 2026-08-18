@@ -29,7 +29,7 @@ async def _async_mirror(
     hourly_spend: Dict[str, Dict[str, float]],
 ) -> None:
     try:
-        from ..providers.supabase_events import (  # noqa: PLC0415
+        from ..providers.supabase_events import (
             _ENABLED,
             _HEADERS,
             _REST,
@@ -92,7 +92,7 @@ async def restore_from_supabase(
     if stats:
         return
     try:
-        from ..providers.supabase_events import (  # noqa: PLC0415
+        from ..providers.supabase_events import (
             _ENABLED,
             _HEADERS,
             _REST,

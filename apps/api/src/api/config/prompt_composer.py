@@ -49,6 +49,8 @@ def compose_system_prompt(
             addendum (tone is optional).
         mode: One of `ModeKey` values (legacy). Unknown behaviour is controlled
             by `unknown_mode` — either "skip" (silently omit) or "raise".
+        mode: One of `ModeKey` values. Unknown behaviour is controlled by
+            `unknown_mode` — either "skip" (silently omit) or "raise".
         learning_boost: If True, append `EDUCATION_SYSTEM_ADDENDUM` to the
             mode addendum slot for LEARNING-classified messages.
         request_glossary: Per-request glossary override (frontend-supplied).

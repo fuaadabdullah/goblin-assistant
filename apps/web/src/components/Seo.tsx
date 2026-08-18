@@ -1,4 +1,5 @@
-import Head from 'next/head';
+'use client';
+
 import { usePathname } from 'next/navigation';
 
 interface SeoProps {
@@ -32,19 +33,18 @@ export default function Seo({
   ogImagePath = '/goblin-logo.png',
 }: SeoProps) {
   const pathname = usePathname();
-  const siteUrl = cleanSiteUrl(process.env.NEXT_PUBLIC_SITE_URL);
+  const siteUrl = cleanSiteUrl(process.env['NEXT_PUBLIC_SITE_URL']);
   const desc = description || DEFAULT_DESCRIPTION;
 
   const canonicalUrl =
-    canonical ||
-    toAbsoluteUrl(siteUrl, pathname || '/');
+    canonical || toAbsoluteUrl(siteUrl, (pathname || '/').split('#')[0]!.split('?')[0]! || '/');
 
   const ogImageUrl = toAbsoluteUrl(siteUrl, ogImagePath);
 
   const fullTitle = title.includes('Goblin Assistant') ? title : `${title} | Goblin Assistant`;
 
   return (
-    <Head>
+    <>
       <title>{fullTitle}</title>
       <meta name="description" content={desc} />
       <link rel="canonical" href={canonicalUrl} />
@@ -62,7 +62,6 @@ export default function Seo({
       <meta name="twitter:title" content={fullTitle} />
       <meta name="twitter:description" content={desc} />
       <meta name="twitter:image" content={ogImageUrl} />
-    </Head>
+    </>
   );
 }
-

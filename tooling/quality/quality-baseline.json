@@ -1,0 +1,16 @@
+{
+  "metrics": {
+    "web_assertions": 80,
+    "web_eslint_suppression_files": 10,
+    "python_noqa_files": 120,
+    "xfail_tests": 0,
+    "suppression_justified_interop_typing_issue": 100,
+    "suppression_framework_limitation": 0,
+    "suppression_legacy_debt": 66,
+    "suppression_temporary_suppression": 0,
+    "suppression_clearly_removable": 197,
+    "architecture_boundary_violations": 0,
+    "architecture_capability_violations": 0,
+    "architecture_total_violations": 0
+  }
+}

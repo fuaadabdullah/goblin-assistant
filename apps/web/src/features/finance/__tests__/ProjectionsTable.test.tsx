@@ -1,6 +1,5 @@
 import React from 'react';
 import { render, screen } from '@testing-library/react';
-import '@testing-library/jest-dom';
 import ProjectionsTable from '../ProjectionsTable';
 
 describe('ProjectionsTable', () => {
@@ -11,40 +10,29 @@ describe('ProjectionsTable', () => {
   ];
 
   const mockConfig = {
-    rowKey: 'provider',
-    columns: ['q1', 'q2', 'q3', 'q4'],
+    columns: [
+      { key: 'provider', label: 'Provider' },
+      { key: 'q1', label: 'q1' },
+      { key: 'q2', label: 'q2' },
+      { key: 'q3', label: 'q3' },
+      { key: 'q4', label: 'q4' },
+    ],
   };
 
   it('renders table', () => {
     const { container } = render(
-      <ProjectionsTable
-        title="Cost Projections"
-        data={mockData}
-        config={mockConfig}
-      />
+      <ProjectionsTable title="Cost Projections" data={mockData} config={mockConfig} />
     );
     expect(container.querySelector('table')).toBeInTheDocument();
   });
 
   it('renders title', () => {
-    render(
-      <ProjectionsTable
-        title="Cost Projections"
-        data={mockData}
-        config={mockConfig}
-      />
-    );
+    render(<ProjectionsTable title="Cost Projections" data={mockData} config={mockConfig} />);
     expect(screen.getByText('Cost Projections')).toBeInTheDocument();
   });
 
   it('renders column headers', () => {
-    render(
-      <ProjectionsTable
-        title="Test"
-        data={mockData}
-        config={mockConfig}
-      />
-    );
+    render(<ProjectionsTable title="Test" data={mockData} config={mockConfig} />);
     expect(screen.getByText('q1')).toBeInTheDocument();
     expect(screen.getByText('q2')).toBeInTheDocument();
     expect(screen.getByText('q3')).toBeInTheDocument();
@@ -52,25 +40,13 @@ describe('ProjectionsTable', () => {
   });
 
   it('renders row data', () => {
-    render(
-      <ProjectionsTable
-        title="Test"
-        data={mockData}
-        config={mockConfig}
-      />
-    );
+    render(<ProjectionsTable title="Test" data={mockData} config={mockConfig} />);
     expect(screen.getByText('OpenAI')).toBeInTheDocument();
     expect(screen.getByText('Anthropic')).toBeInTheDocument();
   });
 
   it('renders with empty data', () => {
-    render(
-      <ProjectionsTable
-        title="Test"
-        data={[]}
-        config={mockConfig}
-      />
-    );
+    render(<ProjectionsTable title="Test" data={[]} config={mockConfig} />);
     expect(screen.getByText('Test')).toBeInTheDocument();
   });
 });

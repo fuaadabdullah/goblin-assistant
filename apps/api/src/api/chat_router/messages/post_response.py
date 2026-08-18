@@ -24,6 +24,7 @@ async def persist_assistant_message(
     conversation_id: str,
     current_user: Any,
     response_content: str,
+    goblin_id: str,
     used_provider: str,
     used_model: Optional[str],
     context_metadata: Dict[str, Any],
@@ -34,6 +35,8 @@ async def persist_assistant_message(
     """Persist the assistant message (best-effort) and return its message id."""
     response_message_id = str(uuid.uuid4())
     assistant_metadata: Dict[str, Any] = {
+        "goblin_id": goblin_id,
+        "goblin": goblin_id,
         "provider": used_provider,
         "model": used_model,
         "message_id": response_message_id,
@@ -82,6 +85,7 @@ async def record_completion_artifacts(
     conversation_id: str,
     user_message_id: Optional[str],
     response_message_id: str,
+    goblin_id: Optional[str] = None,
     sanitized_message: str,
     response_content: str,
     used_provider: str,
@@ -102,6 +106,7 @@ async def record_completion_artifacts(
             assistant_message=response_content,
             provider=used_provider,
             model=used_model,
+            goblin_id=goblin_id,
             usage=usage,
             cost_usd=cost_usd,
         )
@@ -120,6 +125,7 @@ async def record_completion_artifacts(
             message_id=response_message_id,
             provider=used_provider,
             model=used_model,
+            goblin_id=goblin_id,
             usage=usage,
             cost_usd=cost_usd,
             correlation_id=correlation_id,
@@ -144,9 +150,9 @@ def schedule_preference_learning(
 ) -> None:
     """Fire-and-forget preference learning update."""
     try:
-        import asyncio as _asyncio  # noqa: PLC0415
+        import asyncio as _asyncio
 
-        from api.services.preference_learner import preference_learner as _pl  # noqa: PLC0415
+        from api.services.preference_learner import preference_learner as _pl
 
         _pref_task = _asyncio.create_task(
             _pl.record_response(
@@ -199,9 +205,9 @@ def schedule_feedback_outcomes(
 ) -> None:
     """Fire-and-forget feedback-outcome tracking (continuation + provider switch)."""
     try:
-        import asyncio as _asyncio  # noqa: PLC0415
+        import asyncio as _asyncio
 
-        from api.services.feedback_service import (  # noqa: PLC0415
+        from api.services.feedback_service import (
             FeedbackContext,
             feedback_service,
         )

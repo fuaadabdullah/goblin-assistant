@@ -1,20 +1,12 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-echo "[$(date '+%Y-%m-%d %H:%M:%S')] Starting Goblin backend entrypoint"
-# Print a quick directory listing and python path for debugging
-echo "Working dir: $(pwd)"
-ls -la /app || true
-if [ -d /app/apps/api/src/api ]; then
-  echo "api package directory exists"
-  ls -la /app/apps/api/src/api || true
-else
-  echo "WARNING: /app/apps/api/src/api not found"
-fi
-python -c 'import sys; print("PYTHONPATH:", sys.path)'
-python -c 'import importlib, pkgutil; print("Installed packages sample:", [p.name for p in pkgutil.iter_modules()][:10])'
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+REPO_ROOT="$(cd "${SCRIPT_DIR}/../.." && pwd)"
 
-# Start uvicorn with the expected import
-# NOTE: this uses PYTHONPATH=apps/api/src uvicorn api.main:app — change if your package name differs
-cd /app
-exec PYTHONPATH=apps/api/src uvicorn api.main:app --host 0.0.0.0 --port ${PORT:-8001}
+echo "[$(date '+%Y-%m-%d %H:%M:%S')] Starting Goblin backend entrypoint"
+echo "Repo root: ${REPO_ROOT}"
+
+cd "${REPO_ROOT}"
+exec env PYTHONPATH="${REPO_ROOT}/apps/api/src" \
+  uvicorn api.main:app --host 0.0.0.0 --port "${PORT:-8001}"

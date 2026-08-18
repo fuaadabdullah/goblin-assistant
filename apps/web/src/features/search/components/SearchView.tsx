@@ -5,7 +5,9 @@ import SearchForm from './SearchForm';
 import SearchResultsList from './SearchResultsList';
 import type { SearchState } from '../hooks/useSearchResults';
 import Seo from '../../../components/Seo';
-import { EmptyState, InlineErrorState, SectionLoadingState } from '../../../components/ui';
+import { Search, FileText } from 'lucide-react';
+import { InlineErrorState, SectionLoadingState } from '../../../components/ui';
+import EmptyState from '../../../components/ui/EmptyState';
 
 interface SearchViewProps {
   /** Search state + handlers. */
@@ -14,7 +16,11 @@ interface SearchViewProps {
 
 const SearchView = ({ state }: SearchViewProps) => (
   <div className="min-h-screen bg-bg py-12 px-4">
-    <Seo title="Search" description="Audit gateway logs, trace provider routing, monitor costs and SLA compliance." robots="noindex,nofollow" />
+    <Seo
+      title="Search"
+      description="Audit gateway logs, trace provider routing, monitor costs and SLA compliance."
+      robots="noindex,nofollow"
+    />
     <main className="max-w-3xl mx-auto" id="main-content" tabIndex={-1} aria-label="Search">
       <SearchHeader
         title="Gateway Audit Log"
@@ -51,7 +57,7 @@ const SearchView = ({ state }: SearchViewProps) => (
 
       {!state.query && !state.searching && state.results.length === 0 && (
         <EmptyState
-          icon="🔍"
+          icon={<Search className="w-8 h-8" />}
           title="Search everything"
           description="Enter a query above to search documents, messages, and tasks."
         />
@@ -67,13 +73,15 @@ const SearchView = ({ state }: SearchViewProps) => (
 
       {!state.searching && !state.error && state.results.length === 0 && state.query && (
         <EmptyState
-          icon="📄"
+          icon={<FileText className="w-8 h-8" />}
           title="No results found"
           description="Try adjusting your search query or check if documents are indexed in the selected collection."
         />
       )}
 
-      {!state.searching && state.results.length > 0 && <SearchResultsList results={state.results} />}
+      {!state.searching && state.results.length > 0 && (
+        <SearchResultsList results={state.results} query={state.query} />
+      )}
     </main>
   </div>
 );

@@ -5,8 +5,8 @@ from __future__ import annotations
 
 import os
 import sys
+from importlib import import_module
 from pathlib import Path
-
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
 API_SRC_ROOT = REPO_ROOT / "apps" / "api" / "src"
@@ -17,8 +17,10 @@ if str(API_SRC_ROOT) not in sys.path:
 # set a dummy so the app can register routes for inspection without fully booting.
 os.environ.setdefault("JWT_SECRET_KEY", "check-route-lifecycle-dummy-secret")
 
-from api.core.route_lifecycle import RouteLifecycle, classify_route_lifecycle  # noqa: E402
-from api.main import app  # noqa: E402
+_route_lifecycle = import_module("api.core.route_lifecycle")
+RouteLifecycle = _route_lifecycle.RouteLifecycle
+classify_route_lifecycle = _route_lifecycle.classify_route_lifecycle
+app = import_module("api.main").app
 
 
 def main() -> int:

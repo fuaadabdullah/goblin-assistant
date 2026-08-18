@@ -15,7 +15,7 @@ const steps: Array<{ id: StartupStatus; label: string }> = [
 ];
 
 const GoblinBootScreen = ({ status, message }: GoblinBootScreenProps) => {
-  const currentIndex = steps.findIndex(step => step.id === status);
+  const currentIndex = steps.findIndex((step) => step.id === status);
 
   return (
     <div className="min-h-screen bg-bg text-text flex items-center justify-center px-6">
@@ -24,9 +24,7 @@ const GoblinBootScreen = ({ status, message }: GoblinBootScreenProps) => {
           <div className="flex items-center justify-between flex-wrap gap-4">
             <div>
               <p className="text-xs uppercase tracking-[0.3em] text-muted">Goblin Assistant</p>
-              <h1 className="text-3xl md:text-4xl font-semibold mt-3">
-                Initializing gateway
-              </h1>
+              <h1 className="text-3xl md:text-4xl font-semibold mt-3">Initializing gateway</h1>
               <p className="text-sm text-muted mt-2">
                 Connecting to provider networks. Syncing routing policies and cost limits.
               </p>

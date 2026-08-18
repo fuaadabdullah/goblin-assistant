@@ -1,7 +1,7 @@
 'use client';
 
 import type { ReactNode } from 'react';
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { usePathname } from 'next/navigation';
 import { QueryClientProvider } from '@tanstack/react-query';
 import { Analytics } from '@vercel/analytics/react';
@@ -12,36 +12,12 @@ import { ContrastModeProvider } from '@/hooks/useContrastMode';
 import AuthBootstrapper from '@/auth/AuthBootstrapper';
 import { ErrorBoundary } from '@/components/ErrorBoundary';
 import { RouteBoundaryFallback, formatBoundaryTechnicalDetail } from '@/components/RouteBoundary';
-import { ToastProvider, useToast } from '@/contexts/ToastContext';
-import { ToastContainer } from '@/components/ToastContainer';
 import { createQueryClient } from '@/lib/queryClient';
 import { initGA } from '@/utils/analytics';
 import { setupGlobalErrorTracking, monitorNetworkStatus } from '@/utils/error-tracking';
-import { useUIStore } from '@/store/uiStore';
 import ChatFAB from '@/components/ChatFAB';
 import StatusBar from '@/components/StatusBar';
 import PageTransition from '@/components/PageTransition';
-
-function NotificationBridge() {
-  const { addToast } = useToast();
-  const notifications = useUIStore((state) => state.notifications);
-  const lastId = useRef<string | null>(null);
-
-  useEffect(() => {
-    const latest = notifications[notifications.length - 1];
-    if (latest && latest.id !== lastId.current) {
-      addToast({
-        type: latest.type,
-        title: latest.title,
-        message: latest.message,
-        duration: latest.duration,
-      });
-      lastId.current = latest.id;
-    }
-  }, [notifications, addToast]);
-
-  return null;
-}
 
 function sanitizeDatadogTagValue(value: string | undefined, fallback?: string): string | undefined {
   const normalized = value
@@ -113,20 +89,7 @@ export default function Providers({ children }: { children: ReactNode }) {
     initGA();
     setupGlobalErrorTracking();
     monitorNetworkStatus();
-
-    const unsubscribe = queryClient.getMutationCache().subscribe((event) => {
-      if (event.type === 'updated' && event.action.type === 'error') {
-        const error = event.action.error as any;
-        useUIStore.getState().addNotification({
-          type: 'error',
-          title: 'Action failed',
-          message: error?.response?.data?.message || error?.message || 'Request failed',
-        });
-      }
-    });
-
-    return () => unsubscribe();
-  }, [queryClient]);
+  }, []);
 
   return (
     <ErrorBoundary
@@ -147,21 +110,17 @@ export default function Providers({ children }: { children: ReactNode }) {
     >
       <QueryClientProvider client={queryClient}>
         <AuthBootstrapper />
-        <ToastProvider>
-          <ProviderProvider enableRegistry={enableProviderRegistry}>
-            <ContrastModeProvider>
-              <NotificationBridge />
-              <a href="#main-content" className="skip-link">
-                Skip to main content
-              </a>
-              <PageTransition routeKey={pathname ?? '/'}>{children}</PageTransition>
-              <ToastContainer />
-              <ChatFAB />
-              <StatusBar />
-              {enableAnalytics ? <Analytics /> : null}
-            </ContrastModeProvider>
-          </ProviderProvider>
-        </ToastProvider>
+        <ProviderProvider enableRegistry={enableProviderRegistry}>
+          <ContrastModeProvider>
+            <a href="#main-content" className="skip-link">
+              Skip to main content
+            </a>
+            <PageTransition routeKey={pathname ?? '/'}>{children}</PageTransition>
+            <ChatFAB />
+            <StatusBar />
+            {enableAnalytics ? <Analytics /> : null}
+          </ContrastModeProvider>
+        </ProviderProvider>
       </QueryClientProvider>
     </ErrorBoundary>
   );

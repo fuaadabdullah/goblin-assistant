@@ -9,7 +9,6 @@ This module now reads from the TOML at runtime.
 from __future__ import annotations
 
 import importlib
-import os
 from pathlib import Path
 from typing import Any, Dict, List
 
@@ -48,13 +47,15 @@ def get_provider_settings() -> List[Dict[str, Any]]:
     for pid, raw in providers_raw.items():
         if not isinstance(raw, dict):
             continue
-        result.append({
-            "name": pid,
-            "api_key": raw.get("api_key_env"),
-            "base_url": raw.get("endpoint", ""),
-            "models": list(raw.get("models", [])),
-            "enabled": raw.get("is_active", True),
-        })
+        result.append(
+            {
+                "name": pid,
+                "api_key": raw.get("api_key_env"),
+                "base_url": raw.get("endpoint", ""),
+                "models": list(raw.get("models", [])),
+                "enabled": raw.get("is_active", True),
+            }
+        )
 
     # Also include model_defaults as model configs
     return result

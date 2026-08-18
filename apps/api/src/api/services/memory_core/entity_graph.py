@@ -110,7 +110,7 @@ async def _persist_entity_graph(
     Upserts entity nodes (by user_id+type+value uniqueness) and inserts
     typed relation edges from a subject entity to each referenced entity.
     """
-    from sqlalchemy import select as _select  # noqa: PLC0415
+    from sqlalchemy import select as _select
 
     async def _upsert_entity(
         entity_type: str, entity_value: str, confidence: float = 1.0
@@ -125,7 +125,7 @@ async def _persist_entity_graph(
         existing_entity = result.scalar_one_or_none()
         if existing_entity is not None:
             return existing_entity.id
-        import uuid as _uuid  # noqa: PLC0415
+        import uuid as _uuid
 
         new_entity = MemoryEntityModel(
             id=str(_uuid.uuid4()),
@@ -145,7 +145,7 @@ async def _persist_entity_graph(
     if subject_entity_id is None:
         return
 
-    import uuid as _uuid  # noqa: PLC0415
+    import uuid as _uuid
 
     # Upsert target entities and create edges from subject → target
     for ref in entity_refs:

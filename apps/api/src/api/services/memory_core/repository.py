@@ -197,9 +197,9 @@ async def _upsert_memory_record(
     repetition_count: int,
     explicitness_score: float,
 ) -> Optional[MemoryRecord]:
-    import structlog  # noqa: PLC0415
+    import structlog
 
-    from ..embedding_service import EmbeddingProviderUnavailableError  # noqa: PLC0415
+    from ..embedding_service import EmbeddingProviderUnavailableError
 
     logger = structlog.get_logger(__name__)
     now = datetime.now(timezone.utc)

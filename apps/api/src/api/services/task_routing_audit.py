@@ -77,8 +77,8 @@ async def record_task_routing_decision(
     )
 
     try:
-        from ..storage.database import get_db_context  # noqa: PLC0415
-        from ..storage.models import TaskRoutingDecisionModel  # noqa: PLC0415
+        from ..storage.database import get_db_context
+        from ..storage.models import TaskRoutingDecisionModel
 
         async with get_db_context() as session:
             await session.run_sync(
@@ -110,7 +110,7 @@ async def record_task_routing_decision(
                     metadata_=row_metadata,
                 )
             )
-    except Exception as exc:  # noqa: BLE001
+    except Exception as exc:
         logger.debug(
             "task_routing_decision_persist_failed",
             request_id=decision_request_id,

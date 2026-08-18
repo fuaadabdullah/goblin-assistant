@@ -96,7 +96,7 @@ def _build_findings(query: str, sources: List[Dict[str, str]]) -> List[str]:
 def _parse_domain(url: str) -> Optional[str]:
     try:
         parsed = urlsplit(url.strip())
-    except Exception:  # noqa: BLE001
+    except Exception:
         return None
     if parsed.scheme not in {"http", "https"} or not parsed.netloc:
         return None

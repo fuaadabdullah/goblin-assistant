@@ -86,7 +86,7 @@ class MemoryCoreService:
             metadata["sensitive_content_redacted"] = True
             metadata["pii_types"] = pii_types
 
-        from ..message_classifier import MessageClassifier  # noqa: PLC0415
+        from ..message_classifier import MessageClassifier
 
         classifier = MessageClassifier()
         classification = classifier.classify_message(text, "user")
@@ -284,9 +284,9 @@ class MemoryCoreService:
         limit: int = 10,
         categories: Optional[Sequence[str]] = None,
     ) -> List[Dict[str, Any]]:
-        from ..memory_contract import canonicalize_memory_item  # noqa: PLC0415
-        from ..memory_reranker import memory_reranker  # noqa: PLC0415
-        from ..retrieval_service import retrieval_service  # noqa: PLC0415
+        from ..memory_contract import canonicalize_memory_item
+        from ..memory_reranker import memory_reranker
+        from ..retrieval_service import retrieval_service
 
         limit = clamp_memory_search_limit(limit)
         results = await retrieval_service.retrieve_memory_facts(
@@ -301,11 +301,11 @@ class MemoryCoreService:
         return [canonicalize_memory_item(item, user_id=user_id) for item in ranked]
 
     async def export_user_memory(self, user_id: str) -> List[Dict[str, Any]]:
-        from sqlalchemy import select  # noqa: PLC0415
+        from sqlalchemy import select
 
-        from ...storage.database import get_readonly_db_context  # noqa: PLC0415
-        from ...storage.vector_models import MemoryFactModel  # noqa: PLC0415
-        from .repository import _record_from_model  # noqa: PLC0415
+        from ...storage.database import get_readonly_db_context
+        from ...storage.vector_models import MemoryFactModel
+        from .repository import _record_from_model
 
         async with get_readonly_db_context() as session:
             result = await session.execute(
@@ -319,10 +319,10 @@ class MemoryCoreService:
             return records
 
     async def delete_user_memory(self, user_id: str) -> Dict[str, int]:
-        from sqlalchemy import delete  # noqa: PLC0415
+        from sqlalchemy import delete
 
-        from ...storage.database import get_db_context  # noqa: PLC0415
-        from ...storage.vector_models import EmbeddingModel, MemoryFactModel  # noqa: PLC0415
+        from ...storage.database import get_db_context
+        from ...storage.vector_models import EmbeddingModel, MemoryFactModel
 
         async with get_db_context() as session:
             memory_delete = await session.execute(

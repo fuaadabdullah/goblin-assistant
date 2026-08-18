@@ -14,14 +14,14 @@ special category ``financial_profile``.
 
 from __future__ import annotations
 
+import json
 import re
 from datetime import datetime
 from typing import Any, Dict, List, Optional
 
 import structlog
 
-from .memory_promotion_service import (
-    MemoryPromotionService,
+from .memory_promotion import (
     PromotionCandidate,
     PromotionResult,
     memory_promotion_service,
@@ -59,24 +59,28 @@ def _extract_dcf_facts(result: Dict[str, Any], args: Dict[str, Any]) -> List[Dic
     growth = assumptions.get("growth_rate")
 
     if intrinsic is not None:
-        facts.append({
-            "content": (
-                f"DCF valuation for {ticker}: intrinsic value ${intrinsic:.2f}/share "
-                f"({'+' if upside and upside > 0 else ''}{upside:.1f}% vs current price)"
-            ),
-            "category": "instrument",
-        })
+        facts.append(
+            {
+                "content": (
+                    f"DCF valuation for {ticker}: intrinsic value ${intrinsic:.2f}/share "
+                    f"({'+' if upside and upside > 0 else ''}{upside:.1f}% vs current price)"
+                ),
+                "category": "instrument",
+            }
+        )
 
     if wacc is not None and growth is not None:
-        facts.append({
-            "content": (
-                f"DCF assumptions for {ticker}: WACC={wacc*100:.1f}%, "
-                f"growth={growth*100:.1f}%, "
-                f"projection_years={assumptions.get('projection_years', 5)}, "
-                f"terminal_growth={assumptions.get('terminal_growth_rate', 0.025)*100:.1f}%"
-            ),
-            "category": "financial_profile",
-        })
+        facts.append(
+            {
+                "content": (
+                    f"DCF assumptions for {ticker}: WACC={wacc * 100:.1f}%, "
+                    f"growth={growth * 100:.1f}%, "
+                    f"projection_years={assumptions.get('projection_years', 5)}, "
+                    f"terminal_growth={assumptions.get('terminal_growth_rate', 0.025) * 100:.1f}%"
+                ),
+                "category": "financial_profile",
+            }
+        )
 
     return facts
 
@@ -91,10 +95,12 @@ def _extract_portfolio_facts(result: Dict[str, Any], args: Dict[str, Any]) -> Li
     # Summarise the portfolio composition
     if holdings:
         tickers = [h.get("ticker", "?") for h in holdings]
-        facts.append({
-            "content": f"Portfolio holdings analyzed: {', '.join(tickers)}",
-            "category": "portfolio_action",
-        })
+        facts.append(
+            {
+                "content": f"Portfolio holdings analyzed: {', '.join(tickers)}",
+                "category": "portfolio_action",
+            }
+        )
 
     # Risk snapshot
     ann_ret = metrics.get("annualized_return")
@@ -102,14 +108,16 @@ def _extract_portfolio_facts(result: Dict[str, Any], args: Dict[str, Any]) -> Li
     sharpe = metrics.get("sharpe_ratio")
     max_dd = metrics.get("max_drawdown")
     if ann_ret is not None and ann_vol is not None:
-        facts.append({
-            "content": (
-                f"Portfolio risk snapshot: return={ann_ret*100:.1f}%, "
-                f"volatility={ann_vol*100:.1f}%, "
-                f"Sharpe={sharpe:.2f}, max drawdown={max_dd*100:.1f}%"
-            ),
-            "category": "risk_signal",
-        })
+        facts.append(
+            {
+                "content": (
+                    f"Portfolio risk snapshot: return={ann_ret * 100:.1f}%, "
+                    f"volatility={ann_vol * 100:.1f}%, "
+                    f"Sharpe={sharpe:.2f}, max drawdown={max_dd * 100:.1f}%"
+                ),
+                "category": "risk_signal",
+            }
+        )
 
     return facts
 
@@ -120,18 +128,36 @@ def _extract_earnings_facts(result: Dict[str, Any], args: Dict[str, Any]) -> Lis
     ticker = args.get("ticker") or result.get("ticker", "???")
 
     summary = result.get("summary", {})
-    beats = summary.get("beats", 0)
-    total = summary.get("total", 0)
+    beats = summary.get("beats")
+    total = summary.get("total")
     streak = summary.get("streak")
+    if isinstance(beats, int) and isinstance(total, int) and total > 0:
+        content = f"{ticker} earnings surprise record: {beats}/{total} beats"
+        if streak:
+            content += f", streak: {streak}"
+        facts.append({"content": content, "category": "instrument"})
+        return facts
 
-    if total > 0:
-        facts.append({
-            "content": (
-                f"{ticker} earnings: {beats}/{total} beats"
-                + (f", {streak}" if streak else "")
-            ),
-            "category": "instrument",
-        })
+    earnings = result.get("earnings", {})
+    next_date = earnings.get("next_earnings_date")
+    beat_miss = earnings.get("beat_miss_history", [])
+
+    if next_date:
+        facts.append(
+            {
+                "content": f"{ticker} earnings on {next_date}",
+                "category": "instrument",
+            }
+        )
+
+    if beat_miss:
+        recent = beat_miss[-3:]
+        facts.append(
+            {
+                "content": f"{ticker} recent EPS: {recent}",
+                "category": "instrument",
+            }
+        )
 
     return facts
 
@@ -139,16 +165,32 @@ def _extract_earnings_facts(result: Dict[str, Any], args: Dict[str, Any]) -> Lis
 def _extract_screener_facts(result: Dict[str, Any], args: Dict[str, Any]) -> List[Dict[str, str]]:
     """Extract promotable facts from a stock screener result."""
     facts: List[Dict[str, str]] = []
+    screen_name = args.get("screen_name", "custom_screen")
 
-    matches = result.get("matches", [])
-    criteria = result.get("criteria_applied", {})
+    results = result.get("results")
+    if results is None:
+        results = result.get("matches", [])
 
-    if matches:
-        tickers = [m.get("ticker", "?") for m in matches[:10]]
-        facts.append({
-            "content": f"Stock screen matched: {', '.join(tickers)} (criteria: {criteria})",
-            "category": "financial_profile",
-        })
+    criteria = args.get("criteria")
+    if criteria is None:
+        criteria = result.get("criteria_applied", {})
+
+    if results:
+        tickers = [r.get("ticker") for r in results[:5] if r.get("ticker")]
+        facts.append(
+            {
+                "content": f"Screen '{screen_name}' returned {len(results)} results. Top hits: {', '.join(tickers)}",
+                "category": "financial_profile",
+            }
+        )
+
+    if criteria and not result.get("matches"):
+        facts.append(
+            {
+                "content": f"Screening criteria for '{screen_name}': {json.dumps(criteria)}",
+                "category": "financial_profile",
+            }
+        )
 
     return facts
 
@@ -203,15 +245,22 @@ async def extract_and_promote(
             metadata={
                 "user_id": user_id,
                 "tool_name": tool_name,
-                "tool_args": {k: v for k, v in tool_args.items() if isinstance(v, (str, int, float, bool))},
+                "tool_args": {
+                    k: v for k, v in tool_args.items() if isinstance(v, (str, int, float, bool))
+                },
             },
             created_at=datetime.utcnow(),
         )
         try:
             result = await memory_promotion_service.evaluate_promotion_candidate(candidate)
             results.append(result)
-        except Exception:
-            logger.exception("tool_result_promotion_failed", tool=tool_name)
+        except Exception as exc:
+            logger.error(
+                "tool_result_promotion_failed",
+                tool=tool_name,
+                error=str(exc),
+                error_type=type(exc).__name__,
+            )
 
     logger.info(
         "tool_result_memory_extraction",
@@ -255,8 +304,13 @@ async def get_financial_profile(
             ],
             k=15,
         )
-    except Exception:
-        logger.exception("get_financial_profile_failed", user_id=user_id)
+    except Exception as exc:
+        logger.error(
+            "get_financial_profile_failed",
+            user_id=user_id,
+            error=str(exc),
+            error_type=type(exc).__name__,
+        )
         return profile
 
     for fact in facts:
@@ -266,7 +320,7 @@ async def get_financial_profile(
         if cat == "financial_profile":
             if "DCF assumptions" in text:
                 profile["last_dcf_assumptions"] = _parse_dcf_assumptions(text)
-            elif "Stock screen matched" in text:
+            elif "Screen '" in text and "returned" in text:
                 profile["recent_screens"].append(text)
         elif cat == "instrument":
             tickers = re.findall(r"\b[A-Z]{1,5}\b", text)

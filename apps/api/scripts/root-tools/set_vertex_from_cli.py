@@ -32,7 +32,9 @@ def main() -> int:
         print(f"ERROR: Unsupported ADC type: {adc_type}")
         return 1
 
-    cfg = yaml.safe_load(open(os.path.expanduser("~/.render/cli.yaml"), "r", encoding="utf-8")) or {}
+    cfg = (
+        yaml.safe_load(open(os.path.expanduser("~/.render/cli.yaml"), "r", encoding="utf-8")) or {}  # noqa: SIM115
+    )
     api_key = (cfg.get("api") or {}).get("key", "")
     if not api_key:
         print("ERROR: Render API key missing")
@@ -76,7 +78,7 @@ def main() -> int:
     )
 
     with urllib.request.urlopen(put_req, timeout=60, context=ctx):
-        pass
+        ...
 
     print(f"UPDATED_ENV_KEYS {before} -> {len(env)}")
     print(f"SET_VERTEX_AI_PROJECT {project}")

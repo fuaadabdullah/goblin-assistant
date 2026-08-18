@@ -1,10 +1,9 @@
 import React from 'react';
 import { render, screen, fireEvent } from '@testing-library/react';
-import '@testing-library/jest-dom';
 import { GoblinButton } from '../goblin-buttons/GoblinButton';
 
-jest.mock('react', () => {
-  const actual = jest.requireActual('react');
+vi.mock('react', async () => {
+  const actual = await vi.importActual('react');
   return { ...actual };
 });
 
@@ -20,7 +19,7 @@ describe('GoblinButton', () => {
   });
 
   it('calls onClick when clicked', () => {
-    const onClick = jest.fn();
+    const onClick = vi.fn();
     render(<GoblinButton onClick={onClick}>Click</GoblinButton>);
     fireEvent.click(screen.getByRole('button'));
     expect(onClick).toHaveBeenCalledTimes(1);

@@ -1,1 +1,14 @@
 .vercel
+.next/
+out/
+build/
+dist/
+coverage/
+storybook-static/
+node_modules/
+.env*.local
+*.tsbuildinfo
+
+# Local build/dev artifacts — never lint or commit these
+.tmp/
+tmp/
