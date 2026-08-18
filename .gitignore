@@ -35,6 +35,8 @@ instance/
 .tmp/
 data-gym-cache/
 output/
+.benchmarks/
+screenshots/
 
 # Hash artifacts
 api/[0-9a-f][0-9a-f]*
@@ -58,8 +60,12 @@ coverage/
 htmlcov/
 coverage.xml
 .coverage
+.hypothesis/
+.pytest_cache/
+.ruff_cache/
 .playwright/
 .playwright-cli/
+test-results/
 .codex/
 *.tsbuildinfo
 
