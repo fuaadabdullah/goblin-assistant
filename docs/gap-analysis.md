@@ -69,18 +69,18 @@ Current working-tree scale:
 
 | Git status class | Count |
 |---|---:|
-| Modified files | 403 |
+| Modified files | 7 |
 | Deleted files | 0 |
-| Untracked files/directories | 4 |
-| Total status entries | 407 |
+| Untracked files/directories | 1 |
+| Total status entries | 8 |
 
 Current status concentration:
 
 | Area | Status Entries | Primary Caveat |
 |---|---:|---|
-| `apps/` | 395 | Dominates unresolved risk; should not be reviewed as one blob. |
-| `packages/` | 3 | Shared-contract/package drift can affect both API and web. |
-| Root/config/infra files | 9 | Contains runtime, Docker, compose, lockfile, and docs changes that need separate ownership. |
+| `packages/` | 3 | Shared package API/build and UI typing drift remain. |
+| Root/config/infra files | 4 | Compose, GCP setup, and lockfile changes need separate ownership. |
+| Untracked reviewer aid | 1 | `MERGE_ORDER.md` remains untracked and stale. |
 
 Triage labels used below:
 
@@ -102,6 +102,8 @@ misleading subject:
 |---|---|---|
 | `18ef9d25` | `chore(infra): remove orphaned k8s/ manifests` | Contents are architecture/quality/debt reporting files, not k8s removals. |
 | `c5e09df2` | `chore(repo): delete legacy routers, dead services, and abandoned stubs` | Broad deletion commit spanning API routers/services/tests, web Pages Router/test artifacts, shared legacy files, and `apps/web/package.json`; needs dedicated review and validation evidence. |
+| `aa97917c` | `chore(api): apply monorepo-reorg path updates across API surface` | Broad API-wide path/config/test-prefix commit touching API runtime, tests, requirements, and tooling; needs focused import, collection, and contract proof. |
+| `5a284808` | `chore(web): prettier format pass, color token alignment, and root config` | Broad web formatting/theme/root-runtime commit spanning web app, root Docker/env/README, and new web env tests; needs web type/test proof plus runtime-config review. |
 
 This is a release-hygiene problem because reviewers will reason from the commit
 subject before reading the diff. It should be fixed only with an explicit
@@ -114,6 +116,7 @@ Additional caveats:
 |---|---|---|
 | A misleading commit subject makes later archaeology harder | Future maintainers may search for infra deletion and miss that the commit actually changed architecture/quality artifacts. | Explicitly accept the mismatch or perform a coordinated history rewrite. |
 | A broad deletion commit landed mid-cleanup | Reviewers need to distinguish intentional dead-code removal from accidental staging cleanup. | Audit `c5e09df2` with import/type/test/route-manifest proof before treating it as safe. |
+| Broad API/web commits landed mid-cleanup | The working tree is nearly decomposed, but some committed slices remain too large for easy review. | Audit `aa97917c` and `5a284808` with focused API/web gates before release-readiness claims. |
 | The branch mixes already-committed slices with a very dirty working tree | Reviewers cannot tell whether a committed decision depends on still-uncommitted files. | Final commit map showing which remaining dirty clusters are intentionally deferred. |
 | Some generated artifacts were committed before later source churn settled | A clean commit can become stale relative to the eventual branch tip. | Re-run generated-contract checks after the final API/web slices, not just after the earlier commit. |
 
@@ -142,9 +145,10 @@ as regressions.
 
 ### 3. Dirty Tree Is Too Broad for Confident Release Review
 
-There are 407 status entries after the already-created commits. This is larger
-than a normal focused feature branch and mixes backend, frontend, infra, docs,
-generated contracts, scripts, tests, package locks, and deleted legacy trees.
+There are 8 status entries after the already-created commits. The working tree
+is now close to decomposed, but the committed history still contains several
+broad API/web/deletion commits that need validation before the branch is a clean
+review story.
 
 Note: an earlier inventory included 122 deleted-file entries that were stale
 index state, not remaining unstaged working-tree deletions. The index has since
@@ -625,7 +629,7 @@ Do not claim release readiness until all of the following are true:
 
 | Required Before Release Claim | Current State |
 |---|---|
-| Working tree reduced to intentional, reviewable changes | Not true; 407 status entries remain. |
+| Working tree reduced to intentional, reviewable changes | Mostly true for the working tree; 8 status entries remain, but broad committed slices still need review validation. |
 | Commit history matches the requested story or the mismatch is explicitly accepted | Not true; one commit subject is misleading. |
 | Deprecated infra deletion has no active executable references | Mostly true after this pass; final search and policy checks still required. |
 | Contract artifacts regenerated after final API changes | Partially true; must rerun at end. |
