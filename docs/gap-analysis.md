@@ -40,6 +40,7 @@ Latest verified checks on 2026-08-18:
 | `make check-api-cycles` | Pass | Older cycle debt in this document was stale. |
 | `make check-capability-boundaries` | Pass | Capability boundary violations are currently zero. |
 | `python3.11 tooling/quality/quality_baseline.py --timeout-seconds 10 --partial-output .tmp/quality-baseline-partial.json --quiet` | Pass | This is a ratchet/baseline gate, not proof that suppression debt is gone. |
+| `make check-quality-baseline` | Pass | Re-run after removing one unused `# noqa: N802`; metrics are back to the committed 120 Python `noqa` files and 197 clearly removable suppressions. |
 | `status_code=501` / `HTTP_501` search across API/web/packages | 0 hits | Does not replace endpoint smoke tests against a running API. |
 | `node scripts/check-contrast.js` | Pass | Wrapper now delegates to `tooling/quality/check-contrast.js`. |
 | `node scripts/guard-no-inline-styles.js` | Pass | Wrapper now delegates to `tooling/quality/guard-no-inline-styles.js`. |
@@ -60,6 +61,10 @@ Latest verified checks on 2026-08-18:
 | `pnpm install --frozen-lockfile --ignore-scripts --prefer-offline` | Pass | Proves committed package manifests and `pnpm-lock.yaml` are internally consistent; scripts were intentionally skipped. |
 | `shellcheck infra/gcp-llm-setup.sh` / `bash -n infra/gcp-llm-setup.sh` / `./infra/gcp-llm-setup.sh help` | Pass | Re-run after `b3035d07`; no cloud mutation. |
 | `env -u GCP_PROJECT_ID ./infra/gcp-llm-setup.sh status` | Expected fail-fast | Exits `1` with `Set GCP_PROJECT_ID before running status`, proving the helper no longer silently targets a personal project. |
+| `PATH="/usr/local/opt/node@20/bin:/opt/homebrew/opt/node@20/bin:$PATH" make contract-checks` | Pass | Plain `make contract-checks` failed first under Node 26 as intended; Node 20 run generated artifacts and reported them up to date. |
+| `make type-check` | Pass | Covered web plus packages/shared, ui, config, types, and sdk TypeScript checks. |
+| `cd apps/api && PYTHONPATH=src python3.11 -m pytest -o "addopts=" -v src/api/tests/test_goblin_query_api.py src/api/tests/test_contract_boundaries.py src/api/tests/test_chat_route_version_aliases.py` | Pass | 25 focused Goblin query/contract/route-alias tests passed. |
+| `cd apps/api && PYTHONPATH=src python3.11 -m ruff check --config pyproject.toml --extend-select RUF100 src/api/celery_monitoring.py` | Pass | Proves the removed `N802` suppression was unused. |
 
 Current quality baseline metrics:
 
@@ -583,7 +588,7 @@ unit/OpenAPI behavior. Missing or not recently rerun in the current final state:
 |---|---|
 | Full `make test-api` | Not shown passing after the latest broad committed state. |
 | Full `make test-web` | Not shown passing after frontend churn. |
-| Full `make type-check` | Not shown passing after generated SDK and web changes. |
+| Full `make type-check` | Passed after generated SDK and web changes. |
 | Running backend smoke via `/api/v1/health` and Goblin endpoints | Needed before release claim. |
 | E2E/authenticated chat journey | Still high value because route/middleware/proxy changes can pass unit tests and fail in-app. |
 
@@ -697,3 +702,4 @@ Do not claim release readiness until all of the following are true:
 | `lint-staged` allow-empty behavior was placed in package config | Resolved by `c61cce98`; the option now lives on the Husky command line and the web package config validates. |
 | GOBLINOS override escaped the external-drive space literally | Resolved by `097013b3`; the committed path now uses `/Volumes/GOBLINOS 1/...` rather than `/Volumes/GOBLINOS\\ 1/...`. |
 | GCP LLM setup hard-coded personal identity and public firewall defaults | Resolved by `b3035d07`; project/account are env-driven, help is non-mutating, ShellCheck passes, and firewall creation requires explicit `GCP_LLM_SOURCE_RANGES`. |
+| Quality baseline ratchet failed at 121 Python `noqa` files and 198 clearly removable suppressions | Resolved by removing an unused `# noqa: N802` from `apps/api/src/api/celery_monitoring.py`; `make check-quality-baseline` now passes at 120/197. |
