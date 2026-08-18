@@ -350,7 +350,7 @@ class EmbeddingService:
         """Store embedding for a memory fact"""
         try:
             from .memory_core import (
-                memory_core_service,  # noqa: PLC0415  # lazy import avoids memory service cycle
+                memory_core_service,  # lazy import avoids memory service cycle
             )
 
             record = await memory_core_service.ingest_memory_fact(

@@ -106,7 +106,7 @@ class BackgroundTaskManager:
         while self.running:
             try:
                 from .learning_applicator import (
-                    learning_applicator,  # noqa: PLC0415  # lazy import avoids service startup cycle
+                    learning_applicator,  # lazy import avoids service startup cycle
                 )
 
                 async with get_db_context() as db:

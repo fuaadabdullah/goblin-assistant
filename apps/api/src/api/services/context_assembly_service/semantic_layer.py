@@ -69,7 +69,7 @@ async def assemble_semantic_retrieval(
 
         if context_results:
             from ..memory_reranker import (
-                memory_reranker,  # noqa: PLC0415  # lazy import avoids optional reranker startup cost
+                memory_reranker,  # lazy import avoids optional reranker startup cost
             )
 
             context_results = memory_reranker.rerank(context_results, query=query)

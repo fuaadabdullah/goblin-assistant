@@ -114,9 +114,9 @@ class LearningApplicator:
         if not row.task_type or not row.provider:
             return
         try:
-            from api.routing.learning_adapters import apply_bandit_feedback  # noqa: PLC0415
+            from api.routing.learning_adapters import apply_bandit_feedback
 
-            from .outcome_scorer import outcome_scorer  # noqa: PLC0415
+            from .outcome_scorer import outcome_scorer
 
             # When a quality score is available, use a proportional float rating
             # (scaled to ±2) instead of the fixed binary ±1 from _SIGNAL_REWARD.
@@ -145,7 +145,7 @@ class LearningApplicator:
         if success is None or not row.task_type or not row.provider:
             return
         try:
-            from api.routing.learning_adapters import (  # noqa: PLC0415
+            from api.routing.learning_adapters import (
                 apply_feature_router_feedback,
             )
 
@@ -166,7 +166,7 @@ class LearningApplicator:
         if not row.user_id or not row.provider:
             return
         try:
-            from api.services.preference_learner import preference_learner as _pl  # noqa: PLC0415
+            from api.services.preference_learner import preference_learner as _pl
 
             task = asyncio.create_task(
                 _pl.record_response(
@@ -192,7 +192,7 @@ class LearningApplicator:
         if not row.user_id:
             return
         try:
-            from api.services.memory_core import memory_core_service  # noqa: PLC0415
+            from api.services.memory_core import memory_core_service
 
             if row.signal in _SKIP_SIGNALS:
                 return
