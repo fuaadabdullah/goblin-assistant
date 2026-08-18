@@ -69,10 +69,10 @@ Current working-tree scale:
 
 | Git status class | Count |
 |---|---:|
-| Modified files | 683 |
+| Modified files | 680 |
 | Deleted files | 123 |
 | Untracked files/directories | 4 |
-| Total status entries | 810 |
+| Total status entries | 807 |
 
 ## Critical Gaps
 
@@ -115,7 +115,7 @@ as regressions.
 
 ### 3. Dirty Tree Is Too Broad for Confident Release Review
 
-There are 810 status entries after the already-created commits. This is larger
+There are 807 status entries after the already-created commits. This is larger
 than a normal focused feature branch and mixes backend, frontend, infra, docs,
 generated contracts, scripts, tests, package locks, and deleted legacy trees.
 
@@ -166,8 +166,8 @@ Several CI files remain modified after the infra and scripts commits.
 | Surface | Current Risk |
 |---|---|
 | `.github/workflows/ci.yml` | Committed changes turn formerly report-only API lint/policy into hard gates and add quality/architecture jobs. This is good governance, but it can block merges immediately if baseline assumptions are wrong in CI. |
-| `.circleci/config.yml` | Still dirty and much broader than the committed GitHub/security slice. It appears to add deployment/autofix/Codecov ownership into CircleCI, which may duplicate GitHub/Render/Vercel deployment ownership. |
-| CI autofix | `tooling/automation/ci_autofix_trigger.py` is still dirty and changes model/turn budget. Any CI wiring has credential, cost, and safety implications. |
+| `.circleci/config.yml` | Committed as verification-only. It no longer introduces production deploy, Slack notify, or autofix mutation ownership. |
+| CI autofix | Left unmodified and not wired into CircleCI. Any future CI autofix wiring should be an explicit cost/security decision. |
 | Package scripts | Committed scripts now route test buckets through `tooling/quality/*` and expose `test:security`. |
 
 Recommended handling: split CI changes into a governance commit, normalize
@@ -409,7 +409,7 @@ Do not claim release readiness until all of the following are true:
 
 | Required Before Release Claim | Current State |
 |---|---|
-| Working tree reduced to intentional, reviewable changes | Not true; 810 status entries remain. |
+| Working tree reduced to intentional, reviewable changes | Not true; 807 status entries remain. |
 | Commit history matches the requested story or the mismatch is explicitly accepted | Not true; one commit subject is misleading. |
 | Deprecated infra deletion has no active executable references | Mostly true after this pass; final search and policy checks still required. |
 | Contract artifacts regenerated after final API changes | Partially true; must rerun at end. |
@@ -420,9 +420,9 @@ Do not claim release readiness until all of the following are true:
 
 1. Decide whether to rewrite/amend commit history so `18ef9d25` gets the
    correct architecture/quality subject.
-2. Split and validate the remaining CI/CD governance changes. Normalize
-   production health paths, preserve frozen installs unless deliberately
-   changing policy, and decide whether autofix/security gates are blocking.
+2. Keep CI ownership explicit. GitHub/CircleCI governance gates are now split
+   into reviewable commits; future autofix or deploy wiring should be a
+   separate explicit decision.
 3. Commit or defer the security bucket with its Make/package/CI entrypoints.
 4. Re-run docs gates after any remaining docs/reference cleanup:
    `check_docs_inventory`, `check_docs_links`, and
