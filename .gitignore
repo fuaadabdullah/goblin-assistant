@@ -27,6 +27,7 @@ BROKEN_ITEMS.md
 # Supabase migration backups
 supabase/migrations.bak*/
 supabase/.temp/
+supabase/**/.temp/
 
 # Runtime artifacts
 sandbox_jobs/
