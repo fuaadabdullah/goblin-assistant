@@ -70,9 +70,9 @@ Current working-tree scale:
 | Git status class | Count |
 |---|---:|
 | Modified files | 671 |
-| Deleted files | 123 |
+| Deleted files | 122 |
 | Untracked files/directories | 4 |
-| Total status entries | 798 |
+| Total status entries | 797 |
 
 Current status concentration:
 
@@ -80,7 +80,7 @@ Current status concentration:
 |---|---:|---|
 | `apps/` | 764 | Dominates unresolved risk; should not be reviewed as one blob. |
 | `packages/` | 18 | Shared-contract/package drift can affect both API and web. |
-| Root and infra files | 16 | Contains runtime, Docker, compose, lockfile, and docs changes that need separate ownership. |
+| Root and infra files | 15 | Contains runtime, Docker, compose, lockfile, and docs changes that need separate ownership. |
 
 Triage labels used below:
 
@@ -140,7 +140,7 @@ as regressions.
 
 ### 3. Dirty Tree Is Too Broad for Confident Release Review
 
-There are 798 status entries after the already-created commits. This is larger
+There are 797 status entries after the already-created commits. This is larger
 than a normal focused feature branch and mixes backend, frontend, infra, docs,
 generated contracts, scripts, tests, package locks, and deleted legacy trees.
 
@@ -613,7 +613,7 @@ Do not claim release readiness until all of the following are true:
 
 | Required Before Release Claim | Current State |
 |---|---|
-| Working tree reduced to intentional, reviewable changes | Not true; 798 status entries remain. |
+| Working tree reduced to intentional, reviewable changes | Not true; 797 status entries remain. |
 | Commit history matches the requested story or the mismatch is explicitly accepted | Not true; one commit subject is misleading. |
 | Deprecated infra deletion has no active executable references | Mostly true after this pass; final search and policy checks still required. |
 | Contract artifacts regenerated after final API changes | Partially true; must rerun at end. |
@@ -655,3 +655,4 @@ Do not claim release readiness until all of the following are true:
 | Datadog static-analysis config does not cover the monorepo shape | Resolved locally by `010b9547`; YAML parsed successfully, but hosted Datadog validation remains the stronger proof. |
 | Supabase CLI temp metadata was tracked | Resolved by `578e092b`; 16 `.temp` files were removed from tracking and recursive Supabase temp ignores now retain local CLI state. |
 | Local hooks skipped useful checks | Resolved by `06ebf527`; pre-commit and SQLite hook smokes passed, and web typecheck passed before committing pre-push hardening. |
+| Stale screenshot artifacts remained tracked | Resolved by `8a735067`; unreferenced screenshot assets and their stale directory README were removed. |
