@@ -6,10 +6,12 @@ import structlog
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from ..auth.router import User as AuthenticatedUser, get_current_user
+from ..auth.router import User as AuthenticatedUser
+from ..auth.router import get_current_user
+from ..core.contracts import SuccessEnvelope
 from ..input_validation import InputSanitizer
 from ..storage.conversations import ConversationMessage
-from ..storage.database import get_db
+from ..storage.database import get_readonly_db
 from . import _runtime as _cr
 from .schemas import (
     ConversationInfo,
@@ -24,7 +26,7 @@ logger = structlog.get_logger()
 router = APIRouter()
 
 
-@router.post("/conversations", response_model=CreateConversationResponse)
+@router.post("/conversations", response_model=SuccessEnvelope[CreateConversationResponse])
 async def create_conversation(
     request: CreateConversationRequest,
     current_user: AuthenticatedUser = Depends(get_current_user),
@@ -36,18 +38,18 @@ async def create_conversation(
     """
     try:
         sanitized_title = (
-            InputSanitizer.sanitize_conversation_title(request.title)
-            if request.title
-            else None
+            InputSanitizer.sanitize_conversation_title(request.title) if request.title else None
         )
         conversation = await _cr.conversation_store.create_conversation(
             user_id=current_user.id, title=sanitized_title
         )
 
-        return CreateConversationResponse(
-            conversation_id=conversation.conversation_id,
-            title=conversation.title,
-            created_at=conversation.created_at.isoformat(),
+        return SuccessEnvelope(
+            data=CreateConversationResponse(
+                conversation_id=conversation.conversation_id,
+                title=conversation.title,
+                created_at=conversation.created_at.isoformat(),
+            )
         )
     except HTTPException:
         raise
@@ -56,7 +58,7 @@ async def create_conversation(
         raise HTTPException(status_code=500, detail="Failed to create conversation")
 
 
-@router.get("/conversations", response_model=list[ConversationInfo])
+@router.get("/conversations", response_model=SuccessEnvelope[list[ConversationInfo]])
 async def list_conversations(
     limit: int = 50,
     current_user: AuthenticatedUser = Depends(get_current_user),
@@ -70,18 +72,21 @@ async def list_conversations(
             user_id=current_user.id, limit=limit
         )
 
-        return [
-            ConversationInfo(
-                conversation_id=conv.conversation_id,
-                user_id=conv.user_id,
-                title=conv.title,
-                message_count=len(conv.messages),
-                snippet=_cr._latest_snippet(conv),
-                created_at=conv.created_at.isoformat(),
-                updated_at=conv.updated_at.isoformat(),
-            )
-            for conv in conversations
-        ]
+        return SuccessEnvelope(
+            data=[
+                ConversationInfo(
+                    conversation_id=conv.conversation_id,
+                    user_id=conv.user_id,
+                    title=conv.title,
+                    message_count=len(conv.messages),
+                    snippet=_cr._latest_snippet(conv),
+                    created_at=conv.created_at.isoformat(),
+                    updated_at=conv.updated_at.isoformat(),
+                    category=conv.metadata.get("category"),
+                )
+                for conv in conversations
+            ]
+        )
     except Exception:
         raise HTTPException(status_code=500, detail="Failed to list conversations")
 
@@ -144,7 +149,7 @@ async def update_conversation_title(
     conversation_id: str,
     request: UpdateConversationTitleRequest,
     current_user: AuthenticatedUser = Depends(get_current_user),
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(get_readonly_db),
 ):
     """Update conversation title (preserves messages + bumps updated_at)."""
     try:
@@ -167,7 +172,7 @@ async def update_conversation_title(
 async def delete_conversation(
     conversation_id: str,
     current_user: AuthenticatedUser = Depends(get_current_user),
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(get_readonly_db),
 ):
     """Delete a conversation permanently (no soft-delete)."""
     try:
@@ -189,7 +194,7 @@ async def import_conversation_messages(
     conversation_id: str,
     request: ImportConversationRequest,
     current_user: AuthenticatedUser = Depends(get_current_user),
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(get_readonly_db),
 ):
     try:
         await _cr._assert_conversation_owned(conversation_id, current_user, db)
@@ -199,9 +204,11 @@ async def import_conversation_messages(
                 role=message.role,
                 content=message.content,
                 metadata=message.metadata,
-                timestamp=datetime.fromisoformat(message.timestamp.replace("Z", "+00:00"))
-                if message.timestamp
-                else None,
+                timestamp=(
+                    datetime.fromisoformat(message.timestamp.replace("Z", "+00:00"))
+                    if message.timestamp
+                    else None
+                ),
             )
             for message in request.messages
         ]

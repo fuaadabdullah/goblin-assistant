@@ -9,7 +9,7 @@ from typing import Dict, List, Optional
 
 import structlog
 
-from ...utils.tokenizer import count_tokens, trim_to_tokens
+from ...core.tokenization import count_tokens, trim_to_tokens
 from .models import ContextBudget, ContextLayer
 
 logger = structlog.get_logger()

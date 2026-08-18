@@ -2,17 +2,18 @@
 
 from __future__ import annotations
 
-import pytest
 from unittest.mock import AsyncMock, MagicMock, patch
+
 import httpx
+import pytest
 
+from api.providers.base import ProviderHealth, ProviderResult
 from api.providers.openai_provider import OpenAIProvider
-from api.providers.base import ProviderResult, ProviderHealth
-
 
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
+
 
 def _provider(
     api_key: str = "sk-test-key",
@@ -53,7 +54,7 @@ def _stream_response(chunks: list[str]) -> list[str]:
     """Build mock OpenAI streaming response lines."""
     lines = []
     for chunk in chunks:
-        data = f'{{"choices": [{{\"delta": {{"content": "{chunk}"}}}}]}}'
+        data = f'{{"choices": [{{"delta": {{"content": "{chunk}"}}}}]}}'
         lines.append(f"data: {data}")
     lines.append("data: [DONE]")
     return lines
@@ -62,6 +63,7 @@ def _stream_response(chunks: list[str]) -> list[str]:
 # ---------------------------------------------------------------------------
 # invoke — successful cases
 # ---------------------------------------------------------------------------
+
 
 class TestInvokeSuccess:
     @pytest.mark.asyncio
@@ -200,6 +202,7 @@ class TestInvokeSuccess:
 # invoke — error cases
 # ---------------------------------------------------------------------------
 
+
 class TestInvokeErrors:
     @pytest.mark.asyncio
     async def test_invoke_no_api_key(self):
@@ -242,9 +245,7 @@ class TestInvokeErrors:
 
         with patch("httpx.AsyncClient") as MockClient:
             instance = AsyncMock()
-            instance.post = AsyncMock(
-                side_effect=httpx.ConnectError("Connection refused")
-            )
+            instance.post = AsyncMock(side_effect=httpx.ConnectError("Connection refused"))
             instance.__aenter__ = AsyncMock(return_value=instance)
             instance.__aexit__ = AsyncMock(return_value=False)
             MockClient.return_value = instance
@@ -261,9 +262,7 @@ class TestInvokeErrors:
 
         with patch("httpx.AsyncClient") as MockClient:
             instance = AsyncMock()
-            instance.post = AsyncMock(
-                side_effect=httpx.TimeoutException("Request timed out")
-            )
+            instance.post = AsyncMock(side_effect=httpx.TimeoutException("Request timed out"))
             instance.__aenter__ = AsyncMock(return_value=instance)
             instance.__aexit__ = AsyncMock(return_value=False)
             MockClient.return_value = instance
@@ -277,6 +276,7 @@ class TestInvokeErrors:
 # ---------------------------------------------------------------------------
 # stream
 # ---------------------------------------------------------------------------
+
 
 class TestStream:
     @pytest.mark.asyncio
@@ -332,7 +332,7 @@ class TestStream:
             MockClient.return_value = instance
 
             async for _ in provider.stream(prompt="test", model="gpt-4o"):
-                pass
+                continue
 
             call_kwargs = instance.stream.call_args.kwargs
             assert call_kwargs["json"]["model"] == "gpt-4o"
@@ -342,6 +342,7 @@ class TestStream:
 # ---------------------------------------------------------------------------
 # health_check
 # ---------------------------------------------------------------------------
+
 
 class TestHealthCheck:
     @pytest.mark.asyncio
@@ -400,9 +401,7 @@ class TestHealthCheck:
 
         with patch("httpx.AsyncClient") as MockClient:
             instance = AsyncMock()
-            instance.get = AsyncMock(
-                side_effect=httpx.ConnectError("Connection refused")
-            )
+            instance.get = AsyncMock(side_effect=httpx.ConnectError("Connection refused"))
             instance.__aenter__ = AsyncMock(return_value=instance)
             instance.__aexit__ = AsyncMock(return_value=False)
             MockClient.return_value = instance
@@ -417,15 +416,14 @@ class TestHealthCheck:
 # embed
 # ---------------------------------------------------------------------------
 
+
 class TestEmbed:
     @pytest.mark.asyncio
     async def test_embed_single_text(self):
         """Test embedding a single text string."""
         provider = _provider()
         mock_resp = MagicMock()
-        mock_resp.json.return_value = {
-            "data": [{"embedding": [0.1, 0.2, 0.3]}]
-        }
+        mock_resp.json.return_value = {"data": [{"embedding": [0.1, 0.2, 0.3]}]}
         mock_resp.raise_for_status = MagicMock()
 
         with patch("httpx.AsyncClient") as MockClient:

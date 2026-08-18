@@ -15,15 +15,21 @@ import structlog
 from fastapi import APIRouter, Depends, HTTPException
 from fastapi.responses import StreamingResponse
 
-from ..assistant_tools.executor import extract_tool_calls, run_tool_loop
-from ..assistant_tools.registry import export_openai_tools
-from ..auth.router import User as AuthenticatedUser, get_current_user
 from api.config.mode_addendums import (
     Mode,
+)
+from api.config.mode_addendums import (
     get_addendum as _get_legacy_mode_addendum,
+)
+from api.config.mode_addendums import (
     get_mode_addendum as _get_mode_addendum,
 )
 from api.config.system_prompt import EDUCATION_SYSTEM_ADDENDUM, system_prompt_manager
+
+from ..assistant_tools.executor import extract_tool_calls, run_tool_loop
+from ..assistant_tools.registry import export_openai_tools
+from ..auth.router import User as AuthenticatedUser
+from ..auth.router import get_current_user
 from . import _runtime as _cr
 from .schemas import SendMessageRequest, SendMessageResponse
 from .service_accessors import (
@@ -38,9 +44,7 @@ logger = structlog.get_logger()
 router = APIRouter()
 
 
-@router.post(
-    "/conversations/{conversation_id}/messages", response_model=SendMessageResponse
-)
+@router.post("/conversations/{conversation_id}/messages", response_model=SendMessageResponse)
 async def send_message(
     conversation_id: str,
     request: SendMessageRequest,
@@ -79,15 +83,17 @@ async def send_message(
             decision = write_time_result["decision"]
             execution = write_time_result["execution"]
 
-            message_metadata.update({
-                "classification": classification,
-                "decision": decision,
-                "write_time_execution": execution,
-                "memory_type": classification["type"],
-                "confidence": classification["confidence"],
-                "actions_taken": execution["actions_executed"],
-                "processed_at": write_time_result["processed_at"],
-            })
+            message_metadata.update(
+                {
+                    "classification": classification,
+                    "decision": decision,
+                    "write_time_execution": execution,
+                    "memory_type": classification["type"],
+                    "confidence": classification["confidence"],
+                    "actions_taken": execution["actions_executed"],
+                    "processed_at": write_time_result["processed_at"],
+                }
+            )
         except Exception as wti_err:
             logger.error(
                 "write_time_intelligence_failed",
@@ -186,7 +192,9 @@ async def send_message(
                     "degraded_mode": assembly_result.get("degraded_mode", False),
                     "degraded_reason": assembly_result.get("degraded_reason"),
                     "truncation_warnings": assembly_result.get("truncation_warnings", []),
-                    "summary_fallback_applied": assembly_result.get("summary_fallback_applied", False),
+                    "summary_fallback_applied": assembly_result.get(
+                        "summary_fallback_applied", False
+                    ),
                 }
             except Exception as ctx_err:
                 logger.warning(
@@ -257,15 +265,13 @@ async def send_message(
         if isinstance(provider_response, dict) and provider_response.get("ok"):
             result_data = provider_response.get("result", {})
             response_content = result_data.get("text", "")
-            used_provider = provider_response.get(
-                "provider", request.provider or "unknown"
-            )
+            used_provider = provider_response.get("provider", request.provider or "unknown")
             used_model = provider_response.get("model", request.model or "unknown")
         elif isinstance(provider_response, dict) and "choices" in provider_response:
-            response_content = provider_response["choices"][0]["message"]["content"]
-            used_provider = provider_response.get(
-                "provider", request.provider or "unknown"
-            )
+            choices = provider_response["choices"]
+            first = choices[0] if choices else {}
+            response_content = (first.get("message") or {}).get("content") or ""
+            used_provider = provider_response.get("provider", request.provider or "unknown")
             used_model = provider_response.get("model", request.model or "unknown")
         else:
             if isinstance(provider_response, dict) and not provider_response.get("ok"):

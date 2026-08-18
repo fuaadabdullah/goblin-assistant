@@ -3,15 +3,25 @@ S3/MinIO artifact storage service for sandbox jobs
 Provides secure upload, download, and lifecycle management for job artifacts
 """
 
-import os
-import boto3
+import asyncio
 import hashlib
-from typing import Optional, Dict, Any, List
+import os
 from datetime import datetime, timedelta
-import redis
+from typing import Any, Dict, List, Optional, cast
+
+import boto3
+import redis.asyncio as redis
 import structlog
 
+from .config.redis_url import DEFAULT_REDIS_URL, resolve_redis_url
+
 logger = structlog.get_logger()
+
+
+def _resolve_redis_url(redis_url: str | None) -> str:
+    """Compatibility wrapper around the canonical Redis URL resolver."""
+
+    return resolve_redis_url(redis_url, component="artifact_service")
 
 
 class ArtifactService:
@@ -19,7 +29,7 @@ class ArtifactService:
 
     def __init__(self):
         # S3/MinIO configuration
-        self.s3_client = None
+        self.s3_client: Any | None = None
         self.bucket_name = os.getenv("S3_BUCKET", "goblin-sandbox")
         self.endpoint_url = os.getenv("ARTIFACT_S3_ENDPOINT")
         self.access_key = os.getenv("S3_ACCESS_KEY")
@@ -27,8 +37,12 @@ class ArtifactService:
         self.region = os.getenv("S3_REGION", "us-east-1")
 
         # Redis for metadata storage
-        self.redis_client = redis.from_url(
-            os.getenv("REDIS_URL", "redis://redis:6379/0")
+        self.redis_client: Any = cast(
+            Any,
+            redis.from_url(
+                _resolve_redis_url(os.getenv("REDIS_URL", DEFAULT_REDIS_URL)),
+                decode_responses=True,
+            ),
         )
 
         # Configuration
@@ -63,9 +77,7 @@ class ArtifactService:
             )
 
         except Exception as e:
-            logger.warning(
-                "S3/MinIO not available — artifact storage disabled", error=str(e)
-            )
+            logger.warning("S3/MinIO not available — artifact storage disabled", error=str(e))
             self.s3_client = None
 
     def is_available(self) -> bool:
@@ -88,7 +100,7 @@ class ArtifactService:
         except OSError:
             return False
 
-    def upload_artifact(
+    async def upload_artifact(
         self, job_id: str, file_path: str, filename: str
     ) -> Optional[Dict[str, Any]]:
         """
@@ -96,18 +108,27 @@ class ArtifactService:
         Returns artifact metadata on success, None on failure
         """
         if not self.is_available():
-            print(f"⚠️  S3 not available, skipping upload of {filename}")
+            logger.warning("artifact_upload_skipped", filename=filename, reason="s3_unavailable")
             return None
 
         try:
+            s3_client = self.s3_client
+            if s3_client is None:
+                return None
+
             # Validate file exists and size
-            if not os.path.exists(file_path):
-                print(f"❌ Artifact file not found: {file_path}")
+            if not os.path.exists(file_path):  # noqa: ASYNC240  # bounded local metadata check before upload
+                logger.warning("artifact_file_not_found", file_path=file_path, job_id=job_id)
                 return None
 
             if not self.validate_artifact_size(file_path):
-                print(
-                    f"❌ Artifact too large: {filename} ({os.path.getsize(file_path) / (1024 * 1024):.1f}MB > {self.max_artifact_size_mb}MB)"
+                size_mb = os.path.getsize(file_path) / (1024 * 1024)  # noqa: ASYNC240  # bounded local metadata check before upload
+                logger.warning(
+                    "artifact_too_large",
+                    filename=filename,
+                    size_mb=round(size_mb, 1),
+                    limit_mb=self.max_artifact_size_mb,
+                    job_id=job_id,
                 )
                 return None
 
@@ -115,8 +136,8 @@ class ArtifactService:
             s3_key = f"jobs/{job_id}/{filename}"
 
             # Calculate file hash and metadata
-            file_hash = self.calculate_file_hash(file_path)
-            file_size = os.path.getsize(file_path)
+            file_hash = await asyncio.to_thread(self.calculate_file_hash, file_path)
+            file_size = os.path.getsize(file_path)  # noqa: ASYNC240  # bounded local metadata check before upload
             upload_time = datetime.utcnow()
 
             # Set metadata with TTL
@@ -135,8 +156,12 @@ class ArtifactService:
                 "ContentType": self._guess_content_type(filename),
             }
 
-            self.s3_client.upload_file(
-                file_path, self.bucket_name, s3_key, ExtraArgs=extra_args
+            await asyncio.to_thread(
+                s3_client.upload_file,
+                file_path,
+                self.bucket_name,
+                s3_key,
+                ExtraArgs=extra_args,
             )
 
             # Store metadata in Redis
@@ -152,40 +177,45 @@ class ArtifactService:
 
             # Store in Redis with TTL
             meta_key = f"artifact:{job_id}:{filename}"
-            self.redis_client.hset(meta_key, mapping=artifact_meta)
-            self.redis_client.expire(meta_key, self.ttl_days * 24 * 60 * 60)
+            await self.redis_client.hset(meta_key, mapping=artifact_meta)
+            await self.redis_client.expire(meta_key, self.ttl_days * 24 * 60 * 60)
 
-            print(
-                f"✅ Uploaded artifact: {s3_key} ({file_size} bytes, TTL: {self.ttl_days}d)"
+            logger.info(
+                "artifact_uploaded",
+                s3_key=s3_key,
+                size_bytes=file_size,
+                ttl_days=self.ttl_days,
             )
 
             return artifact_meta
 
         except Exception as e:
-            print(f"❌ Failed to upload artifact {filename}: {e}")
+            logger.error(
+                "artifact_upload_failed",
+                filename=filename,
+                job_id=job_id,
+                error=str(e),
+                error_type=type(e).__name__,
+            )
             return None
 
-    def get_artifact_metadata(
-        self, job_id: str, filename: str
-    ) -> Optional[Dict[str, Any]]:
+    async def get_artifact_metadata(self, job_id: str, filename: str) -> Optional[Dict[str, Any]]:
         """Get artifact metadata from Redis"""
         try:
             meta_key = f"artifact:{job_id}:{filename}"
-            data = self.redis_client.hgetall(meta_key)
-
-            if not data:
-                return None
-
-            # Convert bytes to strings
-            return {k.decode("utf-8"): v.decode("utf-8") for k, v in data.items()}
-
+            data = await self.redis_client.hgetall(meta_key)
+            return data or None
         except Exception as e:
-            print(f"❌ Failed to get artifact metadata: {e}")
+            logger.error(
+                "artifact_metadata_fetch_failed",
+                job_id=job_id,
+                filename=filename,
+                error=str(e),
+                error_type=type(e).__name__,
+            )
             return None
 
-    def generate_presigned_url(
-        self, s3_key: str, expiration_seconds: int = 300
-    ) -> Optional[str]:
+    def generate_presigned_url(self, s3_key: str, expiration_seconds: int = 300) -> Optional[str]:
         """
         Generate presigned URL for secure artifact access
         Default expiration: 5 minutes
@@ -194,7 +224,11 @@ class ArtifactService:
             return None
 
         try:
-            url = self.s3_client.generate_presigned_url(
+            s3_client = self.s3_client
+            if s3_client is None:
+                return None
+
+            url = s3_client.generate_presigned_url(
                 "get_object",
                 Params={"Bucket": self.bucket_name, "Key": s3_key},
                 ExpiresIn=expiration_seconds,
@@ -202,84 +236,82 @@ class ArtifactService:
             return url
 
         except Exception as e:
-            print(f"❌ Failed to generate presigned URL for {s3_key}: {e}")
+            logger.error(
+                "presigned_url_generation_failed",
+                s3_key=s3_key,
+                error=str(e),
+                error_type=type(e).__name__,
+            )
             return None
 
-    def list_job_artifacts(self, job_id: str) -> List[Dict[str, Any]]:
+    async def list_job_artifacts(self, job_id: str) -> List[Dict[str, Any]]:
         """List all artifacts for a job"""
         try:
-            # Get all artifact keys for this job
             pattern = f"artifact:{job_id}:*"
-            keys = self.redis_client.keys(pattern)
-
             artifacts = []
-            for key in keys:
-                data = self.redis_client.hgetall(key)
+            async for key in self.redis_client.scan_iter(pattern):
+                data = await self.redis_client.hgetall(key)
                 if data:
-                    artifact = {
-                        k.decode("utf-8"): v.decode("utf-8") for k, v in data.items()
-                    }
-
-                    # Generate presigned URL
-                    s3_key = artifact.get("s3_key")
+                    s3_key = data.get("s3_key")
                     if s3_key:
                         url = self.generate_presigned_url(s3_key)
                         if url:
-                            artifact["url"] = url
-
-                    artifacts.append(artifact)
-
+                            data["url"] = url
+                    artifacts.append(data)
             return artifacts
-
         except Exception as e:
-            print(f"❌ Failed to list artifacts for job {job_id}: {e}")
+            logger.error(
+                "artifact_list_failed",
+                job_id=job_id,
+                error=str(e),
+                error_type=type(e).__name__,
+            )
             return []
 
-    def delete_expired_artifacts(self) -> int:
+    async def delete_expired_artifacts(self) -> int:
         """Delete artifacts that have exceeded TTL (for cleanup)"""
         if not self.is_available():
             return 0
 
         try:
+            s3_client = self.s3_client
+            if s3_client is None:
+                return 0
+
             deleted_count = 0
             current_time = datetime.utcnow()
 
-            # Find expired artifacts in Redis
-            pattern = "artifact:*:*:*"
-            keys = self.redis_client.keys(pattern)
-
-            for key in keys:
+            async for key in self.redis_client.scan_iter("artifact:*"):
                 try:
-                    data = self.redis_client.hgetall(key)
-                    if data:
-                        expires_at_str = data.get(b"expires_at")
-                        if expires_at_str:
-                            expires_at = datetime.fromisoformat(
-                                expires_at_str.decode("utf-8")
-                            )
-                            if current_time > expires_at:
-                                # Delete from S3
-                                s3_key = data.get(b"s3_key")
-                                if s3_key:
-                                    self.s3_client.delete_object(
-                                        Bucket=self.bucket_name,
-                                        Key=s3_key.decode("utf-8"),
-                                    )
-
-                                # Delete from Redis
-                                self.redis_client.delete(key)
-                                deleted_count += 1
-
+                    data = await self.redis_client.hgetall(key)
+                    if not data:
+                        continue
+                    expires_at_str = data.get("expires_at")
+                    if expires_at_str and current_time > datetime.fromisoformat(expires_at_str):
+                        s3_key = data.get("s3_key")
+                        if s3_key:
+                            s3_client.delete_object(Bucket=self.bucket_name, Key=s3_key)
+                        await self.redis_client.delete(key)
+                        deleted_count += 1
                 except Exception as e:
-                    print(f"❌ Error deleting expired artifact {key}: {e}")
+                    logger.error(
+                        "artifact_delete_failed",
+                        key=key,
+                        error=str(e),
+                        error_type=type(e).__name__,
+                    )
 
             if deleted_count > 0:
-                print(f"🧹 Cleaned up {deleted_count} expired artifacts")
+                logger.info("artifacts_cleaned_up", count=deleted_count)
 
             return deleted_count
 
         except Exception as e:
-            print(f"❌ Failed to cleanup expired artifacts: {e}")
+            logger.error(
+                "artifact_cleanup_failed",
+                error=str(e),
+                error_type=type(e).__name__,
+            )
             return 0
 
     def _guess_content_type(self, filename: str) -> str:

@@ -206,6 +206,7 @@ class RequestPipeline:
                 conversation_id=req.conversation_id,
                 conversation_history=history_messages[-10:],
                 model=request_model,
+                intent=dec.intent,
             )
             return (
                 dataclasses.replace(

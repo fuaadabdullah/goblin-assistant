@@ -2,9 +2,10 @@
 Persistent storage wrapper for tasks with database and in-memory backends.
 """
 
-from typing import Dict, Any, Optional, List
 import os
 from datetime import datetime
+from typing import Any, Dict, List, Optional
+
 import structlog
 
 _log = structlog.get_logger()
@@ -24,6 +25,7 @@ class TaskStore:
     def _init_db(self):
         """Verify database connectivity at startup."""
         import asyncio
+
         from sqlalchemy import text
 
         async def _ping():
@@ -101,9 +103,10 @@ class TaskStore:
     async def _get_task_from_db(self, task_id: str) -> Optional[Dict[str, Any]]:
         """Retrieve task from database."""
         try:
-            from .models import TaskModel
-            from .database import get_db_context
             from sqlalchemy import select
+
+            from .database import get_db_context
+            from .models import TaskModel
 
             async with get_db_context() as session:
                 result = await session.execute(
@@ -130,9 +133,10 @@ class TaskStore:
     async def _save_task_to_db(self, task_id: str, task_data: Dict[str, Any]) -> None:
         """Save task to database."""
         try:
-            from .models import TaskModel
-            from .database import get_db_context
             from sqlalchemy import select
+
+            from .database import get_db_context
+            from .models import TaskModel
 
             async with get_db_context() as session:
                 # Check if task exists
@@ -158,8 +162,16 @@ class TaskStore:
                         task_type=task_data.get("task_type"),
                         payload=task_data.get("payload", {}),
                         result=task_data.get("result"),
-                        created_at=datetime.fromisoformat(task_data["created_at"]) if "created_at" in task_data else datetime.utcnow(),
-                        updated_at=datetime.fromisoformat(task_data["updated_at"]) if "updated_at" in task_data else datetime.utcnow(),
+                        created_at=(
+                            datetime.fromisoformat(task_data["created_at"])
+                            if "created_at" in task_data
+                            else datetime.utcnow()
+                        ),
+                        updated_at=(
+                            datetime.fromisoformat(task_data["updated_at"])
+                            if "updated_at" in task_data
+                            else datetime.utcnow()
+                        ),
                         metadata_=task_data.get("metadata", {}),
                     )
                     session.add(task)
@@ -169,9 +181,10 @@ class TaskStore:
     async def _delete_task_from_db(self, task_id: str) -> bool:
         """Delete task from database."""
         try:
-            from .models import TaskModel
-            from .database import get_db_context
             from sqlalchemy import delete
+
+            from .database import get_db_context
+            from .models import TaskModel
 
             async with get_db_context() as session:
                 result = await session.execute(
@@ -187,9 +200,10 @@ class TaskStore:
     ) -> List[Dict[str, Any]]:
         """List tasks from database."""
         try:
-            from .models import TaskModel
+            from sqlalchemy import desc, select
+
             from .database import get_db_context
-            from sqlalchemy import select, desc
+            from .models import TaskModel
 
             async with get_db_context() as session:
                 query = select(TaskModel).order_by(desc(TaskModel.created_at)).limit(limit)

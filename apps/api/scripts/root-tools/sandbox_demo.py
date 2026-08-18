@@ -4,19 +4,32 @@ Sandbox Demo Script
 Demonstrates how to use the sandbox API for secure code execution
 """
 
-import requests
-import json
-import time
-import sys
 import os
+import sys
+import time
+
+import requests
 
 # Configuration
 API_BASE_URL = "http://localhost:8001"  # Adjust as needed
-# Read API key from environment to avoid committing secrets
-API_KEY = os.getenv("API_AUTH_KEY") or os.getenv("SANDBOX_API_KEY") or "devkey"
+
+
+def resolve_api_key() -> str:
+    """Read sandbox API key from environment and fail fast if missing."""
+    api_key = os.getenv("API_AUTH_KEY") or os.getenv("SANDBOX_API_KEY")
+    if api_key:
+        return api_key
+
+    print(
+        "❌ Missing API key: set API_AUTH_KEY or SANDBOX_API_KEY before running sandbox_demo.py",
+        file=sys.stderr,
+    )
+    raise SystemExit(1)
+
 
 def demo_sandbox_api():
     """Demonstrate sandbox API usage"""
+    api_key = resolve_api_key()
     print("🚀 Sandbox API Demo")
     print("=" * 40)
 
@@ -54,27 +67,16 @@ with open('/work/test_output.txt', 'w') as f:
 print("File written successfully")
 """
 
-    headers = {
-        "Content-Type": "application/json",
-        "X-API-Key": API_KEY
-    }
+    headers = {"Content-Type": "application/json", "X-API-Key": api_key}
 
-    job_data = {
-        "language": "python",
-        "source": python_code.strip(),
-        "timeout": 10
-    }
+    job_data = {"language": "python", "source": python_code.strip(), "timeout": 10}
 
     try:
-        response = requests.post(
-            f"{API_BASE_URL}/sandbox/submit",
-            headers=headers,
-            json=job_data
-        )
+        response = requests.post(f"{API_BASE_URL}/sandbox/submit", headers=headers, json=job_data)
 
         if response.status_code == 200:
             result = response.json()
-            job_id = result.get('job_id')
+            job_id = result.get("job_id")
             print(f"   ✅ Job submitted successfully: {job_id}")
 
             # Test 3: Monitor job status
@@ -85,25 +87,24 @@ print("File written successfully")
             while attempt < max_attempts:
                 try:
                     response = requests.get(
-                        f"{API_BASE_URL}/sandbox/status/{job_id}",
-                        headers=headers
+                        f"{API_BASE_URL}/sandbox/status/{job_id}", headers=headers
                     )
 
                     if response.status_code == 200:
                         status_data = response.json()
-                        status = status_data.get('status')
+                        status = status_data.get("status")
                         print(f"   📊 Job status: {status}")
 
-                        if status in ['finished', 'failed']:
+                        if status in ["finished", "failed"]:
                             print(f"   ✅ Job completed with status: {status}")
-                            if status_data.get('exit_code') is not None:
+                            if status_data.get("exit_code") is not None:
                                 print(f"   📄 Exit code: {status_data['exit_code']}")
-                            if status_data.get('error'):
+                            if status_data.get("error"):
                                 print(f"   ❌ Error: {status_data['error']}")
                             break
-                        elif status == 'running':
+                        elif status == "running":
                             print("   ⚙️  Job is running...")
-                        elif status == 'queued':
+                        elif status == "queued":
                             print("   ⏳ Job is queued...")
                     else:
                         print(f"   ❌ Status check failed: {response.status_code}")
@@ -122,18 +123,15 @@ print("File written successfully")
             # Test 4: Get job logs
             print("\n4. Retrieving job logs...")
             try:
-                response = requests.get(
-                    f"{API_BASE_URL}/sandbox/logs/{job_id}",
-                    headers=headers
-                )
+                response = requests.get(f"{API_BASE_URL}/sandbox/logs/{job_id}", headers=headers)
 
                 if response.status_code == 200:
                     logs_data = response.json()
-                    logs = logs_data.get('logs', '')
+                    logs = logs_data.get("logs", "")
                     if logs:
                         print("   📄 Job logs:")
                         print("   " + "-" * 30)
-                        for line in logs.split('\n'):
+                        for line in logs.split("\n"):
                             if line.strip():
                                 print(f"   {line}")
                         print("   " + "-" * 30)
@@ -149,13 +147,12 @@ print("File written successfully")
             print("\n5. Listing job artifacts...")
             try:
                 response = requests.get(
-                    f"{API_BASE_URL}/sandbox/artifacts/{job_id}",
-                    headers=headers
+                    f"{API_BASE_URL}/sandbox/artifacts/{job_id}", headers=headers
                 )
 
                 if response.status_code == 200:
                     artifacts_data = response.json()
-                    artifacts = artifacts_data.get('artifacts', [])
+                    artifacts = artifacts_data.get("artifacts", [])
                     if artifacts:
                         print(f"   📦 Found {len(artifacts)} artifacts:")
                         for artifact in artifacts:
@@ -190,8 +187,9 @@ print("File written successfully")
     print("   3. Go to Chat → Switch to 'Code Sandbox' tab")
     print("   4. Write and execute code securely!")
 
-if __name__ == '__main__':
-    if len(sys.argv) > 1 and sys.argv[1] in ['--help', '-h']:
+
+if __name__ == "__main__":
+    if len(sys.argv) > 1 and sys.argv[1] in ["--help", "-h"]:
         print("Sandbox API Demo")
         print("Usage: python sandbox_demo.py")
         print("Make sure the sandbox API is running on http://localhost:8001")

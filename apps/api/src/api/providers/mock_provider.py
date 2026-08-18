@@ -4,7 +4,6 @@ from __future__ import annotations
 
 import asyncio
 import random
-import time
 from typing import Any, AsyncGenerator, Dict, List, Optional, Union
 
 from .base import BaseProvider, ProviderHealth, ProviderResult
@@ -75,10 +74,7 @@ class MockProvider(BaseProvider):
         dim = 32
         is_single = isinstance(texts, str)
         entries = [texts] if is_single else texts
-        embeddings = [
-            [random.uniform(-1, 1) for _ in range(dim)]
-            for _ in entries
-        ]
+        embeddings = [[random.uniform(-1, 1) for _ in range(dim)] for _ in entries]
         return embeddings[0] if is_single else embeddings
 
     def _generate_response(self, prompt: str, model: str) -> str:

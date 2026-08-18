@@ -1,31 +1,47 @@
-"""Tests for api.api_keys_router."""
+"""Tests for api.routes.api_keys_router."""
 
 from __future__ import annotations
 
 import json
-from pathlib import Path
+from unittest.mock import AsyncMock, MagicMock
 
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
 
-from api import api_keys_router
+from api.routes import api_keys_router
 
 
 def _client() -> TestClient:
     app = FastAPI()
-    app.include_router(api_keys_router.router)
+    app.include_router(api_keys_router.router, prefix="/api/v1")
     return TestClient(app)
+
+
+class _FakeStore:
+    def __init__(self):
+        self.keys = {}
+
+    async def get(self, provider: str):
+        return self.keys.get(provider)
+
+    async def set(self, provider: str, key: str):
+        self.keys[provider] = key
+
+    async def delete(self, provider: str):
+        self.keys.pop(provider, None)
 
 
 def test_store_get_and_delete_api_key_round_trip(tmp_path, monkeypatch):
     keys_file = tmp_path / "api_keys.json"
     monkeypatch.setattr(api_keys_router, "API_KEYS_FILE", str(keys_file))
+    fake_store = _FakeStore()
+    monkeypatch.setattr(api_keys_router, "create_api_key_store", lambda: fake_store)
     client = _client()
 
-    stored = client.post("/api-keys/openai", json={"key": "secret-123"})
-    fetched = client.get("/api-keys/openai")
-    deleted = client.delete("/api-keys/openai")
-    missing = client.get("/api-keys/openai")
+    stored = client.post("/api/v1/api-keys/openai", json={"key": "secret-123"})
+    fetched = client.get("/api/v1/api-keys/openai")
+    deleted = client.delete("/api/v1/api-keys/openai")
+    missing = client.get("/api/v1/api-keys/openai")
 
     assert stored.status_code == 200
     assert stored.json()["message"] == "API key stored for openai"
@@ -38,7 +54,28 @@ def test_store_get_and_delete_api_key_round_trip(tmp_path, monkeypatch):
 
     assert missing.status_code == 200
     assert missing.json() == {"key": None, "provider": "openai"}
-    assert json.loads(Path(keys_file).read_text(encoding="utf-8")) == {}
+    assert fake_store.keys == {}
+
+
+def test_store_api_key_failure_preserves_message(tmp_path, monkeypatch):
+    keys_file = tmp_path / "api_keys.json"
+    monkeypatch.setattr(api_keys_router, "API_KEYS_FILE", str(keys_file))
+    monkeypatch.setattr(
+        api_keys_router,
+        "create_api_key_store",
+        lambda: MagicMock(set=AsyncMock(side_effect=RuntimeError("disk full"))),
+    )
+    monkeypatch.setattr(
+        api_keys_router,
+        "load_api_keys_async",
+        AsyncMock(return_value={}),
+    )
+    client = _client()
+
+    response = client.post("/api/v1/api-keys/openai", json={"key": "secret-123"})
+
+    assert response.status_code == 500
+    assert response.json()["detail"] == "Failed to store API key: disk full"
 
 
 def test_load_api_keys_handles_missing_and_invalid_files(
@@ -62,6 +99,4 @@ def test_save_api_keys_writes_indented_json(tmp_path, monkeypatch):
 
     assert keys_file.exists()
     assert keys_file.read_text(encoding="utf-8").strip().startswith("{")
-    assert json.loads(keys_file.read_text(encoding="utf-8")) == {
-        "openai": "secret-123"
-    }
+    assert json.loads(keys_file.read_text(encoding="utf-8")) == {"openai": "secret-123"}

@@ -2,12 +2,14 @@
 User service for database operations
 """
 
-from sqlalchemy.ext.asyncio import AsyncSession
+from typing import List, Optional
+
+from pydantic import BaseModel
 from sqlalchemy import select, update
 from sqlalchemy.exc import IntegrityError
-from typing import Optional, List
+from sqlalchemy.ext.asyncio import AsyncSession
+
 from .models import UserModel
-from pydantic import BaseModel
 
 
 class UserCreateData(BaseModel):
@@ -23,7 +25,9 @@ class UserService:
     def __init__(self, session: AsyncSession):
         self.session = session
 
-    async def create_user(self, user_data: UserCreateData, flush_only: bool = False) -> Optional[UserModel]:
+    async def create_user(
+        self, user_data: UserCreateData, flush_only: bool = False
+    ) -> Optional[UserModel]:
         """Create a new user"""
         try:
             user = UserModel(
@@ -47,16 +51,12 @@ class UserService:
 
     async def get_user_by_id(self, user_id: str) -> Optional[UserModel]:
         """Get user by ID"""
-        result = await self.session.execute(
-            select(UserModel).where(UserModel.id == user_id)
-        )
+        result = await self.session.execute(select(UserModel).where(UserModel.id == user_id))
         return result.scalar_one_or_none()
 
     async def get_user_by_email(self, email: str) -> Optional[UserModel]:
         """Get user by email"""
-        result = await self.session.execute(
-            select(UserModel).where(UserModel.email == email)
-        )
+        result = await self.session.execute(select(UserModel).where(UserModel.email == email))
         return result.scalar_one_or_none()
 
     async def get_user_by_google_id(self, google_id: str) -> Optional[UserModel]:
@@ -66,9 +66,7 @@ class UserService:
         )
         return result.scalar_one_or_none()
 
-    async def get_user_by_passkey_credential_id(
-        self, credential_id: str
-    ) -> Optional[UserModel]:
+    async def get_user_by_passkey_credential_id(self, credential_id: str) -> Optional[UserModel]:
         """Get user by passkey credential ID"""
         result = await self.session.execute(
             select(UserModel).where(UserModel.passkey_credential_id == credential_id)
@@ -81,9 +79,7 @@ class UserService:
             from sqlalchemy import func
 
             result = await self.session.execute(
-                update(UserModel)
-                .where(UserModel.id == user_id)
-                .values(last_login=func.now())
+                update(UserModel).where(UserModel.id == user_id).values(last_login=func.now())
             )
             if flush_only:
                 await self.session.flush()
@@ -94,7 +90,9 @@ class UserService:
             await self.session.rollback()
             return False
 
-    async def update_user(self, user_id: str, flush_only: bool = False, **kwargs) -> Optional[UserModel]:
+    async def update_user(
+        self, user_id: str, flush_only: bool = False, **kwargs
+    ) -> Optional[UserModel]:
         """Update user fields"""
         try:
             result = await self.session.execute(

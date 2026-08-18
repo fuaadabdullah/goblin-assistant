@@ -2,11 +2,15 @@
 
 from __future__ import annotations
 
-from unittest.mock import patch
+from unittest.mock import AsyncMock, patch
 
 from fastapi import FastAPI
+from fastapi.responses import JSONResponse
 from fastapi.testclient import TestClient
 
+from api.core.contracts import ErrorEnvelope
+from api.core.error_types import ErrorType
+from api.core.errors import DomainError
 from api.routes.providers_models import _provider_models, router
 
 
@@ -29,12 +33,27 @@ def test_provider_models_ignores_blank_values():
 
     result = _provider_models(entry)
 
-    assert result == ["  ", "model-a"] or result == ["model-a"]
+    assert result in (["  ", "model-a"], ["model-a"])
 
 
 def test_get_provider_models_endpoint_returns_providers_and_models():
     app = FastAPI()
-    app.include_router(router)
+
+    @app.exception_handler(DomainError)
+    async def _domain_error_handler(_, exc: DomainError):
+        return JSONResponse(
+            status_code=exc.status_code,
+            content=ErrorEnvelope(
+                error={
+                    "code": exc.code,
+                    "type": ErrorType.BUSINESS_LOGIC,
+                    "message": exc.message,
+                    "details": exc.details,
+                }
+            ).model_dump(exclude_none=True),
+        )
+
+    app.include_router(router, prefix="/api/v1")
     client = TestClient(app)
 
     inventory = [
@@ -42,50 +61,122 @@ def test_get_provider_models_endpoint_returns_providers_and_models():
             "id": "openai",
             "models": ["gpt-4o-mini"],
             "default_model": "gpt-4.1",
+            "health": "healthy",
+            "configured": True,
+            "is_selectable": True,
+            "health_reason": None,
         },
         {
             "id": "mock",
             "models": ["mock-1"],
             "default_model": "mock-2",
+            "health": "unknown",
+            "configured": False,
+            "is_selectable": False,
+            "health_reason": "offline",
         },
     ]
 
-    def fake_status(provider_id: str):
-        if provider_id == "openai":
-            return {"status": "healthy", "configured": True, "last_error": None}
-        return {"status": "unknown", "configured": False, "last_error": "offline"}
-
-    with (
-        patch(
-            "api.routes.providers_models.dispatcher.list_providers",
-            return_value=inventory,
-        ),
-        patch(
-            "api.routes.providers_models.health_monitor.get_status",
-            side_effect=fake_status,
-        ),
+    with patch(
+        "api.routes.providers_models.dispatcher.get_provider_inventory",
+        new_callable=AsyncMock,
+        return_value=inventory,
     ):
-        response = client.get("/providers/models")
+        response = client.get("/api/v1/providers/models")
 
     assert response.status_code == 200
-    data = response.json()
+    data = response.json()["data"]
     assert data["total_providers"] == 2
-    assert data["total_models"] == 4
-    assert data["source"] == "configured_with_health"
+    assert data["total_models"] == 7
+    assert data["total_router_models"] == 3
+    assert data["source"] == "configured_with_health_plus_router"
     assert len(data["providers"]) == 2
     assert any(model["name"] == "gpt-4.1" for model in data["models"])
+    assert {
+        model["name"] for model in data["models"] if model["provider_id"] == "litellm_router"
+    } == {
+        "router-cheap",
+        "router-code",
+        "router-reason",
+    }
+    cheap_router = next(group for group in data["router_models"] if group["name"] == "router-cheap")
+    assert cheap_router["routing_strategy"] == "latency-based-routing"
+    assert cheap_router["fallbacks"] == ["router-code"]
+    assert {group["name"] for group in data["router_models"]} == {
+        "router-cheap",
+        "router-code",
+        "router-reason",
+    }
 
 
 def test_get_provider_models_endpoint_handles_errors():
     app = FastAPI()
-    app.include_router(router)
+
+    @app.exception_handler(DomainError)
+    async def _domain_error_handler(_, exc: DomainError):
+        return JSONResponse(
+            status_code=exc.status_code,
+            content=ErrorEnvelope(
+                error={
+                    "code": exc.code,
+                    "type": ErrorType.BUSINESS_LOGIC,
+                    "message": exc.message,
+                    "details": exc.details,
+                }
+            ).model_dump(exclude_none=True),
+        )
+
+    app.include_router(router, prefix="/api/v1")
     client = TestClient(app)
 
     with patch(
-        "api.routes.providers_models.dispatcher.list_providers",
+        "api.routes.providers_models.dispatcher.get_provider_inventory",
+        new_callable=AsyncMock,
         side_effect=RuntimeError("inventory unavailable"),
     ):
-        response = client.get("/providers/models")
+        response = client.get("/api/v1/providers/models")
 
     assert response.status_code == 500
-    assert "Failed to get models" in response.json()["detail"]
+    assert response.json()["success"] is False
+    assert response.json()["error"]["code"] == "PROVIDER_MODELS_FETCH_FAILED"
+
+
+def test_provider_models_legacy_route_is_not_mounted():
+    app = FastAPI()
+
+    @app.exception_handler(DomainError)
+    async def _domain_error_handler(_, exc: DomainError):
+        return JSONResponse(
+            status_code=exc.status_code,
+            content=ErrorEnvelope(
+                error={
+                    "code": exc.code,
+                    "type": ErrorType.BUSINESS_LOGIC,
+                    "message": exc.message,
+                    "details": exc.details,
+                }
+            ).model_dump(exclude_none=True),
+        )
+
+    app.include_router(router, prefix="/api/v1")
+    client = TestClient(app)
+
+    with patch(
+        "api.routes.providers_models.dispatcher.get_provider_inventory",
+        new_callable=AsyncMock,
+        return_value=[{"id": "openai", "models": ["gpt-4o-mini"], "configured": True}],
+    ):
+        v1 = client.get("/api/v1/providers/models")
+
+    assert v1.status_code == 200
+    assert client.get("/providers/models").status_code == 404
+
+
+def test_provider_models_openapi_marks_route_as_canonical():
+    app = FastAPI()
+    app.include_router(router, prefix="/api/v1")
+
+    operation = app.openapi()["paths"]["/api/v1/providers/models"]["get"]
+
+    assert operation["x-goblin-route-contract"] == "canonical-routing-inventory"
+    assert operation.get("deprecated") is not True

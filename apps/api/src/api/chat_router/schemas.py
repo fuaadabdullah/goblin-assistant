@@ -1,11 +1,21 @@
 """Pydantic request/response models for the chat router."""
 
+from enum import Enum
 from typing import Any, Dict, List, Optional
 
 from pydantic import BaseModel, field_validator, model_validator
 
-from ..config.mode_addendums import Mode, ModeKey, MODE_REGISTRY
+from ..config.mode_addendums import MODE_REGISTRY, Mode, ModeKey
 from ..config.tone_addendums import ToneMode
+
+
+class StreamEventType(str, Enum):
+    TOKEN = "TOKEN"
+    TOOL_CALL = "TOOL_CALL"
+    TOOL_RESULT = "TOOL_RESULT"
+    STATUS = "STATUS"
+    ERROR = "ERROR"
+    COMPLETE = "COMPLETE"
 
 
 class ChatMessage(BaseModel):
@@ -30,15 +40,20 @@ class SendMessageRequest(BaseModel):
     message: str
     provider: Optional[str] = None  # None = let dispatcher choose
     model: Optional[str] = None  # None = use provider default
-    department: Optional[str] = None  # legacy routing hint; preserved for compatibility
+    department: Optional[str] = None  # e.g. "reasoning", "coding", "creative", "research"
     stream: Optional[bool] = False
     metadata: Optional[Dict[str, Any]] = None
     enable_context_assembly: Optional[bool] = True  # Inject RAG context like contextual-chat
     attachment_ids: Optional[List[str]] = None  # IDs from /chat/upload-file
     mode: Mode = Mode.CHAT  # canonical v2 mode; active-gated at validation time
-    legacy_mode: Optional[ModeKey] = None  # overrides auto-detection; exported via OpenAPI → SDK codegen
+    legacy_mode: Optional[ModeKey] = (
+        None  # overrides auto-detection; exported via OpenAPI → SDK codegen
+    )
     tone: Optional[ToneMode] = None  # voice register; DEFAULT/None = no addendum
-    language: Optional[str] = None  # e.g. "python", "javascript" — hints code language for glossary injection
+    glossary: Optional[Dict[str, str]] = None  # Session-scoped term overrides
+    language: Optional[str] = (
+        None  # e.g. "python", "javascript" — hints code language for glossary injection
+    )
 
     @model_validator(mode="before")
     @classmethod
@@ -81,15 +96,34 @@ class SendMessageRequest(BaseModel):
 class SendMessageResponse(BaseModel):
     message_id: str
     response: str
-    provider: str
-    model: str
-    timestamp: str
+    provider: Optional[str] = None
+    model: Optional[str] = None
     department: Optional[str] = None
     department_reason: Optional[str] = None
+    timestamp: str
     usage: Optional[Dict[str, Any]] = None
     cost_usd: Optional[float] = None
     correlation_id: Optional[str] = None
     visualizations: Optional[List[Dict[str, Any]]] = None
+
+
+class LayerEstimate(BaseModel):
+    """Token estimate for a single context-assembly layer."""
+
+    name: str
+    tokens: int
+
+
+class EstimateTokensResponse(BaseModel):
+    """Estimated token/cost breakdown for a chat request."""
+
+    input_tokens: int
+    estimated_output_tokens: int
+    estimated_cost_usd: float
+    department: str = "general"
+    layers: List[LayerEstimate]
+    degraded_mode: bool = False
+    degraded_reason: Optional[str] = None
 
 
 class ConversationInfo(BaseModel):
@@ -100,6 +134,7 @@ class ConversationInfo(BaseModel):
     snippet: Optional[str] = None
     created_at: str
     updated_at: str
+    category: Optional[str] = None
 
 
 class UpdateConversationTitleRequest(BaseModel):
@@ -112,7 +147,9 @@ class ImportConversationRequest(BaseModel):
 
 class SSEErrorEvent(BaseModel):
     """Server-Sent Event error payload"""
+
     type: str = "error"  # "error", "warning", "info"
+    event_type: Optional[StreamEventType] = None
     code: str  # Machine-readable error code
     message: str  # User-friendly error message
     is_recoverable: bool = False  # Whether client can retry
@@ -121,6 +158,8 @@ class SSEErrorEvent(BaseModel):
 
 class SSEDataEvent(BaseModel):
     """Generic Server-Sent Event data payload"""
+
+    event_type: Optional[StreamEventType] = None
     content: Optional[str] = None  # Streaming text chunk
     token_count: Optional[int] = None
     cost_delta: Optional[float] = None
@@ -129,8 +168,8 @@ class SSEDataEvent(BaseModel):
     result: Optional[str] = None
     cost: Optional[float] = None
     tokens: Optional[int] = None
-    model: Optional[str] = None
-    provider: Optional[str] = None
+    department: Optional[str] = None  # Which department handled this
+    department_reason: Optional[str] = None
     duration_ms: Optional[int] = None
     message_id: Optional[str] = None
     # Error fields
@@ -160,13 +199,18 @@ class ContextualChatRequest(BaseModel):
     message: str
     user_id: Optional[str] = None
     conversation_id: Optional[str] = None
-    provider: Optional[str] = None
-    model: Optional[str] = None
+    provider: Optional[str] = None  # None = let dispatcher choose
+    model: Optional[str] = None  # None = use provider default
+    department: Optional[str] = None  # e.g. "reasoning", "coding", "creative", "research"
     stream: Optional[bool] = False
     metadata: Optional[Dict[str, Any]] = None
     enable_context_assembly: bool = True
     mode: Mode = Mode.CHAT  # canonical v2 mode; active-gated at validation time
-    legacy_mode: Optional[ModeKey] = None  # overrides auto-detection; exported via OpenAPI → SDK codegen
+    legacy_mode: Optional[ModeKey] = (
+        None  # overrides auto-detection; exported via OpenAPI → SDK codegen
+    )
+    tone: Optional[ToneMode] = None  # Voice/register override. None → DEFAULT.
+    glossary: Optional[Dict[str, str]] = None  # Session-scoped term overrides
 
     @model_validator(mode="before")
     @classmethod
@@ -211,36 +255,21 @@ class ContextualChatResponse(BaseModel):
 
     message_id: str
     response: str
-    provider: str
-    model: str
+    department: str  # Which brain department handled this
+    department_reason: str = ""
     timestamp: str
     context_assembly: Optional[Dict[str, Any]] = None
     token_usage: Optional[Dict[str, Any]] = None
     visualizations: Optional[List[Dict[str, Any]]] = None
 
 
-class LayerEstimate(BaseModel):
-    """Token estimate for a single context-assembly layer."""
-
-    name: str
-    tokens: int
-
-
-class EstimateTokensResponse(BaseModel):
-    """Estimated token/cost breakdown for a chat request."""
-
-    input_tokens: int
-    estimated_output_tokens: int
-    estimated_cost_usd: float
-    department: str
-    layers: List[LayerEstimate]
-    degraded_mode: bool = False
-    degraded_reason: Optional[str] = None
-
-
 class StreamChatRequest(BaseModel):
     message: str
     conversation_id: str
-    provider: Optional[str] = None
-    model: Optional[str] = None
+    provider: Optional[str] = None  # None = let dispatcher choose
+    model: Optional[str] = None  # None = use provider default
+    department: Optional[str] = None  # e.g. "reasoning", "coding", "creative", "research"
     metadata: Optional[Dict[str, Any]] = None
+    mode: Mode = Mode.CHAT
+    tone: Optional[ToneMode] = None  # Voice/register override. None → DEFAULT.
+    glossary: Optional[Dict[str, str]] = None  # Session-scoped term overrides

@@ -7,14 +7,13 @@ calls to ``search()`` return successive solutions until the frontier is empty.
 
 from __future__ import annotations
 
+import heapq
 from collections import deque
 from collections.abc import Iterable, Iterator, Sequence
 from dataclasses import dataclass
-import heapq
 from typing import Generic, Protocol, TypeVar
 
 from api.core.agents import Displayable
-
 
 NodeT = TypeVar("NodeT")
 

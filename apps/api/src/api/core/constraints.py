@@ -117,9 +117,7 @@ class CSP:
                 names = ", ".join(variable.name for variable in unknown)
                 raise ValueError(f"constraint references variables outside the CSP: {names}")
 
-        buckets: dict[Variable, list[Constraint]] = {
-            variable: [] for variable in variable_values
-        }
+        buckets: dict[Variable, list[Constraint]] = {variable: [] for variable in variable_values}
         for constraint in constraint_values:
             for variable in constraint.scope:
                 buckets[variable].append(constraint)
@@ -201,14 +199,12 @@ class BacktrackingSolver:
         if limit is not None and limit < 1:
             raise ValueError("solution limit must be positive")
 
-        yielded = 0
         start = dict(assignment or {})
         if not self.csp.consistent(start):
             return
 
-        for solution in self._search(start):
+        for yielded, solution in enumerate(self._search(start), start=1):
             yield solution
-            yielded += 1
             if limit is not None and yielded >= limit:
                 return
 

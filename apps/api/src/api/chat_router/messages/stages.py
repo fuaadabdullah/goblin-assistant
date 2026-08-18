@@ -36,12 +36,9 @@ from ...config.archetypes import (
     missing_general_assistant_tools as _missing_general_assistant_tools,
 )
 from ...config.language_glossary import detect_language, format_language_glossary
-from ...config.mode_addendums import (
-    CATEGORY_ADDENDUMS,
-    Mode,
-    get_addendum as _get_mode_addendum,
-    get_mode_addendum as _get_new_mode_addendum,
-)
+from ...config.mode_addendums import CATEGORY_ADDENDUMS, Mode
+from ...config.mode_addendums import get_addendum as _get_mode_addendum
+from ...config.mode_addendums import get_mode_addendum as _get_new_mode_addendum
 from ...config.system_prompt import EDUCATION_SYSTEM_ADDENDUM
 
 logger = structlog.get_logger()
@@ -66,13 +63,15 @@ async def classify_intent(message: str) -> tuple[Any, dict]:
     """
     try:
         from api.routing.intent_classifier import intent_classifier as _ic  # noqa: PLC0415
-        from api.agents.dispatcher import intent_dispatcher as _ad  # noqa: PLC0415
+        from api.services.intent_dispatch_service import (
+            dispatch_intent_archetype,  # noqa: PLC0415  # lazy import avoids chat startup cycle
+        )
 
         result = _ic.classify(message)
         meta = result.to_dict()
 
         try:
-            selection = _ad.dispatch(result)
+            selection = dispatch_intent_archetype(result)
             meta["archetype"] = selection.to_dict()
         except Exception as arch_exc:
             logger.warning("archetype_dispatch_failed", error=str(arch_exc))

@@ -9,8 +9,9 @@ from typing import Any, Dict, List, Optional
 
 import structlog
 
+from ...core.tokenization import count_tokens, trim_to_tokens
 from ...observability.retrieval_tracer import retrieval_tracer
-from ...utils.tokenizer import count_tokens, trim_to_tokens
+from ..retrieval_service._limits import PROMPT_RETRIEVAL_MAX
 from .models import ContextBudget, ContextLayer
 
 logger = structlog.get_logger()
@@ -62,9 +63,16 @@ async def assemble_semantic_retrieval(
             query=query,
             user_id=user_id,
             conversation_id=conversation_id,
-            k=10,
+            k=PROMPT_RETRIEVAL_MAX,
             max_age_hours=168,
         )
+
+        if context_results:
+            from ..memory_reranker import (
+                memory_reranker,  # noqa: PLC0415  # lazy import avoids optional reranker startup cost
+            )
+
+            context_results = memory_reranker.rerank(context_results, query=query)
 
         if not context_results:
             await retrieval_tracer.end_trace(

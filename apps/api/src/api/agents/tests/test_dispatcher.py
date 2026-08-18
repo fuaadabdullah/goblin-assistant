@@ -4,10 +4,9 @@ import pytest
 
 from api.agents.archetypes import (
     ARCHETYPE_REGISTRY,
-    AgentArchetype,
     AgentArchetypeId,
 )
-from api.agents.dispatcher import IntentDispatcher, _SPECIALIST_CONFIDENCE_THRESHOLD
+from api.agents.dispatcher import _SPECIALIST_CONFIDENCE_THRESHOLD, IntentDispatcher
 from api.routing.intent_models import IntentLabel, IntentResult
 
 

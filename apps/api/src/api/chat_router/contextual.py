@@ -14,34 +14,54 @@ from fastapi import APIRouter, Depends, HTTPException
 from fastapi.responses import StreamingResponse
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from ..assistant_tools.executor import extract_tool_calls, run_tool_loop
-from ..assistant_tools.registry import export_openai_tools
-from ..auth.router import User as AuthenticatedUser, get_current_user
-from ..storage import conversation_store
-from ..storage.database import get_db
-from api.config.mode_addendums import (
-    Mode,
-    get_addendum as _get_legacy_mode_addendum,
-    get_mode_addendum as _get_mode_addendum,
+from api.config.archetypes import (
+    is_deep_research_mode as _is_deep_research_mode,
 )
-from api.config.system_prompt import EDUCATION_SYSTEM_ADDENDUM, system_prompt_manager
+from api.config.archetypes import (
+    is_general_assistant_mode as _is_general_assistant_mode,
+)
+from api.config.archetypes import (
+    missing_deep_research_tools as _missing_deep_research_tools,
+)
+from api.config.archetypes import (
+    missing_general_assistant_tools as _missing_general_assistant_tools,
+)
+from api.config.mode_addendums import get_addendum as _get_mode_addendum
+from api.config.prompt_composer import compose_system_prompt
+from api.config.system_prompt import system_prompt_manager
+
+from ..assistant_tools.executor import extract_tool_calls_contract, run_tool_loop
+from ..assistant_tools.registry import export_tools_for_provider
+from ..auth.router import User as AuthenticatedUser
+from ..auth.router import get_current_user
+from ..core.contracts import SuccessEnvelope
+from ..storage import conversation_store
+from ..storage.database import get_readonly_db
 from . import _runtime as _cr
+from .archiving import schedule_conversation_archive
 from .schemas import ContextualChatRequest, ContextualChatResponse
 from .service_accessors import (
     _get_context_assembly_service,
     _get_message_classifier,
 )
 
+
+def _get_embedding_worker():
+    from ..services.embedding_worker import embedding_worker
+
+    return embedding_worker
+
+
 logger = structlog.get_logger()
 
 router = APIRouter()
 
 
-@router.post("/contextual-chat", response_model=ContextualChatResponse)
+@router.post("/contextual-chat", response_model=SuccessEnvelope[ContextualChatResponse])
 async def contextual_chat(
     request: ContextualChatRequest,
     current_user: AuthenticatedUser = Depends(get_current_user),
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(get_readonly_db),
 ):
     """Chat with the new fixed-order retrieval stack + strict token budgeting.
 
@@ -55,36 +75,37 @@ async def contextual_chat(
         if conversation_id:
             await _cr._assert_conversation_owned(conversation_id, current_user, db)
 
-        # Resolve mode addendum: new Mode takes priority, then legacy_mode, then auto-detect.
-        if request.legacy_mode:
+        # Resolve mode + learning boost together so the composer can build
+        # the mode block with the existing addendum / education rules in
+        # the correct slot. The composer owns step 3 of the order; we
+        # just hand it the right inputs.
+        learning_boost = False
+        if request.mode:
             try:
-                addendum = _get_legacy_mode_addendum(request.legacy_mode)
+                _get_mode_addendum(request.mode)  # validate; KeyError handled below
             except KeyError as exc:
-                raise HTTPException(status_code=400, detail=str(exc))
-        elif request.mode != Mode.CHAT:
-            try:
-                mode_addendum = _get_mode_addendum(request.mode)
-                addendum = mode_addendum.directive
-            except ValueError as exc:
                 raise HTTPException(status_code=400, detail=str(exc))
         else:
             message_classifier, MessageType = _get_message_classifier()
-            msg_classification = message_classifier.classify_message(
-                request.message, "user"
-            )
-            addendum = (
-                EDUCATION_SYSTEM_ADDENDUM
-                if msg_classification.message_type == MessageType.LEARNING
-                else ""
-            )
+            msg_classification = message_classifier.classify_message(request.message, "user")
+            learning_boost = msg_classification.message_type == MessageType.LEARNING
+
+        # Build steps 1–4 of the canonical composition order. The assembled
+        # context (step 5) is appended separately below so the system budget
+        # in `system_layer.py` continues to own context placement.
+        prefix_prompt = compose_system_prompt(
+            tone=request.tone,
+            mode=request.mode,
+            learning_boost=learning_boost,
+            request_glossary=request.glossary,
+            unknown_mode="raise",
+        )
 
         context_assembly = None
         if request.enable_context_assembly and user_id:
             conversation_history = []
             if conversation_id:
-                conversation = await conversation_store.get_conversation(
-                    conversation_id
-                )
+                conversation = await conversation_store.get_conversation(conversation_id)
                 if conversation:
                     conversation_history = [
                         {"role": msg.role, "content": msg.content}
@@ -103,11 +124,8 @@ async def contextual_chat(
             context_assembly = assembly_result
             context_text = assembly_result.get("context", "")
 
-            system_prompt = system_prompt_manager.get_complete_prompt_with_addendum(
-                context=context_text,
-                user_query=request.message,
-                addendum=addendum,
-            )
+            # Step 5: dynamic memory / context appended to the composed prefix.
+            system_prompt = f"{prefix_prompt}\n\n{context_text}" if context_text else prefix_prompt
 
             messages = [
                 {"role": "system", "content": system_prompt},
@@ -118,21 +136,15 @@ async def contextual_chat(
                 "total_tokens_used": assembly_result.get("total_tokens_used", 0),
                 "remaining_tokens": assembly_result.get("remaining_tokens", 0),
                 "layers_assembled": len(assembly_result.get("layers", [])),
-                "assembly_time": assembly_result.get("assembly_log", {}).get(
-                    "assembly_time"
-                ),
+                "assembly_time": assembly_result.get("assembly_log", {}).get("assembly_time"),
                 "degraded_mode": assembly_result.get("degraded_mode", False),
                 "degraded_reason": assembly_result.get("degraded_reason"),
                 "truncation_warnings": assembly_result.get("truncation_warnings", []),
-                "summary_fallback_applied": assembly_result.get(
-                    "summary_fallback_applied", False
-                ),
+                "summary_fallback_applied": assembly_result.get("summary_fallback_applied", False),
             }
 
         else:
-            system_prompt = system_prompt_manager.get_complete_prompt_with_addendum(
-                user_query=request.message, addendum=addendum
-            )
+            system_prompt = prefix_prompt
             messages = [
                 {"role": "system", "content": system_prompt},
                 {"role": "user", "content": request.message},
@@ -142,11 +154,48 @@ async def contextual_chat(
         payload = {
             "messages": messages,
             "model": request.model,
+            "user_id": str(user_id),
         }
 
-        ctx_tools = export_openai_tools()
+        ctx_tools = export_tools_for_provider(request.provider)
+        if _is_general_assistant_mode(request.mode) and ctx_tools:
+            missing_tools = _missing_general_assistant_tools(ctx_tools)
+            if missing_tools:
+                logger.warning(
+                    "general_assistant_required_tools_missing",
+                    provider=request.provider,
+                    mode=request.mode,
+                    missing_tools=missing_tools,
+                    registered_tool_count=len(ctx_tools),
+                )
+        if _is_deep_research_mode(request.mode) and ctx_tools:
+            missing_tools = _missing_deep_research_tools(ctx_tools)
+            if missing_tools:
+                logger.warning(
+                    "deep_research_required_tools_missing",
+                    provider=request.provider,
+                    mode=request.mode,
+                    missing_tools=missing_tools,
+                    registered_tool_count=len(ctx_tools),
+                )
         if ctx_tools:
             payload["tools"] = ctx_tools
+
+        # Resolve department for contextual chat
+        _ctx_dept = request.department or "general"
+        _ctx_dept_provider = request.provider
+        _ctx_dept_model = request.model
+        if request.department and not request.provider:
+            try:
+                from api.departments import (
+                    department_dispatcher as _dd,  # noqa: PLC0415  # lazy import avoids router cycle
+                )
+
+                _ctx_dept_id = _dd.resolve_provider_id(request.department)
+                if _ctx_dept_id:
+                    _ctx_dept_provider = _ctx_dept_id
+            except Exception:
+                pass
 
         if request.stream:
             # Streaming requires a conversation; create one on the fly if missing.
@@ -163,8 +212,8 @@ async def contextual_chat(
                     message=request.message,
                     conversation_id=stream_conv_id,
                     current_user=current_user,
-                    provider=request.provider,
-                    model=request.model,
+                    provider=_ctx_dept_provider,
+                    model=_ctx_dept_model,
                 ),
                 media_type="text/event-stream",
                 headers={
@@ -173,53 +222,44 @@ async def contextual_chat(
                 },
             )
 
-        try:
-            provider_response = await _cr.invoke_provider(
-                pid=request.provider,
-                model=request.model,
-                payload=payload,
+        provider_response = await _cr.invoke_provider(
+            pid=_ctx_dept_provider,
+            model=_ctx_dept_model,
+            payload=payload,
+            timeout_ms=30000,
+            stream=False,
+        )
+        if (
+            ctx_tools
+            and isinstance(provider_response, dict)
+            and provider_response.get("ok")
+            and extract_tool_calls_contract(provider_response)
+        ):
+            provider_response = await run_tool_loop(
+                messages=list(messages),
+                invoke_fn=_cr.invoke_provider,
+                provider=_ctx_dept_provider,
+                model=_ctx_dept_model,
+                tools=ctx_tools,
                 timeout_ms=30000,
-                stream=False,
+                user_id=user_id,
+                conversation_id=conversation_id,
             )
-
-            if (
-                isinstance(provider_response, dict)
-                and provider_response.get("ok")
-                and extract_tool_calls(provider_response)
-            ):
-                provider_response = await run_tool_loop(
-                    messages=list(messages),
-                    invoke_fn=_cr.invoke_provider,
-                    provider=request.provider,
-                    model=request.model,
-                    tools=ctx_tools if ctx_tools else None,
-                    timeout_ms=30000,
-                    user_id=user_id,
-                    conversation_id=conversation_id,
-                )
-
-        except Exception:
-            raise
 
         if isinstance(provider_response, dict) and provider_response.get("ok"):
             result_data = provider_response.get("result", {})
             response_content = result_data.get("text", "")
-            used_provider = provider_response.get(
-                "provider", request.provider or "unknown"
-            )
+            used_provider = provider_response.get("provider", request.provider or "unknown")
             used_model = provider_response.get("model", request.model or "unknown")
         elif isinstance(provider_response, dict) and "choices" in provider_response:
-            response_content = provider_response["choices"][0]["message"]["content"]
-            used_provider = provider_response.get(
-                "provider", request.provider or "unknown"
-            )
+            choices = provider_response["choices"]
+            first = choices[0] if choices else {}
+            response_content = (first.get("message") or {}).get("content") or ""
+            used_provider = provider_response.get("provider", request.provider or "unknown")
             used_model = provider_response.get("model", request.model or "unknown")
         else:
             if isinstance(provider_response, dict) and not provider_response.get("ok"):
-                error_msg = provider_response.get("error", "unknown-error")
-                raise HTTPException(
-                    status_code=500, detail=f"AI Provider error: {error_msg}"
-                )
+                _cr._raise_structured_provider_error(provider_response)
 
             response_content = str(provider_response)
             used_provider = request.provider or "unknown"
@@ -232,15 +272,17 @@ async def contextual_chat(
                 conversation_id=conversation_id,
                 role="user",
                 content=request.message,
-                metadata={
-                    "context_assembly_enabled": request.enable_context_assembly,
-                    "context_assembly_layers": len(context_assembly.get("layers", []))
-                    if context_assembly
-                    else 0,
-                    "metadata": request.metadata,
-                }
-                if request.enable_context_assembly
-                else request.metadata,
+                metadata=(
+                    {
+                        "context_assembly_enabled": request.enable_context_assembly,
+                        "context_assembly_layers": (
+                            len(context_assembly.get("layers", [])) if context_assembly else 0
+                        ),
+                        "metadata": request.metadata,
+                    }
+                    if request.enable_context_assembly
+                    else request.metadata
+                ),
             )
 
             await conversation_store.add_message_to_conversation(
@@ -254,27 +296,54 @@ async def contextual_chat(
                     "token_usage": token_usage,
                 },
             )
+            await schedule_conversation_archive(conversation_id)
+
+            # Queue both messages for embedding so they're retrievable by RAG
+            # on future turns. Fire-and-forget — never blocks the response.
+            try:
+                worker = _get_embedding_worker()
+                user_msg_id = str(uuid.uuid4())
+                await worker.queue_message_embedding(
+                    user_id=user_id,
+                    conversation_id=conversation_id,
+                    message_id=user_msg_id,
+                    content=request.message,
+                )
+                await worker.queue_message_embedding(
+                    user_id=user_id,
+                    conversation_id=conversation_id,
+                    message_id=response_message_id,
+                    content=response_content,
+                    metadata={"provider": used_provider, "model": used_model},
+                )
+            except Exception as _emb_exc:
+                logger.debug("embedding_queue_skipped", error=str(_emb_exc))
 
         visualizations = None
-        if isinstance(provider_response, dict) and provider_response.get(
-            "visualizations"
-        ):
+        if isinstance(provider_response, dict) and provider_response.get("visualizations"):
             visualizations = provider_response["visualizations"]
 
-        return ContextualChatResponse(
-            message_id=response_message_id,
-            response=response_content,
-            provider=used_provider,
-            model=used_model,
-            timestamp=datetime.utcnow().isoformat(),
-            context_assembly=context_assembly,
-            token_usage=token_usage,
-            visualizations=visualizations,
+        return SuccessEnvelope(
+            data=ContextualChatResponse(
+                message_id=response_message_id,
+                response=response_content,
+                department=_ctx_dept,
+                department_reason="",
+                timestamp=datetime.utcnow().isoformat(),
+                context_assembly=context_assembly,
+                token_usage=token_usage,
+                visualizations=visualizations,
+            )
         )
 
     except HTTPException:
         raise
-    except Exception:
+    except Exception as exc:
+        logger.error(
+            "contextual_chat_failed",
+            error=str(exc),
+            error_type=type(exc).__name__,
+        )
         raise HTTPException(status_code=500, detail="Contextual chat failed")
 
 
@@ -289,7 +358,12 @@ async def debug_context_assembly():
             "timestamp": datetime.utcnow().isoformat(),
         }
         return debug_info
-    except Exception:
+    except Exception as exc:
+        logger.error(
+            "debug_context_assembly_failed",
+            error=str(exc),
+            error_type=type(exc).__name__,
+        )
         raise HTTPException(status_code=500, detail="Debug endpoint failed")
 
 

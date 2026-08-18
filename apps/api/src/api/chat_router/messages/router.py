@@ -8,6 +8,8 @@ in sibling modules:
 - `post_response.py` — persistence, usage recording, learning tasks
 """
 
+from __future__ import annotations
+
 import time
 import uuid
 from datetime import datetime
@@ -26,7 +28,8 @@ from ...config.archetypes import (
     GENERAL_ASSISTANT_CONTRACT,
 )
 from ...config.glossary import format_glossary_addendum
-from ...config.mode_addendums import Mode, get_addendum as _get_legacy_mode_addendum
+from ...config.mode_addendums import Mode
+from ...config.mode_addendums import get_addendum as _get_legacy_mode_addendum
 from ...config.mode_addendums import get_mode_addendum as _get_mode_addendum
 from ...config.system_prompt import system_prompt_manager
 from ...config.tone_addendums import get_tone_addendum
@@ -282,6 +285,7 @@ async def send_message(
             message_metadata["language_confidence"] = lang_info.get("confidence")
 
         tone_addendum = get_tone_addendum(request.tone)
+
         system_prompt = system_prompt_manager.get_complete_prompt_with_addendum(
             context=pipeline_result.decision.assembled_context,
             user_query=sanitized_message,
@@ -298,6 +302,7 @@ async def send_message(
             request.department or pipeline_result.execution.selected_department or "general"
         )
         department_reason = pipeline_result.execution.department_selection_reason or ""
+
         explicit_mode_requested = bool(request.legacy_mode or request.mode != Mode.CHAT)
         _archetype_tools: list[str] | None = None
         if explicit_mode_requested:
@@ -310,6 +315,7 @@ async def send_message(
                 _archetype_tools = list(GENERAL_ASSISTANT_CONTRACT.required_tool_names)
         elif intent_meta:
             _archetype_tools = intent_meta.get("archetype", {}).get("tools_enabled")
+
         registered_tools = (
             ensure_mode_required_tools(
                 resolved_provider, resolved_mode, pipeline_result.response.tool_schemas
@@ -320,7 +326,8 @@ async def send_message(
         if _archetype_tools is not None:
             _allowed = set(_archetype_tools)
             registered_tools = [
-                t for t in registered_tools
+                t
+                for t in registered_tools
                 if isinstance(t, dict) and t.get("function", {}).get("name") in _allowed
             ]
         log_missing_mode_tools(request.provider, resolved_mode, registered_tools)

@@ -8,7 +8,6 @@ import importlib
 
 import pytest
 
-
 # ---------------------------------------------------------------------------
 # 1. Module import smoke tests
 # ---------------------------------------------------------------------------
@@ -21,7 +20,7 @@ _CORE_MODULES = [
     "api.storage.cache",
     "api.monitoring",
     "api.health",
-    "api.secrets_router",
+    "api.routes.secrets_router",
 ]
 
 

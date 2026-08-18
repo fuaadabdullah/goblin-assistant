@@ -5,9 +5,10 @@ Simulates multiple users interacting with the AI at the same time.
 """
 
 import asyncio
-import aiohttp
-import time
 import random
+import time
+
+import aiohttp
 
 
 async def send_random_message(session, base_url, user_id, conversation_id):
@@ -34,9 +35,7 @@ async def send_random_message(session, base_url, user_id, conversation_id):
             if response.status == 200:
                 data = await response.json()
                 provider = data.get("provider", "unknown")
-                print(
-                    f"✅ User {user_id} got response in {duration:.2f}s from {provider}"
-                )
+                print(f"✅ User {user_id} got response in {duration:.2f}s from {provider}")
                 return True, duration
             else:
                 print(f"❌ User {user_id} failed with status {response.status}")
@@ -72,8 +71,7 @@ async def run_concurrency_test():
 
         # Step 2: Send messages concurrently
         tasks = [
-            send_random_message(session, base_url, user["id"], user["conv_id"])
-            for user in users
+            send_random_message(session, base_url, user["id"], user["conv_id"]) for user in users
         ]
         results = await asyncio.gather(*tasks)
 

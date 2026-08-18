@@ -11,11 +11,25 @@ from fastapi import FastAPI
 from fastapi.testclient import TestClient
 
 from api import api_router
+from api.services.goblin_query_service import build_goblin_query_service
 
 
 def _client() -> TestClient:
     app = FastAPI()
     app.include_router(api_router.router, prefix="/api/v1")
+    return TestClient(app)
+
+
+def _goblin_client() -> TestClient:
+    app = FastAPI()
+    app.include_router(api_router.router, prefix="/api/v1")
+
+    class _EmptyRepo:
+        async def list_history(self, *, user_id, goblin_id, scan_limit):
+            return []
+
+    service = build_goblin_query_service(user_id="u1", history_repository=_EmptyRepo())
+    app.dependency_overrides[api_router.get_goblin_query_service] = lambda: service
     return TestClient(app)
 
 
@@ -69,3 +83,42 @@ def test_contract_stream_poll_missing_shape():
     assert response.status_code == CRITICAL_STATUS_TABLE["stream_missing"]
     payload = response.json()
     assert payload == {"detail": "Stream not found"}
+
+
+def test_contract_goblins_list_shape():
+    client = _goblin_client()
+    response = client.get("/api/v1/api/goblins")
+
+    assert response.status_code == 200
+    payload = response.json()
+    assert {"items", "total", "limit", "order"}.issubset(payload.keys())
+    assert isinstance(payload["items"], list)
+    assert isinstance(payload["total"], int)
+    assert payload["limit"] == 100
+    assert "501" not in str(response.status_code)
+    for item in payload["items"]:
+        assert {"id", "name", "status", "active"}.issubset(item.keys())
+        assert "provider" not in item
+
+
+def test_contract_goblin_history_shape():
+    client = _goblin_client()
+    response = client.get("/api/v1/api/history/coding")
+
+    assert response.status_code == 200
+    payload = response.json()
+    assert {"items", "total", "limit", "order"}.issubset(payload.keys())
+    assert isinstance(payload["items"], list)
+    assert payload["order"] == "newest_first"
+
+
+def test_contract_goblin_stats_shape():
+    client = _goblin_client()
+    response = client.get("/api/v1/api/stats/coding")
+
+    assert response.status_code == 200
+    payload = response.json()
+    assert {"goblin_id", "window", "counters"}.issubset(payload.keys())
+    assert payload["goblin_id"] == "coding"
+    assert {"hours", "started_at", "ended_at"}.issubset(payload["window"].keys())
+    assert {"total_tasks", "completed_tasks", "failed_tasks"}.issubset(payload["counters"].keys())

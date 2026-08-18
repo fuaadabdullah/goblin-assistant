@@ -1,4 +1,5 @@
 import pytest
+
 from api.core.router import ModelRouter
 
 

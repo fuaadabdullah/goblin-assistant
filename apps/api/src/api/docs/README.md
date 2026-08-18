@@ -8,7 +8,7 @@ This is the accurate entry point for the checked-in FastAPI backend.
 - App assembly: `../main.py`
 - OpenAPI docs: `/docs`
 - Health endpoint: `/health`
-- Route versioning in code: mostly unversioned
+- Route versioning in code: public routes mount under `/api/v1`
 
 ## Actual Route Prefixes
 
@@ -24,7 +24,7 @@ These router groups are mounted by `../main.py`:
 - `/health`
 - `/ops`
 - `/search`
-- `/settings`
+- `/api/v1/settings`
 - `/secrets`
 - `/sandbox`
 - `/api/privacy`
@@ -76,16 +76,21 @@ Defined in `../health.py` and `../ops_router.py`:
 - `GET /ops/health/summary`
 - `GET /ops/providers/status`
 - `GET /ops/performance/snapshot`
+- `GET /api/v1/admin/providers/state` (ops-only snapshot; excluded from OpenAPI via `include_in_schema=False`)
 
 ### Routing and task APIs
 
-- `GET /routing/providers`
-- `GET /routing/providers/{capability}`
-- `POST /routing/route`
-- `POST /api/chat`
-- `POST /api/route_task`
-- `POST /parse/`
-- `POST /execute/`
+- Canonical inventory: `GET /api/v1/providers/models`
+- Canonical task routing: `POST /api/v1/api/route_task`
+- Compatibility-only: `GET /api/v1/routing/providers`
+- Compatibility-only: `GET /api/v1/routing/providers/{capability}`
+- Compatibility-only: `POST /api/v1/routing/route`
+- `POST /api/v1/api/chat`
+- `POST /api/v1/agent/task`
+- `GET /api/v1/agent/task/{task_id}`
+- `GET /api/v1/agent/task/{task_id}/events`
+- `POST /api/v1/parse/`
+- `POST /execute/` (retired compatibility reference)
 
 ### Search
 

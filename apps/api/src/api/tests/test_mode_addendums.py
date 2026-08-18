@@ -13,13 +13,13 @@ from api.config.mode_addendums import (
     list_modes,
 )
 
-
 # ── Legacy ModeKey tests (backward compat) ───────────────────────────────
 
 
 def test_general_assistant_mode_addendum_resolves():
     addendum = get_addendum("GENERAL_ASSISTANT")
     assert "[GENERAL ASSISTANT MODE]" in addendum
+    assert "lightweight research" in addendum.lower()
     assert "web_search or lightweight_research" in addendum.lower()
 
 
@@ -54,6 +54,16 @@ def test_research_category_addendum_present():
 def test_finance_category_addendum_present():
     addendum = CATEGORY_ADDENDUMS["finance"]
     assert "web_search or lightweight_research" in addendum.lower()
+
+
+def test_research_category_addendum_mentions_live_sources():
+    addendum = CATEGORY_ADDENDUMS["research"]
+    assert "web_search or lightweight_research" in addendum
+
+
+def test_finance_category_addendum_mentions_live_sources():
+    addendum = CATEGORY_ADDENDUMS["finance"]
+    assert "web_search or lightweight_research" in addendum
 
 
 # ── New canonical Mode + ModeAddendum registry tests ─────────────────────

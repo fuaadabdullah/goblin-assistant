@@ -2,11 +2,12 @@
 Cloudflare integration for security, CDN, DDoS protection, and tunnel support
 """
 
-import os
 import json
-from typing import Dict, Any, Optional
+import os
+from typing import Any, Dict
+
 import httpx
-from fastapi import Request, Response
+from fastapi import Request
 from starlette.middleware.base import BaseHTTPMiddleware
 
 
@@ -22,9 +23,9 @@ class CloudflareSecurityMiddleware(BaseHTTPMiddleware):
     async def dispatch(self, request: Request, call_next):
         # Get Cloudflare headers
         cf_ray = request.headers.get("cf-ray")
-        cf_connecting_ip = request.headers.get("cf-connecting-ip")
-        cf_country = request.headers.get("cf-ipcountry")
-        cf_visitor = request.headers.get("cf-visitor")
+        request.headers.get("cf-connecting-ip")
+        request.headers.get("cf-ipcountry")
+        request.headers.get("cf-visitor")
 
         # Security checks
         if cf_ray:
@@ -33,9 +34,7 @@ class CloudflareSecurityMiddleware(BaseHTTPMiddleware):
             response.headers["X-Frame-Options"] = "SAMEORIGIN"
             response.headers["X-Content-Type-Options"] = "nosniff"
             response.headers["X-XSS-Protection"] = "1; mode=block"
-            response.headers["Strict-Transport-Security"] = (
-                "max-age=31536000; includeSubDomains"
-            )
+            response.headers["Strict-Transport-Security"] = "max-age=31536000; includeSubDomains"
             response.headers["Content-Security-Policy"] = "default-src 'self'"
 
             return response
@@ -78,18 +77,10 @@ class CloudflareTunnelMiddleware(BaseHTTPMiddleware):
 
     def __init__(self, app):
         super().__init__(app)
-        self.kamatera_server1 = os.getenv(
-            "KAMATERA_SERVER1_URL", "http://192.175.23.150:8002"
-        )
-        self.kamatera_server2 = os.getenv(
-            "KAMATERA_SERVER2_URL", "http://45.61.51.220:8000"
-        )
-        self.kamatera_redis = os.getenv(
-            "KAMATERA_REDIS_URL", "http://45.61.51.220:6379"
-        )
-        self.kamatera_postgres = os.getenv(
-            "KAMATERA_POSTGRES_URL", "http://45.61.51.220:5432"
-        )
+        self.kamatera_server1 = os.getenv("KAMATERA_SERVER1_URL", "http://192.175.23.150:8002")
+        self.kamatera_server2 = os.getenv("KAMATERA_SERVER2_URL", "http://45.61.51.220:8000")
+        self.kamatera_redis = os.getenv("KAMATERA_REDIS_URL", "http://45.61.51.220:6379")
+        self.kamatera_postgres = os.getenv("KAMATERA_POSTGRES_URL", "http://45.61.51.220:5432")
 
     async def dispatch(self, request: Request, call_next):
         # Add Kamatera service information to response headers
@@ -333,18 +324,12 @@ class CloudflareTunnelManager:
     async def get_kamatera_services_health(self) -> Dict[str, Any]:
         """Check health of all Kamatera services through tunnels"""
         services = {
-            "server1_ollama": os.getenv(
-                "KAMATERA_SERVER1_TUNNEL", "server1.goblin-assistant.dev"
-            ),
+            "server1_ollama": os.getenv("KAMATERA_SERVER1_TUNNEL", "server1.goblin-assistant.dev"),
             "server1_llamacpp": os.getenv(
                 "KAMATERA_LLAMA_CPP_TUNNEL", "server1.goblin-assistant.dev"
             ),
-            "server2_router": os.getenv(
-                "KAMATERA_SERVER2_TUNNEL", "server2.goblin-assistant.dev"
-            ),
-            "server2_redis": os.getenv(
-                "KAMATERA_REDIS_TUNNEL", "redis.goblin-assistant.dev"
-            ),
+            "server2_router": os.getenv("KAMATERA_SERVER2_TUNNEL", "server2.goblin-assistant.dev"),
+            "server2_redis": os.getenv("KAMATERA_REDIS_TUNNEL", "redis.goblin-assistant.dev"),
             "server2_postgres": os.getenv(
                 "KAMATERA_POSTGRES_TUNNEL", "postgres.goblin-assistant.dev"
             ),
@@ -352,18 +337,16 @@ class CloudflareTunnelManager:
 
         health_status = {}
         for service_name, tunnel_hostname in services.items():
-            health_status[service_name] = await self.check_tunnel_health(
-                tunnel_hostname
-            )
+            health_status[service_name] = await self.check_tunnel_health(tunnel_hostname)
 
         return {
-            "timestamp": json.dumps(
-                {"iso": "2025-12-18T03:03:56Z", "unix": 1734483836}
-            ),
+            "timestamp": json.dumps({"iso": "2025-12-18T03:03:56Z", "unix": 1734483836}),
             "services": health_status,
-            "overall_status": "healthy"
-            if all(s["status"] == "healthy" for s in health_status.values())
-            else "degraded",
+            "overall_status": (
+                "healthy"
+                if all(s["status"] == "healthy" for s in health_status.values())
+                else "degraded"
+            ),
         }
 
 
@@ -385,9 +368,7 @@ def get_cloudflare_config() -> Dict[str, Any]:
         "kamatera_server2": os.getenv("KAMATERA_SERVER2_URL"),
         "kamatera_redis": os.getenv("KAMATERA_REDIS_URL"),
         "kamatera_postgres": os.getenv("KAMATERA_POSTGRES_URL"),
-        "enabled": bool(
-            os.getenv("CLOUDFLARE_API_TOKEN") and os.getenv("CLOUDFLARE_ZONE_ID")
-        ),
+        "enabled": bool(os.getenv("CLOUDFLARE_API_TOKEN") and os.getenv("CLOUDFLARE_ZONE_ID")),
         "tunnels_enabled": bool(
             os.getenv("CLOUDFLARE_API_TOKEN") and os.getenv("CLOUDFLARE_ACCOUNT_ID")
         ),

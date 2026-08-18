@@ -3,8 +3,8 @@ from __future__ import annotations
 import pytest
 
 from api.core.search import (
-    AStarSearcher,
     Arc,
+    AStarSearcher,
     BestFirstSearcher,
     BreadthFirstSearcher,
     CyclePruningSearcher,

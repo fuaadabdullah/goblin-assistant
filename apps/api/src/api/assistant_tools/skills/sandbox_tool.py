@@ -62,22 +62,38 @@ def _run_docker_code(code: str, language: str, timeout: int) -> Dict[str, Any]:
         code_path.write_text(code, encoding="utf-8")
 
         cmd = [
-            "docker", "run", "--rm",
-            "--network", "none",
-            "--memory", "256m",
-            "--memory-swap", "256m",
-            "--cpus", "0.5",
-            "--pids-limit", "32",
+            "docker",
+            "run",
+            "--rm",
+            "--network",
+            "none",
+            "--memory",
+            "256m",
+            "--memory-swap",
+            "256m",
+            "--cpus",
+            "0.5",
+            "--pids-limit",
+            "32",
             "--read-only",
-            "--cap-drop", "all",
-            "--security-opt", "no-new-privileges",
-            "--user", sandbox_user,
-            "--tmpfs", "/tmp:size=64m,noexec,nosuid,nodev,mode=1777",
-            "--tmpfs", f"/home/{sandbox_user}:size=32m,noexec,nosuid,nodev,mode=1777",
-            "--ulimit", "nproc=32:64",
-            "--ulimit", "fsize=1048576",
-            "--ulimit", "nofile=64",
-            "-v", f"{tmpdir}:/code:ro",
+            "--cap-drop",
+            "all",
+            "--security-opt",
+            "no-new-privileges",
+            "--user",
+            sandbox_user,
+            "--tmpfs",
+            "/tmp:size=64m,noexec,nosuid,nodev,mode=1777",
+            "--tmpfs",
+            f"/home/{sandbox_user}:size=32m,noexec,nosuid,nodev,mode=1777",
+            "--ulimit",
+            "nproc=32:64",
+            "--ulimit",
+            "fsize=1048576",
+            "--ulimit",
+            "nofile=64",
+            "-v",
+            f"{tmpdir}:/code:ro",
             sandbox_image,
             "python" if language == "python" else "node",
             f"/code/{filename}",
@@ -85,12 +101,19 @@ def _run_docker_code(code: str, language: str, timeout: int) -> Dict[str, Any]:
 
         try:
             result = subprocess.run(
-                cmd, capture_output=True, text=True, timeout=timeout, check=False,
+                cmd,
+                capture_output=True,
+                text=True,
+                timeout=timeout,
+                check=False,
             )
         except subprocess.TimeoutExpired:
             return {"error": f"Execution timed out after {timeout}s", "exit_code": -1}
         except FileNotFoundError:
-            return {"error": "Docker not found — set SANDBOX_ENABLED=false for dev mode", "exit_code": -1}
+            return {
+                "error": "Docker not found — set SANDBOX_ENABLED=false for dev mode",
+                "exit_code": -1,
+            }
 
     truncated = len(result.stdout) > _STDOUT_CAP
     return {
@@ -135,8 +158,16 @@ async def _handle_execute_code(
         "sandbox_enabled": False,
         "status": result.status.value,
         # Surface resource-limit kills clearly so the LLM can explain them.
-        **({"error": "process killed by resource limit (OOM or fork)"} if result.status == ExecutionStatus.RESOURCE_LIMIT else {}),
-        **({"error": f"execution timed out after {clamped}s"} if result.status == ExecutionStatus.TIMEOUT else {}),
+        **(
+            {"error": "process killed by resource limit (OOM or fork)"}
+            if result.status == ExecutionStatus.RESOURCE_LIMIT
+            else {}
+        ),
+        **(
+            {"error": f"execution timed out after {clamped}s"}
+            if result.status == ExecutionStatus.TIMEOUT
+            else {}
+        ),
     }
 
 

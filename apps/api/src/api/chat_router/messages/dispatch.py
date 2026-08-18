@@ -1,5 +1,7 @@
 """Provider dispatch stage: invoke, department-chain fallback, tool loop."""
 
+from __future__ import annotations
+
 from typing import Any, Dict, Optional
 
 import structlog
@@ -107,10 +109,6 @@ async def dispatch_with_fallback(
             timeout_ms=PROVIDER_TIMEOUT_MS,
             user_id=user_id,
             conversation_id=conversation_id,
-            runtime_context={
-                "user_id": user_id,
-                "conversation_id": conversation_id,
-            },
         )
 
     return provider_response, resolved_provider

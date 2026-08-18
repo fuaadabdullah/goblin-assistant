@@ -8,7 +8,6 @@ Docker sandbox with yfinance, pandas, numpy, and matplotlib available.
 
 from __future__ import annotations
 
-import inspect
 import textwrap
 from typing import Any, Dict, List, Optional
 

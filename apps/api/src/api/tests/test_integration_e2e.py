@@ -8,8 +8,7 @@ simulating what happens when the LLM invokes a tool during chat.
 from __future__ import annotations
 
 import json
-from typing import Any, Dict, List
-from unittest.mock import AsyncMock, MagicMock, patch
+from unittest.mock import AsyncMock, patch
 
 import pytest
 
@@ -72,9 +71,30 @@ _MOCK_HISTORY = {
     "interval": "1d",
     "data_points": 3,
     "data": [
-        {"date": "2024-01-02", "close": 180.0, "open": 179.0, "high": 181.0, "low": 178.0, "volume": 1000000},
-        {"date": "2024-01-03", "close": 182.0, "open": 180.0, "high": 183.0, "low": 179.0, "volume": 1100000},
-        {"date": "2024-01-04", "close": 185.0, "open": 182.0, "high": 186.0, "low": 181.0, "volume": 900000},
+        {
+            "date": "2024-01-02",
+            "close": 180.0,
+            "open": 179.0,
+            "high": 181.0,
+            "low": 178.0,
+            "volume": 1000000,
+        },
+        {
+            "date": "2024-01-03",
+            "close": 182.0,
+            "open": 180.0,
+            "high": 183.0,
+            "low": 179.0,
+            "volume": 1100000,
+        },
+        {
+            "date": "2024-01-04",
+            "close": 185.0,
+            "open": 182.0,
+            "high": 186.0,
+            "low": 181.0,
+            "volume": 900000,
+        },
     ],
 }
 
@@ -101,10 +121,10 @@ class TestDCFEndToEnd:
     @pytest.mark.asyncio
     async def test_dcf_produces_visualizations(self):
         with patch(
-            "api.tools.skills.dcf_calculator.financial_data_service",
+            "api.assistant_tools.skills.dcf_calculator.financial_data_service",
             _mock_financial_data_service(),
         ):
-            from api.tools.skills.dcf_calculator import _handle_dcf_calculator
+            from api.assistant_tools.skills.dcf_calculator import _handle_dcf_calculator
             from api.services.visualization_service import extract_visualizations
 
             result = await _handle_dcf_calculator(ticker="AAPL")
@@ -126,10 +146,10 @@ class TestEarningsEndToEnd:
     @pytest.mark.asyncio
     async def test_earnings_produces_visualizations(self):
         with patch(
-            "api.tools.skills.earnings_summarizer.financial_data_service",
+            "api.assistant_tools.skills.earnings_summarizer.financial_data_service",
             _mock_financial_data_service(),
         ):
-            from api.tools.skills.earnings_summarizer import _handle_earnings_summarizer
+            from api.assistant_tools.skills.earnings_summarizer import _handle_earnings_summarizer
             from api.services.visualization_service import extract_visualizations
 
             result = await _handle_earnings_summarizer(ticker="AAPL")
@@ -149,10 +169,10 @@ class TestScreenerEndToEnd:
     async def test_screener_produces_visualizations(self):
         mock_svc = _mock_financial_data_service()
         with patch(
-            "api.tools.skills.stock_screener.financial_data_service",
+            "api.assistant_tools.skills.stock_screener.financial_data_service",
             mock_svc,
         ):
-            from api.tools.skills.stock_screener import _handle_stock_screener
+            from api.assistant_tools.skills.stock_screener import _handle_stock_screener
             from api.services.visualization_service import extract_visualizations
 
             result = await _handle_stock_screener(tickers=["AAPL", "MSFT"], limit=5)
@@ -192,21 +212,25 @@ class TestToolLoopEndToEnd:
                     "ok": True,
                     "result": {
                         "raw": {
-                            "choices": [{
-                                "finish_reason": "tool_calls",
-                                "message": {
-                                    "role": "assistant",
-                                    "content": None,
-                                    "tool_calls": [{
-                                        "id": "call_123",
-                                        "type": "function",
-                                        "function": {
-                                            "name": "dcf_calculator",
-                                            "arguments": json.dumps({"ticker": "AAPL"}),
-                                        },
-                                    }],
-                                },
-                            }],
+                            "choices": [
+                                {
+                                    "finish_reason": "tool_calls",
+                                    "message": {
+                                        "role": "assistant",
+                                        "content": None,
+                                        "tool_calls": [
+                                            {
+                                                "id": "call_123",
+                                                "type": "function",
+                                                "function": {
+                                                    "name": "dcf_calculator",
+                                                    "arguments": json.dumps({"ticker": "AAPL"}),
+                                                },
+                                            }
+                                        ],
+                                    },
+                                }
+                            ],
                         },
                     },
                 }
@@ -217,22 +241,24 @@ class TestToolLoopEndToEnd:
                     "result": {
                         "text": "AAPL is valued at $X per share.",
                         "raw": {
-                            "choices": [{
-                                "finish_reason": "stop",
-                                "message": {
-                                    "role": "assistant",
-                                    "content": "AAPL is valued at $X per share.",
-                                },
-                            }],
+                            "choices": [
+                                {
+                                    "finish_reason": "stop",
+                                    "message": {
+                                        "role": "assistant",
+                                        "content": "AAPL is valued at $X per share.",
+                                    },
+                                }
+                            ],
                         },
                     },
                 }
 
         with patch(
-            "api.tools.skills.dcf_calculator.financial_data_service",
+            "api.assistant_tools.skills.dcf_calculator.financial_data_service",
             mock_svc,
         ):
-            from api.tools.executor import run_tool_loop
+            from api.assistant_tools.executor import run_tool_loop
 
             messages = [{"role": "user", "content": "Value AAPL for me"}]
             response = await run_tool_loop(
@@ -257,21 +283,25 @@ class TestToolLoopEndToEnd:
                 "ok": True,
                 "result": {
                     "raw": {
-                        "choices": [{
-                            "finish_reason": "tool_calls",
-                            "message": {
-                                "role": "assistant",
-                                "content": None,
-                                "tool_calls": [{
-                                    "id": "call_456",
-                                    "type": "function",
-                                    "function": {
-                                        "name": "dcf_calculator",
-                                        "arguments": json.dumps({"ticker": "AAPL"}),
-                                    },
-                                }],
-                            },
-                        }],
+                        "choices": [
+                            {
+                                "finish_reason": "tool_calls",
+                                "message": {
+                                    "role": "assistant",
+                                    "content": None,
+                                    "tool_calls": [
+                                        {
+                                            "id": "call_456",
+                                            "type": "function",
+                                            "function": {
+                                                "name": "dcf_calculator",
+                                                "arguments": json.dumps({"ticker": "AAPL"}),
+                                            },
+                                        }
+                                    ],
+                                },
+                            }
+                        ],
                     },
                 },
             }
@@ -290,13 +320,15 @@ class TestToolLoopEndToEnd:
                 "result": {
                     "text": "Rate limit hit, try again.",
                     "raw": {
-                        "choices": [{
-                            "finish_reason": "stop",
-                            "message": {
-                                "role": "assistant",
-                                "content": "Rate limit hit, try again.",
-                            },
-                        }],
+                        "choices": [
+                            {
+                                "finish_reason": "stop",
+                                "message": {
+                                    "role": "assistant",
+                                    "content": "Rate limit hit, try again.",
+                                },
+                            }
+                        ],
                     },
                 },
             }
@@ -304,11 +336,11 @@ class TestToolLoopEndToEnd:
         from api.services.financial_guardrails import RateLimitError
 
         with patch(
-            "api.tools.skills.dcf_calculator.financial_data_service",
+            "api.assistant_tools.skills.dcf_calculator.financial_data_service",
         ) as mock_svc:
             mock_svc.get_financials = AsyncMock(side_effect=RateLimitError("rate limit"))
 
-            from api.tools.executor import run_tool_loop
+            from api.assistant_tools.executor import run_tool_loop
 
             messages = [{"role": "user", "content": "Value AAPL"}]
             response = await run_tool_loop(
@@ -337,10 +369,10 @@ class TestVisualizationFrontendContract:
     @pytest.mark.asyncio
     async def test_bar_chart_block_shape(self):
         with patch(
-            "api.tools.skills.dcf_calculator.financial_data_service",
+            "api.assistant_tools.skills.dcf_calculator.financial_data_service",
             _mock_financial_data_service(),
         ):
-            from api.tools.skills.dcf_calculator import _handle_dcf_calculator
+            from api.assistant_tools.skills.dcf_calculator import _handle_dcf_calculator
             from api.services.visualization_service import extract_visualizations
 
             result = await _handle_dcf_calculator(ticker="AAPL")
@@ -365,10 +397,10 @@ class TestVisualizationFrontendContract:
     @pytest.mark.asyncio
     async def test_table_block_shape(self):
         with patch(
-            "api.tools.skills.dcf_calculator.financial_data_service",
+            "api.assistant_tools.skills.dcf_calculator.financial_data_service",
             _mock_financial_data_service(),
         ):
-            from api.tools.skills.dcf_calculator import _handle_dcf_calculator
+            from api.assistant_tools.skills.dcf_calculator import _handle_dcf_calculator
             from api.services.visualization_service import extract_visualizations
 
             result = await _handle_dcf_calculator(ticker="AAPL")

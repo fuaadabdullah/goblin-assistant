@@ -2,12 +2,12 @@
 
 from __future__ import annotations
 
-import pytest
 from unittest.mock import AsyncMock, MagicMock, patch
+
 import httpx
+import pytest
 
 from api.providers.azure_provider import AzureOpenAIProvider
-from api.providers.base import ProviderResult, ProviderHealth
 
 
 def _provider(
@@ -197,7 +197,7 @@ class TestAzureHealth:
 
         # Health check may be unhealthy due to response code check
         assert health is not None
-        assert hasattr(health, 'healthy')
+        assert hasattr(health, "healthy")
 
     @pytest.mark.asyncio
     async def test_health_check_not_configured(self):

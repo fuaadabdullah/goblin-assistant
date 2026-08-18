@@ -5,9 +5,10 @@ Provides endpoints for intelligent model-based debugging suggestions.
 Routes requests to specialized Raptor model or fallback LLM based on task type.
 """
 
-from fastapi import APIRouter, HTTPException, Body
-from typing import Dict, Any
 import logging
+from typing import Any, Dict
+
+from fastapi import APIRouter, Body, HTTPException
 
 from ..core.router import ModelRouter
 
@@ -16,22 +17,27 @@ logger = logging.getLogger(__name__)
 model_router = ModelRouter()
 
 
+def _detail_message(prefix: str, error: Exception) -> str:
+    message = str(error).strip()
+    if message:
+        return f"{prefix}: {message}"
+    return f"{prefix}: Request failed"
+
+
 @router.post("/suggest")
 async def get_debug_suggestion(
-    task: str = Body(
-        ..., description="Debug task type (e.g., 'quick_fix', 'summarize_trace')"
-    ),
+    task: str = Body(..., description="Debug task type (e.g., 'quick_fix', 'summarize_trace')"),
     context: Dict[str, Any] = Body(..., description="Context data for the debug task"),
 ):
     """
     Get intelligent debugging suggestions from model routing system.
-    
+
     Routes specialized tasks to Raptor model; other tasks to fallback model.
-    
+
     Request body:
     - task: str — Task identifier from RAPTOR_TASKS or other
     - context: dict — Contextual data (error, code, traces, etc.)
-    
+
     Returns:
     - model: str — Model used ('raptor' or 'fallback')
     - suggestion: str — The suggestion text
@@ -50,8 +56,8 @@ async def get_debug_suggestion(
     try:
         route = model_router.choose_model(task, context)
     except RuntimeError as e:
-        logger.error(f"Model routing failed for task '{task}': {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        logger.error("Model routing failed for task '%s': %s", task, e)
+        raise HTTPException(status_code=500, detail=_detail_message("Model routing failed", e))
 
     payload = {
         "task": task,
@@ -62,13 +68,11 @@ async def get_debug_suggestion(
     try:
         result = await model_router.call_model(route, payload)
     except Exception as e:
-        logger.exception(f"Model call failed for {route.model_name}: {e}")
-        raise HTTPException(status_code=502, detail=f"Model call failed: {str(e)}")
+        logger.exception("Model call failed for %s: %s", route.model_name, e)
+        raise HTTPException(status_code=502, detail=_detail_message("Model call failed", e))
 
     # Extract suggestion with fallback
-    suggestion = (
-        result.get("suggestion") or result.get("text") or result.get("response") or ""
-    )
+    suggestion = result.get("suggestion") or result.get("text") or result.get("response") or ""
 
     # Add confidence if available
     confidence = result.get("confidence")

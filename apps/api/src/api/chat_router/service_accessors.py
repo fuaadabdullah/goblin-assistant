@@ -22,13 +22,14 @@ def _get_message_classifier():
 
 
 def _get_write_time_intelligence():
-    from ..services.write_time_matrix import write_time_intelligence
+    from ..services.write_time_intelligence import write_time_intelligence
 
     return write_time_intelligence
 
 
 def _get_request_pipeline():
-    from ..pipeline import RequestPipeline, tool_selection_model
+    from ..pipeline.pipeline import RequestPipeline
+    from ..pipeline.tool_selection import tool_selection_model
     from ..routing.intent_classifier import intent_classifier
     from ..services.context_assembly_service import context_assembly_service
     from ..services.smart_router import smart_router

@@ -46,9 +46,9 @@ def test_error_handling_middleware_hides_error_details_by_default() -> None:
 
     assert response.status_code == 500
     data = response.json()["error"]
-    assert data["code"] == "internal_server_error"
+    assert data["code"] == "INTERNAL_ERROR"
     assert data["message"] == "An internal server error occurred"
-    assert data["type"] == "RuntimeError"
+    assert data["type"] == "internal"
     assert data["request_id"]
 
 

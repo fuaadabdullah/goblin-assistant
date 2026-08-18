@@ -5,8 +5,8 @@ import operator
 import pytest
 
 from api.core.constraints import (
-    BacktrackingSolver,
     CSP,
+    BacktrackingSolver,
     Constraint,
     Variable,
     all_solutions,

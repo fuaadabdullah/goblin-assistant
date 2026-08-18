@@ -5,8 +5,10 @@ Run this to verify the integration works locally.
 """
 
 import asyncio
-import httpx
 import os
+import sys
+
+import httpx
 
 
 async def test_debugger_endpoint():
@@ -42,9 +44,7 @@ async def test_debugger_endpoint():
         for i, test_case in enumerate(test_cases, 1):
             print(f"\n--- Test Case {i}: {test_case['task']} ---")
             try:
-                response = await client.post(
-                    "/debug/suggest", json=test_case, timeout=30
-                )
+                response = await client.post("/debug/suggest", json=test_case, timeout=30)
                 if response.status_code == 200:
                     data = response.json()
                     print(f"✅ Success - Model: {data.get('model')}")
@@ -68,7 +68,7 @@ if __name__ == "__main__":
     if missing:
         print(f"⚠️  Missing environment variables: {', '.join(missing)}")
         print("Set them in .env.local or export them before running")
-        exit(1)
+        sys.exit(1)
 
     try:
         asyncio.run(test_debugger_endpoint())

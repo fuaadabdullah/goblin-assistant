@@ -2,14 +2,13 @@
 User preferences service for database operations
 """
 
-from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select, delete
-from sqlalchemy.exc import IntegrityError
-from typing import Optional, Dict, Any
 from datetime import datetime
+from typing import Any, Dict, Optional
 
-from .models import UserPreferencesModel
+from sqlalchemy import delete, select
+
 from .database import get_db_context
+from .models import UserPreferencesModel
 
 
 class PreferencesService:
@@ -20,9 +19,7 @@ class PreferencesService:
         """Get user preferences by user_id"""
         async with get_db_context() as session:
             result = await session.execute(
-                select(UserPreferencesModel).where(
-                    UserPreferencesModel.user_id == user_id
-                )
+                select(UserPreferencesModel).where(UserPreferencesModel.user_id == user_id)
             )
             prefs = result.scalar_one_or_none()
             if prefs:
@@ -50,9 +47,7 @@ class PreferencesService:
         async with get_db_context() as session:
             # Check if preferences exist
             result = await session.execute(
-                select(UserPreferencesModel).where(
-                    UserPreferencesModel.user_id == user_id
-                )
+                select(UserPreferencesModel).where(UserPreferencesModel.user_id == user_id)
             )
             prefs = result.scalar_one_or_none()
 
@@ -97,9 +92,7 @@ class PreferencesService:
         """Delete user preferences"""
         async with get_db_context() as session:
             result = await session.execute(
-                delete(UserPreferencesModel).where(
-                    UserPreferencesModel.user_id == user_id
-                )
+                delete(UserPreferencesModel).where(UserPreferencesModel.user_id == user_id)
             )
             return result.rowcount > 0
 
@@ -117,6 +110,43 @@ class PreferencesService:
         if prefs:
             return prefs.get("rag_consent", False)
         return False
+
+    @staticmethod
+    async def get_learned_preferences(user_id: str) -> dict:
+        """Return the learned preference profile stored inside privacy_settings."""
+        prefs = await PreferencesService.get_preferences(user_id)
+        if prefs:
+            privacy = prefs.get("privacy_settings") or {}
+            return dict(privacy.get("learned_preferences") or {})
+        return {}
+
+    @staticmethod
+    async def update_learned_preferences(user_id: str, learned: dict) -> None:
+        """
+        Persist the learned preference profile.
+
+        The profile is stored as privacy_settings["learned_preferences"] so no
+        schema migration is needed. Other privacy_settings keys are preserved.
+        """
+        async with get_db_context() as session:
+            result = await session.execute(
+                select(UserPreferencesModel).where(UserPreferencesModel.user_id == user_id)
+            )
+            prefs = result.scalar_one_or_none()
+
+            if prefs is None:
+                prefs = UserPreferencesModel(
+                    user_id=user_id,
+                    privacy_settings={"learned_preferences": learned},
+                )
+                session.add(prefs)
+            else:
+                current_privacy: dict = dict(prefs.privacy_settings or {})
+                current_privacy["learned_preferences"] = learned
+                prefs.privacy_settings = current_privacy
+                prefs.updated_at = datetime.utcnow()
+
+            await session.flush()
 
 
 # Singleton instance

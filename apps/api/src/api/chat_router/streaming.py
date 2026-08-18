@@ -8,20 +8,35 @@ carry an `is_recoverable` flag so the client knows whether to retry.
 import asyncio
 import time
 import uuid
-from typing import Optional
+from typing import Any, Optional
 
 import structlog
 from fastapi import APIRouter, Depends, HTTPException
 from fastapi.responses import StreamingResponse
 
-from ..auth.router import User as AuthenticatedUser, get_current_user
+from ..auth.router import User as AuthenticatedUser
+from ..auth.router import get_current_user
+from ..config.prompt_composer import compose_system_prompt
+from ..config.tone_addendums import ToneMode
+from ..core.contracts import ChatMessageCreatedPayload
+from ..observability.events import event_emitter
+from ..storage.tasks import get_task_store
+from ..storage.usage_events import get_usage_event_store
 from . import _runtime as _cr
-from .helpers import _format_sse_event
+from .archiving import schedule_conversation_archive
+from .chat_router_support import _format_sse_event
 from .schemas import StreamChatRequest
 
 logger = structlog.get_logger()
 
 router = APIRouter()
+
+
+def _format_unhandled_stream_error(error: Exception) -> str:
+    message = str(error).strip()
+    if message:
+        return message
+    return "An unexpected error occurred. Your message was saved if it got this far."
 
 
 async def generate_chat_stream(
@@ -30,8 +45,15 @@ async def generate_chat_stream(
     current_user: AuthenticatedUser,
     provider: Optional[str] = None,
     model: Optional[str] = None,
+    tone: Optional[ToneMode] = None,
+    mode: Optional[str] = None,
+    glossary: Optional[dict] = None,
 ):
     """Generate server-sent events for chat streaming via real provider.
+
+    Tone, mode, and glossary are passed through to the canonical
+    `compose_system_prompt` so the streamed path applies the same
+    composition order as the non-streamed /contextual-chat path.
 
     Error handling:
     - Auth errors (401): sent immediately, is_recoverable=false
@@ -40,6 +62,7 @@ async def generate_chat_stream(
     - DB write failures (user msg): error event, is_recoverable=true
     - Stream interruptions: error event with partial-response preview
     """
+
     yield _format_sse_event(
         "status",
         {"status": "started", "message": "Processing your request..."},
@@ -50,14 +73,15 @@ async def generate_chat_stream(
     total_cost = 0.0
     used_provider = provider or "unknown"
     used_model = model or "unknown"
-    start_time = time.perf_counter()
+    used_department = "general"
+    used_department_reason = ""
+    fallback_pids: list = []
+    start_time = time.time()
     response_message_id = str(uuid.uuid4())
 
     try:
         try:
-            conversation = await _cr._require_owned_conversation(
-                conversation_id, current_user
-            )
+            conversation = await _cr._require_owned_conversation(conversation_id, current_user)
         except HTTPException:
             error_event = {
                 "type": "error",
@@ -71,6 +95,29 @@ async def generate_chat_stream(
 
         sanitized_message, _ = _cr.InputSanitizer.sanitize_chat_message(message)
 
+        # Intent + department routing via shared pipeline (avoids duplicating classification logic)
+        _stream_intent_meta = {}
+        try:
+            from .service_accessors import (
+                _get_request_pipeline,  # noqa: PLC0415  # lazy import preserves patchable test seam
+            )
+
+            _dec, _exec = await _get_request_pipeline().run_routing_only(
+                sanitized_message=sanitized_message,
+                preferred_provider=provider,
+                preferred_model=model,
+            )
+            if _dec.intent is not None:
+                _stream_intent_meta = _dec.intent.to_dict()
+            used_department = _exec.selected_department or "general"
+            used_department_reason = _exec.department_selection_reason
+            if not provider and _exec.selected_provider:
+                used_provider = _exec.selected_provider
+                used_model = _exec.selected_model or "unknown"
+                fallback_pids = list(_exec.fallback_chain or [])
+        except Exception:
+            pass
+
         # Persist the user turn before invoking the provider so failures
         # downstream still leave the message in conversation history.
         try:
@@ -78,7 +125,9 @@ async def generate_chat_stream(
                 conversation_id=conversation_id,
                 role="user",
                 content=sanitized_message,
+                metadata={"intent": _stream_intent_meta} if _stream_intent_meta else {},
             )
+            await schedule_conversation_archive(conversation_id)
         except Exception as db_exc:
             logger.error("db_write_error", exc=db_exc, stage="user_message_store")
             error_event = {
@@ -93,14 +142,41 @@ async def generate_chat_stream(
             return
 
         try:
-            conversation = await _cr._require_owned_conversation(
-                conversation_id, current_user
-            )
-            messages = [
-                {"role": msg.role, "content": msg.content}
-                for msg in conversation.messages
-            ]
-            payload = {"messages": messages, "model": model}
+            conversation = await _cr._require_owned_conversation(conversation_id, current_user)
+            messages = [{"role": msg.role, "content": msg.content} for msg in conversation.messages]
+
+            # Steps 1–4 of the canonical composition order: base + glossary +
+            # mode + tone. The streaming path skips the full retrieval stack
+            # (steps 5) for latency but still ships the same identity,
+            # guardrails, glossary, mode, and tone as the non-streamed path.
+            try:
+                _composed = compose_system_prompt(
+                    tone=tone,
+                    mode=mode,
+                    request_glossary=glossary,
+                    unknown_mode="skip",
+                )
+                _system_message = {"role": "system", "content": _composed}
+            except Exception:
+                # Fallback to the fixed-cost system layer (base + guardrails
+                # + date) if the composer itself blows up.
+                try:
+                    from ..services.context_assembly_service.system_layer import (  # noqa: PLC0415  # lazy import keeps streaming path lightweight
+                        build_default_system_message,
+                    )
+
+                    _system_message = await build_default_system_message()
+                except Exception:
+                    _system_message = None
+
+            if _system_message:
+                messages.insert(0, _system_message)
+
+            payload = {
+                "messages": messages,
+                "model": model,
+                "user_id": str(current_user.id),
+            }
         except Exception as build_exc:
             logger.error("message_build_error", exc=build_exc)
             error_event = {
@@ -115,34 +191,34 @@ async def generate_chat_stream(
 
         try:
             provider_response = await _cr.invoke_provider(
-                pid=provider,
-                model=model,
+                pid=used_provider if provider is None else provider,
+                model=used_model if model is None else model,
                 payload=payload,
                 timeout_ms=30000,
                 stream=True,
             )
         except asyncio.TimeoutError:
-            logger.warning("provider_timeout", provider=provider, model=model)
+            logger.warning("provider_timeout", provider=used_provider, model=used_model)
             error_event = {
                 "type": "error",
                 "code": "provider-timeout",
-                "message": f"Provider {provider or 'default'} did not respond in time. Your message was saved.",
+                "message": "The service timed out. Your message was saved.",
                 "is_recoverable": True,
-                "details": {"provider": provider, "timeout_ms": 30000},
+                "details": {"department": used_department},
                 "done": True,
             }
             yield _format_sse_event("error", error_event)
             return
         except Exception as provider_connect_exc:
             logger.error(
-                "provider_connection_error", exc=provider_connect_exc, provider=provider
+                "provider_connection_error", exc=provider_connect_exc, provider=used_provider
             )
             error_event = {
                 "type": "error",
                 "code": "provider-connection-error",
-                "message": f"Could not reach provider {provider or 'default'}. Your message was saved.",
+                "message": "Processing service is temporarily unavailable. Your message was saved.",
                 "is_recoverable": True,
-                "details": {"provider": provider},
+                "details": {"department": used_department},
                 "done": True,
             }
             yield _format_sse_event("error", error_event)
@@ -154,16 +230,38 @@ async def generate_chat_stream(
                 if isinstance(provider_response, dict)
                 else "provider-error"
             )
-            logger.warning("provider_error", error=provider_error, provider=provider)
+            logger.warning("provider_error", error=provider_error, provider=used_provider)
 
             try:
-                fallback_response = await _cr.invoke_provider(
-                    pid=provider,
-                    model=model,
-                    payload=payload,
-                    timeout_ms=30000,
-                    stream=False,
-                )
+                # Retry non-streaming on the same provider first, then walk
+                # the department fallback chain (each provider on its own
+                # default model).
+                fallback_response: Any = None
+                for attempt_pid, attempt_model in [
+                    (used_provider, used_model),
+                    *[(pid, None) for pid in fallback_pids if pid != used_provider],
+                ]:
+                    attempt_payload = dict(payload)
+                    if attempt_model is None:
+                        attempt_payload.pop("model", None)
+                    fallback_response = await _cr.invoke_provider(
+                        pid=attempt_pid,
+                        model=attempt_model,
+                        payload=attempt_payload,
+                        timeout_ms=30000,
+                        stream=False,
+                    )
+                    if isinstance(fallback_response, dict) and fallback_response.get("ok"):
+                        break
+                    logger.warning(
+                        "stream_fallback_provider_failed",
+                        provider=attempt_pid,
+                        error=str(
+                            fallback_response.get("error", "unknown")
+                            if isinstance(fallback_response, dict)
+                            else fallback_response
+                        ),
+                    )
                 if isinstance(fallback_response, dict) and fallback_response.get("ok"):
                     result_data = fallback_response.get("result", {})
                     accumulated_text = result_data.get("text", str(fallback_response))
@@ -188,19 +286,22 @@ async def generate_chat_stream(
                     error_event = {
                         "type": "error",
                         "code": "provider-error",
-                        "message": f"Provider could not process your request: {provider_error}. Your message was saved.",
+                        "message": "Processing service could not complete your request. Your message was saved.",
                         "is_recoverable": True,
-                        "details": {"provider_error": provider_error},
+                        "details": {
+                            "department": used_department,
+                            "provider_error": provider_error,
+                        },
                         "done": True,
                     }
                     yield _format_sse_event("error", error_event)
                     return
             except asyncio.TimeoutError:
-                logger.error("provider_fallback_timeout", provider=provider)
+                logger.error("provider_fallback_timeout", provider=used_provider)
                 error_event = {
                     "type": "error",
                     "code": "provider-timeout",
-                    "message": "Provider fallback timed out. Your message was saved.",
+                    "message": "Processing timed out. Your message was saved.",
                     "is_recoverable": True,
                     "done": True,
                 }
@@ -213,20 +314,24 @@ async def generate_chat_stream(
                     "code": "provider-error",
                     "message": "Provider unavailable. Your message was saved.",
                     "is_recoverable": True,
+                    "details": {
+                        "department": used_department,
+                        "provider_error": provider_error,
+                    },
                     "done": True,
                 }
                 yield _format_sse_event("error", error_event)
                 return
 
         elif provider_response.get("stream"):
+            used_provider = provider_response.get("provider", used_provider)
+            used_model = provider_response.get("model", used_model)
             try:
                 stream_gen = provider_response["stream"]
                 async for chunk in stream_gen:
                     try:
                         chunk_text = (
-                            chunk.get("text", "")
-                            if isinstance(chunk, dict)
-                            else str(chunk)
+                            chunk.get("text", "") if isinstance(chunk, dict) else str(chunk)
                         )
                         if not chunk_text:
                             continue
@@ -247,9 +352,7 @@ async def generate_chat_stream(
                         logger.error("chunk_processing_error", exc=chunk_exc)
                         continue
             except asyncio.TimeoutError:
-                logger.warning(
-                    "stream_timeout", partial_response_len=len(accumulated_text)
-                )
+                logger.warning("stream_timeout", partial_response_len=len(accumulated_text))
                 error_event = {
                     "type": "error",
                     "code": "stream-timeout",
@@ -311,10 +414,22 @@ async def generate_chat_stream(
                 metadata={"provider": used_provider, "model": used_model},
                 message_id=response_message_id,
             )
-        except Exception as db_response_exc:
-            logger.error(
-                "db_write_error", exc=db_response_exc, stage="assistant_message_store"
+            await event_emitter.emit(
+                "chat.message.created",
+                source="api.chat_router.streaming",
+                actor_user_id=current_user.id,
+                payload=ChatMessageCreatedPayload(
+                    conversation_id=conversation_id,
+                    message_id=response_message_id,
+                    role="assistant",
+                    provider=used_provider,
+                    model=used_model,
+                    has_attachments=False,
+                ),
             )
+            await schedule_conversation_archive(conversation_id)
+        except Exception as db_response_exc:
+            logger.error("db_write_error", exc=db_response_exc, stage="assistant_message_store")
             # Response was already streamed — warn rather than error.
             error_event = {
                 "type": "warning",
@@ -326,7 +441,68 @@ async def generate_chat_stream(
             yield _format_sse_event("warning", error_event)
             return
 
-        duration_ms = int((time.perf_counter() - start_time) * 1000)
+        try:
+            task_store = await get_task_store()
+            task_id = str(uuid.uuid4())
+            await task_store.save_task(
+                task_id,
+                {
+                    "task_id": task_id,
+                    "user_id": current_user.id,
+                    "status": "completed",
+                    "task_type": "chat.completion.stream",
+                    "payload": {
+                        "task": sanitized_message,
+                        "conversation_id": conversation_id,
+                    },
+                    "result": {
+                        "selected_provider": used_provider,
+                        "model": used_model,
+                        "department": used_department,
+                        "usage": {"total_tokens": int(total_tokens)},
+                        "cost_usd": float(total_cost),
+                        "result": {"text": accumulated_text},
+                    },
+                    "metadata": {
+                        "source": "chat.generate_chat_stream",
+                        "conversation_id": conversation_id,
+                        "assistant_message_id": response_message_id,
+                    },
+                },
+            )
+        except Exception as task_err:  # noqa: BLE001  # background task errors must be captured and streamed
+            logger.warning(
+                "stream_chat_task_history_write_failed",
+                conversation_id=conversation_id,
+                message_id=response_message_id,
+                error=str(task_err),
+            )
+
+        try:
+            usage_store = await get_usage_event_store()
+            await usage_store.save_event(
+                {
+                    "user_id": current_user.id,
+                    "request_id": response_message_id,
+                    "conversation_id": conversation_id,
+                    "message_id": response_message_id,
+                    "provider": used_provider,
+                    "model": used_model,
+                    "total_tokens": int(total_tokens),
+                    "cost_usd": float(total_cost),
+                    "latency_ms": (time.time() - start_time) * 1000.0,
+                    "metadata": {"source": "chat.generate_chat_stream"},
+                }
+            )
+        except Exception as usage_err:  # noqa: BLE001  # usage extraction should not fail the completed stream
+            logger.warning(
+                "stream_usage_event_write_failed",
+                conversation_id=conversation_id,
+                message_id=response_message_id,
+                error=str(usage_err),
+            )
+
+        duration_ms = int((time.time() - start_time) * 1000)
 
         yield _format_sse_event(
             "complete",
@@ -334,8 +510,8 @@ async def generate_chat_stream(
                 "result": accumulated_text,
                 "cost": total_cost,
                 "tokens": total_tokens,
-                "model": used_model,
-                "provider": used_provider,
+                "department": used_department,
+                "department_reason": used_department_reason,
                 "duration_ms": duration_ms,
                 "message_id": response_message_id,
                 "done": True,
@@ -343,9 +519,7 @@ async def generate_chat_stream(
         )
 
     except HTTPException as http_exc:
-        logger.warning(
-            "http_exception", status=http_exc.status_code, detail=http_exc.detail
-        )
+        logger.warning("http_exception", status=http_exc.status_code, detail=http_exc.detail)
         error_event = {
             "type": "error",
             "code": f"http-{http_exc.status_code}",
@@ -359,7 +533,7 @@ async def generate_chat_stream(
         error_event = {
             "type": "error",
             "code": "internal-error",
-            "message": "An unexpected error occurred. Your message was saved if it got this far.",
+            "message": _format_unhandled_stream_error(exc),
             "is_recoverable": False,
             "done": True,
         }
@@ -380,6 +554,9 @@ async def stream_chat(
                 current_user=current_user,
                 provider=request.provider,
                 model=request.model,
+                tone=request.tone,
+                mode=request.mode,
+                glossary=request.glossary,
             ),
             media_type="text/event-stream",
             headers={
