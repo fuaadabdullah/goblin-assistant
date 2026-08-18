@@ -60,8 +60,8 @@ async def run_stream_task_background(
             },
             initialize_state=False,
         )
-    except Exception as exc:  # noqa: BLE001
-        import structlog  # noqa: PLC0415
+    except Exception as exc:
+        import structlog
 
         structlog.get_logger().error(
             "stream_task_background_failed",
@@ -76,7 +76,7 @@ async def run_stream_task_background(
                 done=True,
                 updates={"error": str(exc)},
             )
-        except Exception as cleanup_exc:  # noqa: BLE001
+        except Exception as cleanup_exc:
             structlog.get_logger().warning(
                 "stream_status_update_failed",
                 stream_id=stream_id,

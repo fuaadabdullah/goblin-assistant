@@ -145,8 +145,8 @@ async def _handle_execute_code(
         return await asyncio.to_thread(_run_docker_code, code, language, clamped)
 
     # Dev / no-Docker path: process-level POSIX resource limits.
-    from ...services.sandbox_executor import ExecutionStatus  # noqa: PLC0415
-    from ...services.sandbox_executor import execute_code as _exec  # noqa: PLC0415
+    from ...services.sandbox_executor import ExecutionStatus
+    from ...services.sandbox_executor import execute_code as _exec
 
     result = await _exec(code, language, timeout=clamped)
     return {
@@ -238,7 +238,7 @@ async def _handle_run_sandbox_template(
     if os.getenv("SANDBOX_ENABLED", "false").lower() == "true":
         return await asyncio.to_thread(_run_docker_code, code, "python", 60)
 
-    from ...services.sandbox_executor import execute_code as _exec  # noqa: PLC0415
+    from ...services.sandbox_executor import execute_code as _exec
 
     result = await _exec(code, "python", timeout=60)
     return {
