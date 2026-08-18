@@ -10,7 +10,7 @@ services:
 
   redis:
     volumes:
-      - /Volumes/GOBLINOS\ 1/goblin-assistant/redis-data:/data
+      - /Volumes/GOBLINOS 1/goblin-assistant/redis-data:/data
 
 # BuildKit cache configuration
 # Add to docker daemon.json: "builder": { "gc": { "policy": [{ "all": true, "maxUnusedBuildCacheSize": "10gb" }] } }
