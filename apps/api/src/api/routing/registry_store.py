@@ -144,7 +144,7 @@ class RoutingRegistryStore:
                 )
                 for row in rows
             }
-        except Exception as exc:  # noqa: BLE001
+        except Exception as exc:
             self.last_error = str(exc)
             logger.warning("routing_registry_load_failed", path=str(self.path), error=str(exc))
             return {}
@@ -164,7 +164,7 @@ class RoutingRegistryStore:
             for hour_bucket, provider_id, spend_usd in rows:
                 spend_by_hour.setdefault(str(hour_bucket), {})[str(provider_id)] = float(spend_usd)
             return spend_by_hour
-        except Exception as exc:  # noqa: BLE001
+        except Exception as exc:
             self.last_error = str(exc)
             logger.warning(
                 "routing_registry_spend_load_failed", path=str(self.path), error=str(exc)
@@ -240,7 +240,7 @@ class RoutingRegistryStore:
                 )
             self.last_flushed_at = time.time()
             self.last_error = ""
-        except Exception as exc:  # noqa: BLE001
+        except Exception as exc:
             self.last_error = str(exc)
             logger.warning("routing_registry_flush_failed", path=str(self.path), error=str(exc))
 
