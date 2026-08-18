@@ -69,10 +69,10 @@ Current working-tree scale:
 
 | Git status class | Count |
 |---|---:|
-| Modified files | 673 |
+| Modified files | 671 |
 | Deleted files | 123 |
 | Untracked files/directories | 4 |
-| Total status entries | 800 |
+| Total status entries | 798 |
 
 Current status concentration:
 
@@ -80,7 +80,7 @@ Current status concentration:
 |---|---:|---|
 | `apps/` | 764 | Dominates unresolved risk; should not be reviewed as one blob. |
 | `packages/` | 18 | Shared-contract/package drift can affect both API and web. |
-| Root and infra files | 18 | Contains runtime, Docker, compose, lockfile, hook, and docs changes that need separate ownership. |
+| Root and infra files | 16 | Contains runtime, Docker, compose, lockfile, and docs changes that need separate ownership. |
 
 Triage labels used below:
 
@@ -140,7 +140,7 @@ as regressions.
 
 ### 3. Dirty Tree Is Too Broad for Confident Release Review
 
-There are 800 status entries after the already-created commits. This is larger
+There are 798 status entries after the already-created commits. This is larger
 than a normal focused feature branch and mixes backend, frontend, infra, docs,
 generated contracts, scripts, tests, package locks, and deleted legacy trees.
 
@@ -409,16 +409,17 @@ system, not just how code compiles.
 Recommended slice: separate "container runtime" from "provider/env docs" from
 "observability config." They are adjacent, but not the same decision.
 
-### 14. Git Hooks Can Improve Discipline or Surprise Contributors
+### 14. Git Hooks Are Committed with a Latency Caveat
 
-`.husky/pre-commit` and `.husky/pre-push` are modified. Hook hardening is useful,
-but it changes developer ergonomics immediately.
+`.husky/pre-commit` and `.husky/pre-push` now enforce local quality checks in
+`06ebf527`. The hooks are useful, but the pre-push web typecheck has noticeable
+latency and should stay intentional rather than silently expanding further.
 
-| Hook Gap | Caveat | Suggested Proof |
-|---|---|---|
-| Pre-commit runs SQLite guard, ruff, and web lint-staged | Contributors need those tools installed and fast enough for normal commits. | Dry-run the hook commands or document dependency expectations. |
-| Pre-push runs web typecheck | Good protection, but can block pushes for unrelated backend/doc changes. | Consider whether this belongs in CI only or is intentionally strict locally. |
-| Hook behavior may duplicate CI | Duplication is fine if fast and deterministic. | Keep Make/script entrypoints canonical so hooks are thin wrappers. |
+| Hook Behavior | Proof or Caveat |
+|---|---|
+| Pre-commit runs SQLite guard, staged API ruff checks, and web lint-staged | `sh .husky/pre-commit` passed with no staged files; `bash scripts/git-hooks/test-no-sqlite-in-commit.sh` passed. |
+| Pre-push runs web typecheck | `pnpm --filter @goblin/web run type-check` passed locally, but took long enough to remain an ergonomics caveat. |
+| Hook behavior duplicates some CI protection | Acceptable while the hooks remain thin wrappers over canonical tools. |
 
 ### 15. Static Analysis Configuration Shift Is Committed with a Vendor Caveat
 
@@ -612,7 +613,7 @@ Do not claim release readiness until all of the following are true:
 
 | Required Before Release Claim | Current State |
 |---|---|
-| Working tree reduced to intentional, reviewable changes | Not true; 800 status entries remain. |
+| Working tree reduced to intentional, reviewable changes | Not true; 798 status entries remain. |
 | Commit history matches the requested story or the mismatch is explicitly accepted | Not true; one commit subject is misleading. |
 | Deprecated infra deletion has no active executable references | Mostly true after this pass; final search and policy checks still required. |
 | Contract artifacts regenerated after final API changes | Partially true; must rerun at end. |
@@ -653,3 +654,4 @@ Do not claim release readiness until all of the following are true:
 | Root contributing stub points at old docs path | Resolved by `c1b2791e`; `CONTRIBUTING.md` now points at the tracked operations guide. |
 | Datadog static-analysis config does not cover the monorepo shape | Resolved locally by `010b9547`; YAML parsed successfully, but hosted Datadog validation remains the stronger proof. |
 | Supabase CLI temp metadata was tracked | Resolved by `578e092b`; 16 `.temp` files were removed from tracking and recursive Supabase temp ignores now retain local CLI state. |
+| Local hooks skipped useful checks | Resolved by `06ebf527`; pre-commit and SQLite hook smokes passed, and web typecheck passed before committing pre-push hardening. |
