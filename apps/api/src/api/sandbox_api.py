@@ -100,13 +100,11 @@ async def submit_job(
 ) -> SuccessEnvelope[SubmitJobResponse]:
     """Submit a job for sandbox execution"""
 
-    if not SANDBOX_ENABLED:
-        raise HTTPException(status_code=503, detail="sandbox service is disabled")
+    if SANDBOX_ENABLED:
+        require_api_key(x_api_key)
 
-    require_api_key(x_api_key)
-
-    if request:
-        await sandbox_rate_limiter.__call__(request)
+        if request:
+            await sandbox_rate_limiter.__call__(request)
 
     if not req.source or len(req.source.strip()) == 0:
         raise HTTPException(status_code=400, detail="source code is required")
@@ -123,6 +121,9 @@ async def submit_job(
     runtime_args = (req.runtime_args or "").strip()
     if len(runtime_args) > 512:
         raise HTTPException(status_code=400, detail="runtime_args must be 512 characters or less")
+
+    if not SANDBOX_ENABLED:
+        raise HTTPException(status_code=503, detail="sandbox service is disabled")
 
     if (
         os.getenv("PYTEST_CURRENT_TEST")

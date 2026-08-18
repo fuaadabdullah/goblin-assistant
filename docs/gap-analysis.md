@@ -65,7 +65,7 @@ Latest verified checks on 2026-08-18:
 | `make type-check` | Pass | Covered web plus packages/shared, ui, config, types, and sdk TypeScript checks. |
 | `cd apps/api && PYTHONPATH=src python3.11 -m pytest -o "addopts=" -v src/api/tests/test_goblin_query_api.py src/api/tests/test_contract_boundaries.py src/api/tests/test_chat_route_version_aliases.py` | Pass | 25 focused Goblin query/contract/route-alias tests passed. |
 | `cd apps/api && PYTHONPATH=src python3.11 -m ruff check --config pyproject.toml --extend-select RUF100 src/api/celery_monitoring.py` | Pass | Proves the removed `N802` suppression was unused. |
-| `make test-api` | Fail | Improved from 2,897 passed / 68 failed to 2,940 passed / 25 failed after restoring memory-entity mapper relationships. Remaining failures cluster around route-introspection assumptions, sandbox subprocess execution, provider-health contract drift, provider-cost signal expectations, contextual chat fallback behavior, and CORS expectation drift. |
+| `make test-api` | Fail | Improved from 2,897 passed / 68 failed to 2,952 passed / 13 failed after restoring memory-entity mapper relationships, aligning sandbox tests with the async executor, adding the missing local origin, and preserving sandbox payload validation before disabled-service responses. Remaining failures cluster around route-introspection assumptions, provider-health contract drift, provider-cost signal expectations, and contextual chat fallback behavior. |
 
 Current quality baseline metrics:
 
@@ -560,19 +560,19 @@ Remaining caveats:
 `make test-api` was rerun on 2026-08-18 after the focused Goblin query,
 contract, type, quality, and docs gates. The first full run failed with 68
 tests. Restoring the missing `MemoryEntityModel` reciprocal relationships
-removed the mapper cascade and improved the suite to 2,940 passing tests with 25
-remaining failures. The focused Goblin query proof still stands, but the full
-API suite is not green:
+removed the mapper cascade. Subsequent sandbox/CORS cleanup improved the suite
+again to 2,952 passing tests with 13 remaining failures. The focused Goblin
+query proof still stands, but the full API suite is not green:
 
 | Failure Cluster | Examples | Likely Root Cause or Caveat |
 |---|---|---|
 | SQLAlchemy mapper initialization | Previously broke auth, account preferences, support, user service, memory indexing, chat archiving, settings, and phase 6 persistence tests with `MemoryEntityModel(memory_entities)` missing relationship property `user`. | Resolved by adding explicit `MemoryEntityModel.user` plus reciprocal entity relation relationships. Targeted mapper-cascade tests passed, and the full suite failure count dropped from 68 to 25. |
 | App route introspection/registration | `/api/v1/health`, provider models, settings, support, account preferences, ops routes, debug routes, and secrets route tests report missing paths or `_IncludedRouter` objects without `.path`. | The app/router test helpers may be seeing FastAPI included-router wrappers after route lifecycle changes, or route mounting has regressed. Needs direct live app route inventory proof. |
-| Sandbox tool execution | Python/Node sandbox tool tests raise `subprocess.SubprocessError: Exception occurred in preexec_fn`; sandbox security route tests return `503` where tests expect validation `400`. | Local subprocess sandbox assumptions no longer match this macOS/test environment or the runtime now checks sandbox availability before request validation. |
+| Sandbox tool execution | Python/Node sandbox tool tests previously raised `subprocess.SubprocessError: Exception occurred in preexec_fn`; sandbox security route tests returned `503` where tests expected validation `400`. | Resolved by aligning tests with the async sandbox executor and validating malformed submit payloads before returning disabled-service `503`. |
 | Provider health contract drift | Credential validation tests no longer receive the expected `invalid_credentials` key. | Either the startup contract intentionally changed and tests need migration, or clients lost a stable diagnostics field. |
 | Provider routing cost signal | `ProviderStats.update_cost` and `ewma_cost_per_request` expectations fail. | Either cost-signal support was removed/renamed without migrating tests, or the routing stats contract regressed. |
 | Contextual chat fallback behavior | The contextual chat route still returns an unexpected status/body for degraded RAG provider fallback. | Needs focused route-level debugging now that persistence mapper failures no longer explain the result. |
-| Security/config expectation drift | Development CORS test expects `http://127.0.0.1:3001`; actual list keeps localhost 3001 but not 127.0.0.1. | Could be intentional policy tightening, but the test/contract must be reconciled before release claims. |
+| Security/config expectation drift | Development CORS test expected `http://127.0.0.1:3001`; actual list kept localhost 3001 but not 127.0.0.1. | Resolved by adding the missing local development origin. |
 
 This is not a Goblin query API blocker by itself, because the focused
 Goblin/contract/alias tests passed. It is a release blocker for any claim that
@@ -614,7 +614,7 @@ bundle should stay explicitly scoped:
 
 | Test/Gate | Caveat |
 |---|---|
-| Full `make test-api` | Fails with 25 failures after 2,940 passes; see high-severity cluster above. |
+| Full `make test-api` | Fails with 13 failures after 2,952 passes; see high-severity cluster above. |
 | Full `make test-web` | Not shown passing after frontend churn. |
 | Full `make type-check` | Passed after generated SDK and web changes. |
 | Running backend smoke via `/api/v1/health` and Goblin endpoints | Needed before release claim. |
