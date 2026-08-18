@@ -18,12 +18,11 @@ jobs:
         id: config
         env:
           SUPABASE_DB_URL: ${{ secrets.SUPABASE_DB_URL }}
-          DATABASE_URL: ${{ secrets.DATABASE_URL }}
         run: |
-          if [ -n "${SUPABASE_DB_URL:-}" ] || [ -n "${DATABASE_URL:-}" ]; then
+          if [ -n "${SUPABASE_DB_URL:-}" ]; then
             echo "enabled=true" >> "$GITHUB_OUTPUT"
           else
-            echo "::notice::Skipping Supabase keep-alive because SUPABASE_DB_URL/DATABASE_URL is not configured."
+            echo "::notice::Skipping Supabase keep-alive because SUPABASE_DB_URL is not configured."
             echo "enabled=false" >> "$GITHUB_OUTPUT"
           fi
 
@@ -41,5 +40,4 @@ jobs:
         if: steps.config.outputs.enabled == 'true'
         env:
           SUPABASE_DB_URL: ${{ secrets.SUPABASE_DB_URL }}
-          DATABASE_URL: ${{ secrets.DATABASE_URL }}
         run: python scripts/supabase_keepalive.py

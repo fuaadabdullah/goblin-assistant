@@ -1,0 +1,26 @@
+{
+  "bucket": "security",
+  "description": "Static security analysis and dependency audit gates. Bandit starts at high severity so legacy medium findings can be burned down deliberately.",
+  "paths": [
+    "scripts/security/scan_secrets.py",
+    "apps/api/requirements.txt"
+  ],
+  "commands": [
+    {
+      "name": "secret-scan",
+      "run": "python3.11 scripts/security/scan_secrets.py"
+    },
+    {
+      "name": "bandit-sast",
+      "run": "bandit -r apps/api/src/api -x apps/api/src/api/tests -lll -q"
+    },
+    {
+      "name": "pip-audit",
+      "run": "python3.11 -m pip_audit -r apps/api/requirements.txt"
+    },
+    {
+      "name": "npm-audit",
+      "run": "pnpm --filter @goblin/web exec audit-ci --config ../../audit-ci.json"
+    }
+  ]
+}
