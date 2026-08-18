@@ -62,9 +62,9 @@ async def classify_intent(message: str) -> tuple[Any, dict]:
     Falls back to (None, {}) on any failure.
     """
     try:
-        from api.routing.intent_classifier import intent_classifier as _ic  # noqa: PLC0415
+        from api.routing.intent_classifier import intent_classifier as _ic
         from api.services.intent_dispatch_service import (
-            dispatch_intent_archetype,  # noqa: PLC0415  # lazy import avoids chat startup cycle
+            dispatch_intent_archetype,  # lazy import avoids chat startup cycle
         )
 
         result = _ic.classify(message)
@@ -255,8 +255,8 @@ async def resolve_addendum(
             addendum_parts.append(intent_addendum)
 
     try:
-        from api.config.mode_addendums import response_length_addendum as _rla  # noqa: PLC0415
-        from api.services.preference_learner import preference_learner as _pl  # noqa: PLC0415
+        from api.config.mode_addendums import response_length_addendum as _rla
+        from api.services.preference_learner import preference_learner as _pl
 
         length_pref = await _pl.get_length_pref(str(user_id), intent_meta.get("label", "default"))
         len_addendum = _rla(length_pref)
@@ -301,7 +301,7 @@ def ensure_mode_required_tools(
     if not missing:
         return registered_tools
 
-    from ...assistant_tools.registry import (  # noqa: PLC0415 — avoid boot-time cycle
+    from ...assistant_tools.registry import (  # avoid boot-time cycle
         export_tool_specs,
         format_tool_specs_for_provider,
     )

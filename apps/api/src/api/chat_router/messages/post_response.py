@@ -144,9 +144,9 @@ def schedule_preference_learning(
 ) -> None:
     """Fire-and-forget preference learning update."""
     try:
-        import asyncio as _asyncio  # noqa: PLC0415
+        import asyncio as _asyncio
 
-        from api.services.preference_learner import preference_learner as _pl  # noqa: PLC0415
+        from api.services.preference_learner import preference_learner as _pl
 
         _pref_task = _asyncio.create_task(
             _pl.record_response(
@@ -199,9 +199,9 @@ def schedule_feedback_outcomes(
 ) -> None:
     """Fire-and-forget feedback-outcome tracking (continuation + provider switch)."""
     try:
-        import asyncio as _asyncio  # noqa: PLC0415
+        import asyncio as _asyncio
 
-        from api.services.feedback_service import (  # noqa: PLC0415
+        from api.services.feedback_service import (
             FeedbackContext,
             feedback_service,
         )

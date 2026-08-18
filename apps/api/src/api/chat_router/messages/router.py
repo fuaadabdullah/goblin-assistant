@@ -138,7 +138,7 @@ async def send_message(
         # because resolve_addendum uses _new_category for context-specific addenda.
         _new_category: Optional[str] = None
         try:
-            from api.services.conversation_classifier import conversation_classifier as _cc  # noqa: PLC0415, I001
+            from api.services.conversation_classifier import conversation_classifier as _cc
 
             _existing_category = conversation.metadata.get("category")
             _new_category = _cc.classify(sanitized_message, existing=_existing_category)
@@ -253,7 +253,7 @@ async def send_message(
         _resolved_dept_model: Optional[str] = None
         if request.department and not request.provider:
             try:
-                from api.departments import department_dispatcher  # noqa: PLC0415
+                from api.departments import department_dispatcher
 
                 _resolved_dept_id = department_dispatcher.resolve_provider_id(request.department)
                 _resolved_dept_provider = _resolved_dept_id

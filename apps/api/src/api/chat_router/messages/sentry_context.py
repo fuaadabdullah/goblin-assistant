@@ -17,7 +17,7 @@ def set_sentry_chat_context(
     never affect chat delivery.
     """
     try:
-        import sentry_sdk  # noqa: PLC0415
+        import sentry_sdk
 
         sentry_sdk.set_tag("conversation_id", conversation_id)
         sentry_sdk.set_tag("operation", "chat.send_message")
