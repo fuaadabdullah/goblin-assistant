@@ -301,11 +301,11 @@ class MemoryCoreService:
         return [canonicalize_memory_item(item, user_id=user_id) for item in ranked]
 
     async def export_user_memory(self, user_id: str) -> List[Dict[str, Any]]:
-        from sqlalchemy import select  # noqa: PLC0415
+        from sqlalchemy import select
 
-        from ...storage.database import get_readonly_db_context  # noqa: PLC0415
-        from ...storage.vector_models import MemoryFactModel  # noqa: PLC0415
-        from .repository import _record_from_model  # noqa: PLC0415
+        from ...storage.database import get_readonly_db_context
+        from ...storage.vector_models import MemoryFactModel
+        from .repository import _record_from_model
 
         async with get_readonly_db_context() as session:
             result = await session.execute(
@@ -319,10 +319,10 @@ class MemoryCoreService:
             return records
 
     async def delete_user_memory(self, user_id: str) -> Dict[str, int]:
-        from sqlalchemy import delete  # noqa: PLC0415
+        from sqlalchemy import delete
 
-        from ...storage.database import get_db_context  # noqa: PLC0415
-        from ...storage.vector_models import EmbeddingModel, MemoryFactModel  # noqa: PLC0415
+        from ...storage.database import get_db_context
+        from ...storage.vector_models import EmbeddingModel, MemoryFactModel
 
         async with get_db_context() as session:
             memory_delete = await session.execute(
