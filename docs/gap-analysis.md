@@ -69,10 +69,10 @@ Current working-tree scale:
 
 | Git status class | Count |
 |---|---:|
-| Modified files | 675 |
+| Modified files | 674 |
 | Deleted files | 123 |
 | Untracked files/directories | 4 |
-| Total status entries | 802 |
+| Total status entries | 801 |
 
 Current status concentration:
 
@@ -80,7 +80,7 @@ Current status concentration:
 |---|---:|---|
 | `apps/` | 764 | Dominates unresolved risk; should not be reviewed as one blob. |
 | `packages/` | 18 | Shared-contract/package drift can affect both API and web. |
-| Root and infra files | 20 | Contains runtime, Docker, compose, lockfile, hook, and docs changes that need separate ownership. |
+| Root and infra files | 19 | Contains runtime, Docker, compose, lockfile, hook, and docs changes that need separate ownership. |
 
 Triage labels used below:
 
@@ -140,7 +140,7 @@ as regressions.
 
 ### 3. Dirty Tree Is Too Broad for Confident Release Review
 
-There are 802 status entries after the already-created commits. This is larger
+There are 801 status entries after the already-created commits. This is larger
 than a normal focused feature branch and mixes backend, frontend, infra, docs,
 generated contracts, scripts, tests, package locks, and deleted legacy trees.
 
@@ -420,18 +420,17 @@ but it changes developer ergonomics immediately.
 | Pre-push runs web typecheck | Good protection, but can block pushes for unrelated backend/doc changes. | Consider whether this belongs in CI only or is intentionally strict locally. |
 | Hook behavior may duplicate CI | Duplication is fine if fast and deterministic. | Keep Make/script entrypoints canonical so hooks are thin wrappers. |
 
-### 15. Static Analysis Configuration Shift Needs Scope Review
+### 15. Static Analysis Configuration Shift Is Committed with a Vendor Caveat
 
-`static-analysis.datadog.yml` changes remove some Python framework rules and add
-TypeScript/React-related scope. That may be appropriate for the current repo
-shape, but it is easy to accidentally reduce backend coverage while improving
-frontend signal.
+`static-analysis.datadog.yml` now removes stale Python web-framework rules and
+adds TypeScript/React-related scope in `010b9547`. Local YAML validation passed,
+but no local `datadog-ci` binary was available for a vendor-side config check.
 
 | Caveat | Consequence | Proof Needed |
 |---|---|---|
-| Removed Python/Django/Flask rules may have been stale | Good if the repo no longer benefits from them. | Confirm removed rules do not cover active API patterns. |
-| Added TS/React scope may be noisy initially | Findings can become ignored if too broad. | Run or inspect one representative static-analysis result before tightening. |
-| Ignore paths can hide real issues | Generated/vendor ignores are healthy; broad app ignores are risky. | Review ignore paths line by line before commit. |
+| Removed Python/Django/Flask rules may have been stale | Good if the repo no longer benefits from them. | Monitor the first hosted Datadog static-analysis result after the commit lands. |
+| Added TS/React scope may be noisy initially | Findings can become ignored if too broad. | Review one representative hosted static-analysis result before tightening. |
+| Ignore paths can hide real issues | Generated/vendor ignores are healthy; broad app ignores are risky. | Current ignore paths are committed; revisit only if hosted findings show blind spots. |
 
 ### 16. Test Manifest Ownership Was Brought Forward
 
@@ -613,7 +612,7 @@ Do not claim release readiness until all of the following are true:
 
 | Required Before Release Claim | Current State |
 |---|---|
-| Working tree reduced to intentional, reviewable changes | Not true; 802 status entries remain. |
+| Working tree reduced to intentional, reviewable changes | Not true; 801 status entries remain. |
 | Commit history matches the requested story or the mismatch is explicitly accepted | Not true; one commit subject is misleading. |
 | Deprecated infra deletion has no active executable references | Mostly true after this pass; final search and policy checks still required. |
 | Contract artifacts regenerated after final API changes | Partially true; must rerun at end. |
@@ -652,3 +651,4 @@ Do not claim release readiness until all of the following are true:
 | Xfail test debt | Current quality baseline reports zero xfail tests. |
 | Missing `storybook-static/` Prettier ignore | Resolved by `ecfe50b3`; Git, ESLint, and Prettier now consistently treat Storybook static output as generated. |
 | Root contributing stub points at old docs path | Resolved by `c1b2791e`; `CONTRIBUTING.md` now points at the tracked operations guide. |
+| Datadog static-analysis config does not cover the monorepo shape | Resolved locally by `010b9547`; YAML parsed successfully, but hosted Datadog validation remains the stronger proof. |
