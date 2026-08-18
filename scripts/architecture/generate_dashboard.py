@@ -9,6 +9,7 @@ against a previous run's snapshot (if one is supplied).
 from __future__ import annotations
 
 import argparse
+import importlib
 import json
 import subprocess
 import sys
@@ -19,8 +20,8 @@ SCRIPTS_DIR = Path(__file__).resolve().parent
 REPO_ROOT = SCRIPTS_DIR.parents[1]
 sys.path.insert(0, str(SCRIPTS_DIR))
 
-import check_api_architecture as api_arch  # noqa: E402
-import check_capability_boundaries as cap_bounds  # noqa: E402
+api_arch = importlib.import_module("check_api_architecture")
+cap_bounds = importlib.import_module("check_capability_boundaries")
 
 API_ROOT = REPO_ROOT / "apps" / "api" / "src" / "api"
 WEB_SRC = REPO_ROOT / "apps" / "web" / "src"
@@ -60,6 +61,7 @@ def dead_code_counts() -> Dict[str, object]:
         ],
         cwd=REPO_ROOT / "apps" / "api",
         capture_output=True,
+        check=False,
         text=True,
     )
     python_unused = len([ln for ln in vulture.stdout.splitlines() if ln.strip()])
@@ -68,6 +70,7 @@ def dead_code_counts() -> Dict[str, object]:
         ["pnpm", "--filter", "@goblin/web", "exec", "knip", "--reporter", "json"],
         cwd=REPO_ROOT,
         capture_output=True,
+        check=False,
         text=True,
     )
     typescript_unused_files: object = None
