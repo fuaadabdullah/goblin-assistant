@@ -52,7 +52,7 @@ class SmartRouter:
         if intent is not None:
             try:
                 from api.routing.intent_classifier import (
-                    map_intent_to_task_type,  # noqa: PLC0415  # lazy import avoids routing cycle
+                    map_intent_to_task_type,  # lazy import avoids routing cycle
                 )
 
                 if intent.confidence >= 0.7:
@@ -64,7 +64,7 @@ class SmartRouter:
         if messages:
             try:
                 from api.routing.prompt_classifier import (
-                    prompt_classifier,  # noqa: PLC0415  # lazy import avoids routing cycle
+                    prompt_classifier,  # lazy import avoids routing cycle
                 )
 
                 return _coerce_task_type_value(prompt_classifier.classify_messages(messages))
@@ -112,7 +112,7 @@ class SmartRouter:
 
         if strategy == RoutingStrategy.ML_BANDIT:
             try:
-                from api.routing.learning_adapters import (  # noqa: PLC0415  # lazy import avoids routing cycle
+                from api.routing.learning_adapters import (  # lazy import avoids routing cycle
                     rank_prompt_with_bandit_router,
                 )
 
@@ -192,7 +192,7 @@ class SmartRouter:
         if user_id:
             try:
                 from api.services.preference_learner import (
-                    preference_learner as _pl,  # noqa: PLC0415  # lazy import avoids routing cycle
+                    preference_learner as _pl,  # lazy import avoids routing cycle
                 )
 
                 ordered = await _pl.apply_to_routing(user_id, ordered)
@@ -236,7 +236,7 @@ class SmartRouter:
         # execution layer already calls it. We only add the bandit update.
         try:
             from api.routing.learning_adapters import (
-                record_bandit_outcome,  # noqa: PLC0415  # lazy import avoids routing cycle
+                record_bandit_outcome,  # lazy import avoids routing cycle
             )
 
             record_bandit_outcome(
@@ -266,7 +266,7 @@ class SmartRouter:
         timeout_ms: int = 30_000,
         **kwargs: Any,
     ) -> Dict[str, Any]:
-        import uuid as _uuid  # noqa: PLC0415  # lazy import preserves lightweight fallback path
+        import uuid as _uuid  # lazy import preserves lightweight fallback path
 
         payload = dict(kwargs.get("payload") or {})
         payload.setdefault("messages", messages)

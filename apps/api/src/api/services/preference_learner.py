@@ -88,7 +88,7 @@ class PreferenceLearner:
         the hot path.
         """
         try:
-            from api.storage.preferences_service import preferences_service  # noqa: PLC0415
+            from api.storage.preferences_service import preferences_service
 
             profile = await preferences_service.get_learned_preferences(user_id)
             profile = _merge_defaults(profile)
@@ -150,7 +150,7 @@ class PreferenceLearner:
     async def get_profile(self, user_id: str) -> Dict[str, Any]:
         """Return the learned preference profile; empty dict for new users."""
         try:
-            from api.storage.preferences_service import preferences_service  # noqa: PLC0415
+            from api.storage.preferences_service import preferences_service
 
             return await preferences_service.get_learned_preferences(user_id)
         except Exception as exc:

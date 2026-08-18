@@ -40,7 +40,7 @@ class MemoryPromotionFacet:
             else:
                 gates_failed = [PromotionGate.CONTENT_QUALITY]
 
-            import asyncio  # noqa: PLC0415
+            import asyncio
 
             try:
                 loop = asyncio.get_running_loop()

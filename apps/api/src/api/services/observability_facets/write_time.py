@@ -77,7 +77,7 @@ class WriteTimeFacet:
                 except ValueError:
                     pass
 
-            import asyncio  # noqa: PLC0415
+            import asyncio
 
             try:
                 loop = asyncio.get_running_loop()

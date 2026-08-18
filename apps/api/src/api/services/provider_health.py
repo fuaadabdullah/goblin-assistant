@@ -102,7 +102,7 @@ def _latency_percentiles(samples: deque) -> Dict[str, float]:
 
 def _push_status(provider_id: str, state: "ProviderHealth") -> None:
     """Fire-and-forget upsert of provider health to Supabase."""
-    import importlib  # noqa: PLC0415  # lazy import keeps provider probes isolated
+    import importlib  # lazy import keeps provider probes isolated
 
     disp = importlib.import_module("api.providers.dispatcher").dispatcher
     provider = disp._providers.get(provider_id)
