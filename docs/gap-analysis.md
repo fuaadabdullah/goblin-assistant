@@ -65,6 +65,7 @@ Latest verified checks on 2026-08-18:
 | `make type-check` | Pass | Covered web plus packages/shared, ui, config, types, and sdk TypeScript checks. |
 | `cd apps/api && PYTHONPATH=src python3.11 -m pytest -o "addopts=" -v src/api/tests/test_goblin_query_api.py src/api/tests/test_contract_boundaries.py src/api/tests/test_chat_route_version_aliases.py` | Pass | 25 focused Goblin query/contract/route-alias tests passed. |
 | `cd apps/api && PYTHONPATH=src python3.11 -m ruff check --config pyproject.toml --extend-select RUF100 src/api/celery_monitoring.py` | Pass | Proves the removed `N802` suppression was unused. |
+| `make test-api` | Fail | 2,897 passed, 68 failed, 10 skipped in 211.53s. Failures cluster around SQLAlchemy mapper configuration, route-introspection assumptions, sandbox subprocess execution, provider-cost signal expectations, and DB-backed task/usage persistence. |
 
 Current quality baseline metrics:
 
@@ -118,7 +119,7 @@ misleading subject:
 | `c5e09df2` | `chore(repo): delete legacy routers, dead services, and abandoned stubs` | Broad deletion commit spanning API routers/services/tests, web Pages Router/test artifacts, shared legacy files, and `apps/web/package.json`; needs dedicated review and validation evidence. |
 | `aa97917c` | `chore(api): apply monorepo-reorg path updates across API surface` | Broad API-wide path/config/test-prefix commit touching API runtime, tests, requirements, and tooling; needs focused import, collection, and contract proof. |
 | `5a284808` | `chore(web): prettier format pass, color token alignment, and root config` | Broad web formatting/theme/root-runtime commit spanning web app, root Docker/env/README, and new web env tests; needs web type/test proof plus runtime-config review. |
-| `a4fb7258` | `chore(infra): update docker-compose, GCP setup, lockfile, and merge order` | Broad CI-autofix-authored commit spanning Compose topology, GCP LLM setup, `pnpm-lock.yaml`, and `MERGE_ORDER.md`; structurally validated but not runtime- or release-proven. |
+| `a4fb7258` | `chore(infra): update docker-compose, GCP setup, lockfile, and merge order` | Broad CI-autofix-authored commit spanning Compose topology, GCP LLM setup, `pnpm-lock.yaml`, and a now-removed stale `MERGE_ORDER.md`; structurally validated but not runtime- or release-proven. |
 
 This is a release-hygiene problem because reviewers will reason from the commit
 subject before reading the diff. It should be fixed only with an explicit
@@ -359,19 +360,22 @@ where an executable production check uses an obsolete base URL or root path.
 Historical notes, compatibility aliases, and generated logical route names
 should be reviewed rather than mechanically rewritten.
 
-### 10. Merge-Order Aid Needs Ownership Review
+### 10. Stale Root Merge-Order Aid Was Removed
 
 Current untracked entries: none.
 
-`MERGE_ORDER.md` is now tracked via `a4fb7258`. Treat it as a committed
-reviewer aid that still needs stale-PR/status review before depending on it.
+`MERGE_ORDER.md` was tracked via `a4fb7258`, but it was a temporary
+2026-08-03 reviewer aid with live GitHub status claims that no longer match
+current PR state. It has been removed rather than retained as another root-level
+process document.
 
-Reviewer-aid caveats:
+Live `gh pr list` evidence on 2026-08-18:
 
-| Caveat | Consequence |
+| Current Finding | Why The Deleted File Was Unsafe |
 |---|---|
-| `MERGE_ORDER.md` landed inside a broad infra/autofix commit | Reviewers may assume the merge sequence is current even if PR state has drifted. |
-| Reviewer aids can become process promises | Treat stale PR numbers, branch names, and status claims as needing verification before use. |
+| PR #61 now exists for `feat/goblin-query-api` targeting `reorg/monorepo-visibility`. | The old merge plan did not know about the active branch being cleaned up here. |
+| PRs #56, #49, #41, #43, and new Dependabot PRs #57-#60 are currently `BLOCKED`; #55 and #50 are `DIRTY`; #51/#53/#54/#61 are `UNSTABLE`. | The old document claimed several entries were mergeable/waiting in ways that could mislead reviewers. |
+| Dependabot PRs #44-#47 are now closed and replaced by newer #57-#60-style PRs. | The backlog table was stale process guidance, not durable project documentation. |
 
 ### 11. Quality Debt Counts Need Recalculation After Final Slices
 
@@ -551,9 +555,28 @@ Remaining caveats:
 | Root Docker Compose files | Need final docs/readme language to keep local-only versus production ownership clear. |
 | Self-development Fly token note | May be a separate worker architecture rather than product deploy; not removed in this infra slice. |
 
+### 21. Full API Suite Exposes Several Non-Goblin Release Blockers
+
+`make test-api` was rerun on 2026-08-18 after the focused Goblin query,
+contract, type, quality, and docs gates. The focused Goblin query proof still
+stands, but the full API suite is not green:
+
+| Failure Cluster | Examples | Likely Root Cause or Caveat |
+|---|---|---|
+| SQLAlchemy mapper initialization | Auth, account preferences, support, user service, memory indexing, chat archiving, settings, and phase 6 persistence tests fail with `MemoryEntityModel(memory_entities)` missing relationship property `user`. | This is the biggest cascade. Fix or isolate the mapper relationship before interpreting downstream 500s as independent product bugs. |
+| App route introspection/registration | `/api/v1/health`, provider models, settings, support, account preferences, ops routes, debug routes, and secrets route tests report missing paths or `_IncludedRouter` objects without `.path`. | The app/router test helpers may be seeing FastAPI included-router wrappers after route lifecycle changes, or route mounting has regressed. Needs direct live app route inventory proof. |
+| Sandbox tool execution | Python/Node sandbox tool tests raise `subprocess.SubprocessError: Exception occurred in preexec_fn`; sandbox security route tests return `503` where tests expect validation `400`. | Local subprocess sandbox assumptions no longer match this macOS/test environment or the runtime now checks sandbox availability before request validation. |
+| Provider routing cost signal | `ProviderStats.update_cost` and `ewma_cost_per_request` expectations fail. | Either cost-signal support was removed/renamed without migrating tests, or the routing stats contract regressed. |
+| DB-backed task and usage stores | Task-store CRUD and usage-event aggregate tests return missing rows or zero counts. | Persistence wiring may be using the wrong DB/session path, or writes are swallowed behind fallback behavior. |
+| Security/config expectation drift | Development CORS test expects `http://127.0.0.1:3001`; actual list keeps localhost 3001 but not 127.0.0.1. | Could be intentional policy tightening, but the test/contract must be reconciled before release claims. |
+
+This is not a Goblin query API blocker by itself, because the focused
+Goblin/contract/alias tests passed. It is a release blocker for any claim that
+the branch is broadly backend-stable.
+
 ## Medium-Severity Issues
 
-### 21. Abstract Agent/Search Base Classes Remain Intentionally Incomplete
+### 22. Abstract Agent/Search Base Classes Remain Intentionally Incomplete
 
 Current `NotImplementedError` production hits:
 
@@ -569,7 +592,7 @@ they should be represented with `abc.ABC`/`@abstractmethod` if they are
 framework contracts, and should not be listed as release blockers unless a
 concrete runtime path instantiates them.
 
-### 22. Health Placeholder Endpoints Still Return Empty/Not-Implemented Data
+### 23. Health Placeholder Endpoints Still Return Empty/Not-Implemented Data
 
 `apps/api/src/api/health.py` still includes service health endpoints that report
 empty latency/error/retest state with messages saying the tracking is not
@@ -578,28 +601,29 @@ implemented for a service.
 This is not the same as a 501 endpoint, but it is still product-visible
 incompleteness if clients rely on operational telemetry.
 
-### 23. Test Proof Is Focused, Not Comprehensive
+### 24. Test Proof Is Focused, Not Comprehensive
 
 Recent passing checks cover architecture gates, quality baseline, contract
 generation, provider config, docs links/inventory, and focused Goblin query API
-unit/OpenAPI behavior. Missing or not recently rerun in the current final state:
+unit/OpenAPI behavior. The broader API suite was rerun and failed, so the proof
+bundle should stay explicitly scoped:
 
 | Test/Gate | Caveat |
 |---|---|
-| Full `make test-api` | Not shown passing after the latest broad committed state. |
+| Full `make test-api` | Fails with 68 failures after 2,897 passes; see high-severity cluster above. |
 | Full `make test-web` | Not shown passing after frontend churn. |
 | Full `make type-check` | Passed after generated SDK and web changes. |
 | Running backend smoke via `/api/v1/health` and Goblin endpoints | Needed before release claim. |
 | E2E/authenticated chat journey | Still high value because route/middleware/proxy changes can pass unit tests and fail in-app. |
 
-### 24. Generated Contract Artifacts Are Committed, but Need Drift Guard
+### 25. Generated Contract Artifacts Are Committed, but Need Drift Guard
 
 The SDK/OpenAPI artifacts were regenerated and committed, but later broad
 commits include additional API, package, and route-adjacent changes. That means
 the generated artifacts may become stale again before final closeout unless
 `make contract-checks` is rerun at the end.
 
-### 25. Provider Configuration Authority Is Improved but Still Affects Web
+### 26. Provider Configuration Authority Is Improved but Still Affects Web
 
 Provider config schema/config changes landed in `19e80656`. The focused
 provider/router checks passed, `config/providers.json` was verified as
@@ -615,7 +639,7 @@ artifact itself.
 
 ## Low-Severity / Opportunistic Issues
 
-### 26. Script Sprawl Is Smaller, but Ownership Still Needs a Final Pass
+### 27. Script Sprawl Is Smaller, but Ownership Still Needs a Final Pass
 
 The latest script commits reduced root script sprawl by turning common
 entrypoints into wrappers over `tooling/*` and deleting obsolete backend start
@@ -626,7 +650,7 @@ Recommendation: do not create another docs checklist. Instead, converge scripts
 behind Makefile targets and delete scripts only when no docs/workflows call
 them.
 
-### 27. Frontend Type Hardening Should Stay Opportunistic
+### 28. Frontend Type Hardening Should Stay Opportunistic
 
 The AGENTS guidance explicitly says not to open a dedicated type-hardening pass.
 The right posture is:
@@ -637,7 +661,7 @@ The right posture is:
 | Improve test helper types as part of test edits | Churning tests only to satisfy aesthetics |
 | Add shared contract types when a real API seam needs them | Creating unused constants/types frameworks |
 
-### 28. Archived Docs and Historical Reports Need Clear Labels
+### 29. Archived Docs and Historical Reports Need Clear Labels
 
 Historical reports are useful if labeled. They are dangerous if they look
 current. The current gap doc should remain the human risk register; generated
@@ -654,7 +678,7 @@ Do not claim release readiness until all of the following are true:
 | Deprecated infra deletion has no active executable references | Mostly true after this pass; final search and policy checks still required. |
 | Contract artifacts regenerated after final API changes | Partially true; must rerun at end. |
 | Runtime smoke proves backend startup and Goblin endpoints | Not yet captured in this pass. |
-| Web/API type and test gates run after final dirty-tree resolution | Not yet captured in this pass. |
+| Web/API type and test gates run after final dirty-tree resolution | `make type-check` passes, but `make test-api` fails and `make test-web` is not yet shown passing. |
 
 ## Recommended Remediation Order
 
