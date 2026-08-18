@@ -9,6 +9,8 @@
  * after editing `config/providers.toml` to regenerate `config/providers.json`.
  */
 
+export const PROVIDERS_JSON_SCHEMA_VERSION = 1;
+
 // ── Leaf types ─────────────────────────────────────────────────────────────
 
 export interface ScoringWeights {
@@ -32,6 +34,17 @@ export interface Health {
   health_check_interval: number;
   timeout_seconds: number;
   retry_attempts: number;
+}
+
+export interface CostEntry {
+  input_per1k: number;
+  output_per1k: number;
+}
+
+export interface RateLimitEntry {
+  requests_per_minute: number;
+  tokens_per_minute: number;
+  concurrency: number;
 }
 
 export interface Raptor {
@@ -92,6 +105,8 @@ export interface ProviderConfigEntry {
   cost_score?: number;
   cost_input_per1k?: number;
   cost_output_per1k?: number;
+  costs?: Record<string, CostEntry>;
+  rate_limits?: Record<string, RateLimitEntry>;
   default_timeout_ms?: number;
   bandwidth_score?: number;
   rate_limit_per_min?: number;
@@ -121,6 +136,33 @@ export interface ModelDefaults {
   supports_streaming: boolean;
 }
 
+export interface RouterBackend {
+  provider_id: string;
+  litellm_provider: string;
+  model: string;
+  api_key_env?: string | null;
+  endpoint_env?: string | null;
+  project_env?: string | null;
+  vertex_location_env?: string | null;
+  vertex_credentials_env?: string | null;
+  order: number;
+  weight: number;
+  cost_input_per1k: number;
+  cost_output_per1k: number;
+  enabled: boolean;
+}
+
+export interface RouterModelGroup {
+  description: string;
+  backends: RouterBackend[];
+  routing_strategy: string;
+  num_retries: number;
+  enable_pre_call_checks: boolean;
+  fallbacks: string[];
+  context_window_fallbacks: string[];
+  content_policy_fallbacks: string[];
+}
+
 export interface ProviderTomlConfig {
   default: DefaultConfig;
   load_balancing: LoadBalancing;
@@ -128,8 +170,10 @@ export interface ProviderTomlConfig {
   model_aliases: Record<string, ModelAlias>;
   visible_providers: string[];
   model_context_windows: Record<string, number>;
+  router_models: Record<string, RouterModelGroup>;
   providers: Record<string, ProviderConfigEntry>;
   model_defaults: Record<string, ModelDefaults>;
+  model_budgets: Record<string, RateLimitEntry>;
 }
 
 // ── JSON-serializable subset (the shape of providers.json) ─────────────────
@@ -143,6 +187,10 @@ export interface JsonProviderEntry {
   capabilities?: string[];
   models?: string[];
   cost_score?: number;
+  cost_input_per1k?: number;
+  cost_output_per1k?: number;
+  costs?: Record<string, CostEntry>;
+  rate_limits?: Record<string, RateLimitEntry>;
   default_timeout_ms?: number;
   rate_limit_per_min?: number;
   display_name?: string;
@@ -151,8 +199,10 @@ export interface JsonProviderEntry {
 }
 
 export interface ProvidersJson {
+  schema_version: number;
   version: number;
   default_timeout_ms: number;
+  model_budgets: Record<string, RateLimitEntry>;
   providers: Record<string, JsonProviderEntry>;
 }
 
@@ -183,6 +233,13 @@ export function validateProvidersJson(raw: unknown): ProvidersJson {
     throw new Error("providers.json: root must be an object");
   }
 
+  const schemaVersion = raw.schema_version;
+  if (schemaVersion !== PROVIDERS_JSON_SCHEMA_VERSION) {
+    throw new Error(
+      `providers.json: expected schema_version=${PROVIDERS_JSON_SCHEMA_VERSION}, got ${String(schemaVersion)}`,
+    );
+  }
+
   const version = raw.version;
   if (version !== 2) {
     throw new Error(
@@ -195,6 +252,10 @@ export function validateProvidersJson(raw: unknown): ProvidersJson {
     throw new Error(
       `providers.json: invalid default_timeout_ms: ${String(defaultTimeout)}`,
     );
+  }
+
+  if (!isRecord(raw.model_budgets)) {
+    throw new Error("providers.json: model_budgets must be an object");
   }
 
   if (!isRecord(raw.providers)) {
@@ -226,7 +287,9 @@ export function validateProvidersJson(raw: unknown): ProvidersJson {
  * Default values for runtime use when config is not loaded yet.
  */
 export const DEFAULT_PROVIDERS_JSON: ProvidersJson = {
+  schema_version: PROVIDERS_JSON_SCHEMA_VERSION,
   version: 2,
   default_timeout_ms: 12000,
+  model_budgets: {},
   providers: {},
 };
