@@ -99,7 +99,7 @@ async def generate_chat_stream(
         _stream_intent_meta = {}
         try:
             from .service_accessors import (
-                _get_request_pipeline,  # noqa: PLC0415  # lazy import preserves patchable test seam
+                _get_request_pipeline,  # lazy import preserves patchable test seam
             )
 
             _dec, _exec = await _get_request_pipeline().run_routing_only(
@@ -161,7 +161,7 @@ async def generate_chat_stream(
                 # Fallback to the fixed-cost system layer (base + guardrails
                 # + date) if the composer itself blows up.
                 try:
-                    from ..services.context_assembly_service.system_layer import (  # noqa: PLC0415  # lazy import keeps streaming path lightweight
+                    from ..services.context_assembly_service.system_layer import (  # lazy import keeps streaming path lightweight
                         build_default_system_message,
                     )
 
@@ -470,7 +470,7 @@ async def generate_chat_stream(
                     },
                 },
             )
-        except Exception as task_err:  # noqa: BLE001  # background task errors must be captured and streamed
+        except Exception as task_err:  # background task errors must be captured and streamed
             logger.warning(
                 "stream_chat_task_history_write_failed",
                 conversation_id=conversation_id,
@@ -494,7 +494,7 @@ async def generate_chat_stream(
                     "metadata": {"source": "chat.generate_chat_stream"},
                 }
             )
-        except Exception as usage_err:  # noqa: BLE001  # usage extraction should not fail the completed stream
+        except Exception as usage_err:  # usage extraction should not fail the completed stream
             logger.warning(
                 "stream_usage_event_write_failed",
                 conversation_id=conversation_id,
