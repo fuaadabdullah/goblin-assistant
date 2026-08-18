@@ -86,7 +86,7 @@ class MemoryCoreService:
             metadata["sensitive_content_redacted"] = True
             metadata["pii_types"] = pii_types
 
-        from ..message_classifier import MessageClassifier  # noqa: PLC0415
+        from ..message_classifier import MessageClassifier
 
         classifier = MessageClassifier()
         classification = classifier.classify_message(text, "user")
@@ -284,9 +284,9 @@ class MemoryCoreService:
         limit: int = 10,
         categories: Optional[Sequence[str]] = None,
     ) -> List[Dict[str, Any]]:
-        from ..memory_contract import canonicalize_memory_item  # noqa: PLC0415
-        from ..memory_reranker import memory_reranker  # noqa: PLC0415
-        from ..retrieval_service import retrieval_service  # noqa: PLC0415
+        from ..memory_contract import canonicalize_memory_item
+        from ..memory_reranker import memory_reranker
+        from ..retrieval_service import retrieval_service
 
         limit = clamp_memory_search_limit(limit)
         results = await retrieval_service.retrieve_memory_facts(
