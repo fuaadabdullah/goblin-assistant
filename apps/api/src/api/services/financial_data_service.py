@@ -310,7 +310,7 @@ def _normalize_news_publisher(source: str, link: str = "") -> str:
 def _domain_from_url(url: str) -> str:
     try:
         parsed = urlsplit(url.strip())
-    except Exception:  # noqa: BLE001  # provider payloads are best-effort normalized
+    except Exception:  # provider payloads are best-effort normalized
         return ""
 
     if parsed.scheme not in {"http", "https"} or not parsed.netloc:
@@ -381,7 +381,7 @@ def _fetch_market_news(query: str, limit: int) -> Dict[str, Any]:
             resp = client.get(_GOOGLE_NEWS_RSS, params=params)
             resp.raise_for_status()
             xml_text = resp.text
-    except Exception as exc:  # noqa: BLE001  # provider payloads are best-effort normalized
+    except Exception as exc:  # provider payloads are best-effort normalized
         return {"error": f"Market news request failed: {exc}"}
 
     try:
