@@ -26,7 +26,7 @@ if command -v circleci >/dev/null 2>&1; then
   read -p "DOCKER_LOGIN (press Enter to skip): " DOCKER_LOGIN
   read -p "DOCKER_PASSWORD (press Enter to skip): " DOCKER_PASSWORD
   read -p "GITHUB_USER (press Enter to skip): " GITHUB_USER
-  read -p "GITHUB_TOKEN (press Enter to skip): " GITHUB_TOKEN
+  read -p "GH_TOKEN (press Enter to skip): " GH_TOKEN
 
   set_env() {
     local name=$1
@@ -43,7 +43,7 @@ if command -v circleci >/dev/null 2>&1; then
   set_env "DOCKER_LOGIN" "$DOCKER_LOGIN"
   set_env "DOCKER_PASSWORD" "$DOCKER_PASSWORD"
   set_env "GITHUB_USER" "$GITHUB_USER"
-  set_env "GITHUB_TOKEN" "$GITHUB_TOKEN"
+  set_env "GH_TOKEN" "$GH_TOKEN"
 
   echo "CircleCI environment variables set (where provided)."
 else
@@ -58,7 +58,7 @@ else
      - DOCKER_LOGIN
      - DOCKER_PASSWORD
      - GITHUB_USER
-     - GITHUB_TOKEN
+     - GH_TOKEN
 
   After adding variables, trigger a build by pushing a commit or starting a pipeline.
 EOF

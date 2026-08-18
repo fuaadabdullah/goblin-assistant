@@ -11,16 +11,91 @@
  *   node tooling/generators/generate-theme-css.js --output apps/web/src/generated-theme.css
  */
 
-import {
-  generateVariants,
-  hexToRgba,
-  GOBLINOS_BASE_COLORS,
-  generateCssVariables,
-  GOBLINOS_PALETTE,
-} from '../../apps/web/src/utils/colorUtils.js';
+const fs = require('node:fs');
 
 const args = process.argv.slice(2);
 const outputFile = args.includes('--output') ? args[args.indexOf('--output') + 1] : null;
+
+function hexToHsl(hex) {
+  const clean = hex.replace('#', '');
+  const r = parseInt(clean.substring(0, 2), 16) / 255;
+  const g = parseInt(clean.substring(2, 4), 16) / 255;
+  const b = parseInt(clean.substring(4, 6), 16) / 255;
+  const max = Math.max(r, g, b);
+  const min = Math.min(r, g, b);
+  let h = 0;
+  let s = 0;
+  const l = (max + min) / 2;
+
+  if (max !== min) {
+    const d = max - min;
+    s = l > 0.5 ? d / (2 - max - min) : d / (max + min);
+    switch (max) {
+      case r:
+        h = (g - b) / d + (g < b ? 6 : 0);
+        break;
+      case g:
+        h = (b - r) / d + 2;
+        break;
+      case b:
+        h = (r - g) / d + 4;
+        break;
+    }
+    h /= 6;
+  }
+
+  return { h: Math.round(h * 360), s: Math.round(s * 100), l: Math.round(l * 100) };
+}
+
+function hslToHex(h, s, l) {
+  const normalizedS = s / 100;
+  const normalizedL = l / 100;
+  const k = (n) => (n + h / 30) % 12;
+  const a = normalizedS * Math.min(normalizedL, 1 - normalizedL);
+  const f = (n) => {
+    const color =
+      normalizedL - a * Math.max(Math.min(k(n) - 3, 9 - k(n), 1), -1);
+    return Math.round(255 * color)
+      .toString(16)
+      .padStart(2, '0');
+  };
+  return `#${f(0)}${f(8)}${f(4)}`;
+}
+
+function generateVariants(hex) {
+  const hsl = hexToHsl(hex);
+  return {
+    base: hex,
+    light: hslToHex(hsl.h, hsl.s, Math.min(95, hsl.l + 20)),
+    dark: hslToHex(hsl.h, hsl.s, Math.max(8, hsl.l - 18)),
+    mid: hslToHex(hsl.h, hsl.s, Math.min(80, hsl.l + 8)),
+    hover: hslToHex(hsl.h, hsl.s, Math.max(5, hsl.l - 5)),
+  };
+}
+
+function hexToRgba(hex, alpha = 1) {
+  const clean = hex.replace('#', '');
+  const r = parseInt(clean.substring(0, 2), 16);
+  const g = parseInt(clean.substring(2, 4), 16);
+  const b = parseInt(clean.substring(4, 6), 16);
+  return `rgba(${r}, ${g}, ${b}, ${alpha})`;
+}
+
+const GOBLINOS_BASE_COLORS = {
+  bg: '#161008',
+  surface: '#26211b',
+  text: '#f8f0e8',
+  muted: '#b8a394',
+  primary: '#d4a574',
+  accent: '#f4967a',
+  cta: '#e69e1d',
+};
+
+const GOBLINOS_PALETTE = {
+  primary: generateVariants(GOBLINOS_BASE_COLORS.primary),
+  accent: generateVariants(GOBLINOS_BASE_COLORS.accent),
+  cta: generateVariants(GOBLINOS_BASE_COLORS.cta),
+};
 
 // Generate complete theme CSS
 function generateThemeCSS() {
@@ -38,13 +113,13 @@ function generateThemeCSS() {
     `  --text: ${GOBLINOS_BASE_COLORS.text};`,
     `  --muted: ${GOBLINOS_BASE_COLORS.muted};`,
     '',
-    '  /* ===== Primary (Goblin Green) - Auto-generated variants ===== */',
+    '  /* ===== Primary (Warm Amber) - Auto-generated variants ===== */',
     `  --primary: ${GOBLINOS_PALETTE.primary.base};`,
     `  --primary-300: ${GOBLINOS_PALETTE.primary.light};`,
     `  --primary-600: ${GOBLINOS_PALETTE.primary.dark};`,
     `  --primary-hover: ${GOBLINOS_PALETTE.primary.hover};`,
     '',
-    '  /* ===== Accent (Magenta) - Auto-generated variants ===== */',
+    '  /* ===== Accent (Warm Coral) - Auto-generated variants ===== */',
     `  --accent: ${GOBLINOS_PALETTE.accent.base};`,
     `  --accent-300: ${GOBLINOS_PALETTE.accent.light};`,
     `  --accent-600: ${GOBLINOS_PALETTE.accent.dark};`,
@@ -104,8 +179,6 @@ const css = generateThemeCSS();
 const verification = generateVerificationData();
 
 if (outputFile) {
-  // Write to file
-  const fs = await import('fs');
   fs.writeFileSync(outputFile, css);
   console.log(`✅ Theme CSS written to: ${outputFile}`);
 } else {

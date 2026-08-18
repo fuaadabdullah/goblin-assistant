@@ -39,7 +39,7 @@ def run_bucket(bucket: str) -> int:
 
 def main() -> int:
     parser = argparse.ArgumentParser(description="Run a canonical test bucket.")
-    parser.add_argument("bucket", choices=("integration", "contract", "performance", "e2e"))
+    parser.add_argument("bucket", choices=("integration", "contract", "performance", "e2e", "security"))
     args = parser.parse_args()
     return run_bucket(args.bucket)
 

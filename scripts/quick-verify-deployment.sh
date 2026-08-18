@@ -7,12 +7,12 @@ echo "🚀 Goblin Assistant - Quick Deployment Status"
 echo "=============================================="
 echo ""
 
-BACKEND_URL="https://goblin-assistant-backend.onrender.com"
+BACKEND_URL="https://goblin-backend-dt30.onrender.com"
 FRONTEND_URL="https://goblin-assistant.vercel.app"
 
 # Quick timeout check (3 second timeout)
 echo "⏱️  Quick backend check (3s timeout)..."
-if timeout 3 curl -s -o /dev/null -w "%{http_code}" "${BACKEND_URL}/health" 2>/dev/null | grep -q "200"; then
+if timeout 3 curl -s -o /dev/null -w "%{http_code}" "${BACKEND_URL}/api/v1/health" 2>/dev/null | grep -q "200"; then
     echo "✅ Backend responding"
 else
     echo "⏳ Backend still starting (this is normal, typically 2-5 minutes)"
@@ -49,5 +49,5 @@ echo ""
 echo "Next steps:"
 echo "  1. Monitor dashboards above for build progress"
 echo "  2. Once both show 'Live', run: npm run test:e2e"
-echo "  3. Or check health: curl ${BACKEND_URL}/health"
+echo "  3. Or check health: curl ${BACKEND_URL}/api/v1/health"
 echo ""

@@ -70,20 +70,76 @@ def _build_operation_index(schema: dict[str, object]) -> dict[tuple[str, str], d
     return index
 
 
+def _join_paths(prefix: str, path: str) -> str:
+    normalized_prefix = prefix.rstrip("/")
+    normalized_path = path if path.startswith("/") else f"/{path}"
+    if not normalized_prefix:
+        return normalized_path
+    if normalized_path == "/":
+        return normalized_prefix or "/"
+    return f"{normalized_prefix}{normalized_path}"
+
+
+def _iter_effective_api_routes(
+    routes: list[Any],
+    *,
+    prefix: str = "",
+    include_in_schema: bool = True,
+    deprecated: bool | None = None,
+    tags: tuple[str, ...] = (),
+) -> list[tuple[APIRoute, str, bool, bool | None, tuple[str, ...]]]:
+    effective_routes: list[tuple[APIRoute, str, bool, bool | None, tuple[str, ...]]] = []
+
+    for route in routes:
+        if isinstance(route, APIRoute):
+            path = _join_paths(prefix, getattr(route, "path", ""))
+            effective_routes.append((route, path, include_in_schema, deprecated, tags))
+            continue
+
+        original_router = getattr(route, "original_router", None)
+        include_context = getattr(route, "include_context", None)
+        child_routes = getattr(original_router, "routes", None)
+        if original_router is None or include_context is None or not isinstance(child_routes, list):
+            continue
+
+        child_prefix = _join_paths(prefix, str(getattr(include_context, "prefix", "") or ""))
+        child_include = include_in_schema and bool(
+            getattr(include_context, "include_in_schema", True)
+        )
+        child_deprecated = getattr(include_context, "deprecated", None)
+        if child_deprecated is None:
+            child_deprecated = deprecated
+        child_tags = (
+            *tags,
+            *tuple(str(tag) for tag in getattr(include_context, "tags", []) or []),
+        )
+        effective_routes.extend(
+            _iter_effective_api_routes(
+                child_routes,
+                prefix=child_prefix,
+                include_in_schema=child_include,
+                deprecated=child_deprecated,
+                tags=child_tags,
+            )
+        )
+
+    return effective_routes
+
+
 def _route_records_from_app(api_app, schema: dict[str, object] | None = None) -> list[RouteRecord]:
     operation_index = _build_operation_index(schema or {})
     records: list[RouteRecord] = []
 
-    for route in api_app.routes:
-        if not isinstance(route, APIRoute):
-            continue
-
-        path = getattr(route, "path", "")
+    for route, path, parent_include_in_schema, parent_deprecated, parent_tags in (
+        _iter_effective_api_routes(list(api_app.routes))
+    ):
         if not isinstance(path, str) or not path:
             continue
 
         logical_path = strip_version_prefix(path)
-        include_in_schema = bool(getattr(route, "include_in_schema", True))
+        include_in_schema = parent_include_in_schema and bool(
+            getattr(route, "include_in_schema", True)
+        )
 
         methods = sorted(
             (
@@ -108,7 +164,7 @@ def _route_records_from_app(api_app, schema: dict[str, object] | None = None) ->
                 fallback="-",
             )
             tags = normalize_tags(
-                (operation or {}).get("tags") or getattr(route, "tags", None)
+                (operation or {}).get("tags") or (*parent_tags, *tuple(getattr(route, "tags", [])))
             )
             operation_id = normalize_text(
                 (operation or {}).get("operationId")
@@ -137,7 +193,10 @@ def _route_records_from_app(api_app, schema: dict[str, object] | None = None) ->
                     compatibility_aliases=(),
                     canonical_path=path,
                     deprecated=bool(
-                        (operation or {}).get("deprecated", getattr(route, "deprecated", False))
+                        (operation or {}).get(
+                            "deprecated",
+                            bool(parent_deprecated) or getattr(route, "deprecated", False),
+                        )
                     ),
                     replacement_path=replacement_path,
                 )

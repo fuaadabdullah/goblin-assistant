@@ -20,7 +20,7 @@ fi
 read -p "Render API Key (RENDER_API_KEY) [press Enter to skip]: " RENDER_API_KEY
 read -p "Render Staging Service ID (RENDER_SERVICE_ID_STAGING) [press Enter to skip]: " RENDER_SERVICE_ID_STAGING
 read -p "Render Prod Service ID (RENDER_SERVICE_ID_PROD) [press Enter to skip]: " RENDER_SERVICE_ID_PROD
-read -p "GitHub Token for workflows (GITHUB_TOKEN) [press Enter to skip]: " GITHUB_TOKEN
+read -p "GitHub token for workflows (GH_TOKEN) [press Enter to skip]: " GH_TOKEN
 
 set_secret() {
   local name=$1
@@ -36,7 +36,7 @@ set_secret() {
 set_secret "RENDER_API_KEY" "$RENDER_API_KEY"
 set_secret "RENDER_SERVICE_ID_STAGING" "$RENDER_SERVICE_ID_STAGING"
 set_secret "RENDER_SERVICE_ID_PROD" "$RENDER_SERVICE_ID_PROD"
-set_secret "GITHUB_TOKEN" "$GITHUB_TOKEN"
+set_secret "GH_TOKEN" "$GH_TOKEN"
 
 echo "All requested secrets processed. Verify in the repository settings UI if needed."
 
