@@ -48,6 +48,7 @@ Latest verified checks on 2026-08-18:
 | `node scripts/generate-theme-css.js` | Pass | Generator is self-contained and aligned to current warm theme seeds. |
 | `bash -n` on modified ops/setup/deploy scripts | Pass | Syntax only, not runtime proof. |
 | `python3.11 -m py_compile` on modified Python tooling/scripts | Pass | Syntax/import parse only. |
+| `make test-security` | Pass | Blocks secret-scan, high-severity Bandit findings, `pip-audit`, and `audit-ci`; medium Bandit findings remain tracked debt. |
 
 Current quality baseline metrics:
 
@@ -68,10 +69,10 @@ Current working-tree scale:
 
 | Git status class | Count |
 |---|---:|
-| Modified files | 688 |
+| Modified files | 683 |
 | Deleted files | 123 |
-| Untracked files/directories | 5 |
-| Total status entries | 816 |
+| Untracked files/directories | 4 |
+| Total status entries | 810 |
 
 ## Critical Gaps
 
@@ -114,7 +115,7 @@ as regressions.
 
 ### 3. Dirty Tree Is Too Broad for Confident Release Review
 
-There are 816 status entries after the already-created commits. This is larger
+There are 810 status entries after the already-created commits. This is larger
 than a normal focused feature branch and mixes backend, frontend, infra, docs,
 generated contracts, scripts, tests, package locks, and deleted legacy trees.
 
@@ -164,11 +165,10 @@ Several CI files remain modified after the infra and scripts commits.
 
 | Surface | Current Risk |
 |---|---|
-| `.github/workflows/ci.yml` | Changes turn formerly report-only API lint/policy into hard gates and add quality/architecture jobs. This is good governance, but it can block merges immediately if baseline assumptions are wrong in CI. |
-| `.circleci/config.yml` | It introduces a much larger pipeline, deploy jobs, autofix hooks, Codecov uploads, and stricter security gates. It still contains `/health` checks instead of `/api/v1/health` in at least the shown diff. |
-| CircleCI pnpm install | Uses `pnpm install --frozen-lockfile=false`, which weakens reproducibility compared with the repo’s frozen-lockfile preference. |
-| CI autofix | `tooling/automation/ci_autofix_trigger.py` switches model/turn budget and is wired into failure paths. This has credential, cost, and safety implications. |
-| Package scripts | `packages:type-check` and `packages:build` now enumerate package configs explicitly. This is stricter, but less tolerant of package moves/removals. |
+| `.github/workflows/ci.yml` | Committed changes turn formerly report-only API lint/policy into hard gates and add quality/architecture jobs. This is good governance, but it can block merges immediately if baseline assumptions are wrong in CI. |
+| `.circleci/config.yml` | Still dirty and much broader than the committed GitHub/security slice. It appears to add deployment/autofix/Codecov ownership into CircleCI, which may duplicate GitHub/Render/Vercel deployment ownership. |
+| CI autofix | `tooling/automation/ci_autofix_trigger.py` is still dirty and changes model/turn budget. Any CI wiring has credential, cost, and safety implications. |
+| Package scripts | Committed scripts now route test buckets through `tooling/quality/*` and expose `test:security`. |
 
 Recommended handling: split CI changes into a governance commit, normalize
 health paths, keep frozen installs unless there is a documented reason, and
@@ -176,19 +176,19 @@ validate YAML plus representative dry-run commands before committing.
 
 ### 7. Security Bucket Is Promising but Not Yet Integrated Safely
 
-`tests/manifests/security.json` is untracked and `tooling/quality/run-test-bucket.py`
-now accepts a `security` bucket.
+`tests/manifests/security.json` is committed and `tooling/quality/run-test-bucket.py`
+accepts a `security` bucket.
 
 | Gap | Caveat |
 |---|---|
-| The security manifest installs `pip-audit` during the gate | Network-dependent installs inside a gate are brittle unless cached or part of setup. |
-| `bandit` and `audit-ci` availability is assumed | CI jobs must install them or fail with tool-not-found noise. |
-| Secret scan path is referenced | `scripts/security/scan_secrets.py` must be present, executable, and safe against false positives before this becomes blocking. |
-| No root `test:security` script or Make target is shown yet | The bucket exists but may not be discoverable from standard workflows. |
+| Bandit is high-severity-only for the first gate | This avoids blocking on 15 known medium findings, but those findings still need scheduled cleanup. |
+| `bandit`, `pip-audit`, and `audit-ci` availability is assumed | CI installs must keep these tools available before invoking `make test-security`. |
+| Dependency audit output includes cache warnings | The gate passed, but noisy pip cache warnings may obscure real failures in CI logs. |
+| `audit-ci` uses existing pnpm allowlists | It passed with moderate/high advisories allowlisted; those allowlists should be revisited separately. |
 
-Recommended handling: commit the manifest together with the CI/Make/package
-entrypoints that run it, and decide whether it is blocking or report-only at
-first.
+Current proof: `make test-security` passed after changing Bandit to high
+severity only. Follow-up should burn down or baseline medium findings rather
+than silently expanding the ignore surface.
 
 ### 8. Generated Artifacts Can Drift Again
 
@@ -234,7 +234,6 @@ Current untracked entries:
 | `apps/web/.env.example` | Likely commit with web env validation changes. |
 | `apps/web/src/app/` | Must be committed with the App Router migration or the web tree is incomplete. |
 | `apps/web/src/config/__tests__/env-example.test.ts` | Commit with env example/runtime validation. |
-| `tests/manifests/security.json` | Commit with security-bucket CI entrypoints or defer. |
 
 ### 11. Quality Debt Counts Need Recalculation After Final Slices
 
@@ -410,7 +409,7 @@ Do not claim release readiness until all of the following are true:
 
 | Required Before Release Claim | Current State |
 |---|---|
-| Working tree reduced to intentional, reviewable changes | Not true; 816 status entries remain. |
+| Working tree reduced to intentional, reviewable changes | Not true; 810 status entries remain. |
 | Commit history matches the requested story or the mismatch is explicitly accepted | Not true; one commit subject is misleading. |
 | Deprecated infra deletion has no active executable references | Mostly true after this pass; final search and policy checks still required. |
 | Contract artifacts regenerated after final API changes | Partially true; must rerun at end. |
