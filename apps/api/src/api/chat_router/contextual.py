@@ -208,7 +208,7 @@ async def contextual_chat(
         if request.department and not request.provider:
             try:
                 from api.departments import (
-                    department_dispatcher as _dd,  # noqa: PLC0415  # lazy import avoids router cycle
+                    department_dispatcher as _dd,  # lazy import avoids router cycle
                 )
 
                 _ctx_dept_id = _dd.resolve_provider_id(request.department)

@@ -94,7 +94,7 @@ async def upload_file(
         chunks = upload_meta.get("chunks") or []
         embed_cache_key = (current_user.id, file_hash)
         if chunks and embed_cache_key not in _pdf_embedding_cache_by_user_hash:
-            from ..services.embedding_service import (  # noqa: PLC0415  # lazy import avoids optional embedding startup cost
+            from ..services.embedding_service import (  # lazy import avoids optional embedding startup cost
                 embedding_worker,
             )
 
