@@ -24,9 +24,11 @@ for goblin catalog, history, and stats, and
 The current risk profile has shifted from "missing endpoint implementation" to
 "integration and release hygiene." Architecture boundary checks now pass, but
 the working tree is still very broad and several commits are not yet the clean
-sequence originally requested. The deprecated Terraform/Kubernetes removal slice
-has been made internally consistent in active workflows/scripts/docs, but it
-still needs final validation and a dedicated commit.
+sequence originally requested. Deprecated Terraform/Kubernetes/Fly-style
+deployment assets have been removed or archived in dedicated commits, and the
+root script/tooling cleanup has also landed. The remaining risk is now
+concentrated in broad app/API churn, CI gate changes, generated-contract drift,
+and release proof that has not yet been rerun after the latest dirty-tree state.
 
 ## Current Evidence Snapshot
 
@@ -39,6 +41,13 @@ Latest verified checks on 2026-08-18:
 | `make check-capability-boundaries` | Pass | Capability boundary violations are currently zero. |
 | `python3.11 tooling/quality/quality_baseline.py --timeout-seconds 10 --partial-output .tmp/quality-baseline-partial.json --quiet` | Pass | This is a ratchet/baseline gate, not proof that suppression debt is gone. |
 | `status_code=501` / `HTTP_501` search across API/web/packages | 0 hits | Does not replace endpoint smoke tests against a running API. |
+| `node scripts/check-contrast.js` | Pass | Wrapper now delegates to `tooling/quality/check-contrast.js`. |
+| `node scripts/guard-no-inline-styles.js` | Pass | Wrapper now delegates to `tooling/quality/guard-no-inline-styles.js`. |
+| `node scripts/guard-no-client-v1.js` | Pass | Guard now scans production web source while ignoring tests/MSW fixtures. |
+| `PYTHONPATH=packages/shared/src python3.11 scripts/generate-providers-json.py --check` | Pass | Wrapper delegates to canonical generator. |
+| `node scripts/generate-theme-css.js` | Pass | Generator is self-contained and aligned to current warm theme seeds. |
+| `bash -n` on modified ops/setup/deploy scripts | Pass | Syntax only, not runtime proof. |
+| `python3.11 -m py_compile` on modified Python tooling/scripts | Pass | Syntax/import parse only. |
 
 Current quality baseline metrics:
 
@@ -59,10 +68,10 @@ Current working-tree scale:
 
 | Git status class | Count |
 |---|---:|
-| Modified files | 738 |
-| Deleted files | 153 |
+| Modified files | 688 |
+| Deleted files | 123 |
 | Untracked files/directories | 5 |
-| Total status entries | 896 |
+| Total status entries | 816 |
 
 ## Critical Gaps
 
@@ -80,31 +89,32 @@ subject before reading the diff. It should be fixed only with an explicit
 history-edit decision, because amending/rebasing published or shared history has
 coordination risk.
 
-### 2. Deprecated Infra Deletion Needs Final Validation and Commit
+### 2. Deprecated Infra Deletion Is Committed, but Stale References Remain
 
-The working tree deletes Terraform, Kubernetes, `kind-config.yaml`,
-`terraform.tfvars.example`, `docker-compose.redis.yml`, and archived deployment
-docs. Active workflow/script references have been updated so those deletions no
-longer strand executable CI/CD paths.
+Deprecated Terraform, Kubernetes, `kind-config.yaml`, `terraform.tfvars.example`,
+`docker-compose.redis.yml`, and archived deployment docs were removed in
+dedicated commits. Active deploy workflows and root verification scripts were
+normalized around Render/Vercel ownership and `/api/v1/health`.
 
-Cleaned in the current infra slice:
+Cleaned in the committed infra/script slices:
 
 | Area | Examples | Risk |
 |---|---|---|
-| GitHub workflows | Removed `.github/workflows/terraform-plan.yml`; made staging/prod deploy workflows Render-only. | Need workflow syntax validation before commit. |
+| GitHub workflows | Removed `.github/workflows/terraform-plan.yml`; made staging/prod deploy workflows Render-only. | Needs final end-to-end workflow proof after remaining CI changes settle. |
 | Dependabot | Removed Terraform ecosystem entry. | Covered by operational policy. |
-| Verification scripts | Rewrote `scripts/verify-cicd-setup.sh` around Render/Vercel and retired-path checks. | Need to run it after final staging. |
-| Setup scripts | Deleted Terraform/Fly/Kubernetes deployment helpers. | Need structure-policy and docs checks. |
-| Operations docs | Replaced Terraform/Fly/Kubernetes instructions with Render/Vercel docs or deprecated stubs. | Need docs link/inventory checks. |
-| Architecture docs | Removed Kubernetes and Redis-only compose entries from the workspace diagram. | Need docs checks. |
+| Verification scripts | Rewrote `scripts/verify-cicd-setup.sh` around Render/Vercel and retired-path checks. | Script passed before commit. |
+| Setup scripts | Deleted Terraform/Fly/Kubernetes deployment helpers. | Structure/docs gates passed before commit. |
+| Operations docs | Replaced Terraform/Fly/Kubernetes instructions with Render/Vercel docs or deprecated stubs. | Docs gates passed before commit. |
+| Root script/tooling wrappers | Consolidated root wrappers to `tooling/generators/*` and `tooling/quality/*`. | Focused wrapper checks passed before commit. |
 
-Remaining tolerated references are retired-path notes, archive-style stubs,
-conceptual security discussion, or the self-development Fly token note. Treat
-new executable references to removed assets as regressions.
+Remaining risk: stale production health references still exist outside the
+latest staged slices, especially older docs and non-primary workflow surfaces.
+Treat new executable references to removed assets or the old Render backend URL
+as regressions.
 
 ### 3. Dirty Tree Is Too Broad for Confident Release Review
 
-There are 896 status entries after the already-created commits. This is larger
+There are 816 status entries after the already-created commits. This is larger
 than a normal focused feature branch and mixes backend, frontend, infra, docs,
 generated contracts, scripts, tests, package locks, and deleted legacy trees.
 
@@ -112,9 +122,138 @@ Primary risk: unrelated work can be accidentally committed under a plausible
 message. That already nearly happened during the infra split, and the current
 state still has enough breadth for a repeat.
 
+## Deep Dive Remaining Gaps
+
+### 4. Frontend Churn Is the Largest Review-Risk Cluster
+
+The dirty tree is dominated by `apps/`, with `apps/web` making up a large share
+of the remaining modifications/deletions/untracked paths.
+
+| Gap | Evidence | Why It Matters |
+|---|---|---|
+| App Router migration is only partially reviewable from status | `apps/web/src/app/` is still untracked while legacy page/test paths are deleted or modified. | Missing tracked files can make local tests pass while CI or reviewers cannot reproduce the app shape. |
+| Web-local provider config was deleted | `apps/web/config/providers.toml` and `apps/web/src/config/providers.json` are deleted. | This is probably correct if root/shared provider config is canonical, but all imports must be proven migrated. |
+| Barrel exports and feature indexes were deleted broadly | Multiple `apps/web/src/features/*/index.ts`, `hooks/index.ts`, and `components/index.ts` entries are deleted. | TypeScript path imports can fail outside the focused tests already run. |
+| Auth/state surfaces changed heavily | Auth bootstrap, login, passkey, API key, session, and store files are modified/deleted. | These are high-value runtime paths; unit tests do not replace an authenticated browser journey. |
+| Generated web types were removed | `apps/web/src/types/generated.ts` is deleted. | Safe only if SDK/shared generated types fully replace it and imports are clean. |
+| Web env example is untracked | `apps/web/.env.example` is untracked. | Environment docs can drift from runtime validation if not intentionally committed. |
+
+Recommended handling: make the App Router/web migration its own slice with
+explicit typecheck, focused route tests, and one authenticated flow proof.
+
+### 5. Backend Compatibility Churn Needs Import and Route Proof
+
+The backend still has broad modifications and deletions under `apps/api/src/api`.
+Several deleted files look like legacy module facades or old router locations.
+
+| Gap | Evidence | Why It Matters |
+|---|---|---|
+| Legacy router files are deleted | Examples include `api_keys_router.py`, `ops_router.py`, `parse_router.py`, `routing_router.py`, `search_router.py`, `secrets_router.py`, `settings_router.py`, `stream_router.py`, and `write_time_router.py`. | Safe only if compatibility imports and route aliases are preserved elsewhere. |
+| Middleware moved from file to package | `middleware.py` is deleted while `middleware/` files are modified. | Startup and import order can break even if isolated unit tests pass. |
+| Tooling namespace moved | `api/tools/*` is deleted while `api/assistant_tools/*` is modified. | Backward-compatible imports matter for tests, plugin hooks, and external references. |
+| Service modules were split/deleted | Retrieval, memory promotion, write-time, and context assembly files are changed. | These are cross-cutting runtime services with high regression blast radius. |
+| Root API test files were deleted | Several `apps/api/src/api/test_*.py` files are deleted while many `src/api/tests/*` files are modified. | Test relocation is good only if collection and coverage remain intact. |
+
+Recommended handling: before any backend consolidation commit, run
+`pytest --collect-only`, a focused import-compatibility smoke, and the route
+manifest/contract gates from the final source state.
+
+### 6. CI/CD Changes Are High Leverage and High Risk
+
+Several CI files remain modified after the infra and scripts commits.
+
+| Surface | Current Risk |
+|---|---|
+| `.github/workflows/ci.yml` | Changes turn formerly report-only API lint/policy into hard gates and add quality/architecture jobs. This is good governance, but it can block merges immediately if baseline assumptions are wrong in CI. |
+| `.circleci/config.yml` | It introduces a much larger pipeline, deploy jobs, autofix hooks, Codecov uploads, and stricter security gates. It still contains `/health` checks instead of `/api/v1/health` in at least the shown diff. |
+| CircleCI pnpm install | Uses `pnpm install --frozen-lockfile=false`, which weakens reproducibility compared with the repo’s frozen-lockfile preference. |
+| CI autofix | `tooling/automation/ci_autofix_trigger.py` switches model/turn budget and is wired into failure paths. This has credential, cost, and safety implications. |
+| Package scripts | `packages:type-check` and `packages:build` now enumerate package configs explicitly. This is stricter, but less tolerant of package moves/removals. |
+
+Recommended handling: split CI changes into a governance commit, normalize
+health paths, keep frozen installs unless there is a documented reason, and
+validate YAML plus representative dry-run commands before committing.
+
+### 7. Security Bucket Is Promising but Not Yet Integrated Safely
+
+`tests/manifests/security.json` is untracked and `tooling/quality/run-test-bucket.py`
+now accepts a `security` bucket.
+
+| Gap | Caveat |
+|---|---|
+| The security manifest installs `pip-audit` during the gate | Network-dependent installs inside a gate are brittle unless cached or part of setup. |
+| `bandit` and `audit-ci` availability is assumed | CI jobs must install them or fail with tool-not-found noise. |
+| Secret scan path is referenced | `scripts/security/scan_secrets.py` must be present, executable, and safe against false positives before this becomes blocking. |
+| No root `test:security` script or Make target is shown yet | The bucket exists but may not be discoverable from standard workflows. |
+
+Recommended handling: commit the manifest together with the CI/Make/package
+entrypoints that run it, and decide whether it is blocking or report-only at
+first.
+
+### 8. Generated Artifacts Can Drift Again
+
+`tooling/generators/route_manifest.py` now handles nested included routers more
+accurately, and SDK/OpenAPI artifacts were already regenerated in an earlier
+commit. The remaining backend/router churn means those generated artifacts can
+become stale again before final closeout.
+
+Required final proof:
+
+| Gate | Reason |
+|---|---|
+| `make generate-route-manifest` | Ensures nested-route logic is reflected in generated route inventory. |
+| `make sdk-generate` or `make sdk-check` | Ensures OpenAPI/TypeScript clients match final API shape. |
+| `make contract-checks` | Catches source/generated drift before review. |
+
+### 9. Production Health Path Is Still Split Across Older Surfaces
+
+Committed deploy scripts now use `/api/v1/health`, but repository-wide evidence
+still shows stale `/health` references in docs, generated descriptions, older
+workflow surfaces, and provider-specific health checks.
+
+Not all `/health` strings are wrong. Some are legitimate logical paths,
+provider health probes, compatibility aliases, or generated logical-path fields.
+The gap is specifically executable production verification against the old
+Render service or root health path.
+
+High-signal follow-up searches:
+
+| Search | Purpose |
+|---|---|
+| `rg "goblin-assistant-backend\\.onrender\\.com" .github scripts docs` | Finds old production backend URL references. |
+| `rg "goblin-backend-dt30\\.onrender\\.com/health" .github scripts docs` | Finds current backend URL with old root health path. |
+| `rg "curl .* /health|/health/ready" .github scripts docs` | Separates executable instructions from historical text. |
+
+### 10. Untracked Files Need Ownership Decisions
+
+Current untracked entries:
+
+| Path | Likely Decision |
+|---|---|
+| `MERGE_ORDER.md` | Commit only if it is an intentional reviewer/merge aid; otherwise keep local or remove later. |
+| `apps/web/.env.example` | Likely commit with web env validation changes. |
+| `apps/web/src/app/` | Must be committed with the App Router migration or the web tree is incomplete. |
+| `apps/web/src/config/__tests__/env-example.test.ts` | Commit with env example/runtime validation. |
+| `tests/manifests/security.json` | Commit with security-bucket CI entrypoints or defer. |
+
+### 11. Quality Debt Counts Need Recalculation After Final Slices
+
+The register still includes quality-baseline counts from earlier evidence.
+Because broad web/backend files remain dirty, those counts should be treated as
+a snapshot, not final release evidence.
+
+Final recalculation should include:
+
+| Metric | Why |
+|---|---|
+| Web `as any` / `as unknown` count | Frontend changes may add or remove assertions. |
+| Python `noqa` count | Backend compatibility moves can either reduce or grow suppressions. |
+| Suppression classifications | The ratchet only helps if the baseline matches final source. |
+| Architecture/capability violations | Boundary checks must run against the final diff, not an earlier midpoint. |
+
 ## High-Severity Issues
 
-### 4. Goblin Query API Needs Runtime Proof, Not Just Unit/OpenAPI Proof
+### 12. Goblin Query API Needs Runtime Proof, Not Just Unit/OpenAPI Proof
 
 Resolved:
 
@@ -133,7 +272,7 @@ Remaining caveats:
 | Stats unavailable metrics are represented as `null` | This is honest, but consumers need contract tests so UI code does not treat nulls as real zero values. |
 | History depends on repository scan limits/cursors | Pagination correctness needs at least one integration-style test with a realistic backing store or fixture volume. |
 
-### 5. Quality Baseline Is Passing but Debt Remains Material
+### 13. Quality Baseline Is Passing but Debt Remains Material
 
 The quality gate is doing the right kind of thing: classifying and ratcheting
 suppressions instead of pretending the repo is clean. But the baseline still
@@ -149,7 +288,7 @@ contains significant debt:
 This should not block the Goblin query API by itself, but it should block any
 claim that the repo is broadly type/lint clean.
 
-### 6. Documentation Consolidation Changed the Information Architecture
+### 14. Documentation Consolidation Changed the Information Architecture
 
 The docs consolidation is valuable, but it deleted or moved many docs. The
 runbook migration validator passed, which is good. Remaining risks:
@@ -157,11 +296,11 @@ runbook migration validator passed, which is good. Remaining risks:
 | Gap | Why It Matters |
 |---|---|
 | Current docs now mostly reference deleted deployment assets only as retired/deprecated context | Needs final docs-link/inventory proof before commit. |
-| Archived deployment docs are deleted in the working tree but not committed | The docs tree remains between states until the infra commit lands. |
+| Archived deployment docs were deleted in the infra cleanup commits | Good, but older current docs can still carry stale historical deployment language. |
 | Some docs are intentionally historical, but not all historical references are clearly marked | Readers can mistake old deployment guidance for current policy. |
 | The root docs map and operation docs need to stay aligned with generated indexes | Manual edits can drift again unless validated with existing checks. |
 
-### 7. Workflow and Deployment Authority Is Split
+### 15. Workflow and Deployment Authority Is Split
 
 Render is the documented canonical backend deployment target and Vercel is the
 documented frontend target. This pass removed active Terraform/Kubernetes/Fly
@@ -178,7 +317,7 @@ Remaining caveats:
 
 ## Medium-Severity Issues
 
-### 8. Abstract Agent/Search Base Classes Remain Intentionally Incomplete
+### 16. Abstract Agent/Search Base Classes Remain Intentionally Incomplete
 
 Current `NotImplementedError` production hits:
 
@@ -194,7 +333,7 @@ they should be represented with `abc.ABC`/`@abstractmethod` if they are
 framework contracts, and should not be listed as release blockers unless a
 concrete runtime path instantiates them.
 
-### 9. Health Placeholder Endpoints Still Return Empty/Not-Implemented Data
+### 17. Health Placeholder Endpoints Still Return Empty/Not-Implemented Data
 
 `apps/api/src/api/health.py` still includes service health endpoints that report
 empty latency/error/retest state with messages saying the tracking is not
@@ -203,7 +342,7 @@ implemented for a service.
 This is not the same as a 501 endpoint, but it is still product-visible
 incompleteness if clients rely on operational telemetry.
 
-### 10. Test Proof Is Focused, Not Comprehensive
+### 18. Test Proof Is Focused, Not Comprehensive
 
 Recent passing checks cover architecture gates, quality baseline, contract
 generation, provider config, docs links/inventory, and focused Goblin query API
@@ -214,17 +353,17 @@ unit/OpenAPI behavior. Missing or not recently rerun in the current final state:
 | Full `make test-api` | Not shown passing after the latest broad dirty-tree state. |
 | Full `make test-web` | Not shown passing after frontend churn. |
 | Full `make type-check` | Not shown passing after generated SDK and web changes. |
-| Running backend smoke via `curl /health` and Goblin endpoints | Needed before release claim. |
+| Running backend smoke via `/api/v1/health` and Goblin endpoints | Needed before release claim. |
 | E2E/authenticated chat journey | Still high value because route/middleware/proxy changes can pass unit tests and fail in-app. |
 
-### 11. Generated Contract Artifacts Are Committed, but Need Drift Guard
+### 19. Generated Contract Artifacts Are Committed, but Need Drift Guard
 
 The SDK/OpenAPI artifacts were regenerated and committed, but the remaining
 dirty tree includes additional API and route-related changes. That means the
 generated artifacts may become stale again before final closeout unless
 `make contract-checks` is rerun at the end.
 
-### 12. Provider Configuration Authority Still Needs Watchfulness
+### 20. Provider Configuration Authority Still Needs Watchfulness
 
 Provider config governance is improved, and provider checks passed earlier.
 Remaining risk is operational rather than structural:
@@ -237,17 +376,18 @@ Remaining risk is operational rather than structural:
 
 ## Low-Severity / Opportunistic Issues
 
-### 13. Script Sprawl Still Has No Single Ownership Model
+### 21. Script Sprawl Is Smaller, but Ownership Still Needs a Final Pass
 
-Many root scripts remain modified or deleted. Some are real platform utilities;
-others look like obsolete deployment setup residue. The risk is mostly
-maintainability and contributor confusion.
+The latest script commit reduced root script sprawl by turning common entrypoints
+into wrappers over `tooling/*` and deleting obsolete backend start helpers. Some
+root/ops scripts and CI references still remain in the dirty tree. The risk is
+mostly maintainability and contributor confusion.
 
 Recommendation: do not create another docs checklist. Instead, converge scripts
 behind Makefile targets and delete scripts only when no docs/workflows call
 them.
 
-### 14. Frontend Type Hardening Should Stay Opportunistic
+### 22. Frontend Type Hardening Should Stay Opportunistic
 
 The AGENTS guidance explicitly says not to open a dedicated type-hardening pass.
 The right posture is:
@@ -258,7 +398,7 @@ The right posture is:
 | Improve test helper types as part of test edits | Churning tests only to satisfy aesthetics |
 | Add shared contract types when a real API seam needs them | Creating unused constants/types frameworks |
 
-### 15. Archived Docs and Historical Reports Need Clear Labels
+### 23. Archived Docs and Historical Reports Need Clear Labels
 
 Historical reports are useful if labeled. They are dangerous if they look
 current. The current gap doc should remain the human risk register; generated
@@ -270,7 +410,7 @@ Do not claim release readiness until all of the following are true:
 
 | Required Before Release Claim | Current State |
 |---|---|
-| Working tree reduced to intentional, reviewable changes | Not true; 880 status entries remain. |
+| Working tree reduced to intentional, reviewable changes | Not true; 816 status entries remain. |
 | Commit history matches the requested story or the mismatch is explicitly accepted | Not true; one commit subject is misleading. |
 | Deprecated infra deletion has no active executable references | Mostly true after this pass; final search and policy checks still required. |
 | Contract artifacts regenerated after final API changes | Partially true; must rerun at end. |
@@ -281,17 +421,18 @@ Do not claim release readiness until all of the following are true:
 
 1. Decide whether to rewrite/amend commit history so `18ef9d25` gets the
    correct architecture/quality subject.
-2. Finish or defer deprecated infra removal. If finishing, remove or update
-   Terraform/Kubernetes references from workflows, scripts, and current docs in
-   the same commit as the deleted assets.
-3. Re-run docs gates after infra/doc reference cleanup:
+2. Split and validate the remaining CI/CD governance changes. Normalize
+   production health paths, preserve frozen installs unless deliberately
+   changing policy, and decide whether autofix/security gates are blocking.
+3. Commit or defer the security bucket with its Make/package/CI entrypoints.
+4. Re-run docs gates after any remaining docs/reference cleanup:
    `check_docs_inventory`, `check_docs_links`, and
    `check_runbook_migration_map`.
-4. Re-run contract gates after all API/router changes:
+5. Re-run contract gates after all API/router changes:
    `make contract-checks`, `make sdk-check`, and route manifest generation.
-5. Run focused runtime smoke for `/health`, `/api/v1/api/goblins`,
+6. Run focused runtime smoke for `/api/v1/health`, `/api/v1/api/goblins`,
    `/api/v1/api/history/{goblin_id}`, and `/api/v1/api/stats/{goblin_id}`.
-6. Only then run broader test/type gates or explicitly document why they are
+7. Only then run broader test/type gates or explicitly document why they are
    deferred.
 
 ## Resolved or Downgraded from Older Snapshots
