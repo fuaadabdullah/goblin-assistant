@@ -69,10 +69,10 @@ Current working-tree scale:
 
 | Git status class | Count |
 |---|---:|
-| Modified files | 670 |
+| Modified files | 669 |
 | Deleted files | 122 |
 | Untracked files/directories | 4 |
-| Total status entries | 796 |
+| Total status entries | 795 |
 
 Current status concentration:
 
@@ -80,7 +80,7 @@ Current status concentration:
 |---|---:|---|
 | `apps/` | 764 | Dominates unresolved risk; should not be reviewed as one blob. |
 | `packages/` | 18 | Shared-contract/package drift can affect both API and web. |
-| Root and infra files | 14 | Contains runtime, Docker, compose, lockfile, and docs changes that need separate ownership. |
+| Root and infra files | 13 | Contains runtime, Docker, compose, lockfile, and docs changes that need separate ownership. |
 
 Triage labels used below:
 
@@ -140,7 +140,7 @@ as regressions.
 
 ### 3. Dirty Tree Is Too Broad for Confident Release Review
 
-There are 796 status entries after the already-created commits. This is larger
+There are 795 status entries after the already-created commits. This is larger
 than a normal focused feature branch and mixes backend, frontend, infra, docs,
 generated contracts, scripts, tests, package locks, and deleted legacy trees.
 
@@ -400,6 +400,7 @@ system, not just how code compiles.
 | Gap | Failure Mode | Proof Needed |
 |---|---|---|
 | Root `.env.example` expanded significantly | New variables may imply unsupported services or insecure defaults. | Compare with actual settings validation and mark optional/provider-specific values. |
+| Docker build context ignore changed | Committed in `0e82061c`; current Dockerfile COPY sources exist and `scripts/` is no longer excluded. | Run a real Docker build when a Docker daemon is available. |
 | `Dockerfile` production runtime changed | Image may build but fail startup due to paths, user permissions, or missing packages. | `docker build` plus container `/api/v1/health` smoke if Docker is available. |
 | `Dockerfile.sandbox` changed separately | Sandbox tooling can drift from API runtime assumptions. | Syntax/build check for the sandbox target or defer as a separate slice. |
 | `docker-compose.yml` has broad changes | Local dev services may no longer match docs or Make targets. | `docker compose config` and local service smoke before claiming local runtime readiness. |
@@ -614,7 +615,7 @@ Do not claim release readiness until all of the following are true:
 
 | Required Before Release Claim | Current State |
 |---|---|
-| Working tree reduced to intentional, reviewable changes | Not true; 796 status entries remain. |
+| Working tree reduced to intentional, reviewable changes | Not true; 795 status entries remain. |
 | Commit history matches the requested story or the mismatch is explicitly accepted | Not true; one commit subject is misleading. |
 | Deprecated infra deletion has no active executable references | Mostly true after this pass; final search and policy checks still required. |
 | Contract artifacts regenerated after final API changes | Partially true; must rerun at end. |
@@ -658,3 +659,4 @@ Do not claim release readiness until all of the following are true:
 | Local hooks skipped useful checks | Resolved by `06ebf527`; pre-commit and SQLite hook smokes passed, and web typecheck passed before committing pre-push hardening. |
 | Stale screenshot artifacts remained tracked | Resolved by `8a735067`; unreferenced screenshot assets and their stale directory README were removed. |
 | Redis daemonized inside Compose-managed runtime | Resolved by `65ebcdfd`; `redis-server redis.conf --daemonize no --port 0 --save "" --appendonly no` loaded the config before intentionally exiting without a listener. |
+| Docker build context ignored needed runtime files | Resolved by `0e82061c`; `.dockerignore` was tightened and COPY sources were statically verified, but a real Docker build remains pending. |
