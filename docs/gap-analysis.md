@@ -69,18 +69,18 @@ Current working-tree scale:
 
 | Git status class | Count |
 |---|---:|
-| Modified files | 669 |
-| Deleted files | 122 |
+| Modified files | 667 |
+| Deleted files | 0 |
 | Untracked files/directories | 4 |
-| Total status entries | 795 |
+| Total status entries | 671 |
 
 Current status concentration:
 
 | Area | Status Entries | Primary Caveat |
 |---|---:|---|
-| `apps/` | 764 | Dominates unresolved risk; should not be reviewed as one blob. |
-| `packages/` | 18 | Shared-contract/package drift can affect both API and web. |
-| Root and infra files | 13 | Contains runtime, Docker, compose, lockfile, and docs changes that need separate ownership. |
+| `apps/` | 654 | Dominates unresolved risk; should not be reviewed as one blob. |
+| `packages/` | 5 | Shared-contract/package drift can affect both API and web. |
+| Root/config/infra files | 12 | Contains runtime, Docker, compose, lockfile, and docs changes that need separate ownership. |
 
 Triage labels used below:
 
@@ -140,9 +140,13 @@ as regressions.
 
 ### 3. Dirty Tree Is Too Broad for Confident Release Review
 
-There are 795 status entries after the already-created commits. This is larger
+There are 671 status entries after the already-created commits. This is larger
 than a normal focused feature branch and mixes backend, frontend, infra, docs,
 generated contracts, scripts, tests, package locks, and deleted legacy trees.
+
+Note: an earlier inventory included 122 deleted-file entries that were stale
+index state, not remaining unstaged working-tree deletions. The index has since
+been cleared, and the current inventory is the authoritative one.
 
 Primary risk: unrelated work can be accidentally committed under a plausible
 message. That already nearly happened during the infra split, and the current
@@ -405,7 +409,7 @@ system, not just how code compiles.
 | `Dockerfile.sandbox` changed separately | Sandbox tooling can drift from API runtime assumptions. | Syntax/build check for the sandbox target or defer as a separate slice. |
 | `docker-compose.yml` has broad changes | Local dev services may no longer match docs or Make targets. | `docker compose config` and local service smoke before claiming local runtime readiness. |
 | Redis config foregrounding changed | Committed in `65ebcdfd`; Redis loaded the config and exited only because validation overrode the port to `0`. | Keep Compose health/runtime smoke in the final proof bundle. |
-| Prometheus config changed | New SLO alerts need rule syntax and metric-availability proof. | Validate with `promtool` or hosted Prometheus before claiming alert readiness. |
+| Prometheus config changed | Committed in `119264d1`; YAML parsed and API SLO expressions were aligned to current telemetry metric names. | Validate with `promtool` or hosted Prometheus before claiming alert readiness. |
 | `infra/gcp-llm-setup.sh` is dirty | Provider setup may introduce a new operational path. | Confirm it is still aligned with current provider strategy before committing. |
 
 Recommended slice: separate "container runtime" from "provider/env docs" from
@@ -615,7 +619,7 @@ Do not claim release readiness until all of the following are true:
 
 | Required Before Release Claim | Current State |
 |---|---|
-| Working tree reduced to intentional, reviewable changes | Not true; 795 status entries remain. |
+| Working tree reduced to intentional, reviewable changes | Not true; 671 status entries remain. |
 | Commit history matches the requested story or the mismatch is explicitly accepted | Not true; one commit subject is misleading. |
 | Deprecated infra deletion has no active executable references | Mostly true after this pass; final search and policy checks still required. |
 | Contract artifacts regenerated after final API changes | Partially true; must rerun at end. |
@@ -660,3 +664,4 @@ Do not claim release readiness until all of the following are true:
 | Stale screenshot artifacts remained tracked | Resolved by `8a735067`; unreferenced screenshot assets and their stale directory README were removed. |
 | Redis daemonized inside Compose-managed runtime | Resolved by `65ebcdfd`; `redis-server redis.conf --daemonize no --port 0 --save "" --appendonly no` loaded the config before intentionally exiting without a listener. |
 | Docker build context ignored needed runtime files | Resolved by `0e82061c`; `.dockerignore` was tightened and COPY sources were statically verified, but a real Docker build remains pending. |
+| Prometheus SLO rules referenced stale metric names | Resolved by `119264d1`; YAML parsed and alert expressions now reference `goblin_*` metrics registered by API telemetry. |
