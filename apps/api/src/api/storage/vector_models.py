@@ -192,6 +192,8 @@ class MemoryEntityModel(Base):
     metadata_ = Column("metadata", JSON, default=dict)
     created_at = Column(DateTime, default=datetime.utcnow)
 
+    user = relationship("UserModel", back_populates="memory_entities")
+
     __table_args__ = (
         Index("idx_memory_entities_user_type_value", "user_id", "entity_type", "entity_value"),
         Index("idx_memory_entities_scope", "scope"),
@@ -217,6 +219,17 @@ class MemoryEntityRelationModel(Base):
     )
     confidence = Column(Float, nullable=False, default=1.0)
     created_at = Column(DateTime, default=datetime.utcnow)
+
+    source_entity = relationship(
+        "MemoryEntityModel",
+        foreign_keys=[source_entity_id],
+        back_populates="source_relations",
+    )
+    target_entity = relationship(
+        "MemoryEntityModel",
+        foreign_keys=[target_entity_id],
+        back_populates="target_relations",
+    )
 
 
 # Add relationships to existing models
