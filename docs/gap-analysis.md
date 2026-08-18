@@ -69,18 +69,18 @@ Current working-tree scale:
 
 | Git status class | Count |
 |---|---:|
-| Modified files | 666 |
+| Modified files | 403 |
 | Deleted files | 0 |
 | Untracked files/directories | 4 |
-| Total status entries | 670 |
+| Total status entries | 407 |
 
 Current status concentration:
 
 | Area | Status Entries | Primary Caveat |
 |---|---:|---|
-| `apps/` | 654 | Dominates unresolved risk; should not be reviewed as one blob. |
-| `packages/` | 5 | Shared-contract/package drift can affect both API and web. |
-| Root/config/infra files | 11 | Contains runtime, Docker, compose, lockfile, and docs changes that need separate ownership. |
+| `apps/` | 395 | Dominates unresolved risk; should not be reviewed as one blob. |
+| `packages/` | 3 | Shared-contract/package drift can affect both API and web. |
+| Root/config/infra files | 9 | Contains runtime, Docker, compose, lockfile, and docs changes that need separate ownership. |
 
 Triage labels used below:
 
@@ -142,7 +142,7 @@ as regressions.
 
 ### 3. Dirty Tree Is Too Broad for Confident Release Review
 
-There are 670 status entries after the already-created commits. This is larger
+There are 407 status entries after the already-created commits. This is larger
 than a normal focused feature branch and mixes backend, frontend, infra, docs,
 generated contracts, scripts, tests, package locks, and deleted legacy trees.
 
@@ -385,7 +385,8 @@ Quality caveats:
 The remaining package-management files are not one small reproducibility change.
 `.npmrc` was split out into `45b473a5` as repository package policy, but
 `pnpm-lock.yaml`, `apps/web/package.json`, and `packages/shared/package.json`
-still show broad package surface movement.
+still show package surface movement after the provider config/schema files were
+split out in `19e80656`.
 
 | Gap | Evidence | Why It Matters |
 |---|---|---|
@@ -574,16 +575,19 @@ dirty tree includes additional API and route-related changes. That means the
 generated artifacts may become stale again before final closeout unless
 `make contract-checks` is rerun at the end.
 
-### 25. Provider Configuration Authority Still Needs Watchfulness
+### 25. Provider Configuration Authority Is Improved but Still Affects Web
 
-Provider config governance is improved, and provider checks passed earlier.
-Remaining risk is operational rather than structural:
+Provider config schema/config changes landed in `19e80656`. The focused
+provider/router checks passed, `config/providers.json` was verified as
+generated from TOML, and Python/TypeScript schema checks passed. Remaining risk
+is now mostly web import/runtime migration, not the canonical provider config
+artifact itself.
 
 | Gap | Caveat |
 |---|---|
-| `config/providers.toml` and `config/providers.json` both exist | This is acceptable only if TOML remains canonical and JSON is generated/validated. |
+| `config/providers.toml` and `config/providers.json` both exist | TOML remains canonical and JSON was checked with `scripts/generate-providers-json.py --check`. |
 | Web config copies were removed/changed | Verify no runtime import still expects deleted web-local provider files. |
-| Generated provider artifacts can drift after manual edits | Keep `make check-providers-json` in the final proof bundle. |
+| Generated provider artifacts can drift after manual edits | Keep provider JSON check in the final proof bundle. |
 
 ## Low-Severity / Opportunistic Issues
 
@@ -621,7 +625,7 @@ Do not claim release readiness until all of the following are true:
 
 | Required Before Release Claim | Current State |
 |---|---|
-| Working tree reduced to intentional, reviewable changes | Not true; 670 status entries remain. |
+| Working tree reduced to intentional, reviewable changes | Not true; 407 status entries remain. |
 | Commit history matches the requested story or the mismatch is explicitly accepted | Not true; one commit subject is misleading. |
 | Deprecated infra deletion has no active executable references | Mostly true after this pass; final search and policy checks still required. |
 | Contract artifacts regenerated after final API changes | Partially true; must rerun at end. |
@@ -668,3 +672,4 @@ Do not claim release readiness until all of the following are true:
 | Docker build context ignored needed runtime files | Resolved by `0e82061c`; `.dockerignore` was tightened and COPY sources were statically verified, but a real Docker build remains pending. |
 | Prometheus SLO rules referenced stale metric names | Resolved by `119264d1`; YAML parsed and alert expressions now reference `goblin_*` metrics registered by API telemetry. |
 | Agent task map pointed at stale repo seams | Resolved by `dcff9191`; referenced paths and Make targets were verified before committing `AGENTS.md`. |
+| Provider config schema lacked router budgets and nested costs | Resolved by `19e80656`; provider JSON generation, Python compile, shared TS typecheck, and focused provider/router tests passed. |
