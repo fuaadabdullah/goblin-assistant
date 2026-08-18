@@ -69,16 +69,15 @@ Current working-tree scale:
 
 | Git status class | Count |
 |---|---:|
-| Modified files | 7 |
+| Modified files | 4 |
 | Deleted files | 0 |
 | Untracked files/directories | 1 |
-| Total status entries | 8 |
+| Total status entries | 5 |
 
 Current status concentration:
 
 | Area | Status Entries | Primary Caveat |
 |---|---:|---|
-| `packages/` | 3 | Shared package API/build and UI typing drift remain. |
 | Root/config/infra files | 4 | Compose, GCP setup, and lockfile changes need separate ownership. |
 | Untracked reviewer aid | 1 | `MERGE_ORDER.md` remains untracked and stale. |
 
@@ -145,7 +144,7 @@ as regressions.
 
 ### 3. Dirty Tree Is Too Broad for Confident Release Review
 
-There are 8 status entries after the already-created commits. The working tree
+There are 5 status entries after the already-created commits. The working tree
 is now close to decomposed, but the committed history still contains several
 broad API/web/deletion commits that need validation before the branch is a clean
 review story.
@@ -388,15 +387,15 @@ Quality caveats:
 
 The remaining package-management files are not one small reproducibility change.
 `.npmrc` was split out into `45b473a5` as repository package policy, but
-`pnpm-lock.yaml`, `apps/web/package.json`, and `packages/shared/package.json`
-still show package surface movement after the provider config/schema files were
-split out in `19e80656`.
+`pnpm-lock.yaml` still shows package surface movement after the provider
+config/schema and shared package API files were split out in `19e80656` and
+`10158e0b`.
 
 | Gap | Evidence | Why It Matters |
 |---|---|---|
 | Lockfile churn is huge | `pnpm-lock.yaml` has thousands of changed lines. | A lockfile-only-looking commit could hide major dependency and runtime changes. |
 | Web package versions appear to move across major framework/runtime boundaries | Package drift includes large frontend dependency changes. | React/Next/Vite/Storybook changes can create behavioral regressions unrelated to source edits. |
-| Shared package manifest changed too | `packages/shared/package.json` is dirty. | Shared contracts affect both API and web consumers. |
+| Package lockfile remains broad | `pnpm-lock.yaml` is still dirty and mostly tied to the web dependency migration. | Keep it with the dependency migration proof, not a package-hygiene commit. |
 | `.npmrc` is resolved | It now adds `save-exact=true` in a standalone commit. | Keep future package policy separate from dependency migrations. |
 
 Recommended slice: keep package manifests and `pnpm-lock.yaml` together in a
@@ -629,7 +628,7 @@ Do not claim release readiness until all of the following are true:
 
 | Required Before Release Claim | Current State |
 |---|---|
-| Working tree reduced to intentional, reviewable changes | Mostly true for the working tree; 8 status entries remain, but broad committed slices still need review validation. |
+| Working tree reduced to intentional, reviewable changes | Mostly true for the working tree; 5 status entries remain, but broad committed slices still need review validation. |
 | Commit history matches the requested story or the mismatch is explicitly accepted | Not true; one commit subject is misleading. |
 | Deprecated infra deletion has no active executable references | Mostly true after this pass; final search and policy checks still required. |
 | Contract artifacts regenerated after final API changes | Partially true; must rerun at end. |
@@ -677,3 +676,5 @@ Do not claim release readiness until all of the following are true:
 | Prometheus SLO rules referenced stale metric names | Resolved by `119264d1`; YAML parsed and alert expressions now reference `goblin_*` metrics registered by API telemetry. |
 | Agent task map pointed at stale repo seams | Resolved by `dcff9191`; referenced paths and Make targets were verified before committing `AGENTS.md`. |
 | Provider config schema lacked router budgets and nested costs | Resolved by `19e80656`; provider JSON generation, Python compile, shared TS typecheck, and focused provider/router tests passed. |
+| Shared package exported source-only entrypoint | Resolved by `10158e0b`; `@goblin/shared` now points to built `dist` output and `pnpm --filter @goblin/shared run build` passed. |
+| Radix select wrapper used broad ElementType aliases | Resolved by `741f8386`; package UI typecheck passed after simplifying wrapper prop types. |
