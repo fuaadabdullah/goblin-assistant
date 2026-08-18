@@ -49,6 +49,13 @@ Latest verified checks on 2026-08-18:
 | `bash -n` on modified ops/setup/deploy scripts | Pass | Syntax only, not runtime proof. |
 | `python3.11 -m py_compile` on modified Python tooling/scripts | Pass | Syntax/import parse only. |
 | `make test-security` | Pass | Blocks secret-scan, high-severity Bandit findings, `pip-audit`, and `audit-ci`; medium Bandit findings remain tracked debt. |
+| `cd apps/web && npx lint-staged --config package.json --debug --diff=HEAD --diff-filter=Z --allow-empty` | Partial pass | Config loaded and validated; the artificial no-file diff failed afterward while gathering staged files. |
+| `sh .husky/pre-commit` | Pass | Hook smoke passed before committing `c61cce98`; it briefly exposed unrelated staged files, so the index was cleared before the commit. |
+| `pnpm --filter @goblin/web run type-check` | Pass | Re-run after the lint-staged hook correction. |
+| `docker compose -f docker-compose.yml config --quiet` | Pass | Static Compose validation only; used dummy secret env values and did not start containers. |
+| `docker compose -f docker-compose.yml --profile workers config --quiet` | Pass | Static validation only; worker topology still needs architecture review. |
+| `docker compose -f docker-compose.yml --profile sandbox config --quiet` | Pass | Static validation only; sandbox Docker socket proxying still needs runtime/security review. |
+| `docker compose -f docker-compose.yml -f docker-compose.goblinos-override.yml config --quiet` | Pass | Static validation only; a literal external-drive path bug was fixed separately in `097013b3`. |
 
 Current quality baseline metrics:
 
@@ -78,7 +85,7 @@ Current status concentration:
 
 | Area | Status Entries | Primary Caveat |
 |---|---:|---|
-| Root/config/infra files | 4 | Compose, GCP setup, and lockfile changes need separate ownership. |
+| Root/config/infra files | 4 | Compose topology, GCP setup, and lockfile changes need separate ownership. |
 | Untracked reviewer aid | 1 | `MERGE_ORDER.md` remains untracked and stale. |
 
 Triage labels used below:
@@ -347,9 +354,6 @@ Current untracked entries:
 | Path | Likely Decision |
 |---|---|
 | `MERGE_ORDER.md` | Commit only if it is an intentional reviewer/merge aid; otherwise keep local or remove later. |
-| `apps/web/.env.example` | Likely commit with web env validation changes. |
-| `apps/web/src/app/` | Must be committed with the App Router migration or the web tree is incomplete. |
-| `apps/web/src/config/__tests__/env-example.test.ts` | Commit with env example/runtime validation. |
 
 Untracked-file caveats:
 
@@ -413,10 +417,13 @@ system, not just how code compiles.
 | Docker build context ignore changed | Committed in `0e82061c`; current Dockerfile COPY sources exist and `scripts/` is no longer excluded. | Run a real Docker build when a Docker daemon is available. |
 | `Dockerfile` production runtime changed | Image may build but fail startup due to paths, user permissions, or missing packages. | `docker build` plus container `/api/v1/health` smoke if Docker is available. |
 | `Dockerfile.sandbox` changed separately | Sandbox tooling can drift from API runtime assumptions. | Syntax/build check for the sandbox target or defer as a separate slice. |
-| `docker-compose.yml` has broad changes | Local dev services may no longer match docs or Make targets. | `docker compose config` and local service smoke before claiming local runtime readiness. |
+| `docker-compose.yml` has broad changes | Static Compose validation passes for base, worker, sandbox, build, and override profiles, but local dev services may no longer match docs or Make targets. | Container startup smoke before claiming local runtime readiness. |
+| Worker Compose profile remains broad | The diff reshapes existing high/default/low worker pools and Flower/monitor services. | Explicitly accept the worker-profile maintenance cost or reduce the local topology before commit. |
+| Sandbox Compose profile exposes Docker through a proxy | Better than a direct socket mount, but still grants container/image API access. | Security review and runtime smoke before promoting beyond local development. |
+| GOBLINOS override still has broader uncommitted edits | Only the escaped external-drive path was committed in `097013b3`; removal of postgres volume wiring and comment/runtime changes remain dirty. | Review with the main Compose topology slice, not as a standalone path fix. |
 | Redis config foregrounding changed | Committed in `65ebcdfd`; Redis loaded the config and exited only because validation overrode the port to `0`. | Keep Compose health/runtime smoke in the final proof bundle. |
 | Prometheus config changed | Committed in `119264d1`; YAML parsed and API SLO expressions were aligned to current telemetry metric names. | Validate with `promtool` or hosted Prometheus before claiming alert readiness. |
-| `infra/gcp-llm-setup.sh` is dirty | Provider setup may introduce a new operational path. | Confirm it is still aligned with current provider strategy before committing. |
+| `infra/gcp-llm-setup.sh` is dirty | The current diff hard-codes a personal GCP account/project and opens public firewall rules for model endpoints. | Do not commit without explicit provider-infra ownership, secret/account policy, and network exposure review. |
 
 Recommended slice: separate "container runtime" from "provider/env docs" from
 "observability config." They are adjacent, but not the same decision.
@@ -424,12 +431,15 @@ Recommended slice: separate "container runtime" from "provider/env docs" from
 ### 14. Git Hooks Are Committed with a Latency Caveat
 
 `.husky/pre-commit` and `.husky/pre-push` now enforce local quality checks in
-`06ebf527`. The hooks are useful, but the pre-push web typecheck has noticeable
-latency and should stay intentional rather than silently expanding further.
+`06ebf527`. `c61cce98` moves the `lint-staged --allow-empty` behavior to the
+CLI invocation instead of package config. The hooks are useful, but the pre-push
+web typecheck has noticeable latency and should stay intentional rather than
+silently expanding further.
 
 | Hook Behavior | Proof or Caveat |
 |---|---|
-| Pre-commit runs SQLite guard, staged API ruff checks, and web lint-staged | `sh .husky/pre-commit` passed with no staged files; `bash scripts/git-hooks/test-no-sqlite-in-commit.sh` passed. |
+| Pre-commit runs SQLite guard, staged API ruff checks, and web lint-staged | `sh .husky/pre-commit` passed; `bash scripts/git-hooks/test-no-sqlite-in-commit.sh` passed earlier. |
+| `lint-staged --allow-empty` is now passed as a CLI option | `apps/web/package.json` config validated without an `allowEmpty` task key, and the hook smoke passed before `c61cce98`. |
 | Pre-push runs web typecheck | `pnpm --filter @goblin/web run type-check` passed locally, but took long enough to remain an ergonomics caveat. |
 | Hook behavior duplicates some CI protection | Acceptable while the hooks remain thin wrappers over canonical tools. |
 
@@ -678,3 +688,5 @@ Do not claim release readiness until all of the following are true:
 | Provider config schema lacked router budgets and nested costs | Resolved by `19e80656`; provider JSON generation, Python compile, shared TS typecheck, and focused provider/router tests passed. |
 | Shared package exported source-only entrypoint | Resolved by `10158e0b`; `@goblin/shared` now points to built `dist` output and `pnpm --filter @goblin/shared run build` passed. |
 | Radix select wrapper used broad ElementType aliases | Resolved by `741f8386`; package UI typecheck passed after simplifying wrapper prop types. |
+| `lint-staged` allow-empty behavior was placed in package config | Resolved by `c61cce98`; the option now lives on the Husky command line and the web package config validates. |
+| GOBLINOS override escaped the external-drive space literally | Resolved by `097013b3`; the committed path now uses `/Volumes/GOBLINOS 1/...` rather than `/Volumes/GOBLINOS\\ 1/...`. |
