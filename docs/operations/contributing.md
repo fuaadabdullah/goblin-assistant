@@ -41,6 +41,9 @@ This project follows a code of conduct to ensure a welcoming environment for all
    # Configure your API keys and settings
    ```
 
+   The web template only contains safe placeholders and browser-exposed public keys.
+   Do not place server-only secrets in `apps/web/.env.local`.
+
 4. **Run Development Servers**:
 
    ```bash

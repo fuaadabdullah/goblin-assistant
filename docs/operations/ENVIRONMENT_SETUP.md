@@ -57,8 +57,8 @@ If you prefer to set up manually:
 1. **Copy example files:**
 
    ```bash
-   cp .env.example .env.local
-   cp api/.env api/.env.local
+   cp apps/web/.env.example apps/web/.env.local
+   cp apps/api/.env.example apps/api/.env.local
    ```
 
 2. **Generate secure JWT secret:**
@@ -84,7 +84,7 @@ If you prefer to set up manually:
    echo "RAPTOR_API_KEY=your_secure_raptor_api_key" >> apps/raptor-mini/.env
    ```
 
-4. **Update Supabase and API keys** with your actual values in `.env.local`
+4. **Update Supabase and API keys** with your actual values in `apps/web/.env.local`
 
 ## Security Notes
 
@@ -95,9 +95,9 @@ If you prefer to set up manually:
 
 ## Files Created/Updated
 
-- `.env.local` - Frontend environment variables
-- `api/.env` - Backend environment variables
+- `apps/web/.env.local` - Frontend environment variables
+- `apps/api/.env.local` - Backend environment variables
 - `deployments/kamatera/.env` - Kamatera deployment variables
 - `docker-compose.vault.env` - Vault deployment variables
 - `apps/raptor-mini/.env` - Raptor Mini variables
-- `.env.example` - Documentation of all required variables
+- `apps/web/.env.example` - Safe browser-exposed frontend placeholders and defaults

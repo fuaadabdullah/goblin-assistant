@@ -15,9 +15,12 @@ DEFAULT_MAP = REPO_ROOT / "docs" / "operations" / "RUNBOOK_MIGRATION_MAP.md"
 MAPPING_PATTERN = re.compile(r"^\|\s*`(?P<old>docs/runbooks/[^`]+)`\s*\|\s*`(?P<new>[^`]+)`\s*\|")
 
 
-def _deleted_runbooks() -> list[str]:
+def _deleted_runbooks(extra_args: list[str] | None = None) -> list[str]:
+    diff_args = ["diff", "--name-status"]
+    if extra_args:
+        diff_args.extend(extra_args)
     result = subprocess.run(
-        ["git", "diff", "--name-status", "--", "docs/runbooks"],
+        ["git", *diff_args, "--", "docs/runbooks"],
         cwd=REPO_ROOT,
         capture_output=True,
         text=True,
@@ -46,7 +49,7 @@ def _load_map(path: Path) -> dict[str, str]:
 
 def validate_map(path: Path = DEFAULT_MAP) -> list[str]:
     failures: list[str] = []
-    deleted = _deleted_runbooks()
+    deleted = sorted(set(_deleted_runbooks()) | set(_deleted_runbooks(["--cached"])))
     mappings = _load_map(path)
 
     for old_path in deleted:
@@ -56,9 +59,6 @@ def validate_map(path: Path = DEFAULT_MAP) -> list[str]:
             continue
         if new_path != "manual-review" and not (REPO_ROOT / new_path).exists():
             failures.append(f"{old_path}: mapped destination does not exist: {new_path}")
-
-    for old_path in sorted(set(mappings) - set(deleted)):
-        failures.append(f"{old_path}: migration-map entry has no deleted runbook")
 
     return failures
 

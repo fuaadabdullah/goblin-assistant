@@ -54,8 +54,8 @@ Implemented comprehensive privacy-first data handling for Goblin Assistant with 
 
 ### 4. Documentation
 
-- **Implementation Guide**: `docs/PRIVACY_IMPLEMENTATION.md` (22 KB, comprehensive)
-- **Integration Guide**: `docs/PRIVACY_INTEGRATION_GUIDE.md` (quick start)
+- **Implementation Guide**: `docs/security/PRIVACY_IMPLEMENTATION.md` (22 KB, comprehensive)
+- **Integration Guide**: `docs/security/PRIVACY_INTEGRATION_GUIDE.md` (quick start)
 - **Test Suite**: `api/tests/test_privacy.py` (13 test cases)
 
 ## Key Features
@@ -182,7 +182,7 @@ USING (auth.uid() = user_id);
 - [ ] Documentation reviewed
 - [ ] Team trained
 
-See `docs/PRIVACY_INTEGRATION_GUIDE.md` for detailed steps.
+See `docs/security/PRIVACY_INTEGRATION_GUIDE.md` for detailed steps.
 
 ## Testing
 
@@ -344,8 +344,8 @@ vector_store.add_document(..., force=True)  # ❌
 4. `api/privacy_router.py` (10 KB)
 5. `supabase/migrations/20260110_privacy_schema_with_rls.sql` (15 KB)
 6. `api/tests/test_privacy.py` (8 KB)
-7. `docs/PRIVACY_IMPLEMENTATION.md` (22 KB)
-8. `docs/PRIVACY_INTEGRATION_GUIDE.md` (10 KB)
+7. `docs/security/PRIVACY_IMPLEMENTATION.md` (22 KB)
+8. `docs/security/PRIVACY_INTEGRATION_GUIDE.md` (10 KB)
 
 **Total**: ~98 KB of production-ready privacy code + documentation
 
@@ -370,8 +370,8 @@ If issues arise:
 
 ## Support & Questions
 
-- **Documentation**: `docs/PRIVACY_IMPLEMENTATION.md`
-- **Integration Guide**: `docs/PRIVACY_INTEGRATION_GUIDE.md`
+- **Documentation**: `docs/security/PRIVACY_IMPLEMENTATION.md`
+- **Integration Guide**: `docs/security/PRIVACY_INTEGRATION_GUIDE.md`
 - **Tests**: `api/tests/test_privacy.py`
 - **Code**: `api/services/sanitization.py` (well-documented)
 
