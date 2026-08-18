@@ -228,7 +228,7 @@ class UsageEventStore:
                     if event.get("latency_ms") is not None:
                         model_daily.total_latency_ms += float(event["latency_ms"])
                     model_daily.updated_at = datetime.utcnow()
-        except Exception as exc:  # noqa: BLE001
+        except Exception as exc:
             _log.error("usage_event_db_save_failed", error=str(exc), user_id=event.get("user_id"))
 
     async def _get_daily_usage_from_db(self, user_id: str, usage_date: date) -> Dict[str, Any]:
@@ -258,7 +258,7 @@ class UsageEventStore:
                     "total_cost_usd": float(daily.total_cost_usd),
                     "updated_at": daily.updated_at.isoformat() if daily.updated_at else None,
                 }
-        except Exception as exc:  # noqa: BLE001
+        except Exception as exc:
             _log.error(
                 "usage_daily_db_read_failed",
                 error=str(exc),
@@ -358,7 +358,7 @@ class UsageEventStore:
                     }
                     for row in rows
                 ]
-        except Exception as exc:  # noqa: BLE001
+        except Exception as exc:
             _log.error("usage_model_rollup_db_read_failed", error=str(exc))
             return []
 
@@ -395,7 +395,7 @@ class UsageEventStore:
                 )
                 value = result.scalar_one()
                 return float(value or 0.0)
-        except Exception as exc:  # noqa: BLE001
+        except Exception as exc:
             _log.error(
                 "usage_total_spend_db_read_failed",
                 error=str(exc),
