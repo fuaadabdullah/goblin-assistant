@@ -1,7 +1,5 @@
 #!/bin/bash
-# Google Cloud Platform — LLM Server Setup
-# Project: goblin-assistant-489711
-# Account: fuaadabdullah@gmail.com
+# Google Cloud Platform - LLM Server Setup
 #
 # Usage:
 #   ./gcp-llm-setup.sh ollama
@@ -11,43 +9,56 @@
 #   ./gcp-llm-setup.sh delete [ollama|llamacpp|both]
 #   ./gcp-llm-setup.sh start  [ollama|llamacpp|both]
 #   ./gcp-llm-setup.sh stop   [ollama|llamacpp|both]
+#
+# Required for mutating commands:
+#   GCP_PROJECT_ID=your-project-id
+#   GCP_LLM_SOURCE_RANGES=203.0.113.4/32
+#
+# Optional:
+#   GCP_ACCOUNT=you@example.com
+#   GCP_REGION=us-central1
+#   GCP_ZONE=us-central1-a
 
 set -euo pipefail
 
-# ── Config ────────────────────────────────────────────────────────────────────
+# -- Config -------------------------------------------------------------------
 
-PROJECT_ID="goblin-assistant-489711"
-ACCOUNT="fuaadabdullah@gmail.com"
-ZONE="us-central1-a"
-REGION="us-central1"
+PROJECT_ID="${GCP_PROJECT_ID:-}"
+ACCOUNT="${GCP_ACCOUNT:-}"
+REGION="${GCP_REGION:-us-central1}"
+ZONE="${GCP_ZONE:-us-central1-a}"
+FIREWALL_SOURCE_RANGES="${GCP_LLM_SOURCE_RANGES:-}"
 
-OLLAMA_VM="goblin-ollama-server"
-LLAMACPP_VM="goblin-llamacpp-server"
+OLLAMA_VM="${GCP_OLLAMA_VM:-goblin-ollama-server}"
+LLAMACPP_VM="${GCP_LLAMACPP_VM:-goblin-llamacpp-server}"
 
-# e2-standard-2: 2 vCPU / 8 GB RAM — adequate for 3B models
-# Spot pricing ≈ $7–9/month each
-OLLAMA_MACHINE="e2-standard-2"
-LLAMACPP_MACHINE="e2-standard-2"
-DISK_SIZE="30"
+# e2-standard-2: 2 vCPU / 8 GB RAM, adequate for 3B models.
+OLLAMA_MACHINE="${GCP_OLLAMA_MACHINE:-e2-standard-2}"
+LLAMACPP_MACHINE="${GCP_LLAMACPP_MACHINE:-e2-standard-2}"
+DISK_SIZE="${GCP_LLM_DISK_SIZE:-30}"
 
-OLLAMA_PORT="11434"
-LLAMACPP_PORT="8080"
+OLLAMA_PORT="${GCP_OLLAMA_PORT:-11434}"
+LLAMACPP_PORT="${GCP_LLAMACPP_PORT:-8080}"
 
 # Models
-OLLAMA_MODELS=("qwen2.5:3b" "llama3.2:1b")
-LLAMACPP_MODEL_URL="https://huggingface.co/Qwen/Qwen2.5-3B-Instruct-GGUF/resolve/main/qwen2.5-3b-instruct-q4_k_m.gguf"
-LLAMACPP_MODEL_FILE="qwen2.5-3b-instruct-q4_k_m.gguf"
+OLLAMA_PRIMARY_MODEL="${GCP_OLLAMA_PRIMARY_MODEL:-qwen2.5:3b}"
+OLLAMA_SMALL_MODEL="${GCP_OLLAMA_SMALL_MODEL:-llama3.2:1b}"
+LLAMACPP_MODEL_URL="${GCP_LLAMACPP_MODEL_URL:-https://huggingface.co/Qwen/Qwen2.5-3B-Instruct-GGUF/resolve/main/qwen2.5-3b-instruct-q4_k_m.gguf}"
+LLAMACPP_MODEL_FILE="${GCP_LLAMACPP_MODEL_FILE:-qwen2.5-3b-instruct-q4_k_m.gguf}"
 
-# ── Helpers ───────────────────────────────────────────────────────────────────
+# -- Helpers ------------------------------------------------------------------
 
-log()  { echo "▸ $*"; }
-ok()   { echo "✓ $*"; }
-err()  { echo "✗ $*" >&2; }
+log()  { echo "> $*"; }
+ok()   { echo "OK: $*"; }
+err()  { echo "ERROR: $*" >&2; }
 die()  { err "$*"; exit 1; }
 
 require_gcloud() {
-  command -v gcloud &>/dev/null || die "gcloud not found — install from https://cloud.google.com/sdk/docs/install"
-  gcloud config set account "$ACCOUNT" --quiet
+  command -v gcloud &>/dev/null || die "gcloud not found - install from https://cloud.google.com/sdk/docs/install"
+  [[ -n "$PROJECT_ID" ]] || die "Set GCP_PROJECT_ID before running $CMD"
+  if [[ -n "$ACCOUNT" ]]; then
+    gcloud config set account "$ACCOUNT" --quiet
+  fi
   gcloud config set project "$PROJECT_ID" --quiet
 }
 
@@ -71,6 +82,7 @@ vm_ip() {
 
 ensure_firewall() {
   local RULE="$1" PORT="$2" TAG="$3"
+  [[ -n "$FIREWALL_SOURCE_RANGES" ]] || die "Set GCP_LLM_SOURCE_RANGES before creating firewall rule $RULE. Use a CIDR allowlist, for example your office/VPN IP as x.x.x.x/32."
   if ! gcloud compute firewall-rules describe "$RULE" \
        --project="$PROJECT_ID" &>/dev/null 2>&1; then
     log "Creating firewall rule $RULE (tcp:$PORT)..."
@@ -81,12 +93,12 @@ ensure_firewall() {
       --network=default \
       --action=ALLOW \
       --rules="tcp:$PORT" \
-      --source-ranges="0.0.0.0/0" \
+      --source-ranges="$FIREWALL_SOURCE_RANGES" \
       --target-tags="$TAG" \
       --quiet
     ok "Firewall rule $RULE created"
   else
-    ok "Firewall rule $RULE already exists"
+    ok "Firewall rule $RULE already exists; verify its source ranges manually"
   fi
 }
 
@@ -108,13 +120,13 @@ wait_for_http() {
   return 1
 }
 
-# ── Ollama ────────────────────────────────────────────────────────────────────
+# -- Ollama -------------------------------------------------------------------
 
-OLLAMA_STARTUP=$(cat <<'STARTUP_EOF'
+OLLAMA_STARTUP=$(cat <<STARTUP_EOF
 #!/bin/bash
 set -euo pipefail
 exec > >(tee /var/log/startup.log) 2>&1
-echo "[startup] beginning at $(date)"
+echo "[startup] beginning at \$(date)"
 
 # System update
 apt-get update -qq
@@ -137,19 +149,19 @@ systemctl restart ollama
 
 # Wait for Ollama to be ready
 echo "[startup] waiting for Ollama API..."
-for i in $(seq 1 30); do
+for i in \$(seq 1 30); do
   curl -sf http://localhost:11434/api/tags &>/dev/null && break
   sleep 2
 done
 
-# Pull models
-echo "[startup] pulling qwen2.5:3b..."
-ollama pull qwen2.5:3b
+# Pull models. Values are expanded by the setup script before VM creation.
+echo "[startup] pulling $OLLAMA_PRIMARY_MODEL..."
+ollama pull $OLLAMA_PRIMARY_MODEL
 
-echo "[startup] pulling llama3.2:1b..."
-ollama pull llama3.2:1b
+echo "[startup] pulling $OLLAMA_SMALL_MODEL..."
+ollama pull $OLLAMA_SMALL_MODEL
 
-echo "[startup] done at $(date)"
+echo "[startup] done at \$(date)"
 STARTUP_EOF
 )
 
@@ -157,7 +169,7 @@ setup_ollama() {
   log "Setting up Ollama VM: $OLLAMA_VM"
 
   if vm_exists "$OLLAMA_VM"; then
-    log "VM $OLLAMA_VM already exists (status: $(vm_status "$OLLAMA_VM")) — skipping create"
+    log "VM $OLLAMA_VM already exists (status: $(vm_status "$OLLAMA_VM")) - skipping create"
   else
     log "Creating $OLLAMA_VM ($OLLAMA_MACHINE, ${DISK_SIZE}GB, spot, $ZONE)..."
     gcloud compute instances create "$OLLAMA_VM" \
@@ -184,12 +196,12 @@ setup_ollama() {
   ok "Ollama VM ready"
   echo "  IP:       $IP"
   echo "  Endpoint: http://$IP:$OLLAMA_PORT"
-  echo "  Note: model downloads take ~5–10 min after VM boot"
+  echo "  Note: model downloads take about 5-10 min after VM boot"
   echo ""
   echo "OLLAMA_GCP_ENDPOINT=http://$IP:$OLLAMA_PORT"
 }
 
-# ── LlamaCPP ──────────────────────────────────────────────────────────────────
+# -- LlamaCPP -----------------------------------------------------------------
 
 LLAMACPP_STARTUP=$(cat <<STARTUP_EOF
 #!/bin/bash
@@ -251,7 +263,7 @@ setup_llamacpp() {
   log "Setting up LlamaCPP VM: $LLAMACPP_VM"
 
   if vm_exists "$LLAMACPP_VM"; then
-    log "VM $LLAMACPP_VM already exists (status: $(vm_status "$LLAMACPP_VM")) — skipping create"
+    log "VM $LLAMACPP_VM already exists (status: $(vm_status "$LLAMACPP_VM")) - skipping create"
   else
     log "Creating $LLAMACPP_VM ($LLAMACPP_MACHINE, ${DISK_SIZE}GB, spot, $ZONE)..."
     gcloud compute instances create "$LLAMACPP_VM" \
@@ -278,18 +290,16 @@ setup_llamacpp() {
   ok "LlamaCPP VM ready"
   echo "  IP:       $IP"
   echo "  Endpoint: http://$IP:$LLAMACPP_PORT"
-  echo "  Note: build + model download take ~15–20 min after VM boot"
+  echo "  Note: build + model download take about 15-20 min after VM boot"
   echo ""
   echo "LLAMACPP_GCP_ENDPOINT=http://$IP:$LLAMACPP_PORT"
 }
 
-# ── Status / Lifecycle ────────────────────────────────────────────────────────
+# -- Status / Lifecycle -------------------------------------------------------
 
 show_status() {
   echo ""
-  echo "┌─────────────────────────────────────────────────────────────┐"
-  echo "│  GCP LLM Server Status  (project: $PROJECT_ID)  │"
-  echo "└─────────────────────────────────────────────────────────────┘"
+  echo "GCP LLM Server Status (project: $PROJECT_ID)"
 
   for VM in "$OLLAMA_VM" "$LLAMACPP_VM"; do
     STATUS=$(vm_status "$VM")
@@ -335,13 +345,18 @@ delete_vms() {
   lifecycle "delete" "$TARGET"
 }
 
-# ── SSH helpers ───────────────────────────────────────────────────────────────
+# -- SSH helpers --------------------------------------------------------------
 
 ssh_vm() {
   local VM="$1"
-  gcloud compute ssh "$VM" \
-    --zone="$ZONE" --project="$PROJECT_ID" \
-    --account="$ACCOUNT"
+  if [[ -n "$ACCOUNT" ]]; then
+    gcloud compute ssh "$VM" \
+      --zone="$ZONE" --project="$PROJECT_ID" \
+      --account="$ACCOUNT"
+  else
+    gcloud compute ssh "$VM" \
+      --zone="$ZONE" --project="$PROJECT_ID"
+  fi
 }
 
 logs_vm() {
@@ -350,11 +365,14 @@ logs_vm() {
     --zone="$ZONE" --project="$PROJECT_ID" | tail -50
 }
 
-# ── Main ──────────────────────────────────────────────────────────────────────
-
-require_gcloud
+# -- Main ---------------------------------------------------------------------
 
 CMD="${1:-help}"
+
+case "$CMD" in
+  help|-h|--help) ;;
+  *) require_gcloud ;;
+esac
 
 case "$CMD" in
   ollama)   setup_ollama ;;
@@ -376,7 +394,7 @@ case "$CMD" in
     echo "Usage: $0 <command> [target]"
     echo ""
     echo "Commands:"
-    echo "  both            Create both VMs (default)"
+    echo "  both            Create both VMs"
     echo "  ollama          Create Ollama VM only"
     echo "  llamacpp        Create LlamaCPP VM only"
     echo "  status          Show VM status + loaded models"
@@ -386,6 +404,13 @@ case "$CMD" in
     echo "  ssh-ollama / ssh-llamacpp"
     echo "  logs-ollama / logs-llamacpp"
     echo ""
-    echo "Project: $PROJECT_ID  Zone: $ZONE"
+    echo "Project: ${PROJECT_ID:-<unset>}  Region: $REGION  Zone: $ZONE"
+    echo ""
+    echo "Required for mutating commands:"
+    echo "  export GCP_PROJECT_ID=your-project-id"
+    echo "  export GCP_LLM_SOURCE_RANGES=your.ip.address/32"
+    echo ""
+    echo "Optional:"
+    echo "  export GCP_ACCOUNT=you@example.com"
     ;;
 esac
