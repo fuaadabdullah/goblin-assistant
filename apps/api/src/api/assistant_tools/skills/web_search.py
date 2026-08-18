@@ -39,7 +39,7 @@ async def _brave_search(query: str, max_results: int) -> Dict[str, Any]:
             resp = await client.get(_BRAVE_ENDPOINT, headers=headers, params=params)
             resp.raise_for_status()
             data = resp.json()
-    except Exception as exc:  # noqa: BLE001
+    except Exception as exc:
         return {"error": f"Brave Search request failed: {exc}"}
 
     raw_results: List[Dict] = data.get("web", {}).get("results", [])
@@ -73,7 +73,7 @@ def _ddg_search_sync(query: str, max_results: int) -> Dict[str, Any]:
     try:
         with DDGS() as ddgs:
             raw = list(ddgs.text(query, max_results=min(max_results, _MAX_RESULTS_CAP)))
-    except Exception as exc:  # noqa: BLE001
+    except Exception as exc:
         return {"error": f"DuckDuckGo search failed: {exc}"}
 
     results = [

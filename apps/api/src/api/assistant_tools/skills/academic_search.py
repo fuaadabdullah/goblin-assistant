@@ -44,7 +44,7 @@ async def _search_arxiv(query: str, max_results: int, category: Optional[str]) -
             resp = await client.get(_ARXIV_ENDPOINT, params=params)
             resp.raise_for_status()
             xml_text = resp.text
-    except Exception as exc:  # noqa: BLE001
+    except Exception as exc:
         return {"error": f"arXiv request failed: {exc}"}
 
     try:
@@ -108,7 +108,7 @@ async def _search_semantic_scholar(query: str, max_results: int) -> Dict[str, An
             resp = await client.get(_SEMANTIC_SCHOLAR_ENDPOINT, params=params)
             resp.raise_for_status()
             data = resp.json()
-    except Exception as exc:  # noqa: BLE001
+    except Exception as exc:
         return {"error": f"Semantic Scholar request failed: {exc}"}
 
     raw: List[Dict] = data.get("data", [])
