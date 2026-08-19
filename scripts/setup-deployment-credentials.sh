@@ -1,7 +1,13 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-# Interactive script to populate terraform/terraform.tfvars from the example
+# Legacy compatibility helper for deployment credential setup.
+#
+# This repository no longer requires a Terraform variables file in the current
+# checkout. If a terraform/ directory exists, this script can still populate
+# terraform/terraform.tfvars. Otherwise it prints the preferred hybrid setup
+# path and exits successfully.
+#
 # Usage: ./scripts/setup-deployment-credentials.sh
 
 ROOT_DIR=$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)
@@ -9,6 +15,16 @@ TERRAFORM_VARS="$ROOT_DIR/terraform/terraform.tfvars"
 EXAMPLE_VARS="$ROOT_DIR/terraform/terraform.tfvars.example"
 
 echo "Starting deployment credentials setup..."
+
+if [ ! -d "$ROOT_DIR/terraform" ]; then
+  echo "Terraform directory not present in this checkout."
+  echo "Use the hybrid CI/CD setup instead:"
+  echo "  ./scripts/setup-ci-cd.sh"
+  echo "  ./scripts/setup-github-secrets.sh <owner> <repo>"
+  echo "  ./scripts/setup-circleci.sh gh <org> <repo>"
+  echo "If you are working in a Terraform-enabled checkout, run this helper there."
+  exit 0
+fi
 
 if [ ! -f "$TERRAFORM_VARS" ]; then
   if [ -f "$EXAMPLE_VARS" ]; then

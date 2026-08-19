@@ -2,11 +2,11 @@
 
 ## 📋 Overview
 
-This document describes the complete hybrid CI/CD pipeline for Goblin Assistant, combining GitHub Actions, CircleCI, and Terraform for a professional-grade deployment system.
+This document describes the complete hybrid CI/CD pipeline for Goblin Assistant, combining GitHub Actions, CircleCI, and the active deployment config in this checkout. Legacy Terraform references are kept where they still matter, but they are not the primary path here.
 
 **Key Features:**
 - ✅ Automated testing on every pull request
-- ✅ Infrastructure-as-Code management with Terraform
+- ✅ Deployment config management for the active Render/Fly setup
 - ✅ Auto-deployment to staging on main branch
 - ✅ Manual approval gate for production
 - ✅ Health checks and automatic rollback
@@ -125,7 +125,9 @@ This document describes the complete hybrid CI/CD pipeline for Goblin Assistant,
    GITHUB_TOKEN                # Your GitHub personal token
    ```
 
-### Phase 2: Terraform Configuration
+### Phase 2: Deployment Configuration
+
+Skip this section unless your checkout includes a `terraform/` directory. In this repo, the preferred path is `./scripts/setup-ci-cd.sh` plus GitHub Secrets and CircleCI env vars.
 
 1. **Create terraform.tfvars**
    ```bash
@@ -330,7 +332,7 @@ curl https://goblin-assistant-backend.onrender.com/api/status
 | `RENDER_API_KEY` | Render dashboard → Account → API Tokens | Deploy to Render |
 | `RENDER_SERVICE_ID_STAGING` | Render dashboard → Service → Settings | Deploy to staging |
 | `RENDER_SERVICE_ID_PROD` | Render dashboard → Service → Settings | Deploy to prod |
-| `GITHUB_TOKEN` | GitHub → Settings → Tokens | Terraform, workflows |
+| `GITHUB_TOKEN` | GitHub → Settings → Tokens | Workflows |
 
 ### GitHub Variables (Optional)
 
@@ -339,9 +341,9 @@ curl https://goblin-assistant-backend.onrender.com/api/status
 | `VERCEL_ORG_ID` | Vercel dashboard | Frontend deployment |
 | `VERCEL_PROJECT_ID` | Vercel dashboard | Frontend deployment |
 
-### Environment Variables (Terraform)
+### Environment Variables (legacy Terraform)
 
-See `terraform.tfvars.example` for complete list:
+If your checkout includes `terraform/`, see `terraform.tfvars.example` for the complete list:
 - `render_api_key` - Render authentication
 - `github_token` - GitHub access
 - `database_url` - Database connection
@@ -387,10 +389,10 @@ curl -v https://goblin-assistant-backend.onrender.com/health
 3. Click "Rollback" or deploy previous version
 ```
 
-### Updating Terraform Configuration
+### Updating Legacy Terraform Configuration
 
 ```bash
-# After changing terraform files:
+# Only if your checkout includes terraform files:
 cd terraform
 terraform validate
 terraform fmt -recursive
@@ -520,7 +522,7 @@ curl https://api.render.com/v1/services/$SERVICE_ID \
 ## 📚 Documentation & References
 
 ### Internal Documentation
-- [Terraform/CI-CD setup](../infra/CI_CD_SETUP.md) - Infrastructure-as-Code details
+- [Hybrid CI/CD setup](../infra/CI_CD_SETUP.md) - deployment and pipeline details
 - [External storage setup](../operations/GOBLINOS_STORAGE_README.md)
 - [render.yaml](render.yaml) - Render deployment backup
 
@@ -538,7 +540,7 @@ curl https://api.render.com/v1/services/$SERVICE_ID \
 ### Immediate (This Week)
 - [ ] Add GitHub Secrets
 - [ ] Configure CircleCI
-- [ ] Test Terraform plan
+- [ ] Validate deployment config
 - [ ] Verify staging deployment
 
 ### Short Term (This Month)

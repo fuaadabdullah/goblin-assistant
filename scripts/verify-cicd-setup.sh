@@ -32,21 +32,20 @@ echo -e "${BLUE}1. Checking File Structure...${NC}"
 echo ""
 
 files_to_check=(
-    "terraform/main.tf"
-    "terraform/variables.tf"
-    "terraform/outputs.tf"
-    "terraform/render.tf"
-    "terraform/database.tf"
-    "terraform/cache.tf"
-    "terraform/secrets.tf"
-    "terraform/.gitignore"
-    "terraform.tfvars.example"
+    "Makefile"
+    "render.yaml"
+    "fly.toml"
+    "Dockerfile"
+    "docker-compose.yml"
     ".github/workflows/ci.yml"
-    ".github/workflows/terraform-plan.yml"
     ".github/workflows/deploy-staging.yml"
     ".github/workflows/deploy-prod.yml"
     ".circleci/config.yml"
+    "scripts/setup-ci-cd.sh"
+    "scripts/setup-circleci.sh"
+    "scripts/verify-cicd-setup.sh"
     "docs/operations/CI_CD_PIPELINE_README.md"
+    "docs/infra/CI_CD_SETUP.md"
 )
 
 all_files_exist=0
@@ -62,41 +61,56 @@ check_status $all_files_exist "All required files present"
 echo ""
 
 # ============================================================================
-# Check 2: Terraform Validation
+# Check 2: Deployment Configuration
 # ============================================================================
-echo -e "${BLUE}2. Validating Terraform...${NC}"
+echo -e "${BLUE}2. Validating Deployment Configuration...${NC}"
 echo ""
 
-if command -v terraform &> /dev/null; then
-    cd terraform
-    
-    # Check if initialized
-    if [ ! -d ".terraform" ]; then
-        echo -e "${YELLOW}⚠️  Terraform not initialized. Run: terraform init${NC}"
-        terraform_init=1
+deployment_config_missing=0
+for file in render.yaml fly.toml; do
+    if [ -f "$file" ]; then
+        echo -e "${GREEN}✅${NC} $file"
     else
-        terraform_init=0
+        echo -e "${RED}❌${NC} $file (missing)"
+        deployment_config_missing=1
     fi
-    
-    # Validate format
-    if terraform fmt -check -recursive &>/dev/null; then
-        echo -e "${GREEN}✅${NC} Terraform formatting valid"
+done
+check_status $deployment_config_missing "Deployment config files present"
+
+if [ -d "terraform" ]; then
+    if command -v terraform &> /dev/null; then
+        cd terraform
+
+        # Check if initialized
+        if [ ! -d ".terraform" ]; then
+            echo -e "${YELLOW}⚠️  Terraform not initialized. Run: terraform init${NC}"
+            terraform_init=1
+        else
+            terraform_init=0
+        fi
+
+        # Validate format
+        if terraform fmt -check -recursive &>/dev/null; then
+            echo -e "${GREEN}✅${NC} Terraform formatting valid"
+        else
+            echo -e "${RED}❌${NC} Terraform formatting issues. Run: terraform fmt -recursive"
+        fi
+
+        # Validate config
+        if terraform validate &>/dev/null; then
+            echo -e "${GREEN}✅${NC} Terraform configuration valid"
+        else
+            echo -e "${RED}❌${NC} Terraform configuration has errors"
+        fi
+
+        cd ..
+        check_status $terraform_init "Terraform initialized"
     else
-        echo -e "${RED}❌${NC} Terraform formatting issues. Run: terraform fmt -recursive"
+        echo -e "${YELLOW}⚠️  Terraform CLI not installed${NC}"
+        echo "   Install from: https://www.terraform.io/downloads"
     fi
-    
-    # Validate config
-    if terraform validate &>/dev/null; then
-        echo -e "${GREEN}✅${NC} Terraform configuration valid"
-    else
-        echo -e "${RED}❌${NC} Terraform configuration has errors"
-    fi
-    
-    cd ..
-    check_status $terraform_init "Terraform initialized"
 else
-    echo -e "${YELLOW}⚠️  Terraform CLI not installed${NC}"
-    echo "   Install from: https://www.terraform.io/downloads"
+    echo -e "${YELLOW}⚠️  terraform/ not present in this checkout; skipping Terraform validation${NC}"
 fi
 echo ""
 
@@ -145,12 +159,29 @@ if [ -f ".circleci/config.yml" ]; then
         echo -e "${YELLOW}⚠️  CircleCI config format outdated${NC}"
     fi
     
-    # Check for essential jobs
-    if grep -q "backend-test\|frontend-test\|build-docker" ".circleci/config.yml"; then
-        echo -e "${GREEN}✅${NC} CircleCI jobs configured"
-    else
-        echo -e "${RED}❌${NC} Essential CircleCI jobs missing"
-    fi
+    # Check for the current core jobs in the hybrid pipeline.
+    circleci_jobs=(
+        "lint"
+        "typecheck"
+        "contract"
+        "test-backend"
+        "test-frontend"
+        "build"
+        "docker-build"
+        "deploy-render"
+        "smoke-test"
+    )
+
+    missing_jobs=0
+    for job in "${circleci_jobs[@]}"; do
+        if grep -qE "^[[:space:]]*$job:" ".circleci/config.yml"; then
+            echo -e "${GREEN}✅${NC} CircleCI job present: $job"
+        else
+            echo -e "${RED}❌${NC} CircleCI job missing: $job"
+            missing_jobs=1
+        fi
+    done
+    check_status $missing_jobs "Essential CircleCI jobs configured"
 else
     echo -e "${RED}❌${NC} CircleCI config.yml not found"
 fi
@@ -181,25 +212,16 @@ echo ""
 echo -e "${BLUE}6. Checking Environment Configuration...${NC}"
 echo ""
 
-if [ -f "terraform.tfvars.example" ]; then
-    echo -e "${GREEN}✅${NC} terraform.tfvars.example exists"
-else
-    echo -e "${RED}❌${NC} terraform.tfvars.example not found"
-fi
-
-if [ -f ".env.example" ]; then
-    echo -e "${GREEN}✅${NC} .env.example exists"
-else
-    echo -e "${YELLOW}⚠️  .env.example not found${NC}"
-fi
-
-# Check if terraform.tfvars is in .gitignore
-if grep -q "terraform.tfvars" ".gitignore" 2>/dev/null; then
-    echo -e "${GREEN}✅${NC} terraform.tfvars properly ignored"
-else
-    echo -e "${YELLOW}⚠️  terraform.tfvars should be added to .gitignore${NC}"
-    echo "   Run: echo 'terraform.tfvars' >> .gitignore"
-fi
+env_config_missing=0
+for file in ".env.example" "render.yaml" "fly.toml"; do
+    if [ -f "$file" ]; then
+        echo -e "${GREEN}✅${NC} $file"
+    else
+        echo -e "${YELLOW}⚠️  $file not found${NC}"
+        env_config_missing=1
+    fi
+done
+check_status $env_config_missing "Environment and deployment config present"
 echo ""
 
 # ============================================================================
@@ -256,34 +278,27 @@ echo "════════════════════════�
 echo ""
 
 echo "✅ Completed:"
-echo "  • Terraform infrastructure code generated"
-echo "  • GitHub Actions workflows created"
+echo "  • GitHub Actions workflows present"
 echo "  • CircleCI pipeline configured"
+echo "  • Deployment config files present"
 echo "  • Documentation completed"
 echo ""
 
 echo "📌 Next Steps:"
 echo ""
-echo "1️⃣  Initialize Terraform (if not done):"
-echo "   cd terraform && terraform init"
-echo ""
-echo "2️⃣  Create terraform.tfvars:"
-echo "   cp terraform.tfvars.example terraform.tfvars"
-echo "   # Edit with your actual values"
-echo ""
-echo "3️⃣  Add GitHub Secrets:"
+echo "1️⃣  Add GitHub Secrets:"
 echo "   GitHub → Settings → Secrets and variables → Actions"
 echo "   Add: RENDER_API_KEY, RENDER_SERVICE_ID_STAGING, RENDER_SERVICE_ID_PROD"
 echo ""
-echo "4️⃣  Enable CircleCI:"
+echo "2️⃣  Enable CircleCI:"
 echo "   https://app.circleci.com/setup/gh/fuaadabdullah/goblin-assistant"
 echo ""
-echo "5️⃣  Test the pipeline:"
+echo "3️⃣  Test the pipeline:"
 echo "   git add ."
-echo "   git commit -m 'feat: Add hybrid CI/CD pipeline'"
+echo "   git commit -m 'feat: align hybrid CI/CD pipeline'"
 echo "   git push origin main"
 echo ""
-echo "6️⃣  Monitor workflows:"
+echo "4️⃣  Monitor workflows:"
 echo "   GitHub: https://github.com/fuaadabdullah/goblin-assistant/actions"
 echo "   CircleCI: https://app.circleci.com/pipelines/github/fuaadabdullah/goblin-assistant"
 echo ""

@@ -1,6 +1,8 @@
 # Goblin Assistant CI/CD Setup
 
-This document outlines the comprehensive CI/CD pipeline for the Goblin Assistant application, including GitHub Actions workflows, pre-push validation, and quality gates.
+This document outlines the CI/CD setup for the Goblin Assistant application, including GitHub Actions workflows, pre-push validation, and quality gates.
+
+For the full hybrid pipeline, including the CircleCI-heavy lane and deployment flow, see `docs/operations/CI_CD_PIPELINE_README.md`.
 
 ## 🚀 Overview
 
@@ -14,6 +16,7 @@ The CI/CD pipeline ensures code quality, security, and reliability through autom
 - **Pre-push Validation**: Local quality checks before pushing code
 - **Branch Protection**: Required status checks and reviews for main branch
 - **Preview Deployments**: Automatic preview environments for pull requests
+- **Hybrid Split**: GitHub Actions keeps the fast guardrails while CircleCI owns the heavier main-branch pipeline
 
 ## 📋 CI/CD Pipeline Jobs
 
@@ -68,9 +71,9 @@ npx lint-staged  # Runs ESLint and Prettier on staged files
 npm run validate-env  # Validates environment configuration
 
 # Pre-push (runs on git push)
-npm run lint      # Full ESLint check
-npm run type-check # TypeScript type checking
-npm run test      # Run test suite
+make lint         # Full lint gate
+make type-check   # TypeScript type checking
+make test         # Run the full test suite
 ```
 
 ### Manual Quality Checks
@@ -79,17 +82,18 @@ Run these commands locally before pushing:
 
 ```bash
 # Run all quality checks
-npm run lint
-npm run type-check
-npm run test
-npm run test:coverage
-npm run security:audit
+make lint
+make type-check
+make test
+make test-web-coverage
+make test-api-coverage
+make contract-checks
 
 # Build verification
-npm run build
+make build
 
 # E2E tests (if applicable)
-npm run test:e2e
+make test-e2e
 ```
 
 ## 🛡️ Branch Protection
@@ -154,6 +158,12 @@ Run the setup script to configure branch protection:
 - **Environment**: `production`
 - **URL**: `https://goblin-assistant.vercel.app`
 
+### CircleCI Setup
+
+- Enable the repository in CircleCI and connect it to GitHub.
+- Run `./scripts/setup-circleci.sh gh <org> <repo>` to seed the required CircleCI environment variables.
+- Review `.circleci/config.yml` for the heavier lint, test, build, and deploy jobs.
+
 ### Deployment Verification
 
 ```bash
@@ -161,7 +171,7 @@ Run the setup script to configure branch protection:
 curl -f https://goblin-assistant.vercel.app/api/health
 
 # Verify build artifacts
-npm run build && ls -la dist/
+make build && ls -la apps/web/.next/
 ```
 
 ## 🔍 Troubleshooting
@@ -170,9 +180,9 @@ npm run build && ls -la dist/
 
 #### Tests Failing Locally but Passing in CI
 
-- Check Node.js version matches CI (`NODE_VERSION: '20'`)
-- Ensure all dependencies are installed: `npm ci`
-- Clear cache: `npm run clean && npm ci`
+- Check Node.js version matches CI (`20`)
+- Ensure all dependencies are installed: `make install`
+- Clear caches and reinstall: `rm -rf .tmp apps/web/node_modules node_modules && make install`
 
 #### Pre-push Hook Blocking Commits
 
@@ -181,8 +191,8 @@ npm run build && ls -la dist/
 git commit --no-verify
 
 # Debug hook execution
-npm run lint --verbose
-npm run test --verbose
+make lint --verbose
+make test --verbose
 ```
 
 #### Branch Protection Issues
@@ -229,13 +239,13 @@ When contributing to the CI/CD pipeline:
 ### Adding New Checks
 
 1. Update the GitHub Actions workflow in `.github/workflows/ci.yml`
-2. Add corresponding npm scripts in `package.json`
+2. Add corresponding Makefile targets or workspace scripts
 3. Update branch protection requirements
 4. Document the new check in this file
 5. Test the changes thoroughly
 
 ---
 
-**Last Updated**: December 12, 2025
+**Last Updated**: August 19, 2026
 **CI Status**: ✅ Active
 **Coverage**: 80% minimum required
