@@ -54,7 +54,6 @@ services:
       - sandbox_jobs:/app/sandbox_jobs
       - api_uploads:/app/apps/api/src/uploads
       - api_logs:/app/logs
-      - api_chroma:/app/chroma_db
       - api_state:/app/state
     read_only: true
     tmpfs:
@@ -384,5 +383,4 @@ volumes:
   minio_data:
   api_uploads:
   api_logs:
-  api_chroma:
   api_state:

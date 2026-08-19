@@ -1,0 +1,12 @@
+{$GOBLIN_API_DOMAIN} {
+    reverse_proxy api:8000
+
+    # Strip X-Forwarded-For spoofing from clients; Caddy sets it correctly
+    header_up X-Forwarded-Proto {scheme}
+    header_up X-Real-IP {remote_host}
+
+    log {
+        output stderr
+        level INFO
+    }
+}

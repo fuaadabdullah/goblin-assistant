@@ -1,0 +1,136 @@
+# Production compose for Oracle Cloud Always Free ARM VM (4 OCPU / 24GB RAM)
+#
+# Usage:
+#   docker compose up -d                       # api + caddy only
+#   docker compose --profile workers up -d     # + celery worker + beat
+#
+# Prerequisites:
+#   - .env file present (copy .env.example and fill in secrets)
+#   - docker login ghcr.io -u <github-user> -p <token>  (once, for private image)
+#   - A DNS A record pointing GOBLIN_API_DOMAIN → this VM's public IP
+
+services:
+  api:
+    image: ghcr.io/fuaadabdullah/goblin-assistant:${GOBLIN_IMAGE_TAG:-latest}
+    # No host ports — Caddy reaches the API via the internal Docker network
+    environment:
+      - ENV=production
+      - PORT=8000
+      - DATABASE_URL=${SUPABASE_DB_URL}
+      - REDIS_URL=${UPSTASH_REDIS_URL}
+      - CELERY_BROKER_URL=${UPSTASH_REDIS_URL}
+      - CELERY_RESULT_BACKEND=${UPSTASH_REDIS_URL}
+      - JWT_SECRET_KEY=${JWT_SECRET_KEY}
+      - SUPABASE_URL=${SUPABASE_URL}
+      - SUPABASE_ANON_KEY=${SUPABASE_ANON_KEY}
+      - SUPABASE_SERVICE_ROLE_KEY=${SUPABASE_SERVICE_ROLE_KEY}
+      - ALLOWED_ORIGINS=${ALLOWED_ORIGINS}
+      - FRONTEND_URL=${FRONTEND_URL}
+      - BACKEND_URL=https://${GOBLIN_API_DOMAIN}
+      - OPENAI_API_KEY=${OPENAI_API_KEY:-}
+      - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY:-}
+      - GEMINI_API_KEY=${GEMINI_API_KEY:-}
+      - GROQ_API_KEY=${GROQ_API_KEY:-}
+      - DEEPSEEK_API_KEY=${DEEPSEEK_API_KEY:-}
+      - SENTRY_DSN=${SENTRY_DSN:-}
+    volumes:
+      - api_state:/app/state
+      - api_logs:/app/logs
+    healthcheck:
+      test:
+        - CMD
+        - python3
+        - -c
+        - "import urllib.request; urllib.request.urlopen('http://localhost:8000/api/v1/health', timeout=5)"
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+    restart: always
+    deploy:
+      resources:
+        limits:
+          cpus: '2.0'
+          memory: 4g
+
+  caddy:
+    image: caddy:2-alpine
+    ports:
+      - "80:80"
+      - "443:443"
+      - "443:443/udp"
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+      - caddy_config:/config
+    environment:
+      - GOBLIN_API_DOMAIN=${GOBLIN_API_DOMAIN}
+    depends_on:
+      api:
+        condition: service_healthy
+    restart: always
+    deploy:
+      resources:
+        limits:
+          cpus: '0.25'
+          memory: 256m
+
+  celery-worker:
+    image: ghcr.io/fuaadabdullah/goblin-assistant:${GOBLIN_IMAGE_TAG:-latest}
+    profiles: [workers]
+    working_dir: /app/apps/api/src/api
+    # Handles all three queues in one worker; split into separate containers if
+    # priority isolation becomes important.
+    command: >
+      celery -A celery_app:app worker
+      --loglevel=info
+      --concurrency=4
+      --pool=prefork
+      -Q high_priority,default,low_priority
+    environment:
+      - ENV=production
+      - DATABASE_URL=${SUPABASE_DB_URL}
+      - REDIS_URL=${UPSTASH_REDIS_URL}
+      - CELERY_BROKER_URL=${UPSTASH_REDIS_URL}
+      - CELERY_RESULT_BACKEND=${UPSTASH_REDIS_URL}
+      - SUPABASE_URL=${SUPABASE_URL}
+      - SUPABASE_ANON_KEY=${SUPABASE_ANON_KEY}
+      - SUPABASE_SERVICE_ROLE_KEY=${SUPABASE_SERVICE_ROLE_KEY}
+      - OPENAI_API_KEY=${OPENAI_API_KEY:-}
+      - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY:-}
+      - GEMINI_API_KEY=${GEMINI_API_KEY:-}
+      - GROQ_API_KEY=${GROQ_API_KEY:-}
+      - DEEPSEEK_API_KEY=${DEEPSEEK_API_KEY:-}
+    volumes:
+      - api_logs:/app/logs
+    restart: always
+    deploy:
+      resources:
+        limits:
+          cpus: '1.5'
+          memory: 3g
+
+  celery-beat:
+    image: ghcr.io/fuaadabdullah/goblin-assistant:${GOBLIN_IMAGE_TAG:-latest}
+    profiles: [workers]
+    working_dir: /app/apps/api/src/api
+    command: celery -A celery_app:app beat --loglevel=info --schedule=/tmp/celerybeat-schedule
+    environment:
+      - ENV=production
+      - REDIS_URL=${UPSTASH_REDIS_URL}
+      - CELERY_BROKER_URL=${UPSTASH_REDIS_URL}
+      - CELERY_RESULT_BACKEND=${UPSTASH_REDIS_URL}
+    tmpfs:
+      - /tmp
+    restart: always
+    deploy:
+      resources:
+        limits:
+          cpus: '0.25'
+          memory: 512m
+
+volumes:
+  api_state:
+  api_logs:
+  caddy_data:
+  caddy_config:

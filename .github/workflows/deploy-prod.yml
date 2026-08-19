@@ -1,303 +1,146 @@
 name: Deploy to Production
 
+# Triggers on push to main (after CI passes) or manual dispatch.
+# Secrets required in the 'production' GitHub environment:
+#   ORACLE_VM_HOST      — public IP or hostname of the Oracle VM
+#   ORACLE_VM_USER      — SSH username (e.g. ubuntu or opc)
+#   ORACLE_VM_SSH_KEY   — private key whose public key is in ~/.ssh/authorized_keys on the VM
+
 on:
+  push:
+    branches: [main]
+    paths:
+      - 'apps/api/**'
+      - 'packages/**'
+      - 'Dockerfile'
+      - 'infra/oracle/**'
   workflow_dispatch:
     inputs:
       image_tag:
-        description: 'Docker image tag to deploy'
+        description: 'Image tag to deploy (default: sha of HEAD)'
         required: false
-        default: 'main'
-      terraform_apply:
-        description: 'Apply Terraform changes'
-        required: false
-        type: boolean
-        default: false
-  repository_dispatch:
-    types: [deploy-prod]
 
 env:
   REGISTRY: ghcr.io
   IMAGE_NAME: ${{ github.repository }}
 
 jobs:
-  # ==============================================================================
-  # Pre-Deployment Checks
-  # ==============================================================================
-  pre-deploy-checks:
-    name: Pre-Deployment Checks
+  # ── Build ARM64 image and push to GHCR ──────────────────────────────────────
+  build:
+    name: Build & push ARM64 image
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
     outputs:
-      continue: ${{ steps.check.outputs.continue }}
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
+      image_tag: ${{ steps.tag.outputs.tag }}
 
-      - name: Verify main branch
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Compute image tag
+        id: tag
         run: |
-          if [ "${{ github.ref }}" != "refs/heads/main" ]; then
-            echo "❌ Production deployment only allowed from main branch"
-            exit 1
+          TAG="${{ github.event.inputs.image_tag }}"
+          if [ -z "$TAG" ]; then
+            TAG="sha-$(echo ${{ github.sha }} | cut -c1-7)"
           fi
-          echo "✅ On main branch"
+          echo "tag=$TAG" >> "$GITHUB_OUTPUT"
+          echo "Building image tag: $TAG"
 
-      - name: Check required secrets
-        id: check
-        run: |
-          if [ -z "${{ secrets.FLY_API_TOKEN }}" ]; then
-            echo "❌ Missing FLY_API_TOKEN secret"
-            exit 1
-          fi
-          echo "✅ All required secrets configured"
-          echo "continue=true" >> $GITHUB_OUTPUT
+      - uses: docker/setup-qemu-action@v3
+        with:
+          platforms: arm64
 
-      - name: Get latest image from staging
-        run: |
-          echo "Latest staging image: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:main"
+      - uses: docker/setup-buildx-action@v3
 
-  # ==============================================================================
-  # Terraform Validation & Plan for Production
-  # ==============================================================================
-  terraform-prod-plan:
-    name: Terraform Plan (Production)
-    needs: [pre-deploy-checks]
+      - uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - uses: docker/build-push-action@v6
+        with:
+          context: .
+          platforms: linux/arm64
+          push: true
+          tags: |
+            ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ steps.tag.outputs.tag }}
+            ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:latest
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+  # ── Deploy to Oracle VM ──────────────────────────────────────────────────────
+  deploy:
+    name: Deploy to Oracle VM
+    needs: build
     runs-on: ubuntu-latest
+    environment: production
+    concurrency:
+      group: deploy-production
+      cancel-in-progress: false
+
     steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-
-      - name: Setup Terraform
-        uses: hashicorp/setup-terraform@v3
-        with:
-          terraform_version: '1.6.0'
-
-      - name: Initialize Terraform
-        run: |
-          cd terraform
-          terraform init -backend=false
+      - name: Deploy via SSH
+        uses: appleboy/ssh-action@v1
         env:
-          TF_INPUT: false
-
-      - name: Validate configuration
-        run: |
-          cd terraform
-          terraform validate
-
-      - name: Generate plan (production)
-        id: plan
-        run: |
-          cd terraform
-          terraform plan -no-color -var="environment=production" || true
-
-      - name: Save plan artifact
-        run: |
-          cd terraform
-          terraform plan -out=tfplan -var="environment=production" || true
-
-      - name: Upload plan artifact
-        uses: actions/upload-artifact@v4
+          GOBLIN_IMAGE_TAG: ${{ needs.build.outputs.image_tag }}
         with:
-          name: terraform-plan-prod
-          path: terraform/tfplan
-          retention-days: 1
+          host: ${{ secrets.ORACLE_VM_HOST }}
+          username: ${{ secrets.ORACLE_VM_USER }}
+          key: ${{ secrets.ORACLE_VM_SSH_KEY }}
+          envs: GOBLIN_IMAGE_TAG
+          script: |
+            set -e
 
-  # ==============================================================================
-  # Manual Approval Gate
-  # ==============================================================================
-  approval:
-    name: Manual Approval
-    needs: [pre-deploy-checks, terraform-prod-plan]
-    runs-on: ubuntu-latest
-    environment:
-      name: production
-    steps:
-      - name: Approve deployment
+            cd ~/goblin-assistant
+            git pull --ff-only origin main
+
+            cd infra/oracle
+
+            # Pull the pinned image (workers share the same image)
+            GOBLIN_IMAGE_TAG=$GOBLIN_IMAGE_TAG docker compose pull api
+
+            # Restart with the new image; keep workers in sync
+            GOBLIN_IMAGE_TAG=$GOBLIN_IMAGE_TAG \
+              docker compose --profile workers up -d --remove-orphans
+
+            # Wait for API to pass its own healthcheck
+            echo "Waiting for API health..."
+            for i in $(seq 1 12); do
+              docker compose exec -T api \
+                python3 -c "import urllib.request; urllib.request.urlopen('http://localhost:8000/api/v1/health', timeout=5)" \
+                && break
+              echo "  attempt $i/12 — sleeping 10s"
+              sleep 10
+            done
+
+            echo "Deploy complete: $GOBLIN_IMAGE_TAG"
+
+      - name: External health check
         run: |
-          echo "## ✅ Approved for Production Deployment"
-          echo ""
-          echo "Deployment details:"
-          echo "- **Branch**: ${{ github.ref }}"
-          echo "- **Commit**: ${{ github.sha }}"
-          echo "- **Triggered by**: ${{ github.actor }}"
-          echo "- **Timestamp**: $(date -u +'%Y-%m-%dT%H:%M:%SZ')"
-
-  # ==============================================================================
-  # Apply Terraform Changes (Optional)
-  # ==============================================================================
-  terraform-apply:
-    name: Apply Terraform (Production)
-    needs: [approval]
-    runs-on: ubuntu-latest
-    if: github.event.inputs.terraform_apply == 'true' || github.event_name == 'repository_dispatch'
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-
-      - name: Setup Terraform
-        uses: hashicorp/setup-terraform@v3
-        with:
-          terraform_version: '1.6.0'
-
-      - name: Download plan artifact
-        uses: actions/download-artifact@v4
-        with:
-          name: terraform-plan-prod
-          path: terraform/
-
-      - name: Initialize Terraform
-        run: |
-          cd terraform
-          terraform init -backend=false
-        env:
-          TF_INPUT: false
-
-      - name: Apply Terraform
-        run: |
-          cd terraform
-          terraform apply -no-color -auto-approve tfplan || true
-        env:
-          TF_INPUT: false
-
-      - name: Save Terraform outputs
-        run: |
-          cd terraform
-          terraform output -json > /tmp/outputs.json
-
-      - name: Upload outputs
-        uses: actions/upload-artifact@v4
-        with:
-          name: terraform-outputs
-          path: /tmp/outputs.json
-          retention-days: 30
-
-  # ==============================================================================
-  # Deploy to Production (Fly.io)
-  # ==============================================================================
-  deploy-production:
-    name: Deploy to Production
-    needs: [approval, terraform-apply]
-    if: always()
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-
-      - name: Install flyctl
-        uses: superfly/flyctl-actions/setup-flyctl@master
-
-      - name: Deploy to Fly.io
-        id: deploy
-        run: |
-          echo "Deploying to production..."
-          flyctl deploy --remote-only --app goblin-backend
-        env:
-          FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
-
-      - name: Wait for deployment
-        run: |
-          echo "Waiting for production deployment..."
-          sleep 45
-
-      - name: Health check
-        id: health
-        run: |
-          max_attempts=30
-          attempt=0
-
-          while [ $attempt -lt $max_attempts ]; do
-            response=$(curl -s -o /dev/null -w "%{http_code}" https://goblin-backend.fly.dev/health)
-            if [ "$response" = "200" ]; then
-              echo "✅ Health check passed - Service is healthy"
-              exit 0
-            fi
-
-            attempt=$((attempt + 1))
-            echo "Attempt $attempt/$max_attempts: Status $response - Retrying in 10s..."
+          url="https://${{ secrets.GOBLIN_API_DOMAIN }}/api/v1/health"
+          echo "Checking $url"
+          for i in 1 2 3 4 5; do
+            status=$(curl -sf -o /dev/null -w "%{http_code}" "$url") && break || true
+            echo "  attempt $i — got $status — retrying in 10s"
             sleep 10
           done
+          if [ "$status" != "200" ]; then
+            echo "Health check failed: HTTP $status"
+            exit 1
+          fi
+          echo "Health check passed"
 
-          echo "❌ Health check failed after $max_attempts attempts"
-          exit 1
-
-      - name: Rollback on failure
-        if: failure()
-        run: |
-          echo "⚠️  Deployment failed — rolling back to previous release..."
-          flyctl releases rollback --app goblin-backend || true
-        env:
-          FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
-        continue-on-error: true
-
-      - name: Notify deployment success
+      - name: Summarize
         if: success()
         run: |
-          echo "## ✅ Production Deployment Successful" >> $GITHUB_STEP_SUMMARY
-          echo "" >> $GITHUB_STEP_SUMMARY
-          echo "- **Environment**: Production" >> $GITHUB_STEP_SUMMARY
-          echo "- **URL**: https://goblin-backend.fly.dev" >> $GITHUB_STEP_SUMMARY
-          echo "- **Commit**: ${{ github.sha }}" >> $GITHUB_STEP_SUMMARY
-          echo "- **Deployed by**: ${{ github.actor }}" >> $GITHUB_STEP_SUMMARY
-          echo "- **Timestamp**: $(date -u +'%Y-%m-%d %H:%M:%S UTC')" >> $GITHUB_STEP_SUMMARY
+          cat >> "$GITHUB_STEP_SUMMARY" <<EOF
+          ## Production deployment successful
 
-      - name: Notify deployment failure
-        if: failure()
-        run: |
-          echo "## ❌ Production Deployment Failed" >> $GITHUB_STEP_SUMMARY
-          echo "" >> $GITHUB_STEP_SUMMARY
-          echo "Please investigate and perform manual rollback if necessary:" >> $GITHUB_STEP_SUMMARY
-          echo "https://fly.io/apps/goblin-backend" >> $GITHUB_STEP_SUMMARY
-
-  # ==============================================================================
-  # Post-Deployment Verification
-  # ==============================================================================
-  post-deploy-verification:
-    name: Post-Deployment Verification
-    needs: [deploy-production]
-    if: always()
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-
-      - name: Verify API endpoints
-        run: |
-          echo "Verifying production API..."
-
-          endpoints=(
-            "/health"
-            "/api/status"
-          )
-
-          for endpoint in "${endpoints[@]}"; do
-            echo "Checking https://goblin-backend.fly.dev$endpoint"
-            status=$(curl -s -o /dev/null -w "%{http_code}" https://goblin-backend.fly.dev$endpoint)
-            if [ "$status" = "200" ] || [ "$status" = "404" ]; then
-              echo "✅ $endpoint - OK ($status)"
-            else
-              echo "❌ $endpoint - FAILED ($status)"
-              exit 1
-            fi
-          done
-
-      - name: Create deployment summary
-        run: |
-          echo "## 📋 Production Deployment Summary" >> $GITHUB_STEP_SUMMARY
-          echo "" >> $GITHUB_STEP_SUMMARY
-          echo "**Status**: ✅ Verified" >> $GITHUB_STEP_SUMMARY
-          echo "**Deployed At**: $(date -u +'%Y-%m-%d %H:%M:%S UTC')" >> $GITHUB_STEP_SUMMARY
-          echo "**Commit**: ${{ github.sha }}" >> $GITHUB_STEP_SUMMARY
-          echo "" >> $GITHUB_STEP_SUMMARY
-          echo "[View in Fly.io Dashboard](https://fly.io/apps/goblin-backend)" >> $GITHUB_STEP_SUMMARY
-
-  # ==============================================================================
-  # Notify Success
-  # ==============================================================================
-  notify-success:
-    name: Deployment Notification
-    needs: [post-deploy-verification]
-    if: success()
-    runs-on: ubuntu-latest
-    steps:
-      - name: Log success
-        run: |
-          echo "✅ Production deployment completed successfully"
-          echo "Deployment: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"
+          - **Image tag**: ${{ needs.build.outputs.image_tag }}
+          - **Commit**: ${{ github.sha }}
+          - **Actor**: ${{ github.actor }}
+          - **URL**: https://${{ secrets.GOBLIN_API_DOMAIN }}
+          EOF
