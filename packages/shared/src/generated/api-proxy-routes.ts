@@ -13,7 +13,6 @@ export const API_PROXY_ROUTES = [
   { frontendPrefix: '/api/health/routing', backendPrefix: '/api/v1/health/routing' },
   { frontendPrefix: '/api/health/streaming', backendPrefix: '/api/v1/health/streaming' },
   { frontendPrefix: '/api/metrics', backendPrefix: '/metrics' },
-  { frontendPrefix: '/api/providers', backendPrefix: '/api/v1/providers' },
   { frontendPrefix: '/api/raptor', backendPrefix: '/api/v1/raptor' },
   { frontendPrefix: '/api/routing', backendPrefix: '/api/v1/routing' },
   { frontendPrefix: '/api/runtime', backendPrefix: '/api/v1/api' },

@@ -21,7 +21,6 @@ PROXY_ROUTES: tuple[ProxyRouteSpec, ...] = (
     ProxyRouteSpec("/api/health/routing", "/api/v1/health/routing"),
     ProxyRouteSpec("/api/health/streaming", "/api/v1/health/streaming"),
     ProxyRouteSpec("/api/metrics", "/metrics"),
-    ProxyRouteSpec("/api/providers", "/api/v1/providers"),
     ProxyRouteSpec("/api/raptor", "/api/v1/raptor"),
     ProxyRouteSpec("/api/routing", "/api/v1/routing"),
     ProxyRouteSpec("/api/runtime", "/api/v1/api"),
