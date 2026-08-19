@@ -18,15 +18,17 @@ from api.config.mode_addendums import get_addendum as _get_mode_addendum
 from api.config.system_prompt import EDUCATION_SYSTEM_ADDENDUM, system_prompt_manager
 
 from ..assistant_tools.executor import extract_tool_calls, run_tool_loop
-from ..assistant_tools.registry import export_openai_tools
+from ..assistant_tools.registry import export_tools_for_provider
 from ..auth.router import User as AuthenticatedUser
 from ..auth.router import get_current_user
 from ..storage import conversation_store
 from ..storage.database import get_db
 from . import _runtime as _cr
+from .archiving import schedule_conversation_archive
 from .schemas import ContextualChatRequest, ContextualChatResponse
 from .service_accessors import (
     _get_context_assembly_service,
+    _get_embedding_worker,
     _get_message_classifier,
 )
 
@@ -127,7 +129,7 @@ async def contextual_chat(
             "model": request.model,
         }
 
-        ctx_tools = export_openai_tools()
+        ctx_tools = export_tools_for_provider(request.provider)
         if ctx_tools:
             payload["tools"] = ctx_tools
 
@@ -232,6 +234,26 @@ async def contextual_chat(
                 },
             )
 
+        if conversation_id and user_id:
+            embedding_worker = _get_embedding_worker()
+            user_message_id = str(uuid.uuid4())
+            await embedding_worker.queue_message_embedding(
+                user_id=user_id,
+                conversation_id=conversation_id,
+                message_id=user_message_id,
+                content=request.message,
+                metadata=request.metadata,
+            )
+            await embedding_worker.queue_message_embedding(
+                user_id=user_id,
+                conversation_id=conversation_id,
+                message_id=response_message_id,
+                content=response_content,
+                metadata={"provider": used_provider, "model": used_model},
+            )
+
+        await schedule_conversation_archive(conversation_id or "")
+
         visualizations = None
         if isinstance(provider_response, dict) and provider_response.get("visualizations"):
             visualizations = provider_response["visualizations"]
@@ -239,8 +261,8 @@ async def contextual_chat(
         return ContextualChatResponse(
             message_id=response_message_id,
             response=response_content,
-            provider=used_provider,
-            model=used_model,
+            department=request.department or used_provider,
+            department_reason=f"provider={used_provider} model={used_model}",
             timestamp=datetime.utcnow().isoformat(),
             context_assembly=context_assembly,
             token_usage=token_usage,

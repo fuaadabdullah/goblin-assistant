@@ -2,7 +2,9 @@
 
 import pytest
 
-from api.routing.router import LatencyRouter, RoutingRegistry, RoutingRegistryStore
+from api.routing.registry_store import RoutingRegistryStore
+from api.routing.router import LatencyRouter
+from api.routing.router_registry import RoutingRegistry
 
 
 class TestLatencyBasedRouting:
