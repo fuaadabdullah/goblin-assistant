@@ -30,19 +30,19 @@ def _context_has_content(context: Dict[str, Any]) -> bool:
 
 
 def _get_context_builder():
-    from .services.retrieval_service import ContextBuilder
+    from ..services.retrieval_service import ContextBuilder
 
     return ContextBuilder
 
 
 def _get_embedding_worker():
-    from .services.embedding_service import embedding_worker
+    from ..services.embedding_service import embedding_worker
 
     return embedding_worker
 
 
 def _get_retrieval_singleton():
-    from .services.retrieval_service import retrieval_service
+    from ..services.retrieval_service import retrieval_service
 
     return retrieval_service
 
