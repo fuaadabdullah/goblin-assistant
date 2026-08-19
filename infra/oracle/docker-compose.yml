@@ -1,18 +1,18 @@
 # Production compose for Oracle Cloud Always Free ARM VM (4 OCPU / 24GB RAM)
 #
-# Usage:
-#   docker compose up -d                       # api + caddy only
+# Run from ~/goblin-assistant/infra/oracle/ after git pull:
+#   docker compose up -d                       # api + caddy
 #   docker compose --profile workers up -d     # + celery worker + beat
 #
 # Prerequisites:
 #   - .env file present (copy .env.example and fill in secrets)
-#   - docker login ghcr.io -u <github-user> -p <token>  (once, for private image)
 #   - A DNS A record pointing GOBLIN_API_DOMAIN → this VM's public IP
 
 services:
   api:
-    image: ghcr.io/fuaadabdullah/goblin-assistant:${GOBLIN_IMAGE_TAG:-latest}
-    # No host ports — Caddy reaches the API via the internal Docker network
+    build:
+      context: ../..   # repo root — where Dockerfile lives
+      dockerfile: Dockerfile
     environment:
       - ENV=production
       - PORT=8000
@@ -76,11 +76,11 @@ services:
           memory: 256m
 
   celery-worker:
-    image: ghcr.io/fuaadabdullah/goblin-assistant:${GOBLIN_IMAGE_TAG:-latest}
+    build:
+      context: ../..
+      dockerfile: Dockerfile
     profiles: [workers]
     working_dir: /app/apps/api/src/api
-    # Handles all three queues in one worker; split into separate containers if
-    # priority isolation becomes important.
     command: >
       celery -A celery_app:app worker
       --loglevel=info
@@ -111,7 +111,9 @@ services:
           memory: 3g
 
   celery-beat:
-    image: ghcr.io/fuaadabdullah/goblin-assistant:${GOBLIN_IMAGE_TAG:-latest}
+    build:
+      context: ../..
+      dockerfile: Dockerfile
     profiles: [workers]
     working_dir: /app/apps/api/src/api
     command: celery -A celery_app:app beat --loglevel=info --schedule=/tmp/celerybeat-schedule

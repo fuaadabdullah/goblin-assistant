@@ -1,146 +1,21 @@
 name: Deploy to Production
 
-# Triggers on push to main (after CI passes) or manual dispatch.
-# Secrets required in the 'production' GitHub environment:
-#   ORACLE_VM_HOST      — public IP or hostname of the Oracle VM
-#   ORACLE_VM_USER      — SSH username (e.g. ubuntu or opc)
-#   ORACLE_VM_SSH_KEY   — private key whose public key is in ~/.ssh/authorized_keys on the VM
-
 on:
   push:
     branches: [main]
-    paths:
-      - 'apps/api/**'
-      - 'packages/**'
-      - 'Dockerfile'
-      - 'infra/oracle/**'
-  workflow_dispatch:
-    inputs:
-      image_tag:
-        description: 'Image tag to deploy (default: sha of HEAD)'
-        required: false
-
-env:
-  REGISTRY: ghcr.io
-  IMAGE_NAME: ${{ github.repository }}
 
 jobs:
-  # ── Build ARM64 image and push to GHCR ──────────────────────────────────────
-  build:
-    name: Build & push ARM64 image
-    runs-on: ubuntu-latest
-    permissions:
-      contents: read
-      packages: write
-    outputs:
-      image_tag: ${{ steps.tag.outputs.tag }}
-
-    steps:
-      - uses: actions/checkout@v4
-
-      - name: Compute image tag
-        id: tag
-        run: |
-          TAG="${{ github.event.inputs.image_tag }}"
-          if [ -z "$TAG" ]; then
-            TAG="sha-$(echo ${{ github.sha }} | cut -c1-7)"
-          fi
-          echo "tag=$TAG" >> "$GITHUB_OUTPUT"
-          echo "Building image tag: $TAG"
-
-      - uses: docker/setup-qemu-action@v3
-        with:
-          platforms: arm64
-
-      - uses: docker/setup-buildx-action@v3
-
-      - uses: docker/login-action@v3
-        with:
-          registry: ${{ env.REGISTRY }}
-          username: ${{ github.actor }}
-          password: ${{ secrets.GITHUB_TOKEN }}
-
-      - uses: docker/build-push-action@v6
-        with:
-          context: .
-          platforms: linux/arm64
-          push: true
-          tags: |
-            ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ steps.tag.outputs.tag }}
-            ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:latest
-          cache-from: type=gha
-          cache-to: type=gha,mode=max
-
-  # ── Deploy to Oracle VM ──────────────────────────────────────────────────────
   deploy:
-    name: Deploy to Oracle VM
-    needs: build
     runs-on: ubuntu-latest
     environment: production
-    concurrency:
-      group: deploy-production
-      cancel-in-progress: false
-
     steps:
-      - name: Deploy via SSH
-        uses: appleboy/ssh-action@v1
-        env:
-          GOBLIN_IMAGE_TAG: ${{ needs.build.outputs.image_tag }}
+      - uses: appleboy/ssh-action@v1
         with:
-          host: ${{ secrets.ORACLE_VM_HOST }}
-          username: ${{ secrets.ORACLE_VM_USER }}
-          key: ${{ secrets.ORACLE_VM_SSH_KEY }}
-          envs: GOBLIN_IMAGE_TAG
+          host: ${{ secrets.ORACLE_VM_IP }}
+          username: ubuntu
+          key: ${{ secrets.ORACLE_SSH_KEY }}
           script: |
-            set -e
-
             cd ~/goblin-assistant
-            git pull --ff-only origin main
-
+            git pull origin main
             cd infra/oracle
-
-            # Pull the pinned image (workers share the same image)
-            GOBLIN_IMAGE_TAG=$GOBLIN_IMAGE_TAG docker compose pull api
-
-            # Restart with the new image; keep workers in sync
-            GOBLIN_IMAGE_TAG=$GOBLIN_IMAGE_TAG \
-              docker compose --profile workers up -d --remove-orphans
-
-            # Wait for API to pass its own healthcheck
-            echo "Waiting for API health..."
-            for i in $(seq 1 12); do
-              docker compose exec -T api \
-                python3 -c "import urllib.request; urllib.request.urlopen('http://localhost:8000/api/v1/health', timeout=5)" \
-                && break
-              echo "  attempt $i/12 — sleeping 10s"
-              sleep 10
-            done
-
-            echo "Deploy complete: $GOBLIN_IMAGE_TAG"
-
-      - name: External health check
-        run: |
-          url="https://${{ secrets.GOBLIN_API_DOMAIN }}/api/v1/health"
-          echo "Checking $url"
-          for i in 1 2 3 4 5; do
-            status=$(curl -sf -o /dev/null -w "%{http_code}" "$url") && break || true
-            echo "  attempt $i — got $status — retrying in 10s"
-            sleep 10
-          done
-          if [ "$status" != "200" ]; then
-            echo "Health check failed: HTTP $status"
-            exit 1
-          fi
-          echo "Health check passed"
-
-      - name: Summarize
-        if: success()
-        run: |
-          cat >> "$GITHUB_STEP_SUMMARY" <<EOF
-          ## Production deployment successful
-
-          - **Image tag**: ${{ needs.build.outputs.image_tag }}
-          - **Commit**: ${{ github.sha }}
-          - **Actor**: ${{ github.actor }}
-          - **URL**: https://${{ secrets.GOBLIN_API_DOMAIN }}
-          EOF
+            docker compose --profile workers up -d --build
