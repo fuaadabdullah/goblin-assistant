@@ -14,14 +14,24 @@ import structlog
 from fastapi import APIRouter, Depends, HTTPException
 from fastapi.responses import StreamingResponse
 
-from ..auth.router import User as AuthenticatedUser, get_current_user
+from ..auth.router import User as AuthenticatedUser
+from ..auth.router import get_current_user
 from . import _runtime as _cr
-from .helpers import _format_sse_event
+from .chat_router_support import _format_sse_event
 from .schemas import StreamChatRequest
 
 logger = structlog.get_logger()
 
 router = APIRouter()
+
+_UNHANDLED_STREAM_FALLBACK = (
+    "An unexpected error occurred. Your message was saved if it got this far."
+)
+
+
+def _format_unhandled_stream_error(exc: BaseException) -> str:
+    """Return the exception message, falling back to a generic message if empty."""
+    return str(exc) if str(exc) else _UNHANDLED_STREAM_FALLBACK
 
 
 async def generate_chat_stream(
@@ -55,9 +65,7 @@ async def generate_chat_stream(
 
     try:
         try:
-            conversation = await _cr._require_owned_conversation(
-                conversation_id, current_user
-            )
+            conversation = await _cr._require_owned_conversation(conversation_id, current_user)
         except HTTPException:
             error_event = {
                 "type": "error",
@@ -93,13 +101,8 @@ async def generate_chat_stream(
             return
 
         try:
-            conversation = await _cr._require_owned_conversation(
-                conversation_id, current_user
-            )
-            messages = [
-                {"role": msg.role, "content": msg.content}
-                for msg in conversation.messages
-            ]
+            conversation = await _cr._require_owned_conversation(conversation_id, current_user)
+            messages = [{"role": msg.role, "content": msg.content} for msg in conversation.messages]
             payload = {"messages": messages, "model": model}
         except Exception as build_exc:
             logger.error("message_build_error", exc=build_exc)
@@ -134,9 +137,7 @@ async def generate_chat_stream(
             yield _format_sse_event("error", error_event)
             return
         except Exception as provider_connect_exc:
-            logger.error(
-                "provider_connection_error", exc=provider_connect_exc, provider=provider
-            )
+            logger.error("provider_connection_error", exc=provider_connect_exc, provider=provider)
             error_event = {
                 "type": "error",
                 "code": "provider-connection-error",
@@ -224,9 +225,7 @@ async def generate_chat_stream(
                 async for chunk in stream_gen:
                     try:
                         chunk_text = (
-                            chunk.get("text", "")
-                            if isinstance(chunk, dict)
-                            else str(chunk)
+                            chunk.get("text", "") if isinstance(chunk, dict) else str(chunk)
                         )
                         if not chunk_text:
                             continue
@@ -247,9 +246,7 @@ async def generate_chat_stream(
                         logger.error("chunk_processing_error", exc=chunk_exc)
                         continue
             except asyncio.TimeoutError:
-                logger.warning(
-                    "stream_timeout", partial_response_len=len(accumulated_text)
-                )
+                logger.warning("stream_timeout", partial_response_len=len(accumulated_text))
                 error_event = {
                     "type": "error",
                     "code": "stream-timeout",
@@ -312,9 +309,7 @@ async def generate_chat_stream(
                 message_id=response_message_id,
             )
         except Exception as db_response_exc:
-            logger.error(
-                "db_write_error", exc=db_response_exc, stage="assistant_message_store"
-            )
+            logger.error("db_write_error", exc=db_response_exc, stage="assistant_message_store")
             # Response was already streamed — warn rather than error.
             error_event = {
                 "type": "warning",
@@ -343,9 +338,7 @@ async def generate_chat_stream(
         )
 
     except HTTPException as http_exc:
-        logger.warning(
-            "http_exception", status=http_exc.status_code, detail=http_exc.detail
-        )
+        logger.warning("http_exception", status=http_exc.status_code, detail=http_exc.detail)
         error_event = {
             "type": "error",
             "code": f"http-{http_exc.status_code}",

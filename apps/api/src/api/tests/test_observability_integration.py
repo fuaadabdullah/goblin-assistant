@@ -11,11 +11,11 @@ from unittest.mock import patch
 
 import pytest
 
-from api.services.write_time_matrix import write_time_intelligence
-from api.services.memory_promotion_service import memory_promotion_service
-from api.services.retrieval_service import RetrievalService
-from api.services.observability_service import observability_service
 from api.observability import context_snapshotter
+from api.services.memory_promotion import memory_promotion_service
+from api.services.observability_service import observability_service
+from api.services.retrieval_service import RetrievalService
+from api.services.write_time_matrix import write_time_intelligence
 
 
 class TestObservabilityIntegration:
@@ -32,12 +32,8 @@ class TestObservabilityIntegration:
 
         # Mock external dependencies
         with patch("api.services.observability_service.get_db") as mock_db:
-            with patch(
-                "api.services.write_time_matrix.embedding_worker"
-            ) as mock_worker:
-                with patch(
-                    "api.services.write_time_matrix.cache_service"
-                ) as mock_cache:
+            with patch("api.services.write_time_matrix.embedding_worker") as mock_worker:
+                with patch("api.services.write_time_matrix.cache_service") as mock_cache:
                     yield {
                         "mock_db": mock_db,
                         "mock_worker": mock_worker,
@@ -88,9 +84,7 @@ class TestObservabilityIntegration:
     async def test_memory_promotion_logging(self, setup_observability_test):
         """Test that memory promotion events are properly logged"""
         # Mock retrieval service for repetition checking
-        with patch.object(
-            memory_promotion_service, "_find_similar_memory_facts"
-        ) as mock_similar:
+        with patch.object(memory_promotion_service, "_find_similar_memory_facts") as mock_similar:
             mock_similar.return_value = []  # No similar facts found
 
             # Create a promotion candidate
@@ -175,9 +169,7 @@ class TestObservabilityIntegration:
     async def test_context_snapshot_logging(self, setup_observability_test):
         """Test that context assembly snapshots are properly captured"""
         # Mock context assembly service
-        with patch.object(
-            context_snapshotter, "capture_context_snapshot"
-        ) as mock_capture:
+        with patch.object(context_snapshotter, "capture_context_snapshot") as mock_capture:
             mock_capture.return_value = {
                 "request_id": "test_context_123",
                 "user_id": "test_user_123",
@@ -227,9 +219,7 @@ class TestObservabilityIntegration:
         # Test write decisions endpoint
         from api.observability.debug_router import get_write_decisions
 
-        write_decisions = await get_write_decisions(
-            conversation_id="test_conv_456", limit=10
-        )
+        write_decisions = await get_write_decisions(conversation_id="test_conv_456", limit=10)
 
         assert "conversation_id" in write_decisions
         assert "decisions" in write_decisions
@@ -396,9 +386,7 @@ class TestObservabilityDebugEndpoints:
         # Test search endpoint
         from api.observability.debug_router import search_write_decisions
 
-        search_results = await search_write_decisions(
-            query="task", conversation_id="test_conv_456"
-        )
+        search_results = await search_write_decisions(query="task", conversation_id="test_conv_456")
 
         assert "query" in search_results
         assert "results" in search_results
@@ -409,16 +397,12 @@ class TestObservabilityDebugEndpoints:
     async def test_memory_promotions_search(self, setup_observability_test):
         """Test search functionality for memory promotions"""
         # Populate test data
-        await TestObservabilityIntegration().test_memory_promotion_logging(
-            setup_observability_test
-        )
+        await TestObservabilityIntegration().test_memory_promotion_logging(setup_observability_test)
 
         # Test search endpoint
         from api.observability.debug_router import search_memory_promotions
 
-        search_results = await search_memory_promotions(
-            query="prefer", user_id="test_user_123"
-        )
+        search_results = await search_memory_promotions(query="prefer", user_id="test_user_123")
 
         assert "query" in search_results
         assert "results" in search_results
@@ -432,12 +416,8 @@ class TestObservabilityDebugEndpoints:
         await TestObservabilityIntegration().test_write_time_decision_logging(
             setup_observability_test
         )
-        await TestObservabilityIntegration().test_memory_promotion_logging(
-            setup_observability_test
-        )
-        await TestObservabilityIntegration().test_retrieval_trace_logging(
-            setup_observability_test
-        )
+        await TestObservabilityIntegration().test_memory_promotion_logging(setup_observability_test)
+        await TestObservabilityIntegration().test_retrieval_trace_logging(setup_observability_test)
 
         # Test system health endpoint
         from api.observability.debug_router import get_system_health
@@ -456,12 +436,8 @@ class TestObservabilityDebugEndpoints:
         await TestObservabilityIntegration().test_write_time_decision_logging(
             setup_observability_test
         )
-        await TestObservabilityIntegration().test_memory_promotion_logging(
-            setup_observability_test
-        )
-        await TestObservabilityIntegration().test_retrieval_trace_logging(
-            setup_observability_test
-        )
+        await TestObservabilityIntegration().test_memory_promotion_logging(setup_observability_test)
+        await TestObservabilityIntegration().test_retrieval_trace_logging(setup_observability_test)
 
         # Test summary endpoint
         from api.observability.debug_router import get_observability_summary

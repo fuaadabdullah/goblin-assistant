@@ -3,20 +3,30 @@ Semantic chat router for Goblin Assistant
 Enhanced chat endpoints with semantic retrieval and context-aware responses
 """
 
-from fastapi import APIRouter, HTTPException
-from pydantic import BaseModel
-from typing import List, Optional, Dict, Any
 import uuid
 from datetime import datetime
+from typing import Any, Dict, List, Optional
 
-from .storage.conversations import conversation_store
-from .providers.dispatcher import invoke_provider
-from .input_validation import InputSanitizer
-from .assistant_tools.registry import export_openai_tools
-from .assistant_tools.executor import run_tool_loop, extract_tool_calls
+from fastapi import APIRouter, HTTPException
+from pydantic import BaseModel
 
+from ..assistant_tools.executor import extract_tool_calls, run_tool_loop
+from ..assistant_tools.registry import export_openai_tools
+from ..input_validation import InputSanitizer
+from ..providers.dispatcher import invoke_provider
+from ..storage.conversations import conversation_store
 
 router = APIRouter(prefix="/semantic-chat", tags=["semantic-chat"])
+
+
+def _context_has_content(context: Dict[str, Any]) -> bool:
+    """Return True if the context dict contains any non-empty content."""
+    for value in context.values():
+        if isinstance(value, (list, dict)) and value:
+            return True
+        if isinstance(value, str) and value.strip():
+            return True
+    return False
 
 
 def _get_context_builder():
@@ -77,9 +87,7 @@ class ContextBundleResponse(BaseModel):
     "/conversations/{conversation_id}/messages",
     response_model=SemanticSendMessageResponse,
 )
-async def semantic_send_message(
-    conversation_id: str, request: SemanticSendMessageRequest
-):
+async def semantic_send_message(conversation_id: str, request: SemanticSendMessageRequest):
     """
     Send a message with semantic retrieval and context-aware responses
 
@@ -208,23 +216,17 @@ async def semantic_send_message(
             # Standardized outcome from our dispatcher
             result_data = provider_response.get("result", {})
             response_content = result_data.get("text", "")
-            used_provider = provider_response.get(
-                "provider", request.provider or "unknown"
-            )
+            used_provider = provider_response.get("provider", request.provider or "unknown")
             used_model = provider_response.get("model", request.model or "unknown")
         elif isinstance(provider_response, dict) and "choices" in provider_response:
             response_content = provider_response["choices"][0]["message"]["content"]
-            used_provider = provider_response.get(
-                "provider", request.provider or "unknown"
-            )
+            used_provider = provider_response.get("provider", request.provider or "unknown")
             used_model = provider_response.get("model", request.model or "unknown")
         else:
             # Check for error in dispatcher response
             if isinstance(provider_response, dict) and not provider_response.get("ok"):
                 error_msg = provider_response.get("error", "unknown-error")
-                raise HTTPException(
-                    status_code=500, detail=f"AI Provider error: {error_msg}"
-                )
+                raise HTTPException(status_code=500, detail=f"AI Provider error: {error_msg}")
 
             response_content = str(provider_response)
             used_provider = request.provider or "unknown"
@@ -241,9 +243,7 @@ async def semantic_send_message(
                 "model": used_model,
                 "message_id": response_message_id,
                 "semantic_context_used": context_used,
-                "context_tokens": context_bundle.get("total_tokens", 0)
-                if context_used
-                else 0,
+                "context_tokens": context_bundle.get("total_tokens", 0) if context_used else 0,
             },
         )
 
@@ -389,10 +389,8 @@ Summary:"""
             raise Exception("Failed to generate summary")
 
         # Store summary and its embedding
-        success = (
-            await retrieval_singleton.embedding_service.store_conversation_summary(
-                conversation_id=conversation_id, summary_text=summary_text
-            )
+        success = await retrieval_singleton.embedding_service.store_conversation_summary(
+            conversation_id=conversation_id, summary_text=summary_text
         )
 
         if not success:

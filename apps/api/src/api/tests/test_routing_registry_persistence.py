@@ -2,7 +2,8 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from api.routing.router import RoutingRegistry, RoutingRegistryStore
+from api.routing.registry_store import RoutingRegistryStore
+from api.routing.router_registry import RoutingRegistry
 
 
 def test_routing_registry_persists_stats_and_hourly_spend(tmp_path: Path):

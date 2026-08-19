@@ -7,15 +7,15 @@ import timeit
 
 import pytest
 
-from api.services.message_classifier import (
-    MessageClassifier,
-    MessageType,
-    MessageClassification,
-    classification_pipeline,
-)
-from api.services.memory_promotion_service import (
+from api.services.memory_promotion import (
     MemoryPromotionService,
     memory_promotion_service,
+)
+from api.services.message_classifier import (
+    MessageClassification,
+    MessageClassifier,
+    MessageType,
+    classification_pipeline,
 )
 from api.services.retrieval_service import RetrievalService
 from api.storage.conversations import conversation_store
@@ -93,9 +93,7 @@ class TestMemoryPromotion:
             reasoning="Fact pattern matched",
         )
 
-        facts = self.promotion_service._extract_facts_from_fact_message(
-            content, classification
-        )
+        facts = self.promotion_service._extract_facts_from_fact_message(content, classification)
 
         assert len(facts) > 0
         fact = facts[0]
@@ -211,20 +209,14 @@ class TestEndToEndPipeline:
             classifications.append(result)
 
         # Verify classifications
-        fact_classifications = [
-            c for c in classifications if c["classification"]["type"] == "fact"
-        ]
+        fact_classifications = [c for c in classifications if c["classification"]["type"] == "fact"]
         preference_classifications = [
             c for c in classifications if c["classification"]["type"] == "preference"
         ]
-        chat_classifications = [
-            c for c in classifications if c["classification"]["type"] == "chat"
-        ]
+        chat_classifications = [c for c in classifications if c["classification"]["type"] == "chat"]
 
         assert len(fact_classifications) >= 1, "Should have at least one fact"
-        assert len(preference_classifications) >= 1, (
-            "Should have at least one preference"
-        )
+        assert len(preference_classifications) >= 1, "Should have at least one preference"
         assert len(chat_classifications) >= 1, "Should have at least one chat message"
 
         # Test memory promotion
@@ -236,9 +228,7 @@ class TestEndToEndPipeline:
         assert promotion_result["promoted_facts"] >= 0, "Should promote some facts"
 
         # Test memory retrieval
-        memory_summary = await memory_promotion_service.get_memory_summary(
-            "test_user_123"
-        )
+        memory_summary = await memory_promotion_service.get_memory_summary("test_user_123")
 
         assert memory_summary["user_id"] == "test_user_123"
         assert memory_summary["total_facts"] >= 0
@@ -288,7 +278,9 @@ class TestPerformance:
 
     def test_classification_performance(self):
         """Test that classification is fast enough for real-time use"""
-        test_message = "I am a software engineer who loves Python and wants to learn machine learning"
+        test_message = (
+            "I am a software engineer who loves Python and wants to learn machine learning"
+        )
 
         def run_classifications():
             for _ in range(1000):
@@ -301,8 +293,7 @@ class TestPerformance:
 
         # Should be fast enough for real-time use (< 10ms per classification)
         assert avg_time < 0.01, (
-            "Classification too slow: "
-            f"{avg_time:.4f}s avg over best of 3 repeated 1000-call runs"
+            f"Classification too slow: {avg_time:.4f}s avg over best of 3 repeated 1000-call runs"
         )
 
     @pytest.mark.asyncio
