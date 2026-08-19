@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import asyncio
-import collections
 import os
 import time
 import uuid
@@ -11,6 +10,9 @@ from dataclasses import dataclass, field
 from typing import Any, Dict, List, Optional
 
 import structlog
+
+from .registry_store import RoutingRegistryStore  # noqa: F401 - re-exported compat surface
+from .router_registry import registry
 
 logger = structlog.get_logger()
 
@@ -58,99 +60,6 @@ class ProviderStats:
     def success_rate(self) -> float:
         total = self.success_count + self.failure_count
         return self.success_count / total if total > 0 else 1.0
-
-
-class RoutingRegistry:
-    _AUDIT_MAX = 1000  # ring buffer capacity for decision audit trail
-
-    def __init__(self) -> None:
-        self._stats: Dict[str, ProviderStats] = {}
-        self._decision_log: collections.deque = collections.deque(
-            maxlen=self._AUDIT_MAX
-        )
-
-    def get(self, provider_id: str) -> ProviderStats:
-        if provider_id not in self._stats:
-            self._stats[provider_id] = ProviderStats(provider_id=provider_id)
-        return self._stats[provider_id]
-
-    def record_success(
-        self,
-        provider_id: str,
-        latency_ms: float,
-        cost_usd: float = 0.0,
-        *,
-        request_id: Optional[str] = None,
-        input_tokens: Optional[int] = None,
-        output_tokens: Optional[int] = None,
-    ) -> None:
-        stats = self.get(provider_id)
-        stats.success_count += 1
-        stats.update_latency(latency_ms)
-        stats.update_cost(cost_usd)
-        stats.total_cost_usd += cost_usd
-        stats.last_used = time.time()
-        if request_id is not None:
-            self._decision_log.append(
-                {
-                    "event": "outcome",
-                    "request_id": request_id,
-                    "provider_id": provider_id,
-                    "actual_latency_ms": round(latency_ms, 2),
-                    "actual_cost_usd": round(cost_usd, 8),
-                    "input_tokens": input_tokens,
-                    "output_tokens": output_tokens,
-                    "timestamp": time.time(),
-                }
-            )
-
-    def record_failure(self, provider_id: str) -> None:
-        stats = self.get(provider_id)
-        stats.failure_count += 1
-        stats.last_used = time.time()
-
-    def log_decision(
-        self,
-        *,
-        request_id: str,
-        cost_weight: float,
-        candidates: List[str],
-        score_breakdown: Dict[str, Dict[str, float]],
-        rank_order: List[str],
-    ) -> None:
-        """Append a routing decision record to the audit trail."""
-        self._decision_log.append(
-            {
-                "event": "decision",
-                "request_id": request_id,
-                "cost_weight": cost_weight,
-                "candidates": candidates,
-                "score_breakdown": score_breakdown,
-                "rank_order": rank_order,
-                "timestamp": time.time(),
-            }
-        )
-
-    def get_audit_trail(self, limit: int = 200) -> List[Dict[str, Any]]:
-        """Return the most recent decision+outcome records."""
-        return list(self._decision_log)[-limit:]
-
-    def snapshot(self) -> Dict[str, Dict[str, Any]]:
-        return {
-            provider_id: {
-                "ewma_latency_ms": round(stats.ewma_latency_ms, 1),
-                "ewma_cost_per_request": round(stats.ewma_cost_per_request, 8),
-                "last_cost_per_request": round(stats.last_cost_per_request, 8),
-                "is_cost_favorable": stats.is_cost_favorable,
-                "success_rate": round(stats.success_rate, 3),
-                "total_cost_usd": round(stats.total_cost_usd, 6),
-                "last_used": stats.last_used,
-            }
-            for provider_id, stats in self._stats.items()
-        }
-
-
-registry = RoutingRegistry()
 
 
 class LatencyRouter:
@@ -213,12 +122,9 @@ class HybridRouter:
             # Paper-buying agent pattern: when a provider's recent observed cost
             # is below 90% of its running average, treat it as 25% cheaper so
             # it floats up in the ranking (lower score = ranked higher).
-            effective_cost = normalized_cost * (
-                0.75 if stats.is_cost_favorable else 1.0
-            )
+            effective_cost = normalized_cost * (0.75 if stats.is_cost_favorable else 1.0)
             final = (
-                (1 - self.cost_weight) * normalized_latency
-                + self.cost_weight * effective_cost
+                (1 - self.cost_weight) * normalized_latency + self.cost_weight * effective_cost
             ) / reliability
             breakdown[provider_id] = {
                 "normalized_latency": round(normalized_latency, 4),
@@ -295,9 +201,7 @@ class ModelTierRouter:
 
 latency_router = LatencyRouter()
 cost_router = CostRouter()
-hybrid_router = HybridRouter(
-    cost_weight=float(os.getenv("ROUTING_COST_WEIGHT", "0.35"))
-)
+hybrid_router = HybridRouter(cost_weight=float(os.getenv("ROUTING_COST_WEIGHT", "0.35")))
 tier_router = ModelTierRouter()
 
 
@@ -369,9 +273,7 @@ async def route_task(
     for provider_id in candidates:
         result = await dispatch.invoke_provider(
             provider_id=provider_id,
-            model=payload.get("model")
-            if isinstance(payload.get("model"), str)
-            else None,
+            model=payload.get("model") if isinstance(payload.get("model"), str) else None,
             payload=payload,
             timeout_ms=int(payload.get("timeout_ms", 30000)),
             stream=stream,

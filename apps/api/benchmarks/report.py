@@ -61,13 +61,9 @@ def aggregate(rows: List[Dict[str, Any]]) -> Dict[str, Dict[str, Any]]:
         successes = [r for r in records if r.get("success")]
         fallbacks = [r for r in records if r.get("used_fallback")]
         costs = [r["cost_usd"] for r in successes if r.get("cost_usd") is not None]
-        latencies = [
-            r["latency_ms"] for r in successes if r.get("latency_ms") is not None
-        ]
+        latencies = [r["latency_ms"] for r in successes if r.get("latency_ms") is not None]
         ttfts = [r["ttft_ms"] for r in successes if r.get("ttft_ms") is not None]
-        qualities = [
-            r["quality_score"] for r in records if r.get("quality_score") is not None
-        ]
+        qualities = [r["quality_score"] for r in records if r.get("quality_score") is not None]
 
         provider_counts: Dict[str, int] = defaultdict(int)
         for r in successes:
@@ -77,9 +73,7 @@ def aggregate(rows: List[Dict[str, Any]]) -> Dict[str, Dict[str, Any]]:
         category_quality: Dict[str, List[float]] = defaultdict(list)
         for r in records:
             if r.get("quality_score") is not None:
-                category_quality[r.get("category", "unknown")].append(
-                    r["quality_score"]
-                )
+                category_quality[r.get("category", "unknown")].append(r["quality_score"])
 
         result[strategy] = {
             "n": n,
@@ -143,16 +137,12 @@ def print_summary(agg: Dict[str, Dict[str, Any]]) -> str:
         )
 
     # Per-category quality breakdown
-    categories = sorted(
-        {cat for d in agg.values() for cat in d["category_quality"].keys()}
-    )
+    categories = sorted({cat for d in agg.values() for cat in d["category_quality"]})
     if categories:
         lines.append("\n" + "─" * 72)
         lines.append("  QUALITY BY CATEGORY")
         lines.append("─" * 72)
-        cat_header = f"  {'Category':<18}" + "".join(
-            f"{s[:10]:>12}" for s in strategies
-        )
+        cat_header = f"  {'Category':<18}" + "".join(f"{s[:10]:>12}" for s in strategies)
         lines.append(cat_header)
         lines.append("  " + "-" * 66)
         for cat in categories:
@@ -187,15 +177,11 @@ def print_summary(agg: Dict[str, Dict[str, Any]]) -> str:
 
         quality_gap_vs_strongest = g["avg_quality"] - s["avg_quality"]
         cost_savings_vs_strongest = (
-            (1 - g["avg_cost_usd"] / s["avg_cost_usd"]) * 100
-            if s["avg_cost_usd"] > 0
-            else 0
+            (1 - g["avg_cost_usd"] / s["avg_cost_usd"]) * 100 if s["avg_cost_usd"] > 0 else 0
         )
         ttft_delta_vs_strongest = g["avg_ttft_ms"] - s["avg_ttft_ms"]
         ttft_speedup_vs_strongest = (
-            (1 - g["avg_ttft_ms"] / s["avg_ttft_ms"]) * 100
-            if s["avg_ttft_ms"] > 0
-            else 0
+            (1 - g["avg_ttft_ms"] / s["avg_ttft_ms"]) * 100 if s["avg_ttft_ms"] > 0 else 0
         )
         quality_vs_cheapest = g["avg_quality"] - c["avg_quality"]
 
@@ -204,38 +190,26 @@ def print_summary(agg: Dict[str, Dict[str, Any]]) -> str:
             f"  cost savings {cost_savings_vs_strongest:.1f}%,"
             f"  TTFT delta {ttft_delta_vs_strongest:+.0f} ms"
         )
-        lines.append(
-            f"  Goblin vs cheapest:   quality delta {quality_vs_cheapest:+.3f}"
-        )
+        lines.append(f"  Goblin vs cheapest:   quality delta {quality_vs_cheapest:+.3f}")
         if r:
             lines.append(
                 f"  Goblin vs random:     quality delta {g['avg_quality'] - r['avg_quality']:+.3f}, "
                 f"  cost delta {g['avg_cost_usd'] - r['avg_cost_usd']:+.5f}"
             )
-        lines.append(
-            f"  Goblin TTFT vs strongest: {ttft_speedup_vs_strongest:.1f}% faster"
-        )
+        lines.append(f"  Goblin TTFT vs strongest: {ttft_speedup_vs_strongest:.1f}% faster")
 
         if quality_gap_vs_strongest >= -0.05 and cost_savings_vs_strongest >= 15:
-            lines.append(
-                "\n  ✓ Goblin achieves comparable quality at meaningfully lower cost."
-            )
+            lines.append("\n  ✓ Goblin achieves comparable quality at meaningfully lower cost.")
             lines.append("    The routing moat is working.")
         elif quality_gap_vs_strongest >= 0 and cost_savings_vs_strongest >= 5:
-            lines.append(
-                "\n  ~ Goblin is cost-efficient but the savings margin is thin."
-            )
+            lines.append("\n  ~ Goblin is cost-efficient but the savings margin is thin.")
             lines.append("    Check if cheapest-capable model thresholds need tuning.")
         elif quality_vs_cheapest > 0.05:
-            lines.append(
-                "\n  ~ Goblin improves over cheapest but costs more than strongest."
-            )
+            lines.append("\n  ~ Goblin improves over cheapest but costs more than strongest.")
             lines.append("    Routing logic may be over-selecting premium providers.")
         else:
             lines.append("\n  ✗ Goblin's routing is not yet differentiated.")
-            lines.append(
-                "    Review the scoring weights and context window thresholds."
-            )
+            lines.append("    Review the scoring weights and context window thresholds.")
 
     lines.append("\n" + "=" * 72 + "\n")
     output = "\n".join(lines)
@@ -264,9 +238,7 @@ def write_markdown(agg: Dict[str, Dict[str, Any]], out_path: Path) -> None:
             f"| {d['avg_quality']:.3f} |"
         )
 
-    categories = sorted(
-        {cat for d in agg.values() for cat in d["category_quality"].keys()}
-    )
+    categories = sorted({cat for d in agg.values() for cat in d["category_quality"]})
     if categories:
         lines.append("\n## Quality by Category\n")
         header = "| Category |" + "".join(f" {s} |" for s in strategies)

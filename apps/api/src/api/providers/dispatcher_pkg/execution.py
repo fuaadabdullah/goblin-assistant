@@ -83,6 +83,28 @@ async def _record_provider_failure(
     )
 
 
+async def _record_provider_observation(
+    provider_id: str,
+    *,
+    ok: bool,
+    latency_ms: float = 0.0,
+    error: Optional[str] = None,
+    error_category: Optional[str] = None,
+) -> None:
+    try:
+        from ...services.provider_health import health_monitor
+
+        await health_monitor.observe_request(
+            provider_id,
+            ok=ok,
+            latency_ms=latency_ms,
+            error=error,
+            error_category=error_category,
+        )
+    except Exception:
+        return
+
+
 async def stream_wrap(
     dispatcher: Any,
     provider_id: str,
@@ -115,6 +137,7 @@ async def stream_wrap(
         provider.record_success()
         dispatcher.record_routing_outcome(provider_id, ok=True, latency_ms=latency, cost_usd=0.0)
         dispatcher.note_provider_result(provider_id, ok=True, latency_ms=latency)
+        await _record_provider_observation(provider_id, ok=True, latency_ms=latency)
         record_dispatch(
             provider_id=provider_id,
             model=model,
@@ -141,6 +164,12 @@ async def stream_wrap(
             provider,
             safe_error,
             category=error_category,
+        )
+        await _record_provider_observation(
+            provider_id,
+            ok=False,
+            error=safe_error,
+            error_category=error_category,
         )
         dispatcher.record_routing_outcome(provider_id, ok=False)
         dispatcher.note_provider_result(provider_id, ok=False, error=safe_error)
@@ -343,6 +372,11 @@ async def _execute_dispatch_attempt_impl(
                     actual_input_tokens=reservation.estimated_input_tokens,
                     actual_output_tokens=reservation.estimated_output_tokens,
                 )
+                await _record_provider_observation(
+                    provider_id,
+                    ok=True,
+                    latency_ms=float(result.latency_ms or 0.0),
+                )
                 return (
                     {
                         "ok": True,
@@ -361,6 +395,13 @@ async def _execute_dispatch_attempt_impl(
                 current_provider,
                 error_msg,
                 category=error_cat,
+            )
+            await _record_provider_observation(
+                provider_id,
+                ok=False,
+                latency_ms=float(result.latency_ms or 0.0),
+                error=error_msg,
+                error_category=error_cat.value if error_cat else None,
             )
             dispatcher.record_routing_outcome(provider_id, ok=False)
             dispatcher.note_provider_result(provider_id, ok=False, error=error_msg)
@@ -488,6 +529,13 @@ async def _execute_dispatch_attempt_impl(
         await _record_provider_failure(
             provider_id, current_provider, timeout_error, category=ProviderErrorCategory.TIMEOUT
         )
+        await _record_provider_observation(
+            provider_id,
+            ok=False,
+            latency_ms=float(timeout_ms),
+            error=timeout_error,
+            error_category=ProviderErrorCategory.TIMEOUT.value,
+        )
         dispatcher.record_routing_outcome(provider_id, ok=False)
         dispatcher.note_provider_result(provider_id, ok=False, error=timeout_error)
         record_dispatch(
@@ -509,6 +557,12 @@ async def _execute_dispatch_attempt_impl(
         error_msg = dispatcher._sanitize_error(exc)
         error_cat = classify_provider_error(exc)
         await _record_provider_failure(provider_id, current_provider, error_msg, category=error_cat)
+        await _record_provider_observation(
+            provider_id,
+            ok=False,
+            error=error_msg,
+            error_category=error_cat.value,
+        )
         dispatcher.record_routing_outcome(provider_id, ok=False)
         dispatcher.note_provider_result(provider_id, ok=False, error=error_msg)
         record_dispatch(

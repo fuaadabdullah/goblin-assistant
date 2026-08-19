@@ -8,6 +8,8 @@ providers, no environment variables, no filesystem access.
 
 from __future__ import annotations
 
+from unittest.mock import patch
+
 import pytest
 
 from api.providers.base import BaseProvider, ProviderHealth, ProviderResult
@@ -257,7 +259,11 @@ class TestCandidateOrder:
 
     def test_auto_returns_multiple_candidates(self):
         d = _make_dispatcher({"a": {}, "b": {}, "c": {}})
-        order = d._candidate_order("auto")
+        with patch(
+            "api.services.provider_health.health_monitor.is_available",
+            side_effect=lambda provider_id: provider_id in {"a", "b", "c"},
+        ):
+            order = d._candidate_order("auto")
         assert len(order) >= 1
         assert set(order).issubset({"a", "b", "c"})
 
@@ -312,7 +318,11 @@ class TestDryRun:
                 "pricey": {"cost_input_per_1k": 5.0, "cost_output_per_1k": 5.0},
             }
         )
-        result = await d.dispatch(None, None, {}, dry_run=True)
+        with patch(
+            "api.services.provider_health.health_monitor.get_available_providers",
+            return_value=["cheap", "pricey"],
+        ):
+            result = await d.dispatch(None, None, {}, dry_run=True)
         assert result["ok"] is True
         providers_in_order = [c["provider"] for c in result["candidate_order"]]
         assert set(providers_in_order) == {"cheap", "pricey"}
@@ -332,7 +342,11 @@ class TestDryRun:
     @pytest.mark.asyncio
     async def test_dry_run_auto_mode_label(self):
         d = _make_dispatcher({"openai": {}})
-        result = await d.dispatch(None, None, {}, dry_run=True)
+        with patch(
+            "api.services.provider_health.health_monitor.get_available_providers",
+            return_value=["openai"],
+        ):
+            result = await d.dispatch(None, None, {}, dry_run=True)
         assert result["routing_mode"] == "auto"
 
     @pytest.mark.asyncio
@@ -345,12 +359,16 @@ class TestDryRun:
                 }
             }
         )
-        result = await d.dispatch(
-            None,
-            None,
-            {"messages": [{"role": "user", "content": "hi"}]},
-            dry_run=True,
-        )
+        with patch(
+            "api.services.provider_health.health_monitor.get_available_providers",
+            return_value=["siliconeflow"],
+        ):
+            result = await d.dispatch(
+                None,
+                None,
+                {"messages": [{"role": "user", "content": "hi"}]},
+                dry_run=True,
+            )
         assert result["ok"] is True
         assert result["resolved_provider"] == "siliconeflow"
         assert result["resolved_model"] == "Qwen/Qwen2.5-72B-Instruct"

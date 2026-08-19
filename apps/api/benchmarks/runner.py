@@ -43,8 +43,8 @@ from __future__ import annotations
 import argparse
 import asyncio
 import json
-import time
 import sys
+import time
 import uuid
 from datetime import datetime, timezone
 from pathlib import Path
@@ -230,11 +230,7 @@ async def _invoke_with_ttft(
             output_tokens = count_tokens(text)
     except Exception:
         pass
-    if (
-        cost_usd is None
-        and result.get("provider")
-        and result.get("model")
-    ):
+    if cost_usd is None and result.get("provider") and result.get("model"):
         try:
             from api.providers.pricing import estimate_cost  # noqa: PLC0415
 
@@ -304,16 +300,12 @@ async def run_one(
         candidate_order = dispatcher._candidate_order(pid)  # noqa: SLF001
         configured_candidates = dispatcher._auto_configured_candidates(candidate_order)  # noqa: SLF001
         if not configured_candidates:
-            configured_candidates = [
-                p for p in candidate_order if dispatcher.is_configured(p)
-            ]
+            configured_candidates = [p for p in candidate_order if dispatcher.is_configured(p)]
         baseline_provider = configured_candidates[0] if configured_candidates else None
         if baseline_provider is not None:
             baseline_model = dispatcher.get_provider_config(baseline_provider).get("default_model")
     used_fallback = bool(
-        baseline_provider
-        and result.get("provider")
-        and result.get("provider") != baseline_provider
+        baseline_provider and result.get("provider") and result.get("provider") != baseline_provider
     )
 
     # Score quality
@@ -324,12 +316,7 @@ async def run_one(
 
     # Cost estimate: use reported cost, fall back to pricing module
     cost = result.get("cost_usd")
-    if (
-        cost is None
-        and succeeded
-        and result.get("input_tokens")
-        and result.get("output_tokens")
-    ):
+    if cost is None and succeeded and result.get("input_tokens") and result.get("output_tokens"):
         try:
             from api.providers.pricing import estimate_cost  # noqa: PLC0415
 
@@ -372,7 +359,11 @@ async def run_one(
         status = "✓" if succeeded else "✗"
         q = f"q={quality:.2f}"
         lat = f"{result.get('latency_ms', 0):.0f}ms"
-        ttft = f"ttft={result.get('ttft_ms', 0):.0f}ms" if result.get("ttft_ms") is not None else "ttft=n/a"
+        ttft = (
+            f"ttft={result.get('ttft_ms', 0):.0f}ms"
+            if result.get("ttft_ms") is not None
+            else "ttft=n/a"
+        )
         cost_str = f"${cost:.5f}" if cost else "  free"
         prov = result.get("provider") or "?"
         print(
@@ -424,21 +415,23 @@ async def run_benchmark(
         print("  [dry-run] Stopping before API calls.\n")
         return []
 
+    from api.services.provider_health import health_monitor  # noqa: PLC0415
+
+    await health_monitor.refresh(include_hidden=False, deep_probe=True)
+
     sem = asyncio.Semaphore(concurrency)
     records: List[Dict[str, Any]] = []
 
     out_path.parent.mkdir(parents=True, exist_ok=True)
 
-    with open(out_path, "w") as f:
+    with open(out_path, "w") as f:  # noqa: ASYNC230
         completed = 0
         for prompt in prompts:
             if verbose:
                 print(
-                f"\n  {prompt['id']} [{prompt['category']}] difficulty={prompt['difficulty']}"
-            )
-                print(
-                    f"  {prompt['prompt'][:80]}{'...' if len(prompt['prompt']) > 80 else ''}"
+                    f"\n  {prompt['id']} [{prompt['category']}] difficulty={prompt['difficulty']}"
                 )
+                print(f"  {prompt['prompt'][:80]}{'...' if len(prompt['prompt']) > 80 else ''}")
 
             tasks = [
                 run_one(
@@ -470,9 +463,7 @@ async def run_benchmark(
                 bar_len = 30
                 filled = int(pct / 100 * bar_len)
                 bar = "█" * filled + "░" * (bar_len - filled)
-                print(
-                    f"\r  [{bar}] {pct:5.1f}%  {completed}/{total}", end="", flush=True
-                )
+                print(f"\r  [{bar}] {pct:5.1f}%  {completed}/{total}", end="", flush=True)
 
     if not verbose:
         print()

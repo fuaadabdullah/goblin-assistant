@@ -246,7 +246,7 @@ def auto_configured_candidates(
             return healthy
     except Exception:
         pass
-    return configured
+    return []
 
 
 def candidate_order(

@@ -27,22 +27,68 @@ from __future__ import annotations
 import argparse
 import asyncio
 import json
+import os
 import sys
 import uuid
 from datetime import datetime, timezone
 from pathlib import Path
+from tempfile import TemporaryDirectory
 from typing import Any, Dict, List, Optional
+
+from sqlalchemy import create_engine
 
 HERE = Path(__file__).resolve().parent
 DATASET_PATH = HERE / "dataset" / "scenarios.jsonl"
 RESULTS_DIR = HERE / "results"
 
 # Bootstrap sys.path regardless of CWD.
-_api_root = HERE.parents[2]  # apps/api/
+# `HERE` is `apps/api/benchmarks/memory`, so `parents[1]` is `apps/api/`.
+_api_root = HERE.parents[1]
 _src = _api_root / "src"
 for _p in (_src, _api_root):
     if _p.exists() and str(_p) not in sys.path:
         sys.path.insert(0, str(_p))
+
+_benchmark_db_tmpdir: TemporaryDirectory[str] | None = None
+
+
+def _prepare_benchmark_database() -> Optional[Path]:
+    """
+    Ensure the benchmark DB has the current typed memory schema expected by
+    the memory core. For local SQLite runs, create a fresh temporary database
+    from the ORM metadata so the benchmark stays self-contained and never
+    mutates the tracked dev database.
+    """
+
+    global _benchmark_db_tmpdir
+
+    database_url = (
+        os.getenv("DATABASE_URL", "").strip() or "sqlite+aiosqlite:///./goblin_assistant.db"
+    )
+    if not database_url:
+        return None
+
+    if not database_url.lower().startswith("sqlite"):
+        return None
+
+    _benchmark_db_tmpdir = TemporaryDirectory(prefix="goblin-memory-bench-")
+    temp_path = Path(_benchmark_db_tmpdir.name) / "goblin_assistant.db"
+    temp_url = f"sqlite+aiosqlite:///{temp_path}"
+    os.environ["DATABASE_URL"] = temp_url
+
+    # Import the current ORM metadata before materializing the temp schema.
+    import api.storage.feedback_models  # noqa: F401, PLC0415
+    import api.storage.profile_model  # noqa: F401, PLC0415
+    import api.storage.vector_models  # noqa: F401, PLC0415
+    from api.storage.models import Base  # noqa: PLC0415
+
+    engine = create_engine(f"sqlite:///{temp_path}", future=True)
+    try:
+        Base.metadata.create_all(bind=engine)
+    finally:
+        engine.dispose()
+
+    return temp_path
 
 
 # ---------------------------------------------------------------------------
@@ -86,6 +132,9 @@ async def run_memory_benchmark(
     from benchmarks.memory.scorer import ScenarioScore, score_query  # noqa: PLC0415
     from benchmarks.memory.seeder import delete_bench_user, seed_all  # noqa: PLC0415
 
+    os.environ.setdefault("EMBEDDING_PROVIDER", "mock")
+    os.environ.setdefault("EMBEDDING_DIMENSION", "1536")
+
     user_id = f"bench-{run_id}"
     total_facts = sum(len(s["facts"]) for s in scenarios)
     total_queries = sum(len(s["queries"]) for s in scenarios)
@@ -107,6 +156,10 @@ async def run_memory_benchmark(
                 exp = q.get("expected_fact_ids", [])
                 print(f"    [{q['query_id']}] d={q['difficulty']} expected={exp}")
         return
+
+    temp_db_path = _prepare_benchmark_database()
+    if verbose and temp_db_path is not None:
+        print(f"  Using temporary benchmark DB: {temp_db_path}")
 
     # --- PHASE 1: SEED -------------------------------------------------------
     print("  Phase 1: Seeding facts...")

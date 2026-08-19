@@ -21,7 +21,6 @@ import re
 from dataclasses import dataclass, field
 from typing import Any, Dict, List, Optional
 
-
 REFUSAL_PATTERNS: list[re.Pattern] = [
     re.compile(r"\bI cannot\b", re.I),
     re.compile(r"\bI'm unable to\b", re.I),
@@ -172,9 +171,7 @@ class LLMJudge:
 
         import hashlib  # noqa: PLC0415
 
-        cache_key = hashlib.sha256(
-            f"{prompt['id']}:{response_text[:500]}".encode()
-        ).hexdigest()
+        cache_key = hashlib.sha256(f"{prompt['id']}:{response_text[:500]}".encode()).hexdigest()
         if cache_key in self._cache:
             return self._cache[cache_key]
 

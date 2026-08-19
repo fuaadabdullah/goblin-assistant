@@ -334,16 +334,20 @@ async def test_check_redis_health_success_and_failure() -> None:
 @pytest.mark.asyncio
 async def test_check_routing_health_success_and_failure() -> None:
     with patch(
-        "api.departments.DEPARTMENT_REGISTRY.list_ids",
-        return_value=["openai", "anthropic"],
+        "api.services.provider_health.health_monitor.get_all_status",
+        return_value={
+            "openai": {"configured": True, "status": "healthy"},
+            "anthropic": {"configured": True, "status": "unknown"},
+        },
     ):
         healthy = await health.check_routing_health()
 
     assert healthy["status"] == "healthy"
-    assert healthy["providers_available"] == 2
+    assert healthy["providers_available"] == 1
+    assert healthy["providers_configured"] == 2
 
     with patch(
-        "api.departments.DEPARTMENT_REGISTRY.list_ids",
+        "api.services.provider_health.health_monitor.get_all_status",
         side_effect=RuntimeError("router exploded"),
     ):
         degraded = await health.check_routing_health()

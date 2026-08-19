@@ -1,368 +1,110 @@
-"""Tests for api.services.provider_health."""
-
 from __future__ import annotations
 
-from unittest.mock import AsyncMock, MagicMock, patch
+from types import SimpleNamespace
+from unittest.mock import AsyncMock
 
 import pytest
 
-from api.providers.domain import ProviderHealthSnapshot, ProviderHealthStatus
-from api.services.provider_health import (
-    HealthStatus,
-    ProviderHealth,
-    ProviderHealthMonitor,
-    ProviderHealthState,
-)
-
-
-def test_provider_health_record_success_updates_state():
-    state = ProviderHealth(provider_id="openai")
-
-    state.record_success(123.4)
-
-    assert state.status == HealthStatus.HEALTHY
-    assert state.last_success is not None
-    assert state.last_error is None
-    assert state.consecutive_failures == 0
-    assert state.avg_latency_ms == 123.4
-    assert state.latency_percentiles_ms == {
-        "p50": 123.4,
-        "p90": 123.4,
-        "p95": 123.4,
-        "p99": 123.4,
-    }
-
-
-def test_provider_health_record_failure_transitions_status():
-    state = ProviderHealth(provider_id="openai")
-
-    state.record_failure("timeout")
-    assert state.status == HealthStatus.DEGRADED
-    state.record_failure("timeout")
-    state.record_failure("timeout")
-
-    assert state.status == HealthStatus.UNHEALTHY
-    assert state.consecutive_failures == 3
-
-
-def test_get_status_exposes_latency_percentiles():
-    monitor = ProviderHealthMonitor()
-    state = ProviderHealth(provider_id="openai", configured=True)
-    for latency_ms in [10.0, 20.0, 30.0, 40.0, 50.0]:
-        state.record_success(latency_ms)
-    monitor.health_data["openai"] = state
-
-    status = monitor.get_status("openai")
-
-    assert status["avg_latency_ms"] == 30.0
-    assert status["latency_sample_count"] == 5
-    assert status["latency_percentiles_ms"]["p50"] == 30.0
-    assert status["latency_percentiles_ms"]["p95"] == 48.0
+from api.services import provider_health
+from api.services.provider_health import ProviderHealth, ProviderHealthService
 
 
 @pytest.mark.asyncio
-async def test_refresh_updates_health_data():
-    monitor = ProviderHealthMonitor()
-    inventory = [
-        {
-            "id": "openai",
-            "configured": True,
-            "healthy": True,
-            "latency_ms": 42,
-        },
-        {
-            "id": "mock",
-            "configured": False,
-            "healthy": False,
-            "health_reason": "not configured",
-        },
-    ]
+async def test_passive_observation_updates_available_state() -> None:
+    service = ProviderHealthService(
+        check_interval=1.0,
+        probe_timeout_seconds=1.0,
+        startup_jitter_seconds=0.0,
+        periodic_jitter_seconds=0.0,
+    )
+    service.health_data["openai"] = ProviderHealth(provider_id="openai", configured=True)
 
-    fake_stats = MagicMock()
-    fake_stats.success_rate = 0.97
+    await service.observe_request("openai", ok=True, latency_ms=125.0)
 
-    with (
-        patch(
-            "api.services.provider_health.dispatcher.get_provider_inventory",
-            new_callable=AsyncMock,
-            return_value=inventory,
-        ),
-        patch(
-            "api.services.provider_health.registry.get",
-            return_value=fake_stats,
-        ),
-    ):
-        result = await monitor.refresh(include_hidden=False)
-
-    assert "openai" in result
-    assert result["openai"].status == HealthStatus.HEALTHY
-    assert result["mock"].status == HealthStatus.UNKNOWN
+    status = service.get_status("openai")
+    assert status["status"] == "healthy"
+    assert status["availability_state"] == "healthy"
+    assert status["latency_ewma_ms"] == pytest.approx(125.0)
+    assert service.is_available("openai") is True
 
 
 @pytest.mark.asyncio
-async def test_refresh_emits_jira_once_for_unhealthy_transition() -> None:
-    monitor = ProviderHealthMonitor()
-    fake_stats = MagicMock()
-    fake_stats.success_rate = 0.12
-    inventory = [
-        {
-            "id": "openai",
-            "configured": True,
-            "healthy": False,
-            "health_reason": "timeout",
-        }
-    ]
-
-    with (
-        patch(
-            "api.services.provider_health.dispatcher.get_provider_inventory",
-            new_callable=AsyncMock,
-            return_value=inventory,
-        ),
-        patch("api.services.provider_health.registry.get", return_value=fake_stats),
-        patch("api.services.provider_health._push_status"),
-        patch(
-            "api.services.provider_health.event_emitter.emit",
-            new_callable=AsyncMock,
-        ),
-        patch(
-            "api.services.provider_health.publish_provider_health_incident",
-            new_callable=AsyncMock,
-            return_value=True,
-        ) as publish_incident,
-    ):
-        await monitor.refresh(include_hidden=False)
-        await monitor.refresh(include_hidden=False)
-
-    publish_incident.assert_awaited_once()
-
-
-@pytest.mark.asyncio
-async def test_refresh_does_not_emit_jira_for_steady_state_healthy_provider() -> None:
-    monitor = ProviderHealthMonitor()
-    fake_stats = MagicMock()
-    fake_stats.success_rate = 0.99
-    inventory = [
-        {
-            "id": "openai",
-            "configured": True,
-            "healthy": True,
-            "latency_ms": 18,
-        }
-    ]
-
-    with (
-        patch.dict(
-            "os.environ",
-            {
-                "JIRA_PROVIDER_OPS_WEBHOOK_URL": "https://jira.example/webhook",
-                "JIRA_PROVIDER_OPS_PROJECT_KEY": "PROVOPS",
-            },
-            clear=False,
-        ),
-        patch(
-            "api.services.provider_health.dispatcher.get_provider_inventory",
-            new_callable=AsyncMock,
-            return_value=inventory,
-        ),
-        patch("api.services.provider_health.registry.get", return_value=fake_stats),
-        patch("api.services.provider_health._push_status"),
-        patch(
-            "api.services.provider_health.event_emitter.emit",
-            new_callable=AsyncMock,
-        ),
-        patch(
-            "api.ops.integrations.jira.post_jira_provider_ops_payload",
-            new_callable=AsyncMock,
-            return_value=True,
-        ) as post_payload,
-    ):
-        await monitor.refresh(include_hidden=False)
-        await monitor.refresh(include_hidden=False)
-
-    post_payload.assert_not_awaited()
-
-
-@pytest.mark.asyncio
-async def test_validate_configured_credentials_groups_ids():
-    monitor = ProviderHealthMonitor()
-    inventory = [
-        {"id": "openai", "configured": True, "is_selectable": True},
-        {"id": "mock", "configured": False, "is_selectable": False},
-    ]
-
-    with patch(
-        "api.services.provider_health.dispatcher.get_provider_inventory",
-        new_callable=AsyncMock,
-        return_value=inventory,
-    ):
-        result = await monitor.validate_configured_credentials()
-
-    assert result["configured"] == ["openai"]
-    assert result["selectable"] == ["openai"]
-    assert result["unconfigured"] == ["mock"]
-
-
-@pytest.mark.asyncio
-async def test_probe_provider_updates_state():
-    monitor = ProviderHealthMonitor()
-    fake_stats = MagicMock()
-    fake_stats.success_rate = 0.91
-
-    with (
-        patch(
-            "api.services.provider_health.dispatcher.check_provider",
-            new_callable=AsyncMock,
+async def test_probe_provider_transitions_unknown_to_healthy(monkeypatch) -> None:
+    dispatcher = SimpleNamespace(
+        check_provider=AsyncMock(
             return_value={
                 "configured": True,
                 "healthy": True,
-                "latency_ms": 18,
-                "health_reason": None,
-            },
+                "billing_issue": False,
+                "latency_ms": 42.0,
+                "health_reason": "",
+            }
         ),
-        patch(
-            "api.services.provider_health.registry.get",
-            return_value=fake_stats,
+        is_configured=lambda provider_id: True,
+        get_provider_config=lambda provider_id: {"default_model": "gpt-4o-mini"},
+        get_provider=lambda provider_id: SimpleNamespace(
+            warmup=AsyncMock(return_value=SimpleNamespace(ok=True, latency_ms=11.0))
         ),
-        patch(
-            "api.services.provider_health.canonical_provider_id",
-            return_value="openai",
-        ),
-    ):
-        status = await monitor.probe_provider("openai")
+    )
+    monkeypatch.setattr(provider_health, "_dispatcher", lambda: dispatcher)
 
-    assert status["status"] == HealthStatus.HEALTHY.value
+    service = ProviderHealthService(
+        check_interval=1.0,
+        probe_timeout_seconds=1.0,
+        startup_jitter_seconds=0.0,
+        periodic_jitter_seconds=0.0,
+    )
+
+    await service.probe_provider("openai")
+
+    status = service.get_status("openai")
+    assert status["status"] == "healthy"
     assert status["configured"] is True
+    assert status["latency_ewma_ms"] == pytest.approx(42.0)
+    assert service.is_available("openai") is True
+    assert dispatcher.check_provider.await_count == 1
 
 
-def test_is_available_uses_cached_state():
-    monitor = ProviderHealthMonitor()
-    state = ProviderHealth(provider_id="openai", configured=True)
-    state.status = HealthStatus.DEGRADED
-    monitor.health_data["openai"] = state
-
-    assert monitor.is_available("openai") is True
-
-
-def test_is_available_falls_back_to_dispatcher_when_cache_missing():
-    monitor = ProviderHealthMonitor()
-    provider = MagicMock()
-    provider.is_available.return_value = True
-
-    with (
-        patch("api.services.provider_health.dispatcher.get_provider", return_value=provider),
-        patch("api.services.provider_health.dispatcher.is_configured", return_value=True),
-    ):
-        assert monitor.is_available("openai") is True
-
-
-def test_get_status_unknown_provider_returns_error():
-    monitor = ProviderHealthMonitor()
-
-    with patch(
-        "api.services.provider_health.dispatcher.get_provider_config",
-        return_value=None,
-    ):
-        result = monitor.get_status("missing")
-
-    assert result["error"] == "Unknown provider: missing"
-
-
-def test_get_all_status_excludes_hidden_cached_providers_by_default():
-    monitor = ProviderHealthMonitor()
-    monitor.health_data = {
-        "visible": ProviderHealth(provider_id="visible"),
-        "hidden": ProviderHealth(provider_id="hidden"),
-    }
-
-    with patch(
-        "api.services.provider_health.dispatcher.provider_ids",
-        side_effect=lambda include_hidden=False: (
-            ["visible", "hidden"] if include_hidden else ["visible"]
+@pytest.mark.asyncio
+async def test_start_schedules_background_probe_without_blocking(monkeypatch) -> None:
+    dispatcher = SimpleNamespace(
+        list_providers=lambda include_hidden=False: [{"id": "openai", "configured": True}],
+        is_configured=lambda provider_id: True,
+        check_provider=AsyncMock(
+            return_value={
+                "configured": True,
+                "healthy": True,
+                "billing_issue": False,
+                "latency_ms": 10.0,
+                "health_reason": "",
+            }
         ),
-    ):
-        assert set(monitor.get_all_status()) == {"visible"}
-        assert set(monitor.get_all_status(include_hidden=True)) == {"hidden", "visible"}
+        get_provider_config=lambda provider_id: {"default_model": "gpt-4o-mini"},
+        get_provider=lambda provider_id: SimpleNamespace(
+            warmup=AsyncMock(return_value=SimpleNamespace(ok=True, latency_ms=10.0))
+        ),
+    )
+    monkeypatch.setattr(provider_health, "_dispatcher", lambda: dispatcher)
 
+    created: list[object] = []
 
-def test_get_best_providers_sorts_by_latency_and_success_rate():
-    monitor = ProviderHealthMonitor()
+    def fake_create_task(coro):
+        coro.close()
+        task = SimpleNamespace(cancel=lambda: None)
+        created.append(task)
+        return task
 
-    fast = ProviderHealth(provider_id="fast", configured=True)
-    fast.status = HealthStatus.HEALTHY
-    fast.avg_latency_ms = 10
-    fast.success_rate = 0.99
+    monkeypatch.setattr(provider_health.asyncio, "create_task", fake_create_task)
 
-    slow = ProviderHealth(provider_id="slow", configured=True)
-    slow.status = HealthStatus.HEALTHY
-    slow.avg_latency_ms = 50
-    slow.success_rate = 0.95
+    service = ProviderHealthService(
+        check_interval=1.0,
+        probe_timeout_seconds=1.0,
+        startup_jitter_seconds=0.0,
+        periodic_jitter_seconds=0.0,
+    )
 
-    monitor.health_data = {"fast": fast, "slow": slow}
+    await service.start()
 
-    assert monitor.get_best_providers(limit=1) == ["fast"]
-
-
-class TestTypedHealthBridge:
-    def test_provider_health_is_provider_health_state(self):
-        # ProviderHealth is now a backward-compat alias for the renamed class.
-        assert ProviderHealth is ProviderHealthState
-
-    def test_to_snapshot_healthy(self):
-        state = ProviderHealth(provider_id="openai")
-        state.record_success(15.0)
-        snapshot = state.to_snapshot()
-
-        assert isinstance(snapshot, ProviderHealthSnapshot)
-        assert snapshot.provider_id == "openai"
-        assert snapshot.healthy is True
-        assert snapshot.status == ProviderHealthStatus.HEALTHY
-        assert snapshot.latency_ms == 15.0
-        assert snapshot.error is None
-
-    def test_to_snapshot_billing_issue(self):
-        state = ProviderHealth(provider_id="openai")
-        state.status = HealthStatus.BILLING
-        state.last_error = "quota exceeded"
-        snapshot = state.to_snapshot()
-
-        assert snapshot.healthy is False
-        assert snapshot.status == ProviderHealthStatus.BILLING_ISSUE
-        assert snapshot.billing_issue is True
-        assert snapshot.error == "quota exceeded"
-
-    def test_monitor_get_status_typed_unknown_provider(self):
-        monitor = ProviderHealthMonitor()
-        with patch(
-            "api.services.provider_health.dispatcher.get_provider_config",
-            return_value=None,
-        ):
-            assert monitor.get_status_typed("missing") is None
-
-    def test_monitor_get_status_typed_matches_cached_state(self):
-        monitor = ProviderHealthMonitor()
-        state = ProviderHealth(provider_id="openai")
-        state.record_success(7.0)
-        monitor.health_data = {"openai": state}
-
-        with patch("api.services.provider_health.canonical_provider_id", return_value="openai"):
-            snapshot = monitor.get_status_typed("openai")
-
-        assert snapshot is not None
-        assert snapshot.provider_id == "openai"
-        assert snapshot.status == ProviderHealthStatus.HEALTHY
-
-    def test_monitor_get_all_status_typed(self):
-        monitor = ProviderHealthMonitor()
-        healthy = ProviderHealth(provider_id="fast", configured=True)
-        healthy.record_success(5.0)
-        monitor.health_data = {"fast": healthy}
-
-        with patch(
-            "api.services.provider_health.dispatcher.provider_ids",
-            return_value=["fast"],
-        ):
-            result = monitor.get_all_status_typed()
-
-        assert set(result.keys()) == {"fast"}
-        assert isinstance(result["fast"], ProviderHealthSnapshot)
+    assert service._running is True
+    assert created
+    assert dispatcher.check_provider.await_count == 0
