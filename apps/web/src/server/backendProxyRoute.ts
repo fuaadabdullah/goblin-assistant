@@ -35,6 +35,10 @@ async function forwardResolvedProxyRequest(
     return NextResponse.json({ detail: 'Not found' }, { status: 404 });
   }
 
+  if (resolved.kind === 'endpoint') {
+    return forwardRequest(req, resolved.backendPath, '');
+  }
+
   return forwardRequest(
     req,
     resolved.backendPrefix,

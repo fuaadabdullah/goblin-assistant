@@ -3,7 +3,7 @@
  * Do not edit by hand.
  */
 
-export const API_PROXY_ROUTES = [
+export const API_PROXY_PREFIX_ROUTES = [
   { frontendPrefix: '/api/account', backendPrefix: '/api/v1/account' },
   { frontendPrefix: '/api/agent', backendPrefix: '/api/v1/agent' },
   { frontendPrefix: '/api/auth', backendPrefix: '/api/v1/auth' },
@@ -22,7 +22,17 @@ export const API_PROXY_ROUTES = [
   { frontendPrefix: '/api/support', backendPrefix: '/api/v1/support' },
 ] as const;
 
-export type ApiProxyRoute = (typeof API_PROXY_ROUTES)[number];
+export type ApiProxyPrefixRoute = (typeof API_PROXY_PREFIX_ROUTES)[number];
+
+export const API_PROXY_ENDPOINT_ROUTES = [
+  { frontendPath: '/api/providers/models', backendPath: '/api/v1/providers/models' },
+] as const;
+
+export type ApiProxyEndpointRoute = (typeof API_PROXY_ENDPOINT_ROUTES)[number];
+
+export type ApiProxyRoute =
+  | ({ kind: 'prefix' } & ApiProxyPrefixRoute)
+  | ({ kind: 'endpoint' } & ApiProxyEndpointRoute);
 
 export const API_PROXY_EXPLICIT_PATHS = [
   '/api/debug/model-usage',
