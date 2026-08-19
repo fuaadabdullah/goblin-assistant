@@ -40,6 +40,7 @@ services:
       - SANDBOX_IMAGE=goblin-assistant-sandbox:latest
       - JOBS_DIR=/app/sandbox_jobs
       - PORT=8001
+      - REDIS_URL=redis://redis:6379/0
       - ROUTING_REGISTRY_DB_PATH=/app/state/routing_registry.db
     volumes:
       - ./apps/api/src/api:/app/apps/api/src/api:ro

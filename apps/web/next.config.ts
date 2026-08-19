@@ -5,6 +5,9 @@ import path from 'path';
 const appVersion = fs.readFileSync(path.join(__dirname, '../../VERSION'), 'utf8').trim();
 
 const nextConfig: NextConfig = {
+  // ExFAT drives (e.g. external GOBLINOS) cannot do atomic renames; redirect
+  // webpack cache output to /tmp via NEXT_DIST_DIR env var at dev startup.
+  distDir: process.env.NEXT_DIST_DIR || '.next',
   env: {
     NEXT_PUBLIC_APP_VERSION: appVersion,
   },
