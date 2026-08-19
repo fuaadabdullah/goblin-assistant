@@ -211,6 +211,8 @@ async def _prewarm_self_hosted_providers(
         provider = ensure_provider_fn(provider_id)
         if provider is None:
             continue
+        if not hasattr(provider, "warmup_targets"):
+            continue
         for target_id, target_provider in provider.warmup_targets():
             tasks.append(
                 asyncio.create_task(

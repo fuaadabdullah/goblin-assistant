@@ -14,13 +14,15 @@ from fastapi import APIRouter, Depends, HTTPException
 from fastapi.responses import StreamingResponse
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from ..assistant_tools.executor import extract_tool_calls, run_tool_loop
-from ..assistant_tools.registry import export_openai_tools
-from ..auth.router import User as AuthenticatedUser, get_current_user
-from ..storage import conversation_store
-from ..storage.database import get_db
 from api.config.mode_addendums import get_addendum as _get_mode_addendum
 from api.config.system_prompt import EDUCATION_SYSTEM_ADDENDUM, system_prompt_manager
+
+from ..assistant_tools.executor import extract_tool_calls, run_tool_loop
+from ..assistant_tools.registry import export_openai_tools
+from ..auth.router import User as AuthenticatedUser
+from ..auth.router import get_current_user
+from ..storage import conversation_store
+from ..storage.database import get_db
 from . import _runtime as _cr
 from .schemas import ContextualChatRequest, ContextualChatResponse
 from .service_accessors import (
@@ -58,9 +60,7 @@ async def contextual_chat(
                 raise HTTPException(status_code=400, detail=str(exc))
         else:
             message_classifier, MessageType = _get_message_classifier()
-            msg_classification = message_classifier.classify_message(
-                request.message, "user"
-            )
+            msg_classification = message_classifier.classify_message(request.message, "user")
             addendum = (
                 EDUCATION_SYSTEM_ADDENDUM
                 if msg_classification.message_type == MessageType.LEARNING
@@ -71,9 +71,7 @@ async def contextual_chat(
         if request.enable_context_assembly and user_id:
             conversation_history = []
             if conversation_id:
-                conversation = await conversation_store.get_conversation(
-                    conversation_id
-                )
+                conversation = await conversation_store.get_conversation(conversation_id)
                 if conversation:
                     conversation_history = [
                         {"role": msg.role, "content": msg.content}
@@ -107,15 +105,11 @@ async def contextual_chat(
                 "total_tokens_used": assembly_result.get("total_tokens_used", 0),
                 "remaining_tokens": assembly_result.get("remaining_tokens", 0),
                 "layers_assembled": len(assembly_result.get("layers", [])),
-                "assembly_time": assembly_result.get("assembly_log", {}).get(
-                    "assembly_time"
-                ),
+                "assembly_time": assembly_result.get("assembly_log", {}).get("assembly_time"),
                 "degraded_mode": assembly_result.get("degraded_mode", False),
                 "degraded_reason": assembly_result.get("degraded_reason"),
                 "truncation_warnings": assembly_result.get("truncation_warnings", []),
-                "summary_fallback_applied": assembly_result.get(
-                    "summary_fallback_applied", False
-                ),
+                "summary_fallback_applied": assembly_result.get("summary_fallback_applied", False),
             }
 
         else:
@@ -193,22 +187,16 @@ async def contextual_chat(
         if isinstance(provider_response, dict) and provider_response.get("ok"):
             result_data = provider_response.get("result", {})
             response_content = result_data.get("text", "")
-            used_provider = provider_response.get(
-                "provider", request.provider or "unknown"
-            )
+            used_provider = provider_response.get("provider", request.provider or "unknown")
             used_model = provider_response.get("model", request.model or "unknown")
         elif isinstance(provider_response, dict) and "choices" in provider_response:
             response_content = provider_response["choices"][0]["message"]["content"]
-            used_provider = provider_response.get(
-                "provider", request.provider or "unknown"
-            )
+            used_provider = provider_response.get("provider", request.provider or "unknown")
             used_model = provider_response.get("model", request.model or "unknown")
         else:
             if isinstance(provider_response, dict) and not provider_response.get("ok"):
                 error_msg = provider_response.get("error", "unknown-error")
-                raise HTTPException(
-                    status_code=500, detail=f"AI Provider error: {error_msg}"
-                )
+                raise HTTPException(status_code=500, detail=f"AI Provider error: {error_msg}")
 
             response_content = str(provider_response)
             used_provider = request.provider or "unknown"
@@ -245,9 +233,7 @@ async def contextual_chat(
             )
 
         visualizations = None
-        if isinstance(provider_response, dict) and provider_response.get(
-            "visualizations"
-        ):
+        if isinstance(provider_response, dict) and provider_response.get("visualizations"):
             visualizations = provider_response["visualizations"]
 
         return ContextualChatResponse(

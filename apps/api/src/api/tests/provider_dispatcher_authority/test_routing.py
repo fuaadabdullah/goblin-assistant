@@ -7,7 +7,8 @@ from unittest.mock import AsyncMock
 import pytest
 
 from api.providers.dispatcher import ProviderDispatcher
-from api.routing.router import hybrid_router, registry
+from api.routing.router import hybrid_router
+from api.routing.router_registry import registry
 
 from .conftest import StubProvider
 
