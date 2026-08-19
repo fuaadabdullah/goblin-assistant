@@ -493,27 +493,27 @@ workflows:
           requires: [build]
           filters:
             branches:
-              only: [main, develop, rc/v1]
+              only: [main, develop, deploy/live-benchmark-clean]
       - deploy-render:
           requires: [docker-build]
           filters:
             branches:
-              only: [main, rc/v1]
+              only: [main, deploy/live-benchmark-clean]
       - deploy-vercel:
           requires: [build]
           filters:
             branches:
-              only: [main, rc/v1]
+              only: [main, deploy/live-benchmark-clean]
       - smoke-test:
           requires: [deploy-render]
           filters:
             branches:
-              only: [main, rc/v1]
+              only: [main, deploy/live-benchmark-clean]
       - notify-deploy:
           requires: [smoke-test, deploy-vercel]
           filters:
             branches:
-              only: [main, rc/v1]
+              only: [main, deploy/live-benchmark-clean]
 
   nightly:
     triggers:
