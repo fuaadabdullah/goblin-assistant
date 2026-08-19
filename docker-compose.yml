@@ -42,6 +42,13 @@ services:
       - PORT=8001
       - REDIS_URL=redis://redis:6379/0
       - ROUTING_REGISTRY_DB_PATH=/app/state/routing_registry.db
+      - JWT_SECRET_KEY=${SECRET_KEY}
+      - DATABASE_URL=${DATABASE_URL}?sslmode=require
+      - OPENAI_API_KEY=${OPENAI_API_KEY:-}
+      - GEMINI_API_KEY=${GEMINI_API_KEY:-}
+      - GROQ_API_KEY=${GROQ_API_KEY:-}
+      - DEEPSEEK_API_KEY=${DEEPSEEK_API_KEY:-}
+      - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY:-}
     volumes:
       - ./apps/api/src/api:/app/apps/api/src/api:ro
       - sandbox_jobs:/app/sandbox_jobs
