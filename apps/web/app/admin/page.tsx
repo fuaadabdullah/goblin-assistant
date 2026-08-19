@@ -8,13 +8,13 @@ import { DashboardSkeleton } from '@/components/LoadingSkeleton';
 
 export const dynamic = 'force-dynamic';
 
-const EnhancedDashboard = nextDynamic(() => import('@/components/EnhancedDashboard'), {
+const Dashboard = nextDynamic(() => import('@/screens/Dashboard'), {
   ssr: false,
   loading: () => <DashboardSkeleton />,
 });
 
 const AdminDashboardContent = withRouteErrorBoundary(function AdminDashboardContent() {
-  return <EnhancedDashboard />;
+  return <Dashboard />;
 }, 'adminIndex');
 
 export default function Admin() {

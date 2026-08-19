@@ -29,12 +29,19 @@
 body {
   margin: 0;
   min-width: 320px;
-  min-height: 100vh;
+  min-height: 100dvh;
+  overflow-x: hidden;
   background: var(--bg-gradient);
   background-attachment: fixed;
   color: var(--text);
   font-size: var(--font-size-base);
   line-height: var(--line-height-base);
+}
+
+@media (max-width: 768px) {
+  body {
+    background-attachment: scroll;
+  }
 }
 
 /* ==========================================================================

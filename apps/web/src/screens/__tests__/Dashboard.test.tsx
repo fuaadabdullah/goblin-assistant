@@ -43,6 +43,24 @@ import { runtimeClient } from '@/lib/api/runtimeClient';
 
 const mockGetCostSummary = runtimeClient.getCostSummary as vi.Mock;
 
+const createLocalStorageMock = () => {
+  const store = new Map<string, string>();
+  return {
+    clear: () => store.clear(),
+    getItem: (key: string) => store.get(key) ?? null,
+    key: (index: number) => Array.from(store.keys())[index] ?? null,
+    removeItem: (key: string) => {
+      store.delete(key);
+    },
+    setItem: (key: string, value: string) => {
+      store.set(key, value);
+    },
+    get length() {
+      return store.size;
+    },
+  } as Storage;
+};
+
 function renderWithClient(ui: React.ReactElement) {
   const qc = new QueryClient({ defaultOptions: { queries: { retry: false } } });
   return render(<QueryClientProvider client={qc}>{ui}</QueryClientProvider>);
@@ -51,6 +69,7 @@ function renderWithClient(ui: React.ReactElement) {
 describe('DashboardContent', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    vi.stubGlobal('localStorage', createLocalStorageMock());
     localStorage.clear();
   });
 

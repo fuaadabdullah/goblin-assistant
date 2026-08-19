@@ -34,7 +34,10 @@ function Tile({
         <span className="text-[11px] font-semibold uppercase tracking-widest text-muted">
           {label}
         </span>
-        <Icon className={`w-3.5 h-3.5 ${iconColor}`} />
+        <span
+          className={`inline-block h-3.5 w-3.5 rounded-full border border-current ${iconColor}`}
+          aria-hidden="true"
+        />
       </div>
       <p className="text-xl font-semibold text-text leading-none">{value}</p>
       {sub && <p className="text-[11px] text-muted">{sub}</p>}

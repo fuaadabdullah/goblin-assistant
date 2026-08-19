@@ -10,7 +10,7 @@ import axios, { AxiosError, type AxiosRequestConfig } from 'axios';
 import { devWarn } from '../../utils/dev-log';
 import { getAuthTokenForRequest } from '../../utils/auth-session';
 import { backendHttp, frontendHttp } from './http-client';
-import type { StandardApiEnvelope } from './api-types';
+import type { ApiErrorLike, StandardApiEnvelope } from './api-types';
 
 // ============================================================================
 // Error Handling
@@ -29,6 +29,36 @@ export const extractApiErrorMessage = (payload: unknown, fallback = 'Request fai
   if (typeof data['detail'] === 'string' && data['detail'].trim()) return data['detail'];
   if (typeof envelopeError === 'string' && envelopeError.trim()) return envelopeError;
   return fallback;
+};
+
+export const getApiErrorStatus = (error: unknown): number | null => {
+  if (!error || typeof error !== 'object') return null;
+  const errorRecord = error as ApiErrorLike;
+  const status = errorRecord.status ?? errorRecord.response?.status;
+  return typeof status === 'number' ? status : null;
+};
+
+export const getApiErrorMessage = (error: unknown, fallback = 'Request failed'): string => {
+  if (typeof error === 'string') {
+    return error.trim() || fallback;
+  }
+  if (!error || typeof error !== 'object') {
+    return fallback;
+  }
+
+  const errorRecord = error as ApiErrorLike;
+  const payloadMessage =
+    extractApiErrorMessage(errorRecord.responseData, '') ||
+    extractApiErrorMessage(errorRecord.response?.data, '');
+  if (payloadMessage) {
+    return payloadMessage;
+  }
+
+  if (error instanceof Error && error.message.trim()) {
+    return error.message.trim();
+  }
+
+  return errorRecord.message?.trim() || fallback;
 };
 
 export const normalizeAxiosError = (error: unknown): never => {

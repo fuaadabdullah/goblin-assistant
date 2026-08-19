@@ -23,6 +23,15 @@ Object.defineProperty(window, 'matchMedia', {
   }),
 });
 
+if (typeof globalThis.localStorage === 'undefined' && typeof window.localStorage !== 'undefined') {
+  Object.defineProperty(globalThis, 'localStorage', {
+    configurable: true,
+    enumerable: true,
+    value: window.localStorage,
+    writable: false,
+  });
+}
+
 global.ResizeObserver = class ResizeObserver {
   observe() {}
   unobserve() {}

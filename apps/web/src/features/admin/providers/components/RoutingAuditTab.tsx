@@ -1,12 +1,12 @@
-import { useRoutingAudit } from '../hooks/useRoutingAnalytics';
+import { useRoutingAudit, type RoutingAuditRecord } from '../hooks/useRoutingAnalytics';
 
 export default function RoutingAuditTab({ providerId }: { providerId?: string }) {
   const { data, isLoading } = useRoutingAudit(50);
 
-  const records = data?.records || [];
+  const records: RoutingAuditRecord[] = data?.records || [];
   const filteredRecords = providerId
     ? records.filter(
-        (r) =>
+        (r: RoutingAuditRecord) =>
           r.selected_provider === providerId ||
           r.provider_id === providerId ||
           r.attempted_providers?.includes(providerId)
@@ -55,8 +55,11 @@ export default function RoutingAuditTab({ providerId }: { providerId?: string })
             </tr>
           </thead>
           <tbody className="divide-y divide-border">
-            {filteredRecords.map((record, idx) => (
-              <tr key={`${record.request_id}-${idx}`} className="hover:bg-bg/50 transition-colors">
+            {filteredRecords.map((record: RoutingAuditRecord, idx: number) => (
+              <tr
+                key={`${record.request_id}-${record.event}-${record.timestamp}`}
+                className="hover:bg-bg/50 transition-colors"
+              >
                 <td className="px-4 py-3 text-muted text-xs whitespace-nowrap">
                   {formatTime(record.timestamp)}
                 </td>

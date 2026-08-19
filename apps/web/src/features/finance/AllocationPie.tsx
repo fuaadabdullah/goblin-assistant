@@ -28,8 +28,11 @@ const AllocationPie = ({ title, data, config }: AllocationPieProps) => {
             }
             labelLine={{ stroke: 'var(--muted)' }}
           >
-            {data.map((_, i) => (
-              <Cell key={`cell-${i}`} fill={getChartPaletteColor(i)} />
+            {data.map((entry, index) => (
+              <Cell
+                key={typeof entry['name'] === 'string' ? entry['name'] : `${index}`}
+                fill={getChartPaletteColor(index)}
+              />
             ))}
           </Pie>
           <Tooltip

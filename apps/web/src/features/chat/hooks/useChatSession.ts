@@ -73,7 +73,7 @@ export const useChatSession = ({
   loadThreads = true,
 }: { loadThreads?: boolean } = {}): ChatSessionState => {
   const searchParams = useSearchParams();
-  const promptParam = searchParams.get('prompt');
+  const promptParam = searchParams?.get('prompt');
   const hasHydratedRef = useRef(false);
   const bottomRef = useRef<HTMLDivElement | null>(null);
 

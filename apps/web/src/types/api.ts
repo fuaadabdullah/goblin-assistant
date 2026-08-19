@@ -51,6 +51,7 @@ export interface PasskeyVerificationChallenge {
 export interface User {
   id: string;
   email: string;
+  name?: string;
   role?: string;
   roles?: string[];
   token_version?: number;
@@ -136,10 +137,14 @@ export interface ServiceHealth {
 export interface HealthStatus {
   overall: 'healthy' | 'degraded' | 'unhealthy';
   timestamp: string;
+  status?: string;
   services: {
     database?: ServiceHealth;
     cache?: ServiceHealth;
     api?: ServiceHealth;
+    [key: string]: ServiceHealth | undefined;
+  };
+  components?: {
     [key: string]: ServiceHealth | undefined;
   };
   uptime?: number;
@@ -271,7 +276,12 @@ export function isApiSuccess<T>(response: unknown): response is ApiSuccessRespon
 }
 
 export function isHealthStatus(data: unknown): data is HealthStatus {
-  return typeof data === 'object' && data !== null && 'overall' in data && 'services' in data;
+  return (
+    typeof data === 'object' &&
+    data !== null &&
+    ('overall' in data || 'status' in data) &&
+    ('services' in data || 'components' in data)
+  );
 }
 
 export function isOrchestrationPlan(data: unknown): data is OrchestrationPlan {
@@ -338,10 +348,10 @@ export interface RuntimeClient {
   parseOrchestration(text: string, defaultGoblin?: string): Promise<OrchestrationPlan>;
   onTaskStream(callback: (payload: StreamChunk) => void): Promise<void>;
   // Authentication methods
-  login(email: string, password: string): Promise<{ token: string; user: User }>;
-  register(email: string, password: string, name?: string): Promise<{ token: string; user: User }>;
+  login(email: string, password: string): Promise<LoginResponse>;
+  register(email: string, password: string, name?: string): Promise<LoginResponse>;
   logout(): Promise<void>;
-  validateToken(token: string): Promise<{ valid: boolean; user?: User }>;
+  validateToken(token?: string): Promise<ValidateTokenResponse>;
 }
 
 export interface GoblinStatus {
@@ -436,6 +446,13 @@ export interface ModelUsageRollupSummary {
   total_tokens: number;
   total_cost_usd: number;
   total_latency_ms: number;
+}
+
+export interface ModelUsageRollupResponse {
+  provider?: string | null;
+  model?: string | null;
+  rows: ModelUsageRollup[];
+  summary: ModelUsageRollupSummary;
 }
 
 export interface OrchestrationStep {

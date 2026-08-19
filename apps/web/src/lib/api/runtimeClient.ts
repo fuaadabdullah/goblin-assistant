@@ -1,6 +1,7 @@
 import { providerKeys } from '@/lib/provider-keys';
 import { streamRuntimeTask } from '@/api/runtime-stream';
 import { hasMockFallbackSignal } from './fallback';
+import { getApiErrorMessage } from './shared';
 import type {
   CostSummary,
   GoblinStats,
@@ -71,13 +72,7 @@ const runtimeClientImpl: RuntimeClient = {
       });
       return response.content || '';
     } catch (error) {
-      const errorObj = error as any;
-      const backendError =
-        errorObj?.responseData?.error ||
-        errorObj?.response?.data?.error ||
-        errorObj?.response?.data?.detail ||
-        errorObj?.response?.data?.message ||
-        errorObj?.message;
+      const backendError = getApiErrorMessage(error, '');
 
       if (hasMockFallbackSignal(backendError)) {
         const fallbackResponse = await apiClient.chatCompletion(
@@ -165,9 +160,11 @@ const runtimeClientImpl: RuntimeClient = {
     await apiClient.logout().catch(() => {});
   },
 
-  async validateToken(token?: string): Promise<{ valid: boolean; user?: User | undefined }> {
+  async validateToken(token?: string): Promise<{ valid: boolean; user?: User }> {
     const result = await apiClient.validateToken(token);
-    return { valid: result?.valid ?? false, user: result?.user };
+    return result?.user
+      ? { valid: result?.valid ?? false, user: result.user }
+      : { valid: result?.valid ?? false };
   },
 };
 

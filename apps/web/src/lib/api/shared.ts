@@ -29,6 +29,7 @@ export type {
   ConversationInfoResponse,
   ConversationDetailResponse,
   ConversationSendResponse,
+  ApiErrorLike,
   ModelUsageRollup,
   ModelUsageRollupResponse,
   ModelUsageRollupSummary,
@@ -55,6 +56,8 @@ export {
 // Re-export all values and types from http-helpers
 export {
   extractApiErrorMessage,
+  getApiErrorMessage,
+  getApiErrorStatus,
   normalizeAxiosError,
   unwrapEnvelope,
   assertNoVersionedClientPath,

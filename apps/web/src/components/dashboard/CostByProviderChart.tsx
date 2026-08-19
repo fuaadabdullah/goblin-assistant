@@ -31,7 +31,9 @@ export const CostByProviderChart = ({ rows }: { rows: ModelUsageRollup[] }) => {
           formatter={(v: unknown) => [formatCost(Number(v), { mode: 'summary' }), 'Cost']}
         />
         <Bar dataKey="cost" radius={[4, 4, 0, 0]}>
-          {data.map((_, i) => <Cell key={i} fill={getChartPaletteColor(i)} />)}
+          {data.map((entry, index) => (
+            <Cell key={entry.provider} fill={getChartPaletteColor(index)} />
+          ))}
         </Bar>
       </BarChart>
     </ResponsiveContainer>

@@ -122,8 +122,8 @@ export const chatMethods = {
         typeof response.response === 'string'
           ? response.response
           : JSON.stringify(response.response),
-      department: (response as any).department || 'general',
-      department_reason: (response as any).department_reason || '',
+      department: response.department || 'general',
+      department_reason: response.department_reason || '',
       provider: response.provider,
       model: response.model,
       createdAt: response.timestamp,

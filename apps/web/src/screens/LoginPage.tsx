@@ -35,8 +35,8 @@ export const resolveOauthErrorMessage = (oauthError: string | null | undefined):
 export default function LoginPage({ initialMode = 'login' }: LoginPageProps) {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const paramMode = searchParams.get('mode');
-  const oauthErrorParam = searchParams.get('error');
+  const paramMode = searchParams?.get('mode');
+  const oauthErrorParam = searchParams?.get('error');
   const [error, setError] = useState<string | null>(null);
   const [dismissedOauthMessage, setDismissedOauthMessage] = useState(false);
 
@@ -58,8 +58,8 @@ export default function LoginPage({ initialMode = 'login' }: LoginPageProps) {
   const handleSuccess = () => {
     setError(null);
     const redirectTo =
-      resolveSafeRedirect(searchParams.get('redirect')) ??
-      resolveSafeRedirect(searchParams.get('from')) ??
+      resolveSafeRedirect(searchParams?.get('redirect')) ??
+      resolveSafeRedirect(searchParams?.get('from')) ??
       '/';
     router.push(redirectTo);
   };
@@ -69,36 +69,67 @@ export default function LoginPage({ initialMode = 'login' }: LoginPageProps) {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-primary/10 via-accent/10 to-cta/10 px-4">
+    <div className="min-h-[100dvh] overflow-x-hidden bg-[radial-gradient(circle_at_top_left,rgba(212,165,116,0.16),transparent_35%),radial-gradient(circle_at_top_right,rgba(244,150,122,0.14),transparent_32%),linear-gradient(135deg,var(--bg)_0%,#1d1712_55%,var(--bg)_100%)] px-4 py-6 sm:px-6 lg:px-8">
       <Seo title="Sign In" description="Sign in to Goblin Assistant." robots="index,follow" />
-      <div className="w-full max-w-md">
-        {(error || visibleOauthMessage) && (
-          <Alert
-            variant="danger"
-            title="Authentication Error"
-            message={error || visibleOauthMessage}
-            dismissible
-            onDismiss={() => {
-              setError(null);
-              setDismissedOauthMessage(true);
-            }}
-            className="mb-4"
+      <div className="mx-auto grid w-full max-w-6xl gap-6 lg:min-h-[calc(100dvh-3rem)] lg:grid-cols-[1.05fr_0.95fr] lg:items-center">
+        <section className="hidden overflow-hidden rounded-[28px] border border-border bg-surface/75 p-8 shadow-card backdrop-blur lg:flex lg:flex-col lg:justify-between">
+          <div>
+            <p className="text-xs font-semibold uppercase tracking-[0.28em] text-muted">
+              Goblin Assistant
+            </p>
+            <h1 className="mt-4 text-4xl font-semibold text-text">
+              One workspace for conversations, research, and operations.
+            </h1>
+            <p className="mt-4 max-w-xl text-base text-muted">
+              Sign in to keep your threads, pick up where you left off, and move between chat,
+              search, and admin tools without losing context.
+            </p>
+          </div>
+
+          <div className="mt-10 grid gap-3 sm:grid-cols-2">
+            {[
+              ['Guest mode', 'Try the product before creating an account.'],
+              ['Saved threads', 'Keep context across devices and sessions.'],
+              ['Live tools', 'Route work to chat, search, sandbox, and admin panels.'],
+              ['Safer access', 'Use email, Google, or passkey sign-in.'],
+            ].map(([title, body]) => (
+              <div key={title} className="rounded-2xl border border-border bg-bg/70 p-4">
+                <p className="text-sm font-semibold text-text">{title}</p>
+                <p className="mt-1 text-sm text-muted">{body}</p>
+              </div>
+            ))}
+          </div>
+        </section>
+
+        <div className="mx-auto w-full max-w-md">
+          {(error || visibleOauthMessage) && (
+            <Alert
+              variant="danger"
+              title="Authentication Error"
+              message={error || visibleOauthMessage}
+              dismissible
+              onDismiss={() => {
+                setError(null);
+                setDismissedOauthMessage(true);
+              }}
+              className="mb-4"
+            />
+          )}
+
+          <ModularLoginForm
+            key={resolvedMode}
+            initialMode={resolvedMode}
+            onSuccess={handleSuccess}
+            onError={handleError}
           />
-        )}
 
-        <ModularLoginForm
-          key={resolvedMode}
-          initialMode={resolvedMode}
-          onSuccess={handleSuccess}
-          onError={handleError}
-        />
-
-        <div className="mt-6 bg-surface border border-border rounded-xl p-4 text-sm text-muted text-center">
-          Want to explore first?{' '}
-          <Link href="/chat?guest=1" className="text-primary font-medium hover:underline">
-            Continue as guest
-          </Link>{' '}
-          to chat without an account.
+          <div className="mt-6 rounded-xl border border-border bg-surface/85 p-4 text-center text-sm text-muted shadow-card backdrop-blur">
+            Want to explore first?{' '}
+            <Link href="/chat?guest=1" className="font-medium text-primary hover:underline">
+              Continue as guest
+            </Link>{' '}
+            to chat without an account.
+          </div>
         </div>
       </div>
     </div>

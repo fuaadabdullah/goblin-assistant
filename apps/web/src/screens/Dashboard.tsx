@@ -209,8 +209,8 @@ const DashboardContent: React.FC = () => {
   }, [activityItems, period]);
 
   return (
-    <div className="min-h-[400px] p-8 text-text">
-      <div className="flex items-center justify-between mb-6">
+    <div className="min-h-[400px] p-4 text-text sm:p-6 lg:p-8">
+      <div className="mb-6 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <h1 className="text-2xl font-bold">Dashboard</h1>
         <div
           className="inline-flex rounded-lg border border-border bg-surface p-1"
@@ -257,7 +257,7 @@ const DashboardContent: React.FC = () => {
       )}
 
       {/* Metrics Row */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
+      <div className="mb-8 grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
         <StatCard label="Total Cost" value={`$${totalCost.toFixed(4)}`} hint="All providers" />
         <StatCard
           label="Total Requests"
@@ -315,7 +315,7 @@ const DashboardContent: React.FC = () => {
         )}
       </TristateWrapper>
 
-      <div className="mt-8 grid gap-6 lg:grid-cols-2">
+      <div className="mt-8 grid gap-6 xl:grid-cols-2">
         <Card variant="default" padding="md" className="shadow-card">
           <div className="mb-4 flex items-center justify-between gap-4">
             <div>

@@ -43,13 +43,13 @@ const StatusSummary: FC<StatusSummaryProps> = ({
         <span className={styles['grayText']}>… Loading</span>
       ) : health.isError ? (
         <span className={styles['errorText']}>✗ Failed</span>
-      ) : (health.data?.overall ?? health.data?.status) === 'healthy' ? (
+      ) : (health.data?.status ?? health.data?.overall) === 'healthy' ? (
         <span className={styles['successText']}>✓ Connected</span>
-      ) : (health.data?.overall ?? health.data?.status) === 'warnings' ? (
+      ) : (health.data?.status ?? health.data?.overall) === 'warnings' ? (
         <span className={styles['warningText']}>⚠ Warnings</span>
-      ) : (health.data?.overall ?? health.data?.status) === 'degraded' ? (
+      ) : (health.data?.status ?? health.data?.overall) === 'degraded' ? (
         <span className={styles['warningText']}>⚠ Degraded</span>
-      ) : (health.data?.overall ?? health.data?.status) === 'unhealthy' ? (
+      ) : (health.data?.status ?? health.data?.overall) === 'unhealthy' ? (
         <span className={styles['errorText']}>✗ Failed</span>
       ) : (
         <span className={styles['grayText']}>⚠ Unknown</span>

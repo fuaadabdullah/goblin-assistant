@@ -1,5 +1,5 @@
 import { useQuery } from '@tanstack/react-query';
-import { api } from '@/api';
+import { getFrontend } from '@/lib/api';
 import { queryKeys } from '../../../../lib/query-keys';
 
 export interface RoutingAuditRecord {
@@ -8,6 +8,7 @@ export interface RoutingAuditRecord {
   timestamp: number;
   selected_provider?: string;
   provider_id?: string;
+  attempted_providers?: string[];
   model?: string;
   latency_ms?: number;
   cost_usd?: number;
@@ -71,8 +72,7 @@ function normalizeStats(stats?: Partial<RoutingStats>): RoutingStats {
 }
 
 async function fetchRoutingProviders(): Promise<RoutingProvidersResponse> {
-  const response = await api.get<RoutingStatusResponse>('/routing/status');
-  const status = response.data;
+  const status = await getFrontend<RoutingStatusResponse>('/routing/status');
   const registry = status.routing_registry ?? {};
   const providers: Record<string, RoutingProvider> = {};
 
@@ -95,8 +95,7 @@ export function useRoutingAudit(limit = 200) {
   return useQuery({
     queryKey: queryKeys.routingAudit(limit),
     queryFn: async () => {
-      const response = await api.get<RoutingAuditResponse>(`/routing/audit?limit=${limit}`);
-      return response.data;
+      return getFrontend<RoutingAuditResponse>(`/routing/audit?limit=${limit}`);
     },
     refetchInterval: 10_000,
   });

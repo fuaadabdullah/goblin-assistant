@@ -83,7 +83,7 @@ const ChatMessageList = ({
 
   if (isLoading) {
     return (
-      <section className="max-w-4xl mx-auto space-y-4" aria-label="Loading conversation">
+      <section className="mx-auto max-w-4xl space-y-4 px-1 sm:px-0" aria-label="Loading conversation">
         <div className="rounded-2xl border border-border bg-surface/70 p-6 shadow-card animate-pulse">
           <div className="h-4 w-32 rounded bg-surface-hover mb-4" />
           <div className="h-4 w-full rounded bg-surface-hover mb-3" />
@@ -108,8 +108,8 @@ const ChatMessageList = ({
   }
 
   return (
-    <section className="max-w-4xl mx-auto space-y-6" aria-label="Chat transcript">
-      <ol aria-live="polite" aria-relevant="additions" className="space-y-5">
+    <section className="mx-auto max-w-4xl space-y-6 px-1 sm:px-0" aria-label="Chat transcript">
+      <ol aria-live="polite" aria-relevant="additions" className="space-y-4 sm:space-y-5">
         {messageList.map((msg) => {
           const messageId = msg.id;
           const isUser = msg.role === 'user';
@@ -138,7 +138,7 @@ const ChatMessageList = ({
               key={messageId}
               className={`flex ${isUser ? 'justify-end' : 'justify-start'} group`}
             >
-              <div className={`max-w-[80%] ${isUser ? 'text-right' : 'text-left'}`}>
+              <div className={`max-w-[92%] sm:max-w-[80%] ${isUser ? 'text-right' : 'text-left'}`}>
                 {/* Timestamp */}
                 <div className="text-xs text-muted mb-1 px-2">
                   <MessageTimestamp createdAt={msg.createdAt} />

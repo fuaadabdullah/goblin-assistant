@@ -33,12 +33,14 @@ export const supabase = createBrowserClient(
 export const supabaseConfigured = Boolean(supabaseUrl && supabaseAnonKey);
 
 export function supabaseUserToAppUser(u: SupabaseUser): AppUser {
+  const name =
+    (u.user_metadata?.['name'] as string | undefined) ??
+    (u.user_metadata?.['full_name'] as string | undefined);
+
   return {
     id: u.id,
     email: u.email ?? '',
-    name:
-      (u.user_metadata?.['name'] as string | undefined) ??
-      (u.user_metadata?.['full_name'] as string | undefined),
+    ...(name ? { name } : {}),
     role: u.role ?? 'authenticated',
     created_at: u.created_at,
   };

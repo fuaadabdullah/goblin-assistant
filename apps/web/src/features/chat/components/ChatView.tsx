@@ -108,7 +108,7 @@ const ChatView = ({ session, isAdmin, isGuest = false }: ChatViewProps) => {
 
   if (!isAuthenticated && !isGuest) {
     return (
-      <div className="min-h-[calc(100vh-64px)] bg-bg flex items-center justify-center px-4">
+      <div className="min-h-[100dvh] bg-bg flex items-center justify-center px-4 py-6 sm:px-6 lg:px-8">
         <Seo
           title="Chat - Sign In Required"
           description="Sign in to chat with Goblin Assistant"
@@ -164,13 +164,13 @@ const ChatView = ({ session, isAdmin, isGuest = false }: ChatViewProps) => {
   }
 
   return (
-    <div className="min-h-[calc(100vh-64px)] bg-bg">
+    <div className="h-[100dvh] bg-bg overflow-hidden">
       <Seo
         title="Chat"
         description="Chat with Goblin Assistant. See the model and cost as you go."
         robots="noindex,nofollow"
       />
-      <div className="relative flex">
+      <div className="relative flex h-[100dvh] overflow-hidden">
         <div
           ref={mobilePanelRef}
           role="dialog"
@@ -247,12 +247,12 @@ const ChatView = ({ session, isAdmin, isGuest = false }: ChatViewProps) => {
             isAdmin={isAdmin}
             totalTokens={totalTokens}
             messageCount={messages.length}
-            className="hidden lg:flex sticky top-0 h-screen"
+            className="hidden lg:flex sticky top-0 h-[100dvh]"
           />
         )}
 
         <main
-          className="flex-1 flex flex-col bg-bg"
+          className="flex h-[100dvh] min-h-0 flex-1 flex-col overflow-hidden bg-bg"
           id="main-content"
           tabIndex={-1}
           aria-label="Chat"
@@ -266,7 +266,7 @@ const ChatView = ({ session, isAdmin, isGuest = false }: ChatViewProps) => {
             activeMobilePanelTab={mobilePanelTab}
           />
           {isGuest && (
-            <div className="mx-4 mt-4 rounded-xl border border-primary/40 bg-surface p-4 text-sm flex items-start justify-between gap-4">
+            <div className="mx-3 mt-3 flex items-start justify-between gap-4 rounded-xl border border-primary/40 bg-surface p-4 text-sm sm:mx-4 sm:mt-4">
               <div>
                 <p className="font-semibold text-primary">Guest session</p>
                 <p className="text-muted mt-1">
@@ -285,7 +285,7 @@ const ChatView = ({ session, isAdmin, isGuest = false }: ChatViewProps) => {
               </Link>
             </div>
           )}
-          <section className="flex-1 overflow-y-auto px-4 py-8">
+          <section className="flex-1 min-h-0 overflow-y-auto px-3 py-4 sm:px-4 sm:py-6 lg:px-6">
             <ChatMessageList
               messages={messages}
               quickPrompts={quickPrompts}
@@ -301,7 +301,7 @@ const ChatView = ({ session, isAdmin, isGuest = false }: ChatViewProps) => {
               onRateFeedback={rateFeedback}
             />
           </section>
-          <footer>
+          <footer className="shrink-0 pb-[env(safe-area-inset-bottom)]">
             <ChatComposer
               input={input}
               inputRef={inputRef}

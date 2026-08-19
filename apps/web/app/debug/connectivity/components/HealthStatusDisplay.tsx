@@ -26,7 +26,7 @@ const HealthStatusDisplay: FC<HealthStatusDisplayProps> = ({ health }) => {
 
   if (!health.data) return null;
 
-  const status = health.data.overall ?? health.data.status ?? 'unknown';
+  const status = health.data.status ?? health.data.overall ?? 'unknown';
   const statusClass =
     status === 'healthy'
       ? styles['statusHealthy']

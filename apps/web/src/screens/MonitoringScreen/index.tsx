@@ -2,7 +2,11 @@
 
 import { useState } from 'react';
 import dynamic from 'next/dynamic';
-import { useRoutingAudit, useRoutingProviders } from '../../features/admin/providers/hooks/useRoutingAnalytics';
+import {
+  useRoutingAudit,
+  useRoutingProviders,
+  type RoutingAuditRecord,
+} from '../../features/admin/providers/hooks/useRoutingAnalytics';
 import Seo from '../../components/Seo';
 
 const LogsPage = dynamic(() => import('../LogsPage'), { ssr: false });
@@ -19,7 +23,7 @@ function ms(n: number) { return `${Math.round(n)} ms`; }
 
 function RoutingTab() {
   const { data, isLoading } = useRoutingAudit(100);
-  const records = data?.records ?? [];
+  const records: RoutingAuditRecord[] = data?.records ?? [];
   if (isLoading) return <div className="p-6 text-sm text-muted">Loading routing data…</div>;
   if (records.length === 0) return <div className="p-6 text-sm text-muted">No routing records yet.</div>;
   return (
@@ -33,8 +37,11 @@ function RoutingTab() {
           </tr>
         </thead>
         <tbody>
-          {records.map((r, i) => (
-            <tr key={`${r.request_id}-${i}`} className="border-b border-border/30 last:border-0 hover:bg-surface-hover/40 transition-colors">
+          {records.map((r: RoutingAuditRecord) => (
+            <tr
+              key={`${r.request_id}-${r.event}-${r.timestamp}`}
+              className="border-b border-border/30 last:border-0 hover:bg-surface-hover/40 transition-colors"
+            >
               <td className="px-3 py-2 text-muted font-mono pl-0 whitespace-nowrap">{new Date(r.timestamp * 1000).toLocaleTimeString()}</td>
               <td className="px-3 py-2 text-text">{r.event}</td>
               <td className="px-3 py-2 text-text capitalize">{r.selected_provider ?? r.provider_id ?? '—'}</td>
