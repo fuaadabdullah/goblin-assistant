@@ -12,65 +12,27 @@ import shutil
 from typing import Any, Dict, List
 
 import aiosqlite
-import httpx
 
 
-async def _check_chroma() -> Dict[str, Any]:
-    """Check Chroma vector DB.
+async def _check_vector_store() -> Dict[str, Any]:
+    """Check the configured vector store (pgvector by default, Chroma HTTP if CHROMA_URL is set).
 
-    Strategy:
-    - If CHROMA_DB_PATH (or default chroma_db/chroma.sqlite3) exists, open sqlite and
-      report number of tables (approx collections) and file size.
-    - Else, if CHROMA_URL is set, call CHROMA_URL/health or CHROMA_URL and inspect response.
-    - Otherwise return unknown/unconfigured status. Chroma is an optional
-      enhancement; its absence must not make the API health probe degraded.
+    Never probes the local filesystem — Render Free and similar ephemeral
+    runtimes lose filesystem state on restart, so a file-presence check would
+    always appear unconfigured even when the service is healthy.
     """
-    from urllib.parse import urlparse
+    try:
+        from .services.vector_store import create_vector_store
 
-    # Prefer explicit config path
-    configured_path = os.environ.get("CHROMA_DB_PATH")
-    path = configured_path or os.path.join(os.getcwd(), "chroma_db", "chroma.sqlite3")
-    if os.path.exists(path):  # noqa: ASYNC240
-        try:
-            size = os.path.getsize(path)  # noqa: ASYNC240
-            async with (
-                aiosqlite.connect(path) as conn,
-                conn.execute("SELECT name FROM sqlite_master WHERE type='table';") as cur,
-            ):
-                tables = [r[0] for r in await cur.fetchall()]
-            return {
-                "status": "healthy",
-                "path": path,
-                "file_size": size,
-                "tables": len(tables),
-                "table_names": tables,
-            }
-        except Exception as e:
-            return {"status": "degraded", "error": str(e), "path": path}
+        store = create_vector_store()
+        return await store.health()
+    except Exception as exc:
+        return {"status": "degraded", "error": str(exc)}
 
-    # Try HTTP probe if URL configured
-    chroma_url = os.environ.get("CHROMA_URL") or os.environ.get("CHROMA_API_URL")
-    if chroma_url:
-        urlparse(chroma_url)
-        base = chroma_url.rstrip("/")
-        probes = [f"{base}/health", base]
-        try:
-            async with httpx.AsyncClient(timeout=2.0) as client:
-                for p in probes:
-                    try:
-                        r = await client.get(p)
-                        if r.status_code == 200:
-                            data = r.json() if r.text else {}
-                            return {"status": "healthy", "url": p, "response": data}
-                    except Exception:
-                        continue
-        except Exception as e:
-            return {"status": "degraded", "error": str(e), "url": chroma_url}
 
-    if configured_path or chroma_url:
-        return {"status": "degraded", "error": "Chroma configured but unreachable"}
-
-    return {"status": "unknown", "configured": False, "error": "Chroma not configured"}
+# Backward-compatible alias — existing imports, test patches, and callers
+# that reference _check_chroma continue to work without changes.
+_check_chroma = _check_vector_store
 
 
 async def _check_mcp() -> Dict[str, Any]:

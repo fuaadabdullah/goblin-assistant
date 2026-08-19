@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from unittest.mock import AsyncMock, MagicMock, patch
+
 import pytest
 
 from api.health_checks import (
@@ -10,44 +12,56 @@ from api.health_checks import (
     _check_mcp,
     _check_raptor,
     _check_sandbox,
+    _check_vector_store,
 )
 from api.health_core import check_redis_health
 
-# ── _check_chroma ─────────────────────────────────────────────────────────────
+# ── _check_vector_store / _check_chroma (alias) ───────────────────────────────
 
 
-class TestCheckChroma:
+def _mock_store(status: str = "healthy", backend: str = "pgvector", **extra) -> MagicMock:
+    store = MagicMock()
+    store.health = AsyncMock(return_value={"status": status, "backend": backend, **extra})
+    return store
+
+
+class TestCheckVectorStore:
     @pytest.mark.asyncio
-    async def test_no_config_returns_unknown_optional_status(self, monkeypatch):
-        monkeypatch.delenv("CHROMA_DB_PATH", raising=False)
+    async def test_delegates_to_store_health(self, monkeypatch):
         monkeypatch.delenv("CHROMA_URL", raising=False)
         monkeypatch.delenv("CHROMA_API_URL", raising=False)
-        result = await _check_chroma()
-        assert result["status"] == "unknown"
-        assert result["configured"] is False
+        with patch("api.services.vector_store.create_vector_store", return_value=_mock_store()):
+            result = await _check_vector_store()
+        assert result["status"] == "healthy"
+        assert result["backend"] == "pgvector"
 
     @pytest.mark.asyncio
-    async def test_nonexistent_path_falls_to_url_check(self, monkeypatch, tmp_path):
-        monkeypatch.setenv("CHROMA_DB_PATH", str(tmp_path / "nonexistent.sqlite3"))
-        monkeypatch.delenv("CHROMA_URL", raising=False)
-        monkeypatch.delenv("CHROMA_API_URL", raising=False)
-        result = await _check_chroma()
-        assert result["status"] == "degraded"
-
-    @pytest.mark.asyncio
-    async def test_returns_dict_with_status_key(self, monkeypatch):
-        monkeypatch.delenv("CHROMA_DB_PATH", raising=False)
-        monkeypatch.delenv("CHROMA_URL", raising=False)
-        monkeypatch.delenv("CHROMA_API_URL", raising=False)
-        result = await _check_chroma()
+    async def test_returns_dict_with_status_key(self):
+        with patch("api.services.vector_store.create_vector_store", return_value=_mock_store()):
+            result = await _check_vector_store()
         assert "status" in result
 
     @pytest.mark.asyncio
-    async def test_unreachable_url_returns_degraded(self, monkeypatch):
-        monkeypatch.delenv("CHROMA_DB_PATH", raising=False)
-        monkeypatch.setenv("CHROMA_URL", "http://127.0.0.1:19999")
-        result = await _check_chroma()
+    async def test_degraded_store_propagates(self):
+        degraded_store = _mock_store(status="degraded", error="connection refused")
+        with patch("api.services.vector_store.create_vector_store", return_value=degraded_store):
+            result = await _check_vector_store()
         assert result["status"] == "degraded"
+
+    @pytest.mark.asyncio
+    async def test_chroma_url_selects_chroma_backend(self, monkeypatch):
+        monkeypatch.setenv("CHROMA_URL", "http://chroma.internal:8000")
+        chroma_store = _mock_store(
+            status="healthy", backend="chroma", url="http://chroma.internal:8000"
+        )
+        with patch("api.services.vector_store.create_vector_store", return_value=chroma_store):
+            result = await _check_vector_store()
+        assert result["backend"] == "chroma"
+
+    @pytest.mark.asyncio
+    async def test_check_chroma_alias_is_same_function(self):
+        """_check_chroma is a backward-compat alias for _check_vector_store."""
+        assert _check_chroma is _check_vector_store
 
 
 # ── _check_mcp ────────────────────────────────────────────────────────────────

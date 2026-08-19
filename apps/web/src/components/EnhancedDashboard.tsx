@@ -1,9 +1,10 @@
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
-import { RefreshCw } from 'lucide-react';
 import { DashboardSkeleton } from './LoadingSkeleton';
 import { useDashboardData } from '../hooks/useDashboardData';
 import type { ServiceStatus } from '../hooks/useDashboardData';
+import { DashboardHeader } from './dashboard/DashboardHeader';
+import { CostOverviewBanner } from './dashboard/CostOverviewBanner';
 import { DashboardError } from './dashboard/DashboardError';
 import { MetricTiles } from './dashboard/MetricTiles';
 import { StatusCardsGrid } from './dashboard/StatusCardsGrid';
@@ -53,42 +54,24 @@ export default function EnhancedDashboard() {
   const rows: never[] = [];
   const summary = null;
   const services: Record<string, ServiceStatus> = dashboard
-    ? { api: dashboard.backend, chroma: dashboard.chroma, mcp: dashboard.mcp, rag: dashboard.rag, sandbox: dashboard.sandbox }
+    ? { api: dashboard.backend, vector_store: dashboard.vectorStore, mcp: dashboard.mcp, rag: dashboard.rag, sandbox: dashboard.sandbox }
     : {};
 
   return (
     <div className="min-h-screen bg-bg py-6 px-4">
       <div className="max-w-7xl mx-auto space-y-6">
-        <div className="flex items-center justify-between gap-4">
-          <div>
-            <h1 className="text-xl font-semibold text-text">Operations</h1>
-            <p className="text-sm text-muted">Real-time system health and usage metrics</p>
-          </div>
-          <div className="flex items-center gap-2">
-            <button
-              type="button"
-              onClick={() => setAutoRefresh((v) => !v)}
-              className={`text-xs px-3 py-1.5 rounded-lg border transition-colors ${
-                autoRefresh
-                  ? 'bg-primary/10 border-primary/40 text-primary'
-                  : 'border-border text-muted hover:border-border/80 hover:text-text'
-              }`}
-            >
-              {autoRefresh ? '◉ Auto' : 'Auto'}
-            </button>
-            <button
-              type="button"
-              onClick={() => void handleRefresh()}
-              disabled={refreshing}
-              className="flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-lg border border-border text-muted hover:text-text hover:border-border/80 transition-colors disabled:opacity-50"
-            >
-              <RefreshCw className={`w-3 h-3 ${refreshing ? 'animate-spin' : ''}`} />
-              Refresh
-            </button>
-          </div>
-        </div>
+        <DashboardHeader
+          autoRefresh={autoRefresh}
+          refreshing={refreshing}
+          title="Operations"
+          description="Real-time system health and usage metrics"
+          onToggleAutoRefresh={() => setAutoRefresh((v) => !v)}
+          onRefresh={() => void handleRefresh()}
+        />
 
         {error && dashboard && <DashboardError error={error} onRetry={handleRefresh} />}
+
+        {dashboard && <CostOverviewBanner cost={dashboard.cost} />}
 
         <MetricTiles summary={summary} services={services} />
 
@@ -97,7 +80,7 @@ export default function EnhancedDashboard() {
           {dashboard && (
             <StatusCardsGrid
               backend={dashboard.backend}
-              chroma={dashboard.chroma}
+              vectorStore={dashboard.vectorStore}
               mcp={dashboard.mcp}
               rag={dashboard.rag}
               sandbox={dashboard.sandbox}

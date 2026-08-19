@@ -12,9 +12,7 @@ Usage:
     GET /api/privacy/data-summary - Get summary of stored data
 """
 
-import importlib.util
 import logging
-import os
 from datetime import datetime
 from typing import Any, Dict
 
@@ -45,14 +43,6 @@ logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/api/privacy", tags=["privacy", "gdpr", "ccpa"])
 
-_VECTOR_STORE_DEFAULT = (
-    "false" if os.getenv("ENVIRONMENT", "development").lower() == "production" else "true"
-)
-VECTOR_STORE_AVAILABLE = (
-    os.getenv("ENABLE_VECTOR_STORE", _VECTOR_STORE_DEFAULT).strip().lower()
-    in {"1", "true", "yes", "on"}
-    and importlib.util.find_spec("chromadb") is not None
-)
 _vector_store = None
 
 
@@ -65,15 +55,10 @@ def _detail_message(prefix: str, error: Exception) -> str:
 
 def _get_vector_store():
     global _vector_store
-
-    if not VECTOR_STORE_AVAILABLE:
-        return None
-
     if _vector_store is None:
-        from ..services.safe_vector_store import SafeVectorStore
+        from ..services.vector_store import create_vector_store
 
-        _vector_store = SafeVectorStore(collection_name="goblin_rag")
-
+        _vector_store = create_vector_store()
     return _vector_store
 
 

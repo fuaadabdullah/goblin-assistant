@@ -3,7 +3,7 @@ import type { ServiceStatus } from '../../hooks/useDashboardData';
 
 interface Props {
   backend: ServiceStatus;
-  chroma: ServiceStatus;
+  vectorStore: ServiceStatus;
   mcp: ServiceStatus;
   rag: ServiceStatus;
   sandbox: ServiceStatus;
@@ -18,7 +18,7 @@ const mapStatus = (
   return 'unknown';
 };
 
-export const StatusCardsGrid = ({ backend, chroma, mcp, rag, sandbox }: Props) => {
+export const StatusCardsGrid = ({ backend, vectorStore, mcp, rag, sandbox }: Props) => {
   return (
     <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
       <StatusCard
@@ -27,9 +27,9 @@ export const StatusCardsGrid = ({ backend, chroma, mcp, rag, sandbox }: Props) =
         meta={[{ label: 'Latency', value: `${backend.latency ?? '--'} ms` }]}
       />
       <StatusCard
-        title="Chroma"
-        status={mapStatus(chroma.status)}
-        meta={[{ label: 'Latency', value: `${chroma.latency ?? '--'} ms` }]}
+        title="Vector Store"
+        status={mapStatus(vectorStore.status)}
+        meta={[{ label: 'Latency', value: `${vectorStore.latency ?? '--'} ms` }]}
       />
       <StatusCard
         title="MCP"

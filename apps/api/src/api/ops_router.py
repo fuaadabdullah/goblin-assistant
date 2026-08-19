@@ -4,32 +4,35 @@ Aggregates existing metrics and provides frontend-friendly JSON responses
 Enhanced with advanced aggregation, security controls, and trend analysis
 """
 
-from typing import Dict, Any, List
-from fastapi import APIRouter, HTTPException, Query, Request
-from datetime import datetime
-import time
-import statistics
 import os
+import statistics
+import time
 from collections import defaultdict
+from datetime import datetime
+from typing import Any, Dict, List
+
+from fastapi import APIRouter, HTTPException, Query, Request
 
 from .health import (
-    health_check,
-    _check_chroma,
+    _check_cost_tracking,
     _check_mcp,
     _check_raptor,
     _check_sandbox,
-    _check_cost_tracking,
+    _check_vector_store,
+    health_check,
 )
+
+_check_chroma = _check_vector_store  # backward-compat alias used below
 from .monitoring import monitor
-from .storage.cache import cache
-from .storage.tasks import task_store
 from .ops.aggregator import aggregator
 from .ops.security import (
-    require_ops_access,
-    require_ops_reset_access,
     get_ops_audit_log,
     get_security_summary,
+    require_ops_access,
+    require_ops_reset_access,
 )
+from .storage.cache import cache
+from .storage.tasks import task_store
 
 router = APIRouter(prefix="/ops", tags=["operations"])
 
@@ -76,8 +79,7 @@ class CircuitBreaker:
             "last_failure_time": self.last_failure_time,
             "time_until_recovery": max(
                 0,
-                self.recovery_timeout
-                - (time.perf_counter() - self.last_failure_perf_counter),
+                self.recovery_timeout - (time.perf_counter() - self.last_failure_perf_counter),
             )
             if self.state == "OPEN"
             else 0,
@@ -147,7 +149,7 @@ async def health_summary() -> Dict[str, Any]:
         base_health = await health_check()
 
         # Get extended health checks
-        chroma_health = await _check_chroma()
+        vector_store_health = await _check_vector_store()
         mcp_health = await _check_mcp()
         raptor_health = await _check_raptor()
         sandbox_health = await _check_sandbox()
@@ -156,7 +158,7 @@ async def health_summary() -> Dict[str, Any]:
         # Calculate overall status
         component_statuses = [
             base_health["status"],
-            chroma_health["status"],
+            vector_store_health["status"],
             mcp_health["status"],
             raptor_health["status"],
             sandbox_health["status"],
@@ -190,7 +192,7 @@ async def health_summary() -> Dict[str, Any]:
                 "redis": base_health["components"]["redis"],
                 "providers": base_health["components"]["providers"],
                 "security": base_health["components"]["security"],
-                "chroma": chroma_health,
+                "vector_store": vector_store_health,
                 "mcp": mcp_health,
                 "raptor": raptor_health,
                 "sandbox": sandbox_health,
@@ -198,15 +200,9 @@ async def health_summary() -> Dict[str, Any]:
             },
             "summary": {
                 "total_components": len(component_statuses),
-                "healthy_components": len(
-                    [s for s in component_statuses if s == "healthy"]
-                ),
-                "degraded_components": len(
-                    [s for s in component_statuses if s == "degraded"]
-                ),
-                "warning_components": len(
-                    [s for s in component_statuses if s == "warnings"]
-                ),
+                "healthy_components": len([s for s in component_statuses if s == "healthy"]),
+                "degraded_components": len([s for s in component_statuses if s == "degraded"]),
+                "warning_components": len([s for s in component_statuses if s == "warnings"]),
             },
         }
     except Exception as e:
@@ -291,19 +287,11 @@ async def providers_status() -> Dict[str, Any]:
                     [p for p in enhanced_status.values() if p["status"] != "healthy"]
                 ),
                 "open_circuit_breakers": len(
-                    [
-                        p
-                        for p in enhanced_status.values()
-                        if p["circuit_breaker"]["state"] == "OPEN"
-                    ]
+                    [p for p in enhanced_status.values() if p["circuit_breaker"]["state"] == "OPEN"]
                 ),
                 "avg_latency": round(
                     statistics.mean(
-                        [
-                            p["latency_ms"]
-                            for p in enhanced_status.values()
-                            if p["latency_ms"] > 0
-                        ]
+                        [p["latency_ms"] for p in enhanced_status.values() if p["latency_ms"] > 0]
                     )
                     if any(p["latency_ms"] > 0 for p in enhanced_status.values())
                     else 0,
@@ -331,27 +319,21 @@ async def performance_snapshot() -> Dict[str, Any]:
         cache_hits = int(redis_info.get("keyspace_hits", 0))
         cache_misses = int(redis_info.get("keyspace_misses", 0))
         total_requests = cache_hits + cache_misses
-        cache_hit_ratio = round(
-            (cache_hits / total_requests * 100) if total_requests > 0 else 0, 2
-        )
+        cache_hit_ratio = round((cache_hits / total_requests * 100) if total_requests > 0 else 0, 2)
 
         # Get overall performance metrics
         all_metrics = []
-        for provider_name in performance_metrics.total_requests.keys():
+        for provider_name in performance_metrics.total_requests:
             metrics = performance_metrics.get_metrics(provider_name)
             if metrics["total_requests"] > 0:
                 all_metrics.append(metrics)
 
         avg_response_time = round(
-            statistics.mean([m["avg_response_time"] for m in all_metrics])
-            if all_metrics
-            else 0,
+            statistics.mean([m["avg_response_time"] for m in all_metrics]) if all_metrics else 0,
             2,
         )
         avg_error_rate = round(
-            statistics.mean([m["error_rate"] for m in all_metrics])
-            if all_metrics
-            else 0,
+            statistics.mean([m["error_rate"] for m in all_metrics]) if all_metrics else 0,
             2,
         )
 
@@ -359,13 +341,9 @@ async def performance_snapshot() -> Dict[str, Any]:
         all_tasks = await task_store.list_tasks()
         task_stats = {
             "total_tasks": len(all_tasks),
-            "completed_tasks": len(
-                [t for t in all_tasks if t.get("status") == "completed"]
-            ),
+            "completed_tasks": len([t for t in all_tasks if t.get("status") == "completed"]),
             "failed_tasks": len([t for t in all_tasks if t.get("status") == "failed"]),
-            "running_tasks": len(
-                [t for t in all_tasks if t.get("status") == "running"]
-            ),
+            "running_tasks": len([t for t in all_tasks if t.get("status") == "running"]),
             "queued_tasks": len([t for t in all_tasks if t.get("status") == "queued"]),
         }
 
@@ -402,9 +380,7 @@ async def performance_snapshot() -> Dict[str, Any]:
             },
         }
     except Exception as e:
-        raise HTTPException(
-            status_code=500, detail=f"Performance snapshot failed: {str(e)}"
-        )
+        raise HTTPException(status_code=500, detail=f"Performance snapshot failed: {str(e)}")
 
 
 @router.get("/queues/snapshot")
@@ -427,11 +403,7 @@ async def queues_snapshot() -> Dict[str, Any]:
         # Calculate task completion times
         completion_times = []
         for task in all_tasks:
-            if (
-                task.get("status") == "completed"
-                and "created_at" in task
-                and "updated_at" in task
-            ):
+            if task.get("status") == "completed" and "created_at" in task and "updated_at" in task:
                 try:
                     created_str = task["created_at"]
                     updated_str = task["updated_at"]
@@ -451,17 +423,14 @@ async def queues_snapshot() -> Dict[str, Any]:
                     # Skip tasks with invalid datetime formats
                     continue
 
-        avg_completion_time = (
-            round(statistics.mean(completion_times), 2) if completion_times else 0
-        )
+        avg_completion_time = round(statistics.mean(completion_times), 2) if completion_times else 0
 
         return {
             "timestamp": datetime.utcnow().isoformat(),
             "queue_status": {
                 "total_tasks": len(all_tasks),
                 "recent_tasks_24h": len(recent_tasks),
-                "active_tasks": status_counts.get("running", 0)
-                + status_counts.get("queued", 0),
+                "active_tasks": status_counts.get("running", 0) + status_counts.get("queued", 0),
                 "completed_tasks": status_counts.get("completed", 0),
                 "failed_tasks": status_counts.get("failed", 0),
                 "cancelled_tasks": status_counts.get("cancelled", 0),
@@ -470,15 +439,11 @@ async def queues_snapshot() -> Dict[str, Any]:
             "performance": {
                 "avg_completion_time": avg_completion_time,
                 "completion_rate": round(
-                    (status_counts.get("completed", 0) / len(all_tasks) * 100)
-                    if all_tasks
-                    else 0,
+                    (status_counts.get("completed", 0) / len(all_tasks) * 100) if all_tasks else 0,
                     2,
                 ),
                 "failure_rate": round(
-                    (status_counts.get("failed", 0) / len(all_tasks) * 100)
-                    if all_tasks
-                    else 0,
+                    (status_counts.get("failed", 0) / len(all_tasks) * 100) if all_tasks else 0,
                     2,
                 ),
             },
@@ -505,9 +470,7 @@ async def circuit_breakers_status() -> Dict[str, Any]:
     try:
         return {
             "timestamp": datetime.utcnow().isoformat(),
-            "circuit_breakers": {
-                name: cb.get_status() for name, cb in circuit_breakers.items()
-            },
+            "circuit_breakers": {name: cb.get_status() for name, cb in circuit_breakers.items()},
             "summary": {
                 "total_breakers": len(circuit_breakers),
                 "open_breakers": len(
@@ -522,9 +485,7 @@ async def circuit_breakers_status() -> Dict[str, Any]:
             },
         }
     except Exception as e:
-        raise HTTPException(
-            status_code=500, detail=f"Circuit breaker status failed: {str(e)}"
-        )
+        raise HTTPException(status_code=500, detail=f"Circuit breaker status failed: {str(e)}")
 
 
 @router.post("/circuit-breakers/{provider_name}/reset")
@@ -546,9 +507,7 @@ async def reset_circuit_breaker(provider_name: str) -> Dict[str, Any]:
             "circuit_breaker": cb.get_status(),
         }
     except Exception as e:
-        raise HTTPException(
-            status_code=500, detail=f"Failed to reset circuit breaker: {str(e)}"
-        )
+        raise HTTPException(status_code=500, detail=f"Failed to reset circuit breaker: {str(e)}")
 
 
 @router.get("/metrics/history")
@@ -577,7 +536,7 @@ async def metrics_history(
         else:
             # Get system-wide history
             all_history = {}
-            for prov_name in performance_metrics.total_requests.keys():
+            for prov_name in performance_metrics.total_requests:
                 times = performance_metrics.response_times.get(prov_name, [])
                 if times:
                     all_history[prov_name] = {
@@ -614,9 +573,7 @@ async def get_aggregated_metrics(request: Request) -> Dict[str, Any]:
             "message": "Aggregated metrics retrieved successfully",
         }
     except Exception as e:
-        raise HTTPException(
-            status_code=500, detail=f"Failed to get aggregated metrics: {str(e)}"
-        )
+        raise HTTPException(status_code=500, detail=f"Failed to get aggregated metrics: {str(e)}")
 
 
 @router.get("/health/trends")
@@ -644,9 +601,7 @@ async def get_health_trends(request: Request) -> Dict[str, Any]:
             "message": "Health trends calculated successfully",
         }
     except Exception as e:
-        raise HTTPException(
-            status_code=500, detail=f"Failed to get health trends: {str(e)}"
-        )
+        raise HTTPException(status_code=500, detail=f"Failed to get health trends: {str(e)}")
 
 
 @router.get("/streaming/analysis")
@@ -680,9 +635,7 @@ async def get_streaming_analysis(request: Request) -> Dict[str, Any]:
             "message": "Streaming analysis completed successfully",
         }
     except Exception as e:
-        raise HTTPException(
-            status_code=500, detail=f"Failed to get streaming analysis: {str(e)}"
-        )
+        raise HTTPException(status_code=500, detail=f"Failed to get streaming analysis: {str(e)}")
 
 
 @router.get("/security/status")
@@ -698,9 +651,7 @@ async def get_security_status(request: Request) -> Dict[str, Any]:
             "message": "Security status retrieved successfully",
         }
     except Exception as e:
-        raise HTTPException(
-            status_code=500, detail=f"Failed to get security status: {str(e)}"
-        )
+        raise HTTPException(status_code=500, detail=f"Failed to get security status: {str(e)}")
 
 
 @router.get("/audit/log")
@@ -725,16 +676,12 @@ async def get_audit_log(
             "message": "Audit log retrieved successfully",
         }
     except Exception as e:
-        raise HTTPException(
-            status_code=500, detail=f"Failed to get audit log: {str(e)}"
-        )
+        raise HTTPException(status_code=500, detail=f"Failed to get audit log: {str(e)}")
 
 
 @router.post("/circuit-breakers/{provider_name}/reset")
 @require_ops_reset_access()
-async def reset_circuit_breaker_enhanced(
-    request: Request, provider_name: str
-) -> Dict[str, Any]:
+async def reset_circuit_breaker_enhanced(request: Request, provider_name: str) -> Dict[str, Any]:
     """Enhanced circuit breaker reset with audit logging"""
     try:
         if provider_name not in circuit_breakers:
@@ -760,9 +707,7 @@ async def reset_circuit_breaker_enhanced(
             "message": f"Circuit breaker for {provider_name} reset successfully",
         }
     except Exception as e:
-        raise HTTPException(
-            status_code=500, detail=f"Failed to reset circuit breaker: {str(e)}"
-        )
+        raise HTTPException(status_code=500, detail=f"Failed to reset circuit breaker: {str(e)}")
 
 
 @router.get("/recommendations")
@@ -805,9 +750,7 @@ async def get_system_recommendations(request: Request) -> Dict[str, Any]:
             "message": "System recommendations generated successfully",
         }
     except Exception as e:
-        raise HTTPException(
-            status_code=500, detail=f"Failed to get recommendations: {str(e)}"
-        )
+        raise HTTPException(status_code=500, detail=f"Failed to get recommendations: {str(e)}")
 
 
 def _calculate_health_score(

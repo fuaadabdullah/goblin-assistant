@@ -1,25 +1,30 @@
 """
 Privacy-first vector store wrapper for Goblin Assistant.
 
-This module provides a secure wrapper around Chroma DB that enforces:
+This module provides a privacy layer on top of any VectorStore implementation
+that enforces:
 - PII detection and blocking before embedding
 - User consent checks before storage
 - TTL (time-to-live) for automatic data expiration
-- User-scoped data isolation (RLS at application level)
+- User-scoped data isolation
+
+Storage is delegated to a VectorStore (PgVectorStore by default, ChromaStore
+when CHROMA_URL is set).  The local Chroma filesystem backend is no longer
+used because ephemeral runtimes lose filesystem state on restart.
 
 Usage:
     from api.services.safe_vector_store import SafeVectorStore
 
-    store = SafeVectorStore(collection_name="goblin_rag")
+    store = SafeVectorStore()
 
-    # Add document with consent check
     result = await store.add_document(
         doc_id="doc_123",
         content=user_input,
+        embedding=embedding_vector,
         metadata={"source": "chat"},
         user_id="user_xyz",
-        consent_given=True,  # Must be True
-        ttl_hours=24
+        consent_given=True,
+        ttl_hours=24,
     )
 """
 
@@ -27,138 +32,80 @@ import logging
 from datetime import datetime, timedelta
 from typing import Any, Dict, Optional
 
-try:
-    import chromadb
-    from chromadb.config import Settings
-
-    CHROMADB_AVAILABLE = True
-except ImportError:
-    chromadb = None  # type: ignore[assignment]
-    Settings = None  # type: ignore[assignment,misc]
-    CHROMADB_AVAILABLE = False
-
-# Optional: embedding functions (requires sentence-transformers)
-try:
-    from chromadb.utils import embedding_functions  # type: ignore[import-not-found]
-
-    EMBEDDINGS_AVAILABLE = True
-except ImportError:
-    EMBEDDINGS_AVAILABLE = False
-    embedding_functions = None
-
 from .sanitization import (
     hash_message_id,
     is_sensitive_content,
     sanitize_input_for_model,
 )
+from .vector_store import VectorStore, create_vector_store
 
 logger = logging.getLogger(__name__)
 
+# CHROMADB_AVAILABLE is kept as a public constant for backward compat with
+# any external code that checked it before importing SafeVectorStore.
+CHROMADB_AVAILABLE = False
+try:
+    import chromadb as _chromadb  # noqa: F401
+
+    CHROMADB_AVAILABLE = True
+except ImportError:
+    pass
+
 
 class SafeVectorStore:
-    """
-    Chroma DB wrapper with privacy-first approach.
+    """Privacy wrapper around a VectorStore implementation.
 
-    Features:
-    - Automatic PII detection and blocking
-    - User consent enforcement
-    - TTL-based expiration
-    - Per-user data isolation
-    - Audit logging
+    Add-time enforcement:
+    - Consent must be explicitly granted
+    - PII is detected and blocked (or stripped when force=True)
+    - TTL metadata is attached so callers can expire documents
+
+    Read/delete operations are delegated directly to the underlying store
+    because they do not require consent re-verification.
     """
 
     def __init__(
         self,
+        default_ttl_hours: int = 24,
+        store: Optional[VectorStore] = None,
+        # Legacy kwarg kept for call-site compat; ignored in the new implementation.
         collection_name: str = "goblin_rag",
         persist_directory: Optional[str] = None,
-        default_ttl_hours: int = 24,
         embedding_model: str = "all-MiniLM-L6-v2",
-    ):
-        """
-        Initialize SafeVectorStore.
-
-        Args:
-            collection_name: Name of the Chroma collection
-            persist_directory: Directory for persistent storage (None = in-memory)
-            default_ttl_hours: Default TTL in hours
-            embedding_model: Sentence transformer model name
-        """
-        if not CHROMADB_AVAILABLE:
-            raise RuntimeError("chromadb is not installed. Install it with: pip install chromadb")
-
-        self.collection_name = collection_name
+    ) -> None:
         self.default_ttl_hours = default_ttl_hours
-
-        # Initialize Chroma client
-        if persist_directory:
-            self.client = chromadb.PersistentClient(
-                path=persist_directory, settings=Settings(anonymized_telemetry=False)
-            )
-        else:
-            self.client = chromadb.Client(settings=Settings(anonymized_telemetry=False))
-        # Setup embedding function
-        if EMBEDDINGS_AVAILABLE and embedding_functions is not None:
-            try:
-                self.embedding_fn = embedding_functions.SentenceTransformerEmbeddingFunction(
-                    model_name=embedding_model
-                )
-            except (ValueError, ImportError) as e:
-                # sentence-transformers not available (requires PyTorch)
-                logger.warning(
-                    "sentence-transformers not available (%s), using default embeddings", e
-                )
-                self.embedding_fn = None
-        else:
-            # Fallback: use default embeddings
-            logger.warning("sentence-transformers not available, using default embeddings")
-            self.embedding_fn = None
-
-        # Get or create collection
-        self.collection = self.client.get_or_create_collection(
-            name=collection_name,
-            embedding_function=self.embedding_fn,
-            metadata={"hnsw:space": "cosine"},
+        self._store: VectorStore = store or create_vector_store()
+        logger.info(
+            "Initialized SafeVectorStore (backend: %s)",
+            type(self._store).__name__,
         )
-
-        logger.info("Initialized SafeVectorStore: %s", collection_name)
 
     async def add_document(
         self,
         doc_id: str,
         content: str,
+        embedding: list,
         metadata: Dict[str, Any],
         user_id: str,
         consent_given: bool = False,
         ttl_hours: Optional[int] = None,
         force: bool = False,
     ) -> Dict[str, Any]:
-        """
-        Add document with sanitization, consent check, and TTL.
+        """Add a document with privacy enforcement.
 
         Args:
             doc_id: Unique document identifier
-            content: Document content (will be sanitized)
+            content: Document text (will be sanitized)
+            embedding: Pre-computed embedding vector
             metadata: Document metadata
-            user_id: User ID for RLS
-            consent_given: User consent for RAG storage (required)
+            user_id: User ID for data isolation
+            consent_given: Must be True for storage to proceed
             ttl_hours: Time-to-live in hours (default: 24h)
-            force: Skip PII checks (use with caution!)
+            force: Skip PII checks (use with caution)
 
         Returns:
-            Dictionary with success status and details
-
-        Example:
-            >>> result = await store.add_document(
-            ...     doc_id="doc_123",
-            ...     content="Technical documentation...",
-            ...     metadata={"source": "upload"},
-            ...     user_id="user_xyz",
-            ...     consent_given=True
-            ... )
-            >>> print(result["success"])
-            True
+            dict with ``success`` key indicating outcome
         """
-        # Check consent
         if not consent_given:
             logger.warning("Consent not given for doc %s by user %s", doc_id, user_id)
             return {
@@ -168,17 +115,15 @@ class SafeVectorStore:
                 "suggestion": "Obtain explicit user consent before storing documents",
             }
 
-        # Check for sensitive content (unless forced)
         if not force and is_sensitive_content(content):
             logger.warning("Sensitive content detected in doc %s", doc_id)
             return {
                 "success": False,
-                "error": "Document contains sensitive content (PII/secret) - cannot embed",
+                "error": "Document contains sensitive content (PII/secret) — cannot embed",
                 "doc_id": doc_id,
                 "suggestion": "Remove PII/secrets before adding to RAG",
             }
 
-        # Sanitize content
         sanitized_content, pii_detected = sanitize_input_for_model(content)
 
         if pii_detected and not force:
@@ -191,12 +136,10 @@ class SafeVectorStore:
                 "suggestion": "Remove detected PII before adding",
             }
 
-        # Calculate expiry
         ttl = ttl_hours or self.default_ttl_hours
         created_at = datetime.utcnow()
         expires_at = created_at + timedelta(hours=ttl)
 
-        # Add safety metadata
         safe_metadata = {
             **metadata,
             "user_id": user_id,
@@ -210,13 +153,14 @@ class SafeVectorStore:
         }
 
         try:
-            # Store in Chroma
-            self.collection.add(
-                documents=[sanitized_content], metadatas=[safe_metadata], ids=[doc_id]
+            await self._store.upsert(
+                doc_id=doc_id,
+                content=sanitized_content,
+                embedding=embedding,
+                user_id=user_id,
+                metadata=safe_metadata,
             )
-
             logger.info("Added doc %s for user %s, expires %s", doc_id, user_id, expires_at)
-
             return {
                 "success": True,
                 "doc_id": doc_id,
@@ -225,202 +169,25 @@ class SafeVectorStore:
                 "sanitized": len(pii_detected) > 0,
                 "pii_removed": pii_detected,
             }
-
-        except Exception as e:
-            logger.error("Failed to add doc %s: %s", doc_id, e)
-            return {"success": False, "error": str(e), "doc_id": doc_id}
-
-    async def query_documents(
-        self,
-        query_text: str,
-        user_id: str,
-        n_results: int = 5,
-        include_expired: bool = False,
-    ) -> Dict[str, Any]:
-        """
-        Query documents for a specific user (RLS).
-
-        Args:
-            query_text: Query text
-            user_id: User ID for filtering
-            n_results: Number of results to return
-            include_expired: Include expired documents
-
-        Returns:
-            Dictionary with query results
-        """
-        # Sanitize query
-        sanitized_query, _ = sanitize_input_for_model(query_text)
-
-        # Build where clause for user isolation
-        where_clause = {"user_id": user_id}
-
-        if not include_expired:
-            # Filter out expired documents
-            now = datetime.utcnow().isoformat()
-            # Note: Chroma doesn't support date comparisons in where clause
-            # We'll filter after retrieval
-
-        try:
-            results = self.collection.query(
-                query_texts=[sanitized_query],
-                n_results=n_results * 2,  # Get extra to filter expired
-                where=where_clause,
-                include=["documents", "metadatas", "distances"],
-            )
-
-            # Filter expired documents
-            if not include_expired:
-                now = datetime.utcnow()
-                filtered_docs = []
-                filtered_metas = []
-                filtered_distances = []
-
-                for doc, meta, dist in zip(
-                    results["documents"][0],
-                    results["metadatas"][0],
-                    results["distances"][0],
-                ):
-                    expires_at = datetime.fromisoformat(meta["expires_at"])
-                    if expires_at > now:
-                        filtered_docs.append(doc)
-                        filtered_metas.append(meta)
-                        filtered_distances.append(dist)
-
-                        if len(filtered_docs) >= n_results:
-                            break
-
-                results = {
-                    "documents": [filtered_docs],
-                    "metadatas": [filtered_metas],
-                    "distances": [filtered_distances],
-                }
-
-            return {
-                "success": True,
-                "results": results,
-                "count": len(results["documents"][0]) if results["documents"] else 0,
-            }
-
-        except Exception as e:
-            logger.error("Query failed for user %s: %s", user_id, e)
-            return {"success": False, "error": str(e), "count": 0}
+        except Exception as exc:
+            logger.error("Failed to add doc %s: %s", doc_id, exc)
+            return {"success": False, "error": str(exc), "doc_id": doc_id}
 
     async def delete_user_data(self, user_id: str) -> Dict[str, Any]:
-        """
-        Delete all documents for a user (GDPR Article 17).
-
-        Args:
-            user_id: User ID
-
-        Returns:
-            Dictionary with deletion status
-        """
-        try:
-            # Get all user documents
-            results = self.collection.get(where={"user_id": user_id}, include=["metadatas"])
-
-            doc_ids = results["ids"]
-
-            if doc_ids:
-                self.collection.delete(ids=doc_ids)
-                logger.info("Deleted %s documents for user %s", len(doc_ids), user_id)
-
-            return {
-                "success": True,
-                "deleted_count": len(doc_ids),
-                "user_id": user_id,
-                "deleted_at": datetime.utcnow().isoformat(),
-            }
-
-        except Exception as e:
-            logger.error("Failed to delete user data for %s: %s", user_id, e)
-            return {"success": False, "error": str(e), "user_id": user_id}
-
-    async def cleanup_expired(self) -> Dict[str, Any]:
-        """
-        Remove documents past their TTL.
-
-        Returns:
-            Dictionary with cleanup statistics
-        """
-        try:
-            all_docs = self.collection.get(include=["metadatas"])
-            now = datetime.utcnow()
-
-            expired_ids = []
-            for doc_id, meta in zip(all_docs["ids"], all_docs["metadatas"]):
-                try:
-                    expires_at = datetime.fromisoformat(meta.get("expires_at"))
-                    if expires_at < now:
-                        expired_ids.append(doc_id)
-                except (ValueError, TypeError):
-                    # Invalid or missing expires_at - skip
-                    logger.warning("Doc %s has invalid expires_at", doc_id)
-                    continue
-
-            if expired_ids:
-                self.collection.delete(ids=expired_ids)
-                logger.info("Cleaned up %s expired documents", len(expired_ids))
-
-            return {
-                "success": True,
-                "deleted_count": len(expired_ids),
-                "cleaned_at": datetime.utcnow().isoformat(),
-            }
-
-        except Exception as e:
-            logger.error("Cleanup failed: %s", e)
-            return {"success": False, "error": str(e), "deleted_count": 0}
-
-    async def get_user_document_count(self, user_id: str) -> int:
-        """Get count of documents for a user."""
-        try:
-            results = self.collection.get(where={"user_id": user_id}, include=[])
-            return len(results["ids"])
-        except Exception as e:
-            logger.error("Failed to count documents for %s: %s", user_id, e)
-            return 0
+        """Delete all documents for a user (GDPR Article 17)."""
+        return await self._store.delete_user_data(user_id)
 
     async def export_user_data(self, user_id: str) -> Dict[str, Any]:
-        """
-        Export all user documents (GDPR Article 20).
+        """Export all user documents (GDPR Article 20)."""
+        return await self._store.export_user_data(user_id)
 
-        Args:
-            user_id: User ID
+    async def get_user_document_count(self, user_id: str) -> int:
+        """Count documents stored for a user."""
+        return await self._store.get_user_document_count(user_id)
 
-        Returns:
-            Dictionary with exported data
-        """
-        try:
-            results = self.collection.get(
-                where={"user_id": user_id}, include=["documents", "metadatas"]
-            )
-
-            documents = []
-            for doc_id, content, meta in zip(
-                results["ids"], results["documents"], results["metadatas"]
-            ):
-                documents.append(
-                    {
-                        "doc_id": doc_id,
-                        "content": content,
-                        "metadata": meta,
-                    }
-                )
-
-            return {
-                "success": True,
-                "user_id": user_id,
-                "document_count": len(documents),
-                "documents": documents,
-                "exported_at": datetime.utcnow().isoformat(),
-            }
-
-        except Exception as e:
-            logger.error("Export failed for user %s: %s", user_id, e)
-            return {"success": False, "error": str(e), "user_id": user_id}
+    async def health(self) -> Dict[str, Any]:
+        """Return the underlying store's health status."""
+        return await self._store.health()
 
 
-# Export public API
-__all__ = ["SafeVectorStore"]
+__all__ = ["SafeVectorStore", "CHROMADB_AVAILABLE"]
