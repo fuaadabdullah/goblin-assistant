@@ -1,0 +1,37 @@
+#cloud-config
+# Bootstraps the Oracle ARM VM: installs Docker, clones the repo.
+# Runs once on first boot (~2 min). Check progress:
+#   sudo cloud-init status --wait
+#   sudo tail -f /var/log/cloud-init-output.log
+
+package_update: true
+
+packages:
+  - ca-certificates
+  - curl
+  - git
+
+runcmd:
+  # Docker (official install script handles ARM64 correctly)
+  - curl -fsSL https://get.docker.com | sh
+  - usermod -aG docker ubuntu
+  - systemctl enable docker
+  - systemctl start docker
+
+  # Clone repo
+  - git clone ${repo_url} /home/ubuntu/goblin-assistant
+  - chown -R ubuntu:ubuntu /home/ubuntu/goblin-assistant
+
+  # Remind operator to drop .env before starting compose
+  - |
+    cat > /home/ubuntu/README.txt <<'EOF'
+    Next step: copy your .env file from your machine:
+      scp infra/oracle/.env ubuntu@$(curl -s ifconfig.me):~/goblin-assistant/infra/oracle/.env
+
+    Then start the stack:
+      cd ~/goblin-assistant/infra/oracle
+      docker compose --profile workers up -d --build
+    EOF
+  - chown ubuntu:ubuntu /home/ubuntu/README.txt
+
+final_message: "VM ready. Copy .env then run docker compose."
