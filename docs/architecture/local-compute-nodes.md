@@ -33,7 +33,11 @@ Nodes announce themselves; they are not discovered. A node is the only party
 that knows whether its GPU is healthy, which models are resident, and how much
 of its concurrency budget is spent.
 
-`POST /api/v1/nodes/heartbeat`
+`POST /api/v1/nodes/heartbeat` — **authenticated**:
+
+```http
+Authorization: Bearer <GOBLIN_NODE_REGISTRATION_SECRET>
+```
 
 ```json
 {
@@ -52,12 +56,44 @@ of its concurrency budget is spent.
 Upserts by `node_id` — the first heartbeat registers, later ones refresh. A
 node that restarts or changes its model set needs no operator action.
 
-| Endpoint | Purpose |
-| --- | --- |
-| `POST /api/v1/nodes/heartbeat` | Node self-announcement |
-| `GET /api/v1/nodes` | All nodes, with effective status and eligibility |
-| `GET /api/v1/nodes/{id}` | One node |
-| `DELETE /api/v1/nodes/{id}` | Evict immediately, without waiting for expiry |
+| Endpoint | Auth | Purpose |
+| --- | --- | --- |
+| `POST /api/v1/nodes/heartbeat` | Node secret | Node self-announcement |
+| `GET /api/v1/nodes` | Authenticated user | All nodes, status and eligibility |
+| `GET /api/v1/nodes/{id}` | Authenticated user | One node |
+| `DELETE /api/v1/nodes/{id}` | Authenticated user | Evict without waiting for expiry |
+
+## Security
+
+The control plane is authenticated because it is not merely status metadata.
+`endpoint` decides where dispatch sends **real user prompts**, under the API's
+own TLS identity — an unauthenticated heartbeat is a prompt-exfiltration and
+SSRF primitive, not a cosmetic concern.
+
+Three controls, in order of importance:
+
+1. **Heartbeat authentication.** A shared bearer secret, compared in constant
+   time. **Fails closed**: with `GOBLIN_NODE_REGISTRATION_SECRET` unset the
+   endpoint returns 503 and registers nothing. Nodes are not users, so this
+   deliberately avoids the session/database path on every beat.
+2. **Endpoint policy.** Advertised endpoints must be well-formed `http(s)`
+   with no credentials, query or fragment; plaintext `http` is permitted only
+   to loopback. Validated at registration *and* re-validated at dispatch, so
+   tightening policy also constrains nodes already resident in the registry.
+3. **Host allowlist.** `GOBLIN_NODE_ENDPOINT_ALLOWLIST` is what turns a leaked
+   registration secret from "attacker receives your users' prompts" into
+   "attacker achieves nothing". **Set it in production.** Without it, an
+   authenticated caller may advertise any structurally valid host — there is a
+   test that documents exactly this residual risk.
+
+Operator routes reuse the standard authenticated-user dependency. An
+unauthorized `DELETE` cannot evict a node.
+
+### Future hardening
+
+Per-node secrets rather than one shared value, HMAC-signed timestamped
+heartbeats to stop replay, or API-side mTLS. Not needed while the fleet is one
+machine, but the shared secret is the first thing to outgrow.
 
 ## Eligibility
 
@@ -91,15 +127,35 @@ Streaming skips the local tier entirely: the node agent forces `stream:false`.
 
 | Variable | Default | Notes |
 | --- | --- | --- |
-| `GOBLIN_LOCAL_NODES_ENABLED` | `true` | `false` restores exact pre-existing routing |
+| `GOBLIN_LOCAL_NODES_ENABLED` | **`false`** | Ships off; production opts in |
+| `GOBLIN_NODE_REGISTRATION_SECRET` | — | **Required.** Unset = heartbeats refused |
+| `GOBLIN_NODE_ENDPOINT_ALLOWLIST` | — | Permitted endpoint hosts. Set in production |
 | `GOBLIN_NODE_HEARTBEAT_TTL` | `90` | Tolerates two dropped 30s beats |
-| `GOBLIN_NODE_TIMEOUT` | `60` | Wait before giving up on a node |
+| `GOBLIN_NODE_CONNECT_TIMEOUT` | `3` | Cap on discovering a node is absent |
+| `GOBLIN_NODE_TIMEOUT` | `300` | Read timeout — generation may be slow |
 | `GOBLIN_NODE_MAX_FAILURES` | `3` | Consecutive failures before shedding |
 | `GOBLIN_NODE_DEFAULT_MODEL` | `llama3.1:8b` | Used when the caller names none |
 | `GOBLIN_NODE_CLIENT_CERT/KEY`, `GOBLIN_NODE_CA_CERT` | — | mTLS identity presented to nodes |
 
 Without a client certificate signed by the node fleet CA, the node drops the
 API at the TLS handshake. That is the intended behaviour, not a misconfiguration.
+
+## Timeout policy
+
+Connect and read budgets are separate, because the two failures are nothing
+alike:
+
+| Failure | Behaviour | Budget |
+| --- | --- | --- |
+| Process killed | RST, refused immediately | ~0 s |
+| Tunnel/firewall blackhole | SYN goes nowhere | `GOBLIN_NODE_CONNECT_TIMEOUT` (3 s) |
+| Node generating a long answer | Legitimately slow | `GOBLIN_NODE_TIMEOUT` (300 s) |
+
+A single shared budget would let a blackholed node stall the user for the
+whole timeout before the cloud is tried — precisely the "local-first made
+Goblin slow" failure this tier must never cause. A 3060 taking a while over a
+long answer is fine; taking 60 seconds to discover the computer isn't there
+is not.
 
 ## Known limitation: multi-worker deployments
 
@@ -125,9 +181,15 @@ Verified against real hardware on 2026-08-19:
    refused is immediate), router proceeds to the cloud ladder.
 4. Heartbeat aged past TTL → status becomes `offline`.
 
+Re-verified with heartbeat authentication and a host allowlist enforced:
+65.4 tok/s, same fallback behaviour. A blackholed host (RFC 5737 TEST-NET-2,
+which drops rather than refuses) falls back inside the connect budget — this
+is covered by an automated test, not just the manual run.
+
 ## Not implemented
 
 - **Streaming** to local nodes.
+- Per-node secrets, HMAC-signed heartbeats, replay protection.
 - **Multi-node scheduling.** `eligible_nodes()` sorts by `active_jobs` then
   `node_id`. Real scheduling — VRAM fit, model residency, locality — is a
   separate problem that should not be half-solved here.

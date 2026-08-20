@@ -25,6 +25,7 @@ from typing import Any, Dict, Optional
 import structlog
 
 from .client import NodeUnavailable, invoke_node
+from .endpoint_policy import InvalidEndpoint, validate_endpoint
 from .config import node_settings
 from .registry import NodeRegistry, node_registry
 
@@ -104,11 +105,25 @@ async def try_local_compute(
         logger.warning("local_compute_skipped", reason="no_endpoint", node_id=node.node_id)
         return None
 
+    # Re-validate at dispatch time, not just at registration. Policy can be
+    # tightened (an allowlist added) while nodes registered under the looser
+    # rules are still resident in the registry.
+    try:
+        target = validate_endpoint(node.endpoint)
+    except InvalidEndpoint as exc:
+        logger.warning(
+            "local_compute_skipped",
+            reason="endpoint_rejected",
+            node_id=node.node_id,
+            error=str(exc),
+        )
+        return None
+
     job_id = request_id or str(uuid.uuid4())
     started = time.perf_counter()
     try:
         result = await invoke_node(
-            endpoint=node.endpoint,
+            endpoint=target,
             model=wanted,
             prompt=prompt,
             options=payload.get("options") if isinstance(payload.get("options"), dict) else None,
