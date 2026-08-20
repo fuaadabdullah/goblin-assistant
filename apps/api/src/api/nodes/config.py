@@ -29,6 +29,20 @@ class NodeSettings:
         default_factory=lambda: _env("GOBLIN_NODE_REGISTRATION_SECRET", "")
     )
 
+    # Secret for the management routes (list / inspect / evict). Deliberately
+    # SEPARATE from registration_secret, because the two have very different
+    # blast radii: the registration secret is copied onto every node in the
+    # fleet, so reusing it here would let any node -- or anyone who
+    # compromised one -- enumerate and evict the rest.
+    #
+    # This exists because Goblin has no role model: UserModel has no admin or
+    # superuser column, so `get_current_user` proves somebody is logged in,
+    # not that they are an operator. Requiring a secret is honest about that.
+    # Replace it with a real authorization dependency once roles exist.
+    operator_secret: str = field(
+        default_factory=lambda: _env("GOBLIN_NODE_OPERATOR_SECRET", "")
+    )
+
     # Hosts a node is permitted to advertise as its endpoint, comma separated.
     # Empty means "no allowlist", which is acceptable only because the
     # heartbeat is authenticated -- set it in production anyway, so a leaked

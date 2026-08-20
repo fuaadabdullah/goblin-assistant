@@ -59,9 +59,9 @@ node that restarts or changes its model set needs no operator action.
 | Endpoint | Auth | Purpose |
 | --- | --- | --- |
 | `POST /api/v1/nodes/heartbeat` | Node secret | Node self-announcement |
-| `GET /api/v1/nodes` | Authenticated user | All nodes, status and eligibility |
-| `GET /api/v1/nodes/{id}` | Authenticated user | One node |
-| `DELETE /api/v1/nodes/{id}` | Authenticated user | Evict without waiting for expiry |
+| `GET /api/v1/nodes` | Operator secret | All nodes, status and eligibility |
+| `GET /api/v1/nodes/{id}` | Operator secret | One node |
+| `DELETE /api/v1/nodes/{id}` | Operator secret | Evict without waiting for expiry |
 
 ## Security
 
@@ -86,8 +86,21 @@ Three controls, in order of importance:
    authenticated caller may advertise any structurally valid host — there is a
    test that documents exactly this residual risk.
 
-Operator routes reuse the standard authenticated-user dependency. An
-unauthorized `DELETE` cannot evict a node.
+### Authentication is not authorization
+
+Management routes use a **separate** `GOBLIN_NODE_OPERATOR_SECRET`, not
+`get_current_user`. Goblin has no role model — `UserModel` carries no admin or
+superuser column — so "authenticated" would have meant *any* user of a
+multi-user deployment could enumerate the fleet or `DELETE` node-001.
+
+The two secrets are deliberately distinct, and the code **refuses to start
+serving management routes if they are equal**. The registration secret is
+copied onto every node in the fleet; if it also opened management,
+compromising any single node would hand over the ability to evict all the
+others. Both fail closed when unset.
+
+Replace this with a real authorization dependency once roles exist — the
+secret is a stand-in for RBAC that does not yet exist, not a preferred design.
 
 ### Future hardening
 
@@ -129,6 +142,7 @@ Streaming skips the local tier entirely: the node agent forces `stream:false`.
 | --- | --- | --- |
 | `GOBLIN_LOCAL_NODES_ENABLED` | **`false`** | Ships off; production opts in |
 | `GOBLIN_NODE_REGISTRATION_SECRET` | — | **Required.** Unset = heartbeats refused |
+| `GOBLIN_NODE_OPERATOR_SECRET` | — | **Required** for management routes. Must differ from the above |
 | `GOBLIN_NODE_ENDPOINT_ALLOWLIST` | — | Permitted endpoint hosts. Set in production |
 | `GOBLIN_NODE_HEARTBEAT_TTL` | `90` | Tolerates two dropped 30s beats |
 | `GOBLIN_NODE_CONNECT_TIMEOUT` | `3` | Cap on discovering a node is absent |
@@ -190,6 +204,8 @@ is covered by an automated test, not just the manual run.
 
 - **Streaming** to local nodes.
 - Per-node secrets, HMAC-signed heartbeats, replay protection.
+- **Role-based authorization.** The operator secret is a stand-in until
+  `UserModel` grows a role and a real `require_admin` dependency exists.
 - **Multi-node scheduling.** `eligible_nodes()` sorts by `active_jobs` then
   `node_id`. Real scheduling — VRAM fit, model residency, locality — is a
   separate problem that should not be half-solved here.

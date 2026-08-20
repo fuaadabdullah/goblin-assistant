@@ -1,17 +1,18 @@
 """HTTP surface for the node registry.
 
-Every route here is authenticated. The heartbeat uses a node registration
-secret; the inspect/evict routes use the normal authenticated-user dependency,
-because those are operator actions rather than machine ones.
+Two distinct credentials, because the callers are not the same kind of thing.
+Nodes publish heartbeats with the registration secret, which is distributed
+across the fleet. Operators list, inspect and evict with a separate operator
+secret, which is not -- so compromising a node does not hand over the fleet.
 """
 
 from __future__ import annotations
 
-from typing import Any, Dict, List
+from typing import Dict, List
 
 from fastapi import APIRouter, Depends, HTTPException, status
 
-from .auth import require_node_secret
+from .auth import require_node_secret, require_operator
 from .endpoint_policy import InvalidEndpoint, validate_endpoint
 from .models import NodeHeartbeat, NodeView
 from .registry import node_registry
@@ -19,28 +20,11 @@ from .registry import node_registry
 router = APIRouter(prefix="/nodes", tags=["nodes"])
 
 
-# The inspect/evict routes are operator actions, so they reuse the app's
-# normal authenticated-user dependency. The import is guarded only so this
-# module stays importable in isolation (unit tests mount the router without
-# the database session machinery); in the running app it is always present.
-try:  # pragma: no cover - exercised implicitly by the app
-    from ..auth.router.dependencies import get_current_user as _get_current_user
-except Exception:  # noqa: BLE001
-    _get_current_user = None
-
-if _get_current_user is None:  # pragma: no cover
-
-    async def _deny() -> Any:
-        # Fail closed: never expose the registry just because auth failed to
-        # import.
-        raise HTTPException(
-            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-            detail="authentication unavailable",
-        )
-
-    _OPERATOR_AUTH = [Depends(_deny)]
-else:
-    _OPERATOR_AUTH = [Depends(_get_current_user)]
+# Management routes are AUTHORIZED, not merely authenticated. Goblin has no
+# role model, so a logged-in user is not evidence of being an operator: with
+# only get_current_user here, any user of a multi-user deployment could
+# enumerate the fleet or evict node-001. See auth.require_operator.
+_OPERATOR_AUTH = [Depends(require_operator)]
 
 
 @router.post("/heartbeat", dependencies=[Depends(require_node_secret)])
