@@ -39,6 +39,16 @@ def registry() -> NodeRegistry:
     return NodeRegistry()
 
 
+@pytest.fixture(autouse=True)
+def local_tier_enabled(monkeypatch):
+    """The tier ships OFF, so dispatch tests must turn it on explicitly."""
+    from dataclasses import replace
+
+    monkeypatch.setattr(
+        "api.nodes.dispatch.node_settings", replace(node_settings, enabled=True)
+    )
+
+
 # --- registration ---------------------------------------------------------
 
 

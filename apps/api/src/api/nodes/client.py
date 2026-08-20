@@ -74,7 +74,16 @@ async def invoke_node(
     connection refused, TLS failure, timeout, 503 (node saturated), or any
     other non-2xx.
     """
-    timeout = timeout_seconds or node_settings.dispatch_timeout_seconds
+    # Connecting and generating get separate budgets. Discovering that a node
+    # is not there must be fast even when the network blackholes packets
+    # instead of refusing politely; generating a long answer on a 3060 is
+    # allowed to take its time.
+    timeout = httpx.Timeout(
+        connect=node_settings.connect_timeout_seconds,
+        read=timeout_seconds or node_settings.read_timeout_seconds,
+        write=node_settings.write_timeout_seconds,
+        pool=node_settings.connect_timeout_seconds,
+    )
     url = endpoint.rstrip("/") + "/inference"
     body: Dict[str, Any] = {"model": model, "prompt": prompt, "options": options or {}}
     if job_id:
@@ -84,7 +93,13 @@ async def invoke_node(
         async with httpx.AsyncClient(verify=build_ssl_context(), timeout=timeout) as client:
             resp = await client.post(url, json=body)
     except httpx.TimeoutException as exc:
-        raise NodeUnavailable("node timed out after {}s".format(timeout)) from exc
+        raise NodeUnavailable(
+            "node timed out (connect={}s read={}s): {}".format(
+                node_settings.connect_timeout_seconds,
+                timeout_seconds or node_settings.read_timeout_seconds,
+                type(exc).__name__,
+            )
+        ) from exc
     except (httpx.HTTPError, ssl.SSLError, OSError) as exc:
         raise NodeUnavailable("node unreachable: {}".format(exc)) from exc
 

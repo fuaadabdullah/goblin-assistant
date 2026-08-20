@@ -16,9 +16,35 @@ def _flag(key: str, default: str = "true") -> bool:
 
 @dataclass(frozen=True)
 class NodeSettings:
-    # Master switch. Off means the router behaves exactly as it did before
-    # local compute existed -- the safest possible rollback.
-    enabled: bool = field(default_factory=lambda: _flag("GOBLIN_LOCAL_NODES_ENABLED", "true"))
+    # Master switch, default OFF. Local compute is a deployment gate, not a
+    # default: an environment opts in only once the tunnel, the mTLS material,
+    # the heartbeat secret and a reachable node are all actually in place.
+    enabled: bool = field(default_factory=lambda: _flag("GOBLIN_LOCAL_NODES_ENABLED", "false"))
+
+    # Shared secret a node presents to register. There is no default and no
+    # fallback: with this unset the heartbeat endpoint refuses every request,
+    # because an unauthenticated node control plane lets anyone redirect real
+    # user prompts to a host of their choosing.
+    registration_secret: str = field(
+        default_factory=lambda: _env("GOBLIN_NODE_REGISTRATION_SECRET", "")
+    )
+
+    # Hosts a node is permitted to advertise as its endpoint, comma separated.
+    # Empty means "no allowlist", which is acceptable only because the
+    # heartbeat is authenticated -- set it in production anyway, so a leaked
+    # secret cannot be escalated into prompt exfiltration.
+    endpoint_allowlist: tuple[str, ...] = field(
+        default_factory=lambda: tuple(
+            h.strip().lower()
+            for h in _env("GOBLIN_NODE_ENDPOINT_ALLOWLIST", "").split(",")
+            if h.strip()
+        )
+    )
+
+    # Permit http:// and non-loopback plaintext endpoints. Development only.
+    allow_insecure_endpoints: bool = field(
+        default_factory=lambda: _flag("GOBLIN_NODE_ALLOW_INSECURE_ENDPOINTS", "false")
+    )
 
     # A heartbeat older than this means offline. 90s tolerates two dropped
     # beats against the agent's 30s default before eviction.
@@ -26,11 +52,25 @@ class NodeSettings:
         default_factory=lambda: float(_env("GOBLIN_NODE_HEARTBEAT_TTL", "90"))
     )
 
-    # How long to wait on a node before giving up and using the cloud. Kept
-    # short: the whole value of the fallback is that the user does not sit
-    # through a dead node's timeout.
-    dispatch_timeout_seconds: float = field(
-        default_factory=lambda: float(_env("GOBLIN_NODE_TIMEOUT", "60"))
+    # Timeouts are split because the two failures are nothing alike.
+    #
+    # A killed process refuses the connection instantly, but a blackholed
+    # tunnel or a firewall that drops packets silently does not -- the SYN
+    # just goes nowhere. Under a single 60s budget that turns "the computer
+    # is not there" into a minute of dead air before the cloud is tried,
+    # which is exactly the "local-first made Goblin slow" failure this tier
+    # must never cause.
+    #
+    # So: discovering a node is unreachable is capped tight, while a 3060
+    # legitimately taking its time over a long answer is left alone.
+    connect_timeout_seconds: float = field(
+        default_factory=lambda: float(_env("GOBLIN_NODE_CONNECT_TIMEOUT", "3"))
+    )
+    read_timeout_seconds: float = field(
+        default_factory=lambda: float(_env("GOBLIN_NODE_TIMEOUT", "300"))
+    )
+    write_timeout_seconds: float = field(
+        default_factory=lambda: float(_env("GOBLIN_NODE_WRITE_TIMEOUT", "10"))
     )
 
     # Consecutive dispatch failures before a node is shed without waiting for
