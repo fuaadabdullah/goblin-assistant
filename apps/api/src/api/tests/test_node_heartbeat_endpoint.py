@@ -24,7 +24,9 @@ HEARTBEAT = {
 
 
 SECRET = "test-node-secret"
+OPERATOR = "test-operator-secret"
 AUTH = {"Authorization": "Bearer " + SECRET}
+OP = {"Authorization": "Bearer " + OPERATOR}
 
 
 @pytest.fixture
@@ -34,20 +36,13 @@ def client(monkeypatch):
     from api.nodes import auth as auth_mod
 
     monkeypatch.setattr(
-        auth_mod, "node_settings", replace(node_settings, registration_secret=SECRET)
+        auth_mod,
+        "node_settings",
+        replace(node_settings, registration_secret=SECRET, operator_secret=OPERATOR),
     )
     node_registry.clear()
     app = FastAPI()
     app.include_router(router)
-    # Operator routes sit behind the normal authenticated-user dependency;
-    # stand in a fake user so these tests exercise the route, not the login.
-    # api.nodes.__init__ re-exports the APIRouter as `router`, shadowing the
-    # submodule attribute, so reach the module itself via importlib.
-    import importlib
-
-    nodes_router_mod = importlib.import_module("api.nodes.router")
-    if nodes_router_mod._get_current_user is not None:
-        app.dependency_overrides[nodes_router_mod._get_current_user] = lambda: {"id": "tester"}
     with TestClient(app) as c:
         yield c
     node_registry.clear()
@@ -66,7 +61,7 @@ def test_second_heartbeat_is_a_refresh_not_a_registration(client):
     client.post("/nodes/heartbeat", json=HEARTBEAT, headers=AUTH)
     body = client.post("/nodes/heartbeat", json=HEARTBEAT, headers=AUTH).json()
     assert body["registered"] is False
-    assert len(client.get("/nodes").json()) == 1
+    assert len(client.get("/nodes", headers=OP).json()) == 1
 
 
 def test_heartbeat_rejects_a_payload_with_no_node_id(client):
@@ -88,7 +83,7 @@ def test_heartbeat_rejects_negative_active_jobs(client):
 
 def test_list_nodes_exposes_what_the_router_sees(client):
     client.post("/nodes/heartbeat", json=HEARTBEAT, headers=AUTH)
-    node = client.get("/nodes").json()[0]
+    node = client.get("/nodes", headers=OP).json()[0]
     assert node["node_id"] == "node-001"
     assert node["status"] == "online"
     assert node["eligible"] is True
@@ -97,20 +92,20 @@ def test_list_nodes_exposes_what_the_router_sees(client):
 
 def test_saturated_node_is_listed_but_not_eligible(client):
     client.post("/nodes/heartbeat", json={**HEARTBEAT, "active_jobs": 1}, headers=AUTH)
-    node = client.get("/nodes").json()[0]
+    node = client.get("/nodes", headers=OP).json()[0]
     assert node["status"] == "online", "still healthy, just busy"
     assert node["eligible"] is False
 
 
 def test_get_unknown_node_is_404(client):
-    assert client.get("/nodes/node-999").status_code == 404
+    assert client.get("/nodes/node-999", headers=OP).status_code == 404
 
 
 def test_node_can_be_forgotten_immediately(client):
     client.post("/nodes/heartbeat", json=HEARTBEAT, headers=AUTH)
-    assert client.delete("/nodes/node-001").status_code == 200
-    assert client.get("/nodes").json() == []
-    assert client.delete("/nodes/node-001").status_code == 404
+    assert client.delete("/nodes/node-001", headers=OP).status_code == 200
+    assert client.get("/nodes", headers=OP).json() == []
+    assert client.delete("/nodes/node-001", headers=OP).status_code == 404
 
 
 def test_agent_payload_shape_is_accepted_verbatim(client):

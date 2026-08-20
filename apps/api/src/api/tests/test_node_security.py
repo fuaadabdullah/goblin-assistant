@@ -20,7 +20,9 @@ from api.nodes.registry import node_registry
 from api.nodes.router import router
 
 SECRET = "correct-horse-battery-staple"
+OPERATOR = "a-different-operator-secret"
 AUTH = {"Authorization": "Bearer " + SECRET}
+OP = {"Authorization": "Bearer " + OPERATOR}
 
 HEARTBEAT = {
     "node_id": "node-001",
@@ -38,7 +40,9 @@ HEARTBEAT = {
 @pytest.fixture
 def app_client(monkeypatch):
     monkeypatch.setattr(
-        auth_mod, "node_settings", replace(node_settings, registration_secret=SECRET)
+        auth_mod,
+        "node_settings",
+        replace(node_settings, registration_secret=SECRET, operator_secret=OPERATOR),
     )
     node_registry.clear()
     app = FastAPI()
@@ -84,13 +88,62 @@ def test_unconfigured_secret_fails_closed(monkeypatch):
     assert node_registry.get("node-001") is None
 
 
-def test_operator_routes_require_authentication(app_client):
+def test_management_routes_reject_anonymous_callers(app_client):
     """Listing and eviction are not anonymous operations."""
     app_client.post("/nodes/heartbeat", json=HEARTBEAT, headers=AUTH)
-    assert app_client.get("/nodes").status_code == 401
-    assert app_client.get("/nodes/node-001").status_code == 401
-    assert app_client.delete("/nodes/node-001").status_code == 401
+    assert app_client.get("/nodes").status_code == 403
+    assert app_client.get("/nodes/node-001").status_code == 403
+    assert app_client.delete("/nodes/node-001").status_code == 403
     assert node_registry.get("node-001") is not None, "unauthorized DELETE must not evict"
+
+
+def test_management_routes_accept_the_operator_secret(app_client):
+    app_client.post("/nodes/heartbeat", json=HEARTBEAT, headers=AUTH)
+    assert app_client.get("/nodes", headers=OP).status_code == 200
+    assert app_client.delete("/nodes/node-001", headers=OP).status_code == 200
+
+
+def test_a_node_credential_cannot_manage_the_fleet(app_client):
+    """Authentication is not authorization.
+
+    The registration secret lives on every node in the fleet. If it also
+    opened the management routes, compromising one node would let an attacker
+    enumerate and evict all the others.
+    """
+    app_client.post("/nodes/heartbeat", json=HEARTBEAT, headers=AUTH)
+    assert app_client.get("/nodes", headers=AUTH).status_code == 403
+    assert app_client.delete("/nodes/node-001", headers=AUTH).status_code == 403
+    assert node_registry.get("node-001") is not None, "a node must not evict its peers"
+
+
+def test_management_fails_closed_without_an_operator_secret(monkeypatch):
+    monkeypatch.setattr(
+        auth_mod,
+        "node_settings",
+        replace(node_settings, registration_secret=SECRET, operator_secret=""),
+    )
+    node_registry.clear()
+    app = FastAPI()
+    app.include_router(router)
+    with TestClient(app) as c:
+        assert c.get("/nodes", headers=OP).status_code == 503
+
+
+def test_operator_secret_must_differ_from_the_registration_secret(monkeypatch):
+    """Reusing one value collapses the two blast radii into one."""
+    same = "shared-value"
+    monkeypatch.setattr(
+        auth_mod,
+        "node_settings",
+        replace(node_settings, registration_secret=same, operator_secret=same),
+    )
+    node_registry.clear()
+    app = FastAPI()
+    app.include_router(router)
+    with TestClient(app) as c:
+        resp = c.get("/nodes", headers={"Authorization": "Bearer " + same})
+    assert resp.status_code == 503
+    assert "must differ" in resp.json()["detail"]
 
 
 # --- endpoint policy (SSRF / prompt exfiltration) -------------------------
