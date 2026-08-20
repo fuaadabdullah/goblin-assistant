@@ -163,6 +163,7 @@ async def startup_event():
     await init_db()
     await monitor.start()
 
+
 @app.on_event("shutdown")
 async def shutdown_event():
     """Clean up resources on shutdown"""
@@ -185,16 +186,13 @@ class ErrorHandlingMiddleware(BaseHTTPMiddleware):
         except Exception as e:
             # Log error
             logger.error(f"Unhandled error: {e}")
-            
+
             # Return formatted error response
             return JSONResponse(
                 status_code=500,
                 content={
-                    "error": {
-                        "code": "INTERNAL_ERROR",
-                        "message": "An internal error occurred"
-                    }
-                }
+                    "error": {"code": "INTERNAL_ERROR", "message": "An internal error occurred"}
+                },
             )
 ```
 
@@ -227,6 +225,7 @@ async def health_check():
     """Basic health check endpoint"""
     return {"status": "healthy"}
 
+
 @router.get("/v1/health/")
 async def comprehensive_health():
     """Detailed health check with component status"""
@@ -235,8 +234,8 @@ async def comprehensive_health():
         "components": {
             "database": await check_db_health(),
             "redis": await check_redis_health(),
-            "providers": await check_providers_health()
-        }
+            "providers": await check_providers_health(),
+        },
     }
 ```
 
@@ -249,24 +248,22 @@ Handles conversation management and AI chat:
 async def create_conversation(request: CreateConversationRequest):
     """Create a new conversation"""
     conversation = await conversation_store.create_conversation(
-        user_id=request.user_id,
-        title=request.title
+        user_id=request.user_id, title=request.title
     )
     return conversation
+
 
 @router.post("/chat/conversations/{conversation_id}/messages")
 async def send_message(conversation_id: str, request: SendMessageRequest):
     """Send a message and get AI response"""
     # Get conversation history
     conversation = await conversation_store.get_conversation(conversation_id)
-    
+
     # Get AI response using provider dispatcher
     response = await invoke_provider(
-        provider=request.provider,
-        model=request.model,
-        messages=conversation.messages
+        provider=request.provider, model=request.model, messages=conversation.messages
     )
-    
+
     # Store response and return
     await conversation_store.add_message_to_conversation(...)
     return response
@@ -282,6 +279,7 @@ task routing now live at `/api/v1/providers/models` and `/api/v1/api/route_task`
 async def get_available_providers():
     """Deprecated compatibility provider view"""
     return await dispatcher.get_provider_inventory(include_hidden=False)
+
 
 @router.post("/routing/route")
 async def route_request(request: RouteRequest):
@@ -379,25 +377,19 @@ For semantic search and RAG capabilities:
 ```python
 import chromadb
 
+
 class VectorStore:
     def __init__(self):
         self.client = chromadb.Client()
         self.collection = self.client.create_collection("documents")
-    
+
     async def add_document(self, text: str, metadata: dict):
         """Add document to vector store"""
-        self.collection.add(
-            documents=[text],
-            metadatas=[metadata],
-            ids=[str(uuid.uuid4())]
-        )
-    
+        self.collection.add(documents=[text], metadatas=[metadata], ids=[str(uuid.uuid4())])
+
     async def search(self, query: str, limit: int = 5):
         """Search similar documents"""
-        return self.collection.query(
-            query_texts=[query],
-            n_results=limit
-        )
+        return self.collection.query(query_texts=[query], n_results=limit)
 ```
 
 ## Request Flow
@@ -488,23 +480,25 @@ class ProviderRouter:
         self.providers = {
             "openai": OpenAIProvider(),
             "anthropic": AnthropicProvider(),
-            "gemini": GeminiProvider()
+            "gemini": GeminiProvider(),
         }
-    
+
     async def route_request(self, task_type: str, requirements: dict):
         """Route request to optimal provider"""
         # Analyze requirements
         cost_budget = requirements.get("cost_budget", 1.0)
         latency_requirement = requirements.get("max_latency", 5.0)
         quality_requirement = requirements.get("min_quality", 0.8)
-        
+
         # Score providers
         scores = {}
         for name, provider in self.providers.items():
             if await provider.is_available():
-                score = self.calculate_score(provider, cost_budget, latency_requirement, quality_requirement)
+                score = self.calculate_score(
+                    provider, cost_budget, latency_requirement, quality_requirement
+                )
                 scores[name] = score
-        
+
         # Select best provider
         best_provider = max(scores, key=scores.get)
         return self.providers[best_provider]
@@ -600,14 +594,15 @@ Provider API keys are encrypted at rest:
 ```python
 from cryptography.fernet import Fernet
 
+
 class EncryptionManager:
     def __init__(self, key: bytes):
         self.cipher = Fernet(key)
-    
+
     def encrypt_api_key(self, api_key: str) -> str:
         """Encrypt API key for storage"""
         return self.cipher.encrypt(api_key.encode()).decode()
-    
+
     def decrypt_api_key(self, encrypted_key: str) -> str:
         """Decrypt API key for use"""
         return self.cipher.decrypt(encrypted_key.encode()).decode()
@@ -624,19 +619,16 @@ class RateLimiter:
         self.refill_rate = refill_rate
         self.tokens = capacity
         self.last_refill = time.time()
-    
+
     async def allow_request(self, cost: int = 1) -> bool:
         """Check if request is allowed"""
         now = time.time()
-        
+
         # Refill tokens
         time_passed = now - self.last_refill
-        self.tokens = min(
-            self.capacity,
-            self.tokens + time_passed * self.refill_rate
-        )
+        self.tokens = min(self.capacity, self.tokens + time_passed * self.refill_rate)
         self.last_refill = now
-        
+
         # Check if enough tokens
         if self.tokens >= cost:
             self.tokens -= cost
@@ -657,20 +649,18 @@ async def process_multiple_requests(requests: List[Request]):
     results = await asyncio.gather(*tasks, return_exceptions=True)
     return results
 
+
 async def process_single_request(request: Request):
     """Process single request with async operations"""
     # Async database query
     user = await database.get_user(request.user_id)
-    
+
     # Async provider call
-    ai_response = await ai_provider.generate_response(
-        prompt=request.prompt,
-        model=request.model
-    )
-    
+    ai_response = await ai_provider.generate_response(prompt=request.prompt, model=request.model)
+
     # Async cache update
     await cache.set(f"response:{request.id}", ai_response)
-    
+
     return ai_response
 ```
 
