@@ -5,13 +5,23 @@ from __future__ import annotations
 import asyncio
 from typing import Any, Dict, List
 
+import structlog
+
 from .policy_engine import cost_router, tier_router
+
+logger = structlog.get_logger()
 
 
 def _dispatcher():
     from ..providers.dispatcher import dispatcher  # noqa: PLC0415
 
     return dispatcher
+
+
+def _local_compute():
+    from ..nodes.dispatch import try_local_compute  # noqa: PLC0415
+
+    return try_local_compute
 
 
 def _provider_costs(provider_ids: List[str]) -> Dict[str, tuple[float, float]]:
@@ -67,6 +77,22 @@ async def route_task(
     max_retries: int = 2,
     stream: bool = False,
 ) -> Dict[str, Any]:
+    # Local compute tier. Self-hosted nodes are tried before the cloud ladder
+    # because we own them and they cost nothing per token. This is a tier, not
+    # a provider: nodes are not ranked against Groq on price -- they either
+    # have capacity for the requested model or they do not.
+    #
+    # Streaming is excluded: the node agent forces stream:false, so a
+    # streaming caller must reach a provider that can actually stream.
+    if not stream:
+        try:
+            local_result = await _local_compute()(task_type, payload)
+        except Exception as exc:  # noqa: BLE001 - local must never break routing
+            logger.warning("local_compute_error", error=str(exc), task_type=task_type)
+            local_result = None
+        if local_result is not None:
+            return local_result
+
     dispatch = _dispatcher()
     candidates = top_providers_for(
         capability=task_type,
