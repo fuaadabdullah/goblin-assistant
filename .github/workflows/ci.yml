@@ -17,6 +17,8 @@ jobs:
       - uses: actions/checkout@v4
         with:
           fetch-depth: 0
+      - name: Test the policy checker
+        run: bash tooling/automation/tests/test-ci-policy-check.sh
       - name: Enforce branch + commit policy
         run: bash tooling/automation/ci-policy-check.sh
 

@@ -89,6 +89,9 @@ jobs:
     steps:
       - checkout
       - run:
+          name: Test the policy checker
+          command: bash tooling/automation/tests/test-ci-policy-check.sh
+      - run:
           name: Branch + commit policy
           command: bash tooling/automation/ci-policy-check.sh
 
