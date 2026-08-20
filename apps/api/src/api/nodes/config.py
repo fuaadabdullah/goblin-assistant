@@ -39,9 +39,7 @@ class NodeSettings:
     # superuser column, so `get_current_user` proves somebody is logged in,
     # not that they are an operator. Requiring a secret is honest about that.
     # Replace it with a real authorization dependency once roles exist.
-    operator_secret: str = field(
-        default_factory=lambda: _env("GOBLIN_NODE_OPERATOR_SECRET", "")
-    )
+    operator_secret: str = field(default_factory=lambda: _env("GOBLIN_NODE_OPERATOR_SECRET", ""))
 
     # Hosts a node is permitted to advertise as its endpoint, comma separated.
     # Empty means "no allowlist", which is acceptable only because the

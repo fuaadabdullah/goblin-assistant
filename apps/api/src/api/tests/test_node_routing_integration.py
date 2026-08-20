@@ -9,7 +9,6 @@ from __future__ import annotations
 
 import pytest
 
-from api.nodes.client import NodeUnavailable
 from api.routing import selection
 
 
@@ -26,7 +25,8 @@ def cloud(monkeypatch):
             calls.append(provider_id)
             return {"ok": True, "text": "cloud answer", "provider": provider_id}
 
-    monkeypatch.setattr(selection, "_dispatcher", lambda: FakeDispatcher())
+    _d = FakeDispatcher()
+    monkeypatch.setattr(selection, "_dispatcher", lambda: _d)
     monkeypatch.setattr(selection, "top_providers_for", lambda **kwargs: ["groq", "gemini"])
     return calls
 
@@ -34,8 +34,7 @@ def cloud(monkeypatch):
 @pytest.mark.asyncio
 async def test_local_node_serves_and_cloud_is_untouched(cloud, monkeypatch):
     async def local_hit(task_type, payload):
-        return {"ok": True, "text": "local answer", "compute_tier": "local",
-                "node_id": "node-001"}
+        return {"ok": True, "text": "local answer", "compute_tier": "local", "node_id": "node-001"}
 
     monkeypatch.setattr(selection, "_local_compute", lambda: local_hit)
 
@@ -63,7 +62,7 @@ async def test_node_failure_falls_back_to_cloud(cloud, monkeypatch):
     """The headline acceptance test: pull the node, same prompt still answers."""
 
     async def local_dead(task_type, payload):
-        return None  # dispatch swallowed NodeUnavailable and told us to move on
+        return None  # dispatch swallowed NodeUnavailableError and told us to move on
 
     monkeypatch.setattr(selection, "_local_compute", lambda: local_dead)
 
@@ -120,7 +119,8 @@ async def test_cloud_ladder_still_retries_next_provider(monkeypatch):
         return None
 
     monkeypatch.setattr(selection, "_local_compute", lambda: local_miss)
-    monkeypatch.setattr(selection, "_dispatcher", lambda: FlakyDispatcher())
+    _d = FlakyDispatcher()
+    monkeypatch.setattr(selection, "_dispatcher", lambda: _d)
     monkeypatch.setattr(selection, "top_providers_for", lambda **kwargs: ["groq", "gemini"])
 
     result = await selection.route_task("chat", {"prompt": "hi"})
@@ -139,7 +139,8 @@ async def test_total_failure_still_reports_providers_tried(monkeypatch):
         return None
 
     monkeypatch.setattr(selection, "_local_compute", lambda: local_miss)
-    monkeypatch.setattr(selection, "_dispatcher", lambda: DeadDispatcher())
+    _d = DeadDispatcher()
+    monkeypatch.setattr(selection, "_dispatcher", lambda: _d)
     monkeypatch.setattr(selection, "top_providers_for", lambda **kwargs: ["groq", "gemini"])
 
     result = await selection.route_task("chat", {"prompt": "hi"})

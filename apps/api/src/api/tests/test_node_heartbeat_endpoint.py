@@ -70,15 +70,21 @@ def test_heartbeat_rejects_a_payload_with_no_node_id(client):
 
 
 def test_heartbeat_rejects_an_unknown_status(client):
-    assert client.post(
-        "/nodes/heartbeat", json={**HEARTBEAT, "status": "vibing"}, headers=AUTH
-    ).status_code == 422
+    assert (
+        client.post(
+            "/nodes/heartbeat", json={**HEARTBEAT, "status": "vibing"}, headers=AUTH
+        ).status_code
+        == 422
+    )
 
 
 def test_heartbeat_rejects_negative_active_jobs(client):
-    assert client.post(
-        "/nodes/heartbeat", json={**HEARTBEAT, "active_jobs": -1}, headers=AUTH
-    ).status_code == 422
+    assert (
+        client.post(
+            "/nodes/heartbeat", json={**HEARTBEAT, "active_jobs": -1}, headers=AUTH
+        ).status_code
+        == 422
+    )
 
 
 def test_list_nodes_exposes_what_the_router_sees(client):

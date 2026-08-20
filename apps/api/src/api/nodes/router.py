@@ -13,7 +13,7 @@ from typing import Dict, List
 from fastapi import APIRouter, Depends, HTTPException, status
 
 from .auth import require_node_secret, require_operator
-from .endpoint_policy import InvalidEndpoint, validate_endpoint
+from .endpoint_policy import InvalidEndpointError, validate_endpoint
 from .models import NodeHeartbeat, NodeView
 from .registry import node_registry
 
@@ -41,7 +41,7 @@ async def heartbeat(payload: NodeHeartbeat) -> Dict[str, object]:
     if payload.endpoint:
         try:
             payload.endpoint = validate_endpoint(payload.endpoint)
-        except InvalidEndpoint as exc:
+        except InvalidEndpointError as exc:
             raise HTTPException(
                 status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
                 detail="rejected endpoint: {}".format(exc),

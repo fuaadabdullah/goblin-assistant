@@ -24,9 +24,9 @@ from typing import Any, Dict, Optional
 
 import structlog
 
-from .client import NodeUnavailable, invoke_node
-from .endpoint_policy import InvalidEndpoint, validate_endpoint
+from .client import NodeUnavailableError, invoke_node
 from .config import node_settings
+from .endpoint_policy import InvalidEndpointError, validate_endpoint
 from .registry import NodeRegistry, node_registry
 
 logger = structlog.get_logger()
@@ -110,7 +110,7 @@ async def try_local_compute(
     # rules are still resident in the registry.
     try:
         target = validate_endpoint(node.endpoint)
-    except InvalidEndpoint as exc:
+    except InvalidEndpointError as exc:
         logger.warning(
             "local_compute_skipped",
             reason="endpoint_rejected",
@@ -129,7 +129,7 @@ async def try_local_compute(
             options=payload.get("options") if isinstance(payload.get("options"), dict) else None,
             job_id=job_id,
         )
-    except NodeUnavailable as exc:
+    except NodeUnavailableError as exc:
         reg.record_failure(node.node_id)
         logger.info(
             "local_compute_fallback",

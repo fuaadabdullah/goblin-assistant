@@ -9,7 +9,7 @@ from __future__ import annotations
 
 import pytest
 
-from api.nodes.client import NodeUnavailable
+from api.nodes.client import NodeUnavailableError
 from api.nodes.config import node_settings
 from api.nodes.dispatch import try_local_compute
 from api.nodes.models import NodeHeartbeat
@@ -44,9 +44,7 @@ def local_tier_enabled(monkeypatch):
     """The tier ships OFF, so dispatch tests must turn it on explicitly."""
     from dataclasses import replace
 
-    monkeypatch.setattr(
-        "api.nodes.dispatch.node_settings", replace(node_settings, enabled=True)
-    )
+    monkeypatch.setattr("api.nodes.dispatch.node_settings", replace(node_settings, enabled=True))
 
 
 # --- registration ---------------------------------------------------------
@@ -194,9 +192,7 @@ async def test_no_registered_node_falls_through(registry):
 @pytest.mark.asyncio
 async def test_unsupported_model_falls_through(registry):
     registry.upsert(make_heartbeat(models=["llama3.1:8b"]))
-    result = await try_local_compute(
-        "chat", {"prompt": "hi", "model": "gpt-4o"}, registry=registry
-    )
+    result = await try_local_compute("chat", {"prompt": "hi", "model": "gpt-4o"}, registry=registry)
     assert result is None
 
 
@@ -214,7 +210,7 @@ async def test_node_failure_falls_through_and_is_recorded(registry, monkeypatch)
     registry.upsert(make_heartbeat())
 
     async def boom(**kwargs):
-        raise NodeUnavailable("connection refused")
+        raise NodeUnavailableError("connection refused")
 
     monkeypatch.setattr("api.nodes.dispatch.invoke_node", boom)
 
@@ -230,12 +226,13 @@ async def test_node_timeout_falls_through(registry, monkeypatch):
     registry.upsert(make_heartbeat())
 
     async def timeout(**kwargs):
-        raise NodeUnavailable("node timed out after 60s")
+        raise NodeUnavailableError("node timed out after 60s")
 
     monkeypatch.setattr("api.nodes.dispatch.invoke_node", timeout)
-    assert await try_local_compute(
-        "chat", {"prompt": "hi", "model": "llama3.1:8b"}, registry=registry
-    ) is None
+    assert (
+        await try_local_compute("chat", {"prompt": "hi", "model": "llama3.1:8b"}, registry=registry)
+        is None
+    )
 
 
 @pytest.mark.asyncio
@@ -244,28 +241,33 @@ async def test_node_503_falls_through(registry, monkeypatch):
     registry.upsert(make_heartbeat())
 
     async def saturated(**kwargs):
-        raise NodeUnavailable("node saturated (503)")
+        raise NodeUnavailableError("node saturated (503)")
 
     monkeypatch.setattr("api.nodes.dispatch.invoke_node", saturated)
-    assert await try_local_compute(
-        "chat", {"prompt": "hi", "model": "llama3.1:8b"}, registry=registry
-    ) is None
+    assert (
+        await try_local_compute("chat", {"prompt": "hi", "model": "llama3.1:8b"}, registry=registry)
+        is None
+    )
 
 
 @pytest.mark.asyncio
 async def test_node_without_endpoint_falls_through(registry):
     registry.upsert(make_heartbeat(endpoint=None))
-    assert await try_local_compute(
-        "chat", {"prompt": "hi", "model": "llama3.1:8b"}, registry=registry
-    ) is None
+    assert (
+        await try_local_compute("chat", {"prompt": "hi", "model": "llama3.1:8b"}, registry=registry)
+        is None
+    )
 
 
 @pytest.mark.asyncio
 async def test_non_chat_task_falls_through(registry):
     registry.upsert(make_heartbeat())
-    assert await try_local_compute(
-        "embedding", {"prompt": "hi", "model": "llama3.1:8b"}, registry=registry
-    ) is None
+    assert (
+        await try_local_compute(
+            "embedding", {"prompt": "hi", "model": "llama3.1:8b"}, registry=registry
+        )
+        is None
+    )
 
 
 @pytest.mark.asyncio
@@ -280,8 +282,10 @@ async def test_messages_payload_is_flattened_to_a_prompt(registry, monkeypatch):
     monkeypatch.setattr("api.nodes.dispatch.invoke_node", capture)
     await try_local_compute(
         "chat",
-        {"messages": [{"role": "user", "content": "Explain compound interest."}],
-         "model": "llama3.1:8b"},
+        {
+            "messages": [{"role": "user", "content": "Explain compound interest."}],
+            "model": "llama3.1:8b",
+        },
         registry=registry,
     )
     assert seen["prompt"] == "Explain compound interest."
@@ -293,6 +297,7 @@ async def test_disabled_flag_bypasses_local_entirely(registry, monkeypatch):
 
     registry.upsert(make_heartbeat())
     monkeypatch.setattr("api.nodes.dispatch.node_settings", replace(node_settings, enabled=False))
-    assert await try_local_compute(
-        "chat", {"prompt": "hi", "model": "llama3.1:8b"}, registry=registry
-    ) is None
+    assert (
+        await try_local_compute("chat", {"prompt": "hi", "model": "llama3.1:8b"}, registry=registry)
+        is None
+    )

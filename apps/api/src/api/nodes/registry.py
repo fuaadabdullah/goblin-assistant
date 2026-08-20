@@ -108,9 +108,7 @@ class NodeRegistry:
         with self._lock:
             return list(self._nodes.values())
 
-    def effective_status(
-        self, record: NodeRecord, *, now: Optional[float] = None
-    ) -> NodeStatus:
+    def effective_status(self, record: NodeRecord, *, now: Optional[float] = None) -> NodeStatus:
         """Status accounting for staleness.
 
         A node that stopped heartbeating is offline no matter what its last
@@ -154,9 +152,7 @@ class NodeRegistry:
         stamp = now if now is not None else time.monotonic()
         with self._lock:
             candidates = [
-                r
-                for r in self._nodes.values()
-                if self.is_eligible(r, model=model, now=stamp)
+                r for r in self._nodes.values() if self.is_eligible(r, model=model, now=stamp)
             ]
         return sorted(candidates, key=lambda r: (r.active_jobs, r.node_id))
 

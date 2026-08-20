@@ -15,7 +15,7 @@ from fastapi.testclient import TestClient
 
 from api.nodes import auth as auth_mod
 from api.nodes.config import node_settings
-from api.nodes.endpoint_policy import InvalidEndpoint, validate_endpoint
+from api.nodes.endpoint_policy import InvalidEndpointError, validate_endpoint
 from api.nodes.registry import node_registry
 from api.nodes.router import router
 
@@ -76,9 +76,7 @@ def test_heartbeat_with_correct_secret_is_accepted(app_client):
 
 def test_unconfigured_secret_fails_closed(monkeypatch):
     """No secret configured must mean no registration, not open registration."""
-    monkeypatch.setattr(
-        auth_mod, "node_settings", replace(node_settings, registration_secret="")
-    )
+    monkeypatch.setattr(auth_mod, "node_settings", replace(node_settings, registration_secret=""))
     node_registry.clear()
     app = FastAPI()
     app.include_router(router)
@@ -192,14 +190,14 @@ def test_with_an_allowlist_the_attacker_host_is_refused(app_client, monkeypatch)
     ],
 )
 def test_dangerous_endpoints_are_rejected(bad):
-    with pytest.raises(InvalidEndpoint):
+    with pytest.raises(InvalidEndpointError):
         validate_endpoint(bad)
 
 
 def test_http_is_allowed_to_loopback_only():
     assert validate_endpoint("http://127.0.0.1:8090") == "http://127.0.0.1:8090"
     assert validate_endpoint("http://localhost:8090") == "http://localhost:8090"
-    with pytest.raises(InvalidEndpoint):
+    with pytest.raises(InvalidEndpointError):
         validate_endpoint("http://10.0.0.5:8090")
 
 
@@ -210,7 +208,7 @@ def test_https_endpoint_is_accepted_and_normalised():
 def test_allowlist_blocks_unlisted_hosts():
     cfg = replace(node_settings, endpoint_allowlist=("node-001.tailnet",))
     assert validate_endpoint("https://node-001.tailnet:8090", settings=cfg)
-    with pytest.raises(InvalidEndpoint):
+    with pytest.raises(InvalidEndpointError):
         validate_endpoint("https://evil.example.com", settings=cfg)
 
 
@@ -238,9 +236,7 @@ async def test_dispatch_revalidates_endpoint_against_current_policy(monkeypatch)
             endpoint="https://sneaky.example.com:8090",
         )
     )
-    monkeypatch.setattr(
-        "api.nodes.dispatch.node_settings", replace(node_settings, enabled=True)
-    )
+    monkeypatch.setattr("api.nodes.dispatch.node_settings", replace(node_settings, enabled=True))
     monkeypatch.setattr(
         "api.nodes.endpoint_policy.node_settings",
         replace(node_settings, endpoint_allowlist=("node-001.tailnet",)),
@@ -283,7 +279,7 @@ async def test_blackholed_network_falls_back_within_the_connect_budget(monkeypat
     refused -- which is exactly the blackhole case a killed process does not
     reproduce.
     """
-    from api.nodes.client import NodeUnavailable, invoke_node, reset_ssl_context
+    from api.nodes.client import NodeUnavailableError, invoke_node, reset_ssl_context
 
     monkeypatch.setattr(
         "api.nodes.client.node_settings",
@@ -292,7 +288,7 @@ async def test_blackholed_network_falls_back_within_the_connect_budget(monkeypat
     reset_ssl_context()
 
     started = time.perf_counter()
-    with pytest.raises(NodeUnavailable):
+    with pytest.raises(NodeUnavailableError):
         await invoke_node(
             endpoint="https://198.51.100.7:8090",
             model="llama3.1:8b",
@@ -302,6 +298,7 @@ async def test_blackholed_network_falls_back_within_the_connect_budget(monkeypat
     reset_ssl_context()
 
     assert elapsed < 10, (
-        "blackholed node took {:.1f}s to fail; a tight connect timeout is the "
-        "whole point".format(elapsed)
+        "blackholed node took {:.1f}s to fail; a tight connect timeout is the whole point".format(
+            elapsed
+        )
     )

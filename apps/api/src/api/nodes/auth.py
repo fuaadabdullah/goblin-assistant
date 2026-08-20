@@ -92,10 +92,7 @@ async def require_operator(
     ):
         raise HTTPException(
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-            detail=(
-                "GOBLIN_NODE_OPERATOR_SECRET must differ from "
-                "GOBLIN_NODE_REGISTRATION_SECRET"
-            ),
+            detail=("GOBLIN_NODE_OPERATOR_SECRET must differ from GOBLIN_NODE_REGISTRATION_SECRET"),
         )
 
     presented = credentials.credentials if credentials else ""

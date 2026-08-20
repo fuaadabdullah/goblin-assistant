@@ -18,7 +18,7 @@ from .config import node_settings
 logger = structlog.get_logger()
 
 
-class NodeUnavailable(RuntimeError):
+class NodeUnavailableError(RuntimeError):
     """The node could not serve this request. Always recoverable via cloud."""
 
 
@@ -70,7 +70,7 @@ async def invoke_node(
 ) -> Dict[str, Any]:
     """POST /inference to a node agent.
 
-    Raises NodeUnavailable for anything that should trigger cloud fallback:
+    Raises NodeUnavailableError for anything that should trigger cloud fallback:
     connection refused, TLS failure, timeout, 503 (node saturated), or any
     other non-2xx.
     """
@@ -93,7 +93,7 @@ async def invoke_node(
         async with httpx.AsyncClient(verify=build_ssl_context(), timeout=timeout) as client:
             resp = await client.post(url, json=body)
     except httpx.TimeoutException as exc:
-        raise NodeUnavailable(
+        raise NodeUnavailableError(
             "node timed out (connect={}s read={}s): {}".format(
                 node_settings.connect_timeout_seconds,
                 timeout_seconds or node_settings.read_timeout_seconds,
@@ -101,18 +101,16 @@ async def invoke_node(
             )
         ) from exc
     except (httpx.HTTPError, ssl.SSLError, OSError) as exc:
-        raise NodeUnavailable("node unreachable: {}".format(exc)) from exc
+        raise NodeUnavailableError("node unreachable: {}".format(exc)) from exc
 
     if resp.status_code == 503:
         # The agent's own concurrency gate turned us away. Not an error --
         # it is the node correctly telling us to go elsewhere.
-        raise NodeUnavailable("node saturated (503)")
+        raise NodeUnavailableError("node saturated (503)")
     if resp.status_code >= 400:
-        raise NodeUnavailable(
-            "node returned {}: {}".format(resp.status_code, resp.text[:200])
-        )
+        raise NodeUnavailableError("node returned {}: {}".format(resp.status_code, resp.text[:200]))
 
     try:
         return resp.json()
     except ValueError as exc:
-        raise NodeUnavailable("node returned non-JSON body") from exc
+        raise NodeUnavailableError("node returned non-JSON body") from exc
