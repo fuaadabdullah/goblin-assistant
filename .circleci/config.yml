@@ -199,6 +199,7 @@ jobs:
             PYTHONPATH=src python -m pytest \
               -o "addopts=" \
               --cov=api \
+              --cov-config=../../.coveragerc \
               --cov-report=xml:coverage.xml \
               --cov-report=html:htmlcov \
               --cov-fail-under=70 \

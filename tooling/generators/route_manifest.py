@@ -9,14 +9,13 @@ import sys
 from collections import defaultdict
 from dataclasses import asdict, dataclass
 from pathlib import Path
-from typing import Any
+from typing import Any, Iterable
 
 from fastapi.routing import APIRoute
 
 from tooling.generators.route_inventory_shared import (
     API_V1_PREFIX,
     METHOD_ORDER,
-    group_for_path,
     method_sort_key,
     normalize_tags,
     normalize_text,
@@ -45,7 +44,9 @@ class RouteRecord:
     replacement_path: str | None
 
 
-def _build_operation_index(schema: dict[str, object]) -> dict[tuple[str, str], dict[str, Any]]:
+def _build_operation_index(
+    schema: dict[str, object],
+) -> dict[tuple[str, str], dict[str, Any]]:
     index: dict[tuple[str, str], dict[str, Any]] = {}
     paths = schema.get("paths", {})
     if not isinstance(paths, dict):
@@ -70,14 +71,31 @@ def _build_operation_index(schema: dict[str, object]) -> dict[tuple[str, str], d
     return index
 
 
-def _route_records_from_app(api_app, schema: dict[str, object] | None = None) -> list[RouteRecord]:
+def _iter_effective_routes(routes: Iterable[Any]) -> Iterable[Any]:
+    for route in routes:
+        if isinstance(route, APIRoute):
+            yield route
+            continue
+
+        effective_candidates = getattr(route, "effective_candidates", None)
+        if callable(effective_candidates):
+            yield from _iter_effective_routes(effective_candidates())
+            continue
+
+        original_route = getattr(route, "original_route", None)
+        path = getattr(route, "path", None)
+        methods = getattr(route, "methods", None)
+        if isinstance(original_route, APIRoute) and isinstance(path, str) and methods:
+            yield route
+
+
+def _route_records_from_app(
+    api_app, schema: dict[str, object] | None = None
+) -> list[RouteRecord]:
     operation_index = _build_operation_index(schema or {})
     records: list[RouteRecord] = []
 
-    for route in api_app.routes:
-        if not isinstance(route, APIRoute):
-            continue
-
+    for route in _iter_effective_routes(api_app.routes):
         path = getattr(route, "path", "")
         if not isinstance(path, str) or not path:
             continue
@@ -95,9 +113,9 @@ def _route_records_from_app(api_app, schema: dict[str, object] | None = None) ->
         )
 
         for method in methods:
-            operation = operation_index.get((logical_path, method)) or operation_index.get(
-                (path, method)
-            )
+            operation = operation_index.get(
+                (logical_path, method)
+            ) or operation_index.get((path, method))
 
             summary = normalize_text(
                 (operation or {}).get("summary")
@@ -119,11 +137,14 @@ def _route_records_from_app(api_app, schema: dict[str, object] | None = None) ->
             openapi_extra = getattr(route, "openapi_extra", None)
             if not isinstance(openapi_extra, dict):
                 openapi_extra = {}
-            replacement_path = normalize_text(
-                (operation or {}).get("x-goblin-replaced-by")
-                or openapi_extra.get("x-goblin-replaced-by"),
-                fallback="",
-            ) or None
+            replacement_path = (
+                normalize_text(
+                    (operation or {}).get("x-goblin-replaced-by")
+                    or openapi_extra.get("x-goblin-replaced-by"),
+                    fallback="",
+                )
+                or None
+            )
 
             records.append(
                 RouteRecord(
@@ -137,7 +158,9 @@ def _route_records_from_app(api_app, schema: dict[str, object] | None = None) ->
                     compatibility_aliases=(),
                     canonical_path=path,
                     deprecated=bool(
-                        (operation or {}).get("deprecated", getattr(route, "deprecated", False))
+                        (operation or {}).get(
+                            "deprecated", getattr(route, "deprecated", False)
+                        )
                     ),
                     replacement_path=replacement_path,
                 )
@@ -190,12 +213,16 @@ def _route_records_from_app(api_app, schema: dict[str, object] | None = None) ->
     return finalized
 
 
-def build_manifest(api_app, schema: dict[str, object] | None = None) -> dict[str, object]:
+def build_manifest(
+    api_app, schema: dict[str, object] | None = None
+) -> dict[str, object]:
     schema = schema or api_app.openapi()
     routes = _route_records_from_app(api_app, schema)
 
     public_routes = [route for route in routes if route.include_in_schema]
-    versioned_routes = [route for route in public_routes if route.path.startswith(API_V1_PREFIX)]
+    versioned_routes = [
+        route for route in public_routes if route.path.startswith(API_V1_PREFIX)
+    ]
     alias_routes = [route for route in public_routes if route.compatibility_aliases]
 
     return {

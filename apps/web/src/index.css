@@ -6,8 +6,8 @@
  */
 
 @import 'tailwindcss';
-@config "../tailwind.config.js";
 @import './theme/index.css';
+@config "../tailwind.config.js";
 
 /* ============================================================================
    BASE STYLES

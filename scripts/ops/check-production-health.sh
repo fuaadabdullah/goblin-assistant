@@ -36,7 +36,7 @@ print_info() {
 # Health check functions
 check_api_health() {
     print_info "Checking API health..."
-    if curl -s -f --max-time 10 https://goblin-backend-dt30.onrender.com/health > /dev/null 2>&1; then
+    if curl -s -f --max-time 10 "${BACKEND_URL}/api/v1/health" > /dev/null 2>&1; then
         print_status "API is healthy"
         return 0
     else
@@ -58,13 +58,12 @@ check_frontend_health() {
 
 check_database_backup() {
     print_info "Checking database backup status..."
-    # This would need GitHub API access to check workflow status
-    # For now, just check if backup script exists
-    if [ -f "../../scripts/backup/pg_backup.sh" ]; then
-        print_status "Backup script exists"
+    if grep -q 'resource "oci_core_volume_backup_policy" "goblin_data"' infra/oracle/terraform/main.tf && \
+       grep -q 'resource "oci_core_volume_backup_policy_assignment" "goblin_data"' infra/oracle/terraform/main.tf; then
+        print_status "Oracle block volume backup policy configured"
         return 0
     else
-        print_error "Backup script not found"
+        print_error "Oracle backup policy not configured"
         return 1
     fi
 }
@@ -101,6 +100,14 @@ check_secrets() {
 main() {
     print_header
 
+    if [ -n "${BACKEND_URL:-}" ]; then
+        :
+    elif [ -n "${GOBLIN_API_DOMAIN:-}" ]; then
+        BACKEND_URL="https://${GOBLIN_API_DOMAIN}"
+    else
+        BACKEND_URL="http://127.0.0.1:8000"
+    fi
+
     local failures=0
 
     # Run all checks
@@ -127,8 +134,8 @@ main() {
 
     echo ""
     print_info "For detailed monitoring, check:"
-    echo "• Datadog Dashboard: https://app.datadoghq.com"
-    echo "• GitHub Actions: Database backup workflows"
+    echo "• Oracle VM logs"
+    echo "• GitHub Actions: deploy-prod workflow"
     echo "• Sentry: Error tracking dashboard"
 }
 

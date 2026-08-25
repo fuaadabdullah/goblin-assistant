@@ -32,7 +32,13 @@ print_error() {
     echo -e "${RED}[err] $1${NC}"
 }
 
-BACKEND_URL="${BACKEND_URL:-https://goblin-backend-dt30.onrender.com}"
+if [ -n "${BACKEND_URL:-}" ]; then
+    BACKEND_URL="${BACKEND_URL}"
+elif [ -n "${GOBLIN_API_DOMAIN:-}" ]; then
+    BACKEND_URL="https://${GOBLIN_API_DOMAIN}"
+else
+    BACKEND_URL="http://127.0.0.1:8000"
+fi
 FRONTEND_URL="${FRONTEND_URL:-https://goblin-assistant.vercel.app}"
 TMPDIR="${TMPDIR:-${ROOT_DIR}/.tmp}"
 PLAYWRIGHT_BROWSERS_PATH="${PLAYWRIGHT_BROWSERS_PATH:-${ROOT_DIR}/.playwright/browsers}"
@@ -51,7 +57,7 @@ echo
 print_header "Pre-Flight Checks"
 
 print_step "1. Checking backend health"
-if curl -s -f "${BACKEND_URL}/health" > /dev/null 2>&1; then
+if curl -s -f "${BACKEND_URL}/api/v1/health" > /dev/null 2>&1; then
     print_success "Backend is responding"
 else
     print_error "Backend is not responding"
