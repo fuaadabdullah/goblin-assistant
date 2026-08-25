@@ -1,0 +1,60 @@
+#cloud-config
+# Bootstraps the Oracle ARM VM: installs Docker, clones the repo.
+# Runs once on first boot (~2 min). Check progress:
+#   sudo cloud-init status --wait
+#   sudo tail -f /var/log/cloud-init-output.log
+
+package_update: true
+
+packages:
+  - ca-certificates
+  - curl
+  - e2fsprogs
+  - git
+  - iptables-persistent   # required for netfilter-persistent save
+
+runcmd:
+  # Clone repo
+  - git clone ${repo_url} /home/ubuntu/goblin-assistant
+  - chown -R ubuntu:ubuntu /home/ubuntu/goblin-assistant
+
+  # Prepare OCI block storage before Docker starts so Docker state lives on the
+  # persistent volume from first boot.
+  - bash /home/ubuntu/goblin-assistant/infra/oracle/scripts/setup-persistent-storage.sh
+
+  # Docker (official install script handles ARM64 correctly)
+  - curl -fsSL https://get.docker.com | sh
+  - usermod -aG docker ubuntu
+  - systemctl enable docker
+  - systemctl start docker
+
+  # OCI Ubuntu images restrict inbound traffic at the guest-OS iptables level,
+  # independent of the OCI security list. SSH (22) is open by default.
+  # Ports 80 and 443 must be explicitly opened or Caddy's ACME challenge fails
+  # and all HTTPS traffic is silently dropped.
+  - iptables -I INPUT 6 -m state --state NEW -p tcp --dport 80  -j ACCEPT
+  - iptables -I INPUT 6 -m state --state NEW -p tcp --dport 443 -j ACCEPT
+  - netfilter-persistent save
+
+  # Remind operator to drop .env before starting compose
+  - |
+    cat > /home/ubuntu/README.txt <<'EOF'
+    Next step: copy your .env file to the VM:
+      scp infra/oracle/.env ubuntu@<VM_IP>:~/goblin-assistant/infra/oracle/.env
+
+    Set GOBLIN_IMAGE in .env to a real image from GHCR, then pull and start:
+      cd ~/goblin-assistant/infra/oracle
+      docker compose pull && docker compose up -d --no-build --remove-orphans
+
+    Images are built by CI (deploy-prod.yml) and pushed to GHCR.
+    Never run docker compose up --build on this VM.
+
+    Check logs:
+      docker compose logs -f api caddy
+
+    Monitor:
+      python3 ~/goblin-assistant/scripts/ops/oci_lifecycle_monitor.py --domain "$GOBLIN_API_DOMAIN"
+    EOF
+  - chown ubuntu:ubuntu /home/ubuntu/README.txt
+
+final_message: "VM ready. Copy .env then run docker compose pull && docker compose up -d --no-build --remove-orphans."

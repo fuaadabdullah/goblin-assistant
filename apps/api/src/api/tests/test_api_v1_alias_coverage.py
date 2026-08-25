@@ -3,13 +3,13 @@ from __future__ import annotations
 import json
 from pathlib import Path
 
-from fastapi.routing import APIRoute
+from route_helpers import iter_effective_routes
 
 from api.main import app
 
 
 def test_api_v1_aliases_cover_key_routes():
-    paths = {route.path for route in app.routes}
+    paths = {route.path for route in iter_effective_routes(app.routes)}
     expected = {
         "/api/v1/auth/login",
         "/api/v1/search/query",
@@ -35,11 +35,10 @@ def test_checked_in_route_manifest_stays_aligned_with_key_contracts():
         if entry["include_in_schema"]
     }
     live_routes: set[tuple[str, str]] = set()
-    for route in app.routes:
-        if isinstance(route, APIRoute):
-            for method in route.methods or set():
-                if method not in {"HEAD", "OPTIONS"}:
-                    live_routes.add((method, route.path))
+    for route in iter_effective_routes(app.routes):
+        for method in route.methods or set():
+            if method not in {"HEAD", "OPTIONS"}:
+                live_routes.add((method, route.path))
 
     # Routing is a hard cutover to /api/v1 (see commit 0ed53d09) — routes.json
     # confirms compatibility_aliases: [] for all of these, so there is no bare

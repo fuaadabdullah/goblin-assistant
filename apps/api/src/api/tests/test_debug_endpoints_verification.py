@@ -5,6 +5,7 @@ Verification test for debug endpoints
 import pytest
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
+from route_helpers import iter_effective_routes
 
 from api.observability.debug_router import get_memory_debug_info, router
 from api.observability.tool_tracer import ToolExecutionStatus, tool_tracer
@@ -18,7 +19,7 @@ client = TestClient(app)
 
 def test_debug_endpoints_are_registered():
     """Verify debug endpoints are registered"""
-    routes = [route.path for route in app.routes]
+    routes = [route.path for route in iter_effective_routes(app.routes)]
 
     # Check that tool trace endpoints exist
     assert any("/api/v1/debug/tool-trace/" in r for r in routes), (

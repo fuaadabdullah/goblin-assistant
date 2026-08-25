@@ -1,5 +1,5 @@
-# ARCHIVED — Render (render.yaml) is the active deployment platform.
-# goblin-backend-dt30.onrender.com is the canonical backend URL.
+# ARCHIVED — Oracle Cloud (infra/oracle/) is the active deployment platform.
+# This file is retained only as a historical deployment reference.
 # This file is kept for reference; do not deploy from it without updating
 # RELEASE_VERSION and environment variables to match the current state.
 

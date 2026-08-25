@@ -1,7 +1,6 @@
 import { expect, test, type Page } from '@playwright/test';
 
-const liveAuthBackendUrl =
-  process.env['LIVE_AUTH_BACKEND_URL']?.trim().replace(/\/+$/, '') || '';
+const liveAuthBackendUrl = process.env['LIVE_AUTH_BACKEND_URL']?.trim().replace(/\/+$/, '') || '';
 const liveAuthEmail = process.env['LIVE_AUTH_EMAIL']?.trim() || '';
 const liveAuthPassword = process.env['LIVE_AUTH_PASSWORD']?.trim() || '';
 const liveAuthReady =
@@ -26,7 +25,10 @@ const readBrowserAccessToken = async (page: Page): Promise<string | null> =>
 
       try {
         const parsed = JSON.parse(trimmed) as unknown;
-        if (typeof parsed === 'string' && /^[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+$/.test(parsed)) {
+        if (
+          typeof parsed === 'string' &&
+          /^[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+$/.test(parsed)
+        ) {
           return parsed;
         }
 

@@ -10,6 +10,7 @@ from unittest.mock import AsyncMock
 import pytest
 from fastapi import FastAPI, status
 from fastapi.testclient import TestClient
+from route_helpers import iter_effective_routes
 
 from api.integrations.secrets import (
     SecretBackendError,
@@ -369,7 +370,7 @@ def test_router_registered_endpoints() -> None:
     """Verify the router registers all expected endpoints."""
     app = FastAPI()
     app.include_router(router, prefix="/api/v1")
-    routes = {(r.path, frozenset(r.methods or [])) for r in app.routes}
+    routes = {(r.path, frozenset(r.methods or [])) for r in iter_effective_routes(app.routes)}
 
     # Check list endpoint (GET /)
     assert any(r[0] in {"/api/v1/secrets", "/api/v1/secrets/"} and "GET" in r[1] for r in routes), (
