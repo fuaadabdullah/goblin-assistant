@@ -36,8 +36,9 @@ and local developer checks use the same entrypoint.
 Operational policy checks are part of `make lint-policy`, which runs in both
 GitHub Actions and CircleCI. The check keeps the hybrid CI/deploy model honest:
 GitHub owns repository guardrails, CircleCI owns the heavy build/test/deploy
-workflow, Render remains the canonical backend target, Fly.io remains archived,
-and dependency update automation must stay configured.
+workflow, Oracle Cloud (via `infra/oracle/`) remains the canonical backend
+target, `render.yaml` and Fly.io remain archived, and dependency update
+automation must stay configured.
 If the regenerated OpenAPI schema or route manifest differs from the checked-in
 files, CI fails immediately.
 

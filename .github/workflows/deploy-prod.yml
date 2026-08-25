@@ -1,21 +1,137 @@
 name: Deploy to Production
 
+# Triggered automatically when the CI workflow completes successfully on main.
+# Also supports manual dispatch with an explicit image tag override.
+#
+# What this does:
+#   1. SSH into the Oracle ARM64 VM (dogfood v1 trigger — acceptable temporarily)
+#   2. Pull the pre-built image from GHCR (no source build on VM)
+#   3. Restart services via docker compose
+#
+# The key improvement over the old approach:
+#   OLD: git pull → docker compose up --build  (builds on VM, not reproducible)
+#   NEW: docker pull ghcr.io/…:SHA → docker compose up  (immutable image from registry)
+#
+# Promotion path to fully automated:
+#   Run infra/oracle/setup-runner.sh to install a self-hosted GitHub Actions runner
+#   on the Oracle VM, then change the deploy job to:
+#     runs-on: [self-hosted, linux, arm64]
+#   The SSH step becomes unnecessary; the runner deploys directly.
+
 on:
-  push:
+  workflow_run:
+    workflows: [CI]
+    types: [completed]
     branches: [main]
+  workflow_dispatch:
+    inputs:
+      image_tag:
+        description: "Image tag to deploy (defaults to HEAD SHA of the triggering run)"
+        required: false
+        type: string
 
 jobs:
   deploy:
+    name: deploy
     runs-on: ubuntu-latest
     environment: production
+    if: >
+      github.event_name == 'workflow_dispatch' ||
+      github.event.workflow_run.conclusion == 'success'
     steps:
-      - uses: appleboy/ssh-action@v1
+      - name: Resolve image tag
+        id: tag
+        run: |
+          if [ -n "${{ inputs.image_tag }}" ]; then
+            echo "tag=${{ inputs.image_tag }}" >> "$GITHUB_OUTPUT"
+          elif [ -n "${{ github.event.workflow_run.head_sha }}" ]; then
+            echo "tag=${{ github.event.workflow_run.head_sha }}" >> "$GITHUB_OUTPUT"
+          else
+            echo "tag=${{ github.sha }}" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Deploy to Oracle VM
+        uses: appleboy/ssh-action@v1
+        env:
+          GOBLIN_IMAGE: ghcr.io/${{ github.repository_owner }}/goblin-api:${{ steps.tag.outputs.tag }}
+          GOBLIN_SANDBOX_IMAGE: ghcr.io/${{ github.repository_owner }}/goblin-sandbox:${{ steps.tag.outputs.tag }}
+          IMAGE_TAG: ${{ steps.tag.outputs.tag }}
+          GHCR_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GHCR_USER: ${{ github.actor }}
         with:
           host: ${{ secrets.ORACLE_VM_IP }}
           username: ubuntu
           key: ${{ secrets.ORACLE_SSH_KEY }}
+          envs: GOBLIN_IMAGE,GOBLIN_SANDBOX_IMAGE,IMAGE_TAG,GHCR_TOKEN,GHCR_USER
+          timeout: 300s
           script: |
-            cd ~/goblin-assistant
-            git pull origin main
-            cd infra/oracle
-            docker compose --profile workers up -d --build
+            set -euo pipefail
+
+            # Authenticate to GHCR so we can pull private images.
+            echo "$GHCR_TOKEN" | docker login ghcr.io -u "$GHCR_USER" --password-stdin
+
+            # Pull the images before taking anything down.
+            # If the pull fails the running containers are untouched.
+            echo "Pulling $GOBLIN_IMAGE ..."
+            docker pull "$GOBLIN_IMAGE"
+
+            echo "Pulling $GOBLIN_SANDBOX_IMAGE ..."
+            docker pull "$GOBLIN_SANDBOX_IMAGE" || echo "Sandbox image not yet built; skipping"
+
+            # Stamp the deployed SHA and timestamp for rollback reference.
+            echo "$IMAGE_TAG" > ~/goblin-assistant/infra/oracle/.last_deploy_sha
+            date -u +"%Y-%m-%dT%H:%M:%SZ" > ~/goblin-assistant/infra/oracle/.last_deploy_at
+
+            # Update .env with the new image references.
+            ENV_FILE=~/goblin-assistant/infra/oracle/.env
+            sed -i "s|^GOBLIN_IMAGE=.*|GOBLIN_IMAGE=$GOBLIN_IMAGE|" "$ENV_FILE" \
+              || echo "GOBLIN_IMAGE=$GOBLIN_IMAGE" >> "$ENV_FILE"
+            sed -i "s|^SANDBOX_IMAGE=.*|SANDBOX_IMAGE=$GOBLIN_SANDBOX_IMAGE|" "$ENV_FILE" \
+              || echo "SANDBOX_IMAGE=$GOBLIN_SANDBOX_IMAGE" >> "$ENV_FILE"
+
+            cd ~/goblin-assistant/infra/oracle
+
+            # Restart services using the pulled images. --no-build is explicit:
+            # we never build on the VM.
+            docker compose up -d --no-build --remove-orphans
+
+            # Wait for the API to become healthy (up to 90 s).
+            echo "Waiting for API health check..."
+            for i in $(seq 1 45); do
+              if docker compose exec -T api \
+                  python3 -c "import urllib.request; urllib.request.urlopen('http://localhost:8000/api/v1/health', timeout=5)" \
+                  2>/dev/null; then
+                echo "API healthy after ${i}x2s"
+                break
+              fi
+              if [ "$i" -eq 45 ]; then
+                echo "API did not become healthy within 90s"
+                docker compose logs --tail=50 api
+                exit 1
+              fi
+              sleep 2
+            done
+
+            # ARM64 sanity check — fail the deploy if the running image is wrong arch.
+            echo "--- ARM64 gate ---"
+            IMAGE_ID=$(docker compose images -q api 2>/dev/null || true)
+            if [ -n "$IMAGE_ID" ]; then
+              ARCH=$(docker inspect "$IMAGE_ID" --format '{{.Architecture}}')
+              echo "  api: $ARCH"
+              if [ "$ARCH" != "arm64" ]; then
+                echo "ERROR: api image is $ARCH, expected arm64" >&2
+                exit 1
+              fi
+            fi
+            echo "--- ARM64 gate passed ---"
+
+            echo "Deploy complete: $GOBLIN_IMAGE"
+
+      - name: Record deployment summary
+        if: always()
+        run: |
+          echo "### Deploy ${{ steps.tag.outputs.tag }}" >> "$GITHUB_STEP_SUMMARY"
+          echo "" >> "$GITHUB_STEP_SUMMARY"
+          echo "Image: \`ghcr.io/${{ github.repository_owner }}/goblin-api:${{ steps.tag.outputs.tag }}\`" >> "$GITHUB_STEP_SUMMARY"
+          echo "" >> "$GITHUB_STEP_SUMMARY"
+          echo "Status: ${{ job.status }}" >> "$GITHUB_STEP_SUMMARY"

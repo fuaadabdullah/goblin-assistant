@@ -1,7 +1,5 @@
-name: CI (GitHub-native gates)
+name: CI
 
-# GitHub keeps the low-cost guardrails.
-# CircleCI owns the heavier lint/test/build/deploy work.
 on:
   push:
     branches: [main, develop]
@@ -9,7 +7,14 @@ on:
     branches: [main, develop]
   workflow_dispatch:
 
+env:
+  REGISTRY: ghcr.io
+  # Image names — repo owner resolved at runtime so forks work automatically.
+  API_IMAGE: ${{ github.repository_owner }}/goblin-api
+  SANDBOX_IMAGE_NAME: ${{ github.repository_owner }}/goblin-sandbox
+
 jobs:
+  # ── branch / commit policy ───────────────────────────────────────────
   policy:
     name: policy
     runs-on: ubuntu-latest
@@ -20,14 +25,14 @@ jobs:
       - name: Enforce branch + commit policy
         run: bash tooling/automation/ci-policy-check.sh
 
+  # ── lint ─────────────────────────────────────────────────────────────
   lint:
     name: lint
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
 
-      - name: Set up Python
-        uses: actions/setup-python@v5
+      - uses: actions/setup-python@v5
         with:
           python-version: "3.11"
           cache: pip
@@ -40,78 +45,133 @@ jobs:
           python -m pip install --upgrade pip
           python -m pip install -r apps/api/requirements.txt -r apps/api/requirements-vector.txt
 
-      - name: Run API lint (Ruff)
+      - name: Ruff (API)
         run: cd apps/api && PYTHONPATH=src python -m ruff check --config pyproject.toml src/api
 
-      - name: Set up Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: "20"
-          cache: "pnpm"
-
-      - name: Set up pnpm
-        uses: pnpm/action-setup@v4
+      - uses: pnpm/action-setup@v4
         with:
           version: 9
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: pnpm
 
       - name: Install frontend dependencies
         run: pnpm install --frozen-lockfile
 
-      - name: Run web lint (ESLint)
+      - name: ESLint (web)
         run: pnpm --filter @goblin/web lint
 
-      - name: Run lint policy
+      - name: Lint policy
         run: make lint-policy
 
-  api-cycles:
-    name: api-cycles (report)
+  # ── types ─────────────────────────────────────────────────────────────
+  types:
+    name: types
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
 
-      - name: Set up Python
-        uses: actions/setup-python@v5
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+          cache-dependency-path: |
+            apps/api/requirements.txt
+            apps/api/requirements-vector.txt
+
+      - name: Install Python dependencies
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install -r apps/api/requirements.txt -r apps/api/requirements-vector.txt
+
+      - name: Pyright (API)
+        run: make type-check-api-pyright
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 9
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: pnpm
+
+      - name: Install frontend dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: tsc (web + packages)
+        run: |
+          mkdir -p .tmp
+          TMPDIR="$PWD/.tmp" pnpm --filter @goblin/web type-check
+          TMPDIR="$PWD/.tmp" pnpm run packages:type-check
+
+  # ── architecture checks ───────────────────────────────────────────────
+  architecture:
+    name: architecture
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
         with:
           python-version: "3.11"
 
-      - name: Report API dependency cycles (true count, ignores baseline allowlist)
+      - name: API import boundaries
+        run: make check-api-boundaries
+
+      - name: Capability ownership boundaries
+        run: make check-capability-boundaries
+
+      - name: Route lifecycle metadata policy
+        run: make check-route-lifecycle
+
+  # ── API cycle report (informational — never blocking) ─────────────────
+  api-cycles-report:
+    name: api-cycles-report
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Report API dependency cycles
         run: make check-api-cycles-report
 
-      - name: Add cycle count to CI summary
+      - name: Write cycle count to CI summary
         run: |
           COUNT=$(python -c "import json; print(json.load(open('artifacts/api-cycles.json'))['cycle_count'])")
           {
             echo "### API dependency cycles"
             echo ""
-            echo "Total cycle count: **${COUNT}**"
-            echo ""
-            echo "This is the true count, independent of the baseline allowlist in"
-            echo "\`apps/api/architecture-boundaries.toml\`. The \`api-cycles-gate\` job below"
-            echo "fails only on cycles that are not already in that baseline."
+            echo "Total: **${COUNT}** (independent of baseline allowlist)"
           } >> "$GITHUB_STEP_SUMMARY"
 
-      - name: Upload cycle graph artifact
-        uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v4
         with:
           name: api-cycle-graph
           path: |
             artifacts/api-cycles.json
             artifacts/api-cycles.dot
 
+  # ── API cycle gate (blocks merge if any new cycles introduced) ────────
   api-cycles-gate:
     name: api-cycles-gate
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
 
-      - name: Set up Python
-        uses: actions/setup-python@v5
+      - uses: actions/setup-python@v5
         with:
           python-version: "3.11"
 
-      - name: Fail on new API dependency cycles (existing baseline debt is allowed)
+      - name: Fail on new API dependency cycles
         run: make check-api-cycles
 
+  # ── OpenAPI / proxy contract validation ───────────────────────────────
   contract:
     name: contract
     runs-on: ubuntu-latest
@@ -120,8 +180,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Set up Python
-        uses: actions/setup-python@v5
+      - uses: actions/setup-python@v5
         with:
           python-version: "3.11"
           cache: pip
@@ -134,23 +193,22 @@ jobs:
           python -m pip install --upgrade pip
           python -m pip install -r apps/api/requirements.txt -r apps/api/requirements-vector.txt
 
-      - name: Set up Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: "20"
-          cache: "pnpm"
-
-      - name: Set up pnpm
-        uses: pnpm/action-setup@v4
+      - uses: pnpm/action-setup@v4
         with:
           version: 9
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: pnpm
 
       - name: Install frontend dependencies
         run: pnpm install --frozen-lockfile
 
-      - name: Check OpenAPI, route manifest, and frontend API path drift
+      - name: OpenAPI, route manifest, and frontend API path drift
         run: make contract-checks
 
+  # ── tests ─────────────────────────────────────────────────────────────
   test-backend:
     name: test-backend
     runs-on: ubuntu-latest
@@ -159,8 +217,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Set up Python
-        uses: actions/setup-python@v5
+      - uses: actions/setup-python@v5
         with:
           python-version: "3.11"
           cache: pip
@@ -173,7 +230,7 @@ jobs:
           python -m pip install --upgrade pip
           python -m pip install -r apps/api/requirements.txt -r apps/api/requirements-vector.txt
 
-      - name: Run API tests with coverage
+      - name: API tests with coverage gate (≥ 80%)
         run: make test-api-coverage
 
   test-frontend:
@@ -184,53 +241,50 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Set up Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: "20"
-          cache: "pnpm"
-
-      - name: Set up pnpm
-        uses: pnpm/action-setup@v4
+      - uses: pnpm/action-setup@v4
         with:
           version: 9
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: pnpm
 
       - name: Install frontend dependencies
         run: pnpm install --frozen-lockfile
 
-      - name: Run web tests with coverage
+      - name: Web tests with coverage gate
         run: make test-web-coverage
 
+  # ── aggregate merge gate ──────────────────────────────────────────────
   merge-gates:
     name: merge-gates
     runs-on: ubuntu-latest
-    needs: [lint, contract, test-backend, test-frontend, api-cycles-gate]
+    needs: [lint, types, architecture, contract, test-backend, test-frontend, api-cycles-gate]
     if: always()
     steps:
-      - name: Require lint, contract, backend coverage, frontend coverage, and no new API cycles
+      - name: All required gates must pass
         run: |
-          if [ "${{ needs.lint.result }}" != "success" ]; then
-            echo "lint gate failed: ${{ needs.lint.result }}"
-            exit 1
-          fi
-          if [ "${{ needs.contract.result }}" != "success" ]; then
-            echo "contract gate failed: ${{ needs.contract.result }}"
-            exit 1
-          fi
-          if [ "${{ needs.test-backend.result }}" != "success" ]; then
-            echo "backend coverage gate failed: ${{ needs.test-backend.result }}"
-            exit 1
-          fi
-          if [ "${{ needs.test-frontend.result }}" != "success" ]; then
-            echo "frontend coverage gate failed: ${{ needs.test-frontend.result }}"
-            exit 1
-          fi
-          if [ "${{ needs.api-cycles-gate.result }}" != "success" ]; then
-            echo "api-cycles-gate failed: ${{ needs.api-cycles-gate.result }}"
-            exit 1
-          fi
-          echo "All required pre-merge gates passed."
+          fail=0
+          check() {
+            if [ "$2" != "success" ]; then
+              echo "FAIL: $1 → $2"
+              fail=1
+            else
+              echo "OK:   $1"
+            fi
+          }
+          check lint          "${{ needs.lint.result }}"
+          check types         "${{ needs.types.result }}"
+          check architecture  "${{ needs.architecture.result }}"
+          check contract      "${{ needs.contract.result }}"
+          check test-backend  "${{ needs.test-backend.result }}"
+          check test-frontend "${{ needs.test-frontend.result }}"
+          check api-cycles    "${{ needs.api-cycles-gate.result }}"
+          [ $fail -eq 0 ] || exit 1
+          echo "All pre-merge gates passed."
 
+  # ── optional live auth smoke ──────────────────────────────────────────
   live-auth-smoke-gate:
     name: live-auth-smoke-gate
     runs-on: ubuntu-latest
@@ -267,16 +321,14 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Set up Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: "20"
-          cache: "pnpm"
-
-      - name: Set up pnpm
-        uses: pnpm/action-setup@v4
+      - uses: pnpm/action-setup@v4
         with:
           version: 9
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: pnpm
 
       - name: Install frontend dependencies
         run: pnpm install --frozen-lockfile
@@ -284,43 +336,203 @@ jobs:
       - name: Run live auth smoke
         run: pnpm --filter @goblin/web test:e2e:live
 
-  build:
-    name: build
+  # ── ARM64 image build → GHCR ─────────────────────────────────────────
+  #
+  # Runs on ubuntu-latest (amd64) with QEMU cross-compilation.
+  # First build is slow (~20-30 min); subsequent builds are fast because
+  # the pip-install and apt layers are cached in GitHub Actions cache.
+  #
+  # To promote to native-speed builds: run infra/oracle/setup-runner.sh
+  # on the Oracle VM and change runs-on to [self-hosted, linux, arm64].
+  # The registry push and deploy steps are identical either way.
+  build-arm64:
+    name: build-arm64
     runs-on: ubuntu-latest
     needs: [merge-gates]
-    timeout-minutes: 10
+    if: github.ref == 'refs/heads/main'
+    timeout-minutes: 60
+    permissions:
+      contents: read
+      packages: write
+    outputs:
+      image: ${{ steps.meta.outputs.tags }}
+      digest: ${{ steps.build.outputs.digest }}
     steps:
       - uses: actions/checkout@v4
 
-      - name: Set up Python
-        uses: actions/setup-python@v5
+      - name: Set up QEMU (ARM64 emulation)
+        uses: docker/setup-qemu-action@v3
         with:
-          python-version: "3.11"
-          cache: pip
-          cache-dependency-path: |
-            apps/api/requirements.txt
-            apps/api/requirements-vector.txt
+          platforms: arm64
 
-      - name: Install Python dependencies (for codegen)
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Log in to GHCR
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Extract image metadata
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ghcr.io/${{ env.API_IMAGE }}
+          tags: |
+            type=raw,value=${{ github.sha }}
+            type=raw,value=latest
+
+      - name: Build and push (linux/arm64)
+        id: build
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          dockerfile: Dockerfile
+          platforms: linux/arm64
+          push: true
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          cache-from: type=gha,scope=api-arm64
+          cache-to: type=gha,mode=max,scope=api-arm64
+
+      - name: Write image reference to CI summary
         run: |
-          python -m pip install --upgrade pip
-          python -m pip install -r apps/api/requirements.txt -r apps/api/requirements-vector.txt
+          echo "### Built image" >> "$GITHUB_STEP_SUMMARY"
+          echo "" >> "$GITHUB_STEP_SUMMARY"
+          echo "\`ghcr.io/${{ env.API_IMAGE }}:${{ github.sha }}\`" >> "$GITHUB_STEP_SUMMARY"
+          echo "" >> "$GITHUB_STEP_SUMMARY"
+          echo "Digest: \`${{ steps.build.outputs.digest }}\`" >> "$GITHUB_STEP_SUMMARY"
 
-      - name: Set up Node.js
-        uses: actions/setup-node@v4
+  # ── sandbox image (ARM64) ────────────────────────────────────────────
+  build-arm64-sandbox:
+    name: build-arm64-sandbox
+    runs-on: ubuntu-latest
+    needs: [merge-gates]
+    if: github.ref == 'refs/heads/main'
+    timeout-minutes: 45
+    permissions:
+      contents: read
+      packages: write
+    outputs:
+      image: ghcr.io/${{ github.repository_owner }}/goblin-sandbox:${{ github.sha }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up QEMU (ARM64 emulation)
+        uses: docker/setup-qemu-action@v3
         with:
-          node-version: "20"
-          cache: "pnpm"
+          platforms: arm64
 
-      - name: Set up pnpm
-        uses: pnpm/action-setup@v4
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Log in to GHCR
+        uses: docker/login-action@v3
         with:
-          version: 9
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Install frontend dependencies
-        run: pnpm install --frozen-lockfile
+      - name: Extract sandbox image metadata
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ghcr.io/${{ env.SANDBOX_IMAGE_NAME }}
+          tags: |
+            type=raw,value=${{ github.sha }}
+            type=raw,value=latest
 
-      - name: Run build
+      - name: Build and push sandbox image (linux/arm64)
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          dockerfile: Dockerfile.sandbox
+          platforms: linux/arm64
+          push: true
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          cache-from: type=gha,scope=sandbox-arm64
+          cache-to: type=gha,mode=max,scope=sandbox-arm64
+
+  # ── integration smoke ─────────────────────────────────────────────────
+  #
+  # Pulls the just-built ARM64 image and verifies it starts correctly.
+  # Uses QEMU to run the arm64 image on the ubuntu-latest (amd64) runner.
+  # This catches: broken imports, missing deps, config loading errors.
+  integration-smoke:
+    name: integration-smoke
+    runs-on: ubuntu-latest
+    needs: [build-arm64]
+    timeout-minutes: 20
+    permissions:
+      contents: read
+      packages: read
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up QEMU (ARM64 emulation)
+        uses: docker/setup-qemu-action@v3
+        with:
+          platforms: arm64
+
+      - name: Log in to GHCR
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Pull built image
+        run: docker pull --platform linux/arm64 ghcr.io/${{ env.API_IMAGE }}:${{ github.sha }}
+
+      - name: Import smoke — verify app module loads without crashing
         run: |
-          PYTHONPATH=packages/shared/src python tooling/generators/generate-providers-json.py --check
-          pnpm --filter @goblin/web build
+          docker run --rm --platform linux/arm64 \
+            -e ENV=test \
+            -e DATABASE_URL=sqlite:///tmp/smoke.db \
+            -e REDIS_URL=redis://localhost:6379/0 \
+            -e SANDBOX_ENABLED=false \
+            -e JWT_SECRET_KEY=smoke-test-secret-not-real \
+            -e SUPABASE_URL=http://localhost:54321 \
+            -e SUPABASE_ANON_KEY=smoke \
+            -e SUPABASE_SERVICE_ROLE_KEY=smoke \
+            ghcr.io/${{ env.API_IMAGE }}:${{ github.sha }} \
+            python -c "from api.main import app; print('import ok')"
+
+      - name: Start API and assert health endpoint responds
+        run: |
+          docker run -d --platform linux/arm64 \
+            --name smoke-api \
+            -p 8000:8000 \
+            -e ENV=test \
+            -e DATABASE_URL=sqlite:///tmp/smoke.db \
+            -e REDIS_URL=redis://localhost:6379/0 \
+            -e SANDBOX_ENABLED=false \
+            -e JWT_SECRET_KEY=smoke-test-secret-not-real \
+            -e SUPABASE_URL=http://localhost:54321 \
+            -e SUPABASE_ANON_KEY=smoke \
+            -e SUPABASE_SERVICE_ROLE_KEY=smoke \
+            ghcr.io/${{ env.API_IMAGE }}:${{ github.sha }}
+
+          # Wait up to 60 s for the health endpoint to respond 200.
+          for i in $(seq 1 30); do
+            status=$(curl -s -o /dev/null -w "%{http_code}" http://localhost:8000/api/v1/health || echo "000")
+            if [ "$status" = "200" ]; then
+              echo "Health check passed (attempt $i)"
+              break
+            fi
+            echo "Attempt $i: status=$status, retrying in 2s..."
+            sleep 2
+          done
+
+          if [ "$status" != "200" ]; then
+            echo "Health check failed after 60s — last status: $status"
+            docker logs smoke-api
+            exit 1
+          fi
+
+      - name: Tear down
+        if: always()
+        run: docker rm -f smoke-api 2>/dev/null || true

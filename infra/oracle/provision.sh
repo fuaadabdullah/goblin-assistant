@@ -30,7 +30,7 @@ cd "$TF_DIR"
 terraform init -upgrade -input=false
 
 echo ""
-echo "Provisioning Oracle Cloud ARM instance (VM.Standard.A1.Flex, 4 OCPU / 24 GB)"
+echo "Provisioning Oracle Cloud ARM instance (VM.Standard.A1.Flex, 2 OCPU / 12 GB)"
 echo "Retrying every ${INTERVAL}s if capacity is unavailable. Ctrl+C to stop."
 echo ""
 

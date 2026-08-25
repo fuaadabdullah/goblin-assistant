@@ -1,25 +1,52 @@
-# Production compose for Oracle Cloud Always Free ARM VM (4 OCPU / 24GB RAM)
+# Production compose for Oracle Cloud Always Free ARM VM (2 OCPU / 12GB RAM)
 #
-# Run from ~/goblin-assistant/infra/oracle/ after git pull:
-#   docker compose up -d                       # api + caddy
-#   docker compose --profile workers up -d     # + celery worker + beat
+# Images are pre-built by CI and pushed to GHCR. Do NOT build on this VM.
+# Deployment is managed by GitHub Actions (deploy-prod.yml):
+#   docker compose pull && docker compose up -d --no-build
+#
+# Manual rollout (after setting GOBLIN_IMAGE in .env):
+#   docker compose pull api celery-worker
+#   docker compose up -d --no-build
+#   docker compose logs -f api redis celery-worker caddy
 #
 # Prerequisites:
-#   - .env file present (copy .env.example and fill in secrets)
+#   - .env file present (copy .env.example and fill in all secrets)
+#   - GOBLIN_IMAGE set to ghcr.io/OWNER/goblin-api:SHA
 #   - A DNS A record pointing GOBLIN_API_DOMAIN → this VM's public IP
 
 services:
+  redis:
+    image: redis:7.2-alpine
+    volumes:
+      - /var/lib/redis:/data
+      - ../../redis.conf:/usr/local/etc/redis/redis.conf:ro
+    command: redis-server /usr/local/etc/redis/redis.conf
+    healthcheck:
+      test:
+        - CMD
+        - redis-cli
+        - ping
+      interval: 10s
+      timeout: 3s
+      retries: 5
+      start_period: 15s
+    restart: always
+    deploy:
+      resources:
+        limits:
+          cpus: '0.25'
+          memory: 512m
+
   api:
-    build:
-      context: ../..   # repo root — where Dockerfile lives
-      dockerfile: Dockerfile
+    image: ${GOBLIN_IMAGE:?GOBLIN_IMAGE must be set — e.g. ghcr.io/OWNER/goblin-api:SHA}
+    command: uvicorn api.main:app --host 0.0.0.0 --port 8000 --workers 2
     environment:
       - ENV=production
       - PORT=8000
       - DATABASE_URL=${SUPABASE_DB_URL}
-      - REDIS_URL=${UPSTASH_REDIS_URL}
-      - CELERY_BROKER_URL=${UPSTASH_REDIS_URL}
-      - CELERY_RESULT_BACKEND=${UPSTASH_REDIS_URL}
+      - REDIS_URL=redis://redis:6379/0
+      - CELERY_BROKER_URL=redis://redis:6379/0
+      - CELERY_RESULT_BACKEND=redis://redis:6379/0
       - JWT_SECRET_KEY=${JWT_SECRET_KEY}
       - SUPABASE_URL=${SUPABASE_URL}
       - SUPABASE_ANON_KEY=${SUPABASE_ANON_KEY}
@@ -34,8 +61,8 @@ services:
       - DEEPSEEK_API_KEY=${DEEPSEEK_API_KEY:-}
       - SENTRY_DSN=${SENTRY_DSN:-}
     volumes:
-      - api_state:/app/state
-      - api_logs:/app/logs
+      - /opt/goblin/data/state/api:/app/state
+      - /var/log/goblin/api:/app/logs
     healthcheck:
       test:
         - CMD
@@ -47,11 +74,14 @@ services:
       retries: 3
       start_period: 40s
     restart: always
+    depends_on:
+      redis:
+        condition: service_healthy
     deploy:
       resources:
         limits:
           cpus: '2.0'
-          memory: 4g
+          memory: 2g
 
   caddy:
     image: caddy:2-alpine
@@ -61,10 +91,18 @@ services:
       - "443:443/udp"
     volumes:
       - ./Caddyfile:/etc/caddy/Caddyfile:ro
-      - caddy_data:/data
+      - caddy_data:/data    # TLS certificates live here — never delete this volume
       - caddy_config:/config
     environment:
       - GOBLIN_API_DOMAIN=${GOBLIN_API_DOMAIN}
+      - CADDY_ACME_EMAIL=${CADDY_ACME_EMAIL:-}
+    healthcheck:
+      # nc (busybox netcat) — checks that Caddy is accepting TCP on port 80.
+      test: ["CMD-SHELL", "nc -z localhost 80 || exit 1"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
     depends_on:
       api:
         condition: service_healthy
@@ -76,23 +114,21 @@ services:
           memory: 256m
 
   celery-worker:
-    build:
-      context: ../..
-      dockerfile: Dockerfile
-    profiles: [workers]
+    image: ${GOBLIN_IMAGE:?GOBLIN_IMAGE must be set — e.g. ghcr.io/OWNER/goblin-api:SHA}
     working_dir: /app/apps/api/src/api
     command: >
       celery -A celery_app:app worker
       --loglevel=info
-      --concurrency=4
+      --concurrency=1
       --pool=prefork
+      --prefetch-multiplier=1
       -Q high_priority,default,low_priority
     environment:
       - ENV=production
       - DATABASE_URL=${SUPABASE_DB_URL}
-      - REDIS_URL=${UPSTASH_REDIS_URL}
-      - CELERY_BROKER_URL=${UPSTASH_REDIS_URL}
-      - CELERY_RESULT_BACKEND=${UPSTASH_REDIS_URL}
+      - REDIS_URL=redis://redis:6379/0
+      - CELERY_BROKER_URL=redis://redis:6379/0
+      - CELERY_RESULT_BACKEND=redis://redis:6379/0
       - SUPABASE_URL=${SUPABASE_URL}
       - SUPABASE_ANON_KEY=${SUPABASE_ANON_KEY}
       - SUPABASE_SERVICE_ROLE_KEY=${SUPABASE_SERVICE_ROLE_KEY}
@@ -102,37 +138,25 @@ services:
       - GROQ_API_KEY=${GROQ_API_KEY:-}
       - DEEPSEEK_API_KEY=${DEEPSEEK_API_KEY:-}
     volumes:
-      - api_logs:/app/logs
+      - /var/log/goblin/celery-worker:/app/logs
+    healthcheck:
+      test:
+        - CMD-SHELL
+        - celery -A celery_app:app inspect ping -d celery@$$HOSTNAME --timeout=5 | grep -q pong
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
     restart: always
+    depends_on:
+      redis:
+        condition: service_healthy
     deploy:
       resources:
         limits:
-          cpus: '1.5'
-          memory: 3g
-
-  celery-beat:
-    build:
-      context: ../..
-      dockerfile: Dockerfile
-    profiles: [workers]
-    working_dir: /app/apps/api/src/api
-    command: celery -A celery_app:app beat --loglevel=info --schedule=/tmp/celerybeat-schedule
-    environment:
-      - ENV=production
-      - REDIS_URL=${UPSTASH_REDIS_URL}
-      - CELERY_BROKER_URL=${UPSTASH_REDIS_URL}
-      - CELERY_RESULT_BACKEND=${UPSTASH_REDIS_URL}
-    tmpfs:
-      - /tmp
-    restart: always
-    deploy:
-      resources:
-        limits:
-          cpus: '0.25'
-          memory: 512m
+          cpus: '0.75'
+          memory: 1.5g
 
 volumes:
-  api_state:
-  api_logs:
   caddy_data:
   caddy_config:
